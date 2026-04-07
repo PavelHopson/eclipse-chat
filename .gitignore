@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.env
+*.local
+__pycache__/
+.DS_Store
+
+# Runtime data
+deploy/runtime/
+backend/uploads/
+
+# IDE
+.vscode/
+.idea/
