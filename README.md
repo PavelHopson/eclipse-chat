@@ -71,6 +71,7 @@ Eclipse Chat — self-hosted мессенджер с функционалом Di
 - [ ] Pinned messages
 - [ ] Thread-ответы на сообщения
 - [ ] Боты API (webhook интеграции)
+- [ ] P2P передача файлов по LAN без сервера (протокол [LocalSend](https://github.com/localsend/localsend))
 - [ ] Мобильный PWA
 
 ---
