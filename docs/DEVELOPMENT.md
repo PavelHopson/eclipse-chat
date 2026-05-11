@@ -81,11 +81,21 @@ npm run dev:web
 | Команда (из корня) | Что делает |
 |---|---|
 | `npm run typecheck` | TypeScript-проверка всех workspaces |
-| `npm run build` | Production build обоих workspaces (`apps/server/dist`, `apps/web/dist`) |
+| `npm run build` | Production build обоих workspaces (`apps/server/dist`, `apps/web/dist`). **Frontend читает `apps/web/.env.production`** — там `VITE_BASE_PATH=/eclipse-chat/` для path-based deploy на Star CRM сервер. |
 | `npm run dev:server` | Backend в watch-режиме на :3001 |
-| `npm run dev:web` | Frontend (Vite) на :5173 |
+| `npm run dev:web` | Frontend (Vite) на :5173, base = `/` (dev-mode не читает `.env.production`) |
 | `npm run db:push` | Применить `schema.prisma` к SQLite (без миграций) |
 | `npm run db:seed` | Засидить начальные данные (канал #general) |
+
+### Base path в production build
+
+Eclipse Chat планируется деплоить **под-путём** на существующий сервер (например `https://app.star-crm.ru/eclipse-chat/`). Чтобы все ассеты, REST-запросы и Socket.io получали правильный prefix, frontend читает `VITE_BASE_PATH` из env при build.
+
+Значение **должно заканчиваться `/`** (Vite требование).
+
+- **По умолчанию для prod build** (`apps/web/.env.production`): `VITE_BASE_PATH=/eclipse-chat/`
+- **Override:** создать `apps/web/.env.production.local` (gitignored) или передать через CI env. Например для своего root-domain: `VITE_BASE_PATH=/`
+- **Dev mode** (`npm run dev:web`): значение игнорируется, base всегда `/`
 
 **Только в `apps/server`:**
 

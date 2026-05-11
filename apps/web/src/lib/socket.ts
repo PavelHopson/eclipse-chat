@@ -12,10 +12,20 @@
 import { io, type Socket } from "socket.io-client";
 import { getAccess } from "./storage";
 
+/**
+ * Socket.io path = `${BASE_URL}socket.io`. BASE_URL всегда заканчивается
+ * `/`, поэтому конкатенация даёт `/socket.io` в dev или
+ * `/eclipse-chat/socket.io` в path-based prod.
+ *
+ * Server слушает на `/socket.io` (без prefix); nginx в prod / Vite proxy
+ * в dev делает rewrite убирая `/eclipse-chat` префикс.
+ */
+const SOCKET_PATH = `${import.meta.env.BASE_URL}socket.io`;
+
 export function createSocket(): Socket {
   const t = getAccess() ?? undefined;
   return io({
-    path: "/socket.io",
+    path: SOCKET_PATH,
     auth: t ? { token: t } : {},
   });
 }

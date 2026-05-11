@@ -6,9 +6,20 @@
  * новую пару токенов, повторяет оригинальный запрос.
  *
  * Возвращает Response. Парсинг JSON — на стороне caller'а.
+ *
+ * **Base path:** все пути префиксятся `import.meta.env.BASE_URL` (всегда
+ * заканчивается `/`). По умолчанию это `/`, при `VITE_BASE_PATH=/eclipse-chat/`
+ * — `/eclipse-chat/`. Caller передаёт path **без** ведущего слэша:
+ * `apiPath("api/auth/login")` → `/eclipse-chat/api/auth/login`.
  */
 
 import { clearAllTokens, getAccess, getRefresh, setTokenPair } from "./storage";
+
+/** Префиксует path значением BASE_URL. Caller передаёт `api/auth/login` без leading `/`. */
+export function apiPath(path: string): string {
+  const cleanPath = path.replace(/^\/+/, "");
+  return `${import.meta.env.BASE_URL}${cleanPath}`;
+}
 
 let inFlightRefresh: Promise<string | null> | null = null;
 
@@ -43,7 +54,7 @@ export async function refreshAccessToken(): Promise<string | null> {
   }
   inFlightRefresh = (async () => {
     try {
-      const res = await fetch("/api/auth/refresh", {
+      const res = await fetch(apiPath("api/auth/refresh"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ refreshToken: refreshTok }),
@@ -87,7 +98,7 @@ export async function api(path: string, init?: RequestInit): Promise<Response> {
     if (access) {
       headers.set("Authorization", `Bearer ${access}`);
     }
-    return fetch(path, { ...init, headers });
+    return fetch(apiPath(path), { ...init, headers });
   };
 
   const access0 = getAccess();

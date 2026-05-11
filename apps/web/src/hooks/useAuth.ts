@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { ApiError, api, apiJson } from "../lib/api";
+import { ApiError, api, apiJson, apiPath } from "../lib/api";
 import { clearAllTokens, getAccess, getRefresh, migrateLegacyToken, setTokenPair } from "../lib/storage";
 
 export type PublicUser = {
@@ -72,7 +72,7 @@ export function useAuth() {
     async (email: string, password: string) => {
       setError(null);
       try {
-        const res = await fetch("/api/auth/login", {
+        const res = await fetch(apiPath("api/auth/login"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, password }),
@@ -104,7 +104,7 @@ export function useAuth() {
     async (email: string, password: string, displayName: string) => {
       setError(null);
       try {
-        const res = await fetch("/api/auth/register", {
+        const res = await fetch(apiPath("api/auth/register"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, password, displayName: displayName || "User" }),
