@@ -8,6 +8,8 @@ __pycache__/
 # Runtime data
 deploy/runtime/
 backend/uploads/
+apps/server/prisma/prisma/dev.db
+apps/server/prisma/prisma/dev.db-journal
 
 # IDE
 .vscode/

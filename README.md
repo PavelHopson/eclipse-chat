@@ -38,23 +38,79 @@ Eclipse Chat — self-hosted мессенджер с функционалом Di
 |------|-----------|
 | **Frontend** | React 19 · TypeScript · Vite 6 · Tailwind CSS 4 · Zustand |
 | **Backend** | Node.js · Fastify · Socket.io · Prisma ORM |
-| **БД** | PostgreSQL 17 · Redis 7 |
-| **Файлы** | MinIO (self-hosted S3-совместимый) |
+| **БД** | PostgreSQL 17 · Redis 7 *(target stack)* · SQLite *(current MVP)* |
+| **Файлы** | MinIO (self-hosted S3-совместимый, planned) |
 | **Auth** | JWT (access + refresh tokens) |
-| **Голос/Видео** | LiveKit (v2) |
-| **Инфра** | Docker · Docker Compose · Caddy |
+| **Голос/Видео** | LiveKit (v2, planned) |
+| **Инфра** | Docker · Docker Compose · Caddy *(target deploy)* |
+
+### Монорепо (каркас)
+
+В корне — `package.json` с [npm workspaces](https://docs.npmjs.com/cli/v10/using-npm/workspaces) (`apps/*`, `packages/*`):
+
+- `apps/server` — рабочий MVP backend: Fastify, Prisma, JWT, Socket.io
+- `apps/web` — рабочий MVP web client: auth, channels, realtime chat
+- `packages/shared` — общий код и типы (пока каркас)
+
+### Запуск (MVP)
+
+1. `apps/server/.env` — из `.env.example` (SQLite `prisma/dev.db`, `JWT_SECRET`, `CORS_ORIGIN`).
+2. `npm run db:push` из **корня** `eclipse-chat` (создать таблицы Prisma).
+3. Два терминала:
+
+| Команда | Порт | Описание |
+|---------|------|----------|
+| `npm run dev:server` | 3001 | Fastify, Prisma, JWT, Socket.io |
+| `npm run dev:web` | 5173 | Vite + React, прокси `/api` и WebSocket `/socket.io` → 3001 |
+
+**API:** `GET /api/health` (`database` — пинг БД).
+
+**Auth:** `POST /api/auth/register` · `POST /api/auth/login` — ответ JSON: `accessToken`, `refreshToken`, поле `token` = access (короткоживущий, **15m**), `user`. `POST /api/auth/refresh` body `{ "refreshToken" }` — ротация refresh, новая пара. `GET /api/auth/me` (Bearer) · `POST /api/auth/logout` (Bearer) — сбрасывает все refresh-сессии пользователя. Клиент хранит `eclipse_chat_access` / `eclipse_chat_refresh` (старый ключ `eclipse_chat_token` мигрирует в access при старте).
+
+**Каналы:** `GET /api/channels`, `POST /api/channels` (JSON `{ "name" }`, нужен JWT), `GET /api/channels/:id/messages`, `POST /api/channels/:id/messages` (JSON `{ "content" }`).
+
+**Socket.io:** `auth: { token: access }` (опционально). Без валидного access `channel:join` **игнорируется**; `server:hello` и `message:new` как раньше. Эмит: `channel:join` / `channel:leave` с `channelId` (с авторизованного сокета — join в комнату `channel:…`).
+
+После `db:push` — **`npm run db:seed`** (канал **#general**). Локальная БД: `apps/server/prisma/dev.db` (в `.gitignore`).
+
+`npm run typecheck` — TypeScript по workspace.
 
 ---
 
 ## Возможности
 
+### Current MVP
+
+- [x] Monorepo skeleton (`apps/server`, `apps/web`, `packages/shared`)
+- [x] Регистрация, логин, access/refresh JWT, logout, `GET /api/auth/me`
+- [x] Базовые каналы: список, создание, история сообщений, отправка сообщений
+- [x] Realtime поток через Socket.io (`message:new`, join/leave channel room)
+- [x] Web-клиент с auth flow, channel list и message composer
+
+### Focus now — next product step
+
+- [ ] Поднять `Server` / `Member` / invite model как first-class сущности
+- [ ] Вынести web из single-file MVP в нормальные layout / store / api / socket модули
+- [ ] Подготовить миграцию с локального SQLite MVP к PostgreSQL + Redis target stack
+- [ ] Свести `docs/*`, Prisma schema и runtime-код в одну честную модель без расхождений
+
+### v1.1 — UX, privacy and operator layer
+
+- [ ] SVG icon system для социальных/брендовых интеграций и провайдеров (reference: `thesvg`)
+- [ ] Privacy QA checklist перед voice/video: WebRTC, DNS, fingerprint, proxy-leak checks
+- [ ] AI assistant prompt refresh по GPT-5.5 guide: короче инструкции, сильнее output contract
+- [ ] Cost-control профили для summary/digest/assistant через сжатые режимы ответов (`caveman`)
+- [ ] Chat-driven operator/bot layer: control surface для задач, bridge в Telegram/Discord, long-term memory hooks
+
 ### v1 — MVP
 
 - [x] Архитектура и документация *(текущий этап)*
-- [ ] Аутентификация (регистрация, вход, JWT refresh)
+- [x] Аутентификация (регистрация, вход, JWT access/refresh, logout, Socket.io с токеном)
+- [x] Базовые каналы и сообщения (list/create/history/post)
+- [x] Realtime доставка новых сообщений в канале
 - [ ] Серверы (создание, инвайт-ссылки, вступление, список участников)
 - [ ] Текстовые каналы (создание, переименование, удаление)
-- [ ] Real-time сообщения (Socket.io, оптимистичные апдейты)
+- [ ] Optimistic UI и подтверждение доставки/ошибок для сообщений
 - [ ] Личные сообщения (DMs)
 - [ ] Реакции на сообщения (emoji picker)
 - [ ] Загрузка файлов и изображений (drag & drop, превью)
@@ -70,7 +126,7 @@ Eclipse Chat — self-hosted мессенджер с функционалом Di
 - [ ] Поиск по сообщениям и серверам
 - [ ] Pinned messages
 - [ ] Thread-ответы на сообщения
-- [ ] Боты API (webhook интеграции)
+- [ ] Bots API и automation hooks (webhook интеграции, system actions, AI operators)
 - [ ] P2P передача файлов по LAN без сервера (протокол [LocalSend](https://github.com/localsend/localsend))
 - [ ] Мобильный PWA
 

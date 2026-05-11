@@ -1,0 +1,17 @@
+{
+  "name": "eclipse-chat",
+  "private": true,
+  "description": "Self-hosted чат: монорепо (сервер, web, shared). Код — поэтапно; см. README.",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "dev:server": "npm run dev -w @eclipse-chat/server",
+    "dev:web": "npm run dev -w @eclipse-chat/web",
+    "build": "npm run build --workspaces --if-present",
+    "db:push": "npm run db:push -w @eclipse-chat/server",
+    "db:seed": "npm run db:seed -w @eclipse-chat/server"
+  }
+}

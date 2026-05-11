@@ -1,0 +1,14 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+code {
+  font-size: 0.9em;
+  padding: 0.1em 0.3em;
+  background: #1a1a20;
+  border-radius: 4px;
+}
