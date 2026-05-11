@@ -39,6 +39,20 @@ const socket = io({
 
 ---
 
+## Автоподписка на server rooms (v0.4)
+
+При успешной handshake-валидации JWT, сервер автоматически добавляет
+сокет в комнаты `server:${serverId}` для **всех серверов, в которых
+user — Member**. Это позволяет получать events `channel:created`,
+`member:joined`, `member:left` без явной подписки от клиента.
+
+Изменения членства между сессиями (вступил в новый server / покинул)
+будут видны после следующего connect — либо клиент должен переподключаться
+после `POST /api/servers/join/:code` и `DELETE /api/servers/:id/leave`
+(в v0.5 frontend split этот цикл будет автоматизирован).
+
+---
+
 ## Текущие события (реализованы)
 
 ### Сервер → Клиент
@@ -75,6 +89,55 @@ socket.on('message:new', (p: {
 
 **Кто получает:** только подключённые к room `channel:${channelId}`
 (подписка через `channel:join`).
+
+#### `channel:created` (v0.4)
+
+Эмитится в `server:${serverId}` при `POST /api/servers/:id/channels`.
+
+```typescript
+socket.on('channel:created', (p: {
+  channelId: string;
+  serverId: string;
+  name: string;
+  slug: string;
+  position: number;
+  createdAt: string;
+}) => {
+  // Новый канал в сервере — обновить ChannelList
+});
+```
+
+#### `member:joined` (v0.4)
+
+Эмитится в `server:${serverId}` при `POST /api/servers/join/:code`
+(только при реальном новом join, не при повторном).
+
+```typescript
+socket.on('member:joined', (p: {
+  memberId: string;
+  userId: string;
+  serverId: string;
+  role: string;          // "MEMBER" по умолчанию для join-by-invite
+  displayName: string;
+  joinedAt: string;
+}) => {
+  // Обновить MemberList
+});
+```
+
+#### `member:left` (v0.4)
+
+Эмитится в `server:${serverId}` при `DELETE /api/servers/:id/leave`.
+
+```typescript
+socket.on('member:left', (p: {
+  memberId: string;
+  userId: string;
+  serverId: string;
+}) => {
+  // Удалить из MemberList
+});
+```
 
 ### Клиент → Сервер
 
@@ -119,13 +182,13 @@ socket.emit('channel:leave', channelId);
 | Room | Формат | Кто получает |
 |---|---|---|
 | Канал | `channel:${channelId}` | Все клиенты, выполнившие `channel:join channelId` |
+| Сервер | `server:${serverId}` | Все авторизованные сокеты user'ов, которые Member данного server. Автоподписка при connect (v0.4). Получают `channel:created`, `member:joined`, `member:left`. |
 
-Будущие rooms (v0.4+):
+Будущие rooms:
 
-| Room | Формат | Зачем (после v0.4) |
+| Room | Формат | Зачем |
 |---|---|---|
-| Сервер | `server:${serverId}` | Member events (join/leave), server-wide announcements |
-| Пользователь | `user:${userId}` | DM notifications, mention pings |
+| Пользователь | `user:${userId}` | DM notifications (v0.8), mention pings (v0.12) |
 
 ---
 
@@ -140,12 +203,12 @@ socket.emit('channel:leave', channelId);
 
 **Сервер → Клиент (планируется):**
 
+- ✅ `channel:created`, `member:joined`, `member:left` — добавлены в v0.4 (выше)
 - ❌ `message:updated` — для edit-операций — v0.12
 - ❌ `message:deleted` — v0.12
 - ❌ `reaction:updated` — v0.7
 - ❌ `presence:update` (online/idle/dnd/offline) — v0.11
 - ❌ `user:typing` — v0.11
-- ❌ `member:joined`, `member:left` — v0.4 (после Server/Member)
 - ❌ `dm:new` — v0.8
 - ❌ `error` (generic error channel) — пока ошибки приходят как HTTP
 
@@ -180,5 +243,7 @@ REST → emit становится bottleneck. Но пока проще REST.
 
 ---
 
-_Updated 2026-05-11 — синхронизировано с реальным кодом
-`apps/server/src/index.ts` и `apps/server/src/realtime.ts`._
+_Updated 2026-05-11 — v0.4 (Server/Member) добавил `channel:created`,
+`member:joined`, `member:left` + автоподписку на `server:${serverId}` rooms.
+Синхронизировано с реальным кодом `apps/server/src/index.ts` и
+`apps/server/src/realtime.ts`._

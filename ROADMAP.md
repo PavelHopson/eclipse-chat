@@ -26,33 +26,49 @@ self-host важнее красивого облачного UX.
 
 ---
 
-## v0.4 — Server / Member / Invite (next, in progress)
+## v0.4 — Server / Member / Invite (backend ✅ done, frontend ⏳ pending)
 
 **Цель:** превратить чат из «одной общей комнаты» в полноценные
 сервера со своим membership.
 
-**Backend:**
-- [ ] Prisma models: `Server`, `Member` (с FK на User), `MemberRole` enum
-- [ ] Prisma: `Channel.serverId` (нового сервера) + миграция existing
-      `Channel` → "Default Server"
-- [ ] Routes: `GET /api/servers`, `POST /api/servers`, `GET /api/servers/:id`,
-      `DELETE /api/servers/:id`, `POST /api/servers/join/:inviteCode`,
-      `DELETE /api/servers/:id/leave`, `GET /api/servers/:id/members`,
-      `GET /api/servers/:id/channels`
-- [ ] Invite codes: `Server.inviteCode` уникальный (cuid)
-- [ ] Channel routes: scope каналов внутри server (`POST /api/servers/:id/channels`)
-- [ ] Socket: автоподписка на rooms `server:${serverId}` при connect
+**Backend (Step 1 — готов):**
+- [x] Prisma models: `Server`, `Member` (с FK на User)
+- [x] `MemberRole` хранится как String (SQLite limitation) — валидация
+      через zod (`"OWNER" | "ADMIN" | "MODERATOR" | "MEMBER"`). Нативный
+      enum появится в v0.6 после PG-миграции.
+- [x] `Channel.serverId` (nullable temporarily — поднимется до NOT NULL
+      в v0.6 после backfill) + `Channel.position`
+- [x] Routes: `GET /api/servers`, `POST /api/servers`,
+      `GET /api/servers/:id`, `DELETE /api/servers/:id` (only OWNER),
+      `POST /api/servers/join/:inviteCode` (idempotent — повторный join
+      возвращает `alreadyMember: true`),
+      `DELETE /api/servers/:id/leave` (OWNER cannot leave),
+      `GET /api/servers/:id/members`, `GET /api/servers/:id/channels`,
+      `POST /api/servers/:id/channels`
+- [x] Invite codes: `Server.inviteCode` уникальный (cuid)
+- [x] Backward compat: `GET/POST /api/channels` работают на Default
+      Server (legacy aliases). Будут deprecate в Step 2.
+- [x] `POST /api/channels/:id/messages` проверяет membership
+      (если `channel.serverId` задан → must be Member)
+- [x] Socket: автоподписка на rooms `server:${serverId}` при connect
+- [x] Socket events: `channel:created`, `member:joined`, `member:left`
+- [x] Idempotent seed-migration: existing `Channel` + existing users
+      → Default Server. Если users не было — создаётся system user
+      (`system@eclipse-chat.local`, невалидный password hash) как owner.
 
-**Frontend:**
+**Frontend (Step 2 — pending):**
 - [ ] ServerList в sidebar
 - [ ] Активный сервер в state
 - [ ] Список каналов фильтруется по активному серверу
-- [ ] Modal: Create Server / Join Server
+- [ ] Modal: Create Server / Join Server (с инвайт-кодом)
+- [ ] Обработка socket events `channel:created`, `member:joined`,
+      `member:left`
 
-**Migration scenario:** existing `Channel` rows (включая seed `#general`)
-переносятся в новый `Server` "Default Server" с `ownerId` = первый user
-или special system user. Существующие пользователи автоматически
-становятся Member этого сервера.
+**Migration outcome (Step 1 уже применён локально):** existing
+`Channel` (включая seed `#general`) перенесены в `Server` "Default
+Server". В пустой dev.db создаётся system user как owner. Существующие
+пользователи автоматически становятся Member of Default Server
+(первый — OWNER, остальные — MEMBER).
 
 ---
 

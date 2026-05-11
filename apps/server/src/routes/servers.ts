@@ -1,0 +1,358 @@
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import { z } from "zod";
+import { db } from "../db.js";
+import { getUserId, requireJwt } from "../auth/requireJwt.js";
+import { emitMemberJoined, emitMemberLeft, emitChannelCreated } from "../realtime.js";
+
+const createServerBody = z.object({
+  name: z.string().min(1).max(80),
+  icon: z.string().url().max(500).optional().nullable(),
+});
+
+const createServerChannelBody = z.object({
+  name: z.string().min(1).max(80),
+});
+
+/** Все допустимые роли. SQLite-friendly — храним как String, валидируем здесь. */
+const MEMBER_ROLES = ["OWNER", "ADMIN", "MODERATOR", "MEMBER"] as const;
+export type MemberRole = (typeof MEMBER_ROLES)[number];
+
+function isMemberRole(value: string): value is MemberRole {
+  return (MEMBER_ROLES as readonly string[]).includes(value);
+}
+
+function slugifyBase(name: string) {
+  return (
+    name
+      .toLowerCase()
+      .normalize("NFKD")
+      .replace(/[̀-ͯ]/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 48) || "channel"
+  );
+}
+
+async function uniqueSlug(base: string) {
+  let slug = base;
+  for (let n = 0; n < 20; n++) {
+    const exists = await db.channel.findUnique({ where: { slug } });
+    if (!exists) {
+      return slug;
+    }
+    slug = `${base}-${Math.random().toString(36).slice(2, 7)}`;
+  }
+  return `${base}-${Date.now()}`;
+}
+
+/**
+ * Проверка членства. Возвращает member-row если current user is member,
+ * иначе отправляет 403/404 и возвращает null.
+ */
+async function loadMember(
+  req: FastifyRequest,
+  reply: FastifyReply,
+  serverId: string,
+): Promise<{ id: string; userId: string; serverId: string; role: string } | null> {
+  const userId = getUserId(req);
+  if (!userId) {
+    void reply.status(401).send({ error: "Unauthorized" });
+    return null;
+  }
+  const serverExists = await db.server.findUnique({ where: { id: serverId }, select: { id: true } });
+  if (!serverExists) {
+    void reply.status(404).send({ error: "Server not found" });
+    return null;
+  }
+  const member = await db.member.findUnique({
+    where: { userId_serverId: { userId, serverId } },
+    select: { id: true, userId: true, serverId: true, role: true },
+  });
+  if (!member) {
+    void reply.status(403).send({ error: "Not a member of this server" });
+    return null;
+  }
+  return member;
+}
+
+export async function registerServerRoutes(app: FastifyInstance) {
+  /** GET /api/servers — мои серверы (где я Member). */
+  app.get("/api/servers", { onRequest: [requireJwt] }, async (req, reply) => {
+    const userId = getUserId(req);
+    if (!userId) {
+      return reply.status(401).send({ error: "Unauthorized" });
+    }
+    const memberships = await db.member.findMany({
+      where: { userId },
+      include: {
+        server: {
+          select: {
+            id: true,
+            name: true,
+            icon: true,
+            inviteCode: true,
+            ownerId: true,
+            createdAt: true,
+            _count: { select: { members: true, channels: true } },
+          },
+        },
+      },
+      orderBy: { joinedAt: "asc" },
+    });
+    return {
+      servers: memberships.map((m) => ({
+        id: m.server.id,
+        name: m.server.name,
+        icon: m.server.icon,
+        inviteCode: m.server.inviteCode,
+        ownerId: m.server.ownerId,
+        createdAt: m.server.createdAt.toISOString(),
+        memberCount: m.server._count.members,
+        channelCount: m.server._count.channels,
+        role: m.role,
+      })),
+    };
+  });
+
+  /** POST /api/servers — создать сервер, текущий user становится OWNER. */
+  app.post("/api/servers", { onRequest: [requireJwt] }, async (req, reply) => {
+    const userId = getUserId(req);
+    if (!userId) {
+      return reply.status(401).send({ error: "Unauthorized" });
+    }
+    const parsed = createServerBody.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: "Invalid body" });
+    }
+    const created = await db.$transaction(async (tx) => {
+      const server = await tx.server.create({
+        data: {
+          name: parsed.data.name,
+          icon: parsed.data.icon ?? null,
+          ownerId: userId,
+        },
+      });
+      await tx.member.create({
+        data: { userId, serverId: server.id, role: "OWNER" },
+      });
+      return server;
+    });
+    return {
+      server: {
+        id: created.id,
+        name: created.name,
+        icon: created.icon,
+        inviteCode: created.inviteCode,
+        ownerId: created.ownerId,
+        createdAt: created.createdAt.toISOString(),
+        role: "OWNER" as MemberRole,
+      },
+    };
+  });
+
+  /** GET /api/servers/:id — инфо о сервере (только для members). */
+  app.get("/api/servers/:id", { onRequest: [requireJwt] }, async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const member = await loadMember(req, reply, id);
+    if (!member) {
+      return reply;
+    }
+    const server = await db.server.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        name: true,
+        icon: true,
+        inviteCode: true,
+        ownerId: true,
+        createdAt: true,
+        _count: { select: { members: true, channels: true } },
+      },
+    });
+    if (!server) {
+      return reply.status(404).send({ error: "Server not found" });
+    }
+    return {
+      server: {
+        id: server.id,
+        name: server.name,
+        icon: server.icon,
+        inviteCode: server.inviteCode,
+        ownerId: server.ownerId,
+        createdAt: server.createdAt.toISOString(),
+        memberCount: server._count.members,
+        channelCount: server._count.channels,
+        role: member.role,
+      },
+    };
+  });
+
+  /** DELETE /api/servers/:id — только OWNER. Cascade удалит каналы/сообщения/members. */
+  app.delete("/api/servers/:id", { onRequest: [requireJwt] }, async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const member = await loadMember(req, reply, id);
+    if (!member) {
+      return reply;
+    }
+    if (member.role !== "OWNER") {
+      return reply.status(403).send({ error: "Only owner can delete server" });
+    }
+    await db.server.delete({ where: { id } });
+    return { ok: true };
+  });
+
+  /** POST /api/servers/join/:code — вступить по inviteCode. Idempotent. */
+  app.post("/api/servers/join/:code", { onRequest: [requireJwt] }, async (req, reply) => {
+    const userId = getUserId(req);
+    if (!userId) {
+      return reply.status(401).send({ error: "Unauthorized" });
+    }
+    const { code } = req.params as { code: string };
+    const server = await db.server.findUnique({ where: { inviteCode: code } });
+    if (!server) {
+      return reply.status(404).send({ error: "Invite not found" });
+    }
+    const existing = await db.member.findUnique({
+      where: { userId_serverId: { userId, serverId: server.id } },
+      select: { id: true, role: true },
+    });
+    if (existing) {
+      return {
+        server: {
+          id: server.id,
+          name: server.name,
+          icon: server.icon,
+          ownerId: server.ownerId,
+        },
+        member: { id: existing.id, role: existing.role },
+        alreadyMember: true,
+      };
+    }
+    const member = await db.member.create({
+      data: { userId, serverId: server.id, role: "MEMBER" },
+      include: { user: { select: { id: true, displayName: true, email: true } } },
+    });
+    emitMemberJoined(server.id, {
+      memberId: member.id,
+      userId: member.userId,
+      serverId: server.id,
+      role: member.role,
+      displayName: member.user.displayName,
+      joinedAt: member.joinedAt.toISOString(),
+    });
+    return {
+      server: {
+        id: server.id,
+        name: server.name,
+        icon: server.icon,
+        ownerId: server.ownerId,
+      },
+      member: { id: member.id, role: member.role },
+      alreadyMember: false,
+    };
+  });
+
+  /** DELETE /api/servers/:id/leave — покинуть сервер. OWNER не может leave. */
+  app.delete("/api/servers/:id/leave", { onRequest: [requireJwt] }, async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const member = await loadMember(req, reply, id);
+    if (!member) {
+      return reply;
+    }
+    if (member.role === "OWNER") {
+      return reply
+        .status(403)
+        .send({ error: "Owner cannot leave own server. Delete it or transfer ownership first." });
+    }
+    await db.member.delete({ where: { id: member.id } });
+    emitMemberLeft(id, { memberId: member.id, userId: member.userId, serverId: id });
+    return { ok: true };
+  });
+
+  /** GET /api/servers/:id/members — список участников. */
+  app.get("/api/servers/:id/members", { onRequest: [requireJwt] }, async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const me = await loadMember(req, reply, id);
+    if (!me) {
+      return reply;
+    }
+    const members = await db.member.findMany({
+      where: { serverId: id },
+      include: {
+        user: { select: { id: true, email: true, displayName: true, createdAt: true } },
+      },
+      orderBy: [{ role: "asc" }, { joinedAt: "asc" }],
+    });
+    return {
+      members: members.map((m) => ({
+        id: m.id,
+        userId: m.userId,
+        role: isMemberRole(m.role) ? m.role : "MEMBER",
+        joinedAt: m.joinedAt.toISOString(),
+        user: {
+          id: m.user.id,
+          displayName: m.user.displayName,
+          email: m.user.email,
+          createdAt: m.user.createdAt.toISOString(),
+        },
+      })),
+    };
+  });
+
+  /** GET /api/servers/:id/channels — каналы сервера. */
+  app.get("/api/servers/:id/channels", { onRequest: [requireJwt] }, async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const me = await loadMember(req, reply, id);
+    if (!me) {
+      return reply;
+    }
+    const channels = await db.channel.findMany({
+      where: { serverId: id },
+      orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        position: true,
+        createdAt: true,
+        _count: { select: { messages: true } },
+      },
+    });
+    return { channels };
+  });
+
+  /** POST /api/servers/:id/channels — создать канал в сервере (любой member). */
+  app.post("/api/servers/:id/channels", { onRequest: [requireJwt] }, async (req, reply) => {
+    const { id: serverId } = req.params as { id: string };
+    const me = await loadMember(req, reply, serverId);
+    if (!me) {
+      return reply;
+    }
+    const parsed = createServerChannelBody.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: "Invalid body" });
+    }
+    const base = slugifyBase(parsed.data.name);
+    const slug = await uniqueSlug(base);
+    const ch = await db.channel.create({
+      data: { name: parsed.data.name, slug, serverId },
+    });
+    emitChannelCreated(serverId, {
+      channelId: ch.id,
+      serverId,
+      name: ch.name,
+      slug: ch.slug,
+      position: ch.position,
+      createdAt: ch.createdAt.toISOString(),
+    });
+    return {
+      channel: {
+        id: ch.id,
+        name: ch.name,
+        slug: ch.slug,
+        position: ch.position,
+        createdAt: ch.createdAt.toISOString(),
+      },
+    };
+  });
+}
