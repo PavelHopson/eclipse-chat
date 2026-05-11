@@ -1,19 +1,57 @@
 # Eclipse Chat — Local Development
 
-Гайд по локальной разработке текущего MVP. Production deployment
-(Docker Compose, Caddy, PostgreSQL, MinIO) — **в roadmap**, см.
-[ROADMAP § v1.4](../ROADMAP.md#v14--производственный-deployment).
+Гайд по локальной разработке. С v0.6 (commit `<TBD-Phase1>`) перешли
+с SQLite на **PostgreSQL** — нативные enum'ы, миграции через
+`prisma migrate dev`, готовность к production-deploy. Production
+deployment на свой сервер описан в
+[docs/DEPLOY-TO-STAR-CRM.md](DEPLOY-TO-STAR-CRM.md).
 
 ---
 
 ## Требования
 
-- Node.js 20+ (рекомендуется LTS)
-- npm 10+ (идёт с Node.js)
-- Git
+- **Node.js 20+** (рекомендуется LTS)
+- **npm 10+** (идёт с Node.js)
+- **PostgreSQL 14+** (нативно или через docker-compose.dev.yml в корне репо)
+- **Git**
 
-**Не нужно:** Docker, PostgreSQL, Redis — для MVP используется SQLite
-файлом на диске.
+> **SQLite больше не поддерживается** для local dev (с v0.6). Если ты на старой
+> версии и хочешь продолжать на SQLite — checkout commit `2b4ddfd` (последний с SQLite).
+
+---
+
+## Local PG setup — два пути
+
+### Путь A — нативный PostgreSQL (рекомендую если PG уже стоит)
+
+```bash
+# Создать БД и user
+psql -U postgres <<'SQL'
+CREATE USER eclipse_chat_dev WITH PASSWORD 'dev_password';
+CREATE DATABASE eclipse_chat_dev OWNER eclipse_chat_dev;
+GRANT ALL PRIVILEGES ON DATABASE eclipse_chat_dev TO eclipse_chat_dev;
+SQL
+
+# Проверить что подключение работает
+psql -U eclipse_chat_dev -d eclipse_chat_dev -h localhost -c "SELECT version();"
+```
+
+DATABASE_URL для `.env`:
+```
+DATABASE_URL="postgresql://eclipse_chat_dev:dev_password@localhost:5432/eclipse_chat_dev?schema=public"
+```
+
+### Путь B — Docker (если нет нативного PG)
+
+```bash
+# В корне репо
+docker compose -f docker-compose.dev.yml up postgres -d
+```
+
+DATABASE_URL для `.env` (порт **5433**, не 5432 — чтобы не конфликтовать с нативным PG):
+```
+DATABASE_URL="postgresql://eclipse_chat_dev:dev_password@localhost:5433/eclipse_chat_dev?schema=public"
+```
 
 ---
 
@@ -23,25 +61,29 @@
 git clone https://github.com/PavelHopson/eclipse-chat.git
 cd eclipse-chat
 
-# 1. Установка зависимостей всех workspaces
+# 1. Установка зависимостей всех workspaces (запускает prisma generate)
 npm install
 
-# 2. .env для бэкенда
+# 2. .env для бэкенда — взять из примера, поправить под свой PG
 cp apps/server/.env.example apps/server/.env
-# Открой и подставь:
-#   JWT_SECRET=<любая случайная строка ≥32 символа>
-#   DATABASE_URL=file:./prisma/dev.db
-#   CORS_ORIGIN=http://localhost:5173
-#   PORT=3001 (опционально)
+# Обязательно проверь:
+#   DATABASE_URL  — подключение к Postgres (см. "Local PG setup" выше)
+#   JWT_SECRET    — любая случайная строка для dev (в проде ≥32 символа)
 
-# 3. Создать таблицы в SQLite
-npm run db:push
+# 3. Создать таблицы в PG и applied initial migration
+npm run db:migrate
+# При первом запуске Prisma спросит имя миграции — введи "init" (или
+# любое другое осмысленное), он создаст apps/server/prisma/migrations/<timestamp>_init/
 
-# 4. Засидить начальный канал #general
+# 4. Засидить начальный канал #general + Default Server + system user
 npm run db:seed
 ```
 
-После этого `apps/server/prisma/dev.db` создан и в нём один канал.
+После этого PG-БД готова, в ней:
+- `User` — 1 system user (для миграции legacy channels)
+- `Server` — 1 «Default Server»
+- `Channel` — 1 `#general` в Default Server
+- `Member` — 1 (system user как OWNER Default Server)
 
 ---
 
@@ -84,8 +126,11 @@ npm run dev:web
 | `npm run build` | Production build обоих workspaces (`apps/server/dist`, `apps/web/dist`). **Frontend читает `apps/web/.env.production`** — там `VITE_BASE_PATH=/eclipse-chat/` для path-based deploy на Star CRM сервер. |
 | `npm run dev:server` | Backend в watch-режиме на :3001 |
 | `npm run dev:web` | Frontend (Vite) на :5173, base = `/` (dev-mode не читает `.env.production`) |
-| `npm run db:push` | Применить `schema.prisma` к SQLite (без миграций) |
-| `npm run db:seed` | Засидить начальные данные (канал #general) |
+| `npm run db:migrate` | **(dev)** Применить новые изменения schema.prisma. Создаст SQL-миграцию в `prisma/migrations/<timestamp>_<name>/`. |
+| `npm run db:migrate:deploy` | **(prod)** Применить existing migrations без создания новых. Используется на серверe. |
+| `npm run db:push` | Применить schema **без миграций** (быстро, но не для prod). Используй только для experimental schema changes. |
+| `npm run db:seed` | Засидить начальные данные (#general канал + Default Server) |
+| `npm run db:studio` | GUI для просмотра PG БД на http://localhost:5555 |
 
 ### Base path в production build
 
@@ -118,28 +163,44 @@ Eclipse Chat планируется деплоить **под-путём** на 
 
 ---
 
-## Структура БД (SQLite)
+## Структура БД (PostgreSQL)
 
-Файл: `apps/server/prisma/dev.db` (в `.gitignore`).
+С v0.6: PG 14+ через `DATABASE_URL` в `.env`. Миграции через
+`prisma migrate dev` — лежат в `apps/server/prisma/migrations/`.
 
 Текущие таблицы:
 - `User` — учётки
 - `RefreshToken` — refresh-токены (хеш SHA-256)
-- `Channel` — каналы
+- `Server` — серверы (контейнер каналов и членов)
+- `Member` — членство пользователя в сервере (с native enum `MemberRole`)
+- `Channel` — каналы внутри сервера (`serverId` теперь NOT NULL)
 - `Message` — сообщения
+
+Native enum:
+- `MemberRole`: `OWNER | ADMIN | MODERATOR | MEMBER`
 
 Schema: `apps/server/prisma/schema.prisma`.
 
 **Очистить dev-данные:**
 ```bash
-rm apps/server/prisma/dev.db
-npm run db:push
+# Дроп БД и пересоздать
+psql -U postgres -c "DROP DATABASE eclipse_chat_dev;"
+psql -U postgres -c "CREATE DATABASE eclipse_chat_dev OWNER eclipse_chat_dev;"
+npm run db:migrate
+npm run db:seed
+```
+
+Или (если используешь Docker):
+```bash
+docker compose -f docker-compose.dev.yml down -v postgres
+docker compose -f docker-compose.dev.yml up postgres -d
+npm run db:migrate
 npm run db:seed
 ```
 
 **Посмотреть содержимое:**
 ```bash
-npm run db:studio -w @eclipse-chat/server
+npm run db:studio
 # Откроется http://localhost:5555
 ```
 
@@ -174,13 +235,30 @@ Backend уже запущен в другом терминале. Останов
 
 ### `Prisma Client did not initialize yet`
 
-Не выполнен `npm run db:push` либо `prisma generate` (запускается
+Не выполнен `npm run db:migrate` либо `prisma generate` (запускается
 автоматически на `postinstall`, но иногда падает на медленных дисках).
 
 Решение:
 ```bash
 npm run db:generate -w @eclipse-chat/server
 ```
+
+### `database "eclipse_chat_dev" does not exist`
+
+PG запущен, но БД не создана. Выполни SQL из § "Local PG setup".
+
+### `password authentication failed for user "eclipse_chat_dev"`
+
+Проверь:
+1. `DATABASE_URL` в `apps/server/.env` совпадает с настройками PG
+2. Если PG нативный — права у `eclipse_chat_dev` пользователя:
+   `psql -U postgres -c "ALTER USER eclipse_chat_dev WITH PASSWORD 'dev_password';"`
+3. `pg_hba.conf` разрешает `localhost` подключения с password (по умолчанию — да)
+
+### `Migration <name> failed to apply cleanly`
+
+Обычно при рассинхроне `prisma/migrations/` и реальной БД. Самый
+безопасный путь — пересоздать БД (см. "Очистить dev-данные").
 
 ### WebSocket не подключается
 

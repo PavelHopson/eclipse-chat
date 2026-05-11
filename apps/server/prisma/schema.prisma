@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -32,8 +32,17 @@ model RefreshToken {
   createdAt DateTime @default(now())
 }
 
+/// Роли участников. PostgreSQL поддерживает enum нативно — после v0.6
+/// миграции с SQLite на PG используем enum вместо String.
+enum MemberRole {
+  OWNER
+  ADMIN
+  MODERATOR
+  MEMBER
+}
+
 /// Сервер — контейнер каналов и участников. Создатель автоматически
-/// становится Member с role = "OWNER".
+/// становится Member с role = OWNER.
 model Server {
   id          String   @id @default(cuid())
   name        String
@@ -50,35 +59,27 @@ model Server {
 }
 
 /// Участие пользователя в сервере. Один user — один Member per server.
-///
-/// `role` — строка, не enum: SQLite в Prisma не поддерживает enum нативно.
-/// Допустимые значения проверяются в routes через zod:
-///   "OWNER" | "ADMIN" | "MODERATOR" | "MEMBER"
-/// В v0.6 при миграции на PostgreSQL → нативный enum MemberRole.
 model Member {
-  id        String   @id @default(cuid())
+  id        String     @id @default(cuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   serverId  String
-  server    Server   @relation(fields: [serverId], references: [id], onDelete: Cascade)
-  role      String   @default("MEMBER")
-  joinedAt  DateTime @default(now())
+  server    Server     @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  role      MemberRole @default(MEMBER)
+  joinedAt  DateTime   @default(now())
 
   @@unique([userId, serverId])
 }
 
-/// Канал внутри сервера. serverId nullable в текущей версии — это
-/// технический долг ради безопасной миграции существующих каналов
-/// (см. ROADMAP § housekeeping). В v0.6 после PG-migration + backfill
-/// — поднимем до NOT NULL.
+/// Канал внутри сервера. После миграции на PG поле serverId стало
+/// обязательным (NOT NULL) — backfill сделан в v0.4 seed, technical
+/// debt из ROADMAP §housekeeping закрыт.
 model Channel {
   id        String    @id @default(cuid())
   name      String
   slug      String    @unique
-  /// nullable temporarily — все новые каналы создаются с serverId.
-  /// Legacy каналы без serverId после seed-миграции не существуют.
-  serverId  String?
-  server    Server?   @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  serverId  String
+  server    Server    @relation(fields: [serverId], references: [id], onDelete: Cascade)
   /// Позиция в списке каналов сервера (для будущей сортировки UI).
   position  Int       @default(0)
   createdAt DateTime  @default(now())

@@ -1,0 +1,50 @@
+# Local development PostgreSQL + Redis для Eclipse Chat.
+#
+# Используй ЭТОТ файл если у тебя НЕТ нативного PG локально.
+# Если PG 14+ уже стоит на машине (как у Pavel'а — PG 18) —
+# проще создать БД вручную, см. docs/DEVELOPMENT.md § "Local PG setup".
+#
+# Запуск:
+#   docker compose -f docker-compose.dev.yml up -d
+#
+# Подключение из apps/server/.env:
+#   DATABASE_URL=postgresql://eclipse_chat_dev:dev_password@localhost:5433/eclipse_chat_dev?schema=public
+#
+# Порты намеренно не стандартные (5433 вместо 5432; 6380 вместо 6379) —
+# чтобы НЕ конфликтовать с нативным PG/Redis если они стоят локально.
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: eclipse-chat-postgres
+    environment:
+      POSTGRES_USER: eclipse_chat_dev
+      POSTGRES_PASSWORD: dev_password
+      POSTGRES_DB: eclipse_chat_dev
+    ports:
+      - "5433:5432"
+    volumes:
+      - eclipse-chat-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U eclipse_chat_dev -d eclipse_chat_dev"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  # Redis зарезервирован для v0.11 Presence / Typing (см. ROADMAP).
+  # Пока что не используется приложением — можно не запускать
+  # (по умолчанию `docker compose up` поднимет всё; запусти только
+  # postgres: `docker compose up postgres -d`).
+  redis:
+    image: redis:7-alpine
+    container_name: eclipse-chat-redis
+    ports:
+      - "6380:6379"
+    volumes:
+      - eclipse-chat-redis:/data
+    restart: unless-stopped
+
+volumes:
+  eclipse-chat-pg:
+  eclipse-chat-redis:
