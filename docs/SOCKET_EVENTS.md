@@ -1,180 +1,184 @@
 # Eclipse Chat — Socket.io Events
 
+Документация **только реализованных** событий. Полный планируемый
+набор (typing, presence, reactions, member events, и т.д.) — в
+[ROADMAP.md](../ROADMAP.md).
+
+**Naming convention:** `<domain>:<action>` через двоеточие — например
+`channel:join`, `message:new`. Старые docs описывали snake_case
+(`join_channel`, `send_message`) — это **устарело**, реальный код
+использует colon-naming.
+
+---
+
 ## Подключение
 
 ```typescript
 import { io } from 'socket.io-client';
 
-const socket = io('http://localhost:3000', {
-  auth: { token: '<access_token>' },
-  transports: ['websocket'],
+const socket = io({
+  path: '/socket.io',
+  auth: { token: '<access_token>' },   // optional, но без него write-операции игнорятся
 });
 ```
 
-Сервер верифицирует JWT при подключении. При невалидном токене — `connect_error`.
+**Endpoint:** `/socket.io` на том же HTTP-сервере, что и Fastify
+(порт `3001` в dev). В Vite dev-сервере есть proxy `/socket.io` → `:3001`.
+
+**Аутентификация:**
+
+Сервер читает `socket.handshake.auth.token` и валидирует JWT:
+- **Валидный access** → `socket.data.userId = <user.id>` (можно делать
+  write-операции)
+- **Невалидный / истёкший / отсутствует** → `socket.data.userId = null`
+  (read-only, write игнорятся)
+
+Подключение **НЕ отклоняется** при отсутствии токена — это позволяет
+клиенту сначала подключиться, получить публичные события
+(`server:hello`), и потом обновить access через `/api/auth/refresh`.
 
 ---
 
-## Клиент → Сервер
+## Текущие события (реализованы)
 
-### join_channel
-Подписаться на события канала (нужно вызвать при открытии канала).
-```typescript
-socket.emit('join_channel', { channelId: 'abc123' });
-```
+### Сервер → Клиент
 
-### leave_channel
-Отписаться (при смене канала).
-```typescript
-socket.emit('leave_channel', { channelId: 'abc123' });
-```
+#### `server:hello`
 
-### send_message
+Эмитится автоматически при подключении (для всех — даже без auth).
+
 ```typescript
-socket.emit('send_message', {
-  channelId: 'abc123',
-  content: 'Привет!',
-  fileUrl: null,    // опционально
-  fileName: null,   // опционально
+socket.on('server:hello', (p: { t: number; msg: string }) => {
+  // p.t   — timestamp подключения (ms)
+  // p.msg — 'Eclipse Chat'
 });
 ```
 
-### edit_message
-```typescript
-socket.emit('edit_message', {
-  messageId: 'msg456',
-  content: 'Обновлённый текст',
-});
-```
+Используется в Web MVP для индикатора "WebSocket подключён".
 
-### delete_message
-```typescript
-socket.emit('delete_message', { messageId: 'msg456' });
-```
+#### `message:new`
 
-### add_reaction
-```typescript
-socket.emit('add_reaction', { messageId: 'msg456', emoji: '👍' });
-```
+Эмитится **в room `channel:${channelId}`** при `POST /api/channels/:id/messages`.
 
-### remove_reaction
 ```typescript
-socket.emit('remove_reaction', { messageId: 'msg456', emoji: '👍' });
-```
-
-### typing_start / typing_stop
-```typescript
-socket.emit('typing_start', { channelId: 'abc123' });
-socket.emit('typing_stop', { channelId: 'abc123' });
-```
-
----
-
-## Сервер → Клиент
-
-### message_new
-```typescript
-socket.on('message_new', (message: Message) => {
-  // Добавить в список сообщений канала
-});
-```
-```typescript
-interface Message {
-  id: string;
-  content: string;
-  fileUrl: string | null;
-  fileName: string | null;
-  edited: boolean;
-  createdAt: string;
-  channelId: string;
-  author: { id: string; username: string; avatar: string | null };
-  reactions: Reaction[];
-}
-```
-
-### message_updated
-```typescript
-socket.on('message_updated', (message: Message) => {
-  // Обновить сообщение в списке
-});
-```
-
-### message_deleted
-```typescript
-socket.on('message_deleted', ({ messageId }: { messageId: string }) => {
-  // Убрать из списка
-});
-```
-
-### reaction_updated
-```typescript
-socket.on('reaction_updated', ({ messageId, reactions }: {
+socket.on('message:new', (p: {
   messageId: string;
-  reactions: Reaction[];
-}) => {
-  // Обновить реакции на сообщение
-});
-```
-
-### user_typing
-```typescript
-socket.on('user_typing', ({ channelId, userId, username, isTyping }: {
+  content: string;
   channelId: string;
   userId: string;
-  username: string;
-  isTyping: boolean;
+  displayName: string;
+  createdAt: string;       // ISO 8601
 }) => {
-  // Показать/скрыть "Pavel печатает..."
+  // Новое сообщение в канале, на который клиент подписан через channel:join
 });
 ```
 
-### presence_update
+**Кто получает:** только подключённые к room `channel:${channelId}`
+(подписка через `channel:join`).
+
+### Клиент → Сервер
+
+#### `client:ping`
+
+Эмитится клиентом с callback. Сервер отвечает текущим timestamp.
+
 ```typescript
-socket.on('presence_update', ({ userId, status }: {
-  userId: string;
-  status: 'ONLINE' | 'IDLE' | 'DND' | 'OFFLINE';
-}) => {
-  // Обновить статус в списке участников
+socket.emit('client:ping', (resp: { t: number }) => {
+  // resp.t — timestamp сервера (ms)
 });
 ```
 
-### member_joined
+Используется для health-check соединения. Эмитится без auth-проверки.
+
+#### `channel:join`
+
+Подписаться на события канала. **Требует валидный access token** в
+handshake.auth — иначе игнорируется (без ошибки).
+
 ```typescript
-socket.on('member_joined', ({ serverId, member }: {
-  serverId: string;
-  member: Member;
-}) => {
-  // Добавить в список участников сервера
-});
+socket.emit('channel:join', channelId);   // строка, не объект
 ```
 
-### member_left
-```typescript
-socket.on('member_left', ({ serverId, userId }: {
-  serverId: string;
-  userId: string;
-}) => {
-  // Убрать из списка участников
-});
-```
+После этого клиент получает `message:new` для этого канала.
 
-### error
+#### `channel:leave`
+
+Отписаться от канала. Работает без проверки auth (можно покинуть room
+даже без валидного токена).
+
 ```typescript
-socket.on('error', ({ message }: { message: string }) => {
-  // Показать ошибку пользователю
-});
+socket.emit('channel:leave', channelId);
 ```
 
 ---
 
-## Комнаты (Rooms)
+## Rooms
 
-Socket.io rooms используются для изоляции событий:
+Текущее использование:
 
 | Room | Формат | Кто получает |
-|------|--------|-------------|
-| Канал | `channel:${channelId}` | Все в этом канале |
-| Сервер | `server:${serverId}` | Все участники сервера |
-| Пользователь | `user:${userId}` | Конкретный пользователь |
+|---|---|---|
+| Канал | `channel:${channelId}` | Все клиенты, выполнившие `channel:join channelId` |
 
-При подключении сервер автоматически добавляет пользователя в rooms всех его серверов (`server:*`). `join_channel` / `leave_channel` управляют подпиской на `channel:*`.
+Будущие rooms (v0.4+):
+
+| Room | Формат | Зачем (после v0.4) |
+|---|---|---|
+| Сервер | `server:${serverId}` | Member events (join/leave), server-wide announcements |
+| Пользователь | `user:${userId}` | DM notifications, mention pings |
+
+---
+
+## Что НЕ реализовано (в [ROADMAP](../ROADMAP.md))
+
+**Клиент → Сервер (планируется):**
+
+- ❌ `message:send` (через socket вместо REST) — v0.7+
+- ❌ `message:edit`, `message:delete` — v0.12
+- ❌ `reaction:add`, `reaction:remove` — v0.7
+- ❌ `typing:start`, `typing:stop` — v0.11
+
+**Сервер → Клиент (планируется):**
+
+- ❌ `message:updated` — для edit-операций — v0.12
+- ❌ `message:deleted` — v0.12
+- ❌ `reaction:updated` — v0.7
+- ❌ `presence:update` (online/idle/dnd/offline) — v0.11
+- ❌ `user:typing` — v0.11
+- ❌ `member:joined`, `member:left` — v0.4 (после Server/Member)
+- ❌ `dm:new` — v0.8
+- ❌ `error` (generic error channel) — пока ошибки приходят как HTTP
+
+**Старые имена (для миграции).** Если где-то в коде/docs всё ещё
+встречается:
+- `send_message` → должно быть POST `/api/channels/:id/messages` (или
+  `message:send` в будущем)
+- `join_channel` → `channel:join`
+- `leave_channel` → `channel:leave`
+- `message_new` → `message:new`
+
+Это **из старых docs, не из текущего кода**. Текущий код уже на
+colon-naming.
+
+---
+
+## Принципы дизайна socket-протокола
+
+1. **Auth на handshake, не на каждое событие.** Один раз проверили
+   JWT при connect, дальше используем `socket.data.userId`.
+2. **Graceful degradation для невалидного auth.** Без токена можно
+   подключиться, но write-операции игнорятся. Это позволяет UI
+   подключиться **до** auth flow и показать индикатор.
+3. **Rooms = isolation.** Никаких broadcast'ов всем. Каждое событие
+   уходит в конкретную room.
+4. **REST для mutations, Socket для notifications.** Создание /
+   обновление / удаление — через REST (надёжный, retry-friendly).
+   Socket — только для realtime уведомлений другим клиентам.
+
+Пункт 4 может пересмотреться в v0.7+ если окажется что round-trip
+REST → emit становится bottleneck. Но пока проще REST.
+
+---
+
+_Updated 2026-05-11 — синхронизировано с реальным кодом
+`apps/server/src/index.ts` и `apps/server/src/realtime.ts`._

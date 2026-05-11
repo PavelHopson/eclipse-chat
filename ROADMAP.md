@@ -1,0 +1,302 @@
+# Eclipse Chat — Roadmap
+
+> Что обещано, но ещё не реализовано. Этот файл — единый реестр
+> «потерянных» обещаний из ранних README/docs + новых направлений.
+> Любая фича, которой нет в текущем MVP, должна попасть сюда —
+> иначе она забудется.
+
+**Текущее состояние:** MVP с `auth + channels + messages + Socket.io` —
+описан в [README.md](README.md). Всё что ниже — будущее.
+
+---
+
+## 🎯 Vision
+
+Eclipse Chat — это **не очередной Discord-клон**. Это:
+
+- **Self-hosted communication core** — все данные у владельца
+- **Control surface для команд и операторов** — серверы, каналы, инвайты
+- **Будущий слой для AI/bot/operator workflows** — Member может быть
+  не только User, но и Bot/Operator (см. §v0.10 ниже)
+- **Privacy/control-first** — нет облачных зависимостей, нет телеметрии
+
+Этот фокус определяет приоритеты: модель «Server → Member → Channel
+→ Message» важнее голоса/видео; bot-layer важнее красивых эмодзи;
+self-host важнее красивого облачного UX.
+
+---
+
+## v0.4 — Server / Member / Invite (next, in progress)
+
+**Цель:** превратить чат из «одной общей комнаты» в полноценные
+сервера со своим membership.
+
+**Backend:**
+- [ ] Prisma models: `Server`, `Member` (с FK на User), `MemberRole` enum
+- [ ] Prisma: `Channel.serverId` (нового сервера) + миграция existing
+      `Channel` → "Default Server"
+- [ ] Routes: `GET /api/servers`, `POST /api/servers`, `GET /api/servers/:id`,
+      `DELETE /api/servers/:id`, `POST /api/servers/join/:inviteCode`,
+      `DELETE /api/servers/:id/leave`, `GET /api/servers/:id/members`,
+      `GET /api/servers/:id/channels`
+- [ ] Invite codes: `Server.inviteCode` уникальный (cuid)
+- [ ] Channel routes: scope каналов внутри server (`POST /api/servers/:id/channels`)
+- [ ] Socket: автоподписка на rooms `server:${serverId}` при connect
+
+**Frontend:**
+- [ ] ServerList в sidebar
+- [ ] Активный сервер в state
+- [ ] Список каналов фильтруется по активному серверу
+- [ ] Modal: Create Server / Join Server
+
+**Migration scenario:** existing `Channel` rows (включая seed `#general`)
+переносятся в новый `Server` "Default Server" с `ownerId` = первый user
+или special system user. Существующие пользователи автоматически
+становятся Member этого сервера.
+
+---
+
+## v0.5 — Frontend split (после v0.4)
+
+**Цель:** разбить `apps/web/src/App.tsx` (557 строк) в модульную
+структуру.
+
+Целевая структура:
+
+```
+apps/web/src/
+├── lib/
+│   ├── api.ts          — fetch wrapper + auto-refresh + JSON parse
+│   ├── storage.ts      — token storage (LS_ACCESS / LS_REFRESH / legacy migration)
+│   └── socket.ts       — Socket.io client init + auth + room subscription
+├── hooks/
+│   ├── useAuth.ts      — login / logout / register / refresh / me state
+│   ├── useServers.ts   — active server, server list (после v0.4)
+│   ├── useChannels.ts  — channels of active server
+│   └── useMessages.ts  — messages of active channel + socket subscription
+├── components/
+│   ├── ServerList.tsx
+│   ├── ChannelList.tsx
+│   ├── MessageList.tsx
+│   ├── MessageInput.tsx
+│   └── MemberList.tsx
+├── pages/
+│   ├── AuthPage.tsx    — login / register UI
+│   └── AppShell.tsx    — main layout после auth
+└── App.tsx             — только routing + providers (стянется до 30-50 строк)
+```
+
+**Не добавляем:** Redux, RTK Query, Tailwind (пока). Простой Zustand
+можно подключить когда state будет реально cross-component. Сейчас
+useState + кастомные хуки достаточно.
+
+---
+
+## v0.6 — PostgreSQL миграция
+
+**Цель:** уйти с SQLite на PG как только Server/Member заработает.
+
+- [ ] `docker-compose.dev.yml` — PostgreSQL 17 + Redis 7 для local dev
+- [ ] `apps/server/.env.example` обновить: `DATABASE_URL=postgresql://...`
+- [ ] `prisma db push` → `prisma migrate dev` (нормальные миграции)
+- [ ] Тест: existing dev.db schema → SQL migration → PG schema
+- [ ] Документация миграции в `docs/MIGRATION-PG.md`
+
+---
+
+## v0.7 — Реакции (Reactions)
+
+- [ ] Prisma: `Reaction` model (userId, messageId, emoji, unique constraint)
+- [ ] Routes: реакции через Socket.io (`reaction:add`, `reaction:remove`)
+- [ ] Backend emit: `reaction:updated` с агрегацией `{ emoji, count, me }`
+- [ ] Frontend: emoji picker, кнопка добавить реакцию, hover-preview списка
+
+---
+
+## v0.8 — Direct Messages (DMs)
+
+- [ ] Prisma: `DirectMessage` model (senderId, receiverId, content)
+- [ ] Routes: `GET /api/dm/:userId`, `POST /api/dm/:userId`
+- [ ] Socket: rooms `dm:${userIdA}:${userIdB}` (sorted)
+- [ ] Frontend: DM tab отдельно от серверов, список собеседников
+
+---
+
+## v0.9 — Загрузка файлов
+
+- [ ] MinIO setup в `docker-compose.dev.yml`
+- [ ] Routes: `POST /api/files/upload` (multipart, max 25MB), presigned URLs
+- [ ] `Message.fileUrl`, `Message.fileName` (поля уже есть в README, добавить
+      в Prisma)
+- [ ] Frontend: drag & drop, превью изображений, прогресс загрузки
+
+---
+
+## v0.10 — Operator / Bot layer (ключевой стратегический шаг)
+
+**Цель:** превратить Eclipse Chat из чата в **control surface** для
+AI-агентов и операторов. Это то что отличает Eclipse Chat от очередного
+Discord-клона.
+
+- [ ] Prisma: `Bot` model (id, name, ownerId, apiKey, capabilities)
+- [ ] Prisma: `Member.type` enum: `HUMAN | BOT` (либо nullable `userId` +
+      nullable `botId` с unique check)
+- [ ] Bot auth: API key через `Authorization: Bot <key>`
+- [ ] Bot lifecycle hooks: `bot:command:received`, `bot:message:sent`,
+      webhooks at server level
+- [ ] Bot SDK: `@eclipse-chat/bot` (npm package, TypeScript)
+- [ ] Готовые шаблоны ботов:
+  - Telegram bridge (вход/выход в Eclipse Chat ↔ Telegram чат)
+  - AI Assistant (RAG по истории канала, summary, digest)
+  - Operator (long-running task tracker с уведомлениями)
+- [ ] Memory hooks: интеграция с MemOS/LanceDB/Mem0 (см.
+      `eclipse-library` § Memory)
+
+**Это main differentiator** Eclipse Chat от Discord/Mattermost/Rocket.Chat
+— все они либо вообще не имеют bot-first архитектуры, либо она
+прикручена сбоку. У нас bot/operator = first-class concept с самого
+дизайна модели.
+
+---
+
+## v0.11 — Presence / Status / Typing
+
+- [ ] `User.status` enum: `ONLINE | IDLE | DND | OFFLINE` (в Prisma)
+- [ ] Redis pub/sub для presence (или БД с `lastSeenAt` если без Redis)
+- [ ] Socket events: `presence:update`, `typing:start`, `typing:stop`
+- [ ] Frontend: индикаторы онлайн в MemberList, "Pavel печатает..."
+      в нижней панели канала
+
+---
+
+## v0.12 — Message lifecycle (edit / delete / pinned / threads)
+
+- [ ] Routes: `PATCH /api/messages/:id` (edit), `DELETE /api/messages/:id`
+- [ ] `Message.edited` boolean + `Message.editedAt`
+- [ ] Pinned messages: `Channel.pinnedMessageIds` или отдельная таблица
+- [ ] Thread-ответы: `Message.parentMessageId` self-relation
+- [ ] Socket events: `message:updated`, `message:deleted`
+- [ ] Frontend: edit-mode in MessageInput, кнопка delete с конфирмом,
+      pin-list в шапке канала, thread sidebar
+
+---
+
+## v1.0 — Roles & permissions
+
+- [ ] `MemberRole` enum: `OWNER | ADMIN | MODERATOR | MEMBER`
+- [ ] Permission checks в каждом mutation-эндпоинте (`canDeleteChannel`,
+      `canKickMember` и т.д.)
+- [ ] Frontend: server settings page, member management UI
+- [ ] Permission helper в `@eclipse-chat/shared`
+
+---
+
+## v1.1 — UX, privacy, operator polish
+
+Из текущего «v1.1» из старого README:
+
+- [ ] **SVG icon system** для социальных/брендовых интеграций и
+      провайдеров — использовать [thesvg](https://github.com/glincker/thesvg)
+      или статически из `Eclipse Forge brand-icons`
+- [ ] **Privacy QA checklist** перед voice/video: WebRTC leak check,
+      DNS leak check, fingerprint check, proxy-leak check (см.
+      `eclipse-library` § Privacy)
+- [ ] **AI assistant prompt refresh** по GPT-5.5 guide: короче
+      инструкции, сильнее output contract
+- [ ] **Cost-control профили** для summary/digest/assistant — сжатые
+      режимы (`caveman` mode) — экономит токены при digest по каналу
+- [ ] **Chat-driven operator/bot layer** — control surface для задач,
+      bridge в Telegram/Discord, long-term memory hooks (продолжение v0.10)
+
+---
+
+## v1.2 — Voice channels (LiveKit)
+
+- [ ] LiveKit self-hosted setup
+- [ ] `Channel.type = VOICE` (enum: `TEXT | VOICE`)
+- [ ] Routes: `POST /api/channels/:id/voice/join` (returns LiveKit token)
+- [ ] Frontend: voice channel UI, mute/unmute, participants list
+- [ ] Privacy gate (см. v1.1)
+
+---
+
+## v1.3 — Video calls
+
+- [ ] Video tracks в существующих voice channels
+- [ ] Screen sharing
+- [ ] Frontend: video grid layout
+
+---
+
+## v1.4 — Производственный deployment
+
+Из текущего `docs/DEPLOYMENT.md` (он на сейчас ложь — у нас даже
+docker-compose.yml нет). Сюда переезжает всё что там описано:
+
+- [ ] `docker-compose.yml` (production)
+- [ ] `docker-compose.dev.yml` (local без HTTPS)
+- [ ] `Dockerfile` для apps/server + apps/web
+- [ ] Caddy reverse proxy с автоматическим HTTPS
+- [ ] PostgreSQL 17 в Compose
+- [ ] Redis 7 в Compose
+- [ ] MinIO в Compose
+- [ ] Backup scripts (`pg_dump`)
+- [ ] `.env.example` в корне со всеми переменными
+- [ ] `docs/DEPLOYMENT.md` (полноценный — НЕ тот что есть сейчас)
+
+---
+
+## v2.0 — Расширения
+
+- [ ] **Поиск по сообщениям и серверам** — full-text search (Postgres tsvector или Meilisearch)
+- [ ] **Bots API + webhooks** — продолжение v0.10
+- [ ] **P2P передача файлов по LAN** без сервера, на базе протокола
+      [LocalSend](https://github.com/localsend/localsend) — для команд
+      в одной сети без интернета
+- [ ] **Мобильный PWA** — installable, push notifications через VAPID
+- [ ] **Federation** (mатрица-стиль) — серверы между разными инстансами
+      могут общаться
+
+---
+
+## Технический долг и housekeeping
+
+**Найдено в аудите 2026-05-11:**
+
+- [ ] `apps/web/dist/` закоммичен в репо — добавить в `.gitignore` и
+      удалить из git
+- [ ] `apps/web/README.md` всё ещё содержал "пакет пустой — это якорь
+      монорепо" (исправлено в Step 0)
+- [ ] Дубль поля `token` в auth response (для legacy совместимости) —
+      убрать после v0.5 когда frontend split закончит миграцию на
+      `accessToken`
+- [ ] `packages/shared` пустой — наполнить типами после v0.4 (Server,
+      Member shapes) и v0.5 (Socket event names как const)
+- [ ] **Нет rate limiting** на auth-роутах. README обещал `@fastify/rate-limit`
+      — добавить перед v1.4 production deployment (минимально на
+      `/api/auth/login` и `/api/auth/register`)
+- [ ] **Нет тестов** — после v0.4 добавить минимальный test suite на
+      backend (Vitest для unit, supertest для integration)
+- [ ] **Response envelope** — docs/API.md в старой версии описывал
+      `{ ok: true, data: {...} }` envelope, но реальный код его не
+      использует. Решение: НЕ применять envelope сейчас, проще без.
+      Если когда-то понадобится — это разовая миграция всех роутов.
+- [ ] **`token` поле в auth-response** оставлено для legacy. Убрать
+      когда frontend split (v0.5) закончит миграцию на `accessToken`.
+
+---
+
+## Принципы расстановки приоритетов
+
+1. **Server/Member раньше voice/video.** Без модели сервера всё
+   остальное бессмысленно.
+2. **Operator layer раньше fancy UX.** Это main differentiator от
+   Discord-клонов.
+3. **Self-host раньше cloud.** Не делать SaaS-фичи до production deploy.
+4. **Honest scope.** Если в roadmap что-то лежит >6 месяцев без движения —
+   удалить, не врать.
+
+---
+
+_Updated 2026-05-11 — переписано в рамках Step 0 (docs sync) после
+аудита расхождений README ↔ docs ↔ код._

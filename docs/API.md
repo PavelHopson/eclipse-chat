@@ -1,189 +1,288 @@
 # Eclipse Chat — REST API Reference
 
-Base URL: `http://localhost:3000/api`
+Документация **только реализованных** endpoints. Полный планируемый
+набор (servers, DMs, files, reactions, и т.д.) — в [ROADMAP.md](../ROADMAP.md).
 
-Все защищённые endpoints требуют заголовка:
+**Base URL (dev):** `http://localhost:3001`
+
+**Защищённые endpoints** требуют:
 ```
 Authorization: Bearer <access_token>
+```
+
+**Response format:** JSON без обёрток. Ошибки — `{ "error": "..." }`
+с соответствующим HTTP-кодом. (Envelope `{ ok, data }` упоминавшийся
+в ранних docs — НЕ применён, см. [ROADMAP § housekeeping](../ROADMAP.md#технический-долг-и-housekeeping).)
+
+---
+
+## Health / Version
+
+### `GET /health`
+Простой ping без префикса `/api`.
+```json
+{ "ok": true, "service": "eclipse-chat-server" }
+```
+
+### `GET /api/health`
+Ping + проверка БД.
+```json
+{ "ok": true, "service": "eclipse-chat-server", "database": true }
+```
+
+### `GET /api/version`
+```json
+{ "name": "@eclipse-chat/server", "version": "0.3.0" }
 ```
 
 ---
 
 ## Auth
 
-### POST /auth/register
+Access token живёт **15 минут**. Refresh token хранится в БД как
+SHA-256 hash, ротация при каждом `/refresh`.
+
+### `POST /api/auth/register`
+
 ```json
 // Request
-{ "username": "pavel", "email": "p@example.com", "password": "secret123" }
-
-// Response 201
-{ "ok": true, "data": { "user": { "id": "...", "username": "pavel" }, "accessToken": "...", "refreshToken": "..." } }
-```
-
-### POST /auth/login
-```json
-// Request
-{ "email": "p@example.com", "password": "secret123" }
+{
+  "email": "pavel@example.com",
+  "password": "atleast8chars",
+  "displayName": "Pavel"
+}
 
 // Response 200
-{ "ok": true, "data": { "user": {...}, "accessToken": "...", "refreshToken": "..." } }
+{
+  "accessToken": "eyJhbGciOi...",
+  "refreshToken": "raw-refresh-token-string",
+  "token": "eyJhbGciOi...",                  // = accessToken, legacy duplicate
+  "user": {
+    "id": "ckxxx",
+    "email": "pavel@example.com",
+    "displayName": "Pavel",
+    "createdAt": "2026-05-11T16:00:00.000Z"
+  }
+}
+
+// Errors
+// 400 — invalid body (zod validation)
+// 409 — email already registered
 ```
 
-### POST /auth/refresh
+### `POST /api/auth/login`
+
 ```json
 // Request
-{ "refreshToken": "..." }
+{ "email": "pavel@example.com", "password": "atleast8chars" }
 
-// Response 200
-{ "ok": true, "data": { "accessToken": "..." } }
+// Response 200 — same shape as register
+// Side effect: все предыдущие refresh-токены этого user'а инвалидируются
+
+// Errors
+// 400 — invalid body
+// 401 — invalid email or password
 ```
 
-### POST /auth/logout
-```json
-// Request (Authorization required)
-{ "refreshToken": "..." }
+### `POST /api/auth/refresh`
 
+```json
+// Request
+{ "refreshToken": "raw-refresh-token-string" }
+
+// Response 200
+{
+  "accessToken": "eyJhbGciOi...",
+  "refreshToken": "new-rotated-refresh-token",
+  "token": "eyJhbGciOi..."                   // = accessToken, legacy duplicate
+}
+
+// Errors
+// 400 — invalid body
+// 401 — invalid refresh token (expired / not found / user deleted)
+```
+
+**Ротация:** старый refresh-token удаляется, новый выдаётся. Если клиент
+теряет refresh между запросом и ответом — нужно делать login заново.
+
+### `POST /api/auth/logout`
+
+Требует Bearer. Body может быть пустым.
+
+```json
 // Response 200
 { "ok": true }
+// Side effect: ВСЕ refresh-токены user'а удалены
 ```
 
----
+### `GET /api/auth/me`
 
-## Servers
+Требует Bearer.
 
-### GET /servers
 ```json
 // Response 200
 {
-  "ok": true,
-  "data": [
-    { "id": "...", "name": "Eclipse Forge", "icon": null, "inviteCode": "abc123", "ownerId": "...", "_count": { "members": 5 } }
-  ]
+  "user": {
+    "id": "ckxxx",
+    "email": "pavel@example.com",
+    "displayName": "Pavel",
+    "createdAt": "2026-05-11T16:00:00.000Z"
+  }
 }
-```
 
-### POST /servers
-```json
-// Request
-{ "name": "My Server", "icon": "https://..." }
-
-// Response 201
-{ "ok": true, "data": { "id": "...", "name": "My Server", "inviteCode": "xyz789", ... } }
-```
-
-### POST /servers/join/:inviteCode
-```json
-// Response 200
-{ "ok": true, "data": { "server": {...}, "member": {...} } }
-```
-
-### GET /servers/:id/members
-```json
-// Response 200
-{
-  "ok": true,
-  "data": [
-    { "id": "...", "role": "OWNER", "user": { "id": "...", "username": "pavel", "avatar": null, "status": "ONLINE" } }
-  ]
-}
+// Если access невалиден → 401 (без user wrapper)
 ```
 
 ---
 
 ## Channels
 
-### GET /servers/:serverId/channels
+Сейчас каналы **глобальные** (нет привязки к серверу). После v0.4 они
+будут scope'нуты под `Server`.
+
+### `GET /api/channels`
+
+Открытый endpoint (без auth).
+
 ```json
-// Response 200
 {
-  "ok": true,
-  "data": [
-    { "id": "...", "name": "general", "type": "TEXT", "position": 0 }
+  "channels": [
+    {
+      "id": "ckxxx",
+      "name": "General",
+      "slug": "general",
+      "createdAt": "2026-05-11T16:00:00.000Z",
+      "_count": { "messages": 42 }
+    }
   ]
 }
 ```
 
-### POST /servers/:serverId/channels
+### `POST /api/channels`
+
+Требует Bearer.
+
 ```json
 // Request
-{ "name": "announcements", "type": "TEXT" }
+{ "name": "Announcements" }
 
-// Response 201
-{ "ok": true, "data": { "id": "...", "name": "announcements", ... } }
+// Response 200
+{
+  "channel": {
+    "id": "ckxxx",
+    "name": "Announcements",
+    "slug": "announcements",   // auto-generated, ASCII slug с retry на коллизии
+    "createdAt": "2026-05-11T16:00:00.000Z"
+  }
+}
+
+// Errors
+// 400 — invalid body (name пустое или >80 символов)
+// 401 — Unauthorized
 ```
+
+**Slug-генерация:** lowercase, NFKD-нормализация (убирает диакритику),
+только `[a-z0-9-]`, max 48 символов. При коллизии — добавляется случайный
+суффикс. Кириллица превращается в `channel` (TODO: нормальная
+транслитерация в roadmap-housekeeping).
 
 ---
 
 ## Messages
 
-### GET /channels/:channelId/messages
+### `GET /api/channels/:id/messages`
+
+Открытый endpoint. Возвращает последние N сообщений в хронологическом
+порядке (старые первые).
+
 ```
-?before=<messageId>  — курсор для пагинации
-&limit=50            — по умолчанию 50, макс 100
+GET /api/channels/ckxxx/messages?take=80
 ```
+
 ```json
+{
+  "channel": { "id": "ckxxx", "name": "General", "slug": "general" },
+  "messages": [
+    {
+      "id": "ckmmm",
+      "content": "Hello",
+      "createdAt": "2026-05-11T16:00:00.000Z",
+      "user": { "id": "ckuuu", "displayName": "Pavel" }
+    }
+  ]
+}
+```
+
+**Параметры:**
+- `take` (optional) — сколько сообщений вернуть. Default `50`, max `100`,
+  min `1`. Сейчас **без cursor-пагинации** (planned для v0.12).
+
+**Errors:**
+- 404 — канал не найден
+
+### `POST /api/channels/:id/messages`
+
+Требует Bearer.
+
+```json
+// Request
+{ "content": "Hello, world!" }
+
 // Response 200
 {
-  "ok": true,
-  "data": {
-    "messages": [
-      {
-        "id": "...",
-        "content": "Привет!",
-        "fileUrl": null,
-        "edited": false,
-        "createdAt": "2026-04-07T10:00:00Z",
-        "author": { "id": "...", "username": "pavel", "avatar": null },
-        "reactions": [{ "emoji": "👍", "count": 3, "me": true }]
-      }
-    ],
-    "hasMore": true
+  "message": {
+    "messageId": "ckmmm",
+    "content": "Hello, world!",
+    "channelId": "ckxxx",
+    "userId": "ckuuu",
+    "displayName": "Pavel",
+    "createdAt": "2026-05-11T16:00:00.000Z"
   }
 }
 ```
 
----
+**Side effect:** Socket.io emit `message:new` всем подключённым к
+room `channel:${id}` с тем же payload.
 
-## Files
-
-### POST /files/upload
-```
-Content-Type: multipart/form-data
-field: file (max 25MB)
-```
-```json
-// Response 201
-{ "ok": true, "data": { "url": "https://...", "fileName": "image.png", "size": 12345 } }
-```
+**Errors:**
+- 400 — invalid body (content пустой или >8000 символов)
+- 401 — Unauthorized / Invalid token
+- 404 — Channel not found / User not found
 
 ---
 
-## Direct Messages
+## Errors — общий формат
 
-### GET /dm/:userId
-```
-?before=<messageId>&limit=50
-```
+Все ошибки:
+
 ```json
-// Response 200
-{ "ok": true, "data": { "messages": [...], "hasMore": false } }
+{ "error": "Описание ошибки" }
 ```
+
+| HTTP | Когда |
+|---|---|
+| 400 | zod validation failed |
+| 401 | нет токена / токен невалиден / истёк |
+| 404 | ресурс не найден |
+| 409 | конфликт (e.g. email уже зарегистрирован) |
+
+**Rate limiting** — не реализован. Запланирован для v1.4 production.
 
 ---
 
-## Errors
+## Что НЕ реализовано (в [ROADMAP](../ROADMAP.md))
 
-Все ошибки в формате:
-```json
-{ "ok": false, "error": "Описание ошибки" }
-```
+- ❌ `/api/servers/*` — создание серверов, инвайты, members (v0.4)
+- ❌ `/api/dm/:userId` — Direct Messages (v0.8)
+- ❌ `/api/files/upload` — MinIO загрузки (v0.9)
+- ❌ `/api/users/*` — поиск пользователей, profile updates (v1.0)
+- ❌ `PATCH /api/messages/:id` — edit (v0.12)
+- ❌ `DELETE /api/messages/:id` — delete (v0.12)
+- ❌ Cursor-пагинация `?before=` для messages (v0.12)
+- ❌ Response envelope `{ ok, data }` — решение: НЕ применять
+  (см. ROADMAP housekeeping)
 
-| Код | Значение |
-|-----|---------|
-| 400 | Неверные данные запроса |
-| 401 | Не авторизован / токен истёк |
-| 403 | Нет прав |
-| 404 | Ресурс не найден |
-| 409 | Конфликт (дубликат email/username) |
-| 429 | Rate limit превышен |
-| 500 | Ошибка сервера |
+---
+
+_Updated 2026-05-11 — синхронизировано с реальным кодом
+`apps/server/src/routes/`._
