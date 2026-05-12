@@ -27,6 +27,11 @@ model User {
   /// Краткое био пользователя — Twitter-like, max 280 символов
   /// (проверяется на уровне zod-валидации в роуте PATCH /api/users/me/profile).
   bio           String?
+  /// Manual presence: ONLINE = default (auto), IDLE/DND/INVISIBLE — user
+  /// override. Combines с auto-presence (socket-based) на render:
+  /// если manual=INVISIBLE → frontend показывает offline; иначе manual
+  /// overrides auto.
+  status        UserStatus     @default(ONLINE)
   createdAt     DateTime       @default(now())
 
   messages      Message[]
@@ -60,6 +65,16 @@ enum MemberRole {
 enum ChannelType {
   TEXT
   VOICE
+}
+
+/// Manual presence status — user-controlled. ONLINE = default (auto от
+/// socket connection). IDLE/DND — user не доступен, но видим как member.
+/// INVISIBLE = appears offline для других (но socket connection живой).
+enum UserStatus {
+  ONLINE
+  IDLE
+  DND
+  INVISIBLE
 }
 
 /// Сервер — контейнер каналов и участников. Создатель автоматически

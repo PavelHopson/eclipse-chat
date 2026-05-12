@@ -11,12 +11,15 @@ import {
 
 export type MemberRole = "OWNER" | "ADMIN" | "MODERATOR" | "MEMBER";
 
+export type UserManualStatus = "ONLINE" | "IDLE" | "DND" | "INVISIBLE";
+
 export type MemberRow = {
   id: string;
   userId: string;
   role: MemberRole;
   joinedAt: string;
   online: boolean;
+  manualStatus?: UserManualStatus;
   user: {
     id: string;
     displayName: string;
@@ -158,9 +161,17 @@ export function useMembers(serverId: string | null, socket: Socket | null) {
     const onPresence = (p: PresenceUpdatePayload) => {
       setMembers((prev) => {
         if (!prev.some((m) => m.userId === p.userId)) return prev;
-        return prev.map((m) =>
-          m.userId === p.userId ? { ...m, online: p.status === "online" } : m,
-        );
+        return prev.map((m) => {
+          if (m.userId !== p.userId) return m;
+          // map socket status → MemberRow flags
+          const online = p.status !== "offline";
+          let manualStatus: UserManualStatus | undefined = m.manualStatus;
+          if (p.status === "idle") manualStatus = "IDLE";
+          else if (p.status === "dnd") manualStatus = "DND";
+          else if (p.status === "online") manualStatus = "ONLINE";
+          else if (p.status === "offline") manualStatus = "INVISIBLE";
+          return { ...m, online, manualStatus };
+        });
       });
     };
     socket.on(SocketEvents.PresenceUpdate, onPresence);

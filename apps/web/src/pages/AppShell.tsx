@@ -12,6 +12,7 @@ import { ProfileModal } from "../components/ProfileModal";
 import { SearchOverlay } from "../components/SearchOverlay";
 import { ServerInfoModal } from "../components/ServerInfoModal";
 import { ServerList } from "../components/ServerList";
+import { StatusMenu } from "../components/StatusMenu";
 import { TypingIndicator } from "../components/TypingIndicator";
 import { VoicePlaceholder } from "../components/VoicePlaceholder";
 import { useChannels } from "../hooks/useChannels";
@@ -202,7 +203,9 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     updateProfile,
     uploadAvatar,
     deleteAvatar,
+    updateStatus,
   } = useProfile(true);
+  const [statusAnchor, setStatusAnchor] = useState<DOMRect | null>(null);
 
   const {
     members,
@@ -375,8 +378,11 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           )}
           <button
             type="button"
-            onClick={() => setShowProfile(true)}
-            title="Профиль"
+            onClick={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect();
+              setStatusAnchor(rect);
+            }}
+            title="Статус и профиль"
             style={userChip}
             onMouseEnter={(e) => {
               e.currentTarget.style.background = "var(--ec-surface-2)";
@@ -387,7 +393,30 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               e.currentTarget.style.borderColor = "transparent";
             }}
           >
-            <Avatar url={headerAvatar} name={headerName} size={26} />
+            <span style={{ position: "relative", display: "inline-block" }}>
+              <Avatar url={headerAvatar} name={headerName} size={26} />
+              {/* presence dot на собственном avatar */}
+              <span
+                aria-hidden
+                style={{
+                  position: "absolute",
+                  bottom: -1,
+                  right: -1,
+                  width: 9,
+                  height: 9,
+                  borderRadius: "var(--ec-radius-full)",
+                  border: "2px solid var(--ec-surface-1)",
+                  background:
+                    profile?.status === "INVISIBLE"
+                      ? "var(--ec-presence-offline)"
+                      : profile?.status === "IDLE"
+                      ? "var(--ec-presence-idle)"
+                      : profile?.status === "DND"
+                      ? "var(--ec-presence-dnd)"
+                      : "var(--ec-presence-online)",
+                }}
+              />
+            </span>
             <span>{headerName}</span>
           </button>
           <button
@@ -598,6 +627,16 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           onSave={updateProfile}
           onUploadAvatar={uploadAvatar}
           onDeleteAvatar={deleteAvatar}
+        />
+      )}
+
+      {statusAnchor && profile && (
+        <StatusMenu
+          anchorRect={statusAnchor}
+          current={profile.status ?? "ONLINE"}
+          onSelect={(s) => void updateStatus(s)}
+          onOpenProfile={() => setShowProfile(true)}
+          onClose={() => setStatusAnchor(null)}
         />
       )}
 

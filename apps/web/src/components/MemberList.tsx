@@ -115,8 +115,17 @@ function MemberRowView({ m }: { m: MemberRow }) {
           aria-hidden
           style={{
             ...presenceDot,
-            background: m.online ? "var(--ec-presence-online)" : "var(--ec-presence-offline)",
-            boxShadow: m.online ? "0 0 6px hsl(150 50% 50% / 0.6)" : "none",
+            background: !m.online
+              ? "var(--ec-presence-offline)"
+              : m.manualStatus === "IDLE"
+              ? "var(--ec-presence-idle)"
+              : m.manualStatus === "DND"
+              ? "var(--ec-presence-dnd)"
+              : "var(--ec-presence-online)",
+            boxShadow:
+              m.online && m.manualStatus !== "IDLE" && m.manualStatus !== "DND"
+                ? "0 0 6px hsl(150 50% 50% / 0.6)"
+                : "none",
           }}
         />
       </span>

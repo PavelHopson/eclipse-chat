@@ -5,10 +5,15 @@ import { z } from "zod";
 import sharp from "sharp";
 import { db } from "../db.js";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
+import { broadcastStatusChange } from "../presence.js";
 
 const updateProfileBody = z.object({
   displayName: z.string().min(1).max(64).optional(),
   bio: z.string().max(280).nullable().optional(),
+});
+
+const updateStatusBody = z.object({
+  status: z.enum(["ONLINE", "IDLE", "DND", "INVISIBLE"]),
 });
 
 /**
@@ -61,6 +66,7 @@ function publicProfile(u: {
   displayName: string;
   avatar: string | null;
   bio: string | null;
+  status?: "ONLINE" | "IDLE" | "DND" | "INVISIBLE";
   createdAt: Date;
 }) {
   return {
@@ -69,6 +75,7 @@ function publicProfile(u: {
     displayName: u.displayName,
     avatar: u.avatar,
     bio: u.bio,
+    status: u.status ?? "ONLINE",
     createdAt: u.createdAt.toISOString(),
   };
 }
@@ -177,6 +184,32 @@ export async function registerUserRoutes(app: FastifyInstance) {
         data: { avatar: url },
       });
       return { user: publicProfile(updated), url };
+    },
+  );
+
+  /**
+   * PATCH /api/users/me/status — manual presence override.
+   * Сохраняет в БД + broadcast на все server-rooms где user member.
+   */
+  app.patch(
+    "/api/users/me/status",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const userId = getUserId(req);
+      if (!userId) {
+        return reply.status(401).send({ error: "Unauthorized" });
+      }
+      const parsed = updateStatusBody.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.status(400).send({ error: "Invalid status" });
+      }
+      const updated = await db.user.update({
+        where: { id: userId },
+        data: { status: parsed.data.status },
+      });
+      // Broadcast change в socket — клиенты в member-list'ах обновят dot
+      broadcastStatusChange(userId, parsed.data.status);
+      return { user: publicProfile(updated), status: updated.status };
     },
   );
 

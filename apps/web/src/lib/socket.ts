@@ -96,7 +96,7 @@ export type MemberUpdatedPayload = {
   role: string;
 };
 
-export type PresenceStatus = "online" | "offline";
+export type PresenceStatus = "online" | "offline" | "idle" | "dnd";
 
 export type PresenceUpdatePayload = {
   userId: string;

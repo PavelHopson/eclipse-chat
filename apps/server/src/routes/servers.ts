@@ -313,26 +313,42 @@ export async function registerServerRoutes(app: FastifyInstance) {
     const members = await db.member.findMany({
       where: { serverId: id },
       include: {
-        user: { select: { id: true, email: true, displayName: true, avatar: true, createdAt: true } },
+        user: {
+          select: {
+            id: true,
+            email: true,
+            displayName: true,
+            avatar: true,
+            status: true,
+            createdAt: true,
+          },
+        },
       },
       orderBy: [{ role: "asc" }, { joinedAt: "asc" }],
     });
     const online = onlineUserIds();
     return {
-      members: members.map((m) => ({
-        id: m.id,
-        userId: m.userId,
-        role: isMemberRole(m.role) ? m.role : "MEMBER",
-        joinedAt: m.joinedAt.toISOString(),
-        online: online.has(m.userId),
-        user: {
-          id: m.user.id,
-          displayName: m.user.displayName,
-          email: m.user.email,
-          avatar: m.user.avatar,
-          createdAt: m.user.createdAt.toISOString(),
-        },
-      })),
+      members: members.map((m) => {
+        const socketOnline = online.has(m.userId);
+        // Если manual status = INVISIBLE → отображаем offline для других
+        const manualInvisible = m.user.status === "INVISIBLE";
+        return {
+          id: m.id,
+          userId: m.userId,
+          role: isMemberRole(m.role) ? m.role : "MEMBER",
+          joinedAt: m.joinedAt.toISOString(),
+          online: socketOnline && !manualInvisible,
+          /** Manual status (если ONLINE/IDLE/DND — overrides; INVISIBLE → online:false выше). */
+          manualStatus: m.user.status,
+          user: {
+            id: m.user.id,
+            displayName: m.user.displayName,
+            email: m.user.email,
+            avatar: m.user.avatar,
+            createdAt: m.user.createdAt.toISOString(),
+          },
+        };
+      }),
     };
   });
 

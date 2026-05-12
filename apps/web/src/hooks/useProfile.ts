@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
 import { ApiError, apiJson } from "../lib/api";
 
+export type UserStatus = "ONLINE" | "IDLE" | "DND" | "INVISIBLE";
+
 export type Profile = {
   id: string;
   email: string;
   displayName: string;
   avatar: string | null;
   bio: string | null;
+  status?: UserStatus;
   createdAt: string;
 };
 
@@ -112,7 +115,32 @@ export function useProfile(enabled: boolean) {
     }
   }, []);
 
-  return { profile, loading, busy, error, reload, updateProfile, uploadAvatar, deleteAvatar };
+  const updateStatus = useCallback(async (status: UserStatus): Promise<boolean> => {
+    setError(null);
+    try {
+      const res = await apiJson<ProfileResponse>("/api/users/me/status", {
+        method: "PATCH",
+        body: JSON.stringify({ status }),
+      });
+      setProfile(res.user);
+      return true;
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Не удалось изменить статус");
+      return false;
+    }
+  }, []);
+
+  return {
+    profile,
+    loading,
+    busy,
+    error,
+    reload,
+    updateProfile,
+    uploadAvatar,
+    deleteAvatar,
+    updateStatus,
+  };
 }
 
 /** FileReader → base64 без префикса `data:...;base64,`. */

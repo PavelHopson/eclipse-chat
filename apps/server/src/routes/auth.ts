@@ -32,6 +32,7 @@ function publicUser(u: {
   displayName: string;
   avatar: string | null;
   bio: string | null;
+  status?: "ONLINE" | "IDLE" | "DND" | "INVISIBLE";
   createdAt: Date;
 }) {
   return {
@@ -40,6 +41,7 @@ function publicUser(u: {
     displayName: u.displayName,
     avatar: u.avatar,
     bio: u.bio,
+    status: u.status ?? "ONLINE",
     createdAt: u.createdAt.toISOString(),
   };
 }
@@ -62,7 +64,7 @@ async function requireJwt(req: FastifyRequest, reply: FastifyReply) {
 
 async function issueSession(
   reply: FastifyReply,
-  user: { id: string; email: string; displayName: string; avatar: string | null; bio: string | null; createdAt: Date },
+  user: { id: string; email: string; displayName: string; avatar: string | null; bio: string | null; status?: "ONLINE" | "IDLE" | "DND" | "INVISIBLE"; createdAt: Date },
 ): Promise<AuthResponseBody> {
   const accessToken = await reply.jwtSign(
     { sub: user.id, email: user.email },

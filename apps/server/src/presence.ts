@@ -19,7 +19,7 @@
 
 import type { Server as SocketServer } from "socket.io";
 
-type Status = "online" | "offline";
+type Status = "online" | "offline" | "idle" | "dnd";
 
 const sockets = new Map<string, Set<string>>(); // userId → socketIds
 const serverIdsByUser = new Map<string, Set<string>>(); // userId → server-rooms для broadcast
@@ -40,6 +40,25 @@ function emit(userId: string, status: Status): void {
   for (const serverId of rooms) {
     ioRef.to(`server:${serverId}`).emit("presence:update", payload);
   }
+}
+
+/**
+ * Broadcast manual status change. Используется когда user меняет
+ * status через PATCH /api/users/me/status. Берёт server-ids из
+ * presence-tracker (если он online); если offline — пытаемся отдельно
+ * найти memberships (но обычно изменение статуса делается online).
+ */
+export function broadcastStatusChange(
+  userId: string,
+  manualStatus: "ONLINE" | "IDLE" | "DND" | "INVISIBLE",
+): void {
+  // INVISIBLE → клиенты должны увидеть offline. IDLE/DND/ONLINE → как есть.
+  let wire: Status = "online";
+  if (manualStatus === "INVISIBLE") wire = "offline";
+  else if (manualStatus === "IDLE") wire = "idle";
+  else if (manualStatus === "DND") wire = "dnd";
+  else wire = "online";
+  emit(userId, wire);
 }
 
 /**
