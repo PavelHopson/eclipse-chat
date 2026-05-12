@@ -2,13 +2,19 @@ import type { CSSProperties } from "react";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { Avatar } from "./Avatar";
 import type { MessageRow } from "../hooks/useMessages";
+import type { MemberRole } from "../hooks/useMembers";
 
 type Props = {
   messages: MessageRow[];
   emptyHint?: string;
   channelName?: string | null;
   currentUserId?: string;
+  currentRole?: MemberRole | null;
   onRetry?: (messageId: string) => Promise<boolean>;
+  onEdit?: (messageId: string, content: string) => Promise<boolean>;
+  onDelete?: (messageId: string) => Promise<boolean>;
+  onPin?: (messageId: string) => Promise<boolean>;
+  onUnpin?: (messageId: string) => Promise<boolean>;
 };
 
 const wrap: CSSProperties = {
@@ -26,7 +32,7 @@ const rowBase: CSSProperties = {
   gridTemplateColumns: "44px 1fr",
   columnGap: "var(--ec-space-3)",
   padding: "var(--ec-space-2) var(--ec-space-2)",
-  paddingRight: 80,
+  paddingRight: 12,
   borderRadius: "var(--ec-radius-md)",
   transition: "background var(--ec-dur-fast) var(--ec-ease)",
 };
@@ -35,6 +41,13 @@ const rowGrouped: CSSProperties = {
   ...rowBase,
   paddingTop: 2,
   paddingBottom: 2,
+};
+
+const rowPinned: CSSProperties = {
+  ...rowBase,
+  background: "hsl(40 70% 60% / 0.06)",
+  borderLeft: "2px solid var(--ec-warn)",
+  paddingLeft: 6,
 };
 
 const daySeparator: CSSProperties = {
@@ -66,8 +79,8 @@ const stickyTime: CSSProperties = {
 
 const actionsBar: CSSProperties = {
   position: "absolute",
-  top: 2,
-  right: 8,
+  top: -10,
+  right: 12,
   display: "flex",
   gap: 2,
   padding: 2,
@@ -78,6 +91,7 @@ const actionsBar: CSSProperties = {
   opacity: 0,
   transition: "opacity var(--ec-dur-fast) var(--ec-ease)",
   pointerEvents: "none",
+  zIndex: 2,
 };
 
 const actionBtn: CSSProperties = {
@@ -109,6 +123,28 @@ const failedTag: CSSProperties = {
   letterSpacing: "var(--ec-tracking-wide)",
 };
 
+const editAreaWrap: CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 6,
+  marginTop: 4,
+};
+
+const editTextarea: CSSProperties = {
+  width: "100%",
+  minHeight: 60,
+  padding: "0.5rem 0.6rem",
+  background: "var(--ec-input-bg)",
+  color: "var(--ec-text)",
+  border: "1px solid var(--ec-accent)",
+  boxShadow: "0 0 0 3px var(--ec-accent-soft)",
+  borderRadius: "var(--ec-radius-md)",
+  fontSize: "var(--ec-text-base)",
+  lineHeight: "var(--ec-leading-normal)",
+  fontFamily: "var(--ec-font-sans)",
+  resize: "vertical",
+};
+
 function formatTime(iso: string): string {
   return iso.slice(11, 16);
 }
@@ -133,17 +169,32 @@ function dayKey(iso: string): string {
   return iso.slice(0, 10);
 }
 
-export function MessageList({ messages, emptyHint, channelName, currentUserId, onRetry }: Props) {
+function canModerate(role: MemberRole | null | undefined): boolean {
+  return role === "OWNER" || role === "ADMIN" || role === "MODERATOR";
+}
+
+export function MessageList({
+  messages,
+  emptyHint,
+  channelName,
+  currentUserId,
+  currentRole,
+  onRetry,
+  onEdit,
+  onDelete,
+  onPin,
+  onUnpin,
+}: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState("");
 
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
     const isAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
-    if (isAtBottom) {
-      el.scrollTop = el.scrollHeight;
-    }
+    if (isAtBottom) el.scrollTop = el.scrollHeight;
   }, [messages.length]);
 
   const handleCopy = async (m: MessageRow) => {
@@ -152,8 +203,35 @@ export function MessageList({ messages, emptyHint, channelName, currentUserId, o
       setCopiedId(m.id);
       setTimeout(() => setCopiedId((cur) => (cur === m.id ? null : cur)), 1400);
     } catch {
-      /* clipboard недоступен — fail silently, не критично */
+      /* fail silently */
     }
+  };
+
+  const beginEdit = (m: MessageRow) => {
+    setEditingId(m.id);
+    setEditDraft(m.content);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditDraft("");
+  };
+
+  const commitEdit = async (m: MessageRow) => {
+    if (!onEdit) return;
+    const trimmed = editDraft.trim();
+    if (trimmed === "" || trimmed === m.content) {
+      cancelEdit();
+      return;
+    }
+    const ok = await onEdit(m.id, trimmed);
+    if (ok) cancelEdit();
+  };
+
+  const handleDelete = async (m: MessageRow) => {
+    if (!onDelete) return;
+    if (!window.confirm("Удалить сообщение?")) return;
+    await onDelete(m.id);
   };
 
   if (messages.length === 0) {
@@ -180,6 +258,8 @@ export function MessageList({ messages, emptyHint, channelName, currentUserId, o
     );
   }
 
+  const canMod = canModerate(currentRole);
+
   return (
     <div ref={containerRef} style={wrap}>
       {messages.map((m, i) => {
@@ -191,6 +271,23 @@ export function MessageList({ messages, emptyHint, channelName, currentUserId, o
         const newDay = !prev || dayKey(m.createdAt) !== dayKey(prev.createdAt);
         const isMine = currentUserId && m.user.id === currentUserId;
         const isCopied = copiedId === m.id;
+        const isEditing = editingId === m.id;
+        const isDeleted = m.deletedAt != null;
+        const isPinned = m.pinnedAt != null;
+
+        // Right action visibility:
+        //  copy   — always (if не deleted/pending/failed)
+        //  edit   — only own + not deleted + not pending/failed
+        //  delete — own OR moderator + not deleted + not pending/failed
+        //  pin    — moderator only + not deleted
+        //  unpin  — moderator only + pinned + not deleted
+        const showActions = !m.pending && !m.failed && !isDeleted && !isEditing;
+        const showEdit = showActions && Boolean(isMine && onEdit);
+        const showDelete = showActions && Boolean((isMine || canMod) && onDelete);
+        const showPin = showActions && Boolean(canMod && onPin && !isPinned);
+        const showUnpin = showActions && Boolean(canMod && onUnpin && isPinned);
+
+        const rowStyle = isPinned ? rowPinned : grouped && !newDay ? rowGrouped : rowBase;
 
         return (
           <Fragment key={m.id}>
@@ -202,12 +299,9 @@ export function MessageList({ messages, emptyHint, channelName, currentUserId, o
               </div>
             )}
             <article
-              style={{
-                ...(grouped && !newDay ? rowGrouped : rowBase),
-                opacity: m.pending ? 0.6 : 1,
-              }}
+              style={{ ...rowStyle, opacity: m.pending ? 0.6 : 1 }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background = "var(--ec-surface-1)";
+                if (!isPinned) e.currentTarget.style.background = "var(--ec-surface-1)";
                 const time = e.currentTarget.querySelector<HTMLElement>("[data-sticky-time]");
                 if (time) time.style.opacity = "1";
                 const bar = e.currentTarget.querySelector<HTMLElement>("[data-actions]");
@@ -217,7 +311,7 @@ export function MessageList({ messages, emptyHint, channelName, currentUserId, o
                 }
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.background = "transparent";
+                if (!isPinned) e.currentTarget.style.background = "transparent";
                 const time = e.currentTarget.querySelector<HTMLElement>("[data-sticky-time]");
                 if (time) time.style.opacity = "0";
                 const bar = e.currentTarget.querySelector<HTMLElement>("[data-actions]");
@@ -228,7 +322,7 @@ export function MessageList({ messages, emptyHint, channelName, currentUserId, o
               }}
             >
               <div style={{ display: "flex", justifyContent: "center" }}>
-                {grouped && !newDay ? (
+                {grouped && !newDay && !isPinned ? (
                   <span data-sticky-time style={stickyTime}>
                     {formatTime(m.createdAt)}
                   </span>
@@ -237,7 +331,7 @@ export function MessageList({ messages, emptyHint, channelName, currentUserId, o
                 )}
               </div>
               <div style={{ minWidth: 0 }}>
-                {(!grouped || newDay) && (
+                {(!grouped || newDay || isPinned) && (
                   <header style={{ display: "flex", alignItems: "baseline", gap: "var(--ec-space-2)", marginBottom: 2 }}>
                     <strong style={{ color: "var(--ec-text-strong)", fontSize: "var(--ec-text-base)", fontWeight: 600 }}>
                       {m.user.displayName}
@@ -252,6 +346,26 @@ export function MessageList({ messages, emptyHint, channelName, currentUserId, o
                     >
                       {formatTime(m.createdAt)}
                     </time>
+                    {isPinned && (
+                      <span
+                        title="Закреплено"
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 3,
+                          color: "var(--ec-warn)",
+                          fontSize: "var(--ec-text-2xs)",
+                          fontWeight: 600,
+                          letterSpacing: "var(--ec-tracking-wide)",
+                        }}
+                      >
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                          <line x1="12" y1="17" x2="12" y2="22" />
+                          <path d="M5 17h14V5l-2 2-2-2-2 2-2-2-2 2-2-2-2 2z" />
+                        </svg>
+                        ЗАКРЕПЛЕНО
+                      </span>
+                    )}
                     {m.pending && (
                       <span style={{ fontSize: "var(--ec-text-2xs)", color: "var(--ec-text-dim)" }}>отправляется…</span>
                     )}
@@ -267,18 +381,71 @@ export function MessageList({ messages, emptyHint, channelName, currentUserId, o
                     )}
                   </header>
                 )}
-                <p
-                  style={{
-                    margin: 0,
-                    color: "var(--ec-text)",
-                    whiteSpace: "pre-wrap",
-                    wordBreak: "break-word",
-                    fontSize: "var(--ec-text-base)",
-                    lineHeight: "var(--ec-leading-normal)",
-                  }}
-                >
-                  {m.content}
-                </p>
+                {isEditing ? (
+                  <div style={editAreaWrap}>
+                    <textarea
+                      value={editDraft}
+                      onChange={(e) => setEditDraft(e.target.value)}
+                      autoFocus
+                      style={editTextarea}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          void commitEdit(m);
+                        } else if (e.key === "Escape") {
+                          cancelEdit();
+                        }
+                      }}
+                    />
+                    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                      <button type="button" className="ec-btn ec-btn--primary ec-btn--sm" onClick={() => void commitEdit(m)}>
+                        Сохранить
+                      </button>
+                      <button type="button" className="ec-btn ec-btn--sm" onClick={cancelEdit}>
+                        Отмена
+                      </button>
+                      <span style={{ fontSize: "var(--ec-text-2xs)", color: "var(--ec-text-dim)" }}>
+                        Enter — сохранить · Esc — отмена
+                      </span>
+                    </div>
+                  </div>
+                ) : isDeleted ? (
+                  <p
+                    style={{
+                      margin: 0,
+                      color: "var(--ec-text-dim)",
+                      fontStyle: "italic",
+                      fontSize: "var(--ec-text-base)",
+                    }}
+                  >
+                    сообщение удалено
+                  </p>
+                ) : (
+                  <p
+                    style={{
+                      margin: 0,
+                      color: "var(--ec-text)",
+                      whiteSpace: "pre-wrap",
+                      wordBreak: "break-word",
+                      fontSize: "var(--ec-text-base)",
+                      lineHeight: "var(--ec-leading-normal)",
+                    }}
+                  >
+                    {m.content}
+                    {m.editedAt && (
+                      <span
+                        title={`Изменено ${new Date(m.editedAt).toLocaleString("ru-RU")}`}
+                        style={{
+                          marginLeft: 6,
+                          fontSize: "var(--ec-text-2xs)",
+                          color: "var(--ec-text-dim)",
+                        }}
+                      >
+                        (изменено)
+                      </span>
+                    )}
+                  </p>
+                )}
                 {m.failed && onRetry && (
                   <button
                     type="button"
@@ -290,12 +457,12 @@ export function MessageList({ messages, emptyHint, channelName, currentUserId, o
                   </button>
                 )}
               </div>
-              {!m.pending && !m.failed && (
+              {showActions && (
                 <div data-actions style={actionsBar}>
                   <button
                     type="button"
                     style={actionBtn}
-                    aria-label="Копировать сообщение"
+                    aria-label="Копировать"
                     title={isCopied ? "Скопировано" : "Копировать"}
                     onClick={() => void handleCopy(m)}
                     onMouseEnter={(e) => {
@@ -318,21 +485,91 @@ export function MessageList({ messages, emptyHint, channelName, currentUserId, o
                       </svg>
                     )}
                   </button>
-                  {isMine && (
-                    <span
-                      style={{
-                        ...actionBtn,
-                        width: 26,
-                        cursor: "default",
-                        fontSize: "0.62rem",
-                        letterSpacing: "var(--ec-tracking-caps)",
-                        color: "var(--ec-text-dim)",
+                  {showEdit && (
+                    <button
+                      type="button"
+                      style={actionBtn}
+                      aria-label="Редактировать"
+                      title="Редактировать"
+                      onClick={() => beginEdit(m)}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = "var(--ec-surface-3)";
+                        e.currentTarget.style.color = "var(--ec-text)";
                       }}
-                      aria-hidden
-                      title="Это ваше сообщение"
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "transparent";
+                        e.currentTarget.style.color = "var(--ec-text-muted)";
+                      }}
                     >
-                      ВЫ
-                    </span>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                        <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                        <path d="M18.5 2.5a2.121 2.121 0 113 3L12 15l-4 1 1-4 9.5-9.5z" />
+                      </svg>
+                    </button>
+                  )}
+                  {showUnpin && (
+                    <button
+                      type="button"
+                      style={{ ...actionBtn, color: "var(--ec-warn)" }}
+                      aria-label="Открепить"
+                      title="Открепить"
+                      onClick={() => void onUnpin?.(m.id)}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = "hsl(40 70% 60% / 0.14)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "transparent";
+                      }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                        <line x1="2" y1="2" x2="22" y2="22" />
+                        <line x1="12" y1="17" x2="12" y2="22" />
+                        <path d="M5 17h14V5l-2 2-2-2-2 2-2-2-2 2-2-2-2 2z" />
+                      </svg>
+                    </button>
+                  )}
+                  {showPin && (
+                    <button
+                      type="button"
+                      style={actionBtn}
+                      aria-label="Закрепить"
+                      title="Закрепить"
+                      onClick={() => void onPin?.(m.id)}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = "var(--ec-surface-3)";
+                        e.currentTarget.style.color = "var(--ec-warn)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "transparent";
+                        e.currentTarget.style.color = "var(--ec-text-muted)";
+                      }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                        <line x1="12" y1="17" x2="12" y2="22" />
+                        <path d="M5 17h14V5l-2 2-2-2-2 2-2-2-2 2-2-2-2 2z" />
+                      </svg>
+                    </button>
+                  )}
+                  {showDelete && (
+                    <button
+                      type="button"
+                      style={{ ...actionBtn, color: "var(--ec-danger)" }}
+                      aria-label="Удалить"
+                      title="Удалить"
+                      onClick={() => void handleDelete(m)}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = "var(--ec-danger-soft)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "transparent";
+                      }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                        <polyline points="3 6 5 6 21 6" />
+                        <path d="M19 6l-2 14a2 2 0 01-2 2H9a2 2 0 01-2-2L5 6" />
+                        <path d="M10 11v6M14 11v6" />
+                      </svg>
+                    </button>
                   )}
                 </div>
               )}

@@ -147,8 +147,11 @@ export async function registerChannelRoutes(app: FastifyInstance) {
         .reverse()
         .map((m) => ({
           id: m.id,
-          content: m.content,
+          content: m.deletedAt ? "" : m.content,
           createdAt: m.createdAt.toISOString(),
+          editedAt: m.editedAt?.toISOString() ?? null,
+          deletedAt: m.deletedAt?.toISOString() ?? null,
+          pinnedAt: m.pinnedAt?.toISOString() ?? null,
           user: { id: m.user.id, displayName: m.user.displayName, avatar: m.user.avatar },
         })),
     };

@@ -73,3 +73,40 @@ export function emitMemberLeft(
 ) {
   io?.to(`server:${serverId}`).emit("member:left", payload);
 }
+
+/** Сообщение отредактировано: frontend обновляет content + editedAt. */
+export function emitMessageUpdated(
+  channelId: string,
+  payload: {
+    messageId: string;
+    channelId: string;
+    content: string;
+    editedAt: string;
+  },
+) {
+  io?.to(`channel:${channelId}`).emit("message:updated", payload);
+}
+
+/** Soft-delete: frontend меняет render на placeholder. */
+export function emitMessageDeleted(
+  channelId: string,
+  payload: { messageId: string; channelId: string; deletedAt: string },
+) {
+  io?.to(`channel:${channelId}`).emit("message:deleted", payload);
+}
+
+/** Pin: frontend добавляет в pinned-bar (если открыт) + помечает сообщение. */
+export function emitMessagePinned(
+  channelId: string,
+  payload: { messageId: string; channelId: string; pinnedAt: string },
+) {
+  io?.to(`channel:${channelId}`).emit("message:pinned", payload);
+}
+
+/** Unpin: frontend убирает из pinned-bar + снимает помету. */
+export function emitMessageUnpinned(
+  channelId: string,
+  payload: { messageId: string; channelId: string },
+) {
+  io?.to(`channel:${channelId}`).emit("message:unpinned", payload);
+}

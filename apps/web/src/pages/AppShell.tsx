@@ -7,12 +7,13 @@ import { JoinServerModal } from "../components/JoinServerModal";
 import { MemberList } from "../components/MemberList";
 import { MessageInput } from "../components/MessageInput";
 import { MessageList } from "../components/MessageList";
+import { PinnedBar } from "../components/PinnedBar";
 import { ProfileModal } from "../components/ProfileModal";
 import { ServerInfoModal } from "../components/ServerInfoModal";
 import { ServerList } from "../components/ServerList";
 import { VoicePlaceholder } from "../components/VoicePlaceholder";
 import { useChannels } from "../hooks/useChannels";
-import { useMembers } from "../hooks/useMembers";
+import { useMembers, type MemberRole } from "../hooks/useMembers";
 import { useMessages } from "../hooks/useMessages";
 import { useProfile } from "../hooks/useProfile";
 import { useServers } from "../hooks/useServers";
@@ -155,6 +156,10 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     messages,
     sendMessage,
     retryMessage,
+    editMessage,
+    deleteMessage,
+    pinMessage,
+    unpinMessage,
     error: messagesError,
     loading: messagesLoading,
   } = useMessages(selectedChannelId, socket);
@@ -186,6 +191,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     displayName: headerName,
     avatar: headerAvatar,
   };
+  // Role текущего user'а на активном сервере — для перм-проверки UI (delete/pin)
+  const currentRole = (activeServer?.role as MemberRole | undefined) ?? null;
 
   const selectedChannel = channels.find((c) => c.id === selectedChannelId) ?? null;
 
@@ -337,12 +344,18 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           <VoicePlaceholder channelName={selectedChannel.name} />
         ) : (
           <>
+            <PinnedBar messages={messages} />
             <MessageList
               messages={messages}
               emptyHint={messagesLoading ? "Загрузка…" : undefined}
               channelName={selectedChannel.name}
               currentUserId={user.id}
+              currentRole={currentRole}
               onRetry={(mid) => retryMessage(mid, senderForMessages)}
+              onEdit={editMessage}
+              onDelete={deleteMessage}
+              onPin={pinMessage}
+              onUnpin={unpinMessage}
             />
             <MessageInput
               channelName={selectedChannel.name}

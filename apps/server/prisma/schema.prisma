@@ -113,8 +113,18 @@ model Message {
   id        String   @id @default(cuid())
   content   String
   createdAt DateTime @default(now())
+  /// Время последнего edit'а. Null = не редактировалось.
+  editedAt  DateTime?
+  /// Soft-delete: deletedAt set → content скрывается, replaced placeholder'ом
+  /// в UI. Row остаётся для thread/reply контекста (v0.12).
+  deletedAt DateTime?
+  /// Pin-bar в chat-header показывает все messages где pinnedAt != null,
+  /// sort by pinnedAt desc. Pin/unpin доступен OWNER/ADMIN/MODERATOR.
+  pinnedAt  DateTime?
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   channelId String
   channel   Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@index([channelId, pinnedAt])
 }

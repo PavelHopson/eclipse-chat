@@ -83,10 +83,38 @@ export type PresenceUpdatePayload = {
   status: PresenceStatus;
 };
 
+export type MessageUpdatedPayload = {
+  messageId: string;
+  channelId: string;
+  content: string;
+  editedAt: string;
+};
+
+export type MessageDeletedPayload = {
+  messageId: string;
+  channelId: string;
+  deletedAt: string;
+};
+
+export type MessagePinnedPayload = {
+  messageId: string;
+  channelId: string;
+  pinnedAt: string;
+};
+
+export type MessageUnpinnedPayload = {
+  messageId: string;
+  channelId: string;
+};
+
 /** Совпадает с naming из docs/SOCKET_EVENTS.md и кода сервера. */
 export const SocketEvents = {
   ServerHello: "server:hello",
   MessageNew: "message:new",
+  MessageUpdated: "message:updated",
+  MessageDeleted: "message:deleted",
+  MessagePinned: "message:pinned",
+  MessageUnpinned: "message:unpinned",
   ChannelCreated: "channel:created",
   ChannelDeleted: "channel:deleted",
   MemberJoined: "member:joined",

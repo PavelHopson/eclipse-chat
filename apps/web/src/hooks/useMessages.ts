@@ -1,30 +1,47 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Socket } from "socket.io-client";
-import { ApiError, apiJson } from "../lib/api";
-import { SocketEvents, type MessageNewPayload } from "../lib/socket";
+import { ApiError, api, apiJson } from "../lib/api";
+import {
+  SocketEvents,
+  type MessageDeletedPayload,
+  type MessageNewPayload,
+  type MessagePinnedPayload,
+  type MessageUnpinnedPayload,
+  type MessageUpdatedPayload,
+} from "../lib/socket";
 
 export type MessageRow = {
   id: string;
   content: string;
   createdAt: string;
+  /** ISO. Null = не редактировалось. */
+  editedAt: string | null;
+  /** ISO. Set = сообщение soft-deleted, content скрыт. */
+  deletedAt: string | null;
+  /** ISO. Set = сообщение закреплено. */
+  pinnedAt: string | null;
   user: { id: string; displayName: string; avatar: string | null };
-  /** UI-only: сообщение отправлено оптимистично, ждём ответа сервера. */
+  /** UI-only: оптимистично отправлено, ждём backend. */
   pending?: boolean;
-  /** UI-only: backend вернул ошибку, сообщение не доставлено. */
+  /** UI-only: backend вернул ошибку. */
   failed?: boolean;
 };
 
-/**
- * Сообщения выбранного канала.
- *
- *  - При смене channelId: подписка `channel:join`, загрузка истории.
- *  - При unmount / next channel: `channel:leave`.
- *  - На `message:new`: добавляет в state (только для текущего канала),
- *    + сверяет с оптимистично отправленным (dedupe по content + senderId
- *    в последнем pending).
- *  - sendMessage: оптимистично добавляет с временным id `local-...`,
- *    POST, на 200 — заменяет id на серверный; на error — flag failed.
- */
+type Sender = { id: string; displayName: string; avatar: string | null };
+
+function defaultLifecycle<T extends { editedAt?: string | null; deletedAt?: string | null; pinnedAt?: string | null }>(m: T): T & {
+  editedAt: string | null;
+  deletedAt: string | null;
+  pinnedAt: string | null;
+} {
+  return {
+    ...m,
+    editedAt: m.editedAt ?? null,
+    deletedAt: m.deletedAt ?? null,
+    pinnedAt: m.pinnedAt ?? null,
+  };
+}
+
 export function useMessages(channelId: string | null, socket: Socket | null) {
   const [messages, setMessages] = useState<MessageRow[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -45,7 +62,7 @@ export function useMessages(channelId: string | null, socket: Socket | null) {
     )
       .then((data) => {
         if (!cancelled) {
-          setMessages(data.messages);
+          setMessages(data.messages.map((m) => defaultLifecycle(m)));
           setError(null);
         }
       })
@@ -71,15 +88,13 @@ export function useMessages(channelId: string | null, socket: Socket | null) {
     };
   }, [channelId, socket]);
 
-  // socket: новые сообщения. Дедупликация: если совпадает с pending
-  // оптимистичным (same userId + same content) — заменяем pending на серверный.
+  // socket: message:new
   useEffect(() => {
     if (!socket) return;
     const handler = (p: MessageNewPayload) => {
       if (p.channelId !== channelIdRef.current) return;
       setMessages((prev) => {
         if (prev.some((m) => m.id === p.messageId)) return prev;
-        // Попробуем найти соответствующий optimistic — заменим in-place
         const optimisticIdx = prev.findIndex(
           (m) => m.pending && m.user.id === p.userId && m.content === p.content,
         );
@@ -87,6 +102,9 @@ export function useMessages(channelId: string | null, socket: Socket | null) {
           id: p.messageId,
           content: p.content,
           createdAt: p.createdAt,
+          editedAt: null,
+          deletedAt: null,
+          pinnedAt: null,
           user: { id: p.userId, displayName: p.displayName, avatar: p.avatar },
         };
         if (optimisticIdx >= 0) {
@@ -103,8 +121,51 @@ export function useMessages(channelId: string | null, socket: Socket | null) {
     };
   }, [socket]);
 
+  // socket: message:updated / deleted / pinned / unpinned
+  useEffect(() => {
+    if (!socket) return;
+    const onUpdated = (p: MessageUpdatedPayload) => {
+      if (p.channelId !== channelIdRef.current) return;
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === p.messageId ? { ...m, content: p.content, editedAt: p.editedAt } : m,
+        ),
+      );
+    };
+    const onDeleted = (p: MessageDeletedPayload) => {
+      if (p.channelId !== channelIdRef.current) return;
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === p.messageId ? { ...m, content: "", deletedAt: p.deletedAt, pinnedAt: null } : m,
+        ),
+      );
+    };
+    const onPinned = (p: MessagePinnedPayload) => {
+      if (p.channelId !== channelIdRef.current) return;
+      setMessages((prev) =>
+        prev.map((m) => (m.id === p.messageId ? { ...m, pinnedAt: p.pinnedAt } : m)),
+      );
+    };
+    const onUnpinned = (p: MessageUnpinnedPayload) => {
+      if (p.channelId !== channelIdRef.current) return;
+      setMessages((prev) =>
+        prev.map((m) => (m.id === p.messageId ? { ...m, pinnedAt: null } : m)),
+      );
+    };
+    socket.on(SocketEvents.MessageUpdated, onUpdated);
+    socket.on(SocketEvents.MessageDeleted, onDeleted);
+    socket.on(SocketEvents.MessagePinned, onPinned);
+    socket.on(SocketEvents.MessageUnpinned, onUnpinned);
+    return () => {
+      socket.off(SocketEvents.MessageUpdated, onUpdated);
+      socket.off(SocketEvents.MessageDeleted, onDeleted);
+      socket.off(SocketEvents.MessagePinned, onPinned);
+      socket.off(SocketEvents.MessageUnpinned, onUnpinned);
+    };
+  }, [socket]);
+
   const sendMessage = useCallback(
-    async (content: string, sender: { id: string; displayName: string; avatar: string | null }): Promise<boolean> => {
+    async (content: string, sender: Sender): Promise<boolean> => {
       if (!channelId) return false;
       const trimmed = content.trim();
       if (!trimmed) return false;
@@ -115,6 +176,9 @@ export function useMessages(channelId: string | null, socket: Socket | null) {
         id: localId,
         content: trimmed,
         createdAt: new Date().toISOString(),
+        editedAt: null,
+        deletedAt: null,
+        pinnedAt: null,
         user: sender,
         pending: true,
       };
@@ -125,9 +189,6 @@ export function useMessages(channelId: string | null, socket: Socket | null) {
           method: "POST",
           body: JSON.stringify({ content: trimmed }),
         });
-        // На успешный ответ — socket эмит придёт и заменит pending'ивший.
-        // Дополнительно гарантируем: если socket почему-то не пришёл за 10с —
-        // снимаем pending-флаг (сообщение пойдёт как обычное).
         setTimeout(() => {
           setMessages((prev) =>
             prev.map((m) => (m.id === localId && m.pending ? { ...m, pending: false } : m)),
@@ -145,17 +206,97 @@ export function useMessages(channelId: string | null, socket: Socket | null) {
     [channelId],
   );
 
-  /** Повторная попытка для failed-сообщений. */
   const retryMessage = useCallback(
-    async (messageId: string, sender: { id: string; displayName: string; avatar: string | null }): Promise<boolean> => {
+    async (messageId: string, sender: Sender): Promise<boolean> => {
       const target = messages.find((m) => m.id === messageId);
       if (!target || !channelId) return false;
-      // Убираем старое и шлём заново
       setMessages((prev) => prev.filter((m) => m.id !== messageId));
       return sendMessage(target.content, sender);
     },
     [messages, channelId, sendMessage],
   );
 
-  return { messages, error, loading, sendMessage, retryMessage };
+  const editMessage = useCallback(async (messageId: string, content: string): Promise<boolean> => {
+    const trimmed = content.trim();
+    if (!trimmed) return false;
+    setError(null);
+    try {
+      await apiJson(`/api/messages/${encodeURIComponent(messageId)}`, {
+        method: "PATCH",
+        body: JSON.stringify({ content: trimmed }),
+      });
+      // Socket message:updated придёт и обновит state — никакой local mutation.
+      return true;
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Не удалось изменить");
+      return false;
+    }
+  }, []);
+
+  const deleteMessage = useCallback(async (messageId: string): Promise<boolean> => {
+    setError(null);
+    try {
+      const res = await api(`/api/messages/${encodeURIComponent(messageId)}`, { method: "DELETE" });
+      if (!res.ok) {
+        let msg = `HTTP ${res.status}`;
+        try {
+          const body = (await res.json()) as { error?: string };
+          if (body?.error) msg = body.error;
+        } catch {
+          /* non-json */
+        }
+        setError(msg);
+        return false;
+      }
+      return true;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Не удалось удалить");
+      return false;
+    }
+  }, []);
+
+  const pinMessage = useCallback(async (messageId: string): Promise<boolean> => {
+    setError(null);
+    try {
+      await apiJson(`/api/messages/${encodeURIComponent(messageId)}/pin`, { method: "POST" });
+      return true;
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Не удалось закрепить");
+      return false;
+    }
+  }, []);
+
+  const unpinMessage = useCallback(async (messageId: string): Promise<boolean> => {
+    setError(null);
+    try {
+      const res = await api(`/api/messages/${encodeURIComponent(messageId)}/pin`, { method: "DELETE" });
+      if (!res.ok) {
+        let msg = `HTTP ${res.status}`;
+        try {
+          const body = (await res.json()) as { error?: string };
+          if (body?.error) msg = body.error;
+        } catch {
+          /* non-json */
+        }
+        setError(msg);
+        return false;
+      }
+      return true;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Не удалось открепить");
+      return false;
+    }
+  }, []);
+
+  return {
+    messages,
+    error,
+    loading,
+    sendMessage,
+    retryMessage,
+    editMessage,
+    deleteMessage,
+    pinMessage,
+    unpinMessage,
+  };
 }

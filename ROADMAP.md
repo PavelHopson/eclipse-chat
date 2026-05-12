@@ -430,7 +430,85 @@ sudo supervisorctl restart eclipse-chat-server
 
 ---
 
-## v0.5.5 — Message lifecycle (edit / delete / pin) 🆕 PLANNED
+## v0.5.5 — Message lifecycle (edit / delete / pin) ✅ DONE (12.05.2026)
+
+> Реализовано после v0.5.4 ship'а. Pavel сказал «продолжаем работу» —
+> я выбрал v0.5.5 как low-risk high-value (LiveKit voice требует
+> отдельной инфра-сессии и оставлен на v0.5.3).
+
+**Backend:**
+- [x] Schema: `Message.editedAt`, `Message.deletedAt`, `Message.pinnedAt`
+      (все nullable). `@@index([channelId, pinnedAt])` для быстрого
+      GET pinned. Migration `20260512220000_add_message_lifecycle`.
+- [x] **`routes/messages.ts`** (новый):
+      - `GET /api/channels/:id/pinned` — список pinned-сообщений канала
+        (member-only), sort by pinnedAt desc
+      - `PATCH /api/messages/:id` — edit, **только автор**, обновляет
+        editedAt; 410 для deleted
+      - `DELETE /api/messages/:id` — soft-delete, **автор OR OWNER/ADMIN/
+        MODERATOR** сервера; idempotent (alreadyDeleted: true); unpin
+        автоматически при delete (чтобы pin-bar не показывал «удалено»)
+      - `POST /api/messages/:id/pin` — **только OWNER/ADMIN/MODERATOR**;
+        idempotent (повторный pin обновляет pinnedAt); 410 для deleted
+      - `DELETE /api/messages/:id/pin` — unpin, same perms
+- [x] `realtime.ts`: `emitMessageUpdated`, `emitMessageDeleted`,
+      `emitMessagePinned`, `emitMessageUnpinned` — все в `channel:${id}`
+      room
+- [x] `channels.ts` GET messages теперь возвращает `editedAt/deletedAt/
+      pinnedAt` для каждого сообщения; `content` пустой для deleted
+- [x] `index.ts` регистрирует `registerMessageRoutes`
+
+**Frontend:**
+- [x] `socket.ts` — 4 новых payload-типа + `SocketEvents.Message{Updated,Deleted,Pinned,Unpinned}`
+- [x] `useMessages`:
+      - `MessageRow` расширен `editedAt/deletedAt/pinnedAt`
+      - Listeners для 4 lifecycle событий обновляют state in-place
+      - `editMessage(id, content)`, `deleteMessage(id)`, `pinMessage(id)`,
+        `unpinMessage(id)` методы
+      - `defaultLifecycle()` helper для backward-compat с старыми payload'ами
+- [x] **MessageList** расширен:
+      - Inline edit: textarea с accent border + soft glow + autoFocus;
+        Enter → save, Esc → cancel; replace в-place при successful edit
+      - Deleted: italic muted «сообщение удалено» вместо content
+      - Edited: «(изменено)» tag с title-tooltip полной даты
+      - Pinned: специальный row style с warm-yellow left-border + bg tint,
+        «ЗАКРЕПЛЕНО» pill в header с pin-icon (warn color)
+      - Hover-actions bar: copy / edit / pin (или unpin) / delete —
+        видимость зависит от роли + ownership + state. Edit только для
+        своих не-deleted; delete для своих ИЛИ moderator; pin/unpin
+        только для moderator
+- [x] **`PinnedBar.tsx`** (новый): collapsible сверху чата, показывает
+      pinned-count и list. Каждая карточка: Avatar + name + relative
+      timestamp («Сегодня, 13:20») + 3-line clamp content. Авто-скрыт
+      когда pinned.length === 0
+- [x] `AppShell` — `PinnedBar` встроен над `MessageList` для TEXT
+      channels; `currentRole` из `activeServer.role` пробрасывается в
+      MessageList для perm-проверок
+
+**Permissions matrix (UI ↔ backend):**
+
+| Action  | Author | OWNER | ADMIN | MOD | MEMBER |
+|---------|:---:|:---:|:---:|:---:|:---:|
+| Copy    | ✅  | ✅  | ✅  | ✅  | ✅  |
+| Edit    | ✅  | ❌  | ❌  | ❌  | ❌  |
+| Delete  | ✅  | ✅  | ✅  | ✅  | ❌  |
+| Pin     | ❌  | ✅  | ✅  | ✅  | ❌  |
+| Unpin   | ❌  | ✅  | ✅  | ✅  | ❌  |
+
+**Bundle:** 310.70 → 321.63 KB raw (+10.9 KB), 92.89 → 94.75 KB gzip (+1.86 KB).
+
+**Deploy (Pavel):**
+```bash
+cd /var/www/eclipse-chat && git pull origin master
+npm ci          # ← postinstall prisma generate
+cd apps/server && npx prisma migrate deploy && cd ..
+npm run build
+sudo supervisorctl restart eclipse-chat-server
+```
+
+---
+
+## v0.7 — Реакции (Reactions)
 
 - [ ] `components/MemberList.tsx` + `hooks/useMembers.ts` — правая колонка
       со списком участников активного сервера. Sub'нуться на `member:joined`
