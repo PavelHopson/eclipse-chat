@@ -53,6 +53,14 @@ enum MemberRole {
   MEMBER
 }
 
+/// Тип канала. TEXT — обычный чат. VOICE — голосовой канал
+/// (placeholder в v0.5.2; полноценная LiveKit-интеграция — v0.5.3).
+/// POST messages блокируется для VOICE каналов на уровне route.
+enum ChannelType {
+  TEXT
+  VOICE
+}
+
 /// Сервер — контейнер каналов и участников. Создатель автоматически
 /// становится Member с role = OWNER.
 model Server {
@@ -87,14 +95,16 @@ model Member {
 /// обязательным (NOT NULL) — backfill сделан в v0.4 seed, technical
 /// debt из ROADMAP §housekeeping закрыт.
 model Channel {
-  id        String    @id @default(cuid())
+  id        String      @id @default(cuid())
   name      String
-  slug      String    @unique
+  slug      String      @unique
   serverId  String
-  server    Server    @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  server    Server      @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  /// Тип канала. По умолчанию TEXT — обратная совместимость с v0.4.
+  type      ChannelType @default(TEXT)
   /// Позиция в списке каналов сервера (для будущей сортировки UI).
-  position  Int       @default(0)
-  createdAt DateTime  @default(now())
+  position  Int         @default(0)
+  createdAt DateTime    @default(now())
 
   messages  Message[]
 }

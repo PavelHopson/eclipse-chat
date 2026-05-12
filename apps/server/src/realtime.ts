@@ -31,11 +31,23 @@ export function emitChannelCreated(
     serverId: string;
     name: string;
     slug: string;
+    type: "TEXT" | "VOICE";
     position: number;
     createdAt: string;
   },
 ) {
   io?.to(`server:${serverId}`).emit("channel:created", payload);
+}
+
+/**
+ * Эмит при удалении канала. Frontend должен убрать его из списка
+ * и сбросить selectedChannelId если был активным.
+ */
+export function emitChannelDeleted(
+  serverId: string,
+  payload: { channelId: string; serverId: string },
+) {
+  io?.to(`server:${serverId}`).emit("channel:deleted", payload);
 }
 
 /** Эмит при вступлении нового члена в сервер. */

@@ -2,15 +2,18 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { db } from "../db.js";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
-import { emitMemberJoined, emitMemberLeft, emitChannelCreated } from "../realtime.js";
+import { emitMemberJoined, emitMemberLeft, emitChannelCreated, emitChannelDeleted } from "../realtime.js";
 
 const createServerBody = z.object({
   name: z.string().min(1).max(80),
   icon: z.string().url().max(500).optional().nullable(),
 });
 
+const channelTypeSchema = z.enum(["TEXT", "VOICE"]);
+
 const createServerChannelBody = z.object({
   name: z.string().min(1).max(80),
+  type: channelTypeSchema.optional(),
 });
 
 /** Все допустимые роли. SQLite-friendly — храним как String, валидируем здесь. */
@@ -313,6 +316,7 @@ export async function registerServerRoutes(app: FastifyInstance) {
         id: true,
         name: true,
         slug: true,
+        type: true,
         position: true,
         createdAt: true,
         _count: { select: { messages: true } },
@@ -335,13 +339,19 @@ export async function registerServerRoutes(app: FastifyInstance) {
     const base = slugifyBase(parsed.data.name);
     const slug = await uniqueSlug(base);
     const ch = await db.channel.create({
-      data: { name: parsed.data.name, slug, serverId },
+      data: {
+        name: parsed.data.name,
+        slug,
+        serverId,
+        type: parsed.data.type ?? "TEXT",
+      },
     });
     emitChannelCreated(serverId, {
       channelId: ch.id,
       serverId,
       name: ch.name,
       slug: ch.slug,
+      type: ch.type,
       position: ch.position,
       createdAt: ch.createdAt.toISOString(),
     });
@@ -350,9 +360,48 @@ export async function registerServerRoutes(app: FastifyInstance) {
         id: ch.id,
         name: ch.name,
         slug: ch.slug,
+        type: ch.type,
         position: ch.position,
         createdAt: ch.createdAt.toISOString(),
       },
     };
+  });
+
+  /**
+   * DELETE /api/channels/:id — удаление канала. Требует OWNER/ADMIN роли
+   * на server'е этого канала. Cascade удалит messages автоматически
+   * (Prisma onDelete: Cascade в schema).
+   *
+   * Возвращает 204 + emit `channel:deleted` на server-room.
+   */
+  app.delete("/api/channels/:id", { onRequest: [requireJwt] }, async (req, reply) => {
+    const { id: channelId } = req.params as { id: string };
+    const userId = getUserId(req);
+    if (!userId) {
+      return reply.status(401).send({ error: "Unauthorized" });
+    }
+    const channel = await db.channel.findUnique({
+      where: { id: channelId },
+      select: { id: true, serverId: true, name: true },
+    });
+    if (!channel) {
+      return reply.status(404).send({ error: "Channel not found" });
+    }
+    const member = await db.member.findUnique({
+      where: { userId_serverId: { userId, serverId: channel.serverId } },
+      select: { role: true },
+    });
+    if (!member) {
+      return reply.status(403).send({ error: "Not a member of this server" });
+    }
+    if (member.role !== "OWNER" && member.role !== "ADMIN") {
+      return reply.status(403).send({ error: "Only OWNER or ADMIN can delete channels" });
+    }
+    await db.channel.delete({ where: { id: channelId } });
+    emitChannelDeleted(channel.serverId, {
+      channelId,
+      serverId: channel.serverId,
+    });
+    return { ok: true };
   });
 }

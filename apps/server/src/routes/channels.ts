@@ -4,8 +4,11 @@ import { db } from "../db.js";
 import { emitMessageOnChannel } from "../realtime.js";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
 
+const channelTypeSchema = z.enum(["TEXT", "VOICE"]);
+
 const createChannelBody = z.object({
   name: z.string().min(1).max(80),
+  type: channelTypeSchema.optional(),
 });
 
 const createMessageBody = z.object({
@@ -64,6 +67,7 @@ export async function registerChannelRoutes(app: FastifyInstance) {
         id: true,
         name: true,
         slug: true,
+        type: true,
         createdAt: true,
         _count: { select: { messages: true } },
       },
@@ -101,13 +105,19 @@ export async function registerChannelRoutes(app: FastifyInstance) {
     const base = slugifyBase(parsed.data.name);
     const slug = await uniqueSlug(base);
     const ch = await db.channel.create({
-      data: { name: parsed.data.name, slug, serverId: defaultServerId },
+      data: {
+        name: parsed.data.name,
+        slug,
+        serverId: defaultServerId,
+        type: parsed.data.type ?? "TEXT",
+      },
     });
     return {
       channel: {
         id: ch.id,
         name: ch.name,
         slug: ch.slug,
+        type: ch.type,
         createdAt: ch.createdAt,
       },
     };
@@ -163,10 +173,13 @@ export async function registerChannelRoutes(app: FastifyInstance) {
       }
       const ch = await db.channel.findUnique({
         where: { id: channelId },
-        select: { id: true, serverId: true },
+        select: { id: true, serverId: true, type: true },
       });
       if (!ch) {
         return reply.status(404).send({ error: "Channel not found" });
+      }
+      if (ch.type === "VOICE") {
+        return reply.status(400).send({ error: "Voice channels don't support text messages" });
       }
       if (ch.serverId) {
         const member = await db.member.findUnique({

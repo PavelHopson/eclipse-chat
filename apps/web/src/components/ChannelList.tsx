@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import { useState } from "react";
 import type { ChannelRow } from "../hooks/useChannels";
+import type { ChannelType } from "../lib/socket";
 
 type Props = {
   serverName: string | null;
@@ -9,7 +10,8 @@ type Props = {
   channels: ChannelRow[];
   selectedChannelId: string | null;
   onSelect: (id: string) => void;
-  onCreate: (name: string) => Promise<void>;
+  onCreate: (name: string, type: ChannelType) => Promise<void>;
+  onDelete: (id: string) => Promise<boolean>;
   onShowServerInfo: () => void;
 };
 
@@ -40,7 +42,6 @@ const serverTrigger: CSSProperties = {
   color: "var(--ec-text-strong)",
   textAlign: "left",
   borderRadius: "var(--ec-radius-sm)",
-  transition: "color var(--ec-dur-fast) var(--ec-ease)",
 };
 
 const listWrap: CSSProperties = {
@@ -56,13 +57,88 @@ const composerRow: CSSProperties = {
   padding: "var(--ec-space-3)",
   borderTop: "1px solid var(--ec-border-subtle)",
   display: "flex",
+  flexDirection: "column",
   gap: "var(--ec-space-2)",
+};
+
+const typeToggle: CSSProperties = {
+  display: "flex",
+  gap: 2,
+  padding: 3,
+  background: "var(--ec-surface-2)",
+  borderRadius: "var(--ec-radius-sm)",
+};
+
+function typeBtn(active: boolean): CSSProperties {
+  return {
+    flex: 1,
+    padding: "0.3rem 0.4rem",
+    fontSize: "var(--ec-text-2xs)",
+    color: active ? "var(--ec-text-strong)" : "var(--ec-text-muted)",
+    background: active ? "var(--ec-surface-3)" : "transparent",
+    border: 0,
+    borderRadius: "var(--ec-radius-xs)",
+    cursor: "pointer",
+    fontWeight: 600,
+    letterSpacing: "var(--ec-tracking-wide)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "var(--ec-space-1)",
+  };
+}
+
+const deleteBtn: CSSProperties = {
+  width: 20,
+  height: 20,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  background: "transparent",
+  border: 0,
+  borderRadius: "var(--ec-radius-xs)",
+  color: "var(--ec-text-dim)",
+  cursor: "pointer",
+  opacity: 0,
+  transition: "opacity var(--ec-dur-fast) var(--ec-ease), color var(--ec-dur-fast) var(--ec-ease), background var(--ec-dur-fast) var(--ec-ease)",
+  marginLeft: "auto",
+  flexShrink: 0,
 };
 
 function roleClass(role: string): string {
   if (role === "OWNER") return "ec-badge ec-badge--owner";
   if (role === "ADMIN" || role === "MODERATOR") return "ec-badge ec-badge--accent";
   return "ec-badge";
+}
+
+function canManage(role: string | null): boolean {
+  return role === "OWNER" || role === "ADMIN";
+}
+
+function ChannelGlyph({ type }: { type: ChannelType }) {
+  if (type === "VOICE") {
+    return (
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden
+      >
+        <path d="M11 5L6 9H2v6h4l5 4V5z" />
+        <path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07" />
+      </svg>
+    );
+  }
+  return (
+    <span className="ec-channel-hash" aria-hidden>
+      #
+    </span>
+  );
 }
 
 export function ChannelList({
@@ -73,10 +149,104 @@ export function ChannelList({
   selectedChannelId,
   onSelect,
   onCreate,
+  onDelete,
   onShowServerInfo,
 }: Props) {
   const [draft, setDraft] = useState("");
+  const [draftType, setDraftType] = useState<ChannelType>("TEXT");
   const [submitting, setSubmitting] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<string | null>(null);
+
+  const manageable = canManage(serverRole);
+
+  const textChannels = channels.filter((c) => c.type === "TEXT");
+  const voiceChannels = channels.filter((c) => c.type === "VOICE");
+
+  const handleDelete = async (channelId: string, channelName: string) => {
+    if (!window.confirm(`Удалить канал «${channelName}»? Все сообщения внутри будут потеряны.`)) {
+      return;
+    }
+    setPendingDelete(channelId);
+    try {
+      await onDelete(channelId);
+    } finally {
+      setPendingDelete(null);
+    }
+  };
+
+  const renderChannel = (c: ChannelRow) => {
+    const isActive = c.id === selectedChannelId;
+    const isDeleting = pendingDelete === c.id;
+    return (
+      <button
+        key={c.id}
+        type="button"
+        onClick={() => onSelect(c.id)}
+        className={isActive ? "ec-channel-item ec-channel-item--active" : "ec-channel-item"}
+        style={isDeleting ? { opacity: 0.5, pointerEvents: "none" } : undefined}
+        onMouseEnter={(e) => {
+          const btn = e.currentTarget.querySelector<HTMLElement>("[data-delete-btn]");
+          if (btn) btn.style.opacity = "1";
+        }}
+        onMouseLeave={(e) => {
+          const btn = e.currentTarget.querySelector<HTMLElement>("[data-delete-btn]");
+          if (btn) btn.style.opacity = "0";
+        }}
+      >
+        <ChannelGlyph type={c.type} />
+        <span
+          style={{
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            minWidth: 0,
+            flex: 1,
+          }}
+        >
+          {c.name}
+        </span>
+        {!isActive && c.type === "TEXT" && c._count.messages > 0 && (
+          <span className="ec-channel-count">{c._count.messages}</span>
+        )}
+        {manageable && (
+          <span
+            data-delete-btn
+            role="button"
+            tabIndex={0}
+            aria-label={`Удалить канал ${c.name}`}
+            title="Удалить канал"
+            style={deleteBtn}
+            onClick={(e) => {
+              e.stopPropagation();
+              void handleDelete(c.id, c.name);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                e.stopPropagation();
+                void handleDelete(c.id, c.name);
+              }
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "var(--ec-danger-soft)";
+              e.currentTarget.style.color = "var(--ec-danger)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "transparent";
+              e.currentTarget.style.color = "var(--ec-text-dim)";
+            }}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <polyline points="3 6 5 6 21 6" />
+              <path d="M19 6l-2 14a2 2 0 01-2 2H9a2 2 0 01-2-2L5 6" />
+              <path d="M10 11v6M14 11v6" />
+              <path d="M9 6V4a2 2 0 012-2h2a2 2 0 012 2v2" />
+            </svg>
+          </span>
+        )}
+      </button>
+    );
+  };
 
   return (
     <aside style={wrap}>
@@ -115,29 +285,28 @@ export function ChannelList({
       </header>
 
       <div style={listWrap}>
-        <div className="ec-section-label" style={{ marginBottom: "var(--ec-space-2)" }}>
-          <span>Каналы</span>
-          {channels.length > 0 && <span style={{ color: "var(--ec-text-dim)", fontFeatureSettings: '"tnum"' }}>{channels.length}</span>}
-        </div>
-        {channels.map((c) => {
-          const isActive = c.id === selectedChannelId;
-          return (
-            <button
-              key={c.id}
-              type="button"
-              onClick={() => onSelect(c.id)}
-              className={isActive ? "ec-channel-item ec-channel-item--active" : "ec-channel-item"}
-            >
-              <span className="ec-channel-hash" aria-hidden>#</span>
-              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>
-                {c.name}
-              </span>
-              {c._count.messages > 0 && <span className="ec-channel-count">{c._count.messages}</span>}
-            </button>
-          );
-        })}
+        {textChannels.length > 0 && (
+          <>
+            <div className="ec-section-label" style={{ marginBottom: "var(--ec-space-2)" }}>
+              <span>Текстовые</span>
+              <span style={{ color: "var(--ec-text-dim)", fontFeatureSettings: '"tnum"' }}>{textChannels.length}</span>
+            </div>
+            {textChannels.map(renderChannel)}
+          </>
+        )}
+
+        {voiceChannels.length > 0 && (
+          <>
+            <div className="ec-section-label" style={{ marginTop: textChannels.length > 0 ? "var(--ec-space-4)" : 0, marginBottom: "var(--ec-space-2)" }}>
+              <span>Голосовые</span>
+              <span style={{ color: "var(--ec-text-dim)", fontFeatureSettings: '"tnum"' }}>{voiceChannels.length}</span>
+            </div>
+            {voiceChannels.map(renderChannel)}
+          </>
+        )}
+
         {channels.length === 0 && (
-          <p style={{ color: "var(--ec-text-dim)", fontSize: "var(--ec-text-sm)", padding: "var(--ec-space-2) var(--ec-space-2) 0", margin: 0 }}>
+          <p style={{ color: "var(--ec-text-dim)", fontSize: "var(--ec-text-sm)", padding: "var(--ec-space-2)", margin: 0 }}>
             Создайте первый канал ниже.
           </p>
         )}
@@ -149,7 +318,7 @@ export function ChannelList({
           if (!draft.trim() || submitting) return;
           setSubmitting(true);
           try {
-            await onCreate(draft.trim());
+            await onCreate(draft.trim(), draftType);
             setDraft("");
           } finally {
             setSubmitting(false);
@@ -157,24 +326,50 @@ export function ChannelList({
         }}
         style={composerRow}
       >
-        <input
-          className="ec-field"
-          placeholder="Новый канал…"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          maxLength={80}
-          style={{ flex: 1, padding: "0.45rem 0.65rem", fontSize: "var(--ec-text-sm)" }}
-        />
-        <button
-          type="submit"
-          disabled={!draft.trim() || submitting}
-          className="ec-btn ec-btn--primary ec-btn--sm"
-          aria-label="Создать канал"
-          title="Создать канал"
-          style={{ minWidth: 36, padding: "0 0.6rem" }}
-        >
-          {submitting ? "…" : "+"}
-        </button>
+        <div style={typeToggle} role="tablist" aria-label="Тип канала">
+          <button
+            type="button"
+            onClick={() => setDraftType("TEXT")}
+            style={typeBtn(draftType === "TEXT")}
+            role="tab"
+            aria-selected={draftType === "TEXT"}
+          >
+            <span aria-hidden style={{ fontSize: "0.8rem" }}>#</span>
+            Текст
+          </button>
+          <button
+            type="button"
+            onClick={() => setDraftType("VOICE")}
+            style={typeBtn(draftType === "VOICE")}
+            role="tab"
+            aria-selected={draftType === "VOICE"}
+          >
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M11 5L6 9H2v6h4l5 4V5z" />
+            </svg>
+            Голос
+          </button>
+        </div>
+        <div style={{ display: "flex", gap: "var(--ec-space-2)" }}>
+          <input
+            className="ec-field"
+            placeholder={draftType === "VOICE" ? "Новый голосовой канал…" : "Новый канал…"}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            maxLength={80}
+            style={{ flex: 1, padding: "0.45rem 0.65rem", fontSize: "var(--ec-text-sm)" }}
+          />
+          <button
+            type="submit"
+            disabled={!draft.trim() || submitting}
+            className="ec-btn ec-btn--primary ec-btn--sm"
+            aria-label="Создать канал"
+            title="Создать канал"
+            style={{ minWidth: 36, padding: "0 0.6rem" }}
+          >
+            {submitting ? "…" : "+"}
+          </button>
+        </div>
       </form>
     </aside>
   );

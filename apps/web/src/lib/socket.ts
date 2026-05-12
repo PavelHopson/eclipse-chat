@@ -43,13 +43,21 @@ export type MessageNewPayload = {
   createdAt: string;
 };
 
+export type ChannelType = "TEXT" | "VOICE";
+
 export type ChannelCreatedPayload = {
   channelId: string;
   serverId: string;
   name: string;
   slug: string;
+  type: ChannelType;
   position: number;
   createdAt: string;
+};
+
+export type ChannelDeletedPayload = {
+  channelId: string;
+  serverId: string;
 };
 
 export type MemberJoinedPayload = {
@@ -72,6 +80,7 @@ export const SocketEvents = {
   ServerHello: "server:hello",
   MessageNew: "message:new",
   ChannelCreated: "channel:created",
+  ChannelDeleted: "channel:deleted",
   MemberJoined: "member:joined",
   MemberLeft: "member:left",
   ChannelJoin: "channel:join",

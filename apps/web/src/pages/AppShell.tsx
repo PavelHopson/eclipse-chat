@@ -9,6 +9,7 @@ import { MessageList } from "../components/MessageList";
 import { ProfileModal } from "../components/ProfileModal";
 import { ServerInfoModal } from "../components/ServerInfoModal";
 import { ServerList } from "../components/ServerList";
+import { VoicePlaceholder } from "../components/VoicePlaceholder";
 import { useChannels } from "../hooks/useChannels";
 import { useMessages } from "../hooks/useMessages";
 import { useProfile } from "../hooks/useProfile";
@@ -140,6 +141,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     selectedChannelId,
     setSelectedChannelId,
     createChannel,
+    deleteChannel,
   } = useChannels(activeServerId, socket);
 
   const { messages, sendMessage, error: messagesError, loading: messagesLoading } = useMessages(
@@ -235,9 +237,10 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
         channels={channels}
         selectedChannelId={selectedChannelId}
         onSelect={setSelectedChannelId}
-        onCreate={async (name) => {
-          await createChannel(name);
+        onCreate={async (name, type) => {
+          await createChannel(name, type);
         }}
+        onDelete={deleteChannel}
         onShowServerInfo={() => activeServer && setShowServerInfo(true)}
       />
 
@@ -245,7 +248,25 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
         <div style={chatHeader}>
           {selectedChannel ? (
             <span style={chatTitle}>
-              <span style={{ color: "var(--ec-accent)" }}>#</span>
+              {selectedChannel.type === "VOICE" ? (
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{ color: "var(--ec-accent)" }}
+                  aria-hidden
+                >
+                  <path d="M11 5L6 9H2v6h4l5 4V5z" />
+                  <path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07" />
+                </svg>
+              ) : (
+                <span style={{ color: "var(--ec-accent)" }}>#</span>
+              )}
               {selectedChannel.name}
             </span>
           ) : (
@@ -278,7 +299,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               </button>
             </div>
           </div>
-        ) : !selectedChannelId ? (
+        ) : !selectedChannelId || !selectedChannel ? (
           <div className="ec-empty">
             <div className="ec-empty-icon" aria-hidden>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -288,16 +309,18 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             <div className="ec-empty-title">Выберите канал</div>
             <div className="ec-empty-hint">Каналы — слева. Или создайте новый внизу панели каналов.</div>
           </div>
+        ) : selectedChannel.type === "VOICE" ? (
+          <VoicePlaceholder channelName={selectedChannel.name} />
         ) : (
           <>
             <MessageList
               messages={messages}
               emptyHint={messagesLoading ? "Загрузка…" : undefined}
-              channelName={selectedChannel?.name ?? null}
+              channelName={selectedChannel.name}
             />
             <MessageInput
-              channelName={selectedChannel?.name ?? null}
-              disabled={!selectedChannelId || !isReady}
+              channelName={selectedChannel.name}
+              disabled={!isReady}
               onSend={sendMessage}
             />
           </>
