@@ -107,6 +107,20 @@ export type MessageUnpinnedPayload = {
   channelId: string;
 };
 
+export type ReactionAddedPayload = {
+  messageId: string;
+  channelId: string;
+  emoji: string;
+  userId: string;
+};
+
+export type ReactionRemovedPayload = {
+  messageId: string;
+  channelId: string;
+  emoji: string;
+  userId: string;
+};
+
 /** Совпадает с naming из docs/SOCKET_EVENTS.md и кода сервера. */
 export const SocketEvents = {
   ServerHello: "server:hello",
@@ -115,6 +129,8 @@ export const SocketEvents = {
   MessageDeleted: "message:deleted",
   MessagePinned: "message:pinned",
   MessageUnpinned: "message:unpinned",
+  ReactionAdded: "reaction:added",
+  ReactionRemoved: "reaction:removed",
   ChannelCreated: "channel:created",
   ChannelDeleted: "channel:deleted",
   MemberJoined: "member:joined",

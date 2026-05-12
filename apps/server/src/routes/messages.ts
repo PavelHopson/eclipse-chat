@@ -7,10 +7,30 @@ import {
   emitMessagePinned,
   emitMessageUnpinned,
   emitMessageUpdated,
+  emitReactionAdded,
+  emitReactionRemoved,
 } from "../realtime.js";
 
 const editBody = z.object({
   content: z.string().min(1).max(8000),
+});
+
+/**
+ * Whitelist эмодзи. Узкий список — гарантирует что в БД не попадёт
+ * произвольный Unicode + что emoji-picker фронта и backend синхронизированы.
+ * Расширение списка — отдельным изменением.
+ */
+const ALLOWED_EMOJI = [
+  "👍", "❤️", "😂", "😮", "😢", "🔥", "🎉", "👀",
+  "🚀", "💯", "🙏", "👏",
+] as const;
+type AllowedEmoji = (typeof ALLOWED_EMOJI)[number];
+const allowedSet = new Set<string>(ALLOWED_EMOJI);
+
+const reactionBody = z.object({
+  emoji: z.string().refine((v): v is AllowedEmoji => allowedSet.has(v), {
+    message: "Emoji not in allowed list",
+  }),
 });
 
 const DELETED_PLACEHOLDER = "[сообщение удалено]";
@@ -257,6 +277,107 @@ export async function registerMessageRoutes(app: FastifyInstance) {
       }
       await db.message.update({ where: { id: messageId }, data: { pinnedAt: null } });
       emitMessageUnpinned(m.channelId, { messageId, channelId: m.channelId });
+      return { ok: true };
+    },
+  );
+
+  /**
+   * POST /api/messages/:id/reactions — добавить реакцию. Любой member.
+   * Idempotent через unique constraint (messageId, userId, emoji).
+   * Запрещено реагировать на soft-deleted сообщения.
+   */
+  app.post(
+    "/api/messages/:id/reactions",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const { id: messageId } = req.params as { id: string };
+      const userId = getUserId(req);
+      if (!userId) {
+        return reply.status(401).send({ error: "Unauthorized" });
+      }
+      const parsed = reactionBody.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.status(400).send({ error: parsed.error.issues[0]?.message ?? "Invalid emoji" });
+      }
+      const m = await db.message.findUnique({
+        where: { id: messageId },
+        select: { id: true, channelId: true, deletedAt: true },
+      });
+      if (!m) {
+        return reply.status(404).send({ error: "Message not found" });
+      }
+      if (m.deletedAt) {
+        return reply.status(410).send({ error: "Cannot react to deleted message" });
+      }
+      const ch = await db.channel.findUnique({
+        where: { id: m.channelId },
+        select: { serverId: true },
+      });
+      if (!ch) {
+        return reply.status(404).send({ error: "Channel not found" });
+      }
+      const member = await db.member.findUnique({
+        where: { userId_serverId: { userId, serverId: ch.serverId } },
+        select: { id: true },
+      });
+      if (!member) {
+        return reply.status(403).send({ error: "Not a member of this server" });
+      }
+      const { emoji } = parsed.data;
+      // upsert через try/catch: повторный POST = same row, не fail
+      try {
+        await db.reaction.create({
+          data: { messageId, userId, emoji },
+        });
+        emitReactionAdded(m.channelId, { messageId, channelId: m.channelId, emoji, userId });
+      } catch (err: unknown) {
+        // unique violation = уже стоит, idempotent ok
+        if (
+          err instanceof Error &&
+          "code" in err &&
+          (err as { code?: string }).code === "P2002"
+        ) {
+          return { ok: true, alreadyExists: true };
+        }
+        throw err;
+      }
+      return { ok: true };
+    },
+  );
+
+  /** DELETE /api/messages/:id/reactions/:emoji — снять свою реакцию. */
+  app.delete(
+    "/api/messages/:id/reactions/:emoji",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const { id: messageId, emoji: rawEmoji } = req.params as {
+        id: string;
+        emoji: string;
+      };
+      const emoji = decodeURIComponent(rawEmoji);
+      const userId = getUserId(req);
+      if (!userId) {
+        return reply.status(401).send({ error: "Unauthorized" });
+      }
+      if (!allowedSet.has(emoji)) {
+        return reply.status(400).send({ error: "Emoji not in allowed list" });
+      }
+      const m = await db.message.findUnique({
+        where: { id: messageId },
+        select: { id: true, channelId: true },
+      });
+      if (!m) {
+        return reply.status(404).send({ error: "Message not found" });
+      }
+      const existing = await db.reaction.findUnique({
+        where: { messageId_userId_emoji: { messageId, userId, emoji } },
+        select: { id: true },
+      });
+      if (!existing) {
+        return { ok: true, alreadyAbsent: true };
+      }
+      await db.reaction.delete({ where: { id: existing.id } });
+      emitReactionRemoved(m.channelId, { messageId, channelId: m.channelId, emoji, userId });
       return { ok: true };
     },
   );

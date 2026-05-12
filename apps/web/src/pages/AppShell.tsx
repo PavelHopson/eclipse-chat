@@ -160,9 +160,10 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     deleteMessage,
     pinMessage,
     unpinMessage,
+    toggleReaction,
     error: messagesError,
     loading: messagesLoading,
-  } = useMessages(selectedChannelId, socket);
+  } = useMessages(selectedChannelId, socket, user.id);
 
   const [showCreateServer, setShowCreateServer] = useState(false);
   const [showJoinServer, setShowJoinServer] = useState(false);
@@ -356,6 +357,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               onDelete={deleteMessage}
               onPin={pinMessage}
               onUnpin={unpinMessage}
+              onToggleReaction={toggleReaction}
             />
             <MessageInput
               channelName={selectedChannel.name}

@@ -33,6 +33,7 @@ model User {
   refreshTokens RefreshToken[]
   memberships   Member[]
   ownedServers  Server[]       @relation("ServerOwner")
+  reactions     Reaction[]
 }
 
 model RefreshToken {
@@ -125,6 +126,25 @@ model Message {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   channelId String
   channel   Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  reactions Reaction[]
 
   @@index([channelId, pinnedAt])
+}
+
+/// Реакция на сообщение. Unique по (messageId, userId, emoji) —
+/// один user может поставить только один экземпляр каждого emoji
+/// на сообщение. Снятие = DELETE row.
+model Reaction {
+  id        String   @id @default(cuid())
+  messageId String
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Unicode emoji ("👍") или shortcode ("thumbs_up"). Для MVP — short
+  /// list разрешённых emoji, валидируется zod-схемой в роуте.
+  emoji     String
+  createdAt DateTime @default(now())
+
+  @@unique([messageId, userId, emoji])
+  @@index([messageId])
 }

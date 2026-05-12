@@ -139,21 +139,51 @@ export async function registerChannelRoutes(app: FastifyInstance) {
       where: { channelId: id },
       take,
       orderBy: { createdAt: "desc" },
-      include: { user: { select: { id: true, displayName: true, avatar: true } } },
+      include: {
+        user: { select: { id: true, displayName: true, avatar: true } },
+        reactions: { select: { emoji: true, userId: true } },
+      },
     });
+    // Опционально достаём currentUserId из jwt — без auth middleware
+    // (этот GET был открытый ради SSR-like preview). Делаем optional
+    // jwtVerify, чтобы 'mine' помечался когда возможно.
+    let currentUserId: string | null = null;
+    try {
+      await req.jwtVerify();
+      const payload = req.user as { sub?: string } | undefined;
+      currentUserId = payload?.sub ?? null;
+    } catch {
+      /* anonymous — mine остаётся false */
+    }
     return {
       channel: { id: ch.id, name: ch.name, slug: ch.slug },
       messages: messages
         .reverse()
-        .map((m) => ({
-          id: m.id,
-          content: m.deletedAt ? "" : m.content,
-          createdAt: m.createdAt.toISOString(),
-          editedAt: m.editedAt?.toISOString() ?? null,
-          deletedAt: m.deletedAt?.toISOString() ?? null,
-          pinnedAt: m.pinnedAt?.toISOString() ?? null,
-          user: { id: m.user.id, displayName: m.user.displayName, avatar: m.user.avatar },
-        })),
+        .map((m) => {
+          // aggregate reactions: emoji → { count, mine }
+          const grouped = new Map<string, { count: number; mine: boolean }>();
+          for (const r of m.reactions) {
+            const cur = grouped.get(r.emoji) ?? { count: 0, mine: false };
+            cur.count += 1;
+            if (currentUserId && r.userId === currentUserId) cur.mine = true;
+            grouped.set(r.emoji, cur);
+          }
+          const reactions = Array.from(grouped.entries()).map(([emoji, agg]) => ({
+            emoji,
+            count: agg.count,
+            mine: agg.mine,
+          }));
+          return {
+            id: m.id,
+            content: m.deletedAt ? "" : m.content,
+            createdAt: m.createdAt.toISOString(),
+            editedAt: m.editedAt?.toISOString() ?? null,
+            deletedAt: m.deletedAt?.toISOString() ?? null,
+            pinnedAt: m.pinnedAt?.toISOString() ?? null,
+            user: { id: m.user.id, displayName: m.user.displayName, avatar: m.user.avatar },
+            reactions,
+          };
+        }),
     };
   });
 

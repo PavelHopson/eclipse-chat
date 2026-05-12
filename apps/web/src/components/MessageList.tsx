@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { Avatar } from "./Avatar";
+import { EmojiPicker } from "./EmojiPicker";
 import type { MessageRow } from "../hooks/useMessages";
 import type { MemberRole } from "../hooks/useMembers";
 
@@ -15,6 +16,7 @@ type Props = {
   onDelete?: (messageId: string) => Promise<boolean>;
   onPin?: (messageId: string) => Promise<boolean>;
   onUnpin?: (messageId: string) => Promise<boolean>;
+  onToggleReaction?: (messageId: string, emoji: string) => Promise<boolean>;
 };
 
 const wrap: CSSProperties = {
@@ -184,11 +186,13 @@ export function MessageList({
   onDelete,
   onPin,
   onUnpin,
+  onToggleReaction,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState("");
+  const [pickerFor, setPickerFor] = useState<{ messageId: string; rect: DOMRect } | null>(null);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -262,6 +266,15 @@ export function MessageList({
 
   return (
     <div ref={containerRef} style={wrap}>
+      {pickerFor && onToggleReaction && (
+        <EmojiPicker
+          anchorRect={pickerFor.rect}
+          onPick={(emoji) => {
+            void onToggleReaction(pickerFor.messageId, emoji);
+          }}
+          onClose={() => setPickerFor(null)}
+        />
+      )}
       {messages.map((m, i) => {
         const prev = i > 0 ? messages[i - 1] : null;
         const sameAuthor = prev?.user.id === m.user.id;
@@ -456,9 +469,65 @@ export function MessageList({
                     Повторить
                   </button>
                 )}
+                {!isDeleted && !isEditing && m.reactions.length > 0 && (
+                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 4 }}>
+                    {m.reactions.map((r) => (
+                      <button
+                        key={r.emoji}
+                        type="button"
+                        onClick={() => void onToggleReaction?.(m.id, r.emoji)}
+                        title={r.mine ? "Снять реакцию" : "Поддержать"}
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 4,
+                          padding: "1px 7px 1px 5px",
+                          background: r.mine ? "var(--ec-accent-soft)" : "var(--ec-surface-2)",
+                          border: r.mine ? "1px solid var(--ec-border-accent)" : "1px solid var(--ec-border-subtle)",
+                          borderRadius: "var(--ec-radius-full)",
+                          color: r.mine ? "var(--ec-accent)" : "var(--ec-text-muted)",
+                          cursor: "pointer",
+                          fontSize: "0.8rem",
+                          lineHeight: 1.4,
+                          transition: "background var(--ec-dur-fast) var(--ec-ease), border-color var(--ec-dur-fast) var(--ec-ease)",
+                        }}
+                      >
+                        <span aria-hidden style={{ fontSize: "0.95rem" }}>{r.emoji}</span>
+                        <span style={{ fontWeight: 600, fontFeatureSettings: '"tnum"' }}>{r.count}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
               {showActions && (
                 <div data-actions style={actionsBar}>
+                  {onToggleReaction && (
+                    <button
+                      type="button"
+                      style={actionBtn}
+                      aria-label="Добавить реакцию"
+                      title="Реакция"
+                      onClick={(e) => {
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        setPickerFor({ messageId: m.id, rect });
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = "var(--ec-surface-3)";
+                        e.currentTarget.style.color = "var(--ec-text)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "transparent";
+                        e.currentTarget.style.color = "var(--ec-text-muted)";
+                      }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+                        <line x1="9" y1="9" x2="9.01" y2="9" />
+                        <line x1="15" y1="9" x2="15.01" y2="9" />
+                      </svg>
+                    </button>
+                  )}
                   <button
                     type="button"
                     style={actionBtn}

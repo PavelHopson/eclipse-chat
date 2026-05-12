@@ -8,7 +8,15 @@ import {
   type MessagePinnedPayload,
   type MessageUnpinnedPayload,
   type MessageUpdatedPayload,
+  type ReactionAddedPayload,
+  type ReactionRemovedPayload,
 } from "../lib/socket";
+
+export type ReactionAggregate = {
+  emoji: string;
+  count: number;
+  mine: boolean;
+};
 
 export type MessageRow = {
   id: string;
@@ -21,6 +29,8 @@ export type MessageRow = {
   /** ISO. Set = сообщение закреплено. */
   pinnedAt: string | null;
   user: { id: string; displayName: string; avatar: string | null };
+  /** Агрегированные реакции, отсортированы backend'ом по emoji. */
+  reactions: ReactionAggregate[];
   /** UI-only: оптимистично отправлено, ждём backend. */
   pending?: boolean;
   /** UI-only: backend вернул ошибку. */
@@ -29,26 +39,39 @@ export type MessageRow = {
 
 type Sender = { id: string; displayName: string; avatar: string | null };
 
-function defaultLifecycle<T extends { editedAt?: string | null; deletedAt?: string | null; pinnedAt?: string | null }>(m: T): T & {
+function defaultLifecycle<T extends {
+  editedAt?: string | null;
+  deletedAt?: string | null;
+  pinnedAt?: string | null;
+  reactions?: ReactionAggregate[];
+}>(m: T): T & {
   editedAt: string | null;
   deletedAt: string | null;
   pinnedAt: string | null;
+  reactions: ReactionAggregate[];
 } {
   return {
     ...m,
     editedAt: m.editedAt ?? null,
     deletedAt: m.deletedAt ?? null,
     pinnedAt: m.pinnedAt ?? null,
+    reactions: m.reactions ?? [],
   };
 }
 
-export function useMessages(channelId: string | null, socket: Socket | null) {
+export function useMessages(
+  channelId: string | null,
+  socket: Socket | null,
+  currentUserId?: string,
+) {
   const [messages, setMessages] = useState<MessageRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const channelIdRef = useRef<string | null>(channelId);
   channelIdRef.current = channelId;
+  const currentUserIdRef = useRef<string | undefined>(currentUserId);
+  currentUserIdRef.current = currentUserId;
 
   useEffect(() => {
     if (!channelId) {
@@ -106,6 +129,7 @@ export function useMessages(channelId: string | null, socket: Socket | null) {
           deletedAt: null,
           pinnedAt: null,
           user: { id: p.userId, displayName: p.displayName, avatar: p.avatar },
+          reactions: [],
         };
         if (optimisticIdx >= 0) {
           const next = prev.slice();
@@ -118,6 +142,53 @@ export function useMessages(channelId: string | null, socket: Socket | null) {
     socket.on(SocketEvents.MessageNew, handler);
     return () => {
       socket.off(SocketEvents.MessageNew, handler);
+    };
+  }, [socket]);
+
+  // socket: reaction:added / reaction:removed
+  useEffect(() => {
+    if (!socket) return;
+    const onAdded = (p: ReactionAddedPayload) => {
+      if (p.channelId !== channelIdRef.current) return;
+      const isMine = p.userId === currentUserIdRef.current;
+      setMessages((prev) =>
+        prev.map((m) => {
+          if (m.id !== p.messageId) return m;
+          const idx = m.reactions.findIndex((r) => r.emoji === p.emoji);
+          if (idx >= 0) {
+            const next = m.reactions.slice();
+            const cur = next[idx];
+            next[idx] = { emoji: cur.emoji, count: cur.count + 1, mine: cur.mine || isMine };
+            return { ...m, reactions: next };
+          }
+          return { ...m, reactions: [...m.reactions, { emoji: p.emoji, count: 1, mine: isMine }] };
+        }),
+      );
+    };
+    const onRemoved = (p: ReactionRemovedPayload) => {
+      if (p.channelId !== channelIdRef.current) return;
+      const isMine = p.userId === currentUserIdRef.current;
+      setMessages((prev) =>
+        prev.map((m) => {
+          if (m.id !== p.messageId) return m;
+          const idx = m.reactions.findIndex((r) => r.emoji === p.emoji);
+          if (idx < 0) return m;
+          const cur = m.reactions[idx];
+          const nextCount = Math.max(0, cur.count - 1);
+          if (nextCount === 0) {
+            return { ...m, reactions: m.reactions.filter((r) => r.emoji !== p.emoji) };
+          }
+          const next = m.reactions.slice();
+          next[idx] = { emoji: cur.emoji, count: nextCount, mine: isMine ? false : cur.mine };
+          return { ...m, reactions: next };
+        }),
+      );
+    };
+    socket.on(SocketEvents.ReactionAdded, onAdded);
+    socket.on(SocketEvents.ReactionRemoved, onRemoved);
+    return () => {
+      socket.off(SocketEvents.ReactionAdded, onAdded);
+      socket.off(SocketEvents.ReactionRemoved, onRemoved);
     };
   }, [socket]);
 
@@ -180,6 +251,7 @@ export function useMessages(channelId: string | null, socket: Socket | null) {
         deletedAt: null,
         pinnedAt: null,
         user: sender,
+        reactions: [],
         pending: true,
       };
       setMessages((prev) => [...prev, optimistic]);
@@ -288,6 +360,58 @@ export function useMessages(channelId: string | null, socket: Socket | null) {
     }
   }, []);
 
+  const addReaction = useCallback(async (messageId: string, emoji: string): Promise<boolean> => {
+    setError(null);
+    try {
+      await apiJson(`/api/messages/${encodeURIComponent(messageId)}/reactions`, {
+        method: "POST",
+        body: JSON.stringify({ emoji }),
+      });
+      return true;
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Не удалось добавить реакцию");
+      return false;
+    }
+  }, []);
+
+  const removeReaction = useCallback(async (messageId: string, emoji: string): Promise<boolean> => {
+    setError(null);
+    try {
+      const res = await api(
+        `/api/messages/${encodeURIComponent(messageId)}/reactions/${encodeURIComponent(emoji)}`,
+        { method: "DELETE" },
+      );
+      if (!res.ok) {
+        let msg = `HTTP ${res.status}`;
+        try {
+          const body = (await res.json()) as { error?: string };
+          if (body?.error) msg = body.error;
+        } catch {
+          /* non-json */
+        }
+        setError(msg);
+        return false;
+      }
+      return true;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Не удалось снять реакцию");
+      return false;
+    }
+  }, []);
+
+  /** Toggle: если mine=true → remove, иначе add. */
+  const toggleReaction = useCallback(
+    async (messageId: string, emoji: string): Promise<boolean> => {
+      const m = messages.find((x) => x.id === messageId);
+      const existing = m?.reactions.find((r) => r.emoji === emoji);
+      if (existing?.mine) {
+        return removeReaction(messageId, emoji);
+      }
+      return addReaction(messageId, emoji);
+    },
+    [messages, addReaction, removeReaction],
+  );
+
   return {
     messages,
     error,
@@ -298,5 +422,8 @@ export function useMessages(channelId: string | null, socket: Socket | null) {
     deleteMessage,
     pinMessage,
     unpinMessage,
+    addReaction,
+    removeReaction,
+    toggleReaction,
   };
 }

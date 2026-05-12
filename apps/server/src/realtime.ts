@@ -110,3 +110,32 @@ export function emitMessageUnpinned(
 ) {
   io?.to(`channel:${channelId}`).emit("message:unpinned", payload);
 }
+
+/**
+ * Реакция добавлена. Payload содержит userId (кто) — клиент использует
+ * для `mine: userId === currentUserId` агрегата.
+ */
+export function emitReactionAdded(
+  channelId: string,
+  payload: {
+    messageId: string;
+    channelId: string;
+    emoji: string;
+    userId: string;
+  },
+) {
+  io?.to(`channel:${channelId}`).emit("reaction:added", payload);
+}
+
+/** Реакция снята. */
+export function emitReactionRemoved(
+  channelId: string,
+  payload: {
+    messageId: string;
+    channelId: string;
+    emoji: string;
+    userId: string;
+  },
+) {
+  io?.to(`channel:${channelId}`).emit("reaction:removed", payload);
+}
