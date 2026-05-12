@@ -1,11 +1,10 @@
 import type { CSSProperties } from "react";
 import { useEffect, useState } from "react";
-import type { Socket } from "socket.io-client";
 import { Avatar } from "./Avatar";
 import { ParticipantContextMenu } from "./ParticipantContextMenu";
 import { VoiceSettingsModal } from "./VoiceSettingsModal";
 import { VoiceStatsOverlay } from "./VoiceStatsOverlay";
-import { useVoice, type VoiceParticipant } from "../hooks/useVoice";
+import type { useVoice as useVoiceHook, VoiceParticipant } from "../hooks/useVoice";
 import { keyCodeToLabel } from "../hooks/useAudioDevices";
 import type { MemberRow } from "../hooks/useMembers";
 
@@ -13,8 +12,8 @@ type Props = {
   channelId: string;
   channelName: string;
   members: MemberRow[];
-  /** Socket — нужен useVoice для emit voice:join/leave (presence broadcast). */
-  socket?: Socket | null;
+  /** voice hook state — поднят в AppShell для persistence + speaking-dots в sidebar. */
+  voice: ReturnType<typeof useVoiceHook>;
 };
 
 const wrap: CSSProperties = {
@@ -251,8 +250,8 @@ type ContextMenuState = {
   y: number;
 };
 
-export function VoiceRoom({ channelId, channelName, members, socket = null }: Props) {
-  const v = useVoice(socket);
+export function VoiceRoom({ channelId, channelName, members, voice }: Props) {
+  const v = voice;
   const [showSettings, setShowSettings] = useState(false);
   const [showStats, setShowStats] = useState(false);
   const [ctxMenu, setCtxMenu] = useState<ContextMenuState | null>(null);
@@ -280,23 +279,15 @@ export function VoiceRoom({ channelId, channelName, members, socket = null }: Pr
   const isReconnecting = v.state === "reconnecting" && v.activeChannelId === channelId;
 
   // Auto-join при mount компонента (выбор VOICE канала) — Discord-style behavior.
-  // Уходим только если действительно ещё не в этом канале.
+  // NB: leave НЕ делаем при unmount — voice connection переживает переключение
+  // между TEXT каналами (как в Discord). Leave только по: кнопке leave / AFK /
+  // выбору ДРУГОГО VOICE канала / выходу из сервера / socket disconnect.
   useEffect(() => {
     const inThisChannel =
       v.activeChannelId === channelId && (v.state === "connected" || v.state === "connecting");
     if (!inThisChannel && !v.busy) {
       void v.join(channelId);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [channelId]);
-
-  // Auto-leave при unmount компонента (смене channel)
-  useEffect(() => {
-    return () => {
-      if (v.activeChannelId === channelId) {
-        void v.leave();
-      }
-    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [channelId]);
 
@@ -324,7 +315,7 @@ export function VoiceRoom({ channelId, channelName, members, socket = null }: Pr
         >
           {connectionBadgeText}
         </span>
-        {v.settings.pushToTalk && isConnected && (
+        {v.settings.micActivationMode === "push_to_talk" && isConnected && (
           <span
             className="ec-badge"
             title={`Push-to-talk: зажми ${keyCodeToLabel(v.settings.pttKey)} чтобы говорить`}
@@ -424,14 +415,16 @@ export function VoiceRoom({ channelId, channelName, members, socket = null }: Pr
                   : controlBtn
               }
               title={
-                v.settings.pushToTalk
+                v.settings.micActivationMode === "push_to_talk"
                   ? `Push-to-talk · ${keyCodeToLabel(v.settings.pttKey)}`
+                  : v.settings.micActivationMode === "voice_activity"
+                  ? "Микрофон автогейт по голосу"
                   : v.isMicMuted
                   ? "Включить микрофон"
                   : "Выключить микрофон"
               }
               aria-label={v.isMicMuted ? "Включить микрофон" : "Выключить микрофон"}
-              disabled={v.settings.pushToTalk}
+              disabled={v.settings.micActivationMode === "push_to_talk"}
             >
               <MicIcon off={v.isMicMuted} />
             </button>

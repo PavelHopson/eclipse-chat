@@ -14,6 +14,7 @@ import { ServerInfoModal } from "../components/ServerInfoModal";
 import { ServerList } from "../components/ServerList";
 import { StatusMenu } from "../components/StatusMenu";
 import { TypingIndicator } from "../components/TypingIndicator";
+import { VoiceMiniBar } from "../components/VoiceMiniBar";
 import { VoicePlaceholder } from "../components/VoicePlaceholder";
 import { VoiceRoom } from "../components/VoiceRoom";
 import { useChannels } from "../hooks/useChannels";
@@ -25,6 +26,7 @@ import { useProfile } from "../hooks/useProfile";
 import { useSearch } from "../hooks/useSearch";
 import { useServers } from "../hooks/useServers";
 import { useSocket } from "../hooks/useSocket";
+import { useVoice } from "../hooks/useVoice";
 import { useVoiceHealth } from "../hooks/useVoiceHealth";
 import { useVoicePresence, reverseVoiceMap } from "../hooks/useVoicePresence";
 import type { PublicUser } from "../hooks/useAuth";
@@ -238,6 +240,12 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   const voiceHealth = useVoiceHealth();
   const voiceByChannel = useVoicePresence(socket);
   const voiceChannelByUser = reverseVoiceMap(voiceByChannel);
+  // Voice state lifted в AppShell — persistent across channel switches, доступен sidebar'у.
+  const voice = useVoice(socket);
+  // Speaking userIds — derived из voice.participants (live LiveKit ActiveSpeakers).
+  const speakingUserIds = new Set(
+    voice.participants.filter((p) => p.isSpeaking && !p.isMicMuted).map((p) => p.identity),
+  );
   // Лукап name канала по id — для tooltip в MemberList «в голосовом «X»»
   const channelNameById = (cid: string): string | undefined =>
     channels.find((c) => c.id === cid)?.name;
@@ -482,6 +490,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           onShowServerInfo={() => activeServer && setShowServerInfo(true)}
           voiceByChannel={voiceByChannel}
           members={members}
+          speakingUserIds={speakingUserIds}
+          myVoiceChannelId={voice.activeChannelId}
         />
       </div>
 
@@ -556,13 +566,29 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               channelId={selectedChannel.id}
               channelName={selectedChannel.name}
               members={members}
-              socket={socket}
+              voice={voice}
             />
           ) : (
             <VoicePlaceholder channelName={selectedChannel.name} />
           )
         ) : (
           <>
+            {/* Voice mini-bar — если ты сейчас в voice, но смотришь TEXT канал */}
+            {voice.activeChannelId &&
+              voice.activeChannelId !== selectedChannelId &&
+              (voice.state === "connected" || voice.state === "reconnecting") && (
+                <VoiceMiniBar
+                  voice={voice}
+                  channelName={
+                    channels.find((c) => c.id === voice.activeChannelId)?.name ?? "канал"
+                  }
+                  onOpenVoiceChannel={() => {
+                    if (voice.activeChannelId) {
+                      setSelectedChannelId(voice.activeChannelId);
+                    }
+                  }}
+                />
+              )}
             <PinnedBar messages={messages} />
             <MessageList
               messages={messages}

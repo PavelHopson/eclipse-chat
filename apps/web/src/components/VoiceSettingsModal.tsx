@@ -2,7 +2,11 @@ import type { CSSProperties } from "react";
 import { useEffect, useRef, useState } from "react";
 import { Modal } from "./Modal";
 import { useAudioDevices, keyCodeToLabel } from "../hooks/useAudioDevices";
-import { useVoiceSettings, type NoiseSuppressionMode } from "../hooks/useVoiceSettings";
+import {
+  useVoiceSettings,
+  type MicActivationMode,
+  type NoiseSuppressionMode,
+} from "../hooks/useVoiceSettings";
 
 type Props = {
   onClose: () => void;
@@ -76,30 +80,6 @@ const toggleRow: CSSProperties = {
   gap: "var(--ec-space-3)",
 };
 
-const switchTrack = (on: boolean): CSSProperties => ({
-  position: "relative",
-  width: 38,
-  height: 22,
-  borderRadius: 999,
-  background: on ? "var(--ec-accent)" : "var(--ec-surface-3)",
-  border: "1px solid var(--ec-border-default)",
-  cursor: "pointer",
-  transition: "background var(--ec-dur-fast) var(--ec-ease)",
-  flexShrink: 0,
-});
-
-const switchKnob = (on: boolean): CSSProperties => ({
-  position: "absolute",
-  top: 2,
-  left: on ? 18 : 2,
-  width: 16,
-  height: 16,
-  borderRadius: "50%",
-  background: "#fff",
-  transition: "left var(--ec-dur-fast) var(--ec-ease)",
-  boxShadow: "0 1px 3px rgba(0,0,0,0.4)",
-});
-
 // Уровневый индикатор громкости — VU meter из 16 баров.
 function VuMeter({ value }: { value: number }) {
   // value: 0..1
@@ -148,8 +128,10 @@ export function VoiceSettingsModal({ onClose }: Props) {
     setInputDevice,
     setOutputDevice,
     setNoiseSuppression,
-    setPushToTalk,
+    setMicActivationMode,
     setPttKey,
+    setVadThreshold,
+    setAfkTimeout,
     setMasterOutputVolume,
   } = useVoiceSettings();
 
@@ -436,32 +418,67 @@ export function VoiceSettingsModal({ onClose }: Props) {
         </div>
       </section>
 
-      {/* ===== Push-to-talk ===== */}
+      {/* ===== Активация микрофона ===== */}
       <section>
-        <h3 style={sectionLabel}>Push-to-talk</h3>
+        <h3 style={sectionLabel}>Активация микрофона</h3>
         <div style={groupCard}>
-          <div style={toggleRow}>
-            <div>
-              <div style={{ color: "var(--ec-text)", fontWeight: 500, fontSize: "var(--ec-text-sm)" }}>
-                Включить режим зажатой клавиши
-              </div>
-              <p style={fieldHint}>
-                Микрофон будет молчать пока вы не зажмёте назначенную клавишу.
-                Полезно когда вокруг шум, дети, или клавиатура с громкими клавишами.
-              </p>
-            </div>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={settings.pushToTalk}
-              onClick={() => setPushToTalk(!settings.pushToTalk)}
-              style={switchTrack(settings.pushToTalk)}
-            >
-              <span style={switchKnob(settings.pushToTalk)} />
-            </button>
+          <div style={segmentRow}>
+            {([
+              { value: "open", label: "Всегда открыт", sub: "Open mic" },
+              { value: "voice_activity", label: "По голосу", sub: "VAD-gate" },
+              { value: "push_to_talk", label: "По клавише", sub: "Push-to-talk" },
+            ] as { value: MicActivationMode; label: string; sub: string }[]).map((m) => (
+              <button
+                key={m.value}
+                type="button"
+                onClick={() => setMicActivationMode(m.value)}
+                style={segmentBtn(settings.micActivationMode === m.value)}
+                aria-pressed={settings.micActivationMode === m.value}
+              >
+                <div>{m.label}</div>
+                <div style={{ opacity: 0.7, fontWeight: 400, fontSize: 9, marginTop: 2 }}>{m.sub}</div>
+              </button>
+            ))}
           </div>
 
-          {settings.pushToTalk && (
+          {settings.micActivationMode === "voice_activity" && (
+            <div style={{ marginTop: "var(--ec-space-2)", display: "flex", flexDirection: "column", gap: 6 }}>
+              <label style={{ fontSize: "var(--ec-text-2xs)", color: "var(--ec-text-muted)", display: "flex", justifyContent: "space-between" }}>
+                <span>Порог чувствительности</span>
+                <span style={{ fontFamily: "var(--ec-font-mono)", color: "var(--ec-text)" }}>
+                  {(settings.vadThreshold * 100).toFixed(1)}%
+                </span>
+              </label>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: "0.55rem", color: "var(--ec-text-dim)" }}>тише</span>
+                <input
+                  type="range"
+                  min={1}
+                  max={300}
+                  step={1}
+                  value={Math.round(settings.vadThreshold * 1000)}
+                  onChange={(e) => setVadThreshold(Number(e.target.value) / 1000)}
+                  style={{ flex: 1, accentColor: "var(--ec-accent)" }}
+                  aria-label="Порог VAD"
+                />
+                <span style={{ fontSize: "0.55rem", color: "var(--ec-text-dim)" }}>громче</span>
+              </div>
+              {testing && (
+                <div style={{ marginTop: 4 }}>
+                  <VuMeter value={testLevel} />
+                  <p style={{ ...fieldHint, marginTop: 4 }}>
+                    Линия в VU-метре выше порога = голос проходит. Тестируй и крути порог.
+                  </p>
+                </div>
+              )}
+              <p style={fieldHint}>
+                Микрофон откроется только когда твой голос громче порога. Удобно
+                для open-mic в шумной комнате — фон отсекается, говоришь — слышат.
+              </p>
+            </div>
+          )}
+
+          {settings.micActivationMode === "push_to_talk" && (
             <div style={{ ...toggleRow, marginTop: 6 }}>
               <div>
                 <div style={{ color: "var(--ec-text)", fontWeight: 500, fontSize: "var(--ec-text-sm)" }}>
@@ -497,6 +514,45 @@ export function VoiceSettingsModal({ onClose }: Props) {
               </div>
             </div>
           )}
+
+          {settings.micActivationMode === "open" && (
+            <p style={{ ...fieldHint, marginTop: 6 }}>
+              Микрофон всегда живой пока ты в голосовом канале. Лучший вариант для
+              тишины + хороших наушников. При шумах попробуй «По голосу».
+            </p>
+          )}
+        </div>
+      </section>
+
+      {/* ===== AFK auto-disconnect ===== */}
+      <section>
+        <h3 style={sectionLabel}>Авто-выход из эфира</h3>
+        <div style={groupCard}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <label style={{ fontSize: "var(--ec-text-2xs)", color: "var(--ec-text-muted)", display: "flex", justifyContent: "space-between" }}>
+              <span>Если ты один в эфире</span>
+              <span style={{ fontFamily: "var(--ec-font-mono)", color: "var(--ec-text)" }}>
+                {settings.afkTimeoutMinutes === 0
+                  ? "никогда"
+                  : `${settings.afkTimeoutMinutes} мин`}
+              </span>
+            </label>
+            <input
+              type="range"
+              min={0}
+              max={30}
+              step={1}
+              value={settings.afkTimeoutMinutes}
+              onChange={(e) => setAfkTimeout(Number(e.target.value))}
+              style={{ accentColor: "var(--ec-accent)" }}
+              aria-label="Авто-выход после"
+            />
+            <p style={fieldHint}>
+              Если в голосовом канале остался один и через указанное время никто
+              не зашёл — автоматически выйти. Защита от «забыл что в эфире».
+              0 = выключено.
+            </p>
+          </div>
         </div>
       </section>
     </Modal>

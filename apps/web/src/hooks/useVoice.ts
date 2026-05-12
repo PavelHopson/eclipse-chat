@@ -57,7 +57,10 @@ export function useVoice(socket: Socket | null = null) {
     setInputDevice,
     setOutputDevice,
     setNoiseSuppression,
-    setPushToTalk,
+    setMicActivationMode,
+    setPttKey,
+    setVadThreshold,
+    setAfkTimeout,
     setParticipantVolume,
     resetParticipantVolume,
     toggleParticipantMute,
@@ -319,22 +322,24 @@ export function useVoice(socket: Socket | null = null) {
         }
 
         // Включаем mic c noise/echo/AGC constraints + selected input device.
-        // Если PTT — mic стартует MUTED.
+        // Если PTT — mic стартует MUTED. Open/VAD — стартуем enabled
+        // (VAD gate потом отключит трансляцию пока голос ниже порога,
+        // но publication остаётся live — это важно для LiveKit).
         try {
           const constraints = noiseModeToConstraints(
             settingsRef.current.noiseSuppression,
           );
           const inputId = settingsRef.current.inputDeviceId;
-          const ptt = settingsRef.current.pushToTalk;
+          const isPtt = settingsRef.current.micActivationMode === "push_to_talk";
 
           await r.localParticipant.setMicrophoneEnabled(
-            !ptt, // если PTT — стартуем muted
+            !isPtt,
             {
               ...constraints,
               ...(inputId ? { deviceId: { exact: inputId } } : {}),
             },
           );
-          setIsMicMuted(ptt);
+          setIsMicMuted(isPtt);
         } catch (micErr) {
           setError(
             micErr instanceof Error && micErr.name === "NotAllowedError"
@@ -404,10 +409,10 @@ export function useVoice(socket: Socket | null = null) {
 
   /**
    * Push-to-talk: глобально слушаем keydown/keyup. Активно только если
-   * `settings.pushToTalk = true` И мы connected.
+   * `settings.micActivationMode === 'push_to_talk'` И мы connected.
    */
   useEffect(() => {
-    if (!settings.pushToTalk) return;
+    if (settings.micActivationMode !== "push_to_talk") return;
     if (state !== "connected") return;
 
     const key = settings.pttKey;
@@ -480,16 +485,16 @@ export function useVoice(socket: Socket | null = null) {
       window.removeEventListener("keyup", onUp);
       window.removeEventListener("blur", onBlur);
     };
-  }, [settings.pushToTalk, settings.pttKey, state, refreshParticipants]);
+  }, [settings.micActivationMode, settings.pttKey, state, refreshParticipants]);
 
-  // Когда PTT toggle меняется на запущенной сессии — синхронизируем mic state.
+  // Когда mode меняется на запущенной сессии — синхронизируем mic state.
+  // Open / VAD → mic enabled (VAD сам потом отключит через gate).
+  // PTT → mic muted, пока не зажмёшь клавишу.
   useEffect(() => {
     const r = roomRef.current;
     if (!r) return;
     if (state !== "connected") return;
-    // PTT включили → mute mic.
-    // PTT выключили → unmute mic (если юзер вручную не замьютил).
-    if (settings.pushToTalk) {
+    if (settings.micActivationMode === "push_to_talk") {
       if (!isMicMuted) {
         void r.localParticipant.setMicrophoneEnabled(false).then(() => {
           setIsMicMuted(true);
@@ -505,7 +510,150 @@ export function useVoice(socket: Socket | null = null) {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settings.pushToTalk]);
+  }, [settings.micActivationMode]);
+
+  /**
+   * Voice Activity Detection gate.
+   * Активен когда `micActivationMode === 'voice_activity'` и мы connected.
+   *
+   * Подвешиваем Web Audio AnalyserNode к localParticipant.mic track'у,
+   * 50ms раз меряем peak amplitude. Если > threshold → mediaStreamTrack.enabled = true.
+   * Иначе false (тишина, не транслируем). enabled=false мгновенный, не вызывает
+   * unpublish — другие участники видят pub.isMuted=true (через WebRTC ontrackmute).
+   *
+   * `mediaStreamTrack.enabled` toggle быстрее чем `setMicrophoneEnabled` — LiveKit
+   * не делает heavy work (renegotiation), просто mute flag.
+   */
+  const vadVoiceActiveRef = useRef(false);
+  useEffect(() => {
+    if (settings.micActivationMode !== "voice_activity") return;
+    if (state !== "connected") return;
+    const r = roomRef.current;
+    if (!r) return;
+
+    let cancelled = false;
+    let audioCtx: AudioContext | null = null;
+    let analyser: AnalyserNode | null = null;
+    let stream: MediaStream | null = null;
+    let intervalId: number | null = null;
+    let releaseTimer: number | null = null;
+
+    const setup = async () => {
+      // Импортируем enum lazily — нужен Track.Source.Microphone
+      const lk = await import("livekit-client");
+      const pub = r.localParticipant.getTrackPublication(lk.Track.Source.Microphone);
+      const track = pub?.audioTrack;
+      const msTrack = track?.mediaStreamTrack;
+      if (!msTrack || cancelled) return;
+
+      stream = new MediaStream([msTrack]);
+      const Ctx: typeof AudioContext =
+        window.AudioContext ??
+        (window as unknown as { webkitAudioContext: typeof AudioContext })
+          .webkitAudioContext;
+      audioCtx = new Ctx();
+      const src = audioCtx.createMediaStreamSource(stream);
+      analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 512;
+      src.connect(analyser);
+
+      const buf = new Uint8Array(analyser.frequencyBinCount);
+      // Hold-time чтобы не мьютить на коротких паузах в речи (50-300ms).
+      const HOLD_MS = 250;
+
+      const tick = () => {
+        if (cancelled || !analyser) return;
+        analyser.getByteTimeDomainData(buf);
+        let peak = 0;
+        for (let i = 0; i < buf.length; i++) {
+          const v = Math.abs(buf[i] - 128) / 128;
+          if (v > peak) peak = v;
+        }
+        const threshold = settingsRef.current.vadThreshold;
+        const above = peak >= threshold;
+        if (above) {
+          // Открываем gate сразу
+          if (releaseTimer !== null) {
+            window.clearTimeout(releaseTimer);
+            releaseTimer = null;
+          }
+          if (!vadVoiceActiveRef.current) {
+            vadVoiceActiveRef.current = true;
+            msTrack.enabled = true;
+            setIsMicMuted(false);
+            refreshParticipants();
+          }
+        } else if (vadVoiceActiveRef.current && releaseTimer === null) {
+          // Тишина — но даём hold-time перед закрытием gate
+          releaseTimer = window.setTimeout(() => {
+            if (cancelled) return;
+            vadVoiceActiveRef.current = false;
+            msTrack.enabled = false;
+            setIsMicMuted(true);
+            refreshParticipants();
+            releaseTimer = null;
+          }, HOLD_MS);
+        }
+      };
+
+      // Стартуем gate в closed-state — пользователь должен заговорить.
+      msTrack.enabled = false;
+      vadVoiceActiveRef.current = false;
+      setIsMicMuted(true);
+
+      intervalId = window.setInterval(tick, 50);
+    };
+
+    void setup();
+
+    return () => {
+      cancelled = true;
+      if (intervalId !== null) window.clearInterval(intervalId);
+      if (releaseTimer !== null) window.clearTimeout(releaseTimer);
+      if (audioCtx) void audioCtx.close().catch(() => undefined);
+      // Возвращаем track в always-on когда выходим из VAD режима
+      const cur = roomRef.current;
+      if (cur && state === "connected") {
+        void import("livekit-client").then((lk) => {
+          const pub = cur.localParticipant.getTrackPublication(lk.Track.Source.Microphone);
+          const ms = pub?.audioTrack?.mediaStreamTrack;
+          if (ms && !ms.enabled) ms.enabled = true;
+        });
+      }
+      vadVoiceActiveRef.current = false;
+    };
+  }, [settings.micActivationMode, state, refreshParticipants]);
+
+  /**
+   * AFK auto-disconnect. Если ты один в voice room более N минут — leave.
+   * Защищает от «забыл что в эфире», стандартное Discord-поведение.
+   *
+   * Алгоритм:
+   * - timer rearm'ится каждый раз когда меняется participants.length:
+   *   - participants.length > 1 → cancel timer (есть собеседник)
+   *   - participants.length === 1 (только ты) → set timer на N минут
+   */
+  useEffect(() => {
+    if (state !== "connected") return;
+    if (settings.afkTimeoutMinutes <= 0) return;
+    if (participants.length > 1) return; // не один — таймер не нужен
+    const id = window.setTimeout(
+      () => {
+        // Leave only если всё ещё один и connected
+        if (
+          roomRef.current &&
+          roomRef.current.remoteParticipants.size === 0
+        ) {
+          console.info(
+            `[voice] AFK timeout (${settings.afkTimeoutMinutes}m alone) — auto-leave`,
+          );
+          void leave();
+        }
+      },
+      settings.afkTimeoutMinutes * 60 * 1000,
+    );
+    return () => window.clearTimeout(id);
+  }, [state, settings.afkTimeoutMinutes, participants.length, leave]);
 
   useEffect(() => {
     return () => {
@@ -600,7 +748,10 @@ export function useVoice(socket: Socket | null = null) {
     setInputDevice,
     setOutputDevice,
     setNoiseSuppression,
-    setPushToTalk,
+    setMicActivationMode,
+    setPttKey,
+    setVadThreshold,
+    setAfkTimeout,
     setParticipantVolume,
     resetParticipantVolume,
     toggleParticipantMute,

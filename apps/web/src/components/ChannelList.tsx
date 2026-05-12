@@ -20,6 +20,14 @@ type Props = {
   voiceByChannel?: Record<string, string[]>;
   /** Members активного сервера — для avatar+name lookup. */
   members?: MemberRow[];
+  /**
+   * Кто сейчас говорит — userId → true. Известно только для тех, кто в твоей
+   * voice room (LiveKit ActiveSpeakers). Других не слышишь — glow для них
+   * показывать смысла нет.
+   */
+  speakingUserIds?: Set<string>;
+  /** Канал в котором сидишь сам — для подсветки «вы здесь». */
+  myVoiceChannelId?: string | null;
 };
 
 const wrap: CSSProperties = {
@@ -161,6 +169,8 @@ export function ChannelList({
   onShowServerInfo,
   voiceByChannel,
   members,
+  speakingUserIds,
+  myVoiceChannelId,
 }: Props) {
   const [draft, setDraft] = useState("");
   const [draftType, setDraftType] = useState<ChannelType>("TEXT");
@@ -205,10 +215,12 @@ export function ChannelList({
           const m = members?.find((mm) => mm.userId === userId);
           const name = m?.user.displayName ?? userId;
           const avatar = m?.user.avatar ?? null;
+          const speaking =
+            channelId === myVoiceChannelId && speakingUserIds?.has(userId);
           return (
             <span
               key={userId}
-              title={`${name} в эфире`}
+              title={speaking ? `${name} говорит` : `${name} в эфире`}
               style={{
                 display: "grid",
                 gridTemplateColumns: "auto 1fr",
@@ -217,10 +229,24 @@ export function ChannelList({
                 padding: "0.15rem 0.3rem",
                 borderRadius: "var(--ec-radius-xs)",
                 fontSize: "var(--ec-text-2xs)",
-                color: "var(--ec-text-muted)",
+                color: speaking ? "var(--ec-accent)" : "var(--ec-text-muted)",
+                fontWeight: speaking ? 600 : 400,
+                transition: "color 80ms linear",
               }}
             >
-              <Avatar url={avatar} name={name} size={16} />
+              <span
+                style={{
+                  position: "relative",
+                  display: "inline-block",
+                  borderRadius: "var(--ec-radius-full)",
+                  boxShadow: speaking
+                    ? "0 0 0 1.5px var(--ec-accent), 0 0 10px hsl(195 60% 55% / 0.65)"
+                    : "none",
+                  transition: "box-shadow 80ms linear",
+                }}
+              >
+                <Avatar url={avatar} name={name} size={16} />
+              </span>
               <span
                 style={{
                   overflow: "hidden",
