@@ -5,9 +5,9 @@
 > Любая фича, которой нет в текущем MVP, должна попасть сюда —
 > иначе она забудется.
 
-**Текущее состояние:** v0.8.1. Eclipse Chat уже вышел за рамку «Discord core».
+**Текущее состояние:** v0.8.2. Eclipse Chat уже вышел за рамку «Discord core».
 Сейчас это self-hosted communication core с серверами, DM, voice/video/screen-share
-и первым execution layer поверх сообщений. Следующий фокус — довести action/memory/operator
+и execution layer поверх сообщений. Следующий фокус — довести action/memory/operator
 контур до уровня, где чат двигает работу вперёд, а не просто хранит разговор.
 
 ---
@@ -28,7 +28,7 @@ self-host важнее красивого облачного UX.
 
 ---
 
-## v0.8.1 — Execution layer: message → task / decision / follow-up 🚧 IN PROGRESS
+## v0.8.1 — Execution layer: message → task / decision / follow-up ✅ DONE
 
 **Цель:** сделать Eclipse Chat полезнее Discord не количеством кнопок, а тем,
 что важные сообщения больше не теряются в ленте. Любое сообщение должно
@@ -47,9 +47,24 @@ self-host важнее красивого облачного UX.
 - [x] Message UI: hover-actions превращают сообщение в task / decision / follow-up
 - [x] Channel execution bar: компактная очередь открытых action items над лентой
 
+---
+
+## v0.8.2 — Action ownership / due dates 🚧 IN PROGRESS
+
+**Цель:** превратить action items из меток на сообщениях в рабочий список,
+где видно кто отвечает, что горит сегодня и что можно закрыть.
+
+**Что делаем сейчас:**
+- [x] API: `PATCH /api/actions/:id` принимает `assigneeUserId`, `dueAt`, `title`, `status`
+- [x] Backend проверяет, что назначенный ответственный состоит в том же сервере
+- [x] UI: action queue показывает ответственного и срок
+- [x] UI: можно взять action item на себя, назначить участника, поставить срок сегодня/завтра
+- [x] UI: можно закрыть action item из очереди
+
 **Следующий слой после этого:**
-- [ ] assign / owner flow
-- [ ] due date / SLA hints
+- [ ] editing title прямо в action queue
+- [ ] фильтр `my actions / all actions`
+- [ ] overdue / SLA hints
 - [ ] channel digest: open actions, recent decisions, unresolved follow-ups
 - [ ] server memory / AI summaries поверх action layer
 

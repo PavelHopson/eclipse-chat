@@ -1,9 +1,13 @@
 import type { CSSProperties } from "react";
-import type { ActionItemStatus, MessageActionItem } from "../hooks/useMessages";
+import { Avatar } from "./Avatar";
+import type { MemberRow } from "../hooks/useMembers";
+import type { ActionItemUpdatePatch, MessageActionItem } from "../hooks/useMessages";
 
 type Props = {
   items: MessageActionItem[];
-  onToggleStatus?: (actionId: string, nextStatus: ActionItemStatus) => Promise<boolean>;
+  currentUserId: string;
+  members: MemberRow[];
+  onUpdateAction?: (actionId: string, patch: ActionItemUpdatePatch) => Promise<boolean>;
 };
 
 const wrap: CSSProperties = {
@@ -40,10 +44,46 @@ const card: CSSProperties = {
   gap: "var(--ec-space-2)",
 };
 
+const metaRow: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: "var(--ec-space-2)",
+  color: "var(--ec-text-muted)",
+  fontSize: "var(--ec-text-2xs)",
+};
+
+const smallBtn: CSSProperties = {
+  minHeight: 26,
+  padding: "0.2rem 0.45rem",
+  fontSize: "var(--ec-text-2xs)",
+};
+
 function labelForType(type: MessageActionItem["type"]) {
   if (type === "DECISION") return "Decision";
   if (type === "FOLLOW_UP") return "Follow-up";
   return "Task";
+}
+
+function dueLabel(iso: string | null): string {
+  if (!iso) return "Без срока";
+  const due = new Date(iso);
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+  const sameDay = (a: Date, b: Date) =>
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate();
+  if (sameDay(due, today)) return "Сегодня";
+  if (sameDay(due, tomorrow)) return "Завтра";
+  return due.toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
+}
+
+function dueIsoInDays(days: number): string {
+  const due = new Date();
+  due.setDate(due.getDate() + days);
+  due.setHours(18, 0, 0, 0);
+  return due.toISOString();
 }
 
 function tintForType(type: MessageActionItem["type"]) {
@@ -68,7 +108,7 @@ function tintForType(type: MessageActionItem["type"]) {
   };
 }
 
-export function ActionQueueBar({ items, onToggleStatus }: Props) {
+export function ActionQueueBar({ items, currentUserId, members, onUpdateAction }: Props) {
   return (
     <div style={wrap}>
       <div style={header}>
@@ -107,6 +147,7 @@ export function ActionQueueBar({ items, onToggleStatus }: Props) {
         <div style={rail}>
           {items.map((item) => {
             const tint = tintForType(item.type);
+            const assignee = item.assignee;
             return (
               <article key={item.id} style={card}>
                 <div style={{ display: "flex", alignItems: "center", gap: "var(--ec-space-2)" }}>
@@ -144,17 +185,79 @@ export function ActionQueueBar({ items, onToggleStatus }: Props) {
                 >
                   {item.title}
                 </div>
+                <div style={metaRow}>
+                  {assignee ? (
+                    <>
+                      <Avatar url={assignee.avatar} name={assignee.displayName} size={18} />
+                      <span style={{ color: "var(--ec-text)" }}>{assignee.displayName}</span>
+                    </>
+                  ) : (
+                    <span>Нет ответственного</span>
+                  )}
+                  <span style={{ marginLeft: "auto" }}>{dueLabel(item.dueAt)}</span>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                  <select
+                    value={item.assignee?.id ?? ""}
+                    onChange={(event) =>
+                      void onUpdateAction?.(item.id, {
+                        assigneeUserId: event.currentTarget.value || null,
+                      })
+                    }
+                    title="Ответственный"
+                    style={{
+                      minWidth: 0,
+                      padding: "0.35rem 0.45rem",
+                      borderRadius: "var(--ec-radius-sm)",
+                      border: "1px solid var(--ec-border-subtle)",
+                      background: "var(--ec-surface-1)",
+                      color: "var(--ec-text)",
+                      fontSize: "var(--ec-text-xs)",
+                    }}
+                  >
+                    <option value="">Без владельца</option>
+                    {members.map((member) => (
+                      <option key={member.userId} value={member.userId}>
+                        {member.user.displayName}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    className="ec-btn ec-btn--sm"
+                    onClick={() => void onUpdateAction?.(item.id, { assigneeUserId: currentUserId })}
+                    style={smallBtn}
+                  >
+                    Взять
+                  </button>
+                  <button
+                    type="button"
+                    className="ec-btn ec-btn--sm"
+                    onClick={() => void onUpdateAction?.(item.id, { dueAt: dueIsoInDays(0) })}
+                    style={smallBtn}
+                  >
+                    Сегодня
+                  </button>
+                  <button
+                    type="button"
+                    className="ec-btn ec-btn--sm"
+                    onClick={() => void onUpdateAction?.(item.id, { dueAt: dueIsoInDays(1) })}
+                    style={smallBtn}
+                  >
+                    Завтра
+                  </button>
+                </div>
                 <button
                   type="button"
                   className="ec-btn ec-btn--sm"
-                  onClick={() => void onToggleStatus?.(item.id, item.status === "OPEN" ? "DONE" : "OPEN")}
+                  onClick={() => void onUpdateAction?.(item.id, { status: "DONE" })}
                   style={{
                     justifyContent: "center",
                     borderColor: "var(--ec-ok)",
                     color: "var(--ec-ok)",
                   }}
                 >
-                  Отметить выполненным
+                  Закрыть action item
                 </button>
               </article>
             );

@@ -196,6 +196,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     unpinMessage,
     toggleReaction,
     createActionItem,
+    updateActionItem,
     updateActionItemStatus,
     typingUsers,
     emitTypingStart,
@@ -706,7 +707,9 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               )}
             <ActionQueueBar
               items={openActionItems}
-              onToggleStatus={updateActionItemStatus}
+              currentUserId={user.id}
+              members={members}
+              onUpdateAction={updateActionItem}
             />
             <PinnedBar messages={messages} />
             <MessageList

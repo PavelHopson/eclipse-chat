@@ -32,6 +32,12 @@ export type ReactionAggregate = {
 export type Attachment = AttachmentPayload;
 export type { ActionItemStatus, ActionItemType };
 export type MessageActionItem = ActionItemPayload;
+export type ActionItemUpdatePatch = {
+  status?: ActionItemStatus;
+  title?: string;
+  assigneeUserId?: string | null;
+  dueAt?: string | null;
+};
 
 /** Payload, отправляемый клиентом на POST /messages. */
 export type AttachmentUpload = {
@@ -628,15 +634,15 @@ export function useMessages(
     [],
   );
 
-  const updateActionItemStatus = useCallback(
-    async (actionId: string, status: ActionItemStatus): Promise<boolean> => {
+  const updateActionItem = useCallback(
+    async (actionId: string, patch: ActionItemUpdatePatch): Promise<boolean> => {
       setError(null);
       try {
         const data = await apiJson<{ action: MessageActionItem }>(
           `/api/actions/${encodeURIComponent(actionId)}`,
           {
             method: "PATCH",
-            body: JSON.stringify({ status }),
+            body: JSON.stringify(patch),
           },
         );
         setMessages((prev) => upsertMessageAction(prev, data.action));
@@ -648,6 +654,13 @@ export function useMessages(
       }
     },
     [],
+  );
+
+  const updateActionItemStatus = useCallback(
+    async (actionId: string, status: ActionItemStatus): Promise<boolean> => {
+      return updateActionItem(actionId, { status });
+    },
+    [updateActionItem],
   );
 
   return {
@@ -665,6 +678,7 @@ export function useMessages(
     removeReaction,
     toggleReaction,
     createActionItem,
+    updateActionItem,
     updateActionItemStatus,
     typingUsers,
     emitTypingStart,

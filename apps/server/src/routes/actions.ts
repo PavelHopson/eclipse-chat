@@ -17,9 +17,16 @@ const createActionBody = z.object({
   title: z.string().trim().min(1).max(160).optional(),
 });
 
-const updateActionBody = z.object({
-  status: actionStatusSchema,
-});
+const updateActionBody = z
+  .object({
+    status: actionStatusSchema.optional(),
+    title: z.string().trim().min(1).max(160).optional(),
+    assigneeUserId: z.string().nullable().optional(),
+    dueAt: z.string().datetime().nullable().optional(),
+  })
+  .refine((body) => Object.keys(body).length > 0, {
+    message: "At least one field is required",
+  });
 
 function deriveActionTitle(type: z.infer<typeof actionTypeSchema>, content: string): string {
   const compact = content.replace(/\s+/g, " ").trim();
@@ -215,10 +222,32 @@ export async function registerActionRoutes(app: FastifyInstance) {
         return reply.status(403).send({ error: "Not a member of this server" });
       }
 
+      if (parsed.data.assigneeUserId) {
+        const assignee = await db.member.findUnique({
+          where: {
+            userId_serverId: {
+              userId: parsed.data.assigneeUserId,
+              serverId: existing.serverId,
+            },
+          },
+          select: { id: true },
+        });
+        if (!assignee) {
+          return reply.status(400).send({ error: "Assignee is not a member of this server" });
+        }
+      }
+
       const updated = await db.actionItem.update({
         where: { id: actionId },
         data: {
-          status: parsed.data.status,
+          ...(parsed.data.status ? { status: parsed.data.status } : {}),
+          ...(parsed.data.title ? { title: parsed.data.title } : {}),
+          ...(parsed.data.assigneeUserId !== undefined
+            ? { assigneeUserId: parsed.data.assigneeUserId }
+            : {}),
+          ...(parsed.data.dueAt !== undefined
+            ? { dueAt: parsed.data.dueAt ? new Date(parsed.data.dueAt) : null }
+            : {}),
         },
         include: actionItemInclude,
       });
