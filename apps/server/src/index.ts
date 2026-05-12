@@ -95,6 +95,15 @@ io.on("connection", (socket) => {
 try {
   await app.listen({ port, host: "0.0.0.0" });
   app.log.info({ port }, "Server + Socket.io");
+
+  // Keep-alive ping для Neon free tier (Scales to zero после ~5 минут idle).
+  // Без этого Neon рвёт connection и каждый запрос имеет 20-сек cold start.
+  // На native PG (prod) этот ping безвреден, лишний `SELECT 1` каждую минуту.
+  setInterval(() => {
+    db.$queryRaw`SELECT 1`.catch((err) => {
+      app.log.warn({ err }, "DB keepalive failed (auto-retry on next request)");
+    });
+  }, 60_000);
 } catch (err) {
   app.log.error(err);
   process.exit(1);
