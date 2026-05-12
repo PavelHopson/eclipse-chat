@@ -12,9 +12,12 @@
 [![Socket.io](https://img.shields.io/badge/Socket.io-010101?style=for-the-badge&logo=socketdotio&logoColor=white)](https://socket.io)
 [![MIT](https://img.shields.io/badge/License-MIT-22c55e?style=for-the-badge)](LICENSE)
 
-> **Статус:** 🏗️ MVP работает (auth + каналы + сообщения + realtime).
-> Server / Member / invite flow — в активной разработке.
-> Полная карта в [ROADMAP.md](ROADMAP.md).
+> **Статус:** 🟢 **LIVE in production** (с 12.05.2026)
+> → [`https://app.star-crm.ru/eclipse-chat/`](https://app.star-crm.ru/eclipse-chat/)
+>
+> v0.4 (Server / Member / invite end-to-end) завершён + path-based deploy
+> на VPS Star CRM. Дальше — v0.5 UX polish (show password + user profile
+> с avatar). Полная карта в [ROADMAP.md](ROADMAP.md).
 
 </div>
 
