@@ -9,6 +9,7 @@ import { MessageInput } from "../components/MessageInput";
 import { MessageList } from "../components/MessageList";
 import { PinnedBar } from "../components/PinnedBar";
 import { ProfileModal } from "../components/ProfileModal";
+import { SearchOverlay } from "../components/SearchOverlay";
 import { ServerInfoModal } from "../components/ServerInfoModal";
 import { ServerList } from "../components/ServerList";
 import { TypingIndicator } from "../components/TypingIndicator";
@@ -18,6 +19,7 @@ import { useMediaQuery } from "../hooks/useMediaQuery";
 import { useMembers, type MemberRole } from "../hooks/useMembers";
 import { useMessages } from "../hooks/useMessages";
 import { useProfile } from "../hooks/useProfile";
+import { useSearch } from "../hooks/useSearch";
 import { useServers } from "../hooks/useServers";
 import { useSocket } from "../hooks/useSocket";
 import type { PublicUser } from "../hooks/useAuth";
@@ -158,6 +160,30 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   const [showJoinServer, setShowJoinServer] = useState(false);
   const [showServerInfo, setShowServerInfo] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+
+  const {
+    query: searchQuery,
+    setQuery: setSearchQuery,
+    results: searchResults,
+    loading: searchLoading,
+    error: searchError,
+    reset: searchReset,
+  } = useSearch(activeServerId);
+
+  // Ctrl/Cmd+K — открыть search overlay
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const isK = e.key === "k" || e.key === "K" || e.key === "л" || e.key === "Л";
+      if ((e.ctrlKey || e.metaKey) && isK) {
+        if (!activeServer) return;
+        e.preventDefault();
+        setShowSearch(true);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [activeServer]);
 
   const {
     profile,
@@ -262,6 +288,21 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             title={isReady ? "Подключено" : "Соединение разорвано"}
             aria-label={isReady ? "online" : "offline"}
           />
+          {showMembers && (
+            <button
+              type="button"
+              onClick={() => setShowSearch(true)}
+              title="Поиск (Ctrl+K)"
+              aria-label="Поиск"
+              className="ec-btn ec-btn--ghost ec-btn--sm"
+              style={{ padding: "0.35rem 0.65rem" }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+            </button>
+          )}
           {showMembers && (
             <button
               type="button"
@@ -496,6 +537,27 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           onSave={updateProfile}
           onUploadAvatar={uploadAvatar}
           onDeleteAvatar={deleteAvatar}
+        />
+      )}
+
+      {showSearch && activeServerId && (
+        <SearchOverlay
+          query={searchQuery}
+          setQuery={setSearchQuery}
+          results={searchResults}
+          loading={searchLoading}
+          error={searchError}
+          onSelect={(hit) => {
+            // Переключаемся на канал hit + закрываем overlay
+            setSelectedChannelId(hit.channel.id);
+            setShowSearch(false);
+            // На mobile drawer должен открыться/закрыться — channel drawer закрыт уже
+            searchReset();
+          }}
+          onClose={() => {
+            setShowSearch(false);
+            searchReset();
+          }}
         />
       )}
     </div>

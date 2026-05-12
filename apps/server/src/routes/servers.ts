@@ -309,6 +309,53 @@ export async function registerServerRoutes(app: FastifyInstance) {
     };
   });
 
+  /**
+   * GET /api/servers/:id/search?q=&take= — full-text search по сообщениям
+   * сервера. Простой `contains` без FTS-индекса — для MVP хватает (Postgres
+   * умеет sequential scan на ~10k-100k messages быстро). v2.0 — tsvector
+   * + GIN index или Meilisearch.
+   *
+   * Только TEXT channels, deleted skipped. Ограничено 50 hits.
+   */
+  app.get(
+    "/api/servers/:id/search",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const { id: serverId } = req.params as { id: string };
+      const me = await loadMember(req, reply, serverId);
+      if (!me) return reply;
+      const q = (req.query as { q?: string }).q?.trim() ?? "";
+      const take = Math.min(50, Math.max(1, Number((req.query as { take?: string }).take) || 25));
+      if (q.length < 2) {
+        return { query: q, results: [] };
+      }
+      const hits = await db.message.findMany({
+        where: {
+          channel: { serverId, type: "TEXT" },
+          deletedAt: null,
+          content: { contains: q, mode: "insensitive" },
+        },
+        take,
+        orderBy: { createdAt: "desc" },
+        include: {
+          user: { select: { id: true, displayName: true, avatar: true } },
+          channel: { select: { id: true, name: true, slug: true } },
+        },
+      });
+      return {
+        query: q,
+        results: hits.map((m) => ({
+          id: m.id,
+          content: m.content,
+          createdAt: m.createdAt.toISOString(),
+          editedAt: m.editedAt?.toISOString() ?? null,
+          user: { id: m.user.id, displayName: m.user.displayName, avatar: m.user.avatar },
+          channel: { id: m.channel.id, name: m.channel.name, slug: m.channel.slug },
+        })),
+      };
+    },
+  );
+
   /** GET /api/servers/:id/channels — каналы сервера. */
   app.get("/api/servers/:id/channels", { onRequest: [requireJwt] }, async (req, reply) => {
     const { id } = req.params as { id: string };
