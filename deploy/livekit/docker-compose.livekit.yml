@@ -1,0 +1,44 @@
+# Eclipse Chat — LiveKit voice server (self-hosted)
+#
+# Запускается рядом с eclipse-chat-server на том же VPS (Star CRM сервер
+# cv6067007). LiveKit + Redis в одном compose. Nginx WSS proxies на
+# 127.0.0.1:7880, UDP firewall открыт на 7881/7882 для WebRTC traffic.
+#
+# Usage (на prod):
+#   cd /var/www/eclipse-chat/deploy/livekit
+#   cp livekit.yaml.example livekit.yaml   # отредактировать keys/secrets
+#   docker compose -f docker-compose.livekit.yml up -d
+#   sudo ufw allow 7881/udp
+#   sudo ufw allow 7882/udp
+#
+# После этого добавить в `/var/www/eclipse-chat/apps/server/.env`:
+#   LIVEKIT_API_KEY=<API key из livekit.yaml>
+#   LIVEKIT_API_SECRET=<секрет из livekit.yaml>
+#   LIVEKIT_WS_URL=wss://app.star-crm.ru/eclipse-chat/livekit
+# Затем `supervisorctl restart eclipse-chat-server`.
+
+services:
+  livekit:
+    image: livekit/livekit-server:latest
+    container_name: eclipse-livekit
+    restart: unless-stopped
+    network_mode: host  # необходимо для UDP-портов WebRTC media
+    command: --config /etc/livekit.yaml
+    volumes:
+      - ./livekit.yaml:/etc/livekit.yaml:ro
+    depends_on:
+      - redis
+    # Healthcheck — простой ping на signal API
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:7880"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  redis:
+    image: redis:7-alpine
+    container_name: eclipse-livekit-redis
+    restart: unless-stopped
+    # Listen только на localhost — LiveKit подключается через 127.0.0.1
+    command: redis-server --bind 127.0.0.1 --protected-mode yes
+    network_mode: host

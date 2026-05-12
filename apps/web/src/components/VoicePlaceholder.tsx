@@ -142,9 +142,11 @@ export function VoicePlaceholder({ channelName }: Props) {
         <span style={tag}>Готовим инфраструктуру</span>
 
         <p style={{ margin: 0, color: "var(--ec-text-muted)", fontSize: "var(--ec-text-sm)", lineHeight: "var(--ec-leading-relaxed)" }}>
-          Канал создан и закреплён за сервером. Голосовая связь подключится автоматически,
-          когда в этой версии Eclipse Chat появится LiveKit-интеграция (планируется
-          в <strong style={{ color: "var(--ec-text)" }}>v0.5.3</strong>).
+          Канал создан и закреплён за сервером. Backend готов выдавать LiveKit JWT
+          через <code style={{ fontSize: "0.85em" }}>POST /api/channels/:id/voice/join</code>.
+          Голос активируется как только администратор поднимет LiveKit Docker
+          (см. <strong style={{ color: "var(--ec-text)" }}>docs/LIVEKIT-SETUP.md</strong>) и
+          установит <code style={{ fontSize: "0.85em" }}>livekit-client</code> на frontend.
         </p>
 
         <div style={list}>
@@ -154,7 +156,7 @@ export function VoicePlaceholder({ channelName }: Props) {
                 <polyline points="20 6 9 17 4 12" />
               </svg>
             </span>
-            <span><span style={{ color: "var(--ec-text)" }}>Структура каналов</span> — TEXT / VOICE в базе</span>
+            <span><span style={{ color: "var(--ec-text)" }}>Структура каналов</span> — TEXT / VOICE в базе, разделение в UI</span>
           </div>
           <div style={listRow}>
             <span style={checkmark} aria-hidden>
@@ -162,7 +164,15 @@ export function VoicePlaceholder({ channelName }: Props) {
                 <polyline points="20 6 9 17 4 12" />
               </svg>
             </span>
-            <span><span style={{ color: "var(--ec-text)" }}>UI и создание</span> — оба типа доступны OWNER / ADMIN</span>
+            <span><span style={{ color: "var(--ec-text)" }}>Backend JWT route</span> — <code style={{ fontSize: "0.85em" }}>POST /voice/join</code> готов</span>
+          </div>
+          <div style={listRow}>
+            <span style={checkmark} aria-hidden>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </span>
+            <span><span style={{ color: "var(--ec-text)" }}>Infra files</span> — docker-compose + nginx + deploy guide</span>
           </div>
           <div style={listRow}>
             <span
@@ -179,7 +189,7 @@ export function VoicePlaceholder({ channelName }: Props) {
                 <line x1="5" y1="12" x2="19" y2="12" />
               </svg>
             </span>
-            <span>LiveKit SFU + TURN сервер на VPS</span>
+            <span>LiveKit Docker + UDP firewall на VPS (admin)</span>
           </div>
           <div style={listRow}>
             <span
@@ -196,7 +206,7 @@ export function VoicePlaceholder({ channelName }: Props) {
                 <line x1="5" y1="12" x2="19" y2="12" />
               </svg>
             </span>
-            <span>Voice room UI: участники, mute / deafen, push-to-talk</span>
+            <span>Frontend livekit-client + VoiceRoom (v0.5.3.2)</span>
           </div>
         </div>
       </div>

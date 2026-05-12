@@ -10,6 +10,7 @@ import { registerChannelRoutes } from "./routes/channels.js";
 import { registerMessageRoutes } from "./routes/messages.js";
 import { registerServerRoutes } from "./routes/servers.js";
 import { registerUserRoutes } from "./routes/users.js";
+import { registerVoiceRoutes } from "./routes/voice.js";
 import { setSocketIO } from "./realtime.js";
 import { registerSocketAuth } from "./auth/socketAuth.js";
 import { setPresenceIO, trackConnect, trackDisconnect } from "./presence.js";
@@ -57,6 +58,7 @@ await registerChannelRoutes(app);
 await registerServerRoutes(app);
 await registerUserRoutes(app);
 await registerMessageRoutes(app);
+await registerVoiceRoutes(app);
 await app.ready();
 
 /* Socket.io: тот же HTTP-сервер, что и у Fastify */

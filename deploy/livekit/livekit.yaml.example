@@ -1,0 +1,35 @@
+# Eclipse Chat — LiveKit server configuration
+#
+# Скопировать в `livekit.yaml`, сгенерировать keys, поднять контейнер.
+#
+# Генерация ключей:
+#   docker run --rm livekit/livekit-server generate-keys
+# Получишь пару `APIxxxxxxxxxx` (key) + secret. ВНЕСТИ их сюда + в .env.
+
+port: 7880
+
+rtc:
+  # TCP fallback порт (если UDP заблокирован у клиента)
+  tcp_port: 7881
+  # UDP диапазон для media (нужен для WebRTC). Открыть в ufw.
+  port_range_start: 50000
+  port_range_end: 50200
+  # Use specific UDP port (faster startup, single port)
+  udp_port: 7882
+  # External IP — обязательно для NAT traversal. Подставь публичный IP
+  # сервера cv6067007. Без этого remote клиенты не смогут connect'нуться.
+  use_external_ip: true
+
+redis:
+  address: 127.0.0.1:6379
+
+# API keys для backend JWT signing. Backend Eclipse Chat должен иметь
+# те же ключи в LIVEKIT_API_KEY / LIVEKIT_API_SECRET env vars.
+keys:
+  # ЗАМЕНИТЬ на сгенерированные пары
+  APIxxxxxxxxxxxxxxxxx: secretxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+# Logging
+logging:
+  level: info
+  pion_level: warn  # WebRTC layer — verbose, ставим warn
