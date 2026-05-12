@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { Fragment, useEffect, useRef } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { Avatar } from "./Avatar";
 import type { MessageRow } from "../hooks/useMessages";
 
@@ -7,6 +7,8 @@ type Props = {
   messages: MessageRow[];
   emptyHint?: string;
   channelName?: string | null;
+  currentUserId?: string;
+  onRetry?: (messageId: string) => Promise<boolean>;
 };
 
 const wrap: CSSProperties = {
@@ -19,10 +21,12 @@ const wrap: CSSProperties = {
 };
 
 const rowBase: CSSProperties = {
+  position: "relative",
   display: "grid",
-  gridTemplateColumns: "44px 1fr auto",
+  gridTemplateColumns: "44px 1fr",
   columnGap: "var(--ec-space-3)",
   padding: "var(--ec-space-2) var(--ec-space-2)",
+  paddingRight: 80,
   borderRadius: "var(--ec-radius-md)",
   transition: "background var(--ec-dur-fast) var(--ec-ease)",
 };
@@ -60,6 +64,51 @@ const stickyTime: CSSProperties = {
   transition: "opacity var(--ec-dur-fast) var(--ec-ease)",
 };
 
+const actionsBar: CSSProperties = {
+  position: "absolute",
+  top: 2,
+  right: 8,
+  display: "flex",
+  gap: 2,
+  padding: 2,
+  background: "var(--ec-surface-2)",
+  border: "1px solid var(--ec-border-subtle)",
+  borderRadius: "var(--ec-radius-md)",
+  boxShadow: "var(--ec-shadow-sm)",
+  opacity: 0,
+  transition: "opacity var(--ec-dur-fast) var(--ec-ease)",
+  pointerEvents: "none",
+};
+
+const actionBtn: CSSProperties = {
+  width: 26,
+  height: 26,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  background: "transparent",
+  border: 0,
+  borderRadius: "var(--ec-radius-sm)",
+  color: "var(--ec-text-muted)",
+  cursor: "pointer",
+  transition: "background var(--ec-dur-fast) var(--ec-ease), color var(--ec-dur-fast) var(--ec-ease)",
+};
+
+const failedTag: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 4,
+  marginLeft: "var(--ec-space-2)",
+  padding: "0.05rem 0.45rem",
+  background: "var(--ec-danger-soft)",
+  color: "var(--ec-danger)",
+  border: "1px solid var(--ec-danger)",
+  borderRadius: "var(--ec-radius-full)",
+  fontSize: "var(--ec-text-2xs)",
+  fontWeight: 600,
+  letterSpacing: "var(--ec-tracking-wide)",
+};
+
 function formatTime(iso: string): string {
   return iso.slice(11, 16);
 }
@@ -73,15 +122,20 @@ function formatDay(iso: string): string {
     a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
   if (sameDay(d, today)) return "Сегодня";
   if (sameDay(d, yest)) return "Вчера";
-  return d.toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: d.getFullYear() === today.getFullYear() ? undefined : "numeric" });
+  return d.toLocaleDateString("ru-RU", {
+    day: "numeric",
+    month: "long",
+    year: d.getFullYear() === today.getFullYear() ? undefined : "numeric",
+  });
 }
 
 function dayKey(iso: string): string {
   return iso.slice(0, 10);
 }
 
-export function MessageList({ messages, emptyHint, channelName }: Props) {
+export function MessageList({ messages, emptyHint, channelName, currentUserId, onRetry }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -91,6 +145,16 @@ export function MessageList({ messages, emptyHint, channelName }: Props) {
       el.scrollTop = el.scrollHeight;
     }
   }, [messages.length]);
+
+  const handleCopy = async (m: MessageRow) => {
+    try {
+      await navigator.clipboard.writeText(m.content);
+      setCopiedId(m.id);
+      setTimeout(() => setCopiedId((cur) => (cur === m.id ? null : cur)), 1400);
+    } catch {
+      /* clipboard недоступен — fail silently, не критично */
+    }
+  };
 
   if (messages.length === 0) {
     return (
@@ -102,7 +166,13 @@ export function MessageList({ messages, emptyHint, channelName }: Props) {
             </svg>
           </div>
           <div className="ec-empty-title">
-            {channelName ? <>Начните разговор в <span style={{ color: "var(--ec-accent)" }}>#{channelName}</span></> : "Сообщений пока нет"}
+            {channelName ? (
+              <>
+                Начните разговор в <span style={{ color: "var(--ec-accent)" }}>#{channelName}</span>
+              </>
+            ) : (
+              "Сообщений пока нет"
+            )}
           </div>
           <div className="ec-empty-hint">{emptyHint ?? "Будьте первым — напишите что-нибудь ниже."}</div>
         </div>
@@ -119,6 +189,8 @@ export function MessageList({ messages, emptyHint, channelName }: Props) {
           prev != null && new Date(m.createdAt).getTime() - new Date(prev.createdAt).getTime() < 5 * 60 * 1000;
         const grouped = Boolean(sameAuthor && closeInTime);
         const newDay = !prev || dayKey(m.createdAt) !== dayKey(prev.createdAt);
+        const isMine = currentUserId && m.user.id === currentUserId;
+        const isCopied = copiedId === m.id;
 
         return (
           <Fragment key={m.id}>
@@ -130,22 +202,36 @@ export function MessageList({ messages, emptyHint, channelName }: Props) {
               </div>
             )}
             <article
-              className="ec-message"
-              style={grouped && !newDay ? rowGrouped : rowBase}
+              style={{
+                ...(grouped && !newDay ? rowGrouped : rowBase),
+                opacity: m.pending ? 0.6 : 1,
+              }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = "var(--ec-surface-1)";
                 const time = e.currentTarget.querySelector<HTMLElement>("[data-sticky-time]");
                 if (time) time.style.opacity = "1";
+                const bar = e.currentTarget.querySelector<HTMLElement>("[data-actions]");
+                if (bar) {
+                  bar.style.opacity = "1";
+                  bar.style.pointerEvents = "auto";
+                }
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.background = "transparent";
                 const time = e.currentTarget.querySelector<HTMLElement>("[data-sticky-time]");
                 if (time) time.style.opacity = "0";
+                const bar = e.currentTarget.querySelector<HTMLElement>("[data-actions]");
+                if (bar) {
+                  bar.style.opacity = "0";
+                  bar.style.pointerEvents = "none";
+                }
               }}
             >
               <div style={{ display: "flex", justifyContent: "center" }}>
                 {grouped && !newDay ? (
-                  <span data-sticky-time style={stickyTime}>{formatTime(m.createdAt)}</span>
+                  <span data-sticky-time style={stickyTime}>
+                    {formatTime(m.createdAt)}
+                  </span>
                 ) : (
                   <Avatar url={m.user.avatar} name={m.user.displayName} size={36} />
                 )}
@@ -166,6 +252,19 @@ export function MessageList({ messages, emptyHint, channelName }: Props) {
                     >
                       {formatTime(m.createdAt)}
                     </time>
+                    {m.pending && (
+                      <span style={{ fontSize: "var(--ec-text-2xs)", color: "var(--ec-text-dim)" }}>отправляется…</span>
+                    )}
+                    {m.failed && (
+                      <span style={failedTag}>
+                        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                          <circle cx="12" cy="12" r="10" />
+                          <line x1="12" y1="8" x2="12" y2="12" />
+                          <line x1="12" y1="16" x2="12.01" y2="16" />
+                        </svg>
+                        Ошибка
+                      </span>
+                    )}
                   </header>
                 )}
                 <p
@@ -180,8 +279,63 @@ export function MessageList({ messages, emptyHint, channelName }: Props) {
                 >
                   {m.content}
                 </p>
+                {m.failed && onRetry && (
+                  <button
+                    type="button"
+                    onClick={() => void onRetry(m.id)}
+                    className="ec-btn ec-btn--sm"
+                    style={{ marginTop: 4, color: "var(--ec-danger)", borderColor: "var(--ec-danger)" }}
+                  >
+                    Повторить
+                  </button>
+                )}
               </div>
-              <div />
+              {!m.pending && !m.failed && (
+                <div data-actions style={actionsBar}>
+                  <button
+                    type="button"
+                    style={actionBtn}
+                    aria-label="Копировать сообщение"
+                    title={isCopied ? "Скопировано" : "Копировать"}
+                    onClick={() => void handleCopy(m)}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = "var(--ec-surface-3)";
+                      e.currentTarget.style.color = "var(--ec-text)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = "transparent";
+                      e.currentTarget.style.color = "var(--ec-text-muted)";
+                    }}
+                  >
+                    {isCopied ? (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ec-ok)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    ) : (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                        <rect x="9" y="9" width="13" height="13" rx="2" />
+                        <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+                      </svg>
+                    )}
+                  </button>
+                  {isMine && (
+                    <span
+                      style={{
+                        ...actionBtn,
+                        width: 26,
+                        cursor: "default",
+                        fontSize: "0.62rem",
+                        letterSpacing: "var(--ec-tracking-caps)",
+                        color: "var(--ec-text-dim)",
+                      }}
+                      aria-hidden
+                      title="Это ваше сообщение"
+                    >
+                      ВЫ
+                    </span>
+                  )}
+                </div>
+              )}
             </article>
           </Fragment>
         );

@@ -348,7 +348,89 @@ sudo supervisorctl restart eclipse-chat-server
 
 ---
 
-## v0.5.4 — MemberList + redesigned MessageList/Composer 🆕 PLANNED
+## v0.5.4 — MemberList + UX polish ✅ DONE (12.05.2026)
+
+> Реализовано после v0.5.2 ship'а. Pavel выбрал в опрос «v0.5.4 MemberList +
+> UX polish (реком)». Цель — чат должен ощутиться «дозревшим»: видимые
+> участники с presence, оптимистичный send, hover-actions на сообщениях,
+> invite copy/share, unread badges.
+
+**Backend:**
+- [x] `apps/server/src/presence.ts` — in-memory tracker `userId → Set<socketId>`
+      + `serverIdsByUser` (для broadcast'а в правильные server-rooms).
+      Grace-period 5s на disconnect (быстрый refresh не «флапает» offline).
+      Не требует Redis для single-instance.
+- [x] `index.ts`: при socket connect → `trackConnect(userId, socketId,
+      serverIds)`, при disconnect → `trackDisconnect`. Emit `presence:update`
+      первому connect / последнему disconnect (после grace).
+- [x] `routes/servers.ts`: GET `/api/servers/:id/members` теперь возвращает
+      `online: boolean` (вычисляется из `onlineUserIds()` Set) + `avatar`
+      в user-payload. Join/leave routes вызывают `addServerRoom` / `removeServerRoom`
+      для актуальности presence-broadcast'а из активной сессии.
+- [x] `realtime.ts`: `emitMemberJoined` payload расширен `avatar` для
+      моментального рендера в MemberList без reload.
+
+**Frontend — MemberList:**
+- [x] `socket.ts` — `PresenceStatus`, `PresenceUpdatePayload`,
+      `SocketEvents.PresenceUpdate`, avatar в `MemberJoinedPayload`
+- [x] `useMembers` hook — load + listeners на `member:joined`/`member:left`/
+      `presence:update` (last обновляет flag online без reload)
+- [x] `MemberList.tsx` — 232px правая колонка (4-я в grid). Группировка
+      «В сети» / «Не в сети» с counters, sortBy: role (OWNER→ADMIN→MOD→
+      MEMBER) → name asc. Avatar 28px с presence-dot (10px зелёный glow /
+      серый), name (muted color для offline), role badge (token-aware).
+- [x] AppShell: grid стал 4-column когда `showMembers = Boolean(activeServer)`,
+      шапка `topbar` остаётся через grid-column 1/-1.
+
+**Frontend — Optimistic send + hover-actions:**
+- [x] `useMessages.sendMessage(content, sender)` — добавляет optimistic
+      MessageRow с `id="local-..."` и `pending: true` сразу, затем POST.
+      Socket `message:new` ищет matching pending (same userId + content)
+      и заменяет в-place. На API error → `pending: false, failed: true`.
+- [x] `retryMessage(id, sender)` — повторная отправка failed-сообщений.
+- [x] `MessageList`:
+      - opacity 0.6 для pending, «отправляется…» tag в header
+      - failed message: red «Ошибка» pill + кнопка «Повторить»
+      - hover-actions bar справа (absolute): copy-icon (clipboard.writeText
+        + check-mark визуальный feedback 1.4s), «ВЫ» tag для own messages
+      - actions hidden для pending/failed
+
+**Frontend — Unread badges:**
+- [x] `useChannels.unread: Record<channelId, number>` — `message:new`
+      инкрементит для не-активных каналов; selecting канал сбрасывает.
+      Удаление канала чистит счётчик.
+- [x] `ChannelList` — unread badge (accent-glow pill с цифрой, «99+» cap)
+      + bold-font name + text-strong color для unread channels.
+
+**Frontend — Invite UX:**
+- [x] `ServerInfoModal` — две кнопки: «Код» (ghost) и «Ссылка-инвайт»
+      (primary). Ссылка формируется как `${origin}${BASE_URL}?invite=<code>`
+      → в prod даёт `https://app.star-crm.ru/eclipse-chat/?invite=...`.
+      Обе показывают check-mark при copy success.
+- [x] `useServers` — auto-join из URL `?invite=<code>` после initial
+      reload: POST `/api/servers/join/:code`, переключение active server,
+      затем `history.replaceState` чистит `?invite=` из URL (избегаем
+      повторного auto-join при reload). Idempotent (backend возвращает
+      `alreadyMember: true` если уже в сервере).
+
+**Bundle:** 297.77 → 310.70 KB raw (+12.93 KB), 90.04 → 92.89 KB gzip (+2.85 KB).
+
+**Что НЕ сделано осознанно (отложено):**
+- Message edit/delete — отдельный milestone (v0.5.5 или v0.12)
+- TanStack Query — пока не нужно, useState + ручные reload справляются
+- packages/shared — типы дублируются между server и web; обязательно
+  при росте кодовой базы, сейчас приемлемо
+
+**Deploy (Pavel):**
+```bash
+cd /var/www/eclipse-chat && git pull origin master
+npm run build       # ← deps уже стоят, ни migration ни npm ci не нужны
+sudo supervisorctl restart eclipse-chat-server
+```
+
+---
+
+## v0.5.5 — Message lifecycle (edit / delete / pin) 🆕 PLANNED
 
 - [ ] `components/MemberList.tsx` + `hooks/useMembers.ts` — правая колонка
       со списком участников активного сервера. Sub'нуться на `member:joined`

@@ -59,6 +59,7 @@ export function emitMemberJoined(
     serverId: string;
     role: string;
     displayName: string;
+    avatar: string | null;
     joinedAt: string;
   },
 ) {

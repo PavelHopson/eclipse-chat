@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Socket } from "socket.io-client";
 import { ApiError, api, apiJson } from "../lib/api";
 import {
@@ -6,6 +6,7 @@ import {
   type ChannelCreatedPayload,
   type ChannelDeletedPayload,
   type ChannelType,
+  type MessageNewPayload,
 } from "../lib/socket";
 
 export type ChannelRow = {
@@ -41,11 +42,16 @@ export function useChannels(serverId: string | null, socket: Socket | null) {
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  /** Map<channelId, unreadCount> для текущего сервера. */
+  const [unread, setUnread] = useState<Record<string, number>>({});
+  const selectedChannelIdRef = useRef<string | null>(null);
+  selectedChannelIdRef.current = selectedChannelId;
 
   const reload = useCallback(async () => {
     if (!serverId) {
       setChannels([]);
       setSelectedChannelId(null);
+      setUnread({});
       return;
     }
     setLoading(true);
@@ -105,12 +111,45 @@ export function useChannels(serverId: string | null, socket: Socket | null) {
       if (p.serverId !== serverId) return;
       setChannels((prev) => prev.filter((c) => c.id !== p.channelId));
       setSelectedChannelId((cur) => (cur === p.channelId ? null : cur));
+      setUnread((prev) => {
+        if (!(p.channelId in prev)) return prev;
+        const next = { ...prev };
+        delete next[p.channelId];
+        return next;
+      });
     };
     socket.on(SocketEvents.ChannelDeleted, handler);
     return () => {
       socket.off(SocketEvents.ChannelDeleted, handler);
     };
   }, [socket, serverId]);
+
+  // Socket: message:new → инкремент unread для каналов кроме активного.
+  useEffect(() => {
+    if (!socket) return;
+    const handler = (p: MessageNewPayload) => {
+      if (p.channelId === selectedChannelIdRef.current) return;
+      setUnread((prev) => ({
+        ...prev,
+        [p.channelId]: (prev[p.channelId] ?? 0) + 1,
+      }));
+    };
+    socket.on(SocketEvents.MessageNew, handler);
+    return () => {
+      socket.off(SocketEvents.MessageNew, handler);
+    };
+  }, [socket]);
+
+  // Сброс unread на выбранном канале.
+  useEffect(() => {
+    if (!selectedChannelId) return;
+    setUnread((prev) => {
+      if (!(selectedChannelId in prev)) return prev;
+      const next = { ...prev };
+      delete next[selectedChannelId];
+      return next;
+    });
+  }, [selectedChannelId]);
 
   const createChannel = useCallback(
     async (name: string, type: ChannelType = "TEXT"): Promise<ChannelRow | null> => {
@@ -177,5 +216,6 @@ export function useChannels(serverId: string | null, socket: Socket | null) {
     reload,
     createChannel,
     deleteChannel,
+    unread,
   };
 }

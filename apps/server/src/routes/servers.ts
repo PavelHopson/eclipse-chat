@@ -3,6 +3,7 @@ import { z } from "zod";
 import { db } from "../db.js";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
 import { emitMemberJoined, emitMemberLeft, emitChannelCreated, emitChannelDeleted } from "../realtime.js";
+import { addServerRoom, onlineUserIds, removeServerRoom } from "../presence.js";
 
 const createServerBody = z.object({
   name: z.string().min(1).max(80),
@@ -233,14 +234,16 @@ export async function registerServerRoutes(app: FastifyInstance) {
     }
     const member = await db.member.create({
       data: { userId, serverId: server.id, role: "MEMBER" },
-      include: { user: { select: { id: true, displayName: true, email: true } } },
+      include: { user: { select: { id: true, displayName: true, email: true, avatar: true } } },
     });
+    addServerRoom(userId, server.id);
     emitMemberJoined(server.id, {
       memberId: member.id,
       userId: member.userId,
       serverId: server.id,
       role: member.role,
       displayName: member.user.displayName,
+      avatar: member.user.avatar,
       joinedAt: member.joinedAt.toISOString(),
     });
     return {
@@ -268,11 +271,12 @@ export async function registerServerRoutes(app: FastifyInstance) {
         .send({ error: "Owner cannot leave own server. Delete it or transfer ownership first." });
     }
     await db.member.delete({ where: { id: member.id } });
+    removeServerRoom(member.userId, id);
     emitMemberLeft(id, { memberId: member.id, userId: member.userId, serverId: id });
     return { ok: true };
   });
 
-  /** GET /api/servers/:id/members — список участников. */
+  /** GET /api/servers/:id/members — список участников с current online-статусом. */
   app.get("/api/servers/:id/members", { onRequest: [requireJwt] }, async (req, reply) => {
     const { id } = req.params as { id: string };
     const me = await loadMember(req, reply, id);
@@ -282,20 +286,23 @@ export async function registerServerRoutes(app: FastifyInstance) {
     const members = await db.member.findMany({
       where: { serverId: id },
       include: {
-        user: { select: { id: true, email: true, displayName: true, createdAt: true } },
+        user: { select: { id: true, email: true, displayName: true, avatar: true, createdAt: true } },
       },
       orderBy: [{ role: "asc" }, { joinedAt: "asc" }],
     });
+    const online = onlineUserIds();
     return {
       members: members.map((m) => ({
         id: m.id,
         userId: m.userId,
         role: isMemberRole(m.role) ? m.role : "MEMBER",
         joinedAt: m.joinedAt.toISOString(),
+        online: online.has(m.userId),
         user: {
           id: m.user.id,
           displayName: m.user.displayName,
           email: m.user.email,
+          avatar: m.user.avatar,
           createdAt: m.user.createdAt.toISOString(),
         },
       })),

@@ -46,17 +46,37 @@ const statValue: CSSProperties = {
   fontFeatureSettings: '"tnum"',
 };
 
+function buildInviteUrl(code: string): string {
+  // ${origin}${BASE_URL}?invite=<code>. BASE_URL заканчивается /,
+  // import.meta.env.BASE_URL=/eclipse-chat/ в prod → /eclipse-chat/?invite=...
+  if (typeof window === "undefined") return `?invite=${code}`;
+  return `${window.location.origin}${import.meta.env.BASE_URL}?invite=${encodeURIComponent(code)}`;
+}
+
 export function ServerInfoModal({ server, onClose, onLeave, onDelete }: Props) {
-  const [copied, setCopied] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isOwner = server.role === "OWNER";
 
-  const copyInvite = async () => {
+  const inviteUrl = buildInviteUrl(server.inviteCode);
+
+  const copyInviteCode = async () => {
     try {
       await navigator.clipboard.writeText(server.inviteCode);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
+      setCopiedCode(true);
+      setTimeout(() => setCopiedCode(false), 1500);
+    } catch {
+      setError("Не удалось скопировать (clipboard недоступен)");
+    }
+  };
+
+  const copyInviteLink = async () => {
+    try {
+      await navigator.clipboard.writeText(inviteUrl);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 1500);
     } catch {
       setError("Не удалось скопировать (clipboard недоступен)");
     }
@@ -125,33 +145,61 @@ export function ServerInfoModal({ server, onClose, onLeave, onDelete }: Props) {
       <div>
         <label className="ec-field-label">Инвайт-код</label>
         <div style={codeBox}>{server.inviteCode}</div>
-        <button
-          type="button"
-          onClick={() => void copyInvite()}
-          className={copied ? "ec-btn ec-btn--sm" : "ec-btn ec-btn--sm"}
-          style={{
-            marginTop: "var(--ec-space-2)",
-            color: copied ? "var(--ec-ok)" : undefined,
-            borderColor: copied ? "var(--ec-ok)" : undefined,
-          }}
-        >
-          {copied ? (
-            <>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-              Скопировано
-            </>
-          ) : (
-            <>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <rect x="9" y="9" width="13" height="13" rx="2" />
-                <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
-              </svg>
-              Скопировать
-            </>
-          )}
-        </button>
+        <div style={{ display: "flex", gap: "var(--ec-space-2)", marginTop: "var(--ec-space-2)" }}>
+          <button
+            type="button"
+            onClick={() => void copyInviteCode()}
+            className="ec-btn ec-btn--sm"
+            style={{
+              color: copiedCode ? "var(--ec-ok)" : undefined,
+              borderColor: copiedCode ? "var(--ec-ok)" : undefined,
+            }}
+          >
+            {copiedCode ? (
+              <>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+                Код скопирован
+              </>
+            ) : (
+              <>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <rect x="9" y="9" width="13" height="13" rx="2" />
+                  <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+                </svg>
+                Код
+              </>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => void copyInviteLink()}
+            className="ec-btn ec-btn--sm ec-btn--primary"
+            style={{
+              background: copiedLink ? "var(--ec-ok)" : undefined,
+              borderColor: copiedLink ? "var(--ec-ok)" : undefined,
+            }}
+            title={inviteUrl}
+          >
+            {copiedLink ? (
+              <>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+                Ссылка скопирована
+              </>
+            ) : (
+              <>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" />
+                  <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" />
+                </svg>
+                Ссылка-инвайт
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       <p style={{ margin: 0, fontSize: "var(--ec-text-xs)", color: "var(--ec-text-dim)" }}>

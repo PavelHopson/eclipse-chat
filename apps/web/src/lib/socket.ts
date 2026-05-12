@@ -66,6 +66,7 @@ export type MemberJoinedPayload = {
   serverId: string;
   role: string;
   displayName: string;
+  avatar: string | null;
   joinedAt: string;
 };
 
@@ -73,6 +74,13 @@ export type MemberLeftPayload = {
   memberId: string;
   userId: string;
   serverId: string;
+};
+
+export type PresenceStatus = "online" | "offline";
+
+export type PresenceUpdatePayload = {
+  userId: string;
+  status: PresenceStatus;
 };
 
 /** Совпадает с naming из docs/SOCKET_EVENTS.md и кода сервера. */
@@ -85,4 +93,5 @@ export const SocketEvents = {
   MemberLeft: "member:left",
   ChannelJoin: "channel:join",
   ChannelLeave: "channel:leave",
+  PresenceUpdate: "presence:update",
 } as const;

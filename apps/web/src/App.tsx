@@ -5,12 +5,13 @@ import { AuthPage } from "./pages/AuthPage";
 
 const loadingStyle: CSSProperties = {
   minHeight: "100vh",
-  background: "#0f0f12",
-  color: "#888",
+  background: "var(--ec-bg)",
+  color: "var(--ec-text-dim)",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  fontFamily: "system-ui, -apple-system, sans-serif",
+  fontFamily: "var(--ec-font-sans)",
+  fontSize: "var(--ec-text-sm)",
 };
 
 export function App() {

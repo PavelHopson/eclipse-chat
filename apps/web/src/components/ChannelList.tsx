@@ -8,6 +8,7 @@ type Props = {
   serverRole: string | null;
   inviteCode: string | null;
   channels: ChannelRow[];
+  unread: Record<string, number>;
   selectedChannelId: string | null;
   onSelect: (id: string) => void;
   onCreate: (name: string, type: ChannelType) => Promise<void>;
@@ -146,6 +147,7 @@ export function ChannelList({
   serverRole,
   inviteCode: _inviteCode,
   channels,
+  unread,
   selectedChannelId,
   onSelect,
   onCreate,
@@ -177,13 +179,18 @@ export function ChannelList({
   const renderChannel = (c: ChannelRow) => {
     const isActive = c.id === selectedChannelId;
     const isDeleting = pendingDelete === c.id;
+    const unreadCount = unread[c.id] ?? 0;
+    const hasUnread = unreadCount > 0 && !isActive;
     return (
       <button
         key={c.id}
         type="button"
         onClick={() => onSelect(c.id)}
         className={isActive ? "ec-channel-item ec-channel-item--active" : "ec-channel-item"}
-        style={isDeleting ? { opacity: 0.5, pointerEvents: "none" } : undefined}
+        style={{
+          ...(isDeleting ? { opacity: 0.5, pointerEvents: "none" } : undefined),
+          ...(hasUnread ? { color: "var(--ec-text-strong)", fontWeight: 600 } : undefined),
+        }}
         onMouseEnter={(e) => {
           const btn = e.currentTarget.querySelector<HTMLElement>("[data-delete-btn]");
           if (btn) btn.style.opacity = "1";
@@ -205,7 +212,30 @@ export function ChannelList({
         >
           {c.name}
         </span>
-        {!isActive && c.type === "TEXT" && c._count.messages > 0 && (
+        {hasUnread && (
+          <span
+            aria-label={`${unreadCount} непрочитанных`}
+            title={`${unreadCount} непрочитанных`}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              minWidth: 18,
+              height: 18,
+              padding: "0 5px",
+              borderRadius: "var(--ec-radius-full)",
+              background: "var(--ec-accent)",
+              color: "var(--ec-accent-text)",
+              fontSize: "0.6rem",
+              fontWeight: 700,
+              fontFeatureSettings: '"tnum"',
+              boxShadow: "0 0 8px hsl(195 60% 55% / 0.5)",
+            }}
+          >
+            {unreadCount > 99 ? "99+" : unreadCount}
+          </span>
+        )}
+        {!hasUnread && !isActive && c.type === "TEXT" && c._count.messages > 0 && (
           <span className="ec-channel-count">{c._count.messages}</span>
         )}
         {manageable && (

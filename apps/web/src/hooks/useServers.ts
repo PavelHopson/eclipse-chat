@@ -54,6 +54,40 @@ export function useServers(isReady: boolean) {
     void reload();
   }, [reload]);
 
+  /**
+   * Auto-join по URL `?invite=<code>`. Срабатывает после первой загрузки
+   * списка серверов. Если user уже member — backend вернёт alreadyMember
+   * и просто переключит активный сервер. После handling — стираем
+   * `invite=` из URL чтобы reload не повторял.
+   */
+  useEffect(() => {
+    if (!isReady || loading) return;
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const inviteCode = params.get("invite");
+    if (!inviteCode) return;
+    // strip ?invite= из URL до запроса, чтобы избежать loop'а
+    params.delete("invite");
+    const newSearch = params.toString();
+    window.history.replaceState(
+      {},
+      "",
+      `${window.location.pathname}${newSearch ? "?" + newSearch : ""}${window.location.hash}`,
+    );
+    void (async () => {
+      setError(null);
+      try {
+        const data = await apiJson<JoinResult>(`/api/servers/join/${encodeURIComponent(inviteCode)}`, {
+          method: "POST",
+        });
+        await reload();
+        setActiveServerId(data.server.id);
+      } catch (e) {
+        setError(e instanceof ApiError ? e.message : "Не удалось вступить по инвайт-ссылке");
+      }
+    })();
+  }, [isReady, loading, reload]);
+
   const createServer = useCallback(
     async (input: CreateServerInput): Promise<ServerRow | null> => {
       setError(null);

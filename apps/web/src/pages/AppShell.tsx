@@ -4,6 +4,7 @@ import { Avatar } from "../components/Avatar";
 import { ChannelList } from "../components/ChannelList";
 import { CreateServerModal } from "../components/CreateServerModal";
 import { JoinServerModal } from "../components/JoinServerModal";
+import { MemberList } from "../components/MemberList";
 import { MessageInput } from "../components/MessageInput";
 import { MessageList } from "../components/MessageList";
 import { ProfileModal } from "../components/ProfileModal";
@@ -11,6 +12,7 @@ import { ServerInfoModal } from "../components/ServerInfoModal";
 import { ServerList } from "../components/ServerList";
 import { VoicePlaceholder } from "../components/VoicePlaceholder";
 import { useChannels } from "../hooks/useChannels";
+import { useMembers } from "../hooks/useMembers";
 import { useMessages } from "../hooks/useMessages";
 import { useProfile } from "../hooks/useProfile";
 import { useServers } from "../hooks/useServers";
@@ -23,14 +25,18 @@ type Props = {
   onLogout: () => Promise<void>;
 };
 
-const shellStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "var(--ec-rail-width) var(--ec-sidebar-width) 1fr",
-  gridTemplateRows: "var(--ec-header-height) 1fr",
-  height: "100vh",
-  background: "var(--ec-bg)",
-  color: "var(--ec-text)",
-};
+function shellGrid(showMembers: boolean): CSSProperties {
+  return {
+    display: "grid",
+    gridTemplateColumns: showMembers
+      ? "var(--ec-rail-width) var(--ec-sidebar-width) 1fr 232px"
+      : "var(--ec-rail-width) var(--ec-sidebar-width) 1fr",
+    gridTemplateRows: "var(--ec-header-height) 1fr",
+    height: "100vh",
+    background: "var(--ec-bg)",
+    color: "var(--ec-text)",
+  };
+}
 
 const topbar: CSSProperties = {
   gridColumn: "1 / -1",
@@ -142,12 +148,16 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     setSelectedChannelId,
     createChannel,
     deleteChannel,
+    unread,
   } = useChannels(activeServerId, socket);
 
-  const { messages, sendMessage, error: messagesError, loading: messagesLoading } = useMessages(
-    selectedChannelId,
-    socket,
-  );
+  const {
+    messages,
+    sendMessage,
+    retryMessage,
+    error: messagesError,
+    loading: messagesLoading,
+  } = useMessages(selectedChannelId, socket);
 
   const [showCreateServer, setShowCreateServer] = useState(false);
   const [showJoinServer, setShowJoinServer] = useState(false);
@@ -163,13 +173,26 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     deleteAvatar,
   } = useProfile(true);
 
+  const {
+    members,
+    loading: membersLoading,
+    error: membersError,
+  } = useMembers(activeServerId, socket);
+
   const headerName = profile?.displayName ?? user.displayName;
   const headerAvatar = profile?.avatar ?? user.avatar;
+  const senderForMessages = {
+    id: user.id,
+    displayName: headerName,
+    avatar: headerAvatar,
+  };
 
   const selectedChannel = channels.find((c) => c.id === selectedChannelId) ?? null;
 
+  const showMembers = Boolean(activeServer);
+
   return (
-    <div style={shellStyle}>
+    <div style={shellGrid(showMembers)}>
       <header style={topbar}>
         <div style={{ display: "flex", alignItems: "center", minWidth: 0 }}>
           <span style={brand}>
@@ -235,6 +258,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
         serverRole={activeServer?.role ?? null}
         inviteCode={activeServer?.inviteCode ?? null}
         channels={channels}
+        unread={unread}
         selectedChannelId={selectedChannelId}
         onSelect={setSelectedChannelId}
         onCreate={async (name, type) => {
@@ -317,15 +341,19 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               messages={messages}
               emptyHint={messagesLoading ? "Загрузка…" : undefined}
               channelName={selectedChannel.name}
+              currentUserId={user.id}
+              onRetry={(mid) => retryMessage(mid, senderForMessages)}
             />
             <MessageInput
               channelName={selectedChannel.name}
               disabled={!isReady}
-              onSend={sendMessage}
+              onSend={(content) => sendMessage(content, senderForMessages)}
             />
           </>
         )}
       </section>
+
+      {showMembers && <MemberList members={members} loading={membersLoading} error={membersError} />}
 
       {showCreateServer && (
         <CreateServerModal
