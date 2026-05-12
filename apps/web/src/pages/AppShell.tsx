@@ -432,7 +432,9 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             <MessageInput
               channelName={selectedChannel.name}
               disabled={!isReady}
-              onSend={(content) => sendMessage(content, senderForMessages)}
+              onSend={(content, attachments) =>
+                sendMessage(content, senderForMessages, attachments)
+              }
             />
           </>
         )}

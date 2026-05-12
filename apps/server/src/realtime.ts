@@ -6,6 +6,19 @@ export function setSocketIO(server: SocketServer) {
   io = server;
 }
 
+/** Attachment в socket-payload — minimal subset для отображения. */
+export type AttachmentPayload = {
+  id: string;
+  filename: string;
+  mimeType: string;
+  size: number;
+  url: string;
+  width: number | null;
+  height: number | null;
+  thumbnailUrl: string | null;
+  position: number;
+};
+
 /** Эмит нового сообщения в room `channel:${channelId}`. */
 export function emitMessageOnChannel(
   channelId: string,
@@ -18,6 +31,7 @@ export function emitMessageOnChannel(
     /** Аватар автора на момент отправки. Null если у user'а нет аватара. */
     avatar: string | null;
     createdAt: string;
+    attachments?: AttachmentPayload[];
   },
 ) {
   io?.to(`channel:${channelId}`).emit("message:new", payload);

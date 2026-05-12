@@ -3,6 +3,7 @@ import type { Socket } from "socket.io-client";
 import { ApiError, api, apiJson } from "../lib/api";
 import {
   SocketEvents,
+  type AttachmentPayload,
   type MessageDeletedPayload,
   type MessageNewPayload,
   type MessagePinnedPayload,
@@ -18,6 +19,15 @@ export type ReactionAggregate = {
   mine: boolean;
 };
 
+export type Attachment = AttachmentPayload;
+
+/** Payload, отправляемый клиентом на POST /messages. */
+export type AttachmentUpload = {
+  filename: string;
+  mimeType: string;
+  dataBase64: string;
+};
+
 export type MessageRow = {
   id: string;
   content: string;
@@ -31,6 +41,8 @@ export type MessageRow = {
   user: { id: string; displayName: string; avatar: string | null };
   /** Агрегированные реакции, отсортированы backend'ом по emoji. */
   reactions: ReactionAggregate[];
+  /** Прикреплённые файлы, sorted by position asc. */
+  attachments: Attachment[];
   /** UI-only: оптимистично отправлено, ждём backend. */
   pending?: boolean;
   /** UI-only: backend вернул ошибку. */
@@ -44,11 +56,13 @@ function defaultLifecycle<T extends {
   deletedAt?: string | null;
   pinnedAt?: string | null;
   reactions?: ReactionAggregate[];
+  attachments?: Attachment[];
 }>(m: T): T & {
   editedAt: string | null;
   deletedAt: string | null;
   pinnedAt: string | null;
   reactions: ReactionAggregate[];
+  attachments: Attachment[];
 } {
   return {
     ...m,
@@ -56,6 +70,7 @@ function defaultLifecycle<T extends {
     deletedAt: m.deletedAt ?? null,
     pinnedAt: m.pinnedAt ?? null,
     reactions: m.reactions ?? [],
+    attachments: m.attachments ?? [],
   };
 }
 
@@ -130,6 +145,7 @@ export function useMessages(
           pinnedAt: null,
           user: { id: p.userId, displayName: p.displayName, avatar: p.avatar },
           reactions: [],
+          attachments: p.attachments ?? [],
         };
         if (optimisticIdx >= 0) {
           const next = prev.slice();
@@ -236,13 +252,31 @@ export function useMessages(
   }, [socket]);
 
   const sendMessage = useCallback(
-    async (content: string, sender: Sender): Promise<boolean> => {
+    async (
+      content: string,
+      sender: Sender,
+      attachments: AttachmentUpload[] = [],
+    ): Promise<boolean> => {
       if (!channelId) return false;
       const trimmed = content.trim();
-      if (!trimmed) return false;
+      if (!trimmed && attachments.length === 0) return false;
       setError(null);
 
       const localId = `local-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+      // Optimistic attachments: для preview используем dataBase64 как inline
+      // image src через `data:` URI, чтобы пока сервер не ответил, в UI
+      // уже было видно что прикреплено. После socket message:new — заменим.
+      const optimisticAttachments: Attachment[] = attachments.map((a, i) => ({
+        id: `local-att-${i}`,
+        filename: a.filename,
+        mimeType: a.mimeType,
+        size: Math.ceil((a.dataBase64.length * 3) / 4),
+        url: `data:${a.mimeType};base64,${a.dataBase64}`,
+        thumbnailUrl: null,
+        width: null,
+        height: null,
+        position: i,
+      }));
       const optimistic: MessageRow = {
         id: localId,
         content: trimmed,
@@ -252,6 +286,7 @@ export function useMessages(
         pinnedAt: null,
         user: sender,
         reactions: [],
+        attachments: optimisticAttachments,
         pending: true,
       };
       setMessages((prev) => [...prev, optimistic]);
@@ -259,7 +294,10 @@ export function useMessages(
       try {
         await apiJson(`/api/channels/${encodeURIComponent(channelId)}/messages`, {
           method: "POST",
-          body: JSON.stringify({ content: trimmed }),
+          body: JSON.stringify({
+            content: trimmed,
+            attachments: attachments.length > 0 ? attachments : undefined,
+          }),
         });
         setTimeout(() => {
           setMessages((prev) =>

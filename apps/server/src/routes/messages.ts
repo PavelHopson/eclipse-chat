@@ -10,6 +10,7 @@ import {
   emitReactionAdded,
   emitReactionRemoved,
 } from "../realtime.js";
+import { unlinkAttachmentFiles } from "../attachments.js";
 
 const editBody = z.object({
   content: z.string().min(1).max(8000),
@@ -187,6 +188,18 @@ export async function registerMessageRoutes(app: FastifyInstance) {
         where: { id: messageId },
         data: { deletedAt, pinnedAt: null },
       });
+      // Cleanup attachment-файлов с disk (best-effort). Прежде чем удалить
+      // Attachment rows — соберём urls (потом cascade-delete можно).
+      const attachments = await db.attachment.findMany({
+        where: { messageId },
+        select: { url: true, thumbnailUrl: true },
+      });
+      if (attachments.length > 0) {
+        const urls = attachments.flatMap((a) => [a.url, a.thumbnailUrl]);
+        await db.attachment.deleteMany({ where: { messageId } });
+        // Best-effort fs cleanup — не блокируем response
+        void unlinkAttachmentFiles(urls);
+      }
       emitMessageDeleted(m.channelId, {
         messageId,
         channelId: m.channelId,

@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import { Fragment, useEffect, useRef, useState } from "react";
+import { Attachments } from "./Attachments";
 import { Avatar } from "./Avatar";
 import { EmojiPicker } from "./EmojiPicker";
 import type { MessageRow } from "../hooks/useMessages";
@@ -434,30 +435,35 @@ export function MessageList({
                     сообщение удалено
                   </p>
                 ) : (
-                  <p
-                    style={{
-                      margin: 0,
-                      color: "var(--ec-text)",
-                      whiteSpace: "pre-wrap",
-                      wordBreak: "break-word",
-                      fontSize: "var(--ec-text-base)",
-                      lineHeight: "var(--ec-leading-normal)",
-                    }}
-                  >
-                    {m.content}
-                    {m.editedAt && (
-                      <span
-                        title={`Изменено ${new Date(m.editedAt).toLocaleString("ru-RU")}`}
+                  <>
+                    {m.content && (
+                      <p
                         style={{
-                          marginLeft: 6,
-                          fontSize: "var(--ec-text-2xs)",
-                          color: "var(--ec-text-dim)",
+                          margin: 0,
+                          color: "var(--ec-text)",
+                          whiteSpace: "pre-wrap",
+                          wordBreak: "break-word",
+                          fontSize: "var(--ec-text-base)",
+                          lineHeight: "var(--ec-leading-normal)",
                         }}
                       >
-                        (изменено)
-                      </span>
+                        {m.content}
+                        {m.editedAt && (
+                          <span
+                            title={`Изменено ${new Date(m.editedAt).toLocaleString("ru-RU")}`}
+                            style={{
+                              marginLeft: 6,
+                              fontSize: "var(--ec-text-2xs)",
+                              color: "var(--ec-text-dim)",
+                            }}
+                          >
+                            (изменено)
+                          </span>
+                        )}
+                      </p>
                     )}
-                  </p>
+                    {m.attachments.length > 0 && <Attachments attachments={m.attachments} />}
+                  </>
                 )}
                 {m.failed && onRetry && (
                   <button

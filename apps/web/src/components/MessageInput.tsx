@@ -1,10 +1,12 @@
 import type { CSSProperties } from "react";
 import { useEffect, useRef, useState } from "react";
+import { fileToBase64 } from "../lib/fileToBase64";
+import type { AttachmentUpload } from "../hooks/useMessages";
 
 type Props = {
   channelName: string | null;
   disabled?: boolean;
-  onSend: (content: string) => Promise<boolean>;
+  onSend: (content: string, attachments: AttachmentUpload[]) => Promise<boolean>;
 };
 
 const wrap: CSSProperties = {
@@ -46,17 +48,17 @@ const textarea: CSSProperties = {
   overflowY: "auto",
 };
 
-const attachBtn: CSSProperties = {
+const iconBtn: CSSProperties = {
   width: 32,
   height: 32,
   borderRadius: "var(--ec-radius-md)",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  color: "var(--ec-text-dim)",
+  color: "var(--ec-text-muted)",
   background: "transparent",
   border: 0,
-  cursor: "not-allowed",
+  cursor: "pointer",
   transition: "color var(--ec-dur-fast) var(--ec-ease), background var(--ec-dur-fast) var(--ec-ease)",
 };
 
@@ -99,36 +101,194 @@ const kbd: CSSProperties = {
   lineHeight: 1.6,
 };
 
+const previewRow: CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: "var(--ec-space-2)",
+  marginBottom: "var(--ec-space-2)",
+};
+
+const previewChip: CSSProperties = {
+  position: "relative",
+  display: "flex",
+  alignItems: "center",
+  gap: 6,
+  padding: "4px 28px 4px 4px",
+  background: "var(--ec-surface-2)",
+  border: "1px solid var(--ec-border-subtle)",
+  borderRadius: "var(--ec-radius-md)",
+  fontSize: "var(--ec-text-xs)",
+  color: "var(--ec-text-muted)",
+  maxWidth: 180,
+};
+
+const previewThumb: CSSProperties = {
+  width: 28,
+  height: 28,
+  borderRadius: "var(--ec-radius-sm)",
+  objectFit: "cover",
+  flexShrink: 0,
+};
+
+const previewRemove: CSSProperties = {
+  position: "absolute",
+  top: 2,
+  right: 2,
+  width: 18,
+  height: 18,
+  display: "grid",
+  placeItems: "center",
+  borderRadius: "var(--ec-radius-full)",
+  background: "var(--ec-surface-3)",
+  border: 0,
+  color: "var(--ec-text-muted)",
+  cursor: "pointer",
+};
+
+// Лимиты в синхроне с backend (apps/server/src/attachments.ts)
+const ATTACHMENT_MAX_BYTES = 25 * 1024 * 1024;
+const MAX_PER_MESSAGE = 10;
+const ALLOWED_MIME = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "application/pdf",
+  "text/plain",
+]);
+
+type Pending = {
+  id: string;
+  file: File;
+  /** data: URI для image preview. Null для non-image. */
+  previewUrl: string | null;
+};
+
+function humanSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
 export function MessageInput({ channelName, disabled, onSend }: Props) {
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [focused, setFocused] = useState(false);
-  const ref = useRef<HTMLTextAreaElement>(null);
+  const [pending, setPending] = useState<Pending[]>([]);
+  const [attachError, setAttachError] = useState<string | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Autosize: height = scrollHeight, capped через max-height стилем.
+  // Autosize textarea
   useEffect(() => {
-    const el = ref.current;
+    const el = textareaRef.current;
     if (!el) return;
     el.style.height = "auto";
     el.style.height = `${el.scrollHeight}px`;
   }, [draft]);
 
+  // Cleanup object-URLs on unmount или при unpending
+  useEffect(() => {
+    return () => {
+      for (const p of pending) {
+        if (p.previewUrl && p.previewUrl.startsWith("blob:")) {
+          URL.revokeObjectURL(p.previewUrl);
+        }
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const addFiles = (filesList: FileList | File[]) => {
+    setAttachError(null);
+    const files = Array.from(filesList);
+    const newOnes: Pending[] = [];
+    let err: string | null = null;
+    for (const f of files) {
+      if (!ALLOWED_MIME.has(f.type)) {
+        err = `Не поддерживается: ${f.type || f.name}`;
+        continue;
+      }
+      if (f.size > ATTACHMENT_MAX_BYTES) {
+        err = `«${f.name}» больше 25 МБ`;
+        continue;
+      }
+      const isImage = f.type.startsWith("image/");
+      newOnes.push({
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        file: f,
+        previewUrl: isImage ? URL.createObjectURL(f) : null,
+      });
+    }
+    setPending((prev) => {
+      const next = [...prev, ...newOnes];
+      if (next.length > MAX_PER_MESSAGE) {
+        err = `Максимум ${MAX_PER_MESSAGE} файлов на сообщение`;
+        return next.slice(0, MAX_PER_MESSAGE);
+      }
+      return next;
+    });
+    if (err) setAttachError(err);
+  };
+
+  const removePending = (id: string) => {
+    setPending((prev) => {
+      const target = prev.find((p) => p.id === id);
+      if (target?.previewUrl?.startsWith("blob:")) {
+        URL.revokeObjectURL(target.previewUrl);
+      }
+      return prev.filter((p) => p.id !== id);
+    });
+  };
+
   const submit = async () => {
     const trimmed = draft.trim();
-    if (!trimmed || sending) return;
+    if ((!trimmed && pending.length === 0) || sending) return;
     setSending(true);
+    setAttachError(null);
     try {
-      const ok = await onSend(trimmed);
-      if (ok) setDraft("");
+      // Конвертируем все File в base64 параллельно
+      const uploads: AttachmentUpload[] = await Promise.all(
+        pending.map(async (p) => ({
+          filename: p.file.name,
+          mimeType: p.file.type,
+          dataBase64: await fileToBase64(p.file),
+        })),
+      );
+      const ok = await onSend(trimmed, uploads);
+      if (ok) {
+        setDraft("");
+        for (const p of pending) {
+          if (p.previewUrl?.startsWith("blob:")) URL.revokeObjectURL(p.previewUrl);
+        }
+        setPending([]);
+      }
     } finally {
       setSending(false);
-      // вернуть фокус на textarea чтобы можно было продолжать печатать
-      ref.current?.focus();
+      textareaRef.current?.focus();
     }
   };
 
-  const canSend = draft.trim().length > 0 && !disabled && !sending;
+  const canSend = (draft.trim().length > 0 || pending.length > 0) && !disabled && !sending;
   const boxStyle = focused ? { ...composerBox, ...composerBoxFocused } : composerBox;
+
+  // Drag-drop поддержка
+  const [dragOver, setDragOver] = useState(false);
+  const onDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(true);
+  };
+  const onDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+  };
+  const onDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    if (e.dataTransfer.files.length > 0) {
+      addFiles(e.dataTransfer.files);
+    }
+  };
 
   return (
     <form
@@ -136,21 +296,111 @@ export function MessageInput({ channelName, disabled, onSend }: Props) {
         e.preventDefault();
         void submit();
       }}
-      style={wrap}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+      style={{
+        ...wrap,
+        ...(dragOver ? { background: "var(--ec-accent-soft)" } : {}),
+      }}
+      className="ec-composer-safe"
     >
+      {pending.length > 0 && (
+        <div style={previewRow}>
+          {pending.map((p) => (
+            <div key={p.id} style={previewChip} className="ec-anim-fade">
+              {p.previewUrl ? (
+                <img src={p.previewUrl} alt="" style={previewThumb} />
+              ) : (
+                <span
+                  aria-hidden
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: "var(--ec-radius-sm)",
+                    background: "var(--ec-surface-3)",
+                    display: "grid",
+                    placeItems: "center",
+                    flexShrink: 0,
+                    color: "var(--ec-text-muted)",
+                  }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                  </svg>
+                </span>
+              )}
+              <span
+                style={{
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                  flex: 1,
+                  minWidth: 0,
+                }}
+                title={p.file.name}
+              >
+                {p.file.name}
+              </span>
+              <span style={{ fontSize: "0.65rem", color: "var(--ec-text-dim)" }}>
+                {humanSize(p.file.size)}
+              </span>
+              <button
+                type="button"
+                onClick={() => removePending(p.id)}
+                aria-label="Убрать"
+                title="Убрать"
+                style={previewRemove}
+              >
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      {attachError && (
+        <p style={{ margin: "0 0 var(--ec-space-2)", color: "var(--ec-danger)", fontSize: "var(--ec-text-xs)" }}>
+          {attachError}
+        </p>
+      )}
       <div style={boxStyle}>
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          accept="image/jpeg,image/png,image/webp,image/gif,application/pdf,text/plain"
+          onChange={(e) => {
+            if (e.target.files) addFiles(e.target.files);
+            e.target.value = "";
+          }}
+          style={{ display: "none" }}
+        />
         <button
           type="button"
-          disabled
-          title="Загрузка файлов — скоро (v0.9)"
-          style={attachBtn}
+          onClick={() => fileInputRef.current?.click()}
+          disabled={disabled || pending.length >= MAX_PER_MESSAGE}
+          title="Прикрепить файлы"
+          aria-label="Прикрепить файлы"
+          style={iconBtn}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "var(--ec-surface-3)";
+            e.currentTarget.style.color = "var(--ec-text)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "transparent";
+            e.currentTarget.style.color = "var(--ec-text-muted)";
+          }}
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
             <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.49" />
           </svg>
         </button>
         <textarea
-          ref={ref}
+          ref={textareaRef}
           rows={1}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
@@ -189,6 +439,8 @@ export function MessageInput({ channelName, disabled, onSend }: Props) {
         <span><span style={kbd}>Enter</span> — отправить</span>
         <span style={{ color: "var(--ec-border-emphasis)" }}>·</span>
         <span><span style={kbd}>Shift+Enter</span> — новая строка</span>
+        <span style={{ color: "var(--ec-border-emphasis)" }}>·</span>
+        <span>drop файлы</span>
       </div>
     </form>
   );

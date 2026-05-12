@@ -127,8 +127,39 @@ model Message {
   channelId String
   channel   Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
   reactions Reaction[]
+  attachments Attachment[]
 
   @@index([channelId, pinnedAt])
+}
+
+/// Файл, прикреплённый к сообщению. Multiple attachments per message
+/// поддерживается (image grid 2x2 + chips). На soft-delete message
+/// attachments тоже скрываются в UI, но row остаётся (для restore-фичи
+/// в v1.x если когда-то будет).
+model Attachment {
+  id           String   @id @default(cuid())
+  messageId    String
+  message      Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  /// Оригинальное имя файла (для download attribute / chip label).
+  filename     String
+  /// MIME type — `image/jpeg`, `image/png`, `image/webp`, `application/pdf`, etc.
+  mimeType     String
+  /// Размер в байтах (после resize для images, original для прочих).
+  size         Int
+  /// Path на disk-relative URL (`/uploads/attachments/<msgId>-<idx>-<filename>`).
+  /// Frontend префиксит BASE_URL.
+  url          String
+  /// Для images: размеры (для aspect-ratio в lightbox). Null для non-image.
+  width        Int?
+  height       Int?
+  /// Для images > 512px: ресайз 512x512 webp для inline preview. Null если
+  /// image сам меньше threshold (тогда url служит и preview, и full).
+  thumbnailUrl String?
+  /// Порядок в message (0-indexed). UI рендерит по position asc.
+  position     Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  @@index([messageId])
 }
 
 /// Реакция на сообщение. Unique по (messageId, userId, emoji) —

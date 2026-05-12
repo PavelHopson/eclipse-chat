@@ -32,6 +32,18 @@ export function createSocket(): Socket {
 
 export type ServerHello = { t: number; msg: string };
 
+export type AttachmentPayload = {
+  id: string;
+  filename: string;
+  mimeType: string;
+  size: number;
+  url: string;
+  width: number | null;
+  height: number | null;
+  thumbnailUrl: string | null;
+  position: number;
+};
+
 export type MessageNewPayload = {
   messageId: string;
   content: string;
@@ -41,6 +53,7 @@ export type MessageNewPayload = {
   /** Аватар автора на момент отправки. Null если у user'а нет аватара. */
   avatar: string | null;
   createdAt: string;
+  attachments?: AttachmentPayload[];
 };
 
 export type ChannelType = "TEXT" | "VOICE";
