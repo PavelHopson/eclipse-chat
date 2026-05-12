@@ -15,7 +15,9 @@ const EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "🔥", "🎉", "👀"
 
 const popover: CSSProperties = {
   position: "fixed",
-  background: "var(--ec-surface-2)",
+  background: "hsl(200 8% 12% / 0.85)",
+  backdropFilter: "saturate(180%) blur(14px)",
+  WebkitBackdropFilter: "saturate(180%) blur(14px)",
   border: "1px solid var(--ec-border-default)",
   borderRadius: "var(--ec-radius-md)",
   boxShadow: "var(--ec-shadow-md)",
@@ -24,6 +26,7 @@ const popover: CSSProperties = {
   gridTemplateColumns: "repeat(6, 1fr)",
   gap: 2,
   zIndex: 50,
+  animation: "ec-modal-zoom-in var(--ec-dur-fast) var(--ec-ease-out) both",
 };
 
 const cell: CSSProperties = {

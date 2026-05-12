@@ -13,13 +13,14 @@ const backdrop: CSSProperties = {
   position: "fixed",
   inset: 0,
   background: "rgba(0, 0, 0, 0.55)",
-  backdropFilter: "blur(2px)",
-  WebkitBackdropFilter: "blur(2px)",
+  backdropFilter: "saturate(140%) blur(8px)",
+  WebkitBackdropFilter: "saturate(140%) blur(8px)",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
   zIndex: 100,
   padding: "var(--ec-space-4)",
+  animation: "ec-fade-in var(--ec-dur-base) var(--ec-ease) both",
 };
 
 const closeBtn: CSSProperties = {
@@ -70,14 +71,18 @@ export function Modal({ title, onClose, children, footer, width = 440 }: Props) 
   }, [onClose]);
 
   const box: CSSProperties = {
-    background: "var(--ec-surface-1)",
+    background: "hsl(200 8% 9% / 0.92)",
+    backdropFilter: "saturate(180%) blur(20px)",
+    WebkitBackdropFilter: "saturate(180%) blur(20px)",
     boxShadow: "var(--ec-shadow-modal)",
     borderRadius: "var(--ec-radius-lg)",
+    border: "1px solid var(--ec-border-default)",
     width: `min(${width}px, 100%)`,
     maxHeight: "calc(100vh - 64px)",
     display: "flex",
     flexDirection: "column",
     overflow: "hidden",
+    animation: "ec-modal-zoom-in var(--ec-dur-base) var(--ec-ease-out) both",
   };
 
   return (

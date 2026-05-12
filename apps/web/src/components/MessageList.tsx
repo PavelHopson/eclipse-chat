@@ -475,6 +475,7 @@ export function MessageList({
                       <button
                         key={r.emoji}
                         type="button"
+                        className="ec-anim-reaction-pop"
                         onClick={() => void onToggleReaction?.(m.id, r.emoji)}
                         title={r.mine ? "Снять реакцию" : "Поддержать"}
                         style={{
@@ -489,7 +490,13 @@ export function MessageList({
                           cursor: "pointer",
                           fontSize: "0.8rem",
                           lineHeight: 1.4,
-                          transition: "background var(--ec-dur-fast) var(--ec-ease), border-color var(--ec-dur-fast) var(--ec-ease)",
+                          transition: "background var(--ec-dur-fast) var(--ec-ease), border-color var(--ec-dur-fast) var(--ec-ease), transform var(--ec-dur-fast) var(--ec-ease)",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = "translateY(-1px)";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = "translateY(0)";
                         }}
                       >
                         <span aria-hidden style={{ fontSize: "0.95rem" }}>{r.emoji}</span>

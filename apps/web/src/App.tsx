@@ -17,13 +17,17 @@ const loadingStyle: CSSProperties = {
 export function App() {
   const { view, user, error, login, register, logout, socketRev } = useAuth();
 
-  if (view === "loading") {
-    return <main style={loadingStyle}>Загрузка…</main>;
-  }
-
-  if (view === "auth" || !user) {
-    return <AuthPage error={error} onLogin={login} onRegister={register} />;
-  }
-
-  return <AppShell user={user} socketRev={socketRev} onLogout={logout} />;
+  return (
+    <>
+      {/* Ambient background layer — visible на всех view'ах через z-index -1 */}
+      <div className="ec-ambient" aria-hidden />
+      {view === "loading" ? (
+        <main style={loadingStyle}>Загрузка…</main>
+      ) : view === "auth" || !user ? (
+        <AuthPage error={error} onLogin={login} onRegister={register} />
+      ) : (
+        <AppShell user={user} socketRev={socketRev} onLogout={logout} />
+      )}
+    </>
+  );
 }

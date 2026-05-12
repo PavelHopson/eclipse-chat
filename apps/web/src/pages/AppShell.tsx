@@ -51,8 +51,6 @@ const brandMark: CSSProperties = {
   width: 22,
   height: 22,
   borderRadius: "var(--ec-radius-sm)",
-  background: "linear-gradient(135deg, hsl(195 60% 55%) 0%, hsl(160 45% 55%) 100%)",
-  boxShadow: "var(--ec-glow-active)",
 };
 
 const breadcrumbStyle: CSSProperties = {
@@ -238,7 +236,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             </button>
           )}
           <span style={brand}>
-            <span style={brandMark} aria-hidden />
+            <span className="ec-brand-mark" style={brandMark} aria-hidden />
             <span>Eclipse Chat</span>
           </span>
           {activeServer && (
