@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Avatar } from "../components/Avatar";
 import { ChannelList } from "../components/ChannelList";
 import { CreateServerModal } from "../components/CreateServerModal";
@@ -18,6 +18,7 @@ import { useChannels } from "../hooks/useChannels";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import { useMembers, type MemberRole } from "../hooks/useMembers";
 import { useMessages } from "../hooks/useMessages";
+import { useNotifications } from "../hooks/useNotifications";
 import { useProfile } from "../hooks/useProfile";
 import { useSearch } from "../hooks/useSearch";
 import { useServers } from "../hooks/useServers";
@@ -139,6 +140,13 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     deleteChannel,
     unread,
   } = useChannels(activeServerId, socket);
+
+  // Total unread по всем каналам — для tab title badge
+  const unreadTotal = Object.values(unread).reduce((sum, n) => sum + n, 0);
+  // Ref для selected channel — useNotifications читает на каждый message:new
+  const selectedChannelIdRef = useRef<string | null>(selectedChannelId);
+  selectedChannelIdRef.current = selectedChannelId;
+  const notif = useNotifications(socket, user.id, selectedChannelIdRef, unreadTotal);
 
   const {
     messages,
@@ -301,6 +309,49 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                 <circle cx="11" cy="11" r="8" />
                 <line x1="21" y1="21" x2="16.65" y2="16.65" />
               </svg>
+            </button>
+          )}
+          {notif.supported && (
+            <button
+              type="button"
+              onClick={() => {
+                if (notif.permission === "default") void notif.request();
+                else notif.toggle();
+              }}
+              title={
+                notif.permission === "denied"
+                  ? "Уведомления заблокированы в браузере"
+                  : notif.permission === "default"
+                  ? "Включить уведомления"
+                  : notif.enabled
+                  ? "Уведомления включены — выключить"
+                  : "Уведомления выключены — включить"
+              }
+              aria-label="Уведомления"
+              className="ec-btn ec-btn--ghost ec-btn--sm"
+              style={{
+                padding: "0.35rem 0.65rem",
+                color:
+                  notif.permission === "granted" && notif.enabled
+                    ? "var(--ec-accent)"
+                    : "var(--ec-text-muted)",
+                opacity: notif.permission === "denied" ? 0.45 : 1,
+              }}
+            >
+              {notif.permission === "granted" && notif.enabled ? (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                  <path d="M13.73 21a2 2 0 01-3.46 0" />
+                </svg>
+              ) : (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M13.73 21a2 2 0 01-3.46 0" />
+                  <path d="M18.63 13A17.89 17.89 0 0118 8" />
+                  <path d="M6.26 6.26A5.86 5.86 0 006 8c0 7-3 9-3 9h14" />
+                  <path d="M18 8a6 6 0 00-9.33-5" />
+                  <line x1="1" y1="1" x2="23" y2="23" />
+                </svg>
+              )}
             </button>
           )}
           {showMembers && (
