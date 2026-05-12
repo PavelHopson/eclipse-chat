@@ -9,6 +9,10 @@ type Props = {
   error: string | null;
   /** Drawer-mode close button. Передаётся на mobile/tablet — на desktop omitted. */
   onClose?: () => void;
+  /** Кто сейчас в каком VOICE-канале (userId → channelId или undefined). */
+  voiceChannelByUser?: Record<string, string>;
+  /** Лукап name канала по id — для tooltip. */
+  channelNameById?: (channelId: string) => string | undefined;
 };
 
 const wrap: CSSProperties = {
@@ -96,8 +100,24 @@ function roleBadgeClass(role: MemberRole): string {
   return "ec-badge";
 }
 
-function MemberRowView({ m }: { m: MemberRow }) {
+function MemberRowView({
+  m,
+  inVoiceChannel,
+  voiceChannelName,
+}: {
+  m: MemberRow;
+  inVoiceChannel: boolean;
+  voiceChannelName?: string;
+}) {
   const label = roleLabel(m.role);
+  const tooltip =
+    `${m.user.displayName} · ${m.role}` +
+    (m.online ? " · в сети" : "") +
+    (inVoiceChannel
+      ? voiceChannelName
+        ? ` · в голосовом «${voiceChannelName}»`
+        : " · в голосовом"
+      : "");
   return (
     <div
       style={rowStyle}
@@ -107,7 +127,7 @@ function MemberRowView({ m }: { m: MemberRow }) {
       onMouseLeave={(e) => {
         e.currentTarget.style.background = "transparent";
       }}
-      title={`${m.user.displayName} · ${m.role}${m.online ? " · в сети" : ""}`}
+      title={tooltip}
     >
       <span style={avatarWrap}>
         <Avatar url={m.user.avatar} name={m.user.displayName} size={28} />
@@ -135,9 +155,34 @@ function MemberRowView({ m }: { m: MemberRow }) {
           textOverflow: "ellipsis",
           whiteSpace: "nowrap",
           color: m.online ? "var(--ec-text)" : "var(--ec-text-muted)",
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 6,
         }}
       >
         {m.user.displayName}
+        {inVoiceChannel && (
+          <span
+            aria-label="В голосовом канале"
+            title="В голосовом канале"
+            style={{
+              display: "inline-grid",
+              placeItems: "center",
+              width: 14,
+              height: 14,
+              borderRadius: "var(--ec-radius-full)",
+              background: "hsl(195 60% 55% / 0.18)",
+              color: "var(--ec-accent)",
+              flexShrink: 0,
+              boxShadow: "0 0 6px hsl(195 60% 55% / 0.4)",
+            }}
+          >
+            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M11 5L6 9H2v6h4l5 4V5z" />
+              <path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07" />
+            </svg>
+          </span>
+        )}
       </span>
       {label && (
         <span className={roleBadgeClass(m.role)} style={{ fontSize: "0.6rem", padding: "0.05rem 0.35rem" }}>
@@ -148,7 +193,14 @@ function MemberRowView({ m }: { m: MemberRow }) {
   );
 }
 
-export function MemberList({ members, loading, error, onClose }: Props) {
+export function MemberList({
+  members,
+  loading,
+  error,
+  onClose,
+  voiceChannelByUser,
+  channelNameById,
+}: Props) {
   const { online, offline } = useMemo(() => {
     const sorted = sortMembers(members);
     return {
@@ -203,9 +255,17 @@ export function MemberList({ members, loading, error, onClose }: Props) {
                   </span>
                   <span style={{ color: "var(--ec-text-dim)", fontFeatureSettings: '"tnum"' }}>{online.length}</span>
                 </div>
-                {online.map((m) => (
-                  <MemberRowView key={m.id} m={m} />
-                ))}
+                {online.map((m) => {
+                  const vc = voiceChannelByUser?.[m.userId];
+                  return (
+                    <MemberRowView
+                      key={m.id}
+                      m={m}
+                      inVoiceChannel={Boolean(vc)}
+                      voiceChannelName={vc ? channelNameById?.(vc) : undefined}
+                    />
+                  );
+                })}
               </>
             )}
 
@@ -221,7 +281,11 @@ export function MemberList({ members, loading, error, onClose }: Props) {
                   <span style={{ color: "var(--ec-text-dim)", fontFeatureSettings: '"tnum"' }}>{offline.length}</span>
                 </div>
                 {offline.map((m) => (
-                  <MemberRowView key={m.id} m={m} />
+                  <MemberRowView
+                    key={m.id}
+                    m={m}
+                    inVoiceChannel={false}
+                  />
                 ))}
               </>
             )}

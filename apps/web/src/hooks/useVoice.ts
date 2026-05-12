@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { Socket } from "socket.io-client";
 import type {
   Room as RoomType,
   RemoteParticipant,
@@ -6,6 +7,7 @@ import type {
   RemoteTrackPublication,
 } from "livekit-client";
 import { ApiError, apiJson } from "../lib/api";
+import { SocketEvents } from "../lib/socket";
 import {
   noiseModeToConstraints,
   useVoiceSettings,
@@ -49,7 +51,7 @@ type RemoteTrackEntry = {
   participantIdentity: string;
 };
 
-export function useVoice() {
+export function useVoice(socket: Socket | null = null) {
   const {
     settings,
     setInputDevice,
@@ -193,9 +195,15 @@ export function useVoice() {
     refreshParticipants();
   }, [room, refreshParticipants]);
 
+  const socketRef = useRef<Socket | null>(socket);
+  socketRef.current = socket;
+
   const leave = useCallback(async () => {
     const r = roomRef.current;
     if (!r) return;
+    // Сначала уведомляем backend — это снимет нас из voice:state у других
+    // участников быстрее чем disconnect Socket.io.
+    socketRef.current?.emit(SocketEvents.VoiceLeave);
     try {
       await r.disconnect();
     } catch {
@@ -338,6 +346,21 @@ export function useVoice() {
         setRoom(r);
         setActiveChannelId(channelId);
         refreshParticipants();
+
+        // Уведомляем backend о join'е — другие участники сервера увидят
+        // тебя в эфире через voice:participant:joined event.
+        socketRef.current?.emit(
+          SocketEvents.VoiceJoin,
+          { channelId },
+          (err: string | null) => {
+            if (err) {
+              // Не critical — backend отказался регистрировать (но LiveKit
+              // подключение уже идёт). Логируем для диагностики.
+              console.warn("voice:join backend rejected:", err);
+            }
+          },
+        );
+
         return true;
       } catch (e) {
         if (e instanceof ApiError && e.status === 503) {

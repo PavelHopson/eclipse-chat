@@ -1,6 +1,8 @@
 import type { CSSProperties } from "react";
 import { useState } from "react";
+import { Avatar } from "./Avatar";
 import type { ChannelRow } from "../hooks/useChannels";
+import type { MemberRow } from "../hooks/useMembers";
 import type { ChannelType } from "../lib/socket";
 
 type Props = {
@@ -14,6 +16,10 @@ type Props = {
   onCreate: (name: string, type: ChannelType) => Promise<void>;
   onDelete: (id: string) => Promise<boolean>;
   onShowServerInfo: () => void;
+  /** Кто сейчас в каком VOICE-канале — для sticky-списка под каналом. */
+  voiceByChannel?: Record<string, string[]>;
+  /** Members активного сервера — для avatar+name lookup. */
+  members?: MemberRow[];
 };
 
 const wrap: CSSProperties = {
@@ -153,6 +159,8 @@ export function ChannelList({
   onCreate,
   onDelete,
   onShowServerInfo,
+  voiceByChannel,
+  members,
 }: Props) {
   const [draft, setDraft] = useState("");
   const [draftType, setDraftType] = useState<ChannelType>("TEXT");
@@ -174,6 +182,59 @@ export function ChannelList({
     } finally {
       setPendingDelete(null);
     }
+  };
+
+  // Sticky-список голосовых участников под voice-каналом (Discord-style)
+  const renderVoiceOccupants = (channelId: string) => {
+    const userIds = voiceByChannel?.[channelId];
+    if (!userIds || userIds.length === 0) return null;
+    return (
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 1,
+          marginLeft: "var(--ec-space-5)",
+          paddingLeft: "var(--ec-space-2)",
+          borderLeft: "1px dashed var(--ec-border-subtle)",
+          paddingTop: 2,
+          paddingBottom: 2,
+        }}
+      >
+        {userIds.map((userId) => {
+          const m = members?.find((mm) => mm.userId === userId);
+          const name = m?.user.displayName ?? userId;
+          const avatar = m?.user.avatar ?? null;
+          return (
+            <span
+              key={userId}
+              title={`${name} в эфире`}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "auto 1fr",
+                alignItems: "center",
+                gap: 6,
+                padding: "0.15rem 0.3rem",
+                borderRadius: "var(--ec-radius-xs)",
+                fontSize: "var(--ec-text-2xs)",
+                color: "var(--ec-text-muted)",
+              }}
+            >
+              <Avatar url={avatar} name={name} size={16} />
+              <span
+                style={{
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {name}
+              </span>
+            </span>
+          );
+        })}
+      </div>
+    );
   };
 
   const renderChannel = (c: ChannelRow) => {
@@ -331,7 +392,12 @@ export function ChannelList({
               <span>Голосовые</span>
               <span style={{ color: "var(--ec-text-dim)", fontFeatureSettings: '"tnum"' }}>{voiceChannels.length}</span>
             </div>
-            {voiceChannels.map(renderChannel)}
+            {voiceChannels.map((c) => (
+              <div key={c.id}>
+                {renderChannel(c)}
+                {renderVoiceOccupants(c.id)}
+              </div>
+            ))}
           </>
         )}
 

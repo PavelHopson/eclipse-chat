@@ -153,6 +153,25 @@ export type TypingStopPayload = {
   userId: string;
 };
 
+/**
+ * Voice presence — кто сейчас в каком VOICE-канале.
+ * Backend трекает по Socket.io connect/disconnect + явным 'voice:join'/'voice:leave'.
+ */
+export type VoiceParticipantJoinedPayload = {
+  userId: string;
+  voiceChannelId: string;
+  serverId: string;
+};
+
+export type VoiceParticipantLeftPayload = {
+  userId: string;
+  voiceChannelId: string;
+  serverId: string;
+};
+
+/** Snapshot — `Record<voiceChannelId, userId[]>`. Шлётся раз на connect. */
+export type VoiceStatePayload = Record<string, string[]>;
+
 export const SocketEvents = {
   ServerHello: "server:hello",
   MessageNew: "message:new",
@@ -172,4 +191,9 @@ export const SocketEvents = {
   PresenceUpdate: "presence:update",
   TypingStart: "typing:start",
   TypingStop: "typing:stop",
+  VoiceJoin: "voice:join",
+  VoiceLeave: "voice:leave",
+  VoiceState: "voice:state",
+  VoiceParticipantJoined: "voice:participant:joined",
+  VoiceParticipantLeft: "voice:participant:left",
 } as const;

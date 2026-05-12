@@ -14,6 +14,12 @@ import { registerVoiceRoutes } from "./routes/voice.js";
 import { setSocketIO } from "./realtime.js";
 import { registerSocketAuth } from "./auth/socketAuth.js";
 import { setPresenceIO, trackConnect, trackDisconnect } from "./presence.js";
+import {
+  setVoicePresenceIO,
+  snapshotForServer,
+  trackVoiceJoin,
+  trackVoiceLeave,
+} from "./voicePresence.js";
 import { db } from "./db.js";
 
 const port = Number(process.env.PORT) || 3001;
@@ -68,6 +74,7 @@ const io = new SocketServer(app.server, {
 });
 setSocketIO(io);
 setPresenceIO(io);
+setVoicePresenceIO(io);
 registerSocketAuth(io, resolvedJwtSecret);
 
 /**
@@ -90,6 +97,20 @@ async function subscribeToUserServers(
   return serverIds;
 }
 
+/** Снимок voice presence для всех channels на серверах user'а. */
+async function buildVoicePresenceSnapshot(userId: string): Promise<Record<string, string[]>> {
+  const memberships = await db.member.findMany({
+    where: { userId },
+    select: { serverId: true },
+  });
+  if (memberships.length === 0) return {};
+  const channels = await db.channel.findMany({
+    where: { serverId: { in: memberships.map((m) => m.serverId) }, type: "VOICE" },
+    select: { id: true },
+  });
+  return snapshotForServer(channels.map((c) => c.id));
+}
+
 io.on("connection", (socket) => {
   socket.emit("server:hello", { t: Date.now(), msg: "Eclipse Chat" });
 
@@ -98,6 +119,12 @@ io.on("connection", (socket) => {
     void subscribeToUserServers(socket, userId)
       .then((serverIds) => {
         trackConnect(userId, socket.id, serverIds);
+        // Сразу высылаем snapshot voice presence — чтобы UI у новоприбывшего
+        // не ждал событий, а сразу показал кто где в эфире.
+        return buildVoicePresenceSnapshot(userId);
+      })
+      .then((snap) => {
+        if (snap) socket.emit("voice:state", snap);
       })
       .catch((err) => {
         app.log.error({ err, userId }, "Failed to subscribe socket to user servers");
@@ -152,10 +179,53 @@ io.on("connection", (socket) => {
     });
   });
 
+  // ===== Voice presence =====
+  // Frontend emits 'voice:join' после успешного LiveKit Room.connect().
+  // Verify membership и channel.type === VOICE — иначе spoof'ить можно с лёгкостью.
+  socket.on(
+    "voice:join",
+    async (payload: { channelId: string }, cb?: (err: string | null) => void) => {
+      const uid = (socket.data as { userId: string | null | undefined }).userId;
+      if (!uid) {
+        cb?.("Unauthorized");
+        return;
+      }
+      const channelId = payload?.channelId;
+      if (typeof channelId !== "string" || !channelId) {
+        cb?.("Bad channelId");
+        return;
+      }
+      const channel = await db.channel.findUnique({
+        where: { id: channelId },
+        select: { id: true, type: true, serverId: true },
+      });
+      if (!channel || channel.type !== "VOICE") {
+        cb?.("Channel not found or not VOICE");
+        return;
+      }
+      const member = await db.member.findUnique({
+        where: { userId_serverId: { userId: uid, serverId: channel.serverId } },
+        select: { id: true },
+      });
+      if (!member) {
+        cb?.("Not a member");
+        return;
+      }
+      trackVoiceJoin(socket.id, uid, channel.id, channel.serverId);
+      cb?.(null);
+    },
+  );
+
+  socket.on("voice:leave", () => {
+    trackVoiceLeave(socket.id);
+  });
+
   socket.on("disconnect", () => {
     if (userId) {
       trackDisconnect(userId, socket.id);
     }
+    // Auto-cleanup voice presence (если socket crashed/closed без явного leave).
+    trackVoiceLeave(socket.id);
   });
 });
 

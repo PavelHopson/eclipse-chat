@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import { useEffect, useState } from "react";
+import type { Socket } from "socket.io-client";
 import { Avatar } from "./Avatar";
 import { VoiceSettingsModal } from "./VoiceSettingsModal";
 import { useVoice, type VoiceParticipant } from "../hooks/useVoice";
@@ -10,6 +11,8 @@ type Props = {
   channelId: string;
   channelName: string;
   members: MemberRow[];
+  /** Socket — нужен useVoice для emit voice:join/leave (presence broadcast). */
+  socket?: Socket | null;
 };
 
 const wrap: CSSProperties = {
@@ -194,8 +197,8 @@ function Tile({ p, lookupAvatar }: { p: VoiceParticipant; lookupAvatar: (identit
   );
 }
 
-export function VoiceRoom({ channelId, channelName, members }: Props) {
-  const v = useVoice();
+export function VoiceRoom({ channelId, channelName, members, socket = null }: Props) {
+  const v = useVoice(socket);
   const [showSettings, setShowSettings] = useState(false);
 
   // Helper для подбора avatar по identity (= userId)

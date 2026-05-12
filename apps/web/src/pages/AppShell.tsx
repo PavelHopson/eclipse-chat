@@ -26,6 +26,7 @@ import { useSearch } from "../hooks/useSearch";
 import { useServers } from "../hooks/useServers";
 import { useSocket } from "../hooks/useSocket";
 import { useVoiceHealth } from "../hooks/useVoiceHealth";
+import { useVoicePresence, reverseVoiceMap } from "../hooks/useVoicePresence";
 import type { PublicUser } from "../hooks/useAuth";
 
 type Props = {
@@ -235,6 +236,11 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   const isMobile = useMediaQuery("(max-width: 640px)");
   const isTabletOrSmaller = useMediaQuery("(max-width: 1024px)");
   const voiceHealth = useVoiceHealth();
+  const voiceByChannel = useVoicePresence(socket);
+  const voiceChannelByUser = reverseVoiceMap(voiceByChannel);
+  // Лукап name канала по id — для tooltip в MemberList «в голосовом «X»»
+  const channelNameById = (cid: string): string | undefined =>
+    channels.find((c) => c.id === cid)?.name;
 
   // Авто-закрытие drawer'ов при breakpoint upscale (например phone→desktop)
   useEffect(() => {
@@ -474,6 +480,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           }}
           onDelete={deleteChannel}
           onShowServerInfo={() => activeServer && setShowServerInfo(true)}
+          voiceByChannel={voiceByChannel}
+          members={members}
         />
       </div>
 
@@ -548,6 +556,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               channelId={selectedChannel.id}
               channelName={selectedChannel.name}
               members={members}
+              socket={socket}
             />
           ) : (
             <VoicePlaceholder channelName={selectedChannel.name} />
@@ -591,6 +600,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             loading={membersLoading}
             error={membersError}
             onClose={isTabletOrSmaller ? () => setMembersOpen(false) : undefined}
+            voiceChannelByUser={voiceChannelByUser}
+            channelNameById={channelNameById}
           />
         </div>
       )}
