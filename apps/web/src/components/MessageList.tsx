@@ -3,6 +3,7 @@ import { Fragment, useEffect, useRef, useState } from "react";
 import { Attachments } from "./Attachments";
 import { Avatar } from "./Avatar";
 import { EmojiPicker } from "./EmojiPicker";
+import { RichContent } from "./RichContent";
 import type { MessageRow } from "../hooks/useMessages";
 import type { MemberRole } from "../hooks/useMembers";
 
@@ -11,7 +12,10 @@ type Props = {
   emptyHint?: string;
   channelName?: string | null;
   currentUserId?: string;
+  currentUserName?: string;
   currentRole?: MemberRole | null;
+  /** Display names известных members активного сервера — для @mention detection. */
+  mentionNames?: string[];
   onRetry?: (messageId: string) => Promise<boolean>;
   onEdit?: (messageId: string, content: string) => Promise<boolean>;
   onDelete?: (messageId: string) => Promise<boolean>;
@@ -181,7 +185,9 @@ export function MessageList({
   emptyHint,
   channelName,
   currentUserId,
+  currentUserName,
   currentRole,
+  mentionNames = [],
   onRetry,
   onEdit,
   onDelete,
@@ -447,7 +453,11 @@ export function MessageList({
                           lineHeight: "var(--ec-leading-normal)",
                         }}
                       >
-                        {m.content}
+                        <RichContent
+                          content={m.content}
+                          mentionNames={mentionNames}
+                          currentUserName={currentUserName}
+                        />
                         {m.editedAt && (
                           <span
                             title={`Изменено ${new Date(m.editedAt).toLocaleString("ru-RU")}`}

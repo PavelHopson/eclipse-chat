@@ -520,7 +520,9 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               emptyHint={messagesLoading ? "Загрузка…" : undefined}
               channelName={selectedChannel.name}
               currentUserId={user.id}
+              currentUserName={headerName}
               currentRole={currentRole}
+              mentionNames={members.map((m) => m.user.displayName)}
               onRetry={(mid) => retryMessage(mid, senderForMessages)}
               onEdit={editMessage}
               onDelete={deleteMessage}
