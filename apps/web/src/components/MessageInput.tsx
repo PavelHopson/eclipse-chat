@@ -373,7 +373,7 @@ export function MessageInput({
         ...wrap,
         ...(dragOver ? { background: "var(--ec-accent-soft)" } : {}),
       }}
-      className="ec-composer-safe"
+      className="ec-composer ec-composer-safe"
     >
       {pending.length > 0 && (
         <div style={previewRow}>
@@ -437,7 +437,7 @@ export function MessageInput({
           {attachError}
         </p>
       )}
-      <div style={boxStyle}>
+      <div className="ec-composer-box" style={boxStyle}>
         <input
           ref={fileInputRef}
           type="file"
@@ -453,6 +453,7 @@ export function MessageInput({
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={disabled || pending.length >= MAX_PER_MESSAGE}
+          className="ec-composer-icon-btn"
           title="Прикрепить файлы"
           aria-label="Прикрепить файлы"
           style={iconBtn}
@@ -484,11 +485,13 @@ export function MessageInput({
           onBlur={() => setFocused(false)}
           placeholder={channelName ? `Сообщение в #${channelName}` : "Сообщение"}
           disabled={disabled}
+          className="ec-composer-textarea"
           style={textarea}
         />
         <button
           type="submit"
           disabled={!canSend}
+          className="ec-composer-send"
           style={{ ...sendBtn, opacity: canSend ? 1 : 0.4, cursor: canSend ? "pointer" : "default" }}
           title="Отправить (Enter)"
         >
@@ -496,7 +499,7 @@ export function MessageInput({
             "…"
           ) : (
             <>
-              <span>Отправить</span>
+              <span className="ec-composer-send-label">Отправить</span>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <line x1="22" y1="2" x2="11" y2="13" />
                 <polygon points="22 2 15 22 11 13 2 9 22 2" />
@@ -505,7 +508,7 @@ export function MessageInput({
           )}
         </button>
       </div>
-      <div style={hintRow}>
+      <div className="ec-composer-hints" style={hintRow}>
         <span><span style={kbd}>Enter</span> — отправить</span>
         <span style={{ color: "var(--ec-border-emphasis)" }}>·</span>
         <span><span style={kbd}>Shift+Enter</span> — новая строка</span>

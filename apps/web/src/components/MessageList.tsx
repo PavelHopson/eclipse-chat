@@ -286,7 +286,7 @@ export function MessageList({
 
   if (messages.length === 0) {
     return (
-      <div ref={containerRef} style={{ ...wrap, justifyContent: "center" }}>
+      <div ref={containerRef} className="ec-message-list" style={{ ...wrap, justifyContent: "center" }}>
         <div className="ec-empty">
           <div className="ec-empty-icon" aria-hidden>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -311,7 +311,7 @@ export function MessageList({
   const canMod = canModerate(currentRole);
 
   return (
-    <div ref={containerRef} style={wrap}>
+    <div ref={containerRef} className="ec-message-list" style={wrap}>
       {pickerFor && onToggleReaction && (
         <EmojiPicker
           anchorRect={pickerFor.rect}
@@ -360,6 +360,7 @@ export function MessageList({
               </div>
             )}
             <article
+              className="ec-message-row"
               style={{ ...rowStyle, opacity: m.pending ? 0.6 : 1 }}
               onMouseEnter={(e) => {
                 if (!isPinned) e.currentTarget.style.background = "var(--ec-surface-1)";
@@ -631,7 +632,7 @@ export function MessageList({
                 )}
               </div>
               {showActions && (
-                <div data-actions style={actionsBar}>
+                <div data-actions className="ec-message-actions" style={actionsBar}>
                   {onToggleReaction && (
                     <button
                       type="button"

@@ -22,7 +22,7 @@ const wrap: CSSProperties = {
   gap: "var(--ec-space-2)",
   padding: "var(--ec-space-2) var(--ec-space-3)",
   background:
-    "linear-gradient(180deg, hsl(195 44% 13% / 0.56), hsl(208 12% 9% / 0.96))",
+    "linear-gradient(180deg, hsl(32 60% 12% / 0.42), hsl(220 12% 7% / 0.96))",
   borderTop: "1px solid var(--ec-border-subtle)",
   borderBottom: "1px solid var(--ec-border-subtle)",
   color: "var(--ec-text)",
@@ -59,7 +59,7 @@ const statusPill: CSSProperties = {
   padding: "0.2rem 0.45rem",
   borderRadius: "var(--ec-radius-full)",
   border: "1px solid var(--ec-border-default)",
-  background: "hsl(195 60% 55% / 0.08)",
+  background: "var(--ec-accent-soft)",
   color: "var(--ec-text-muted)",
   fontSize: "var(--ec-text-2xs)",
   letterSpacing: "var(--ec-tracking-wide)",
@@ -77,7 +77,7 @@ export function VoiceMiniBar({ voice, channelName, onOpenVoiceChannel }: Props) 
           width: 220,
           height: 140,
           borderRadius: "50%",
-          background: "radial-gradient(circle, hsl(195 60% 55% / 0.16) 0%, transparent 70%)",
+          background: "radial-gradient(circle, hsl(32 100% 58% / 0.14) 0%, transparent 70%)",
           pointerEvents: "none",
         }}
       />
@@ -105,10 +105,10 @@ export function VoiceMiniBar({ voice, channelName, onOpenVoiceChannel }: Props) 
             width: 26,
             height: 26,
             borderRadius: "var(--ec-radius-full)",
-            background: "hsl(195 60% 55% / 0.18)",
+            background: "var(--ec-accent-soft)",
             color: "var(--ec-accent)",
             boxShadow: voice.pttActive
-              ? "0 0 0 1.5px var(--ec-accent), 0 0 12px hsl(195 60% 55% / 0.5)"
+              ? "0 0 0 1.5px var(--ec-accent), 0 0 12px hsl(32 100% 58% / 0.48)"
               : "none",
             transition: "box-shadow var(--ec-dur-fast) var(--ec-ease)",
           }}

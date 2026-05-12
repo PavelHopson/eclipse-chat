@@ -450,7 +450,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   return (
     <div className={shellClass}>
       <header className="ec-shell__top" style={topbar}>
-        <div style={{ display: "flex", alignItems: "center", minWidth: 0, gap: "var(--ec-space-2)" }}>
+        <div className="ec-shell__top-left" style={{ display: "flex", alignItems: "center", minWidth: 0, gap: "var(--ec-space-2)" }}>
           {isMobile && (
             <button
               type="button"
@@ -482,7 +482,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             title="Главная"
           >
             <span className="ec-brand-mark" style={brandMark} aria-hidden />
-            <span>Eclipse Chat</span>
+            <span className="ec-shell__brand-title">Eclipse Chat</span>
           </button>
           {homeOpen ? (
             <span className="ec-shell__breadcrumb" style={breadcrumbStyle}>
@@ -502,7 +502,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             </span>
           )}
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "var(--ec-space-2)" }}>
+        <div className="ec-shell__top-actions" style={{ display: "flex", alignItems: "center", gap: "var(--ec-space-2)" }}>
           <span
             className={isReady ? "ec-dot ec-dot--online" : "ec-dot ec-dot--offline"}
             title={isReady ? "Подключено" : "Соединение разорвано"}
@@ -589,6 +589,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               setStatusAnchor(rect);
             }}
             title="Статус и профиль"
+            className="ec-shell__user-chip"
             style={userChip}
             onMouseEnter={(e) => {
               e.currentTarget.style.background = "var(--ec-surface-2)";
@@ -623,7 +624,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                 }}
               />
             </span>
-            <span>{headerName}</span>
+            <span className="ec-shell__user-name">{headerName}</span>
           </button>
           <button
             type="button"
@@ -636,7 +637,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               <polyline points="16 17 21 12 16 7" />
               <line x1="21" y1="12" x2="9" y2="12" />
             </svg>
-            <span style={{ marginLeft: 4 }}>Выйти</span>
+            <span className="ec-shell__logout-label" style={{ marginLeft: 4 }}>Выйти</span>
           </button>
         </div>
       </header>
@@ -709,14 +710,14 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
       </div>
 
       <section className="ec-shell__chat" style={chatColumn}>
-        <div style={chatHeader}>
+        <div className="ec-chat-header" style={chatHeader}>
           {homeOpen ? (
-            <span style={chatTitle}>
+            <span className="ec-chat-title" style={chatTitle}>
               <span className="ec-brand-mark" style={{ ...brandMark, width: 18, height: 18 }} aria-hidden />
               Главная
             </span>
           ) : inDmMode && selectedDm ? (
-            <span style={chatTitle}>
+            <span className="ec-chat-title" style={chatTitle}>
               <Avatar url={selectedDm.other.avatar} name={selectedDm.other.displayName} size={22} />
               {selectedDm.other.displayName}
             </span>
@@ -725,7 +726,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               Выберите диалог
             </span>
           ) : selectedChannel ? (
-            <span style={chatTitle}>
+            <span className="ec-chat-title" style={chatTitle}>
               {selectedChannel.type === "VOICE" ? (
                 <svg
                   width="16"

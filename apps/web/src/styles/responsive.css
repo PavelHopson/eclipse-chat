@@ -17,6 +17,9 @@
 .ec-shell {
   display: grid;
   height: 100vh;
+  height: 100dvh;
+  min-width: 0;
+  overflow: hidden;
   background: var(--ec-bg);
   color: var(--ec-text);
   grid-template-rows: var(--ec-header-height) 1fr;
@@ -35,11 +38,26 @@
     "rail   channels chat";
 }
 
-.ec-shell__top      { grid-area: top; }
-.ec-shell__rail     { grid-area: rail; }
-.ec-shell__channels { grid-area: channels; }
-.ec-shell__chat     { grid-area: chat; min-width: 0; }
-.ec-shell__members  { grid-area: members; }
+.ec-shell__top      { grid-area: top; min-width: 0; }
+.ec-shell__rail     { grid-area: rail; min-width: 0; }
+.ec-shell__channels { grid-area: channels; min-width: 0; }
+.ec-shell__chat     { grid-area: chat; min-width: 0; min-height: 0; }
+.ec-shell__members  { grid-area: members; min-width: 0; min-height: 0; }
+
+.ec-shell__top-left,
+.ec-shell__top-actions {
+  min-width: 0;
+}
+
+.ec-shell__top-actions {
+  flex-shrink: 0;
+}
+
+.ec-shell__brand-title,
+.ec-shell__user-name,
+.ec-shell__logout-label {
+  white-space: nowrap;
+}
 
 /* ===== Tablet (640 - 1024px): members → drawer ============== */
 
@@ -69,6 +87,29 @@
   }
 }
 
+@media (max-width: 900px) {
+  .ec-shell__top {
+    padding: 0 var(--ec-space-3) !important;
+  }
+
+  .ec-shell__top-actions {
+    gap: var(--ec-space-1) !important;
+  }
+
+  .ec-shell__user-chip {
+    padding-right: var(--ec-space-1) !important;
+  }
+
+  .ec-shell__logout-label,
+  .ec-shell__user-name {
+    display: none;
+  }
+
+  .ec-chat-header {
+    padding: 0 var(--ec-space-4) !important;
+  }
+}
+
 /* ===== Mobile (< 640px): rail+channels → drawer, single column ==== */
 
 @media (max-width: 640px) {
@@ -79,11 +120,27 @@
       "top"
       "chat";
   }
+  .ec-shell__top {
+    gap: var(--ec-space-2) !important;
+    padding: 0 var(--ec-space-2) !important;
+  }
+
+  .ec-shell__brand-home {
+    padding: 0.22rem 0.42rem !important;
+  }
+
+  .ec-shell__brand-title {
+    max-width: 10ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   .ec-shell__rail,
   .ec-shell__channels {
     position: fixed;
     top: var(--ec-header-height);
     bottom: 0;
+    bottom: env(safe-area-inset-bottom, 0);
     z-index: var(--ec-z-sidebar);
     transform: translateX(-100%);
     transition: transform var(--ec-dur-base) var(--ec-ease);
@@ -96,7 +153,7 @@
   .ec-shell__channels {
     left: var(--ec-rail-width);
     width: calc(100vw - var(--ec-rail-width));
-    max-width: 320px;
+    max-width: min(320px, calc(100vw - var(--ec-rail-width)));
   }
   .ec-shell--nav-open .ec-shell__rail,
   .ec-shell--nav-open .ec-shell__channels {
@@ -176,6 +233,65 @@
   .ec-composer-safe {
     padding-bottom: max(var(--ec-space-4), env(safe-area-inset-bottom, 0));
   }
+  .ec-composer {
+    padding: var(--ec-space-2) var(--ec-space-3) max(var(--ec-space-3), env(safe-area-inset-bottom, 0)) !important;
+  }
+
+  .ec-composer-box {
+    grid-template-columns: 34px minmax(0, 1fr) 38px !important;
+    gap: var(--ec-space-1) !important;
+    padding: var(--ec-space-2) !important;
+    border-radius: var(--ec-radius-md) !important;
+  }
+
+  .ec-composer-icon-btn,
+  .ec-composer-send {
+    width: 34px !important;
+    height: 34px !important;
+    min-width: 34px !important;
+    padding: 0 !important;
+  }
+
+  .ec-composer-send-label,
+  .ec-composer-hints {
+    display: none !important;
+  }
+
+  .ec-composer-textarea {
+    font-size: var(--ec-text-sm) !important;
+    max-height: 132px !important;
+  }
+
+  .ec-message-list {
+    padding: var(--ec-space-3) var(--ec-space-2) var(--ec-space-1) !important;
+  }
+
+  .ec-message-row {
+    grid-template-columns: 34px minmax(0, 1fr) !important;
+    column-gap: var(--ec-space-2) !important;
+    padding: var(--ec-space-2) var(--ec-space-1) !important;
+  }
+
+  .ec-message-actions {
+    position: static !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    margin-top: var(--ec-space-2);
+    width: fit-content;
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  .ec-chat-header {
+    height: 44px !important;
+    padding: 0 var(--ec-space-3) !important;
+  }
+
+  .ec-chat-title {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
   /* MessageList на mobile — меньше horizontal padding */
   .ec-shell__chat .ec-empty {
     padding: var(--ec-space-4) var(--ec-space-3);
@@ -226,5 +342,22 @@
 
   .ec-voice-room__controls {
     padding: var(--ec-space-3) !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .ec-shell__brand-title {
+    display: none;
+  }
+
+  .ec-shell__drawer-btn,
+  .ec-btn--ghost.ec-btn--sm {
+    width: 34px;
+    height: 34px;
+    padding: 0 !important;
+  }
+
+  .ec-home-card {
+    grid-template-columns: 38px minmax(0, 1fr) !important;
   }
 }

@@ -2,9 +2,9 @@
  * Eclipse Chat — Design tokens
  * ============================
  *
- * Контракт «operator console»: глубокий зелёно-чёрный с лёгким cyan
- * undertone'ом, холодный sky-cyan accent, тонкие линии, точные глоу.
- * НЕ Discord-Blurple, НЕ геймерский неон, НЕ sci-fi HUD.
+ * Контракт «operator console»: глубокий void-black, тонкие линии,
+ * eclipse edge-light и редкий warm action accent. НЕ Discord-Blurple,
+ * НЕ геймерский неон, НЕ перегруженный sci-fi HUD.
  *
  * Все компоненты должны брать значения отсюда через `var(--name)`.
  * Inline-стили допустимы только для динамических значений (например
@@ -20,33 +20,33 @@
 
 :root {
   /* ---- Background tiers ---------------------------------------- */
-  --ec-bg:                  hsl(200 8% 6%);     /* #0d1014 */
-  --ec-surface-1:           hsl(200 8% 9%);     /* #14181c */
-  --ec-surface-2:           hsl(200 8% 12%);    /* #1c2025 */
-  --ec-surface-3:           hsl(200 9% 16%);    /* #242a30 */
-  --ec-surface-4:           hsl(200 11% 22%);   /* #313940 */
+  --ec-bg:                  hsl(220 18% 3%);     /* void black */
+  --ec-surface-1:           hsl(220 15% 6%);     /* steel */
+  --ec-surface-2:           hsl(220 14% 9%);     /* slate */
+  --ec-surface-3:           hsl(220 12% 13%);    /* ash */
+  --ec-surface-4:           hsl(220 12% 18%);
 
   /* Контрастный slate для inputs где нужен дополнительный depth */
-  --ec-input-bg:            hsl(200 9% 11%);
-  --ec-input-bg-focus:      hsl(200 10% 14%);
+  --ec-input-bg:            hsl(220 13% 8%);
+  --ec-input-bg-focus:      hsl(220 14% 11%);
 
   /* ---- Borders / dividers -------------------------------------- */
   --ec-border-subtle:       rgba(255, 255, 255, 0.05);
   --ec-border-default:      rgba(255, 255, 255, 0.09);
   --ec-border-emphasis:     rgba(255, 255, 255, 0.16);
-  --ec-border-accent:       hsl(195 60% 55% / 0.55);
+  --ec-border-accent:       hsl(32 100% 58% / 0.55);
 
-  /* ---- Accent (Eclipse «cool sky») ----------------------------- */
-  --ec-accent:              hsl(195 58% 60%);    /* #5db5d9 */
-  --ec-accent-hover:        hsl(195 65% 68%);    /* #7bc4e0 */
-  --ec-accent-soft:         hsl(195 58% 60% / 0.14);
+  /* ---- Accent (Eclipse Forge edge light) ----------------------- */
+  --ec-accent:              hsl(32 100% 58%);    /* eclipse orange */
+  --ec-accent-hover:        hsl(34 100% 64%);
+  --ec-accent-soft:         hsl(32 100% 58% / 0.14);
   --ec-accent-text:         hsl(0 0% 100%);
-  --ec-accent-glow:         0 0 0 1px hsl(195 60% 55% / 0.45),
-                            0 0 16px -2px hsl(195 60% 55% / 0.35);
+  --ec-accent-glow:         0 0 0 1px hsl(32 100% 58% / 0.44),
+                            0 0 18px -2px hsl(32 100% 58% / 0.38);
 
   /* Secondary accent для join/secondary CTA */
-  --ec-accent-2:            hsl(160 45% 55%);    /* #5dc8a3 — teal-mint */
-  --ec-accent-2-soft:       hsl(160 45% 55% / 0.14);
+  --ec-accent-2:            hsl(220 92% 68%);    /* halo blue */
+  --ec-accent-2-soft:       hsl(220 92% 68% / 0.14);
 
   /* ---- Text ---------------------------------------------------- */
   --ec-text:                hsl(210 12% 92%);   /* #e6e9ed */
@@ -57,7 +57,7 @@
 
   /* ---- Semantic ------------------------------------------------ */
   --ec-ok:                  hsl(150 45% 58%);   /* #5dc890 */
-  --ec-warn:                hsl(40 70% 60%);    /* #e0b350 */
+  --ec-warn:                hsl(40 86% 62%);    /* warm signal */
   --ec-danger:              hsl(0 70% 65%);     /* #e07070 */
   --ec-danger-soft:         hsl(0 70% 65% / 0.14);
 
@@ -87,7 +87,7 @@
   --ec-leading-normal:      1.45;
   --ec-leading-relaxed:     1.6;
 
-  --ec-tracking-tight:      -0.005em;
+  --ec-tracking-tight:      0;
   --ec-tracking-normal:     0;
   --ec-tracking-wide:       0.04em;
   --ec-tracking-caps:       0.08em;

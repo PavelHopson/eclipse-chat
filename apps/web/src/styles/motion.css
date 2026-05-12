@@ -66,13 +66,13 @@
 @keyframes ec-glow-breathe {
   0%, 100% {
     box-shadow:
-      0 0 0 1px hsl(195 60% 55% / 0.35),
-      0 0 16px -2px hsl(195 60% 55% / 0.25);
+      0 0 0 1px hsl(32 100% 58% / 0.35),
+      0 0 16px -2px hsl(32 100% 58% / 0.25);
   }
   50% {
     box-shadow:
-      0 0 0 1px hsl(195 60% 55% / 0.55),
-      0 0 24px -2px hsl(195 60% 55% / 0.45);
+      0 0 0 1px hsl(32 100% 58% / 0.55),
+      0 0 24px -2px hsl(32 100% 58% / 0.45);
   }
 }
 
@@ -234,12 +234,12 @@
   border-radius: 50%;
   overflow: hidden;
   background:
-    radial-gradient(circle at 50% 50%, hsl(195 60% 72%) 0%, hsl(195 60% 58%) 18%, hsl(198 48% 28%) 54%, hsl(210 16% 10%) 72%);
+    radial-gradient(circle at 50% 50%, hsl(32 100% 78%) 0%, hsl(32 100% 58%) 15%, hsl(220 24% 16%) 54%, hsl(220 18% 4%) 74%);
   background-size: 160% 160%;
   animation: ec-bg-shimmer 8s ease-in-out infinite;
   box-shadow:
-    0 0 0 1px hsl(195 60% 55% / 0.28),
-    0 0 18px -2px hsl(195 60% 55% / 0.3);
+    0 0 0 1px hsl(32 100% 58% / 0.28),
+    0 0 18px -2px hsl(32 100% 58% / 0.32);
 }
 
 .ec-brand-mark::before {
@@ -250,7 +250,7 @@
   background: hsl(212 18% 6%);
   box-shadow:
     inset 0 0 18px hsl(0 0% 0% / 0.55),
-    0 0 0 1px hsl(195 60% 55% / 0.12);
+    0 0 0 1px hsl(32 100% 58% / 0.14);
 }
 
 .ec-brand-mark::after {
@@ -260,8 +260,8 @@
   left: 8%;
   width: 84%;
   height: 1.5px;
-  background: linear-gradient(90deg, transparent, hsl(195 60% 82% / 0.9), transparent);
-  box-shadow: 0 0 12px hsl(195 60% 55% / 0.55);
+  background: linear-gradient(90deg, transparent, hsl(32 100% 78% / 0.95), transparent);
+  box-shadow: 0 0 12px hsl(32 100% 58% / 0.7);
   transform: translateY(-50%) rotate(-12deg);
 }
 

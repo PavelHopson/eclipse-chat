@@ -183,10 +183,10 @@ function MemberRowView({
               width: 14,
               height: 14,
               borderRadius: "var(--ec-radius-full)",
-              background: "hsl(195 60% 55% / 0.18)",
+              background: "var(--ec-accent-soft)",
               color: "var(--ec-accent)",
               flexShrink: 0,
-              boxShadow: "0 0 6px hsl(195 60% 55% / 0.4)",
+              boxShadow: "0 0 6px hsl(32 100% 58% / 0.38)",
             }}
           >
             <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -226,7 +226,7 @@ function MemberRowView({
             marginLeft: 4,
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = "var(--ec-accent-soft, hsl(195 60% 55% / 0.2))";
+            e.currentTarget.style.background = "var(--ec-accent-soft)";
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.background = "var(--ec-surface-1)";
