@@ -62,6 +62,7 @@ fi
 
 cat > "$DEPLOY_PATH/apps/server/.env" <<ENV
 DATABASE_URL="postgresql://eclipse_chat_user:${ECLIPSE_CHAT_DB_PASSWORD}@localhost:5432/eclipse_chat?schema=public"
+DIRECT_URL="postgresql://eclipse_chat_user:${ECLIPSE_CHAT_DB_PASSWORD}@localhost:5432/eclipse_chat?schema=public"
 JWT_SECRET="${ECLIPSE_CHAT_JWT_SECRET}"
 CORS_ORIGIN="https://app.star-crm.ru"
 PORT=3001
