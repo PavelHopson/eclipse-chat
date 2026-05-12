@@ -1,0 +1,202 @@
+/**
+ * Eclipse Chat — Responsive layout
+ *
+ * Breakpoints (мобильно-сначала):
+ *   < 640px   — mobile: drawer-based, single column для чата, off-canvas
+ *               server-rail+channels (left) и members (right)
+ *   640–1024  — tablet: server-rail + channels visible, members off-canvas
+ *   > 1024    — desktop: все 4 columns (server-rail + channels + chat + members)
+ *
+ * AppShell использует класс `.ec-shell` + `.ec-shell--has-server` (когда есть
+ * activeServer; влияет на наличие members-колонки). Drawers toggle'ятся через
+ * React state, открытые drawers переопределяют дефолтное `display:none` на mobile.
+ */
+
+/* ===== Layout root ========================================== */
+
+.ec-shell {
+  display: grid;
+  height: 100vh;
+  background: var(--ec-bg);
+  color: var(--ec-text);
+  grid-template-rows: var(--ec-header-height) 1fr;
+  /* default: desktop layout с members */
+  grid-template-columns: var(--ec-rail-width) var(--ec-sidebar-width) 1fr var(--ec-members-width);
+  grid-template-areas:
+    "top    top      top      top"
+    "rail   channels chat     members";
+}
+
+/* Без активного сервера — members колонка не нужна */
+.ec-shell:not(.ec-shell--has-server) {
+  grid-template-columns: var(--ec-rail-width) var(--ec-sidebar-width) 1fr;
+  grid-template-areas:
+    "top    top      top"
+    "rail   channels chat";
+}
+
+.ec-shell__top      { grid-area: top; }
+.ec-shell__rail     { grid-area: rail; }
+.ec-shell__channels { grid-area: channels; }
+.ec-shell__chat     { grid-area: chat; min-width: 0; }
+.ec-shell__members  { grid-area: members; }
+
+/* ===== Tablet (640 - 1024px): members → drawer ============== */
+
+@media (max-width: 1024px) {
+  .ec-shell,
+  .ec-shell.ec-shell--has-server {
+    grid-template-columns: var(--ec-rail-width) var(--ec-sidebar-width) 1fr;
+    grid-template-areas:
+      "top    top      top"
+      "rail   channels chat";
+  }
+  /* Members столбец рендерится — но в drawer (fixed) */
+  .ec-shell__members {
+    position: fixed;
+    top: var(--ec-header-height);
+    right: 0;
+    bottom: 0;
+    width: 280px;
+    max-width: 90vw;
+    z-index: var(--ec-z-sidebar);
+    transform: translateX(100%);
+    transition: transform var(--ec-dur-base) var(--ec-ease);
+    box-shadow: -20px 0 40px rgba(0, 0, 0, 0.4);
+  }
+  .ec-shell--members-open .ec-shell__members {
+    transform: translateX(0);
+  }
+}
+
+/* ===== Mobile (< 640px): rail+channels → drawer, single column ==== */
+
+@media (max-width: 640px) {
+  .ec-shell,
+  .ec-shell.ec-shell--has-server {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "top"
+      "chat";
+  }
+  .ec-shell__rail,
+  .ec-shell__channels {
+    position: fixed;
+    top: var(--ec-header-height);
+    bottom: 0;
+    z-index: var(--ec-z-sidebar);
+    transform: translateX(-100%);
+    transition: transform var(--ec-dur-base) var(--ec-ease);
+    box-shadow: 20px 0 40px rgba(0, 0, 0, 0.4);
+  }
+  .ec-shell__rail {
+    left: 0;
+    width: var(--ec-rail-width);
+  }
+  .ec-shell__channels {
+    left: var(--ec-rail-width);
+    width: calc(100vw - var(--ec-rail-width));
+    max-width: 320px;
+  }
+  .ec-shell--nav-open .ec-shell__rail,
+  .ec-shell--nav-open .ec-shell__channels {
+    transform: translateX(0);
+  }
+
+  /* Members на mobile: full-width drawer справа */
+  .ec-shell__members {
+    width: 90vw;
+    max-width: 320px;
+  }
+}
+
+/* ===== Drawer backdrop (mobile/tablet когда drawer open) === */
+
+.ec-shell__backdrop {
+  position: fixed;
+  inset: var(--ec-header-height) 0 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: calc(var(--ec-z-sidebar) - 1);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--ec-dur-base) var(--ec-ease);
+}
+
+@media (max-width: 1024px) {
+  .ec-shell--members-open .ec-shell__backdrop {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .ec-shell--nav-open .ec-shell__backdrop {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+/* ===== Header buttons (drawer toggles): hidden by default ==== */
+
+.ec-shell__drawer-btn {
+  display: none;
+  width: 36px;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--ec-radius-md);
+  color: var(--ec-text-muted);
+  cursor: pointer;
+  transition: background var(--ec-dur-fast) var(--ec-ease), color var(--ec-dur-fast) var(--ec-ease), border-color var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-shell__drawer-btn:hover {
+  background: var(--ec-surface-2);
+  color: var(--ec-text);
+  border-color: var(--ec-border-default);
+}
+
+@media (max-width: 1024px) {
+  .ec-shell__drawer-btn--members {
+    display: inline-flex;
+  }
+}
+
+@media (max-width: 640px) {
+  .ec-shell__drawer-btn--nav {
+    display: inline-flex;
+  }
+}
+
+/* ===== Composer / chat-area mobile fine-tuning ============== */
+
+@media (max-width: 640px) {
+  /* safe-area-inset для bottom (iOS PWA / standalone) */
+  .ec-composer-safe {
+    padding-bottom: max(var(--ec-space-4), env(safe-area-inset-bottom, 0));
+  }
+  /* MessageList на mobile — меньше horizontal padding */
+  .ec-shell__chat .ec-empty {
+    padding: var(--ec-space-4) var(--ec-space-3);
+  }
+}
+
+/* ===== Members drawer header (close button visible on mobile) === */
+
+.ec-shell__members-close {
+  display: none;
+}
+@media (max-width: 1024px) {
+  .ec-shell__members-close {
+    display: inline-flex;
+  }
+}
+
+/* ===== Hide breadcrumb на узких viewports — мешает ========== */
+
+@media (max-width: 720px) {
+  .ec-shell__breadcrumb {
+    display: none;
+  }
+}

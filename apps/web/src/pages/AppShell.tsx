@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Avatar } from "../components/Avatar";
 import { ChannelList } from "../components/ChannelList";
 import { CreateServerModal } from "../components/CreateServerModal";
@@ -13,6 +13,7 @@ import { ServerInfoModal } from "../components/ServerInfoModal";
 import { ServerList } from "../components/ServerList";
 import { VoicePlaceholder } from "../components/VoicePlaceholder";
 import { useChannels } from "../hooks/useChannels";
+import { useMediaQuery } from "../hooks/useMediaQuery";
 import { useMembers, type MemberRole } from "../hooks/useMembers";
 import { useMessages } from "../hooks/useMessages";
 import { useProfile } from "../hooks/useProfile";
@@ -26,21 +27,7 @@ type Props = {
   onLogout: () => Promise<void>;
 };
 
-function shellGrid(showMembers: boolean): CSSProperties {
-  return {
-    display: "grid",
-    gridTemplateColumns: showMembers
-      ? "var(--ec-rail-width) var(--ec-sidebar-width) 1fr 232px"
-      : "var(--ec-rail-width) var(--ec-sidebar-width) 1fr",
-    gridTemplateRows: "var(--ec-header-height) 1fr",
-    height: "100vh",
-    background: "var(--ec-bg)",
-    color: "var(--ec-text)",
-  };
-}
-
 const topbar: CSSProperties = {
-  gridColumn: "1 / -1",
   display: "flex",
   alignItems: "center",
   justifyContent: "space-between",
@@ -198,17 +185,64 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   const selectedChannel = channels.find((c) => c.id === selectedChannelId) ?? null;
 
   const showMembers = Boolean(activeServer);
+  const [navOpen, setNavOpen] = useState(false);
+  const [membersOpen, setMembersOpen] = useState(false);
+
+  const isMobile = useMediaQuery("(max-width: 640px)");
+  const isTabletOrSmaller = useMediaQuery("(max-width: 1024px)");
+
+  // Авто-закрытие drawer'ов при breakpoint upscale (например phone→desktop)
+  useEffect(() => {
+    if (!isMobile) setNavOpen(false);
+  }, [isMobile]);
+  useEffect(() => {
+    if (!isTabletOrSmaller) setMembersOpen(false);
+  }, [isTabletOrSmaller]);
+
+  // На mobile: select channel → закрыть nav drawer (UX как в Discord/Telegram)
+  const handleSelectChannel = (channelId: string) => {
+    setSelectedChannelId(channelId);
+    if (isMobile) setNavOpen(false);
+  };
+
+  const shellClass =
+    "ec-shell" +
+    (showMembers ? " ec-shell--has-server" : "") +
+    (navOpen ? " ec-shell--nav-open" : "") +
+    (membersOpen ? " ec-shell--members-open" : "");
 
   return (
-    <div style={shellGrid(showMembers)}>
-      <header style={topbar}>
-        <div style={{ display: "flex", alignItems: "center", minWidth: 0 }}>
+    <div className={shellClass}>
+      <header className="ec-shell__top" style={topbar}>
+        <div style={{ display: "flex", alignItems: "center", minWidth: 0, gap: "var(--ec-space-2)" }}>
+          {isMobile && (
+            <button
+              type="button"
+              className="ec-shell__drawer-btn ec-shell__drawer-btn--nav"
+              onClick={() => setNavOpen((v) => !v)}
+              aria-label={navOpen ? "Закрыть навигацию" : "Открыть навигацию"}
+              title="Серверы и каналы"
+            >
+              {navOpen ? (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              ) : (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <line x1="3" y1="12" x2="21" y2="12" />
+                  <line x1="3" y1="6" x2="21" y2="6" />
+                  <line x1="3" y1="18" x2="21" y2="18" />
+                </svg>
+              )}
+            </button>
+          )}
           <span style={brand}>
             <span style={brandMark} aria-hidden />
             <span>Eclipse Chat</span>
           </span>
           {activeServer && (
-            <span style={breadcrumbStyle}>
+            <span className="ec-shell__breadcrumb" style={breadcrumbStyle}>
               <span style={{ opacity: 0.5 }}>/</span>
               <span style={{ color: "var(--ec-text)", fontWeight: 500 }}>{activeServer.name}</span>
               {selectedChannel && (
@@ -226,6 +260,22 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             title={isReady ? "Подключено" : "Соединение разорвано"}
             aria-label={isReady ? "online" : "offline"}
           />
+          {showMembers && (
+            <button
+              type="button"
+              className="ec-shell__drawer-btn ec-shell__drawer-btn--members"
+              onClick={() => setMembersOpen((v) => !v)}
+              aria-label={membersOpen ? "Скрыть участников" : "Показать участников"}
+              title="Участники"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <path d="M23 21v-2a4 4 0 00-3-3.87" />
+                <path d="M16 3.13a4 4 0 010 7.75" />
+              </svg>
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setShowProfile(true)}
@@ -247,36 +297,58 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             type="button"
             onClick={() => void onLogout()}
             className="ec-btn ec-btn--ghost ec-btn--sm"
+            aria-label="Выйти"
           >
-            Выйти
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+            <span style={{ marginLeft: 4 }}>Выйти</span>
           </button>
         </div>
       </header>
 
-      <ServerList
-        servers={servers}
-        activeServerId={activeServerId}
-        onSelect={setActiveServerId}
-        onCreateRequest={() => setShowCreateServer(true)}
-        onJoinRequest={() => setShowJoinServer(true)}
-      />
-
-      <ChannelList
-        serverName={activeServer?.name ?? null}
-        serverRole={activeServer?.role ?? null}
-        inviteCode={activeServer?.inviteCode ?? null}
-        channels={channels}
-        unread={unread}
-        selectedChannelId={selectedChannelId}
-        onSelect={setSelectedChannelId}
-        onCreate={async (name, type) => {
-          await createChannel(name, type);
+      <div
+        className="ec-shell__backdrop"
+        onClick={() => {
+          setNavOpen(false);
+          setMembersOpen(false);
         }}
-        onDelete={deleteChannel}
-        onShowServerInfo={() => activeServer && setShowServerInfo(true)}
+        aria-hidden
       />
 
-      <section style={chatColumn}>
+      <div className="ec-shell__rail">
+        <ServerList
+          servers={servers}
+          activeServerId={activeServerId}
+          onSelect={(id) => {
+            setActiveServerId(id);
+            if (isMobile) setNavOpen(false);
+          }}
+          onCreateRequest={() => setShowCreateServer(true)}
+          onJoinRequest={() => setShowJoinServer(true)}
+        />
+      </div>
+
+      <div className="ec-shell__channels">
+        <ChannelList
+          serverName={activeServer?.name ?? null}
+          serverRole={activeServer?.role ?? null}
+          inviteCode={activeServer?.inviteCode ?? null}
+          channels={channels}
+          unread={unread}
+          selectedChannelId={selectedChannelId}
+          onSelect={handleSelectChannel}
+          onCreate={async (name, type) => {
+            await createChannel(name, type);
+          }}
+          onDelete={deleteChannel}
+          onShowServerInfo={() => activeServer && setShowServerInfo(true)}
+        />
+      </div>
+
+      <section className="ec-shell__chat" style={chatColumn}>
         <div style={chatHeader}>
           {selectedChannel ? (
             <span style={chatTitle}>
@@ -368,7 +440,16 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
         )}
       </section>
 
-      {showMembers && <MemberList members={members} loading={membersLoading} error={membersError} />}
+      {showMembers && (
+        <div className="ec-shell__members">
+          <MemberList
+            members={members}
+            loading={membersLoading}
+            error={membersError}
+            onClose={isTabletOrSmaller ? () => setMembersOpen(false) : undefined}
+          />
+        </div>
+      )}
 
       {showCreateServer && (
         <CreateServerModal

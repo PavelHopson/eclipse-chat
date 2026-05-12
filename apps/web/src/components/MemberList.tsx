@@ -7,10 +7,13 @@ type Props = {
   members: MemberRow[];
   loading: boolean;
   error: string | null;
+  /** Drawer-mode close button. Передаётся на mobile/tablet — на desktop omitted. */
+  onClose?: () => void;
 };
 
 const wrap: CSSProperties = {
-  width: 232,
+  width: "100%",
+  height: "100%",
   background: "var(--ec-surface-1)",
   borderLeft: "1px solid var(--ec-border-subtle)",
   display: "flex",
@@ -136,7 +139,7 @@ function MemberRowView({ m }: { m: MemberRow }) {
   );
 }
 
-export function MemberList({ members, loading, error }: Props) {
+export function MemberList({ members, loading, error, onClose }: Props) {
   const { online, offline } = useMemo(() => {
     const sorted = sortMembers(members);
     return {
@@ -151,9 +154,25 @@ export function MemberList({ members, loading, error }: Props) {
         <span style={{ fontSize: "var(--ec-text-sm)", fontWeight: 600, color: "var(--ec-text-strong)" }}>
           Участники
         </span>
-        <span style={{ fontSize: "var(--ec-text-2xs)", color: "var(--ec-text-dim)", fontFeatureSettings: '"tnum"' }}>
-          {online.length}/{members.length}
-        </span>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: "var(--ec-text-2xs)", color: "var(--ec-text-dim)", fontFeatureSettings: '"tnum"' }}>
+            {online.length}/{members.length}
+          </span>
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="ec-shell__members-close ec-btn ec-btn--ghost ec-btn--sm"
+              aria-label="Закрыть"
+              style={{ width: 28, height: 28, padding: 0 }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          )}
+        </div>
       </header>
 
       <div style={listScroll}>

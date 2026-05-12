@@ -140,7 +140,12 @@
   --ec-header-height:       52px;
   --ec-rail-width:          64px;
   --ec-sidebar-width:       232px;
+  --ec-members-width:       232px;
   --ec-composer-min-height: 44px;
+
+  /* ---- Breakpoints (только для документации; в CSS используем @media напрямую) */
+  --ec-bp-mobile:           640px;
+  --ec-bp-tablet:           1024px;
 }
 
 /* Respect user system preference */
