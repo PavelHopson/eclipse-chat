@@ -3,8 +3,14 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  // directUrl — для prisma migrate (он сам открывает несколько соединений
+  // и не любит pgbouncer/pooler). Используется только во время migrate.
+  // Для рантайма берётся `url` (= pooled DATABASE_URL).
+  // На non-pooled провайдерах (локальный PG, Railway, etc) можно оставить
+  // DIRECT_URL пустым в .env — Prisma fallback'нется на url.
+  directUrl = env("DIRECT_URL")
 }
 
 /// Пользователь — реальный человек. После v0.10 появится Bot, и Member
