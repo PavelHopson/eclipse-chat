@@ -55,10 +55,15 @@ const brand: CSSProperties = {
   display: "flex",
   alignItems: "center",
   gap: "var(--ec-space-2)",
+  padding: "0.28rem 0.58rem 0.28rem 0.32rem",
+  border: "1px solid transparent",
+  borderRadius: "var(--ec-radius-full)",
+  background: "transparent",
   fontSize: "var(--ec-text-sm)",
   fontWeight: 600,
   letterSpacing: "var(--ec-tracking-tight)",
   color: "var(--ec-text-strong)",
+  cursor: "pointer",
 };
 
 const brandMark: CSSProperties = {
@@ -127,6 +132,112 @@ const errorBanner: CSSProperties = {
   borderBottom: "1px solid var(--ec-border-subtle)",
   fontSize: "var(--ec-text-sm)",
 };
+
+function HomePanel({
+  userName,
+  serversCount,
+  dmCount,
+  unreadTotal,
+  activeServerName,
+  onOpenServer,
+  onOpenDms,
+  onCreateServer,
+  onJoinServer,
+}: {
+  userName: string;
+  serversCount: number;
+  dmCount: number;
+  unreadTotal: number;
+  activeServerName: string | null;
+  onOpenServer: () => void;
+  onOpenDms: () => void;
+  onCreateServer: () => void;
+  onJoinServer: () => void;
+}) {
+  return (
+    <div className="ec-home">
+      <section className="ec-home__hero">
+        <span className="ec-brand-mark ec-home__mark" aria-hidden />
+        <div className="ec-home__copy">
+          <span className="ec-home__eyebrow">Главная Eclipse Chat</span>
+          <h2>Центр связи, голосовых сессий и рабочих действий.</h2>
+          <p>
+            {userName}, отсюда можно быстро вернуться в сервер, открыть личные сообщения
+            или запустить новый контур команды.
+          </p>
+        </div>
+      </section>
+
+      <div className="ec-home__stats" aria-label="Сводка">
+        <div>
+          <strong>{serversCount}</strong>
+          <span>серверов</span>
+        </div>
+        <div>
+          <strong>{dmCount}</strong>
+          <span>диалогов</span>
+        </div>
+        <div>
+          <strong>{unreadTotal}</strong>
+          <span>непрочитано</span>
+        </div>
+      </div>
+
+      <div className="ec-home__actions">
+        <button type="button" className="ec-home-card is-primary" onClick={onOpenServer}>
+          <span className="ec-home-card__icon" aria-hidden>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="4" y="4" width="16" height="16" rx="4" />
+              <path d="M8 9h8M8 13h5M8 17h7" />
+            </svg>
+          </span>
+          <span>
+            <strong>{activeServerName ? `Открыть ${activeServerName}` : "Открыть сервер"}</strong>
+            <small>Вернуться в рабочие каналы и сообщения.</small>
+          </span>
+        </button>
+
+        <button type="button" className="ec-home-card" onClick={onOpenDms}>
+          <span className="ec-home-card__icon" aria-hidden>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              <path d="M8 9h8M8 13h5" />
+            </svg>
+          </span>
+          <span>
+            <strong>Личные сообщения</strong>
+            <small>Открыть DM-контур и быстрые диалоги.</small>
+          </span>
+        </button>
+
+        <button type="button" className="ec-home-card" onClick={onCreateServer}>
+          <span className="ec-home-card__icon" aria-hidden>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+          </span>
+          <span>
+            <strong>Создать сервер</strong>
+            <small>Собрать новый workspace под команду или проект.</small>
+          </span>
+        </button>
+
+        <button type="button" className="ec-home-card" onClick={onJoinServer}>
+          <span className="ec-home-card__icon" aria-hidden>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M10 13a5 5 0 0 0 7.07 0l2.12-2.12a5 5 0 0 0-7.07-7.07L11 4.93" />
+              <path d="M14 11a5 5 0 0 0-7.07 0L4.81 13.1a5 5 0 0 0 7.07 7.07L13 19.07" />
+            </svg>
+          </span>
+          <span>
+            <strong>Вступить по инвайту</strong>
+            <small>Подключиться к существующему контуру.</small>
+          </span>
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export function AppShell({ user, socketRev, onLogout }: Props) {
   const socket = useSocket(socketRev);
@@ -211,6 +322,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   const [showServerInfo, setShowServerInfo] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+  const [homeOpen, setHomeOpen] = useState(false);
 
   const {
     query: searchQuery,
@@ -265,7 +377,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
 
   const selectedChannel = channels.find((c) => c.id === selectedChannelId) ?? null;
 
-  const showMembers = Boolean(activeServer);
+  const showMembers = Boolean(activeServer) && !homeOpen;
   const [navOpen, setNavOpen] = useState(false);
   const [membersOpen, setMembersOpen] = useState(false);
 
@@ -304,8 +416,29 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
 
   // На mobile: select channel → закрыть nav drawer (UX как в Discord/Telegram)
   const handleSelectChannel = (channelId: string) => {
+    setHomeOpen(false);
     setSelectedChannelId(channelId);
     if (isMobile) setNavOpen(false);
+  };
+
+  const openHome = () => {
+    setHomeOpen(true);
+    setSelectedChannelId(null);
+    selectDm(null);
+    setNavOpen(false);
+    setMembersOpen(false);
+  };
+
+  const openActiveServer = () => {
+    setHomeOpen(false);
+    if (activeServerId == null && servers[0]) {
+      setActiveServerId(servers[0].id);
+      return;
+    }
+    const firstChannelId = channels.find((c) => c.type === "TEXT")?.id ?? channels[0]?.id ?? null;
+    if (firstChannelId) {
+      setSelectedChannelId(firstChannelId);
+    }
   };
 
   const shellClass =
@@ -340,11 +473,23 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               )}
             </button>
           )}
-          <span style={brand}>
+          <button
+            type="button"
+            className="ec-shell__brand-home"
+            style={brand}
+            onClick={openHome}
+            aria-label="Открыть главную страницу"
+            title="Главная"
+          >
             <span className="ec-brand-mark" style={brandMark} aria-hidden />
             <span>Eclipse Chat</span>
-          </span>
-          {activeServer && (
+          </button>
+          {homeOpen ? (
+            <span className="ec-shell__breadcrumb" style={breadcrumbStyle}>
+              <span style={{ opacity: 0.5 }}>/</span>
+              <span style={{ color: "var(--ec-text)", fontWeight: 500 }}>Главная</span>
+            </span>
+          ) : activeServer && (
             <span className="ec-shell__breadcrumb" style={breadcrumbStyle}>
               <span style={{ opacity: 0.5 }}>/</span>
               <span style={{ color: "var(--ec-text)", fontWeight: 500 }}>{activeServer.name}</span>
@@ -510,6 +655,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           servers={servers}
           activeServerId={activeServerId}
           onSelect={(id) => {
+            setHomeOpen(false);
             setActiveServerId(id);
             if (isMobile) setNavOpen(false);
           }}
@@ -518,6 +664,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           dmsActive={inDmMode}
           dmsUnread={dmConversations.reduce((sum, c) => sum + c.unread, 0)}
           onDmsRequest={() => {
+            setHomeOpen(false);
             setActiveServerId(null);
             if (isMobile) setNavOpen(false);
           }}
@@ -532,6 +679,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             error={dmError}
             selectedDmId={selectedDmId}
             onSelect={(id) => {
+              setHomeOpen(false);
               selectDm(id);
               if (isMobile) setNavOpen(false);
             }}
@@ -547,6 +695,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             selectedChannelId={selectedChannelId}
             onSelect={handleSelectChannel}
             onCreate={async (name, type) => {
+              setHomeOpen(false);
               await createChannel(name, type);
             }}
             onDelete={deleteChannel}
@@ -561,7 +710,12 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
 
       <section className="ec-shell__chat" style={chatColumn}>
         <div style={chatHeader}>
-          {inDmMode && selectedDm ? (
+          {homeOpen ? (
+            <span style={chatTitle}>
+              <span className="ec-brand-mark" style={{ ...brandMark, width: 18, height: 18 }} aria-hidden />
+              Главная
+            </span>
+          ) : inDmMode && selectedDm ? (
             <span style={chatTitle}>
               <Avatar url={selectedDm.other.avatar} name={selectedDm.other.displayName} size={22} />
               {selectedDm.other.displayName}
@@ -606,7 +760,23 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           </div>
         )}
 
-        {inDmMode ? (
+        {homeOpen ? (
+          <HomePanel
+            userName={headerName}
+            serversCount={servers.length}
+            dmCount={dmConversations.length}
+            unreadTotal={unreadTotal}
+            activeServerName={activeServer?.name ?? servers[0]?.name ?? null}
+            onOpenServer={openActiveServer}
+            onOpenDms={() => {
+              setHomeOpen(false);
+              setActiveServerId(null);
+              selectDm(null);
+            }}
+            onCreateServer={() => setShowCreateServer(true)}
+            onJoinServer={() => setShowJoinServer(true)}
+          />
+        ) : inDmMode ? (
           !selectedDm ? (
             <div className="ec-empty">
               <div className="ec-empty-icon" aria-hidden>
@@ -771,6 +941,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
         <CreateServerModal
           onClose={() => setShowCreateServer(false)}
           onCreate={async (name) => {
+            setHomeOpen(false);
             const res = await createServer({ name });
             return res != null;
           }}
@@ -781,6 +952,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
         <JoinServerModal
           onClose={() => setShowJoinServer(false)}
           onJoin={async (code) => {
+            setHomeOpen(false);
             const res = await joinByInvite(code);
             return res ? { alreadyMember: res.alreadyMember } : null;
           }}
@@ -830,9 +1002,10 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           results={searchResults}
           loading={searchLoading}
           error={searchError}
-          onSelect={(hit) => {
-            // Переключаемся на канал hit + закрываем overlay
-            setSelectedChannelId(hit.channel.id);
+            onSelect={(hit) => {
+              // Переключаемся на канал hit + закрываем overlay
+              setHomeOpen(false);
+              setSelectedChannelId(hit.channel.id);
             setShowSearch(false);
             // На mobile drawer должен открыться/закрыться — channel drawer закрыт уже
             searchReset();
