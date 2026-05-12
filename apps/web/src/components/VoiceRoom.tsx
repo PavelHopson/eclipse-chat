@@ -4,6 +4,7 @@ import type { Socket } from "socket.io-client";
 import { Avatar } from "./Avatar";
 import { ParticipantContextMenu } from "./ParticipantContextMenu";
 import { VoiceSettingsModal } from "./VoiceSettingsModal";
+import { VoiceStatsOverlay } from "./VoiceStatsOverlay";
 import { useVoice, type VoiceParticipant } from "../hooks/useVoice";
 import { keyCodeToLabel } from "../hooks/useAudioDevices";
 import type { MemberRow } from "../hooks/useMembers";
@@ -253,7 +254,20 @@ type ContextMenuState = {
 export function VoiceRoom({ channelId, channelName, members, socket = null }: Props) {
   const v = useVoice(socket);
   const [showSettings, setShowSettings] = useState(false);
+  const [showStats, setShowStats] = useState(false);
   const [ctxMenu, setCtxMenu] = useState<ContextMenuState | null>(null);
+
+  // Hotkey Ctrl+Shift+` toggles stats overlay (только пока we connected)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && e.code === "Backquote") {
+        e.preventDefault();
+        setShowStats((s) => !s);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   // Helper для подбора avatar по identity (= userId)
   const lookupAvatar = (identity: string): string | null => {
@@ -463,6 +477,19 @@ export function VoiceRoom({ channelId, channelName, members, socket = null }: Pr
             </div>
             <button
               type="button"
+              onClick={() => setShowStats((s) => !s)}
+              style={showStats ? controlBtnAccent : controlBtn}
+              title="Сетевая диагностика (Ctrl+Shift+`)"
+              aria-label="Сетевая диагностика"
+              aria-pressed={showStats}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M3 3v18h18" />
+                <path d="M7 14l3-3 4 4 6-7" />
+              </svg>
+            </button>
+            <button
+              type="button"
               onClick={() => setShowSettings(true)}
               style={controlBtn}
               title="Настройки голоса"
@@ -484,6 +511,14 @@ export function VoiceRoom({ channelId, channelName, members, socket = null }: Pr
       </div>
 
       {showSettings && <VoiceSettingsModal onClose={() => setShowSettings(false)} />}
+
+      {showStats && (
+        <VoiceStatsOverlay
+          participants={v.participants}
+          getRemoteStats={v.getRemoteStats}
+          onClose={() => setShowStats(false)}
+        />
+      )}
 
       {ctxMenu && (
         <ParticipantContextMenu
