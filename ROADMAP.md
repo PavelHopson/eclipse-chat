@@ -5,8 +5,9 @@
 > Любая фича, которой нет в текущем MVP, должна попасть сюда —
 > иначе она забудется.
 
-**Текущее состояние:** MVP с `auth + channels + messages + Socket.io` —
-описан в [README.md](README.md). Всё что ниже — будущее.
+**Текущее состояние:** v0.6.4 LIVE-готов в master. Eclipse Chat — full-featured
+self-hosted чат с real-time voice (LiveKit), feature-parity Discord core +
+voice quality controls. Деплой через Pavel SSH session.
 
 ---
 
@@ -476,6 +477,90 @@ sudo supervisorctl restart eclipse-chat-server
 
 ---
 
+## v0.6 — Voice quality & controls ✅ DONE (13.05.2026)
+
+> Реализовано после feedback'а Pavel'я с первого реального голосового звонка
+> через Eclipse Chat. «Сделать как лучший аналог Discord». 4 коммита подряд,
+> auto-join + шумодав + device picker + PTT + per-participant volume + voice
+> presence + stats overlay.
+
+**v0.6.1 — Settings foundation (commit `1f80a0a`):**
+- [x] `useVoiceSettings` — persistent localStorage layer для noise mode
+      (off/standard/aggressive), input/output device IDs, push-to-talk + key,
+      per-participant volumes + mutes, master output volume.
+- [x] `useAudioDevices` — enumeration + devicechange listener + setSinkId support
+      detection. Permission flow для появления label'ов.
+- [x] `useVoice` теперь применяет noise constraints + deviceId в
+      `setMicrophoneEnabled`, `switchActiveDevice("audiooutput", id)` для всех
+      audio-elements + future tracks. Per-participant volume × master в
+      `applyRemoteAudioState`. PTT — global keydown/up listener с
+      `isTypingTarget` guard (не активируем когда юзер печатает в input).
+- [x] `VoiceSettingsModal` — tri-state шумодав segmented control, device
+      pickers, master volume slider, PTT toggle + key recorder, live mic
+      test с VU-meter (16 bars FFT).
+- [x] `VoiceRoom` — **auto-join** при выборе VOICE канала (Discord-style,
+      без явной кнопки), inline master volume slider в controls, settings
+      cog button, PTT badge в header «PTT · Пробел», «ПЕРЕДАЁМ» state когда
+      зажата PTT клавиша. Mic кнопка disabled в PTT mode.
+
+**v0.6.2 — Voice presence (commit `fc81ae0`):**
+- [x] `apps/server/src/voicePresence.ts` — in-memory tracker
+      `socketId → {userId, channelId, serverId}` + reverse
+      `channelId → Set<userId>`. trackVoiceJoin/Leave с dedup'ом для
+      multiple tabs.
+- [x] Socket.io events: `voice:join` (zod-style verify membership + channel
+      type, ack callback), `voice:leave`, `voice:state` (snapshot для всех
+      voice-каналов user'ового сервера при connect), `voice:participant:joined`
+      / `voice:participant:left` — broadcast в `server:${serverId}` room.
+- [x] Disconnect handler: auto-cleanup voice presence (для crashed/closed
+      sockets без explicit leave).
+- [x] `useVoicePresence(socket)` hook — listen на snapshot + delta events,
+      Record<channelId, userId[]>. `reverseVoiceMap` helper для MemberList.
+- [x] `useVoice` принимает socket param и emit'ит `voice:join`/`leave` вокруг
+      LiveKit connect/disconnect.
+- [x] **MemberList**: mic-glyph badge у online-юзеров кто сейчас в voice +
+      tooltip «в голосовом «X»».
+- [x] **ChannelList**: sticky-список голосовых участников под каждым VOICE
+      channel (Avatar 16px + name + dashed-border-left). Видно даже если не
+      в этом канале — как Discord.
+
+**v0.6.3 — Per-participant volume + local mute (commit `70d7af6`):**
+- [x] `ParticipantContextMenu` — fixed-positioned popover, click-outside +
+      Escape close, viewport clamp. Avatar header + descriptive hint
+      «Только для тебя — другие участники не увидят».
+- [x] Volume slider 0..100% + reset-to-100% button + «Заглушить для меня» /
+      «Включить звук» toggle.
+- [x] `VoiceRoom Tile` — onContextMenu trigger (skip own tile), показывает
+      volume % suffix в имени если != 100%, полупрозрачность для
+      muted/quieter, dual mute overlay (mic-muted red bottom-right +
+      locally-muted gray bottom-left).
+- [x] Settings persistent — localStorage keeps это между сессиями.
+
+**v0.6.4 — Voice stats overlay (commit `c1f334d`):**
+- [x] `VoiceStatsOverlay` — 1Hz polling `v.getRemoteStats()` который читает
+      `RTCStatsReport` `inbound-rtp` + `remote-inbound-rtp` audio.
+- [x] Bitrate из `bytesReceived` delta между snapshots (× 8 / time / 1000 = kbps).
+- [x] Compact grid 5-column: name / ping / loss / kbps / jitter. Color-coded
+      ping (green<80ms, amber<200ms, red>=200ms).
+- [x] Toggle: hotkey `Ctrl+Shift+\`` или chart-icon button в controls bar
+      (становится accent при active). z-index 50 — под modals (100), над
+      контентом. Click-outside НЕ закрывает (HUD, не modal).
+
+**Bundle (cumulative):** 383→418 KB raw (+35), 109→119 KB gzip (+10). LiveKit
+chunk не тронут — все voice fixes на нашем стороне.
+
+**Что осознанно НЕ сделано (отложено в v0.6.5+ или backlog):**
+- Krisp/RNNoise DNN noise filter (placeholder «aggressive» mode уже есть в
+  UI — нужен только wire DNN lib). Free open-source RNNoise WASM — пет-вариант.
+- Mic gain (Web Audio GainNode перед publish track) — settings layer готов
+  (setMicGain существует), но требует рефакторинга publish flow (`createLocalAudioTrack`
+  + `publishTrack` вместо `setMicrophoneEnabled`).
+- Voice region selector — single-instance LiveKit пока хватает.
+- Soundboard / custom sound effects.
+- Screen share / video.
+
+---
+
 ## v0.5.5 — Message lifecycle (edit / delete / pin) ✅ DONE (12.05.2026)
 
 > Реализовано после v0.5.4 ship'а. Pavel сказал «продолжаем работу» —
@@ -551,6 +636,27 @@ cd apps/server && npx prisma migrate deploy && cd ..
 npm run build
 sudo supervisorctl restart eclipse-chat-server
 ```
+
+---
+
+## v0.6.5 — Voice quality v2 (Krisp DNN + mic gain) — backlog
+
+- [ ] **Krisp/RNNoise DNN noise filter** — wire поверх существующего
+      «aggressive» mode placeholder. Кандидаты:
+      - `@livekit/krisp-noise-filter` (требует LiveKit Cloud subscription
+        или специальная лицензия — проверить для self-host)
+      - `@jitsi/rnnoise-wasm` (Apache 2.0 free) — manual integration через
+        AudioWorklet
+      - Microsoft `noise-suppression-net` (MIT) — DNN, тяжелее
+- [ ] **Mic gain** через Web Audio GainNode перед publish. Требует
+      рефакторинг useVoice publish flow:
+      `getUserMedia → MediaStreamSource → GainNode → MediaStreamDestination
+      → new LocalAudioTrack(destination.stream.getAudioTracks()[0]) →
+      room.localParticipant.publishTrack(track)`.
+- [ ] **Mic sensitivity** (threshold gate) — открывать mic только когда
+      input level > X dB. Альтернатива PTT для шумной обстановки.
+- [ ] **Auto-disconnect timeout** — если в voice один сидишь больше N
+      минут — auto-leave (Discord по умолчанию 5 мин AFK).
 
 ---
 
