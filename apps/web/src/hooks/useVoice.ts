@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Socket } from "socket.io-client";
 import type {
+  LocalVideoTrack,
   Room as RoomType,
   RemoteParticipant,
   RemoteTrack,
   RemoteTrackPublication,
+  RemoteVideoTrack,
 } from "livekit-client";
 import { ApiError, apiJson } from "../lib/api";
 import { SocketEvents } from "../lib/socket";
@@ -33,6 +35,16 @@ export type VoiceParticipant = {
   isMicMuted: boolean;
   isDeafened: boolean;
   isLocal: boolean;
+};
+
+export type VoiceVisualTrack = {
+  id: string;
+  identity: string;
+  name: string;
+  source: "camera" | "screen";
+  isLocal: boolean;
+  isMuted: boolean;
+  track: LocalVideoTrack | RemoteVideoTrack;
 };
 
 type JoinResponse = {
@@ -76,6 +88,9 @@ export function useVoice(socket: Socket | null = null) {
   const [busy, setBusy] = useState(false);
   const [isMicMuted, setIsMicMuted] = useState(false);
   const [isDeafened, setIsDeafened] = useState(false);
+  const [isCameraEnabled, setIsCameraEnabled] = useState(false);
+  const [isScreenShareEnabled, setIsScreenShareEnabled] = useState(false);
+  const [visualTracks, setVisualTracks] = useState<VoiceVisualTrack[]>([]);
   /** True пока удерживается PTT hotkey. */
   const [pttActive, setPttActive] = useState(false);
 
@@ -194,9 +209,80 @@ export function useVoice(socket: Socket | null = null) {
     });
   }, [isDeafened]);
 
+  const refreshVisualTracks = useCallback(() => {
+    const r = roomRef.current;
+    if (!r) {
+      setVisualTracks([]);
+      setIsCameraEnabled(false);
+      setIsScreenShareEnabled(false);
+      return;
+    }
+
+    type VideoPublicationLike = {
+      trackSid: string;
+      source: string;
+      isMuted: boolean;
+      videoTrack?: LocalVideoTrack | RemoteVideoTrack;
+    };
+
+    const next: VoiceVisualTrack[] = [];
+    const pushTrack = (
+      publication: VideoPublicationLike,
+      identity: string,
+      name: string,
+      isLocal: boolean,
+    ) => {
+      if (publication.source !== "camera" && publication.source !== "screen_share") return;
+      if (!publication.videoTrack) return;
+      next.push({
+        id: publication.trackSid,
+        identity,
+        name,
+        source: publication.source === "screen_share" ? "screen" : "camera",
+        isLocal,
+        isMuted: publication.isMuted,
+        track: publication.videoTrack,
+      });
+    };
+
+    for (const pub of r.localParticipant.videoTrackPublications.values()) {
+      pushTrack(
+        pub as unknown as VideoPublicationLike,
+        r.localParticipant.identity,
+        r.localParticipant.name || r.localParticipant.identity,
+        true,
+      );
+    }
+
+    for (const participant of r.remoteParticipants.values()) {
+      for (const pub of participant.videoTrackPublications.values()) {
+        pushTrack(
+          pub as unknown as VideoPublicationLike,
+          participant.identity,
+          participant.name || participant.identity,
+          false,
+        );
+      }
+    }
+
+    next.sort((a, b) => {
+      if (a.source !== b.source) return a.source === "screen" ? -1 : 1;
+      if (a.isLocal !== b.isLocal) return a.isLocal ? -1 : 1;
+      return a.name.localeCompare(b.name, "ru");
+    });
+
+    setVisualTracks(next);
+    setIsCameraEnabled(r.localParticipant.isCameraEnabled);
+    setIsScreenShareEnabled(r.localParticipant.isScreenShareEnabled);
+  }, []);
+
   useEffect(() => {
     refreshParticipants();
   }, [room, refreshParticipants]);
+
+  useEffect(() => {
+    refreshVisualTracks();
+  }, [room, refreshVisualTracks]);
 
   const socketRef = useRef<Socket | null>(socket);
   socketRef.current = socket;
@@ -226,6 +312,9 @@ export function useVoice(socket: Socket | null = null) {
     setActiveChannelId(null);
     setState("disconnected");
     setParticipants([]);
+    setVisualTracks([]);
+    setIsCameraEnabled(false);
+    setIsScreenShareEnabled(false);
   }, []);
 
   const join = useCallback(
@@ -267,6 +356,12 @@ export function useVoice(socket: Socket | null = null) {
         r.on(RoomEvent.TrackUnmuted, refreshParticipants);
         r.on(RoomEvent.LocalTrackPublished, refreshParticipants);
         r.on(RoomEvent.LocalTrackUnpublished, refreshParticipants);
+        r.on(RoomEvent.ParticipantConnected, refreshVisualTracks);
+        r.on(RoomEvent.ParticipantDisconnected, refreshVisualTracks);
+        r.on(RoomEvent.TrackMuted, refreshVisualTracks);
+        r.on(RoomEvent.TrackUnmuted, refreshVisualTracks);
+        r.on(RoomEvent.LocalTrackPublished, refreshVisualTracks);
+        r.on(RoomEvent.LocalTrackUnpublished, refreshVisualTracks);
 
         r.on(RoomEvent.TrackSubscribed, (track: RemoteTrack, pub: RemoteTrackPublication, participant: RemoteParticipant) => {
           if (track.kind === Track.Kind.Audio) {
@@ -296,6 +391,7 @@ export function useVoice(socket: Socket | null = null) {
             remoteTracksRef.current.set(key, entry);
             applyRemoteAudioState(entry, isDeafened);
           }
+          refreshVisualTracks();
         });
         r.on(RoomEvent.TrackUnsubscribed, (track: RemoteTrack, pub: RemoteTrackPublication, participant: RemoteParticipant) => {
           if (track.kind === Track.Kind.Audio) {
@@ -307,6 +403,7 @@ export function useVoice(socket: Socket | null = null) {
               remoteTracksRef.current.delete(key);
             }
           }
+          refreshVisualTracks();
         });
 
         await r.connect(data.wsUrl, data.token);
@@ -351,6 +448,7 @@ export function useVoice(socket: Socket | null = null) {
         setRoom(r);
         setActiveChannelId(channelId);
         refreshParticipants();
+        refreshVisualTracks();
 
         // Уведомляем backend о join'е — другие участники сервера увидят
         // тебя в эфире через voice:participant:joined event.
@@ -378,7 +476,7 @@ export function useVoice(socket: Socket | null = null) {
         setBusy(false);
       }
     },
-    [activeChannelId, busy, leave, refreshParticipants, state, applyRemoteAudioState, isDeafened],
+    [activeChannelId, busy, leave, refreshParticipants, refreshVisualTracks, state, applyRemoteAudioState, isDeafened],
   );
 
   const toggleMic = useCallback(async () => {
@@ -406,6 +504,42 @@ export function useVoice(socket: Socket | null = null) {
     }
     refreshParticipants();
   }, [isDeafened, isMicMuted, toggleMic, refreshParticipants, applyRemoteAudioState]);
+
+  const toggleCamera = useCallback(async () => {
+    const r = roomRef.current;
+    if (!r) return;
+    try {
+      const next = !r.localParticipant.isCameraEnabled;
+      await r.localParticipant.setCameraEnabled(next);
+      refreshVisualTracks();
+    } catch (e) {
+      setError(
+        e instanceof Error && e.name === "NotAllowedError"
+          ? "Доступ к камере отклонён браузером"
+          : e instanceof Error
+          ? e.message
+          : "Не удалось переключить камеру",
+      );
+    }
+  }, [refreshVisualTracks]);
+
+  const toggleScreenShare = useCallback(async () => {
+    const r = roomRef.current;
+    if (!r) return;
+    try {
+      const next = !r.localParticipant.isScreenShareEnabled;
+      await r.localParticipant.setScreenShareEnabled(next);
+      refreshVisualTracks();
+    } catch (e) {
+      setError(
+        e instanceof Error && e.name === "NotAllowedError"
+          ? "Доступ к демонстрации экрана отклонён"
+          : e instanceof Error
+          ? e.message
+          : "Не удалось переключить демонстрацию экрана",
+      );
+    }
+  }, [refreshVisualTracks]);
 
   /**
    * Push-to-talk: глобально слушаем keydown/keyup. Активно только если
@@ -738,11 +872,16 @@ export function useVoice(socket: Socket | null = null) {
     busy,
     isMicMuted,
     isDeafened,
+    isCameraEnabled,
+    isScreenShareEnabled,
+    visualTracks,
     pttActive,
     join,
     leave,
     toggleMic,
     toggleDeafen,
+    toggleCamera,
+    toggleScreenShare,
     // settings passthrough — для UI элементов
     settings,
     setInputDevice,

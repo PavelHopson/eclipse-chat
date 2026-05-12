@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import { useEffect, useRef, useState } from "react";
+import { ActionQueueBar } from "../components/ActionQueueBar";
 import { Avatar } from "../components/Avatar";
 import { ChannelList } from "../components/ChannelList";
 import { CreateServerModal } from "../components/CreateServerModal";
@@ -22,7 +23,7 @@ import { useChannels } from "../hooks/useChannels";
 import { useDirectConversations } from "../hooks/useDirectConversations";
 import { useDirectMessages } from "../hooks/useDirectMessages";
 import { useMediaQuery } from "../hooks/useMediaQuery";
-import { useMembers, type MemberRole } from "../hooks/useMembers";
+import { useMembers, type MemberRole, type MemberRow } from "../hooks/useMembers";
 import { useMessages } from "../hooks/useMessages";
 import { useNotifications } from "../hooks/useNotifications";
 import { useProfile } from "../hooks/useProfile";
@@ -63,7 +64,9 @@ const brand: CSSProperties = {
 const brandMark: CSSProperties = {
   width: 22,
   height: 22,
-  borderRadius: "var(--ec-radius-sm)",
+  borderRadius: "50%",
+  position: "relative",
+  overflow: "hidden",
 };
 
 const breadcrumbStyle: CSSProperties = {
@@ -192,11 +195,14 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     pinMessage,
     unpinMessage,
     toggleReaction,
+    createActionItem,
+    updateActionItemStatus,
     typingUsers,
     emitTypingStart,
     emitTypingStop,
     error: messagesError,
     loading: messagesLoading,
+    openActionItems,
   } = useMessages(selectedChannelId, socket, user.id);
 
   const [showCreateServer, setShowCreateServer] = useState(false);
@@ -273,6 +279,16 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   const speakingUserIds = new Set(
     voice.participants.filter((p) => p.isSpeaking && !p.isMicMuted).map((p) => p.identity),
   );
+  const activeVoiceChannelName =
+    voice.activeChannelId != null
+      ? channels.find((c) => c.id === voice.activeChannelId)?.name ?? null
+      : null;
+  const selectedVoiceOccupants =
+    selectedChannel?.type === "VOICE"
+      ? (voiceByChannel[selectedChannel.id] ?? [])
+          .map((userId) => members.find((member) => member.userId === userId))
+          .filter((member): member is MemberRow => Boolean(member))
+      : [];
   // Лукап name канала по id — для tooltip в MemberList «в голосовом «X»»
   const channelNameById = (cid: string): string | undefined =>
     channels.find((c) => c.id === cid)?.name;
@@ -663,6 +679,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               channelId={selectedChannel.id}
               channelName={selectedChannel.name}
               members={members}
+              occupants={selectedVoiceOccupants}
+              activeVoiceChannelName={activeVoiceChannelName}
               voice={voice}
             />
           ) : (
@@ -686,6 +704,10 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                   }}
                 />
               )}
+            <ActionQueueBar
+              items={openActionItems}
+              onToggleStatus={updateActionItemStatus}
+            />
             <PinnedBar messages={messages} />
             <MessageList
               messages={messages}
@@ -701,6 +723,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               onPin={pinMessage}
               onUnpin={unpinMessage}
               onToggleReaction={toggleReaction}
+              onCreateAction={createActionItem}
+              onToggleActionStatus={updateActionItemStatus}
             />
             <TypingIndicator users={typingUsers} />
             <MessageInput

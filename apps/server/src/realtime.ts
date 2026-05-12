@@ -167,6 +167,62 @@ export function emitReactionRemoved(
   io?.to(`channel:${channelId}`).emit("reaction:removed", payload);
 }
 
+export function emitActionItemCreated(
+  channelId: string,
+  payload: {
+    id: string;
+    title: string;
+    type: "TASK" | "DECISION" | "FOLLOW_UP";
+    status: "OPEN" | "DONE";
+    serverId: string;
+    channelId: string;
+    sourceMessageId: string;
+    createdAt: string;
+    updatedAt: string;
+    dueAt: string | null;
+    createdBy: {
+      id: string;
+      displayName: string;
+      avatar: string | null;
+    };
+    assignee: {
+      id: string;
+      displayName: string;
+      avatar: string | null;
+    } | null;
+  },
+) {
+  io?.to(`channel:${channelId}`).emit("action:item:created", payload);
+}
+
+export function emitActionItemUpdated(
+  channelId: string,
+  payload: {
+    id: string;
+    title: string;
+    type: "TASK" | "DECISION" | "FOLLOW_UP";
+    status: "OPEN" | "DONE";
+    serverId: string;
+    channelId: string;
+    sourceMessageId: string;
+    createdAt: string;
+    updatedAt: string;
+    dueAt: string | null;
+    createdBy: {
+      id: string;
+      displayName: string;
+      avatar: string | null;
+    };
+    assignee: {
+      id: string;
+      displayName: string;
+      avatar: string | null;
+    } | null;
+  },
+) {
+  io?.to(`channel:${channelId}`).emit("action:item:updated", payload);
+}
+
 // ============================
 // Direct Messages (DM) events
 // ============================

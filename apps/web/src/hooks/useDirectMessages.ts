@@ -48,7 +48,7 @@ export function useDirectMessages(
       const data = await apiJson<{ conversationId: string; messages: MessageRow[] }>(
         `/api/dm/conversations/${encodeURIComponent(conversationId)}/messages?take=50`,
       );
-      setMessages(data.messages);
+      setMessages(data.messages.map((message) => ({ ...message, actionItems: message.actionItems ?? [] })));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load DM messages");
     } finally {
@@ -86,6 +86,7 @@ export function useDirectMessages(
           user: { id: p.userId, displayName: p.displayName, avatar: p.avatar },
           reactions: [],
           attachments: p.attachments ?? [],
+          actionItems: [],
         };
         if (pendingIdx !== -1) {
           const next = [...prev];
@@ -112,7 +113,7 @@ export function useDirectMessages(
       setMessages((prev) =>
         prev.map((m) =>
           m.id === p.messageId
-            ? { ...m, deletedAt: p.deletedAt, content: "", attachments: [] }
+            ? { ...m, deletedAt: p.deletedAt, content: "", attachments: [], actionItems: [] }
             : m,
         ),
       );
@@ -206,6 +207,7 @@ export function useDirectMessages(
         user: { id: sender.id, displayName: sender.displayName, avatar: sender.avatar },
         reactions: [],
         attachments: [],
+        actionItems: [],
         pending: true,
       };
       setMessages((prev) => [...prev, optimistic]);

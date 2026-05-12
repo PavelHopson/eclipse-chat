@@ -3,6 +3,9 @@ import type { Socket } from "socket.io-client";
 import { ApiError, api, apiJson } from "../lib/api";
 import {
   SocketEvents,
+  type ActionItemPayload,
+  type ActionItemStatus,
+  type ActionItemType,
   type AttachmentPayload,
   type MessageDeletedPayload,
   type MessageNewPayload,
@@ -27,6 +30,8 @@ export type ReactionAggregate = {
 };
 
 export type Attachment = AttachmentPayload;
+export type { ActionItemStatus, ActionItemType };
+export type MessageActionItem = ActionItemPayload;
 
 /** Payload, отправляемый клиентом на POST /messages. */
 export type AttachmentUpload = {
@@ -50,6 +55,8 @@ export type MessageRow = {
   reactions: ReactionAggregate[];
   /** Прикреплённые файлы, sorted by position asc. */
   attachments: Attachment[];
+  /** Action layer поверх сообщения: task / decision / follow-up. */
+  actionItems: MessageActionItem[];
   /** UI-only: оптимистично отправлено, ждём backend. */
   pending?: boolean;
   /** UI-only: backend вернул ошибку. */
@@ -64,12 +71,14 @@ function defaultLifecycle<T extends {
   pinnedAt?: string | null;
   reactions?: ReactionAggregate[];
   attachments?: Attachment[];
+  actionItems?: MessageActionItem[];
 }>(m: T): T & {
   editedAt: string | null;
   deletedAt: string | null;
   pinnedAt: string | null;
   reactions: ReactionAggregate[];
   attachments: Attachment[];
+  actionItems: MessageActionItem[];
 } {
   return {
     ...m,
@@ -78,7 +87,36 @@ function defaultLifecycle<T extends {
     pinnedAt: m.pinnedAt ?? null,
     reactions: m.reactions ?? [],
     attachments: m.attachments ?? [],
+    actionItems: m.actionItems ?? [],
   };
+}
+
+function sortMessageActionItems(items: MessageActionItem[]) {
+  return items.slice().sort((a, b) => {
+    if (a.status !== b.status) return a.status === "OPEN" ? -1 : 1;
+    return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+  });
+}
+
+function upsertMessageAction(messages: MessageRow[], action: MessageActionItem): MessageRow[] {
+  return messages.map((message) => {
+    if (message.id !== action.sourceMessageId) return message;
+    const next = message.actionItems.filter((item) => item.id !== action.id);
+    next.push(action);
+    return {
+      ...message,
+      actionItems: sortMessageActionItems(next),
+    };
+  });
+}
+
+function mergeOpenActions(items: MessageActionItem[], action: MessageActionItem): MessageActionItem[] {
+  if (action.status === "DONE") {
+    return items.filter((item) => item.id !== action.id);
+  }
+  const next = items.filter((item) => item.id !== action.id);
+  next.unshift(action);
+  return next.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
 export function useMessages(
@@ -90,6 +128,7 @@ export function useMessages(
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
+  const [openActionItems, setOpenActionItems] = useState<MessageActionItem[]>([]);
 
   const channelIdRef = useRef<string | null>(channelId);
   channelIdRef.current = channelId;
@@ -117,10 +156,12 @@ export function useMessages(
   useEffect(() => {
     if (!channelId) {
       setMessages([]);
+      setOpenActionItems([]);
       return;
     }
     let cancelled = false;
     setLoading(true);
+    setOpenActionItems([]);
     apiJson<{ messages: MessageRow[] }>(
       `/api/channels/${encodeURIComponent(channelId)}/messages?take=80`,
     )
@@ -138,6 +179,20 @@ export function useMessages(
       .finally(() => {
         if (!cancelled) {
           setLoading(false);
+        }
+      });
+
+    apiJson<{ actions: MessageActionItem[] }>(
+      `/api/channels/${encodeURIComponent(channelId)}/actions?status=OPEN`,
+    )
+      .then((data) => {
+        if (!cancelled) {
+          setOpenActionItems(data.actions);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setOpenActionItems([]);
         }
       });
 
@@ -172,6 +227,7 @@ export function useMessages(
           user: { id: p.userId, displayName: p.displayName, avatar: p.avatar },
           reactions: [],
           attachments: p.attachments ?? [],
+          actionItems: [],
         };
         if (optimisticIdx >= 0) {
           const next = prev.slice();
@@ -184,6 +240,26 @@ export function useMessages(
     socket.on(SocketEvents.MessageNew, handler);
     return () => {
       socket.off(SocketEvents.MessageNew, handler);
+    };
+  }, [socket]);
+
+  useEffect(() => {
+    if (!socket) return;
+    const onCreated = (payload: ActionItemPayload) => {
+      if (payload.channelId !== channelIdRef.current) return;
+      setMessages((prev) => upsertMessageAction(prev, payload));
+      setOpenActionItems((prev) => mergeOpenActions(prev, payload));
+    };
+    const onUpdated = (payload: ActionItemPayload) => {
+      if (payload.channelId !== channelIdRef.current) return;
+      setMessages((prev) => upsertMessageAction(prev, payload));
+      setOpenActionItems((prev) => mergeOpenActions(prev, payload));
+    };
+    socket.on(SocketEvents.ActionItemCreated, onCreated);
+    socket.on(SocketEvents.ActionItemUpdated, onUpdated);
+    return () => {
+      socket.off(SocketEvents.ActionItemCreated, onCreated);
+      socket.off(SocketEvents.ActionItemUpdated, onUpdated);
     };
   }, [socket]);
 
@@ -299,9 +375,12 @@ export function useMessages(
       if (p.channelId !== channelIdRef.current) return;
       setMessages((prev) =>
         prev.map((m) =>
-          m.id === p.messageId ? { ...m, content: "", deletedAt: p.deletedAt, pinnedAt: null } : m,
+          m.id === p.messageId
+            ? { ...m, content: "", deletedAt: p.deletedAt, pinnedAt: null, actionItems: [] }
+            : m,
         ),
       );
+      setOpenActionItems((prev) => prev.filter((item) => item.sourceMessageId !== p.messageId));
     };
     const onPinned = (p: MessagePinnedPayload) => {
       if (p.channelId !== channelIdRef.current) return;
@@ -363,6 +442,7 @@ export function useMessages(
         user: sender,
         reactions: [],
         attachments: optimisticAttachments,
+        actionItems: [],
         pending: true,
       };
       setMessages((prev) => [...prev, optimistic]);
@@ -526,8 +606,53 @@ export function useMessages(
     [messages, addReaction, removeReaction],
   );
 
+  const createActionItem = useCallback(
+    async (messageId: string, type: ActionItemType): Promise<boolean> => {
+      setError(null);
+      try {
+        const data = await apiJson<{ action: MessageActionItem }>(
+          `/api/messages/${encodeURIComponent(messageId)}/actions`,
+          {
+            method: "POST",
+            body: JSON.stringify({ type }),
+          },
+        );
+        setMessages((prev) => upsertMessageAction(prev, data.action));
+        setOpenActionItems((prev) => mergeOpenActions(prev, data.action));
+        return true;
+      } catch (e) {
+        setError(e instanceof ApiError ? e.message : "Не удалось создать action item");
+        return false;
+      }
+    },
+    [],
+  );
+
+  const updateActionItemStatus = useCallback(
+    async (actionId: string, status: ActionItemStatus): Promise<boolean> => {
+      setError(null);
+      try {
+        const data = await apiJson<{ action: MessageActionItem }>(
+          `/api/actions/${encodeURIComponent(actionId)}`,
+          {
+            method: "PATCH",
+            body: JSON.stringify({ status }),
+          },
+        );
+        setMessages((prev) => upsertMessageAction(prev, data.action));
+        setOpenActionItems((prev) => mergeOpenActions(prev, data.action));
+        return true;
+      } catch (e) {
+        setError(e instanceof ApiError ? e.message : "Не удалось обновить action item");
+        return false;
+      }
+    },
+    [],
+  );
+
   return {
     messages,
+    openActionItems,
     error,
     loading,
     sendMessage,
@@ -539,6 +664,8 @@ export function useMessages(
     addReaction,
     removeReaction,
     toggleReaction,
+    createActionItem,
+    updateActionItemStatus,
     typingUsers,
     emitTypingStart,
     emitTypingStop,

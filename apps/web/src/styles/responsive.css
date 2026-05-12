@@ -191,6 +191,14 @@
   .ec-shell__members-close {
     display: inline-flex;
   }
+
+  .ec-voice-room__hero {
+    grid-template-columns: 1fr !important;
+  }
+
+  .ec-voice-room__video-grid {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)) !important;
+  }
 }
 
 /* ===== Hide breadcrumb на узких viewports — мешает ========== */
@@ -198,5 +206,25 @@
 @media (max-width: 720px) {
   .ec-shell__breadcrumb {
     display: none;
+  }
+
+  .ec-voice-room__controls {
+    justify-content: flex-start !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .ec-voice-room__body {
+    padding: var(--ec-space-3) !important;
+    gap: var(--ec-space-3) !important;
+  }
+
+  .ec-voice-room__video-grid,
+  .ec-voice-room__audio-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .ec-voice-room__controls {
+    padding: var(--ec-space-3) !important;
   }
 }

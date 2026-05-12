@@ -39,6 +39,8 @@ model User {
   memberships      Member[]
   ownedServers     Server[]              @relation("ServerOwner")
   reactions        Reaction[]
+  createdActionItems ActionItem[]        @relation("ActionItemCreator")
+  assignedActionItems ActionItem[]       @relation("ActionItemAssignee")
   /// DM conversations где user — userA (нормализованная позиция, см. DirectConversation).
   dmsAsUserA       DirectConversation[]  @relation("DMUserA")
   /// DM conversations где user — userB.
@@ -81,6 +83,17 @@ enum UserStatus {
   INVISIBLE
 }
 
+enum ActionItemType {
+  TASK
+  DECISION
+  FOLLOW_UP
+}
+
+enum ActionItemStatus {
+  OPEN
+  DONE
+}
+
 /// Сервер — контейнер каналов и участников. Создатель автоматически
 /// становится Member с role = OWNER.
 model Server {
@@ -96,6 +109,7 @@ model Server {
 
   channels    Channel[]
   members     Member[]
+  actionItems ActionItem[]
 }
 
 /// Участие пользователя в сервере. Один user — один Member per server.
@@ -127,6 +141,7 @@ model Channel {
   createdAt DateTime    @default(now())
 
   messages  Message[]
+  actionItems ActionItem[]
 }
 
 /// Сообщение. Может принадлежать ЛИБО серверному каналу (`channelId`),
@@ -156,9 +171,38 @@ model Message {
   conversation   DirectConversation? @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   reactions Reaction[]
   attachments Attachment[]
+  actionItems ActionItem[]
 
   @@index([channelId, pinnedAt])
   @@index([conversationId, createdAt])
+}
+
+/// Action layer поверх сообщений. Сообщение можно превратить в task / decision / follow-up
+/// и дальше использовать это уже как сущность выполнения, а не просто как chat history.
+model ActionItem {
+  id              String           @id @default(cuid())
+  title           String
+  type            ActionItemType
+  status          ActionItemStatus @default(OPEN)
+  dueAt           DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  serverId        String
+  server          Server           @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  channelId       String
+  channel         Channel          @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  sourceMessageId String
+  sourceMessage   Message          @relation(fields: [sourceMessageId], references: [id], onDelete: Cascade)
+  createdByUserId String
+  createdBy       User             @relation("ActionItemCreator", fields: [createdByUserId], references: [id], onDelete: Cascade)
+  assigneeUserId  String?
+  assignee        User?            @relation("ActionItemAssignee", fields: [assigneeUserId], references: [id], onDelete: SetNull)
+
+  @@unique([sourceMessageId, type])
+  @@index([channelId, status, createdAt])
+  @@index([serverId, status, createdAt])
+  @@index([assigneeUserId, status])
 }
 
 /// 1-to-1 direct conversation между двумя users.

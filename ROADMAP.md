@@ -5,10 +5,10 @@
 > Любая фича, которой нет в текущем MVP, должна попасть сюда —
 > иначе она забудется.
 
-**Текущее состояние:** v0.8 DMs готовы в master. Eclipse Chat — full-featured
-self-hosted чат с real-time voice (LiveKit) + voice quality controls +
-1-to-1 DMs. Feature-parity Discord core + DM. Деплой через Pavel SSH session
-(требует prisma migrate deploy на этот раз — schema changed).
+**Текущее состояние:** v0.8.1. Eclipse Chat уже вышел за рамку «Discord core».
+Сейчас это self-hosted communication core с серверами, DM, voice/video/screen-share
+и первым execution layer поверх сообщений. Следующий фокус — довести action/memory/operator
+контур до уровня, где чат двигает работу вперёд, а не просто хранит разговор.
 
 ---
 
@@ -25,6 +25,33 @@ Eclipse Chat — это **не очередной Discord-клон**. Это:
 Этот фокус определяет приоритеты: модель «Server → Member → Channel
 → Message» важнее голоса/видео; bot-layer важнее красивых эмодзи;
 self-host важнее красивого облачного UX.
+
+---
+
+## v0.8.1 — Execution layer: message → task / decision / follow-up 🚧 IN PROGRESS
+
+**Цель:** сделать Eclipse Chat полезнее Discord не количеством кнопок, а тем,
+что важные сообщения больше не теряются в ленте. Любое сообщение должно
+уметь стать рабочим объектом.
+
+**Что уже делаем сейчас:**
+- [x] Prisma: `ActionItem` + `ActionItemType` (`TASK | DECISION | FOLLOW_UP`)
+      + `ActionItemStatus` (`OPEN | DONE`)
+- [x] Backend routes:
+      - `POST /api/messages/:id/actions`
+      - `PATCH /api/actions/:id`
+      - `GET /api/channels/:id/actions`
+- [x] Realtime events:
+      - `action:item:created`
+      - `action:item:updated`
+- [x] Message UI: hover-actions превращают сообщение в task / decision / follow-up
+- [x] Channel execution bar: компактная очередь открытых action items над лентой
+
+**Следующий слой после этого:**
+- [ ] assign / owner flow
+- [ ] due date / SLA hints
+- [ ] channel digest: open actions, recent decisions, unresolved follow-ups
+- [ ] server memory / AI summaries поверх action layer
 
 ---
 

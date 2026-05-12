@@ -4,7 +4,7 @@ import { Attachments } from "./Attachments";
 import { Avatar } from "./Avatar";
 import { EmojiPicker } from "./EmojiPicker";
 import { RichContent } from "./RichContent";
-import type { MessageRow } from "../hooks/useMessages";
+import type { ActionItemStatus, ActionItemType, MessageRow } from "../hooks/useMessages";
 import type { MemberRole } from "../hooks/useMembers";
 
 type Props = {
@@ -22,6 +22,8 @@ type Props = {
   onPin?: (messageId: string) => Promise<boolean>;
   onUnpin?: (messageId: string) => Promise<boolean>;
   onToggleReaction?: (messageId: string, emoji: string) => Promise<boolean>;
+  onCreateAction?: (messageId: string, type: ActionItemType) => Promise<boolean>;
+  onToggleActionStatus?: (actionId: string, nextStatus: ActionItemStatus) => Promise<boolean>;
 };
 
 const wrap: CSSProperties = {
@@ -137,6 +139,41 @@ const editAreaWrap: CSSProperties = {
   marginTop: 4,
 };
 
+function labelForAction(type: ActionItemType): string {
+  if (type === "DECISION") return "Decision";
+  if (type === "FOLLOW_UP") return "Follow-up";
+  return "Task";
+}
+
+function tintForAction(type: ActionItemType, status: ActionItemStatus) {
+  if (status === "DONE") {
+    return {
+      bg: "color-mix(in srgb, var(--ec-surface-3) 75%, transparent)",
+      fg: "var(--ec-text-dim)",
+      border: "var(--ec-border-subtle)",
+    };
+  }
+  if (type === "DECISION") {
+    return {
+      bg: "hsl(47 85% 58% / 0.12)",
+      fg: "hsl(47 88% 68%)",
+      border: "hsl(47 72% 46% / 0.32)",
+    };
+  }
+  if (type === "FOLLOW_UP") {
+    return {
+      bg: "hsl(170 70% 52% / 0.12)",
+      fg: "hsl(170 74% 64%)",
+      border: "hsl(170 64% 46% / 0.28)",
+    };
+  }
+  return {
+    bg: "var(--ec-accent-soft)",
+    fg: "var(--ec-accent)",
+    border: "var(--ec-border-accent)",
+  };
+}
+
 const editTextarea: CSSProperties = {
   width: "100%",
   minHeight: 60,
@@ -194,6 +231,8 @@ export function MessageList({
   onPin,
   onUnpin,
   onToggleReaction,
+  onCreateAction,
+  onToggleActionStatus,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -306,6 +345,8 @@ export function MessageList({
         const showDelete = showActions && Boolean((isMine || canMod) && onDelete);
         const showPin = showActions && Boolean(canMod && onPin && !isPinned);
         const showUnpin = showActions && Boolean(canMod && onUnpin && isPinned);
+        const canCreateActions = showActions && Boolean(onCreateAction);
+        const existingTypes = new Set(m.actionItems.map((item) => item.type));
 
         const rowStyle = isPinned ? rowPinned : grouped && !newDay ? rowGrouped : rowBase;
 
@@ -521,6 +562,73 @@ export function MessageList({
                     ))}
                   </div>
                 )}
+                {!isDeleted && !isEditing && m.actionItems.length > 0 && (
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
+                    {m.actionItems.map((action) => {
+                      const tint = tintForAction(action.type, action.status);
+                      return (
+                        <button
+                          key={action.id}
+                          type="button"
+                          title={
+                            action.status === "OPEN"
+                              ? "Отметить как выполненное"
+                              : "Вернуть в открытые action items"
+                          }
+                          onClick={() =>
+                            void onToggleActionStatus?.(
+                              action.id,
+                              action.status === "OPEN" ? "DONE" : "OPEN",
+                            )
+                          }
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 6,
+                            maxWidth: "100%",
+                            padding: "0.26rem 0.65rem",
+                            borderRadius: "var(--ec-radius-full)",
+                            border: `1px solid ${tint.border}`,
+                            background: tint.bg,
+                            color: tint.fg,
+                            cursor: onToggleActionStatus ? "pointer" : "default",
+                            transition: "transform var(--ec-dur-fast) var(--ec-ease)",
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.transform = "translateY(-1px)";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = "translateY(0)";
+                          }}
+                        >
+                          <span
+                            style={{
+                              fontSize: "var(--ec-text-2xs)",
+                              fontWeight: 700,
+                              letterSpacing: "var(--ec-tracking-wide)",
+                              textTransform: "uppercase",
+                              flexShrink: 0,
+                            }}
+                          >
+                            {labelForAction(action.type)}
+                          </span>
+                          <span
+                            style={{
+                              color: action.status === "DONE" ? "var(--ec-text-dim)" : "var(--ec-text)",
+                              fontSize: "var(--ec-text-xs)",
+                              whiteSpace: "nowrap",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              maxWidth: 240,
+                            }}
+                          >
+                            {action.title}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
               {showActions && (
                 <div data-actions style={actionsBar}>
@@ -596,6 +704,71 @@ export function MessageList({
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                         <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
                         <path d="M18.5 2.5a2.121 2.121 0 113 3L12 15l-4 1 1-4 9.5-9.5z" />
+                      </svg>
+                    </button>
+                  )}
+                  {canCreateActions && !existingTypes.has("TASK") && (
+                    <button
+                      type="button"
+                      style={actionBtn}
+                      aria-label="Сделать задачей"
+                      title="Сделать задачей"
+                      onClick={() => void onCreateAction?.(m.id, "TASK")}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = "var(--ec-surface-3)";
+                        e.currentTarget.style.color = "var(--ec-accent)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "transparent";
+                        e.currentTarget.style.color = "var(--ec-text-muted)";
+                      }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                        <path d="M9 11l3 3L22 4" />
+                        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+                      </svg>
+                    </button>
+                  )}
+                  {canCreateActions && !existingTypes.has("DECISION") && (
+                    <button
+                      type="button"
+                      style={actionBtn}
+                      aria-label="Зафиксировать решение"
+                      title="Зафиксировать решение"
+                      onClick={() => void onCreateAction?.(m.id, "DECISION")}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = "hsl(47 85% 58% / 0.12)";
+                        e.currentTarget.style.color = "var(--ec-warn)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "transparent";
+                        e.currentTarget.style.color = "var(--ec-text-muted)";
+                      }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                        <path d="M12 2l7 4v6c0 5-3.8 8.7-7 10-3.2-1.3-7-5-7-10V6l7-4z" />
+                      </svg>
+                    </button>
+                  )}
+                  {canCreateActions && !existingTypes.has("FOLLOW_UP") && (
+                    <button
+                      type="button"
+                      style={actionBtn}
+                      aria-label="Поставить follow-up"
+                      title="Поставить follow-up"
+                      onClick={() => void onCreateAction?.(m.id, "FOLLOW_UP")}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = "hsl(170 70% 52% / 0.12)";
+                        e.currentTarget.style.color = "var(--ec-ok)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "transparent";
+                        e.currentTarget.style.color = "var(--ec-text-muted)";
+                      }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                        <path d="M5 12h14" />
+                        <path d="M13 5l7 7-7 7" />
                       </svg>
                     </button>
                   )}

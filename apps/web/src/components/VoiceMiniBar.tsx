@@ -1,25 +1,34 @@
 import type { CSSProperties } from "react";
 import type { useVoice as useVoiceHook } from "../hooks/useVoice";
+import {
+  CameraLensIcon,
+  HeadsetIcon,
+  HangupIcon,
+  MicStateIcon,
+  ScreenShareIcon,
+  VoiceChannelIcon,
+} from "./icons/EclipseIcons";
 
 type Props = {
   voice: ReturnType<typeof useVoiceHook>;
   channelName: string;
-  /** Navigate назад в voice channel. */
   onOpenVoiceChannel: () => void;
 };
 
 const wrap: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "auto 1fr auto auto auto",
+  display: "flex",
+  flexWrap: "wrap",
   alignItems: "center",
   gap: "var(--ec-space-2)",
   padding: "var(--ec-space-2) var(--ec-space-3)",
   background:
-    "linear-gradient(180deg, hsl(195 40% 14% / 0.5), hsl(200 8% 10% / 0.95))",
+    "linear-gradient(180deg, hsl(195 44% 13% / 0.56), hsl(208 12% 9% / 0.96))",
   borderTop: "1px solid var(--ec-border-subtle)",
   borderBottom: "1px solid var(--ec-border-subtle)",
   color: "var(--ec-text)",
   fontSize: "var(--ec-text-sm)",
+  position: "relative",
+  overflow: "hidden",
 };
 
 const ctrlBtn: CSSProperties = {
@@ -32,7 +41,8 @@ const ctrlBtn: CSSProperties = {
   color: "var(--ec-text)",
   border: "1px solid var(--ec-border-default)",
   cursor: "pointer",
-  transition: "background var(--ec-dur-fast) var(--ec-ease), border-color var(--ec-dur-fast) var(--ec-ease)",
+  transition:
+    "background var(--ec-dur-fast) var(--ec-ease), border-color var(--ec-dur-fast) var(--ec-ease)",
 };
 
 const leaveBtn: CSSProperties = {
@@ -42,9 +52,36 @@ const leaveBtn: CSSProperties = {
   borderColor: "var(--ec-danger)",
 };
 
+const statusPill: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 5,
+  padding: "0.2rem 0.45rem",
+  borderRadius: "var(--ec-radius-full)",
+  border: "1px solid var(--ec-border-default)",
+  background: "hsl(195 60% 55% / 0.08)",
+  color: "var(--ec-text-muted)",
+  fontSize: "var(--ec-text-2xs)",
+  letterSpacing: "var(--ec-tracking-wide)",
+  textTransform: "uppercase",
+};
+
 export function VoiceMiniBar({ voice, channelName, onOpenVoiceChannel }: Props) {
   return (
     <div style={wrap} role="region" aria-label="Голосовое подключение">
+      <div
+        aria-hidden
+        style={{
+          position: "absolute",
+          inset: "-25% auto auto -4%",
+          width: 220,
+          height: 140,
+          borderRadius: "50%",
+          background: "radial-gradient(circle, hsl(195 60% 55% / 0.16) 0%, transparent 70%)",
+          pointerEvents: "none",
+        }}
+      />
+
       <button
         type="button"
         onClick={onOpenVoiceChannel}
@@ -57,6 +94,7 @@ export function VoiceMiniBar({ voice, channelName, onOpenVoiceChannel }: Props) 
           cursor: "pointer",
           padding: 0,
           color: "inherit",
+          minWidth: 0,
         }}
         title="Открыть голосовую комнату"
       >
@@ -75,56 +113,122 @@ export function VoiceMiniBar({ voice, channelName, onOpenVoiceChannel }: Props) 
             transition: "box-shadow var(--ec-dur-fast) var(--ec-ease)",
           }}
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <path d="M11 5L6 9H2v6h4l5 4V5z" />
-            <path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07" />
-          </svg>
+          <VoiceChannelIcon size={14} />
         </span>
-        <span>
+        <span style={{ minWidth: 0 }}>
           <span style={{ color: "var(--ec-text-strong)", fontWeight: 600 }}>В эфире</span>
-          <span style={{ color: "var(--ec-text-muted)", marginLeft: 6 }}>
+          <span
+            style={{
+              color: "var(--ec-text-muted)",
+              marginLeft: 6,
+              display: "inline-block",
+              maxWidth: 180,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              verticalAlign: "bottom",
+              whiteSpace: "nowrap",
+            }}
+          >
             #{channelName}
           </span>
         </span>
       </button>
-      <span style={{ color: "var(--ec-text-dim)", fontSize: "var(--ec-text-2xs)", justifySelf: "end" }}>
-        {voice.participants.length} в комнате
-      </span>
+
+      <div style={{ display: "inline-flex", alignItems: "center", gap: 6, marginLeft: "auto", flexWrap: "wrap" }}>
+        {voice.isCameraEnabled && (
+          <span style={statusPill} title="Камера включена">
+            <CameraLensIcon size={11} />
+            Cam
+          </span>
+        )}
+        {voice.isScreenShareEnabled && (
+          <span style={statusPill} title="Демонстрация экрана активна">
+            <ScreenShareIcon size={11} />
+            Share
+          </span>
+        )}
+        <span style={{ color: "var(--ec-text-dim)", fontSize: "var(--ec-text-2xs)" }}>
+          {voice.participants.length} в комнате
+        </span>
+      </div>
+
+      <button
+        type="button"
+        onClick={() => void voice.toggleCamera()}
+        style={
+          voice.isCameraEnabled
+            ? {
+                ...ctrlBtn,
+                background: "var(--ec-accent-soft)",
+                color: "var(--ec-accent)",
+                borderColor: "var(--ec-accent)",
+              }
+            : ctrlBtn
+        }
+        title={voice.isCameraEnabled ? "Выключить камеру" : "Включить камеру"}
+        aria-label={voice.isCameraEnabled ? "Выключить камеру" : "Включить камеру"}
+      >
+        <CameraLensIcon size={14} off={!voice.isCameraEnabled} />
+      </button>
+
       <button
         type="button"
         onClick={() => void voice.toggleMic()}
-        style={voice.isMicMuted ? { ...ctrlBtn, background: "var(--ec-danger-soft)", color: "var(--ec-danger)", borderColor: "var(--ec-danger)" } : ctrlBtn}
+        style={
+          voice.isMicMuted
+            ? {
+                ...ctrlBtn,
+                background: "var(--ec-danger-soft)",
+                color: "var(--ec-danger)",
+                borderColor: "var(--ec-danger)",
+              }
+            : ctrlBtn
+        }
         title={voice.isMicMuted ? "Включить микрофон" : "Выключить микрофон"}
         aria-label={voice.isMicMuted ? "Включить микрофон" : "Выключить микрофон"}
         disabled={voice.settings.micActivationMode === "push_to_talk"}
       >
-        {voice.isMicMuted ? (
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <line x1="1" y1="1" x2="23" y2="23" />
-            <path d="M9 9v3a3 3 0 005.12 2.12M15 9.34V4a3 3 0 00-5.94-.6" />
-            <path d="M17 16.95A7 7 0 015 12v-2m14 0v2a7 7 0 01-.11 1.23" />
-            <line x1="12" y1="19" x2="12" y2="23" />
-            <line x1="8" y1="23" x2="16" y2="23" />
-          </svg>
-        ) : (
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
-            <path d="M19 10v2a7 7 0 01-14 0v-2" />
-          </svg>
-        )}
+        <MicStateIcon size={14} off={voice.isMicMuted} />
       </button>
+
       <button
         type="button"
         onClick={() => voice.toggleDeafen()}
-        style={voice.isDeafened ? { ...ctrlBtn, background: "var(--ec-danger-soft)", color: "var(--ec-danger)", borderColor: "var(--ec-danger)" } : ctrlBtn}
+        style={
+          voice.isDeafened
+            ? {
+                ...ctrlBtn,
+                background: "var(--ec-danger-soft)",
+                color: "var(--ec-danger)",
+                borderColor: "var(--ec-danger)",
+              }
+            : ctrlBtn
+        }
         title={voice.isDeafened ? "Включить звук" : "Заглушить всех"}
         aria-label={voice.isDeafened ? "Включить звук" : "Заглушить всех"}
       >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-          <path d="M3 18v-6a9 9 0 0118 0v6" />
-          <path d="M21 19a2 2 0 01-2 2h-1a2 2 0 01-2-2v-3a2 2 0 012-2h3v5zM3 19a2 2 0 002 2h1a2 2 0 002-2v-3a2 2 0 00-2-2H3v5z" />
-        </svg>
+        <HeadsetIcon size={14} off={voice.isDeafened} />
       </button>
+
+      <button
+        type="button"
+        onClick={() => void voice.toggleScreenShare()}
+        style={
+          voice.isScreenShareEnabled
+            ? {
+                ...ctrlBtn,
+                background: "var(--ec-accent-soft)",
+                color: "var(--ec-accent)",
+                borderColor: "var(--ec-accent)",
+              }
+            : ctrlBtn
+        }
+        title={voice.isScreenShareEnabled ? "Остановить демонстрацию экрана" : "Начать демонстрацию экрана"}
+        aria-label={voice.isScreenShareEnabled ? "Остановить демонстрацию экрана" : "Начать демонстрацию экрана"}
+      >
+        <ScreenShareIcon size={14} off={!voice.isScreenShareEnabled} />
+      </button>
+
       <button
         type="button"
         onClick={() => void voice.leave()}
@@ -132,10 +236,7 @@ export function VoiceMiniBar({ voice, channelName, onOpenVoiceChannel }: Props) 
         title="Покинуть голосовой канал"
         aria-label="Покинуть голосовой канал"
       >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-          <path d="M10.68 13.31a16 16 0 003.41 2.6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7 2 2 0 011.72 2v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-3.07-3.07" />
-          <line x1="22" y1="2" x2="2" y2="22" />
-        </svg>
+        <HangupIcon size={14} />
       </button>
     </div>
   );

@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
+import { actionItemInclude, serializeActionItem } from "../actionItems.js";
 import { db } from "../db.js";
 import { emitMessageOnChannel } from "../realtime.js";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
@@ -169,6 +170,10 @@ export async function registerChannelRoutes(app: FastifyInstance) {
           },
           orderBy: { position: "asc" },
         },
+        actionItems: {
+          include: actionItemInclude,
+          orderBy: [{ status: "asc" }, { createdAt: "asc" }],
+        },
       },
     });
     // Опционально достаём currentUserId из jwt — без auth middleware
@@ -210,6 +215,7 @@ export async function registerChannelRoutes(app: FastifyInstance) {
             user: { id: m.user.id, displayName: m.user.displayName, avatar: m.user.avatar },
             reactions,
             attachments: m.deletedAt ? [] : m.attachments,
+            actionItems: m.deletedAt ? [] : m.actionItems.map(serializeActionItem),
           };
         }),
     };

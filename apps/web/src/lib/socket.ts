@@ -141,6 +141,32 @@ export type ReactionRemovedPayload = {
   userId: string;
 };
 
+export type ActionItemType = "TASK" | "DECISION" | "FOLLOW_UP";
+export type ActionItemStatus = "OPEN" | "DONE";
+
+export type ActionItemPayload = {
+  id: string;
+  title: string;
+  type: ActionItemType;
+  status: ActionItemStatus;
+  serverId: string;
+  channelId: string;
+  sourceMessageId: string;
+  createdAt: string;
+  updatedAt: string;
+  dueAt: string | null;
+  createdBy: {
+    id: string;
+    displayName: string;
+    avatar: string | null;
+  };
+  assignee: {
+    id: string;
+    displayName: string;
+    avatar: string | null;
+  } | null;
+};
+
 /** Совпадает с naming из docs/SOCKET_EVENTS.md и кода сервера. */
 export type TypingStartPayload = {
   channelId: string;
@@ -226,6 +252,8 @@ export const SocketEvents = {
   MessageUnpinned: "message:unpinned",
   ReactionAdded: "reaction:added",
   ReactionRemoved: "reaction:removed",
+  ActionItemCreated: "action:item:created",
+  ActionItemUpdated: "action:item:updated",
   ChannelCreated: "channel:created",
   ChannelDeleted: "channel:deleted",
   MemberJoined: "member:joined",
