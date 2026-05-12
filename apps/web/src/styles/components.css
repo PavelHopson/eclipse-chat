@@ -1315,3 +1315,432 @@
     flex-direction: column;
   }
 }
+
+/* ===== Auth brand board override ============================ */
+
+body:has(.ec-auth-page--board),
+#root:has(.ec-auth-page--board) {
+  overflow-x: clip;
+}
+
+@media (min-width: 1180px) {
+  body:has(.ec-auth-page--board)::before,
+  body:has(.ec-auth-page--board)::after {
+    content: "";
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    z-index: 3;
+    width: 56px;
+    pointer-events: none;
+  }
+
+  body:has(.ec-auth-page--board)::before {
+    left: 0;
+    background: linear-gradient(90deg, hsl(220 18% 3%), transparent);
+  }
+
+  body:has(.ec-auth-page--board)::after {
+    right: 0;
+    background: linear-gradient(270deg, hsl(220 18% 3%), transparent);
+  }
+}
+
+.ec-auth-page--board {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
+  overflow-y: auto;
+  padding: var(--ec-space-6);
+  background:
+    linear-gradient(90deg, hsl(0 0% 100% / 0.025) 1px, transparent 1px),
+    linear-gradient(hsl(0 0% 100% / 0.025) 1px, transparent 1px),
+    radial-gradient(ellipse 44rem 28rem at 10% 8%, hsl(32 100% 58% / 0.08), transparent 64%),
+    radial-gradient(ellipse 42rem 30rem at 82% 24%, hsl(194 72% 43% / 0.1), transparent 62%),
+    linear-gradient(135deg, hsl(220 18% 3%) 0%, hsl(218 18% 4%) 58%, hsl(222 18% 3%) 100%);
+  background-size: 56px 56px, 56px 56px, auto, auto, auto;
+}
+
+.ec-auth-page--board::before {
+  background:
+    linear-gradient(90deg, transparent 0 49.9%, hsl(0 0% 100% / 0.08) 50%, transparent 50.1% 100%),
+    linear-gradient(180deg, transparent 0 49.9%, hsl(0 0% 100% / 0.08) 50%, transparent 50.1% 100%);
+  background-size: 100% 1px, 1px 100%;
+  background-position: center 7.8rem, 1.5rem center;
+  mask-image: none;
+  -webkit-mask-image: none;
+  opacity: 0.48;
+}
+
+.ec-auth-page--board::after {
+  right: -6rem;
+  bottom: -16rem;
+  border-color: hsl(32 100% 58% / 0.16);
+  background:
+    radial-gradient(circle at 50% 50%, hsl(220 18% 3%) 0 30%, transparent 31%),
+    conic-gradient(from 248deg, transparent 0 8%, hsl(32 100% 62% / 0.72), transparent 24% 68%, hsl(194 72% 60% / 0.22), transparent 78% 100%);
+}
+
+.ec-auth-board-shell {
+  position: relative;
+  z-index: 1;
+  width: min(1040px, 100%);
+  margin: 0 auto;
+  overflow: hidden;
+  border: 1px solid hsl(0 0% 100% / 0.08);
+  background:
+    linear-gradient(180deg, hsl(220 16% 5% / 0.78), hsl(220 16% 4% / 0.72));
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.04),
+    0 34px 120px hsl(0 0% 0% / 0.36);
+}
+
+.ec-auth-board-shell::before,
+.ec-auth-board-shell::after {
+  content: "+";
+  position: absolute;
+  color: hsl(0 0% 100% / 0.44);
+  font-family: var(--ec-font-mono);
+  font-size: 1rem;
+}
+
+.ec-auth-board-shell::before {
+  top: -1.35rem;
+  left: -0.35rem;
+}
+
+.ec-auth-board-shell::after {
+  right: -0.35rem;
+  bottom: -1.35rem;
+}
+
+.ec-auth-board-head {
+  display: grid;
+  grid-template-columns: minmax(300px, 1.08fr) minmax(240px, 0.72fr) minmax(210px, 0.56fr);
+  min-height: 138px;
+  border-bottom: 1px solid hsl(0 0% 100% / 0.08);
+}
+
+.ec-auth-board-identity,
+.ec-auth-board-statement,
+.ec-auth-board-principles {
+  padding: var(--ec-space-6);
+}
+
+.ec-auth-board-identity {
+  display: flex;
+  align-items: center;
+  gap: var(--ec-space-5);
+}
+
+.ec-auth-board-mark {
+  width: 78px;
+  height: 78px;
+  flex: 0 0 78px;
+}
+
+.ec-auth-board-identity h1 {
+  margin: 0;
+  color: var(--ec-text-strong);
+  font-family: var(--ec-font-display);
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: var(--ec-tracking-brand);
+  line-height: 1.05;
+  text-transform: uppercase;
+}
+
+.ec-auth-board-identity p {
+  margin: var(--ec-space-2) 0 0;
+  color: var(--ec-text-muted);
+  font-family: var(--ec-font-display);
+  font-size: var(--ec-text-sm);
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+}
+
+.ec-auth-board-identity span:not(.ec-brand-mark) {
+  display: block;
+  margin-top: var(--ec-space-4);
+  color: var(--ec-accent);
+  font-family: var(--ec-font-mono);
+  font-size: var(--ec-text-2xs);
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+}
+
+.ec-auth-board-statement {
+  border-left: 1px solid hsl(0 0% 100% / 0.08);
+  border-right: 1px solid hsl(0 0% 100% / 0.08);
+}
+
+.ec-auth-board-statement span,
+.ec-auth-board-copy > span {
+  display: block;
+  margin-bottom: var(--ec-space-2);
+  color: var(--ec-text-strong);
+  font-family: var(--ec-font-mono);
+  font-size: var(--ec-text-2xs);
+  font-weight: 800;
+  letter-spacing: var(--ec-tracking-caps);
+  text-transform: uppercase;
+}
+
+.ec-auth-board-statement p {
+  max-width: 36ch;
+  margin: 0;
+  color: var(--ec-text-muted);
+  font-size: var(--ec-text-sm);
+  line-height: 1.7;
+}
+
+.ec-auth-board-principles {
+  display: grid;
+  gap: var(--ec-space-3);
+}
+
+.ec-auth-board-principles div {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  column-gap: var(--ec-space-3);
+  align-items: start;
+}
+
+.ec-auth-board-principles div > span {
+  grid-row: span 2;
+  color: var(--ec-text-dim);
+}
+
+.ec-auth-board-principles strong {
+  color: var(--ec-text-strong);
+  font-family: var(--ec-font-mono);
+  font-size: var(--ec-text-2xs);
+  letter-spacing: var(--ec-tracking-caps);
+  text-transform: uppercase;
+}
+
+.ec-auth-board-principles small {
+  color: var(--ec-text-muted);
+  font-size: var(--ec-text-xs);
+}
+
+.ec-auth-board-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 334px);
+  border-bottom: 1px solid hsl(0 0% 100% / 0.08);
+}
+
+.ec-auth-board-hero {
+  min-width: 0;
+  padding: var(--ec-space-6);
+}
+
+.ec-auth-board-copy {
+  display: grid;
+  gap: var(--ec-space-3);
+  max-width: 680px;
+  margin-bottom: var(--ec-space-5);
+}
+
+.ec-auth-board-copy > span {
+  color: var(--ec-accent);
+}
+
+.ec-auth-board-copy h2 {
+  margin: 0;
+  max-width: 15ch;
+  color: var(--ec-text-strong);
+  font-family: var(--ec-font-display);
+  font-size: clamp(2.55rem, 5vw, 3.08rem);
+  font-weight: 700;
+  line-height: 0.95;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ec-auth-board-copy p {
+  max-width: 58ch;
+  margin: 0;
+  color: var(--ec-text-muted);
+  line-height: 1.7;
+}
+
+.ec-auth-board-feature-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--ec-space-3);
+  margin-top: var(--ec-space-4);
+}
+
+.ec-auth-page--board .ec-auth-feature-card {
+  min-height: 136px;
+  border-color: hsl(0 0% 100% / 0.08);
+  background:
+    linear-gradient(180deg, hsl(220 14% 8% / 0.86), hsl(220 14% 5% / 0.78)),
+    radial-gradient(circle at 100% 0%, hsl(32 100% 58% / 0.08), transparent 42%);
+}
+
+.ec-auth-page--board .ec-auth-feature-icon {
+  border-color: hsl(32 100% 58% / 0.2);
+  background: hsl(32 100% 58% / 0.08);
+  color: var(--ec-accent);
+}
+
+.ec-auth-board-login {
+  align-self: stretch;
+  min-width: 0;
+  border-width: 0 0 0 1px;
+  border-color: hsl(0 0% 100% / 0.08);
+  border-radius: 0;
+  background:
+    radial-gradient(circle at 100% 0%, hsl(194 72% 46% / 0.12), transparent 38%),
+    linear-gradient(180deg, hsl(220 16% 7% / 0.98), hsl(220 16% 4% / 0.98));
+  box-shadow: none;
+}
+
+.ec-auth-page--board .ec-auth-tabs button.is-active {
+  background: hsl(194 46% 18% / 0.72);
+  box-shadow: inset 0 0 0 1px hsl(194 72% 60% / 0.16);
+}
+
+.ec-auth-page--board .ec-auth-preview {
+  border-color: hsl(0 0% 100% / 0.1);
+  border-radius: var(--ec-radius-md);
+  background:
+    radial-gradient(circle at 88% 0%, hsl(32 100% 58% / 0.11), transparent 36%),
+    radial-gradient(circle at 100% 68%, hsl(194 72% 46% / 0.1), transparent 42%),
+    linear-gradient(180deg, hsl(220 16% 8% / 0.95), hsl(220 16% 4% / 0.96));
+  animation: none;
+}
+
+.ec-auth-page--board .ec-auth-preview__title,
+.ec-auth-page--board .ec-auth-action-strip,
+.ec-auth-page--board .ec-auth-preview__footer,
+.ec-auth-page--board .ec-auth-status-list span,
+.ec-auth-page--board .ec-auth-status-list strong {
+  letter-spacing: 0.13em;
+}
+
+.ec-auth-page--board .ec-auth-message.is-accent,
+.ec-auth-page--board .ec-auth-action-strip {
+  border-color: hsl(32 100% 58% / 0.2);
+  background: hsl(32 100% 58% / 0.075);
+}
+
+.ec-auth-page--board .ec-auth-server-tile.is-active {
+  background: linear-gradient(135deg, hsl(32 100% 18% / 0.9), hsl(220 24% 16%));
+  box-shadow: 0 0 22px hsl(32 100% 58% / 0.18);
+}
+
+.ec-auth-page--board .ec-auth-voice-pill,
+.ec-auth-page--board .ec-auth-channel.is-active {
+  border-color: hsl(194 72% 54% / 0.18);
+  background: hsl(194 72% 18% / 0.18);
+  color: hsl(194 76% 72%);
+}
+
+@media (max-width: 1120px) {
+  .ec-auth-board-head {
+    grid-template-columns: 1fr;
+  }
+
+  .ec-auth-board-statement,
+  .ec-auth-board-principles {
+    border-left: 0;
+    border-right: 0;
+    border-top: 1px solid hsl(0 0% 100% / 0.08);
+  }
+
+  .ec-auth-board-principles {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .ec-auth-board-main {
+    grid-template-columns: 1fr;
+  }
+
+  .ec-auth-board-login {
+    border-width: 1px 0 0;
+  }
+}
+
+@media (max-width: 760px) {
+  .ec-auth-page--board {
+    padding: var(--ec-space-3);
+  }
+
+  .ec-auth-board-identity,
+  .ec-auth-board-statement,
+  .ec-auth-board-principles,
+  .ec-auth-board-hero {
+    padding: var(--ec-space-4);
+  }
+
+  .ec-auth-board-identity {
+    align-items: flex-start;
+    gap: var(--ec-space-4);
+  }
+
+  .ec-auth-board-mark {
+    width: 58px;
+    height: 58px;
+    flex-basis: 58px;
+  }
+
+  .ec-auth-board-identity h1 {
+    font-size: 1.45rem;
+    letter-spacing: 0.16em;
+  }
+
+  .ec-auth-board-identity p {
+    font-size: var(--ec-text-xs);
+    letter-spacing: 0.16em;
+  }
+
+  .ec-auth-board-identity span:not(.ec-brand-mark) {
+    letter-spacing: 0.14em;
+  }
+
+  .ec-auth-board-principles,
+  .ec-auth-board-feature-row {
+    grid-template-columns: 1fr;
+  }
+
+  .ec-auth-board-copy h2 {
+    font-size: 2.35rem;
+  }
+
+  .ec-auth-board-copy p {
+    font-size: var(--ec-text-sm);
+  }
+
+  .ec-auth-board-login {
+    padding: var(--ec-space-4);
+  }
+}
+
+@media (max-width: 480px) {
+  .ec-auth-board-identity {
+    display: grid;
+    grid-template-columns: 52px minmax(0, 1fr);
+  }
+
+  .ec-auth-board-mark {
+    width: 52px;
+    height: 52px;
+    flex-basis: 52px;
+  }
+
+  .ec-auth-board-copy h2 {
+    font-size: 1.85rem;
+  }
+
+  .ec-auth-page--board .ec-auth-preview__body {
+    grid-template-columns: 1fr;
+  }
+
+  .ec-auth-page--board .ec-auth-channel-panel {
+    display: none;
+  }
+}
