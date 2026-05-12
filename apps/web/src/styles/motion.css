@@ -90,6 +90,48 @@
   100% { transform: translate(0, 0); }
 }
 
+@keyframes ec-auth-card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ec-auth-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-8px); }
+}
+
+@keyframes ec-auth-line-pulse {
+  0%, 100% { opacity: 0.16; filter: blur(0); }
+  50%      { opacity: 0.55; filter: blur(0.5px); }
+}
+
+@keyframes ec-auth-orbit {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes ec-auth-panel-scan {
+  0%, 55%, 100% { transform: translateX(-82%); opacity: 0; }
+  70%           { opacity: 1; }
+  88%           { transform: translateX(82%); opacity: 0; }
+}
+
+@keyframes ec-auth-signal-sweep {
+  0%, 100% { opacity: 0.34; transform: translateX(-2%); }
+  50%      { opacity: 0.62; transform: translateX(2%); }
+}
+
+@keyframes ec-auth-star-drift {
+  0%, 100% { transform: translate3d(0, 0, 0); opacity: 0.72; }
+  50%      { transform: translate3d(-10px, 8px, 0); opacity: 1; }
+}
+
 /* ===== Utility classes ====================================== */
 
 .ec-anim-fade           { animation: ec-fade-in var(--ec-dur-base) var(--ec-ease) both; }
@@ -250,4 +292,14 @@
   .ec-dot--online           { animation: none !important; }
   .ec-typing-dot            { animation: none !important; }
   .ec-brand-mark            { animation: none !important; }
+  .ec-auth-hero,
+  .ec-auth-panel,
+  .ec-auth-preview,
+  .ec-auth-page::after,
+  .ec-auth-atmosphere::before,
+  .ec-auth-atmosphere::after,
+  .ec-auth-signal,
+  .ec-auth-panel::before {
+    animation: none !important;
+  }
 }

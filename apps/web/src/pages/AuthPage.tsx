@@ -1,5 +1,11 @@
-import type { CSSProperties } from "react";
 import { useState } from "react";
+import {
+  CameraLensIcon,
+  ScreenShareIcon,
+  StatsPulseIcon,
+  TuningIcon,
+  VoiceChannelIcon,
+} from "../components/icons/EclipseIcons";
 
 type Props = {
   error: string | null;
@@ -7,96 +13,171 @@ type Props = {
   onRegister: (email: string, password: string, displayName: string) => Promise<boolean>;
 };
 
-const wrap: CSSProperties = {
-  minHeight: "100vh",
-  background: "var(--ec-bg)",
-  color: "var(--ec-text)",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  padding: "var(--ec-space-4)",
-  backgroundImage:
-    "radial-gradient(ellipse at top, hsl(195 40% 14% / 0.5) 0%, transparent 50%), radial-gradient(ellipse at bottom right, hsl(160 30% 12% / 0.35) 0%, transparent 55%)",
-};
+const featureCards = [
+  {
+    icon: <OrbitIcon />,
+    title: "Командное ядро",
+    text: "Серверы, каналы, личные сообщения и рабочие комнаты в одном приватном контуре.",
+  },
+  {
+    icon: <ActionIcon />,
+    title: "Сообщения → действия",
+    text: "Задачи можно закреплять прямо из переписки, назначать ответственного и доводить до результата.",
+  },
+  {
+    icon: <ShieldIcon />,
+    title: "Self-hosted контроль",
+    text: "Данные, доступы и коммуникации остаются внутри вашей инфраструктуры.",
+  },
+];
 
-const card: CSSProperties = {
-  width: "min(420px, 100%)",
-  background: "var(--ec-surface-1)",
-  border: "1px solid var(--ec-border-default)",
-  borderRadius: "var(--ec-radius-lg)",
-  padding: "var(--ec-space-6)",
-  boxShadow: "var(--ec-shadow-lg)",
-};
+const statusRows = ["Канал запроса открыт", "Voice core online", "Action queue синхронизирована"];
 
-const brandRow: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: "var(--ec-space-2)",
-  marginBottom: "var(--ec-space-1)",
-};
-
-const brandMark: CSSProperties = {
-  width: 24,
-  height: 24,
-  borderRadius: "var(--ec-radius-sm)",
-  background: "linear-gradient(135deg, hsl(195 60% 55%) 0%, hsl(160 45% 55%) 100%)",
-  boxShadow: "0 0 12px hsl(195 60% 55% / 0.4)",
-};
-
-const tabsRow: CSSProperties = {
-  display: "flex",
-  gap: 2,
-  marginBottom: "var(--ec-space-4)",
-  padding: 3,
-  background: "var(--ec-surface-2)",
-  borderRadius: "var(--ec-radius-md)",
-};
-
-function tabStyle(active: boolean): CSSProperties {
+function baseIconProps() {
   return {
-    flex: 1,
-    padding: "0.5rem 0.75rem",
-    background: active ? "var(--ec-surface-3)" : "transparent",
-    color: active ? "var(--ec-text-strong)" : "var(--ec-text-muted)",
-    border: 0,
-    borderRadius: "var(--ec-radius-sm)",
-    cursor: "pointer",
-    fontSize: "var(--ec-text-sm)",
-    fontWeight: 600,
-    transition: "background var(--ec-dur-fast) var(--ec-ease), color var(--ec-dur-fast) var(--ec-ease)",
+    width: 18,
+    height: 18,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.8,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    "aria-hidden": true,
   };
 }
 
-const passwordWrap: CSSProperties = { position: "relative" };
-
-const eyeButton: CSSProperties = {
-  position: "absolute",
-  top: 0,
-  right: 0,
-  bottom: 0,
-  width: 42,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  background: "transparent",
-  border: 0,
-  color: "var(--ec-text-dim)",
-  cursor: "pointer",
-  padding: 0,
-  transition: "color var(--ec-dur-fast) var(--ec-ease)",
-};
-
 function EyeIcon({ off }: { off: boolean }) {
   return off ? (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <svg {...baseIconProps()}>
       <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
       <line x1="1" y1="1" x2="23" y2="23" />
     </svg>
   ) : (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <svg {...baseIconProps()}>
       <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
       <circle cx="12" cy="12" r="3" />
     </svg>
+  );
+}
+
+function ShieldIcon() {
+  return (
+    <svg {...baseIconProps()}>
+      <path d="M12 3 5.5 5.7v5.2c0 4.2 2.6 7.9 6.5 9.1 3.9-1.2 6.5-4.9 6.5-9.1V5.7L12 3Z" />
+      <path d="m9.6 12 1.7 1.7 3.5-4" />
+    </svg>
+  );
+}
+
+function OrbitIcon() {
+  return (
+    <svg {...baseIconProps()}>
+      <circle cx="12" cy="12" r="2.4" />
+      <path d="M4.6 12c0-2.7 3.3-4.9 7.4-4.9s7.4 2.2 7.4 4.9-3.3 4.9-7.4 4.9-7.4-2.2-7.4-4.9Z" />
+      <path d="M8.4 5.6c2.3-1.3 5.9.7 8 4.3 2 3.6 1.8 7.7-.5 9-2.3 1.3-5.9-.7-8-4.3-2-3.6-1.8-7.7.5-9Z" />
+    </svg>
+  );
+}
+
+function ActionIcon() {
+  return (
+    <svg {...baseIconProps()}>
+      <path d="M6 6h12" />
+      <path d="M6 12h8" />
+      <path d="M6 18h5" />
+      <path d="m15 17 2 2 4-5" />
+    </svg>
+  );
+}
+
+function ArrowIcon() {
+  return (
+    <svg {...baseIconProps()} width="16" height="16">
+      <path d="M5 12h14" />
+      <path d="m13 6 6 6-6 6" />
+    </svg>
+  );
+}
+
+function ProductPreview() {
+  return (
+    <div className="ec-auth-preview" aria-label="Превью интерфейса Eclipse Chat">
+      <div className="ec-auth-preview__bar">
+        <span className="ec-auth-window-dot" />
+        <span className="ec-auth-window-dot" />
+        <span className="ec-auth-window-dot" />
+        <span className="ec-auth-preview__title">ECLIPSE://CONTROL-ROOM</span>
+      </div>
+
+      <div className="ec-auth-preview__body">
+        <div className="ec-auth-server-rail">
+          <span className="ec-auth-server-tile is-active">E</span>
+          <span className="ec-auth-server-tile">+</span>
+          <span className="ec-auth-server-tile">
+            <VoiceChannelIcon />
+          </span>
+        </div>
+
+        <div className="ec-auth-channel-panel">
+          <div className="ec-auth-channel-head">
+            <strong>Execution room</strong>
+            <span>OWNER</span>
+          </div>
+          <div className="ec-auth-channel-group">Текстовые каналы</div>
+          <div className="ec-auth-channel is-active"># strategy-core</div>
+          <div className="ec-auth-channel"># product-flow</div>
+          <div className="ec-auth-channel"># release-control</div>
+          <div className="ec-auth-channel-group">Голосовые</div>
+          <div className="ec-auth-voice-pill">
+            <VoiceChannelIcon />
+            system call
+          </div>
+        </div>
+
+        <div className="ec-auth-chat-panel">
+          <div className="ec-auth-chat-top">
+            <span># strategy-core</span>
+            <div>
+              <CameraLensIcon />
+              <ScreenShareIcon />
+              <TuningIcon />
+            </div>
+          </div>
+
+          <div className="ec-auth-message">
+            <span className="ec-auth-avatar">P</span>
+            <div>
+              <strong>Павел</strong>
+              <p>Нужно превратить хаотичный чат в рабочую систему.</p>
+            </div>
+          </div>
+          <div className="ec-auth-message is-accent">
+            <span className="ec-auth-avatar">AI</span>
+            <div>
+              <strong>Eclipse Operator</strong>
+              <p>Создан action item, назначен ответственный, открыт voice-контур.</p>
+            </div>
+          </div>
+
+          <div className="ec-auth-action-strip">
+            <div>
+              <ActionIcon />
+              <span>3 действия</span>
+            </div>
+            <span>sync 98%</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="ec-auth-preview__footer">
+        <span>
+          <StatsPulseIcon />
+          Latency 24ms
+        </span>
+        <span>signal stable</span>
+      </div>
+    </div>
   );
 }
 
@@ -124,102 +205,156 @@ export function AuthPage({ error, onLogin, onRegister }: Props) {
   };
 
   return (
-    <main style={wrap}>
-      <section style={card}>
-        <div style={brandRow}>
-          <span style={brandMark} aria-hidden />
-          <h1 style={{ margin: 0, fontSize: "var(--ec-text-lg)", fontWeight: 600, letterSpacing: "var(--ec-tracking-tight)" }}>
-            Eclipse Chat
-          </h1>
-        </div>
-        <p style={{ margin: "0 0 var(--ec-space-5)", color: "var(--ec-text-muted)", fontSize: "var(--ec-text-sm)" }}>
-          Self-hosted communication core
-        </p>
+    <main className="ec-auth-page">
+      <div className="ec-auth-atmosphere" aria-hidden>
+        <span className="ec-auth-signal ec-auth-signal--one" />
+        <span className="ec-auth-signal ec-auth-signal--two" />
+        <span className="ec-auth-signal ec-auth-signal--three" />
+      </div>
 
-        <div style={tabsRow} role="tablist">
-          <button type="button" onClick={() => setMode("login")} style={tabStyle(mode === "login")} role="tab" aria-selected={mode === "login"}>
-            Вход
-          </button>
-          <button type="button" onClick={() => setMode("register")} style={tabStyle(mode === "register")} role="tab" aria-selected={mode === "register"}>
-            Регистрация
-          </button>
-        </div>
-
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            void submit();
-          }}
-          style={{ display: "grid", gap: "var(--ec-space-3)" }}
-        >
-          {mode === "register" && (
-            <div>
-              <label className="ec-field-label">Имя</label>
-              <input
-                className="ec-field"
-                placeholder="Как вас называть"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                autoComplete="nickname"
-                maxLength={64}
-              />
-            </div>
-          )}
-          <div>
-            <label className="ec-field-label">Email</label>
-            <input
-              className="ec-field"
-              type="email"
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoComplete="email"
-              required
-            />
+      <section className="ec-auth-shell">
+        <div className="ec-auth-hero">
+          <div className="ec-auth-brand-row">
+            <span className="ec-brand-mark ec-auth-brand-mark" aria-hidden />
+            <span>Eclipse Chat</span>
           </div>
-          <div>
-            <label className="ec-field-label">Пароль <span style={{ color: "var(--ec-text-dim)", fontWeight: 400 }}>(8+)</span></label>
-            <div style={passwordWrap}>
-              <input
-                className="ec-field"
-                type={showPassword ? "text" : "password"}
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete={mode === "login" ? "current-password" : "new-password"}
-                required
-                minLength={8}
-                style={{ paddingRight: 44 }}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword((v) => !v)}
-                aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}
-                title={showPassword ? "Скрыть пароль" : "Показать пароль"}
-                tabIndex={-1}
-                style={eyeButton}
-                onMouseEnter={(e) => (e.currentTarget.style.color = "var(--ec-text)")}
-                onMouseLeave={(e) => (e.currentTarget.style.color = "var(--ec-text-dim)")}
-              >
-                <EyeIcon off={showPassword} />
-              </button>
-            </div>
-          </div>
-          <button
-            type="submit"
-            disabled={busy}
-            className="ec-btn ec-btn--primary"
-            style={{ padding: "0.7rem", fontSize: "var(--ec-text-base)", marginTop: "var(--ec-space-2)" }}
-          >
-            {busy ? "Подождите…" : mode === "login" ? "Войти" : "Создать аккаунт"}
-          </button>
-        </form>
 
-        {error && (
-          <p style={{ margin: "var(--ec-space-3) 0 0", color: "var(--ec-danger)", fontSize: "var(--ec-text-sm)" }}>
-            {error}
+          <h1>Eclipse Chat</h1>
+          <p className="ec-auth-lead">
+            Приватный командный чат, где разговоры превращаются в действия, голосовые сессии и управляемый рабочий поток.
           </p>
-        )}
+
+          <div className="ec-auth-quick-actions" aria-label="Главные возможности">
+            <a href="#auth-panel" className="ec-btn ec-btn--primary ec-auth-cta">
+              Войти в систему
+              <ArrowIcon />
+            </a>
+            <span className="ec-auth-signal-badge">
+              <ShieldIcon />
+              Self-hosted core
+            </span>
+          </div>
+
+          <div className="ec-auth-feature-grid">
+            {featureCards.map((item) => (
+              <article className="ec-auth-feature-card" key={item.title}>
+                <span className="ec-auth-feature-icon">{item.icon}</span>
+                <h2>{item.title}</h2>
+                <p>{item.text}</p>
+              </article>
+            ))}
+          </div>
+
+          <ProductPreview />
+        </div>
+
+        <aside className="ec-auth-panel" id="auth-panel" aria-label="Вход в Eclipse Chat">
+          <div className="ec-auth-panel__status">
+            <span className="ec-dot ec-dot--online" />
+            Request channel open
+          </div>
+
+          <div className="ec-auth-panel__head">
+            <h2>{mode === "login" ? "Вход в контур" : "Создать контур"}</h2>
+            <p>{mode === "login" ? "Продолжайте работу там, где остановились." : "Запустите приватное пространство для команды."}</p>
+          </div>
+
+          <div className="ec-auth-tabs" role="tablist" aria-label="Режим авторизации">
+            <button
+              type="button"
+              className={mode === "login" ? "is-active" : ""}
+              onClick={() => setMode("login")}
+              role="tab"
+              aria-selected={mode === "login"}
+            >
+              Вход
+            </button>
+            <button
+              type="button"
+              className={mode === "register" ? "is-active" : ""}
+              onClick={() => setMode("register")}
+              role="tab"
+              aria-selected={mode === "register"}
+            >
+              Регистрация
+            </button>
+          </div>
+
+          <form
+            className="ec-auth-form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void submit();
+            }}
+          >
+            {mode === "register" && (
+              <div>
+                <label className="ec-field-label">Имя</label>
+                <input
+                  className="ec-field"
+                  placeholder="Как вас называть"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  autoComplete="nickname"
+                  maxLength={64}
+                  required
+                />
+              </div>
+            )}
+            <div>
+              <label className="ec-field-label">Email</label>
+              <input
+                className="ec-field"
+                type="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
+                required
+              />
+            </div>
+            <div>
+              <label className="ec-field-label">
+                Пароль <span>(8+)</span>
+              </label>
+              <div className="ec-auth-password">
+                <input
+                  className="ec-field"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete={mode === "login" ? "current-password" : "new-password"}
+                  required
+                  minLength={8}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}
+                  title={showPassword ? "Скрыть пароль" : "Показать пароль"}
+                  tabIndex={-1}
+                >
+                  <EyeIcon off={showPassword} />
+                </button>
+              </div>
+            </div>
+            <button type="submit" disabled={busy} className="ec-btn ec-btn--primary ec-auth-submit">
+              {busy ? "Подключаю…" : mode === "login" ? "Войти" : "Создать аккаунт"}
+            </button>
+          </form>
+
+          {error && <p className="ec-auth-error">{error}</p>}
+
+          <div className="ec-auth-status-list" aria-label="Статусы системы">
+            {statusRows.map((row) => (
+              <div key={row}>
+                <span>STATUS</span>
+                <strong>{row}</strong>
+              </div>
+            ))}
+          </div>
+        </aside>
       </section>
     </main>
   );
