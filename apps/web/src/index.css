@@ -1,14 +1,15 @@
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
-body {
-  margin: 0;
-}
+/* Global stylesheet. Импортирует tokens → reset → components в нужном порядке. */
+@import "./styles/tokens.css";
+@import "./styles/reset.css";
+@import "./styles/components.css";
+
+/* inline `<code>` tag — для backward compat (JoinServerModal). */
 code {
-  font-size: 0.9em;
-  padding: 0.1em 0.3em;
-  background: #1a1a20;
-  border-radius: 4px;
+  font-family: var(--ec-font-mono);
+  font-size: 0.88em;
+  padding: 0.1em 0.4em;
+  background: var(--ec-surface-2);
+  border: 1px solid var(--ec-border-subtle);
+  border-radius: var(--ec-radius-xs);
+  color: var(--ec-text);
 }

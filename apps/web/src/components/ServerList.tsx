@@ -10,46 +10,57 @@ type Props = {
 };
 
 const railStyle: CSSProperties = {
-  width: 72,
-  background: "#0a0a0c",
-  borderRight: "1px solid #1c1c22",
+  background: "var(--ec-surface-1)",
+  borderRight: "1px solid var(--ec-border-subtle)",
   display: "flex",
   flexDirection: "column",
   alignItems: "center",
-  gap: 12,
-  padding: "12px 0",
+  gap: "var(--ec-space-2)",
+  padding: "var(--ec-space-3) 0",
+  overflowY: "auto",
 };
 
-const buttonBase: CSSProperties = {
-  width: 48,
-  height: 48,
-  borderRadius: 16,
-  border: "1px solid #2a2a32",
-  background: "#1a1a20",
-  color: "#e8e8ed",
+const tileBase: CSSProperties = {
+  width: 44,
+  height: 44,
+  borderRadius: "var(--ec-radius-lg)",
+  background: "var(--ec-surface-2)",
+  color: "var(--ec-text)",
   cursor: "pointer",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
   fontWeight: 600,
-  fontSize: 18,
-  transition: "border-radius 120ms ease, background 120ms ease",
+  fontSize: "var(--ec-text-sm)",
+  letterSpacing: 0,
+  border: "1px solid var(--ec-border-subtle)",
+  transition: "border-radius var(--ec-dur-base) var(--ec-ease), background var(--ec-dur-fast) var(--ec-ease), border-color var(--ec-dur-fast) var(--ec-ease), box-shadow var(--ec-dur-fast) var(--ec-ease), transform var(--ec-dur-fast) var(--ec-ease)",
   position: "relative",
+  overflow: "hidden",
 };
 
 const activeMarker: CSSProperties = {
   position: "absolute",
-  left: -10,
-  top: 12,
-  bottom: 12,
+  left: -16,
+  top: "50%",
+  transform: "translateY(-50%)",
   width: 4,
-  borderRadius: 4,
-  background: "#9ac",
+  height: 22,
+  borderRadius: "var(--ec-radius-full)",
+  background: "var(--ec-accent)",
+  boxShadow: "0 0 8px hsl(195 60% 55% / 0.5)",
+};
+
+const separator: CSSProperties = {
+  width: 26,
+  height: 1,
+  background: "var(--ec-border-subtle)",
+  margin: "var(--ec-space-1) 0",
 };
 
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/).slice(0, 2);
-  return parts.map((p) => p[0]?.toUpperCase() ?? "").join("");
+  return parts.map((p) => p[0]?.toUpperCase() ?? "").join("") || "??";
 }
 
 export function ServerList({ servers, activeServerId, onSelect, onCreateRequest, onJoinRequest }: Props) {
@@ -64,9 +75,23 @@ export function ServerList({ servers, activeServerId, onSelect, onCreateRequest,
             onClick={() => onSelect(s.id)}
             title={s.name}
             style={{
-              ...buttonBase,
-              borderRadius: isActive ? 12 : 24,
-              background: isActive ? "#2a2a3a" : "#1a1a20",
+              ...tileBase,
+              borderRadius: isActive ? "var(--ec-radius-lg)" : "var(--ec-radius-full)",
+              background: isActive ? "var(--ec-surface-3)" : "var(--ec-surface-2)",
+              borderColor: isActive ? "var(--ec-border-accent)" : "var(--ec-border-subtle)",
+              boxShadow: isActive ? "var(--ec-glow-active)" : "none",
+            }}
+            onMouseEnter={(e) => {
+              if (!isActive) {
+                e.currentTarget.style.borderRadius = "var(--ec-radius-lg)";
+                e.currentTarget.style.background = "var(--ec-surface-3)";
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!isActive) {
+                e.currentTarget.style.borderRadius = "var(--ec-radius-full)";
+                e.currentTarget.style.background = "var(--ec-surface-2)";
+              }
             }}
           >
             {isActive && <span style={activeMarker} aria-hidden />}
@@ -77,29 +102,70 @@ export function ServerList({ servers, activeServerId, onSelect, onCreateRequest,
                 style={{ width: "100%", height: "100%", borderRadius: "inherit", objectFit: "cover" }}
               />
             ) : (
-              <span aria-hidden>{initials(s.name) || "??"}</span>
+              <span aria-hidden>{initials(s.name)}</span>
             )}
           </button>
         );
       })}
 
-      <div style={{ width: 32, height: 1, background: "#2a2a32", margin: "4px 0" }} />
+      <div style={separator} aria-hidden />
 
       <button
         type="button"
         onClick={onCreateRequest}
         title="Создать сервер"
-        style={{ ...buttonBase, background: "#13391d", borderColor: "#1f5a2e", color: "#7fe195" }}
+        style={{
+          ...tileBase,
+          borderRadius: "var(--ec-radius-full)",
+          background: "transparent",
+          color: "var(--ec-accent-2)",
+          borderColor: "var(--ec-border-default)",
+          borderStyle: "dashed",
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.borderRadius = "var(--ec-radius-lg)";
+          e.currentTarget.style.background = "var(--ec-accent-2-soft)";
+          e.currentTarget.style.borderStyle = "solid";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.borderRadius = "var(--ec-radius-full)";
+          e.currentTarget.style.background = "transparent";
+          e.currentTarget.style.borderStyle = "dashed";
+        }}
       >
-        +
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <line x1="12" y1="5" x2="12" y2="19" />
+          <line x1="5" y1="12" x2="19" y2="12" />
+        </svg>
       </button>
       <button
         type="button"
         onClick={onJoinRequest}
         title="Вступить по инвайту"
-        style={{ ...buttonBase, background: "#13202f", borderColor: "#1f3f5e", color: "#7fb6e1" }}
+        style={{
+          ...tileBase,
+          borderRadius: "var(--ec-radius-full)",
+          background: "transparent",
+          color: "var(--ec-accent)",
+          borderColor: "var(--ec-border-default)",
+          borderStyle: "dashed",
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.borderRadius = "var(--ec-radius-lg)";
+          e.currentTarget.style.background = "var(--ec-accent-soft)";
+          e.currentTarget.style.borderStyle = "solid";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.borderRadius = "var(--ec-radius-full)";
+          e.currentTarget.style.background = "transparent";
+          e.currentTarget.style.borderStyle = "dashed";
+        }}
       >
-        ⤵
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="M9 18l6-6-6-6" />
+          <path d="M15 3v6" />
+          <path d="M21 9h-6" />
+        </svg>
       </button>
     </nav>
   );

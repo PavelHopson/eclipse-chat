@@ -1,0 +1,278 @@
+/**
+ * Eclipse Chat — utility classes для общих UI-паттернов
+ *
+ * Используется компонентами через className. Это НЕ Tailwind-стиль
+ * (single-purpose utilities), а semantic component-classes — buttons,
+ * fields, badges, list items. Inline-стили оставлены только для
+ * динамических значений.
+ */
+
+/* ===== Buttons ============================================== */
+
+.ec-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ec-space-2);
+  padding: 0.5rem 0.85rem;
+  background: var(--ec-surface-2);
+  color: var(--ec-text);
+  border: 1px solid var(--ec-border-default);
+  border-radius: var(--ec-radius-md);
+  font-size: var(--ec-text-sm);
+  font-weight: 500;
+  letter-spacing: var(--ec-tracking-tight);
+  cursor: pointer;
+  transition:
+    background var(--ec-dur-fast) var(--ec-ease),
+    border-color var(--ec-dur-fast) var(--ec-ease),
+    color var(--ec-dur-fast) var(--ec-ease),
+    transform var(--ec-dur-fast) var(--ec-ease);
+  user-select: none;
+  white-space: nowrap;
+}
+
+.ec-btn:hover {
+  background: var(--ec-surface-3);
+  border-color: var(--ec-border-emphasis);
+}
+
+.ec-btn:active { transform: translateY(0.5px); }
+
+.ec-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.ec-btn--primary {
+  background: var(--ec-accent);
+  color: var(--ec-accent-text);
+  border-color: var(--ec-accent);
+  font-weight: 600;
+}
+.ec-btn--primary:hover {
+  background: var(--ec-accent-hover);
+  border-color: var(--ec-accent-hover);
+}
+
+.ec-btn--ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--ec-text-muted);
+}
+.ec-btn--ghost:hover {
+  background: var(--ec-surface-2);
+  color: var(--ec-text);
+}
+
+.ec-btn--danger {
+  color: var(--ec-danger);
+  border-color: var(--ec-border-default);
+}
+.ec-btn--danger:hover {
+  background: var(--ec-danger-soft);
+  border-color: var(--ec-danger);
+  color: var(--ec-danger);
+}
+
+.ec-btn--sm {
+  padding: 0.35rem 0.65rem;
+  font-size: var(--ec-text-xs);
+  border-radius: var(--ec-radius-sm);
+}
+
+.ec-btn--icon {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: var(--ec-radius-md);
+}
+
+/* ===== Fields =============================================== */
+
+.ec-field {
+  display: block;
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  background: var(--ec-input-bg);
+  color: var(--ec-text);
+  border: 1px solid var(--ec-border-default);
+  border-radius: var(--ec-radius-md);
+  font-size: var(--ec-text-base);
+  line-height: var(--ec-leading-normal);
+  transition:
+    background var(--ec-dur-fast) var(--ec-ease),
+    border-color var(--ec-dur-fast) var(--ec-ease),
+    box-shadow var(--ec-dur-fast) var(--ec-ease);
+}
+
+.ec-field:hover { border-color: var(--ec-border-emphasis); }
+
+.ec-field:focus {
+  background: var(--ec-input-bg-focus);
+  border-color: var(--ec-accent);
+  box-shadow: 0 0 0 3px var(--ec-accent-soft);
+  outline: none;
+}
+
+.ec-field--textarea {
+  resize: vertical;
+  min-height: 84px;
+  font-family: var(--ec-font-sans);
+}
+
+.ec-field-label {
+  display: block;
+  margin-bottom: var(--ec-space-1);
+  font-size: var(--ec-text-xs);
+  font-weight: 500;
+  color: var(--ec-text-muted);
+  letter-spacing: var(--ec-tracking-wide);
+}
+
+.ec-field-counter {
+  display: block;
+  margin-top: var(--ec-space-1);
+  font-size: var(--ec-text-2xs);
+  color: var(--ec-text-dim);
+  text-align: right;
+  font-feature-settings: "tnum";
+}
+
+/* ===== Labels ============================================== */
+
+.ec-section-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--ec-space-2);
+  margin-bottom: var(--ec-space-1);
+  font-size: var(--ec-text-2xs);
+  text-transform: uppercase;
+  letter-spacing: var(--ec-tracking-caps);
+  font-weight: 600;
+  color: var(--ec-text-dim);
+}
+
+.ec-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1rem 0.45rem;
+  background: var(--ec-surface-3);
+  color: var(--ec-text-muted);
+  border-radius: var(--ec-radius-full);
+  font-size: var(--ec-text-2xs);
+  font-weight: 600;
+  letter-spacing: var(--ec-tracking-caps);
+  text-transform: uppercase;
+}
+
+.ec-badge--accent {
+  background: var(--ec-accent-soft);
+  color: var(--ec-accent);
+}
+
+.ec-badge--owner {
+  background: hsl(40 70% 60% / 0.14);
+  color: var(--ec-warn);
+}
+
+/* ===== Presence dot ======================================= */
+
+.ec-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--ec-radius-full);
+  background: var(--ec-text-dim);
+  flex-shrink: 0;
+}
+.ec-dot--online  { background: var(--ec-presence-online); box-shadow: 0 0 6px hsl(150 50% 50% / 0.55); }
+.ec-dot--idle    { background: var(--ec-presence-idle); }
+.ec-dot--dnd     { background: var(--ec-presence-dnd); }
+.ec-dot--offline { background: var(--ec-presence-offline); }
+
+/* ===== Empty states ======================================= */
+
+.ec-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ec-space-3);
+  padding: var(--ec-space-8) var(--ec-space-6);
+  color: var(--ec-text-muted);
+  text-align: center;
+  flex: 1;
+}
+
+.ec-empty-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--ec-radius-full);
+  background: var(--ec-surface-2);
+  display: grid;
+  place-items: center;
+  color: var(--ec-text-dim);
+}
+
+.ec-empty-title {
+  font-size: var(--ec-text-base);
+  font-weight: 600;
+  color: var(--ec-text);
+}
+
+.ec-empty-hint {
+  font-size: var(--ec-text-sm);
+  color: var(--ec-text-muted);
+  max-width: 28ch;
+}
+
+/* ===== Channel/Server list items ========================== */
+
+.ec-channel-item {
+  display: flex;
+  align-items: center;
+  gap: var(--ec-space-2);
+  width: 100%;
+  padding: 0.4rem 0.6rem;
+  border-radius: var(--ec-radius-sm);
+  color: var(--ec-text-muted);
+  font-size: var(--ec-text-sm);
+  cursor: pointer;
+  transition: background var(--ec-dur-fast) var(--ec-ease),
+              color var(--ec-dur-fast) var(--ec-ease);
+  text-align: left;
+}
+.ec-channel-item:hover {
+  background: var(--ec-surface-2);
+  color: var(--ec-text);
+}
+.ec-channel-item--active {
+  background: var(--ec-surface-3);
+  color: var(--ec-text-strong);
+}
+.ec-channel-item--active::before {
+  content: "";
+  width: 3px;
+  height: 16px;
+  background: var(--ec-accent);
+  border-radius: var(--ec-radius-full);
+  margin-left: -8px;
+  margin-right: 5px;
+  flex-shrink: 0;
+}
+
+.ec-channel-hash {
+  color: var(--ec-text-dim);
+  font-weight: 500;
+}
+.ec-channel-item--active .ec-channel-hash { color: var(--ec-accent); }
+
+.ec-channel-count {
+  margin-left: auto;
+  font-size: var(--ec-text-2xs);
+  color: var(--ec-text-dim);
+  font-feature-settings: "tnum";
+}

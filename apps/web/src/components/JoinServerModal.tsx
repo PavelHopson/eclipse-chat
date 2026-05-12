@@ -6,16 +6,6 @@ type Props = {
   onJoin: (inviteCode: string) => Promise<{ alreadyMember: boolean } | null>;
 };
 
-const inputStyle = {
-  padding: "0.6rem 0.7rem",
-  borderRadius: 8,
-  border: "1px solid #2a2a32",
-  background: "#1a1a20",
-  color: "#e8e8ed",
-  fontSize: "0.95rem",
-  fontFamily: "monospace",
-};
-
 export function JoinServerModal({ onClose, onJoin }: Props) {
   const [code, setCode] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -24,9 +14,7 @@ export function JoinServerModal({ onClose, onJoin }: Props) {
 
   const submit = async () => {
     const trimmed = code.trim();
-    if (!trimmed || submitting) {
-      return;
-    }
+    if (!trimmed || submitting) return;
     setSubmitting(true);
     setError(null);
     setSuccess(null);
@@ -51,40 +39,27 @@ export function JoinServerModal({ onClose, onJoin }: Props) {
       onClose={onClose}
       footer={
         <>
-          <button
-            type="button"
-            onClick={onClose}
-            style={{ padding: "0.5rem 0.9rem", background: "transparent", color: "#c8c8d0", border: "1px solid #2a2a32", borderRadius: 8 }}
-          >
+          <button type="button" onClick={onClose} className="ec-btn">
             Отмена
           </button>
           <button
             type="button"
             onClick={() => void submit()}
             disabled={!code.trim() || submitting}
-            style={{
-              padding: "0.5rem 1rem",
-              background: "#3b5ccc",
-              color: "#fff",
-              border: "none",
-              borderRadius: 8,
-              opacity: !code.trim() || submitting ? 0.5 : 1,
-              cursor: !code.trim() || submitting ? "default" : "pointer",
-              fontWeight: 600,
-            }}
+            className="ec-btn ec-btn--primary"
           >
             {submitting ? "Проверяю…" : "Вступить"}
           </button>
         </>
       }
     >
-      <p style={{ margin: 0, opacity: 0.7, fontSize: "0.88rem" }}>
-        Вставьте инвайт-код от владельца сервера. Это идентификатор вида
-        <code style={{ background: "#1a1a20", padding: "2px 6px", borderRadius: 4, marginLeft: 6 }}>cmp1fu5ik0005l2mko3s3y46a</code>.
+      <p style={{ margin: 0, color: "var(--ec-text-muted)", fontSize: "var(--ec-text-sm)" }}>
+        Вставьте инвайт-код от владельца сервера. Это идентификатор вида <code>cmp1fu5ik0005l2mko3s3y46a</code>.
       </p>
-      <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        <span style={{ fontSize: "0.85rem", opacity: 0.8 }}>Инвайт-код</span>
+      <div>
+        <label className="ec-field-label">Инвайт-код</label>
         <input
+          className="ec-field"
           value={code}
           onChange={(e) => setCode(e.target.value)}
           onKeyDown={(e) => {
@@ -96,11 +71,11 @@ export function JoinServerModal({ onClose, onJoin }: Props) {
           placeholder="cmpxxxxxxxxxxxxxxxxxxxxx"
           autoFocus
           spellCheck={false}
-          style={inputStyle}
+          style={{ fontFamily: "var(--ec-font-mono)", fontSize: "var(--ec-text-sm)" }}
         />
-      </label>
-      {error && <p style={{ margin: 0, color: "#f88", fontSize: "0.85rem" }}>{error}</p>}
-      {success && <p style={{ margin: 0, color: "#7fe195", fontSize: "0.85rem" }}>{success}</p>}
+      </div>
+      {error && <p style={{ margin: 0, color: "var(--ec-danger)", fontSize: "var(--ec-text-sm)" }}>{error}</p>}
+      {success && <p style={{ margin: 0, color: "var(--ec-ok)", fontSize: "var(--ec-text-sm)" }}>{success}</p>}
     </Modal>
   );
 }

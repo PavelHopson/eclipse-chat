@@ -1,0 +1,153 @@
+/**
+ * Eclipse Chat — Design tokens
+ * ============================
+ *
+ * Контракт «operator console»: глубокий зелёно-чёрный с лёгким cyan
+ * undertone'ом, холодный sky-cyan accent, тонкие линии, точные глоу.
+ * НЕ Discord-Blurple, НЕ геймерский неон, НЕ sci-fi HUD.
+ *
+ * Все компоненты должны брать значения отсюда через `var(--name)`.
+ * Inline-стили допустимы только для динамических значений (например
+ * width/height по props), но цвета/spacing/radius — всегда tokens.
+ *
+ * Иерархия surface'ов:
+ *   ec-bg            — фон страницы (самый глубокий)
+ *   ec-surface-1     — sidebar/header (приподнят)
+ *   ec-surface-2     — карточки/inputs
+ *   ec-surface-3     — hover/secondary action
+ *   ec-surface-4     — active state
+ */
+
+:root {
+  /* ---- Background tiers ---------------------------------------- */
+  --ec-bg:                  hsl(200 8% 6%);     /* #0d1014 */
+  --ec-surface-1:           hsl(200 8% 9%);     /* #14181c */
+  --ec-surface-2:           hsl(200 8% 12%);    /* #1c2025 */
+  --ec-surface-3:           hsl(200 9% 16%);    /* #242a30 */
+  --ec-surface-4:           hsl(200 11% 22%);   /* #313940 */
+
+  /* Контрастный slate для inputs где нужен дополнительный depth */
+  --ec-input-bg:            hsl(200 9% 11%);
+  --ec-input-bg-focus:      hsl(200 10% 14%);
+
+  /* ---- Borders / dividers -------------------------------------- */
+  --ec-border-subtle:       rgba(255, 255, 255, 0.05);
+  --ec-border-default:      rgba(255, 255, 255, 0.09);
+  --ec-border-emphasis:     rgba(255, 255, 255, 0.16);
+  --ec-border-accent:       hsl(195 60% 55% / 0.55);
+
+  /* ---- Accent (Eclipse «cool sky») ----------------------------- */
+  --ec-accent:              hsl(195 58% 60%);    /* #5db5d9 */
+  --ec-accent-hover:        hsl(195 65% 68%);    /* #7bc4e0 */
+  --ec-accent-soft:         hsl(195 58% 60% / 0.14);
+  --ec-accent-text:         hsl(0 0% 100%);
+  --ec-accent-glow:         0 0 0 1px hsl(195 60% 55% / 0.45),
+                            0 0 16px -2px hsl(195 60% 55% / 0.35);
+
+  /* Secondary accent для join/secondary CTA */
+  --ec-accent-2:            hsl(160 45% 55%);    /* #5dc8a3 — teal-mint */
+  --ec-accent-2-soft:       hsl(160 45% 55% / 0.14);
+
+  /* ---- Text ---------------------------------------------------- */
+  --ec-text:                hsl(210 12% 92%);   /* #e6e9ed */
+  --ec-text-strong:         hsl(210 18% 98%);
+  --ec-text-muted:          hsl(210 8% 66%);    /* #a0a6ad */
+  --ec-text-dim:            hsl(210 7% 47%);    /* #6b7178 */
+  --ec-text-placeholder:    hsl(210 6% 40%);
+
+  /* ---- Semantic ------------------------------------------------ */
+  --ec-ok:                  hsl(150 45% 58%);   /* #5dc890 */
+  --ec-warn:                hsl(40 70% 60%);    /* #e0b350 */
+  --ec-danger:              hsl(0 70% 65%);     /* #e07070 */
+  --ec-danger-soft:         hsl(0 70% 65% / 0.14);
+
+  /* Presence dot цвета — для будущего MemberList */
+  --ec-presence-online:     hsl(150 50% 50%);
+  --ec-presence-idle:       hsl(40 80% 55%);
+  --ec-presence-dnd:        hsl(0 70% 60%);
+  --ec-presence-offline:    hsl(210 7% 40%);
+
+  /* ---- Typography ---------------------------------------------- */
+  --ec-font-sans:           "Inter Variable", "Inter", "Segoe UI Variable",
+                            -apple-system, BlinkMacSystemFont, system-ui,
+                            "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --ec-font-mono:           "JetBrains Mono", "SF Mono", "Cascadia Mono",
+                            Consolas, "Liberation Mono", Menlo, monospace;
+
+  /* Type scale (base 16px) */
+  --ec-text-2xs:            0.6875rem;  /* 11 */
+  --ec-text-xs:             0.75rem;    /* 12 */
+  --ec-text-sm:             0.8125rem;  /* 13 */
+  --ec-text-base:           0.9375rem;  /* 15 */
+  --ec-text-md:             1rem;       /* 16 */
+  --ec-text-lg:             1.125rem;   /* 18 */
+  --ec-text-xl:             1.375rem;   /* 22 */
+
+  --ec-leading-tight:       1.2;
+  --ec-leading-normal:      1.45;
+  --ec-leading-relaxed:     1.6;
+
+  --ec-tracking-tight:      -0.005em;
+  --ec-tracking-normal:     0;
+  --ec-tracking-wide:       0.04em;
+  --ec-tracking-caps:       0.08em;
+
+  /* ---- Spacing (4px base) -------------------------------------- */
+  --ec-space-1:             0.25rem;    /* 4 */
+  --ec-space-2:             0.5rem;     /* 8 */
+  --ec-space-3:             0.75rem;    /* 12 */
+  --ec-space-4:             1rem;       /* 16 */
+  --ec-space-5:             1.25rem;    /* 20 */
+  --ec-space-6:             1.5rem;     /* 24 */
+  --ec-space-8:             2rem;       /* 32 */
+  --ec-space-10:            2.5rem;     /* 40 */
+  --ec-space-12:            3rem;       /* 48 */
+  --ec-space-16:            4rem;       /* 64 */
+
+  /* ---- Radius -------------------------------------------------- */
+  --ec-radius-xs:           4px;
+  --ec-radius-sm:           6px;
+  --ec-radius-md:           8px;
+  --ec-radius-lg:           12px;
+  --ec-radius-xl:           16px;
+  --ec-radius-full:         999px;
+
+  /* ---- Shadows / glows ----------------------------------------- */
+  --ec-shadow-sm:           0 1px 2px rgba(0, 0, 0, 0.25);
+  --ec-shadow-md:           0 4px 12px rgba(0, 0, 0, 0.35);
+  --ec-shadow-lg:           0 16px 40px rgba(0, 0, 0, 0.5);
+  --ec-shadow-modal:        0 24px 64px rgba(0, 0, 0, 0.55),
+                            0 0 0 1px var(--ec-border-default);
+  --ec-glow-active:         var(--ec-accent-glow);
+
+  /* ---- Z-index ------------------------------------------------- */
+  --ec-z-base:              1;
+  --ec-z-sidebar:           10;
+  --ec-z-header:            20;
+  --ec-z-dropdown:          50;
+  --ec-z-modal-backdrop:    100;
+  --ec-z-modal:             110;
+  --ec-z-tooltip:           200;
+
+  /* ---- Motion -------------------------------------------------- */
+  --ec-ease:                cubic-bezier(0.4, 0, 0.2, 1);
+  --ec-ease-out:            cubic-bezier(0.16, 1, 0.3, 1);
+  --ec-dur-fast:            120ms;
+  --ec-dur-base:            160ms;
+  --ec-dur-slow:            240ms;
+
+  /* ---- Component-level slots ----------------------------------- */
+  --ec-header-height:       52px;
+  --ec-rail-width:          64px;
+  --ec-sidebar-width:       232px;
+  --ec-composer-min-height: 44px;
+}
+
+/* Respect user system preference */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --ec-dur-fast:          1ms;
+    --ec-dur-base:          1ms;
+    --ec-dur-slow:          1ms;
+  }
+}

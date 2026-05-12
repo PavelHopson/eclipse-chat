@@ -14,53 +14,14 @@ type Props = {
   onDeleteAvatar: () => Promise<boolean>;
 };
 
-const fieldBase: CSSProperties = {
-  width: "100%",
-  padding: "0.6rem 0.7rem",
-  borderRadius: 8,
-  border: "1px solid #2a2a32",
-  background: "#1a1a20",
-  color: "#e8e8ed",
-  fontSize: "0.95rem",
-  fontFamily: "inherit",
-};
-
-const labelStyle: CSSProperties = {
-  display: "block",
-  fontSize: "0.8rem",
-  opacity: 0.7,
-  marginBottom: 4,
-};
-
-const counterStyle: CSSProperties = {
-  fontSize: "0.72rem",
-  opacity: 0.5,
-  textAlign: "right",
-  marginTop: 4,
-};
-
-const buttonBase: CSSProperties = {
-  padding: "0.55rem 0.9rem",
-  borderRadius: 8,
-  border: "1px solid #2a2a32",
-  cursor: "pointer",
-  fontSize: "0.85rem",
-  background: "#1a1a20",
-  color: "#c8c8d0",
-};
-
-const buttonPrimary: CSSProperties = {
-  ...buttonBase,
-  background: "#3b5ccc",
-  color: "#fff",
-  border: "1px solid #3b5ccc",
-  fontWeight: 600,
-};
-
-const buttonDanger: CSSProperties = {
-  ...buttonBase,
-  color: "#f88",
-  borderColor: "#3a1f24",
+const avatarSection: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: "var(--ec-space-4)",
+  padding: "var(--ec-space-3)",
+  background: "var(--ec-surface-2)",
+  border: "1px solid var(--ec-border-subtle)",
+  borderRadius: "var(--ec-radius-md)",
 };
 
 export function ProfileModal({
@@ -107,16 +68,17 @@ export function ProfileModal({
   return (
     <Modal
       title="Профиль"
+      width={460}
       onClose={onClose}
       footer={
         <>
-          <button type="button" onClick={onClose} style={buttonBase} disabled={busy}>
+          <button type="button" onClick={onClose} className="ec-btn" disabled={busy}>
             Отмена
           </button>
           <button
             type="button"
             onClick={() => void handleSave()}
-            style={{ ...buttonPrimary, opacity: canSave ? 1 : 0.55, cursor: canSave ? "pointer" : "default" }}
+            className="ec-btn ec-btn--primary"
             disabled={!canSave}
           >
             {busy ? "Сохраняем…" : "Сохранить"}
@@ -124,9 +86,9 @@ export function ProfileModal({
         </>
       }
     >
-      <section style={{ display: "flex", alignItems: "center", gap: 14 }}>
+      <section style={avatarSection}>
         <Avatar url={profile.avatar} name={profile.displayName} size={72} />
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "var(--ec-space-2)", flex: 1 }}>
           <input
             ref={fileRef}
             type="file"
@@ -134,60 +96,59 @@ export function ProfileModal({
             style={{ display: "none" }}
             onChange={handleFile}
           />
-          <button
-            type="button"
-            onClick={() => fileRef.current?.click()}
-            style={buttonBase}
-            disabled={busy}
-          >
-            {profile.avatar ? "Заменить" : "Загрузить аватар"}
-          </button>
-          {profile.avatar && (
-            <button
-              type="button"
-              onClick={() => void onDeleteAvatar()}
-              style={buttonDanger}
-              disabled={busy}
-            >
-              Удалить
+          <div style={{ display: "flex", gap: "var(--ec-space-2)" }}>
+            <button type="button" onClick={() => fileRef.current?.click()} className="ec-btn ec-btn--sm" disabled={busy}>
+              {profile.avatar ? "Заменить" : "Загрузить"}
             </button>
-          )}
-          <span style={{ fontSize: "0.72rem", opacity: 0.5 }}>JPEG/PNG/WebP · до 5 МБ</span>
+            {profile.avatar && (
+              <button
+                type="button"
+                onClick={() => void onDeleteAvatar()}
+                className="ec-btn ec-btn--sm ec-btn--danger"
+                disabled={busy}
+              >
+                Удалить
+              </button>
+            )}
+          </div>
+          <span style={{ fontSize: "var(--ec-text-2xs)", color: "var(--ec-text-dim)" }}>
+            JPEG / PNG / WebP · до 5 МБ · обрежется до 256×256
+          </span>
         </div>
       </section>
 
-      <label style={{ display: "block" }}>
-        <span style={labelStyle}>Имя</span>
+      <div>
+        <label className="ec-field-label">Имя</label>
         <input
+          className="ec-field"
           type="text"
           value={displayName}
           onChange={(e) => setDisplayName(e.target.value)}
           maxLength={64}
           required
-          style={fieldBase}
         />
-        <div style={counterStyle}>{trimmedName.length}/64</div>
-      </label>
+        <span className="ec-field-counter">{trimmedName.length}/64</span>
+      </div>
 
-      <label style={{ display: "block" }}>
-        <span style={labelStyle}>О себе</span>
+      <div>
+        <label className="ec-field-label">О себе</label>
         <textarea
+          className="ec-field ec-field--textarea"
           value={bio}
           onChange={(e) => setBio(e.target.value)}
           maxLength={280}
           rows={3}
           placeholder="Коротко о себе…"
-          style={{ ...fieldBase, resize: "vertical", minHeight: 70 }}
         />
-        <div style={counterStyle}>{trimmedBio.length}/280</div>
-      </label>
+        <span className="ec-field-counter">{trimmedBio.length}/280</span>
+      </div>
 
-      <div style={{ fontSize: "0.72rem", opacity: 0.5 }}>
-        Email: {profile.email}
+      <div style={{ fontSize: "var(--ec-text-xs)", color: "var(--ec-text-dim)" }}>
+        Email: <span style={{ fontFamily: "var(--ec-font-mono)" }}>{profile.email}</span>
       </div>
 
       {error && (
-        <p style={{ margin: 0, color: "#f88", fontSize: "0.85rem" }}>{error}</p>
+        <p style={{ margin: 0, color: "var(--ec-danger)", fontSize: "var(--ec-text-sm)" }}>{error}</p>
       )}
     </Modal>
   );

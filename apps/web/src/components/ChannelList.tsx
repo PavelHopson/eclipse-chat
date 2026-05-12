@@ -14,57 +14,56 @@ type Props = {
 };
 
 const wrap: CSSProperties = {
-  width: 240,
-  background: "#15151a",
-  borderRight: "1px solid #1c1c22",
+  background: "var(--ec-surface-1)",
+  borderRight: "1px solid var(--ec-border-subtle)",
   display: "flex",
   flexDirection: "column",
+  minWidth: 0,
 };
 
 const headerStyle: CSSProperties = {
-  padding: "12px 14px",
-  borderBottom: "1px solid #1c1c22",
+  padding: "var(--ec-space-3) var(--ec-space-4)",
+  borderBottom: "1px solid var(--ec-border-subtle)",
+  background: "var(--ec-surface-1)",
+};
+
+const serverTrigger: CSSProperties = {
+  background: "transparent",
+  border: 0,
+  padding: 0,
+  width: "100%",
   display: "flex",
   alignItems: "center",
   justifyContent: "space-between",
-  gap: 8,
-  background: "#15151a",
-  position: "sticky",
-  top: 0,
+  gap: "var(--ec-space-2)",
+  cursor: "pointer",
+  color: "var(--ec-text-strong)",
+  textAlign: "left",
+  borderRadius: "var(--ec-radius-sm)",
+  transition: "color var(--ec-dur-fast) var(--ec-ease)",
 };
 
 const listWrap: CSSProperties = {
   flex: 1,
   overflow: "auto",
-  padding: "8px 8px 12px",
+  padding: "var(--ec-space-3) var(--ec-space-2)",
   display: "flex",
   flexDirection: "column",
-  gap: 4,
+  gap: 2,
 };
 
-const channelBtn: CSSProperties = {
-  textAlign: "left",
-  padding: "0.5rem 0.6rem",
-  borderRadius: 6,
-  background: "transparent",
-  border: "none",
-  color: "#c8c8d0",
-  cursor: "pointer",
-  fontSize: "0.9rem",
+const composerRow: CSSProperties = {
+  padding: "var(--ec-space-3)",
+  borderTop: "1px solid var(--ec-border-subtle)",
   display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  gap: 8,
+  gap: "var(--ec-space-2)",
 };
 
-const inputBase: CSSProperties = {
-  width: "100%",
-  padding: "0.5rem 0.6rem",
-  borderRadius: 8,
-  border: "1px solid #2a2a32",
-  background: "#1a1a20",
-  color: "#e8e8ed",
-};
+function roleClass(role: string): string {
+  if (role === "OWNER") return "ec-badge ec-badge--owner";
+  if (role === "ADMIN" || role === "MODERATOR") return "ec-badge ec-badge--accent";
+  return "ec-badge";
+}
 
 export function ChannelList({
   serverName,
@@ -82,37 +81,43 @@ export function ChannelList({
   return (
     <aside style={wrap}>
       <header style={headerStyle}>
-        <button
-          type="button"
-          onClick={onShowServerInfo}
-          style={{
-            background: "transparent",
-            border: "none",
-            color: "#e8e8ed",
-            fontWeight: 600,
-            fontSize: "0.95rem",
-            cursor: "pointer",
-            textAlign: "left",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "flex-start",
-            gap: 2,
-            padding: 0,
-          }}
-          title="Подробнее о сервере"
-        >
-          <span>{serverName ?? "Нет сервера"}</span>
-          {serverRole && (
-            <span style={{ fontSize: "0.7rem", opacity: 0.6, textTransform: "uppercase", letterSpacing: 0.5 }}>
-              {serverRole}
+        <button type="button" onClick={onShowServerInfo} style={serverTrigger} title="Подробнее о сервере">
+          <span style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+            <span
+              style={{
+                fontSize: "var(--ec-text-base)",
+                fontWeight: 600,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {serverName ?? "Нет сервера"}
             </span>
-          )}
+            {serverRole && <span className={roleClass(serverRole)} style={{ alignSelf: "flex-start" }}>{serverRole}</span>}
+          </span>
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+            style={{ color: "var(--ec-text-dim)", flexShrink: 0 }}
+          >
+            <circle cx="12" cy="12" r="9" />
+            <path d="M12 16v-4M12 8h.01" />
+          </svg>
         </button>
       </header>
 
       <div style={listWrap}>
-        <div style={{ fontSize: "0.72rem", letterSpacing: 0.6, opacity: 0.5, textTransform: "uppercase", padding: "4px 6px 8px" }}>
-          Текстовые каналы
+        <div className="ec-section-label" style={{ marginBottom: "var(--ec-space-2)" }}>
+          <span>Каналы</span>
+          {channels.length > 0 && <span style={{ color: "var(--ec-text-dim)", fontFeatureSettings: '"tnum"' }}>{channels.length}</span>}
         </div>
         {channels.map((c) => {
           const isActive = c.id === selectedChannelId;
@@ -121,31 +126,27 @@ export function ChannelList({
               key={c.id}
               type="button"
               onClick={() => onSelect(c.id)}
-              style={{
-                ...channelBtn,
-                background: isActive ? "#2a2a3a" : "transparent",
-                color: isActive ? "#e8e8ed" : "#c8c8d0",
-              }}
+              className={isActive ? "ec-channel-item ec-channel-item--active" : "ec-channel-item"}
             >
-              <span>
-                <span style={{ opacity: 0.5, marginRight: 6 }}>#</span>
+              <span className="ec-channel-hash" aria-hidden>#</span>
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>
                 {c.name}
               </span>
-              <span style={{ opacity: 0.4, fontSize: "0.75rem" }}>{c._count.messages}</span>
+              {c._count.messages > 0 && <span className="ec-channel-count">{c._count.messages}</span>}
             </button>
           );
         })}
         {channels.length === 0 && (
-          <p style={{ opacity: 0.5, fontSize: "0.85rem", padding: "8px 6px" }}>Каналов пока нет</p>
+          <p style={{ color: "var(--ec-text-dim)", fontSize: "var(--ec-text-sm)", padding: "var(--ec-space-2) var(--ec-space-2) 0", margin: 0 }}>
+            Создайте первый канал ниже.
+          </p>
         )}
       </div>
 
       <form
         onSubmit={async (e) => {
           e.preventDefault();
-          if (!draft.trim() || submitting) {
-            return;
-          }
+          if (!draft.trim() || submitting) return;
           setSubmitting(true);
           try {
             await onCreate(draft.trim());
@@ -154,33 +155,25 @@ export function ChannelList({
             setSubmitting(false);
           }
         }}
-        style={{
-          padding: 10,
-          borderTop: "1px solid #1c1c22",
-          display: "flex",
-          gap: 6,
-        }}
+        style={composerRow}
       >
         <input
+          className="ec-field"
           placeholder="Новый канал…"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          style={inputBase}
+          maxLength={80}
+          style={{ flex: 1, padding: "0.45rem 0.65rem", fontSize: "var(--ec-text-sm)" }}
         />
         <button
           type="submit"
           disabled={!draft.trim() || submitting}
-          style={{
-            padding: "0.5rem 0.7rem",
-            background: "#3b5ccc",
-            color: "#fff",
-            border: "none",
-            borderRadius: 8,
-            cursor: draft.trim() ? "pointer" : "default",
-            opacity: draft.trim() ? 1 : 0.5,
-          }}
+          className="ec-btn ec-btn--primary ec-btn--sm"
+          aria-label="Создать канал"
+          title="Создать канал"
+          style={{ minWidth: 36, padding: "0 0.6rem" }}
         >
-          +
+          {submitting ? "…" : "+"}
         </button>
       </form>
     </aside>

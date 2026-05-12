@@ -24,12 +24,11 @@ type Props = {
 
 const shellStyle: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "auto auto 1fr",
-  gridTemplateRows: "auto 1fr",
+  gridTemplateColumns: "var(--ec-rail-width) var(--ec-sidebar-width) 1fr",
+  gridTemplateRows: "var(--ec-header-height) 1fr",
   height: "100vh",
-  background: "#0f0f12",
-  color: "#e8e8ed",
-  fontFamily: "system-ui, -apple-system, sans-serif",
+  background: "var(--ec-bg)",
+  color: "var(--ec-text)",
 };
 
 const topbar: CSSProperties = {
@@ -37,23 +36,87 @@ const topbar: CSSProperties = {
   display: "flex",
   alignItems: "center",
   justifyContent: "space-between",
-  padding: "10px 16px",
-  background: "#0a0a0c",
-  borderBottom: "1px solid #1c1c22",
-  gap: 12,
+  padding: "0 var(--ec-space-4)",
+  background: "var(--ec-surface-1)",
+  borderBottom: "1px solid var(--ec-border-subtle)",
+  gap: "var(--ec-space-3)",
+};
+
+const brand: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: "var(--ec-space-2)",
+  fontSize: "var(--ec-text-sm)",
+  fontWeight: 600,
+  letterSpacing: "var(--ec-tracking-tight)",
+  color: "var(--ec-text-strong)",
+};
+
+const brandMark: CSSProperties = {
+  width: 22,
+  height: 22,
+  borderRadius: "var(--ec-radius-sm)",
+  background: "linear-gradient(135deg, hsl(195 60% 55%) 0%, hsl(160 45% 55%) 100%)",
+  boxShadow: "var(--ec-glow-active)",
+};
+
+const breadcrumbStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: "var(--ec-space-2)",
+  marginLeft: "var(--ec-space-4)",
+  paddingLeft: "var(--ec-space-4)",
+  borderLeft: "1px solid var(--ec-border-subtle)",
+  color: "var(--ec-text-muted)",
+  fontSize: "var(--ec-text-sm)",
+};
+
+const userChip: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: "var(--ec-space-2)",
+  padding: "var(--ec-space-1) var(--ec-space-3) var(--ec-space-1) var(--ec-space-1)",
+  background: "transparent",
+  color: "var(--ec-text)",
+  border: "1px solid transparent",
+  borderRadius: "var(--ec-radius-full)",
+  cursor: "pointer",
+  fontSize: "var(--ec-text-sm)",
+  transition: "background var(--ec-dur-fast) var(--ec-ease), border-color var(--ec-dur-fast) var(--ec-ease)",
 };
 
 const chatColumn: CSSProperties = {
   display: "flex",
   flexDirection: "column",
   minWidth: 0,
-  background: "#0f0f12",
+  background: "var(--ec-bg)",
 };
 
 const chatHeader: CSSProperties = {
-  padding: "12px 18px",
-  borderBottom: "1px solid #1c1c22",
-  background: "#13131a",
+  display: "flex",
+  alignItems: "center",
+  gap: "var(--ec-space-3)",
+  padding: "0 var(--ec-space-5)",
+  height: 48,
+  borderBottom: "1px solid var(--ec-border-subtle)",
+  background: "var(--ec-bg)",
+};
+
+const chatTitle: CSSProperties = {
+  display: "flex",
+  alignItems: "baseline",
+  gap: "var(--ec-space-2)",
+  fontSize: "var(--ec-text-base)",
+  fontWeight: 600,
+  color: "var(--ec-text-strong)",
+};
+
+const errorBanner: CSSProperties = {
+  padding: "var(--ec-space-2) var(--ec-space-5)",
+  color: "var(--ec-danger)",
+  background: "var(--ec-danger-soft)",
+  borderBottom: "1px solid var(--ec-border-subtle)",
+  fontSize: "var(--ec-text-sm)",
 };
 
 export function AppShell({ user, socketRev, onLogout }: Props) {
@@ -98,7 +161,6 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     deleteAvatar,
   } = useProfile(true);
 
-  /** Текущий аватар + имя для header'а: пока профиль не подтянулся — fallback на user из auth. */
   const headerName = profile?.displayName ?? user.displayName;
   const headerAvatar = profile?.avatar ?? user.avatar;
 
@@ -107,43 +169,51 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   return (
     <div style={shellStyle}>
       <header style={topbar}>
-        <strong style={{ fontSize: "0.95rem" }}>Eclipse Chat</strong>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", minWidth: 0 }}>
+          <span style={brand}>
+            <span style={brandMark} aria-hidden />
+            <span>Eclipse Chat</span>
+          </span>
+          {activeServer && (
+            <span style={breadcrumbStyle}>
+              <span style={{ opacity: 0.5 }}>/</span>
+              <span style={{ color: "var(--ec-text)", fontWeight: 500 }}>{activeServer.name}</span>
+              {selectedChannel && (
+                <>
+                  <span style={{ opacity: 0.5 }}>/</span>
+                  <span style={{ color: "var(--ec-text-muted)" }}>#{selectedChannel.name}</span>
+                </>
+              )}
+            </span>
+          )}
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: "var(--ec-space-2)" }}>
+          <span
+            className={isReady ? "ec-dot ec-dot--online" : "ec-dot ec-dot--offline"}
+            title={isReady ? "Подключено" : "Соединение разорвано"}
+            aria-label={isReady ? "online" : "offline"}
+          />
           <button
             type="button"
             onClick={() => setShowProfile(true)}
             title="Профиль"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              padding: "0.25rem 0.5rem",
-              background: "transparent",
-              color: "#c8c8d0",
-              border: "1px solid transparent",
-              borderRadius: 999,
-              cursor: "pointer",
-              fontSize: "0.85rem",
-              opacity: 0.85,
+            style={userChip}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "var(--ec-surface-2)";
+              e.currentTarget.style.borderColor = "var(--ec-border-default)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "transparent";
+              e.currentTarget.style.borderColor = "transparent";
             }}
           >
-            <Avatar url={headerAvatar} name={headerName} size={24} />
-            <span>
-              {headerName} {!isReady && <span style={{ color: "#f88" }}>· offline</span>}
-            </span>
+            <Avatar url={headerAvatar} name={headerName} size={26} />
+            <span>{headerName}</span>
           </button>
           <button
             type="button"
             onClick={() => void onLogout()}
-            style={{
-              padding: "0.4rem 0.7rem",
-              background: "transparent",
-              color: "#c8c8d0",
-              border: "1px solid #2a2a32",
-              borderRadius: 6,
-              cursor: "pointer",
-              fontSize: "0.85rem",
-            }}
+            className="ec-btn ec-btn--ghost ec-btn--sm"
           >
             Выйти
           </button>
@@ -174,33 +244,64 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
       <section style={chatColumn}>
         <div style={chatHeader}>
           {selectedChannel ? (
-            <strong>
-              <span style={{ opacity: 0.5, marginRight: 6 }}>#</span>
+            <span style={chatTitle}>
+              <span style={{ color: "var(--ec-accent)" }}>#</span>
               {selectedChannel.name}
-            </strong>
+            </span>
           ) : (
-            <span style={{ opacity: 0.6 }}>
-              {activeServer ? "Выберите канал слева" : "Нет активного сервера. Создайте или вступите по инвайту."}
+            <span style={{ color: "var(--ec-text-muted)", fontSize: "var(--ec-text-sm)" }}>
+              {activeServer ? "Выберите канал слева" : "Нет активного сервера"}
             </span>
           )}
         </div>
 
         {(serversError || messagesError) && (
-          <div style={{ padding: "8px 18px", color: "#f88", fontSize: "0.85rem", borderBottom: "1px solid #2a1a1a" }}>
-            {serversError ?? messagesError}
-          </div>
+          <div style={errorBanner}>{serversError ?? messagesError}</div>
         )}
 
-        <MessageList
-          messages={messages}
-          emptyHint={messagesLoading ? "Загрузка…" : "Сообщений ещё нет — будьте первым"}
-        />
-
-        <MessageInput
-          channelName={selectedChannel?.name ?? null}
-          disabled={!selectedChannelId || !isReady}
-          onSend={sendMessage}
-        />
+        {!activeServer ? (
+          <div className="ec-empty">
+            <div className="ec-empty-icon" aria-hidden>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="4" />
+                <path d="M3 9h18M9 3v18" />
+              </svg>
+            </div>
+            <div className="ec-empty-title">Нет активного сервера</div>
+            <div className="ec-empty-hint">Создайте свой или вступите по инвайту — кнопки в левой колонке.</div>
+            <div style={{ display: "flex", gap: "var(--ec-space-2)" }}>
+              <button type="button" className="ec-btn ec-btn--primary ec-btn--sm" onClick={() => setShowCreateServer(true)}>
+                Создать сервер
+              </button>
+              <button type="button" className="ec-btn ec-btn--sm" onClick={() => setShowJoinServer(true)}>
+                Вступить по инвайту
+              </button>
+            </div>
+          </div>
+        ) : !selectedChannelId ? (
+          <div className="ec-empty">
+            <div className="ec-empty-icon" aria-hidden>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 6h16M4 12h16M4 18h10" />
+              </svg>
+            </div>
+            <div className="ec-empty-title">Выберите канал</div>
+            <div className="ec-empty-hint">Каналы — слева. Или создайте новый внизу панели каналов.</div>
+          </div>
+        ) : (
+          <>
+            <MessageList
+              messages={messages}
+              emptyHint={messagesLoading ? "Загрузка…" : undefined}
+              channelName={selectedChannel?.name ?? null}
+            />
+            <MessageInput
+              channelName={selectedChannel?.name ?? null}
+              disabled={!selectedChannelId || !isReady}
+              onSend={sendMessage}
+            />
+          </>
+        )}
       </section>
 
       {showCreateServer && (
