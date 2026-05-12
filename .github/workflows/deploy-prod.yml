@@ -1,0 +1,145 @@
+name: Deploy PROD (master)
+
+on:
+  push:
+    branches: ["master"]
+  workflow_dispatch:
+    inputs:
+      run_initial_setup:
+        description: "Run deploy/initial-setup.sh on server (only first time)"
+        required: false
+        default: "false"
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: eclipse-chat-prod-deploy
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: [self-hosted, Linux, ci]
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Show Node version
+        run: |
+          node -v
+          npm -v
+
+      - name: Install all workspaces
+        run: npm ci
+
+      - name: TypeScript check
+        run: npm run typecheck
+
+      - name: Build server + web
+        run: npm run build
+        env:
+          # apps/web/.env.production уже содержит VITE_BASE_PATH=/eclipse-chat/
+          # но дублируем здесь чтобы override через CI env работал
+          VITE_BASE_PATH: "/eclipse-chat/"
+
+      - name: Upload build artefacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: eclipse-chat-dist
+          path: |
+            apps/server/dist/
+            apps/web/dist/
+            apps/server/prisma/
+            apps/server/package.json
+            apps/server/package-lock.json
+            apps/web/package.json
+            package.json
+            package-lock.json
+            deploy/
+          retention-days: 7
+
+  deploy:
+    needs: build
+    runs-on: [self-hosted, Linux, prod]
+    environment: production # требует manual approval в GitHub UI
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup SSH
+        shell: bash
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY_PROD }}" | tr -d '\r' > ~/.ssh/id_prod_ci
+          chmod 600 ~/.ssh/id_prod_ci
+
+      - name: Add server to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H "${{ secrets.DEPLOY_HOST_PROD }}" >> ~/.ssh/known_hosts
+
+      - name: Run initial setup (optional, first deploy only)
+        if: github.event.inputs.run_initial_setup == 'true'
+        run: |
+          ssh -i ~/.ssh/id_prod_ci "${{ secrets.DEPLOY_USER_PROD }}@${{ secrets.DEPLOY_HOST_PROD }}" \
+            "bash -s" < deploy/initial-setup.sh
+        env:
+          ECLIPSE_CHAT_DB_PASSWORD: ${{ secrets.ECLIPSE_CHAT_DB_PASSWORD }}
+          ECLIPSE_CHAT_JWT_SECRET: ${{ secrets.ECLIPSE_CHAT_JWT_SECRET }}
+
+      - name: Deploy via SSH (git pull + migrate + restart)
+        run: |
+          ssh -i ~/.ssh/id_prod_ci "${{ secrets.DEPLOY_USER_PROD }}@${{ secrets.DEPLOY_HOST_PROD }}" << 'EOF'
+          set -e
+          DEPLOY_PATH="/var/www/eclipse-chat"
+
+          if [ ! -d "$DEPLOY_PATH" ]; then
+            echo "ERROR: $DEPLOY_PATH не существует. Запусти workflow с run_initial_setup=true сначала."
+            exit 1
+          fi
+
+          cd "$DEPLOY_PATH"
+
+          echo "== git pull =="
+          git fetch origin master
+          git reset --hard origin/master
+
+          echo "== write release.json =="
+          echo "{\"branch\":\"$(git branch --show-current)\",\"commit\":\"$(git rev-parse --short HEAD)\",\"subject\":\"$(git log -1 --pretty=%s)\",\"deployed_at\":\"$(date -Iseconds)\"}" > release.json
+
+          echo "== npm ci =="
+          npm ci --omit=optional
+
+          echo "== prisma migrate deploy =="
+          cd apps/server
+          npx prisma generate
+          npx prisma migrate deploy
+          cd "$DEPLOY_PATH"
+
+          echo "== build server (tsc) + web (vite) =="
+          npm run build
+
+          echo "== set permissions on dist =="
+          chown -R www-data:www-data "$DEPLOY_PATH/apps/web/dist" || true
+          chown -R www-data:www-data "$DEPLOY_PATH/apps/server/dist" || true
+          chown -R www-data:www-data "$DEPLOY_PATH/apps/server/prisma" || true
+
+          echo "== restart supervisor program =="
+          sudo supervisorctl restart eclipse-chat-server || \
+            (echo "ERROR: supervisor program не найдена. Возможно нужен initial-setup."; exit 1)
+
+          echo "== reload nginx (если конфиг менялся) =="
+          sudo nginx -t && sudo systemctl reload nginx || \
+            echo "⚠ nginx config invalid или reload failed — Star CRM может пострадать, проверь!"
+
+          echo "DEPLOY COMPLETE"
+          EOF
+
+      - name: Smoke test
+        run: |
+          sleep 5
+          curl -sS --max-time 30 "https://app.star-crm.ru/eclipse-chat/api/health" | tee /tmp/health.json
+          grep -q '"ok":true' /tmp/health.json
+          echo ""
+          echo "✓ Eclipse Chat is live on https://app.star-crm.ru/eclipse-chat/"
