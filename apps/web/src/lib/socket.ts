@@ -89,6 +89,13 @@ export type MemberLeftPayload = {
   serverId: string;
 };
 
+export type MemberUpdatedPayload = {
+  memberId: string;
+  userId: string;
+  serverId: string;
+  role: string;
+};
+
 export type PresenceStatus = "online" | "offline";
 
 export type PresenceUpdatePayload = {
@@ -159,6 +166,7 @@ export const SocketEvents = {
   ChannelDeleted: "channel:deleted",
   MemberJoined: "member:joined",
   MemberLeft: "member:left",
+  MemberUpdated: "member:updated",
   ChannelJoin: "channel:join",
   ChannelLeave: "channel:leave",
   PresenceUpdate: "presence:update",

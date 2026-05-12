@@ -1,15 +1,20 @@
 import { useRef, useState } from "react";
 import type { CSSProperties } from "react";
+import { Avatar } from "./Avatar";
+import type { MemberRole, MemberRow } from "../hooks/useMembers";
 import type { ServerRow } from "../hooks/useServers";
 import { Modal } from "./Modal";
 
 type Props = {
   server: ServerRow;
+  members?: MemberRow[];
+  currentUserId?: string;
   onClose: () => void;
   onLeave: () => Promise<boolean>;
   onDelete: () => Promise<boolean>;
   onUploadIcon?: (file: File) => Promise<boolean>;
   onDeleteIcon?: () => Promise<boolean>;
+  onUpdateRole?: (memberUserId: string, role: "ADMIN" | "MODERATOR" | "MEMBER") => Promise<boolean>;
 };
 
 function resolveIconUrl(raw: string): string {
@@ -93,13 +98,43 @@ function buildInviteUrl(code: string): string {
   return `${window.location.origin}${import.meta.env.BASE_URL}?invite=${encodeURIComponent(code)}`;
 }
 
+const memberRowStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "32px 1fr auto",
+  alignItems: "center",
+  gap: "var(--ec-space-2)",
+  padding: "var(--ec-space-2) var(--ec-space-2)",
+  borderRadius: "var(--ec-radius-sm)",
+};
+
+const roleSelect: CSSProperties = {
+  background: "var(--ec-surface-3)",
+  border: "1px solid var(--ec-border-default)",
+  borderRadius: "var(--ec-radius-sm)",
+  padding: "0.2rem 0.4rem",
+  color: "var(--ec-text)",
+  fontSize: "var(--ec-text-2xs)",
+  fontWeight: 600,
+  letterSpacing: "var(--ec-tracking-wide)",
+  cursor: "pointer",
+};
+
+function roleBadgeClass(role: MemberRole | string): string {
+  if (role === "OWNER") return "ec-badge ec-badge--owner";
+  if (role === "ADMIN" || role === "MODERATOR") return "ec-badge ec-badge--accent";
+  return "ec-badge";
+}
+
 export function ServerInfoModal({
   server,
+  members,
+  currentUserId,
   onClose,
   onLeave,
   onDelete,
   onUploadIcon,
   onDeleteIcon,
+  onUpdateRole,
 }: Props) {
   const [copiedCode, setCopiedCode] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
@@ -263,6 +298,71 @@ export function ServerInfoModal({
           <span style={statValue}>{server.memberCount}</span>
         </div>
       </div>
+
+      {members && members.length > 0 && (
+        <div>
+          <label className="ec-field-label">Участники ({members.length})</label>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 2,
+              maxHeight: 220,
+              overflowY: "auto",
+              padding: "var(--ec-space-1) 0",
+              border: "1px solid var(--ec-border-subtle)",
+              borderRadius: "var(--ec-radius-md)",
+            }}
+          >
+            {members.map((m) => {
+              const isMe = currentUserId === m.userId;
+              const isOwnerRow = m.role === "OWNER";
+              return (
+                <div key={m.id} style={memberRowStyle}>
+                  <Avatar url={m.user.avatar} name={m.user.displayName} size={28} />
+                  <span
+                    style={{
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      color: "var(--ec-text)",
+                    }}
+                  >
+                    {m.user.displayName}
+                    {isMe && (
+                      <span style={{ marginLeft: 6, color: "var(--ec-text-dim)", fontSize: "var(--ec-text-2xs)" }}>
+                        (вы)
+                      </span>
+                    )}
+                  </span>
+                  {/* OWNER может менять roles на не-OWNER + не-себе */}
+                  {isOwner && !isOwnerRow && !isMe && onUpdateRole ? (
+                    <select
+                      value={m.role}
+                      onChange={(e) =>
+                        void onUpdateRole(
+                          m.userId,
+                          e.target.value as "ADMIN" | "MODERATOR" | "MEMBER",
+                        )
+                      }
+                      style={roleSelect}
+                      title="Изменить роль"
+                    >
+                      <option value="ADMIN">ADMIN</option>
+                      <option value="MODERATOR">MOD</option>
+                      <option value="MEMBER">MEMBER</option>
+                    </select>
+                  ) : (
+                    <span className={roleBadgeClass(m.role)} style={{ fontSize: "0.6rem" }}>
+                      {m.role === "MODERATOR" ? "MOD" : m.role}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div>
         <label className="ec-field-label">Инвайт-код</label>

@@ -5,6 +5,7 @@ import {
   SocketEvents,
   type MemberJoinedPayload,
   type MemberLeftPayload,
+  type MemberUpdatedPayload,
   type PresenceUpdatePayload,
 } from "../lib/socket";
 
@@ -109,6 +110,48 @@ export function useMembers(serverId: string | null, socket: Socket | null) {
     };
   }, [socket, serverId]);
 
+  // socket: member:updated (role change)
+  useEffect(() => {
+    if (!socket || !serverId) return;
+    const onUpdated = (p: MemberUpdatedPayload) => {
+      if (p.serverId !== serverId) return;
+      const role: MemberRole =
+        p.role === "OWNER" || p.role === "ADMIN" || p.role === "MODERATOR"
+          ? (p.role as MemberRole)
+          : "MEMBER";
+      setMembers((prev) => prev.map((m) => (m.id === p.memberId ? { ...m, role } : m)));
+    };
+    socket.on(SocketEvents.MemberUpdated, onUpdated);
+    return () => {
+      socket.off(SocketEvents.MemberUpdated, onUpdated);
+    };
+  }, [socket, serverId]);
+
+  const updateMemberRole = useCallback(
+    async (memberUserId: string, newRole: "ADMIN" | "MODERATOR" | "MEMBER"): Promise<boolean> => {
+      if (!serverId) return false;
+      setError(null);
+      try {
+        await apiJson(
+          `/api/servers/${encodeURIComponent(serverId)}/members/${encodeURIComponent(memberUserId)}`,
+          {
+            method: "PATCH",
+            body: JSON.stringify({ role: newRole }),
+          },
+        );
+        // Socket emit придёт и обновит state — но добавим optimistic для UX
+        setMembers((prev) =>
+          prev.map((m) => (m.userId === memberUserId ? { ...m, role: newRole } : m)),
+        );
+        return true;
+      } catch (e) {
+        setError(e instanceof ApiError ? e.message : "Не удалось изменить роль");
+        return false;
+      }
+    },
+    [serverId],
+  );
+
   // socket: presence:update
   useEffect(() => {
     if (!socket || !serverId) return;
@@ -126,5 +169,5 @@ export function useMembers(serverId: string | null, socket: Socket | null) {
     };
   }, [socket, serverId]);
 
-  return { members, loading, error, reload };
+  return { members, loading, error, reload, updateMemberRole };
 }

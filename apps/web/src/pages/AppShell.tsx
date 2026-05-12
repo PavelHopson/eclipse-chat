@@ -208,6 +208,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     members,
     loading: membersLoading,
     error: membersError,
+    updateMemberRole,
   } = useMembers(activeServerId, socket);
 
   const headerName = profile?.displayName ?? user.displayName;
@@ -575,11 +576,14 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
       {showServerInfo && activeServer && (
         <ServerInfoModal
           server={activeServer}
+          members={members}
+          currentUserId={user.id}
           onClose={() => setShowServerInfo(false)}
           onLeave={() => leaveServer(activeServer.id)}
           onDelete={() => deleteServer(activeServer.id)}
           onUploadIcon={(file) => uploadServerIcon(activeServer.id, file)}
           onDeleteIcon={() => deleteServerIcon(activeServer.id)}
+          onUpdateRole={updateMemberRole}
         />
       )}
 

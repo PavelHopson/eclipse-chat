@@ -5,7 +5,13 @@ import { z } from "zod";
 import sharp from "sharp";
 import { db } from "../db.js";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
-import { emitMemberJoined, emitMemberLeft, emitChannelCreated, emitChannelDeleted } from "../realtime.js";
+import {
+  emitChannelCreated,
+  emitChannelDeleted,
+  emitMemberJoined,
+  emitMemberLeft,
+  emitMemberUpdated,
+} from "../realtime.js";
 import { addServerRoom, onlineUserIds, removeServerRoom } from "../presence.js";
 
 const ICON_BODY_LIMIT = 7 * 1024 * 1024;
@@ -536,6 +542,59 @@ export async function registerServerRoutes(app: FastifyInstance) {
       const url = serverIconUrl(filename);
       await db.server.update({ where: { id: serverId }, data: { icon: url } });
       return { ok: true, icon: url };
+    },
+  );
+
+  /**
+   * PATCH /api/servers/:id/members/:userId — изменить роль участника.
+   * Только OWNER. Нельзя:
+   *   - менять свою роль (OWNER не может разжаловать себя — сначала
+   *     transfer ownership когда v1.x)
+   *   - назначать OWNER (transfer — отдельный endpoint в v1.x)
+   */
+  app.patch(
+    "/api/servers/:id/members/:userId",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const { id: serverId, userId: targetUserId } = req.params as {
+        id: string;
+        userId: string;
+      };
+      const me = await loadMember(req, reply, serverId);
+      if (!me) return reply;
+      if (me.role !== "OWNER") {
+        return reply.status(403).send({ error: "Only OWNER can change roles" });
+      }
+      if (me.userId === targetUserId) {
+        return reply.status(400).send({ error: "Cannot change own role" });
+      }
+      const body = z
+        .object({ role: z.enum(["ADMIN", "MODERATOR", "MEMBER"]) })
+        .safeParse(req.body);
+      if (!body.success) {
+        return reply.status(400).send({ error: "Invalid role" });
+      }
+      const target = await db.member.findUnique({
+        where: { userId_serverId: { userId: targetUserId, serverId } },
+        select: { id: true, role: true },
+      });
+      if (!target) {
+        return reply.status(404).send({ error: "Member not found" });
+      }
+      if (target.role === "OWNER") {
+        return reply.status(400).send({ error: "Cannot demote OWNER" });
+      }
+      const updated = await db.member.update({
+        where: { id: target.id },
+        data: { role: body.data.role },
+      });
+      emitMemberUpdated(serverId, {
+        memberId: updated.id,
+        userId: updated.userId,
+        serverId,
+        role: updated.role,
+      });
+      return { ok: true, role: updated.role };
     },
   );
 

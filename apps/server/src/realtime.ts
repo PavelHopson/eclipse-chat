@@ -88,6 +88,19 @@ export function emitMemberLeft(
   io?.to(`server:${serverId}`).emit("member:left", payload);
 }
 
+/** Эмит при изменении роли участника. */
+export function emitMemberUpdated(
+  serverId: string,
+  payload: {
+    memberId: string;
+    userId: string;
+    serverId: string;
+    role: string;
+  },
+) {
+  io?.to(`server:${serverId}`).emit("member:updated", payload);
+}
+
 /** Сообщение отредактировано: frontend обновляет content + editedAt. */
 export function emitMessageUpdated(
   channelId: string,
