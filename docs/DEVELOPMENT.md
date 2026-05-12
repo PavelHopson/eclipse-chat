@@ -1,6 +1,6 @@
 # Eclipse Chat — Local Development
 
-Гайд по локальной разработке. С v0.6 (commit `<TBD-Phase1>`) перешли
+Гайд по локальной разработке. С v0.6 (commit `9d92263`) перешли
 с SQLite на **PostgreSQL** — нативные enum'ы, миграции через
 `prisma migrate dev`, готовность к production-deploy. Production
 deployment на свой сервер описан в
@@ -24,21 +24,32 @@ deployment на свой сервер описан в
 
 ### Путь A — нативный PostgreSQL (рекомендую если PG уже стоит)
 
+**Важно: уточни порт твоего локального PG.** На стандарте — `5432`, но
+может быть другим (у Pavel'а на Windows PG 18 слушает на `5433`,
+проверь через `netstat -ano | findstr 5432` или `Get-NetTCPConnection -State Listen`).
+
+**Bash (Git Bash / Linux / macOS):**
 ```bash
-# Создать БД и user
-psql -U postgres <<'SQL'
+psql -U postgres -p <PORT> <<'SQL'
 CREATE USER eclipse_chat_dev WITH PASSWORD 'dev_password';
 CREATE DATABASE eclipse_chat_dev OWNER eclipse_chat_dev;
 GRANT ALL PRIVILEGES ON DATABASE eclipse_chat_dev TO eclipse_chat_dev;
 SQL
-
-# Проверить что подключение работает
-psql -U eclipse_chat_dev -d eclipse_chat_dev -h localhost -c "SELECT version();"
 ```
 
-DATABASE_URL для `.env`:
+**PowerShell (Windows) — heredoc не поддерживается, через `-c`:**
+```powershell
+psql -U postgres -p <PORT> -c "CREATE USER eclipse_chat_dev WITH PASSWORD 'dev_password'; CREATE DATABASE eclipse_chat_dev OWNER eclipse_chat_dev;"
 ```
-DATABASE_URL="postgresql://eclipse_chat_dev:dev_password@localhost:5432/eclipse_chat_dev?schema=public"
+
+**Проверка что подключение работает:**
+```bash
+psql -U eclipse_chat_dev -d eclipse_chat_dev -h localhost -p <PORT> -c "SELECT version();"
+```
+
+DATABASE_URL для `.env` (замени `<PORT>` на твой):
+```
+DATABASE_URL="postgresql://eclipse_chat_dev:dev_password@localhost:<PORT>/eclipse_chat_dev?schema=public"
 ```
 
 ### Путь B — Docker (если нет нативного PG)
