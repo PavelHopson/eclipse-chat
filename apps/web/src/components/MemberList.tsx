@@ -13,6 +13,10 @@ type Props = {
   voiceChannelByUser?: Record<string, string>;
   /** Лукап name канала по id — для tooltip. */
   channelNameById?: (channelId: string) => string | undefined;
+  /** Текущий user id — скрыть «написать в личку» для самого себя. */
+  currentUserId?: string;
+  /** «Написать в личку» — открывает или создаёт DM. */
+  onOpenDm?: (userId: string) => void;
 };
 
 const wrap: CSSProperties = {
@@ -104,10 +108,14 @@ function MemberRowView({
   m,
   inVoiceChannel,
   voiceChannelName,
+  showDmButton,
+  onOpenDm,
 }: {
   m: MemberRow;
   inVoiceChannel: boolean;
   voiceChannelName?: string;
+  showDmButton: boolean;
+  onOpenDm?: (userId: string) => void;
 }) {
   const label = roleLabel(m.role);
   const tooltip =
@@ -123,9 +131,13 @@ function MemberRowView({
       style={rowStyle}
       onMouseEnter={(e) => {
         e.currentTarget.style.background = "var(--ec-surface-2)";
+        const dmBtn = e.currentTarget.querySelector<HTMLElement>("[data-dm-btn]");
+        if (dmBtn) dmBtn.style.opacity = "1";
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.background = "transparent";
+        const dmBtn = e.currentTarget.querySelector<HTMLElement>("[data-dm-btn]");
+        if (dmBtn) dmBtn.style.opacity = "0";
       }}
       title={tooltip}
     >
@@ -189,6 +201,42 @@ function MemberRowView({
           {label}
         </span>
       )}
+      {showDmButton && onOpenDm && (
+        <button
+          data-dm-btn
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpenDm(m.userId);
+          }}
+          aria-label={`Написать ${m.user.displayName} в личку`}
+          title="Написать в личку"
+          style={{
+            width: 22,
+            height: 22,
+            border: "1px solid var(--ec-border-default)",
+            background: "var(--ec-surface-1)",
+            color: "var(--ec-accent)",
+            borderRadius: "var(--ec-radius-xs)",
+            cursor: "pointer",
+            display: "grid",
+            placeItems: "center",
+            opacity: 0,
+            transition: "opacity var(--ec-dur-fast) var(--ec-ease), background var(--ec-dur-fast) var(--ec-ease)",
+            marginLeft: 4,
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "var(--ec-accent-soft, hsl(195 60% 55% / 0.2))";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "var(--ec-surface-1)";
+          }}
+        >
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+          </svg>
+        </button>
+      )}
     </div>
   );
 }
@@ -200,6 +248,8 @@ export function MemberList({
   onClose,
   voiceChannelByUser,
   channelNameById,
+  currentUserId,
+  onOpenDm,
 }: Props) {
   const { online, offline } = useMemo(() => {
     const sorted = sortMembers(members);
@@ -263,6 +313,8 @@ export function MemberList({
                       m={m}
                       inVoiceChannel={Boolean(vc)}
                       voiceChannelName={vc ? channelNameById?.(vc) : undefined}
+                      showDmButton={Boolean(currentUserId && m.userId !== currentUserId)}
+                      onOpenDm={onOpenDm}
                     />
                   );
                 })}
@@ -285,6 +337,8 @@ export function MemberList({
                     key={m.id}
                     m={m}
                     inVoiceChannel={false}
+                    showDmButton={Boolean(currentUserId && m.userId !== currentUserId)}
+                    onOpenDm={onOpenDm}
                   />
                 ))}
               </>

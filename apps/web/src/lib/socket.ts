@@ -172,6 +172,51 @@ export type VoiceParticipantLeftPayload = {
 /** Snapshot — `Record<voiceChannelId, userId[]>`. Шлётся раз на connect. */
 export type VoiceStatePayload = Record<string, string[]>;
 
+// ============================
+// DM (Direct Messages) payloads
+// ============================
+
+export type DmMessageNewPayload = {
+  messageId: string;
+  conversationId: string;
+  userId: string;
+  displayName: string;
+  avatar: string | null;
+  content: string;
+  createdAt: string;
+  attachments?: AttachmentPayload[];
+};
+
+export type DmMessageUpdatedPayload = {
+  messageId: string;
+  conversationId: string;
+  content: string;
+  editedAt: string;
+};
+
+export type DmMessageDeletedPayload = {
+  messageId: string;
+  conversationId: string;
+  deletedAt: string;
+};
+
+export type DmReactionAddedPayload = {
+  messageId: string;
+  conversationId: string;
+  emoji: string;
+  userId: string;
+};
+
+export type DmReactionRemovedPayload = DmReactionAddedPayload;
+
+/** Bump conversation в sidebar list — отправлено индивидуально каждому participant'у. */
+export type DmConversationBumpedPayload = {
+  conversationId: string;
+  lastMessageAt: string;
+  lastMessagePreview: string;
+  lastSenderUserId: string;
+};
+
 export const SocketEvents = {
   ServerHello: "server:hello",
   MessageNew: "message:new",
@@ -196,4 +241,12 @@ export const SocketEvents = {
   VoiceState: "voice:state",
   VoiceParticipantJoined: "voice:participant:joined",
   VoiceParticipantLeft: "voice:participant:left",
+  DmJoin: "dm:join",
+  DmLeave: "dm:leave",
+  DmMessageNew: "dm:message:new",
+  DmMessageUpdated: "dm:message:updated",
+  DmMessageDeleted: "dm:message:deleted",
+  DmReactionAdded: "dm:reaction:added",
+  DmReactionRemoved: "dm:reaction:removed",
+  DmConversationBumped: "dm:conversation:bumped",
 } as const;

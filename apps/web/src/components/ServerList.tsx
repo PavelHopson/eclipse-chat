@@ -7,6 +7,12 @@ type Props = {
   onSelect: (id: string) => void;
   onCreateRequest: () => void;
   onJoinRequest: () => void;
+  /** DM mode active (activeServerId === null + user clicked DMs tile). */
+  dmsActive?: boolean;
+  /** Total unread DM count для badge. */
+  dmsUnread?: number;
+  /** Switch to DM view (handler в AppShell setActiveServerId(null)). */
+  onDmsRequest?: () => void;
 };
 
 const railStyle: CSSProperties = {
@@ -63,9 +69,76 @@ function initials(name: string): string {
   return parts.map((p) => p[0]?.toUpperCase() ?? "").join("") || "??";
 }
 
-export function ServerList({ servers, activeServerId, onSelect, onCreateRequest, onJoinRequest }: Props) {
+export function ServerList({
+  servers,
+  activeServerId,
+  onSelect,
+  onCreateRequest,
+  onJoinRequest,
+  dmsActive = false,
+  dmsUnread = 0,
+  onDmsRequest,
+}: Props) {
   return (
     <nav style={railStyle} aria-label="Список серверов">
+      {onDmsRequest && (
+        <button
+          type="button"
+          onClick={onDmsRequest}
+          title="Личные сообщения"
+          style={{
+            ...tileBase,
+            borderRadius: dmsActive ? "var(--ec-radius-lg)" : "var(--ec-radius-full)",
+            background: dmsActive ? "var(--ec-surface-3)" : "var(--ec-surface-2)",
+            borderColor: dmsActive ? "var(--ec-border-accent)" : "var(--ec-border-subtle)",
+            boxShadow: dmsActive ? "var(--ec-glow-active)" : "none",
+            color: dmsActive ? "var(--ec-accent)" : "var(--ec-text)",
+          }}
+          onMouseEnter={(e) => {
+            if (!dmsActive) {
+              e.currentTarget.style.borderRadius = "var(--ec-radius-lg)";
+              e.currentTarget.style.background = "var(--ec-surface-3)";
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (!dmsActive) {
+              e.currentTarget.style.borderRadius = "var(--ec-radius-full)";
+              e.currentTarget.style.background = "var(--ec-surface-2)";
+            }
+          }}
+        >
+          {dmsActive && <span style={activeMarker} aria-hidden />}
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+          </svg>
+          {dmsUnread > 0 && !dmsActive && (
+            <span
+              aria-label={`${dmsUnread} непрочитанных`}
+              style={{
+                position: "absolute",
+                top: -2,
+                right: -2,
+                minWidth: 16,
+                height: 16,
+                padding: "0 4px",
+                borderRadius: "var(--ec-radius-full)",
+                background: "var(--ec-accent)",
+                color: "#fff",
+                fontSize: "0.55rem",
+                fontWeight: 700,
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                border: "2px solid var(--ec-surface-1)",
+                boxShadow: "0 0 6px hsl(195 60% 55% / 0.5)",
+              }}
+            >
+              {dmsUnread > 99 ? "99+" : dmsUnread}
+            </span>
+          )}
+        </button>
+      )}
+      {onDmsRequest && servers.length > 0 && <div style={separator} aria-hidden />}
       {servers.map((s) => {
         const isActive = s.id === activeServerId;
         return (

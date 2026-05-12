@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { Avatar } from "../components/Avatar";
 import { ChannelList } from "../components/ChannelList";
 import { CreateServerModal } from "../components/CreateServerModal";
+import { DirectConversationList } from "../components/DirectConversationList";
 import { JoinServerModal } from "../components/JoinServerModal";
 import { MemberList } from "../components/MemberList";
 import { MessageInput } from "../components/MessageInput";
@@ -18,6 +19,8 @@ import { VoiceMiniBar } from "../components/VoiceMiniBar";
 import { VoicePlaceholder } from "../components/VoicePlaceholder";
 import { VoiceRoom } from "../components/VoiceRoom";
 import { useChannels } from "../hooks/useChannels";
+import { useDirectConversations } from "../hooks/useDirectConversations";
+import { useDirectMessages } from "../hooks/useDirectMessages";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import { useMembers, type MemberRole } from "../hooks/useMembers";
 import { useMessages } from "../hooks/useMessages";
@@ -148,6 +151,30 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     deleteChannel,
     unread,
   } = useChannels(activeServerId, socket);
+
+  // ===== DMs =====
+  // DM-mode активируется когда activeServerId === null (после клика «📩 DMs»
+  // в ServerList). Список конверсаций + текущий выбранный + open-or-create.
+  const {
+    conversations: dmConversations,
+    loading: dmLoading,
+    error: dmError,
+    selectedDmId,
+    selectDm,
+    openDmWith,
+  } = useDirectConversations(socket, user.id);
+  const inDmMode = activeServerId === null;
+  const selectedDm = dmConversations.find((c) => c.id === selectedDmId) ?? null;
+  const {
+    messages: dmMessages,
+    loading: dmMessagesLoading,
+    error: dmMessagesError,
+    sendMessage: dmSend,
+    retryMessage: dmRetry,
+    editMessage: dmEdit,
+    deleteMessage: dmDelete,
+    toggleReaction: dmToggleReaction,
+  } = useDirectMessages(inDmMode ? selectedDmId : null, socket, user.id);
 
   // Total unread по всем каналам — для tab title badge
   const unreadTotal = Object.values(unread).reduce((sum, n) => sum + n, 0);
@@ -471,33 +498,62 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           }}
           onCreateRequest={() => setShowCreateServer(true)}
           onJoinRequest={() => setShowJoinServer(true)}
+          dmsActive={inDmMode}
+          dmsUnread={dmConversations.reduce((sum, c) => sum + c.unread, 0)}
+          onDmsRequest={() => {
+            setActiveServerId(null);
+            if (isMobile) setNavOpen(false);
+          }}
         />
       </div>
 
       <div className="ec-shell__channels">
-        <ChannelList
-          serverName={activeServer?.name ?? null}
-          serverRole={activeServer?.role ?? null}
-          inviteCode={activeServer?.inviteCode ?? null}
-          channels={channels}
-          unread={unread}
-          selectedChannelId={selectedChannelId}
-          onSelect={handleSelectChannel}
-          onCreate={async (name, type) => {
-            await createChannel(name, type);
-          }}
-          onDelete={deleteChannel}
-          onShowServerInfo={() => activeServer && setShowServerInfo(true)}
-          voiceByChannel={voiceByChannel}
-          members={members}
-          speakingUserIds={speakingUserIds}
-          myVoiceChannelId={voice.activeChannelId}
-        />
+        {inDmMode ? (
+          <DirectConversationList
+            conversations={dmConversations}
+            loading={dmLoading}
+            error={dmError}
+            selectedDmId={selectedDmId}
+            onSelect={(id) => {
+              selectDm(id);
+              if (isMobile) setNavOpen(false);
+            }}
+            onlineUserIds={new Set(members.filter((m) => m.online).map((m) => m.userId))}
+          />
+        ) : (
+          <ChannelList
+            serverName={activeServer?.name ?? null}
+            serverRole={activeServer?.role ?? null}
+            inviteCode={activeServer?.inviteCode ?? null}
+            channels={channels}
+            unread={unread}
+            selectedChannelId={selectedChannelId}
+            onSelect={handleSelectChannel}
+            onCreate={async (name, type) => {
+              await createChannel(name, type);
+            }}
+            onDelete={deleteChannel}
+            onShowServerInfo={() => activeServer && setShowServerInfo(true)}
+            voiceByChannel={voiceByChannel}
+            members={members}
+            speakingUserIds={speakingUserIds}
+            myVoiceChannelId={voice.activeChannelId}
+          />
+        )}
       </div>
 
       <section className="ec-shell__chat" style={chatColumn}>
         <div style={chatHeader}>
-          {selectedChannel ? (
+          {inDmMode && selectedDm ? (
+            <span style={chatTitle}>
+              <Avatar url={selectedDm.other.avatar} name={selectedDm.other.displayName} size={22} />
+              {selectedDm.other.displayName}
+            </span>
+          ) : inDmMode ? (
+            <span style={{ color: "var(--ec-text-muted)", fontSize: "var(--ec-text-sm)" }}>
+              Выберите диалог
+            </span>
+          ) : selectedChannel ? (
             <span style={chatTitle}>
               {selectedChannel.type === "VOICE" ? (
                 <svg
@@ -527,11 +583,52 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           )}
         </div>
 
-        {(serversError || messagesError) && (
-          <div style={errorBanner}>{serversError ?? messagesError}</div>
+        {(serversError || messagesError || dmError || dmMessagesError) && (
+          <div style={errorBanner}>
+            {serversError ?? messagesError ?? dmError ?? dmMessagesError}
+          </div>
         )}
 
-        {!activeServer ? (
+        {inDmMode ? (
+          !selectedDm ? (
+            <div className="ec-empty">
+              <div className="ec-empty-icon" aria-hidden>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+                </svg>
+              </div>
+              <div className="ec-empty-title">Личные сообщения</div>
+              <div className="ec-empty-hint">
+                Выбери диалог слева или открой профиль участника любого сервера и нажми «Написать в личку».
+              </div>
+            </div>
+          ) : (
+            <>
+              <MessageList
+                messages={dmMessages}
+                emptyHint={dmMessagesLoading ? "Загрузка…" : "Это начало вашего диалога. Напиши первое сообщение."}
+                channelName={selectedDm.other.displayName}
+                currentUserId={user.id}
+                currentUserName={headerName}
+                currentRole={null}
+                mentionNames={[selectedDm.other.displayName]}
+                onRetry={(mid) => dmRetry(mid, senderForMessages)}
+                onEdit={dmEdit}
+                onDelete={dmDelete}
+                onPin={async () => false}
+                onUnpin={async () => false}
+                onToggleReaction={dmToggleReaction}
+              />
+              <MessageInput
+                channelName={selectedDm.other.displayName}
+                disabled={!isReady}
+                onSend={(content, attachments) => dmSend(content, senderForMessages, attachments)}
+                onTypingStart={() => undefined}
+                onTypingStop={() => undefined}
+              />
+            </>
+          )
+        ) : !activeServer ? (
           <div className="ec-empty">
             <div className="ec-empty-icon" aria-hidden>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -628,6 +725,17 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             onClose={isTabletOrSmaller ? () => setMembersOpen(false) : undefined}
             voiceChannelByUser={voiceChannelByUser}
             channelNameById={channelNameById}
+            currentUserId={user.id}
+            onOpenDm={(otherId) => {
+              void openDmWith(otherId).then((convoId) => {
+                if (convoId) {
+                  // Переключаемся в DM mode
+                  setActiveServerId(null);
+                  // selectDm уже вызван внутри openDmWith
+                  if (isTabletOrSmaller) setMembersOpen(false);
+                }
+              });
+            }}
           />
         </div>
       )}
