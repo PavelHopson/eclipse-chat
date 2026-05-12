@@ -123,6 +123,35 @@ io.on("connection", (socket) => {
       void socket.leave(`channel:${channelId}`);
     }
   });
+
+  // typing:start / typing:stop — ephemeral, без DB. Broadcast в channel-room
+  // ИСКЛЮЧАЯ sender (socket.to(...) вместо io.to(...)). User identity берётся
+  // из socket.data — нельзя spoof'нуть.
+  socket.on("typing:start", async (channelId: string) => {
+    const uid = (socket.data as { userId: string | null | undefined }).userId;
+    if (!uid || typeof channelId !== "string" || !channelId) return;
+    // Prefetch displayName из БД один раз (на typing event'е — небольшой overhead;
+    // если будет узкое место — кешировать на socket.data при connect)
+    const user = await db.user.findUnique({
+      where: { id: uid },
+      select: { displayName: true },
+    });
+    if (!user) return;
+    socket.to(`channel:${channelId}`).emit("typing:start", {
+      channelId,
+      userId: uid,
+      displayName: user.displayName,
+    });
+  });
+  socket.on("typing:stop", (channelId: string) => {
+    const uid = (socket.data as { userId: string | null | undefined }).userId;
+    if (!uid || typeof channelId !== "string" || !channelId) return;
+    socket.to(`channel:${channelId}`).emit("typing:stop", {
+      channelId,
+      userId: uid,
+    });
+  });
+
   socket.on("disconnect", () => {
     if (userId) {
       trackDisconnect(userId, socket.id);

@@ -7,6 +7,8 @@ type Props = {
   channelName: string | null;
   disabled?: boolean;
   onSend: (content: string, attachments: AttachmentUpload[]) => Promise<boolean>;
+  onTypingStart?: () => void;
+  onTypingStop?: () => void;
 };
 
 const wrap: CSSProperties = {
@@ -170,7 +172,13 @@ function humanSize(bytes: number): string {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
-export function MessageInput({ channelName, disabled, onSend }: Props) {
+export function MessageInput({
+  channelName,
+  disabled,
+  onSend,
+  onTypingStart,
+  onTypingStop,
+}: Props) {
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [focused, setFocused] = useState(false);
@@ -178,6 +186,59 @@ export function MessageInput({ channelName, disabled, onSend }: Props) {
   const [attachError, setAttachError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  /**
+   * Typing emit: первый keystroke → typing:start, последующие — refresh
+   * stop-timer (3 секунды после последнего keystroke). Если sendMessage
+   * вызвался — emit stop сразу + сброс таймера.
+   */
+  const isTypingRef = useRef(false);
+  const stopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const scheduleStop = () => {
+    if (stopTimerRef.current) clearTimeout(stopTimerRef.current);
+    stopTimerRef.current = setTimeout(() => {
+      if (isTypingRef.current) {
+        isTypingRef.current = false;
+        onTypingStop?.();
+      }
+      stopTimerRef.current = null;
+    }, 3_000);
+  };
+
+  const handleDraftChange = (value: string) => {
+    setDraft(value);
+    if (value.trim().length === 0) {
+      // Очистили — сразу stop
+      if (isTypingRef.current) {
+        isTypingRef.current = false;
+        onTypingStop?.();
+      }
+      if (stopTimerRef.current) {
+        clearTimeout(stopTimerRef.current);
+        stopTimerRef.current = null;
+      }
+      return;
+    }
+    if (!isTypingRef.current) {
+      isTypingRef.current = true;
+      onTypingStart?.();
+    }
+    scheduleStop();
+  };
+
+  // Cleanup на unmount / channel change
+  useEffect(() => {
+    return () => {
+      if (stopTimerRef.current) clearTimeout(stopTimerRef.current);
+      if (isTypingRef.current) {
+        isTypingRef.current = false;
+        onTypingStop?.();
+      }
+    };
+    // onTypingStop как dep вызвал бы лишний emit — игнорируем
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Autosize textarea
   useEffect(() => {
@@ -262,6 +323,15 @@ export function MessageInput({ channelName, disabled, onSend }: Props) {
           if (p.previewUrl?.startsWith("blob:")) URL.revokeObjectURL(p.previewUrl);
         }
         setPending([]);
+        // Sent → typing stop сразу
+        if (isTypingRef.current) {
+          isTypingRef.current = false;
+          onTypingStop?.();
+        }
+        if (stopTimerRef.current) {
+          clearTimeout(stopTimerRef.current);
+          stopTimerRef.current = null;
+        }
       }
     } finally {
       setSending(false);
@@ -403,7 +473,7 @@ export function MessageInput({ channelName, disabled, onSend }: Props) {
           ref={textareaRef}
           rows={1}
           value={draft}
-          onChange={(e) => setDraft(e.target.value)}
+          onChange={(e) => handleDraftChange(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();

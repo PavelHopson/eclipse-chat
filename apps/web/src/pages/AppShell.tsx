@@ -11,6 +11,7 @@ import { PinnedBar } from "../components/PinnedBar";
 import { ProfileModal } from "../components/ProfileModal";
 import { ServerInfoModal } from "../components/ServerInfoModal";
 import { ServerList } from "../components/ServerList";
+import { TypingIndicator } from "../components/TypingIndicator";
 import { VoicePlaceholder } from "../components/VoicePlaceholder";
 import { useChannels } from "../hooks/useChannels";
 import { useMediaQuery } from "../hooks/useMediaQuery";
@@ -146,6 +147,9 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     pinMessage,
     unpinMessage,
     toggleReaction,
+    typingUsers,
+    emitTypingStart,
+    emitTypingStop,
     error: messagesError,
     loading: messagesLoading,
   } = useMessages(selectedChannelId, socket, user.id);
@@ -429,12 +433,15 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               onUnpin={unpinMessage}
               onToggleReaction={toggleReaction}
             />
+            <TypingIndicator users={typingUsers} />
             <MessageInput
               channelName={selectedChannel.name}
               disabled={!isReady}
               onSend={(content, attachments) =>
                 sendMessage(content, senderForMessages, attachments)
               }
+              onTypingStart={emitTypingStart}
+              onTypingStop={emitTypingStop}
             />
           </>
         )}

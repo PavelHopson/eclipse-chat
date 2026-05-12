@@ -11,7 +11,14 @@ import {
   type MessageUpdatedPayload,
   type ReactionAddedPayload,
   type ReactionRemovedPayload,
+  type TypingStartPayload,
+  type TypingStopPayload,
 } from "../lib/socket";
+
+export type TypingUser = {
+  userId: string;
+  displayName: string;
+};
 
 export type ReactionAggregate = {
   emoji: string;
@@ -82,11 +89,30 @@ export function useMessages(
   const [messages, setMessages] = useState<MessageRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
 
   const channelIdRef = useRef<string | null>(channelId);
   channelIdRef.current = channelId;
   const currentUserIdRef = useRef<string | undefined>(currentUserId);
   currentUserIdRef.current = currentUserId;
+
+  /**
+   * Per-user typing expiry timers. Auto-remove если typing:stop не пришёл
+   * за 5 секунд (защита от broken sockets / orphan typing state).
+   */
+  const typingTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  // Очищаем все таймеры на unmount + при смене канала
+  useEffect(() => {
+    setTypingUsers([]);
+    for (const t of typingTimers.current.values()) clearTimeout(t);
+    typingTimers.current.clear();
+  }, [channelId]);
+  useEffect(() => {
+    return () => {
+      for (const t of typingTimers.current.values()) clearTimeout(t);
+      typingTimers.current.clear();
+    };
+  }, []);
 
   useEffect(() => {
     if (!channelId) {
@@ -160,6 +186,56 @@ export function useMessages(
       socket.off(SocketEvents.MessageNew, handler);
     };
   }, [socket]);
+
+  // socket: typing:start / typing:stop
+  useEffect(() => {
+    if (!socket) return;
+    const onStart = (p: TypingStartPayload) => {
+      if (p.channelId !== channelIdRef.current) return;
+      if (p.userId === currentUserIdRef.current) return; // не показываем себя
+      setTypingUsers((prev) => {
+        if (prev.some((u) => u.userId === p.userId)) {
+          // Обновить displayName на случай если поменялось
+          return prev.map((u) => (u.userId === p.userId ? { ...u, displayName: p.displayName } : u));
+        }
+        return [...prev, { userId: p.userId, displayName: p.displayName }];
+      });
+      // Reset auto-expire таймер
+      const existing = typingTimers.current.get(p.userId);
+      if (existing) clearTimeout(existing);
+      const t = setTimeout(() => {
+        typingTimers.current.delete(p.userId);
+        setTypingUsers((prev) => prev.filter((u) => u.userId !== p.userId));
+      }, 5_000);
+      typingTimers.current.set(p.userId, t);
+    };
+    const onStop = (p: TypingStopPayload) => {
+      if (p.channelId !== channelIdRef.current) return;
+      setTypingUsers((prev) => prev.filter((u) => u.userId !== p.userId));
+      const t = typingTimers.current.get(p.userId);
+      if (t) {
+        clearTimeout(t);
+        typingTimers.current.delete(p.userId);
+      }
+    };
+    socket.on(SocketEvents.TypingStart, onStart);
+    socket.on(SocketEvents.TypingStop, onStop);
+    return () => {
+      socket.off(SocketEvents.TypingStart, onStart);
+      socket.off(SocketEvents.TypingStop, onStop);
+    };
+  }, [socket]);
+
+  /** Emit typing:start (для composer'а). Backend сам resolve'ит displayName. */
+  const emitTypingStart = useCallback(() => {
+    if (!socket || !channelId) return;
+    socket.emit(SocketEvents.TypingStart, channelId);
+  }, [socket, channelId]);
+
+  const emitTypingStop = useCallback(() => {
+    if (!socket || !channelId) return;
+    socket.emit(SocketEvents.TypingStop, channelId);
+  }, [socket, channelId]);
 
   // socket: reaction:added / reaction:removed
   useEffect(() => {
@@ -463,5 +539,8 @@ export function useMessages(
     addReaction,
     removeReaction,
     toggleReaction,
+    typingUsers,
+    emitTypingStart,
+    emitTypingStop,
   };
 }

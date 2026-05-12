@@ -135,6 +135,17 @@ export type ReactionRemovedPayload = {
 };
 
 /** Совпадает с naming из docs/SOCKET_EVENTS.md и кода сервера. */
+export type TypingStartPayload = {
+  channelId: string;
+  userId: string;
+  displayName: string;
+};
+
+export type TypingStopPayload = {
+  channelId: string;
+  userId: string;
+};
+
 export const SocketEvents = {
   ServerHello: "server:hello",
   MessageNew: "message:new",
@@ -151,4 +162,6 @@ export const SocketEvents = {
   ChannelJoin: "channel:join",
   ChannelLeave: "channel:leave",
   PresenceUpdate: "presence:update",
+  TypingStart: "typing:start",
+  TypingStop: "typing:stop",
 } as const;
