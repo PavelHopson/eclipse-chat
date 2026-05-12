@@ -5,9 +5,10 @@
 > Любая фича, которой нет в текущем MVP, должна попасть сюда —
 > иначе она забудется.
 
-**Текущее состояние:** v0.6.4 LIVE-готов в master. Eclipse Chat — full-featured
-self-hosted чат с real-time voice (LiveKit), feature-parity Discord core +
-voice quality controls. Деплой через Pavel SSH session.
+**Текущее состояние:** v0.8 DMs готовы в master. Eclipse Chat — full-featured
+self-hosted чат с real-time voice (LiveKit) + voice quality controls +
+1-to-1 DMs. Feature-parity Discord core + DM. Деплой через Pavel SSH session
+(требует prisma migrate deploy на этот раз — schema changed).
 
 ---
 
@@ -781,12 +782,77 @@ useState + кастомные хуки достаточно.
 
 ---
 
-## v0.8 — Direct Messages (DMs)
+## v0.8 — Direct Messages (DMs) ✅ DONE (13.05.2026)
 
-- [ ] Prisma: `DirectMessage` model (senderId, receiverId, content)
-- [ ] Routes: `GET /api/dm/:userId`, `POST /api/dm/:userId`
-- [ ] Socket: rooms `dm:${userIdA}:${userIdB}` (sorted)
-- [ ] Frontend: DM tab отдельно от серверов, список собеседников
+> Реализовано после v0.6.5 voice block close — Pavel сказал «давай продолжать
+> разработку», выбрал DMs как самый крупный gap из roadmap.
+> Backend commit `3916e3f`, frontend commit `1d069c0`.
+
+**Schema (migration 20260513160000_add_direct_messages):**
+- [x] `DirectConversation` model: 1-to-1 conversations, нормализованная пара
+      (userAId < userBId) → unique constraint. Indices userAId/userBId +
+      lastMessageAt для sidebar list sort.
+- [x] `Message.channelId` стал nullable, добавлено nullable conversationId.
+      XOR-invariant защищён CHECK CONSTRAINT в SQL (Prisma не имеет check
+      constraints в schema, поэтому raw SQL).
+- [x] Index Message(conversationId, createdAt) для history pagination.
+- [x] User relations: dmsAsUserA / dmsAsUserB.
+
+**Backend routes (`apps/server/src/routes/dm.ts`, ~420 строк):**
+- [x] `GET    /api/dm/conversations` — мои convos sort by lastMessageAt
+- [x] `POST   /api/dm/conversations/:userId` — get-or-create (idempotent upsert)
+- [x] `GET    /api/dm/conversations/:id/messages` — paginated take=N
+- [x] `POST   /api/dm/conversations/:id/messages` — send (content + attachments).
+      Transaction: insert message + bump lastMessageAt. Emits dm:message:new
+      в room + dm:conversation:bumped обоим participant'ам в их user-rooms.
+- [x] `PATCH  /api/dm/messages/:id` — edit (author only)
+- [x] `DELETE /api/dm/messages/:id` — soft-delete (author only — нет ролей в DM)
+
+**Socket events:**
+- [x] `dm:join` / `dm:leave` с server-side membership verify
+- [x] `dm:message:new` / `updated` / `deleted` в room `dm:${convoId}`
+- [x] `dm:reaction:added` / `removed` (reuses /api/messages/:id/reactions endpoint
+      который теперь поддерживает оба контекста)
+- [x] `dm:conversation:bumped` в user-specific room `user:${userId}`
+- [x] Auto-subscribe socket'а к `user:${userId}` при connect
+
+**Channel messages routes (`apps/server/src/routes/messages.ts`):**
+- [x] edit/delete/pin/unpin теперь возвращают 400 если message — DM (используйте
+      /api/dm/messages/:id). Pin не доступен для DM (нет ролей).
+- [x] Reactions POST/DELETE поддерживают BOTH контекста: для channel msgs —
+      member check; для DM — participant of conversation. Эмит в соответствующий room.
+
+**Frontend hooks:**
+- [x] `useDirectConversations(socket, currentUserId)` — list + sort by
+      lastMessageAt + listen `dm:conversation:bumped` (preview + unread bump).
+      `openDmWith(userId)` upsert'ит conversation и возвращает её id.
+- [x] `useDirectMessages(convoId, socket, currentUserId)` — параллель
+      useMessages для DM. send/edit/delete/toggleReaction → Promise<boolean>.
+      Optimistic send с pending-replacement match по userId+content.
+      Reuses MessageRow type.
+
+**Frontend UI:**
+- [x] `DirectConversationList` — sidebar replaces ChannelList в DM mode.
+      Avatar 32px + presence-dot + name + last-msg preview + relative time +
+      unread badge с accent-glow. «Вы:» префикс для own последнего message.
+- [x] `ServerList` — new chat-bubble tile в начале (с unread badge).
+      `dmsActive` highlight + `onDmsRequest` switch.
+- [x] `MemberList` — «Написать в личку» icon-button в каждой row (hover-reveal,
+      скрыта для self). `onOpenDm` callback.
+- [x] `AppShell` — `inDmMode = activeServerId === null`. В DM mode renders
+      DirectConversationList + DM MessageList/MessageInput. Pin/unpin отключён
+      (`async () => false`). Member-list скрыт (нет server'а).
+- [x] DM open-or-create через MemberList «Написать в личку» → auto switch
+      в DM mode + auto-selection новой conversation.
+
+**Bundle:** 429→444 KB raw (+15), 121→124 KB gzip (+3).
+
+**Limits (отложено в v0.8.1):**
+- Group DMs (3+ users) — текущая schema только 1-to-1.
+- Voice/video в DMs — LiveKit call между двумя users.
+- DM-specific search.
+- Block user.
+- Typing indicators в DMs (только в channels пока).
 
 ---
 
