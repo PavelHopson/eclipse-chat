@@ -29,6 +29,7 @@ export default defineConfig(({ mode }) => {
   // с продом по поведению.
   const apiPrefix = base === "/" ? "/api" : `${base.slice(0, -1)}/api`;
   const socketPrefix = base === "/" ? "/socket.io" : `${base.slice(0, -1)}/socket.io`;
+  const uploadsPrefix = base === "/" ? "/uploads" : `${base.slice(0, -1)}/uploads`;
 
   const proxy: Record<string, import("vite").ProxyOptions> = {
     [apiPrefix]: {
@@ -41,6 +42,13 @@ export default defineConfig(({ mode }) => {
       target: "http://127.0.0.1:3001",
       changeOrigin: true,
       ws: true,
+      rewrite: base === "/" ? undefined : (path) => path.replace(base.slice(0, -1), ""),
+    },
+    // Аватарки: в dev отдаёт Fastify (@fastify/static на /uploads/).
+    // В prod nginx перехватывает /eclipse-chat/uploads/ через alias.
+    [uploadsPrefix]: {
+      target: "http://127.0.0.1:3001",
+      changeOrigin: true,
       rewrite: base === "/" ? undefined : (path) => path.replace(base.slice(0, -1), ""),
     },
   };

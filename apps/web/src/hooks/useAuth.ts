@@ -6,6 +6,8 @@ export type PublicUser = {
   id: string;
   email: string;
   displayName: string;
+  avatar: string | null;
+  bio: string | null;
   createdAt: string;
 };
 

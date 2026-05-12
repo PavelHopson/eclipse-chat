@@ -129,7 +129,7 @@ export async function registerChannelRoutes(app: FastifyInstance) {
       where: { channelId: id },
       take,
       orderBy: { createdAt: "desc" },
-      include: { user: { select: { id: true, displayName: true, email: true } } },
+      include: { user: { select: { id: true, displayName: true, avatar: true } } },
     });
     return {
       channel: { id: ch.id, name: ch.name, slug: ch.slug },
@@ -139,7 +139,7 @@ export async function registerChannelRoutes(app: FastifyInstance) {
           id: m.id,
           content: m.content,
           createdAt: m.createdAt.toISOString(),
-          user: { id: m.user.id, displayName: m.user.displayName },
+          user: { id: m.user.id, displayName: m.user.displayName, avatar: m.user.avatar },
         })),
     };
   });
@@ -183,7 +183,7 @@ export async function registerChannelRoutes(app: FastifyInstance) {
       }
       const m = await db.message.create({
         data: { content: parsed.data.content, userId, channelId },
-        include: { user: { select: { id: true, displayName: true } } },
+        include: { user: { select: { id: true, displayName: true, avatar: true } } },
       });
       const payload = {
         messageId: m.id,
@@ -191,6 +191,7 @@ export async function registerChannelRoutes(app: FastifyInstance) {
         channelId: m.channelId,
         userId: m.userId,
         displayName: m.user.displayName,
+        avatar: m.user.avatar,
         createdAt: m.createdAt.toISOString(),
       };
       emitMessageOnChannel(m.channelId, payload);

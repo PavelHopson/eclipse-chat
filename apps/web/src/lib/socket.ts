@@ -38,6 +38,8 @@ export type MessageNewPayload = {
   channelId: string;
   userId: string;
   displayName: string;
+  /** Аватар автора на момент отправки. Null если у user'а нет аватара. */
+  avatar: string | null;
   createdAt: string;
 };
 

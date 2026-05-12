@@ -26,11 +26,20 @@ const refreshBody = z.object({
 
 const ACCESS_TTL = "15m";
 
-function publicUser(u: { id: string; email: string; displayName: string; createdAt: Date }) {
+function publicUser(u: {
+  id: string;
+  email: string;
+  displayName: string;
+  avatar: string | null;
+  bio: string | null;
+  createdAt: Date;
+}) {
   return {
     id: u.id,
     email: u.email,
     displayName: u.displayName,
+    avatar: u.avatar,
+    bio: u.bio,
     createdAt: u.createdAt.toISOString(),
   };
 }
@@ -53,7 +62,7 @@ async function requireJwt(req: FastifyRequest, reply: FastifyReply) {
 
 async function issueSession(
   reply: FastifyReply,
-  user: { id: string; email: string; displayName: string; createdAt: Date },
+  user: { id: string; email: string; displayName: string; avatar: string | null; bio: string | null; createdAt: Date },
 ): Promise<AuthResponseBody> {
   const accessToken = await reply.jwtSign(
     { sub: user.id, email: user.email },

@@ -21,6 +21,12 @@ model User {
   email         String         @unique
   passwordHash  String
   displayName   String
+  /// URL аватара (path-based, обычно `/eclipse-chat/uploads/avatars/<file>`).
+  /// nullable — при отсутствии UI рисует placeholder с инициалами.
+  avatar        String?
+  /// Краткое био пользователя — Twitter-like, max 280 символов
+  /// (проверяется на уровне zod-валидации в роуте PATCH /api/users/me/profile).
+  bio           String?
   createdAt     DateTime       @default(now())
 
   messages      Message[]

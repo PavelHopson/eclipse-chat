@@ -1,14 +1,17 @@
 import type { CSSProperties } from "react";
 import { useState } from "react";
+import { Avatar } from "../components/Avatar";
 import { ChannelList } from "../components/ChannelList";
 import { CreateServerModal } from "../components/CreateServerModal";
 import { JoinServerModal } from "../components/JoinServerModal";
 import { MessageInput } from "../components/MessageInput";
 import { MessageList } from "../components/MessageList";
+import { ProfileModal } from "../components/ProfileModal";
 import { ServerInfoModal } from "../components/ServerInfoModal";
 import { ServerList } from "../components/ServerList";
 import { useChannels } from "../hooks/useChannels";
 import { useMessages } from "../hooks/useMessages";
+import { useProfile } from "../hooks/useProfile";
 import { useServers } from "../hooks/useServers";
 import { useSocket } from "../hooks/useSocket";
 import type { PublicUser } from "../hooks/useAuth";
@@ -84,6 +87,20 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   const [showCreateServer, setShowCreateServer] = useState(false);
   const [showJoinServer, setShowJoinServer] = useState(false);
   const [showServerInfo, setShowServerInfo] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
+
+  const {
+    profile,
+    busy: profileBusy,
+    error: profileError,
+    updateProfile,
+    uploadAvatar,
+    deleteAvatar,
+  } = useProfile(true);
+
+  /** Текущий аватар + имя для header'а: пока профиль не подтянулся — fallback на user из auth. */
+  const headerName = profile?.displayName ?? user.displayName;
+  const headerAvatar = profile?.avatar ?? user.avatar;
 
   const selectedChannel = channels.find((c) => c.id === selectedChannelId) ?? null;
 
@@ -92,9 +109,29 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
       <header style={topbar}>
         <strong style={{ fontSize: "0.95rem" }}>Eclipse Chat</strong>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <span style={{ opacity: 0.7, fontSize: "0.85rem" }}>
-            {user.displayName} {!isReady && <span style={{ color: "#f88" }}>· offline</span>}
-          </span>
+          <button
+            type="button"
+            onClick={() => setShowProfile(true)}
+            title="Профиль"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "0.25rem 0.5rem",
+              background: "transparent",
+              color: "#c8c8d0",
+              border: "1px solid transparent",
+              borderRadius: 999,
+              cursor: "pointer",
+              fontSize: "0.85rem",
+              opacity: 0.85,
+            }}
+          >
+            <Avatar url={headerAvatar} name={headerName} size={24} />
+            <span>
+              {headerName} {!isReady && <span style={{ color: "#f88" }}>· offline</span>}
+            </span>
+          </button>
           <button
             type="button"
             onClick={() => void onLogout()}
@@ -192,6 +229,18 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           onClose={() => setShowServerInfo(false)}
           onLeave={() => leaveServer(activeServer.id)}
           onDelete={() => deleteServer(activeServer.id)}
+        />
+      )}
+
+      {showProfile && profile && (
+        <ProfileModal
+          profile={profile}
+          busy={profileBusy}
+          error={profileError}
+          onClose={() => setShowProfile(false)}
+          onSave={updateProfile}
+          onUploadAvatar={uploadAvatar}
+          onDeleteAvatar={deleteAvatar}
         />
       )}
     </div>

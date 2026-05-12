@@ -1,0 +1,134 @@
+import { useCallback, useEffect, useState } from "react";
+import { ApiError, apiJson } from "../lib/api";
+
+export type Profile = {
+  id: string;
+  email: string;
+  displayName: string;
+  avatar: string | null;
+  bio: string | null;
+  createdAt: string;
+};
+
+type ProfileResponse = { user: Profile };
+
+/**
+ * Профиль текущего пользователя: загрузка + редактирование + аватар.
+ *
+ * Avatar upload идёт через JSON+base64 (не multipart) — см. комментарий
+ * в `apps/server/src/routes/users.ts`. Браузер читает File через FileReader,
+ * чистит `data:...;base64,` префикс, отправляет POST JSON.
+ *
+ * Все ошибки складываются в `error: string | null`. Сетевые ошибки →
+ * generic message; ApiError с backend message → как есть.
+ */
+export function useProfile(enabled: boolean) {
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const reload = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await apiJson<ProfileResponse>("/api/users/me/profile");
+      setProfile(data.user);
+      setError(null);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Не удалось загрузить профиль");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (enabled) {
+      void reload();
+    }
+  }, [enabled, reload]);
+
+  const updateProfile = useCallback(
+    async (data: { displayName?: string; bio?: string | null }): Promise<boolean> => {
+      setBusy(true);
+      setError(null);
+      try {
+        const res = await apiJson<ProfileResponse>("/api/users/me/profile", {
+          method: "PATCH",
+          body: JSON.stringify(data),
+        });
+        setProfile(res.user);
+        return true;
+      } catch (e) {
+        setError(e instanceof ApiError ? e.message : "Не удалось сохранить");
+        return false;
+      } finally {
+        setBusy(false);
+      }
+    },
+    [],
+  );
+
+  const uploadAvatar = useCallback(async (file: File): Promise<boolean> => {
+    setBusy(true);
+    setError(null);
+    try {
+      if (!/^image\/(jpeg|png|webp)$/.test(file.type)) {
+        setError("Только JPEG/PNG/WebP");
+        return false;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        setError("Файл больше 5 МБ");
+        return false;
+      }
+      const dataBase64 = await fileToBase64(file);
+      const res = await apiJson<ProfileResponse>("/api/users/me/avatar", {
+        method: "POST",
+        body: JSON.stringify({ contentType: file.type, dataBase64 }),
+      });
+      setProfile(res.user);
+      return true;
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Не удалось загрузить аватар");
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  }, []);
+
+  const deleteAvatar = useCallback(async (): Promise<boolean> => {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await apiJson<ProfileResponse>("/api/users/me/avatar", {
+        method: "DELETE",
+      });
+      setProfile(res.user);
+      return true;
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Не удалось удалить аватар");
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  }, []);
+
+  return { profile, loading, busy, error, reload, updateProfile, uploadAvatar, deleteAvatar };
+}
+
+/** FileReader → base64 без префикса `data:...;base64,`. */
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error ?? new Error("FileReader error"));
+    reader.onload = () => {
+      const result = reader.result;
+      if (typeof result !== "string") {
+        reject(new Error("Unexpected FileReader result"));
+        return;
+      }
+      const idx = result.indexOf("base64,");
+      resolve(idx >= 0 ? result.slice(idx + 7) : result);
+    };
+    reader.readAsDataURL(file);
+  });
+}

@@ -1,11 +1,14 @@
 import "dotenv/config";
+import path from "node:path";
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import fastifyJwt from "@fastify/jwt";
+import fastifyStatic from "@fastify/static";
 import { Server as SocketServer } from "socket.io";
 import { registerAuthRoutes } from "./routes/auth.js";
 import { registerChannelRoutes } from "./routes/channels.js";
 import { registerServerRoutes } from "./routes/servers.js";
+import { registerUserRoutes } from "./routes/users.js";
 import { setSocketIO } from "./realtime.js";
 import { registerSocketAuth } from "./auth/socketAuth.js";
 import { db } from "./db.js";
@@ -24,6 +27,16 @@ await app.register(cors, { origin: corsOrigin, credentials: true });
 await app.register(fastifyJwt, {
   secret: resolvedJwtSecret,
 });
+// Статика для аватарок. В проде nginx обычно перехватывает
+// `/eclipse-chat/uploads/` сам через alias — это fallback + dev-режим.
+const uploadsDir = path.resolve(process.env.UPLOADS_DIR ?? "./uploads");
+await app.register(fastifyStatic, {
+  root: uploadsDir,
+  prefix: "/uploads/",
+  decorateReply: false,
+  cacheControl: true,
+  maxAge: "1h",
+});
 
 app.get("/health", async () => ({ ok: true, service: "eclipse-chat-server" }));
 app.get("/api/health", async () => {
@@ -35,11 +48,12 @@ app.get("/api/health", async () => {
   }
   return { ok: true, service: "eclipse-chat-server", database: dbOk };
 });
-app.get("/api/version", async () => ({ name: "@eclipse-chat/server", version: "0.4.0" }));
+app.get("/api/version", async () => ({ name: "@eclipse-chat/server", version: "0.5.0" }));
 
 await registerAuthRoutes(app);
 await registerChannelRoutes(app);
 await registerServerRoutes(app);
+await registerUserRoutes(app);
 await app.ready();
 
 /* Socket.io: тот же HTTP-сервер, что и у Fastify */

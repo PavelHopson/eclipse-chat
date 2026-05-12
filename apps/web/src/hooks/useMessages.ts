@@ -7,7 +7,7 @@ export type MessageRow = {
   id: string;
   content: string;
   createdAt: string;
-  user: { id: string; displayName: string };
+  user: { id: string; displayName: string; avatar: string | null };
 };
 
 /**
@@ -84,7 +84,7 @@ export function useMessages(channelId: string | null, socket: Socket | null) {
             id: p.messageId,
             content: p.content,
             createdAt: p.createdAt,
-            user: { id: p.userId, displayName: p.displayName },
+            user: { id: p.userId, displayName: p.displayName, avatar: p.avatar },
           },
         ];
       });
