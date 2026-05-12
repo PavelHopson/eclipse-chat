@@ -1,9 +1,30 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import { promises as fs } from "node:fs";
+import path from "node:path";
 import { z } from "zod";
+import sharp from "sharp";
 import { db } from "../db.js";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
 import { emitMemberJoined, emitMemberLeft, emitChannelCreated, emitChannelDeleted } from "../realtime.js";
 import { addServerRoom, onlineUserIds, removeServerRoom } from "../presence.js";
+
+const ICON_BODY_LIMIT = 7 * 1024 * 1024;
+const ICON_MAX_BINARY = 5 * 1024 * 1024;
+const ICON_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
+
+const uploadIconBody = z.object({
+  contentType: z.string().min(3).max(40),
+  dataBase64: z.string().min(1),
+});
+
+function serverIconsDir(): string {
+  const base = process.env.UPLOADS_DIR ?? "./uploads";
+  return path.join(base, "server-icons");
+}
+
+function serverIconUrl(filename: string): string {
+  return `/uploads/server-icons/${filename}`;
+}
 
 const createServerBody = z.object({
   name: z.string().min(1).max(80),
@@ -456,6 +477,87 @@ export async function registerServerRoutes(app: FastifyInstance) {
       channelId,
       serverId: channel.serverId,
     });
+    return { ok: true };
+  });
+
+  /**
+   * POST /api/servers/:id/icon — загрузить иконку сервера. Только OWNER.
+   * JSON+base64 (как avatars), sharp resize 256x256 webp.
+   */
+  app.post(
+    "/api/servers/:id/icon",
+    {
+      onRequest: [requireJwt],
+      bodyLimit: ICON_BODY_LIMIT,
+    },
+    async (req, reply) => {
+      const { id: serverId } = req.params as { id: string };
+      const me = await loadMember(req, reply, serverId);
+      if (!me) return reply;
+      if (me.role !== "OWNER") {
+        return reply.status(403).send({ error: "Only OWNER can change server icon" });
+      }
+      const parsed = uploadIconBody.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.status(400).send({ error: "Invalid body" });
+      }
+      if (!ICON_MIME.has(parsed.data.contentType)) {
+        return reply.status(415).send({ error: "Only jpeg/png/webp supported" });
+      }
+      const buf = Buffer.from(parsed.data.dataBase64, "base64");
+      if (buf.length === 0) {
+        return reply.status(400).send({ error: "Empty file" });
+      }
+      if (buf.length > ICON_MAX_BINARY) {
+        return reply.status(413).send({ error: "File too large (max 5MB)" });
+      }
+      const resized = await sharp(buf)
+        .rotate()
+        .resize(256, 256, { fit: "cover", position: "center" })
+        .webp({ quality: 88 })
+        .toBuffer()
+        .catch(() => null);
+      if (!resized) {
+        return reply.status(400).send({ error: "Image processing failed" });
+      }
+      const dir = serverIconsDir();
+      await fs.mkdir(dir, { recursive: true });
+      // Cleanup старого icon best-effort
+      const existing = await db.server.findUnique({
+        where: { id: serverId },
+        select: { icon: true },
+      });
+      if (existing?.icon) {
+        const oldName = path.basename(existing.icon);
+        if (oldName) await fs.unlink(path.join(dir, oldName)).catch(() => undefined);
+      }
+      const filename = `${serverId}-${Date.now()}.webp`;
+      await fs.writeFile(path.join(dir, filename), resized);
+      const url = serverIconUrl(filename);
+      await db.server.update({ where: { id: serverId }, data: { icon: url } });
+      return { ok: true, icon: url };
+    },
+  );
+
+  /** DELETE /api/servers/:id/icon — снять иконку. Только OWNER. */
+  app.delete("/api/servers/:id/icon", { onRequest: [requireJwt] }, async (req, reply) => {
+    const { id: serverId } = req.params as { id: string };
+    const me = await loadMember(req, reply, serverId);
+    if (!me) return reply;
+    if (me.role !== "OWNER") {
+      return reply.status(403).send({ error: "Only OWNER can change server icon" });
+    }
+    const existing = await db.server.findUnique({
+      where: { id: serverId },
+      select: { icon: true },
+    });
+    if (existing?.icon) {
+      const oldName = path.basename(existing.icon);
+      if (oldName) {
+        await fs.unlink(path.join(serverIconsDir(), oldName)).catch(() => undefined);
+      }
+    }
+    await db.server.update({ where: { id: serverId }, data: { icon: null } });
     return { ok: true };
   });
 }

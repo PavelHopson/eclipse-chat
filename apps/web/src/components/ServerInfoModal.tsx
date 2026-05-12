@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import type { ServerRow } from "../hooks/useServers";
 import { Modal } from "./Modal";
@@ -8,6 +8,46 @@ type Props = {
   onClose: () => void;
   onLeave: () => Promise<boolean>;
   onDelete: () => Promise<boolean>;
+  onUploadIcon?: (file: File) => Promise<boolean>;
+  onDeleteIcon?: () => Promise<boolean>;
+};
+
+function resolveIconUrl(raw: string): string {
+  if (raw.startsWith("http") || raw.startsWith("data:")) return raw;
+  const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+  const p = raw.startsWith("/") ? raw : `/${raw}`;
+  return `${base}${p}`;
+}
+
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).slice(0, 2);
+  return parts.map((p) => p[0]?.toUpperCase() ?? "").join("") || "??";
+}
+
+const iconSection: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: "var(--ec-space-4)",
+  padding: "var(--ec-space-3)",
+  background: "var(--ec-surface-2)",
+  border: "1px solid var(--ec-border-subtle)",
+  borderRadius: "var(--ec-radius-md)",
+};
+
+const iconBox: CSSProperties = {
+  width: 72,
+  height: 72,
+  borderRadius: "var(--ec-radius-lg)",
+  background: "var(--ec-surface-3)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  overflow: "hidden",
+  flexShrink: 0,
+  color: "var(--ec-text-strong)",
+  fontWeight: 600,
+  fontSize: 24,
+  border: "1px solid var(--ec-border-default)",
 };
 
 const codeBox: CSSProperties = {
@@ -53,12 +93,40 @@ function buildInviteUrl(code: string): string {
   return `${window.location.origin}${import.meta.env.BASE_URL}?invite=${encodeURIComponent(code)}`;
 }
 
-export function ServerInfoModal({ server, onClose, onLeave, onDelete }: Props) {
+export function ServerInfoModal({
+  server,
+  onClose,
+  onLeave,
+  onDelete,
+  onUploadIcon,
+  onDeleteIcon,
+}: Props) {
   const [copiedCode, setCopiedCode] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [iconBusy, setIconBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
   const isOwner = server.role === "OWNER";
+
+  const handleIconFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !onUploadIcon) return;
+    setIconBusy(true);
+    setError(null);
+    const ok = await onUploadIcon(file);
+    if (!ok) setError("Не удалось загрузить иконку");
+    setIconBusy(false);
+  };
+  const handleIconDelete = async () => {
+    if (!onDeleteIcon) return;
+    setIconBusy(true);
+    setError(null);
+    const ok = await onDeleteIcon();
+    if (!ok) setError("Не удалось удалить иконку");
+    setIconBusy(false);
+  };
 
   const inviteUrl = buildInviteUrl(server.inviteCode);
 
@@ -127,6 +195,60 @@ export function ServerInfoModal({ server, onClose, onLeave, onDelete }: Props) {
         </>
       }
     >
+      <section style={iconSection}>
+        <div style={iconBox} aria-hidden>
+          {server.icon ? (
+            <img
+              src={resolveIconUrl(server.icon)}
+              alt=""
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            />
+          ) : (
+            <span>{initials(server.name)}</span>
+          )}
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: "var(--ec-space-2)", flex: 1 }}>
+          {isOwner ? (
+            <>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                style={{ display: "none" }}
+                onChange={handleIconFile}
+              />
+              <div style={{ display: "flex", gap: "var(--ec-space-2)" }}>
+                <button
+                  type="button"
+                  onClick={() => fileRef.current?.click()}
+                  className="ec-btn ec-btn--sm"
+                  disabled={iconBusy}
+                >
+                  {server.icon ? "Заменить" : "Загрузить иконку"}
+                </button>
+                {server.icon && (
+                  <button
+                    type="button"
+                    onClick={() => void handleIconDelete()}
+                    className="ec-btn ec-btn--sm ec-btn--danger"
+                    disabled={iconBusy}
+                  >
+                    Удалить
+                  </button>
+                )}
+              </div>
+              <span style={{ fontSize: "var(--ec-text-2xs)", color: "var(--ec-text-dim)" }}>
+                JPEG / PNG / WebP · до 5 МБ · обрежется до 256×256
+              </span>
+            </>
+          ) : (
+            <span style={{ fontSize: "var(--ec-text-sm)", color: "var(--ec-text-muted)" }}>
+              {server.icon ? "Иконку устанавливает владелец сервера." : "Без иконки."}
+            </span>
+          )}
+        </div>
+      </section>
+
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "var(--ec-space-2)" }}>
         <div style={stat}>
           <span style={statLabel}>Роль</span>

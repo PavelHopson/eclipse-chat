@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { ApiError, apiJson } from "../lib/api";
+import { ApiError, api, apiJson } from "../lib/api";
+import { fileToBase64 } from "../lib/fileToBase64";
 
 export type ServerRow = {
   id: string;
@@ -159,6 +160,63 @@ export function useServers(isReady: boolean) {
     [],
   );
 
+  const uploadServerIcon = useCallback(
+    async (serverId: string, file: File): Promise<boolean> => {
+      setError(null);
+      try {
+        if (!/^image\/(jpeg|png|webp)$/.test(file.type)) {
+          setError("Только JPEG/PNG/WebP");
+          return false;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+          setError("Файл больше 5 МБ");
+          return false;
+        }
+        const dataBase64 = await fileToBase64(file);
+        const res = await apiJson<{ icon: string }>(
+          `/api/servers/${encodeURIComponent(serverId)}/icon`,
+          {
+            method: "POST",
+            body: JSON.stringify({ contentType: file.type, dataBase64 }),
+          },
+        );
+        setServers((prev) =>
+          prev.map((s) => (s.id === serverId ? { ...s, icon: res.icon } : s)),
+        );
+        return true;
+      } catch (e) {
+        setError(e instanceof ApiError ? e.message : "Не удалось загрузить иконку");
+        return false;
+      }
+    },
+    [],
+  );
+
+  const deleteServerIcon = useCallback(async (serverId: string): Promise<boolean> => {
+    setError(null);
+    try {
+      const res = await api(`/api/servers/${encodeURIComponent(serverId)}/icon`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        let msg = `HTTP ${res.status}`;
+        try {
+          const body = (await res.json()) as { error?: string };
+          if (body?.error) msg = body.error;
+        } catch {
+          /* */
+        }
+        setError(msg);
+        return false;
+      }
+      setServers((prev) => prev.map((s) => (s.id === serverId ? { ...s, icon: null } : s)));
+      return true;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Не удалось удалить иконку");
+      return false;
+    }
+  }, []);
+
   const activeServer = servers.find((s) => s.id === activeServerId) ?? null;
 
   return {
@@ -173,5 +231,7 @@ export function useServers(isReady: boolean) {
     joinByInvite,
     leaveServer,
     deleteServer,
+    uploadServerIcon,
+    deleteServerIcon,
   };
 }

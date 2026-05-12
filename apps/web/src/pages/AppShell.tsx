@@ -129,6 +129,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     joinByInvite,
     leaveServer,
     deleteServer,
+    uploadServerIcon,
+    deleteServerIcon,
     error: serversError,
   } = useServers(true);
 
@@ -576,6 +578,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           onClose={() => setShowServerInfo(false)}
           onLeave={() => leaveServer(activeServer.id)}
           onDelete={() => deleteServer(activeServer.id)}
+          onUploadIcon={(file) => uploadServerIcon(activeServer.id, file)}
+          onDeleteIcon={() => deleteServerIcon(activeServer.id)}
         />
       )}
 
