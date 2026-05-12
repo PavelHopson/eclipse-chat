@@ -3,6 +3,8 @@ import { z } from "zod";
 import { db } from "../db.js";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
 import {
+  emitDmReactionAdded,
+  emitDmReactionRemoved,
   emitMessageDeleted,
   emitMessagePinned,
   emitMessageUnpinned,
@@ -115,6 +117,9 @@ export async function registerMessageRoutes(app: FastifyInstance) {
       if (!m) {
         return reply.status(404).send({ error: "Message not found" });
       }
+      if (!m.channelId) {
+        return reply.status(400).send({ error: "Use /api/dm/messages/:id for DM messages" });
+      }
       if (m.userId !== userId) {
         return reply.status(403).send({ error: "Only author can edit" });
       }
@@ -161,6 +166,9 @@ export async function registerMessageRoutes(app: FastifyInstance) {
       });
       if (!m) {
         return reply.status(404).send({ error: "Message not found" });
+      }
+      if (!m.channelId) {
+        return reply.status(400).send({ error: "Use /api/dm/messages/:id for DM messages" });
       }
       if (m.deletedAt) {
         return { ok: true, alreadyDeleted: true };
@@ -229,6 +237,9 @@ export async function registerMessageRoutes(app: FastifyInstance) {
       if (!m) {
         return reply.status(404).send({ error: "Message not found" });
       }
+      if (!m.channelId) {
+        return reply.status(400).send({ error: "Pin is not available for DM messages" });
+      }
       if (m.deletedAt) {
         return reply.status(410).send({ error: "Cannot pin deleted message" });
       }
@@ -274,6 +285,9 @@ export async function registerMessageRoutes(app: FastifyInstance) {
       if (!m) {
         return reply.status(404).send({ error: "Message not found" });
       }
+      if (!m.channelId) {
+        return reply.status(400).send({ error: "Unpin is not available for DM messages" });
+      }
       const ch = await db.channel.findUnique({
         where: { id: m.channelId },
         select: { serverId: true },
@@ -314,7 +328,14 @@ export async function registerMessageRoutes(app: FastifyInstance) {
       }
       const m = await db.message.findUnique({
         where: { id: messageId },
-        select: { id: true, channelId: true, deletedAt: true },
+        select: {
+          id: true,
+          channelId: true,
+          conversationId: true,
+          deletedAt: true,
+          channel: { select: { serverId: true } },
+          conversation: { select: { userAId: true, userBId: true } },
+        },
       });
       if (!m) {
         return reply.status(404).send({ error: "Message not found" });
@@ -322,19 +343,23 @@ export async function registerMessageRoutes(app: FastifyInstance) {
       if (m.deletedAt) {
         return reply.status(410).send({ error: "Cannot react to deleted message" });
       }
-      const ch = await db.channel.findUnique({
-        where: { id: m.channelId },
-        select: { serverId: true },
-      });
-      if (!ch) {
-        return reply.status(404).send({ error: "Channel not found" });
-      }
-      const member = await db.member.findUnique({
-        where: { userId_serverId: { userId, serverId: ch.serverId } },
-        select: { id: true },
-      });
-      if (!member) {
-        return reply.status(403).send({ error: "Not a member of this server" });
+      // Проверка участия: либо member сервера, либо участник DM
+      if (m.channelId && m.channel) {
+        const member = await db.member.findUnique({
+          where: { userId_serverId: { userId, serverId: m.channel.serverId } },
+          select: { id: true },
+        });
+        if (!member) {
+          return reply.status(403).send({ error: "Not a member of this server" });
+        }
+      } else if (m.conversationId && m.conversation) {
+        const ok =
+          m.conversation.userAId === userId || m.conversation.userBId === userId;
+        if (!ok) {
+          return reply.status(403).send({ error: "Not a participant of this DM" });
+        }
+      } else {
+        return reply.status(500).send({ error: "Orphan message" });
       }
       const { emoji } = parsed.data;
       // upsert через try/catch: повторный POST = same row, не fail
@@ -342,7 +367,16 @@ export async function registerMessageRoutes(app: FastifyInstance) {
         await db.reaction.create({
           data: { messageId, userId, emoji },
         });
-        emitReactionAdded(m.channelId, { messageId, channelId: m.channelId, emoji, userId });
+        if (m.channelId) {
+          emitReactionAdded(m.channelId, { messageId, channelId: m.channelId, emoji, userId });
+        } else if (m.conversationId) {
+          emitDmReactionAdded(m.conversationId, {
+            messageId,
+            conversationId: m.conversationId,
+            emoji,
+            userId,
+          });
+        }
       } catch (err: unknown) {
         // unique violation = уже стоит, idempotent ok
         if (
@@ -377,7 +411,7 @@ export async function registerMessageRoutes(app: FastifyInstance) {
       }
       const m = await db.message.findUnique({
         where: { id: messageId },
-        select: { id: true, channelId: true },
+        select: { id: true, channelId: true, conversationId: true },
       });
       if (!m) {
         return reply.status(404).send({ error: "Message not found" });
@@ -390,7 +424,16 @@ export async function registerMessageRoutes(app: FastifyInstance) {
         return { ok: true, alreadyAbsent: true };
       }
       await db.reaction.delete({ where: { id: existing.id } });
-      emitReactionRemoved(m.channelId, { messageId, channelId: m.channelId, emoji, userId });
+      if (m.channelId) {
+        emitReactionRemoved(m.channelId, { messageId, channelId: m.channelId, emoji, userId });
+      } else if (m.conversationId) {
+        emitDmReactionRemoved(m.conversationId, {
+          messageId,
+          conversationId: m.conversationId,
+          emoji,
+          userId,
+        });
+      }
       return { ok: true };
     },
   );

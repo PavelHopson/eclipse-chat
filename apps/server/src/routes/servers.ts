@@ -387,14 +387,18 @@ export async function registerServerRoutes(app: FastifyInstance) {
       });
       return {
         query: q,
-        results: hits.map((m) => ({
-          id: m.id,
-          content: m.content,
-          createdAt: m.createdAt.toISOString(),
-          editedAt: m.editedAt?.toISOString() ?? null,
-          user: { id: m.user.id, displayName: m.user.displayName, avatar: m.user.avatar },
-          channel: { id: m.channel.id, name: m.channel.name, slug: m.channel.slug },
-        })),
+        // where clause гарантирует channel != null (filter по channel.serverId),
+        // но TypeScript этого не видит — отфильтруем явно и пропустим orphans.
+        results: hits
+          .filter((m) => m.channel != null)
+          .map((m) => ({
+            id: m.id,
+            content: m.content,
+            createdAt: m.createdAt.toISOString(),
+            editedAt: m.editedAt?.toISOString() ?? null,
+            user: { id: m.user.id, displayName: m.user.displayName, avatar: m.user.avatar },
+            channel: { id: m.channel!.id, name: m.channel!.name, slug: m.channel!.slug },
+          })),
       };
     },
   );

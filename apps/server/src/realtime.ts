@@ -166,3 +166,95 @@ export function emitReactionRemoved(
 ) {
   io?.to(`channel:${channelId}`).emit("reaction:removed", payload);
 }
+
+// ============================
+// Direct Messages (DM) events
+// ============================
+
+/** Новое DM-сообщение. Broadcast в room `dm:${conversationId}`. */
+export function emitDmMessageNew(
+  conversationId: string,
+  payload: {
+    messageId: string;
+    conversationId: string;
+    userId: string;
+    displayName: string;
+    avatar: string | null;
+    content: string;
+    createdAt: string;
+    attachments?: AttachmentPayload[];
+  },
+) {
+  io?.to(`dm:${conversationId}`).emit("dm:message:new", payload);
+}
+
+/** DM-сообщение отредактировано. */
+export function emitDmMessageUpdated(
+  conversationId: string,
+  payload: {
+    messageId: string;
+    conversationId: string;
+    content: string;
+    editedAt: string;
+  },
+) {
+  io?.to(`dm:${conversationId}`).emit("dm:message:updated", payload);
+}
+
+/** DM-сообщение удалено (soft). */
+export function emitDmMessageDeleted(
+  conversationId: string,
+  payload: {
+    messageId: string;
+    conversationId: string;
+    deletedAt: string;
+  },
+) {
+  io?.to(`dm:${conversationId}`).emit("dm:message:deleted", payload);
+}
+
+/** Реакция на DM-сообщение добавлена. */
+export function emitDmReactionAdded(
+  conversationId: string,
+  payload: {
+    messageId: string;
+    conversationId: string;
+    emoji: string;
+    userId: string;
+  },
+) {
+  io?.to(`dm:${conversationId}`).emit("dm:reaction:added", payload);
+}
+
+/** Реакция на DM-сообщение снята. */
+export function emitDmReactionRemoved(
+  conversationId: string,
+  payload: {
+    messageId: string;
+    conversationId: string;
+    emoji: string;
+    userId: string;
+  },
+) {
+  io?.to(`dm:${conversationId}`).emit("dm:reaction:removed", payload);
+}
+
+/**
+ * Обновление conversation в боковом списке у получателя — поднимает
+ * convo в топ списка при новом message, обновляет previewText и lastMessageAt.
+ *
+ * Шлём индивидуально каждому участнику в его user-room `user:${userId}`.
+ */
+export function emitDmConversationBumped(
+  userId: string,
+  payload: {
+    conversationId: string;
+    lastMessageAt: string;
+    /** Превью последнего сообщения (для unread + sidebar preview). */
+    lastMessagePreview: string;
+    /** Кто отправил последнее (если не я — это unread bump). */
+    lastSenderUserId: string;
+  },
+) {
+  io?.to(`user:${userId}`).emit("dm:conversation:bumped", payload);
+}

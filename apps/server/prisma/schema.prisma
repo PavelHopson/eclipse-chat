@@ -34,11 +34,15 @@ model User {
   status        UserStatus     @default(ONLINE)
   createdAt     DateTime       @default(now())
 
-  messages      Message[]
-  refreshTokens RefreshToken[]
-  memberships   Member[]
-  ownedServers  Server[]       @relation("ServerOwner")
-  reactions     Reaction[]
+  messages         Message[]
+  refreshTokens    RefreshToken[]
+  memberships      Member[]
+  ownedServers     Server[]              @relation("ServerOwner")
+  reactions        Reaction[]
+  /// DM conversations где user — userA (нормализованная позиция, см. DirectConversation).
+  dmsAsUserA       DirectConversation[]  @relation("DMUserA")
+  /// DM conversations где user — userB.
+  dmsAsUserB       DirectConversation[]  @relation("DMUserB")
 }
 
 model RefreshToken {
@@ -125,6 +129,10 @@ model Channel {
   messages  Message[]
 }
 
+/// Сообщение. Может принадлежать ЛИБО серверному каналу (`channelId`),
+/// ЛИБО direct-conversation (`conversationId`) — XOR-инвариант
+/// проверяется на уровне route'ов (Prisma не имеет check constraints).
+/// Из двух полей всегда заполнено ровно одно.
 model Message {
   id        String   @id @default(cuid())
   content   String
@@ -136,15 +144,44 @@ model Message {
   deletedAt DateTime?
   /// Pin-bar в chat-header показывает все messages где pinnedAt != null,
   /// sort by pinnedAt desc. Pin/unpin доступен OWNER/ADMIN/MODERATOR.
+  /// Для DM messages pin не разрешён (нет ролей в DM).
   pinnedAt  DateTime?
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  channelId String
-  channel   Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  /// Канал в server-context. NULL → message принадлежит DM-разговору.
+  channelId String?
+  channel   Channel? @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  /// DM-разговор. NULL → message принадлежит серверному каналу.
+  conversationId String?
+  conversation   DirectConversation? @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   reactions Reaction[]
   attachments Attachment[]
 
   @@index([channelId, pinnedAt])
+  @@index([conversationId, createdAt])
+}
+
+/// 1-to-1 direct conversation между двумя users.
+/// Чтобы избежать дубликатов «A→B» и «B→A» как разных строк,
+/// нормализуем позицию: всегда `userAId < userBId` (string comparison).
+/// При создании route'ом мы сортируем два id и помещаем меньший как userA.
+/// Group DMs (3+ участника) — будущее расширение (v0.8.1+).
+model DirectConversation {
+  id            String   @id @default(cuid())
+  userAId       String
+  userA         User     @relation("DMUserA", fields: [userAId], references: [id], onDelete: Cascade)
+  userBId       String
+  userB         User     @relation("DMUserB", fields: [userBId], references: [id], onDelete: Cascade)
+  createdAt     DateTime @default(now())
+  /// Timestamp последнего сообщения — для сортировки в user's DM list.
+  /// Обновляется в transaction при send message.
+  lastMessageAt DateTime @default(now())
+
+  messages Message[]
+
+  @@unique([userAId, userBId])
+  @@index([userAId, lastMessageAt])
+  @@index([userBId, lastMessageAt])
 }
 
 /// Файл, прикреплённый к сообщению. Multiple attachments per message

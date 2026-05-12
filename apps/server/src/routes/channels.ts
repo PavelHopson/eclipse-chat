@@ -299,7 +299,8 @@ export async function registerChannelRoutes(app: FastifyInstance) {
       const payload = {
         messageId: m.id,
         content: m.content,
-        channelId: m.channelId,
+        // channelId всегда set'нут — этот route только для server channels.
+        channelId: m.channelId!,
         userId: m.userId,
         displayName: m.user.displayName,
         avatar: m.user.avatar,
@@ -316,7 +317,7 @@ export async function registerChannelRoutes(app: FastifyInstance) {
           position: a.position,
         })),
       };
-      emitMessageOnChannel(m.channelId, payload);
+      emitMessageOnChannel(m.channelId!, payload);
       return { message: payload };
     },
   );

@@ -639,7 +639,41 @@ sudo supervisorctl restart eclipse-chat-server
 
 ---
 
-## v0.6.5 — Voice quality v2 (Krisp DNN + mic gain) — backlog
+## v0.6.5 — Voice activation modes + AFK + speaking indicators ✅ DONE (13.05.2026)
+
+> Реализовано после v0.6.4 prod-deploy. Commit `6f1cc3f`. Pavel сказал
+> «давай продолжать разработку» → выбрал finalize-voice-block scope.
+
+- [x] **Refactor:** `pushToTalk:boolean` → `micActivationMode: "open"
+      | "voice_activity" | "push_to_talk"`. Backward-compat migration в
+      loadSettings (legacy `pushToTalk=true` → `"push_to_talk"`).
+- [x] **VAD (voice activity detection) gate** — Web Audio AnalyserNode
+      подключён к local mic mediaStreamTrack, 50ms раз меряем peak
+      amplitude, hold-time 250ms перед закрытием gate. UI: VAD slider
+      0.1–30% + live VU-meter в settings когда тестируешь.
+- [x] **AFK auto-disconnect** — если один в voice room > N мин → auto-leave.
+      UI: range slider 0–30 мин (0 = выключено), default 5 мин (Discord
+      parity). Timer rearm'ится при изменении participants.length.
+- [x] **Voice persistence across channel switches** — lift `useVoice()` из
+      VoiceRoom в AppShell. Voice connection переживает переключение между
+      TEXT каналами (как Discord). Leave только по: explicit click / AFK /
+      socket disconnect / выбор ДРУГОГО VOICE канала / выход из сервера.
+- [x] **VoiceMiniBar** (новый компонент) — показывается над PinnedBar в TEXT
+      канале когда ты в voice room в другом канале. «В эфире #voice-name»
+      + count + mic toggle + deafen + leave + open-back button. Glow вокруг
+      mic-icon когда PTT активен.
+- [x] **Speaking-dots в ChannelList sticky voice users** — accent-glow
+      ring у avatars говорящих + name становится accent-coloured. Только
+      для voice room где ты сам (для других звук не слышишь — glow не нужен).
+- [x] **VoiceSettingsModal redesign** — 3-mode segmented control для mic
+      activation + VAD threshold slider с live VU-meter + AFK timeout
+      slider. Убраны старые switchTrack/switchKnob.
+
+**Bundle:** 418→429 KB raw (+11), 119→121 KB gzip (+2). Backend без изменений.
+
+---
+
+## v0.6.6 — Voice quality v3 (DNN noise + mic gain) — backlog
 
 - [ ] **Krisp/RNNoise DNN noise filter** — wire поверх существующего
       «aggressive» mode placeholder. Кандидаты:
@@ -653,10 +687,10 @@ sudo supervisorctl restart eclipse-chat-server
       `getUserMedia → MediaStreamSource → GainNode → MediaStreamDestination
       → new LocalAudioTrack(destination.stream.getAudioTracks()[0]) →
       room.localParticipant.publishTrack(track)`.
-- [ ] **Mic sensitivity** (threshold gate) — открывать mic только когда
-      input level > X dB. Альтернатива PTT для шумной обстановки.
-- [ ] **Auto-disconnect timeout** — если в voice один сидишь больше N
-      минут — auto-leave (Discord по умолчанию 5 мин AFK).
+- [ ] **Auto-reconnect feedback** — если LiveKit reconnecting > 5s, показать
+      banner «Восстанавливаем связь…» с retry button.
+- [ ] **Voice channel "knock"** — knock-notification когда заходишь в
+      пустой voice (опционально alert онлайн-юзерам сервера).
 
 ---
 
