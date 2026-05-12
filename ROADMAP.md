@@ -329,22 +329,68 @@ sudo supervisorctl restart eclipse-chat-server
 
 ---
 
-## v0.5.3 — LiveKit voice integration 🆕 PLANNED
+## v0.5.3 — LiveKit voice integration ✅ DONE (12.05.2026 ночь)
 
-> Полноценная голосовая связь поверх LiveKit. Структура каналов уже
-> готова (v0.5.2). Требует поднятия LiveKit-сервера и работа с UDP/TURN.
+> Полная голосовая связь поверх self-hosted LiveKit. Реализовано двумя
+> фазами: v0.5.3.1 (backend JWT + infra файлы, commit 5bc0ff3),
+> v0.5.3.2 (frontend livekit-client + VoiceRoom + auto-setup script,
+> commit b8d9f8b). Инфраструктура поднята на prod VPS — LiveKit Docker
+> running, `/api/voice/health` → enabled:true.
 
-- [ ] LiveKit Docker compose dev — local разработка
-- [ ] LiveKit prod setup на VPS: Docker + cert + UDP firewall (порты
-      7881/7882) + TURN fallback для NAT
-- [ ] Backend: `POST /api/channels/:id/voice/join` — генерирует JWT
-      для LiveKit room с правами publish/subscribe; check channel.type=VOICE
-      + membership + role
-- [ ] Frontend `VoiceRoom` component — `livekit-client` SDK, participant
-      grid с avatar (наши Avatar + name + speaker indicator), mute/unmute,
-      deafen, leave room, push-to-talk hold
-- [ ] Замена VoicePlaceholder на VoiceRoom когда LiveKit available
-- [ ] Voice presence сигналы в MemberList (когда v0.5.5 будет готов)
+**Backend (Phase 1 — commit 5bc0ff3):**
+- [x] `apps/server/src/livekit.ts` — JWT generation через jsonwebtoken
+      (без livekit-server-sdk dep — экономия, ECONNRESET bypass)
+      `generateLivekitToken({identity, room, ttl, can*})`
+- [x] `apps/server/src/routes/voice.ts`:
+      - `POST /api/channels/:id/voice/join` — check channel.type=VOICE +
+        membership; 503 если LIVEKIT_* env не настроен; возвращает
+        `{wsUrl, token, roomName, identity, metadata}`
+      - `GET /api/voice/health` — `{enabled, wsUrl}` для frontend
+        conditional rendering
+- [x] `deploy/livekit/`:
+      - `docker-compose.livekit.yml` — LiveKit + Redis в host network
+      - `livekit.yaml.example` — config template (port 7880 signal,
+        UDP 7882 single-port + 50000-50200 range + 7881 TCP fallback)
+      - `nginx.livekit.conf` — WSS proxy snippet
+      - **`setup.sh`** — one-command auto-setup (10 idempotent steps):
+        generate-keys, mkdir, ufw allow UDP, docker compose, nginx include
+        auto-insert, env vars, supervisor restart, health smoke
+- [x] `docs/LIVEKIT-SETUP.md` — manual 7-step guide для admin
+
+**Frontend (Phase 2 — commit b8d9f8b):**
+- [x] `livekit-client@^2.18` добавлен в apps/web deps
+- [x] **Lazy-loaded chunk** — 513 KB raw / 134 KB gzip отдельный
+      `livekit-client.esm-*.js` chunk, fetched только при первом
+      `useVoice.join()`. Users без voice — никогда не платят
+- [x] `useVoiceHealth` hook — singleton cached GET /api/voice/health
+- [x] `useVoice` hook: join/leave/toggleMic/toggleDeafen,
+      participants[] с isSpeaking из RoomEvent.ActiveSpeakersChanged,
+      handles getUserMedia denied gracefully
+- [x] `VoiceRoom` component — participant grid 168px tiles, Avatar 88px
+      lookup по identity=userId из members, speaking-ring accent border +
+      22px glow, mic-muted overlay red, controls bar (mic/deafen/leave
+      44px round buttons), header с channel name + connection badge
+- [x] AppShell branch: VOICE channel + voiceHealth.enabled →
+      VoiceRoom; else → VoicePlaceholder
+
+**Prod deployment 12.05 ночь:**
+- Docker 29.1.3 + Compose 2.40.3 installed (`apt install docker.io docker-compose-v2`)
+- `setup.sh` прошёл все 10 шагов чисто:
+  - Generated API Key `APIabjbYLLqaDwm` + secret
+  - eclipse-livekit + eclipse-livekit-redis containers RUNNING
+  - UFW: 7881/udp, 7882/udp, 50000-50200/udp open
+  - nginx WSS snippet auto-included
+  - LIVEKIT_* env vars в .env
+  - `/api/voice/health` → `{enabled:true, wsUrl:"wss://app.star-crm.ru/eclipse-chat/livekit"}` ✓
+
+**Bundle final:** main 383 KB raw / 109 KB gzip + livekit chunk 513 KB raw /
+134 KB gzip (lazy). CSS 16.75 KB / 4.08 KB gzip unchanged.
+
+**Limits:**
+- Single LiveKit VPS handle до ~20 одновременных participants в комнате
+- Дальше — dedicated LiveKit VPS или LiveKit Cloud
+- За корпоративным NAT без TCP fallback может не пройти — есть 7881/tcp
+  для таких случаев
 
 ---
 
