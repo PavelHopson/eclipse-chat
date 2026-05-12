@@ -15,6 +15,7 @@ import { ServerList } from "../components/ServerList";
 import { StatusMenu } from "../components/StatusMenu";
 import { TypingIndicator } from "../components/TypingIndicator";
 import { VoicePlaceholder } from "../components/VoicePlaceholder";
+import { VoiceRoom } from "../components/VoiceRoom";
 import { useChannels } from "../hooks/useChannels";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import { useMembers, type MemberRole } from "../hooks/useMembers";
@@ -24,6 +25,7 @@ import { useProfile } from "../hooks/useProfile";
 import { useSearch } from "../hooks/useSearch";
 import { useServers } from "../hooks/useServers";
 import { useSocket } from "../hooks/useSocket";
+import { useVoiceHealth } from "../hooks/useVoiceHealth";
 import type { PublicUser } from "../hooks/useAuth";
 
 type Props = {
@@ -232,6 +234,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
 
   const isMobile = useMediaQuery("(max-width: 640px)");
   const isTabletOrSmaller = useMediaQuery("(max-width: 1024px)");
+  const voiceHealth = useVoiceHealth();
 
   // Авто-закрытие drawer'ов при breakpoint upscale (например phone→desktop)
   useEffect(() => {
@@ -540,7 +543,15 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             <div className="ec-empty-hint">Каналы — слева. Или создайте новый внизу панели каналов.</div>
           </div>
         ) : selectedChannel.type === "VOICE" ? (
-          <VoicePlaceholder channelName={selectedChannel.name} />
+          voiceHealth.enabled ? (
+            <VoiceRoom
+              channelId={selectedChannel.id}
+              channelName={selectedChannel.name}
+              members={members}
+            />
+          ) : (
+            <VoicePlaceholder channelName={selectedChannel.name} />
+          )
         ) : (
           <>
             <PinnedBar messages={messages} />
