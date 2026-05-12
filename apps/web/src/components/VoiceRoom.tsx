@@ -1,7 +1,9 @@
 import type { CSSProperties } from "react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Avatar } from "./Avatar";
+import { VoiceSettingsModal } from "./VoiceSettingsModal";
 import { useVoice, type VoiceParticipant } from "../hooks/useVoice";
+import { keyCodeToLabel } from "../hooks/useAudioDevices";
 import type { MemberRow } from "../hooks/useMembers";
 
 type Props = {
@@ -64,6 +66,14 @@ const controlBtnDanger: CSSProperties = {
   background: "var(--ec-danger)",
   color: "#fff",
   borderColor: "var(--ec-danger)",
+};
+
+const controlBtnAccent: CSSProperties = {
+  ...controlBtn,
+  background: "var(--ec-accent)",
+  color: "#fff",
+  borderColor: "var(--ec-accent)",
+  boxShadow: "0 0 0 1px var(--ec-accent), 0 0 18px -2px hsl(195 60% 55% / 0.55)",
 };
 
 const tile: CSSProperties = {
@@ -143,6 +153,15 @@ function PhoneOffIcon() {
   );
 }
 
+function SettingsIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z" />
+    </svg>
+  );
+}
+
 function Tile({ p, lookupAvatar }: { p: VoiceParticipant; lookupAvatar: (identity: string) => string | null }) {
   const avatar = lookupAvatar(p.identity);
   const speaking = p.isSpeaking && !p.isMicMuted;
@@ -177,6 +196,7 @@ function Tile({ p, lookupAvatar }: { p: VoiceParticipant; lookupAvatar: (identit
 
 export function VoiceRoom({ channelId, channelName, members }: Props) {
   const v = useVoice();
+  const [showSettings, setShowSettings] = useState(false);
 
   // Helper для подбора avatar по identity (= userId)
   const lookupAvatar = (identity: string): string | null => {
@@ -184,10 +204,20 @@ export function VoiceRoom({ channelId, channelName, members }: Props) {
     return m?.user.avatar ?? null;
   };
 
-  // Auto-leave при смене channel — handled в useVoice через leave/join cycle.
-  // Manual join button — explicit пользовательский интент.
   const isConnected = v.state === "connected" && v.activeChannelId === channelId;
   const isConnecting = v.state === "connecting" && v.activeChannelId === channelId;
+  const isReconnecting = v.state === "reconnecting" && v.activeChannelId === channelId;
+
+  // Auto-join при mount компонента (выбор VOICE канала) — Discord-style behavior.
+  // Уходим только если действительно ещё не в этом канале.
+  useEffect(() => {
+    const inThisChannel =
+      v.activeChannelId === channelId && (v.state === "connected" || v.state === "connecting");
+    if (!inThisChannel && !v.busy) {
+      void v.join(channelId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [channelId]);
 
   // Auto-leave при unmount компонента (смене channel)
   useEffect(() => {
@@ -198,6 +228,16 @@ export function VoiceRoom({ channelId, channelName, members }: Props) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [channelId]);
+
+  const connectionBadgeText = isConnected
+    ? v.pttActive
+      ? "ПЕРЕДАЁМ"
+      : "В ЭФИРЕ"
+    : isReconnecting
+    ? "ПЕРЕПОДКЛЮЧЕНИЕ…"
+    : isConnecting
+    ? "ПОДКЛЮЧАЕМСЯ…"
+    : "ОТКЛЮЧЕНО";
 
   return (
     <div style={wrap}>
@@ -211,8 +251,17 @@ export function VoiceRoom({ channelId, channelName, members }: Props) {
           className={isConnected ? "ec-badge ec-badge--accent" : "ec-badge"}
           style={{ marginLeft: 6, fontSize: "0.6rem" }}
         >
-          {isConnected ? "В ЭФИРЕ" : isConnecting ? "ПОДКЛЮЧАЕМСЯ…" : "ОТКЛЮЧЕНО"}
+          {connectionBadgeText}
         </span>
+        {v.settings.pushToTalk && isConnected && (
+          <span
+            className="ec-badge"
+            title={`Push-to-talk: зажми ${keyCodeToLabel(v.settings.pttKey)} чтобы говорить`}
+            style={{ marginLeft: 6, fontSize: "0.6rem", borderColor: "var(--ec-accent)", color: "var(--ec-accent)" }}
+          >
+            PTT · {keyCodeToLabel(v.settings.pttKey)}
+          </span>
+        )}
         {v.participants.length > 0 && (
           <span style={{ marginLeft: "auto", fontSize: "var(--ec-text-2xs)", color: "var(--ec-text-dim)" }}>
             {v.participants.length} в комнате
@@ -235,8 +284,14 @@ export function VoiceRoom({ channelId, channelName, members }: Props) {
               <line x1="8" y1="23" x2="16" y2="23" />
             </svg>
           </div>
-          <div className="ec-empty-title">Пусто в эфире</div>
-          <div className="ec-empty-hint">Нажми «Подключиться» чтобы войти в голосовой канал.</div>
+          <div className="ec-empty-title">
+            {isConnecting ? "Подключаемся…" : isReconnecting ? "Восстанавливаем связь…" : "Подключение"}
+          </div>
+          <div className="ec-empty-hint">
+            {isConnecting || isReconnecting
+              ? "Ждём подтверждения сервера"
+              : "Голосовой канал готов — заходи и говори"}
+          </div>
         </div>
       )}
       {v.error && (
@@ -254,7 +309,7 @@ export function VoiceRoom({ channelId, channelName, members }: Props) {
         </p>
       )}
       <div style={controlsBar}>
-        {!isConnected ? (
+        {!isConnected && !isConnecting && !isReconnecting ? (
           <button
             type="button"
             onClick={() => void v.join(channelId)}
@@ -269,9 +324,22 @@ export function VoiceRoom({ channelId, channelName, members }: Props) {
             <button
               type="button"
               onClick={() => void v.toggleMic()}
-              style={v.isMicMuted ? controlBtnDanger : controlBtn}
-              title={v.isMicMuted ? "Включить микрофон" : "Выключить микрофон"}
+              style={
+                v.pttActive
+                  ? controlBtnAccent
+                  : v.isMicMuted
+                  ? controlBtnDanger
+                  : controlBtn
+              }
+              title={
+                v.settings.pushToTalk
+                  ? `Push-to-talk · ${keyCodeToLabel(v.settings.pttKey)}`
+                  : v.isMicMuted
+                  ? "Включить микрофон"
+                  : "Выключить микрофон"
+              }
               aria-label={v.isMicMuted ? "Включить микрофон" : "Выключить микрофон"}
+              disabled={v.settings.pushToTalk}
             >
               <MicIcon off={v.isMicMuted} />
             </button>
@@ -283,6 +351,46 @@ export function VoiceRoom({ channelId, channelName, members }: Props) {
               aria-label={v.isDeafened ? "Включить звук" : "Заглушить всех"}
             >
               <HeadphonesIcon off={v.isDeafened} />
+            </button>
+            {/* Master volume slider — inline, рядом с deafen */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                background: "var(--ec-surface-2)",
+                border: "1px solid var(--ec-border-default)",
+                borderRadius: "var(--ec-radius-full)",
+                padding: "0 12px",
+                height: 44,
+              }}
+              title={`Громкость воспроизведения · ${Math.round(v.settings.masterOutputVolume * 100)}%`}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ color: "var(--ec-text-muted)" }}>
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                <path d="M15.54 8.46a5 5 0 010 7.07" />
+              </svg>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                step={1}
+                value={Math.round(v.settings.masterOutputVolume * 100)}
+                onChange={(e) =>
+                  v.setMasterOutputVolume(Number(e.target.value) / 100)
+                }
+                style={{ width: 90, accentColor: "var(--ec-accent)" }}
+                aria-label="Громкость воспроизведения"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowSettings(true)}
+              style={controlBtn}
+              title="Настройки голоса"
+              aria-label="Настройки голоса"
+            >
+              <SettingsIcon />
             </button>
             <button
               type="button"
@@ -296,6 +404,8 @@ export function VoiceRoom({ channelId, channelName, members }: Props) {
           </>
         )}
       </div>
+
+      {showSettings && <VoiceSettingsModal onClose={() => setShowSettings(false)} />}
     </div>
   );
 }
