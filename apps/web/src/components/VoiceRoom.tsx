@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import { useEffect, useState } from "react";
 import type { Socket } from "socket.io-client";
 import { Avatar } from "./Avatar";
+import { ParticipantContextMenu } from "./ParticipantContextMenu";
 import { VoiceSettingsModal } from "./VoiceSettingsModal";
 import { useVoice, type VoiceParticipant } from "../hooks/useVoice";
 import { keyCodeToLabel } from "../hooks/useAudioDevices";
@@ -165,15 +166,54 @@ function SettingsIcon() {
   );
 }
 
-function Tile({ p, lookupAvatar }: { p: VoiceParticipant; lookupAvatar: (identity: string) => string | null }) {
+function Tile({
+  p,
+  lookupAvatar,
+  isLocallyMuted,
+  participantVolume,
+  onContextMenu,
+}: {
+  p: VoiceParticipant;
+  lookupAvatar: (identity: string) => string | null;
+  isLocallyMuted: boolean;
+  participantVolume: number;
+  onContextMenu: (e: React.MouseEvent) => void;
+}) {
   const avatar = lookupAvatar(p.identity);
-  const speaking = p.isSpeaking && !p.isMicMuted;
+  const speaking = p.isSpeaking && !p.isMicMuted && !isLocallyMuted;
+  const dimmed = isLocallyMuted || participantVolume < 1;
   return (
-    <div style={speaking ? tileSpeaking : tile}>
+    <div
+      style={{
+        ...(speaking ? tileSpeaking : tile),
+        ...(dimmed && !p.isLocal ? { opacity: 0.78 } : {}),
+        cursor: p.isLocal ? "default" : "context-menu",
+      }}
+      onContextMenu={p.isLocal ? undefined : onContextMenu}
+    >
       <Avatar url={avatar} name={p.name} size={88} />
       {p.isMicMuted && (
         <span style={muteOverlay} aria-label="Микрофон выключен" title="Микрофон выключен">
           <MicIcon off />
+        </span>
+      )}
+      {isLocallyMuted && (
+        <span
+          style={{
+            ...muteOverlay,
+            bottom: 12,
+            left: 12,
+            right: "auto",
+            background: "var(--ec-text-muted)",
+          }}
+          aria-label="Заглушено локально"
+          title="Заглушено локально для тебя"
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <line x1="23" y1="9" x2="17" y2="15" />
+            <line x1="17" y1="9" x2="23" y2="15" />
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+          </svg>
         </span>
       )}
       <span
@@ -192,14 +232,28 @@ function Tile({ p, lookupAvatar }: { p: VoiceParticipant; lookupAvatar: (identit
         {p.isLocal && (
           <span style={{ color: "var(--ec-text-dim)", fontWeight: 500, marginLeft: 4 }}>(вы)</span>
         )}
+        {!p.isLocal && participantVolume !== 1 && (
+          <span style={{ color: "var(--ec-text-dim)", fontWeight: 500, marginLeft: 4, fontFamily: "var(--ec-font-mono)", fontSize: "0.6rem" }}>
+            · {Math.round(participantVolume * 100)}%
+          </span>
+        )}
       </span>
     </div>
   );
 }
 
+type ContextMenuState = {
+  identity: string;
+  name: string;
+  avatar: string | null;
+  x: number;
+  y: number;
+};
+
 export function VoiceRoom({ channelId, channelName, members, socket = null }: Props) {
   const v = useVoice(socket);
   const [showSettings, setShowSettings] = useState(false);
+  const [ctxMenu, setCtxMenu] = useState<ContextMenuState | null>(null);
 
   // Helper для подбора avatar по identity (= userId)
   const lookupAvatar = (identity: string): string | null => {
@@ -273,9 +327,30 @@ export function VoiceRoom({ channelId, channelName, members, socket = null }: Pr
       </div>
       {v.participants.length > 0 ? (
         <div style={stage}>
-          {v.participants.map((p) => (
-            <Tile key={p.identity} p={p} lookupAvatar={lookupAvatar} />
-          ))}
+          {v.participants.map((p) => {
+            const isMuted = v.settings.mutedParticipants.includes(p.identity);
+            const vol = v.settings.participantVolumes[p.identity] ?? 1;
+            return (
+              <Tile
+                key={p.identity}
+                p={p}
+                lookupAvatar={lookupAvatar}
+                isLocallyMuted={isMuted}
+                participantVolume={vol}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  if (p.isLocal) return;
+                  setCtxMenu({
+                    identity: p.identity,
+                    name: p.name,
+                    avatar: lookupAvatar(p.identity),
+                    x: e.clientX,
+                    y: e.clientY,
+                  });
+                }}
+              />
+            );
+          })}
         </div>
       ) : (
         <div className="ec-empty" style={{ flex: 1 }}>
@@ -409,6 +484,22 @@ export function VoiceRoom({ channelId, channelName, members, socket = null }: Pr
       </div>
 
       {showSettings && <VoiceSettingsModal onClose={() => setShowSettings(false)} />}
+
+      {ctxMenu && (
+        <ParticipantContextMenu
+          identity={ctxMenu.identity}
+          name={ctxMenu.name}
+          avatar={ctxMenu.avatar}
+          volume={v.settings.participantVolumes[ctxMenu.identity] ?? 1}
+          isMuted={v.settings.mutedParticipants.includes(ctxMenu.identity)}
+          anchorX={ctxMenu.x}
+          anchorY={ctxMenu.y}
+          onVolumeChange={(vol) => v.setParticipantVolume(ctxMenu.identity, vol)}
+          onResetVolume={() => v.resetParticipantVolume(ctxMenu.identity)}
+          onToggleMute={() => v.toggleParticipantMute(ctxMenu.identity)}
+          onClose={() => setCtxMenu(null)}
+        />
+      )}
     </div>
   );
 }
