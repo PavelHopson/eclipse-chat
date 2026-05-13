@@ -12,7 +12,7 @@ on:
       run_initial_setup:
         description: "Run deploy/initial-setup.sh on server (only first time)"
         required: false
-        default: "false"
+        default: false
         type: boolean
 
 permissions:
@@ -92,6 +92,10 @@ jobs:
           ECLIPSE_CHAT_JWT_SECRET: ${{ secrets.ECLIPSE_CHAT_JWT_SECRET }}
 
       # --- Регулярный деплой: orchestrator deploy.sh делает всё ---
+      # Workflow сам делает git pull перед bash deploy.sh — иначе chicken-egg:
+      # если на проде старый commit без deploy/scripts/, файл просто не существует.
+      # После initial pull deploy.sh сам делает второй reset --hard как [1/10] step
+      # (идемпотентно, harmless).
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.2.0
         with:
@@ -100,7 +104,12 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY_PROD }}
           command_timeout: 15m
           script: |
+            set -e
             cd /var/www/eclipse-chat
+            echo "==> Pre-pull (workflow bootstrap, до deploy.sh)"
+            git fetch origin master
+            git reset --hard origin/master
+            echo "==> Running deploy/scripts/deploy.sh"
             bash deploy/scripts/deploy.sh
 
       # --- Post-deploy: independent smoke от CI runner (не из prod),
