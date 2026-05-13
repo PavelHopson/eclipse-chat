@@ -62,11 +62,15 @@ self-host важнее красивого облачного UX.
 - [x] UI: можно закрыть action item из очереди
 
 **Следующий слой после этого:**
-- [ ] editing title прямо в action queue
-- [ ] фильтр `my actions / all actions`
-- [ ] overdue / SLA hints
-- [ ] channel digest: open actions, recent decisions, unresolved follow-ups
+- [x] editing title прямо в action queue
+- [x] фильтр `my actions / all actions`
+- [x] overdue / SLA hints
+- [x] channel digest: open actions по типам + SLA + my count
 - [ ] server memory / AI summaries поверх action layer
+
+**Update 13.05.2026:** action queue получила inline-edit title, фильтр
+`Все / Мои`, SLA-сигналы по срокам и компактный channel digest. Следующий
+логичный шаг — server memory / AI summaries поверх action layer.
 
 ---
 
