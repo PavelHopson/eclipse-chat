@@ -66,6 +66,26 @@ export function emitChannelDeleted(
   io?.to(`server:${serverId}`).emit("channel:deleted", payload);
 }
 
+/**
+ * Эмит при обновлении channel-meta (rename / description change).
+ * Frontend обновляет в местах: ChannelList, chat header, breadcrumb.
+ * slug в payload включён но обычно неизменный (мы не меняем slug при rename).
+ */
+export function emitChannelUpdated(
+  serverId: string,
+  payload: {
+    channelId: string;
+    serverId: string;
+    name: string;
+    slug: string;
+    type: "TEXT" | "VOICE";
+    position: number;
+    description: string | null;
+  },
+) {
+  io?.to(`server:${serverId}`).emit("channel:updated", payload);
+}
+
 /** Эмит при вступлении нового члена в сервер. */
 export function emitMemberJoined(
   serverId: string,

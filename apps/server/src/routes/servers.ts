@@ -8,6 +8,7 @@ import { getUserId, requireJwt } from "../auth/requireJwt.js";
 import {
   emitChannelCreated,
   emitChannelDeleted,
+  emitChannelUpdated,
   emitMemberJoined,
   emitMemberLeft,
   emitMemberUpdated,
@@ -55,7 +56,13 @@ const channelTypeSchema = z.enum(["TEXT", "VOICE"]);
 
 const createServerChannelBody = z.object({
   name: z.string().min(1).max(80),
+  description: z.string().max(1024).optional().nullable(),
   type: channelTypeSchema.optional(),
+});
+
+const updateChannelBody = z.object({
+  name: z.string().trim().min(1).max(80).optional(),
+  description: z.string().max(1024).optional().nullable(),
 });
 
 /** Все допустимые роли. SQLite-friendly — храним как String, валидируем здесь. */
@@ -449,6 +456,7 @@ export async function registerServerRoutes(app: FastifyInstance) {
         slug: true,
         type: true,
         position: true,
+        description: true,
         createdAt: true,
         _count: { select: { messages: true } },
       },
@@ -475,6 +483,7 @@ export async function registerServerRoutes(app: FastifyInstance) {
         slug,
         serverId,
         type: parsed.data.type ?? "TEXT",
+        description: parsed.data.description?.trim() || null,
       },
     });
     emitChannelCreated(serverId, {
@@ -493,10 +502,105 @@ export async function registerServerRoutes(app: FastifyInstance) {
         slug: ch.slug,
         type: ch.type,
         position: ch.position,
+        description: ch.description,
         createdAt: ch.createdAt.toISOString(),
       },
     };
   });
+
+  /**
+   * PATCH /api/channels/:id — переименование канала + обновление description.
+   * Permissions: OWNER / ADMIN / MODERATOR на server'е этого канала.
+   * MEMBER нельзя — иначе пользователи переименуют #general случайно.
+   *
+   * Body: { name?: string, description?: string | null }.
+   * При смене name — slug НЕ обновляется (slug фиксирован при create
+   * для сохранения inbound ссылок). UI отображает name, slug — внутренне.
+   *
+   * Emits: `channel:updated` в server-room.
+   */
+  app.patch(
+    "/api/channels/:id",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const { id: channelId } = req.params as { id: string };
+      const userId = getUserId(req);
+      if (!userId) {
+        return reply.status(401).send({ error: "Unauthorized" });
+      }
+      const parsed = updateChannelBody.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.status(400).send({ error: "Invalid body" });
+      }
+      // Не разрешаем PATCH без полей — иначе zero-op + спам socket emit
+      if (parsed.data.name === undefined && parsed.data.description === undefined) {
+        return reply.status(400).send({ error: "Nothing to update" });
+      }
+      const channel = await db.channel.findUnique({
+        where: { id: channelId },
+        select: { id: true, serverId: true },
+      });
+      if (!channel) {
+        return reply.status(404).send({ error: "Channel not found" });
+      }
+      const member = await db.member.findUnique({
+        where: { userId_serverId: { userId, serverId: channel.serverId } },
+        select: { role: true },
+      });
+      if (!member) {
+        return reply.status(403).send({ error: "Not a member of this server" });
+      }
+      if (
+        member.role !== "OWNER" &&
+        member.role !== "ADMIN" &&
+        member.role !== "MODERATOR"
+      ) {
+        return reply.status(403).send({
+          error: "Только OWNER / ADMIN / MODERATOR могут редактировать каналы",
+        });
+      }
+      const data: { name?: string; description?: string | null } = {};
+      if (parsed.data.name !== undefined) {
+        data.name = parsed.data.name.trim();
+      }
+      if (parsed.data.description !== undefined) {
+        const d = parsed.data.description?.trim();
+        data.description = d ? d : null;
+      }
+      const updated = await db.channel.update({
+        where: { id: channelId },
+        data,
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          type: true,
+          position: true,
+          description: true,
+          serverId: true,
+        },
+      });
+      emitChannelUpdated(updated.serverId, {
+        channelId: updated.id,
+        serverId: updated.serverId,
+        name: updated.name,
+        slug: updated.slug,
+        type: updated.type,
+        position: updated.position,
+        description: updated.description,
+      });
+      return {
+        channel: {
+          id: updated.id,
+          name: updated.name,
+          slug: updated.slug,
+          type: updated.type,
+          position: updated.position,
+          description: updated.description,
+        },
+      };
+    },
+  );
 
   /**
    * DELETE /api/channels/:id — удаление канала. Требует OWNER/ADMIN роли

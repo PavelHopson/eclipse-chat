@@ -4,6 +4,7 @@ import { ActionQueueBar } from "../components/ActionQueueBar";
 import { ChannelDigestPanel } from "../components/ChannelDigestPanel";
 import { Avatar } from "../components/Avatar";
 import { ChannelList } from "../components/ChannelList";
+import { ChannelSettingsModal } from "../components/ChannelSettingsModal";
 import { CreateServerModal } from "../components/CreateServerModal";
 import { DirectConversationList } from "../components/DirectConversationList";
 import { JoinServerModal } from "../components/JoinServerModal";
@@ -317,6 +318,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     selectedChannelId,
     setSelectedChannelId,
     createChannel,
+    updateChannel,
     deleteChannel,
     unread,
   } = useChannels(activeServerId, socket);
@@ -396,6 +398,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   // Thread panel — открыт когда selectedThreadId != null. Replaces MemberList
   // в right rail. Close → возвращается MemberList.
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
+  // Channel settings modal — id канала, который сейчас редактируется.
+  const [settingsChannelId, setSettingsChannelId] = useState<string | null>(null);
 
   // Закрыть thread при смене канала / сервера — не показывать thread из старого канала
   useEffect(() => {
@@ -779,6 +783,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               await createChannel(name, type);
             }}
             onDelete={deleteChannel}
+            onOpenSettings={(channelId) => setSettingsChannelId(channelId)}
             onShowServerInfo={() => activeServer && setShowServerInfo(true)}
             voiceByChannel={voiceByChannel}
             members={members}
@@ -805,28 +810,101 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               Выберите диалог
             </span>
           ) : selectedChannel ? (
-            <span className="ec-chat-title" style={chatTitle}>
-              {selectedChannel.type === "VOICE" ? (
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  style={{ color: "var(--ec-accent)" }}
-                  aria-hidden
-                >
-                  <path d="M11 5L6 9H2v6h4l5 4V5z" />
-                  <path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07" />
-                </svg>
-              ) : (
-                <span style={{ color: "var(--ec-accent)" }}>#</span>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "var(--ec-space-3)",
+                minWidth: 0,
+                flex: 1,
+              }}
+            >
+              <span className="ec-chat-title" style={chatTitle}>
+                {selectedChannel.type === "VOICE" ? (
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    style={{ color: "var(--ec-accent)" }}
+                    aria-hidden
+                  >
+                    <path d="M11 5L6 9H2v6h4l5 4V5z" />
+                    <path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07" />
+                  </svg>
+                ) : (
+                  <span style={{ color: "var(--ec-accent)" }}>#</span>
+                )}
+                {selectedChannel.name}
+              </span>
+              {selectedChannel.description && (
+                <>
+                  <span
+                    aria-hidden
+                    style={{
+                      width: 1,
+                      height: 18,
+                      background: "var(--ec-border-default)",
+                      flexShrink: 0,
+                    }}
+                  />
+                  <span
+                    style={{
+                      fontSize: "var(--ec-text-2xs)",
+                      color: "var(--ec-text-muted)",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      minWidth: 0,
+                      flex: 1,
+                    }}
+                    title={selectedChannel.description}
+                  >
+                    {selectedChannel.description}
+                  </span>
+                </>
               )}
-              {selectedChannel.name}
-            </span>
+              {(activeServer?.role === "OWNER" ||
+                activeServer?.role === "ADMIN" ||
+                activeServer?.role === "MODERATOR") && (
+                <button
+                  type="button"
+                  onClick={() => setSettingsChannelId(selectedChannel.id)}
+                  aria-label="Настройки канала"
+                  title="Настройки канала"
+                  style={{
+                    flexShrink: 0,
+                    width: 26,
+                    height: 26,
+                    display: "grid",
+                    placeItems: "center",
+                    background: "transparent",
+                    border: 0,
+                    borderRadius: "var(--ec-radius-sm)",
+                    color: "var(--ec-text-dim)",
+                    cursor: "pointer",
+                    transition: "background var(--ec-dur-fast) var(--ec-ease), color var(--ec-dur-fast) var(--ec-ease)",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "var(--ec-surface-2)";
+                    e.currentTarget.style.color = "var(--ec-text)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "transparent";
+                    e.currentTarget.style.color = "var(--ec-text-dim)";
+                  }}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <circle cx="12" cy="12" r="3" />
+                    <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
+                  </svg>
+                </button>
+              )}
+            </div>
           ) : (
             <span style={{ color: "var(--ec-text-muted)", fontSize: "var(--ec-text-sm)" }}>
               {activeServer ? "Выберите канал слева" : "Нет активного сервера"}
@@ -1125,6 +1203,18 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           onClose={() => setStatusAnchor(null)}
         />
       )}
+
+      {settingsChannelId && (() => {
+        const ch = channels.find((c) => c.id === settingsChannelId);
+        if (!ch) return null;
+        return (
+          <ChannelSettingsModal
+            channel={ch}
+            onClose={() => setSettingsChannelId(null)}
+            onUpdate={(patch) => updateChannel(ch.id, patch)}
+          />
+        );
+      })()}
 
       {showSearch && activeServerId && (
         <SearchOverlay

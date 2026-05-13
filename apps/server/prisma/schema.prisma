@@ -269,6 +269,9 @@ model Channel {
   type      ChannelType @default(TEXT)
   /// Позиция в списке каналов сервера (для будущей сортировки UI).
   position  Int         @default(0)
+  /// Описание канала (до 1024 символов). Показывается в chat header
+  /// под #channel-name + в ChannelSettingsModal. Nullable = нет описания.
+  description String?
   createdAt DateTime    @default(now())
 
   messages  Message[]

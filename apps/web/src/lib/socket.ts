@@ -75,6 +75,16 @@ export type ChannelDeletedPayload = {
   serverId: string;
 };
 
+export type ChannelUpdatedPayload = {
+  channelId: string;
+  serverId: string;
+  name: string;
+  slug: string;
+  type: ChannelType;
+  position: number;
+  description: string | null;
+};
+
 export type MemberJoinedPayload = {
   memberId: string;
   userId: string;
@@ -281,6 +291,7 @@ export const SocketEvents = {
   ActionItemUpdated: "action:item:updated",
   ChannelCreated: "channel:created",
   ChannelDeleted: "channel:deleted",
+  ChannelUpdated: "channel:updated",
   MemberJoined: "member:joined",
   MemberLeft: "member:left",
   MemberUpdated: "member:updated",

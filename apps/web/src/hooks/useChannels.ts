@@ -6,6 +6,7 @@ import {
   type ChannelCreatedPayload,
   type ChannelDeletedPayload,
   type ChannelType,
+  type ChannelUpdatedPayload,
   type MessageNewPayload,
 } from "../lib/socket";
 
@@ -15,6 +16,8 @@ export type ChannelRow = {
   slug: string;
   type: ChannelType;
   position: number;
+  /** Description канала (до 1024 символов). Null = нет описания. */
+  description: string | null;
   createdAt: string;
   _count: { messages: number };
 };
@@ -25,12 +28,18 @@ type ChannelDto = {
   slug: string;
   type?: ChannelType; // legacy server без type — fallback TEXT
   position: number;
+  description?: string | null;
   createdAt: string;
-  _count: { messages: number };
+  _count?: { messages: number };
 };
 
 function normalizeChannel(dto: ChannelDto): ChannelRow {
-  return { ...dto, type: dto.type ?? "TEXT" };
+  return {
+    ...dto,
+    type: dto.type ?? "TEXT",
+    description: dto.description ?? null,
+    _count: dto._count ?? { messages: 0 },
+  };
 }
 
 /**
@@ -92,6 +101,7 @@ export function useChannels(serverId: string | null, socket: Socket | null) {
             slug: p.slug,
             type: p.type ?? "TEXT",
             position: p.position,
+            description: null,
             createdAt: p.createdAt,
             _count: { messages: 0 },
           },
@@ -101,6 +111,32 @@ export function useChannels(serverId: string | null, socket: Socket | null) {
     socket.on(SocketEvents.ChannelCreated, handler);
     return () => {
       socket.off(SocketEvents.ChannelCreated, handler);
+    };
+  }, [socket, serverId]);
+
+  // Socket: updated — rename / description change
+  useEffect(() => {
+    if (!socket || !serverId) return;
+    const handler = (p: ChannelUpdatedPayload) => {
+      if (p.serverId !== serverId) return;
+      setChannels((prev) =>
+        prev.map((c) =>
+          c.id === p.channelId
+            ? {
+                ...c,
+                name: p.name,
+                slug: p.slug,
+                type: p.type,
+                position: p.position,
+                description: p.description,
+              }
+            : c,
+        ),
+      );
+    };
+    socket.on(SocketEvents.ChannelUpdated, handler);
+    return () => {
+      socket.off(SocketEvents.ChannelUpdated, handler);
     };
   }, [socket, serverId]);
 
@@ -177,6 +213,45 @@ export function useChannels(serverId: string | null, socket: Socket | null) {
     [serverId],
   );
 
+  const updateChannel = useCallback(
+    async (
+      channelId: string,
+      patch: { name?: string; description?: string | null },
+    ): Promise<boolean> => {
+      setError(null);
+      try {
+        const data = await apiJson<{ channel: ChannelDto }>(
+          `/api/channels/${encodeURIComponent(channelId)}`,
+          {
+            method: "PATCH",
+            body: JSON.stringify(patch),
+          },
+        );
+        const updated = normalizeChannel(data.channel);
+        // Локально обновим — socket эмит придёт также, дедупликация в handler.
+        setChannels((prev) =>
+          prev.map((c) =>
+            c.id === channelId
+              ? {
+                  ...c,
+                  name: updated.name,
+                  slug: updated.slug,
+                  type: updated.type,
+                  position: updated.position,
+                  description: updated.description,
+                }
+              : c,
+          ),
+        );
+        return true;
+      } catch (e) {
+        setError(e instanceof ApiError ? e.message : "Не удалось обновить канал");
+        return false;
+      }
+    },
+    [],
+  );
+
   const deleteChannel = useCallback(
     async (channelId: string): Promise<boolean> => {
       setError(null);
@@ -215,6 +290,7 @@ export function useChannels(serverId: string | null, socket: Socket | null) {
     loading,
     reload,
     createChannel,
+    updateChannel,
     deleteChannel,
     unread,
   };

@@ -15,6 +15,8 @@ type Props = {
   onSelect: (id: string) => void;
   onCreate: (name: string, type: ChannelType) => Promise<void>;
   onDelete: (id: string) => Promise<boolean>;
+  /** Открыть ChannelSettingsModal. Скрывает кнопку если не передано. */
+  onOpenSettings?: (channelId: string) => void;
   onShowServerInfo: () => void;
   /** Кто сейчас в каком VOICE-канале — для sticky-списка под каналом. */
   voiceByChannel?: Record<string, string[]>;
@@ -130,6 +132,11 @@ function canManage(role: string | null): boolean {
   return role === "OWNER" || role === "ADMIN";
 }
 
+/** Edit channel name/description. Включает MODERATOR (отличается от delete). */
+function canEditChannel(role: string | null): boolean {
+  return role === "OWNER" || role === "ADMIN" || role === "MODERATOR";
+}
+
 function ChannelGlyph({ type }: { type: ChannelType }) {
   if (type === "VOICE") {
     return (
@@ -166,6 +173,7 @@ export function ChannelList({
   onSelect,
   onCreate,
   onDelete,
+  onOpenSettings,
   onShowServerInfo,
   voiceByChannel,
   members,
@@ -178,6 +186,7 @@ export function ChannelList({
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
 
   const manageable = canManage(serverRole);
+  const editable = canEditChannel(serverRole);
 
   const textChannels = channels.filter((c) => c.type === "TEXT");
   const voiceChannels = channels.filter((c) => c.type === "VOICE");
@@ -279,12 +288,14 @@ export function ChannelList({
           ...(hasUnread ? { color: "var(--ec-text-strong)", fontWeight: 600 } : undefined),
         }}
         onMouseEnter={(e) => {
-          const btn = e.currentTarget.querySelector<HTMLElement>("[data-delete-btn]");
-          if (btn) btn.style.opacity = "1";
+          e.currentTarget.querySelectorAll<HTMLElement>("[data-channel-action]").forEach((el) => {
+            el.style.opacity = "1";
+          });
         }}
         onMouseLeave={(e) => {
-          const btn = e.currentTarget.querySelector<HTMLElement>("[data-delete-btn]");
-          if (btn) btn.style.opacity = "0";
+          e.currentTarget.querySelectorAll<HTMLElement>("[data-channel-action]").forEach((el) => {
+            el.style.opacity = "0";
+          });
         }}
       >
         <ChannelGlyph type={c.type} />
@@ -325,9 +336,43 @@ export function ChannelList({
         {!hasUnread && !isActive && c.type === "TEXT" && c._count.messages > 0 && (
           <span className="ec-channel-count">{c._count.messages}</span>
         )}
+        {editable && onOpenSettings && (
+          <span
+            data-channel-action
+            role="button"
+            tabIndex={0}
+            aria-label={`Настройки канала ${c.name}`}
+            title="Редактировать канал"
+            style={deleteBtn}
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenSettings(c.id);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                e.stopPropagation();
+                onOpenSettings(c.id);
+              }
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "var(--ec-surface-3)";
+              e.currentTarget.style.color = "var(--ec-text)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "transparent";
+              e.currentTarget.style.color = "var(--ec-text-dim)";
+            }}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
+            </svg>
+          </span>
+        )}
         {manageable && (
           <span
-            data-delete-btn
+            data-channel-action
             role="button"
             tabIndex={0}
             aria-label={`Удалить канал ${c.name}`}
