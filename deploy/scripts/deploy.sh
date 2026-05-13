@@ -62,7 +62,10 @@ cat release.json
 
 echo
 echo "==> [3/10] npm ci (workspaces — из корня репо)"
-npm ci --omit=optional
+# WHY no --omit=optional: rollup использует platform-specific native modules
+# (@rollup/rollup-linux-x64-gnu и др.) через optional dependencies. Если их
+# не установить — vite build падает с MODULE_NOT_FOUND. См. npm bug #4828.
+npm ci
 
 echo
 echo "==> [4/10] prisma generate + migrate deploy"
