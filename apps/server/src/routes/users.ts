@@ -28,12 +28,35 @@ const updateStatusBody = z.object({
  * presigned URLs, не через multipart — тогда вернуться к этому решению
  * не понадобится.
  */
-const AVATAR_BODY_LIMIT = 7 * 1024 * 1024;
-const AVATAR_MAX_BINARY = 5 * 1024 * 1024;
-const AVATAR_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
+/**
+ * Лимиты бампнуты в v0.9.2 после фидбека от Pavel'я:
+ * iPhone-сделанные фото (HEIC/JPEG) часто 10-15 MB и проходить под 5 MB
+ * не должны. Теперь 20 MB binary + 27 MB body (base64 overhead ~34%).
+ */
+const AVATAR_BODY_LIMIT = 27 * 1024 * 1024;
+const AVATAR_MAX_BINARY = 20 * 1024 * 1024;
+/**
+ * Sharp на входе принимает большинство raster-форматов. HEIC/HEIF/AVIF
+ * требуют libheif/libaom на сервере — если они не установлены, sharp
+ * thrown'ет и мы вернём понятный 400 с hint'ом про конвертацию.
+ *
+ * Список MIME широкий — пусть sharp сам разруливает: если формат не
+ * поддержан, поймаем в catch и user-friendly message. На выход всегда webp.
+ */
+const AVATAR_MIME = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "image/avif",
+  "image/heic",
+  "image/heif",
+  "image/bmp",
+  "image/tiff",
+]);
 
 const uploadAvatarBody = z.object({
-  /** Mime: должен быть jpeg/png/webp. На вход sharp принимает любой raster — выход всегда webp. */
+  /** Mime — расширенный список raster-форматов. Sharp конвертирует в webp. */
   contentType: z.string().min(3).max(40),
   /** Base64 без префикса `data:...;base64,` — клиент чистит сам. */
   dataBase64: z.string().min(1),
@@ -144,24 +167,40 @@ export async function registerUserRoutes(app: FastifyInstance) {
         return reply.status(400).send({ error: "Invalid body", details: parsed.error.flatten() });
       }
       if (!AVATAR_MIME.has(parsed.data.contentType)) {
-        return reply.status(415).send({ error: "Only jpeg/png/webp supported" });
+        return reply.status(415).send({
+          error: `Формат ${parsed.data.contentType} не поддерживается. Используй JPEG, PNG, WebP, GIF, AVIF, HEIC, BMP или TIFF.`,
+        });
       }
       const buf = Buffer.from(parsed.data.dataBase64, "base64");
       if (buf.length === 0) {
-        return reply.status(400).send({ error: "Empty file" });
+        return reply.status(400).send({ error: "Пустой файл" });
       }
       if (buf.length > AVATAR_MAX_BINARY) {
-        return reply.status(413).send({ error: "File too large (max 5MB)" });
+        return reply.status(413).send({
+          error: `Файл слишком большой (${(buf.length / 1024 / 1024).toFixed(1)} MB). Максимум 20 MB.`,
+        });
       }
-      // sharp: resize до 256x256 (cover crop) + конверт в webp (стабильный, мелкий)
-      const resized = await sharp(buf)
-        .rotate() // учесть EXIF orientation
-        .resize(256, 256, { fit: "cover", position: "center" })
-        .webp({ quality: 88 })
-        .toBuffer()
-        .catch(() => null);
-      if (!resized) {
-        return reply.status(400).send({ error: "Image processing failed" });
+      // sharp: resize 512×512 (увеличено с 256 после фидбека Pavel'я —
+      // 256 был «сломан» на retina; 512×512 webp ≈ 30-50 KB, всё ещё компактно).
+      // failOn:"none" — толерантнее к JPEG с мелкими warnings.
+      let resized: Buffer;
+      try {
+        resized = await sharp(buf, { failOn: "none" })
+          .rotate() // EXIF orientation
+          .resize(512, 512, { fit: "cover", position: "center" })
+          .webp({ quality: 90 })
+          .toBuffer();
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        app.log.warn({ err, mime: parsed.data.contentType, size: buf.length }, "Avatar sharp processing failed");
+        // HEIC без libheif даёт `Input file contains unsupported image format`
+        const hint = /heif|heic|libheif/i.test(message)
+          ? " Похоже, что HEIC из iPhone — открой Фото → Поделиться → Параметры → выбери «Совместимый» формат, либо загрузи JPEG/PNG."
+          : "";
+        return reply.status(400).send({
+          error: `Не удалось обработать изображение.${hint}`,
+          details: message,
+        });
       }
       const dir = avatarsDir();
       await fs.mkdir(dir, { recursive: true });

@@ -89,14 +89,20 @@ function FileIcon({ mime }: { mime: string }) {
 }
 
 function ImageItem({ a, onOpen }: { a: Attachment; onOpen: (a: Attachment) => void }) {
-  const src = resolveUrl(a.thumbnailUrl ?? a.url);
+  // Если thumbnail-sharp умер на сервере и thumbnailUrl=null — берём original.
+  // Если ImgLoad упадёт и для thumbnail (404 / битый файл) — onError swap'нет
+  // на original; если и original битый — показываем placeholder без broken-icon.
+  const initialSrc = resolveUrl(a.thumbnailUrl ?? a.url);
+  const fallbackSrc = resolveUrl(a.url);
+  const [imgSrc, setImgSrc] = useState(initialSrc);
+  const [errored, setErrored] = useState(false);
   // Aspect ratio из metadata если есть, иначе fallback на 16:9
   const aspect = a.width && a.height ? `${a.width} / ${a.height}` : "16 / 9";
   return (
     <button
       type="button"
       onClick={() => onOpen(a)}
-      style={{ ...imageWrap, padding: 0, border: imageWrap.border, maxWidth: 380 }}
+      style={{ ...imageWrap, padding: 0, border: imageWrap.border, maxWidth: 480 }}
       aria-label={`Открыть изображение ${a.filename}`}
       onMouseEnter={(e) => {
         e.currentTarget.style.transform = "scale(1.005)";
@@ -105,20 +111,53 @@ function ImageItem({ a, onOpen }: { a: Attachment; onOpen: (a: Attachment) => vo
         e.currentTarget.style.transform = "scale(1)";
       }}
     >
-      <img
-        src={src}
-        alt={a.filename}
-        loading="lazy"
-        style={{
-          display: "block",
-          width: "100%",
-          height: "auto",
-          maxWidth: 380,
-          maxHeight: 280,
-          aspectRatio: aspect,
-          objectFit: "cover",
-        }}
-      />
+      {errored ? (
+        <div
+          style={{
+            width: "100%",
+            maxWidth: 480,
+            aspectRatio: aspect,
+            display: "grid",
+            placeItems: "center",
+            background: "var(--ec-surface-2)",
+            color: "var(--ec-text-muted)",
+            fontSize: "var(--ec-text-sm)",
+            gap: 6,
+            flexDirection: "column",
+          }}
+        >
+          <FileIcon mime={a.mimeType} />
+          <span style={{ maxWidth: "80%", textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {a.filename}
+          </span>
+          <span style={{ fontSize: "var(--ec-text-2xs)", color: "var(--ec-text-dim)" }}>
+            не удалось показать превью
+          </span>
+        </div>
+      ) : (
+        <img
+          src={imgSrc}
+          alt={a.filename}
+          loading="lazy"
+          onError={() => {
+            // First fail: попробуем original. Second fail: placeholder.
+            if (imgSrc !== fallbackSrc) {
+              setImgSrc(fallbackSrc);
+            } else {
+              setErrored(true);
+            }
+          }}
+          style={{
+            display: "block",
+            width: "100%",
+            height: "auto",
+            maxWidth: 480,
+            maxHeight: 360,
+            aspectRatio: aspect,
+            objectFit: "cover",
+          }}
+        />
+      )}
     </button>
   );
 }

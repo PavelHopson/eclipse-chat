@@ -147,16 +147,32 @@ const previewRemove: CSSProperties = {
   cursor: "pointer",
 };
 
-// Лимиты в синхроне с backend (apps/server/src/attachments.ts)
-const ATTACHMENT_MAX_BYTES = 25 * 1024 * 1024;
+// Лимиты в синхроне с backend (apps/server/src/attachments.ts) — v0.9.2 bumped.
+const ATTACHMENT_MAX_BYTES = 50 * 1024 * 1024;
 const MAX_PER_MESSAGE = 10;
 const ALLOWED_MIME = new Set([
   "image/jpeg",
   "image/png",
   "image/webp",
   "image/gif",
+  "image/avif",
+  "image/heic",
+  "image/heif",
+  "image/bmp",
+  "image/tiff",
+  "image/svg+xml",
   "application/pdf",
   "text/plain",
+  "text/markdown",
+  "application/json",
+  "application/zip",
+  "video/mp4",
+  "video/webm",
+  "video/quicktime",
+  "audio/mpeg",
+  "audio/wav",
+  "audio/ogg",
+  "audio/webm",
 ]);
 
 type Pending = {
@@ -266,12 +282,21 @@ export function MessageInput({
     const newOnes: Pending[] = [];
     let err: string | null = null;
     for (const f of files) {
-      if (!ALLOWED_MIME.has(f.type)) {
+      // Allow files без явного MIME — браузер часто не знает HEIC, MOV.
+      // Backend сам разруливает через sharp/magic bytes.
+      const acceptable =
+        ALLOWED_MIME.has(f.type) ||
+        f.type === "" ||
+        f.type === "application/octet-stream" ||
+        f.type.startsWith("image/") ||
+        f.type.startsWith("video/") ||
+        f.type.startsWith("audio/");
+      if (!acceptable) {
         err = `Не поддерживается: ${f.type || f.name}`;
         continue;
       }
       if (f.size > ATTACHMENT_MAX_BYTES) {
-        err = `«${f.name}» больше 25 МБ`;
+        err = `«${f.name}» больше ${(ATTACHMENT_MAX_BYTES / 1024 / 1024).toFixed(0)} МБ`;
         continue;
       }
       const isImage = f.type.startsWith("image/");

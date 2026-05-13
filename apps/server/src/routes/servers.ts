@@ -14,9 +14,23 @@ import {
 } from "../realtime.js";
 import { addServerRoom, onlineUserIds, removeServerRoom } from "../presence.js";
 
-const ICON_BODY_LIMIT = 7 * 1024 * 1024;
-const ICON_MAX_BINARY = 5 * 1024 * 1024;
-const ICON_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
+/**
+ * Server-icon лимиты: 20 MB binary / 27 MB body (для iPhone HEIC + base64
+ * overhead). Mime широкий — sharp конвертит в webp на выходе.
+ */
+const ICON_BODY_LIMIT = 27 * 1024 * 1024;
+const ICON_MAX_BINARY = 20 * 1024 * 1024;
+const ICON_MIME = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "image/avif",
+  "image/heic",
+  "image/heif",
+  "image/bmp",
+  "image/tiff",
+]);
 
 const uploadIconBody = z.object({
   contentType: z.string().min(3).max(40),
@@ -528,23 +542,36 @@ export async function registerServerRoutes(app: FastifyInstance) {
         return reply.status(400).send({ error: "Invalid body" });
       }
       if (!ICON_MIME.has(parsed.data.contentType)) {
-        return reply.status(415).send({ error: "Only jpeg/png/webp supported" });
+        return reply.status(415).send({
+          error: `Формат ${parsed.data.contentType} не поддерживается. Используй JPEG, PNG, WebP, GIF, AVIF, HEIC, BMP или TIFF.`,
+        });
       }
       const buf = Buffer.from(parsed.data.dataBase64, "base64");
       if (buf.length === 0) {
-        return reply.status(400).send({ error: "Empty file" });
+        return reply.status(400).send({ error: "Пустой файл" });
       }
       if (buf.length > ICON_MAX_BINARY) {
-        return reply.status(413).send({ error: "File too large (max 5MB)" });
+        return reply.status(413).send({
+          error: `Файл слишком большой (${(buf.length / 1024 / 1024).toFixed(1)} MB). Максимум 20 MB.`,
+        });
       }
-      const resized = await sharp(buf)
-        .rotate()
-        .resize(256, 256, { fit: "cover", position: "center" })
-        .webp({ quality: 88 })
-        .toBuffer()
-        .catch(() => null);
-      if (!resized) {
-        return reply.status(400).send({ error: "Image processing failed" });
+      let resized: Buffer;
+      try {
+        resized = await sharp(buf, { failOn: "none" })
+          .rotate()
+          .resize(512, 512, { fit: "cover", position: "center" })
+          .webp({ quality: 90 })
+          .toBuffer();
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        app.log.warn({ err, mime: parsed.data.contentType, size: buf.length }, "Server icon sharp failed");
+        const hint = /heif|heic|libheif/i.test(message)
+          ? " Похоже, HEIC из iPhone — переключи Фото → Поделиться → формат «Совместимый» (JPEG)."
+          : "";
+        return reply.status(400).send({
+          error: `Не удалось обработать иконку.${hint}`,
+          details: message,
+        });
       }
       const dir = serverIconsDir();
       await fs.mkdir(dir, { recursive: true });

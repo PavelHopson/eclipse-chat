@@ -164,20 +164,27 @@ export function useServers(isReady: boolean) {
     async (serverId: string, file: File): Promise<boolean> => {
       setError(null);
       try {
-        if (!/^image\/(jpeg|png|webp)$/.test(file.type)) {
-          setError("Только JPEG/PNG/WebP");
+        const isImage =
+          /^image\//.test(file.type) ||
+          file.type === "" ||
+          file.type === "application/octet-stream";
+        if (!isImage) {
+          setError(`Файл ${file.type} — не изображение`);
           return false;
         }
-        if (file.size > 5 * 1024 * 1024) {
-          setError("Файл больше 5 МБ");
+        if (file.size > 20 * 1024 * 1024) {
+          setError(
+            `Файл ${(file.size / 1024 / 1024).toFixed(1)} MB слишком большой. Максимум 20 MB.`,
+          );
           return false;
         }
         const dataBase64 = await fileToBase64(file);
+        const contentType = file.type || "image/heic";
         const res = await apiJson<{ icon: string }>(
           `/api/servers/${encodeURIComponent(serverId)}/icon`,
           {
             method: "POST",
-            body: JSON.stringify({ contentType: file.type, dataBase64 }),
+            body: JSON.stringify({ contentType, dataBase64 }),
           },
         );
         setServers((prev) =>

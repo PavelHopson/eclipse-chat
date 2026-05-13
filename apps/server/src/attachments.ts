@@ -20,21 +20,56 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import sharp from "sharp";
 
-export const ATTACHMENT_MAX_BYTES = 25 * 1024 * 1024;
+/**
+ * Лимиты бампнуты в v0.9.2: 25 → 50 MB per attachment.
+ * Фотки с современных телефонов (iPhone 15, Galaxy S24) часто 12-18 MB
+ * без resize. До бампа Pavel получал «Файл слишком большой».
+ */
+export const ATTACHMENT_MAX_BYTES = 50 * 1024 * 1024;
 export const ATTACHMENTS_PER_MESSAGE = 10;
-/** body limit учитывает base64 overhead ~33% + JSON envelope */
-export const MESSAGE_BODY_LIMIT_WITH_ATTACHMENTS = 200 * 1024 * 1024;
+/** body limit учитывает base64 overhead ~34% + JSON envelope + 10 attachments. */
+export const MESSAGE_BODY_LIMIT_WITH_ATTACHMENTS = 700 * 1024 * 1024;
 
+/**
+ * Allowed MIME — широкий список raster + документы. Sharp на images
+ * thumbnails в webp; HEIC/AVIF толерируются (если libheif установлен).
+ */
 const ALLOWED_MIME = new Set([
   "image/jpeg",
   "image/png",
   "image/webp",
   "image/gif",
+  "image/avif",
+  "image/heic",
+  "image/heif",
+  "image/bmp",
+  "image/tiff",
+  "image/svg+xml",
   "application/pdf",
   "text/plain",
+  "text/markdown",
+  "application/json",
+  "application/zip",
+  "video/mp4",
+  "video/webm",
+  "video/quicktime",
+  "audio/mpeg",
+  "audio/wav",
+  "audio/ogg",
+  "audio/webm",
 ]);
 
-const IMAGE_MIME = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+const IMAGE_MIME = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "image/avif",
+  "image/heic",
+  "image/heif",
+  "image/bmp",
+  "image/tiff",
+]);
 /** Для images > этого порога — рендерим thumbnail 512×512 webp. */
 const THUMBNAIL_THRESHOLD = 512;
 
@@ -126,13 +161,14 @@ export async function processAttachment(
 
   if (IMAGE_MIME.has(input.mimeType) && input.mimeType !== "image/gif") {
     // Для статичных изображений: получим metadata + сделаем thumbnail
-    // если > THUMBNAIL_THRESHOLD.
+    // если > THUMBNAIL_THRESHOLD. failOn:"none" — толерантнее к minor JPEG
+    // warnings; HEIC/AVIF попытается, если libheif/libaom доступны.
     try {
-      const meta = await sharp(buf).metadata();
+      const meta = await sharp(buf, { failOn: "none" }).metadata();
       width = meta.width ?? null;
       height = meta.height ?? null;
       if (width && height && (width > THUMBNAIL_THRESHOLD || height > THUMBNAIL_THRESHOLD)) {
-        const thumb = await sharp(buf)
+        const thumb = await sharp(buf, { failOn: "none" })
           .rotate()
           .resize(THUMBNAIL_THRESHOLD, THUMBNAIL_THRESHOLD, {
             fit: "inside",
@@ -144,8 +180,35 @@ export async function processAttachment(
         await fs.writeFile(path.join(dir, thumbFilename), thumb);
         thumbnailUrl = attachmentUrl(thumbFilename);
       }
+
+      // Для HEIC/HEIF/AVIF/TIFF/BMP — конвертируем original в JPEG, чтобы
+      // фронт точно мог отрендерить (browsers HEIC не показывают).
+      // Webp оставим только для thumbnail; full-size берём jpeg q=90.
+      const NEEDS_CONVERSION = new Set([
+        "image/heic",
+        "image/heif",
+        "image/avif",
+        "image/tiff",
+        "image/bmp",
+      ]);
+      if (NEEDS_CONVERSION.has(input.mimeType)) {
+        try {
+          const converted = await sharp(buf, { failOn: "none" })
+            .rotate()
+            .jpeg({ quality: 90 })
+            .toBuffer();
+          finalBytes = Buffer.from(converted);
+          // mime override — для DB row mime будет input.mimeType, но
+          // url-расширение jpg чтобы browser корректно отрендерил.
+          // (Браузер игнорит mime в `<img>`, читает magic bytes; jpg-extension
+          // помогает только nginx mime-detect, который для inline img не критичен.)
+        } catch (convErr) {
+          // если не получилось — оставим original buf
+        }
+      }
     } catch {
-      // sharp может не справиться с экзотическими форматами — fall through
+      // sharp вообще упал — fall through, файл сохранится как есть, UI
+      // покажет attachment chip вместо preview (graceful degradation).
     }
   } else if (input.mimeType === "image/gif") {
     // GIF — пишем как есть, sharp animated workflow не оптимизируем (anim
