@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import { useEffect, useRef, useState } from "react";
 import { ActionQueueBar } from "../components/ActionQueueBar";
+import { ChannelDigestPanel } from "../components/ChannelDigestPanel";
 import { Avatar } from "../components/Avatar";
 import { ChannelList } from "../components/ChannelList";
 import { CreateServerModal } from "../components/CreateServerModal";
@@ -19,6 +20,7 @@ import { TypingIndicator } from "../components/TypingIndicator";
 import { VoiceMiniBar } from "../components/VoiceMiniBar";
 import { VoicePlaceholder } from "../components/VoicePlaceholder";
 import { VoiceRoom } from "../components/VoiceRoom";
+import { useChannelDigest } from "../hooks/useChannelDigest";
 import { useChannels } from "../hooks/useChannels";
 import { useDirectConversations } from "../hooks/useDirectConversations";
 import { useDirectMessages } from "../hooks/useDirectMessages";
@@ -265,6 +267,16 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     deleteChannel,
     unread,
   } = useChannels(activeServerId, socket);
+
+  // ===== Channel digest =====
+  // Открытые задачи / решения / follow-ups / pinned — компактная сводка канала.
+  // Auto-fetch при смене канала + manual refresh из ChannelDigestPanel.
+  const {
+    digest: channelDigest,
+    loading: digestLoading,
+    error: digestError,
+    refresh: refreshDigest,
+  } = useChannelDigest(selectedChannelId, socket);
 
   // ===== DMs =====
   // DM-mode активируется когда activeServerId === null (после клика «📩 DMs»
@@ -882,6 +894,15 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               members={members}
               onUpdateAction={updateActionItem}
             />
+            <div style={{ padding: "var(--ec-space-2) var(--ec-space-5)" }}>
+              <ChannelDigestPanel
+                digest={channelDigest}
+                loading={digestLoading}
+                error={digestError}
+                onRefresh={() => void refreshDigest()}
+                compact={isMobile}
+              />
+            </div>
             <PinnedBar messages={messages} />
             <MessageList
               messages={messages}

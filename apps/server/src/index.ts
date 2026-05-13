@@ -8,6 +8,7 @@ import { Server as SocketServer } from "socket.io";
 import { registerActionRoutes } from "./routes/actions.js";
 import { registerAuthRoutes } from "./routes/auth.js";
 import { registerChannelRoutes } from "./routes/channels.js";
+import { registerDigestRoutes } from "./routes/digest.js";
 import { registerDmRoutes } from "./routes/dm.js";
 import { registerMessageRoutes } from "./routes/messages.js";
 import { registerServerRoutes } from "./routes/servers.js";
@@ -64,6 +65,7 @@ app.get("/api/version", async () => ({ name: "@eclipse-chat/server", version: "0
 await registerAuthRoutes(app);
 await registerChannelRoutes(app);
 await registerActionRoutes(app);
+await registerDigestRoutes(app);
 await registerServerRoutes(app);
 await registerUserRoutes(app);
 await registerMessageRoutes(app);
