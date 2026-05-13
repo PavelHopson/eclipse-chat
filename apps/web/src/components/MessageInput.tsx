@@ -2,6 +2,12 @@ import type { CSSProperties } from "react";
 import { useEffect, useRef, useState } from "react";
 import { fileToBase64 } from "../lib/fileToBase64";
 import type { AttachmentUpload } from "../hooks/useMessages";
+import {
+  AutocompletePopover,
+  detectTrigger,
+  type AutocompleteItem,
+  type AutocompleteTrigger,
+} from "./AutocompletePopover";
 
 type Props = {
   channelName: string | null;
@@ -9,6 +15,12 @@ type Props = {
   onSend: (content: string, attachments: AttachmentUpload[]) => Promise<boolean>;
   onTypingStart?: () => void;
   onTypingStop?: () => void;
+  /** Display names known members активного сервера — для @-autocomplete. */
+  mentionNames?: string[];
+  /** Hide attachments — для thread reply composer, где attachments yet not supported. */
+  hideAttachments?: boolean;
+  /** Custom placeholder. */
+  placeholder?: string;
 };
 
 const wrap: CSSProperties = {
@@ -194,6 +206,9 @@ export function MessageInput({
   onSend,
   onTypingStart,
   onTypingStop,
+  mentionNames = [],
+  hideAttachments = false,
+  placeholder,
 }: Props) {
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
@@ -202,6 +217,42 @@ export function MessageInput({
   const [attachError, setAttachError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Autocomplete state — @ mentions + : emoji shortcodes
+  const [trigger, setTrigger] = useState<AutocompleteTrigger | null>(null);
+  const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
+
+  const refreshTrigger = () => {
+    const el = textareaRef.current;
+    if (!el || el.disabled) {
+      setTrigger(null);
+      return;
+    }
+    const caret = el.selectionStart ?? 0;
+    const next = detectTrigger(el.value, caret);
+    setTrigger(next);
+    if (next) {
+      setAnchorRect(el.getBoundingClientRect());
+    }
+  };
+
+  const applyAutocomplete = (item: AutocompleteItem) => {
+    if (!trigger) return;
+    const el = textareaRef.current;
+    if (!el) return;
+    const caret = el.selectionStart ?? draft.length;
+    // Replace text [startIdx..caret] (includes trigger char `@` или `:` + word)
+    const before = draft.slice(0, trigger.startIdx);
+    const after = draft.slice(caret);
+    const next = before + item.insertText + after;
+    setDraft(next);
+    setTrigger(null);
+    // Reposition caret после insert
+    queueMicrotask(() => {
+      el.focus();
+      const newCaret = before.length + item.insertText.length;
+      el.setSelectionRange(newCaret, newCaret);
+    });
+  };
 
   /**
    * Typing emit: первый keystroke → typing:start, последующие — refresh
@@ -224,6 +275,8 @@ export function MessageInput({
 
   const handleDraftChange = (value: string) => {
     setDraft(value);
+    // Refresh trigger после React-update применит value (next tick)
+    queueMicrotask(refreshTrigger);
     if (value.trim().length === 0) {
       // Очистили — сразу stop
       if (isTypingRef.current) {
@@ -501,14 +554,34 @@ export function MessageInput({
           value={draft}
           onChange={(e) => handleDraftChange(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
+            // Если popover активен — Enter/Tab/Arrow keys обрабатывает он (capture).
+            // Здесь только Enter без trigger = submit.
+            if (e.key === "Enter" && !e.shiftKey && !trigger) {
               e.preventDefault();
               void submit();
             }
           }}
+          onClick={refreshTrigger}
+          onKeyUp={(e) => {
+            // Arrow keys / Home / End — caret position может измениться
+            if (
+              e.key === "ArrowLeft" ||
+              e.key === "ArrowRight" ||
+              e.key === "Home" ||
+              e.key === "End"
+            ) {
+              refreshTrigger();
+            }
+          }}
           onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
-          placeholder={channelName ? `Сообщение в #${channelName}` : "Сообщение"}
+          onBlur={() => {
+            setFocused(false);
+            // Dismiss popover с задержкой — чтобы успел сработать onClick по item
+            setTimeout(() => setTrigger(null), 120);
+          }}
+          placeholder={
+            placeholder ?? (channelName ? `Сообщение в #${channelName}` : "Сообщение")
+          }
           disabled={disabled}
           className="ec-composer-textarea"
           style={textarea}
@@ -537,9 +610,26 @@ export function MessageInput({
         <span><span style={kbd}>Enter</span> — отправить</span>
         <span style={{ color: "var(--ec-border-emphasis)" }}>·</span>
         <span><span style={kbd}>Shift+Enter</span> — новая строка</span>
+        {!hideAttachments && (
+          <>
+            <span style={{ color: "var(--ec-border-emphasis)" }}>·</span>
+            <span>drop файлы</span>
+          </>
+        )}
         <span style={{ color: "var(--ec-border-emphasis)" }}>·</span>
-        <span>drop файлы</span>
+        <span>
+          <span style={kbd}>@</span> участник · <span style={kbd}>:</span>emoji
+        </span>
       </div>
+      {trigger && (
+        <AutocompletePopover
+          trigger={trigger}
+          members={mentionNames}
+          anchorRect={anchorRect}
+          onSelect={applyAutocomplete}
+          onDismiss={() => setTrigger(null)}
+        />
+      )}
     </form>
   );
 }

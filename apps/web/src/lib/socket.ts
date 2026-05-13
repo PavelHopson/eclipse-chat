@@ -83,6 +83,7 @@ export type ChannelUpdatedPayload = {
   type: ChannelType;
   position: number;
   description: string | null;
+  emoji: string | null;
 };
 
 export type MemberJoinedPayload = {
@@ -164,6 +165,7 @@ export type ThreadReplyNewPayload = {
   isBot?: boolean;
   content: string;
   createdAt: string;
+  attachments?: AttachmentPayload[];
 };
 
 /** Thread meta-update — для UI badge «N replies» на root в main feed. */

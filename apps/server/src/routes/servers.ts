@@ -63,6 +63,20 @@ const createServerChannelBody = z.object({
 const updateChannelBody = z.object({
   name: z.string().trim().min(1).max(80).optional(),
   description: z.string().max(1024).optional().nullable(),
+  emoji: z.string().max(16).optional().nullable(),
+});
+
+const reorderChannelsBody = z.object({
+  /** Массив { id, position }. position — целое неотрицательное число. */
+  order: z
+    .array(
+      z.object({
+        id: z.string().min(1),
+        position: z.number().int().min(0).max(10000),
+      }),
+    )
+    .min(1)
+    .max(200),
 });
 
 /** Все допустимые роли. SQLite-friendly — храним как String, валидируем здесь. */
@@ -457,6 +471,7 @@ export async function registerServerRoutes(app: FastifyInstance) {
         type: true,
         position: true,
         description: true,
+        emoji: true,
         createdAt: true,
         _count: { select: { messages: true } },
       },
@@ -559,13 +574,17 @@ export async function registerServerRoutes(app: FastifyInstance) {
           error: "Только OWNER / ADMIN / MODERATOR могут редактировать каналы",
         });
       }
-      const data: { name?: string; description?: string | null } = {};
+      const data: { name?: string; description?: string | null; emoji?: string | null } = {};
       if (parsed.data.name !== undefined) {
         data.name = parsed.data.name.trim();
       }
       if (parsed.data.description !== undefined) {
         const d = parsed.data.description?.trim();
         data.description = d ? d : null;
+      }
+      if (parsed.data.emoji !== undefined) {
+        const e = parsed.data.emoji?.trim();
+        data.emoji = e ? e : null;
       }
       const updated = await db.channel.update({
         where: { id: channelId },
@@ -577,6 +596,7 @@ export async function registerServerRoutes(app: FastifyInstance) {
           type: true,
           position: true,
           description: true,
+          emoji: true,
           serverId: true,
         },
       });
@@ -588,6 +608,7 @@ export async function registerServerRoutes(app: FastifyInstance) {
         type: updated.type,
         position: updated.position,
         description: updated.description,
+        emoji: updated.emoji,
       });
       return {
         channel: {
@@ -597,8 +618,93 @@ export async function registerServerRoutes(app: FastifyInstance) {
           type: updated.type,
           position: updated.position,
           description: updated.description,
+          emoji: updated.emoji,
         },
       };
+    },
+  );
+
+  /**
+   * PATCH /api/servers/:id/channels/reorder — batch обновление positions.
+   * Body: { order: [{id, position}, ...] }.
+   * Permissions: OWNER / ADMIN / MODERATOR.
+   * Atomic через db.$transaction.
+   */
+  app.patch(
+    "/api/servers/:id/channels/reorder",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const { id: serverId } = req.params as { id: string };
+      const userId = getUserId(req);
+      if (!userId) {
+        return reply.status(401).send({ error: "Unauthorized" });
+      }
+      const member = await db.member.findUnique({
+        where: { userId_serverId: { userId, serverId } },
+        select: { role: true },
+      });
+      if (!member) return reply.status(403).send({ error: "Not a member" });
+      if (
+        member.role !== "OWNER" &&
+        member.role !== "ADMIN" &&
+        member.role !== "MODERATOR"
+      ) {
+        return reply.status(403).send({
+          error: "Только OWNER / ADMIN / MODERATOR могут менять порядок каналов",
+        });
+      }
+      const parsed = reorderChannelsBody.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.status(400).send({ error: "Invalid body" });
+      }
+      const ids = parsed.data.order.map((o) => o.id);
+      // Verify все channels принадлежат серверу — anti-spoof
+      const channels = await db.channel.findMany({
+        where: { id: { in: ids }, serverId },
+        select: { id: true },
+      });
+      if (channels.length !== ids.length) {
+        return reply.status(400).send({
+          error: "Некоторые channels не принадлежат серверу или не существуют",
+        });
+      }
+      await db.$transaction(
+        parsed.data.order.map((o) =>
+          db.channel.update({
+            where: { id: o.id },
+            data: { position: o.position },
+          }),
+        ),
+      );
+      // Emit updated event для каждого channel с новой позицией (frontend
+      // обновит ChannelList сразу — sorted рендер). Можно было batch single
+      // event, но reuse существующего channel:updated cleaner.
+      const updated = await db.channel.findMany({
+        where: { id: { in: ids } },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          type: true,
+          position: true,
+          description: true,
+          emoji: true,
+          serverId: true,
+        },
+      });
+      for (const ch of updated) {
+        emitChannelUpdated(serverId, {
+          channelId: ch.id,
+          serverId,
+          name: ch.name,
+          slug: ch.slug,
+          type: ch.type,
+          position: ch.position,
+          description: ch.description,
+          emoji: ch.emoji,
+        });
+      }
+      return { ok: true, updated: updated.length };
     },
   );
 

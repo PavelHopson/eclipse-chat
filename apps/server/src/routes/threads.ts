@@ -6,9 +6,21 @@ import {
   emitThreadReplyNew,
   emitThreadMetaUpdate,
 } from "../realtime.js";
+import {
+  ATTACHMENTS_PER_MESSAGE,
+  MESSAGE_BODY_LIMIT_WITH_ATTACHMENTS,
+  processAttachment,
+} from "../attachments.js";
+
+const attachmentInputSchema = z.object({
+  filename: z.string().min(1).max(255),
+  mimeType: z.string().min(3).max(80),
+  dataBase64: z.string().min(1),
+});
 
 const replyBody = z.object({
-  content: z.string().min(1).max(8000),
+  content: z.string().max(8000).optional().default(""),
+  attachments: z.array(attachmentInputSchema).max(ATTACHMENTS_PER_MESSAGE).optional(),
 });
 
 /**
@@ -166,10 +178,14 @@ export async function registerThreadRoutes(app: FastifyInstance) {
 
   /**
    * POST /api/messages/:id/thread — создать reply в thread.
+   * Body: { content?, attachments? } — хотя бы одно из них.
    */
   app.post(
     "/api/messages/:id/thread",
-    { onRequest: [requireJwt] },
+    {
+      onRequest: [requireJwt],
+      bodyLimit: MESSAGE_BODY_LIMIT_WITH_ATTACHMENTS,
+    },
     async (req, reply) => {
       const { id: rootId } = req.params as { id: string };
       const userId = getUserId(req);
@@ -179,6 +195,13 @@ export async function registerThreadRoutes(app: FastifyInstance) {
       const parsed = replyBody.safeParse(req.body);
       if (!parsed.success) {
         return reply.status(400).send({ error: "Invalid body" });
+      }
+      const trimmed = parsed.data.content.trim();
+      const attachInputs = parsed.data.attachments ?? [];
+      if (trimmed === "" && attachInputs.length === 0) {
+        return reply
+          .status(400)
+          .send({ error: "Thread reply must have content or attachments" });
       }
 
       const root = await db.message.findUnique({
@@ -228,7 +251,7 @@ export async function registerThreadRoutes(app: FastifyInstance) {
 
       const m = await db.message.create({
         data: {
-          content: parsed.data.content.trim(),
+          content: trimmed,
           userId,
           channelId: root.channelId,
           parentMessageId: rootId,
@@ -246,6 +269,33 @@ export async function registerThreadRoutes(app: FastifyInstance) {
         },
       });
 
+      // Attachments — outside transaction (FS I/O slow), rollback message
+      // если хоть один fails (consistent с channels.ts POST).
+      const processedAttachments = [];
+      for (let i = 0; i < attachInputs.length; i++) {
+        try {
+          const proc = await processAttachment(attachInputs[i], m.id, i);
+          const created = await db.attachment.create({
+            data: {
+              messageId: m.id,
+              filename: proc.filename,
+              mimeType: proc.mimeType,
+              size: proc.size,
+              url: proc.url,
+              width: proc.width,
+              height: proc.height,
+              thumbnailUrl: proc.thumbnailUrl,
+              position: proc.position,
+            },
+          });
+          processedAttachments.push(created);
+        } catch (err) {
+          await db.message.delete({ where: { id: m.id } });
+          const msg = err instanceof Error ? err.message : "Attachment processing failed";
+          return reply.status(400).send({ error: msg });
+        }
+      }
+
       const replyPayload = {
         messageId: m.id,
         rootId,
@@ -258,6 +308,17 @@ export async function registerThreadRoutes(app: FastifyInstance) {
           m.user.botProfile != null ||
           m.user.email === "system@eclipse-chat.local",
         createdAt: m.createdAt.toISOString(),
+        attachments: processedAttachments.map((a) => ({
+          id: a.id,
+          filename: a.filename,
+          mimeType: a.mimeType,
+          size: a.size,
+          url: a.url,
+          width: a.width,
+          height: a.height,
+          thumbnailUrl: a.thumbnailUrl,
+          position: a.position,
+        })),
       };
       emitThreadReplyNew(rootId, replyPayload);
 

@@ -5,6 +5,7 @@ import { ChannelDigestPanel } from "../components/ChannelDigestPanel";
 import { Avatar } from "../components/Avatar";
 import { ChannelList } from "../components/ChannelList";
 import { ChannelSettingsModal } from "../components/ChannelSettingsModal";
+import { RichContent } from "../components/RichContent";
 import { CreateServerModal } from "../components/CreateServerModal";
 import { DirectConversationList } from "../components/DirectConversationList";
 import { JoinServerModal } from "../components/JoinServerModal";
@@ -319,6 +320,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     setSelectedChannelId,
     createChannel,
     updateChannel,
+    reorderChannels,
     deleteChannel,
     unread,
   } = useChannels(activeServerId, socket);
@@ -784,6 +786,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             }}
             onDelete={deleteChannel}
             onOpenSettings={(channelId) => setSettingsChannelId(channelId)}
+            onReorder={reorderChannels}
             onShowServerInfo={() => activeServer && setShowServerInfo(true)}
             voiceByChannel={voiceByChannel}
             members={members}
@@ -820,7 +823,9 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               }}
             >
               <span className="ec-chat-title" style={chatTitle}>
-                {selectedChannel.type === "VOICE" ? (
+                {selectedChannel.emoji ? (
+                  <span style={{ fontSize: "1rem", lineHeight: 1 }}>{selectedChannel.emoji}</span>
+                ) : selectedChannel.type === "VOICE" ? (
                   <svg
                     width="16"
                     height="16"
@@ -864,7 +869,11 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                     }}
                     title={selectedChannel.description}
                   >
-                    {selectedChannel.description}
+                    <RichContent
+                      content={selectedChannel.description}
+                      mentionNames={members.map((m) => m.user.displayName)}
+                      currentUserName={headerName}
+                    />
                   </span>
                 </>
               )}

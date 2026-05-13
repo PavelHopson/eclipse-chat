@@ -1,6 +1,8 @@
 import type { CSSProperties } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
+import { Attachments } from "./Attachments";
 import { Avatar } from "./Avatar";
+import { MessageInput } from "./MessageInput";
 import { RichContent } from "./RichContent";
 import { useThread } from "../hooks/useThread";
 import type { Socket } from "socket.io-client";
@@ -105,57 +107,6 @@ const replyRow: CSSProperties = {
   padding: "var(--ec-space-1) 0",
 };
 
-const composer: CSSProperties = {
-  padding: "var(--ec-space-3) var(--ec-space-4)",
-  borderTop: "1px solid var(--ec-border-subtle)",
-  background: "var(--ec-bg)",
-};
-
-const composerBox: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "1fr auto",
-  gap: "var(--ec-space-2)",
-  alignItems: "end",
-  padding: "var(--ec-space-2) var(--ec-space-3)",
-  background: "var(--ec-input-bg)",
-  border: "1px solid var(--ec-border-default)",
-  borderRadius: "var(--ec-radius-lg)",
-  transition:
-    "border-color var(--ec-dur-fast) var(--ec-ease), box-shadow var(--ec-dur-fast) var(--ec-ease)",
-};
-
-const composerBoxFocused: CSSProperties = {
-  borderColor: "var(--ec-accent)",
-  boxShadow: "0 0 0 3px var(--ec-accent-soft)",
-};
-
-const textareaStyle: CSSProperties = {
-  display: "block",
-  width: "100%",
-  background: "transparent",
-  border: 0,
-  color: "var(--ec-text)",
-  fontSize: "var(--ec-text-sm)",
-  lineHeight: "var(--ec-leading-normal)",
-  fontFamily: "var(--ec-font-sans)",
-  resize: "none",
-  outline: "none",
-  padding: "var(--ec-space-1) 0",
-  maxHeight: 140,
-};
-
-const sendBtn: CSSProperties = {
-  padding: "0.45rem 0.8rem",
-  background: "var(--ec-accent)",
-  color: "var(--ec-accent-text)",
-  border: 0,
-  borderRadius: "var(--ec-radius-md)",
-  fontSize: "var(--ec-text-xs)",
-  fontWeight: 600,
-  cursor: "pointer",
-  whiteSpace: "nowrap",
-};
-
 function formatShortTime(iso: string): string {
   return iso.slice(11, 16);
 }
@@ -188,26 +139,15 @@ function ReplyBadge({ isBot }: { isBot?: boolean }) {
 
 export function ThreadPanel({
   rootId,
-  socket,
+  socket: _socket,
   currentUser,
   currentUserName,
   currentUserAvatar,
   mentionNames,
   onClose,
 }: Props) {
-  const { data, loading, error, sending, sendReply } = useThread(rootId, socket);
-  const [draft, setDraft] = useState("");
-  const [focused, setFocused] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { data, loading, error, sendReply } = useThread(rootId, _socket);
   const scrollRef = useRef<HTMLDivElement>(null);
-
-  // Autosize textarea
-  useEffect(() => {
-    const el = textareaRef.current;
-    if (!el) return;
-    el.style.height = "auto";
-    el.style.height = `${el.scrollHeight}px`;
-  }, [draft]);
 
   // Auto-scroll to bottom on new reply
   useEffect(() => {
@@ -217,29 +157,17 @@ export function ThreadPanel({
     if (isAtBottom) el.scrollTop = el.scrollHeight;
   }, [data?.replies.length]);
 
-  // ESC to close
+  // ESC to close — но НЕ если фокус в input/textarea (Esc dismisses autocomplete)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key !== "Escape") return;
+      const tag = (document.activeElement?.tagName ?? "").toLowerCase();
+      if (tag === "input" || tag === "textarea") return;
+      onClose();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
-
-  const submit = async () => {
-    const trimmed = draft.trim();
-    if (!trimmed || sending) return;
-    const ok = await sendReply(trimmed, {
-      id: currentUser.id,
-      displayName: currentUserName,
-      avatar: currentUserAvatar,
-    });
-    if (ok) setDraft("");
-    textareaRef.current?.focus();
-  };
-
-  const canSend = draft.trim().length > 0 && !sending;
-  const boxStyle = focused ? { ...composerBox, ...composerBoxFocused } : composerBox;
 
   return (
     <aside className="ec-thread-panel" style={panel} aria-label="Thread panel">
@@ -405,6 +333,11 @@ export function ThreadPanel({
                       />
                     )}
                   </p>
+                  {!r.deletedAt && r.attachments.length > 0 && (
+                    <div style={{ marginTop: 4 }}>
+                      <Attachments attachments={r.attachments} />
+                    </div>
+                  )}
                 </div>
               </article>
             ))}
@@ -412,55 +345,24 @@ export function ThreadPanel({
         )}
       </div>
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          void submit();
-        }}
-        style={composer}
-      >
-        <div style={boxStyle}>
-          <textarea
-            ref={textareaRef}
-            rows={1}
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                void submit();
-              }
-            }}
-            onFocus={() => setFocused(true)}
-            onBlur={() => setFocused(false)}
-            placeholder="Ответить в треде"
-            style={textareaStyle}
-            aria-label="Ответ в треде"
-          />
-          <button
-            type="submit"
-            disabled={!canSend}
-            style={{
-              ...sendBtn,
-              opacity: canSend ? 1 : 0.4,
-              cursor: canSend ? "pointer" : "default",
-            }}
-            title="Отправить (Enter)"
-          >
-            {sending ? "…" : "Ответить"}
-          </button>
-        </div>
-        <p
-          style={{
-            margin: "4px 0 0",
-            fontSize: "var(--ec-text-2xs)",
-            color: "var(--ec-text-dim)",
-            paddingLeft: "var(--ec-space-2)",
-          }}
-        >
-          Enter — отправить · Shift+Enter — новая строка · Esc — закрыть тред
-        </p>
-      </form>
+      <MessageInput
+        channelName={data?.root.user.displayName ?? null}
+        placeholder="Ответить в треде"
+        mentionNames={mentionNames}
+        onSend={(content, attachments) =>
+          sendReply(
+            content,
+            {
+              id: currentUser.id,
+              displayName: currentUserName,
+              avatar: currentUserAvatar,
+            },
+            attachments,
+          )
+        }
+        onTypingStart={() => undefined}
+        onTypingStop={() => undefined}
+      />
     </aside>
   );
 }

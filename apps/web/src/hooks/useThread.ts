@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { Socket } from "socket.io-client";
 import { ApiError, apiJson } from "../lib/api";
 import { SocketEvents, type ThreadReplyNewPayload } from "../lib/socket";
-import type { MessageRow } from "./useMessages";
+import type { AttachmentUpload, MessageRow } from "./useMessages";
 
 /**
  * Thread data — root-сообщение + список replies.
@@ -104,7 +104,7 @@ export function useThread(
             isBot: p.isBot ?? false,
           },
           reactions: [],
-          attachments: [],
+          attachments: p.attachments ?? [],
           actionItems: [],
         };
         if (pendingIdx >= 0) {
@@ -124,10 +124,14 @@ export function useThread(
   }, [socket, rootId]);
 
   const sendReply = useCallback(
-    async (content: string, sender: Sender): Promise<boolean> => {
+    async (
+      content: string,
+      sender: Sender,
+      attachments: AttachmentUpload[] = [],
+    ): Promise<boolean> => {
       if (!rootId) return false;
       const trimmed = content.trim();
-      if (!trimmed) return false;
+      if (!trimmed && attachments.length === 0) return false;
       setSending(true);
       setError(null);
 
@@ -141,7 +145,17 @@ export function useThread(
         pinnedAt: null,
         user: sender,
         reactions: [],
-        attachments: [],
+        attachments: attachments.map((a, i) => ({
+          id: `local-att-${i}`,
+          filename: a.filename,
+          mimeType: a.mimeType,
+          size: Math.ceil((a.dataBase64.length * 3) / 4),
+          url: `data:${a.mimeType};base64,${a.dataBase64}`,
+          thumbnailUrl: null,
+          width: null,
+          height: null,
+          position: i,
+        })),
         actionItems: [],
         pending: true,
       };
@@ -152,7 +166,10 @@ export function useThread(
       try {
         await apiJson(`/api/messages/${encodeURIComponent(rootId)}/thread`, {
           method: "POST",
-          body: JSON.stringify({ content: trimmed }),
+          body: JSON.stringify({
+            content: trimmed,
+            attachments: attachments.length > 0 ? attachments : undefined,
+          }),
         });
         // Реальное сообщение придёт через socket — заменит optimistic
         return true;

@@ -46,6 +46,9 @@ jobs:
       - name: TypeScript check
         run: npm run typecheck
 
+      - name: Unit tests (server)
+        run: npm test --workspace=@eclipse-chat/server
+
       - name: Production build (server + web)
         run: npm run build
         env:

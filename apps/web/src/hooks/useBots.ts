@@ -15,6 +15,12 @@ export type BotRow = {
   /** Префикс API key для display ("ecb_AbCd…"). Не secret. */
   apiKeyPrefix: string;
   capabilities: string[];
+  /** Outbound webhook URL для message.created events. Null = нет webhook. */
+  webhookUrl: string | null;
+  /** True если webhookSecret set (для display «secret configured» badge). */
+  webhookSecretSet: boolean;
+  /** Subscribed events: ["message.created"]. */
+  webhookEvents: string[];
   createdAt: string;
   lastUsedAt: string | null;
 };
@@ -129,6 +135,36 @@ export function useBots(serverId: string | null) {
     [serverId, reload],
   );
 
+  const updateBot = useCallback(
+    async (
+      botId: string,
+      patch: {
+        name?: string;
+        description?: string | null;
+        webhookUrl?: string | null;
+        webhookSecret?: string | null;
+      },
+    ): Promise<boolean> => {
+      if (!serverId) return false;
+      setError(null);
+      try {
+        await apiJson(
+          `/api/servers/${encodeURIComponent(serverId)}/bots/${encodeURIComponent(botId)}`,
+          {
+            method: "PATCH",
+            body: JSON.stringify(patch),
+          },
+        );
+        await reload();
+        return true;
+      } catch (e) {
+        setError(e instanceof ApiError ? e.message : "Не удалось обновить бота");
+        return false;
+      }
+    },
+    [serverId, reload],
+  );
+
   const deleteBot = useCallback(
     async (botId: string): Promise<boolean> => {
       if (!serverId) return false;
@@ -170,6 +206,7 @@ export function useBots(serverId: string | null) {
     revealed,
     reload,
     createBot,
+    updateBot,
     regenerateKey,
     deleteBot,
     dismissRevealedKey,

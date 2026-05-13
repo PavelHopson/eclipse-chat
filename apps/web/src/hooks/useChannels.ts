@@ -18,6 +18,8 @@ export type ChannelRow = {
   position: number;
   /** Description канала (до 1024 символов). Null = нет описания. */
   description: string | null;
+  /** Кастомный emoji prefix вместо # / 🔊. Null = default. */
+  emoji: string | null;
   createdAt: string;
   _count: { messages: number };
 };
@@ -29,6 +31,7 @@ type ChannelDto = {
   type?: ChannelType; // legacy server без type — fallback TEXT
   position: number;
   description?: string | null;
+  emoji?: string | null;
   createdAt: string;
   _count?: { messages: number };
 };
@@ -38,6 +41,7 @@ function normalizeChannel(dto: ChannelDto): ChannelRow {
     ...dto,
     type: dto.type ?? "TEXT",
     description: dto.description ?? null,
+    emoji: dto.emoji ?? null,
     _count: dto._count ?? { messages: 0 },
   };
 }
@@ -102,6 +106,7 @@ export function useChannels(serverId: string | null, socket: Socket | null) {
             type: p.type ?? "TEXT",
             position: p.position,
             description: null,
+            emoji: null,
             createdAt: p.createdAt,
             _count: { messages: 0 },
           },
@@ -129,6 +134,7 @@ export function useChannels(serverId: string | null, socket: Socket | null) {
                 type: p.type,
                 position: p.position,
                 description: p.description,
+                emoji: p.emoji,
               }
             : c,
         ),
@@ -216,7 +222,7 @@ export function useChannels(serverId: string | null, socket: Socket | null) {
   const updateChannel = useCallback(
     async (
       channelId: string,
-      patch: { name?: string; description?: string | null },
+      patch: { name?: string; description?: string | null; emoji?: string | null },
     ): Promise<boolean> => {
       setError(null);
       try {
@@ -239,6 +245,7 @@ export function useChannels(serverId: string | null, socket: Socket | null) {
                   type: updated.type,
                   position: updated.position,
                   description: updated.description,
+                  emoji: updated.emoji,
                 }
               : c,
           ),
@@ -250,6 +257,47 @@ export function useChannels(serverId: string | null, socket: Socket | null) {
       }
     },
     [],
+  );
+
+  /**
+   * Batch reorder каналов. Принимает массив { id, position } —
+   * каждый channel получит новую position. Optimistic update + rollback на fail.
+   */
+  const reorderChannels = useCallback(
+    async (order: { id: string; position: number }[]): Promise<boolean> => {
+      if (!serverId) return false;
+      setError(null);
+      // Snapshot для rollback
+      const snapshot = channels.map((c) => ({ id: c.id, position: c.position }));
+      // Optimistic update
+      const orderMap = new Map(order.map((o) => [o.id, o.position]));
+      setChannels((prev) =>
+        prev
+          .map((c) => ({ ...c, position: orderMap.get(c.id) ?? c.position }))
+          .sort((a, b) => a.position - b.position),
+      );
+      try {
+        await apiJson(
+          `/api/servers/${encodeURIComponent(serverId)}/channels/reorder`,
+          {
+            method: "PATCH",
+            body: JSON.stringify({ order }),
+          },
+        );
+        return true;
+      } catch (e) {
+        // Rollback
+        const snapMap = new Map(snapshot.map((s) => [s.id, s.position]));
+        setChannels((prev) =>
+          prev
+            .map((c) => ({ ...c, position: snapMap.get(c.id) ?? c.position }))
+            .sort((a, b) => a.position - b.position),
+        );
+        setError(e instanceof ApiError ? e.message : "Не удалось изменить порядок");
+        return false;
+      }
+    },
+    [serverId, channels],
   );
 
   const deleteChannel = useCallback(
@@ -291,6 +339,7 @@ export function useChannels(serverId: string | null, socket: Socket | null) {
     reload,
     createChannel,
     updateChannel,
+    reorderChannels,
     deleteChannel,
     unread,
   };

@@ -286,12 +286,60 @@ export function BotsTab({ serverId }: Props) {
     error,
     revealed,
     createBot,
+    updateBot,
     regenerateKey,
     deleteBot,
     dismissRevealedKey,
   } = useBots(serverId);
   const [showCreate, setShowCreate] = useState(false);
   const [busy, setBusy] = useState(false);
+  /** Bot id у которого открыта webhook-форма. Null = ни один. */
+  const [webhookOpen, setWebhookOpen] = useState<string | null>(null);
+  /** Drafts of webhook URLs + secrets, keyed by botId. */
+  const [webhookDrafts, setWebhookDrafts] = useState<Record<string, { url: string; secret: string }>>({});
+
+  const ensureDraft = (bot: BotRow) => {
+    if (webhookDrafts[bot.id]) return;
+    setWebhookDrafts((prev) => ({
+      ...prev,
+      [bot.id]: { url: bot.webhookUrl ?? "", secret: "" },
+    }));
+  };
+
+  const handleSaveWebhook = async (bot: BotRow) => {
+    const draft = webhookDrafts[bot.id];
+    if (!draft) return;
+    setBusy(true);
+    try {
+      const patch: { webhookUrl?: string | null; webhookSecret?: string | null } = {
+        webhookUrl: draft.url.trim() || null,
+      };
+      // Только если secret typed — иначе сохраняем как есть (не очищаем)
+      if (draft.secret) patch.webhookSecret = draft.secret;
+      const ok = await updateBot(bot.id, patch);
+      if (ok) {
+        setWebhookDrafts((prev) => ({
+          ...prev,
+          [bot.id]: { url: draft.url, secret: "" }, // Reset secret после save
+        }));
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleClearWebhook = async (bot: BotRow) => {
+    if (!window.confirm(`Удалить webhook у «${bot.name}»? Бот перестанет получать события.`)) {
+      return;
+    }
+    setBusy(true);
+    try {
+      await updateBot(bot.id, { webhookUrl: null, webhookSecret: null });
+      setWebhookDrafts((prev) => ({ ...prev, [bot.id]: { url: "", secret: "" } }));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const handleCreate = async (input: { name: string; description?: string | null }) => {
     setBusy(true);
@@ -489,6 +537,26 @@ export function BotsTab({ serverId }: Props) {
             <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
               <button
                 type="button"
+                onClick={() => {
+                  ensureDraft(bot);
+                  setWebhookOpen((cur) => (cur === bot.id ? null : bot.id));
+                }}
+                disabled={busy}
+                className="ec-btn ec-btn--ghost ec-btn--sm"
+                title={bot.webhookUrl ? "Webhook настроен — редактировать" : "Подключить webhook"}
+                style={
+                  bot.webhookUrl
+                    ? {
+                        color: "var(--ec-ok)",
+                        borderColor: "var(--ec-border-accent)",
+                      }
+                    : undefined
+                }
+              >
+                {bot.webhookUrl ? "🔗 Webhook" : "+ Webhook"}
+              </button>
+              <button
+                type="button"
                 onClick={() => void handleRegenerate(bot.id, bot.name)}
                 disabled={busy}
                 className="ec-btn ec-btn--ghost ec-btn--sm"
@@ -508,6 +576,131 @@ export function BotsTab({ serverId }: Props) {
             </div>
           </div>
         ))}
+        {/* Webhook form — inline под bot row если открыт */}
+        {webhookOpen && (() => {
+          const bot = bots.find((b) => b.id === webhookOpen);
+          if (!bot) return null;
+          const draft = webhookDrafts[bot.id] ?? { url: "", secret: "" };
+          return (
+            <div
+              key={`webhook-${bot.id}`}
+              style={{
+                marginTop: "var(--ec-space-2)",
+                padding: "var(--ec-space-3)",
+                background: "var(--ec-surface-2)",
+                border: "1px solid var(--ec-border-accent)",
+                borderRadius: "var(--ec-radius-md)",
+                display: "flex",
+                flexDirection: "column",
+                gap: "var(--ec-space-2)",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}
+              >
+                <strong style={{ fontSize: "var(--ec-text-sm)" }}>
+                  Webhook для «{bot.name}»
+                </strong>
+                <button
+                  type="button"
+                  onClick={() => setWebhookOpen(null)}
+                  className="ec-btn ec-btn--ghost ec-btn--sm"
+                  style={{ padding: "0.2rem 0.5rem" }}
+                  title="Закрыть"
+                >
+                  ✕
+                </button>
+              </div>
+              <label
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 4,
+                  fontSize: "var(--ec-text-2xs)",
+                  color: "var(--ec-text-muted)",
+                  letterSpacing: "var(--ec-tracking-wide)",
+                }}
+              >
+                URL (https://…)
+                <input
+                  type="url"
+                  value={draft.url}
+                  onChange={(e) =>
+                    setWebhookDrafts((prev) => ({
+                      ...prev,
+                      [bot.id]: { ...draft, url: e.target.value },
+                    }))
+                  }
+                  placeholder="https://my-bot.example.com/eclipse-events"
+                  style={inputStyle}
+                />
+              </label>
+              <label
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 4,
+                  fontSize: "var(--ec-text-2xs)",
+                  color: "var(--ec-text-muted)",
+                  letterSpacing: "var(--ec-tracking-wide)",
+                }}
+              >
+                Secret (HMAC-SHA256 signing){" "}
+                {bot.webhookSecretSet && (
+                  <span style={{ color: "var(--ec-ok)" }}>· уже задан</span>
+                )}
+                <input
+                  type="password"
+                  value={draft.secret}
+                  onChange={(e) =>
+                    setWebhookDrafts((prev) => ({
+                      ...prev,
+                      [bot.id]: { ...draft, secret: e.target.value },
+                    }))
+                  }
+                  placeholder={
+                    bot.webhookSecretSet
+                      ? "Оставь пустым чтобы не менять, или введи новый"
+                      : "Опционально — для signature verification на receiver-side"
+                  }
+                  style={inputStyle}
+                />
+              </label>
+              <p style={fieldHint}>
+                Каждое сообщение в каналах сервера будет POST'нуто на URL.
+                Headers: <code style={monoChip}>X-Eclipse-Event: message.created</code>,
+                <code style={monoChip}>X-Eclipse-Bot-Id: {bot.id}</code>,
+                и (если secret) <code style={monoChip}>X-Eclipse-Bot-Signature: sha256=&lt;hex&gt;</code>.
+                <br />
+                Timeout 5s, бот не получает свои собственные messages (anti-loop).
+              </p>
+              <div style={{ display: "flex", gap: "var(--ec-space-2)", justifyContent: "flex-end" }}>
+                {bot.webhookUrl && (
+                  <button
+                    type="button"
+                    onClick={() => void handleClearWebhook(bot)}
+                    disabled={busy}
+                    className="ec-btn ec-btn--danger ec-btn--sm"
+                  >
+                    Удалить webhook
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => void handleSaveWebhook(bot)}
+                  disabled={busy || !draft.url.trim()}
+                  className="ec-btn ec-btn--primary ec-btn--sm"
+                >
+                  {busy ? "Сохраняем…" : "Сохранить"}
+                </button>
+              </div>
+            </div>
+          );
+        })()}
 
         {bots.length >= 20 && (
           <p style={{ ...fieldHint, textAlign: "center" }}>

@@ -108,6 +108,15 @@ model Bot {
   /// JSON array capabilities: ["send_message", "create_action_item", "react"].
   /// Сейчас всё разрешено — но field готов под granular ACL в v0.12.1.
   capabilities String   @default("[\"send_message\",\"react\"]")
+  /// HTTPS URL для outbound webhook'ов. Backend POST'ит сюда события
+  /// (message.created etc) от каналов где bot — member. Null = нет webhook.
+  webhookUrl    String?
+  /// Shared secret для HMAC-SHA256 signing webhook payloads. Если задан —
+  /// header X-Eclipse-Bot-Signature: sha256=<hex> добавляется на каждый POST.
+  webhookSecret String?
+  /// JSON массив subscribed events. Default ["message.created"]. Bot
+  /// получает только events что в списке.
+  webhookEvents String   @default("[\"message.created\"]")
   createdAt    DateTime @default(now())
   /// Когда bot последний раз был использован (любой successful API call).
   lastUsedAt   DateTime?
@@ -272,6 +281,9 @@ model Channel {
   /// Описание канала (до 1024 символов). Показывается в chat header
   /// под #channel-name + в ChannelSettingsModal. Nullable = нет описания.
   description String?
+  /// Кастомный emoji prefix вместо # (TEXT) / 🔊 (VOICE) в UI.
+  /// Single emoji char, может быть compound (👨‍💻). Null = default glyph.
+  emoji       String?
   createdAt DateTime    @default(now())
 
   messages  Message[]

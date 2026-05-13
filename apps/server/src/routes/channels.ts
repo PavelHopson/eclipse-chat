@@ -10,6 +10,7 @@ import {
   processAttachment,
 } from "../attachments.js";
 import { maybeReplyToMention } from "../ai/assistant.js";
+import { fireMessageCreatedWebhooks } from "../bots/webhooks.js";
 
 const channelTypeSchema = z.enum(["TEXT", "VOICE"]);
 
@@ -368,6 +369,21 @@ export async function registerChannelRoutes(app: FastifyInstance) {
       // через ~3-10s. Caller получит immediately свой message, AI reply
       // прилетит через socket.
       void maybeReplyToMention(m.channelId!, m.id, userId, m.content, app.log);
+      // Fire-and-forget: bot webhooks (outbound POST для подписанных bots).
+      fireMessageCreatedWebhooks(
+        ch.serverId,
+        {
+          messageId: m.id,
+          channelId: m.channelId!,
+          serverId: ch.serverId,
+          userId,
+          displayName: m.user.displayName,
+          content: m.content,
+          isBot: false,
+          createdAt: m.createdAt.toISOString(),
+        },
+        app.log,
+      );
       return { message: payload };
     },
   );

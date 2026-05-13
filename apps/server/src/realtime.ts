@@ -81,6 +81,7 @@ export function emitChannelUpdated(
     type: "TEXT" | "VOICE";
     position: number;
     description: string | null;
+    emoji: string | null;
   },
 ) {
   io?.to(`server:${serverId}`).emit("channel:updated", payload);
@@ -233,6 +234,7 @@ export function emitThreadReplyNew(
     content: string;
     isBot?: boolean;
     createdAt: string;
+    attachments?: AttachmentPayload[];
   },
 ) {
   io?.to(`thread:${rootId}`).emit("thread:reply:new", payload);

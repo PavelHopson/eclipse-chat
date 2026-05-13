@@ -6,8 +6,25 @@ import type { ChannelRow } from "../hooks/useChannels";
 type Props = {
   channel: ChannelRow;
   onClose: () => void;
-  onUpdate: (patch: { name?: string; description?: string | null }) => Promise<boolean>;
+  onUpdate: (patch: {
+    name?: string;
+    description?: string | null;
+    emoji?: string | null;
+  }) => Promise<boolean>;
 };
+
+/**
+ * Channel-relevant emoji presets (компактный набор, не overwhelm picker).
+ * 5 columns × 6 rows = 30 шт.
+ */
+const CHANNEL_EMOJI_PRESETS = [
+  "💬", "🔔", "📢", "📌", "🗣️",
+  "💡", "🧠", "🎯", "🚀", "🔥",
+  "🐛", "🛠️", "⚙️", "🔧", "📦",
+  "📊", "📈", "💰", "💸", "💎",
+  "🎨", "🎮", "🎬", "🎵", "📺",
+  "☕", "🍕", "🌍", "🌙", "⭐",
+] as const;
 
 const sectionLabel: CSSProperties = {
   fontSize: "var(--ec-text-2xs)",
@@ -49,6 +66,7 @@ const inputStyle: CSSProperties = {
 export function ChannelSettingsModal({ channel, onClose, onUpdate }: Props) {
   const [name, setName] = useState(channel.name);
   const [description, setDescription] = useState(channel.description ?? "");
+  const [emoji, setEmoji] = useState<string | null>(channel.emoji);
   const [saving, setSaving] = useState(false);
   const [savedFlash, setSavedFlash] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -57,18 +75,22 @@ export function ChannelSettingsModal({ channel, onClose, onUpdate }: Props) {
   useEffect(() => {
     setName(channel.name);
     setDescription(channel.description ?? "");
-  }, [channel.id, channel.name, channel.description]);
+    setEmoji(channel.emoji);
+  }, [channel.id, channel.name, channel.description, channel.emoji]);
 
   const nameChanged = name.trim() !== channel.name;
   const descChanged = (description.trim() || null) !== (channel.description || null);
-  const canSave = (nameChanged || descChanged) && name.trim().length > 0 && !saving;
+  const emojiChanged = (emoji || null) !== (channel.emoji || null);
+  const canSave =
+    (nameChanged || descChanged || emojiChanged) && name.trim().length > 0 && !saving;
 
   const handleSave = async () => {
     setSaving(true);
     setError(null);
-    const patch: { name?: string; description?: string | null } = {};
+    const patch: { name?: string; description?: string | null; emoji?: string | null } = {};
     if (nameChanged) patch.name = name.trim();
     if (descChanged) patch.description = description.trim() || null;
+    if (emojiChanged) patch.emoji = emoji;
     try {
       const ok = await onUpdate(patch);
       if (ok) {
@@ -82,7 +104,7 @@ export function ChannelSettingsModal({ channel, onClose, onUpdate }: Props) {
     }
   };
 
-  const channelPrefix = channel.type === "VOICE" ? "🔊" : "#";
+  const channelPrefix = emoji || (channel.type === "VOICE" ? "🔊" : "#");
 
   return (
     <Modal
@@ -116,6 +138,71 @@ export function ChannelSettingsModal({ channel, onClose, onUpdate }: Props) {
             <span style={{ marginLeft: 6, color: "var(--ec-text-muted)" }}>
               {name.length}/80
             </span>
+          </p>
+        </div>
+      </section>
+
+      {/* Emoji prefix */}
+      <section style={{ marginTop: "var(--ec-space-4)" }}>
+        <h3 style={sectionLabel}>Иконка канала</h3>
+        <div style={groupCard}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(10, 1fr)",
+              gap: "var(--ec-space-1)",
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => setEmoji(null)}
+              title="Сбросить — использовать стандартную #"
+              style={{
+                aspectRatio: "1",
+                display: "grid",
+                placeItems: "center",
+                background: emoji === null ? "var(--ec-accent-soft)" : "var(--ec-surface-1)",
+                border: emoji === null ? "1px solid var(--ec-accent)" : "1px solid var(--ec-border-subtle)",
+                borderRadius: "var(--ec-radius-md)",
+                fontSize: "1.1rem",
+                color: emoji === null ? "var(--ec-accent)" : "var(--ec-text-muted)",
+                cursor: "pointer",
+                fontWeight: 700,
+                transition: "all var(--ec-dur-fast) var(--ec-ease)",
+              }}
+            >
+              {channel.type === "VOICE" ? "🔊" : "#"}
+            </button>
+            {CHANNEL_EMOJI_PRESETS.map((e) => {
+              const active = emoji === e;
+              return (
+                <button
+                  key={e}
+                  type="button"
+                  onClick={() => setEmoji(e)}
+                  title={e}
+                  style={{
+                    aspectRatio: "1",
+                    display: "grid",
+                    placeItems: "center",
+                    background: active ? "var(--ec-accent-soft)" : "var(--ec-surface-1)",
+                    border: active
+                      ? "1px solid var(--ec-accent)"
+                      : "1px solid var(--ec-border-subtle)",
+                    borderRadius: "var(--ec-radius-md)",
+                    fontSize: "1.05rem",
+                    cursor: "pointer",
+                    transition: "all var(--ec-dur-fast) var(--ec-ease)",
+                  }}
+                >
+                  {e}
+                </button>
+              );
+            })}
+          </div>
+          <p style={fieldHint}>
+            Кастомная иконка показывается вместо # / 🔊 в боковой панели
+            и шапке чата. Сейчас: <span style={{ fontSize: "1rem" }}>{channelPrefix}</span>
           </p>
         </div>
       </section>

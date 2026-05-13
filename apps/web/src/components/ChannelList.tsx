@@ -17,6 +17,8 @@ type Props = {
   onDelete: (id: string) => Promise<boolean>;
   /** Открыть ChannelSettingsModal. Скрывает кнопку если не передано. */
   onOpenSettings?: (channelId: string) => void;
+  /** Batch reorder каналов через drag-drop. Скрывает DnD если не передано. */
+  onReorder?: (order: { id: string; position: number }[]) => Promise<boolean>;
   onShowServerInfo: () => void;
   /** Кто сейчас в каком VOICE-канале — для sticky-списка под каналом. */
   voiceByChannel?: Record<string, string[]>;
@@ -137,7 +139,23 @@ function canEditChannel(role: string | null): boolean {
   return role === "OWNER" || role === "ADMIN" || role === "MODERATOR";
 }
 
-function ChannelGlyph({ type }: { type: ChannelType }) {
+function ChannelGlyph({
+  type,
+  emoji,
+}: {
+  type: ChannelType;
+  emoji?: string | null;
+}) {
+  if (emoji) {
+    return (
+      <span
+        aria-hidden
+        style={{ fontSize: "0.95rem", lineHeight: 1, display: "inline-block" }}
+      >
+        {emoji}
+      </span>
+    );
+  }
   if (type === "VOICE") {
     return (
       <svg
@@ -174,6 +192,7 @@ export function ChannelList({
   onCreate,
   onDelete,
   onOpenSettings,
+  onReorder,
   onShowServerInfo,
   voiceByChannel,
   members,
@@ -184,9 +203,40 @@ export function ChannelList({
   const [draftType, setDraftType] = useState<ChannelType>("TEXT");
   const [submitting, setSubmitting] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
+  // DnD reorder state
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [dropTargetId, setDropTargetId] = useState<string | null>(null);
 
   const manageable = canManage(serverRole);
   const editable = canEditChannel(serverRole);
+  const canDrag = editable && Boolean(onReorder);
+
+  // Apply reorder: используем splice (target-position insertion)
+  const applyReorder = async (sourceId: string, targetId: string) => {
+    if (!onReorder) return;
+    if (sourceId === targetId) return;
+    // Reorder только внутри типа (TEXT нельзя смешивать с VOICE)
+    const source = channels.find((c) => c.id === sourceId);
+    const target = channels.find((c) => c.id === targetId);
+    if (!source || !target || source.type !== target.type) return;
+    // Реально работаем только над одним type'ом
+    const sameType = channels.filter((c) => c.type === source.type);
+    const otherType = channels.filter((c) => c.type !== source.type);
+    const fromIdx = sameType.findIndex((c) => c.id === sourceId);
+    const toIdx = sameType.findIndex((c) => c.id === targetId);
+    if (fromIdx === -1 || toIdx === -1) return;
+    const moved = sameType.slice();
+    const [removed] = moved.splice(fromIdx, 1);
+    moved.splice(toIdx, 0, removed);
+    // Назначаем positions с шагом 10 (резерв под manual insertions)
+    const order = moved.map((c, i) => ({ id: c.id, position: i * 10 }));
+    // Опционально включить otherType, но их позиции не меняем
+    const fullOrder = [
+      ...order,
+      ...otherType.map((c, i) => ({ id: c.id, position: 1000 + i * 10 })),
+    ];
+    await onReorder(fullOrder);
+  };
 
   const textChannels = channels.filter((c) => c.type === "TEXT");
   const voiceChannels = channels.filter((c) => c.type === "VOICE");
@@ -277,15 +327,60 @@ export function ChannelList({
     const isDeleting = pendingDelete === c.id;
     const unreadCount = unread[c.id] ?? 0;
     const hasUnread = unreadCount > 0 && !isActive;
+    const isDragged = draggedId === c.id;
+    const isDropTarget = dropTargetId === c.id && draggedId && draggedId !== c.id;
     return (
       <button
         key={c.id}
         type="button"
-        onClick={() => onSelect(c.id)}
+        draggable={canDrag && !isDeleting}
+        onDragStart={(e) => {
+          if (!canDrag) return;
+          setDraggedId(c.id);
+          e.dataTransfer.effectAllowed = "move";
+          // Some browsers required для actual drag start
+          e.dataTransfer.setData("text/plain", c.id);
+        }}
+        onDragOver={(e) => {
+          if (!draggedId || draggedId === c.id) return;
+          // Reorder только внутри своего type'а
+          const src = channels.find((ch) => ch.id === draggedId);
+          if (!src || src.type !== c.type) return;
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "move";
+          if (dropTargetId !== c.id) setDropTargetId(c.id);
+        }}
+        onDragLeave={(e) => {
+          // Только если actually выходим из элемента
+          if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+          if (dropTargetId === c.id) setDropTargetId(null);
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          const src = draggedId;
+          setDraggedId(null);
+          setDropTargetId(null);
+          if (src && src !== c.id) {
+            void applyReorder(src, c.id);
+          }
+        }}
+        onDragEnd={() => {
+          setDraggedId(null);
+          setDropTargetId(null);
+        }}
+        onClick={() => {
+          if (draggedId) return;
+          onSelect(c.id);
+        }}
         className={isActive ? "ec-channel-item ec-channel-item--active" : "ec-channel-item"}
         style={{
           ...(isDeleting ? { opacity: 0.5, pointerEvents: "none" } : undefined),
           ...(hasUnread ? { color: "var(--ec-text-strong)", fontWeight: 600 } : undefined),
+          ...(isDragged ? { opacity: 0.4 } : undefined),
+          ...(isDropTarget
+            ? { boxShadow: "inset 0 2px 0 0 var(--ec-accent), inset 0 -2px 0 0 var(--ec-accent)" }
+            : undefined),
+          cursor: canDrag ? "grab" : "pointer",
         }}
         onMouseEnter={(e) => {
           e.currentTarget.querySelectorAll<HTMLElement>("[data-channel-action]").forEach((el) => {
@@ -298,7 +393,7 @@ export function ChannelList({
           });
         }}
       >
-        <ChannelGlyph type={c.type} />
+        <ChannelGlyph type={c.type} emoji={c.emoji} />
         <span
           style={{
             overflow: "hidden",

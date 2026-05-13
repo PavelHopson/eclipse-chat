@@ -7,6 +7,7 @@ import { getUserId, requireJwt } from "../auth/requireJwt.js";
 import { requireBotAuth } from "../auth/botAuth.js";
 import { recordAudit } from "../security/audit.js";
 import { emitMessageOnChannel, emitReactionAdded } from "../realtime.js";
+import { fireMessageCreatedWebhooks } from "../bots/webhooks.js";
 
 const ALLOWED_BOT_EMOJI = new Set([
   "👍", "❤️", "😂", "😮", "😢", "🔥", "🎉", "👀",
@@ -32,6 +33,21 @@ function generateApiKey(): string {
 const createBotBody = z.object({
   name: z.string().trim().min(1).max(80),
   description: z.string().max(280).optional().nullable(),
+});
+
+const updateBotBody = z.object({
+  name: z.string().trim().min(1).max(80).optional(),
+  description: z.string().max(280).optional().nullable(),
+  webhookUrl: z
+    .string()
+    .max(512)
+    .refine(
+      (v) => v === "" || /^https?:\/\//.test(v),
+      { message: "webhookUrl должен быть http(s) URL" },
+    )
+    .optional()
+    .nullable(),
+  webhookSecret: z.string().max(128).optional().nullable(),
 });
 
 const botMessageBody = z.object({
@@ -118,6 +134,11 @@ export async function registerBotRoutes(app: FastifyInstance) {
           // Только префикс — не secret, для UX «ecb_AbCd…» display
           apiKeyPrefix: b.apiKeyPrefix,
           capabilities: JSON.parse(b.capabilities || "[]") as string[],
+          webhookUrl: b.webhookUrl,
+          // webhookSecret НЕ отдаём — только при create/regenerate
+          // через webhookSecretSet flag показываем «есть/нет»
+          webhookSecretSet: Boolean(b.webhookSecret),
+          webhookEvents: JSON.parse(b.webhookEvents || "[]") as string[],
           createdAt: b.createdAt.toISOString(),
           lastUsedAt: b.lastUsedAt?.toISOString() ?? null,
         })),
@@ -243,6 +264,93 @@ export async function registerBotRoutes(app: FastifyInstance) {
   );
 
   /**
+   * PATCH /api/servers/:id/bots/:botId — update bot meta + webhook config.
+   * OWNER only. Возвращает updated bot row (без webhookSecret в response —
+   * мы его храним plaintext для HMAC signing но не отдаём через GET).
+   */
+  app.patch(
+    "/api/servers/:id/bots/:botId",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const { id: serverId, botId } = req.params as { id: string; botId: string };
+      const userId = getUserId(req);
+      const auth = await requireServerOwner(serverId, userId);
+      if (!auth.ok) return reply.status(auth.status).send({ error: auth.error });
+      const parsed = updateBotBody.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.status(400).send({
+          error: parsed.error.issues[0]?.message ?? "Invalid body",
+        });
+      }
+      const bot = await db.bot.findUnique({
+        where: { id: botId },
+        select: { id: true, serverId: true, userId: true },
+      });
+      if (!bot || bot.serverId !== serverId) {
+        return reply.status(404).send({ error: "Bot not found" });
+      }
+      const data: {
+        name?: string;
+        description?: string | null;
+        webhookUrl?: string | null;
+        webhookSecret?: string | null;
+      } = {};
+      if (parsed.data.name !== undefined) data.name = parsed.data.name.trim();
+      if (parsed.data.description !== undefined) {
+        const d = parsed.data.description?.trim();
+        data.description = d ? d : null;
+      }
+      if (parsed.data.webhookUrl !== undefined) {
+        const u = parsed.data.webhookUrl?.trim();
+        data.webhookUrl = u ? u : null;
+      }
+      if (parsed.data.webhookSecret !== undefined) {
+        const s = parsed.data.webhookSecret?.trim();
+        data.webhookSecret = s ? s : null;
+      }
+      // Sync shadow user displayName если bot.name changed
+      const updated = await db.bot.update({
+        where: { id: botId },
+        data,
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          avatar: true,
+          apiKeyPrefix: true,
+          webhookUrl: true,
+          webhookSecret: true,
+          webhookEvents: true,
+          userId: true,
+          createdAt: true,
+          lastUsedAt: true,
+        },
+      });
+      if (data.name) {
+        await db.user.update({
+          where: { id: updated.userId },
+          data: { displayName: data.name },
+        });
+      }
+      return {
+        bot: {
+          id: updated.id,
+          name: updated.name,
+          description: updated.description,
+          avatar: updated.avatar,
+          apiKeyPrefix: updated.apiKeyPrefix,
+          webhookUrl: updated.webhookUrl,
+          webhookSecretSet: Boolean(updated.webhookSecret),
+          webhookEvents: JSON.parse(updated.webhookEvents || "[]") as string[],
+          shadowUserId: updated.userId,
+          createdAt: updated.createdAt.toISOString(),
+          lastUsedAt: updated.lastUsedAt?.toISOString() ?? null,
+        },
+      };
+    },
+  );
+
+  /**
    * DELETE /api/servers/:id/bots/:botId — удалить бота. Cascade удалит
    * shadow user, member row, все его сообщения.
    */
@@ -342,6 +450,22 @@ export async function registerBotRoutes(app: FastifyInstance) {
         createdAt: m.createdAt.toISOString(),
       };
       emitMessageOnChannel(ch.id, payload);
+      // Fire-and-forget: webhooks для ДРУГИХ bot'ов в этом server'е
+      // (с фильтром anti-loop в helper'е — bot НЕ получает свои сообщения).
+      fireMessageCreatedWebhooks(
+        ch.serverId,
+        {
+          messageId: m.id,
+          channelId: ch.id,
+          serverId: ch.serverId,
+          userId: shadow.id,
+          displayName: shadow.displayName,
+          content: m.content,
+          isBot: true,
+          createdAt: m.createdAt.toISOString(),
+        },
+        app.log,
+      );
       return { message: payload };
     },
   );

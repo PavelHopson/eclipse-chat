@@ -1,0 +1,255 @@
+import type { CSSProperties } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { EMOJI_SHORTCODES } from "./RichContent";
+
+/**
+ * Autocomplete popover для @ mentions и :emoji shortcodes в textarea composer'е.
+ *
+ * Использование: parent отслеживает textarea state через `useTextareaAutocomplete`
+ * helper, передаёт сюда `trigger` (kind + word). Popover показывает filtered list,
+ * keyboard navigation + click. Parent рендерит результат через `onSelect`.
+ *
+ * Positioning: minimal viable — popover absolute, anchor через `anchorEl.getBoundingClientRect()`.
+ * НЕ tracking caret-pixel position (что требует canvas measurement + line height tracking).
+ * Это appendix-style popover ниже textarea — UX как Discord/Slack.
+ */
+
+export type AutocompleteTrigger = {
+  kind: "@" | ":";
+  /** Текущее слово после trigger char (без самого `@` / `:`). */
+  word: string;
+  /** Индекс trigger char в textarea (inclusive). */
+  startIdx: number;
+};
+
+export type AutocompleteItem = {
+  /** Lookup key — для @ это name, для : это shortcode. */
+  key: string;
+  /** Visual: emoji char для :, отображаемое имя для @. */
+  display: string;
+  /** Текст для вставки в textarea (без trigger char). */
+  insertText: string;
+};
+
+type Props = {
+  trigger: AutocompleteTrigger;
+  /** Известные member display names — для @-autocomplete. */
+  members: string[];
+  anchorRect: DOMRect | null;
+  onSelect: (item: AutocompleteItem) => void;
+  onDismiss: () => void;
+};
+
+const wrap: CSSProperties = {
+  position: "fixed",
+  zIndex: 200,
+  minWidth: 220,
+  maxWidth: 320,
+  maxHeight: 240,
+  overflowY: "auto",
+  background: "var(--ec-surface-2)",
+  border: "1px solid var(--ec-border-default)",
+  borderRadius: "var(--ec-radius-md)",
+  boxShadow: "var(--ec-shadow-lg)",
+  padding: 4,
+};
+
+const itemStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  padding: "0.32rem 0.55rem",
+  borderRadius: "var(--ec-radius-sm)",
+  cursor: "pointer",
+  background: "transparent",
+  border: 0,
+  width: "100%",
+  textAlign: "left",
+  color: "var(--ec-text)",
+  fontSize: "var(--ec-text-sm)",
+};
+
+const itemActive: CSSProperties = {
+  ...itemStyle,
+  background: "var(--ec-accent-soft)",
+  color: "var(--ec-accent)",
+};
+
+const headerLabel: CSSProperties = {
+  padding: "0.25rem 0.55rem",
+  fontSize: "var(--ec-text-2xs)",
+  letterSpacing: "var(--ec-tracking-caps)",
+  textTransform: "uppercase",
+  color: "var(--ec-text-dim)",
+  fontWeight: 700,
+};
+
+function buildItems(
+  trigger: AutocompleteTrigger,
+  members: string[],
+): AutocompleteItem[] {
+  const q = trigger.word.toLowerCase();
+  if (trigger.kind === "@") {
+    const matches = members
+      .filter((m) => m.toLowerCase().includes(q))
+      .sort((a, b) => {
+        const sa = a.toLowerCase().startsWith(q) ? 0 : 1;
+        const sb = b.toLowerCase().startsWith(q) ? 0 : 1;
+        if (sa !== sb) return sa - sb;
+        return a.localeCompare(b);
+      })
+      .slice(0, 12);
+    return matches.map((name) => ({
+      key: name,
+      display: name,
+      // Insert: «@Name » — пробел после для удобства продолжать набор
+      insertText: `@${name} `,
+    }));
+  }
+  // kind === ':' — emoji shortcodes
+  const entries = Object.entries(EMOJI_SHORTCODES);
+  const matches = entries
+    .filter(([code]) => code.toLowerCase().includes(q))
+    .sort(([a], [b]) => {
+      const sa = a.toLowerCase().startsWith(q) ? 0 : 1;
+      const sb = b.toLowerCase().startsWith(q) ? 0 : 1;
+      if (sa !== sb) return sa - sb;
+      return a.localeCompare(b);
+    })
+    .slice(0, 12);
+  return matches.map(([code, emoji]) => ({
+    key: code,
+    display: `${emoji}  :${code}:`,
+    insertText: `${emoji} `,
+  }));
+}
+
+export function AutocompletePopover({
+  trigger,
+  members,
+  anchorRect,
+  onSelect,
+  onDismiss,
+}: Props) {
+  const items = useMemo(() => buildItems(trigger, members), [trigger, members]);
+  const [activeIdx, setActiveIdx] = useState(0);
+
+  // Reset highlighted при смене query
+  useEffect(() => {
+    setActiveIdx(0);
+  }, [trigger.kind, trigger.word]);
+
+  // Keyboard: ArrowUp/Down, Enter/Tab, Esc.
+  // Note: parent textarea также видит эти keys — мы вызываем onSelect ИЗ
+  // popover (parent НЕ должен handle отдельно если popover active).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (items.length === 0) {
+        if (e.key === "Escape") {
+          e.preventDefault();
+          onDismiss();
+        }
+        return;
+      }
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setActiveIdx((i) => (i + 1) % items.length);
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setActiveIdx((i) => (i - 1 + items.length) % items.length);
+      } else if (e.key === "Enter" || e.key === "Tab") {
+        e.preventDefault();
+        const item = items[activeIdx];
+        if (item) onSelect(item);
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        onDismiss();
+      }
+    };
+    // Capture phase — чтобы перехватить ДО textarea onKeyDown
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [items, activeIdx, onSelect, onDismiss]);
+
+  if (items.length === 0) return null;
+
+  // Positioning: ниже anchor textarea, выровнен по left.
+  // Если рядом с нижним краем экрана — popover показывается над textarea.
+  const top = anchorRect ? anchorRect.top - 8 : 100;
+  const left = anchorRect ? anchorRect.left : 100;
+  const transform = "translateY(-100%)"; // popover над textarea (above) — Discord pattern
+
+  return (
+    <div
+      style={{
+        ...wrap,
+        top,
+        left,
+        transform,
+      }}
+      role="listbox"
+      aria-label={trigger.kind === "@" ? "Упоминание участника" : "Эмоджи"}
+    >
+      <div style={headerLabel}>
+        {trigger.kind === "@" ? "Упомянуть участника" : "Эмоджи"}
+        <span style={{ marginLeft: 6, fontWeight: 400, letterSpacing: 0, textTransform: "none" }}>
+          ↑↓ навигация · Enter — вставить · Esc — закрыть
+        </span>
+      </div>
+      {items.map((item, i) => (
+        <button
+          key={item.key}
+          type="button"
+          role="option"
+          aria-selected={i === activeIdx}
+          style={i === activeIdx ? itemActive : itemStyle}
+          onMouseEnter={() => setActiveIdx(i)}
+          onMouseDown={(e) => {
+            // mousedown НЕ blur textarea — important
+            e.preventDefault();
+          }}
+          onClick={() => onSelect(item)}
+        >
+          {item.display}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Detect trigger в textarea text по caret position. Walk back от caret до
+ * пробела или начала. Если последовательность вида `<space|start>@word` или
+ * `<space|start>:word` — return trigger.
+ *
+ * Returns null если caret НЕ в активном trigger.
+ */
+export function detectTrigger(
+  text: string,
+  caretIdx: number,
+): AutocompleteTrigger | null {
+  let i = caretIdx - 1;
+  while (i >= 0) {
+    const ch = text[i];
+    if (ch === " " || ch === "\n" || ch === "\t") return null;
+    if (ch === "@" || ch === ":") {
+      const prev = i > 0 ? text[i - 1] : " ";
+      if (prev === " " || prev === "\n" || prev === "\t" || i === 0) {
+        const word = text.slice(i + 1, caretIdx);
+        // Don't trigger на пустой `:` (caret сразу после) — too noisy
+        // Для @ — show even на empty word (member list)
+        if (ch === ":" && word.length === 0) return null;
+        return {
+          kind: ch as "@" | ":",
+          startIdx: i,
+          word,
+        };
+      }
+      return null;
+    }
+    // Допустимые word chars: латин/cyrl letters, digits, underscore, hyphen, +
+    if (!/[\p{L}\p{N}_+-]/u.test(ch)) return null;
+    i--;
+  }
+  return null;
+}
