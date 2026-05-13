@@ -5,10 +5,33 @@
 > Любая фича, которой нет в текущем MVP, должна попасть сюда —
 > иначе она забудется.
 
-**Текущее состояние:** v0.8.2. Eclipse Chat уже вышел за рамку «Discord core».
-Сейчас это self-hosted communication core с серверами, DM, voice/video/screen-share
-и execution layer поверх сообщений. Следующий фокус — довести action/memory/operator
-контур до уровня, где чат двигает работу вперёд, а не просто хранит разговор.
+**Текущее состояние:** **v0.12.1 LIVE in prod** (commit `501c4f3`, 13.05.2026
+late afternoon). Eclipse Chat теперь full-featured self-hosted operator
+communication core: auth + 2FA TOTP + brute-force lockout + audit log +
+DMs + voice/video/screen-share (LiveKit) + AI layer (Ollama Qwen2.5:7b
+на CPU + OpenRouter/NVIDIA/OpenAI auto-fallback) + ChannelDigest +
+@ai assistant в чате + bot/operator backend (shadow-user pattern,
+ecb_ API keys) + cold-tone design system + 87 designer-skills installed.
+
+17 коммитов в одной сессии 13.05.2026:
+v0.6.1→v0.6.4 voice quality controls (шумодав, devices, master volume,
+PTT, stats overlay) → v0.6.5 voice activation modes (open/VAD/PTT) +
+AFK auto-disconnect + persistent voice + VoiceMiniBar + speaking-dots →
+v0.8 1-to-1 DMs → v0.9 ChannelDigest + v0.9.2 image fix → v0.10.1
+Server identity (banner + brandColor per-server CSS override + welcome
+message) + cold-tone redesign → v0.11 AI layer (auto-fallback chain) +
+v0.11.1 security (helmet/rate-limit/2FA/audit) → v0.11.2 Ollama priority
++ NVIDIA support + docs/AI-SETUP.md → v0.12 image bug fix (sharp guards
++ frontend onError fallback) + Bot model backend (CRUD + auth +
+shadow-user pattern) → v0.12.1 design polish (typography modular 1.25 +
+skeleton screens + focus rings + empty states aurora).
+
+Следующие милестоны:
+- v0.12.2 — bot frontend UI (ServerSettingsModal tab + useBots + Message
+  bot badge + docs/BOT-API.md + Telegram bridge template).
+- Threads + mention autocomplete.
+- Tests baseline (Vitest + supertest для critical paths).
+- Group DMs + voice/video DMs.
 
 ---
 
