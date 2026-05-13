@@ -24,6 +24,8 @@ type Props = {
   onToggleReaction?: (messageId: string, emoji: string) => Promise<boolean>;
   onCreateAction?: (messageId: string, type: ActionItemType) => Promise<boolean>;
   onToggleActionStatus?: (actionId: string, nextStatus: ActionItemStatus) => Promise<boolean>;
+  /** Открыть Thread panel для этого root message. Скрывает кнопку если не задано. */
+  onOpenThread?: (messageId: string) => void;
 };
 
 const wrap: CSSProperties = {
@@ -233,6 +235,7 @@ export function MessageList({
   onToggleReaction,
   onCreateAction,
   onToggleActionStatus,
+  onOpenThread,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -660,6 +663,39 @@ export function MessageList({
                     ))}
                   </div>
                 )}
+                {!isDeleted && !isEditing && (m.threadReplyCount ?? 0) > 0 && onOpenThread && (
+                  <button
+                    type="button"
+                    onClick={() => onOpenThread(m.id)}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 6,
+                      marginTop: 6,
+                      padding: "0.22rem 0.6rem",
+                      background: "var(--ec-accent-soft)",
+                      border: "1px solid var(--ec-border-accent)",
+                      borderRadius: "var(--ec-radius-full)",
+                      color: "var(--ec-accent)",
+                      fontSize: "var(--ec-text-2xs)",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      letterSpacing: "var(--ec-tracking-wide)",
+                      transition: "transform var(--ec-dur-fast) var(--ec-ease)",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = "translateY(-1px)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = "translateY(0)";
+                    }}
+                  >
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                      <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" />
+                    </svg>
+                    {m.threadReplyCount} {m.threadReplyCount === 1 ? "ответ" : "ответов"} в треде
+                  </button>
+                )}
                 {!isDeleted && !isEditing && m.actionItems.length > 0 && (
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
                     {m.actionItems.map((action) => {
@@ -730,6 +766,27 @@ export function MessageList({
               </div>
               {showActions && (
                 <div data-actions className="ec-message-actions" style={actionsBar}>
+                  {onOpenThread && (
+                    <button
+                      type="button"
+                      style={actionBtn}
+                      aria-label="Открыть тред"
+                      title="Ответить в треде"
+                      onClick={() => onOpenThread(m.id)}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = "var(--ec-accent-soft)";
+                        e.currentTarget.style.color = "var(--ec-accent)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "transparent";
+                        e.currentTarget.style.color = "var(--ec-text-muted)";
+                      }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                        <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" />
+                      </svg>
+                    </button>
+                  )}
                   {onToggleReaction && (
                     <button
                       type="button"

@@ -151,7 +151,11 @@ export async function registerChannelRoutes(app: FastifyInstance) {
     }
     const take = Math.min(100, Math.max(1, Number((req.query as { take?: string }).take) || 50));
     const messages = await db.message.findMany({
-      where: { channelId: id },
+      where: {
+        channelId: id,
+        // Скрываем thread replies из main feed — они показываются в Thread panel
+        parentMessageId: null,
+      },
       take,
       orderBy: { createdAt: "desc" },
       include: {
@@ -163,6 +167,11 @@ export async function registerChannelRoutes(app: FastifyInstance) {
             // botProfile: 1-to-1 relation → null если user не shadow-bot.
             // Преобразуется в `user.isBot: boolean` на сериализации.
             botProfile: { select: { id: true } },
+            // email нужен только чтобы детектить system AI bot
+            // (system@eclipse-chat.local) — у него нет Bot record по архитектуре,
+            // но он визуально должен быть BOT для @ai сообщений.
+            // email НЕ отдаётся фронту, отбрасывается на serialize.
+            email: true,
           },
         },
         reactions: { select: { emoji: true, userId: true } },
@@ -183,6 +192,14 @@ export async function registerChannelRoutes(app: FastifyInstance) {
         actionItems: {
           include: actionItemInclude,
           orderBy: [{ status: "asc" }, { createdAt: "asc" }],
+        },
+        // Thread metadata: count + last reply timestamp.
+        // _count efficient (один subquery), даёт UI бейдж «3 replies» без N+1.
+        _count: { select: { threadReplies: true } },
+        threadReplies: {
+          select: { createdAt: true },
+          orderBy: { createdAt: "desc" },
+          take: 1,
         },
       },
     });
@@ -226,11 +243,16 @@ export async function registerChannelRoutes(app: FastifyInstance) {
               id: m.user.id,
               displayName: m.user.displayName,
               avatar: m.user.avatar,
-              isBot: m.user.botProfile != null,
+              isBot:
+                m.user.botProfile != null ||
+                m.user.email === "system@eclipse-chat.local",
             },
             reactions,
             attachments: m.deletedAt ? [] : m.attachments,
             actionItems: m.deletedAt ? [] : m.actionItems.map(serializeActionItem),
+            threadReplyCount: m._count.threadReplies,
+            threadLastReplyAt:
+              m.threadReplies[0]?.createdAt.toISOString() ?? null,
           };
         }),
     };

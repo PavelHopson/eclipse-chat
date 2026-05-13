@@ -9,15 +9,19 @@ type Props = {
 };
 
 /**
- * Простой rich-content renderer для message text. Поддерживает:
+ * Rich-content renderer для message text. Поддерживает:
  *   - @<Name> mentions (если Name in mentionNames)
- *   - URLs (http/https)
+ *   - Markdown inline: **bold**, italic (*x* or _x_), `code`, ~~strike~~
+ *   - URLs (http/https) — auto-link, target=_blank
+ *   - Emoji shortcodes: :smile: → 😄 (~40 popular)
  *
  * Mentions подсвечиваются accent-цветом, при упоминании самого user'а —
- * с micro-glow ring. Не поддерживает markdown — это отдельная фича.
+ * с micro-glow ring. Markdown не поддерживает nesting (e.g. **bold *italic***)
+ * — это намеренно, чтобы не плодить parser-bugs в чат-сообщениях.
  *
- * Regex'ы простые без greedy: имя — буквы/цифры/пробелы/подчёркивания/
- * дефисы до конца слова или известного name'а. Whitespace-aware.
+ * Безопасность: НИКАКОГО dangerouslySetInnerHTML — React сам escape'ит все
+ * text-content. Markdown tokenizer работает чисто над строкой, output —
+ * structured React-элементы.
  */
 
 const mentionStyle: CSSProperties = {
@@ -43,14 +47,144 @@ const urlStyle: CSSProperties = {
   wordBreak: "break-all",
 };
 
-const URL_RE = /(https?:\/\/[^\s<>"']+)/g;
+const codeStyle: CSSProperties = {
+  fontFamily: "var(--ec-font-mono)",
+  fontSize: "0.9em",
+  background: "var(--ec-surface-3)",
+  padding: "0.08rem 0.35rem",
+  borderRadius: "var(--ec-radius-sm)",
+  border: "1px solid var(--ec-border-subtle)",
+  color: "var(--ec-text-strong)",
+};
+
+const emojiStyle: CSSProperties = {
+  fontSize: "1.15em",
+  lineHeight: 1,
+  verticalAlign: "middle",
+};
 
 /**
- * Detect @<DisplayName> где DisplayName ∈ mentionNames. Greedy-longest-match:
- * пробуем имена начиная с самых длинных (чтобы «@Pavel Hopson» имел приоритет
- * над «@Pavel»).
+ * Whitelist emoji shortcodes — самые популярные. Не пытаемся быть Slack/Discord
+ * с тысячами вариантов: hot-list 40+ покрывает 95% использования. Расширение
+ * списка — отдельный commit, чтобы было видно что добавилось.
  */
-function detectMentions(text: string, names: string[]): Array<{ start: number; end: number; name: string }> {
+export const EMOJI_SHORTCODES: Record<string, string> = {
+  smile: "😄", laughing: "😆", joy: "😂", grin: "😁", wink: "😉",
+  heart: "❤️", heartbeat: "💓", sparkling_heart: "💖",
+  fire: "🔥", rocket: "🚀", tada: "🎉", sparkles: "✨", star: "⭐",
+  "+1": "👍", "-1": "👎", thumbsup: "👍", thumbsdown: "👎",
+  eyes: "👀", wave: "👋", thinking: "🤔", confused: "😕", facepalm: "🤦",
+  ok: "👌", clap: "👏", muscle: "💪", pray: "🙏",
+  warning: "⚠️", exclamation: "❗", question: "❓",
+  check: "✅", x: "❌", white_check_mark: "✅",
+  bug: "🐛", construction: "🚧", wrench: "🔧", hammer: "🔨",
+  computer: "💻", phone: "📱", email: "📧", bell: "🔔", mute: "🔕",
+  coffee: "☕", beer: "🍺", pizza: "🍕", cake: "🎂",
+  sunny: "☀️", cloud: "☁️", rainbow: "🌈",
+  zap: "⚡", boom: "💥", point_right: "👉", point_left: "👈",
+  hourglass: "⏳", clock: "🕐", calendar: "📅",
+  lock: "🔒", unlock: "🔓", key: "🔑",
+  bulb: "💡", memo: "📝", book: "📖", chart: "📊", chart_up: "📈", chart_down: "📉",
+  robot: "🤖", alien: "👽", ghost: "👻",
+};
+
+const MENTION_BOUNDARY_RE = /[\s.,!?;:)"'\-]/;
+/**
+ * Tokenizer regex: capture-group ordered by precedence.
+ * 1. `code`        — protects inner content from other markdown
+ * 2. **bold**
+ * 3. *italic* / _italic_
+ * 4. ~~strike~~
+ * 5. URL (http/https)
+ * 6. :shortcode:   — emoji
+ *
+ * `[^\n]` boundaries не дают парсеру схватить multi-line markdown через
+ * \n — каждая строка обрабатывается независимо.
+ */
+const TOKEN_RE =
+  /(`[^`\n]+`)|(\*\*[^*\n]+\*\*)|(\*[^*\n]+\*|_[^_\n]+_)|(~~[^~\n]+~~)|(https?:\/\/[^\s<>"']+)|(:[a-z0-9_+-]+:)/gi;
+
+type InlineToken =
+  | { type: "text"; text: string }
+  | { type: "code"; text: string }
+  | { type: "bold"; text: string }
+  | { type: "italic"; text: string }
+  | { type: "strike"; text: string }
+  | { type: "url"; text: string }
+  | { type: "emoji"; text: string };
+
+function tokenize(text: string): InlineToken[] {
+  const tokens: InlineToken[] = [];
+  TOKEN_RE.lastIndex = 0;
+  let lastIdx = 0;
+  let m: RegExpExecArray | null;
+  while ((m = TOKEN_RE.exec(text)) !== null) {
+    if (m.index > lastIdx) {
+      tokens.push({ type: "text", text: text.slice(lastIdx, m.index) });
+    }
+    if (m[1]) {
+      tokens.push({ type: "code", text: m[1].slice(1, -1) });
+    } else if (m[2]) {
+      tokens.push({ type: "bold", text: m[2].slice(2, -2) });
+    } else if (m[3]) {
+      tokens.push({ type: "italic", text: m[3].slice(1, -1) });
+    } else if (m[4]) {
+      tokens.push({ type: "strike", text: m[4].slice(2, -2) });
+    } else if (m[5]) {
+      tokens.push({ type: "url", text: m[5] });
+    } else if (m[6]) {
+      const code = m[6].slice(1, -1).toLowerCase();
+      const ch = EMOJI_SHORTCODES[code];
+      if (ch) {
+        tokens.push({ type: "emoji", text: ch });
+      } else {
+        tokens.push({ type: "text", text: m[6] });
+      }
+    }
+    lastIdx = TOKEN_RE.lastIndex;
+  }
+  if (lastIdx < text.length) {
+    tokens.push({ type: "text", text: text.slice(lastIdx) });
+  }
+  return tokens;
+}
+
+function renderTokens(tokens: InlineToken[], keyPrefix: string): ReactNode[] {
+  return tokens.map((tok, i) => {
+    const key = `${keyPrefix}-${i}`;
+    switch (tok.type) {
+      case "text":
+        return <span key={key}>{tok.text}</span>;
+      case "code":
+        return <code key={key} style={codeStyle}>{tok.text}</code>;
+      case "bold":
+        return <strong key={key}>{tok.text}</strong>;
+      case "italic":
+        return <em key={key}>{tok.text}</em>;
+      case "strike":
+        return <s key={key}>{tok.text}</s>;
+      case "url":
+        return (
+          <a
+            key={key}
+            href={tok.text}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={urlStyle}
+          >
+            {tok.text}
+          </a>
+        );
+      case "emoji":
+        return <span key={key} style={emojiStyle} aria-hidden>{tok.text}</span>;
+    }
+  });
+}
+
+function detectMentions(
+  text: string,
+  names: string[],
+): Array<{ start: number; end: number; name: string }> {
   if (names.length === 0) return [];
   const sorted = [...names].sort((a, b) => b.length - a.length);
   const found: Array<{ start: number; end: number; name: string }> = [];
@@ -62,11 +196,9 @@ function detectMentions(text: string, names: string[]): Array<{ start: number; e
     }
     let matched: { name: string; len: number } | null = null;
     for (const name of sorted) {
-      // Регистронезависимое сравнение
       if (text.slice(i + 1, i + 1 + name.length).toLowerCase() === name.toLowerCase()) {
         const after = text[i + 1 + name.length];
-        // Граница: end-of-string или non-word char
-        if (after === undefined || /[\s.,!?;:)"'\-]/.test(after)) {
+        if (after === undefined || MENTION_BOUNDARY_RE.test(after)) {
           matched = { name, len: name.length };
           break;
         }
@@ -90,10 +222,11 @@ export function RichContent({ content, mentionNames = [], currentUserName }: Pro
   for (let mi = 0; mi < mentions.length; mi++) {
     const m = mentions[mi];
     if (m.start > lastIdx) {
-      // Plain text сегмент с URL-разметкой
-      result.push(renderTextWithUrls(content.slice(lastIdx, m.start), `t-${mi}`));
+      const segment = content.slice(lastIdx, m.start);
+      result.push(...renderTokens(tokenize(segment), `t-${mi}`));
     }
-    const isMe = currentUserName != null && m.name.toLowerCase() === currentUserName.toLowerCase();
+    const isMe =
+      currentUserName != null && m.name.toLowerCase() === currentUserName.toLowerCase();
     result.push(
       <span key={`m-${mi}`} style={isMe ? meMentionStyle : mentionStyle}>
         @{m.name}
@@ -102,39 +235,19 @@ export function RichContent({ content, mentionNames = [], currentUserName }: Pro
     lastIdx = m.end;
   }
   if (lastIdx < content.length) {
-    result.push(renderTextWithUrls(content.slice(lastIdx), "t-tail"));
+    const tail = content.slice(lastIdx);
+    result.push(...renderTokens(tokenize(tail), "t-tail"));
   }
   if (result.length === 0) return <>{content}</>;
   return <>{result}</>;
 }
 
-function renderTextWithUrls(text: string, keyPrefix: string): ReactNode {
-  const parts = text.split(URL_RE);
-  if (parts.length === 1) return <span key={keyPrefix}>{text}</span>;
-  return (
-    <span key={keyPrefix}>
-      {parts.map((p, i) => {
-        if (i % 2 === 1) {
-          return (
-            <a
-              key={`${keyPrefix}-u${i}`}
-              href={p}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={urlStyle}
-            >
-              {p}
-            </a>
-          );
-        }
-        return <span key={`${keyPrefix}-t${i}`}>{p}</span>;
-      })}
-    </span>
-  );
-}
-
 /** Check если content упоминает currentUserName — используется для notification escalation. */
-export function contentMentionsMe(content: string, mentionNames: string[], currentUserName?: string): boolean {
+export function contentMentionsMe(
+  content: string,
+  mentionNames: string[],
+  currentUserName?: string,
+): boolean {
   if (!currentUserName) return false;
   const mentions = detectMentions(content, mentionNames);
   return mentions.some((m) => m.name.toLowerCase() === currentUserName.toLowerCase());

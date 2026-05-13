@@ -197,6 +197,44 @@ export function emitActionItemCreated(
   io?.to(`channel:${channelId}`).emit("action:item:created", payload);
 }
 
+/**
+ * Thread reply created — broadcast в room `thread:${rootId}` для всех клиентов
+ * у которых открыт Thread panel этого root'а.
+ */
+export function emitThreadReplyNew(
+  rootId: string,
+  payload: {
+    messageId: string;
+    rootId: string;
+    channelId: string;
+    userId: string;
+    displayName: string;
+    avatar: string | null;
+    content: string;
+    isBot?: boolean;
+    createdAt: string;
+  },
+) {
+  io?.to(`thread:${rootId}`).emit("thread:reply:new", payload);
+}
+
+/**
+ * Thread meta-update — emit'ит обновлённый счётчик reply'ев в channel-room
+ * для всех клиентов в этом канале (не только тех у кого открыт thread panel).
+ * Используется для UI badge «N replies» на root-сообщении в main feed.
+ */
+export function emitThreadMetaUpdate(
+  channelId: string,
+  payload: {
+    rootId: string;
+    channelId: string;
+    replyCount: number;
+    lastReplyAt: string;
+  },
+) {
+  io?.to(`channel:${channelId}`).emit("thread:meta:update", payload);
+}
+
 export function emitActionItemUpdated(
   channelId: string,
   payload: {

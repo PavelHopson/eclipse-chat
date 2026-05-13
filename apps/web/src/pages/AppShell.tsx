@@ -17,6 +17,7 @@ import { ServerInfoModal } from "../components/ServerInfoModal";
 import { ServerSettingsModal } from "../components/ServerSettingsModal";
 import { ServerList } from "../components/ServerList";
 import { StatusMenu } from "../components/StatusMenu";
+import { ThreadPanel } from "../components/ThreadPanel";
 import { TypingIndicator } from "../components/TypingIndicator";
 import { VoiceMiniBar } from "../components/VoiceMiniBar";
 import { VoicePlaceholder } from "../components/VoicePlaceholder";
@@ -392,6 +393,14 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   const [showProfile, setShowProfile] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [homeOpen, setHomeOpen] = useState(false);
+  // Thread panel — открыт когда selectedThreadId != null. Replaces MemberList
+  // в right rail. Close → возвращается MemberList.
+  const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
+
+  // Закрыть thread при смене канала / сервера — не показывать thread из старого канала
+  useEffect(() => {
+    setSelectedThreadId(null);
+  }, [selectedChannelId, activeServerId]);
 
   const {
     query: searchQuery,
@@ -982,6 +991,10 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               onToggleReaction={toggleReaction}
               onCreateAction={createActionItem}
               onToggleActionStatus={updateActionItemStatus}
+              onOpenThread={(messageId) => {
+                setSelectedThreadId(messageId);
+                if (isTabletOrSmaller) setMembersOpen(true);
+              }}
             />
             <TypingIndicator users={typingUsers} />
             <MessageInput
@@ -999,25 +1012,37 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
 
       {showMembers && (
         <div className="ec-shell__members">
-          <MemberList
-            members={members}
-            loading={membersLoading}
-            error={membersError}
-            onClose={isTabletOrSmaller ? () => setMembersOpen(false) : undefined}
-            voiceChannelByUser={voiceChannelByUser}
-            channelNameById={channelNameById}
-            currentUserId={user.id}
-            onOpenDm={(otherId) => {
-              void openDmWith(otherId).then((convoId) => {
-                if (convoId) {
-                  // Переключаемся в DM mode
-                  setActiveServerId(null);
-                  // selectDm уже вызван внутри openDmWith
-                  if (isTabletOrSmaller) setMembersOpen(false);
-                }
-              });
-            }}
-          />
+          {selectedThreadId ? (
+            <ThreadPanel
+              rootId={selectedThreadId}
+              socket={socket}
+              currentUser={user}
+              currentUserName={headerName}
+              currentUserAvatar={headerAvatar}
+              mentionNames={members.map((m) => m.user.displayName)}
+              onClose={() => setSelectedThreadId(null)}
+            />
+          ) : (
+            <MemberList
+              members={members}
+              loading={membersLoading}
+              error={membersError}
+              onClose={isTabletOrSmaller ? () => setMembersOpen(false) : undefined}
+              voiceChannelByUser={voiceChannelByUser}
+              channelNameById={channelNameById}
+              currentUserId={user.id}
+              onOpenDm={(otherId) => {
+                void openDmWith(otherId).then((convoId) => {
+                  if (convoId) {
+                    // Переключаемся в DM mode
+                    setActiveServerId(null);
+                    // selectDm уже вызван внутри openDmWith
+                    if (isTabletOrSmaller) setMembersOpen(false);
+                  }
+                });
+              }}
+            />
+          )}
         </div>
       )}
 

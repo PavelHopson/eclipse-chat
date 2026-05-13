@@ -14,6 +14,7 @@ import {
   type MessageUpdatedPayload,
   type ReactionAddedPayload,
   type ReactionRemovedPayload,
+  type ThreadMetaUpdatePayload,
   type TypingStartPayload,
   type TypingStopPayload,
 } from "../lib/socket";
@@ -63,6 +64,10 @@ export type MessageRow = {
   attachments: Attachment[];
   /** Action layer поверх сообщения: task / decision / follow-up. */
   actionItems: MessageActionItem[];
+  /** Количество reply'ев в thread (0 если нет). */
+  threadReplyCount?: number;
+  /** ISO последнего reply (для sort/age). Null если threadReplyCount=0. */
+  threadLastReplyAt?: string | null;
   /** UI-only: оптимистично отправлено, ждём backend. */
   pending?: boolean;
   /** UI-only: backend вернул ошибку. */
@@ -414,6 +419,26 @@ export function useMessages(
       socket.off(SocketEvents.MessageDeleted, onDeleted);
       socket.off(SocketEvents.MessagePinned, onPinned);
       socket.off(SocketEvents.MessageUnpinned, onUnpinned);
+    };
+  }, [socket]);
+
+  // socket: thread:meta:update — обновляем threadReplyCount + threadLastReplyAt
+  // на root-сообщении в main feed. Realtime бейдж «N replies».
+  useEffect(() => {
+    if (!socket) return;
+    const onThreadMeta = (p: ThreadMetaUpdatePayload) => {
+      if (p.channelId !== channelIdRef.current) return;
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === p.rootId
+            ? { ...m, threadReplyCount: p.replyCount, threadLastReplyAt: p.lastReplyAt }
+            : m,
+        ),
+      );
+    };
+    socket.on(SocketEvents.ThreadMetaUpdate, onThreadMeta);
+    return () => {
+      socket.off(SocketEvents.ThreadMetaUpdate, onThreadMeta);
     };
   }, [socket]);
 

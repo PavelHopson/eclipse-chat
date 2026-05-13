@@ -434,7 +434,11 @@
   }
 }
 
-/* prefers-reduced-motion: убираем все non-essential анимации */
+/* prefers-reduced-motion: убираем все non-essential анимации.
+ * Этот блок покрывает И one-shot transitions (fade/zoom/pop),
+ * И continuous decorative loops (limbus, aurora, scan-line, brand shimmer).
+ * Cosmic ambient остаётся (gradient static — без anim/drift).
+ */
 @media (prefers-reduced-motion: reduce) {
   .ec-anim-fade,
   .ec-anim-message-enter,
@@ -447,6 +451,20 @@
   .ec-dot--online           { animation: none !important; }
   .ec-typing-dot            { animation: none !important; }
   .ec-brand-mark            { animation: none !important; }
+  .ec-anim-breathe,
+  .ec-anim-limbus,
+  .ec-anim-levitate,
+  .ec-anim-orbit-sweep {
+    animation: none !important;
+  }
+  .ec-aurora-bg {
+    animation: none !important;
+    background-position: 20% 0%, 80% 100%;
+  }
+  .ec-scan-line::before {
+    animation: none !important;
+    opacity: 0;
+  }
   .ec-auth-hero,
   .ec-auth-panel,
   .ec-auth-preview,

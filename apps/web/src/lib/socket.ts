@@ -143,6 +143,27 @@ export type ReactionRemovedPayload = {
   userId: string;
 };
 
+/** Новый thread reply — broadcast в room `thread:${rootId}`. */
+export type ThreadReplyNewPayload = {
+  messageId: string;
+  rootId: string;
+  channelId: string;
+  userId: string;
+  displayName: string;
+  avatar: string | null;
+  isBot?: boolean;
+  content: string;
+  createdAt: string;
+};
+
+/** Thread meta-update — для UI badge «N replies» на root в main feed. */
+export type ThreadMetaUpdatePayload = {
+  rootId: string;
+  channelId: string;
+  replyCount: number;
+  lastReplyAt: string;
+};
+
 export type ActionItemType = "TASK" | "DECISION" | "FOLLOW_UP";
 export type ActionItemStatus = "OPEN" | "DONE";
 
@@ -273,6 +294,10 @@ export const SocketEvents = {
   VoiceState: "voice:state",
   VoiceParticipantJoined: "voice:participant:joined",
   VoiceParticipantLeft: "voice:participant:left",
+  ThreadJoin: "thread:join",
+  ThreadLeave: "thread:leave",
+  ThreadReplyNew: "thread:reply:new",
+  ThreadMetaUpdate: "thread:meta:update",
   DmJoin: "dm:join",
   DmLeave: "dm:leave",
   DmMessageNew: "dm:message:new",

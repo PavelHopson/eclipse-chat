@@ -17,6 +17,7 @@ import { registerDigestRoutes } from "./routes/digest.js";
 import { registerDmRoutes } from "./routes/dm.js";
 import { registerMessageRoutes } from "./routes/messages.js";
 import { registerServerRoutes } from "./routes/servers.js";
+import { registerThreadRoutes } from "./routes/threads.js";
 import { registerUserRoutes } from "./routes/users.js";
 import { registerVoiceRoutes } from "./routes/voice.js";
 import { setSocketIO } from "./realtime.js";
@@ -110,7 +111,7 @@ app.get("/api/health", async () => {
   }
   return { ok: true, service: "eclipse-chat-server", database: dbOk };
 });
-app.get("/api/version", async () => ({ name: "@eclipse-chat/server", version: "0.12.2" }));
+app.get("/api/version", async () => ({ name: "@eclipse-chat/server", version: "0.13.0" }));
 
 await registerAuthRoutes(app);
 await registerTwoFactorRoutes(app);
@@ -149,6 +150,7 @@ await registerDigestRoutes(app);
 await registerServerRoutes(app);
 await registerUserRoutes(app);
 await registerMessageRoutes(app);
+await registerThreadRoutes(app);
 await registerVoiceRoutes(app);
 await registerDmRoutes(app);
 await app.ready();
@@ -236,6 +238,29 @@ io.on("connection", (socket) => {
   socket.on("channel:leave", (channelId: string) => {
     if (typeof channelId === "string" && channelId) {
       void socket.leave(`channel:${channelId}`);
+    }
+  });
+
+  // Thread rooms — frontend подписывается на thread:${rootId} когда открывает
+  // Thread panel. Backend verify ownership (user — member канала root'а).
+  socket.on("thread:join", async (rootId: string) => {
+    const uid = (socket.data as { userId: string | null | undefined }).userId;
+    if (!uid || typeof rootId !== "string" || !rootId) return;
+    const root = await db.message.findUnique({
+      where: { id: rootId },
+      select: { channelId: true, channel: { select: { serverId: true } } },
+    });
+    if (!root || !root.channelId || !root.channel) return;
+    const member = await db.member.findUnique({
+      where: { userId_serverId: { userId: uid, serverId: root.channel.serverId } },
+      select: { id: true },
+    });
+    if (!member) return;
+    await socket.join(`thread:${rootId}`);
+  });
+  socket.on("thread:leave", (rootId: string) => {
+    if (typeof rootId === "string" && rootId) {
+      void socket.leave(`thread:${rootId}`);
     }
   });
 

@@ -184,6 +184,10 @@ export async function maybeReplyToMention(
         userId: botUser.id,
         displayName: botUser.displayName,
         avatar: botUser.avatar,
+        // system@eclipse-chat.local — AI bot, не Bot row, но визуально BOT.
+        // Frontend получит isBot=true на reload через email-check
+        // в routes/channels.ts (см. assistant.ts companion change).
+        isBot: true,
         createdAt: reply.createdAt.toISOString(),
       });
       log.info(

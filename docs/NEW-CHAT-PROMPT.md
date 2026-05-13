@@ -96,7 +96,7 @@ E:\projects\ROADMAP.md (§1 статусы + §5 Changelog). Per-repo ROADMAP
 
 ---
 
-## 📊 PROJECT STATUS (13.05.2026, evening — v0.12.2)
+## 📊 PROJECT STATUS (13.05.2026, late evening — v0.13.0)
 
 Eclipse Chat теперь **full-featured self-hosted operator communication
 core** + AI layer + security hardening + bot/operator layer **(full stack,
@@ -129,8 +129,13 @@ backend + UI)**. LIVE in prod: `https://app.star-crm.ru/eclipse-chat/`.
 - Pin/unpin (моды, для channels — не для DM)
 - Reactions (12 emoji whitelist, both contexts)
 - Attachments (10 files × 50MB, HEIC→JPEG conversion если libheif)
+- **Markdown inline:** `**bold**`, `*italic*`/`_italic_`, `` `code` ``, `~~strike~~`
+- **Emoji shortcodes:** `:smile:` → 😄 (~50 popular в whitelist)
 - Mentions @user + URL auto-linking
 - Edit/delete UI с inline composer + hover-actions
+- **Threads (v0.13):** «Ответить в треде» из hover-actions → ThreadPanel в right
+  rail (вместо MemberList). Replies скрыты из main feed (отдельный entrypoint),
+  badge «N ответов в треде» на root в main. Realtime через `thread:reply:new`.
 
 **DM (Direct Messages):**
 - 1-to-1 conversations (group DMs — v0.8.1 backlog)
@@ -170,12 +175,12 @@ backend + UI)**. LIVE in prod: `https://app.star-crm.ru/eclipse-chat/`.
 - Создание из сообщения через context-menu
 - ActionQueueBar в чате с filtering + SLA hints + inline-edit
 
-**Bot/Operator layer (v0.12.2 — full stack):**
+**Bot/Operator layer (v0.13 — full stack + reactions):**
 - Bot model с shadow-user pattern (1:1 User row)
 - API keys format `ecb_<32-char-base64>` (bcrypt hashed,
   apiKeyPrefix unique для O(1) lookup)
 - Routes: CRUD `/api/servers/:id/bots` (OWNER), `POST /api/bot/messages`,
-  `GET /api/bot/me`
+  `POST /api/bot/reactions` (v0.13), `GET /api/bot/me`
 - Hard cap 20 bots/server
 - Audit: BOT_CREATED / BOT_DELETED / BOT_KEY_REGENERATED
 - `lastUsedAt` bump на каждый successful POST /api/bot/messages
@@ -183,6 +188,8 @@ backend + UI)**. LIVE in prod: `https://app.star-crm.ru/eclipse-chat/`.
   список ботов + one-time key reveal modal + curl-example
 - Bot badge **BOT** (violet accent hsl(252 70%)) у сообщений с `isBot=true`
   — определяется через `User.botProfile` relation на backend
+- `@ai` AI assistant теперь тоже получает BOT badge (через email check
+  на `system@eclipse-chat.local` — без миграции)
 - `docs/BOT-API.md` — публичный API spec для bot writers
 
 **Security hardening (v0.11.1):**
@@ -371,26 +378,30 @@ TWOFA_ENCRYPTION_KEY=<openssl rand -hex 32>
 
 ### Высокий приоритет (P1)
 
-- [x] **v0.12 Bot frontend** — done. ServerSettingsModal tab «Боты» +
-      useBots hook + BotsTab component + Message bot badge + docs/BOT-API.md.
-      Bundle +14KB raw / +3KB gzip.
-- [ ] **AI assistant как первый Bot** — `system@eclipse-chat.local` user
-      не имеет Bot row → @ai сообщения показываются БЕЗ badge на reload
-      (только при socket emit, и то нет — assistant.ts emit'ит без isBot).
-      Чтобы fix consistently: при первом @ai mention auto-promote system
-      user в Bot record OR в `assistant.ts` явно `isBot: true` в emit'е
-      (но при reload откатится). Cleanest: миграция promote.
-- [ ] **Bot reactions API** — capability `react` объявлена в default но
-      `POST /api/bot/reactions` не существует. Endpoint + capability check.
+- [x] **v0.12 Bot frontend** — done в v0.12.2.
+- [x] **AI assistant как Bot badge** — done в v0.13 через email check
+      `system@eclipse-chat.local` в routes/channels.ts + dm.ts. Никакой
+      миграции не понадобилось.
+- [x] **Bot reactions API** — done в v0.13. `POST /api/bot/reactions` +
+      capability check + docs/BOT-API.md обновлён.
+- [x] **Markdown в messages** — done в v0.13: bold/italic/code/strike +
+      emoji shortcodes (~50). RichContent.tsx переписан с unified tokenizer.
+- [x] **Threads** — done в v0.13: migration `20260514000000_add_message_threads`,
+      `routes/threads.ts`, `useThread` hook, `ThreadPanel` component,
+      hover-action + badge в MessageList, ESC-close.
+- [ ] **@-autocomplete + :-autocomplete в composer** — deferred (требует
+      caret-positioning popover + ~200 LOC). Markdown и emoji работают
+      без UI помощи: user пишет `:fire:` или `@Username` руками.
 - [ ] **Bot inbound socket events** — bot не подключается к Socket.io,
       не получает push'ов. Нужен либо webhook outbound config, либо
       long-polling helper в docs/BOT-API.md.
 - [ ] **Telegram bridge bot template** — отдельный repo / minimal Node.js
       template, не входит в основной (см. docs/BOT-API.md).
-- [ ] **Threads + mention autocomplete** — `Message.parentMessageId`
-      self-relation + thread sidebar + `@` autocomplete в composer
+- [ ] **Thread attachments** — POST /api/messages/:id/thread сейчас принимает
+      только content (без attachments). Чтобы добавить — обновить body schema
+      + использовать processAttachment как в channel POST.
 - [ ] **Tests baseline** — Vitest для critical paths (auth, dm, 2fa, ai,
-      digest, bots) + GitHub Actions CI
+      digest, bots, threads) + GitHub Actions CI
 
 ### Средний приоритет (P2)
 
@@ -462,8 +473,8 @@ state и работай.
 4. E:\projects\ROADMAP.md (общая дорожная карта Eclipse Hopson)
 
 Eclipse Chat LIVE в проде: https://app.star-crm.ru/eclipse-chat/
-Версия в коде: 0.12.2 (Bot frontend UI + isBot pipeline +
-docs/BOT-API.md), 0.12.1 предыдущий deployed Pavel'ом 13.05.2026.
+Версия в коде: 0.13.0 (Threads + Markdown + Bot ecosystem closure +
+prefers-reduced-motion). v0.12.2 предыдущий — Bot frontend UI.
 
 Текущее состояние:
 - Auth + Profile + 2FA TOTP + audit log + brute-force lockout

@@ -6,7 +6,12 @@ import { db } from "../db.js";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
 import { requireBotAuth } from "../auth/botAuth.js";
 import { recordAudit } from "../security/audit.js";
-import { emitMessageOnChannel } from "../realtime.js";
+import { emitMessageOnChannel, emitReactionAdded } from "../realtime.js";
+
+const ALLOWED_BOT_EMOJI = new Set([
+  "👍", "❤️", "😂", "😮", "😢", "🔥", "🎉", "👀",
+  "🚀", "💯", "🙏", "👏",
+]);
 
 const URL_SAFE = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
 
@@ -32,6 +37,11 @@ const createBotBody = z.object({
 const botMessageBody = z.object({
   channelId: z.string().min(1),
   content: z.string().max(8000).optional().default(""),
+});
+
+const botReactionBody = z.object({
+  messageId: z.string().min(1),
+  emoji: z.string().min(1).max(8),
 });
 
 /**
@@ -333,6 +343,89 @@ export async function registerBotRoutes(app: FastifyInstance) {
       };
       emitMessageOnChannel(ch.id, payload);
       return { message: payload };
+    },
+  );
+
+  /**
+   * POST /api/bot/reactions — добавить реакцию на сообщение от имени бота.
+   * Body: { messageId, emoji }.
+   *
+   * Permission rules:
+   *   - capability 'react' должен быть в bot.capabilities
+   *   - message должен принадлежать TEXT-каналу того же server'а что bot
+   *   - DM-сообщения нельзя реагировать ботом (нет membership в DM)
+   *   - emoji должен быть в whitelist (тот же что у human user реакций)
+   *
+   * Idempotent через unique(messageId, userId, emoji) constraint.
+   */
+  app.post(
+    "/api/bot/reactions",
+    { onRequest: [requireBotAuth] },
+    async (req, reply) => {
+      const bot = req.bot;
+      if (!bot) return reply.status(401).send({ error: "Bot auth required" });
+      const parsed = botReactionBody.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.status(400).send({ error: "Invalid body" });
+      }
+      if (!bot.capabilities.includes("react")) {
+        return reply.status(403).send({
+          error: "Bot не имеет capability react",
+        });
+      }
+      const { messageId, emoji } = parsed.data;
+      if (!ALLOWED_BOT_EMOJI.has(emoji)) {
+        return reply.status(400).send({ error: "Emoji not in allowed list" });
+      }
+      const m = await db.message.findUnique({
+        where: { id: messageId },
+        select: {
+          id: true,
+          channelId: true,
+          deletedAt: true,
+          channel: { select: { serverId: true } },
+        },
+      });
+      if (!m) return reply.status(404).send({ error: "Message not found" });
+      if (m.deletedAt) {
+        return reply.status(410).send({ error: "Cannot react to deleted message" });
+      }
+      if (!m.channelId || !m.channel) {
+        return reply.status(400).send({
+          error: "Bot реакции доступны только для канальных сообщений (не DM)",
+        });
+      }
+      if (m.channel.serverId !== bot.serverId) {
+        return reply.status(403).send({
+          error: "Bot не имеет доступа к этому каналу",
+        });
+      }
+      // Bump lastUsedAt fire-and-forget (см. POST /api/bot/messages)
+      void db.bot
+        .update({ where: { id: bot.id }, data: { lastUsedAt: new Date() } })
+        .catch(() => undefined);
+      try {
+        await db.reaction.create({
+          data: { messageId, userId: bot.userId, emoji },
+        });
+        emitReactionAdded(m.channelId, {
+          messageId,
+          channelId: m.channelId,
+          emoji,
+          userId: bot.userId,
+        });
+        return { ok: true };
+      } catch (err: unknown) {
+        // P2002 = unique constraint = already reacted; idempotent success
+        if (
+          err instanceof Error &&
+          "code" in err &&
+          (err as { code?: string }).code === "P2002"
+        ) {
+          return { ok: true, alreadyExists: true };
+        }
+        throw err;
+      }
     },
   );
 

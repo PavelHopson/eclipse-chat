@@ -300,12 +300,19 @@ model Message {
   /// DM-разговор. NULL → message принадлежит серверному каналу.
   conversationId String?
   conversation   DirectConversation? @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  /// Thread self-relation: root-сообщения имеют parentMessageId=NULL.
+  /// Replies — id root'а. onDelete:SetNull = при удалении root replies остаются
+  /// orphan (history preserved, UI рендерит placeholder).
+  parentMessageId String?
+  parent          Message?  @relation("MessageThread", fields: [parentMessageId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  threadReplies   Message[] @relation("MessageThread")
   reactions Reaction[]
   attachments Attachment[]
   actionItems ActionItem[]
 
   @@index([channelId, pinnedAt])
   @@index([conversationId, createdAt])
+  @@index([parentMessageId])
 }
 
 /// Action layer поверх сообщений. Сообщение можно превратить в task / decision / follow-up

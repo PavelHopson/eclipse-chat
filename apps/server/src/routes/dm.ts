@@ -215,6 +215,8 @@ export async function registerDmRoutes(app: FastifyInstance) {
               avatar: true,
               // botProfile relation для UI isBot badge.
               botProfile: { select: { id: true } },
+              // email — для детекции system AI bot (не отдаётся фронту).
+              email: true,
             },
           },
           reactions: { select: { emoji: true, userId: true } },
@@ -259,7 +261,9 @@ export async function registerDmRoutes(app: FastifyInstance) {
               id: m.user.id,
               displayName: m.user.displayName,
               avatar: m.user.avatar,
-              isBot: m.user.botProfile != null,
+              isBot:
+                m.user.botProfile != null ||
+                m.user.email === "system@eclipse-chat.local",
             },
             reactions,
             attachments: m.deletedAt ? [] : m.attachments,
