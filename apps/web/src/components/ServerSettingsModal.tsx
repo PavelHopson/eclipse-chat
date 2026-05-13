@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import { useEffect, useRef, useState } from "react";
 import { Modal } from "./Modal";
+import { BotsTab } from "./BotsTab";
 import type { ServerRow } from "../hooks/useServers";
 
 type Props = {
@@ -82,7 +83,7 @@ export function ServerSettingsModal({
   onDeleteBanner,
   onUpdateIdentity,
 }: Props) {
-  const [tab, setTab] = useState<"identity" | "banner">("identity");
+  const [tab, setTab] = useState<"identity" | "banner" | "bots">("identity");
   const [brandColor, setBrandColor] = useState<string>(server.brandColor ?? "");
   const [description, setDescription] = useState<string>(server.description ?? "");
   const [welcomeMessage, setWelcomeMessage] = useState<string>(server.welcomeMessage ?? "");
@@ -158,6 +159,7 @@ export function ServerSettingsModal({
           [
             { id: "identity", label: "Идентичность" },
             { id: "banner", label: "Баннер" },
+            { id: "bots", label: "Боты" },
           ] as const
         ).map((t) => {
           const active = tab === t.id;
@@ -503,6 +505,8 @@ export function ServerSettingsModal({
           </div>
         </section>
       )}
+
+      {tab === "bots" && <BotsTab serverId={server.id} />}
     </Modal>
   );
 }

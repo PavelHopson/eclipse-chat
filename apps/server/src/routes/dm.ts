@@ -208,7 +208,15 @@ export async function registerDmRoutes(app: FastifyInstance) {
         take,
         orderBy: { createdAt: "desc" },
         include: {
-          user: { select: { id: true, displayName: true, avatar: true } },
+          user: {
+            select: {
+              id: true,
+              displayName: true,
+              avatar: true,
+              // botProfile relation для UI isBot badge.
+              botProfile: { select: { id: true } },
+            },
+          },
           reactions: { select: { emoji: true, userId: true } },
           attachments: {
             select: {
@@ -251,6 +259,7 @@ export async function registerDmRoutes(app: FastifyInstance) {
               id: m.user.id,
               displayName: m.user.displayName,
               avatar: m.user.avatar,
+              isBot: m.user.botProfile != null,
             },
             reactions,
             attachments: m.deletedAt ? [] : m.attachments,
@@ -353,6 +362,8 @@ export async function registerDmRoutes(app: FastifyInstance) {
         userId: me,
         displayName: user.displayName,
         avatar: user.avatar,
+        // POST DM через requireJwt = human user; bot не пишет в DM (бот не имеет inbox).
+        isBot: false,
         content: m.content,
         createdAt: m.createdAt.toISOString(),
         attachments: processedAttachments.map((a) => ({

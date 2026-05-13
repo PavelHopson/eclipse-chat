@@ -56,7 +56,7 @@ export type MessageRow = {
   deletedAt: string | null;
   /** ISO. Set = сообщение закреплено. */
   pinnedAt: string | null;
-  user: { id: string; displayName: string; avatar: string | null };
+  user: { id: string; displayName: string; avatar: string | null; isBot?: boolean };
   /** Агрегированные реакции, отсортированы backend'ом по emoji. */
   reactions: ReactionAggregate[];
   /** Прикреплённые файлы, sorted by position asc. */
@@ -230,7 +230,12 @@ export function useMessages(
           editedAt: null,
           deletedAt: null,
           pinnedAt: null,
-          user: { id: p.userId, displayName: p.displayName, avatar: p.avatar },
+          user: {
+            id: p.userId,
+            displayName: p.displayName,
+            avatar: p.avatar,
+            isBot: p.isBot ?? false,
+          },
           reactions: [],
           attachments: p.attachments ?? [],
           actionItems: [],

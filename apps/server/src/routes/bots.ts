@@ -316,6 +316,11 @@ export async function registerBotRoutes(app: FastifyInstance) {
           channelId: ch.id,
         },
       });
+      // Bump lastUsedAt — bot аналитика «когда последний раз дышал».
+      // Fire-and-forget (не блокируем response).
+      void db.bot
+        .update({ where: { id: bot.id }, data: { lastUsedAt: new Date() } })
+        .catch(() => undefined);
       const payload = {
         messageId: m.id,
         content: m.content,
@@ -323,6 +328,7 @@ export async function registerBotRoutes(app: FastifyInstance) {
         userId: shadow.id,
         displayName: shadow.displayName,
         avatar: shadow.avatar,
+        isBot: true,
         createdAt: m.createdAt.toISOString(),
       };
       emitMessageOnChannel(ch.id, payload);

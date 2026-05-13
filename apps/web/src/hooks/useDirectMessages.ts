@@ -83,7 +83,12 @@ export function useDirectMessages(
           editedAt: null,
           deletedAt: null,
           pinnedAt: null,
-          user: { id: p.userId, displayName: p.displayName, avatar: p.avatar },
+          user: {
+            id: p.userId,
+            displayName: p.displayName,
+            avatar: p.avatar,
+            isBot: p.isBot ?? false,
+          },
           reactions: [],
           attachments: p.attachments ?? [],
           actionItems: [],

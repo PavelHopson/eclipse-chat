@@ -30,6 +30,8 @@ export function emitMessageOnChannel(
     displayName: string;
     /** Аватар автора на момент отправки. Null если у user'а нет аватара. */
     avatar: string | null;
+    /** True если автор — Bot shadow user (для UI badge). Default false. */
+    isBot?: boolean;
     createdAt: string;
     attachments?: AttachmentPayload[];
   },
@@ -236,6 +238,8 @@ export function emitDmMessageNew(
     userId: string;
     displayName: string;
     avatar: string | null;
+    /** True если автор — Bot shadow user. Default false. */
+    isBot?: boolean;
     content: string;
     createdAt: string;
     attachments?: AttachmentPayload[];

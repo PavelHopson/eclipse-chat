@@ -52,6 +52,8 @@ export type MessageNewPayload = {
   displayName: string;
   /** Аватар автора на момент отправки. Null если у user'а нет аватара. */
   avatar: string | null;
+  /** Автор — Bot shadow user. Используется для UI badge. Default false. */
+  isBot?: boolean;
   createdAt: string;
   attachments?: AttachmentPayload[];
 };
@@ -208,6 +210,8 @@ export type DmMessageNewPayload = {
   userId: string;
   displayName: string;
   avatar: string | null;
+  /** Автор — Bot shadow user. Default false. */
+  isBot?: boolean;
   content: string;
   createdAt: string;
   attachments?: AttachmentPayload[];

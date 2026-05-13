@@ -155,7 +155,16 @@ export async function registerChannelRoutes(app: FastifyInstance) {
       take,
       orderBy: { createdAt: "desc" },
       include: {
-        user: { select: { id: true, displayName: true, avatar: true } },
+        user: {
+          select: {
+            id: true,
+            displayName: true,
+            avatar: true,
+            // botProfile: 1-to-1 relation → null если user не shadow-bot.
+            // Преобразуется в `user.isBot: boolean` на сериализации.
+            botProfile: { select: { id: true } },
+          },
+        },
         reactions: { select: { emoji: true, userId: true } },
         attachments: {
           select: {
@@ -213,7 +222,12 @@ export async function registerChannelRoutes(app: FastifyInstance) {
             editedAt: m.editedAt?.toISOString() ?? null,
             deletedAt: m.deletedAt?.toISOString() ?? null,
             pinnedAt: m.pinnedAt?.toISOString() ?? null,
-            user: { id: m.user.id, displayName: m.user.displayName, avatar: m.user.avatar },
+            user: {
+              id: m.user.id,
+              displayName: m.user.displayName,
+              avatar: m.user.avatar,
+              isBot: m.user.botProfile != null,
+            },
             reactions,
             attachments: m.deletedAt ? [] : m.attachments,
             actionItems: m.deletedAt ? [] : m.actionItems.map(serializeActionItem),
@@ -311,6 +325,9 @@ export async function registerChannelRoutes(app: FastifyInstance) {
         userId: m.userId,
         displayName: m.user.displayName,
         avatar: m.user.avatar,
+        // POST через requireJwt = только human users; bot пишет через
+        // POST /api/bot/messages с собственным payload.
+        isBot: false,
         createdAt: m.createdAt.toISOString(),
         attachments: processedAttachments.map((a) => ({
           id: a.id,

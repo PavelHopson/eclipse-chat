@@ -5,7 +5,7 @@
 > Скопируй блок «Continuation Message» в самом конце в новый чат
 > как первое сообщение.
 >
-> **Обновлено 2026-05-13 (после v0.12.1 design polish + 87 skills).**
+> **Обновлено 2026-05-13 (после v0.12.2 Bot frontend UI + version bump).**
 
 ---
 
@@ -96,11 +96,11 @@ E:\projects\ROADMAP.md (§1 статусы + §5 Changelog). Per-repo ROADMAP
 
 ---
 
-## 📊 PROJECT STATUS (13.05.2026, late afternoon — v0.12.1)
+## 📊 PROJECT STATUS (13.05.2026, evening — v0.12.2)
 
 Eclipse Chat теперь **full-featured self-hosted operator communication
-core** + AI layer + security hardening + bot/operator layer (backend).
-LIVE in prod: `https://app.star-crm.ru/eclipse-chat/`.
+core** + AI layer + security hardening + bot/operator layer **(full stack,
+backend + UI)**. LIVE in prod: `https://app.star-crm.ru/eclipse-chat/`.
 
 ### Что в продакшне работает
 
@@ -170,7 +170,7 @@ LIVE in prod: `https://app.star-crm.ru/eclipse-chat/`.
 - Создание из сообщения через context-menu
 - ActionQueueBar в чате с filtering + SLA hints + inline-edit
 
-**Bot/Operator layer (v0.12 — backend готов, UI pending):**
+**Bot/Operator layer (v0.12.2 — full stack):**
 - Bot model с shadow-user pattern (1:1 User row)
 - API keys format `ecb_<32-char-base64>` (bcrypt hashed,
   apiKeyPrefix unique для O(1) lookup)
@@ -178,8 +178,12 @@ LIVE in prod: `https://app.star-crm.ru/eclipse-chat/`.
   `GET /api/bot/me`
 - Hard cap 20 bots/server
 - Audit: BOT_CREATED / BOT_DELETED / BOT_KEY_REGENERATED
-- UI: ServerSettingsModal tab «Боты» + useBots hook + Message bot
-  badge — **СЛЕДУЮЩИЙ MILESTONE**
+- `lastUsedAt` bump на каждый successful POST /api/bot/messages
+- UI: ServerSettingsModal tab «Боты» (OWNER-gated) с create form +
+  список ботов + one-time key reveal modal + curl-example
+- Bot badge **BOT** (violet accent hsl(252 70%)) у сообщений с `isBot=true`
+  — определяется через `User.botProfile` relation на backend
+- `docs/BOT-API.md` — публичный API spec для bot writers
 
 **Security hardening (v0.11.1):**
 - @fastify/helmet с CSP + HSTS + X-Frame-Options
@@ -360,17 +364,29 @@ TWOFA_ENCRYPTION_KEY=<openssl rand -hex 32>
 
 ### Срочное (P0 — Pavel ждёт фидбек)
 
-- [ ] **/api/version bump** 0.12.0 → 0.12.1 (forgot в design polish commit)
+- [x] **/api/version bump** 0.12.0 → 0.12.2 — done в Bot UI commit
 - [ ] **libheif install** на проде если хочешь iPhone HEIC support:
       `sudo apt install libheif1 libheif-dev && cd /var/www/eclipse-chat && npm rebuild sharp`
 - [ ] **nginx client_max_body_size** — verify проверка ≥750m включена
 
 ### Высокий приоритет (P1)
 
-- [ ] **v0.12 Bot frontend** — ServerSettingsModal новый tab «Боты» +
-      useBots hook + UI отображения bot badge в MessageList + создание
-      bot UI с one-time API key display + docs/BOT-API.md + Telegram bridge
-      bot template (~3-4 часа)
+- [x] **v0.12 Bot frontend** — done. ServerSettingsModal tab «Боты» +
+      useBots hook + BotsTab component + Message bot badge + docs/BOT-API.md.
+      Bundle +14KB raw / +3KB gzip.
+- [ ] **AI assistant как первый Bot** — `system@eclipse-chat.local` user
+      не имеет Bot row → @ai сообщения показываются БЕЗ badge на reload
+      (только при socket emit, и то нет — assistant.ts emit'ит без isBot).
+      Чтобы fix consistently: при первом @ai mention auto-promote system
+      user в Bot record OR в `assistant.ts` явно `isBot: true` в emit'е
+      (но при reload откатится). Cleanest: миграция promote.
+- [ ] **Bot reactions API** — capability `react` объявлена в default но
+      `POST /api/bot/reactions` не существует. Endpoint + capability check.
+- [ ] **Bot inbound socket events** — bot не подключается к Socket.io,
+      не получает push'ов. Нужен либо webhook outbound config, либо
+      long-polling helper в docs/BOT-API.md.
+- [ ] **Telegram bridge bot template** — отдельный repo / minimal Node.js
+      template, не входит в основной (см. docs/BOT-API.md).
 - [ ] **Threads + mention autocomplete** — `Message.parentMessageId`
       self-relation + thread sidebar + `@` autocomplete в composer
 - [ ] **Tests baseline** — Vitest для critical paths (auth, dm, 2fa, ai,
@@ -446,7 +462,8 @@ state и работай.
 4. E:\projects\ROADMAP.md (общая дорожная карта Eclipse Hopson)
 
 Eclipse Chat LIVE в проде: https://app.star-crm.ru/eclipse-chat/
-Версия на сервере: 0.12.1 (commit 501c4f3, deployed 13.05.2026).
+Версия в коде: 0.12.2 (Bot frontend UI + isBot pipeline +
+docs/BOT-API.md), 0.12.1 предыдущий deployed Pavel'ом 13.05.2026.
 
 Текущее состояние:
 - Auth + Profile + 2FA TOTP + audit log + brute-force lockout
@@ -459,9 +476,11 @@ Eclipse Chat LIVE в проде: https://app.star-crm.ru/eclipse-chat/
   per-participant volume + stats overlay + speaking-dots
 - ChannelDigest + AI summary поверх (Ollama Qwen2.5:7b на CPU)
 - @ai assistant в чате (mention triggers fire-and-forget reply через
-  system-bot user)
-- Bot/Operator backend готов (shadow-user pattern, ecb_ API keys),
-  frontend UI — следующий milestone
+  system-bot user — но НЕ имеет Bot row, поэтому BOT badge не показывается)
+- Bot/Operator FULL STACK: backend shadow-user pattern + ecb_ API keys +
+  ServerSettingsModal tab «Боты» (OWNER) + create form + one-time key
+  reveal + curl-example в UI + Message BOT badge (violet)
+- docs/BOT-API.md — публичный API gateway для bot writers
 - Cold-tone design system + 87 designer-skills в ~/.claude/skills
 
 Stack:
@@ -476,7 +495,7 @@ Stack:
 Production:
 - VPS cv6067007 (Star CRM сервер). Pavel под root SSH.
 - nginx 1.24, supervisor, PG 16, Ollama systemd, Docker compose для LiveKit.
-- /api/version → 0.12.0 (надо bump до 0.12.1).
+- /api/version → 0.12.2 (после deploy текущего HEAD'а), сейчас на проде 0.12.0.
 - nginx client_max_body_size 750m (для uploads до 50MB × 10 attachments).
 
 Деплой:
@@ -496,10 +515,9 @@ Anti-patterns (не повторять):
   явно после Eclipse Forge agent's redesign.
 
 Что хочется делать дальше — открытые milestones:
-- v0.12 Bot frontend UI (backend готов — ServerSettingsModal tab +
-  useBots hook + Message bot badge + docs/BOT-API.md + Telegram bridge
-  template)
-- v0.12.2 /api/version bump 0.12.0 → 0.12.1
+- Telegram bridge template (отдельный repo, использует /api/bot/messages)
+- AI assistant как первый Bot record (чтобы @ai badge работал consistently)
+- Bot reactions API endpoint (capability declared но endpoint отсутствует)
 - libheif install на сервере (если хочется iPhone HEIC support)
 - Threads + mention autocomplete
 - Tests baseline (Vitest)
