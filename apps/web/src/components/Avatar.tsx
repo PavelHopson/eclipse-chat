@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import { useEffect, useState } from "react";
 
 type Props = {
   url: string | null | undefined;
@@ -40,36 +41,59 @@ function colorFor(name: string): string {
 
 export function Avatar({ url, name, size = 32 }: Props) {
   const fontSize = Math.round(size * 0.42);
+  const [errored, setErrored] = useState(false);
+
+  // Сбрасываем error-state при смене url — например после re-upload аватара.
+  useEffect(() => {
+    setErrored(false);
+  }, [url]);
+
+  const useFallback = !url || errored;
   const style: CSSProperties = {
     width: size,
     height: size,
     borderRadius: "50%",
     flexShrink: 0,
     overflow: "hidden",
-    background: url ? "#2a2a32" : colorFor(name),
+    background: useFallback ? colorFor(name) : "var(--ec-surface-3, #2a2a32)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    color: "#e8e8ed",
+    color: "var(--ec-text, #e8e8ed)",
     fontWeight: 600,
     fontSize,
     letterSpacing: 0,
     userSelect: "none",
+    // Border тонкий — отделяет avatar от фона при темной теме.
+    boxShadow: "inset 0 0 0 1px var(--ec-border-subtle, rgba(255,255,255,0.05))",
   };
-  if (url) {
+  if (useFallback) {
     return (
       <span style={style} aria-hidden>
-        <img
-          src={resolveAvatarUrl(url)}
-          alt=""
-          style={{ width: "100%", height: "100%", objectFit: "cover" }}
-        />
+        {initials(name)}
       </span>
     );
   }
   return (
     <span style={style} aria-hidden>
-      {initials(name)}
+      <img
+        src={resolveAvatarUrl(url!)}
+        alt=""
+        loading="lazy"
+        decoding="async"
+        onError={() => {
+          // Image broken (corrupt webp / 404 / wrong path) → swap на initials.
+          // Не show «broken image» icon на UI — это ломает визуал.
+          setErrored(true);
+        }}
+        style={{
+          width: "100%",
+          height: "100%",
+          objectFit: "cover",
+          objectPosition: "center",
+          display: "block",
+        }}
+      />
     </span>
   );
 }

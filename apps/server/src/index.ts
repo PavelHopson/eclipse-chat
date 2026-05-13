@@ -6,9 +6,11 @@ import helmet from "@fastify/helmet";
 import rateLimit from "@fastify/rate-limit";
 import fastifyJwt from "@fastify/jwt";
 import fastifyStatic from "@fastify/static";
+import sharp from "sharp";
 import { Server as SocketServer } from "socket.io";
 import { registerActionRoutes } from "./routes/actions.js";
 import { registerAuthRoutes } from "./routes/auth.js";
+import { registerBotRoutes } from "./routes/bots.js";
 import { registerTwoFactorRoutes } from "./routes/twoFactor.js";
 import { registerChannelRoutes } from "./routes/channels.js";
 import { registerDigestRoutes } from "./routes/digest.js";
@@ -108,10 +110,39 @@ app.get("/api/health", async () => {
   }
   return { ok: true, service: "eclipse-chat-server", database: dbOk };
 });
-app.get("/api/version", async () => ({ name: "@eclipse-chat/server", version: "0.11.2" }));
+app.get("/api/version", async () => ({ name: "@eclipse-chat/server", version: "0.12.0" }));
 
 await registerAuthRoutes(app);
 await registerTwoFactorRoutes(app);
+await registerBotRoutes(app);
+// Startup diagnostic: log sharp format support так admin сразу видит
+// что libheif/libavif установлены или нет — главная причина «сломанных
+// изображений» при загрузке HEIC с iPhone.
+{
+  const formats = sharp.format as unknown as Record<
+    string,
+    { input?: { file?: boolean } }
+  >;
+  const supported: string[] = [];
+  const missing: string[] = [];
+  for (const fmt of ["jpeg", "png", "webp", "gif", "avif", "heif", "tiff", "svg"]) {
+    const info = formats[fmt];
+    if (info?.input?.file) {
+      supported.push(fmt);
+    } else {
+      missing.push(fmt);
+    }
+  }
+  app.log.info({ supported, missing }, "Sharp image format support");
+  if (missing.includes("heif")) {
+    app.log.warn(
+      "Sharp без HEIF/HEIC поддержки. iPhone-фотки в этом формате отлупит 400. " +
+        "Чтобы включить: `apt install libheif1 libheif-dev` + `npm rebuild sharp` " +
+        "из корня /var/www/eclipse-chat.",
+    );
+  }
+}
+
 await registerChannelRoutes(app);
 await registerActionRoutes(app);
 await registerDigestRoutes(app);

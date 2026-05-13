@@ -573,17 +573,28 @@ export async function registerServerRoutes(app: FastifyInstance) {
       }
       let resized: Buffer;
       try {
+        const meta = await sharp(buf, { failOn: "none" }).metadata();
+        if (!meta.width || !meta.height) {
+          throw new Error(
+            `Image metadata пустая (${meta.format ?? "unknown"} нечитаем)`,
+          );
+        }
         resized = await sharp(buf, { failOn: "none" })
           .rotate()
           .resize(512, 512, { fit: "cover", position: "center" })
           .webp({ quality: 90 })
           .toBuffer();
+        if (resized.length < 800) {
+          throw new Error(`Sharp вернул corrupt webp (${resized.length} байт)`);
+        }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         app.log.warn({ err, mime: parsed.data.contentType, size: buf.length }, "Server icon sharp failed");
-        const hint = /heif|heic|libheif/i.test(message)
-          ? " Похоже, HEIC из iPhone — переключи Фото → Поделиться → формат «Совместимый» (JPEG)."
-          : "";
+        const hint =
+          /heif|heic|libheif|unsupported image format/i.test(message) ||
+          /heic|heif/i.test(parsed.data.contentType)
+            ? " HEIC/HEIF из iPhone не поддержан (сервер без libheif). Загрузи JPEG/PNG."
+            : "";
         return reply.status(400).send({
           error: `Не удалось обработать иконку.${hint}`,
           details: message,
@@ -793,18 +804,29 @@ export async function registerServerRoutes(app: FastifyInstance) {
       }
       let resized: Buffer;
       try {
+        const meta = await sharp(buf, { failOn: "none" }).metadata();
+        if (!meta.width || !meta.height) {
+          throw new Error(
+            `Image metadata пустая (${meta.format ?? "unknown"} нечитаем)`,
+          );
+        }
         // Баннер 1500×500 (3:1 aspect). cover crop, центр.
         resized = await sharp(buf, { failOn: "none" })
           .rotate()
           .resize(1500, 500, { fit: "cover", position: "center" })
           .webp({ quality: 86 })
           .toBuffer();
+        if (resized.length < 2000) {
+          throw new Error(`Sharp вернул corrupt webp (${resized.length} байт)`);
+        }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         app.log.warn({ err, serverId }, "Server banner sharp failed");
-        const hint = /heif|heic|libheif/i.test(message)
-          ? " Похоже HEIC из iPhone — переключи Фото → Поделиться → формат «Совместимый»."
-          : "";
+        const hint =
+          /heif|heic|libheif|unsupported image format/i.test(message) ||
+          /heic|heif/i.test(parsed.data.contentType)
+            ? " HEIC/HEIF из iPhone не поддержан. Загрузи JPEG/PNG."
+            : "";
         return reply.status(400).send({
           error: `Не удалось обработать баннер.${hint}`,
           details: message,

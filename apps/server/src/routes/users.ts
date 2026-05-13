@@ -185,18 +185,38 @@ export async function registerUserRoutes(app: FastifyInstance) {
       // failOn:"none" — толерантнее к JPEG с мелкими warnings.
       let resized: Buffer;
       try {
+        // Verify input через metadata — даёт чёткую error если sharp не
+        // распознаёт format (HEIC без libheif, corrupt JPEG, и т.д.).
+        const meta = await sharp(buf, { failOn: "none" }).metadata();
+        if (!meta.width || !meta.height) {
+          throw new Error(
+            `Image metadata пустая (формат ${meta.format ?? "unknown"} нечитаем)`,
+          );
+        }
         resized = await sharp(buf, { failOn: "none" })
           .rotate() // EXIF orientation
           .resize(512, 512, { fit: "cover", position: "center" })
           .webp({ quality: 90 })
           .toBuffer();
+        // Sanity check: webp с реальным контентом не бывает < 800 байт.
+        // Если получили tiny output — sharp вернул "успех" с corrupt результатом.
+        if (resized.length < 800) {
+          throw new Error(
+            `Sharp вернул подозрительно маленький webp (${resized.length} байт) — формат скорее всего не поддержан`,
+          );
+        }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        app.log.warn({ err, mime: parsed.data.contentType, size: buf.length }, "Avatar sharp processing failed");
+        app.log.warn(
+          { err, mime: parsed.data.contentType, size: buf.length },
+          "Avatar sharp processing failed",
+        );
         // HEIC без libheif даёт `Input file contains unsupported image format`
-        const hint = /heif|heic|libheif/i.test(message)
-          ? " Похоже, что HEIC из iPhone — открой Фото → Поделиться → Параметры → выбери «Совместимый» формат, либо загрузи JPEG/PNG."
-          : "";
+        const hint =
+          /heif|heic|libheif|unsupported image format/i.test(message) ||
+          /heic|heif/i.test(parsed.data.contentType)
+            ? " Похоже, HEIC/HEIF из iPhone. Сервер не имеет libheif — нужен JPEG/PNG/WebP. На iPhone: Фото → Поделиться → Параметры → формат «Совместимый» (JPEG)."
+            : "";
         return reply.status(400).send({
           error: `Не удалось обработать изображение.${hint}`,
           details: message,

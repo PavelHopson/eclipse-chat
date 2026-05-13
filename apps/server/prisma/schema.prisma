@@ -58,6 +58,62 @@ model User {
   /// DM conversations где user — userB.
   dmsAsUserB       DirectConversation[]  @relation("DMUserB")
   auditLogs        AuditLog[]
+  /// Боты которыми владеет user (как создатель).
+  ownedBots        Bot[]                 @relation("BotOwner")
+  /// Если user — это shadow user для bot'а (1-to-1). null = обычный User.
+  botProfile       Bot?                  @relation("BotShadowUser")
+}
+
+/**
+ * Bot — operator entity внутри сервера. main differentiator Eclipse Chat
+ * от Discord: bots = first-class citizens с явным API контрактом,
+ * не webhooks-only.
+ *
+ * Архитектурное решение — bot реиспользует существующую User модель как
+ * «shadow user»:
+ *   - При create Bot — создаётся User row с email `bot-<botId>@eclipse-chat.local`.
+ *   - Bot.userId → User.id (1-to-1).
+ *   - Messages from bot выглядят как обычные Message с user.id = bot's shadow user.
+ *   - Member.userId работает для bot'а как для регулярного юзера (auto-добавляется
+ *     в server при create).
+ * Это упрощает Message.userId, Reaction, Avatar и т.д. — никакой polymorphism.
+ *
+ * API auth:
+ *   Authorization: Bot ecb_<32-char-base64>
+ *   - Сравнение через bcrypt(apiKey, apiKeyHash).
+ *   - apiKeyPrefix хранится для quick row-lookup (первые 12 символов).
+ */
+model Bot {
+  id           String   @id @default(cuid())
+  name         String
+  /// Avatar URL — может быть кастомным или auto-generated.
+  avatar       String?
+  /// Описание роли бота (для UI), до 280 символов.
+  description  String?
+  /// Bcrypt hash of API key. Plaintext возвращается одноразово при create/regen.
+  apiKeyHash   String
+  /// Префикс API key для quick lookup (`ecb_` + 8 chars). Unique для O(1) find.
+  apiKeyPrefix String   @unique
+  /// Server в котором bot живёт (scoped к одному, как Discord webhooks).
+  serverId     String
+  server       Server   @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  /// Owner user — может regenerate key и delete bot. Cascade при удалении user'а
+  /// удаляет bots — admin должен передать ownership перед уходом из server'а.
+  ownerUserId  String
+  owner        User     @relation("BotOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  /// Shadow user (1-to-1). Auto-created при bot creation. Bot posts messages
+  /// как этот user; reactions, mentions работают штатно.
+  userId       String   @unique
+  user         User     @relation("BotShadowUser", fields: [userId], references: [id], onDelete: Cascade)
+  /// JSON array capabilities: ["send_message", "create_action_item", "react"].
+  /// Сейчас всё разрешено — но field готов под granular ACL в v0.12.1.
+  capabilities String   @default("[\"send_message\",\"react\"]")
+  createdAt    DateTime @default(now())
+  /// Когда bot последний раз был использован (любой successful API call).
+  lastUsedAt   DateTime?
+
+  @@index([serverId])
+  @@index([ownerUserId])
 }
 
 /**
@@ -85,6 +141,9 @@ enum AuditEventType {
   MESSAGE_DELETED_BY_MOD
   CHANNEL_CREATED
   CHANNEL_DELETED
+  BOT_CREATED
+  BOT_DELETED
+  BOT_KEY_REGENERATED
 }
 
 model AuditLog {
@@ -181,6 +240,7 @@ model Server {
   channels    Channel[]
   members     Member[]
   actionItems ActionItem[]
+  bots        Bot[]
 }
 
 /// Участие пользователя в сервере. Один user — один Member per server.
