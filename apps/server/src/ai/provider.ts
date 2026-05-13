@@ -4,17 +4,32 @@
  * Архитектурно повторяет Star CRM AutoReply auto-chain: primary → fallback,
  * каждый провайдер шлёт OpenAI-compatible /chat/completions и парсит choice[0].
  *
- * По умолчанию провайдер = OpenRouter (free DeepSeek/Qwen). Без API key
- * `chat()` бросает `AINotConfiguredError` — route catches и возвращает 503
- * с пояснением. Это позволяет деплоить Eclipse Chat без AI и включать
- * фичу позже только env-переменной.
+ * Chain priority (auto-fallback по списку, первый успешный = result):
+ *   1. Ollama (локальный, без API key) — приоритет для self-host
+ *   2. OpenRouter (free DeepSeek/Qwen tier)
+ *   3. NVIDIA Build (95 free models, требует API key)
+ *   4. OpenAI (paid fallback)
+ *
+ * Если ни один не сконфигурирован — `chat()` бросает `AINotConfiguredError`,
+ * route возвращает 503 с пояснением. Это позволяет деплоить Eclipse Chat
+ * без AI и включать фичу позже только env-переменной.
  *
  * Конфигурация:
- *   OPENROUTER_API_KEY=<key>           — primary provider
- *   OPENROUTER_MODEL=...               — override default model
- *   OPENAI_API_KEY=<key>               — fallback (если openrouter упал)
- *   OPENAI_MODEL=gpt-4o-mini           — override
- *   AI_TIMEOUT_MS=20000                — per-request timeout
+ *   ## Self-host (рекомендуется — free, privacy)
+ *   OLLAMA_BASE_URL=http://localhost:11434/v1
+ *   OLLAMA_MODEL=qwen2.5:7b              — pull через `ollama pull qwen2.5:7b`
+ *                                          Альтернативы: llama3.1:8b, deepseek-r1:7b,
+ *                                          gemma2:9b, mistral:7b
+ *
+ *   ## Облачные free / paid
+ *   OPENROUTER_API_KEY=<key>             — free tier DeepSeek/Qwen/Llama
+ *   OPENROUTER_MODEL=...                 — override default
+ *   NVIDIA_API_KEY=nvapi-...             — 95 free моделей на build.nvidia.com
+ *   NVIDIA_MODEL=qwen/qwen2.5-coder-32b-instruct
+ *   OPENAI_API_KEY=<key>                 — paid fallback
+ *   OPENAI_MODEL=gpt-4o-mini
+ *
+ *   AI_TIMEOUT_MS=20000                  — per-request timeout
  *
  * Никакого PII не логируется в случае ошибок — только meta (latency, model).
  */
@@ -62,6 +77,22 @@ type ProviderConfig = {
 
 function getProviders(): ProviderConfig[] {
   const out: ProviderConfig[] = [];
+
+  // 1. Ollama (локальный) — приоритет. Без API key.
+  //    Включается если задан OLLAMA_BASE_URL ИЛИ OLLAMA_MODEL (значит admin
+  //    осознанно настроил локальный runtime).
+  const ollamaUrl = process.env.OLLAMA_BASE_URL?.trim();
+  const ollamaModel = process.env.OLLAMA_MODEL?.trim();
+  if (ollamaUrl || ollamaModel) {
+    out.push({
+      name: "ollama",
+      baseUrl: ollamaUrl ?? "http://localhost:11434/v1",
+      apiKey: "ollama", // dummy, Ollama игнорирует
+      model: ollamaModel ?? "qwen2.5:7b",
+    });
+  }
+
+  // 2. OpenRouter — free tier DeepSeek/Qwen/Llama.
   const orKey = process.env.OPENROUTER_API_KEY?.trim();
   if (orKey) {
     out.push({
@@ -75,6 +106,20 @@ function getProviders(): ProviderConfig[] {
       },
     });
   }
+
+  // 3. NVIDIA Build — 95 free моделей (Qwen, GLM, DeepSeek, Kimi, Gemma, Mistral).
+  //    OpenAI-compatible на https://integrate.api.nvidia.com/v1.
+  const nvKey = process.env.NVIDIA_API_KEY?.trim();
+  if (nvKey) {
+    out.push({
+      name: "nvidia",
+      baseUrl: "https://integrate.api.nvidia.com/v1",
+      apiKey: nvKey,
+      model: process.env.NVIDIA_MODEL ?? "qwen/qwen2.5-coder-32b-instruct",
+    });
+  }
+
+  // 4. OpenAI — paid fallback.
   const oaiKey = process.env.OPENAI_API_KEY?.trim();
   if (oaiKey) {
     out.push({
@@ -91,7 +136,9 @@ export function isAiConfigured(): boolean {
   return getProviders().length > 0;
 }
 
-const DEFAULT_TIMEOUT_MS = Number(process.env.AI_TIMEOUT_MS) || 20_000;
+// Ollama на CPU может отвечать 30-60s — увеличили default. AI_TIMEOUT_MS env
+// для override (например, 120000 если запускаешь 32B model на слабом железе).
+const DEFAULT_TIMEOUT_MS = Number(process.env.AI_TIMEOUT_MS) || 60_000;
 
 async function callProvider(
   cfg: ProviderConfig,
