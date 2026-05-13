@@ -63,12 +63,18 @@
   --ec-accent-3:            hsl(252 70% 70%);    /* electric violet */
   --ec-accent-3-soft:       hsl(252 70% 70% / 0.14);
 
-  /* ---- Text (warm grey с лёгким blue tint, не pure white) ----- */
-  --ec-text:                hsl(210 18% 92%);
-  --ec-text-strong:         hsl(200 25% 98%);
-  --ec-text-muted:          hsl(210 12% 66%);
-  --ec-text-dim:            hsl(210 10% 47%);
-  --ec-text-placeholder:    hsl(210 8% 40%);
+  /*
+   * Text colors — designer-skills dark-mode rules:
+   *   - НЕ pure white (#FFFFFF) — eye strain. off-white #E0E6EC.
+   *   - text-strong slightly cooler off-white для headings.
+   *   - text-dim удовлетворяет 4.5:1 contrast на ec-bg (#0a0d10).
+   *   - placeholder ниже body но всё ещё readable (3:1 для placeholders OK).
+   */
+  --ec-text:                hsl(210 18% 90%);   /* #DDE3E9 — primary */
+  --ec-text-strong:         hsl(200 22% 96%);   /* #F0F4F7 — headings */
+  --ec-text-muted:          hsl(210 12% 66%);   /* #9DA6AE — secondary */
+  --ec-text-dim:            hsl(210 10% 50%);   /* #757F87 — tertiary */
+  --ec-text-placeholder:    hsl(210 8% 42%);    /* #61686E — placeholders */
 
   /* ---- Semantic ------------------------------------------------ */
   --ec-ok:                  hsl(160 55% 56%);    /* cool mint-green */
@@ -92,16 +98,23 @@
   --ec-font-mono:           "JetBrains Mono", "SF Mono", "Cascadia Mono",
                             Consolas, "Liberation Mono", Menlo, monospace;
 
-  /* Type scale (base 16px) */
-  --ec-text-2xs:            0.6875rem;  /* 11 */
-  --ec-text-xs:             0.75rem;    /* 12 */
-  --ec-text-sm:             0.8125rem;  /* 13 */
-  --ec-text-base:           0.9375rem;  /* 15 */
-  --ec-text-md:             1rem;       /* 16 */
-  --ec-text-lg:             1.125rem;   /* 18 */
-  --ec-text-xl:             1.375rem;   /* 22 */
-  --ec-text-2xl:            1.875rem;   /* 30 — для hero/empty-states */
-  --ec-text-3xl:            2.5rem;     /* 40 — для landing/auth */
+  /*
+   * Type scale — modular ratio 1.25 (major third). Применён после
+   * designer-skills audit (visual-hierarchy + typography-scale):
+   *   - body bumped 15→16px для retina readability (skill rule: ≥16px)
+   *   - соседние шаги теперь 1.25x вместо 1.09x — squint test проходит
+   *   - 8 sizes total, 4-5 в active use (caption/body/lg/xl/2xl)
+   */
+  --ec-text-2xs:            0.6875rem;  /* 11 — fine print, timestamps */
+  --ec-text-xs:             0.8125rem;  /* 13 — caption, meta */
+  --ec-text-sm:             0.875rem;   /* 14 — body small */
+  --ec-text-base:           1rem;       /* 16 — primary body (skill min) */
+  --ec-text-md:             1.125rem;   /* 18 — emphasized body, lg-button */
+  --ec-text-lg:             1.25rem;    /* 20 — subheading */
+  --ec-text-xl:             1.5rem;     /* 24 — heading-3 */
+  --ec-text-2xl:            1.875rem;   /* 30 — heading-2, empty-state */
+  --ec-text-3xl:            2.5rem;     /* 40 — heading-1, hero */
+  --ec-text-4xl:            3.5rem;     /* 56 — landing display */
 
   --ec-leading-tight:       1.2;
   --ec-leading-normal:      1.45;

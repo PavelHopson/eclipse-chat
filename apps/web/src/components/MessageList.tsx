@@ -284,25 +284,92 @@ export function MessageList({
     await onDelete(m.id);
   };
 
+  // Loading state — skeleton screens вместо пустого блока с текстом «Загрузка…».
+  // designer-skills (loading-states): «show layout shape before content loads».
+  // emptyHint === "Загрузка…" — convention из useMessages/useDirectMessages.
+  const isLoading = emptyHint === "Загрузка…";
+
+  if (messages.length === 0 && isLoading) {
+    return (
+      <div
+        ref={containerRef}
+        className="ec-message-list"
+        style={{ ...wrap, paddingTop: "var(--ec-space-6)" }}
+        aria-busy="true"
+        aria-label="Загружаем сообщения"
+      >
+        {[80, 65, 90, 55, 75].map((widthPct, i) => (
+          <div
+            key={i}
+            style={{
+              display: "flex",
+              gap: "var(--ec-space-3)",
+              padding: "var(--ec-space-2) var(--ec-space-5)",
+              marginBottom: "var(--ec-space-2)",
+              opacity: 1 - i * 0.12,
+            }}
+          >
+            <div
+              className="ec-skeleton"
+              style={{ width: 36, height: 36, borderRadius: "50%", flexShrink: 0 }}
+              aria-hidden
+            />
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
+              <div
+                className="ec-skeleton"
+                style={{ width: 120, height: 12, borderRadius: 6 }}
+                aria-hidden
+              />
+              <div
+                className="ec-skeleton"
+                style={{ width: `${widthPct}%`, height: 14, borderRadius: 6 }}
+                aria-hidden
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   if (messages.length === 0) {
     return (
-      <div ref={containerRef} className="ec-message-list" style={{ ...wrap, justifyContent: "center" }}>
+      <div
+        ref={containerRef}
+        className="ec-message-list ec-aurora-bg"
+        style={{ ...wrap, justifyContent: "center" }}
+      >
         <div className="ec-empty">
-          <div className="ec-empty-icon" aria-hidden>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <div
+            className="ec-empty-icon ec-anim-limbus"
+            style={{
+              background: "var(--ec-accent-soft)",
+              color: "var(--ec-accent)",
+              boxShadow:
+                "0 0 0 1px var(--ec-accent), 0 0 28px hsl(195 70% 60% / 0.35), inset 0 0 18px hsl(195 70% 60% / 0.18)",
+            }}
+            aria-hidden
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" />
             </svg>
           </div>
-          <div className="ec-empty-title">
+          <div
+            className="ec-empty-title"
+            style={{ fontSize: "var(--ec-text-2xl)", letterSpacing: "var(--ec-tracking-tight)" }}
+          >
             {channelName ? (
               <>
-                Начните разговор в <span style={{ color: "var(--ec-accent)" }}>#{channelName}</span>
+                Начните разговор в{" "}
+                <span style={{ color: "var(--ec-accent)" }}>#{channelName}</span>
               </>
             ) : (
               "Сообщений пока нет"
             )}
           </div>
-          <div className="ec-empty-hint">{emptyHint ?? "Будьте первым — напишите что-нибудь ниже."}</div>
+          <div className="ec-empty-hint" style={{ maxWidth: 380 }}>
+            {emptyHint ?? "Будьте первым — напишите что-нибудь ниже."}
+          </div>
         </div>
       </div>
     );

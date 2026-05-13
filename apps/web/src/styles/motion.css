@@ -122,6 +122,17 @@
   50%      { transform: translateY(-3px); }
 }
 
+/*
+ * Skeleton shimmer — loading-state pattern из designer-skills:
+ * показываем layout shape ДО загрузки реального контента вместо
+ * blank или spinner. Shimmer диагональный, 1.6s loop, respects
+ * prefers-reduced-motion (становится static gradient).
+ */
+@keyframes ec-skeleton-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
 @keyframes ec-bg-shimmer {
   0%   { background-position: 0% 50%; }
   50%  { background-position: 100% 50%; }
@@ -182,6 +193,24 @@
 
 .ec-anim-fade           { animation: ec-fade-in var(--ec-dur-base) var(--ec-ease) both; }
 .ec-anim-message-enter  { animation: ec-message-enter var(--ec-dur-base) var(--ec-ease-out) both; }
+
+/*
+ * Stagger utilities — для list-enter (MessageList, MemberList, ServerList).
+ * Use: <div class="ec-anim-message-enter" style={{animationDelay: `${i*40}ms`}}>.
+ * Designer-skills motion-system rule: 30-50ms между related items,
+ * total sequence ≤ 500ms (= max 12 items animated explicitly).
+ */
+.ec-stagger-list > *:nth-child(1)  { animation-delay: 0ms; }
+.ec-stagger-list > *:nth-child(2)  { animation-delay: 40ms; }
+.ec-stagger-list > *:nth-child(3)  { animation-delay: 80ms; }
+.ec-stagger-list > *:nth-child(4)  { animation-delay: 120ms; }
+.ec-stagger-list > *:nth-child(5)  { animation-delay: 160ms; }
+.ec-stagger-list > *:nth-child(6)  { animation-delay: 200ms; }
+.ec-stagger-list > *:nth-child(7)  { animation-delay: 240ms; }
+.ec-stagger-list > *:nth-child(8)  { animation-delay: 280ms; }
+.ec-stagger-list > *:nth-child(9)  { animation-delay: 320ms; }
+.ec-stagger-list > *:nth-child(10) { animation-delay: 360ms; }
+.ec-stagger-list > *:nth-child(n+11) { animation-delay: 400ms; }
 .ec-anim-reaction-pop   { animation: ec-reaction-pop 240ms cubic-bezier(0.34, 1.56, 0.64, 1) both; }
 .ec-anim-modal-zoom     { animation: ec-modal-zoom-in var(--ec-dur-base) var(--ec-ease-out) both; }
 .ec-anim-breathe        { animation: ec-glow-breathe 4s ease-in-out infinite; }
@@ -238,6 +267,31 @@
   );
   filter: blur(0.5px);
   animation: ec-scan-line 3.5s ease-in-out infinite;
+}
+
+/*
+ * Skeleton — placeholder shape для async-loaded content. Шиммер
+ * только пока content грузится; static gradient если prefers-reduced-motion.
+ * Применяется как class или inline style.
+ */
+.ec-skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--ec-surface-2) 0%,
+    var(--ec-surface-3) 50%,
+    var(--ec-surface-2) 100%
+  );
+  background-size: 200% 100%;
+  animation: ec-skeleton-shimmer 1.6s linear infinite;
+  border-radius: var(--ec-radius-sm);
+  /* Чуть приглушённый чем surface — намёк «здесь будет контент» */
+  opacity: 0.85;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ec-skeleton {
+    animation: none;
+    background: var(--ec-surface-2);
+  }
 }
 
 /* Presence dot online — мягкий пульс (1 цикл / 2.4s) */

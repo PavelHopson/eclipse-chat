@@ -69,10 +69,23 @@ img { display: block; max-width: 100%; }
 
 :focus { outline: none; }
 
+/*
+ * Focus ring — keyboard a11y. Layered: 2px accent + 4px soft halo.
+ * Из designer-skills accessibility-audit: 3:1 contrast min, smooth transition.
+ */
 :focus-visible {
   outline: 2px solid var(--ec-accent);
   outline-offset: 2px;
+  box-shadow: 0 0 0 4px hsl(195 70% 60% / 0.18);
   border-radius: var(--ec-radius-xs);
+  transition: box-shadow var(--ec-dur-fast) var(--ec-ease);
+}
+
+/* Inputs/textarea/select: ring без offset — он внутри border, не снаружи */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline-offset: 0;
 }
 
 /* Scrollbar — тонкая, ненавязчивая, в духе terminal */
