@@ -71,18 +71,31 @@ export function useAuth() {
   }, [loadMe]);
 
   const login = useCallback(
-    async (email: string, password: string) => {
+    async (
+      email: string,
+      password: string,
+      opts?: { totpCode?: string; recoveryCode?: string },
+    ): Promise<{ success: boolean; needs2FA?: boolean }> => {
       setError(null);
       try {
+        const body: Record<string, unknown> = { email, password };
+        if (opts?.totpCode) body.totpCode = opts.totpCode;
+        if (opts?.recoveryCode) body.recoveryCode = opts.recoveryCode;
         const res = await fetch(apiPath("api/auth/login"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password }),
+          body: JSON.stringify(body),
         });
-        const data = (await res.json().catch(() => ({}))) as AuthResponse & { error?: string };
+        const data = (await res.json().catch(() => ({}))) as AuthResponse & {
+          error?: string;
+          twoFactorRequired?: boolean;
+        };
         if (!res.ok) {
           setError(data.error ?? "Ошибка входа");
-          return false;
+          return {
+            success: false,
+            needs2FA: Boolean(data.twoFactorRequired),
+          };
         }
         const acc = data.accessToken ?? data.token;
         if (acc && data.refreshToken) {
@@ -93,10 +106,10 @@ export function useAuth() {
         }
         setView("app");
         bumpSocketRev();
-        return true;
+        return { success: true };
       } catch (e) {
         setError(e instanceof Error ? e.message : "Сетевая ошибка");
-        return false;
+        return { success: false };
       }
     },
     [bumpSocketRev],

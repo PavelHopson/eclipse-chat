@@ -33,6 +33,18 @@ model User {
   /// overrides auto.
   status        UserStatus     @default(ONLINE)
   createdAt     DateTime       @default(now())
+  /// 2FA TOTP secret (base32). Зашифрован при-rest через AES-256-GCM
+  /// в app-layer (apps/server/src/auth/twoFactor.ts).
+  twoFactorSecret      String?
+  /// 2FA включён (secret сохранён И первый код подтверждён).
+  twoFactorEnabled     Boolean   @default(false)
+  /// Recovery codes — JSON массив bcrypt-хэшей. При verify сравниваем bcrypt
+  /// и помечаем code как использованный (remove from list).
+  twoFactorRecoveryCodes String?
+  /// Счётчик неудачных попыток входа. Reset при успехе или после lockoutUntil.
+  failedLoginAttempts  Int       @default(0)
+  /// Времянка lockout после 5 неудачных попыток. Null = не залочен.
+  lockoutUntil         DateTime?
 
   messages         Message[]
   refreshTokens    RefreshToken[]
@@ -45,6 +57,53 @@ model User {
   dmsAsUserA       DirectConversation[]  @relation("DMUserA")
   /// DM conversations где user — userB.
   dmsAsUserB       DirectConversation[]  @relation("DMUserB")
+  auditLogs        AuditLog[]
+}
+
+/**
+ * Audit log: журнал security-events и admin-действий.
+ * Никогда не удаляем (compliance). Старше 1 года будут архивироваться
+ * cron'ом в отдельную таблицу (v1.x).
+ */
+enum AuditEventType {
+  AUTH_LOGIN
+  AUTH_LOGIN_FAILED
+  AUTH_LOGIN_LOCKED
+  AUTH_LOGOUT
+  AUTH_REGISTER
+  AUTH_PASSWORD_CHANGE
+  TWOFA_ENABLED
+  TWOFA_DISABLED
+  TWOFA_VERIFIED
+  TWOFA_RECOVERY_USED
+  SERVER_CREATED
+  SERVER_DELETED
+  SERVER_BANNER_CHANGED
+  SERVER_IDENTITY_CHANGED
+  MEMBER_ROLE_CHANGED
+  MEMBER_KICKED
+  MESSAGE_DELETED_BY_MOD
+  CHANNEL_CREATED
+  CHANNEL_DELETED
+}
+
+model AuditLog {
+  id        String         @id @default(cuid())
+  type      AuditEventType
+  /// User инициатор (может быть null для system events / failed login attempts).
+  userId    String?
+  user      User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  /// IP origin (для security-расследований). Best-effort, может быть proxy IP.
+  ipAddress String?
+  /// User-Agent string для browser fingerprint.
+  userAgent String?
+  /// Дополнительные metadata в JSON (target serverId, что менялось etc).
+  /// Никаких PII — только id'шники и status flags.
+  metadata  String?
+  createdAt DateTime       @default(now())
+
+  @@index([userId, createdAt])
+  @@index([type, createdAt])
 }
 
 model RefreshToken {

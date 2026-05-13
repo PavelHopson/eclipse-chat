@@ -328,6 +328,10 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     loading: digestLoading,
     error: digestError,
     refresh: refreshDigest,
+    aiSummary: digestAiSummary,
+    aiLoading: digestAiLoading,
+    aiError: digestAiError,
+    requestAiSummary: requestDigestAiSummary,
   } = useChannelDigest(selectedChannelId, socket);
 
   // ===== DMs =====
@@ -420,6 +424,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     uploadAvatar,
     deleteAvatar,
     updateStatus,
+    reload: reloadProfile,
   } = useProfile(true);
   const [statusAnchor, setStatusAnchor] = useState<DOMRect | null>(null);
 
@@ -954,6 +959,10 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                 error={digestError}
                 onRefresh={() => void refreshDigest()}
                 compact={isMobile}
+                aiSummary={digestAiSummary}
+                aiLoading={digestAiLoading}
+                aiError={digestAiError}
+                onRequestAiSummary={() => void requestDigestAiSummary(7)}
               />
             </div>
             <PinnedBar messages={messages} />
@@ -1075,6 +1084,10 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           onSave={updateProfile}
           onUploadAvatar={uploadAvatar}
           onDeleteAvatar={deleteAvatar}
+          onTwoFactorChanged={() => {
+            // Refresh profile чтобы twoFactorEnabled flag обновился.
+            void reloadProfile?.();
+          }}
         />
       )}
 

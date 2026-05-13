@@ -2,6 +2,13 @@ import type { FastifyInstance } from "fastify";
 import { actionItemInclude, serializeActionItem } from "../actionItems.js";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
 import { db } from "../db.js";
+import {
+  AINotConfiguredError,
+  AIProviderError,
+  chat,
+  isAiConfigured,
+} from "../ai/provider.js";
+import { digestSummaryPrompt } from "../ai/prompts.js";
 
 /**
  * Channel Digest — компактная сводка состояния канала.
@@ -211,6 +218,174 @@ export async function registerDigestRoutes(app: FastifyInstance) {
           uniqueAuthors: uniqueAuthors7d,
         },
       };
+    },
+  );
+
+  /**
+   * POST /api/channels/:id/digest/summary
+   *
+   * Запрашивает natural-language резюме у LLM на базе digest snapshot'а.
+   * Сейчас не кешируем — каждый запрос свежий (digest часто меняется,
+   * кэш быстро устаревает). Будущая v0.11.1 может класть в Redis с TTL=60s.
+   *
+   * Возвращает: { summary, provider, model, latencyMs }.
+   * 503 если AI не сконфигурирован (env OPENROUTER_API_KEY / OPENAI_API_KEY).
+   * 502 если все провайдеры упали.
+   */
+  app.post(
+    "/api/channels/:id/digest/summary",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const userId = getUserId(req);
+      if (!userId) {
+        return reply.status(401).send({ error: "Unauthorized" });
+      }
+      const { id: channelId } = req.params as { id: string };
+      const membership = await requireChannelMember(userId, channelId);
+      if ("error" in membership) {
+        return reply
+          .status(membership.error === "Channel not found" ? 404 : 403)
+          .send({ error: membership.error });
+      }
+      if (!isAiConfigured()) {
+        return reply.status(503).send({
+          error: "AI не настроен на сервере",
+          hint: "Admin: set OPENROUTER_API_KEY или OPENAI_API_KEY в apps/server/.env",
+        });
+      }
+      const channel = membership.channel;
+      const windowDaysRaw = Number(
+        (req.body as { windowDays?: string | number } | null | undefined)?.windowDays ?? 7,
+      );
+      const windowDays = Number.isFinite(windowDaysRaw)
+        ? Math.min(30, Math.max(1, Math.round(windowDaysRaw)))
+        : 7;
+      const now = new Date();
+      const windowStart = new Date(now.getTime() - windowDays * ONE_DAY_MS);
+      const todayEnd = endOfDayUTC(now);
+      const tomorrowStart = startOfDayUTC(new Date(now.getTime() + ONE_DAY_MS));
+      const tomorrowEnd = endOfDayUTC(new Date(now.getTime() + ONE_DAY_MS));
+
+      // Та же сборка digest что в GET /digest — extract в helper при росте.
+      const openActions = await db.actionItem.findMany({
+        where: { channelId, status: "OPEN" },
+        include: actionItemInclude,
+        orderBy: [{ dueAt: { sort: "asc", nulls: "last" } }, { createdAt: "desc" }],
+        take: 100,
+      });
+      const recentDecisions = await db.actionItem.findMany({
+        where: { channelId, type: "DECISION", updatedAt: { gte: windowStart } },
+        include: actionItemInclude,
+        orderBy: { updatedAt: "desc" },
+        take: 10,
+      });
+      const followUps = await db.actionItem.findMany({
+        where: {
+          channelId,
+          type: "FOLLOW_UP",
+          OR: [
+            { status: "OPEN" },
+            { status: "DONE", updatedAt: { gte: windowStart } },
+          ],
+        },
+        include: actionItemInclude,
+        orderBy: [
+          { status: "asc" },
+          { dueAt: { sort: "asc", nulls: "last" } },
+          { createdAt: "desc" },
+        ],
+        take: 10,
+      });
+      const pinned = await db.message.findMany({
+        where: { channelId, pinnedAt: { not: null }, deletedAt: null },
+        orderBy: { pinnedAt: "desc" },
+        take: 5,
+        select: {
+          id: true,
+          content: true,
+          user: { select: { displayName: true } },
+        },
+      });
+      const messagesInWindow = await db.message.findMany({
+        where: { channelId, createdAt: { gte: windowStart }, deletedAt: null },
+        select: { userId: true },
+      });
+
+      const overdue: typeof openActions = [];
+      const dueToday: typeof openActions = [];
+      const dueTomorrow: typeof openActions = [];
+      const unassigned: typeof openActions = [];
+      for (const a of openActions) {
+        if (a.dueAt) {
+          const due = a.dueAt.getTime();
+          if (due < now.getTime()) overdue.push(a);
+          else if (due <= todayEnd.getTime()) dueToday.push(a);
+          else if (due >= tomorrowStart.getTime() && due <= tomorrowEnd.getTime()) dueTomorrow.push(a);
+        }
+        if (!a.assigneeUserId) unassigned.push(a);
+      }
+
+      const adapt = (a: (typeof openActions)[number]) => ({
+        type: a.type,
+        title: a.title,
+        dueAt: a.dueAt?.toISOString() ?? null,
+        assignee: a.assignee ? { displayName: a.assignee.displayName } : null,
+        status: a.status,
+      });
+
+      const prompt = digestSummaryPrompt({
+        channelName: channel.name,
+        windowDays,
+        openActions: {
+          total: openActions.length,
+          overdue: overdue.map(adapt),
+          dueToday: dueToday.map(adapt),
+          dueTomorrow: dueTomorrow.map(adapt),
+          unassigned: unassigned.map(adapt),
+        },
+        decisions: recentDecisions.map(adapt),
+        followUps: followUps.map(adapt),
+        pinned: pinned.map((p) => ({
+          content: p.content,
+          user: { displayName: p.user.displayName },
+        })),
+        stats: {
+          messages: messagesInWindow.length,
+          uniqueAuthors: new Set(messagesInWindow.map((m) => m.userId)).size,
+        },
+      });
+
+      try {
+        const result = await chat(
+          [
+            { role: "system", content: prompt.system },
+            { role: "user", content: prompt.user },
+          ],
+          { temperature: 0.4, maxTokens: 350 },
+        );
+        return {
+          summary: result.text,
+          provider: result.provider,
+          model: result.model,
+          latencyMs: result.latencyMs,
+          generatedAt: new Date().toISOString(),
+        };
+      } catch (err) {
+        if (err instanceof AINotConfiguredError) {
+          return reply.status(503).send({ error: "AI не настроен" });
+        }
+        if (err instanceof AIProviderError) {
+          app.log.warn(
+            { provider: err.provider, status: err.status, msg: err.message },
+            "AI digest summary failed",
+          );
+          return reply.status(502).send({
+            error: "AI провайдер недоступен. Попробуй позже.",
+            details: `${err.provider} ${err.status ?? ""}`.trim(),
+          });
+        }
+        throw err;
+      }
     },
   );
 }

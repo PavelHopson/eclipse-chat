@@ -9,7 +9,11 @@ import {
 
 type Props = {
   error: string | null;
-  onLogin: (email: string, password: string) => Promise<boolean>;
+  onLogin: (
+    email: string,
+    password: string,
+    opts?: { totpCode?: string; recoveryCode?: string },
+  ) => Promise<{ success: boolean; needs2FA?: boolean }>;
   onRegister: (email: string, password: string, displayName: string) => Promise<boolean>;
 };
 
@@ -194,19 +198,36 @@ export function AuthPage({ error, onLogin, onRegister }: Props) {
   const [displayName, setDisplayName] = useState("");
   const [busy, setBusy] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [needs2FA, setNeeds2FA] = useState(false);
+  const [totpCode, setTotpCode] = useState("");
+  const [useRecovery, setUseRecovery] = useState(false);
 
   const submit = async () => {
     if (busy) return;
     setBusy(true);
     try {
       if (mode === "login") {
-        await onLogin(email, password);
+        const opts = needs2FA
+          ? useRecovery
+            ? { recoveryCode: totpCode }
+            : { totpCode }
+          : undefined;
+        const res = await onLogin(email, password, opts);
+        if (!res.success && res.needs2FA) {
+          setNeeds2FA(true);
+        }
+        if (res.success) {
+          setNeeds2FA(false);
+          setTotpCode("");
+        }
       } else {
         await onRegister(email, password, displayName);
       }
     } finally {
       setBusy(false);
-      setPassword("");
+      if (!needs2FA) {
+        setPassword("");
+      }
     }
   };
 
@@ -342,7 +363,13 @@ export function AuthPage({ error, onLogin, onRegister }: Props) {
                   type="email"
                   placeholder="you@example.com"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (needs2FA) {
+                      setNeeds2FA(false);
+                      setTotpCode("");
+                    }
+                  }}
                   autoComplete="email"
                   required
                 />
@@ -373,8 +400,65 @@ export function AuthPage({ error, onLogin, onRegister }: Props) {
                   </button>
                 </div>
               </div>
+              {mode === "login" && needs2FA && (
+                <div
+                  style={{
+                    padding: "var(--ec-space-3)",
+                    background: "var(--ec-accent-soft)",
+                    border: "1px solid var(--ec-accent)",
+                    borderRadius: "var(--ec-radius-md)",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "var(--ec-space-2)",
+                  }}
+                >
+                  <label className="ec-field-label">
+                    {useRecovery ? "Recovery-код" : "Код 2FA"}{" "}
+                    <span>
+                      {useRecovery ? "(XXXXX-XXXXX)" : "(6 цифр из приложения)"}
+                    </span>
+                  </label>
+                  <input
+                    className="ec-field"
+                    type="text"
+                    inputMode={useRecovery ? "text" : "numeric"}
+                    placeholder={useRecovery ? "ABCDE-12345" : "123456"}
+                    value={totpCode}
+                    onChange={(e) => setTotpCode(e.target.value)}
+                    autoComplete="one-time-code"
+                    autoFocus
+                    maxLength={useRecovery ? 11 : 6}
+                    required
+                    style={{
+                      fontFamily: "var(--ec-font-mono)",
+                      letterSpacing: "0.15em",
+                      textAlign: "center",
+                      fontSize: "var(--ec-text-base)",
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUseRecovery((v) => !v);
+                      setTotpCode("");
+                    }}
+                    className="ec-btn ec-btn--ghost ec-btn--sm"
+                    style={{ alignSelf: "flex-start", fontSize: "var(--ec-text-2xs)" }}
+                  >
+                    {useRecovery
+                      ? "← Использовать код из приложения"
+                      : "Потерял доступ к телефону? Использовать recovery-код"}
+                  </button>
+                </div>
+              )}
               <button type="submit" disabled={busy} className="ec-btn ec-btn--primary ec-auth-submit">
-                {busy ? "Подключаю…" : mode === "login" ? "Войти" : "Создать аккаунт"}
+                {busy
+                  ? "Подключаю…"
+                  : mode === "login"
+                  ? needs2FA
+                    ? "Подтвердить и войти"
+                    : "Войти"
+                  : "Создать аккаунт"}
               </button>
             </form>
 

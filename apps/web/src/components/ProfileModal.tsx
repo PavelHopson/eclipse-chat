@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import { useRef, useState } from "react";
 import { Avatar } from "./Avatar";
 import { Modal } from "./Modal";
+import { TwoFactorSetupModal } from "./TwoFactorSetupModal";
 import type { Profile } from "../hooks/useProfile";
 
 type Props = {
@@ -12,6 +13,8 @@ type Props = {
   onSave: (data: { displayName?: string; bio?: string | null }) => Promise<boolean>;
   onUploadAvatar: (file: File) => Promise<boolean>;
   onDeleteAvatar: () => Promise<boolean>;
+  /** Уведомить parent: 2FA flipped — он refresh'нет /me. */
+  onTwoFactorChanged?: () => void;
 };
 
 const avatarSection: CSSProperties = {
@@ -32,10 +35,13 @@ export function ProfileModal({
   onSave,
   onUploadAvatar,
   onDeleteAvatar,
+  onTwoFactorChanged,
 }: Props) {
   const [displayName, setDisplayName] = useState(profile.displayName);
   const [bio, setBio] = useState(profile.bio ?? "");
+  const [show2FA, setShow2FA] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const twoFaOn = (profile as Profile & { twoFactorEnabled?: boolean }).twoFactorEnabled === true;
 
   const trimmedName = displayName.trim();
   const trimmedBio = bio.trim();
@@ -112,9 +118,53 @@ export function ProfileModal({
             )}
           </div>
           <span style={{ fontSize: "var(--ec-text-2xs)", color: "var(--ec-text-dim)" }}>
-            JPEG / PNG / WebP · до 5 МБ · обрежется до 256×256
+            JPEG / PNG / WebP / HEIC · до 20 МБ · обрежется до 512×512
           </span>
         </div>
+      </section>
+
+      {/* 2FA section */}
+      <section
+        style={{
+          ...avatarSection,
+          background: twoFaOn ? "var(--ec-accent-soft)" : "var(--ec-surface-2)",
+          borderColor: twoFaOn ? "var(--ec-accent)" : "var(--ec-border-subtle)",
+        }}
+      >
+        <div
+          aria-hidden
+          style={{
+            width: 48,
+            height: 48,
+            borderRadius: "var(--ec-radius-md)",
+            display: "grid",
+            placeItems: "center",
+            background: twoFaOn ? "var(--ec-accent)" : "var(--ec-surface-3)",
+            color: twoFaOn ? "#fff" : "var(--ec-text-muted)",
+          }}
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" />
+            <path d="M7 11V7a5 5 0 0110 0v4" />
+          </svg>
+        </div>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 4 }}>
+          <strong style={{ color: "var(--ec-text-strong)", fontSize: "var(--ec-text-sm)" }}>
+            Двухфакторная аутентификация
+          </strong>
+          <span style={{ fontSize: "var(--ec-text-2xs)", color: "var(--ec-text-muted)", lineHeight: 1.4 }}>
+            {twoFaOn
+              ? "Включена — на каждый вход требуется код из приложения."
+              : "Защити вход через TOTP-приложение. Без 2FA пароль — единственная защита."}
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={() => setShow2FA(true)}
+          className={twoFaOn ? "ec-btn ec-btn--ghost ec-btn--sm" : "ec-btn ec-btn--primary ec-btn--sm"}
+        >
+          {twoFaOn ? "Отключить" : "Включить"}
+        </button>
       </section>
 
       <div>
@@ -149,6 +199,14 @@ export function ProfileModal({
 
       {error && (
         <p style={{ margin: 0, color: "var(--ec-danger)", fontSize: "var(--ec-text-sm)" }}>{error}</p>
+      )}
+
+      {show2FA && (
+        <TwoFactorSetupModal
+          initialEnabled={twoFaOn}
+          onClose={() => setShow2FA(false)}
+          onChanged={() => onTwoFactorChanged?.()}
+        />
       )}
     </Modal>
   );

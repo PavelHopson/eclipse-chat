@@ -2,11 +2,14 @@ import "dotenv/config";
 import path from "node:path";
 import Fastify from "fastify";
 import cors from "@fastify/cors";
+import helmet from "@fastify/helmet";
+import rateLimit from "@fastify/rate-limit";
 import fastifyJwt from "@fastify/jwt";
 import fastifyStatic from "@fastify/static";
 import { Server as SocketServer } from "socket.io";
 import { registerActionRoutes } from "./routes/actions.js";
 import { registerAuthRoutes } from "./routes/auth.js";
+import { registerTwoFactorRoutes } from "./routes/twoFactor.js";
 import { registerChannelRoutes } from "./routes/channels.js";
 import { registerDigestRoutes } from "./routes/digest.js";
 import { registerDmRoutes } from "./routes/dm.js";
@@ -36,6 +39,51 @@ const app = Fastify({ logger: true });
 
 const corsOrigin = process.env.CORS_ORIGIN ?? "http://localhost:5173";
 await app.register(cors, { origin: corsOrigin, credentials: true });
+
+// Security headers: CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy.
+// CSP с unsafe-inline для styles (у нас inline styles в React components) +
+// unsafe-eval отключаем. img-src разрешает blob: для uploads preview + data: для avatars.
+// connect-src wildcard wss/https для LiveKit + Socket.io.
+await app.register(helmet, {
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "blob:", "https:"],
+      fontSrc: ["'self'", "data:"],
+      connectSrc: ["'self'", "wss:", "https:"],
+      mediaSrc: ["'self'", "blob:", "data:"],
+      workerSrc: ["'self'", "blob:"],
+      frameSrc: ["'none'"],
+      objectSrc: ["'none'"],
+      baseUri: ["'self'"],
+      formAction: ["'self'"],
+    },
+  },
+  // HSTS — только в проде (HTTPS); dev может быть HTTP localhost.
+  hsts: process.env.NODE_ENV === "production"
+    ? { maxAge: 15552000, includeSubDomains: true, preload: false }
+    : false,
+  crossOriginEmbedderPolicy: false, // ломает inline images через blob иногда
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  referrerPolicy: { policy: "strict-origin-when-cross-origin" },
+});
+
+// Rate limiting (global): защита от base-line abuse.
+// Per-route override в auth.ts для логина (тоньше).
+await app.register(rateLimit, {
+  global: false, // включаем выборочно через config: {rateLimit: ...} в routes
+  max: 100,
+  timeWindow: "1 minute",
+  hook: "onRequest",
+  keyGenerator: (req) => {
+    // Используем X-Forwarded-For (nginx ставит) или fallback req.ip
+    const fwd = req.headers["x-forwarded-for"];
+    if (typeof fwd === "string") return fwd.split(",")[0]?.trim() || req.ip;
+    return req.ip;
+  },
+});
 await app.register(fastifyJwt, {
   secret: resolvedJwtSecret,
 });
@@ -60,9 +108,10 @@ app.get("/api/health", async () => {
   }
   return { ok: true, service: "eclipse-chat-server", database: dbOk };
 });
-app.get("/api/version", async () => ({ name: "@eclipse-chat/server", version: "0.10.1" }));
+app.get("/api/version", async () => ({ name: "@eclipse-chat/server", version: "0.11.0" }));
 
 await registerAuthRoutes(app);
+await registerTwoFactorRoutes(app);
 await registerChannelRoutes(app);
 await registerActionRoutes(app);
 await registerDigestRoutes(app);

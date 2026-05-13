@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import type { CSSProperties } from "react";
-import type { ChannelDigest } from "../hooks/useChannelDigest";
+import type { ChannelDigest, DigestAiSummary } from "../hooks/useChannelDigest";
 import type { ActionItemPayload } from "../lib/socket";
 
 type Props = {
@@ -11,6 +11,12 @@ type Props = {
   onRefresh: () => void;
   /** UI compact на мобилке. */
   compact?: boolean;
+  /** AI-резюме (на LLM поверх digest). Null = ещё не запрашивали. */
+  aiSummary?: DigestAiSummary | null;
+  aiLoading?: boolean;
+  aiError?: string | null;
+  /** Triggers AI summary generation. */
+  onRequestAiSummary?: () => void;
 };
 
 const wrap: CSSProperties = {
@@ -187,7 +193,17 @@ function ItemLine({ item }: { item: ActionItemPayload }) {
   );
 }
 
-export function ChannelDigestPanel({ digest, loading, error, onRefresh, compact }: Props) {
+export function ChannelDigestPanel({
+  digest,
+  loading,
+  error,
+  onRefresh,
+  compact,
+  aiSummary,
+  aiLoading,
+  aiError,
+  onRequestAiSummary,
+}: Props) {
   const generatedAgo = useMemo(() => {
     if (!digest) return null;
     return relativeShort(digest.generatedAt);
@@ -202,16 +218,108 @@ export function ChannelDigestPanel({ digest, loading, error, onRefresh, compact 
             обновлено {generatedAgo}
           </span>
         )}
-        <button
-          type="button"
-          onClick={onRefresh}
-          disabled={loading}
-          className="ec-btn ec-btn--ghost"
-          style={{ marginLeft: "auto", minHeight: 28, padding: "0.25rem 0.7rem", fontSize: "var(--ec-text-2xs)" }}
-        >
-          {loading ? "Собираем…" : "Собрать сводку"}
-        </button>
+        <div style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
+          <button
+            type="button"
+            onClick={onRefresh}
+            disabled={loading}
+            className="ec-btn ec-btn--ghost"
+            style={{ minHeight: 28, padding: "0.25rem 0.7rem", fontSize: "var(--ec-text-2xs)" }}
+          >
+            {loading ? "Собираем…" : "Собрать сводку"}
+          </button>
+          {onRequestAiSummary && digest && (
+            <button
+              type="button"
+              onClick={onRequestAiSummary}
+              disabled={aiLoading}
+              style={{
+                minHeight: 28,
+                padding: "0.25rem 0.7rem",
+                fontSize: "var(--ec-text-2xs)",
+                fontWeight: 700,
+                letterSpacing: "var(--ec-tracking-caps)",
+                textTransform: "uppercase",
+                borderRadius: "var(--ec-radius-sm)",
+                background: "var(--ec-accent-3-soft)",
+                color: "var(--ec-accent-3)",
+                border: "1px solid var(--ec-accent-3)",
+                cursor: aiLoading ? "wait" : "pointer",
+                transition: "background var(--ec-dur-fast) var(--ec-ease)",
+              }}
+              title="Сгенерировать резюме через ИИ"
+            >
+              {aiLoading ? "ИИ думает…" : aiSummary ? "Перегенерировать ИИ" : "✦ Резюме ИИ"}
+            </button>
+          )}
+        </div>
       </header>
+
+      {(aiSummary || aiError) && (
+        <div
+          style={{
+            padding: "var(--ec-space-3) var(--ec-space-4)",
+            background:
+              "linear-gradient(135deg, var(--ec-accent-3-soft), color-mix(in srgb, var(--ec-accent-3) 4%, transparent))",
+            border: "1px solid var(--ec-accent-3)",
+            borderRadius: "var(--ec-radius-md)",
+            display: "flex",
+            flexDirection: "column",
+            gap: 6,
+            position: "relative",
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              fontSize: "var(--ec-text-2xs)",
+              fontWeight: 700,
+              letterSpacing: "var(--ec-tracking-caps)",
+              textTransform: "uppercase",
+              color: "var(--ec-accent-3)",
+            }}
+          >
+            <span aria-hidden>✦</span>
+            <span>ИИ-резюме</span>
+            {aiSummary && (
+              <span
+                style={{
+                  marginLeft: "auto",
+                  fontFamily: "var(--ec-font-mono)",
+                  fontSize: "0.6rem",
+                  color: "var(--ec-text-dim)",
+                  letterSpacing: 0,
+                  textTransform: "none",
+                  fontWeight: 400,
+                }}
+                title={`${aiSummary.provider}/${aiSummary.model} · ${aiSummary.latencyMs}ms`}
+              >
+                {aiSummary.provider} · {(aiSummary.latencyMs / 1000).toFixed(1)}s
+              </span>
+            )}
+          </div>
+          {aiError ? (
+            <p style={{ margin: 0, color: "var(--ec-danger)", fontSize: "var(--ec-text-sm)" }}>
+              {aiError}
+            </p>
+          ) : (
+            <p
+              style={{
+                margin: 0,
+                color: "var(--ec-text)",
+                fontSize: "var(--ec-text-sm)",
+                lineHeight: "var(--ec-leading-relaxed)",
+                whiteSpace: "pre-wrap",
+              }}
+            >
+              {aiSummary?.summary}
+            </p>
+          )}
+        </div>
+      )}
 
       {error && (
         <p style={{ margin: 0, color: "var(--ec-danger)", fontSize: "var(--ec-text-sm)" }}>

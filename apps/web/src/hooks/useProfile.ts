@@ -10,6 +10,7 @@ export type Profile = {
   avatar: string | null;
   bio: string | null;
   status?: UserStatus;
+  twoFactorEnabled?: boolean;
   createdAt: string;
 };
 

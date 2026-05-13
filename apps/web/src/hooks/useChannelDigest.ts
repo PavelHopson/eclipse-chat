@@ -37,11 +37,22 @@ export type ChannelDigest = {
   stats: { messages: number; uniqueAuthors: number };
 };
 
+export type DigestAiSummary = {
+  summary: string;
+  provider: string;
+  model: string;
+  latencyMs: number;
+  generatedAt: string;
+};
+
 export function useChannelDigest(channelId: string | null, socket?: Socket | null) {
   const [digest, setDigest] = useState<ChannelDigest | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const lastFetchedAt = useRef<number>(0);
+  const [aiSummary, setAiSummary] = useState<DigestAiSummary | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   const fetchDigest = useCallback(async () => {
     if (!channelId) {
@@ -62,6 +73,38 @@ export function useChannelDigest(channelId: string | null, socket?: Socket | nul
       setLoading(false);
     }
   }, [channelId]);
+
+  // Сбрасываем AI summary при смене канала или digest refresh — context менялся.
+  useEffect(() => {
+    setAiSummary(null);
+    setAiError(null);
+  }, [channelId]);
+
+  const requestAiSummary = useCallback(
+    async (windowDays = 7): Promise<DigestAiSummary | null> => {
+      if (!channelId) return null;
+      setAiLoading(true);
+      setAiError(null);
+      try {
+        const data = await apiJson<DigestAiSummary>(
+          `/api/channels/${encodeURIComponent(channelId)}/digest/summary`,
+          {
+            method: "POST",
+            body: JSON.stringify({ windowDays }),
+          },
+        );
+        setAiSummary(data);
+        return data;
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "AI недоступен";
+        setAiError(msg);
+        return null;
+      } finally {
+        setAiLoading(false);
+      }
+    },
+    [channelId],
+  );
 
   // Auto-fetch при смене channelId
   useEffect(() => {
@@ -106,5 +149,9 @@ export function useChannelDigest(channelId: string | null, socket?: Socket | nul
     error,
     refresh: fetchDigest,
     lastFetchedAt: lastFetchedAt.current,
+    aiSummary,
+    aiLoading,
+    aiError,
+    requestAiSummary,
   };
 }

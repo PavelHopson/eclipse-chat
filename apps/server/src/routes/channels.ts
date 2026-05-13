@@ -9,6 +9,7 @@ import {
   MESSAGE_BODY_LIMIT_WITH_ATTACHMENTS,
   processAttachment,
 } from "../attachments.js";
+import { maybeReplyToMention } from "../ai/assistant.js";
 
 const channelTypeSchema = z.enum(["TEXT", "VOICE"]);
 
@@ -324,6 +325,10 @@ export async function registerChannelRoutes(app: FastifyInstance) {
         })),
       };
       emitMessageOnChannel(m.channelId!, payload);
+      // Fire-and-forget: если в сообщении @ai — assistant ответит асинхронно
+      // через ~3-10s. Caller получит immediately свой message, AI reply
+      // прилетит через socket.
+      void maybeReplyToMention(m.channelId!, m.id, userId, m.content, app.log);
       return { message: payload };
     },
   );
