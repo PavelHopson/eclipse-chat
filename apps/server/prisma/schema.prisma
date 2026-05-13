@@ -100,6 +100,18 @@ model Server {
   id          String   @id @default(cuid())
   name        String
   icon        String?
+  /// Banner image, 1500×500 webp (resized sharp). Хедер чата + сервер-инфо.
+  banner      String?
+  /// HSL brand color string без `hsl()` wrapper: "200 80% 60%". Frontend
+  /// инжектит `:root { --ec-accent: hsl(X) }` пока активен этот сервер.
+  /// Null = default cool sky. Per-server theming без full redesign.
+  brandColor  String?
+  /// Markdown-описание сервера (до 1000 символов). Показывается в Info modal
+  /// и welcome screen для новых членов.
+  description String?
+  /// Welcome-сообщение для новых members. Показывается один раз в первом
+  /// TEXT канале как dismissible system-card. До 500 символов.
+  welcomeMessage String?
   /// Уникальный код для приёма по ссылке. Регенерируется через PATCH (TODO v0.4+).
   inviteCode  String   @unique @default(cuid())
   /// Владелец — User. Не может быть удалён пока ownsServer (onDelete: Restrict).

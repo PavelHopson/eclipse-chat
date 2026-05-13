@@ -54,7 +54,7 @@ const activeMarker: CSSProperties = {
   height: 22,
   borderRadius: "var(--ec-radius-full)",
   background: "var(--ec-accent)",
-  boxShadow: "0 0 8px hsl(32 100% 58% / 0.55)",
+  boxShadow: "0 0 8px hsl(195 70% 60% / 0.55)",
 };
 
 const separator: CSSProperties = {
@@ -130,7 +130,7 @@ export function ServerList({
                 alignItems: "center",
                 justifyContent: "center",
                 border: "2px solid var(--ec-surface-1)",
-                boxShadow: "0 0 6px hsl(32 100% 58% / 0.5)",
+                boxShadow: "0 0 6px hsl(195 70% 60% / 0.5)",
               }}
             >
               {dmsUnread > 99 ? "99+" : dmsUnread}

@@ -143,9 +143,9 @@ function dueMeta(iso: string | null) {
     return {
       label: "Сегодня",
       hint: "Горит сегодня",
-      bg: "hsl(32 100% 58% / 0.13)",
-      fg: "hsl(32 100% 68%)",
-      border: "hsl(32 100% 58% / 0.34)",
+      bg: "hsl(195 70% 60% / 0.13)",
+      fg: "hsl(195 70% 68%)",
+      border: "hsl(195 70% 60% / 0.34)",
     };
   }
 

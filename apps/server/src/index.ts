@@ -60,7 +60,7 @@ app.get("/api/health", async () => {
   }
   return { ok: true, service: "eclipse-chat-server", database: dbOk };
 });
-app.get("/api/version", async () => ({ name: "@eclipse-chat/server", version: "0.8.2" }));
+app.get("/api/version", async () => ({ name: "@eclipse-chat/server", version: "0.10.1" }));
 
 await registerAuthRoutes(app);
 await registerChannelRoutes(app);

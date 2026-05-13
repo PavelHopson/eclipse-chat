@@ -6,6 +6,14 @@ export type ServerRow = {
   id: string;
   name: string;
   icon: string | null;
+  /** v0.10.1: banner image 1500×500. URL relative to BASE_URL. */
+  banner: string | null;
+  /** v0.10.1: HSL string "200 80% 60%" без `hsl()` wrapper. Frontend инжектит. */
+  brandColor: string | null;
+  /** v0.10.1: markdown описание сервера (до 1000 символов). */
+  description: string | null;
+  /** v0.10.1: приветственное сообщение для новых members (до 500 символов). */
+  welcomeMessage: string | null;
   inviteCode: string;
   ownerId: string;
   createdAt: string;
@@ -199,6 +207,112 @@ export function useServers(isReady: boolean) {
     [],
   );
 
+  // ===== v0.10.1 Server Identity =====
+
+  const uploadServerBanner = useCallback(
+    async (serverId: string, file: File): Promise<boolean> => {
+      setError(null);
+      try {
+        const isImage =
+          /^image\//.test(file.type) ||
+          file.type === "" ||
+          file.type === "application/octet-stream";
+        if (!isImage) {
+          setError(`Файл ${file.type} — не изображение`);
+          return false;
+        }
+        if (file.size > 25 * 1024 * 1024) {
+          setError(
+            `Файл ${(file.size / 1024 / 1024).toFixed(1)} MB слишком большой. Максимум 25 MB.`,
+          );
+          return false;
+        }
+        const dataBase64 = await fileToBase64(file);
+        const contentType = file.type || "image/heic";
+        const res = await apiJson<{ banner: string }>(
+          `/api/servers/${encodeURIComponent(serverId)}/banner`,
+          {
+            method: "POST",
+            body: JSON.stringify({ contentType, dataBase64 }),
+          },
+        );
+        setServers((prev) =>
+          prev.map((s) => (s.id === serverId ? { ...s, banner: res.banner } : s)),
+        );
+        return true;
+      } catch (e) {
+        setError(e instanceof ApiError ? e.message : "Не удалось загрузить баннер");
+        return false;
+      }
+    },
+    [],
+  );
+
+  const deleteServerBanner = useCallback(async (serverId: string): Promise<boolean> => {
+    setError(null);
+    try {
+      const res = await api(`/api/servers/${encodeURIComponent(serverId)}/banner`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        let msg = `HTTP ${res.status}`;
+        try {
+          const body = (await res.json()) as { error?: string };
+          if (body?.error) msg = body.error;
+        } catch {
+          /* */
+        }
+        setError(msg);
+        return false;
+      }
+      setServers((prev) =>
+        prev.map((s) => (s.id === serverId ? { ...s, banner: null } : s)),
+      );
+      return true;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Не удалось удалить баннер");
+      return false;
+    }
+  }, []);
+
+  const updateServerIdentity = useCallback(
+    async (
+      serverId: string,
+      patch: {
+        brandColor?: string | null;
+        description?: string | null;
+        welcomeMessage?: string | null;
+      },
+    ): Promise<boolean> => {
+      setError(null);
+      try {
+        const res = await apiJson<{
+          identity: { brandColor: string | null; description: string | null; welcomeMessage: string | null };
+        }>(`/api/servers/${encodeURIComponent(serverId)}/identity`, {
+          method: "PATCH",
+          body: JSON.stringify(patch),
+        });
+        setServers((prev) =>
+          prev.map((s) =>
+            s.id === serverId
+              ? {
+                  ...s,
+                  brandColor: res.identity.brandColor,
+                  description: res.identity.description,
+                  welcomeMessage: res.identity.welcomeMessage,
+                }
+              : s,
+          ),
+        );
+        return true;
+      } catch (e) {
+        setError(e instanceof ApiError ? e.message : "Не удалось сохранить оформление");
+        return false;
+      }
+    },
+    [],
+  );
+
   const deleteServerIcon = useCallback(async (serverId: string): Promise<boolean> => {
     setError(null);
     try {
@@ -240,5 +354,8 @@ export function useServers(isReady: boolean) {
     deleteServer,
     uploadServerIcon,
     deleteServerIcon,
+    uploadServerBanner,
+    deleteServerBanner,
+    updateServerIdentity,
   };
 }

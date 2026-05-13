@@ -15,6 +15,8 @@ type Props = {
   onUploadIcon?: (file: File) => Promise<boolean>;
   onDeleteIcon?: () => Promise<boolean>;
   onUpdateRole?: (memberUserId: string, role: "ADMIN" | "MODERATOR" | "MEMBER") => Promise<boolean>;
+  /** Кнопка «Оформление» — открывает ServerSettingsModal. Только OWNER. */
+  onOpenSettings?: () => void;
 };
 
 function resolveIconUrl(raw: string): string {
@@ -135,6 +137,7 @@ export function ServerInfoModal({
   onUploadIcon,
   onDeleteIcon,
   onUpdateRole,
+  onOpenSettings,
 }: Props) {
   const [copiedCode, setCopiedCode] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
@@ -218,6 +221,16 @@ export function ServerInfoModal({
           <button type="button" onClick={onClose} className="ec-btn">
             Закрыть
           </button>
+          {isOwner && onOpenSettings && (
+            <button
+              type="button"
+              onClick={onOpenSettings}
+              className="ec-btn ec-btn--primary"
+              title="Открыть настройки оформления"
+            >
+              ⚡ Оформление
+            </button>
+          )}
           {isOwner ? (
             <button type="button" onClick={() => void handleDelete()} disabled={busy} className="ec-btn ec-btn--danger">
               Удалить сервер
@@ -230,6 +243,55 @@ export function ServerInfoModal({
         </>
       }
     >
+      {server.banner && (
+        <div
+          style={{
+            position: "relative",
+            margin: "calc(var(--ec-space-5) * -1) calc(var(--ec-space-5) * -1) var(--ec-space-4)",
+            aspectRatio: "3 / 1",
+            overflow: "hidden",
+            borderBottom: "1px solid var(--ec-border-default)",
+          }}
+        >
+          <img
+            src={resolveIconUrl(server.banner)}
+            alt=""
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              display: "block",
+            }}
+          />
+          <div
+            aria-hidden
+            style={{
+              position: "absolute",
+              inset: 0,
+              background:
+                "linear-gradient(180deg, transparent 40%, hsl(210 22% 4% / 0.85) 100%)",
+              pointerEvents: "none",
+            }}
+          />
+        </div>
+      )}
+      {server.description && (
+        <p
+          style={{
+            margin: 0,
+            color: "var(--ec-text-muted)",
+            fontSize: "var(--ec-text-sm)",
+            lineHeight: "var(--ec-leading-relaxed)",
+            padding: "var(--ec-space-3) var(--ec-space-4)",
+            background: "var(--ec-surface-2)",
+            border: "1px solid var(--ec-border-subtle)",
+            borderRadius: "var(--ec-radius-md)",
+            whiteSpace: "pre-wrap",
+          }}
+        >
+          {server.description}
+        </p>
+      )}
       <section style={iconSection}>
         <div style={iconBox} aria-hidden>
           {server.icon ? (

@@ -135,6 +135,10 @@ export async function registerServerRoutes(app: FastifyInstance) {
             id: true,
             name: true,
             icon: true,
+            banner: true,
+            brandColor: true,
+            description: true,
+            welcomeMessage: true,
             inviteCode: true,
             ownerId: true,
             createdAt: true,
@@ -149,6 +153,10 @@ export async function registerServerRoutes(app: FastifyInstance) {
         id: m.server.id,
         name: m.server.name,
         icon: m.server.icon,
+        banner: m.server.banner,
+        brandColor: m.server.brandColor,
+        description: m.server.description,
+        welcomeMessage: m.server.welcomeMessage,
         inviteCode: m.server.inviteCode,
         ownerId: m.server.ownerId,
         createdAt: m.server.createdAt.toISOString(),
@@ -208,6 +216,10 @@ export async function registerServerRoutes(app: FastifyInstance) {
         id: true,
         name: true,
         icon: true,
+        banner: true,
+        brandColor: true,
+        description: true,
+        welcomeMessage: true,
         inviteCode: true,
         ownerId: true,
         createdAt: true,
@@ -222,6 +234,10 @@ export async function registerServerRoutes(app: FastifyInstance) {
         id: server.id,
         name: server.name,
         icon: server.icon,
+        banner: server.banner,
+        brandColor: server.brandColor,
+        description: server.description,
+        welcomeMessage: server.welcomeMessage,
         inviteCode: server.inviteCode,
         ownerId: server.ownerId,
         createdAt: server.createdAt.toISOString(),
@@ -666,4 +682,177 @@ export async function registerServerRoutes(app: FastifyInstance) {
     await db.server.update({ where: { id: serverId }, data: { icon: null } });
     return { ok: true };
   });
+
+  // =========================================================================
+  // v0.10.1 Server Identity — banner + brand color + description + welcome
+  // =========================================================================
+
+  const BANNER_BODY_LIMIT = 35 * 1024 * 1024;
+  const BANNER_MAX_BINARY = 25 * 1024 * 1024;
+
+  /** Валидация HSL string: "200 80% 60%" (3 числа space-separated с % на 2/3). */
+  const HSL_PATTERN = /^\d{1,3}\s+\d{1,3}%\s+\d{1,3}%$/;
+
+  const updateIdentityBody = z.object({
+    brandColor: z
+      .string()
+      .max(40)
+      .nullable()
+      .optional()
+      .refine(
+        (v) => v == null || v === "" || HSL_PATTERN.test(v.trim()),
+        { message: "brandColor должен быть в формате 'H S% L%' (например '200 80% 60%')" },
+      ),
+    description: z.string().max(1000).nullable().optional(),
+    welcomeMessage: z.string().max(500).nullable().optional(),
+  });
+
+  /**
+   * PATCH /api/servers/:id/identity — обновить brandColor / description /
+   * welcomeMessage. Только OWNER. Каждое поле опциональное; передаётся
+   * только то что меняется. Передача null = сброс.
+   */
+  app.patch(
+    "/api/servers/:id/identity",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const { id: serverId } = req.params as { id: string };
+      const me = await loadMember(req, reply, serverId);
+      if (!me) return reply;
+      if (me.role !== "OWNER") {
+        return reply.status(403).send({ error: "Только OWNER может менять оформление сервера" });
+      }
+      const parsed = updateIdentityBody.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.status(400).send({
+          error: parsed.error.issues[0]?.message ?? "Invalid body",
+        });
+      }
+      const data: {
+        brandColor?: string | null;
+        description?: string | null;
+        welcomeMessage?: string | null;
+      } = {};
+      if (parsed.data.brandColor !== undefined) {
+        const c = parsed.data.brandColor;
+        data.brandColor = c == null || c === "" ? null : c.trim();
+      }
+      if (parsed.data.description !== undefined) {
+        const d = parsed.data.description;
+        data.description = d == null || d === "" ? null : d.trim();
+      }
+      if (parsed.data.welcomeMessage !== undefined) {
+        const w = parsed.data.welcomeMessage;
+        data.welcomeMessage = w == null || w === "" ? null : w.trim();
+      }
+      const updated = await db.server.update({
+        where: { id: serverId },
+        data,
+        select: {
+          id: true,
+          brandColor: true,
+          description: true,
+          welcomeMessage: true,
+        },
+      });
+      return { ok: true, identity: updated };
+    },
+  );
+
+  /**
+   * POST /api/servers/:id/banner — загрузить banner image (1500×500 webp).
+   * Только OWNER. JSON+base64 (как icon/avatar).
+   */
+  app.post(
+    "/api/servers/:id/banner",
+    { onRequest: [requireJwt], bodyLimit: BANNER_BODY_LIMIT },
+    async (req, reply) => {
+      const { id: serverId } = req.params as { id: string };
+      const me = await loadMember(req, reply, serverId);
+      if (!me) return reply;
+      if (me.role !== "OWNER") {
+        return reply.status(403).send({ error: "Только OWNER может менять баннер" });
+      }
+      const parsed = uploadIconBody.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.status(400).send({ error: "Invalid body" });
+      }
+      if (!ICON_MIME.has(parsed.data.contentType)) {
+        return reply.status(415).send({
+          error: `Формат ${parsed.data.contentType} не поддерживается.`,
+        });
+      }
+      const buf = Buffer.from(parsed.data.dataBase64, "base64");
+      if (buf.length === 0) {
+        return reply.status(400).send({ error: "Пустой файл" });
+      }
+      if (buf.length > BANNER_MAX_BINARY) {
+        return reply.status(413).send({
+          error: `Файл ${(buf.length / 1024 / 1024).toFixed(1)} MB слишком большой. Максимум 25 MB.`,
+        });
+      }
+      let resized: Buffer;
+      try {
+        // Баннер 1500×500 (3:1 aspect). cover crop, центр.
+        resized = await sharp(buf, { failOn: "none" })
+          .rotate()
+          .resize(1500, 500, { fit: "cover", position: "center" })
+          .webp({ quality: 86 })
+          .toBuffer();
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        app.log.warn({ err, serverId }, "Server banner sharp failed");
+        const hint = /heif|heic|libheif/i.test(message)
+          ? " Похоже HEIC из iPhone — переключи Фото → Поделиться → формат «Совместимый»."
+          : "";
+        return reply.status(400).send({
+          error: `Не удалось обработать баннер.${hint}`,
+          details: message,
+        });
+      }
+      const dir = path.join(process.env.UPLOADS_DIR ?? "./uploads", "server-banners");
+      await fs.mkdir(dir, { recursive: true });
+      // Cleanup старого banner best-effort
+      const existing = await db.server.findUnique({
+        where: { id: serverId },
+        select: { banner: true },
+      });
+      if (existing?.banner) {
+        const oldName = path.basename(existing.banner);
+        if (oldName) await fs.unlink(path.join(dir, oldName)).catch(() => undefined);
+      }
+      const filename = `${serverId}-${Date.now()}.webp`;
+      await fs.writeFile(path.join(dir, filename), resized);
+      const url = `/uploads/server-banners/${filename}`;
+      await db.server.update({ where: { id: serverId }, data: { banner: url } });
+      return { ok: true, banner: url };
+    },
+  );
+
+  /** DELETE /api/servers/:id/banner — снять баннер. Только OWNER. */
+  app.delete(
+    "/api/servers/:id/banner",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const { id: serverId } = req.params as { id: string };
+      const me = await loadMember(req, reply, serverId);
+      if (!me) return reply;
+      if (me.role !== "OWNER") {
+        return reply.status(403).send({ error: "Только OWNER может менять баннер" });
+      }
+      const existing = await db.server.findUnique({
+        where: { id: serverId },
+        select: { banner: true },
+      });
+      if (existing?.banner) {
+        const oldName = path.basename(existing.banner);
+        if (oldName) {
+          const dir = path.join(process.env.UPLOADS_DIR ?? "./uploads", "server-banners");
+          await fs.unlink(path.join(dir, oldName)).catch(() => undefined);
+        }
+      }
+      await db.server.update({ where: { id: serverId }, data: { banner: null } });
+      return { ok: true };
+    },
+  );
 }

@@ -46,14 +46,14 @@
 }
 
 .ec-btn--primary {
-  background: linear-gradient(135deg, var(--ec-accent), hsl(28 100% 48%));
+  background: linear-gradient(135deg, var(--ec-accent), hsl(168 60% 48%));
   color: var(--ec-accent-text);
   border-color: var(--ec-accent);
   font-weight: 600;
-  box-shadow: 0 0 0 1px hsl(32 100% 70% / 0.14), 0 10px 28px hsl(32 100% 40% / 0.14);
+  box-shadow: 0 0 0 1px hsl(195 70% 70% / 0.14), 0 10px 28px hsl(195 70% 35% / 0.14);
 }
 .ec-btn--primary:hover {
-  background: linear-gradient(135deg, var(--ec-accent-hover), hsl(28 100% 52%));
+  background: linear-gradient(135deg, var(--ec-accent-hover), hsl(168 60% 54%));
   border-color: var(--ec-accent-hover);
 }
 
@@ -113,7 +113,7 @@
 .ec-field:focus {
   background: var(--ec-input-bg-focus);
   border-color: var(--ec-accent);
-  box-shadow: 0 0 0 2px var(--ec-accent-soft), 0 0 18px hsl(32 100% 58% / 0.12);
+  box-shadow: 0 0 0 2px var(--ec-accent-soft), 0 0 18px hsl(195 70% 60% / 0.12);
   outline: none;
 }
 
@@ -283,7 +283,7 @@
 .ec-shell {
   background:
     radial-gradient(ellipse 34rem 26rem at 82% 18%, hsl(220 92% 68% / 0.08), transparent 62%),
-    radial-gradient(ellipse 28rem 20rem at 8% 94%, hsl(32 100% 58% / 0.06), transparent 58%),
+    radial-gradient(ellipse 28rem 20rem at 8% 94%, hsl(195 70% 60% / 0.06), transparent 58%),
     var(--ec-bg);
 }
 
@@ -291,7 +291,7 @@
   background:
     linear-gradient(180deg, hsl(220 18% 5% / 0.96), hsl(220 18% 4% / 0.94)) !important;
   border-bottom-color: hsl(0 0% 100% / 0.07) !important;
-  box-shadow: 0 1px 0 hsl(32 100% 58% / 0.06);
+  box-shadow: 0 1px 0 hsl(195 70% 60% / 0.06);
 }
 
 .ec-shell__rail,
@@ -302,7 +302,7 @@
 }
 
 .ec-shell__rail {
-  box-shadow: inset -1px 0 0 hsl(32 100% 58% / 0.04);
+  box-shadow: inset -1px 0 0 hsl(195 70% 60% / 0.04);
 }
 
 .ec-shell__channels {
@@ -330,8 +330,8 @@
 
 .ec-shell__brand-home:hover {
   background: var(--ec-surface-2) !important;
-  border-color: hsl(32 100% 58% / 0.22) !important;
-  box-shadow: 0 0 22px hsl(32 100% 58% / 0.1);
+  border-color: hsl(195 70% 60% / 0.22) !important;
+  box-shadow: 0 0 22px hsl(195 70% 60% / 0.1);
 }
 
 .ec-shell__brand-home:active {
@@ -345,7 +345,7 @@
   overflow: auto;
   padding: var(--ec-space-6);
   background:
-    radial-gradient(circle at 76% 18%, hsl(32 100% 58% / 0.12), transparent 34%),
+    radial-gradient(circle at 76% 18%, hsl(195 70% 60% / 0.12), transparent 34%),
     radial-gradient(circle at 18% 82%, hsl(220 92% 68% / 0.08), transparent 36%);
 }
 
@@ -380,7 +380,7 @@
   border-radius: var(--ec-radius-md);
   background:
     linear-gradient(180deg, hsl(222 20% 10% / 0.88), hsl(222 20% 7% / 0.78)),
-    radial-gradient(circle at 0% 0%, hsl(32 100% 58% / 0.18), transparent 42%);
+    radial-gradient(circle at 0% 0%, hsl(195 70% 60% / 0.18), transparent 42%);
   box-shadow:
     inset 0 1px 0 hsl(0 0% 100% / 0.05),
     0 24px 80px hsl(220 72% 3% / 0.38);
@@ -498,10 +498,10 @@
   place-items: center;
   width: 44px;
   height: 44px;
-  border: 1px solid hsl(32 100% 68% / 0.22);
+  border: 1px solid hsl(195 70% 68% / 0.22);
   border-radius: var(--ec-radius-md);
-  background: hsl(32 100% 18% / 0.22);
-  color: hsl(32 100% 72%);
+  background: hsl(200 50% 12% / 0.22);
+  color: hsl(195 75% 72%);
 }
 
 .ec-home-card strong,
@@ -1356,7 +1356,7 @@ body:has(.ec-auth-page--board),
   background:
     linear-gradient(90deg, hsl(0 0% 100% / 0.025) 1px, transparent 1px),
     linear-gradient(hsl(0 0% 100% / 0.025) 1px, transparent 1px),
-    radial-gradient(ellipse 44rem 28rem at 10% 8%, hsl(32 100% 58% / 0.08), transparent 64%),
+    radial-gradient(ellipse 44rem 28rem at 10% 8%, hsl(195 70% 60% / 0.08), transparent 64%),
     radial-gradient(ellipse 42rem 30rem at 82% 24%, hsl(194 72% 43% / 0.1), transparent 62%),
     linear-gradient(135deg, hsl(220 18% 3%) 0%, hsl(218 18% 4%) 58%, hsl(222 18% 3%) 100%);
   background-size: 56px 56px, 56px 56px, auto, auto, auto;
@@ -1376,10 +1376,10 @@ body:has(.ec-auth-page--board),
 .ec-auth-page--board::after {
   right: -6rem;
   bottom: -16rem;
-  border-color: hsl(32 100% 58% / 0.16);
+  border-color: hsl(195 70% 60% / 0.16);
   background:
     radial-gradient(circle at 50% 50%, hsl(220 18% 3%) 0 30%, transparent 31%),
-    conic-gradient(from 248deg, transparent 0 8%, hsl(32 100% 62% / 0.72), transparent 24% 68%, hsl(194 72% 60% / 0.22), transparent 78% 100%);
+    conic-gradient(from 248deg, transparent 0 8%, hsl(195 70% 64% / 0.72), transparent 24% 68%, hsl(194 72% 60% / 0.22), transparent 78% 100%);
 }
 
 .ec-auth-board-shell {
@@ -1578,12 +1578,12 @@ body:has(.ec-auth-page--board),
   border-color: hsl(0 0% 100% / 0.08);
   background:
     linear-gradient(180deg, hsl(220 14% 8% / 0.86), hsl(220 14% 5% / 0.78)),
-    radial-gradient(circle at 100% 0%, hsl(32 100% 58% / 0.08), transparent 42%);
+    radial-gradient(circle at 100% 0%, hsl(195 70% 60% / 0.08), transparent 42%);
 }
 
 .ec-auth-page--board .ec-auth-feature-icon {
-  border-color: hsl(32 100% 58% / 0.2);
-  background: hsl(32 100% 58% / 0.08);
+  border-color: hsl(195 70% 60% / 0.2);
+  background: hsl(195 70% 60% / 0.08);
   color: var(--ec-accent);
 }
 
@@ -1608,7 +1608,7 @@ body:has(.ec-auth-page--board),
   border-color: hsl(0 0% 100% / 0.1);
   border-radius: var(--ec-radius-md);
   background:
-    radial-gradient(circle at 88% 0%, hsl(32 100% 58% / 0.11), transparent 36%),
+    radial-gradient(circle at 88% 0%, hsl(195 70% 60% / 0.11), transparent 36%),
     radial-gradient(circle at 100% 68%, hsl(194 72% 46% / 0.1), transparent 42%),
     linear-gradient(180deg, hsl(220 16% 8% / 0.95), hsl(220 16% 4% / 0.96));
   animation: none;
@@ -1624,13 +1624,13 @@ body:has(.ec-auth-page--board),
 
 .ec-auth-page--board .ec-auth-message.is-accent,
 .ec-auth-page--board .ec-auth-action-strip {
-  border-color: hsl(32 100% 58% / 0.2);
-  background: hsl(32 100% 58% / 0.075);
+  border-color: hsl(195 70% 60% / 0.2);
+  background: hsl(195 70% 60% / 0.075);
 }
 
 .ec-auth-page--board .ec-auth-server-tile.is-active {
-  background: linear-gradient(135deg, hsl(32 100% 18% / 0.9), hsl(220 24% 16%));
-  box-shadow: 0 0 22px hsl(32 100% 58% / 0.18);
+  background: linear-gradient(135deg, hsl(200 50% 12% / 0.9), hsl(220 24% 16%));
+  box-shadow: 0 0 22px hsl(195 70% 60% / 0.18);
 }
 
 .ec-auth-page--board .ec-auth-voice-pill,

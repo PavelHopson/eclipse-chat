@@ -1,76 +1,91 @@
 /**
- * Eclipse Chat — Design tokens
- * ============================
+ * Eclipse Chat — Design tokens (v0.10 "Cold Operator Console")
+ * ============================================================
  *
- * Контракт «operator console»: глубокий void-black, тонкие линии,
- * eclipse edge-light и редкий warm action accent. НЕ Discord-Blurple,
- * НЕ геймерский неон, НЕ перегруженный sci-fi HUD.
+ * Контракт почерка:
+ *   — Глубокий night-blue void с лёгким cyan undertone, не «mid grey».
+ *   — Edge-light accent — cool sky #5db5d9 с лёгким cyan хвостом.
+ *   — Тонкие линии (rgba(255,255,255,0.06-0.16)), никаких толстых borders.
+ *   — Motion бытра (120ms), modal/glow 200ms; ambient breathing 4s.
+ *   — Type: Orbitron только для display/brand caps; основной — Inter.
  *
- * Все компоненты должны брать значения отсюда через `var(--name)`.
- * Inline-стили допустимы только для динамических значений (например
- * width/height по props), но цвета/spacing/radius — всегда tokens.
+ * Палитра вернулась к холодной после фидбека Pavel'я 13.05.2026
+ * («дизайн слабый, верни холодные тона, добавь креатив»). Eclipse Forge
+ * orange теперь только как `--ec-warn-2` для редких action-emphasis,
+ * не как primary accent.
+ *
+ * Per-server brand-color override: AppShell инжектит
+ * `:root { --ec-accent: hsl(X Y% Z%) }` когда у активного сервера задан
+ * `brandColor`. Все компоненты автоматически подхватят.
  *
  * Иерархия surface'ов:
- *   ec-bg            — фон страницы (самый глубокий)
- *   ec-surface-1     — sidebar/header (приподнят)
+ *   ec-bg            — фон страницы (deepest)
+ *   ec-surface-1     — sidebar/header
  *   ec-surface-2     — карточки/inputs
- *   ec-surface-3     — hover/secondary action
- *   ec-surface-4     — active state
+ *   ec-surface-3     — hover
+ *   ec-surface-4     — active
  */
 
 :root {
-  /* ---- Background tiers ---------------------------------------- */
-  --ec-bg:                  hsl(220 18% 3%);     /* void black */
-  --ec-surface-1:           hsl(220 15% 6%);     /* steel */
-  --ec-surface-2:           hsl(220 14% 9%);     /* slate */
-  --ec-surface-3:           hsl(220 12% 13%);    /* ash */
-  --ec-surface-4:           hsl(220 12% 18%);
+  /* ---- Background tiers (night-blue void) ---------------------- */
+  --ec-bg:                  hsl(210 22% 4%);     /* deep night blue */
+  --ec-surface-1:           hsl(210 18% 7%);     /* steel-blue */
+  --ec-surface-2:           hsl(210 16% 10%);    /* slate-blue */
+  --ec-surface-3:           hsl(210 14% 14%);    /* ash-blue */
+  --ec-surface-4:           hsl(205 13% 18%);    /* slightly warmer for active */
 
-  /* Контрастный slate для inputs где нужен дополнительный depth */
-  --ec-input-bg:            hsl(220 13% 8%);
-  --ec-input-bg-focus:      hsl(220 14% 11%);
+  /* Контрастный input bg — чтобы поля «втыкались» в surface */
+  --ec-input-bg:            hsl(210 18% 8%);
+  --ec-input-bg-focus:      hsl(210 18% 11%);
 
   /* ---- Borders / dividers -------------------------------------- */
-  --ec-border-subtle:       rgba(255, 255, 255, 0.05);
-  --ec-border-default:      rgba(255, 255, 255, 0.09);
-  --ec-border-emphasis:     rgba(255, 255, 255, 0.16);
-  --ec-border-accent:       hsl(32 100% 58% / 0.55);
+  --ec-border-subtle:       rgba(180, 210, 240, 0.05);
+  --ec-border-default:      rgba(180, 210, 240, 0.10);
+  --ec-border-emphasis:     rgba(180, 210, 240, 0.18);
+  --ec-border-accent:       hsl(195 70% 60% / 0.55);
 
-  /* ---- Accent (Eclipse Forge edge light) ----------------------- */
-  --ec-accent:              hsl(32 100% 58%);    /* eclipse orange */
-  --ec-accent-hover:        hsl(34 100% 64%);
-  --ec-accent-soft:         hsl(32 100% 58% / 0.14);
+  /* ---- Accent: cool sky (Eclipse limbus light) ----------------- */
+  --ec-accent:              hsl(195 70% 60%);    /* #5db5d9 cool sky */
+  --ec-accent-hover:        hsl(195 75% 66%);
+  --ec-accent-soft:         hsl(195 70% 60% / 0.14);
   --ec-accent-text:         hsl(0 0% 100%);
-  --ec-accent-glow:         0 0 0 1px hsl(32 100% 58% / 0.44),
-                            0 0 18px -2px hsl(32 100% 58% / 0.38);
+  /* Multi-layer glow: тонкий outline + outer halo */
+  --ec-accent-glow:         0 0 0 1px hsl(195 70% 60% / 0.45),
+                            0 0 22px -2px hsl(195 70% 60% / 0.42),
+                            0 0 40px -8px hsl(180 80% 60% / 0.18);
 
-  /* Secondary accent для join/secondary CTA */
-  --ec-accent-2:            hsl(220 92% 68%);    /* halo blue */
-  --ec-accent-2-soft:       hsl(220 92% 68% / 0.14);
+  /* Secondary accent: teal-mint (для info/secondary CTA) */
+  --ec-accent-2:            hsl(168 60% 58%);    /* teal-mint */
+  --ec-accent-2-soft:       hsl(168 60% 58% / 0.14);
+  --ec-accent-2-hover:      hsl(168 65% 64%);
 
-  /* ---- Text ---------------------------------------------------- */
-  --ec-text:                hsl(210 12% 92%);   /* #e6e9ed */
-  --ec-text-strong:         hsl(210 18% 98%);
-  --ec-text-muted:          hsl(210 8% 66%);    /* #a0a6ad */
-  --ec-text-dim:            hsl(210 7% 47%);    /* #6b7178 */
-  --ec-text-placeholder:    hsl(210 6% 40%);
+  /* Tertiary: violet-indigo (для experimental/AI features) */
+  --ec-accent-3:            hsl(252 70% 70%);    /* electric violet */
+  --ec-accent-3-soft:       hsl(252 70% 70% / 0.14);
+
+  /* ---- Text (warm grey с лёгким blue tint, не pure white) ----- */
+  --ec-text:                hsl(210 18% 92%);
+  --ec-text-strong:         hsl(200 25% 98%);
+  --ec-text-muted:          hsl(210 12% 66%);
+  --ec-text-dim:            hsl(210 10% 47%);
+  --ec-text-placeholder:    hsl(210 8% 40%);
 
   /* ---- Semantic ------------------------------------------------ */
-  --ec-ok:                  hsl(150 45% 58%);   /* #5dc890 */
-  --ec-warn:                hsl(40 86% 62%);    /* warm signal */
-  --ec-danger:              hsl(0 70% 65%);     /* #e07070 */
-  --ec-danger-soft:         hsl(0 70% 65% / 0.14);
+  --ec-ok:                  hsl(160 55% 56%);    /* cool mint-green */
+  --ec-warn:                hsl(42 90% 64%);     /* warm signal yellow */
+  --ec-warn-2:              hsl(28 95% 62%);     /* eclipse orange (rare emphasis) */
+  --ec-danger:              hsl(355 72% 68%);    /* berry-red */
+  --ec-danger-soft:         hsl(355 72% 68% / 0.14);
 
-  /* Presence dot цвета — для будущего MemberList */
-  --ec-presence-online:     hsl(150 50% 50%);
-  --ec-presence-idle:       hsl(40 80% 55%);
-  --ec-presence-dnd:        hsl(0 70% 60%);
-  --ec-presence-offline:    hsl(210 7% 40%);
+  /* Presence dot цвета — cohesive с accent palette */
+  --ec-presence-online:     hsl(160 55% 52%);
+  --ec-presence-idle:       hsl(42 88% 58%);
+  --ec-presence-dnd:        hsl(355 70% 62%);
+  --ec-presence-offline:    hsl(210 10% 40%);
 
   /* ---- Typography ---------------------------------------------- */
   --ec-font-display:        "Orbitron", "Eurostile Extended", "Bank Gothic",
-                            "Inter Variable", "Inter", "Segoe UI Variable",
-                            system-ui, sans-serif;
+                            "Inter Variable", "Inter", system-ui, sans-serif;
   --ec-font-sans:           "Inter Variable", "Inter", "Segoe UI Variable",
                             -apple-system, BlinkMacSystemFont, system-ui,
                             "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -85,12 +100,14 @@
   --ec-text-md:             1rem;       /* 16 */
   --ec-text-lg:             1.125rem;   /* 18 */
   --ec-text-xl:             1.375rem;   /* 22 */
+  --ec-text-2xl:            1.875rem;   /* 30 — для hero/empty-states */
+  --ec-text-3xl:            2.5rem;     /* 40 — для landing/auth */
 
   --ec-leading-tight:       1.2;
   --ec-leading-normal:      1.45;
   --ec-leading-relaxed:     1.6;
 
-  --ec-tracking-tight:      0;
+  --ec-tracking-tight:      -0.01em;
   --ec-tracking-normal:     0;
   --ec-tracking-wide:       0.04em;
   --ec-tracking-caps:       0.08em;
@@ -114,15 +131,30 @@
   --ec-radius-md:           8px;
   --ec-radius-lg:           12px;
   --ec-radius-xl:           16px;
+  --ec-radius-2xl:          24px;
   --ec-radius-full:         999px;
 
-  /* ---- Shadows / glows ----------------------------------------- */
-  --ec-shadow-sm:           0 1px 2px rgba(0, 0, 0, 0.25);
-  --ec-shadow-md:           0 4px 12px rgba(0, 0, 0, 0.35);
-  --ec-shadow-lg:           0 16px 40px rgba(0, 0, 0, 0.5);
-  --ec-shadow-modal:        0 24px 64px rgba(0, 0, 0, 0.55),
-                            0 0 0 1px var(--ec-border-default);
+  /* ---- Shadows / glows (cooler hue tint вместо pure black) ---- */
+  --ec-shadow-sm:           0 1px 3px hsl(210 25% 2% / 0.4);
+  --ec-shadow-md:           0 6px 16px hsl(210 30% 2% / 0.5);
+  --ec-shadow-lg:           0 20px 48px hsl(210 35% 2% / 0.6),
+                            0 0 0 1px hsl(210 15% 18% / 0.6);
+  --ec-shadow-modal:        0 30px 80px hsl(210 35% 2% / 0.65),
+                            0 0 0 1px var(--ec-border-default),
+                            inset 0 1px 0 hsl(195 70% 60% / 0.06);
   --ec-glow-active:         var(--ec-accent-glow);
+
+  /* Ambient gradients для empty-states и hero блоков */
+  --ec-gradient-aurora:     radial-gradient(ellipse 90% 70% at 20% 0%,
+                              hsl(195 70% 50% / 0.18), transparent 55%),
+                            radial-gradient(ellipse 80% 60% at 80% 100%,
+                              hsl(252 70% 60% / 0.12), transparent 60%);
+  --ec-gradient-eclipse:    radial-gradient(circle at 50% 50%,
+                              transparent 40%,
+                              hsl(195 70% 60% / 0.08) 50%,
+                              transparent 60%);
+  --ec-grid-blueprint:      linear-gradient(hsl(195 30% 30% / 0.04) 1px, transparent 1px),
+                            linear-gradient(90deg, hsl(195 30% 30% / 0.04) 1px, transparent 1px);
 
   /* ---- Z-index ------------------------------------------------- */
   --ec-z-base:              1;
@@ -136,18 +168,20 @@
   /* ---- Motion -------------------------------------------------- */
   --ec-ease:                cubic-bezier(0.4, 0, 0.2, 1);
   --ec-ease-out:            cubic-bezier(0.16, 1, 0.3, 1);
+  --ec-ease-spring:         cubic-bezier(0.34, 1.56, 0.64, 1);
   --ec-dur-fast:            120ms;
-  --ec-dur-base:            160ms;
-  --ec-dur-slow:            240ms;
+  --ec-dur-base:            180ms;
+  --ec-dur-slow:            260ms;
+  --ec-dur-ambient:         4s;          /* breathing/pulse loops */
 
   /* ---- Component-level slots ----------------------------------- */
-  --ec-header-height:       52px;
-  --ec-rail-width:          64px;
-  --ec-sidebar-width:       232px;
-  --ec-members-width:       232px;
-  --ec-composer-min-height: 44px;
+  --ec-header-height:       54px;
+  --ec-rail-width:          68px;
+  --ec-sidebar-width:       248px;
+  --ec-members-width:       248px;
+  --ec-composer-min-height: 48px;
 
-  /* ---- Breakpoints (только для документации; в CSS используем @media напрямую) */
+  /* ---- Breakpoints --------------------------------------------- */
   --ec-bp-mobile:           640px;
   --ec-bp-tablet:           1024px;
 }
@@ -158,5 +192,6 @@
     --ec-dur-fast:          1ms;
     --ec-dur-base:          1ms;
     --ec-dur-slow:          1ms;
+    --ec-dur-ambient:       1ms;
   }
 }

@@ -66,14 +66,60 @@
 @keyframes ec-glow-breathe {
   0%, 100% {
     box-shadow:
-      0 0 0 1px hsl(32 100% 58% / 0.35),
-      0 0 16px -2px hsl(32 100% 58% / 0.25);
+      0 0 0 1px hsl(195 70% 60% / 0.35),
+      0 0 18px -2px hsl(195 70% 60% / 0.28);
   }
   50% {
     box-shadow:
-      0 0 0 1px hsl(32 100% 58% / 0.55),
-      0 0 24px -2px hsl(32 100% 58% / 0.45);
+      0 0 0 1px hsl(195 70% 60% / 0.6),
+      0 0 28px -2px hsl(195 70% 60% / 0.48),
+      0 0 60px -10px hsl(180 80% 60% / 0.22);
   }
+}
+
+/* Eclipse limbus light — ambient glow используется на active server tile
+ * и в hero/empty-state блоках. Долгий 6s cycle = тихий, не отвлекает. */
+@keyframes ec-limbus-pulse {
+  0%, 100% {
+    opacity: 0.35;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.65;
+    transform: scale(1.02);
+  }
+}
+
+/* Aurora drift — медленное смещение radial gradient для empty-state
+ * и server settings hero. Очень медленный 18s — почти не видно, даёт
+ * ощущение «живого» интерфейса. */
+@keyframes ec-aurora-drift {
+  0%   { background-position: 20% 0%, 80% 100%; }
+  50%  { background-position: 24% 4%, 76% 96%; }
+  100% { background-position: 20% 0%, 80% 100%; }
+}
+
+/* Scan line — тонкая линия сверху-вниз для loading-states / hero panels.
+ * 3.5s cycle. */
+@keyframes ec-scan-line {
+  0%   { transform: translateY(-2%);   opacity: 0; }
+  10%  { opacity: 0.55; }
+  90%  { opacity: 0.55; }
+  100% { transform: translateY(102%); opacity: 0; }
+}
+
+/* Orbit line — bottom-border-only sweep для divider'ов между секциями.
+ * Используется в digest panel header + чат-header. */
+@keyframes ec-orbit-sweep {
+  0%   { background-position: -100% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Soft levitate — для primary CTA в auth/landing. Очень мелкий
+ * 8px вверх-вниз. */
+@keyframes ec-levitate {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-3px); }
 }
 
 @keyframes ec-bg-shimmer {
@@ -138,6 +184,61 @@
 .ec-anim-message-enter  { animation: ec-message-enter var(--ec-dur-base) var(--ec-ease-out) both; }
 .ec-anim-reaction-pop   { animation: ec-reaction-pop 240ms cubic-bezier(0.34, 1.56, 0.64, 1) both; }
 .ec-anim-modal-zoom     { animation: ec-modal-zoom-in var(--ec-dur-base) var(--ec-ease-out) both; }
+.ec-anim-breathe        { animation: ec-glow-breathe 4s ease-in-out infinite; }
+.ec-anim-limbus         { animation: ec-limbus-pulse 6s ease-in-out infinite; }
+.ec-anim-levitate       { animation: ec-levitate 5s ease-in-out infinite; }
+.ec-anim-orbit-sweep    {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    hsl(195 70% 60% / 0.45) 50%,
+    transparent 100%
+  );
+  background-size: 50% 100%;
+  animation: ec-orbit-sweep 3.2s linear infinite;
+}
+
+/* Aurora-bg utility — для empty-states, hero blocks, server settings */
+.ec-aurora-bg {
+  background-image: var(--ec-gradient-aurora);
+  background-size: 140% 140%, 140% 140%;
+  animation: ec-aurora-drift 18s ease-in-out infinite;
+}
+
+/* Blueprint grid overlay — subtle 48px geometry для hero/empty layouts */
+.ec-grid-overlay {
+  position: absolute;
+  inset: 0;
+  background-image: var(--ec-grid-blueprint);
+  background-size: 48px 48px;
+  opacity: 0.7;
+  pointer-events: none;
+  mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, black 30%, transparent 80%);
+  -webkit-mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, black 30%, transparent 80%);
+}
+
+/* Scan-line overlay — для voice rooms «В эфире» / connection states */
+.ec-scan-line {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.ec-scan-line::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    hsl(195 70% 60% / 0.55) 50%,
+    transparent 100%
+  );
+  filter: blur(0.5px);
+  animation: ec-scan-line 3.5s ease-in-out infinite;
+}
 
 /* Presence dot online — мягкий пульс (1 цикл / 2.4s) */
 .ec-dot--online {

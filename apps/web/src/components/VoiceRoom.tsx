@@ -33,7 +33,7 @@ const wrap: CSSProperties = {
   flexDirection: "column",
   minHeight: 0,
   background:
-    "radial-gradient(ellipse 68% 50% at 20% -10%, hsl(32 85% 14% / 0.34) 0%, transparent 55%), radial-gradient(ellipse 52% 40% at 100% 100%, hsl(220 30% 18% / 0.26) 0%, transparent 62%), var(--ec-bg)",
+    "radial-gradient(ellipse 68% 50% at 20% -10%, hsl(195 70% 16% / 0.42) 0%, transparent 55%), radial-gradient(ellipse 52% 40% at 100% 100%, hsl(252 60% 22% / 0.22) 0%, transparent 62%), var(--ec-bg)",
 };
 
 const header: CSSProperties = {
@@ -100,7 +100,7 @@ const boardGlow: CSSProperties = {
   width: 300,
   height: 240,
   borderRadius: "50%",
-  background: "radial-gradient(circle, hsl(32 100% 58% / 0.18) 0%, transparent 72%)",
+  background: "radial-gradient(circle, hsl(195 70% 60% / 0.18) 0%, transparent 72%)",
   pointerEvents: "none",
 };
 
@@ -111,8 +111,8 @@ const boardRing: CSSProperties = {
   width: 240,
   height: 240,
   borderRadius: "50%",
-  border: "1px solid hsl(32 100% 58% / 0.16)",
-  boxShadow: "0 0 0 28px hsl(32 100% 58% / 0.04), inset 0 0 40px hsl(32 100% 58% / 0.08)",
+  border: "1px solid hsl(195 70% 60% / 0.16)",
+  boxShadow: "0 0 0 28px hsl(195 70% 60% / 0.04), inset 0 0 40px hsl(195 70% 60% / 0.08)",
   pointerEvents: "none",
 };
 
@@ -139,7 +139,7 @@ const tag: CSSProperties = {
   padding: "0.28rem 0.6rem",
   borderRadius: "var(--ec-radius-full)",
   border: "1px solid var(--ec-border-default)",
-  background: "hsl(32 100% 58% / 0.08)",
+  background: "hsl(195 70% 60% / 0.08)",
   color: "var(--ec-text-muted)",
   fontSize: "var(--ec-text-2xs)",
   letterSpacing: "var(--ec-tracking-wide)",
@@ -195,7 +195,7 @@ const videoTileWrap: CSSProperties = {
   overflow: "hidden",
   border: "1px solid var(--ec-border-default)",
   background:
-    "radial-gradient(circle at 50% 20%, hsl(32 100% 58% / 0.18), transparent 48%), linear-gradient(180deg, hsl(208 14% 13%), hsl(210 12% 8%))",
+    "radial-gradient(circle at 50% 20%, hsl(195 70% 60% / 0.18), transparent 48%), linear-gradient(180deg, hsl(208 14% 13%), hsl(210 12% 8%))",
 };
 
 const videoCanvas: CSSProperties = {
@@ -238,7 +238,7 @@ const audioTile: CSSProperties = {
 const audioTileSpeaking: CSSProperties = {
   ...audioTile,
   borderColor: "var(--ec-accent)",
-  boxShadow: "0 0 0 1px var(--ec-accent), 0 0 24px -3px hsl(32 100% 58% / 0.45)",
+  boxShadow: "0 0 0 1px var(--ec-accent), 0 0 24px -3px hsl(195 70% 60% / 0.45)",
   transform: "translateY(-1px)",
 };
 
@@ -294,7 +294,7 @@ const controlBtnAccent: CSSProperties = {
   background: "var(--ec-accent-soft)",
   color: "var(--ec-accent)",
   borderColor: "var(--ec-accent)",
-  boxShadow: "0 0 0 1px var(--ec-border-accent), 0 0 18px -2px hsl(32 100% 58% / 0.42)",
+  boxShadow: "0 0 0 1px var(--ec-border-accent), 0 0 18px -2px hsl(195 70% 60% / 0.42)",
 };
 
 const emptyHero: CSSProperties = {
@@ -302,9 +302,9 @@ const emptyHero: CSSProperties = {
   placeItems: "center",
   minHeight: 220,
   borderRadius: "var(--ec-radius-xl)",
-  border: "1px solid hsl(32 100% 58% / 0.16)",
+  border: "1px solid hsl(195 70% 60% / 0.16)",
   background:
-    "radial-gradient(circle at 50% 30%, hsl(32 100% 58% / 0.16) 0%, transparent 54%), linear-gradient(180deg, hsl(210 12% 10% / 0.92), hsl(210 12% 8% / 0.98))",
+    "radial-gradient(circle at 50% 30%, hsl(195 70% 60% / 0.16) 0%, transparent 54%), linear-gradient(180deg, hsl(210 12% 10% / 0.92), hsl(210 12% 8% / 0.98))",
 };
 
 function resolveConnectionBadge(isConnected: boolean, isReconnecting: boolean, isConnecting: boolean, pttActive: boolean) {
@@ -453,7 +453,7 @@ function VideoTrackTile({
           inset: 0,
           background:
             visual.source === "screen"
-              ? "radial-gradient(circle at 50% 0%, hsl(32 100% 58% / 0.18), transparent 48%)"
+              ? "radial-gradient(circle at 50% 0%, hsl(195 70% 60% / 0.18), transparent 48%)"
               : "radial-gradient(circle at 50% 0%, hsl(220 40% 40% / 0.12), transparent 48%)",
         }}
       />
@@ -550,7 +550,7 @@ export function VoiceRoom({
             display: "grid",
             placeItems: "center",
             color: "var(--ec-accent)",
-            background: "hsl(32 100% 58% / 0.12)",
+            background: "hsl(195 70% 60% / 0.12)",
             border: "1px solid var(--ec-border-accent)",
           }}
           aria-hidden
@@ -761,10 +761,10 @@ export function VoiceRoom({
                             borderRadius: "50%",
                             display: "grid",
                             placeItems: "center",
-                            background: "hsl(32 100% 58% / 0.12)",
-                            border: "1px solid hsl(32 100% 58% / 0.22)",
+                            background: "hsl(195 70% 60% / 0.12)",
+                            border: "1px solid hsl(195 70% 60% / 0.22)",
                             color: "var(--ec-accent)",
-                            boxShadow: "0 0 0 1px hsl(32 100% 58% / 0.18), 0 0 28px hsl(32 100% 58% / 0.2)",
+                            boxShadow: "0 0 0 1px hsl(195 70% 60% / 0.18), 0 0 28px hsl(195 70% 60% / 0.2)",
                           }}
                           aria-hidden
                         >

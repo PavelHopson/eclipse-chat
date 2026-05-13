@@ -22,7 +22,7 @@ const wrap: CSSProperties = {
   gap: "var(--ec-space-2)",
   padding: "var(--ec-space-2) var(--ec-space-3)",
   background:
-    "linear-gradient(180deg, hsl(32 60% 12% / 0.42), hsl(220 12% 7% / 0.96))",
+    "linear-gradient(180deg, hsl(195 40% 14% / 0.42), hsl(210 18% 7% / 0.96))",
   borderTop: "1px solid var(--ec-border-subtle)",
   borderBottom: "1px solid var(--ec-border-subtle)",
   color: "var(--ec-text)",
@@ -77,7 +77,7 @@ export function VoiceMiniBar({ voice, channelName, onOpenVoiceChannel }: Props) 
           width: 220,
           height: 140,
           borderRadius: "50%",
-          background: "radial-gradient(circle, hsl(32 100% 58% / 0.14) 0%, transparent 70%)",
+          background: "radial-gradient(circle, hsl(195 70% 60% / 0.14) 0%, transparent 70%)",
           pointerEvents: "none",
         }}
       />
@@ -108,7 +108,7 @@ export function VoiceMiniBar({ voice, channelName, onOpenVoiceChannel }: Props) 
             background: "var(--ec-accent-soft)",
             color: "var(--ec-accent)",
             boxShadow: voice.pttActive
-              ? "0 0 0 1.5px var(--ec-accent), 0 0 12px hsl(32 100% 58% / 0.48)"
+              ? "0 0 0 1.5px var(--ec-accent), 0 0 12px hsl(195 70% 60% / 0.48)"
               : "none",
             transition: "box-shadow var(--ec-dur-fast) var(--ec-ease)",
           }}

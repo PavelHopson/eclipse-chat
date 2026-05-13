@@ -14,6 +14,7 @@ import { PinnedBar } from "../components/PinnedBar";
 import { ProfileModal } from "../components/ProfileModal";
 import { SearchOverlay } from "../components/SearchOverlay";
 import { ServerInfoModal } from "../components/ServerInfoModal";
+import { ServerSettingsModal } from "../components/ServerSettingsModal";
 import { ServerList } from "../components/ServerList";
 import { StatusMenu } from "../components/StatusMenu";
 import { TypingIndicator } from "../components/TypingIndicator";
@@ -256,8 +257,59 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     deleteServer,
     uploadServerIcon,
     deleteServerIcon,
+    uploadServerBanner,
+    deleteServerBanner,
+    updateServerIdentity,
     error: serversError,
   } = useServers(true);
+
+  /**
+   * Per-server brand-color injection.
+   * Когда активен сервер с `brandColor` (HSL "200 80% 60%") — инжектим
+   * `:root { --ec-accent: hsl(X) }` через document.documentElement.style.
+   * Cleanup при unmount/change на default tokens.css value.
+   */
+  useEffect(() => {
+    const c = activeServer?.brandColor;
+    const root = document.documentElement;
+    if (c && /^\d{1,3}\s+\d{1,3}%\s+\d{1,3}%$/.test(c.trim())) {
+      const hsl = c.trim();
+      root.style.setProperty("--ec-accent", `hsl(${hsl})`);
+      // hover чуть светлее (+6% lightness — best-effort regex)
+      const m = hsl.match(/^(\d+)\s+(\d+)%\s+(\d+)%$/);
+      if (m) {
+        const h = Number(m[1]);
+        const s = Number(m[2]);
+        const l = Math.min(95, Number(m[3]) + 6);
+        root.style.setProperty("--ec-accent-hover", `hsl(${h} ${s}% ${l}%)`);
+        root.style.setProperty(
+          "--ec-accent-soft",
+          `hsl(${h} ${s}% ${m[3]}% / 0.14)`,
+        );
+        root.style.setProperty(
+          "--ec-border-accent",
+          `hsl(${h} ${s}% ${m[3]}% / 0.55)`,
+        );
+        root.style.setProperty(
+          "--ec-accent-glow",
+          `0 0 0 1px hsl(${h} ${s}% ${m[3]}% / 0.45), 0 0 22px -2px hsl(${h} ${s}% ${m[3]}% / 0.42)`,
+        );
+      }
+    } else {
+      root.style.removeProperty("--ec-accent");
+      root.style.removeProperty("--ec-accent-hover");
+      root.style.removeProperty("--ec-accent-soft");
+      root.style.removeProperty("--ec-border-accent");
+      root.style.removeProperty("--ec-accent-glow");
+    }
+    return () => {
+      root.style.removeProperty("--ec-accent");
+      root.style.removeProperty("--ec-accent-hover");
+      root.style.removeProperty("--ec-accent-soft");
+      root.style.removeProperty("--ec-border-accent");
+      root.style.removeProperty("--ec-accent-glow");
+    };
+  }, [activeServer?.brandColor]);
 
   const {
     channels,
@@ -332,6 +384,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   const [showCreateServer, setShowCreateServer] = useState(false);
   const [showJoinServer, setShowJoinServer] = useState(false);
   const [showServerInfo, setShowServerInfo] = useState(false);
+  const [showServerSettings, setShowServerSettings] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [homeOpen, setHomeOpen] = useState(false);
@@ -992,6 +1045,24 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           onUploadIcon={(file) => uploadServerIcon(activeServer.id, file)}
           onDeleteIcon={() => deleteServerIcon(activeServer.id)}
           onUpdateRole={updateMemberRole}
+          onOpenSettings={
+            activeServer.role === "OWNER"
+              ? () => {
+                  setShowServerInfo(false);
+                  setShowServerSettings(true);
+                }
+              : undefined
+          }
+        />
+      )}
+
+      {showServerSettings && activeServer && activeServer.role === "OWNER" && (
+        <ServerSettingsModal
+          server={activeServer}
+          onClose={() => setShowServerSettings(false)}
+          onUploadBanner={(file) => uploadServerBanner(activeServer.id, file)}
+          onDeleteBanner={() => deleteServerBanner(activeServer.id)}
+          onUpdateIdentity={(patch) => updateServerIdentity(activeServer.id, patch)}
         />
       )}
 
