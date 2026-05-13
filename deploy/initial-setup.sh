@@ -80,9 +80,10 @@ npx prisma db seed || echo "⚠ seed warning (may already be applied)"
 cd "$DEPLOY_PATH"
 npm run build
 
-echo "==> 5. Install nginx snippet"
-sudo mkdir -p /etc/nginx/snippets
-sudo cp "$DEPLOY_PATH/deploy/nginx/eclipse-chat.conf" /etc/nginx/snippets/eclipse-chat.conf
+echo "==> 5. Install nginx snippets (chat + livekit)"
+# Используем sync-nginx.sh — он копирует ВСЕ deploy/nginx/*.conf
+# с auto-rollback при nginx -t fail. Безопаснее чем ручной cp.
+bash "$DEPLOY_PATH/deploy/scripts/sync-nginx.sh"
 
 NGINX_SITE="/etc/nginx/sites-available/app.star-crm.ru"
 NGINX_SITE_ALT="/etc/nginx/sites-enabled/app.star-crm.ru"
@@ -95,18 +96,18 @@ for f in "$NGINX_SITE" "$NGINX_SITE_ALT"; do
 done
 
 if [ -z "$SITE_FILE" ]; then
-  echo "WARNING: nginx site-config для app.star-crm.ru не найден. Добавь руками:"
+  echo "WARNING: nginx site-config для app.star-crm.ru не найден. Добавь руками внутри server { ... } блока:"
   echo "  include /etc/nginx/snippets/eclipse-chat.conf;"
-  echo "внутри server { ... } блока для app.star-crm.ru"
+  echo "  include /etc/nginx/snippets/eclipse-chat-livekit.conf;"
 else
-  if ! grep -q "snippets/eclipse-chat.conf" "$SITE_FILE"; then
-    echo "Добавляю include в $SITE_FILE"
-    # Добавляем строку перед закрывающим } блока server (последний }).
-    # Простой sed на последний `}` в файле.
-    sudo sed -i '0,/^}/{s|^}|    include /etc/nginx/snippets/eclipse-chat.conf;\n}|}' "$SITE_FILE"
-  else
-    echo "✓ include уже есть в $SITE_FILE"
-  fi
+  for inc in "eclipse-chat.conf" "eclipse-chat-livekit.conf"; do
+    if ! grep -q "snippets/$inc" "$SITE_FILE"; then
+      echo "Добавляю include $inc в $SITE_FILE"
+      sudo sed -i "0,/^}/{s|^}|    include /etc/nginx/snippets/$inc;\\n}|}" "$SITE_FILE"
+    else
+      echo "✓ include $inc уже есть"
+    fi
+  done
 fi
 
 sudo nginx -t && sudo systemctl reload nginx || {
@@ -115,9 +116,7 @@ sudo nginx -t && sudo systemctl reload nginx || {
 }
 
 echo "==> 6. Install supervisor program"
-sudo cp "$DEPLOY_PATH/deploy/supervisor/eclipse-chat.conf" /etc/supervisor/conf.d/eclipse-chat.conf
-sudo supervisorctl reread
-sudo supervisorctl update
+bash "$DEPLOY_PATH/deploy/scripts/sync-supervisor.sh"
 sleep 3
 sudo supervisorctl status eclipse-chat-server
 

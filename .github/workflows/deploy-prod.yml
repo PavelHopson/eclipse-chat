@@ -1,5 +1,9 @@
 name: Deploy PROD (master)
 
+# Триггеры:
+#   - push в master → автоматически валидирует и деплоит
+#   - workflow_dispatch → ручной запуск из GitHub UI (с опциональным initial-setup
+#     для первого деплоя на свежий сервер)
 on:
   push:
     branches: ["master"]
@@ -14,132 +18,111 @@ on:
 permissions:
   contents: read
 
+# Concurrency: не дать двум deploy'ям бежать одновременно. Если в очереди уже
+# есть deploy — новый встаёт следом, не отменяя предыдущий (cancel-in-progress=false).
 concurrency:
   group: eclipse-chat-prod-deploy
   cancel-in-progress: false
 
 jobs:
-  build:
-    runs-on: [self-hosted, Linux, ci]
-
+  # ============================================================
+  # 1. Validate — CI gate: TypeScript + production build должны пройти,
+  #    иначе deploy не запустится. Защищает от broken master.
+  # ============================================================
+  validate:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
 
-      - name: Show Node version
-        run: |
-          node -v
-          npm -v
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
 
-      - name: Install all workspaces
+      - name: Install workspaces
         run: npm ci
 
       - name: TypeScript check
         run: npm run typecheck
 
-      - name: Build server + web
+      - name: Production build (server + web)
         run: npm run build
         env:
-          # apps/web/.env.production уже содержит VITE_BASE_PATH=/eclipse-chat/
-          # но дублируем здесь чтобы override через CI env работал
           VITE_BASE_PATH: "/eclipse-chat/"
 
-      - name: Upload build artefacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: eclipse-chat-dist
-          path: |
-            apps/server/dist/
-            apps/web/dist/
-            apps/server/prisma/
-            apps/server/package.json
-            apps/server/package-lock.json
-            apps/web/package.json
-            package.json
-            package-lock.json
-            deploy/
-          retention-days: 7
-
+  # ============================================================
+  # 2. Deploy — SSH в prod, запускает deploy/scripts/deploy.sh.
+  #    Все шаги (git pull → build → migrate → nginx sync → restart → smoke)
+  #    инкапсулированы в orchestrator на проде. CI-job только SSH'итин.
+  # ============================================================
   deploy:
-    needs: build
-    runs-on: [self-hosted, Linux, prod]
+    needs: validate
+    runs-on: ubuntu-latest
     environment: production # требует manual approval в GitHub UI
-
     steps:
       - uses: actions/checkout@v5
 
-      - name: Setup SSH
-        shell: bash
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY_PROD }}" | tr -d '\r' > ~/.ssh/id_prod_ci
-          chmod 600 ~/.ssh/id_prod_ci
-
-      - name: Add server to known_hosts
-        run: |
-          mkdir -p ~/.ssh
-          ssh-keyscan -H "${{ secrets.DEPLOY_HOST_PROD }}" >> ~/.ssh/known_hosts
-
-      - name: Run initial setup (optional, first deploy only)
-        if: github.event.inputs.run_initial_setup == 'true'
-        run: |
-          ssh -i ~/.ssh/id_prod_ci "${{ secrets.DEPLOY_USER_PROD }}@${{ secrets.DEPLOY_HOST_PROD }}" \
-            "bash -s" < deploy/initial-setup.sh
+      # --- Optional: первый деплой на свежий сервер ---
+      # Запускается только при workflow_dispatch с run_initial_setup=true.
+      # Создаёт PG БД, .env, supervisor program, nginx snippets с нуля.
+      - name: Run initial setup (first deploy only)
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.run_initial_setup == 'true'
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST_PROD }}
+          username: ${{ secrets.DEPLOY_USER_PROD }}
+          key: ${{ secrets.SSH_PRIVATE_KEY_PROD }}
+          envs: ECLIPSE_CHAT_DB_PASSWORD,ECLIPSE_CHAT_JWT_SECRET
+          script: |
+            set -e
+            DEPLOY_PATH="/var/www/eclipse-chat"
+            if [ ! -d "$DEPLOY_PATH/deploy" ]; then
+              if [ ! -d "$DEPLOY_PATH" ]; then
+                sudo mkdir -p "$DEPLOY_PATH"
+                sudo chown -R "$USER:$USER" "$DEPLOY_PATH"
+              fi
+              cd "$DEPLOY_PATH"
+              git clone https://github.com/PavelHopson/eclipse-chat.git . || true
+              git fetch origin master && git reset --hard origin/master
+            fi
+            bash "$DEPLOY_PATH/deploy/initial-setup.sh"
         env:
           ECLIPSE_CHAT_DB_PASSWORD: ${{ secrets.ECLIPSE_CHAT_DB_PASSWORD }}
           ECLIPSE_CHAT_JWT_SECRET: ${{ secrets.ECLIPSE_CHAT_JWT_SECRET }}
 
-      - name: Deploy via SSH (git pull + migrate + restart)
+      # --- Регулярный деплой: orchestrator deploy.sh делает всё ---
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST_PROD }}
+          username: ${{ secrets.DEPLOY_USER_PROD }}
+          key: ${{ secrets.SSH_PRIVATE_KEY_PROD }}
+          command_timeout: 15m
+          script: |
+            cd /var/www/eclipse-chat
+            bash deploy/scripts/deploy.sh
+
+      # --- Post-deploy: independent smoke от CI runner (не из prod),
+      #     чтобы убедиться что внешний пользователь видит работающий сервис ---
+      - name: External smoke (from CI runner)
         run: |
-          ssh -i ~/.ssh/id_prod_ci "${{ secrets.DEPLOY_USER_PROD }}@${{ secrets.DEPLOY_HOST_PROD }}" << 'EOF'
           set -e
-          DEPLOY_PATH="/var/www/eclipse-chat"
+          BASE="https://app.star-crm.ru/eclipse-chat"
 
-          if [ ! -d "$DEPLOY_PATH" ]; then
-            echo "ERROR: $DEPLOY_PATH не существует. Запусти workflow с run_initial_setup=true сначала."
-            exit 1
-          fi
+          echo "→ /api/version"
+          curl -sf --max-time 10 "$BASE/api/version" | tee /tmp/version.json
+          grep -q '"version"' /tmp/version.json
 
-          cd "$DEPLOY_PATH"
-
-          echo "== git pull =="
-          git fetch origin master
-          git reset --hard origin/master
-
-          echo "== write release.json =="
-          echo "{\"branch\":\"$(git branch --show-current)\",\"commit\":\"$(git rev-parse --short HEAD)\",\"subject\":\"$(git log -1 --pretty=%s)\",\"deployed_at\":\"$(date -Iseconds)\"}" > release.json
-
-          echo "== npm ci =="
-          npm ci --omit=optional
-
-          echo "== prisma migrate deploy =="
-          cd apps/server
-          npx prisma generate
-          npx prisma migrate deploy
-          cd "$DEPLOY_PATH"
-
-          echo "== build server (tsc) + web (vite) =="
-          npm run build
-
-          echo "== set permissions on dist =="
-          chown -R www-data:www-data "$DEPLOY_PATH/apps/web/dist" || true
-          chown -R www-data:www-data "$DEPLOY_PATH/apps/server/dist" || true
-          chown -R www-data:www-data "$DEPLOY_PATH/apps/server/prisma" || true
-
-          echo "== restart supervisor program =="
-          sudo supervisorctl restart eclipse-chat-server || \
-            (echo "ERROR: supervisor program не найдена. Возможно нужен initial-setup."; exit 1)
-
-          echo "== reload nginx (если конфиг менялся) =="
-          sudo nginx -t && sudo systemctl reload nginx || \
-            echo "⚠ nginx config invalid или reload failed — Star CRM может пострадать, проверь!"
-
-          echo "DEPLOY COMPLETE"
-          EOF
-
-      - name: Smoke test
-        run: |
-          sleep 5
-          curl -sS --max-time 30 "https://app.star-crm.ru/eclipse-chat/api/health" | tee /tmp/health.json
-          grep -q '"ok":true' /tmp/health.json
           echo ""
-          echo "✓ Eclipse Chat is live on https://app.star-crm.ru/eclipse-chat/"
+          echo "→ /api/health"
+          curl -sf --max-time 10 "$BASE/api/health" | tee /tmp/health.json
+          grep -q '"ok":true' /tmp/health.json
+          grep -q '"database":true' /tmp/health.json
+
+          echo ""
+          echo "→ frontend index.html"
+          curl -sI --max-time 10 "$BASE/" | grep -i '^content-type:.*text/html'
+
+          echo ""
+          echo "✓ Eclipse Chat live на $BASE/"

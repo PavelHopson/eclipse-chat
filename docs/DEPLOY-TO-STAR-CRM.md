@@ -267,28 +267,61 @@ sudo supervisorctl stop eclipse-chat-server
 
 ## Step 8 — Updates (когда фиксим / добавляем фичи)
 
+С v0.12.2 deploy полностью автоматизирован. Три варианта в порядке предпочтения:
+
+### Вариант A — GitHub Actions auto-deploy (рекомендую)
+
+`push` в master → GitHub Actions сама делает всё.
+
 ```bash
-cd /var/www/eclipse-chat
-
-# Pull latest
-git pull origin master  # ветка — пока master (у Pavel'а локально)
-
-# Если изменилась schema — применить migrations
-npm install --omit=dev
-cd apps/server && npx prisma migrate deploy && cd ../..
-
-# Rebuild frontend (если изменился apps/web/**)
-npm run build
-
-# Restart backend (если изменился apps/server/**)
-sudo supervisorctl restart eclipse-chat-server
-
-# Smoke test заново (Step 6)
+git push origin master
+# → CI прогоняет typecheck + build
+# → ждёт твоего approve в Actions tab (environment: production)
+# → SSH в прод → bash deploy/scripts/deploy.sh
+# → external smoke test
 ```
 
-**Прим.:** репо сейчас archived/read-only — push заблокирован, но
-`git pull` работает. Если разархивируем — добавится `git push`
-с Pavel'овской машины.
+Setup one-time: см. [`CI-SETUP.md`](./CI-SETUP.md).
+Workflow: [`.github/workflows/deploy-prod.yml`](../.github/workflows/deploy-prod.yml).
+
+### Вариант B — ручной deploy.sh (если CI временно недоступен)
+
+```bash
+ssh root@cv6067007.novalocal
+cd /var/www/eclipse-chat
+bash deploy/scripts/deploy.sh
+```
+
+[`deploy/scripts/deploy.sh`](../deploy/scripts/deploy.sh) делает те же 10 шагов
+что и GitHub Actions:
+1. `git fetch + reset --hard origin/master`
+2. write `release.json` (commit metadata)
+3. `npm ci` из корня
+4. `prisma generate + migrate deploy`
+5. `npm run build`
+6. **sync nginx snippets** через [`sync-nginx.sh`](../deploy/scripts/sync-nginx.sh)
+   (с auto-rollback при `nginx -t` fail — Star CRM защищён)
+7. sync supervisor через [`sync-supervisor.sh`](../deploy/scripts/sync-supervisor.sh)
+8. `chown www-data` на dist/ + uploads/
+9. `supervisorctl restart eclipse-chat-server`
+10. smoke test через [`smoke.sh`](../deploy/scripts/smoke.sh) (version + health + supervisor RUNNING + uploads MIME)
+
+Если smoke fail'ится — script exit'ится с 1 и печатает что упало.
+
+### Вариант C — legacy ручной (только если deploy.sh сломан)
+
+```bash
+cd /var/www/eclipse-chat
+git pull origin master
+npm ci
+cd apps/server && npx prisma migrate deploy && cd ..
+npm run build
+sudo supervisorctl restart eclipse-chat-server
+```
+
+⚠ Этот путь НЕ синхронизирует nginx snippets из репо. Если в репо изменился
+`deploy/nginx/*.conf` — придётся `sudo cp` руками + `nginx -t && reload`.
+Используй только в emergency.
 
 ---
 
