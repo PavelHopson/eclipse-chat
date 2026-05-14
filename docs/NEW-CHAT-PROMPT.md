@@ -5,7 +5,7 @@
 > Скопируй блок «Continuation Message» в самом конце в новый чат
 > как первое сообщение.
 >
-> **Обновлено 2026-05-13 (после v0.12.2 Bot frontend UI + version bump).**
+> **Обновлено 2026-05-14 (после v0.16.0 Incident Mode).**
 
 ---
 
@@ -96,7 +96,7 @@ E:\projects\ROADMAP.md (§1 статусы + §5 Changelog). Per-repo ROADMAP
 
 ---
 
-## 📊 PROJECT STATUS (14.05.2026 — v0.15.0)
+## 📊 PROJECT STATUS (14.05.2026 — v0.16.0)
 
 Eclipse Chat теперь **full-featured self-hosted operator communication
 core** + AI layer + security hardening + bot/operator layer **(full stack,
@@ -215,6 +215,28 @@ backend + UI)**. LIVE in prod: `https://app.star-crm.ru/eclipse-chat/`.
 - `docs/BOT-API.md` — публичный API spec для bot writers (включая webhook
   пример verify + payload schema)
 
+**Incident Mode (v0.16 — operator-console differentiator):**
+- `Incident` model: serverId, title, status (OPEN/RESOLVED), channelId
+  (1-to-1 unique с Channel), openedBy, openedAt, resolvedAt, postMortem
+- `routes/incidents.ts`:
+  - `POST /api/servers/:id/incidents` — открыть. Транзакцией создаёт
+    Incident + dedicated TEXT-канал (emoji 🚨, position -100 = сверху
+    списка), линкует. Любой member.
+  - `GET /api/servers/:id/incidents` — список
+  - `GET /api/incidents/:id` — детали + timeline (decisions + tasks +
+    pinned messages incident-канала)
+  - `PATCH /api/incidents/:id/resolve` — закрыть. Status+resolvedAt
+    синхронно; post-mortem генерится Ollama fire-and-forget
+    (`incidentPostMortemPrompt` → chat() → UPDATE + emit). Permission:
+    openedBy ИЛИ OWNER/ADMIN/MODERATOR
+- UI: 🚨-кнопка в топбаре (red badge openCount) → `IncidentPanel` в
+  right rail (приоритет ниже ThreadPanel). List + detail views.
+  `useIncidents` hook + socket `incident:opened`/`incident:resolved`.
+- Post-mortem рендерится через RichContent (markdown разрешён) —
+  структура: Что произошло / Хронология / Решения / Action items / Выводы
+- Связывает channels + ActionItems + AI в incident workflow которого
+  нет у Discord/Slack
+
 **Security hardening (v0.11.1):**
 - @fastify/helmet с CSP + HSTS + X-Frame-Options
 - @fastify/rate-limit: register 5/15min, login 10/15min, refresh 60/5min
@@ -240,17 +262,17 @@ backend + UI)**. LIVE in prod: `https://app.star-crm.ru/eclipse-chat/`.
 - Browser notifications + tab title badge
 - Action item created/updated events
 
-### Bundle size (текущее)
+### Bundle size (текущее, v0.16.0)
 
-- Main JS: 528 KB raw / 142 KB gzip
+- Main JS: 595 KB raw / 160 KB gzip
 - LiveKit chunk: 513 KB raw / 134 KB gzip (lazy-loaded только для voice)
-- CSS: 52 KB raw / 10 KB gzip
-- **Initial load (без voice):** ~580 KB raw / ~152 KB gzip
+- CSS: 53 KB raw / 10.5 KB gzip
+- **Initial load (без voice):** ~648 KB raw / ~170 KB gzip
 
 ### Database
 
 PostgreSQL 16, БД `eclipse_chat`, role `eclipse_chat_user`.
-**12 миграций applied:**
+**16 миграций applied:**
 - `init` — User, Server, Member, Channel, Message, RefreshToken
 - `add_user_profile` — avatar + bio
 - `add_channel_type` — TEXT/VOICE enum
@@ -262,6 +284,11 @@ PostgreSQL 16, БД `eclipse_chat`, role `eclipse_chat_user`.
 - `add_server_identity` — banner + brandColor + description + welcomeMessage
 - `add_security_layer` — 2FA + AuditLog + lockout
 - `add_bot_layer` — Bot model + AuditEventType extension
+- `add_action_items` — ActionItem model (TASK/DECISION/FOLLOW_UP)
+- `add_message_threads` (v0.13) — Message.parentMessageId self-relation
+- `add_channel_description` (v0.13.1) — Channel.description
+- `add_channel_emoji_bot_webhooks` (v0.14) — Channel.emoji + Bot.webhookUrl/Secret/Events
+- `add_incident_mode` (v0.16) — Incident model + IncidentStatus enum + Channel.incidentId
 
 ---
 
@@ -503,35 +530,42 @@ state и работай.
 4. E:\projects\ROADMAP.md (общая дорожная карта Eclipse Hopson)
 
 Eclipse Chat LIVE в проде: https://app.star-crm.ru/eclipse-chat/
-Версия в коде: 0.15.0 (Voice quality v3 — Web Audio DSP-цепочка в
-«Студийном» режиме + live mic gain + compact voice tiles).
-Предыдущая 0.14.0 (@/: autocomplete + channel emoji prefix + channel
-DnD reorder + markdown в descriptions + bot webhooks + thread attachments
-+ Vitest baseline + tests CI step). v0.13.1 — channel rename/description.
+Версия в проде: 0.16.0 (Incident Mode — операторский контур разбора
+инцидентов: dedicated 🚨-канал + timeline + AI post-mortem).
 
-Текущее состояние:
+История последних релизов (всё в проде):
+- v0.16.0 — Incident Mode
+- v0.15.0 — Voice quality v3 (Web Audio DSP-цепочка «Студийный» режим)
+- v0.14.0 — @/: autocomplete + channel emoji/DnD + bot webhooks + Vitest
+- v0.13.1 — channel rename/description
+- v0.13.0 — Threads + Markdown + Bot ecosystem closure
+- v0.12.2 — Bot frontend UI
+
+Текущее состояние (всё в проде):
 - Auth + Profile + 2FA TOTP + audit log + brute-force lockout
 - Servers (icon/banner/brandColor) + Members (4 роли) + role management
-- Channels TEXT/VOICE + delete
+- Channels TEXT/VOICE + edit (rename/description/emoji-prefix) + DnD reorder
 - Messages: send/edit/delete/pin/copy/react (12 emoji)/attach (50MB)/
-  mention/URL auto-link
+  mention/URL auto-link + markdown (bold/italic/code/strike) +
+  emoji shortcodes (:smile:) + @/: autocomplete popover
+- Threads: ThreadPanel в right rail, replies + attachments, realtime
 - DMs 1-to-1 (group — backlog)
 - Voice: LiveKit Docker + VAD/PTT/Open modes + screen-share + camera +
-  per-participant volume + stats overlay + speaking-dots
-- ChannelDigest + AI summary поверх (Ollama Qwen2.5:7b на CPU)
-- @ai assistant в чате (mention triggers fire-and-forget reply через
-  system-bot user — но НЕ имеет Bot row, поэтому BOT badge не показывается)
-- Bot/Operator FULL STACK: backend shadow-user pattern + ecb_ API keys +
-  ServerSettingsModal tab «Боты» (OWNER) + create form + one-time key
-  reveal + curl-example в UI + Message BOT badge (violet)
-- docs/BOT-API.md — публичный API gateway для bot writers
-- Cold-tone design system + 87 designer-skills в ~/.claude/skills
+  per-participant volume + stats overlay + speaking-dots + «Студийный»
+  режим (Web Audio DSP: highpass/lowpass/compressor/gain) + live mic gain
+- ChannelDigest + AI summary (Ollama Qwen2.5:7b на CPU)
+- @ai assistant в чате (BOT badge работает через email-check system user)
+- Bots FULL STACK: shadow-user pattern + ecb_ API keys + BotsTab UI +
+  reactions API + outbound webhooks (HMAC signing) + docs/BOT-API.md
+- Incident Mode: 🚨-кнопка в топбаре → IncidentPanel, open создаёт
+  dedicated канал, resolve генерит AI post-mortem из timeline
+- Cold-tone design system + prefers-reduced-motion + 87 designer-skills
 
 Stack:
 - Backend: Node 20 + Fastify 5 + Prisma 6 + Socket.io 4 + Sharp +
   Helmet + Rate-limit + otplib + LiveKit JWT
 - Frontend: React 19 + Vite 6 + TS 5.8 + livekit-client 2.18 lazy
-- DB: PostgreSQL 16, 12 migrations applied
+- DB: PostgreSQL 16, 16 migrations applied
 - AI: Ollama (local) → OpenRouter → NVIDIA → OpenAI auto-fallback
 - LiveKit + Ollama running на том же VPS (cv6067007)
 - Path-based deploy под /eclipse-chat/ на app.star-crm.ru
@@ -539,38 +573,49 @@ Stack:
 Production:
 - VPS cv6067007 (Star CRM сервер). Pavel под root SSH.
 - nginx 1.24, supervisor, PG 16, Ollama systemd, Docker compose для LiveKit.
-- /api/version → 0.12.2 (после deploy текущего HEAD'а), сейчас на проде 0.12.0.
-- nginx client_max_body_size 750m (для uploads до 50MB × 10 attachments).
+- /api/version → 0.16.0.
+- nginx client_max_body_size 750m + location ^~ /eclipse-chat/uploads/
+  (alias на /var/www/eclipse-chat/uploads/ — БЕЗ него images ломаются).
 
-Деплой:
-  cd /var/www/eclipse-chat && git pull origin master
-  npm ci                                                    # из КОРНЯ!
-  cd apps/server && npx prisma migrate deploy && cd ..      # если migration
-  npm run build                                             # из КОРНЯ
-  sudo supervisorctl restart eclipse-chat-server
+ДЕПЛОЙ ТЕПЕРЬ АВТОМАТИЧЕСКИЙ (с v0.14):
+- push в master → GitHub Actions workflow deploy-prod.yml
+- validate job: npm ci + typecheck + npm test + build
+- deploy job: ждёт approve в environment "production" → SSH в прод →
+  bash deploy/scripts/deploy.sh (git pull → npm ci → prisma migrate →
+  build → sync nginx → restart → smoke)
+- Claude может approve через: gh api --method POST
+  repos/PavelHopson/eclipse-chat/actions/runs/<RUN_ID>/pending_deployments
+  -F 'environment_ids[]=15291822396' -F 'state=approved' -F 'comment=...'
+- Конфиги в git: deploy/nginx/*.conf, deploy/supervisor/*, deploy/scripts/*
+- Setup: docs/CI-SETUP.md. Manual fallback: deploy/scripts/deploy.sh
 
 Anti-patterns (не повторять):
 - НЕ @fastify/multipart (ECONNRESET — все uploads через base64+sharp).
 - НЕ npm ci из apps/server (только из корня — workspaces).
-- НЕ деплоить без post-verification (curl /api/version + smoke).
-- Sharp ОБЯЗАТЕЛЬНО с failOn:"none" + metadata preflight + Buffer
-  size guard (<800 byte = corrupt). История: «зелёный пиксель» bug.
-- Cool-tone palette (#5db5d9 sky), НЕ warm orange — Pavel вернул это
-  явно после Eclipse Forge agent's redesign.
+- НЕ добавлять npm-зависимости бездумно — npm registry на машине Pavel'я
+  нестабилен (ECONNRESET). vitest пришлось через `npx --yes vitest@2.1.8`
+  вместо devDependency. Если нужен новый пакет — сначала проверь сеть.
+- НЕ `*/` внутри JSDoc-комментариев (markdown `*italic*/_x_` закрывает
+  комментарий — был баг в RichContent.tsx).
+- Cool-tone palette (#5db5d9 sky), НЕ warm orange.
+- Sharp с failOn:"none" + metadata preflight + Buffer size guard.
 
 Что хочется делать дальше — открытые milestones:
-- Telegram bridge template (отдельный repo, использует /api/bot/messages)
-- AI assistant как первый Bot record (чтобы @ai badge работал consistently)
-- Bot reactions API endpoint (capability declared но endpoint отсутствует)
-- libheif install на сервере (если хочется iPhone HEIC support)
-- Threads + mention autocomplete
-- Tests baseline (Vitest)
+- @ai с tool use (function calling — создаёт ActionItems/pins/search) —
+  логичное продолжение operator-направления
+- Status Board (kanban всех ActionItems across channels)
+- Telegram bridge bot template (отдельный repo — всё для writeup'а в
+  docs/BOT-API.md уже есть)
+- Integration tests (Vitest + Supertest + ephemeral PG)
+- i18n EN translation
+- PTT + «Студийный» voice edge case (enhancer слетает после PTT-цикла)
 
 Скажи что выбираем, или дай новую задачу.
 ```
 
 ---
 
-_Generated 2026-05-13 (после v0.12.1 design polish, 17 коммитов в одной
-сессии). Если за время следующей сессии в проде что-то изменилось —
-обновить этот файл перед следующим handoff'ом._
+_Generated 2026-05-14 (после v0.16.0 Incident Mode). За сессию 14.05:
+v0.12.2 → v0.16.0, 9 деплоев + infra-as-code + GitHub Actions auto-deploy
+с нуля + фикс image bug. Если за время следующей сессии в проде что-то
+изменилось — обновить этот файл перед следующим handoff'ом._
