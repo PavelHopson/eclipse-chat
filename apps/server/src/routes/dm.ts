@@ -101,7 +101,11 @@ export async function registerDmRoutes(app: FastifyInstance) {
       },
     });
     return {
-      conversations: list.map((c) => {
+      // Self-conversation (Saved Messages) исключаем из обычного списка —
+      // она отдаётся отдельно через POST /api/dm/saved и пинится в UI сверху.
+      conversations: list
+        .filter((c) => c.userAId !== c.userBId)
+        .map((c) => {
         const other = c.userAId === userId ? c.userB : c.userA;
         const last = c.messages[0];
         return {
@@ -127,6 +131,75 @@ export async function registerDmRoutes(app: FastifyInstance) {
             : null,
         };
       }),
+    };
+  });
+
+  /**
+   * POST /api/dm/saved — get-or-create «Избранное» (Saved Messages):
+   * self-conversation где userAId === userBId === me. Telegram-killer:
+   * личный буфер для заметок / ссылок / файлов. Переиспользует всю DM-инфру
+   * (send/edit/delete/react/attachments) — participant-check проходит т.к.
+   * оба участника = я.
+   */
+  app.post("/api/dm/saved", { onRequest: [requireJwt] }, async (req, reply) => {
+    const me = getUserId(req);
+    if (!me) {
+      return reply.status(401).send({ error: "Unauthorized" });
+    }
+    const user = await db.user.findUnique({
+      where: { id: me },
+      select: { id: true, displayName: true, avatar: true, status: true },
+    });
+    if (!user) {
+      return reply.status(401).send({ error: "User not found" });
+    }
+    const convo = await db.directConversation.upsert({
+      where: { userAId_userBId: { userAId: me, userBId: me } },
+      update: {},
+      create: { userAId: me, userBId: me },
+      select: {
+        id: true,
+        createdAt: true,
+        lastMessageAt: true,
+        messages: {
+          take: 1,
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            content: true,
+            createdAt: true,
+            userId: true,
+            deletedAt: true,
+            attachments: { select: { id: true } },
+          },
+        },
+      },
+    });
+    const last = convo.messages[0];
+    return {
+      conversation: {
+        id: convo.id,
+        saved: true,
+        other: {
+          id: user.id,
+          displayName: user.displayName,
+          avatar: user.avatar,
+          manualStatus: user.status,
+        },
+        createdAt: convo.createdAt.toISOString(),
+        lastMessageAt: convo.lastMessageAt.toISOString(),
+        lastMessage: last
+          ? {
+              id: last.id,
+              content: last.deletedAt
+                ? "[сообщение удалено]"
+                : previewContent(last.content, last.attachments.length),
+              createdAt: last.createdAt.toISOString(),
+              userId: last.userId,
+              mine: true,
+            }
+          : null,
+      },
     };
   });
 

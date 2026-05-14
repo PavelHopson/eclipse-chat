@@ -40,6 +40,8 @@ export type DmConversation = {
   /** Локальный unread count — incrementится при dm:conversation:bumped от не-меня
    *  для не-активной conversation. Сбрасывается при select. */
   unread: number;
+  /** «Избранное» — self-conversation. Пинится сверху списка, особый header. */
+  saved?: boolean;
 };
 
 type ApiConversation = Omit<DmConversation, "unread">;
@@ -56,8 +58,22 @@ export function useDirectConversations(socket: Socket | null, currentUserId: str
     setLoading(true);
     setError(null);
     try {
-      const data = await apiJson<ApiResponse>("/api/dm/conversations");
-      setConversations(data.conversations.map((c) => ({ ...c, unread: 0 })));
+      // Список обычных DM + «Избранное» (self-conversation) параллельно.
+      const [data, savedData] = await Promise.all([
+        apiJson<ApiResponse>("/api/dm/conversations"),
+        apiJson<{ conversation: ApiConversation }>("/api/dm/saved", {
+          method: "POST",
+        }),
+      ]);
+      const saved: DmConversation = {
+        ...savedData.conversation,
+        saved: true,
+        unread: 0,
+      };
+      setConversations([
+        saved,
+        ...data.conversations.map((c) => ({ ...c, unread: 0 })),
+      ]);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load DMs");
     } finally {

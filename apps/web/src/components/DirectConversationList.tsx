@@ -88,6 +88,8 @@ export function DirectConversationList({
   onSelect,
   onlineUserIds,
 }: Props) {
+  const savedConvo = conversations.find((c) => c.saved) ?? null;
+  const regularConvos = conversations.filter((c) => !c.saved);
   return (
     <aside style={wrap} aria-label="Личные сообщения">
       <header style={headerStyle}>
@@ -110,7 +112,74 @@ export function DirectConversationList({
             {error}
           </p>
         )}
-        {!loading && !error && conversations.length === 0 && (
+
+        {/* «Избранное» — self-conversation, всегда закреплено сверху. */}
+        {savedConvo && (
+          <>
+            <button
+              type="button"
+              onClick={() => onSelect(savedConvo.id)}
+              style={{
+                ...rowStyle(savedConvo.id === selectedDmId),
+                marginBottom: 2,
+              }}
+              onMouseEnter={(e) => {
+                if (savedConvo.id !== selectedDmId)
+                  e.currentTarget.style.background = "var(--ec-surface-2)";
+              }}
+              onMouseLeave={(e) => {
+                if (savedConvo.id !== selectedDmId)
+                  e.currentTarget.style.background = "transparent";
+              }}
+            >
+              <span
+                aria-hidden
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: "var(--ec-radius-md)",
+                  display: "grid",
+                  placeItems: "center",
+                  background: "var(--ec-accent-soft)",
+                  color: "var(--ec-accent)",
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z" />
+                </svg>
+              </span>
+              <span style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
+                <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  Избранное
+                </span>
+                <span
+                  style={{
+                    fontSize: "var(--ec-text-2xs)",
+                    color: "var(--ec-text-dim)",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  {savedConvo.lastMessage?.content ?? "Заметки, ссылки и файлы для себя"}
+                </span>
+              </span>
+              <span style={{ fontSize: "0.6rem", color: "var(--ec-text-dim)" }}>
+                {savedConvo.lastMessage ? relativeTime(savedConvo.lastMessage.createdAt) : ""}
+              </span>
+            </button>
+            <div
+              style={{
+                height: 1,
+                background: "var(--ec-border-subtle)",
+                margin: "var(--ec-space-1) var(--ec-space-2) var(--ec-space-2)",
+              }}
+              aria-hidden
+            />
+          </>
+        )}
+
+        {!loading && !error && regularConvos.length === 0 && (
           <div className="ec-empty" style={{ padding: "var(--ec-space-5) var(--ec-space-3)" }}>
             <div className="ec-empty-icon" aria-hidden>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -124,7 +193,7 @@ export function DirectConversationList({
           </div>
         )}
 
-        {conversations.map((c) => {
+        {regularConvos.map((c) => {
           const isActive = c.id === selectedDmId;
           const isOnline = onlineUserIds?.has(c.other.id) ?? false;
           const isInvisible = c.other.manualStatus === "INVISIBLE";

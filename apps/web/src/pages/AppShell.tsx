@@ -828,8 +828,32 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             </span>
           ) : inDmMode && selectedDm ? (
             <span className="ec-chat-title" style={chatTitle}>
-              <Avatar url={selectedDm.other.avatar} name={selectedDm.other.displayName} size={22} />
-              {selectedDm.other.displayName}
+              {selectedDm.saved ? (
+                <>
+                  <span
+                    aria-hidden
+                    style={{
+                      width: 22,
+                      height: 22,
+                      borderRadius: "var(--ec-radius-sm)",
+                      display: "grid",
+                      placeItems: "center",
+                      background: "var(--ec-accent-soft)",
+                      color: "var(--ec-accent)",
+                    }}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z" />
+                    </svg>
+                  </span>
+                  Избранное
+                </>
+              ) : (
+                <>
+                  <Avatar url={selectedDm.other.avatar} name={selectedDm.other.displayName} size={22} />
+                  {selectedDm.other.displayName}
+                </>
+              )}
             </span>
           ) : inDmMode ? (
             <span style={{ color: "var(--ec-text-muted)", fontSize: "var(--ec-text-sm)" }}>
@@ -1007,8 +1031,14 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             <>
               <MessageList
                 messages={dmMessages}
-                emptyHint={dmMessagesLoading ? "Загрузка…" : "Это начало вашего диалога. Напиши первое сообщение."}
-                channelName={selectedDm.other.displayName}
+                emptyHint={
+                  dmMessagesLoading
+                    ? "Загрузка…"
+                    : selectedDm.saved
+                    ? "Избранное — твой личный буфер. Сохраняй сюда заметки, ссылки и файлы."
+                    : "Это начало вашего диалога. Напиши первое сообщение."
+                }
+                channelName={selectedDm.saved ? "Избранное" : selectedDm.other.displayName}
                 currentUserId={user.id}
                 currentUserName={headerName}
                 currentRole={null}
@@ -1021,7 +1051,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                 onToggleReaction={dmToggleReaction}
               />
               <MessageInput
-                channelName={selectedDm.other.displayName}
+                channelName={selectedDm.saved ? "Избранное" : selectedDm.other.displayName}
+                placeholder={selectedDm.saved ? "Заметка в Избранное" : undefined}
                 disabled={!isReady}
                 onSend={(content, attachments) => dmSend(content, senderForMessages, attachments)}
                 onTypingStart={() => undefined}
