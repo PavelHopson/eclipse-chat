@@ -5,16 +5,21 @@
 > Любая фича, которой нет в текущем MVP, должна попасть сюда —
 > иначе она забудется.
 
-**Текущее состояние:** **v0.16.3 LIVE in prod** (commit `0219a48`, 14.05.2026).
+**Текущее состояние:** **v0.17.2 LIVE in prod** (commit `809ce4b`, 14.05.2026)
+— Operational redesign Фаза A завершена.
 Eclipse Chat — full-featured self-hosted operator communication core:
 auth + 2FA TOTP + brute-force lockout + audit log + DMs + Threads +
 Markdown + voice/video/screen-share (LiveKit) + Voice quality v3 (Web Audio
 DSP) + AI layer (Ollama Qwen2.5:7b + OpenRouter/NVIDIA/OpenAI auto-fallback)
 + ChannelDigest + @ai assistant + bot/operator full stack (shadow-user,
 ecb_ API keys, webhooks) + Incident Mode + cold-tone design system.
-Последнее (v0.16.1 → v0.16.3): voice UI polish — камера целиком, убраны
-дубли голосового присутствия, Discord-level mute/deafen-индикаторы +
-speaking-индикатор для всех voice-комнат сервера в sidebar.
+Последнее (v0.17.0 → v0.17.2): **Operational redesign Фаза A** — смена
+позиционирования из «voice/chat UI» в «operational command environment».
+IntelligencePanel (context-aware правый rail, табы Intelligence+Участники),
+semantic status-палитра, operational motion (signal-pulse / telemetry-edge),
+Forge Layer nav (NAV/SPACES/ADD), operational center polish. До этого
+v0.16.1→v0.16.4 — voice UI polish (камера, дубли, mute/deafen, speaking).
+Дальше — Фаза B (Message→Entity, Execution Dock, Today's Execution).
 
 17 коммитов в одной сессии 13.05.2026:
 v0.6.1→v0.6.4 voice quality controls (шумодав, devices, master volume,

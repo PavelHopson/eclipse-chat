@@ -5,7 +5,7 @@
 > Скопируй блок «Continuation Message» в самом конце в новый чат
 > как первое сообщение.
 >
-> **Обновлено 2026-05-14 (после v0.16.3 — voice UI polish).**
+> **Обновлено 2026-05-14 (после v0.17.2 — Operational redesign Фаза A).**
 
 ---
 
@@ -96,24 +96,32 @@ E:\projects\ROADMAP.md (§1 статусы + §5 Changelog). Per-repo ROADMAP
 
 ---
 
-## 📊 PROJECT STATUS (14.05.2026 — v0.16.3)
+## 📊 PROJECT STATUS (14.05.2026 — v0.17.2)
 
-> **v0.16.1 → v0.16.3 (voice UI polish, в проде):**
-> - v0.16.1 — камера в `VideoTrackTile` теперь `objectFit:contain` (кадр
->   целиком, не обрезается); muted-публикации не рендерятся (убрана чёрная
->   плитка после выключения камеры); участник с камерой в видео-сетке больше
->   не дублируется audio-плиткой в «Голос в комнате» (`audioOnlyParticipants`);
->   MemberList без voice-badge; для VOICE-канала правый rail (MemberList)
->   скрыт целиком — VoiceRoom сам показывает участников.
-> - v0.16.2 — Discord-level mute/deafen-индикаторы участников эфира в sidebar.
->   Backend трекает `userMeta` (mic/deafen) + рассылает `voice:participant:meta`;
->   `useVoicePresence` отдаёт `{ byChannel, metaByUser }`; `ChannelList`
->   рисует mic-off / deafened иконки у occupants под voice-каналом.
-> - v0.16.3 — speaking-индикатор покрывает ВСЕ voice-каналы сервера, не
->   только свою комнату. Backend `broadcastSpeaking()` → `voice:participant:
->   speaking` дельта (сверх-транзиентно, без snapshot); `useVoice` эмитит
->   `voice:speaking:update`; `useVoicePresence` → `speakingByUser`; AppShell
->   мержит backend (чужие комнаты) + локальный LiveKit ActiveSpeakers (своя).
+> **Operational redesign Фаза A ЗАВЕРШЕНА (v0.17.0 → v0.17.2, в проде).**
+> Pavel задал смену позиционирования: «voice/chat UI» → «operational
+> command environment». Ось экрана `CONTEXT → EXECUTION → INTELLIGENCE`.
+> Раскладка: Фаза A (чистый фронт, сделано), B (Message→Entity, Execution
+> Dock, Today's Execution — нужен backend), C (AI Memory layer, Context
+> Tree, Client Mode — schema + AI, недели).
+>
+> **Фаза A — что сделано:**
+> - **IntelligencePanel** — постоянный context-aware правый rail с табами
+>   «Intelligence» + «Участники». chat→Intelligence = ChannelDigest (переехал
+>   из центра ленты); voice→Intelligence = live-roster эфира. Виден всегда
+>   в server-view (и voice, и chat). `MemberList` получил `hideHeader`.
+> - **Semantic status palette** — `--ec-status-exec/warn/risk/idle/ai` (+soft).
+> - **Operational motion** — `ec-signal-pulse` (status-dot), `ec-telemetry-edge`
+>   (радарная развёртка). respects reduced-motion.
+> - **Forge Layer** — `ServerList` = системная навигация: NAV (Home/Search)
+>   / SPACES (DMs + environments) / ADD. AI/Tasks/Runtime ждут Фазы B/C.
+> - **Center polish** — VoiceRoom connection badge semantic-цвета + signal-dot,
+>   telemetry-edge на header при подключении.
+>
+> **До Фазы A (v0.16.1 → v0.16.4, voice UI polish):** камера `objectFit:contain`,
+> убраны 3 дубля голосового присутствия + чёрная плитка, Discord-level
+> mute/deafen-индикаторы, speaking-индикатор всех voice-комнат, фикс состава
+> sidebar (LiveKit как источник истины для активного канала).
 
 
 Eclipse Chat теперь **full-featured self-hosted operator communication
@@ -548,13 +556,14 @@ state и работай.
 4. E:\projects\ROADMAP.md (общая дорожная карта Eclipse Hopson)
 
 Eclipse Chat LIVE в проде: https://app.star-crm.ru/eclipse-chat/
-Версия в проде: 0.16.3 (voice UI polish — камера целиком, убраны дубли
-голосового присутствия, Discord-level mute/deafen + speaking-индикаторы).
+Версия в проде: 0.17.2 (Operational redesign Фаза A — IntelligencePanel +
+semantic palette + Forge Layer nav + operational motion).
 
 История последних релизов (всё в проде):
-- v0.16.3 — speaking-индикатор для всех voice-комнат сервера
-- v0.16.2 — Discord-level mute/deafen-индикаторы участников эфира в sidebar
-- v0.16.1 — voice UI: камера contain + убраны 3 дубля голосового присутствия
+- v0.17.2 — Фаза A шаги 3-4: Forge Layer nav + operational center polish
+- v0.17.1 — Фаза A шаг 2: semantic status palette + operational motion
+- v0.17.0 — Фаза A шаг 1: IntelligencePanel (context-aware правый rail)
+- v0.16.1→v0.16.4 — voice UI polish (камера, дубли, mute/deafen, speaking)
 - v0.16.0 — Incident Mode
 - v0.15.0 — Voice quality v3 (Web Audio DSP-цепочка «Студийный» режим)
 - v0.14.0 — @/: autocomplete + channel emoji/DnD + bot webhooks + Vitest
