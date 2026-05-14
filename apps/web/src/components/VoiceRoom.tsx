@@ -18,6 +18,22 @@ import {
   VoiceChannelIcon,
 } from "./icons/EclipseIcons";
 
+/**
+ * VoiceRoom — **immersive voice experience** (operational redesign Фаза A.5).
+ *
+ * Не dashboard-grid. Это:
+ *   ┌─ TOP BAR     — минимально: комната · LIVE · участники
+ *   ├─ ROOM CANVAS — full immersive: presence layer (floating avatars +
+ *   │                speaking glow) ИЛИ cinematic video stage. Ambient
+ *   │                gradients, дышащая атмосфера. Без card-in-card.
+ *   └─ CONTROLS DOCK — floating bar внизу
+ *
+ * Убрано из старой версии: giant telemetry box, boxed hero card, boxed
+ * «Голос в комнате» grid. Участники теперь — live presence layer в центре,
+ * не тяжёлые dashboard-карточки. Intelligence/context живёт в правой
+ * collapsible-панели (IntelligencePanel), не ломая immersion.
+ */
+
 type Props = {
   channelId: string;
   channelName: string;
@@ -27,245 +43,64 @@ type Props = {
   voice: ReturnType<typeof useVoiceHook>;
 };
 
-const wrap: CSSProperties = {
+/* ===== Layout ============================================== */
+
+const roomWrap: CSSProperties = {
   flex: 1,
   display: "flex",
   flexDirection: "column",
   minHeight: 0,
+  position: "relative",
+  overflow: "hidden",
   background:
-    "radial-gradient(ellipse 68% 50% at 20% -10%, hsl(195 70% 16% / 0.42) 0%, transparent 55%), radial-gradient(ellipse 52% 40% at 100% 100%, hsl(252 60% 22% / 0.22) 0%, transparent 62%), var(--ec-bg)",
+    "radial-gradient(ellipse 70% 55% at 22% -8%, hsl(195 70% 18% / 0.5) 0%, transparent 58%)," +
+    "radial-gradient(ellipse 55% 45% at 100% 108%, hsl(252 60% 24% / 0.32) 0%, transparent 64%)," +
+    "var(--ec-bg)",
 };
 
-const header: CSSProperties = {
+const topBar: CSSProperties = {
   display: "flex",
   alignItems: "center",
   gap: "var(--ec-space-3)",
-  padding: "var(--ec-space-4) var(--ec-space-5)",
-  borderBottom: "1px solid var(--ec-border-subtle)",
-  background: "hsl(205 18% 9% / 0.78)",
-  backdropFilter: "blur(18px)",
+  padding: "0 var(--ec-space-5)",
+  height: 52,
+  flexShrink: 0,
+  position: "relative",
+  zIndex: 2,
+  // отделяем не рамкой, а мягкой тенью-градиентом (atmospheric depth)
+  background:
+    "linear-gradient(180deg, hsl(205 20% 7% / 0.92), hsl(205 20% 7% / 0))",
 };
 
-const body: CSSProperties = {
+const canvas: CSSProperties = {
   flex: 1,
   minHeight: 0,
+  position: "relative",
+  display: "flex",
+  flexDirection: "column",
   overflow: "auto",
   padding: "var(--ec-space-5)",
-  display: "flex",
-  flexDirection: "column",
-  gap: "var(--ec-space-5)",
-};
-
-const heroGrid: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "minmax(0, 1.5fr) minmax(280px, 0.95fr)",
-  gap: "var(--ec-space-4)",
-  alignItems: "stretch",
-};
-
-const panel: CSSProperties = {
-  position: "relative",
-  overflow: "hidden",
-  borderRadius: "var(--ec-radius-xl)",
-  border: "1px solid var(--ec-border-default)",
-  background:
-    "linear-gradient(180deg, hsl(208 16% 10% / 0.92), hsl(210 14% 8% / 0.98))",
-  boxShadow: "var(--ec-shadow-lg)",
-};
-
-const panelBody: CSSProperties = {
-  position: "relative",
   zIndex: 1,
-  padding: "var(--ec-space-5)",
-  display: "flex",
-  flexDirection: "column",
-  gap: "var(--ec-space-4)",
-  minHeight: 0,
 };
 
-const stageBoard: CSSProperties = {
-  ...panel,
-  minHeight: 400,
-};
-
-const stageBoardBody: CSSProperties = {
-  ...panelBody,
-  minHeight: 400,
-  justifyContent: "space-between",
-};
-
-const boardGlow: CSSProperties = {
-  position: "absolute",
-  inset: "-10% auto auto -5%",
-  width: 300,
-  height: 240,
-  borderRadius: "50%",
-  background: "radial-gradient(circle, hsl(195 70% 60% / 0.18) 0%, transparent 72%)",
-  pointerEvents: "none",
-};
-
-const boardRing: CSSProperties = {
-  position: "absolute",
-  right: -80,
-  bottom: -110,
-  width: 240,
-  height: 240,
-  borderRadius: "50%",
-  border: "1px solid hsl(195 70% 60% / 0.16)",
-  boxShadow: "0 0 0 28px hsl(195 70% 60% / 0.04), inset 0 0 40px hsl(195 70% 60% / 0.08)",
-  pointerEvents: "none",
-};
-
-const metricGrid: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-  gap: "var(--ec-space-2)",
-};
-
-const metricCard: CSSProperties = {
-  borderRadius: "var(--ec-radius-lg)",
-  border: "1px solid var(--ec-border-subtle)",
-  background: "hsl(210 14% 10% / 0.82)",
-  padding: "var(--ec-space-3)",
-  display: "flex",
-  flexDirection: "column",
-  gap: 4,
-};
-
-const tag: CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 6,
-  padding: "0.28rem 0.6rem",
-  borderRadius: "var(--ec-radius-full)",
-  border: "1px solid var(--ec-border-default)",
-  background: "hsl(195 70% 60% / 0.08)",
-  color: "var(--ec-text-muted)",
-  fontSize: "var(--ec-text-2xs)",
-  letterSpacing: "var(--ec-tracking-wide)",
-  textTransform: "uppercase",
-};
-
-const statusList: CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: "var(--ec-space-2)",
-};
-
-const statusRow: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  gap: "var(--ec-space-2)",
-  borderRadius: "var(--ec-radius-md)",
-  border: "1px solid var(--ec-border-subtle)",
-  padding: "0.75rem 0.9rem",
-  background: "hsl(210 12% 10% / 0.75)",
-};
-
-const previewOccupants: CSSProperties = {
-  display: "flex",
-  flexWrap: "wrap",
-  gap: "var(--ec-space-2)",
-};
-
-const occupantPill: CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 8,
-  padding: "0.32rem 0.55rem 0.32rem 0.32rem",
-  borderRadius: "var(--ec-radius-full)",
-  border: "1px solid var(--ec-border-default)",
-  background: "hsl(210 12% 11% / 0.88)",
-  color: "var(--ec-text)",
-  fontSize: "var(--ec-text-xs)",
-};
-
-const videoGrid: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-  gap: "var(--ec-space-3)",
-  alignContent: "start",
-};
-
-const videoTileWrap: CSSProperties = {
-  position: "relative",
-  minHeight: 214,
-  borderRadius: "var(--ec-radius-xl)",
-  overflow: "hidden",
-  border: "1px solid var(--ec-border-default)",
-  background:
-    "radial-gradient(circle at 50% 20%, hsl(195 70% 60% / 0.18), transparent 48%), linear-gradient(180deg, hsl(208 14% 13%), hsl(210 12% 8%))",
-};
-
-const videoCanvas: CSSProperties = {
-  position: "absolute",
-  inset: 0,
-};
-
-const videoOverlay: CSSProperties = {
-  position: "absolute",
-  inset: "auto 0 0",
-  padding: "var(--ec-space-3)",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  gap: "var(--ec-space-2)",
-  background:
-    "linear-gradient(180deg, transparent, hsl(210 12% 7% / 0.92) 52%, hsl(210 12% 7% / 0.98))",
-};
-
-const audioGrid: CSSProperties = {
-  display: "grid",
-  gap: "var(--ec-space-2)",
-  gridTemplateColumns: "repeat(auto-fill, minmax(132px, 1fr))",
-};
-
-const audioTile: CSSProperties = {
-  position: "relative",
-  background: "hsl(210 12% 10% / 0.9)",
-  border: "1px solid var(--ec-border-default)",
-  borderRadius: "var(--ec-radius-md)",
-  padding: "var(--ec-space-3) var(--ec-space-2)",
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  gap: "var(--ec-space-1)",
-  transition:
-    "border-color var(--ec-dur-fast) var(--ec-ease), box-shadow var(--ec-dur-fast) var(--ec-ease), transform var(--ec-dur-fast) var(--ec-ease)",
-};
-
-const audioTileSpeaking: CSSProperties = {
-  ...audioTile,
-  borderColor: "var(--ec-accent)",
-  boxShadow: "0 0 0 1px var(--ec-accent), 0 0 24px -3px hsl(195 70% 60% / 0.45)",
-  transform: "translateY(-1px)",
-};
-
-const muteOverlay: CSSProperties = {
-  position: "absolute",
-  bottom: 12,
-  right: 12,
-  width: 24,
-  height: 24,
-  borderRadius: "var(--ec-radius-full)",
-  background: "var(--ec-danger)",
-  color: "#fff",
-  display: "grid",
-  placeItems: "center",
-  border: "2px solid hsl(210 12% 10%)",
-};
-
-const controlsBar: CSSProperties = {
+const controlsDock: CSSProperties = {
+  flexShrink: 0,
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
   gap: "var(--ec-space-2)",
-  padding: "var(--ec-space-3) var(--ec-space-5)",
-  borderTop: "1px solid var(--ec-border-subtle)",
-  background: "hsl(208 14% 9% / 0.88)",
-  backdropFilter: "blur(18px)",
+  margin: "0 auto var(--ec-space-4)",
+  padding: "var(--ec-space-2) var(--ec-space-3)",
+  borderRadius: "var(--ec-radius-full)",
+  background: "hsl(208 16% 9% / 0.82)",
+  backdropFilter: "blur(20px)",
+  WebkitBackdropFilter: "blur(20px)",
+  boxShadow:
+    "0 18px 48px hsl(210 40% 2% / 0.6), 0 0 0 1px hsl(195 30% 40% / 0.12), inset 0 1px 0 hsl(195 70% 60% / 0.06)",
+  position: "relative",
+  zIndex: 2,
   flexWrap: "wrap",
+  maxWidth: "calc(100% - var(--ec-space-8))",
 };
 
 const controlBtn: CSSProperties = {
@@ -274,9 +109,9 @@ const controlBtn: CSSProperties = {
   borderRadius: "var(--ec-radius-full)",
   display: "grid",
   placeItems: "center",
-  background: "var(--ec-surface-2)",
+  background: "hsl(210 14% 14% / 0.9)",
   color: "var(--ec-text)",
-  border: "1px solid var(--ec-border-default)",
+  border: "1px solid hsl(195 30% 50% / 0.12)",
   cursor: "pointer",
   transition:
     "background var(--ec-dur-fast) var(--ec-ease), color var(--ec-dur-fast) var(--ec-ease), border-color var(--ec-dur-fast) var(--ec-ease), transform var(--ec-dur-fast) var(--ec-ease)",
@@ -297,15 +132,114 @@ const controlBtnAccent: CSSProperties = {
   boxShadow: "0 0 0 1px var(--ec-border-accent), 0 0 18px -2px hsl(195 70% 60% / 0.42)",
 };
 
-const emptyHero: CSSProperties = {
+/* ===== Presence layer ====================================== */
+
+const presenceLayer: CSSProperties = {
+  flex: 1,
+  display: "flex",
+  flexWrap: "wrap",
+  alignContent: "center",
+  justifyContent: "center",
+  gap: "var(--ec-space-5)",
+  padding: "var(--ec-space-6) var(--ec-space-4)",
+  minHeight: 0,
+};
+
+function presenceCardStyle(speaking: boolean, dimmed: boolean): CSSProperties {
+  return {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: "var(--ec-space-2)",
+    padding: "var(--ec-space-4) var(--ec-space-3)",
+    minWidth: 132,
+    borderRadius: "var(--ec-radius-xl)",
+    // no hard box — мягкая подложка + тень для depth
+    background: speaking
+      ? "radial-gradient(ellipse at 50% 30%, hsl(195 70% 60% / 0.16), hsl(208 16% 11% / 0.55))"
+      : "hsl(208 16% 11% / 0.45)",
+    boxShadow: speaking
+      ? "0 0 0 1px hsl(195 70% 60% / 0.4), 0 12px 40px -8px hsl(195 70% 50% / 0.35)"
+      : "0 10px 30px -12px hsl(210 40% 2% / 0.7)",
+    opacity: dimmed ? 0.7 : 1,
+    transition:
+      "background 140ms var(--ec-ease), box-shadow 140ms var(--ec-ease), opacity var(--ec-dur-fast) var(--ec-ease)",
+  };
+}
+
+const muteBadge: CSSProperties = {
+  position: "absolute",
+  bottom: -2,
+  right: -2,
+  width: 22,
+  height: 22,
+  borderRadius: "var(--ec-radius-full)",
+  background: "var(--ec-danger)",
+  color: "#fff",
   display: "grid",
   placeItems: "center",
+  border: "2px solid hsl(208 16% 9%)",
+};
+
+/* ===== Video stage ========================================= */
+
+const videoStage: CSSProperties = {
+  flex: 1,
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+  gap: "var(--ec-space-3)",
+  alignContent: "start",
+  minHeight: 0,
+};
+
+const videoTileWrap: CSSProperties = {
+  position: "relative",
   minHeight: 220,
   borderRadius: "var(--ec-radius-xl)",
-  border: "1px solid hsl(195 70% 60% / 0.16)",
+  overflow: "hidden",
   background:
-    "radial-gradient(circle at 50% 30%, hsl(195 70% 60% / 0.16) 0%, transparent 54%), linear-gradient(180deg, hsl(210 12% 10% / 0.92), hsl(210 12% 8% / 0.98))",
+    "radial-gradient(circle at 50% 18%, hsl(195 70% 60% / 0.16), transparent 50%), linear-gradient(180deg, hsl(208 14% 12%), hsl(210 12% 7%))",
+  boxShadow: "0 18px 44px -14px hsl(210 40% 2% / 0.7)",
 };
+
+const videoCanvas: CSSProperties = { position: "absolute", inset: 0 };
+
+const videoOverlay: CSSProperties = {
+  position: "absolute",
+  inset: "auto 0 0",
+  padding: "var(--ec-space-3)",
+  display: "flex",
+  alignItems: "center",
+  gap: "var(--ec-space-2)",
+  background:
+    "linear-gradient(180deg, transparent, hsl(210 12% 6% / 0.94) 60%)",
+};
+
+/* presence strip — компактные участники без видео под видео-сценой */
+const presenceStrip: CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: "var(--ec-space-2)",
+  marginTop: "var(--ec-space-4)",
+};
+
+function stripChipStyle(speaking: boolean): CSSProperties {
+  return {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 8,
+    padding: "0.3rem 0.7rem 0.3rem 0.3rem",
+    borderRadius: "var(--ec-radius-full)",
+    background: "hsl(208 16% 11% / 0.7)",
+    boxShadow: speaking
+      ? "0 0 0 1px hsl(195 70% 60% / 0.45), 0 0 14px -3px hsl(195 70% 55% / 0.5)"
+      : "0 6px 18px -10px hsl(210 40% 2% / 0.7)",
+    color: speaking ? "var(--ec-accent)" : "var(--ec-text)",
+    fontSize: "var(--ec-text-xs)",
+    fontWeight: speaking ? 600 : 400,
+    transition: "box-shadow 140ms var(--ec-ease), color 140ms var(--ec-ease)",
+  };
+}
 
 function resolveConnectionBadge(isConnected: boolean, isReconnecting: boolean, isConnecting: boolean, pttActive: boolean) {
   if (isConnected) return pttActive ? "Передача" : "В эфире";
@@ -313,89 +247,59 @@ function resolveConnectionBadge(isConnected: boolean, isReconnecting: boolean, i
   if (isConnecting) return "Подключаемся";
   return "Готов";
 }
-function AudioTile({
-  participant,
-  lookupAvatar,
-  isLocallyMuted,
-  participantVolume,
-  onContextMenu,
-}: {
-  participant: VoiceParticipant;
-  lookupAvatar: (identity: string) => string | null;
-  isLocallyMuted: boolean;
-  participantVolume: number;
-  onContextMenu: (e: React.MouseEvent) => void;
-}) {
-  const avatar = lookupAvatar(participant.identity);
-  const speaking = participant.isSpeaking && !participant.isMicMuted && !isLocallyMuted;
-  const dimmed = isLocallyMuted || participantVolume < 1;
 
+/* ===== Speaking avatar (presence layer) ==================== */
+
+function PresenceAvatar({
+  name,
+  avatar,
+  size,
+  speaking,
+  muted,
+}: {
+  name: string;
+  avatar: string | null;
+  size: number;
+  speaking: boolean;
+  muted: boolean;
+}) {
   return (
-    <div
+    <span
       style={{
-        ...(speaking ? audioTileSpeaking : audioTile),
-        ...(dimmed && !participant.isLocal ? { opacity: 0.78 } : {}),
-        cursor: participant.isLocal ? "default" : "context-menu",
+        position: "relative",
+        display: "inline-block",
+        borderRadius: "var(--ec-radius-full)",
+        boxShadow: speaking
+          ? "0 0 0 2.5px var(--ec-accent), 0 0 26px hsl(195 70% 60% / 0.6)"
+          : "0 0 0 1px hsl(195 30% 50% / 0.1)",
+        transition: "box-shadow 120ms var(--ec-ease)",
       }}
-      onContextMenu={participant.isLocal ? undefined : onContextMenu}
     >
-      <Avatar url={avatar} name={participant.name} size={56} />
-      {participant.isMicMuted && (
-        <span style={muteOverlay} aria-label="Микрофон выключен" title="Микрофон выключен">
-          <MicStateIcon size={12} off />
-        </span>
-      )}
-      {isLocallyMuted && (
+      <Avatar url={avatar} name={name} size={size} />
+      {/* speaking visualization — мягкое дышащее кольцо */}
+      {speaking && (
         <span
+          aria-hidden
+          className="ec-anim-limbus"
           style={{
-            ...muteOverlay,
-            bottom: 12,
-            left: 12,
-            right: "auto",
-            background: "var(--ec-text-muted)",
+            position: "absolute",
+            inset: -7,
+            borderRadius: "var(--ec-radius-full)",
+            border: "1.5px solid hsl(195 70% 65% / 0.55)",
+            pointerEvents: "none",
           }}
-          aria-label="Заглушено локально"
-          title="Заглушено локально для тебя"
-        >
-          <HeadsetIcon size={12} off />
+        />
+      )}
+      {muted && (
+        <span style={muteBadge} aria-label="Микрофон выключен" title="Микрофон выключен">
+          <MicStateIcon size={11} off />
         </span>
       )}
-      <span
-        style={{
-          fontSize: "var(--ec-text-sm)",
-          fontWeight: 600,
-          color: speaking ? "var(--ec-accent)" : "var(--ec-text)",
-          maxWidth: "100%",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-          textAlign: "center",
-        }}
-      >
-        {participant.name}
-        {participant.isLocal && (
-          <span style={{ color: "var(--ec-text-dim)", fontWeight: 500, marginLeft: 4 }}>(ты)</span>
-        )}
-        {!participant.isLocal && participantVolume !== 1 && (
-          <span
-            style={{
-              color: "var(--ec-text-dim)",
-              fontWeight: 500,
-              marginLeft: 4,
-              fontFamily: "var(--ec-font-mono)",
-              fontSize: "0.6rem",
-            }}
-          >
-            · {Math.round(participantVolume * 100)}%
-          </span>
-        )}
-      </span>
-      <span style={{ fontSize: "var(--ec-text-2xs)", color: "var(--ec-text-dim)" }}>
-        {speaking ? "Передаёт голос" : participant.isMicMuted ? "Mic off" : "Слушает эфир"}
-      </span>
-    </div>
+    </span>
   );
 }
+
+/* ===== Video tile ========================================== */
 
 function VideoTrackTile({
   visual,
@@ -416,12 +320,9 @@ function VideoTrackTile({
     element.muted = visual.isLocal;
     element.style.width = "100%";
     element.style.height = "100%";
-    // contain — показываем кадр камеры/экрана целиком без обрезки краёв.
-    // cover раньше обрезал webcam-кадр сверху/снизу под формат плитки.
     element.style.objectFit = "contain";
     element.style.background = "#070b0f";
     host.appendChild(element);
-
     return () => {
       try {
         visual.track.detach(element);
@@ -440,51 +341,39 @@ function VideoTrackTile({
     <article
       style={{
         ...videoTileWrap,
-        ...(isScreen
-          ? {
-              minHeight: 320,
-              gridColumn: "1 / -1",
-            }
-          : null),
+        ...(isScreen ? { minHeight: 340, gridColumn: "1 / -1" } : null),
       }}
     >
-      <div
-        aria-hidden
-        style={{
-          position: "absolute",
-          inset: 0,
-          background:
-            visual.source === "screen"
-              ? "radial-gradient(circle at 50% 0%, hsl(195 70% 60% / 0.18), transparent 48%)"
-              : "radial-gradient(circle at 50% 0%, hsl(220 40% 40% / 0.12), transparent 48%)",
-        }}
-      />
       <div ref={mountRef} style={videoCanvas} />
       <div style={videoOverlay}>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-          <Avatar url={avatar} name={visual.name} size={30} />
-          <span style={{ minWidth: 0 }}>
-            <span
-              style={{
-                display: "block",
-                color: "var(--ec-text-strong)",
-                fontWeight: 600,
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {visual.name}
-              {visual.isLocal ? " · ты" : ""}
-            </span>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "var(--ec-text-muted)", fontSize: "var(--ec-text-xs)" }}>
-              {isScreen ? <ScreenShareIcon size={12} /> : <CameraLensIcon size={12} />}
-              {isScreen ? "Демонстрация экрана" : "Камера"}
-            </span>
+        <Avatar url={avatar} name={visual.name} size={28} />
+        <span style={{ minWidth: 0 }}>
+          <span
+            style={{
+              display: "block",
+              color: "var(--ec-text-strong)",
+              fontWeight: 600,
+              fontSize: "var(--ec-text-sm)",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {visual.name}
+            {visual.isLocal ? " · ты" : ""}
           </span>
-        </span>
-        <span style={tag}>
-          {isScreen ? "Screen" : "Video"}
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 5,
+              color: "var(--ec-text-muted)",
+              fontSize: "var(--ec-text-2xs)",
+            }}
+          >
+            {isScreen ? <ScreenShareIcon size={11} /> : <CameraLensIcon size={11} />}
+            {isScreen ? "Демонстрация экрана" : "Камера"}
+          </span>
         </span>
       </div>
     </article>
@@ -523,10 +412,8 @@ export function VoiceRoom({
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  const lookupAvatar = (identity: string): string | null => {
-    const member = members.find((row) => row.userId === identity);
-    return member?.user.avatar ?? null;
-  };
+  const lookupAvatar = (identity: string): string | null =>
+    members.find((row) => row.userId === identity)?.user.avatar ?? null;
 
   const isConnected = v.state === "connected" && v.activeChannelId === channelId;
   const isConnecting = v.state === "connecting" && v.activeChannelId === channelId;
@@ -537,35 +424,50 @@ export function VoiceRoom({
     v.activeChannelId !== channelId &&
     (v.state === "connected" || v.state === "connecting" || v.state === "reconnecting");
 
-  const screenTracks = v.visualTracks.filter((track) => track.source === "screen");
-  const cameraTracks = v.visualTracks.filter((track) => track.source === "camera");
-  const connectionBadgeText = resolveConnectionBadge(isConnected, isReconnecting, isConnecting, v.pttActive);
+  const screenTracks = v.visualTracks.filter((t) => t.source === "screen");
+  const cameraTracks = v.visualTracks.filter((t) => t.source === "camera");
+  const hasVisual = screenTracks.length > 0 || cameraTracks.length > 0;
 
-  // Участники, чья камера уже показана видео-плиткой выше — НЕ дублируем их
-  // отдельной audio-плиткой в секции «Голос в комнате» (Discord-style:
-  // камера заменяет аватар-плитку, а не висит рядом с ней).
-  const cameraIdentities = new Set(cameraTracks.map((track) => track.identity));
+  // Участники с камерой уже в видео-сцене — не дублируем presence-карточкой.
+  const cameraIdentities = new Set(cameraTracks.map((t) => t.identity));
   const audioOnlyParticipants = v.participants.filter(
-    (participant) => !cameraIdentities.has(participant.identity),
+    (p) => !cameraIdentities.has(p.identity),
   );
 
-  // Operational status-цвет для connection badge (Фаза A semantic palette).
+  const connectionBadgeText = resolveConnectionBadge(
+    isConnected,
+    isReconnecting,
+    isConnecting,
+    v.pttActive,
+  );
   const statusColor = isConnected
     ? "var(--ec-status-exec)"
     : isReconnecting || isConnecting
     ? "var(--ec-status-warn)"
     : "var(--ec-status-idle)";
 
+  const headcount = isJoinedHere ? v.participants.length : occupants.length;
+
+  const openCtxMenu = (p: VoiceParticipant, e: React.MouseEvent) => {
+    e.preventDefault();
+    if (p.isLocal) return;
+    setCtxMenu({
+      identity: p.identity,
+      name: p.name,
+      avatar: lookupAvatar(p.identity),
+      x: e.clientX,
+      y: e.clientY,
+    });
+  };
+
   return (
-    <div style={wrap} className="ec-voice-room">
-      <div
-        style={header}
-        className={isJoinedHere ? "ec-telemetry-edge" : undefined}
-      >
+    <div style={roomWrap} className="ec-voice-room">
+      {/* ── TOP BAR — минимально ─────────────────────────────── */}
+      <div style={topBar}>
         <span
           style={{
-            width: 34,
-            height: 34,
+            width: 30,
+            height: 30,
             borderRadius: "50%",
             display: "grid",
             placeItems: "center",
@@ -575,25 +477,30 @@ export function VoiceRoom({
           }}
           aria-hidden
         >
-          <VoiceChannelIcon size={16} />
+          <VoiceChannelIcon size={15} />
         </span>
-        <div style={{ minWidth: 0 }}>
-          <strong style={{ color: "var(--ec-text-strong)", fontSize: "var(--ec-text-base)" }}>#{channelName}</strong>
-          <div style={{ color: "var(--ec-text-dim)", fontSize: "var(--ec-text-xs)", marginTop: 2 }}>
-            Голосовой узел системы
-          </div>
-        </div>
-        <span
-          className="ec-badge"
+        <strong
           style={{
-            marginLeft: 6,
-            fontSize: "0.62rem",
+            color: "var(--ec-text-strong)",
+            fontSize: "var(--ec-text-base)",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            minWidth: 0,
+          }}
+        >
+          #{channelName}
+        </strong>
+        <span
+          style={{
             display: "inline-flex",
             alignItems: "center",
             gap: 5,
+            fontSize: "var(--ec-text-2xs)",
+            fontWeight: 700,
+            letterSpacing: "var(--ec-tracking-caps)",
+            textTransform: "uppercase",
             color: statusColor,
-            borderColor: "color-mix(in srgb, currentColor 45%, transparent)",
-            background: "color-mix(in srgb, currentColor 12%, transparent)",
           }}
         >
           <span
@@ -615,356 +522,275 @@ export function VoiceRoom({
         </span>
         {v.settings.micActivationMode === "push_to_talk" && isJoinedHere && (
           <span
-            className="ec-badge"
-            title={`Push-to-talk: зажми ${keyCodeToLabel(v.settings.pttKey)} чтобы говорить`}
-            style={{ fontSize: "0.62rem", borderColor: "var(--ec-accent)", color: "var(--ec-accent)" }}
+            style={{
+              fontSize: "var(--ec-text-2xs)",
+              color: "var(--ec-accent)",
+              border: "1px solid var(--ec-border-accent)",
+              borderRadius: "var(--ec-radius-full)",
+              padding: "0.1rem 0.5rem",
+            }}
+            title={`Push-to-talk: зажми ${keyCodeToLabel(v.settings.pttKey)}`}
           >
             PTT · {keyCodeToLabel(v.settings.pttKey)}
           </span>
         )}
-        <span style={{ marginLeft: "auto", fontSize: "var(--ec-text-2xs)", color: "var(--ec-text-dim)" }}>
-          {isJoinedHere ? `${v.participants.length} в комнате` : occupants.length > 0 ? `${occupants.length} уже в эфире` : "комната свободна"}
+        <span
+          style={{
+            marginLeft: "auto",
+            fontSize: "var(--ec-text-2xs)",
+            color: "var(--ec-text-dim)",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 5,
+            whiteSpace: "nowrap",
+          }}
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+            <circle cx="9" cy="7" r="4" />
+            <path d="M23 21v-2a4 4 0 00-3-3.87" />
+          </svg>
+          {headcount}
         </span>
       </div>
 
-      <div style={body} className="ec-voice-room__body">
-        {!isJoinedHere ? (
-          <section style={heroGrid} className="ec-voice-room__hero">
-            <div style={stageBoard}>
-              <div style={boardGlow} aria-hidden />
-              <div style={boardRing} aria-hidden />
-              <div style={stageBoardBody}>
-                <div style={{ display: "flex", flexDirection: "column", gap: "var(--ec-space-3)", maxWidth: 520 }}>
-                  <span style={tag}>
-                    <VoiceChannelIcon size={12} />
-                    Voice Preview
-                  </span>
-                  <h2
-                    style={{
-                      margin: 0,
-                      fontSize: "clamp(1.35rem, 2vw, 1.8rem)",
-                      lineHeight: 1.05,
-                      letterSpacing: "var(--ec-tracking-tight)",
-                      color: "var(--ec-text-strong)",
-                    }}
-                  >
-                    Голос теперь не втягивает автоматически.
-                  </h2>
-                  <p style={{ margin: 0, color: "var(--ec-text-muted)", maxWidth: 44 * 8, lineHeight: "var(--ec-leading-relaxed)" }}>
-                    Открывай комнату, смотри кто уже в эфире, и входи осознанно. Это убирает ощущение, что интерфейс сам
-                    перекидывает тебя в голосовой режим, и одновременно готовит сцену под камеру и screen share.
-                  </p>
-                </div>
-
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--ec-space-2)" }}>
-                  <button
-                    type="button"
-                    onClick={() => void v.join(channelId)}
-                    disabled={v.busy}
-                    className="ec-btn ec-btn--primary"
-                    style={{ padding: "0.85rem 1.4rem" }}
-                  >
-                    {v.busy
-                      ? "Подключаемся…"
-                      : isInAnotherVoice
-                      ? "Переключиться в этот эфир"
-                      : "Войти в голосовой канал"}
-                  </button>
-                  {isInAnotherVoice && activeVoiceChannelName && (
-                    <span style={{ ...tag, alignSelf: "center" }}>
-                      Уже в #{activeVoiceChannelName}
-                    </span>
-                  )}
-                </div>
-
-                {occupants.length > 0 && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "var(--ec-space-2)" }}>
-                    <span style={{ fontSize: "var(--ec-text-xs)", color: "var(--ec-text-dim)", letterSpacing: "var(--ec-tracking-wide)", textTransform: "uppercase" }}>
-                      Уже в комнате
-                    </span>
-                    <div style={previewOccupants}>
-                      {occupants.map((occupant) => (
-                        <span key={occupant.id} style={occupantPill}>
-                          <Avatar url={occupant.user.avatar} name={occupant.user.displayName} size={24} />
-                          <span>{occupant.user.displayName}</span>
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <aside style={panel}>
-              <div style={panelBody}>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  <span style={tag}>
-                    <StatsPulseIcon size={12} />
-                    Системный статус
-                  </span>
-                  <strong style={{ color: "var(--ec-text-strong)", fontSize: "var(--ec-text-lg)" }}>
-                    Видео и демонстрация готовы
-                  </strong>
-                  <span style={{ color: "var(--ec-text-muted)", lineHeight: "var(--ec-leading-relaxed)" }}>
-                    Камера и screen share работают в той же LiveKit-комнате. Не нужен отдельный режим, только явный вход.
-                  </span>
-                </div>
-
-                <div style={metricGrid}>
-                  <div style={metricCard}>
-                    <span style={{ color: "var(--ec-text-dim)", fontSize: "var(--ec-text-2xs)", textTransform: "uppercase", letterSpacing: "var(--ec-tracking-wide)" }}>Состояние</span>
-                    <strong style={{ color: "var(--ec-text-strong)" }}>{isInAnotherVoice ? "Другой эфир" : "Готов к входу"}</strong>
-                  </div>
-                  <div style={metricCard}>
-                    <span style={{ color: "var(--ec-text-dim)", fontSize: "var(--ec-text-2xs)", textTransform: "uppercase", letterSpacing: "var(--ec-tracking-wide)" }}>Формат</span>
-                    <strong style={{ color: "var(--ec-text-strong)" }}>Voice + Video + Share</strong>
-                  </div>
-                </div>
-
-                <div style={statusList}>
-                  <div style={statusRow}>
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                      <MicStateIcon size={14} />
-                      Микрофон
-                    </span>
-                    <span style={{ color: "var(--ec-text-muted)", fontSize: "var(--ec-text-xs)" }}>
-                      {v.settings.micActivationMode === "push_to_talk"
-                        ? `PTT · ${keyCodeToLabel(v.settings.pttKey)}`
-                        : v.settings.micActivationMode === "voice_activity"
-                        ? "Voice activity"
-                        : "Open mic"}
-                    </span>
-                  </div>
-                  <div style={statusRow}>
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                      <CameraLensIcon size={14} />
-                      Камера
-                    </span>
-                    <span style={{ color: "var(--ec-text-muted)", fontSize: "var(--ec-text-xs)" }}>Можно включить после входа</span>
-                  </div>
-                  <div style={statusRow}>
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                      <ScreenShareIcon size={14} />
-                      Демонстрация
-                    </span>
-                    <span style={{ color: "var(--ec-text-muted)", fontSize: "var(--ec-text-xs)" }}>Отдельная кнопка в эфире</span>
-                  </div>
-                </div>
-              </div>
-            </aside>
-          </section>
-        ) : (
+      {/* ── ROOM CANVAS — immersive ──────────────────────────── */}
+      <div style={canvas} className="ec-voice-room__body">
+        {hasVisual ? (
+          /* Cinematic video stage + компактная presence-полоса аудио-участников */
           <>
-            <section style={heroGrid} className="ec-voice-room__hero">
-              <div style={stageBoard}>
-                <div style={boardGlow} aria-hidden />
-                <div style={boardRing} aria-hidden />
-                <div style={stageBoardBody}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--ec-space-3)", flexWrap: "wrap" }}>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                      <span style={tag}>
-                        <VoiceChannelIcon size={12} />
-                        Active Room
-                      </span>
-                      <strong style={{ color: "var(--ec-text-strong)", fontSize: "var(--ec-text-lg)" }}>
-                        {screenTracks.length > 0 ? "Визуальный поток активен" : cameraTracks.length > 0 ? "Видео-связь в работе" : "Эфир без видео"}
-                      </strong>
-                    </div>
-                    <div style={{ display: "inline-flex", flexWrap: "wrap", gap: 8 }}>
-                      <span style={tag}>
-                        <MicStateIcon size={12} off={v.isMicMuted} />
-                        {v.isMicMuted ? "Mic off" : "Mic live"}
-                      </span>
-                      <span style={tag}>
-                        <CameraLensIcon size={12} off={!v.isCameraEnabled} />
-                        {v.isCameraEnabled ? "Camera on" : "Camera off"}
-                      </span>
-                      <span style={tag}>
-                        <ScreenShareIcon size={12} off={!v.isScreenShareEnabled} />
-                        {v.isScreenShareEnabled ? "Screen live" : "Share off"}
-                      </span>
-                    </div>
-                  </div>
-
-                  {screenTracks.length > 0 || cameraTracks.length > 0 ? (
-                    <div style={videoGrid} className="ec-voice-room__video-grid">
-                      {screenTracks.map((track) => (
-                        <VideoTrackTile key={track.id} visual={track} lookupAvatar={lookupAvatar} />
-                      ))}
-                      {cameraTracks.map((track) => (
-                        <VideoTrackTile key={track.id} visual={track} lookupAvatar={lookupAvatar} />
-                      ))}
-                    </div>
-                  ) : (
-                    <div style={emptyHero}>
-                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "var(--ec-space-3)", textAlign: "center", maxWidth: 420 }}>
-                        <span
-                          style={{
-                            width: 72,
-                            height: 72,
-                            borderRadius: "50%",
-                            display: "grid",
-                            placeItems: "center",
-                            background: "hsl(195 70% 60% / 0.12)",
-                            border: "1px solid hsl(195 70% 60% / 0.22)",
-                            color: "var(--ec-accent)",
-                            boxShadow: "0 0 0 1px hsl(195 70% 60% / 0.18), 0 0 28px hsl(195 70% 60% / 0.2)",
-                          }}
-                          aria-hidden
-                        >
-                          <VoiceChannelIcon size={28} />
-                        </span>
-                        <strong style={{ color: "var(--ec-text-strong)", fontSize: "var(--ec-text-lg)" }}>
-                          Голосовая комната активна
-                        </strong>
-                        <span style={{ color: "var(--ec-text-muted)", lineHeight: "var(--ec-leading-relaxed)" }}>
-                          Сейчас это чистый audio-mode. Включи камеру для видеозвонка или начни демонстрацию экрана, чтобы вывести room в визуальный режим.
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <aside style={panel}>
-                <div style={panelBody}>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    <span style={tag}>
-                      <StatsPulseIcon size={12} />
-                      Live telemetry
-                    </span>
-                    <strong style={{ color: "var(--ec-text-strong)", fontSize: "var(--ec-text-lg)" }}>
-                      Системная сводка комнаты
-                    </strong>
-                  </div>
-
-                  <div style={metricGrid}>
-                    <div style={metricCard}>
-                      <span style={{ color: "var(--ec-text-dim)", fontSize: "var(--ec-text-2xs)", textTransform: "uppercase", letterSpacing: "var(--ec-tracking-wide)" }}>Участники</span>
-                      <strong style={{ color: "var(--ec-text-strong)" }}>{v.participants.length}</strong>
-                    </div>
-                    <div style={metricCard}>
-                      <span style={{ color: "var(--ec-text-dim)", fontSize: "var(--ec-text-2xs)", textTransform: "uppercase", letterSpacing: "var(--ec-tracking-wide)" }}>Видео-потоки</span>
-                      <strong style={{ color: "var(--ec-text-strong)" }}>{v.visualTracks.length}</strong>
-                    </div>
-                  </div>
-
-                  <div style={statusList}>
-                    <div style={statusRow}>
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                        <HeadsetIcon size={14} off={v.isDeafened} />
-                        Прослушивание
-                      </span>
-                      <span style={{ color: "var(--ec-text-muted)", fontSize: "var(--ec-text-xs)" }}>
-                        {v.isDeafened ? "Звук отключён" : `${Math.round(v.settings.masterOutputVolume * 100)}%`}
-                      </span>
-                    </div>
-                    <div style={statusRow}>
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                        <MicStateIcon size={14} off={v.isMicMuted} />
-                        Передача
-                      </span>
-                      <span style={{ color: "var(--ec-text-muted)", fontSize: "var(--ec-text-xs)" }}>
-                        {v.settings.micActivationMode === "push_to_talk"
-                          ? `PTT · ${keyCodeToLabel(v.settings.pttKey)}`
-                          : v.settings.micActivationMode === "voice_activity"
-                          ? "Voice activity"
-                          : v.isMicMuted
-                          ? "Пауза"
-                          : "Открытый микрофон"}
-                      </span>
-                    </div>
-                    <div style={statusRow}>
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                        <ScreenShareIcon size={14} off={!v.isScreenShareEnabled} />
-                        Демонстрация
-                      </span>
-                      <span style={{ color: "var(--ec-text-muted)", fontSize: "var(--ec-text-xs)" }}>
-                        {v.isScreenShareEnabled ? "Идёт трансляция" : "Не активна"}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </aside>
-            </section>
-
+            <div style={videoStage} className="ec-voice-room__video-grid">
+              {screenTracks.map((t) => (
+                <VideoTrackTile key={t.id} visual={t} lookupAvatar={lookupAvatar} />
+              ))}
+              {cameraTracks.map((t) => (
+                <VideoTrackTile key={t.id} visual={t} lookupAvatar={lookupAvatar} />
+              ))}
+            </div>
             {audioOnlyParticipants.length > 0 && (
-            <section style={panel}>
-              <div style={{ ...panelBody, paddingBottom: "var(--ec-space-5)" }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--ec-space-3)", flexWrap: "wrap" }}>
-                  <div>
-                    <strong style={{ color: "var(--ec-text-strong)", fontSize: "var(--ec-text-base)" }}>Голос в комнате</strong>
-                    <div style={{ color: "var(--ec-text-dim)", fontSize: "var(--ec-text-xs)", marginTop: 4 }}>
-                      Участники без видео — те, кто с камерой, показаны плитками выше.
-                    </div>
-                  </div>
-                  <span style={tag}>
-                    {audioOnlyParticipants.length} participants
-                  </span>
-                </div>
-
-                <div style={audioGrid} className="ec-voice-room__audio-grid">
-                  {audioOnlyParticipants.map((participant) => {
-                    const isMuted = v.settings.mutedParticipants.includes(participant.identity);
-                    const volume = v.settings.participantVolumes[participant.identity] ?? 1;
-                    return (
-                      <AudioTile
-                        key={participant.identity}
-                        participant={participant}
-                        lookupAvatar={lookupAvatar}
-                        isLocallyMuted={isMuted}
-                        participantVolume={volume}
-                        onContextMenu={(e) => {
-                          e.preventDefault();
-                          if (participant.isLocal) return;
-                          setCtxMenu({
-                            identity: participant.identity,
-                            name: participant.name,
-                            avatar: lookupAvatar(participant.identity),
-                            x: e.clientX,
-                            y: e.clientY,
-                          });
-                        }}
+              <div style={presenceStrip}>
+                {audioOnlyParticipants.map((p) => {
+                  const muted = v.settings.mutedParticipants.includes(p.identity);
+                  const speaking = p.isSpeaking && !p.isMicMuted && !muted;
+                  return (
+                    <span
+                      key={p.identity}
+                      style={stripChipStyle(speaking)}
+                      onContextMenu={(e) => openCtxMenu(p, e)}
+                      title={p.isMicMuted ? `${p.name} — mic off` : p.name}
+                    >
+                      <PresenceAvatar
+                        name={p.name}
+                        avatar={lookupAvatar(p.identity)}
+                        size={28}
+                        speaking={speaking}
+                        muted={p.isMicMuted}
                       />
-                    );
-                  })}
-                </div>
+                      {p.name}
+                      {p.isLocal && (
+                        <span style={{ color: "var(--ec-text-dim)", fontWeight: 500 }}>
+                          {" "}· ты
+                        </span>
+                      )}
+                    </span>
+                  );
+                })}
               </div>
-            </section>
             )}
           </>
+        ) : isJoinedHere ? (
+          /* Atmospheric presence room — floating avatars, speaking glow */
+          <div style={presenceLayer}>
+            {v.participants.map((p) => {
+              const muted = v.settings.mutedParticipants.includes(p.identity);
+              const volume = v.settings.participantVolumes[p.identity] ?? 1;
+              const speaking = p.isSpeaking && !p.isMicMuted && !muted;
+              return (
+                <div
+                  key={p.identity}
+                  style={{
+                    ...presenceCardStyle(speaking, muted || volume < 1),
+                    cursor: p.isLocal ? "default" : "context-menu",
+                  }}
+                  onContextMenu={p.isLocal ? undefined : (e) => openCtxMenu(p, e)}
+                >
+                  <PresenceAvatar
+                    name={p.name}
+                    avatar={lookupAvatar(p.identity)}
+                    size={72}
+                    speaking={speaking}
+                    muted={p.isMicMuted}
+                  />
+                  <span
+                    style={{
+                      fontSize: "var(--ec-text-sm)",
+                      fontWeight: 600,
+                      color: speaking ? "var(--ec-accent)" : "var(--ec-text-strong)",
+                      maxWidth: 140,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      textAlign: "center",
+                    }}
+                  >
+                    {p.name}
+                    {p.isLocal && (
+                      <span style={{ color: "var(--ec-text-dim)", fontWeight: 500 }}> · ты</span>
+                    )}
+                  </span>
+                  <span style={{ fontSize: "var(--ec-text-2xs)", color: "var(--ec-text-dim)" }}>
+                    {speaking
+                      ? "говорит"
+                      : p.isMicMuted
+                      ? "микрофон выключен"
+                      : "в эфире"}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          /* Не подключён — ambient room с превью присутствующих + CTA */
+          <div
+            style={{
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "var(--ec-space-5)",
+              textAlign: "center",
+              padding: "var(--ec-space-6)",
+            }}
+          >
+            <span
+              className="ec-anim-limbus"
+              aria-hidden
+              style={{
+                width: 96,
+                height: 96,
+                borderRadius: "50%",
+                display: "grid",
+                placeItems: "center",
+                color: "var(--ec-accent)",
+                background:
+                  "radial-gradient(circle at 50% 40%, hsl(195 70% 60% / 0.22), hsl(195 70% 60% / 0.04) 70%)",
+                boxShadow: "0 0 60px -6px hsl(195 70% 55% / 0.4)",
+              }}
+            >
+              <VoiceChannelIcon size={36} />
+            </span>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, maxWidth: 440 }}>
+              <h2
+                style={{
+                  margin: 0,
+                  fontSize: "var(--ec-text-xl)",
+                  color: "var(--ec-text-strong)",
+                  letterSpacing: "var(--ec-tracking-tight)",
+                }}
+              >
+                {occupants.length > 0 ? "В комнате идёт эфир" : "Голосовая комната"}
+              </h2>
+              <p style={{ margin: 0, color: "var(--ec-text-muted)", lineHeight: "var(--ec-leading-relaxed)" }}>
+                {occupants.length > 0
+                  ? "Подключись, чтобы услышать остальных. Камера и демонстрация экрана включаются уже внутри."
+                  : "Войди первым — другие участники сервера увидят тебя в эфире."}
+              </p>
+            </div>
+
+            {occupants.length > 0 && (
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  justifyContent: "center",
+                  gap: "var(--ec-space-3)",
+                }}
+              >
+                {occupants.map((o) => (
+                  <div
+                    key={o.id}
+                    style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}
+                    title={o.user.displayName}
+                  >
+                    <PresenceAvatar
+                      name={o.user.displayName}
+                      avatar={o.user.avatar}
+                      size={52}
+                      speaking={false}
+                      muted={false}
+                    />
+                    <span
+                      style={{
+                        fontSize: "var(--ec-text-2xs)",
+                        color: "var(--ec-text-muted)",
+                        maxWidth: 90,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {o.user.displayName}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() => void v.join(channelId)}
+              disabled={v.busy}
+              className="ec-btn ec-btn--primary"
+              style={{ padding: "0.85rem 1.6rem", fontSize: "var(--ec-text-md)" }}
+            >
+              {v.busy
+                ? "Подключаемся…"
+                : isInAnotherVoice
+                ? "Переключиться в этот эфир"
+                : "Войти в голосовой канал"}
+            </button>
+            {isInAnotherVoice && activeVoiceChannelName && (
+              <span style={{ fontSize: "var(--ec-text-2xs)", color: "var(--ec-text-dim)" }}>
+                Сейчас ты в #{activeVoiceChannelName}
+              </span>
+            )}
+          </div>
         )}
       </div>
 
       {v.error && (
         <p
           style={{
-            margin: 0,
-            padding: "var(--ec-space-2) var(--ec-space-5)",
+            margin: "0 var(--ec-space-5) var(--ec-space-2)",
+            padding: "var(--ec-space-2) var(--ec-space-3)",
             color: "var(--ec-danger)",
             background: "var(--ec-danger-soft)",
-            borderTop: "1px solid var(--ec-border-subtle)",
+            borderRadius: "var(--ec-radius-md)",
             fontSize: "var(--ec-text-sm)",
+            position: "relative",
+            zIndex: 2,
           }}
         >
           {v.error}
         </p>
       )}
 
-      <div style={controlsBar} className="ec-voice-room__controls">
+      {/* ── CONTROLS DOCK — floating ─────────────────────────── */}
+      <div style={controlsDock} className="ec-voice-room__controls">
         {!isJoinedHere ? (
           <button
             type="button"
             onClick={() => void v.join(channelId)}
             disabled={v.busy}
             className="ec-btn ec-btn--primary"
-            style={{ padding: "0.78rem 1.4rem" }}
+            style={{ padding: "0.7rem 1.4rem" }}
           >
             {v.busy
               ? "Подключаемся…"
               : isInAnotherVoice
-              ? "Переключиться в этот канал"
-              : "Войти в голосовой канал"}
+              ? "Переключиться сюда"
+              : "Войти"}
           </button>
         ) : (
           <>
@@ -972,11 +798,7 @@ export function VoiceRoom({
               type="button"
               onClick={() => void v.toggleMic()}
               style={
-                v.pttActive
-                  ? controlBtnAccent
-                  : v.isMicMuted
-                  ? controlBtnDanger
-                  : controlBtn
+                v.pttActive ? controlBtnAccent : v.isMicMuted ? controlBtnDanger : controlBtn
               }
               title={
                 v.settings.micActivationMode === "push_to_talk"
@@ -1018,8 +840,8 @@ export function VoiceRoom({
               type="button"
               onClick={() => void v.toggleScreenShare()}
               style={v.isScreenShareEnabled ? controlBtnAccent : controlBtn}
-              title={v.isScreenShareEnabled ? "Остановить демонстрацию экрана" : "Начать демонстрацию экрана"}
-              aria-label={v.isScreenShareEnabled ? "Остановить демонстрацию экрана" : "Начать демонстрацию экрана"}
+              title={v.isScreenShareEnabled ? "Остановить демонстрацию" : "Демонстрация экрана"}
+              aria-label={v.isScreenShareEnabled ? "Остановить демонстрацию" : "Демонстрация экрана"}
               disabled={!isConnected}
             >
               <ScreenShareIcon off={!v.isScreenShareEnabled} />
@@ -1030,13 +852,13 @@ export function VoiceRoom({
                 display: "flex",
                 alignItems: "center",
                 gap: 8,
-                background: "var(--ec-surface-2)",
-                border: "1px solid var(--ec-border-default)",
+                background: "hsl(210 14% 14% / 0.9)",
+                border: "1px solid hsl(195 30% 50% / 0.12)",
                 borderRadius: "var(--ec-radius-full)",
                 padding: "0 12px",
                 height: 44,
               }}
-              title={`Громкость воспроизведения · ${Math.round(v.settings.masterOutputVolume * 100)}%`}
+              title={`Громкость · ${Math.round(v.settings.masterOutputVolume * 100)}%`}
             >
               <HeadsetIcon size={14} />
               <input
@@ -1046,7 +868,7 @@ export function VoiceRoom({
                 step={1}
                 value={Math.round(v.settings.masterOutputVolume * 100)}
                 onChange={(e) => v.setMasterOutputVolume(Number(e.target.value) / 100)}
-                style={{ width: 90, accentColor: "var(--ec-accent)" }}
+                style={{ width: 84, accentColor: "var(--ec-accent)" }}
                 aria-label="Громкость воспроизведения"
               />
             </div>
@@ -1113,4 +935,3 @@ export function VoiceRoom({
     </div>
   );
 }
-

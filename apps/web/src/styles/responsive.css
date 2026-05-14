@@ -307,6 +307,36 @@
   }
 }
 
+/* ===== Rail-expand tab (когда правый rail свёрнут на desktop) ==== */
+
+.ec-rail-expand {
+  position: fixed;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+  width: 22px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ec-surface-2);
+  color: var(--ec-text-muted);
+  border: 1px solid var(--ec-border-subtle);
+  border-right: none;
+  border-radius: var(--ec-radius-md) 0 0 var(--ec-radius-md);
+  cursor: pointer;
+  z-index: var(--ec-z-sidebar);
+  box-shadow: -8px 0 24px hsl(210 40% 2% / 0.4);
+  transition: background var(--ec-dur-fast) var(--ec-ease),
+              color var(--ec-dur-fast) var(--ec-ease),
+              width var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-rail-expand:hover {
+  background: var(--ec-surface-3);
+  color: var(--ec-text);
+  width: 27px;
+}
+
 /* ===== Members drawer header (close button visible on mobile) === */
 
 .ec-shell__members-close {

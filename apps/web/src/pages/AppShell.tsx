@@ -478,6 +478,10 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   const showRightRail = inServerView;
   const [navOpen, setNavOpen] = useState(false);
   const [membersOpen, setMembersOpen] = useState(false);
+  // Правый rail сворачивается, чтобы не съедать ширину центра (особенно
+  // в voice-immersive режиме). По умолчанию свёрнут в voice, развёрнут в chat.
+  const [rightRailCollapsed, setRightRailCollapsed] = useState(false);
+  const rightRailVisible = showRightRail && !rightRailCollapsed;
 
   const isMobile = useMediaQuery("(max-width: 640px)");
   const isTabletOrSmaller = useMediaQuery("(max-width: 1024px)");
@@ -547,6 +551,10 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   useEffect(() => {
     if (!isTabletOrSmaller) setMembersOpen(false);
   }, [isTabletOrSmaller]);
+  // Voice = immersive: сворачиваем правый rail. Chat — разворачиваем.
+  useEffect(() => {
+    setRightRailCollapsed(isVoiceView);
+  }, [isVoiceView]);
 
   // На mobile: select channel → закрыть nav drawer (UX как в Discord/Telegram)
   const handleSelectChannel = (channelId: string) => {
@@ -577,7 +585,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
 
   const shellClass =
     "ec-shell" +
-    (showRightRail ? " ec-shell--has-server" : "") +
+    (rightRailVisible ? " ec-shell--has-server" : "") +
     (navOpen ? " ec-shell--nav-open" : "") +
     (membersOpen ? " ec-shell--members-open" : "");
 
@@ -1192,7 +1200,21 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
         )}
       </section>
 
-      {showRightRail && (
+      {showRightRail && rightRailCollapsed && !isTabletOrSmaller && (
+        <button
+          type="button"
+          className="ec-rail-expand"
+          onClick={() => setRightRailCollapsed(false)}
+          aria-label="Развернуть Intelligence-панель"
+          title="Развернуть панель"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+        </button>
+      )}
+
+      {rightRailVisible && (
         <div className="ec-shell__members">
           {selectedThreadId ? (
             <ThreadPanel
@@ -1228,6 +1250,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               channelNameById={channelNameById}
               currentUserId={user.id}
               onClose={isTabletOrSmaller ? () => setMembersOpen(false) : undefined}
+              onCollapse={isTabletOrSmaller ? undefined : () => setRightRailCollapsed(true)}
               onOpenDm={(otherId) => {
                 void openDmWith(otherId).then((convoId) => {
                   if (convoId) {

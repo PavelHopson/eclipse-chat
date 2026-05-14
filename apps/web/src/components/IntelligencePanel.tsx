@@ -35,6 +35,8 @@ type Props = {
   onOpenDm: (userId: string) => void;
   /** Drawer-close (mobile/tablet). На desktop omitted. */
   onClose?: () => void;
+  /** Collapse rail (desktop) — сворачивает панель чтобы не съедать ширину центра. */
+  onCollapse?: () => void;
   // ── Intelligence: chat-режим (digest) ─────────────────────
   digest: ChannelDigest | null;
   digestLoading: boolean;
@@ -403,6 +405,7 @@ export function IntelligencePanel({
   currentUserId,
   onOpenDm,
   onClose,
+  onCollapse,
   digest,
   digestLoading,
   digestError,
@@ -455,6 +458,20 @@ export function IntelligencePanel({
             {onlineCount}/{members.length}
           </span>
         </button>
+        {onCollapse && (
+          <button
+            type="button"
+            onClick={onCollapse}
+            aria-label="Свернуть панель"
+            title="Свернуть панель"
+            className="ec-btn ec-btn--ghost ec-btn--sm"
+            style={{ width: 28, height: 28, padding: 0, flexShrink: 0, alignSelf: "center" }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M9 6l6 6-6 6" />
+            </svg>
+          </button>
+        )}
         {onClose && <CloseButton onClose={onClose} />}
       </div>
 
