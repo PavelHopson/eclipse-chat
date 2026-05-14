@@ -5,13 +5,15 @@
 > Любая фича, которой нет в текущем MVP, должна попасть сюда —
 > иначе она забудется.
 
-**Текущее состояние:** **v0.12.1 LIVE in prod** (commit `501c4f3`, 13.05.2026
-late afternoon). Eclipse Chat теперь full-featured self-hosted operator
-communication core: auth + 2FA TOTP + brute-force lockout + audit log +
-DMs + voice/video/screen-share (LiveKit) + AI layer (Ollama Qwen2.5:7b
-на CPU + OpenRouter/NVIDIA/OpenAI auto-fallback) + ChannelDigest +
-@ai assistant в чате + bot/operator backend (shadow-user pattern,
-ecb_ API keys) + cold-tone design system + 87 designer-skills installed.
+**Текущее состояние:** **v0.16.2 LIVE in prod** (commit `3775e36`, 14.05.2026).
+Eclipse Chat — full-featured self-hosted operator communication core:
+auth + 2FA TOTP + brute-force lockout + audit log + DMs + Threads +
+Markdown + voice/video/screen-share (LiveKit) + Voice quality v3 (Web Audio
+DSP) + AI layer (Ollama Qwen2.5:7b + OpenRouter/NVIDIA/OpenAI auto-fallback)
++ ChannelDigest + @ai assistant + bot/operator full stack (shadow-user,
+ecb_ API keys, webhooks) + Incident Mode + cold-tone design system.
+Последнее (v0.16.1/v0.16.2): voice UI polish — камера целиком, убраны
+дубли голосового присутствия, Discord-level mute/deafen-индикаторы в sidebar.
 
 17 коммитов в одной сессии 13.05.2026:
 v0.6.1→v0.6.4 voice quality controls (шумодав, devices, master volume,

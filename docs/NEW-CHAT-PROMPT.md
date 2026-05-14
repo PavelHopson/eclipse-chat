@@ -5,7 +5,7 @@
 > Скопируй блок «Continuation Message» в самом конце в новый чат
 > как первое сообщение.
 >
-> **Обновлено 2026-05-14 (после v0.16.0 Incident Mode).**
+> **Обновлено 2026-05-14 (после v0.16.2 — voice UI polish).**
 
 ---
 
@@ -96,7 +96,20 @@ E:\projects\ROADMAP.md (§1 статусы + §5 Changelog). Per-repo ROADMAP
 
 ---
 
-## 📊 PROJECT STATUS (14.05.2026 — v0.16.0)
+## 📊 PROJECT STATUS (14.05.2026 — v0.16.2)
+
+> **v0.16.1 + v0.16.2 (voice UI polish, в проде):**
+> - v0.16.1 — камера в `VideoTrackTile` теперь `objectFit:contain` (кадр
+>   целиком, не обрезается); muted-публикации не рендерятся (убрана чёрная
+>   плитка после выключения камеры); участник с камерой в видео-сетке больше
+>   не дублируется audio-плиткой в «Голос в комнате» (`audioOnlyParticipants`);
+>   MemberList без voice-badge; для VOICE-канала правый rail (MemberList)
+>   скрыт целиком — VoiceRoom сам показывает участников.
+> - v0.16.2 — Discord-level mute/deafen-индикаторы участников эфира в sidebar.
+>   Backend трекает `userMeta` (mic/deafen) + рассылает `voice:participant:meta`;
+>   `useVoicePresence` отдаёт `{ byChannel, metaByUser }`; `ChannelList`
+>   рисует mic-off / deafened иконки у occupants под voice-каналом.
+
 
 Eclipse Chat теперь **full-featured self-hosted operator communication
 core** + AI layer + security hardening + bot/operator layer **(full stack,
@@ -530,10 +543,12 @@ state и работай.
 4. E:\projects\ROADMAP.md (общая дорожная карта Eclipse Hopson)
 
 Eclipse Chat LIVE в проде: https://app.star-crm.ru/eclipse-chat/
-Версия в проде: 0.16.0 (Incident Mode — операторский контур разбора
-инцидентов: dedicated 🚨-канал + timeline + AI post-mortem).
+Версия в проде: 0.16.2 (voice UI polish — камера целиком, убраны дубли
+голосового присутствия, Discord-level mute/deafen-индикаторы в sidebar).
 
 История последних релизов (всё в проде):
+- v0.16.2 — Discord-level mute/deafen-индикаторы участников эфира в sidebar
+- v0.16.1 — voice UI: камера contain + убраны 3 дубля голосового присутствия
 - v0.16.0 — Incident Mode
 - v0.15.0 — Voice quality v3 (Web Audio DSP-цепочка «Студийный» режим)
 - v0.14.0 — @/: autocomplete + channel emoji/DnD + bot webhooks + Vitest
