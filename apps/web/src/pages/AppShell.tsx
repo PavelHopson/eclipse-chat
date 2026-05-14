@@ -1,15 +1,14 @@
 import type { CSSProperties } from "react";
 import { useEffect, useRef, useState } from "react";
 import { ActionQueueBar } from "../components/ActionQueueBar";
-import { ChannelDigestPanel } from "../components/ChannelDigestPanel";
 import { Avatar } from "../components/Avatar";
 import { ChannelList } from "../components/ChannelList";
 import { ChannelSettingsModal } from "../components/ChannelSettingsModal";
 import { RichContent } from "../components/RichContent";
 import { CreateServerModal } from "../components/CreateServerModal";
 import { DirectConversationList } from "../components/DirectConversationList";
+import { IntelligencePanel } from "../components/IntelligencePanel";
 import { JoinServerModal } from "../components/JoinServerModal";
-import { MemberList } from "../components/MemberList";
 import { MessageInput } from "../components/MessageInput";
 import { MessageList } from "../components/MessageList";
 import { PinnedBar } from "../components/PinnedBar";
@@ -470,12 +469,13 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
 
   const selectedChannel = channels.find((c) => c.id === selectedChannelId) ?? null;
 
-  // VOICE-канал: VoiceRoom сам рендерит участников эфира, отдельная правая
-  // панель (MemberList) была дублем — для voice-режима её скрываем.
+  // Правый rail — context-aware IntelligencePanel — виден ВСЕГДА в server-view
+  // (и voice, и chat): табы «Intelligence» + «Участники». `isVoiceView`
+  // переключает режим панели.
   const isVoiceView =
     !inDmMode && !homeOpen && selectedChannel?.type === "VOICE";
   const inServerView = Boolean(activeServer) && !homeOpen;
-  const showMembers = inServerView && !isVoiceView;
+  const showRightRail = inServerView;
   const [navOpen, setNavOpen] = useState(false);
   const [membersOpen, setMembersOpen] = useState(false);
 
@@ -577,7 +577,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
 
   const shellClass =
     "ec-shell" +
-    (showMembers ? " ec-shell--has-server" : "") +
+    (showRightRail ? " ec-shell--has-server" : "") +
     (navOpen ? " ec-shell--nav-open" : "") +
     (membersOpen ? " ec-shell--members-open" : "");
 
@@ -657,7 +657,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               </svg>
             </button>
           )}
-          {showMembers && (
+          {showRightRail && (
             <button
               type="button"
               onClick={() => {
@@ -751,13 +751,13 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               )}
             </button>
           )}
-          {showMembers && (
+          {showRightRail && (
             <button
               type="button"
               className="ec-shell__drawer-btn ec-shell__drawer-btn--members"
               onClick={() => setMembersOpen((v) => !v)}
-              aria-label={membersOpen ? "Скрыть участников" : "Показать участников"}
-              title="Участники"
+              aria-label={membersOpen ? "Скрыть панель" : "Показать панель"}
+              title="Intelligence-панель"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
@@ -1148,19 +1148,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               members={members}
               onUpdateAction={updateActionItem}
             />
-            <div style={{ padding: "var(--ec-space-2) var(--ec-space-5)" }}>
-              <ChannelDigestPanel
-                digest={channelDigest}
-                loading={digestLoading}
-                error={digestError}
-                onRefresh={() => void refreshDigest()}
-                compact={isMobile}
-                aiSummary={digestAiSummary}
-                aiLoading={digestAiLoading}
-                aiError={digestAiError}
-                onRequestAiSummary={() => void requestDigestAiSummary(7)}
-              />
-            </div>
+            {/* ChannelDigest переехал в правую IntelligencePanel (Фаза A) —
+                контекст канала живёт в Intelligence-табе, не в ленте. */}
             <PinnedBar messages={messages} />
             <MessageList
               messages={messages}
@@ -1197,7 +1186,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
         )}
       </section>
 
-      {showMembers && (
+      {showRightRail && (
         <div className="ec-shell__members">
           {selectedThreadId ? (
             <ThreadPanel
@@ -1224,14 +1213,15 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               onClose={() => setShowIncidents(false)}
             />
           ) : (
-            <MemberList
+            <IntelligencePanel
+              mode={isVoiceView ? "voice" : "chat"}
               members={members}
-              loading={membersLoading}
-              error={membersError}
-              onClose={isTabletOrSmaller ? () => setMembersOpen(false) : undefined}
+              membersLoading={membersLoading}
+              membersError={membersError}
               voiceChannelByUser={voiceChannelByUser}
               channelNameById={channelNameById}
               currentUserId={user.id}
+              onClose={isTabletOrSmaller ? () => setMembersOpen(false) : undefined}
               onOpenDm={(otherId) => {
                 void openDmWith(otherId).then((convoId) => {
                   if (convoId) {
@@ -1242,6 +1232,21 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                   }
                 });
               }}
+              digest={channelDigest}
+              digestLoading={digestLoading}
+              digestError={digestError}
+              onRefreshDigest={() => void refreshDigest()}
+              digestCompact={isMobile}
+              aiSummary={digestAiSummary}
+              aiLoading={digestAiLoading}
+              aiError={digestAiError}
+              onRequestAiSummary={() => void requestDigestAiSummary(7)}
+              voice={voice}
+              voiceChannelId={
+                selectedChannel?.type === "VOICE" ? selectedChannel.id : null
+              }
+              voiceChannelName={isVoiceView ? selectedChannel?.name ?? null : null}
+              voiceOccupants={selectedVoiceOccupants}
             />
           )}
         </div>

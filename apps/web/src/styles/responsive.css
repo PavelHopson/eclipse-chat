@@ -44,6 +44,15 @@
 .ec-shell__chat     { grid-area: chat; min-width: 0; min-height: 0; }
 .ec-shell__members  { grid-area: members; min-width: 0; min-height: 0; }
 
+/* Laptop (1025-1366px): rail + channels + chat + members одновременно
+   съедают много ширины. Поджимаем боковые колонки, чтобы центральный
+   operational surface оставался читаемым. */
+@media (min-width: 1025px) and (max-width: 1366px) {
+  .ec-shell.ec-shell--has-server {
+    grid-template-columns: var(--ec-rail-width) 220px 1fr 224px;
+  }
+}
+
 .ec-shell__top-left,
 .ec-shell__top-actions {
   min-width: 0;

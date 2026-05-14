@@ -9,6 +9,9 @@ type Props = {
   error: string | null;
   /** Drawer-mode close button. Передаётся на mobile/tablet — на desktop omitted. */
   onClose?: () => void;
+  /** Скрыть собственный header — когда MemberList вложен в IntelligencePanel
+   *  (там tab-bar служит заголовком). */
+  hideHeader?: boolean;
   /** Кто сейчас в каком VOICE-канале (userId → channelId или undefined). */
   voiceChannelByUser?: Record<string, string>;
   /** Лукап name канала по id — для tooltip. */
@@ -231,6 +234,7 @@ export function MemberList({
   channelNameById,
   currentUserId,
   onOpenDm,
+  hideHeader,
 }: Props) {
   const { online, offline } = useMemo(() => {
     const sorted = sortMembers(members);
@@ -241,31 +245,36 @@ export function MemberList({
   }, [members]);
 
   return (
-    <aside style={wrap} aria-label="Участники сервера">
-      <header style={headerStyle}>
-        <span style={{ fontSize: "var(--ec-text-sm)", fontWeight: 600, color: "var(--ec-text-strong)" }}>
-          Участники
-        </span>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: "var(--ec-text-2xs)", color: "var(--ec-text-dim)", fontFeatureSettings: '"tnum"' }}>
-            {online.length}/{members.length}
+    <aside
+      style={hideHeader ? { ...wrap, borderLeft: "none" } : wrap}
+      aria-label="Участники сервера"
+    >
+      {!hideHeader && (
+        <header style={headerStyle}>
+          <span style={{ fontSize: "var(--ec-text-sm)", fontWeight: 600, color: "var(--ec-text-strong)" }}>
+            Участники
           </span>
-          {onClose && (
-            <button
-              type="button"
-              onClick={onClose}
-              className="ec-shell__members-close ec-btn ec-btn--ghost ec-btn--sm"
-              aria-label="Закрыть"
-              style={{ width: 28, height: 28, padding: 0 }}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            </button>
-          )}
-        </div>
-      </header>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: "var(--ec-text-2xs)", color: "var(--ec-text-dim)", fontFeatureSettings: '"tnum"' }}>
+              {online.length}/{members.length}
+            </span>
+            {onClose && (
+              <button
+                type="button"
+                onClick={onClose}
+                className="ec-shell__members-close ec-btn ec-btn--ghost ec-btn--sm"
+                aria-label="Закрыть"
+                style={{ width: 28, height: 28, padding: 0 }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            )}
+          </div>
+        </header>
+      )}
 
       <div style={listScroll}>
         {loading && members.length === 0 ? (
