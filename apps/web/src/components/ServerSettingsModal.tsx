@@ -10,6 +10,7 @@ type Props = {
   onUploadBanner: (file: File) => Promise<boolean>;
   onDeleteBanner: () => Promise<boolean>;
   onUpdateIdentity: (patch: {
+    name?: string;
     brandColor?: string | null;
     description?: string | null;
     welcomeMessage?: string | null;
@@ -84,6 +85,7 @@ export function ServerSettingsModal({
   onUpdateIdentity,
 }: Props) {
   const [tab, setTab] = useState<"identity" | "banner" | "bots">("identity");
+  const [name, setName] = useState<string>(server.name);
   const [brandColor, setBrandColor] = useState<string>(server.brandColor ?? "");
   const [description, setDescription] = useState<string>(server.description ?? "");
   const [welcomeMessage, setWelcomeMessage] = useState<string>(server.welcomeMessage ?? "");
@@ -109,10 +111,15 @@ export function ServerSettingsModal({
     };
   }, []);
 
+  const trimmedName = name.trim();
+  const nameValid = trimmedName.length >= 1 && trimmedName.length <= 80;
+
   const handleSave = async () => {
+    if (!nameValid) return;
     setSaving(true);
     try {
       const ok = await onUpdateIdentity({
+        name: trimmedName,
         brandColor: brandColor.trim() || null,
         description: description.trim() || null,
         welcomeMessage: welcomeMessage.trim() || null,
@@ -195,6 +202,34 @@ export function ServerSettingsModal({
 
       {tab === "identity" && (
         <>
+          {/* Server name */}
+          <section style={{ marginBottom: "var(--ec-space-4)" }}>
+            <h3 style={sectionLabel}>Название сервера</h3>
+            <div style={groupCard}>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                maxLength={80}
+                placeholder="Название сервера"
+                style={{
+                  ...inputStyle,
+                  borderColor: nameValid
+                    ? "var(--ec-border-default)"
+                    : "var(--ec-danger)",
+                }}
+              />
+              <p style={fieldHint}>
+                Видно всем участникам в списке серверов и в шапке. 1–80 символов.
+                Slug (внутренний идентификатор для ссылок) при переименовании
+                не меняется.
+                <span style={{ marginLeft: 6, color: "var(--ec-text-muted)" }}>
+                  {trimmedName.length}/80
+                </span>
+              </p>
+            </div>
+          </section>
+
           {/* Brand color */}
           <section>
             <h3 style={sectionLabel}>Цвет акцента</h3>
@@ -425,7 +460,7 @@ export function ServerSettingsModal({
             <button
               type="button"
               onClick={handleSave}
-              disabled={saving}
+              disabled={saving || !nameValid}
               className="ec-btn ec-btn--primary"
             >
               {saving ? "Сохраняем…" : "Сохранить"}

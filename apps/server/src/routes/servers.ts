@@ -915,6 +915,7 @@ export async function registerServerRoutes(app: FastifyInstance) {
   const HSL_PATTERN = /^\d{1,3}\s+\d{1,3}%\s+\d{1,3}%$/;
 
   const updateIdentityBody = z.object({
+    name: z.string().trim().min(1).max(80).optional(),
     brandColor: z
       .string()
       .max(40)
@@ -929,9 +930,9 @@ export async function registerServerRoutes(app: FastifyInstance) {
   });
 
   /**
-   * PATCH /api/servers/:id/identity — обновить brandColor / description /
-   * welcomeMessage. Только OWNER. Каждое поле опциональное; передаётся
-   * только то что меняется. Передача null = сброс.
+   * PATCH /api/servers/:id/identity — обновить name / brandColor / description
+   * / welcomeMessage. Только OWNER. Каждое поле опциональное; передаётся
+   * только то что меняется. Передача null = сброс (для nullable полей).
    */
   app.patch(
     "/api/servers/:id/identity",
@@ -950,10 +951,14 @@ export async function registerServerRoutes(app: FastifyInstance) {
         });
       }
       const data: {
+        name?: string;
         brandColor?: string | null;
         description?: string | null;
         welcomeMessage?: string | null;
       } = {};
+      if (parsed.data.name !== undefined) {
+        data.name = parsed.data.name.trim();
+      }
       if (parsed.data.brandColor !== undefined) {
         const c = parsed.data.brandColor;
         data.brandColor = c == null || c === "" ? null : c.trim();
@@ -971,6 +976,7 @@ export async function registerServerRoutes(app: FastifyInstance) {
         data,
         select: {
           id: true,
+          name: true,
           brandColor: true,
           description: true,
           welcomeMessage: true,

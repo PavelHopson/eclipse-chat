@@ -279,6 +279,7 @@ export function useServers(isReady: boolean) {
     async (
       serverId: string,
       patch: {
+        name?: string;
         brandColor?: string | null;
         description?: string | null;
         welcomeMessage?: string | null;
@@ -287,7 +288,12 @@ export function useServers(isReady: boolean) {
       setError(null);
       try {
         const res = await apiJson<{
-          identity: { brandColor: string | null; description: string | null; welcomeMessage: string | null };
+          identity: {
+            name: string;
+            brandColor: string | null;
+            description: string | null;
+            welcomeMessage: string | null;
+          };
         }>(`/api/servers/${encodeURIComponent(serverId)}/identity`, {
           method: "PATCH",
           body: JSON.stringify(patch),
@@ -297,6 +303,7 @@ export function useServers(isReady: boolean) {
             s.id === serverId
               ? {
                   ...s,
+                  name: res.identity.name,
                   brandColor: res.identity.brandColor,
                   description: res.identity.description,
                   welcomeMessage: res.identity.welcomeMessage,
