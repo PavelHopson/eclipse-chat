@@ -470,7 +470,12 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
 
   const selectedChannel = channels.find((c) => c.id === selectedChannelId) ?? null;
 
-  const showMembers = Boolean(activeServer) && !homeOpen;
+  // VOICE-канал: VoiceRoom сам рендерит участников эфира, отдельная правая
+  // панель (MemberList) была дублем — для voice-режима её скрываем.
+  const isVoiceView =
+    !inDmMode && !homeOpen && selectedChannel?.type === "VOICE";
+  const inServerView = Boolean(activeServer) && !homeOpen;
+  const showMembers = inServerView && !isVoiceView;
   const [navOpen, setNavOpen] = useState(false);
   const [membersOpen, setMembersOpen] = useState(false);
 
@@ -601,7 +606,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             title={isReady ? "Подключено" : "Соединение разорвано"}
             aria-label={isReady ? "online" : "offline"}
           />
-          {showMembers && (
+          {inServerView && (
             <button
               type="button"
               onClick={() => setShowSearch(true)}

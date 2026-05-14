@@ -173,28 +173,9 @@ function MemberRowView({
         }}
       >
         {m.user.displayName}
-        {inVoiceChannel && (
-          <span
-            aria-label="В голосовом канале"
-            title="В голосовом канале"
-            style={{
-              display: "inline-grid",
-              placeItems: "center",
-              width: 14,
-              height: 14,
-              borderRadius: "var(--ec-radius-full)",
-              background: "var(--ec-accent-soft)",
-              color: "var(--ec-accent)",
-              flexShrink: 0,
-              boxShadow: "0 0 6px hsl(195 70% 60% / 0.38)",
-            }}
-          >
-            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <path d="M11 5L6 9H2v6h4l5 4V5z" />
-              <path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07" />
-            </svg>
-          </span>
-        )}
+        {/* voice-индикатор намеренно убран: кто в голосовом — видно списком
+            под voice-каналом в sidebar (ChannelList), дублировать не нужно.
+            inVoiceChannel остаётся в tooltip (см. выше). */}
       </span>
       {label && (
         <span className={roleBadgeClass(m.role)} style={{ fontSize: "0.6rem", padding: "0.05rem 0.35rem" }}>

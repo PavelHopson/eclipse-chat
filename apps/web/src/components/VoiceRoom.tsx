@@ -416,7 +416,9 @@ function VideoTrackTile({
     element.muted = visual.isLocal;
     element.style.width = "100%";
     element.style.height = "100%";
-    element.style.objectFit = visual.source === "screen" ? "contain" : "cover";
+    // contain — показываем кадр камеры/экрана целиком без обрезки краёв.
+    // cover раньше обрезал webcam-кадр сверху/снизу под формат плитки.
+    element.style.objectFit = "contain";
     element.style.background = "#070b0f";
     host.appendChild(element);
 
@@ -538,6 +540,14 @@ export function VoiceRoom({
   const screenTracks = v.visualTracks.filter((track) => track.source === "screen");
   const cameraTracks = v.visualTracks.filter((track) => track.source === "camera");
   const connectionBadgeText = resolveConnectionBadge(isConnected, isReconnecting, isConnecting, v.pttActive);
+
+  // Участники, чья камера уже показана видео-плиткой выше — НЕ дублируем их
+  // отдельной audio-плиткой в секции «Голос в комнате» (Discord-style:
+  // камера заменяет аватар-плитку, а не висит рядом с ней).
+  const cameraIdentities = new Set(cameraTracks.map((track) => track.identity));
+  const audioOnlyParticipants = v.participants.filter(
+    (participant) => !cameraIdentities.has(participant.identity),
+  );
 
   return (
     <div style={wrap} className="ec-voice-room">
@@ -844,22 +854,23 @@ export function VoiceRoom({
               </aside>
             </section>
 
+            {audioOnlyParticipants.length > 0 && (
             <section style={panel}>
               <div style={{ ...panelBody, paddingBottom: "var(--ec-space-5)" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--ec-space-3)", flexWrap: "wrap" }}>
                   <div>
                     <strong style={{ color: "var(--ec-text-strong)", fontSize: "var(--ec-text-base)" }}>Голос в комнате</strong>
                     <div style={{ color: "var(--ec-text-dim)", fontSize: "var(--ec-text-xs)", marginTop: 4 }}>
-                      Отдельно от видео-потоков, чтобы аудио-участники не терялись.
+                      Участники без видео — те, кто с камерой, показаны плитками выше.
                     </div>
                   </div>
                   <span style={tag}>
-                    {v.participants.length} participants
+                    {audioOnlyParticipants.length} participants
                   </span>
                 </div>
 
                 <div style={audioGrid} className="ec-voice-room__audio-grid">
-                  {v.participants.map((participant) => {
+                  {audioOnlyParticipants.map((participant) => {
                     const isMuted = v.settings.mutedParticipants.includes(participant.identity);
                     const volume = v.settings.participantVolumes[participant.identity] ?? 1;
                     return (
@@ -886,6 +897,7 @@ export function VoiceRoom({
                 </div>
               </div>
             </section>
+            )}
           </>
         )}
       </div>

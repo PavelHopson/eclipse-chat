@@ -252,6 +252,9 @@ export function useVoice(socket: Socket | null = null) {
     ) => {
       if (publication.source !== "camera" && publication.source !== "screen_share") return;
       if (!publication.videoTrack) return;
+      // Muted-публикация = камера/экран выключены. Не показываем чёрную плитку
+      // (раньше при выключении камеры тайл оставался пустым чёрным окном).
+      if (publication.isMuted) return;
       next.push({
         id: publication.trackSid,
         identity,
