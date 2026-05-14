@@ -18,6 +18,7 @@ import { SearchOverlay } from "../components/SearchOverlay";
 import { ServerInfoModal } from "../components/ServerInfoModal";
 import { ServerSettingsModal } from "../components/ServerSettingsModal";
 import { ServerList } from "../components/ServerList";
+import { StatusBoard } from "../components/StatusBoard";
 import { StatusMenu } from "../components/StatusMenu";
 import { IncidentPanel } from "../components/IncidentPanel";
 import { ThreadPanel } from "../components/ThreadPanel";
@@ -37,6 +38,7 @@ import { useNotifications } from "../hooks/useNotifications";
 import { useHomeToday } from "../hooks/useHomeToday";
 import { useProfile } from "../hooks/useProfile";
 import { useSearch } from "../hooks/useSearch";
+import { useServerActions } from "../hooks/useServerActions";
 import { useServers } from "../hooks/useServers";
 import { useSocket } from "../hooks/useSocket";
 import { useVoice } from "../hooks/useVoice";
@@ -301,11 +303,17 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   // Channel settings modal — id канала, который сейчас редактируется.
   const [settingsChannelId, setSettingsChannelId] = useState<string | null>(null);
+  // Execution Status Board — server-wide доска задач в центре (вместо чата).
+  const [statusBoardOpen, setStatusBoardOpen] = useState(false);
 
   // Закрыть thread при смене канала / сервера — не показывать thread из старого канала
   useEffect(() => {
     setSelectedThreadId(null);
   }, [selectedChannelId, activeServerId]);
+  // Закрыть Status Board при смене сервера (board привязан к серверу).
+  useEffect(() => {
+    setStatusBoardOpen(false);
+  }, [activeServerId]);
 
   const {
     query: searchQuery,
@@ -357,6 +365,10 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   // Операционная сводка поверх всех workspace'ов — fetch при открытии Home.
   const homeToday = useHomeToday(homeOpen);
 
+  // ===== Execution Status Board =====
+  // Все ActionItem'ы активного сервера — live через action:item:* в server-room.
+  const serverActions = useServerActions(activeServerId, socket);
+
   const headerName = profile?.displayName ?? user.displayName;
   const headerAvatar = profile?.avatar ?? user.avatar;
   const senderForMessages = {
@@ -384,7 +396,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   const isVoiceView =
     !inDmMode && !homeOpen && selectedChannel?.type === "VOICE";
   const inServerView = Boolean(activeServer) && !homeOpen;
-  const showRightRail = inServerView;
+  // Status Board открывается на всю ширину (как Home) — правый rail скрыт.
+  const showRightRail = inServerView && !statusBoardOpen;
   const [navOpen, setNavOpen] = useState(false);
   const [membersOpen, setMembersOpen] = useState(false);
   // Правый rail сворачивается, чтобы не съедать ширину центра (особенно
@@ -468,12 +481,14 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   // На mobile: select channel → закрыть nav drawer (UX как в Discord/Telegram)
   const handleSelectChannel = (channelId: string) => {
     setHomeOpen(false);
+    setStatusBoardOpen(false);
     setSelectedChannelId(channelId);
     if (isMobile) setNavOpen(false);
   };
 
   const openHome = () => {
     setHomeOpen(true);
+    setStatusBoardOpen(false);
     setSelectedChannelId(null);
     selectDm(null);
     setNavOpen(false);
@@ -482,6 +497,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
 
   const openActiveServer = () => {
     setHomeOpen(false);
+    setStatusBoardOpen(false);
     if (activeServerId == null && servers[0]) {
       setActiveServerId(servers[0].id);
       return;
@@ -811,6 +827,12 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             onOpenSettings={(channelId) => setSettingsChannelId(channelId)}
             onReorder={reorderChannels}
             onShowServerInfo={() => activeServer && setShowServerInfo(true)}
+            onOpenStatusBoard={() => {
+              setHomeOpen(false);
+              setStatusBoardOpen(true);
+              if (isMobile) setNavOpen(false);
+            }}
+            statusBoardActive={statusBoardOpen}
             voiceByChannel={voiceByChannel}
             voiceMetaByUser={voiceMetaByUser}
             members={members}
@@ -825,6 +847,16 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             <span className="ec-chat-title" style={chatTitle}>
               <span className="ec-brand-mark" style={{ ...brandMark, width: 18, height: 18 }} aria-hidden />
               Главная
+            </span>
+          ) : statusBoardOpen ? (
+            <span className="ec-chat-title" style={chatTitle}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--ec-accent)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <rect x="3" y="3" width="7" height="9" rx="1" />
+                <rect x="14" y="3" width="7" height="5" rx="1" />
+                <rect x="14" y="12" width="7" height="9" rx="1" />
+                <rect x="3" y="16" width="7" height="5" rx="1" />
+              </svg>
+              Доска задач
             </span>
           ) : inDmMode && selectedDm ? (
             <span className="ec-chat-title" style={chatTitle}>
@@ -1013,6 +1045,22 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               selectDm(null);
             }}
             onCreateServer={() => setShowCreateServer(true)}
+          />
+        ) : statusBoardOpen && activeServer ? (
+          <StatusBoard
+            serverName={activeServer.name}
+            actions={serverActions.actions}
+            loading={serverActions.loading}
+            error={serverActions.error}
+            onReload={() => void serverActions.reload()}
+            currentUserId={user.id}
+            channelNameById={(cid) => channelNameById(cid)}
+            onUpdateStatus={(id, status) => void serverActions.updateStatus(id, status)}
+            onOpenChannel={(channelId) => {
+              setStatusBoardOpen(false);
+              setSelectedChannelId(channelId);
+              if (isMobile) setNavOpen(false);
+            }}
           />
         ) : inDmMode ? (
           !selectedDm ? (

@@ -98,6 +98,43 @@ export async function registerActionRoutes(app: FastifyInstance) {
     },
   );
 
+  /**
+   * GET /api/servers/:id/actions — все action items сервера (across channels)
+   * для Status Board. Membership-only. status-фильтр опционален.
+   */
+  app.get(
+    "/api/servers/:id/actions",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const userId = getUserId(req);
+      if (!userId) {
+        return reply.status(401).send({ error: "Unauthorized" });
+      }
+      const { id: serverId } = req.params as { id: string };
+      const parsed = actionQuerySchema.safeParse(req.query);
+      if (!parsed.success) {
+        return reply.status(400).send({ error: "Invalid query" });
+      }
+      const member = await db.member.findUnique({
+        where: { userId_serverId: { userId, serverId } },
+        select: { id: true },
+      });
+      if (!member) {
+        return reply.status(403).send({ error: "Not a member of this server" });
+      }
+      const actions = await db.actionItem.findMany({
+        where: {
+          serverId,
+          ...(parsed.data.status ? { status: parsed.data.status } : {}),
+        },
+        include: actionItemInclude,
+        orderBy: [{ status: "asc" }, { dueAt: "asc" }, { createdAt: "desc" }],
+        take: 200,
+      });
+      return { actions: actions.map(serializeActionItem) };
+    },
+  );
+
   app.post(
     "/api/messages/:id/actions",
     { onRequest: [requireJwt] },

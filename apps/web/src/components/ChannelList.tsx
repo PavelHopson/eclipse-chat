@@ -20,6 +20,10 @@ type Props = {
   /** Batch reorder каналов через drag-drop. Скрывает DnD если не передано. */
   onReorder?: (order: { id: string; position: number }[]) => Promise<boolean>;
   onShowServerInfo: () => void;
+  /** Открыть Execution Status Board (доска задач сервера). */
+  onOpenStatusBoard?: () => void;
+  /** Status Board сейчас открыт — для подсветки. */
+  statusBoardActive?: boolean;
   /** Кто сейчас в каком VOICE-канале — для sticky-списка под каналом. */
   voiceByChannel?: Record<string, string[]>;
   /** Mic/deafen-состояние участников эфира — для Discord-style иконок. */
@@ -237,6 +241,8 @@ export function ChannelList({
   onOpenSettings,
   onReorder,
   onShowServerInfo,
+  onOpenStatusBoard,
+  statusBoardActive,
   voiceByChannel,
   voiceMetaByUser,
   members,
@@ -612,6 +618,28 @@ export function ChannelList({
       </header>
 
       <div style={listWrap}>
+        {onOpenStatusBoard && (
+          <button
+            type="button"
+            onClick={onOpenStatusBoard}
+            className={
+              statusBoardActive
+                ? "ec-channel-item ec-channel-item--active"
+                : "ec-channel-item"
+            }
+            style={{ marginBottom: "var(--ec-space-2)" }}
+            title="Доска задач — все task / decision / follow-up сервера"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <rect x="3" y="3" width="7" height="9" rx="1" />
+              <rect x="14" y="3" width="7" height="5" rx="1" />
+              <rect x="14" y="12" width="7" height="9" rx="1" />
+              <rect x="3" y="16" width="7" height="5" rx="1" />
+            </svg>
+            <span style={{ flex: 1, minWidth: 0 }}>Доска задач</span>
+          </button>
+        )}
+
         {textChannels.length > 0 && (
           <>
             <div className="ec-section-label" style={{ marginBottom: "var(--ec-space-2)" }}>

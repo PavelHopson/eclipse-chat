@@ -215,7 +215,10 @@ export function emitActionItemCreated(
     } | null;
   },
 ) {
-  io?.to(`channel:${channelId}`).emit("action:item:created", payload);
+  // Эмитим в server-room тоже — чтобы Status Board (server-wide) получал
+  // live-апдейты. Socket.io доставит once на сокет даже если он в обеих
+  // комнатах. useMessages фильтрует по channelId, server board — нет.
+  io?.to(`channel:${channelId}`).to(`server:${payload.serverId}`).emit("action:item:created", payload);
 }
 
 /**
@@ -282,7 +285,7 @@ export function emitActionItemUpdated(
     } | null;
   },
 ) {
-  io?.to(`channel:${channelId}`).emit("action:item:updated", payload);
+  io?.to(`channel:${channelId}`).to(`server:${payload.serverId}`).emit("action:item:updated", payload);
 }
 
 // ============================
