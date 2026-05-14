@@ -127,6 +127,91 @@ type AssistantContext = {
   pinned: PinnedForPrompt[];
 };
 
+type IncidentPostMortemContext = {
+  title: string;
+  openedAt: string;
+  resolvedAt: string;
+  openedByName: string;
+  /** Все decisions из incident-канала. */
+  decisions: ActionForPrompt[];
+  /** Все tasks/follow-ups из incident-канала. */
+  actionItems: ActionForPrompt[];
+  /** Закреплённые сообщения — ключевые факты. */
+  pinned: PinnedForPrompt[];
+  /** Сообщения incident-канала, oldest first (до ~40). */
+  messages: MessageForPrompt[];
+};
+
+/**
+ * Post-mortem генерится при resolve инцидента. Собирает timeline
+ * incident-канала (decisions + actions + pinned + messages) → структурированный
+ * markdown-разбор. В отличие от digest/assistant — здесь markdown РАЗРЕШЁН
+ * (post-mortem рендерится как RichContent в IncidentPanel).
+ */
+export function incidentPostMortemPrompt(c: IncidentPostMortemContext): {
+  system: string;
+  user: string;
+} {
+  const openedMs = new Date(c.openedAt).getTime();
+  const resolvedMs = new Date(c.resolvedAt).getTime();
+  const durationMin = Math.max(1, Math.round((resolvedMs - openedMs) / 60_000));
+  const durationLabel =
+    durationMin < 60
+      ? `${durationMin} мин`
+      : `${Math.floor(durationMin / 60)} ч ${durationMin % 60} мин`;
+
+  const lines: string[] = [];
+  lines.push(`Инцидент: ${c.title}`);
+  lines.push(`Открыл: ${c.openedByName}`);
+  lines.push(`Длительность: ${durationLabel}`);
+  lines.push("");
+
+  if (c.decisions.length > 0) {
+    lines.push("Принятые решения:");
+    c.decisions.slice(0, 12).forEach((a, i) => lines.push(formatActionLine(a, i)));
+    lines.push("");
+  }
+  if (c.actionItems.length > 0) {
+    lines.push("Задачи и follow-up:");
+    c.actionItems.slice(0, 16).forEach((a, i) => lines.push(formatActionLine(a, i)));
+    lines.push("");
+  }
+  if (c.pinned.length > 0) {
+    lines.push("Закреплённые факты:");
+    c.pinned.slice(0, 8).forEach((p, i) => {
+      const cont = p.content.replace(/\s+/g, " ").trim().slice(0, 200);
+      lines.push(`  ${i + 1}. (${p.user.displayName}) ${cont}`);
+    });
+    lines.push("");
+  }
+  if (c.messages.length > 0) {
+    lines.push("Хронология обсуждения (старые → новые):");
+    for (const m of c.messages.slice(-40)) {
+      const time = new Date(m.createdAt).toLocaleTimeString("ru-RU", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+      const text = m.content.replace(/\s+/g, " ").trim().slice(0, 240);
+      if (text) lines.push(`  [${time}] ${m.displayName}: ${text}`);
+    }
+  }
+
+  return {
+    system:
+      "Ты — операционный аналитик Eclipse Chat. По данным incident-канала " +
+      "составь компактный post-mortem на русском в markdown. Структура строго:\n" +
+      "## Что произошло\n(2-4 предложения — суть инцидента)\n" +
+      "## Хронология\n(маркированный список ключевых моментов с временем)\n" +
+      "## Принятые решения\n(маркированный список — что решили)\n" +
+      "## Action items\n(маркированный список незакрытых задач — что доделать)\n" +
+      "## Выводы\n(1-3 предложения — что улучшить чтобы не повторилось)\n\n" +
+      "Будь конкретным, опирайся только на данные. Если раздел пустой — напиши " +
+      "«—». Без воды, без эмодзи. Markdown заголовки и списки — обязательны.",
+    user:
+      "Данные инцидента:\n\n" + lines.join("\n") + "\n\nPost-mortem (markdown):",
+  };
+}
+
 export function assistantPrompt(c: AssistantContext): {
   system: string;
   user: string;

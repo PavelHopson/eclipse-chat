@@ -176,6 +176,25 @@ export type ThreadMetaUpdatePayload = {
   lastReplyAt: string;
 };
 
+/** Инцидент открыт — broadcast в server-room. */
+export type IncidentOpenedPayload = {
+  incidentId: string;
+  serverId: string;
+  title: string;
+  channelId: string | null;
+  openedByUserId: string;
+  openedByName: string;
+  openedAt: string;
+};
+
+/** Инцидент закрыт — broadcast в server-room. */
+export type IncidentResolvedPayload = {
+  incidentId: string;
+  serverId: string;
+  resolvedAt: string;
+  hasPostMortem: boolean;
+};
+
 export type ActionItemType = "TASK" | "DECISION" | "FOLLOW_UP";
 export type ActionItemStatus = "OPEN" | "DONE";
 
@@ -294,6 +313,8 @@ export const SocketEvents = {
   ChannelCreated: "channel:created",
   ChannelDeleted: "channel:deleted",
   ChannelUpdated: "channel:updated",
+  IncidentOpened: "incident:opened",
+  IncidentResolved: "incident:resolved",
   MemberJoined: "member:joined",
   MemberLeft: "member:left",
   MemberUpdated: "member:updated",

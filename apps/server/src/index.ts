@@ -16,6 +16,7 @@ import { registerChannelRoutes } from "./routes/channels.js";
 import { registerDigestRoutes } from "./routes/digest.js";
 import { registerDmRoutes } from "./routes/dm.js";
 import { registerMessageRoutes } from "./routes/messages.js";
+import { registerIncidentRoutes } from "./routes/incidents.js";
 import { registerServerRoutes } from "./routes/servers.js";
 import { registerThreadRoutes } from "./routes/threads.js";
 import { registerUserRoutes } from "./routes/users.js";
@@ -111,7 +112,7 @@ app.get("/api/health", async () => {
   }
   return { ok: true, service: "eclipse-chat-server", database: dbOk };
 });
-app.get("/api/version", async () => ({ name: "@eclipse-chat/server", version: "0.15.0" }));
+app.get("/api/version", async () => ({ name: "@eclipse-chat/server", version: "0.16.0" }));
 
 await registerAuthRoutes(app);
 await registerTwoFactorRoutes(app);
@@ -151,6 +152,7 @@ await registerServerRoutes(app);
 await registerUserRoutes(app);
 await registerMessageRoutes(app);
 await registerThreadRoutes(app);
+await registerIncidentRoutes(app);
 await registerVoiceRoutes(app);
 await registerDmRoutes(app);
 await app.ready();

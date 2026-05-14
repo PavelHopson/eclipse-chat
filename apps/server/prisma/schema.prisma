@@ -62,6 +62,8 @@ model User {
   ownedBots        Bot[]                 @relation("BotOwner")
   /// Если user — это shadow user для bot'а (1-to-1). null = обычный User.
   botProfile       Bot?                  @relation("BotShadowUser")
+  /// Инциденты открытые этим user'ом.
+  openedIncidents  Incident[]            @relation("IncidentOpener")
 }
 
 /**
@@ -216,6 +218,12 @@ enum ActionItemType {
   FOLLOW_UP
 }
 
+/// Статус инцидента. OPEN = разбор идёт, RESOLVED = закрыт + post-mortem сгенерён.
+enum IncidentStatus {
+  OPEN
+  RESOLVED
+}
+
 enum ActionItemStatus {
   OPEN
   DONE
@@ -250,6 +258,36 @@ model Server {
   members     Member[]
   actionItems ActionItem[]
   bots        Bot[]
+  incidents   Incident[]
+}
+
+/**
+ * Incident — операторский «контур разбора». Создаётся кнопкой «Открыть
+ * инцидент»: спавнит dedicated TEXT-канал, собирает timeline (ActionItems
+ * + pinned messages), при resolve генерит post-mortem через Ollama.
+ *
+ * Главный differentiator Eclipse Chat как operator console — связывает
+ * уже построенные слои (channels + ActionItems + AI) в incident workflow.
+ */
+model Incident {
+  id             String         @id @default(cuid())
+  serverId       String
+  server         Server         @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  title          String
+  status         IncidentStatus @default(OPEN)
+  /// Dedicated channel инцидента. SET NULL если канал удалён руками —
+  /// Incident-запись остаётся для history. 1-to-1 с Channel.incidentId.
+  channelId      String?        @unique
+  channel        Channel?       @relation("IncidentChannel", fields: [channelId], references: [id], onDelete: SetNull)
+  openedByUserId String
+  openedBy       User           @relation("IncidentOpener", fields: [openedByUserId], references: [id], onDelete: Restrict)
+  openedAt       DateTime       @default(now())
+  resolvedAt     DateTime?
+  /// Post-mortem markdown. Генерится Ollama при resolve. Null пока OPEN.
+  postMortem     String?
+
+  @@index([serverId, status])
+  @@index([channelId])
 }
 
 /// Участие пользователя в сервере. Один user — один Member per server.
@@ -284,6 +322,10 @@ model Channel {
   /// Кастомный emoji prefix вместо # (TEXT) / 🔊 (VOICE) в UI.
   /// Single emoji char, может быть compound (👨‍💻). Null = default glyph.
   emoji       String?
+  /// Если канал — incident-канал, ссылка на Incident. Unique (1-to-1).
+  /// Null для обычных каналов. UI рисует incident badge если set.
+  incidentId  String?    @unique
+  incident    Incident?  @relation("IncidentChannel")
   createdAt DateTime    @default(now())
 
   messages  Message[]

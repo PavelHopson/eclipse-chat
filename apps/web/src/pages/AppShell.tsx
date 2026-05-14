@@ -19,6 +19,7 @@ import { ServerInfoModal } from "../components/ServerInfoModal";
 import { ServerSettingsModal } from "../components/ServerSettingsModal";
 import { ServerList } from "../components/ServerList";
 import { StatusMenu } from "../components/StatusMenu";
+import { IncidentPanel } from "../components/IncidentPanel";
 import { ThreadPanel } from "../components/ThreadPanel";
 import { TypingIndicator } from "../components/TypingIndicator";
 import { VoiceMiniBar } from "../components/VoiceMiniBar";
@@ -28,6 +29,7 @@ import { useChannelDigest } from "../hooks/useChannelDigest";
 import { useChannels } from "../hooks/useChannels";
 import { useDirectConversations } from "../hooks/useDirectConversations";
 import { useDirectMessages } from "../hooks/useDirectMessages";
+import { useIncidents } from "../hooks/useIncidents";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import { useMembers, type MemberRole, type MemberRow } from "../hooks/useMembers";
 import { useMessages } from "../hooks/useMessages";
@@ -397,6 +399,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   const [showProfile, setShowProfile] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [homeOpen, setHomeOpen] = useState(false);
+  // Incident panel — toggle в right rail (приоритет ниже thread panel).
+  const [showIncidents, setShowIncidents] = useState(false);
   // Thread panel — открыт когда selectedThreadId != null. Replaces MemberList
   // в right rail. Close → возвращается MemberList.
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
@@ -449,6 +453,10 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     error: membersError,
     updateMemberRole,
   } = useMembers(activeServerId, socket);
+
+  // ===== Incidents =====
+  // Список инцидентов сервера + open/resolve. IncidentPanel в right rail.
+  const { openCount: incidentOpenCount } = useIncidents(activeServerId, socket);
 
   const headerName = profile?.displayName ?? user.displayName;
   const headerAvatar = profile?.avatar ?? user.avatar;
@@ -606,6 +614,57 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                 <circle cx="11" cy="11" r="8" />
                 <line x1="21" y1="21" x2="16.65" y2="16.65" />
               </svg>
+            </button>
+          )}
+          {showMembers && (
+            <button
+              type="button"
+              onClick={() => {
+                setShowIncidents((v) => !v);
+                setSelectedThreadId(null);
+                if (isTabletOrSmaller) setMembersOpen(true);
+              }}
+              title={
+                incidentOpenCount > 0
+                  ? `Инциденты — ${incidentOpenCount} активных`
+                  : "Инциденты"
+              }
+              aria-label="Инциденты"
+              className="ec-btn ec-btn--ghost ec-btn--sm"
+              style={{
+                padding: "0.35rem 0.65rem",
+                position: "relative",
+                color: incidentOpenCount > 0 ? "var(--ec-danger)" : undefined,
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                <line x1="12" y1="9" x2="12" y2="13" />
+                <line x1="12" y1="17" x2="12.01" y2="17" />
+              </svg>
+              {incidentOpenCount > 0 && (
+                <span
+                  aria-hidden
+                  style={{
+                    position: "absolute",
+                    top: -2,
+                    right: -2,
+                    minWidth: 14,
+                    height: 14,
+                    padding: "0 3px",
+                    borderRadius: "var(--ec-radius-full)",
+                    background: "var(--ec-danger)",
+                    color: "#fff",
+                    fontSize: "0.55rem",
+                    fontWeight: 700,
+                    display: "grid",
+                    placeItems: "center",
+                    lineHeight: 1,
+                  }}
+                >
+                  {incidentOpenCount > 9 ? "9+" : incidentOpenCount}
+                </span>
+              )}
             </button>
           )}
           {notif.supported && (
@@ -1108,6 +1167,20 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               currentUserAvatar={headerAvatar}
               mentionNames={members.map((m) => m.user.displayName)}
               onClose={() => setSelectedThreadId(null)}
+            />
+          ) : showIncidents && activeServerId ? (
+            <IncidentPanel
+              serverId={activeServerId}
+              socket={socket}
+              currentUserId={user.id}
+              currentRole={currentRole}
+              onOpenChannel={(channelId) => {
+                setHomeOpen(false);
+                setSelectedChannelId(channelId);
+                setShowIncidents(false);
+                if (isMobile) setNavOpen(false);
+              }}
+              onClose={() => setShowIncidents(false)}
             />
           ) : (
             <MemberList

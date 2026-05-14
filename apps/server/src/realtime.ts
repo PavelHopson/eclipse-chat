@@ -286,6 +286,40 @@ export function emitActionItemUpdated(
 }
 
 // ============================
+// Incident Mode events
+// ============================
+
+/** Инцидент открыт — broadcast в server-room. Frontend добавляет в список. */
+export function emitIncidentOpened(
+  serverId: string,
+  payload: {
+    incidentId: string;
+    serverId: string;
+    title: string;
+    channelId: string | null;
+    openedByUserId: string;
+    openedByName: string;
+    openedAt: string;
+  },
+) {
+  io?.to(`server:${serverId}`).emit("incident:opened", payload);
+}
+
+/** Инцидент закрыт — broadcast в server-room. Frontend обновляет статус + post-mortem. */
+export function emitIncidentResolved(
+  serverId: string,
+  payload: {
+    incidentId: string;
+    serverId: string;
+    resolvedAt: string;
+    /** Сгенерён ли post-mortem (AI мог быть недоступен). */
+    hasPostMortem: boolean;
+  },
+) {
+  io?.to(`server:${serverId}`).emit("incident:resolved", payload);
+}
+
+// ============================
 // Direct Messages (DM) events
 // ============================
 
