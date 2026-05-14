@@ -482,7 +482,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   const isMobile = useMediaQuery("(max-width: 640px)");
   const isTabletOrSmaller = useMediaQuery("(max-width: 1024px)");
   const voiceHealth = useVoiceHealth();
-  const voiceByChannel = useVoicePresence(socket);
+  const { byChannel: voiceByChannel, metaByUser: voiceMetaByUser } =
+    useVoicePresence(socket);
   const voiceChannelByUser = reverseVoiceMap(voiceByChannel);
   // Voice state lifted в AppShell — persistent across channel switches, доступен sidebar'у.
   const voice = useVoice(socket);
@@ -853,6 +854,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             onReorder={reorderChannels}
             onShowServerInfo={() => activeServer && setShowServerInfo(true)}
             voiceByChannel={voiceByChannel}
+            voiceMetaByUser={voiceMetaByUser}
             members={members}
             speakingUserIds={speakingUserIds}
             myVoiceChannelId={voice.activeChannelId}

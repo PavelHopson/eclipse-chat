@@ -27,8 +27,10 @@ import { setPresenceIO, trackConnect, trackDisconnect } from "./presence.js";
 import {
   setVoicePresenceIO,
   snapshotForServer,
+  metaSnapshotForUsers,
   trackVoiceJoin,
   trackVoiceLeave,
+  updateVoiceMeta,
 } from "./voicePresence.js";
 import { db } from "./db.js";
 
@@ -112,7 +114,7 @@ app.get("/api/health", async () => {
   }
   return { ok: true, service: "eclipse-chat-server", database: dbOk };
 });
-app.get("/api/version", async () => ({ name: "@eclipse-chat/server", version: "0.16.1" }));
+app.get("/api/version", async () => ({ name: "@eclipse-chat/server", version: "0.16.2" }));
 
 await registerAuthRoutes(app);
 await registerTwoFactorRoutes(app);
@@ -187,18 +189,27 @@ async function subscribeToUserServers(
   return serverIds;
 }
 
-/** Снимок voice presence для всех channels на серверах user'а. */
-async function buildVoicePresenceSnapshot(userId: string): Promise<Record<string, string[]>> {
+/**
+ * Снимок voice presence для всех channels на серверах user'а.
+ * Возвращает `byChannel` (кто где) + `meta` (mic/deafen-состояние каждого
+ * участника эфира) — чтобы sidebar у новоприбывшего сразу показал актуальные
+ * Discord-style индикаторы, не дожидаясь дельта-событий.
+ */
+async function buildVoicePresenceSnapshot(
+  userId: string,
+): Promise<{ byChannel: Record<string, string[]>; meta: Record<string, { micMuted: boolean; deafened: boolean }> }> {
   const memberships = await db.member.findMany({
     where: { userId },
     select: { serverId: true },
   });
-  if (memberships.length === 0) return {};
+  if (memberships.length === 0) return { byChannel: {}, meta: {} };
   const channels = await db.channel.findMany({
     where: { serverId: { in: memberships.map((m) => m.serverId) }, type: "VOICE" },
     select: { id: true },
   });
-  return snapshotForServer(channels.map((c) => c.id));
+  const byChannel = snapshotForServer(channels.map((c) => c.id));
+  const userIds = Array.from(new Set(Object.values(byChannel).flat()));
+  return { byChannel, meta: metaSnapshotForUsers(userIds) };
 }
 
 io.on("connection", (socket) => {
@@ -216,7 +227,10 @@ io.on("connection", (socket) => {
         return buildVoicePresenceSnapshot(userId);
       })
       .then((snap) => {
-        if (snap) socket.emit("voice:state", snap);
+        if (snap) {
+          socket.emit("voice:state", snap.byChannel);
+          socket.emit("voice:meta", snap.meta);
+        }
       })
       .catch((err) => {
         app.log.error({ err, userId }, "Failed to subscribe socket to user servers");
@@ -353,6 +367,19 @@ io.on("connection", (socket) => {
   socket.on("voice:leave", () => {
     trackVoiceLeave(socket.id);
   });
+
+  // Клиент переключил микрофон / звук — обновляем meta и рассылаем дельту
+  // всем участникам сервера (Discord-style mute/deafen-иконки в sidebar).
+  socket.on(
+    "voice:meta:update",
+    (payload: { micMuted?: unknown; deafened?: unknown }) => {
+      if (!payload || typeof payload !== "object") return;
+      updateVoiceMeta(socket.id, {
+        micMuted: typeof payload.micMuted === "boolean" ? payload.micMuted : undefined,
+        deafened: typeof payload.deafened === "boolean" ? payload.deafened : undefined,
+      });
+    },
+  );
 
   socket.on("disconnect", () => {
     if (userId) {

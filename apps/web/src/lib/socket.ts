@@ -252,6 +252,21 @@ export type VoiceParticipantLeftPayload = {
 /** Snapshot — `Record<voiceChannelId, userId[]>`. Шлётся раз на connect. */
 export type VoiceStatePayload = Record<string, string[]>;
 
+/** Mic/deafen-состояние участника эфира — для Discord-style индикаторов. */
+export type VoiceMeta = { micMuted: boolean; deafened: boolean };
+
+/** Snapshot meta — `Record<userId, VoiceMeta>`. Шлётся раз на connect. */
+export type VoiceMetaPayload = Record<string, VoiceMeta>;
+
+/** Дельта meta — один участник переключил микрофон / звук. */
+export type VoiceParticipantMetaPayload = {
+  userId: string;
+  voiceChannelId: string;
+  serverId: string;
+  micMuted: boolean;
+  deafened: boolean;
+};
+
 // ============================
 // DM (Direct Messages) payloads
 // ============================
@@ -326,8 +341,11 @@ export const SocketEvents = {
   VoiceJoin: "voice:join",
   VoiceLeave: "voice:leave",
   VoiceState: "voice:state",
+  VoiceMeta: "voice:meta",
+  VoiceMetaUpdate: "voice:meta:update",
   VoiceParticipantJoined: "voice:participant:joined",
   VoiceParticipantLeft: "voice:participant:left",
+  VoiceParticipantMeta: "voice:participant:meta",
   ThreadJoin: "thread:join",
   ThreadLeave: "thread:leave",
   ThreadReplyNew: "thread:reply:new",

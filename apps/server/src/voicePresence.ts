@@ -22,9 +22,13 @@ type VoiceState = {
   serverId: string;
 };
 
+/** Mic/deafen-состояние участника эфира — для Discord-style индикаторов. */
+type VoiceMeta = { micMuted: boolean; deafened: boolean };
+
 const socketStates = new Map<string, VoiceState>(); // socketId → state
 const channelOccupants = new Map<string, Set<string>>(); // channelId → userIds
 const userActiveChannel = new Map<string, string>(); // userId → channelId (последний join)
+const userMeta = new Map<string, VoiceMeta>(); // userId → mic/deafen state
 
 let ioRef: SocketServer | null = null;
 
@@ -69,6 +73,42 @@ export function snapshotForServer(serverChannelIds: string[]): Record<string, st
   return out;
 }
 
+/** Снимок mic/deafen-состояния для набора userId (тех, кто сейчас в эфире). */
+export function metaSnapshotForUsers(userIds: string[]): Record<string, VoiceMeta> {
+  const out: Record<string, VoiceMeta> = {};
+  for (const userId of userIds) {
+    const meta = userMeta.get(userId);
+    if (meta) out[userId] = { ...meta };
+  }
+  return out;
+}
+
+/**
+ * Клиент сообщил, что переключил микрофон / звук (Socket.io 'voice:meta:update').
+ * Обновляем стейт и рассылаем дельту всем участникам сервера — sidebar у всех
+ * показывает актуальные mute/deafen-иконки (Discord-style).
+ */
+export function updateVoiceMeta(
+  socketId: string,
+  meta: Partial<VoiceMeta>,
+): void {
+  const state = socketStates.get(socketId);
+  if (!state) return;
+  const current = userMeta.get(state.userId) ?? { micMuted: false, deafened: false };
+  const next: VoiceMeta = {
+    micMuted: meta.micMuted ?? current.micMuted,
+    deafened: meta.deafened ?? current.deafened,
+  };
+  userMeta.set(state.userId, next);
+  ioRef?.to(`server:${state.serverId}`).emit("voice:participant:meta", {
+    userId: state.userId,
+    voiceChannelId: state.voiceChannelId,
+    serverId: state.serverId,
+    micMuted: next.micMuted,
+    deafened: next.deafened,
+  });
+}
+
 /**
  * Пользователь вошёл в voice-канал (Socket.io event 'voice:join').
  *
@@ -97,6 +137,11 @@ export function trackVoiceJoin(
   const wasEmpty = !occupants.has(userId);
   occupants.add(userId);
   userActiveChannel.set(userId, voiceChannelId);
+  // Дефолтное meta-состояние — клиент сразу после join эмитит реальное
+  // через 'voice:meta:update'.
+  if (!userMeta.has(userId)) {
+    userMeta.set(userId, { micMuted: false, deafened: false });
+  }
 
   // Эмитим только если user реально только что появился в этом канале
   // (защита от дубликата — у user может быть несколько tabs).
@@ -143,7 +188,11 @@ function untrackInternal(socketId: string, state: VoiceState): void {
         }
       }
       if (nextActive) userActiveChannel.set(state.userId, nextActive);
-      else userActiveChannel.delete(state.userId);
+      else {
+        userActiveChannel.delete(state.userId);
+        // Полностью вышел из эфира — meta больше не нужна.
+        userMeta.delete(state.userId);
+      }
     }
     emitLeft(state);
   }

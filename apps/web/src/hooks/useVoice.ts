@@ -847,6 +847,20 @@ export function useVoice(socket: Socket | null = null) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /**
+   * Broadcast mic/deafen-состояния на backend при каждом изменении (пока
+   * connected). Backend рассылает дельту участникам сервера — sidebar у всех
+   * показывает актуальные Discord-style mute/deafen-иконки.
+   */
+  useEffect(() => {
+    if (state !== "connected") return;
+    if (!activeChannelId) return;
+    socketRef.current?.emit(SocketEvents.VoiceMetaUpdate, {
+      micMuted: isMicMuted,
+      deafened: isDeafened,
+    });
+  }, [state, activeChannelId, isMicMuted, isDeafened]);
+
   /** Snapshot RTCStats для каждого remote audio track (для stats overlay). */
   const getRemoteStats = useCallback(async () => {
     const out: Array<{

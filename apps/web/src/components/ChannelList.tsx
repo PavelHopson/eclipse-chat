@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Avatar } from "./Avatar";
 import type { ChannelRow } from "../hooks/useChannels";
 import type { MemberRow } from "../hooks/useMembers";
-import type { ChannelType } from "../lib/socket";
+import type { ChannelType, VoiceMeta } from "../lib/socket";
 
 type Props = {
   serverName: string | null;
@@ -22,6 +22,8 @@ type Props = {
   onShowServerInfo: () => void;
   /** Кто сейчас в каком VOICE-канале — для sticky-списка под каналом. */
   voiceByChannel?: Record<string, string[]>;
+  /** Mic/deafen-состояние участников эфира — для Discord-style иконок. */
+  voiceMetaByUser?: Record<string, VoiceMeta>;
   /** Members активного сервера — для avatar+name lookup. */
   members?: MemberRow[];
   /**
@@ -181,6 +183,29 @@ function ChannelGlyph({
   );
 }
 
+/** Перечёркнутый микрофон — участник эфира с выключенным микрофоном. */
+function MicOffGlyph() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <line x1="1" y1="1" x2="23" y2="23" />
+      <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6" />
+      <path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23" />
+      <line x1="12" y1="19" x2="12" y2="23" />
+    </svg>
+  );
+}
+
+/** Перечёркнутые наушники — участник эфира заглушил весь звук (deafened). */
+function DeafenedGlyph() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <line x1="1" y1="1" x2="23" y2="23" />
+      <path d="M3 14v-3a9 9 0 0 1 14.31-7.24M21 13v1a2 2 0 0 1-.18.83" />
+      <path d="M21 15a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3M3 14a2 2 0 0 1 2-2h1a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5" />
+    </svg>
+  );
+}
+
 export function ChannelList({
   serverName,
   serverRole,
@@ -195,6 +220,7 @@ export function ChannelList({
   onReorder,
   onShowServerInfo,
   voiceByChannel,
+  voiceMetaByUser,
   members,
   speakingUserIds,
   myVoiceChannelId,
@@ -253,7 +279,8 @@ export function ChannelList({
     }
   };
 
-  // Sticky-список голосовых участников под voice-каналом (Discord-style)
+  // Sticky-список голосовых участников под voice-каналом (Discord-style):
+  // аватар + имя + индикатор mic-off / deafened, speaking-glow для своей room.
   const renderVoiceOccupants = (channelId: string) => {
     const userIds = voiceByChannel?.[channelId];
     if (!userIds || userIds.length === 0) return null;
@@ -276,13 +303,24 @@ export function ChannelList({
           const avatar = m?.user.avatar ?? null;
           const speaking =
             channelId === myVoiceChannelId && speakingUserIds?.has(userId);
+          const meta = voiceMetaByUser?.[userId];
+          const deafened = Boolean(meta?.deafened);
+          // deafened подразумевает mic off — показываем один значок (наушники).
+          const micMuted = Boolean(meta?.micMuted) && !deafened;
+          const stateLabel = deafened
+            ? "звук выключен"
+            : micMuted
+            ? "микрофон выключен"
+            : speaking
+            ? "говорит"
+            : "в эфире";
           return (
             <span
               key={userId}
-              title={speaking ? `${name} говорит` : `${name} в эфире`}
+              title={`${name} — ${stateLabel}`}
               style={{
                 display: "grid",
-                gridTemplateColumns: "auto 1fr",
+                gridTemplateColumns: "auto 1fr auto",
                 alignItems: "center",
                 gap: 6,
                 padding: "0.15rem 0.3rem",
@@ -302,6 +340,7 @@ export function ChannelList({
                     ? "0 0 0 1.5px var(--ec-accent), 0 0 10px hsl(195 70% 60% / 0.55)"
                     : "none",
                   transition: "box-shadow 80ms linear",
+                  opacity: deafened || micMuted ? 0.6 : 1,
                 }}
               >
                 <Avatar url={avatar} name={name} size={16} />
@@ -311,10 +350,24 @@ export function ChannelList({
                   overflow: "hidden",
                   textOverflow: "ellipsis",
                   whiteSpace: "nowrap",
+                  opacity: deafened || micMuted ? 0.7 : 1,
                 }}
               >
                 {name}
               </span>
+              {(deafened || micMuted) && (
+                <span
+                  aria-hidden
+                  style={{
+                    display: "inline-grid",
+                    placeItems: "center",
+                    color: "var(--ec-danger)",
+                    flexShrink: 0,
+                  }}
+                >
+                  {deafened ? <DeafenedGlyph /> : <MicOffGlyph />}
+                </span>
+              )}
             </span>
           );
         })}
