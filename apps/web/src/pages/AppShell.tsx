@@ -469,6 +469,15 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
 
   const selectedChannel = channels.find((c) => c.id === selectedChannelId) ?? null;
 
+  // BROADCAST-канал (news/blogger): читают все, публикуют только
+  // OWNER/ADMIN/MODERATOR. Остальные видят read-only ленту.
+  const canManageBroadcast =
+    currentRole === "OWNER" ||
+    currentRole === "ADMIN" ||
+    currentRole === "MODERATOR";
+  const broadcastReadOnly =
+    selectedChannel?.type === "BROADCAST" && !canManageBroadcast;
+
   // Правый rail — context-aware IntelligencePanel — виден ВСЕГДА в server-view
   // (и voice, и chat): табы «Intelligence» + «Участники». `isVoiceView`
   // переключает режим панели.
@@ -955,6 +964,23 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                     <path d="M11 5L6 9H2v6h4l5 4V5z" />
                     <path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07" />
                   </svg>
+                ) : selectedChannel.type === "BROADCAST" ? (
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    style={{ color: "var(--ec-accent)" }}
+                    aria-hidden
+                  >
+                    <path d="M3 11l15-5v12L3 13v-2z" />
+                    <path d="M11.6 16.8a3 3 0 11-5.8-1.6" />
+                    <path d="M21 9v6" />
+                  </svg>
                 ) : (
                   <span style={{ color: "var(--ec-accent)" }}>#</span>
                 )}
@@ -1187,15 +1213,39 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               }}
             />
             <TypingIndicator users={typingUsers} />
-            <MessageInput
-              channelName={selectedChannel.name}
-              disabled={!isReady}
-              onSend={(content, attachments) =>
-                sendMessage(content, senderForMessages, attachments)
-              }
-              onTypingStart={emitTypingStart}
-              onTypingStop={emitTypingStop}
-            />
+            {broadcastReadOnly ? (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "var(--ec-space-2)",
+                  padding: "var(--ec-space-3) var(--ec-space-5)",
+                  margin: "var(--ec-space-2) var(--ec-space-3)",
+                  borderRadius: "var(--ec-radius-md)",
+                  background: "var(--ec-surface-2)",
+                  border: "1px solid var(--ec-border-subtle)",
+                  color: "var(--ec-text-muted)",
+                  fontSize: "var(--ec-text-sm)",
+                }}
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ flexShrink: 0, color: "var(--ec-accent)" }}>
+                  <path d="M3 11l15-5v12L3 13v-2z" />
+                  <path d="M11.6 16.8a3 3 0 11-5.8-1.6" />
+                  <path d="M21 9v6" />
+                </svg>
+                Это канал-вещание — публикуют только владелец и модераторы. Ты подписан и видишь все публикации.
+              </div>
+            ) : (
+              <MessageInput
+                channelName={selectedChannel.name}
+                disabled={!isReady}
+                onSend={(content, attachments) =>
+                  sendMessage(content, senderForMessages, attachments)
+                }
+                onTypingStart={emitTypingStart}
+                onTypingStop={emitTypingStop}
+              />
+            )}
           </>
         )}
       </section>

@@ -58,7 +58,7 @@ export type MessageNewPayload = {
   attachments?: AttachmentPayload[];
 };
 
-export type ChannelType = "TEXT" | "VOICE";
+export type ChannelType = "TEXT" | "VOICE" | "BROADCAST";
 
 export type ChannelCreatedPayload = {
   channelId: string;

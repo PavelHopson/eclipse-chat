@@ -174,6 +174,26 @@ function ChannelGlyph({
       </svg>
     );
   }
+  if (type === "BROADCAST") {
+    // Megaphone — канал-вещание (news/blogger)
+    return (
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden
+      >
+        <path d="M3 11l15-5v12L3 13v-2z" />
+        <path d="M11.6 16.8a3 3 0 11-5.8-1.6" />
+        <path d="M21 9v6" />
+      </svg>
+    );
+  }
   return (
     <span className="ec-channel-hash" aria-hidden>
       #
@@ -262,6 +282,7 @@ export function ChannelList({
   };
 
   const textChannels = channels.filter((c) => c.type === "TEXT");
+  const broadcastChannels = channels.filter((c) => c.type === "BROADCAST");
   const voiceChannels = channels.filter((c) => c.type === "VOICE");
 
   const handleDelete = async (channelId: string, channelName: string) => {
@@ -601,9 +622,34 @@ export function ChannelList({
           </>
         )}
 
+        {broadcastChannels.length > 0 && (
+          <>
+            <div
+              className="ec-section-label"
+              style={{
+                marginTop: textChannels.length > 0 ? "var(--ec-space-4)" : 0,
+                marginBottom: "var(--ec-space-2)",
+              }}
+            >
+              <span>Каналы</span>
+              <span style={{ color: "var(--ec-text-dim)", fontFeatureSettings: '"tnum"' }}>{broadcastChannels.length}</span>
+            </div>
+            {broadcastChannels.map(renderChannel)}
+          </>
+        )}
+
         {voiceChannels.length > 0 && (
           <>
-            <div className="ec-section-label" style={{ marginTop: textChannels.length > 0 ? "var(--ec-space-4)" : 0, marginBottom: "var(--ec-space-2)" }}>
+            <div
+              className="ec-section-label"
+              style={{
+                marginTop:
+                  textChannels.length > 0 || broadcastChannels.length > 0
+                    ? "var(--ec-space-4)"
+                    : 0,
+                marginBottom: "var(--ec-space-2)",
+              }}
+            >
               <span>Голосовые</span>
               <span style={{ color: "var(--ec-text-dim)", fontFeatureSettings: '"tnum"' }}>{voiceChannels.length}</span>
             </div>
@@ -644,9 +690,24 @@ export function ChannelList({
             style={typeBtn(draftType === "TEXT")}
             role="tab"
             aria-selected={draftType === "TEXT"}
+            title="Текстовый канал"
           >
             <span aria-hidden style={{ fontSize: "0.8rem" }}>#</span>
             Текст
+          </button>
+          <button
+            type="button"
+            onClick={() => setDraftType("BROADCAST")}
+            style={typeBtn(draftType === "BROADCAST")}
+            role="tab"
+            aria-selected={draftType === "BROADCAST"}
+            title="Канал-вещание — публикуют модераторы, читают все"
+          >
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M3 11l15-5v12L3 13v-2z" />
+              <path d="M11.6 16.8a3 3 0 11-5.8-1.6" />
+            </svg>
+            Канал
           </button>
           <button
             type="button"
@@ -654,6 +715,7 @@ export function ChannelList({
             style={typeBtn(draftType === "VOICE")}
             role="tab"
             aria-selected={draftType === "VOICE"}
+            title="Голосовой канал"
           >
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
               <path d="M11 5L6 9H2v6h4l5 4V5z" />
@@ -664,7 +726,13 @@ export function ChannelList({
         <div style={{ display: "flex", gap: "var(--ec-space-2)" }}>
           <input
             className="ec-field"
-            placeholder={draftType === "VOICE" ? "Новый голосовой канал…" : "Новый канал…"}
+            placeholder={
+              draftType === "VOICE"
+                ? "Новый голосовой канал…"
+                : draftType === "BROADCAST"
+                ? "Новый канал-вещание…"
+                : "Новый канал…"
+            }
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             maxLength={80}

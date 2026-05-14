@@ -47,7 +47,7 @@ export function emitChannelCreated(
     serverId: string;
     name: string;
     slug: string;
-    type: "TEXT" | "VOICE";
+    type: "TEXT" | "VOICE" | "BROADCAST";
     position: number;
     createdAt: string;
   },
@@ -78,7 +78,7 @@ export function emitChannelUpdated(
     serverId: string;
     name: string;
     slug: string;
-    type: "TEXT" | "VOICE";
+    type: "TEXT" | "VOICE" | "BROADCAST";
     position: number;
     description: string | null;
     emoji: string | null;

@@ -52,7 +52,7 @@ const createServerBody = z.object({
   icon: z.string().url().max(500).optional().nullable(),
 });
 
-const channelTypeSchema = z.enum(["TEXT", "VOICE"]);
+const channelTypeSchema = z.enum(["TEXT", "VOICE", "BROADCAST"]);
 
 const createServerChannelBody = z.object({
   name: z.string().min(1).max(80),

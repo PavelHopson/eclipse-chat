@@ -194,12 +194,14 @@ enum MemberRole {
   MEMBER
 }
 
-/// Тип канала. TEXT — обычный чат. VOICE — голосовой канал
-/// (placeholder в v0.5.2; полноценная LiveKit-интеграция — v0.5.3).
-/// POST messages блокируется для VOICE каналов на уровне route.
+/// Тип канала. TEXT — обычный чат. VOICE — голосовой канал (LiveKit).
+/// BROADCAST — канал-вещание (news/blogger, Discord×Telegram-гибрид):
+/// читают все участники, публикуют только OWNER/ADMIN/MODERATOR.
+/// POST messages блокируется для VOICE; для BROADCAST — gated по роли.
 enum ChannelType {
   TEXT
   VOICE
+  BROADCAST
 }
 
 /// Manual presence status — user-controlled. ONLINE = default (auto от

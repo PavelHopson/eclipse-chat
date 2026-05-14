@@ -12,7 +12,7 @@ import {
 import { maybeReplyToMention } from "../ai/assistant.js";
 import { fireMessageCreatedWebhooks } from "../bots/webhooks.js";
 
-const channelTypeSchema = z.enum(["TEXT", "VOICE"]);
+const channelTypeSchema = z.enum(["TEXT", "VOICE", "BROADCAST"]);
 
 const createChannelBody = z.object({
   name: z.string().min(1).max(80),
@@ -298,10 +298,22 @@ export async function registerChannelRoutes(app: FastifyInstance) {
       if (ch.serverId) {
         const member = await db.member.findUnique({
           where: { userId_serverId: { userId, serverId: ch.serverId } },
-          select: { id: true },
+          select: { id: true, role: true },
         });
         if (!member) {
           return reply.status(403).send({ error: "Not a member of this server" });
+        }
+        // BROADCAST-каналы (news/blogger): публикуют только OWNER/ADMIN/
+        // MODERATOR, остальные участники — read-only подписчики.
+        if (
+          ch.type === "BROADCAST" &&
+          member.role !== "OWNER" &&
+          member.role !== "ADMIN" &&
+          member.role !== "MODERATOR"
+        ) {
+          return reply
+            .status(403)
+            .send({ error: "В канал-вещание публикуют только владелец и модераторы" });
         }
       }
       const u = await db.user.findUnique({ where: { id: userId } });
