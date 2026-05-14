@@ -483,13 +483,36 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   const isTabletOrSmaller = useMediaQuery("(max-width: 1024px)");
   const voiceHealth = useVoiceHealth();
   const {
-    byChannel: voiceByChannel,
-    metaByUser: voiceMetaByUser,
+    byChannel: rawVoiceByChannel,
+    metaByUser: rawVoiceMeta,
     speakingByUser,
   } = useVoicePresence(socket);
-  const voiceChannelByUser = reverseVoiceMap(voiceByChannel);
   // Voice state lifted в AppShell — persistent across channel switches, доступен sidebar'у.
   const voice = useVoice(socket);
+  // Для voice-канала, где ты сейчас подключён, источник истины — сам LiveKit
+  // (`voice.participants`), а НЕ socket-tracked voiceByChannel. Тот может
+  // рассинхрониться: socket disconnect ≠ LiveKit disconnect → backend думает
+  // что в канале 1, а реально 4 (sidebar показывал неполный состав).
+  // Накрываем активный канал реальным составом + live mic/deafen-стейтом.
+  const liveVoiceOverride = voice.activeChannelId && voice.participants.length > 0;
+  const voiceByChannel = liveVoiceOverride
+    ? {
+        ...rawVoiceByChannel,
+        [voice.activeChannelId as string]: voice.participants.map((p) => p.identity),
+      }
+    : rawVoiceByChannel;
+  const voiceMetaByUser = liveVoiceOverride
+    ? {
+        ...rawVoiceMeta,
+        ...Object.fromEntries(
+          voice.participants.map((p) => [
+            p.identity,
+            { micMuted: p.isMicMuted, deafened: p.isDeafened },
+          ]),
+        ),
+      }
+    : rawVoiceMeta;
+  const voiceChannelByUser = reverseVoiceMap(voiceByChannel);
   // Speaking userIds для sidebar-glow во ВСЕХ voice-каналах:
   //  - чужие комнаты — из backend broadcast (speakingByUser);
   //  - своя комната — из локального LiveKit ActiveSpeakers (точнее, без
