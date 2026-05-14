@@ -549,9 +549,19 @@ export function VoiceRoom({
     (participant) => !cameraIdentities.has(participant.identity),
   );
 
+  // Operational status-цвет для connection badge (Фаза A semantic palette).
+  const statusColor = isConnected
+    ? "var(--ec-status-exec)"
+    : isReconnecting || isConnecting
+    ? "var(--ec-status-warn)"
+    : "var(--ec-status-idle)";
+
   return (
     <div style={wrap} className="ec-voice-room">
-      <div style={header}>
+      <div
+        style={header}
+        className={isJoinedHere ? "ec-telemetry-edge" : undefined}
+      >
         <span
           style={{
             width: 34,
@@ -574,9 +584,33 @@ export function VoiceRoom({
           </div>
         </div>
         <span
-          className={isConnected ? "ec-badge ec-badge--accent" : "ec-badge"}
-          style={{ marginLeft: 6, fontSize: "0.62rem" }}
+          className="ec-badge"
+          style={{
+            marginLeft: 6,
+            fontSize: "0.62rem",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 5,
+            color: statusColor,
+            borderColor: "color-mix(in srgb, currentColor 45%, transparent)",
+            background: "color-mix(in srgb, currentColor 12%, transparent)",
+          }}
         >
+          <span
+            className={isConnected ? "ec-signal-dot" : undefined}
+            style={
+              isConnected
+                ? { color: statusColor }
+                : {
+                    width: 6,
+                    height: 6,
+                    borderRadius: "50%",
+                    background: "currentColor",
+                    display: "inline-block",
+                  }
+            }
+            aria-hidden
+          />
           {connectionBadgeText}
         </span>
         {v.settings.micActivationMode === "push_to_talk" && isJoinedHere && (

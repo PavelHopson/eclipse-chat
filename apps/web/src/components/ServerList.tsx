@@ -1,6 +1,19 @@
 import type { CSSProperties } from "react";
 import type { ServerRow } from "../hooks/useServers";
 
+/**
+ * ServerList — far-left **Forge Layer** (operational redesign Фаза A).
+ *
+ * Не просто «список серверов» — это системная навигация:
+ *   ┌─ NAV     — Home / Search (operational shortcuts)
+ *   ├─ SPACES  — DMs + operational environments (бывшие «серверы»)
+ *   └─ ADD     — создать / вступить
+ *
+ * Spaces — это operational environments команды, не чаты. AI / Tasks /
+ * Runtime появятся здесь когда подъедет backend (Фаза B/C) — пока не
+ * добавляем dead-кнопки.
+ */
+
 type Props = {
   servers: ServerRow[];
   activeServerId: string | null;
@@ -13,6 +26,12 @@ type Props = {
   dmsUnread?: number;
   /** Switch to DM view (handler в AppShell setActiveServerId(null)). */
   onDmsRequest?: () => void;
+  /** Forge Layer nav — Home (operational overview). */
+  onHomeRequest: () => void;
+  homeActive: boolean;
+  /** Forge Layer nav — Search. Server-scoped: disabled без активного сервера. */
+  onSearchRequest: () => void;
+  searchEnabled: boolean;
 };
 
 const railStyle: CSSProperties = {
@@ -64,6 +83,78 @@ const separator: CSSProperties = {
   margin: "var(--ec-space-1) 0",
 };
 
+const sectionLabel: CSSProperties = {
+  fontSize: "0.5rem",
+  fontWeight: 800,
+  letterSpacing: "var(--ec-tracking-caps)",
+  color: "var(--ec-text-dim)",
+  textTransform: "uppercase",
+  lineHeight: 1,
+  marginBottom: 2,
+};
+
+function navBtnStyle(active: boolean, disabled: boolean): CSSProperties {
+  return {
+    width: 40,
+    height: 40,
+    borderRadius: "var(--ec-radius-md)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background: active ? "var(--ec-accent-soft)" : "transparent",
+    color: active
+      ? "var(--ec-accent)"
+      : disabled
+      ? "var(--ec-text-dim)"
+      : "var(--ec-text-muted)",
+    border: `1px solid ${active ? "var(--ec-border-accent)" : "transparent"}`,
+    cursor: disabled ? "not-allowed" : "pointer",
+    opacity: disabled ? 0.4 : 1,
+    position: "relative",
+    transition:
+      "background var(--ec-dur-fast) var(--ec-ease), color var(--ec-dur-fast) var(--ec-ease), border-color var(--ec-dur-fast) var(--ec-ease)",
+  };
+}
+
+function NavButton({
+  label,
+  active = false,
+  disabled = false,
+  onClick,
+  children,
+}: {
+  label: string;
+  active?: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      title={label}
+      aria-label={label}
+      aria-pressed={active}
+      disabled={disabled}
+      onClick={onClick}
+      style={navBtnStyle(active, disabled)}
+      onMouseEnter={(e) => {
+        if (active || disabled) return;
+        e.currentTarget.style.background = "var(--ec-surface-2)";
+        e.currentTarget.style.color = "var(--ec-text)";
+      }}
+      onMouseLeave={(e) => {
+        if (active || disabled) return;
+        e.currentTarget.style.background = "transparent";
+        e.currentTarget.style.color = "var(--ec-text-muted)";
+      }}
+    >
+      {active && <span style={activeMarker} aria-hidden />}
+      {children}
+    </button>
+  );
+}
+
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/).slice(0, 2);
   return parts.map((p) => p[0]?.toUpperCase() ?? "").join("") || "??";
@@ -78,9 +169,38 @@ export function ServerList({
   dmsActive = false,
   dmsUnread = 0,
   onDmsRequest,
+  onHomeRequest,
+  homeActive,
+  onSearchRequest,
+  searchEnabled,
 }: Props) {
   return (
-    <nav style={railStyle} aria-label="Список серверов">
+    <nav style={railStyle} aria-label="Forge Layer — навигация">
+      {/* ── NAV — operational shortcuts ───────────────────────── */}
+      <NavButton label="Главная" active={homeActive} onClick={onHomeRequest}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="M3 10.5L12 3l9 7.5" />
+          <path d="M5 9.5V21h14V9.5" />
+          <path d="M9 21v-6h6v6" />
+        </svg>
+      </NavButton>
+      <NavButton
+        label={searchEnabled ? "Поиск (Ctrl+K)" : "Поиск — открой Space"}
+        disabled={!searchEnabled}
+        onClick={onSearchRequest}
+      >
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <circle cx="11" cy="11" r="8" />
+          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+        </svg>
+      </NavButton>
+
+      <div style={separator} aria-hidden />
+
+      {/* ── SPACES — operational environments ─────────────────── */}
+      <span style={sectionLabel} aria-hidden>
+        SP
+      </span>
       {onDmsRequest && (
         <button
           type="button"
@@ -138,7 +258,6 @@ export function ServerList({
           )}
         </button>
       )}
-      {onDmsRequest && servers.length > 0 && <div style={separator} aria-hidden />}
       {servers.map((s) => {
         const isActive = s.id === activeServerId;
         return (
@@ -183,10 +302,11 @@ export function ServerList({
 
       <div style={separator} aria-hidden />
 
+      {/* ── ADD ───────────────────────────────────────────────── */}
       <button
         type="button"
         onClick={onCreateRequest}
-        title="Создать сервер"
+        title="Создать Space"
         style={{
           ...tileBase,
           borderRadius: "var(--ec-radius-full)",

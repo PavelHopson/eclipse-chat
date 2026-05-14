@@ -847,6 +847,12 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           }}
           onCreateRequest={() => setShowCreateServer(true)}
           onJoinRequest={() => setShowJoinServer(true)}
+          onHomeRequest={openHome}
+          homeActive={homeOpen}
+          onSearchRequest={() => {
+            if (activeServerId) setShowSearch(true);
+          }}
+          searchEnabled={Boolean(activeServerId)}
           dmsActive={inDmMode}
           dmsUnread={dmConversations.reduce((sum, c) => sum + c.unread, 0)}
           onDmsRequest={() => {
