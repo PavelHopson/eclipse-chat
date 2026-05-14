@@ -217,20 +217,20 @@ const videoOverlay: CSSProperties = {
 
 const audioGrid: CSSProperties = {
   display: "grid",
-  gap: "var(--ec-space-3)",
-  gridTemplateColumns: "repeat(auto-fill, minmax(176px, 1fr))",
+  gap: "var(--ec-space-2)",
+  gridTemplateColumns: "repeat(auto-fill, minmax(132px, 1fr))",
 };
 
 const audioTile: CSSProperties = {
   position: "relative",
   background: "hsl(210 12% 10% / 0.9)",
   border: "1px solid var(--ec-border-default)",
-  borderRadius: "var(--ec-radius-lg)",
-  padding: "var(--ec-space-4)",
+  borderRadius: "var(--ec-radius-md)",
+  padding: "var(--ec-space-3) var(--ec-space-2)",
   display: "flex",
   flexDirection: "column",
   alignItems: "center",
-  gap: "var(--ec-space-2)",
+  gap: "var(--ec-space-1)",
   transition:
     "border-color var(--ec-dur-fast) var(--ec-ease), box-shadow var(--ec-dur-fast) var(--ec-ease), transform var(--ec-dur-fast) var(--ec-ease)",
 };
@@ -339,7 +339,7 @@ function AudioTile({
       }}
       onContextMenu={participant.isLocal ? undefined : onContextMenu}
     >
-      <Avatar url={avatar} name={participant.name} size={88} />
+      <Avatar url={avatar} name={participant.name} size={56} />
       {participant.isMicMuted && (
         <span style={muteOverlay} aria-label="Микрофон выключен" title="Микрофон выключен">
           <MicStateIcon size={12} off />

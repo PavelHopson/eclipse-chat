@@ -24,7 +24,10 @@ export type VoiceSettings = {
   /**
    * - `off`: никакого DSP, raw signal. Для качественных USB-mic или recording.
    * - `standard`: WebRTC built-in (noiseSuppression+echoCancellation+AGC). Default.
-   * - `aggressive`: standard + future DNN noise filter (Krisp/RNNoise) когда добавим.
+   * - `aggressive`: standard WebRTC + Web Audio DSP-цепочка (highpass 85Hz
+   *   rumble cut + lowpass 12kHz hiss cut + compressor + mic gain). См.
+   *   `lib/audioEnhancer.ts`. DNN noise filter (Krisp/RNNoise WASM) — отдельная
+   *   фича в будущем.
    */
   noiseSuppression: NoiseSuppressionMode;
   /** Activation mode: open / voice_activity / push_to_talk. Заменяет старый bool. */
@@ -218,8 +221,9 @@ export function noiseModeToConstraints(mode: NoiseSuppressionMode): {
       autoGainControl: false,
     };
   }
-  // standard + aggressive: оба включают WebRTC built-ins. aggressive в будущем
-  // дополнит DNN-фильтр (Krisp/RNNoise) поверх — но baseline такой же.
+  // standard + aggressive: оба включают WebRTC built-ins как baseline.
+  // aggressive дополнительно прогоняет mic через Web Audio DSP-цепочку
+  // (см. useVoice → createAudioEnhancer) — но WebRTC constraints одинаковы.
   return {
     echoCancellation: true,
     noiseSuppression: true,

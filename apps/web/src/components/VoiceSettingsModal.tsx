@@ -264,7 +264,7 @@ export function VoiceSettingsModal({ onClose }: Props) {
   const modes: { value: NoiseSuppressionMode; label: string; sub: string }[] = [
     { value: "off", label: "Без обработки", sub: "Raw signal" },
     { value: "standard", label: "Стандарт", sub: "WebRTC DSP" },
-    { value: "aggressive", label: "Усиленный", sub: "WebRTC + DNN*" },
+    { value: "aggressive", label: "Студийный", sub: "WebRTC + Web Audio" },
   ];
 
   return (
@@ -289,8 +289,10 @@ export function VoiceSettingsModal({ onClose }: Props) {
           </div>
           <p style={fieldHint}>
             «Стандарт» — встроенное в браузер шумоподавление + эхоподавление + AGC.
-            Подходит большинству. «Усиленный» применит DNN-фильтр (Krisp/RNNoise)
-            когда добавим в v0.6.1. «Без обработки» — для USB-mic с собственным DSP.
+            Подходит большинству. «Студийный» — поверх WebRTC прогоняет микрофон
+            через Web Audio DSP-цепочку: highpass 85&nbsp;Гц (режет гул, вибрацию,
+            breath-pops), lowpass 12&nbsp;кГц (шипение), компрессор (выравнивает
+            громкость) + mic gain. «Без обработки» — для USB-mic с собственным DSP.
           </p>
         </div>
       </section>

@@ -96,7 +96,7 @@ E:\projects\ROADMAP.md (§1 статусы + §5 Changelog). Per-repo ROADMAP
 
 ---
 
-## 📊 PROJECT STATUS (13.05.2026, late night — v0.14.0)
+## 📊 PROJECT STATUS (14.05.2026 — v0.15.0)
 
 Eclipse Chat теперь **full-featured self-hosted operator communication
 core** + AI layer + security hardening + bot/operator layer **(full stack,
@@ -156,13 +156,20 @@ backend + UI)**. LIVE in prod: `https://app.star-crm.ru/eclipse-chat/`.
 **Voice (LiveKit self-hosted Docker):**
 - Real-time voice + camera + screen-share
 - Voice activation modes: open / voice_activity (VAD) / push_to_talk
-- WebRTC noise suppression (off/standard/aggressive)
+- 3 режима обработки звука (off / standard / **«Студийный»**):
+  - `off` — raw signal
+  - `standard` — WebRTC built-in (noiseSuppression + echo + AGC)
+  - `aggressive` («Студийный», v0.15) — WebRTC + **Web Audio DSP-цепочка**:
+    highpass 85Hz (rumble/гул/breath-pops) → lowpass 12kHz (hiss) →
+    DynamicsCompressor (выравнивание громкости) → GainNode (mic gain).
+    `lib/audioEnhancer.ts` + `LocalAudioTrack.replaceTrack()`. 0 npm-deps.
 - Audio device picker (mic + speakers через MediaDevices API)
-- Master volume + per-participant volume + local mute
+- Master volume + per-participant volume + local mute + live mic gain
 - AFK auto-disconnect timer (0-30 min)
 - VoiceMiniBar когда ты в voice но смотришь TEXT канал
 - Speaking-dots indicators в ChannelList sticky list
 - Stats overlay (Ctrl+Shift+`) — ping/loss/bitrate/jitter
+- VoiceRoom compact participant-tiles (v0.15)
 
 **AI Layer (v0.11):**
 - Provider chain: Ollama → OpenRouter → NVIDIA → OpenAI
@@ -422,12 +429,20 @@ TWOFA_ENCRYPTION_KEY=<openssl rand -hex 32>
 
 - [ ] **v0.8.1 DMs extension** — group DMs, voice/video DMs, DM search,
       block user, typing indicators в DMs
-- [ ] **v0.6.6 Voice quality v3** — Krisp/RNNoise DNN noise filter
-      (placeholder «aggressive» mode уже в UI) + mic gain через Web Audio
-      GainNode
-- [ ] **Markdown rendering** в messages (bold/italic/code/links)
+- [x] **v0.6.6 Voice quality v3** — done в v0.15.0. Web Audio DSP-цепочка
+      (highpass/lowpass/compressor/gain) в «Студийном» режиме +
+      live mic gain. RNNoise/Krisp DNN — отдельный future item (нужен
+      WASM-пакет + AudioWorklet, ждёт стабильной сети для npm install).
+- [x] **Markdown rendering** в messages — done в v0.13.
 - [ ] **i18n EN translation** — language toggle
 - [ ] **Backup cron** для eclipse_chat БД (см. docs/DEPLOY-TO-STAR-CRM.md)
+- [ ] **Incident Mode** — schema + migration написаны (uncommitted в этой
+      сессии, валидны). Осталось: routes/incidents.ts (open/resolve/list +
+      Ollama post-mortem), socket events, useIncidents hook, IncidentPanel
+      UI, «Открыть инцидент» button. Топ-рекомендация для operator-console
+      позиционирования.
+- [ ] **PTT + «Студийный» edge case** — после PTT-цикла enhancer может
+      слететь с нового track'а (open/VAD modes работают полностью).
 
 ### Низкий приоритет (P3)
 
@@ -488,7 +503,9 @@ state и работай.
 4. E:\projects\ROADMAP.md (общая дорожная карта Eclipse Hopson)
 
 Eclipse Chat LIVE в проде: https://app.star-crm.ru/eclipse-chat/
-Версия в коде: 0.14.0 (@/: autocomplete + channel emoji prefix + channel
+Версия в коде: 0.15.0 (Voice quality v3 — Web Audio DSP-цепочка в
+«Студийном» режиме + live mic gain + compact voice tiles).
+Предыдущая 0.14.0 (@/: autocomplete + channel emoji prefix + channel
 DnD reorder + markdown в descriptions + bot webhooks + thread attachments
 + Vitest baseline + tests CI step). v0.13.1 — channel rename/description.
 

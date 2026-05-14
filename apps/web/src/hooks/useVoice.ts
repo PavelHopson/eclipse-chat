@@ -11,6 +11,10 @@ import type {
 import { ApiError, apiJson } from "../lib/api";
 import { SocketEvents } from "../lib/socket";
 import {
+  createAudioEnhancer,
+  type AudioEnhancerHandle,
+} from "../lib/audioEnhancer";
+import {
   noiseModeToConstraints,
   useVoiceSettings,
 } from "./useVoiceSettings";
@@ -100,9 +104,23 @@ export function useVoice(socket: Socket | null = null) {
   /** identity-trackSid → entry. Используется для cleanup, volume, stats. */
   const remoteTracksRef = useRef<Map<string, RemoteTrackEntry>>(new Map());
 
+  /**
+   * Audio enhancer handle — Web Audio DSP-цепочка для mic-трека.
+   * Активен только в режиме noiseSuppression="aggressive". null иначе.
+   */
+  const enhancerRef = useRef<AudioEnhancerHandle | null>(null);
+
   /** Snapshot последних settings — для use в callbacks без зависимостей. */
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
+
+  // Live-обновление mic gain: если enhancer активен (aggressive mode) и
+  // пользователь крутит mic gain slider — применяем без пересоздания цепочки.
+  useEffect(() => {
+    if (enhancerRef.current) {
+      enhancerRef.current.setGain(settings.micGain);
+    }
+  }, [settings.micGain]);
 
   /**
    * Применяет per-participant volume + mute к audio-элементу.
@@ -308,6 +326,11 @@ export function useVoice(socket: Socket | null = null) {
       }
     }
     remoteTracksRef.current.clear();
+    // Закрываем audio enhancer (Web Audio context) если был активен
+    if (enhancerRef.current) {
+      enhancerRef.current.destroy();
+      enhancerRef.current = null;
+    }
     setRoom(null);
     setActiveChannelId(null);
     setState("disconnected");
@@ -437,6 +460,31 @@ export function useVoice(socket: Socket | null = null) {
             },
           );
           setIsMicMuted(isPtt);
+
+          // Aggressive mode → вставляем Web Audio DSP-цепочку перед publish.
+          // highpass + lowpass + compressor + gain. replaceTrack — clean
+          // LiveKit API, LiveKit отправит обработанный сигнал. Если что-то
+          // упадёт — fallback на raw track (mic всё равно работает).
+          if (settingsRef.current.noiseSuppression === "aggressive") {
+            try {
+              const lk = await import("livekit-client");
+              const micPub = r.localParticipant.getTrackPublication(
+                lk.Track.Source.Microphone,
+              );
+              const localAudioTrack = micPub?.audioTrack;
+              const rawMs = localAudioTrack?.mediaStreamTrack;
+              if (localAudioTrack && rawMs) {
+                const enhancer = createAudioEnhancer(rawMs, {
+                  micGain: settingsRef.current.micGain,
+                });
+                await localAudioTrack.replaceTrack(enhancer.outputTrack);
+                enhancerRef.current = enhancer;
+              }
+            } catch (enhErr) {
+              // DSP-цепочка не критична — mic работает на raw track.
+              console.warn("Audio enhancer failed, using raw mic:", enhErr);
+            }
+          }
         } catch (micErr) {
           setError(
             micErr instanceof Error && micErr.name === "NotAllowedError"
