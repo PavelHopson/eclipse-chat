@@ -1146,8 +1146,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               <MessageInput
                 channelName={selectedChannel.name}
                 disabled={!isReady}
-                onSend={(content, attachments) =>
-                  sendMessage(content, senderForMessages, attachments)
+                onSend={(content, attachments, actionItem) =>
+                  sendMessage(content, senderForMessages, attachments, actionItem)
                 }
                 onTypingStart={emitTypingStart}
                 onTypingStop={emitTypingStop}

@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { actionItemInclude, serializeActionItem } from "../actionItems.js";
 import { db } from "../db.js";
-import { emitMessageOnChannel } from "../realtime.js";
+import { emitMessageOnChannel, emitActionItemCreated } from "../realtime.js";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
 import {
   ATTACHMENTS_PER_MESSAGE,
@@ -29,6 +29,14 @@ const createMessageBody = z.object({
   /** content может быть пустым если приложены attachments. */
   content: z.string().max(8000).optional().default(""),
   attachments: z.array(attachmentInputSchema).max(ATTACHMENTS_PER_MESSAGE).optional(),
+  /**
+   * Operator slash-command: создать ActionItem из этого же сообщения
+   * (`/task` `/decision` `/followup` в композере). Сообщение становится
+   * sourceMessage для action item — задача линкуется к видимому сообщению.
+   */
+  actionItem: z
+    .object({ type: z.enum(["TASK", "DECISION", "FOLLOW_UP"]) })
+    .optional(),
 });
 
 function slugifyBase(name: string) {
@@ -396,7 +404,33 @@ export async function registerChannelRoutes(app: FastifyInstance) {
         },
         app.log,
       );
-      return { message: payload };
+
+      // Operator slash-command: создаём ActionItem из только что
+      // отправленного сообщения (title = content). Линкуется к сообщению,
+      // как обычный «message → task». Только для server-каналов.
+      let actionItemPayload = null;
+      if (parsed.data.actionItem && ch.serverId && trimmed) {
+        try {
+          const createdAction = await db.actionItem.create({
+            data: {
+              title: trimmed.replace(/\s+/g, " ").slice(0, 160),
+              type: parsed.data.actionItem.type,
+              serverId: ch.serverId,
+              channelId: m.channelId!,
+              sourceMessageId: m.id,
+              createdByUserId: userId,
+            },
+            include: actionItemInclude,
+          });
+          actionItemPayload = serializeActionItem(createdAction);
+          emitActionItemCreated(m.channelId!, actionItemPayload);
+        } catch (err) {
+          // Не критично — сообщение уже отправлено. Логируем и продолжаем.
+          app.log.warn({ err, messageId: m.id }, "slash-command action item failed");
+        }
+      }
+
+      return { message: payload, actionItem: actionItemPayload };
     },
   );
 }

@@ -59,6 +59,50 @@ self-host важнее красивого облачного UX.
 
 ---
 
+## 🧭 Operational Vision & Phase Map (Pavel, 14.05.2026)
+
+> Зафиксировано по развёрнутому product-vision сообщению Pavel'я. Это
+> **источник истины по направлению продукта**. Eclipse Chat — не «чат для
+> общения», а **communication + execution + operational memory**.
+> Формула: **Discord × Telegram × Linear × Notion × AI Workspace**.
+> Не gaming-эстетика, не overloaded dashboard — **calm operational system**.
+
+### 15 функциональных областей — статус на v0.20.0
+
+| # | Область | Статус | Что осталось |
+|---|---|---|---|
+| 1 | **Chat core** (markdown/code/mentions/replies/reactions/edit/delete/pin/attach/search) | ✅ готово | link-embeds / previews |
+| 2 | **Discord layer** (workspaces, text/voice/announcement-каналы, voice system) | ✅ готово | execution/client/AI room-типы |
+| 3 | **Telegram DM** | 🟡 1-to-1 есть | **Saved Messages**, draft sync, group DM |
+| 4 | **AI layer** | 🟡 digest summary + @ai | **AI memory**, semantic search, transcription, AI-actions |
+| 5 | **Execution layer** | 🟡 ActionItem (task/decision/follow-up) | **kanban / Status Board**, decision-объекты с approval, project health, follow-up reminders |
+| 6 | **Client mode** | ❌ | внешние комнаты, approvals, invoices, reports |
+| 7 | **Telegram channel DNA** | 🟡 broadcast-каналы (v0.19) | reactions/comments-UI, highlights, AI-сводки канала |
+| 8 | **Media UX** | 🟡 attachments | media groups, fullscreen viewer, streaming, drag&drop |
+| 9 | **Global search** | 🟡 поиск по сообщениям | поиск по tasks/decisions/files/voice-summaries |
+| 10 | **Home «TODAY»** | ✅ готово (v0.20.0) | live-обновление, AI-alerts |
+| 11 | **Smart notifications / AI digest** | 🟡 базовые notifications | AI-дайджест «сегодня: N решений, M просрочено…» |
+| 12 | **Files & knowledge graph** | ❌ | shared memory, связи room↔task↔decision↔file↔people |
+| 13 | **Mobile** | 🟡 responsive | Telegram-level mobile UX |
+| 14 | **Operator UX** (`/task` `/decision` `/summary` `/assign` `/followup`) | 🚧 в работе | slash-commands в композере |
+| 15 | **Live presence** (speaking glow, typing, room activity) | ✅ готово | — |
+
+### MVP-фазы
+
+- **Phase 1 — CORE** (workspaces, rooms, chat, voice, DMs, markdown, uploads) — ✅ **фактически закрыта**
+- **Phase 2 — AI** (summaries, memory, search, transcription) — 🟡 частично (digest + @ai)
+- **Phase 3 — EXECUTION** (tasks, decisions, approvals, project health) — 🟡 частично (ActionItem-слой)
+- **Phase 4 — CLIENT MODE** (external rooms, approvals, invoices, reports) — ❌
+
+### Рекомендованный порядок дальнейших слайсов
+
+1. **Operator slash-commands** (`/task` `/decision` `/followup` в композере) — дёшево, ActionItem-инфра есть, сразу даёт operator-feel 🚧
+2. **Saved Messages** — Telegram-killer, переиспользует DM-инфру
+3. **Execution kanban / Status Board** — все ActionItem'ы across channels
+4. **AI Memory «Since your last visit»** — главный differentiator, нужен last-visit tracking + AI
+
+---
+
 ## v0.8.1 — Execution layer: message → task / decision / follow-up ✅ DONE
 
 **Цель:** сделать Eclipse Chat полезнее Discord не количеством кнопок, а тем,

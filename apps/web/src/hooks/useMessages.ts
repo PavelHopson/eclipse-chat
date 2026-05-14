@@ -447,6 +447,8 @@ export function useMessages(
       content: string,
       sender: Sender,
       attachments: AttachmentUpload[] = [],
+      /** Operator slash-command: создать ActionItem из этого сообщения. */
+      actionItem?: { type: ActionItemType },
     ): Promise<boolean> => {
       if (!channelId) return false;
       const trimmed = content.trim();
@@ -489,6 +491,7 @@ export function useMessages(
           body: JSON.stringify({
             content: trimmed,
             attachments: attachments.length > 0 ? attachments : undefined,
+            actionItem: actionItem ?? undefined,
           }),
         });
         setTimeout(() => {

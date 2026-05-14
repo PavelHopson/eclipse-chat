@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import { useEffect, useRef, useState } from "react";
 import { fileToBase64 } from "../lib/fileToBase64";
 import type { AttachmentUpload } from "../hooks/useMessages";
+import type { ActionItemType } from "../lib/socket";
 import {
   AutocompletePopover,
   detectTrigger,
@@ -9,10 +10,43 @@ import {
   type AutocompleteTrigger,
 } from "./AutocompletePopover";
 
+/**
+ * Operator slash-commands — `/task` `/decision` `/followup` в композере.
+ * `/task Купить домен` → отправляет сообщение «Купить домен» + создаёт из
+ * него ActionItem типа TASK (backend делает это атомарно в одном POST).
+ */
+const SLASH_COMMANDS: {
+  cmd: string;
+  aliases: string[];
+  type: ActionItemType;
+  label: string;
+  desc: string;
+}[] = [
+  { cmd: "task", aliases: ["task", "t"], type: "TASK", label: "/task", desc: "создать задачу из текста" },
+  { cmd: "decision", aliases: ["decision", "dec", "d"], type: "DECISION", label: "/decision", desc: "зафиксировать решение" },
+  { cmd: "followup", aliases: ["followup", "fu", "f"], type: "FOLLOW_UP", label: "/followup", desc: "поставить follow-up" },
+];
+
+function parseSlashCommand(
+  text: string,
+): { type: ActionItemType; title: string } | null {
+  const m = text.match(/^\/([a-zA-Z]+)\s+([\s\S]+)$/);
+  if (!m) return null;
+  const cmd = m[1].toLowerCase();
+  const title = m[2].trim();
+  if (!title) return null;
+  const found = SLASH_COMMANDS.find((c) => c.aliases.includes(cmd));
+  return found ? { type: found.type, title } : null;
+}
+
 type Props = {
   channelName: string | null;
   disabled?: boolean;
-  onSend: (content: string, attachments: AttachmentUpload[]) => Promise<boolean>;
+  onSend: (
+    content: string,
+    attachments: AttachmentUpload[],
+    actionItem?: { type: ActionItemType },
+  ) => Promise<boolean>;
   onTypingStart?: () => void;
   onTypingStop?: () => void;
   /** Display names known members активного сервера — для @-autocomplete. */
@@ -113,6 +147,31 @@ const kbd: CSSProperties = {
   fontSize: "0.62rem",
   color: "var(--ec-text-muted)",
   lineHeight: 1.6,
+};
+
+const slashHintStrip: CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 2,
+  marginBottom: "var(--ec-space-2)",
+  padding: 4,
+  background: "var(--ec-surface-2)",
+  border: "1px solid var(--ec-border-default)",
+  borderRadius: "var(--ec-radius-md)",
+};
+
+const slashHintItem: CSSProperties = {
+  display: "flex",
+  alignItems: "baseline",
+  gap: "var(--ec-space-2)",
+  padding: "0.35rem 0.55rem",
+  background: "transparent",
+  border: 0,
+  borderRadius: "var(--ec-radius-sm)",
+  cursor: "pointer",
+  textAlign: "left",
+  width: "100%",
+  transition: "background var(--ec-dur-fast) var(--ec-ease)",
 };
 
 const previewRow: CSSProperties = {
@@ -394,7 +453,11 @@ export function MessageInput({
           dataBase64: await fileToBase64(p.file),
         })),
       );
-      const ok = await onSend(trimmed, uploads);
+      // Operator slash-command: `/task ...` → отправляем title + actionItem.
+      const slash = parseSlashCommand(trimmed);
+      const ok = slash
+        ? await onSend(slash.title, uploads, { type: slash.type })
+        : await onSend(trimmed, uploads);
       if (ok) {
         setDraft("");
         for (const p of pending) {
@@ -419,6 +482,14 @@ export function MessageInput({
 
   const canSend = (draft.trim().length > 0 || pending.length > 0) && !disabled && !sending;
   const boxStyle = focused ? { ...composerBox, ...composerBoxFocused } : composerBox;
+
+  // Slash-command hint: показываем когда юзер набрал «/» + (опц.) часть
+  // команды, но ещё не дошёл до пробела. @/:-popover имеет приоритет.
+  const slashQuery = /^\s*\/([a-zA-Zа-яёА-ЯЁ]*)$/.exec(draft);
+  const slashMatches =
+    slashQuery && !trigger
+      ? SLASH_COMMANDS.filter((c) => c.cmd.startsWith(slashQuery[1].toLowerCase()))
+      : [];
 
   // Drag-drop поддержка
   const [dragOver, setDragOver] = useState(false);
@@ -514,6 +585,42 @@ export function MessageInput({
         <p style={{ margin: "0 0 var(--ec-space-2)", color: "var(--ec-danger)", fontSize: "var(--ec-text-xs)" }}>
           {attachError}
         </p>
+      )}
+      {slashMatches.length > 0 && (
+        <div style={slashHintStrip}>
+          {slashMatches.map((c) => (
+            <button
+              key={c.cmd}
+              type="button"
+              style={slashHintItem}
+              onMouseDown={(e) => {
+                // mousedown (не click) — чтобы успеть до blur textarea
+                e.preventDefault();
+                setDraft(`/${c.cmd} `);
+                queueMicrotask(() => textareaRef.current?.focus());
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "var(--ec-surface-3)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "transparent";
+              }}
+            >
+              <strong
+                style={{
+                  fontFamily: "var(--ec-font-mono)",
+                  fontSize: "var(--ec-text-xs)",
+                  color: "var(--ec-accent)",
+                }}
+              >
+                {c.label}
+              </strong>
+              <span style={{ fontSize: "var(--ec-text-2xs)", color: "var(--ec-text-muted)" }}>
+                {c.desc}
+              </span>
+            </button>
+          ))}
+        </div>
       )}
       <div className="ec-composer-box" style={boxStyle}>
         <input
@@ -619,6 +726,10 @@ export function MessageInput({
         <span style={{ color: "var(--ec-border-emphasis)" }}>·</span>
         <span>
           <span style={kbd}>@</span> участник · <span style={kbd}>:</span>emoji
+        </span>
+        <span style={{ color: "var(--ec-border-emphasis)" }}>·</span>
+        <span>
+          <span style={kbd}>/task</span> задача
         </span>
       </div>
       {trigger && (
