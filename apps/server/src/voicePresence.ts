@@ -110,6 +110,29 @@ export function updateVoiceMeta(
 }
 
 /**
+ * Клиент сообщил, что начал/перестал говорить (Socket.io 'voice:speaking:update').
+ *
+ * Speaking — сверх-транзиентное состояние, НЕ храним в snapshot: просто
+ * рассылаем дельту участникам сервера, чтобы speaking-glow был виден во ВСЕХ
+ * voice-каналах sidebar, а не только в своей комнате (для своей точный сигнал
+ * даёт локальный LiveKit ActiveSpeakers).
+ *
+ * Частота: LiveKit `ActiveSpeakersChanged` событийный, не polling — эмитится
+ * только на transition speak-start / speak-stop. Один клиент шлёт лишь СВОЁ
+ * состояние, без N× редандантности.
+ */
+export function broadcastSpeaking(socketId: string, speaking: boolean): void {
+  const state = socketStates.get(socketId);
+  if (!state) return;
+  ioRef?.to(`server:${state.serverId}`).emit("voice:participant:speaking", {
+    userId: state.userId,
+    voiceChannelId: state.voiceChannelId,
+    serverId: state.serverId,
+    speaking,
+  });
+}
+
+/**
  * Пользователь вошёл в voice-канал (Socket.io event 'voice:join').
  *
  * Если у этого же socket'а была старая voice-привязка — сначала чистим её,

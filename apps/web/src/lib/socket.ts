@@ -267,6 +267,14 @@ export type VoiceParticipantMetaPayload = {
   deafened: boolean;
 };
 
+/** Дельта speaking — один участник начал/перестал говорить (сверх-транзиентно). */
+export type VoiceParticipantSpeakingPayload = {
+  userId: string;
+  voiceChannelId: string;
+  serverId: string;
+  speaking: boolean;
+};
+
 // ============================
 // DM (Direct Messages) payloads
 // ============================
@@ -343,9 +351,11 @@ export const SocketEvents = {
   VoiceState: "voice:state",
   VoiceMeta: "voice:meta",
   VoiceMetaUpdate: "voice:meta:update",
+  VoiceSpeakingUpdate: "voice:speaking:update",
   VoiceParticipantJoined: "voice:participant:joined",
   VoiceParticipantLeft: "voice:participant:left",
   VoiceParticipantMeta: "voice:participant:meta",
+  VoiceParticipantSpeaking: "voice:participant:speaking",
   ThreadJoin: "thread:join",
   ThreadLeave: "thread:leave",
   ThreadReplyNew: "thread:reply:new",

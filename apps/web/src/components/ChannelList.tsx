@@ -27,13 +27,11 @@ type Props = {
   /** Members активного сервера — для avatar+name lookup. */
   members?: MemberRow[];
   /**
-   * Кто сейчас говорит — userId → true. Известно только для тех, кто в твоей
-   * voice room (LiveKit ActiveSpeakers). Других не слышишь — glow для них
-   * показывать смысла нет.
+   * Кто сейчас говорит — userId → true. Покрывает ВСЕ voice-каналы:
+   * свою комнату из локального LiveKit ActiveSpeakers, чужие — из backend
+   * broadcast (`voice:participant:speaking`). Мержится в AppShell.
    */
   speakingUserIds?: Set<string>;
-  /** Канал в котором сидишь сам — для подсветки «вы здесь». */
-  myVoiceChannelId?: string | null;
 };
 
 const wrap: CSSProperties = {
@@ -223,7 +221,6 @@ export function ChannelList({
   voiceMetaByUser,
   members,
   speakingUserIds,
-  myVoiceChannelId,
 }: Props) {
   const [draft, setDraft] = useState("");
   const [draftType, setDraftType] = useState<ChannelType>("TEXT");
@@ -301,8 +298,7 @@ export function ChannelList({
           const m = members?.find((mm) => mm.userId === userId);
           const name = m?.user.displayName ?? userId;
           const avatar = m?.user.avatar ?? null;
-          const speaking =
-            channelId === myVoiceChannelId && speakingUserIds?.has(userId);
+          const speaking = speakingUserIds?.has(userId) ?? false;
           const meta = voiceMetaByUser?.[userId];
           const deafened = Boolean(meta?.deafened);
           // deafened подразумевает mic off — показываем один значок (наушники).

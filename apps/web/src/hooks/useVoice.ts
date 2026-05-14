@@ -861,6 +861,21 @@ export function useVoice(socket: Socket | null = null) {
     });
   }, [state, activeChannelId, isMicMuted, isDeafened]);
 
+  /**
+   * Broadcast собственного speaking-состояния на backend. Backend рассылает
+   * дельту участникам сервера — speaking-glow виден во ВСЕХ voice-каналах
+   * sidebar, не только в своей комнате. `localSpeaking` берётся из LiveKit
+   * ActiveSpeakers (событийный, не polling), при muted mic — всегда false.
+   */
+  const localSpeaking = participants.find((p) => p.isLocal)?.isSpeaking ?? false;
+  useEffect(() => {
+    if (state !== "connected") return;
+    if (!activeChannelId) return;
+    socketRef.current?.emit(SocketEvents.VoiceSpeakingUpdate, {
+      speaking: localSpeaking && !isMicMuted,
+    });
+  }, [state, activeChannelId, localSpeaking, isMicMuted]);
+
   /** Snapshot RTCStats для каждого remote audio track (для stats overlay). */
   const getRemoteStats = useCallback(async () => {
     const out: Array<{

@@ -31,6 +31,7 @@ import {
   trackVoiceJoin,
   trackVoiceLeave,
   updateVoiceMeta,
+  broadcastSpeaking,
 } from "./voicePresence.js";
 import { db } from "./db.js";
 
@@ -114,7 +115,7 @@ app.get("/api/health", async () => {
   }
   return { ok: true, service: "eclipse-chat-server", database: dbOk };
 });
-app.get("/api/version", async () => ({ name: "@eclipse-chat/server", version: "0.16.2" }));
+app.get("/api/version", async () => ({ name: "@eclipse-chat/server", version: "0.16.3" }));
 
 await registerAuthRoutes(app);
 await registerTwoFactorRoutes(app);
@@ -380,6 +381,13 @@ io.on("connection", (socket) => {
       });
     },
   );
+
+  // Клиент начал/перестал говорить — рассылаем дельту участникам сервера,
+  // чтобы speaking-glow был виден во всех voice-каналах sidebar.
+  socket.on("voice:speaking:update", (payload: { speaking?: unknown }) => {
+    if (!payload || typeof payload !== "object") return;
+    broadcastSpeaking(socket.id, Boolean(payload.speaking));
+  });
 
   socket.on("disconnect", () => {
     if (userId) {

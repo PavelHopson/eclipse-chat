@@ -482,15 +482,27 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   const isMobile = useMediaQuery("(max-width: 640px)");
   const isTabletOrSmaller = useMediaQuery("(max-width: 1024px)");
   const voiceHealth = useVoiceHealth();
-  const { byChannel: voiceByChannel, metaByUser: voiceMetaByUser } =
-    useVoicePresence(socket);
+  const {
+    byChannel: voiceByChannel,
+    metaByUser: voiceMetaByUser,
+    speakingByUser,
+  } = useVoicePresence(socket);
   const voiceChannelByUser = reverseVoiceMap(voiceByChannel);
   // Voice state lifted в AppShell — persistent across channel switches, доступен sidebar'у.
   const voice = useVoice(socket);
-  // Speaking userIds — derived из voice.participants (live LiveKit ActiveSpeakers).
-  const speakingUserIds = new Set(
-    voice.participants.filter((p) => p.isSpeaking && !p.isMicMuted).map((p) => p.identity),
-  );
+  // Speaking userIds для sidebar-glow во ВСЕХ voice-каналах:
+  //  - чужие комнаты — из backend broadcast (speakingByUser);
+  //  - своя комната — из локального LiveKit ActiveSpeakers (точнее, без
+  //    socket round-trip), overlay поверх backend.
+  const speakingUserIds = new Set<string>();
+  for (const [uid, isSpeaking] of Object.entries(speakingByUser)) {
+    if (isSpeaking && voiceChannelByUser[uid] !== voice.activeChannelId) {
+      speakingUserIds.add(uid);
+    }
+  }
+  for (const p of voice.participants) {
+    if (p.isSpeaking && !p.isMicMuted) speakingUserIds.add(p.identity);
+  }
   const activeVoiceChannelName =
     voice.activeChannelId != null
       ? channels.find((c) => c.id === voice.activeChannelId)?.name ?? null
@@ -857,7 +869,6 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             voiceMetaByUser={voiceMetaByUser}
             members={members}
             speakingUserIds={speakingUserIds}
-            myVoiceChannelId={voice.activeChannelId}
           />
         )}
       </div>
