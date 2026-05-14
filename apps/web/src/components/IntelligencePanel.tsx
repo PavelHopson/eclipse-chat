@@ -254,8 +254,21 @@ function VoiceIntelligence({
     ? "идёт эфир"
     : "комната свободна";
 
+  // Semantic status-цвет: live → exec green, connecting → warn amber,
+  // свободная комната → idle blue.
+  const statusColor =
+    joinedHere && (voice.state === "connecting" || voice.state === "reconnecting")
+      ? "var(--ec-status-warn)"
+      : roster.length > 0
+      ? "var(--ec-status-exec)"
+      : "var(--ec-status-idle)";
+  const sessionLive = roster.length > 0;
+
   return (
-    <div style={voiceWrap}>
+    <div
+      style={voiceWrap}
+      className={sessionLive ? "ec-telemetry-edge" : undefined}
+    >
       <div style={voiceHeader}>
         <span style={voiceTitle}>
           <span aria-hidden style={{ color: "var(--ec-accent)" }}>
@@ -266,7 +279,32 @@ function VoiceIntelligence({
           </span>
           Эфир
         </span>
-        <span style={{ fontSize: "var(--ec-text-2xs)", color: "var(--ec-text-muted)" }}>
+        <span
+          style={{
+            fontSize: "var(--ec-text-2xs)",
+            color: "var(--ec-text-muted)",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+          }}
+        >
+          <span
+            className={sessionLive ? "ec-signal-dot" : undefined}
+            style={{
+              color: statusColor,
+              ...(sessionLive
+                ? {}
+                : {
+                    width: 7,
+                    height: 7,
+                    borderRadius: "50%",
+                    background: "currentColor",
+                    display: "inline-block",
+                    flexShrink: 0,
+                  }),
+            }}
+            aria-hidden
+          />
           {voiceChannelName ? `#${voiceChannelName} · ` : ""}
           {roster.length} {roster.length === 1 ? "участник" : "участников"} · {statusLabel}
         </span>

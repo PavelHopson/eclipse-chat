@@ -83,6 +83,24 @@
   --ec-danger:              hsl(355 72% 68%);    /* berry-red */
   --ec-danger-soft:         hsl(355 72% 68% / 0.14);
 
+  /*
+   * ---- Operational status palette (Фаза A — operational redesign) ----
+   * Единый semantic-слой для execution state. Используется везде где
+   * нужно показать «в каком состоянии система»: status-dots, карточки
+   * телеметрии, badges, alert-индикаторы. Аккуратно — это не декор,
+   * а сигнал. Маппится на базовые semantic цвета + idle-blue новый.
+   */
+  --ec-status-exec:         hsl(152 58% 52%);    /* execution / live / done — green */
+  --ec-status-exec-soft:    hsl(152 58% 52% / 0.14);
+  --ec-status-warn:         hsl(42 90% 62%);     /* warning / pending — amber */
+  --ec-status-warn-soft:    hsl(42 90% 62% / 0.14);
+  --ec-status-risk:         hsl(355 72% 66%);    /* risk / blocker / overdue — red */
+  --ec-status-risk-soft:    hsl(355 72% 66% / 0.14);
+  --ec-status-idle:         hsl(212 60% 62%);    /* idle / standby / neutral — blue */
+  --ec-status-idle-soft:    hsl(212 60% 62% / 0.14);
+  --ec-status-ai:           hsl(252 70% 70%);    /* AI / intelligence — violet */
+  --ec-status-ai-soft:      hsl(252 70% 70% / 0.14);
+
   /* Presence dot цвета — cohesive с accent palette */
   --ec-presence-online:     hsl(160 55% 52%);
   --ec-presence-idle:       hsl(42 88% 58%);

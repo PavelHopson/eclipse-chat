@@ -189,6 +189,32 @@
   50%      { transform: translate3d(-10px, 8px, 0); opacity: 1; }
 }
 
+/*
+ * Signal pulse — operational status indicator. Не «дышащий glow» (декор),
+ * а чёткий短 пульс как телеметрический сигнал. Для live status-dots
+ * (эфир активен, исполнение идёт). 2s cycle, currentColor-based чтобы
+ * работал с любым semantic-цветом. Mission-control feel, не game-feel.
+ */
+@keyframes ec-signal-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 currentColor;
+    opacity: 1;
+  }
+  50% {
+    box-shadow: 0 0 0 3px transparent;
+    opacity: 0.78;
+  }
+}
+
+/*
+ * Telemetry sweep — горизонтальная «развёртка» как на радаре/осциллографе.
+ * Для top-border активных operational-карточек. Очень тонкая, 4s.
+ */
+@keyframes ec-telemetry-sweep {
+  0%   { background-position: -130% 0; }
+  100% { background-position: 230% 0; }
+}
+
 /* ===== Utility classes ====================================== */
 
 .ec-anim-fade           { animation: ec-fade-in var(--ec-dur-base) var(--ec-ease) both; }
@@ -225,6 +251,46 @@
   );
   background-size: 50% 100%;
   animation: ec-orbit-sweep 3.2s linear infinite;
+}
+
+/*
+ * Signal-pulse status dot — operational live-индикатор. Применяется к
+ * элементу с заданным `color` (semantic status цвет): дот пульсирует
+ * этим цветом. Use: <span class="ec-signal-dot" style={{color:'var(--ec-status-exec)'}} />.
+ */
+.ec-signal-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: ec-signal-pulse 2s var(--ec-ease) infinite;
+  flex-shrink: 0;
+}
+
+/* Telemetry-sweep top accent — для активных operational-карточек.
+ * Применяется к элементу с position:relative; рисует тонкую развёртку
+ * по верхней кромке. */
+.ec-telemetry-edge {
+  position: relative;
+}
+.ec-telemetry-edge::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--ec-status-ai, hsl(195 70% 60%)) 50%,
+    transparent 100%
+  );
+  background-size: 40% 100%;
+  background-repeat: no-repeat;
+  animation: ec-telemetry-sweep 4s linear infinite;
+  pointer-events: none;
 }
 
 /* Aurora-bg utility — для empty-states, hero blocks, server settings */
@@ -454,8 +520,13 @@
   .ec-anim-breathe,
   .ec-anim-limbus,
   .ec-anim-levitate,
-  .ec-anim-orbit-sweep {
+  .ec-anim-orbit-sweep,
+  .ec-signal-dot {
     animation: none !important;
+  }
+  .ec-telemetry-edge::before {
+    animation: none !important;
+    opacity: 0;
   }
   .ec-aurora-bg {
     animation: none !important;
