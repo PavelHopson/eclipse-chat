@@ -5,7 +5,7 @@
 > Скопируй блок «Continuation Message» в самом конце в новый чат
 > как первое сообщение.
 >
-> **Обновлено 2026-05-14 (после v0.16.2 — voice UI polish).**
+> **Обновлено 2026-05-14 (после v0.16.3 — voice UI polish).**
 
 ---
 
@@ -96,9 +96,9 @@ E:\projects\ROADMAP.md (§1 статусы + §5 Changelog). Per-repo ROADMAP
 
 ---
 
-## 📊 PROJECT STATUS (14.05.2026 — v0.16.2)
+## 📊 PROJECT STATUS (14.05.2026 — v0.16.3)
 
-> **v0.16.1 + v0.16.2 (voice UI polish, в проде):**
+> **v0.16.1 → v0.16.3 (voice UI polish, в проде):**
 > - v0.16.1 — камера в `VideoTrackTile` теперь `objectFit:contain` (кадр
 >   целиком, не обрезается); muted-публикации не рендерятся (убрана чёрная
 >   плитка после выключения камеры); участник с камерой в видео-сетке больше
@@ -109,6 +109,11 @@ E:\projects\ROADMAP.md (§1 статусы + §5 Changelog). Per-repo ROADMAP
 >   Backend трекает `userMeta` (mic/deafen) + рассылает `voice:participant:meta`;
 >   `useVoicePresence` отдаёт `{ byChannel, metaByUser }`; `ChannelList`
 >   рисует mic-off / deafened иконки у occupants под voice-каналом.
+> - v0.16.3 — speaking-индикатор покрывает ВСЕ voice-каналы сервера, не
+>   только свою комнату. Backend `broadcastSpeaking()` → `voice:participant:
+>   speaking` дельта (сверх-транзиентно, без snapshot); `useVoice` эмитит
+>   `voice:speaking:update`; `useVoicePresence` → `speakingByUser`; AppShell
+>   мержит backend (чужие комнаты) + локальный LiveKit ActiveSpeakers (своя).
 
 
 Eclipse Chat теперь **full-featured self-hosted operator communication
@@ -543,10 +548,11 @@ state и работай.
 4. E:\projects\ROADMAP.md (общая дорожная карта Eclipse Hopson)
 
 Eclipse Chat LIVE в проде: https://app.star-crm.ru/eclipse-chat/
-Версия в проде: 0.16.2 (voice UI polish — камера целиком, убраны дубли
-голосового присутствия, Discord-level mute/deafen-индикаторы в sidebar).
+Версия в проде: 0.16.3 (voice UI polish — камера целиком, убраны дубли
+голосового присутствия, Discord-level mute/deafen + speaking-индикаторы).
 
 История последних релизов (всё в проде):
+- v0.16.3 — speaking-индикатор для всех voice-комнат сервера
 - v0.16.2 — Discord-level mute/deafen-индикаторы участников эфира в sidebar
 - v0.16.1 — voice UI: камера contain + убраны 3 дубля голосового присутствия
 - v0.16.0 — Incident Mode
