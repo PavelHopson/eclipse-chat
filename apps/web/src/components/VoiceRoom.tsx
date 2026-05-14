@@ -185,21 +185,27 @@ const muteBadge: CSSProperties = {
 
 const videoStage: CSSProperties = {
   flex: 1,
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+  display: "flex",
+  flexWrap: "wrap",
   gap: "var(--ec-space-3)",
-  alignContent: "start",
+  alignContent: "center",
+  justifyContent: "center",
+  alignItems: "center",
   minHeight: 0,
 };
 
 const videoTileWrap: CSSProperties = {
   position: "relative",
-  minHeight: 220,
+  // Тайл держит 16:9 и растёт до разумной ширины — не растягивается
+  // в широкую короткую коробку с letterbox'нутым видео внутри.
+  flex: "1 1 420px",
+  maxWidth: 760,
+  aspectRatio: "16 / 9",
   borderRadius: "var(--ec-radius-xl)",
   overflow: "hidden",
   background:
-    "radial-gradient(circle at 50% 18%, hsl(195 70% 60% / 0.16), transparent 50%), linear-gradient(180deg, hsl(208 14% 12%), hsl(210 12% 7%))",
-  boxShadow: "0 18px 44px -14px hsl(210 40% 2% / 0.7)",
+    "radial-gradient(circle at 50% 18%, hsl(195 70% 60% / 0.12), transparent 55%), linear-gradient(180deg, hsl(208 14% 12%), hsl(210 12% 7%))",
+  boxShadow: "0 10px 30px -16px hsl(210 40% 2% / 0.5)",
 };
 
 const videoCanvas: CSSProperties = { position: "absolute", inset: 0 };
@@ -341,7 +347,8 @@ function VideoTrackTile({
     <article
       style={{
         ...videoTileWrap,
-        ...(isScreen ? { minHeight: 340, gridColumn: "1 / -1" } : null),
+        // Демонстрация экрана — широкий cinematic-тайл на всю строку.
+        ...(isScreen ? { flexBasis: "100%", maxWidth: "100%" } : null),
       }}
     >
       <div ref={mountRef} style={videoCanvas} />
@@ -428,10 +435,12 @@ export function VoiceRoom({
   const cameraTracks = v.visualTracks.filter((t) => t.source === "camera");
   const hasVisual = screenTracks.length > 0 || cameraTracks.length > 0;
 
-  // Участники с камерой уже в видео-сцене — не дублируем presence-карточкой.
-  const cameraIdentities = new Set(cameraTracks.map((t) => t.identity));
+  // Участник с ЛЮБЫМ visual-треком (камера ИЛИ экран) уже представлен в
+  // видео-сцене — не дублируем его presence-чипом (был дубль «Павел · ты»
+  // при screen-share без камеры).
+  const visualIdentities = new Set(v.visualTracks.map((t) => t.identity));
   const audioOnlyParticipants = v.participants.filter(
-    (p) => !cameraIdentities.has(p.identity),
+    (p) => !visualIdentities.has(p.identity),
   );
 
   const connectionBadgeText = resolveConnectionBadge(
