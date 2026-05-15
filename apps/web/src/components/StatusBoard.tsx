@@ -96,10 +96,13 @@ const board: CSSProperties = {
   flex: 1,
   minHeight: 0,
   display: "grid",
-  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  /* v0.43: было hardcoded 2-col — на mobile ломалось. Теперь auto-fit
+     adaptive: ≥480px = 2 col, <480px = 1 col. Responsive.css доп. правило
+     для совсем-narrow. */
+  gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 280px), 1fr))",
   gap: "var(--ec-space-3)",
   padding: "var(--ec-space-4) var(--ec-space-5)",
-  overflow: "hidden",
+  overflow: "auto",
 };
 
 const column: CSSProperties = {

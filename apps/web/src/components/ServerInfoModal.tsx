@@ -346,7 +346,7 @@ export function ServerInfoModal({
         </div>
       </section>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "var(--ec-space-2)" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 120px), 1fr))", gap: "var(--ec-space-2)" }}>
         <div style={stat}>
           <span style={statLabel}>Роль</span>
           <span style={statValue}>{server.role}</span>
