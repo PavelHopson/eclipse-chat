@@ -212,6 +212,87 @@ export function incidentPostMortemPrompt(c: IncidentPostMortemContext): {
   };
 }
 
+type SinceLastVisitContext = {
+  channelName: string;
+  priorVisitAt: string;
+  /** Сообщения канала, появившиеся после prior visit (oldest → newest). */
+  messages: MessageForPrompt[];
+  /** Action items созданные после prior visit. */
+  newActions: ActionForPrompt[];
+  /** Pinned-сообщения, закреплённые после prior visit. */
+  newPinned: PinnedForPrompt[];
+  /** Инцидент в канале, если открыт после prior. */
+  incident: { title: string; status: "OPEN" | "RESOLVED"; openedAt: string } | null;
+};
+
+/**
+ * AI Memory «Пока тебя не было» — prose-резюме поверх structured delta.
+ * Отвечает не «сколько чего» (это уже видно в banner-счётчиках), а
+ * «о чём, почему важно, что осталось нерешённым».
+ */
+export function sinceLastVisitSummaryPrompt(c: SinceLastVisitContext): {
+  system: string;
+  user: string;
+} {
+  const lines: string[] = [];
+  lines.push(`Канал: #${c.channelName}`);
+  const priorLabel = new Date(c.priorVisitAt).toLocaleString("ru-RU", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  lines.push(`Период: с ${priorLabel} до настоящего момента`);
+  lines.push("");
+
+  if (c.incident) {
+    lines.push(
+      `Инцидент «${c.incident.title}» открыт в этот период (${c.incident.status}).`,
+    );
+    lines.push("");
+  }
+  if (c.newActions.length > 0) {
+    lines.push(`Новые операционные пункты (${c.newActions.length}):`);
+    c.newActions.slice(0, 16).forEach((a, i) => lines.push(formatActionLine(a, i)));
+    lines.push("");
+  }
+  if (c.newPinned.length > 0) {
+    lines.push("Закреплено за этот период:");
+    c.newPinned.slice(0, 4).forEach((p, i) => {
+      const cont = p.content.replace(/\s+/g, " ").trim().slice(0, 180);
+      lines.push(`  ${i + 1}. (${p.user.displayName}) ${cont}`);
+    });
+    lines.push("");
+  }
+  if (c.messages.length > 0) {
+    lines.push("Обсуждение (старые → новые):");
+    for (const m of c.messages.slice(-40)) {
+      const time = new Date(m.createdAt).toLocaleTimeString("ru-RU", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+      const text = m.content.replace(/\s+/g, " ").trim().slice(0, 240);
+      if (text) lines.push(`  [${time}] ${m.displayName}: ${text}`);
+    }
+  }
+
+  return {
+    system:
+      "Ты — операционный ассистент Eclipse Chat. Пользователь возвращается " +
+      "в канал спустя время. Сделай компактный summary «что произошло пока " +
+      "его не было» на русском, 3-5 предложений. Фокус на: ключевые решения, " +
+      "новые задачи, нерешённые блокеры, важные изменения статуса, запросы " +
+      "клиента. Не повторяй цифры буквально (их пользователь видит в " +
+      "сводке-счётчиках) — объясняй СУТЬ и контекст. Если не хватает данных " +
+      "для содержательного резюме — скажи прямо «пока ничего существенного». " +
+      "Без эмодзи. Без markdown. Без воды.",
+    user:
+      "Данные за период отсутствия:\n\n" +
+      lines.join("\n") +
+      "\n\nКраткое резюме «что произошло пока тебя не было» (3-5 предложений):",
+  };
+}
+
 export function assistantPrompt(c: AssistantContext): {
   system: string;
   user: string;

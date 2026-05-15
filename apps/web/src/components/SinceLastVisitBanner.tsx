@@ -1,5 +1,8 @@
 import type { CSSProperties } from "react";
-import type { SinceLastVisitData } from "../hooks/useSinceLastVisit";
+import type {
+  SinceLastVisitAiSummary,
+  SinceLastVisitData,
+} from "../hooks/useSinceLastVisit";
 
 /**
  * SinceLastVisitBanner — AI Memory card «Пока тебя не было».
@@ -19,6 +22,10 @@ type Props = {
   data: SinceLastVisitData | null;
   onDismiss: () => void;
   onOpenAction?: (channelId: string) => void;
+  aiSummary?: SinceLastVisitAiSummary | null;
+  aiLoading?: boolean;
+  aiError?: string | null;
+  onRequestAiSummary?: () => void;
 };
 
 const wrap: CSSProperties = {
@@ -80,7 +87,14 @@ function relativeShort(iso: string): string {
   return new Date(iso).toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
 }
 
-export function SinceLastVisitBanner({ data, onDismiss }: Props) {
+export function SinceLastVisitBanner({
+  data,
+  onDismiss,
+  aiSummary,
+  aiLoading,
+  aiError,
+  onRequestAiSummary,
+}: Props) {
   if (!data || !data.priorVisitAt || !data.since) return null;
   const priorMs = Date.now() - new Date(data.priorVisitAt).getTime();
   if (priorMs < MIN_GAP_MS) return null;
@@ -122,10 +136,99 @@ export function SinceLastVisitBanner({ data, onDismiss }: Props) {
         </svg>
       </button>
 
-      <div style={header}>
-        <span aria-hidden style={{ fontSize: "0.8rem" }}>✦</span>
-        <span>Пока тебя не было · {relativeShort(data.priorVisitAt)}</span>
+      <div style={{ ...header, justifyContent: "space-between", paddingRight: "var(--ec-space-5)" }}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+          <span aria-hidden style={{ fontSize: "0.8rem" }}>✦</span>
+          <span>Пока тебя не было · {relativeShort(data.priorVisitAt)}</span>
+        </span>
+        {onRequestAiSummary && !aiSummary && (
+          <button
+            type="button"
+            onClick={onRequestAiSummary}
+            disabled={aiLoading}
+            style={{
+              padding: "0.22rem 0.65rem",
+              fontSize: "var(--ec-text-2xs)",
+              fontWeight: 700,
+              letterSpacing: "var(--ec-tracking-caps)",
+              textTransform: "uppercase",
+              borderRadius: "var(--ec-radius-sm)",
+              background: "color-mix(in srgb, var(--ec-status-ai) 14%, transparent)",
+              color: "var(--ec-status-ai)",
+              border: "1px solid color-mix(in srgb, var(--ec-status-ai) 45%, transparent)",
+              cursor: aiLoading ? "wait" : "pointer",
+              transition: "background var(--ec-dur-fast) var(--ec-ease)",
+            }}
+            title="Сгенерировать prose-резюме через ИИ"
+          >
+            {aiLoading ? "ИИ думает…" : "✦ Что произошло"}
+          </button>
+        )}
       </div>
+
+      {(aiSummary || aiError) && (
+        <div
+          style={{
+            padding: "var(--ec-space-3) var(--ec-space-4)",
+            background:
+              "linear-gradient(135deg, color-mix(in srgb, var(--ec-status-ai) 10%, transparent), color-mix(in srgb, var(--ec-status-ai) 3%, transparent))",
+            border: "1px solid color-mix(in srgb, var(--ec-status-ai) 38%, transparent)",
+            borderRadius: "var(--ec-radius-md)",
+            display: "flex",
+            flexDirection: "column",
+            gap: 6,
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              fontSize: "var(--ec-text-2xs)",
+              fontWeight: 700,
+              letterSpacing: "var(--ec-tracking-caps)",
+              textTransform: "uppercase",
+              color: "var(--ec-status-ai)",
+            }}
+          >
+            <span aria-hidden>✦</span>
+            <span>ИИ-резюме</span>
+            {aiSummary && (
+              <span
+                style={{
+                  marginLeft: "auto",
+                  fontFamily: "var(--ec-font-mono)",
+                  fontSize: "0.6rem",
+                  color: "var(--ec-text-dim)",
+                  letterSpacing: 0,
+                  textTransform: "none",
+                  fontWeight: 400,
+                }}
+                title={`${aiSummary.provider}/${aiSummary.model} · ${aiSummary.latencyMs}ms`}
+              >
+                {aiSummary.provider} · {(aiSummary.latencyMs / 1000).toFixed(1)}s
+              </span>
+            )}
+          </div>
+          {aiError ? (
+            <p style={{ margin: 0, color: "var(--ec-danger)", fontSize: "var(--ec-text-sm)" }}>
+              {aiError}
+            </p>
+          ) : (
+            <p
+              style={{
+                margin: 0,
+                color: "var(--ec-text)",
+                fontSize: "var(--ec-text-sm)",
+                lineHeight: "var(--ec-leading-relaxed)",
+                whiteSpace: "pre-wrap",
+              }}
+            >
+              {aiSummary?.summary}
+            </p>
+          )}
+        </div>
+      )}
 
       <div style={counterRow}>
         {counter("сообщений", s.newMessages, "var(--ec-text-strong)")}

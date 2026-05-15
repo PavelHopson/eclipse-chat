@@ -1,7 +1,14 @@
 import type { FastifyInstance } from "fastify";
+import { z } from "zod";
 import { actionItemInclude, serializeActionItem } from "../actionItems.js";
 import { db } from "../db.js";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
+import {
+  AINotConfiguredError,
+  AIProviderError,
+  chat,
+} from "../ai/provider.js";
+import { sinceLastVisitSummaryPrompt } from "../ai/prompts.js";
 
 /**
  * AI Memory «Since your last visit» — операционная сводка дельты по каналу
@@ -157,6 +164,149 @@ export async function registerVisitRoutes(app: FastifyInstance) {
             : null,
         },
       };
+    },
+  );
+
+  /**
+   * POST /api/channels/:id/since-summary — AI-prose summary дельты «пока
+   * тебя не было». Body: `{ since: ISO }`. На вход — структурированный
+   * snapshot (messages, actions, pinned, incident), на выход — 3-5 предложений.
+   *
+   * Отделено от /visit чтобы был явный двух-шаговый flow: сперва дешёвая
+   * structured-сводка (рендерится мгновенно), потом по кнопке — LLM-вызов.
+   */
+  const sinceSummaryBody = z.object({
+    since: z.string().datetime(),
+  });
+
+  app.post(
+    "/api/channels/:id/since-summary",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const userId = getUserId(req);
+      if (!userId) {
+        return reply.status(401).send({ error: "Unauthorized" });
+      }
+      const { id: channelId } = req.params as { id: string };
+      const parsed = sinceSummaryBody.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.status(400).send({ error: "Invalid body" });
+      }
+      const since = new Date(parsed.data.since);
+
+      const channel = await db.channel.findUnique({
+        where: { id: channelId },
+        select: { id: true, name: true, serverId: true, type: true },
+      });
+      if (!channel) {
+        return reply.status(404).send({ error: "Channel not found" });
+      }
+      if (channel.type === "VOICE") {
+        return reply.status(400).send({ error: "Voice channels have no message feed" });
+      }
+      const member = await db.member.findUnique({
+        where: { userId_serverId: { userId, serverId: channel.serverId } },
+        select: { id: true },
+      });
+      if (!member) {
+        return reply.status(403).send({ error: "Not a member of this server" });
+      }
+
+      const messages = await db.message.findMany({
+        where: {
+          channelId,
+          createdAt: { gt: since },
+          deletedAt: null,
+        },
+        orderBy: { createdAt: "asc" },
+        take: 100,
+        select: {
+          content: true,
+          createdAt: true,
+          user: { select: { displayName: true } },
+        },
+      });
+      const newActions = await db.actionItem.findMany({
+        where: { channelId, createdAt: { gt: since } },
+        include: actionItemInclude,
+        orderBy: { createdAt: "desc" },
+        take: 20,
+      });
+      const newPinned = await db.message.findMany({
+        where: { channelId, pinnedAt: { gt: since }, deletedAt: null },
+        orderBy: { pinnedAt: "desc" },
+        take: 8,
+        select: {
+          content: true,
+          user: { select: { displayName: true } },
+        },
+      });
+      const incident = await db.incident.findFirst({
+        where: { channelId, openedAt: { gt: since } },
+        select: { title: true, status: true, openedAt: true },
+      });
+
+      const adaptAction = (a: (typeof newActions)[number]) => ({
+        type: a.type,
+        title: a.title,
+        dueAt: a.dueAt?.toISOString() ?? null,
+        assignee: a.assignee ? { displayName: a.assignee.displayName } : null,
+        status: a.status,
+      });
+
+      const prompt = sinceLastVisitSummaryPrompt({
+        channelName: channel.name,
+        priorVisitAt: since.toISOString(),
+        messages: messages.map((m) => ({
+          displayName: m.user.displayName,
+          content: m.content,
+          createdAt: m.createdAt.toISOString(),
+        })),
+        newActions: newActions.map(adaptAction),
+        newPinned: newPinned.map((p) => ({
+          content: p.content,
+          user: { displayName: p.user.displayName },
+        })),
+        incident: incident
+          ? {
+              title: incident.title,
+              status: incident.status,
+              openedAt: incident.openedAt.toISOString(),
+            }
+          : null,
+      });
+
+      try {
+        const result = await chat(
+          [
+            { role: "system", content: prompt.system },
+            { role: "user", content: prompt.user },
+          ],
+          { temperature: 0.4, maxTokens: 320 },
+        );
+        return {
+          summary: result.text,
+          provider: result.provider,
+          model: result.model,
+          latencyMs: result.latencyMs,
+          generatedAt: new Date().toISOString(),
+        };
+      } catch (err) {
+        if (err instanceof AINotConfiguredError) {
+          return reply.status(503).send({ error: "AI не настроен" });
+        }
+        if (err instanceof AIProviderError) {
+          app.log.warn(
+            { provider: err.provider, status: err.status, msg: err.message },
+            "AI since-visit summary failed",
+          );
+          return reply.status(502).send({
+            error: "AI провайдер недоступен. Попробуй позже.",
+            details: `${err.provider} ${err.status ?? ""}`.trim(),
+          });
+        }
+        throw err;
+      }
     },
   );
 }

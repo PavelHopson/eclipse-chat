@@ -1179,6 +1179,10 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             <SinceLastVisitBanner
               data={sinceLastVisit.data}
               onDismiss={sinceLastVisit.dismiss}
+              aiSummary={sinceLastVisit.aiSummary}
+              aiLoading={sinceLastVisit.aiLoading}
+              aiError={sinceLastVisit.aiError}
+              onRequestAiSummary={() => void sinceLastVisit.requestAiSummary()}
             />
             <ActionQueueBar
               items={openActionItems}
