@@ -436,8 +436,15 @@ export function MessageList({
               </div>
             )}
             <article
-              className="ec-message-row"
-              style={{ ...rowStyle, opacity: m.pending ? 0.6 : 1 }}
+              className="ec-message-row ec-anim-message-enter"
+              style={{
+                ...rowStyle,
+                opacity: m.pending ? 0.6 : 1,
+                /* v0.39: stagger cascade на первые 12 messages при mount.
+                   Socket-arrival messages в established channel'е получают
+                   0ms delay = instant fade-up. */
+                animationDelay: i < 12 ? `${i * 25}ms` : "0ms",
+              }}
               onMouseEnter={(e) => {
                 if (!isPinned) e.currentTarget.style.background = "var(--ec-surface-1)";
                 const time = e.currentTarget.querySelector<HTMLElement>("[data-sticky-time]");

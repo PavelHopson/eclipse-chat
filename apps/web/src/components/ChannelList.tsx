@@ -10,6 +10,8 @@ type Props = {
   serverRole: string | null;
   inviteCode: string | null;
   channels: ChannelRow[];
+  /** Channels async loading state (после server-switch до GET ответа). */
+  channelsLoading?: boolean;
   unread: Record<string, number>;
   selectedChannelId: string | null;
   onSelect: (id: string) => void;
@@ -265,6 +267,7 @@ export function ChannelList({
   serverRole,
   inviteCode: _inviteCode,
   channels,
+  channelsLoading,
   unread,
   selectedChannelId,
   onSelect,
@@ -744,7 +747,27 @@ export function ChannelList({
           </>
         )}
 
-        {channels.length === 0 && (
+        {channelsLoading && channels.length === 0 && (
+          <div className="ec-skeleton-list" aria-label="Загрузка каналов">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div
+                key={i}
+                className="ec-skeleton-row"
+                style={{ gridTemplateColumns: "16px 1fr" }}
+              >
+                <div
+                  className="ec-skeleton-row__avatar"
+                  style={{ width: 14, height: 14, borderRadius: 3 }}
+                />
+                <div className="ec-skeleton-row__bars">
+                  <div className="ec-skeleton-row__bar" />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {!channelsLoading && channels.length === 0 && (
           <p style={{ color: "var(--ec-text-dim)", fontSize: "var(--ec-text-sm)", padding: "var(--ec-space-2)", margin: 0 }}>
             Создайте первый канал ниже.
           </p>

@@ -232,6 +232,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     reorderChannels,
     deleteChannel,
     unread,
+    loading: channelsLoading,
   } = useChannels(activeServerId, socket);
 
   // ===== Channel digest =====
@@ -857,6 +858,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             serverRole={activeServer?.role ?? null}
             inviteCode={activeServer?.inviteCode ?? null}
             channels={channels}
+            channelsLoading={channelsLoading}
             unread={unread}
             selectedChannelId={selectedChannelId}
             onSelect={handleSelectChannel}
