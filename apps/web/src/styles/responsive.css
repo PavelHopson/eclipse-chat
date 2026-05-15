@@ -169,10 +169,10 @@
     transform: translateX(0);
   }
 
-  /* Members на mobile: full-width drawer справа */
+  /* Members на mobile: drawer справа с разумным breathing room */
   .ec-shell__members {
-    width: 90vw;
-    max-width: 320px;
+    width: 86vw;
+    max-width: 300px;
   }
 }
 
@@ -237,10 +237,23 @@
 
 /* ===== Composer / chat-area mobile fine-tuning ============== */
 
+/* Composer hints прогрессивно прячутся по breakpoint'ам.
+   • >900px: всё видно
+   • 641-900px: hide --lg хинты (drop / @/:/emoji)
+   • ≤640px:   hide и --md хинты (Shift+Enter) — оставляется только
+     Enter + /task если activate'нут */
+@media (max-width: 900px) {
+  .ec-composer-hint--lg {
+    display: none !important;
+  }
+}
 @media (max-width: 640px) {
   /* safe-area-inset для bottom (iOS PWA / standalone) */
   .ec-composer-safe {
     padding-bottom: max(var(--ec-space-4), env(safe-area-inset-bottom, 0));
+  }
+  .ec-composer-hint--md {
+    display: none !important;
   }
   .ec-composer {
     padding: var(--ec-space-2) var(--ec-space-3) max(var(--ec-space-3), env(safe-area-inset-bottom, 0)) !important;
@@ -418,18 +431,32 @@
   align-self: center;
 }
 
-/* Compact label на узком rail-фиксированной ширине:
+/* Compact label на узких right-rail состояниях:
    • laptop range 1025-1366 → right rail = 224px → label слишком тесно
-     даже с icon → hide label, icon + count остаются
-   • narrow rail в general (panel < 260px) — drop label */
-@media (min-width: 1025px) and (max-width: 1366px) {
+   • tablet/mobile (≤1024) → right rail в drawer ≤300px → label режется
+   Labels видимы только на full desktop ≥1367 — там rail-fixed 280px+. */
+@media (max-width: 1366px) {
   .ec-shell__members .ec-intel-tab__label {
     display: none;
   }
 }
 
-/* На tablet (members drawer width = 280px) — label видим OK, без правок.
-   На mobile (≤640px) members drawer тоже 280px — также видим. */
+/* Tab bar overflow indicator — на узких rail'ах когда tabs могут быть
+   scroll'абельны, gradient справа намекает на overflow. Subtle, не aggressive. */
+.ec-intel-tabs::after {
+  content: "";
+  position: sticky;
+  right: 0;
+  width: 18px;
+  align-self: stretch;
+  background: linear-gradient(to right, transparent, var(--ec-surface-1) 70%);
+  pointer-events: none;
+  flex-shrink: 0;
+  margin-left: -18px;
+  /* На viewport'ах с large rail (full desktop) этот fade тоже OK — он
+     становится невидимым потому что нет overflow. Sticky гарантирует
+     что fade держится у правого края scroll viewport'а. */
+}
 
 /* ===== Rail-expand tab (когда правый rail свёрнут на desktop) ==== */
 

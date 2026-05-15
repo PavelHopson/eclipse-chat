@@ -726,16 +726,16 @@ export function MessageInput({
       </div>
       <div className="ec-composer-hints" style={hintRow}>
         <span><span style={kbd}>Enter</span> — отправить</span>
-        <span style={{ color: "var(--ec-border-emphasis)" }}>·</span>
-        <span><span style={kbd}>Shift+Enter</span> — новая строка</span>
+        <span className="ec-composer-hint--md" style={{ color: "var(--ec-border-emphasis)" }}>·</span>
+        <span className="ec-composer-hint--md"><span style={kbd}>Shift+Enter</span> — новая строка</span>
         {!hideAttachments && (
           <>
-            <span style={{ color: "var(--ec-border-emphasis)" }}>·</span>
-            <span>drop файлы</span>
+            <span className="ec-composer-hint--lg" style={{ color: "var(--ec-border-emphasis)" }}>·</span>
+            <span className="ec-composer-hint--lg">drop файлы</span>
           </>
         )}
-        <span style={{ color: "var(--ec-border-emphasis)" }}>·</span>
-        <span>
+        <span className="ec-composer-hint--lg" style={{ color: "var(--ec-border-emphasis)" }}>·</span>
+        <span className="ec-composer-hint--lg">
           <span style={kbd}>@</span> участник · <span style={kbd}>:</span>emoji
         </span>
         {!hideSlashCommands && (
