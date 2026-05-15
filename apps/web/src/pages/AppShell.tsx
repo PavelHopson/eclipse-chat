@@ -20,6 +20,7 @@ import { ServerSettingsModal } from "../components/ServerSettingsModal";
 import { ServerList } from "../components/ServerList";
 import { SinceLastVisitBanner } from "../components/SinceLastVisitBanner";
 import { StatusBoard } from "../components/StatusBoard";
+import { TeamHealth } from "../components/TeamHealth";
 import { StatusMenu } from "../components/StatusMenu";
 import { IncidentPanel } from "../components/IncidentPanel";
 import { ThreadPanel } from "../components/ThreadPanel";
@@ -40,6 +41,7 @@ import { useHomeToday } from "../hooks/useHomeToday";
 import { useProfile } from "../hooks/useProfile";
 import { useSearch } from "../hooks/useSearch";
 import { useServerActions } from "../hooks/useServerActions";
+import { useTeamHealth } from "../hooks/useTeamHealth";
 import { useServers } from "../hooks/useServers";
 import { useSinceLastVisit } from "../hooks/useSinceLastVisit";
 import { useSocket } from "../hooks/useSocket";
@@ -307,14 +309,18 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   const [settingsChannelId, setSettingsChannelId] = useState<string | null>(null);
   // Execution Status Board — server-wide доска задач в центре (вместо чата).
   const [statusBoardOpen, setStatusBoardOpen] = useState(false);
+  // Team Health — server-wide aggregate ActionItem'ов. Полный full-width view
+  // как Status Board (правый rail скрыт, чат не виден).
+  const [teamHealthOpen, setTeamHealthOpen] = useState(false);
 
   // Закрыть thread при смене канала / сервера — не показывать thread из старого канала
   useEffect(() => {
     setSelectedThreadId(null);
   }, [selectedChannelId, activeServerId]);
-  // Закрыть Status Board при смене сервера (board привязан к серверу).
+  // Закрыть Status Board + Team Health при смене сервера (они привязаны к серверу).
   useEffect(() => {
     setStatusBoardOpen(false);
+    setTeamHealthOpen(false);
   }, [activeServerId]);
 
   const {
@@ -370,6 +376,9 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   // ===== Execution Status Board =====
   // Все ActionItem'ы активного сервера — live через action:item:* в server-room.
   const serverActions = useServerActions(activeServerId, socket);
+  // Team Health — server-wide aggregate ActionItem'ов. Fetch при teamHealthOpen
+  // (lazy: ничего не делаем пока юзер не открыл view).
+  const teamHealth = useTeamHealth(teamHealthOpen ? activeServerId : null);
 
   const headerName = profile?.displayName ?? user.displayName;
   const headerAvatar = profile?.avatar ?? user.avatar;
@@ -409,8 +418,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   const isVoiceView =
     !inDmMode && !homeOpen && selectedChannel?.type === "VOICE";
   const inServerView = Boolean(activeServer) && !homeOpen;
-  // Status Board открывается на всю ширину (как Home) — правый rail скрыт.
-  const showRightRail = inServerView && !statusBoardOpen;
+  // Status Board / Team Health открываются на всю ширину (как Home) — правый rail скрыт.
+  const showRightRail = inServerView && !statusBoardOpen && !teamHealthOpen;
   const [navOpen, setNavOpen] = useState(false);
   const [membersOpen, setMembersOpen] = useState(false);
   // Правый rail сворачивается, чтобы не съедать ширину центра (особенно
@@ -495,6 +504,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   const handleSelectChannel = (channelId: string) => {
     setHomeOpen(false);
     setStatusBoardOpen(false);
+    setTeamHealthOpen(false);
     setSelectedChannelId(channelId);
     if (isMobile) setNavOpen(false);
   };
@@ -502,6 +512,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   const openHome = () => {
     setHomeOpen(true);
     setStatusBoardOpen(false);
+    setTeamHealthOpen(false);
     setSelectedChannelId(null);
     selectDm(null);
     setNavOpen(false);
@@ -511,6 +522,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   const openActiveServer = () => {
     setHomeOpen(false);
     setStatusBoardOpen(false);
+    setTeamHealthOpen(false);
     if (activeServerId == null && servers[0]) {
       setActiveServerId(servers[0].id);
       return;
@@ -845,11 +857,23 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                 ? undefined
                 : () => {
                     setHomeOpen(false);
+                    setTeamHealthOpen(false);
                     setStatusBoardOpen(true);
                     if (isMobile) setNavOpen(false);
                   }
             }
             statusBoardActive={statusBoardOpen}
+            onOpenTeamHealth={
+              isClientMode
+                ? undefined
+                : () => {
+                    setHomeOpen(false);
+                    setStatusBoardOpen(false);
+                    setTeamHealthOpen(true);
+                    if (isMobile) setNavOpen(false);
+                  }
+            }
+            teamHealthActive={teamHealthOpen}
             voiceByChannel={voiceByChannel}
             voiceMetaByUser={voiceMetaByUser}
             members={members}
@@ -874,6 +898,13 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                 <rect x="3" y="16" width="7" height="5" rx="1" />
               </svg>
               Доска задач
+            </span>
+          ) : teamHealthOpen ? (
+            <span className="ec-chat-title" style={chatTitle}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--ec-accent)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+              </svg>
+              Здоровье команды
             </span>
           ) : inDmMode && selectedDm ? (
             <span className="ec-chat-title" style={chatTitle}>
@@ -1077,6 +1108,23 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               setStatusBoardOpen(false);
               setSelectedChannelId(channelId);
               if (isMobile) setNavOpen(false);
+            }}
+          />
+        ) : teamHealthOpen && activeServer ? (
+          <TeamHealth
+            serverName={activeServer.name}
+            data={teamHealth.data}
+            loading={teamHealth.loading}
+            error={teamHealth.error}
+            onReload={() => void teamHealth.reload()}
+            onClose={() => setTeamHealthOpen(false)}
+            onOpenBoard={() => {
+              // v0.30.0: pre-filter forward-compat — пока без auto-filter.
+              // Открываем Status Board, operator пользуется встроенными фильтрами.
+              // v0.31+: StatusBoard initialFilter prop активирует by-overdue/
+              // by-unassigned/by-assignee filter автоматически.
+              setTeamHealthOpen(false);
+              setStatusBoardOpen(true);
             }}
           />
         ) : inDmMode ? (

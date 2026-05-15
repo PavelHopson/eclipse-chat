@@ -9,6 +9,7 @@ import fastifyStatic from "@fastify/static";
 import sharp from "sharp";
 import { Server as SocketServer } from "socket.io";
 import { registerActionRoutes } from "./routes/actions.js";
+import { registerAnalyticsRoutes } from "./routes/analytics.js";
 import { registerAuthRoutes } from "./routes/auth.js";
 import { registerBotRoutes } from "./routes/bots.js";
 import { registerTwoFactorRoutes } from "./routes/twoFactor.js";
@@ -117,7 +118,7 @@ app.get("/api/health", async () => {
   }
   return { ok: true, service: "eclipse-chat-server", database: dbOk };
 });
-app.get("/api/version", async () => ({ name: "@eclipse-chat/server", version: "0.29.0" }));
+app.get("/api/version", async () => ({ name: "@eclipse-chat/server", version: "0.30.0" }));
 
 await registerAuthRoutes(app);
 await registerTwoFactorRoutes(app);
@@ -161,6 +162,7 @@ await registerIncidentRoutes(app);
 await registerVoiceRoutes(app);
 await registerDmRoutes(app);
 await registerHomeRoutes(app);
+registerAnalyticsRoutes(app);
 await registerVisitRoutes(app);
 await app.ready();
 
