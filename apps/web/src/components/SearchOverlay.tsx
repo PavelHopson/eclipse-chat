@@ -1,6 +1,8 @@
 import type { CSSProperties } from "react";
 import { useEffect, useRef } from "react";
 import { Avatar } from "./Avatar";
+import { EmptyState } from "./EmptyState";
+import { EmptySearchIcon } from "./EmptyIcons";
 import type { SearchHit } from "../hooks/useSearch";
 
 type Props = {
@@ -184,16 +186,12 @@ export function SearchOverlay({
         </div>
         <div style={listWrap}>
           {!truncated && (
-            <div className="ec-empty" style={{ padding: "var(--ec-space-6)" }}>
-              <div className="ec-empty-icon" aria-hidden>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="11" cy="11" r="8" />
-                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                </svg>
-              </div>
-              <div className="ec-empty-title">Начните печатать</div>
-              <div className="ec-empty-hint">Минимум 2 символа. Поиск в текстовых каналах активного сервера, без удалённых.</div>
-            </div>
+            <EmptyState
+              icon={<EmptySearchIcon />}
+              title="Начните печатать"
+              hint="Минимум 2 символа. Поиск в текстовых каналах активного сервера, без удалённых сообщений."
+              compact
+            />
           )}
           {truncated && loading && (
             <p style={{ color: "var(--ec-text-dim)", fontSize: "var(--ec-text-sm)", padding: "var(--ec-space-3) var(--ec-space-3)", margin: 0 }}>
@@ -206,9 +204,12 @@ export function SearchOverlay({
             </p>
           )}
           {truncated && !loading && !error && results.length === 0 && (
-            <p style={{ color: "var(--ec-text-dim)", fontSize: "var(--ec-text-sm)", padding: "var(--ec-space-3) var(--ec-space-3)", margin: 0 }}>
-              Ничего не найдено.
-            </p>
+            <EmptyState
+              icon={<EmptySearchIcon />}
+              title="Ничего не найдено"
+              hint="Попробуйте другие слова или часть имени автора."
+              compact
+            />
           )}
           {truncated && !loading && results.length > 0 && (
             <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>

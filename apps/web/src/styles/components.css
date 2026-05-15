@@ -39,10 +39,31 @@
 
 .ec-btn:active { transform: translateY(0.5px); }
 
+/* v0.34: accessibility — focus-visible ring для keyboard navigation.
+   Mouse-click НЕ показывает ring (`:focus-visible` discriminates). */
+.ec-btn:focus-visible {
+  outline: 2px solid var(--ec-border-accent);
+  outline-offset: 2px;
+}
+
 .ec-btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
   pointer-events: none;
+}
+
+/* v0.34: channel-item, message-action — same a11y treatment. */
+.ec-channel-item:focus-visible,
+.ec-message-actions button:focus-visible {
+  outline: 2px solid var(--ec-border-accent);
+  outline-offset: -2px;
+  border-radius: var(--ec-radius-sm);
+}
+
+/* Inputs (text/url/email/password/textarea) — extend existing
+   .ec-field rule с :focus-visible variant для consistency. */
+.ec-field:focus-visible {
+  outline: none;  /* border-color уже даёт visual focus signal */
 }
 
 .ec-btn--primary {

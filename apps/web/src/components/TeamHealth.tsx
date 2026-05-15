@@ -1,5 +1,7 @@
 import type { CSSProperties } from "react";
 import { Avatar } from "./Avatar";
+import { EmptyState } from "./EmptyState";
+import { EmptyHealthIcon } from "./EmptyIcons";
 import type { TeamHealthData } from "../hooks/useTeamHealth";
 
 /**
@@ -277,22 +279,11 @@ export function TeamHealth({
         )}
 
         {!error && isEmpty && (
-          <div
-            className="ec-empty"
-            style={{
-              padding: "var(--ec-space-6) var(--ec-space-4)",
-              textAlign: "center",
-              border: "1px dashed var(--ec-border-default)",
-              borderRadius: "var(--ec-radius-lg)",
-            }}
-          >
-            <div className="ec-empty-title">Пока нечего считать</div>
-            <div className="ec-empty-hint" style={{ maxWidth: 380, margin: "0 auto" }}>
-              На сервере ещё нет задач/решений. Создавайте их через{" "}
-              <code>/task</code> или hover-меню сообщений — здесь появится
-              операционная сводка.
-            </div>
-          </div>
+          <EmptyState
+            icon={<EmptyHealthIcon />}
+            title="Пока нечего считать"
+            hint="На сервере ещё нет задач или решений. Создавайте их через /task в композере или hover-меню сообщения — здесь появится операционная сводка."
+          />
         )}
 
         {!error && !isEmpty && data && (

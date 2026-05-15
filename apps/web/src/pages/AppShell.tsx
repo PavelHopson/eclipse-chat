@@ -21,6 +21,12 @@ import { ServerList } from "../components/ServerList";
 import { SinceLastVisitBanner } from "../components/SinceLastVisitBanner";
 import { StatusBoard } from "../components/StatusBoard";
 import { TeamHealth } from "../components/TeamHealth";
+import { EmptyState } from "../components/EmptyState";
+import {
+  EmptyDmIcon,
+  EmptyChannelIcon,
+  EmptyHomeIcon,
+} from "../components/EmptyIcons";
 import { StatusMenu } from "../components/StatusMenu";
 import { IncidentPanel } from "../components/IncidentPanel";
 import { ThreadPanel } from "../components/ThreadPanel";
@@ -1144,17 +1150,11 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           />
         ) : inDmMode ? (
           !selectedDm ? (
-            <div className="ec-empty">
-              <div className="ec-empty-icon" aria-hidden>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
-                </svg>
-              </div>
-              <div className="ec-empty-title">Личные сообщения</div>
-              <div className="ec-empty-hint">
-                Выбери диалог слева или открой профиль участника любого сервера и нажми «Написать в личку».
-              </div>
-            </div>
+            <EmptyState
+              icon={<EmptyDmIcon />}
+              title="Личные сообщения"
+              hint="Выбери диалог слева или открой профиль участника любого сервера и нажми «Написать в личку»."
+            />
           ) : (
             <>
               <MessageList
@@ -1190,34 +1190,35 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             </>
           )
         ) : !activeServer ? (
-          <div className="ec-empty">
-            <div className="ec-empty-icon" aria-hidden>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="3" width="18" height="18" rx="4" />
-                <path d="M3 9h18M9 3v18" />
-              </svg>
-            </div>
-            <div className="ec-empty-title">Нет активного сервера</div>
-            <div className="ec-empty-hint">Создайте свой или вступите по инвайту — кнопки в левой колонке.</div>
-            <div style={{ display: "flex", gap: "var(--ec-space-2)" }}>
-              <button type="button" className="ec-btn ec-btn--primary ec-btn--sm" onClick={() => setShowCreateServer(true)}>
-                Создать сервер
-              </button>
-              <button type="button" className="ec-btn ec-btn--sm" onClick={() => setShowJoinServer(true)}>
-                Вступить по инвайту
-              </button>
-            </div>
-          </div>
+          <EmptyState
+            icon={<EmptyHomeIcon />}
+            title="Нет активного сервера"
+            hint="Создайте свой workspace или вступите по инвайту — кнопки в левой колонке."
+            action={
+              <div style={{ display: "flex", gap: "var(--ec-space-2)" }}>
+                <button
+                  type="button"
+                  className="ec-btn ec-btn--primary ec-btn--sm"
+                  onClick={() => setShowCreateServer(true)}
+                >
+                  Создать сервер
+                </button>
+                <button
+                  type="button"
+                  className="ec-btn ec-btn--sm"
+                  onClick={() => setShowJoinServer(true)}
+                >
+                  Вступить по инвайту
+                </button>
+              </div>
+            }
+          />
         ) : !selectedChannelId || !selectedChannel ? (
-          <div className="ec-empty">
-            <div className="ec-empty-icon" aria-hidden>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M4 6h16M4 12h16M4 18h10" />
-              </svg>
-            </div>
-            <div className="ec-empty-title">Выберите канал</div>
-            <div className="ec-empty-hint">Каналы — слева. Или создайте новый внизу панели каналов.</div>
-          </div>
+          <EmptyState
+            icon={<EmptyChannelIcon />}
+            title="Выберите канал"
+            hint="Список каналов — слева. Или создайте новый внизу панели."
+          />
         ) : selectedChannel.type === "VOICE" ? (
           voiceHealth.enabled ? (
             <VoiceRoom

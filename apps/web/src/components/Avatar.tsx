@@ -29,14 +29,21 @@ function initials(name: string): string {
   return letters || "??";
 }
 
-/** Стабильный цвет фона из имени — чтобы placeholder не "прыгал" между перерендерами. */
+/**
+ * Стабильный цвет фона из имени — детерминированный hash → HSL, чтобы
+ * placeholder не прыгал между рендерами.
+ *
+ * v0.34: saturation bumped 30→45 + lightness 32→34 — для visual interest
+ * на dark theme. Hue по hash, saturation/lightness constant — calm range,
+ * никаких "neon"-сэтуплов.
+ */
 function colorFor(name: string): string {
   let h = 0;
   for (let i = 0; i < name.length; i++) {
     h = (h * 31 + name.charCodeAt(i)) | 0;
   }
   const hue = ((h % 360) + 360) % 360;
-  return `hsl(${hue}, 30%, 32%)`;
+  return `hsl(${hue}, 45%, 34%)`;
 }
 
 export function Avatar({ url, name, size = 32 }: Props) {
