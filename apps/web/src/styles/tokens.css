@@ -27,12 +27,25 @@
  */
 
 :root {
-  /* ---- Background tiers (night-blue void) ---------------------- */
-  --ec-bg:                  hsl(210 22% 4%);     /* deep night blue */
-  --ec-surface-1:           hsl(210 18% 7%);     /* steel-blue */
-  --ec-surface-2:           hsl(210 16% 10%);    /* slate-blue */
-  --ec-surface-3:           hsl(210 14% 14%);    /* ash-blue */
-  --ec-surface-4:           hsl(205 13% 18%);    /* slightly warmer for active */
+  /*
+   * ---- Background tiers — Layered Voids (Pavel brief 14.05) -----
+   * Aligned к brief-палитре #07090D / #0B0F14 / #11161D / #141A22 —
+   * cinematic night-blue void с лёгким cyan undertone. На прод изменение
+   * субтильное (текущая палитра была уже близка), но фиксирует язык:
+   * 4 чёткие глубины, каждая на ~3% lightness глубже предыдущей.
+   *
+   *   --ec-void               глубочайший фон страницы            (#07090D)
+   *   --ec-surface-1          sidebar / topbar / rails             (#0B0F14)
+   *   --ec-surface-2          карточки / inputs / списки           (#11161D)
+   *   --ec-surface-3          hover / chips                         (#141A22)
+   *   --ec-surface-4          active-state / выраженный elevation
+   */
+  --ec-void:                #07090D;
+  --ec-bg:                  #07090D;             /* alias на --ec-void */
+  --ec-surface-1:           #0B0F14;
+  --ec-surface-2:           #11161D;
+  --ec-surface-3:           #141A22;
+  --ec-surface-4:           hsl(214 22% 14%);    /* slightly warmer active */
 
   /* Контрастный input bg — чтобы поля «втыкались» в surface */
   --ec-input-bg:            hsl(210 18% 8%);
@@ -174,6 +187,25 @@
                             0 0 0 1px var(--ec-border-default),
                             inset 0 1px 0 hsl(195 70% 60% / 0.06);
   --ec-glow-active:         var(--ec-accent-glow);
+
+  /*
+   * Atmospheric glows — для accent-areas (AI blocks, live status, voice
+   * rooms). По brief используем как atmospheric layer, не яркие акценты
+   * везде. Цвет наносится через box-shadow или background gradient на
+   * существующие surfaces.
+   */
+  --ec-glow-cyan:           0 0 32px -6px hsl(195 70% 55% / 0.4);
+  --ec-glow-violet:         0 0 32px -6px hsl(252 65% 65% / 0.32);
+  --ec-glow-gold:           0 0 28px -8px hsl(38 90% 60% / 0.24);
+  --ec-glow-mint:           0 0 28px -8px hsl(152 58% 52% / 0.26);
+
+  /* «Атмосферная подложка» — soft elevation без хард-рамки. Использовать
+     для immersive-карточек где card-in-card нельзя (voice room, banners). */
+  --ec-atmos-soft:          0 12px 40px -16px hsl(210 40% 2% / 0.65),
+                            0 0 0 1px hsl(212 24% 16% / 0.4);
+  --ec-atmos-strong:        0 28px 72px -22px hsl(210 40% 2% / 0.75),
+                            0 0 0 1px hsl(212 24% 18% / 0.5),
+                            inset 0 1px 0 hsl(195 70% 60% / 0.05);
 
   /* Ambient gradients для empty-states и hero блоков */
   --ec-gradient-aurora:     radial-gradient(ellipse 90% 70% at 20% 0%,

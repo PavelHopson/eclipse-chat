@@ -374,6 +374,24 @@
   border: 1px solid var(--ec-border-default);
 }
 
+/*
+ * Atmospheric panel — для card-карточек где «hard border + flat bg» режет
+ * immersion. Soft elevation, без видимой рамки, slight inset highlight.
+ * Brief: layered shadows / soft glow separation / atmospheric depth.
+ */
+.ec-atmos-panel {
+  background: linear-gradient(180deg, var(--ec-surface-2), var(--ec-surface-1));
+  border: 1px solid transparent;
+  border-radius: var(--ec-radius-lg);
+  box-shadow: var(--ec-atmos-soft);
+}
+.ec-atmos-panel--strong {
+  box-shadow: var(--ec-atmos-strong);
+}
+/* Atmospheric accent corner-glow — для live/active элементов */
+.ec-atmos-glow-cyan   { box-shadow: var(--ec-atmos-soft), var(--ec-glow-cyan); }
+.ec-atmos-glow-violet { box-shadow: var(--ec-atmos-soft), var(--ec-glow-violet); }
+
 .ec-glass-strong {
   background: hsl(200 8% 8% / 0.55);
   backdrop-filter: saturate(180%) blur(22px);
