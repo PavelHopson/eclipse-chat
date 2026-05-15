@@ -8,6 +8,14 @@ import { requireBotAuth } from "../auth/botAuth.js";
 import { recordAudit } from "../security/audit.js";
 import { emitMessageOnChannel, emitReactionAdded } from "../realtime.js";
 import { fireMessageCreatedWebhooks } from "../bots/webhooks.js";
+import {
+  BOT_ROLES,
+  BOT_ROLE_LABELS,
+  botRolePrompt,
+  type BotRoleValue,
+} from "../ai/botRoles.js";
+
+const botRoleSchema = z.enum(BOT_ROLES as readonly [BotRoleValue, ...BotRoleValue[]]);
 
 const ALLOWED_BOT_EMOJI = new Set([
   "👍", "❤️", "😂", "😮", "😢", "🔥", "🎉", "👀",
@@ -33,11 +41,13 @@ function generateApiKey(): string {
 const createBotBody = z.object({
   name: z.string().trim().min(1).max(80),
   description: z.string().max(280).optional().nullable(),
+  role: botRoleSchema.optional(),
 });
 
 const updateBotBody = z.object({
   name: z.string().trim().min(1).max(80).optional(),
   description: z.string().max(280).optional().nullable(),
+  role: botRoleSchema.optional(),
   webhookUrl: z
     .string()
     .max(512)
@@ -129,6 +139,7 @@ export async function registerBotRoutes(app: FastifyInstance) {
           name: b.name,
           avatar: b.avatar ?? b.user.avatar ?? null,
           description: b.description,
+          role: b.role as BotRoleValue,
           owner: b.owner,
           shadowUserId: b.userId,
           // Только префикс — не secret, для UX «ecb_AbCd…» display
@@ -189,6 +200,7 @@ export async function registerBotRoutes(app: FastifyInstance) {
             id: botId,
             name: parsed.data.name.trim(),
             description: parsed.data.description?.trim() || null,
+            role: parsed.data.role ?? "GENERIC",
             apiKeyHash,
             apiKeyPrefix,
             serverId,
@@ -208,12 +220,18 @@ export async function registerBotRoutes(app: FastifyInstance) {
       recordAudit("BOT_CREATED", {
         userId,
         req,
-        metadata: { botId: result.id, serverId, name: result.name },
+        metadata: {
+          botId: result.id,
+          serverId,
+          name: result.name,
+          role: result.role,
+        },
       });
       return {
         bot: {
           id: result.id,
           name: result.name,
+          role: result.role as BotRoleValue,
           shadowUserId: result.userId,
           apiKeyPrefix: result.apiKeyPrefix,
           createdAt: result.createdAt.toISOString(),
@@ -292,6 +310,7 @@ export async function registerBotRoutes(app: FastifyInstance) {
       const data: {
         name?: string;
         description?: string | null;
+        role?: BotRoleValue;
         webhookUrl?: string | null;
         webhookSecret?: string | null;
       } = {};
@@ -300,6 +319,7 @@ export async function registerBotRoutes(app: FastifyInstance) {
         const d = parsed.data.description?.trim();
         data.description = d ? d : null;
       }
+      if (parsed.data.role !== undefined) data.role = parsed.data.role;
       if (parsed.data.webhookUrl !== undefined) {
         const u = parsed.data.webhookUrl?.trim();
         data.webhookUrl = u ? u : null;
@@ -316,6 +336,7 @@ export async function registerBotRoutes(app: FastifyInstance) {
           id: true,
           name: true,
           description: true,
+          role: true,
           avatar: true,
           apiKeyPrefix: true,
           webhookUrl: true,
@@ -337,6 +358,7 @@ export async function registerBotRoutes(app: FastifyInstance) {
           id: updated.id,
           name: updated.name,
           description: updated.description,
+          role: updated.role as BotRoleValue,
           avatar: updated.avatar,
           apiKeyPrefix: updated.apiKeyPrefix,
           webhookUrl: updated.webhookUrl,
@@ -447,6 +469,7 @@ export async function registerBotRoutes(app: FastifyInstance) {
         displayName: shadow.displayName,
         avatar: shadow.avatar,
         isBot: true,
+        botRole: bot.role,
         createdAt: m.createdAt.toISOString(),
       };
       emitMessageOnChannel(ch.id, payload);
@@ -462,6 +485,7 @@ export async function registerBotRoutes(app: FastifyInstance) {
           displayName: shadow.displayName,
           content: m.content,
           isBot: true,
+          botRole: bot.role,
           createdAt: m.createdAt.toISOString(),
         },
         app.log,
@@ -555,12 +579,21 @@ export async function registerBotRoutes(app: FastifyInstance) {
 
   /**
    * GET /api/bot/me — bot intro/whoami. Используется SDK для health-check.
+   *
+   * Возвращает также:
+   *   - role:           taxonomy-роль бота (GENERIC | MODERATOR | PM | KNOWLEDGE | SALES)
+   *   - roleLabel:      короткий RU-лейбл для UI
+   *   - systemPrompt:   рекомендуемый system-prompt template для LLM-провайдера
+   *                     бота. SDK может использовать как system message для
+   *                     своего chat completion.
    */
   app.get(
     "/api/bot/me",
     { onRequest: [requireBotAuth] },
     async (req) => {
       const bot = req.bot!;
+      // bot.role приходит из botAuth context'а как plain string из БД.
+      const role = bot.role as BotRoleValue;
       return {
         bot: {
           id: bot.id,
@@ -568,6 +601,9 @@ export async function registerBotRoutes(app: FastifyInstance) {
           serverId: bot.serverId,
           shadowUserId: bot.userId,
           capabilities: bot.capabilities,
+          role,
+          roleLabel: BOT_ROLE_LABELS[role] ?? BOT_ROLE_LABELS.GENERIC,
+          systemPrompt: botRolePrompt(role),
         },
       };
     },

@@ -1,6 +1,7 @@
 import { createHmac } from "node:crypto";
 import { db } from "../db.js";
 import type { FastifyBaseLogger } from "fastify";
+import type { BotRoleValue } from "../ai/botRoles.js";
 
 /**
  * Outbound webhook fan-out для bot subscribers.
@@ -24,6 +25,8 @@ type MessageCreatedPayload = {
   displayName: string;
   content: string;
   isBot: boolean;
+  /** Taxonomy-роль автора, если isBot. Null для human-сообщений + system bot без Bot row. */
+  botRole?: BotRoleValue | null;
   createdAt: string;
 };
 

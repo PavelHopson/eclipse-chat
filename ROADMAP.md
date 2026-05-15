@@ -5,7 +5,7 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v0.27.0** (commit `2bd3559`, 15.05.2026)
+**Текущая версия в проде:** **v0.28.0** (Sprint 3 — AI Agents типология, 15.05.2026)
 — https://app.star-crm.ru/eclipse-chat/
 
 ## 📌 Позиционирование (зафиксировано 15.05)
@@ -67,7 +67,8 @@ chat и не enterprise prison.
 
 | Версия | Дата | Что |
 |---|---|---|
-| **v0.27.0** | 15.05 | Client Mode — Server.mode ENGINEERING/CLIENT + UI gates (Status Board, Дела/Файлы tabs, slash-hints hidden в CLIENT) |
+| **v0.28.0** | 15.05 | **AI Agents типология** — `Bot.role` enum (GENERIC/MODERATOR/PM/KNOWLEDGE/SALES) + per-role system-prompt templates + UI selector в BotsTab + role-chip + role-aware BOT badge в MessageList. Боты получают taxonomy: каждая роль = свой цвет, лейбл, prompt-шаблон через GET /api/bot/me для SDK integrations |
+| v0.27.0 | 15.05 | Client Mode — Server.mode ENGINEERING/CLIENT + UI gates (Status Board, Дела/Файлы tabs, slash-hints hidden в CLIENT) |
 | v0.26.1 | 15.05 | Картинки целиком в ленте + tabs polish (RU short) + ROADMAP refresh |
 | v0.26.0 | 15.05 | Context Tree groupings (OVERVIEW + COMMUNICATION) |
 | v0.25.1 | 15.05 | Layered blacks + atmospheric depth tokens |
@@ -100,29 +101,29 @@ chat и не enterprise prison.
 
 ## 🎯 Что делаем дальше
 
-По рекомендованному порядку из brief Pavel'я:
+По рекомендованному порядку из brief Pavel'я (✅ #5 + #6 закрыты):
 
-1. **#5 Client Mode** (Phase 4) — `Server.mode: ENGINEERING | CLIENT` enum
-   + миграция. В CLIENT-server'е UI **мягче / без developer chrome /
-   фокус на approvals + files + summaries**. Скрывать developer-каналы
-   через role-based видимость. Calm operational interface для не-
-   технических клиентов.
+1. **Server-side AI invocation от имени бота** — следующая итерация
+   #6: когда боту прислан webhook с message, Eclipse Chat может
+   сгенерить ответ через Ollama, используя role-specific
+   system-prompt + контекст канала (open actions / pinned / recent).
+   Сейчас (v0.28.0) `@ai` всё ещё generic system-bot — refactor его
+   так чтобы выбирать prompt по «ближайшему» Bot.role в канале.
 
-2. **#6 AI Agents типология** — `Bot.role: MODERATOR | PM | KNOWLEDGE |
-   SALES` + per-role prompts. Боты становятся «embedded room
-   participants», не generic `@ai` chatbot'ами.
-
-3. **Semantic search** — global operational search across messages /
+2. **Semantic search** — global operational search across messages /
    tasks / decisions / files / voice-summaries. Codex-vision #5.
 
-4. **Execution Analytics** — Team Health (blockers / delays / response
+3. **Execution Analytics** — Team Health (blockers / delays / response
    speed / overload) поверх ActionItem-данных. Codex-vision #6.
 
-5. **AI Transcription** — speech-to-text + summaries / decisions /
+4. **AI Transcription** — speech-to-text + summaries / decisions /
    tasks из voice-сессий. Vision-area #4 transcription.
 
-6. **Group DMs + voice/video DMs** — DM-инфра уже есть, расширить
+5. **Group DMs + voice/video DMs** — DM-инфра уже есть, расширить
    на multi-participant.
+
+6. **Client Mode v2** — role-based видимость каналов (internal vs
+   client), softer visual, hide BOT-badges в CLIENT-режиме.
 
 ## 📋 Открытые follow-ups
 

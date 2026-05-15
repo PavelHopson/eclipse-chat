@@ -6,6 +6,12 @@ import { EmojiPicker } from "./EmojiPicker";
 import { RichContent } from "./RichContent";
 import type { ActionItemStatus, ActionItemType, MessageRow } from "../hooks/useMessages";
 import type { MemberRole } from "../hooks/useMembers";
+import {
+  BOT_ROLE_COLORS,
+  BOT_ROLE_LABELS,
+  isBotRole,
+  type BotRole,
+} from "../lib/botRoles";
 
 type Props = {
   messages: MessageRow[];
@@ -468,36 +474,52 @@ export function MessageList({
                     <strong style={{ color: "var(--ec-text-strong)", fontSize: "var(--ec-text-base)", fontWeight: 600 }}>
                       {m.user.displayName}
                     </strong>
-                    {m.user.isBot && (
-                      <span
-                        title="Сообщение от бота"
-                        aria-label="бот"
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: 3,
-                          padding: "0.05rem 0.4rem",
-                          background: "hsl(252 70% 70% / 0.14)",
-                          color: "hsl(252 80% 78%)",
-                          border: "1px solid hsl(252 70% 60% / 0.45)",
-                          borderRadius: "var(--ec-radius-full)",
-                          fontSize: "0.62rem",
-                          fontWeight: 700,
-                          letterSpacing: "var(--ec-tracking-caps)",
-                          textTransform: "uppercase",
-                          lineHeight: 1.3,
-                        }}
-                      >
-                        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                          <rect x="3" y="11" width="18" height="10" rx="2" />
-                          <circle cx="12" cy="5" r="2" />
-                          <path d="M12 7v4" />
-                          <line x1="8" y1="16" x2="8" y2="16" />
-                          <line x1="16" y1="16" x2="16" y2="16" />
-                        </svg>
-                        BOT
-                      </span>
-                    )}
+                    {m.user.isBot && (() => {
+                      // Если бот имеет taxonomy-роль (Bot row с role) — рисуем
+                      // role-aware badge с цветом + RU-лейблом. Для system @ai
+                      // bot (без Bot row) или GENERIC — generic violet BOT.
+                      const role: BotRole | null =
+                        m.user.botRole && isBotRole(m.user.botRole) ? m.user.botRole : null;
+                      const useRole = role && role !== "GENERIC";
+                      const c = useRole
+                        ? BOT_ROLE_COLORS[role!]
+                        : BOT_ROLE_COLORS.GENERIC;
+                      const label = useRole ? BOT_ROLE_LABELS[role!] : "BOT";
+                      return (
+                        <span
+                          title={
+                            useRole
+                              ? `Бот · ${BOT_ROLE_LABELS[role!]}`
+                              : "Сообщение от бота"
+                          }
+                          aria-label={useRole ? BOT_ROLE_LABELS[role!] : "бот"}
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 3,
+                            padding: "0.05rem 0.4rem",
+                            background: c.bg,
+                            color: c.fg,
+                            border: `1px solid ${c.border}`,
+                            borderRadius: "var(--ec-radius-full)",
+                            fontSize: "0.62rem",
+                            fontWeight: 700,
+                            letterSpacing: "var(--ec-tracking-caps)",
+                            textTransform: "uppercase",
+                            lineHeight: 1.3,
+                          }}
+                        >
+                          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                            <rect x="3" y="11" width="18" height="10" rx="2" />
+                            <circle cx="12" cy="5" r="2" />
+                            <path d="M12 7v4" />
+                            <line x1="8" y1="16" x2="8" y2="16" />
+                            <line x1="16" y1="16" x2="16" y2="16" />
+                          </svg>
+                          {label}
+                        </span>
+                      );
+                    })()}
                     <time
                       dateTime={m.createdAt}
                       style={{

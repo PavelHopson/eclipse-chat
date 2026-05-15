@@ -1,6 +1,13 @@
 import type { CSSProperties } from "react";
 import { useState } from "react";
 import { useBots, type BotKeyReveal, type BotRow } from "../hooks/useBots";
+import {
+  BOT_ROLES,
+  BOT_ROLE_COLORS,
+  BOT_ROLE_DESCRIPTIONS,
+  BOT_ROLE_LABELS,
+  type BotRole,
+} from "../lib/botRoles";
 
 type Props = {
   serverId: string;
@@ -55,17 +62,38 @@ const botCard: CSSProperties = {
   transition: "border-color var(--ec-dur-fast) var(--ec-ease), background var(--ec-dur-fast) var(--ec-ease)",
 };
 
-const botAvatar: CSSProperties = {
-  width: 36,
-  height: 36,
-  borderRadius: "var(--ec-radius-md)",
-  background: "hsl(252 70% 70% / 0.18)",
-  color: "hsl(252 80% 78%)",
-  display: "grid",
-  placeItems: "center",
-  fontSize: "0.95rem",
-  border: "1px solid hsl(252 70% 60% / 0.35)",
-};
+function roleAvatarStyle(role: BotRole): CSSProperties {
+  const c = BOT_ROLE_COLORS[role];
+  return {
+    width: 36,
+    height: 36,
+    borderRadius: "var(--ec-radius-md)",
+    background: c.bg,
+    color: c.fg,
+    display: "grid",
+    placeItems: "center",
+    fontSize: "0.95rem",
+    border: `1px solid ${c.border}`,
+  };
+}
+
+function roleChipStyle(role: BotRole): CSSProperties {
+  const c = BOT_ROLE_COLORS[role];
+  return {
+    display: "inline-flex",
+    alignItems: "center",
+    padding: "0.05rem 0.45rem",
+    background: c.bg,
+    color: c.fg,
+    border: `1px solid ${c.border}`,
+    borderRadius: "var(--ec-radius-full)",
+    fontSize: "0.62rem",
+    fontWeight: 700,
+    letterSpacing: "var(--ec-tracking-caps)",
+    textTransform: "uppercase",
+    lineHeight: 1.3,
+  };
+}
 
 const monoChip: CSSProperties = {
   fontFamily: "var(--ec-font-mono)",
@@ -219,24 +247,86 @@ function RevealedKeyPanel({
   );
 }
 
+function RolePicker({
+  value,
+  onChange,
+  busy,
+  size = "md",
+}: {
+  value: BotRole;
+  onChange: (role: BotRole) => void;
+  busy?: boolean;
+  size?: "sm" | "md";
+}) {
+  const isSm = size === "sm";
+  return (
+    <div
+      role="radiogroup"
+      aria-label="Роль бота"
+      style={{
+        display: "flex",
+        flexWrap: "wrap",
+        gap: isSm ? 4 : 6,
+      }}
+    >
+      {BOT_ROLES.map((role) => {
+        const c = BOT_ROLE_COLORS[role];
+        const active = role === value;
+        return (
+          <button
+            key={role}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            disabled={busy}
+            onClick={() => onChange(role)}
+            style={{
+              padding: isSm ? "0.2rem 0.55rem" : "0.35rem 0.7rem",
+              fontSize: isSm ? "var(--ec-text-2xs)" : "var(--ec-text-xs)",
+              fontWeight: 600,
+              letterSpacing: "var(--ec-tracking-wide)",
+              borderRadius: "var(--ec-radius-full)",
+              background: active ? c.bg : "var(--ec-surface-1)",
+              color: active ? c.fg : "var(--ec-text-muted)",
+              border: `1px solid ${active ? c.border : "var(--ec-border-subtle)"}`,
+              cursor: busy ? "wait" : "pointer",
+              transition:
+                "background var(--ec-dur-fast) var(--ec-ease), color var(--ec-dur-fast) var(--ec-ease), border-color var(--ec-dur-fast) var(--ec-ease)",
+              fontFamily: "inherit",
+            }}
+          >
+            {BOT_ROLE_LABELS[role]}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function CreateBotForm({
   onSubmit,
   busy,
   onCancel,
 }: {
-  onSubmit: (input: { name: string; description?: string | null }) => Promise<void>;
+  onSubmit: (input: {
+    name: string;
+    description?: string | null;
+    role: BotRole;
+  }) => Promise<void>;
   busy: boolean;
   onCancel: () => void;
 }) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [role, setRole] = useState<BotRole>("GENERIC");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || busy) return;
-    await onSubmit({ name, description: description || null });
+    await onSubmit({ name, description: description || null, role });
     setName("");
     setDescription("");
+    setRole("GENERIC");
   };
 
   return (
@@ -260,6 +350,19 @@ function CreateBotForm({
         placeholder="Что этот бот делает (необязательно, до 280 символов)"
         style={{ ...inputStyle, resize: "vertical", minHeight: 60 }}
       />
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <span
+          style={{
+            fontSize: "var(--ec-text-2xs)",
+            color: "var(--ec-text-muted)",
+            letterSpacing: "var(--ec-tracking-wide)",
+          }}
+        >
+          Роль
+        </span>
+        <RolePicker value={role} onChange={setRole} busy={busy} />
+        <p style={{ ...fieldHint, marginTop: 2 }}>{BOT_ROLE_DESCRIPTIONS[role]}</p>
+      </div>
       <div style={{ display: "flex", gap: "var(--ec-space-2)", justifyContent: "flex-end" }}>
         <button type="button" onClick={onCancel} disabled={busy} className="ec-btn ec-btn--ghost ec-btn--sm">
           Отмена
@@ -295,6 +398,8 @@ export function BotsTab({ serverId }: Props) {
   const [busy, setBusy] = useState(false);
   /** Bot id у которого открыта webhook-форма. Null = ни один. */
   const [webhookOpen, setWebhookOpen] = useState<string | null>(null);
+  /** Bot id у которого открыт role-picker. Null = ни один. */
+  const [roleEditOpen, setRoleEditOpen] = useState<string | null>(null);
   /** Drafts of webhook URLs + secrets, keyed by botId. */
   const [webhookDrafts, setWebhookDrafts] = useState<Record<string, { url: string; secret: string }>>({});
 
@@ -341,13 +446,31 @@ export function BotsTab({ serverId }: Props) {
     }
   };
 
-  const handleCreate = async (input: { name: string; description?: string | null }) => {
+  const handleCreate = async (input: {
+    name: string;
+    description?: string | null;
+    role: BotRole;
+  }) => {
     setBusy(true);
     try {
       const result = await createBot(input);
       if (result) {
         setShowCreate(false);
       }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleRoleChange = async (bot: BotRow, nextRole: BotRole) => {
+    if (nextRole === bot.role) {
+      setRoleEditOpen(null);
+      return;
+    }
+    setBusy(true);
+    try {
+      const ok = await updateBot(bot.id, { role: nextRole });
+      if (ok) setRoleEditOpen(null);
     } finally {
       setBusy(false);
     }
@@ -495,14 +618,29 @@ export function BotsTab({ serverId }: Props) {
               e.currentTarget.style.background = "var(--ec-surface-1)";
             }}
           >
-            <div style={botAvatar} aria-hidden>
+            <div style={roleAvatarStyle(bot.role)} aria-hidden>
               <BotIcon />
             </div>
             <div style={{ minWidth: 0 }}>
-              <div style={{ display: "flex", alignItems: "baseline", gap: "var(--ec-space-2)", flexWrap: "wrap" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "var(--ec-space-2)", flexWrap: "wrap" }}>
                 <strong style={{ color: "var(--ec-text-strong)", fontSize: "var(--ec-text-base)" }}>
                   {bot.name}
                 </strong>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setRoleEditOpen((cur) => (cur === bot.id ? null : bot.id))
+                  }
+                  disabled={busy}
+                  title="Изменить роль"
+                  style={{
+                    ...roleChipStyle(bot.role),
+                    cursor: busy ? "wait" : "pointer",
+                    fontFamily: "inherit",
+                  }}
+                >
+                  {BOT_ROLE_LABELS[bot.role]}
+                </button>
                 <span style={monoChip}>{bot.apiKeyPrefix}…</span>
               </div>
               {bot.description && (
@@ -533,6 +671,37 @@ export function BotsTab({ serverId }: Props) {
                 <span>•</span>
                 <span>{bot.capabilities.join(", ") || "нет capabilities"}</span>
               </div>
+              {roleEditOpen === bot.id && (
+                <div
+                  style={{
+                    marginTop: "var(--ec-space-2)",
+                    padding: "var(--ec-space-2) var(--ec-space-3)",
+                    background: "var(--ec-surface-2)",
+                    border: "1px solid var(--ec-border-accent)",
+                    borderRadius: "var(--ec-radius-md)",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 6,
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: "var(--ec-text-2xs)",
+                      color: "var(--ec-text-muted)",
+                      letterSpacing: "var(--ec-tracking-wide)",
+                    }}
+                  >
+                    Сменить роль
+                  </div>
+                  <RolePicker
+                    size="sm"
+                    value={bot.role}
+                    busy={busy}
+                    onChange={(next) => void handleRoleChange(bot, next)}
+                  />
+                  <p style={fieldHint}>{BOT_ROLE_DESCRIPTIONS[bot.role]}</p>
+                </div>
+              )}
             </div>
             <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
               <button

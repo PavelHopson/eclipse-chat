@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Socket } from "socket.io-client";
 import { ApiError, api, apiJson } from "../lib/api";
+import type { BotRole } from "../lib/botRoles";
 import {
   SocketEvents,
   type ActionItemPayload,
@@ -57,7 +58,14 @@ export type MessageRow = {
   deletedAt: string | null;
   /** ISO. Set = сообщение закреплено. */
   pinnedAt: string | null;
-  user: { id: string; displayName: string; avatar: string | null; isBot?: boolean };
+  user: {
+    id: string;
+    displayName: string;
+    avatar: string | null;
+    isBot?: boolean;
+    /** Taxonomy-роль бота. Null/undefined для human-сообщений и system @ai bot. */
+    botRole?: BotRole | null;
+  };
   /** Агрегированные реакции, отсортированы backend'ом по emoji. */
   reactions: ReactionAggregate[];
   /** Прикреплённые файлы, sorted by position asc. */
@@ -240,6 +248,7 @@ export function useMessages(
             displayName: p.displayName,
             avatar: p.avatar,
             isBot: p.isBot ?? false,
+            botRole: p.botRole ?? null,
           },
           reactions: [],
           attachments: p.attachments ?? [],

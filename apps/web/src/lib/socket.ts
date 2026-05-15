@@ -11,6 +11,7 @@
 
 import { io, type Socket } from "socket.io-client";
 import { getAccess } from "./storage";
+import type { BotRole } from "./botRoles";
 
 /**
  * Socket.io path = `${BASE_URL}socket.io`. BASE_URL всегда заканчивается
@@ -54,6 +55,9 @@ export type MessageNewPayload = {
   avatar: string | null;
   /** Автор — Bot shadow user. Используется для UI badge. Default false. */
   isBot?: boolean;
+  /** Taxonomy-роль бота (GENERIC/MODERATOR/PM/KNOWLEDGE/SALES). Null/undefined для
+      human-сообщений и system @ai bot без Bot row. */
+  botRole?: BotRole | null;
   createdAt: string;
   attachments?: AttachmentPayload[];
 };
@@ -163,6 +167,7 @@ export type ThreadReplyNewPayload = {
   displayName: string;
   avatar: string | null;
   isBot?: boolean;
+  botRole?: BotRole | null;
   content: string;
   createdAt: string;
   attachments?: AttachmentPayload[];
@@ -287,6 +292,8 @@ export type DmMessageNewPayload = {
   avatar: string | null;
   /** Автор — Bot shadow user. Default false. */
   isBot?: boolean;
+  /** Taxonomy-роль бота-автора. Null/undefined для human + system bot. */
+  botRole?: BotRole | null;
   content: string;
   createdAt: string;
   attachments?: AttachmentPayload[];

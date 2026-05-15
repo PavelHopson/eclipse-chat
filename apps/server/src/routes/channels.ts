@@ -174,8 +174,8 @@ export async function registerChannelRoutes(app: FastifyInstance) {
             displayName: true,
             avatar: true,
             // botProfile: 1-to-1 relation → null если user не shadow-bot.
-            // Преобразуется в `user.isBot: boolean` на сериализации.
-            botProfile: { select: { id: true } },
+            // Преобразуется в `user.isBot: boolean` + `user.botRole` на сериализации.
+            botProfile: { select: { id: true, role: true } },
             // email нужен только чтобы детектить system AI bot
             // (system@eclipse-chat.local) — у него нет Bot record по архитектуре,
             // но он визуально должен быть BOT для @ai сообщений.
@@ -255,6 +255,7 @@ export async function registerChannelRoutes(app: FastifyInstance) {
               isBot:
                 m.user.botProfile != null ||
                 m.user.email === "system@eclipse-chat.local",
+              botRole: m.user.botProfile?.role ?? null,
             },
             reactions,
             attachments: m.deletedAt ? [] : m.attachments,

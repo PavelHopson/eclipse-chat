@@ -88,6 +88,7 @@ export function useDirectMessages(
             displayName: p.displayName,
             avatar: p.avatar,
             isBot: p.isBot ?? false,
+            botRole: p.botRole ?? null,
           },
           reactions: [],
           attachments: p.attachments ?? [],

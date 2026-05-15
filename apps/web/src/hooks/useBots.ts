@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { ApiError, apiJson, api } from "../lib/api";
+import type { BotRole } from "../lib/botRoles";
 
 /**
  * Bot row из GET /api/servers/:id/bots.
@@ -10,6 +11,8 @@ export type BotRow = {
   name: string;
   avatar: string | null;
   description: string | null;
+  /** Taxonomy-роль бота. Default GENERIC для существующих ботов. */
+  role: BotRole;
   owner: { id: string; displayName: string };
   shadowUserId: string;
   /** Префикс API key для display ("ecb_AbCd…"). Не secret. */
@@ -37,6 +40,7 @@ export type BotKeyReveal = {
 type CreateBotInput = {
   name: string;
   description?: string | null;
+  role?: BotRole;
 };
 
 /**
@@ -86,6 +90,7 @@ export function useBots(serverId: string | null) {
           bot: {
             id: string;
             name: string;
+            role: BotRole;
             shadowUserId: string;
             apiKeyPrefix: string;
             createdAt: string;
@@ -96,6 +101,7 @@ export function useBots(serverId: string | null) {
           body: JSON.stringify({
             name: input.name.trim(),
             description: input.description?.trim() || null,
+            role: input.role ?? "GENERIC",
           }),
         });
         await reload();
@@ -141,6 +147,7 @@ export function useBots(serverId: string | null) {
       patch: {
         name?: string;
         description?: string | null;
+        role?: BotRole;
         webhookUrl?: string | null;
         webhookSecret?: string | null;
       },

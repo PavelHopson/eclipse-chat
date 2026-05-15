@@ -1,4 +1,5 @@
 import type { Server as SocketServer } from "socket.io";
+import type { BotRoleValue } from "./ai/botRoles.js";
 
 let io: SocketServer | null = null;
 
@@ -32,6 +33,8 @@ export function emitMessageOnChannel(
     avatar: string | null;
     /** True если автор — Bot shadow user (для UI badge). Default false. */
     isBot?: boolean;
+    /** Taxonomy-роль бота (если isBot). Null для human users + system bot без Bot row. */
+    botRole?: BotRoleValue | null;
     createdAt: string;
     attachments?: AttachmentPayload[];
   },
@@ -236,6 +239,7 @@ export function emitThreadReplyNew(
     avatar: string | null;
     content: string;
     isBot?: boolean;
+    botRole?: BotRoleValue | null;
     createdAt: string;
     attachments?: AttachmentPayload[];
   },
@@ -337,6 +341,7 @@ export function emitDmMessageNew(
     avatar: string | null;
     /** True если автор — Bot shadow user. Default false. */
     isBot?: boolean;
+    botRole?: BotRoleValue | null;
     content: string;
     createdAt: string;
     attachments?: AttachmentPayload[];

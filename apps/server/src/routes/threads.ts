@@ -63,7 +63,7 @@ export async function registerThreadRoutes(app: FastifyInstance) {
             id: true,
             displayName: true,
             avatar: true,
-            botProfile: { select: { id: true } },
+            botProfile: { select: { id: true, role: true } },
             email: true,
           },
         },
@@ -113,7 +113,7 @@ export async function registerThreadRoutes(app: FastifyInstance) {
             id: true,
             displayName: true,
             avatar: true,
-            botProfile: { select: { id: true } },
+            botProfile: { select: { id: true, role: true } },
             email: true,
           },
         },
@@ -163,6 +163,7 @@ export async function registerThreadRoutes(app: FastifyInstance) {
           isBot:
             m.user.botProfile != null ||
             m.user.email === "system@eclipse-chat.local",
+          botRole: m.user.botProfile?.role ?? null,
         },
         reactions,
         attachments: m.deletedAt ? [] : m.attachments,
@@ -262,7 +263,7 @@ export async function registerThreadRoutes(app: FastifyInstance) {
               id: true,
               displayName: true,
               avatar: true,
-              botProfile: { select: { id: true } },
+              botProfile: { select: { id: true, role: true } },
               email: true,
             },
           },
@@ -307,6 +308,7 @@ export async function registerThreadRoutes(app: FastifyInstance) {
         isBot:
           m.user.botProfile != null ||
           m.user.email === "system@eclipse-chat.local",
+        botRole: m.user.botProfile?.role ?? null,
         createdAt: m.createdAt.toISOString(),
         attachments: processedAttachments.map((a) => ({
           id: a.id,

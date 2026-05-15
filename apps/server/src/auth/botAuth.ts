@@ -1,6 +1,7 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 import bcrypt from "bcryptjs";
 import { db } from "../db.js";
+import type { BotRoleValue } from "../ai/botRoles.js";
 
 /**
  * Bot auth middleware.
@@ -31,6 +32,8 @@ export type BotContext = {
   userId: string;
   ownerUserId: string;
   capabilities: string[];
+  /** Taxonomy-роль бота (GENERIC | MODERATOR | PM | KNOWLEDGE | SALES). */
+  role: BotRoleValue;
 };
 
 declare module "fastify" {
@@ -90,6 +93,7 @@ export async function requireBotAuth(
     userId: bot.userId,
     ownerUserId: bot.ownerUserId,
     capabilities,
+    role: bot.role as BotRoleValue,
   };
   // Fire-and-forget lastUsedAt update
   void db.bot

@@ -109,6 +109,9 @@ model Bot {
   /// как этот user; reactions, mentions работают штатно.
   userId       String   @unique
   user         User     @relation("BotShadowUser", fields: [userId], references: [id], onDelete: Cascade)
+  /// Роль бота — определяет system-prompt template, UI badge и (в будущем)
+  /// поведение AI invocation. Default GENERIC = существующие боты не ломаются.
+  role         BotRole  @default(GENERIC)
   /// JSON array capabilities: ["send_message", "create_action_item", "react"].
   /// Сейчас всё разрешено — но field готов под granular ACL в v0.12.1.
   capabilities String   @default("[\"send_message\",\"react\"]")
@@ -229,6 +232,23 @@ enum ActionItemType {
 enum ServerMode {
   ENGINEERING
   CLIENT
+}
+
+/// Типология ботов — превращает их из generic shadow-users в embedded
+/// role-aware participants. Каждая роль имеет свой system-prompt template
+/// (см. ai/botRoles.ts) и собственный визуальный label/colour.
+///
+///   GENERIC   — default, без специализации (Telegram bridge, мониторинг и т.п.)
+///   MODERATOR — channel watchdog: этикет, warning, cleanup-suggestions
+///   PM        — project management: задачи / решения / follow-up reminders
+///   KNOWLEDGE — server knowledge assistant: Q&A над pinned + history
+///   SALES     — outreach / клиентские диалоги (нужно подавать tone)
+enum BotRole {
+  GENERIC
+  MODERATOR
+  PM
+  KNOWLEDGE
+  SALES
 }
 
 /// Статус инцидента. OPEN = разбор идёт, RESOLVED = закрыт + post-mortem сгенерён.
