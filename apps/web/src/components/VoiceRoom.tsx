@@ -183,22 +183,34 @@ const muteBadge: CSSProperties = {
 
 /* ===== Video stage ========================================= */
 
+/*
+ * v0.42: CSS Grid auto-fit для предсказуемого multi-cam layout. Раньше
+ * был flex 1 1 420px — на 3+ участников ломалось (некоторые тайлы
+ * растягивались гораздо шире 420px, некоторые шли на новый ряд непредсказуемо).
+ *
+ * Grid auto-fit с minmax(280px, 1fr):
+ *  - 1 cam: full-width row (max-width лимитирует через child)
+ *  - 2 cams: 2 columns если ≥640px шире
+ *  - 3-4 cams: 2x2 на средних viewports, 3-col на широких
+ *  - N cams: auto-fit заполняет рядами по 280px+
+ *
+ * На mobile (≤640) — single column через responsive.css (existing rule).
+ */
 const videoStage: CSSProperties = {
   flex: 1,
-  display: "flex",
-  flexWrap: "wrap",
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
   gap: "var(--ec-space-3)",
   alignContent: "center",
-  justifyContent: "center",
+  justifyItems: "center",
   alignItems: "center",
   minHeight: 0,
+  padding: "var(--ec-space-2) 0",
 };
 
 const videoTileWrap: CSSProperties = {
   position: "relative",
-  // Тайл держит 16:9 и растёт до разумной ширины — не растягивается
-  // в широкую короткую коробку с letterbox'нутым видео внутри.
-  flex: "1 1 420px",
+  width: "100%",
   maxWidth: 760,
   aspectRatio: "16 / 9",
   borderRadius: "var(--ec-radius-xl)",
@@ -206,6 +218,7 @@ const videoTileWrap: CSSProperties = {
   background:
     "radial-gradient(circle at 50% 18%, hsl(195 70% 60% / 0.12), transparent 55%), linear-gradient(180deg, hsl(208 14% 12%), hsl(210 12% 7%))",
   boxShadow: "0 10px 30px -16px hsl(210 40% 2% / 0.5)",
+  transition: "box-shadow var(--ec-dur-base) var(--ec-ease-out)",
 };
 
 const videoCanvas: CSSProperties = { position: "absolute", inset: 0 };
