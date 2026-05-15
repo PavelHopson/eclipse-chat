@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" fill="none">
+  <!-- Eclipse Chat OG card 1200×630. Calm operator console aesthetic:
+       layered void background, cool-sky cyan accent, editorial typography. -->
+  <defs>
+    <radialGradient id="bg-glow" cx="78%" cy="38%" r="55%">
+      <stop offset="0%" stop-color="#5db5d9" stop-opacity="0.16"/>
+      <stop offset="55%" stop-color="#0B0F14" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="brand-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#5db5d9"/>
+      <stop offset="100%" stop-color="#9ad8ef"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Layered void background -->
+  <rect width="1200" height="630" fill="#07090D"/>
+  <rect width="1200" height="630" fill="url(#bg-glow)"/>
+
+  <!-- Brand mark (left, ~80px height) -->
+  <g transform="translate(80,75)">
+    <circle cx="40" cy="40" r="38" fill="#0B0F14" stroke="#141A22" stroke-width="1.5"/>
+    <path d="M 40 4 A 36 36 0 0 1 76 40" stroke="url(#brand-grad)" stroke-width="6" stroke-linecap="round" fill="none"/>
+    <circle cx="65" cy="14" r="4" fill="#9ad8ef"/>
+  </g>
+
+  <!-- Wordmark -->
+  <text x="180" y="125" fill="#E6EEF8" font-family="-apple-system,system-ui,Segoe UI,Roboto,Inter,sans-serif" font-weight="700" font-size="40" letter-spacing="-1">Eclipse Chat</text>
+  <text x="180" y="155" fill="#5db5d9" font-family="-apple-system,system-ui,Segoe UI,Roboto,Inter,sans-serif" font-weight="600" font-size="16" letter-spacing="3" text-transform="uppercase">OPERATIONAL · COMMUNICATION · MEMORY</text>
+
+  <!-- Main headline -->
+  <text x="80" y="320" fill="#F3F8FC" font-family="-apple-system,system-ui,Segoe UI,Roboto,Inter,sans-serif" font-weight="600" font-size="72" letter-spacing="-2">
+    Communication.
+  </text>
+  <text x="80" y="395" fill="#F3F8FC" font-family="-apple-system,system-ui,Segoe UI,Roboto,Inter,sans-serif" font-weight="600" font-size="72" letter-spacing="-2">
+    Execution. Memory.
+  </text>
+
+  <!-- Subheadline -->
+  <text x="80" y="450" fill="#9DB0C4" font-family="-apple-system,system-ui,Segoe UI,Roboto,Inter,sans-serif" font-weight="400" font-size="22" letter-spacing="0">
+    Discord × Telegram × Linear × Notion — для AI-first команд
+  </text>
+
+  <!-- Bottom row: status chips -->
+  <g transform="translate(80,535)">
+    <!-- chip 1: self-hosted -->
+    <rect x="0" y="0" width="155" height="34" rx="17" fill="#11161D" stroke="rgba(180,210,240,0.10)" stroke-width="1"/>
+    <circle cx="18" cy="17" r="3.5" fill="#5db5d9"/>
+    <text x="30" y="22" fill="#E6EEF8" font-family="-apple-system,system-ui,sans-serif" font-weight="600" font-size="13" letter-spacing="1.5">SELF-HOSTED</text>
+
+    <!-- chip 2: voice + video -->
+    <rect x="170" y="0" width="160" height="34" rx="17" fill="#11161D" stroke="rgba(180,210,240,0.10)" stroke-width="1"/>
+    <circle cx="188" cy="17" r="3.5" fill="#76d6a3"/>
+    <text x="200" y="22" fill="#E6EEF8" font-family="-apple-system,system-ui,sans-serif" font-weight="600" font-size="13" letter-spacing="1.5">VOICE + VIDEO</text>
+
+    <!-- chip 3: ai memory -->
+    <rect x="345" y="0" width="160" height="34" rx="17" fill="#11161D" stroke="rgba(180,210,240,0.10)" stroke-width="1"/>
+    <circle cx="363" cy="17" r="3.5" fill="#b794f4"/>
+    <text x="375" y="22" fill="#E6EEF8" font-family="-apple-system,system-ui,sans-serif" font-weight="600" font-size="13" letter-spacing="1.5">AI MEMORY</text>
+  </g>
+
+  <!-- Right-side: URL footer -->
+  <text x="1120" y="586" fill="#5db5d9" font-family="-apple-system,system-ui,sans-serif" font-weight="500" font-size="14" letter-spacing="1" text-anchor="end" opacity="0.85">
+    app.star-crm.ru/eclipse-chat
+  </text>
+</svg>

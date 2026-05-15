@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" fill="none">
+  <!-- Apple touch icon: bigger version of favicon, без rounded mask
+       (iOS сам делает rounded squircle). Сохраняет 1:1 brand identity. -->
+  <rect width="180" height="180" rx="40" fill="#07090D"/>
+  <circle cx="90" cy="90" r="56" fill="#0B0F14" stroke="#141A22" stroke-width="2"/>
+  <!-- Limbus arc -->
+  <path d="M 90 34 A 56 56 0 0 1 146 90" stroke="#5db5d9" stroke-width="10" stroke-linecap="round" fill="none" opacity="0.95"/>
+  <!-- Edge-light spark -->
+  <circle cx="132" cy="46" r="7" fill="#9ad8ef"/>
+  <!-- Soft glow ring (atmospheric depth) -->
+  <circle cx="90" cy="90" r="56" stroke="#5db5d9" stroke-width="1" stroke-opacity="0.2" fill="none"/>
+</svg>

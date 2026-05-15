@@ -5,7 +5,7 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v0.31.0** (Team Health → Status Board pre-filter, 15.05.2026)
+**Текущая версия в проде:** **v0.32.0** (Design polish slice 1 — tab overflow + brand identity scaffolding, 15.05.2026)
 — https://app.star-crm.ru/eclipse-chat/
 
 ## 📌 Позиционирование (зафиксировано 15.05)
@@ -67,7 +67,8 @@ chat и не enterprise prison.
 
 | Версия | Дата | Что |
 |---|---|---|
-| **v0.31.0** | 15.05 | **Team Health → Status Board pre-filter** — закрывает scope cut v0.30.0. StatusBoard принимает `initialFilter` prop (overdue / unassigned / by-assignee); mount-effect применяет к state. 3 новых фильтра: «Просрочено» / «Без ответственного» toggle-chip'ы + dismissible chip с avatar для assignee. `applyBoardFilters` extracted pure-функция (AND-logic). Clicking stat-card в Team Health открывает Board с авто-применённым фильтром. 9 unit-тестов на filter combinations |
+| **v0.32.0** | 15.05 | **Design polish slice 1.** Fix: IntelligencePanel tab overflow на узком rail — icons (5 SVG inline) + responsive label + horizontal scroll fallback + sticky utility-buttons. Brand identity scaffolding: full `index.html` meta (OG / Twitter card / manifest / canonical / robots noindex), `apps/web/public/` populated впервые — `favicon.svg`, `apple-touch-icon.svg`, `og-image.svg` (1200×630 calm brand card), `manifest.webmanifest`. PWA-ready. theme-color → `#07090D` align с `--ec-void` |
+| v0.31.0 | 15.05 | **Team Health → Status Board pre-filter** — закрывает scope cut v0.30.0. StatusBoard принимает `initialFilter` prop (overdue / unassigned / by-assignee); mount-effect применяет к state. 3 новых фильтра: «Просрочено» / «Без ответственного» toggle-chip'ы + dismissible chip с avatar для assignee. `applyBoardFilters` extracted pure-функция (AND-logic). Clicking stat-card в Team Health открывает Board с авто-применённым фильтром. 9 unit-тестов на filter combinations |
 | v0.30.0 | 15.05 | **Execution Analytics — Team Health** — `GET /api/servers/:id/analytics/team-health`. Server-wide aggregate поверх ActionItem'ов: overdue / unassigned / open totals, avg resolution days (30d window), top-3 overloaded members, blocked members (3+ assigned-open). Calm card-grid dashboard «Здоровье команды» (server-wide view, доступ из ChannelList рядом со Status Board, hidden в CLIENT mode). Pure-функция `aggregateTeamHealth` + 11 unit-тестов (sort order / threshold / avg / edge cases) |
 | v0.29.0 | 15.05 | **Role-aware `@`-mentions** — `ai/assistant.ts` детектор расширен с `@ai` до `@moderator/@pm/@knowledge/@sales` (+RU `@мод/@менеджер/@знания/@продажи/@кб`). При срабатывании system-bot отвечает используя role-specific system-prompt из `ai/botRoles.ts` + emit с `botRole: <role>` → MessageList рисует role-coloured BOT badge. AutocompletePopover теперь предлагает 5 AI mention'ов в `@`-suggestions (поверх members). 22 unit-теста на detector/resolver/strip |
 | v0.28.0 | 15.05 | **AI Agents типология** — `Bot.role` enum (GENERIC/MODERATOR/PM/KNOWLEDGE/SALES) + per-role system-prompt templates + UI selector в BotsTab + role-chip + role-aware BOT badge в MessageList. Боты получают taxonomy: каждая роль = свой цвет, лейбл, prompt-шаблон через GET /api/bot/me для SDK integrations |

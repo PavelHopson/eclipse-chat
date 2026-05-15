@@ -103,49 +103,76 @@ const wrap: CSSProperties = {
   minHeight: 0,
 };
 
-const tabBar: CSSProperties = {
-  display: "flex",
-  alignItems: "stretch",
-  gap: 2,
-  padding: "var(--ec-space-2) var(--ec-space-2) 0",
-  borderBottom: "1px solid var(--ec-border-subtle)",
+/**
+ * Tab bar layout: class-based для responsive.css hooks (hide label на
+ * narrow viewport, overflow-x scroll fallback на overcrowded states).
+ *
+ * Структура:
+ *   `.ec-intel-tabs`     — wrapper flex с horizontal scroll fallback
+ *   `.ec-intel-tab`      — индивидуальный tab button (icon + label + count)
+ *   `.ec-intel-tab__icon`
+ *   `.ec-intel-tab__label`
+ *   `.ec-intel-tab__count`
+ *   `.ec-intel-tabs__utils` — sticky-right группа utility buttons (collapse/close),
+ *                              не сжимаются и не скроллятся
+ */
+const tabBarInline: CSSProperties = {
   background: "var(--ec-surface-1)",
-  flexShrink: 0,
+  borderBottom: "1px solid var(--ec-border-subtle)",
 };
 
-function tabBtn(active: boolean): CSSProperties {
+/** Inline-стили только для visual variant; класс делает layout. */
+function tabBtnInline(active: boolean): CSSProperties {
   return {
-    flex: 1,
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    padding: "0.5rem 0.5rem 0.55rem",
-    background: "transparent",
-    border: 0,
     borderBottom: active
       ? "2px solid var(--ec-accent)"
       : "2px solid transparent",
     color: active ? "var(--ec-text-strong)" : "var(--ec-text-muted)",
-    fontSize: "var(--ec-text-2xs)",
-    fontWeight: 700,
-    letterSpacing: "var(--ec-tracking-caps)",
-    textTransform: "uppercase",
-    cursor: "pointer",
-    transition:
-      "color var(--ec-dur-fast) var(--ec-ease), border-color var(--ec-dur-fast) var(--ec-ease)",
   };
 }
 
-const countPill: CSSProperties = {
-  fontSize: "0.6rem",
-  fontWeight: 700,
-  fontFeatureSettings: '"tnum"',
-  padding: "0.05rem 0.32rem",
-  borderRadius: "var(--ec-radius-full)",
-  background: "var(--ec-surface-3)",
-  color: "var(--ec-text-muted)",
-};
+/** Иконки для табов — минимальный SVG-сет, 14×14. */
+function IconSummary() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M3 5h18M3 12h12M3 19h18" />
+    </svg>
+  );
+}
+function IconMemory() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z" />
+    </svg>
+  );
+}
+function IconExecution() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <polyline points="9 11 12 14 22 4" />
+      <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
+    </svg>
+  );
+}
+function IconFiles() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z" />
+      <polyline points="13 2 13 9 20 9" />
+    </svg>
+  );
+}
+function IconMembers() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
+    </svg>
+  );
+}
+
+// countPill стилизуется через .ec-intel-tab__count в responsive.css.
 
 const scrollArea: CSSProperties = {
   flex: 1,
@@ -482,59 +509,67 @@ export function IntelligencePanel({
 
   return (
     <aside style={wrap} aria-label="Intelligence-панель">
-      <div style={tabBar}>
+      <div className="ec-intel-tabs" style={tabBarInline} role="tablist">
         <button
           type="button"
-          style={tabBtn(tab === "intelligence")}
+          className="ec-intel-tab"
+          style={tabBtnInline(tab === "intelligence")}
           onClick={() => setTab("intelligence")}
           aria-selected={tab === "intelligence"}
           role="tab"
           title="Сводка / контекст канала"
         >
-          Сводка
+          <span className="ec-intel-tab__icon"><IconSummary /></span>
+          <span className="ec-intel-tab__label">Сводка</span>
         </button>
         {mode === "chat" && (
           <>
             <button
               type="button"
-              style={tabBtn(tab === "memory")}
+              className="ec-intel-tab"
+              style={tabBtnInline(tab === "memory")}
               onClick={() => setTab("memory")}
               aria-selected={tab === "memory"}
               role="tab"
               title="Закреплённое — память канала"
             >
-              Память
+              <span className="ec-intel-tab__icon"><IconMemory /></span>
+              <span className="ec-intel-tab__label">Память</span>
               {pinnedMessages.length > 0 && (
-                <span style={countPill}>{pinnedMessages.length}</span>
+                <span className="ec-intel-tab__count">{pinnedMessages.length}</span>
               )}
             </button>
             {!clientMode && (
               <button
                 type="button"
-                style={tabBtn(tab === "execution")}
+                className="ec-intel-tab"
+                style={tabBtnInline(tab === "execution")}
                 onClick={() => setTab("execution")}
                 aria-selected={tab === "execution"}
                 role="tab"
                 title="Задачи / решения / follow-up канала"
               >
-                Дела
+                <span className="ec-intel-tab__icon"><IconExecution /></span>
+                <span className="ec-intel-tab__label">Дела</span>
                 {executionItems.length > 0 && (
-                  <span style={countPill}>{executionItems.length}</span>
+                  <span className="ec-intel-tab__count">{executionItems.length}</span>
                 )}
               </button>
             )}
             {!clientMode && (
               <button
                 type="button"
-                style={tabBtn(tab === "files")}
+                className="ec-intel-tab"
+                style={tabBtnInline(tab === "files")}
                 onClick={() => setTab("files")}
                 aria-selected={tab === "files"}
                 role="tab"
                 title="Файлы канала"
               >
-                Файлы
+                <span className="ec-intel-tab__icon"><IconFiles /></span>
+                <span className="ec-intel-tab__label">Файлы</span>
                 {attachments.length > 0 && (
-                  <span style={countPill}>{attachments.length}</span>
+                  <span className="ec-intel-tab__count">{attachments.length}</span>
                 )}
               </button>
             )}
@@ -542,29 +577,32 @@ export function IntelligencePanel({
         )}
         <button
           type="button"
-          style={tabBtn(tab === "members")}
+          className="ec-intel-tab"
+          style={tabBtnInline(tab === "members")}
           onClick={() => setTab("members")}
           aria-selected={tab === "members"}
           role="tab"
           title={`Участники сервера · ${onlineCount}/${members.length}`}
         >
-          Люди
+          <span className="ec-intel-tab__icon"><IconMembers /></span>
+          <span className="ec-intel-tab__label">Люди</span>
         </button>
-        {onCollapse && (
-          <button
-            type="button"
-            onClick={onCollapse}
-            aria-label="Свернуть панель"
-            title="Свернуть панель"
-            className="ec-btn ec-btn--ghost ec-btn--sm"
-            style={{ width: 28, height: 28, padding: 0, flexShrink: 0, alignSelf: "center" }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <path d="M9 6l6 6-6 6" />
-            </svg>
-          </button>
-        )}
-        {onClose && <CloseButton onClose={onClose} />}
+        <div className="ec-intel-tabs__utils">
+          {onCollapse && (
+            <button
+              type="button"
+              onClick={onCollapse}
+              aria-label="Свернуть панель"
+              title="Свернуть панель"
+              className="ec-btn ec-btn--ghost ec-btn--sm ec-intel-tabs__util"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M9 6l6 6-6 6" />
+              </svg>
+            </button>
+          )}
+          {onClose && <CloseButton onClose={onClose} />}
+        </div>
       </div>
 
       {tab === "members" ? (

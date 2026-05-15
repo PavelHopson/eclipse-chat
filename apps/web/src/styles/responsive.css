@@ -307,6 +307,130 @@
   }
 }
 
+/* ===== IntelligencePanel tab bar — overflow-safe layout =========
+ *
+ * До v0.32: tabs использовали flex:1, равное распределение + uppercase
+ * text-only labels. На 224-280px панелях RU-лейблы режутся («ФАЙЛ»
+ * вместо «ФАЙЛЫ»). Теперь — icon + label, label hides на узких rail'ах,
+ * horizontal scroll fallback если совсем не помещается.
+ */
+
+.ec-intel-tabs {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  padding: var(--ec-space-2) var(--ec-space-2) 0;
+  flex-shrink: 0;
+  /* Horizontal scroll fallback: если icon+label не помещаются, можно
+     прокрутить. Scrollbar скрыт (calm UX), gradient-fade на правом краю
+     намекает на overflow. */
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  position: relative;
+}
+.ec-intel-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.ec-intel-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0.5rem 0.6rem 0.55rem;
+  background: transparent;
+  border: 0;
+  /* border-bottom управляется inline-style'ом (active / inactive). */
+  font: inherit;
+  font-size: var(--ec-text-2xs);
+  font-weight: 700;
+  letter-spacing: var(--ec-tracking-caps);
+  text-transform: uppercase;
+  cursor: pointer;
+  flex-shrink: 0;       /* не сжимаем — overflow-x обрабатывает */
+  min-width: 0;
+  white-space: nowrap;
+  transition:
+    color var(--ec-dur-fast) var(--ec-ease),
+    border-color var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-intel-tab:hover {
+  color: var(--ec-text);
+}
+.ec-intel-tab:focus-visible {
+  outline: 2px solid var(--ec-border-accent);
+  outline-offset: -2px;
+  border-radius: var(--ec-radius-xs);
+}
+
+.ec-intel-tab__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+.ec-intel-tab[aria-selected="true"] .ec-intel-tab__icon {
+  opacity: 1;
+}
+
+.ec-intel-tab__label {
+  display: inline;
+}
+
+.ec-intel-tab__count {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.6rem;
+  font-weight: 700;
+  font-feature-settings: "tnum";
+  padding: 0.05rem 0.32rem;
+  border-radius: var(--ec-radius-full);
+  background: var(--ec-surface-3);
+  color: var(--ec-text-muted);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* Utility-кнопки (collapse/close) — sticky-right группа, не сжимаются
+   и не уходят в scroll. */
+.ec-intel-tabs__utils {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+  flex-shrink: 0;
+  padding-left: var(--ec-space-1);
+  /* Подложка чтобы при scroll'е tabs под нами они "уезжали" под background */
+  position: sticky;
+  right: 0;
+  background: linear-gradient(
+    to right,
+    transparent 0,
+    var(--ec-surface-1) 12px
+  );
+}
+.ec-intel-tabs__util {
+  width: 28px;
+  height: 28px;
+  padding: 0 !important;
+  flex-shrink: 0;
+  align-self: center;
+}
+
+/* Compact label на узком rail-фиксированной ширине:
+   • laptop range 1025-1366 → right rail = 224px → label слишком тесно
+     даже с icon → hide label, icon + count остаются
+   • narrow rail в general (panel < 260px) — drop label */
+@media (min-width: 1025px) and (max-width: 1366px) {
+  .ec-shell__members .ec-intel-tab__label {
+    display: none;
+  }
+}
+
+/* На tablet (members drawer width = 280px) — label видим OK, без правок.
+   На mobile (≤640px) members drawer тоже 280px — также видим. */
+
 /* ===== Rail-expand tab (когда правый rail свёрнут на desktop) ==== */
 
 .ec-rail-expand {

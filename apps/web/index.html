@@ -2,13 +2,55 @@
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="color-scheme" content="dark" />
-    <meta name="theme-color" content="#0d1014" />
-    <title>Eclipse Chat</title>
+    <meta name="theme-color" content="#07090D" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Eclipse Chat" />
+    <meta name="format-detection" content="telephone=no" />
+
+    <title>Eclipse Chat — Operational Communication</title>
+    <meta name="description" content="Eclipse Chat — operational communication infrastructure для команд: каналы, голос, задачи, решения и операционная память в одном calm пространстве." />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Eclipse Chat" />
+    <meta property="og:title" content="Eclipse Chat — Operational Communication" />
+    <meta property="og:description" content="Communication + execution + memory + intelligence для AI-first команд. Чат, голос, задачи, решения, операционная память — в одной calm среде." />
+    <!-- OG image: absolute URL обязателен (crawlers Twitter/Facebook не
+         надёжно резолвят relative paths). Production deploy = /eclipse-chat/. -->
+    <meta property="og:image" content="https://app.star-crm.ru/eclipse-chat/og-image.svg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:type" content="image/svg+xml" />
+    <meta property="og:locale" content="ru_RU" />
+    <meta property="og:url" content="https://app.star-crm.ru/eclipse-chat/" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Eclipse Chat — Operational Communication" />
+    <meta name="twitter:description" content="Communication + execution + memory + intelligence для AI-first команд." />
+    <meta name="twitter:image" content="https://app.star-crm.ru/eclipse-chat/og-image.svg" />
+
+    <!-- Icons (relative paths корректно резолвятся от index.html location:
+         dev → /favicon.svg, prod → /eclipse-chat/favicon.svg). -->
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.svg" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+
+    <!-- SEO basics -->
+    <link rel="canonical" href="https://app.star-crm.ru/eclipse-chat/" />
+    <meta name="robots" content="noindex" />
+    <!-- noindex пока private alpha; снять когда выйдем на public landing -->
   </head>
   <body>
     <div id="root"></div>
+    <noscript>
+      <p style="padding:24px;font-family:system-ui,sans-serif;color:#e6eef8;background:#07090D">
+        Eclipse Chat требует JavaScript. Включите его и обновите страницу.
+      </p>
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
