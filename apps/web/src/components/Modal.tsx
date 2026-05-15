@@ -87,6 +87,7 @@ export function Modal({ title, onClose, children, footer, width = 440 }: Props) 
 
   return (
     <div
+      className="ec-modal-backdrop"
       style={backdrop}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();

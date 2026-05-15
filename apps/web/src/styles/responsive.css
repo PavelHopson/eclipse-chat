@@ -536,6 +536,13 @@
   }
 }
 
+/* v0.43: Modal на mobile — меньше backdrop padding, smaller body padding */
+@media (max-width: 640px) {
+  .ec-modal-backdrop {
+    padding: var(--ec-space-2) !important;
+  }
+}
+
 @media (max-width: 420px) {
   .ec-shell__brand-title {
     display: none;
