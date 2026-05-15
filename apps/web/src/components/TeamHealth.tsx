@@ -291,6 +291,7 @@ export function TeamHealth({
             <div style={grid}>
               <button
                 type="button"
+                className="ec-lift-md ec-press"
                 style={statCardStyle("exec")}
                 onClick={() => onOpenBoard(null)}
                 title="Открыть Доску задач"
@@ -301,6 +302,7 @@ export function TeamHealth({
               </button>
               <button
                 type="button"
+                className="ec-lift-md ec-press"
                 style={statCardStyle("warn")}
                 onClick={() => onOpenBoard({ kind: "overdue" })}
                 title="Открыть Доску задач — только просроченные"
@@ -314,6 +316,7 @@ export function TeamHealth({
               </button>
               <button
                 type="button"
+                className="ec-lift-md ec-press"
                 style={statCardStyle("idle")}
                 onClick={() => onOpenBoard({ kind: "unassigned" })}
                 title="Открыть Доску задач — без ответственного"
@@ -355,6 +358,7 @@ export function TeamHealth({
                     <button
                       key={m.userId}
                       type="button"
+                      className="ec-hover-lift ec-press"
                       style={overloadRow}
                       onClick={() =>
                         onOpenBoard({ kind: "assignee", userId: m.userId })

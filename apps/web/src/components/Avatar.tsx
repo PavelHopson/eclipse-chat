@@ -5,6 +5,12 @@ type Props = {
   url: string | null | undefined;
   name: string;
   size?: number;
+  /**
+   * Atmospheric cyan ring + glow вокруг avatar — для online users /
+   * active operational state. Subtle 4s breathing animation. По умолчанию
+   * false (no glow). v0.37 design pass.
+   */
+  glow?: boolean;
 };
 
 /**
@@ -46,7 +52,7 @@ function colorFor(name: string): string {
   return `hsl(${hue}, 45%, 34%)`;
 }
 
-export function Avatar({ url, name, size = 32 }: Props) {
+export function Avatar({ url, name, size = 32, glow = false }: Props) {
   const fontSize = Math.round(size * 0.42);
   const [errored, setErrored] = useState(false);
 
@@ -74,15 +80,16 @@ export function Avatar({ url, name, size = 32 }: Props) {
     // Border тонкий — отделяет avatar от фона при темной теме.
     boxShadow: "inset 0 0 0 1px var(--ec-border-subtle, rgba(255,255,255,0.05))",
   };
+  const glowClass = glow ? "ec-avatar-glow" : undefined;
   if (useFallback) {
     return (
-      <span style={style} aria-hidden>
+      <span style={style} className={glowClass} aria-hidden>
         {initials(name)}
       </span>
     );
   }
   return (
-    <span style={style} aria-hidden>
+    <span style={style} className={glowClass} aria-hidden>
       <img
         src={resolveAvatarUrl(url!)}
         alt=""

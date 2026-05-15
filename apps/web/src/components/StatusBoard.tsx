@@ -209,7 +209,7 @@ function Card({
   const meta = TYPE_META[item.type];
   const chip = dueChip(item.dueAt);
   return (
-    <div style={card}>
+    <div className="ec-hover-lift" style={card}>
       <button
         type="button"
         onClick={onToggle}

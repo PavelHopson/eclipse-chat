@@ -465,6 +465,122 @@
   box-shadow: var(--ec-shadow-md);
 }
 
+/*
+ * Premium lift для feature-cards (Team Health stat-tiles / Status Board
+ * action cards / Bot row cards). Сильнее чем обычный hover-lift — больше
+ * elevation + cyan inner-border refraction на hover. Использует
+ * out-expo easing для premium spring-feel.
+ *
+ * Combine с :active scale(0.98) — tactile press feedback.
+ */
+.ec-lift-md {
+  transition:
+    transform var(--ec-dur-base) var(--ec-ease-out),
+    box-shadow var(--ec-dur-base) var(--ec-ease-out),
+    border-color var(--ec-dur-base) var(--ec-ease-out);
+  will-change: transform;
+}
+.ec-lift-md:hover {
+  transform: translateY(-3px);
+  box-shadow:
+    var(--ec-atmos-soft),
+    inset 0 1px 0 hsl(195 70% 60% / 0.06);
+}
+.ec-lift-md:active {
+  transform: translateY(-1px) scale(0.99);
+  transition-duration: var(--ec-dur-fast);
+}
+
+/*
+ * Tactile press — short scale(0.98) на :active. Combine с любым lift-class'ом
+ * для consistent feedback. Применяется к buttons / cards / tabs.
+ */
+.ec-press {
+  transition: transform var(--ec-dur-fast) var(--ec-ease-out);
+}
+.ec-press:active {
+  transform: scale(0.97);
+}
+
+/*
+ * Avatar atmospheric ring — для online users / active operational state.
+ * Subtle cyan glow вокруг avatar, breathing 4s. Use prop `glow` через
+ * Avatar component (см. Avatar.tsx). Override existing inset border.
+ */
+.ec-avatar-glow {
+  box-shadow:
+    inset 0 0 0 1px hsl(195 70% 60% / 0.45),
+    0 0 0 1px hsl(195 70% 60% / 0.35),
+    0 0 14px -2px hsl(195 70% 60% / 0.4);
+  animation: ec-glow-breathe 4s ease-in-out infinite;
+}
+
+/*
+ * Shimmer text — для AI-generation in-progress states ("AI печатает...",
+ * "Собираем сводку..."). Gradient через text-color через background-clip.
+ * Mission-control feel — cool shimmer без circus rainbow.
+ */
+@keyframes ec-shimmer-text {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.ec-shimmer-text {
+  background: linear-gradient(
+    90deg,
+    var(--ec-text-muted) 0%,
+    var(--ec-accent) 50%,
+    var(--ec-text-muted) 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: ec-shimmer-text 2.2s linear infinite;
+}
+
+/*
+ * Reveal cascade — для list-enter (MessageList, ChannelList, Status Board).
+ * Применяется к parent: каждый child получает delay = i * 30ms через
+ * inline `style={{ animationDelay: `${i * 30}ms` }}` ИЛИ через CSS counter.
+ * Combines с .ec-anim-message-enter / .ec-anim-fade на children.
+ */
+.ec-reveal-cascade > * {
+  animation: ec-message-enter 320ms var(--ec-ease-out) both;
+}
+.ec-reveal-cascade > *:nth-child(1)  { animation-delay: 0ms; }
+.ec-reveal-cascade > *:nth-child(2)  { animation-delay: 30ms; }
+.ec-reveal-cascade > *:nth-child(3)  { animation-delay: 60ms; }
+.ec-reveal-cascade > *:nth-child(4)  { animation-delay: 90ms; }
+.ec-reveal-cascade > *:nth-child(5)  { animation-delay: 120ms; }
+.ec-reveal-cascade > *:nth-child(6)  { animation-delay: 150ms; }
+.ec-reveal-cascade > *:nth-child(7)  { animation-delay: 180ms; }
+.ec-reveal-cascade > *:nth-child(8)  { animation-delay: 210ms; }
+.ec-reveal-cascade > *:nth-child(9)  { animation-delay: 240ms; }
+.ec-reveal-cascade > *:nth-child(10) { animation-delay: 270ms; }
+.ec-reveal-cascade > *:nth-child(n+11) { animation-delay: 300ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ec-lift-md,
+  .ec-press,
+  .ec-hover-lift {
+    transition: none !important;
+  }
+  .ec-lift-md:hover,
+  .ec-press:active,
+  .ec-hover-lift:hover {
+    transform: none !important;
+  }
+  .ec-avatar-glow,
+  .ec-shimmer-text {
+    animation: none !important;
+  }
+  .ec-reveal-cascade > * {
+    animation: none !important;
+    opacity: 1;
+  }
+}
+
 /* ===== Brand mark — slow shimmer =========================== */
 
 .ec-brand-mark {

@@ -145,7 +145,12 @@ function MemberRowView({
       title={tooltip}
     >
       <span style={avatarWrap}>
-        <Avatar url={m.user.avatar} name={m.user.displayName} size={28} />
+        <Avatar
+          url={m.user.avatar}
+          name={m.user.displayName}
+          size={28}
+          glow={m.online && m.manualStatus !== "IDLE" && m.manualStatus !== "DND"}
+        />
         <span
           aria-hidden
           style={{
