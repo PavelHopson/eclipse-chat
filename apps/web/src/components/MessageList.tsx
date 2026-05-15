@@ -20,6 +20,9 @@ type Props = {
   currentUserId?: string;
   currentUserName?: string;
   currentRole?: MemberRole | null;
+  /** AI typing indicator: показать shimmer-text «{Роль} собирает ответ...» —
+   *  set когда user отправил @ai-mention, clear на bot reply или 30s timeout. */
+  pendingAiRole?: BotRole | null;
   /** Display names известных members активного сервера — для @mention detection. */
   mentionNames?: string[];
   onRetry?: (messageId: string) => Promise<boolean>;
@@ -232,6 +235,7 @@ export function MessageList({
   currentUserId,
   currentUserName,
   currentRole,
+  pendingAiRole,
   mentionNames = [],
   onRetry,
   onEdit,
@@ -1026,6 +1030,33 @@ export function MessageList({
           </Fragment>
         );
       })}
+      {pendingAiRole && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            padding: "0.45rem 0.65rem",
+            margin: "var(--ec-space-2) 0 var(--ec-space-3)",
+            background: "var(--ec-surface-2)",
+            border: "1px solid var(--ec-border-subtle)",
+            borderRadius: "var(--ec-radius-md)",
+            fontSize: "var(--ec-text-sm)",
+            maxWidth: "fit-content",
+          }}
+          role="status"
+          aria-live="polite"
+        >
+          <span className="ec-typing" style={{ background: "transparent", border: 0, padding: 0 }}>
+            <span className="ec-typing-dot" />
+            <span className="ec-typing-dot" />
+            <span className="ec-typing-dot" />
+          </span>
+          <span className="ec-shimmer-text">
+            {BOT_ROLE_LABELS[pendingAiRole]} собирает ответ
+          </span>
+        </div>
+      )}
     </div>
   );
 }

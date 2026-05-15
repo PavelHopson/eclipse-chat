@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Socket } from "socket.io-client";
 import { ApiError, api, apiJson } from "../lib/api";
 import type { BotRole } from "../lib/botRoles";
+import { resolveAiMention } from "../lib/aiMention";
 import {
   SocketEvents,
   type ActionItemPayload,
@@ -148,6 +149,13 @@ export function useMessages(
   const [loading, setLoading] = useState(false);
   const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
   const [openActionItems, setOpenActionItems] = useState<MessageActionItem[]>([]);
+  /**
+   * AI «typing» indicator: когда отправили message с @ai-mention, ждём
+   * bot reply. На socket message:new с isBot=true этого канала — clear.
+   * 30s safety timeout — match server-side throttle window. v0.40.
+   */
+  const [pendingAiRole, setPendingAiRole] = useState<BotRole | null>(null);
+  const pendingAiTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const channelIdRef = useRef<string | null>(channelId);
   channelIdRef.current = channelId;
@@ -171,6 +179,16 @@ export function useMessages(
       typingTimers.current.clear();
     };
   }, []);
+  // Clear AI typing indicator + cancel timeout при смене канала / unmount
+  useEffect(() => {
+    setPendingAiRole(null);
+    return () => {
+      if (pendingAiTimerRef.current) {
+        clearTimeout(pendingAiTimerRef.current);
+        pendingAiTimerRef.current = null;
+      }
+    };
+  }, [channelId]);
 
   useEffect(() => {
     if (!channelId) {
@@ -231,6 +249,14 @@ export function useMessages(
     if (!socket) return;
     const handler = (p: MessageNewPayload) => {
       if (p.channelId !== channelIdRef.current) return;
+      // v0.40: bot reply arrived → clear AI typing indicator
+      if (p.isBot) {
+        if (pendingAiTimerRef.current) {
+          clearTimeout(pendingAiTimerRef.current);
+          pendingAiTimerRef.current = null;
+        }
+        setPendingAiRole(null);
+      }
       setMessages((prev) => {
         if (prev.some((m) => m.id === p.messageId)) return prev;
         const optimisticIdx = prev.findIndex(
@@ -494,6 +520,10 @@ export function useMessages(
       };
       setMessages((prev) => [...prev, optimistic]);
 
+      // Detect AI mention в исходящем тексте — показать typing indicator
+      // (clear'нется на bot reply socket'ом или 30s safety timeout).
+      const aiMatch = resolveAiMention(trimmed);
+
       try {
         await apiJson(`/api/channels/${encodeURIComponent(channelId)}/messages`, {
           method: "POST",
@@ -503,6 +533,14 @@ export function useMessages(
             actionItem: actionItem ?? undefined,
           }),
         });
+        if (aiMatch) {
+          setPendingAiRole(aiMatch.role);
+          if (pendingAiTimerRef.current) clearTimeout(pendingAiTimerRef.current);
+          pendingAiTimerRef.current = setTimeout(() => {
+            setPendingAiRole(null);
+            pendingAiTimerRef.current = null;
+          }, 30_000);
+        }
         setTimeout(() => {
           setMessages((prev) =>
             prev.map((m) => (m.id === localId && m.pending ? { ...m, pending: false } : m)),
@@ -710,6 +748,7 @@ export function useMessages(
     openActionItems,
     error,
     loading,
+    pendingAiRole,
     sendMessage,
     retryMessage,
     editMessage,
