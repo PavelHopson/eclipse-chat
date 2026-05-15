@@ -703,7 +703,7 @@ export function ChannelList({
               <span>Текстовые</span>
               <span style={{ color: "var(--ec-text-dim)", fontFeatureSettings: '"tnum"' }}>{textChannels.length}</span>
             </div>
-            {textChannels.map(renderChannel)}
+            <div className="ec-reveal-cascade">{textChannels.map(renderChannel)}</div>
           </>
         )}
 
