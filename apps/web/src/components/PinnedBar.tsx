@@ -27,7 +27,9 @@ const triggerStyle: CSSProperties = {
 };
 
 const listWrap: CSSProperties = {
-  maxHeight: 260,
+  /* v0.45: adaptive maxHeight — на mobile pinned bar не должна занимать
+     половину экрана. clamp() даёт min 160px, max 260px, scales к viewport. */
+  maxHeight: "min(260px, 40vh)",
   overflowY: "auto",
   padding: "var(--ec-space-2) var(--ec-space-3) var(--ec-space-3)",
   display: "flex",
