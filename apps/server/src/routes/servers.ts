@@ -64,6 +64,9 @@ const updateChannelBody = z.object({
   name: z.string().trim().min(1).max(80).optional(),
   description: z.string().max(1024).optional().nullable(),
   emoji: z.string().max(16).optional().nullable(),
+  /** v0.47 Client Mode v2: internal flag. Toggle visibility для MEMBER role
+   *  когда server.mode = CLIENT. OWNER/ADMIN/MODERATOR всегда видят. */
+  internal: z.boolean().optional(),
 });
 
 const reorderChannelsBody = z.object({
@@ -458,15 +461,30 @@ export async function registerServerRoutes(app: FastifyInstance) {
     },
   );
 
-  /** GET /api/servers/:id/channels — каналы сервера. */
+  /** GET /api/servers/:id/channels — каналы сервера.
+   *
+   * v0.47 Client Mode v2: internal=true каналы filter'ятся ИЗ ответа для
+   * MEMBER role, когда server.mode = CLIENT. OWNER/ADMIN/MODERATOR видят
+   * все каналы (включая internal — у них lock-icon в UI). В ENGINEERING
+   * serverе flag ignored, все members видят все.
+   */
   app.get("/api/servers/:id/channels", { onRequest: [requireJwt] }, async (req, reply) => {
     const { id } = req.params as { id: string };
     const me = await loadMember(req, reply, id);
     if (!me) {
       return reply;
     }
+    const server = await db.server.findUnique({
+      where: { id },
+      select: { mode: true },
+    });
+    const hideInternal =
+      server?.mode === "CLIENT" && me.role === "MEMBER";
     const channels = await db.channel.findMany({
-      where: { serverId: id },
+      where: {
+        serverId: id,
+        ...(hideInternal ? { internal: false } : {}),
+      },
       orderBy: [{ position: "asc" }, { createdAt: "asc" }],
       select: {
         id: true,
@@ -476,6 +494,7 @@ export async function registerServerRoutes(app: FastifyInstance) {
         position: true,
         description: true,
         emoji: true,
+        internal: true,
         createdAt: true,
         _count: { select: { messages: true } },
       },
@@ -552,7 +571,12 @@ export async function registerServerRoutes(app: FastifyInstance) {
         return reply.status(400).send({ error: "Invalid body" });
       }
       // Не разрешаем PATCH без полей — иначе zero-op + спам socket emit
-      if (parsed.data.name === undefined && parsed.data.description === undefined) {
+      if (
+        parsed.data.name === undefined &&
+        parsed.data.description === undefined &&
+        parsed.data.emoji === undefined &&
+        parsed.data.internal === undefined
+      ) {
         return reply.status(400).send({ error: "Nothing to update" });
       }
       const channel = await db.channel.findUnique({
@@ -578,7 +602,12 @@ export async function registerServerRoutes(app: FastifyInstance) {
           error: "Только OWNER / ADMIN / MODERATOR могут редактировать каналы",
         });
       }
-      const data: { name?: string; description?: string | null; emoji?: string | null } = {};
+      const data: {
+        name?: string;
+        description?: string | null;
+        emoji?: string | null;
+        internal?: boolean;
+      } = {};
       if (parsed.data.name !== undefined) {
         data.name = parsed.data.name.trim();
       }
@@ -589,6 +618,9 @@ export async function registerServerRoutes(app: FastifyInstance) {
       if (parsed.data.emoji !== undefined) {
         const e = parsed.data.emoji?.trim();
         data.emoji = e ? e : null;
+      }
+      if (parsed.data.internal !== undefined) {
+        data.internal = parsed.data.internal;
       }
       const updated = await db.channel.update({
         where: { id: channelId },
@@ -601,6 +633,7 @@ export async function registerServerRoutes(app: FastifyInstance) {
           position: true,
           description: true,
           emoji: true,
+          internal: true,
           serverId: true,
         },
       });
@@ -623,6 +656,7 @@ export async function registerServerRoutes(app: FastifyInstance) {
           position: updated.position,
           description: updated.description,
           emoji: updated.emoji,
+          internal: updated.internal,
         },
       };
     },

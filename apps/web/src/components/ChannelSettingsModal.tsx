@@ -10,7 +10,10 @@ type Props = {
     name?: string;
     description?: string | null;
     emoji?: string | null;
+    internal?: boolean;
   }) => Promise<boolean>;
+  /** v0.47: показывать toggle «Internal channel». OWNER/ADMIN/MOD + Client mode. */
+  showInternalToggle?: boolean;
 };
 
 /**
@@ -63,10 +66,16 @@ const inputStyle: CSSProperties = {
   fontFamily: "inherit",
 };
 
-export function ChannelSettingsModal({ channel, onClose, onUpdate }: Props) {
+export function ChannelSettingsModal({
+  channel,
+  onClose,
+  onUpdate,
+  showInternalToggle = false,
+}: Props) {
   const [name, setName] = useState(channel.name);
   const [description, setDescription] = useState(channel.description ?? "");
   const [emoji, setEmoji] = useState<string | null>(channel.emoji);
+  const [internal, setInternal] = useState<boolean>(channel.internal ?? false);
   const [saving, setSaving] = useState(false);
   const [savedFlash, setSavedFlash] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -76,21 +85,31 @@ export function ChannelSettingsModal({ channel, onClose, onUpdate }: Props) {
     setName(channel.name);
     setDescription(channel.description ?? "");
     setEmoji(channel.emoji);
-  }, [channel.id, channel.name, channel.description, channel.emoji]);
+    setInternal(channel.internal ?? false);
+  }, [channel.id, channel.name, channel.description, channel.emoji, channel.internal]);
 
   const nameChanged = name.trim() !== channel.name;
   const descChanged = (description.trim() || null) !== (channel.description || null);
   const emojiChanged = (emoji || null) !== (channel.emoji || null);
+  const internalChanged = internal !== (channel.internal ?? false);
   const canSave =
-    (nameChanged || descChanged || emojiChanged) && name.trim().length > 0 && !saving;
+    (nameChanged || descChanged || emojiChanged || internalChanged) &&
+    name.trim().length > 0 &&
+    !saving;
 
   const handleSave = async () => {
     setSaving(true);
     setError(null);
-    const patch: { name?: string; description?: string | null; emoji?: string | null } = {};
+    const patch: {
+      name?: string;
+      description?: string | null;
+      emoji?: string | null;
+      internal?: boolean;
+    } = {};
     if (nameChanged) patch.name = name.trim();
     if (descChanged) patch.description = description.trim() || null;
     if (emojiChanged) patch.emoji = emoji;
+    if (internalChanged) patch.internal = internal;
     try {
       const ok = await onUpdate(patch);
       if (ok) {
@@ -228,6 +247,52 @@ export function ChannelSettingsModal({ channel, onClose, onUpdate }: Props) {
           </p>
         </div>
       </section>
+
+      {/* v0.47 Client Mode v2: internal toggle. Видим только для
+          OWNER/ADMIN/MOD в CLIENT-server'е (showInternalToggle prop). */}
+      {showInternalToggle && (
+        <section>
+          <h3 style={sectionLabel}>Видимость для клиентов</h3>
+          <div style={groupCard}>
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "var(--ec-space-3)",
+                cursor: "pointer",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={internal}
+                onChange={(e) => setInternal(e.target.checked)}
+                style={{
+                  width: 18,
+                  height: 18,
+                  accentColor: "var(--ec-accent)",
+                  cursor: "pointer",
+                }}
+              />
+              <div>
+                <div
+                  style={{
+                    color: "var(--ec-text-strong)",
+                    fontSize: "var(--ec-text-sm)",
+                    fontWeight: 500,
+                  }}
+                >
+                  Internal channel — скрыт от клиентов
+                </div>
+                <div style={fieldHint}>
+                  Если включено, канал виден только OWNER / ADMIN /
+                  MODERATOR. Members с ролью клиента (MEMBER в
+                  CLIENT-server'е) не увидят канал в списке.
+                </div>
+              </div>
+            </label>
+          </div>
+        </section>
+      )}
 
       {error && (
         <div

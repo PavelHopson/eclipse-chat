@@ -1538,11 +1538,18 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
       {settingsChannelId && (() => {
         const ch = channels.find((c) => c.id === settingsChannelId);
         if (!ch) return null;
+        // v0.47: Internal toggle видим OWNER/ADMIN/MOD В ЛЮБОМ server'е
+        // (mode=ENGINEERING прячет channel только когда server переключат в CLIENT).
+        const canMod =
+          currentRole === "OWNER" ||
+          currentRole === "ADMIN" ||
+          currentRole === "MODERATOR";
         return (
           <ChannelSettingsModal
             channel={ch}
             onClose={() => setSettingsChannelId(null)}
             onUpdate={(patch) => updateChannel(ch.id, patch)}
+            showInternalToggle={canMod}
           />
         );
       })()}

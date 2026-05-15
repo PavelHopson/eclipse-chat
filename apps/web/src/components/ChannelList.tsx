@@ -518,6 +518,24 @@ export function ChannelList({
         >
           {c.name}
         </span>
+        {c.internal && (
+          <span
+            aria-label="Internal channel — скрыт от клиентов"
+            title="Internal: скрыт от MEMBER в Client mode сервере"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              color: "var(--ec-warn)",
+              opacity: 0.7,
+              flexShrink: 0,
+            }}
+          >
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <rect x="3" y="11" width="18" height="11" rx="2" />
+              <path d="M7 11V7a5 5 0 0110 0v4" />
+            </svg>
+          </span>
+        )}
         {hasUnread && (
           <span
             aria-label={`${unreadCount} непрочитанных`}

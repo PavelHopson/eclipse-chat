@@ -360,6 +360,10 @@ model Channel {
   /// Кастомный emoji prefix вместо # (TEXT) / 🔊 (VOICE) в UI.
   /// Single emoji char, может быть compound (👨‍💻). Null = default glyph.
   emoji       String?
+  /// v0.47 Client Mode v2: internal-канал виден ТОЛЬКО OWNER/ADMIN/MODERATOR
+  /// когда Server.mode = CLIENT. В ENGINEERING serverе flag ignored (все
+  /// каналы видны всем members). Channel rename/delete не зависят от flag.
+  internal    Boolean    @default(false)
   /// Если канал — incident-канал, ссылка на Incident. Unique (1-to-1).
   /// Null для обычных каналов. UI рисует incident badge если set.
   incidentId  String?    @unique

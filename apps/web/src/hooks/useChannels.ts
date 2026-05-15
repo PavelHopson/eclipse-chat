@@ -20,6 +20,9 @@ export type ChannelRow = {
   description: string | null;
   /** Кастомный emoji prefix вместо # / 🔊. Null = default. */
   emoji: string | null;
+  /** v0.47 Client Mode v2: internal-канал виден только OWNER/ADMIN/MOD
+   *  когда server.mode=CLIENT. В ENGINEERING serverе flag ignored. */
+  internal?: boolean;
   createdAt: string;
   _count: { messages: number };
 };
@@ -32,6 +35,7 @@ type ChannelDto = {
   position: number;
   description?: string | null;
   emoji?: string | null;
+  internal?: boolean;
   createdAt: string;
   _count?: { messages: number };
 };
@@ -42,6 +46,7 @@ function normalizeChannel(dto: ChannelDto): ChannelRow {
     type: dto.type ?? "TEXT",
     description: dto.description ?? null,
     emoji: dto.emoji ?? null,
+    internal: dto.internal ?? false,
     _count: dto._count ?? { messages: 0 },
   };
 }
@@ -222,7 +227,13 @@ export function useChannels(serverId: string | null, socket: Socket | null) {
   const updateChannel = useCallback(
     async (
       channelId: string,
-      patch: { name?: string; description?: string | null; emoji?: string | null },
+      patch: {
+        name?: string;
+        description?: string | null;
+        emoji?: string | null;
+        /** v0.47 Client Mode v2: toggle internal flag. */
+        internal?: boolean;
+      },
     ): Promise<boolean> => {
       setError(null);
       try {
@@ -246,6 +257,7 @@ export function useChannels(serverId: string | null, socket: Socket | null) {
                   position: updated.position,
                   description: updated.description,
                   emoji: updated.emoji,
+                  internal: updated.internal,
                 }
               : c,
           ),
