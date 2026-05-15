@@ -5,7 +5,7 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v0.26.0** (commit `f158008`, 15.05.2026)
+**Текущая версия в проде:** **v0.27.0** (commit `2bd3559`, 15.05.2026)
 — https://app.star-crm.ru/eclipse-chat/
 
 ## 📌 Позиционирование (зафиксировано 15.05)
@@ -67,7 +67,9 @@ chat и не enterprise prison.
 
 | Версия | Дата | Что |
 |---|---|---|
-| **v0.26.0** | 15.05 | Context Tree groupings (OVERVIEW + COMMUNICATION) |
+| **v0.27.0** | 15.05 | Client Mode — Server.mode ENGINEERING/CLIENT + UI gates (Status Board, Дела/Файлы tabs, slash-hints hidden в CLIENT) |
+| v0.26.1 | 15.05 | Картинки целиком в ленте + tabs polish (RU short) + ROADMAP refresh |
+| v0.26.0 | 15.05 | Context Tree groupings (OVERVIEW + COMMUNICATION) |
 | v0.25.1 | 15.05 | Layered blacks + atmospheric depth tokens |
 | v0.25.0 | 15.05 | IntelligencePanel +Память/Дела/Файлы tabs |
 | v0.24.1 | 15.05 | AI-prose summary в SinceLastVisit |
