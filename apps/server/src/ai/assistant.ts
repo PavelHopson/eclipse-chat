@@ -118,10 +118,10 @@ export function stripAiMention(content: string): string {
 const pendingByChannel = new Map<string, number>();
 const THROTTLE_MS = 20_000;
 
-let cachedBotUserId: string | null = null;
+let cachedSystemUserId: string | null = null;
 
-async function getBotUserId(): Promise<string | null> {
-  if (cachedBotUserId) return cachedBotUserId;
+async function getSystemUserId(): Promise<string | null> {
+  if (cachedSystemUserId) return cachedSystemUserId;
   // System user был создан в seed-migration с email system@eclipse-chat.local.
   // Если нет такого user — fallback на самого старого user'а (обычно OWNER).
   const sys = await db.user.findFirst({
@@ -129,15 +129,60 @@ async function getBotUserId(): Promise<string | null> {
     select: { id: true },
   });
   if (sys) {
-    cachedBotUserId = sys.id;
+    cachedSystemUserId = sys.id;
     return sys.id;
   }
   const oldest = await db.user.findFirst({
     orderBy: { createdAt: "asc" },
     select: { id: true },
   });
-  cachedBotUserId = oldest?.id ?? null;
-  return cachedBotUserId;
+  cachedSystemUserId = oldest?.id ?? null;
+  return cachedSystemUserId;
+}
+
+/**
+ * Responder для AI-reply на role-mention.
+ *
+ * Priority (v0.33+):
+ *   1. Если есть Bot row в server с подходящей `role` → отвечает он.
+ *      Bot.userId (shadow user) становится author'ом сообщения, frontend
+ *      рисует bot's avatar + role-badge через стандартную сериализацию
+ *      (m.user.botProfile?.role в channels.ts route).
+ *   2. Иначе fallback на system @ai (system@eclipse-chat.local) с
+ *      role-prompt'ом — наследственное поведение v0.29+.
+ *
+ * Это превращает Bot row из «shadow user posting via REST» в
+ * «embedded room participant» — обещание AI Agents типологии (#6 brief).
+ *
+ * GENERIC role не lookup'ит Bot — generic mention обслуживается system @ai
+ * чтобы не дёргать случайный generic-bot в server'е (например telegram-bridge).
+ */
+export async function getResponderForRole(
+  serverId: string,
+  role: BotRoleValue,
+): Promise<{ userId: string; isRealBot: boolean } | null> {
+  if (role !== "GENERIC") {
+    const bot = await db.bot.findFirst({
+      where: { serverId, role },
+      orderBy: { createdAt: "asc" },
+      select: { userId: true, capabilities: true },
+    });
+    if (bot) {
+      // Bot должен иметь capability send_message (default yes).
+      let caps: string[] = [];
+      try {
+        caps = JSON.parse(bot.capabilities) as string[];
+      } catch {
+        /* fallback empty */
+      }
+      if (caps.includes("send_message")) {
+        return { userId: bot.userId, isRealBot: true };
+      }
+    }
+  }
+  const sys = await getSystemUserId();
+  if (!sys) return null;
+  return { userId: sys, isRealBot: false };
 }
 
 /**
@@ -165,12 +210,6 @@ export async function maybeReplyToMention(
   }
   pendingByChannel.set(channelId, now);
 
-  const botId = await getBotUserId();
-  if (!botId || botId === triggerUserId) {
-    // Bot не должен отвечать на собственные сообщения
-    return;
-  }
-
   // Не блокируем route — true fire-and-forget
   void (async () => {
     try {
@@ -179,6 +218,14 @@ export async function maybeReplyToMention(
         select: { id: true, name: true, type: true, serverId: true },
       });
       if (!channel || channel.type !== "TEXT") return;
+
+      // Resolve responder: real Bot row с подходящей role > system @ai.
+      const responder = await getResponderForRole(channel.serverId, mention.role);
+      if (!responder || responder.userId === triggerUserId) {
+        // Нет responder ИЛИ это сам же триггерящий юзер
+        return;
+      }
+      const botId = responder.userId;
 
       // Контекст
       const userInfo = await db.user.findUnique({
@@ -248,7 +295,7 @@ export async function maybeReplyToMention(
         { temperature: 0.5, maxTokens: 450 },
       );
 
-      // Постим как сообщение от system-bot в канал
+      // Постим как сообщение от responder'а в канал (real Bot OR system @ai)
       const botUser = await db.user.findUnique({
         where: { id: botId },
         select: { id: true, displayName: true, avatar: true },
@@ -269,14 +316,10 @@ export async function maybeReplyToMention(
         userId: botUser.id,
         displayName: botUser.displayName,
         avatar: botUser.avatar,
-        // system@eclipse-chat.local — AI bot, не Bot row, но визуально BOT.
-        // Frontend получит isBot=true на reload через email-check
-        // в routes/channels.ts (см. assistant.ts companion change).
+        // Real Bot row: isBot=true + botProfile resolution даст role-badge
+        // на reload. System @ai: isBot=true (email-check в channels.ts),
+        // botRole в realtime payload — на reload botRole=null (нет Bot row).
         isBot: true,
-        // Role-aware badge: real-time consumers видят роль, который сматчился
-        // в trigger-mention. На reload — botRole=null (system bot не имеет
-        // Bot row → botProfile?.role не определён). Это OK: bage эфемерен,
-        // role-info актуальна в момент ответа, в истории — generic.
         botRole: mention.role,
         createdAt: reply.createdAt.toISOString(),
       });
@@ -285,6 +328,7 @@ export async function maybeReplyToMention(
           channelId,
           role: mention.role,
           keyword: mention.keyword,
+          responder: responder.isRealBot ? "bot-row" : "system-ai",
           provider: result.provider,
           model: result.model,
           latencyMs: result.latencyMs,

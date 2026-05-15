@@ -106,6 +106,23 @@ const monoChip: CSSProperties = {
   letterSpacing: 0,
 };
 
+/** Основной EN-keyword для роли (для UI hint про @-mention в BotsTab). */
+function primaryRoleKeyword(role: BotRole): string {
+  switch (role) {
+    case "MODERATOR":
+      return "moderator";
+    case "PM":
+      return "pm";
+    case "KNOWLEDGE":
+      return "knowledge";
+    case "SALES":
+      return "sales";
+    case "GENERIC":
+    default:
+      return "ai";
+  }
+}
+
 function formatRelative(iso: string | null): string {
   if (!iso) return "ни разу";
   const ts = new Date(iso).getTime();
@@ -653,6 +670,23 @@ export function BotsTab({ serverId }: Props) {
                   }}
                 >
                   {bot.description}
+                </p>
+              )}
+              {bot.role !== "GENERIC" && (
+                <p
+                  style={{
+                    margin: "6px 0 0",
+                    fontSize: "var(--ec-text-2xs)",
+                    color: BOT_ROLE_COLORS[bot.role].fg,
+                    lineHeight: 1.4,
+                  }}
+                  title="Eclipse Chat генерирует ответ от этого бота когда участник упоминает соответствующий @keyword"
+                >
+                  Отвечает на{" "}
+                  <code style={{ fontFamily: "var(--ec-font-mono)", fontSize: "0.7rem" }}>
+                    @{primaryRoleKeyword(bot.role)}
+                  </code>
+                  -mentions в каналах
                 </p>
               )}
               <div

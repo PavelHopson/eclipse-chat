@@ -316,9 +316,60 @@ Reverse direction (Eclipse → Telegram) — невозможно через bot
 
 ---
 
+## Role-based @-mention responder (v0.33+)
+
+Каждый бот имеет `role` из taxonomy:
+
+- `GENERIC` — default, без специализации. Боты этой роли НЕ привязаны к
+  `@ai`-mentions автоматически — generic mentions всегда обслуживает
+  system @ai.
+- `MODERATOR` / `PM` / `KNOWLEDGE` / `SALES` — specialized. **Eclipse
+  Chat сам генерит AI-ответ от имени этого бота**, когда участник пишет
+  соответствующий `@`-mention в text-канале того же сервера:
+
+| Bot role    | Mention keywords (case-insensitive)            |
+|-------------|-------------------------------------------------|
+| `MODERATOR` | `@moderator`, `@мод`, `@модератор`              |
+| `PM`        | `@pm`, `@менеджер`                              |
+| `KNOWLEDGE` | `@knowledge`, `@kb`, `@знания`                  |
+| `SALES`     | `@sales`, `@продажи`                            |
+| `GENERIC`   | (не привязано — generic `@ai` идёт через system) |
+
+При срабатывании Eclipse Chat:
+
+1. Resolver ищет Bot row сервера с подходящей `role` (oldest createdAt
+   wins, deterministic).
+2. Если найден, Bot.userId (shadow user) становится автором сообщения —
+   frontend рисует bot's avatar + role-coloured BOT badge через
+   стандартную сериализацию (`m.user.botProfile.role`).
+3. System-prompt берётся из `botRolePrompt(role)` (см. `GET /api/bot/me`
+   `systemPrompt` field — там же шаблон).
+4. Контекст канала (open ActionItems + pinned + last 20 messages)
+   передаётся в user-prompt.
+5. Если bot НЕ найден → fallback на system @ai bot с role-prompt'ом
+   (наследственное поведение v0.29.0).
+
+**Полезное следствие**: чтобы создать «embedded AI-agent» в сервере —
+просто создай Bot row с нужной role. SDK-интеграция (`POST /api/bot/messages`)
+для AI-ответов **не нужна** — Eclipse Chat сам генерит. Это превращает
+Bot из «webhook-приёмника» в полноценного **room participant**.
+
+SDK-интеграция всё ещё нужна для:
+- Не-AI ботов (Telegram-bridge, monitoring webhooks, etc).
+- Custom logic поверх AI-ответов (post-processing).
+- Реакций на specific keyword'ы вне taxonomy.
+
+### Throttle
+
+Один pending AI-request per channel, 20 секунд после последнего
+ответа. Если за 20 сек несколько `@pm` mentions — отвечает только
+первый. Это предотвращает spam в активных дискуссиях.
+
+---
+
 ## Версия API
 
-Сейчас API stable on v0.12.1. Breaking changes — только через мажорный bump
+Сейчас API stable on v0.33.0. Breaking changes — только через мажорный bump
 (`/api/v2/bot/...`). Совместимость с существующими ключами гарантируется.
 
 Текущий status — actively maintained. Обратная связь — Pavel Hopson или issues
