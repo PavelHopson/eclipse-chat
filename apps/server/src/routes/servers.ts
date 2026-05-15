@@ -160,6 +160,7 @@ export async function registerServerRoutes(app: FastifyInstance) {
             brandColor: true,
             description: true,
             welcomeMessage: true,
+            mode: true,
             inviteCode: true,
             ownerId: true,
             createdAt: true,
@@ -178,6 +179,7 @@ export async function registerServerRoutes(app: FastifyInstance) {
         brandColor: m.server.brandColor,
         description: m.server.description,
         welcomeMessage: m.server.welcomeMessage,
+        mode: m.server.mode,
         inviteCode: m.server.inviteCode,
         ownerId: m.server.ownerId,
         createdAt: m.server.createdAt.toISOString(),
@@ -241,6 +243,7 @@ export async function registerServerRoutes(app: FastifyInstance) {
         brandColor: true,
         description: true,
         welcomeMessage: true,
+        mode: true,
         inviteCode: true,
         ownerId: true,
         createdAt: true,
@@ -259,6 +262,7 @@ export async function registerServerRoutes(app: FastifyInstance) {
         brandColor: server.brandColor,
         description: server.description,
         welcomeMessage: server.welcomeMessage,
+        mode: server.mode,
         inviteCode: server.inviteCode,
         ownerId: server.ownerId,
         createdAt: server.createdAt.toISOString(),
@@ -927,6 +931,7 @@ export async function registerServerRoutes(app: FastifyInstance) {
       ),
     description: z.string().max(1000).nullable().optional(),
     welcomeMessage: z.string().max(500).nullable().optional(),
+    mode: z.enum(["ENGINEERING", "CLIENT"]).optional(),
   });
 
   /**
@@ -955,6 +960,7 @@ export async function registerServerRoutes(app: FastifyInstance) {
         brandColor?: string | null;
         description?: string | null;
         welcomeMessage?: string | null;
+        mode?: "ENGINEERING" | "CLIENT";
       } = {};
       if (parsed.data.name !== undefined) {
         data.name = parsed.data.name.trim();
@@ -971,6 +977,9 @@ export async function registerServerRoutes(app: FastifyInstance) {
         const w = parsed.data.welcomeMessage;
         data.welcomeMessage = w == null || w === "" ? null : w.trim();
       }
+      if (parsed.data.mode !== undefined) {
+        data.mode = parsed.data.mode;
+      }
       const updated = await db.server.update({
         where: { id: serverId },
         data,
@@ -980,6 +989,7 @@ export async function registerServerRoutes(app: FastifyInstance) {
           brandColor: true,
           description: true,
           welcomeMessage: true,
+          mode: true,
         },
       });
       return { ok: true, identity: updated };

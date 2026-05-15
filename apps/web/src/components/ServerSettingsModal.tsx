@@ -14,6 +14,7 @@ type Props = {
     brandColor?: string | null;
     description?: string | null;
     welcomeMessage?: string | null;
+    mode?: "ENGINEERING" | "CLIENT";
   }) => Promise<boolean>;
 };
 
@@ -86,6 +87,7 @@ export function ServerSettingsModal({
 }: Props) {
   const [tab, setTab] = useState<"identity" | "banner" | "bots">("identity");
   const [name, setName] = useState<string>(server.name);
+  const [mode, setMode] = useState<"ENGINEERING" | "CLIENT">(server.mode ?? "ENGINEERING");
   const [brandColor, setBrandColor] = useState<string>(server.brandColor ?? "");
   const [description, setDescription] = useState<string>(server.description ?? "");
   const [welcomeMessage, setWelcomeMessage] = useState<string>(server.welcomeMessage ?? "");
@@ -123,6 +125,7 @@ export function ServerSettingsModal({
         brandColor: brandColor.trim() || null,
         description: description.trim() || null,
         welcomeMessage: welcomeMessage.trim() || null,
+        mode,
       });
       if (ok) {
         setSavedFlash(true);
@@ -226,6 +229,64 @@ export function ServerSettingsModal({
                 <span style={{ marginLeft: 6, color: "var(--ec-text-muted)" }}>
                   {trimmedName.length}/80
                 </span>
+              </p>
+            </div>
+          </section>
+
+          {/* Server mode */}
+          <section style={{ marginBottom: "var(--ec-space-4)" }}>
+            <h3 style={sectionLabel}>Режим</h3>
+            <div style={groupCard}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--ec-space-2)" }}>
+                {([
+                  {
+                    id: "ENGINEERING" as const,
+                    title: "Engineering",
+                    desc: "Полный operator-инструментарий — Status Board, slash-commands, AI-сводки. Для внутренних команд.",
+                  },
+                  {
+                    id: "CLIENT" as const,
+                    title: "Client",
+                    desc: "Calm portal для клиента — без developer-chrome, focus на approvals / files / summaries. Для агентств / dev-студий.",
+                  },
+                ]).map((opt) => {
+                  const active = mode === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => setMode(opt.id)}
+                      style={{
+                        textAlign: "left",
+                        padding: "var(--ec-space-3)",
+                        borderRadius: "var(--ec-radius-md)",
+                        background: active ? "var(--ec-accent-soft)" : "var(--ec-surface-1)",
+                        border: active
+                          ? "1px solid var(--ec-border-accent)"
+                          : "1px solid var(--ec-border-default)",
+                        color: active ? "var(--ec-text-strong)" : "var(--ec-text)",
+                        cursor: "pointer",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 4,
+                        transition: "all var(--ec-dur-fast) var(--ec-ease)",
+                        boxShadow: active ? "0 0 0 1px var(--ec-accent), 0 0 14px -2px hsl(195 70% 60% / 0.3)" : "none",
+                      }}
+                    >
+                      <span style={{ fontSize: "var(--ec-text-sm)", fontWeight: 700 }}>
+                        {opt.title}
+                      </span>
+                      <span style={{ fontSize: "var(--ec-text-2xs)", color: "var(--ec-text-muted)", lineHeight: 1.4 }}>
+                        {opt.desc}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              <p style={fieldHint}>
+                В Client-режиме скрыты operator-инструменты (Доска задач, Дела/
+                Файлы-табы, slash-hints) — клиент видит calm room, не developer
+                chrome. Можно менять в любой момент.
               </p>
             </div>
           </section>

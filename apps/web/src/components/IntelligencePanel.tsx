@@ -84,6 +84,12 @@ type Props = {
   attachments: AttachmentBrief[];
   executionItems: ExecutionItemBrief[];
   onToggleExecutionStatus?: (id: string, status: "OPEN" | "DONE") => void;
+  /**
+   * Client Mode: скрыть operator-tabs Дела и Файлы. В CLIENT-серверах
+   * остаются Сводка / Память / Люди — calm portal для клиента, без
+   * developer-chrome. Default tab переключается на «Люди».
+   */
+  clientMode?: boolean;
 };
 
 const wrap: CSSProperties = {
@@ -453,17 +459,24 @@ export function IntelligencePanel({
   attachments,
   executionItems,
   onToggleExecutionStatus,
+  clientMode = false,
 }: Props) {
-  // Default-вкладка зависит от режима: в чате контекст важнее (Intelligence),
-  // в voice центр уже показывает участников плитками → дефолт «Участники».
-  const [tab, setTab] = useState<RightTab>(
-    mode === "voice" ? "members" : "intelligence",
-  );
+  // Default-вкладка: voice → Люди, chat operator → Сводка, chat client → Люди.
+  // CLIENT-серверы прячут Дела + Файлы — клиенту важнее «кто есть в комнате».
+  const defaultTab: RightTab =
+    mode === "voice" || clientMode ? "members" : "intelligence";
+  const [tab, setTab] = useState<RightTab>(defaultTab);
 
-  // При смене режима (chat ↔ voice) сбрасываем на дефолт этого режима.
+  // При смене режима или CLIENT-флага — сброс на актуальный default.
   useEffect(() => {
-    setTab(mode === "voice" ? "members" : "intelligence");
-  }, [mode]);
+    setTab(defaultTab);
+  }, [defaultTab]);
+  // Если ранее выбран запрещённый в client-mode таб — переключаем.
+  useEffect(() => {
+    if (clientMode && (tab === "execution" || tab === "files")) {
+      setTab("members");
+    }
+  }, [clientMode, tab]);
 
   const onlineCount = members.filter((m) => m.online).length;
 
@@ -495,32 +508,36 @@ export function IntelligencePanel({
                 <span style={countPill}>{pinnedMessages.length}</span>
               )}
             </button>
-            <button
-              type="button"
-              style={tabBtn(tab === "execution")}
-              onClick={() => setTab("execution")}
-              aria-selected={tab === "execution"}
-              role="tab"
-              title="Задачи / решения / follow-up канала"
-            >
-              Дела
-              {executionItems.length > 0 && (
-                <span style={countPill}>{executionItems.length}</span>
-              )}
-            </button>
-            <button
-              type="button"
-              style={tabBtn(tab === "files")}
-              onClick={() => setTab("files")}
-              aria-selected={tab === "files"}
-              role="tab"
-              title="Файлы канала"
-            >
-              Файлы
-              {attachments.length > 0 && (
-                <span style={countPill}>{attachments.length}</span>
-              )}
-            </button>
+            {!clientMode && (
+              <button
+                type="button"
+                style={tabBtn(tab === "execution")}
+                onClick={() => setTab("execution")}
+                aria-selected={tab === "execution"}
+                role="tab"
+                title="Задачи / решения / follow-up канала"
+              >
+                Дела
+                {executionItems.length > 0 && (
+                  <span style={countPill}>{executionItems.length}</span>
+                )}
+              </button>
+            )}
+            {!clientMode && (
+              <button
+                type="button"
+                style={tabBtn(tab === "files")}
+                onClick={() => setTab("files")}
+                aria-selected={tab === "files"}
+                role="tab"
+                title="Файлы канала"
+              >
+                Файлы
+                {attachments.length > 0 && (
+                  <span style={countPill}>{attachments.length}</span>
+                )}
+              </button>
+            )}
           </>
         )}
         <button

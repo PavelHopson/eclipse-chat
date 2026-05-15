@@ -389,6 +389,11 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     selectedChannel && selectedChannel.type !== "VOICE" ? selectedChannel.id : null;
   const sinceLastVisit = useSinceLastVisit(visitChannelId);
 
+  // Client Mode (v0.27 brief #5): CLIENT-серверы прячут operator-инструменты
+  // (Status Board / Дела / Файлы / slash-hints) — calm portal для клиента
+  // агентства/dev-студии. Меняется OWNER'ом в Server Settings → Режим.
+  const isClientMode = activeServer?.mode === "CLIENT";
+
   // BROADCAST-канал (news/blogger): читают все, публикуют только
   // OWNER/ADMIN/MODERATOR. Остальные видят read-only ленту.
   const canManageBroadcast =
@@ -835,11 +840,15 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             onOpenSettings={(channelId) => setSettingsChannelId(channelId)}
             onReorder={reorderChannels}
             onShowServerInfo={() => activeServer && setShowServerInfo(true)}
-            onOpenStatusBoard={() => {
-              setHomeOpen(false);
-              setStatusBoardOpen(true);
-              if (isMobile) setNavOpen(false);
-            }}
+            onOpenStatusBoard={
+              isClientMode
+                ? undefined
+                : () => {
+                    setHomeOpen(false);
+                    setStatusBoardOpen(true);
+                    if (isMobile) setNavOpen(false);
+                  }
+            }
             statusBoardActive={statusBoardOpen}
             voiceByChannel={voiceByChannel}
             voiceMetaByUser={voiceMetaByUser}
@@ -1110,6 +1119,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                 channelName={selectedDm.saved ? "Избранное" : selectedDm.other.displayName}
                 placeholder={selectedDm.saved ? "Заметка в Избранное" : undefined}
                 disabled={!isReady}
+                hideSlashCommands
                 onSend={(content, attachments) => dmSend(content, senderForMessages, attachments)}
                 onTypingStart={() => undefined}
                 onTypingStop={() => undefined}
@@ -1241,6 +1251,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               <MessageInput
                 channelName={selectedChannel.name}
                 disabled={!isReady}
+                hideSlashCommands={isClientMode}
                 onSend={(content, attachments, actionItem) =>
                   sendMessage(content, senderForMessages, attachments, actionItem)
                 }
@@ -1365,6 +1376,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               onToggleExecutionStatus={(id, status) =>
                 void updateActionItemStatus(id, status)
               }
+              clientMode={isClientMode}
             />
           )}
         </div>

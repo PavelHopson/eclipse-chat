@@ -55,6 +55,12 @@ type Props = {
   hideAttachments?: boolean;
   /** Custom placeholder. */
   placeholder?: string;
+  /**
+   * Client Mode: спрятать operator-фичи композера — slash-hint strip + не
+   * парсить /task /decision /followup (клиенту не нужны task-creation
+   * shortcut'ы). DM-композер тоже использует true (DM не имеет actions).
+   */
+  hideSlashCommands?: boolean;
 };
 
 const wrap: CSSProperties = {
@@ -268,6 +274,7 @@ export function MessageInput({
   mentionNames = [],
   hideAttachments = false,
   placeholder,
+  hideSlashCommands = false,
 }: Props) {
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
@@ -454,7 +461,8 @@ export function MessageInput({
         })),
       );
       // Operator slash-command: `/task ...` → отправляем title + actionItem.
-      const slash = parseSlashCommand(trimmed);
+      // В Client Mode парсинг отключён — клиенту не нужны task-shortcut'ы.
+      const slash = hideSlashCommands ? null : parseSlashCommand(trimmed);
       const ok = slash
         ? await onSend(slash.title, uploads, { type: slash.type })
         : await onSend(trimmed, uploads);
@@ -485,7 +493,10 @@ export function MessageInput({
 
   // Slash-command hint: показываем когда юзер набрал «/» + (опц.) часть
   // команды, но ещё не дошёл до пробела. @/:-popover имеет приоритет.
-  const slashQuery = /^\s*\/([a-zA-Zа-яёА-ЯЁ]*)$/.exec(draft);
+  // В Client Mode hint скрыт (hideSlashCommands).
+  const slashQuery = hideSlashCommands
+    ? null
+    : /^\s*\/([a-zA-Zа-яёА-ЯЁ]*)$/.exec(draft);
   const slashMatches =
     slashQuery && !trigger
       ? SLASH_COMMANDS.filter((c) => c.cmd.startsWith(slashQuery[1].toLowerCase()))
@@ -727,10 +738,14 @@ export function MessageInput({
         <span>
           <span style={kbd}>@</span> участник · <span style={kbd}>:</span>emoji
         </span>
-        <span style={{ color: "var(--ec-border-emphasis)" }}>·</span>
-        <span>
-          <span style={kbd}>/task</span> задача
-        </span>
+        {!hideSlashCommands && (
+          <>
+            <span style={{ color: "var(--ec-border-emphasis)" }}>·</span>
+            <span>
+              <span style={kbd}>/task</span> задача
+            </span>
+          </>
+        )}
       </div>
       {trigger && (
         <AutocompletePopover
