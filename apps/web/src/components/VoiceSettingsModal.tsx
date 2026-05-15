@@ -133,6 +133,7 @@ export function VoiceSettingsModal({ onClose }: Props) {
     setVadThreshold,
     setAfkTimeout,
     setMasterOutputVolume,
+    resetSettings,
   } = useVoiceSettings();
 
   const [testLevel, setTestLevel] = useState(0);
@@ -555,6 +556,39 @@ export function VoiceSettingsModal({ onClose }: Props) {
               0 = выключено.
             </p>
           </div>
+        </div>
+      </section>
+
+      {/* ===== Reset (v0.41 troubleshooting) ===== */}
+      <section>
+        <h3 style={sectionLabel}>Сброс настроек</h3>
+        <div style={groupCard}>
+          <p style={fieldHint}>
+            Если что-то с голосом «застряло» — отсутствует звук, mic gain
+            в нуле, output device на отключённой гарнитуре — нажми, чтобы
+            вернуть все настройки к умолчаниям. Wipe'нет localStorage и
+            восстановит mode «всегда передавать» + default volumes.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              if (
+                window.confirm(
+                  "Сбросить все голосовые настройки? Это удалит выбранные устройства, " +
+                    "режим активации (PTT/VAD), индивидуальные громкости участников.",
+                )
+              ) {
+                resetSettings();
+              }
+            }}
+            className="ec-btn ec-btn--ghost ec-btn--sm ec-press"
+            style={{
+              alignSelf: "flex-start",
+              borderColor: "var(--ec-border-emphasis)",
+            }}
+          >
+            Сбросить голосовые настройки
+          </button>
         </div>
       </section>
     </Modal>

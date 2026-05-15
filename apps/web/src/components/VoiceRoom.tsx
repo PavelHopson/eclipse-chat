@@ -406,6 +406,7 @@ export function VoiceRoom({
   const v = voice;
   const [showSettings, setShowSettings] = useState(false);
   const [showStats, setShowStats] = useState(false);
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
   const [ctxMenu, setCtxMenu] = useState<ContextMenuState | null>(null);
 
   useEffect(() => {
@@ -785,6 +786,70 @@ export function VoiceRoom({
         </p>
       )}
 
+      {/* ── DIAGNOSTICS PANEL (v0.41 troubleshooting helper) ─── */}
+      {showDiagnostics && (
+        <div
+          style={{
+            position: "absolute",
+            bottom: 80,
+            left: 16,
+            maxWidth: 340,
+            padding: "var(--ec-space-3) var(--ec-space-4)",
+            background: "var(--ec-surface-2)",
+            border: "1px solid var(--ec-border-default)",
+            borderRadius: "var(--ec-radius-md)",
+            boxShadow: "var(--ec-shadow-md)",
+            fontSize: "var(--ec-text-2xs)",
+            color: "var(--ec-text-muted)",
+            zIndex: 4,
+            fontFamily: "var(--ec-font-mono)",
+            lineHeight: 1.6,
+          }}
+          role="status"
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginBottom: 6,
+            }}
+          >
+            <strong style={{ color: "var(--ec-text)" }}>Voice diagnostics</strong>
+            <button
+              type="button"
+              onClick={() => setShowDiagnostics(false)}
+              style={{
+                background: "transparent",
+                border: 0,
+                color: "var(--ec-text-dim)",
+                cursor: "pointer",
+                padding: 2,
+              }}
+              aria-label="Закрыть"
+            >
+              ✕
+            </button>
+          </div>
+          <div>state: <span style={{ color: "var(--ec-text)" }}>{v.state}</span></div>
+          <div>active channel: <span style={{ color: "var(--ec-text)" }}>{v.activeChannelId ?? "—"}</span></div>
+          <div>mic: <span style={{ color: v.isMicMuted ? "var(--ec-warn)" : "var(--ec-status-exec)" }}>{v.isMicMuted ? "muted" : "live"}</span> · deafened: {v.isDeafened ? "yes" : "no"}</div>
+          <div>mode: <span style={{ color: "var(--ec-text)" }}>{v.settings.micActivationMode}</span></div>
+          <div>noise: <span style={{ color: "var(--ec-text)" }}>{v.settings.noiseSuppression}</span></div>
+          <div>input device: <span style={{ color: "var(--ec-text)" }}>{v.settings.inputDeviceId ? v.settings.inputDeviceId.slice(0, 8) + "…" : "default"}</span></div>
+          <div>output device: <span style={{ color: "var(--ec-text)" }}>{v.settings.outputDeviceId ? v.settings.outputDeviceId.slice(0, 8) + "…" : "default"}</span></div>
+          <div>master volume: <span style={{ color: "var(--ec-text)" }}>{Math.round(v.settings.masterOutputVolume * 100)}%</span></div>
+          <div>mic gain: <span style={{ color: "var(--ec-text)" }}>{Math.round(v.settings.micGain * 100)}%</span></div>
+          <div>participants: <span style={{ color: "var(--ec-text)" }}>{v.participants.length}</span> · visual tracks: <span style={{ color: "var(--ec-text)" }}>{v.visualTracks.length}</span></div>
+          {v.error && (
+            <div style={{ marginTop: 6, color: "var(--ec-danger)" }}>error: {v.error}</div>
+          )}
+          <div style={{ marginTop: 8, fontFamily: "inherit", color: "var(--ec-text-dim)", fontSize: "0.65rem" }}>
+            Если voice сломан: открой Настройки голоса → «Сбросить голосовые настройки» в самом низу. Это вернёт все umolchaniya и обычно лечит застрявшие state'ы.
+          </div>
+        </div>
+      )}
+
       {/* ── CONTROLS DOCK — floating ─────────────────────────── */}
       <div style={controlsDock} className="ec-voice-room__controls">
         {!isJoinedHere ? (
@@ -891,6 +956,21 @@ export function VoiceRoom({
               aria-pressed={showStats}
             >
               <StatsPulseIcon />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowDiagnostics((s) => !s)}
+              style={showDiagnostics ? controlBtnAccent : controlBtn}
+              title="Voice diagnostics — состояние подключения и настроек"
+              aria-label="Voice diagnostics"
+              aria-pressed={showDiagnostics}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="16" x2="12" y2="12" />
+                <line x1="12" y1="8" x2="12.01" y2="8" />
+              </svg>
             </button>
 
             <button

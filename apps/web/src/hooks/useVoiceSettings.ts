@@ -188,6 +188,21 @@ export function useVoiceSettings() {
     });
   }, []);
 
+  /**
+   * Reset все voice settings к defaults. Полезно когда settings застряли
+   * (mic gain в 0, masterOutputVolume в 0, output device указывает на
+   * отсоединённый bluetooth, etc) — пользователь не может разобраться,
+   * хочет «начать заново». v0.41.
+   */
+  const resetSettings = useCallback(() => {
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      /* */
+    }
+    setMemoryState(() => DEFAULT_SETTINGS);
+  }, []);
+
   return {
     settings,
     setInputDevice,
@@ -202,6 +217,7 @@ export function useVoiceSettings() {
     toggleParticipantMute,
     setMasterOutputVolume,
     setMicGain,
+    resetSettings,
   };
 }
 
