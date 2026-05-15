@@ -312,6 +312,15 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   // Team Health — server-wide aggregate ActionItem'ов. Полный full-width view
   // как Status Board (правый rail скрыт, чат не виден).
   const [teamHealthOpen, setTeamHealthOpen] = useState(false);
+  // Pre-filter для Status Board — set'ится при переходе из Team Health
+  // stat-карточки. Прокидывается в StatusBoard через `initialFilter` prop;
+  // StatusBoard mount-effect применяет фильтр к state.
+  const [statusBoardFilter, setStatusBoardFilter] = useState<
+    | { kind: "overdue" }
+    | { kind: "unassigned" }
+    | { kind: "assignee"; userId: string }
+    | null
+  >(null);
 
   // Закрыть thread при смене канала / сервера — не показывать thread из старого канала
   useEffect(() => {
@@ -321,6 +330,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   useEffect(() => {
     setStatusBoardOpen(false);
     setTeamHealthOpen(false);
+    setStatusBoardFilter(null);
   }, [activeServerId]);
 
   const {
@@ -858,6 +868,9 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                 : () => {
                     setHomeOpen(false);
                     setTeamHealthOpen(false);
+                    // Direct entry из ChannelList — сбрасываем pre-filter
+                    // (он имеет смысл только при переходе из Team Health).
+                    setStatusBoardFilter(null);
                     setStatusBoardOpen(true);
                     if (isMobile) setNavOpen(false);
                   }
@@ -1106,9 +1119,11 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             onUpdateStatus={(id, status) => void serverActions.updateStatus(id, status)}
             onOpenChannel={(channelId) => {
               setStatusBoardOpen(false);
+              setStatusBoardFilter(null);
               setSelectedChannelId(channelId);
               if (isMobile) setNavOpen(false);
             }}
+            initialFilter={statusBoardFilter}
           />
         ) : teamHealthOpen && activeServer ? (
           <TeamHealth
@@ -1118,11 +1133,11 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             error={teamHealth.error}
             onReload={() => void teamHealth.reload()}
             onClose={() => setTeamHealthOpen(false)}
-            onOpenBoard={() => {
-              // v0.30.0: pre-filter forward-compat — пока без auto-filter.
-              // Открываем Status Board, operator пользуется встроенными фильтрами.
-              // v0.31+: StatusBoard initialFilter prop активирует by-overdue/
-              // by-unassigned/by-assignee filter автоматически.
+            onOpenBoard={(filter) => {
+              // v0.31: filter активируется через StatusBoard initialFilter prop.
+              // null = просто открыть Board без pre-filter (клик по «Открыто»
+              // stat-карточке).
+              setStatusBoardFilter(filter);
               setTeamHealthOpen(false);
               setStatusBoardOpen(true);
             }}

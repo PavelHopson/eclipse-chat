@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Avatar } from "./Avatar";
 import type { ActionItemPayload, ActionItemType } from "../lib/socket";
 
@@ -8,7 +8,22 @@ import type { ActionItemPayload, ActionItemType } from "../lib/socket";
  * в двух колонках Открытые / Сделано. Calm operational board, не overloaded
  * dashboard: фильтры по типу + «мои / все», клик по карточке → переход в
  * канал-источник, чекбокс переключает статус.
+ *
+ * v0.31: pre-filter integration с Team Health. `initialFilter` prop ставит
+ * один из 3-х filter mode'ов при mount: overdue / unassigned / by-assignee.
+ * UI dismissible chip показывает active pre-filter — пользователь может
+ * снять одним кликом.
  */
+
+/**
+ * Pre-filter, который Team Health (и теоретически другие entry points)
+ * может прокинуть в Board при открытии. Null = без pre-filter.
+ */
+export type BoardPreFilter =
+  | { kind: "overdue" }
+  | { kind: "unassigned" }
+  | { kind: "assignee"; userId: string }
+  | null;
 
 type Props = {
   serverName: string | null;
@@ -21,7 +36,44 @@ type Props = {
   channelNameById: (channelId: string) => string | undefined;
   onUpdateStatus: (id: string, status: "OPEN" | "DONE") => void;
   onOpenChannel: (channelId: string) => void;
+  /** Pre-filter from external trigger (Team Health stat-card click etc). */
+  initialFilter?: BoardPreFilter;
 };
+
+/**
+ * Pure фильтр — testable без React. Применяется AND-логикой: action попадает
+ * в результат только если проходит ВСЕ активные фильтры. Все фильтры — opt-in.
+ */
+export type BoardFilters = {
+  type: "ALL" | ActionItemType;
+  mineOnly: boolean;
+  overdueOnly: boolean;
+  unassignedOnly: boolean;
+  /** Filter to actions assigned to this userId. Null = no filter. */
+  assigneeUserId: string | null;
+};
+
+export function applyBoardFilters(
+  actions: ActionItemPayload[],
+  filters: BoardFilters,
+  currentUserId: string,
+  now: number = Date.now(),
+): ActionItemPayload[] {
+  return actions.filter((a) => {
+    if (filters.type !== "ALL" && a.type !== filters.type) return false;
+    if (filters.mineOnly && a.assignee?.id !== currentUserId) return false;
+    if (filters.overdueOnly) {
+      if (!a.dueAt) return false;
+      if (new Date(a.dueAt).getTime() >= now) return false;
+      if (a.status === "DONE") return false; // overdue имеет смысл только для open
+    }
+    if (filters.unassignedOnly && a.assignee != null) return false;
+    if (filters.assigneeUserId && a.assignee?.id !== filters.assigneeUserId) {
+      return false;
+    }
+    return true;
+  });
+}
 
 const wrap: CSSProperties = {
   flex: 1,
@@ -254,17 +306,60 @@ export function StatusBoard({
   channelNameById,
   onUpdateStatus,
   onOpenChannel,
+  initialFilter,
 }: Props) {
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("ALL");
   const [mineOnly, setMineOnly] = useState(false);
+  const [overdueOnly, setOverdueOnly] = useState(false);
+  const [unassignedOnly, setUnassignedOnly] = useState(false);
+  const [assigneeFilter, setAssigneeFilter] = useState<string | null>(null);
 
-  const filtered = useMemo(() => {
-    return actions.filter((a) => {
-      if (typeFilter !== "ALL" && a.type !== typeFilter) return false;
-      if (mineOnly && a.assignee?.id !== currentUserId) return false;
-      return true;
-    });
-  }, [actions, typeFilter, mineOnly, currentUserId]);
+  // Apply initialFilter on mount + when prop changes (re-entry from TeamHealth
+  // с другим filter'ом). Сбрасываем взаимоисключающие — если пришёл overdue,
+  // unassigned/assignee сбрасываются (это разные intent'ы).
+  useEffect(() => {
+    if (!initialFilter) return;
+    if (initialFilter.kind === "overdue") {
+      setOverdueOnly(true);
+      setUnassignedOnly(false);
+      setAssigneeFilter(null);
+    } else if (initialFilter.kind === "unassigned") {
+      setUnassignedOnly(true);
+      setOverdueOnly(false);
+      setAssigneeFilter(null);
+    } else if (initialFilter.kind === "assignee") {
+      setAssigneeFilter(initialFilter.userId);
+      setOverdueOnly(false);
+      setUnassignedOnly(false);
+    }
+  }, [initialFilter]);
+
+  // Display name + avatar для chip'а assignee filter — резолвим из actions.
+  const assigneeChipInfo = useMemo(() => {
+    if (!assigneeFilter) return null;
+    const action = actions.find((a) => a.assignee?.id === assigneeFilter);
+    if (!action?.assignee) return { displayName: "участник", avatar: null };
+    return {
+      displayName: action.assignee.displayName,
+      avatar: action.assignee.avatar,
+    };
+  }, [actions, assigneeFilter]);
+
+  const filtered = useMemo(
+    () =>
+      applyBoardFilters(
+        actions,
+        {
+          type: typeFilter,
+          mineOnly,
+          overdueOnly,
+          unassignedOnly,
+          assigneeUserId: assigneeFilter,
+        },
+        currentUserId,
+      ),
+    [actions, typeFilter, mineOnly, overdueOnly, unassignedOnly, assigneeFilter, currentUserId],
+  );
 
   const open = filtered.filter((a) => a.status === "OPEN");
   const done = filtered.filter((a) => a.status === "DONE");
@@ -288,7 +383,7 @@ export function StatusBoard({
             Доска задач{serverName ? ` — ${serverName}` : ""}
           </strong>
         </div>
-        <div style={{ display: "flex", gap: 4, marginLeft: "var(--ec-space-3)", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 4, marginLeft: "var(--ec-space-3)", flexWrap: "wrap", alignItems: "center" }}>
           {(["ALL", "TASK", "DECISION", "FOLLOW_UP"] as const).map((t) => (
             <button
               key={t}
@@ -306,6 +401,60 @@ export function StatusBoard({
           >
             Мои
           </button>
+          <button
+            type="button"
+            style={filterBtn(overdueOnly)}
+            onClick={() => setOverdueOnly((v) => !v)}
+            title="Только просроченные (dueAt в прошлом + не закрыто)"
+          >
+            Просрочено
+          </button>
+          <button
+            type="button"
+            style={filterBtn(unassignedOnly)}
+            onClick={() => setUnassignedOnly((v) => !v)}
+            title="Только без ответственного"
+          >
+            Без ответственного
+          </button>
+          {assigneeFilter && assigneeChipInfo && (
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "0.25rem 0.55rem 0.25rem 0.3rem",
+                borderRadius: "var(--ec-radius-full)",
+                border: "1px solid var(--ec-border-accent)",
+                background: "var(--ec-accent-soft)",
+                color: "var(--ec-accent)",
+                fontSize: "var(--ec-text-2xs)",
+                fontWeight: 600,
+              }}
+              title={`По участнику · ${assigneeChipInfo.displayName}`}
+            >
+              <Avatar url={assigneeChipInfo.avatar} name={assigneeChipInfo.displayName} size={20} />
+              {assigneeChipInfo.displayName}
+              <button
+                type="button"
+                onClick={() => setAssigneeFilter(null)}
+                aria-label="Снять фильтр по участнику"
+                style={{
+                  marginLeft: 2,
+                  background: "transparent",
+                  border: 0,
+                  color: "inherit",
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                  fontSize: "0.85rem",
+                  lineHeight: 1,
+                  padding: 0,
+                }}
+              >
+                ✕
+              </button>
+            </span>
+          )}
         </div>
         <button
           type="button"

@@ -5,7 +5,7 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v0.30.0** (Execution Analytics — Team Health, 15.05.2026)
+**Текущая версия в проде:** **v0.31.0** (Team Health → Status Board pre-filter, 15.05.2026)
 — https://app.star-crm.ru/eclipse-chat/
 
 ## 📌 Позиционирование (зафиксировано 15.05)
@@ -67,7 +67,8 @@ chat и не enterprise prison.
 
 | Версия | Дата | Что |
 |---|---|---|
-| **v0.30.0** | 15.05 | **Execution Analytics — Team Health** — `GET /api/servers/:id/analytics/team-health`. Server-wide aggregate поверх ActionItem'ов: overdue / unassigned / open totals, avg resolution days (30d window), top-3 overloaded members, blocked members (3+ assigned-open). Calm card-grid dashboard «Здоровье команды» (server-wide view, доступ из ChannelList рядом со Status Board, hidden в CLIENT mode). Pure-функция `aggregateTeamHealth` + 11 unit-тестов (sort order / threshold / avg / edge cases) |
+| **v0.31.0** | 15.05 | **Team Health → Status Board pre-filter** — закрывает scope cut v0.30.0. StatusBoard принимает `initialFilter` prop (overdue / unassigned / by-assignee); mount-effect применяет к state. 3 новых фильтра: «Просрочено» / «Без ответственного» toggle-chip'ы + dismissible chip с avatar для assignee. `applyBoardFilters` extracted pure-функция (AND-logic). Clicking stat-card в Team Health открывает Board с авто-применённым фильтром. 9 unit-тестов на filter combinations |
+| v0.30.0 | 15.05 | **Execution Analytics — Team Health** — `GET /api/servers/:id/analytics/team-health`. Server-wide aggregate поверх ActionItem'ов: overdue / unassigned / open totals, avg resolution days (30d window), top-3 overloaded members, blocked members (3+ assigned-open). Calm card-grid dashboard «Здоровье команды» (server-wide view, доступ из ChannelList рядом со Status Board, hidden в CLIENT mode). Pure-функция `aggregateTeamHealth` + 11 unit-тестов (sort order / threshold / avg / edge cases) |
 | v0.29.0 | 15.05 | **Role-aware `@`-mentions** — `ai/assistant.ts` детектор расширен с `@ai` до `@moderator/@pm/@knowledge/@sales` (+RU `@мод/@менеджер/@знания/@продажи/@кб`). При срабатывании system-bot отвечает используя role-specific system-prompt из `ai/botRoles.ts` + emit с `botRole: <role>` → MessageList рисует role-coloured BOT badge. AutocompletePopover теперь предлагает 5 AI mention'ов в `@`-suggestions (поверх members). 22 unit-теста на detector/resolver/strip |
 | v0.28.0 | 15.05 | **AI Agents типология** — `Bot.role` enum (GENERIC/MODERATOR/PM/KNOWLEDGE/SALES) + per-role system-prompt templates + UI selector в BotsTab + role-chip + role-aware BOT badge в MessageList. Боты получают taxonomy: каждая роль = свой цвет, лейбл, prompt-шаблон через GET /api/bot/me для SDK integrations |
 | v0.27.0 | 15.05 | Client Mode — Server.mode ENGINEERING/CLIENT + UI gates (Status Board, Дела/Файлы tabs, slash-hints hidden в CLIENT) |
@@ -104,7 +105,8 @@ chat и не enterprise prison.
 ## 🎯 Что делаем дальше
 
 По рекомендованному порядку из brief Pavel'я (✅ #5 + #6 закрыты,
-✅ server-side role-aware mentions, ✅ Execution Analytics base):
+✅ server-side role-aware mentions, ✅ Execution Analytics base + pre-filter
+wiring):
 
 1. **Semantic search** — global operational search across messages /
    tasks / decisions / files / voice-summaries. Codex-vision #5.
@@ -123,9 +125,8 @@ chat и не enterprise prison.
    webhook), используя role-prompt + контекст канала. Это превращает
    role-aware @ai mentions в полноценных embedded room participants.
 
-6. **Team Health v2** — pre-filter integration со Status Board
-   (clicking stat-карточку → board с auto-applied filter); trends
-   vs prev week; per-channel breakdown.
+6. **Team Health v3** — trends vs prev week (нужны snapshot'ы),
+   per-channel breakdown, response-time computation.
 
 ## 📋 Открытые follow-ups
 
