@@ -1,45 +1,147 @@
 # Eclipse Chat — Roadmap
 
-> Что обещано, но ещё не реализовано. Этот файл — единый реестр
-> «потерянных» обещаний из ранних README/docs + новых направлений.
-> Любая фича, которой нет в текущем MVP, должна попасть сюда —
-> иначе она забудется.
+> **Источник истины** по Eclipse Chat: позиционирование, текущее состояние,
+> фазы, версии в проде, открытые направления. Стоит отдельно от
+> `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
+> Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущее состояние:** **v0.17.2 LIVE in prod** (commit `809ce4b`, 14.05.2026)
-— Operational redesign Фаза A завершена.
-Eclipse Chat — full-featured self-hosted operator communication core:
-auth + 2FA TOTP + brute-force lockout + audit log + DMs + Threads +
-Markdown + voice/video/screen-share (LiveKit) + Voice quality v3 (Web Audio
-DSP) + AI layer (Ollama Qwen2.5:7b + OpenRouter/NVIDIA/OpenAI auto-fallback)
-+ ChannelDigest + @ai assistant + bot/operator full stack (shadow-user,
-ecb_ API keys, webhooks) + Incident Mode + cold-tone design system.
-Последнее (v0.17.0 → v0.17.2): **Operational redesign Фаза A** — смена
-позиционирования из «voice/chat UI» в «operational command environment».
-IntelligencePanel (context-aware правый rail, табы Intelligence+Участники),
-semantic status-палитра, operational motion (signal-pulse / telemetry-edge),
-Forge Layer nav (NAV/SPACES/ADD), operational center polish. До этого
-v0.16.1→v0.16.4 — voice UI polish (камера, дубли, mute/deafen, speaking).
-Дальше — Фаза B (Message→Entity, Execution Dock, Today's Execution).
+**Текущая версия в проде:** **v0.26.0** (commit `f158008`, 15.05.2026)
+— https://app.star-crm.ru/eclipse-chat/
 
-17 коммитов в одной сессии 13.05.2026:
-v0.6.1→v0.6.4 voice quality controls (шумодав, devices, master volume,
-PTT, stats overlay) → v0.6.5 voice activation modes (open/VAD/PTT) +
-AFK auto-disconnect + persistent voice + VoiceMiniBar + speaking-dots →
-v0.8 1-to-1 DMs → v0.9 ChannelDigest + v0.9.2 image fix → v0.10.1
-Server identity (banner + brandColor per-server CSS override + welcome
-message) + cold-tone redesign → v0.11 AI layer (auto-fallback chain) +
-v0.11.1 security (helmet/rate-limit/2FA/audit) → v0.11.2 Ollama priority
-+ NVIDIA support + docs/AI-SETUP.md → v0.12 image bug fix (sharp guards
-+ frontend onError fallback) + Bot model backend (CRUD + auth +
-shadow-user pattern) → v0.12.1 design polish (typography modular 1.25 +
-skeleton screens + focus rings + empty states aurora).
+## 📌 Позиционирование (зафиксировано 15.05)
 
-Следующие милестоны:
-- v0.12.2 — bot frontend UI (ServerSettingsModal tab + useBots + Message
-  bot badge + docs/BOT-API.md + Telegram bridge template).
-- Threads + mention autocomplete.
-- Tests baseline (Vitest + supertest для critical paths).
-- Group DMs + voice/video DMs.
+Eclipse Chat **НЕ** Discord-clone / Slack-clone / Telegram-clone.
+
+Eclipse Chat = **operational communication infrastructure** =
+**Discord × Telegram × Linear × Notion × AI Workspace**.
+
+Главная формула: **communication + execution + memory + intelligence**.
+
+Целевая аудитория: AI-first teams, operators, agencies, startups,
+internal business teams, automation-heavy companies. **НЕ продаём AI**,
+продаём: **clarity / calmness / execution / coordination / operational
+visibility**. Это calm cinematic operational environment, не noisy gamer
+chat и не enterprise prison.
+
+## 🏗 Что в проде сейчас
+
+**Phase 1 CORE (фактически закрыта):**
+- Auth + 2FA TOTP + brute-force lockout + audit log
+- Servers (workspaces) + Members (4 роли) + invites
+- Channels: TEXT / VOICE (LiveKit) / **BROADCAST** (announcement-каналы)
+- Messages: markdown / code / mentions / replies / reactions / edit / delete
+  / pin / attachments (50MB) / search
+- Threads (parent-message самоссылка + ThreadPanel)
+- 1-to-1 DMs + **Saved Messages «Избранное»** (self-conversation)
+- Voice + camera + screen-share + Voice quality v3 (Web Audio DSP)
+- Bots: shadow-user pattern + ecb_ API keys + outbound webhooks
+- Incident Mode: dedicated 🚨-канал + timeline + AI post-mortem
+
+**Operational layer (Sprint 1-2 по brief, в проде):**
+- **Forge Layer** (left rail: NAV / SPACES / ADD)
+- **IntelligencePanel** — context-aware правый rail, 5 табов: Сводка /
+  Память / Дела / Файлы / Люди (collapsible)
+- **Immersive VoiceRoom** — presence layer + cinematic video stage +
+  floating dock (без card-in-card)
+- **Home «СЕГОДНЯ»** — operational сводка across workspace'ов
+- **Execution Status Board** — server-wide доска ActionItem'ов
+- **Operator slash-commands** `/task` `/decision` `/followup`
+- **AI Memory «Пока тебя не было»** — delta при возврате в канал +
+  AI-prose summary через Ollama
+- **Layered blacks** (`#07090D` / `#0B0F14` / `#11161D` / `#141A22`) +
+  atmospheric glow tokens + signal-pulse / telemetry-edge motion
+- **Context Tree** (group labels OVERVIEW / COMMUNICATION в ChannelList)
+- Semantic status palette (exec / warn / risk / idle / ai)
+
+## 🗺 Phased plan (по brief Pavel'я)
+
+| Phase | Что | Статус |
+|---|---|---|
+| **1 CORE** | workspaces / rooms / chat / voice / DMs / markdown / uploads | ✅ закрыта |
+| **2 AI** | summaries / memory / search / transcription | 🟡 summaries+memory готовы; search+transcription — будущее |
+| **3 EXECUTION** | tasks / decisions / approvals / project health | 🟡 task/decision/follow-up + Status Board готовы; approvals/health — будущее |
+| **4 CLIENT MODE** | external rooms / approvals / invoices / reports | ❌ next sprint |
+| **5 VERTICALS** | Construction Runtime / agencies / operations | ❌ долгосрочное |
+
+## 📈 Sprint timeline (RU короткие версии)
+
+| Версия | Дата | Что |
+|---|---|---|
+| **v0.26.0** | 15.05 | Context Tree groupings (OVERVIEW + COMMUNICATION) |
+| v0.25.1 | 15.05 | Layered blacks + atmospheric depth tokens |
+| v0.25.0 | 15.05 | IntelligencePanel +Память/Дела/Файлы tabs |
+| v0.24.1 | 15.05 | AI-prose summary в SinceLastVisit |
+| v0.24.0 | 14.05 | AI Memory «Пока тебя не было» (delta digest) |
+| v0.23.0 | 14.05 | Execution Status Board |
+| v0.22.0 | 14.05 | Saved Messages «Избранное» |
+| v0.21.0 | 14.05 | Operator slash-commands /task /decision /followup |
+| v0.20.0 | 14.05 | Home «СЕГОДНЯ» (operational сводка) |
+| v0.19.0 | 14.05 | BROADCAST-каналы (announcement, Discord×Telegram) |
+| v0.18.2 | 14.05 | Редактирование имени сервера |
+| v0.18.0 | 14.05 | Immersive VoiceRoom + collapsible right rail |
+| v0.17.0→.2 | 14.05 | Operational redesign Фаза A — IntelligencePanel, Forge Layer, semantic palette, center polish |
+| v0.16.0→.4 | 14.05 | Voice UI polish (камера contain, дубли, mute/deafen, speaking всех комнат, фикс состава sidebar) |
+| v0.16.0 | 14.05 | Incident Mode |
+| v0.15.0 | 14.05 | Voice quality v3 (Web Audio DSP «Студийный» режим) |
+| v0.14.0 | 14.05 | @/: autocomplete + channel emoji/DnD + bot webhooks + Vitest |
+| v0.13.1 | 14.05 | Channel rename / description |
+| v0.13.0 | 14.05 | Threads + Markdown + Bot reactions API |
+| v0.12.2 | 13.05 | Bot frontend UI |
+| v0.12.x | 13.05 | Bot backend (shadow-user) + design polish + AI layer + security |
+| v0.10.x | 13.05 | Cold-tone redesign + server identity (banner/brandColor) |
+| v0.9.x  | 13.05 | ChannelDigest + image fix |
+| v0.8.0  | 13.05 | 1-to-1 DMs |
+| v0.6.x  | 13.05 | Voice quality controls (noise/devices/PTT/stats) |
+| v0.5.x  | 12.05 | Profile + Avatar + show-password + design tokens |
+| v0.4.x  | 11.05 | Servers/Members/invites + path-based deploy + PG migration |
+| v0.3.0  | 10.05 | MVP (auth + channels + messages) |
+
+## 🎯 Что делаем дальше
+
+По рекомендованному порядку из brief Pavel'я:
+
+1. **#5 Client Mode** (Phase 4) — `Server.mode: ENGINEERING | CLIENT` enum
+   + миграция. В CLIENT-server'е UI **мягче / без developer chrome /
+   фокус на approvals + files + summaries**. Скрывать developer-каналы
+   через role-based видимость. Calm operational interface для не-
+   технических клиентов.
+
+2. **#6 AI Agents типология** — `Bot.role: MODERATOR | PM | KNOWLEDGE |
+   SALES` + per-role prompts. Боты становятся «embedded room
+   participants», не generic `@ai` chatbot'ами.
+
+3. **Semantic search** — global operational search across messages /
+   tasks / decisions / files / voice-summaries. Codex-vision #5.
+
+4. **Execution Analytics** — Team Health (blockers / delays / response
+   speed / overload) поверх ActionItem-данных. Codex-vision #6.
+
+5. **AI Transcription** — speech-to-text + summaries / decisions /
+   tasks из voice-сессий. Vision-area #4 transcription.
+
+6. **Group DMs + voice/video DMs** — DM-инфра уже есть, расширить
+   на multi-participant.
+
+## 📋 Открытые follow-ups
+
+- libheif на проде для iPhone HEIC (`apt install libheif1 libheif-dev`)
+- Backup cron для `eclipse_chat` БД (см. `docs/DEPLOY-TO-STAR-CRM.md`)
+- Telegram bridge bot template (отдельный repo)
+- Integration tests (Vitest + Supertest + ephemeral PG)
+- i18n EN translation
+- PTT + «Студийный» edge case (enhancer слетает после PTT-цикла)
+- Cross-channel files aggregator (для KNOWLEDGE-секции Context Tree)
+- Approvals + blockers (для EXECUTION-секции Context Tree)
+- Pricing / billing infra (Free / Pro / Business тиры) — **не сейчас**,
+  до product-market fit
+
+---
+
+## 📜 Историческая часть ниже
+
+> Старые milestone-описания v0.6→v0.17 оставлены для контекста — отдельные
+> разделы по каждому версионному рывку. Дублируется с tabular timeline
+> выше; читать только если нужны детали реализации конкретной фазы.
 
 ---
 
@@ -100,6 +202,24 @@ self-host важнее красивого облачного UX.
 2. **Saved Messages** — Telegram-killer, переиспользует DM-инфру
 3. **Execution kanban / Status Board** — все ActionItem'ы across channels
 4. **AI Memory «Since your last visit»** — главный differentiator, нужен last-visit tracking + AI
+
+### Codex review 14.05.2026 — strategic confirmation
+
+Codex прислал стратегический разбор позиционирования. **Подтверждает направление**, в котором мы строим:
+
+- **НЕ позиционировать как «Discord competitor»** — это смерть.
+- **Позиционировать как**: execution & coordination system для AI-first teams / operators / agencies / startups / internal business teams.
+- **Не продавать AI как фичу. Продавать**: clarity / calmness / execution / coordination / operational visibility.
+- **Pricing tiers** (Free → Pro → Business) — отложено до PMF; сейчас Билл-инфра контр-продуктивна.
+- **10 направлений монетизации** (Core SaaS, AI Agents, Client Portals, Vertical workflows, AI Memory, Execution Analytics, Internal Business OS, Agent Marketplace, AI Client Support, Embedded Automation) — это карта на 1-2 года, не план на сейчас.
+
+**Actionable из Codex для кода:**
+- **#3 Client Portals** = brief'овский **#5 Client Mode** (следующий слайс)
+- **AI Operational Agents** = brief'овский **#6** (Bot.role + per-role prompts, дальше)
+- **AI Memory System** = уже v0.24.x (база). Cross-channel knowledge graph — будущее.
+- **Execution Analytics** (team health / blockers / response speed) — поверх ActionItem-данных, отдельный слайс.
+
+**UX-copy rule** (Codex): на проде UI-копирайт «AI Summary» / «AI Memory» → переименовать в направлении «Что произошло» / «Память канала» в ближайшем UX-проходе.
 
 ---
 

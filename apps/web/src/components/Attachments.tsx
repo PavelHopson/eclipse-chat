@@ -96,13 +96,20 @@ function ImageItem({ a, onOpen }: { a: Attachment; onOpen: (a: Attachment) => vo
   const fallbackSrc = resolveUrl(a.url);
   const [imgSrc, setImgSrc] = useState(initialSrc);
   const [errored, setErrored] = useState(false);
-  // Aspect ratio из metadata если есть, иначе fallback на 16:9
-  const aspect = a.width && a.height ? `${a.width} / ${a.height}` : "16 / 9";
   return (
     <button
       type="button"
       onClick={() => onOpen(a)}
-      style={{ ...imageWrap, padding: 0, border: imageWrap.border, maxWidth: 480 }}
+      style={{
+        ...imageWrap,
+        padding: 0,
+        border: imageWrap.border,
+        // Контейнер сжимается под natural размер картинки — не растягивается
+        // в широкий бокс. maxWidth ограничивает крупные пейзажи.
+        display: "inline-block",
+        maxWidth: 480,
+        width: "auto",
+      }}
       aria-label={`Открыть изображение ${a.filename}`}
       onMouseEnter={(e) => {
         e.currentTarget.style.transform = "scale(1.005)";
@@ -114,9 +121,8 @@ function ImageItem({ a, onOpen }: { a: Attachment; onOpen: (a: Attachment) => vo
       {errored ? (
         <div
           style={{
-            width: "100%",
-            maxWidth: 480,
-            aspectRatio: aspect,
+            width: 320,
+            height: 180,
             display: "grid",
             placeItems: "center",
             background: "var(--ec-surface-2)",
@@ -147,14 +153,19 @@ function ImageItem({ a, onOpen }: { a: Attachment; onOpen: (a: Attachment) => vo
               setErrored(true);
             }
           }}
+          /*
+           * Картинка рендерится ЦЕЛИКОМ в естественной пропорции (без crop'а),
+           * вписана в maxWidth × maxHeight. Раньше aspectRatio + objectFit:cover
+           * обрезали портретные кадры в widescreen-бокс — теперь width/height:auto
+           * + object-fit:contain держат картинку целой. Click → lightbox full-size.
+           */
           style={{
             display: "block",
-            width: "100%",
+            width: "auto",
             height: "auto",
             maxWidth: 480,
-            maxHeight: 360,
-            aspectRatio: aspect,
-            objectFit: "cover",
+            maxHeight: 420,
+            objectFit: "contain",
           }}
         />
       )}
@@ -292,12 +303,21 @@ export function Attachments({ attachments }: Props) {
     <div style={wrap}>
       {images.length > 0 && (
         <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: images.length === 1 ? "1fr" : "repeat(2, minmax(0, 1fr))",
-            gap: 4,
-            maxWidth: 540,
-          }}
+          style={
+            images.length === 1
+              ? {
+                  // Одна картинка — НЕ растягиваем grid'ом, кнопка сама
+                  // примет natural ширину (см. ImageItem display:inline-block).
+                  display: "flex",
+                  maxWidth: 540,
+                }
+              : {
+                  display: "grid",
+                  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                  gap: 4,
+                  maxWidth: 540,
+                }
+          }
         >
           {images.map((a) => (
             <ImageItem key={a.id} a={a} onOpen={setLightbox} />

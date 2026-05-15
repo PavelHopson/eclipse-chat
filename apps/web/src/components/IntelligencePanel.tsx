@@ -476,10 +476,9 @@ export function IntelligencePanel({
           onClick={() => setTab("intelligence")}
           aria-selected={tab === "intelligence"}
           role="tab"
-          title="Сводка / контекст"
+          title="Сводка / контекст канала"
         >
-          <span aria-hidden style={{ fontSize: "0.7rem" }}>✦</span>
-          Intel
+          Сводка
         </button>
         {mode === "chat" && (
           <>
@@ -491,7 +490,7 @@ export function IntelligencePanel({
               role="tab"
               title="Закреплённое — память канала"
             >
-              Memory
+              Память
               {pinnedMessages.length > 0 && (
                 <span style={countPill}>{pinnedMessages.length}</span>
               )}
@@ -504,7 +503,7 @@ export function IntelligencePanel({
               role="tab"
               title="Задачи / решения / follow-up канала"
             >
-              Exec
+              Дела
               {executionItems.length > 0 && (
                 <span style={countPill}>{executionItems.length}</span>
               )}
@@ -517,7 +516,7 @@ export function IntelligencePanel({
               role="tab"
               title="Файлы канала"
             >
-              Files
+              Файлы
               {attachments.length > 0 && (
                 <span style={countPill}>{attachments.length}</span>
               )}
@@ -530,12 +529,9 @@ export function IntelligencePanel({
           onClick={() => setTab("members")}
           aria-selected={tab === "members"}
           role="tab"
-          title="Участники сервера"
+          title={`Участники сервера · ${onlineCount}/${members.length}`}
         >
-          Участники
-          <span style={countPill}>
-            {onlineCount}/{members.length}
-          </span>
+          Люди
         </button>
         {onCollapse && (
           <button

@@ -334,30 +334,47 @@ export function ChannelDigestPanel({
         </p>
       )}
 
-      {digest && (
-        <>
+      {digest && (() => {
+        const isCleanChannel =
+          digest.openActions.total === 0 &&
+          digest.decisions.length === 0 &&
+          digest.followUps.length === 0 &&
+          digest.pinned.length === 0;
+        if (isCleanChannel) {
+          // Calm empty-state — без 5 нулевых stat-карточек.
+          return null;
+        }
+        return (
           <div style={statsRow}>
-            <div style={statCard}>
-              <span style={statValue}>{digest.openActions.byType.TASK}</span>
-              <span style={statLabel}>Открытые задачи</span>
-            </div>
-            <div style={statCard}>
-              <span style={{ ...statValue, color: digest.openActions.overdue.length > 0 ? "var(--ec-danger)" : "var(--ec-text-strong)" }}>
-                {digest.openActions.overdue.length}
-              </span>
-              <span style={statLabel}>Просрочено</span>
-            </div>
-            <div style={statCard}>
-              <span style={{ ...statValue, color: digest.openActions.dueToday.length > 0 ? "var(--ec-accent)" : "var(--ec-text-strong)" }}>
-                {digest.openActions.dueToday.length}
-              </span>
-              <span style={statLabel}>Сегодня</span>
-            </div>
-            <div style={statCard}>
-              <span style={statValue}>{digest.openActions.unassigned.length}</span>
-              <span style={statLabel}>Без ответственного</span>
-            </div>
-            {!compact && (
+            {digest.openActions.byType.TASK > 0 && (
+              <div style={statCard}>
+                <span style={statValue}>{digest.openActions.byType.TASK}</span>
+                <span style={statLabel}>Открытые задачи</span>
+              </div>
+            )}
+            {digest.openActions.overdue.length > 0 && (
+              <div style={statCard}>
+                <span style={{ ...statValue, color: "var(--ec-status-risk)" }}>
+                  {digest.openActions.overdue.length}
+                </span>
+                <span style={statLabel}>Просрочено</span>
+              </div>
+            )}
+            {digest.openActions.dueToday.length > 0 && (
+              <div style={statCard}>
+                <span style={{ ...statValue, color: "var(--ec-status-warn)" }}>
+                  {digest.openActions.dueToday.length}
+                </span>
+                <span style={statLabel}>Сегодня</span>
+              </div>
+            )}
+            {digest.openActions.unassigned.length > 0 && (
+              <div style={statCard}>
+                <span style={statValue}>{digest.openActions.unassigned.length}</span>
+                <span style={statLabel}>Без ответственного</span>
+              </div>
+            )}
+            {!compact && digest.stats.messages > 0 && (
               <div style={statCard}>
                 <span style={statValue}>
                   {digest.stats.messages}
@@ -367,7 +384,10 @@ export function ChannelDigestPanel({
               </div>
             )}
           </div>
-
+        );
+      })()}
+      {digest && (
+        <>
           {digest.openActions.overdue.length > 0 && (
             <div>
               <div style={sectionTitle}>Требует внимания</div>

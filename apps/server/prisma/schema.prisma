@@ -222,6 +222,15 @@ enum ActionItemType {
   FOLLOW_UP
 }
 
+/// Режим сервера — Client Portal vs Engineering / Internal Ops.
+/// CLIENT: мягче UI, скрыты operator-инструменты (Status Board / Execution tab
+/// / slash-command hints / BOT badges) — клиент видит calm room, не developer
+/// chrome. ENGINEERING (default): полный operator-set.
+enum ServerMode {
+  ENGINEERING
+  CLIENT
+}
+
 /// Статус инцидента. OPEN = разбор идёт, RESOLVED = закрыт + post-mortem сгенерён.
 enum IncidentStatus {
   OPEN
@@ -251,6 +260,11 @@ model Server {
   /// Welcome-сообщение для новых members. Показывается один раз в первом
   /// TEXT канале как dismissible system-card. До 500 символов.
   welcomeMessage String?
+  /// Режим сервера. ENGINEERING (default) = полный operator-инструментарий.
+  /// CLIENT = мягче UI, скрыты Status Board / Execution / slash hints —
+  /// для портала клиентов агентств / dev-студий / консалтинга. Меняется
+  /// OWNER'ом в Server Settings.
+  mode        ServerMode @default(ENGINEERING)
   /// Уникальный код для приёма по ссылке. Регенерируется через PATCH (TODO v0.4+).
   inviteCode  String   @unique @default(cuid())
   /// Владелец — User. Не может быть удалён пока ownsServer (onDelete: Restrict).
