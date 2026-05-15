@@ -365,6 +365,84 @@
   animation: ec-presence-pulse 2.4s ease-in-out infinite;
 }
 
+/*
+ * Skeleton list — typical row pattern. Avatar circle + 2 text lines.
+ * Применяется как placeholder во время async load (MemberList, DM convos,
+ * Status Board, Team Health, etc). Cleaner чем "Загрузка..." text.
+ */
+.ec-skeleton-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ec-space-2);
+  padding: var(--ec-space-2);
+}
+.ec-skeleton-row {
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  gap: var(--ec-space-3);
+  align-items: center;
+  padding: 4px 6px;
+}
+.ec-skeleton-row__avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(
+    90deg,
+    var(--ec-surface-2) 0%,
+    var(--ec-surface-3) 50%,
+    var(--ec-surface-2) 100%
+  );
+  background-size: 200% 100%;
+  animation: ec-skeleton-shimmer 1.6s linear infinite;
+}
+.ec-skeleton-row__bars {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ec-skeleton-row__bar {
+  height: 9px;
+  border-radius: 2px;
+  background: linear-gradient(
+    90deg,
+    var(--ec-surface-2) 0%,
+    var(--ec-surface-3) 50%,
+    var(--ec-surface-2) 100%
+  );
+  background-size: 200% 100%;
+  animation: ec-skeleton-shimmer 1.6s linear infinite;
+}
+.ec-skeleton-row__bar--sub {
+  height: 7px;
+  width: 60%;
+  opacity: 0.6;
+}
+
+/* Skeleton card — для grid layouts (Team Health stat tiles, Status Board cards). */
+.ec-skeleton-card {
+  height: 110px;
+  border-radius: var(--ec-radius-lg);
+  background: linear-gradient(
+    135deg,
+    var(--ec-surface-2) 0%,
+    var(--ec-surface-3) 50%,
+    var(--ec-surface-2) 100%
+  );
+  background-size: 200% 200%;
+  animation: ec-skeleton-shimmer 2s linear infinite;
+  border: 1px solid var(--ec-border-subtle);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ec-skeleton-row__avatar,
+  .ec-skeleton-row__bar,
+  .ec-skeleton-card {
+    animation: none !important;
+    background-position: 50% 50%;
+  }
+}
+
 /* ===== Glass effects ======================================= */
 
 .ec-glass {

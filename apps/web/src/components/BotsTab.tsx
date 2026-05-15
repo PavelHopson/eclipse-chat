@@ -625,6 +625,7 @@ export function BotsTab({ serverId }: Props) {
         {bots.map((bot) => (
           <div
             key={bot.id}
+            className="ec-hover-lift"
             style={botCard}
             onMouseEnter={(e) => {
               e.currentTarget.style.borderColor = "var(--ec-border-default)";

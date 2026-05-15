@@ -278,6 +278,14 @@ export function TeamHealth({
           </div>
         )}
 
+        {!error && loading && !data && (
+          <div style={grid} aria-label="Считаем здоровье команды">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="ec-skeleton-card" />
+            ))}
+          </div>
+        )}
+
         {!error && isEmpty && (
           <EmptyState
             icon={<EmptyHealthIcon />}

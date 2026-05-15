@@ -283,9 +283,17 @@ export function MemberList({
 
       <div style={listScroll}>
         {loading && members.length === 0 ? (
-          <p style={{ color: "var(--ec-text-dim)", fontSize: "var(--ec-text-sm)", padding: "var(--ec-space-2)", margin: 0 }}>
-            Загрузка…
-          </p>
+          <div className="ec-skeleton-list" aria-label="Загрузка участников">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="ec-skeleton-row">
+                <div className="ec-skeleton-row__avatar" />
+                <div className="ec-skeleton-row__bars">
+                  <div className="ec-skeleton-row__bar" />
+                  <div className="ec-skeleton-row__bar ec-skeleton-row__bar--sub" />
+                </div>
+              </div>
+            ))}
+          </div>
         ) : error ? (
           <p style={{ color: "var(--ec-danger)", fontSize: "var(--ec-text-sm)", padding: "var(--ec-space-2)", margin: 0 }}>
             {error}
