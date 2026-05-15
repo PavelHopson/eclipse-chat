@@ -1289,6 +1289,11 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               onToggleActionStatus={updateActionItemStatus}
               onOpenThread={(messageId) => {
                 setSelectedThreadId(messageId);
+                // v0.46 fix: auto-expand right rail if collapsed —
+                // иначе click silent, ThreadPanel рендерится только
+                // когда rightRailVisible (см. AppShell line ~446).
+                // Павел report: «треды не работают» — root cause найден.
+                setRightRailCollapsed(false);
                 if (isTabletOrSmaller) setMembersOpen(true);
               }}
             />
