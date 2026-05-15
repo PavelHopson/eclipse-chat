@@ -2,6 +2,7 @@ import { db } from "../db.js";
 import { emitMessageOnChannel } from "../realtime.js";
 import { chat, isAiConfigured } from "./provider.js";
 import { assistantPrompt } from "./prompts.js";
+import { botRolePrompt, type BotRoleValue } from "./botRoles.js";
 import type { FastifyBaseLogger } from "fastify";
 
 /**
@@ -24,16 +25,80 @@ import type { FastifyBaseLogger } from "fastify";
  *   - Bot не отвечает на свои собственные сообщения (избегаем циклов).
  */
 
-/** Regex: `@ai`, `@AI`, `@Аи` etc., как отдельное слово. */
-const AI_MENTION_REGEX = /(?:^|\s)@(?:ai|ии|AI|Аи)(?=\s|$|[?.!,])/iu;
+/**
+ * Mention-detector с role-resolution.
+ *
+ * Поддерживает:
+ *   `@ai` / `@AI` / `@ии` / `@Аи`               → GENERIC
+ *   `@moderator` / `@мод` / `@модератор`        → MODERATOR
+ *   `@pm` / `@менеджер`                          → PM
+ *   `@knowledge` / `@знания` / `@kb`             → KNOWLEDGE
+ *   `@sales` / `@продажи`                        → SALES
+ *
+ * Все keyword'ы — case-insensitive, должны стоять как отдельное слово
+ * (lookbehind на start/whitespace, lookahead на end/whitespace/пунктуацию).
+ *
+ * Если в одном сообщении несколько mention'ов — берётся первый.
+ */
+type AiMentionMatch = { role: BotRoleValue; keyword: string };
 
+const AI_MENTION_KEYWORDS: ReadonlyArray<{ kw: string; role: BotRoleValue }> = [
+  // Specific roles прежде GENERIC — match-order matters при overlapping
+  // (e.g. "ai" — это GENERIC, не должен ловить "@aimoderator" etc — но из-за
+  // \b boundary это safe).
+  { kw: "moderator", role: "MODERATOR" },
+  { kw: "модератор", role: "MODERATOR" },
+  { kw: "мод", role: "MODERATOR" },
+  { kw: "pm", role: "PM" },
+  { kw: "менеджер", role: "PM" },
+  { kw: "knowledge", role: "KNOWLEDGE" },
+  { kw: "kb", role: "KNOWLEDGE" },
+  { kw: "знания", role: "KNOWLEDGE" },
+  { kw: "sales", role: "SALES" },
+  { kw: "продажи", role: "SALES" },
+  // Generic — традиционные ai/ии триггеры
+  { kw: "ai", role: "GENERIC" },
+  { kw: "ии", role: "GENERIC" },
+  { kw: "аи", role: "GENERIC" },
+];
+
+/** Превращаем список в alternation, sorted by length desc (long first). */
+const KEYWORDS_ALT = [...AI_MENTION_KEYWORDS]
+  .map((k) => k.kw)
+  .sort((a, b) => b.length - a.length)
+  .join("|");
+
+/**
+ * Капчурим keyword чтобы определить роль. Boundary lookbehind/lookahead
+ * предотвращает match'и внутри слов (`@aimoderator` не сматчит `@ai`).
+ */
+const AI_MENTION_REGEX = new RegExp(
+  `(?:^|\\s)@(${KEYWORDS_ALT})(?=\\s|$|[?.!,;:])`,
+  "iu",
+);
+
+/** Найдено ли любое role-mention в content'е. */
 export function detectAiMention(content: string): boolean {
   return AI_MENTION_REGEX.test(content);
 }
 
-/** Стрипаем @ai (любой регистр) из текста, оставляем остальное. */
+/**
+ * Resolve role + matched keyword. Null если нет mention'а. Берётся первый
+ * (если несколько — игнорируем остальные).
+ */
+export function resolveAiMention(content: string): AiMentionMatch | null {
+  const m = AI_MENTION_REGEX.exec(content);
+  if (!m || !m[1]) return null;
+  const kw = m[1].toLowerCase();
+  const entry = AI_MENTION_KEYWORDS.find((e) => e.kw === kw);
+  if (!entry) return null;
+  return { role: entry.role, keyword: kw };
+}
+
+/** Стрипаем все известные role-mention'ы из текста. */
+const STRIP_REGEX = new RegExp(`@(?:${KEYWORDS_ALT})\\b`, "giu");
 export function stripAiMention(content: string): string {
-  return content.replace(/@(?:ai|ии|AI|Аи)\b/giu, "").trim();
+  return content.replace(STRIP_REGEX, "").replace(/\s+/g, " ").trim();
 }
 
 const pendingByChannel = new Map<string, number>();
@@ -74,13 +139,14 @@ export async function maybeReplyToMention(
   log: FastifyBaseLogger,
 ): Promise<void> {
   if (!isAiConfigured()) return;
-  if (!detectAiMention(triggerContent)) return;
+  const mention = resolveAiMention(triggerContent);
+  if (!mention) return;
 
   // Throttle
   const lastAt = pendingByChannel.get(channelId);
   const now = Date.now();
   if (lastAt && now - lastAt < THROTTLE_MS) {
-    log.debug({ channelId }, "AI mention throttled");
+    log.debug({ channelId, role: mention.role }, "AI mention throttled");
     return;
   }
   pendingByChannel.set(channelId, now);
@@ -131,7 +197,10 @@ export async function maybeReplyToMention(
         },
       });
 
-      const prompt = assistantPrompt({
+      // Базовый user-prompt с контекстом канала (open actions / pinned / recent).
+      // System message замещаем role-aware: GENERIC = старый assistantPrompt
+      // (наследственный generic operator-tone), остальные роли — из botRolePrompt.
+      const basePrompt = assistantPrompt({
         channelName: channel.name,
         userQuery: stripAiMention(triggerContent),
         userDisplayName: userInfo?.displayName ?? "user",
@@ -154,11 +223,13 @@ export async function maybeReplyToMention(
           user: { displayName: p.user.displayName },
         })),
       });
+      const systemPrompt =
+        mention.role === "GENERIC" ? basePrompt.system : botRolePrompt(mention.role);
 
       const result = await chat(
         [
-          { role: "system", content: prompt.system },
-          { role: "user", content: prompt.user },
+          { role: "system", content: systemPrompt },
+          { role: "user", content: basePrompt.user },
         ],
         { temperature: 0.5, maxTokens: 450 },
       );
@@ -188,11 +259,18 @@ export async function maybeReplyToMention(
         // Frontend получит isBot=true на reload через email-check
         // в routes/channels.ts (см. assistant.ts companion change).
         isBot: true,
+        // Role-aware badge: real-time consumers видят роль, который сматчился
+        // в trigger-mention. На reload — botRole=null (system bot не имеет
+        // Bot row → botProfile?.role не определён). Это OK: bage эфемерен,
+        // role-info актуальна в момент ответа, в истории — generic.
+        botRole: mention.role,
         createdAt: reply.createdAt.toISOString(),
       });
       log.info(
         {
           channelId,
+          role: mention.role,
+          keyword: mention.keyword,
           provider: result.provider,
           model: result.model,
           latencyMs: result.latencyMs,

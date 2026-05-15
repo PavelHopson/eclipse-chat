@@ -1,6 +1,25 @@
 import type { CSSProperties } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { EMOJI_SHORTCODES } from "./RichContent";
+import { BOT_ROLE_LABELS } from "../lib/botRoles";
+
+/**
+ * AI role-mention keyword'ы — список синхронизирован с
+ * apps/server/src/ai/assistant.ts AI_MENTION_KEYWORDS.
+ *
+ * Каждая запись: keyword (вставляется в текст без `@`) + display lable
+ * с RU-именем роли.
+ */
+const AI_MENTION_SUGGESTIONS: ReadonlyArray<{
+  kw: string;
+  label: string;
+}> = [
+  { kw: "ai", label: BOT_ROLE_LABELS.GENERIC + " · @ai" },
+  { kw: "moderator", label: BOT_ROLE_LABELS.MODERATOR + " · @moderator" },
+  { kw: "pm", label: BOT_ROLE_LABELS.PM + " · @pm" },
+  { kw: "knowledge", label: BOT_ROLE_LABELS.KNOWLEDGE + " · @knowledge" },
+  { kw: "sales", label: BOT_ROLE_LABELS.SALES + " · @sales" },
+];
 
 /**
  * Autocomplete popover для @ mentions и :emoji shortcodes в textarea composer'е.
@@ -90,7 +109,17 @@ function buildItems(
 ): AutocompleteItem[] {
   const q = trigger.word.toLowerCase();
   if (trigger.kind === "@") {
-    const matches = members
+    // AI role-mention suggestions: показываем СНАЧАЛА если query матчится
+    // (или query пустой). Каждый сопоставляется по keyword + по локализованному
+    // label-фрагменту (модератор / менеджер / знания / продажи / бот).
+    const aiMatches = AI_MENTION_SUGGESTIONS.filter((s) => {
+      if (q === "") return true;
+      return (
+        s.kw.toLowerCase().startsWith(q) ||
+        s.label.toLowerCase().includes(q)
+      );
+    });
+    const memberMatches = members
       .filter((m) => m.toLowerCase().includes(q))
       .sort((a, b) => {
         const sa = a.toLowerCase().startsWith(q) ? 0 : 1;
@@ -99,12 +128,18 @@ function buildItems(
         return a.localeCompare(b);
       })
       .slice(0, 12);
-    return matches.map((name) => ({
-      key: name,
+    const aiItems = aiMatches.map((s) => ({
+      key: `ai:${s.kw}`,
+      display: s.label,
+      // Insert: `@<keyword> ` — пробел после для удобства
+      insertText: `@${s.kw} `,
+    }));
+    const memberItems = memberMatches.map((name) => ({
+      key: `m:${name}`,
       display: name,
-      // Insert: «@Name » — пробел после для удобства продолжать набор
       insertText: `@${name} `,
     }));
+    return [...aiItems, ...memberItems];
   }
   // kind === ':' — emoji shortcodes
   const entries = Object.entries(EMOJI_SHORTCODES);

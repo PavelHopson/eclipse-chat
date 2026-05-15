@@ -5,7 +5,7 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v0.28.0** (Sprint 3 — AI Agents типология, 15.05.2026)
+**Текущая версия в проде:** **v0.29.0** (Role-aware AI mentions, 15.05.2026)
 — https://app.star-crm.ru/eclipse-chat/
 
 ## 📌 Позиционирование (зафиксировано 15.05)
@@ -67,7 +67,8 @@ chat и не enterprise prison.
 
 | Версия | Дата | Что |
 |---|---|---|
-| **v0.28.0** | 15.05 | **AI Agents типология** — `Bot.role` enum (GENERIC/MODERATOR/PM/KNOWLEDGE/SALES) + per-role system-prompt templates + UI selector в BotsTab + role-chip + role-aware BOT badge в MessageList. Боты получают taxonomy: каждая роль = свой цвет, лейбл, prompt-шаблон через GET /api/bot/me для SDK integrations |
+| **v0.29.0** | 15.05 | **Role-aware `@`-mentions** — `ai/assistant.ts` детектор расширен с `@ai` до `@moderator/@pm/@knowledge/@sales` (+RU `@мод/@менеджер/@знания/@продажи/@кб`). При срабатывании system-bot отвечает используя role-specific system-prompt из `ai/botRoles.ts` + emit с `botRole: <role>` → MessageList рисует role-coloured BOT badge. AutocompletePopover теперь предлагает 5 AI mention'ов в `@`-suggestions (поверх members). 22 unit-теста на detector/resolver/strip |
+| v0.28.0 | 15.05 | **AI Agents типология** — `Bot.role` enum (GENERIC/MODERATOR/PM/KNOWLEDGE/SALES) + per-role system-prompt templates + UI selector в BotsTab + role-chip + role-aware BOT badge в MessageList. Боты получают taxonomy: каждая роль = свой цвет, лейбл, prompt-шаблон через GET /api/bot/me для SDK integrations |
 | v0.27.0 | 15.05 | Client Mode — Server.mode ENGINEERING/CLIENT + UI gates (Status Board, Дела/Файлы tabs, slash-hints hidden в CLIENT) |
 | v0.26.1 | 15.05 | Картинки целиком в ленте + tabs polish (RU short) + ROADMAP refresh |
 | v0.26.0 | 15.05 | Context Tree groupings (OVERVIEW + COMMUNICATION) |
@@ -101,29 +102,28 @@ chat и не enterprise prison.
 
 ## 🎯 Что делаем дальше
 
-По рекомендованному порядку из brief Pavel'я (✅ #5 + #6 закрыты):
+По рекомендованному порядку из brief Pavel'я (✅ #5 + #6 закрыты,
+✅ server-side role-aware mentions активированы):
 
-1. **Server-side AI invocation от имени бота** — следующая итерация
-   #6: когда боту прислан webhook с message, Eclipse Chat может
-   сгенерить ответ через Ollama, используя role-specific
-   system-prompt + контекст канала (open actions / pinned / recent).
-   Сейчас (v0.28.0) `@ai` всё ещё generic system-bot — refactor его
-   так чтобы выбирать prompt по «ближайшему» Bot.role в канале.
-
-2. **Semantic search** — global operational search across messages /
+1. **Semantic search** — global operational search across messages /
    tasks / decisions / files / voice-summaries. Codex-vision #5.
 
-3. **Execution Analytics** — Team Health (blockers / delays / response
+2. **Execution Analytics** — Team Health (blockers / delays / response
    speed / overload) поверх ActionItem-данных. Codex-vision #6.
 
-4. **AI Transcription** — speech-to-text + summaries / decisions /
+3. **AI Transcription** — speech-to-text + summaries / decisions /
    tasks из voice-сессий. Vision-area #4 transcription.
 
-5. **Group DMs + voice/video DMs** — DM-инфра уже есть, расширить
+4. **Group DMs + voice/video DMs** — DM-инфра уже есть, расширить
    на multi-participant.
 
-6. **Client Mode v2** — role-based видимость каналов (internal vs
+5. **Client Mode v2** — role-based видимость каналов (internal vs
    client), softer visual, hide BOT-badges в CLIENT-режиме.
+
+6. **Bot row + role + auto-respond** — owner создаёт Bot row с
+   role=MODERATOR. Eclipse Chat сам генерит ответы через Ollama (без
+   webhook), используя role-prompt + контекст канала. Это превращает
+   role-aware @ai mentions в полноценных embedded room participants.
 
 ## 📋 Открытые follow-ups
 
