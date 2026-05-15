@@ -64,6 +64,8 @@ model User {
   botProfile       Bot?                  @relation("BotShadowUser")
   /// Инциденты открытые этим user'ом.
   openedIncidents  Incident[]            @relation("IncidentOpener")
+  /// Last-visit per channel (AI Memory «Since your last visit»).
+  channelVisits    ChannelLastVisit[]
 }
 
 /**
@@ -332,6 +334,7 @@ model Channel {
 
   messages  Message[]
   actionItems ActionItem[]
+  visits    ChannelLastVisit[]
 }
 
 /// Сообщение. Может принадлежать ЛИБО серверному каналу (`channelId`),
@@ -423,6 +426,27 @@ model DirectConversation {
   @@unique([userAId, userBId])
   @@index([userAId, lastMessageAt])
   @@index([userBId, lastMessageAt])
+}
+
+/// AI Memory — последний visit пользователя в канал. Используется для
+/// «Since your last visit»: при возвращении в канал спустя >30мин показываем
+/// дельту (новые сообщения / actions / pinned / incidents) — операционная
+/// сводка «пока тебя не было», без перечитывания всей ленты.
+///
+/// Composite PK (userId, channelId) — ровно одна запись на пару.
+/// onDelete: Cascade чтобы при удалении user/channel записи чистились.
+model ChannelLastVisit {
+  userId    String
+  channelId String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channel   Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  /// Обновляется на каждый явный visit (frontend шлёт POST при открытии канала).
+  /// @updatedAt автоматически бампит при db.update; для upsert используем
+  /// explicit `new Date()` в route — там видимость явная.
+  visitedAt DateTime @default(now())
+
+  @@id([userId, channelId])
+  @@index([userId])
 }
 
 /// Файл, прикреплённый к сообщению. Multiple attachments per message

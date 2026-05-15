@@ -18,6 +18,7 @@ import { SearchOverlay } from "../components/SearchOverlay";
 import { ServerInfoModal } from "../components/ServerInfoModal";
 import { ServerSettingsModal } from "../components/ServerSettingsModal";
 import { ServerList } from "../components/ServerList";
+import { SinceLastVisitBanner } from "../components/SinceLastVisitBanner";
 import { StatusBoard } from "../components/StatusBoard";
 import { StatusMenu } from "../components/StatusMenu";
 import { IncidentPanel } from "../components/IncidentPanel";
@@ -40,6 +41,7 @@ import { useProfile } from "../hooks/useProfile";
 import { useSearch } from "../hooks/useSearch";
 import { useServerActions } from "../hooks/useServerActions";
 import { useServers } from "../hooks/useServers";
+import { useSinceLastVisit } from "../hooks/useSinceLastVisit";
 import { useSocket } from "../hooks/useSocket";
 import { useVoice } from "../hooks/useVoice";
 import { useVoiceHealth } from "../hooks/useVoiceHealth";
@@ -380,6 +382,12 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   const currentRole = (activeServer?.role as MemberRole | undefined) ?? null;
 
   const selectedChannel = channels.find((c) => c.id === selectedChannelId) ?? null;
+
+  // AI Memory «Since your last visit» — фиксирует visit + дельта с prior.
+  // Только для text/broadcast (voice = без feed'а).
+  const visitChannelId =
+    selectedChannel && selectedChannel.type !== "VOICE" ? selectedChannel.id : null;
+  const sinceLastVisit = useSinceLastVisit(visitChannelId);
 
   // BROADCAST-канал (news/blogger): читают все, публикуют только
   // OWNER/ADMIN/MODERATOR. Остальные видят read-only ленту.
@@ -1168,6 +1176,10 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                   }}
                 />
               )}
+            <SinceLastVisitBanner
+              data={sinceLastVisit.data}
+              onDismiss={sinceLastVisit.dismiss}
+            />
             <ActionQueueBar
               items={openActionItems}
               currentUserId={user.id}
