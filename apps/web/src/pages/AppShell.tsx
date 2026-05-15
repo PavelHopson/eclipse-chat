@@ -1328,6 +1328,43 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               }
               voiceChannelName={isVoiceView ? selectedChannel?.name ?? null : null}
               voiceOccupants={selectedVoiceOccupants}
+              pinnedMessages={messages
+                .filter((m) => m.pinnedAt && !m.deletedAt)
+                .map((m) => ({
+                  id: m.id,
+                  content: m.content,
+                  pinnedAt: m.pinnedAt,
+                  user: {
+                    displayName: m.user.displayName,
+                    avatar: m.user.avatar,
+                  },
+                }))}
+              attachments={messages.flatMap((m) =>
+                m.attachments.map((a) => ({
+                  id: a.id,
+                  filename: a.filename,
+                  mimeType: a.mimeType,
+                  size: a.size,
+                  url: a.url,
+                  thumbnailUrl: a.thumbnailUrl,
+                })),
+              )}
+              executionItems={openActionItems.map((a) => ({
+                id: a.id,
+                title: a.title,
+                type: a.type,
+                status: a.status,
+                dueAt: a.dueAt ?? null,
+                assignee: a.assignee
+                  ? {
+                      displayName: a.assignee.displayName,
+                      avatar: a.assignee.avatar,
+                    }
+                  : null,
+              }))}
+              onToggleExecutionStatus={(id, status) =>
+                void updateActionItemStatus(id, status)
+              }
             />
           )}
         </div>

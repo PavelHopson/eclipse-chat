@@ -21,7 +21,32 @@ import type { useVoice as useVoiceHook } from "../hooks/useVoice";
  * IntelligencePanel это default-состояние правой колонки.
  */
 
-type RightTab = "intelligence" | "members";
+type RightTab = "intelligence" | "memory" | "execution" | "files" | "members";
+
+export type PinnedMessageBrief = {
+  id: string;
+  content: string;
+  pinnedAt: string | null;
+  user: { displayName: string; avatar: string | null };
+};
+
+export type AttachmentBrief = {
+  id: string;
+  filename: string;
+  mimeType: string;
+  size: number;
+  url: string;
+  thumbnailUrl: string | null;
+};
+
+export type ExecutionItemBrief = {
+  id: string;
+  title: string;
+  type: "TASK" | "DECISION" | "FOLLOW_UP";
+  status: "OPEN" | "DONE";
+  dueAt: string | null;
+  assignee: { displayName: string; avatar: string | null } | null;
+};
 
 type Props = {
   mode: "voice" | "chat";
@@ -54,6 +79,11 @@ type Props = {
   voiceChannelName: string | null;
   /** Occupants выбранного voice-канала когда ты в него НЕ подключён. */
   voiceOccupants: MemberRow[];
+  // ── Memory / Execution / Files (chat-режим, channel-scoped) ───────
+  pinnedMessages: PinnedMessageBrief[];
+  attachments: AttachmentBrief[];
+  executionItems: ExecutionItemBrief[];
+  onToggleExecutionStatus?: (id: string, status: "OPEN" | "DONE") => void;
 };
 
 const wrap: CSSProperties = {
@@ -419,6 +449,10 @@ export function IntelligencePanel({
   voiceChannelId,
   voiceChannelName,
   voiceOccupants,
+  pinnedMessages,
+  attachments,
+  executionItems,
+  onToggleExecutionStatus,
 }: Props) {
   // Default-вкладка зависит от режима: в чате контекст важнее (Intelligence),
   // в voice центр уже показывает участников плитками → дефолт «Участники».
@@ -442,16 +476,61 @@ export function IntelligencePanel({
           onClick={() => setTab("intelligence")}
           aria-selected={tab === "intelligence"}
           role="tab"
+          title="Сводка / контекст"
         >
           <span aria-hidden style={{ fontSize: "0.7rem" }}>✦</span>
-          Intelligence
+          Intel
         </button>
+        {mode === "chat" && (
+          <>
+            <button
+              type="button"
+              style={tabBtn(tab === "memory")}
+              onClick={() => setTab("memory")}
+              aria-selected={tab === "memory"}
+              role="tab"
+              title="Закреплённое — память канала"
+            >
+              Memory
+              {pinnedMessages.length > 0 && (
+                <span style={countPill}>{pinnedMessages.length}</span>
+              )}
+            </button>
+            <button
+              type="button"
+              style={tabBtn(tab === "execution")}
+              onClick={() => setTab("execution")}
+              aria-selected={tab === "execution"}
+              role="tab"
+              title="Задачи / решения / follow-up канала"
+            >
+              Exec
+              {executionItems.length > 0 && (
+                <span style={countPill}>{executionItems.length}</span>
+              )}
+            </button>
+            <button
+              type="button"
+              style={tabBtn(tab === "files")}
+              onClick={() => setTab("files")}
+              aria-selected={tab === "files"}
+              role="tab"
+              title="Файлы канала"
+            >
+              Files
+              {attachments.length > 0 && (
+                <span style={countPill}>{attachments.length}</span>
+              )}
+            </button>
+          </>
+        )}
         <button
           type="button"
           style={tabBtn(tab === "members")}
           onClick={() => setTab("members")}
           aria-selected={tab === "members"}
           role="tab"
+          title="Участники сервера"
         >
           Участники
           <span style={countPill}>
@@ -488,6 +567,18 @@ export function IntelligencePanel({
             hideHeader
           />
         </div>
+      ) : tab === "memory" ? (
+        <div style={{ ...scrollArea, padding: "var(--ec-space-3)" }}>
+          <MemoryView items={pinnedMessages} />
+        </div>
+      ) : tab === "execution" ? (
+        <div style={{ ...scrollArea, padding: "var(--ec-space-3)" }}>
+          <ExecutionView items={executionItems} onToggle={onToggleExecutionStatus} />
+        </div>
+      ) : tab === "files" ? (
+        <div style={{ ...scrollArea, padding: "var(--ec-space-3)" }}>
+          <FilesView items={attachments} />
+        </div>
       ) : mode === "voice" ? (
         <div style={scrollArea}>
           <VoiceIntelligence
@@ -514,5 +605,257 @@ export function IntelligencePanel({
         </div>
       )}
     </aside>
+  );
+}
+
+/* ===== Memory tab ========================================== */
+
+function MemoryView({ items }: { items: PinnedMessageBrief[] }) {
+  if (items.length === 0) {
+    return (
+      <p style={{ margin: 0, color: "var(--ec-text-dim)", fontSize: "var(--ec-text-sm)" }}>
+        В этом канале ещё ничего не закреплено. Закрепи важное сообщение через
+        hover-меню — оно появится здесь как «память» канала.
+      </p>
+    );
+  }
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--ec-space-2)" }}>
+      {items.map((m) => (
+        <div
+          key={m.id}
+          style={{
+            padding: "var(--ec-space-2) var(--ec-space-3)",
+            borderRadius: "var(--ec-radius-md)",
+            background: "var(--ec-surface-2)",
+            border: "1px solid var(--ec-border-subtle)",
+            display: "flex",
+            flexDirection: "column",
+            gap: 4,
+          }}
+        >
+          <span
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              fontSize: "var(--ec-text-2xs)",
+              color: "var(--ec-text-dim)",
+            }}
+          >
+            <span aria-hidden style={{ color: "var(--ec-accent)" }}>📌</span>
+            {m.user.displayName}
+          </span>
+          <p
+            style={{
+              margin: 0,
+              fontSize: "var(--ec-text-sm)",
+              color: "var(--ec-text)",
+              whiteSpace: "pre-wrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              display: "-webkit-box",
+              WebkitLineClamp: 3,
+              WebkitBoxOrient: "vertical",
+            }}
+          >
+            {m.content || "[без текста — вложение]"}
+          </p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ===== Execution tab ======================================= */
+
+function execTypeMeta(type: "TASK" | "DECISION" | "FOLLOW_UP") {
+  if (type === "DECISION") return { glyph: "◆", color: "var(--ec-status-ai)" };
+  if (type === "FOLLOW_UP") return { glyph: "↻", color: "var(--ec-status-warn)" };
+  return { glyph: "□", color: "var(--ec-status-exec)" };
+}
+
+function ExecutionView({
+  items,
+  onToggle,
+}: {
+  items: ExecutionItemBrief[];
+  onToggle?: (id: string, status: "OPEN" | "DONE") => void;
+}) {
+  if (items.length === 0) {
+    return (
+      <p style={{ margin: 0, color: "var(--ec-text-dim)", fontSize: "var(--ec-text-sm)" }}>
+        Открытых задач, решений и follow-up в канале нет. Набери в композере
+        «/task ...» / «/decision ...» / «/followup ...» — задача появится здесь
+        и в общей доске сервера.
+      </p>
+    );
+  }
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--ec-space-2)" }}>
+      {items.map((a) => {
+        const meta = execTypeMeta(a.type);
+        const done = a.status === "DONE";
+        return (
+          <div
+            key={a.id}
+            style={{
+              display: "grid",
+              gridTemplateColumns: "auto 1fr",
+              gap: 8,
+              padding: "var(--ec-space-2) var(--ec-space-3)",
+              borderRadius: "var(--ec-radius-md)",
+              background: "var(--ec-surface-2)",
+              border: "1px solid var(--ec-border-subtle)",
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => onToggle?.(a.id, done ? "OPEN" : "DONE")}
+              style={{
+                width: 16,
+                height: 16,
+                marginTop: 2,
+                borderRadius: "var(--ec-radius-xs)",
+                border: `1.5px solid ${done ? "var(--ec-status-exec)" : "var(--ec-border-emphasis)"}`,
+                background: done ? "var(--ec-status-exec)" : "transparent",
+                color: "#fff",
+                cursor: onToggle ? "pointer" : "default",
+                display: "grid",
+                placeItems: "center",
+              }}
+              aria-label={done ? "Открыть заново" : "Отметить выполненным"}
+            >
+              {done && (
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              )}
+            </button>
+            <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+              <span
+                style={{
+                  display: "flex",
+                  alignItems: "baseline",
+                  gap: 6,
+                  fontSize: "var(--ec-text-sm)",
+                  color: done ? "var(--ec-text-dim)" : "var(--ec-text)",
+                  textDecoration: done ? "line-through" : "none",
+                }}
+              >
+                <span aria-hidden style={{ color: meta.color, fontFamily: "var(--ec-font-mono)" }}>
+                  {meta.glyph}
+                </span>
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {a.title}
+                </span>
+              </span>
+              {(a.assignee || a.dueAt) && (
+                <span style={{ fontSize: "var(--ec-text-2xs)", color: "var(--ec-text-dim)" }}>
+                  {a.assignee?.displayName ?? "без ответственного"}
+                  {a.dueAt
+                    ? ` · до ${new Date(a.dueAt).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}`
+                    : ""}
+                </span>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ===== Files tab =========================================== */
+
+function humanSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+function FilesView({ items }: { items: AttachmentBrief[] }) {
+  if (items.length === 0) {
+    return (
+      <p style={{ margin: 0, color: "var(--ec-text-dim)", fontSize: "var(--ec-text-sm)" }}>
+        Файлов в канале пока нет. Перетащи файл в композер или нажми скрепку —
+        он окажется здесь.
+      </p>
+    );
+  }
+  const basePrefix = import.meta.env.BASE_URL.replace(/\/$/, "");
+  return (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fill, minmax(86px, 1fr))",
+        gap: "var(--ec-space-2)",
+      }}
+    >
+      {items.map((a) => {
+        const isImage = a.mimeType.startsWith("image/");
+        const thumb = a.thumbnailUrl ?? (isImage ? a.url : null);
+        return (
+          <a
+            key={a.id}
+            href={`${basePrefix}${a.url}`}
+            target="_blank"
+            rel="noreferrer"
+            title={`${a.filename} · ${humanSize(a.size)}`}
+            style={{
+              position: "relative",
+              display: "block",
+              aspectRatio: "1",
+              borderRadius: "var(--ec-radius-md)",
+              overflow: "hidden",
+              background: "var(--ec-surface-2)",
+              border: "1px solid var(--ec-border-subtle)",
+              textDecoration: "none",
+              color: "var(--ec-text-muted)",
+            }}
+          >
+            {thumb ? (
+              <img
+                src={`${basePrefix}${thumb}`}
+                alt={a.filename}
+                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                loading="lazy"
+              />
+            ) : (
+              <span
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  display: "grid",
+                  placeItems: "center",
+                  fontSize: "0.6rem",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.05em",
+                  textAlign: "center",
+                  padding: 4,
+                }}
+              >
+                {a.mimeType.split("/")[1]?.slice(0, 6) ?? "file"}
+              </span>
+            )}
+            <span
+              style={{
+                position: "absolute",
+                inset: "auto 0 0",
+                padding: "2px 4px",
+                background: "linear-gradient(180deg, transparent, hsl(210 12% 6% / 0.92))",
+                color: "var(--ec-text)",
+                fontSize: "0.58rem",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {a.filename}
+            </span>
+          </a>
+        );
+      })}
+    </div>
   );
 }
