@@ -95,8 +95,22 @@ export function resolveAiMention(content: string): AiMentionMatch | null {
   return { role: entry.role, keyword: kw };
 }
 
-/** Стрипаем все известные role-mention'ы из текста. */
-const STRIP_REGEX = new RegExp(`@(?:${KEYWORDS_ALT})\\b`, "giu");
+/**
+ * Стрипаем все известные role-mention'ы из текста.
+ *
+ * Cyrillic-safe boundaries:
+ *   - lookbehind `(?<=^|\s)` — `@` должен быть в начале строки или после
+ *     whitespace. Защита от удаления `@ai` внутри email-подобных строк
+ *     (`user@ai.com`).
+ *   - lookahead `(?![\p{L}\p{N}_])` — после keyword'а НЕ должно быть
+ *     unicode word char'а. JS `\b` использует ASCII `\w` даже с `u` флагом,
+ *     поэтому для кириллицы стандартный `\b` НЕ работает; используем явный
+ *     unicode property escape.
+ */
+const STRIP_REGEX = new RegExp(
+  `(?<=^|\\s)@(?:${KEYWORDS_ALT})(?![\\p{L}\\p{N}_])`,
+  "giu",
+);
 export function stripAiMention(content: string): string {
   return content.replace(STRIP_REGEX, "").replace(/\s+/g, " ").trim();
 }
