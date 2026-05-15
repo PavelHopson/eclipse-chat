@@ -143,6 +143,34 @@ function canEditChannel(role: string | null): boolean {
   return role === "OWNER" || role === "ADMIN" || role === "MODERATOR";
 }
 
+/**
+ * ContextGroupHeader — parent-label для Context Tree групп (OVERVIEW /
+ * COMMUNICATION / EXECUTION / KNOWLEDGE). Жирнее и выше sub-label'ов
+ * («Текстовые» / «Голосовые»), под линией снизу для визуального разделения
+ * групп. EXECUTION / KNOWLEDGE групп пока нет — их добавим когда подъедет
+ * соответствующий контент (cross-channel files, knowledge graph).
+ */
+function ContextGroupHeader({ label, marginTop }: { label: string; marginTop?: boolean }) {
+  return (
+    <div
+      style={{
+        marginTop: marginTop ? "var(--ec-space-4)" : 0,
+        marginBottom: "var(--ec-space-2)",
+        padding: "0 var(--ec-space-2) var(--ec-space-2)",
+        fontSize: "0.62rem",
+        fontWeight: 800,
+        letterSpacing: "var(--ec-tracking-brand)",
+        textTransform: "uppercase",
+        color: "var(--ec-text-muted)",
+        borderBottom: "1px solid var(--ec-border-subtle)",
+      }}
+      aria-hidden
+    >
+      {label}
+    </div>
+  );
+}
+
 function ChannelGlyph({
   type,
   emoji,
@@ -618,6 +646,8 @@ export function ChannelList({
       </header>
 
       <div style={listWrap}>
+        {/* Context Tree — operational groupings (brief #3) */}
+        <ContextGroupHeader label="Overview" />
         {onOpenStatusBoard && (
           <button
             type="button"
@@ -627,7 +657,6 @@ export function ChannelList({
                 ? "ec-channel-item ec-channel-item--active"
                 : "ec-channel-item"
             }
-            style={{ marginBottom: "var(--ec-space-2)" }}
             title="Доска задач — все task / decision / follow-up сервера"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -639,6 +668,8 @@ export function ChannelList({
             <span style={{ flex: 1, minWidth: 0 }}>Доска задач</span>
           </button>
         )}
+
+        <ContextGroupHeader label="Communication" marginTop />
 
         {textChannels.length > 0 && (
           <>
