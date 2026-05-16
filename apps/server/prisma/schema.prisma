@@ -53,6 +53,10 @@ model User {
   reactions        Reaction[]
   createdActionItems ActionItem[]        @relation("ActionItemCreator")
   assignedActionItems ActionItem[]       @relation("ActionItemAssignee")
+  /// Comments написанные этим user'ом на ActionItem'ах (v0.54 drawer).
+  actionItemComments ActionItemComment[]
+  /// Audit-log записи где user был инициатором (v0.54). Null userId — system.
+  actionItemActivities ActionItemActivity[]
   /// DM conversations где user — userA (нормализованная позиция, см. DirectConversation).
   /// Для group DMs userA/userB NULL — membership через ConversationParticipant.
   dmsAsUserA       DirectConversation[]  @relation("DMUserA")
@@ -273,6 +277,30 @@ enum ActionItemStatus {
   DONE
 }
 
+/// Приоритет action item. Default NORMAL — backward-compat для existing
+/// rows. UI рендерит цветной badge: LOW=idle, NORMAL=text-muted,
+/// HIGH=warn, URGENT=risk.
+enum ActionItemPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+/// Audit-log тип события для ActionItemActivity. Расширяется по мере
+/// добавления новых mutable полей.
+enum ActionItemActivityType {
+  CREATED
+  STATUS_CHANGED
+  ASSIGNEE_CHANGED
+  DUE_CHANGED
+  PRIORITY_CHANGED
+  TITLE_CHANGED
+  DESCRIPTION_CHANGED
+  COMMENT_ADDED
+  COMMENT_DELETED
+}
+
 /// Сервер — контейнер каналов и участников. Создатель автоматически
 /// становится Member с role = OWNER.
 model Server {
@@ -428,11 +456,19 @@ model Message {
 
 /// Action layer поверх сообщений. Сообщение можно превратить в task / decision / follow-up
 /// и дальше использовать это уже как сущность выполнения, а не просто как chat history.
+///
+/// v0.54 detail-drawer: добавлены `priority`, `description`, comments thread
+/// (ActionItemComment) и activity log (ActionItemActivity). Поле `title`
+/// остаётся коротким (до 160 символов) — markdown body живёт в `description`.
 model ActionItem {
   id              String           @id @default(cuid())
   title           String
+  /// Markdown description (v0.54). Nullable — старые items не имеют. Max 4000.
+  description     String?
   type            ActionItemType
   status          ActionItemStatus @default(OPEN)
+  /// v0.54: приоритет для сортировки + визуальной важности.
+  priority        ActionItemPriority @default(NORMAL)
   dueAt           DateTime?
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
@@ -448,10 +484,51 @@ model ActionItem {
   assigneeUserId  String?
   assignee        User?            @relation("ActionItemAssignee", fields: [assigneeUserId], references: [id], onDelete: SetNull)
 
+  comments        ActionItemComment[]
+  activities      ActionItemActivity[]
+
   @@unique([sourceMessageId, type])
   @@index([channelId, status, createdAt])
   @@index([serverId, status, createdAt])
   @@index([assigneeUserId, status])
+}
+
+/// Comments thread на ActionItem — v0.54 detail drawer.
+/// Cascade-delete при удалении item или автора. Edit через editedAt timestamp
+/// (нет soft-delete для comment'ов: delete = remove row, отдельное audit-event).
+model ActionItemComment {
+  id           String     @id @default(cuid())
+  actionItemId String
+  actionItem   ActionItem @relation(fields: [actionItemId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content      String
+  createdAt    DateTime   @default(now())
+  /// Время последнего edit (null = не редактировался).
+  editedAt     DateTime?
+
+  @@index([actionItemId, createdAt])
+  @@index([userId])
+}
+
+/// Audit log on ActionItem — v0.54. Каждое значимое изменение (status,
+/// assignee, due, priority, title, description) + comments add/delete
+/// генерируют запись. История остаётся при удалении actor'а (userId
+/// SetNull). Payload — JSON string с before/after значениями.
+model ActionItemActivity {
+  id           String                 @id @default(cuid())
+  actionItemId String
+  actionItem   ActionItem             @relation(fields: [actionItemId], references: [id], onDelete: Cascade)
+  /// Initiator. Null = system / автоматическое событие.
+  userId       String?
+  user         User?                  @relation(fields: [userId], references: [id], onDelete: SetNull)
+  type         ActionItemActivityType
+  /// JSON metadata e.g. `{ "from": "OPEN", "to": "DONE" }` для STATUS_CHANGED.
+  /// Frontend парсит per-type — schema-less для гибкости в v1.
+  payload      String?
+  createdAt    DateTime               @default(now())
+
+  @@index([actionItemId, createdAt])
 }
 
 /// Direct conversation — 1-to-1 ИЛИ group (v0.52).

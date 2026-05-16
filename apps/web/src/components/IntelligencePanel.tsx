@@ -85,6 +85,8 @@ type Props = {
   attachments: AttachmentBrief[];
   executionItems: ExecutionItemBrief[];
   onToggleExecutionStatus?: (id: string, status: "OPEN" | "DONE") => void;
+  /** v0.54: открыть ActionItemDrawer по клику на execution row. */
+  onOpenAction?: (actionItemId: string) => void;
   /**
    * Client Mode: скрыть operator-tabs Дела и Файлы. В CLIENT-серверах
    * остаются Сводка / Память / Люди — calm portal для клиента, без
@@ -487,6 +489,7 @@ export function IntelligencePanel({
   attachments,
   executionItems,
   onToggleExecutionStatus,
+  onOpenAction,
   clientMode = false,
 }: Props) {
   // Default-вкладка: voice → Люди, chat operator → Сводка, chat client → Люди.
@@ -625,7 +628,11 @@ export function IntelligencePanel({
         </div>
       ) : tab === "execution" ? (
         <div style={{ ...scrollArea, padding: "var(--ec-space-3)" }}>
-          <ExecutionView items={executionItems} onToggle={onToggleExecutionStatus} />
+          <ExecutionView
+            items={executionItems}
+            onToggle={onToggleExecutionStatus}
+            onOpen={onOpenAction}
+          />
         </div>
       ) : tab === "files" ? (
         <div style={{ ...scrollArea, padding: "var(--ec-space-3)" }}>
@@ -730,9 +737,11 @@ function execTypeMeta(type: "TASK" | "DECISION" | "FOLLOW_UP") {
 function ExecutionView({
   items,
   onToggle,
+  onOpen,
 }: {
   items: ExecutionItemBrief[];
   onToggle?: (id: string, status: "OPEN" | "DONE") => void;
+  onOpen?: (actionItemId: string) => void;
 }) {
   if (items.length === 0) {
     return (
@@ -751,6 +760,7 @@ function ExecutionView({
         return (
           <div
             key={a.id}
+            onClick={() => onOpen?.(a.id)}
             style={{
               display: "grid",
               gridTemplateColumns: "auto 1fr",
@@ -759,11 +769,15 @@ function ExecutionView({
               borderRadius: "var(--ec-radius-md)",
               background: "var(--ec-surface-2)",
               border: "1px solid var(--ec-border-subtle)",
+              cursor: onOpen ? "pointer" : "default",
             }}
           >
             <button
               type="button"
-              onClick={() => onToggle?.(a.id, done ? "OPEN" : "DONE")}
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggle?.(a.id, done ? "OPEN" : "DONE");
+              }}
               style={{
                 width: 16,
                 height: 16,

@@ -305,6 +305,41 @@ export function emitActionItemUpdated(
   io?.to(`channel:${channelId}`).to(`server:${payload.serverId}`).emit("action:item:updated", payload);
 }
 
+/**
+ * v0.54 drawer events: comment добавлен / удалён. Broadcast в channel+server
+ * rooms — клиенты с открытым ActionItemDrawer обновят thread; чипы и
+ * Status Board не используют это событие (ActionItemUpdated уже покрывает
+ * top-level fields).
+ */
+export function emitActionItemCommentAdded(
+  channelId: string,
+  serverId: string,
+  payload: {
+    id: string;
+    actionItemId: string;
+    serverId: string;
+    channelId: string;
+    content: string;
+    createdAt: string;
+    editedAt: string | null;
+    user: {
+      id: string;
+      displayName: string;
+      avatar: string | null;
+    };
+  },
+) {
+  io?.to(`channel:${channelId}`).to(`server:${serverId}`).emit("action:item:comment:added", payload);
+}
+
+export function emitActionItemCommentDeleted(
+  channelId: string,
+  serverId: string,
+  payload: { commentId: string; actionItemId: string },
+) {
+  io?.to(`channel:${channelId}`).to(`server:${serverId}`).emit("action:item:comment:deleted", payload);
+}
+
 // ============================
 // Incident Mode events
 // ============================

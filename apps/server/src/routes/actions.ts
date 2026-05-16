@@ -1,12 +1,23 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { actionItemInclude, serializeActionItem } from "../actionItems.js";
+import {
+  actionItemDetailInclude,
+  actionItemInclude,
+  serializeActionItem,
+  serializeActionItemDetail,
+} from "../actionItems.js";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
 import { db } from "../db.js";
-import { emitActionItemCreated, emitActionItemUpdated } from "../realtime.js";
+import {
+  emitActionItemCommentAdded,
+  emitActionItemCommentDeleted,
+  emitActionItemCreated,
+  emitActionItemUpdated,
+} from "../realtime.js";
 
 const actionTypeSchema = z.enum(["TASK", "DECISION", "FOLLOW_UP"]);
 const actionStatusSchema = z.enum(["OPEN", "DONE"]);
+const actionPrioritySchema = z.enum(["LOW", "NORMAL", "HIGH", "URGENT"]);
 
 const actionQuerySchema = z.object({
   status: actionStatusSchema.optional(),
@@ -21,12 +32,18 @@ const updateActionBody = z
   .object({
     status: actionStatusSchema.optional(),
     title: z.string().trim().min(1).max(160).optional(),
+    description: z.string().max(4000).nullable().optional(),
+    priority: actionPrioritySchema.optional(),
     assigneeUserId: z.string().nullable().optional(),
     dueAt: z.string().datetime().nullable().optional(),
   })
   .refine((body) => Object.keys(body).length > 0, {
     message: "At least one field is required",
   });
+
+const createCommentBody = z.object({
+  content: z.string().trim().min(1).max(2000),
+});
 
 function deriveActionTitle(type: z.infer<typeof actionTypeSchema>, content: string): string {
   const compact = content.replace(/\s+/g, " ").trim();
@@ -57,6 +74,14 @@ async function requireChannelMember(userId: string, channelId: string) {
   }
 
   return { channel };
+}
+
+/**
+ * Activity payload serializer. Хранит compact diff e.g. for STATUS_CHANGED:
+ * `{ "from": "OPEN", "to": "DONE" }`. Schema-less — frontend парсит per-type.
+ */
+function activityPayload(data: Record<string, unknown>): string {
+  return JSON.stringify(data);
 }
 
 export async function registerActionRoutes(app: FastifyInstance) {
@@ -135,6 +160,38 @@ export async function registerActionRoutes(app: FastifyInstance) {
     },
   );
 
+  /**
+   * v0.54: GET /api/actions/:id — detail с comments + activity. Used by
+   * ActionItemDrawer на frontend. Membership-only check (любой member
+   * server'а может видеть detail).
+   */
+  app.get(
+    "/api/actions/:id",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const userId = getUserId(req);
+      if (!userId) {
+        return reply.status(401).send({ error: "Unauthorized" });
+      }
+      const { id } = req.params as { id: string };
+      const item = await db.actionItem.findUnique({
+        where: { id },
+        include: actionItemDetailInclude,
+      });
+      if (!item) {
+        return reply.status(404).send({ error: "Action not found" });
+      }
+      const member = await db.member.findUnique({
+        where: { userId_serverId: { userId, serverId: item.serverId } },
+        select: { id: true },
+      });
+      if (!member) {
+        return reply.status(403).send({ error: "Not a member of this server" });
+      }
+      return { action: serializeActionItemDetail(item) };
+    },
+  );
+
   app.post(
     "/api/messages/:id/actions",
     { onRequest: [requireJwt] },
@@ -199,6 +256,13 @@ export async function registerActionRoutes(app: FastifyInstance) {
             channelId: message.channelId,
             sourceMessageId: message.id,
             createdByUserId: userId,
+            activities: {
+              create: {
+                userId,
+                type: "CREATED",
+                payload: activityPayload({ source: "message", type: parsed.data.type }),
+              },
+            },
           },
           include: actionItemInclude,
         });
@@ -240,6 +304,12 @@ export async function registerActionRoutes(app: FastifyInstance) {
           id: true,
           channelId: true,
           serverId: true,
+          status: true,
+          title: true,
+          description: true,
+          priority: true,
+          assigneeUserId: true,
+          dueAt: true,
         },
       });
       if (!existing) {
@@ -274,24 +344,235 @@ export async function registerActionRoutes(app: FastifyInstance) {
         }
       }
 
-      const updated = await db.actionItem.update({
-        where: { id: actionId },
-        data: {
-          ...(parsed.data.status ? { status: parsed.data.status } : {}),
-          ...(parsed.data.title ? { title: parsed.data.title } : {}),
-          ...(parsed.data.assigneeUserId !== undefined
-            ? { assigneeUserId: parsed.data.assigneeUserId }
-            : {}),
-          ...(parsed.data.dueAt !== undefined
-            ? { dueAt: parsed.data.dueAt ? new Date(parsed.data.dueAt) : null }
-            : {}),
-        },
-        include: actionItemInclude,
+      // Build update + activity log in one transaction.
+      const activityEntries: Array<{
+        type:
+          | "STATUS_CHANGED"
+          | "ASSIGNEE_CHANGED"
+          | "DUE_CHANGED"
+          | "PRIORITY_CHANGED"
+          | "TITLE_CHANGED"
+          | "DESCRIPTION_CHANGED";
+        payload: string;
+      }> = [];
+
+      if (parsed.data.status && parsed.data.status !== existing.status) {
+        activityEntries.push({
+          type: "STATUS_CHANGED",
+          payload: activityPayload({ from: existing.status, to: parsed.data.status }),
+        });
+      }
+      if (parsed.data.title && parsed.data.title !== existing.title) {
+        activityEntries.push({
+          type: "TITLE_CHANGED",
+          payload: activityPayload({ from: existing.title, to: parsed.data.title }),
+        });
+      }
+      if (
+        parsed.data.description !== undefined &&
+        (parsed.data.description ?? null) !== (existing.description ?? null)
+      ) {
+        activityEntries.push({
+          type: "DESCRIPTION_CHANGED",
+          payload: activityPayload({
+            hadValue: existing.description !== null,
+            hasValue: parsed.data.description !== null,
+          }),
+        });
+      }
+      if (parsed.data.priority && parsed.data.priority !== existing.priority) {
+        activityEntries.push({
+          type: "PRIORITY_CHANGED",
+          payload: activityPayload({ from: existing.priority, to: parsed.data.priority }),
+        });
+      }
+      if (
+        parsed.data.assigneeUserId !== undefined &&
+        parsed.data.assigneeUserId !== existing.assigneeUserId
+      ) {
+        activityEntries.push({
+          type: "ASSIGNEE_CHANGED",
+          payload: activityPayload({
+            from: existing.assigneeUserId,
+            to: parsed.data.assigneeUserId,
+          }),
+        });
+      }
+      const incomingDueAt =
+        parsed.data.dueAt !== undefined
+          ? parsed.data.dueAt
+            ? new Date(parsed.data.dueAt)
+            : null
+          : undefined;
+      if (
+        incomingDueAt !== undefined &&
+        (incomingDueAt?.toISOString() ?? null) !== (existing.dueAt?.toISOString() ?? null)
+      ) {
+        activityEntries.push({
+          type: "DUE_CHANGED",
+          payload: activityPayload({
+            from: existing.dueAt?.toISOString() ?? null,
+            to: incomingDueAt?.toISOString() ?? null,
+          }),
+        });
+      }
+
+      const updated = await db.$transaction(async (tx) => {
+        const result = await tx.actionItem.update({
+          where: { id: actionId },
+          data: {
+            ...(parsed.data.status ? { status: parsed.data.status } : {}),
+            ...(parsed.data.title ? { title: parsed.data.title } : {}),
+            ...(parsed.data.description !== undefined
+              ? { description: parsed.data.description }
+              : {}),
+            ...(parsed.data.priority ? { priority: parsed.data.priority } : {}),
+            ...(parsed.data.assigneeUserId !== undefined
+              ? { assigneeUserId: parsed.data.assigneeUserId }
+              : {}),
+            ...(incomingDueAt !== undefined ? { dueAt: incomingDueAt } : {}),
+          },
+          include: actionItemInclude,
+        });
+        if (activityEntries.length > 0) {
+          await tx.actionItemActivity.createMany({
+            data: activityEntries.map((entry) => ({
+              actionItemId: actionId,
+              userId,
+              type: entry.type,
+              payload: entry.payload,
+            })),
+          });
+        }
+        return result;
       });
 
       const payload = serializeActionItem(updated);
       emitActionItemUpdated(existing.channelId, payload);
       return { action: payload };
+    },
+  );
+
+  /**
+   * v0.54: POST /api/actions/:id/comments — добавить comment.
+   * Activity log пишется автоматически (COMMENT_ADDED).
+   */
+  app.post(
+    "/api/actions/:id/comments",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const userId = getUserId(req);
+      if (!userId) {
+        return reply.status(401).send({ error: "Unauthorized" });
+      }
+      const { id: actionId } = req.params as { id: string };
+      const parsed = createCommentBody.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.status(400).send({ error: "Invalid body" });
+      }
+      const item = await db.actionItem.findUnique({
+        where: { id: actionId },
+        select: { id: true, serverId: true, channelId: true },
+      });
+      if (!item) {
+        return reply.status(404).send({ error: "Action not found" });
+      }
+      const member = await db.member.findUnique({
+        where: { userId_serverId: { userId, serverId: item.serverId } },
+        select: { id: true },
+      });
+      if (!member) {
+        return reply.status(403).send({ error: "Not a member of this server" });
+      }
+      const { comment } = await db.$transaction(async (tx) => {
+        const created = await tx.actionItemComment.create({
+          data: {
+            actionItemId: actionId,
+            userId,
+            content: parsed.data.content,
+          },
+          include: {
+            user: { select: { id: true, displayName: true, avatar: true } },
+          },
+        });
+        await tx.actionItemActivity.create({
+          data: {
+            actionItemId: actionId,
+            userId,
+            type: "COMMENT_ADDED",
+            payload: activityPayload({ commentId: created.id }),
+          },
+        });
+        return { comment: created };
+      });
+
+      const payload = {
+        id: comment.id,
+        actionItemId: actionId,
+        serverId: item.serverId,
+        channelId: item.channelId,
+        content: comment.content,
+        createdAt: comment.createdAt.toISOString(),
+        editedAt: comment.editedAt?.toISOString() ?? null,
+        user: {
+          id: comment.user.id,
+          displayName: comment.user.displayName,
+          avatar: comment.user.avatar,
+        },
+      };
+      emitActionItemCommentAdded(item.channelId, item.serverId, payload);
+      return { comment: payload };
+    },
+  );
+
+  /**
+   * v0.54: DELETE /api/actions/:id/comments/:commentId — author only.
+   * Activity log COMMENT_DELETED. Hard delete (нет soft-delete для comments).
+   */
+  app.delete(
+    "/api/actions/:id/comments/:commentId",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const userId = getUserId(req);
+      if (!userId) {
+        return reply.status(401).send({ error: "Unauthorized" });
+      }
+      const { id: actionId, commentId } = req.params as {
+        id: string;
+        commentId: string;
+      };
+      const comment = await db.actionItemComment.findUnique({
+        where: { id: commentId },
+        select: {
+          id: true,
+          userId: true,
+          actionItemId: true,
+          actionItem: { select: { serverId: true, channelId: true } },
+        },
+      });
+      if (!comment || comment.actionItemId !== actionId) {
+        return reply.status(404).send({ error: "Comment not found" });
+      }
+      if (comment.userId !== userId) {
+        return reply.status(403).send({ error: "Only comment author can delete" });
+      }
+      await db.$transaction(async (tx) => {
+        await tx.actionItemComment.delete({ where: { id: commentId } });
+        await tx.actionItemActivity.create({
+          data: {
+            actionItemId: actionId,
+            userId,
+            type: "COMMENT_DELETED",
+            payload: activityPayload({ commentId }),
+          },
+        });
+      });
+      emitActionItemCommentDeleted(
+        comment.actionItem.channelId,
+        comment.actionItem.serverId,
+        { commentId, actionItemId: actionId },
+      );
+      return { ok: true };
     },
   );
 }

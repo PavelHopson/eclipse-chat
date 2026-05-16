@@ -11,6 +11,7 @@ import { CreateGroupDmModal, type AvailableUser } from "../components/CreateGrou
 import { GroupAvatar } from "../components/GroupAvatar";
 import { HomeToday } from "../components/HomeToday";
 import { IntelligencePanel } from "../components/IntelligencePanel";
+import { ActionItemDrawer } from "../components/ActionItemDrawer";
 import { JoinServerModal } from "../components/JoinServerModal";
 import { MessageInput } from "../components/MessageInput";
 import { MessageList } from "../components/MessageList";
@@ -264,6 +265,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     createGroupDm,
   } = useDirectConversations(socket, user.id);
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
+  /** v0.54: открытый ActionItemDrawer. null = drawer закрыт. */
+  const [openActionItemId, setOpenActionItemId] = useState<string | null>(null);
   const inDmMode = activeServerId === null;
   const selectedDm = dmConversations.find((c) => c.id === selectedDmId) ?? null;
   const {
@@ -1143,6 +1146,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               setSelectedChannelId(channelId);
               if (isMobile) setNavOpen(false);
             }}
+            onOpenAction={(id) => setOpenActionItemId(id)}
             initialFilter={statusBoardFilter}
           />
         ) : teamHealthOpen && activeServer ? (
@@ -1472,10 +1476,31 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               onToggleExecutionStatus={(id, status) =>
                 void updateActionItemStatus(id, status)
               }
+              onOpenAction={(id) => setOpenActionItemId(id)}
               clientMode={isClientMode}
             />
           )}
         </div>
+      )}
+
+      {openActionItemId && (
+        <ActionItemDrawer
+          actionItemId={openActionItemId}
+          socket={socket}
+          currentUserId={user.id}
+          members={members.map((m) => ({
+            userId: m.userId,
+            user: { displayName: m.user.displayName, avatar: m.user.avatar },
+          }))}
+          channelNameById={(cid) => channelNameById(cid) ?? null}
+          onClose={() => setOpenActionItemId(null)}
+          onJumpToSource={(channelId, _messageId) => {
+            setOpenActionItemId(null);
+            setStatusBoardOpen(false);
+            setSelectedChannelId(channelId);
+            if (isMobile) setNavOpen(false);
+          }}
+        />
       )}
 
       {showCreateServer && (

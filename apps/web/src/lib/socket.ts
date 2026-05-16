@@ -202,12 +202,15 @@ export type IncidentResolvedPayload = {
 
 export type ActionItemType = "TASK" | "DECISION" | "FOLLOW_UP";
 export type ActionItemStatus = "OPEN" | "DONE";
+export type ActionItemPriority = "LOW" | "NORMAL" | "HIGH" | "URGENT";
 
 export type ActionItemPayload = {
   id: string;
   title: string;
+  description: string | null;
   type: ActionItemType;
   status: ActionItemStatus;
+  priority: ActionItemPriority;
   serverId: string;
   channelId: string;
   sourceMessageId: string;
@@ -224,6 +227,22 @@ export type ActionItemPayload = {
     displayName: string;
     avatar: string | null;
   } | null;
+};
+
+export type ActionItemCommentAddedPayload = {
+  id: string;
+  actionItemId: string;
+  serverId: string;
+  channelId: string;
+  content: string;
+  createdAt: string;
+  editedAt: string | null;
+  user: { id: string; displayName: string; avatar: string | null };
+};
+
+export type ActionItemCommentDeletedPayload = {
+  commentId: string;
+  actionItemId: string;
 };
 
 /** Совпадает с naming из docs/SOCKET_EVENTS.md и кода сервера. */
@@ -348,6 +367,8 @@ export const SocketEvents = {
   ReactionRemoved: "reaction:removed",
   ActionItemCreated: "action:item:created",
   ActionItemUpdated: "action:item:updated",
+  ActionItemCommentAdded: "action:item:comment:added",
+  ActionItemCommentDeleted: "action:item:comment:deleted",
   ChannelCreated: "channel:created",
   ChannelDeleted: "channel:deleted",
   ChannelUpdated: "channel:updated",

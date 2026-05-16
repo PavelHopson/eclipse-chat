@@ -36,6 +36,9 @@ type Props = {
   channelNameById: (channelId: string) => string | undefined;
   onUpdateStatus: (id: string, status: "OPEN" | "DONE") => void;
   onOpenChannel: (channelId: string) => void;
+  /** v0.54: открыть ActionItemDrawer по клику на карточку. Если undefined —
+   *  старое поведение (клик = переход в канал-источник). */
+  onOpenAction?: (actionItemId: string) => void;
   /** Pre-filter from external trigger (Team Health stat-card click etc). */
   initialFilter?: BoardPreFilter;
 };
@@ -309,6 +312,7 @@ export function StatusBoard({
   channelNameById,
   onUpdateStatus,
   onOpenChannel,
+  onOpenAction,
   initialFilter,
 }: Props) {
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("ALL");
@@ -534,7 +538,11 @@ export function StatusBoard({
                     onToggle={() =>
                       onUpdateStatus(item.id, item.status === "DONE" ? "OPEN" : "DONE")
                     }
-                    onOpen={() => onOpenChannel(item.channelId)}
+                    onOpen={() =>
+                      onOpenAction
+                        ? onOpenAction(item.id)
+                        : onOpenChannel(item.channelId)
+                    }
                   />
                 ))
               )}
