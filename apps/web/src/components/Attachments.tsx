@@ -70,6 +70,43 @@ const fileIconWrap: CSSProperties = {
   flexShrink: 0,
 };
 
+const ARCHIVE_MIMES = new Set([
+  "application/zip",
+  "application/x-rar-compressed",
+  "application/vnd.rar",
+  "application/x-7z-compressed",
+  "application/x-tar",
+  "application/gzip",
+  "application/x-bzip2",
+]);
+
+const DOC_MIMES = new Set([
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.oasis.opendocument.text",
+]);
+
+const SHEET_MIMES = new Set([
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.oasis.opendocument.spreadsheet",
+  "text/csv",
+]);
+
+const SLIDES_MIMES = new Set([
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "application/vnd.oasis.opendocument.presentation",
+]);
+
+function FileBadge({ label }: { label: string }) {
+  // Document с лейблом-меткой (PDF / DOC / XLS / PPT / ZIP / RAR / 7Z).
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+      <text x="7" y="18" fontSize="5" fontWeight="700" fill="currentColor" stroke="none">{label}</text>
+    </svg>
+  );
+}
+
 function FileIcon({ mime }: { mime: string }) {
   if (mime.startsWith("audio/")) {
     return (
@@ -88,15 +125,23 @@ function FileIcon({ mime }: { mime: string }) {
       </svg>
     );
   }
-  if (mime === "application/pdf") {
+  if (mime === "application/pdf") return <FileBadge label="PDF" />;
+  if (DOC_MIMES.has(mime))    return <FileBadge label="DOC" />;
+  if (SHEET_MIMES.has(mime))  return <FileBadge label="XLS" />;
+  if (SLIDES_MIMES.has(mime)) return <FileBadge label="PPT" />;
+  if (ARCHIVE_MIMES.has(mime)) {
+    // Архив: коробка с защёлкой — visually отличается от document chip.
     return (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
-        <polyline points="14 2 14 8 20 8" />
-        <text x="7" y="18" fontSize="6" fontWeight="700" fill="currentColor" stroke="none">PDF</text>
+        <rect x="3" y="4" width="18" height="16" rx="2" />
+        <path d="M3 9h18" />
+        <path d="M11 13h2" />
+        <path d="M12 13v3" />
       </svg>
     );
   }
+  if (mime === "text/csv") return <FileBadge label="CSV" />;
+  if (mime === "text/markdown") return <FileBadge label="MD" />;
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />

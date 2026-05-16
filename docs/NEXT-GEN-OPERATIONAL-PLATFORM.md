@@ -81,6 +81,14 @@ Needed:
 - Draft syncing per room and DM.
 - Better thread unread states.
 - Better long-message/code UX.
+- **Full file taxonomy in uploads** — beyond current images / PDF /
+  zip / video / audio coverage, accept Office documents (docx, xlsx,
+  pptx, odt, csv), all common archive formats (rar, 7z, tar, gz),
+  and extended video formats (mkv, avi). Add magic-bytes MIME
+  sniffing (do not trust client-declared `mimeType`), raise video
+  cap (currently 50MB across the board) with synced nginx
+  `client_max_body_size`, and per-extension iconography in the
+  attachment chip UI.
 
 ### 2. Workspaces & Rooms
 
@@ -362,6 +370,14 @@ Voice system:
 - Screen sharing.
 - Video calls.
 - Recording.
+- **Concurrent multi-publisher streams.** Every participant in a voice
+  room can publish camera and screen share simultaneously — not just
+  one screen at a time. The grid layout, hooks and LiveKit room
+  config must hold up under 6+ live video tiles with mixed camera +
+  screen sources, with graceful auto-collapse / pinning when the tile
+  count exceeds the viewport budget. This is what turns voice rooms
+  into real review/whiteboard sessions instead of one-presenter
+  meetings.
 
 AI transcription:
 

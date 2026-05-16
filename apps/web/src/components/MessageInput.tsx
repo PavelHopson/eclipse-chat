@@ -226,10 +226,13 @@ const previewRemove: CSSProperties = {
   cursor: "pointer",
 };
 
-// Лимиты в синхроне с backend (apps/server/src/attachments.ts) — v0.9.2 bumped.
+// Лимиты в синхроне с backend (apps/server/src/attachments.ts).
+// Не-видео: 50 MB. Видео: 200 MB (4K phone clip без транскода).
 const ATTACHMENT_MAX_BYTES = 50 * 1024 * 1024;
+const ATTACHMENT_MAX_BYTES_VIDEO = 200 * 1024 * 1024;
 const MAX_PER_MESSAGE = 10;
 const ALLOWED_MIME = new Set([
+  // Images
   "image/jpeg",
   "image/png",
   "image/webp",
@@ -240,19 +243,46 @@ const ALLOWED_MIME = new Set([
   "image/bmp",
   "image/tiff",
   "image/svg+xml",
+  // Documents
   "application/pdf",
   "text/plain",
   "text/markdown",
+  "text/csv",
   "application/json",
+  // Office
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "application/vnd.oasis.opendocument.text",
+  "application/vnd.oasis.opendocument.spreadsheet",
+  "application/vnd.oasis.opendocument.presentation",
+  // Archives
   "application/zip",
+  "application/x-rar-compressed",
+  "application/vnd.rar",
+  "application/x-7z-compressed",
+  "application/x-tar",
+  "application/gzip",
+  "application/x-bzip2",
+  // Video
   "video/mp4",
   "video/webm",
   "video/quicktime",
+  "video/x-matroska",
+  "video/x-msvideo",
+  // Audio
   "audio/mpeg",
   "audio/wav",
+  "audio/x-wav",
   "audio/ogg",
   "audio/webm",
+  "audio/mp4",
+  "audio/aac",
 ]);
+
+function clientSizeLimit(mime: string): number {
+  return mime.startsWith("video/") ? ATTACHMENT_MAX_BYTES_VIDEO : ATTACHMENT_MAX_BYTES;
+}
 
 type Pending = {
   id: string;
@@ -528,8 +558,9 @@ export function MessageInput({
         err = `Не поддерживается: ${f.type || f.name}`;
         continue;
       }
-      if (f.size > ATTACHMENT_MAX_BYTES) {
-        err = `«${f.name}» больше ${(ATTACHMENT_MAX_BYTES / 1024 / 1024).toFixed(0)} МБ`;
+      const limit = clientSizeLimit(f.type);
+      if (f.size > limit) {
+        err = `«${f.name}» больше ${(limit / 1024 / 1024).toFixed(0)} МБ`;
         continue;
       }
       const isImage = f.type.startsWith("image/");
@@ -888,7 +919,7 @@ export function MessageInput({
           ref={fileInputRef}
           type="file"
           multiple
-          accept="image/jpeg,image/png,image/webp,image/gif,image/avif,image/heic,image/heif,image/bmp,image/tiff,image/svg+xml,application/pdf,text/plain,text/markdown,application/json,application/zip,video/mp4,video/webm,video/quicktime,audio/mpeg,audio/wav,audio/ogg,audio/webm"
+          accept="image/*,video/*,audio/*,application/pdf,text/plain,text/markdown,text/csv,application/json,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.oasis.opendocument.text,application/vnd.oasis.opendocument.spreadsheet,application/vnd.oasis.opendocument.presentation,application/zip,application/x-rar-compressed,application/vnd.rar,application/x-7z-compressed,application/x-tar,application/gzip,application/x-bzip2,.docx,.xlsx,.pptx,.odt,.ods,.odp,.csv,.zip,.rar,.7z,.tar,.gz,.bz2,.mkv,.avi"
           onChange={(e) => {
             if (e.target.files) addFiles(e.target.files);
             e.target.value = "";

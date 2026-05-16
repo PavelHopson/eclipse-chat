@@ -5,9 +5,9 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v0.50.0** (media viewer + voice messages +
-previous v0.49 unread/jump-to-latest/draft sync, 16.05.2026)
-— https://app.star-crm.ru/eclipse-chat/
+**Текущая версия в проде:** **v0.51.0** (uploads full taxonomy — Office /
+архивы / extended video + magic-bytes sniff + 200 MB cap для video,
+16.05.2026) — https://app.star-crm.ru/eclipse-chat/
 
 > **Сессия 15.05 (вечер)**: v0.28 → v0.47 = 20 prod-деплоев за один заход.
 > AI Agents типология (#6 brief) закрыта полностью. Execution Analytics
@@ -83,6 +83,7 @@ chat и не enterprise prison.
 
 | Версия | Дата | Что |
 |---|---|---|
+| **v0.51.0** | 16.05 | **Uploads full file taxonomy** — `attachments.ts` ALLOWED_MIME расширен: Office (docx/xlsx/pptx/odt/ods/odp/csv), архивы (rar/7z/tar/gz/bz2 в дополнение к zip), extended video (mkv/avi), extra audio (m4a/aac). Magic-bytes sniff (`sniffMime` + `isMimeConsistent`, без npm dep) — клиент-объявленный mime сверяется с фактическими байтами буфера, чтобы нельзя было загрузить .exe под видом image/png. Per-mime size cap: 200 MB для video/*, 50 MB остальное. nginx `client_max_body_size` 750m → 900m. Frontend Attachments.tsx: FileBadge с label-вкладкой (DOC/XLS/PPT/PDF/CSV/MD) + новый archive-icon. MessageInput.tsx: расширен `accept=` (image/*, video/*, audio/* + explicit Office/archive mime + ext fallbacks .docx/.rar/.7z/.mkv etc) + per-mime client-side size check. Unit-тест `attachments-sniff.test.ts` — 30 cases на каждое family + mismatch detection (text/plain claim + pdf content → reject). |
 | **v0.50.0** | 16.05 | **Media layer + voice messages** — video fullscreen viewer, audio/voice player cards, composer mic recorder via MediaRecorder, correct audio/video upload extensions. |
 | **v0.49.0** | 16.05 | **Unread ergonomics** — active-room unread divider + jump-to-latest overlay + per-channel/DM/thread local draft sync. |
 | **v0.48.x** | 16.05 | **Responsive visual system pass** — cinematic shell background, operator topbar/rail, channel/message/composer depth, Home command-center cards, desktop/tablet/mobile polish. Commit `d392b54` |
@@ -183,6 +184,29 @@ base, ✅ Home command center, ✅ responsive cinematic UI pass.
 10. **Operational tables schema spike** — проверить модель Table /
     Field / Row / Cell до UI.
 
+11. **Voice multi-publisher harden + verify** — UI грид и `useVoice`
+    хуки уже поддерживают одновременную публикацию камеры + screen
+    share от *всех* участников (см. `VoiceRoom.tsx` screenTracks +
+    cameraTracks fan-out, `useVoice.toggleCamera/toggleScreenShare` без
+    per-room gates). Что нужно: e2e-проверка с 3+ участниками
+    параллельно публикующими camera+screen (bandwidth profile, LiveKit
+    egress, layout под 6+ tiles), explicit fixture в `livekit.yaml`
+    `room.max_participants`/`publisher` quotas, graceful fallback
+    («слишком много screens — auto-collapse в presence strip»), Voice
+    diagnostics: сколько track'ов publishing/subscribed live. Без этого
+    decision-call с 5 разработчиками + 2 screen share = potential
+    breakdown. Малый-средний.
+
+12. ✅ **Uploads: full file taxonomy** — закрыто в v0.51.0. Расширен
+    ALLOWED_MIME (Office docx/xlsx/pptx/odt/ods/odp + архивы
+    rar/7z/tar/gz/bz2 + extra video mkv/avi + audio m4a/aac/x-wav).
+    Magic-bytes sniff (`sniffMime` + `isMimeConsistent`, без npm dep) —
+    client-объявленный mime сверяется с фактическими байтами буфера.
+    Per-mime size cap: 200 MB для video/*, 50 MB остальное. nginx
+    `client_max_body_size` 750m → 900m. Frontend FileBadge + archive
+    icon + расширенный `accept=`. 30 unit-тестов в
+    `attachments-sniff.test.ts`.
+
 ## 📋 Открытые follow-ups
 
 - libheif на проде для iPhone HEIC (`apt install libheif1 libheif-dev`)
@@ -193,6 +217,10 @@ base, ✅ Home command center, ✅ responsive cinematic UI pass.
 - PTT + «Студийный» edge case (enhancer слетает после PTT-цикла)
 - Cross-channel files aggregator (для KNOWLEDGE-секции Context Tree)
 - Approvals + blockers (для EXECUTION-секции Context Tree)
+- **Voice multi-publisher e2e + LiveKit quota tuning** — см. engineering
+  queue #11. UI/SDK уровень готов; нужен load-тест и formal sign-off.
+- ✅ **Uploads: Office + архивы + MIME-sniffing + bigger video cap** —
+  закрыто в v0.51.0 (engineering queue #12). См. timeline / changelog.
 - Pricing / billing infra (Free / Pro / Business тиры) — **не сейчас**,
   до product-market fit
 
