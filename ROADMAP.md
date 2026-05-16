@@ -5,7 +5,8 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v0.47.0** (Client Mode v2 — Channel.internal flag + lock-icon, 15.05.2026)
+**Текущая версия в проде:** **v0.48.0** (asset path/image fallback fixes +
+responsive visual system pass, 16.05.2026)
 — https://app.star-crm.ru/eclipse-chat/
 
 > **Сессия 15.05 (вечер)**: v0.28 → v0.47 = 20 prod-деплоев за один заход.
@@ -23,6 +24,14 @@ Eclipse Chat = **operational communication infrastructure** =
 **Discord × Telegram × Linear × Notion × AI Workspace**.
 
 Главная формула: **communication + execution + memory + intelligence**.
+
+**Next-generation product north star зафиксирован отдельно:**
+[`docs/NEXT-GEN-OPERATIONAL-PLATFORM.md`](docs/NEXT-GEN-OPERATIONAL-PLATFORM.md)
+
+Новая формула платформы: **communication + execution + AI + memory +
+workflows**. Это уже не "чат с фичами", а operational collaboration
+platform: workspaces / rooms / execution entities / AI agents / operational
+tables / client portals / automation.
 
 Целевая аудитория: AI-first teams, operators, agencies, startups,
 internal business teams, automation-heavy companies. **НЕ продаём AI**,
@@ -74,6 +83,8 @@ chat и не enterprise prison.
 
 | Версия | Дата | Что |
 |---|---|---|
+| **v0.48.x** | 16.05 | **Responsive visual system pass** — cinematic shell background, operator topbar/rail, channel/message/composer depth, Home command-center cards, desktop/tablet/mobile polish. Commit `d392b54` |
+| **v0.48.0** | 16.05 | **Upload asset path fixes** — centralized `resolveAssetUrl`, avatar/server icon fallbacks, uploads MIME smoke guard. Fixes broken images under `/eclipse-chat/` path deploy |
 | **v0.47.0** | 15.05 | **Client Mode v2** — `Channel.internal` Boolean + миграция `add_channel_internal` (additive, default false). Filter: internal каналы hidden для MEMBER когда `server.mode=CLIENT`. PATCH принимает internal (OWNER/ADMIN/MOD). UI: ChannelSettingsModal toggle + ChannelList lock-icon |
 | v0.46.0 | 15.05 | **Threads hotfix** — `rightRailCollapsed` блокировал ThreadPanel render. onOpenThread auto-expand'ит rail |
 | v0.45.0 | 15.05 | ChannelList stagger reveal cascade + PinnedBar adaptive maxHeight на mobile |
@@ -130,40 +141,45 @@ chat и не enterprise prison.
 | v0.4.x  | 11.05 | Servers/Members/invites + path-based deploy + PG migration |
 | v0.3.0  | 10.05 | MVP (auth + channels + messages) |
 
-## 🎯 Что делаем дальше (v0.48+)
+## 🎯 Что делаем дальше (v0.49+)
 
-По состоянию на v0.47.0 закрыты: ✅ #5 + #6 brief (Client Mode v1+v2,
-AI Agents типология полностью), ✅ Execution Analytics base + pre-filter,
-✅ Premium motion polish + skeletons + cascade reveals, ✅ Brand identity
-scaffolding, ✅ Mobile responsive multi-round, ✅ Threads hotfix, ✅ Voice
-diagnostics, ✅ Multi-cam grid auto-fit, ✅ AI typing indicator.
+По состоянию на 16.05 закрыты: ✅ Core chat foundation, ✅ voice/video
+base, ✅ DMs + Saved Messages, ✅ Client Mode v2, ✅ AI Agents taxonomy,
+✅ ActionItem execution layer, ✅ Status Board + Team Health, ✅ AI memory
+base, ✅ Home command center, ✅ responsive cinematic UI pass.
 
-1. **Group DMs + voice/video DMs** — multi-participant DM. Schema
-   migration (ConversationParticipant join table) + UI (participant
-   picker, composite avatar). Средний-большой.
+Новый стратегический север:
+**Eclipse Chat = communication + execution + AI + memory + workflows**.
+Детальный план: [`docs/NEXT-GEN-OPERATIONAL-PLATFORM.md`](docs/NEXT-GEN-OPERATIONAL-PLATFORM.md).
 
-2. **Bot v3** — Bot.autoRespond toggle + Bot.systemPromptOverride +
-   «Bot печатает...» typing indicator. Средний.
+Ближайшая engineering-очередь:
 
-3. **Semantic search** — global operational search across messages /
-   tasks / decisions / files / voice-summaries. Codex-vision #5. Большой.
+1. **Unread + jump-to-latest + draft sync** — закрыть daily-driver
+   эргономику чата.
 
-2. **AI Transcription** — speech-to-text + summaries / decisions /
-   tasks из voice-сессий. Vision-area #4 transcription.
+2. **Media viewer + voice messages** — закрыть communication gaps:
+   галерея, fullscreen preview, audio-message flow.
 
-3. **Group DMs + voice/video DMs** — DM-инфра уже есть, расширить
-   на multi-participant.
+3. **Group DMs** — расширить существующую DM-модель до multi-participant
+   conversations.
 
-4. **Client Mode v2** — role-based видимость каналов (internal vs
-   client), softer visual, hide BOT-badges в CLIENT-режиме.
+4. **Workspace/Room language pass** — UI-копирайт увести от Discord:
+   servers → workspaces, channels → rooms, где это не ломает код.
 
-5. **Bot row + role + auto-respond** — owner создаёт Bot row с
-   role=MODERATOR. Eclipse Chat сам генерит ответы через Ollama (без
-   webhook), используя role-prompt + контекст канала. Это превращает
-   role-aware @ai mentions в полноценных embedded room participants.
+5. **Role architecture v2** — permission matrix + визуальная иерархия:
+   Architect / Developer / Operator / Client / Viewer / AI Agent.
 
-6. **Team Health v3** — trends vs prev week (нужны snapshot'ы),
-   per-channel breakdown, response-time computation.
+6. **Execution entity detail drawer** — task/decision/follow-up должны
+   стать first-class объектами, а не только chips в сообщении.
+
+7. **Approvals** — required для client portals и decision-flow.
+
+8. **Semantic search v1** — messages/action-items/files by meaning.
+
+9. **Voice transcription prototype** — voice → summary → decisions/tasks.
+
+10. **Operational tables schema spike** — проверить модель Table /
+    Field / Row / Cell до UI.
 
 ## 📋 Открытые follow-ups
 
