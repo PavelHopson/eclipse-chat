@@ -5,8 +5,15 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v0.35.0** (Mobile adaptation hotfix — IntelligencePanel + composer hints, 15.05.2026)
+**Текущая версия в проде:** **v0.47.0** (Client Mode v2 — Channel.internal flag + lock-icon, 15.05.2026)
 — https://app.star-crm.ru/eclipse-chat/
+
+> **Сессия 15.05 (вечер)**: v0.28 → v0.47 = 20 prod-деплоев за один заход.
+> AI Agents типология (#6 brief) закрыта полностью. Execution Analytics
+> base + pre-filter. Client Mode v1+v2. Premium motion + skeletons +
+> cascade reveals. Brand identity scaffolding. Mobile responsive multi-
+> round. Threads hotfix. Voice diagnostics + Reset. Multi-cam grid.
+> AI typing indicator. Детали в timeline ниже.
 
 ## 📌 Позиционирование (зафиксировано 15.05)
 
@@ -67,7 +74,24 @@ chat и не enterprise prison.
 
 | Версия | Дата | Что |
 |---|---|---|
-| **v0.35.0** | 15.05 | **Mobile adaptation hotfix.** Pavel screenshot — tabs «Дела/Файлы/Люди» отрезались в members drawer. Расширил breakpoint hide-label с 1025-1366 → ≤1366 (все sub-desktop). Drawer width 90vw→86vw, max 320→300px. Composer hints прогрессивно прячутся: drop/@/:emoji ≤900px, Shift+Enter ≤640px — на mobile остаётся Enter + /task. Tab bar gradient-fade справа намекает на overflow scroll |
+| **v0.47.0** | 15.05 | **Client Mode v2** — `Channel.internal` Boolean + миграция `add_channel_internal` (additive, default false). Filter: internal каналы hidden для MEMBER когда `server.mode=CLIENT`. PATCH принимает internal (OWNER/ADMIN/MOD). UI: ChannelSettingsModal toggle + ChannelList lock-icon |
+| v0.46.0 | 15.05 | **Threads hotfix** — `rightRailCollapsed` блокировал ThreadPanel render. onOpenThread auto-expand'ит rail |
+| v0.45.0 | 15.05 | ChannelList stagger reveal cascade + PinnedBar adaptive maxHeight на mobile |
+| v0.44.0 | 15.05 | Modal backdrop padding 16→8px на ≤640px |
+| v0.43.0 | 15.05 | StatusBoard + ServerInfoModal grids → auto-fit responsive |
+| v0.42.0 | 15.05 | Multi-cam grid — CSS Grid auto-fit minmax(280px,1fr) |
+| v0.41.0 | 15.05 | **Voice diagnostics panel + Reset settings button** |
+| v0.40.0 | 15.05 | **AI typing indicator** — shimmer-text при pending @ai |
+| v0.39.0 | 15.05 | DM/Channel skeletons + MessageList stagger first 12 messages |
+| v0.38.0 | 15.05 | Skeleton CSS helpers + MemberList/TeamHealth skeleton + ChannelList slide-right hover |
+| v0.37.0 | 15.05 | **Premium motion system** (taste-skill) — lift-md / press / avatar-glow / shimmer-text / reveal-cascade |
+| v0.33.0 | 15.05 | **Bot row как role-mention responder** — embedded room participant |
+| v0.32.0 | 15.05 | **Brand identity scaffolding** — favicon.svg + apple-touch + og-image + manifest |
+| v0.31.0 | 15.05 | Team Health → Status Board pre-filter wiring |
+| v0.30.0 | 15.05 | **Execution Analytics — Team Health** dashboard |
+| v0.29.0 | 15.05 | Role-aware `@`-mentions (`@moderator/@pm/@knowledge/@sales` + RU) |
+| v0.28.0 | 15.05 | **AI Agents типология** — Bot.role enum + per-role prompts |
+| v0.35.0 | 15.05 | **Mobile adaptation hotfix.** Pavel screenshot — tabs «Дела/Файлы/Люди» отрезались в members drawer. Расширил breakpoint hide-label с 1025-1366 → ≤1366 (все sub-desktop). Drawer width 90vw→86vw, max 320→300px. Composer hints прогрессивно прячутся: drop/@/:emoji ≤900px, Shift+Enter ≤640px — на mobile остаётся Enter + /task. Tab bar gradient-fade справа намекает на overflow scroll |
 | v0.34.0 | 15.05 | **Visual polish pass.** Reusable `EmptyState` component (icon + title + hint + optional action) + 10 calm line-art SVG icons (EmptyIcons.tsx). Replaced text-only empties в TeamHealth / SearchOverlay / AppShell (DM placeholder / no-server / no-channel) — calm operational visual вместо «холодного» текста. Avatar fallback saturation 30→45 + lightness 32→34 для visual interest. `:focus-visible` rings global pass (a11y) — `.ec-btn` / `.ec-channel-item` / `.ec-message-actions` |
 | v0.33.0 | 15.05 | **Bot row как role-mention responder.** Закрывает promise AI Agents типологии v0.28.0 — Bot row становится «embedded room participant». `getResponderForRole(serverId, role)` resolver: bot с подходящей `role` в server (oldest createdAt wins, deterministic) → fallback system @ai. Bot.userId (shadow user) — author message → MessageList рисует bot's avatar + role-badge через стандартную `botProfile.role` сериализацию (works on reload, не эфемерно как v0.29.0 fallback). Throttle per-channel сохранён. BotsTab: per-role hint «Отвечает на @{keyword}-mentions» с role-coloured код-chip'ом. BOT-API.md обновлён новой секцией |
 | v0.32.0 | 15.05 | **Design polish slice 1.** Fix: IntelligencePanel tab overflow на узком rail — icons (5 SVG inline) + responsive label + horizontal scroll fallback + sticky utility-buttons. Brand identity scaffolding: full `index.html` meta (OG / Twitter card / manifest / canonical / robots noindex), `apps/web/public/` populated впервые — `favicon.svg`, `apple-touch-icon.svg`, `og-image.svg` (1200×630 calm brand card), `manifest.webmanifest`. PWA-ready. theme-color → `#07090D` align с `--ec-void` |
@@ -106,14 +130,23 @@ chat и не enterprise prison.
 | v0.4.x  | 11.05 | Servers/Members/invites + path-based deploy + PG migration |
 | v0.3.0  | 10.05 | MVP (auth + channels + messages) |
 
-## 🎯 Что делаем дальше
+## 🎯 Что делаем дальше (v0.48+)
 
-По рекомендованному порядку из brief Pavel'я (✅ #5 + #6 закрыты,
-✅ server-side role-aware mentions, ✅ Execution Analytics base + pre-filter
-wiring):
+По состоянию на v0.47.0 закрыты: ✅ #5 + #6 brief (Client Mode v1+v2,
+AI Agents типология полностью), ✅ Execution Analytics base + pre-filter,
+✅ Premium motion polish + skeletons + cascade reveals, ✅ Brand identity
+scaffolding, ✅ Mobile responsive multi-round, ✅ Threads hotfix, ✅ Voice
+diagnostics, ✅ Multi-cam grid auto-fit, ✅ AI typing indicator.
 
-1. **Semantic search** — global operational search across messages /
-   tasks / decisions / files / voice-summaries. Codex-vision #5.
+1. **Group DMs + voice/video DMs** — multi-participant DM. Schema
+   migration (ConversationParticipant join table) + UI (participant
+   picker, composite avatar). Средний-большой.
+
+2. **Bot v3** — Bot.autoRespond toggle + Bot.systemPromptOverride +
+   «Bot печатает...» typing indicator. Средний.
+
+3. **Semantic search** — global operational search across messages /
+   tasks / decisions / files / voice-summaries. Codex-vision #5. Большой.
 
 2. **AI Transcription** — speech-to-text + summaries / decisions /
    tasks из voice-сессий. Vision-area #4 transcription.
