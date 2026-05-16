@@ -25,7 +25,7 @@ export function JoinServerModal({ onClose, onJoin }: Props) {
         return;
       }
       if (result.alreadyMember) {
-        setSuccess("Вы уже состоите в этом сервере. Сервер выбран в списке.");
+        setSuccess("Вы уже состоите в этом пространстве. Оно выбрано в списке.");
       }
       setTimeout(() => onClose(), result.alreadyMember ? 900 : 0);
     } finally {
@@ -35,7 +35,7 @@ export function JoinServerModal({ onClose, onJoin }: Props) {
 
   return (
     <Modal
-      title="Вступить в сервер"
+      title="Вступить в пространство"
       onClose={onClose}
       footer={
         <>
@@ -54,7 +54,7 @@ export function JoinServerModal({ onClose, onJoin }: Props) {
       }
     >
       <p style={{ margin: 0, color: "var(--ec-text-muted)", fontSize: "var(--ec-text-sm)" }}>
-        Вставьте инвайт-код от владельца сервера. Это идентификатор вида <code>cmp1fu5ik0005l2mko3s3y46a</code>.
+        Вставьте инвайт-код от владельца пространства. Это идентификатор вида <code>cmp1fu5ik0005l2mko3s3y46a</code>.
       </p>
       <div>
         <label className="ec-field-label">Инвайт-код</label>

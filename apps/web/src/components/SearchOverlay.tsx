@@ -179,7 +179,7 @@ export function SearchOverlay({
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Поиск сообщений в этом сервере…"
+            placeholder="Поиск сообщений в этом пространстве…"
             style={searchInput}
           />
           <span style={kbd}>Esc</span>
@@ -189,7 +189,7 @@ export function SearchOverlay({
             <EmptyState
               icon={<EmptySearchIcon />}
               title="Начните печатать"
-              hint="Минимум 2 символа. Поиск в текстовых каналах активного сервера, без удалённых сообщений."
+              hint="Минимум 2 символа. Поиск в текстовых комнатах активного пространства, без удалённых сообщений."
               compact
             />
           )}

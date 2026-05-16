@@ -252,7 +252,7 @@ export function MemberList({
   return (
     <aside
       style={hideHeader ? { ...wrap, borderLeft: "none" } : wrap}
-      aria-label="Участники сервера"
+      aria-label="Участники пространства"
     >
       {!hideHeader && (
         <header style={headerStyle}>

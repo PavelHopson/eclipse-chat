@@ -329,7 +329,7 @@ export function ChannelList({
   const voiceChannels = channels.filter((c) => c.type === "VOICE");
 
   const handleDelete = async (channelId: string, channelName: string) => {
-    if (!window.confirm(`Удалить канал «${channelName}»? Все сообщения внутри будут потеряны.`)) {
+    if (!window.confirm(`Удалить комнату «${channelName}»? Все сообщения внутри будут потеряны.`)) {
       return;
     }
     setPendingDelete(channelId);
@@ -520,8 +520,8 @@ export function ChannelList({
         </span>
         {c.internal && (
           <span
-            aria-label="Internal channel — скрыт от клиентов"
-            title="Internal: скрыт от MEMBER в Client mode сервере"
+            aria-label="Внутренняя комната — скрыта от клиентов"
+            title="Внутренняя: скрыта от MEMBER в Client mode пространстве"
             style={{
               display: "inline-flex",
               alignItems: "center",
@@ -567,8 +567,8 @@ export function ChannelList({
             data-channel-action
             role="button"
             tabIndex={0}
-            aria-label={`Настройки канала ${c.name}`}
-            title="Редактировать канал"
+            aria-label={`Настройки комнаты ${c.name}`}
+            title="Редактировать комнату"
             style={deleteBtn}
             onClick={(e) => {
               e.stopPropagation();
@@ -601,8 +601,8 @@ export function ChannelList({
             data-channel-action
             role="button"
             tabIndex={0}
-            aria-label={`Удалить канал ${c.name}`}
-            title="Удалить канал"
+            aria-label={`Удалить комнату ${c.name}`}
+            title="Удалить комнату"
             style={deleteBtn}
             onClick={(e) => {
               e.stopPropagation();
@@ -639,7 +639,7 @@ export function ChannelList({
   return (
     <aside style={wrap}>
       <header style={headerStyle}>
-        <button type="button" onClick={onShowServerInfo} style={serverTrigger} title="Подробнее о сервере">
+        <button type="button" onClick={onShowServerInfo} style={serverTrigger} title="Подробнее о пространстве">
           <span style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
             <span
               style={{
@@ -650,7 +650,7 @@ export function ChannelList({
                 textOverflow: "ellipsis",
               }}
             >
-              {serverName ?? "Нет сервера"}
+              {serverName ?? "Нет пространства"}
             </span>
             {serverRole && <span className={roleClass(serverRole)} style={{ alignSelf: "flex-start" }}>{serverRole}</span>}
           </span>
@@ -684,7 +684,7 @@ export function ChannelList({
                 ? "ec-channel-item ec-channel-item--active"
                 : "ec-channel-item"
             }
-            title="Доска задач — все task / decision / follow-up сервера"
+            title="Доска задач — все task / decision / follow-up пространства"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
               <rect x="3" y="3" width="7" height="9" rx="1" />
@@ -766,7 +766,7 @@ export function ChannelList({
         )}
 
         {channelsLoading && channels.length === 0 && (
-          <div className="ec-skeleton-list" aria-label="Загрузка каналов">
+          <div className="ec-skeleton-list" aria-label="Загрузка комнат">
             {Array.from({ length: 4 }).map((_, i) => (
               <div
                 key={i}
@@ -787,7 +787,7 @@ export function ChannelList({
 
         {!channelsLoading && channels.length === 0 && (
           <p style={{ color: "var(--ec-text-dim)", fontSize: "var(--ec-text-sm)", padding: "var(--ec-space-2)", margin: 0 }}>
-            Создайте первый канал ниже.
+            Создайте первую комнату ниже.
           </p>
         )}
       </div>
@@ -806,14 +806,14 @@ export function ChannelList({
         }}
         style={composerRow}
       >
-        <div style={typeToggle} role="tablist" aria-label="Тип канала">
+        <div style={typeToggle} role="tablist" aria-label="Тип комнаты">
           <button
             type="button"
             onClick={() => setDraftType("TEXT")}
             style={typeBtn(draftType === "TEXT")}
             role="tab"
             aria-selected={draftType === "TEXT"}
-            title="Текстовый канал"
+            title="Текстовая комната"
           >
             <span aria-hidden style={{ fontSize: "0.8rem" }}>#</span>
             Текст
@@ -838,7 +838,7 @@ export function ChannelList({
             style={typeBtn(draftType === "VOICE")}
             role="tab"
             aria-selected={draftType === "VOICE"}
-            title="Голосовой канал"
+            title="Голосовая комната"
           >
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
               <path d="M11 5L6 9H2v6h4l5 4V5z" />
@@ -851,10 +851,10 @@ export function ChannelList({
             className="ec-field"
             placeholder={
               draftType === "VOICE"
-                ? "Новый голосовой канал…"
+                ? "Новая голосовая комната…"
                 : draftType === "BROADCAST"
                 ? "Новый канал-вещание…"
-                : "Новый канал…"
+                : "Новая комната…"
             }
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
@@ -865,8 +865,8 @@ export function ChannelList({
             type="submit"
             disabled={!draft.trim() || submitting}
             className="ec-btn ec-btn--primary ec-btn--sm"
-            aria-label="Создать канал"
-            title="Создать канал"
+            aria-label="Создать комнату"
+            title="Создать комнату"
             style={{ minWidth: 36, padding: "0 0.6rem" }}
           >
             {submitting ? "…" : "+"}

@@ -378,7 +378,7 @@ function VoiceIntelligence({
 
       {roster.length === 0 ? (
         <p style={{ margin: 0, color: "var(--ec-text-dim)", fontSize: "var(--ec-text-sm)" }}>
-          В этом голосовом канале сейчас никого. Зайди первым — другие увидят
+          В этой голосовой комнате сейчас никого. Зайди первым — другие увидят
           тебя в эфире.
         </p>
       ) : (
@@ -518,7 +518,7 @@ export function IntelligencePanel({
           onClick={() => setTab("intelligence")}
           aria-selected={tab === "intelligence"}
           role="tab"
-          title="Сводка / контекст канала"
+          title="Сводка / контекст комнаты"
         >
           <span className="ec-intel-tab__icon"><IconSummary /></span>
           <span className="ec-intel-tab__label">Сводка</span>
@@ -532,7 +532,7 @@ export function IntelligencePanel({
               onClick={() => setTab("memory")}
               aria-selected={tab === "memory"}
               role="tab"
-              title="Закреплённое — память канала"
+              title="Закреплённое — память комнаты"
             >
               <span className="ec-intel-tab__icon"><IconMemory /></span>
               <span className="ec-intel-tab__label">Память</span>
@@ -548,7 +548,7 @@ export function IntelligencePanel({
                 onClick={() => setTab("execution")}
                 aria-selected={tab === "execution"}
                 role="tab"
-                title="Задачи / решения / follow-up канала"
+                title="Задачи / решения / follow-up комнаты"
               >
                 <span className="ec-intel-tab__icon"><IconExecution /></span>
                 <span className="ec-intel-tab__label">Дела</span>
@@ -565,7 +565,7 @@ export function IntelligencePanel({
                 onClick={() => setTab("files")}
                 aria-selected={tab === "files"}
                 role="tab"
-                title="Файлы канала"
+                title="Файлы комнаты"
               >
                 <span className="ec-intel-tab__icon"><IconFiles /></span>
                 <span className="ec-intel-tab__label">Файлы</span>
@@ -583,7 +583,7 @@ export function IntelligencePanel({
           onClick={() => setTab("members")}
           aria-selected={tab === "members"}
           role="tab"
-          title={`Участники сервера · ${onlineCount}/${members.length}`}
+          title={`Участники пространства · ${onlineCount}/${members.length}`}
         >
           <span className="ec-intel-tab__icon"><IconMembers /></span>
           <span className="ec-intel-tab__label">Люди</span>
@@ -666,8 +666,8 @@ function MemoryView({ items }: { items: PinnedMessageBrief[] }) {
   if (items.length === 0) {
     return (
       <p style={{ margin: 0, color: "var(--ec-text-dim)", fontSize: "var(--ec-text-sm)" }}>
-        В этом канале ещё ничего не закреплено. Закрепи важное сообщение через
-        hover-меню — оно появится здесь как «память» канала.
+        В этой комнате ещё ничего не закреплено. Закрепи важное сообщение через
+        hover-меню — оно появится здесь как «память» комнаты.
       </p>
     );
   }
@@ -737,9 +737,9 @@ function ExecutionView({
   if (items.length === 0) {
     return (
       <p style={{ margin: 0, color: "var(--ec-text-dim)", fontSize: "var(--ec-text-sm)" }}>
-        Открытых задач, решений и follow-up в канале нет. Набери в композере
+        Открытых задач, решений и follow-up в комнате нет. Набери в композере
         «/task ...» / «/decision ...» / «/followup ...» — задача появится здесь
-        и в общей доске сервера.
+        и в общей доске пространства.
       </p>
     );
   }
@@ -830,7 +830,7 @@ function FilesView({ items }: { items: AttachmentBrief[] }) {
   if (items.length === 0) {
     return (
       <p style={{ margin: 0, color: "var(--ec-text-dim)", fontSize: "var(--ec-text-sm)" }}>
-        Файлов в канале пока нет. Перетащи файл в композер или нажми скрепку —
+        Файлов в комнате пока нет. Перетащи файл в композер или нажми скрепку —
         он окажется здесь.
       </p>
     );

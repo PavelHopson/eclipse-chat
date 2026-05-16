@@ -266,7 +266,7 @@ function Card({
             flexWrap: "wrap",
           }}
         >
-          <span>#{channelName ?? "канал"}</span>
+          <span>#{channelName ?? "комната"}</span>
           {item.assignee && (
             <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
               <Avatar

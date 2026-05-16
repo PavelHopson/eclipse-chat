@@ -210,9 +210,9 @@ export function ChannelDigestPanel({
   }, [digest]);
 
   return (
-    <section style={wrap} aria-label="Сводка канала">
+    <section style={wrap} aria-label="Сводка комнаты">
       <header style={headerRow}>
-        <span style={titleStyle}>Сводка канала</span>
+        <span style={titleStyle}>Сводка комнаты</span>
         {generatedAgo && (
           <span style={meta} title={`Обновлено ${digest?.generatedAt}`}>
             обновлено {generatedAgo}
@@ -330,7 +330,7 @@ export function ChannelDigestPanel({
       {!digest && !loading && !error && (
         <p style={{ margin: 0, color: "var(--ec-text-muted)", fontSize: "var(--ec-text-sm)" }}>
           Нажми «Собрать сводку», чтобы увидеть открытые задачи, решения и
-          закреплённые сообщения этого канала.
+          закреплённые сообщения этой комнаты.
         </p>
       )}
 
@@ -467,7 +467,7 @@ export function ChannelDigestPanel({
             digest.followUps.length === 0 &&
             digest.pinned.length === 0 && (
               <p style={{ margin: 0, color: "var(--ec-text-muted)", fontSize: "var(--ec-text-sm)" }}>
-                Канал чистый — нет открытых задач, решений или закреплённых сообщений.
+                Комната чистая — нет открытых задач, решений или закреплённых сообщений.
               </p>
             )}
         </>

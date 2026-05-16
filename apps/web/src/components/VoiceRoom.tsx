@@ -717,7 +717,7 @@ export function VoiceRoom({
               <p style={{ margin: 0, color: "var(--ec-text-muted)", lineHeight: "var(--ec-leading-relaxed)" }}>
                 {occupants.length > 0
                   ? "Подключись, чтобы услышать остальных. Камера и демонстрация экрана включаются уже внутри."
-                  : "Войди первым — другие участники сервера увидят тебя в эфире."}
+                  : "Войди первым — другие участники пространства увидят тебя в эфире."}
               </p>
             </div>
 
@@ -771,7 +771,7 @@ export function VoiceRoom({
                 ? "Подключаемся…"
                 : isInAnotherVoice
                 ? "Переключиться в этот эфир"
-                : "Войти в голосовой канал"}
+                : "Войти в голосовую комнату"}
             </button>
             {isInAnotherVoice && activeVoiceChannelName && (
               <span style={{ fontSize: "var(--ec-text-2xs)", color: "var(--ec-text-dim)" }}>
@@ -1000,8 +1000,8 @@ export function VoiceRoom({
               type="button"
               onClick={() => void v.leave()}
               style={controlBtnDanger}
-              title="Покинуть голосовой канал"
-              aria-label="Покинуть голосовой канал"
+              title="Покинуть голосовую комнату"
+              aria-label="Покинуть голосовую комнату"
             >
               <HangupIcon />
             </button>

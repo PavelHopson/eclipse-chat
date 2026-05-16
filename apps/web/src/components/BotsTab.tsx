@@ -585,7 +585,7 @@ export function BotsTab({ serverId }: Props) {
           marginBottom: "var(--ec-space-3)",
         }}
       >
-        <h3 style={{ ...sectionLabel, margin: 0 }}>Боты сервера ({bots.length}/20)</h3>
+        <h3 style={{ ...sectionLabel, margin: 0 }}>Боты пространства ({bots.length}/20)</h3>
         {!showCreate && bots.length < 20 && (
           <button
             type="button"
@@ -665,7 +665,7 @@ export function BotsTab({ serverId }: Props) {
             </div>
             <div className="ec-empty-hint" style={{ maxWidth: 360, margin: "0 auto" }}>
               Боты — это сервисные участники: Telegram-мост, мониторинг, AI-агенты.
-              Каждый получает API-ключ и пишет в каналы через REST.
+              Каждый получает API-ключ и пишет в комнаты через REST.
             </div>
           </div>
         )}
@@ -735,7 +735,7 @@ export function BotsTab({ serverId }: Props) {
                   <code style={{ fontFamily: "var(--ec-font-mono)", fontSize: "0.7rem" }}>
                     @{primaryRoleKeyword(bot.role)}
                   </code>
-                  -mentions в каналах
+                  -mentions в комнатах
                 </p>
               )}
               {bot.autoRespond && (
@@ -747,7 +747,7 @@ export function BotsTab({ serverId }: Props) {
                     lineHeight: 1.4,
                   }}
                 >
-                  Автоответ в текстовых каналах сервера на каждое сообщение
+                  Автоответ в текстовых комнатах пространства на каждое сообщение
                   {bot.systemPromptOverride ? " · свой промпт" : ""}
                 </p>
               )}
@@ -808,7 +808,7 @@ export function BotsTab({ serverId }: Props) {
                 title={
                   bot.autoRespond
                     ? "Выключить автоответ"
-                    : "Автоответ в текстовых каналах сервера"
+                    : "Автоответ в текстовых комнатах пространства"
                 }
                 style={
                   bot.autoRespond
@@ -977,7 +977,7 @@ export function BotsTab({ serverId }: Props) {
                 />
               </label>
               <p style={fieldHint}>
-                Каждое сообщение в каналах сервера будет POST'нуто на URL.
+                Каждое сообщение в комнатах пространства будет POST'нуто на URL.
                 Headers: <code style={monoChip}>X-Eclipse-Event: message.created</code>,
                 <code style={monoChip}>X-Eclipse-Bot-Id: {bot.id}</code>,
                 и (если secret) <code style={monoChip}>X-Eclipse-Bot-Signature: sha256=&lt;hex&gt;</code>.
@@ -1092,7 +1092,7 @@ export function BotsTab({ serverId }: Props) {
 
         {bots.length >= 20 && (
           <p style={{ ...fieldHint, textAlign: "center" }}>
-            Достигнут лимит 20 ботов на сервер. Удали неиспользуемого, чтобы создать нового.
+            Достигнут лимит 20 ботов на пространство. Удали неиспользуемого, чтобы создать нового.
           </p>
         )}
       </div>

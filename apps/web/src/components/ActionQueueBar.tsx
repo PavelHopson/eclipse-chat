@@ -260,7 +260,7 @@ export function ActionQueueBar({ items, currentUserId, members, onUpdateAction }
           </div>
         </div>
         {items.length > 0 && (
-          <div style={digestRail} aria-label="Дайджест канала">
+          <div style={digestRail} aria-label="Дайджест комнаты">
             <span style={{ color: "var(--ec-text-dim)", fontSize: "var(--ec-text-2xs)" }}>
               T:{taskCount} / D:{decisionCount} / F:{followUpCount}
             </span>

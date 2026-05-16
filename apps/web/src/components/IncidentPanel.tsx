@@ -288,7 +288,7 @@ export function IncidentPanel({
                   className="ec-btn ec-btn--ghost ec-btn--sm"
                   style={{ alignSelf: "flex-start", marginTop: "var(--ec-space-1)" }}
                 >
-                  🚨 Открыть канал инцидента
+                  🚨 Открыть комнату инцидента
                 </button>
               )}
 
@@ -500,7 +500,7 @@ export function IncidentPanel({
               style={inputStyle}
             />
             <p style={{ margin: 0, fontSize: "var(--ec-text-2xs)", color: "var(--ec-text-dim)", lineHeight: 1.5 }}>
-              Создаст dedicated канал 🚨 для разбора. Закрытие инцидента сгенерит
+              Создаст dedicated комнату 🚨 для разбора. Закрытие инцидента сгенерит
               post-mortem из timeline (задачи, решения, закреплённое).
             </p>
             <div style={{ display: "flex", gap: "var(--ec-space-2)", justifyContent: "flex-end" }}>
@@ -570,7 +570,7 @@ export function IncidentPanel({
             </div>
             <div className="ec-empty-hint" style={{ maxWidth: 300, margin: "0 auto" }}>
               Когда что-то ломается — открой инцидент. Eclipse Chat создаст
-              dedicated канал и соберёт timeline для разбора.
+              dedicated комнату и соберёт timeline для разбора.
             </div>
           </div>
         )}

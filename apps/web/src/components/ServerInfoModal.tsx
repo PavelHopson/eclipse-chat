@@ -188,20 +188,20 @@ export function ServerInfoModal({
     setError(null);
     const ok = await onLeave();
     if (ok) onClose();
-    else setError("Не удалось покинуть сервер. Если вы владелец — сначала удалите сервер.");
+    else setError("Не удалось покинуть пространство. Если вы владелец — сначала удалите его.");
     setBusy(false);
   };
 
   const handleDelete = async () => {
     if (busy) return;
-    if (!window.confirm(`Удалить сервер «${server.name}»? Это удалит все каналы и сообщения.`)) {
+    if (!window.confirm(`Удалить пространство «${server.name}»? Это удалит все комнаты и сообщения.`)) {
       return;
     }
     setBusy(true);
     setError(null);
     const ok = await onDelete();
     if (ok) onClose();
-    else setError("Не удалось удалить сервер");
+    else setError("Не удалось удалить пространство");
     setBusy(false);
   };
 
@@ -227,7 +227,7 @@ export function ServerInfoModal({
           )}
           {isOwner ? (
             <button type="button" onClick={() => void handleDelete()} disabled={busy} className="ec-btn ec-btn--danger">
-              Удалить сервер
+              Удалить пространство
             </button>
           ) : (
             <button type="button" onClick={() => void handleLeave()} disabled={busy} className="ec-btn ec-btn--danger">
@@ -334,7 +334,7 @@ export function ServerInfoModal({
             </>
           ) : (
             <span style={{ fontSize: "var(--ec-text-sm)", color: "var(--ec-text-muted)" }}>
-              {server.icon ? "Иконку устанавливает владелец сервера." : "Без иконки."}
+              {server.icon ? "Иконку устанавливает владелец пространства." : "Без иконки."}
             </span>
           )}
         </div>
@@ -346,7 +346,7 @@ export function ServerInfoModal({
           <span style={statValue}>{server.role}</span>
         </div>
         <div style={stat}>
-          <span style={statLabel}>Каналов</span>
+          <span style={statLabel}>Комнат</span>
           <span style={statValue}>{server.channelCount}</span>
         </div>
         <div style={stat}>

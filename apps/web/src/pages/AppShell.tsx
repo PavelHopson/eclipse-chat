@@ -571,7 +571,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               className="ec-shell__drawer-btn ec-shell__drawer-btn--nav"
               onClick={() => setNavOpen((v) => !v)}
               aria-label={navOpen ? "Закрыть навигацию" : "Открыть навигацию"}
-              title="Серверы и каналы"
+              title="Пространства и комнаты"
             >
               {navOpen ? (
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -1060,8 +1060,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                 <button
                   type="button"
                   onClick={() => setSettingsChannelId(selectedChannel.id)}
-                  aria-label="Настройки канала"
-                  title="Настройки канала"
+                  aria-label="Настройки комнаты"
+                  title="Настройки комнаты"
                   style={{
                     flexShrink: 0,
                     width: 26,
@@ -1093,7 +1093,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             </div>
           ) : (
             <span style={{ color: "var(--ec-text-muted)", fontSize: "var(--ec-text-sm)" }}>
-              {activeServer ? "Выберите канал слева" : "Нет активного сервера"}
+              {activeServer ? "Выберите комнату слева" : "Нет активного пространства"}
             </span>
           )}
         </div>
@@ -1167,7 +1167,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             <EmptyState
               icon={<EmptyDmIcon />}
               title="Личные сообщения"
-              hint="Выбери диалог слева или открой профиль участника любого сервера и нажми «Написать в личку»."
+              hint="Выбери диалог слева или открой профиль участника любого пространства и нажми «Написать в личку»."
             />
           ) : (
             <>
@@ -1216,8 +1216,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
         ) : !activeServer ? (
           <EmptyState
             icon={<EmptyHomeIcon />}
-            title="Нет активного сервера"
-            hint="Создайте свой workspace или вступите по инвайту — кнопки в левой колонке."
+            title="Нет активного пространства"
+            hint="Создайте своё пространство или вступите по инвайту — кнопки в левой колонке."
             action={
               <div style={{ display: "flex", gap: "var(--ec-space-2)" }}>
                 <button
@@ -1225,7 +1225,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                   className="ec-btn ec-btn--primary ec-btn--sm"
                   onClick={() => setShowCreateServer(true)}
                 >
-                  Создать сервер
+                  Создать пространство
                 </button>
                 <button
                   type="button"
@@ -1240,8 +1240,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
         ) : !selectedChannelId || !selectedChannel ? (
           <EmptyState
             icon={<EmptyChannelIcon />}
-            title="Выберите канал"
-            hint="Список каналов — слева. Или создайте новый внизу панели."
+            title="Выберите комнату"
+            hint="Список комнат — слева. Или создайте новую внизу панели."
           />
         ) : selectedChannel.type === "VOICE" ? (
           voiceHealth.enabled ? (
@@ -1265,7 +1265,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                 <VoiceMiniBar
                   voice={voice}
                   channelName={
-                    channels.find((c) => c.id === voice.activeChannelId)?.name ?? "канал"
+                    channels.find((c) => c.id === voice.activeChannelId)?.name ?? "комната"
                   }
                   onOpenVoiceChannel={() => {
                     if (voice.activeChannelId) {

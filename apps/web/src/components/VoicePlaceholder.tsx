@@ -142,7 +142,7 @@ export function VoicePlaceholder({ channelName }: Props) {
         <span style={tag}>Готовим инфраструктуру</span>
 
         <p style={{ margin: 0, color: "var(--ec-text-muted)", fontSize: "var(--ec-text-sm)", lineHeight: "var(--ec-leading-relaxed)" }}>
-          Канал создан и закреплён за сервером. Backend готов выдавать LiveKit JWT
+          Комната создана и закреплена за пространством. Backend готов выдавать LiveKit JWT
           через <code style={{ fontSize: "0.85em" }}>POST /api/channels/:id/voice/join</code>.
           Голос активируется как только администратор поднимет LiveKit Docker
           (см. <strong style={{ color: "var(--ec-text)" }}>docs/LIVEKIT-SETUP.md</strong>) и
@@ -156,7 +156,7 @@ export function VoicePlaceholder({ channelName }: Props) {
                 <polyline points="20 6 9 17 4 12" />
               </svg>
             </span>
-            <span><span style={{ color: "var(--ec-text)" }}>Структура каналов</span> — TEXT / VOICE в базе, разделение в UI</span>
+            <span><span style={{ color: "var(--ec-text)" }}>Структура комнат</span> — TEXT / VOICE в базе, разделение в UI</span>
           </div>
           <div style={listRow}>
             <span style={checkmark} aria-hidden>

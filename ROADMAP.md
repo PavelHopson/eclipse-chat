@@ -5,9 +5,10 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v0.52.0** (Group DMs — multi-participant
-direct conversations через ConversationParticipant join + composite
-avatar + CreateGroupDmModal, 16.05.2026)
+**Текущая версия в проде:** **v0.53.0** (Workspace/Room language pass —
+UI копирайт уходит от Discord-стиля: «сервер» → «пространство»,
+«канал» → «комната»; DB/API/типы не тронуты; BROADCAST остаётся
+«каналом» для Telegram-flavour, 16.05.2026)
 — https://app.star-crm.ru/eclipse-chat/
 
 > **Сессия 15.05 (вечер)**: v0.28 → v0.47 = 20 prod-деплоев за один заход.
@@ -84,6 +85,7 @@ chat и не enterprise prison.
 
 | Версия | Дата | Что |
 |---|---|---|
+| **v0.53.0** | 16.05 | **Workspace/Room language pass** — closes engineering #4. UI копирайт уведён от Discord-наследия в сторону NEXT-GEN positioning «operational collaboration infrastructure»: «сервер» → «пространство» (workspace), «канал» → «комната» (room) во всех user-facing строках 14 файлов. Затронуты: CreateServerModal / JoinServerModal / ServerInfoModal / ServerSettingsModal заголовки + плейсхолдеры + confirm prompts; ChannelList header / типы / placeholder композера / aria-label'ы кнопок; ChannelSettingsModal все секции (Название/Иконка/Описание + Internal toggle); AppShell chat header / empty states / drawer hint / VoiceMiniBar fallback; IntelligencePanel 5 табов + Memory/Execution/Files empty hints; SearchOverlay placeholder + hint; HomeToday/StatusBoard/TeamHealth/MemberList aria + empty states; VoiceRoom/VoiceMiniBar/VoicePlaceholder hangup + ready text; IncidentPanel «комнату инцидента»; ChannelDigestPanel «Сводка комнаты»; BotsTab «Боты пространства» + mentions copy; ActionQueueBar aria-label; AuthPage hero feature card. **Не тронуты** (намеренно): DB schema (`Server` / `Channel` остаются), API endpoints (`/api/servers/*`, `/api/channels/*`), TypeScript типы, internal variable names, code comments. BROADCAST type сохраняет термин «канал» как Telegram-flavoured announcement-stream (Discord×Telegram гибрид). |
 | **v0.52.0** | 16.05 | **Group DMs** — closes engineering #3. Additive schema: новая таблица `ConversationParticipant (conversationId, userId, joinedAt)` + `DirectConversation` поля `isGroup`/`name`/`createdByUserId`; `userAId`/`userBId` стали nullable (NULL для group, заполнены для legacy 1-to-1). Migration `20260516220000_add_group_dms` (additive, zero-downtime — existing 1-to-1 rows не затронуты). Backend: unified helper `loadConversationMembers()` + `isDmMember()` — все DM-маршруты используют один membership-check независимо от типа. Новые routes: `POST /api/dm/groups` (create, 2-24 других user-id, server отвергает дубликаты и unknown ids), `PATCH /api/dm/groups/:id` (rename, host only), `POST /api/dm/groups/:id/participants` (add user, host only), `DELETE /api/dm/groups/:id/participants/:userId` (kick если host / leave если self; host не может уйти, transfer-ownership = future feature). `GET /api/dm/conversations` возвращает discriminated union: `isGroup=false` rows с `other`, `isGroup=true` rows с `participants[]+name+createdByUserId`. `emitDmConversationBumped` fan-out по всем participants (был только userA/userB). Frontend: `DmConversation` type теперь union, новые helpers `dmTitle()` и `dmIsSaved()` для унифицированного rendering. `GroupAvatar` (composite 2 stacked + counter если ≥3) + `deriveGroupTitle()`. `DirectConversationList` рендерит group rows + кнопка «Создать группу» в header. `CreateGroupDmModal` с substring-search, multi-select (selected first ordering), chip-row для выбранных, optional group-name (auto-derive если пусто). `AppShell` chat header / MessageList / MessageInput работают с обоими типами через helpers. Unit-тест `dm-membership.test.ts` — 8 cases (1-to-1 / group / saved / outsider / empty). |
 | **v0.51.0** | 16.05 | **Uploads full file taxonomy** — `attachments.ts` ALLOWED_MIME расширен: Office (docx/xlsx/pptx/odt/ods/odp/csv), архивы (rar/7z/tar/gz/bz2 в дополнение к zip), extended video (mkv/avi), extra audio (m4a/aac). Magic-bytes sniff (`sniffMime` + `isMimeConsistent`, без npm dep) — клиент-объявленный mime сверяется с фактическими байтами буфера, чтобы нельзя было загрузить .exe под видом image/png. Per-mime size cap: 200 MB для video/*, 50 MB остальное. nginx `client_max_body_size` 750m → 900m. Frontend Attachments.tsx: FileBadge с label-вкладкой (DOC/XLS/PPT/PDF/CSV/MD) + новый archive-icon. MessageInput.tsx: расширен `accept=` (image/*, video/*, audio/* + explicit Office/archive mime + ext fallbacks .docx/.rar/.7z/.mkv etc) + per-mime client-side size check. Unit-тест `attachments-sniff.test.ts` — 30 cases на каждое family + mismatch detection (text/plain claim + pdf content → reject). |
 | **v0.50.0** | 16.05 | **Media layer + voice messages** — video fullscreen viewer, audio/voice player cards, composer mic recorder via MediaRecorder, correct audio/video upload extensions. |
@@ -170,8 +172,10 @@ base, ✅ Home command center, ✅ responsive cinematic UI pass.
    unified membership helper, новые group routes (create/rename/add/remove),
    composite GroupAvatar, CreateGroupDmModal с participant picker.
 
-4. **Workspace/Room language pass** — UI-копирайт увести от Discord:
-   servers → workspaces, channels → rooms, где это не ломает код.
+4. ✅ **Workspace/Room language pass** — закрыто в v0.53.0. UI копирайт
+   уведён в сторону «пространство» / «комната» во всех user-facing
+   строках; DB/API/типы остались на Server/Channel. BROADCAST сохраняет
+   «канал» как Telegram-flavour announcement type.
 
 5. **Role architecture v2** — permission matrix + визуальная иерархия:
    Architect / Developer / Operator / Client / Viewer / AI Agent.

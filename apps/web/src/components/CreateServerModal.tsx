@@ -18,7 +18,7 @@ export function CreateServerModal({ onClose, onCreate }: Props) {
     try {
       const ok = await onCreate(name.trim());
       if (ok) onClose();
-      else setError("Не удалось создать сервер");
+      else setError("Не удалось создать пространство");
     } finally {
       setSubmitting(false);
     }
@@ -26,7 +26,7 @@ export function CreateServerModal({ onClose, onCreate }: Props) {
 
   return (
     <Modal
-      title="Создать сервер"
+      title="Новое пространство"
       onClose={onClose}
       footer={
         <>
@@ -45,8 +45,8 @@ export function CreateServerModal({ onClose, onCreate }: Props) {
       }
     >
       <p style={{ margin: 0, color: "var(--ec-text-muted)", fontSize: "var(--ec-text-sm)" }}>
-        Вы автоматически становитесь владельцем сервера. Других участников можно пригласить
-        по инвайт-коду из деталей сервера.
+        Вы автоматически становитесь владельцем пространства. Других участников
+        можно пригласить по инвайт-коду из настроек.
       </p>
       <div>
         <label className="ec-field-label">Название</label>

@@ -233,8 +233,8 @@ export function VoiceMiniBar({ voice, channelName, onOpenVoiceChannel }: Props) 
         type="button"
         onClick={() => void voice.leave()}
         style={leaveBtn}
-        title="Покинуть голосовой канал"
-        aria-label="Покинуть голосовой канал"
+        title="Покинуть голосовую комнату"
+        aria-label="Покинуть голосовую комнату"
       >
         <HangupIcon size={14} />
       </button>

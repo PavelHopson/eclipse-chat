@@ -127,13 +127,13 @@ export function ChannelSettingsModal({
 
   return (
     <Modal
-      title={`Настройки канала ${channelPrefix} ${channel.name}`}
+      title={`Настройки комнаты ${channelPrefix} ${channel.name}`}
       onClose={onClose}
       width={560}
     >
       {/* Name */}
       <section>
-        <h3 style={sectionLabel}>Название канала</h3>
+        <h3 style={sectionLabel}>Название комнаты</h3>
         <div style={groupCard}>
           <input
             type="text"
@@ -146,7 +146,7 @@ export function ChannelSettingsModal({
           />
           <p style={fieldHint}>
             Видно всем участникам в боковой панели + breadcrumb сверху.
-            До 80 символов. URL-slug канала <code style={{
+            До 80 символов. URL-slug комнаты <code style={{
               fontFamily: "var(--ec-font-mono)",
               fontSize: "0.85em",
               background: "var(--ec-surface-3)",
@@ -163,7 +163,7 @@ export function ChannelSettingsModal({
 
       {/* Emoji prefix */}
       <section style={{ marginTop: "var(--ec-space-4)" }}>
-        <h3 style={sectionLabel}>Иконка канала</h3>
+        <h3 style={sectionLabel}>Иконка комнаты</h3>
         <div style={groupCard}>
           <div
             style={{
@@ -235,11 +235,11 @@ export function ChannelSettingsModal({
             onChange={(e) => setDescription(e.target.value)}
             maxLength={1024}
             rows={4}
-            placeholder="О чём этот канал. Что обсуждается. Правила."
+            placeholder="О чём эта комната. Что обсуждается. Правила."
             style={{ ...inputStyle, resize: "vertical", minHeight: 90 }}
           />
           <p style={fieldHint}>
-            Показывается тонкой строкой под названием канала в шапке чата.
+            Показывается тонкой строкой под названием комнаты в шапке чата.
             Поддерживается markdown — bold, italic, ссылки, эмоджи. До 1024 символов.
             <span style={{ marginLeft: 6, color: "var(--ec-text-muted)" }}>
               {description.length}/1024
@@ -281,12 +281,12 @@ export function ChannelSettingsModal({
                     fontWeight: 500,
                   }}
                 >
-                  Internal channel — скрыт от клиентов
+                  Внутренняя комната — скрыта от клиентов
                 </div>
                 <div style={fieldHint}>
-                  Если включено, канал виден только OWNER / ADMIN /
+                  Если включено, комната видна только OWNER / ADMIN /
                   MODERATOR. Members с ролью клиента (MEMBER в
-                  CLIENT-server'е) не увидят канал в списке.
+                  CLIENT-пространстве) не увидят её в списке.
                 </div>
               </div>
             </label>

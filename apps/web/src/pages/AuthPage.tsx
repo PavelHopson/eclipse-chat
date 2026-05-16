@@ -21,7 +21,7 @@ const featureCards = [
   {
     icon: <OrbitIcon />,
     title: "Private",
-    text: "Приватный контур для команды, каналов, DM и голосовых сессий.",
+    text: "Приватный контур для команды, комнат, DM и голосовых сессий.",
   },
   {
     icon: <ActionIcon />,
@@ -134,7 +134,7 @@ function ProductPreview() {
             <strong>Execution room</strong>
             <span>OWNER</span>
           </div>
-          <div className="ec-auth-channel-group">Текстовые каналы</div>
+          <div className="ec-auth-channel-group">Текстовые комнаты</div>
           <div className="ec-auth-channel is-active"># strategy-core</div>
           <div className="ec-auth-channel"># product-flow</div>
           <div className="ec-auth-channel"># release-control</div>

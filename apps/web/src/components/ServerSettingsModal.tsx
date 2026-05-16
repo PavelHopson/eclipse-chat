@@ -152,7 +152,7 @@ export function ServerSettingsModal({
   const parsed = parseHsl(brandColor);
 
   return (
-    <Modal title={`Оформление сервера «${server.name}»`} onClose={onClose} width={620}>
+    <Modal title={`Оформление пространства «${server.name}»`} onClose={onClose} width={620}>
       {/* Tabs */}
       <div
         style={{
@@ -208,14 +208,14 @@ export function ServerSettingsModal({
         <>
           {/* Server name */}
           <section style={{ marginBottom: "var(--ec-space-4)" }}>
-            <h3 style={sectionLabel}>Название сервера</h3>
+            <h3 style={sectionLabel}>Название пространства</h3>
             <div style={groupCard}>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 maxLength={80}
-                placeholder="Название сервера"
+                placeholder="Название пространства"
                 style={{
                   ...inputStyle,
                   borderColor: nameValid
@@ -224,7 +224,7 @@ export function ServerSettingsModal({
                 }}
               />
               <p style={fieldHint}>
-                Видно всем участникам в списке серверов и в шапке. 1–80 символов.
+                Видно всем участникам в списке пространств и в шапке. 1–80 символов.
                 Slug (внутренний идентификатор для ссылок) при переименовании
                 не меняется.
                 <span style={{ marginLeft: 6, color: "var(--ec-text-muted)" }}>
@@ -443,7 +443,7 @@ export function ServerSettingsModal({
               </button>
 
               <p style={fieldHint}>
-                Цвет применяется ко всем accent-элементам пока активен этот сервер
+                Цвет применяется ко всем accent-элементам пока активно это пространство
                 (кнопки, badges, focus rings, glow). Другие участники тоже увидят.
               </p>
             </div>
@@ -451,14 +451,14 @@ export function ServerSettingsModal({
 
           {/* Description */}
           <section style={{ marginTop: "var(--ec-space-4)" }}>
-            <h3 style={sectionLabel}>Описание сервера</h3>
+            <h3 style={sectionLabel}>Описание пространства</h3>
             <div style={groupCard}>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 maxLength={1000}
                 rows={4}
-                placeholder="О чём этот сервер. Что обсуждается. Кому подходит."
+                placeholder="О чём это пространство. Что обсуждается. Кому подходит."
                 style={{ ...inputStyle, resize: "vertical", minHeight: 90 }}
               />
               <p style={fieldHint}>
@@ -483,7 +483,7 @@ export function ServerSettingsModal({
                 style={{ ...inputStyle, resize: "vertical", minHeight: 80 }}
               />
               <p style={fieldHint}>
-                Показывается один раз в первом text-канале сервера как
+                Показывается один раз в первой текстовой комнате пространства как
                 dismissible welcome-card. До 500 символов.
                 <span style={{ marginLeft: 6, color: "var(--ec-text-muted)" }}>
                   {welcomeMessage.length}/500
@@ -533,7 +533,7 @@ export function ServerSettingsModal({
 
       {tab === "banner" && (
         <section>
-          <h3 style={sectionLabel}>Баннер сервера</h3>
+          <h3 style={sectionLabel}>Баннер пространства</h3>
           <div style={groupCard}>
             {server.banner ? (
               <div
@@ -597,7 +597,7 @@ export function ServerSettingsModal({
             </div>
             <p style={fieldHint}>
               1500×500, до 25 MB. Любой формат — конвертируем в webp. Показывается
-              в шапке чата при пустом канале и в Info modal.
+              в шапке чата при пустой комнате и в Info modal.
             </p>
           </div>
         </section>
