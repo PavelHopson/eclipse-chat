@@ -378,6 +378,20 @@ Voice system:
   count exceeds the viewport budget. This is what turns voice rooms
   into real review/whiteboard sessions instead of one-presenter
   meetings.
+- **Shared channel playback ("listening room").** One member starts an
+  audio attachment (mp3 / wav / m4a / ogg) and every member in the
+  same channel hears it synchronously from the same timeline
+  position — Spotify Group Session / Telegram music-mode pattern. Not
+  a soundboard (one-shot fx over voice) and not personal playback
+  (each user with their own position) — a shared session with one
+  authoritative start time held by the server, clients seek their
+  local audio element to `now − startedAt + positionMs`. Sources v1:
+  only audio attachments uploaded to this server (use existing
+  `audio/*` whitelist; no YouTube / Spotify integration — copyright
+  surface + AGPL exposure). Permissions: queue add = member+, skip /
+  stop = host or moderator+. Coexists with voice rooms but stays
+  decoupled in v1 (don't couple to LiveKit publish flow). Closes the
+  "shared audio context" gap without re-inventing voice.
 
 AI transcription:
 

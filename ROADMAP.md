@@ -5,9 +5,10 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v0.51.0** (uploads full taxonomy — Office /
-архивы / extended video + magic-bytes sniff + 200 MB cap для video,
-16.05.2026) — https://app.star-crm.ru/eclipse-chat/
+**Текущая версия в проде:** **v0.52.0** (Group DMs — multi-participant
+direct conversations через ConversationParticipant join + composite
+avatar + CreateGroupDmModal, 16.05.2026)
+— https://app.star-crm.ru/eclipse-chat/
 
 > **Сессия 15.05 (вечер)**: v0.28 → v0.47 = 20 prod-деплоев за один заход.
 > AI Agents типология (#6 brief) закрыта полностью. Execution Analytics
@@ -83,6 +84,7 @@ chat и не enterprise prison.
 
 | Версия | Дата | Что |
 |---|---|---|
+| **v0.52.0** | 16.05 | **Group DMs** — closes engineering #3. Additive schema: новая таблица `ConversationParticipant (conversationId, userId, joinedAt)` + `DirectConversation` поля `isGroup`/`name`/`createdByUserId`; `userAId`/`userBId` стали nullable (NULL для group, заполнены для legacy 1-to-1). Migration `20260516220000_add_group_dms` (additive, zero-downtime — existing 1-to-1 rows не затронуты). Backend: unified helper `loadConversationMembers()` + `isDmMember()` — все DM-маршруты используют один membership-check независимо от типа. Новые routes: `POST /api/dm/groups` (create, 2-24 других user-id, server отвергает дубликаты и unknown ids), `PATCH /api/dm/groups/:id` (rename, host only), `POST /api/dm/groups/:id/participants` (add user, host only), `DELETE /api/dm/groups/:id/participants/:userId` (kick если host / leave если self; host не может уйти, transfer-ownership = future feature). `GET /api/dm/conversations` возвращает discriminated union: `isGroup=false` rows с `other`, `isGroup=true` rows с `participants[]+name+createdByUserId`. `emitDmConversationBumped` fan-out по всем participants (был только userA/userB). Frontend: `DmConversation` type теперь union, новые helpers `dmTitle()` и `dmIsSaved()` для унифицированного rendering. `GroupAvatar` (composite 2 stacked + counter если ≥3) + `deriveGroupTitle()`. `DirectConversationList` рендерит group rows + кнопка «Создать группу» в header. `CreateGroupDmModal` с substring-search, multi-select (selected first ordering), chip-row для выбранных, optional group-name (auto-derive если пусто). `AppShell` chat header / MessageList / MessageInput работают с обоими типами через helpers. Unit-тест `dm-membership.test.ts` — 8 cases (1-to-1 / group / saved / outsider / empty). |
 | **v0.51.0** | 16.05 | **Uploads full file taxonomy** — `attachments.ts` ALLOWED_MIME расширен: Office (docx/xlsx/pptx/odt/ods/odp/csv), архивы (rar/7z/tar/gz/bz2 в дополнение к zip), extended video (mkv/avi), extra audio (m4a/aac). Magic-bytes sniff (`sniffMime` + `isMimeConsistent`, без npm dep) — клиент-объявленный mime сверяется с фактическими байтами буфера, чтобы нельзя было загрузить .exe под видом image/png. Per-mime size cap: 200 MB для video/*, 50 MB остальное. nginx `client_max_body_size` 750m → 900m. Frontend Attachments.tsx: FileBadge с label-вкладкой (DOC/XLS/PPT/PDF/CSV/MD) + новый archive-icon. MessageInput.tsx: расширен `accept=` (image/*, video/*, audio/* + explicit Office/archive mime + ext fallbacks .docx/.rar/.7z/.mkv etc) + per-mime client-side size check. Unit-тест `attachments-sniff.test.ts` — 30 cases на каждое family + mismatch detection (text/plain claim + pdf content → reject). |
 | **v0.50.0** | 16.05 | **Media layer + voice messages** — video fullscreen viewer, audio/voice player cards, composer mic recorder via MediaRecorder, correct audio/video upload extensions. |
 | **v0.49.0** | 16.05 | **Unread ergonomics** — active-room unread divider + jump-to-latest overlay + per-channel/DM/thread local draft sync. |
@@ -163,8 +165,10 @@ base, ✅ Home command center, ✅ responsive cinematic UI pass.
 2. ✅ **Media viewer + voice messages** — закрыто в v0.50.0:
    fullscreen video, audio/voice cards, mic recorder in composer.
 
-3. **Group DMs** — расширить существующую DM-модель до multi-participant
-   conversations.
+3. ✅ **Group DMs** — закрыто в v0.52.0. Additive `ConversationParticipant`
+   join-таблица + `isGroup`/`name`/`createdByUserId` на `DirectConversation`,
+   unified membership helper, новые group routes (create/rename/add/remove),
+   composite GroupAvatar, CreateGroupDmModal с participant picker.
 
 4. **Workspace/Room language pass** — UI-копирайт увести от Discord:
    servers → workspaces, channels → rooms, где это не ломает код.
@@ -206,6 +210,34 @@ base, ✅ Home command center, ✅ responsive cinematic UI pass.
     `client_max_body_size` 750m → 900m. Frontend FileBadge + archive
     icon + расширенный `accept=`. 30 unit-тестов в
     `attachments-sniff.test.ts`.
+
+13. **Shared channel playback / listening room** — синхронный
+    audio-плеер на канале: один участник жмёт ▶ на mp3-attachment'е,
+    все members в канале слышат одновременно с одной timeline-позиции
+    (a-la Spotify Group Session / Telegram voice chats music mode).
+    Schema: `MusicSession { id, channelId @unique, trackAttachmentId,
+    startedAt, pausedAt?, positionMs, queue Json[], hostUserId }`.
+    Sync mechanism: server держит authoritative `startedAt` +
+    `positionMs`, клиент рассчитывает текущий offset как
+    `now - startedAt + positionMs`. Socket events: `music:started`,
+    `music:paused`, `music:position-sync`, `music:queue-updated`,
+    `music:track-changed`. Permissions: queue add — MEMBER+; skip /
+    stop — host или MODERATOR+. Audio source v1 — только uploaded
+    audio attachments из этого сервера (используем существующий
+    `audio/*` whitelist, никакой YouTube/Spotify integration —
+    copyright + AGPL риски). Frontend: floating mini-player в chat
+    header (track name + ▶/⏸ + progress + queue popover) + audio
+    element с `currentTime` setter под server-position. Voice room
+    interop v1: если канал VOICE — music просто **не активна**
+    (избегаем coupling с LiveKit publish flow в первом срезе); v2 —
+    можно publish'ить как отдельный LiveKit audio track. Edge cases:
+    позднее присоединение (новый member слышит с middle position),
+    network jitter (re-sync если drift > 1.5s), seek by host. Средний-
+    большой (M-L, ~3-5 дней). Risk: medium — audio sync edge cases,
+    но additive schema, нет breaking changes. Trade-off vs voice:
+    music — это `shared playback session`, voice — это `live
+    conversation`; оба могут coexist в одном канале со временем, но
+    раздельные state-machines.
 
 ## 📋 Открытые follow-ups
 

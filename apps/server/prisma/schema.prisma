@@ -54,9 +54,15 @@ model User {
   createdActionItems ActionItem[]        @relation("ActionItemCreator")
   assignedActionItems ActionItem[]       @relation("ActionItemAssignee")
   /// DM conversations где user — userA (нормализованная позиция, см. DirectConversation).
+  /// Для group DMs userA/userB NULL — membership через ConversationParticipant.
   dmsAsUserA       DirectConversation[]  @relation("DMUserA")
   /// DM conversations где user — userB.
   dmsAsUserB       DirectConversation[]  @relation("DMUserB")
+  /// Group DMs, созданные этим user'ом (host). Legacy 1-to-1 имеют createdByUserId=NULL.
+  dmGroupsCreated  DirectConversation[]  @relation("DMCreator")
+  /// Участие в group DMs (новая модель v0.52). 1-to-1 DMs используют userA/userB,
+  /// group DMs — этот join. Membership-check унифицирован в route helper.
+  dmParticipations ConversationParticipant[]
   auditLogs        AuditLog[]
   /// Боты которыми владеет user (как создатель).
   ownedBots        Bot[]                 @relation("BotOwner")
@@ -448,27 +454,61 @@ model ActionItem {
   @@index([assigneeUserId, status])
 }
 
-/// 1-to-1 direct conversation между двумя users.
-/// Чтобы избежать дубликатов «A→B» и «B→A» как разных строк,
-/// нормализуем позицию: всегда `userAId < userBId` (string comparison).
-/// При создании route'ом мы сортируем два id и помещаем меньший как userA.
-/// Group DMs (3+ участника) — будущее расширение (v0.8.1+).
+/// Direct conversation — 1-to-1 ИЛИ group (v0.52).
+///
+/// Two-track membership модель:
+///   - **1-to-1 path (legacy):** `userAId`/`userBId` filled, `isGroup=false`.
+///     Нормализованная позиция: `userAId < userBId` (string compare). Unique
+///     constraint защищает от дубликатов «A→B» и «B→A».
+///   - **Group path (v0.52):** `userAId/userBId` NULL, `isGroup=true`,
+///     участники в `ConversationParticipant` join-таблице. `name` — user-set
+///     title (nullable, frontend генерирует «Pavel, Alex, +2» если null).
+///     `createdByUserId` — host (может rename group / add/remove members).
+///
+/// Membership-check унифицирован через helper `isDmParticipant()` в
+/// routes/dm.ts — все routes используют его независимо от типа.
 model DirectConversation {
   id            String   @id @default(cuid())
-  userAId       String
-  userA         User     @relation("DMUserA", fields: [userAId], references: [id], onDelete: Cascade)
-  userBId       String
-  userB         User     @relation("DMUserB", fields: [userBId], references: [id], onDelete: Cascade)
+  /// 1-to-1 path: filled. Group path: NULL.
+  userAId       String?
+  userA         User?    @relation("DMUserA", fields: [userAId], references: [id], onDelete: Cascade)
+  userBId       String?
+  userB         User?    @relation("DMUserB", fields: [userBId], references: [id], onDelete: Cascade)
+  /// True для group DM (3+ participants). False для legacy 1-to-1.
+  isGroup       Boolean  @default(false)
+  /// User-set group title. Null = auto-derive из participant names в UI.
+  /// Max 80 chars (zod-валидация в route). Не используется для 1-to-1.
+  name          String?
+  /// Host группы — может rename / add/remove members. Null для legacy 1-to-1
+  /// (там обе стороны симметричны). SetNull при удалении user'а — group живёт.
+  createdByUserId String?
+  createdBy       User?  @relation("DMCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
   createdAt     DateTime @default(now())
   /// Timestamp последнего сообщения — для сортировки в user's DM list.
   /// Обновляется в transaction при send message.
   lastMessageAt DateTime @default(now())
 
-  messages Message[]
+  participants ConversationParticipant[]
+  messages     Message[]
 
   @@unique([userAId, userBId])
   @@index([userAId, lastMessageAt])
   @@index([userBId, lastMessageAt])
+}
+
+/// Участник group DM. Composite PK (conversationId, userId) гарантирует
+/// что один user не может быть в одной group дважды. userId-index для
+/// быстрой выборки «все мои conversations» через participant lookup.
+model ConversationParticipant {
+  conversationId String
+  conversation   DirectConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  joinedAt       DateTime           @default(now())
+
+  @@id([conversationId, userId])
+  @@index([userId])
 }
 
 /// AI Memory — последний visit пользователя в канал. Используется для

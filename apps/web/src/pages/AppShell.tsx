@@ -7,6 +7,8 @@ import { ChannelSettingsModal } from "../components/ChannelSettingsModal";
 import { RichContent } from "../components/RichContent";
 import { CreateServerModal } from "../components/CreateServerModal";
 import { DirectConversationList } from "../components/DirectConversationList";
+import { CreateGroupDmModal, type AvailableUser } from "../components/CreateGroupDmModal";
+import { GroupAvatar } from "../components/GroupAvatar";
 import { HomeToday } from "../components/HomeToday";
 import { IntelligencePanel } from "../components/IntelligencePanel";
 import { JoinServerModal } from "../components/JoinServerModal";
@@ -36,7 +38,7 @@ import { VoicePlaceholder } from "../components/VoicePlaceholder";
 import { VoiceRoom } from "../components/VoiceRoom";
 import { useChannelDigest } from "../hooks/useChannelDigest";
 import { useChannels } from "../hooks/useChannels";
-import { useDirectConversations } from "../hooks/useDirectConversations";
+import { dmIsSaved, dmTitle, useDirectConversations } from "../hooks/useDirectConversations";
 import { useDirectMessages } from "../hooks/useDirectMessages";
 import { useIncidents } from "../hooks/useIncidents";
 import { useMediaQuery } from "../hooks/useMediaQuery";
@@ -259,7 +261,9 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     selectedDmId,
     selectDm,
     openDmWith,
+    createGroupDm,
   } = useDirectConversations(socket, user.id);
+  const [createGroupOpen, setCreateGroupOpen] = useState(false);
   const inDmMode = activeServerId === null;
   const selectedDm = dmConversations.find((c) => c.id === selectedDmId) ?? null;
   const {
@@ -852,6 +856,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               if (isMobile) setNavOpen(false);
             }}
             onlineUserIds={new Set(members.filter((m) => m.online).map((m) => m.userId))}
+            currentUserId={user.id}
+            onCreateGroup={() => setCreateGroupOpen(true)}
           />
         ) : (
           <ChannelList
@@ -930,7 +936,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             </span>
           ) : inDmMode && selectedDm ? (
             <span className="ec-chat-title" style={chatTitle}>
-              {selectedDm.saved ? (
+              {dmIsSaved(selectedDm) ? (
                 <>
                   <span
                     aria-hidden
@@ -949,6 +955,11 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                     </svg>
                   </span>
                   Избранное
+                </>
+              ) : selectedDm.isGroup ? (
+                <>
+                  <GroupAvatar participants={selectedDm.participants} size={22} />
+                  {dmTitle(selectedDm, user.id)}
                 </>
               ) : (
                 <>
@@ -1165,16 +1176,24 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                 emptyHint={
                   dmMessagesLoading
                     ? "Загрузка…"
-                    : selectedDm.saved
+                    : dmIsSaved(selectedDm)
                     ? "Избранное — твой личный буфер. Сохраняй сюда заметки, ссылки и файлы."
+                    : selectedDm.isGroup
+                    ? "Это начало группового чата. Напиши первое сообщение."
                     : "Это начало вашего диалога. Напиши первое сообщение."
                 }
-                channelName={selectedDm.saved ? "Избранное" : selectedDm.other.displayName}
+                channelName={dmTitle(selectedDm, user.id)}
                 listKey={`dm:${selectedDm.id}`}
                 currentUserId={user.id}
                 currentUserName={headerName}
                 currentRole={null}
-                mentionNames={[selectedDm.other.displayName]}
+                mentionNames={
+                  selectedDm.isGroup
+                    ? selectedDm.participants
+                        .filter((p) => p.id !== user.id)
+                        .map((p) => p.displayName)
+                    : [selectedDm.other.displayName]
+                }
                 onRetry={(mid) => dmRetry(mid, senderForMessages)}
                 onEdit={dmEdit}
                 onDelete={dmDelete}
@@ -1183,8 +1202,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                 onToggleReaction={dmToggleReaction}
               />
               <MessageInput
-                channelName={selectedDm.saved ? "Избранное" : selectedDm.other.displayName}
-                placeholder={selectedDm.saved ? "Заметка в Избранное" : undefined}
+                channelName={dmTitle(selectedDm, user.id)}
+                placeholder={dmIsSaved(selectedDm) ? "Заметка в Избранное" : undefined}
                 draftKey={`dm:${selectedDm.id}`}
                 disabled={!isReady}
                 hideSlashCommands
@@ -1477,6 +1496,26 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             setHomeOpen(false);
             const res = await joinByInvite(code);
             return res ? { alreadyMember: res.alreadyMember } : null;
+          }}
+        />
+      )}
+
+      {createGroupOpen && (
+        <CreateGroupDmModal
+          availableUsers={members.map<AvailableUser>((m) => ({
+            id: m.userId,
+            displayName: m.user.displayName,
+            avatar: m.user.avatar,
+          }))}
+          currentUserId={user.id}
+          onClose={() => setCreateGroupOpen(false)}
+          onCreate={async (memberUserIds, name) => {
+            const id = await createGroupDm(memberUserIds, name);
+            if (id) {
+              setHomeOpen(false);
+              if (isMobile) setNavOpen(false);
+            }
+            return id;
           }}
         />
       )}

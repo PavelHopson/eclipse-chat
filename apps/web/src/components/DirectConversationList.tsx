@@ -1,6 +1,10 @@
 import type { CSSProperties } from "react";
 import { Avatar } from "./Avatar";
-import type { DmConversation } from "../hooks/useDirectConversations";
+import { GroupAvatar, deriveGroupTitle } from "./GroupAvatar";
+import type {
+  DmConversation,
+  DmConversationGroup,
+} from "../hooks/useDirectConversations";
 
 type Props = {
   conversations: DmConversation[];
@@ -12,6 +16,10 @@ type Props = {
    *  — но для DM нам нужен глобальный online tracker. Пока берём из useMembers
    *  активного сервера если есть; иначе все offline. */
   onlineUserIds?: Set<string>;
+  /** Id текущего пользователя — для derive group title без меня. */
+  currentUserId: string;
+  /** Открывает CreateGroupDmModal. Если undefined — кнопка скрыта. */
+  onCreateGroup?: () => void;
 };
 
 const wrap: CSSProperties = {
@@ -28,6 +36,21 @@ const headerStyle: CSSProperties = {
   display: "flex",
   alignItems: "center",
   gap: 8,
+};
+
+const createGroupBtn: CSSProperties = {
+  marginLeft: "auto",
+  width: 26,
+  height: 26,
+  display: "grid",
+  placeItems: "center",
+  borderRadius: "var(--ec-radius-sm)",
+  background: "transparent",
+  border: "1px solid var(--ec-border-subtle)",
+  color: "var(--ec-text-muted)",
+  cursor: "pointer",
+  transition:
+    "background var(--ec-dur-fast) var(--ec-ease), color var(--ec-dur-fast) var(--ec-ease), border-color var(--ec-dur-fast) var(--ec-ease)",
 };
 
 const listScroll: CSSProperties = {
@@ -80,6 +103,91 @@ function relativeTime(iso: string): string {
   return new Date(iso).toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
 }
 
+function GroupRow({
+  c,
+  active,
+  currentUserId,
+  onSelect,
+}: {
+  c: DmConversationGroup;
+  active: boolean;
+  currentUserId: string;
+  onSelect: (id: string) => void;
+}) {
+  const title = c.name?.trim() || deriveGroupTitle(c.participants, currentUserId);
+  const preview = c.lastMessage?.content ?? `${c.participants.length} участников`;
+  const isUnread = c.unread > 0;
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(c.id)}
+      style={{
+        ...rowStyle(active),
+        ...(isUnread ? { color: "var(--ec-text-strong)", fontWeight: 600 } : {}),
+      }}
+      onMouseEnter={(e) => {
+        if (!active) e.currentTarget.style.background = "var(--ec-surface-2)";
+      }}
+      onMouseLeave={(e) => {
+        if (!active) e.currentTarget.style.background = "transparent";
+      }}
+      title={c.participants.map((p) => p.displayName).join(", ")}
+    >
+      <GroupAvatar participants={c.participants} size={32} />
+      <span style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
+        <span
+          style={{
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+        >
+          {title}
+        </span>
+        <span
+          style={{
+            fontSize: "var(--ec-text-2xs)",
+            color: isUnread ? "var(--ec-text-muted)" : "var(--ec-text-dim)",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+        >
+          {c.lastMessage?.mine && "Вы: "}
+          {preview}
+        </span>
+      </span>
+      <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+        <span style={{ fontSize: "0.6rem", color: "var(--ec-text-dim)" }}>
+          {c.lastMessage ? relativeTime(c.lastMessage.createdAt) : ""}
+        </span>
+        {isUnread && (
+          <span
+            aria-label={`${c.unread} непрочитанных`}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              minWidth: 18,
+              height: 18,
+              padding: "0 5px",
+              borderRadius: "var(--ec-radius-full)",
+              background: "var(--ec-accent)",
+              color: "var(--ec-accent-text, #fff)",
+              fontSize: "0.6rem",
+              fontWeight: 700,
+              fontFeatureSettings: '"tnum"',
+              boxShadow: "0 0 8px hsl(195 70% 60% / 0.5)",
+            }}
+          >
+            {c.unread > 99 ? "99+" : c.unread}
+          </span>
+        )}
+      </span>
+    </button>
+  );
+}
+
 export function DirectConversationList({
   conversations,
   loading,
@@ -87,9 +195,13 @@ export function DirectConversationList({
   selectedDmId,
   onSelect,
   onlineUserIds,
+  currentUserId,
+  onCreateGroup,
 }: Props) {
-  const savedConvo = conversations.find((c) => c.saved) ?? null;
-  const regularConvos = conversations.filter((c) => !c.saved);
+  const savedConvo =
+    conversations.find((c): c is DmConversation & { saved: true } => !c.isGroup && c.saved === true) ??
+    null;
+  const regularConvos = conversations.filter((c) => c.isGroup || !(c as { saved?: boolean }).saved);
   return (
     <aside style={wrap} aria-label="Личные сообщения">
       <header style={headerStyle}>
@@ -99,6 +211,32 @@ export function DirectConversationList({
         <strong style={{ color: "var(--ec-text-strong)", fontSize: "var(--ec-text-base)" }}>
           Личные сообщения
         </strong>
+        {onCreateGroup && (
+          <button
+            type="button"
+            style={createGroupBtn}
+            onClick={onCreateGroup}
+            title="Создать группу"
+            aria-label="Создать группу"
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "var(--ec-accent-soft)";
+              e.currentTarget.style.color = "var(--ec-accent)";
+              e.currentTarget.style.borderColor = "var(--ec-border-accent)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "transparent";
+              e.currentTarget.style.color = "var(--ec-text-muted)";
+              e.currentTarget.style.borderColor = "var(--ec-border-subtle)";
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M19 8v6" />
+              <path d="M22 11h-6" />
+            </svg>
+          </button>
+        )}
       </header>
 
       <div style={listScroll}>
@@ -196,13 +334,24 @@ export function DirectConversationList({
             </div>
             <div className="ec-empty-title">Пусто</div>
             <div className="ec-empty-hint">
-              Открой профиль участника в любом сервере и нажми «Написать в личку».
+              Открой профиль участника и нажми «Написать в личку», либо собери группу через ＋ в заголовке.
             </div>
           </div>
         )}
 
         {regularConvos.map((c) => {
           const isActive = c.id === selectedDmId;
+          if (c.isGroup) {
+            return (
+              <GroupRow
+                key={c.id}
+                c={c}
+                active={isActive}
+                currentUserId={currentUserId}
+                onSelect={onSelect}
+              />
+            );
+          }
           const isOnline = onlineUserIds?.has(c.other.id) ?? false;
           const isInvisible = c.other.manualStatus === "INVISIBLE";
           const showOnline = isOnline && !isInvisible;
