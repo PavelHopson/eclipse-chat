@@ -20,9 +20,8 @@ type Props = {
   currentUserId?: string;
   currentUserName?: string;
   currentRole?: MemberRole | null;
-  /** AI typing indicator: показать shimmer-text «{Роль} собирает ответ...» —
-   *  set когда user отправил @ai-mention, clear на bot reply или 30s timeout. */
-  pendingAiRole?: BotRole | null;
+  /** Bot typing: shimmer «{label} собирает ответ» (v0.40 local + v0.48 socket). */
+  pendingBotTyping?: { role: BotRole; label: string } | null;
   /** Display names известных members активного сервера — для @mention detection. */
   mentionNames?: string[];
   onRetry?: (messageId: string) => Promise<boolean>;
@@ -235,7 +234,7 @@ export function MessageList({
   currentUserId,
   currentUserName,
   currentRole,
-  pendingAiRole,
+  pendingBotTyping,
   mentionNames = [],
   onRetry,
   onEdit,
@@ -1030,7 +1029,7 @@ export function MessageList({
           </Fragment>
         );
       })}
-      {pendingAiRole && (
+      {pendingBotTyping && (
         <div
           style={{
             display: "flex",
@@ -1053,7 +1052,7 @@ export function MessageList({
             <span className="ec-typing-dot" />
           </span>
           <span className="ec-shimmer-text">
-            {BOT_ROLE_LABELS[pendingAiRole]} собирает ответ
+            {pendingBotTyping.label} собирает ответ
           </span>
         </div>
       )}

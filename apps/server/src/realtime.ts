@@ -42,6 +42,19 @@ export function emitMessageOnChannel(
   io?.to(`channel:${channelId}`).emit("message:new", payload);
 }
 
+/** Bot генерирует ответ — shimmer «{имя} собирает ответ» у всех в канале. v0.48 */
+export function emitBotTyping(
+  channelId: string,
+  payload: {
+    channelId: string;
+    userId: string;
+    displayName: string;
+    botRole: BotRoleValue;
+  },
+) {
+  io?.to(`channel:${channelId}`).emit("bot:typing", payload);
+}
+
 /** Эмит при создании канала в сервере. Подписанные на server room — обновят список каналов. */
 export function emitChannelCreated(
   serverId: string,

@@ -1,51 +1,28 @@
 import { db } from "../db.js";
-import { emitMessageOnChannel } from "../realtime.js";
+import { emitBotTyping, emitMessageOnChannel } from "../realtime.js";
 import { chat, isAiConfigured } from "./provider.js";
 import { assistantPrompt } from "./prompts.js";
-import { botRolePrompt, type BotRoleValue } from "./botRoles.js";
+import { resolveBotSystemPrompt, type BotRoleValue } from "./botRoles.js";
 import type { FastifyBaseLogger } from "fastify";
 
 /**
- * @ai mention assistant.
+ * @ai mention assistant + Bot v3 autoRespond.
  *
- * При detection `@ai` в новом сообщении канала — выполняем fire-and-forget
- * background-job: собрать контекст (open actions + pinned + last 20 msgs) →
- * скормить LLM → запостить ответ от system-bot в тот же канал.
- *
- * System-bot user — самый старый user в БД (создан seed-migration в v0.4 как
- * `system@eclipse-chat.local`). Используем его id для авторства AI-сообщений,
- * чтобы они выглядели как обычные сообщения, но визуально отличались (frontend
- * детектит по email домену или специальному префиксу).
+ * При detection `@ai` / role-mentions — fire-and-forget background reply.
+ * При `Bot.autoRespond` — ответ на каждое human-сообщение в TEXT-канале
+ * сервера (без @mention), один бот (oldest createdAt).
  *
  * Защиты:
- *   - Только если AI configured (isAiConfigured).
- *   - Только если text-канал (VOICE — skip).
- *   - Throttle: один pending request per channel — дубль-mention в течение
- *     20 секунд игнорируется.
- *   - Bot не отвечает на свои собственные сообщения (избегаем циклов).
+ *   - isAiConfigured
+ *   - TEXT channels only
+ *   - Throttle 20s per channel
+ *   - Bot не отвечает на bot-сообщения
+ *   - Mention path и autoRespond не дублируются
  */
 
-/**
- * Mention-detector с role-resolution.
- *
- * Поддерживает:
- *   `@ai` / `@AI` / `@ии` / `@Аи`               → GENERIC
- *   `@moderator` / `@мод` / `@модератор`        → MODERATOR
- *   `@pm` / `@менеджер`                          → PM
- *   `@knowledge` / `@знания` / `@kb`             → KNOWLEDGE
- *   `@sales` / `@продажи`                        → SALES
- *
- * Все keyword'ы — case-insensitive, должны стоять как отдельное слово
- * (lookbehind на start/whitespace, lookahead на end/whitespace/пунктуацию).
- *
- * Если в одном сообщении несколько mention'ов — берётся первый.
- */
 type AiMentionMatch = { role: BotRoleValue; keyword: string };
 
 const AI_MENTION_KEYWORDS: ReadonlyArray<{ kw: string; role: BotRoleValue }> = [
-  // Specific roles прежде GENERIC — match-order matters при overlapping
-  // (e.g. "ai" — это GENERIC, не должен ловить "@aimoderator" etc — но из-за
-  // \b boundary это safe).
   { kw: "moderator", role: "MODERATOR" },
   { kw: "модератор", role: "MODERATOR" },
   { kw: "мод", role: "MODERATOR" },
@@ -56,36 +33,30 @@ const AI_MENTION_KEYWORDS: ReadonlyArray<{ kw: string; role: BotRoleValue }> = [
   { kw: "знания", role: "KNOWLEDGE" },
   { kw: "sales", role: "SALES" },
   { kw: "продажи", role: "SALES" },
-  // Generic — традиционные ai/ии триггеры
   { kw: "ai", role: "GENERIC" },
   { kw: "ии", role: "GENERIC" },
   { kw: "аи", role: "GENERIC" },
 ];
 
-/** Превращаем список в alternation, sorted by length desc (long first). */
 const KEYWORDS_ALT = [...AI_MENTION_KEYWORDS]
   .map((k) => k.kw)
   .sort((a, b) => b.length - a.length)
   .join("|");
 
-/**
- * Капчурим keyword чтобы определить роль. Boundary lookbehind/lookahead
- * предотвращает match'и внутри слов (`@aimoderator` не сматчит `@ai`).
- */
 const AI_MENTION_REGEX = new RegExp(
   `(?:^|\\s)@(${KEYWORDS_ALT})(?=\\s|$|[?.!,;:])`,
   "iu",
 );
 
-/** Найдено ли любое role-mention в content'е. */
+const STRIP_REGEX = new RegExp(
+  `(?<=^|\\s)@(?:${KEYWORDS_ALT})(?![\\p{L}\\p{N}_])`,
+  "giu",
+);
+
 export function detectAiMention(content: string): boolean {
   return AI_MENTION_REGEX.test(content);
 }
 
-/**
- * Resolve role + matched keyword. Null если нет mention'а. Берётся первый
- * (если несколько — игнорируем остальные).
- */
 export function resolveAiMention(content: string): AiMentionMatch | null {
   const m = AI_MENTION_REGEX.exec(content);
   if (!m || !m[1]) return null;
@@ -95,22 +66,6 @@ export function resolveAiMention(content: string): AiMentionMatch | null {
   return { role: entry.role, keyword: kw };
 }
 
-/**
- * Стрипаем все известные role-mention'ы из текста.
- *
- * Cyrillic-safe boundaries:
- *   - lookbehind `(?<=^|\s)` — `@` должен быть в начале строки или после
- *     whitespace. Защита от удаления `@ai` внутри email-подобных строк
- *     (`user@ai.com`).
- *   - lookahead `(?![\p{L}\p{N}_])` — после keyword'а НЕ должно быть
- *     unicode word char'а. JS `\b` использует ASCII `\w` даже с `u` флагом,
- *     поэтому для кириллицы стандартный `\b` НЕ работает; используем явный
- *     unicode property escape.
- */
-const STRIP_REGEX = new RegExp(
-  `(?<=^|\\s)@(?:${KEYWORDS_ALT})(?![\\p{L}\\p{N}_])`,
-  "giu",
-);
 export function stripAiMention(content: string): string {
   return content.replace(STRIP_REGEX, "").replace(/\s+/g, " ").trim();
 }
@@ -122,8 +77,6 @@ let cachedSystemUserId: string | null = null;
 
 async function getSystemUserId(): Promise<string | null> {
   if (cachedSystemUserId) return cachedSystemUserId;
-  // System user был создан в seed-migration с email system@eclipse-chat.local.
-  // Если нет такого user — fallback на самого старого user'а (обычно OWNER).
   const sys = await db.user.findFirst({
     where: { email: "system@eclipse-chat.local" },
     select: { id: true },
@@ -140,56 +93,246 @@ async function getSystemUserId(): Promise<string | null> {
   return cachedSystemUserId;
 }
 
-/**
- * Responder для AI-reply на role-mention.
- *
- * Priority (v0.33+):
- *   1. Если есть Bot row в server с подходящей `role` → отвечает он.
- *      Bot.userId (shadow user) становится author'ом сообщения, frontend
- *      рисует bot's avatar + role-badge через стандартную сериализацию
- *      (m.user.botProfile?.role в channels.ts route).
- *   2. Иначе fallback на system @ai (system@eclipse-chat.local) с
- *      role-prompt'ом — наследственное поведение v0.29+.
- *
- * Это превращает Bot row из «shadow user posting via REST» в
- * «embedded room participant» — обещание AI Agents типологии (#6 brief).
- *
- * GENERIC role не lookup'ит Bot — generic mention обслуживается system @ai
- * чтобы не дёргать случайный generic-bot в server'е (например telegram-bridge).
- */
+export type BotResponder = {
+  userId: string;
+  role: BotRoleValue;
+  displayName: string;
+  systemPromptOverride: string | null;
+  isRealBot: boolean;
+};
+
 export async function getResponderForRole(
   serverId: string,
   role: BotRoleValue,
-): Promise<{ userId: string; isRealBot: boolean } | null> {
+): Promise<BotResponder | null> {
   if (role !== "GENERIC") {
     const bot = await db.bot.findFirst({
       where: { serverId, role },
       orderBy: { createdAt: "asc" },
-      select: { userId: true, capabilities: true },
+      select: {
+        userId: true,
+        role: true,
+        capabilities: true,
+        systemPromptOverride: true,
+        user: { select: { displayName: true } },
+      },
     });
     if (bot) {
-      // Bot должен иметь capability send_message (default yes).
       let caps: string[] = [];
       try {
         caps = JSON.parse(bot.capabilities) as string[];
       } catch {
-        /* fallback empty */
+        /* */
       }
       if (caps.includes("send_message")) {
-        return { userId: bot.userId, isRealBot: true };
+        return {
+          userId: bot.userId,
+          role: bot.role as BotRoleValue,
+          displayName: bot.user.displayName,
+          systemPromptOverride: bot.systemPromptOverride,
+          isRealBot: true,
+        };
       }
     }
   }
   const sys = await getSystemUserId();
   if (!sys) return null;
-  return { userId: sys, isRealBot: false };
+  const user = await db.user.findUnique({
+    where: { id: sys },
+    select: { displayName: true },
+  });
+  return {
+    userId: sys,
+    role: "GENERIC",
+    displayName: user?.displayName ?? "AI",
+    systemPromptOverride: null,
+    isRealBot: false,
+  };
 }
 
-/**
- * Fire-and-forget triggered из POST /api/channels/:id/messages когда message
- * содержит @ai. Caller не ждёт — return обычное message immediately, AI
- * reply прилетит через socket через ~3-10 секунд.
- */
+async function isBotUserId(userId: string): Promise<boolean> {
+  const row = await db.bot.findUnique({
+    where: { userId },
+    select: { id: true },
+  });
+  return Boolean(row);
+}
+
+function tryAcquireChannelThrottle(channelId: string, log: FastifyBaseLogger): boolean {
+  const lastAt = pendingByChannel.get(channelId);
+  const now = Date.now();
+  if (lastAt && now - lastAt < THROTTLE_MS) {
+    log.debug({ channelId }, "AI/bot reply throttled");
+    return false;
+  }
+  pendingByChannel.set(channelId, now);
+  return true;
+}
+
+type ChannelContext = {
+  channel: { id: string; name: string; serverId: string };
+  userQuery: string;
+  userDisplayName: string;
+  basePrompt: ReturnType<typeof assistantPrompt>;
+};
+
+async function loadChannelContext(
+  channelId: string,
+  triggerMessageId: string,
+  triggerUserId: string,
+  triggerContent: string,
+): Promise<ChannelContext | null> {
+  const channel = await db.channel.findUnique({
+    where: { id: channelId },
+    select: { id: true, name: true, type: true, serverId: true },
+  });
+  if (!channel || channel.type !== "TEXT") return null;
+
+  const userInfo = await db.user.findUnique({
+    where: { id: triggerUserId },
+    select: { displayName: true },
+  });
+  const openActions = await db.actionItem.findMany({
+    where: { channelId, status: "OPEN" },
+    include: { assignee: { select: { displayName: true } } },
+    orderBy: [{ dueAt: { sort: "asc", nulls: "last" } }, { createdAt: "desc" }],
+    take: 20,
+  });
+  const pinned = await db.message.findMany({
+    where: { channelId, pinnedAt: { not: null }, deletedAt: null },
+    orderBy: { pinnedAt: "desc" },
+    take: 5,
+    select: {
+      content: true,
+      user: { select: { displayName: true } },
+    },
+  });
+  const recent = await db.message.findMany({
+    where: { channelId, deletedAt: null, id: { not: triggerMessageId } },
+    orderBy: { createdAt: "desc" },
+    take: 20,
+    include: { user: { select: { displayName: true } } },
+  });
+
+  const basePrompt = assistantPrompt({
+    channelName: channel.name,
+    userQuery: stripAiMention(triggerContent),
+    userDisplayName: userInfo?.displayName ?? "user",
+    recentMessages: recent
+      .reverse()
+      .map((m) => ({
+        displayName: m.user.displayName,
+        content: m.content,
+        createdAt: m.createdAt.toISOString(),
+      })),
+    openActions: openActions.map((a) => ({
+      type: a.type,
+      title: a.title,
+      dueAt: a.dueAt?.toISOString() ?? null,
+      assignee: a.assignee ? { displayName: a.assignee.displayName } : null,
+      status: a.status,
+    })),
+    pinned: pinned.map((p) => ({
+      content: p.content,
+      user: { displayName: p.user.displayName },
+    })),
+  });
+
+  return {
+    channel: { id: channel.id, name: channel.name, serverId: channel.serverId },
+    userQuery: stripAiMention(triggerContent),
+    userDisplayName: userInfo?.displayName ?? "user",
+    basePrompt,
+  };
+}
+
+async function executeChannelBotReply(params: {
+  channelId: string;
+  triggerMessageId: string;
+  triggerUserId: string;
+  triggerContent: string;
+  responder: BotResponder;
+  mentionRole: BotRoleValue;
+  log: FastifyBaseLogger;
+  source: "mention" | "auto_respond";
+}): Promise<void> {
+  const { channelId, triggerMessageId, triggerUserId, responder, mentionRole, log, source } =
+    params;
+
+  if (responder.userId === triggerUserId) return;
+
+  const ctx = await loadChannelContext(
+    channelId,
+    triggerMessageId,
+    triggerUserId,
+    params.triggerContent,
+  );
+  if (!ctx) return;
+
+  const promptRole = responder.isRealBot ? responder.role : mentionRole;
+  const genericAssistant =
+    mentionRole === "GENERIC" && !responder.isRealBot ? ctx.basePrompt.system : undefined;
+  const systemPrompt = resolveBotSystemPrompt(
+    promptRole,
+    responder.systemPromptOverride,
+    genericAssistant,
+  );
+
+  emitBotTyping(channelId, {
+    channelId,
+    userId: responder.userId,
+    displayName: responder.displayName,
+    botRole: promptRole,
+  });
+
+  const result = await chat(
+    [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: ctx.basePrompt.user },
+    ],
+    { temperature: 0.5, maxTokens: 450 },
+  );
+
+  const botUser = await db.user.findUnique({
+    where: { id: responder.userId },
+    select: { id: true, displayName: true, avatar: true },
+  });
+  if (!botUser) return;
+
+  const reply = await db.message.create({
+    data: {
+      content: result.text,
+      userId: responder.userId,
+      channelId,
+    },
+  });
+
+  emitMessageOnChannel(channelId, {
+    messageId: reply.id,
+    content: reply.content,
+    channelId,
+    userId: botUser.id,
+    displayName: botUser.displayName,
+    avatar: botUser.avatar,
+    isBot: true,
+    botRole: promptRole,
+    createdAt: reply.createdAt.toISOString(),
+  });
+
+  log.info(
+    {
+      channelId,
+      role: promptRole,
+      source,
+      responder: responder.isRealBot ? "bot-row" : "system-ai",
+      provider: result.provider,
+      model: result.model,
+      latencyMs: result.latencyMs,
+    },
+    "Bot assistant replied",
+  );
+}
+
 export async function maybeReplyToMention(
   channelId: string,
   triggerMessageId: string,
@@ -200,146 +343,99 @@ export async function maybeReplyToMention(
   if (!isAiConfigured()) return;
   const mention = resolveAiMention(triggerContent);
   if (!mention) return;
+  if (!tryAcquireChannelThrottle(channelId, log)) return;
 
-  // Throttle
-  const lastAt = pendingByChannel.get(channelId);
-  const now = Date.now();
-  if (lastAt && now - lastAt < THROTTLE_MS) {
-    log.debug({ channelId, role: mention.role }, "AI mention throttled");
-    return;
-  }
-  pendingByChannel.set(channelId, now);
-
-  // Не блокируем route — true fire-and-forget
   void (async () => {
     try {
       const channel = await db.channel.findUnique({
         where: { id: channelId },
-        select: { id: true, name: true, type: true, serverId: true },
+        select: { serverId: true, type: true },
       });
       if (!channel || channel.type !== "TEXT") return;
 
-      // Resolve responder: real Bot row с подходящей role > system @ai.
       const responder = await getResponderForRole(channel.serverId, mention.role);
-      if (!responder || responder.userId === triggerUserId) {
-        // Нет responder ИЛИ это сам же триггерящий юзер
-        return;
-      }
-      const botId = responder.userId;
+      if (!responder) return;
 
-      // Контекст
-      const userInfo = await db.user.findUnique({
-        where: { id: triggerUserId },
-        select: { displayName: true },
-      });
-      const openActions = await db.actionItem.findMany({
-        where: { channelId, status: "OPEN" },
-        include: {
-          assignee: { select: { displayName: true } },
-        },
-        orderBy: [{ dueAt: { sort: "asc", nulls: "last" } }, { createdAt: "desc" }],
-        take: 20,
-      });
-      const pinned = await db.message.findMany({
-        where: { channelId, pinnedAt: { not: null }, deletedAt: null },
-        orderBy: { pinnedAt: "desc" },
-        take: 5,
-        select: {
-          content: true,
-          user: { select: { displayName: true } },
-        },
-      });
-      const recent = await db.message.findMany({
-        where: { channelId, deletedAt: null, id: { not: triggerMessageId } },
-        orderBy: { createdAt: "desc" },
-        take: 20,
-        include: {
-          user: { select: { displayName: true } },
-        },
-      });
-
-      // Базовый user-prompt с контекстом канала (open actions / pinned / recent).
-      // System message замещаем role-aware: GENERIC = старый assistantPrompt
-      // (наследственный generic operator-tone), остальные роли — из botRolePrompt.
-      const basePrompt = assistantPrompt({
-        channelName: channel.name,
-        userQuery: stripAiMention(triggerContent),
-        userDisplayName: userInfo?.displayName ?? "user",
-        recentMessages: recent
-          .reverse()
-          .map((m) => ({
-            displayName: m.user.displayName,
-            content: m.content,
-            createdAt: m.createdAt.toISOString(),
-          })),
-        openActions: openActions.map((a) => ({
-          type: a.type,
-          title: a.title,
-          dueAt: a.dueAt?.toISOString() ?? null,
-          assignee: a.assignee ? { displayName: a.assignee.displayName } : null,
-          status: a.status,
-        })),
-        pinned: pinned.map((p) => ({
-          content: p.content,
-          user: { displayName: p.user.displayName },
-        })),
-      });
-      const systemPrompt =
-        mention.role === "GENERIC" ? basePrompt.system : botRolePrompt(mention.role);
-
-      const result = await chat(
-        [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: basePrompt.user },
-        ],
-        { temperature: 0.5, maxTokens: 450 },
-      );
-
-      // Постим как сообщение от responder'а в канал (real Bot OR system @ai)
-      const botUser = await db.user.findUnique({
-        where: { id: botId },
-        select: { id: true, displayName: true, avatar: true },
-      });
-      if (!botUser) return;
-
-      const reply = await db.message.create({
-        data: {
-          content: result.text,
-          userId: botId,
-          channelId,
-        },
-      });
-      emitMessageOnChannel(channelId, {
-        messageId: reply.id,
-        content: reply.content,
+      await executeChannelBotReply({
         channelId,
-        userId: botUser.id,
-        displayName: botUser.displayName,
-        avatar: botUser.avatar,
-        // Real Bot row: isBot=true + botProfile resolution даст role-badge
-        // на reload. System @ai: isBot=true (email-check в channels.ts),
-        // botRole в realtime payload — на reload botRole=null (нет Bot row).
-        isBot: true,
-        botRole: mention.role,
-        createdAt: reply.createdAt.toISOString(),
+        triggerMessageId,
+        triggerUserId,
+        triggerContent,
+        responder,
+        mentionRole: mention.role,
+        log,
+        source: "mention",
       });
-      log.info(
-        {
-          channelId,
-          role: mention.role,
-          keyword: mention.keyword,
-          responder: responder.isRealBot ? "bot-row" : "system-ai",
-          provider: result.provider,
-          model: result.model,
-          latencyMs: result.latencyMs,
-          promptTokens: result.promptTokens,
-        },
-        "AI assistant replied",
-      );
     } catch (err) {
       log.warn({ err, channelId }, "AI assistant failed");
-      // Не отправляем error в чат — silent fail. User видит свой message,
-      // просто без ответа. Это лучше чем «AI fail» спам в канале.
+      pendingByChannel.delete(channelId);
+    }
+  })();
+}
+
+/**
+ * Auto-respond: первый Bot с autoRespond=true на сервере (oldest createdAt).
+ * Не срабатывает если в сообщении уже есть role-mention.
+ */
+export async function maybeAutoRespond(
+  channelId: string,
+  triggerMessageId: string,
+  triggerUserId: string,
+  triggerContent: string,
+  log: FastifyBaseLogger,
+): Promise<void> {
+  if (!isAiConfigured()) return;
+  if (detectAiMention(triggerContent)) return;
+  if (await isBotUserId(triggerUserId)) return;
+  if (!tryAcquireChannelThrottle(channelId, log)) return;
+
+  void (async () => {
+    try {
+      const channel = await db.channel.findUnique({
+        where: { id: channelId },
+        select: { serverId: true, type: true },
+      });
+      if (!channel || channel.type !== "TEXT") return;
+
+      const autoBot = await db.bot.findFirst({
+        where: { serverId: channel.serverId, autoRespond: true },
+        orderBy: { createdAt: "asc" },
+        select: {
+          userId: true,
+          role: true,
+          capabilities: true,
+          systemPromptOverride: true,
+          user: { select: { displayName: true } },
+        },
+      });
+      if (!autoBot) return;
+
+      let caps: string[] = [];
+      try {
+        caps = JSON.parse(autoBot.capabilities) as string[];
+      } catch {
+        /* */
+      }
+      if (!caps.includes("send_message")) return;
+
+      await executeChannelBotReply({
+        channelId,
+        triggerMessageId,
+        triggerUserId,
+        triggerContent,
+        responder: {
+          userId: autoBot.userId,
+          role: autoBot.role as BotRoleValue,
+          displayName: autoBot.user.displayName,
+          systemPromptOverride: autoBot.systemPromptOverride,
+          isRealBot: true,
+        },
+        mentionRole: autoBot.role as BotRoleValue,
+        log,
+        source: "auto_respond",
+      });
+    } catch (err) {
+      log.warn({ err, channelId }, "Bot auto-respond failed");
       pendingByChannel.delete(channelId);
     }
   })();

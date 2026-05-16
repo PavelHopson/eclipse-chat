@@ -95,3 +95,26 @@ export function botRolePrompt(role: BotRoleValue | null | undefined): string {
   if (!role || !isBotRole(role)) return BOT_ROLE_SYSTEM_PROMPTS.GENERIC;
   return BOT_ROLE_SYSTEM_PROMPTS[role];
 }
+
+const MAX_SYSTEM_PROMPT_OVERRIDE = 8000;
+
+/**
+ * Effective system prompt: per-bot override > role template.
+ * Для system @ai (GENERIC, без Bot row) — optional assistant channel prompt.
+ */
+export function resolveBotSystemPrompt(
+  role: BotRoleValue,
+  systemPromptOverride: string | null | undefined,
+  genericAssistantSystem?: string,
+): string {
+  const trimmed = systemPromptOverride?.trim();
+  if (trimmed) {
+    return trimmed.length > MAX_SYSTEM_PROMPT_OVERRIDE
+      ? trimmed.slice(0, MAX_SYSTEM_PROMPT_OVERRIDE)
+      : trimmed;
+  }
+  if (role === "GENERIC" && genericAssistantSystem?.trim()) {
+    return genericAssistantSystem.trim();
+  }
+  return botRolePrompt(role);
+}

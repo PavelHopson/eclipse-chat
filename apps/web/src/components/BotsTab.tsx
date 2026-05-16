@@ -417,8 +417,11 @@ export function BotsTab({ serverId }: Props) {
   const [webhookOpen, setWebhookOpen] = useState<string | null>(null);
   /** Bot id у которого открыт role-picker. Null = ни один. */
   const [roleEditOpen, setRoleEditOpen] = useState<string | null>(null);
+  /** Bot id у которого открыт редактор system prompt. */
+  const [promptEditOpen, setPromptEditOpen] = useState<string | null>(null);
   /** Drafts of webhook URLs + secrets, keyed by botId. */
   const [webhookDrafts, setWebhookDrafts] = useState<Record<string, { url: string; secret: string }>>({});
+  const [promptDrafts, setPromptDrafts] = useState<Record<string, string>>({});
 
   const ensureDraft = (bot: BotRow) => {
     if (webhookDrafts[bot.id]) return;
@@ -473,6 +476,51 @@ export function BotsTab({ serverId }: Props) {
       const result = await createBot(input);
       if (result) {
         setShowCreate(false);
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const ensurePromptDraft = (bot: BotRow) => {
+    if (promptDrafts[bot.id] !== undefined) return;
+    setPromptDrafts((prev) => ({
+      ...prev,
+      [bot.id]: bot.systemPromptOverride ?? "",
+    }));
+  };
+
+  const handleToggleAutoRespond = async (bot: BotRow) => {
+    setBusy(true);
+    try {
+      await updateBot(bot.id, { autoRespond: !bot.autoRespond });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleSavePrompt = async (bot: BotRow) => {
+    const draft = promptDrafts[bot.id];
+    if (draft === undefined) return;
+    setBusy(true);
+    try {
+      const trimmed = draft.trim();
+      const ok = await updateBot(bot.id, {
+        systemPromptOverride: trimmed ? trimmed : null,
+      });
+      if (ok) setPromptEditOpen(null);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleResetPrompt = async (bot: BotRow) => {
+    setBusy(true);
+    try {
+      const ok = await updateBot(bot.id, { systemPromptOverride: null });
+      if (ok) {
+        setPromptDrafts((prev) => ({ ...prev, [bot.id]: "" }));
+        setPromptEditOpen(null);
       }
     } finally {
       setBusy(false);
@@ -690,6 +738,19 @@ export function BotsTab({ serverId }: Props) {
                   -mentions в каналах
                 </p>
               )}
+              {bot.autoRespond && (
+                <p
+                  style={{
+                    margin: "6px 0 0",
+                    fontSize: "var(--ec-text-2xs)",
+                    color: "var(--ec-status-ai)",
+                    lineHeight: 1.4,
+                  }}
+                >
+                  Автоответ в текстовых каналах сервера на каждое сообщение
+                  {bot.systemPromptOverride ? " · свой промпт" : ""}
+                </p>
+              )}
               <div
                 style={{
                   marginTop: 4,
@@ -738,7 +799,48 @@ export function BotsTab({ serverId }: Props) {
                 </div>
               )}
             </div>
-            <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+            <div style={{ display: "flex", gap: 6, flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
+              <button
+                type="button"
+                onClick={() => void handleToggleAutoRespond(bot)}
+                disabled={busy}
+                className="ec-btn ec-btn--ghost ec-btn--sm"
+                title={
+                  bot.autoRespond
+                    ? "Выключить автоответ"
+                    : "Автоответ в текстовых каналах сервера"
+                }
+                style={
+                  bot.autoRespond
+                    ? {
+                        color: "var(--ec-status-ai)",
+                        borderColor: "hsl(252 70% 60% / 0.35)",
+                      }
+                    : undefined
+                }
+              >
+                {bot.autoRespond ? "Авто ✓" : "Авто"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  ensurePromptDraft(bot);
+                  setPromptEditOpen((cur) => (cur === bot.id ? null : bot.id));
+                }}
+                disabled={busy}
+                className="ec-btn ec-btn--ghost ec-btn--sm"
+                title="Кастомный system prompt"
+                style={
+                  bot.systemPromptOverride
+                    ? {
+                        color: "var(--ec-accent)",
+                        borderColor: "var(--ec-border-accent)",
+                      }
+                    : undefined
+                }
+              >
+                Промпт
+              </button>
               <button
                 type="button"
                 onClick={() => {
@@ -897,6 +999,88 @@ export function BotsTab({ serverId }: Props) {
                   type="button"
                   onClick={() => void handleSaveWebhook(bot)}
                   disabled={busy || !draft.url.trim()}
+                  className="ec-btn ec-btn--primary ec-btn--sm"
+                >
+                  {busy ? "Сохраняем…" : "Сохранить"}
+                </button>
+              </div>
+            </div>
+          );
+        })()}
+
+        {promptEditOpen && (() => {
+          const bot = bots.find((b) => b.id === promptEditOpen);
+          if (!bot) return null;
+          const draft = promptDrafts[bot.id] ?? bot.systemPromptOverride ?? "";
+          return (
+            <div
+              key={`prompt-${bot.id}`}
+              style={{
+                marginTop: "var(--ec-space-2)",
+                padding: "var(--ec-space-3)",
+                background: "var(--ec-surface-2)",
+                border: "1px solid var(--ec-border-accent)",
+                borderRadius: "var(--ec-radius-md)",
+                display: "flex",
+                flexDirection: "column",
+                gap: "var(--ec-space-2)",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}
+              >
+                <strong style={{ fontSize: "var(--ec-text-sm)" }}>
+                  System prompt — «{bot.name}»
+                </strong>
+                <button
+                  type="button"
+                  onClick={() => setPromptEditOpen(null)}
+                  className="ec-btn ec-btn--ghost ec-btn--sm"
+                  style={{ padding: "0.2rem 0.5rem" }}
+                  title="Закрыть"
+                >
+                  ✕
+                </button>
+              </div>
+              <p style={fieldHint}>
+                Пустое поле = шаблон роли{" "}
+                <span style={roleChipStyle(bot.role)}>{BOT_ROLE_LABELS[bot.role]}</span>.
+                Если включён автоответ и несколько ботов с авто — отвечает самый старый.
+              </p>
+              <textarea
+                value={draft}
+                onChange={(e) =>
+                  setPromptDrafts((prev) => ({ ...prev, [bot.id]: e.target.value }))
+                }
+                rows={8}
+                maxLength={8000}
+                placeholder={BOT_ROLE_DESCRIPTIONS[bot.role]}
+                style={{
+                  ...inputStyle,
+                  resize: "vertical",
+                  minHeight: 120,
+                  fontFamily: "var(--ec-font-mono)",
+                  fontSize: "var(--ec-text-xs)",
+                  lineHeight: 1.45,
+                }}
+              />
+              <div style={{ display: "flex", gap: "var(--ec-space-2)", justifyContent: "flex-end" }}>
+                <button
+                  type="button"
+                  onClick={() => void handleResetPrompt(bot)}
+                  disabled={busy || !bot.systemPromptOverride}
+                  className="ec-btn ec-btn--ghost ec-btn--sm"
+                >
+                  Сбросить к шаблону
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleSavePrompt(bot)}
+                  disabled={busy}
                   className="ec-btn ec-btn--primary ec-btn--sm"
                 >
                   {busy ? "Сохраняем…" : "Сохранить"}

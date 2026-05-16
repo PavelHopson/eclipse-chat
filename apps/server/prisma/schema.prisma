@@ -112,6 +112,11 @@ model Bot {
   /// Роль бота — определяет system-prompt template, UI badge и (в будущем)
   /// поведение AI invocation. Default GENERIC = существующие боты не ломаются.
   role         BotRole  @default(GENERIC)
+  /// Отвечать на каждое сообщение в TEXT-каналах сервера (без @mention).
+  /// Если несколько ботов с autoRespond — отвечает oldest createdAt.
+  autoRespond  Boolean  @default(false)
+  /// Кастомный system prompt (приоритет над role-template). Max 8000 в API.
+  systemPromptOverride String?
   /// JSON array capabilities: ["send_message", "create_action_item", "react"].
   /// Сейчас всё разрешено — но field готов под granular ACL в v0.12.1.
   capabilities String   @default("[\"send_message\",\"react\"]")

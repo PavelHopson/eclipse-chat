@@ -13,6 +13,8 @@ export type BotRow = {
   description: string | null;
   /** Taxonomy-роль бота. Default GENERIC для существующих ботов. */
   role: BotRole;
+  autoRespond: boolean;
+  systemPromptOverride: string | null;
   owner: { id: string; displayName: string };
   shadowUserId: string;
   /** Префикс API key для display ("ecb_AbCd…"). Не secret. */
@@ -148,6 +150,8 @@ export function useBots(serverId: string | null) {
         name?: string;
         description?: string | null;
         role?: BotRole;
+        autoRespond?: boolean;
+        systemPromptOverride?: string | null;
         webhookUrl?: string | null;
         webhookSecret?: string | null;
       },

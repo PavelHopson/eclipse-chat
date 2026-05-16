@@ -238,6 +238,14 @@ export type TypingStopPayload = {
   userId: string;
 };
 
+/** Server-side bot генерирует AI-ответ (v0.48). */
+export type BotTypingPayload = {
+  channelId: string;
+  userId: string;
+  displayName: string;
+  botRole: BotRole;
+};
+
 /**
  * Voice presence — кто сейчас в каком VOICE-канале.
  * Backend трекает по Socket.io connect/disconnect + явным 'voice:join'/'voice:leave'.
@@ -353,6 +361,7 @@ export const SocketEvents = {
   PresenceUpdate: "presence:update",
   TypingStart: "typing:start",
   TypingStop: "typing:stop",
+  BotTyping: "bot:typing",
   VoiceJoin: "voice:join",
   VoiceLeave: "voice:leave",
   VoiceState: "voice:state",

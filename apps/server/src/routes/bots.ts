@@ -12,6 +12,7 @@ import {
   BOT_ROLES,
   BOT_ROLE_LABELS,
   botRolePrompt,
+  resolveBotSystemPrompt,
   type BotRoleValue,
 } from "../ai/botRoles.js";
 
@@ -48,6 +49,8 @@ const updateBotBody = z.object({
   name: z.string().trim().min(1).max(80).optional(),
   description: z.string().max(280).optional().nullable(),
   role: botRoleSchema.optional(),
+  autoRespond: z.boolean().optional(),
+  systemPromptOverride: z.string().max(8000).optional().nullable(),
   webhookUrl: z
     .string()
     .max(512)
@@ -140,6 +143,8 @@ export async function registerBotRoutes(app: FastifyInstance) {
           avatar: b.avatar ?? b.user.avatar ?? null,
           description: b.description,
           role: b.role as BotRoleValue,
+          autoRespond: b.autoRespond,
+          systemPromptOverride: b.systemPromptOverride,
           owner: b.owner,
           shadowUserId: b.userId,
           // Только префикс — не secret, для UX «ecb_AbCd…» display
@@ -311,6 +316,8 @@ export async function registerBotRoutes(app: FastifyInstance) {
         name?: string;
         description?: string | null;
         role?: BotRoleValue;
+        autoRespond?: boolean;
+        systemPromptOverride?: string | null;
         webhookUrl?: string | null;
         webhookSecret?: string | null;
       } = {};
@@ -320,6 +327,11 @@ export async function registerBotRoutes(app: FastifyInstance) {
         data.description = d ? d : null;
       }
       if (parsed.data.role !== undefined) data.role = parsed.data.role;
+      if (parsed.data.autoRespond !== undefined) data.autoRespond = parsed.data.autoRespond;
+      if (parsed.data.systemPromptOverride !== undefined) {
+        const p = parsed.data.systemPromptOverride?.trim();
+        data.systemPromptOverride = p ? p : null;
+      }
       if (parsed.data.webhookUrl !== undefined) {
         const u = parsed.data.webhookUrl?.trim();
         data.webhookUrl = u ? u : null;
@@ -337,6 +349,8 @@ export async function registerBotRoutes(app: FastifyInstance) {
           name: true,
           description: true,
           role: true,
+          autoRespond: true,
+          systemPromptOverride: true,
           avatar: true,
           apiKeyPrefix: true,
           webhookUrl: true,
@@ -359,6 +373,8 @@ export async function registerBotRoutes(app: FastifyInstance) {
           name: updated.name,
           description: updated.description,
           role: updated.role as BotRoleValue,
+          autoRespond: updated.autoRespond,
+          systemPromptOverride: updated.systemPromptOverride,
           avatar: updated.avatar,
           apiKeyPrefix: updated.apiKeyPrefix,
           webhookUrl: updated.webhookUrl,
@@ -591,19 +607,30 @@ export async function registerBotRoutes(app: FastifyInstance) {
     "/api/bot/me",
     { onRequest: [requireBotAuth] },
     async (req) => {
-      const bot = req.bot!;
-      // bot.role приходит из botAuth context'а как plain string из БД.
-      const role = bot.role as BotRoleValue;
+      const ctx = req.bot!;
+      const row = await db.bot.findUnique({
+        where: { id: ctx.id },
+        select: {
+          role: true,
+          autoRespond: true,
+          systemPromptOverride: true,
+        },
+      });
+      const role = (row?.role ?? ctx.role) as BotRoleValue;
+      const override = row?.systemPromptOverride ?? null;
       return {
         bot: {
-          id: bot.id,
-          name: bot.name,
-          serverId: bot.serverId,
-          shadowUserId: bot.userId,
-          capabilities: bot.capabilities,
+          id: ctx.id,
+          name: ctx.name,
+          serverId: ctx.serverId,
+          shadowUserId: ctx.userId,
+          capabilities: ctx.capabilities,
           role,
           roleLabel: BOT_ROLE_LABELS[role] ?? BOT_ROLE_LABELS.GENERIC,
-          systemPrompt: botRolePrompt(role),
+          autoRespond: row?.autoRespond ?? false,
+          systemPrompt: resolveBotSystemPrompt(role, override),
+          systemPromptOverride: override,
+          roleTemplatePrompt: botRolePrompt(role),
         },
       };
     },

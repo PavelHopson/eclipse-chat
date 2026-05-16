@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Socket } from "socket.io-client";
 import { ApiError, api, apiJson } from "../lib/api";
-import type { BotRole } from "../lib/botRoles";
+import { BOT_ROLE_LABELS, type BotRole } from "../lib/botRoles";
 import { resolveAiMention } from "../lib/aiMention";
 import {
   SocketEvents,
@@ -17,6 +17,7 @@ import {
   type ReactionAddedPayload,
   type ReactionRemovedPayload,
   type ThreadMetaUpdatePayload,
+  type BotTypingPayload,
   type TypingStartPayload,
   type TypingStopPayload,
 } from "../lib/socket";
@@ -150,12 +151,14 @@ export function useMessages(
   const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
   const [openActionItems, setOpenActionItems] = useState<MessageActionItem[]>([]);
   /**
-   * AI «typing» indicator: когда отправили message с @ai-mention, ждём
-   * bot reply. На socket message:new с isBot=true этого канала — clear.
-   * 30s safety timeout — match server-side throttle window. v0.40.
+   * Bot «typing» indicator: локально после @mention ИЛИ socket bot:typing
+   * от сервера (autoRespond / чужой @mention). Clear на bot message:new.
    */
-  const [pendingAiRole, setPendingAiRole] = useState<BotRole | null>(null);
-  const pendingAiTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [pendingBotTyping, setPendingBotTyping] = useState<{
+    role: BotRole;
+    label: string;
+  } | null>(null);
+  const pendingBotTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const channelIdRef = useRef<string | null>(channelId);
   channelIdRef.current = channelId;
@@ -179,16 +182,18 @@ export function useMessages(
       typingTimers.current.clear();
     };
   }, []);
-  // Clear AI typing indicator + cancel timeout при смене канала / unmount
+  const clearPendingBotTyping = useCallback(() => {
+    setPendingBotTyping(null);
+    if (pendingBotTimerRef.current) {
+      clearTimeout(pendingBotTimerRef.current);
+      pendingBotTimerRef.current = null;
+    }
+  }, []);
+
+  // Clear bot typing при смене канала / unmount
   useEffect(() => {
-    setPendingAiRole(null);
-    return () => {
-      if (pendingAiTimerRef.current) {
-        clearTimeout(pendingAiTimerRef.current);
-        pendingAiTimerRef.current = null;
-      }
-    };
-  }, [channelId]);
+    clearPendingBotTyping();
+  }, [channelId, clearPendingBotTyping]);
 
   useEffect(() => {
     if (!channelId) {
@@ -249,13 +254,8 @@ export function useMessages(
     if (!socket) return;
     const handler = (p: MessageNewPayload) => {
       if (p.channelId !== channelIdRef.current) return;
-      // v0.40: bot reply arrived → clear AI typing indicator
       if (p.isBot) {
-        if (pendingAiTimerRef.current) {
-          clearTimeout(pendingAiTimerRef.current);
-          pendingAiTimerRef.current = null;
-        }
-        setPendingAiRole(null);
+        clearPendingBotTyping();
       }
       setMessages((prev) => {
         if (prev.some((m) => m.id === p.messageId)) return prev;
@@ -350,6 +350,25 @@ export function useMessages(
     return () => {
       socket.off(SocketEvents.TypingStart, onStart);
       socket.off(SocketEvents.TypingStop, onStop);
+    };
+  }, [socket]);
+
+  // socket: bot:typing (server-side AI generation)
+  useEffect(() => {
+    if (!socket) return;
+    const onBotTyping = (p: BotTypingPayload) => {
+      if (p.channelId !== channelIdRef.current) return;
+      if (p.userId === currentUserIdRef.current) return;
+      setPendingBotTyping({ role: p.botRole, label: p.displayName });
+      if (pendingBotTimerRef.current) clearTimeout(pendingBotTimerRef.current);
+      pendingBotTimerRef.current = setTimeout(() => {
+        setPendingBotTyping(null);
+        pendingBotTimerRef.current = null;
+      }, 30_000);
+    };
+    socket.on(SocketEvents.BotTyping, onBotTyping);
+    return () => {
+      socket.off(SocketEvents.BotTyping, onBotTyping);
     };
   }, [socket]);
 
@@ -534,11 +553,14 @@ export function useMessages(
           }),
         });
         if (aiMatch) {
-          setPendingAiRole(aiMatch.role);
-          if (pendingAiTimerRef.current) clearTimeout(pendingAiTimerRef.current);
-          pendingAiTimerRef.current = setTimeout(() => {
-            setPendingAiRole(null);
-            pendingAiTimerRef.current = null;
+          setPendingBotTyping({
+            role: aiMatch.role,
+            label: BOT_ROLE_LABELS[aiMatch.role],
+          });
+          if (pendingBotTimerRef.current) clearTimeout(pendingBotTimerRef.current);
+          pendingBotTimerRef.current = setTimeout(() => {
+            setPendingBotTyping(null);
+            pendingBotTimerRef.current = null;
           }, 30_000);
         }
         setTimeout(() => {
@@ -748,7 +770,7 @@ export function useMessages(
     openActionItems,
     error,
     loading,
-    pendingAiRole,
+    pendingBotTyping,
     sendMessage,
     retryMessage,
     editMessage,

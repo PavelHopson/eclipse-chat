@@ -298,7 +298,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     error: messagesError,
     loading: messagesLoading,
     openActionItems,
-    pendingAiRole,
+    pendingBotTyping,
   } = useMessages(selectedChannelId, socket, user.id);
 
   const [showCreateServer, setShowCreateServer] = useState(false);
@@ -1272,7 +1272,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             <PinnedBar messages={messages} />
             <MessageList
               messages={messages}
-              pendingAiRole={pendingAiRole}
+              pendingBotTyping={pendingBotTyping}
               emptyHint={messagesLoading ? "Загрузка…" : undefined}
               channelName={selectedChannel.name}
               currentUserId={user.id}
