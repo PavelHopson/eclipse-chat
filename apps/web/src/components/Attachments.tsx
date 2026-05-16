@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import { useEffect, useState } from "react";
 import type { Attachment } from "../hooks/useMessages";
+import { resolveAssetUrl } from "../lib/assets";
 
 type Props = {
   attachments: Attachment[];
@@ -13,15 +14,6 @@ const wrap: CSSProperties = {
   gap: 6,
   maxWidth: 540,
 };
-
-function resolveUrl(raw: string): string {
-  if (raw.startsWith("data:") || raw.startsWith("blob:") || /^https?:\/\//i.test(raw)) {
-    return raw;
-  }
-  const base = import.meta.env.BASE_URL.replace(/\/$/, "");
-  const path = raw.startsWith("/") ? raw : `/${raw}`;
-  return `${base}${path}`;
-}
 
 function humanSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -92,8 +84,8 @@ function ImageItem({ a, onOpen }: { a: Attachment; onOpen: (a: Attachment) => vo
   // Если thumbnail-sharp умер на сервере и thumbnailUrl=null — берём original.
   // Если ImgLoad упадёт и для thumbnail (404 / битый файл) — onError swap'нет
   // на original; если и original битый — показываем placeholder без broken-icon.
-  const initialSrc = resolveUrl(a.thumbnailUrl ?? a.url);
-  const fallbackSrc = resolveUrl(a.url);
+  const initialSrc = resolveAssetUrl(a.thumbnailUrl ?? a.url) ?? "";
+  const fallbackSrc = resolveAssetUrl(a.url) ?? "";
   const [imgSrc, setImgSrc] = useState(initialSrc);
   const [errored, setErrored] = useState(false);
   return (
@@ -254,7 +246,7 @@ function Lightbox({ a, onClose }: { a: Attachment; onClose: () => void }) {
       document.body.style.overflow = prev;
     };
   }, [onClose]);
-  const fullUrl = resolveUrl(a.url);
+  const fullUrl = resolveAssetUrl(a.url) ?? "";
   return (
     <div style={lightboxBackdrop} onClick={(e) => e.target === e.currentTarget && onClose()} role="dialog" aria-modal="true">
       <img src={fullUrl} alt={a.filename} style={lightboxImg} />
@@ -329,7 +321,7 @@ export function Attachments({ attachments }: Props) {
           {files.map((a) => (
             <a
               key={a.id}
-              href={resolveUrl(a.url)}
+              href={resolveAssetUrl(a.url) ?? ""}
               download={a.filename}
               target="_blank"
               rel="noopener noreferrer"

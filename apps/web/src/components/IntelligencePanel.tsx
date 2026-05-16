@@ -6,6 +6,7 @@ import { MemberList } from "./MemberList";
 import type { ChannelDigest, DigestAiSummary } from "../hooks/useChannelDigest";
 import type { MemberRow } from "../hooks/useMembers";
 import type { useVoice as useVoiceHook } from "../hooks/useVoice";
+import { resolveAssetUrl } from "../lib/assets";
 
 /**
  * IntelligencePanel — правый rail Eclipse Chat как **context-aware
@@ -834,7 +835,6 @@ function FilesView({ items }: { items: AttachmentBrief[] }) {
       </p>
     );
   }
-  const basePrefix = import.meta.env.BASE_URL.replace(/\/$/, "");
   return (
     <div
       style={{
@@ -849,7 +849,7 @@ function FilesView({ items }: { items: AttachmentBrief[] }) {
         return (
           <a
             key={a.id}
-            href={`${basePrefix}${a.url}`}
+            href={resolveAssetUrl(a.url) ?? ""}
             target="_blank"
             rel="noreferrer"
             title={`${a.filename} · ${humanSize(a.size)}`}
@@ -867,7 +867,7 @@ function FilesView({ items }: { items: AttachmentBrief[] }) {
           >
             {thumb ? (
               <img
-                src={`${basePrefix}${thumb}`}
+                src={resolveAssetUrl(thumb) ?? ""}
                 alt={a.filename}
                 style={{ width: "100%", height: "100%", objectFit: "cover" }}
                 loading="lazy"

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Socket } from "socket.io-client";
+import { resolveAssetUrl } from "../lib/assets";
 import { SocketEvents, type MessageNewPayload } from "../lib/socket";
 
 type Permission = "default" | "granted" | "denied" | "unsupported";
@@ -26,16 +27,6 @@ function setStoredEnabled(enabled: boolean): void {
 
 function isSupported(): boolean {
   return typeof window !== "undefined" && "Notification" in window;
-}
-
-function resolveIconUrl(avatar: string | null): string | undefined {
-  if (!avatar) return undefined;
-  if (avatar.startsWith("http") || avatar.startsWith("data:") || avatar.startsWith("blob:")) {
-    return avatar;
-  }
-  const base = import.meta.env.BASE_URL.replace(/\/$/, "");
-  const path = avatar.startsWith("/") ? avatar : `/${avatar}`;
-  return `${base}${path}`;
 }
 
 /**
@@ -137,7 +128,7 @@ export function useNotifications(
       try {
         const notif = new Notification(p.displayName, {
           body: p.content.slice(0, 120),
-          icon: resolveIconUrl(p.avatar) ?? "/favicon.ico",
+          icon: resolveAssetUrl(p.avatar) ?? `${import.meta.env.BASE_URL}favicon.ico`,
           tag: `eclipse-chat-${p.channelId}`,
           silent: false,
         });

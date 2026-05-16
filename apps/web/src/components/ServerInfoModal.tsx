@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 import { Avatar } from "./Avatar";
 import type { MemberRole, MemberRow } from "../hooks/useMembers";
 import type { ServerRow } from "../hooks/useServers";
+import { resolveAssetUrl } from "../lib/assets";
 import { Modal } from "./Modal";
 
 type Props = {
@@ -18,13 +19,6 @@ type Props = {
   /** Кнопка «Оформление» — открывает ServerSettingsModal. Только OWNER. */
   onOpenSettings?: () => void;
 };
-
-function resolveIconUrl(raw: string): string {
-  if (raw.startsWith("http") || raw.startsWith("data:")) return raw;
-  const base = import.meta.env.BASE_URL.replace(/\/$/, "");
-  const p = raw.startsWith("/") ? raw : `/${raw}`;
-  return `${base}${p}`;
-}
 
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/).slice(0, 2);
@@ -254,7 +248,7 @@ export function ServerInfoModal({
           }}
         >
           <img
-            src={resolveIconUrl(server.banner)}
+            src={resolveAssetUrl(server.banner) ?? ""}
             alt=""
             style={{
               width: "100%",
@@ -296,7 +290,7 @@ export function ServerInfoModal({
         <div style={iconBox} aria-hidden>
           {server.icon ? (
             <img
-              src={resolveIconUrl(server.icon)}
+              src={resolveAssetUrl(server.icon) ?? ""}
               alt=""
               style={{ width: "100%", height: "100%", objectFit: "cover" }}
             />

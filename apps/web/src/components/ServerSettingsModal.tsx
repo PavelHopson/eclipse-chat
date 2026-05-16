@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { Modal } from "./Modal";
 import { BotsTab } from "./BotsTab";
 import type { ServerRow } from "../hooks/useServers";
+import { resolveAssetUrl } from "../lib/assets";
 
 type Props = {
   server: ServerRow;
@@ -546,7 +547,7 @@ export function ServerSettingsModal({
                 }}
               >
                 <img
-                  src={`${import.meta.env.BASE_URL.replace(/\/$/, "")}${server.banner}`}
+                  src={resolveAssetUrl(server.banner) ?? ""}
                   alt="Server banner"
                   style={{ width: "100%", height: "100%", objectFit: "cover" }}
                 />

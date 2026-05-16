@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import { useEffect, useState } from "react";
+import { resolveAssetUrl } from "../lib/assets";
 
 type Props = {
   url: string | null | undefined;
@@ -12,22 +13,6 @@ type Props = {
    */
   glow?: boolean;
 };
-
-/**
- * Avatar с fallback на инициалы. URL приходит с backend как
- * `/uploads/avatars/...` — относительный путь без BASE_URL prefix.
- * Здесь префиксируем `import.meta.env.BASE_URL` (минус trailing slash),
- * чтобы работало под dev (`/uploads/...`) и под path-based prod
- * (`/eclipse-chat/uploads/...`).
- */
-function resolveAvatarUrl(raw: string): string {
-  if (/^https?:\/\//i.test(raw)) {
-    return raw;
-  }
-  const base = import.meta.env.BASE_URL.replace(/\/$/, "");
-  const path = raw.startsWith("/") ? raw : `/${raw}`;
-  return `${base}${path}`;
-}
 
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/).slice(0, 2);
@@ -91,7 +76,7 @@ export function Avatar({ url, name, size = 32, glow = false }: Props) {
   return (
     <span style={style} className={glowClass} aria-hidden>
       <img
-        src={resolveAvatarUrl(url!)}
+        src={resolveAssetUrl(url) ?? ""}
         alt=""
         loading="lazy"
         decoding="async"

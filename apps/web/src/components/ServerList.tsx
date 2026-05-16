@@ -1,5 +1,7 @@
+import { useEffect, useState } from "react";
 import type { CSSProperties } from "react";
 import type { ServerRow } from "../hooks/useServers";
+import { resolveAssetUrl } from "../lib/assets";
 
 /**
  * ServerList — far-left **Forge Layer** (operational redesign Фаза A).
@@ -160,6 +162,30 @@ function initials(name: string): string {
   return parts.map((p) => p[0]?.toUpperCase() ?? "").join("") || "??";
 }
 
+function ServerTileIcon({ server }: { server: ServerRow }) {
+  const [errored, setErrored] = useState(false);
+  const iconUrl = resolveAssetUrl(server.icon);
+
+  useEffect(() => {
+    setErrored(false);
+  }, [server.icon]);
+
+  if (!iconUrl || errored) {
+    return <span aria-hidden>{initials(server.name)}</span>;
+  }
+
+  return (
+    <img
+      src={iconUrl}
+      alt=""
+      loading="lazy"
+      decoding="async"
+      onError={() => setErrored(true)}
+      style={{ width: "100%", height: "100%", borderRadius: "inherit", objectFit: "cover" }}
+    />
+  );
+}
+
 export function ServerList({
   servers,
   activeServerId,
@@ -287,15 +313,7 @@ export function ServerList({
             }}
           >
             {isActive && <span style={activeMarker} aria-hidden />}
-            {s.icon ? (
-              <img
-                src={s.icon}
-                alt=""
-                style={{ width: "100%", height: "100%", borderRadius: "inherit", objectFit: "cover" }}
-              />
-            ) : (
-              <span aria-hidden>{initials(s.name)}</span>
-            )}
+            <ServerTileIcon server={s} />
           </button>
         );
       })}
