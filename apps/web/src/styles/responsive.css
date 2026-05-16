@@ -299,6 +299,50 @@
     margin: var(--ec-space-2) 0;
   }
 
+  .ec-video-attachment {
+    width: 100%;
+  }
+
+  .ec-video-attachment video {
+    max-height: 220px;
+  }
+
+  .ec-video-attachment__meta {
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    font-size: 0.68rem;
+  }
+
+  .ec-audio-attachment {
+    grid-template-columns: 34px minmax(0, 1fr);
+    gap: 8px;
+    padding: 0.55rem;
+  }
+
+  .ec-audio-attachment__download {
+    grid-column: 2;
+    width: 100%;
+  }
+
+  .ec-audio-attachment__icon {
+    width: 34px;
+    height: 34px;
+  }
+
+  .ec-voice-recorder-bar {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .ec-voice-recorder-bar__time {
+    margin-right: 0;
+  }
+
+  .ec-voice-recorder-bar button {
+    flex: 1;
+  }
+
   .ec-message-row {
     grid-template-columns: 34px minmax(0, 1fr) !important;
     column-gap: var(--ec-space-2) !important;

@@ -25,6 +25,14 @@ function isImage(a: Attachment): boolean {
   return a.mimeType.startsWith("image/");
 }
 
+function isVideo(a: Attachment): boolean {
+  return a.mimeType.startsWith("video/");
+}
+
+function isAudio(a: Attachment): boolean {
+  return a.mimeType.startsWith("audio/");
+}
+
 const imageWrap: CSSProperties = {
   display: "block",
   background: "var(--ec-surface-2)",
@@ -63,6 +71,23 @@ const fileIconWrap: CSSProperties = {
 };
 
 function FileIcon({ mime }: { mime: string }) {
+  if (mime.startsWith("audio/")) {
+    return (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <path d="M9 18V5l12-2v13" />
+        <circle cx="6" cy="18" r="3" />
+        <circle cx="18" cy="16" r="3" />
+      </svg>
+    );
+  }
+  if (mime.startsWith("video/")) {
+    return (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <rect x="3" y="5" width="18" height="14" rx="2" />
+        <path d="M10 9l5 3-5 3V9z" />
+      </svg>
+    );
+  }
   if (mime === "application/pdf") {
     return (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -77,6 +102,63 @@ function FileIcon({ mime }: { mime: string }) {
       <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
       <polyline points="14 2 14 8 20 8" />
     </svg>
+  );
+}
+
+function VideoItem({ a, onOpen }: { a: Attachment; onOpen: (a: Attachment) => void }) {
+  const src = resolveAssetUrl(a.url) ?? "";
+  return (
+    <button
+      type="button"
+      className="ec-video-attachment"
+      onClick={() => onOpen(a)}
+      aria-label={`Открыть видео ${a.filename}`}
+    >
+      <video src={src} preload="metadata" muted playsInline />
+      <span className="ec-video-attachment__play" aria-hidden>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+          <path d="M8 5v14l11-7z" />
+        </svg>
+      </span>
+      <span className="ec-video-attachment__meta">
+        <span>{a.filename}</span>
+        <span>{humanSize(a.size)}</span>
+      </span>
+    </button>
+  );
+}
+
+function AudioItem({ a }: { a: Attachment }) {
+  const src = resolveAssetUrl(a.url) ?? "";
+  const isVoice = /^voice-message-/i.test(a.filename);
+  return (
+    <div className={isVoice ? "ec-audio-attachment ec-audio-attachment--voice" : "ec-audio-attachment"}>
+      <div className="ec-audio-attachment__icon" aria-hidden>
+        <FileIcon mime={a.mimeType} />
+      </div>
+      <div className="ec-audio-attachment__body">
+        <div className="ec-audio-attachment__title">
+          {isVoice ? "Голосовое сообщение" : a.filename}
+        </div>
+        <audio controls preload="metadata" src={src} />
+        <div className="ec-audio-attachment__meta">
+          {humanSize(a.size)} · {a.mimeType.split("/")[1] ?? "audio"}
+        </div>
+      </div>
+      <a
+        href={src}
+        download={a.filename}
+        className="ec-audio-attachment__download"
+        title="Скачать"
+        aria-label="Скачать аудио"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+          <polyline points="7 10 12 15 17 10" />
+          <line x1="12" y1="15" x2="12" y2="3" />
+        </svg>
+      </a>
+    </div>
   );
 }
 
@@ -249,7 +331,11 @@ function Lightbox({ a, onClose }: { a: Attachment; onClose: () => void }) {
   const fullUrl = resolveAssetUrl(a.url) ?? "";
   return (
     <div style={lightboxBackdrop} onClick={(e) => e.target === e.currentTarget && onClose()} role="dialog" aria-modal="true">
-      <img src={fullUrl} alt={a.filename} style={lightboxImg} />
+      {isVideo(a) ? (
+        <video src={fullUrl} controls autoPlay playsInline style={lightboxImg} />
+      ) : (
+        <img src={fullUrl} alt={a.filename} style={lightboxImg} />
+      )}
       <div style={lightboxControls}>
         <a
           href={fullUrl}
@@ -289,7 +375,9 @@ export function Attachments({ attachments }: Props) {
   if (attachments.length === 0) return null;
 
   const images = attachments.filter(isImage);
-  const files = attachments.filter((a) => !isImage(a));
+  const videos = attachments.filter(isVideo);
+  const audios = attachments.filter(isAudio);
+  const files = attachments.filter((a) => !isImage(a) && !isVideo(a) && !isAudio(a));
 
   return (
     <div style={wrap}>
@@ -313,6 +401,20 @@ export function Attachments({ attachments }: Props) {
         >
           {images.map((a) => (
             <ImageItem key={a.id} a={a} onOpen={setLightbox} />
+          ))}
+        </div>
+      )}
+      {videos.length > 0 && (
+        <div className="ec-video-attachment-grid">
+          {videos.map((a) => (
+            <VideoItem key={a.id} a={a} onOpen={setLightbox} />
+          ))}
+        </div>
+      )}
+      {audios.length > 0 && (
+        <div className="ec-audio-attachment-list">
+          {audios.map((a) => (
+            <AudioItem key={a.id} a={a} />
           ))}
         </div>
       )}

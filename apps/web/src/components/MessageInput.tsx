@@ -267,6 +267,40 @@ function humanSize(bytes: number): string {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
+function formatDuration(ms: number): string {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const minutes = Math.floor(total / 60);
+  const seconds = total % 60;
+  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+}
+
+function pickVoiceMimeType(): string {
+  if (typeof MediaRecorder === "undefined") return "";
+  const candidates = [
+    "audio/webm;codecs=opus",
+    "audio/webm",
+    "audio/ogg;codecs=opus",
+    "audio/ogg",
+  ];
+  return candidates.find((mime) => MediaRecorder.isTypeSupported(mime)) ?? "";
+}
+
+function extensionFromAudioMime(mime: string): string {
+  if (mime.includes("ogg")) return "ogg";
+  if (mime.includes("mpeg")) return "mp3";
+  if (mime.includes("wav")) return "wav";
+  return "webm";
+}
+
+function normalizeAudioMime(mime: string): string {
+  return mime.split(";")[0] || "audio/webm";
+}
+
+function voiceFilename(mime: string): string {
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  return `voice-message-${stamp}.${extensionFromAudioMime(mime)}`;
+}
+
 const DRAFT_STORAGE_PREFIX = "eclipse-chat:draft:v1:";
 
 function getDraftStorageKey(draftKey: string | null | undefined): string | null {
@@ -318,6 +352,13 @@ export function MessageInput({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const draftRef = useRef(draft);
   const draftKeyRef = useRef<string | null>(draftKey);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordingStreamRef = useRef<MediaStream | null>(null);
+  const recordingChunksRef = useRef<Blob[]>([]);
+  const recordingCancelledRef = useRef(false);
+  const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingMs, setRecordingMs] = useState(0);
   // Autocomplete state — @ mentions + : emoji shortcodes
   const [trigger, setTrigger] = useState<AutocompleteTrigger | null>(null);
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
@@ -379,6 +420,10 @@ export function MessageInput({
     if (stopTimerRef.current) {
       clearTimeout(stopTimerRef.current);
       stopTimerRef.current = null;
+    }
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      recordingCancelledRef.current = true;
+      mediaRecorderRef.current.stop();
     }
     saveDraft(draftKeyRef.current, draftRef.current);
     draftKeyRef.current = currentKey;
@@ -515,9 +560,125 @@ export function MessageInput({
     });
   };
 
+  const cleanupRecordingTimer = () => {
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+  };
+
+  const cleanupRecordingStream = () => {
+    recordingStreamRef.current?.getTracks().forEach((track) => track.stop());
+    recordingStreamRef.current = null;
+  };
+
+  const stopVoiceRecording = (save: boolean) => {
+    recordingCancelledRef.current = !save;
+    const recorder = mediaRecorderRef.current;
+    if (recorder && recorder.state !== "inactive") {
+      recorder.stop();
+      return;
+    }
+    cleanupRecordingTimer();
+    cleanupRecordingStream();
+    setIsRecording(false);
+    setRecordingMs(0);
+  };
+
+  const startVoiceRecording = async () => {
+    if (disabled || sending || pending.length >= MAX_PER_MESSAGE || hideAttachments) return;
+    if (isRecording) {
+      stopVoiceRecording(true);
+      return;
+    }
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+      setAttachError("Браузер не поддерживает запись голосовых сообщений.");
+      return;
+    }
+
+    try {
+      setAttachError(null);
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      });
+      const preferredMime = pickVoiceMimeType();
+      const recorder = preferredMime
+        ? new MediaRecorder(stream, { mimeType: preferredMime })
+        : new MediaRecorder(stream);
+
+      recordingChunksRef.current = [];
+      recordingCancelledRef.current = false;
+      recordingStreamRef.current = stream;
+      mediaRecorderRef.current = recorder;
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) recordingChunksRef.current.push(event.data);
+      };
+
+      recorder.onerror = () => {
+        setAttachError("Запись голоса прервалась. Попробуй ещё раз.");
+        stopVoiceRecording(false);
+      };
+
+      recorder.onstop = () => {
+        const chunks = recordingChunksRef.current;
+        const mimeType = normalizeAudioMime(recorder.mimeType || preferredMime || "audio/webm");
+        if (!recordingCancelledRef.current && chunks.length > 0) {
+          const blob = new Blob(chunks, { type: mimeType });
+          const file = new File([blob], voiceFilename(mimeType), { type: mimeType });
+          addFiles([file]);
+        }
+        mediaRecorderRef.current = null;
+        recordingChunksRef.current = [];
+        cleanupRecordingTimer();
+        cleanupRecordingStream();
+        setIsRecording(false);
+        setRecordingMs(0);
+      };
+
+      recorder.start(250);
+      const startedAt = Date.now();
+      setIsRecording(true);
+      setRecordingMs(0);
+      cleanupRecordingTimer();
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingMs(Date.now() - startedAt);
+      }, 250);
+    } catch {
+      cleanupRecordingTimer();
+      cleanupRecordingStream();
+      setIsRecording(false);
+      setRecordingMs(0);
+      setAttachError("Не удалось получить доступ к микрофону.");
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      recordingCancelledRef.current = true;
+      const recorder = mediaRecorderRef.current;
+      if (recorder && recorder.state !== "inactive") {
+        recorder.ondataavailable = null;
+        recorder.onerror = null;
+        recorder.onstop = null;
+        recorder.stop();
+      }
+      mediaRecorderRef.current = null;
+      recordingChunksRef.current = [];
+      cleanupRecordingTimer();
+      cleanupRecordingStream();
+    };
+    // Recorder cleanup must run only on unmount; callbacks use refs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const submit = async () => {
     const trimmed = draft.trim();
-    if ((!trimmed && pending.length === 0) || sending) return;
+    if ((!trimmed && pending.length === 0) || sending || isRecording) return;
     setSending(true);
     setAttachError(null);
     try {
@@ -558,8 +719,12 @@ export function MessageInput({
     }
   };
 
-  const canSend = (draft.trim().length > 0 || pending.length > 0) && !disabled && !sending;
-  const boxStyle = focused ? { ...composerBox, ...composerBoxFocused } : composerBox;
+  const canSend = (draft.trim().length > 0 || pending.length > 0) && !disabled && !sending && !isRecording;
+  const baseBoxStyle = focused ? { ...composerBox, ...composerBoxFocused } : composerBox;
+  const boxStyle: CSSProperties = {
+    ...baseBoxStyle,
+    gridTemplateColumns: hideAttachments ? "1fr auto" : "auto auto 1fr auto",
+  };
 
   // Slash-command hint: показываем когда юзер набрал «/» + (опц.) часть
   // команды, но ещё не дошёл до пробела. @/:-popover имеет приоритет.
@@ -667,6 +832,19 @@ export function MessageInput({
           {attachError}
         </p>
       )}
+      {isRecording && (
+        <div className="ec-voice-recorder-bar" role="status" aria-live="polite">
+          <span className="ec-voice-recorder-bar__pulse" aria-hidden />
+          <span className="ec-voice-recorder-bar__label">Запись голоса</span>
+          <span className="ec-voice-recorder-bar__time">{formatDuration(recordingMs)}</span>
+          <button type="button" onClick={() => stopVoiceRecording(false)}>
+            Отмена
+          </button>
+          <button type="button" onClick={() => stopVoiceRecording(true)}>
+            Готово
+          </button>
+        </div>
+      )}
       {slashMatches.length > 0 && (
         <div style={slashHintStrip}>
           {slashMatches.map((c) => (
@@ -704,11 +882,13 @@ export function MessageInput({
         </div>
       )}
       <div className="ec-composer-box" style={boxStyle}>
+        {!hideAttachments && (
+          <>
         <input
           ref={fileInputRef}
           type="file"
           multiple
-          accept="image/jpeg,image/png,image/webp,image/gif,application/pdf,text/plain"
+          accept="image/jpeg,image/png,image/webp,image/gif,image/avif,image/heic,image/heif,image/bmp,image/tiff,image/svg+xml,application/pdf,text/plain,text/markdown,application/json,application/zip,video/mp4,video/webm,video/quicktime,audio/mpeg,audio/wav,audio/ogg,audio/webm"
           onChange={(e) => {
             if (e.target.files) addFiles(e.target.files);
             e.target.value = "";
@@ -718,7 +898,7 @@ export function MessageInput({
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          disabled={disabled || pending.length >= MAX_PER_MESSAGE}
+          disabled={disabled || pending.length >= MAX_PER_MESSAGE || isRecording}
           className="ec-composer-icon-btn"
           title="Прикрепить файлы"
           aria-label="Прикрепить файлы"
@@ -736,6 +916,32 @@ export function MessageInput({
             <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.49" />
           </svg>
         </button>
+            <button
+              type="button"
+              onClick={() => (isRecording ? stopVoiceRecording(true) : void startVoiceRecording())}
+              disabled={disabled || sending || pending.length >= MAX_PER_MESSAGE}
+              className={isRecording ? "ec-composer-icon-btn ec-composer-icon-btn--recording" : "ec-composer-icon-btn"}
+              title={isRecording ? "Завершить запись" : "Записать голосовое"}
+              aria-label={isRecording ? "Завершить запись голосового" : "Записать голосовое сообщение"}
+              style={iconBtn}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = isRecording ? "var(--ec-danger-soft)" : "var(--ec-surface-3)";
+                e.currentTarget.style.color = isRecording ? "var(--ec-danger)" : "var(--ec-text)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "transparent";
+                e.currentTarget.style.color = "var(--ec-text-muted)";
+              }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
+                <path d="M19 10v2a7 7 0 01-14 0v-2" />
+                <line x1="12" y1="19" x2="12" y2="23" />
+                <line x1="8" y1="23" x2="16" y2="23" />
+              </svg>
+            </button>
+          </>
+        )}
         <textarea
           ref={textareaRef}
           rows={1}

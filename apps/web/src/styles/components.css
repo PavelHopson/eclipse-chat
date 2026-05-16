@@ -1002,6 +1002,181 @@
   -webkit-backdrop-filter: blur(14px) saturate(140%);
 }
 
+.ec-video-attachment-grid,
+.ec-audio-attachment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 540px;
+}
+
+.ec-video-attachment {
+  position: relative;
+  display: block;
+  width: min(480px, 100%);
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid hsl(205 70% 72% / 0.12);
+  border-radius: var(--ec-radius-lg);
+  background:
+    radial-gradient(circle at 18% 0%, hsl(195 70% 60% / 0.12), transparent 44%),
+    var(--ec-surface-2);
+  color: var(--ec-text);
+  cursor: zoom-in;
+  box-shadow: 0 14px 34px hsl(210 70% 2% / 0.20);
+  transition:
+    transform var(--ec-dur-fast) var(--ec-ease-out),
+    border-color var(--ec-dur-fast) var(--ec-ease),
+    box-shadow var(--ec-dur-fast) var(--ec-ease);
+}
+
+.ec-video-attachment:hover {
+  transform: translateY(-1px);
+  border-color: hsl(195 86% 62% / 0.30);
+  box-shadow:
+    0 18px 42px hsl(210 70% 2% / 0.28),
+    0 0 26px hsl(195 86% 62% / 0.12);
+}
+
+.ec-video-attachment video {
+  display: block;
+  width: 100%;
+  max-height: 320px;
+  object-fit: cover;
+  opacity: 0.84;
+}
+
+.ec-video-attachment__play {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: white;
+  filter: drop-shadow(0 0 18px hsl(195 86% 62% / 0.40));
+  pointer-events: none;
+}
+
+.ec-video-attachment__play svg {
+  width: 52px;
+  height: 52px;
+  padding: 14px;
+  border: 1px solid hsl(0 0% 100% / 0.18);
+  border-radius: 999px;
+  background: hsl(214 28% 5% / 0.54);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.ec-video-attachment__meta {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0.45rem 0.62rem;
+  border: 1px solid hsl(205 70% 72% / 0.12);
+  border-radius: var(--ec-radius-md);
+  background: hsl(214 28% 5% / 0.62);
+  color: var(--ec-text);
+  font-size: var(--ec-text-xs);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.ec-video-attachment__meta span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ec-video-attachment__meta span:last-child {
+  color: var(--ec-text-dim);
+  flex-shrink: 0;
+}
+
+.ec-audio-attachment {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: min(500px, 100%);
+  padding: 0.65rem;
+  border: 1px solid hsl(205 70% 72% / 0.12);
+  border-radius: var(--ec-radius-lg);
+  background:
+    radial-gradient(circle at 0% 0%, hsl(195 70% 60% / 0.10), transparent 42%),
+    linear-gradient(180deg, hsl(214 28% 12% / 0.88), hsl(214 28% 8% / 0.88));
+  box-shadow: 0 12px 30px hsl(210 70% 2% / 0.18);
+}
+
+.ec-audio-attachment--voice {
+  border-color: hsl(195 86% 62% / 0.22);
+}
+
+.ec-audio-attachment__icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border: 1px solid hsl(195 86% 62% / 0.18);
+  border-radius: 999px;
+  background: hsl(195 70% 60% / 0.10);
+  color: hsl(195 86% 72%);
+  box-shadow: inset 0 0 18px hsl(195 86% 62% / 0.08);
+}
+
+.ec-audio-attachment__body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.ec-audio-attachment__title {
+  overflow: hidden;
+  color: var(--ec-text-strong);
+  font-size: var(--ec-text-sm);
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ec-audio-attachment audio {
+  width: 100%;
+  height: 32px;
+}
+
+.ec-audio-attachment__meta {
+  color: var(--ec-text-dim);
+  font-family: var(--ec-font-mono);
+  font-size: var(--ec-text-2xs);
+  letter-spacing: var(--ec-tracking-wide);
+}
+
+.ec-audio-attachment__download {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 1px solid hsl(205 70% 72% / 0.12);
+  border-radius: var(--ec-radius-md);
+  color: var(--ec-text-muted);
+  text-decoration: none;
+  transition:
+    color var(--ec-dur-fast) var(--ec-ease),
+    border-color var(--ec-dur-fast) var(--ec-ease),
+    background var(--ec-dur-fast) var(--ec-ease);
+}
+
+.ec-audio-attachment__download:hover {
+  color: var(--ec-accent);
+  border-color: var(--ec-border-accent);
+  background: var(--ec-accent-soft);
+}
+
 .ec-composer {
   position: relative;
   background:
@@ -1037,6 +1212,77 @@
     0 0 0 1px hsl(195 70% 60% / 0.16),
     0 0 34px hsl(195 70% 60% / 0.10),
     inset 0 1px 0 hsl(0 0% 100% / 0.05) !important;
+}
+
+.ec-composer-icon-btn--recording {
+  color: var(--ec-danger) !important;
+  background: var(--ec-danger-soft) !important;
+  box-shadow: 0 0 18px hsl(0 70% 55% / 0.18);
+}
+
+.ec-voice-recorder-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--ec-space-2);
+  margin-bottom: var(--ec-space-2);
+  padding: 0.55rem 0.65rem;
+  border: 1px solid hsl(0 70% 55% / 0.24);
+  border-radius: var(--ec-radius-lg);
+  background:
+    radial-gradient(circle at 0% 0%, hsl(0 70% 55% / 0.16), transparent 40%),
+    linear-gradient(180deg, hsl(214 28% 12% / 0.92), hsl(214 28% 8% / 0.92));
+  color: var(--ec-text);
+  box-shadow: 0 14px 34px hsl(210 70% 2% / 0.20);
+}
+
+.ec-voice-recorder-bar__pulse {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--ec-danger);
+  box-shadow: 0 0 18px hsl(0 70% 55% / 0.72);
+  animation: ec-signal-pulse 1.2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.ec-voice-recorder-bar__label,
+.ec-voice-recorder-bar__time {
+  font-family: var(--ec-font-mono);
+  font-size: var(--ec-text-2xs);
+  font-weight: 800;
+  letter-spacing: var(--ec-tracking-caps);
+  text-transform: uppercase;
+}
+
+.ec-voice-recorder-bar__label {
+  color: var(--ec-text-strong);
+}
+
+.ec-voice-recorder-bar__time {
+  color: var(--ec-danger);
+  font-feature-settings: "tnum";
+  margin-right: auto;
+}
+
+.ec-voice-recorder-bar button {
+  padding: 0.35rem 0.6rem;
+  border: 1px solid hsl(205 70% 72% / 0.12);
+  border-radius: var(--ec-radius-md);
+  background: hsl(214 28% 6% / 0.42);
+  color: var(--ec-text-muted);
+  font-size: var(--ec-text-xs);
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    color var(--ec-dur-fast) var(--ec-ease),
+    border-color var(--ec-dur-fast) var(--ec-ease),
+    background var(--ec-dur-fast) var(--ec-ease);
+}
+
+.ec-voice-recorder-bar button:hover {
+  border-color: var(--ec-border-accent);
+  background: var(--ec-accent-soft);
+  color: var(--ec-text-strong);
 }
 
 .ec-composer-send {

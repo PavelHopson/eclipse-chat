@@ -5,9 +5,8 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v0.49.0** (unread/jump-to-latest/draft sync +
-previous v0.48 asset path/image fallback fixes + responsive visual system pass,
-16.05.2026)
+**Текущая версия в проде:** **v0.50.0** (media viewer + voice messages +
+previous v0.49 unread/jump-to-latest/draft sync, 16.05.2026)
 — https://app.star-crm.ru/eclipse-chat/
 
 > **Сессия 15.05 (вечер)**: v0.28 → v0.47 = 20 prod-деплоев за один заход.
@@ -84,6 +83,7 @@ chat и не enterprise prison.
 
 | Версия | Дата | Что |
 |---|---|---|
+| **v0.50.0** | 16.05 | **Media layer + voice messages** — video fullscreen viewer, audio/voice player cards, composer mic recorder via MediaRecorder, correct audio/video upload extensions. |
 | **v0.49.0** | 16.05 | **Unread ergonomics** — active-room unread divider + jump-to-latest overlay + per-channel/DM/thread local draft sync. |
 | **v0.48.x** | 16.05 | **Responsive visual system pass** — cinematic shell background, operator topbar/rail, channel/message/composer depth, Home command-center cards, desktop/tablet/mobile polish. Commit `d392b54` |
 | **v0.48.0** | 16.05 | **Upload asset path fixes** — centralized `resolveAssetUrl`, avatar/server icon fallbacks, uploads MIME smoke guard. Fixes broken images under `/eclipse-chat/` path deploy |
@@ -159,8 +159,8 @@ base, ✅ Home command center, ✅ responsive cinematic UI pass.
 1. ✅ **Unread + jump-to-latest + draft sync** — закрыто в v0.49.0:
    active-room unread divider, jump overlay, local drafts for channels/DM/threads.
 
-2. **Media viewer + voice messages** — закрыть communication gaps:
-   галерея, fullscreen preview, audio-message flow.
+2. ✅ **Media viewer + voice messages** — закрыто в v0.50.0:
+   fullscreen video, audio/voice cards, mic recorder in composer.
 
 3. **Group DMs** — расширить существующую DM-модель до multi-participant
    conversations.

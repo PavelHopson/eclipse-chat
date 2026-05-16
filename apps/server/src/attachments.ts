@@ -120,6 +120,16 @@ function extFromMime(mime: string): string {
     case "image/gif":  return "gif";
     case "application/pdf": return "pdf";
     case "text/plain": return "txt";
+    case "text/markdown": return "md";
+    case "application/json": return "json";
+    case "application/zip": return "zip";
+    case "video/mp4": return "mp4";
+    case "video/webm": return "webm";
+    case "video/quicktime": return "mov";
+    case "audio/mpeg": return "mp3";
+    case "audio/wav": return "wav";
+    case "audio/ogg": return "ogg";
+    case "audio/webm": return "webm";
     default: return "bin";
   }
 }
