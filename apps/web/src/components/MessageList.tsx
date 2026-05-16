@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { Attachments } from "./Attachments";
 import { Avatar } from "./Avatar";
 import { EmojiPicker } from "./EmojiPicker";
@@ -17,6 +17,7 @@ type Props = {
   messages: MessageRow[];
   emptyHint?: string;
   channelName?: string | null;
+  listKey?: string | null;
   currentUserId?: string;
   currentUserName?: string;
   currentRole?: MemberRole | null;
@@ -34,6 +35,15 @@ type Props = {
   onToggleActionStatus?: (actionId: string, nextStatus: ActionItemStatus) => Promise<boolean>;
   /** Открыть Thread panel для этого root message. Скрывает кнопку если не задано. */
   onOpenThread?: (messageId: string) => void;
+};
+
+const shell: CSSProperties = {
+  flex: 1,
+  minHeight: 0,
+  position: "relative",
+  display: "flex",
+  flexDirection: "column",
+  overflow: "hidden",
 };
 
 const wrap: CSSProperties = {
@@ -227,10 +237,17 @@ function canModerate(role: MemberRole | null | undefined): boolean {
   return role === "OWNER" || role === "ADMIN" || role === "MODERATOR";
 }
 
+const BOTTOM_THRESHOLD_PX = 96;
+
+function isNearBottom(el: HTMLDivElement): boolean {
+  return el.scrollHeight - el.scrollTop - el.clientHeight < BOTTOM_THRESHOLD_PX;
+}
+
 export function MessageList({
   messages,
   emptyHint,
   channelName,
+  listKey,
   currentUserId,
   currentUserName,
   currentRole,
@@ -251,13 +268,105 @@ export function MessageList({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState("");
   const [pickerFor, setPickerFor] = useState<{ messageId: string; rect: DOMRect } | null>(null);
+  const [isAtBottom, setIsAtBottom] = useState(true);
+  const [unreadAnchorId, setUnreadAnchorId] = useState<string | null>(null);
+  const [newMessagesCount, setNewMessagesCount] = useState(0);
+  const atBottomRef = useRef(true);
+  const listKeyRef = useRef<string | null>(listKey ?? null);
+  const tailIdRef = useRef<string | null>(null);
+  const messageCountRef = useRef(0);
+
+  const clearNewMessageMarker = useCallback(() => {
+    setUnreadAnchorId(null);
+    setNewMessagesCount(0);
+  }, []);
+
+  const syncBottomState = useCallback(() => {
+    const el = containerRef.current;
+    const next = !el || isNearBottom(el);
+    if (atBottomRef.current !== next) {
+      atBottomRef.current = next;
+      setIsAtBottom(next);
+    }
+    return next;
+  }, []);
+
+  const scrollToLatest = useCallback(
+    (behavior: ScrollBehavior = "smooth") => {
+      const el = containerRef.current;
+      if (!el) return;
+      el.scrollTo({ top: el.scrollHeight, behavior });
+      atBottomRef.current = true;
+      setIsAtBottom(true);
+      clearNewMessageMarker();
+    },
+    [clearNewMessageMarker],
+  );
+
+  const handleScroll = useCallback(() => {
+    if (syncBottomState()) clearNewMessageMarker();
+  }, [clearNewMessageMarker, syncBottomState]);
 
   useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const isAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
-    if (isAtBottom) el.scrollTop = el.scrollHeight;
-  }, [messages.length]);
+    const nextListKey = listKey ?? null;
+    if (listKeyRef.current === nextListKey) return;
+    listKeyRef.current = nextListKey;
+    tailIdRef.current = null;
+    messageCountRef.current = 0;
+    atBottomRef.current = true;
+    setIsAtBottom(true);
+    clearNewMessageMarker();
+    setPickerFor(null);
+    setEditingId(null);
+    setEditDraft("");
+    requestAnimationFrame(() => scrollToLatest("auto"));
+  }, [listKey, clearNewMessageMarker, scrollToLatest]);
+
+  const tail = messages[messages.length - 1];
+
+  useEffect(() => {
+    const previousTailId = tailIdRef.current;
+    const previousCount = messageCountRef.current;
+    tailIdRef.current = tail?.id ?? null;
+    messageCountRef.current = messages.length;
+
+    if (!tail) {
+      atBottomRef.current = true;
+      setIsAtBottom(true);
+      clearNewMessageMarker();
+      return;
+    }
+
+    if (!previousTailId || previousCount === 0) {
+      requestAnimationFrame(() => scrollToLatest("auto"));
+      return;
+    }
+
+    if (tail.id === previousTailId) return;
+
+    const isOwnMessage = Boolean(currentUserId && tail.user.id === currentUserId);
+    if (atBottomRef.current || isOwnMessage || tail.pending) {
+      requestAnimationFrame(() => scrollToLatest(isOwnMessage ? "smooth" : "auto"));
+      return;
+    }
+
+    setUnreadAnchorId((current) => current ?? tail.id);
+    setNewMessagesCount((count) => count + 1);
+  }, [
+    tail?.id,
+    tail?.user.id,
+    tail?.pending,
+    messages.length,
+    currentUserId,
+    clearNewMessageMarker,
+    scrollToLatest,
+  ]);
+
+  useEffect(() => {
+    if (unreadAnchorId && !messages.some((m) => m.id === unreadAnchorId)) {
+      clearNewMessageMarker();
+    }
+  }, [messages, unreadAnchorId, clearNewMessageMarker]);
 
   const handleCopy = async (m: MessageRow) => {
     try {
@@ -390,7 +499,8 @@ export function MessageList({
   const canMod = canModerate(currentRole);
 
   return (
-    <div ref={containerRef} className="ec-message-list" style={wrap}>
+    <div className="ec-message-list-shell" style={shell}>
+      <div ref={containerRef} className="ec-message-list" style={wrap} onScroll={handleScroll}>
       {pickerFor && onToggleReaction && (
         <EmojiPicker
           anchorRect={pickerFor.rect}
@@ -436,6 +546,11 @@ export function MessageList({
                 <span style={dayLine} aria-hidden />
                 <span>{formatDay(m.createdAt)}</span>
                 <span style={dayLine} aria-hidden />
+              </div>
+            )}
+            {unreadAnchorId === m.id && (
+              <div className="ec-unread-divider" role="separator" aria-label="Новые сообщения">
+                <span>Новые сообщения</span>
               </div>
             )}
             <article
@@ -1055,6 +1170,18 @@ export function MessageList({
             {pendingBotTyping.label} собирает ответ
           </span>
         </div>
+      )}
+      </div>
+      {!isAtBottom && (
+        <button
+          type="button"
+          className="ec-jump-latest"
+          onClick={() => scrollToLatest("smooth")}
+          aria-label="Перейти к последним сообщениям"
+        >
+          <span className="ec-jump-latest__dot" aria-hidden />
+          {newMessagesCount > 0 ? `${newMessagesCount} новых ниже` : "К последним"}
+        </button>
       )}
     </div>
   );

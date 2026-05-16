@@ -348,6 +348,7 @@ export function ThreadPanel({
       <MessageInput
         channelName={data?.root.user.displayName ?? null}
         placeholder="Ответить в треде"
+        draftKey={`thread:${rootId}`}
         mentionNames={mentionNames}
         onSend={(content, attachments) =>
           sendReply(

@@ -288,6 +288,17 @@
     padding: var(--ec-space-3) var(--ec-space-2) var(--ec-space-1) !important;
   }
 
+  .ec-jump-latest {
+    bottom: 10px;
+    padding: 0.5rem 0.72rem;
+    font-size: 0.62rem;
+  }
+
+  .ec-unread-divider {
+    gap: var(--ec-space-2);
+    margin: var(--ec-space-2) 0;
+  }
+
   .ec-message-row {
     grid-template-columns: 34px minmax(0, 1fr) !important;
     column-gap: var(--ec-space-2) !important;

@@ -1170,6 +1170,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                     : "Это начало вашего диалога. Напиши первое сообщение."
                 }
                 channelName={selectedDm.saved ? "Избранное" : selectedDm.other.displayName}
+                listKey={`dm:${selectedDm.id}`}
                 currentUserId={user.id}
                 currentUserName={headerName}
                 currentRole={null}
@@ -1184,6 +1185,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               <MessageInput
                 channelName={selectedDm.saved ? "Избранное" : selectedDm.other.displayName}
                 placeholder={selectedDm.saved ? "Заметка в Избранное" : undefined}
+                draftKey={`dm:${selectedDm.id}`}
                 disabled={!isReady}
                 hideSlashCommands
                 onSend={(content, attachments) => dmSend(content, senderForMessages, attachments)}
@@ -1275,6 +1277,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               pendingBotTyping={pendingBotTyping}
               emptyHint={messagesLoading ? "Загрузка…" : undefined}
               channelName={selectedChannel.name}
+              listKey={`channel:${selectedChannel.id}`}
               currentUserId={user.id}
               currentUserName={headerName}
               currentRole={currentRole}
@@ -1323,6 +1326,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             ) : (
               <MessageInput
                 channelName={selectedChannel.name}
+                draftKey={`channel:${selectedChannel.id}`}
                 disabled={!isReady}
                 hideSlashCommands={isClientMode}
                 onSend={(content, attachments, actionItem) =>

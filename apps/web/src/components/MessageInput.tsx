@@ -55,6 +55,8 @@ type Props = {
   hideAttachments?: boolean;
   /** Custom placeholder. */
   placeholder?: string;
+  /** Stable storage key for local drafts: channel:<id>, dm:<id>, thread:<id>. */
+  draftKey?: string | null;
   /**
    * Client Mode: спрятать operator-фичи композера — slash-hint strip + не
    * парсить /task /decision /followup (клиенту не нужны task-creation
@@ -265,6 +267,36 @@ function humanSize(bytes: number): string {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
+const DRAFT_STORAGE_PREFIX = "eclipse-chat:draft:v1:";
+
+function getDraftStorageKey(draftKey: string | null | undefined): string | null {
+  return draftKey ? `${DRAFT_STORAGE_PREFIX}${draftKey}` : null;
+}
+
+function loadDraft(draftKey: string | null | undefined): string {
+  const storageKey = getDraftStorageKey(draftKey);
+  if (!storageKey || typeof window === "undefined") return "";
+  try {
+    return window.localStorage.getItem(storageKey) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+function saveDraft(draftKey: string | null | undefined, value: string) {
+  const storageKey = getDraftStorageKey(draftKey);
+  if (!storageKey || typeof window === "undefined") return;
+  try {
+    if (value.trim().length === 0) {
+      window.localStorage.removeItem(storageKey);
+    } else {
+      window.localStorage.setItem(storageKey, value);
+    }
+  } catch {
+    // Storage can be unavailable in private modes; composer should still work.
+  }
+}
+
 export function MessageInput({
   channelName,
   disabled,
@@ -274,18 +306,26 @@ export function MessageInput({
   mentionNames = [],
   hideAttachments = false,
   placeholder,
+  draftKey = null,
   hideSlashCommands = false,
 }: Props) {
-  const [draft, setDraft] = useState("");
+  const [draft, setDraft] = useState(() => loadDraft(draftKey));
   const [sending, setSending] = useState(false);
   const [focused, setFocused] = useState(false);
   const [pending, setPending] = useState<Pending[]>([]);
   const [attachError, setAttachError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const draftRef = useRef(draft);
+  const draftKeyRef = useRef<string | null>(draftKey);
   // Autocomplete state — @ mentions + : emoji shortcodes
   const [trigger, setTrigger] = useState<AutocompleteTrigger | null>(null);
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
+
+  const setDraftValue = (value: string) => {
+    draftRef.current = value;
+    setDraft(value);
+  };
 
   const refreshTrigger = () => {
     const el = textareaRef.current;
@@ -310,7 +350,7 @@ export function MessageInput({
     const before = draft.slice(0, trigger.startIdx);
     const after = draft.slice(caret);
     const next = before + item.insertText + after;
-    setDraft(next);
+    setDraftValue(next);
     setTrigger(null);
     // Reposition caret после insert
     queueMicrotask(() => {
@@ -328,6 +368,35 @@ export function MessageInput({
   const isTypingRef = useRef(false);
   const stopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  useEffect(() => {
+    const currentKey = draftKey ?? null;
+    if (draftKeyRef.current === currentKey) return;
+
+    if (isTypingRef.current) {
+      isTypingRef.current = false;
+      onTypingStop?.();
+    }
+    if (stopTimerRef.current) {
+      clearTimeout(stopTimerRef.current);
+      stopTimerRef.current = null;
+    }
+    saveDraft(draftKeyRef.current, draftRef.current);
+    draftKeyRef.current = currentKey;
+    setDraftValue(loadDraft(currentKey));
+    setPending([]);
+    setAttachError(null);
+    setTrigger(null);
+  }, [draftKey]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => saveDraft(draftKey, draft), 250);
+    return () => window.clearTimeout(timer);
+  }, [draftKey, draft]);
+
+  useEffect(() => {
+    return () => saveDraft(draftKeyRef.current, draftRef.current);
+  }, []);
+
   const scheduleStop = () => {
     if (stopTimerRef.current) clearTimeout(stopTimerRef.current);
     stopTimerRef.current = setTimeout(() => {
@@ -340,7 +409,7 @@ export function MessageInput({
   };
 
   const handleDraftChange = (value: string) => {
-    setDraft(value);
+    setDraftValue(value);
     // Refresh trigger после React-update применит value (next tick)
     queueMicrotask(refreshTrigger);
     if (value.trim().length === 0) {
@@ -467,7 +536,8 @@ export function MessageInput({
         ? await onSend(slash.title, uploads, { type: slash.type })
         : await onSend(trimmed, uploads);
       if (ok) {
-        setDraft("");
+        setDraftValue("");
+        saveDraft(draftKeyRef.current, "");
         for (const p of pending) {
           if (p.previewUrl?.startsWith("blob:")) URL.revokeObjectURL(p.previewUrl);
         }
@@ -607,7 +677,7 @@ export function MessageInput({
               onMouseDown={(e) => {
                 // mousedown (не click) — чтобы успеть до blur textarea
                 e.preventDefault();
-                setDraft(`/${c.cmd} `);
+                setDraftValue(`/${c.cmd} `);
                 queueMicrotask(() => textareaRef.current?.focus());
               }}
               onMouseEnter={(e) => {
