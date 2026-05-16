@@ -575,6 +575,482 @@
   }
 }
 
+/* ===== Immersive app surface =================================
+ *
+ * v0.49: усиливаем основной интерфейс до ощущения private operator system:
+ * меньше плоских прямоугольников, больше depth, rim-light, blueprint-grid и
+ * живых состояний. Это декоративный слой поверх текущей логики.
+ */
+
+.ec-shell {
+  position: relative;
+  isolation: isolate;
+  background:
+    radial-gradient(ellipse 46rem 34rem at 82% 2%, hsl(224 86% 55% / 0.13), transparent 62%),
+    radial-gradient(ellipse 34rem 28rem at 14% 92%, hsl(195 78% 45% / 0.09), transparent 64%),
+    radial-gradient(circle at 50% -18%, hsl(32 100% 64% / 0.065), transparent 36%),
+    linear-gradient(135deg, #05070a 0%, #080c12 42%, #07090d 100%) !important;
+}
+
+.ec-shell > * {
+  position: relative;
+  z-index: 1;
+}
+
+.ec-shell::before,
+.ec-shell::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.ec-shell::before {
+  background-image:
+    linear-gradient(hsl(205 90% 82% / 0.027) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(205 90% 82% / 0.022) 1px, transparent 1px),
+    radial-gradient(circle at 12% 18%, hsl(195 90% 75% / 0.16) 0 1px, transparent 2px),
+    radial-gradient(circle at 78% 24%, hsl(223 90% 76% / 0.14) 0 1px, transparent 2px),
+    radial-gradient(circle at 61% 78%, hsl(32 100% 70% / 0.10) 0 1px, transparent 2px);
+  background-size: 56px 56px, 56px 56px, 320px 260px, 420px 330px, 360px 300px;
+  mask-image: radial-gradient(ellipse 86% 78% at 56% 42%, black 30%, transparent 84%);
+  -webkit-mask-image: radial-gradient(ellipse 86% 78% at 56% 42%, black 30%, transparent 84%);
+  animation: ec-console-field-drift 26s ease-in-out infinite;
+}
+
+.ec-shell::after {
+  background:
+    linear-gradient(120deg, transparent 0 24%, hsl(205 80% 70% / 0.05) 24.2%, transparent 24.5% 100%),
+    linear-gradient(104deg, transparent 0 68%, hsl(223 90% 70% / 0.055) 68.15%, transparent 68.5% 100%),
+    radial-gradient(ellipse 70% 54% at 50% 52%, transparent 42%, hsl(0 0% 0% / 0.42) 100%);
+  opacity: 0.82;
+}
+
+.ec-shell__top {
+  overflow: hidden;
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  background:
+    linear-gradient(180deg, hsl(218 24% 8% / 0.88), hsl(218 24% 5% / 0.82)) !important;
+  border-bottom-color: hsl(205 70% 72% / 0.10) !important;
+  box-shadow:
+    0 1px 0 hsl(195 70% 60% / 0.10),
+    0 16px 40px hsl(210 70% 2% / 0.28) !important;
+}
+
+.ec-shell__top::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, hsl(195 88% 72% / 0.72), hsl(32 100% 68% / 0.42), transparent);
+  background-size: 44% 100%;
+  background-repeat: no-repeat;
+  animation: ec-orbit-sweep 5.2s linear infinite;
+}
+
+.ec-shell__brand-home {
+  min-height: 36px;
+  font-family: var(--ec-font-display);
+  letter-spacing: 0.075em !important;
+  text-transform: uppercase;
+  background:
+    linear-gradient(180deg, hsl(213 26% 11% / 0.52), hsl(213 26% 7% / 0.34)) !important;
+  border-color: hsl(205 70% 72% / 0.10) !important;
+}
+
+.ec-shell__brand-title {
+  font-size: 0.75rem;
+}
+
+.ec-shell__top-actions .ec-btn,
+.ec-shell__drawer-btn,
+.ec-shell__user-chip {
+  background: hsl(214 22% 9% / 0.48) !important;
+  border-color: hsl(205 70% 72% / 0.09) !important;
+  box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.035);
+}
+
+.ec-shell__top-actions .ec-btn:hover,
+.ec-shell__drawer-btn:hover,
+.ec-shell__user-chip:hover {
+  background: hsl(214 26% 13% / 0.72) !important;
+  border-color: hsl(195 70% 60% / 0.22) !important;
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.06),
+    0 0 18px hsl(195 70% 60% / 0.08);
+}
+
+.ec-shell__rail,
+.ec-shell__channels,
+.ec-shell__members {
+  backdrop-filter: blur(18px) saturate(130%);
+  -webkit-backdrop-filter: blur(18px) saturate(130%);
+  background:
+    linear-gradient(180deg, hsl(216 24% 7% / 0.90), hsl(216 24% 5% / 0.96)) !important;
+}
+
+.ec-shell__rail {
+  box-shadow:
+    inset -1px 0 0 hsl(195 70% 60% / 0.08),
+    14px 0 44px hsl(210 70% 2% / 0.22) !important;
+}
+
+.ec-server-rail {
+  position: relative;
+}
+
+.ec-server-rail::before {
+  content: "";
+  position: absolute;
+  top: 14px;
+  bottom: 14px;
+  left: 50%;
+  width: 1px;
+  transform: translateX(-50%);
+  background: linear-gradient(180deg, transparent, hsl(195 70% 60% / 0.16), transparent);
+  opacity: 0.52;
+  pointer-events: none;
+}
+
+.ec-rail-space-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 16px;
+  border-radius: var(--ec-radius-full);
+  background: hsl(214 28% 13% / 0.75);
+  border: 1px solid hsl(205 70% 72% / 0.08);
+}
+
+.ec-rail-nav-btn,
+.ec-server-tile {
+  isolation: isolate;
+  transform: translateZ(0);
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.04),
+    0 10px 24px hsl(210 70% 2% / 0.22);
+}
+
+.ec-rail-nav-btn::after,
+.ec-server-tile::after {
+  content: "";
+  position: absolute;
+  inset: -40%;
+  z-index: 0;
+  background: radial-gradient(circle, hsl(195 82% 66% / 0.20), transparent 58%);
+  opacity: 0;
+  transition: opacity var(--ec-dur-base) var(--ec-ease);
+}
+
+.ec-rail-nav-btn > *,
+.ec-server-tile > * {
+  position: relative;
+  z-index: 1;
+}
+
+.ec-rail-nav-btn:hover::after,
+.ec-server-tile:hover::after,
+.ec-server-tile--active::after,
+.ec-rail-nav-btn--active::after {
+  opacity: 1;
+}
+
+.ec-server-tile--add::after {
+  background: radial-gradient(circle, hsl(168 70% 62% / 0.20), transparent 58%);
+}
+
+.ec-server-tile--join::after {
+  background: radial-gradient(circle, hsl(195 82% 66% / 0.20), transparent 58%);
+}
+
+.ec-shell__channels {
+  box-shadow:
+    inset -1px 0 0 hsl(205 70% 72% / 0.07),
+    18px 0 48px hsl(210 70% 2% / 0.18) !important;
+}
+
+.ec-shell__channels > aside {
+  background: transparent !important;
+  border-right-color: hsl(205 70% 72% / 0.07) !important;
+}
+
+.ec-shell__channels > aside > header {
+  background:
+    linear-gradient(180deg, hsl(214 26% 10% / 0.62), hsl(214 26% 7% / 0.36)) !important;
+  border-bottom-color: hsl(205 70% 72% / 0.075) !important;
+  box-shadow: inset 0 -1px 0 hsl(0 0% 100% / 0.02);
+}
+
+.ec-channel-item {
+  position: relative;
+  overflow: hidden;
+  min-height: 34px;
+  border: 1px solid transparent;
+  background: transparent;
+  letter-spacing: 0.005em;
+}
+
+.ec-channel-item::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 0% 50%, hsl(195 70% 60% / 0.15), transparent 42%),
+    linear-gradient(90deg, hsl(195 70% 60% / 0.08), transparent 70%);
+  opacity: 0;
+  transition: opacity var(--ec-dur-fast) var(--ec-ease);
+  pointer-events: none;
+}
+
+.ec-channel-item:hover {
+  background: hsl(214 28% 13% / 0.64);
+  border-color: hsl(205 70% 72% / 0.08);
+}
+
+.ec-channel-item:hover::after,
+.ec-channel-item--active::after {
+  opacity: 1;
+}
+
+.ec-channel-item--active {
+  background:
+    linear-gradient(90deg, hsl(195 70% 60% / 0.15), hsl(214 28% 14% / 0.76) 42%, hsl(214 28% 12% / 0.72)) !important;
+  border-color: hsl(195 70% 60% / 0.18);
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.04),
+    0 0 22px hsl(195 70% 60% / 0.06);
+}
+
+.ec-channel-item--active::before {
+  box-shadow: 0 0 14px hsl(195 70% 60% / 0.55);
+}
+
+.ec-chat-header {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, hsl(216 24% 7% / 0.82), hsl(216 24% 5% / 0.72)) !important;
+  backdrop-filter: blur(18px) saturate(130%);
+  -webkit-backdrop-filter: blur(18px) saturate(130%);
+  border-bottom-color: hsl(205 70% 72% / 0.08) !important;
+  box-shadow: 0 16px 38px hsl(210 70% 2% / 0.18);
+}
+
+.ec-chat-header::after {
+  content: "";
+  position: absolute;
+  left: -20%;
+  right: -20%;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, hsl(195 70% 60% / 0.45), transparent);
+  background-size: 36% 100%;
+  animation: ec-orbit-sweep 6.4s linear infinite;
+}
+
+.ec-chat-title {
+  font-family: var(--ec-font-display);
+  font-size: 0.86rem !important;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.ec-shell__chat {
+  position: relative;
+  background:
+    radial-gradient(ellipse 40rem 26rem at 62% 4%, hsl(195 70% 60% / 0.045), transparent 62%),
+    radial-gradient(ellipse 36rem 30rem at 96% 86%, hsl(252 70% 60% / 0.045), transparent 64%),
+    linear-gradient(180deg, hsl(216 24% 5% / 0.72), hsl(216 24% 4% / 0.94)) !important;
+}
+
+.ec-message-list {
+  position: relative;
+  scrollbar-color: hsl(205 70% 72% / 0.20) transparent;
+  background-image:
+    linear-gradient(hsl(205 70% 72% / 0.014) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(205 70% 72% / 0.012) 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+
+.ec-message-row {
+  border: 1px solid transparent;
+  transition:
+    background var(--ec-dur-fast) var(--ec-ease),
+    border-color var(--ec-dur-fast) var(--ec-ease),
+    box-shadow var(--ec-dur-fast) var(--ec-ease),
+    transform var(--ec-dur-fast) var(--ec-ease-out);
+}
+
+.ec-message-row:hover {
+  background:
+    linear-gradient(90deg, hsl(195 70% 60% / 0.07), hsl(214 24% 12% / 0.70) 22%, hsl(214 24% 10% / 0.42)) !important;
+  border-color: hsl(205 70% 72% / 0.08);
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.025),
+    0 10px 28px hsl(210 70% 2% / 0.20);
+}
+
+.ec-message-actions {
+  background:
+    linear-gradient(180deg, hsl(214 28% 13% / 0.94), hsl(214 28% 9% / 0.94)) !important;
+  border-color: hsl(205 70% 72% / 0.12) !important;
+  box-shadow:
+    var(--ec-shadow-md),
+    0 0 18px hsl(195 70% 60% / 0.08) !important;
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+}
+
+.ec-composer {
+  position: relative;
+  background:
+    linear-gradient(180deg, transparent, hsl(216 24% 4% / 0.96) 32%) !important;
+  border-top: 1px solid hsl(205 70% 72% / 0.065);
+}
+
+.ec-composer::before {
+  content: "";
+  position: absolute;
+  left: var(--ec-space-5);
+  right: var(--ec-space-5);
+  top: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, hsl(195 70% 60% / 0.34), transparent);
+  opacity: 0.8;
+}
+
+.ec-composer-box {
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 0% 0%, hsl(195 70% 60% / 0.10), transparent 34%),
+    linear-gradient(180deg, hsl(216 24% 11% / 0.92), hsl(216 24% 8% / 0.94)) !important;
+  border-color: hsl(205 70% 72% / 0.12) !important;
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.04),
+    0 18px 48px hsl(210 70% 2% / 0.28);
+}
+
+.ec-composer-box:focus-within {
+  border-color: hsl(195 70% 60% / 0.42) !important;
+  box-shadow:
+    0 0 0 1px hsl(195 70% 60% / 0.16),
+    0 0 34px hsl(195 70% 60% / 0.10),
+    inset 0 1px 0 hsl(0 0% 100% / 0.05) !important;
+}
+
+.ec-composer-send {
+  background:
+    linear-gradient(135deg, hsl(195 74% 62%), hsl(214 90% 64%)) !important;
+  border-color: hsl(195 74% 62% / 0.7) !important;
+  box-shadow: 0 10px 24px hsl(195 80% 38% / 0.22);
+}
+
+.ec-composer-send:hover {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+}
+
+.ec-home {
+  max-width: none !important;
+  background:
+    radial-gradient(ellipse 44rem 30rem at 74% 10%, hsl(195 70% 60% / 0.13), transparent 62%),
+    radial-gradient(ellipse 34rem 24rem at 18% 82%, hsl(32 100% 64% / 0.055), transparent 62%),
+    linear-gradient(180deg, hsl(216 24% 5% / 0.18), transparent) !important;
+}
+
+.ec-home > * {
+  width: 100%;
+  max-width: 1080px;
+  margin-inline: auto;
+}
+
+.ec-home-today__header {
+  position: relative;
+  overflow: hidden;
+  padding: var(--ec-space-5);
+  border: 1px solid hsl(205 70% 72% / 0.12);
+  border-radius: var(--ec-radius-2xl);
+  background:
+    radial-gradient(circle at 88% 18%, hsl(32 100% 64% / 0.10), transparent 26%),
+    radial-gradient(circle at 6% 0%, hsl(195 70% 60% / 0.16), transparent 42%),
+    linear-gradient(180deg, hsl(216 24% 10% / 0.84), hsl(216 24% 7% / 0.72));
+  box-shadow: var(--ec-atmos-strong);
+}
+
+.ec-home-today__header::after {
+  content: "";
+  position: absolute;
+  top: -60%;
+  bottom: -60%;
+  width: 34%;
+  left: -40%;
+  background: linear-gradient(90deg, transparent, hsl(0 0% 100% / 0.08), transparent);
+  animation: ec-panel-glint 8.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.ec-home-stat-card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid hsl(205 70% 72% / 0.10);
+  background:
+    linear-gradient(180deg, hsl(216 24% 10% / 0.86), hsl(216 24% 7% / 0.72)) !important;
+}
+
+.ec-home-stat-card::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, currentColor, transparent);
+  opacity: 0.36;
+}
+
+.ec-home-stat-card--exec { color: var(--ec-status-exec); }
+.ec-home-stat-card--risk { color: var(--ec-status-risk); }
+.ec-home-stat-card--warn { color: var(--ec-status-warn); }
+.ec-home-stat-card--idle { color: var(--ec-status-idle); }
+
+.ec-home-today-row {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, hsl(216 24% 10% / 0.78), hsl(216 24% 8% / 0.72)) !important;
+  border-color: hsl(205 70% 72% / 0.09) !important;
+  box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.025);
+}
+
+.ec-home-today-row:hover {
+  border-color: hsl(195 70% 60% / 0.24) !important;
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.04),
+    0 14px 34px hsl(210 70% 2% / 0.24);
+}
+
+.ec-home-quick-actions {
+  border-top-color: hsl(205 70% 72% / 0.10) !important;
+}
+
+.ec-shell__members {
+  box-shadow:
+    inset 1px 0 0 hsl(205 70% 72% / 0.07),
+    -18px 0 52px hsl(210 70% 2% / 0.20) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ec-shell::before,
+  .ec-shell__top::after,
+  .ec-chat-header::after,
+  .ec-home-today__header::after {
+    animation: none !important;
+  }
+}
+
 /* ===== Auth landing ======================================== */
 
 .ec-auth-page {

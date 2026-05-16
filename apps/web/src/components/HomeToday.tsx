@@ -168,6 +168,7 @@ function Row({
     <button
       type="button"
       onClick={onClick}
+      className="ec-home-today-row"
       style={rowBtn}
       onMouseEnter={(e) => {
         e.currentTarget.style.background = "var(--ec-surface-3)";
@@ -238,7 +239,7 @@ export function HomeToday({
 
   return (
     <div style={wrap} className="ec-home">
-      <header style={header}>
+      <header className="ec-home-today__header" style={header}>
         <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
           <span style={eyebrow}>Операционная сводка</span>
           <h2
@@ -278,24 +279,24 @@ export function HomeToday({
       )}
 
       {/* Operational stat cards */}
-      <div style={statRow}>
-        <div style={statCard("var(--ec-status-exec)")}>
+      <div className="ec-home-today__stats" style={statRow}>
+        <div className="ec-home-stat-card ec-home-stat-card--exec" style={statCard("var(--ec-status-exec)")}>
           <span style={statValue}>{counts.tasks}</span>
           <span style={statLabel}>Задач на мне</span>
         </div>
-        <div style={statCard("var(--ec-status-risk)")}>
+        <div className="ec-home-stat-card ec-home-stat-card--risk" style={statCard("var(--ec-status-risk)")}>
           <span style={{ ...statValue, color: counts.overdue > 0 ? "var(--ec-status-risk)" : "var(--ec-text-strong)" }}>
             {counts.overdue}
           </span>
           <span style={statLabel}>Просрочено</span>
         </div>
-        <div style={statCard("var(--ec-status-warn)")}>
+        <div className="ec-home-stat-card ec-home-stat-card--warn" style={statCard("var(--ec-status-warn)")}>
           <span style={{ ...statValue, color: counts.incidents > 0 ? "var(--ec-status-warn)" : "var(--ec-text-strong)" }}>
             {counts.incidents}
           </span>
           <span style={statLabel}>Инцидентов</span>
         </div>
-        <div style={statCard("var(--ec-status-idle)")}>
+        <div className="ec-home-stat-card ec-home-stat-card--idle" style={statCard("var(--ec-status-idle)")}>
           <span style={statValue}>{counts.activeVoice}</span>
           <span style={statLabel}>Голосовых сессий</span>
         </div>
@@ -447,6 +448,7 @@ export function HomeToday({
 
       {/* Quick actions */}
       <div
+        className="ec-home-quick-actions"
         style={{
           display: "flex",
           gap: "var(--ec-space-2)",

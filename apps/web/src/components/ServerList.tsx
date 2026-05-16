@@ -139,6 +139,7 @@ function NavButton({
       aria-pressed={active}
       disabled={disabled}
       onClick={onClick}
+      className={active ? "ec-rail-nav-btn ec-rail-nav-btn--active" : "ec-rail-nav-btn"}
       style={navBtnStyle(active, disabled)}
       onMouseEnter={(e) => {
         if (active || disabled) return;
@@ -201,7 +202,7 @@ export function ServerList({
   searchEnabled,
 }: Props) {
   return (
-    <nav style={railStyle} aria-label="Forge Layer — навигация">
+    <nav className="ec-server-rail" style={railStyle} aria-label="Forge Layer — навигация">
       {/* ── NAV — operational shortcuts ───────────────────────── */}
       <NavButton label="Главная" active={homeActive} onClick={onHomeRequest}>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -224,7 +225,7 @@ export function ServerList({
       <div style={separator} aria-hidden />
 
       {/* ── SPACES — operational environments ─────────────────── */}
-      <span style={sectionLabel} aria-hidden>
+      <span className="ec-rail-space-label" style={sectionLabel} aria-hidden>
         SP
       </span>
       {onDmsRequest && (
@@ -232,6 +233,7 @@ export function ServerList({
           type="button"
           onClick={onDmsRequest}
           title="Личные сообщения"
+          className={dmsActive ? "ec-server-tile ec-server-tile--dm ec-server-tile--active" : "ec-server-tile ec-server-tile--dm"}
           style={{
             ...tileBase,
             borderRadius: dmsActive ? "var(--ec-radius-lg)" : "var(--ec-radius-full)",
@@ -292,6 +294,7 @@ export function ServerList({
             type="button"
             onClick={() => onSelect(s.id)}
             title={s.name}
+            className={isActive ? "ec-server-tile ec-server-tile--active" : "ec-server-tile"}
             style={{
               ...tileBase,
               borderRadius: isActive ? "var(--ec-radius-lg)" : "var(--ec-radius-full)",
@@ -325,6 +328,7 @@ export function ServerList({
         type="button"
         onClick={onCreateRequest}
         title="Создать Space"
+        className="ec-server-tile ec-server-tile--add"
         style={{
           ...tileBase,
           borderRadius: "var(--ec-radius-full)",
@@ -353,6 +357,7 @@ export function ServerList({
         type="button"
         onClick={onJoinRequest}
         title="Вступить по инвайту"
+        className="ec-server-tile ec-server-tile--join"
         style={{
           ...tileBase,
           borderRadius: "var(--ec-radius-full)",

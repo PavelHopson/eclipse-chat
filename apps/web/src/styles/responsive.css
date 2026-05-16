@@ -559,3 +559,205 @@
     grid-template-columns: 38px minmax(0, 1fr) !important;
   }
 }
+
+/* ===== v0.49 responsive polish: operator UI on every device ===== */
+
+@media (min-width: 1367px) {
+  .ec-shell.ec-shell--has-server {
+    grid-template-columns: 72px 264px minmax(0, 1fr) 272px;
+  }
+}
+
+@media (max-width: 1180px) {
+  .ec-shell__breadcrumb {
+    max-width: 34vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .ec-home > * {
+    max-width: 960px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .ec-shell__members {
+    width: min(360px, 88vw);
+    border-left: 1px solid hsl(205 70% 72% / 0.10);
+  }
+
+  .ec-shell__backdrop {
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    background:
+      radial-gradient(circle at 72% 18%, hsl(195 70% 60% / 0.10), transparent 42%),
+      hsl(220 20% 2% / 0.72);
+  }
+
+  .ec-chat-title {
+    font-size: 0.78rem !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .ec-home {
+    padding: var(--ec-space-4) var(--ec-space-3) var(--ec-space-6) !important;
+  }
+
+  .ec-home-today__header {
+    align-items: flex-start !important;
+    padding: var(--ec-space-4) !important;
+    border-radius: var(--ec-radius-xl);
+  }
+
+  .ec-home-today__stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .ec-home-stat-card {
+    padding: var(--ec-space-3) !important;
+  }
+
+  .ec-home-today-row {
+    padding: 0.62rem 0.7rem !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .ec-shell {
+    min-height: 100dvh;
+  }
+
+  .ec-shell::before {
+    opacity: 0.58;
+    background-size: 44px 44px, 44px 44px, 280px 220px, 340px 280px, 300px 260px;
+  }
+
+  .ec-shell__top {
+    height: var(--ec-header-height);
+    padding-inline: max(var(--ec-space-2), env(safe-area-inset-left, 0)) max(var(--ec-space-2), env(safe-area-inset-right, 0)) !important;
+  }
+
+  .ec-shell__top-actions {
+    gap: 5px !important;
+  }
+
+  .ec-shell__top-actions > .ec-dot {
+    display: none;
+  }
+
+  .ec-shell__top-actions .ec-btn {
+    min-width: 34px;
+  }
+
+  .ec-shell__rail {
+    width: 64px;
+  }
+
+  .ec-shell__channels {
+    left: 64px;
+    width: calc(100vw - 64px);
+    max-width: min(336px, calc(100vw - 64px));
+  }
+
+  .ec-server-rail {
+    padding-top: var(--ec-space-2) !important;
+    gap: 7px !important;
+  }
+
+  .ec-rail-nav-btn,
+  .ec-server-tile {
+    width: 42px !important;
+    height: 42px !important;
+  }
+
+  .ec-shell__members {
+    top: var(--ec-header-height);
+    width: min(340px, 88vw);
+    max-width: 88vw;
+  }
+
+  .ec-chat-header {
+    min-height: 44px;
+  }
+
+  .ec-chat-title {
+    font-size: 0.72rem !important;
+    letter-spacing: 0.04em;
+  }
+
+  .ec-message-list {
+    background-size: 36px 36px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .ec-message-row {
+    border-radius: var(--ec-radius-lg) !important;
+  }
+
+  .ec-message-row:hover {
+    transform: none;
+  }
+
+  .ec-composer::before {
+    left: var(--ec-space-3);
+    right: var(--ec-space-3);
+  }
+
+  .ec-composer-box {
+    box-shadow:
+      inset 0 1px 0 hsl(0 0% 100% / 0.04),
+      0 12px 32px hsl(210 70% 2% / 0.28) !important;
+  }
+
+  .ec-home-quick-actions {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+  }
+
+  .ec-home-quick-actions .ec-btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 520px) {
+  .ec-home-today__stats {
+    grid-template-columns: 1fr !important;
+  }
+
+  .ec-shell__top-actions .ec-btn[title="Поиск (Ctrl+K)"],
+  .ec-shell__top-actions .ec-btn[aria-label="Инциденты"],
+  .ec-shell__top-actions .ec-btn[aria-label="Уведомления"] {
+    display: none;
+  }
+
+  .ec-shell__user-chip {
+    width: 34px;
+    height: 34px;
+    padding: 0 !important;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 380px) {
+  .ec-shell__top {
+    gap: 6px !important;
+  }
+
+  .ec-shell__drawer-btn,
+  .ec-shell__top-actions .ec-btn {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+  }
+
+  .ec-shell__brand-home {
+    min-height: 32px;
+    padding-inline: 0.34rem !important;
+  }
+
+  .ec-shell__channels {
+    max-width: calc(100vw - 64px);
+  }
+}

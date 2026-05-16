@@ -189,6 +189,33 @@
   50%      { transform: translate3d(-10px, 8px, 0); opacity: 1; }
 }
 
+@keyframes ec-console-field-drift {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.86; }
+  50%      { transform: translate3d(-18px, 10px, 0) scale(1.015); opacity: 1; }
+}
+
+@keyframes ec-panel-glint {
+  0%, 52%, 100% { transform: translateX(-135%) skewX(-18deg); opacity: 0; }
+  64%           { opacity: 0.72; }
+  82%           { transform: translateX(135%) skewX(-18deg); opacity: 0; }
+}
+
+@keyframes ec-eclipse-rim {
+  0%, 100% {
+    filter: drop-shadow(0 0 10px hsl(32 100% 66% / 0.28));
+    transform: rotate(-10deg) scale(1);
+  }
+  50% {
+    filter: drop-shadow(0 0 18px hsl(32 100% 66% / 0.44));
+    transform: rotate(-4deg) scale(1.025);
+  }
+}
+
+@keyframes ec-soft-breathe {
+  0%, 100% { opacity: 0.62; }
+  50%      { opacity: 0.92; }
+}
+
 /*
  * Signal pulse — operational status indicator. Не «дышащий glow» (декор),
  * а чёткий短 пульс как телеметрический сигнал. Для live status-dots
