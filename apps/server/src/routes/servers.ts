@@ -145,6 +145,22 @@ async function loadMember(
   return member;
 }
 
+/**
+ * v0.64: лимит на количество workspace'ов где user — OWNER.
+ * Учитываются только серверы созданные этим юзером; участие в чужих
+ * серверах не ограничено. ENV override `MAX_SERVERS_PER_USER` —
+ * Pavel/admin может поднять при необходимости.
+ */
+const MAX_SERVERS_PER_USER = (() => {
+  const raw = Number(process.env.MAX_SERVERS_PER_USER);
+  if (Number.isFinite(raw) && raw > 0) return Math.floor(raw);
+  return 2;
+})();
+
+async function countOwnedServers(userId: string): Promise<number> {
+  return db.member.count({ where: { userId, role: "OWNER" } });
+}
+
 export async function registerServerRoutes(app: FastifyInstance) {
   /** GET /api/servers — мои серверы (где я Member). */
   app.get("/api/servers", { onRequest: [requireJwt] }, async (req, reply) => {
@@ -191,6 +207,13 @@ export async function registerServerRoutes(app: FastifyInstance) {
         channelCount: m.server._count.channels,
         role: m.role,
       })),
+      // v0.64: frontend использует это чтобы grey-out «+» button и
+      // показать tooltip с лимитом. owned count derivable из servers[]
+      // (filter role==='OWNER'), но передаём maxOwned чтобы UI не
+      // хардкодил константу.
+      limits: {
+        maxOwnedServers: MAX_SERVERS_PER_USER,
+      },
     };
   });
 
@@ -203,6 +226,17 @@ export async function registerServerRoutes(app: FastifyInstance) {
     const parsed = createServerBody.safeParse(req.body);
     if (!parsed.success) {
       return reply.status(400).send({ error: "Invalid body" });
+    }
+    // v0.64: лимит owned серверов на аккаунт. Проверка до transaction —
+    // быстрый bail без открытия write-транзакции.
+    const ownedCount = await countOwnedServers(userId);
+    if (ownedCount >= MAX_SERVERS_PER_USER) {
+      return reply.status(403).send({
+        error: `Достигнут лимит ${MAX_SERVERS_PER_USER} пространств на аккаунт`,
+        code: "OWNED_SERVERS_LIMIT",
+        limit: MAX_SERVERS_PER_USER,
+        current: ownedCount,
+      });
     }
     const created = await db.$transaction(async (tx) => {
       const server = await tx.server.create({

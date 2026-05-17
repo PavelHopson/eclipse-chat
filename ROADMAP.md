@@ -5,12 +5,12 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v0.63.0** (Security & integrity pass —
-channel:join socket bypass closed, CI runs tests, Message.userId +
-ActionItemComment.userId cascade Cascade→SetNull (history preservation
-policy B), ActionItem approval CHECK constraint, transcript stuck-PENDING
-recovery on boot, backup cron infrastructure, requireJwt hardening,
-17.05.2026)
+**Текущая версия в проде:** **v0.64.0** (Account limit — макс
+2 OWNER-сервера на user, backend-enforced + UI disabled state,
+ENV-override `MAX_SERVERS_PER_USER`. До этого v0.63.0 Security &
+integrity pass — channel:join socket bypass closed, CI runs tests,
+cascade policy B, ActionItem approval CHECK, transcript boot recovery,
+backup cron, 17.05.2026)
 — https://app.star-crm.ru/eclipse-chat/
 
 > **Сессия 15.05 (вечер)**: v0.28 → v0.47 = 20 prod-деплоев за один заход.
@@ -87,6 +87,7 @@ chat и не enterprise prison.
 
 | Версия | Дата | Что |
 |---|---|---|
+| **v0.64.0** | 17.05 | **Account limit — макс 2 OWNER-сервера на user.** Pavel-ask. Backend: новая ENV `MAX_SERVERS_PER_USER` (default 2, override через env на проде). `POST /api/servers` теперь делает `db.member.count({ userId, role: 'OWNER' })` перед открытием transaction; если >= лимита — 403 `{error, code: 'OWNED_SERVERS_LIMIT', limit, current}`. `GET /api/servers` возвращает дополнительное поле `limits: { maxOwnedServers }` — UI не хардкодит константу. Frontend: `useServers` exposes `limits`, `ownedCount` (derived через `servers.filter(s => s.role === 'OWNER').length`), `canCreateServer`; `ServerList` принимает три новых prop'а и показывает «+» button с `disabled` state + `opacity: 0.45` + `cursor: not-allowed` + tooltip «Достигнут лимит N пространств (создано X). Удалите одно или попросите расширить лимит.» когда limit reached; AppShell `onCreateRequest` silently no-op'ит если `!canCreateServer` (не открывает модалку зря). DEPLOY-TO-STAR-CRM.md секция ENV получила commented-out пример override. Backward-compat: `limits` field optional в response — старые клиенты игнорируют. Typecheck зелёный, 0 миграций. | TBD |
 | **v0.63.0** | 17.05 | **Security & integrity pass** — closes 8 пунктов из аудита 17.05. (1) **channel:join socket bypass**: socket-room присоединение теперь валидирует membership через Channel→Server→Member lookup (зеркало `thread:join`/`dm:join`); раньше любой залогиненный юзер мог join `channel:${id}` и получать `message:new`/`typing:start`/`reaction:added` чужих серверов — cross-workspace data leak. (2) **CI runs tests**: `npm run test -w @eclipse-chat/server` добавлен в `ci.yml` после typecheck — все 10 unit-тестов до сих пор не выполнялись в CI, регрессии в bot-roles / ai-mention / dm-membership проходили незамеченными. (3) **Cascade policy B** для preservation истории: `Message.userId` и `ActionItemComment.userId` стали nullable + Cascade→SetNull. После удаления юзера messages и comments остаются с автором=null; centralized `serializeUser()` helper в `lib/userView.ts` возвращает «Удалённый пользователь» placeholder — frontend ничего не трогает, shape стабильна. Стандартный chat-app паттерн (Slack/Discord/Telegram). Bot deletions / GDPR-style erasure больше не уничтожают историю. Refactored 11 файлов serializer'ов (actionItems, channels, messages, threads, dm, visits, servers, digest, incidents, ai/assistant). (4) **ActionItem approval CHECK constraint**: raw SQL CHECK на лицикл `requiresApproval ⇔ approvalStatus`. Закрывает silent-corruption surface — состояние (false, PENDING) физически невозможно. (5) **Transcript boot recovery**: при старте сервера `recoverStuckTranscripts()` revert'ит застрявшие PENDING attachments старше 10 мин в NONE с reason «прервано рестартом». UI больше не крутит спиннер вечно после crash'а сервера. (6) **Backup infrastructure**: `deploy/scripts/backup-db.sh` (pg_dump → gzip → /var/backups/eclipse-chat/, 14-day rotation) + `deploy/cron.d/eclipse-chat-backup` (04:17 daily). Install: `cp deploy/cron.d/eclipse-chat-backup /etc/cron.d/`. (7) **requireJwt hardening**: `void reply.send` → `return reply.send` — defensive, Fastify по факту прерывал chain и так, но без return было на грани UB. 3 миграции: `20260517120000_message_user_setnull`, `20260517140000_action_item_comment_user_setnull`, `20260517160000_action_item_approval_check`. Schema additive (nullable + SetNull) — existing rows backward-compat, zero downtime. Typecheck зелёный, frontend без изменений (placeholder = stable API shape). |
 | **v0.62.0** | 17.05 | **Operational Tables phase 2** — продолжение #10. Closing key gaps в phase 1: (1) **Realtime collaboration** — новый `emitTableEvent(serverId, kind, payload)` helper, 8 event types (`table:updated`/`table:deleted`/`table:field:added`/`updated`/`deleted`/`table:row:added`/`updated`/`deleted`), wired в каждый mutation route. Frontend `useOperationalTables` invalidates list через reload на любой event; `useOperationalTable` apply'ит patches к local state (по `tableId` filter + field/row-level updates). Два user'а в одной таблице видят чужие правки сразу без manual reload. (2) **RBAC**: DELETE table + DELETE field теперь MOD+ only (OWNER/ADMIN/MODERATOR). Edit и create cell/row остаются open для всех members — calm operational UX без trigger-happy роли. (3) **Two new field types**: `USER` (cell.value = userId, frontend select из members с native `<select>`, validation на backend — `coerceCellValue` проверяет membership) и `CHECKBOX` (cell.value = `"true"`/`"false"`, frontend `<input type=checkbox>`, backend coerces любой truthy в `"true"`). Migration `20260517100000_table_field_types_phase2` — два `ALTER TYPE ADD VALUE` (Prisma migrate разводит по транзакциям). Schema-only change, existing rows не затронуты. AppShell теперь передаёт `members` + `socket` в `OperationalTablePanel`. Trade-offs: list-level reload вместо per-row patch (counts надо пересчитывать; для 100+ tables это станет проблемой — phase 2.5 будет patches). RBAC только на DELETE — Edit/create open для всех, эскалация при необходимости. Phase 2.5: RELATION (cross-table cells), FILE (attachment), drag-reorder, table templates. |
 | **v0.61.0** | 17.05 | **Shared listening room MVP** — closes engineering #13. Synchronous audio playback на канале: один member жмёт «▶ Слушать вместе» на любом audio-attachment'е в чате, остальные members в той же комнате видят mini-player в chat header и слышат тот же track с одной timeline-позиции. Schema: новая модель `MusicSession` (channelId @unique, currentTrackAttachmentId, startedAt, positionMs, isPlaying, queue Json-string array, hostUserId) — одна сессия per channel. Migration `20260517080000_add_music_session` — additive. Backend: новый `routes/music.ts` с 7 endpoints — get state, start, pause/resume, skip, stop, queue add. Permissions: queue-add разрешено любому member; pause/resume/skip/stop — host или MOD+. Voice channels отвергаются (LiveKit pipeline coupling — phase 2). Source треков — audio/* attachments из того же server'а (не из DM — privacy). Sync: server держит `startedAt` (timestamp последнего play/resume) + `positionMs` (saved offset на pause). Frontend рассчитывает текущую позицию как `isPlaying ? (now - startedAt + positionMs) : positionMs`; mini-player tick'ает каждые 500ms для smooth progress bar. Audio element seek'ит к `position - 150ms` (compensation для perceived latency). Realtime event `music:session:updated` с full payload — клиент получает свежее состояние на каждое action любого member'а. Frontend: `useChannelMusic(channelId, socket)` hook (state + derivedPositionMs + start/togglePlayPause/skip/stop/addToQueue actions). `MusicMiniPlayer` — floating pill в chat header (play/pause + track name + progress bar + position counter + host avatar + queue count badge + skip + stop). `Attachments.AudioItem` получил optional `onPlayShared` callback — accent-coloured «▶» button рядом с download (hidden если callback undefined, e.g. в DM). Trade-offs: без late-join drift-correction (новый member может быть на ~500ms-1.5s offset); без periodic position-sync (v2 если drift станет заметным); без LiveKit interop для VOICE channels; без YouTube/Spotify integration (copyright + privacy). |
@@ -248,6 +249,176 @@ base, ✅ Home command center, ✅ responsive cinematic UI pass.
     `ecb_*`, webhook URL + HMAC, role-mentions, autoRespond toggle,
     systemPromptOverride). Кнопка «?» в Forge Layer. Размер M-L
     (1-2 рабочих захода). Pavel-ask 17.05.
+
+### NEXT-GEN audit gap items (зафиксировано 17.05 после полного сверки docs/NEXT-GEN-OPERATIONAL-PLATFORM.md vs codebase)
+
+15. **CORE chat: link embeds / OG preview cards** — единственный gap
+    в §1 NEXT-GEN. RichContent рендерит markdown, но `https://example.com`
+    остаётся текстовой ссылкой без card. Backend: новый endpoint
+    `GET /api/embeds/preview?url=` с server-side HTML fetch + OG meta
+    extract + image-thumbnail proxy через sharp (rate-limited, allowed
+    schemes only). Frontend: detect URLs в RichContent, async fetch
+    preview, render card под сообщением. Кэш в БД 7 дней. Risk: SSRF
+    (whitelist domains? отдельный egress proxy?). S-M.
+
+16. **Room types: execution / AI / temporary / focus** — §2 NEXT-GEN
+    gap. Сейчас только TEXT/VOICE/BROADCAST + Channel.internal flag.
+    Phase 1 — добавить enum value `EXECUTION` (Status Board становится
+    "канал-режим" для всего workspace со своим IntelligencePanel
+    contextom). Phase 2 — `TEMPORARY` (auto-delete после resolveAt).
+    Phase 3 — `FOCUS` (per-user-scoped, hide noise mode). `AI rooms`
+    — отдельный тип где default-participant — bot, цель: AI dialog
+    surface. M на phase 1, L на полный набор.
+
+17. **Role architecture v2** — расширить #5 NEXT-GEN. Текущие 4
+    роли (OWNER/ADMIN/MODERATOR/MEMBER) → 11 ролей: + Architect,
+    Developer, Operator, Client, Viewer, AI Agent, Observer, Guest.
+    + permission matrix (room visibility / AI access / file
+    permissions / execution actions / moderation / task mgmt /
+    approval / bot mgmt / analytics access) — 9 dimensions × 11
+    roles = 99 cells, конфигурируемые per-workspace. UI: визуальная
+    иерархия с colour-coding, glow, status indicators, badges,
+    live states. Schema-heavy: новая `RolePermission` table, либо
+    JSON-based bitmask на `Member.role`. L.
+
+18. **AI agents: реальное поведение** — §5 NEXT-GEN. Сейчас 5
+    ролей (GENERIC/MODERATOR/PM/KNOWLEDGE/SALES) = prompted
+    assistants с разными system-prompts. Нет фоновой логики.
+    Phase 1: добавить SUPPORT + ARCHITECT в taxonomy (быстро). Phase
+    2 — реальные background tasks по ролям:
+    - MODERATOR: периодический scan канала на anti-spam / toxicity
+      pattern matching, suggest cleanup MOD'ам.
+    - PM: cron daily — overdue tasks, blocker detection (3+ assigned-
+      open, no comments 48h), deadline reminders через DM.
+    - KNOWLEDGE: indexable архив pinned + decisions для semantic
+      Q&A (требует §22 vector store).
+    - SALES: lead-summaries по client-mode channels.
+    - SUPPORT: AI helpdesk на @support mention с FAQ retrieval.
+    - ARCHITECT: technical summaries decisions log + auto-generated
+      architecture diagrams (D2/Mermaid). L-XL.
+
+19. **Bot Builder visual editor** — §6 NEXT-GEN. Node-based logic
+    builder в браузере. Drag-and-drop nodes: trigger (message /
+    mention / cron / webhook in / approval) → condition (regex /
+    role check / channel filter) → action (send message / create
+    task / call API / update table / post to webhook). Workflow
+    chains сохраняются в JSON, выполняются server-side через
+    queue. React-Flow или Reactflow.dev (lazy chunk). Backend:
+    новая `BotWorkflow` table + execution engine. XL.
+
+20. **Execution: kanban + dependencies + escalation + reminders** —
+    §7 NEXT-GEN. Сейчас StatusBoard = 2-column filter view. Phase
+    1: kanban-style drag-and-drop columns (OPEN / IN_PROGRESS /
+    REVIEW / DONE) — расширение `ActionItemStatus` enum + drag
+    handler с PATCH /api/actions/:id. Phase 2: `ActionItem.dependsOn`
+    relation (blocks/blocked-by graph), UI badge "blocked by N
+    tasks". Phase 3: escalation cron (если overdue 48h без
+    обновления — DM креатору + assignee + manager). Phase 4: AI
+    summary per-task (description + comments → 2-line takeaway).
+    M-L.
+
+21. **AI persistent memory + semantic search v2** — §8 NEXT-GEN
+    killer feature. Текущий assistant получает context window
+    (recent 20 + pinned + open actions) на каждый mention. Phase
+    1: vector store (pgvector в PG 16 native) для messages /
+    decisions / pinned. Embeddings через локальный sentence-
+    transformer (без OpenAI dep) или Ollama embedding model.
+    Phase 2: semantic search endpoint — заменяет ILIKE в
+    SearchOverlay. Phase 3: "memory recall" — bot ищет
+    relevant past discussions при ответе ("вы уже обсуждали
+    auth в этом канале 3 недели назад, decision был X"). L-XL.
+
+22. **Live voice intelligence** — §9 NEXT-GEN. LiveKit Egress
+    для recording voice rooms + Whisper streaming для live
+    transcription overlay. Phase 1: opt-in recording (host
+    запускает, все видят red dot, transcript появляется в
+    IntelligencePanel под voice room). Phase 2: live AI capture
+    — Ollama parsit transcript chunks, extract tasks/decisions/
+    follow-ups в real-time, отображает chips в right rail. Phase
+    3: post-call summary message в associated channel. Требует
+    LiveKit Egress server в Docker compose + storage для записей.
+    L.
+
+23. **Live workspace (notes / whiteboard / diagrams)** — §9 NEXT-
+    GEN. Во время voice call — collaborative canvas справа.
+    Phase 1: shared notepad (Yjs CRDT через y-websocket провайдер
+    через наш Socket.io). Phase 2: whiteboard на Excalidraw lib
+    (open-source, MIT, lazy chunk). Phase 3: D2/Mermaid live
+    architecture diagrams. XL.
+
+24. **Client portal expansion** — §10 NEXT-GEN. Текущий Client
+    Mode v2 (Channel.internal + Server.mode=CLIENT) скрывает
+    operator chrome. Расширение: client-side dashboard
+    (`/eclipse-chat/portal/:serverId`) с project progress (open
+    tasks по статусу), approvals список с CTA approve/reject,
+    invoices (новая `Invoice` model — поднять отдельно), files
+    aggregator, summaries (AI digest канала за период), reports
+    download (PDF generation через puppeteer? или server-side
+    HTML→PDF). AI client assistant: onboarding flow + Q&A bot
+    с client-safe knowledge subset. L.
+
+25. **Admin Panel** — §11 NEXT-GEN. Unified workspace settings:
+    rooms list с bulk actions, roles + permissions matrix UI
+    (§17), moderation queue (reported messages), audit log
+    viewer, AI controls (per-bot prompt edit / memory clear /
+    permissions), system analytics (response time / AI usage /
+    execution health / room activity), integrations panel.
+    Single `/eclipse-chat/admin` route, OWNER+ только.
+    Phase 1: settings consolidation. Phase 2: analytics. Phase
+    3: AI mgmt. M-L.
+
+26. **Automation system** — §12 NEXT-GEN. Triggers (message /
+    new task / approval / file upload / voice session / mention)
+    + Actions (create task / notify / generate summary / update
+    table / generate PDF / send webhook) + Integrations
+    (Telegram bot bridge, GitHub webhook receiver, Notion sync,
+    Bitrix / 1C custom HTTP). Уровень выше Bot Builder (§19) —
+    workspace-scope automation, не per-bot logic. Phase 1: 3
+    integrations (Telegram / GitHub / Notion). XL overall.
+
+27. **Mobile-first phase** — §14 NEXT-GEN. Текущий responsive
+    pass (v0.34→v0.45) даёт **adaptive layout**, не mobile-
+    first UX. Phase 1: gesture nav (swipe left/right between
+    channels, swipe down для drawer dismiss). Phase 2: PWA
+    manifest + service worker (offline message queue + push
+    notifications). Phase 3: voice-first mode (push-to-talk
+    floating button, voice messages как primary input).
+    Phase 4: native shell (Capacitor wrapper для App Store /
+    Play). L-XL.
+
+28. **Home expansion** — §15 NEXT-GEN. Сейчас Home «СЕГОДНЯ»
+    показывает: assignedTasks / incidents / activeVoice / counts.
+    Добавить: active rooms (top-N с recent activity heat-map),
+    AI alerts (если bot обнаружил blocker / overdue / spam), Team
+    Health summary card (топ-1-2 числа), Approvals queue (мои PENDING).
+    S-M, чисто frontend + backend aggregation route.
+
+29. **Focus mode + Replay timeline + Temporary rooms** — §16 NEXT-
+    GEN. Focus mode: per-user toggle "hide noise", скрывает все
+    messages кроме direct mentions / assignments / approvals;
+    тонкая UI prop. Temporary rooms: новый `Channel.expiresAt`
+    + cron auto-delete; UI badge "автоудаление через Xч". Replay
+    timeline: scrubber UI поверх MessageList, фильтр messages
+    по timeline range + decisions/approvals overlay; чисто
+    frontend на existing data. M-L.
+
+30. **Marketplaces + Industry runtimes** — §17 NEXT-GEN long-term.
+    Agent Marketplace (install AI agents в workspace из catalog),
+    AI Workflows Marketplace (templates: support / sales /
+    construction / CRM), Industry Runtimes (construction /
+    agency / startup / support — pre-configured workspaces с
+    rooms / bots / templates). Требует §19 Bot Builder + §17
+    Roles + §25 Admin foundations. XL+.
+
+### Сейчас приоритеты (по ROI и cohesion)
+
+| Очередь | Что | Effort | Impact |
+|---|---|---|---|
+| Next | **#15 link embeds** | S | M | gap-fix CORE chat |
+| После | **#28 Home expansion** | S-M | M | визуальный win, нет инфры |
+| После | **#10 Tables phase 2.5** RELATION + drag-reorder | M | H | продолжение текущей фичи |
+| После | **#20 Execution kanban + reminders** | M | H | execution loop замыкается |
+| После | **#17 Role architecture v2** или **#25 Admin Panel** | L | H | structural |
 
 ## 📋 Открытые follow-ups
 

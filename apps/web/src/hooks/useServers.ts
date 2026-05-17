@@ -38,6 +38,17 @@ type JoinResult = {
 };
 
 /**
+ * v0.64: server-side enforced limits. backend возвращает их в /api/servers
+ * чтобы UI не хардкодил константы. maxOwnedServers — сколько пространств
+ * можно создать (быть OWNER); ownedCount — derived из servers list.
+ */
+export type ServerLimits = {
+  maxOwnedServers: number;
+};
+
+const DEFAULT_LIMITS: ServerLimits = { maxOwnedServers: 2 };
+
+/**
  * Список серверов текущего user'а + активный сервер.
  *
  * Активный сервер хранится в state, по умолчанию = первый из списка
@@ -48,6 +59,7 @@ export function useServers(isReady: boolean) {
   const [activeServerId, setActiveServerId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [limits, setLimits] = useState<ServerLimits>(DEFAULT_LIMITS);
 
   const reload = useCallback(async () => {
     if (!isReady) {
@@ -55,8 +67,11 @@ export function useServers(isReady: boolean) {
     }
     setLoading(true);
     try {
-      const data = await apiJson<{ servers: ServerRow[] }>("/api/servers");
+      const data = await apiJson<{ servers: ServerRow[]; limits?: ServerLimits }>(
+        "/api/servers",
+      );
       setServers(data.servers);
+      if (data.limits) setLimits(data.limits);
       setActiveServerId((cur) => cur ?? data.servers[0]?.id ?? null);
       setError(null);
     } catch (e) {
@@ -356,6 +371,8 @@ export function useServers(isReady: boolean) {
   }, []);
 
   const activeServer = servers.find((s) => s.id === activeServerId) ?? null;
+  const ownedCount = servers.filter((s) => s.role === "OWNER").length;
+  const canCreateServer = ownedCount < limits.maxOwnedServers;
 
   return {
     servers,
@@ -374,5 +391,9 @@ export function useServers(isReady: boolean) {
     uploadServerBanner,
     deleteServerBanner,
     updateServerIdentity,
+    /** v0.64: server-enforced limits (max OWNER memberships per account). */
+    limits,
+    ownedCount,
+    canCreateServer,
   };
 }

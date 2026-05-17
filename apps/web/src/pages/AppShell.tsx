@@ -180,6 +180,9 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     deleteServerBanner,
     updateServerIdentity,
     error: serversError,
+    limits: serverLimits,
+    ownedCount: ownedServersCount,
+    canCreateServer,
   } = useServers(true);
 
   /**
@@ -851,7 +854,13 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             setActiveServerId(id);
             if (isMobile) setNavOpen(false);
           }}
-          onCreateRequest={() => setShowCreateServer(true)}
+          onCreateRequest={() => {
+            // v0.64: silently no-op если backend-лимит достигнут.
+            // Tooltip на самой кнопке уже объясняет причину; модалка не
+            // открывается, чтобы не путать «открыл → нажал → ошибка».
+            if (!canCreateServer) return;
+            setShowCreateServer(true);
+          }}
           onJoinRequest={() => setShowJoinServer(true)}
           onHomeRequest={openHome}
           homeActive={homeOpen}
@@ -866,6 +875,9 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             setActiveServerId(null);
             if (isMobile) setNavOpen(false);
           }}
+          canCreateServer={canCreateServer}
+          ownedCount={ownedServersCount}
+          maxOwnedServers={serverLimits.maxOwnedServers}
         />
       </div>
 

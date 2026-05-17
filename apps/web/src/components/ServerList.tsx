@@ -34,6 +34,10 @@ type Props = {
   /** Forge Layer nav — Search. Server-scoped: disabled без активного сервера. */
   onSearchRequest: () => void;
   searchEnabled: boolean;
+  /** v0.64: лимит OWNER-серверов на аккаунт (backend-enforced). */
+  canCreateServer?: boolean;
+  ownedCount?: number;
+  maxOwnedServers?: number;
 };
 
 const railStyle: CSSProperties = {
@@ -200,7 +204,13 @@ export function ServerList({
   homeActive,
   onSearchRequest,
   searchEnabled,
+  canCreateServer = true,
+  ownedCount = 0,
+  maxOwnedServers = 2,
 }: Props) {
+  const addTooltip = canCreateServer
+    ? "Создать Space"
+    : `Достигнут лимит ${maxOwnedServers} пространств (создано ${ownedCount}). Удалите одно или попросите расширить лимит.`;
   return (
     <nav className="ec-server-rail" style={railStyle} aria-label="Forge Layer — навигация">
       {/* ── NAV — operational shortcuts ───────────────────────── */}
@@ -327,22 +337,28 @@ export function ServerList({
       <button
         type="button"
         onClick={onCreateRequest}
-        title="Создать Space"
+        title={addTooltip}
+        aria-label={addTooltip}
+        disabled={!canCreateServer}
         className="ec-server-tile ec-server-tile--add"
         style={{
           ...tileBase,
           borderRadius: "var(--ec-radius-full)",
           background: "transparent",
-          color: "var(--ec-accent-2)",
+          color: canCreateServer ? "var(--ec-accent-2)" : "var(--ec-text-faint)",
           borderColor: "var(--ec-border-default)",
           borderStyle: "dashed",
+          cursor: canCreateServer ? "pointer" : "not-allowed",
+          opacity: canCreateServer ? 1 : 0.45,
         }}
         onMouseEnter={(e) => {
+          if (!canCreateServer) return;
           e.currentTarget.style.borderRadius = "var(--ec-radius-lg)";
           e.currentTarget.style.background = "var(--ec-accent-2-soft)";
           e.currentTarget.style.borderStyle = "solid";
         }}
         onMouseLeave={(e) => {
+          if (!canCreateServer) return;
           e.currentTarget.style.borderRadius = "var(--ec-radius-full)";
           e.currentTarget.style.background = "transparent";
           e.currentTarget.style.borderStyle = "dashed";
