@@ -410,11 +410,97 @@ base, ✅ Home command center, ✅ responsive cinematic UI pass.
     rooms / bots / templates). Требует §19 Bot Builder + §17
     Roles + §25 Admin foundations. XL+.
 
+31. **Mobile responsive hardening v2** — Pavel-ask 17.05 «всё урезано
+    и криво». Отдельно от #27 strategic mobile-first phase (PWA / native
+    shell / gestures / voice-first) — это **hardening hotfixes** для
+    реальных дефектов в текущем responsive layer (v0.34→v0.45). Audit
+    17.05 (Explore agent, file:line привязка).
+
+    **Critical (UX сломана на touch):**
+    - **a.** DM-button в `MemberList.tsx:193-228` `opacity: 0` hover-only
+      → на touch device полностью скрыт, ЛС недоступны с мобильного.
+      Fix: media-query `opacity: 0.8` на ≤640px.
+    - **b.** Message actions bar (edit/delete/react) в
+      `MessageList.tsx:111-126` `opacity: 0` hover-only + `position:
+      absolute; top: -10px` уходит за bounds на узком экране. На mobile
+      все per-message actions недоступны. Fix: на ≤640px `position:
+      static` + `opacity: 1` + flex row под message-content.
+    - **c.** `Modal.tsx:64-135` — нет focus trap, нет scroll-lock body,
+      `maxHeight: calc(100vh - 64px)` не учитывает iOS Safari URL bar +
+      виртуальную клавиатуру. На mobile modal обрезает поля под
+      keyboard. Fix: `100dvh` + `safe-area-inset-bottom` padding + body
+      `overflow: hidden` lock при open.
+    - **d.** `ActionItemDrawer.tsx:60-73,150-159` — close-button 32×32px
+      (ниже WCAG 44×44 min touch target), drawer 460px width на 375px
+      экране = взрыв layout (берётся 100vw без явных стилей под mobile).
+      Fix: `min(460px, 100vw)` явно + close-btn 48×48 на ≤640px.
+    - **e.** `MessageInput.tsx` slash-commands на mobile не discoverable
+      (hints спрятаны на ≤640px в responsive.css), но `/task` `/decision`
+      работают — пользователь не знает. Fix: placeholder rotation
+      «Сообщение или /task» / mobile-version hint chip.
+
+    **High (cramped / cluttered):**
+    - **f.** `ChannelList.tsx:128-143` — delete/settings button `opacity: 0`
+      hover-only — same проблема что MemberList.
+    - **g.** `IntelligencePanel.tsx` tabs (5 icons на 248px rail с
+      icons-only на ≤1366) — нет `aria-label`, на touch нет tooltip,
+      пользователь гадает что за иконка. Fix: aria-label + long-press
+      tooltip или явный «What's this» FAB.
+    - **h.** `OperationalTablePanel.tsx:85-91` — таблица с horizontal scroll
+      на mobile, но НЕТ visual hint (gradient-fade edge или scroll
+      indicator). Cells обрезаются молча.
+    - **i.** `MusicMiniPlayer.tsx:34-46` — pill `max-width: none`, на узком
+      топбаре съедает место для chat-header title. Fix: `max-width: 200px`
+      + text-overflow на ≤640px.
+    - **j.** `VoiceRoom.tsx:199-209` controls dock `flex-wrap` —
+      переносится на 2-3 строки если экран < 300px (landscape с
+      keyboard ≈ 220px). Fix: `flex-wrap: nowrap` + horizontal scroll.
+    - **k.** `StatusBoard.tsx:98-109` — `minmax(280px, 1fr)` даёт
+      одну колонку только на ≤560px; на 480-560px странный hybrid.
+      Fix: явный `grid-template-columns: 1fr` на ≤500px.
+    - **l.** `HomeToday.tsx:56-59` — `minmax(150px, 1fr)` на 375px
+      сжимается до 1 column через auto-fit, а лучше 2-column для
+      density. Fix: explicit `repeat(2, 1fr)` на ≤420px.
+
+    **Medium polish:**
+    - **m.** `SearchOverlay.tsx:50-63` — `padding: 10vh ...` слишком
+      много vertical space на mobile. Fix: `5vh` на ≤500px.
+    - **n.** `Attachments.tsx` video — `max-height: 220px` — норм, но нет
+      fullscreen-button на touch (есть для image lightbox, нет для video).
+    - **o.** `TeamHealth.tsx:68-72` stat-cards `minmax(220px, 1fr)` —
+      на 420-440px странный 1.5-column гибрид. Fix: explicit 2-column.
+
+    **Quick wins** (5 fixes × ~10 мин = 1 час суммарно, максимальный
+    видимый эффект):
+    1. (a) DM-button always-visible на mobile
+    2. (b) Message actions bar always-visible на mobile
+    3. (c) Modal `100dvh` + safe-area + body scroll-lock
+    4. (d) Drawer close-button 48×48 на mobile
+    5. (g) IntelligencePanel tabs `aria-label`
+
+    **Out of scope этого item'а** (закрыто отдельным #27):
+    - PWA / service worker / offline queue / push notifications
+    - Native shell (Capacitor wrapper)
+    - Swipe gesture nav между каналами
+    - Voice-first push-to-talk floating button
+
+    **Что NOT-broken** (audit confirmed OK):
+    - Breakpoint структура (640/1024/1366) корректная.
+    - Drawer system left-nav + members drawer работает.
+    - VoiceRoom grid auto-fit single-column на ≤640px OK.
+    - Composer textarea max-height ограничена, buttons shrink.
+    - `safe-area-inset` уже используется в composer + shell-top.
+    - `100dvh` уже есть в responsive.css (lines 20, 684).
+
+    **Effort:** M (5 critical + 7 medium fixes ≈ 3-4 часа). **Impact:**
+    H — мобильный UX становится usable, текущий broken.
+
 ### Сейчас приоритеты (по ROI и cohesion)
 
-| Очередь | Что | Effort | Impact |
-|---|---|---|---|
-| Next | **#15 link embeds** | S | M | gap-fix CORE chat |
+| Очередь | Что | Effort | Impact | Зачем |
+|---|---|---|---|---|
+| **#1 next** | **#31 Mobile responsive hardening v2** (Pavel-ask 17.05) | M (3-4ч) | **H** | мобильный UX сейчас broken, 5 quick wins за 1ч уже снимают самое больное |
+| После | **#15 link embeds** | S | M | gap-fix CORE chat |
 | После | **#28 Home expansion** | S-M | M | визуальный win, нет инфры |
 | После | **#10 Tables phase 2.5** RELATION + drag-reorder | M | H | продолжение текущей фичи |
 | После | **#20 Execution kanban + reminders** | M | H | execution loop замыкается |
