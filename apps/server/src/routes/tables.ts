@@ -3,6 +3,7 @@ import { z } from "zod";
 import { db } from "../db.js";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
 import { emitTableEvent } from "../realtime.js";
+import { TABLE_TEMPLATES, getTemplate } from "../lib/tableTemplates.js";
 
 /**
  * Operational Tables phase 1 (v0.59.0) — CRUD routes.
@@ -76,6 +77,19 @@ const updateRowBody = z.object({
     )
     .min(1)
     .max(40),
+});
+
+/** v0.70: bulk reorder — ordered list ids, индекс → новая position. */
+const reorderBody = z.object({
+  orderedIds: z.array(z.string().min(1)).min(1).max(500),
+});
+
+/** v0.70: from-template body. templateId должен match TABLE_TEMPLATES. */
+const fromTemplateBody = z.object({
+  templateId: z.string().min(1).max(40),
+  name: z.string().trim().min(1).max(120).optional(),
+  description: z.string().max(500).optional(),
+  channelId: z.string().nullable().optional(),
 });
 
 async function requireServerMember(userId: string, serverId: string) {
@@ -669,6 +683,221 @@ export async function registerTableRoutes(app: FastifyInstance) {
         });
       }
       return { row: rowPayload };
+    },
+  );
+
+  /**
+   * v0.70 POST /api/tables/:id/fields/reorder — bulk re-position.
+   * Body: { orderedIds: [...] } — каждый id получит index как position.
+   * Все ids должны принадлежать этой таблице (validated). Atomic transaction.
+   * После — emit table:field:updated за каждое перемещённое поле, чтобы
+   * клиенты pacify state без full reload.
+   */
+  app.post(
+    "/api/tables/:id/fields/reorder",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const userId = getUserId(req);
+      if (!userId) return reply.status(401).send({ error: "Unauthorized" });
+      const { id: tableId } = req.params as { id: string };
+      const parsed = reorderBody.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.status(400).send({ error: "Invalid body" });
+      }
+      const table = await db.table.findUnique({
+        where: { id: tableId },
+        select: { serverId: true },
+      });
+      if (!table) return reply.status(404).send({ error: "Table not found" });
+      const member = await requireServerMember(userId, table.serverId);
+      if (!member) {
+        return reply.status(403).send({ error: "Not a member of this server" });
+      }
+      // Все ids должны принадлежать этой таблице.
+      const existing = await db.tableField.findMany({
+        where: { id: { in: parsed.data.orderedIds }, tableId },
+        select: { id: true },
+      });
+      if (existing.length !== parsed.data.orderedIds.length) {
+        return reply
+          .status(400)
+          .send({ error: "Some fieldIds не принадлежат этой таблице" });
+      }
+      const updated = await db.$transaction(
+        parsed.data.orderedIds.map((id, idx) =>
+          db.tableField.update({
+            where: { id },
+            data: { position: idx },
+            select: {
+              id: true,
+              name: true,
+              type: true,
+              options: true,
+              position: true,
+            },
+          }),
+        ),
+      );
+      await db.table.update({
+        where: { id: tableId },
+        data: { updatedAt: new Date() },
+      });
+      for (const f of updated) {
+        emitTableEvent(table.serverId, "table:field:updated", {
+          tableId,
+          field: {
+            id: f.id,
+            name: f.name,
+            type: f.type,
+            options: serializeOptions(f.options),
+            position: f.position,
+          },
+        });
+      }
+      return { ok: true };
+    },
+  );
+
+  /**
+   * v0.70 POST /api/tables/:id/rows/reorder — bulk re-position rows.
+   * Same pattern что и fields/reorder.
+   */
+  app.post(
+    "/api/tables/:id/rows/reorder",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const userId = getUserId(req);
+      if (!userId) return reply.status(401).send({ error: "Unauthorized" });
+      const { id: tableId } = req.params as { id: string };
+      const parsed = reorderBody.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.status(400).send({ error: "Invalid body" });
+      }
+      const table = await db.table.findUnique({
+        where: { id: tableId },
+        select: { serverId: true },
+      });
+      if (!table) return reply.status(404).send({ error: "Table not found" });
+      const member = await requireServerMember(userId, table.serverId);
+      if (!member) {
+        return reply.status(403).send({ error: "Not a member of this server" });
+      }
+      const existing = await db.tableRow.findMany({
+        where: { id: { in: parsed.data.orderedIds }, tableId },
+        select: { id: true },
+      });
+      if (existing.length !== parsed.data.orderedIds.length) {
+        return reply
+          .status(400)
+          .send({ error: "Some rowIds не принадлежат этой таблице" });
+      }
+      const updated = await db.$transaction(
+        parsed.data.orderedIds.map((id, idx) =>
+          db.tableRow.update({
+            where: { id },
+            data: { position: idx },
+            include: { cells: true },
+          }),
+        ),
+      );
+      await db.table.update({
+        where: { id: tableId },
+        data: { updatedAt: new Date() },
+      });
+      for (const r of updated) {
+        emitTableEvent(table.serverId, "table:row:updated", {
+          tableId,
+          row: {
+            id: r.id,
+            position: r.position,
+            createdAt: r.createdAt.toISOString(),
+            updatedAt: r.updatedAt.toISOString(),
+            cells: r.cells.map((c) => ({ fieldId: c.fieldId, value: c.value })),
+          },
+        });
+      }
+      return { ok: true };
+    },
+  );
+
+  /**
+   * v0.70 GET /api/tables/templates — list для frontend create-form
+   * picker'а. Не требует серверного контекста (templates — статические).
+   * Auth обязателен — нет смысла отдавать незалогиненным.
+   */
+  app.get(
+    "/api/tables/templates",
+    { onRequest: [requireJwt] },
+    async () => {
+      return {
+        templates: TABLE_TEMPLATES.map((t) => ({
+          id: t.id,
+          label: t.label,
+          description: t.description,
+          fieldCount: t.fields.length,
+          fieldNames: t.fields.map((f) => f.name),
+        })),
+      };
+    },
+  );
+
+  /**
+   * v0.70 POST /api/servers/:id/tables/from-template — создать таблицу
+   * с пред-заданным набором полей. Эквивалент обычного create + N add-
+   * field в одной транзакции, плюс правильный default name.
+   */
+  app.post(
+    "/api/servers/:id/tables/from-template",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const userId = getUserId(req);
+      if (!userId) return reply.status(401).send({ error: "Unauthorized" });
+      const { id: serverId } = req.params as { id: string };
+      const member = await requireServerMember(userId, serverId);
+      if (!member) {
+        return reply.status(403).send({ error: "Not a member of this server" });
+      }
+      const parsed = fromTemplateBody.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.status(400).send({ error: "Invalid body" });
+      }
+      const tpl = getTemplate(parsed.data.templateId);
+      if (!tpl) {
+        return reply.status(400).send({ error: `Unknown template: ${parsed.data.templateId}` });
+      }
+      const created = await db.table.create({
+        data: {
+          serverId,
+          channelId: parsed.data.channelId ?? null,
+          name: parsed.data.name?.trim() || tpl.defaultName,
+          description: parsed.data.description ?? null,
+          createdByUserId: userId,
+          fields: {
+            create: tpl.fields.map((f, idx) => ({
+              name: f.name,
+              type: f.type,
+              position: idx,
+              options:
+                f.type === "STATUS" && f.options
+                  ? JSON.stringify(f.options)
+                  : null,
+            })),
+          },
+        },
+        include: {
+          createdBy: { select: { id: true, displayName: true, avatar: true } },
+          fields: true,
+          rows: { include: { cells: true } },
+        },
+      });
+      emitTableEvent(serverId, "table:updated", {
+        serverId,
+        id: created.id,
+        name: created.name,
+        description: created.description,
+        channelId: created.channelId,
+      });
+      return { table: serializeTable(created) };
     },
   );
 

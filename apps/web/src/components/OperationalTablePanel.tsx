@@ -170,10 +170,29 @@ export function OperationalTablePanel({
     addRow,
     updateRow,
     removeRow,
+    reorderFields,
+    reorderRows,
   } = useOperationalTable(tableId, socket);
 
   const [nameDraft, setNameDraft] = useState("");
   const [showFieldForm, setShowFieldForm] = useState(false);
+  // v0.70: drag-and-drop state. Один на каждый axis (поля / строки) —
+  // нельзя drag одновременно field+row, но они независимы visually.
+  const [dragFieldId, setDragFieldId] = useState<string | null>(null);
+  const [dropFieldTarget, setDropFieldTarget] = useState<string | null>(null);
+  const [dragRowId, setDragRowId] = useState<string | null>(null);
+  const [dropRowTarget, setDropRowTarget] = useState<string | null>(null);
+
+  // v0.70: всегда sorted by position на render — realtime emit'ы могут
+  // прислать field/row updates в произвольном порядке.
+  const sortedFields = useMemo(
+    () => (table ? [...table.fields].sort((a, b) => a.position - b.position) : []),
+    [table?.fields],
+  );
+  const sortedRows = useMemo(
+    () => (table ? [...table.rows].sort((a, b) => a.position - b.position) : []),
+    [table?.rows],
+  );
 
   useEffect(() => {
     if (table) setNameDraft(table.name);
@@ -275,16 +294,42 @@ export function OperationalTablePanel({
         <table style={tableStyle}>
           <thead>
             <tr>
-              {table.fields.map((field) => (
+              {/* v0.70: row-drag-handle column placeholder в thead */}
+              <th style={{ ...thStyle, width: 28 }} aria-hidden />
+              {sortedFields.map((field) => (
                 <FieldHeader
                   key={field.id}
                   field={field}
+                  dragging={dragFieldId === field.id}
+                  dropTarget={dropFieldTarget === field.id}
                   onRename={(name) => void updateField(field.id, { name })}
                   onUpdateOptions={(options) => void updateField(field.id, { options })}
                   onRemove={() => void removeField(field.id)}
+                  onDragStart={() => setDragFieldId(field.id)}
+                  onDragEnter={() => {
+                    if (dragFieldId && dragFieldId !== field.id) {
+                      setDropFieldTarget(field.id);
+                    }
+                  }}
+                  onDragEnd={() => {
+                    if (dragFieldId && dropFieldTarget && dragFieldId !== dropFieldTarget) {
+                      // v0.70: построить новый порядок ids перемещая dragFieldId
+                      // на позицию dropFieldTarget.
+                      const ids = sortedFields.map((f) => f.id);
+                      const from = ids.indexOf(dragFieldId);
+                      const to = ids.indexOf(dropFieldTarget);
+                      if (from >= 0 && to >= 0 && from !== to) {
+                        ids.splice(from, 1);
+                        ids.splice(to, 0, dragFieldId);
+                        void reorderFields(ids);
+                      }
+                    }
+                    setDragFieldId(null);
+                    setDropFieldTarget(null);
+                  }}
                 />
               ))}
-              {table.fields.length === 0 && (
+              {sortedFields.length === 0 && (
                 <th style={thStyle}>
                   Добавьте колонку →
                 </th>
@@ -293,10 +338,10 @@ export function OperationalTablePanel({
             </tr>
           </thead>
           <tbody>
-            {table.rows.length === 0 ? (
+            {sortedRows.length === 0 ? (
               <tr>
                 <td
-                  colSpan={Math.max(1, table.fields.length + 1)}
+                  colSpan={Math.max(1, sortedFields.length + 2)}
                   style={{
                     padding: "var(--ec-space-5)",
                     textAlign: "center",
@@ -309,14 +354,36 @@ export function OperationalTablePanel({
                 </td>
               </tr>
             ) : (
-              table.rows.map((row) => (
+              sortedRows.map((row) => (
                 <RowEditor
                   key={row.id}
                   row={row}
-                  fields={table.fields}
+                  fields={sortedFields}
                   members={members}
+                  dragging={dragRowId === row.id}
+                  dropTarget={dropRowTarget === row.id}
                   onSave={(cells) => void updateRow(row.id, cells)}
                   onRemove={() => void removeRow(row.id)}
+                  onDragStart={() => setDragRowId(row.id)}
+                  onDragEnter={() => {
+                    if (dragRowId && dragRowId !== row.id) {
+                      setDropRowTarget(row.id);
+                    }
+                  }}
+                  onDragEnd={() => {
+                    if (dragRowId && dropRowTarget && dragRowId !== dropRowTarget) {
+                      const ids = sortedRows.map((r) => r.id);
+                      const from = ids.indexOf(dragRowId);
+                      const to = ids.indexOf(dropRowTarget);
+                      if (from >= 0 && to >= 0 && from !== to) {
+                        ids.splice(from, 1);
+                        ids.splice(to, 0, dragRowId);
+                        void reorderRows(ids);
+                      }
+                    }
+                    setDragRowId(null);
+                    setDropRowTarget(null);
+                  }}
                 />
               ))
             )}
@@ -329,14 +396,24 @@ export function OperationalTablePanel({
 
 function FieldHeader({
   field,
+  dragging,
+  dropTarget,
   onRename,
   onUpdateOptions,
   onRemove,
+  onDragStart,
+  onDragEnter,
+  onDragEnd,
 }: {
   field: TableField;
+  dragging: boolean;
+  dropTarget: boolean;
   onRename: (name: string) => void;
   onUpdateOptions: (options: string[] | null) => void;
   onRemove: () => void;
+  onDragStart: () => void;
+  onDragEnter: () => void;
+  onDragEnd: () => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(field.name);
@@ -344,8 +421,50 @@ function FieldHeader({
   useEffect(() => setDraft(field.name), [field.id, field.name]);
 
   return (
-    <th style={thStyle}>
+    <th
+      style={{
+        ...thStyle,
+        opacity: dragging ? 0.4 : 1,
+        boxShadow: dropTarget
+          ? "inset 3px 0 0 0 var(--ec-accent)"
+          : undefined,
+        transition: "opacity var(--ec-dur-fast) var(--ec-ease)",
+      }}
+      draggable={!editing}
+      onDragStart={(e) => {
+        // editable input swallows drag — этот path только для th в idle.
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/plain", field.id);
+        onDragStart();
+      }}
+      onDragEnter={onDragEnter}
+      onDragOver={(e) => {
+        // allow drop
+        if (dragging) return;
+        e.preventDefault();
+      }}
+      onDragEnd={onDragEnd}
+      onDrop={(e) => {
+        e.preventDefault();
+        onDragEnd();
+      }}
+    >
       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        {/* v0.70: drag handle visual hint — pure CSS, no logic */}
+        <span
+          aria-hidden
+          title="Тяни чтобы поменять порядок колонок"
+          style={{
+            color: "var(--ec-text-faint)",
+            fontSize: "0.7rem",
+            cursor: "grab",
+            userSelect: "none",
+            letterSpacing: "-2px",
+            marginRight: 2,
+          }}
+        >
+          ⋮⋮
+        </span>
         {editing ? (
           <input
             value={draft}
@@ -460,8 +579,13 @@ function RowEditor({
   row,
   fields,
   members,
+  dragging,
+  dropTarget,
   onSave,
   onRemove,
+  onDragStart,
+  onDragEnter,
+  onDragEnd,
 }: {
   row: TableRowType;
   fields: TableField[];
@@ -469,8 +593,13 @@ function RowEditor({
     userId: string;
     user: { displayName: string; avatar: string | null };
   }>;
+  dragging: boolean;
+  dropTarget: boolean;
   onSave: (cells: Array<{ fieldId: string; value: string }>) => void;
   onRemove: () => void;
+  onDragStart: () => void;
+  onDragEnter: () => void;
+  onDragEnd: () => void;
 }) {
   // Local draft per field. Save on blur.
   const cellMap = useMemo(() => {
@@ -495,7 +624,48 @@ function RowEditor({
   };
 
   return (
-    <tr>
+    <tr
+      style={{
+        opacity: dragging ? 0.4 : 1,
+        boxShadow: dropTarget
+          ? "inset 0 3px 0 0 var(--ec-accent)"
+          : undefined,
+        transition: "opacity var(--ec-dur-fast) var(--ec-ease)",
+      }}
+      onDragEnter={onDragEnter}
+      onDragOver={(e) => {
+        if (dragging) return;
+        e.preventDefault();
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        onDragEnd();
+      }}
+    >
+      {/* v0.70: drag handle column — initiate row reorder by dragging it. */}
+      <td
+        style={{
+          ...tdStyle,
+          width: 28,
+          textAlign: "center",
+          verticalAlign: "middle",
+          cursor: "grab",
+          color: "var(--ec-text-faint)",
+          userSelect: "none",
+          padding: "var(--ec-space-2) 0",
+        }}
+        draggable
+        onDragStart={(e) => {
+          e.dataTransfer.effectAllowed = "move";
+          e.dataTransfer.setData("text/plain", row.id);
+          onDragStart();
+        }}
+        onDragEnd={onDragEnd}
+        title="Тяни чтобы поменять порядок строк"
+        aria-label="Перетащить строку"
+      >
+        ⋮⋮
+      </td>
       {fields.map((field) => (
         <td key={field.id} style={tdStyle}>
           <CellEditor

@@ -24,6 +24,7 @@ import { ProfileModal } from "../components/ProfileModal";
 import { SearchOverlay } from "../components/SearchOverlay";
 import { ServerInfoModal } from "../components/ServerInfoModal";
 import { ServerSettingsModal } from "../components/ServerSettingsModal";
+import { CreateTableModal } from "../components/CreateTableModal";
 import { ServerList } from "../components/ServerList";
 import { SinceLastVisitBanner } from "../components/SinceLastVisitBanner";
 import { StatusBoard } from "../components/StatusBoard";
@@ -280,8 +281,11 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     tables: opTables,
     reload: reloadTables,
     createTable: createOpTable,
+    createFromTemplate: createOpTableFromTemplate,
     deleteTable: deleteOpTable,
   } = useOperationalTables(activeServerId, socket);
+  /** v0.70: открыта ли модалка создания таблицы (с template picker). */
+  const [showCreateTable, setShowCreateTable] = useState(false);
   // v0.61 shared listening room. Scoped per selected TEXT/BROADCAST channel —
   // в VOICE сессии не активны (backend отвергнёт).
   const music = useChannelMusic(selectedChannelId, socket);
@@ -961,22 +965,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                   }
             }
             onCreateTable={
-              isClientMode
-                ? undefined
-                : async () => {
-                    const name = window.prompt(
-                      "Название таблицы",
-                      "Новая таблица",
-                    );
-                    if (!name) return;
-                    const id = await createOpTable(name);
-                    if (id) {
-                      setHomeOpen(false);
-                      setStatusBoardOpen(false);
-                      setTeamHealthOpen(false);
-                      setSelectedTableId(id);
-                    }
-                  }
+              isClientMode ? undefined : () => setShowCreateTable(true)
             }
             activeTableId={selectedTableId}
             voiceByChannel={voiceByChannel}
@@ -1605,6 +1594,28 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             setStatusBoardOpen(false);
             setSelectedChannelId(channelId);
             if (isMobile) setNavOpen(false);
+          }}
+        />
+      )}
+
+      {showCreateTable && (
+        <CreateTableModal
+          onClose={() => setShowCreateTable(false)}
+          onCreate={async (templateId, name) => {
+            // v0.70: blank template = legacy create (single «Название» field),
+            // другие — серверный from-template endpoint с pre-seeded полями.
+            const id =
+              templateId === "blank"
+                ? await createOpTable(name)
+                : await createOpTableFromTemplate(templateId, name);
+            if (id) {
+              setHomeOpen(false);
+              setStatusBoardOpen(false);
+              setTeamHealthOpen(false);
+              setSelectedTableId(id);
+              return true;
+            }
+            return false;
           }}
         />
       )}

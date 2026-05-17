@@ -148,6 +148,32 @@ export function useOperationalTables(
     [serverId, reload],
   );
 
+  /**
+   * v0.70: создать таблицу из template. Возвращает id новой таблицы
+   * (или null при failure). Frontend сразу switch'нется на детальный view.
+   */
+  const createFromTemplate = useCallback(
+    async (templateId: string, name?: string): Promise<string | null> => {
+      if (!serverId) return null;
+      try {
+        const data = await apiJson<{ table: TableDetail }>(
+          `/api/servers/${encodeURIComponent(serverId)}/tables/from-template`,
+          {
+            method: "POST",
+            body: JSON.stringify({ templateId, name }),
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+        await reload();
+        return data.table.id;
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Не удалось создать таблицу по шаблону");
+        return null;
+      }
+    },
+    [serverId, reload],
+  );
+
   const deleteTable = useCallback(
     async (tableId: string): Promise<boolean> => {
       try {
@@ -164,7 +190,32 @@ export function useOperationalTables(
     [],
   );
 
-  return { tables, loading, error, reload, createTable, deleteTable };
+  return { tables, loading, error, reload, createTable, createFromTemplate, deleteTable };
+}
+
+/** v0.70: shared template descriptor (server-driven, in case добавим больше). */
+export type TableTemplateDescriptor = {
+  id: string;
+  label: string;
+  description: string;
+  fieldCount: number;
+  fieldNames: string[];
+};
+
+/** Lazy-fetched один раз: список доступных templates (статика, кэшируем). */
+let cachedTemplates: TableTemplateDescriptor[] | null = null;
+
+export async function loadTableTemplates(): Promise<TableTemplateDescriptor[]> {
+  if (cachedTemplates) return cachedTemplates;
+  try {
+    const data = await apiJson<{ templates: TableTemplateDescriptor[] }>(
+      "/api/tables/templates",
+    );
+    cachedTemplates = data.templates;
+    return cachedTemplates;
+  } catch {
+    return [];
+  }
 }
 
 /** ============================================================
@@ -482,6 +533,83 @@ export function useOperationalTable(
     [tableId],
   );
 
+  /**
+   * v0.70: bulk re-position полей. orderedFieldIds — все поля таблицы в
+   * новом порядке. Оптимистично применяем порядок локально + PATCH
+   * на бэкенд; на failure — reload(). Backend emit'ит N
+   * `table:field:updated` events, useEffect handler выше apply'нет
+   * новые positions у остальных клиентов.
+   */
+  const reorderFields = useCallback(
+    async (orderedFieldIds: string[]): Promise<boolean> => {
+      if (!tableId) return false;
+      setTable((prev) => {
+        if (!prev) return prev;
+        const byId = new Map(prev.fields.map((f) => [f.id, f]));
+        const reordered = orderedFieldIds
+          .map((id, idx) => {
+            const f = byId.get(id);
+            return f ? { ...f, position: idx } : null;
+          })
+          .filter((f): f is TableField => f !== null);
+        // Поля которых нет в orderedIds — сохраняем в хвосте (защита).
+        const missing = prev.fields.filter((f) => !orderedFieldIds.includes(f.id));
+        return { ...prev, fields: [...reordered, ...missing] };
+      });
+      try {
+        await apiJson(
+          `/api/tables/${encodeURIComponent(tableId)}/fields/reorder`,
+          {
+            method: "POST",
+            body: JSON.stringify({ orderedIds: orderedFieldIds }),
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+        return true;
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Не удалось переупорядочить колонки");
+        await reload();
+        return false;
+      }
+    },
+    [tableId, reload],
+  );
+
+  /** v0.70: bulk re-position строк, тот же pattern что и reorderFields. */
+  const reorderRows = useCallback(
+    async (orderedRowIds: string[]): Promise<boolean> => {
+      if (!tableId) return false;
+      setTable((prev) => {
+        if (!prev) return prev;
+        const byId = new Map(prev.rows.map((r) => [r.id, r]));
+        const reordered = orderedRowIds
+          .map((id, idx) => {
+            const r = byId.get(id);
+            return r ? { ...r, position: idx } : null;
+          })
+          .filter((r): r is TableRow => r !== null);
+        const missing = prev.rows.filter((r) => !orderedRowIds.includes(r.id));
+        return { ...prev, rows: [...reordered, ...missing] };
+      });
+      try {
+        await apiJson(
+          `/api/tables/${encodeURIComponent(tableId)}/rows/reorder`,
+          {
+            method: "POST",
+            body: JSON.stringify({ orderedIds: orderedRowIds }),
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+        return true;
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Не удалось переупорядочить строки");
+        await reload();
+        return false;
+      }
+    },
+    [tableId, reload],
+  );
+
   return {
     table,
     loading,
@@ -494,5 +622,7 @@ export function useOperationalTable(
     addRow,
     updateRow,
     removeRow,
+    reorderFields,
+    reorderRows,
   };
 }
