@@ -35,18 +35,33 @@ OUT="$BACKUP_DIR/${DB_NAME}-${TS}.sql.gz"
 
 # pg_dump --no-owner / --no-acl делает дампы portable — можно restore'нуть
 # в любую БД с правильной ролью. --clean / --if-exists даёт чистый replay.
-pg_dump \
+#
+# `sudo -u postgres` обходит peer-auth проблему: OS user `postgres` ↔ PG
+# superuser `postgres` через Unix socket peer. Альтернатива — `.pgpass`
+# или PGPASSWORD env, но они требуют secret management. Superuser имеет
+# доступ к любой БД, ECLIPSE_DB_USER в этом скрипте больше не нужен.
+sudo -u postgres pg_dump \
   --no-owner \
   --no-acl \
   --clean \
   --if-exists \
-  -U "$DB_USER" \
-  -d "$DB_NAME" \
+  "$DB_NAME" \
   | gzip -9 > "$OUT"
 
-# Sanity check — пустой файл значит pg_dump молча упал.
-if [[ ! -s "$OUT" ]]; then
-  echo "ERROR: backup file empty: $OUT" >&2
+# `set -o pipefail` НЕ ловит pg_dump exit code, если gzip успешно
+# обработал error-stream (что всегда). Проверяем PIPESTATUS[0] явно.
+PG_EXIT="${PIPESTATUS[0]}"
+if [[ "$PG_EXIT" -ne 0 ]]; then
+  echo "ERROR: pg_dump exited with $PG_EXIT" >&2
+  rm -f "$OUT"
+  exit 1
+fi
+
+# Пустой gzip-stream даёт ~20 bytes header, не 0 — `! -s` это пропустит.
+# Реальный дамп даже минимальной БД ≫ 100 bytes. Threshold = 100.
+SIZE=$(stat -c%s "$OUT" 2>/dev/null || stat -f%z "$OUT" 2>/dev/null || echo 0)
+if [[ "$SIZE" -lt 100 ]]; then
+  echo "ERROR: backup suspiciously small ($SIZE bytes), likely pg_dump failed" >&2
   rm -f "$OUT"
   exit 1
 fi
@@ -54,5 +69,4 @@ fi
 # Ротация: удаляем backups старше KEEP_DAYS дней.
 find "$BACKUP_DIR" -name "${DB_NAME}-*.sql.gz" -type f -mtime +"$KEEP_DAYS" -delete
 
-SIZE=$(stat -c%s "$OUT" 2>/dev/null || stat -f%z "$OUT" 2>/dev/null || echo "?")
 echo "Backup OK: $OUT ($SIZE bytes), keeping ${KEEP_DAYS}d"
