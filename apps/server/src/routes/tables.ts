@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { db } from "../db.js";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
+import { emitTableEvent } from "../realtime.js";
 
 /**
  * Operational Tables phase 1 (v0.59.0) — CRUD routes.
@@ -28,7 +29,14 @@ import { getUserId, requireJwt } from "../auth/requireJwt.js";
  * Phase 2 — emit `table:*` events для multi-user collaboration.
  */
 
-const fieldTypeSchema = z.enum(["TEXT", "NUMBER", "STATUS", "DATE"]);
+const fieldTypeSchema = z.enum([
+  "TEXT",
+  "NUMBER",
+  "STATUS",
+  "DATE",
+  "USER",
+  "CHECKBOX",
+]);
 
 const createTableBody = z.object({
   name: z.string().trim().min(1).max(120),
@@ -78,6 +86,38 @@ async function requireServerMember(userId: string, serverId: string) {
   return member;
 }
 
+/** v0.62: MOD+ check для destructive ops. */
+function isMod(role: "OWNER" | "ADMIN" | "MODERATOR" | "MEMBER"): boolean {
+  return role === "OWNER" || role === "ADMIN" || role === "MODERATOR";
+}
+
+/**
+ * v0.62: coerce + validate cell value по field.type.
+ * USER — проверяет что value это userId of member данного server'а.
+ * CHECKBOX — coerce в "true"/"false" (любой truthy → "true").
+ * Остальные типы — passthrough (frontend сам coerce'ит при render).
+ */
+async function coerceCellValue(
+  fieldType: "TEXT" | "NUMBER" | "STATUS" | "DATE" | "USER" | "CHECKBOX",
+  value: string,
+  serverId: string,
+): Promise<string | { error: string }> {
+  if (value === "") return value; // delete-cell path
+  if (fieldType === "USER") {
+    const member = await db.member.findUnique({
+      where: { userId_serverId: { userId: value, serverId } },
+      select: { id: true },
+    });
+    if (!member) return { error: `User ${value} не является участником` };
+    return value;
+  }
+  if (fieldType === "CHECKBOX") {
+    const lower = value.toLowerCase();
+    return lower === "true" || lower === "1" || lower === "yes" ? "true" : "false";
+  }
+  return value;
+}
+
 function serializeOptions(raw: string | null): string[] | null {
   if (!raw) return null;
   try {
@@ -100,7 +140,7 @@ function serializeTable(t: {
   fields: Array<{
     id: string;
     name: string;
-    type: "TEXT" | "NUMBER" | "STATUS" | "DATE";
+    type: "TEXT" | "NUMBER" | "STATUS" | "DATE" | "USER" | "CHECKBOX";
     options: string | null;
     position: number;
   }>;
@@ -235,6 +275,13 @@ export async function registerTableRoutes(app: FastifyInstance) {
           rows: { include: { cells: true } },
         },
       });
+      emitTableEvent(serverId, "table:updated", {
+        serverId,
+        id: created.id,
+        name: created.name,
+        description: created.description,
+        channelId: created.channelId,
+      });
       return { table: serializeTable(created) };
     },
   );
@@ -301,11 +348,18 @@ export async function registerTableRoutes(app: FastifyInstance) {
         },
         select: { id: true, name: true, description: true, channelId: true },
       });
+      emitTableEvent(existing.serverId, "table:updated", {
+        serverId: existing.serverId,
+        id: updated.id,
+        name: updated.name,
+        description: updated.description,
+        channelId: updated.channelId,
+      });
       return { table: updated };
     },
   );
 
-  /** DELETE /api/tables/:id — drop (cascade). */
+  /** DELETE /api/tables/:id — drop (cascade). MOD+ only (v0.62 RBAC). */
   app.delete(
     "/api/tables/:id",
     { onRequest: [requireJwt] },
@@ -322,7 +376,16 @@ export async function registerTableRoutes(app: FastifyInstance) {
       if (!member) {
         return reply.status(403).send({ error: "Not a member of this server" });
       }
+      if (!isMod(member.role)) {
+        return reply
+          .status(403)
+          .send({ error: "Удалить таблицу может только модератор / админ / владелец" });
+      }
       await db.table.delete({ where: { id } });
+      emitTableEvent(existing.serverId, "table:deleted", {
+        serverId: existing.serverId,
+        id,
+      });
       return { ok: true };
     },
   );
@@ -368,15 +431,18 @@ export async function registerTableRoutes(app: FastifyInstance) {
         where: { id: tableId },
         data: { updatedAt: new Date() },
       });
-      return {
-        field: {
-          id: field.id,
-          name: field.name,
-          type: field.type,
-          options: serializeOptions(field.options),
-          position: field.position,
-        },
+      const fieldPayload = {
+        id: field.id,
+        name: field.name,
+        type: field.type,
+        options: serializeOptions(field.options),
+        position: field.position,
       };
+      emitTableEvent(table.serverId, "table:field:added", {
+        tableId,
+        field: fieldPayload,
+      });
+      return { field: fieldPayload };
     },
   );
 
@@ -417,19 +483,22 @@ export async function registerTableRoutes(app: FastifyInstance) {
             : {}),
         },
       });
-      return {
-        field: {
-          id: updated.id,
-          name: updated.name,
-          type: updated.type,
-          options: serializeOptions(updated.options),
-          position: updated.position,
-        },
+      const fieldPayload = {
+        id: updated.id,
+        name: updated.name,
+        type: updated.type,
+        options: serializeOptions(updated.options),
+        position: updated.position,
       };
+      emitTableEvent(field.table.serverId, "table:field:updated", {
+        tableId,
+        field: fieldPayload,
+      });
+      return { field: fieldPayload };
     },
   );
 
-  /** DELETE field — cascade удаляет cells этой колонки. */
+  /** DELETE field — cascade удаляет cells этой колонки. MOD+ only. */
   app.delete(
     "/api/tables/:id/fields/:fieldId",
     { onRequest: [requireJwt] },
@@ -448,7 +517,16 @@ export async function registerTableRoutes(app: FastifyInstance) {
       if (!member) {
         return reply.status(403).send({ error: "Not a member of this server" });
       }
+      if (!isMod(member.role)) {
+        return reply
+          .status(403)
+          .send({ error: "Удалить колонку может только модератор / админ / владелец" });
+      }
       await db.tableField.delete({ where: { id: fieldId } });
+      emitTableEvent(field.table.serverId, "table:field:deleted", {
+        tableId,
+        fieldId,
+      });
       return { ok: true };
     },
   );
@@ -480,15 +558,15 @@ export async function registerTableRoutes(app: FastifyInstance) {
         where: { id: tableId },
         data: { updatedAt: new Date() },
       });
-      return {
-        row: {
-          id: row.id,
-          position: row.position,
-          createdAt: row.createdAt.toISOString(),
-          updatedAt: row.updatedAt.toISOString(),
-          cells: [],
-        },
+      const rowPayload = {
+        id: row.id,
+        position: row.position,
+        createdAt: row.createdAt.toISOString(),
+        updatedAt: row.updatedAt.toISOString(),
+        cells: [] as Array<{ fieldId: string; value: string }>,
       };
+      emitTableEvent(table.serverId, "table:row:added", { tableId, row: rowPayload });
+      return { row: rowPayload };
     },
   );
 
@@ -519,21 +597,34 @@ export async function registerTableRoutes(app: FastifyInstance) {
       if (!member) {
         return reply.status(403).send({ error: "Not a member of this server" });
       }
-      // Verify все fieldIds принадлежат этой таблице.
+      // Verify все fieldIds принадлежат этой таблице + получим типы для
+      // value coercion.
       const fieldIds = parsed.data.cells.map((c) => c.fieldId);
       const fields = await db.tableField.findMany({
         where: { id: { in: fieldIds }, tableId },
-        select: { id: true },
+        select: { id: true, type: true },
       });
-      const valid = new Set(fields.map((f) => f.id));
-      const invalid = fieldIds.filter((id) => !valid.has(id));
+      const fieldMap = new Map(fields.map((f) => [f.id, f.type]));
+      const invalid = fieldIds.filter((id) => !fieldMap.has(id));
       if (invalid.length > 0) {
         return reply
           .status(400)
           .send({ error: "Some fieldIds do not belong to this table", invalid });
       }
+
+      // v0.62: coerce / validate cell values по типу поля.
+      const coercedCells: Array<{ fieldId: string; value: string }> = [];
+      for (const cell of parsed.data.cells) {
+        const type = fieldMap.get(cell.fieldId)!;
+        const result = await coerceCellValue(type, cell.value, row.table.serverId);
+        if (typeof result === "object") {
+          return reply.status(400).send({ error: result.error, fieldId: cell.fieldId });
+        }
+        coercedCells.push({ fieldId: cell.fieldId, value: result });
+      }
+
       await db.$transaction(async (tx) => {
-        for (const cell of parsed.data.cells) {
+        for (const cell of coercedCells) {
           if (cell.value === "") {
             await tx.tableCell.deleteMany({
               where: { rowId, fieldId: cell.fieldId },
@@ -559,20 +650,25 @@ export async function registerTableRoutes(app: FastifyInstance) {
         where: { id: rowId },
         include: { cells: true },
       });
-      return {
-        row: updated
-          ? {
-              id: updated.id,
-              position: updated.position,
-              createdAt: updated.createdAt.toISOString(),
-              updatedAt: updated.updatedAt.toISOString(),
-              cells: updated.cells.map((c) => ({
-                fieldId: c.fieldId,
-                value: c.value,
-              })),
-            }
-          : null,
-      };
+      const rowPayload = updated
+        ? {
+            id: updated.id,
+            position: updated.position,
+            createdAt: updated.createdAt.toISOString(),
+            updatedAt: updated.updatedAt.toISOString(),
+            cells: updated.cells.map((c) => ({
+              fieldId: c.fieldId,
+              value: c.value,
+            })),
+          }
+        : null;
+      if (rowPayload) {
+        emitTableEvent(row.table.serverId, "table:row:updated", {
+          tableId,
+          row: rowPayload,
+        });
+      }
+      return { row: rowPayload };
     },
   );
 
@@ -596,6 +692,10 @@ export async function registerTableRoutes(app: FastifyInstance) {
         return reply.status(403).send({ error: "Not a member of this server" });
       }
       await db.tableRow.delete({ where: { id: rowId } });
+      emitTableEvent(row.table.serverId, "table:row:deleted", {
+        tableId,
+        rowId,
+      });
       return { ok: true };
     },
   );

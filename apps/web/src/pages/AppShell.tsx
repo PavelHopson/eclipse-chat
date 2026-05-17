@@ -278,7 +278,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     reload: reloadTables,
     createTable: createOpTable,
     deleteTable: deleteOpTable,
-  } = useOperationalTables(activeServerId);
+  } = useOperationalTables(activeServerId, socket);
   // v0.61 shared listening room. Scoped per selected TEXT/BROADCAST channel —
   // в VOICE сессии не активны (backend отвергнёт).
   const music = useChannelMusic(selectedChannelId, socket);
@@ -1191,6 +1191,14 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                 await reloadTables();
               }
             }}
+            members={members.map((m) => ({
+              userId: m.userId,
+              user: {
+                displayName: m.user.displayName,
+                avatar: m.user.avatar,
+              },
+            }))}
+            socket={socket}
           />
         ) : homeOpen ? (
           <HomeToday

@@ -333,15 +333,18 @@ enum TranscriptStatus {
   FAILED
 }
 
-/// Тип поля Operational Table (v0.59 phase 1). v1: четыре базовых типа.
-/// Phase 2 — USER (relation на Member), RELATION (cross-table), FILE,
-/// CHECKBOX, FORMULA. Coercion value хранится как строка, frontend
-/// приводит к нужному типу при render/edit.
+/// Тип поля Operational Table (v0.59 phase 1, расширено v0.62 phase 2).
+/// Phase 2 добавил USER (cell.value = userId, UI рендерит avatar/name из
+/// member list) и CHECKBOX (cell.value = "true"|"false"). Phase 2.5+ —
+/// RELATION (cross-table), FILE (attachment), FORMULA. Coercion value
+/// хранится как строка, frontend приводит к нужному типу при render/edit.
 enum TableFieldType {
   TEXT
   NUMBER
   STATUS
   DATE
+  USER
+  CHECKBOX
 }
 
 /// Сервер — контейнер каналов и участников. Создатель автоматически

@@ -477,6 +477,32 @@ export function emitAttachmentTranscriptUpdated(
 }
 
 /**
+ * v0.62 phase 2: Operational Tables realtime. Все mutations таблицы
+ * (rename/desc/field add+update+delete/row add+update+delete) emit'ятся
+ * в server room — клиенты у которых открыт OperationalTablePanel
+ * получают свежий state без ручного reload.
+ *
+ * Используем server-wide room (не отдельный table-room): таблиц обычно
+ * мало, listener-overhead минимальный, а server room уже подписан в
+ * useServers / useChannels.
+ */
+export function emitTableEvent(
+  serverId: string,
+  kind:
+    | "table:updated"
+    | "table:deleted"
+    | "table:field:added"
+    | "table:field:updated"
+    | "table:field:deleted"
+    | "table:row:added"
+    | "table:row:updated"
+    | "table:row:deleted",
+  payload: Record<string, unknown>,
+) {
+  io?.to(`server:${serverId}`).emit(kind, payload);
+}
+
+/**
  * v0.61 shared listening room: emit при любом изменении MusicSession
  * (start / pause / resume / skip / stop / queue add). Payload null
  * означает stop / session disposed.

@@ -1,16 +1,24 @@
 import { useCallback, useEffect, useState } from "react";
+import type { Socket } from "socket.io-client";
 import { apiJson } from "../lib/api";
+import { SocketEvents } from "../lib/socket";
 
 /**
- * Operational Tables phase 1 (v0.59) — два hooks:
- *   useOperationalTables(serverId)  — list для sidebar / Context Tree
- *   useOperationalTable(tableId)    — full detail + CRUD ops
+ * Operational Tables — два hooks:
+ *   useOperationalTables(serverId, socket)  — list для sidebar / Context Tree
+ *   useOperationalTable(tableId, socket)    — full detail + CRUD ops
  *
- * Realtime — out of scope phase 1 (manual refresh). Phase 2 — emit
- * `table:*` events, hook subscribes автоматически.
+ * v0.62 phase 2: оба subscribe на socket-events `table:*`, обновляют
+ * локальный state без manual reload.
  */
 
-export type TableFieldType = "TEXT" | "NUMBER" | "STATUS" | "DATE";
+export type TableFieldType =
+  | "TEXT"
+  | "NUMBER"
+  | "STATUS"
+  | "DATE"
+  | "USER"
+  | "CHECKBOX";
 
 export type TableSummary = {
   id: string;
@@ -63,7 +71,10 @@ export type TableDetail = {
  *  ============================================================
  */
 
-export function useOperationalTables(serverId: string | null) {
+export function useOperationalTables(
+  serverId: string | null,
+  socket: Socket | null = null,
+) {
   const [tables, setTables] = useState<TableSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -90,6 +101,30 @@ export function useOperationalTables(serverId: string | null) {
   useEffect(() => {
     void reload();
   }, [reload]);
+
+  // v0.62: subscribe на server-wide table events — list invalidate'ится
+  // через reload (full state легче чем patch'ить counts).
+  useEffect(() => {
+    if (!socket || !serverId) return;
+    const onChanged = () => {
+      void reload();
+    };
+    socket.on(SocketEvents.TableUpdated, onChanged);
+    socket.on(SocketEvents.TableDeleted, onChanged);
+    // Row/field events тоже trigger reload — fieldCount/rowCount меняются.
+    socket.on(SocketEvents.TableFieldAdded, onChanged);
+    socket.on(SocketEvents.TableFieldDeleted, onChanged);
+    socket.on(SocketEvents.TableRowAdded, onChanged);
+    socket.on(SocketEvents.TableRowDeleted, onChanged);
+    return () => {
+      socket.off(SocketEvents.TableUpdated, onChanged);
+      socket.off(SocketEvents.TableDeleted, onChanged);
+      socket.off(SocketEvents.TableFieldAdded, onChanged);
+      socket.off(SocketEvents.TableFieldDeleted, onChanged);
+      socket.off(SocketEvents.TableRowAdded, onChanged);
+      socket.off(SocketEvents.TableRowDeleted, onChanged);
+    };
+  }, [socket, serverId, reload]);
 
   const createTable = useCallback(
     async (name: string, description?: string): Promise<string | null> => {
@@ -137,7 +172,10 @@ export function useOperationalTables(serverId: string | null) {
  *  ============================================================
  */
 
-export function useOperationalTable(tableId: string | null) {
+export function useOperationalTable(
+  tableId: string | null,
+  socket: Socket | null = null,
+) {
   const [table, setTable] = useState<TableDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -164,6 +202,106 @@ export function useOperationalTable(tableId: string | null) {
   useEffect(() => {
     void reload();
   }, [reload]);
+
+  // v0.62: subscribe — apply patches к local state. Каждый event имеет
+  // tableId, фильтруем по совпадению с currently-open table.
+  useEffect(() => {
+    if (!socket || !tableId) return;
+    const onTableUpdated = (p: { id: string; name?: string; description?: string | null; channelId?: string | null }) => {
+      if (p.id !== tableId) return;
+      setTable((prev) =>
+        prev
+          ? {
+              ...prev,
+              name: p.name ?? prev.name,
+              description: p.description !== undefined ? p.description : prev.description,
+              channelId: p.channelId !== undefined ? p.channelId : prev.channelId,
+            }
+          : prev,
+      );
+    };
+    const onTableDeleted = (p: { id: string }) => {
+      if (p.id === tableId) setTable(null);
+    };
+    const onFieldAdded = (p: { tableId: string; field: TableField }) => {
+      if (p.tableId !== tableId) return;
+      setTable((prev) =>
+        prev && !prev.fields.some((f) => f.id === p.field.id)
+          ? { ...prev, fields: [...prev.fields, p.field] }
+          : prev,
+      );
+    };
+    const onFieldUpdated = (p: { tableId: string; field: TableField }) => {
+      if (p.tableId !== tableId) return;
+      setTable((prev) =>
+        prev
+          ? {
+              ...prev,
+              fields: prev.fields.map((f) => (f.id === p.field.id ? p.field : f)),
+            }
+          : prev,
+      );
+    };
+    const onFieldDeleted = (p: { tableId: string; fieldId: string }) => {
+      if (p.tableId !== tableId) return;
+      setTable((prev) =>
+        prev
+          ? {
+              ...prev,
+              fields: prev.fields.filter((f) => f.id !== p.fieldId),
+              rows: prev.rows.map((r) => ({
+                ...r,
+                cells: r.cells.filter((c) => c.fieldId !== p.fieldId),
+              })),
+            }
+          : prev,
+      );
+    };
+    const onRowAdded = (p: { tableId: string; row: TableRow }) => {
+      if (p.tableId !== tableId) return;
+      setTable((prev) =>
+        prev && !prev.rows.some((r) => r.id === p.row.id)
+          ? { ...prev, rows: [...prev.rows, p.row] }
+          : prev,
+      );
+    };
+    const onRowUpdated = (p: { tableId: string; row: TableRow }) => {
+      if (p.tableId !== tableId) return;
+      setTable((prev) =>
+        prev
+          ? {
+              ...prev,
+              rows: prev.rows.map((r) => (r.id === p.row.id ? p.row : r)),
+            }
+          : prev,
+      );
+    };
+    const onRowDeleted = (p: { tableId: string; rowId: string }) => {
+      if (p.tableId !== tableId) return;
+      setTable((prev) =>
+        prev ? { ...prev, rows: prev.rows.filter((r) => r.id !== p.rowId) } : prev,
+      );
+    };
+
+    socket.on(SocketEvents.TableUpdated, onTableUpdated);
+    socket.on(SocketEvents.TableDeleted, onTableDeleted);
+    socket.on(SocketEvents.TableFieldAdded, onFieldAdded);
+    socket.on(SocketEvents.TableFieldUpdated, onFieldUpdated);
+    socket.on(SocketEvents.TableFieldDeleted, onFieldDeleted);
+    socket.on(SocketEvents.TableRowAdded, onRowAdded);
+    socket.on(SocketEvents.TableRowUpdated, onRowUpdated);
+    socket.on(SocketEvents.TableRowDeleted, onRowDeleted);
+    return () => {
+      socket.off(SocketEvents.TableUpdated, onTableUpdated);
+      socket.off(SocketEvents.TableDeleted, onTableDeleted);
+      socket.off(SocketEvents.TableFieldAdded, onFieldAdded);
+      socket.off(SocketEvents.TableFieldUpdated, onFieldUpdated);
+      socket.off(SocketEvents.TableFieldDeleted, onFieldDeleted);
+      socket.off(SocketEvents.TableRowAdded, onRowAdded);
+      socket.off(SocketEvents.TableRowUpdated, onRowUpdated);
+      socket.off(SocketEvents.TableRowDeleted, onRowDeleted);
+    };
+  }, [socket, tableId]);
 
   const rename = useCallback(
     async (name: string): Promise<boolean> => {

@@ -24,6 +24,15 @@ type Props = {
   tableId: string;
   onClose: () => void;
   onDelete?: () => void;
+  /** v0.62 phase 2: список member'ов активного сервера — для USER-field
+   *  dropdown. Empty array = UI рендерит «—» в USER cells. */
+  members?: Array<{
+    userId: string;
+    user: { displayName: string; avatar: string | null };
+  }>;
+  /** v0.62: socket для realtime sync. Optional — без него поведение как
+   *  в v0.59 phase 1 (manual reload). */
+  socket?: import("socket.io-client").Socket | null;
 };
 
 const wrap: CSSProperties = {
@@ -123,6 +132,8 @@ const TYPE_LABELS: Record<TableFieldType, string> = {
   NUMBER: "Число",
   STATUS: "Статус",
   DATE: "Дата",
+  USER: "Участник",
+  CHECKBOX: "Чекбокс",
 };
 
 const STATUS_COLOR_POOL = [
@@ -141,7 +152,13 @@ function statusColor(value: string, options: string[] | null): string {
   return STATUS_COLOR_POOL[idx % STATUS_COLOR_POOL.length];
 }
 
-export function OperationalTablePanel({ tableId, onClose, onDelete }: Props) {
+export function OperationalTablePanel({
+  tableId,
+  onClose,
+  onDelete,
+  members = [],
+  socket = null,
+}: Props) {
   const {
     table,
     loading,
@@ -153,7 +170,7 @@ export function OperationalTablePanel({ tableId, onClose, onDelete }: Props) {
     addRow,
     updateRow,
     removeRow,
-  } = useOperationalTable(tableId);
+  } = useOperationalTable(tableId, socket);
 
   const [nameDraft, setNameDraft] = useState("");
   const [showFieldForm, setShowFieldForm] = useState(false);
@@ -297,6 +314,7 @@ export function OperationalTablePanel({ tableId, onClose, onDelete }: Props) {
                   key={row.id}
                   row={row}
                   fields={table.fields}
+                  members={members}
                   onSave={(cells) => void updateRow(row.id, cells)}
                   onRemove={() => void removeRow(row.id)}
                 />
@@ -441,11 +459,16 @@ function FieldHeader({
 function RowEditor({
   row,
   fields,
+  members,
   onSave,
   onRemove,
 }: {
   row: TableRowType;
   fields: TableField[];
+  members: Array<{
+    userId: string;
+    user: { displayName: string; avatar: string | null };
+  }>;
   onSave: (cells: Array<{ fieldId: string; value: string }>) => void;
   onRemove: () => void;
 }) {
@@ -478,6 +501,7 @@ function RowEditor({
           <CellEditor
             field={field}
             value={drafts[field.id] ?? ""}
+            members={members}
             onChange={(v) =>
               setDrafts((prev) => ({ ...prev, [field.id]: v }))
             }
@@ -511,15 +535,77 @@ function RowEditor({
 function CellEditor({
   field,
   value,
+  members,
   onChange,
   onCommit,
 }: {
   field: TableField;
   value: string;
+  members: Array<{
+    userId: string;
+    user: { displayName: string; avatar: string | null };
+  }>;
   onChange: (v: string) => void;
   onCommit: (v: string) => void;
 }) {
   const [focused, setFocused] = useState(false);
+
+  if (field.type === "CHECKBOX") {
+    const checked = value === "true";
+    return (
+      <label
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "var(--ec-space-2) var(--ec-space-3)",
+          cursor: "pointer",
+        }}
+      >
+        <input
+          type="checkbox"
+          checked={checked}
+          onChange={(e) => {
+            const next = e.target.checked ? "true" : "false";
+            onChange(next);
+            onCommit(next);
+          }}
+          style={{
+            width: 16,
+            height: 16,
+            accentColor: "var(--ec-accent)",
+            cursor: "pointer",
+          }}
+        />
+      </label>
+    );
+  }
+
+  if (field.type === "USER") {
+    return (
+      <select
+        value={value}
+        onChange={(e) => {
+          onChange(e.target.value);
+          onCommit(e.target.value);
+        }}
+        style={{
+          ...cellInput,
+          ...(focused ? cellInputFocus : null),
+          color: value ? "var(--ec-text-strong)" : "var(--ec-text-dim)",
+        }}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+      >
+        <option value="">— не назначен —</option>
+        {members.map((m) => (
+          <option key={m.userId} value={m.userId}>
+            {m.user.displayName}
+          </option>
+        ))}
+      </select>
+    );
+  }
 
   if (field.type === "STATUS") {
     const options = field.options ?? [];
@@ -660,6 +746,8 @@ function AddFieldForm({
         <option value="NUMBER">Число</option>
         <option value="STATUS">Статус</option>
         <option value="DATE">Дата</option>
+        <option value="USER">Участник</option>
+        <option value="CHECKBOX">Чекбокс</option>
       </select>
       {type === "STATUS" && (
         <input
