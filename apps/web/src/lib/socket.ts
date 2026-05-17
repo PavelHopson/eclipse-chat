@@ -82,7 +82,7 @@ export type MessageNewPayload = {
   attachments?: AttachmentPayload[];
 };
 
-export type ChannelType = "TEXT" | "VOICE" | "BROADCAST";
+export type ChannelType = "TEXT" | "VOICE" | "BROADCAST" | "EXECUTION";
 
 export type ChannelCreatedPayload = {
   channelId: string;
@@ -92,6 +92,7 @@ export type ChannelCreatedPayload = {
   type: ChannelType;
   position: number;
   createdAt: string;
+  expiresAt?: string | null;
 };
 
 export type ChannelDeletedPayload = {
@@ -108,6 +109,7 @@ export type ChannelUpdatedPayload = {
   position: number;
   description: string | null;
   emoji: string | null;
+  expiresAt?: string | null;
 };
 
 export type MemberJoinedPayload = {

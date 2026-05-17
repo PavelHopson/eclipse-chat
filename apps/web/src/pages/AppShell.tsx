@@ -15,6 +15,7 @@ import { ActionItemDrawer } from "../components/ActionItemDrawer";
 import { OperationalTablePanel } from "../components/OperationalTablePanel";
 import { useOperationalTables } from "../hooks/useOperationalTables";
 import { MusicMiniPlayer } from "../components/MusicMiniPlayer";
+import { MusicExpandModal } from "../components/MusicExpandModal";
 import { useChannelMusic } from "../hooks/useChannelMusic";
 import { HelpPanel } from "../components/HelpPanel";
 import { JoinServerModal } from "../components/JoinServerModal";
@@ -32,6 +33,7 @@ import { SinceLastVisitBanner } from "../components/SinceLastVisitBanner";
 import { StatusBoard } from "../components/StatusBoard";
 import { TeamHealth } from "../components/TeamHealth";
 import { EmptyState } from "../components/EmptyState";
+import { ExpiryBadge } from "../components/ExpiryBadge";
 import {
   EmptyDmIcon,
   EmptyChannelIcon,
@@ -53,6 +55,7 @@ import { useMediaQuery } from "../hooks/useMediaQuery";
 import { useMembers, type MemberRole, type MemberRow } from "../hooks/useMembers";
 import { useMessages } from "../hooks/useMessages";
 import { useNotifications } from "../hooks/useNotifications";
+import { useFocusMode } from "../hooks/useFocusMode";
 import { useHomeToday } from "../hooks/useHomeToday";
 import { useProfile } from "../hooks/useProfile";
 import { useSearch } from "../hooks/useSearch";
@@ -290,6 +293,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   const [showCreateTable, setShowCreateTable] = useState(false);
   /** v0.72: открыт ли picker для запуска music в VOICE-канале. */
   const [showVoiceMusicPicker, setShowVoiceMusicPicker] = useState(false);
+  /** v0.74 #32 phase 3: открыт ли expand modal плеера. */
+  const [showMusicExpand, setShowMusicExpand] = useState(false);
   // v0.61 shared listening room. Scoped per selected TEXT/BROADCAST channel —
   // в VOICE сессии не активны (backend отвергнёт).
   const music = useChannelMusic(selectedChannelId, socket);
@@ -312,6 +317,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   const selectedChannelIdRef = useRef<string | null>(selectedChannelId);
   selectedChannelIdRef.current = selectedChannelId;
   const notif = useNotifications(socket, user.id, selectedChannelIdRef, unreadTotal);
+  // v0.74 #29 phase 1: Focus mode — filter feed to mentions/pinned/own.
+  const focus = useFocusMode();
 
   const {
     messages,
@@ -726,6 +733,31 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               <circle cx="12" cy="12" r="10" />
               <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
               <line x1="12" y1="17" x2="12.01" y2="17" />
+            </svg>
+          </button>
+          {/* v0.74 #29 phase 1: Focus mode toggle — фильтр feed'а на
+              direct-mentions + pinned + own messages. Глобальный, не
+              привязан к каналу. */}
+          <button
+            type="button"
+            onClick={focus.toggle}
+            title={
+              focus.enabled
+                ? "Фокус-режим включён — показаны только меншены, закреплённые и свои"
+                : "Включить фокус-режим (скрыть шум)"
+            }
+            aria-label="Фокус-режим"
+            aria-pressed={focus.enabled}
+            className="ec-btn ec-btn--ghost ec-btn--sm ec-focus-toggle"
+            style={{
+              padding: "0.35rem 0.65rem",
+              color: focus.enabled ? "var(--ec-accent)" : undefined,
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <circle cx="12" cy="12" r="10" />
+              <circle cx="12" cy="12" r="6" />
+              <circle cx="12" cy="12" r="2" fill="currentColor" />
             </svg>
           </button>
           {showRightRail && (
@@ -1158,6 +1190,9 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                 )}
                 {selectedChannel.name}
               </span>
+              {selectedChannel.expiresAt && (
+                <ExpiryBadge expiresAt={selectedChannel.expiresAt} />
+              )}
               {selectedChannel.description && (
                 <>
                   <span
@@ -1200,6 +1235,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                   onTogglePlayPause={() => void music.togglePlayPause()}
                   onSkip={() => void music.skip()}
                   onStop={() => void music.stop()}
+                  onExpand={() => setShowMusicExpand(true)}
                 />
               )}
               {/* v0.72: для VOICE-канала без активной music session —
@@ -1459,6 +1495,30 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           ) : (
             <VoicePlaceholder channelName={selectedChannel.name} />
           )
+        ) : selectedChannel.type === "EXECUTION" && activeServer ? (
+          // v0.74 #16 phase 1: execution-комната = channel-scoped kanban.
+          // Reuse StatusBoard, фильтруем actions по channelId. Chat не
+          // показывается — это «room as kanban» mode.
+          <StatusBoard
+            serverName={`${activeServer.name} · #${selectedChannel.name}`}
+            actions={serverActions.actions.filter(
+              (a) => a.channelId === selectedChannel.id,
+            )}
+            loading={serverActions.loading}
+            error={serverActions.error}
+            onReload={() => void serverActions.reload()}
+            currentUserId={user.id}
+            channelNameById={(cid) => channelNameById(cid)}
+            onUpdateStatus={(id, status) =>
+              void serverActions.updateStatus(id, status)
+            }
+            onOpenChannel={(channelId) => {
+              setSelectedChannelId(channelId);
+              if (isMobile) setNavOpen(false);
+            }}
+            onOpenAction={(id) => setOpenActionItemId(id)}
+            initialFilter={null}
+          />
         ) : (
           <>
             {/* Voice mini-bar — если ты сейчас в voice, но смотришь TEXT канал */}
@@ -1494,8 +1554,67 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             {/* ChannelDigest переехал в правую IntelligencePanel (Фаза A) —
                 контекст канала живёт в Intelligence-табе, не в ленте. */}
             <PinnedBar messages={messages} />
+            {/* v0.74 #29 phase 1: Focus mode banner — explicit affordance
+                чтобы юзер не думал, что сообщения «пропали». */}
+            {focus.enabled && (
+              <div
+                style={{
+                  margin: "6px var(--ec-space-3) 0",
+                  padding: "0.45rem 0.75rem",
+                  borderRadius: "var(--ec-radius-md)",
+                  background: "var(--ec-accent-soft)",
+                  border: "1px solid var(--ec-border-accent)",
+                  color: "var(--ec-accent)",
+                  fontSize: "var(--ec-text-2xs)",
+                  letterSpacing: "var(--ec-tracking-caps)",
+                  textTransform: "uppercase",
+                  fontWeight: 700,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 8,
+                }}
+              >
+                <span>Фокус — только меншены, закреплённые и свои</span>
+                <button
+                  type="button"
+                  onClick={focus.toggle}
+                  style={{
+                    padding: "0.15rem 0.55rem",
+                    borderRadius: "var(--ec-radius-sm)",
+                    background: "transparent",
+                    border: "1px solid var(--ec-border-accent)",
+                    color: "var(--ec-accent)",
+                    fontSize: "0.6rem",
+                    cursor: "pointer",
+                    letterSpacing: 0,
+                    textTransform: "none",
+                    fontWeight: 600,
+                  }}
+                >
+                  Выключить
+                </button>
+              </div>
+            )}
             <MessageList
-              messages={messages}
+              messages={
+                focus.enabled
+                  ? messages.filter((m) => {
+                      // Direct mention by display name
+                      const lcContent = m.content.toLowerCase();
+                      const mentioned =
+                        headerName &&
+                        lcContent.includes(`@${headerName.toLowerCase()}`);
+                      // Pinned
+                      const pinned = m.pinnedAt != null;
+                      // Own message
+                      const mine = m.user?.id === user.id;
+                      // Bot / system messages keep
+                      const bot = m.user?.isBot === true;
+                      return Boolean(mentioned || pinned || mine || bot);
+                    })
+                  : messages
+              }
               pendingBotTyping={pendingBotTyping}
               emptyHint={messagesLoading ? "Загрузка…" : undefined}
               channelName={selectedChannel.name}
@@ -1714,6 +1833,18 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             const ok = await music.start(attachmentId);
             return ok;
           }}
+        />
+      )}
+
+      {showMusicExpand && music.session && (
+        <MusicExpandModal
+          session={music.session}
+          derivedPositionMs={music.derivedPositionMs}
+          currentUserId={user.id}
+          onClose={() => setShowMusicExpand(false)}
+          onTogglePlayPause={() => void music.togglePlayPause()}
+          onSkip={() => void music.skip()}
+          onStop={() => void music.stop()}
         />
       )}
 

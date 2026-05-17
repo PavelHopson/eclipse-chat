@@ -53,12 +53,15 @@ const createServerBody = z.object({
   icon: z.string().url().max(500).optional().nullable(),
 });
 
-const channelTypeSchema = z.enum(["TEXT", "VOICE", "BROADCAST"]);
+const channelTypeSchema = z.enum(["TEXT", "VOICE", "BROADCAST", "EXECUTION"]);
 
 const createServerChannelBody = z.object({
   name: z.string().min(1).max(80),
   description: z.string().max(1024).optional().nullable(),
   type: channelTypeSchema.optional(),
+  /** v0.74 #29 phase 1: optional auto-expiry. ISO timestamp в будущем
+   *  (max 30 дней вперёд, validate в route). NULL = постоянный канал. */
+  expiresAt: z.string().datetime().nullable().optional(),
 });
 
 const updateChannelBody = z.object({
@@ -68,6 +71,9 @@ const updateChannelBody = z.object({
   /** v0.47 Client Mode v2: internal flag. Toggle visibility для MEMBER role
    *  когда server.mode = CLIENT. OWNER/ADMIN/MODERATOR всегда видят. */
   internal: z.boolean().optional(),
+  /** v0.74 #29 phase 1: переключить expiry. NULL = снять (постоянный),
+   *  ISO timestamp в будущем = установить/обновить. */
+  expiresAt: z.string().datetime().nullable().optional(),
 });
 
 const reorderChannelsBody = z.object({
@@ -686,6 +692,7 @@ export async function registerServerRoutes(app: FastifyInstance) {
         description: true,
         emoji: true,
         internal: true,
+        expiresAt: true,
         createdAt: true,
         _count: { select: { messages: true } },
       },
@@ -704,6 +711,23 @@ export async function registerServerRoutes(app: FastifyInstance) {
     if (!parsed.success) {
       return reply.status(400).send({ error: "Invalid body" });
     }
+    // v0.74 #29: validate expiresAt — должно быть в будущем + max 30 дней.
+    let expiresAtDate: Date | null = null;
+    if (parsed.data.expiresAt) {
+      const d = new Date(parsed.data.expiresAt);
+      if (Number.isNaN(d.getTime())) {
+        return reply.status(400).send({ error: "Invalid expiresAt" });
+      }
+      const minDelta = 5 * 60 * 1000; // 5 мин
+      const maxDelta = 30 * 24 * 60 * 60 * 1000; // 30 дней
+      const delta = d.getTime() - Date.now();
+      if (delta < minDelta || delta > maxDelta) {
+        return reply
+          .status(400)
+          .send({ error: "expiresAt must be 5min..30d from now" });
+      }
+      expiresAtDate = d;
+    }
     const base = slugifyBase(parsed.data.name);
     const slug = await uniqueSlug(base);
     const ch = await db.channel.create({
@@ -713,6 +737,7 @@ export async function registerServerRoutes(app: FastifyInstance) {
         serverId,
         type: parsed.data.type ?? "TEXT",
         description: parsed.data.description?.trim() || null,
+        expiresAt: expiresAtDate,
       },
     });
     emitChannelCreated(serverId, {
@@ -732,6 +757,7 @@ export async function registerServerRoutes(app: FastifyInstance) {
         type: ch.type,
         position: ch.position,
         description: ch.description,
+        expiresAt: ch.expiresAt?.toISOString() ?? null,
         createdAt: ch.createdAt.toISOString(),
       },
     };
@@ -766,9 +792,31 @@ export async function registerServerRoutes(app: FastifyInstance) {
         parsed.data.name === undefined &&
         parsed.data.description === undefined &&
         parsed.data.emoji === undefined &&
-        parsed.data.internal === undefined
+        parsed.data.internal === undefined &&
+        parsed.data.expiresAt === undefined
       ) {
         return reply.status(400).send({ error: "Nothing to update" });
+      }
+      // v0.74 #29: expiresAt validate если задано (NULL = снять expiry).
+      let expiresAtValue: Date | null | undefined = undefined;
+      if (parsed.data.expiresAt !== undefined) {
+        if (parsed.data.expiresAt === null) {
+          expiresAtValue = null;
+        } else {
+          const d = new Date(parsed.data.expiresAt);
+          if (Number.isNaN(d.getTime())) {
+            return reply.status(400).send({ error: "Invalid expiresAt" });
+          }
+          const minDelta = 5 * 60 * 1000;
+          const maxDelta = 30 * 24 * 60 * 60 * 1000;
+          const delta = d.getTime() - Date.now();
+          if (delta < minDelta || delta > maxDelta) {
+            return reply
+              .status(400)
+              .send({ error: "expiresAt must be 5min..30d from now" });
+          }
+          expiresAtValue = d;
+        }
       }
       const channel = await db.channel.findUnique({
         where: { id: channelId },
@@ -798,6 +846,7 @@ export async function registerServerRoutes(app: FastifyInstance) {
         description?: string | null;
         emoji?: string | null;
         internal?: boolean;
+        expiresAt?: Date | null;
       } = {};
       if (parsed.data.name !== undefined) {
         data.name = parsed.data.name.trim();
@@ -813,6 +862,9 @@ export async function registerServerRoutes(app: FastifyInstance) {
       if (parsed.data.internal !== undefined) {
         data.internal = parsed.data.internal;
       }
+      if (expiresAtValue !== undefined) {
+        data.expiresAt = expiresAtValue;
+      }
       const updated = await db.channel.update({
         where: { id: channelId },
         data,
@@ -825,6 +877,7 @@ export async function registerServerRoutes(app: FastifyInstance) {
           description: true,
           emoji: true,
           internal: true,
+          expiresAt: true,
           serverId: true,
         },
       });
@@ -837,6 +890,7 @@ export async function registerServerRoutes(app: FastifyInstance) {
         position: updated.position,
         description: updated.description,
         emoji: updated.emoji,
+        expiresAt: updated.expiresAt?.toISOString() ?? null,
       });
       return {
         channel: {
@@ -848,6 +902,7 @@ export async function registerServerRoutes(app: FastifyInstance) {
           description: updated.description,
           emoji: updated.emoji,
           internal: updated.internal,
+          expiresAt: updated.expiresAt?.toISOString() ?? null,
         },
       };
     },

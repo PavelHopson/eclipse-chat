@@ -34,6 +34,13 @@ const AI_MENTION_KEYWORDS: ReadonlyArray<{ kw: string; role: BotRoleValue }> = [
   { kw: "знания", role: "KNOWLEDGE" },
   { kw: "sales", role: "SALES" },
   { kw: "продажи", role: "SALES" },
+  // v0.74 #18 phase 1: новые роли.
+  { kw: "support", role: "SUPPORT" },
+  { kw: "поддержка", role: "SUPPORT" },
+  { kw: "хелп", role: "SUPPORT" },
+  { kw: "architect", role: "ARCHITECT" },
+  { kw: "архитектор", role: "ARCHITECT" },
+  { kw: "арх", role: "ARCHITECT" },
   { kw: "ai", role: "GENERIC" },
   { kw: "ии", role: "GENERIC" },
   { kw: "аи", role: "GENERIC" },

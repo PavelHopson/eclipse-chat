@@ -23,6 +23,9 @@ export type ChannelRow = {
   /** v0.47 Client Mode v2: internal-канал виден только OWNER/ADMIN/MOD
    *  когда server.mode=CLIENT. В ENGINEERING serverе flag ignored. */
   internal?: boolean;
+  /** v0.74 #29 phase 1: temporary room. ISO timestamp авто-удаления через
+   *  cron. NULL = постоянный канал. UI показывает countdown badge. */
+  expiresAt: string | null;
   createdAt: string;
   _count: { messages: number };
 };
@@ -36,6 +39,7 @@ type ChannelDto = {
   description?: string | null;
   emoji?: string | null;
   internal?: boolean;
+  expiresAt?: string | null;
   createdAt: string;
   _count?: { messages: number };
 };
@@ -47,6 +51,7 @@ function normalizeChannel(dto: ChannelDto): ChannelRow {
     description: dto.description ?? null,
     emoji: dto.emoji ?? null,
     internal: dto.internal ?? false,
+    expiresAt: dto.expiresAt ?? null,
     _count: dto._count ?? { messages: 0 },
   };
 }
@@ -112,6 +117,7 @@ export function useChannels(serverId: string | null, socket: Socket | null) {
             position: p.position,
             description: null,
             emoji: null,
+            expiresAt: p.expiresAt ?? null,
             createdAt: p.createdAt,
             _count: { messages: 0 },
           },
@@ -140,6 +146,7 @@ export function useChannels(serverId: string | null, socket: Socket | null) {
                 position: p.position,
                 description: p.description,
                 emoji: p.emoji,
+                expiresAt: p.expiresAt ?? c.expiresAt ?? null,
               }
             : c,
         ),
@@ -199,15 +206,24 @@ export function useChannels(serverId: string | null, socket: Socket | null) {
   }, [selectedChannelId]);
 
   const createChannel = useCallback(
-    async (name: string, type: ChannelType = "TEXT"): Promise<ChannelRow | null> => {
+    async (
+      name: string,
+      type: ChannelType = "TEXT",
+      options: { expiresAt?: string | null } = {},
+    ): Promise<ChannelRow | null> => {
       if (!serverId) return null;
       setError(null);
       try {
+        const body: { name: string; type: ChannelType; expiresAt?: string } = {
+          name,
+          type,
+        };
+        if (options.expiresAt) body.expiresAt = options.expiresAt;
         const data = await apiJson<{ channel: ChannelDto }>(
           `/api/servers/${encodeURIComponent(serverId)}/channels`,
           {
             method: "POST",
-            body: JSON.stringify({ name, type }),
+            body: JSON.stringify(body),
           },
         );
         const created = normalizeChannel({ ...data.channel, _count: { messages: 0 } });
@@ -233,6 +249,8 @@ export function useChannels(serverId: string | null, socket: Socket | null) {
         emoji?: string | null;
         /** v0.47 Client Mode v2: toggle internal flag. */
         internal?: boolean;
+        /** v0.74 #29: установить/снять авто-удаление (NULL = снять). */
+        expiresAt?: string | null;
       },
     ): Promise<boolean> => {
       setError(null);
@@ -258,6 +276,7 @@ export function useChannels(serverId: string | null, socket: Socket | null) {
                   description: updated.description,
                   emoji: updated.emoji,
                   internal: updated.internal,
+                  expiresAt: updated.expiresAt,
                 }
               : c,
           ),

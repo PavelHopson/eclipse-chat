@@ -4,7 +4,14 @@
  * новой инфры в monorepo'е). При изменении enum — синхронизировать оба файла
  * вручную + миграцию в schema.prisma.
  */
-export type BotRole = "GENERIC" | "MODERATOR" | "PM" | "KNOWLEDGE" | "SALES";
+export type BotRole =
+  | "GENERIC"
+  | "MODERATOR"
+  | "PM"
+  | "KNOWLEDGE"
+  | "SALES"
+  | "SUPPORT"
+  | "ARCHITECT";
 
 export const BOT_ROLES: readonly BotRole[] = [
   "GENERIC",
@@ -12,6 +19,8 @@ export const BOT_ROLES: readonly BotRole[] = [
   "PM",
   "KNOWLEDGE",
   "SALES",
+  "SUPPORT",
+  "ARCHITECT",
 ] as const;
 
 /** Короткий RU-лейбл (chip-badge). */
@@ -21,6 +30,8 @@ export const BOT_ROLE_LABELS: Record<BotRole, string> = {
   PM: "Менеджер",
   KNOWLEDGE: "База знаний",
   SALES: "Продажи",
+  SUPPORT: "Поддержка",
+  ARCHITECT: "Архитектор",
 };
 
 /** Однострочное описание роли — для help-text'а в селекторе при создании. */
@@ -30,6 +41,8 @@ export const BOT_ROLE_DESCRIPTIONS: Record<BotRole, string> = {
   PM: "Отслеживает задачи, решения, follow-up. Напоминает о сроках.",
   KNOWLEDGE: "Отвечает на вопросы по контексту сервера.",
   SALES: "Sales-ассистент: клиентские диалоги, мягкий тон.",
+  SUPPORT: "Helpdesk: FAQ, triage, routing к человеку при сложном кейсе.",
+  ARCHITECT: "Technical-сводки, decisions, рекомендации по архитектуре.",
 };
 
 /**
@@ -82,6 +95,20 @@ export const BOT_ROLE_COLORS: Record<BotRole, RoleColor> = {
     fg: "hsl(160 70% 65%)",
     bg: "hsl(160 60% 55% / 0.14)",
     border: "hsl(160 60% 50% / 0.45)",
+  },
+  SUPPORT: {
+    // light-violet — тёплый и спокойный для helpdesk
+    hsl: "275 55% 65%",
+    fg: "hsl(275 70% 75%)",
+    bg: "hsl(275 55% 65% / 0.14)",
+    border: "hsl(275 55% 60% / 0.45)",
+  },
+  ARCHITECT: {
+    // teal — structural, technical, calm
+    hsl: "180 55% 50%",
+    fg: "hsl(180 75% 65%)",
+    bg: "hsl(180 55% 50% / 0.14)",
+    border: "hsl(180 55% 45% / 0.45)",
   },
 };
 

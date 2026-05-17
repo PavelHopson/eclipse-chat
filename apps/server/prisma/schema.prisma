@@ -229,6 +229,11 @@ enum ChannelType {
   TEXT
   VOICE
   BROADCAST
+  /// v0.74 #16 phase 1: execution-комната. Чат заменяется на встроенный
+  /// channel-scoped StatusBoard kanban (filter actions по channelId).
+  /// Сообщения всё ещё пишутся (вне kanban — могут идти как "обсуждение"),
+  /// но primary view — Status Board, не feed.
+  EXECUTION
 }
 
 /// Manual presence status — user-controlled. ONLINE = default (auto от
@@ -271,6 +276,10 @@ enum BotRole {
   PM
   KNOWLEDGE
   SALES
+  /// v0.74 #18 phase 1: helpdesk-агент. @support / @поддержка mention.
+  SUPPORT
+  /// v0.74 #18 phase 1: architecture/tech-summaries. @architect / @архитектор.
+  ARCHITECT
 }
 
 /// Статус инцидента. OPEN = разбор идёт, RESOLVED = закрыт + post-mortem сгенерён.
@@ -456,6 +465,10 @@ model Channel {
   /// когда Server.mode = CLIENT. В ENGINEERING serverе flag ignored (все
   /// каналы видны всем members). Channel rename/delete не зависят от flag.
   internal    Boolean    @default(false)
+  /// v0.74 #29 phase 1: temporary rooms. Если задано — канал авто-удаляется
+  /// cron'ом после `expiresAt`. UI показывает countdown badge в chat-header.
+  /// NULL = постоянный канал. Hard delete (cascade messages/actions).
+  expiresAt   DateTime?
   /// Если канал — incident-канал, ссылка на Incident. Unique (1-to-1).
   /// Null для обычных каналов. UI рисует incident badge если set.
   incidentId  String?    @unique
@@ -467,6 +480,8 @@ model Channel {
   visits    ChannelLastVisit[]
   tables    Table[]
   musicSession MusicSession?
+
+  @@index([expiresAt])
 }
 
 /// Сообщение. Может принадлежать ЛИБО серверному каналу (`channelId`),

@@ -68,9 +68,10 @@ export function emitChannelCreated(
     serverId: string;
     name: string;
     slug: string;
-    type: "TEXT" | "VOICE" | "BROADCAST";
+    type: "TEXT" | "VOICE" | "BROADCAST" | "EXECUTION";
     position: number;
     createdAt: string;
+    expiresAt?: string | null;
   },
 ) {
   io?.to(`server:${serverId}`).emit("channel:created", payload);
@@ -99,10 +100,11 @@ export function emitChannelUpdated(
     serverId: string;
     name: string;
     slug: string;
-    type: "TEXT" | "VOICE" | "BROADCAST";
+    type: "TEXT" | "VOICE" | "BROADCAST" | "EXECUTION";
     position: number;
     description: string | null;
     emoji: string | null;
+    expiresAt?: string | null;
   },
 ) {
   io?.to(`server:${serverId}`).emit("channel:updated", payload);

@@ -29,6 +29,8 @@ type Props = {
   onTogglePlayPause: () => void | Promise<void>;
   onSkip: () => void | Promise<void>;
   onStop: () => void | Promise<void>;
+  /** v0.74 #32 phase 3: open big expand-view modal. */
+  onExpand?: () => void;
 };
 
 const wrap: CSSProperties = {
@@ -86,6 +88,7 @@ export function MusicMiniPlayer({
   onTogglePlayPause,
   onSkip,
   onStop,
+  onExpand,
 }: Props) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [durationMs, setDurationMs] = useState<number | null>(null);
@@ -158,7 +161,10 @@ export function MusicMiniPlayer({
           </svg>
         )}
       </button>
-      <span
+      <button
+        type="button"
+        onClick={onExpand}
+        disabled={!onExpand}
         style={{
           minWidth: 0,
           maxWidth: 200,
@@ -167,11 +173,17 @@ export function MusicMiniPlayer({
           overflow: "hidden",
           textOverflow: "ellipsis",
           whiteSpace: "nowrap",
+          background: "transparent",
+          border: 0,
+          padding: 0,
+          cursor: onExpand ? "pointer" : "default",
+          fontSize: "inherit",
+          textAlign: "left",
         }}
-        title={trackName}
+        title={onExpand ? `${trackName} — открыть плеер` : trackName}
       >
         {isVoiceMessage ? "Голосовое" : trackName}
-      </span>
+      </button>
       <span
         style={{
           width: 70,

@@ -14,11 +14,14 @@ import {
 import { maybeAutoRespond, maybeReplyToMention } from "../ai/assistant.js";
 import { fireMessageCreatedWebhooks } from "../bots/webhooks.js";
 
-const channelTypeSchema = z.enum(["TEXT", "VOICE", "BROADCAST"]);
+const channelTypeSchema = z.enum(["TEXT", "VOICE", "BROADCAST", "EXECUTION"]);
 
 const createChannelBody = z.object({
   name: z.string().min(1).max(80),
   type: channelTypeSchema.optional(),
+  /// v0.74 #29 phase 1: optional auto-expiry. ISO timestamp в будущем,
+  /// max 30 дней вперёд. NULL/undefined = постоянный канал.
+  expiresAt: z.string().datetime().nullable().optional(),
 });
 
 const attachmentInputSchema = z.object({

@@ -108,6 +108,8 @@ const sessionInclude = {
       url: true,
       thumbnailUrl: true,
       size: true,
+      // v0.74 #32 phase 3: waveform peaks для expand-modal full waveform.
+      waveformPeaks: true,
       transcript: true,
       transcriptStatus: true,
     },
@@ -130,6 +132,7 @@ function serializeSession(s: {
     url: string;
     thumbnailUrl: string | null;
     size: number;
+    waveformPeaks?: unknown;
   } | null;
   startedAt: Date | null;
   positionMs: number;
@@ -150,6 +153,11 @@ function serializeSession(s: {
           url: s.currentTrack.url,
           thumbnailUrl: s.currentTrack.thumbnailUrl,
           size: s.currentTrack.size,
+          // v0.74 #32 phase 3: peaks могут быть Json (массив 0..100 чисел)
+          // или null для legacy attachments — клиент fallback на baseline.
+          waveformPeaks: Array.isArray(s.currentTrack.waveformPeaks)
+            ? (s.currentTrack.waveformPeaks as number[])
+            : null,
         }
       : null,
     startedAt: s.startedAt?.toISOString() ?? null,

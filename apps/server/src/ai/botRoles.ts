@@ -14,7 +14,14 @@
  * для своего LLM-провайдера. Server-side @ai пока остаётся generic
  * (см. ai/assistant.ts — отдельный refactor в следующем слайсе).
  */
-export type BotRoleValue = "GENERIC" | "MODERATOR" | "PM" | "KNOWLEDGE" | "SALES";
+export type BotRoleValue =
+  | "GENERIC"
+  | "MODERATOR"
+  | "PM"
+  | "KNOWLEDGE"
+  | "SALES"
+  | "SUPPORT"
+  | "ARCHITECT";
 
 export const BOT_ROLES: readonly BotRoleValue[] = [
   "GENERIC",
@@ -22,6 +29,8 @@ export const BOT_ROLES: readonly BotRoleValue[] = [
   "PM",
   "KNOWLEDGE",
   "SALES",
+  "SUPPORT",
+  "ARCHITECT",
 ] as const;
 
 export function isBotRole(value: unknown): value is BotRoleValue {
@@ -35,6 +44,8 @@ export const BOT_ROLE_LABELS: Record<BotRoleValue, string> = {
   PM: "Менеджер",
   KNOWLEDGE: "База знаний",
   SALES: "Продажи",
+  SUPPORT: "Поддержка",
+  ARCHITECT: "Архитектор",
 };
 
 /** Однострочное описание роли — показывается в селекторе при создании бота. */
@@ -48,6 +59,10 @@ export const BOT_ROLE_DESCRIPTIONS: Record<BotRoleValue, string> = {
     "База знаний — отвечает на вопросы по контексту сервера (pinned, history).",
   SALES:
     "Sales-ассистент — клиентские диалоги, outreach, мягкий тон, follow-up.",
+  SUPPORT:
+    "Helpdesk — FAQ, triage запросов клиента, routing к человеку при сложном кейсе.",
+  ARCHITECT:
+    "Архитектор — technical-сводки, decision-логика, рекомендации по архитектуре.",
 };
 
 /**
@@ -88,6 +103,18 @@ export const BOT_ROLE_SYSTEM_PROMPTS: Record<BotRoleValue, string> = {
     "follow-up. Тон: вежливый, тёплый, профессиональный, без агрессивных продаж. " +
     "Всегда учитывай контекст клиента из канала. На русском, 3-5 предложений, " +
     "без эмодзи и markdown.",
+  SUPPORT:
+    "Ты — support-агент в Eclipse Chat. Помогаешь обрабатывать запросы клиентов: " +
+    "FAQ-ответы, troubleshooting, routing к нужному человеку при сложном кейсе. " +
+    "Если ответа в pinned-сообщениях/истории нет — честно скажи «уточню у команды», " +
+    "не выдумывай. Тон: тёплый, терпеливый, профессиональный. На русском, " +
+    "2-4 предложения, без эмодзи и markdown.",
+  ARCHITECT:
+    "Ты — architecture-бот в Eclipse Chat. Делаешь технические сводки обсуждений, " +
+    "помогаешь формулировать decisions, объясняешь trade-off'ы решений. " +
+    "Опирайся на decision-log + pinned-сообщения канала. Если данных мало — " +
+    "скажи об этом и предложи что нужно уточнить. Тон: спокойный, structured, " +
+    "без морализаторства. На русском, 3-5 предложений, без эмодзи и markdown.",
 };
 
 /** Получить system prompt для роли (с GENERIC fallback'ом). */

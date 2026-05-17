@@ -25,6 +25,9 @@ export type MusicTrack = {
   url: string;
   thumbnailUrl: string | null;
   size: number;
+  /** v0.74 #32 phase 3: pre-computed waveform peaks (32..256 чисел 0..100)
+   *  для отображения full-width дорожки в expand modal. null для legacy. */
+  waveformPeaks?: number[] | null;
 };
 
 export type MusicSession = {

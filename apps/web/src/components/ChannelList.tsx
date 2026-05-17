@@ -248,6 +248,27 @@ function ChannelGlyph({
       </svg>
     );
   }
+  if (type === "EXECUTION") {
+    // Kanban-board glyph — execution комната, primary view = Status Board.
+    return (
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden
+      >
+        <rect x="3" y="3" width="7" height="9" rx="1" />
+        <rect x="14" y="3" width="7" height="5" rx="1" />
+        <rect x="14" y="12" width="7" height="9" rx="1" />
+        <rect x="3" y="16" width="7" height="5" rx="1" />
+      </svg>
+    );
+  }
   return (
     <span className="ec-channel-hash" aria-hidden>
       #
@@ -344,7 +365,11 @@ export function ChannelList({
     await onReorder(fullOrder);
   };
 
-  const textChannels = channels.filter((c) => c.type === "TEXT");
+  // v0.74 #16: EXECUTION channels группируются с TEXT (это "operational
+  // rooms"), отличаются только icon + рендер mode'ом в AppShell.
+  const textChannels = channels.filter(
+    (c) => c.type === "TEXT" || c.type === "EXECUTION",
+  );
   const broadcastChannels = channels.filter((c) => c.type === "BROADCAST");
   const voiceChannels = channels.filter((c) => c.type === "VOICE");
 
@@ -949,6 +974,22 @@ export function ChannelList({
             </svg>
             Голос
           </button>
+          <button
+            type="button"
+            onClick={() => setDraftType("EXECUTION")}
+            style={typeBtn(draftType === "EXECUTION")}
+            role="tab"
+            aria-selected={draftType === "EXECUTION"}
+            title="Execution-комната — kanban-доска для выполнения задач"
+          >
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <rect x="3" y="3" width="7" height="9" rx="1" />
+              <rect x="14" y="3" width="7" height="5" rx="1" />
+              <rect x="14" y="12" width="7" height="9" rx="1" />
+              <rect x="3" y="16" width="7" height="5" rx="1" />
+            </svg>
+            Канбан
+          </button>
         </div>
         <div style={{ display: "flex", gap: "var(--ec-space-2)" }}>
           <input
@@ -958,6 +999,8 @@ export function ChannelList({
                 ? "Новая голосовая комната…"
                 : draftType === "BROADCAST"
                 ? "Новый канал-вещание…"
+                : draftType === "EXECUTION"
+                ? "Новая kanban-комната…"
                 : "Новая комната…"
             }
             value={draft}
