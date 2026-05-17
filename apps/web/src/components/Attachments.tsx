@@ -5,6 +5,9 @@ import { resolveAssetUrl } from "../lib/assets";
 
 type Props = {
   attachments: Attachment[];
+  /** v0.61: запустить shared listening session для audio attachment'а.
+   *  Когда undefined — кнопка «Слушать вместе» скрыта (например, в DM). */
+  onPlayShared?: (attachmentId: string) => void | Promise<void>;
 };
 
 const wrap: CSSProperties = {
@@ -173,7 +176,13 @@ function VideoItem({ a, onOpen }: { a: Attachment; onOpen: (a: Attachment) => vo
   );
 }
 
-function AudioItem({ a }: { a: Attachment }) {
+function AudioItem({
+  a,
+  onPlayShared,
+}: {
+  a: Attachment;
+  onPlayShared?: (attachmentId: string) => void | Promise<void>;
+}) {
   const src = resolveAssetUrl(a.url) ?? "";
   const isVoice = /^voice-message-/i.test(a.filename);
   const transcriptStatus = a.transcriptStatus ?? "NONE";
@@ -196,19 +205,44 @@ function AudioItem({ a }: { a: Attachment }) {
           error={a.transcriptError ?? null}
         />
       </div>
-      <a
-        href={src}
-        download={a.filename}
-        className="ec-audio-attachment__download"
-        title="Скачать"
-        aria-label="Скачать аудио"
-      >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-          <polyline points="7 10 12 15 17 10" />
-          <line x1="12" y1="15" x2="12" y2="3" />
-        </svg>
-      </a>
+      <div style={{ display: "flex", flexDirection: "column", gap: 4, alignSelf: "flex-start" }}>
+        {onPlayShared && (
+          <button
+            type="button"
+            onClick={() => void onPlayShared(a.id)}
+            title="Слушать вместе с комнатой"
+            aria-label="Слушать вместе"
+            style={{
+              width: 28,
+              height: 28,
+              display: "grid",
+              placeItems: "center",
+              borderRadius: "var(--ec-radius-full)",
+              background: "var(--ec-accent-soft)",
+              color: "var(--ec-accent)",
+              border: "1px solid var(--ec-border-accent)",
+              cursor: "pointer",
+            }}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+              <path d="M8 5v14l11-7z" />
+            </svg>
+          </button>
+        )}
+        <a
+          href={src}
+          download={a.filename}
+          className="ec-audio-attachment__download"
+          title="Скачать"
+          aria-label="Скачать аудио"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" y1="15" x2="12" y2="3" />
+          </svg>
+        </a>
+      </div>
     </div>
   );
 }
@@ -522,7 +556,7 @@ function Lightbox({ a, onClose }: { a: Attachment; onClose: () => void }) {
   );
 }
 
-export function Attachments({ attachments }: Props) {
+export function Attachments({ attachments, onPlayShared }: Props) {
   const [lightbox, setLightbox] = useState<Attachment | null>(null);
   if (attachments.length === 0) return null;
 
@@ -566,7 +600,7 @@ export function Attachments({ attachments }: Props) {
       {audios.length > 0 && (
         <div className="ec-audio-attachment-list">
           {audios.map((a) => (
-            <AudioItem key={a.id} a={a} />
+            <AudioItem key={a.id} a={a} onPlayShared={onPlayShared} />
           ))}
         </div>
       )}

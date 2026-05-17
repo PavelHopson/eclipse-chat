@@ -476,6 +476,18 @@ export function emitAttachmentTranscriptUpdated(
   }
 }
 
+/**
+ * v0.61 shared listening room: emit при любом изменении MusicSession
+ * (start / pause / resume / skip / stop / queue add). Payload null
+ * означает stop / session disposed.
+ */
+export function emitMusicSessionUpdated(
+  channelId: string,
+  payload: object | null,
+) {
+  io?.to(`channel:${channelId}`).emit("music:session:updated", payload);
+}
+
 export function emitDmConversationBumped(
   userId: string,
   payload: {

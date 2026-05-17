@@ -396,6 +396,7 @@ export const SocketEvents = {
   ActionItemCommentAdded: "action:item:comment:added",
   ActionItemCommentDeleted: "action:item:comment:deleted",
   AttachmentTranscriptUpdated: "attachment:transcript:updated",
+  MusicSessionUpdated: "music:session:updated",
   ChannelCreated: "channel:created",
   ChannelDeleted: "channel:deleted",
   ChannelUpdated: "channel:updated",

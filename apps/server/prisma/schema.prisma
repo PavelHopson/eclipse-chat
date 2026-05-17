@@ -57,6 +57,9 @@ model User {
   approvalQueue      ActionItem[]        @relation("ActionItemApprover")
   /// Operational Tables, созданные этим user'ом (v0.59 phase 1).
   createdTables      Table[]             @relation("TableCreator")
+  /// Music sessions где user — host (v0.61). Один user может быть host'ом
+  /// в нескольких channels одновременно.
+  hostedMusicSessions MusicSession[]
   /// Comments написанные этим user'ом на ActionItem'ах (v0.54 drawer).
   actionItemComments ActionItemComment[]
   /// Audit-log записи где user был инициатором (v0.54). Null userId — system.
@@ -454,6 +457,7 @@ model Channel {
   actionItems ActionItem[]
   visits    ChannelLastVisit[]
   tables    Table[]
+  musicSession MusicSession?
 }
 
 /// Сообщение. Может принадлежать ЛИБО серверному каналу (`channelId`),
@@ -699,6 +703,10 @@ model Attachment {
   /// Текст ошибки если transcriptStatus = FAILED. Отображается в UI как
   /// muted-line под audio player'ом.
   transcriptError   String?
+  /// v0.61: если attachment используется как current track в MusicSession.
+  /// Inverse relation для cascade лоgic — при удалении attachment Sessoin's
+  /// currentTrackAttachmentId уйдёт в NULL (SetNull).
+  musicSessions    MusicSession[]
 
   @@index([messageId])
 }
@@ -791,4 +799,35 @@ model TableCell {
 
   @@id([rowId, fieldId])
   @@index([fieldId])
+}
+
+/// Shared listening room (v0.61). Одна сессия per channel; один член
+/// запускает audio-attachment, остальные слышат синхронно.
+///
+/// Sync: server holds authoritative `startedAt` + `positionMs`. Frontend:
+///   position = isPlaying ? (now - startedAt + positionMs) : positionMs
+///
+/// V1 — без late-join drift correction (REST state at join моментально
+/// достаточно для UX). V2 — periodic emit + adaptive seek при drift > 1.5s.
+model MusicSession {
+  id                       String      @id @default(cuid())
+  channelId                String      @unique
+  channel                  Channel     @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  /// Текущий track (Attachment id). Null = idle / track недоступен.
+  currentTrackAttachmentId String?
+  currentTrack             Attachment? @relation(fields: [currentTrackAttachmentId], references: [id], onDelete: SetNull)
+  /// Когда текущий track начал играть (или resumed). Null когда paused/idle.
+  startedAt                DateTime?
+  /// Saved position на момент pause. На resume: startedAt = now; position
+  /// продолжается от этой точки.
+  positionMs               Int         @default(0)
+  isPlaying                Boolean     @default(false)
+  /// JSON-string array of attachmentIds в очереди (после current).
+  queue                    String      @default("[]")
+  /// Host — кто запустил. Pause/resume/skip/stop разрешены host'у или
+  /// MOD+ (override). Add-to-queue разрешено MEMBER+.
+  hostUserId               String
+  host                     User        @relation(fields: [hostUserId], references: [id], onDelete: Cascade)
+  createdAt                DateTime    @default(now())
+  updatedAt                DateTime    @updatedAt
 }

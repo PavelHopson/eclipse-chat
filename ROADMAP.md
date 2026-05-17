@@ -5,10 +5,11 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v0.60.0** (Team Health v3 — week-over-week
-trends + per-channel breakdown + median first-reply response time;
-analytics endpoint расширен on-the-fly без снапшотов, 17.05.2026)
-— https://app.star-crm.ru/eclipse-chat/
+**Текущая версия в проде:** **v0.61.0** (Shared listening room MVP —
+синхронный audio player на канале: «Слушать вместе» на любом
+audio-attachment'е запускает session, mini-player в chat header
+видим всем members, sync через server timestamp без drift-
+correction, 17.05.2026) — https://app.star-crm.ru/eclipse-chat/
 
 > **Сессия 15.05 (вечер)**: v0.28 → v0.47 = 20 prod-деплоев за один заход.
 > AI Agents типология (#6 brief) закрыта полностью. Execution Analytics
@@ -84,6 +85,7 @@ chat и не enterprise prison.
 
 | Версия | Дата | Что |
 |---|---|---|
+| **v0.61.0** | 17.05 | **Shared listening room MVP** — closes engineering #13. Synchronous audio playback на канале: один member жмёт «▶ Слушать вместе» на любом audio-attachment'е в чате, остальные members в той же комнате видят mini-player в chat header и слышат тот же track с одной timeline-позиции. Schema: новая модель `MusicSession` (channelId @unique, currentTrackAttachmentId, startedAt, positionMs, isPlaying, queue Json-string array, hostUserId) — одна сессия per channel. Migration `20260517080000_add_music_session` — additive. Backend: новый `routes/music.ts` с 7 endpoints — get state, start, pause/resume, skip, stop, queue add. Permissions: queue-add разрешено любому member; pause/resume/skip/stop — host или MOD+. Voice channels отвергаются (LiveKit pipeline coupling — phase 2). Source треков — audio/* attachments из того же server'а (не из DM — privacy). Sync: server держит `startedAt` (timestamp последнего play/resume) + `positionMs` (saved offset на pause). Frontend рассчитывает текущую позицию как `isPlaying ? (now - startedAt + positionMs) : positionMs`; mini-player tick'ает каждые 500ms для smooth progress bar. Audio element seek'ит к `position - 150ms` (compensation для perceived latency). Realtime event `music:session:updated` с full payload — клиент получает свежее состояние на каждое action любого member'а. Frontend: `useChannelMusic(channelId, socket)` hook (state + derivedPositionMs + start/togglePlayPause/skip/stop/addToQueue actions). `MusicMiniPlayer` — floating pill в chat header (play/pause + track name + progress bar + position counter + host avatar + queue count badge + skip + stop). `Attachments.AudioItem` получил optional `onPlayShared` callback — accent-coloured «▶» button рядом с download (hidden если callback undefined, e.g. в DM). Trade-offs: без late-join drift-correction (новый member может быть на ~500ms-1.5s offset); без periodic position-sync (v2 если drift станет заметным); без LiveKit interop для VOICE channels; без YouTube/Spotify integration (copyright + privacy). |
 | **v0.60.0** | 17.05 | **Team Health v3** — closes engineering #12. Расширил existing analytics endpoint тремя новыми блоками без снапшотов: (1) **trends** — week-over-week sliding 7-day window для `created`/`closed` counts (current vs prev неделя; вычисляется on-the-fly из ActionItem.createdAt/updatedAt без снапшот-таблицы). (2) **perChannel** — breakdown open/overdue/closed по channelId; channels hydrated с name+type; rows отсортированы по open desc, top-8 рендерятся, overflow → "ещё N". (3) **responseTime** — median latency от root message до первого thread reply за 30-day окно; sample size; null если < 5 обсуждений (`RESPONSE_MIN_SAMPLE`). Exported pure helper `median(values)` для unit-test'ов. Frontend: `TeamHealthData` type extended с `trends`, `perChannel`, `responseTime`. Новый stat-card «Время первого ответа» рядом с «Среднее закрытие» (`formatDuration(ms)` — секунды/минуты/часы/дни). Новая секция `TrendsRibbon` с двумя cells (Создано/Закрыто) — arrow + delta + percentage; «Закрыто» growth — exec colour, «Закрыто» decline — warn; ribbon hidden если активности нет вообще. Новая секция `PerChannelSection` — table-like grid Комната/Открыто/Просроч./Закрыто с monospace numbers и conditional coloring (overdue в warn если >0, closed в exec). Все cuts из v0.30.0 scope cuts now закрыты. |
 | **v0.59.0** | 17.05 | **Operational Tables phase 1** — closes engineering #10 spike. Первый срез HUGE-feature §4 NEXT-GEN — встроенные таблицы внутри пространства как operational surfaces, не отдельная Notion-like page. Schema: новые модели `Table` (id, serverId, channelId?, name, description?, createdBy), `TableField` (name, type, options, position), `TableRow` (position), `TableCell` (composite PK rowId+fieldId, value as string) + enum `TableFieldType` (TEXT/NUMBER/STATUS/DATE — четыре базовых типа в v1, без USER/RELATION/FILE/FORMULA — phase 2+). Migration `20260517060000_add_operational_tables` — additive, новые таблицы пустые. Backend: `routes/tables.ts` с 10 endpoints — list (`GET /api/servers/:id/tables`), create / detail / patch / delete table, add / patch / remove field, add / patch / remove row. Создание таблицы автоматически добавляет дефолтное поле «Название». Row update — bulk через `cells: [{fieldId, value}]`, atomic `$transaction` с upsert на каждую cell + bump table.updatedAt. Empty cell value → delete row (защита от засорения индексов). Membership-only check, без RBAC в phase 1. Frontend: два hooks (`useOperationalTables` list + `useOperationalTable` detail с CRUD ops для rename/addField/updateField/removeField/addRow/updateRow/removeRow). `OperationalTablePanel` — full chat-area replacement, header с inline-edit title + add-column form + add-row button + delete + close, HTML `<table>` с sticky thead + per-type cell editors: TEXT/NUMBER `<input>`, STATUS `<select>` со значениями из options (цветом из status-palette pool), DATE `<input type=date>`. Save on blur (single-cell PATCH вместо bulk). `AddFieldForm` inline под header с STATUS-options textbox через запятую. Field rename via click on header + edit-on-blur. `ChannelList` Context Tree: новая секция «Таблицы» под Overview (рядом с Доской задач / Здоровьем команды), скрыта в Client mode; список с rowCount badge + `+` create button. `AppShell` state `selectedTableId` сбрасывается при смене сервера / channel; render OperationalTablePanel вместо chat когда set. Realtime / relations к ActionItem / AI-fill / drag-reorder fields — out of scope phase 1, foundation под phase 2-3. |
 | **v0.58.0** | 17.05 | **Voice transcription prototype** — closes engineering #9. Audio-attachments (включая voice messages из v0.50) транскрибируются background fire-and-forget после upload. Schema additive: `TranscriptStatus` enum (NONE/PENDING/READY/FAILED) + `Attachment.transcript` + `transcriptStatus` (default NONE) + `transcriptError`. Migration `20260517040000_add_attachment_transcript` — zero-downtime. Backend модуль `ai/transcribe.ts`: OpenAI Whisper API через native `fetch` (без `openai` SDK dep — Pavel anti-pattern про npm-deps), 25 MB лимит на файл (Whisper API constraint), 90s timeout с AbortController, поддерживаемые mime: mp3/mp4/wav/x-wav/ogg/webm/aac. `OPENAI_API_KEY` reuse существующего provider chain — если ключа нет, outcome=NONE и UI показывает audio без transcript блока. `processAttachment` extended: для audio mime возвращает `audioBuffer` (raw bytes для транскрипции, ноль allocation overhead для non-audio). `kickoffTranscription(attachmentId, buffer, mime, filename, context)` — fire-and-forget helper, выставляет PENDING, async вызывает Whisper, обновляет row, emit'ит `attachment:transcript:updated` в channel-room или dm-room (в зависимости от context). Wired в три upload-points: `routes/channels.ts`, `routes/dm.ts`, `routes/threads.ts`. Все три route'а возвращают новые поля через select. Frontend: `AttachmentPayload` extended с optional `transcript` / `transcriptStatus` / `transcriptError` + `AttachmentTranscriptUpdatedPayload` socket event type. `useMessages` и `useDirectMessages` подписаны на новый event — находят attachment по id в `messages[].attachments[]` и обновляют поля. `Attachments.tsx` — новый `TranscriptBlock` render под `AudioItem`: PENDING = shimmer-text "Транскрибируем…", READY = expandable блок с accent-bordered подложкой (свернут на 240 символах, кнопка «Развернуть»), FAILED = muted-line с reason, NONE = nothing. Trade-off v1: OpenAI Whisper only (paid API); future v2 — local Whisper.cpp / Ollama whisper / fallback chain. Также: voice transcription для live voice-channel сессий — отдельная задача (требует LiveKit Egress + recording infrastructure), не в этом срезе. |
@@ -226,33 +228,12 @@ base, ✅ Home command center, ✅ responsive cinematic UI pass.
     icon + расширенный `accept=`. 30 unit-тестов в
     `attachments-sniff.test.ts`.
 
-13. **Shared channel playback / listening room** — синхронный
-    audio-плеер на канале: один участник жмёт ▶ на mp3-attachment'е,
-    все members в канале слышат одновременно с одной timeline-позиции
-    (a-la Spotify Group Session / Telegram voice chats music mode).
-    Schema: `MusicSession { id, channelId @unique, trackAttachmentId,
-    startedAt, pausedAt?, positionMs, queue Json[], hostUserId }`.
-    Sync mechanism: server держит authoritative `startedAt` +
-    `positionMs`, клиент рассчитывает текущий offset как
-    `now - startedAt + positionMs`. Socket events: `music:started`,
-    `music:paused`, `music:position-sync`, `music:queue-updated`,
-    `music:track-changed`. Permissions: queue add — MEMBER+; skip /
-    stop — host или MODERATOR+. Audio source v1 — только uploaded
-    audio attachments из этого сервера (используем существующий
-    `audio/*` whitelist, никакой YouTube/Spotify integration —
-    copyright + AGPL риски). Frontend: floating mini-player в chat
-    header (track name + ▶/⏸ + progress + queue popover) + audio
-    element с `currentTime` setter под server-position. Voice room
-    interop v1: если канал VOICE — music просто **не активна**
-    (избегаем coupling с LiveKit publish flow в первом срезе); v2 —
-    можно publish'ить как отдельный LiveKit audio track. Edge cases:
-    позднее присоединение (новый member слышит с middle position),
-    network jitter (re-sync если drift > 1.5s), seek by host. Средний-
-    большой (M-L, ~3-5 дней). Risk: medium — audio sync edge cases,
-    но additive schema, нет breaking changes. Trade-off vs voice:
-    music — это `shared playback session`, voice — это `live
-    conversation`; оба могут coexist в одном канале со временем, но
-    раздельные state-machines.
+13. ✅ **Shared channel playback / listening room** — MVP закрыт в
+    v0.61.0. Schema (`MusicSession`), 7 routes (state/start/pause/
+    resume/skip/stop/queue), single socket event `music:session:updated`,
+    `MusicMiniPlayer` в chat header, «Слушать вместе» button на audio
+    attachments. Late-join drift-correction, LiveKit interop, periodic
+    position-sync — phase 2.
 
 ## 📋 Открытые follow-ups
 

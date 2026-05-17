@@ -14,6 +14,8 @@ import { IntelligencePanel } from "../components/IntelligencePanel";
 import { ActionItemDrawer } from "../components/ActionItemDrawer";
 import { OperationalTablePanel } from "../components/OperationalTablePanel";
 import { useOperationalTables } from "../hooks/useOperationalTables";
+import { MusicMiniPlayer } from "../components/MusicMiniPlayer";
+import { useChannelMusic } from "../hooks/useChannelMusic";
 import { JoinServerModal } from "../components/JoinServerModal";
 import { MessageInput } from "../components/MessageInput";
 import { MessageList } from "../components/MessageList";
@@ -277,6 +279,9 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     createTable: createOpTable,
     deleteTable: deleteOpTable,
   } = useOperationalTables(activeServerId);
+  // v0.61 shared listening room. Scoped per selected TEXT/BROADCAST channel —
+  // в VOICE сессии не активны (backend отвергнёт).
+  const music = useChannelMusic(selectedChannelId, socket);
   const inDmMode = activeServerId === null;
   const selectedDm = dmConversations.find((c) => c.id === selectedDmId) ?? null;
   const {
@@ -1114,6 +1119,16 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                   </span>
                 </>
               )}
+              {music.session && selectedChannel.type !== "VOICE" && (
+                <MusicMiniPlayer
+                  session={music.session}
+                  derivedPositionMs={music.derivedPositionMs}
+                  currentUserId={user.id}
+                  onTogglePlayPause={() => void music.togglePlayPause()}
+                  onSkip={() => void music.skip()}
+                  onStop={() => void music.stop()}
+                />
+              )}
               {(activeServer?.role === "OWNER" ||
                 activeServer?.role === "ADMIN" ||
                 activeServer?.role === "MODERATOR") && (
@@ -1392,6 +1407,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                 setRightRailCollapsed(false);
                 if (isTabletOrSmaller) setMembersOpen(true);
               }}
+              onPlayShared={(attachmentId) => void music.start(attachmentId)}
             />
             <TypingIndicator users={typingUsers} />
             {broadcastReadOnly ? (

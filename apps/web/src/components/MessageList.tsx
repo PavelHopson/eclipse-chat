@@ -35,6 +35,8 @@ type Props = {
   onToggleActionStatus?: (actionId: string, nextStatus: ActionItemStatus) => Promise<boolean>;
   /** Открыть Thread panel для этого root message. Скрывает кнопку если не задано. */
   onOpenThread?: (messageId: string) => void;
+  /** v0.61: запустить shared listening для audio attachment'а. */
+  onPlayShared?: (attachmentId: string) => void | Promise<void>;
 };
 
 const shell: CSSProperties = {
@@ -262,6 +264,7 @@ export function MessageList({
   onCreateAction,
   onToggleActionStatus,
   onOpenThread,
+  onPlayShared,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -761,7 +764,12 @@ export function MessageList({
                         )}
                       </p>
                     )}
-                    {m.attachments.length > 0 && <Attachments attachments={m.attachments} />}
+                    {m.attachments.length > 0 && (
+                      <Attachments
+                        attachments={m.attachments}
+                        onPlayShared={onPlayShared}
+                      />
+                    )}
                   </>
                 )}
                 {m.failed && onRetry && (
