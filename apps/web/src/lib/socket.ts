@@ -203,6 +203,7 @@ export type IncidentResolvedPayload = {
 export type ActionItemType = "TASK" | "DECISION" | "FOLLOW_UP";
 export type ActionItemStatus = "OPEN" | "DONE";
 export type ActionItemPriority = "LOW" | "NORMAL" | "HIGH" | "URGENT";
+export type ApprovalStatus = "NONE" | "PENDING" | "APPROVED" | "REJECTED";
 
 export type ActionItemPayload = {
   id: string;
@@ -223,6 +224,15 @@ export type ActionItemPayload = {
     avatar: string | null;
   };
   assignee: {
+    id: string;
+    displayName: string;
+    avatar: string | null;
+  } | null;
+  requiresApproval: boolean;
+  approvalStatus: ApprovalStatus;
+  approvalNote: string | null;
+  approvedAt: string | null;
+  approver: {
     id: string;
     displayName: string;
     avatar: string | null;

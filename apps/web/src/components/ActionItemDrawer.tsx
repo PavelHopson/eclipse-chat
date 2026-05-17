@@ -249,6 +249,12 @@ function formatActivity(a: ActionItemActivity): string {
       return `${author}: оставил комментарий`;
     case "COMMENT_DELETED":
       return `${author}: удалил комментарий`;
+    case "APPROVAL_REQUESTED":
+      return `${author}: запросил одобрение`;
+    case "APPROVAL_APPROVED":
+      return `${author}: одобрил`;
+    case "APPROVAL_REJECTED":
+      return `${author}: отклонил`;
     default:
       return author;
   }
@@ -273,16 +279,28 @@ export function ActionItemDrawer({
   onClose,
   onJumpToSource,
 }: Props) {
-  const { detail, loading, error, update, addComment, removeComment } = useActionItem(
-    actionItemId,
-    socket,
-  );
+  const {
+    detail,
+    loading,
+    error,
+    update,
+    addComment,
+    removeComment,
+    requestApproval,
+    decideApproval,
+  } = useActionItem(actionItemId, socket);
 
   const [titleDraft, setTitleDraft] = useState("");
   const [descDraft, setDescDraft] = useState("");
   const [commentDraft, setCommentDraft] = useState("");
   const [submittingComment, setSubmittingComment] = useState(false);
   const [showActivity, setShowActivity] = useState(false);
+  // Approval section state.
+  const [showApprovalForm, setShowApprovalForm] = useState(false);
+  const [approvalApproverId, setApprovalApproverId] = useState<string>("");
+  const [approvalNote, setApprovalNote] = useState("");
+  const [decisionNote, setDecisionNote] = useState("");
+  const [submittingApproval, setSubmittingApproval] = useState(false);
 
   // Sync drafts when detail loads / external update arrives.
   useEffect(() => {
@@ -357,6 +375,24 @@ export function ActionItemDrawer({
     const ok = await addComment(value);
     setSubmittingComment(false);
     if (ok) setCommentDraft("");
+  };
+
+  const submitApprovalRequest = async () => {
+    if (!approvalApproverId) return;
+    setSubmittingApproval(true);
+    const ok = await requestApproval(approvalApproverId, approvalNote.trim() || undefined);
+    setSubmittingApproval(false);
+    if (ok) {
+      setShowApprovalForm(false);
+      setApprovalNote("");
+    }
+  };
+
+  const submitDecision = async (decision: "APPROVED" | "REJECTED") => {
+    setSubmittingApproval(true);
+    const ok = await decideApproval(decision, decisionNote.trim() || undefined);
+    setSubmittingApproval(false);
+    if (ok) setDecisionNote("");
   };
 
   return (
@@ -529,6 +565,31 @@ export function ActionItemDrawer({
                 </div>
               </section>
 
+              {/* Approval */}
+              <section>
+                <h3 style={sectionLabel}>Одобрение</h3>
+                <ApprovalSection
+                  status={detail.approvalStatus}
+                  approver={detail.approver}
+                  approvalNote={detail.approvalNote}
+                  approvedAt={detail.approvedAt}
+                  currentUserId={currentUserId}
+                  members={members}
+                  showForm={showApprovalForm}
+                  setShowForm={setShowApprovalForm}
+                  approverId={approvalApproverId}
+                  setApproverId={setApprovalApproverId}
+                  noteDraft={approvalNote}
+                  setNoteDraft={setApprovalNote}
+                  decisionNote={decisionNote}
+                  setDecisionNote={setDecisionNote}
+                  submitting={submittingApproval}
+                  onRequest={() => void submitApprovalRequest()}
+                  onApprove={() => void submitDecision("APPROVED")}
+                  onReject={() => void submitDecision("REJECTED")}
+                />
+              </section>
+
               {/* Description */}
               <section>
                 <h3 style={sectionLabel}>Описание</h3>
@@ -662,6 +723,401 @@ export function ActionItemDrawer({
         )}
       </aside>
     </>
+  );
+}
+
+type ApprovalSectionProps = {
+  status: "NONE" | "PENDING" | "APPROVED" | "REJECTED";
+  approver: { id: string; displayName: string; avatar: string | null } | null;
+  approvalNote: string | null;
+  approvedAt: string | null;
+  currentUserId: string;
+  members: Array<{
+    userId: string;
+    user: { displayName: string; avatar: string | null };
+  }>;
+  showForm: boolean;
+  setShowForm: (v: boolean) => void;
+  approverId: string;
+  setApproverId: (v: string) => void;
+  noteDraft: string;
+  setNoteDraft: (v: string) => void;
+  decisionNote: string;
+  setDecisionNote: (v: string) => void;
+  submitting: boolean;
+  onRequest: () => void;
+  onApprove: () => void;
+  onReject: () => void;
+};
+
+function ApprovalSection({
+  status,
+  approver,
+  approvalNote,
+  approvedAt,
+  currentUserId,
+  members,
+  showForm,
+  setShowForm,
+  approverId,
+  setApproverId,
+  noteDraft,
+  setNoteDraft,
+  decisionNote,
+  setDecisionNote,
+  submitting,
+  onRequest,
+  onApprove,
+  onReject,
+}: ApprovalSectionProps) {
+  const eligible = members.filter((m) => m.userId !== currentUserId);
+  const isApprover = approver?.id === currentUserId;
+
+  const statusBadge = (label: string, color: string) => (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
+        padding: "0.25rem 0.55rem",
+        borderRadius: "var(--ec-radius-full)",
+        background: "var(--ec-surface-2)",
+        border: `1px solid ${color}`,
+        color,
+        fontSize: "var(--ec-text-2xs)",
+        fontWeight: 700,
+        textTransform: "uppercase",
+        letterSpacing: "var(--ec-tracking-caps)",
+      }}
+    >
+      {label}
+    </span>
+  );
+
+  if (status === "NONE") {
+    return (
+      <div>
+        {!showForm ? (
+          <button
+            type="button"
+            onClick={() => setShowForm(true)}
+            className="ec-btn ec-btn--ghost ec-btn--sm"
+            style={{
+              border: "1px solid var(--ec-border-default)",
+              padding: "0.4rem 0.75rem",
+            }}
+          >
+            Запросить одобрение
+          </button>
+        ) : (
+          <div
+            style={{
+              padding: "var(--ec-space-2) var(--ec-space-3)",
+              background: "var(--ec-surface-2)",
+              borderRadius: "var(--ec-radius-md)",
+              border: "1px solid var(--ec-border-subtle)",
+              display: "flex",
+              flexDirection: "column",
+              gap: "var(--ec-space-2)",
+            }}
+          >
+            <label
+              style={{
+                fontSize: "var(--ec-text-2xs)",
+                color: "var(--ec-text-dim)",
+                textTransform: "uppercase",
+                letterSpacing: "var(--ec-tracking-wide)",
+              }}
+            >
+              Кто одобряет
+            </label>
+            <select
+              value={approverId}
+              onChange={(e) => setApproverId(e.target.value)}
+              style={{ ...inlineInput }}
+            >
+              <option value="">— выбери участника —</option>
+              {eligible.map((m) => (
+                <option key={m.userId} value={m.userId}>
+                  {m.user.displayName}
+                </option>
+              ))}
+            </select>
+            <textarea
+              value={noteDraft}
+              onChange={(e) => setNoteDraft(e.target.value)}
+              placeholder="Комментарий для approver (необязательно)"
+              style={{ ...inlineInput, minHeight: 50, resize: "vertical" }}
+              maxLength={500}
+              rows={2}
+            />
+            <div style={{ display: "flex", gap: "var(--ec-space-2)", justifyContent: "flex-end" }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowForm(false);
+                  setNoteDraft("");
+                }}
+                disabled={submitting}
+                style={{
+                  background: "transparent",
+                  border: "1px solid var(--ec-border-default)",
+                  color: "var(--ec-text-muted)",
+                  padding: "0.4rem 0.75rem",
+                  borderRadius: "var(--ec-radius-sm)",
+                  fontSize: "var(--ec-text-sm)",
+                  cursor: submitting ? "not-allowed" : "pointer",
+                }}
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                onClick={onRequest}
+                disabled={submitting || !approverId}
+                style={{
+                  ...sendBtn,
+                  opacity: !approverId || submitting ? 0.55 : 1,
+                  cursor: !approverId || submitting ? "not-allowed" : "pointer",
+                }}
+              >
+                {submitting ? "Отправляем…" : "Запросить"}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (status === "PENDING") {
+    return (
+      <div
+        style={{
+          padding: "var(--ec-space-3)",
+          background: "var(--ec-surface-2)",
+          borderRadius: "var(--ec-radius-md)",
+          border: "1px solid var(--ec-status-warn)",
+          display: "flex",
+          flexDirection: "column",
+          gap: "var(--ec-space-2)",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {statusBadge("Ожидает", "var(--ec-status-warn)")}
+          <span style={{ fontSize: "var(--ec-text-sm)", color: "var(--ec-text)" }}>
+            Решение от{" "}
+            {approver ? (
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                <Avatar url={approver.avatar} name={approver.displayName} size={16} />
+                <strong style={{ color: "var(--ec-text-strong)" }}>{approver.displayName}</strong>
+              </span>
+            ) : (
+              "неизвестно"
+            )}
+          </span>
+        </div>
+        {approvalNote && (
+          <p
+            style={{
+              margin: 0,
+              fontSize: "var(--ec-text-xs)",
+              color: "var(--ec-text-muted)",
+              fontStyle: "italic",
+              whiteSpace: "pre-wrap",
+            }}
+          >
+            Запрос: {approvalNote}
+          </p>
+        )}
+        {isApprover && (
+          <>
+            <textarea
+              value={decisionNote}
+              onChange={(e) => setDecisionNote(e.target.value)}
+              placeholder="Причина / комментарий (особенно при отклонении)"
+              style={{ ...inlineInput, minHeight: 50, resize: "vertical" }}
+              maxLength={500}
+              rows={2}
+            />
+            <div style={{ display: "flex", gap: "var(--ec-space-2)", justifyContent: "flex-end" }}>
+              <button
+                type="button"
+                onClick={onReject}
+                disabled={submitting}
+                style={{
+                  background: "transparent",
+                  border: "1px solid var(--ec-danger)",
+                  color: "var(--ec-danger)",
+                  padding: "0.4rem 0.75rem",
+                  borderRadius: "var(--ec-radius-sm)",
+                  fontSize: "var(--ec-text-sm)",
+                  fontWeight: 600,
+                  cursor: submitting ? "not-allowed" : "pointer",
+                }}
+              >
+                Отклонить
+              </button>
+              <button
+                type="button"
+                onClick={onApprove}
+                disabled={submitting}
+                style={{
+                  background: "var(--ec-status-exec)",
+                  color: "var(--ec-accent-text, #fff)",
+                  border: "1px solid var(--ec-status-exec)",
+                  padding: "0.4rem 0.75rem",
+                  borderRadius: "var(--ec-radius-sm)",
+                  fontSize: "var(--ec-text-sm)",
+                  fontWeight: 600,
+                  cursor: submitting ? "not-allowed" : "pointer",
+                }}
+              >
+                Одобрить
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  // APPROVED / REJECTED — read-only display + re-request option.
+  const isApproved = status === "APPROVED";
+  return (
+    <div
+      style={{
+        padding: "var(--ec-space-3)",
+        background: "var(--ec-surface-2)",
+        borderRadius: "var(--ec-radius-md)",
+        border: `1px solid ${isApproved ? "var(--ec-status-exec)" : "var(--ec-danger)"}`,
+        display: "flex",
+        flexDirection: "column",
+        gap: "var(--ec-space-2)",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+        {statusBadge(
+          isApproved ? "Одобрено" : "Отклонено",
+          isApproved ? "var(--ec-status-exec)" : "var(--ec-danger)",
+        )}
+        {approver && (
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 4,
+              fontSize: "var(--ec-text-xs)",
+              color: "var(--ec-text-muted)",
+            }}
+          >
+            <Avatar url={approver.avatar} name={approver.displayName} size={16} />
+            {approver.displayName}
+          </span>
+        )}
+        {approvedAt && (
+          <span style={{ fontSize: "var(--ec-text-2xs)", color: "var(--ec-text-dim)" }}>
+            {relativeTime(approvedAt)}
+          </span>
+        )}
+      </div>
+      {approvalNote && (
+        <p
+          style={{
+            margin: 0,
+            fontSize: "var(--ec-text-sm)",
+            color: "var(--ec-text)",
+            whiteSpace: "pre-wrap",
+          }}
+        >
+          {approvalNote}
+        </p>
+      )}
+      <button
+        type="button"
+        onClick={() => setShowForm(true)}
+        style={{
+          alignSelf: "flex-start",
+          background: "transparent",
+          border: "1px solid var(--ec-border-default)",
+          color: "var(--ec-text-muted)",
+          padding: "0.3rem 0.6rem",
+          borderRadius: "var(--ec-radius-sm)",
+          fontSize: "var(--ec-text-2xs)",
+          cursor: "pointer",
+        }}
+      >
+        Запросить заново
+      </button>
+      {showForm && (
+        <div
+          style={{
+            marginTop: "var(--ec-space-2)",
+            padding: "var(--ec-space-2) var(--ec-space-3)",
+            background: "var(--ec-surface-1)",
+            borderRadius: "var(--ec-radius-md)",
+            border: "1px solid var(--ec-border-subtle)",
+            display: "flex",
+            flexDirection: "column",
+            gap: "var(--ec-space-2)",
+          }}
+        >
+          <select
+            value={approverId}
+            onChange={(e) => setApproverId(e.target.value)}
+            style={{ ...inlineInput }}
+          >
+            <option value="">— выбери участника —</option>
+            {eligible.map((m) => (
+              <option key={m.userId} value={m.userId}>
+                {m.user.displayName}
+              </option>
+            ))}
+          </select>
+          <textarea
+            value={noteDraft}
+            onChange={(e) => setNoteDraft(e.target.value)}
+            placeholder="Комментарий для approver (необязательно)"
+            style={{ ...inlineInput, minHeight: 50, resize: "vertical" }}
+            maxLength={500}
+            rows={2}
+          />
+          <div style={{ display: "flex", gap: "var(--ec-space-2)", justifyContent: "flex-end" }}>
+            <button
+              type="button"
+              onClick={() => {
+                setShowForm(false);
+                setNoteDraft("");
+              }}
+              disabled={submitting}
+              style={{
+                background: "transparent",
+                border: "1px solid var(--ec-border-default)",
+                color: "var(--ec-text-muted)",
+                padding: "0.4rem 0.75rem",
+                borderRadius: "var(--ec-radius-sm)",
+                fontSize: "var(--ec-text-sm)",
+                cursor: submitting ? "not-allowed" : "pointer",
+              }}
+            >
+              Отмена
+            </button>
+            <button
+              type="button"
+              onClick={onRequest}
+              disabled={submitting || !approverId}
+              style={{
+                ...sendBtn,
+                opacity: !approverId || submitting ? 0.55 : 1,
+                cursor: !approverId || submitting ? "not-allowed" : "pointer",
+              }}
+            >
+              {submitting ? "Отправляем…" : "Запросить"}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 

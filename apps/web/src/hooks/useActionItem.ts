@@ -24,7 +24,10 @@ export type ActionItemActivityType =
   | "TITLE_CHANGED"
   | "DESCRIPTION_CHANGED"
   | "COMMENT_ADDED"
-  | "COMMENT_DELETED";
+  | "COMMENT_DELETED"
+  | "APPROVAL_REQUESTED"
+  | "APPROVAL_APPROVED"
+  | "APPROVAL_REJECTED";
 
 export type ActionItemComment = {
   id: string;
@@ -216,6 +219,53 @@ export function useActionItem(id: string | null, socket: Socket | null) {
     [id],
   );
 
+  const requestApproval = useCallback(
+    async (approverUserId: string, note?: string): Promise<boolean> => {
+      if (!id) return false;
+      try {
+        const result = await apiJson<{ action: ActionItemPayload }>(
+          `/api/actions/${encodeURIComponent(id)}/approval`,
+          {
+            method: "POST",
+            body: JSON.stringify({ approverUserId, note }),
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+        setDetail((prev) => (prev ? { ...prev, ...result.action } : prev));
+        // Activity log обновится через emit'ы action:item:updated +
+        // reload через socket. Inline reload не нужен — activity feed
+        // обновится lazily при следующем open drawer'а.
+        return true;
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Не удалось запросить одобрение");
+        return false;
+      }
+    },
+    [id],
+  );
+
+  const decideApproval = useCallback(
+    async (decision: "APPROVED" | "REJECTED", note?: string): Promise<boolean> => {
+      if (!id) return false;
+      try {
+        const result = await apiJson<{ action: ActionItemPayload }>(
+          `/api/actions/${encodeURIComponent(id)}/approval/decision`,
+          {
+            method: "POST",
+            body: JSON.stringify({ decision, note }),
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+        setDetail((prev) => (prev ? { ...prev, ...result.action } : prev));
+        return true;
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Не удалось обработать одобрение");
+        return false;
+      }
+    },
+    [id],
+  );
+
   return {
     detail,
     loading,
@@ -224,5 +274,7 @@ export function useActionItem(id: string | null, socket: Socket | null) {
     update,
     addComment,
     removeComment,
+    requestApproval,
+    decideApproval,
   };
 }

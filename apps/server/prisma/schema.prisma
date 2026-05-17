@@ -53,6 +53,8 @@ model User {
   reactions        Reaction[]
   createdActionItems ActionItem[]        @relation("ActionItemCreator")
   assignedActionItems ActionItem[]       @relation("ActionItemAssignee")
+  /// Items на которых я approver (v0.55). Pending → approver_userId = me.
+  approvalQueue      ActionItem[]        @relation("ActionItemApprover")
   /// Comments написанные этим user'ом на ActionItem'ах (v0.54 drawer).
   actionItemComments ActionItemComment[]
   /// Audit-log записи где user был инициатором (v0.54). Null userId — system.
@@ -299,6 +301,20 @@ enum ActionItemActivityType {
   DESCRIPTION_CHANGED
   COMMENT_ADDED
   COMMENT_DELETED
+  APPROVAL_REQUESTED
+  APPROVAL_APPROVED
+  APPROVAL_REJECTED
+}
+
+/// Статус одобрения action item (v0.55). Отдельный axis от ActionItemStatus —
+/// item может быть DONE и не требовать approval, или OPEN и быть APPROVED.
+/// Lifecycle: NONE → PENDING → APPROVED / REJECTED. Только approver может
+/// перевести из PENDING в финальное состояние.
+enum ApprovalStatus {
+  NONE
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 /// Сервер — контейнер каналов и участников. Создатель автоматически
@@ -484,6 +500,19 @@ model ActionItem {
   assigneeUserId  String?
   assignee        User?            @relation("ActionItemAssignee", fields: [assigneeUserId], references: [id], onDelete: SetNull)
 
+  /// v0.55 approval flow. Default state — NONE (одобрение не требуется).
+  /// Когда кто-то делает request approval — переключается в PENDING с
+  /// заполненным approverUserId.
+  requiresApproval Boolean        @default(false)
+  approverUserId   String?
+  approver         User?          @relation("ActionItemApprover", fields: [approverUserId], references: [id], onDelete: SetNull)
+  approvalStatus   ApprovalStatus @default(NONE)
+  /// Необязательная текстовая причина approve/reject (например, для reject
+  /// объяснение). Frontend показывает в Approval section если задан.
+  approvalNote     String?
+  /// Timestamp финального approve/reject (null пока PENDING/NONE).
+  approvedAt       DateTime?
+
   comments        ActionItemComment[]
   activities      ActionItemActivity[]
 
@@ -491,6 +520,7 @@ model ActionItem {
   @@index([channelId, status, createdAt])
   @@index([serverId, status, createdAt])
   @@index([assigneeUserId, status])
+  @@index([approverUserId, approvalStatus])
 }
 
 /// Comments thread на ActionItem — v0.54 detail drawer.

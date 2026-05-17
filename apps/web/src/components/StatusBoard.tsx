@@ -200,6 +200,36 @@ function dueChip(dueAt: string | null): { label: string; color: string } | null 
   };
 }
 
+/**
+ * Approval chip — visible на cards с активным approval workflow.
+ * PENDING = warn (ожидает), APPROVED = exec (зелёный), REJECTED = danger.
+ */
+function ApprovalChip({ status }: { status: "PENDING" | "APPROVED" | "REJECTED" }) {
+  const map = {
+    PENDING: { label: "одобрение?", color: "var(--ec-status-warn)" },
+    APPROVED: { label: "одобрено", color: "var(--ec-status-exec)" },
+    REJECTED: { label: "отклонено", color: "var(--ec-danger)" },
+  } as const;
+  const meta = map[status];
+  return (
+    <span
+      style={{
+        fontSize: "0.58rem",
+        fontWeight: 700,
+        textTransform: "uppercase",
+        letterSpacing: "0.04em",
+        padding: "0.08rem 0.4rem",
+        borderRadius: "var(--ec-radius-full)",
+        color: meta.color,
+        background: `color-mix(in srgb, ${meta.color} 14%, transparent)`,
+        border: `1px solid color-mix(in srgb, ${meta.color} 40%, transparent)`,
+      }}
+    >
+      {meta.label}
+    </span>
+  );
+}
+
 function Card({
   item,
   channelName,
@@ -295,6 +325,9 @@ function Card({
             >
               {chip.label}
             </span>
+          )}
+          {item.approvalStatus !== "NONE" && (
+            <ApprovalChip status={item.approvalStatus} />
           )}
         </span>
       </button>

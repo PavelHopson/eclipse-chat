@@ -45,6 +45,16 @@ const createCommentBody = z.object({
   content: z.string().trim().min(1).max(2000),
 });
 
+const requestApprovalBody = z.object({
+  approverUserId: z.string().min(1),
+  note: z.string().max(500).optional(),
+});
+
+const decideApprovalBody = z.object({
+  decision: z.enum(["APPROVED", "REJECTED"]),
+  note: z.string().max(500).optional(),
+});
+
 function deriveActionTitle(type: z.infer<typeof actionTypeSchema>, content: string): string {
   const compact = content.replace(/\s+/g, " ").trim();
   if (compact.length > 0) {
@@ -522,6 +532,145 @@ export async function registerActionRoutes(app: FastifyInstance) {
       };
       emitActionItemCommentAdded(item.channelId, item.serverId, payload);
       return { comment: payload };
+    },
+  );
+
+  /**
+   * v0.55: POST /api/actions/:id/approval — запрос одобрения. Любой member
+   * может назначить approver'а (это не обязательно creator/assignee). Сменяет
+   * approvalStatus на PENDING и записывает APPROVAL_REQUESTED в activity-log.
+   *
+   * Идемпотентность: повторный POST с другим approver'ом — заменит approver
+   * (audit log сохраняет всю историю). С тем же — re-request разрешён
+   * (нет error, повторное событие в activity).
+   */
+  app.post(
+    "/api/actions/:id/approval",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const userId = getUserId(req);
+      if (!userId) return reply.status(401).send({ error: "Unauthorized" });
+      const { id: actionId } = req.params as { id: string };
+      const parsed = requestApprovalBody.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.status(400).send({ error: "Invalid body" });
+      }
+      const item = await db.actionItem.findUnique({
+        where: { id: actionId },
+        select: { id: true, serverId: true, channelId: true, approvalStatus: true },
+      });
+      if (!item) return reply.status(404).send({ error: "Action not found" });
+      const member = await db.member.findUnique({
+        where: { userId_serverId: { userId, serverId: item.serverId } },
+        select: { id: true },
+      });
+      if (!member) return reply.status(403).send({ error: "Not a member of this server" });
+      const approverMember = await db.member.findUnique({
+        where: {
+          userId_serverId: { userId: parsed.data.approverUserId, serverId: item.serverId },
+        },
+        select: { id: true },
+      });
+      if (!approverMember) {
+        return reply
+          .status(400)
+          .send({ error: "Approver is not a member of this server" });
+      }
+      const updated = await db.$transaction(async (tx) => {
+        const result = await tx.actionItem.update({
+          where: { id: actionId },
+          data: {
+            requiresApproval: true,
+            approverUserId: parsed.data.approverUserId,
+            approvalStatus: "PENDING",
+            approvalNote: parsed.data.note ?? null,
+            // Re-request обнуляет approvedAt — это снова pending.
+            approvedAt: null,
+          },
+          include: actionItemInclude,
+        });
+        await tx.actionItemActivity.create({
+          data: {
+            actionItemId: actionId,
+            userId,
+            type: "APPROVAL_REQUESTED",
+            payload: activityPayload({
+              approverUserId: parsed.data.approverUserId,
+              note: parsed.data.note ?? null,
+            }),
+          },
+        });
+        return result;
+      });
+      const payload = serializeActionItem(updated);
+      emitActionItemUpdated(item.channelId, payload);
+      return { action: payload };
+    },
+  );
+
+  /**
+   * v0.55: POST /api/actions/:id/approval/decision — approver делает решение.
+   * Только user указанный как approverUserId может вызвать. Decision =
+   * APPROVED или REJECTED, optional note.
+   */
+  app.post(
+    "/api/actions/:id/approval/decision",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const userId = getUserId(req);
+      if (!userId) return reply.status(401).send({ error: "Unauthorized" });
+      const { id: actionId } = req.params as { id: string };
+      const parsed = decideApprovalBody.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.status(400).send({ error: "Invalid body" });
+      }
+      const item = await db.actionItem.findUnique({
+        where: { id: actionId },
+        select: {
+          id: true,
+          serverId: true,
+          channelId: true,
+          approverUserId: true,
+          approvalStatus: true,
+        },
+      });
+      if (!item) return reply.status(404).send({ error: "Action not found" });
+      if (item.approverUserId !== userId) {
+        return reply
+          .status(403)
+          .send({ error: "Only the designated approver can decide" });
+      }
+      if (item.approvalStatus !== "PENDING") {
+        return reply
+          .status(409)
+          .send({ error: "Approval is not pending", status: item.approvalStatus });
+      }
+      const now = new Date();
+      const updated = await db.$transaction(async (tx) => {
+        const result = await tx.actionItem.update({
+          where: { id: actionId },
+          data: {
+            approvalStatus: parsed.data.decision,
+            approvalNote: parsed.data.note ?? null,
+            approvedAt: now,
+          },
+          include: actionItemInclude,
+        });
+        await tx.actionItemActivity.create({
+          data: {
+            actionItemId: actionId,
+            userId,
+            type: parsed.data.decision === "APPROVED"
+              ? "APPROVAL_APPROVED"
+              : "APPROVAL_REJECTED",
+            payload: activityPayload({ note: parsed.data.note ?? null }),
+          },
+        });
+        return result;
+      });
+      const payload = serializeActionItem(updated);
+      emitActionItemUpdated(item.channelId, payload);
+      return { action: payload };
     },
   );
 

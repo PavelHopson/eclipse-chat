@@ -15,6 +15,13 @@ export const actionItemInclude = {
       avatar: true,
     },
   },
+  approver: {
+    select: {
+      id: true,
+      displayName: true,
+      avatar: true,
+    },
+  },
 } satisfies Prisma.ActionItemInclude;
 
 /**
@@ -75,6 +82,17 @@ export function serializeActionItem(item: ActionItemWithRelations) {
           id: item.assignee.id,
           displayName: item.assignee.displayName,
           avatar: item.assignee.avatar,
+        }
+      : null,
+    requiresApproval: item.requiresApproval,
+    approvalStatus: item.approvalStatus,
+    approvalNote: item.approvalNote,
+    approvedAt: item.approvedAt?.toISOString() ?? null,
+    approver: item.approver
+      ? {
+          id: item.approver.id,
+          displayName: item.approver.displayName,
+          avatar: item.approver.avatar,
         }
       : null,
   };
