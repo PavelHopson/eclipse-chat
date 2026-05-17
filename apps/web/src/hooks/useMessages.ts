@@ -20,6 +20,7 @@ import {
   type BotTypingPayload,
   type TypingStartPayload,
   type TypingStopPayload,
+  type AttachmentTranscriptUpdatedPayload,
 } from "../lib/socket";
 
 export type TypingUser = {
@@ -493,6 +494,37 @@ export function useMessages(
     socket.on(SocketEvents.ThreadMetaUpdate, onThreadMeta);
     return () => {
       socket.off(SocketEvents.ThreadMetaUpdate, onThreadMeta);
+    };
+  }, [socket]);
+
+  // v0.58 voice transcription: подписываемся на attachment:transcript:updated,
+  // ищем attachment в messages-array и обновляем его поля. attachmentId
+  // уникален в БД, так что matching по id безопасен.
+  useEffect(() => {
+    if (!socket) return;
+    const onTranscript = (p: AttachmentTranscriptUpdatedPayload) => {
+      setMessages((prev) =>
+        prev.map((m) => {
+          if (!m.attachments?.some((a) => a.id === p.attachmentId)) return m;
+          return {
+            ...m,
+            attachments: m.attachments.map((a) =>
+              a.id === p.attachmentId
+                ? {
+                    ...a,
+                    transcript: p.transcript,
+                    transcriptStatus: p.transcriptStatus,
+                    transcriptError: p.transcriptError,
+                  }
+                : a,
+            ),
+          };
+        }),
+      );
+    };
+    socket.on(SocketEvents.AttachmentTranscriptUpdated, onTranscript);
+    return () => {
+      socket.off(SocketEvents.AttachmentTranscriptUpdated, onTranscript);
     };
   }, [socket]);
 

@@ -455,6 +455,27 @@ export function emitDmReactionRemoved(
  *
  * Шлём индивидуально каждому участнику в его user-room `user:${userId}`.
  */
+/**
+ * v0.58: транскрипция audio-attachment'а обновилась — emit в room того
+ * message'а. Если message в channel — channel:${channelId}; если в DM —
+ * dm:${conversationId}. UI пересчитывает status badge и render transcript.
+ */
+export function emitAttachmentTranscriptUpdated(
+  context: { channelId: string | null; conversationId: string | null },
+  payload: {
+    attachmentId: string;
+    transcriptStatus: "NONE" | "PENDING" | "READY" | "FAILED";
+    transcript: string | null;
+    transcriptError: string | null;
+  },
+) {
+  if (context.channelId) {
+    io?.to(`channel:${context.channelId}`).emit("attachment:transcript:updated", payload);
+  } else if (context.conversationId) {
+    io?.to(`dm:${context.conversationId}`).emit("attachment:transcript:updated", payload);
+  }
+}
+
 export function emitDmConversationBumped(
   userId: string,
   payload: {

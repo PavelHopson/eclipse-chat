@@ -11,6 +11,7 @@ import {
 import {
   ATTACHMENTS_PER_MESSAGE,
   MESSAGE_BODY_LIMIT_WITH_ATTACHMENTS,
+  kickoffTranscription,
   processAttachment,
   unlinkAttachmentFiles,
 } from "../attachments.js";
@@ -630,6 +631,9 @@ export async function registerDmRoutes(app: FastifyInstance) {
               height: true,
               thumbnailUrl: true,
               position: true,
+              transcript: true,
+              transcriptStatus: true,
+              transcriptError: true,
             },
             orderBy: { position: "asc" },
           },
@@ -751,6 +755,11 @@ export async function registerDmRoutes(app: FastifyInstance) {
             },
           });
           processedAttachments.push(created);
+          // v0.58: fire-and-forget транскрипция аудио в DM. Контекст —
+          // conversationId (не channelId), socket emit пойдёт в dm-room.
+          kickoffTranscription(created.id, proc.audioBuffer, proc.mimeType, proc.filename, {
+            conversationId,
+          });
         } catch (err) {
           // Откатим message при provoke attachment failure
           await db.message.delete({ where: { id: m.id } });

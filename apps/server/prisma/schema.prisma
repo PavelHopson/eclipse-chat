@@ -317,6 +317,17 @@ enum ApprovalStatus {
   REJECTED
 }
 
+/// Статус транскрипции аудио-вложения (v0.58). NONE = не запускали (non-audio
+/// файл или OPENAI_API_KEY не сетап); PENDING = в работе fire-and-forget;
+/// READY = transcript заполнен; FAILED = transcript ошибка (error в
+/// transcriptError). UI рендерит status под audio-player.
+enum TranscriptStatus {
+  NONE
+  PENDING
+  READY
+  FAILED
+}
+
 /// Сервер — контейнер каналов и участников. Создатель автоматически
 /// становится Member с role = OWNER.
 model Server {
@@ -665,6 +676,14 @@ model Attachment {
   /// Порядок в message (0-indexed). UI рендерит по position asc.
   position     Int      @default(0)
   createdAt    DateTime @default(now())
+  /// v0.58 voice transcription. Заполняется async после upload audio-файла
+  /// через OpenAI Whisper API (если OPENAI_API_KEY сетап). Null = не было
+  /// попытки / non-audio / провайдер не сетап.
+  transcript        String?
+  transcriptStatus  TranscriptStatus @default(NONE)
+  /// Текст ошибки если transcriptStatus = FAILED. Отображается в UI как
+  /// muted-line под audio player'ом.
+  transcriptError   String?
 
   @@index([messageId])
 }

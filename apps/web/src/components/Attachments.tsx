@@ -176,6 +176,7 @@ function VideoItem({ a, onOpen }: { a: Attachment; onOpen: (a: Attachment) => vo
 function AudioItem({ a }: { a: Attachment }) {
   const src = resolveAssetUrl(a.url) ?? "";
   const isVoice = /^voice-message-/i.test(a.filename);
+  const transcriptStatus = a.transcriptStatus ?? "NONE";
   return (
     <div className={isVoice ? "ec-audio-attachment ec-audio-attachment--voice" : "ec-audio-attachment"}>
       <div className="ec-audio-attachment__icon" aria-hidden>
@@ -189,6 +190,11 @@ function AudioItem({ a }: { a: Attachment }) {
         <div className="ec-audio-attachment__meta">
           {humanSize(a.size)} · {a.mimeType.split("/")[1] ?? "audio"}
         </div>
+        <TranscriptBlock
+          status={transcriptStatus}
+          transcript={a.transcript ?? null}
+          error={a.transcriptError ?? null}
+        />
       </div>
       <a
         href={src}
@@ -203,6 +209,107 @@ function AudioItem({ a }: { a: Attachment }) {
           <line x1="12" y1="15" x2="12" y2="3" />
         </svg>
       </a>
+    </div>
+  );
+}
+
+/**
+ * v0.58: транскрипция аудио-вложения. Рендерит:
+ *  - PENDING: shimmer-line "Транскрибируем…"
+ *  - READY:  expandable блок с текстом (по умолчанию свернут до 3 строк)
+ *  - FAILED: одна muted-строка с reason
+ *  - NONE:   ничего (нет провайдера / не аудио)
+ */
+function TranscriptBlock({
+  status,
+  transcript,
+  error,
+}: {
+  status: "NONE" | "PENDING" | "READY" | "FAILED";
+  transcript: string | null;
+  error: string | null;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  if (status === "NONE") return null;
+  if (status === "PENDING") {
+    return (
+      <div
+        className="ec-shimmer-text"
+        style={{
+          marginTop: 6,
+          fontSize: "var(--ec-text-2xs)",
+          color: "var(--ec-text-dim)",
+          letterSpacing: "var(--ec-tracking-wide)",
+        }}
+      >
+        Транскрибируем…
+      </div>
+    );
+  }
+  if (status === "FAILED") {
+    return (
+      <div
+        style={{
+          marginTop: 6,
+          fontSize: "var(--ec-text-2xs)",
+          color: "var(--ec-text-dim)",
+          fontStyle: "italic",
+        }}
+      >
+        Транскрипция не удалась{error ? ` · ${error.slice(0, 100)}` : ""}
+      </div>
+    );
+  }
+  // READY
+  if (!transcript) return null;
+  const isLong = transcript.length > 240;
+  const shown = expanded || !isLong ? transcript : transcript.slice(0, 240) + "…";
+  return (
+    <div
+      style={{
+        marginTop: 8,
+        padding: "var(--ec-space-2) var(--ec-space-3)",
+        background: "var(--ec-surface-2)",
+        borderRadius: "var(--ec-radius-sm)",
+        borderLeft: "2px solid var(--ec-accent)",
+        fontSize: "var(--ec-text-sm)",
+        color: "var(--ec-text)",
+        lineHeight: "var(--ec-leading-relaxed)",
+        whiteSpace: "pre-wrap",
+        wordBreak: "break-word",
+      }}
+    >
+      <div
+        style={{
+          fontSize: "var(--ec-text-2xs)",
+          color: "var(--ec-text-dim)",
+          letterSpacing: "var(--ec-tracking-caps)",
+          textTransform: "uppercase",
+          fontWeight: 700,
+          marginBottom: 4,
+        }}
+      >
+        Транскрипция
+      </div>
+      {shown}
+      {isLong && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          style={{
+            display: "block",
+            marginTop: 6,
+            background: "transparent",
+            border: 0,
+            color: "var(--ec-accent)",
+            fontSize: "var(--ec-text-2xs)",
+            cursor: "pointer",
+            padding: 0,
+          }}
+        >
+          {expanded ? "Свернуть" : "Развернуть"}
+        </button>
+      )}
     </div>
   );
 }

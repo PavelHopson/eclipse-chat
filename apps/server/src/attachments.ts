@@ -22,6 +22,12 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import sharp from "sharp";
+import { db } from "./db.js";
+import {
+  isTranscribableMime,
+  transcribeAudio,
+} from "./ai/transcribe.js";
+import { emitAttachmentTranscriptUpdated } from "./realtime.js";
 
 /**
  * Базовый размер (фото/документы/архивы/аудио). 50 MB достаточно для:
@@ -141,6 +147,11 @@ export type ProcessedAttachment = {
   height: number | null;
   thumbnailUrl: string | null;
   position: number;
+  /** v0.58: для audio — оригинальный buffer для последующей транскрипции.
+   *  Caller вызывает kickoffTranscription() сам, чтобы не привязывать
+   *  processAttachment к id записи (она создаётся caller'ом). Null для
+   *  не-аудио. */
+  audioBuffer: Buffer | null;
 };
 
 function attachmentsDir(): string {
@@ -498,7 +509,125 @@ export async function processAttachment(
     height,
     thumbnailUrl,
     position,
+    // Audio — отдаём оригинальный buffer для последующей транскрипции.
+    // Не дублируем буфер для non-audio (memory).
+    audioBuffer: isTranscribableMime(input.mimeType) ? buf : null,
   };
+}
+
+/**
+ * v0.58: запустить транскрипцию audio-attachment'а в background. Fire-and-
+ * forget — caller не ждёт результата. Внутри:
+ *   1. Set transcriptStatus = PENDING.
+ *   2. Async вызов OpenAI Whisper API.
+ *   3. Update row → READY / FAILED / silent NONE (если ключа нет).
+ *   4. emit `attachment:transcript:updated` в подходящую socket-комнату.
+ *
+ * channelId/conversationId — для socket-fan-out. Один из них должен быть
+ * заполнен (caller знает, к какому message принадлежит attachment).
+ */
+export function kickoffTranscription(
+  attachmentId: string,
+  buffer: Buffer | null,
+  mimeType: string,
+  filename: string,
+  context: { channelId?: string | null; conversationId?: string | null },
+): void {
+  if (!buffer || !isTranscribableMime(mimeType)) return;
+  // Сразу проставим PENDING — UI может отрисовать "транскрибируется".
+  // Если provider не сетап — outcome=NONE, статус откатывается обратно.
+  void (async () => {
+    try {
+      await db.attachment.update({
+        where: { id: attachmentId },
+        data: { transcriptStatus: "PENDING" },
+      });
+      emitTranscriptEvent(attachmentId, context, {
+        transcriptStatus: "PENDING",
+        transcript: null,
+        transcriptError: null,
+      });
+
+      const outcome = await transcribeAudio(buffer, mimeType, filename);
+      if (outcome.status === "READY") {
+        await db.attachment.update({
+          where: { id: attachmentId },
+          data: {
+            transcript: outcome.text,
+            transcriptStatus: "READY",
+            transcriptError: null,
+          },
+        });
+        emitTranscriptEvent(attachmentId, context, {
+          transcriptStatus: "READY",
+          transcript: outcome.text,
+          transcriptError: null,
+        });
+      } else if (outcome.status === "FAILED") {
+        await db.attachment.update({
+          where: { id: attachmentId },
+          data: {
+            transcriptStatus: "FAILED",
+            transcriptError: outcome.reason,
+          },
+        });
+        emitTranscriptEvent(attachmentId, context, {
+          transcriptStatus: "FAILED",
+          transcript: null,
+          transcriptError: outcome.reason,
+        });
+      } else {
+        // NONE — provider не сетап. Откатимся обратно в NONE.
+        await db.attachment.update({
+          where: { id: attachmentId },
+          data: { transcriptStatus: "NONE" },
+        });
+        emitTranscriptEvent(attachmentId, context, {
+          transcriptStatus: "NONE",
+          transcript: null,
+          transcriptError: null,
+        });
+      }
+    } catch (err) {
+      // Best-effort: при любой непредвиденной ошибке (DB upd, network) —
+      // помечаем FAILED. Не должна влиять на UX основного сообщения.
+      const reason = err instanceof Error ? err.message : "unknown error";
+      try {
+        await db.attachment.update({
+          where: { id: attachmentId },
+          data: { transcriptStatus: "FAILED", transcriptError: reason },
+        });
+        emitTranscriptEvent(attachmentId, context, {
+          transcriptStatus: "FAILED",
+          transcript: null,
+          transcriptError: reason,
+        });
+      } catch {
+        /* row could have been removed in the meantime — fine */
+      }
+    }
+  })();
+}
+
+function emitTranscriptEvent(
+  attachmentId: string,
+  context: { channelId?: string | null; conversationId?: string | null },
+  payload: {
+    transcriptStatus: "NONE" | "PENDING" | "READY" | "FAILED";
+    transcript: string | null;
+    transcriptError: string | null;
+  },
+): void {
+  emitAttachmentTranscriptUpdated(
+    {
+      channelId: context.channelId ?? null,
+      conversationId: context.conversationId ?? null,
+    },
+    {
+      attachmentId,
+      ...payload,
+    },
+  );
 }
 
 /**

@@ -9,6 +9,7 @@ import {
 import {
   ATTACHMENTS_PER_MESSAGE,
   MESSAGE_BODY_LIMIT_WITH_ATTACHMENTS,
+  kickoffTranscription,
   processAttachment,
 } from "../attachments.js";
 
@@ -290,6 +291,11 @@ export async function registerThreadRoutes(app: FastifyInstance) {
             },
           });
           processedAttachments.push(created);
+          // v0.58: транскрипция thread-reply audio. Thread всегда внутри
+          // channel (root.channelId), emit пойдёт в channel-room.
+          kickoffTranscription(created.id, proc.audioBuffer, proc.mimeType, proc.filename, {
+            channelId: root.channelId,
+          });
         } catch (err) {
           await db.message.delete({ where: { id: m.id } });
           const msg = err instanceof Error ? err.message : "Attachment processing failed";

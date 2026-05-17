@@ -7,6 +7,7 @@ import { getUserId, requireJwt } from "../auth/requireJwt.js";
 import {
   ATTACHMENTS_PER_MESSAGE,
   MESSAGE_BODY_LIMIT_WITH_ATTACHMENTS,
+  kickoffTranscription,
   processAttachment,
 } from "../attachments.js";
 import { maybeAutoRespond, maybeReplyToMention } from "../ai/assistant.js";
@@ -195,6 +196,9 @@ export async function registerChannelRoutes(app: FastifyInstance) {
             height: true,
             thumbnailUrl: true,
             position: true,
+            transcript: true,
+            transcriptStatus: true,
+            transcriptError: true,
           },
           orderBy: { position: "asc" },
         },
@@ -353,6 +357,11 @@ export async function registerChannelRoutes(app: FastifyInstance) {
             },
           });
           processedAttachments.push(created);
+          // v0.58: fire-and-forget транскрипция аудио. Если non-audio
+          // или OPENAI_API_KEY не сетап — kickoff молча skip'нёт.
+          kickoffTranscription(created.id, proc.audioBuffer, proc.mimeType, proc.filename, {
+            channelId,
+          });
         } catch (err) {
           // Если хоть один attachment не удался — rollback всё сообщение,
           // чтобы не было «message без обещанных файлов»

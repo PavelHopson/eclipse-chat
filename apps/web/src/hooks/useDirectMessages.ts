@@ -8,6 +8,7 @@ import {
   type DmMessageUpdatedPayload,
   type DmReactionAddedPayload,
   type DmReactionRemovedPayload,
+  type AttachmentTranscriptUpdatedPayload,
 } from "../lib/socket";
 import type { MessageRow, AttachmentUpload } from "./useMessages";
 
@@ -175,11 +176,33 @@ export function useDirectMessages(
       );
     };
 
+    const onTranscript = (p: AttachmentTranscriptUpdatedPayload) => {
+      setMessages((prev) =>
+        prev.map((m) => {
+          if (!m.attachments?.some((a) => a.id === p.attachmentId)) return m;
+          return {
+            ...m,
+            attachments: m.attachments.map((a) =>
+              a.id === p.attachmentId
+                ? {
+                    ...a,
+                    transcript: p.transcript,
+                    transcriptStatus: p.transcriptStatus,
+                    transcriptError: p.transcriptError,
+                  }
+                : a,
+            ),
+          };
+        }),
+      );
+    };
+
     socket.on(SocketEvents.DmMessageNew, onNew);
     socket.on(SocketEvents.DmMessageUpdated, onUpdated);
     socket.on(SocketEvents.DmMessageDeleted, onDeleted);
     socket.on(SocketEvents.DmReactionAdded, onReactionAdded);
     socket.on(SocketEvents.DmReactionRemoved, onReactionRemoved);
+    socket.on(SocketEvents.AttachmentTranscriptUpdated, onTranscript);
 
     return () => {
       socket.emit(SocketEvents.DmLeave, conversationId);
@@ -188,6 +211,7 @@ export function useDirectMessages(
       socket.off(SocketEvents.DmMessageDeleted, onDeleted);
       socket.off(SocketEvents.DmReactionAdded, onReactionAdded);
       socket.off(SocketEvents.DmReactionRemoved, onReactionRemoved);
+      socket.off(SocketEvents.AttachmentTranscriptUpdated, onTranscript);
     };
   }, [socket, conversationId, currentUserId]);
 

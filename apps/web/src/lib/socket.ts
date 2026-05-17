@@ -33,6 +33,8 @@ export function createSocket(): Socket {
 
 export type ServerHello = { t: number; msg: string };
 
+export type TranscriptStatus = "NONE" | "PENDING" | "READY" | "FAILED";
+
 export type AttachmentPayload = {
   id: string;
   filename: string;
@@ -43,6 +45,20 @@ export type AttachmentPayload = {
   height: number | null;
   thumbnailUrl: string | null;
   position: number;
+  /** v0.58: транскрипция аудио. Все три поля optional — старый бэкенд
+   *  до 0.58 их не возвращает (но прод уже >=0.58). undefined трактуется
+   *  как NONE. */
+  transcript?: string | null;
+  transcriptStatus?: TranscriptStatus;
+  transcriptError?: string | null;
+};
+
+/** v0.58: socket-event при обновлении транскрипции attachment'а. */
+export type AttachmentTranscriptUpdatedPayload = {
+  attachmentId: string;
+  transcriptStatus: TranscriptStatus;
+  transcript: string | null;
+  transcriptError: string | null;
 };
 
 export type MessageNewPayload = {
@@ -379,6 +395,7 @@ export const SocketEvents = {
   ActionItemUpdated: "action:item:updated",
   ActionItemCommentAdded: "action:item:comment:added",
   ActionItemCommentDeleted: "action:item:comment:deleted",
+  AttachmentTranscriptUpdated: "attachment:transcript:updated",
   ChannelCreated: "channel:created",
   ChannelDeleted: "channel:deleted",
   ChannelUpdated: "channel:updated",
