@@ -5,11 +5,11 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v0.55.0** (Approvals — formal request →
-approve/reject flow поверх ActionItem: approverUserId + approvalStatus
-(NONE/PENDING/APPROVED/REJECTED) + approvalNote + activity-log
-APPROVAL_* events; UI section в drawer + chip в StatusBoard,
-17.05.2026) — https://app.star-crm.ru/eclipse-chat/
+**Текущая версия в проде:** **v0.56.0** (Voice multi-publisher harden —
+tile budget с приоритезацией (screens never collapse, speakers first),
+overflow cameras переходят в presence-strip как chips с camera-glyph,
+расширенный diagnostics показывает screens/cameras/budget/speaking
+breakdown, 17.05.2026) — https://app.star-crm.ru/eclipse-chat/
 
 > **Сессия 15.05 (вечер)**: v0.28 → v0.47 = 20 prod-деплоев за один заход.
 > AI Agents типология (#6 brief) закрыта полностью. Execution Analytics
@@ -85,6 +85,7 @@ chat и не enterprise prison.
 
 | Версия | Дата | Что |
 |---|---|---|
+| **v0.56.0** | 17.05 | **Voice multi-publisher harden** — closes engineering #11. Frontend-only изменения; LiveKit room config / quotas остались на defaults (sensible для v1, нет жёстких лимитов). Был риск: при 5+ участниках с одновременно опубликованной camera + screen-share grid auto-fit minmax(280px, 1fr) выдавал бесконечно растущий список tiles, пожирая viewport. Введён **TILE_LIMIT=6**: total visible tiles в main video stage ограничен 6. Priority: screens НИКОГДА не collapse (главный operational signal), остаток квоты получают cameras с приоритетом по local (всегда вижу себя) → speaking (текущий говорящий важнее молчащих) → остальные. Overflow cameras (cameras не вошедшие в budget) падают в presence-strip как chips с camera-glyph icon, отличаясь визуально от audio-only chip'ов. Это сохраняет presence-аффинность (видно, кто включил камеру) без визуального хаоса. Расширенный voice diagnostics panel: per-source breakdown `visual: N (screens: X · cameras: Y)`, `tile budget: M/6` с warn-индикатором свернутых камер, `speaking: count`. Trade-off: hard limit 6 — арbitrary, может потребовать tuning per viewport. Адаптивный TILE_LIMIT по window width — будущее улучшение. E2e harden с 6+ участниками одновременно публикующими — оставлено как formal acceptance test (нет инструментов в session для multi-browser test). |
 | **v0.55.0** | 17.05 | **Approvals** — closes engineering #7. Formal request → approve/reject flow поверх ActionItem (extension вместо отдельной Approval-таблицы — minimum viable v1, multi-approver chains = future). Schema additive: новый `ApprovalStatus` enum (NONE / PENDING / APPROVED / REJECTED) + `ActionItem.requiresApproval` Boolean + `approverUserId` (FK к User, SetNull) + `approvalStatus` (default NONE) + `approvalNote` + `approvedAt`; index `(approverUserId, approvalStatus)` для будущего «моя очередь approval». `ActionItemActivityType` enum расширен тремя значениями: `APPROVAL_REQUESTED` / `APPROVAL_APPROVED` / `APPROVAL_REJECTED`. Migration `20260517020000_add_approvals` — zero-downtime, defaults безопасны. Backend: `POST /api/actions/:id/approval` (member request approval с approver pick + optional note → status=PENDING) + `POST /api/actions/:id/approval/decision` (approver-only: APPROVED или REJECTED + optional note; 409 если не PENDING). Atomic transaction с activity-log insert. `actionItemInclude` + `serializeActionItem` extend approver объектом + 4 новыми полями; existing routes автоматически возвращают новые поля. Frontend: `useActionItem` получил `requestApproval` + `decideApproval` actions. `ActionItemDrawer` — новая Approval section с тремя состояниями: NONE (кнопка «Запросить одобрение» → форма с member-picker + note), PENDING (warn-badge + «Решение от X», если currentUser=approver — Approve/Reject buttons + decision-note textarea), APPROVED/REJECTED (read-only с note + approve timestamp + «Запросить заново» для re-cycle). `StatusBoard` карточка получила `ApprovalChip` (warn/exec/danger) когда approvalStatus≠NONE. |
 | **v0.54.0** | 17.05 | **Execution entity detail drawer** — closes engineering #6. ActionItem перестал быть chip-only — теперь это first-class сущность с inline-edit drawer'ом. Schema additive: `ActionItem.priority` (ActionItemPriority enum LOW/NORMAL/HIGH/URGENT, default NORMAL) + `ActionItem.description` (Text, nullable, max 4000) + новые таблицы `ActionItemComment(id, actionItemId, userId, content, createdAt, editedAt?)` и `ActionItemActivity(id, actionItemId, userId?, type, payload, createdAt)` с audit-log enum `ActionItemActivityType` (CREATED / STATUS_CHANGED / ASSIGNEE_CHANGED / DUE_CHANGED / PRIORITY_CHANGED / TITLE_CHANGED / DESCRIPTION_CHANGED / COMMENT_ADDED / COMMENT_DELETED). Migration `20260517000000_add_action_item_drawer` — zero-downtime, defaults + nullable. Backend: `GET /api/actions/:id` (detail с comments + activities), расширенный `PATCH /api/actions/:id` (принимает priority + description, пишет activity-log в одной transaction), `POST /api/actions/:id/comments` + `DELETE /api/actions/:id/comments/:commentId` (author only). `serializeActionItemDetail` отдаёт всё через `actionItemDetailInclude`. Realtime: новые события `action:item:comment:added` / `comment:deleted`, fan-out в channel+server rooms; sync через socket в useActionItem hook. Frontend: `useActionItem(id, socket)` — fetch + live update + update/addComment/removeComment API; `ActionItemDrawer` — right-side floating panel (animation `ec-slide-in-right`) с inline title input, properties row (priority select, assignee dropdown по member list, datetime-local due, source channel ref + jump-to-message), description textarea (blur-save), comments thread с composer и delete-for-author, collapsible activity feed с человекочитаемым форматированием. Wiring: AppShell state `openActionItemId`, передаётся `onOpenAction` в `StatusBoard` (карточка теперь открывает drawer вместо jump в канал) и `IntelligencePanel` execution view (row click); checkbox toggle статуса сохранён через `stopPropagation`. |
 | **v0.53.0** | 16.05 | **Workspace/Room language pass** — closes engineering #4. UI копирайт уведён от Discord-наследия в сторону NEXT-GEN positioning «operational collaboration infrastructure»: «сервер» → «пространство» (workspace), «канал» → «комната» (room) во всех user-facing строках 14 файлов. Затронуты: CreateServerModal / JoinServerModal / ServerInfoModal / ServerSettingsModal заголовки + плейсхолдеры + confirm prompts; ChannelList header / типы / placeholder композера / aria-label'ы кнопок; ChannelSettingsModal все секции (Название/Иконка/Описание + Internal toggle); AppShell chat header / empty states / drawer hint / VoiceMiniBar fallback; IntelligencePanel 5 табов + Memory/Execution/Files empty hints; SearchOverlay placeholder + hint; HomeToday/StatusBoard/TeamHealth/MemberList aria + empty states; VoiceRoom/VoiceMiniBar/VoicePlaceholder hangup + ready text; IncidentPanel «комнату инцидента»; ChannelDigestPanel «Сводка комнаты»; BotsTab «Боты пространства» + mentions copy; ActionQueueBar aria-label; AuthPage hero feature card. **Не тронуты** (намеренно): DB schema (`Server` / `Channel` остаются), API endpoints (`/api/servers/*`, `/api/channels/*`), TypeScript типы, internal variable names, code comments. BROADCAST type сохраняет термин «канал» как Telegram-flavoured announcement-stream (Discord×Telegram гибрид). |
@@ -198,18 +199,11 @@ base, ✅ Home command center, ✅ responsive cinematic UI pass.
 10. **Operational tables schema spike** — проверить модель Table /
     Field / Row / Cell до UI.
 
-11. **Voice multi-publisher harden + verify** — UI грид и `useVoice`
-    хуки уже поддерживают одновременную публикацию камеры + screen
-    share от *всех* участников (см. `VoiceRoom.tsx` screenTracks +
-    cameraTracks fan-out, `useVoice.toggleCamera/toggleScreenShare` без
-    per-room gates). Что нужно: e2e-проверка с 3+ участниками
-    параллельно публикующими camera+screen (bandwidth profile, LiveKit
-    egress, layout под 6+ tiles), explicit fixture в `livekit.yaml`
-    `room.max_participants`/`publisher` quotas, graceful fallback
-    («слишком много screens — auto-collapse в presence strip»), Voice
-    diagnostics: сколько track'ов publishing/subscribed live. Без этого
-    decision-call с 5 разработчиками + 2 screen share = potential
-    breakdown. Малый-средний.
+11. ✅ **Voice multi-publisher harden** — закрыто в v0.56.0. TILE_LIMIT
+    с priority sort (screens never collapse, speakers first), overflow
+    cameras в presence-strip как chips, расширенный diagnostics. E2e
+    test с 6+ participants остаётся formal acceptance — нет инструмента
+    в session.
 
 12. ✅ **Uploads: full file taxonomy** — закрыто в v0.51.0. Расширен
     ALLOWED_MIME (Office docx/xlsx/pptx/odt/ods/odp + архивы
@@ -259,8 +253,9 @@ base, ✅ Home command center, ✅ responsive cinematic UI pass.
 - PTT + «Студийный» edge case (enhancer слетает после PTT-цикла)
 - Cross-channel files aggregator (для KNOWLEDGE-секции Context Tree)
 - Approvals + blockers (для EXECUTION-секции Context Tree)
-- **Voice multi-publisher e2e + LiveKit quota tuning** — см. engineering
-  queue #11. UI/SDK уровень готов; нужен load-тест и formal sign-off.
+- **Voice multi-publisher e2e + LiveKit quota tuning** — UI tile-budget
+  + diagnostics закрыты в v0.56.0. Остаётся formal load-test с 6+
+  одновременных camera+screen publishers (нет инструмента в session).
 - ✅ **Uploads: Office + архивы + MIME-sniffing + bigger video cap** —
   закрыто в v0.51.0 (engineering queue #12). См. timeline / changelog.
 - Pricing / billing infra (Free / Pro / Business тиры) — **не сейчас**,

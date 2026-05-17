@@ -449,12 +449,56 @@ export function VoiceRoom({
   const cameraTracks = v.visualTracks.filter((t) => t.source === "camera");
   const hasVisual = screenTracks.length > 0 || cameraTracks.length > 0;
 
-  // Участник с ЛЮБЫМ visual-треком (камера ИЛИ экран) уже представлен в
-  // видео-сцене — не дублируем его presence-чипом (был дубль «Павел · ты»
-  // при screen-share без камеры).
-  const visualIdentities = new Set(v.visualTracks.map((t) => t.identity));
+  /**
+   * v0.56 multi-publisher harden: tile budget. Когда total visual tracks
+   * превышает TILE_LIMIT, мы priority-sort'им cameras и оставляем top-N в
+   * main grid; остальные cameras падают в overflow presence-strip как чипы
+   * с avatar + "камера" hint. Screens НИКОГДА не collapse'ятся — это самый
+   * информативный источник в operational session.
+   *
+   * Priority в camera grid: local first (ты должен видеть себя), затем
+   * speaking, затем остальные. Это даёт стабильный layout при 5+
+   * участниках с камерами + screen-share поверх (типичный engineering
+   * design review сценарий).
+   */
+  const TILE_LIMIT = 6;
+  const screenSpots = Math.min(screenTracks.length, TILE_LIMIT);
+  const cameraSpots = Math.max(0, TILE_LIMIT - screenSpots);
+
+  const speakingIdentities = new Set(
+    v.participants
+      .filter((p) => p.isSpeaking && !p.isMicMuted)
+      .map((p) => p.identity),
+  );
+  const sortedCameras = [...cameraTracks].sort((a, b) => {
+    if (a.isLocal !== b.isLocal) return a.isLocal ? -1 : 1;
+    const aSpeaking = speakingIdentities.has(a.identity);
+    const bSpeaking = speakingIdentities.has(b.identity);
+    if (aSpeaking !== bSpeaking) return aSpeaking ? -1 : 1;
+    return 0;
+  });
+  const visibleCameraTracks = sortedCameras.slice(0, cameraSpots);
+  const overflowCameraIdentities = new Set(
+    sortedCameras.slice(cameraSpots).map((t) => t.identity),
+  );
+
+  // Участник с ЛЮБЫМ ВИДИМЫМ visual-треком (камера в budget ИЛИ экран) уже
+  // представлен в видео-сцене — не дублируем его presence-чипом (был дубль
+  // «Павел · ты» при screen-share без камеры).
+  const visibleVisualIdentities = new Set([
+    ...screenTracks.map((t) => t.identity),
+    ...visibleCameraTracks.map((t) => t.identity),
+  ]);
   const audioOnlyParticipants = v.participants.filter(
-    (p) => !visualIdentities.has(p.identity),
+    (p) =>
+      !visibleVisualIdentities.has(p.identity) &&
+      !overflowCameraIdentities.has(p.identity),
+  );
+  // Overflow camera participants — те у кого есть камера, но не попали в
+  // budget. Рендерим как presence-чипы с camera-mark (отличаются от
+  // audio-only визуально).
+  const overflowCameraParticipants = v.participants.filter((p) =>
+    overflowCameraIdentities.has(p.identity),
   );
 
   const connectionBadgeText = resolveConnectionBadge(
@@ -586,12 +630,43 @@ export function VoiceRoom({
               {screenTracks.map((t) => (
                 <VideoTrackTile key={t.id} visual={t} lookupAvatar={lookupAvatar} />
               ))}
-              {cameraTracks.map((t) => (
+              {visibleCameraTracks.map((t) => (
                 <VideoTrackTile key={t.id} visual={t} lookupAvatar={lookupAvatar} />
               ))}
             </div>
-            {audioOnlyParticipants.length > 0 && (
+            {(audioOnlyParticipants.length > 0 || overflowCameraParticipants.length > 0) && (
               <div style={presenceStrip}>
+                {/* Overflow cameras: участники с published cameras, не вошедшие
+                    в TILE_LIMIT — отдельный визуальный маркер (small camera glyph). */}
+                {overflowCameraParticipants.map((p) => {
+                  const muted = v.settings.mutedParticipants.includes(p.identity);
+                  const speaking = p.isSpeaking && !p.isMicMuted && !muted;
+                  return (
+                    <span
+                      key={`cam-${p.identity}`}
+                      style={stripChipStyle(speaking)}
+                      onContextMenu={(e) => openCtxMenu(p, e)}
+                      title={`${p.name} — камера (свернута)`}
+                    >
+                      <PresenceAvatar
+                        name={p.name}
+                        avatar={lookupAvatar(p.identity)}
+                        size={28}
+                        speaking={speaking}
+                        muted={p.isMicMuted}
+                      />
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                        <CameraLensIcon size={11} />
+                        {p.name}
+                      </span>
+                      {p.isLocal && (
+                        <span style={{ color: "var(--ec-text-dim)", fontWeight: 500 }}>
+                          {" "}· ты
+                        </span>
+                      )}
+                    </span>
+                  );
+                })}
                 {audioOnlyParticipants.map((p) => {
                   const muted = v.settings.mutedParticipants.includes(p.identity);
                   const speaking = p.isSpeaking && !p.isMicMuted && !muted;
@@ -853,7 +928,9 @@ export function VoiceRoom({
           <div>output device: <span style={{ color: "var(--ec-text)" }}>{v.settings.outputDeviceId ? v.settings.outputDeviceId.slice(0, 8) + "…" : "default"}</span></div>
           <div>master volume: <span style={{ color: "var(--ec-text)" }}>{Math.round(v.settings.masterOutputVolume * 100)}%</span></div>
           <div>mic gain: <span style={{ color: "var(--ec-text)" }}>{Math.round(v.settings.micGain * 100)}%</span></div>
-          <div>participants: <span style={{ color: "var(--ec-text)" }}>{v.participants.length}</span> · visual tracks: <span style={{ color: "var(--ec-text)" }}>{v.visualTracks.length}</span></div>
+          <div>participants: <span style={{ color: "var(--ec-text)" }}>{v.participants.length}</span> · visual: <span style={{ color: "var(--ec-text)" }}>{v.visualTracks.length}</span> (screens: <span style={{ color: "var(--ec-status-exec)" }}>{screenTracks.length}</span> · cameras: <span style={{ color: "var(--ec-accent)" }}>{cameraTracks.length}</span>)</div>
+          <div>tile budget: <span style={{ color: "var(--ec-text)" }}>{screenTracks.length + visibleCameraTracks.length}/{TILE_LIMIT}</span>{overflowCameraParticipants.length > 0 && (<span style={{ color: "var(--ec-status-warn)" }}> · {overflowCameraParticipants.length} камер свернуто</span>)}</div>
+          <div>speaking: <span style={{ color: "var(--ec-status-exec)" }}>{speakingIdentities.size}</span></div>
           {v.error && (
             <div style={{ marginTop: 6, color: "var(--ec-danger)" }}>error: {v.error}</div>
           )}
