@@ -5,6 +5,11 @@ dist/
 __pycache__/
 .DS_Store
 
+# Локальные temp-файлы для multi-line git commit messages
+# (Pavel anti-pattern: PowerShell heredoc + `git commit -m` ломается)
+.commit-message.tmp
+.commit-message*.txt
+
 # Runtime data
 deploy/runtime/
 backend/uploads/
