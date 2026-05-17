@@ -14,13 +14,15 @@ import {
  */
 
 describe("BotRole taxonomy", () => {
-  it("BOT_ROLES содержит ровно 5 ролей brief'а Pavel'я", () => {
+  it("BOT_ROLES содержит 7 ролей (5 brief'а + SUPPORT/ARCHITECT v0.74)", () => {
     expect(BOT_ROLES).toEqual([
       "GENERIC",
       "MODERATOR",
       "PM",
       "KNOWLEDGE",
       "SALES",
+      "SUPPORT",
+      "ARCHITECT",
     ]);
   });
 
