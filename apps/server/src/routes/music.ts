@@ -166,6 +166,67 @@ function serializeSession(s: {
 }
 
 export async function registerMusicRoutes(app: FastifyInstance) {
+  /**
+   * v0.72: GET /api/servers/:id/audio-tracks — list audio attachments
+   * со всех TEXT/BROADCAST каналов сервера (recent 50). Используется
+   * в VoiceMusicPicker — user в VOICE-канале выбирает что слушать
+   * вместе с остальными. Membership-only.
+   */
+  app.get(
+    "/api/servers/:id/audio-tracks",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const userId = getUserId(req);
+      if (!userId) return reply.status(401).send({ error: "Unauthorized" });
+      const { id: serverId } = req.params as { id: string };
+      const member = await db.member.findUnique({
+        where: { userId_serverId: { userId, serverId } },
+        select: { id: true },
+      });
+      if (!member) {
+        return reply.status(403).send({ error: "Not a member of this server" });
+      }
+      const tracks = await db.attachment.findMany({
+        where: {
+          mimeType: { startsWith: "audio/" },
+          message: {
+            channel: { serverId },
+            deletedAt: null,
+          },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 50,
+        select: {
+          id: true,
+          filename: true,
+          mimeType: true,
+          size: true,
+          url: true,
+          createdAt: true,
+          message: {
+            select: {
+              channel: { select: { id: true, name: true } },
+            },
+          },
+        },
+      });
+      return {
+        tracks: tracks
+          .filter((t) => t.message.channel != null)
+          .map((t) => ({
+            id: t.id,
+            filename: t.filename,
+            mimeType: t.mimeType,
+            size: t.size,
+            url: t.url,
+            createdAt: t.createdAt.toISOString(),
+            channelId: t.message.channel!.id,
+            channelName: t.message.channel!.name,
+          })),
+      };
+    },
+  );
+
   /** GET state — null если сессии нет. */
   app.get(
     "/api/channels/:id/music",
@@ -207,12 +268,14 @@ export async function registerMusicRoutes(app: FastifyInstance) {
           error: ctx.error,
         });
       }
-      if (ctx.channel.type === "VOICE") {
-        return reply.status(400).send({
-          error:
-            "Voice channels не поддерживают music session в v1 (используется LiveKit pipeline).",
-        });
-      }
+      // v0.72: VOICE-каналы теперь поддерживаются (Pavel-ask 17.05) —
+      // music session работает поверх LiveKit voice присутствия. Каждый
+      // клиент в room рендерит свой <audio> tag, sync через единый
+      // session.startedAt + positionMs (same algorithm что и для TEXT
+      // channels). BROADCAST остаётся также exclusive — там no chat
+      // composer для quick «Слушать вместе» action в любом случае.
+      // Future phase B: LiveKit data channels для server-side mixed
+      // audio publish (точная sync, не зависит от drift).
       const track = await loadAudioAttachment(
         parsed.data.attachmentId,
         ctx.channel.serverId,

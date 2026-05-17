@@ -25,6 +25,7 @@ import { SearchOverlay } from "../components/SearchOverlay";
 import { ServerInfoModal } from "../components/ServerInfoModal";
 import { ServerSettingsModal } from "../components/ServerSettingsModal";
 import { CreateTableModal } from "../components/CreateTableModal";
+import { VoiceMusicPicker } from "../components/VoiceMusicPicker";
 import { ServerList } from "../components/ServerList";
 import { SinceLastVisitBanner } from "../components/SinceLastVisitBanner";
 import { StatusBoard } from "../components/StatusBoard";
@@ -286,6 +287,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   } = useOperationalTables(activeServerId, socket);
   /** v0.70: открыта ли модалка создания таблицы (с template picker). */
   const [showCreateTable, setShowCreateTable] = useState(false);
+  /** v0.72: открыт ли picker для запуска music в VOICE-канале. */
+  const [showVoiceMusicPicker, setShowVoiceMusicPicker] = useState(false);
   // v0.61 shared listening room. Scoped per selected TEXT/BROADCAST channel —
   // в VOICE сессии не активны (backend отвергнёт).
   const music = useChannelMusic(selectedChannelId, socket);
@@ -1120,7 +1123,10 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                   </span>
                 </>
               )}
-              {music.session && selectedChannel.type !== "VOICE" && (
+              {music.session && (
+                // v0.72: убрано исключение для VOICE — теперь music
+                // работает и в voice-каналах (synchronous listening
+                // во время голосового созвона). Backend разрешил VOICE.
                 <MusicMiniPlayer
                   session={music.session}
                   derivedPositionMs={music.derivedPositionMs}
@@ -1129,6 +1135,37 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                   onSkip={() => void music.skip()}
                   onStop={() => void music.stop()}
                 />
+              )}
+              {/* v0.72: для VOICE-канала без активной music session —
+                  кнопка «Запустить музыку» открывает picker. Для TEXT
+                  каналов это не нужно (можно нажать «Слушать вместе»
+                  на любом audio attachment в чате). */}
+              {!music.session && selectedChannel.type === "VOICE" && (
+                <button
+                  type="button"
+                  onClick={() => setShowVoiceMusicPicker(true)}
+                  title="Запустить музыку для всех в голосовой комнате"
+                  aria-label="Запустить музыку"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    padding: "0.35rem 0.7rem",
+                    borderRadius: "var(--ec-radius-full)",
+                    background: "var(--ec-accent-soft)",
+                    color: "var(--ec-accent)",
+                    border: "1px solid var(--ec-border-accent)",
+                    cursor: "pointer",
+                    fontSize: "var(--ec-text-2xs)",
+                    fontWeight: 600,
+                    flexShrink: 0,
+                  }}
+                >
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                  Музыка
+                </button>
               )}
               {(activeServer?.role === "OWNER" ||
                 activeServer?.role === "ADMIN" ||
@@ -1594,6 +1631,17 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             setStatusBoardOpen(false);
             setSelectedChannelId(channelId);
             if (isMobile) setNavOpen(false);
+          }}
+        />
+      )}
+
+      {showVoiceMusicPicker && activeServerId && (
+        <VoiceMusicPicker
+          serverId={activeServerId}
+          onClose={() => setShowVoiceMusicPicker(false)}
+          onPick={async (attachmentId) => {
+            const ok = await music.start(attachmentId);
+            return ok;
           }}
         />
       )}
