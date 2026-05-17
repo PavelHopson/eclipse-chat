@@ -60,7 +60,7 @@ export function useServerActions(serverId: string | null, socket: Socket | null)
 
   /** Optimistic toggle OPEN↔DONE, серверный ответ прилетит через socket. */
   const updateStatus = useCallback(
-    async (id: string, status: "OPEN" | "DONE") => {
+    async (id: string, status: import("../lib/socket").ActionItemStatus) => {
       setActions((prev) => prev.map((a) => (a.id === id ? { ...a, status } : a)));
       try {
         await apiJson(`/api/actions/${encodeURIComponent(id)}`, {

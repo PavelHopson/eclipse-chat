@@ -25,7 +25,7 @@ export type SearchActionHit = {
   title: string;
   description: string | null;
   type: "TASK" | "DECISION" | "FOLLOW_UP";
-  status: "OPEN" | "DONE";
+  status: import("../lib/socket").ActionItemStatus;
   priority: "LOW" | "NORMAL" | "HIGH" | "URGENT";
   dueAt: string | null;
   channel: { id: string; name: string; slug: string };

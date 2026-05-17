@@ -217,7 +217,7 @@ export function emitActionItemCreated(
     id: string;
     title: string;
     type: "TASK" | "DECISION" | "FOLLOW_UP";
-    status: "OPEN" | "DONE";
+    status: "OPEN" | "IN_PROGRESS" | "REVIEW" | "DONE";
     serverId: string;
     channelId: string;
     sourceMessageId: string;
@@ -288,7 +288,7 @@ export function emitActionItemUpdated(
     id: string;
     title: string;
     type: "TASK" | "DECISION" | "FOLLOW_UP";
-    status: "OPEN" | "DONE";
+    status: "OPEN" | "IN_PROGRESS" | "REVIEW" | "DONE";
     serverId: string;
     channelId: string;
     sourceMessageId: string;

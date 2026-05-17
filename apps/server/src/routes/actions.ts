@@ -17,7 +17,7 @@ import {
 } from "../realtime.js";
 
 const actionTypeSchema = z.enum(["TASK", "DECISION", "FOLLOW_UP"]);
-const actionStatusSchema = z.enum(["OPEN", "DONE"]);
+const actionStatusSchema = z.enum(["OPEN", "IN_PROGRESS", "REVIEW", "DONE"]);
 const actionPrioritySchema = z.enum(["LOW", "NORMAL", "HIGH", "URGENT"]);
 
 const actionQuerySchema = z.object({

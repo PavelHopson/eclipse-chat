@@ -158,18 +158,8 @@ const closeBtn: CSSProperties = {
   cursor: "pointer",
 };
 
-const statusToggle = (done: boolean): CSSProperties => ({
-  padding: "0.4rem 0.8rem",
-  borderRadius: "var(--ec-radius-full)",
-  background: done ? "var(--ec-status-exec)" : "transparent",
-  color: done ? "var(--ec-accent-text, #fff)" : "var(--ec-text)",
-  border: `1px solid ${done ? "var(--ec-status-exec)" : "var(--ec-border-default)"}`,
-  fontSize: "var(--ec-text-xs)",
-  fontWeight: 600,
-  letterSpacing: "var(--ec-tracking-wide)",
-  cursor: "pointer",
-  whiteSpace: "nowrap",
-});
+// v0.71: legacy binary statusToggle убран — теперь 4-status native select
+// в headerStyle. handleStatusToggle тоже больше не нужен.
 
 const composerWrap: CSSProperties = {
   borderTop: "1px solid var(--ec-border-subtle)",
@@ -350,11 +340,6 @@ export function ActionItemDrawer({
     await update({ description: value });
   };
 
-  const handleStatusToggle = async () => {
-    if (!detail) return;
-    await update({ status: detail.status === "DONE" ? "OPEN" : "DONE" });
-  };
-
   const handleAssigneeChange = async (value: string) => {
     await update({ assigneeUserId: value === "" ? null : value });
   };
@@ -436,13 +421,46 @@ export function ActionItemDrawer({
                 {typeMeta.label}
               </span>
               <span style={{ flex: 1 }} />
-              <button
-                type="button"
-                onClick={handleStatusToggle}
-                style={statusToggle(detail.status === "DONE")}
+              {/* v0.71: 4-status select вместо binary toggle. Native
+                  <select> достаточно для inline-edit (drag-and-drop
+                  доступен в StatusBoard). */}
+              <select
+                value={detail.status}
+                onChange={(e) =>
+                  void update({
+                    status: e.target.value as "OPEN" | "IN_PROGRESS" | "REVIEW" | "DONE",
+                  })
+                }
+                style={{
+                  padding: "0.35rem 0.7rem",
+                  borderRadius: "var(--ec-radius-full)",
+                  border: `1px solid ${
+                    detail.status === "DONE"
+                      ? "var(--ec-status-exec)"
+                      : detail.status === "REVIEW"
+                      ? "var(--ec-status-ai, var(--ec-accent))"
+                      : detail.status === "IN_PROGRESS"
+                      ? "var(--ec-accent)"
+                      : "var(--ec-border-default)"
+                  }`,
+                  background: detail.status === "DONE"
+                    ? "var(--ec-status-exec)"
+                    : "var(--ec-surface-2)",
+                  color: detail.status === "DONE"
+                    ? "var(--ec-accent-text, #fff)"
+                    : "var(--ec-text)",
+                  fontSize: "var(--ec-text-xs)",
+                  fontWeight: 600,
+                  letterSpacing: "var(--ec-tracking-wide)",
+                  cursor: "pointer",
+                  outline: "none",
+                }}
               >
-                {detail.status === "DONE" ? "✓ Выполнено" : "Открыто"}
-              </button>
+                <option value="OPEN">Открыто</option>
+                <option value="IN_PROGRESS">В работе</option>
+                <option value="REVIEW">На ревью</option>
+                <option value="DONE">Выполнено</option>
+              </select>
             </>
           ) : (
             <strong style={{ fontSize: "var(--ec-text-sm)", color: "var(--ec-text-muted)" }}>

@@ -12,7 +12,7 @@ type ActionForPrompt = {
   title: string;
   dueAt: string | null;
   assignee: { displayName: string } | null;
-  status: "OPEN" | "DONE";
+  status: "OPEN" | "IN_PROGRESS" | "REVIEW" | "DONE";
 };
 
 type PinnedForPrompt = {

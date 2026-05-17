@@ -7,6 +7,7 @@ import {
   type ActionItemCommentAddedPayload,
   type ActionItemCommentDeletedPayload,
   type ActionItemPriority,
+  type ActionItemStatus,
 } from "../lib/socket";
 
 /**
@@ -53,7 +54,7 @@ export type ActionItemDetail = ActionItemPayload & {
 type ApiResponse = { action: ActionItemDetail };
 
 type UpdatePayload = Partial<{
-  status: "OPEN" | "DONE";
+  status: ActionItemStatus;
   title: string;
   description: string | null;
   priority: ActionItemPriority;

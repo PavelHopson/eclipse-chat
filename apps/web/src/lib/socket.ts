@@ -221,7 +221,10 @@ export type IncidentResolvedPayload = {
 };
 
 export type ActionItemType = "TASK" | "DECISION" | "FOLLOW_UP";
-export type ActionItemStatus = "OPEN" | "DONE";
+/** v0.71: 4-status kanban. Promoted from binary OPEN/DONE для execution
+ *  flow с intermediate states. Backend enum в Prisma — see migration
+ *  20260517220000_action_item_status_phase2. */
+export type ActionItemStatus = "OPEN" | "IN_PROGRESS" | "REVIEW" | "DONE";
 export type ActionItemPriority = "LOW" | "NORMAL" | "HIGH" | "URGENT";
 export type ApprovalStatus = "NONE" | "PENDING" | "APPROVED" | "REJECTED";
 

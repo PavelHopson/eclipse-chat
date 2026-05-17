@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { Avatar } from "./Avatar";
-import type { ActionItemPayload, ActionItemType } from "../lib/socket";
+import type { ActionItemPayload, ActionItemStatus, ActionItemType } from "../lib/socket";
 
 /**
  * StatusBoard — Execution-доска: все ActionItem'ы сервера (across channels)
@@ -34,7 +34,7 @@ type Props = {
   currentUserId: string;
   /** Резолв имени канала по id (из useChannels активного сервера). */
   channelNameById: (channelId: string) => string | undefined;
-  onUpdateStatus: (id: string, status: "OPEN" | "DONE") => void;
+  onUpdateStatus: (id: string, status: ActionItemStatus) => void;
   onOpenChannel: (channelId: string) => void;
   /** v0.54: открыть ActionItemDrawer по клику на карточку. Если undefined —
    *  старое поведение (клик = переход в канал-источник). */
@@ -235,17 +235,38 @@ function Card({
   channelName,
   onToggle,
   onOpen,
+  onDragStart,
+  onDragEnd,
+  dragging,
 }: {
   item: ActionItemPayload;
   channelName: string | undefined;
   onToggle: () => void;
   onOpen: () => void;
+  onDragStart: () => void;
+  onDragEnd: () => void;
+  dragging: boolean;
 }) {
   const done = item.status === "DONE";
   const meta = TYPE_META[item.type];
   const chip = dueChip(item.dueAt);
   return (
-    <div className="ec-hover-lift" style={card}>
+    <div
+      className="ec-hover-lift"
+      style={{
+        ...card,
+        opacity: dragging ? 0.45 : 1,
+        cursor: "grab",
+        transition: "opacity var(--ec-dur-fast) var(--ec-ease)",
+      }}
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/plain", item.id);
+        onDragStart();
+      }}
+      onDragEnd={onDragEnd}
+    >
       <button
         type="button"
         onClick={onToggle}
@@ -401,8 +422,26 @@ export function StatusBoard({
     [actions, typeFilter, mineOnly, overdueOnly, unassignedOnly, assigneeFilter, currentUserId],
   );
 
-  const open = filtered.filter((a) => a.status === "OPEN");
-  const done = filtered.filter((a) => a.status === "DONE");
+  // v0.71: 4-status kanban — отдельный bucket для каждого. Items без
+  // recognized status (e.g. enum extension в будущем) попадают в OPEN
+  // для backward-compat.
+  const byStatus = useMemo(() => {
+    const buckets: Record<ActionItemStatus, ActionItemPayload[]> = {
+      OPEN: [],
+      IN_PROGRESS: [],
+      REVIEW: [],
+      DONE: [],
+    };
+    for (const a of filtered) {
+      (buckets[a.status] ?? buckets.OPEN).push(a);
+    }
+    return buckets;
+  }, [filtered]);
+
+  // v0.71: drag state — какой ActionItem сейчас drag'ается; over какой
+  // column сейчас pointer. Drop = onUpdateStatus с target column.
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [dropCol, setDropCol] = useState<ActionItemStatus | null>(null);
 
   return (
     <div style={wrap}>
@@ -525,63 +564,101 @@ export function StatusBoard({
       <div className="ec-status-board" style={board}>
         {(
           [
-            { key: "open", title: "Открытые", items: open, color: "var(--ec-status-warn)" },
-            { key: "done", title: "Сделано", items: done, color: "var(--ec-status-exec)" },
+            { key: "OPEN", title: "Открыто", items: byStatus.OPEN, color: "var(--ec-status-warn)", empty: "Нет открытых задач" },
+            { key: "IN_PROGRESS", title: "В работе", items: byStatus.IN_PROGRESS, color: "var(--ec-accent)", empty: "Ничего не в работе" },
+            { key: "REVIEW", title: "Ревью", items: byStatus.REVIEW, color: "var(--ec-status-ai, var(--ec-accent))", empty: "Нет на ревью" },
+            { key: "DONE", title: "Сделано", items: byStatus.DONE, color: "var(--ec-status-exec)", empty: "Пока ничего не закрыто" },
           ] as const
-        ).map((col) => (
-          <section key={col.key} style={column}>
-            <div style={columnHead}>
-              <span
-                aria-hidden
-                style={{
-                  width: 7,
-                  height: 7,
-                  borderRadius: "50%",
-                  background: col.color,
-                }}
-              />
-              {col.title}
-              <span style={{ marginLeft: "auto", color: "var(--ec-text-dim)", fontFeatureSettings: '"tnum"' }}>
-                {col.items.length}
-              </span>
-            </div>
-            <div style={columnList}>
-              {col.items.length === 0 ? (
-                <p
+        ).map((col) => {
+          const isDropTarget = dropCol === col.key;
+          return (
+            <section
+              key={col.key}
+              style={{
+                ...column,
+                borderColor: isDropTarget
+                  ? "var(--ec-border-accent)"
+                  : "var(--ec-border-subtle)",
+                background: isDropTarget
+                  ? "color-mix(in srgb, var(--ec-accent) 6%, hsl(208 16% 9% / 0.55))"
+                  : "hsl(208 16% 9% / 0.55)",
+                transition:
+                  "border-color var(--ec-dur-fast) var(--ec-ease), background var(--ec-dur-fast) var(--ec-ease)",
+              }}
+              onDragEnter={() => {
+                if (dragId) setDropCol(col.key);
+              }}
+              onDragOver={(e) => {
+                if (!dragId) return;
+                e.preventDefault();
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                if (dragId) {
+                  const dragged = filtered.find((a) => a.id === dragId);
+                  if (dragged && dragged.status !== col.key) {
+                    onUpdateStatus(dragId, col.key);
+                  }
+                }
+                setDragId(null);
+                setDropCol(null);
+              }}
+            >
+              <div style={columnHead}>
+                <span
+                  aria-hidden
                   style={{
-                    margin: 0,
-                    padding: "var(--ec-space-4) var(--ec-space-2)",
-                    color: "var(--ec-text-dim)",
-                    fontSize: "var(--ec-text-sm)",
-                    textAlign: "center",
+                    width: 7,
+                    height: 7,
+                    borderRadius: "50%",
+                    background: col.color,
                   }}
-                >
-                  {loading
-                    ? "Загрузка…"
-                    : col.key === "open"
-                    ? "Нет открытых задач"
-                    : "Пока ничего не закрыто"}
-                </p>
-              ) : (
-                col.items.map((item) => (
-                  <Card
-                    key={item.id}
-                    item={item}
-                    channelName={channelNameById(item.channelId)}
-                    onToggle={() =>
-                      onUpdateStatus(item.id, item.status === "DONE" ? "OPEN" : "DONE")
-                    }
-                    onOpen={() =>
-                      onOpenAction
-                        ? onOpenAction(item.id)
-                        : onOpenChannel(item.channelId)
-                    }
-                  />
-                ))
-              )}
-            </div>
-          </section>
-        ))}
+                />
+                {col.title}
+                <span style={{ marginLeft: "auto", color: "var(--ec-text-dim)", fontFeatureSettings: '"tnum"' }}>
+                  {col.items.length}
+                </span>
+              </div>
+              <div style={columnList}>
+                {col.items.length === 0 ? (
+                  <p
+                    style={{
+                      margin: 0,
+                      padding: "var(--ec-space-4) var(--ec-space-2)",
+                      color: "var(--ec-text-dim)",
+                      fontSize: "var(--ec-text-sm)",
+                      textAlign: "center",
+                    }}
+                  >
+                    {loading ? "Загрузка…" : col.empty}
+                  </p>
+                ) : (
+                  col.items.map((item) => (
+                    <Card
+                      key={item.id}
+                      item={item}
+                      channelName={channelNameById(item.channelId)}
+                      onToggle={() =>
+                        onUpdateStatus(item.id, item.status === "DONE" ? "OPEN" : "DONE")
+                      }
+                      onOpen={() =>
+                        onOpenAction
+                          ? onOpenAction(item.id)
+                          : onOpenChannel(item.channelId)
+                      }
+                      dragging={dragId === item.id}
+                      onDragStart={() => setDragId(item.id)}
+                      onDragEnd={() => {
+                        setDragId(null);
+                        setDropCol(null);
+                      }}
+                    />
+                  ))
+                )}
+              </div>
+            </section>
+          );
+        })}
       </div>
     </div>
   );

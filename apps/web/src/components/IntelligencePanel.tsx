@@ -44,7 +44,7 @@ export type ExecutionItemBrief = {
   id: string;
   title: string;
   type: "TASK" | "DECISION" | "FOLLOW_UP";
-  status: "OPEN" | "DONE";
+  status: import("../lib/socket").ActionItemStatus;
   dueAt: string | null;
   assignee: { displayName: string; avatar: string | null } | null;
 };
@@ -84,7 +84,7 @@ type Props = {
   pinnedMessages: PinnedMessageBrief[];
   attachments: AttachmentBrief[];
   executionItems: ExecutionItemBrief[];
-  onToggleExecutionStatus?: (id: string, status: "OPEN" | "DONE") => void;
+  onToggleExecutionStatus?: (id: string, status: import("../lib/socket").ActionItemStatus) => void;
   /** v0.54: открыть ActionItemDrawer по клику на execution row. */
   onOpenAction?: (actionItemId: string) => void;
   /**
@@ -740,7 +740,7 @@ function ExecutionView({
   onOpen,
 }: {
   items: ExecutionItemBrief[];
-  onToggle?: (id: string, status: "OPEN" | "DONE") => void;
+  onToggle?: (id: string, status: import("../lib/socket").ActionItemStatus) => void;
   onOpen?: (actionItemId: string) => void;
 }) {
   if (items.length === 0) {
