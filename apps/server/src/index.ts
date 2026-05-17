@@ -123,7 +123,7 @@ app.get("/api/health", async () => {
   }
   return { ok: true, service: "eclipse-chat-server", database: dbOk };
 });
-app.get("/api/version", async () => ({ name: "@eclipse-chat/server", version: "0.72.0" }));
+app.get("/api/version", async () => ({ name: "@eclipse-chat/server", version: "0.73.0" }));
 
 await registerAuthRoutes(app);
 await registerTwoFactorRoutes(app);
