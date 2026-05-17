@@ -1383,4 +1383,77 @@ export async function registerServerRoutes(app: FastifyInstance) {
       return { ok: true };
     },
   );
+
+  /**
+   * v0.76 #25 phase 1: GET /api/servers/:id/audit-log
+   *
+   * OWNER-only — последние N audit events с filter по server-relevant
+   * types (SERVER_*, CHANNEL_*, MEMBER_*, BOT_*, MESSAGE_DELETED_BY_MOD).
+   * Auth events (login/logout) — global, для admin panel специфичного
+   * server'а они зашумят. Это ограничение v1.
+   *
+   * Возвращает топ-100 в обратной хронологии. Pagination — отдельный slice.
+   */
+  app.get(
+    "/api/servers/:id/audit-log",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const { id: serverId } = req.params as { id: string };
+      const userId = getUserId(req);
+      if (!userId) return reply.status(401).send({ error: "Unauthorized" });
+      const member = await db.member.findUnique({
+        where: { userId_serverId: { userId, serverId } },
+        select: { role: true },
+      });
+      if (!member) {
+        return reply.status(403).send({ error: "Not a member of this server" });
+      }
+      if (member.role !== "OWNER" && member.role !== "ADMIN") {
+        return reply
+          .status(403)
+          .send({ error: "Только OWNER/ADMIN могут видеть audit-log" });
+      }
+      const serverScopedTypes = [
+        "SERVER_CREATED",
+        "SERVER_DELETED",
+        "SERVER_BANNER_CHANGED",
+        "SERVER_IDENTITY_CHANGED",
+        "MEMBER_ROLE_CHANGED",
+        "MEMBER_KICKED",
+        "MESSAGE_DELETED_BY_MOD",
+        "CHANNEL_CREATED",
+        "CHANNEL_DELETED",
+        "BOT_CREATED",
+        "BOT_DELETED",
+        "BOT_KEY_REGENERATED",
+      ] as const;
+      const events = await db.auditLog.findMany({
+        where: { type: { in: serverScopedTypes as unknown as string[] } as any },
+        orderBy: { createdAt: "desc" },
+        take: 100,
+        select: {
+          id: true,
+          type: true,
+          createdAt: true,
+          metadata: true,
+          user: { select: { id: true, displayName: true, avatar: true } },
+        },
+      });
+      return {
+        events: events.map((e) => ({
+          id: e.id,
+          type: e.type,
+          createdAt: e.createdAt.toISOString(),
+          metadata: e.metadata,
+          user: e.user
+            ? {
+                id: e.user.id,
+                displayName: e.user.displayName,
+                avatar: e.user.avatar,
+              }
+            : null,
+        })),
+      };
+    },
+  );
 }

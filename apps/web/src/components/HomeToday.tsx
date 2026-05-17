@@ -244,7 +244,9 @@ export function HomeToday({
     data.incidents.length === 0 &&
     data.activeVoice.length === 0 &&
     (data.pendingApprovals?.length ?? 0) === 0 &&
-    (data.activeRooms?.length ?? 0) === 0;
+    (data.activeRooms?.length ?? 0) === 0 &&
+    (data.aiSignals?.staleTasks.length ?? 0) === 0 &&
+    (data.aiSignals?.escalated.length ?? 0) === 0;
 
   return (
     <div style={wrap} className="ec-home">
@@ -320,6 +322,14 @@ export function HomeToday({
           <span style={statValue}>{counts.activeRooms}</span>
           <span style={statLabel}>Активных комнат</span>
         </div>
+        {counts.aiSignals != null && counts.aiSignals > 0 && (
+          <div className="ec-home-stat-card ec-home-stat-card--warn" style={statCard("var(--ec-status-warn)")}>
+            <span style={{ ...statValue, color: "var(--ec-warn)" }}>
+              {counts.aiSignals}
+            </span>
+            <span style={statLabel}>AI-алерты</span>
+          </div>
+        )}
       </div>
 
       {isEmpty && (
@@ -500,6 +510,95 @@ export function HomeToday({
           </div>
         </section>
       )}
+
+      {/* v0.76 #28 phase 2: AI-alerts — heuristic signals (stale 14d / escalated 24h) */}
+      {data &&
+        data.aiSignals &&
+        (data.aiSignals.staleTasks.length > 0 ||
+          data.aiSignals.escalated.length > 0) && (
+          <section>
+            <h3 style={sectionTitle}>
+              <span aria-hidden style={{ color: "var(--ec-warn)" }}>▸</span>
+              AI-алерты
+              <span style={{ color: "var(--ec-text-dim)", fontWeight: 600 }}>
+                · требует внимания
+              </span>
+            </h3>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "var(--ec-space-2)",
+              }}
+            >
+              {data.aiSignals.escalated.map((t) => (
+                <Row
+                  key={`escalated-${t.id}`}
+                  onClick={() => onOpenChannel(t.serverId, t.channelId)}
+                  glyph={
+                    <span
+                      aria-hidden
+                      style={{
+                        fontFamily: "var(--ec-font-mono)",
+                        fontWeight: 700,
+                      }}
+                    >
+                      ⚠
+                    </span>
+                  }
+                  glyphColor="var(--ec-warn)"
+                  title={t.title}
+                  context={`Эскалация · ${t.serverName} · #${t.channelName}`}
+                  trailing={
+                    <span
+                      style={{
+                        fontSize: "var(--ec-text-2xs)",
+                        color: "var(--ec-warn)",
+                        fontWeight: 600,
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      просрочена
+                    </span>
+                  }
+                />
+              ))}
+              {data.aiSignals.staleTasks.map((t) => (
+                <Row
+                  key={`stale-${t.id}`}
+                  onClick={() => onOpenChannel(t.serverId, t.channelId)}
+                  glyph={
+                    <span
+                      aria-hidden
+                      style={{
+                        fontFamily: "var(--ec-font-mono)",
+                        fontWeight: 700,
+                      }}
+                    >
+                      ◌
+                    </span>
+                  }
+                  glyphColor="var(--ec-text-dim)"
+                  title={t.title}
+                  context={`Без обновлений · ${t.serverName} · #${t.channelName}`}
+                  trailing={
+                    <span
+                      style={{
+                        fontSize: "var(--ec-text-2xs)",
+                        color: "var(--ec-text-dim)",
+                        fontWeight: 600,
+                        whiteSpace: "nowrap",
+                      }}
+                      title={t.updatedAt}
+                    >
+                      {relativeShort(t.updatedAt)}
+                    </span>
+                  }
+                />
+              ))}
+            </div>
+          </section>
+        )}
 
       {/* Active voice */}
       {data && data.activeVoice.length > 0 && (

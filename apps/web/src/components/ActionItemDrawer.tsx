@@ -1436,6 +1436,306 @@ function depRowStyle(done: boolean): CSSProperties {
   };
 }
 
+/* ============================================================
+ * v0.76 #20 phase 2: mini DAG visualization для зависимостей.
+ *
+ * Layered layout, 3 уровня:
+ *   - row 0 (top): blockers (`dependencies` — то, что блокирует меня)
+ *   - row 1 (mid): current task
+ *   - row 2 (bot): tasks-я-блокирую (`blocks`)
+ *
+ * Compact: max 6 nodes per row (overflow → «+N» chip). Edges рисуются
+ * от blocker.bottom → current.top и current.bottom → blocked.top.
+ * SVG, без библиотек.
+ * ============================================================ */
+
+function truncateLabel(s: string, max = 18): string {
+  return s.length > max ? s.slice(0, max - 1) + "…" : s;
+}
+
+function dagNodeColors(
+  status: "OPEN" | "IN_PROGRESS" | "REVIEW" | "DONE",
+): { fill: string; stroke: string; text: string } {
+  if (status === "DONE")
+    return {
+      fill: "var(--ec-exec-soft, var(--ec-surface-3))",
+      stroke: "var(--ec-exec, var(--ec-text-dim))",
+      text: "var(--ec-text-muted)",
+    };
+  if (status === "IN_PROGRESS")
+    return {
+      fill: "var(--ec-accent-soft)",
+      stroke: "var(--ec-border-accent)",
+      text: "var(--ec-text)",
+    };
+  if (status === "REVIEW")
+    return {
+      fill: "var(--ec-ai-soft, var(--ec-accent-soft))",
+      stroke: "var(--ec-ai, var(--ec-accent))",
+      text: "var(--ec-text)",
+    };
+  return {
+    fill: "var(--ec-surface-2)",
+    stroke: "var(--ec-border-default)",
+    text: "var(--ec-text)",
+  };
+}
+
+function DepDagViz({
+  dependencies,
+  blocks,
+}: {
+  dependencies: ActionItemDependencyRef[];
+  blocks: ActionItemDependencyRef[];
+}) {
+  const MAX = 6;
+  const visibleDeps = dependencies.slice(0, MAX);
+  const moreDeps = dependencies.length - visibleDeps.length;
+  const visibleBlocks = blocks.slice(0, MAX);
+  const moreBlocks = blocks.length - visibleBlocks.length;
+
+  // Геометрия: каждая node 96×26, gap 8, layered y-padding 14.
+  const nodeW = 96;
+  const nodeH = 26;
+  const gapX = 10;
+  const ySpace = 50;
+  const padTop = 6;
+  const padBottom = 6;
+  const cols = Math.max(
+    1,
+    visibleDeps.length + (moreDeps > 0 ? 1 : 0),
+    1,
+    visibleBlocks.length + (moreBlocks > 0 ? 1 : 0),
+  );
+  const innerW = cols * nodeW + (cols - 1) * gapX;
+  const w = innerW + 24;
+  const h = padTop + nodeH + ySpace + nodeH + ySpace + nodeH + padBottom;
+
+  // helper coordinates: layout центрирует ряд относительно средней оси.
+  function rowCoords(count: number, idx: number): { x: number; y: number } {
+    const rowWidth = count * nodeW + (count - 1) * gapX;
+    const x = (w - rowWidth) / 2 + idx * (nodeW + gapX);
+    return { x, y: 0 };
+  }
+
+  const depRowCount = visibleDeps.length + (moreDeps > 0 ? 1 : 0);
+  const blockRowCount = visibleBlocks.length + (moreBlocks > 0 ? 1 : 0);
+  const yDeps = padTop;
+  const yMe = padTop + nodeH + ySpace;
+  const yBlocks = padTop + nodeH + ySpace + nodeH + ySpace;
+  const meX = (w - nodeW) / 2;
+
+  return (
+    <details
+      style={{
+        background: "var(--ec-surface-2)",
+        border: "1px solid var(--ec-border-subtle)",
+        borderRadius: "var(--ec-radius-md)",
+        padding: "var(--ec-space-2) var(--ec-space-3)",
+      }}
+    >
+      <summary
+        style={{
+          cursor: "pointer",
+          color: "var(--ec-text-muted)",
+          fontSize: "var(--ec-text-2xs)",
+          letterSpacing: "var(--ec-tracking-caps)",
+          textTransform: "uppercase",
+          fontWeight: 700,
+        }}
+      >
+        Граф зависимостей · {dependencies.length} ← me → {blocks.length}
+      </summary>
+      <div style={{ marginTop: 8, overflowX: "auto" }}>
+        <svg
+          viewBox={`0 0 ${w} ${h}`}
+          width={w}
+          height={h}
+          style={{ display: "block", margin: "0 auto", maxWidth: "100%" }}
+          aria-label="Граф зависимостей"
+        >
+          {/* Top row: blockers (dependencies) */}
+          {visibleDeps.map((d, i) => {
+            const { x } = rowCoords(depRowCount, i);
+            const c = dagNodeColors(d.status);
+            return (
+              <g key={d.id}>
+                <rect
+                  x={x}
+                  y={yDeps}
+                  width={nodeW}
+                  height={nodeH}
+                  rx={6}
+                  fill={c.fill}
+                  stroke={c.stroke}
+                  strokeWidth={1}
+                />
+                <text
+                  x={x + nodeW / 2}
+                  y={yDeps + nodeH / 2 + 4}
+                  textAnchor="middle"
+                  fontSize={11}
+                  fill={c.text}
+                  style={{ fontFamily: "var(--ec-font)" }}
+                >
+                  {truncateLabel(d.title)}
+                </text>
+                {/* arrow blocker→me */}
+                <line
+                  x1={x + nodeW / 2}
+                  y1={yDeps + nodeH}
+                  x2={meX + nodeW / 2}
+                  y2={yMe}
+                  stroke="var(--ec-border-default)"
+                  strokeWidth={1.2}
+                  markerEnd="url(#ec-dag-arrow)"
+                />
+              </g>
+            );
+          })}
+          {moreDeps > 0 && (
+            <g>
+              <rect
+                x={rowCoords(depRowCount, visibleDeps.length).x}
+                y={yDeps}
+                width={nodeW}
+                height={nodeH}
+                rx={6}
+                fill="var(--ec-surface-3)"
+                stroke="var(--ec-border-default)"
+                strokeDasharray="3 3"
+              />
+              <text
+                x={rowCoords(depRowCount, visibleDeps.length).x + nodeW / 2}
+                y={yDeps + nodeH / 2 + 4}
+                textAnchor="middle"
+                fontSize={11}
+                fill="var(--ec-text-muted)"
+              >
+                +{moreDeps} ещё
+              </text>
+            </g>
+          )}
+
+          {/* Middle: current task */}
+          <rect
+            x={meX}
+            y={yMe}
+            width={nodeW}
+            height={nodeH}
+            rx={6}
+            fill="var(--ec-accent)"
+            stroke="var(--ec-accent)"
+            opacity={0.95}
+          />
+          <text
+            x={meX + nodeW / 2}
+            y={yMe + nodeH / 2 + 4}
+            textAnchor="middle"
+            fontSize={11}
+            fontWeight={700}
+            fill="var(--ec-accent-text, #fff)"
+          >
+            Эта задача
+          </text>
+
+          {/* Bottom row: blocks (исходящие edges) */}
+          {visibleBlocks.map((b, i) => {
+            const { x } = rowCoords(blockRowCount, i);
+            const c = dagNodeColors(b.status);
+            return (
+              <g key={b.id}>
+                <line
+                  x1={meX + nodeW / 2}
+                  y1={yMe + nodeH}
+                  x2={x + nodeW / 2}
+                  y2={yBlocks}
+                  stroke="var(--ec-border-default)"
+                  strokeWidth={1.2}
+                  markerEnd="url(#ec-dag-arrow)"
+                />
+                <rect
+                  x={x}
+                  y={yBlocks}
+                  width={nodeW}
+                  height={nodeH}
+                  rx={6}
+                  fill={c.fill}
+                  stroke={c.stroke}
+                  strokeWidth={1}
+                />
+                <text
+                  x={x + nodeW / 2}
+                  y={yBlocks + nodeH / 2 + 4}
+                  textAnchor="middle"
+                  fontSize={11}
+                  fill={c.text}
+                  style={{ fontFamily: "var(--ec-font)" }}
+                >
+                  {truncateLabel(b.title)}
+                </text>
+              </g>
+            );
+          })}
+          {moreBlocks > 0 && (
+            <g>
+              <line
+                x1={meX + nodeW / 2}
+                y1={yMe + nodeH}
+                x2={
+                  rowCoords(blockRowCount, visibleBlocks.length).x + nodeW / 2
+                }
+                y2={yBlocks}
+                stroke="var(--ec-border-default)"
+                strokeWidth={1.2}
+                strokeDasharray="3 3"
+              />
+              <rect
+                x={rowCoords(blockRowCount, visibleBlocks.length).x}
+                y={yBlocks}
+                width={nodeW}
+                height={nodeH}
+                rx={6}
+                fill="var(--ec-surface-3)"
+                stroke="var(--ec-border-default)"
+                strokeDasharray="3 3"
+              />
+              <text
+                x={
+                  rowCoords(blockRowCount, visibleBlocks.length).x + nodeW / 2
+                }
+                y={yBlocks + nodeH / 2 + 4}
+                textAnchor="middle"
+                fontSize={11}
+                fill="var(--ec-text-muted)"
+              >
+                +{moreBlocks} ещё
+              </text>
+            </g>
+          )}
+
+          <defs>
+            <marker
+              id="ec-dag-arrow"
+              viewBox="0 0 10 10"
+              refX="8"
+              refY="5"
+              markerWidth="6"
+              markerHeight="6"
+              orient="auto-start-reverse"
+            >
+              <path
+                d="M 0 0 L 10 5 L 0 10 z"
+                fill="var(--ec-border-default)"
+              />
+            </marker>
+          </defs>
+        </svg>
+      </div>
+    </details>
+  );
+}
+
 function DependencySection({
   dependencies,
   blocks,
@@ -1476,8 +1776,15 @@ function DependencySection({
       .slice(0, 30);
   }, [serverActions, dependencies, currentActionId, query]);
 
+  // v0.76 #20 phase 2: показываем mini-DAG только если есть >=1 edge — иначе
+  // картинка пустая. Toggle-collapsible чтобы не давить когда не нужно.
+  const hasGraph = dependencies.length > 0 || blocks.length > 0;
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      {hasGraph && (
+        <DepDagViz dependencies={dependencies} blocks={blocks} />
+      )}
       {dependencies.length === 0 ? (
         <p
           style={{

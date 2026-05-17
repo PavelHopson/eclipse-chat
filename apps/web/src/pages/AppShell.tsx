@@ -18,6 +18,7 @@ import { MusicMiniPlayer } from "../components/MusicMiniPlayer";
 import { MusicExpandModal } from "../components/MusicExpandModal";
 import { useChannelMusic } from "../hooks/useChannelMusic";
 import { HelpPanel } from "../components/HelpPanel";
+import { AdminPanel } from "../components/AdminPanel";
 import { JoinServerModal } from "../components/JoinServerModal";
 import { MessageInput } from "../components/MessageInput";
 import { MessageList } from "../components/MessageList";
@@ -351,6 +352,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   /** v0.73 #14: In-app help / onboarding. Полноэкранный view как Home /
    *  StatusBoard / TeamHealth — правый rail скрыт. Открывается «?» в topbar. */
   const [helpOpen, setHelpOpen] = useState(false);
+  /** v0.76 #25 phase 1: Admin Panel — полноэкранный view для OWNER/ADMIN. */
+  const [adminOpen, setAdminOpen] = useState(false);
   // Incident panel — toggle в right rail (приоритет ниже thread panel).
   const [showIncidents, setShowIncidents] = useState(false);
   // Thread panel — открыт когда selectedThreadId != null. Replaces MemberList
@@ -478,10 +481,15 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   // переключает режим панели.
   const isVoiceView =
     !inDmMode && !homeOpen && selectedChannel?.type === "VOICE";
-  const inServerView = Boolean(activeServer) && !homeOpen && !helpOpen;
-  // Status Board / Team Health / Help открываются на всю ширину (как Home) — правый rail скрыт.
+  const inServerView =
+    Boolean(activeServer) && !homeOpen && !helpOpen && !adminOpen;
+  // Status Board / Team Health / Help / Admin открываются на всю ширину (как Home) — правый rail скрыт.
   const showRightRail =
-    inServerView && !statusBoardOpen && !teamHealthOpen && !helpOpen;
+    inServerView &&
+    !statusBoardOpen &&
+    !teamHealthOpen &&
+    !helpOpen &&
+    !adminOpen;
   const [navOpen, setNavOpenRaw] = useState(false);
   const [membersOpen, setMembersOpenRaw] = useState(false);
 
@@ -585,6 +593,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   const handleSelectChannel = (channelId: string) => {
     setHomeOpen(false);
     setHelpOpen(false);
+    setAdminOpen(false);
     setStatusBoardOpen(false);
     setTeamHealthOpen(false);
     setSelectedTableId(null);
@@ -601,6 +610,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   const openHome = () => {
     setHomeOpen(true);
     setHelpOpen(false);
+    setAdminOpen(false);
     setStatusBoardOpen(false);
     setTeamHealthOpen(false);
     setSelectedTableId(null);
@@ -612,6 +622,18 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
 
   const openHelp = () => {
     setHelpOpen(true);
+    setAdminOpen(false);
+    setHomeOpen(false);
+    setStatusBoardOpen(false);
+    setTeamHealthOpen(false);
+    setSelectedTableId(null);
+    setNavOpen(false);
+    setMembersOpen(false);
+  };
+
+  const openAdmin = () => {
+    setAdminOpen(true);
+    setHelpOpen(false);
     setHomeOpen(false);
     setStatusBoardOpen(false);
     setTeamHealthOpen(false);
@@ -623,6 +645,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   const openActiveServer = () => {
     setHomeOpen(false);
     setHelpOpen(false);
+    setAdminOpen(false);
     setStatusBoardOpen(false);
     setTeamHealthOpen(false);
     if (activeServerId == null && servers[0]) {
@@ -735,6 +758,29 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               <line x1="12" y1="17" x2="12.01" y2="17" />
             </svg>
           </button>
+          {(currentRole === "OWNER" || currentRole === "ADMIN") &&
+            activeServer &&
+            !inDmMode && (
+              <button
+                type="button"
+                onClick={() =>
+                  adminOpen ? setAdminOpen(false) : openAdmin()
+                }
+                title="Админ-панель"
+                aria-label="Админ-панель"
+                aria-pressed={adminOpen}
+                className="ec-btn ec-btn--ghost ec-btn--sm"
+                style={{
+                  padding: "0.35rem 0.65rem",
+                  color: adminOpen ? "var(--ec-accent)" : undefined,
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M12 2l9 4v6c0 5-3.5 9.5-9 10-5.5-.5-9-5-9-10V6l9-4z" />
+                  <path d="M9 12l2 2 4-4" />
+                </svg>
+              </button>
+            )}
           {/* v0.74 #29 phase 1: Focus mode toggle — фильтр feed'а на
               direct-mentions + pinned + own messages. Глобальный, не
               привязан к каналу. */}
@@ -946,6 +992,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           onSelect={(id) => {
             setHomeOpen(false);
             setHelpOpen(false);
+            setAdminOpen(false);
             setActiveServerId(id);
             if (isMobile) setNavOpen(false);
           }}
@@ -968,6 +1015,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           onDmsRequest={() => {
             setHomeOpen(false);
             setHelpOpen(false);
+            setAdminOpen(false);
             setActiveServerId(null);
             if (isMobile) setNavOpen(false);
           }}
@@ -1083,6 +1131,14 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                 <line x1="12" y1="17" x2="12.01" y2="17" />
               </svg>
               Справка
+            </span>
+          ) : adminOpen ? (
+            <span className="ec-chat-title" style={chatTitle}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--ec-accent)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M12 2l9 4v6c0 5-3.5 9.5-9 10-5.5-.5-9-5-9-10V6l9-4z" />
+                <path d="M9 12l2 2 4-4" />
+              </svg>
+              Админ-панель
             </span>
           ) : statusBoardOpen ? (
             <span className="ec-chat-title" style={chatTitle}>
@@ -1321,6 +1377,23 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
 
         {helpOpen ? (
           <HelpPanel onClose={() => setHelpOpen(false)} />
+        ) : adminOpen && activeServer ? (
+          <AdminPanel
+            serverId={activeServer.id}
+            serverName={activeServer.name}
+            currentRole={currentRole}
+            members={members}
+            channels={channels}
+            teamHealth={teamHealth.data}
+            onUpdateMemberRole={async (userId, role) => {
+              await updateMemberRole(userId, role);
+            }}
+            onOpenChannelSettings={(channelId) => {
+              setSettingsChannelId(channelId);
+            }}
+            onOpenServerSettings={() => setShowServerSettings(true)}
+            onClose={() => setAdminOpen(false)}
+          />
         ) : selectedTableId ? (
           <OperationalTablePanel
             tableId={selectedTableId}

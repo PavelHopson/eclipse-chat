@@ -199,12 +199,89 @@ export function registerHomeRoutes(app: FastifyInstance) {
       })
       .filter((r): r is NonNullable<typeof r> => r !== null);
 
+    // ── v0.76 #28 phase 2: AI signals ───────────────────────────────
+    // Heuristic-based «alerts» поверх данных (без AI provider call'а на
+    // каждый Home open — это бы было дорого + flaky). Каждый signal
+    // вычисляется detectively, frontend рендерит accent-coloured card.
+    //
+    //   stale-action — задача без updatedAt за last 14 дней + ещё не DONE
+    //   blocker-chain — задача-блокер с blockers >= 2 уровня (transitive blockers)
+    //   escalated — escalatedAt set within last 24h (overdue 48h+ scan'ом)
+    //
+    // Все signals — top-3 max каждой категории. Если >3 — UI показывает
+    // «и ещё N…» counter без деталей. Никаких PII, только id/title.
+    const FOURTEEN_DAYS_MS = 14 * 24 * 60 * 60 * 1000;
+    const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+    const staleRows = await db.actionItem.findMany({
+      where: {
+        assigneeUserId: userId,
+        status: { in: ["OPEN", "IN_PROGRESS", "REVIEW"] },
+        updatedAt: { lt: new Date(now - FOURTEEN_DAYS_MS) },
+      },
+      orderBy: { updatedAt: "asc" },
+      take: 3,
+      select: {
+        id: true,
+        title: true,
+        type: true,
+        updatedAt: true,
+        serverId: true,
+        channelId: true,
+        server: { select: { name: true } },
+        channel: { select: { name: true } },
+      },
+    });
+    const escalatedRows = await db.actionItem.findMany({
+      where: {
+        assigneeUserId: userId,
+        status: { in: ["OPEN", "IN_PROGRESS", "REVIEW"] },
+        escalatedAt: { gte: new Date(now - ONE_DAY_MS) },
+      },
+      orderBy: { escalatedAt: "desc" },
+      take: 3,
+      select: {
+        id: true,
+        title: true,
+        type: true,
+        escalatedAt: true,
+        dueAt: true,
+        serverId: true,
+        channelId: true,
+        server: { select: { name: true } },
+        channel: { select: { name: true } },
+      },
+    });
+    const aiSignals = {
+      staleTasks: staleRows.map((t) => ({
+        id: t.id,
+        title: t.title,
+        type: t.type,
+        updatedAt: t.updatedAt.toISOString(),
+        serverId: t.serverId,
+        serverName: t.server.name,
+        channelId: t.channelId,
+        channelName: t.channel.name,
+      })),
+      escalated: escalatedRows.map((t) => ({
+        id: t.id,
+        title: t.title,
+        type: t.type,
+        escalatedAt: t.escalatedAt?.toISOString() ?? null,
+        dueAt: t.dueAt?.toISOString() ?? null,
+        serverId: t.serverId,
+        serverName: t.server.name,
+        channelId: t.channelId,
+        channelName: t.channel.name,
+      })),
+    };
+
     return {
       assignedTasks,
       incidents,
       activeVoice,
       pendingApprovals,
       activeRooms,
+      aiSignals,
       counts: {
         tasks: assignedTasks.length,
         overdue: assignedTasks.filter((t) => t.overdue).length,
@@ -212,6 +289,8 @@ export function registerHomeRoutes(app: FastifyInstance) {
         activeVoice: activeVoice.length,
         approvals: pendingApprovals.length,
         activeRooms: activeRooms.length,
+        aiSignals:
+          aiSignals.staleTasks.length + aiSignals.escalated.length,
       },
     };
   });

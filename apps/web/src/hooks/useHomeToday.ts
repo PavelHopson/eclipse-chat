@@ -58,12 +58,42 @@ export type HomeActiveRoom = {
   authorCount: number;
 };
 
+/** v0.76 #28 phase 2: AI alert items (heuristic-derived, не AI call). */
+export type HomeStaleTask = {
+  id: string;
+  title: string;
+  type: "TASK" | "DECISION" | "FOLLOW_UP";
+  updatedAt: string;
+  serverId: string;
+  serverName: string;
+  channelId: string;
+  channelName: string;
+};
+
+export type HomeEscalatedTask = {
+  id: string;
+  title: string;
+  type: "TASK" | "DECISION" | "FOLLOW_UP";
+  escalatedAt: string | null;
+  dueAt: string | null;
+  serverId: string;
+  serverName: string;
+  channelId: string;
+  channelName: string;
+};
+
+export type HomeAiSignals = {
+  staleTasks: HomeStaleTask[];
+  escalated: HomeEscalatedTask[];
+};
+
 export type HomeTodayData = {
   assignedTasks: HomeTask[];
   incidents: HomeIncident[];
   activeVoice: HomeVoice[];
   pendingApprovals: HomePendingApproval[];
   activeRooms: HomeActiveRoom[];
+  aiSignals?: HomeAiSignals;
   counts: {
     tasks: number;
     overdue: number;
@@ -71,6 +101,7 @@ export type HomeTodayData = {
     activeVoice: number;
     approvals: number;
     activeRooms: number;
+    aiSignals?: number;
   };
 };
 
