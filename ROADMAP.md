@@ -412,7 +412,60 @@ base, ✅ Home command center, ✅ responsive cinematic UI pass.
     rooms / bots / templates). Требует §19 Bot Builder + §17
     Roles + §25 Admin foundations. XL+.
 
-31. **Mobile responsive hardening v2** — Pavel-ask 17.05 «всё урезано
+32. **Player visualization — waveform + scrubbing** — Pavel-ask 17.05
+    «нужно настроить визуализацию проигрывателя видео и музыки в чате,
+    чтобы было видно дорожку». Сейчас: audio/video attachments
+    используют native `<audio controls>` / `<video controls>` — linear
+    progress bar, без waveform. MusicMiniPlayer имеет custom pill
+    progress, но без визуальной дорожки. Voice messages — то же
+    (native controls).
+
+    **Цель — три уровня визуализации:**
+
+    **Phase 1: Audio waveform (Telegram-style)** — самое важное для
+    voice messages и music. Подходы:
+    - **a.** Pre-rendered waveform: backend в `processAttachment` для
+      audio mime'ов сохраняет `Attachment.waveformPeaks` (Int[] N=64
+      или 96 нормализованных peaks 0-100) — рассчитывается через
+      `ffprobe` / `audiowaveform` CLI или JS lib `wavesurfer.js`
+      analyzer (offline). Кэш в БД, рендер на frontend через SVG
+      polyline или canvas. Преимущество: instant render, scrubable.
+      Минус: новый migration + CLI dependency на проде.
+    - **b.** Client-side decode: на mount audio attachment frontend
+      decode'ит first ~3 sec через Web Audio API + рисует peaks.
+      Преимущество: zero backend. Минус: задержка perceived ~200ms,
+      крутится spinner.
+    - **Решение:** опция **a** для phase 1 — pre-rendered, instant.
+      Schema: `Attachment.waveformPeaks Json?` + migration additive.
+      Backend: `audiowaveform` cli (`apt install audiowaveform`) или
+      JS lib `web-audio-api` для server-side decoding.
+
+    **Phase 2: Video timeline thumbnails** — для video attachments:
+    при наведении на progress bar показывать thumbnail кадра в этой
+    точке (как YouTube). Подходы: ffmpeg extract N=20 thumbnails
+    при upload → sprite-sheet PNG → `Attachment.timelineSpriteUrl`.
+    Стандартный pattern.
+
+    **Phase 3: Музыкальный плеер апгрейд** — MusicMiniPlayer
+    получает full-width waveform view при expand'е (а не только pill
+    progress). + spectrum analyzer overlay для playing track через
+    Web Audio API (real-time visualisation). Cinematic / calm
+    aesthetic.
+
+    **Места для wire-in:**
+    - `Attachments.tsx` `AudioItem` / `VoiceMessageItem` —
+      основной hit point.
+    - `Attachments.tsx` video `<video>` thumbnail — phase 2.
+    - `MusicMiniPlayer.tsx` — pill expand view + waveform.
+
+    **Effort:** Phase 1 M (server-side decode + schema migration +
+    SVG render + scrubbing handler), Phase 2 M-L (ffmpeg cli + sprite
+    serving), Phase 3 S-M на base + L на real-time analyzer.
+    **Impact:** H — operational chat aesthetic становится cinematic,
+    voice messages сразу узнаваемы по shape, music room ощущается
+    как proper player.
+
+33. **Mobile responsive hardening v2** — Pavel-ask 17.05 «всё урезано
     и криво». Отдельно от #27 strategic mobile-first phase (PWA / native
     shell / gestures / voice-first) — это **hardening hotfixes** для
     реальных дефектов в текущем responsive layer (v0.34→v0.45). Audit
@@ -501,8 +554,9 @@ base, ✅ Home command center, ✅ responsive cinematic UI pass.
 
 | Очередь | Что | Effort | Impact | Зачем |
 |---|---|---|---|---|
-| ✅ закрыто | **#31 Mobile responsive hardening v2** — закрыто в v0.65.0 (14 fixes). Strategic mobile-first phase (#27) остаётся отдельной L-tier работой (PWA / native shell / gestures / voice-first) |
-| **#1 next** | **#15 link embeds** | S | M | gap-fix CORE chat |
+| ✅ закрыто | **#33 Mobile responsive hardening v2** — закрыто в v0.65.0 (14 fixes). Strategic mobile-first phase (#27) остаётся отдельной L-tier работой (PWA / native shell / gestures / voice-first) |
+| **#1 next** | **#32 Player visualization — phase 1 audio waveform** (Pavel-ask 17.05) | M | H | voice/music сейчас выглядит «голым» native control'ом, Telegram-style waveform делает chat cinematic + scrubable |
+| После | **#15 link embeds** | S | M | gap-fix CORE chat |
 | После | **#28 Home expansion** | S-M | M | визуальный win, нет инфры |
 | После | **#10 Tables phase 2.5** RELATION + drag-reorder | M | H | продолжение текущей фичи |
 | После | **#20 Execution kanban + reminders** | M | H | execution loop замыкается |
