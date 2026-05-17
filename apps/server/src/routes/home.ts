@@ -101,15 +101,117 @@ export function registerHomeRoutes(app: FastifyInstance) {
         count: voiceSnap[c.id]!.length,
       }));
 
+    // ── v0.69: На моём одобрении (Approvals waiting on me) ──────────
+    // ActionItems где я approver + status PENDING. Не зависит от server-
+    // membership напрямую (approver мог быть назначен в чужой server'е),
+    // но FK approverUserId → User обеспечивает что это валидные items.
+    const approvalRows = await db.actionItem.findMany({
+      where: { approverUserId: userId, approvalStatus: "PENDING" },
+      orderBy: { updatedAt: "desc" },
+      take: 20,
+      select: {
+        id: true,
+        title: true,
+        type: true,
+        serverId: true,
+        channelId: true,
+        updatedAt: true,
+        server: { select: { name: true } },
+        channel: { select: { name: true } },
+        createdBy: { select: { displayName: true } },
+      },
+    });
+    const pendingApprovals = approvalRows.map((a) => ({
+      id: a.id,
+      title: a.title,
+      type: a.type,
+      serverId: a.serverId,
+      serverName: a.server.name,
+      channelId: a.channelId,
+      channelName: a.channel.name,
+      requestedAt: a.updatedAt.toISOString(),
+      requestedBy: a.createdBy?.displayName ?? "—",
+    }));
+
+    // ── v0.69: Активные комнаты (recent activity heat) ──────────────
+    // Top-5 TEXT-channels с сообщениями за последний час across мои
+    // servers. Группировка by channelId через JS (group + take 5)
+    // вместо тяжёлого SQL — для MVP scope 100-1000 messages в 1h в
+    // small workspace это милисекунды.
+    const oneHourAgo = new Date(now - 60 * 60 * 1000);
+    const recentMessages = serverIds.length
+      ? await db.message.findMany({
+          where: {
+            channel: { serverId: { in: serverIds }, type: "TEXT" },
+            createdAt: { gte: oneHourAgo },
+            deletedAt: null,
+          },
+          select: {
+            channelId: true,
+            userId: true,
+          },
+        })
+      : [];
+    const activityByChannel = new Map<
+      string,
+      { messages: number; uniqueAuthors: Set<string> }
+    >();
+    for (const m of recentMessages) {
+      if (!m.channelId) continue;
+      const cur =
+        activityByChannel.get(m.channelId) ?? {
+          messages: 0,
+          uniqueAuthors: new Set<string>(),
+        };
+      cur.messages += 1;
+      if (m.userId) cur.uniqueAuthors.add(m.userId);
+      activityByChannel.set(m.channelId, cur);
+    }
+    const topChannelIds = [...activityByChannel.entries()]
+      .sort((a, b) => b[1].messages - a[1].messages)
+      .slice(0, 5)
+      .map(([id]) => id);
+    const activeRoomChannels = topChannelIds.length
+      ? await db.channel.findMany({
+          where: { id: { in: topChannelIds } },
+          select: {
+            id: true,
+            name: true,
+            serverId: true,
+            server: { select: { name: true } },
+          },
+        })
+      : [];
+    const activeRoomMap = new Map(activeRoomChannels.map((c) => [c.id, c]));
+    const activeRooms = topChannelIds
+      .map((cid) => {
+        const ch = activeRoomMap.get(cid);
+        const stats = activityByChannel.get(cid);
+        if (!ch || !stats) return null;
+        return {
+          channelId: ch.id,
+          channelName: ch.name,
+          serverId: ch.serverId,
+          serverName: ch.server.name,
+          messageCount: stats.messages,
+          authorCount: stats.uniqueAuthors.size,
+        };
+      })
+      .filter((r): r is NonNullable<typeof r> => r !== null);
+
     return {
       assignedTasks,
       incidents,
       activeVoice,
+      pendingApprovals,
+      activeRooms,
       counts: {
         tasks: assignedTasks.length,
         overdue: assignedTasks.filter((t) => t.overdue).length,
         incidents: incidents.length,
         activeVoice: activeVoice.length,
+        approvals: pendingApprovals.length,
+        activeRooms: activeRooms.length,
       },
     };
   });

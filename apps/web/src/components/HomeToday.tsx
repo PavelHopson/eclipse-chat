@@ -228,14 +228,23 @@ export function HomeToday({
   onOpenDms,
   onCreateServer,
 }: Props) {
-  const counts = data?.counts ?? { tasks: 0, overdue: 0, incidents: 0, activeVoice: 0 };
+  const counts = data?.counts ?? {
+    tasks: 0,
+    overdue: 0,
+    incidents: 0,
+    activeVoice: 0,
+    approvals: 0,
+    activeRooms: 0,
+  };
   const isEmpty =
     !loading &&
     !error &&
     data != null &&
     data.assignedTasks.length === 0 &&
     data.incidents.length === 0 &&
-    data.activeVoice.length === 0;
+    data.activeVoice.length === 0 &&
+    (data.pendingApprovals?.length ?? 0) === 0 &&
+    (data.activeRooms?.length ?? 0) === 0;
 
   return (
     <div style={wrap} className="ec-home">
@@ -299,6 +308,17 @@ export function HomeToday({
         <div className="ec-home-stat-card ec-home-stat-card--idle" style={statCard("var(--ec-status-idle)")}>
           <span style={statValue}>{counts.activeVoice}</span>
           <span style={statLabel}>Голосовых сессий</span>
+        </div>
+        {/* v0.69: approvals + active rooms cards */}
+        <div className="ec-home-stat-card ec-home-stat-card--ai" style={statCard("var(--ec-status-ai, var(--ec-accent))")}>
+          <span style={{ ...statValue, color: counts.approvals > 0 ? "var(--ec-accent)" : "var(--ec-text-strong)" }}>
+            {counts.approvals}
+          </span>
+          <span style={statLabel}>На моём одобрении</span>
+        </div>
+        <div className="ec-home-stat-card ec-home-stat-card--idle" style={statCard("var(--ec-status-idle)")}>
+          <span style={statValue}>{counts.activeRooms}</span>
+          <span style={statLabel}>Активных комнат</span>
         </div>
       </div>
 
@@ -401,6 +421,80 @@ export function HomeToday({
                 glyphColor="var(--ec-status-risk)"
                 title={i.title}
                 context={`${i.serverName} · открыт ${relativeShort(i.openedAt)}`}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* v0.69: На моём одобрении */}
+      {data && data.pendingApprovals && data.pendingApprovals.length > 0 && (
+        <section>
+          <h3 style={sectionTitle}>
+            <span aria-hidden style={{ color: "var(--ec-accent)" }}>▸</span>
+            На моём одобрении
+          </h3>
+          <div style={{ display: "flex", flexDirection: "column", gap: "var(--ec-space-2)" }}>
+            {data.pendingApprovals.map((a) => (
+              <Row
+                key={a.id}
+                onClick={() => onOpenChannel(a.serverId, a.channelId)}
+                glyph={typeGlyph(a.type)}
+                glyphColor="var(--ec-accent)"
+                title={a.title}
+                context={`${a.serverName} · #${a.channelName} · от ${a.requestedBy}`}
+                trailing={
+                  <span
+                    style={{
+                      fontSize: "0.6rem",
+                      fontWeight: 700,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.04em",
+                      padding: "0.12rem 0.45rem",
+                      borderRadius: "var(--ec-radius-full)",
+                      color: "var(--ec-accent)",
+                      background: "var(--ec-accent-soft)",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {relativeShort(a.requestedAt)}
+                  </span>
+                }
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* v0.69: Активные комнаты — top-5 каналов с messages за last 1h */}
+      {data && data.activeRooms && data.activeRooms.length > 0 && (
+        <section>
+          <h3 style={sectionTitle}>
+            <span aria-hidden style={{ color: "var(--ec-status-exec)" }}>▸</span>
+            Активные комнаты <span style={{ color: "var(--ec-text-dim)", fontWeight: 600 }}>· последний час</span>
+          </h3>
+          <div style={{ display: "flex", flexDirection: "column", gap: "var(--ec-space-2)" }}>
+            {data.activeRooms.map((r) => (
+              <Row
+                key={r.channelId}
+                onClick={() => onOpenChannel(r.serverId, r.channelId)}
+                glyph={<span aria-hidden style={{ fontFamily: "var(--ec-font-mono)", fontWeight: 700 }}>#</span>}
+                glyphColor="var(--ec-status-exec)"
+                title={r.channelName}
+                context={`${r.serverName} · ${r.authorCount} ${r.authorCount === 1 ? "автор" : "авторов"}`}
+                trailing={
+                  <span
+                    style={{
+                      fontSize: "var(--ec-text-2xs)",
+                      color: "var(--ec-status-exec)",
+                      fontWeight: 600,
+                      whiteSpace: "nowrap",
+                      fontVariantNumeric: "tabular-nums",
+                    }}
+                  >
+                    {r.messageCount} сообщ.
+                  </span>
+                }
               />
             ))}
           </div>
