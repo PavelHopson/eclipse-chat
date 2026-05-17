@@ -38,11 +38,15 @@
     "rail   channels chat";
 }
 
+/* v0.68: min-height:0 на каждой grid-area обязательно — без него grid-row
+   auto-expand'ится под content (большой channel list / long member list),
+   header app уходит за viewport, никаких scroll'ов не появляется.
+   Pavel-ask 17.05 «не у всех экран показывает все каналы». */
 .ec-shell__top      { grid-area: top; min-width: 0; }
-.ec-shell__rail     { grid-area: rail; min-width: 0; }
-.ec-shell__channels { grid-area: channels; min-width: 0; }
+.ec-shell__rail     { grid-area: rail; min-width: 0; min-height: 0; overflow: hidden; }
+.ec-shell__channels { grid-area: channels; min-width: 0; min-height: 0; overflow: hidden; }
 .ec-shell__chat     { grid-area: chat; min-width: 0; min-height: 0; }
-.ec-shell__members  { grid-area: members; min-width: 0; min-height: 0; }
+.ec-shell__members  { grid-area: members; min-width: 0; min-height: 0; overflow: hidden; }
 
 /* Laptop (1025-1366px): rail + channels + chat + members одновременно
    съедают много ширины. Поджимаем боковые колонки, чтобы центральный

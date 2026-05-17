@@ -58,6 +58,14 @@ const wrap: CSSProperties = {
   display: "flex",
   flexDirection: "column",
   minWidth: 0,
+  // v0.68: height:100% + min-height:0 + overflow:hidden обязательны чтобы
+  // listWrap (flex:1; overflow:auto) реально получил bounded height и начал
+  // scrollить. Без них на коротком viewport (≤700px) или с большим числом
+  // каналов content overflows за пределы grid-area и пропадает за footer'ом
+  // экрана. Pavel-ask 17.05: «не у всех всё видно».
+  height: "100%",
+  minHeight: 0,
+  overflow: "hidden",
 };
 
 const headerStyle: CSSProperties = {
