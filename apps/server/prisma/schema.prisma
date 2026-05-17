@@ -55,6 +55,8 @@ model User {
   assignedActionItems ActionItem[]       @relation("ActionItemAssignee")
   /// Items на которых я approver (v0.55). Pending → approver_userId = me.
   approvalQueue      ActionItem[]        @relation("ActionItemApprover")
+  /// Operational Tables, созданные этим user'ом (v0.59 phase 1).
+  createdTables      Table[]             @relation("TableCreator")
   /// Comments написанные этим user'ом на ActionItem'ах (v0.54 drawer).
   actionItemComments ActionItemComment[]
   /// Audit-log записи где user был инициатором (v0.54). Null userId — system.
@@ -328,6 +330,17 @@ enum TranscriptStatus {
   FAILED
 }
 
+/// Тип поля Operational Table (v0.59 phase 1). v1: четыре базовых типа.
+/// Phase 2 — USER (relation на Member), RELATION (cross-table), FILE,
+/// CHECKBOX, FORMULA. Coercion value хранится как строка, frontend
+/// приводит к нужному типу при render/edit.
+enum TableFieldType {
+  TEXT
+  NUMBER
+  STATUS
+  DATE
+}
+
 /// Сервер — контейнер каналов и участников. Создатель автоматически
 /// становится Member с role = OWNER.
 model Server {
@@ -363,6 +376,7 @@ model Server {
   actionItems ActionItem[]
   bots        Bot[]
   incidents   Incident[]
+  tables      Table[]
 }
 
 /**
@@ -439,6 +453,7 @@ model Channel {
   messages  Message[]
   actionItems ActionItem[]
   visits    ChannelLastVisit[]
+  tables    Table[]
 }
 
 /// Сообщение. Может принадлежать ЛИБО серверному каналу (`channelId`),
@@ -704,4 +719,76 @@ model Reaction {
 
   @@unique([messageId, userId, emoji])
   @@index([messageId])
+}
+
+/// Operational Table (v0.59 phase 1) — встроенная таблица внутри
+/// пространства. Не отдельная Notion-page, а operational surface рядом с
+/// каналами (Context Tree). v1 — server-wide; channelId optional для
+/// будущего channel-scoped binding (когда таблица «принадлежит» комнате).
+///
+/// v1 модель — generic key-value cells. Phase 2 добавит relations к
+/// ActionItem (rows становятся first-class задачами), AI-fill, formulas.
+model Table {
+  id              String   @id @default(cuid())
+  serverId        String
+  server          Server   @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  /// Optional binding к каналу-источнику. Null = server-wide table.
+  channelId       String?
+  channel         Channel? @relation(fields: [channelId], references: [id], onDelete: SetNull)
+  name            String
+  description     String?
+  createdByUserId String
+  createdBy       User     @relation("TableCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  fields          TableField[]
+  rows            TableRow[]
+
+  @@index([serverId, updatedAt])
+  @@index([channelId])
+}
+
+model TableField {
+  id        String          @id @default(cuid())
+  tableId   String
+  table     Table           @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  name      String
+  type      TableFieldType
+  /// Для STATUS — JSON-string array допустимых значений `["TODO","DONE"]`.
+  /// Null для других типов.
+  options   String?
+  /// Порядок в строке (0-indexed). UI рендерит по position asc.
+  position  Int             @default(0)
+
+  cells     TableCell[]
+
+  @@index([tableId, position])
+}
+
+model TableRow {
+  id        String      @id @default(cuid())
+  tableId   String
+  table     Table       @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  position  Int         @default(0)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  cells     TableCell[]
+
+  @@index([tableId, position])
+}
+
+/// Ячейка: одна на пересечение (rowId, fieldId). Composite PK гарантирует
+/// уникальность. Value хранится как plain string; frontend coerces по
+/// field.type при render/edit.
+model TableCell {
+  rowId   String
+  row     TableRow   @relation(fields: [rowId], references: [id], onDelete: Cascade)
+  fieldId String
+  field   TableField @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  value   String
+
+  @@id([rowId, fieldId])
+  @@index([fieldId])
 }

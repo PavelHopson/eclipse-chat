@@ -30,6 +30,14 @@ type Props = {
   onOpenTeamHealth?: () => void;
   /** Team Health сейчас открыт — для подсветки. */
   teamHealthActive?: boolean;
+  /** v0.59 phase 1: список таблиц активного пространства. */
+  tables?: Array<{ id: string; name: string; rowCount: number }>;
+  /** Открыть Operational Table panel по id. */
+  onOpenTable?: (tableId: string) => void;
+  /** Создать новую таблицу. */
+  onCreateTable?: () => void;
+  /** Активная таблица (для подсветки в list). */
+  activeTableId?: string | null;
   /** Кто сейчас в каком VOICE-канале — для sticky-списка под каналом. */
   voiceByChannel?: Record<string, string[]>;
   /** Mic/deafen-состояние участников эфира — для Discord-style иконок. */
@@ -280,6 +288,10 @@ export function ChannelList({
   statusBoardActive,
   onOpenTeamHealth,
   teamHealthActive,
+  tables,
+  onOpenTable,
+  onCreateTable,
+  activeTableId,
   voiceByChannel,
   voiceMetaByUser,
   members,
@@ -711,6 +723,90 @@ export function ChannelList({
             </svg>
             <span style={{ flex: 1, minWidth: 0 }}>Здоровье команды</span>
           </button>
+        )}
+
+        {/* v0.59 phase 1: Operational Tables section */}
+        {(tables !== undefined && onOpenTable !== undefined) && (
+          <>
+            <div
+              className="ec-section-label"
+              style={{
+                marginTop: "var(--ec-space-3)",
+                marginBottom: "var(--ec-space-2)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <span>Таблицы</span>
+              {onCreateTable && (
+                <button
+                  type="button"
+                  onClick={onCreateTable}
+                  title="Создать таблицу"
+                  aria-label="Создать таблицу"
+                  style={{
+                    background: "transparent",
+                    border: "1px solid var(--ec-border-subtle)",
+                    color: "var(--ec-text-dim)",
+                    fontSize: "0.7rem",
+                    padding: "0.05rem 0.4rem",
+                    borderRadius: "var(--ec-radius-xs)",
+                    cursor: "pointer",
+                    lineHeight: 1.3,
+                  }}
+                >
+                  +
+                </button>
+              )}
+            </div>
+            {tables.length === 0 ? (
+              <p
+                style={{
+                  color: "var(--ec-text-dim)",
+                  fontSize: "var(--ec-text-2xs)",
+                  padding: "0 var(--ec-space-2) var(--ec-space-2)",
+                  margin: 0,
+                }}
+              >
+                Задачи, CRM, leads — что угодно. Жми +
+              </p>
+            ) : (
+              tables.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => onOpenTable(t.id)}
+                  className={
+                    activeTableId === t.id
+                      ? "ec-channel-item ec-channel-item--active"
+                      : "ec-channel-item"
+                  }
+                  title={t.name}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <rect x="3" y="3" width="18" height="18" rx="2" />
+                    <line x1="3" y1="9" x2="21" y2="9" />
+                    <line x1="9" y1="3" x2="9" y2="21" />
+                  </svg>
+                  <span
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {t.name}
+                  </span>
+                  {t.rowCount > 0 && (
+                    <span className="ec-channel-count">{t.rowCount}</span>
+                  )}
+                </button>
+              ))
+            )}
+          </>
         )}
 
         <ContextGroupHeader label="Communication" marginTop />

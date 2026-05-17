@@ -20,6 +20,7 @@ import { registerHomeRoutes } from "./routes/home.js";
 import { registerMessageRoutes } from "./routes/messages.js";
 import { registerIncidentRoutes } from "./routes/incidents.js";
 import { registerServerRoutes } from "./routes/servers.js";
+import { registerTableRoutes } from "./routes/tables.js";
 import { registerThreadRoutes } from "./routes/threads.js";
 import { registerUserRoutes } from "./routes/users.js";
 import { registerVisitRoutes } from "./routes/visits.js";
@@ -118,7 +119,7 @@ app.get("/api/health", async () => {
   }
   return { ok: true, service: "eclipse-chat-server", database: dbOk };
 });
-app.get("/api/version", async () => ({ name: "@eclipse-chat/server", version: "0.58.0" }));
+app.get("/api/version", async () => ({ name: "@eclipse-chat/server", version: "0.59.0" }));
 
 await registerAuthRoutes(app);
 await registerTwoFactorRoutes(app);
@@ -164,6 +165,7 @@ await registerDmRoutes(app);
 await registerHomeRoutes(app);
 registerAnalyticsRoutes(app);
 await registerVisitRoutes(app);
+await registerTableRoutes(app);
 await app.ready();
 
 /* Socket.io: тот же HTTP-сервер, что и у Fastify */

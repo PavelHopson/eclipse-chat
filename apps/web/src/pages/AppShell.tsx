@@ -12,6 +12,8 @@ import { GroupAvatar } from "../components/GroupAvatar";
 import { HomeToday } from "../components/HomeToday";
 import { IntelligencePanel } from "../components/IntelligencePanel";
 import { ActionItemDrawer } from "../components/ActionItemDrawer";
+import { OperationalTablePanel } from "../components/OperationalTablePanel";
+import { useOperationalTables } from "../hooks/useOperationalTables";
 import { JoinServerModal } from "../components/JoinServerModal";
 import { MessageInput } from "../components/MessageInput";
 import { MessageList } from "../components/MessageList";
@@ -267,6 +269,14 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
   /** v0.54: открытый ActionItemDrawer. null = drawer закрыт. */
   const [openActionItemId, setOpenActionItemId] = useState<string | null>(null);
+  /** v0.59 phase 1: выбранная таблица (заменяет chat main area). */
+  const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
+  const {
+    tables: opTables,
+    reload: reloadTables,
+    createTable: createOpTable,
+    deleteTable: deleteOpTable,
+  } = useOperationalTables(activeServerId);
   const inDmMode = activeServerId === null;
   const selectedDm = dmConversations.find((c) => c.id === selectedDmId) ?? null;
   const {
@@ -530,14 +540,22 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     setHomeOpen(false);
     setStatusBoardOpen(false);
     setTeamHealthOpen(false);
+    setSelectedTableId(null);
     setSelectedChannelId(channelId);
     if (isMobile) setNavOpen(false);
   };
+
+  // v0.59 phase 1: при смене сервера сбрасываем выбранную таблицу
+  // (таблицы scoped per-server — id из другого пространства невалиден).
+  useEffect(() => {
+    setSelectedTableId(null);
+  }, [activeServerId]);
 
   const openHome = () => {
     setHomeOpen(true);
     setStatusBoardOpen(false);
     setTeamHealthOpen(false);
+    setSelectedTableId(null);
     setSelectedChannelId(null);
     selectDm(null);
     setNavOpen(false);
@@ -905,6 +923,45 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                   }
             }
             teamHealthActive={teamHealthOpen}
+            tables={
+              isClientMode
+                ? undefined
+                : opTables.map((t) => ({
+                    id: t.id,
+                    name: t.name,
+                    rowCount: t.rowCount,
+                  }))
+            }
+            onOpenTable={
+              isClientMode
+                ? undefined
+                : (tableId) => {
+                    setHomeOpen(false);
+                    setStatusBoardOpen(false);
+                    setTeamHealthOpen(false);
+                    setSelectedTableId(tableId);
+                    if (isMobile) setNavOpen(false);
+                  }
+            }
+            onCreateTable={
+              isClientMode
+                ? undefined
+                : async () => {
+                    const name = window.prompt(
+                      "Название таблицы",
+                      "Новая таблица",
+                    );
+                    if (!name) return;
+                    const id = await createOpTable(name);
+                    if (id) {
+                      setHomeOpen(false);
+                      setStatusBoardOpen(false);
+                      setTeamHealthOpen(false);
+                      setSelectedTableId(id);
+                    }
+                  }
+            }
+            activeTableId={selectedTableId}
             voiceByChannel={voiceByChannel}
             voiceMetaByUser={voiceMetaByUser}
             members={members}
@@ -1107,7 +1164,20 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           </div>
         )}
 
-        {homeOpen ? (
+        {selectedTableId ? (
+          <OperationalTablePanel
+            tableId={selectedTableId}
+            onClose={() => setSelectedTableId(null)}
+            onDelete={async () => {
+              if (!window.confirm("Удалить таблицу со всеми данными?")) return;
+              const ok = await deleteOpTable(selectedTableId);
+              if (ok) {
+                setSelectedTableId(null);
+                await reloadTables();
+              }
+            }}
+          />
+        ) : homeOpen ? (
           <HomeToday
             userName={headerName}
             data={homeToday.data}
