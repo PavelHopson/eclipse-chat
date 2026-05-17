@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { actionItemInclude, serializeActionItem } from "../actionItems.js";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
 import { db } from "../db.js";
+import { serializeUser, userDisplayName } from "../lib/userView.js";
 import {
   AINotConfiguredError,
   AIProviderError,
@@ -170,7 +171,15 @@ export async function registerDigestRoutes(app: FastifyInstance) {
           content: true,
           pinnedAt: true,
           createdAt: true,
-          user: { select: { id: true, displayName: true, avatar: true } },
+          user: {
+            select: {
+              id: true,
+              displayName: true,
+              avatar: true,
+              email: true,
+              botProfile: { select: { id: true, role: true } },
+            },
+          },
         },
       });
 
@@ -211,7 +220,7 @@ export async function registerDigestRoutes(app: FastifyInstance) {
           content: m.content,
           createdAt: m.createdAt.toISOString(),
           pinnedAt: m.pinnedAt?.toISOString() ?? null,
-          user: m.user,
+          user: serializeUser(m.user),
         })),
         stats: {
           messages: messages7d,
@@ -347,7 +356,7 @@ export async function registerDigestRoutes(app: FastifyInstance) {
         followUps: followUps.map(adapt),
         pinned: pinned.map((p) => ({
           content: p.content,
-          user: { displayName: p.user.displayName },
+          user: { displayName: userDisplayName(p.user) },
         })),
         stats: {
           messages: messagesInWindow.length,

@@ -17,9 +17,19 @@
  * `reason` поле для FAILED status'а.
  */
 
+import type { FastifyBaseLogger } from "fastify";
+import { db } from "../db.js";
+
 const WHISPER_MAX_BYTES = 25 * 1024 * 1024;
 const WHISPER_TIMEOUT_MS = 90_000;
 const WHISPER_API_URL = "https://api.openai.com/v1/audio/transcriptions";
+
+/**
+ * Сколько минут ждать перед тем как признать застрявший PENDING
+ * мёртвым. Whisper API timeout = 90s, плюс несколько ретраев в
+ * sharp-pipeline — 10 минут даёт уверенный gap.
+ */
+const STUCK_PENDING_GRACE_MIN = 10;
 
 const SUPPORTED_AUDIO_MIME = new Set<string>([
   "audio/mpeg",
@@ -121,5 +131,42 @@ export async function transcribeAudio(
           : err.message
         : String(err);
     return { status: "FAILED", reason: `Whisper error: ${message}` };
+  }
+}
+
+/**
+ * Boot-time recovery (v0.63): после рестарта сервера revert застрявшие
+ * PENDING attachments в NONE. Без этого UI крутит «Транскрибируем…»
+ * вечно для файлов, чья транскрипция была in-flight в момент crash'а.
+ *
+ * Решение более простое чем resume: помечаем NONE с reason — пользователь
+ * видит «прервано рестартом», без false expectation что транскрипт ещё
+ * появится. Manual re-trigger будет в v0.64 (повторная загрузка файла).
+ *
+ * Идемпотентно и безопасно: ничего не делает если PENDING нет.
+ */
+export async function recoverStuckTranscripts(log: FastifyBaseLogger): Promise<void> {
+  const cutoff = new Date(Date.now() - STUCK_PENDING_GRACE_MIN * 60 * 1000);
+  try {
+    const result = await db.attachment.updateMany({
+      where: {
+        transcriptStatus: "PENDING",
+        createdAt: { lt: cutoff },
+      },
+      data: {
+        transcriptStatus: "NONE",
+        transcriptError: `прервано рестартом сервера (>${STUCK_PENDING_GRACE_MIN}m PENDING)`,
+      },
+    });
+    if (result.count > 0) {
+      log.warn(
+        { count: result.count, cutoff: cutoff.toISOString() },
+        "Recovered stuck PENDING transcripts (v0.63 boot-recovery)",
+      );
+    }
+  } catch (err) {
+    // Не критично — сервер всё равно стартует, просто PENDING-плашки могут
+    // повисеть до следующего боковго рестарта. Логируем и едем дальше.
+    log.error({ err }, "Failed to recover stuck transcripts on boot");
   }
 }

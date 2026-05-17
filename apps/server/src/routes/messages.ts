@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { db } from "../db.js";
+import { serializeUser } from "../lib/userView.js";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
 import {
   emitDmReactionAdded,
@@ -77,7 +78,17 @@ export async function registerMessageRoutes(app: FastifyInstance) {
       const pinned = await db.message.findMany({
         where: { channelId, pinnedAt: { not: null } },
         orderBy: { pinnedAt: "desc" },
-        include: { user: { select: { id: true, displayName: true, avatar: true } } },
+        include: {
+          user: {
+            select: {
+              id: true,
+              displayName: true,
+              avatar: true,
+              email: true,
+              botProfile: { select: { id: true, role: true } },
+            },
+          },
+        },
       });
       return {
         pinned: pinned.map((m) => ({
@@ -87,7 +98,7 @@ export async function registerMessageRoutes(app: FastifyInstance) {
           editedAt: m.editedAt?.toISOString() ?? null,
           deletedAt: m.deletedAt?.toISOString() ?? null,
           pinnedAt: m.pinnedAt?.toISOString() ?? null,
-          user: { id: m.user.id, displayName: m.user.displayName, avatar: m.user.avatar },
+          user: serializeUser(m.user),
         })),
       };
     },

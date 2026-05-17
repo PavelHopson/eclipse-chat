@@ -5,10 +5,12 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v0.62.0** (Operational Tables phase 2 —
-realtime collab через socket events, RBAC для destructive ops
-(MOD+), новые field types USER (member picker) и CHECKBOX;
-RELATION/FILE/drag-reorder — phase 2.5, 17.05.2026)
+**Текущая версия в проде:** **v0.63.0** (Security & integrity pass —
+channel:join socket bypass closed, CI runs tests, Message.userId +
+ActionItemComment.userId cascade Cascade→SetNull (history preservation
+policy B), ActionItem approval CHECK constraint, transcript stuck-PENDING
+recovery on boot, backup cron infrastructure, requireJwt hardening,
+17.05.2026)
 — https://app.star-crm.ru/eclipse-chat/
 
 > **Сессия 15.05 (вечер)**: v0.28 → v0.47 = 20 prod-деплоев за один заход.
@@ -85,6 +87,7 @@ chat и не enterprise prison.
 
 | Версия | Дата | Что |
 |---|---|---|
+| **v0.63.0** | 17.05 | **Security & integrity pass** — closes 8 пунктов из аудита 17.05. (1) **channel:join socket bypass**: socket-room присоединение теперь валидирует membership через Channel→Server→Member lookup (зеркало `thread:join`/`dm:join`); раньше любой залогиненный юзер мог join `channel:${id}` и получать `message:new`/`typing:start`/`reaction:added` чужих серверов — cross-workspace data leak. (2) **CI runs tests**: `npm run test -w @eclipse-chat/server` добавлен в `ci.yml` после typecheck — все 10 unit-тестов до сих пор не выполнялись в CI, регрессии в bot-roles / ai-mention / dm-membership проходили незамеченными. (3) **Cascade policy B** для preservation истории: `Message.userId` и `ActionItemComment.userId` стали nullable + Cascade→SetNull. После удаления юзера messages и comments остаются с автором=null; centralized `serializeUser()` helper в `lib/userView.ts` возвращает «Удалённый пользователь» placeholder — frontend ничего не трогает, shape стабильна. Стандартный chat-app паттерн (Slack/Discord/Telegram). Bot deletions / GDPR-style erasure больше не уничтожают историю. Refactored 11 файлов serializer'ов (actionItems, channels, messages, threads, dm, visits, servers, digest, incidents, ai/assistant). (4) **ActionItem approval CHECK constraint**: raw SQL CHECK на лицикл `requiresApproval ⇔ approvalStatus`. Закрывает silent-corruption surface — состояние (false, PENDING) физически невозможно. (5) **Transcript boot recovery**: при старте сервера `recoverStuckTranscripts()` revert'ит застрявшие PENDING attachments старше 10 мин в NONE с reason «прервано рестартом». UI больше не крутит спиннер вечно после crash'а сервера. (6) **Backup infrastructure**: `deploy/scripts/backup-db.sh` (pg_dump → gzip → /var/backups/eclipse-chat/, 14-day rotation) + `deploy/cron.d/eclipse-chat-backup` (04:17 daily). Install: `cp deploy/cron.d/eclipse-chat-backup /etc/cron.d/`. (7) **requireJwt hardening**: `void reply.send` → `return reply.send` — defensive, Fastify по факту прерывал chain и так, но без return было на грани UB. 3 миграции: `20260517120000_message_user_setnull`, `20260517140000_action_item_comment_user_setnull`, `20260517160000_action_item_approval_check`. Schema additive (nullable + SetNull) — existing rows backward-compat, zero downtime. Typecheck зелёный, frontend без изменений (placeholder = stable API shape). |
 | **v0.62.0** | 17.05 | **Operational Tables phase 2** — продолжение #10. Closing key gaps в phase 1: (1) **Realtime collaboration** — новый `emitTableEvent(serverId, kind, payload)` helper, 8 event types (`table:updated`/`table:deleted`/`table:field:added`/`updated`/`deleted`/`table:row:added`/`updated`/`deleted`), wired в каждый mutation route. Frontend `useOperationalTables` invalidates list через reload на любой event; `useOperationalTable` apply'ит patches к local state (по `tableId` filter + field/row-level updates). Два user'а в одной таблице видят чужие правки сразу без manual reload. (2) **RBAC**: DELETE table + DELETE field теперь MOD+ only (OWNER/ADMIN/MODERATOR). Edit и create cell/row остаются open для всех members — calm operational UX без trigger-happy роли. (3) **Two new field types**: `USER` (cell.value = userId, frontend select из members с native `<select>`, validation на backend — `coerceCellValue` проверяет membership) и `CHECKBOX` (cell.value = `"true"`/`"false"`, frontend `<input type=checkbox>`, backend coerces любой truthy в `"true"`). Migration `20260517100000_table_field_types_phase2` — два `ALTER TYPE ADD VALUE` (Prisma migrate разводит по транзакциям). Schema-only change, existing rows не затронуты. AppShell теперь передаёт `members` + `socket` в `OperationalTablePanel`. Trade-offs: list-level reload вместо per-row patch (counts надо пересчитывать; для 100+ tables это станет проблемой — phase 2.5 будет patches). RBAC только на DELETE — Edit/create open для всех, эскалация при необходимости. Phase 2.5: RELATION (cross-table cells), FILE (attachment), drag-reorder, table templates. |
 | **v0.61.0** | 17.05 | **Shared listening room MVP** — closes engineering #13. Synchronous audio playback на канале: один member жмёт «▶ Слушать вместе» на любом audio-attachment'е в чате, остальные members в той же комнате видят mini-player в chat header и слышат тот же track с одной timeline-позиции. Schema: новая модель `MusicSession` (channelId @unique, currentTrackAttachmentId, startedAt, positionMs, isPlaying, queue Json-string array, hostUserId) — одна сессия per channel. Migration `20260517080000_add_music_session` — additive. Backend: новый `routes/music.ts` с 7 endpoints — get state, start, pause/resume, skip, stop, queue add. Permissions: queue-add разрешено любому member; pause/resume/skip/stop — host или MOD+. Voice channels отвергаются (LiveKit pipeline coupling — phase 2). Source треков — audio/* attachments из того же server'а (не из DM — privacy). Sync: server держит `startedAt` (timestamp последнего play/resume) + `positionMs` (saved offset на pause). Frontend рассчитывает текущую позицию как `isPlaying ? (now - startedAt + positionMs) : positionMs`; mini-player tick'ает каждые 500ms для smooth progress bar. Audio element seek'ит к `position - 150ms` (compensation для perceived latency). Realtime event `music:session:updated` с full payload — клиент получает свежее состояние на каждое action любого member'а. Frontend: `useChannelMusic(channelId, socket)` hook (state + derivedPositionMs + start/togglePlayPause/skip/stop/addToQueue actions). `MusicMiniPlayer` — floating pill в chat header (play/pause + track name + progress bar + position counter + host avatar + queue count badge + skip + stop). `Attachments.AudioItem` получил optional `onPlayShared` callback — accent-coloured «▶» button рядом с download (hidden если callback undefined, e.g. в DM). Trade-offs: без late-join drift-correction (новый member может быть на ~500ms-1.5s offset); без periodic position-sync (v2 если drift станет заметным); без LiveKit interop для VOICE channels; без YouTube/Spotify integration (copyright + privacy). |
 | **v0.60.0** | 17.05 | **Team Health v3** — closes engineering #12. Расширил existing analytics endpoint тремя новыми блоками без снапшотов: (1) **trends** — week-over-week sliding 7-day window для `created`/`closed` counts (current vs prev неделя; вычисляется on-the-fly из ActionItem.createdAt/updatedAt без снапшот-таблицы). (2) **perChannel** — breakdown open/overdue/closed по channelId; channels hydrated с name+type; rows отсортированы по open desc, top-8 рендерятся, overflow → "ещё N". (3) **responseTime** — median latency от root message до первого thread reply за 30-day окно; sample size; null если < 5 обсуждений (`RESPONSE_MIN_SAMPLE`). Exported pure helper `median(values)` для unit-test'ов. Frontend: `TeamHealthData` type extended с `trends`, `perChannel`, `responseTime`. Новый stat-card «Время первого ответа» рядом с «Среднее закрытие» (`formatDuration(ms)` — секунды/минуты/часы/дни). Новая секция `TrendsRibbon` с двумя cells (Создано/Закрыто) — arrow + delta + percentage; «Закрыто» growth — exec colour, «Закрыто» decline — warn; ribbon hidden если активности нет вообще. Новая секция `PerChannelSection` — table-like grid Комната/Открыто/Просроч./Закрыто с monospace numbers и conditional coloring (overdue в warn если >0, closed в exec). Все cuts из v0.30.0 scope cuts now закрыты. |
@@ -237,10 +240,23 @@ base, ✅ Home command center, ✅ responsive cinematic UI pass.
     attachments. Late-join drift-correction, LiveKit interop, periodic
     position-sync — phase 2.
 
+14. **In-app Help / Onboarding** — отдельная страница `/eclipse-chat/help`
+    или drawer с двумя секциями: «Полный функционал» (workspaces / rooms /
+    messages / threads / DMs / voice / status board / intelligence panel /
+    tables / music / search) + «Настройка ботов» (создать в Settings →
+    Боты, выбрать role GENERIC/MODERATOR/PM/KNOWLEDGE/SALES, API key
+    `ecb_*`, webhook URL + HMAC, role-mentions, autoRespond toggle,
+    systemPromptOverride). Кнопка «?» в Forge Layer. Размер M-L
+    (1-2 рабочих захода). Pavel-ask 17.05.
+
 ## 📋 Открытые follow-ups
 
 - libheif на проде для iPhone HEIC (`apt install libheif1 libheif-dev`)
-- Backup cron для `eclipse_chat` БД (см. `docs/DEPLOY-TO-STAR-CRM.md`)
+- ✅ **Backup cron** — закрыто в v0.63.0. `deploy/scripts/backup-db.sh`
+  + `deploy/cron.d/eclipse-chat-backup` в репо. Install one-time:
+  `sudo cp deploy/cron.d/eclipse-chat-backup /etc/cron.d/` + `sudo chmod
+  644 /etc/cron.d/eclipse-chat-backup`. Manual test: `sudo /var/www/
+  eclipse-chat/deploy/scripts/backup-db.sh`.
 - Telegram bridge bot template (отдельный repo)
 - Integration tests (Vitest + Supertest + ephemeral PG)
 - i18n EN translation

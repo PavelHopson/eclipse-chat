@@ -1,0 +1,15 @@
+# Eclipse Chat — daily Postgres backup (v0.63).
+#
+# Install:
+#   sudo cp /var/www/eclipse-chat/deploy/cron.d/eclipse-chat-backup \
+#     /etc/cron.d/eclipse-chat-backup
+#   sudo chmod 644 /etc/cron.d/eclipse-chat-backup
+#
+# Запускается каждый день в 04:17 (off-peak), под root'ом (нужен sudo -u
+# postgres внутри). Логи — в /var/log/eclipse-chat-backup.log.
+#
+# Manual test:
+#   sudo /var/www/eclipse-chat/deploy/scripts/backup-db.sh
+#
+# m  h  dom mon dow user  command
+17  4  *   *   *   root  /var/www/eclipse-chat/deploy/scripts/backup-db.sh >> /var/log/eclipse-chat-backup.log 2>&1

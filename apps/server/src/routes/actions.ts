@@ -8,6 +8,7 @@ import {
 } from "../actionItems.js";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
 import { db } from "../db.js";
+import { serializeUser } from "../lib/userView.js";
 import {
   emitActionItemCommentAdded,
   emitActionItemCommentDeleted,
@@ -524,11 +525,10 @@ export async function registerActionRoutes(app: FastifyInstance) {
         content: comment.content,
         createdAt: comment.createdAt.toISOString(),
         editedAt: comment.editedAt?.toISOString() ?? null,
-        user: {
-          id: comment.user.id,
-          displayName: comment.user.displayName,
-          avatar: comment.user.avatar,
-        },
+        // v0.63: comment.user может быть null после deletion (cascade SetNull),
+        // но мы только что создали комментарий — guaranteed non-null. Defensive
+        // serializeUser() даёт «Удалённый пользователь» placeholder если null.
+        user: serializeUser(comment.user),
       };
       emitActionItemCommentAdded(item.channelId, item.serverId, payload);
       return { comment: payload };

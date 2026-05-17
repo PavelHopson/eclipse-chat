@@ -38,6 +38,7 @@ import {
   updateVoiceMeta,
   broadcastSpeaking,
 } from "./voicePresence.js";
+import { recoverStuckTranscripts } from "./ai/transcribe.js";
 import { db } from "./db.js";
 
 const port = Number(process.env.PORT) || 3001;
@@ -120,7 +121,7 @@ app.get("/api/health", async () => {
   }
   return { ok: true, service: "eclipse-chat-server", database: dbOk };
 });
-app.get("/api/version", async () => ({ name: "@eclipse-chat/server", version: "0.62.0" }));
+app.get("/api/version", async () => ({ name: "@eclipse-chat/server", version: "0.63.0" }));
 
 await registerAuthRoutes(app);
 await registerTwoFactorRoutes(app);
@@ -253,14 +254,25 @@ io.on("connection", (socket) => {
       cb({ t: Date.now() });
     }
   });
-  socket.on("channel:join", (channelId: string) => {
+  // channel:join — frontend подписывается на channel:${id} когда открывает
+  // канал. Backend verify membership через Channel→Server→Member lookup;
+  // без проверки залогиненный user может join любой channel-room и получать
+  // message:new / typing:start / reaction:added для чужих серверов (cross-
+  // workspace data leak). Тот же паттерн что в thread:join и dm:join.
+  socket.on("channel:join", async (channelId: string) => {
     const uid = (socket.data as { userId: string | null | undefined }).userId;
-    if (!uid) {
-      return;
-    }
-    if (typeof channelId === "string" && channelId) {
-      void socket.join(`channel:${channelId}`);
-    }
+    if (!uid || typeof channelId !== "string" || !channelId) return;
+    const channel = await db.channel.findUnique({
+      where: { id: channelId },
+      select: { serverId: true },
+    });
+    if (!channel) return;
+    const member = await db.member.findUnique({
+      where: { userId_serverId: { userId: uid, serverId: channel.serverId } },
+      select: { id: true },
+    });
+    if (!member) return;
+    await socket.join(`channel:${channelId}`);
   });
   socket.on("channel:leave", (channelId: string) => {
     if (typeof channelId === "string" && channelId) {
@@ -411,6 +423,10 @@ io.on("connection", (socket) => {
 try {
   await app.listen({ port, host: "0.0.0.0" });
   app.log.info({ port }, "Server + Socket.io");
+
+  // v0.63 boot recovery: revert застрявшие PENDING transcripts в NONE.
+  // Fire-and-forget — не блокируем startup, в случае ошибки логируем.
+  void recoverStuckTranscripts(app.log);
 
   // Keep-alive ping для Neon free tier (Scales to zero после ~5 минут idle).
   // Без этого Neon рвёт connection и каждый запрос имеет 20-сек cold start.

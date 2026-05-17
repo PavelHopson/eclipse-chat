@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { db } from "../db.js";
+import { userDisplayName } from "../lib/userView.js";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
 import {
   emitChannelCreated,
@@ -261,7 +262,7 @@ export async function registerIncidentRoutes(app: FastifyInstance) {
         pinned = pins.map((p) => ({
           id: p.id,
           content: p.content,
-          authorName: p.user.displayName,
+          authorName: userDisplayName(p.user),
         }));
       }
 
@@ -382,10 +383,10 @@ export async function registerIncidentRoutes(app: FastifyInstance) {
               actionItems: actionsRaw.map(mapAction),
               pinned: pinnedRaw.map((p) => ({
                 content: p.content,
-                user: { displayName: p.user.displayName },
+                user: { displayName: userDisplayName(p.user) },
               })),
               messages: messagesRaw.map((m) => ({
-                displayName: m.user.displayName,
+                displayName: userDisplayName(m.user),
                 content: m.content,
                 createdAt: m.createdAt.toISOString(),
               })),

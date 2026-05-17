@@ -480,8 +480,11 @@ model Message {
   /// sort by pinnedAt desc. Pin/unpin доступен OWNER/ADMIN/MODERATOR.
   /// Для DM messages pin не разрешён (нет ролей в DM).
   pinnedAt  DateTime?
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// v0.63 cascade policy B: nullable + SetNull. При удалении User
+  /// message остаётся, автор=null, UI рендерит «Удалённый пользователь».
+  /// Bot deletions / GDPR-style erasure теперь не уничтожают историю.
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   /// Канал в server-context. NULL → message принадлежит DM-разговору.
   channelId String?
   channel   Channel? @relation(fields: [channelId], references: [id], onDelete: Cascade)
@@ -563,8 +566,10 @@ model ActionItemComment {
   id           String     @id @default(cuid())
   actionItemId String
   actionItem   ActionItem @relation(fields: [actionItemId], references: [id], onDelete: Cascade)
-  userId       String
-  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// v0.63 cascade policy B: nullable + SetNull. Удаление автора не
+  /// стирает task discussion — комментарий остаётся анонимным.
+  userId       String?
+  user         User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
   content      String
   createdAt    DateTime   @default(now())
   /// Время последнего edit (null = не редактировался).

@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { actionItemInclude, serializeActionItem } from "../actionItems.js";
 import { db } from "../db.js";
+import { serializeUser, userDisplayName } from "../lib/userView.js";
 import { emitMessageOnChannel, emitActionItemCreated } from "../realtime.js";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
 import {
@@ -252,15 +253,7 @@ export async function registerChannelRoutes(app: FastifyInstance) {
             editedAt: m.editedAt?.toISOString() ?? null,
             deletedAt: m.deletedAt?.toISOString() ?? null,
             pinnedAt: m.pinnedAt?.toISOString() ?? null,
-            user: {
-              id: m.user.id,
-              displayName: m.user.displayName,
-              avatar: m.user.avatar,
-              isBot:
-                m.user.botProfile != null ||
-                m.user.email === "system@eclipse-chat.local",
-              botRole: m.user.botProfile?.role ?? null,
-            },
+            user: serializeUser(m.user),
             reactions,
             attachments: m.deletedAt ? [] : m.attachments,
             actionItems: m.deletedAt ? [] : m.actionItems.map(serializeActionItem),
@@ -375,9 +368,12 @@ export async function registerChannelRoutes(app: FastifyInstance) {
         content: m.content,
         // channelId всегда set'нут — этот route только для server channels.
         channelId: m.channelId!,
-        userId: m.userId,
-        displayName: m.user.displayName,
-        avatar: m.user.avatar,
+        // userId только что-создан этим аутентифицированным юзером (POST'нувшим
+        // сообщение) — guaranteed non-null. Non-null assertion для compliance
+        // с emitMessageOnChannel signature (userId: string).
+        userId: m.userId!,
+        displayName: userDisplayName(m.user),
+        avatar: m.user?.avatar ?? null,
         // POST через requireJwt = только human users; bot пишет через
         // POST /api/bot/messages с собственным payload.
         isBot: false,
@@ -408,7 +404,7 @@ export async function registerChannelRoutes(app: FastifyInstance) {
           channelId: m.channelId!,
           serverId: ch.serverId,
           userId,
-          displayName: m.user.displayName,
+          displayName: userDisplayName(m.user),
           content: m.content,
           isBot: false,
           createdAt: m.createdAt.toISOString(),

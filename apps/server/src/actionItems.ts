@@ -1,27 +1,18 @@
 import { Prisma } from "@prisma/client";
+import { serializeUser } from "./lib/userView.js";
+
+const userSelectForView = {
+  id: true,
+  displayName: true,
+  avatar: true,
+  email: true,
+  botProfile: { select: { id: true, role: true } },
+} satisfies Prisma.UserSelect;
 
 export const actionItemInclude = {
-  createdBy: {
-    select: {
-      id: true,
-      displayName: true,
-      avatar: true,
-    },
-  },
-  assignee: {
-    select: {
-      id: true,
-      displayName: true,
-      avatar: true,
-    },
-  },
-  approver: {
-    select: {
-      id: true,
-      displayName: true,
-      avatar: true,
-    },
-  },
+  createdBy: { select: userSelectForView },
+  assignee: { select: userSelectForView },
+  approver: { select: userSelectForView },
 } satisfies Prisma.ActionItemInclude;
 
 /**
@@ -34,18 +25,14 @@ export const actionItemDetailInclude = {
   comments: {
     orderBy: { createdAt: "asc" },
     include: {
-      user: {
-        select: { id: true, displayName: true, avatar: true },
-      },
+      user: { select: userSelectForView },
     },
   },
   activities: {
     orderBy: { createdAt: "desc" },
     take: 60,
     include: {
-      user: {
-        select: { id: true, displayName: true, avatar: true },
-      },
+      user: { select: userSelectForView },
     },
   },
 } satisfies Prisma.ActionItemInclude;
@@ -72,29 +59,13 @@ export function serializeActionItem(item: ActionItemWithRelations) {
     createdAt: item.createdAt.toISOString(),
     updatedAt: item.updatedAt.toISOString(),
     dueAt: item.dueAt?.toISOString() ?? null,
-    createdBy: {
-      id: item.createdBy.id,
-      displayName: item.createdBy.displayName,
-      avatar: item.createdBy.avatar,
-    },
-    assignee: item.assignee
-      ? {
-          id: item.assignee.id,
-          displayName: item.assignee.displayName,
-          avatar: item.assignee.avatar,
-        }
-      : null,
+    createdBy: serializeUser(item.createdBy),
+    assignee: item.assignee ? serializeUser(item.assignee) : null,
     requiresApproval: item.requiresApproval,
     approvalStatus: item.approvalStatus,
     approvalNote: item.approvalNote,
     approvedAt: item.approvedAt?.toISOString() ?? null,
-    approver: item.approver
-      ? {
-          id: item.approver.id,
-          displayName: item.approver.displayName,
-          avatar: item.approver.avatar,
-        }
-      : null,
+    approver: item.approver ? serializeUser(item.approver) : null,
   };
 }
 
@@ -106,24 +77,16 @@ export function serializeActionItemDetail(item: ActionItemDetailWithRelations) {
       content: c.content,
       createdAt: c.createdAt.toISOString(),
       editedAt: c.editedAt?.toISOString() ?? null,
-      user: {
-        id: c.user.id,
-        displayName: c.user.displayName,
-        avatar: c.user.avatar,
-      },
+      // v0.63: comment author может быть null после user deletion (cascade
+      // policy B). serializeUser возвращает «Удалённый пользователь» placeholder.
+      user: serializeUser(c.user),
     })),
     activities: item.activities.map((a) => ({
       id: a.id,
       type: a.type,
       payload: a.payload,
       createdAt: a.createdAt.toISOString(),
-      user: a.user
-        ? {
-            id: a.user.id,
-            displayName: a.user.displayName,
-            avatar: a.user.avatar,
-          }
-        : null,
+      user: a.user ? serializeUser(a.user) : null,
     })),
   };
 }

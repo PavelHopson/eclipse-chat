@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { actionItemInclude, serializeActionItem } from "../actionItems.js";
 import { db } from "../db.js";
+import { serializeUser, userDisplayName } from "../lib/userView.js";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
 import {
   AINotConfiguredError,
@@ -128,7 +129,15 @@ export async function registerVisitRoutes(app: FastifyInstance) {
           id: true,
           content: true,
           pinnedAt: true,
-          user: { select: { id: true, displayName: true, avatar: true } },
+          user: {
+            select: {
+              id: true,
+              displayName: true,
+              avatar: true,
+              email: true,
+              botProfile: { select: { id: true, role: true } },
+            },
+          },
         },
       });
 
@@ -152,7 +161,7 @@ export async function registerVisitRoutes(app: FastifyInstance) {
             id: m.id,
             content: m.content,
             pinnedAt: m.pinnedAt!.toISOString(),
-            user: m.user,
+            user: serializeUser(m.user),
           })),
           incident: incident
             ? {
@@ -223,6 +232,8 @@ export async function registerVisitRoutes(app: FastifyInstance) {
         select: {
           content: true,
           createdAt: true,
+          // v0.63: user может быть null после deletion. select минимальный —
+          // displayName только; в prompt передаём через userDisplayName().
           user: { select: { displayName: true } },
         },
       });
@@ -258,14 +269,14 @@ export async function registerVisitRoutes(app: FastifyInstance) {
         channelName: channel.name,
         priorVisitAt: since.toISOString(),
         messages: messages.map((m) => ({
-          displayName: m.user.displayName,
+          displayName: userDisplayName(m.user),
           content: m.content,
           createdAt: m.createdAt.toISOString(),
         })),
         newActions: newActions.map(adaptAction),
         newPinned: newPinned.map((p) => ({
           content: p.content,
-          user: { displayName: p.user.displayName },
+          user: { displayName: userDisplayName(p.user) },
         })),
         incident: incident
           ? {

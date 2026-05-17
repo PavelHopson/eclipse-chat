@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { db } from "../db.js";
+import { serializeUser } from "../lib/userView.js";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
 import {
   emitThreadReplyNew,
@@ -157,15 +158,7 @@ export async function registerThreadRoutes(app: FastifyInstance) {
         deletedAt: m.deletedAt?.toISOString() ?? null,
         pinnedAt: m.pinnedAt?.toISOString() ?? null,
         parentMessageId: m.parentMessageId ?? null,
-        user: {
-          id: m.user.id,
-          displayName: m.user.displayName,
-          avatar: m.user.avatar,
-          isBot:
-            m.user.botProfile != null ||
-            m.user.email === "system@eclipse-chat.local",
-          botRole: m.user.botProfile?.role ?? null,
-        },
+        user: serializeUser(m.user),
         reactions,
         attachments: m.deletedAt ? [] : m.attachments,
       };
@@ -303,18 +296,18 @@ export async function registerThreadRoutes(app: FastifyInstance) {
         }
       }
 
+      const replyAuthor = serializeUser(m.user);
       const replyPayload = {
         messageId: m.id,
         rootId,
         channelId: root.channelId,
-        userId: m.userId,
-        displayName: m.user.displayName,
-        avatar: m.user.avatar,
+        // Только что создано — userId guaranteed non-null (см. channels.ts комментарий).
+        userId: m.userId!,
+        displayName: replyAuthor.displayName,
+        avatar: replyAuthor.avatar,
         content: m.content,
-        isBot:
-          m.user.botProfile != null ||
-          m.user.email === "system@eclipse-chat.local",
-        botRole: m.user.botProfile?.role ?? null,
+        isBot: replyAuthor.isBot,
+        botRole: replyAuthor.botRole,
         createdAt: m.createdAt.toISOString(),
         attachments: processedAttachments.map((a) => ({
           id: a.id,

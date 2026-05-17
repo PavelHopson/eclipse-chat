@@ -327,19 +327,38 @@ sudo supervisorctl restart eclipse-chat-server
 
 ## Step 9 — Backup strategy
 
-Раз в день:
-```bash
-# Backup БД (вне Star CRM backup-цикла)
-pg_dump -U eclipse_chat_user eclipse_chat > /backups/eclipse_chat_$(date +%Y%m%d).sql.gz
-gzip /backups/eclipse_chat_$(date +%Y%m%d).sql
+С v0.63.0 в репо есть готовый script + cron entry — устанавливается одной
+командой, retention 14 дней, дамп идёт в `/var/backups/eclipse-chat/`.
 
-# Retention: 7 дней
-find /backups -name "eclipse_chat_*.sql.gz" -mtime +7 -delete
+**Install (один раз):**
+```bash
+sudo cp /var/www/eclipse-chat/deploy/cron.d/eclipse-chat-backup \
+        /etc/cron.d/eclipse-chat-backup
+sudo chmod 644 /etc/cron.d/eclipse-chat-backup
+sudo touch /var/log/eclipse-chat-backup.log
+sudo chown root:root /var/log/eclipse-chat-backup.log
+
+# Manual smoke-test (создаст первый backup сейчас):
+sudo /var/www/eclipse-chat/deploy/scripts/backup-db.sh
+ls -lh /var/backups/eclipse-chat/
 ```
 
-Можно добавить в cron:
-```cron
-0 3 * * * pg_dump -U eclipse_chat_user eclipse_chat | gzip > /backups/eclipse_chat_$(date +\%Y\%m\%d).sql.gz
+**Что под капотом** (`deploy/scripts/backup-db.sh`):
+- `pg_dump --no-owner --no-acl --clean --if-exists` → `gzip -9` →
+  `/var/backups/eclipse-chat/eclipse_chat-$(date +%F).sql.gz`
+- Sanity-check: пустой файл — fail с exit 1 (cron шлёт root'у почту)
+- Ротация: `find -mtime +14 -delete`
+- ENV overrides: `ECLIPSE_BACKUP_DIR`, `ECLIPSE_DB_USER`, `ECLIPSE_DB_NAME`,
+  `ECLIPSE_BACKUP_KEEP` (см. шапку файла)
+
+**Cron расписание** (`deploy/cron.d/eclipse-chat-backup`):
+- Ежедневно в `04:17` (off-peak), под root'ом
+- Лог: `/var/log/eclipse-chat-backup.log`
+
+**Recovery:**
+```bash
+gunzip < /var/backups/eclipse-chat/eclipse_chat-YYYY-MM-DD.sql.gz \
+  | psql -U eclipse_chat_user -d eclipse_chat
 ```
 
 ---

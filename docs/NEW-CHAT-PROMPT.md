@@ -5,7 +5,8 @@
 > Скопируй блок «Continuation Message» в самом конце в новый чат
 > как первое сообщение.
 >
-> **Обновлено 2026-05-15 (после v0.27.0 — Client Mode).**
+> **Обновлено 2026-05-17 (после v0.63.0 — Security & integrity pass).**
+> Сессия 17.05: v0.53 → v0.63 = 11 prod-деплоев за один заход.
 
 ---
 
@@ -159,10 +160,33 @@ E:\projects\ROADMAP.md (§1 статусы + §5 Changelog). Per-repo ROADMAP
 
 ---
 
-## 📊 PROJECT STATUS (15.05.2026 — v0.47.0)
+## 📊 PROJECT STATUS (17.05.2026 — v0.63.0)
 
 > **Полная сводка — в `eclipse-chat/ROADMAP.md`** (self-contained doc
 > с phased plan + sprint timeline + open follow-ups). Здесь — конспект.
+
+### Сессия 17.05 — 11 деплоев подряд (v0.53 → v0.63)
+
+| Версия | Что |
+|---|---|
+| v0.53.0 | Workspace/Room language pass (UI копирайт уходит от Discord-стиля) |
+| v0.54.0 | Execution entity drawer (priority/description/comments/activity log) |
+| v0.55.0 | Approvals (request → approve/reject flow на ActionItem) |
+| v0.56.0 | Voice multi-publisher harden (TILE_LIMIT=6 + priority sort + overflow strip) |
+| v0.57.0 | Operational search v1 (messages + actions + files, 3 tabs) |
+| v0.58.0 | Voice transcription prototype (OpenAI Whisper API через native fetch) |
+| v0.59.0 | Operational Tables phase 1 (HUGE feature §4 NEXT-GEN spike) |
+| v0.60.0 | Team Health v3 (trends + per-channel + median response time) |
+| v0.61.0 | Shared listening room MVP (synchronous audio player на канале) |
+| v0.62.0 | Operational Tables phase 2 (realtime + RBAC + USER/CHECKBOX) |
+| **v0.63.0** | **Security & integrity pass** — channel:join membership re-check, CI runs tests, Message.userId/ActionItemComment.userId cascade SetNull (cascade policy B — preservation of history), ActionItem approval CHECK constraint, transcript stuck-PENDING boot recovery, backup cron infrastructure, requireJwt hardening. Centralized `serializeUser()` helper в `lib/userView.ts` рефакторит 11 serializer'ов под «Удалённый пользователь» placeholder — frontend ничего не трогает. |
+
+**Engineering queue из ROADMAP**: пункты #1-#13 все закрыты или
+помечены ✅/🟡 (phased). Осталось: **#10 phase 2.5** (RELATION /
+FILE / drag-reorder / table templates), **#10 phase 3** (AI-fill /
+formulas / row=ActionItem binding), audit-table NEXT-GEN §3-§17
+(role architecture v2, bot builder, admin panel, automation, focus
+mode/replay, marketplace) — крупные multi-week feature blocks.
 
 ### Позиционирование
 
@@ -174,7 +198,7 @@ Eclipse Chat = **operational communication infrastructure** =
 Целевая аудитория: AI-first teams, operators, agencies, startups,
 internal business teams, automation-heavy companies.
 
-### Что в проде (v0.47.0)
+### Что в проде (v0.62.0)
 
 **Phase 1 CORE** (закрыта):
 - Auth + 2FA TOTP + brute-force lockout + audit log

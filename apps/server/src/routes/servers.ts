@@ -4,6 +4,7 @@ import path from "node:path";
 import { z } from "zod";
 import sharp from "sharp";
 import { db } from "../db.js";
+import { serializeUser, userDisplayName } from "../lib/userView.js";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
 import {
   emitChannelCreated,
@@ -322,13 +323,15 @@ export async function registerServerRoutes(app: FastifyInstance) {
       include: { user: { select: { id: true, displayName: true, email: true, avatar: true } } },
     });
     addServerRoom(userId, server.id);
+    // member.user всегда non-null т.к. Member.userId не nullable — defensive
+    // userDisplayName() для consistency со styles серверного кода.
     emitMemberJoined(server.id, {
       memberId: member.id,
       userId: member.userId,
       serverId: server.id,
       role: member.role,
-      displayName: member.user.displayName,
-      avatar: member.user.avatar,
+      displayName: userDisplayName(member.user),
+      avatar: member.user?.avatar ?? null,
       joinedAt: member.joinedAt.toISOString(),
     });
     return {
@@ -452,7 +455,15 @@ export async function registerServerRoutes(app: FastifyInstance) {
           take,
           orderBy: { createdAt: "desc" },
           include: {
-            user: { select: { id: true, displayName: true, avatar: true } },
+            user: {
+              select: {
+                id: true,
+                displayName: true,
+                avatar: true,
+                email: true,
+                botProfile: { select: { id: true, role: true } },
+              },
+            },
             channel: { select: { id: true, name: true, slug: true } },
           },
         }),
@@ -502,11 +513,7 @@ export async function registerServerRoutes(app: FastifyInstance) {
             id: m.id,
             content: m.content,
             createdAt: m.createdAt.toISOString(),
-            user: {
-              id: m.user.id,
-              displayName: m.user.displayName,
-              avatar: m.user.avatar,
-            },
+            user: serializeUser(m.user),
             channel: {
               id: m.channel!.id,
               name: m.channel!.name,
@@ -526,13 +533,7 @@ export async function registerServerRoutes(app: FastifyInstance) {
             name: a.channel.name,
             slug: a.channel.slug,
           },
-          assignee: a.assignee
-            ? {
-                id: a.assignee.id,
-                displayName: a.assignee.displayName,
-                avatar: a.assignee.avatar,
-              }
-            : null,
+          assignee: a.assignee ? serializeUser(a.assignee) : null,
         })),
         files: files
           .filter((f) => f.message.channel != null)
@@ -587,7 +588,15 @@ export async function registerServerRoutes(app: FastifyInstance) {
         take,
         orderBy: { createdAt: "desc" },
         include: {
-          user: { select: { id: true, displayName: true, avatar: true } },
+          user: {
+            select: {
+              id: true,
+              displayName: true,
+              avatar: true,
+              email: true,
+              botProfile: { select: { id: true, role: true } },
+            },
+          },
           channel: { select: { id: true, name: true, slug: true } },
         },
       });
@@ -602,7 +611,7 @@ export async function registerServerRoutes(app: FastifyInstance) {
             content: m.content,
             createdAt: m.createdAt.toISOString(),
             editedAt: m.editedAt?.toISOString() ?? null,
-            user: { id: m.user.id, displayName: m.user.displayName, avatar: m.user.avatar },
+            user: serializeUser(m.user),
             channel: { id: m.channel!.id, name: m.channel!.name, slug: m.channel!.slug },
           })),
       };

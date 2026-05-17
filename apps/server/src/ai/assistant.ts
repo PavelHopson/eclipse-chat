@@ -1,4 +1,5 @@
 import { db } from "../db.js";
+import { userDisplayName } from "../lib/userView.js";
 import { emitBotTyping, emitMessageOnChannel } from "../realtime.js";
 import { chat, isAiConfigured } from "./provider.js";
 import { assistantPrompt } from "./prompts.js";
@@ -221,7 +222,7 @@ async function loadChannelContext(
     recentMessages: recent
       .reverse()
       .map((m) => ({
-        displayName: m.user.displayName,
+        displayName: userDisplayName(m.user),
         content: m.content,
         createdAt: m.createdAt.toISOString(),
       })),
@@ -234,7 +235,7 @@ async function loadChannelContext(
     })),
     pinned: pinned.map((p) => ({
       content: p.content,
-      user: { displayName: p.user.displayName },
+      user: { displayName: userDisplayName(p.user) },
     })),
   });
 

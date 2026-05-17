@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { db } from "../db.js";
+import { serializeUser } from "../lib/userView.js";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
 import {
   emitDmConversationBumped,
@@ -660,15 +661,7 @@ export async function registerDmRoutes(app: FastifyInstance) {
             createdAt: m.createdAt.toISOString(),
             editedAt: m.editedAt?.toISOString() ?? null,
             deletedAt: m.deletedAt?.toISOString() ?? null,
-            user: {
-              id: m.user.id,
-              displayName: m.user.displayName,
-              avatar: m.user.avatar,
-              isBot:
-                m.user.botProfile != null ||
-                m.user.email === "system@eclipse-chat.local",
-              botRole: m.user.botProfile?.role ?? null,
-            },
+            user: serializeUser(m.user),
             reactions,
             attachments: m.deletedAt ? [] : m.attachments,
           };
