@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Attachment } from "../hooks/useMessages";
 import { resolveAssetUrl } from "../lib/assets";
 
@@ -176,6 +176,115 @@ function VideoItem({ a, onOpen }: { a: Attachment; onOpen: (a: Attachment) => vo
   );
 }
 
+/**
+ * v0.66: Telegram-style audio waveform. Peaks pre-computed на клиенте
+ * через computeWaveformPeaks() при upload, отдаются backend'ом в
+ * a.waveformPeaks. Если null (старые attachments / decode fail) —
+ * рендерим baseline-bars equal-height fallback. Bars подсвечиваются
+ * прогрессом проигрывания, click/drag = seek.
+ */
+function Waveform({
+  peaks,
+  progress,
+  onSeek,
+  ariaLabel,
+}: {
+  peaks: number[];
+  progress: number; // 0..1
+  onSeek: (fraction: number) => void;
+  ariaLabel: string;
+}) {
+  const ref = useRef<SVGSVGElement | null>(null);
+  const draggingRef = useRef(false);
+  const fillIdx = Math.round(progress * peaks.length);
+
+  const seekFromEvent = (clientX: number) => {
+    const el = ref.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const f = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    onSeek(f);
+  };
+
+  // 64 bars × 3px width + 1px gap = ~256px. SVG viewBox масштабируется.
+  const barW = 3;
+  const gap = 1;
+  const slot = barW + gap;
+  const w = peaks.length * slot - gap;
+  const h = 32;
+
+  return (
+    <svg
+      ref={ref}
+      role="slider"
+      tabIndex={0}
+      aria-label={ariaLabel}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={Math.round(progress * 100)}
+      width="100%"
+      height={h}
+      viewBox={`0 0 ${w} ${h}`}
+      preserveAspectRatio="none"
+      style={{
+        display: "block",
+        cursor: "pointer",
+        touchAction: "none",
+        userSelect: "none",
+      }}
+      onPointerDown={(e) => {
+        draggingRef.current = true;
+        (e.target as Element).setPointerCapture?.(e.pointerId);
+        seekFromEvent(e.clientX);
+      }}
+      onPointerMove={(e) => {
+        if (draggingRef.current) seekFromEvent(e.clientX);
+      }}
+      onPointerUp={(e) => {
+        draggingRef.current = false;
+        (e.target as Element).releasePointerCapture?.(e.pointerId);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "ArrowLeft") {
+          e.preventDefault();
+          onSeek(Math.max(0, progress - 0.05));
+        } else if (e.key === "ArrowRight") {
+          e.preventDefault();
+          onSeek(Math.min(1, progress + 0.05));
+        }
+      }}
+    >
+      {peaks.map((p, i) => {
+        const barH = Math.max(2, (p / 100) * h);
+        const y = (h - barH) / 2;
+        const x = i * slot;
+        const played = i < fillIdx;
+        return (
+          <rect
+            key={i}
+            x={x}
+            y={y}
+            width={barW}
+            height={barH}
+            rx={1}
+            ry={1}
+            fill={played ? "var(--ec-accent)" : "var(--ec-text-dim)"}
+            opacity={played ? 0.95 : 0.45}
+          />
+        );
+      })}
+    </svg>
+  );
+}
+
+function formatDuration(sec: number): string {
+  if (!Number.isFinite(sec) || sec < 0) return "0:00";
+  const total = Math.round(sec);
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
 function AudioItem({
   a,
   onPlayShared,
@@ -186,18 +295,105 @@ function AudioItem({
   const src = resolveAssetUrl(a.url) ?? "";
   const isVoice = /^voice-message-/i.test(a.filename);
   const transcriptStatus = a.transcriptStatus ?? "NONE";
+  const peaks = a.waveformPeaks ?? null;
+
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+
+  useEffect(() => {
+    const el = audioRef.current;
+    if (!el) return;
+    const onPlay = () => setIsPlaying(true);
+    const onPause = () => setIsPlaying(false);
+    const onTime = () => setCurrentTime(el.currentTime);
+    const onMeta = () => setDuration(el.duration);
+    const onEnded = () => setIsPlaying(false);
+    el.addEventListener("play", onPlay);
+    el.addEventListener("pause", onPause);
+    el.addEventListener("timeupdate", onTime);
+    el.addEventListener("loadedmetadata", onMeta);
+    el.addEventListener("durationchange", onMeta);
+    el.addEventListener("ended", onEnded);
+    return () => {
+      el.removeEventListener("play", onPlay);
+      el.removeEventListener("pause", onPause);
+      el.removeEventListener("timeupdate", onTime);
+      el.removeEventListener("loadedmetadata", onMeta);
+      el.removeEventListener("durationchange", onMeta);
+      el.removeEventListener("ended", onEnded);
+    };
+  }, []);
+
+  const togglePlay = () => {
+    const el = audioRef.current;
+    if (!el) return;
+    if (el.paused) void el.play();
+    else el.pause();
+  };
+
+  const seekTo = (fraction: number) => {
+    const el = audioRef.current;
+    if (!el || !Number.isFinite(el.duration) || el.duration === 0) return;
+    el.currentTime = fraction * el.duration;
+    setCurrentTime(el.currentTime);
+  };
+
+  const progress = duration > 0 ? currentTime / duration : 0;
+
+  // Fallback бары если peaks нет (старые attachments / decode failed).
+  const fallbackPeaks =
+    peaks ?? Array.from({ length: 48 }, (_, i) => 30 + Math.round(Math.sin(i / 2) * 12));
+
   return (
     <div className={isVoice ? "ec-audio-attachment ec-audio-attachment--voice" : "ec-audio-attachment"}>
-      <div className="ec-audio-attachment__icon" aria-hidden>
-        <FileIcon mime={a.mimeType} />
-      </div>
+      <button
+        type="button"
+        onClick={togglePlay}
+        aria-label={isPlaying ? "Пауза" : "Воспроизвести"}
+        title={isPlaying ? "Пауза" : "Воспроизвести"}
+        className="ec-audio-attachment__icon"
+        style={{
+          background: "var(--ec-accent)",
+          color: "var(--ec-accent-text, #fff)",
+          border: 0,
+          cursor: "pointer",
+          borderRadius: "var(--ec-radius-full)",
+        }}
+      >
+        {isPlaying ? (
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+            <rect x="6" y="5" width="4" height="14" rx="1" />
+            <rect x="14" y="5" width="4" height="14" rx="1" />
+          </svg>
+        ) : (
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+            <path d="M8 5v14l11-7z" />
+          </svg>
+        )}
+      </button>
       <div className="ec-audio-attachment__body">
         <div className="ec-audio-attachment__title">
           {isVoice ? "Голосовое сообщение" : a.filename}
         </div>
-        <audio controls preload="metadata" src={src} />
+        <Waveform
+          peaks={fallbackPeaks}
+          progress={progress}
+          onSeek={seekTo}
+          ariaLabel={`Дорожка ${isVoice ? "голосового сообщения" : a.filename}`}
+        />
+        <audio ref={audioRef} preload="metadata" src={src} style={{ display: "none" }} />
         <div className="ec-audio-attachment__meta">
-          {humanSize(a.size)} · {a.mimeType.split("/")[1] ?? "audio"}
+          <span style={{ fontVariantNumeric: "tabular-nums" }}>
+            {formatDuration(currentTime)} / {formatDuration(duration)}
+          </span>
+          <span style={{ opacity: 0.6 }}> · {humanSize(a.size)}</span>
+          {!peaks && (
+            <span style={{ opacity: 0.45, marginLeft: 6 }} title="Waveform не доступен для этого файла">
+              · базовая дорожка
+            </span>
+          )}
         </div>
         <TranscriptBlock
           status={transcriptStatus}

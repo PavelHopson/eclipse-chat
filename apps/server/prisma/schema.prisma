@@ -711,6 +711,12 @@ model Attachment {
   /// Текст ошибки если transcriptStatus = FAILED. Отображается в UI как
   /// muted-line под audio player'ом.
   transcriptError   String?
+  /// v0.66 audio waveform peaks (Telegram-style visualization).
+  /// JSON массив из N=64 normalized чисел 0..100. Считается на frontend
+  /// через Web Audio API при upload, передаётся в attachment payload.
+  /// Null для non-audio / старых attachments — frontend fallback'нется
+  /// на linear progress bar.
+  waveformPeaks     Json?
   /// v0.61: если attachment используется как current track в MusicSession.
   /// Inverse relation для cascade лоgic — при удалении attachment Sessoin's
   /// currentTrackAttachmentId уйдёт в NULL (SetNull).

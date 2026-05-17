@@ -25,6 +25,10 @@ const attachmentInputSchema = z.object({
   filename: z.string().min(1).max(255),
   mimeType: z.string().min(3).max(80),
   dataBase64: z.string().min(1),
+  // v0.66: optional pre-computed audio waveform peaks (Telegram-style viz).
+  // 32..256 значений, каждое 0..100. Backend дополнительно validate'ит
+  // — кривые игнорируются, fallback на linear progress bar.
+  waveformPeaks: z.array(z.number().min(0).max(100)).min(32).max(256).optional().nullable(),
 });
 
 const createMessageBody = z.object({
@@ -200,6 +204,7 @@ export async function registerChannelRoutes(app: FastifyInstance) {
             transcript: true,
             transcriptStatus: true,
             transcriptError: true,
+            waveformPeaks: true,
           },
           orderBy: { position: "asc" },
         },
@@ -347,6 +352,7 @@ export async function registerChannelRoutes(app: FastifyInstance) {
               height: proc.height,
               thumbnailUrl: proc.thumbnailUrl,
               position: proc.position,
+              waveformPeaks: proc.waveformPeaks ?? undefined,
             },
           });
           processedAttachments.push(created);
@@ -388,6 +394,9 @@ export async function registerChannelRoutes(app: FastifyInstance) {
           height: a.height,
           thumbnailUrl: a.thumbnailUrl,
           position: a.position,
+          // v0.66: Prisma Json field returns JsonValue; cast в number[].
+          // validateWaveformPeaks гарантировал shape, либо null.
+          waveformPeaks: (a.waveformPeaks as number[] | null) ?? null,
         })),
       };
       emitMessageOnChannel(m.channelId!, payload);

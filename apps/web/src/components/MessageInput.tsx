@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import { useEffect, useRef, useState } from "react";
 import { fileToBase64 } from "../lib/fileToBase64";
+import { computeWaveformPeaks } from "../lib/audioPeaks";
 import type { AttachmentUpload } from "../hooks/useMessages";
 import type { ActionItemType } from "../lib/socket";
 import {
@@ -713,13 +714,23 @@ export function MessageInput({
     setSending(true);
     setAttachError(null);
     try {
-      // Конвертируем все File в base64 параллельно
+      // Конвертируем все File в base64 параллельно + для audio дополнительно
+      // считаем waveform peaks (Telegram-style viz). computeWaveformPeaks
+      // failure-safe возвращает null — backend fallback на linear progress.
       const uploads: AttachmentUpload[] = await Promise.all(
-        pending.map(async (p) => ({
-          filename: p.file.name,
-          mimeType: p.file.type,
-          dataBase64: await fileToBase64(p.file),
-        })),
+        pending.map(async (p) => {
+          const isAudio = p.file.type.startsWith("audio/");
+          const [dataBase64, waveformPeaks] = await Promise.all([
+            fileToBase64(p.file),
+            isAudio ? computeWaveformPeaks(p.file).catch(() => null) : Promise.resolve(null),
+          ]);
+          return {
+            filename: p.file.name,
+            mimeType: p.file.type,
+            dataBase64,
+            waveformPeaks,
+          };
+        }),
       );
       // Operator slash-command: `/task ...` → отправляем title + actionItem.
       // В Client Mode парсинг отключён — клиенту не нужны task-shortcut'ы.

@@ -51,6 +51,10 @@ export type AttachmentPayload = {
   transcript?: string | null;
   transcriptStatus?: TranscriptStatus;
   transcriptError?: string | null;
+  /** v0.66: pre-computed audio waveform peaks (32..256 чисел 0..100).
+   *  Null/undefined → frontend fallback'нется на linear progress bar.
+   *  Только для audio/* attachments. */
+  waveformPeaks?: number[] | null;
 };
 
 /** v0.58: socket-event при обновлении транскрипции attachment'а. */

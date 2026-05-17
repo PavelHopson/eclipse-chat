@@ -136,6 +136,12 @@ export type AttachmentInput = {
   filename: string;
   mimeType: string;
   dataBase64: string;
+  /** v0.66: pre-computed audio waveform peaks для Telegram-style визуализации.
+   *  Считается на frontend через Web Audio API при upload, N=64 чисел 0..100.
+   *  Клиент гарантирует валидность (длина, range); backend дополнительно
+   *  валидирует zod-схемой и игнорирует если кривое. Optional — non-audio
+   *  attachments не присылают, старые клиенты тоже работают. */
+  waveformPeaks?: number[] | null;
 };
 
 export type ProcessedAttachment = {
@@ -152,7 +158,32 @@ export type ProcessedAttachment = {
    *  processAttachment к id записи (она создаётся caller'ом). Null для
    *  не-аудио. */
   audioBuffer: Buffer | null;
+  /** v0.66: validated waveform peaks (passes-through если input был валиден,
+   *  null если non-audio или peaks некорректные). */
+  waveformPeaks: number[] | null;
 };
+
+/**
+ * v0.66: валидация peaks от клиента. Шлёт array of N normalized чисел.
+ * Контракт: длина 32..256, каждое значение 0..100 (number). Если что-то
+ * вне границ — игнорируем (вернётся null). Frontend fallback'нется на
+ * linear progress bar.
+ */
+function validateWaveformPeaks(
+  raw: number[] | null | undefined,
+  mimeType: string,
+): number[] | null {
+  if (!raw) return null;
+  if (!Array.isArray(raw)) return null;
+  if (raw.length < 32 || raw.length > 256) return null;
+  if (!mimeType.startsWith("audio/")) return null;
+  for (const v of raw) {
+    if (typeof v !== "number" || !Number.isFinite(v) || v < 0 || v > 100) {
+      return null;
+    }
+  }
+  return raw;
+}
 
 function attachmentsDir(): string {
   const base = process.env.UPLOADS_DIR ?? "./uploads";
@@ -512,6 +543,7 @@ export async function processAttachment(
     // Audio — отдаём оригинальный buffer для последующей транскрипции.
     // Не дублируем буфер для non-audio (memory).
     audioBuffer: isTranscribableMime(input.mimeType) ? buf : null,
+    waveformPeaks: validateWaveformPeaks(input.waveformPeaks, input.mimeType),
   };
 }
 

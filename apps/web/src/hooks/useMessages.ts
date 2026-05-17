@@ -49,6 +49,10 @@ export type AttachmentUpload = {
   filename: string;
   mimeType: string;
   dataBase64: string;
+  /** v0.66: pre-computed audio waveform peaks (Telegram-style viz).
+   *  Считаются клиентом через Web Audio API. Optional — non-audio + случаи
+   *  когда decode не удался. Backend дополнительно валидирует zod'ом. */
+  waveformPeaks?: number[] | null;
 };
 
 export type MessageRow = {

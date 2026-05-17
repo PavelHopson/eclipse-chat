@@ -18,6 +18,11 @@ export type AttachmentPayload = {
   height: number | null;
   thumbnailUrl: string | null;
   position: number;
+  /** v0.66: pre-computed audio waveform peaks (32..256 чисел 0..100).
+   *  Null для non-audio + старых attachments — frontend fallback на
+   *  linear progress bar. Передаётся в первом message:new emit'е,
+   *  чтобы UI сразу рисовал waveform без reload. */
+  waveformPeaks?: number[] | null;
 };
 
 /** Эмит нового сообщения в room `channel:${channelId}`. */

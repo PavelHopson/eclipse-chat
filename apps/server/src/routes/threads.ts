@@ -18,6 +18,8 @@ const attachmentInputSchema = z.object({
   filename: z.string().min(1).max(255),
   mimeType: z.string().min(3).max(80),
   dataBase64: z.string().min(1),
+  // v0.66: см. comment в channels.ts.
+  waveformPeaks: z.array(z.number().min(0).max(100)).min(32).max(256).optional().nullable(),
 });
 
 const replyBody = z.object({
@@ -81,6 +83,7 @@ export async function registerThreadRoutes(app: FastifyInstance) {
             height: true,
             thumbnailUrl: true,
             position: true,
+            waveformPeaks: true,
           },
           orderBy: { position: "asc" },
         },
@@ -131,6 +134,7 @@ export async function registerThreadRoutes(app: FastifyInstance) {
             height: true,
             thumbnailUrl: true,
             position: true,
+            waveformPeaks: true,
           },
           orderBy: { position: "asc" },
         },
@@ -281,6 +285,7 @@ export async function registerThreadRoutes(app: FastifyInstance) {
               height: proc.height,
               thumbnailUrl: proc.thumbnailUrl,
               position: proc.position,
+              waveformPeaks: proc.waveformPeaks ?? undefined,
             },
           });
           processedAttachments.push(created);
@@ -319,6 +324,7 @@ export async function registerThreadRoutes(app: FastifyInstance) {
           height: a.height,
           thumbnailUrl: a.thumbnailUrl,
           position: a.position,
+          waveformPeaks: (a.waveformPeaks as number[] | null) ?? null,
         })),
       };
       emitThreadReplyNew(rootId, replyPayload);
