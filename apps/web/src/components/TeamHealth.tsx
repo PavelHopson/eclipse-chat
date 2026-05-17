@@ -349,7 +349,26 @@ export function TeamHealth({
                     : `за последние ${data.windowDays} дней (${data.counts.resolvedInWindow} закрыто)`}
                 </span>
               </div>
+              <div style={{ ...statCardStyle("idle"), cursor: "default" }}>
+                <span style={statLabel}>Время первого ответа</span>
+                <span style={statValue}>
+                  {data.responseTime.medianMs === null
+                    ? "—"
+                    : formatDuration(data.responseTime.medianMs)}
+                </span>
+                <span style={statHint}>
+                  {data.responseTime.medianMs === null
+                    ? `обсуждений < 5 за ${data.responseTime.windowDays} дн`
+                    : `медиана по ${data.responseTime.sampleSize} обсуждений`}
+                </span>
+              </div>
             </div>
+
+            {/* v0.60: Trends week-over-week */}
+            <TrendsRibbon trends={data.trends} />
+
+            {/* v0.60: Per-channel breakdown */}
+            <PerChannelSection rows={data.perChannel} />
 
             {data.topOverloaded.length > 0 && (
               <section
@@ -414,5 +433,278 @@ export function TeamHealth({
         )}
       </div>
     </div>
+  );
+}
+
+/* ============================================================
+ * v0.60 #12 Team Health v3 — trends + perChannel
+ * ============================================================
+ */
+
+function formatDuration(ms: number): string {
+  if (ms < 60_000) {
+    const secs = Math.max(1, Math.round(ms / 1000));
+    return `${secs} c`;
+  }
+  if (ms < 3_600_000) {
+    const mins = Math.round(ms / 60_000);
+    return `${mins} мин`;
+  }
+  if (ms < 86_400_000) {
+    const hours = ms / 3_600_000;
+    return `${hours.toFixed(1)} ч`;
+  }
+  const days = ms / 86_400_000;
+  return `${days.toFixed(1)} д`;
+}
+
+type TrendCellTone = "exec" | "warn" | "idle";
+
+function TrendsRibbon({
+  trends,
+}: {
+  trends: { thisWeek: { created: number; closed: number }; prevWeek: { created: number; closed: number } };
+}) {
+  // Hide ribbon если совсем нет активности в обоих окнах — calm UI.
+  const total =
+    trends.thisWeek.created +
+    trends.thisWeek.closed +
+    trends.prevWeek.created +
+    trends.prevWeek.closed;
+  if (total === 0) return null;
+  return (
+    <section
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: "var(--ec-space-2)",
+      }}
+    >
+      <h3 style={sectionLabel}>За эту неделю</h3>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+          gap: "var(--ec-space-2)",
+        }}
+      >
+        <TrendCell
+          label="Создано"
+          current={trends.thisWeek.created}
+          previous={trends.prevWeek.created}
+          tone="idle"
+        />
+        <TrendCell
+          label="Закрыто"
+          current={trends.thisWeek.closed}
+          previous={trends.prevWeek.closed}
+          tone="exec"
+        />
+      </div>
+    </section>
+  );
+}
+
+function TrendCell({
+  label,
+  current,
+  previous,
+  tone,
+}: {
+  label: string;
+  current: number;
+  previous: number;
+  tone: TrendCellTone;
+}) {
+  const delta = current - previous;
+  const pct =
+    previous === 0
+      ? current === 0
+        ? 0
+        : 100
+      : Math.round(((current - previous) / previous) * 100);
+  // Positive delta для "Закрыто" = good (exec colour). Для "Создано" — neutral
+  // (просто сигнал волатильности, без оценки).
+  const isPositive = delta > 0;
+  const isNegative = delta < 0;
+  const goodDirection = tone === "exec" ? isPositive : false;
+  const badDirection = tone === "exec" ? isNegative : false;
+  const arrow = delta === 0 ? "→" : isPositive ? "↑" : "↓";
+  const arrowColor = goodDirection
+    ? "var(--ec-status-exec)"
+    : badDirection
+    ? "var(--ec-status-warn)"
+    : "var(--ec-text-muted)";
+  return (
+    <div
+      style={{
+        padding: "var(--ec-space-3) var(--ec-space-4)",
+        background: "var(--ec-surface-2)",
+        border: "1px solid var(--ec-border-subtle)",
+        borderRadius: "var(--ec-radius-md)",
+        display: "flex",
+        flexDirection: "column",
+        gap: 4,
+      }}
+    >
+      <div
+        style={{
+          fontSize: "var(--ec-text-2xs)",
+          color: "var(--ec-text-dim)",
+          letterSpacing: "var(--ec-tracking-caps)",
+          textTransform: "uppercase",
+          fontWeight: 700,
+        }}
+      >
+        {label}
+      </div>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
+        <span
+          style={{
+            fontSize: "1.5rem",
+            fontWeight: 700,
+            color: "var(--ec-text-strong)",
+            fontFamily: "var(--ec-font-mono)",
+            fontFeatureSettings: '"tnum"',
+          }}
+        >
+          {current}
+        </span>
+        <span style={{ color: arrowColor, fontSize: "var(--ec-text-sm)" }}>
+          {arrow}{" "}
+          {delta === 0
+            ? "без изменений"
+            : `${delta > 0 ? "+" : ""}${delta} (${pct > 0 ? "+" : ""}${pct}%)`}
+        </span>
+      </div>
+      <span style={{ fontSize: "var(--ec-text-2xs)", color: "var(--ec-text-dim)" }}>
+        пред. неделя: {previous}
+      </span>
+    </div>
+  );
+}
+
+function PerChannelSection({
+  rows,
+}: {
+  rows: import("../hooks/useTeamHealth").ChannelBreakdown[];
+}) {
+  if (rows.length === 0) return null;
+  // Limit отображаемых строк — не больше 8, остальное collapses в "ещё N".
+  const TOP_LIMIT = 8;
+  const top = rows.slice(0, TOP_LIMIT);
+  const overflow = rows.length - top.length;
+
+  return (
+    <section
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: "var(--ec-space-2)",
+      }}
+    >
+      <h3 style={sectionLabel}>По комнатам</h3>
+      <div
+        style={{
+          background: "var(--ec-surface-2)",
+          border: "1px solid var(--ec-border-subtle)",
+          borderRadius: "var(--ec-radius-md)",
+          overflow: "hidden",
+        }}
+      >
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 70px 80px 80px",
+            gap: 0,
+            padding: "var(--ec-space-2) var(--ec-space-3)",
+            background: "var(--ec-surface-3)",
+            fontSize: "var(--ec-text-2xs)",
+            color: "var(--ec-text-dim)",
+            textTransform: "uppercase",
+            letterSpacing: "var(--ec-tracking-wide)",
+            fontWeight: 700,
+            borderBottom: "1px solid var(--ec-border-subtle)",
+          }}
+        >
+          <span>Комната</span>
+          <span style={{ textAlign: "right" }}>Открыто</span>
+          <span style={{ textAlign: "right" }}>Просроч.</span>
+          <span style={{ textAlign: "right" }}>Закрыто</span>
+        </div>
+        {top.map((row) => (
+          <div
+            key={row.channelId}
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 70px 80px 80px",
+              padding: "var(--ec-space-2) var(--ec-space-3)",
+              borderBottom: "1px solid var(--ec-border-subtle)",
+              fontSize: "var(--ec-text-sm)",
+              alignItems: "center",
+            }}
+          >
+            <span
+              style={{
+                color: "var(--ec-text-strong)",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              <span style={{ color: "var(--ec-accent)" }}>
+                {row.channelType === "VOICE"
+                  ? "🔊"
+                  : row.channelType === "BROADCAST"
+                  ? "📢"
+                  : "#"}
+              </span>{" "}
+              {row.channelName ?? "—"}
+            </span>
+            <span
+              style={{
+                textAlign: "right",
+                fontFamily: "var(--ec-font-mono)",
+                fontFeatureSettings: '"tnum"',
+              }}
+            >
+              {row.open}
+            </span>
+            <span
+              style={{
+                textAlign: "right",
+                fontFamily: "var(--ec-font-mono)",
+                fontFeatureSettings: '"tnum"',
+                color: row.overdue > 0 ? "var(--ec-status-warn)" : "var(--ec-text-dim)",
+              }}
+            >
+              {row.overdue}
+            </span>
+            <span
+              style={{
+                textAlign: "right",
+                fontFamily: "var(--ec-font-mono)",
+                fontFeatureSettings: '"tnum"',
+                color: row.closed > 0 ? "var(--ec-status-exec)" : "var(--ec-text-dim)",
+              }}
+            >
+              {row.closed}
+            </span>
+          </div>
+        ))}
+        {overflow > 0 && (
+          <div
+            style={{
+              padding: "var(--ec-space-2) var(--ec-space-3)",
+              fontSize: "var(--ec-text-2xs)",
+              color: "var(--ec-text-dim)",
+              textAlign: "center",
+            }}
+          >
+            и ещё {overflow}
+          </div>
+        )}
+      </div>
+    </section>
   );
 }

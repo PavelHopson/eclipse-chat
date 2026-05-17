@@ -8,30 +8,36 @@ import { db } from "../db.js";
  *   GET /api/servers/:id/analytics/team-health
  *
  * Server-wide aggregate поверх ActionItem'ов. Membership-gated. Calm
- * operator dashboard: не chart-perversion, а 4 числа + top-overloaded
- * (top-3) + blocked members (3+ assigned-open).
+ * operator dashboard.
  *
  * Возвращаемые метрики:
- *   - overdueTotal      — number of OPEN ActionItem'ов с dueAt < now
- *   - unassignedTotal   — number of OPEN без assignee
- *   - openTotal         — total OPEN (для контекста)
- *   - avgResolutionDays — среднее время (createdAt → updatedAt) для
- *                          DONE actions за последние 30 дней (null если
- *                          выборка < 3 closures — слишком мало для signal)
- *   - topOverloaded     — top 3 members по числу assigned-open
- *                          (avatar, displayName, openCount), excludes
- *                          members с openCount === 0
- *   - blockedMembers    — members с >= 3 open assigned (subset topOverloaded)
+ *   v0.30 base:
+ *     - overdueTotal      — number of OPEN ActionItem'ов с dueAt < now
+ *     - unassignedTotal   — number of OPEN без assignee
+ *     - openTotal         — total OPEN (для контекста)
+ *     - avgResolutionDays — среднее время (createdAt → updatedAt) для
+ *                            DONE actions за окно. Null если < 3 closures.
+ *     - topOverloaded     — top 3 members по числу assigned-open
+ *     - blockedMembers    — members с >= 3 open assigned
  *
- * Scope cuts (v0.30+):
- *   - response time per channel (требует expensive median computation)
- *   - trend vs prev week (нужны snapshot'ы исторических данных)
- *   - per-channel breakdown (сейчас только server-wide)
+ *   v0.60 (#12 Team Health v3):
+ *     - trends            — current week vs previous week deltas для
+ *                            createdInWeek + closedInWeek (sliding 7-day window).
+ *     - perChannel        — breakdown open + overdue + resolvedInWindow per
+ *                            channelId (отсортирован по open desc).
+ *     - responseTime      — median(first thread reply latency) в ms, sample
+ *                            size в окне. Null если < 5 thread-conversations.
+ *
+ * Snapshot'ы исторических данных не нужны — current vs prev week вычисляется
+ * on-the-fly из ActionItem.createdAt / updatedAt.
  */
 const RESOLUTION_WINDOW_DAYS = 30;
 const RESOLUTION_MIN_SAMPLE = 3;
 const TOP_OVERLOADED_LIMIT = 3;
 const BLOCKED_THRESHOLD = 3;
+const RESPONSE_MIN_SAMPLE = 5;
+const RESPONSE_WINDOW_DAYS = 30;
+const WEEK_MS = 7 * 86_400_000;
 
 /**
  * Pure aggregation — separated для unit-test'абельности.
@@ -149,6 +155,19 @@ export function aggregateTeamHealth(
   };
 }
 
+/**
+ * Median of numeric array. Pure helper для unit-tests + main route.
+ * Возвращает null если массив пуст.
+ */
+export function median(values: number[]): number | null {
+  if (values.length === 0) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0
+    ? (sorted[mid - 1] + sorted[mid]) / 2
+    : sorted[mid];
+}
+
 export function registerAnalyticsRoutes(app: FastifyInstance) {
   app.get(
     "/api/servers/:id/analytics/team-health",
@@ -160,7 +179,6 @@ export function registerAnalyticsRoutes(app: FastifyInstance) {
       }
       const { id: serverId } = req.params as { id: string };
 
-      // Membership-only — server-wide aggregate не должен утекать non-членам.
       const member = await db.member.findUnique({
         where: { userId_serverId: { userId, serverId } },
         select: { id: true },
@@ -171,21 +189,77 @@ export function registerAnalyticsRoutes(app: FastifyInstance) {
 
       const now = new Date();
       const since = new Date(now.getTime() - RESOLUTION_WINDOW_DAYS * 86_400_000);
+      const weekStart = new Date(now.getTime() - WEEK_MS);
+      const prevWeekStart = new Date(now.getTime() - 2 * WEEK_MS);
+      const responseSince = new Date(now.getTime() - RESPONSE_WINDOW_DAYS * 86_400_000);
 
-      // 1. OPEN actions (минимальные поля)
+      // 1. OPEN actions — для overdue/unassigned/topOverloaded.
       const openActions = await db.actionItem.findMany({
         where: { serverId, status: "OPEN" },
-        select: { assigneeUserId: true, dueAt: true },
+        select: {
+          assigneeUserId: true,
+          dueAt: true,
+          channelId: true,
+        },
       });
 
-      // 2. DONE actions за окно (для avg resolution)
+      // 2. DONE actions за окно — avg resolution + closedInWindow per channel.
       const recentDone = await db.actionItem.findMany({
         where: { serverId, status: "DONE", updatedAt: { gte: since } },
-        select: { createdAt: true, updatedAt: true },
-        take: 500,
+        select: {
+          createdAt: true,
+          updatedAt: true,
+          channelId: true,
+        },
+        take: 1000,
       });
 
-      // 3. Hydrate ВСЕХ unique assignee'ев в одном запросе (избегаем 2 round-trip'а)
+      // 3. Trend: всё созданное за 2 недели (для current/prev week split).
+      const trendActions = await db.actionItem.findMany({
+        where: {
+          serverId,
+          createdAt: { gte: prevWeekStart },
+        },
+        select: {
+          createdAt: true,
+          status: true,
+          updatedAt: true,
+        },
+        take: 2000,
+      });
+
+      // 4. Channels на сервере — для hydration имён в perChannel breakdown.
+      const channels = await db.channel.findMany({
+        where: { serverId },
+        select: { id: true, name: true, type: true },
+      });
+
+      // 5. Response time: thread roots за окно с первым reply.
+      // Берём messages у которых есть threadReplies, JOIN с минимальной первой.
+      const threadRoots = await db.message.findMany({
+        where: {
+          channel: { serverId, type: "TEXT" },
+          deletedAt: null,
+          createdAt: { gte: responseSince },
+          // hasSome не работает с pivots; делаем `some` через threadReplies.
+          threadReplies: {
+            some: { createdAt: { gte: responseSince } },
+          },
+        },
+        select: {
+          id: true,
+          createdAt: true,
+          channelId: true,
+          threadReplies: {
+            where: { deletedAt: null },
+            orderBy: { createdAt: "asc" },
+            take: 1,
+            select: { createdAt: true },
+          },
+        },
+        take: 800,
+      });
+
       const assigneeIds = Array.from(
         new Set(
           openActions
@@ -202,6 +276,76 @@ export function registerAnalyticsRoutes(app: FastifyInstance) {
 
       const result = aggregateTeamHealth(openActions, recentDone, users, now);
 
+      // ── Trends (week-over-week)
+      const thisWeek = {
+        created: 0,
+        closed: 0,
+      };
+      const prevWeek = {
+        created: 0,
+        closed: 0,
+      };
+      for (const a of trendActions) {
+        const createdMs = a.createdAt.getTime();
+        if (createdMs >= weekStart.getTime()) thisWeek.created++;
+        else if (createdMs >= prevWeekStart.getTime()) prevWeek.created++;
+        if (a.status === "DONE") {
+          const closedMs = a.updatedAt.getTime();
+          if (closedMs >= weekStart.getTime()) thisWeek.closed++;
+          else if (closedMs >= prevWeekStart.getTime()) prevWeek.closed++;
+        }
+      }
+
+      // ── Per-channel breakdown.
+      const channelMeta = new Map(
+        channels.map((c) => [c.id, { name: c.name, type: c.type }]),
+      );
+      const perChannelMap = new Map<
+        string,
+        { open: number; overdue: number; closed: number }
+      >();
+      const ensureChannelEntry = (cid: string) => {
+        if (!perChannelMap.has(cid)) {
+          perChannelMap.set(cid, { open: 0, overdue: 0, closed: 0 });
+        }
+        return perChannelMap.get(cid)!;
+      };
+      for (const a of openActions) {
+        const entry = ensureChannelEntry(a.channelId);
+        entry.open++;
+        if (a.dueAt && a.dueAt.getTime() < now.getTime()) entry.overdue++;
+      }
+      for (const a of recentDone) {
+        ensureChannelEntry(a.channelId).closed++;
+      }
+      const perChannel = Array.from(perChannelMap.entries())
+        .map(([channelId, counts]) => {
+          const meta = channelMeta.get(channelId);
+          return {
+            channelId,
+            channelName: meta?.name ?? null,
+            channelType: meta?.type ?? null,
+            open: counts.open,
+            overdue: counts.overdue,
+            closed: counts.closed,
+          };
+        })
+        // Фильтруем deleted channels (нет meta + 0 activity) — оставляем
+        // активные либо те где meta есть.
+        .filter((c) => c.channelName !== null || c.open + c.closed > 0)
+        .sort((a, b) => b.open - a.open || b.closed - a.closed);
+
+      // ── Response time (median).
+      const deltas: number[] = [];
+      for (const root of threadRoots) {
+        const firstReply = root.threadReplies[0];
+        if (!firstReply) continue;
+        const delta = firstReply.createdAt.getTime() - root.createdAt.getTime();
+        if (delta >= 0) deltas.push(delta);
+      }
+      const responseMedianMs =
+        deltas.length >= RESPONSE_MIN_SAMPLE ? median(deltas) : null;
+
       return {
         serverId,
         generatedAt: now.toISOString(),
@@ -215,6 +359,16 @@ export function registerAnalyticsRoutes(app: FastifyInstance) {
         avgResolutionDays: result.avgResolutionDays,
         topOverloaded: result.topOverloaded,
         blockedMembers: result.blockedMembers,
+        trends: {
+          thisWeek,
+          prevWeek,
+        },
+        perChannel,
+        responseTime: {
+          medianMs: responseMedianMs,
+          sampleSize: deltas.length,
+          windowDays: RESPONSE_WINDOW_DAYS,
+        },
       };
     },
   );

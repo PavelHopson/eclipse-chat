@@ -16,6 +16,16 @@ export type OverloadedMember = {
   openCount: number;
 };
 
+/** v0.60: per-channel breakdown row. */
+export type ChannelBreakdown = {
+  channelId: string;
+  channelName: string | null;
+  channelType: "TEXT" | "VOICE" | "BROADCAST" | null;
+  open: number;
+  overdue: number;
+  closed: number;
+};
+
 export type TeamHealthData = {
   serverId: string;
   generatedAt: string;
@@ -32,6 +42,19 @@ export type TeamHealthData = {
   topOverloaded: OverloadedMember[];
   /** Members с >= 3 assigned-open. Subset/superset topOverloaded. */
   blockedMembers: OverloadedMember[];
+  /** v0.60: trends week-over-week (sliding 7-day window). */
+  trends: {
+    thisWeek: { created: number; closed: number };
+    prevWeek: { created: number; closed: number };
+  };
+  /** v0.60: per-channel breakdown отсортирован по open desc. */
+  perChannel: ChannelBreakdown[];
+  /** v0.60: median first-reply latency. Null если sample < 5. */
+  responseTime: {
+    medianMs: number | null;
+    sampleSize: number;
+    windowDays: number;
+  };
 };
 
 export function useTeamHealth(serverId: string | null) {
