@@ -6,6 +6,7 @@ import {
   serializeActionItem,
   serializeActionItemDetail,
 } from "../actionItems.js";
+import { AINotConfiguredError, chat } from "../ai/provider.js";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
 import { db } from "../db.js";
 import { serializeUser } from "../lib/userView.js";
@@ -13,6 +14,7 @@ import {
   emitActionItemCommentAdded,
   emitActionItemCommentDeleted,
   emitActionItemCreated,
+  emitActionItemDependencyChanged,
   emitActionItemUpdated,
 } from "../realtime.js";
 
@@ -54,6 +56,10 @@ const requestApprovalBody = z.object({
 const decideApprovalBody = z.object({
   decision: z.enum(["APPROVED", "REJECTED"]),
   note: z.string().max(500).optional(),
+});
+
+const addDependencyBody = z.object({
+  dependsOnActionItemId: z.string().min(1),
 });
 
 function deriveActionTitle(type: z.infer<typeof actionTypeSchema>, content: string): string {
@@ -671,6 +677,374 @@ export async function registerActionRoutes(app: FastifyInstance) {
       const payload = serializeActionItem(updated);
       emitActionItemUpdated(item.channelId, payload);
       return { action: payload };
+    },
+  );
+
+  /**
+   * v0.73 #20 phase 2: POST /api/actions/:id/dependencies — добавить
+   * blocker. Body: `{ dependsOnActionItemId }`. Membership-only.
+   *
+   * Защиты:
+   *   * self-loop отвергается (BD CHECK тоже ловит как defense-in-depth);
+   *   * обе задачи должны быть в одном server'е;
+   *   * BFS от dependsOnActionItemId по существующим зависимостям —
+   *     если граф достижим до :id, был бы цикл (A→B→…→A) → 409;
+   *   * P2002 (duplicate edge) → 409.
+   */
+  app.post(
+    "/api/actions/:id/dependencies",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const userId = getUserId(req);
+      if (!userId) return reply.status(401).send({ error: "Unauthorized" });
+      const { id: actionId } = req.params as { id: string };
+      const parsed = addDependencyBody.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.status(400).send({ error: "Invalid body" });
+      }
+      const { dependsOnActionItemId: blockerId } = parsed.data;
+      if (actionId === blockerId) {
+        return reply
+          .status(400)
+          .send({ error: "Action cannot depend on itself" });
+      }
+      const [item, blocker] = await Promise.all([
+        db.actionItem.findUnique({
+          where: { id: actionId },
+          select: { id: true, serverId: true, channelId: true },
+        }),
+        db.actionItem.findUnique({
+          where: { id: blockerId },
+          select: { id: true, serverId: true, channelId: true },
+        }),
+      ]);
+      if (!item || !blocker) {
+        return reply.status(404).send({ error: "Action not found" });
+      }
+      if (item.serverId !== blocker.serverId) {
+        return reply
+          .status(400)
+          .send({ error: "Dependency must be within the same workspace" });
+      }
+      const member = await db.member.findUnique({
+        where: { userId_serverId: { userId, serverId: item.serverId } },
+        select: { id: true },
+      });
+      if (!member) {
+        return reply.status(403).send({ error: "Not a member of this server" });
+      }
+
+      // BFS из blockerId по зависимостям: если достигнем actionId — цикл.
+      // Берём все edges сервера один раз, чтобы не делать N запросов.
+      const allEdges = await db.actionItemDependency.findMany({
+        where: { actionItem: { serverId: item.serverId } },
+        select: { actionItemId: true, dependsOnActionItemId: true },
+      });
+      const adj = new Map<string, string[]>();
+      for (const e of allEdges) {
+        const arr = adj.get(e.actionItemId);
+        if (arr) arr.push(e.dependsOnActionItemId);
+        else adj.set(e.actionItemId, [e.dependsOnActionItemId]);
+      }
+      const stack = [blockerId];
+      const seen = new Set<string>();
+      while (stack.length > 0) {
+        const node = stack.pop()!;
+        if (node === actionId) {
+          return reply
+            .status(409)
+            .send({ error: "Adding this dependency would create a cycle" });
+        }
+        if (seen.has(node)) continue;
+        seen.add(node);
+        const neighbors = adj.get(node);
+        if (neighbors) stack.push(...neighbors);
+      }
+
+      try {
+        await db.$transaction(async (tx) => {
+          await tx.actionItemDependency.create({
+            data: {
+              actionItemId: actionId,
+              dependsOnActionItemId: blockerId,
+            },
+          });
+          await tx.actionItemActivity.create({
+            data: {
+              actionItemId: actionId,
+              userId,
+              type: "DEPENDENCY_ADDED",
+              payload: activityPayload({ blockerId }),
+            },
+          });
+        });
+      } catch (error: unknown) {
+        if (
+          error instanceof Error &&
+          "code" in error &&
+          (error as { code?: string }).code === "P2002"
+        ) {
+          return reply
+            .status(409)
+            .send({ error: "Dependency already exists" });
+        }
+        throw error;
+      }
+
+      // Отдаём обновлённые detail-payload'ы обеих задач, чтобы клиент
+      // мог обновить и drawer источника, и карточку блокера.
+      const [itemAfter, blockerAfter] = await Promise.all([
+        db.actionItem.findUnique({
+          where: { id: actionId },
+          include: actionItemInclude,
+        }),
+        db.actionItem.findUnique({
+          where: { id: blockerId },
+          include: actionItemInclude,
+        }),
+      ]);
+      if (itemAfter) emitActionItemUpdated(item.channelId, serializeActionItem(itemAfter));
+      if (blockerAfter)
+        emitActionItemUpdated(blocker.channelId, serializeActionItem(blockerAfter));
+      emitActionItemDependencyChanged(item.channelId, item.serverId, {
+        actionItemId: actionId,
+        dependsOnActionItemId: blockerId,
+        kind: "added",
+      });
+      return {
+        action: itemAfter ? serializeActionItem(itemAfter) : null,
+        blocker: blockerAfter ? serializeActionItem(blockerAfter) : null,
+      };
+    },
+  );
+
+  /**
+   * v0.73 #20 phase 2: DELETE /api/actions/:id/dependencies/:depId
+   * Удалить blocker. Membership-only. P2025 (edge not found) → 404.
+   */
+  app.delete(
+    "/api/actions/:id/dependencies/:depId",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const userId = getUserId(req);
+      if (!userId) return reply.status(401).send({ error: "Unauthorized" });
+      const { id: actionId, depId } = req.params as {
+        id: string;
+        depId: string;
+      };
+      const item = await db.actionItem.findUnique({
+        where: { id: actionId },
+        select: { id: true, serverId: true, channelId: true },
+      });
+      if (!item) {
+        return reply.status(404).send({ error: "Action not found" });
+      }
+      const member = await db.member.findUnique({
+        where: { userId_serverId: { userId, serverId: item.serverId } },
+        select: { id: true },
+      });
+      if (!member) {
+        return reply.status(403).send({ error: "Not a member of this server" });
+      }
+      try {
+        await db.$transaction(async (tx) => {
+          await tx.actionItemDependency.delete({
+            where: {
+              actionItemId_dependsOnActionItemId: {
+                actionItemId: actionId,
+                dependsOnActionItemId: depId,
+              },
+            },
+          });
+          await tx.actionItemActivity.create({
+            data: {
+              actionItemId: actionId,
+              userId,
+              type: "DEPENDENCY_REMOVED",
+              payload: activityPayload({ blockerId: depId }),
+            },
+          });
+        });
+      } catch (error: unknown) {
+        if (
+          error instanceof Error &&
+          "code" in error &&
+          (error as { code?: string }).code === "P2025"
+        ) {
+          return reply.status(404).send({ error: "Dependency not found" });
+        }
+        throw error;
+      }
+      const blocker = await db.actionItem.findUnique({
+        where: { id: depId },
+        select: { channelId: true },
+      });
+      const [itemAfter, blockerAfter] = await Promise.all([
+        db.actionItem.findUnique({
+          where: { id: actionId },
+          include: actionItemInclude,
+        }),
+        db.actionItem.findUnique({
+          where: { id: depId },
+          include: actionItemInclude,
+        }),
+      ]);
+      if (itemAfter) emitActionItemUpdated(item.channelId, serializeActionItem(itemAfter));
+      if (blockerAfter && blocker)
+        emitActionItemUpdated(blocker.channelId, serializeActionItem(blockerAfter));
+      emitActionItemDependencyChanged(item.channelId, item.serverId, {
+        actionItemId: actionId,
+        dependsOnActionItemId: depId,
+        kind: "removed",
+      });
+      return { ok: true };
+    },
+  );
+
+  /**
+   * v0.73 #20 phase 4: POST /api/actions/:id/ai-summary — генерит 2-3
+   * строчную сводку по description + последние 30 комментариев. Любой
+   * member. Кэш в `aiSummary` + `aiSummaryUpdatedAt`. Activity log
+   * AI_SUMMARY_GENERATED.
+   *
+   * Ошибки:
+   *   * 503 если AI не сконфигурирован (AINotConfiguredError).
+   *   * 400 если у задачи нечего суммаризовать (no description + 0 comments).
+   *   * 502 если все провайдеры упали — клиент покажет «попробовать ещё раз».
+   */
+  app.post(
+    "/api/actions/:id/ai-summary",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const userId = getUserId(req);
+      if (!userId) return reply.status(401).send({ error: "Unauthorized" });
+      const { id: actionId } = req.params as { id: string };
+      const item = await db.actionItem.findUnique({
+        where: { id: actionId },
+        select: {
+          id: true,
+          serverId: true,
+          channelId: true,
+          title: true,
+          description: true,
+          type: true,
+          status: true,
+        },
+      });
+      if (!item) return reply.status(404).send({ error: "Action not found" });
+      const member = await db.member.findUnique({
+        where: { userId_serverId: { userId, serverId: item.serverId } },
+        select: { id: true },
+      });
+      if (!member) {
+        return reply.status(403).send({ error: "Not a member of this server" });
+      }
+      const comments = await db.actionItemComment.findMany({
+        where: { actionItemId: actionId },
+        orderBy: { createdAt: "desc" },
+        take: 30,
+        select: {
+          content: true,
+          createdAt: true,
+          user: { select: { displayName: true } },
+        },
+      });
+      const hasDescription = (item.description ?? "").trim().length > 0;
+      if (!hasDescription && comments.length === 0) {
+        return reply
+          .status(400)
+          .send({ error: "Nothing to summarize: no description and no comments" });
+      }
+
+      // Compose prompt — короткие сводки, не «AI-powered» копирайт. RU,
+      // 2-3 предложения максимум. Plain text без markdown.
+      const commentLines = comments
+        .slice()
+        .reverse()
+        .map((c) => {
+          const who = c.user?.displayName ?? "Удалённый пользователь";
+          return `${who}: ${c.content.replace(/\s+/g, " ").trim()}`;
+        })
+        .join("\n");
+      const typeLabel =
+        item.type === "DECISION"
+          ? "решение"
+          : item.type === "FOLLOW_UP"
+            ? "follow-up"
+            : "задача";
+
+      const system = [
+        "Ты — операционный ассистент команды. Резюмируй задачу или решение",
+        "в 2-3 коротких предложения на русском. Без markdown, без emoji,",
+        "без вводных фраз («Вот резюме…»). Описывай суть + текущее состояние",
+        "+ что осталось сделать. Если данных мало — скажи об этом одной фразой.",
+      ].join(" ");
+      const user = [
+        `Тип: ${typeLabel}`,
+        `Статус: ${item.status}`,
+        `Заголовок: ${item.title}`,
+        hasDescription ? `Описание:\n${item.description}` : "Описание: (нет)",
+        comments.length > 0
+          ? `Последние комментарии:\n${commentLines}`
+          : "Комментариев нет.",
+      ].join("\n\n");
+
+      let summary: string;
+      try {
+        const result = await chat(
+          [
+            { role: "system", content: system },
+            { role: "user", content: user },
+          ],
+          { temperature: 0.3, maxTokens: 220 },
+        );
+        summary = result.text.trim();
+      } catch (err) {
+        if (err instanceof AINotConfiguredError) {
+          return reply
+            .status(503)
+            .send({ error: "AI is not configured on this server" });
+        }
+        req.log.warn({ err, actionId }, "AI summary failed");
+        return reply
+          .status(502)
+          .send({ error: "AI provider failed; please try again" });
+      }
+      if (!summary) {
+        return reply
+          .status(502)
+          .send({ error: "AI returned empty result" });
+      }
+      // Clamp на всякий случай — Prisma строка без лимита, но нам не нужны
+      // огромные блобы.
+      if (summary.length > 1500) summary = summary.slice(0, 1500);
+
+      await db.$transaction(async (tx) => {
+        await tx.actionItem.update({
+          where: { id: actionId },
+          data: { aiSummary: summary, aiSummaryUpdatedAt: new Date() },
+        });
+        await tx.actionItemActivity.create({
+          data: {
+            actionItemId: actionId,
+            userId,
+            type: "AI_SUMMARY_GENERATED",
+            payload: activityPayload({ length: summary.length }),
+          },
+        });
+      });
+
+      const updated = await db.actionItem.findUnique({
+        where: { id: actionId },
+        include: actionItemInclude,
+      });
+      if (updated) {
+        emitActionItemUpdated(item.channelId, serializeActionItem(updated));
+      }
+      return {
+        summary,
+        updatedAt: new Date().toISOString(),
+      };
     },
   );
 

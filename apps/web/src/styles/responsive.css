@@ -938,3 +938,135 @@
     max-width: calc(100vw - 64px);
   }
 }
+
+/* ==============================================================
+ * v0.73 mobile simplify pass — Pavel screenshot 17.05:
+ *   * drawer'ы налезали друг на друга и на чат (composer wrap'ил
+ *     placeholder по символу), stat-cards вертикальный «вермишелька»,
+ *     breadcrumb «Eclipse Forge» wrap'ил, channel-action gear/trash
+ *     торчали как столбик слева в чате.
+ *
+ * Решение — focused-overrides ниже:
+ *   1. Drawer ≥ 92vw на мобильнике (фактически fullscreen), сильнее
+ *      backdrop;  AppShell дополнительно муcucex'ит state.
+ *   2. Stat-grid (Home / Help) — 2-col forced между 320px и 760px,
+ *      1-col только на совсем-узких <320 (rare).
+ *   3. Breadcrumb «{server} / {channel}» — nowrap + ellipsis на ≤640.
+ *   4. ChannelList row-actions (gear/trash) — НЕ через hover-opacity,
+ *      а через native settings-modal (mobile нет hover). Скрыты на
+ *      ≤640px, channel меняется через долгое tap → settings-screen.
+ *   5. Composer textarea + chat-header — гарантированный min-width:0
+ *      на flex-родителе, чтобы placeholder не падал в столбец-по-1.
+ * ============================================================== */
+
+@media (max-width: 640px) {
+  /* Drawer width — почти fullscreen, чтобы чат не светил из-под backdrop'а.
+     На ≤400px — full 100vw (минус rail для левого drawer). */
+  .ec-shell__channels {
+    max-width: calc(100vw - 64px) !important;
+    width: calc(100vw - 64px) !important;
+  }
+  .ec-shell__members {
+    width: min(100vw, 420px) !important;
+    max-width: 100vw !important;
+  }
+  /* Backdrop — глубже затемняем (0.45 → 0.62) + сильнее blur. Drawer
+     теперь читается как полноценный modal, а не side-panel. */
+  .ec-shell--nav-open .ec-shell__backdrop,
+  .ec-shell--members-open .ec-shell__backdrop {
+    background: hsl(220 22% 2% / 0.78) !important;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+
+  /* Breadcrumb «server / channel» — nowrap + ellipsis. Раньше «Eclipse
+     Forge» переносился на 2 строки + наезжал на иконки топбара. */
+  .ec-shell__breadcrumb {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    max-width: calc(100vw - 200px);
+  }
+  .ec-shell__breadcrumb > span {
+    white-space: nowrap;
+  }
+  .ec-shell__top-left {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+  /* Brand-title — прячем когда breadcrumb есть (один из двух, не оба). */
+  .ec-shell__brand-home:has(+ .ec-shell__breadcrumb) .ec-shell__brand-title {
+    display: none;
+  }
+
+  /* Chat header — гарантировать что children не overflow'ят родителя. */
+  .ec-chat-header {
+    min-width: 0;
+    overflow: hidden;
+  }
+  .ec-chat-header > * {
+    min-width: 0;
+  }
+  .ec-chat-title {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex-shrink: 1;
+  }
+
+  /* Composer wrap — обеспечим что textarea получает width родителя,
+     а не сжимается до column-of-1 character. */
+  .ec-composer,
+  .ec-composer-wrap {
+    width: 100%;
+    min-width: 0;
+  }
+  .ec-composer-box {
+    min-width: 0;
+  }
+  .ec-composer-textarea {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+
+  /* ChannelList row-actions (settings/trash) — на mobile только через
+     долгий tap (open-settings). Hover-only opacity не работает на touch,
+     получается «столбик иконок» слева в чате когда drawer закрывается.
+     Прячем кнопки целиком — channel-settings доступен через chat-header
+     gear-icon рядом с #channel-name. */
+  [data-channel-action] {
+    display: none !important;
+  }
+
+  /* Stat-grid в Home / Help / TeamHealth — 2 столбца forced. Существующий
+     1-col при ≤520px давал бесконечный «вермишелька»-список. */
+  .ec-home-today__stats,
+  .ec-team-health-stats,
+  .ec-stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: var(--ec-space-2) !important;
+  }
+  .ec-home-stat-card {
+    padding: var(--ec-space-2) var(--ec-space-3) !important;
+    min-width: 0;
+  }
+  .ec-home-stat-card > * {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+/* Совсем узкий viewport — fallback на 1 col, но без !important чтобы
+   контент-карточки в нормальных home/help/health screen'ах могли
+   решать по своему. */
+@media (max-width: 320px) {
+  .ec-home-today__stats,
+  .ec-team-health-stats,
+  .ec-stat-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+

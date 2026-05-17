@@ -9,10 +9,40 @@ const userSelectForView = {
   botProfile: { select: { id: true, role: true } },
 } satisfies Prisma.UserSelect;
 
+/**
+ * v0.73 #20 phase 2: dependencies — lightweight select для bulk fetch'а
+ * (Status Board возвращает до 200 items, тяжёлый include не пойдёт).
+ * Возвращаем только id+title+status+type — этого хватает для chip badge
+ * «🚧 Blocked by N: Title 1, Title 2…» в карточке и drawer'е.
+ */
+const depRowSelect = {
+  dependsOnActionItem: {
+    select: {
+      id: true,
+      title: true,
+      status: true,
+      type: true,
+    },
+  },
+} satisfies Prisma.ActionItemDependencySelect;
+
+const blockRowSelect = {
+  actionItem: {
+    select: {
+      id: true,
+      title: true,
+      status: true,
+      type: true,
+    },
+  },
+} satisfies Prisma.ActionItemDependencySelect;
+
 export const actionItemInclude = {
   createdBy: { select: userSelectForView },
   assignee: { select: userSelectForView },
   approver: { select: userSelectForView },
+  dependencies: { select: depRowSelect },
+  blocks: { select: blockRowSelect },
 } satisfies Prisma.ActionItemInclude;
 
 /**
@@ -45,7 +75,30 @@ export type ActionItemDetailWithRelations = Prisma.ActionItemGetPayload<{
   include: typeof actionItemDetailInclude;
 }>;
 
+export type ActionItemDependencyRef = {
+  id: string;
+  title: string;
+  status: "OPEN" | "IN_PROGRESS" | "REVIEW" | "DONE";
+  type: "TASK" | "DECISION" | "FOLLOW_UP";
+};
+
 export function serializeActionItem(item: ActionItemWithRelations) {
+  const dependencies: ActionItemDependencyRef[] = item.dependencies.map(
+    (d) => ({
+      id: d.dependsOnActionItem.id,
+      title: d.dependsOnActionItem.title,
+      status: d.dependsOnActionItem.status,
+      type: d.dependsOnActionItem.type,
+    }),
+  );
+  const blocks: ActionItemDependencyRef[] = item.blocks.map((d) => ({
+    id: d.actionItem.id,
+    title: d.actionItem.title,
+    status: d.actionItem.status,
+    type: d.actionItem.type,
+  }));
+  // Сколько blockers'ов ещё не закрыты — UI badge "🚧 Blocked by N".
+  const blockedByOpen = dependencies.filter((d) => d.status !== "DONE").length;
   return {
     id: item.id,
     title: item.title,
@@ -66,6 +119,13 @@ export function serializeActionItem(item: ActionItemWithRelations) {
     approvalNote: item.approvalNote,
     approvedAt: item.approvedAt?.toISOString() ?? null,
     approver: item.approver ? serializeUser(item.approver) : null,
+    dependencies,
+    blocks,
+    blockedByOpen,
+    /// v0.73 phase 3/4 — escalation + AI summary metadata.
+    escalatedAt: item.escalatedAt?.toISOString() ?? null,
+    aiSummary: item.aiSummary,
+    aiSummaryUpdatedAt: item.aiSummaryUpdatedAt?.toISOString() ?? null,
   };
 }
 

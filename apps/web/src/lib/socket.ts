@@ -228,6 +228,14 @@ export type ActionItemStatus = "OPEN" | "IN_PROGRESS" | "REVIEW" | "DONE";
 export type ActionItemPriority = "LOW" | "NORMAL" | "HIGH" | "URGENT";
 export type ApprovalStatus = "NONE" | "PENDING" | "APPROVED" | "REJECTED";
 
+/** v0.73 #20 phase 2: lightweight ref for blockers/blocks lists. */
+export type ActionItemDependencyRef = {
+  id: string;
+  title: string;
+  status: ActionItemStatus;
+  type: ActionItemType;
+};
+
 export type ActionItemPayload = {
   id: string;
   title: string;
@@ -260,6 +268,35 @@ export type ActionItemPayload = {
     displayName: string;
     avatar: string | null;
   } | null;
+  /** v0.73 #20 phase 2: задачи, от которых зависит эта. */
+  dependencies: ActionItemDependencyRef[];
+  /** v0.73 #20 phase 2: задачи, которые эта блокирует. */
+  blocks: ActionItemDependencyRef[];
+  /** v0.73 #20 phase 2: сколько blockers ещё не DONE. UI badge. */
+  blockedByOpen: number;
+  /** v0.73 #20 phase 3: timestamp последней эскалации (overdue 48h scan). */
+  escalatedAt: string | null;
+  /** v0.73 #20 phase 4: AI-сводка задачи (description + recent comments). */
+  aiSummary: string | null;
+  aiSummaryUpdatedAt: string | null;
+};
+
+/** v0.73 #20 phase 3: escalation event. */
+export type ActionItemEscalatedPayload = {
+  actionItemId: string;
+  title: string;
+  serverId: string;
+  channelId: string;
+  dueAt: string | null;
+  assigneeUserId: string | null;
+  createdByUserId: string;
+  escalatedAt: string;
+};
+
+export type ActionItemDependencyChangedPayload = {
+  actionItemId: string;
+  dependsOnActionItemId: string;
+  kind: "added" | "removed";
 };
 
 export type ActionItemCommentAddedPayload = {
@@ -402,6 +439,8 @@ export const SocketEvents = {
   ActionItemUpdated: "action:item:updated",
   ActionItemCommentAdded: "action:item:comment:added",
   ActionItemCommentDeleted: "action:item:comment:deleted",
+  ActionItemDependencyChanged: "action:item:dependency:changed",
+  ActionItemEscalated: "action:item:escalated",
   AttachmentTranscriptUpdated: "attachment:transcript:updated",
   MusicSessionUpdated: "music:session:updated",
   TableUpdated: "table:updated",

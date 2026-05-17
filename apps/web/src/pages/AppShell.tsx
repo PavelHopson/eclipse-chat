@@ -16,6 +16,7 @@ import { OperationalTablePanel } from "../components/OperationalTablePanel";
 import { useOperationalTables } from "../hooks/useOperationalTables";
 import { MusicMiniPlayer } from "../components/MusicMiniPlayer";
 import { useChannelMusic } from "../hooks/useChannelMusic";
+import { HelpPanel } from "../components/HelpPanel";
 import { JoinServerModal } from "../components/JoinServerModal";
 import { MessageInput } from "../components/MessageInput";
 import { MessageList } from "../components/MessageList";
@@ -340,6 +341,9 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   const [showProfile, setShowProfile] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [homeOpen, setHomeOpen] = useState(false);
+  /** v0.73 #14: In-app help / onboarding. Полноэкранный view как Home /
+   *  StatusBoard / TeamHealth — правый rail скрыт. Открывается «?» в topbar. */
+  const [helpOpen, setHelpOpen] = useState(false);
   // Incident panel — toggle в right rail (приоритет ниже thread panel).
   const [showIncidents, setShowIncidents] = useState(false);
   // Thread panel — открыт когда selectedThreadId != null. Replaces MemberList
@@ -467,11 +471,31 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   // переключает режим панели.
   const isVoiceView =
     !inDmMode && !homeOpen && selectedChannel?.type === "VOICE";
-  const inServerView = Boolean(activeServer) && !homeOpen;
-  // Status Board / Team Health открываются на всю ширину (как Home) — правый rail скрыт.
-  const showRightRail = inServerView && !statusBoardOpen && !teamHealthOpen;
-  const [navOpen, setNavOpen] = useState(false);
-  const [membersOpen, setMembersOpen] = useState(false);
+  const inServerView = Boolean(activeServer) && !homeOpen && !helpOpen;
+  // Status Board / Team Health / Help открываются на всю ширину (как Home) — правый rail скрыт.
+  const showRightRail =
+    inServerView && !statusBoardOpen && !teamHealthOpen && !helpOpen;
+  const [navOpen, setNavOpenRaw] = useState(false);
+  const [membersOpen, setMembersOpenRaw] = useState(false);
+
+  // v0.73 mobile: drawer mutex. Открытие nav-drawer'а закрывает members,
+  // и наоборот. На mobile (один-drawer-в-момент) это убирает наложение
+  // двух drawer'ов одновременно — было слышно по Pavel-screenshot 17.05:
+  // обе панели частично видны, чат зажат, composer wrap'ит по символу.
+  const setNavOpen = (value: boolean | ((p: boolean) => boolean)) => {
+    setNavOpenRaw((prev) => {
+      const next = typeof value === "function" ? value(prev) : value;
+      if (next) setMembersOpenRaw(false);
+      return next;
+    });
+  };
+  const setMembersOpen = (value: boolean | ((p: boolean) => boolean)) => {
+    setMembersOpenRaw((prev) => {
+      const next = typeof value === "function" ? value(prev) : value;
+      if (next) setNavOpenRaw(false);
+      return next;
+    });
+  };
   // Правый rail сворачивается, чтобы не съедать ширину центра (особенно
   // в voice-immersive режиме). По умолчанию свёрнут в voice, развёрнут в chat.
   const [rightRailCollapsed, setRightRailCollapsed] = useState(false);
@@ -553,6 +577,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   // На mobile: select channel → закрыть nav drawer (UX как в Discord/Telegram)
   const handleSelectChannel = (channelId: string) => {
     setHomeOpen(false);
+    setHelpOpen(false);
     setStatusBoardOpen(false);
     setTeamHealthOpen(false);
     setSelectedTableId(null);
@@ -568,6 +593,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
 
   const openHome = () => {
     setHomeOpen(true);
+    setHelpOpen(false);
     setStatusBoardOpen(false);
     setTeamHealthOpen(false);
     setSelectedTableId(null);
@@ -577,8 +603,19 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     setMembersOpen(false);
   };
 
+  const openHelp = () => {
+    setHelpOpen(true);
+    setHomeOpen(false);
+    setStatusBoardOpen(false);
+    setTeamHealthOpen(false);
+    setSelectedTableId(null);
+    setNavOpen(false);
+    setMembersOpen(false);
+  };
+
   const openActiveServer = () => {
     setHomeOpen(false);
+    setHelpOpen(false);
     setStatusBoardOpen(false);
     setTeamHealthOpen(false);
     if (activeServerId == null && servers[0]) {
@@ -673,6 +710,24 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               </svg>
             </button>
           )}
+          <button
+            type="button"
+            onClick={() => (helpOpen ? setHelpOpen(false) : openHelp())}
+            title="Справка и онбординг"
+            aria-label="Справка"
+            aria-pressed={helpOpen}
+            className="ec-btn ec-btn--ghost ec-btn--sm"
+            style={{
+              padding: "0.35rem 0.65rem",
+              color: helpOpen ? "var(--ec-accent)" : undefined,
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <circle cx="12" cy="12" r="10" />
+              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+              <line x1="12" y1="17" x2="12.01" y2="17" />
+            </svg>
+          </button>
           {showRightRail && (
             <button
               type="button"
@@ -858,6 +913,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           activeServerId={activeServerId}
           onSelect={(id) => {
             setHomeOpen(false);
+            setHelpOpen(false);
             setActiveServerId(id);
             if (isMobile) setNavOpen(false);
           }}
@@ -879,6 +935,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           dmsUnread={dmConversations.reduce((sum, c) => sum + c.unread, 0)}
           onDmsRequest={() => {
             setHomeOpen(false);
+            setHelpOpen(false);
             setActiveServerId(null);
             if (isMobile) setNavOpen(false);
           }}
@@ -985,6 +1042,15 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             <span className="ec-chat-title" style={chatTitle}>
               <span className="ec-brand-mark" style={{ ...brandMark, width: 18, height: 18 }} aria-hidden />
               Главная
+            </span>
+          ) : helpOpen ? (
+            <span className="ec-chat-title" style={chatTitle}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--ec-accent)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <circle cx="12" cy="12" r="10" />
+                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                <line x1="12" y1="17" x2="12.01" y2="17" />
+              </svg>
+              Справка
             </span>
           ) : statusBoardOpen ? (
             <span className="ec-chat-title" style={chatTitle}>
@@ -1217,7 +1283,9 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           </div>
         )}
 
-        {selectedTableId ? (
+        {helpOpen ? (
+          <HelpPanel onClose={() => setHelpOpen(false)} />
+        ) : selectedTableId ? (
           <OperationalTablePanel
             tableId={selectedTableId}
             onClose={() => setSelectedTableId(null)}
@@ -1632,6 +1700,9 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             setSelectedChannelId(channelId);
             if (isMobile) setNavOpen(false);
           }}
+          serverActions={
+            activeServerId ? serverActions.actions : undefined
+          }
         />
       )}
 

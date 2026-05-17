@@ -40,6 +40,7 @@ import {
   broadcastSpeaking,
 } from "./voicePresence.js";
 import { recoverStuckTranscripts } from "./ai/transcribe.js";
+import { startEscalationCron } from "./escalation.js";
 import { db } from "./db.js";
 
 const port = Number(process.env.PORT) || 3001;
@@ -429,6 +430,10 @@ try {
   // v0.63 boot recovery: revert застрявшие PENDING transcripts в NONE.
   // Fire-and-forget — не блокируем startup, в случае ошибки логируем.
   void recoverStuckTranscripts(app.log);
+
+  // v0.73 #20 phase 3: cron эскалации overdue 48h+ задач. Первый scan через
+  // 30s после boot, дальше — раз в час. PROCESS_LIMIT защищает от runaway.
+  startEscalationCron(app.log);
 
   // Keep-alive ping для Neon free tier (Scales to zero после ~5 минут idle).
   // Без этого Neon рвёт connection и каждый запрос имеет 20-сек cold start.

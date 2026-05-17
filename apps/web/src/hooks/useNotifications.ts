@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Socket } from "socket.io-client";
 import { resolveAssetUrl } from "../lib/assets";
-import { SocketEvents, type MessageNewPayload } from "../lib/socket";
+import {
+  SocketEvents,
+  type ActionItemEscalatedPayload,
+  type MessageNewPayload,
+} from "../lib/socket";
 
 type Permission = "default" | "granted" | "denied" | "unsupported";
 
@@ -146,6 +150,55 @@ export function useNotifications(
       socket.off(SocketEvents.MessageNew, handler);
     };
   }, [socket, enabled, permission, currentUserId, selectedChannelIdRef]);
+
+  // v0.73 #20 phase 3: escalation events. Когда фон ставит task'е
+  // escalatedAt=now (overdue 48h+), backend эмитит payload — мы шлём
+  // desktop-notification только тем, кому это relevant: assignee или
+  // creator. Без anti-spam ratelimit — escalation редкое событие, 1
+  // на задачу раз в 7 дней.
+  useEffect(() => {
+    if (!socket) return;
+    if (!isSupported()) return;
+    const handler = (p: ActionItemEscalatedPayload) => {
+      if (!enabled) return;
+      if (permission !== "granted") return;
+      if (!currentUserId) return;
+      const isMine =
+        p.assigneeUserId === currentUserId ||
+        p.createdByUserId === currentUserId;
+      if (!isMine) return;
+      const overdueHours = p.dueAt
+        ? Math.max(
+            0,
+            Math.floor(
+              (Date.now() - new Date(p.dueAt).getTime()) / 3_600_000,
+            ),
+          )
+        : null;
+      const body =
+        overdueHours !== null
+          ? `Просрочено ${overdueHours} ч: ${p.title}`
+          : `Просрочена задача: ${p.title}`;
+      try {
+        const notif = new Notification("Эскалация", {
+          body,
+          icon: `${import.meta.env.BASE_URL}favicon.ico`,
+          tag: `eclipse-chat-escalate-${p.actionItemId}`,
+          silent: false,
+        });
+        notif.onclick = () => {
+          window.focus();
+          notif.close();
+        };
+      } catch {
+        /* ignore */
+      }
+    };
+    socket.on(SocketEvents.ActionItemEscalated, handler);
+    return () => {
+      socket.off(SocketEvents.ActionItemEscalated, handler);
+    };
+  }, [socket, enabled, permission, currentUserId]);
 
   return {
     permission,

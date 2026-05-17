@@ -345,6 +345,47 @@ export function emitActionItemCommentDeleted(
   io?.to(`channel:${channelId}`).to(`server:${serverId}`).emit("action:item:comment:deleted", payload);
 }
 
+/**
+ * v0.73 #20 phase 2: dependency graph mutation.
+ * Fan-out в channel + server rooms — Status Board (server-room) и
+ * ActionItemDrawer (channel-room для source channel) обновляют свои
+ * derived state'ы. Frontend гарантированно перезагружает оба item'а
+ * (как блокирующего, так и заблокированного).
+ */
+export function emitActionItemDependencyChanged(
+  channelId: string,
+  serverId: string,
+  payload: {
+    actionItemId: string;
+    dependsOnActionItemId: string;
+    kind: "added" | "removed";
+  },
+) {
+  io?.to(`channel:${channelId}`).to(`server:${serverId}`).emit("action:item:dependency:changed", payload);
+}
+
+/**
+ * v0.73 #20 phase 3: escalation. Эмитится фоном cron'ом (см. escalation.ts)
+ * на каждую задачу, которая overdue 48h+ и ещё не закрыта. Frontend
+ * показывает desktop notification creator'у и assignee + badge в UI.
+ */
+export function emitActionItemEscalated(
+  channelId: string,
+  serverId: string,
+  payload: {
+    actionItemId: string;
+    title: string;
+    serverId: string;
+    channelId: string;
+    dueAt: string | null;
+    assigneeUserId: string | null;
+    createdByUserId: string;
+    escalatedAt: string;
+  },
+) {
+  io?.to(`channel:${channelId}`).to(`server:${serverId}`).emit("action:item:escalated", payload);
+}
+
 // ============================
 // Incident Mode events
 // ============================

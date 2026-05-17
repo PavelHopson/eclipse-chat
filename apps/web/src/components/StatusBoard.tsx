@@ -350,6 +350,28 @@ function Card({
           {item.approvalStatus !== "NONE" && (
             <ApprovalChip status={item.approvalStatus} />
           )}
+          {/* v0.73 #20 phase 2: blocked-by indicator. Не показываем
+              после DONE — задача уже закрыта, blockers неактуальны. */}
+          {!done && item.blockedByOpen > 0 && (
+            <span
+              title={`Блокировано: ${item.dependencies
+                .filter((d) => d.status !== "DONE")
+                .map((d) => d.title)
+                .join(", ")}`}
+              style={{
+                fontSize: "0.58rem",
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: "0.04em",
+                padding: "0.08rem 0.4rem",
+                borderRadius: "var(--ec-radius-full)",
+                color: "var(--ec-warn)",
+                background: "var(--ec-warn-soft)",
+              }}
+            >
+              🚧 blocked × {item.blockedByOpen}
+            </span>
+          )}
         </span>
       </button>
     </div>

@@ -28,7 +28,9 @@ export type ActionItemActivityType =
   | "COMMENT_DELETED"
   | "APPROVAL_REQUESTED"
   | "APPROVAL_APPROVED"
-  | "APPROVAL_REJECTED";
+  | "APPROVAL_REJECTED"
+  | "DEPENDENCY_ADDED"
+  | "DEPENDENCY_REMOVED";
 
 export type ActionItemComment = {
   id: string;
@@ -267,6 +269,99 @@ export function useActionItem(id: string | null, socket: Socket | null) {
     [id],
   );
 
+  /**
+   * v0.73 #20 phase 2: add dependency (blocker). Backend проверяет цикл +
+   * same-server + self-loop. Возвращает обновлённую detail-форму
+   * текущей задачи (с новой зависимостью в `dependencies[]`).
+   * Ошибки: 409 "Adding this dependency would create a cycle",
+   * 409 "Dependency already exists", 400 same-server / self.
+   */
+  const addDependency = useCallback(
+    async (
+      blockerId: string,
+    ): Promise<{ ok: true } | { ok: false; error: string }> => {
+      if (!id) return { ok: false, error: "no-id" };
+      try {
+        const result = await apiJson<{ action: ActionItemPayload | null }>(
+          `/api/actions/${encodeURIComponent(id)}/dependencies`,
+          {
+            method: "POST",
+            body: JSON.stringify({ dependsOnActionItemId: blockerId }),
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+        if (result.action) {
+          setDetail((prev) => (prev ? { ...prev, ...result.action! } : prev));
+        }
+        return { ok: true };
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "Не удалось добавить зависимость";
+        setError(msg);
+        return { ok: false, error: msg };
+      }
+    },
+    [id],
+  );
+
+  const removeDependency = useCallback(
+    async (blockerId: string): Promise<boolean> => {
+      if (!id) return false;
+      try {
+        await apiJson(
+          `/api/actions/${encodeURIComponent(id)}/dependencies/${encodeURIComponent(blockerId)}`,
+          { method: "DELETE" },
+        );
+        // Локально вычистим — server-emit обновит остальные клиенты.
+        setDetail((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            dependencies: prev.dependencies.filter((d) => d.id !== blockerId),
+            blockedByOpen: prev.dependencies
+              .filter((d) => d.id !== blockerId)
+              .filter((d) => d.status !== "DONE").length,
+          };
+        });
+        return true;
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Не удалось удалить зависимость");
+        return false;
+      }
+    },
+    [id],
+  );
+
+  /**
+   * v0.73 #20 phase 4: regenerate AI summary. Кэшируется в БД, повторный
+   * вызов перезаписывает (нет ratelimit на frontend; backend сам через AI
+   * провайдер тротлит). Возвращает summary text или error.
+   */
+  const generateAiSummary = useCallback(
+    async (): Promise<{ ok: true; summary: string } | { ok: false; error: string }> => {
+      if (!id) return { ok: false, error: "no-id" };
+      try {
+        const result = await apiJson<{ summary: string; updatedAt: string }>(
+          `/api/actions/${encodeURIComponent(id)}/ai-summary`,
+          { method: "POST" },
+        );
+        setDetail((prev) =>
+          prev
+            ? {
+                ...prev,
+                aiSummary: result.summary,
+                aiSummaryUpdatedAt: result.updatedAt,
+              }
+            : prev,
+        );
+        return { ok: true, summary: result.summary };
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "Не удалось сгенерировать сводку";
+        return { ok: false, error: msg };
+      }
+    },
+    [id],
+  );
+
   return {
     detail,
     loading,
@@ -277,5 +372,8 @@ export function useActionItem(id: string | null, socket: Socket | null) {
     removeComment,
     requestApproval,
     decideApproval,
+    addDependency,
+    removeDependency,
+    generateAiSummary,
   };
 }

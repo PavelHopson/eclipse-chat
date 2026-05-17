@@ -311,6 +311,10 @@ enum ActionItemActivityType {
   APPROVAL_REQUESTED
   APPROVAL_APPROVED
   APPROVAL_REJECTED
+  DEPENDENCY_ADDED
+  DEPENDENCY_REMOVED
+  ESCALATED
+  AI_SUMMARY_GENERATED
 }
 
 /// Статус одобрения action item (v0.55). Отдельный axis от ActionItemStatus —
@@ -551,14 +555,50 @@ model ActionItem {
   /// Timestamp финального approve/reject (null пока PENDING/NONE).
   approvedAt       DateTime?
 
+  /// v0.73 #20 phase 3: escalation. Когда задача overdue 48h+ и ещё открыта,
+  /// фоновой scan ставит escalatedAt = now() и эмитит socket-event +
+  /// activity-log (ESCALATED). Повторная эскалация — раз в 7 дней (cooldown
+  /// в коде, не constraint в схеме).
+  escalatedAt      DateTime?
+
+  /// v0.73 #20 phase 4: AI-summary. Краткая 2-3 строчная сводка задачи
+  /// (description + recent comments). Генерируется по запросу через
+  /// существующую AI-provider chain. NULL = не сгенерирована или
+  /// устарела. Frontend в drawer'е показывает блок с кнопкой regenerate.
+  aiSummary        String?
+  aiSummaryUpdatedAt DateTime?
+
   comments        ActionItemComment[]
   activities      ActionItemActivity[]
+  /// v0.73 #20 phase 2: блокеры — задачи, от которых зависит эта.
+  /// `dependencies` = это меня блокирует; `blocks` = я блокирую кого-то.
+  dependencies    ActionItemDependency[] @relation("ActionItemBlockedBy")
+  blocks          ActionItemDependency[] @relation("ActionItemBlocks")
 
   @@unique([sourceMessageId, type])
   @@index([channelId, status, createdAt])
   @@index([serverId, status, createdAt])
   @@index([assigneeUserId, status])
   @@index([approverUserId, approvalStatus])
+}
+
+/// Граф зависимостей между ActionItem'ами (v0.73 #20 phase 2).
+/// Self-relation many-to-many через composite PK. `actionItemId` —
+/// текущая задача, `dependsOnActionItemId` — её blocker.
+///
+/// Обе стороны cascade-delete: удалить любую из задач — связь исчезает.
+/// Цикл (A→B→A) запрещён на уровне backend — BFS проверка перед insert.
+/// Self-loop (A→A) запрещён через runtime check (Postgres CHECK constraint
+/// тоже добавлен в миграции для defense-in-depth).
+model ActionItemDependency {
+  actionItemId          String
+  actionItem            ActionItem @relation("ActionItemBlockedBy", fields: [actionItemId], references: [id], onDelete: Cascade)
+  dependsOnActionItemId String
+  dependsOnActionItem   ActionItem @relation("ActionItemBlocks", fields: [dependsOnActionItemId], references: [id], onDelete: Cascade)
+  createdAt             DateTime   @default(now())
+
+  @@id([actionItemId, dependsOnActionItemId])
+  @@index([dependsOnActionItemId])
 }
 
 /// Comments thread на ActionItem — v0.54 detail drawer.

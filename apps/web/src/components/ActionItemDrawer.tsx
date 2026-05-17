@@ -8,7 +8,11 @@ import {
   type ActionItemComment,
   type ActionItemActivity,
 } from "../hooks/useActionItem";
-import type { ActionItemPriority } from "../lib/socket";
+import type {
+  ActionItemPayload,
+  ActionItemPriority,
+  ActionItemDependencyRef,
+} from "../lib/socket";
 
 /**
  * ActionItemDrawer — first-class detail для task / decision / follow-up
@@ -43,6 +47,10 @@ type Props = {
   onClose: () => void;
   /** Optional: jump к source message в основном чате. */
   onJumpToSource?: (channelId: string, messageId: string) => void;
+  /** v0.73 #20 phase 2: список ActionItem'ов активного сервера для
+   *  dependency picker. Optional — если не передан, секция «Зависимости»
+   *  работает в read-only режиме (без add). */
+  serverActions?: ActionItemPayload[];
 };
 
 /* ===== Styles ============================================== */
@@ -268,6 +276,7 @@ export function ActionItemDrawer({
   channelNameById,
   onClose,
   onJumpToSource,
+  serverActions,
 }: Props) {
   const {
     detail,
@@ -278,6 +287,9 @@ export function ActionItemDrawer({
     removeComment,
     requestApproval,
     decideApproval,
+    addDependency,
+    removeDependency,
+    generateAiSummary,
   } = useActionItem(actionItemId, socket);
 
   const [titleDraft, setTitleDraft] = useState("");
@@ -291,6 +303,14 @@ export function ActionItemDrawer({
   const [approvalNote, setApprovalNote] = useState("");
   const [decisionNote, setDecisionNote] = useState("");
   const [submittingApproval, setSubmittingApproval] = useState(false);
+  // v0.73 #20 phase 2: dependency picker state.
+  const [depPickerOpen, setDepPickerOpen] = useState(false);
+  const [depQuery, setDepQuery] = useState("");
+  const [depError, setDepError] = useState<string | null>(null);
+  const [submittingDep, setSubmittingDep] = useState(false);
+  // v0.73 #20 phase 4: AI summary state.
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   // Sync drafts when detail loads / external update arrives.
   useEffect(() => {
@@ -615,6 +635,59 @@ export function ActionItemDrawer({
                 />
               </section>
 
+              {/* v0.73 #20 phase 2: Dependencies */}
+              <section>
+                <h3 style={sectionLabel}>
+                  Зависимости
+                  {detail.blockedByOpen > 0 ? (
+                    <span
+                      style={{
+                        marginLeft: 8,
+                        padding: "1px 6px",
+                        borderRadius: 4,
+                        background: "var(--ec-warn-soft)",
+                        color: "var(--ec-warn)",
+                        fontSize: "0.7em",
+                        letterSpacing: 0,
+                        textTransform: "none",
+                      }}
+                    >
+                      🚧 blocked by {detail.blockedByOpen}
+                    </span>
+                  ) : null}
+                </h3>
+                <DependencySection
+                  dependencies={detail.dependencies}
+                  blocks={detail.blocks}
+                  serverActions={serverActions}
+                  currentActionId={detail.id}
+                  pickerOpen={depPickerOpen}
+                  setPickerOpen={setDepPickerOpen}
+                  query={depQuery}
+                  setQuery={setDepQuery}
+                  error={depError}
+                  setError={setDepError}
+                  submitting={submittingDep}
+                  onAdd={async (blockerId) => {
+                    setSubmittingDep(true);
+                    setDepError(null);
+                    const r = await addDependency(blockerId);
+                    setSubmittingDep(false);
+                    if (r.ok) {
+                      setDepPickerOpen(false);
+                      setDepQuery("");
+                    } else {
+                      setDepError(r.error);
+                    }
+                  }}
+                  onRemove={async (blockerId) => {
+                    setSubmittingDep(true);
+                    await removeDependency(blockerId);
+                    setSubmittingDep(false);
+                  }}
+                />
+              </section>
+
               {/* Description */}
               <section>
                 <h3 style={sectionLabel}>Описание</h3>
@@ -627,6 +700,95 @@ export function ActionItemDrawer({
                   maxLength={4000}
                   rows={4}
                 />
+              </section>
+
+              {/* v0.73 #20 phase 4: AI summary */}
+              <section>
+                <h3 style={sectionLabel}>
+                  AI-сводка
+                  {detail.aiSummaryUpdatedAt && (
+                    <span
+                      style={{
+                        marginLeft: 8,
+                        color: "var(--ec-text-dim)",
+                        fontSize: "0.7em",
+                        letterSpacing: 0,
+                        textTransform: "none",
+                      }}
+                    >
+                      {relativeTime(detail.aiSummaryUpdatedAt)}
+                    </span>
+                  )}
+                </h3>
+                {detail.aiSummary ? (
+                  <p
+                    style={{
+                      margin: 0,
+                      padding: "var(--ec-space-3)",
+                      borderRadius: "var(--ec-radius-md)",
+                      background: "var(--ec-accent-soft)",
+                      border: "1px solid var(--ec-border-accent)",
+                      color: "var(--ec-text)",
+                      fontSize: "var(--ec-text-sm)",
+                      lineHeight: 1.55,
+                      whiteSpace: "pre-wrap",
+                    }}
+                  >
+                    {detail.aiSummary}
+                  </p>
+                ) : (
+                  <p
+                    style={{
+                      margin: 0,
+                      color: "var(--ec-text-dim)",
+                      fontSize: "var(--ec-text-sm)",
+                    }}
+                  >
+                    Сводка ещё не сгенерирована.
+                  </p>
+                )}
+                {aiError && (
+                  <p
+                    style={{
+                      margin: "6px 0 0",
+                      color: "var(--ec-danger)",
+                      fontSize: "var(--ec-text-2xs)",
+                    }}
+                  >
+                    {aiError}
+                  </p>
+                )}
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setAiLoading(true);
+                    setAiError(null);
+                    const r = await generateAiSummary();
+                    setAiLoading(false);
+                    if (!r.ok) setAiError(r.error);
+                  }}
+                  disabled={aiLoading}
+                  className="ec-press"
+                  style={{
+                    marginTop: 6,
+                    padding: "0.3rem 0.7rem",
+                    borderRadius: "var(--ec-radius-md)",
+                    background: "transparent",
+                    border: "1px dashed var(--ec-border-default)",
+                    color: aiLoading ? "var(--ec-text-dim)" : "var(--ec-text-muted)",
+                    cursor: aiLoading ? "wait" : "pointer",
+                    fontSize: "var(--ec-text-2xs)",
+                    fontWeight: 600,
+                    letterSpacing: "var(--ec-tracking-caps)",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  {aiLoading
+                    ? "Генерирую…"
+                    : detail.aiSummary
+                      ? "Перегенерировать"
+                      : "Сгенерировать сводку"}
+                </button>
               </section>
 
               {/* Comments */}
@@ -1224,6 +1386,407 @@ function CommentRow({
           }}
         >
           ×
+        </button>
+      )}
+    </div>
+  );
+}
+
+/* ============================================================
+ * v0.73 #20 phase 2: Dependencies — задачи, от которых зависит
+ * текущая (blockers), и задачи, которые она блокирует (blocks).
+ * Picker лениво открывается, фильтрует по title (substring) и
+ * исключает: саму задачу, уже добавленные blockers, и циклически
+ * связанные (последнее проверяет backend и возвращает 409).
+ * ============================================================ */
+
+const DEP_STATUS_TONE: Record<
+  "OPEN" | "IN_PROGRESS" | "REVIEW" | "DONE",
+  { fg: string; bg: string; label: string }
+> = {
+  OPEN: { fg: "var(--ec-text)", bg: "var(--ec-surface-3)", label: "OPEN" },
+  IN_PROGRESS: {
+    fg: "var(--ec-accent)",
+    bg: "var(--ec-accent-soft)",
+    label: "В работе",
+  },
+  REVIEW: {
+    fg: "var(--ec-ai, var(--ec-accent))",
+    bg: "var(--ec-ai-soft, var(--ec-accent-soft))",
+    label: "Review",
+  },
+  DONE: {
+    fg: "var(--ec-exec, var(--ec-text-muted))",
+    bg: "var(--ec-exec-soft, var(--ec-surface-3))",
+    label: "Done",
+  },
+};
+
+function depRowStyle(done: boolean): CSSProperties {
+  return {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    padding: "var(--ec-space-1) var(--ec-space-2)",
+    borderRadius: "var(--ec-radius-md)",
+    background: "var(--ec-surface-2)",
+    border: "1px solid var(--ec-border-subtle)",
+    opacity: done ? 0.7 : 1,
+    fontSize: "var(--ec-text-sm)",
+  };
+}
+
+function DependencySection({
+  dependencies,
+  blocks,
+  serverActions,
+  currentActionId,
+  pickerOpen,
+  setPickerOpen,
+  query,
+  setQuery,
+  error,
+  setError,
+  submitting,
+  onAdd,
+  onRemove,
+}: {
+  dependencies: ActionItemDependencyRef[];
+  blocks: ActionItemDependencyRef[];
+  serverActions?: ActionItemPayload[];
+  currentActionId: string;
+  pickerOpen: boolean;
+  setPickerOpen: (v: boolean) => void;
+  query: string;
+  setQuery: (v: string) => void;
+  error: string | null;
+  setError: (v: string | null) => void;
+  submitting: boolean;
+  onAdd: (blockerId: string) => Promise<void>;
+  onRemove: (blockerId: string) => Promise<void>;
+}) {
+  const candidates = useMemo(() => {
+    if (!serverActions) return [];
+    const existing = new Set(dependencies.map((d) => d.id));
+    existing.add(currentActionId);
+    const q = query.trim().toLowerCase();
+    return serverActions
+      .filter((a) => !existing.has(a.id))
+      .filter((a) => (q ? a.title.toLowerCase().includes(q) : true))
+      .slice(0, 30);
+  }, [serverActions, dependencies, currentActionId, query]);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      {dependencies.length === 0 ? (
+        <p
+          style={{
+            margin: 0,
+            color: "var(--ec-text-dim)",
+            fontSize: "var(--ec-text-sm)",
+          }}
+        >
+          Эта задача ни от чего не зависит.
+        </p>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          {dependencies.map((d) => {
+            const tone = DEP_STATUS_TONE[d.status];
+            return (
+              <div key={d.id} style={depRowStyle(d.status === "DONE")}>
+                <span
+                  style={{
+                    padding: "1px 6px",
+                    borderRadius: 4,
+                    background: tone.bg,
+                    color: tone.fg,
+                    fontSize: "0.65rem",
+                    fontWeight: 700,
+                    textTransform: "uppercase",
+                    letterSpacing: "var(--ec-tracking-caps)",
+                    flexShrink: 0,
+                  }}
+                >
+                  {tone.label}
+                </span>
+                <span
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    color: "var(--ec-text)",
+                  }}
+                  title={d.title}
+                >
+                  {d.title}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => void onRemove(d.id)}
+                  disabled={submitting}
+                  title="Убрать зависимость"
+                  aria-label="Убрать зависимость"
+                  style={{
+                    width: 22,
+                    height: 22,
+                    display: "grid",
+                    placeItems: "center",
+                    background: "transparent",
+                    border: 0,
+                    color: "var(--ec-text-dim)",
+                    cursor: submitting ? "not-allowed" : "pointer",
+                    fontSize: "0.9rem",
+                    flexShrink: 0,
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {blocks.length > 0 && (
+        <details>
+          <summary
+            style={{
+              cursor: "pointer",
+              fontSize: "var(--ec-text-2xs)",
+              color: "var(--ec-text-dim)",
+              letterSpacing: "var(--ec-tracking-caps)",
+              textTransform: "uppercase",
+              fontWeight: 700,
+            }}
+          >
+            Блокирует {blocks.length}
+          </summary>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 4,
+              marginTop: 6,
+            }}
+          >
+            {blocks.map((b) => {
+              const tone = DEP_STATUS_TONE[b.status];
+              return (
+                <div key={b.id} style={depRowStyle(b.status === "DONE")}>
+                  <span
+                    style={{
+                      padding: "1px 6px",
+                      borderRadius: 4,
+                      background: tone.bg,
+                      color: tone.fg,
+                      fontSize: "0.65rem",
+                      fontWeight: 700,
+                      textTransform: "uppercase",
+                      letterSpacing: "var(--ec-tracking-caps)",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {tone.label}
+                  </span>
+                  <span
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      color: "var(--ec-text)",
+                    }}
+                    title={b.title}
+                  >
+                    {b.title}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </details>
+      )}
+
+      {pickerOpen ? (
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 6,
+            padding: "var(--ec-space-2)",
+            borderRadius: "var(--ec-radius-md)",
+            background: "var(--ec-surface-2)",
+            border: "1px solid var(--ec-border-default)",
+          }}
+        >
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setError(null);
+            }}
+            placeholder="Поиск задачи по названию…"
+            autoFocus
+            style={{
+              padding: "0.4rem 0.6rem",
+              borderRadius: "var(--ec-radius-sm)",
+              border: "1px solid var(--ec-border-default)",
+              background: "var(--ec-surface-1)",
+              color: "var(--ec-text)",
+              fontSize: "var(--ec-text-sm)",
+            }}
+          />
+          {!serverActions ? (
+            <p
+              style={{
+                margin: 0,
+                color: "var(--ec-text-dim)",
+                fontSize: "var(--ec-text-2xs)",
+              }}
+            >
+              Открой пространство, чтобы выбрать задачу-блокер.
+            </p>
+          ) : candidates.length === 0 ? (
+            <p
+              style={{
+                margin: 0,
+                color: "var(--ec-text-dim)",
+                fontSize: "var(--ec-text-2xs)",
+              }}
+            >
+              Подходящих задач нет.
+            </p>
+          ) : (
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 2,
+                maxHeight: 220,
+                overflowY: "auto",
+              }}
+            >
+              {candidates.map((c) => {
+                const tone = DEP_STATUS_TONE[c.status];
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => void onAdd(c.id)}
+                    disabled={submitting}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      padding: "var(--ec-space-1) var(--ec-space-2)",
+                      borderRadius: "var(--ec-radius-sm)",
+                      background: "transparent",
+                      border: "1px solid transparent",
+                      color: "var(--ec-text)",
+                      cursor: submitting ? "not-allowed" : "pointer",
+                      textAlign: "left",
+                      fontSize: "var(--ec-text-sm)",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = "var(--ec-surface-3)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = "transparent";
+                    }}
+                  >
+                    <span
+                      style={{
+                        padding: "1px 5px",
+                        borderRadius: 4,
+                        background: tone.bg,
+                        color: tone.fg,
+                        fontSize: "0.6rem",
+                        fontWeight: 700,
+                        textTransform: "uppercase",
+                        letterSpacing: "var(--ec-tracking-caps)",
+                        flexShrink: 0,
+                      }}
+                    >
+                      {tone.label}
+                    </span>
+                    <span
+                      style={{
+                        flex: 1,
+                        minWidth: 0,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                      title={c.title}
+                    >
+                      {c.title}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          {error && (
+            <p
+              style={{
+                margin: 0,
+                color: "var(--ec-danger)",
+                fontSize: "var(--ec-text-2xs)",
+              }}
+            >
+              {error}
+            </p>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              setPickerOpen(false);
+              setQuery("");
+              setError(null);
+            }}
+            style={{
+              alignSelf: "flex-end",
+              padding: "0.25rem 0.6rem",
+              background: "transparent",
+              border: "1px solid var(--ec-border-default)",
+              borderRadius: "var(--ec-radius-sm)",
+              color: "var(--ec-text-muted)",
+              cursor: "pointer",
+              fontSize: "var(--ec-text-2xs)",
+            }}
+          >
+            Отмена
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setPickerOpen(true)}
+          disabled={!serverActions}
+          title={
+            !serverActions
+              ? "Открой пространство, чтобы выбрать задачу"
+              : "Добавить blocker"
+          }
+          style={{
+            alignSelf: "flex-start",
+            padding: "0.3rem 0.7rem",
+            borderRadius: "var(--ec-radius-md)",
+            background: "transparent",
+            border: "1px dashed var(--ec-border-default)",
+            color: serverActions ? "var(--ec-text-muted)" : "var(--ec-text-dim)",
+            cursor: serverActions ? "pointer" : "not-allowed",
+            fontSize: "var(--ec-text-2xs)",
+            fontWeight: 600,
+            letterSpacing: "var(--ec-tracking-caps)",
+            textTransform: "uppercase",
+          }}
+        >
+          + Добавить блокер
         </button>
       )}
     </div>
