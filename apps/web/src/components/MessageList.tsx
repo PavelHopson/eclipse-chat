@@ -4,6 +4,8 @@ import { Attachments } from "./Attachments";
 import { Avatar } from "./Avatar";
 import { EmojiPicker } from "./EmojiPicker";
 import { RichContent } from "./RichContent";
+import { LinkEmbedCard } from "./LinkEmbedCard";
+import { extractFirstUrl } from "../lib/linkExtract";
 import type { ActionItemStatus, ActionItemType, MessageRow } from "../hooks/useMessages";
 import type { MemberRole } from "../hooks/useMembers";
 import {
@@ -770,6 +772,13 @@ export function MessageList({
                         onPlayShared={onPlayShared}
                       />
                     )}
+                    {/* v0.67: OG link preview под телом сообщения. Только
+                        если нет attachments (visually noisy с обоими) и
+                        URL extracted из content. */}
+                    {m.attachments.length === 0 && m.content && (() => {
+                      const url = extractFirstUrl(m.content);
+                      return url ? <LinkEmbedCard url={url} /> : null;
+                    })()}
                   </>
                 )}
                 {m.failed && onRetry && (

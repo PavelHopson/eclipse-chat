@@ -681,6 +681,38 @@ model ChannelLastVisit {
 /// поддерживается (image grid 2x2 + chips). На soft-delete message
 /// attachments тоже скрываются в UI, но row остаётся (для restore-фичи
 /// в v1.x если когда-то будет).
+/// v0.67: LinkEmbed — кэш OG-preview карточек для URL в чате.
+/// Один URL приходит часто (расшариваемые статьи) — не хотим fetch
+/// каждый раз. TTL 7 дней через `expiresAt`, очистка lazy (route
+/// проверяет expires при чтении). FAILED статусы тоже кэшируются на
+/// 24ч, чтобы не долбить bad URL.
+enum LinkEmbedStatus {
+  OK
+  FAILED
+}
+
+model LinkEmbed {
+  id           String          @id @default(cuid())
+  /// Нормализованный URL (lowercased host, removed fragment).
+  url          String          @unique
+  status       LinkEmbedStatus @default(OK)
+  /// OG-meta поля. Все nullable — если preview минимальный, заполняем что есть.
+  title        String?
+  description  String?
+  /// Absolute URL картинки (og:image). Frontend рендерит через стандартный
+  /// <img src="..."> без проксирования — это open web, та же модель что
+  /// markdown ![]().
+  image        String?
+  siteName     String?
+  fetchedAt    DateTime        @default(now())
+  /// Cache TTL. OK=7 дней, FAILED=24 часа. Route проверяет на read.
+  expiresAt    DateTime
+  /// Текст ошибки для FAILED status. Не отдаём фронту (internal debug).
+  error        String?
+
+  @@index([expiresAt])
+}
+
 model Attachment {
   id           String   @id @default(cuid())
   messageId    String
