@@ -1,33 +1,73 @@
 import { useCallback, useEffect, useState } from "react";
 import { ApiError, apiJson } from "../lib/api";
 
-export type SearchHit = {
+/**
+ * v0.57: operational search — unified поиск по сообщениям, action items и
+ * файлам активного пространства. Backend (/api/servers/:id/operational-search)
+ * возвращает три массива в одном response, frontend рендерит их в трёх
+ * tabs SearchOverlay.
+ *
+ * Min query length 2. Debounce 200ms. Каждая категория ограничена 25 hits.
+ * V1 — Postgres ILIKE без FTS index; tsvector + GIN — future upgrade
+ * (одна миграция, без breaking changes для frontend).
+ */
+
+export type SearchMessageHit = {
   id: string;
   content: string;
   createdAt: string;
-  editedAt: string | null;
   user: { id: string; displayName: string; avatar: string | null };
   channel: { id: string; name: string; slug: string };
 };
 
-type Response = { query: string; results: SearchHit[] };
+export type SearchActionHit = {
+  id: string;
+  title: string;
+  description: string | null;
+  type: "TASK" | "DECISION" | "FOLLOW_UP";
+  status: "OPEN" | "DONE";
+  priority: "LOW" | "NORMAL" | "HIGH" | "URGENT";
+  dueAt: string | null;
+  channel: { id: string; name: string; slug: string };
+  assignee: { id: string; displayName: string; avatar: string | null } | null;
+};
 
-/**
- * Поиск по сообщениям в активном сервере. Простой debounced fetch
- * через GET /api/servers/:id/search?q=. Backend ограничивает 50 hits,
- * deleted skipped, только TEXT channels.
- *
- * Min query length 2 — иначе backend сразу возвращает [].
- */
+export type SearchFileHit = {
+  id: string;
+  filename: string;
+  mimeType: string;
+  size: number;
+  url: string;
+  thumbnailUrl: string | null;
+  messageId: string;
+  createdAt: string;
+  channel: { id: string; name: string; slug: string };
+};
+
+export type SearchResults = {
+  messages: SearchMessageHit[];
+  actions: SearchActionHit[];
+  files: SearchFileHit[];
+};
+
+type Response = {
+  query: string;
+  messages: SearchMessageHit[];
+  actions: SearchActionHit[];
+  files: SearchFileHit[];
+};
+
+const EMPTY: SearchResults = { messages: [], actions: [], files: [] };
+
 export function useSearch(serverId: string | null) {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<SearchHit[]>([]);
+  const [results, setResults] = useState<SearchResults>(EMPTY);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!serverId || query.trim().length < 2) {
-      setResults([]);
+      setResults(EMPTY);
       setError(null);
       setLoading(false);
       return;
@@ -36,24 +76,28 @@ export function useSearch(serverId: string | null) {
     setLoading(true);
     const timer = setTimeout(() => {
       apiJson<Response>(
-        `/api/servers/${encodeURIComponent(serverId)}/search?q=${encodeURIComponent(query.trim())}`,
+        `/api/servers/${encodeURIComponent(serverId)}/operational-search?q=${encodeURIComponent(query.trim())}`,
       )
         .then((data) => {
           if (!cancelled) {
-            setResults(data.results);
+            setResults({
+              messages: data.messages,
+              actions: data.actions,
+              files: data.files,
+            });
             setError(null);
           }
         })
         .catch((e: unknown) => {
           if (!cancelled) {
             setError(e instanceof ApiError ? e.message : "Поиск временно недоступен");
-            setResults([]);
+            setResults(EMPTY);
           }
         })
         .finally(() => {
           if (!cancelled) setLoading(false);
         });
-    }, 200); // debounce: 200 мс после последнего keystroke
+    }, 200);
 
     return () => {
       cancelled = true;
@@ -63,7 +107,7 @@ export function useSearch(serverId: string | null) {
 
   const reset = useCallback(() => {
     setQuery("");
-    setResults([]);
+    setResults(EMPTY);
     setError(null);
   }, []);
 

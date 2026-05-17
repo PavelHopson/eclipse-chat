@@ -1629,12 +1629,25 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           results={searchResults}
           loading={searchLoading}
           error={searchError}
-            onSelect={(hit) => {
-              // Переключаемся на канал hit + закрываем overlay
-              setHomeOpen(false);
-              setSelectedChannelId(hit.channel.id);
+          onSelectMessage={(hit) => {
+            // Переключаемся на канал hit + закрываем overlay.
+            setHomeOpen(false);
+            setSelectedChannelId(hit.channel.id);
             setShowSearch(false);
-            // На mobile drawer должен открыться/закрыться — channel drawer закрыт уже
+            searchReset();
+          }}
+          onSelectAction={(hit) => {
+            // Открываем ActionItemDrawer над текущим контекстом.
+            setShowSearch(false);
+            searchReset();
+            setOpenActionItemId(hit.id);
+          }}
+          onSelectFile={(hit) => {
+            // Прыгаем в канал-источник файла; lightbox откроется при клике
+            // на attachment в чате (v1 — без deep-link на конкретное message).
+            setHomeOpen(false);
+            setSelectedChannelId(hit.channel.id);
+            setShowSearch(false);
             searchReset();
           }}
           onClose={() => {

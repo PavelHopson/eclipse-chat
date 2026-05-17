@@ -411,8 +411,156 @@ export async function registerServerRoutes(app: FastifyInstance) {
   });
 
   /**
-   * GET /api/servers/:id/search?q=&take= — full-text search по сообщениям
-   * сервера. Простой `contains` без FTS-индекса — для MVP хватает (Postgres
+   * v0.57: GET /api/servers/:id/operational-search?q=&take= — unified
+   * operational search: messages + action items + files в одном response.
+   * Каждая категория ограничена 25 hits. Используется новым SearchOverlay
+   * с tabs.
+   *
+   * Подход v1: case-insensitive contains (Postgres ILIKE через Prisma
+   * `mode: "insensitive"`) — простой, без tsvector index. Performance OK
+   * до десятков тысяч rows; FTS upgrade — v2 (одна migration с tsvector +
+   * GIN index на Message.content, ActionItem.title+description,
+   * Attachment.filename).
+   *
+   * Используется существующий single-endpoint /search для backward compat
+   * (frontend useSearch hook). New endpoint coexists.
+   */
+  app.get(
+    "/api/servers/:id/operational-search",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const { id: serverId } = req.params as { id: string };
+      const me = await loadMember(req, reply, serverId);
+      if (!me) return reply;
+      const q = (req.query as { q?: string }).q?.trim() ?? "";
+      const take = Math.min(
+        25,
+        Math.max(1, Number((req.query as { take?: string }).take) || 15),
+      );
+      if (q.length < 2) {
+        return { query: q, messages: [], actions: [], files: [] };
+      }
+
+      const [messages, actions, files] = await Promise.all([
+        // Messages — TEXT channels, не deleted.
+        db.message.findMany({
+          where: {
+            channel: { serverId, type: "TEXT" },
+            deletedAt: null,
+            content: { contains: q, mode: "insensitive" },
+          },
+          take,
+          orderBy: { createdAt: "desc" },
+          include: {
+            user: { select: { id: true, displayName: true, avatar: true } },
+            channel: { select: { id: true, name: true, slug: true } },
+          },
+        }),
+        // Action items — title OR description.
+        db.actionItem.findMany({
+          where: {
+            serverId,
+            OR: [
+              { title: { contains: q, mode: "insensitive" } },
+              { description: { contains: q, mode: "insensitive" } },
+            ],
+          },
+          take,
+          orderBy: [{ status: "asc" }, { updatedAt: "desc" }],
+          include: {
+            channel: { select: { id: true, name: true, slug: true } },
+            assignee: { select: { id: true, displayName: true, avatar: true } },
+          },
+        }),
+        // Files — by filename. Через attachments → message → channel.
+        db.attachment.findMany({
+          where: {
+            message: {
+              channel: { serverId },
+              deletedAt: null,
+            },
+            filename: { contains: q, mode: "insensitive" },
+          },
+          take,
+          orderBy: { createdAt: "desc" },
+          include: {
+            message: {
+              select: {
+                id: true,
+                channel: { select: { id: true, name: true, slug: true } },
+              },
+            },
+          },
+        }),
+      ]);
+
+      return {
+        query: q,
+        messages: messages
+          .filter((m) => m.channel != null)
+          .map((m) => ({
+            id: m.id,
+            content: m.content,
+            createdAt: m.createdAt.toISOString(),
+            user: {
+              id: m.user.id,
+              displayName: m.user.displayName,
+              avatar: m.user.avatar,
+            },
+            channel: {
+              id: m.channel!.id,
+              name: m.channel!.name,
+              slug: m.channel!.slug,
+            },
+          })),
+        actions: actions.map((a) => ({
+          id: a.id,
+          title: a.title,
+          description: a.description,
+          type: a.type,
+          status: a.status,
+          priority: a.priority,
+          dueAt: a.dueAt?.toISOString() ?? null,
+          channel: {
+            id: a.channel.id,
+            name: a.channel.name,
+            slug: a.channel.slug,
+          },
+          assignee: a.assignee
+            ? {
+                id: a.assignee.id,
+                displayName: a.assignee.displayName,
+                avatar: a.assignee.avatar,
+              }
+            : null,
+        })),
+        files: files
+          .filter((f) => f.message.channel != null)
+          .map((f) => ({
+            id: f.id,
+            filename: f.filename,
+            mimeType: f.mimeType,
+            size: f.size,
+            url: f.url,
+            thumbnailUrl: f.thumbnailUrl,
+            messageId: f.messageId,
+            createdAt: f.createdAt.toISOString(),
+            channel: {
+              id: f.message.channel!.id,
+              name: f.message.channel!.name,
+              slug: f.message.channel!.slug,
+            },
+          })),
+      };
+    },
+  );
+
+  /**
+   * GET /api/servers/:id/search?q=&take= — legacy messages-only search.
+   * Сохранён для backward compat — useSearch hook продолжает работать.
+   * Новый operational-search возвращает union, см. выше.
+   *
+   * Простой `contains` без FTS-индекса — для MVP хватает (Postgres
    * умеет sequential scan на ~10k-100k messages быстро). v2.0 — tsvector
    * + GIN index или Meilisearch.
    *
