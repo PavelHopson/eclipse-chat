@@ -360,6 +360,12 @@ enum TableFieldType {
   DATE
   USER
   CHECKBOX
+  /// v0.75 #10 phase 2.5b: ссылка на row(ы) другой таблицы того же сервера.
+  /// Cell.value = JSON array of rowIds. Field.linkedTableId — target table.
+  RELATION
+  /// v0.75 #10 phase 2.5b: файлы в ячейке (upload via /api/tables/:id/upload).
+  /// Cell.value = JSON array of `{url, filename, mimeType, size}` objects.
+  FILE
 }
 
 /// Сервер — контейнер каналов и участников. Создатель автоматически
@@ -855,6 +861,9 @@ model Table {
 
   fields          TableField[]
   rows            TableRow[]
+  /// v0.75 #10 phase 2.5b: поля других таблиц, ссылающиеся на эту через RELATION.
+  /// Inverse relation для SetNull cascade при delete.
+  incomingRelations TableField[] @relation("TableFieldRelation")
 
   @@index([serverId, updatedAt])
   @@index([channelId])
@@ -871,10 +880,16 @@ model TableField {
   options   String?
   /// Порядок в строке (0-indexed). UI рендерит по position asc.
   position  Int             @default(0)
+  /// v0.75 #10 phase 2.5b RELATION: target table id (same server). SetNull
+  /// при удалении target — поле остаётся, UI показывает «таблица удалена».
+  /// Только для type=RELATION; для других типов NULL.
+  linkedTableId String?
+  linkedTable   Table?  @relation("TableFieldRelation", fields: [linkedTableId], references: [id], onDelete: SetNull)
 
   cells     TableCell[]
 
   @@index([tableId, position])
+  @@index([linkedTableId])
 }
 
 model TableRow {

@@ -1341,6 +1341,9 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               },
             }))}
             socket={socket}
+            availableTables={opTables
+              .filter((t) => t.id !== selectedTableId)
+              .map((t) => ({ id: t.id, name: t.name }))}
           />
         ) : homeOpen ? (
           <HomeToday

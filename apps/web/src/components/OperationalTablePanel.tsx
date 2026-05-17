@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   useOperationalTable,
   type TableCell,
@@ -33,6 +33,9 @@ type Props = {
   /** v0.62: socket для realtime sync. Optional — без него поведение как
    *  в v0.59 phase 1 (manual reload). */
   socket?: import("socket.io-client").Socket | null;
+  /** v0.75 #10 phase 2.5b: список таблиц активного сервера — для RELATION
+   *  picker'а в AddFieldForm. Empty array = «нет таблиц для связи». */
+  availableTables?: Array<{ id: string; name: string }>;
 };
 
 const wrap: CSSProperties = {
@@ -134,6 +137,8 @@ const TYPE_LABELS: Record<TableFieldType, string> = {
   DATE: "Дата",
   USER: "Участник",
   CHECKBOX: "Чекбокс",
+  RELATION: "Связь",
+  FILE: "Файл",
 };
 
 const STATUS_COLOR_POOL = [
@@ -158,6 +163,7 @@ export function OperationalTablePanel({
   onDelete,
   members = [],
   socket = null,
+  availableTables,
 }: Props) {
   const {
     table,
@@ -172,6 +178,8 @@ export function OperationalTablePanel({
     removeRow,
     reorderFields,
     reorderRows,
+    loadRelatedRows,
+    uploadFiles,
   } = useOperationalTable(tableId, socket);
 
   const [nameDraft, setNameDraft] = useState("");
@@ -277,11 +285,12 @@ export function OperationalTablePanel({
 
       {showFieldForm && (
         <AddFieldForm
-          onSubmit={async (name, type, options) => {
-            const ok = await addField(name, type, options);
+          onSubmit={async (name, type, options, linkedTableId) => {
+            const ok = await addField(name, type, options, linkedTableId);
             if (ok) setShowFieldForm(false);
           }}
           onCancel={() => setShowFieldForm(false)}
+          availableTables={availableTables}
         />
       )}
 
@@ -360,6 +369,8 @@ export function OperationalTablePanel({
                   row={row}
                   fields={sortedFields}
                   members={members}
+                  loadRelatedRows={loadRelatedRows}
+                  uploadFiles={uploadFiles}
                   dragging={dragRowId === row.id}
                   dropTarget={dropRowTarget === row.id}
                   onSave={(cells) => void updateRow(row.id, cells)}
@@ -579,6 +590,8 @@ function RowEditor({
   row,
   fields,
   members,
+  loadRelatedRows,
+  uploadFiles,
   dragging,
   dropTarget,
   onSave,
@@ -593,6 +606,15 @@ function RowEditor({
     userId: string;
     user: { displayName: string; avatar: string | null };
   }>;
+  loadRelatedRows?: (fieldId: string) => Promise<{
+    linkedTableId: string;
+    displayFieldName: string | null;
+    rows: Array<{ id: string; display: string }>;
+  } | null>;
+  uploadFiles?: (files: File[]) => Promise<
+    Array<{ url: string; filename: string; mimeType: string; size: number }>
+    | null
+  >;
   dragging: boolean;
   dropTarget: boolean;
   onSave: (cells: Array<{ fieldId: string; value: string }>) => void;
@@ -676,6 +698,8 @@ function RowEditor({
               setDrafts((prev) => ({ ...prev, [field.id]: v }))
             }
             onCommit={(v) => saveSingle(field.id, v)}
+            loadRelatedRows={loadRelatedRows}
+            uploadFiles={uploadFiles}
           />
         </td>
       ))}
@@ -708,6 +732,8 @@ function CellEditor({
   members,
   onChange,
   onCommit,
+  loadRelatedRows,
+  uploadFiles,
 }: {
   field: TableField;
   value: string;
@@ -717,6 +743,16 @@ function CellEditor({
   }>;
   onChange: (v: string) => void;
   onCommit: (v: string) => void;
+  /** v0.75 #10 phase 2.5b: RELATION/FILE editors используют. */
+  loadRelatedRows?: (fieldId: string) => Promise<{
+    linkedTableId: string;
+    displayFieldName: string | null;
+    rows: Array<{ id: string; display: string }>;
+  } | null>;
+  uploadFiles?: (files: File[]) => Promise<
+    Array<{ url: string; filename: string; mimeType: string; size: number }>
+    | null
+  >;
 }) {
   const [focused, setFocused] = useState(false);
 
@@ -843,6 +879,25 @@ function CellEditor({
     );
   }
 
+  // v0.75 #10 phase 2.5b — RELATION cell
+  if (field.type === "RELATION") {
+    return (
+      <RelationCell
+        field={field}
+        value={value}
+        loadRelatedRows={loadRelatedRows}
+        onCommit={onCommit}
+      />
+    );
+  }
+
+  // v0.75 #10 phase 2.5b — FILE cell
+  if (field.type === "FILE") {
+    return (
+      <FileCell value={value} onCommit={onCommit} uploadFiles={uploadFiles} />
+    );
+  }
+
   // TEXT
   return (
     <input
@@ -862,13 +917,22 @@ function CellEditor({
 function AddFieldForm({
   onSubmit,
   onCancel,
+  availableTables,
 }: {
-  onSubmit: (name: string, type: TableFieldType, options?: string[]) => Promise<void>;
+  onSubmit: (
+    name: string,
+    type: TableFieldType,
+    options?: string[],
+    linkedTableId?: string,
+  ) => Promise<void>;
   onCancel: () => void;
+  /** v0.75 #10 phase 2.5b: список доступных таблиц для RELATION picker'а. */
+  availableTables?: Array<{ id: string; name: string }>;
 }) {
   const [name, setName] = useState("");
   const [type, setType] = useState<TableFieldType>("TEXT");
   const [optionsText, setOptionsText] = useState("");
+  const [linkedTableId, setLinkedTableId] = useState("");
   const [busy, setBusy] = useState(false);
 
   return (
@@ -918,7 +982,31 @@ function AddFieldForm({
         <option value="DATE">Дата</option>
         <option value="USER">Участник</option>
         <option value="CHECKBOX">Чекбокс</option>
+        <option value="RELATION">Связь</option>
+        <option value="FILE">Файл</option>
       </select>
+      {type === "RELATION" && (
+        <select
+          value={linkedTableId}
+          onChange={(e) => setLinkedTableId(e.target.value)}
+          style={{
+            padding: "0.4rem 0.6rem",
+            background: "var(--ec-input-bg)",
+            border: "1px solid var(--ec-border-default)",
+            borderRadius: "var(--ec-radius-sm)",
+            color: linkedTableId ? "var(--ec-text)" : "var(--ec-text-dim)",
+            fontSize: "var(--ec-text-sm)",
+            minWidth: 200,
+          }}
+        >
+          <option value="">— Выберите таблицу —</option>
+          {(availableTables ?? []).map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.name}
+            </option>
+          ))}
+        </select>
+      )}
       {type === "STATUS" && (
         <input
           type="text"
@@ -942,6 +1030,7 @@ function AddFieldForm({
         onClick={async () => {
           const trimmed = name.trim();
           if (!trimmed) return;
+          if (type === "RELATION" && !linkedTableId) return;
           setBusy(true);
           const options =
             type === "STATUS"
@@ -950,10 +1039,17 @@ function AddFieldForm({
                   .map((s) => s.trim())
                   .filter(Boolean)
               : undefined;
-          await onSubmit(trimmed, type, options);
+          await onSubmit(
+            trimmed,
+            type,
+            options,
+            type === "RELATION" ? linkedTableId : undefined,
+          );
           setBusy(false);
         }}
-        disabled={busy || !name.trim()}
+        disabled={
+          busy || !name.trim() || (type === "RELATION" && !linkedTableId)
+        }
         style={{
           padding: "0.4rem 0.9rem",
           background: "var(--ec-accent)",
@@ -989,3 +1085,375 @@ function AddFieldForm({
 
 // Helper экспорт TableCell для дальнейших импортов (если понадобится).
 export type { TableCell };
+
+/* ============================================================
+ * v0.75 #10 phase 2.5b — RelationCell + FileCell editors
+ * ============================================================ */
+
+type TableFileItem = {
+  url: string;
+  filename: string;
+  mimeType: string;
+  size: number;
+};
+
+function parseRelationValue(value: string): string[] {
+  if (!value) return [];
+  try {
+    const arr = JSON.parse(value);
+    return Array.isArray(arr) ? arr.filter((v) => typeof v === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+function parseFileValue(value: string): TableFileItem[] {
+  if (!value) return [];
+  try {
+    const arr = JSON.parse(value);
+    if (!Array.isArray(arr)) return [];
+    return arr.filter(
+      (i): i is TableFileItem =>
+        i &&
+        typeof i === "object" &&
+        typeof (i as { url?: unknown }).url === "string" &&
+        typeof (i as { filename?: unknown }).filename === "string" &&
+        typeof (i as { mimeType?: unknown }).mimeType === "string" &&
+        typeof (i as { size?: unknown }).size === "number",
+    );
+  } catch {
+    return [];
+  }
+}
+
+function fmtBytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(0)} KB`;
+  return `${(n / 1024 / 1024).toFixed(1)} MB`;
+}
+
+function RelationCell({
+  field,
+  value,
+  loadRelatedRows,
+  onCommit,
+}: {
+  field: TableField;
+  value: string;
+  loadRelatedRows?: (fieldId: string) => Promise<{
+    linkedTableId: string;
+    displayFieldName: string | null;
+    rows: Array<{ id: string; display: string }>;
+  } | null>;
+  onCommit: (v: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [rows, setRows] = useState<Array<{ id: string; display: string }> | null>(
+    null,
+  );
+  const selectedIds = useMemo(() => new Set(parseRelationValue(value)), [value]);
+  const displayMap = useMemo(() => {
+    const m = new Map<string, string>();
+    if (rows) {
+      for (const r of rows) m.set(r.id, r.display);
+    }
+    return m;
+  }, [rows]);
+
+  const ensureLoaded = useCallback(async () => {
+    if (rows || !loadRelatedRows) return;
+    const data = await loadRelatedRows(field.id);
+    if (data) setRows(data.rows);
+  }, [rows, loadRelatedRows, field.id]);
+
+  useEffect(() => {
+    if (open) void ensureLoaded();
+  }, [open, ensureLoaded]);
+
+  const toggle = (id: string) => {
+    const next = new Set(selectedIds);
+    if (next.has(id)) next.delete(id);
+    else if (next.size >= 5) return; // max 5 backend hard cap
+    else next.add(id);
+    onCommit(next.size === 0 ? "" : JSON.stringify(Array.from(next)));
+  };
+
+  if (!field.linkedTableId) {
+    return (
+      <span
+        style={{
+          ...cellInput,
+          color: "var(--ec-text-dim)",
+          fontStyle: "italic",
+        }}
+        title="Связанная таблица была удалена"
+      >
+        — связь сломана —
+      </span>
+    );
+  }
+
+  return (
+    <div style={{ position: "relative" }}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        style={{
+          ...cellInput,
+          textAlign: "left",
+          cursor: "pointer",
+          background: "transparent",
+          border: "1px solid transparent",
+          color: selectedIds.size > 0 ? "var(--ec-text)" : "var(--ec-text-dim)",
+          fontSize: "var(--ec-text-sm)",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+        }}
+        title={
+          selectedIds.size > 0
+            ? Array.from(selectedIds)
+                .map((id) => displayMap.get(id) ?? id.slice(0, 8))
+                .join(", ")
+            : "Связать с рядами"
+        }
+      >
+        {selectedIds.size === 0
+          ? "+ связать"
+          : selectedIds.size === 1
+            ? Array.from(selectedIds)
+                .map((id) => displayMap.get(id) ?? `…${id.slice(-6)}`)
+                .join(", ")
+            : `${selectedIds.size} связей`}
+      </button>
+      {open && (
+        <div
+          style={{
+            position: "absolute",
+            top: "100%",
+            left: 0,
+            zIndex: 30,
+            marginTop: 4,
+            background: "var(--ec-surface-2)",
+            border: "1px solid var(--ec-border-default)",
+            borderRadius: "var(--ec-radius-md)",
+            padding: "var(--ec-space-2)",
+            boxShadow: "0 12px 32px -16px rgba(0,0,0,0.55)",
+            minWidth: 240,
+            maxHeight: 280,
+            overflow: "auto",
+          }}
+        >
+          {!rows ? (
+            <div style={{ color: "var(--ec-text-dim)", padding: 6 }}>
+              Загрузка…
+            </div>
+          ) : rows.length === 0 ? (
+            <div style={{ color: "var(--ec-text-dim)", padding: 6 }}>
+              Целевая таблица пустая.
+            </div>
+          ) : (
+            rows.map((r) => {
+              const checked = selectedIds.has(r.id);
+              return (
+                <label
+                  key={r.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    padding: "0.3rem 0.5rem",
+                    borderRadius: "var(--ec-radius-sm)",
+                    cursor: "pointer",
+                    fontSize: "var(--ec-text-sm)",
+                    color: "var(--ec-text)",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "var(--ec-surface-3)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "transparent";
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => toggle(r.id)}
+                    style={{ accentColor: "var(--ec-accent)" }}
+                  />
+                  <span
+                    style={{
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {r.display || `(пусто) #${r.id.slice(-6)}`}
+                  </span>
+                </label>
+              );
+            })
+          )}
+          <div
+            style={{
+              borderTop: "1px solid var(--ec-border-subtle)",
+              marginTop: 6,
+              paddingTop: 6,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              fontSize: "var(--ec-text-2xs)",
+              color: "var(--ec-text-dim)",
+            }}
+          >
+            <span>{selectedIds.size}/5</span>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              style={{
+                padding: "0.2rem 0.5rem",
+                background: "transparent",
+                border: "1px solid var(--ec-border-default)",
+                borderRadius: "var(--ec-radius-sm)",
+                color: "var(--ec-text-muted)",
+                cursor: "pointer",
+                fontSize: "var(--ec-text-2xs)",
+              }}
+            >
+              Закрыть
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FileCell({
+  value,
+  onCommit,
+  uploadFiles,
+}: {
+  value: string;
+  onCommit: (v: string) => void;
+  uploadFiles?: (files: File[]) => Promise<TableFileItem[] | null>;
+}) {
+  const files = useMemo(() => parseFileValue(value), [value]);
+  const [busy, setBusy] = useState(false);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  const onSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const list = e.target.files;
+    if (!list || list.length === 0 || !uploadFiles) return;
+    const arr = Array.from(list);
+    const remaining = Math.max(0, 5 - files.length);
+    if (remaining <= 0) return;
+    const slice = arr.slice(0, remaining);
+    setBusy(true);
+    const uploaded = await uploadFiles(slice);
+    setBusy(false);
+    if (uploaded && uploaded.length > 0) {
+      const next = [...files, ...uploaded].slice(0, 5);
+      onCommit(next.length === 0 ? "" : JSON.stringify(next));
+    }
+    if (inputRef.current) inputRef.current.value = "";
+  };
+
+  const removeAt = (idx: number) => {
+    const next = files.filter((_, i) => i !== idx);
+    onCommit(next.length === 0 ? "" : JSON.stringify(next));
+  };
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexWrap: "wrap",
+        gap: 4,
+        alignItems: "center",
+        padding: "0.25rem 0.4rem",
+      }}
+    >
+      {files.map((f, i) => (
+        <span
+          key={`${f.url}-${i}`}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 4,
+            padding: "0.1rem 0.45rem",
+            borderRadius: "var(--ec-radius-full)",
+            background: "var(--ec-surface-2)",
+            border: "1px solid var(--ec-border-subtle)",
+            fontSize: "var(--ec-text-2xs)",
+            maxWidth: 200,
+          }}
+          title={`${f.filename} · ${fmtBytes(f.size)}`}
+        >
+          <a
+            href={f.url}
+            target="_blank"
+            rel="noreferrer"
+            style={{
+              color: "var(--ec-text)",
+              textDecoration: "none",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {f.filename}
+          </a>
+          <button
+            type="button"
+            onClick={() => removeAt(i)}
+            aria-label="Удалить файл"
+            style={{
+              width: 16,
+              height: 16,
+              display: "grid",
+              placeItems: "center",
+              background: "transparent",
+              border: 0,
+              color: "var(--ec-text-dim)",
+              cursor: "pointer",
+              fontSize: "0.8rem",
+              lineHeight: 1,
+            }}
+          >
+            ×
+          </button>
+        </span>
+      ))}
+      {files.length < 5 && (
+        <>
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            disabled={busy || !uploadFiles}
+            style={{
+              padding: "0.18rem 0.6rem",
+              background: "transparent",
+              border: "1px dashed var(--ec-border-default)",
+              borderRadius: "var(--ec-radius-sm)",
+              color: busy ? "var(--ec-text-dim)" : "var(--ec-text-muted)",
+              cursor: busy ? "wait" : "pointer",
+              fontSize: "var(--ec-text-2xs)",
+              fontWeight: 600,
+            }}
+            title="Прикрепить файл (до 5 на ячейку)"
+          >
+            {busy ? "Загрузка…" : "+ файл"}
+          </button>
+          <input
+            ref={inputRef}
+            type="file"
+            multiple
+            onChange={onSelected}
+            style={{ display: "none" }}
+          />
+        </>
+      )}
+    </div>
+  );
+}

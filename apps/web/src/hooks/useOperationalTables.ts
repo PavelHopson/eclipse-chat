@@ -18,7 +18,9 @@ export type TableFieldType =
   | "STATUS"
   | "DATE"
   | "USER"
-  | "CHECKBOX";
+  | "CHECKBOX"
+  | "RELATION"
+  | "FILE";
 
 export type TableSummary = {
   id: string;
@@ -38,6 +40,16 @@ export type TableField = {
   /** Для STATUS — массив доступных значений. Null для остальных. */
   options: string[] | null;
   position: number;
+  /** v0.75 #10 phase 2.5b RELATION: target table id (same server). */
+  linkedTableId?: string | null;
+};
+
+/** v0.75 #10 phase 2.5b: формат FILE-ячейки — JSON array этого объекта. */
+export type TableFileItem = {
+  url: string;
+  filename: string;
+  mimeType: string;
+  size: number;
 };
 
 export type TableCell = {
@@ -378,14 +390,18 @@ export function useOperationalTable(
       name: string,
       type: TableFieldType,
       options?: string[],
+      linkedTableId?: string,
     ): Promise<boolean> => {
       if (!tableId) return false;
       try {
+        const body: Record<string, unknown> = { name, type };
+        if (options) body.options = options;
+        if (linkedTableId) body.linkedTableId = linkedTableId;
         const data = await apiJson<{ field: TableField }>(
           `/api/tables/${encodeURIComponent(tableId)}/fields`,
           {
             method: "POST",
-            body: JSON.stringify({ name, type, options }),
+            body: JSON.stringify(body),
             headers: { "Content-Type": "application/json" },
           },
         );
@@ -396,6 +412,67 @@ export function useOperationalTable(
       } catch (e) {
         setError(e instanceof Error ? e.message : "Не удалось добавить колонку");
         return false;
+      }
+    },
+    [tableId],
+  );
+
+  /** v0.75 #10 phase 2.5b: list rows linked-table'а для RELATION picker. */
+  const loadRelatedRows = useCallback(
+    async (
+      fieldId: string,
+    ): Promise<{
+      linkedTableId: string;
+      displayFieldName: string | null;
+      rows: Array<{ id: string; display: string }>;
+    } | null> => {
+      if (!tableId) return null;
+      try {
+        return await apiJson(
+          `/api/tables/${encodeURIComponent(tableId)}/related-rows?fieldId=${encodeURIComponent(fieldId)}`,
+        );
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Не удалось загрузить связи");
+        return null;
+      }
+    },
+    [tableId],
+  );
+
+  /** v0.75 #10 phase 2.5b: upload файлов для FILE-ячейки. base64 inline. */
+  const uploadFiles = useCallback(
+    async (
+      files: File[],
+    ): Promise<TableFileItem[] | null> => {
+      if (!tableId) return null;
+      try {
+        const items = await Promise.all(
+          files.map(async (f) => {
+            const buf = await f.arrayBuffer();
+            const bytes = new Uint8Array(buf);
+            let bin = "";
+            for (let i = 0; i < bytes.byteLength; i++) {
+              bin += String.fromCharCode(bytes[i]!);
+            }
+            return {
+              filename: f.name,
+              mimeType: f.type || "application/octet-stream",
+              dataBase64: btoa(bin),
+            };
+          }),
+        );
+        const data = await apiJson<{ files: TableFileItem[] }>(
+          `/api/tables/${encodeURIComponent(tableId)}/upload`,
+          {
+            method: "POST",
+            body: JSON.stringify({ files: items }),
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+        return data.files;
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Не удалось загрузить файлы");
+        return null;
       }
     },
     [tableId],
@@ -624,5 +701,7 @@ export function useOperationalTable(
     removeRow,
     reorderFields,
     reorderRows,
+    loadRelatedRows,
+    uploadFiles,
   };
 }

@@ -679,3 +679,68 @@ export async function unlinkAttachmentFiles(urls: (string | null | undefined)[])
       }),
   );
 }
+
+/**
+ * v0.75 #10 phase 2.5b: standalone file upload для Operational Tables
+ * FILE-ячеек. Без DB row (no Attachment) — файл лежит на disk и
+ * referenced через JSON в TableCell.value.
+ *
+ * Те же magic-bytes + size guards что в processAttachment. Сохраняем в
+ * `/uploads/tables/`, returns minimal payload для UI chip.
+ *
+ * Cleanup: orphan files когда cell value меняется — best-effort через
+ * future TODO. На v1 не critical, disk у нас не тесный.
+ */
+export type StandaloneTableFile = {
+  url: string;
+  filename: string;
+  mimeType: string;
+  size: number;
+};
+
+function tablesDir(): string {
+  const base = process.env.UPLOADS_DIR ?? "./uploads";
+  return path.join(base, "tables");
+}
+
+function tablesUrl(filename: string): string {
+  return `/uploads/tables/${filename}`;
+}
+
+export async function processStandaloneFile(
+  input: AttachmentInput,
+  ownerId: string,
+  position: number,
+): Promise<StandaloneTableFile> {
+  if (!ALLOWED_MIME.has(input.mimeType)) {
+    throw new Error(`Unsupported mime type: ${input.mimeType}`);
+  }
+  const buf = Buffer.from(input.dataBase64, "base64");
+  if (buf.length === 0) {
+    throw new Error("Empty file");
+  }
+  const limit = sizeLimitFor(input.mimeType);
+  if (buf.length > limit) {
+    throw new Error(
+      `File too large (max ${Math.round(limit / 1024 / 1024)}MB)`,
+    );
+  }
+  const sniffed = sniffMime(buf);
+  if (!isMimeConsistent(input.mimeType, sniffed)) {
+    throw new Error(
+      `File content does not match declared type ${input.mimeType} (detected: ${sniffed})`,
+    );
+  }
+  const dir = tablesDir();
+  await fs.mkdir(dir, { recursive: true });
+  const ext = extFromMime(input.mimeType);
+  const baseName = sanitizeFilename(input.filename);
+  const filename = `${ownerId}-${position}-${Date.now()}-${baseName}.${ext}`;
+  await fs.writeFile(path.join(dir, filename), buf);
+  return {
+    url: tablesUrl(filename),
+    filename: input.filename,
+    mimeType: input.mimeType,
+    size: buf.length,
+  };
+}

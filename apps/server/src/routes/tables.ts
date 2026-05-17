@@ -4,6 +4,7 @@ import { db } from "../db.js";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
 import { emitTableEvent } from "../realtime.js";
 import { TABLE_TEMPLATES, getTemplate } from "../lib/tableTemplates.js";
+import { processStandaloneFile } from "../attachments.js";
 
 /**
  * Operational Tables phase 1 (v0.59.0) — CRUD routes.
@@ -37,7 +38,11 @@ const fieldTypeSchema = z.enum([
   "DATE",
   "USER",
   "CHECKBOX",
+  "RELATION",
+  "FILE",
 ]);
+
+type FieldType = z.infer<typeof fieldTypeSchema>;
 
 const createTableBody = z.object({
   name: z.string().trim().min(1).max(120),
@@ -58,11 +63,14 @@ const createFieldBody = z.object({
   type: fieldTypeSchema,
   /** Для STATUS — array допустимых значений. Игнорируется для других типов. */
   options: z.array(z.string().min(1).max(40)).max(20).optional(),
+  /** v0.75 #10 phase 2.5b RELATION: target table id (тот же server). */
+  linkedTableId: z.string().min(1).optional(),
 });
 
 const updateFieldBody = z.object({
   name: z.string().trim().min(1).max(80).optional(),
   options: z.array(z.string().min(1).max(40)).max(20).nullable().optional(),
+  linkedTableId: z.string().min(1).nullable().optional(),
 }).refine((body) => Object.keys(body).length > 0, {
   message: "At least one field is required",
 });
@@ -92,6 +100,20 @@ const fromTemplateBody = z.object({
   channelId: z.string().nullable().optional(),
 });
 
+/** v0.75 #10 phase 2.5b: upload base64-attachments для FILE-ячеек. */
+const tableUploadBody = z.object({
+  files: z
+    .array(
+      z.object({
+        filename: z.string().min(1).max(255),
+        mimeType: z.string().min(3).max(120),
+        dataBase64: z.string().min(1),
+      }),
+    )
+    .min(1)
+    .max(5),
+});
+
 async function requireServerMember(userId: string, serverId: string) {
   const member = await db.member.findUnique({
     where: { userId_serverId: { userId, serverId } },
@@ -112,9 +134,10 @@ function isMod(role: "OWNER" | "ADMIN" | "MODERATOR" | "MEMBER"): boolean {
  * Остальные типы — passthrough (frontend сам coerce'ит при render).
  */
 async function coerceCellValue(
-  fieldType: "TEXT" | "NUMBER" | "STATUS" | "DATE" | "USER" | "CHECKBOX",
+  fieldType: FieldType,
   value: string,
   serverId: string,
+  field?: { linkedTableId: string | null },
 ): Promise<string | { error: string }> {
   if (value === "") return value; // delete-cell path
   if (fieldType === "USER") {
@@ -128,6 +151,77 @@ async function coerceCellValue(
   if (fieldType === "CHECKBOX") {
     const lower = value.toLowerCase();
     return lower === "true" || lower === "1" || lower === "yes" ? "true" : "false";
+  }
+  if (fieldType === "RELATION") {
+    // v0.75: JSON array of rowIds. Validate что rows существуют в linkedTable
+    // того же сервера. Max 5 связей в ячейке — UX clarity (chip-list).
+    if (!field?.linkedTableId) {
+      return { error: "RELATION field has no linkedTableId" };
+    }
+    let ids: unknown;
+    try {
+      ids = JSON.parse(value);
+    } catch {
+      return { error: "RELATION value must be JSON array of row ids" };
+    }
+    if (!Array.isArray(ids) || ids.some((v) => typeof v !== "string")) {
+      return { error: "RELATION value must be array of strings" };
+    }
+    if (ids.length === 0) return "";
+    if (ids.length > 5) {
+      return { error: "RELATION: максимум 5 связей в ячейке" };
+    }
+    const linked = await db.table.findUnique({
+      where: { id: field.linkedTableId },
+      select: { id: true, serverId: true },
+    });
+    if (!linked || linked.serverId !== serverId) {
+      return { error: "Linked table not in this workspace" };
+    }
+    const found = await db.tableRow.findMany({
+      where: { id: { in: ids as string[] }, tableId: field.linkedTableId },
+      select: { id: true },
+    });
+    if (found.length !== ids.length) {
+      return { error: "Some related rows do not exist or are in another table" };
+    }
+    return JSON.stringify(ids);
+  }
+  if (fieldType === "FILE") {
+    // v0.75: JSON array of {url, filename, mimeType, size}. URLs выданы
+    // POST /api/tables/:id/upload — должны начинаться с `/uploads/tables/`
+    // (path-only, prevents arbitrary URL injection в ячейку). Max 5 файлов.
+    let items: unknown;
+    try {
+      items = JSON.parse(value);
+    } catch {
+      return { error: "FILE value must be JSON array" };
+    }
+    if (!Array.isArray(items)) {
+      return { error: "FILE value must be array" };
+    }
+    if (items.length === 0) return "";
+    if (items.length > 5) {
+      return { error: "FILE: максимум 5 файлов в ячейке" };
+    }
+    for (const it of items) {
+      if (!it || typeof it !== "object") {
+        return { error: "FILE item must be object" };
+      }
+      const obj = it as Record<string, unknown>;
+      if (
+        typeof obj.url !== "string" ||
+        typeof obj.filename !== "string" ||
+        typeof obj.mimeType !== "string" ||
+        typeof obj.size !== "number"
+      ) {
+        return { error: "FILE item missing required fields" };
+      }
+      if (!obj.url.startsWith("/uploads/tables/")) {
+        return { error: "FILE url must be from /api/tables/:id/upload" };
+      }
+    }
+    return JSON.stringify(items);
   }
   return value;
 }
@@ -154,9 +248,10 @@ function serializeTable(t: {
   fields: Array<{
     id: string;
     name: string;
-    type: "TEXT" | "NUMBER" | "STATUS" | "DATE" | "USER" | "CHECKBOX";
+    type: FieldType;
     options: string | null;
     position: number;
+    linkedTableId?: string | null;
   }>;
   rows: Array<{
     id: string;
@@ -188,6 +283,7 @@ function serializeTable(t: {
         type: f.type,
         options: serializeOptions(f.options),
         position: f.position,
+        linkedTableId: f.linkedTableId ?? null,
       })),
     rows: t.rows
       .slice()
@@ -428,6 +524,25 @@ export async function registerTableRoutes(app: FastifyInstance) {
       if (!member) {
         return reply.status(403).send({ error: "Not a member of this server" });
       }
+      // v0.75 RELATION: validate linkedTableId если type=RELATION.
+      let linkedTableId: string | null = null;
+      if (parsed.data.type === "RELATION") {
+        if (!parsed.data.linkedTableId) {
+          return reply
+            .status(400)
+            .send({ error: "RELATION требует linkedTableId" });
+        }
+        const linked = await db.table.findUnique({
+          where: { id: parsed.data.linkedTableId },
+          select: { serverId: true },
+        });
+        if (!linked || linked.serverId !== table.serverId) {
+          return reply
+            .status(400)
+            .send({ error: "Связанная таблица не найдена в этом пространстве" });
+        }
+        linkedTableId = parsed.data.linkedTableId;
+      }
       const field = await db.tableField.create({
         data: {
           tableId,
@@ -438,6 +553,7 @@ export async function registerTableRoutes(app: FastifyInstance) {
             parsed.data.type === "STATUS" && parsed.data.options
               ? JSON.stringify(parsed.data.options)
               : null,
+          linkedTableId,
         },
       });
       // bump table.updatedAt чтобы list пересортировался
@@ -451,6 +567,7 @@ export async function registerTableRoutes(app: FastifyInstance) {
         type: field.type,
         options: serializeOptions(field.options),
         position: field.position,
+        linkedTableId: field.linkedTableId,
       };
       emitTableEvent(table.serverId, "table:field:added", {
         tableId,
@@ -503,6 +620,7 @@ export async function registerTableRoutes(app: FastifyInstance) {
         type: updated.type,
         options: serializeOptions(updated.options),
         position: updated.position,
+        linkedTableId: updated.linkedTableId,
       };
       emitTableEvent(field.table.serverId, "table:field:updated", {
         tableId,
@@ -616,9 +734,11 @@ export async function registerTableRoutes(app: FastifyInstance) {
       const fieldIds = parsed.data.cells.map((c) => c.fieldId);
       const fields = await db.tableField.findMany({
         where: { id: { in: fieldIds }, tableId },
-        select: { id: true, type: true },
+        select: { id: true, type: true, linkedTableId: true },
       });
-      const fieldMap = new Map(fields.map((f) => [f.id, f.type]));
+      const fieldMap = new Map(
+        fields.map((f) => [f.id, { type: f.type, linkedTableId: f.linkedTableId }]),
+      );
       const invalid = fieldIds.filter((id) => !fieldMap.has(id));
       if (invalid.length > 0) {
         return reply
@@ -627,10 +747,16 @@ export async function registerTableRoutes(app: FastifyInstance) {
       }
 
       // v0.62: coerce / validate cell values по типу поля.
+      // v0.75: field meta (linkedTableId) передаётся для RELATION валидации.
       const coercedCells: Array<{ fieldId: string; value: string }> = [];
       for (const cell of parsed.data.cells) {
-        const type = fieldMap.get(cell.fieldId)!;
-        const result = await coerceCellValue(type, cell.value, row.table.serverId);
+        const meta = fieldMap.get(cell.fieldId)!;
+        const result = await coerceCellValue(
+          meta.type,
+          cell.value,
+          row.table.serverId,
+          { linkedTableId: meta.linkedTableId },
+        );
         if (typeof result === "object") {
           return reply.status(400).send({ error: result.error, fieldId: cell.fieldId });
         }
@@ -926,6 +1052,121 @@ export async function registerTableRoutes(app: FastifyInstance) {
         rowId,
       });
       return { ok: true };
+    },
+  );
+
+  /**
+   * v0.75 #10 phase 2.5b: GET /api/tables/:id/related-rows?fieldId=X
+   * Возвращает rows из linkedTable поля X с display value (значение
+   * первой колонки) — для RELATION picker'а на frontend'е. Membership
+   * resolved через source table.
+   */
+  app.get(
+    "/api/tables/:id/related-rows",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const userId = getUserId(req);
+      if (!userId) return reply.status(401).send({ error: "Unauthorized" });
+      const { id: tableId } = req.params as { id: string };
+      const { fieldId } = req.query as { fieldId?: string };
+      if (!fieldId) {
+        return reply.status(400).send({ error: "fieldId is required" });
+      }
+      const field = await db.tableField.findUnique({
+        where: { id: fieldId },
+        select: {
+          tableId: true,
+          type: true,
+          linkedTableId: true,
+          table: { select: { serverId: true } },
+        },
+      });
+      if (!field || field.tableId !== tableId) {
+        return reply.status(404).send({ error: "Field not found" });
+      }
+      if (field.type !== "RELATION" || !field.linkedTableId) {
+        return reply
+          .status(400)
+          .send({ error: "Field is not a RELATION or has no linked table" });
+      }
+      const member = await requireServerMember(userId, field.table.serverId);
+      if (!member) {
+        return reply.status(403).send({ error: "Not a member of this server" });
+      }
+      // Display column = первое поле linked table'а (position=0).
+      const linkedFields = await db.tableField.findMany({
+        where: { tableId: field.linkedTableId },
+        orderBy: { position: "asc" },
+        select: { id: true, name: true },
+        take: 1,
+      });
+      const displayFieldId = linkedFields[0]?.id ?? null;
+      const rows = await db.tableRow.findMany({
+        where: { tableId: field.linkedTableId },
+        orderBy: { position: "asc" },
+        take: 200,
+        select: {
+          id: true,
+          cells: displayFieldId
+            ? {
+                where: { fieldId: displayFieldId },
+                select: { value: true },
+              }
+            : false,
+        },
+      });
+      return {
+        linkedTableId: field.linkedTableId,
+        displayFieldName: linkedFields[0]?.name ?? null,
+        rows: rows.map((r) => ({
+          id: r.id,
+          display:
+            displayFieldId && Array.isArray(r.cells) && r.cells[0]
+              ? r.cells[0].value
+              : `(${r.id.slice(0, 6)})`,
+        })),
+      };
+    },
+  );
+
+  /**
+   * v0.75 #10 phase 2.5b: POST /api/tables/:id/upload — upload files
+   * для FILE-ячейки. Base64 inline (как везде), сохраняются на диск
+   * через `processStandaloneFile` без Attachment row. Возвращает
+   * массив `{url, filename, mimeType, size}` — клиент кладёт в cell
+   * как JSON. Cap: 5 файлов за раз, 50/200 MB per file (как везде).
+   */
+  app.post(
+    "/api/tables/:id/upload",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const userId = getUserId(req);
+      if (!userId) return reply.status(401).send({ error: "Unauthorized" });
+      const { id: tableId } = req.params as { id: string };
+      const parsed = tableUploadBody.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.status(400).send({ error: "Invalid body" });
+      }
+      const table = await db.table.findUnique({
+        where: { id: tableId },
+        select: { serverId: true },
+      });
+      if (!table) return reply.status(404).send({ error: "Table not found" });
+      const member = await requireServerMember(userId, table.serverId);
+      if (!member) {
+        return reply.status(403).send({ error: "Not a member of this server" });
+      }
+      try {
+        const files = await Promise.all(
+          parsed.data.files.map((f, idx) =>
+            processStandaloneFile(f, tableId, idx),
+          ),
+        );
+        return { files };
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Upload failed";
+        return reply.status(400).send({ error: msg });
+      }
     },
   );
 }
