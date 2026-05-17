@@ -67,9 +67,20 @@ export function Modal({ title, onClose, children, footer, width = 440 }: Props) 
       if (e.key === "Escape") onClose();
     };
     document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+    // v0.65: body scroll-lock пока modal открыт. Иначе на mobile фон
+    // прокручивается под backdrop, особенно когда виртуальная клавиатура
+    // открыта — текст уходит за viewport.
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
   }, [onClose]);
 
+  // v0.65: 100dvh вместо 100vh — iOS Safari URL bar shift не
+  // обрезает modal под виртуальной клавиатурой. min() гарантирует
+  // что на desktop с большим экраном не растягиваем без надобности.
   const box: CSSProperties = {
     background: "hsl(200 8% 9% / 0.92)",
     backdropFilter: "saturate(180%) blur(20px)",
@@ -78,7 +89,7 @@ export function Modal({ title, onClose, children, footer, width = 440 }: Props) 
     borderRadius: "var(--ec-radius-lg)",
     border: "1px solid var(--ec-border-default)",
     width: `min(${width}px, 100%)`,
-    maxHeight: "calc(100vh - 64px)",
+    maxHeight: "min(calc(100dvh - 64px), 92vh)",
     display: "flex",
     flexDirection: "column",
     overflow: "hidden",
@@ -111,6 +122,7 @@ export function Modal({ title, onClose, children, footer, width = 440 }: Props) 
             type="button"
             onClick={onClose}
             aria-label="Закрыть"
+            className="ec-modal-close"
             style={closeBtn}
             onMouseEnter={(e) => {
               e.currentTarget.style.background = "var(--ec-surface-2)";

@@ -266,7 +266,7 @@ export function OperationalTablePanel({
         />
       )}
 
-      <div style={bodyScroll}>
+      <div className="ec-op-table-scroll" style={bodyScroll}>
         {error && (
           <p style={{ color: "var(--ec-danger)", margin: "0 0 var(--ec-space-2)" }}>
             {error}

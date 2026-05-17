@@ -279,7 +279,7 @@ export function TeamHealth({
         )}
 
         {!error && loading && !data && (
-          <div style={grid} aria-label="Считаем здоровье команды">
+          <div className="ec-team-health-stats" style={grid} aria-label="Считаем здоровье команды">
             {Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="ec-skeleton-card" />
             ))}
@@ -296,7 +296,7 @@ export function TeamHealth({
 
         {!error && !isEmpty && data && (
           <>
-            <div style={grid}>
+            <div className="ec-team-health-stats" style={grid}>
               <button
                 type="button"
                 className="ec-lift-md ec-press"

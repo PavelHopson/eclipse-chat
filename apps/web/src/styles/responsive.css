@@ -492,9 +492,18 @@
    visible только если IntelligencePanel рендерится outside of members rail
    (не используется сейчас, но прописано на будущее). v0.36 fix Pavel'я
    feedback: «не починил, как было криво и обрезано, так и осталось» —
-   v0.35 ограничивал hide media query'ем который не матчил desktop. */
+   v0.35 ограничивал hide media query'ем который не матчил desktop.
+
+   v0.65 mobile-fix (g): на mobile members rail становится drawer 88vw —
+   там физически помещаются labels. Возвращаем для touch devices, где
+   icon-only tabs без tooltip — UX слом. */
 .ec-shell__members .ec-intel-tab__label {
   display: none;
+}
+@media (max-width: 640px) {
+  .ec-shell__members .ec-intel-tab__label {
+    display: inline;
+  }
 }
 
 /* Tab bar overflow indicator — на узких rail'ах когда tabs могут быть
@@ -591,10 +600,119 @@
   }
 }
 
-/* v0.43: Modal на mobile — меньше backdrop padding, smaller body padding */
+/* v0.43: Modal на mobile — меньше backdrop padding, smaller body padding.
+   v0.65: + safe-area-inset для iOS keyboard / notch; touch close-btn 44×44. */
 @media (max-width: 640px) {
   .ec-modal-backdrop {
     padding: var(--ec-space-2) !important;
+    padding-bottom: max(var(--ec-space-2), env(safe-area-inset-bottom, 0)) !important;
+  }
+
+  .ec-modal-close,
+  .ec-drawer-close {
+    width: 44px !important;
+    height: 44px !important;
+  }
+
+  /* ActionItemDrawer: full-screen на mobile (460px не помещается). */
+  .ec-action-drawer {
+    width: 100vw !important;
+    border-left: 0 !important;
+  }
+}
+
+/* ===== v0.65 Mobile hardening v2 (audit 17.05) ============== */
+
+/* (a) DM-button в MemberList был hover-only opacity:0 — на touch
+       полностью невидим. Принудительно показываем на mobile. */
+@media (max-width: 640px) {
+  [data-dm-btn] {
+    opacity: 0.85 !important;
+  }
+}
+
+/* (f) ChannelList delete/settings buttons тоже были hover-only —
+       та же фиксация. Уже помечены `data-channel-action`. */
+@media (max-width: 640px) {
+  [data-channel-action] {
+    opacity: 0.6 !important;
+  }
+}
+
+/* (i) MusicMiniPlayer pill на узком топбаре съедает место под chat-
+       header title. Ограничиваем max-width на mobile + ellipsis. */
+@media (max-width: 640px) {
+  .ec-music-mini-player {
+    max-width: 180px !important;
+    overflow: hidden;
+  }
+  .ec-music-mini-player .ec-music-mini-track {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+/* (j) VoiceRoom controls dock на очень узких screens (landscape с
+       клавиатурой ≈ 220-300px) переносился на 2-3 строки. Принудительно
+       одну строку + horizontal scroll если не помещается. */
+@media (max-width: 360px) {
+  .ec-voice-room__controls {
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .ec-voice-room__controls::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* (k) StatusBoard на узких mobile (480-560px hybrid range) — явный
+       1-column, иначе одна колонка занимает 100%, вторая на новую
+       строку с empty space. */
+@media (max-width: 500px) {
+  .ec-status-board {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* (m) SearchOverlay padding на mobile — 10vh слишком много, content
+       начинается с середины экрана. */
+@media (max-width: 500px) {
+  .ec-search-overlay {
+    padding: 4vh var(--ec-space-2) !important;
+  }
+}
+
+/* (o) TeamHealth stat-cards: minmax(220px) на 420-440px даёт странный
+       1.5-column hybrid. Явный 2-column на mobile. */
+@media (max-width: 480px) {
+  .ec-team-health-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+/* (h) OperationalTable horizontal scroll — добавляем gradient-fade
+       справа как visual hint что cells обрезаются. */
+.ec-op-table-scroll {
+  position: relative;
+}
+.ec-op-table-scroll::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 24px;
+  background: linear-gradient(to right, transparent, var(--ec-surface-1));
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--ec-dur-fast) var(--ec-ease);
+}
+@media (max-width: 900px) {
+  .ec-op-table-scroll::after {
+    opacity: 1;
   }
 }
 

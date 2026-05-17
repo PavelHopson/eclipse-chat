@@ -250,6 +250,7 @@ export function SearchOverlay({
 
   return (
     <div
+      className="ec-search-overlay"
       style={backdrop}
       onClick={(e) => e.target === e.currentTarget && onClose()}
       role="dialog"

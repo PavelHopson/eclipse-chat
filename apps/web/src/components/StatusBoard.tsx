@@ -522,7 +522,7 @@ export function StatusBoard({
         </p>
       )}
 
-      <div style={board}>
+      <div className="ec-status-board" style={board}>
         {(
           [
             { key: "open", title: "Открытые", items: open, color: "var(--ec-status-warn)" },

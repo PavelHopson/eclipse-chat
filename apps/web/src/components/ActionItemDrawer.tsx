@@ -310,13 +310,19 @@ export function ActionItemDrawer({
     }
   }, [detail?.id, detail?.updatedAt]);
 
-  // Escape closes drawer.
+  // Escape closes drawer + body scroll-lock пока drawer открыт.
+  // v0.65: на mobile drawer fullscreen, background scroll'ил под backdrop.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
     document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
   }, [onClose]);
 
   const typeMeta = detail ? TYPE_META[detail.type] : null;
@@ -398,7 +404,7 @@ export function ActionItemDrawer({
   return (
     <>
       <div style={backdrop} onClick={onClose} aria-hidden />
-      <aside style={drawer} role="dialog" aria-label="Детали задачи">
+      <aside className="ec-action-drawer" style={drawer} role="dialog" aria-label="Детали задачи">
         <header style={headerStyle}>
           {detail && typeMeta ? (
             <>
@@ -446,6 +452,7 @@ export function ActionItemDrawer({
           <button
             type="button"
             onClick={onClose}
+            className="ec-drawer-close"
             style={closeBtn}
             aria-label="Закрыть"
             title="Закрыть · Esc"

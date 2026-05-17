@@ -138,7 +138,7 @@ export function MusicMiniPlayer({
       : 0;
 
   return (
-    <div style={wrap} role="region" aria-label="Общий плеер канала">
+    <div className="ec-music-mini-player" style={wrap} role="region" aria-label="Общий плеер канала">
       <button
         type="button"
         onClick={() => void onTogglePlayPause()}
