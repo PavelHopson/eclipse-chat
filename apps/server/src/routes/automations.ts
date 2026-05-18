@@ -24,13 +24,59 @@ const triggerSchema = z.object({
   keyword: z.string().max(200).optional(),
   channelId: z.string().min(1).nullable().optional(),
   caseInsensitive: z.boolean().optional(),
+  /** v0.82 #19 phase 1: regex pattern. Validate compileability на save. */
+  regex: z
+    .string()
+    .max(500)
+    .optional()
+    .refine(
+      (v) => {
+        if (!v) return true;
+        try {
+          new RegExp(v);
+          return true;
+        } catch {
+          return false;
+        }
+      },
+      { message: "Invalid regex pattern" },
+    ),
 });
 
-const actionSchema = z.object({
+const actionPostMessageSchema = z.object({
   type: z.literal("POST_MESSAGE"),
   channelId: z.string().min(1),
   template: z.string().min(1).max(2000),
 });
+
+const actionCreateTaskSchema = z.object({
+  type: z.literal("CREATE_TASK"),
+  taskType: z.enum(["TASK", "DECISION", "FOLLOW_UP"]),
+  titleTemplate: z.string().min(1).max(300),
+});
+
+const actionSendWebhookSchema = z.object({
+  type: z.literal("SEND_WEBHOOK"),
+  url: z
+    .string()
+    .min(1)
+    .max(400)
+    .refine((v) => {
+      try {
+        const u = new URL(v);
+        return u.protocol === "https:";
+      } catch {
+        return false;
+      }
+    }, "URL must start with https://"),
+  secret: z.string().min(8).max(200).optional(),
+});
+
+const actionSchema = z.discriminatedUnion("type", [
+  actionPostMessageSchema,
+  actionCreateTaskSchema,
+  actionSendWebhookSchema,
+]);
 
 const createBody = z.object({
   name: z.string().trim().min(1).max(120),
@@ -131,20 +177,27 @@ export async function registerAutomationRoutes(app: FastifyInstance) {
       if (!parsed.success) {
         return reply.status(400).send({ error: "Invalid body" });
       }
-      // Validate target channels принадлежат тому же серверу.
-      const targetChannel = await db.channel.findUnique({
-        where: { id: parsed.data.action.channelId },
-        select: { serverId: true, type: true },
-      });
-      if (!targetChannel || targetChannel.serverId !== serverId) {
-        return reply
-          .status(400)
-          .send({ error: "Action targets a channel not in this workspace" });
-      }
-      if (targetChannel.type !== "TEXT" && targetChannel.type !== "BROADCAST") {
-        return reply
-          .status(400)
-          .send({ error: "Action target must be TEXT / BROADCAST channel" });
+      // POST_MESSAGE требует target channel в том же сервере. Для
+      // CREATE_TASK / SEND_WEBHOOK target — это исходный канал или внешний
+      // URL, validate отдельно.
+      if (parsed.data.action.type === "POST_MESSAGE") {
+        const targetChannel = await db.channel.findUnique({
+          where: { id: parsed.data.action.channelId },
+          select: { serverId: true, type: true },
+        });
+        if (!targetChannel || targetChannel.serverId !== serverId) {
+          return reply
+            .status(400)
+            .send({ error: "Action targets a channel not in this workspace" });
+        }
+        if (
+          targetChannel.type !== "TEXT" &&
+          targetChannel.type !== "BROADCAST"
+        ) {
+          return reply
+            .status(400)
+            .send({ error: "Action target must be TEXT / BROADCAST channel" });
+        }
       }
       if (parsed.data.trigger.channelId) {
         const srcChannel = await db.channel.findUnique({

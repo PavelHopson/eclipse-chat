@@ -1,6 +1,14 @@
+import { createHmac, randomUUID } from "node:crypto";
 import type { FastifyBaseLogger } from "fastify";
+import {
+  actionItemInclude,
+  serializeActionItem,
+} from "./actionItems.js";
 import { db } from "./db.js";
-import { emitMessageOnChannel } from "./realtime.js";
+import {
+  emitActionItemCreated,
+  emitMessageOnChannel,
+} from "./realtime.js";
 
 /**
  * v0.80 #26 phase 1: Automation engine.
@@ -53,6 +61,11 @@ type MessageTrigger = {
   keyword?: string;
   channelId?: string | null;
   caseInsensitive?: boolean;
+  /** v0.82 #19 phase 1: regex pattern (alternative to substring keyword).
+   *  Применяется ПОСЛЕ keyword match — если оба заданы, оба должны pass'нуть.
+   *  Invalid regex → rule skip (silent). Anchors допустимы; flags определяются
+   *  отдельно через caseInsensitive (применяется к regex тоже). */
+  regex?: string;
 };
 
 type PostMessageAction = {
@@ -60,6 +73,25 @@ type PostMessageAction = {
   channelId: string;
   template: string;
 };
+
+/** v0.82 #19 phase 1: создать ActionItem на source-message. */
+type CreateTaskAction = {
+  type: "CREATE_TASK";
+  /** TASK / DECISION / FOLLOW_UP — какой тип создать. */
+  taskType: "TASK" | "DECISION" | "FOLLOW_UP";
+  /** Template title. Та же {{user}}/{{message}}/{{channel}} палитра. */
+  titleTemplate: string;
+};
+
+/** v0.82 #19 phase 1: outbound webhook с HMAC-SHA256 signature. */
+type SendWebhookAction = {
+  type: "SEND_WEBHOOK";
+  url: string;
+  /** Secret для HMAC. Тот же шаблон что у bot webhooks. */
+  secret?: string;
+};
+
+type ActionDef = PostMessageAction | CreateTaskAction | SendWebhookAction;
 
 function parseTrigger(raw: string): MessageTrigger | null {
   try {
@@ -71,16 +103,28 @@ function parseTrigger(raw: string): MessageTrigger | null {
   return null;
 }
 
-function parseAction(raw: string): PostMessageAction | null {
+function parseAction(raw: string): ActionDef | null {
   try {
     const a = JSON.parse(raw);
+    if (!a || typeof a.type !== "string") return null;
     if (
-      a &&
       a.type === "POST_MESSAGE" &&
       typeof a.channelId === "string" &&
       typeof a.template === "string"
     ) {
       return a as PostMessageAction;
+    }
+    if (
+      a.type === "CREATE_TASK" &&
+      (a.taskType === "TASK" ||
+        a.taskType === "DECISION" ||
+        a.taskType === "FOLLOW_UP") &&
+      typeof a.titleTemplate === "string"
+    ) {
+      return a as CreateTaskAction;
+    }
+    if (a.type === "SEND_WEBHOOK" && typeof a.url === "string") {
+      return a as SendWebhookAction;
     }
   } catch {
     /* ignore */
@@ -165,8 +209,25 @@ async function doEvaluate(
   });
   if (rules.length === 0) return;
 
-  // Lookup target channels с серверной проверкой за один query.
-  // Action.channelId должен принадлежать тому же серверу.
+  // Pre-fetch source channel name (для template placeholders).
+  let userDisplay = "—";
+  if (authorUserId) {
+    const u = await db.user.findUnique({
+      where: { id: authorUserId },
+      select: { displayName: true },
+    });
+    userDisplay = u?.displayName ?? "—";
+  }
+  const sourceChannel = await db.channel.findUnique({
+    where: { id: channelId },
+    select: { name: true },
+  });
+  const tplCtx = {
+    user: userDisplay,
+    message: content,
+    channel: sourceChannel?.name ?? "—",
+  };
+
   for (const rule of rules) {
     const trig = parseTrigger(rule.trigger);
     const act = parseAction(rule.action);
@@ -179,64 +240,53 @@ async function doEvaluate(
     const ci = trig.caseInsensitive ?? true;
     if (!matchKeyword(content, trig.keyword ?? "", ci)) continue;
 
-    // Validate target channel в same server.
-    const target = await db.channel.findUnique({
-      where: { id: act.channelId },
-      select: { id: true, serverId: true, type: true, name: true },
-    });
-    if (!target || target.serverId !== serverId) continue;
-    if (target.type !== "TEXT" && target.type !== "BROADCAST") continue;
-
-    // Resolve author display name (для placeholder).
-    let userDisplay = "—";
-    if (authorUserId) {
-      const u = await db.user.findUnique({
-        where: { id: authorUserId },
-        select: { displayName: true },
-      });
-      userDisplay = u?.displayName ?? "—";
-    }
-    const sourceChannel = await db.channel.findUnique({
-      where: { id: channelId },
-      select: { name: true },
-    });
-    const rendered = renderTemplate(act.template, {
-      user: userDisplay,
-      message: content,
-      channel: sourceChannel?.name ?? "—",
-    });
-    if (!rendered.trim()) continue;
-
-    const systemUserId = await getSystemUserId();
-    if (!systemUserId) {
-      log.warn({ ruleId: rule.id }, "automation: no system user for posting");
-      continue;
+    // v0.82 #19 phase 1: regex match (если задан).
+    if (trig.regex) {
+      try {
+        const re = new RegExp(trig.regex, ci ? "i" : "");
+        if (!re.test(content)) continue;
+      } catch {
+        // Invalid regex — skip правило тихо. UI должен валидировать на save.
+        continue;
+      }
     }
 
+    let fired = false;
     try {
-      const posted = await db.message.create({
-        data: {
-          content: rendered.slice(0, 4000),
-          channelId: act.channelId,
-          userId: systemUserId,
-        },
-        include: {
-          user: {
-            select: { id: true, displayName: true, avatar: true },
-          },
-        },
-      });
-      emitMessageOnChannel(act.channelId, {
-        messageId: posted.id,
-        content: posted.content,
-        channelId: act.channelId,
-        userId: posted.userId ?? "",
-        displayName: posted.user?.displayName ?? "Automation",
-        avatar: posted.user?.avatar ?? null,
-        isBot: true,
-        createdAt: posted.createdAt.toISOString(),
-      });
-      // Update fireCount + lastFiredAt fire-and-forget (не блокируем эмит).
+      if (act.type === "POST_MESSAGE") {
+        fired = await fireActionPostMessage(act, serverId, tplCtx, log, rule.id);
+      } else if (act.type === "CREATE_TASK") {
+        fired = await fireActionCreateTask(
+          act,
+          serverId,
+          channelId,
+          messageId,
+          authorUserId,
+          tplCtx,
+          log,
+          rule.id,
+        );
+      } else if (act.type === "SEND_WEBHOOK") {
+        fired = await fireActionSendWebhook(
+          act,
+          serverId,
+          channelId,
+          messageId,
+          authorUserId,
+          content,
+          rule.id,
+          rule.name,
+          log,
+        );
+      }
+    } catch (err) {
+      log.warn(
+        { err, ruleId: rule.id, actionType: act.type },
+        "automation action failed; continuing",
+      );
+    }
+
+    if (fired) {
       await db.automationRule.update({
         where: { id: rule.id },
         data: {
@@ -245,14 +295,188 @@ async function doEvaluate(
         },
       });
       log.info(
-        { ruleId: rule.id, targetChannelId: act.channelId },
+        { ruleId: rule.id, actionType: act.type },
         "automation rule fired",
       );
-    } catch (err) {
-      log.warn(
-        { err, ruleId: rule.id },
-        "automation rule fire failed; continuing",
-      );
     }
+  }
+}
+
+async function fireActionPostMessage(
+  act: PostMessageAction,
+  serverId: string,
+  tplCtx: { user: string; message: string; channel: string },
+  log: FastifyBaseLogger,
+  ruleId: string,
+): Promise<boolean> {
+  const target = await db.channel.findUnique({
+    where: { id: act.channelId },
+    select: { id: true, serverId: true, type: true, name: true },
+  });
+  if (!target || target.serverId !== serverId) return false;
+  if (target.type !== "TEXT" && target.type !== "BROADCAST") return false;
+
+  const rendered = renderTemplate(act.template, tplCtx);
+  if (!rendered.trim()) return false;
+  const systemUserId = await getSystemUserId();
+  if (!systemUserId) {
+    log.warn({ ruleId }, "automation: no system user for posting");
+    return false;
+  }
+  const posted = await db.message.create({
+    data: {
+      content: rendered.slice(0, 4000),
+      channelId: act.channelId,
+      userId: systemUserId,
+    },
+    include: {
+      user: { select: { id: true, displayName: true, avatar: true } },
+    },
+  });
+  emitMessageOnChannel(act.channelId, {
+    messageId: posted.id,
+    content: posted.content,
+    channelId: act.channelId,
+    userId: posted.userId ?? "",
+    displayName: posted.user?.displayName ?? "Automation",
+    avatar: posted.user?.avatar ?? null,
+    isBot: true,
+    createdAt: posted.createdAt.toISOString(),
+  });
+  return true;
+}
+
+async function fireActionCreateTask(
+  act: CreateTaskAction,
+  serverId: string,
+  channelId: string,
+  sourceMessageId: string,
+  authorUserId: string | null,
+  tplCtx: { user: string; message: string; channel: string },
+  log: FastifyBaseLogger,
+  ruleId: string,
+): Promise<boolean> {
+  const title = renderTemplate(act.titleTemplate, tplCtx).trim().slice(0, 160);
+  if (!title) return false;
+  const systemUserId = (await getSystemUserId()) ?? authorUserId;
+  if (!systemUserId) {
+    log.warn({ ruleId }, "automation: no creator user for CREATE_TASK");
+    return false;
+  }
+  try {
+    const item = await db.actionItem.create({
+      data: {
+        title,
+        type: act.taskType,
+        serverId,
+        channelId,
+        sourceMessageId,
+        createdByUserId: systemUserId,
+        activities: {
+          create: {
+            userId: systemUserId,
+            type: "CREATED",
+            payload: JSON.stringify({
+              source: "automation",
+              ruleId,
+              type: act.taskType,
+            }),
+          },
+        },
+      },
+      include: actionItemInclude,
+    });
+    const payload = serializeActionItem(item);
+    emitActionItemCreated(channelId, payload);
+    return true;
+  } catch (err) {
+    // P2002 (unique sourceMessageId+type) — already exists; считаем не-fired.
+    if (
+      err instanceof Error &&
+      "code" in err &&
+      (err as { code?: string }).code === "P2002"
+    ) {
+      return false;
+    }
+    throw err;
+  }
+}
+
+async function fireActionSendWebhook(
+  act: SendWebhookAction,
+  serverId: string,
+  channelId: string,
+  messageId: string,
+  authorUserId: string | null,
+  content: string,
+  ruleId: string,
+  ruleName: string,
+  log: FastifyBaseLogger,
+): Promise<boolean> {
+  // SSRF defense (как в lib/linkPreview): запрет на http://localhost,
+  // private-IP ranges, file:/ftp:/gopher:. Только https://.
+  let u: URL;
+  try {
+    u = new URL(act.url);
+  } catch {
+    return false;
+  }
+  if (u.protocol !== "https:") return false;
+  const host = u.hostname;
+  if (
+    host === "localhost" ||
+    host === "0.0.0.0" ||
+    /^127\./.test(host) ||
+    /^10\./.test(host) ||
+    /^192\.168\./.test(host) ||
+    /^169\.254\./.test(host) ||
+    /^172\.(1[6-9]|2\d|3[0-1])\./.test(host)
+  ) {
+    return false;
+  }
+
+  const body = JSON.stringify({
+    eventId: randomUUID(),
+    eventType: "automation.fired",
+    ruleId,
+    ruleName,
+    serverId,
+    channelId,
+    messageId,
+    authorUserId,
+    content: content.slice(0, 2000),
+    firedAt: new Date().toISOString(),
+  });
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    "User-Agent": "EclipseChat-Automation/1.0",
+  };
+  if (act.secret) {
+    const sig = createHmac("sha256", act.secret).update(body).digest("hex");
+    headers["X-Eclipse-Signature"] = `sha256=${sig}`;
+  }
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), 8_000);
+  try {
+    const res = await fetch(act.url, {
+      method: "POST",
+      headers,
+      body,
+      redirect: "manual",
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      log.warn(
+        { ruleId, status: res.status },
+        "automation webhook returned non-2xx",
+      );
+      return false;
+    }
+    return true;
+  } catch (err) {
+    log.warn({ err, ruleId }, "automation webhook fetch failed");
+    return false;
+  } finally {
+    clearTimeout(t);
   }
 }

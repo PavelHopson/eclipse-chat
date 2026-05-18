@@ -64,18 +64,34 @@ type Tab =
   | "audit"
   | "analytics";
 
-/** v0.80 #26 phase 1: AutomationRule shape от backend. */
+/** v0.80 #26 phase 1: AutomationRule shape от backend.
+ *  v0.82 #19 phase 1: расширение discriminator'ов. */
 type AutomationTrigger = {
   type: "MESSAGE_NEW";
   keyword?: string;
   channelId?: string | null;
   caseInsensitive?: boolean;
+  regex?: string;
 };
-type AutomationAction = {
+type AutomationActionPostMessage = {
   type: "POST_MESSAGE";
   channelId: string;
   template: string;
 };
+type AutomationActionCreateTask = {
+  type: "CREATE_TASK";
+  taskType: "TASK" | "DECISION" | "FOLLOW_UP";
+  titleTemplate: string;
+};
+type AutomationActionSendWebhook = {
+  type: "SEND_WEBHOOK";
+  url: string;
+  secret?: string;
+};
+type AutomationAction =
+  | AutomationActionPostMessage
+  | AutomationActionCreateTask
+  | AutomationActionSendWebhook;
 type AutomationRule = {
   id: string;
   serverId: string;
@@ -323,10 +339,8 @@ export function AdminPanel({
 
   const createRule = async (input: {
     name: string;
-    keyword: string;
-    triggerChannelId: string | null;
-    actionChannelId: string;
-    template: string;
+    trigger: AutomationTrigger;
+    action: AutomationAction;
   }) => {
     try {
       const data = await apiJson<{ rule: AutomationRule }>(
@@ -337,17 +351,8 @@ export function AdminPanel({
           body: JSON.stringify({
             name: input.name,
             enabled: true,
-            trigger: {
-              type: "MESSAGE_NEW",
-              keyword: input.keyword || undefined,
-              channelId: input.triggerChannelId,
-              caseInsensitive: true,
-            },
-            action: {
-              type: "POST_MESSAGE",
-              channelId: input.actionChannelId,
-              template: input.template,
-            },
+            trigger: input.trigger,
+            action: input.action,
           }),
         },
       );
@@ -1144,10 +1149,69 @@ function AutomationRow({
     ? channels.find((c) => c.id === rule.trigger?.channelId)?.name ??
       "(удалён)"
     : "любой канал";
-  const actChannelName = rule.action?.channelId
-    ? channels.find((c) => c.id === rule.action?.channelId)?.name ??
-      "(удалён)"
-    : "—";
+  // v0.82 #19 phase 1: per-action-type description.
+  const actionLabel =
+    rule.action?.type === "POST_MESSAGE"
+      ? "Постить в"
+      : rule.action?.type === "CREATE_TASK"
+        ? "Создать"
+        : rule.action?.type === "SEND_WEBHOOK"
+          ? "Webhook →"
+          : "—";
+  const actionPreview =
+    rule.action?.type === "POST_MESSAGE"
+      ? (() => {
+          const a = rule.action as AutomationActionPostMessage;
+          const ch =
+            channels.find((c) => c.id === a.channelId)?.name ?? "(удалён)";
+          return (
+            <>
+              <strong style={{ color: "var(--ec-accent)" }}>#{ch}</strong>:{" "}
+              <span style={{ fontStyle: "italic" }}>
+                {a.template.slice(0, 120)}
+              </span>
+            </>
+          );
+        })()
+      : rule.action?.type === "CREATE_TASK"
+        ? (() => {
+            const a = rule.action as AutomationActionCreateTask;
+            const typeLabel =
+              a.taskType === "DECISION"
+                ? "решение"
+                : a.taskType === "FOLLOW_UP"
+                  ? "follow-up"
+                  : "задачу";
+            return (
+              <>
+                <strong style={{ color: "var(--ec-accent)" }}>{typeLabel}</strong>
+                : <span style={{ fontStyle: "italic" }}>
+                  {a.titleTemplate.slice(0, 120)}
+                </span>
+              </>
+            );
+          })()
+        : rule.action?.type === "SEND_WEBHOOK"
+          ? (() => {
+              const a = rule.action as AutomationActionSendWebhook;
+              let host = a.url;
+              try {
+                host = new URL(a.url).host;
+              } catch {
+                /* ignore */
+              }
+              return (
+                <span
+                  style={{
+                    fontFamily: "var(--ec-font-mono)",
+                    color: "var(--ec-accent)",
+                  }}
+                >
+                  {host}
+                </span>
+              );
+            })()
+          : null;
   return (
     <div
       style={{
@@ -1215,17 +1279,15 @@ function AutomationRow({
           }}
         >
           <strong style={{ color: "var(--ec-text)" }}>WHEN</strong>{" "}
-          {rule.trigger?.keyword
-            ? `сообщение содержит «${rule.trigger.keyword}»`
-            : "любое сообщение"}{" "}
+          {rule.trigger?.regex
+            ? `regex /${rule.trigger.regex}/`
+            : rule.trigger?.keyword
+              ? `сообщение содержит «${rule.trigger.keyword}»`
+              : "любое сообщение"}{" "}
           в <strong style={{ color: "var(--ec-accent)" }}>#{trigChannelName}</strong>
           <br />
-          <strong style={{ color: "var(--ec-text)" }}>THEN</strong> постить в{" "}
-          <strong style={{ color: "var(--ec-accent)" }}>#{actChannelName}</strong>
-          :{" "}
-          <span style={{ fontStyle: "italic" }}>
-            {(rule.action?.template ?? "").slice(0, 120)}
-          </span>
+          <strong style={{ color: "var(--ec-text)" }}>THEN</strong> {actionLabel}{" "}
+          {actionPreview}
         </div>
       </div>
       {canEdit && (
@@ -1269,6 +1331,8 @@ function AutomationRow({
   );
 }
 
+type ActionKind = "POST_MESSAGE" | "CREATE_TASK" | "SEND_WEBHOOK";
+
 function CreateRuleForm({
   channels,
   onCancel,
@@ -1278,10 +1342,8 @@ function CreateRuleForm({
   onCancel: () => void;
   onCreate: (input: {
     name: string;
-    keyword: string;
-    triggerChannelId: string | null;
-    actionChannelId: string;
-    template: string;
+    trigger: AutomationTrigger;
+    action: AutomationAction;
   }) => void;
 }) {
   const textChannels = channels.filter(
@@ -1289,9 +1351,84 @@ function CreateRuleForm({
   );
   const [name, setName] = useState("");
   const [keyword, setKeyword] = useState("");
+  const [useRegex, setUseRegex] = useState(false);
+  const [regex, setRegex] = useState("");
   const [trigCh, setTrigCh] = useState<string>("");
+  const [actionKind, setActionKind] = useState<ActionKind>("POST_MESSAGE");
+  // POST_MESSAGE fields
   const [actCh, setActCh] = useState<string>(textChannels[0]?.id ?? "");
   const [tmpl, setTmpl] = useState("");
+  // CREATE_TASK fields
+  const [taskType, setTaskType] = useState<"TASK" | "DECISION" | "FOLLOW_UP">(
+    "TASK",
+  );
+  const [titleTemplate, setTitleTemplate] = useState("");
+  // SEND_WEBHOOK fields
+  const [webhookUrl, setWebhookUrl] = useState("");
+  const [webhookSecret, setWebhookSecret] = useState("");
+
+  const regexValid = useMemo(() => {
+    if (!useRegex || !regex) return true;
+    try {
+      new RegExp(regex);
+      return true;
+    } catch {
+      return false;
+    }
+  }, [useRegex, regex]);
+
+  const canSubmit =
+    name.trim() &&
+    regexValid &&
+    (actionKind === "POST_MESSAGE"
+      ? !!actCh && !!tmpl.trim()
+      : actionKind === "CREATE_TASK"
+        ? !!titleTemplate.trim()
+        : actionKind === "SEND_WEBHOOK"
+          ? webhookUrl.trim().startsWith("https://")
+          : false);
+
+  const inputStyle: React.CSSProperties = {
+    padding: "0.4rem 0.6rem",
+    borderRadius: "var(--ec-radius-sm)",
+    background: "var(--ec-input-bg)",
+    border: "1px solid var(--ec-border-default)",
+    color: "var(--ec-text)",
+    fontSize: "var(--ec-text-sm)",
+  };
+
+  const handleSubmit = () => {
+    const trigger: AutomationTrigger = {
+      type: "MESSAGE_NEW",
+      caseInsensitive: true,
+      channelId: trigCh || null,
+      ...(useRegex
+        ? { regex: regex.trim() || undefined }
+        : { keyword: keyword.trim() || undefined }),
+    };
+    let action: AutomationAction;
+    if (actionKind === "POST_MESSAGE") {
+      action = {
+        type: "POST_MESSAGE",
+        channelId: actCh,
+        template: tmpl.trim(),
+      };
+    } else if (actionKind === "CREATE_TASK") {
+      action = {
+        type: "CREATE_TASK",
+        taskType,
+        titleTemplate: titleTemplate.trim(),
+      };
+    } else {
+      action = {
+        type: "SEND_WEBHOOK",
+        url: webhookUrl.trim(),
+        ...(webhookSecret.trim() ? { secret: webhookSecret.trim() } : {}),
+      };
+    }
+    onCreate({ name: name.trim(), trigger, action });
+  };
+
   return (
     <div
       style={{
@@ -1310,7 +1447,6 @@ function CreateRuleForm({
           fontSize: "var(--ec-text-md)",
           fontWeight: 700,
           color: "var(--ec-text-strong)",
-          letterSpacing: "var(--ec-tracking-tight)",
         }}
       >
         Новое правило
@@ -1319,17 +1455,40 @@ function CreateRuleForm({
         type="text"
         value={name}
         onChange={(e) => setName(e.target.value)}
-        placeholder="Название (например, «Sales-keyword → #sales»)"
+        placeholder="Название (например, «'купить' → #sales»)"
         maxLength={120}
-        style={{
-          padding: "0.4rem 0.6rem",
-          borderRadius: "var(--ec-radius-sm)",
-          background: "var(--ec-input-bg)",
-          border: "1px solid var(--ec-border-default)",
-          color: "var(--ec-text)",
-          fontSize: "var(--ec-text-sm)",
-        }}
+        style={inputStyle}
       />
+
+      <div style={{ ...cardLabel, marginTop: 4 }}>WHEN — триггер</div>
+      <div
+        style={{
+          display: "flex",
+          gap: 12,
+          alignItems: "center",
+          fontSize: "var(--ec-text-2xs)",
+          color: "var(--ec-text-muted)",
+        }}
+      >
+        <label style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <input
+            type="radio"
+            name="match-mode"
+            checked={!useRegex}
+            onChange={() => setUseRegex(false)}
+          />
+          substring
+        </label>
+        <label style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <input
+            type="radio"
+            name="match-mode"
+            checked={useRegex}
+            onChange={() => setUseRegex(true)}
+          />
+          regex
+        </label>
+      </div>
       <div
         style={{
           display: "grid",
@@ -1337,32 +1496,35 @@ function CreateRuleForm({
           gap: "var(--ec-space-2)",
         }}
       >
-        <input
-          type="text"
-          value={keyword}
-          onChange={(e) => setKeyword(e.target.value)}
-          placeholder="Keyword (например, «купить»)"
-          maxLength={200}
-          style={{
-            padding: "0.4rem 0.6rem",
-            borderRadius: "var(--ec-radius-sm)",
-            background: "var(--ec-input-bg)",
-            border: "1px solid var(--ec-border-default)",
-            color: "var(--ec-text)",
-            fontSize: "var(--ec-text-sm)",
-          }}
-        />
+        {useRegex ? (
+          <input
+            type="text"
+            value={regex}
+            onChange={(e) => setRegex(e.target.value)}
+            placeholder={'Regex: \\bкупит[ьеть]\\b'}
+            maxLength={500}
+            style={{
+              ...inputStyle,
+              fontFamily: "var(--ec-font-mono)",
+              borderColor: regexValid
+                ? "var(--ec-border-default)"
+                : "var(--ec-danger)",
+            }}
+          />
+        ) : (
+          <input
+            type="text"
+            value={keyword}
+            onChange={(e) => setKeyword(e.target.value)}
+            placeholder="Keyword (например, «купить»)"
+            maxLength={200}
+            style={inputStyle}
+          />
+        )}
         <select
           value={trigCh}
           onChange={(e) => setTrigCh(e.target.value)}
-          style={{
-            padding: "0.4rem 0.6rem",
-            borderRadius: "var(--ec-radius-sm)",
-            background: "var(--ec-input-bg)",
-            border: "1px solid var(--ec-border-default)",
-            color: "var(--ec-text)",
-            fontSize: "var(--ec-text-sm)",
-          }}
+          style={inputStyle}
         >
           <option value="">— любой канал —</option>
           {textChannels.map((c) => (
@@ -1372,42 +1534,103 @@ function CreateRuleForm({
           ))}
         </select>
       </div>
+
+      <div style={{ ...cardLabel, marginTop: 4 }}>THEN — действие</div>
       <select
-        value={actCh}
-        onChange={(e) => setActCh(e.target.value)}
+        value={actionKind}
+        onChange={(e) => setActionKind(e.target.value as ActionKind)}
+        style={inputStyle}
+      >
+        <option value="POST_MESSAGE">Запостить сообщение</option>
+        <option value="CREATE_TASK">Создать задачу / решение / follow-up</option>
+        <option value="SEND_WEBHOOK">Отправить webhook</option>
+      </select>
+      {actionKind === "POST_MESSAGE" && (
+        <>
+          <select
+            value={actCh}
+            onChange={(e) => setActCh(e.target.value)}
+            style={inputStyle}
+          >
+            {textChannels.map((c) => (
+              <option key={c.id} value={c.id}>
+                Постить в #{c.name}
+              </option>
+            ))}
+          </select>
+          <textarea
+            value={tmpl}
+            onChange={(e) => setTmpl(e.target.value)}
+            placeholder="Шаблон: «{{user}} упомянул(а) keyword в #{{channel}}»"
+            maxLength={2000}
+            rows={3}
+            style={{ ...inputStyle, resize: "vertical", fontFamily: "inherit" }}
+          />
+        </>
+      )}
+      {actionKind === "CREATE_TASK" && (
+        <>
+          <select
+            value={taskType}
+            onChange={(e) =>
+              setTaskType(e.target.value as "TASK" | "DECISION" | "FOLLOW_UP")
+            }
+            style={inputStyle}
+          >
+            <option value="TASK">Задача</option>
+            <option value="DECISION">Решение</option>
+            <option value="FOLLOW_UP">Follow-up</option>
+          </select>
+          <textarea
+            value={titleTemplate}
+            onChange={(e) => setTitleTemplate(e.target.value)}
+            placeholder="Title-шаблон: «Уточнить запрос от {{user}}»"
+            maxLength={300}
+            rows={2}
+            style={{ ...inputStyle, resize: "vertical", fontFamily: "inherit" }}
+          />
+        </>
+      )}
+      {actionKind === "SEND_WEBHOOK" && (
+        <>
+          <input
+            type="url"
+            value={webhookUrl}
+            onChange={(e) => setWebhookUrl(e.target.value)}
+            placeholder="https://example.com/webhook"
+            maxLength={400}
+            style={{ ...inputStyle, fontFamily: "var(--ec-font-mono)" }}
+          />
+          <input
+            type="text"
+            value={webhookSecret}
+            onChange={(e) => setWebhookSecret(e.target.value)}
+            placeholder="HMAC secret (опционально, X-Eclipse-Signature)"
+            maxLength={200}
+            style={{ ...inputStyle, fontFamily: "var(--ec-font-mono)" }}
+          />
+          <p
+            style={{
+              margin: 0,
+              fontSize: "var(--ec-text-2xs)",
+              color: "var(--ec-text-dim)",
+              lineHeight: 1.4,
+            }}
+          >
+            Только https://. SSRF guard — localhost / private IPs отвергаются.
+            Тело: JSON {`{eventType, ruleId, serverId, content, ...}`}.
+          </p>
+        </>
+      )}
+
+      <div
         style={{
-          padding: "0.4rem 0.6rem",
-          borderRadius: "var(--ec-radius-sm)",
-          background: "var(--ec-input-bg)",
-          border: "1px solid var(--ec-border-default)",
-          color: "var(--ec-text)",
-          fontSize: "var(--ec-text-sm)",
+          display: "flex",
+          gap: 6,
+          justifyContent: "flex-end",
+          marginTop: 4,
         }}
       >
-        {textChannels.map((c) => (
-          <option key={c.id} value={c.id}>
-            Постить в #{c.name}
-          </option>
-        ))}
-      </select>
-      <textarea
-        value={tmpl}
-        onChange={(e) => setTmpl(e.target.value)}
-        placeholder="Шаблон: «{{user}} упомянул(а) ключевое слово в #{{channel}}»"
-        maxLength={2000}
-        rows={3}
-        style={{
-          padding: "0.4rem 0.6rem",
-          borderRadius: "var(--ec-radius-sm)",
-          background: "var(--ec-input-bg)",
-          border: "1px solid var(--ec-border-default)",
-          color: "var(--ec-text)",
-          fontSize: "var(--ec-text-sm)",
-          fontFamily: "inherit",
-          resize: "vertical",
-        }}
-      />
-      <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
         <button
           type="button"
           onClick={onCancel}
@@ -1417,16 +1640,8 @@ function CreateRuleForm({
         </button>
         <button
           type="button"
-          disabled={!name.trim() || !actCh || !tmpl.trim()}
-          onClick={() =>
-            onCreate({
-              name: name.trim(),
-              keyword: keyword.trim(),
-              triggerChannelId: trigCh || null,
-              actionChannelId: actCh,
-              template: tmpl.trim(),
-            })
-          }
+          disabled={!canSubmit}
+          onClick={handleSubmit}
           className="ec-btn ec-btn--primary ec-btn--sm"
         >
           Создать
