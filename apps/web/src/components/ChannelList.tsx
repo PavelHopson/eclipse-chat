@@ -37,6 +37,11 @@ type Props = {
   serverMode?: "ENGINEERING" | "CLIENT";
   /** v0.83 #24 phase 1: открыть клиентский портал. */
   onOpenClientPortal?: () => void;
+  /** v0.85 #27 phase 4: muted channel ids (per-user). Если undefined —
+   *  feature не активен и UI скрывает bell-toggle. */
+  mutedChannels?: ReadonlySet<string>;
+  /** v0.85 #27 phase 4: toggle mute. */
+  onToggleMute?: (channelId: string, mute: boolean) => void;
   /** v0.59 phase 1: список таблиц активного пространства. */
   tables?: Array<{ id: string; name: string; rowCount: number }>;
   /** Открыть Operational Table panel по id. */
@@ -326,6 +331,8 @@ export function ChannelList({
   teamHealthActive,
   serverMode,
   onOpenClientPortal,
+  mutedChannels,
+  onToggleMute,
   tables,
   onOpenTable,
   onCreateTable,
@@ -616,6 +623,63 @@ export function ChannelList({
         {!hasUnread && !isActive && c.type === "TEXT" && c._count.messages > 0 && (
           <span className="ec-channel-count">{c._count.messages}</span>
         )}
+        {onToggleMute && mutedChannels && (() => {
+          const isMuted = mutedChannels.has(c.id);
+          return (
+            <span
+              role="button"
+              tabIndex={0}
+              aria-label={isMuted ? `Снять заглушку с ${c.name}` : `Заглушить ${c.name}`}
+              title={isMuted ? "Заглушено — клик чтобы вернуть push" : "Заглушить push"}
+              style={{
+                ...deleteBtn,
+                // Muted каналы — bell-off иконка всегда видна (не hover-only).
+                opacity: isMuted ? 0.7 : 0,
+                color: isMuted ? "var(--ec-warn)" : "var(--ec-text-dim)",
+              }}
+              data-channel-action={isMuted ? undefined : "true"}
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleMute(c.id, !isMuted);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onToggleMute(c.id, !isMuted);
+                }
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "var(--ec-surface-3)";
+                e.currentTarget.style.color = isMuted
+                  ? "var(--ec-warn)"
+                  : "var(--ec-text)";
+                e.currentTarget.style.opacity = "1";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "transparent";
+                e.currentTarget.style.color = isMuted
+                  ? "var(--ec-warn)"
+                  : "var(--ec-text-dim)";
+                e.currentTarget.style.opacity = isMuted ? "0.7" : "0";
+              }}
+            >
+              {isMuted ? (
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <line x1="1" y1="1" x2="23" y2="23" />
+                  <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                  <path d="M18.63 13A17.89 17.89 0 0 1 18 8" />
+                  <path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14" />
+                </svg>
+              ) : (
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+                  <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                </svg>
+              )}
+            </span>
+          );
+        })()}
         {editable && onOpenSettings && (
           <span
             data-channel-action

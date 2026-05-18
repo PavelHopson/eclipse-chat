@@ -129,11 +129,13 @@ export async function runEscalationScan(log: FastifyBaseLogger): Promise<{
       );
       void notifyUsers(
         recipients,
+        "escalation",
         {
           title: `Эскалация: ${item.title}`,
           body: `Задача просрочена на 48+ часов и до сих пор открыта.`,
           url: `/eclipse-chat/`,
           tag: `escalation-${item.id}`,
+          channelId: item.channelId,
         },
         log,
       );

@@ -5,6 +5,10 @@ import { Modal } from "./Modal";
 import { TwoFactorSetupModal } from "./TwoFactorSetupModal";
 import type { Profile } from "../hooks/useProfile";
 import { usePushNotifications } from "../hooks/usePushNotifications";
+import {
+  usePushPreferences,
+  type PushPreferences,
+} from "../hooks/usePushPreferences";
 
 type Props = {
   profile: Profile;
@@ -45,6 +49,9 @@ export function ProfileModal({
   const twoFaOn = (profile as Profile & { twoFactorEnabled?: boolean }).twoFactorEnabled === true;
   // v0.84 #27 phase 3: push notifications state.
   const push = usePushNotifications();
+  // v0.85 #27 phase 4: per-event-type toggles. Fetch только когда push enabled.
+  const pushPrefs = usePushPreferences(push.enabled);
+  const [showPrefs, setShowPrefs] = useState(false);
 
   const trimmedName = displayName.trim();
   const trimmedBio = bio.trim();
@@ -263,19 +270,104 @@ export function ProfileModal({
               {push.busy ? "…" : push.enabled ? "Отключить" : "Включить"}
             </button>
             {push.enabled && (
-              <button
-                type="button"
-                onClick={() => void push.sendTest()}
-                className="ec-btn ec-btn--ghost ec-btn--sm"
-                disabled={push.busy}
-                title="Отправить тестовое уведомление"
-              >
-                Тест
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={() => void push.sendTest()}
+                  className="ec-btn ec-btn--ghost ec-btn--sm"
+                  disabled={push.busy}
+                  title="Отправить тестовое уведомление"
+                >
+                  Тест
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowPrefs((s) => !s)}
+                  className="ec-btn ec-btn--ghost ec-btn--sm"
+                  title="Управление типами уведомлений"
+                >
+                  {showPrefs ? "Скрыть" : "Настроить"}
+                </button>
+              </>
             )}
           </div>
         )}
       </section>
+
+      {/* v0.85 #27 phase 4: per-event-type toggles. Disclosure под push section. */}
+      {push.enabled && showPrefs && (
+        <section
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "var(--ec-space-2)",
+            padding: "var(--ec-space-3) var(--ec-space-4)",
+            background: "hsl(208 16% 10% / 0.5)",
+            border: "1px solid var(--ec-border-subtle)",
+            borderRadius: "var(--ec-radius-md)",
+          }}
+        >
+          <span
+            style={{
+              fontSize: "var(--ec-text-2xs)",
+              fontWeight: 700,
+              letterSpacing: "var(--ec-tracking-caps)",
+              textTransform: "uppercase",
+              color: "var(--ec-text-dim)",
+              marginBottom: 2,
+            }}
+          >
+            Какие события присылать
+          </span>
+          {(
+            [
+              { key: "mentions", label: "Упоминания @меня", hint: "В каналах сервера" },
+              { key: "dms", label: "Личные сообщения", hint: "DM 1-to-1 + группы" },
+              { key: "assignments", label: "Назначения задач", hint: "Меня указали ответственным" },
+              { key: "approvals", label: "Запросы одобрения", hint: "Меня указали approver'ом" },
+              { key: "escalations", label: "Эскалации", hint: "Мои задачи overdue 48h+" },
+            ] as Array<{ key: keyof PushPreferences; label: string; hint: string }>
+          ).map(({ key, label, hint }) => (
+            <label
+              key={key}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr auto",
+                alignItems: "center",
+                gap: "var(--ec-space-3)",
+                cursor: "pointer",
+                padding: "0.35rem 0",
+              }}
+            >
+              <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+                <span style={{ fontSize: "var(--ec-text-sm)", color: "var(--ec-text)" }}>
+                  {label}
+                </span>
+                <span style={{ fontSize: "var(--ec-text-2xs)", color: "var(--ec-text-dim)" }}>
+                  {hint}
+                </span>
+              </div>
+              <input
+                type="checkbox"
+                checked={pushPrefs.prefs[key]}
+                onChange={(e) => void pushPrefs.toggle(key, e.target.checked)}
+                disabled={pushPrefs.loading}
+                style={{ accentColor: "var(--ec-accent)", width: 18, height: 18 }}
+              />
+            </label>
+          ))}
+          {pushPrefs.error && (
+            <span
+              style={{
+                fontSize: "var(--ec-text-2xs)",
+                color: "var(--ec-danger)",
+              }}
+            >
+              {pushPrefs.error}
+            </span>
+          )}
+        </section>
+      )}
 
       {show2FA && (
         <TwoFactorSetupModal

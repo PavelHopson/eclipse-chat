@@ -60,6 +60,39 @@ export function isPushEnabled(): boolean {
 }
 
 /**
+ * v0.85 #27 phase 4: event types для per-event-type filtering.
+ *
+ *   mention      — @<displayName> в server channel
+ *   dm           — DM message (1-to-1 или group)
+ *   assignment   — ActionItem.assigneeUserId set на recipient
+ *   approval     — ActionItem.approverUserId set на recipient
+ *   escalation   — overdue 48h+ escalation cron
+ */
+export type NotificationEvent =
+  | "mention"
+  | "dm"
+  | "assignment"
+  | "approval"
+  | "escalation";
+
+/** Маппинг event → поле в NotificationPreferences. */
+const EVENT_TO_PREF: Record<NotificationEvent, keyof PrefRow> = {
+  mention: "mentions",
+  dm: "dms",
+  assignment: "assignments",
+  approval: "approvals",
+  escalation: "escalations",
+};
+
+type PrefRow = {
+  mentions: boolean;
+  dms: boolean;
+  assignments: boolean;
+  approvals: boolean;
+  escalations: boolean;
+};
+
+/**
  * Payload, который сериализуется в JSON и заворачивается web-push'ом.
  * Service worker парсит JSON в `push` event handler'е.
  *
@@ -71,6 +104,10 @@ export function isPushEnabled(): boolean {
  *   - tag — для dedupe одинаковых notifications (новый push с тем же
  *     tag перезаписывает старый, OS уведомляет только один раз).
  *   - icon — optional override (default favicon из manifest).
+ *   - channelId — для per-channel mute check (если user заглушил канал,
+ *     push skip'ается даже если event-type enabled). Phase 4. Если нет
+ *     channelId (например, escalation которая может быть в любом
+ *     канале) — mute check skip'нется.
  */
 export type PushPayload = {
   title: string;
@@ -78,6 +115,8 @@ export type PushPayload = {
   url: string;
   tag?: string;
   icon?: string;
+  /** v0.85: channelId для per-channel mute check. */
+  channelId?: string;
 };
 
 const MAX_TITLE = 60;
@@ -95,13 +134,64 @@ function truncate(s: string, max: number): string {
  * но caller обычно делает `void notifyUser(...)`. Не throws — все errors
  * логируются.
  *
- * Lifecycle:
- *   1. Fetch active subscriptions.
- *   2. Send concurrently, await all.
- *   3. Cleanup expired (HTTP 404 / 410).
- *   4. Bump lastSeenAt для successful sends.
+ * Lifecycle (v0.85 #27 phase 4):
+ *   1. Check per-event-type preference (default enabled). Skip если off.
+ *   2. Check per-channel mute (если payload.channelId задан). Skip если muted.
+ *   3. Fetch active subscriptions.
+ *   4. Send concurrently, await all.
+ *   5. Cleanup expired (HTTP 404 / 410).
+ *   6. Bump lastSeenAt для successful sends.
  */
 export async function notifyUser(
+  userId: string,
+  event: NotificationEvent,
+  payload: PushPayload,
+  log?: FastifyBaseLogger,
+): Promise<{ sent: number; expired: number; failed: number; skipped?: string }> {
+  if (!ensureVapidConfig()) {
+    return { sent: 0, expired: 0, failed: 0 };
+  }
+
+  // v0.85: check user preferences (default = enabled если row отсутствует).
+  const prefs = await db.notificationPreferences.findUnique({
+    where: { userId },
+    select: {
+      mentions: true,
+      dms: true,
+      assignments: true,
+      approvals: true,
+      escalations: true,
+    },
+  });
+  if (prefs) {
+    const fieldName = EVENT_TO_PREF[event];
+    if (prefs[fieldName] === false) {
+      return { sent: 0, expired: 0, failed: 0, skipped: "event-disabled" };
+    }
+  }
+
+  // v0.85: check per-channel mute (если payload содержит channelId).
+  if (payload.channelId) {
+    const muted = await db.mutedChannel.findUnique({
+      where: {
+        userId_channelId: { userId, channelId: payload.channelId },
+      },
+      select: { userId: true },
+    });
+    if (muted) {
+      return { sent: 0, expired: 0, failed: 0, skipped: "channel-muted" };
+    }
+  }
+
+  return notifyUserDirect(userId, payload, log);
+}
+
+/**
+ * Raw send без pref/mute checks — для test-endpoint'а где user явно тестирует
+ * связку. Не должен использоваться для regular triggers (иначе игнорирует
+ * user opt-out).
+ */
+export async function notifyUserDirect(
   userId: string,
   payload: PushPayload,
   log?: FastifyBaseLogger,
@@ -183,14 +273,15 @@ export async function notifyUser(
 /**
  * Notify сразу нескольких user'ов (например — mention двух человек в
  * сообщении). Внутри — parallel Promise.all over notifyUser, не блокирует
- * caller.
+ * caller. v0.85: takes event type для per-recipient pref filtering.
  */
 export async function notifyUsers(
   userIds: readonly string[],
+  event: NotificationEvent,
   payload: PushPayload,
   log?: FastifyBaseLogger,
 ): Promise<void> {
   if (userIds.length === 0) return;
   const unique = Array.from(new Set(userIds));
-  await Promise.all(unique.map((id) => notifyUser(id, payload, log)));
+  await Promise.all(unique.map((id) => notifyUser(id, event, payload, log)));
 }

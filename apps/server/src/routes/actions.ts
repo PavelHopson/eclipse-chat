@@ -476,11 +476,13 @@ export async function registerActionRoutes(app: FastifyInstance) {
       ) {
         void notifyUser(
           parsed.data.assigneeUserId,
+          "assignment",
           {
             title: `Тебе назначили: ${payload.title}`,
             body: `Задача в Eclipse Chat ждёт реакции.`,
             url: `/eclipse-chat/`,
             tag: `action-${payload.id}`,
+            channelId: existing.channelId,
           },
           req.log,
         );
@@ -633,11 +635,13 @@ export async function registerActionRoutes(app: FastifyInstance) {
       if (parsed.data.approverUserId !== userId) {
         void notifyUser(
           parsed.data.approverUserId,
+          "approval",
           {
             title: `Требуется одобрение: ${payload.title}`,
             body: parsed.data.note?.trim() || `Кто-то ждёт твоего решения.`,
             url: `/eclipse-chat/`,
             tag: `approval-${payload.id}`,
+            channelId: item.channelId,
           },
           req.log,
         );

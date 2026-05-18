@@ -58,6 +58,7 @@ import { useMessages } from "../hooks/useMessages";
 import { useNotifications } from "../hooks/useNotifications";
 import { useFocusMode } from "../hooks/useFocusMode";
 import { useHomeToday } from "../hooks/useHomeToday";
+import { useMutedChannels } from "../hooks/usePushPreferences";
 import { useSwipeNavigate } from "../hooks/useSwipeNavigate";
 import { useProfile } from "../hooks/useProfile";
 import { useSearch } from "../hooks/useSearch";
@@ -444,6 +445,10 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   // Team Health — server-wide aggregate ActionItem'ов. Fetch при teamHealthOpen
   // (lazy: ничего не делаем пока юзер не открыл view).
   const teamHealth = useTeamHealth(teamHealthOpen ? activeServerId : null);
+
+  // v0.85 #27 phase 4: muted channels per-user. Загружается один раз при
+  // mount; toggle через mute/unmute optimistic updates.
+  const muted = useMutedChannels();
 
   const headerName = profile?.displayName ?? user.displayName;
   const headerAvatar = profile?.avatar ?? user.avatar;
@@ -1124,6 +1129,14 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             }
             teamHealthActive={teamHealthOpen}
             serverMode={activeServer?.mode}
+            mutedChannels={muted.mutedSet}
+            onToggleMute={(channelId, mute) => {
+              if (mute) {
+                void muted.mute(channelId);
+              } else {
+                void muted.unmute(channelId);
+              }
+            }}
             onOpenClientPortal={
               isClientMode && activeServer
                 ? () => {

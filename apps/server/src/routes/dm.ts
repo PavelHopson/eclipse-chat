@@ -807,6 +807,7 @@ export async function registerDmRoutes(app: FastifyInstance) {
         const body = m.content.trim() || `📎 ${processedAttachments.length} файл(ов)`;
         void notifyUsers(
           recipients,
+          "dm",
           {
             title: `Сообщение от ${user.displayName}`,
             body,

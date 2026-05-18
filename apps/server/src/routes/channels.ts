@@ -15,6 +15,8 @@ import { maybeAutoRespond, maybeReplyToMention } from "../ai/assistant.js";
 import { scheduleEmbed } from "../ai/embedSync.js";
 import { scheduleAutomation } from "../automation.js";
 import { fireMessageCreatedWebhooks } from "../bots/webhooks.js";
+import { extractMentionTokens, resolveMentions } from "../lib/mentions.js";
+import { notifyUsers } from "../lib/webPush.js";
 
 const channelTypeSchema = z.enum(["TEXT", "VOICE", "BROADCAST", "EXECUTION"]);
 
@@ -409,6 +411,35 @@ export async function registerChannelRoutes(app: FastifyInstance) {
       // через ~3-10s. Caller получит immediately свой message, AI reply
       // прилетит через socket.
       void maybeReplyToMention(m.channelId!, m.id, userId, m.content, app.log);
+      // v0.85 #27 phase 4: human-mention push. Parse @<displayName>,
+      // resolve to userIds, push (skip self, skip muted, skip event-disabled).
+      // AI keywords (@ai/@pm etc) тоже могут match'нуть на реальных
+      // пользователей с такими именами — это OK, оба пути fire fire-and-forget.
+      const mentionTokens = extractMentionTokens(m.content);
+      if (mentionTokens.length > 0 && ch.serverId) {
+        const senderName = userDisplayName(m.user);
+        void (async () => {
+          try {
+            const ids = await resolveMentions(ch.serverId, mentionTokens, userId);
+            if (ids.size === 0) return;
+            const preview = m.content.trim().slice(0, 140);
+            await notifyUsers(
+              Array.from(ids),
+              "mention",
+              {
+                title: `Упоминание от ${senderName}`,
+                body: preview || "Тебя упомянули в Eclipse Chat",
+                url: `/eclipse-chat/`,
+                tag: `mention-${m.channelId}-${m.id}`,
+                channelId: m.channelId!,
+              },
+              app.log,
+            );
+          } catch (err) {
+            app.log.warn({ err }, "mention push failed");
+          }
+        })();
+      }
       // v0.77 #21: embed content для semantic search (no-op если AI не сетап).
       scheduleEmbed(m.id, m.content, app.log);
       // v0.80 #26 phase 1: automation engine — fire matching rules.

@@ -89,6 +89,50 @@ model User {
   /// все его pushSubscriptions удаляются cascade (включая ключи), чтобы не
   /// слать notifications мёртвому user'у.
   pushSubscriptions PushSubscription[]
+  /// v0.85 #27 phase 4: per-event-type push preferences. 1-to-1, lazy-created
+  /// при первом explicit toggle в UI. Отсутствие row = все типы enabled (default).
+  notificationPreferences NotificationPreferences?
+  /// v0.85 #27 phase 4: каналы которые user заглушил (push skip).
+  mutedChannels MutedChannel[]
+}
+
+/// v0.85 #27 phase 4: per-event-type notification toggles.
+///
+/// Хранится как один row per user с булевыми флагами. Default — все true
+/// (отсутствие row = всё enabled, чтобы не нужен был bulk-seed при upgrade).
+/// Каждое поле = один event type, который может trigger'ить push:
+///   mentions     — @<displayName> в TEXT/EXECUTION каналах
+///   dms          — сообщения в DM (1-to-1 + groups)
+///   assignments  — мне назначили ActionItem
+///   approvals    — запрос approval на ActionItem где я approver
+///   escalations  — overdue 48h+ на моей задаче
+///
+/// Phase 5 — per-channel mute (already separate model). Phase 6 — quiet hours.
+model NotificationPreferences {
+  userId       String   @id
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mentions     Boolean  @default(true)
+  dms          Boolean  @default(true)
+  assignments  Boolean  @default(true)
+  approvals    Boolean  @default(true)
+  escalations  Boolean  @default(true)
+  updatedAt    DateTime @updatedAt
+}
+
+/// v0.85 #27 phase 4: каналы которые user заглушил. Push в эти каналы skip'ается
+/// независимо от event-type toggle. UI — context-menu на канале «Заглушить».
+///
+/// Composite PK (userId, channelId) — один user заглушает один канал максимум
+/// один раз. Cascade на обе стороны — удаление user'а или канала очищает.
+model MutedChannel {
+  userId    String
+  channelId String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channel   Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  mutedAt   DateTime @default(now())
+
+  @@id([userId, channelId])
+  @@index([channelId])
 }
 
 /// v0.84 #27 phase 3: Web Push API subscription (per-device).
@@ -580,6 +624,8 @@ model Channel {
   visits    ChannelLastVisit[]
   tables    Table[]
   musicSession MusicSession?
+  /// v0.85 #27 phase 4: inverse relation для MutedChannel.
+  mutedBy   MutedChannel[]
 
   @@index([expiresAt])
 }
