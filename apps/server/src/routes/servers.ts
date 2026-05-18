@@ -1385,6 +1385,142 @@ export async function registerServerRoutes(app: FastifyInstance) {
   );
 
   /**
+   * v0.77 #21 phase 1: POST /api/servers/:id/search/semantic
+   *
+   * Body: `{ query: string, limit?: number }`. Возвращает top-N сообщений
+   * сервера, отсортированных по cosine similarity к embedded query.
+   *
+   * Membership-only check. Не индексирует internal-каналы для MEMBER в
+   * CLIENT mode (применяем тот же filter что и regular search).
+   *
+   * Implementation note: загружаем все embeddings сервера в память,
+   * считаем dot-product (vectors уже unit-normalized). Для <30K сообщений
+   * — ~100ms на средней машине. Future scale → pgvector + IVFFlat.
+   *
+   * 503 если embedding provider не сетап (no OLLAMA / no OPENAI key).
+   */
+  app.post(
+    "/api/servers/:id/search/semantic",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const { id: serverId } = req.params as { id: string };
+      const userId = getUserId(req);
+      if (!userId) return reply.status(401).send({ error: "Unauthorized" });
+      const body = req.body as { query?: string; limit?: number };
+      const q = (body?.query ?? "").trim();
+      if (!q || q.length < 3) {
+        return reply
+          .status(400)
+          .send({ error: "Query must be at least 3 characters" });
+      }
+      const limit = Math.min(50, Math.max(1, body?.limit ?? 20));
+
+      const member = await db.member.findUnique({
+        where: { userId_serverId: { userId, serverId } },
+        select: { role: true },
+      });
+      if (!member) {
+        return reply.status(403).send({ error: "Not a member of this server" });
+      }
+      const server = await db.server.findUnique({
+        where: { id: serverId },
+        select: { mode: true },
+      });
+      const hideInternal =
+        server?.mode === "CLIENT" && member.role === "MEMBER";
+
+      const { embedText, cosineSim, EmbeddingNotConfiguredError } =
+        await import("../ai/embeddings.js");
+      let queryVec: number[];
+      let queryModel: string;
+      try {
+        const r = await embedText(q);
+        queryVec = r.vector;
+        queryModel = r.model;
+      } catch (err) {
+        if (err instanceof EmbeddingNotConfiguredError) {
+          return reply
+            .status(503)
+            .send({ error: "Semantic search не сконфигурирован" });
+        }
+        req.log.warn({ err }, "embed query failed");
+        return reply
+          .status(502)
+          .send({ error: "Не удалось встроить запрос; попробуй ещё раз" });
+      }
+
+      // Load embeddings всех messages сервера (через channel JOIN).
+      // Для большого workspace это много — добавим soft cap 30K
+      // и top-up'нем последние. Future: per-channel partitioning.
+      const rows = await db.messageEmbedding.findMany({
+        where: {
+          model: queryModel, // cross-model search не имеет смысла
+          message: {
+            channel: {
+              serverId,
+              ...(hideInternal ? { internal: false } : {}),
+            },
+            deletedAt: null,
+          },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 30_000,
+        select: {
+          vector: true,
+          message: {
+            select: {
+              id: true,
+              content: true,
+              createdAt: true,
+              channelId: true,
+              userId: true,
+              channel: { select: { name: true } },
+              user: { select: { id: true, displayName: true, avatar: true } },
+            },
+          },
+        },
+      });
+
+      const scored: Array<{
+        score: number;
+        messageId: string;
+        content: string;
+        createdAt: string;
+        channelId: string;
+        channelName: string;
+        userId: string | null;
+        displayName: string | null;
+        avatar: string | null;
+      }> = [];
+      for (const r of rows) {
+        const msg = r.message;
+        if (!msg || !msg.channelId) continue;
+        const score = cosineSim(queryVec, r.vector);
+        if (score <= 0.1) continue; // отсечка низкорелевантных
+        scored.push({
+          score,
+          messageId: msg.id,
+          content: msg.content,
+          createdAt: msg.createdAt.toISOString(),
+          channelId: msg.channelId,
+          channelName: msg.channel?.name ?? "—",
+          userId: msg.user?.id ?? null,
+          displayName: msg.user?.displayName ?? null,
+          avatar: msg.user?.avatar ?? null,
+        });
+      }
+      scored.sort((a, b) => b.score - a.score);
+      const top = scored.slice(0, limit);
+      return {
+        query: q,
+        model: queryModel,
+        total: scored.length,
+        results: top,
+      };
+    },
+  );
+
+  /**
    * v0.76 #25 phase 1: GET /api/servers/:id/audit-log
    *
    * OWNER-only — последние N audit events с filter по server-relevant

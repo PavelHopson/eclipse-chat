@@ -10,6 +10,7 @@ import type {
   SearchMessageHit,
   SearchResults,
 } from "../hooks/useSearch";
+import { useSemanticSearch } from "../hooks/useSemanticSearch";
 
 /**
  * SearchOverlay — operational search с tabs (v0.57).
@@ -29,9 +30,11 @@ type Props = {
   onSelectAction: (hit: SearchActionHit) => void;
   onSelectFile: (hit: SearchFileHit) => void;
   onClose: () => void;
+  /** v0.77 #21: serverId для semantic-search tab. Null = hide tab. */
+  semanticServerId?: string | null;
 };
 
-type Tab = "messages" | "actions" | "files";
+type Tab = "messages" | "actions" | "files" | "semantic";
 
 const backdrop: CSSProperties = {
   position: "fixed",
@@ -209,22 +212,31 @@ export function SearchOverlay({
   onSelectAction,
   onSelectFile,
   onClose,
+  semanticServerId,
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [tab, setTab] = useState<Tab>("messages");
+  const semantic = useSemanticSearch(
+    semanticServerId ?? null,
+    query,
+    tab === "semantic",
+  );
 
   // Auto-switch на первую non-empty категорию когда results меняются —
   // если текущий tab пуст, а другой имеет hits, prefer non-empty.
+  // Semantic в auto-switch не участвует: это explicit choice пользователя.
   const counts = useMemo(
     () => ({
       messages: results.messages.length,
       actions: results.actions.length,
       files: results.files.length,
+      semantic: semantic.hits.length,
     }),
-    [results],
+    [results, semantic.hits.length],
   );
 
   useEffect(() => {
+    if (tab === "semantic") return; // pure user-choice
     if (counts[tab] > 0) return;
     if (counts.messages > 0) setTab("messages");
     else if (counts.actions > 0) setTab("actions");
@@ -247,6 +259,10 @@ export function SearchOverlay({
 
   const truncated = query.trim().length >= 2;
   const totalHits = counts.messages + counts.actions + counts.files;
+  // Semantic-tab показываем только если есть serverId + не «notConfigured».
+  // Если backend вернул 503 — скрываем chip, чтобы не дразнить юзера.
+  const semanticAvailable =
+    Boolean(semanticServerId) && !semantic.notConfigured;
 
   return (
     <div
@@ -274,7 +290,7 @@ export function SearchOverlay({
           <span style={kbd}>Esc</span>
         </div>
 
-        {truncated && totalHits > 0 && (
+        {truncated && (totalHits > 0 || semanticAvailable) && (
           <div style={tabsRow} role="tablist">
             <button
               type="button"
@@ -306,6 +322,23 @@ export function SearchOverlay({
               Файлы
               <span style={tabCount(tab === "files")}>{counts.files}</span>
             </button>
+            {semanticAvailable && (
+              <button
+                type="button"
+                role="tab"
+                aria-selected={tab === "semantic"}
+                onClick={() => setTab("semantic")}
+                style={tabBtn(tab === "semantic")}
+                title="Семантический поиск по смыслу (AI embeddings)"
+              >
+                Семантика
+                <span style={tabCount(tab === "semantic")}>
+                  {tab === "semantic" && semantic.loading
+                    ? "…"
+                    : counts.semantic}
+                </span>
+              </button>
+            )}
           </div>
         )}
 
@@ -358,8 +391,211 @@ export function SearchOverlay({
               onSelect={onSelectFile}
             />
           )}
+          {truncated && tab === "semantic" && (
+            <SemanticList
+              hits={semantic.hits}
+              loading={semantic.loading}
+              error={semantic.error}
+              query={query}
+              onSelect={(h) =>
+                onSelectMessage({
+                  // адаптируем под SearchMessageHit shape — все нужные поля есть.
+                  // slug не передаётся бэкендом — fallback на channelId (для
+                  // onSelectMessage важна только channel.id для навигации).
+                  id: h.messageId,
+                  content: h.content,
+                  createdAt: h.createdAt,
+                  channel: {
+                    id: h.channelId,
+                    name: h.channelName,
+                    slug: h.channelId,
+                  },
+                  user: {
+                    id: h.userId ?? "",
+                    displayName: h.displayName ?? "—",
+                    avatar: h.avatar,
+                  },
+                })
+              }
+            />
+          )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function SemanticList({
+  hits,
+  loading,
+  error,
+  query,
+  onSelect,
+}: {
+  hits: Array<{
+    score: number;
+    messageId: string;
+    content: string;
+    createdAt: string;
+    channelId: string;
+    channelName: string;
+    userId: string | null;
+    displayName: string | null;
+    avatar: string | null;
+  }>;
+  loading: boolean;
+  error: string | null;
+  query: string;
+  onSelect: (h: {
+    score: number;
+    messageId: string;
+    content: string;
+    createdAt: string;
+    channelId: string;
+    channelName: string;
+    userId: string | null;
+    displayName: string | null;
+    avatar: string | null;
+  }) => void;
+}) {
+  if (loading) {
+    return (
+      <p
+        style={{
+          color: "var(--ec-text-dim)",
+          fontSize: "var(--ec-text-sm)",
+          padding: "var(--ec-space-3) var(--ec-space-3)",
+          margin: 0,
+        }}
+      >
+        Ищу по смыслу…
+      </p>
+    );
+  }
+  if (error) {
+    return (
+      <p
+        style={{
+          color: "var(--ec-danger)",
+          fontSize: "var(--ec-text-sm)",
+          padding: "var(--ec-space-3) var(--ec-space-3)",
+          margin: 0,
+        }}
+      >
+        {error}
+      </p>
+    );
+  }
+  if (hits.length === 0 && query.trim().length >= 3) {
+    return (
+      <EmptyState
+        icon={<EmptySearchIcon />}
+        title="Ничего похожего"
+        hint="Семантический поиск ищет по смыслу. Попробуй сформулировать иначе."
+        compact
+      />
+    );
+  }
+  if (hits.length === 0) {
+    return (
+      <p
+        style={{
+          color: "var(--ec-text-dim)",
+          fontSize: "var(--ec-text-sm)",
+          padding: "var(--ec-space-3) var(--ec-space-3)",
+          margin: 0,
+        }}
+      >
+        Введи хотя бы 3 символа.
+      </p>
+    );
+  }
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      {hits.map((h) => (
+        <button
+          key={h.messageId}
+          type="button"
+          onClick={() => onSelect(h)}
+          style={hitRow}
+          onMouseEnter={(e) =>
+            (e.currentTarget.style.background = "var(--ec-surface-2)")
+          }
+          onMouseLeave={(e) =>
+            (e.currentTarget.style.background = "transparent")
+          }
+        >
+          <Avatar url={h.avatar} name={h.displayName ?? "?"} size={28} />
+          <span
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 2,
+              minWidth: 0,
+            }}
+          >
+            <span style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+              <strong
+                style={{
+                  color: "var(--ec-text-strong)",
+                  fontSize: "var(--ec-text-sm)",
+                }}
+              >
+                {h.displayName ?? "—"}
+              </strong>
+              <span
+                style={{
+                  color: "var(--ec-text-dim)",
+                  fontSize: "var(--ec-text-2xs)",
+                }}
+              >
+                в{" "}
+                <span style={{ color: "var(--ec-accent)" }}>
+                  #{h.channelName}
+                </span>
+              </span>
+              <span
+                style={{
+                  marginLeft: "auto",
+                  fontSize: "0.62rem",
+                  fontWeight: 700,
+                  color: "var(--ec-accent)",
+                  padding: "0 6px",
+                  borderRadius: "var(--ec-radius-full)",
+                  background: "var(--ec-accent-soft)",
+                  border: "1px solid var(--ec-border-accent)",
+                }}
+                title={`relevance ${h.score.toFixed(3)}`}
+              >
+                {(h.score * 100).toFixed(0)}%
+              </span>
+            </span>
+            <span
+              style={{
+                color: "var(--ec-text-muted)",
+                fontSize: "var(--ec-text-sm)",
+                overflow: "hidden",
+                display: "-webkit-box",
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: "vertical",
+              }}
+            >
+              {h.content}
+            </span>
+          </span>
+          <time
+            dateTime={h.createdAt}
+            style={{
+              fontFamily: "var(--ec-font-mono)",
+              fontSize: "var(--ec-text-2xs)",
+              color: "var(--ec-text-dim)",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {formatHitDate(h.createdAt)}
+          </time>
+        </button>
+      ))}
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { db } from "../db.js";
 import { serializeUser } from "../lib/userView.js";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
+import { scheduleEmbed } from "../ai/embedSync.js";
 import {
   emitThreadReplyNew,
   emitThreadMetaUpdate,
@@ -328,6 +329,8 @@ export async function registerThreadRoutes(app: FastifyInstance) {
         })),
       };
       emitThreadReplyNew(rootId, replyPayload);
+      // v0.77 #21: embed thread reply too — index everything в semantic search.
+      scheduleEmbed(m.id, m.content, app.log);
 
       // Также emit meta-update для channel — чтобы badge replies-counter
       // обновился у всех в канале (не только в open Thread panel).

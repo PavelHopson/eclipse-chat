@@ -527,10 +527,37 @@ model Message {
   reactions Reaction[]
   attachments Attachment[]
   actionItems ActionItem[]
+  /// v0.77 #21: AI memory + semantic search. Inverse relation для cascade.
+  embedding   MessageEmbedding?
 
   @@index([channelId, pinnedAt])
   @@index([conversationId, createdAt])
   @@index([parentMessageId])
+}
+
+/// v0.77 #21 phase 1: embedding для семантического поиска.
+///
+/// Один embedding per message (unique). Vector storage — `Float[]` без
+/// pgvector dependency (анти-pattern на native PG где extension может
+/// быть не установлен). Cosine similarity вычисляется в Node при поиске.
+/// Performance trade-off: для <30K messages OK, > → future миграция на
+/// pgvector + IVFFlat index.
+///
+/// Vectors normalized на write (unit-length) — search = простой dot-product.
+/// Model column фиксирует какой embedder использовался — позволяет
+/// re-embed batch'ем при смене модели.
+model MessageEmbedding {
+  id        String   @id @default(cuid())
+  messageId String   @unique
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  /// Unit-normalized vector (cosine via dot-product). Ожидаемая длина 768
+  /// для nomic-embed-text / text-embedding-3-small (с dimensions=768).
+  vector    Float[]
+  /// Embedder identifier — `ollama:nomic-embed-text` / `openai:text-embedding-3-small`.
+  model     String
+  createdAt DateTime @default(now())
+
+  @@index([model, createdAt])
 }
 
 /// Action layer поверх сообщений. Сообщение можно превратить в task / decision / follow-up

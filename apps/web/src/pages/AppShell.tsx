@@ -2097,6 +2097,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             setShowSearch(false);
             searchReset();
           }}
+          semanticServerId={activeServerId}
         />
       )}
     </div>

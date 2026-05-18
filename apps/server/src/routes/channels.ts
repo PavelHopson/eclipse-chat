@@ -12,6 +12,7 @@ import {
   processAttachment,
 } from "../attachments.js";
 import { maybeAutoRespond, maybeReplyToMention } from "../ai/assistant.js";
+import { scheduleEmbed } from "../ai/embedSync.js";
 import { fireMessageCreatedWebhooks } from "../bots/webhooks.js";
 
 const channelTypeSchema = z.enum(["TEXT", "VOICE", "BROADCAST", "EXECUTION"]);
@@ -407,6 +408,8 @@ export async function registerChannelRoutes(app: FastifyInstance) {
       // через ~3-10s. Caller получит immediately свой message, AI reply
       // прилетит через socket.
       void maybeReplyToMention(m.channelId!, m.id, userId, m.content, app.log);
+      // v0.77 #21: embed content для semantic search (no-op если AI не сетап).
+      scheduleEmbed(m.id, m.content, app.log);
       void maybeAutoRespond(m.channelId!, m.id, userId, m.content, app.log);
       // Fire-and-forget: bot webhooks (outbound POST для подписанных bots).
       fireMessageCreatedWebhooks(
