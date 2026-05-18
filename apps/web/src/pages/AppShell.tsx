@@ -1123,6 +1123,16 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                   }
             }
             teamHealthActive={teamHealthOpen}
+            serverMode={activeServer?.mode}
+            onOpenClientPortal={
+              isClientMode && activeServer
+                ? () => {
+                    // v0.83 #24 phase 1: navigate to portal через hash route.
+                    // App.tsx detect'нет hash и переключит на ClientPortalContainer.
+                    window.location.hash = `#/portal/${activeServer.id}`;
+                  }
+                : undefined
+            }
             tables={
               isClientMode
                 ? undefined
@@ -1420,6 +1430,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           <AdminPanel
             serverId={activeServer.id}
             serverName={activeServer.name}
+            serverMode={activeServer.mode}
             currentRole={currentRole}
             members={members}
             channels={channels}
@@ -1431,6 +1442,9 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               setSettingsChannelId(channelId);
             }}
             onOpenServerSettings={() => setShowServerSettings(true)}
+            onOpenClientPortal={() => {
+              window.location.hash = `#/portal/${activeServer.id}`;
+            }}
             onClose={() => setAdminOpen(false)}
           />
         ) : selectedTableId ? (

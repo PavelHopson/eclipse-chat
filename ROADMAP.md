@@ -726,8 +726,9 @@ base, ✅ Home command center, ✅ responsive cinematic UI pass.
 | 🟡 частично | **#10 Tables phase 2.5a** — drag-reorder + 2 templates закрыто в v0.70.0. **Phase 2.5b** остаётся: RELATION (cross-table) field, FILE (attachment) field, расширенный набор templates (bugs / construction / approvals / knowledge). |
 | 🟡 частично | **#20 Execution kanban phase 1** — закрыто в v0.71.0 (4-status enum + drag-drop kanban). Phase 2 (dependencies / blocks-graph), Phase 3 (escalation cron + DM на overdue 48h), Phase 4 (AI summary per-task) остаются. |
 | 🟡 частично | **#34 Music в VOICE-каналах phase A** — закрыто в v0.72.0 (backend unblock + VoiceMusicPicker + UI в chat-header). Phase B (LiveKit data channels для server-side mixed audio + точный sync без клиентского drift) остаётся. |
-| **#1 next** | **#10 Tables phase 2.5b** RELATION + FILE field types | M-L | H | завершение Tables phase 2.5 |
-| После | **#17 Role architecture v2** или **#25 Admin Panel** | L | H | structural |
+| 🟡 частично | **#24 Client portal phase 1** — закрыто в v0.83.0. Hash-route `/#/portal/<serverId>` + новый endpoint `GET /api/servers/:id/client-portal` (progress counts + items, approvals pending+recent, files cross-channel, recent activity) + ClientPortalPage с 4 секциями + entry points (ChannelList «Клиентский портал» для CLIENT-mode + AdminPanel preview-card). Permission gate: CLIENT (primary) + OWNER/ADMIN (preview), все остальные роли — 403. Visibility filter: internal-каналы всегда hidden. Phase 2 (Invoice model + PDF reports + AI digest) + Phase 3 (public token-based access без login + email delivery) — остаются. |
+| **#1 next** | **#27 phase 3 Push notifications** ИЛИ **#23 Live workspace phase 1** | L / XL | H / H | retention vs review/whiteboard sessions |
+| После | **#10 Tables phase 2.5b** RELATION + FILE field types | M-L | H | завершение Tables phase 2.5 |
 
 ## 📋 Открытые follow-ups
 

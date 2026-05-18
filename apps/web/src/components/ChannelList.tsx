@@ -30,6 +30,13 @@ type Props = {
   onOpenTeamHealth?: () => void;
   /** Team Health сейчас открыт — для подсветки. */
   teamHealthActive?: boolean;
+  /**
+   * v0.83 #24 phase 1: server mode. Если CLIENT — отображаем
+   * «Клиентский портал» entry в Overview-группе. На ENGINEERING — скрываем.
+   */
+  serverMode?: "ENGINEERING" | "CLIENT";
+  /** v0.83 #24 phase 1: открыть клиентский портал. */
+  onOpenClientPortal?: () => void;
   /** v0.59 phase 1: список таблиц активного пространства. */
   tables?: Array<{ id: string; name: string; rowCount: number }>;
   /** Открыть Operational Table panel по id. */
@@ -317,6 +324,8 @@ export function ChannelList({
   statusBoardActive,
   onOpenTeamHealth,
   teamHealthActive,
+  serverMode,
+  onOpenClientPortal,
   tables,
   onOpenTable,
   onCreateTable,
@@ -755,6 +764,24 @@ export function ChannelList({
               <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
             </svg>
             <span style={{ flex: 1, minWidth: 0 }}>Здоровье команды</span>
+          </button>
+        )}
+        {/* v0.83 #24 phase 1: Client Portal entry. Видим только в CLIENT-mode
+            workspace'ах. AppShell сам решает кому показывать onOpenClientPortal
+            на основании role (CLIENT/OWNER/ADMIN). */}
+        {serverMode === "CLIENT" && onOpenClientPortal && (
+          <button
+            type="button"
+            onClick={onOpenClientPortal}
+            className="ec-channel-item"
+            title="Клиентский портал — прогресс проекта, одобрения, файлы"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <path d="M3 9h18" />
+              <path d="M9 21V9" />
+            </svg>
+            <span style={{ flex: 1, minWidth: 0 }}>Клиентский портал</span>
           </button>
         )}
 

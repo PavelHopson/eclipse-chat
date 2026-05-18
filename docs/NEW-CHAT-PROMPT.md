@@ -3,11 +3,12 @@
 > Этот файл — **system prompt + project status + architecture overview**
 > для продолжения работы над Eclipse Chat в свежем чате с Claude Code.
 >
-> **Обновлено 2026-05-18 (после v0.82.0).** Сессия 18.05:
-> v0.72 → v0.82 = **10 prod-деплоев** за один заход. Pavel-priority queue
-> (#21 → #17 → #22 → #26 → #27) закрыт + расширения (#10 phase 2.5b +
-> #14 + #16 + #18 + #20 phase 2/3/4 + #25 + #28 phase 2 + #29 + #32
-> phase 3 + #19 phase 1) до этого.
+> **Обновлено 2026-05-18 (после v0.83.0).** Сессия 18.05 (продолжение):
+> v0.82 → v0.83 = #24 Client Portal phase 1 (hash-route /#/portal/:id +
+> aggregation endpoint + 4-section dashboard + entry points для CLIENT/
+> OWNER/ADMIN). Pavel-priority queue до этого: v0.72 → v0.82 = 10 prod-
+> деплоев (#21 AI memory → #17 Roles v2 → #22 voice intel → #26
+> Automation → #27 PWA + расширения).
 
 ---
 
@@ -86,10 +87,10 @@ Calm cinematic operational environment.
 Продаём: clarity / calmness / execution / coordination / operational
 visibility. НЕ продаём AI — AI это enabler, не headline.
 
-## Current state — v0.82.0 LIVE
+## Current state — v0.83.0 LIVE
 
 Prod: https://app.star-crm.ru/eclipse-chat/
-Version endpoint: /eclipse-chat/api/version → 0.82.0
+Version endpoint: /eclipse-chat/api/version → 0.83.0
 
 ### Сессия 18.05 — 10 prod-деплоев за один заход (v0.72 → v0.82)
 
@@ -126,6 +127,13 @@ Version endpoint: /eclipse-chat/api/version → 0.82.0
   CREATE_TASK + SEND_WEBHOOK с SSRF guard + HMAC signature + trigger.regex
   с zod compileability check + AdminPanel CreateRuleForm v2 с
   action-type picker и radio substring↔regex).
+- v0.83 — #24 phase 1 Client Portal (hash-route /#/portal/<serverId> +
+  GET /api/servers/:id/client-portal aggregation endpoint + ClientPortal-
+  Page с 4 секциями: Progress counts+items, Approvals pending+recent,
+  Files cross-channel, Recent activity). Permission gate: CLIENT primary
+  + OWNER/ADMIN preview. Visibility filter — Channel.internal always
+  hidden. Entry points: ChannelList «Клиентский портал» в Overview
+  group для CLIENT-mode + AdminPanel preview-card.
 
 ### Phase 1 CORE (закрыта до 14.05)
 
@@ -173,7 +181,9 @@ Version endpoint: /eclipse-chat/api/version → 0.82.0
 - Backend: Node 20 + Fastify 5 + Prisma 6 + Socket.io 4 + Sharp +
   Helmet + Rate-limit + otplib + LiveKit JWT
 - Frontend: React 19 + Vite 6 + TS 5.8 + livekit-client 2.18 (lazy)
-- DB: PostgreSQL 16. На v0.82 — **38 миграций applied** (последние:
+- DB: PostgreSQL 16. На v0.83 — **38 миграций applied** (v0.83 zero
+  schema changes — переиспользует ActionItem/Attachment/Member/Channel
+  primitives). Последние миграции:
   message_user_setnull, action_item_comment_user_setnull,
   action_item_approval_check, attachment_waveform, link_embed_cache,
   action_item_status_phase2, action_item_dependencies,
@@ -300,6 +310,12 @@ Version endpoint: /eclipse-chat/api/version → 0.82.0
   fire-and-forget на message:new. 3 action types: POST_MESSAGE /
   CREATE_TASK / SEND_WEBHOOK. SSRF guard на webhook URLs.
   Phase 2 — visual node-editor.
+- Client Portal (v0.83 phase 1): hash-route /#/portal/<serverId>
+  вместо path route — no nginx changes, no router lib. Aggregation-only
+  endpoint (zero schema changes), переиспользует ActionItem/Attachment.
+  Permission gate: CLIENT primary + OWNER/ADMIN preview, остальные 403.
+  Internal channels всегда hidden. Phase 2 — Invoice + PDF + AI digest.
+  Phase 3 — public token-based access (CLIENT без login).
 
 ## Стиль работы
 
@@ -319,19 +335,18 @@ Version endpoint: /eclipse-chat/api/version → 0.82.0
 
 ### Текущий приоритет (Pavel order для следующих slice'ов)
 
-1. **#24 Client portal expansion** — L. Project progress + approvals
-   queue + invoices + reports + AI client assistant для CLIENT-mode
-   workspace'ов. Schema: Invoice model (server-scoped, line items +
-   status + amount). Endpoint client-portal data aggregation. Frontend:
-   `/eclipse-chat/portal/:serverId` route ИЛИ Admin Panel «Клиент» tab.
-2. **#23 Live workspace** — XL. Excalidraw + Yjs CRDT во время voice
+1. **#27 phase 3 Push notifications** — L. web-push lib + VAPID +
+   PushSubscription schema + install-prompt UX + background sync.
+   Retention для mobile-users который PWA закрыли.
+2. **#24 Client portal phase 2** — M-L. Invoice model (server-scoped,
+   line items + status + amount) + PDF report generation (puppeteer/
+   playwright server-side render) + AI digest (5-line summary через
+   existing assistant chain). Phase 1 уже закрыт в v0.83.
+3. **#23 Live workspace** — XL. Excalidraw + Yjs CRDT во время voice
    call (shared notepad / whiteboard / diagrams).
-3. **#26 phase 2** — extra triggers (NEW_TASK / FILE_UPLOAD / APPROVAL
+4. **#26 phase 2** — extra triggers (NEW_TASK / FILE_UPLOAD / APPROVAL
    / MENTION) + external integrations (Telegram bridge / GitHub webhook
    / Notion sync / Bitrix/1C custom HTTP).
-4. **#27 phase 3** — Push notifications (web-push lib + VAPID +
-   PushSubscription schema) + install-prompt UX (beforeinstallprompt) +
-   background sync.
 5. **#19 phase 2** — visual node-editor для AutomationRule (React-Flow
    или custom SVG layout).
 6. **#22 phase 2** — LiveKit Egress + live Whisper streaming + real-
@@ -340,6 +355,8 @@ Version endpoint: /eclipse-chat/api/version → 0.82.0
    замена hardcoded role checks на hasPermission() calls.
 8. **#21 phase 2** — embedding backfill cron для existing messages +
    AI assistant context-recall («вы уже обсуждали X 3 недели назад»).
+9. **#24 phase 3** — public token-based portal access (CLIENT user без
+   login через signed URL) + email delivery для PDF reports.
 
 ### Long-term / XL+
 
@@ -379,8 +396,10 @@ Version endpoint: /eclipse-chat/api/version → 0.82.0
 
 ---
 
-_Generated 2026-05-18 (после v0.82.0 Bot Builder phase 1). Сессия
-18.05 = v0.72 → v0.82 за один заход (10 prod-деплоев). Pavel-priority
-queue (#21 AI memory → #17 Roles v2 → #22 voice intel → #26 Automation
-→ #27 PWA) полностью закрыт + расширения. Если в следующей сессии
-что-то изменится в проде — обновить этот файл перед следующим handoff'ом._
+_Generated 2026-05-18 (после v0.83.0 Client Portal phase 1). Сессия
+18.05 продолжение: v0.82 → v0.83 = #24 Client Portal phase 1 (hash-
+route /#/portal/:id + aggregation endpoint + 4-section dashboard +
+entry points). До этого: v0.72 → v0.82 = 10 prod-деплоев (#21 AI
+memory → #17 Roles v2 → #22 voice intel → #26 Automation → #27 PWA
++ расширения). Если в следующей сессии что-то изменится в проде —
+обновить этот файл перед следующим handoff'ом._

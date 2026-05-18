@@ -42,6 +42,8 @@ export type AssignableMemberRole = Exclude<MemberRole, "OWNER">;
 type Props = {
   serverId: string;
   serverName: string;
+  /** v0.83 #24 phase 1: server mode. CLIENT → показываем кнопку «Открыть портал». */
+  serverMode?: "ENGINEERING" | "CLIENT";
   currentRole: MemberRole | null;
   members: MemberRow[];
   channels: ChannelRow[];
@@ -52,6 +54,8 @@ type Props = {
   ) => Promise<void>;
   onOpenChannelSettings: (channelId: string) => void;
   onOpenServerSettings: () => void;
+  /** v0.83 #24 phase 1: открыть client portal (preview для OWNER/ADMIN). */
+  onOpenClientPortal?: () => void;
   onClose: () => void;
 };
 
@@ -245,6 +249,7 @@ function formatRel(iso: string): string {
 export function AdminPanel({
   serverId,
   serverName,
+  serverMode,
   currentRole,
   members,
   channels,
@@ -252,6 +257,7 @@ export function AdminPanel({
   onUpdateMemberRole,
   onOpenChannelSettings,
   onOpenServerSettings,
+  onOpenClientPortal,
   onClose,
 }: Props) {
   const [tab, setTab] = useState<Tab>("overview");
@@ -580,6 +586,35 @@ export function AdminPanel({
               Имя · режим · brand · боты
             </span>
           </button>
+          {/* v0.83 #24 phase 1: Client portal preview entry (OWNER/ADMIN only;
+              tab already gated by accessDenied). Only useful если mode=CLIENT. */}
+          {serverMode === "CLIENT" && onOpenClientPortal && (
+            <button
+              type="button"
+              onClick={onOpenClientPortal}
+              style={{
+                ...card,
+                cursor: "pointer",
+                alignItems: "flex-start",
+                textAlign: "left",
+                transition: "background var(--ec-dur-fast) var(--ec-ease)",
+              }}
+            >
+              <span style={cardLabel}>Клиентский портал</span>
+              <span
+                style={{
+                  ...cardValue,
+                  fontSize: "var(--ec-text-md)",
+                  color: "var(--ec-accent)",
+                }}
+              >
+                Открыть превью →
+              </span>
+              <span style={{ fontSize: "var(--ec-text-2xs)", color: "var(--ec-text-dim)" }}>
+                Так это видит клиент: прогресс, одобрения, файлы
+              </span>
+            </button>
+          )}
         </div>
       )}
 
