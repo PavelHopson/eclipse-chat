@@ -3,7 +3,7 @@
  * v0.84 #27 phase 3: VAPID key pair generator.
  *
  * Запустить один раз на проде (или локально для dev):
- *   node scripts/generate-vapid.js
+ *   node apps/server/scripts/generate-vapid.js mailto:admin@example.com
  *
  * Вывод — три строки для `.env` сервера + одна строка для `.env` web'а.
  * Ключи должны быть стабильными между restarts — потеряешь private →
@@ -13,8 +13,11 @@
  * Subject — обязательная контактная информация per RFC 8292. Можно
  * mailto:admin@... или https://your-site/. Push-провайдеры (Mozilla
  * Autopush / Google FCM) могут использовать его для контактов при abuse.
+ *
+ * ESM: apps/server/package.json содержит "type": "module", поэтому
+ * `.js` файлы должны использовать `import`, не `require`.
  */
-const webPush = require("web-push");
+import webPush from "web-push";
 
 const keys = webPush.generateVAPIDKeys();
 const subject = process.argv[2] || "mailto:admin@example.com";
