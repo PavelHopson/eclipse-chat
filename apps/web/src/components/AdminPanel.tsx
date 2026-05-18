@@ -60,8 +60,33 @@ type Tab =
   | "members"
   | "channels"
   | "roles"
+  | "automation"
   | "audit"
   | "analytics";
+
+/** v0.80 #26 phase 1: AutomationRule shape от backend. */
+type AutomationTrigger = {
+  type: "MESSAGE_NEW";
+  keyword?: string;
+  channelId?: string | null;
+  caseInsensitive?: boolean;
+};
+type AutomationAction = {
+  type: "POST_MESSAGE";
+  channelId: string;
+  template: string;
+};
+type AutomationRule = {
+  id: string;
+  serverId: string;
+  name: string;
+  enabled: boolean;
+  trigger: AutomationTrigger | null;
+  action: AutomationAction | null;
+  createdAt: string;
+  lastFiredAt: string | null;
+  fireCount: number;
+};
 
 type AuditEvent = {
   id: string;
@@ -217,6 +242,11 @@ export function AdminPanel({
   const [audit, setAudit] = useState<AuditEvent[] | null>(null);
   const [auditLoading, setAuditLoading] = useState(false);
   const [auditError, setAuditError] = useState<string | null>(null);
+  // v0.80 #26 phase 1: automation tab state.
+  const [rules, setRules] = useState<AutomationRule[] | null>(null);
+  const [rulesLoading, setRulesLoading] = useState(false);
+  const [rulesError, setRulesError] = useState<string | null>(null);
+  const [showCreateRule, setShowCreateRule] = useState(false);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -241,6 +271,92 @@ export function AdminPanel({
       )
       .finally(() => setAuditLoading(false));
   }, [tab, audit, serverId]);
+
+  // v0.80 #26: lazy load automation rules при первом open tab'а.
+  useEffect(() => {
+    if (tab !== "automation" || rules !== null) return;
+    setRulesLoading(true);
+    setRulesError(null);
+    apiJson<{ rules: AutomationRule[] }>(
+      `/api/servers/${encodeURIComponent(serverId)}/automations`,
+    )
+      .then((d) => setRules(d.rules))
+      .catch((e) =>
+        setRulesError(
+          e instanceof Error ? e.message : "Не удалось загрузить правила",
+        ),
+      )
+      .finally(() => setRulesLoading(false));
+  }, [tab, rules, serverId]);
+
+  const toggleRule = async (rule: AutomationRule) => {
+    try {
+      const data = await apiJson<{ rule: AutomationRule }>(
+        `/api/automations/${encodeURIComponent(rule.id)}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({ enabled: !rule.enabled }),
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+      setRules((prev) =>
+        prev ? prev.map((r) => (r.id === rule.id ? data.rule : r)) : prev,
+      );
+    } catch (e) {
+      setRulesError(
+        e instanceof Error ? e.message : "Не удалось обновить правило",
+      );
+    }
+  };
+
+  const deleteRule = async (rule: AutomationRule) => {
+    if (!window.confirm(`Удалить правило «${rule.name}»?`)) return;
+    try {
+      await apiJson(`/api/automations/${encodeURIComponent(rule.id)}`, {
+        method: "DELETE",
+      });
+      setRules((prev) => (prev ? prev.filter((r) => r.id !== rule.id) : prev));
+    } catch (e) {
+      setRulesError(e instanceof Error ? e.message : "Не удалось удалить");
+    }
+  };
+
+  const createRule = async (input: {
+    name: string;
+    keyword: string;
+    triggerChannelId: string | null;
+    actionChannelId: string;
+    template: string;
+  }) => {
+    try {
+      const data = await apiJson<{ rule: AutomationRule }>(
+        `/api/servers/${encodeURIComponent(serverId)}/automations`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: input.name,
+            enabled: true,
+            trigger: {
+              type: "MESSAGE_NEW",
+              keyword: input.keyword || undefined,
+              channelId: input.triggerChannelId,
+              caseInsensitive: true,
+            },
+            action: {
+              type: "POST_MESSAGE",
+              channelId: input.actionChannelId,
+              template: input.template,
+            },
+          }),
+        },
+      );
+      setRules((prev) => (prev ? [data.rule, ...prev] : [data.rule]));
+      setShowCreateRule(false);
+    } catch (e) {
+      setRulesError(e instanceof Error ? e.message : "Не удалось создать правило");
+    }
+  };
 
   const onlineCount = useMemo(
     () => members.filter((m) => m.online).length,
@@ -348,6 +464,15 @@ export function AdminPanel({
           style={tabBtn(tab === "roles")}
         >
           Роли · {ROLE_ORDER.length}
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === "automation"}
+          onClick={() => setTab("automation")}
+          style={tabBtn(tab === "automation")}
+        >
+          Автоматизация{rules ? ` · ${rules.length}` : ""}
         </button>
         <button
           type="button"
@@ -739,6 +864,87 @@ export function AdminPanel({
         </div>
       )}
 
+      {tab === "automation" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "var(--ec-space-3)" }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
+              gap: "var(--ec-space-3)",
+              flexWrap: "wrap",
+            }}
+          >
+            <p
+              style={{
+                margin: 0,
+                fontSize: "var(--ec-text-sm)",
+                color: "var(--ec-text-muted)",
+                lineHeight: 1.5,
+                maxWidth: 640,
+              }}
+            >
+              Trigger → Action правила для workspace. Phase 1: keyword-match
+              на сообщение → пост от системного бота в target-канал. Placeholders:
+              <code style={{ background: "var(--ec-surface-2)", padding: "0 4px" }}>
+                {"{{user}}"}
+              </code>
+              ,{" "}
+              <code style={{ background: "var(--ec-surface-2)", padding: "0 4px" }}>
+                {"{{message}}"}
+              </code>
+              ,{" "}
+              <code style={{ background: "var(--ec-surface-2)", padding: "0 4px" }}>
+                {"{{channel}}"}
+              </code>
+              .
+            </p>
+            {(currentRole === "OWNER" || currentRole === "ADMIN") && (
+              <button
+                type="button"
+                onClick={() => setShowCreateRule(true)}
+                className="ec-btn ec-btn--primary ec-btn--sm"
+              >
+                + Создать правило
+              </button>
+            )}
+          </div>
+          {rulesLoading && (
+            <p style={{ color: "var(--ec-text-dim)" }}>Загружаем…</p>
+          )}
+          {rulesError && (
+            <p style={{ color: "var(--ec-danger)" }}>{rulesError}</p>
+          )}
+          {rules && rules.length === 0 && !rulesLoading && (
+            <p
+              style={{
+                color: "var(--ec-text-dim)",
+                fontSize: "var(--ec-text-sm)",
+              }}
+            >
+              Правил пока нет. Создай первое — keyword в #channel → автоответ.
+            </p>
+          )}
+          {rules?.map((r) => (
+            <AutomationRow
+              key={r.id}
+              rule={r}
+              channels={channels}
+              onToggle={() => void toggleRule(r)}
+              onDelete={() => void deleteRule(r)}
+              canEdit={currentRole === "OWNER" || currentRole === "ADMIN"}
+            />
+          ))}
+          {showCreateRule && (
+            <CreateRuleForm
+              channels={channels}
+              onCancel={() => setShowCreateRule(false)}
+              onCreate={(input) => void createRule(input)}
+            />
+          )}
+        </div>
+      )}
+
       {tab === "audit" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           {auditLoading && (
@@ -917,6 +1123,315 @@ function StatCard({
     >
       <span style={cardLabel}>{label}</span>
       <span style={cardValue}>{value}</span>
+    </div>
+  );
+}
+
+function AutomationRow({
+  rule,
+  channels,
+  onToggle,
+  onDelete,
+  canEdit,
+}: {
+  rule: AutomationRule;
+  channels: ChannelRow[];
+  onToggle: () => void;
+  onDelete: () => void;
+  canEdit: boolean;
+}) {
+  const trigChannelName = rule.trigger?.channelId
+    ? channels.find((c) => c.id === rule.trigger?.channelId)?.name ??
+      "(удалён)"
+    : "любой канал";
+  const actChannelName = rule.action?.channelId
+    ? channels.find((c) => c.id === rule.action?.channelId)?.name ??
+      "(удалён)"
+    : "—";
+  return (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "1fr auto",
+        gap: "var(--ec-space-3)",
+        padding: "var(--ec-space-3) var(--ec-space-4)",
+        borderRadius: "var(--ec-radius-md)",
+        background: "hsl(208 16% 10% / 0.55)",
+        border: "1px solid var(--ec-border-subtle)",
+        alignItems: "center",
+      }}
+    >
+      <div style={{ minWidth: 0 }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            flexWrap: "wrap",
+          }}
+        >
+          <strong
+            style={{
+              color: "var(--ec-text-strong)",
+              fontSize: "var(--ec-text-sm)",
+            }}
+          >
+            {rule.name}
+          </strong>
+          {!rule.enabled && (
+            <span
+              style={{
+                padding: "0.1rem 0.45rem",
+                borderRadius: "var(--ec-radius-full)",
+                background: "var(--ec-surface-2)",
+                color: "var(--ec-text-dim)",
+                fontSize: "0.6rem",
+                fontWeight: 700,
+                textTransform: "uppercase",
+              }}
+            >
+              выключено
+            </span>
+          )}
+          {rule.fireCount > 0 && (
+            <span
+              style={{
+                fontSize: "0.65rem",
+                color: "var(--ec-text-dim)",
+                fontWeight: 600,
+              }}
+              title={`Last fired: ${rule.lastFiredAt ?? "—"}`}
+            >
+              сработало {rule.fireCount}×
+            </span>
+          )}
+        </div>
+        <div
+          style={{
+            marginTop: 6,
+            fontSize: "var(--ec-text-2xs)",
+            color: "var(--ec-text-muted)",
+            lineHeight: 1.5,
+          }}
+        >
+          <strong style={{ color: "var(--ec-text)" }}>WHEN</strong>{" "}
+          {rule.trigger?.keyword
+            ? `сообщение содержит «${rule.trigger.keyword}»`
+            : "любое сообщение"}{" "}
+          в <strong style={{ color: "var(--ec-accent)" }}>#{trigChannelName}</strong>
+          <br />
+          <strong style={{ color: "var(--ec-text)" }}>THEN</strong> постить в{" "}
+          <strong style={{ color: "var(--ec-accent)" }}>#{actChannelName}</strong>
+          :{" "}
+          <span style={{ fontStyle: "italic" }}>
+            {(rule.action?.template ?? "").slice(0, 120)}
+          </span>
+        </div>
+      </div>
+      {canEdit && (
+        <div style={{ display: "flex", gap: 6 }}>
+          <button
+            type="button"
+            onClick={onToggle}
+            style={{
+              padding: "0.2rem 0.55rem",
+              borderRadius: "var(--ec-radius-sm)",
+              background: rule.enabled
+                ? "var(--ec-accent-soft)"
+                : "var(--ec-surface-2)",
+              border: `1px solid ${rule.enabled ? "var(--ec-border-accent)" : "var(--ec-border-default)"}`,
+              color: rule.enabled ? "var(--ec-accent)" : "var(--ec-text-muted)",
+              cursor: "pointer",
+              fontSize: "var(--ec-text-2xs)",
+              fontWeight: 600,
+            }}
+          >
+            {rule.enabled ? "Выключить" : "Включить"}
+          </button>
+          <button
+            type="button"
+            onClick={onDelete}
+            style={{
+              padding: "0.2rem 0.55rem",
+              borderRadius: "var(--ec-radius-sm)",
+              background: "transparent",
+              border: "1px solid var(--ec-border-default)",
+              color: "var(--ec-text-muted)",
+              cursor: "pointer",
+              fontSize: "var(--ec-text-2xs)",
+            }}
+          >
+            Удалить
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CreateRuleForm({
+  channels,
+  onCancel,
+  onCreate,
+}: {
+  channels: ChannelRow[];
+  onCancel: () => void;
+  onCreate: (input: {
+    name: string;
+    keyword: string;
+    triggerChannelId: string | null;
+    actionChannelId: string;
+    template: string;
+  }) => void;
+}) {
+  const textChannels = channels.filter(
+    (c) => c.type === "TEXT" || c.type === "BROADCAST",
+  );
+  const [name, setName] = useState("");
+  const [keyword, setKeyword] = useState("");
+  const [trigCh, setTrigCh] = useState<string>("");
+  const [actCh, setActCh] = useState<string>(textChannels[0]?.id ?? "");
+  const [tmpl, setTmpl] = useState("");
+  return (
+    <div
+      style={{
+        padding: "var(--ec-space-4)",
+        borderRadius: "var(--ec-radius-lg)",
+        background: "hsl(208 16% 8% / 0.8)",
+        border: "1px solid var(--ec-border-accent)",
+        display: "flex",
+        flexDirection: "column",
+        gap: "var(--ec-space-2)",
+      }}
+    >
+      <h3
+        style={{
+          margin: 0,
+          fontSize: "var(--ec-text-md)",
+          fontWeight: 700,
+          color: "var(--ec-text-strong)",
+          letterSpacing: "var(--ec-tracking-tight)",
+        }}
+      >
+        Новое правило
+      </h3>
+      <input
+        type="text"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder="Название (например, «Sales-keyword → #sales»)"
+        maxLength={120}
+        style={{
+          padding: "0.4rem 0.6rem",
+          borderRadius: "var(--ec-radius-sm)",
+          background: "var(--ec-input-bg)",
+          border: "1px solid var(--ec-border-default)",
+          color: "var(--ec-text)",
+          fontSize: "var(--ec-text-sm)",
+        }}
+      />
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: "var(--ec-space-2)",
+        }}
+      >
+        <input
+          type="text"
+          value={keyword}
+          onChange={(e) => setKeyword(e.target.value)}
+          placeholder="Keyword (например, «купить»)"
+          maxLength={200}
+          style={{
+            padding: "0.4rem 0.6rem",
+            borderRadius: "var(--ec-radius-sm)",
+            background: "var(--ec-input-bg)",
+            border: "1px solid var(--ec-border-default)",
+            color: "var(--ec-text)",
+            fontSize: "var(--ec-text-sm)",
+          }}
+        />
+        <select
+          value={trigCh}
+          onChange={(e) => setTrigCh(e.target.value)}
+          style={{
+            padding: "0.4rem 0.6rem",
+            borderRadius: "var(--ec-radius-sm)",
+            background: "var(--ec-input-bg)",
+            border: "1px solid var(--ec-border-default)",
+            color: "var(--ec-text)",
+            fontSize: "var(--ec-text-sm)",
+          }}
+        >
+          <option value="">— любой канал —</option>
+          {textChannels.map((c) => (
+            <option key={c.id} value={c.id}>
+              #{c.name}
+            </option>
+          ))}
+        </select>
+      </div>
+      <select
+        value={actCh}
+        onChange={(e) => setActCh(e.target.value)}
+        style={{
+          padding: "0.4rem 0.6rem",
+          borderRadius: "var(--ec-radius-sm)",
+          background: "var(--ec-input-bg)",
+          border: "1px solid var(--ec-border-default)",
+          color: "var(--ec-text)",
+          fontSize: "var(--ec-text-sm)",
+        }}
+      >
+        {textChannels.map((c) => (
+          <option key={c.id} value={c.id}>
+            Постить в #{c.name}
+          </option>
+        ))}
+      </select>
+      <textarea
+        value={tmpl}
+        onChange={(e) => setTmpl(e.target.value)}
+        placeholder="Шаблон: «{{user}} упомянул(а) ключевое слово в #{{channel}}»"
+        maxLength={2000}
+        rows={3}
+        style={{
+          padding: "0.4rem 0.6rem",
+          borderRadius: "var(--ec-radius-sm)",
+          background: "var(--ec-input-bg)",
+          border: "1px solid var(--ec-border-default)",
+          color: "var(--ec-text)",
+          fontSize: "var(--ec-text-sm)",
+          fontFamily: "inherit",
+          resize: "vertical",
+        }}
+      />
+      <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="ec-btn ec-btn--ghost ec-btn--sm"
+        >
+          Отмена
+        </button>
+        <button
+          type="button"
+          disabled={!name.trim() || !actCh || !tmpl.trim()}
+          onClick={() =>
+            onCreate({
+              name: name.trim(),
+              keyword: keyword.trim(),
+              triggerChannelId: trigCh || null,
+              actionChannelId: actCh,
+              template: tmpl.trim(),
+            })
+          }
+          className="ec-btn ec-btn--primary ec-btn--sm"
+        >
+          Создать
+        </button>
+      </div>
     </div>
   );
 }

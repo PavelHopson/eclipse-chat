@@ -57,6 +57,8 @@ model User {
   approvalQueue      ActionItem[]        @relation("ActionItemApprover")
   /// Operational Tables, созданные этим user'ом (v0.59 phase 1).
   createdTables      Table[]             @relation("TableCreator")
+  /// v0.80 #26: Automation rules, созданные этим user'ом.
+  createdAutomations AutomationRule[]    @relation("AutomationRuleCreator")
   /// Music sessions где user — host (v0.61). Один user может быть host'ом
   /// в нескольких channels одновременно.
   hostedMusicSessions MusicSession[]
@@ -422,6 +424,43 @@ model Server {
   bots        Bot[]
   incidents   Incident[]
   tables      Table[]
+  /// v0.80 #26 phase 1: automation rules (trigger + action декларативные).
+  automations AutomationRule[]
+}
+
+/// v0.80 #26 phase 1: Automation system — declarative trigger/action правила
+/// для workspace. Phase 1 поддерживает один trigger-type (MESSAGE_NEW) и
+/// один action-type (POST_MESSAGE) — это покрывает 80% use-cases типа
+/// «когда кто-то пишет X в #общий → бот публикует Y в #команда».
+///
+/// Storage: trigger + action как JSON-string (Postgres TEXT) — даёт
+/// гибкость без новых tables на каждый тип. Phase 2 — schema'у можно
+/// расширять разными trigger/action types (FILE_UPLOAD, NEW_TASK,
+/// APPROVAL, и т.п.), Bot Builder visual editor.
+///
+/// Evaluation: при создании message в channel — async fire-and-forget
+/// сканирует enabled rules сервера, matches keyword/channel filter,
+/// fires action (например, posts message от system bot в target channel).
+/// `lastFiredAt` + `fireCount` для UI «правило сработало N раз».
+model AutomationRule {
+  id              String   @id @default(cuid())
+  serverId        String
+  server          Server   @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  name            String
+  enabled         Boolean  @default(true)
+  /// JSON: { type: "MESSAGE_NEW", keyword?: string, channelId?: string, caseInsensitive?: bool }
+  trigger         String
+  /// JSON: { type: "POST_MESSAGE", channelId: string, template: string }
+  action          String
+  createdByUserId String?
+  createdBy       User?    @relation("AutomationRuleCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdAt       DateTime @default(now())
+  /// Timestamp последнего срабатывания (для UI «работало N часов назад»).
+  lastFiredAt     DateTime?
+  /// Cum. счётчик срабатываний (для UI). Increment на каждый fire.
+  fireCount       Int      @default(0)
+
+  @@index([serverId, enabled])
 }
 
 /**

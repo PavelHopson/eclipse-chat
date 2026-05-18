@@ -13,6 +13,7 @@ import {
 } from "../attachments.js";
 import { maybeAutoRespond, maybeReplyToMention } from "../ai/assistant.js";
 import { scheduleEmbed } from "../ai/embedSync.js";
+import { scheduleAutomation } from "../automation.js";
 import { fireMessageCreatedWebhooks } from "../bots/webhooks.js";
 
 const channelTypeSchema = z.enum(["TEXT", "VOICE", "BROADCAST", "EXECUTION"]);
@@ -410,6 +411,22 @@ export async function registerChannelRoutes(app: FastifyInstance) {
       void maybeReplyToMention(m.channelId!, m.id, userId, m.content, app.log);
       // v0.77 #21: embed content для semantic search (no-op если AI не сетап).
       scheduleEmbed(m.id, m.content, app.log);
+      // v0.80 #26 phase 1: automation engine — fire matching rules.
+      const channelInfo = await db.channel.findUnique({
+        where: { id: m.channelId! },
+        select: { serverId: true },
+      });
+      if (channelInfo) {
+        scheduleAutomation(
+          channelInfo.serverId,
+          m.channelId!,
+          m.id,
+          m.userId,
+          m.content,
+          false,
+          app.log,
+        );
+      }
       void maybeAutoRespond(m.channelId!, m.id, userId, m.content, app.log);
       // Fire-and-forget: bot webhooks (outbound POST для подписанных bots).
       fireMessageCreatedWebhooks(
