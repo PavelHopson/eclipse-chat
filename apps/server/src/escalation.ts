@@ -1,6 +1,7 @@
 import type { FastifyBaseLogger } from "fastify";
 import { actionItemInclude, serializeActionItem } from "./actionItems.js";
 import { db } from "./db.js";
+import { notifyUsers } from "./lib/webPush.js";
 import { emitActionItemEscalated, emitActionItemUpdated } from "./realtime.js";
 
 /**
@@ -122,6 +123,20 @@ export async function runEscalationScan(log: FastifyBaseLogger): Promise<{
         createdByUserId: item.createdByUserId,
         escalatedAt: now.toISOString(),
       });
+      // v0.84 #27 phase 3: push assignee + creator (de-duped в notifyUsers).
+      const recipients = [item.assigneeUserId, item.createdByUserId].filter(
+        (id): id is string => Boolean(id),
+      );
+      void notifyUsers(
+        recipients,
+        {
+          title: `Эскалация: ${item.title}`,
+          body: `Задача просрочена на 48+ часов и до сих пор открыта.`,
+          url: `/eclipse-chat/`,
+          tag: `escalation-${item.id}`,
+        },
+        log,
+      );
       escalated += 1;
     } catch (err) {
       log.warn({ err, actionItemId: item.id }, "Failed to escalate action");

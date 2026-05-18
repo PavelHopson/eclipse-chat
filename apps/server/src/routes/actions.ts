@@ -10,6 +10,7 @@ import { AINotConfiguredError, chat } from "../ai/provider.js";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
 import { db } from "../db.js";
 import { serializeUser } from "../lib/userView.js";
+import { notifyUser } from "../lib/webPush.js";
 import {
   emitActionItemCommentAdded,
   emitActionItemCommentDeleted,
@@ -466,6 +467,24 @@ export async function registerActionRoutes(app: FastifyInstance) {
 
       const payload = serializeActionItem(updated);
       emitActionItemUpdated(existing.channelId, payload);
+      // v0.84 #27 phase 3: push assignee если назначили нового (не self-assign).
+      if (
+        parsed.data.assigneeUserId !== undefined &&
+        parsed.data.assigneeUserId !== existing.assigneeUserId &&
+        parsed.data.assigneeUserId &&
+        parsed.data.assigneeUserId !== userId
+      ) {
+        void notifyUser(
+          parsed.data.assigneeUserId,
+          {
+            title: `Тебе назначили: ${payload.title}`,
+            body: `Задача в Eclipse Chat ждёт реакции.`,
+            url: `/eclipse-chat/`,
+            tag: `action-${payload.id}`,
+          },
+          req.log,
+        );
+      }
       return { action: payload };
     },
   );
@@ -610,6 +629,19 @@ export async function registerActionRoutes(app: FastifyInstance) {
       });
       const payload = serializeActionItem(updated);
       emitActionItemUpdated(item.channelId, payload);
+      // v0.84 #27 phase 3: push approver (не self).
+      if (parsed.data.approverUserId !== userId) {
+        void notifyUser(
+          parsed.data.approverUserId,
+          {
+            title: `Требуется одобрение: ${payload.title}`,
+            body: parsed.data.note?.trim() || `Кто-то ждёт твоего решения.`,
+            url: `/eclipse-chat/`,
+            tag: `approval-${payload.id}`,
+          },
+          req.log,
+        );
+      }
       return { action: payload };
     },
   );

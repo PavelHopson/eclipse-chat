@@ -3,12 +3,12 @@
 > Этот файл — **system prompt + project status + architecture overview**
 > для продолжения работы над Eclipse Chat в свежем чате с Claude Code.
 >
-> **Обновлено 2026-05-18 (после v0.83.0).** Сессия 18.05 (продолжение):
-> v0.82 → v0.83 = #24 Client Portal phase 1 (hash-route /#/portal/:id +
-> aggregation endpoint + 4-section dashboard + entry points для CLIENT/
-> OWNER/ADMIN). Pavel-priority queue до этого: v0.72 → v0.82 = 10 prod-
-> деплоев (#21 AI memory → #17 Roles v2 → #22 voice intel → #26
-> Automation → #27 PWA + расширения).
+> **Обновлено 2026-05-18 (после v0.84.0).** Сессия 18.05 (продолжение):
+> v0.82 → v0.83 → v0.84 = #24 Client Portal phase 1 + #27 Push
+> Notifications phase 3 (Web Push API: VAPID + subscriptions schema +
+> 4 triggers + SW handlers + ProfileModal toggle). Pavel-priority до
+> этого: v0.72 → v0.82 = 10 prod-деплоев (#21 AI memory → #17 Roles
+> v2 → #22 voice intel → #26 Automation → #27 PWA + расширения).
 
 ---
 
@@ -87,10 +87,10 @@ Calm cinematic operational environment.
 Продаём: clarity / calmness / execution / coordination / operational
 visibility. НЕ продаём AI — AI это enabler, не headline.
 
-## Current state — v0.83.0 LIVE
+## Current state — v0.84.0 LIVE
 
 Prod: https://app.star-crm.ru/eclipse-chat/
-Version endpoint: /eclipse-chat/api/version → 0.83.0
+Version endpoint: /eclipse-chat/api/version → 0.84.0
 
 ### Сессия 18.05 — 10 prod-деплоев за один заход (v0.72 → v0.82)
 
@@ -134,6 +134,14 @@ Version endpoint: /eclipse-chat/api/version → 0.83.0
   + OWNER/ADMIN preview. Visibility filter — Channel.internal always
   hidden. Entry points: ChannelList «Клиентский портал» в Overview
   group для CLIENT-mode + AdminPanel preview-card.
+- v0.84 — #27 phase 3 Web Push Notifications (per-device PushSubscription
+  schema + web-push lib + VAPID env config + 4 triggers: DM message,
+  ActionItem assigned, Approval requested, Escalation). Service worker
+  получил push + notificationclick handlers с deep-link focus existing
+  tab. ProfileModal section «Push-уведомления» с enable/disable + test.
+  Graceful degradation: если VAPID env keys missing → /api/push/config
+  возвращает enabled=false, UI показывает «push не настроен». Mention
+  trigger + per-event-type toggle — phase 4.
 
 ### Phase 1 CORE (закрыта до 14.05)
 
@@ -181,9 +189,8 @@ Version endpoint: /eclipse-chat/api/version → 0.83.0
 - Backend: Node 20 + Fastify 5 + Prisma 6 + Socket.io 4 + Sharp +
   Helmet + Rate-limit + otplib + LiveKit JWT
 - Frontend: React 19 + Vite 6 + TS 5.8 + livekit-client 2.18 (lazy)
-- DB: PostgreSQL 16. На v0.83 — **38 миграций applied** (v0.83 zero
-  schema changes — переиспользует ActionItem/Attachment/Member/Channel
-  primitives). Последние миграции:
+- DB: PostgreSQL 16. На v0.84 — **39 миграций applied** (v0.84 добавил
+  push_subscriptions, v0.83 zero schema changes). Последние миграции:
   message_user_setnull, action_item_comment_user_setnull,
   action_item_approval_check, attachment_waveform, link_embed_cache,
   action_item_status_phase2, action_item_dependencies,
@@ -316,6 +323,13 @@ Version endpoint: /eclipse-chat/api/version → 0.83.0
   Permission gate: CLIENT primary + OWNER/ADMIN preview, остальные 403.
   Internal channels всегда hidden. Phase 2 — Invoice + PDF + AI digest.
   Phase 3 — public token-based access (CLIENT без login).
+- Push Notifications (v0.84 phase 3): web-push lib (npm dep, ECONNRESET
+  required 3 ретрая на Windows — anti-pattern в действии; в проде Ubuntu
+  install быстрый). VAPID config через env (lazy init в lib/webPush.ts,
+  graceful если missing). 4 triggers — DM/assignee/approver/escalation.
+  Mention deferred phase 4 (нужен proper mention token system). Privacy:
+  payload через web-push шифруется browser-key + auth, push-сервис видит
+  только encrypted blob. ENV setup: см. `apps/server/scripts/generate-vapid.js`.
 
 ## Стиль работы
 
@@ -335,15 +349,16 @@ Version endpoint: /eclipse-chat/api/version → 0.83.0
 
 ### Текущий приоритет (Pavel order для следующих slice'ов)
 
-1. **#27 phase 3 Push notifications** — L. web-push lib + VAPID +
-   PushSubscription schema + install-prompt UX + background sync.
-   Retention для mobile-users который PWA закрыли.
+1. **#23 Live workspace** — XL. Excalidraw + Yjs CRDT во время voice
+   call (shared notepad / whiteboard / diagrams). Phase 1 — shared
+   notepad через Yjs + y-websocket провайдер через наш Socket.io.
 2. **#24 Client portal phase 2** — M-L. Invoice model (server-scoped,
    line items + status + amount) + PDF report generation (puppeteer/
    playwright server-side render) + AI digest (5-line summary через
    existing assistant chain). Phase 1 уже закрыт в v0.83.
-3. **#23 Live workspace** — XL. Excalidraw + Yjs CRDT во время voice
-   call (shared notepad / whiteboard / diagrams).
+3. **#27 phase 4 push polish** — S-M. @mention trigger (нужен mention
+   token system) + per-event-type toggles в ProfileModal + per-channel
+   mute. Background sync (PWA offline message queue) — отложен.
 4. **#26 phase 2** — extra triggers (NEW_TASK / FILE_UPLOAD / APPROVAL
    / MENTION) + external integrations (Telegram bridge / GitHub webhook
    / Notion sync / Bitrix/1C custom HTTP).
@@ -396,10 +411,8 @@ Version endpoint: /eclipse-chat/api/version → 0.83.0
 
 ---
 
-_Generated 2026-05-18 (после v0.83.0 Client Portal phase 1). Сессия
-18.05 продолжение: v0.82 → v0.83 = #24 Client Portal phase 1 (hash-
-route /#/portal/:id + aggregation endpoint + 4-section dashboard +
-entry points). До этого: v0.72 → v0.82 = 10 prod-деплоев (#21 AI
-memory → #17 Roles v2 → #22 voice intel → #26 Automation → #27 PWA
-+ расширения). Если в следующей сессии что-то изменится в проде —
+_Generated 2026-05-18 (после v0.84.0 Push Notifications phase 3). Сессия
+18.05 продолжение: v0.82 → v0.83 = #24 Client Portal phase 1, v0.83 →
+v0.84 = #27 Push Notifications phase 3. До этого: v0.72 → v0.82 = 10
+prod-деплоев. Если в следующей сессии что-то изменится в проде —
 обновить этот файл перед следующим handoff'ом._

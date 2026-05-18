@@ -85,6 +85,43 @@ model User {
   openedIncidents  Incident[]            @relation("IncidentOpener")
   /// Last-visit per channel (AI Memory «Since your last visit»).
   channelVisits    ChannelLastVisit[]
+  /// v0.84 #27 phase 3: web-push subscriptions (per-device). При удалении user'а
+  /// все его pushSubscriptions удаляются cascade (включая ключи), чтобы не
+  /// слать notifications мёртвому user'у.
+  pushSubscriptions PushSubscription[]
+}
+
+/// v0.84 #27 phase 3: Web Push API subscription (per-device).
+///
+/// Один user может иметь несколько subscriptions — по одной на каждый browser
+/// session где он включил push. `endpoint` глобально уникален (URL push-сервиса
+/// браузера). При expiration (HTTP 410 от push-сервиса) row удаляется cleanup'ом
+/// в `notifyUser()` helper'е.
+///
+/// Storage: p256dh + auth — base64url-encoded ключи от browser
+/// `PushSubscription.toJSON()`. userAgent сохраняется для UI «удалить с этого
+/// устройства». lastSeenAt бампится при каждой successful send'и.
+///
+/// Privacy: payload через web-push API шифруется browser-public-key + auth —
+/// content виден только подписавшемуся user'у (не push-сервису).
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// URL push-сервиса браузера (Mozilla / Google FCM / Apple). Unique.
+  endpoint  String   @unique
+  /// Browser public key (ECDH p256). Base64url.
+  p256dh    String
+  /// Auth secret для AES-GCM. Base64url.
+  auth      String
+  /// User-Agent string на момент subscribe. Для UI «удалить с этого устройства».
+  userAgent String?
+  createdAt DateTime @default(now())
+  /// Бампится при каждой successful push send. Используется для cleanup'а
+  /// stale subs (older than 30 дней без активности — кандидаты на удаление).
+  lastSeenAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 /**

@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { db } from "../db.js";
 import { serializeUser } from "../lib/userView.js";
+import { notifyUsers } from "../lib/webPush.js";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
 import {
   emitDmConversationBumped,
@@ -798,6 +799,22 @@ export async function registerDmRoutes(app: FastifyInstance) {
       };
       for (const participantId of members.memberUserIds) {
         emitDmConversationBumped(participantId, bumpPayload);
+      }
+      // v0.84 #27 phase 3: push DM recipients (все кроме отправителя).
+      // Saved Messages (1-to-1 со собой) — skip.
+      const recipients = members.memberUserIds.filter((id) => id !== me);
+      if (recipients.length > 0) {
+        const body = m.content.trim() || `📎 ${processedAttachments.length} файл(ов)`;
+        void notifyUsers(
+          recipients,
+          {
+            title: `Сообщение от ${user.displayName}`,
+            body,
+            url: `/eclipse-chat/`,
+            tag: `dm-${conversationId}`,
+          },
+          req.log,
+        );
       }
       return { message: payload };
     },

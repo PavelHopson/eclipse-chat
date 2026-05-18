@@ -18,7 +18,7 @@
  * Version bump в SW_VERSION гарантирует invalidate стары кэшей при deploy.
  */
 
-const SW_VERSION = "eclipse-v0.81";
+const SW_VERSION = "eclipse-v0.84";
 const APP_SHELL_CACHE = `${SW_VERSION}-shell`;
 const ASSETS_CACHE = `${SW_VERSION}-assets`;
 const UPLOADS_CACHE = `${SW_VERSION}-uploads`;
@@ -140,3 +140,77 @@ async function navigationStrategy(req) {
     );
   }
 }
+
+/* ===== v0.84 #27 phase 3: Web Push notifications ===== */
+
+/**
+ * push event: показываем notification. Backend шлёт JSON payload
+ * `{ title, body, url, tag?, icon? }` через web-push (encrypted).
+ *
+ * Если payload отсутствует / невалидный JSON — показываем generic
+ * fallback. Это происходит когда server использует sendNotification
+ * без payload (например, sync ping) — Web Push allows empty body.
+ */
+self.addEventListener("push", (event) => {
+  let data = null;
+  try {
+    data = event.data ? event.data.json() : null;
+  } catch (err) {
+    data = null;
+  }
+  const title = (data && data.title) || "Eclipse Chat";
+  const body = (data && data.body) || "Новое уведомление";
+  const url = (data && data.url) || "/eclipse-chat/";
+  const tag = (data && data.tag) || undefined;
+  const icon = (data && data.icon) || "./apple-touch-icon.svg";
+
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body,
+      icon,
+      badge: "./favicon.svg",
+      tag,
+      // renotify=true заставит OS повторить звук/вибрацию если tag тот же
+      // (например, цепочка mention'ов в одном канале).
+      renotify: Boolean(tag),
+      data: { url },
+    }),
+  );
+});
+
+/**
+ * notificationclick: focus existing tab или открываем новый.
+ * `data.url` — relative path внутри /eclipse-chat/.
+ */
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const targetUrl = (event.notification.data && event.notification.data.url) || "/eclipse-chat/";
+
+  event.waitUntil(
+    (async () => {
+      const allClients = await self.clients.matchAll({
+        type: "window",
+        includeUncontrolled: true,
+      });
+      // Ищем существующий tab с приложением, focus + postMessage с deep link.
+      for (const client of allClients) {
+        if (client.url.includes("/eclipse-chat/")) {
+          if ("focus" in client) {
+            await client.focus();
+            // postMessage чтобы App.tsx мог обработать deep-link если нужно.
+            try {
+              client.postMessage({ type: "push:open", url: targetUrl });
+            } catch (err) {
+              /* ignore — client может не слушать */
+            }
+            return;
+          }
+        }
+      }
+      // Нет открытых клиентов — open new.
+      if (self.clients.openWindow) {
+        await self.clients.openWindow(targetUrl);
+      }
+    })(),
+  );
+});

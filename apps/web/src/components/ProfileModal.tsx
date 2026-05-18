@@ -4,6 +4,7 @@ import { Avatar } from "./Avatar";
 import { Modal } from "./Modal";
 import { TwoFactorSetupModal } from "./TwoFactorSetupModal";
 import type { Profile } from "../hooks/useProfile";
+import { usePushNotifications } from "../hooks/usePushNotifications";
 
 type Props = {
   profile: Profile;
@@ -42,6 +43,8 @@ export function ProfileModal({
   const [show2FA, setShow2FA] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const twoFaOn = (profile as Profile & { twoFactorEnabled?: boolean }).twoFactorEnabled === true;
+  // v0.84 #27 phase 3: push notifications state.
+  const push = usePushNotifications();
 
   const trimmedName = displayName.trim();
   const trimmedBio = bio.trim();
@@ -200,6 +203,79 @@ export function ProfileModal({
       {error && (
         <p style={{ margin: 0, color: "var(--ec-danger)", fontSize: "var(--ec-text-sm)" }}>{error}</p>
       )}
+
+      {/* v0.84 #27 phase 3: Push notifications section */}
+      <section
+        style={{
+          ...avatarSection,
+          background: push.enabled ? "var(--ec-accent-soft)" : "var(--ec-surface-2)",
+          borderColor: push.enabled ? "var(--ec-accent)" : "var(--ec-border-subtle)",
+        }}
+      >
+        <div
+          aria-hidden
+          style={{
+            width: 48,
+            height: 48,
+            borderRadius: "var(--ec-radius-md)",
+            display: "grid",
+            placeItems: "center",
+            background: push.enabled ? "var(--ec-accent)" : "var(--ec-surface-3)",
+            color: push.enabled ? "#fff" : "var(--ec-text-muted)",
+          }}
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+            <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+          </svg>
+        </div>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
+          <strong style={{ color: "var(--ec-text-strong)", fontSize: "var(--ec-text-sm)" }}>
+            Push-уведомления
+          </strong>
+          <span style={{ fontSize: "var(--ec-text-2xs)", color: "var(--ec-text-muted)", lineHeight: 1.4 }}>
+            {push.capability === "unsupported"
+              ? push.error ?? "Браузер не поддерживает push, либо сервер не настроен."
+              : push.capability === "denied"
+                ? "Разрешение отклонено в браузере. Открой настройки сайта чтобы изменить."
+                : push.enabled
+                  ? "Включены — на это устройство приходят DM, назначения задач, одобрения и эскалации."
+                  : "Получай уведомления о DM, задачах и эскалациях даже когда вкладка закрыта."}
+          </span>
+          {push.error && push.capability !== "unsupported" && push.capability !== "denied" && (
+            <span style={{ fontSize: "var(--ec-text-2xs)", color: "var(--ec-danger)", lineHeight: 1.4 }}>
+              {push.error}
+            </span>
+          )}
+        </div>
+        {push.capability === "ready" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <button
+              type="button"
+              onClick={() => void (push.enabled ? push.disable() : push.enable())}
+              className={
+                push.enabled
+                  ? "ec-btn ec-btn--ghost ec-btn--sm"
+                  : "ec-btn ec-btn--primary ec-btn--sm"
+              }
+              disabled={push.busy}
+            >
+              {push.busy ? "…" : push.enabled ? "Отключить" : "Включить"}
+            </button>
+            {push.enabled && (
+              <button
+                type="button"
+                onClick={() => void push.sendTest()}
+                className="ec-btn ec-btn--ghost ec-btn--sm"
+                disabled={push.busy}
+                title="Отправить тестовое уведомление"
+              >
+                Тест
+              </button>
+            )}
+          </div>
+        )}
+      </section>
 
       {show2FA && (
         <TwoFactorSetupModal
