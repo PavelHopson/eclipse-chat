@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { apiJson } from "../lib/api";
 import {
   useOperationalTable,
   type TableCell,
@@ -366,6 +367,7 @@ export function OperationalTablePanel({
               sortedRows.map((row) => (
                 <RowEditor
                   key={row.id}
+                  tableId={table.id}
                   row={row}
                   fields={sortedFields}
                   members={members}
@@ -399,6 +401,82 @@ export function OperationalTablePanel({
               ))
             )}
           </tbody>
+          {/* v0.87 #10 phase 3: aggregations footer для NUMBER колонок. */}
+          {table.aggregations.length > 0 && sortedRows.length > 0 && (
+            <tfoot>
+              <tr>
+                <th
+                  scope="row"
+                  style={{
+                    ...tdStyle,
+                    fontWeight: 700,
+                    color: "var(--ec-text-dim)",
+                    fontSize: "var(--ec-text-2xs)",
+                    letterSpacing: "var(--ec-tracking-caps)",
+                    textTransform: "uppercase",
+                    background: "var(--ec-surface-1)",
+                    borderTop: "1px solid var(--ec-border-subtle)",
+                  }}
+                >
+                  Итого
+                </th>
+                {sortedFields.map((field) => {
+                  const agg = table.aggregations.find(
+                    (a) => a.fieldId === field.id,
+                  );
+                  if (!agg || field.type !== "NUMBER") {
+                    return (
+                      <td
+                        key={field.id}
+                        style={{
+                          ...tdStyle,
+                          background: "var(--ec-surface-1)",
+                          borderTop: "1px solid var(--ec-border-subtle)",
+                        }}
+                      />
+                    );
+                  }
+                  return (
+                    <td
+                      key={field.id}
+                      style={{
+                        ...tdStyle,
+                        background: "var(--ec-surface-1)",
+                        borderTop: "1px solid var(--ec-border-subtle)",
+                        fontFeatureSettings: '"tnum"',
+                        fontSize: "var(--ec-text-xs)",
+                      }}
+                      title={`SUM ${agg.sum.toLocaleString("ru-RU")} · AVG ${
+                        agg.avg !== null ? agg.avg.toFixed(2) : "—"
+                      } · MIN ${agg.min ?? "—"} · MAX ${agg.max ?? "—"} · COUNT ${agg.count}`}
+                    >
+                      <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                        <strong style={{ color: "var(--ec-text-strong)" }}>
+                          Σ {agg.sum.toLocaleString("ru-RU")}
+                        </strong>
+                        <span
+                          style={{
+                            color: "var(--ec-text-dim)",
+                            fontSize: "var(--ec-text-2xs)",
+                          }}
+                        >
+                          ⌀ {agg.avg !== null ? agg.avg.toFixed(2) : "—"} · {agg.count}{" "}
+                          из {sortedRows.length}
+                        </span>
+                      </div>
+                    </td>
+                  );
+                })}
+                <td
+                  style={{
+                    ...tdStyle,
+                    background: "var(--ec-surface-1)",
+                    borderTop: "1px solid var(--ec-border-subtle)",
+                  }}
+                />
+              </tr>
+            </tfoot>
+          )}
         </table>
       </div>
     </div>
@@ -587,6 +665,7 @@ function FieldHeader({
 }
 
 function RowEditor({
+  tableId,
   row,
   fields,
   members,
@@ -600,6 +679,8 @@ function RowEditor({
   onDragEnter,
   onDragEnd,
 }: {
+  /** v0.87 #10 phase 3: для AI-fill endpoint. */
+  tableId: string;
   row: TableRowType;
   fields: TableField[];
   members: Array<{
@@ -623,6 +704,9 @@ function RowEditor({
   onDragEnter: () => void;
   onDragEnd: () => void;
 }) {
+  // v0.87 #10 phase 3: AI-fill state.
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
   // Local draft per field. Save on blur.
   const cellMap = useMemo(() => {
     const m = new Map<string, string>();
@@ -703,24 +787,103 @@ function RowEditor({
           />
         </td>
       ))}
-      <td style={{ ...tdStyle, width: 32, textAlign: "center", verticalAlign: "middle" }}>
-        <button
-          type="button"
-          onClick={() => {
-            if (window.confirm("Удалить строку?")) onRemove();
-          }}
-          title="Удалить строку"
-          style={{
-            background: "transparent",
-            border: 0,
-            color: "var(--ec-text-dim)",
-            cursor: "pointer",
-            fontSize: "0.95rem",
-            padding: "0.25rem 0.4rem",
-          }}
-        >
-          ×
-        </button>
+      <td style={{ ...tdStyle, width: 56, textAlign: "center", verticalAlign: "middle", padding: "var(--ec-space-1) 0" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 2, alignItems: "center" }}>
+          {/* v0.87 #10 phase 3: AI-fill row button. Видна если есть пустые
+              fillable cells (TEXT/NUMBER/STATUS/DATE/CHECKBOX). */}
+          {(() => {
+            const fillableEmpty = fields.some(
+              (f) =>
+                ["TEXT", "NUMBER", "STATUS", "DATE", "CHECKBOX"].includes(f.type) &&
+                (!cellMap.get(f.id) || cellMap.get(f.id) === ""),
+            );
+            if (!fillableEmpty) return null;
+            return (
+              <button
+                type="button"
+                onClick={async () => {
+                  setAiBusy(true);
+                  setAiError(null);
+                  try {
+                    const res = await apiJson<{
+                      rowId: string;
+                      suggestions: Array<{ fieldId: string; fieldName: string; value: string }>;
+                    }>(
+                      `/api/tables/${encodeURIComponent(tableId)}/rows/${encodeURIComponent(row.id)}/ai-fill`,
+                      { method: "POST" },
+                    );
+                    if (res.suggestions.length === 0) {
+                      setAiError("AI ничего не предложил");
+                      return;
+                    }
+                    // Auto-apply suggestions через onSave (PATCH row через batch).
+                    onSave(
+                      res.suggestions.map((s) => ({
+                        fieldId: s.fieldId,
+                        value: s.value,
+                      })),
+                    );
+                  } catch (e) {
+                    const msg = e instanceof Error ? e.message : "AI ошибка";
+                    setAiError(msg);
+                    window.setTimeout(() => setAiError(null), 4000);
+                  } finally {
+                    setAiBusy(false);
+                  }
+                }}
+                disabled={aiBusy}
+                title={aiError ?? "Заполнить пустые ячейки через AI"}
+                aria-label="AI заполнить"
+                style={{
+                  background: "transparent",
+                  border: "1px solid var(--ec-border-subtle)",
+                  color: aiError
+                    ? "var(--ec-danger)"
+                    : aiBusy
+                      ? "var(--ec-accent)"
+                      : "var(--ec-text-dim)",
+                  cursor: aiBusy ? "wait" : "pointer",
+                  fontSize: "0.7rem",
+                  padding: "0.18rem 0.42rem",
+                  borderRadius: "var(--ec-radius-xs)",
+                  lineHeight: 1,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 3,
+                }}
+              >
+                {aiBusy ? (
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+                    <circle cx="12" cy="12" r="9" opacity="0.3" />
+                    <path d="M12 3a9 9 0 0 1 9 9" />
+                  </svg>
+                ) : (
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden>
+                    <path d="M13 2L3 14h7l-2 8 10-12h-7l2-8z" strokeLinejoin="round" />
+                  </svg>
+                )}
+                AI
+              </button>
+            );
+          })()}
+          <button
+            type="button"
+            onClick={() => {
+              if (window.confirm("Удалить строку?")) onRemove();
+            }}
+            title="Удалить строку"
+            style={{
+              background: "transparent",
+              border: 0,
+              color: "var(--ec-text-dim)",
+              cursor: "pointer",
+              fontSize: "0.95rem",
+              padding: "0.18rem 0.4rem",
+            }}
+          >
+            ×
+          </button>
+        </div>
       </td>
     </tr>
   );

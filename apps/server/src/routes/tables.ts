@@ -6,6 +6,7 @@ import { emitTableEvent } from "../realtime.js";
 import { TABLE_TEMPLATES, getTemplate } from "../lib/tableTemplates.js";
 import { processStandaloneFile } from "../attachments.js";
 import { isModOrHigher } from "../lib/permissions.js";
+import { AINotConfiguredError, chat } from "../ai/provider.js";
 
 /**
  * Operational Tables phase 1 (v0.59.0) — CRUD routes.
@@ -235,6 +236,56 @@ function serializeOptions(raw: string | null): string[] | null {
   }
 }
 
+/**
+ * v0.87 #10 phase 3: column-level aggregations.
+ *
+ * Pure computation — для каждого NUMBER field считается SUM/AVG/COUNT/MIN/MAX
+ * по non-empty parseable values. Возвращается в payload как `aggregations`
+ * (один row per NUMBER field). UI рендерит footer-row под таблицей.
+ *
+ * COUNT учитывает только parseable non-empty cells (не общее число rows).
+ * AVG/MIN/MAX undefined если COUNT=0.
+ */
+export type FieldAggregation = {
+  fieldId: string;
+  count: number;
+  sum: number;
+  avg: number | null;
+  min: number | null;
+  max: number | null;
+};
+
+export function aggregateNumberFields(
+  fields: Array<{ id: string; type: FieldType }>,
+  rows: Array<{ cells: Array<{ fieldId: string; value: string }> }>,
+): FieldAggregation[] {
+  const numericFields = fields.filter((f) => f.type === "NUMBER");
+  return numericFields.map((field) => {
+    let count = 0;
+    let sum = 0;
+    let min = Number.POSITIVE_INFINITY;
+    let max = Number.NEGATIVE_INFINITY;
+    for (const row of rows) {
+      const cell = row.cells.find((c) => c.fieldId === field.id);
+      if (!cell || !cell.value) continue;
+      const parsed = parseFloat(cell.value.replace(",", "."));
+      if (!Number.isFinite(parsed)) continue;
+      count += 1;
+      sum += parsed;
+      if (parsed < min) min = parsed;
+      if (parsed > max) max = parsed;
+    }
+    return {
+      fieldId: field.id,
+      count,
+      sum,
+      avg: count > 0 ? sum / count : null,
+      min: count > 0 ? min : null,
+      max: count > 0 ? max : null,
+    };
+  });
+}
+
 function serializeTable(t: {
   id: string;
   serverId: string;
@@ -260,6 +311,7 @@ function serializeTable(t: {
     cells: Array<{ rowId: string; fieldId: string; value: string }>;
   }>;
 }) {
+  const cellsByRow = t.rows.map((r) => ({ cells: r.cells }));
   return {
     id: t.id,
     serverId: t.serverId,
@@ -297,6 +349,8 @@ function serializeTable(t: {
           value: c.value,
         })),
       })),
+    // v0.87 #10 phase 3: aggregations footer.
+    aggregations: aggregateNumberFields(t.fields, cellsByRow),
   };
 }
 
@@ -1135,6 +1189,216 @@ export async function registerTableRoutes(app: FastifyInstance) {
    * массив `{url, filename, mimeType, size}` — клиент кладёт в cell
    * как JSON. Cap: 5 файлов за раз, 50/200 MB per file (как везде).
    */
+  /**
+   * v0.87 #10 phase 3: AI-fill empty cells in a row.
+   *
+   * POST /api/tables/:id/rows/:rowId/ai-fill
+   *
+   * Просит AI заполнить пустые ячейки row'а на основе:
+   *   - Table schema (имена + типы полей + STATUS options).
+   *   - Sample rows (top 3 fully-filled) для tone/format reference.
+   *   - Существующих заполненных ячеек этой row (контекст).
+   *
+   * Returns JSON `{ updates: Array<{ fieldId, value }> }` — клиент потом
+   * PATCH'ает row через стандартный update-row endpoint. Этот endpoint
+   * READ-ONLY — он только генерирует suggestion, не сохраняет.
+   *
+   * Skipped fields: FILE / RELATION / USER — AI не умеет валидно угадывать
+   * id'шники. Если AI не configured → 503 с понятным сообщением.
+   */
+  app.post(
+    "/api/tables/:id/rows/:rowId/ai-fill",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const userId = getUserId(req);
+      if (!userId) return reply.status(401).send({ error: "Unauthorized" });
+      const { id: tableId, rowId } = req.params as { id: string; rowId: string };
+      const table = await db.table.findUnique({
+        where: { id: tableId },
+        include: {
+          fields: true,
+          rows: { include: { cells: true } },
+        },
+      });
+      if (!table) return reply.status(404).send({ error: "Table not found" });
+      const member = await requireServerMember(userId, table.serverId);
+      if (!member) {
+        return reply.status(403).send({ error: "Not a member of this server" });
+      }
+      const row = table.rows.find((r) => r.id === rowId);
+      if (!row) return reply.status(404).send({ error: "Row not found" });
+
+      // Только AI-fillable types — skip FILE/RELATION/USER.
+      const fillableFields = table.fields
+        .slice()
+        .sort((a, b) => a.position - b.position)
+        .filter((f) =>
+          ["TEXT", "NUMBER", "STATUS", "DATE", "CHECKBOX"].includes(f.type),
+        );
+      if (fillableFields.length === 0) {
+        return reply
+          .status(400)
+          .send({ error: "Нет полей для AI-заполнения в этой таблице" });
+      }
+
+      // Какие cells пустые в этой row.
+      const currentCells = new Map(row.cells.map((c) => [c.fieldId, c.value]));
+      const emptyFieldIds = fillableFields
+        .map((f) => f.id)
+        .filter((id) => {
+          const v = currentCells.get(id);
+          return v === undefined || v === "";
+        });
+      if (emptyFieldIds.length === 0) {
+        return reply.status(400).send({ error: "Все поля уже заполнены" });
+      }
+
+      // Sample rows — берём first 3 с самым большим non-empty count, не-target row.
+      const sampleRows = table.rows
+        .filter((r) => r.id !== rowId)
+        .map((r) => ({
+          cells: r.cells,
+          filledCount: r.cells.filter((c) => c.value).length,
+        }))
+        .sort((a, b) => b.filledCount - a.filledCount)
+        .slice(0, 3);
+
+      const schemaPart = fillableFields
+        .map((f) => {
+          const opts = serializeOptions(f.options);
+          const optsHint =
+            f.type === "STATUS" && opts && opts.length > 0
+              ? ` (allowed: ${opts.join(" | ")})`
+              : "";
+          return `- ${f.name} (${f.type}${optsHint})`;
+        })
+        .join("\n");
+
+      const samplePart = sampleRows.length
+        ? sampleRows
+            .map((r, idx) => {
+              const pairs = fillableFields
+                .map((f) => {
+                  const c = r.cells.find((c) => c.fieldId === f.id);
+                  return `${f.name}: ${c?.value ?? "—"}`;
+                })
+                .join("; ");
+              return `Row ${idx + 1}: ${pairs}`;
+            })
+            .join("\n")
+        : "(no example rows yet)";
+
+      const currentPart = fillableFields
+        .map((f) => {
+          const v = currentCells.get(f.id);
+          return `${f.name}: ${v && v !== "" ? v : "<EMPTY>"}`;
+        })
+        .join("; ");
+
+      const fillTargets = emptyFieldIds
+        .map((id) => fillableFields.find((f) => f.id === id))
+        .filter((f): f is NonNullable<typeof f> => Boolean(f))
+        .map((f) => `"${f.name}"`)
+        .join(", ");
+
+      // Compact JSON-only prompt — AI должен вернуть структурированный JSON.
+      const messages = [
+        {
+          role: "system" as const,
+          content:
+            "Ты — operational assistant в Eclipse Chat. Заполни пустые ячейки таблицы " +
+            "на основе схемы и существующих rows. Отвечай ТОЛЬКО валидным JSON массивом " +
+            "вида: [{\"name\":\"<column name>\",\"value\":\"<value>\"}]. Никаких пояснений, " +
+            "никаких маркеров, никакого markdown. Для STATUS поля используй ТОЛЬКО " +
+            "значения из allowed list. Для NUMBER — число без единиц. Для DATE — формат " +
+            "YYYY-MM-DD. Для CHECKBOX — \"true\" или \"false\". Если не уверен в значении — " +
+            "пропусти поле (не включай в массив).",
+        },
+        {
+          role: "user" as const,
+          content: [
+            `Table: ${table.name}`,
+            `Columns:\n${schemaPart}`,
+            `Example rows:\n${samplePart}`,
+            `Current row (fill EMPTY): ${currentPart}`,
+            `Fill these columns: ${fillTargets}`,
+            "JSON response:",
+          ].join("\n\n"),
+        },
+      ];
+
+      let raw: string;
+      try {
+        const result = await chat(messages, {
+          maxTokens: 500,
+          temperature: 0.3,
+        });
+        raw = result.text;
+      } catch (err) {
+        if (err instanceof AINotConfiguredError) {
+          return reply.status(503).send({ error: "AI не настроен на сервере" });
+        }
+        req.log.warn({ err }, "Table AI-fill chat() failed");
+        return reply.status(500).send({ error: "AI failed" });
+      }
+
+      // Парсим JSON. AI иногда оборачивает в ```json ``` — strip.
+      const cleaned = raw
+        .replace(/^[\s\S]*?(\[)/, "$1") // обрезаем всё до первой `[`
+        .replace(/([\]\}])[\s\S]*$/, "$1"); // и всё после последней `]`
+      let parsedJson: Array<{ name?: string; value?: string }> = [];
+      try {
+        const json = JSON.parse(cleaned);
+        if (Array.isArray(json)) {
+          parsedJson = json;
+        }
+      } catch (err) {
+        req.log.warn({ err, raw }, "Table AI-fill JSON parse failed");
+        return reply.status(500).send({ error: "AI вернул невалидный JSON" });
+      }
+
+      // Map name→fieldId + validate STATUS options.
+      const nameMap = new Map(fillableFields.map((f) => [f.name.toLowerCase(), f]));
+      const updates: Array<{ fieldId: string; value: string; fieldName: string }> = [];
+      for (const entry of parsedJson) {
+        if (!entry.name || entry.value === undefined) continue;
+        const field = nameMap.get(entry.name.toLowerCase());
+        if (!field) continue;
+        if (!emptyFieldIds.includes(field.id)) continue; // не overwrite заполненные
+        const value = String(entry.value).trim().slice(0, 4000);
+        if (!value) continue;
+        // STATUS validation: значение должно быть в options.
+        if (field.type === "STATUS") {
+          const opts = serializeOptions(field.options);
+          if (opts && opts.length > 0 && !opts.includes(value)) continue;
+        }
+        // CHECKBOX normalization.
+        if (field.type === "CHECKBOX") {
+          if (value !== "true" && value !== "false") continue;
+        }
+        // NUMBER validation.
+        if (field.type === "NUMBER") {
+          const n = parseFloat(value.replace(",", "."));
+          if (!Number.isFinite(n)) continue;
+        }
+        // DATE validation: ISO date.
+        if (field.type === "DATE") {
+          if (!/^\d{4}-\d{2}-\d{2}/.test(value)) continue;
+        }
+        updates.push({ fieldId: field.id, value, fieldName: field.name });
+      }
+
+      return {
+        rowId,
+        suggestions: updates.map(({ fieldId, value, fieldName }) => ({
+          fieldId,
+          fieldName,
+          value,
+        })),
+      };
+    },
+  );
+
   app.post(
     "/api/tables/:id/upload",
     { onRequest: [requireJwt] },

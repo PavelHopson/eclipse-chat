@@ -65,6 +65,16 @@ export type TableRow = {
   cells: TableCell[];
 };
 
+/** v0.87 #10 phase 3: column-level aggregation для NUMBER fields. */
+export type TableAggregation = {
+  fieldId: string;
+  count: number;
+  sum: number;
+  avg: number | null;
+  min: number | null;
+  max: number | null;
+};
+
 export type TableDetail = {
   id: string;
   serverId: string;
@@ -76,6 +86,8 @@ export type TableDetail = {
   createdBy: { id: string; displayName: string; avatar: string | null };
   fields: TableField[];
   rows: TableRow[];
+  /** v0.87 #10 phase 3: computed-on-read aggregations для NUMBER колонок. */
+  aggregations: TableAggregation[];
 };
 
 /** ============================================================
