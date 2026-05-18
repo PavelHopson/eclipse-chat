@@ -71,6 +71,19 @@ export type PortalActivity = {
   actor: string | null;
 };
 
+export type PortalInvoice = {
+  id: string;
+  number: string;
+  title: string;
+  status: "SENT" | "PAID";
+  currency: string;
+  amountTotal: number;
+  issuedAt: string | null;
+  dueAt: string | null;
+  paidAt: string | null;
+  itemCount: number;
+};
+
 export type ClientPortalData = {
   server: {
     id: string;
@@ -85,6 +98,7 @@ export type ClientPortalData = {
     isPreview: boolean;
   };
   generatedAt: string;
+  summary: { text: string; generatedAt: string } | null;
   progress: {
     counts: { open: number; inProgress: number; review: number; done: number };
     items: PortalActionItem[];
@@ -94,6 +108,10 @@ export type ClientPortalData = {
     recent: PortalApproval[];
   };
   files: PortalFile[];
+  invoices: {
+    outstanding: number;
+    invoices: PortalInvoice[];
+  };
   recentActivity: PortalActivity[];
 };
 

@@ -3,11 +3,10 @@
 > Этот файл — **system prompt + project status + architecture overview**
 > для продолжения работы над Eclipse Chat в свежем чате с Claude Code.
 >
-> **Обновлено 2026-05-18 (после v0.85.0).** Сессия 18.05 (продолжение):
-> v0.82 → v0.85 = #24 Client Portal phase 1 + #27 Push Notifications
-> phase 3 + #27 phase 4 polish (mention trigger + per-event toggles +
-> per-channel mute). Pavel-priority до этого: v0.72 → v0.82 = 10 prod-
-> деплоев.
+> **Обновлено 2026-05-18 (после v0.86.0).** Сессия 18.05 (продолжение):
+> v0.82 → v0.86 = #24 phase 1 + #27 phase 3+4 + #24 phase 2a (Client
+> Portal Invoices + AI digest). Pavel-priority до этого: v0.72 → v0.82
+> = 10 prod-деплоев.
 
 ---
 
@@ -86,10 +85,10 @@ Calm cinematic operational environment.
 Продаём: clarity / calmness / execution / coordination / operational
 visibility. НЕ продаём AI — AI это enabler, не headline.
 
-## Current state — v0.85.0 LIVE
+## Current state — v0.86.0 LIVE
 
 Prod: https://app.star-crm.ru/eclipse-chat/
-Version endpoint: /eclipse-chat/api/version → 0.85.0
+Version endpoint: /eclipse-chat/api/version → 0.86.0
 
 ### Сессия 18.05 — 10 prod-деплоев за один заход (v0.72 → v0.82)
 
@@ -145,6 +144,14 @@ Version endpoint: /eclipse-chat/api/version → 0.85.0
   bell-toggle в ChannelList с bell-off icon для muted). notifyUser
   обогащён event-type + pref check + mute check. Test endpoint
   отдельный notifyUserDirect (bypass — explicit user test).
+- v0.86 — #24 phase 2a Client Portal extension: Invoice schema
+  (Invoice + InvoiceItem + InvoiceStatus enum DRAFT/SENT/PAID/CANCELLED)
+  + full CRUD routes (admin-only) + status workflow с auto issuedAt/
+  paidAt + Invoices section в ClientPortalPage (CLIENT видит SENT/PAID)
+  + AdminPanel «Счета» tab (только для CLIENT-mode) с inline create-form
+  + AI digest в portal payload (3-5 line RU summary через chat() chain).
+  Phase 2b (PDF generation) deferred — pdfkit npm install не прошёл
+  registry ECONNRESET. Phase 3 (public token-based access).
 
 ### Phase 1 CORE (закрыта до 14.05)
 
@@ -192,9 +199,9 @@ Version endpoint: /eclipse-chat/api/version → 0.85.0
 - Backend: Node 20 + Fastify 5 + Prisma 6 + Socket.io 4 + Sharp +
   Helmet + Rate-limit + otplib + LiveKit JWT
 - Frontend: React 19 + Vite 6 + TS 5.8 + livekit-client 2.18 (lazy)
-- DB: PostgreSQL 16. На v0.85 — **40 миграций applied** (v0.85 добавил
-  notification_polish — NotificationPreferences + MutedChannel; v0.84 —
-  push_subscriptions; v0.83 — zero schema changes). Последние миграции:
+- DB: PostgreSQL 16. На v0.86 — **41 миграция applied** (v0.86 добавил
+  invoices — Invoice + InvoiceItem + InvoiceStatus enum; v0.85 —
+  notification_polish; v0.84 — push_subscriptions). Последние миграции:
   message_user_setnull, action_item_comment_user_setnull,
   action_item_approval_check, attachment_waveform, link_embed_cache,
   action_item_status_phase2, action_item_dependencies,
@@ -356,17 +363,18 @@ Version endpoint: /eclipse-chat/api/version → 0.85.0
 
 ### Текущий приоритет (Pavel order для следующих slice'ов)
 
-1. **#23 Live workspace** — XL. Excalidraw + Yjs CRDT во время voice
+1. **#10 phase 3 Operational Tables AI-fill + formulas** — M-L.
+   AI fills rows from conversation context; basic formulas (SUM/COUNT/
+   AVG over columns); row→ActionItem binding (one row = one task).
+2. **#23 Live workspace** — XL. Excalidraw + Yjs CRDT во время voice
    call (shared notepad / whiteboard / diagrams). Phase 1 — shared
    notepad через Yjs + y-websocket провайдер через наш Socket.io.
-2. **#24 Client portal phase 2** — M-L. Invoice model (server-scoped,
-   line items + status + amount) + PDF report generation (puppeteer/
-   playwright server-side render) + AI digest (5-line summary через
-   existing assistant chain). Phase 1 уже закрыт в v0.83.
+3. **#24 phase 2b** — PDF report generation (pdfkit, deferred from
+   v0.86 из-за registry ECONNRESET) + email delivery.
 3. **#26 phase 2** — extra triggers (NEW_TASK / FILE_UPLOAD / APPROVAL
    / MENTION) + external integrations (Telegram bridge / GitHub webhook
    / Notion sync / Bitrix/1C custom HTTP).
-4. **#27 phase 5** — background sync для offline message queue (PWA
+5. **#27 phase 5** — background sync для offline message queue (PWA
    полноценный offline mode). Не приоритет до feedback'а от users.
 5. **#19 phase 2** — visual node-editor для AutomationRule (React-Flow
    или custom SVG layout).

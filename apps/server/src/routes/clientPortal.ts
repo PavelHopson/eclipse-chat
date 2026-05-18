@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
 import { db } from "../db.js";
+import { AINotConfiguredError, chat } from "../ai/provider.js";
 import type { MemberRole } from "./servers.js";
 
 /**
@@ -105,6 +106,20 @@ export type PortalActivity =
       actor: string | null;
     };
 
+/** v0.86 #24 phase 2: invoice summary в portal payload. */
+export type PortalInvoice = {
+  id: string;
+  number: string;
+  title: string;
+  status: "SENT" | "PAID";
+  currency: string;
+  amountTotal: number;
+  issuedAt: string | null;
+  dueAt: string | null;
+  paidAt: string | null;
+  itemCount: number;
+};
+
 export type ClientPortalPayload = {
   server: {
     id: string;
@@ -119,6 +134,8 @@ export type ClientPortalPayload = {
     isPreview: boolean;
   };
   generatedAt: string;
+  /** v0.86 #24 phase 2: AI-generated 3-5 line summary. null если AI not configured. */
+  summary: { text: string; generatedAt: string } | null;
   progress: {
     counts: { open: number; inProgress: number; review: number; done: number };
     items: PortalActionItem[];
@@ -128,6 +145,11 @@ export type ClientPortalPayload = {
     recent: PortalApproval[];
   };
   files: PortalFile[];
+  /** v0.86 #24 phase 2: invoices visible to client (SENT + PAID). */
+  invoices: {
+    outstanding: number; // sum amount SENT, в копейках currency
+    invoices: PortalInvoice[];
+  };
   recentActivity: PortalActivity[];
 };
 
@@ -246,9 +268,11 @@ export function registerClientPortalRoutes(app: FastifyInstance) {
           },
           viewer: { role: member.role as MemberRole, isPreview: access.isPreview },
           generatedAt: new Date().toISOString(),
+          summary: null,
           progress: { counts: { open: 0, inProgress: 0, review: 0, done: 0 }, items: [] },
           approvals: { pending: [], recent: [] },
           files: [],
+          invoices: { outstanding: 0, invoices: [] },
           recentActivity: [],
         } satisfies ClientPortalPayload;
       }
@@ -452,6 +476,63 @@ export function registerClientPortalRoutes(app: FastifyInstance) {
       activity.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
       const recentActivity = activity.slice(0, ACTIVITY_LIMIT);
 
+      // ── v0.86 #24 phase 2: Invoices. CLIENT видит SENT+PAID. OWNER/ADMIN
+      // preview видят те же — чтобы preview точно отражал client experience.
+      // DRAFT/CANCELLED доступны только через admin routes.
+      const invoiceRows = await db.invoice.findMany({
+        where: { serverId, status: { in: ["SENT", "PAID"] } },
+        orderBy: [{ status: "asc" }, { issuedAt: "desc" }],
+        take: 50,
+        select: {
+          id: true,
+          number: true,
+          title: true,
+          status: true,
+          currency: true,
+          amountTotal: true,
+          issuedAt: true,
+          dueAt: true,
+          paidAt: true,
+          _count: { select: { items: true } },
+        },
+      });
+      const invoices: PortalInvoice[] = invoiceRows.map((inv) => ({
+        id: inv.id,
+        number: inv.number,
+        title: inv.title,
+        status: inv.status as "SENT" | "PAID",
+        currency: inv.currency,
+        amountTotal: inv.amountTotal,
+        issuedAt: inv.issuedAt?.toISOString() ?? null,
+        dueAt: inv.dueAt?.toISOString() ?? null,
+        paidAt: inv.paidAt?.toISOString() ?? null,
+        itemCount: inv._count.items,
+      }));
+      const outstanding = invoiceRows
+        .filter((inv) => inv.status === "SENT")
+        .reduce((sum, inv) => sum + inv.amountTotal, 0);
+
+      // ── v0.86 #24 phase 2: AI digest (3-5 line summary).
+      // Fire-and-forget — если AI не configured ИЛИ упал → summary=null,
+      // UI gracefully скрывает блок. Кэширование пока нет (per-request
+      // generate); phase 3 — кэшировать на 6h в Server table.
+      let summary: ClientPortalPayload["summary"] = null;
+      try {
+        summary = await buildAiDigest({
+          serverName: server.name,
+          counts,
+          pendingApprovals: pendingApprovalRows.length,
+          outstandingInvoices: invoiceRows.filter((i) => i.status === "SENT").length,
+          recentDecisions: recentApprovalRows.slice(0, 5).map((a) => ({
+            title: a.title,
+            decision: a.approvalStatus,
+          })),
+          recentClosed: recentDoneRows.slice(0, 5).map((r) => r.title),
+        });
+      } catch (err) {
+        req.log.warn({ err }, "Portal AI digest failed");
+      }
+
       const payload: ClientPortalPayload = {
         server: {
           id: server.id,
@@ -463,15 +544,87 @@ export function registerClientPortalRoutes(app: FastifyInstance) {
         },
         viewer: { role: member.role as MemberRole, isPreview: access.isPreview },
         generatedAt: now.toISOString(),
+        summary,
         progress: { counts, items: progressItems },
         approvals: {
           pending: pendingApprovalRows.map(mapApproval),
           recent: recentApprovalRows.map(mapApproval),
         },
         files,
+        invoices: { outstanding, invoices },
         recentActivity,
       };
       return payload;
     },
   );
+}
+
+/**
+ * v0.86 #24 phase 2: AI digest для client-facing summary.
+ *
+ * Compact prompt — calm RU 3-5 sentences. Specifically НЕ marketing tone —
+ * operational, факты. Skipping если AI not configured (returns null).
+ */
+async function buildAiDigest(ctx: {
+  serverName: string;
+  counts: { open: number; inProgress: number; review: number; done: number };
+  pendingApprovals: number;
+  outstandingInvoices: number;
+  recentDecisions: Array<{ title: string; decision: string }>;
+  recentClosed: string[];
+}): Promise<{ text: string; generatedAt: string } | null> {
+  const factsParts: string[] = [];
+  factsParts.push(
+    `Проект "${ctx.serverName}". В работе: ${ctx.counts.inProgress + ctx.counts.review}. ` +
+      `Завершено: ${ctx.counts.done}. Открыто: ${ctx.counts.open}.`,
+  );
+  if (ctx.pendingApprovals > 0) {
+    factsParts.push(`Ожидают одобрения: ${ctx.pendingApprovals}.`);
+  }
+  if (ctx.outstandingInvoices > 0) {
+    factsParts.push(`Неоплаченных счетов: ${ctx.outstandingInvoices}.`);
+  }
+  if (ctx.recentClosed.length > 0) {
+    factsParts.push(
+      `Недавно завершено: ${ctx.recentClosed.slice(0, 3).map((t) => `"${t}"`).join(", ")}.`,
+    );
+  }
+  if (ctx.recentDecisions.length > 0) {
+    factsParts.push(
+      `Недавние решения: ${ctx.recentDecisions
+        .map((d) => `"${d.title}" (${d.decision === "APPROVED" ? "одобрено" : "отклонено"})`)
+        .join(", ")}.`,
+    );
+  }
+  const facts = factsParts.join("\n");
+
+  const messages = [
+    {
+      role: "system" as const,
+      content:
+        "Ты — calm operational assistant внутри клиентского портала Eclipse Chat. " +
+        "Сгенерируй 3-5 коротких предложений по-русски, без маркетинга и эмоций. " +
+        "Сухие факты + acknowledgement что важно клиенту. Не упоминай что ты AI. " +
+        "Не используй маркеры (•/-/—). Не выдумывай факты которых нет в input'е.",
+    },
+    {
+      role: "user" as const,
+      content: `Факты:\n${facts}\n\nСводка:`,
+    },
+  ];
+
+  try {
+    const result = await chat(messages, { maxTokens: 250, temperature: 0.3 });
+    const trimmed = result.text.trim();
+    if (!trimmed) return null;
+    return {
+      text: trimmed.slice(0, 1200),
+      generatedAt: new Date().toISOString(),
+    };
+  } catch (err) {
+    if (err instanceof AINotConfiguredError) {
+      return null;
+    }
+    throw err;
+  }
 }

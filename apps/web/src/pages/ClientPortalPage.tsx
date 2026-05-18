@@ -10,6 +10,7 @@ import type {
   PortalApproval,
   PortalError,
   PortalFile,
+  PortalInvoice,
 } from "../hooks/useClientPortal";
 
 /**
@@ -346,6 +347,101 @@ function formatBytes(bytes: number): string {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
+/** v0.86 #24 phase 2: формат денежной суммы из копеек в человеческий вид. */
+function formatMoney(amountKopeks: number, currency: string): string {
+  const major = amountKopeks / 100;
+  // Локально-формат RU для RUB, fallback на ISO format.
+  try {
+    return new Intl.NumberFormat("ru-RU", {
+      style: "currency",
+      currency,
+      maximumFractionDigits: 2,
+    }).format(major);
+  } catch {
+    return `${major.toFixed(2)} ${currency}`;
+  }
+}
+
+const INVOICE_TONE: Record<PortalInvoice["status"], string> = {
+  SENT: "hsl(36 70% 60%)",
+  PAID: "hsl(150 50% 55%)",
+};
+
+const INVOICE_LABEL: Record<PortalInvoice["status"], string> = {
+  SENT: "Ожидает оплаты",
+  PAID: "Оплачен",
+};
+
+function InvoiceItem({ invoice }: { invoice: PortalInvoice }) {
+  const tone = INVOICE_TONE[invoice.status];
+  const dueOverdue =
+    invoice.status === "SENT" &&
+    invoice.dueAt &&
+    new Date(invoice.dueAt).getTime() < Date.now();
+  return (
+    <div style={itemRow}>
+      <span
+        style={{
+          width: 8,
+          height: 8,
+          borderRadius: "50%",
+          background: dueOverdue ? "hsl(0 70% 62%)" : tone,
+          boxShadow: `0 0 8px ${dueOverdue ? "hsl(0 70% 62%)" : tone}`,
+        }}
+        aria-hidden
+      />
+      <div style={{ minWidth: 0 }}>
+        <div style={itemTitle}>
+          {invoice.number} · {invoice.title}
+        </div>
+        <div style={itemMeta}>
+          <span>{INVOICE_LABEL[invoice.status]}</span>
+          {invoice.itemCount > 0 && (
+            <>
+              <span>·</span>
+              <span>{invoice.itemCount} позиций</span>
+            </>
+          )}
+          {invoice.issuedAt && (
+            <>
+              <span>·</span>
+              <span>выставлен {formatDate(invoice.issuedAt)}</span>
+            </>
+          )}
+          {invoice.dueAt && invoice.status === "SENT" && (
+            <>
+              <span>·</span>
+              <span style={dueOverdue ? { color: "hsl(0 70% 70%)" } : undefined}>
+                срок {formatDate(invoice.dueAt)}
+                {dueOverdue ? " · просрочен" : ""}
+              </span>
+            </>
+          )}
+          {invoice.paidAt && (
+            <>
+              <span>·</span>
+              <span>оплачен {formatDate(invoice.paidAt)}</span>
+            </>
+          )}
+        </div>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+        <span
+          style={{
+            fontSize: "var(--ec-text-md)",
+            fontWeight: 700,
+            color: "var(--ec-text-strong)",
+            fontFeatureSettings: '"tnum"',
+          }}
+        >
+          {formatMoney(invoice.amountTotal, invoice.currency)}
+        </span>
+        <span style={badge(tone)}>{INVOICE_LABEL[invoice.status]}</span>
+      </div>
+    </div>
+  );
+}
+
 function ProgressItem({ item }: { item: PortalActionItem }) {
   return (
     <div style={itemRow}>
@@ -621,6 +717,45 @@ export function ClientPortalPage({ data, loading, error, onReload, onExit }: Pro
           <div style={welcomeCard}>{data.server.welcomeMessage}</div>
         )}
 
+        {/* v0.86 #24 phase 2: AI summary */}
+        {data.summary && (
+          <section
+            style={{
+              padding: "var(--ec-space-4) var(--ec-space-5)",
+              borderRadius: "var(--ec-radius-lg)",
+              background:
+                "linear-gradient(135deg, hsl(195 50% 12% / 0.65), hsl(208 30% 8% / 0.85))",
+              border: "1px solid hsl(195 60% 35% / 0.3)",
+              display: "flex",
+              flexDirection: "column",
+              gap: 6,
+            }}
+          >
+            <span
+              style={{
+                fontSize: "var(--ec-text-2xs)",
+                fontWeight: 800,
+                letterSpacing: "var(--ec-tracking-caps)",
+                textTransform: "uppercase",
+                color: "hsl(195 60% 70%)",
+              }}
+            >
+              Сводка
+            </span>
+            <p
+              style={{
+                margin: 0,
+                fontSize: "var(--ec-text-sm)",
+                color: "var(--ec-text)",
+                lineHeight: 1.6,
+                whiteSpace: "pre-wrap",
+              }}
+            >
+              {data.summary.text}
+            </p>
+          </section>
+        )}
+
         {/* Progress */}
         <section style={{ display: "flex", flexDirection: "column", gap: "var(--ec-space-3)" }}>
           <div style={sectionHeader}>
@@ -713,6 +848,31 @@ export function ClientPortalPage({ data, loading, error, onReload, onExit }: Pro
               icon={<EmptyFilesIcon />}
               title="Файлов пока нет"
               hint="Документы, которые опубликуют в каналах, появятся здесь."
+            />
+          )}
+        </section>
+
+        {/* v0.86 #24 phase 2: Invoices */}
+        <section style={{ display: "flex", flexDirection: "column", gap: "var(--ec-space-3)" }}>
+          <div style={sectionHeader}>
+            <h2 style={sectionTitle}>Счета</h2>
+            <span style={sectionMuted}>
+              {data.invoices.invoices.length} {data.invoices.outstanding > 0
+                ? `· к оплате ${formatMoney(data.invoices.outstanding, data.invoices.invoices.find((i) => i.status === "SENT")?.currency ?? "RUB")}`
+                : ""}
+            </span>
+          </div>
+          {data.invoices.invoices.length > 0 ? (
+            <div style={list}>
+              {data.invoices.invoices.map((inv) => (
+                <InvoiceItem key={inv.id} invoice={inv} />
+              ))}
+            </div>
+          ) : (
+            <EmptyState
+              icon={<EmptyHomeIcon />}
+              title="Счетов пока нет"
+              hint="Выставленные счета появятся здесь со ссылкой на детали."
             />
           )}
         </section>

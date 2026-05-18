@@ -94,6 +94,8 @@ model User {
   notificationPreferences NotificationPreferences?
   /// v0.85 #27 phase 4: каналы которые user заглушил (push skip).
   mutedChannels MutedChannel[]
+  /// v0.86 #24 phase 2: счета, которые этот user создал (SetNull при удалении).
+  createdInvoices Invoice[]
 }
 
 /// v0.85 #27 phase 4: per-event-type notification toggles.
@@ -507,6 +509,8 @@ model Server {
   tables      Table[]
   /// v0.80 #26 phase 1: automation rules (trigger + action декларативные).
   automations AutomationRule[]
+  /// v0.86 #24 phase 2: client invoices (server-scoped).
+  invoices    Invoice[]
 }
 
 /// v0.80 #26 phase 1: Automation system — declarative trigger/action правила
@@ -1084,6 +1088,83 @@ model TableCell {
 
   @@id([rowId, fieldId])
   @@index([fieldId])
+}
+
+/// v0.86 #24 phase 2: статус счёта.
+///   DRAFT     — черновик, не виден CLIENT'у
+///   SENT      — выставлен, виден CLIENT'у, ждёт оплаты
+///   PAID      — оплачен, отображается с зелёной меткой
+///   CANCELLED — отменён, виден только OWNER/ADMIN preview
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  CANCELLED
+}
+
+/// v0.86 #24 phase 2: client invoices.
+///
+/// Server-scoped (привязан к CLIENT-mode workspace, но не enforce'нем — invoice
+/// можно создать в любом server'е, display gated по mode в frontend).
+///
+/// Денежные значения в **копейках** (Int) — стандартный pattern для избежания
+/// floating-point ошибок. Frontend форматит /100 → display. Currency — ISO
+/// code (RUB / USD / EUR / etc), default "RUB".
+///
+/// Permissions:
+///   - OWNER/ADMIN create/edit/delete/status-change.
+///   - CLIENT/VIEWER read-only (только SENT + PAID — DRAFT и CANCELLED hidden).
+///
+/// `number` — human-readable identifier (e.g. "INV-2026-001"), unique per
+/// server. Не auto-generated — пользователь сам назначает (или UI suggests).
+model Invoice {
+  id          String        @id @default(cuid())
+  serverId    String
+  server      Server        @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  number      String
+  title       String
+  status      InvoiceStatus @default(DRAFT)
+  /// ISO 4217 currency code. UTF-safe ASCII (3 chars).
+  currency    String        @default("RUB")
+  /// Sum всех line items в копейках. Recomputed на каждый item insert/delete/edit
+  /// в transaction. Stored для query-без-join.
+  amountTotal Int           @default(0)
+  /// Дата выставления (status SENT). Null пока DRAFT.
+  issuedAt    DateTime?
+  /// Срок оплаты (optional).
+  dueAt       DateTime?
+  /// Дата оплаты (status PAID).
+  paidAt      DateTime?
+  /// Free-form notes (markdown). Видны CLIENT'у.
+  notes       String?
+  /// Автор счёта. Null после удаления user'а (cascade policy B).
+  createdByUserId String?
+  createdBy   User?         @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  items       InvoiceItem[]
+
+  @@unique([serverId, number])
+  @@index([serverId, status])
+}
+
+/// v0.86 #24 phase 2: line item внутри Invoice.
+///
+/// Simplified model — нет quantity/unitPrice/tax. Просто title + amount в
+/// копейках. Если нужны часы — пользователь напишет "Дизайн логотипа · 12h"
+/// в title и подставит сумму. Phase 3 — добавить quantity + unitPrice +
+/// VAT, когда станет clear что требуется.
+model InvoiceItem {
+  id        String  @id @default(cuid())
+  invoiceId String
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  position  Int     @default(0)
+  title     String
+  /// Сумма в копейках.
+  amount    Int
+
+  @@index([invoiceId, position])
 }
 
 /// Shared listening room (v0.61). Одна сессия per channel; один член

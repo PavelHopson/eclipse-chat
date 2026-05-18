@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { apiJson } from "../lib/api";
 import { Avatar } from "./Avatar";
+import { InvoicesTabContent } from "./AdminInvoicesTab";
 import type { MemberRole, MemberRow } from "../hooks/useMembers";
 import type { ChannelRow } from "../hooks/useChannels";
 import type { TeamHealthData } from "../hooks/useTeamHealth";
@@ -65,8 +66,34 @@ type Tab =
   | "channels"
   | "roles"
   | "automation"
+  | "invoices"
   | "audit"
   | "analytics";
+
+/** v0.86 #24 phase 2: invoice shape от backend. */
+type AdminInvoiceItem = {
+  id: string;
+  position: number;
+  title: string;
+  amount: number;
+};
+type AdminInvoice = {
+  id: string;
+  serverId: string;
+  number: string;
+  title: string;
+  status: "DRAFT" | "SENT" | "PAID" | "CANCELLED";
+  currency: string;
+  amountTotal: number;
+  issuedAt: string | null;
+  dueAt: string | null;
+  paidAt: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: { id: string; displayName: string; avatar: string | null } | null;
+  items: AdminInvoiceItem[];
+};
 
 /** v0.80 #26 phase 1: AutomationRule shape от backend.
  *  v0.82 #19 phase 1: расширение discriminator'ов. */
@@ -269,6 +296,11 @@ export function AdminPanel({
   const [rulesLoading, setRulesLoading] = useState(false);
   const [rulesError, setRulesError] = useState<string | null>(null);
   const [showCreateRule, setShowCreateRule] = useState(false);
+  // v0.86 #24 phase 2: invoices tab state.
+  const [invoices, setInvoices] = useState<AdminInvoice[] | null>(null);
+  const [invoicesLoading, setInvoicesLoading] = useState(false);
+  const [invoicesError, setInvoicesError] = useState<string | null>(null);
+  const [showCreateInvoice, setShowCreateInvoice] = useState(false);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -293,6 +325,23 @@ export function AdminPanel({
       )
       .finally(() => setAuditLoading(false));
   }, [tab, audit, serverId]);
+
+  // v0.86 #24: lazy load invoices при первом open tab'а.
+  useEffect(() => {
+    if (tab !== "invoices" || invoices !== null) return;
+    setInvoicesLoading(true);
+    setInvoicesError(null);
+    apiJson<{ invoices: AdminInvoice[] }>(
+      `/api/servers/${encodeURIComponent(serverId)}/invoices`,
+    )
+      .then((d) => setInvoices(d.invoices))
+      .catch((e) =>
+        setInvoicesError(
+          e instanceof Error ? e.message : "Не удалось загрузить счета",
+        ),
+      )
+      .finally(() => setInvoicesLoading(false));
+  }, [tab, invoices, serverId]);
 
   // v0.80 #26: lazy load automation rules при первом open tab'а.
   useEffect(() => {
@@ -485,6 +534,17 @@ export function AdminPanel({
         >
           Автоматизация{rules ? ` · ${rules.length}` : ""}
         </button>
+        {serverMode === "CLIENT" && (
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === "invoices"}
+            onClick={() => setTab("invoices")}
+            style={tabBtn(tab === "invoices")}
+          >
+            Счета{invoices ? ` · ${invoices.length}` : ""}
+          </button>
+        )}
         <button
           type="button"
           role="tab"
@@ -983,6 +1043,20 @@ export function AdminPanel({
             />
           )}
         </div>
+      )}
+
+      {tab === "invoices" && (
+        <InvoicesTabContent
+          serverId={serverId}
+          invoices={invoices}
+          loading={invoicesLoading}
+          error={invoicesError}
+          showCreate={showCreateInvoice}
+          onShowCreate={() => setShowCreateInvoice(true)}
+          onHideCreate={() => setShowCreateInvoice(false)}
+          onChange={(next) => setInvoices(next)}
+          onError={(msg) => setInvoicesError(msg)}
+        />
       )}
 
       {tab === "audit" && (
