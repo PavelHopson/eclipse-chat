@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import { useEffect, useRef, useState } from "react";
 import type { Attachment } from "../hooks/useMessages";
+import { apiJson } from "../lib/api";
 import { resolveAssetUrl } from "../lib/assets";
 
 type Props = {
@@ -396,6 +397,7 @@ function AudioItem({
           )}
         </div>
         <TranscriptBlock
+          attachmentId={a.id}
           status={transcriptStatus}
           transcript={a.transcript ?? null}
           error={a.transcriptError ?? null}
@@ -451,15 +453,22 @@ function AudioItem({
  *  - NONE:   ничего (нет провайдера / не аудио)
  */
 function TranscriptBlock({
+  attachmentId,
   status,
   transcript,
   error,
 }: {
+  attachmentId: string;
   status: "NONE" | "PENDING" | "READY" | "FAILED";
   transcript: string | null;
   error: string | null;
 }) {
   const [expanded, setExpanded] = useState(false);
+  // v0.79 #22 phase 1: extraction state — inline под transcript блоком.
+  const [extracting, setExtracting] = useState(false);
+  const [extractError, setExtractError] = useState<string | null>(null);
+  const [extractedCount, setExtractedCount] = useState<number | null>(null);
+  const [extractedNote, setExtractedNote] = useState<string | null>(null);
   if (status === "NONE") return null;
   if (status === "PENDING") {
     return (
@@ -540,6 +549,97 @@ function TranscriptBlock({
           {expanded ? "Свернуть" : "Развернуть"}
         </button>
       )}
+      {/* v0.79 #22 phase 1: AI extract задач/решений/follow-up из транскрипта.
+          Available только когда transcript readable (status=READY + non-empty). */}
+      <div
+        style={{
+          marginTop: 8,
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          flexWrap: "wrap",
+        }}
+      >
+        <button
+          type="button"
+          disabled={extracting}
+          onClick={async () => {
+            setExtracting(true);
+            setExtractError(null);
+            setExtractedCount(null);
+            setExtractedNote(null);
+            try {
+              const data = await apiJson<{
+                createdActions: Array<unknown>;
+                note: string | null;
+              }>(
+                `/api/attachments/${encodeURIComponent(attachmentId)}/extract-actions`,
+                { method: "POST" },
+              );
+              setExtractedCount(data.createdActions.length);
+              setExtractedNote(data.note);
+            } catch (err) {
+              setExtractError(
+                err instanceof Error
+                  ? err.message
+                  : "Не удалось извлечь задачи",
+              );
+            } finally {
+              setExtracting(false);
+            }
+          }}
+          style={{
+            padding: "0.2rem 0.55rem",
+            borderRadius: "var(--ec-radius-md)",
+            background: "transparent",
+            border: "1px dashed var(--ec-border-default)",
+            color: extracting
+              ? "var(--ec-text-dim)"
+              : "var(--ec-text-muted)",
+            cursor: extracting ? "wait" : "pointer",
+            fontSize: "var(--ec-text-2xs)",
+            fontWeight: 600,
+            letterSpacing: "var(--ec-tracking-caps)",
+            textTransform: "uppercase",
+          }}
+        >
+          {extracting ? "Извлекаю…" : "Извлечь задачи"}
+        </button>
+        {extractedCount != null && (
+          <span
+            style={{
+              fontSize: "var(--ec-text-2xs)",
+              color: extractedCount > 0 ? "var(--ec-accent)" : "var(--ec-text-dim)",
+              fontWeight: 600,
+            }}
+          >
+            {extractedCount > 0
+              ? `+${extractedCount} ${extractedCount === 1 ? "задача" : "задач"}`
+              : "Ничего не выделено"}
+          </span>
+        )}
+        {extractedNote && (
+          <span
+            style={{
+              fontSize: "var(--ec-text-2xs)",
+              color: "var(--ec-text-dim)",
+              fontStyle: "italic",
+            }}
+          >
+            {extractedNote}
+          </span>
+        )}
+        {extractError && (
+          <span
+            style={{
+              fontSize: "var(--ec-text-2xs)",
+              color: "var(--ec-danger)",
+            }}
+          >
+            {extractError}
+          </span>
+        )}
+      </div>
     </div>
   );
 }
