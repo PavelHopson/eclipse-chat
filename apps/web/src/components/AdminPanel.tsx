@@ -5,6 +5,15 @@ import { Avatar } from "./Avatar";
 import type { MemberRole, MemberRow } from "../hooks/useMembers";
 import type { ChannelRow } from "../hooks/useChannels";
 import type { TeamHealthData } from "../hooks/useTeamHealth";
+import {
+  PERMISSION_GROUPS,
+  PERMISSION_LABELS_RU,
+  ROLE_DESCRIPTIONS_RU,
+  ROLE_LABELS_RU as ROLE_LABELS_FROM_LIB,
+  ROLE_ORDER,
+  ROLE_TONES,
+  hasPermission,
+} from "../lib/memberRoles";
 
 /**
  * v0.76 #25 phase 1 Admin Panel — unified workspace settings + analytics +
@@ -26,8 +35,9 @@ import type { TeamHealthData } from "../hooks/useTeamHealth";
  */
 
 /** v0.76 #25: AdminPanel может менять только non-OWNER роли — поэтому
- *  сужаем сигнатуру. OWNER role transfer = отдельный feature будущего. */
-export type AssignableMemberRole = "ADMIN" | "MODERATOR" | "MEMBER";
+ *  сужаем сигнатуру. OWNER role transfer = отдельный feature будущего.
+ *  v0.78 #17 phase 1: 9 assignable ролей. */
+export type AssignableMemberRole = Exclude<MemberRole, "OWNER">;
 
 type Props = {
   serverId: string;
@@ -45,7 +55,13 @@ type Props = {
   onClose: () => void;
 };
 
-type Tab = "overview" | "members" | "channels" | "audit" | "analytics";
+type Tab =
+  | "overview"
+  | "members"
+  | "channels"
+  | "roles"
+  | "audit"
+  | "analytics";
 
 type AuditEvent = {
   id: string;
@@ -70,12 +86,8 @@ const TYPE_LABELS_RU: Record<string, string> = {
   BOT_KEY_REGENERATED: "Регенерация API-ключа бота",
 };
 
-const ROLE_LABELS_RU: Record<MemberRole, string> = {
-  OWNER: "Владелец",
-  ADMIN: "Админ",
-  MODERATOR: "Модератор",
-  MEMBER: "Участник",
-};
+// v0.78 #17: используем ROLE_LABELS_FROM_LIB (10 ролей) — single source.
+const ROLE_LABELS_RU = ROLE_LABELS_FROM_LIB;
 
 const wrap: CSSProperties = {
   flex: 1,
@@ -331,6 +343,15 @@ export function AdminPanel({
         <button
           type="button"
           role="tab"
+          aria-selected={tab === "roles"}
+          onClick={() => setTab("roles")}
+          style={tabBtn(tab === "roles")}
+        >
+          Роли · {ROLE_ORDER.length}
+        </button>
+        <button
+          type="button"
+          role="tab"
           aria-selected={tab === "audit"}
           onClick={() => setTab("audit")}
           style={tabBtn(tab === "audit")}
@@ -480,31 +501,14 @@ export function AdminPanel({
                     fontSize: "var(--ec-text-2xs)",
                   }}
                 >
-                  <option value="ADMIN">{ROLE_LABELS_RU.ADMIN}</option>
-                  <option value="MODERATOR">{ROLE_LABELS_RU.MODERATOR}</option>
-                  <option value="MEMBER">{ROLE_LABELS_RU.MEMBER}</option>
+                  {ROLE_ORDER.filter((r) => r !== "OWNER").map((r) => (
+                    <option key={r} value={r}>
+                      {ROLE_LABELS_RU[r]}
+                    </option>
+                  ))}
                 </select>
               ) : (
-                <span
-                  style={{
-                    padding: "0.2rem 0.55rem",
-                    borderRadius: "var(--ec-radius-full)",
-                    background:
-                      m.role === "OWNER"
-                        ? "var(--ec-accent-soft)"
-                        : "var(--ec-surface-2)",
-                    color:
-                      m.role === "OWNER"
-                        ? "var(--ec-accent)"
-                        : "var(--ec-text-muted)",
-                    fontSize: "0.65rem",
-                    fontWeight: 700,
-                    textTransform: "uppercase",
-                    letterSpacing: "var(--ec-tracking-caps)",
-                  }}
-                >
-                  {ROLE_LABELS_RU[m.role]}
-                </span>
+                <RoleChip role={m.role} />
               )}
               <span aria-hidden />
             </div>
@@ -583,6 +587,155 @@ export function AdminPanel({
               </button>
             </div>
           ))}
+        </div>
+      )}
+
+      {tab === "roles" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "var(--ec-space-4)" }}>
+          <p
+            style={{
+              margin: 0,
+              fontSize: "var(--ec-text-sm)",
+              color: "var(--ec-text-muted)",
+              lineHeight: 1.55,
+              maxWidth: 720,
+            }}
+          >
+            10 ролей × {PERMISSION_GROUPS.flatMap((g) => g.perms).length}{" "}
+            permission'ов. Phase 1 — read-only матрица (hardcoded), phase 2 —
+            редактируемые per-workspace overrides.
+          </p>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+              gap: "var(--ec-space-3)",
+            }}
+          >
+            {ROLE_ORDER.map((r) => (
+              <div key={r} style={card}>
+                <RoleChip role={r} />
+                <p
+                  style={{
+                    margin: "6px 0 0",
+                    fontSize: "var(--ec-text-2xs)",
+                    color: "var(--ec-text-muted)",
+                    lineHeight: 1.5,
+                  }}
+                >
+                  {ROLE_DESCRIPTIONS_RU[r]}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ overflowX: "auto" }}>
+            <table
+              style={{
+                borderCollapse: "collapse",
+                width: "100%",
+                fontSize: "var(--ec-text-2xs)",
+                minWidth: 760,
+              }}
+            >
+              <thead>
+                <tr>
+                  <th
+                    style={{
+                      textAlign: "left",
+                      padding: "0.5rem 0.6rem",
+                      borderBottom: "1px solid var(--ec-border-default)",
+                      color: "var(--ec-text-dim)",
+                      letterSpacing: "var(--ec-tracking-caps)",
+                      textTransform: "uppercase",
+                      fontWeight: 700,
+                      position: "sticky",
+                      left: 0,
+                      background: "var(--ec-bg)",
+                    }}
+                  >
+                    Permission
+                  </th>
+                  {ROLE_ORDER.map((r) => (
+                    <th
+                      key={r}
+                      style={{
+                        padding: "0.5rem 0.4rem",
+                        borderBottom: "1px solid var(--ec-border-default)",
+                        textAlign: "center",
+                        whiteSpace: "nowrap",
+                        color: ROLE_TONES[r].fg,
+                        letterSpacing: "var(--ec-tracking-caps)",
+                        textTransform: "uppercase",
+                        fontWeight: 700,
+                      }}
+                    >
+                      {ROLE_LABELS_RU[r]}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {PERMISSION_GROUPS.map((group) => (
+                  <>
+                    <tr key={`grp-${group.name}`}>
+                      <td
+                        colSpan={ROLE_ORDER.length + 1}
+                        style={{
+                          padding: "0.45rem 0.6rem",
+                          background: "hsl(208 16% 10% / 0.6)",
+                          color: "var(--ec-text-dim)",
+                          fontWeight: 700,
+                          letterSpacing: "var(--ec-tracking-caps)",
+                          textTransform: "uppercase",
+                          fontSize: "0.62rem",
+                          position: "sticky",
+                          left: 0,
+                        }}
+                      >
+                        {group.name}
+                      </td>
+                    </tr>
+                    {group.perms.map((p) => (
+                      <tr key={p}>
+                        <td
+                          style={{
+                            padding: "0.35rem 0.6rem",
+                            borderBottom: "1px solid var(--ec-border-subtle)",
+                            color: "var(--ec-text)",
+                            position: "sticky",
+                            left: 0,
+                            background: "var(--ec-bg)",
+                          }}
+                        >
+                          {PERMISSION_LABELS_RU[p]}
+                        </td>
+                        {ROLE_ORDER.map((r) => (
+                          <td
+                            key={r}
+                            style={{
+                              padding: "0.35rem 0.4rem",
+                              borderBottom: "1px solid var(--ec-border-subtle)",
+                              textAlign: "center",
+                              color: hasPermission(r, p)
+                                ? ROLE_TONES[r].fg
+                                : "var(--ec-text-dim)",
+                              fontFamily: hasPermission(r, p)
+                                ? "var(--ec-font-mono)"
+                                : undefined,
+                              fontWeight: hasPermission(r, p) ? 700 : 400,
+                            }}
+                          >
+                            {hasPermission(r, p) ? "✓" : "·"}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
@@ -765,5 +918,28 @@ function StatCard({
       <span style={cardLabel}>{label}</span>
       <span style={cardValue}>{value}</span>
     </div>
+  );
+}
+
+function RoleChip({ role }: { role: MemberRole }) {
+  const tone = ROLE_TONES[role];
+  return (
+    <span
+      style={{
+        padding: "0.2rem 0.55rem",
+        borderRadius: "var(--ec-radius-full)",
+        background: tone.bg,
+        color: tone.fg,
+        border: `1px solid ${tone.border}`,
+        fontSize: "0.65rem",
+        fontWeight: 700,
+        textTransform: "uppercase",
+        letterSpacing: "var(--ec-tracking-caps)",
+        display: "inline-block",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {ROLE_LABELS_RU[role]}
+    </span>
   );
 }

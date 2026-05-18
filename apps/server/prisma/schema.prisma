@@ -214,10 +214,28 @@ model RefreshToken {
 
 /// Роли участников. PostgreSQL поддерживает enum нативно — после v0.6
 /// миграции с SQLite на PG используем enum вместо String.
+///
+/// v0.78 #17 phase 1: расширение taxonomy с 4 ролей до 10. Новые роли —
+/// hierarchical operational identity, не permission-overrides. Permission
+/// matrix (hasPermission helper) определяет capabilities каждой роли.
+/// Phase 2 — full RBAC с custom roles per workspace.
 enum MemberRole {
   OWNER
   ADMIN
   MODERATOR
+  /// v0.78 #17: tech-lead / architecture decisions. Read all, edit specs.
+  ARCHITECT
+  /// v0.78 #17: engineer / contributor. Создаёт каналы и задачи.
+  DEVELOPER
+  /// v0.78 #17: execution / dispatch. Triage задач, assignments, approvals.
+  OPERATOR
+  /// v0.78 #17: external client (in CLIENT-mode workspace). Read + comment
+  /// в non-internal channels.
+  CLIENT
+  /// v0.78 #17: read-only с analytics-доступом (reviewer, stakeholder).
+  VIEWER
+  /// v0.78 #17: limited TEXT-only без analytics. Для temporary вход.
+  GUEST
   MEMBER
 }
 

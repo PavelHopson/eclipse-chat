@@ -9,7 +9,17 @@ import {
   type PresenceUpdatePayload,
 } from "../lib/socket";
 
-export type MemberRole = "OWNER" | "ADMIN" | "MODERATOR" | "MEMBER";
+export type MemberRole =
+  | "OWNER"
+  | "ADMIN"
+  | "MODERATOR"
+  | "ARCHITECT"
+  | "DEVELOPER"
+  | "OPERATOR"
+  | "CLIENT"
+  | "VIEWER"
+  | "GUEST"
+  | "MEMBER";
 
 export type UserManualStatus = "ONLINE" | "IDLE" | "DND" | "INVISIBLE";
 
@@ -131,7 +141,10 @@ export function useMembers(serverId: string | null, socket: Socket | null) {
   }, [socket, serverId]);
 
   const updateMemberRole = useCallback(
-    async (memberUserId: string, newRole: "ADMIN" | "MODERATOR" | "MEMBER"): Promise<boolean> => {
+    async (
+      memberUserId: string,
+      newRole: Exclude<MemberRole, "OWNER">,
+    ): Promise<boolean> => {
       if (!serverId) return false;
       setError(null);
       try {

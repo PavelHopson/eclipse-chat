@@ -49,9 +49,10 @@ async function loadChannelMembership(userId: string, channelId: string) {
   return { channel, member };
 }
 
-function isMod(role: "OWNER" | "ADMIN" | "MODERATOR" | "MEMBER") {
-  return role === "OWNER" || role === "ADMIN" || role === "MODERATOR";
-}
+// v0.78 #17: reuse централизованный helper из lib/permissions.ts.
+// OPERATOR теперь тоже = moderation-level (включает MESSAGE_DELETE_OTHERS).
+import { isModOrHigher } from "../lib/permissions.js";
+const isMod = isModOrHigher;
 
 type ChannelMembership = NonNullable<
   Awaited<ReturnType<typeof loadChannelMembership>>["channel"]

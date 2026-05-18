@@ -78,12 +78,18 @@ const presenceDot: CSSProperties = {
   border: "2px solid var(--ec-surface-1)",
 };
 
-/** Сортировка: OWNER → ADMIN → MOD → MEMBER, потом alphabetical. */
+/** v0.78 #17: ранжирование 10 ролей. Outliers OWNER first, GUEST last. */
 const ROLE_RANK: Record<MemberRole, number> = {
   OWNER: 0,
   ADMIN: 1,
   MODERATOR: 2,
-  MEMBER: 3,
+  ARCHITECT: 3,
+  DEVELOPER: 4,
+  OPERATOR: 5,
+  MEMBER: 6,
+  CLIENT: 7,
+  VIEWER: 8,
+  GUEST: 9,
 };
 
 function sortMembers(list: MemberRow[]): MemberRow[] {

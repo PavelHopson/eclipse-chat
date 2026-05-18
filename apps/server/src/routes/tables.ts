@@ -5,6 +5,7 @@ import { getUserId, requireJwt } from "../auth/requireJwt.js";
 import { emitTableEvent } from "../realtime.js";
 import { TABLE_TEMPLATES, getTemplate } from "../lib/tableTemplates.js";
 import { processStandaloneFile } from "../attachments.js";
+import { isModOrHigher } from "../lib/permissions.js";
 
 /**
  * Operational Tables phase 1 (v0.59.0) — CRUD routes.
@@ -122,10 +123,8 @@ async function requireServerMember(userId: string, serverId: string) {
   return member;
 }
 
-/** v0.62: MOD+ check для destructive ops. */
-function isMod(role: "OWNER" | "ADMIN" | "MODERATOR" | "MEMBER"): boolean {
-  return role === "OWNER" || role === "ADMIN" || role === "MODERATOR";
-}
+/** v0.62 → v0.78 #17: MOD+ check через centralized helper (включает OPERATOR). */
+const isMod = isModOrHigher;
 
 /**
  * v0.62: coerce + validate cell value по field.type.

@@ -89,8 +89,23 @@ const reorderChannelsBody = z.object({
     .max(200),
 });
 
-/** Все допустимые роли. SQLite-friendly — храним как String, валидируем здесь. */
-const MEMBER_ROLES = ["OWNER", "ADMIN", "MODERATOR", "MEMBER"] as const;
+/**
+ * Все допустимые роли. v0.78 #17 phase 1: extended с 4 до 10.
+ * Источник истины для validation в PATCH /api/servers/:id/members/:userId.
+ * OWNER не валидный target — transferOwnership отдельный flow.
+ */
+const MEMBER_ROLES = [
+  "OWNER",
+  "ADMIN",
+  "MODERATOR",
+  "ARCHITECT",
+  "DEVELOPER",
+  "OPERATOR",
+  "CLIENT",
+  "VIEWER",
+  "GUEST",
+  "MEMBER",
+] as const;
 export type MemberRole = (typeof MEMBER_ROLES)[number];
 
 function isMemberRole(value: string): value is MemberRole {
