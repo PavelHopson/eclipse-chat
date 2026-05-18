@@ -2,19 +2,28 @@
   "name": "Eclipse Chat",
   "short_name": "Eclipse",
   "description": "Operational communication infrastructure для AI-first команд: чат, голос, задачи, решения, операционная память в одной calm среде.",
+  "id": "eclipse-chat",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
   "background_color": "#07090D",
   "theme_color": "#07090D",
   "orientation": "any",
   "lang": "ru",
+  "categories": ["productivity", "business", "social"],
   "icons": [
     {
       "src": "favicon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
     },
     {
       "src": "apple-touch-icon.svg",
@@ -22,5 +31,22 @@
       "type": "image/svg+xml",
       "purpose": "any"
     }
-  ]
+  ],
+  "shortcuts": [
+    {
+      "name": "Главная",
+      "short_name": "Главная",
+      "description": "Operational сводка по всем пространствам",
+      "url": "./",
+      "icons": [{ "src": "favicon.svg", "sizes": "any" }]
+    },
+    {
+      "name": "Открыть DM",
+      "short_name": "DM",
+      "description": "Личные сообщения и saved messages",
+      "url": "./?view=dm",
+      "icons": [{ "src": "favicon.svg", "sizes": "any" }]
+    }
+  ],
+  "prefer_related_applications": false
 }

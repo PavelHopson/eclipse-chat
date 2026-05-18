@@ -1070,3 +1070,48 @@
   }
 }
 
+/* =============================================================
+ * v0.81 #27 phase 2 PWA — voice-first FAB на mobile.
+ *
+ * Existing voice-mic кнопка в composer'е на ≤640px:
+ *   1. Бóльше (44px touch target) и accent-coloured — primary CTA.
+ *   2. Pulse-glow когда recording — visible feedback во всех контекстах.
+ *   3. Composer grid reorder: mic уезжает справа (between textarea и send).
+ *
+ * Pavel positioning: voice-first для operational quick-capture.
+ * ============================================================ */
+
+@media (max-width: 640px) {
+  .ec-composer-icon-btn {
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+  }
+
+  /* Active recording — accent-glow для visible feedback. */
+  .ec-composer-icon-btn--recording {
+    box-shadow:
+      0 0 0 2px hsl(0 70% 60% / 0.45),
+      0 0 16px -2px hsl(0 70% 60% / 0.45) !important;
+    animation: ec-recording-pulse 1.4s ease-in-out infinite;
+  }
+}
+
+@keyframes ec-recording-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.08);
+  }
+}
+
+/* Reduced-motion: убираем pulse-анимацию (animation сама респектит
+   prefers-reduced-motion если был media query, но defensive). */
+@media (prefers-reduced-motion: reduce) {
+  .ec-composer-icon-btn--recording {
+    animation: none !important;
+  }
+}
+

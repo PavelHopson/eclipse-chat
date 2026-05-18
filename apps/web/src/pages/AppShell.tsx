@@ -58,6 +58,7 @@ import { useMessages } from "../hooks/useMessages";
 import { useNotifications } from "../hooks/useNotifications";
 import { useFocusMode } from "../hooks/useFocusMode";
 import { useHomeToday } from "../hooks/useHomeToday";
+import { useSwipeNavigate } from "../hooks/useSwipeNavigate";
 import { useProfile } from "../hooks/useProfile";
 import { useSearch } from "../hooks/useSearch";
 import { useServerActions } from "../hooks/useServerActions";
@@ -600,6 +601,44 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     setSelectedChannelId(channelId);
     if (isMobile) setNavOpen(false);
   };
+
+  // v0.81 #27 phase 2 PWA: swipe-навигация между TEXT/EXECUTION каналами
+  // на mobile. Disabled когда: не mobile / drawer открыт / в DM/voice/etc.
+  const swipeEnabled =
+    isMobile &&
+    !navOpen &&
+    !membersOpen &&
+    !inDmMode &&
+    !helpOpen &&
+    !adminOpen &&
+    !homeOpen &&
+    !statusBoardOpen &&
+    !teamHealthOpen &&
+    !selectedTableId &&
+    selectedChannel?.type !== "VOICE";
+  useSwipeNavigate({
+    enabled: swipeEnabled,
+    onSwipeLeft: () => {
+      const texts = channels.filter(
+        (c) => c.type === "TEXT" || c.type === "EXECUTION",
+      );
+      if (texts.length < 2 || !selectedChannelId) return;
+      const idx = texts.findIndex((c) => c.id === selectedChannelId);
+      if (idx === -1) return;
+      const next = texts[(idx + 1) % texts.length];
+      if (next) handleSelectChannel(next.id);
+    },
+    onSwipeRight: () => {
+      const texts = channels.filter(
+        (c) => c.type === "TEXT" || c.type === "EXECUTION",
+      );
+      if (texts.length < 2 || !selectedChannelId) return;
+      const idx = texts.findIndex((c) => c.id === selectedChannelId);
+      if (idx === -1) return;
+      const prev = texts[(idx - 1 + texts.length) % texts.length];
+      if (prev) handleSelectChannel(prev.id);
+    },
+  });
 
   // v0.59 phase 1: при смене сервера сбрасываем выбранную таблицу
   // (таблицы scoped per-server — id из другого пространства невалиден).
