@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import { useEffect, useRef, useState } from "react";
 import { Avatar } from "./Avatar";
 import { ParticipantContextMenu } from "./ParticipantContextMenu";
+import { VoiceNotePanel } from "./VoiceNotePanel";
 import { VoiceSettingsModal } from "./VoiceSettingsModal";
 import { VoiceStatsOverlay } from "./VoiceStatsOverlay";
 import type { useVoice as useVoiceHook, VoiceParticipant, VoiceVisualTrack } from "../hooks/useVoice";
@@ -41,6 +42,9 @@ type Props = {
   occupants?: MemberRow[];
   activeVoiceChannelName?: string | null;
   voice: ReturnType<typeof useVoiceHook>;
+  /** v0.88 #23 phase 1a: socket для shared voice-note realtime updates.
+   *  Если undefined — VoiceNotePanel скрыт. */
+  socket?: import("socket.io-client").Socket | null;
 };
 
 /* ===== Layout ============================================== */
@@ -415,6 +419,7 @@ export function VoiceRoom({
   occupants = [],
   activeVoiceChannelName,
   voice,
+  socket,
 }: Props) {
   const v = voice;
   const [showSettings, setShowSettings] = useState(false);
@@ -853,6 +858,20 @@ export function VoiceRoom({
                 Сейчас ты в #{activeVoiceChannelName}
               </span>
             )}
+          </div>
+        )}
+        {/* v0.88 #23 phase 1a: shared voice-room notepad. Видна всегда (даже
+            до join'а) — operators могут готовить agenda до встречи. */}
+        {socket !== undefined && (
+          <div
+            style={{
+              marginTop: "var(--ec-space-4)",
+              display: "flex",
+              flexDirection: "column",
+              minHeight: 240,
+            }}
+          >
+            <VoiceNotePanel channelId={channelId} socket={socket ?? null} />
           </div>
         )}
       </div>

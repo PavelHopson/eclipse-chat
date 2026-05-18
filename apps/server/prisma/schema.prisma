@@ -96,6 +96,8 @@ model User {
   mutedChannels MutedChannel[]
   /// v0.86 #24 phase 2: счета, которые этот user создал (SetNull при удалении).
   createdInvoices Invoice[]
+  /// v0.88 #23 phase 1: voice notes последняя редактура которых от меня.
+  editedVoiceNotes VoiceNote[]
 }
 
 /// v0.85 #27 phase 4: per-event-type notification toggles.
@@ -630,8 +632,44 @@ model Channel {
   musicSession MusicSession?
   /// v0.85 #27 phase 4: inverse relation для MutedChannel.
   mutedBy   MutedChannel[]
+  /// v0.88 #23 phase 1: shared voice-room notepad (Yjs CRDT).
+  voiceNote VoiceNote?
 
   @@index([expiresAt])
+}
+
+/// v0.88 #23 phase 1a: shared notepad attached to a VOICE channel.
+///
+/// Один doc per channel (1-to-1, channelId UNIQUE). Phase 1a — plain
+/// shared text с last-writer-wins (no CRDT). Phase 1b — upgrade на Yjs
+/// binary state когда yjs npm install отработает (today registry rejects).
+///
+/// Persistence model (phase 1a):
+///   - `content` — plain UTF-8 text (markdown). String — phase 1b
+///     переключится на Bytes для Yjs binary.
+///   - `version` increments на каждый PATCH. UI optimistic — посылает
+///     `baseVersion`, сервер accept'ит если совпадает; иначе returns 409
+///     с current state для merge.
+///   - Update broadcast'ится через `voice-note:updated` socket event
+///     в `channel:${id}` room.
+///
+/// channelId Cascade: при удалении канала doc auto-cleanup. lastEditorUserId
+/// SetNull — preserve doc после удаления автора (cascade policy B).
+model VoiceNote {
+  id                String   @id @default(cuid())
+  channelId         String   @unique
+  channel           Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  /// Plain text content. Phase 1a — markdown без CRDT. Phase 1b — Yjs
+  /// binary state (мигрируем тип на Bytes).
+  content           String   @default("")
+  /// Optimistic concurrency. Bumped на каждый successful save.
+  version           Int      @default(0)
+  lastEditorUserId  String?
+  lastEditor        User?    @relation(fields: [lastEditorUserId], references: [id], onDelete: SetNull)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([channelId])
 }
 
 /// Сообщение. Может принадлежать ЛИБО серверному каналу (`channelId`),

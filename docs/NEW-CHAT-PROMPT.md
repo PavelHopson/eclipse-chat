@@ -85,10 +85,10 @@ Calm cinematic operational environment.
 Продаём: clarity / calmness / execution / coordination / operational
 visibility. НЕ продаём AI — AI это enabler, не headline.
 
-## Current state — v0.87.0 LIVE
+## Current state — v0.88.0 LIVE
 
 Prod: https://app.star-crm.ru/eclipse-chat/
-Version endpoint: /eclipse-chat/api/version → 0.87.0
+Version endpoint: /eclipse-chat/api/version → 0.88.0
 
 ### Сессия 18.05 — 10 prod-деплоев за один заход (v0.72 → v0.82)
 
@@ -162,6 +162,15 @@ Version endpoint: /eclipse-chat/api/version → 0.87.0
   true/false), возвращает suggestions для PATCH. AI lightning button в
   RowEditor (видим только если есть пустые fillable cells). Phase 4 —
   row→ActionItem binding + per-row formulas.
+- v0.88 — #23 phase 1a Live workspace shared notepad. VoiceNote schema
+  (channelId UNIQUE + content text + version counter) + GET/PATCH routes
+  с optimistic concurrency (baseVersion → 409 + current state на
+  conflict) + socket `voice-note:updated` в channel-room + useVoiceNote
+  hook (debounced save 800ms + socket sub + conflict handler) +
+  VoiceNotePanel в VoiceRoom (markdown textarea + saved-status indicator
+  + conflict banner). Phase 1a = last-writer-wins (не CRDT) — yjs npm
+  install 7 ретраев упёрся в registry, deferred phase 1b. Phase 2 —
+  Excalidraw whiteboard в том же VoiceNotePanel. Phase 3 — D2/Mermaid.
 
 ### Phase 1 CORE (закрыта до 14.05)
 
@@ -209,9 +218,8 @@ Version endpoint: /eclipse-chat/api/version → 0.87.0
 - Backend: Node 20 + Fastify 5 + Prisma 6 + Socket.io 4 + Sharp +
   Helmet + Rate-limit + otplib + LiveKit JWT
 - Frontend: React 19 + Vite 6 + TS 5.8 + livekit-client 2.18 (lazy)
-- DB: PostgreSQL 16. На v0.87 — **41 миграция applied** (v0.87 zero
-  schema changes — aggregations + AI-fill переиспользуют existing
-  TableField/TableRow/TableCell; v0.86 — invoices; v0.85 —
+- DB: PostgreSQL 16. На v0.88 — **42 миграции applied** (v0.88 добавил
+  voice_notes; v0.87 zero schema changes; v0.86 — invoices; v0.85 —
   notification_polish; v0.84 — push_subscriptions). Последние миграции:
   message_user_setnull, action_item_comment_user_setnull,
   action_item_approval_check, attachment_waveform, link_embed_cache,
@@ -374,16 +382,16 @@ Version endpoint: /eclipse-chat/api/version → 0.87.0
 
 ### Текущий приоритет (Pavel order для следующих slice'ов)
 
-1. **#23 Live workspace** — XL. Excalidraw + Yjs CRDT во время voice
-   call (shared notepad / whiteboard / diagrams). Phase 1 — shared
-   notepad через Yjs + y-websocket провайдер через наш Socket.io.
-2. **#26 phase 2** — extra triggers (NEW_TASK / FILE_UPLOAD / APPROVAL
+1. **#26 phase 2** — extra triggers (NEW_TASK / FILE_UPLOAD / APPROVAL
    / MENTION) + external integrations (Telegram bridge / GitHub webhook
    / Notion sync / Bitrix/1C custom HTTP).
+2. **#23 phase 1b Yjs CRDT upgrade** — S-M. Заменить last-writer-wins
+   на yjs CRDT (когда npm install позволит). Migration content: TEXT →
+   BYTEA. UI bind через Y.Text. True concurrent editing без потери diff.
 3. **#10 phase 4** — row→ActionItem binding (одна row = одна задача
    с automatic sync title/status) + per-row formulas (`=quantity*price`).
-4. **#24 phase 2b** — PDF report generation (pdfkit, deferred из-за
-   registry ECONNRESET) + email delivery.
+4. **#23 phase 2** — Excalidraw whiteboard inside VoiceNotePanel.
+5. **#24 phase 2b** — PDF report generation (pdfkit, deferred).
 3. **#26 phase 2** — extra triggers (NEW_TASK / FILE_UPLOAD / APPROVAL
    / MENTION) + external integrations (Telegram bridge / GitHub webhook
    / Notion sync / Bitrix/1C custom HTTP).

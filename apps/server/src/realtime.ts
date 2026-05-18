@@ -110,6 +110,24 @@ export function emitChannelUpdated(
   io?.to(`server:${serverId}`).emit("channel:updated", payload);
 }
 
+/**
+ * v0.88 #23 phase 1a: эмит обновления shared voice notepad в room
+ * `channel:${channelId}`. Other clients в комнате применяют content.
+ */
+export function emitVoiceNoteUpdated(
+  channelId: string,
+  payload: {
+    channelId: string;
+    content: string;
+    version: number;
+    lastEditorUserId: string | null;
+    lastEditorDisplayName: string | null;
+    updatedAt: string;
+  },
+) {
+  io?.to(`channel:${channelId}`).emit("voice-note:updated", payload);
+}
+
 /** Эмит при вступлении нового члена в сервер. */
 export function emitMemberJoined(
   serverId: string,

@@ -1633,6 +1633,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               occupants={selectedVoiceOccupants}
               activeVoiceChannelName={activeVoiceChannelName}
               voice={voice}
+              socket={socket}
             />
           ) : (
             <VoicePlaceholder channelName={selectedChannel.name} />

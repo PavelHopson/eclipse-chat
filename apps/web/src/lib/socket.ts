@@ -445,6 +445,8 @@ export const SocketEvents = {
   ActionItemEscalated: "action:item:escalated",
   AttachmentTranscriptUpdated: "attachment:transcript:updated",
   MusicSessionUpdated: "music:session:updated",
+  /** v0.88 #23 phase 1a: shared voice notepad updated. */
+  VoiceNoteUpdated: "voice-note:updated",
   TableUpdated: "table:updated",
   TableDeleted: "table:deleted",
   TableFieldAdded: "table:field:added",
