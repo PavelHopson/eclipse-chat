@@ -85,10 +85,10 @@ Calm cinematic operational environment.
 Продаём: clarity / calmness / execution / coordination / operational
 visibility. НЕ продаём AI — AI это enabler, не headline.
 
-## Current state — v0.88.0 LIVE
+## Current state — v0.89.0 LIVE
 
 Prod: https://app.star-crm.ru/eclipse-chat/
-Version endpoint: /eclipse-chat/api/version → 0.88.0
+Version endpoint: /eclipse-chat/api/version → 0.89.0
 
 ### Сессия 18.05 — 10 prod-деплоев за один заход (v0.72 → v0.82)
 
@@ -171,6 +171,18 @@ Version endpoint: /eclipse-chat/api/version → 0.88.0
   + conflict banner). Phase 1a = last-writer-wins (не CRDT) — yjs npm
   install 7 ретраев упёрся в registry, deferred phase 1b. Phase 2 —
   Excalidraw whiteboard в том же VoiceNotePanel. Phase 3 — D2/Mermaid.
+- v0.89 — #26 phase 2a Integrations (Telegram outgoing + GitHub
+  webhook). Integration schema + IntegrationType enum + AES-256-GCM
+  config encryption (reuse 2FA key). Telegram outgoing: bridge на
+  message:new в bridged channel → POST `api.telegram.org/bot<token>/
+  sendMessage` через raw fetch (no npm dep) + token format validate.
+  GitHub incoming: public webhook receiver `/api/integrations/gh/:path`
+  с HMAC-SHA256 verify (timingSafeEqual constant-time), formatter
+  supports push/PR/issue/release/ping в RU markdown. Raw body capture
+  через replaced JSON content-type parser (rawBody на каждом request
+  параллельно с parsed). AdminPanel «Интеграции» tab — CreateIntegrationForm
+  + one-time GH setup card (URL + secret отдаются на create, потом
+  только path виден). Phase 2b — Telegram incoming + Notion sync.
 
 ### Phase 1 CORE (закрыта до 14.05)
 
@@ -218,9 +230,10 @@ Version endpoint: /eclipse-chat/api/version → 0.88.0
 - Backend: Node 20 + Fastify 5 + Prisma 6 + Socket.io 4 + Sharp +
   Helmet + Rate-limit + otplib + LiveKit JWT
 - Frontend: React 19 + Vite 6 + TS 5.8 + livekit-client 2.18 (lazy)
-- DB: PostgreSQL 16. На v0.88 — **42 миграции applied** (v0.88 добавил
-  voice_notes; v0.87 zero schema changes; v0.86 — invoices; v0.85 —
-  notification_polish; v0.84 — push_subscriptions). Последние миграции:
+- DB: PostgreSQL 16. На v0.89 — **43 миграции applied** (v0.89 добавил
+  integrations; v0.88 — voice_notes; v0.87 zero schema changes; v0.86
+  — invoices; v0.85 — notification_polish; v0.84 — push_subscriptions).
+  Последние миграции:
   message_user_setnull, action_item_comment_user_setnull,
   action_item_approval_check, attachment_waveform, link_embed_cache,
   action_item_status_phase2, action_item_dependencies,
@@ -382,12 +395,11 @@ Version endpoint: /eclipse-chat/api/version → 0.88.0
 
 ### Текущий приоритет (Pavel order для следующих slice'ов)
 
-1. **#26 phase 2** — extra triggers (NEW_TASK / FILE_UPLOAD / APPROVAL
-   / MENTION) + external integrations (Telegram bridge / GitHub webhook
-   / Notion sync / Bitrix/1C custom HTTP).
-2. **#23 phase 1b Yjs CRDT upgrade** — S-M. Заменить last-writer-wins
+1. **#23 phase 1b Yjs CRDT upgrade** — S-M. Заменить last-writer-wins
    на yjs CRDT (когда npm install позволит). Migration content: TEXT →
    BYTEA. UI bind через Y.Text. True concurrent editing без потери diff.
+2. **#26 phase 2b** — Telegram incoming bridge (TG → Eclipse через
+   long-polling worker или public webhook) + Notion 2-way sync.
 3. **#10 phase 4** — row→ActionItem binding (одна row = одна задача
    с automatic sync title/status) + per-row formulas (`=quantity*price`).
 4. **#23 phase 2** — Excalidraw whiteboard inside VoiceNotePanel.

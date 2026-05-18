@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { apiJson } from "../lib/api";
 import { Avatar } from "./Avatar";
 import { InvoicesTabContent } from "./AdminInvoicesTab";
+import { IntegrationsTabContent, type AdminIntegration } from "./AdminIntegrationsTab";
 import type { MemberRole, MemberRow } from "../hooks/useMembers";
 import type { ChannelRow } from "../hooks/useChannels";
 import type { TeamHealthData } from "../hooks/useTeamHealth";
@@ -67,6 +68,7 @@ type Tab =
   | "roles"
   | "automation"
   | "invoices"
+  | "integrations"
   | "audit"
   | "analytics";
 
@@ -301,6 +303,11 @@ export function AdminPanel({
   const [invoicesLoading, setInvoicesLoading] = useState(false);
   const [invoicesError, setInvoicesError] = useState<string | null>(null);
   const [showCreateInvoice, setShowCreateInvoice] = useState(false);
+  // v0.89 #26 phase 2: integrations tab state.
+  const [integrations, setIntegrations] = useState<AdminIntegration[] | null>(null);
+  const [integrationsLoading, setIntegrationsLoading] = useState(false);
+  const [integrationsError, setIntegrationsError] = useState<string | null>(null);
+  const [showCreateIntegration, setShowCreateIntegration] = useState(false);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -325,6 +332,23 @@ export function AdminPanel({
       )
       .finally(() => setAuditLoading(false));
   }, [tab, audit, serverId]);
+
+  // v0.89 #26: lazy load integrations при первом open tab'а.
+  useEffect(() => {
+    if (tab !== "integrations" || integrations !== null) return;
+    setIntegrationsLoading(true);
+    setIntegrationsError(null);
+    apiJson<{ integrations: AdminIntegration[] }>(
+      `/api/servers/${encodeURIComponent(serverId)}/integrations`,
+    )
+      .then((d) => setIntegrations(d.integrations))
+      .catch((e) =>
+        setIntegrationsError(
+          e instanceof Error ? e.message : "Не удалось загрузить интеграции",
+        ),
+      )
+      .finally(() => setIntegrationsLoading(false));
+  }, [tab, integrations, serverId]);
 
   // v0.86 #24: lazy load invoices при первом open tab'а.
   useEffect(() => {
@@ -545,6 +569,15 @@ export function AdminPanel({
             Счета{invoices ? ` · ${invoices.length}` : ""}
           </button>
         )}
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === "integrations"}
+          onClick={() => setTab("integrations")}
+          style={tabBtn(tab === "integrations")}
+        >
+          Интеграции{integrations ? ` · ${integrations.length}` : ""}
+        </button>
         <button
           type="button"
           role="tab"
@@ -1043,6 +1076,21 @@ export function AdminPanel({
             />
           )}
         </div>
+      )}
+
+      {tab === "integrations" && (
+        <IntegrationsTabContent
+          serverId={serverId}
+          channels={channels}
+          integrations={integrations}
+          loading={integrationsLoading}
+          error={integrationsError}
+          showCreate={showCreateIntegration}
+          onShowCreate={() => setShowCreateIntegration(true)}
+          onHideCreate={() => setShowCreateIntegration(false)}
+          onChange={(next) => setIntegrations(next)}
+          onError={(msg) => setIntegrationsError(msg)}
+        />
       )}
 
       {tab === "invoices" && (

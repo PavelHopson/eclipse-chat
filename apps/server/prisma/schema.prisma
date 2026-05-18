@@ -98,6 +98,8 @@ model User {
   createdInvoices Invoice[]
   /// v0.88 #23 phase 1: voice notes последняя редактура которых от меня.
   editedVoiceNotes VoiceNote[]
+  /// v0.89 #26 phase 2: интеграции, которые этот user настроил.
+  createdIntegrations Integration[]
 }
 
 /// v0.85 #27 phase 4: per-event-type notification toggles.
@@ -513,6 +515,9 @@ model Server {
   automations AutomationRule[]
   /// v0.86 #24 phase 2: client invoices (server-scoped).
   invoices    Invoice[]
+  /// v0.89 #26 phase 2: external integrations (Telegram outgoing, GitHub
+  /// incoming webhook). Cascade при удалении server'а.
+  integrations Integration[]
 }
 
 /// v0.80 #26 phase 1: Automation system — declarative trigger/action правила
@@ -636,6 +641,64 @@ model Channel {
   voiceNote VoiceNote?
 
   @@index([expiresAt])
+}
+
+/// v0.89 #26 phase 2: тип внешней интеграции.
+///
+///   TELEGRAM_OUTGOING — Eclipse Chat → Telegram chat (post on message:new
+///                       в bridged Eclipse channel).
+///   GITHUB_WEBHOOK    — GitHub → Eclipse (receive PR/issue/push events,
+///                       post в bridged channel как system bot).
+///
+/// Phase 2b: TELEGRAM_INCOMING (TG → Eclipse), NOTION_SYNC (2-way).
+enum IntegrationType {
+  TELEGRAM_OUTGOING
+  GITHUB_WEBHOOK
+}
+
+/// v0.89 #26 phase 2: external integration per server.
+///
+/// `config` — JSON-encoded plaintext, encrypted на rest через
+/// `encryptSecret`/`decryptSecret` (AES-256-GCM, reuses TWOFA_ENCRYPTION_KEY).
+/// Shape зависит от `type`:
+///   - TELEGRAM_OUTGOING: `{ "botToken": "...", "chatId": "-100..." }`
+///   - GITHUB_WEBHOOK:    `{}` (secret в `webhookSecret` plaintext, path в `webhookPath`).
+///
+/// `channelId` — для TELEGRAM_OUTGOING это source channel (Eclipse → TG),
+/// для GITHUB_WEBHOOK это target channel (GH → Eclipse).
+///
+/// `webhookPath` — random unique slug для public webhook URL.
+/// `webhookSecret` — HMAC-SHA256 secret для verify request signature.
+///
+/// Permissions: OWNER/ADMIN only create/edit/delete. View — все members
+/// (для transparency что bridged).
+model Integration {
+  id              String          @id @default(cuid())
+  serverId        String
+  server          Server          @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  type            IntegrationType
+  name            String
+  /// Encrypted JSON config (AES-256-GCM). Plaintext shape — см. enum docs.
+  config          String
+  /// Source/target channel (см. type docs).
+  channelId       String?
+  /// Random unique slug для webhook URL (только GITHUB_WEBHOOK).
+  webhookPath     String?         @unique
+  /// HMAC secret (только GITHUB_WEBHOOK). Plaintext — used for signature
+  /// verify. Не leak через API (returned `null` в read responses).
+  webhookSecret   String?
+  enabled         Boolean         @default(true)
+  createdByUserId String?
+  createdBy       User?           @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  /// Timestamp последнего successful event (outgoing fire или incoming receive).
+  lastEventAt     DateTime?
+  /// Cumulative event counter (для UI «сработало N раз»).
+  eventCount      Int             @default(0)
+
+  @@index([serverId, enabled])
+  @@index([type])
 }
 
 /// v0.88 #23 phase 1a: shared notepad attached to a VOICE channel.

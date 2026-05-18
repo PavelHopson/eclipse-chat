@@ -23,6 +23,7 @@ import { registerEmbedRoutes } from "./routes/embeds.js";
 import { registerHomeRoutes } from "./routes/home.js";
 import { registerMessageRoutes } from "./routes/messages.js";
 import { registerIncidentRoutes } from "./routes/incidents.js";
+import { registerIntegrationRoutes } from "./routes/integrations.js";
 import { registerInvoiceRoutes } from "./routes/invoices.js";
 import { registerMusicRoutes } from "./routes/music.js";
 import { registerPushRoutes } from "./routes/push.js";
@@ -106,6 +107,29 @@ await app.register(rateLimit, {
     return req.ip;
   },
 });
+
+// v0.89 #26 phase 2: replace default JSON parser чтобы сохранять raw body.
+// GitHub webhook verification требует exact bytes для HMAC-SHA256.
+// Parsed JSON и rawBody оба доступны в request handler'ах.
+app.removeContentTypeParser(["application/json"]);
+app.addContentTypeParser(
+  "application/json",
+  { parseAs: "string" },
+  (req, body, done) => {
+    const raw = typeof body === "string" ? body : body.toString("utf8");
+    (req as typeof req & { rawBody?: string }).rawBody = raw;
+    if (raw.length === 0) {
+      done(null, undefined);
+      return;
+    }
+    try {
+      const parsed = JSON.parse(raw);
+      done(null, parsed);
+    } catch (err) {
+      done(err as Error, undefined);
+    }
+  },
+);
 await app.register(fastifyJwt, {
   secret: resolvedJwtSecret,
 });
@@ -130,7 +154,7 @@ app.get("/api/health", async () => {
   }
   return { ok: true, service: "eclipse-chat-server", database: dbOk };
 });
-app.get("/api/version", async () => ({ name: "@eclipse-chat/server", version: "0.88.0" }));
+app.get("/api/version", async () => ({ name: "@eclipse-chat/server", version: "0.89.0" }));
 
 await registerAuthRoutes(app);
 await registerTwoFactorRoutes(app);
@@ -185,6 +209,7 @@ await registerMusicRoutes(app);
 registerInvoiceRoutes(app);
 registerPushRoutes(app);
 registerVoiceNoteRoutes(app);
+registerIntegrationRoutes(app);
 await app.ready();
 
 /* Socket.io: тот же HTTP-сервер, что и у Fastify */

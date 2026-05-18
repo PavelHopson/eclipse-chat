@@ -17,6 +17,7 @@ import { scheduleAutomation } from "../automation.js";
 import { fireMessageCreatedWebhooks } from "../bots/webhooks.js";
 import { extractMentionTokens, resolveMentions } from "../lib/mentions.js";
 import { notifyUsers } from "../lib/webPush.js";
+import { fireTelegramOutgoing } from "./integrations.js";
 
 const channelTypeSchema = z.enum(["TEXT", "VOICE", "BROADCAST", "EXECUTION"]);
 
@@ -459,6 +460,16 @@ export async function registerChannelRoutes(app: FastifyInstance) {
         );
       }
       void maybeAutoRespond(m.channelId!, m.id, userId, m.content, app.log);
+      // v0.89 #26 phase 2: fire-and-forget Telegram outgoing bridge.
+      // Перебирает enabled TELEGRAM_OUTGOING integrations для channel,
+      // postит в TG chat. Skip если no integrations.
+      void fireTelegramOutgoing(
+        m.channelId!,
+        userDisplayName(m.user),
+        m.content,
+        app.log,
+      );
+
       // Fire-and-forget: bot webhooks (outbound POST для подписанных bots).
       fireMessageCreatedWebhooks(
         ch.serverId,
