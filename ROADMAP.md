@@ -5,7 +5,44 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v1.1.5** (cinematic delta усиление
+**Текущая версия в проде:** **v1.1.6** (composer / chat header /
+modal cyber framing — продолжение polish track по Pavel feedback
+«хорошо, продолжай делать дизайн»).
+
+**Изменения v1.1.6:**
+
+**(1) Composer status strip scan dots** — после «ВВОД ПОТОКА» /
+«ОЖИДАНИЕ СИГНАЛА» появляются 3 fade-dot indicator (1.6s loop,
+sequential delays, scale + box-shadow pulse). Subtle live-pulse.
+
+**(2) Composer send button enhanced glow** (`.ec-composer-send`):
+- Hover gradient sweep ::before (translateX -110 → 110%, 600ms)
+- Triple-layered hover shadow: 28px outer halo + 1px border shine
+  + 18px cyan glow
+
+**(3) Composer box focus state** — atmospheric box-shadow halo
+(32px cyan) появляется при focus-within сверху existing border-
+accent. Композер «оживает» когда курсор внутри.
+
+**(4) Chat title icon drop-shadow glow** — все channel-icon SVG в
+header'е получают 4px cyan drop-shadow.
+
+**(5) Generic Modal cyber framing** (Modal.tsx применяется ко всем
+modals — CreateChannel / CreateServer / JoinServer / Confirm
+/ etc):
+- Modal header → `.ec-holo-edge` (1px holographic top-line)
+- Title → uppercase + 0.18em tracking + display font (Orbitron
+  fallback Inter)
+
+**(6) ServerHubModal tabs** → `.ec-hud-tab` class на Обзор /
+Оформление / Настройки / Боты. Active tab получает top-fade
+gradient + 2px glowing bottom bar (consistent с sidebar HUD tabs
+из v1.1.5).
+
+**Сборка**: 8 files changed, +104/-8. CSS bundle 97.36 → 99.04 KB
+raw (+1.68 KB), gzip 18.19 → 18.48 KB. Build 2.95s.
+
+**Предыдущие версии:** v1.1.5 (cinematic delta усиление
 + BotsTab card layout bug fix — Pavel screenshot после v1.1.4:
 «мало изменений вижу, продолжаем»).
 
