@@ -782,10 +782,22 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           )}
         </div>
         <div className="ec-shell__top-actions" style={{ display: "flex", alignItems: "center", gap: "var(--ec-space-2)" }}>
+          {/* v1.1.1 Eclipse_OS telemetry pills — HUD status strip. */}
+          <span className="ec-telemetry-pill ec-telemetry-pill--ok" title={isReady ? "Соединение установлено" : "Соединение потеряно"}>
+            <span className="ec-telemetry-pill__dot" />
+            СЕТЬ: {isReady ? "СТАБИЛЬНА" : "ОБРЫВ"}
+          </span>
+          <span className="ec-telemetry-pill" title="Использование памяти (placeholder)">
+            ПАМ: 12%
+          </span>
+          <span className="ec-telemetry-pill" title="Загрузка CPU (placeholder)">
+            ЦП: 04%
+          </span>
           <span
             className={isReady ? "ec-dot ec-dot--online" : "ec-dot ec-dot--offline"}
             title={isReady ? "Подключено" : "Соединение разорвано"}
             aria-label={isReady ? "online" : "offline"}
+            style={{ display: "none" }}
           />
           {inServerView && (
             <button

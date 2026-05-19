@@ -923,6 +923,38 @@ export function MessageInput({
           ))}
         </div>
       )}
+      {/* v1.1.1 Eclipse_OS secure-channel status strip над composer'ом. */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          padding: "0 0 6px",
+          fontSize: "0.6rem",
+          color: "var(--ec-text-dim)",
+          fontFamily: "var(--ec-font-mono, ui-monospace, monospace)",
+          letterSpacing: "0.06em",
+        }}
+      >
+        <span
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 4,
+            padding: "0.16rem 0.5rem",
+            borderRadius: "var(--ec-radius-sm)",
+            background: "color-mix(in srgb, var(--ec-accent) 12%, transparent)",
+            border: "1px solid var(--ec-border-accent)",
+            color: "var(--ec-accent)",
+            fontWeight: 700,
+          }}
+        >
+          {">_"} ЗАЩИЩЁННЫЙ_КАНАЛ
+        </span>
+        <span style={{ textTransform: "uppercase" }}>
+          {focused ? "ВВОД ПОТОКА…" : "ОЖИДАНИЕ СИГНАЛА…"}
+        </span>
+      </div>
       <div className="ec-composer-box" style={boxStyle}>
         {!hideAttachments && (
           <>
@@ -1016,7 +1048,7 @@ export function MessageInput({
             setTimeout(() => setTrigger(null), 120);
           }}
           placeholder={
-            placeholder ?? (channelName ? `INITIALIZE TRANSMISSION в #${channelName}…` : "INITIALIZE TRANSMISSION…")
+            placeholder ?? (channelName ? `ВВОД СООБЩЕНИЯ в #${channelName}…` : "ВВОД СООБЩЕНИЯ…")
           }
           disabled={disabled}
           className="ec-composer-textarea"
@@ -1027,13 +1059,13 @@ export function MessageInput({
           disabled={!canSend}
           className="ec-composer-send"
           style={{ ...sendBtn, opacity: canSend ? 1 : 0.4, cursor: canSend ? "pointer" : "default" }}
-          title="TRANSMIT (Enter)"
+          title="ПЕРЕДАТЬ (Enter)"
         >
           {sending ? (
             "…"
           ) : (
             <>
-              <span className="ec-composer-send-label" style={{ letterSpacing: "0.08em" }}>TRANSMIT</span>
+              <span className="ec-composer-send-label" style={{ letterSpacing: "0.08em" }}>ПЕРЕДАТЬ</span>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <line x1="22" y1="2" x2="11" y2="13" />
                 <polygon points="22 2 15 22 11 13 2 9 22 2" />
@@ -1064,6 +1096,33 @@ export function MessageInput({
             </span>
           </>
         )}
+        {/* v1.1.1 E2E encryption indicator — sticks вправо. */}
+        <span
+          style={{
+            marginLeft: "auto",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 4,
+            fontSize: "0.58rem",
+            fontFamily: "var(--ec-font-mono, ui-monospace, monospace)",
+            letterSpacing: "0.06em",
+            color: "var(--ec-accent)",
+            textTransform: "uppercase",
+          }}
+          title="End-to-end encryption активно"
+        >
+          <span
+            aria-hidden
+            style={{
+              width: 6,
+              height: 6,
+              borderRadius: "50%",
+              background: "var(--ec-accent)",
+              boxShadow: "0 0 6px var(--ec-accent)",
+            }}
+          />
+          ШИФРОВАНИЕ
+        </span>
       </div>
       {trigger && (
         <AutocompletePopover

@@ -5,7 +5,52 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v1.1.0** (Eclipse_OS visual rebrand —
+**Текущая версия в проде:** **v1.1.1** (Eclipse_OS full visual adoption —
+v1.1.0 был too minimal по Pavel'у («ну такое»). Полная adoption из AI
+Studio mockup'а:
+
+**(1) Vocabulary correction** — все English labels из v1.1.0
+переключены на **Russian cyberpunk** (mockup был на русском, не
+английском как я ошибочно интерпретировал):
+- CHANNELS → КАНАЛЫ / TASKS → ЗАДАЧИ / DATA → ДАННЫЕ
+- DATA STREAMS → ПОТОКИ ДАННЫХ / BROADCAST → ВЕЩАНИЕ /
+  VOICE LINKS → ГОЛОСОВЫЕ СВЯЗИ
+- TACTICAL VIEW → ТАКТИЧЕСКИЙ ВИД / LINKED_NODES → СВЯЗАННЫЕ_УЗЛЫ /
+  SLEEP_STATE → СПЯЩИЙ_РЕЖИМ
+- INITIALIZE TRANSMISSION → ВВОД СООБЩЕНИЯ / TRANSMIT → ПЕРЕДАТЬ
+- + INITIALIZE ROOM → + СОЗДАТЬ КОМНАТУ
+
+**(2) Atmospheric background grid** (tokens.css): `.ec-shell::before`
+overlay с 60×60 cyan grid lines + radial center spotlight + bottom
+shadow gradient. Slow `ec-grid-drift` 60s linear infinite (respects
+prefers-reduced-motion). `z-index: 0` под content (1).
+
+**(3) Topbar telemetry pills** (AppShell.tsx): СЕТЬ: СТАБИЛЬНА /
+ОБРЫВ (с pulsing dot, использует existing `isReady` socket state) +
+ПАМ: 12% + ЦП: 04% (placeholder values, future real-time data). Через
+`.ec-telemetry-pill` class.
+
+**(4) Server header ID hash** (ChannelList.tsx): `◆ ID_xxxxxx_SYS_xxxxxx`
+deterministic из serverId.slice(-6) + serverName.slice(0,6),
+monospace, под server name. Server name теперь uppercase 0.08em
+letter-spacing.
+
+**(5) Composer redesign** (MessageInput.tsx): новая status strip над
+composer-box — `>_ ЗАЩИЩЁННЫЙ_КАНАЛ` pill (accent-soft + border-accent)
++ status text «ВВОД ПОТОКА…» при focus / «ОЖИДАНИЕ СИГНАЛА…» при idle.
+Bottom hints row: добавлен ШИФРОВАНИЕ E2E indicator справа (accent
+glowing dot + uppercase label).
+
+**(6) Sticky date dividers** (MessageList.tsx): новая функция
+`formatLogEntryDay` — format «ЗАПИСЬ_ЖУРНАЛА_19_МАЯ_2026 //
+СИНХР_ВРЕМЕНИ» с RU month abbreviations (ЯНВ/ФЕВ/МАР/etc). Style:
+accent color, monospace, 0.08em tracking, 0.62rem font, hover title
+показывает original «Сегодня»/«Вчера».
+
+Pure visual+text. Никаких schema/API/logic изменений. AuthScreen
+multi-step redesign — всё ещё deferred (v1.1.2 candidate).
+
+**Предыдущие версии:** v1.1.0 (Eclipse_OS visual rebrand initial —
 из Google AI Studio mockup'а который Pavel получил. Pavel-feedback:
 «мне нравится как визуально он сделал, давай применим». Cyberpunk
 operational system visual language adopted.
@@ -957,6 +1002,7 @@ base, ✅ Home command center, ✅ responsive cinematic UI pass.
 | ✅ закрыто | **UI hotfix word-wrap v0.92.0** (19.05): «ПЕРЕГЕНЕРИРОВАТЬ» glitch в ChannelDigestPanel «Сводка комнаты» (long RU UPPERCASE слово ломалось mid-word на узком intel-rail). Текст укорочен до «✦ Заново / ✦ Резюме», `whiteSpace: nowrap` + `textOverflow: ellipsis` + `maxWidth: 100%` defensive style. |
 | ✅ закрыто | **#5 phase 2 + #4 AI-write v0.93.0** — AI agent создаёт rows в operational tables по запросу из чата. `ai/taskFromChat.ts`: `hasTaskCreationIntent` regex prescan (RU/EN keywords) → `loadContext(serverId)` (server tables + members) → AI JSON extract intent + table_id + cells → per-type validation (USER displayName→userId, DATE ISO, STATUS options, NUMBER, CHECKBOX) → row.create + bot confirmation reply. Wired в `maybeReplyToMention` (skip normal AI reply если task created). Phase 2 (future) — update existing rows, batch creation, explicit `#tableName` syntax. |
 | 🟡 частично | **#10 phase 4b bidirectional row↔ActionItem sync** — закрыто в v0.94.0. `lib/rowActionSync.ts` pure mappers: `mapCellToActionStatus` / `mapActionStatusToCell` с RU+EN dictionary (Открыто/Open/Todo, В работе/In Progress/Doing, На ревью/Review, Завершено/Done). `resolveMapping(fields)` picks first-by-type (TEXT/STATUS/USER/DATE). `syncRowToAction` + `syncActionToRows` с loop-guard (diff-check «source === target → no-op»). Wired в PATCH row + PATCH action endpoints с re-emit для UI realtime. v0.93 taskFromChat auto-link ActionItem после row create если table.channelId set. Phase 4c — explicit per-field mapping config UI (current convention-based). |
+| ✅ закрыто | **Eclipse_OS full visual adoption v1.1.1** (19.05) — Pavel-feedback после v1.1.0: «ну такое, давай всё же попробуем этот дизайн от гугл студио». v1.1.0 был too minimal (только vocab + violet halos без visible эффектов). Эта итерация — full adoption. **Vocab correction**: English → Russian cyberpunk во всех components (КАНАЛЫ/ЗАДАЧИ/ДАННЫЕ/ПОТОКИ ДАННЫХ/ВЕЩАНИЕ/ГОЛОСОВЫЕ СВЯЗИ/ТАКТИЧЕСКИЙ ВИД/СВЯЗАННЫЕ_УЗЛЫ/СПЯЩИЙ_РЕЖИМ/ВВОД СООБЩЕНИЯ/ПЕРЕДАТЬ/СОЗДАТЬ КОМНАТУ) — mockup был на русском, я ошибочно в v1.1.0 перевёл на английский. **Atmospheric background grid** в tokens.css: `.ec-shell::before` overlay с 60×60 cyan grid lines + radial center spotlight + bottom shadow gradient + `ec-grid-drift` 60s linear infinite (reduced-motion guard). Все shell children получают z-index: 1 чтобы быть above background. **Topbar telemetry pills** (AppShell): 3 monospace pills — СЕТЬ: СТАБИЛЬНА/ОБРЫВ (using existing isReady socket state) + ПАМ: 12% + ЦП: 04% (placeholder values). Через `.ec-telemetry-pill` class с ok/warn variants. **Server header ID hash** (ChannelList): `◆ ID_xxxxxx_SYS_xxxxxx` deterministic из serverId + serverName slices, monospace 0.62rem под server name. Server name теперь uppercase letter-spacing 0.08em fontWeight 700. **Composer status strip** (MessageInput): новая row над composer-box с `>_ ЗАЩИЩЁННЫЙ_КАНАЛ` pill (accent-soft + border-accent) + status text «ВВОД ПОТОКА…» при focus / «ОЖИДАНИЕ СИГНАЛА…» idle. **ШИФРОВАНИЕ E2E indicator** добавлен в hints row справа (glowing accent dot + uppercase). **Sticky log-entry date dividers** (MessageList): новая `formatLogEntryDay` функция выдаёт «ЗАПИСЬ_ЖУРНАЛА_19_МАЯ_2026 // СИНХР_ВРЕМЕНИ» с RU month abbreviations. Hover title shows original. Все changes — pure visual+text, ноль schema/API/logic. Files: tokens.css (+40 строк background grid), ChannelList.tsx (vocab + server header ID hash), IntelligencePanel.tsx (vocab), MemberList.tsx (vocab), MessageInput.tsx (vocab + status strip + ШИФРОВАНИЕ indicator), MessageList.tsx (formatLogEntryDay + divider rebrand), AppShell.tsx (3 telemetry pills + isReady mapping). |
 | ✅ закрыто | **Eclipse_OS visual rebrand v1.1.0** (19.05) — adoption из Google AI Studio mockup'а. Pavel-feedback после v1.0.2: «мне нравится как визуально он сделал, давай применим, хочу пощупать в проде». AI Studio прислал full React+Vite+Tailwind+Motion+Lucide standalone app — incompatible stack с Eclipse Chat (vanilla CSS + tokens). Извлекли design patterns + переписали под наш stack: новые tokens (`--ec-surface-glass` rgba(11,15,20,0.45), `--ec-holo-cyan` linear-gradient base, `--ec-glow-ai` + `--ec-glow-live` multi-layer shadows; existing `--ec-accent-3` violet reused), новые utility classes (`.ec-holo-edge` 1px top-edge via ::before, `.ec-scan-line` horizontal sweep keyframe 4s infinite с reduced-motion guard, `.ec-glass-panel` frosted blur(20)+saturate(140%), `.ec-avatar-halo--ai` violet glow, `.ec-avatar-halo--live` cyan breathing 4s, `.ec-telemetry-pill` + ok/warn variants), active channel left-border заменён на holographic gradient через inset box-shadow, custom scrollbar webkit + Firefox с cyan-accent hover. **Vocabulary rebrand** (Russian UI labels → English sci-fi): sidebar tabs (CHANNELS/TASKS/DATA), section labels (DATA STREAMS/BROADCAST/VOICE LINKS), members panel (TACTICAL VIEW/LINKED_NODES/SLEEP_STATE), composer (INITIALIZE TRANSMISSION/TRANSMIT/INITIALIZE ROOM), brand (ECLIPSE_OS с letter-spacing 0.18em в topbar), bot badge (AI_AGENT вместо BOT для GENERIC). **Russian content сохраняется** — только UI labels recoded. Bot avatars wrap'аются в span.ec-avatar-halo--ai для violet glow ring через box-shadow tokens. AuthScreen multi-step redesign — deferred в v1.1.1. SW_VERSION bumped → v1.1.0. Ноль schema/API изменений, pure visual+text. Files: tokens.css (+140), ChannelList.tsx, IntelligencePanel.tsx, MemberList.tsx, AppShell.tsx, MessageInput.tsx, MessageList.tsx. |
 | ✅ закрыто | **Composio AutomationRule UI editor v1.0.2** (19.05) — закрывает loop из v1.0.1 (backend был ready, UI explicitly deferred). Extends CreateRuleForm (apps/web/src/components/AdminPanel.tsx, ~1500 строк component) с 4-м action type. Type additions: `AutomationActionComposio` (type: "COMPOSIO_ACTION" + connectionId + actionName + paramsTemplate JSON-string), extended ActionKind union, AutomationAction union extended. CreateRuleForm extended с serverId prop (для useComposio hook). Hook integration: useComposio loads server's Composio connections + status, filtered to activeConnections (status === "ACTIVE"). New state: composioConnectionId / composioActions[] / composioActionName / composioParams (JSON textarea с default Gmail template). useEffect lazy-loads actions list через `/api/servers/:id/composio/connections/:id/actions` endpoint когда connection selected. useMemo composioParamsValid — JSON.parse + object-type check. canSubmit + handleSubmit dispatcher extended. UI block (~120 строк): conditional disable banners (Composio not configured / no active connections), connection picker dropdown, lazy-loaded action picker dropdown с loading state, monospace JSON textarea с realtime border-color по validity, hint с code-styled placeholders. AutomationRow display extension: actionLabel «Composio →», actionPreview — monospace actionName в accent color. Ноль schema/backend changes (backend в v1.0.1). |
 | ✅ закрыто | **Composio Automation Expansion v1.0.1** (19.05) — из eclipse-library scan, Pavel-pick «делаем по максимуму». 500+ OAuth apps через Composio (https://composio.dev) proxy. Schema migration #46: новая ComposioConnection model + 3 AuditEventType значения. New file `apps/server/src/lib/composio.ts` — pure-fetch wrapper (listSupportedApps / initiateConnection / verifyConnection / disconnectConnection / executeAction / listActionsForApp), AbortController timeout 12s, ComposioError class с status code. 6 endpoints в `apps/server/src/routes/composio.ts` (status / apps / connections list / connect initiate / OAuth callback handler с auto-close HTML / disconnect / actions / manual execute). Graceful disable если COMPOSIO_API_KEY env not set — UI показывает setup instructions с callback URL. Automation engine extension (`apps/server/src/automation.ts`): новый ActionDef `COMPOSIO_ACTION` + `fireActionComposio` handler с recursive params template rendering (placeholders {{user}}/{{message}}/{{channel}} в strings deep через objects+arrays). New frontend hook `useComposio.ts` + new component `ComposioConnections.tsx` (status banner / connection list с chips / app picker overlay с search + OAuth window opener + postMessage listener для auto-reload). AdminPanel «Интеграции» tab расширен — секция Composio под IntegrationsTabContent. AES-256-GCM encryption через existing twoFactor `encryptSecret` (reuse TWOFA_ENCRYPTION_KEY pattern). Audit log: COMPOSIO_CONNECTED при successful OAuth callback, COMPOSIO_DISCONNECTED, COMPOSIO_ACTION_EXECUTED (с success / latencyMs / triggeredByAutomation metadata). Pavel-side setup ENV: COMPOSIO_API_KEY + optional COMPOSIO_BASE_URL + PUBLIC_BASE_URL (для OAuth callback). Migration 46-я additive. Ноль breaking changes. AutomationRule editor UI для COMPOSIO_ACTION — deferred в v1.0.2 (current scope: connection management). |
