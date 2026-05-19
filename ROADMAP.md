@@ -5,7 +5,44 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v1.1.4** (ECLIPSE_CHAT rebrand +
+**Текущая версия в проде:** **v1.1.5** (cinematic delta усиление
++ BotsTab card layout bug fix — Pavel screenshot после v1.1.4:
+«мало изменений вижу, продолжаем»).
+
+**Изменения v1.1.5:**
+
+**(0) BotsTab layout bug fix**: grid template `auto 1fr auto` →
+`auto minmax(0, 1fr) minmax(0, 280px)`. Без `minmax(0, …)` col 2
+(description) сжимался до 1 буквы в столбец когда col 3 (7 action
+кнопок) запрашивал max-content (~700px). 280px cap для col 3
+заставляет кнопки wrap'аться в 2-3 рядa vertically.
+
+**(1) AI message distinct card** (`.ec-message-row--ai` в
+tokens.css): violet linear-gradient bg + 2px violet border-left +
+radial top-right corner glow halo. Hover bumps opacity. Bot
+сообщения теперь мгновенно отличаются от human messages без
+зависимости от bot-badge label. JSX в MessageList применяет class
+когда `m.user.isBot`. Existing `.ec-avatar-halo--ai` сохранён.
+
+**(2) Section labels diamond accents** (sidebar group headings):
+- «ПОТОКИ ДАННЫХ» → cyan diamond glow (default)
+- «ВЕЩАНИЕ» → violet diamond glow (`--diamond-violet` variant)
+- «ГОЛОСОВЫЕ СВЯЗИ» → mint diamond glow (`--diamond-mint` variant)
+Rotated 5×5px square + 6px box-shadow accent.
+
+**(3) HUD tabs stronger active state** (`.ec-hud-tab` в
+tokens.css): active tab получает top-fade gradient pseudo (cyan
+0.12 → transparent) + 2px bottom accent bar с 8px cyan glow.
+Применён к sidebar tabs (КАНАЛЫ / ЗАДАЧИ / ДАННЫЕ).
+
+**(4) Server header holographic bottom-edge**
+(`.ec-server-header-edge`): 1px gradient line под server-header
+в sidebar (`var(--ec-holo-cyan)`).
+
+**Сборка**: 8 files changed, +141/-12. CSS bundle 95.55 → 97.36 KB
+raw (+1.81 KB), gzip 17.91 → 18.19 KB. Build 2.73s.
+
+**Предыдущие версии:** v1.1.4 (ECLIPSE_CHAT rebrand +
 cinematic polish pass — Pavel feedback «надо дизайн доработать»
 после v1.1.3 LIVE).
 
