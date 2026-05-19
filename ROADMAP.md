@@ -5,7 +5,42 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v1.1.7** (real telemetry pills +
+**Текущая версия в проде:** **v1.1.8** (HomeToday «Сегодня»
+cinematic polish — продолжение polish track по Pavel «делаем
+дальше»).
+
+**Изменения v1.1.8:**
+
+HomeToday — первый экран после login'а, заходим ежедневно. До
+v1.1.8 ещё не получал cyber polish.
+
+**(1) Header eyebrow** «Операционная сводка» → «ОПЕРАТИВНАЯ_СВОДКА //»
+(uppercase monospace 0.18em tracking).
+
+**(2) Header h2** «Сегодня, {name}» → «Сегодня · {name}» uppercase
+0.1em tracking + display font (Orbitron).
+
+**(3) Stat cards** (7 шт: Задач / Просрочено / Инцидентов / Голос /
+Одобрений / Активные комнаты / AI-алерты) получают `.ec-corner-
+brackets` — top-right + bottom-left tactical-corner accents на
+hover. Inset border-left color-coding сохранён.
+
+**(4) Stat values** — Orbitron display font для чисел (-0.02em
+tracking), monospace 0.6rem 0.16em для labels. Tabular-nums
+сохранены.
+
+**(5) Section titles** — `<h3>` monospace 0.7rem 0.18em tracking +
+glyph `▸` → `◆` (filled diamond, consistent с sidebar diamonds
+из v1.1.5).
+
+**(6) «Обновить» button** — `.ec-shimmer-sweep` class + UPPERCASE
+text. Idle: «ОБНОВИТЬ» / loading: «СИНХРОНИЗАЦИЯ…».
+
+**Сборка**: 5 files changed, +44/-32. CSS bundle unchanged 100.15
+KB (только inline style + className changes — все classes уже в
+tokens.css из предыдущих slice'ов).
+
+**Предыдущие версии:** v1.1.7 (real telemetry pills +
 cipher shimmer typing — продолжение polish track по Pavel
 «продолжай»).
 
