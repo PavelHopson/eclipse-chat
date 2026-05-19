@@ -110,17 +110,6 @@ const brandMark: CSSProperties = {
   overflow: "hidden",
 };
 
-const breadcrumbStyle: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: "var(--ec-space-2)",
-  marginLeft: "var(--ec-space-4)",
-  paddingLeft: "var(--ec-space-4)",
-  borderLeft: "1px solid var(--ec-border-subtle)",
-  color: "var(--ec-text-muted)",
-  fontSize: "var(--ec-text-sm)",
-};
-
 const userChip: CSSProperties = {
   display: "flex",
   alignItems: "center",
@@ -761,21 +750,21 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             title="Главная"
           >
             <span className="ec-brand-mark" style={brandMark} aria-hidden />
-            <span className="ec-shell__brand-title" style={{ letterSpacing: "0.18em", fontWeight: 700 }}>ECLIPSE_OS</span>
+            <span className="ec-shell__brand-title ec-shimmer-text" style={{ letterSpacing: "0.18em", fontWeight: 700 }}>ECLIPSE_CHAT</span>
           </button>
           {homeOpen ? (
-            <span className="ec-shell__breadcrumb" style={breadcrumbStyle}>
-              <span style={{ opacity: 0.5 }}>/</span>
-              <span style={{ color: "var(--ec-text)", fontWeight: 500 }}>Главная</span>
+            <span className="ec-shell__breadcrumb ec-breadcrumb-cyber">
+              <span className="ec-breadcrumb-cyber__label">УЗЕЛ //</span>
+              <span className="ec-breadcrumb-cyber__active">ГЛАВНАЯ</span>
             </span>
           ) : activeServer && (
-            <span className="ec-shell__breadcrumb" style={breadcrumbStyle}>
-              <span style={{ opacity: 0.5 }}>/</span>
-              <span style={{ color: "var(--ec-text)", fontWeight: 500 }}>{activeServer.name}</span>
+            <span className="ec-shell__breadcrumb ec-breadcrumb-cyber">
+              <span className="ec-breadcrumb-cyber__label">УЗЕЛ //</span>
+              <span className="ec-breadcrumb-cyber__name">{activeServer.name}</span>
               {selectedChannel && (
                 <>
-                  <span style={{ opacity: 0.5 }}>/</span>
-                  <span style={{ color: "var(--ec-text-muted)" }}>#{selectedChannel.name}</span>
+                  <span className="ec-breadcrumb-cyber__sep">/</span>
+                  <span className="ec-breadcrumb-cyber__active">#{selectedChannel.name}</span>
                 </>
               )}
             </span>

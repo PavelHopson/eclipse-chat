@@ -32,15 +32,6 @@ const wrap: CSSProperties = {
   overflow: "hidden",
 };
 
-const headerStyle: CSSProperties = {
-  padding: "var(--ec-space-3) var(--ec-space-4)",
-  borderBottom: "1px solid var(--ec-border-subtle)",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  gap: "var(--ec-space-2)",
-};
-
 const listScroll: CSSProperties = {
   flex: 1,
   overflow: "auto",
@@ -59,6 +50,7 @@ const rowStyle: CSSProperties = {
   borderRadius: "var(--ec-radius-sm)",
   fontSize: "var(--ec-text-sm)",
   color: "var(--ec-text)",
+  position: "relative",
   transition: "background var(--ec-dur-fast) var(--ec-ease)",
 };
 
@@ -100,17 +92,24 @@ function sortMembers(list: MemberRow[]): MemberRow[] {
   });
 }
 
-function roleLabel(role: MemberRole): string | null {
-  if (role === "OWNER") return "OWNER";
-  if (role === "ADMIN") return "ADMIN";
-  if (role === "MODERATOR") return "MOD";
-  return null;
-}
+/** v1.1.4 — monospace 3-char tag для каждой из 10 ролей (TACTICAL VIEW). */
+const ROLE_TAG: Record<MemberRole, string> = {
+  OWNER: "OWN",
+  ADMIN: "ADM",
+  MODERATOR: "MOD",
+  ARCHITECT: "ARC",
+  DEVELOPER: "DEV",
+  OPERATOR: "OPR",
+  MEMBER: "MEM",
+  CLIENT: "CLI",
+  VIEWER: "VWR",
+  GUEST: "GST",
+};
 
-function roleBadgeClass(role: MemberRole): string {
-  if (role === "OWNER") return "ec-badge ec-badge--owner";
-  if (role === "ADMIN" || role === "MODERATOR") return "ec-badge ec-badge--accent";
-  return "ec-badge";
+function statusPillClass(role: MemberRole): string {
+  if (role === "OWNER") return "ec-status-pill ec-status-pill--owner";
+  if (role === "ADMIN" || role === "MODERATOR") return "ec-status-pill ec-status-pill--admin";
+  return "ec-status-pill";
 }
 
 function MemberRowView({
@@ -126,7 +125,8 @@ function MemberRowView({
   showDmButton: boolean;
   onOpenDm?: (userId: string) => void;
 }) {
-  const label = roleLabel(m.role);
+  const tag = ROLE_TAG[m.role];
+  const pillClass = statusPillClass(m.role);
   const tooltip =
     `${m.user.displayName} · ${m.role}` +
     (m.online ? " · в сети" : "") +
@@ -137,6 +137,7 @@ function MemberRowView({
       : "");
   return (
     <div
+      className="ec-corner-brackets"
       style={rowStyle}
       onMouseEnter={(e) => {
         e.currentTarget.style.background = "var(--ec-surface-2)";
@@ -191,11 +192,7 @@ function MemberRowView({
             под voice-каналом в sidebar (ChannelList), дублировать не нужно.
             inVoiceChannel остаётся в tooltip (см. выше). */}
       </span>
-      {label && (
-        <span className={roleBadgeClass(m.role)} style={{ fontSize: "0.6rem", padding: "0.05rem 0.35rem" }}>
-          {label}
-        </span>
-      )}
+      <span className={pillClass} title={m.role}>{tag}</span>
       {showDmButton && onOpenDm && (
         <button
           data-dm-btn
@@ -257,33 +254,48 @@ export function MemberList({
 
   return (
     <aside
+      className="ec-tactical-grid"
       style={hideHeader ? { ...wrap, borderLeft: "none" } : wrap}
       aria-label="Участники пространства"
     >
       {!hideHeader && (
-        <header style={headerStyle}>
-          <span style={{ fontSize: "var(--ec-text-sm)", fontWeight: 600, color: "var(--ec-text-strong)" }}>
-            Участники
+        <header className="ec-tactical-header">
+          <span className="ec-tactical-header__title">
+            <svg
+              className="ec-tactical-header__icon"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden
+            >
+              <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" />
+              <line x1="8" y1="2" x2="8" y2="18" />
+              <line x1="16" y1="6" x2="16" y2="22" />
+            </svg>
+            ТАКТИЧЕСКИЙ ВИД
           </span>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: "var(--ec-text-2xs)", color: "var(--ec-text-dim)", fontFeatureSettings: '"tnum"' }}>
-              {online.length}/{members.length}
-            </span>
-            {onClose && (
-              <button
-                type="button"
-                onClick={onClose}
-                className="ec-shell__members-close ec-btn ec-btn--ghost ec-btn--sm"
-                aria-label="Закрыть"
-                style={{ width: 28, height: 28, padding: 0 }}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
-            )}
-          </div>
+          <span className="ec-tactical-header__count" title="онлайн / всего">
+            {online.length}/{members.length}
+          </span>
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="ec-shell__members-close ec-btn ec-btn--ghost ec-btn--sm"
+              aria-label="Закрыть"
+              style={{ width: 28, height: 28, padding: 0, marginLeft: "var(--ec-space-2)" }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          )}
         </header>
       )}
 

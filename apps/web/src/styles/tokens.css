@@ -477,3 +477,233 @@
     --ec-dur-ambient:       1ms;
   }
 }
+
+/* ============================================================
+ * v1.1.4 Cinematic polish — utility classes
+ * ============================================================
+ * Дополнительные patterns из Eclipse_OS mockup'а:
+ *   shimmer-text   — gradient sweep по тексту (brand caption)
+ *   shimmer-sweep  — hover gradient horizontal sweep (CTA buttons)
+ *   breadcrumb-cyber — monospace «УЗЕЛ //» framing
+ *   corner-brackets — top-right + bottom-left brackets opacity:0 → :hover 1
+ *   tactical-grid  — subtle dot-grid background (panels)
+ *   tactical-header — «ТАКТИЧЕСКИЙ ВИД» style header (MemberList)
+ *   status-pill    — monospace OPR/MEM/etc badge
+ *   rotate-hover   — child SVG rotate 90deg on hover
+ */
+
+/* Shimmer-text — animated gradient swipe across brand caption. */
+.ec-shimmer-text {
+  background: linear-gradient(
+    90deg,
+    var(--ec-text-strong) 0%,
+    var(--ec-accent) 50%,
+    var(--ec-text-strong) 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  animation: ec-shimmer-text-sweep 4.5s linear infinite;
+}
+@keyframes ec-shimmer-text-sweep {
+  to { background-position: 200% center; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ec-shimmer-text {
+    animation: none;
+    color: var(--ec-text-strong);
+    -webkit-text-fill-color: var(--ec-text-strong);
+  }
+}
+
+/* Cyber breadcrumb — monospace «УЗЕЛ //» framing для topbar path. */
+.ec-breadcrumb-cyber {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ec-space-2);
+  margin-left: var(--ec-space-4);
+  padding-left: var(--ec-space-4);
+  border-left: 1px solid var(--ec-border-subtle);
+  font-family: var(--ec-font-mono, ui-monospace, monospace);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ec-text-dim);
+  min-width: 0;
+  overflow: hidden;
+}
+.ec-breadcrumb-cyber__label { color: var(--ec-text-dim); }
+.ec-breadcrumb-cyber__name {
+  color: var(--ec-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ec-breadcrumb-cyber__sep { opacity: 0.45; }
+.ec-breadcrumb-cyber__active {
+  color: var(--ec-accent);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Shimmer-sweep — diagonal hover gradient sweep на full-width CTA. */
+.ec-shimmer-sweep {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.ec-shimmer-sweep::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    hsl(195 70% 60% / 0.22) 50%,
+    transparent 100%
+  );
+  transform: translateX(-110%);
+  transition: transform 700ms ease-out;
+  pointer-events: none;
+  z-index: 0;
+}
+.ec-shimmer-sweep:hover::before {
+  transform: translateX(110%);
+}
+.ec-shimmer-sweep > * { position: relative; z-index: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .ec-shimmer-sweep::before { transition: none; }
+}
+
+/* Corner brackets — tactical accent для hover-state. Top-right + bottom-left. */
+.ec-corner-brackets { position: relative; }
+.ec-corner-brackets::before,
+.ec-corner-brackets::after {
+  content: "";
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  opacity: 0;
+  transition: opacity var(--ec-dur-fast) var(--ec-ease);
+  pointer-events: none;
+}
+.ec-corner-brackets::before {
+  top: 3px;
+  right: 3px;
+  border-top: 1px solid var(--ec-accent);
+  border-right: 1px solid var(--ec-accent);
+}
+.ec-corner-brackets::after {
+  bottom: 3px;
+  left: 3px;
+  border-bottom: 1px solid var(--ec-accent);
+  border-left: 1px solid var(--ec-accent);
+}
+.ec-corner-brackets:hover::before,
+.ec-corner-brackets:hover::after { opacity: 0.75; }
+
+/* Tactical dot-grid background — subtle sci-fi подложка. */
+.ec-tactical-grid {
+  background-image:
+    linear-gradient(rgba(180, 210, 240, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(180, 210, 240, 0.025) 1px, transparent 1px);
+  background-size: 24px 24px;
+  background-position: 0 0, 0 0;
+}
+
+/* Tactical view header (MemberList top section). */
+.ec-tactical-header {
+  display: flex;
+  align-items: center;
+  gap: var(--ec-space-2);
+  padding: var(--ec-space-3) var(--ec-space-4);
+  border-bottom: 1px solid var(--ec-border-subtle);
+  background: hsl(210 25% 4% / 0.5);
+}
+.ec-tactical-header__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--ec-font-mono, ui-monospace, monospace);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ec-text-muted);
+}
+.ec-tactical-header__icon {
+  color: var(--ec-accent-3);
+  flex-shrink: 0;
+}
+.ec-tactical-header__count {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.12rem 0.42rem;
+  border-radius: var(--ec-radius-xs);
+  font-family: var(--ec-font-mono, ui-monospace, monospace);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--ec-accent-3);
+  background: var(--ec-accent-3-soft);
+  border: 1px solid hsl(252 70% 70% / 0.3);
+  font-feature-settings: "tnum";
+}
+
+/* Monospace status pill (OPR / MEM / OWN / etc). */
+.ec-status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.08rem 0.38rem;
+  border-radius: var(--ec-radius-xs);
+  font-family: var(--ec-font-mono, ui-monospace, monospace);
+  font-size: 0.52rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  border: 1px solid var(--ec-border-default);
+  background: var(--ec-surface-1);
+  color: var(--ec-text-dim);
+  white-space: nowrap;
+  line-height: 1.2;
+}
+.ec-status-pill--owner {
+  color: hsl(28 90% 72%);
+  border-color: hsl(28 95% 62% / 0.4);
+  background: hsl(28 95% 62% / 0.08);
+}
+.ec-status-pill--admin,
+.ec-status-pill--mod {
+  color: var(--ec-accent);
+  border-color: var(--ec-border-accent);
+  background: var(--ec-accent-soft);
+}
+.ec-status-pill--ai {
+  color: var(--ec-accent-3);
+  border-color: hsl(252 70% 70% / 0.4);
+  background: var(--ec-accent-3-soft);
+}
+
+/* Rotate child on hover — для composer Plus icon. */
+.ec-rotate-hover svg,
+.ec-rotate-hover-target {
+  transition: transform 320ms var(--ec-ease-out);
+}
+.ec-rotate-hover:hover svg,
+.ec-rotate-hover:hover .ec-rotate-hover-target {
+  transform: rotate(90deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ec-rotate-hover svg,
+  .ec-rotate-hover-target { transition: none; }
+  .ec-rotate-hover:hover svg,
+  .ec-rotate-hover:hover .ec-rotate-hover-target { transform: none; }
+}

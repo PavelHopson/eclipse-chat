@@ -1228,10 +1228,10 @@ export function ChannelList({
           <button
             type="button"
             onClick={onCreateTable}
-            className="ec-btn ec-btn--primary ec-btn--sm"
+            className="ec-btn ec-btn--primary ec-btn--sm ec-shimmer-sweep"
             style={{ width: "100%", justifyContent: "center" }}
           >
-            + Новая таблица
+            <span>+ НОВАЯ ТАБЛИЦА</span>
           </button>
         </div>
       )}
@@ -1240,10 +1240,10 @@ export function ChannelList({
           <button
             type="button"
             onClick={() => openCreateModal("TEXT")}
-            className="ec-btn ec-btn--primary ec-btn--sm"
+            className="ec-btn ec-btn--primary ec-btn--sm ec-shimmer-sweep"
             style={{ width: "100%", justifyContent: "center" }}
           >
-            + СОЗДАТЬ КОМНАТУ
+            <span>+ СОЗДАТЬ КОМНАТУ</span>
           </button>
         </div>
       )}

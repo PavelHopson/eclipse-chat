@@ -973,7 +973,7 @@ export function MessageInput({
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={disabled || pending.length >= MAX_PER_MESSAGE || isRecording}
-          className="ec-composer-icon-btn"
+          className="ec-composer-icon-btn ec-rotate-hover"
           title="Прикрепить файлы"
           aria-label="Прикрепить файлы"
           style={iconBtn}

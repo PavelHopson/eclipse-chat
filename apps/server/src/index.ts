@@ -173,7 +173,7 @@ app.get("/api/health", async () => {
     pg,
   };
 });
-app.get("/api/version", async () => ({ name: "@eclipse-chat/server", version: "1.1.3" }));
+app.get("/api/version", async () => ({ name: "@eclipse-chat/server", version: "1.1.4" }));
 
 await registerAuthRoutes(app);
 await registerTwoFactorRoutes(app);
