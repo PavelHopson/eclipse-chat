@@ -1,6 +1,5 @@
 import type { CSSProperties } from "react";
 import { useEffect, useRef, useState } from "react";
-import { ActionQueueBar } from "../components/ActionQueueBar";
 import { Avatar } from "../components/Avatar";
 import { ChannelList } from "../components/ChannelList";
 import { ChannelSettingsModal } from "../components/ChannelSettingsModal";
@@ -12,6 +11,7 @@ import { GroupAvatar } from "../components/GroupAvatar";
 import { HomeToday } from "../components/HomeToday";
 import { IntelligencePanel } from "../components/IntelligencePanel";
 import { ChannelInfoPanel } from "../components/ChannelInfoPanel";
+import { ChatHeaderHoverButton } from "../components/ChatHeaderHoverButton";
 import { ActionItemDrawer } from "../components/ActionItemDrawer";
 import { OperationalTablePanel } from "../components/OperationalTablePanel";
 import { useOperationalTables } from "../hooks/useOperationalTables";
@@ -23,7 +23,6 @@ import { AdminPanel } from "../components/AdminPanel";
 import { JoinServerModal } from "../components/JoinServerModal";
 import { MessageInput } from "../components/MessageInput";
 import { MessageList } from "../components/MessageList";
-import { PinnedBar } from "../components/PinnedBar";
 import { ProfileModal } from "../components/ProfileModal";
 import { SearchOverlay } from "../components/SearchOverlay";
 import { ServerHubModal } from "../components/ServerHubModal";
@@ -348,7 +347,6 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     unpinMessage,
     toggleReaction,
     createActionItem,
-    updateActionItem,
     updateActionItemStatus,
     typingUsers,
     emitTypingStart,
@@ -1412,6 +1410,91 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                   Музыка
                 </button>
               )}
+              {/* v0.98: hover-buttons для pins / tasks. Раньше ActionQueueBar
+                  + PinnedBar занимали постоянное место сверху MessageList'а.
+                  Теперь — compact icons в chat-header с count badge; hover
+                  показывает top 3 items popover; click открывает full
+                  ChannelInfoPanel на соответствующем tab'е. Pavel-ask 19.05
+                  «при наведении отображались поверх экрана чата». */}
+              {(() => {
+                const pinnedList = messages
+                  .filter((m) => m.pinnedAt && !m.deletedAt)
+                  .slice(-50)
+                  .reverse();
+                const pinnedPreview = pinnedList.slice(0, 3);
+                return (
+                  <ChatHeaderHoverButton
+                    icon={
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                        <line x1="12" y1="17" x2="12" y2="22" />
+                        <path d="M5 17h14V5l-2 2-2-2-2 2-2-2-2 2-2-2-2 2z" />
+                      </svg>
+                    }
+                    label="Закреплённые"
+                    count={pinnedList.length}
+                    items={pinnedPreview}
+                    itemKey={(m) => m.id}
+                    renderItem={(m) => (
+                      <>
+                        <span style={{ display: "block", fontSize: "var(--ec-text-2xs)", color: "var(--ec-text-dim)", marginBottom: 2 }}>
+                          {m.user.displayName}
+                        </span>
+                        <span style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "pre-wrap", color: "var(--ec-text)" }}>
+                          {m.content || "[без текста — вложение]"}
+                        </span>
+                      </>
+                    )}
+                    accent="var(--ec-warn)"
+                    onOpenFull={() => {
+                      setInfoPanelTab("memory");
+                      setInfoPanelOpen(true);
+                    }}
+                  />
+                );
+              })()}
+              {(() => {
+                const openTasks = openActionItems;
+                const tasksPreview = openTasks.slice(0, 3);
+                return (
+                  <ChatHeaderHoverButton
+                    icon={
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                        <polyline points="9 11 12 14 22 4" />
+                        <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
+                      </svg>
+                    }
+                    label="Открытые дела"
+                    count={openTasks.length}
+                    items={tasksPreview}
+                    itemKey={(a) => a.id}
+                    renderItem={(a) => {
+                      const glyph = a.type === "DECISION" ? "◆" : a.type === "FOLLOW_UP" ? "↻" : "□";
+                      const dueAt = a.dueAt
+                        ? new Date(a.dueAt).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })
+                        : null;
+                      return (
+                        <>
+                          <span style={{ display: "block", fontSize: "var(--ec-text-2xs)", color: "var(--ec-text-dim)", marginBottom: 2 }}>
+                            <span aria-hidden style={{ fontFamily: "var(--ec-font-mono)", marginRight: 6 }}>
+                              {glyph}
+                            </span>
+                            {a.assignee?.displayName ?? "без ответственного"}
+                            {dueAt ? ` · до ${dueAt}` : ""}
+                          </span>
+                          <span style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--ec-text)" }}>
+                            {a.title}
+                          </span>
+                        </>
+                      );
+                    }}
+                    accent="var(--ec-status-exec)"
+                    onOpenFull={() => {
+                      setInfoPanelTab("execution");
+                      setInfoPanelOpen(true);
+                    }}
+                  />
+                );
+              })()}
               {/* v0.96: (i) кнопка — открывает ChannelInfoPanel overlay
                   с 4 inner tabs (Сводка/Память/Дела/Файлы). Раньше эти
                   вкладки жили в right rail; теперь rail = только Участники. */}
@@ -1816,15 +1899,11 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               aiError={sinceLastVisit.aiError}
               onRequestAiSummary={() => void sinceLastVisit.requestAiSummary()}
             />
-            <ActionQueueBar
-              items={openActionItems}
-              currentUserId={user.id}
-              members={members}
-              onUpdateAction={updateActionItem}
-            />
-            {/* ChannelDigest переехал в правую IntelligencePanel (Фаза A) —
-                контекст канала живёт в Intelligence-табе, не в ленте. */}
-            <PinnedBar messages={messages} />
+            {/* v0.98: ActionQueueBar + PinnedBar убраны из ленты. Pavel-ask
+                «при наведении отображались поверх экрана чата». Функционал
+                переехал в hover-buttons chat-header'а (📌 + ✓ icons рядом с
+                (i)) → preview popover на hover + full panel на click. Лента
+                стала чище — chat-header → MessageList → composer, без banners. */}
             {/* v0.74 #29 phase 1: Focus mode banner — explicit affordance
                 чтобы юзер не думал, что сообщения «пропали». */}
             {focus.enabled && (
