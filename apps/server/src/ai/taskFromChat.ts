@@ -1,9 +1,16 @@
 import type { FastifyBaseLogger } from "fastify";
 import { db } from "../db.js";
-import { emitBotTyping, emitMessageOnChannel, emitTableEvent } from "../realtime.js";
+import {
+  emitActionItemCreated,
+  emitBotTyping,
+  emitMessageOnChannel,
+  emitTableEvent,
+} from "../realtime.js";
 import { AINotConfiguredError, chat } from "./provider.js";
 import { stripAiMention } from "./assistant.js";
 import type { BotResponder } from "./assistant.js";
+import { getSystemBotUserId } from "../lib/systemBot.js";
+import { actionItemInclude, serializeActionItem } from "../actionItems.js";
 
 /**
  * v0.93 #5 phase 2 + #4 — AI agent создаёт row в operational table по
@@ -293,11 +300,16 @@ function formatConfirmationMessage(
   tableName: string,
   rowPosition: number,
   applied: Array<{ fieldName: string; displayValue: string }>,
+  linkedActionId: string | null,
 ): string {
   const lines = applied.map((a) => `  • **${a.fieldName}**: ${a.displayValue}`);
+  const taskNote = linkedActionId
+    ? `\n_Привязана задача — ищи в доске задач (Status Board)._`
+    : "";
   return (
     `✓ Добавил в таблицу **«${tableName}»** строку #${rowPosition + 1}:\n` +
-    lines.join("\n")
+    lines.join("\n") +
+    taskNote
   );
 }
 
@@ -441,8 +453,20 @@ export async function attemptCreateRowFromMention(params: {
   });
   const newPosition = (lastRow?.position ?? -1) + 1;
 
-  // Create row + cells в transaction.
+  // Derive title for ActionItem (если будет создан) — value первого TEXT cell.
+  const textField = table.fields.find((f) => f.type === "TEXT");
+  let actionTitle = "";
+  if (textField) {
+    const titleCell = cellsToCreate.find((c) => c.fieldId === textField.id);
+    if (titleCell?.value) {
+      actionTitle = titleCell.value.trim().slice(0, 160);
+    }
+  }
+
+  // Create row + cells в transaction. v0.94 #10 phase 4b: если table
+  // привязана к каналу + есть title — auto-create ActionItem и link.
   let createdRowId: string;
+  let linkedActionId: string | null = null;
   try {
     const created = await db.$transaction(async (tx) => {
       const row = await tx.tableRow.create({
@@ -469,19 +493,138 @@ export async function attemptCreateRowFromMention(params: {
         position: created.position,
         createdAt: created.createdAt.toISOString(),
         updatedAt: created.updatedAt.toISOString(),
+        actionItemId: null,
         cells: created.cells.map((c) => ({
           fieldId: c.fieldId,
           value: c.value,
         })),
       },
     });
+
+    // v0.94 #10 phase 4b: auto-link ActionItem if table has channel.
+    // ActionItem.channelId = table.channelId. Check channel type — VOICE
+    // не годится (нет места для source-message). Если что-то сломалось —
+    // не блокируем row, просто skip linking.
+    if (table.channelId && actionTitle) {
+      try {
+        const channel = await db.channel.findUnique({
+          where: { id: table.channelId },
+          select: { id: true, serverId: true, type: true },
+        });
+        if (channel && channel.serverId === serverId && channel.type !== "VOICE") {
+          const systemUserId = await getSystemBotUserId();
+          const provenanceText =
+            `📋 Задача создана AI-агентом из таблицы **«${table.name}»** ` +
+            `(строка #${newPosition + 1}): ${actionTitle}`;
+          const linked = await db.$transaction(async (tx) => {
+            const message = await tx.message.create({
+              data: {
+                content: provenanceText,
+                userId: systemUserId,
+                channelId: channel.id,
+              },
+              include: {
+                user: { select: { id: true, displayName: true, avatar: true } },
+              },
+            });
+            const action = await tx.actionItem.create({
+              data: {
+                title: actionTitle,
+                type: "TASK",
+                serverId,
+                channelId: channel.id,
+                sourceMessageId: message.id,
+                createdByUserId: senderUserId,
+                // v0.94: copy assignee/dueAt из cells если есть.
+                assigneeUserId:
+                  cellsToCreate.find(
+                    (c) =>
+                      table!.fields.find((f) => f.id === c.fieldId)?.type ===
+                      "USER",
+                  )?.value || null,
+                dueAt: (() => {
+                  const dateCell = cellsToCreate.find(
+                    (c) =>
+                      table!.fields.find((f) => f.id === c.fieldId)?.type ===
+                      "DATE",
+                  );
+                  if (
+                    dateCell?.value &&
+                    /^\d{4}-\d{2}-\d{2}/.test(dateCell.value)
+                  ) {
+                    const d = new Date(dateCell.value);
+                    return Number.isNaN(d.getTime()) ? null : d;
+                  }
+                  return null;
+                })(),
+                activities: {
+                  create: {
+                    userId: senderUserId,
+                    type: "CREATED",
+                    payload: JSON.stringify({
+                      source: "ai-chat-taskcreator",
+                      tableId: table!.id,
+                      rowId: createdRowId,
+                    }),
+                  },
+                },
+              },
+              include: actionItemInclude,
+            });
+            await tx.tableRow.update({
+              where: { id: createdRowId },
+              data: { actionItemId: action.id },
+            });
+            return { message, action };
+          });
+          linkedActionId = linked.action.id;
+          emitMessageOnChannel(channel.id, {
+            messageId: linked.message.id,
+            content: linked.message.content,
+            channelId: channel.id,
+            userId: linked.message.userId!,
+            displayName: linked.message.user?.displayName ?? "System",
+            avatar: linked.message.user?.avatar ?? null,
+            isBot: true,
+            createdAt: linked.message.createdAt.toISOString(),
+            attachments: [],
+          });
+          emitActionItemCreated(channel.id, serializeActionItem(linked.action));
+          // Re-emit row с обновлённым actionItemId.
+          emitTableEvent(serverId, "table:row:updated", {
+            tableId: table.id,
+            row: {
+              id: createdRowId,
+              position: newPosition,
+              createdAt: created.createdAt.toISOString(),
+              updatedAt: new Date().toISOString(),
+              actionItemId: linkedActionId,
+              cells: created.cells.map((c) => ({
+                fieldId: c.fieldId,
+                value: c.value,
+              })),
+            },
+          });
+        }
+      } catch (err) {
+        log.warn(
+          { err, tableId: table.id, rowId: createdRowId },
+          "AI taskCreator: auto-link ActionItem failed (row создан, action нет)",
+        );
+      }
+    }
   } catch (err) {
     log.warn({ err, tableId: table.id }, "AI taskCreator: row create failed");
     return false;
   }
 
   // Post confirmation в chat от имени bot'а.
-  const reply = formatConfirmationMessage(table.name, newPosition, applied);
+  const reply = formatConfirmationMessage(
+    table.name,
+    newPosition,
+    applied,
+    linkedActionId,
+  );
   const botUser = await db.user.findUnique({
     where: { id: responder.userId },
     select: { id: true, displayName: true, avatar: true },

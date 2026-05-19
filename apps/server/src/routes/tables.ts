@@ -8,8 +8,13 @@ import { processStandaloneFile } from "../attachments.js";
 import { isModOrHigher } from "../lib/permissions.js";
 import { AINotConfiguredError, chat } from "../ai/provider.js";
 import { actionItemInclude, serializeActionItem } from "../actionItems.js";
-import { emitActionItemCreated, emitMessageOnChannel } from "../realtime.js";
+import {
+  emitActionItemCreated,
+  emitActionItemUpdated,
+  emitMessageOnChannel,
+} from "../realtime.js";
 import { getSystemBotUserId } from "../lib/systemBot.js";
+import { syncRowToAction } from "../lib/rowActionSync.js";
 
 /**
  * Operational Tables phase 1 (v0.59.0) — CRUD routes.
@@ -940,6 +945,28 @@ export async function registerTableRoutes(app: FastifyInstance) {
           row: rowPayload,
         });
       }
+      // v0.94 #10 phase 4b: bidirectional sync — если row linked к
+      // ActionItem, протолкнуть title/status/assignee/dueAt в action.
+      // Fire-and-forget, не блокируем response.
+      void syncRowToAction(rowId, req.log).then(async () => {
+        // После update'а action emit чтобы Status Board/clients увидели.
+        const fresh = await db.tableRow.findUnique({
+          where: { id: rowId },
+          select: { actionItemId: true },
+        });
+        if (fresh?.actionItemId) {
+          const updatedAction = await db.actionItem.findUnique({
+            where: { id: fresh.actionItemId },
+            include: actionItemInclude,
+          });
+          if (updatedAction) {
+            emitActionItemUpdated(
+              updatedAction.channelId,
+              serializeActionItem(updatedAction),
+            );
+          }
+        }
+      });
       return { row: rowPayload };
     },
   );

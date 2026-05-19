@@ -11,6 +11,8 @@ import { getUserId, requireJwt } from "../auth/requireJwt.js";
 import { db } from "../db.js";
 import { serializeUser } from "../lib/userView.js";
 import { notifyUser } from "../lib/webPush.js";
+import { syncActionToRows } from "../lib/rowActionSync.js";
+import { emitTableEvent } from "../realtime.js";
 import {
   emitActionItemCommentAdded,
   emitActionItemCommentDeleted,
@@ -487,6 +489,35 @@ export async function registerActionRoutes(app: FastifyInstance) {
           req.log,
         );
       }
+      // v0.94 #10 phase 4b: bidirectional sync — если у action есть
+      // linked TableRow'ы, протолкнуть title/status/assignee/dueAt в
+      // соответствующие cells. Fire-and-forget. После sync emit
+      // table:row:updated event для UI realtime refresh.
+      void syncActionToRows(actionId, req.log).then(async () => {
+        const linkedRows = await db.tableRow.findMany({
+          where: { actionItemId: actionId },
+          include: {
+            cells: true,
+            table: { select: { serverId: true } },
+          },
+        });
+        for (const r of linkedRows) {
+          if (!r.table) continue;
+          emitTableEvent(r.table.serverId, "table:row:updated", {
+            tableId: r.tableId,
+            row: {
+              id: r.id,
+              position: r.position,
+              createdAt: r.createdAt.toISOString(),
+              updatedAt: r.updatedAt.toISOString(),
+              cells: r.cells.map((c) => ({
+                fieldId: c.fieldId,
+                value: c.value,
+              })),
+            },
+          });
+        }
+      });
       return { action: payload };
     },
   );
