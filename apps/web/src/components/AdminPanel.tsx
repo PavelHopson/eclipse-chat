@@ -8,6 +8,7 @@ import { ComposioConnections } from "./ComposioConnections";
 import type { MemberRole, MemberRow } from "../hooks/useMembers";
 import type { ChannelRow } from "../hooks/useChannels";
 import type { TeamHealthData } from "../hooks/useTeamHealth";
+import { useComposio } from "../hooks/useComposio";
 import {
   PERMISSION_GROUPS,
   PERMISSION_LABELS_RU,
@@ -122,10 +123,20 @@ type AutomationActionSendWebhook = {
   url: string;
   secret?: string;
 };
+/** v1.0.2 #11.5: Composio action — execute action на подключённом
+ *  external app (Gmail / Slack / Notion / etc) с template params. */
+type AutomationActionComposio = {
+  type: "COMPOSIO_ACTION";
+  connectionId: string;
+  actionName: string;
+  /** JSON-string с placeholders {{user}}/{{message}}/{{channel}}. */
+  paramsTemplate: string;
+};
 type AutomationAction =
   | AutomationActionPostMessage
   | AutomationActionCreateTask
-  | AutomationActionSendWebhook;
+  | AutomationActionSendWebhook
+  | AutomationActionComposio;
 type AutomationRule = {
   id: string;
   serverId: string;
@@ -1071,6 +1082,7 @@ export function AdminPanel({
           ))}
           {showCreateRule && (
             <CreateRuleForm
+              serverId={serverId}
               channels={channels}
               onCancel={() => setShowCreateRule(false)}
               onCreate={(input) => void createRule(input)}
@@ -1311,7 +1323,7 @@ function AutomationRow({
     ? channels.find((c) => c.id === rule.trigger?.channelId)?.name ??
       "(удалён)"
     : "любой канал";
-  // v0.82 #19 phase 1: per-action-type description.
+  // v0.82 #19 phase 1: per-action-type description. v1.0.2: + COMPOSIO_ACTION.
   const actionLabel =
     rule.action?.type === "POST_MESSAGE"
       ? "Постить в"
@@ -1319,7 +1331,9 @@ function AutomationRow({
         ? "Создать"
         : rule.action?.type === "SEND_WEBHOOK"
           ? "Webhook →"
-          : "—";
+          : rule.action?.type === "COMPOSIO_ACTION"
+            ? "Composio →"
+            : "—";
   const actionPreview =
     rule.action?.type === "POST_MESSAGE"
       ? (() => {
@@ -1373,7 +1387,16 @@ function AutomationRow({
                 </span>
               );
             })()
-          : null;
+          : rule.action?.type === "COMPOSIO_ACTION"
+            ? (() => {
+                const a = rule.action as AutomationActionComposio;
+                return (
+                  <span style={{ fontFamily: "var(--ec-font-mono)", color: "var(--ec-accent)" }}>
+                    {a.actionName}
+                  </span>
+                );
+              })()
+            : null;
   return (
     <div
       style={{
@@ -1493,13 +1516,15 @@ function AutomationRow({
   );
 }
 
-type ActionKind = "POST_MESSAGE" | "CREATE_TASK" | "SEND_WEBHOOK";
+type ActionKind = "POST_MESSAGE" | "CREATE_TASK" | "SEND_WEBHOOK" | "COMPOSIO_ACTION";
 
 function CreateRuleForm({
+  serverId,
   channels,
   onCancel,
   onCreate,
 }: {
+  serverId: string;
   channels: ChannelRow[];
   onCancel: () => void;
   onCreate: (input: {
@@ -1528,6 +1553,60 @@ function CreateRuleForm({
   // SEND_WEBHOOK fields
   const [webhookUrl, setWebhookUrl] = useState("");
   const [webhookSecret, setWebhookSecret] = useState("");
+  // v1.0.2 COMPOSIO_ACTION fields
+  const composio = useComposio(serverId);
+  const activeConnections = composio.connections.filter(
+    (c) => c.status === "ACTIVE",
+  );
+  const [composioConnectionId, setComposioConnectionId] = useState<string>("");
+  const [composioActions, setComposioActions] = useState<
+    Array<{ name: string; displayName: string; description?: string }>
+  >([]);
+  const [composioActionsLoading, setComposioActionsLoading] = useState(false);
+  const [composioActionName, setComposioActionName] = useState<string>("");
+  const [composioParams, setComposioParams] = useState<string>(
+    '{\n  "to": "team@example.com",\n  "subject": "Eclipse: {{user}} триггер в #{{channel}}",\n  "body": "{{message}}"\n}',
+  );
+
+  // Lazy-load actions list когда connection selected.
+  useEffect(() => {
+    if (!composioConnectionId || actionKind !== "COMPOSIO_ACTION") {
+      setComposioActions([]);
+      return;
+    }
+    setComposioActionsLoading(true);
+    setComposioActionName("");
+    (async () => {
+      try {
+        const data = await fetch(
+          `/api/servers/${encodeURIComponent(serverId)}/composio/connections/${encodeURIComponent(composioConnectionId)}/actions`,
+          {
+            credentials: "include",
+          },
+        ).then((r) => r.json() as Promise<{ actions?: typeof composioActions; error?: string }>);
+        if (data.actions) {
+          setComposioActions(data.actions);
+        } else {
+          setComposioActions([]);
+        }
+      } catch {
+        setComposioActions([]);
+      } finally {
+        setComposioActionsLoading(false);
+      }
+    })();
+  }, [composioConnectionId, actionKind, serverId]);
+
+  // Validate JSON syntax для COMPOSIO_ACTION params textarea.
+  const composioParamsValid = useMemo(() => {
+    if (actionKind !== "COMPOSIO_ACTION") return true;
+    try {
+      const parsed = JSON.parse(composioParams);
+      return parsed && typeof parsed === "object" && !Array.isArray(parsed);
+    } catch {
+      return false;
+    }
+  }, [actionKind, composioParams]);
 
   const regexValid = useMemo(() => {
     if (!useRegex || !regex) return true;
@@ -1548,7 +1627,9 @@ function CreateRuleForm({
         ? !!titleTemplate.trim()
         : actionKind === "SEND_WEBHOOK"
           ? webhookUrl.trim().startsWith("https://")
-          : false);
+          : actionKind === "COMPOSIO_ACTION"
+            ? !!composioConnectionId && !!composioActionName && composioParamsValid
+            : false);
 
   const inputStyle: React.CSSProperties = {
     padding: "0.4rem 0.6rem",
@@ -1581,11 +1662,20 @@ function CreateRuleForm({
         taskType,
         titleTemplate: titleTemplate.trim(),
       };
-    } else {
+    } else if (actionKind === "SEND_WEBHOOK") {
       action = {
         type: "SEND_WEBHOOK",
         url: webhookUrl.trim(),
         ...(webhookSecret.trim() ? { secret: webhookSecret.trim() } : {}),
+      };
+    } else {
+      // COMPOSIO_ACTION — paramsTemplate стораджит как JSON-string,
+      // engine на сервере парсит + рендерит placeholders deep.
+      action = {
+        type: "COMPOSIO_ACTION",
+        connectionId: composioConnectionId,
+        actionName: composioActionName,
+        paramsTemplate: composioParams,
       };
     }
     onCreate({ name: name.trim(), trigger, action });
@@ -1706,6 +1796,9 @@ function CreateRuleForm({
         <option value="POST_MESSAGE">Запостить сообщение</option>
         <option value="CREATE_TASK">Создать задачу / решение / follow-up</option>
         <option value="SEND_WEBHOOK">Отправить webhook</option>
+        <option value="COMPOSIO_ACTION">
+          Composio action (Gmail / Slack / Notion / …)
+        </option>
       </select>
       {actionKind === "POST_MESSAGE" && (
         <>
@@ -1782,6 +1875,127 @@ function CreateRuleForm({
             Только https://. SSRF guard — localhost / private IPs отвергаются.
             Тело: JSON {`{eventType, ruleId, serverId, content, ...}`}.
           </p>
+        </>
+      )}
+      {actionKind === "COMPOSIO_ACTION" && (
+        <>
+          {composio.status && !composio.status.enabled && (
+            <p
+              style={{
+                margin: 0,
+                padding: "var(--ec-space-2) var(--ec-space-3)",
+                color: "var(--ec-status-warn)",
+                background: "color-mix(in srgb, var(--ec-status-warn) 12%, transparent)",
+                border: "1px solid color-mix(in srgb, var(--ec-status-warn) 35%, transparent)",
+                borderRadius: "var(--ec-radius-md)",
+                fontSize: "var(--ec-text-2xs)",
+                lineHeight: 1.5,
+              }}
+            >
+              ⚠ Composio не настроен на сервере. Сначала установите COMPOSIO_API_KEY
+              в .env (см. секцию «Composio» во вкладке Интеграции).
+            </p>
+          )}
+          {composio.status?.enabled && activeConnections.length === 0 && (
+            <p
+              style={{
+                margin: 0,
+                padding: "var(--ec-space-2) var(--ec-space-3)",
+                color: "var(--ec-text-muted)",
+                background: "var(--ec-surface-2)",
+                border: "1px solid var(--ec-border-default)",
+                borderRadius: "var(--ec-radius-md)",
+                fontSize: "var(--ec-text-2xs)",
+                lineHeight: 1.5,
+              }}
+            >
+              Нет активных Composio подключений. Подключите app (Gmail / Slack / …)
+              во вкладке «Интеграции» — он появится в этом списке.
+            </p>
+          )}
+          {composio.status?.enabled && activeConnections.length > 0 && (
+            <>
+              <select
+                value={composioConnectionId}
+                onChange={(e) => setComposioConnectionId(e.target.value)}
+                style={inputStyle}
+              >
+                <option value="">— выбери подключение —</option>
+                {activeConnections.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.displayName} ({c.appName})
+                  </option>
+                ))}
+              </select>
+              {composioConnectionId && (
+                <select
+                  value={composioActionName}
+                  onChange={(e) => setComposioActionName(e.target.value)}
+                  disabled={composioActionsLoading}
+                  style={inputStyle}
+                >
+                  <option value="">
+                    {composioActionsLoading
+                      ? "Загружаем actions…"
+                      : composioActions.length === 0
+                      ? "— actions не получены —"
+                      : "— выбери action —"}
+                  </option>
+                  {composioActions.map((a) => (
+                    <option key={a.name} value={a.name}>
+                      {a.displayName} ({a.name})
+                    </option>
+                  ))}
+                </select>
+              )}
+              {composioActionName && (
+                <>
+                  <textarea
+                    value={composioParams}
+                    onChange={(e) => setComposioParams(e.target.value)}
+                    rows={8}
+                    maxLength={4000}
+                    placeholder='JSON params с placeholders {{user}} / {{message}} / {{channel}}'
+                    style={{
+                      ...inputStyle,
+                      fontFamily: "var(--ec-font-mono)",
+                      fontSize: "0.78rem",
+                      resize: "vertical",
+                      minHeight: 140,
+                      borderColor: composioParamsValid
+                        ? "var(--ec-border-default)"
+                        : "var(--ec-danger)",
+                    }}
+                  />
+                  {!composioParamsValid && (
+                    <p
+                      style={{
+                        margin: 0,
+                        fontSize: "var(--ec-text-2xs)",
+                        color: "var(--ec-danger)",
+                      }}
+                    >
+                      ⚠ Неверный JSON. Params должен быть object {`{}`}, не array / scalar.
+                    </p>
+                  )}
+                  <p
+                    style={{
+                      margin: 0,
+                      fontSize: "var(--ec-text-2xs)",
+                      color: "var(--ec-text-dim)",
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    String values поддерживают placeholders <code style={{ fontFamily: "var(--ec-font-mono)" }}>{`{{user}}`}</code>,{" "}
+                    <code style={{ fontFamily: "var(--ec-font-mono)" }}>{`{{message}}`}</code>,{" "}
+                    <code style={{ fontFamily: "var(--ec-font-mono)" }}>{`{{channel}}`}</code>.
+                    Engine рендерит deep через nested objects / arrays. На каждый
+                    fire Composio выполняет action с этими params.
+                  </p>
+                </>
+              )}
+            </>
+          )}
         </>
       )}
 
