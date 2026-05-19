@@ -14,6 +14,7 @@ import {
 } from "../lib/integrations/telegram.js";
 import { emitMessageOnChannel } from "../realtime.js";
 import { userDisplayName } from "../lib/userView.js";
+import { getSystemBotUserId } from "../lib/systemBot.js";
 import type { MemberRole } from "./servers.js";
 
 /**
@@ -107,27 +108,8 @@ async function isAdmin(userId: string, serverId: string): Promise<boolean> {
   return member.role === "OWNER" || member.role === "ADMIN";
 }
 
-/**
- * Получить system AI bot user (для post через webhook). Если нет — создать.
- */
-async function getSystemBotUserId(): Promise<string> {
-  const SYSTEM_EMAIL = "system@eclipse-chat.local";
-  let user = await db.user.findUnique({
-    where: { email: SYSTEM_EMAIL },
-    select: { id: true },
-  });
-  if (!user) {
-    user = await db.user.create({
-      data: {
-        email: SYSTEM_EMAIL,
-        displayName: "System",
-        passwordHash: "!system-no-login!",
-      },
-      select: { id: true },
-    });
-  }
-  return user.id;
-}
+// v0.90: getSystemBotUserId переехал в `lib/systemBot.ts` для shared reuse
+// между integrations + table row→task conversion.
 
 export function registerIntegrationRoutes(app: FastifyInstance) {
   /** List per server. */

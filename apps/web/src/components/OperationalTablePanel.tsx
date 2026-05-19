@@ -37,6 +37,9 @@ type Props = {
   /** v0.75 #10 phase 2.5b: список таблиц активного сервера — для RELATION
    *  picker'а в AddFieldForm. Empty array = «нет таблиц для связи». */
   availableTables?: Array<{ id: string; name: string }>;
+  /** v0.90 #10 phase 4: открыть ActionItemDrawer (для linked rows). Если
+   *  undefined — badge всё равно показывается, но click — noop. */
+  onOpenLinkedAction?: (actionItemId: string, channelId: string) => void;
 };
 
 const wrap: CSSProperties = {
@@ -165,6 +168,7 @@ export function OperationalTablePanel({
   members = [],
   socket = null,
   availableTables,
+  onOpenLinkedAction,
 }: Props) {
   const {
     table,
@@ -377,6 +381,7 @@ export function OperationalTablePanel({
                   dropTarget={dropRowTarget === row.id}
                   onSave={(cells) => void updateRow(row.id, cells)}
                   onRemove={() => void removeRow(row.id)}
+                  onOpenLinkedAction={onOpenLinkedAction}
                   onDragStart={() => setDragRowId(row.id)}
                   onDragEnter={() => {
                     if (dragRowId && dragRowId !== row.id) {
@@ -678,6 +683,7 @@ function RowEditor({
   onDragStart,
   onDragEnter,
   onDragEnd,
+  onOpenLinkedAction,
 }: {
   /** v0.87 #10 phase 3: для AI-fill endpoint. */
   tableId: string;
@@ -703,10 +709,15 @@ function RowEditor({
   onDragStart: () => void;
   onDragEnter: () => void;
   onDragEnd: () => void;
+  /** v0.90 #10 phase 4: открыть ActionItemDrawer для linked row'а. */
+  onOpenLinkedAction?: (actionItemId: string, channelId: string) => void;
 }) {
   // v0.87 #10 phase 3: AI-fill state.
   const [aiBusy, setAiBusy] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  // v0.90 #10 phase 4: row → action conversion state.
+  const [actionBusy, setActionBusy] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   // Local draft per field. Save on blur.
   const cellMap = useMemo(() => {
     const m = new Map<string, string>();
@@ -883,11 +894,130 @@ function RowEditor({
           >
             ×
           </button>
+          {/* v0.90 #10 phase 4: «→ Задача» button (если row не linked) или
+              status badge (если linked). */}
+          {row.linkedAction ? (
+            <button
+              type="button"
+              onClick={() => onOpenLinkedAction?.(row.linkedAction!.id, row.linkedAction!.channelId)}
+              title={`Задача: ${row.linkedAction.title} · ${TASK_STATUS_RU[row.linkedAction.status]}`}
+              style={{
+                background: TASK_STATUS_TONE[row.linkedAction.status].bg,
+                border: `1px solid ${TASK_STATUS_TONE[row.linkedAction.status].border}`,
+                color: TASK_STATUS_TONE[row.linkedAction.status].fg,
+                cursor: "pointer",
+                fontSize: "0.62rem",
+                fontWeight: 700,
+                letterSpacing: "var(--ec-tracking-wide)",
+                textTransform: "uppercase",
+                padding: "0.14rem 0.42rem",
+                borderRadius: "var(--ec-radius-xs)",
+                lineHeight: 1.1,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 3,
+              }}
+            >
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden>
+                <path d="M9 11l3 3L22 4" />
+                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+              </svg>
+              {TASK_STATUS_SHORT[row.linkedAction.status]}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={async () => {
+                setActionBusy(true);
+                setActionError(null);
+                try {
+                  await apiJson(
+                    `/api/tables/${encodeURIComponent(tableId)}/rows/${encodeURIComponent(row.id)}/to-action`,
+                    { method: "POST", body: JSON.stringify({}) },
+                  );
+                  // Socket emit table:row:updated прилетит и обновит state.
+                } catch (e) {
+                  const msg = e instanceof Error ? e.message : "Не удалось";
+                  setActionError(msg);
+                  window.setTimeout(() => setActionError(null), 4000);
+                } finally {
+                  setActionBusy(false);
+                }
+              }}
+              disabled={actionBusy}
+              title={actionError ?? "Создать задачу из этой строки"}
+              style={{
+                background: "transparent",
+                border: "1px solid var(--ec-border-subtle)",
+                color: actionError
+                  ? "var(--ec-danger)"
+                  : actionBusy
+                    ? "var(--ec-accent)"
+                    : "var(--ec-text-dim)",
+                cursor: actionBusy ? "wait" : "pointer",
+                fontSize: "0.62rem",
+                fontWeight: 700,
+                letterSpacing: "var(--ec-tracking-wide)",
+                textTransform: "uppercase",
+                padding: "0.14rem 0.42rem",
+                borderRadius: "var(--ec-radius-xs)",
+                lineHeight: 1.1,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 3,
+              }}
+            >
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden>
+                <path d="M9 11l3 3L22 4" />
+              </svg>
+              → задача
+            </button>
+          )}
         </div>
       </td>
     </tr>
   );
 }
+
+const TASK_STATUS_TONE: Record<
+  "OPEN" | "IN_PROGRESS" | "REVIEW" | "DONE",
+  { bg: string; border: string; fg: string }
+> = {
+  OPEN: {
+    bg: "hsl(200 30% 16% / 0.5)",
+    border: "hsl(200 40% 35% / 0.4)",
+    fg: "hsl(200 70% 75%)",
+  },
+  IN_PROGRESS: {
+    bg: "hsl(36 50% 18% / 0.5)",
+    border: "hsl(36 60% 40% / 0.4)",
+    fg: "hsl(36 80% 75%)",
+  },
+  REVIEW: {
+    bg: "hsl(280 30% 18% / 0.5)",
+    border: "hsl(280 50% 40% / 0.4)",
+    fg: "hsl(280 60% 75%)",
+  },
+  DONE: {
+    bg: "hsl(150 30% 14% / 0.5)",
+    border: "hsl(150 50% 35% / 0.4)",
+    fg: "hsl(150 60% 75%)",
+  },
+};
+
+const TASK_STATUS_RU: Record<"OPEN" | "IN_PROGRESS" | "REVIEW" | "DONE", string> = {
+  OPEN: "Открыто",
+  IN_PROGRESS: "В работе",
+  REVIEW: "На ревью",
+  DONE: "Завершено",
+};
+
+const TASK_STATUS_SHORT: Record<"OPEN" | "IN_PROGRESS" | "REVIEW" | "DONE", string> = {
+  OPEN: "open",
+  IN_PROGRESS: "work",
+  REVIEW: "rev",
+  DONE: "done",
+};
 
 function CellEditor({
   field,

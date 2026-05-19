@@ -85,10 +85,12 @@ Calm cinematic operational environment.
 Продаём: clarity / calmness / execution / coordination / operational
 visibility. НЕ продаём AI — AI это enabler, не headline.
 
-## Current state — v0.89.0 LIVE
+## Current state — v0.90.0 (master) / v0.88.0 LIVE
 
 Prod: https://app.star-crm.ru/eclipse-chat/
-Version endpoint: /eclipse-chat/api/version → 0.89.0
+Version endpoint: /eclipse-chat/api/version → 0.88.0 (waiting for prod
+recovery — БД unreachable after manual prod work, нужен restart postgresql
++ retry CI deploy для v0.89 + v0.90).
 
 ### Сессия 18.05 — 10 prod-деплоев за один заход (v0.72 → v0.82)
 
@@ -183,6 +185,16 @@ Version endpoint: /eclipse-chat/api/version → 0.89.0
   параллельно с parsed). AdminPanel «Интеграции» tab — CreateIntegrationForm
   + one-time GH setup card (URL + secret отдаются на create, потом
   только path виден). Phase 2b — Telegram incoming + Notion sync.
+- v0.90 — #10 phase 4 row→ActionItem binding. TableRow.actionItemId
+  nullable + SetNull cascade. Endpoint POST /api/tables/:id/rows/:rowId/
+  to-action создаёт ActionItem из row (title из первого TEXT cell, или
+  «Строка #N из {tableName}» fallback), system bot postит provenance
+  message в table.channelId, links row.actionItemId. Lib/systemBot.ts
+  extracted shared (cached). serializeTable обогащён linkedAction
+  snapshot per row (status/dueAt/etc). UI: «→ задача» button в action
+  area (unlinked rows) + colored status badge (linked rows, click →
+  ActionItemDrawer). Phase 4a = one-way (row → task). Phase 4b —
+  bidirectional sync.
 
 ### Phase 1 CORE (закрыта до 14.05)
 
@@ -230,10 +242,11 @@ Version endpoint: /eclipse-chat/api/version → 0.89.0
 - Backend: Node 20 + Fastify 5 + Prisma 6 + Socket.io 4 + Sharp +
   Helmet + Rate-limit + otplib + LiveKit JWT
 - Frontend: React 19 + Vite 6 + TS 5.8 + livekit-client 2.18 (lazy)
-- DB: PostgreSQL 16. На v0.89 — **43 миграции applied** (v0.89 добавил
-  integrations; v0.88 — voice_notes; v0.87 zero schema changes; v0.86
-  — invoices; v0.85 — notification_polish; v0.84 — push_subscriptions).
-  Последние миграции:
+- DB: PostgreSQL 16. На v0.90 (master) — **44 миграции** (на проде
+  пока 42; v0.89 + v0.90 ждут recovery + CI retry). v0.90 добавил
+  table_row_action_item; v0.89 — integrations; v0.88 — voice_notes;
+  v0.87 zero schema changes; v0.86 — invoices; v0.85 — notification_polish;
+  v0.84 — push_subscriptions. Последние миграции:
   message_user_setnull, action_item_comment_user_setnull,
   action_item_approval_check, attachment_waveform, link_embed_cache,
   action_item_status_phase2, action_item_dependencies,
@@ -400,8 +413,9 @@ Version endpoint: /eclipse-chat/api/version → 0.89.0
    BYTEA. UI bind через Y.Text. True concurrent editing без потери diff.
 2. **#26 phase 2b** — Telegram incoming bridge (TG → Eclipse через
    long-polling worker или public webhook) + Notion 2-way sync.
-3. **#10 phase 4** — row→ActionItem binding (одна row = одна задача
-   с automatic sync title/status) + per-row formulas (`=quantity*price`).
+3. **#10 phase 4b** — bidirectional sync row ↔ ActionItem (STATUS
+   column ↔ action.status, title column ↔ action.title) + per-row
+   formulas (`=quantity*price`).
 4. **#23 phase 2** — Excalidraw whiteboard inside VoiceNotePanel.
 5. **#24 phase 2b** — PDF report generation (pdfkit, deferred).
 3. **#26 phase 2** — extra triggers (NEW_TASK / FILE_UPLOAD / APPROVAL

@@ -867,6 +867,9 @@ model ActionItem {
   /// `dependencies` = это меня блокирует; `blocks` = я блокирую кого-то.
   dependencies    ActionItemDependency[] @relation("ActionItemBlockedBy")
   blocks          ActionItemDependency[] @relation("ActionItemBlocks")
+  /// v0.90 #10 phase 4: rows которые linked к этой задаче (1-to-many).
+  /// Cascade при удалении task — rows остаются с actionItemId=null.
+  tableRows       TableRow[]
 
   @@unique([sourceMessageId, type])
   @@index([channelId, status, createdAt])
@@ -1171,10 +1174,18 @@ model TableRow {
   position  Int         @default(0)
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
+  /// v0.90 #10 phase 4: row → ActionItem binding. Если задано — этот row
+  /// linked to first-class task. UI отображает status badge, click → drawer.
+  /// Phase 4a: read-only binding (создаём task через explicit button, sync
+  /// row.cells → action.* нет). Phase 4b: bidirectional sync назначенной
+  /// «title» колонки + STATUS column → ActionItem.title/status.
+  actionItemId String?
+  actionItem   ActionItem? @relation(fields: [actionItemId], references: [id], onDelete: SetNull)
 
   cells     TableCell[]
 
   @@index([tableId, position])
+  @@index([actionItemId])
 }
 
 /// Ячейка: одна на пересечение (rowId, fieldId). Composite PK гарантирует

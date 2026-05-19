@@ -1483,6 +1483,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             availableTables={opTables
               .filter((t) => t.id !== selectedTableId)
               .map((t) => ({ id: t.id, name: t.name }))}
+            onOpenLinkedAction={(actionItemId) => setOpenActionItemId(actionItemId)}
           />
         ) : homeOpen ? (
           <HomeToday

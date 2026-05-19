@@ -7,6 +7,9 @@ import { TABLE_TEMPLATES, getTemplate } from "../lib/tableTemplates.js";
 import { processStandaloneFile } from "../attachments.js";
 import { isModOrHigher } from "../lib/permissions.js";
 import { AINotConfiguredError, chat } from "../ai/provider.js";
+import { actionItemInclude, serializeActionItem } from "../actionItems.js";
+import { emitActionItemCreated, emitMessageOnChannel } from "../realtime.js";
+import { getSystemBotUserId } from "../lib/systemBot.js";
 
 /**
  * Operational Tables phase 1 (v0.59.0) — CRUD routes.
@@ -286,6 +289,19 @@ export function aggregateNumberFields(
   });
 }
 
+/** v0.90 #10 phase 4: lightweight linked-action snapshot для row. */
+export type LinkedActionView = {
+  id: string;
+  title: string;
+  type: "TASK" | "DECISION" | "FOLLOW_UP";
+  status: "OPEN" | "IN_PROGRESS" | "REVIEW" | "DONE";
+  priority: "LOW" | "NORMAL" | "HIGH" | "URGENT";
+  approvalStatus: "NONE" | "PENDING" | "APPROVED" | "REJECTED";
+  dueAt: string | null;
+  assigneeUserId: string | null;
+  channelId: string;
+};
+
 function serializeTable(t: {
   id: string;
   serverId: string;
@@ -308,6 +324,18 @@ function serializeTable(t: {
     position: number;
     createdAt: Date;
     updatedAt: Date;
+    actionItemId?: string | null;
+    actionItem?: {
+      id: string;
+      title: string;
+      type: "TASK" | "DECISION" | "FOLLOW_UP";
+      status: "OPEN" | "IN_PROGRESS" | "REVIEW" | "DONE";
+      priority: "LOW" | "NORMAL" | "HIGH" | "URGENT";
+      approvalStatus: "NONE" | "PENDING" | "APPROVED" | "REJECTED";
+      dueAt: Date | null;
+      assigneeUserId: string | null;
+      channelId: string;
+    } | null;
     cells: Array<{ rowId: string; fieldId: string; value: string }>;
   }>;
 }) {
@@ -348,6 +376,21 @@ function serializeTable(t: {
           fieldId: c.fieldId,
           value: c.value,
         })),
+        // v0.90 #10 phase 4: linked-action snapshot. null если row не linked.
+        actionItemId: r.actionItemId ?? null,
+        linkedAction: r.actionItem
+          ? ({
+              id: r.actionItem.id,
+              title: r.actionItem.title,
+              type: r.actionItem.type,
+              status: r.actionItem.status,
+              priority: r.actionItem.priority,
+              approvalStatus: r.actionItem.approvalStatus,
+              dueAt: r.actionItem.dueAt?.toISOString() ?? null,
+              assigneeUserId: r.actionItem.assigneeUserId,
+              channelId: r.actionItem.channelId,
+            } satisfies LinkedActionView)
+          : null,
       })),
     // v0.87 #10 phase 3: aggregations footer.
     aggregations: aggregateNumberFields(t.fields, cellsByRow),
@@ -435,7 +478,25 @@ export async function registerTableRoutes(app: FastifyInstance) {
         include: {
           createdBy: { select: { id: true, displayName: true, avatar: true } },
           fields: true,
-          rows: { include: { cells: true } },
+          rows: {
+            include: {
+              cells: true,
+              // v0.90 #10 phase 4: linked ActionItem snapshot для row badge.
+              actionItem: {
+                select: {
+                  id: true,
+                  title: true,
+                  type: true,
+                  status: true,
+                  priority: true,
+                  approvalStatus: true,
+                  dueAt: true,
+                  assigneeUserId: true,
+                  channelId: true,
+                },
+              },
+            },
+          },
         },
       });
       emitTableEvent(serverId, "table:updated", {
@@ -465,7 +526,25 @@ export async function registerTableRoutes(app: FastifyInstance) {
         include: {
           createdBy: { select: { id: true, displayName: true, avatar: true } },
           fields: true,
-          rows: { include: { cells: true } },
+          rows: {
+            include: {
+              cells: true,
+              // v0.90 #10 phase 4: linked ActionItem snapshot для row badge.
+              actionItem: {
+                select: {
+                  id: true,
+                  title: true,
+                  type: true,
+                  status: true,
+                  priority: true,
+                  approvalStatus: true,
+                  dueAt: true,
+                  assigneeUserId: true,
+                  channelId: true,
+                },
+              },
+            },
+          },
         },
       });
       if (!table) return reply.status(404).send({ error: "Table not found" });
@@ -1066,7 +1145,25 @@ export async function registerTableRoutes(app: FastifyInstance) {
         include: {
           createdBy: { select: { id: true, displayName: true, avatar: true } },
           fields: true,
-          rows: { include: { cells: true } },
+          rows: {
+            include: {
+              cells: true,
+              // v0.90 #10 phase 4: linked ActionItem snapshot для row badge.
+              actionItem: {
+                select: {
+                  id: true,
+                  title: true,
+                  type: true,
+                  status: true,
+                  priority: true,
+                  approvalStatus: true,
+                  dueAt: true,
+                  assigneeUserId: true,
+                  channelId: true,
+                },
+              },
+            },
+          },
         },
       });
       emitTableEvent(serverId, "table:updated", {
@@ -1105,6 +1202,191 @@ export async function registerTableRoutes(app: FastifyInstance) {
         rowId,
       });
       return { ok: true };
+    },
+  );
+
+  /**
+   * v0.90 #10 phase 4: convert table row → first-class ActionItem.
+   *
+   * POST /api/tables/:id/rows/:rowId/to-action
+   * Body: `{ type?: "TASK" | "DECISION" | "FOLLOW_UP" }` (default TASK).
+   *
+   * Lifecycle:
+   *   1. Validate row + table; row не должен быть already linked.
+   *   2. Table должна быть привязана к channel'у — иначе 400 (нет где
+   *      создавать source message + ActionItem).
+   *   3. Pick title из первого NON-EMPTY TEXT cell (fallback на
+   *      «Строка #{position+1} из {tableName}»).
+   *   4. Post system message в channel («Задача из таблицы…»).
+   *   5. Create ActionItem с этим message как source.
+   *   6. Update row.actionItemId.
+   *   7. Emit `table:row:updated` + `action:item:created`.
+   *
+   * Sync direction phase 4a: ONE-WAY (row → task). Phase 4b — bidirectional
+   * STATUS column ↔ ActionItem.status + title column ↔ ActionItem.title.
+   */
+  const toActionBody = z
+    .object({
+      type: z.enum(["TASK", "DECISION", "FOLLOW_UP"]).optional(),
+    })
+    .optional();
+
+  app.post(
+    "/api/tables/:id/rows/:rowId/to-action",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const userId = getUserId(req);
+      if (!userId) return reply.status(401).send({ error: "Unauthorized" });
+      const { id: tableId, rowId } = req.params as { id: string; rowId: string };
+      const parsed = toActionBody.safeParse(req.body ?? {});
+      const actionType = parsed.success
+        ? (parsed.data?.type ?? "TASK")
+        : "TASK";
+      const row = await db.tableRow.findUnique({
+        where: { id: rowId },
+        include: {
+          cells: true,
+          table: {
+            select: {
+              id: true,
+              name: true,
+              serverId: true,
+              channelId: true,
+              fields: {
+                select: { id: true, name: true, type: true, position: true },
+              },
+            },
+          },
+        },
+      });
+      if (!row || row.tableId !== tableId) {
+        return reply.status(404).send({ error: "Row not found" });
+      }
+      if (row.actionItemId) {
+        return reply
+          .status(409)
+          .send({ error: "Эта строка уже привязана к задаче" });
+      }
+      const member = await requireServerMember(userId, row.table.serverId);
+      if (!member) {
+        return reply.status(403).send({ error: "Not a member of this server" });
+      }
+      if (!row.table.channelId) {
+        return reply.status(400).send({
+          error:
+            "Привяжи таблицу к каналу в настройках чтобы создавать задачи из строк",
+        });
+      }
+      const channel = await db.channel.findUnique({
+        where: { id: row.table.channelId },
+        select: { id: true, type: true, serverId: true },
+      });
+      if (!channel || channel.serverId !== row.table.serverId) {
+        return reply.status(400).send({ error: "Channel not in this server" });
+      }
+      if (channel.type === "VOICE") {
+        return reply.status(400).send({
+          error: "Нельзя создать задачу из voice-канала — привяжи таблицу к TEXT каналу",
+        });
+      }
+
+      // Derive title: первый TEXT field's non-empty cell value.
+      const textFields = row.table.fields
+        .filter((f) => f.type === "TEXT")
+        .sort((a, b) => a.position - b.position);
+      let title = "";
+      for (const f of textFields) {
+        const cell = row.cells.find((c) => c.fieldId === f.id);
+        if (cell?.value) {
+          title = cell.value.trim().slice(0, 160);
+          if (title) break;
+        }
+      }
+      if (!title) {
+        title = `Строка #${row.position + 1} из «${row.table.name}»`.slice(0, 160);
+      }
+
+      const systemUserId = await getSystemBotUserId();
+      const provenanceText =
+        `📋 Задача создана из таблицы **«${row.table.name}»** (строка #${row.position + 1}): ` +
+        title;
+
+      // Transaction: post system message + create action + link row.
+      const result = await db.$transaction(async (tx) => {
+        const message = await tx.message.create({
+          data: {
+            content: provenanceText,
+            userId: systemUserId,
+            channelId: channel.id,
+          },
+          include: {
+            user: { select: { id: true, displayName: true, avatar: true } },
+          },
+        });
+        const action = await tx.actionItem.create({
+          data: {
+            title,
+            type: actionType,
+            serverId: row.table.serverId,
+            channelId: channel.id,
+            sourceMessageId: message.id,
+            createdByUserId: userId,
+            activities: {
+              create: {
+                userId,
+                type: "CREATED",
+                payload: JSON.stringify({
+                  source: "table-row",
+                  tableId,
+                  rowId,
+                  type: actionType,
+                }),
+              },
+            },
+          },
+          include: actionItemInclude,
+        });
+        const updatedRow = await tx.tableRow.update({
+          where: { id: rowId },
+          data: { actionItemId: action.id },
+          include: { cells: true },
+        });
+        return { message, action, updatedRow };
+      });
+
+      // Emit events (вне transaction'а).
+      emitMessageOnChannel(channel.id, {
+        messageId: result.message.id,
+        content: result.message.content,
+        channelId: channel.id,
+        userId: result.message.userId!,
+        displayName: result.message.user?.displayName ?? "System",
+        avatar: result.message.user?.avatar ?? null,
+        isBot: true,
+        createdAt: result.message.createdAt.toISOString(),
+        attachments: [],
+      });
+      const actionPayload = serializeActionItem(result.action);
+      emitActionItemCreated(channel.id, actionPayload);
+      emitTableEvent(row.table.serverId, "table:row:updated", {
+        tableId,
+        row: {
+          id: result.updatedRow.id,
+          position: result.updatedRow.position,
+          createdAt: result.updatedRow.createdAt.toISOString(),
+          updatedAt: result.updatedRow.updatedAt.toISOString(),
+          actionItemId: result.updatedRow.actionItemId,
+          cells: result.updatedRow.cells.map((c) => ({
+            fieldId: c.fieldId,
+            value: c.value,
+          })),
+        },
+      });
+      return {
+        rowId,
+        actionItemId: result.action.id,
+        action: actionPayload,
+      };
     },
   );
 
@@ -1217,7 +1499,25 @@ export async function registerTableRoutes(app: FastifyInstance) {
         where: { id: tableId },
         include: {
           fields: true,
-          rows: { include: { cells: true } },
+          rows: {
+            include: {
+              cells: true,
+              // v0.90 #10 phase 4: linked ActionItem snapshot для row badge.
+              actionItem: {
+                select: {
+                  id: true,
+                  title: true,
+                  type: true,
+                  status: true,
+                  priority: true,
+                  approvalStatus: true,
+                  dueAt: true,
+                  assigneeUserId: true,
+                  channelId: true,
+                },
+              },
+            },
+          },
         },
       });
       if (!table) return reply.status(404).send({ error: "Table not found" });

@@ -57,12 +57,28 @@ export type TableCell = {
   value: string;
 };
 
+/** v0.90 #10 phase 4: lightweight linked-action snapshot per row. */
+export type TableLinkedAction = {
+  id: string;
+  title: string;
+  type: "TASK" | "DECISION" | "FOLLOW_UP";
+  status: "OPEN" | "IN_PROGRESS" | "REVIEW" | "DONE";
+  priority: "LOW" | "NORMAL" | "HIGH" | "URGENT";
+  approvalStatus: "NONE" | "PENDING" | "APPROVED" | "REJECTED";
+  dueAt: string | null;
+  assigneeUserId: string | null;
+  channelId: string;
+};
+
 export type TableRow = {
   id: string;
   position: number;
   createdAt: string;
   updatedAt: string;
   cells: TableCell[];
+  /** v0.90 #10 phase 4: linked first-class ActionItem (если есть). */
+  actionItemId?: string | null;
+  linkedAction?: TableLinkedAction | null;
 };
 
 /** v0.87 #10 phase 3: column-level aggregation для NUMBER fields. */
