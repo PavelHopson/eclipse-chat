@@ -490,22 +490,34 @@
   align-self: center;
 }
 
-/* IntelligencePanel в `.ec-shell__members` — rail-width FIXED 248px на ВСЕХ
-   viewport'ах (token --ec-members-width). 5 tabs + 2 utility buttons НЕ
-   помещаются с labels даже на full HD. Поэтому icons-only ВСЕГДА — label
-   visible только если IntelligencePanel рендерится outside of members rail
-   (не используется сейчас, но прописано на будущее). v0.36 fix Pavel'я
-   feedback: «не починил, как было криво и обрезано, так и осталось» —
-   v0.35 ограничивал hide media query'ем который не матчил desktop.
-
-   v0.65 mobile-fix (g): на mobile members rail становится drawer 88vw —
-   там физически помещаются labels. Возвращаем для touch devices, где
-   icon-only tabs без tooltip — UX слом. */
+/* IntelligencePanel labels в `.ec-shell__members`.
+ *
+ * История:
+ *   v0.36 force-hid labels GLOBALLY на members rail — на 248px было тесно.
+ *   v0.65 вернул labels на mobile drawer (drawer wider than rail).
+ *
+ * v0.95 Phase 1 density pass: Pavel-feedback 19.05 «не весь функционал
+ * виден на экране, всё урезано». Старое правило прятало labels даже на
+ * full-desktop 272px rail где они спокойно влезают (с horizontal scroll
+ * fallback'ом для overflow). Новая логика:
+ *
+ *   - Default (full desktop ≥1367, mobile drawer, tablet drawer) — все
+ *     labels visible. Если совсем не влезают — `.ec-intel-tabs` имеет
+ *     `overflow-x: auto` + gradient-fade ::after как visual hint что
+ *     дальше есть прокрутка (уже было до v0.95).
+ *   - Tight laptop (1025-1366, rail 224px) — слишком узко для 5 labels,
+ *     показываем только active tab label, остальные icon-only с title
+ *     tooltip (был и раньше). User видит где он находится, остальные
+ *     tabs дискoverable через icon + tooltip + horizontal scroll.
+ */
 .ec-shell__members .ec-intel-tab__label {
-  display: none;
+  display: inline;
 }
-@media (max-width: 640px) {
+@media (min-width: 1025px) and (max-width: 1366px) {
   .ec-shell__members .ec-intel-tab__label {
+    display: none;
+  }
+  .ec-shell__members .ec-intel-tab[aria-selected="true"] .ec-intel-tab__label {
     display: inline;
   }
 }

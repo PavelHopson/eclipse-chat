@@ -54,7 +54,12 @@ const eyebrow: CSSProperties = {
 
 const statRow: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+  // v0.95 Phase 1 density: 150 → 132 даёт +1-2 cards per row на средних
+  // viewport'ах (1080-1280px chat area), убирает awkward 2-row layout
+  // для 7 stat cards (Задачи / Просрочено / Инциденты / Голос / Одобрения /
+  // Активные комнаты / AI-алерты). Existing mobile breakpoints в
+  // responsive.css (760px → 2-col, 520px → 1-col, 320px → 1-col) сохраняются.
+  gridTemplateColumns: "repeat(auto-fit, minmax(132px, 1fr))",
   gap: "var(--ec-space-3)",
 };
 

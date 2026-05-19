@@ -233,7 +233,10 @@ const sectionMuted: CSSProperties = {
 
 const statGrid: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+  // v0.95 Phase 1 density: 160 → 140 даёт лучшую упаковку на narrow
+  // viewport'ах client portal (нет shell-rail'ов, но всё равно стандартный
+  // width 920px max + padding). Совпадает с HomeToday паттерном.
+  gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
   gap: "var(--ec-space-3)",
 };
 

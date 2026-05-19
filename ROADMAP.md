@@ -5,17 +5,16 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v0.82.0** (#19 phase 1 Bot Builder
-foundation — расширение AutomationRule capabilities без visual node-editor
-(тот в phase 2). Новые action discriminator'ы: CREATE_TASK (создать
-ActionItem из template) и SEND_WEBHOOK (POST к https URL с optional
-HMAC-SHA256 signature). Новый trigger field: regex (alternative
-keyword-substring match). Engine разделён на 3 fire-handler функции,
-каждая с per-type validation. SSRF guard на webhook URL (private-IP
-block + scheme whitelist). Frontend: CreateRuleForm v2 с action-type
-picker + per-type fields + radio substring/regex + live regex
-validation. AutomationRow с per-action-type description. Подробности
-в timeline.)
+**Текущая версия в проде:** **v0.95.0** (UI density pass Phase 1 —
+системный fix визуальной обрезки вместо очередного hotfix.
+IntelligencePanel labels (Сводка/Память/Дела/Файлы/Люди) теперь visible
+по умолчанию вместо force-hide на всех viewport'ах; на tight laptop
+1025-1366 — active tab labeled, остальные icon-only с title tooltip.
+HomeToday stat grid 150→132 minmax (+1-2 cards per row для 7 карточек),
+ClientPortal sections 160→140. Pure CSS+layout, ноль logic. Phase 2
+(v0.96) — Tables + AdminPanel + Drawer responsive. Phase 3 (v0.97) —
+touch fallbacks + RU UPPERCASE word-break systematic. Сессия 18-19.05
+закрыла v0.83→v0.95 — 13 prod-деплоев. Полная история — в timeline ниже.)
 
 **Предыдущие версии:** v0.81.0 (#27 phase 2 Mobile-first PWA —
 manifest расширен (id/display_override/shortcuts/categories/maskable icons),
@@ -738,6 +737,7 @@ base, ✅ Home command center, ✅ responsive cinematic UI pass.
 | ✅ закрыто | **UI hotfix word-wrap v0.92.0** (19.05): «ПЕРЕГЕНЕРИРОВАТЬ» glitch в ChannelDigestPanel «Сводка комнаты» (long RU UPPERCASE слово ломалось mid-word на узком intel-rail). Текст укорочен до «✦ Заново / ✦ Резюме», `whiteSpace: nowrap` + `textOverflow: ellipsis` + `maxWidth: 100%` defensive style. |
 | ✅ закрыто | **#5 phase 2 + #4 AI-write v0.93.0** — AI agent создаёт rows в operational tables по запросу из чата. `ai/taskFromChat.ts`: `hasTaskCreationIntent` regex prescan (RU/EN keywords) → `loadContext(serverId)` (server tables + members) → AI JSON extract intent + table_id + cells → per-type validation (USER displayName→userId, DATE ISO, STATUS options, NUMBER, CHECKBOX) → row.create + bot confirmation reply. Wired в `maybeReplyToMention` (skip normal AI reply если task created). Phase 2 (future) — update existing rows, batch creation, explicit `#tableName` syntax. |
 | 🟡 частично | **#10 phase 4b bidirectional row↔ActionItem sync** — закрыто в v0.94.0. `lib/rowActionSync.ts` pure mappers: `mapCellToActionStatus` / `mapActionStatusToCell` с RU+EN dictionary (Открыто/Open/Todo, В работе/In Progress/Doing, На ревью/Review, Завершено/Done). `resolveMapping(fields)` picks first-by-type (TEXT/STATUS/USER/DATE). `syncRowToAction` + `syncActionToRows` с loop-guard (diff-check «source === target → no-op»). Wired в PATCH row + PATCH action endpoints с re-emit для UI realtime. v0.93 taskFromChat auto-link ActionItem после row create если table.channelId set. Phase 4c — explicit per-field mapping config UI (current convention-based). |
+| ✅ закрыто | **UI density pass v0.95.0 Phase 1** (19.05) — Pavel-feedback «не весь функционал виден на экране, всё урезано». Системный density-fix вместо очередного hotfix. **IntelligencePanel labels** (responsive.css:504-520): старое правило `display: none` GLOBALLY на `.ec-shell__members .ec-intel-tab__label` прятало labels даже на full-desktop ≥1367 (members rail 272px) — где они физически помещались. Новая логика: labels visible по умолчанию (включая full-desktop + mobile drawer + tablet drawer); на tight laptop 1025-1366 (rail 224px) показываем label только для active tab — остальные icon-only с title tooltip + horizontal scroll fallback. **HomeToday stat grid** (HomeToday.tsx:55-66): `repeat(auto-fit, minmax(150px, 1fr))` → `minmax(132px, 1fr)`. +1-2 cards per row на 1080-1280px chat area, убирает awkward 2-row layout для 7 карточек (Задачи / Просрочено / Инциденты / Голос / Одобрения / Активные комнаты / AI-алерты). Mobile breakpoints 760→2col / 520→1col сохраняются. **ClientPortal sections** (ClientPortalPage.tsx:234-241): same fix `minmax(160px)` → `minmax(140px)`. Pure CSS+layout changes, ноль logic. Phase 2 (v0.96) — Tables + AdminPanel + Drawer responsive. Phase 3 (v0.97) — touch fallbacks + RU UPPERCASE word-break systematic. |
 | **#1 next** | **#23 phase 1b Yjs CRDT upgrade** | S-M | M | true concurrent editing (когда npm registry даст yjs) |
 | После | **#26 phase 2b** Telegram incoming + Notion sync | M-L | M | завершение integrations |
 | После | **#5 phase 3 AI agent backgrounds** | M-L | H | proactive PM daily / MODERATOR scan / KNOWLEDGE indexer |
