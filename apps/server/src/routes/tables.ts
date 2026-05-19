@@ -1490,7 +1490,16 @@ export async function registerTableRoutes(app: FastifyInstance) {
    */
   app.post(
     "/api/tables/:id/rows/:rowId/ai-fill",
-    { onRequest: [requireJwt] },
+    {
+      onRequest: [requireJwt],
+      // v0.91 stability hardening: rate-limit per IP. AI-fill попадает
+      // в Ollama/OpenRouter/OpenAI чейн — burst клики могли бы перегрузить
+      // upstream + удерживать DB connections на ожидании. 20 req за 60s
+      // достаточно для нормального workflow; spam-cooling.
+      config: {
+        rateLimit: { max: 20, timeWindow: 60 * 1000 },
+      },
+    },
     async (req, reply) => {
       const userId = getUserId(req);
       if (!userId) return reply.status(401).send({ error: "Unauthorized" });

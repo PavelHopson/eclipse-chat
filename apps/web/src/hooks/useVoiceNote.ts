@@ -33,7 +33,13 @@ export type VoiceNoteStatus =
   | { kind: "conflict" }
   | { kind: "error"; message: string };
 
-const DEBOUNCE_MS = 800;
+/**
+ * v0.91 stability hardening: 800 → 1500ms.
+ * Снижает write-burst к Postgres при активном печатании (50%+ редукция
+ * PATCH запросов). UX latency не критичен — это collaborative note, не
+ * realtime co-editing (phase 1a без CRDT).
+ */
+const DEBOUNCE_MS = 1500;
 
 export function useVoiceNote(channelId: string | null, socket: Socket | null) {
   const [note, setNote] = useState<VoiceNoteState | null>(null);

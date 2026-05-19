@@ -147,14 +147,32 @@ await app.register(fastifyStatic, {
 app.get("/health", async () => ({ ok: true, service: "eclipse-chat-server" }));
 app.get("/api/health", async () => {
   let dbOk = true;
+  // v0.91 stability hardening: возвращаем pg_stat_activity breakdown
+  // (active/idle/idle-in-transaction) чтобы видеть connection pressure
+  // на проде. Запрос дешёвый (один scan системной view).
+  let pg: Record<string, number> | null = null;
   try {
     await db.$queryRaw`SELECT 1`;
+    const rows = await db.$queryRaw<
+      Array<{ state: string | null; cnt: bigint }>
+    >`SELECT state, count(*)::bigint AS cnt FROM pg_stat_activity WHERE datname = current_database() GROUP BY state`;
+    pg = {};
+    for (const r of rows) {
+      const key = (r.state ?? "unknown").replace(/\s+/g, "_");
+      pg[key] = Number(r.cnt);
+    }
   } catch {
     dbOk = false;
+    pg = null;
   }
-  return { ok: true, service: "eclipse-chat-server", database: dbOk };
+  return {
+    ok: true,
+    service: "eclipse-chat-server",
+    database: dbOk,
+    pg,
+  };
 });
-app.get("/api/version", async () => ({ name: "@eclipse-chat/server", version: "0.90.0" }));
+app.get("/api/version", async () => ({ name: "@eclipse-chat/server", version: "0.91.0" }));
 
 await registerAuthRoutes(app);
 await registerTwoFactorRoutes(app);

@@ -85,12 +85,16 @@ Calm cinematic operational environment.
 Продаём: clarity / calmness / execution / coordination / operational
 visibility. НЕ продаём AI — AI это enabler, не headline.
 
-## Current state — v0.90.0 (master) / v0.88.0 LIVE
+## Current state — v0.91.0 (master, deploying) / v0.84.0 LIVE
 
 Prod: https://app.star-crm.ru/eclipse-chat/
-Version endpoint: /eclipse-chat/api/version → 0.88.0 (waiting for prod
-recovery — БД unreachable after manual prod work, нужен restart postgresql
-+ retry CI deploy для v0.89 + v0.90).
+Version endpoint: /eclipse-chat/api/version → 0.84.0 (после
+prod-recovery восстановлено состояние v0.84; миграции v0.85-v0.91
+применятся при next CI deploy).
+
+Сессия 18.05 closed 8 slices: #24 ph1 (v0.83), #27 ph3-4 (v0.84-85),
+#24 ph2a (v0.86), #10 ph3 (v0.87), #23 ph1a (v0.88), #26 ph2a (v0.89),
+#10 ph4a (v0.90), Stability hardening (v0.91).
 
 ### Сессия 18.05 — 10 prod-деплоев за один заход (v0.72 → v0.82)
 
