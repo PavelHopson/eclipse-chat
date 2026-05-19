@@ -45,11 +45,12 @@ const header: CSSProperties = {
 };
 
 const eyebrow: CSSProperties = {
-  fontSize: "var(--ec-text-2xs)",
-  fontWeight: 800,
-  letterSpacing: "var(--ec-tracking-caps)",
+  fontSize: "0.62rem",
+  fontWeight: 700,
+  letterSpacing: "0.18em",
   textTransform: "uppercase",
   color: "var(--ec-text-dim)",
+  fontFamily: "var(--ec-font-mono, ui-monospace, monospace)",
 };
 
 const statRow: CSSProperties = {
@@ -72,6 +73,9 @@ function statCard(color: string): CSSProperties {
     borderRadius: "var(--ec-radius-lg)",
     background: "hsl(208 16% 10% / 0.6)",
     boxShadow: `inset 3px 0 0 0 ${color}, 0 8px 24px -16px hsl(210 40% 2% / 0.7)`,
+    // v1.1.8: position:relative для .ec-corner-brackets pseudo overlays.
+    position: "relative",
+    transition: "background var(--ec-dur-fast) var(--ec-ease)",
   };
 }
 
@@ -81,25 +85,30 @@ const statValue: CSSProperties = {
   fontFeatureSettings: '"tnum"',
   lineHeight: 1,
   color: "var(--ec-text-strong)",
+  fontFamily: "var(--ec-font-display, var(--ec-font-sans))",
+  letterSpacing: "-0.02em",
 };
 
 const statLabel: CSSProperties = {
-  fontSize: "var(--ec-text-2xs)",
+  fontSize: "0.6rem",
   color: "var(--ec-text-muted)",
   textTransform: "uppercase",
-  letterSpacing: "var(--ec-tracking-wide)",
+  letterSpacing: "0.16em",
+  fontFamily: "var(--ec-font-mono, ui-monospace, monospace)",
+  fontWeight: 600,
 };
 
 const sectionTitle: CSSProperties = {
-  fontSize: "var(--ec-text-2xs)",
-  fontWeight: 800,
-  letterSpacing: "var(--ec-tracking-caps)",
+  fontSize: "0.7rem",
+  fontWeight: 700,
+  letterSpacing: "0.18em",
   textTransform: "uppercase",
   color: "var(--ec-text-muted)",
   margin: "0 0 var(--ec-space-2) 0",
   display: "flex",
   alignItems: "center",
-  gap: 6,
+  gap: 8,
+  fontFamily: "var(--ec-font-mono, ui-monospace, monospace)",
 };
 
 const rowBtn: CSSProperties = {
@@ -256,26 +265,29 @@ export function HomeToday({
   return (
     <div style={wrap} className="ec-home">
       <header className="ec-home-today__header" style={header}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
-          <span style={eyebrow}>Операционная сводка</span>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
+          <span style={eyebrow}>ОПЕРАТИВНАЯ_СВОДКА //</span>
           <h2
             style={{
               margin: 0,
               fontSize: "var(--ec-text-2xl)",
               color: "var(--ec-text-strong)",
-              letterSpacing: "var(--ec-tracking-tight)",
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              fontFamily: "var(--ec-font-display, var(--ec-font-sans))",
+              fontWeight: 700,
             }}
           >
-            Сегодня, {userName}
+            Сегодня · {userName}
           </h2>
         </div>
         <button
           type="button"
           onClick={onReload}
           disabled={loading}
-          className="ec-btn ec-btn--ghost ec-btn--sm"
+          className="ec-btn ec-btn--ghost ec-btn--sm ec-shimmer-sweep"
         >
-          {loading ? "Обновляем…" : "Обновить"}
+          <span>{loading ? "СИНХРОНИЗАЦИЯ…" : "ОБНОВИТЬ"}</span>
         </button>
       </header>
 
@@ -296,39 +308,39 @@ export function HomeToday({
 
       {/* Operational stat cards */}
       <div className="ec-home-today__stats" style={statRow}>
-        <div className="ec-home-stat-card ec-home-stat-card--exec" style={statCard("var(--ec-status-exec)")}>
+        <div className="ec-home-stat-card ec-corner-brackets ec-home-stat-card--exec" style={statCard("var(--ec-status-exec)")}>
           <span style={statValue}>{counts.tasks}</span>
           <span style={statLabel}>Задач на мне</span>
         </div>
-        <div className="ec-home-stat-card ec-home-stat-card--risk" style={statCard("var(--ec-status-risk)")}>
+        <div className="ec-home-stat-card ec-corner-brackets ec-home-stat-card--risk" style={statCard("var(--ec-status-risk)")}>
           <span style={{ ...statValue, color: counts.overdue > 0 ? "var(--ec-status-risk)" : "var(--ec-text-strong)" }}>
             {counts.overdue}
           </span>
           <span style={statLabel}>Просрочено</span>
         </div>
-        <div className="ec-home-stat-card ec-home-stat-card--warn" style={statCard("var(--ec-status-warn)")}>
+        <div className="ec-home-stat-card ec-corner-brackets ec-home-stat-card--warn" style={statCard("var(--ec-status-warn)")}>
           <span style={{ ...statValue, color: counts.incidents > 0 ? "var(--ec-status-warn)" : "var(--ec-text-strong)" }}>
             {counts.incidents}
           </span>
           <span style={statLabel}>Инцидентов</span>
         </div>
-        <div className="ec-home-stat-card ec-home-stat-card--idle" style={statCard("var(--ec-status-idle)")}>
+        <div className="ec-home-stat-card ec-corner-brackets ec-home-stat-card--idle" style={statCard("var(--ec-status-idle)")}>
           <span style={statValue}>{counts.activeVoice}</span>
           <span style={statLabel}>Голосовых сессий</span>
         </div>
         {/* v0.69: approvals + active rooms cards */}
-        <div className="ec-home-stat-card ec-home-stat-card--ai" style={statCard("var(--ec-status-ai, var(--ec-accent))")}>
+        <div className="ec-home-stat-card ec-corner-brackets ec-home-stat-card--ai" style={statCard("var(--ec-status-ai, var(--ec-accent))")}>
           <span style={{ ...statValue, color: counts.approvals > 0 ? "var(--ec-accent)" : "var(--ec-text-strong)" }}>
             {counts.approvals}
           </span>
           <span style={statLabel}>На моём одобрении</span>
         </div>
-        <div className="ec-home-stat-card ec-home-stat-card--idle" style={statCard("var(--ec-status-idle)")}>
+        <div className="ec-home-stat-card ec-corner-brackets ec-home-stat-card--idle" style={statCard("var(--ec-status-idle)")}>
           <span style={statValue}>{counts.activeRooms}</span>
           <span style={statLabel}>Активных комнат</span>
         </div>
         {counts.aiSignals != null && counts.aiSignals > 0 && (
-          <div className="ec-home-stat-card ec-home-stat-card--warn" style={statCard("var(--ec-status-warn)")}>
+          <div className="ec-home-stat-card ec-corner-brackets ec-home-stat-card--warn" style={statCard("var(--ec-status-warn)")}>
             <span style={{ ...statValue, color: "var(--ec-warn)" }}>
               {counts.aiSignals}
             </span>
@@ -380,7 +392,7 @@ export function HomeToday({
       {data && data.assignedTasks.length > 0 && (
         <section>
           <h3 style={sectionTitle}>
-            <span aria-hidden style={{ color: "var(--ec-status-exec)" }}>▸</span>
+            <span aria-hidden style={{ color: "var(--ec-status-exec)" }}>◆</span>
             Назначено мне
           </h3>
           <div style={{ display: "flex", flexDirection: "column", gap: "var(--ec-space-2)" }}>
@@ -424,7 +436,7 @@ export function HomeToday({
       {data && data.incidents.length > 0 && (
         <section>
           <h3 style={sectionTitle}>
-            <span aria-hidden style={{ color: "var(--ec-status-warn)" }}>▸</span>
+            <span aria-hidden style={{ color: "var(--ec-status-warn)" }}>◆</span>
             Активные инциденты
           </h3>
           <div style={{ display: "flex", flexDirection: "column", gap: "var(--ec-space-2)" }}>
@@ -446,7 +458,7 @@ export function HomeToday({
       {data && data.pendingApprovals && data.pendingApprovals.length > 0 && (
         <section>
           <h3 style={sectionTitle}>
-            <span aria-hidden style={{ color: "var(--ec-accent)" }}>▸</span>
+            <span aria-hidden style={{ color: "var(--ec-accent)" }}>◆</span>
             На моём одобрении
           </h3>
           <div style={{ display: "flex", flexDirection: "column", gap: "var(--ec-space-2)" }}>
@@ -485,7 +497,7 @@ export function HomeToday({
       {data && data.activeRooms && data.activeRooms.length > 0 && (
         <section>
           <h3 style={sectionTitle}>
-            <span aria-hidden style={{ color: "var(--ec-status-exec)" }}>▸</span>
+            <span aria-hidden style={{ color: "var(--ec-status-exec)" }}>◆</span>
             Активные комнаты <span style={{ color: "var(--ec-text-dim)", fontWeight: 600 }}>· последний час</span>
           </h3>
           <div style={{ display: "flex", flexDirection: "column", gap: "var(--ec-space-2)" }}>
@@ -523,7 +535,7 @@ export function HomeToday({
           data.aiSignals.escalated.length > 0) && (
           <section>
             <h3 style={sectionTitle}>
-              <span aria-hidden style={{ color: "var(--ec-warn)" }}>▸</span>
+              <span aria-hidden style={{ color: "var(--ec-warn)" }}>◆</span>
               AI-алерты
               <span style={{ color: "var(--ec-text-dim)", fontWeight: 600 }}>
                 · требует внимания
@@ -609,7 +621,7 @@ export function HomeToday({
       {data && data.activeVoice.length > 0 && (
         <section>
           <h3 style={sectionTitle}>
-            <span aria-hidden style={{ color: "var(--ec-status-idle)" }}>▸</span>
+            <span aria-hidden style={{ color: "var(--ec-status-idle)" }}>◆</span>
             Голосовые сессии
           </h3>
           <div style={{ display: "flex", flexDirection: "column", gap: "var(--ec-space-2)" }}>
