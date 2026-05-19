@@ -5,7 +5,33 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v1.1.9** (StatusBoard + TeamHealth
+**Текущая версия в проде:** **v1.1.10** (ChannelInfoPanel +
+IntelligencePanel cyber polish — продолжение polish track по
+Pavel «продолжай»).
+
+**Изменения v1.1.10:**
+
+**ChannelInfoPanel** (открывается через (i) в chat-header):
+- 4 tabs (Сводка / Память / Дела / Файлы) → `.ec-hud-tab` class
+  (top-fade gradient + 2px glowing bottom bar)
+- tabBtn — fontSize 0.62rem, letter-spacing 0.16em, JetBrains Mono
+- borderBottom inline удалён (handled через hud-tab::after pseudo)
+
+**IntelligencePanel** (правый rail с members):
+- header → `.ec-server-header-edge` class (1px holographic bottom
+  gradient line)
+- headerStyle bg slightly darker (hsl 210 25% 4% / 0.55)
+- headerLabel «ТАКТИЧЕСКИЙ ВИД» — monospace 0.62rem 0.18em,
+  text-muted color
+- headerCount «N/M» — violet badge (accent-3 на soft bg с violet
+  border) consistent с `.ec-tactical-header__count`
+- IconMembers color violet (accent-3) consistent с MemberList
+  tactical-header icon (v1.1.4)
+
+**Сборка**: 6 files changed, +33/-20. CSS bundle unchanged 100.15
+KB (existing classes + inline tweaks).
+
+**Предыдущие версии:** v1.1.9 (StatusBoard + TeamHealth
 dashboards cyber polish — продолжение polish track по Pavel
 «продолжай»).
 
