@@ -122,11 +122,12 @@ const columnHead: CSSProperties = {
   alignItems: "center",
   gap: 8,
   padding: "var(--ec-space-3) var(--ec-space-3) var(--ec-space-2)",
-  fontSize: "var(--ec-text-2xs)",
-  fontWeight: 800,
-  letterSpacing: "var(--ec-tracking-caps)",
+  fontSize: "0.65rem",
+  fontWeight: 700,
+  letterSpacing: "0.18em",
   textTransform: "uppercase",
   color: "var(--ec-text-muted)",
+  fontFamily: "var(--ec-font-mono, ui-monospace, monospace)",
 };
 
 const columnList: CSSProperties = {
@@ -148,6 +149,8 @@ const card: CSSProperties = {
   borderRadius: "var(--ec-radius-md)",
   background: "var(--ec-surface-2)",
   border: "1px solid var(--ec-border-subtle)",
+  // v1.1.9: hover corner brackets via .ec-corner-brackets class.
+  transition: "border-color var(--ec-dur-fast) var(--ec-ease)",
 };
 
 const checkbox = (done: boolean): CSSProperties => ({
@@ -252,7 +255,7 @@ function Card({
   const chip = dueChip(item.dueAt);
   return (
     <div
-      className="ec-hover-lift"
+      className="ec-hover-lift ec-corner-brackets"
       style={{
         ...card,
         opacity: dragging ? 0.45 : 1,
@@ -471,17 +474,26 @@ export function StatusBoard({
         <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
           <span
             style={{
-              fontSize: "var(--ec-text-2xs)",
-              fontWeight: 800,
-              letterSpacing: "var(--ec-tracking-caps)",
+              fontSize: "0.62rem",
+              fontWeight: 700,
+              letterSpacing: "0.18em",
               textTransform: "uppercase",
               color: "var(--ec-text-dim)",
+              fontFamily: "var(--ec-font-mono, ui-monospace, monospace)",
             }}
           >
-            Execution
+            EXECUTION_BOARD //
           </span>
-          <strong style={{ color: "var(--ec-text-strong)", fontSize: "var(--ec-text-lg)" }}>
-            Доска задач{serverName ? ` — ${serverName}` : ""}
+          <strong
+            style={{
+              color: "var(--ec-text-strong)",
+              fontSize: "var(--ec-text-lg)",
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              fontFamily: "var(--ec-font-display, var(--ec-font-sans))",
+            }}
+          >
+            Доска задач{serverName ? ` · ${serverName}` : ""}
           </strong>
         </div>
         <div style={{ display: "flex", gap: 4, marginLeft: "var(--ec-space-3)", flexWrap: "wrap", alignItems: "center" }}>

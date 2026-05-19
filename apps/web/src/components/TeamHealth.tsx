@@ -117,14 +117,17 @@ const statValue: CSSProperties = {
   fontWeight: 700,
   lineHeight: 1,
   letterSpacing: "-0.02em",
+  fontFamily: "var(--ec-font-display, var(--ec-font-sans))",
+  fontFeatureSettings: '"tnum"',
 };
 
 const statLabel: CSSProperties = {
-  fontSize: "var(--ec-text-2xs)",
-  letterSpacing: "var(--ec-tracking-caps)",
+  fontSize: "0.6rem",
+  letterSpacing: "0.16em",
   textTransform: "uppercase",
-  fontWeight: 700,
+  fontWeight: 600,
   opacity: 0.78,
+  fontFamily: "var(--ec-font-mono, ui-monospace, monospace)",
 };
 
 const statHint: CSSProperties = {
@@ -134,12 +137,16 @@ const statHint: CSSProperties = {
 };
 
 const sectionLabel: CSSProperties = {
-  fontSize: "var(--ec-text-2xs)",
+  fontSize: "0.7rem",
   fontWeight: 700,
-  letterSpacing: "var(--ec-tracking-caps)",
+  letterSpacing: "0.18em",
   textTransform: "uppercase",
   color: "var(--ec-text-muted)",
   margin: 0,
+  fontFamily: "var(--ec-font-mono, ui-monospace, monospace)",
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
 };
 
 const overloadRow: CSSProperties = {
@@ -177,13 +184,16 @@ const blockedChip: CSSProperties = {
 
 const chatTitle: CSSProperties = {
   fontSize: "var(--ec-text-base)",
-  fontWeight: 600,
+  fontWeight: 700,
   color: "var(--ec-text-strong)",
   display: "flex",
   alignItems: "center",
   gap: "var(--ec-space-2)",
   flex: 1,
   minWidth: 0,
+  letterSpacing: "0.08em",
+  textTransform: "uppercase",
+  fontFamily: "var(--ec-font-display, var(--ec-font-sans))",
 };
 
 function HeartIcon() {
@@ -247,10 +257,10 @@ export function TeamHealth({
           type="button"
           onClick={onReload}
           disabled={loading}
-          className="ec-btn ec-btn--ghost ec-btn--sm"
+          className="ec-btn ec-btn--ghost ec-btn--sm ec-shimmer-sweep"
           title="Пересчитать"
         >
-          {loading ? "Считаем…" : "Обновить"}
+          <span>{loading ? "СИНХРОНИЗАЦИЯ…" : "ОБНОВИТЬ"}</span>
         </button>
         <button
           type="button"
@@ -299,7 +309,7 @@ export function TeamHealth({
             <div className="ec-team-health-stats" style={grid}>
               <button
                 type="button"
-                className="ec-lift-md ec-press"
+                className="ec-lift-md ec-press ec-corner-brackets"
                 style={statCardStyle("exec")}
                 onClick={() => onOpenBoard(null)}
                 title="Открыть Доску задач"
@@ -310,7 +320,7 @@ export function TeamHealth({
               </button>
               <button
                 type="button"
-                className="ec-lift-md ec-press"
+                className="ec-lift-md ec-press ec-corner-brackets"
                 style={statCardStyle("warn")}
                 onClick={() => onOpenBoard({ kind: "overdue" })}
                 title="Открыть Доску задач — только просроченные"
@@ -324,7 +334,7 @@ export function TeamHealth({
               </button>
               <button
                 type="button"
-                className="ec-lift-md ec-press"
+                className="ec-lift-md ec-press ec-corner-brackets"
                 style={statCardStyle("idle")}
                 onClick={() => onOpenBoard({ kind: "unassigned" })}
                 title="Открыть Доску задач — без ответственного"
@@ -378,7 +388,7 @@ export function TeamHealth({
                   gap: "var(--ec-space-2)",
                 }}
               >
-                <h3 style={sectionLabel}>Кто перегружен</h3>
+                <h3 style={sectionLabel}><span aria-hidden style={{ color: "var(--ec-status-risk)" }}>◆</span>Кто перегружен</h3>
                 {data.topOverloaded.map((m) => {
                   const isBlocked = blockedSet.has(m.userId);
                   return (
@@ -480,7 +490,7 @@ function TrendsRibbon({
         gap: "var(--ec-space-2)",
       }}
     >
-      <h3 style={sectionLabel}>За эту неделю</h3>
+      <h3 style={sectionLabel}><span aria-hidden style={{ color: "var(--ec-status-exec)" }}>◆</span>За эту неделю</h3>
       <div
         style={{
           display: "grid",
@@ -603,7 +613,7 @@ function PerChannelSection({
         gap: "var(--ec-space-2)",
       }}
     >
-      <h3 style={sectionLabel}>По комнатам</h3>
+      <h3 style={sectionLabel}><span aria-hidden style={{ color: "var(--ec-accent)" }}>◆</span>По комнатам</h3>
       <div
         style={{
           background: "var(--ec-surface-2)",
