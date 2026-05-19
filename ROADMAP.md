@@ -5,7 +5,35 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v1.1.8** (HomeToday «Сегодня»
+**Текущая версия в проде:** **v1.1.9** (StatusBoard + TeamHealth
+dashboards cyber polish — продолжение polish track по Pavel
+«продолжай»).
+
+**Изменения v1.1.9:**
+
+**StatusBoard (Доска задач kanban):**
+- Eyebrow `Execution` → `EXECUTION_BOARD //` (monospace 0.18em)
+- Title uppercase 0.08em display font (Orbitron)
+- Column heads (Открыто / В работе / На ревью / Сделано) monospace
+  0.65rem 0.18em
+- Cards `.ec-corner-brackets` — top-right + bottom-left tactical
+  brackets on hover
+
+**TeamHealth (Здоровье команды):**
+- chatTitle uppercase 0.08em display font
+- 5 stat values → Orbitron + tabular-nums
+- 5 stat labels → monospace 0.6rem 0.16em
+- 5 stat cards → `.ec-corner-brackets`
+- Section headers («Кто перегружен» / «За эту неделю» / «По
+  комнатам») — monospace 0.7rem 0.18em + `◆` filled diamond
+  prefix color-coded (risk-red / exec-green / accent-cyan)
+- «Обновить» → `.ec-shimmer-sweep` UPPERCASE
+
+**Сборка**: 6 files changed, +50/-28. CSS bundle unchanged
+100.15 KB (только inline + className concats — все classes уже в
+tokens.css).
+
+**Предыдущие версии:** v1.1.8 (HomeToday «Сегодня»
 cinematic polish — продолжение polish track по Pavel «делаем
 дальше»).
 
