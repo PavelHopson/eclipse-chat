@@ -5,7 +5,20 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v0.95.0** (UI density pass Phase 1 —
+**Текущая версия в проде:** **v0.96.0** (UX refactor — Pavel-feedback
+со скриншотами 19.05 «справа должны быть только участники, в sidebar
+слишком много всего, надо вкладки». Major redesign в 3 направлениях:
+(1) **Right rail упрощён до Members-only** — старая IntelligencePanel
+с 5 tabs (Сводка/Память/Дела/Файлы/Люди) превратилась в clean
+MemberList с header «Участники · 5/12». (2) **Sidebar разделён на 3
+вкладки** — Каналы / Работа / Таблицы вместо длинного смешанного
+списка. Persisted per-server в localStorage. (3) **(i)-кнопка в
+chat-header** + новый ChannelInfoPanel — open ↓ show 4 inner tabs
+(Сводка/Память/Дела/Файлы) overlay'ем сверху chat-area, ESC закрывает.
+Auto-close при смене канала. CLIENT-mode унифицирован с operator UX.
+Полная история — в timeline ниже.)
+
+**Предыдущие версии:** v0.95.0 (UI density pass Phase 1 —
 системный fix визуальной обрезки вместо очередного hotfix.
 IntelligencePanel labels (Сводка/Память/Дела/Файлы/Люди) теперь visible
 по умолчанию вместо force-hide на всех viewport'ах; на tight laptop
@@ -737,6 +750,7 @@ base, ✅ Home command center, ✅ responsive cinematic UI pass.
 | ✅ закрыто | **UI hotfix word-wrap v0.92.0** (19.05): «ПЕРЕГЕНЕРИРОВАТЬ» glitch в ChannelDigestPanel «Сводка комнаты» (long RU UPPERCASE слово ломалось mid-word на узком intel-rail). Текст укорочен до «✦ Заново / ✦ Резюме», `whiteSpace: nowrap` + `textOverflow: ellipsis` + `maxWidth: 100%` defensive style. |
 | ✅ закрыто | **#5 phase 2 + #4 AI-write v0.93.0** — AI agent создаёт rows в operational tables по запросу из чата. `ai/taskFromChat.ts`: `hasTaskCreationIntent` regex prescan (RU/EN keywords) → `loadContext(serverId)` (server tables + members) → AI JSON extract intent + table_id + cells → per-type validation (USER displayName→userId, DATE ISO, STATUS options, NUMBER, CHECKBOX) → row.create + bot confirmation reply. Wired в `maybeReplyToMention` (skip normal AI reply если task created). Phase 2 (future) — update existing rows, batch creation, explicit `#tableName` syntax. |
 | 🟡 частично | **#10 phase 4b bidirectional row↔ActionItem sync** — закрыто в v0.94.0. `lib/rowActionSync.ts` pure mappers: `mapCellToActionStatus` / `mapActionStatusToCell` с RU+EN dictionary (Открыто/Open/Todo, В работе/In Progress/Doing, На ревью/Review, Завершено/Done). `resolveMapping(fields)` picks first-by-type (TEXT/STATUS/USER/DATE). `syncRowToAction` + `syncActionToRows` с loop-guard (diff-check «source === target → no-op»). Wired в PATCH row + PATCH action endpoints с re-emit для UI realtime. v0.93 taskFromChat auto-link ActionItem после row create если table.channelId set. Phase 4c — explicit per-field mapping config UI (current convention-based). |
+| ✅ закрыто | **UX refactor v0.96.0** (19.05) — Pavel-feedback со скриншотами «справа должны быть только участники, в sidebar слишком много всего, надо вкладки». Major surgery 3-направлений. (1) **IntelligencePanel → MembersPanel** (apps/web/src/components/IntelligencePanel.tsx fully rewritten): убраны 5 tabs (Сводка/Память/Дела/Файлы/Люди) + VoiceIntelligence sub-component. Остался clean MemberList с header «Участники · {online}/{total}» + collapse/close buttons. MemoryView / ExecutionView / FilesView экспортированы для переиспользования. (2) **Sidebar tabs в ChannelList** (apps/web/src/components/ChannelList.tsx): 3 таба сверху — Каналы (TEXT/BROADCAST/VOICE + create-form), Работа (Доска задач / Здоровье команды / Client Portal entries), Таблицы (list + create-table button). Persisted per-server в localStorage (key `ec:sidebar-tab:<serverId>`). (3) **ChannelInfoPanel — новый компонент** (apps/web/src/components/ChannelInfoPanel.tsx): открывается (i)-кнопкой в chat-header'е. Flex-child (не overlay) занимает верх chat-area до 48vh, 4 inner tabs (Сводка/Память/Дела/Файлы). Auto-close при смене канала. ESC закрывает. AppShell wiring: serverId prop в ChannelList, intel-props убраны из IntelligencePanel call, передаются в ChannelInfoPanel call. CLIENT-mode унифицирован (same UX, без special path для intel-блока — execution/files скрыты как раньше). Pure UX changes, ноль logic/API/DB изменений. |
 | ✅ закрыто | **UI density pass v0.95.0 Phase 1** (19.05) — Pavel-feedback «не весь функционал виден на экране, всё урезано». Системный density-fix вместо очередного hotfix. **IntelligencePanel labels** (responsive.css:504-520): старое правило `display: none` GLOBALLY на `.ec-shell__members .ec-intel-tab__label` прятало labels даже на full-desktop ≥1367 (members rail 272px) — где они физически помещались. Новая логика: labels visible по умолчанию (включая full-desktop + mobile drawer + tablet drawer); на tight laptop 1025-1366 (rail 224px) показываем label только для active tab — остальные icon-only с title tooltip + horizontal scroll fallback. **HomeToday stat grid** (HomeToday.tsx:55-66): `repeat(auto-fit, minmax(150px, 1fr))` → `minmax(132px, 1fr)`. +1-2 cards per row на 1080-1280px chat area, убирает awkward 2-row layout для 7 карточек (Задачи / Просрочено / Инциденты / Голос / Одобрения / Активные комнаты / AI-алерты). Mobile breakpoints 760→2col / 520→1col сохраняются. **ClientPortal sections** (ClientPortalPage.tsx:234-241): same fix `minmax(160px)` → `minmax(140px)`. Pure CSS+layout changes, ноль logic. Phase 2 (v0.96) — Tables + AdminPanel + Drawer responsive. Phase 3 (v0.97) — touch fallbacks + RU UPPERCASE word-break systematic. |
 | **#1 next** | **#23 phase 1b Yjs CRDT upgrade** | S-M | M | true concurrent editing (когда npm registry даст yjs) |
 | После | **#26 phase 2b** Telegram incoming + Notion sync | M-L | M | завершение integrations |

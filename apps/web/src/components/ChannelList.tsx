@@ -1,11 +1,17 @@
 import type { CSSProperties } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Avatar } from "./Avatar";
 import type { ChannelRow } from "../hooks/useChannels";
 import type { MemberRow } from "../hooks/useMembers";
 import type { ChannelType, VoiceMeta } from "../lib/socket";
 
+/** v0.96 UX refactor: sidebar разделён на 3 таба. Persist active tab
+ *  per-server в localStorage. */
+type SidebarTab = "channels" | "work" | "tables";
+
 type Props = {
+  /** v0.96: serverId для per-server-persisted sidebarTab. */
+  serverId: string | null;
   serverName: string | null;
   serverRole: string | null;
   inviteCode: string | null;
@@ -177,34 +183,6 @@ function canEditChannel(role: string | null): boolean {
   return role === "OWNER" || role === "ADMIN" || role === "MODERATOR";
 }
 
-/**
- * ContextGroupHeader — parent-label для Context Tree групп (OVERVIEW /
- * COMMUNICATION / EXECUTION / KNOWLEDGE). Жирнее и выше sub-label'ов
- * («Текстовые» / «Голосовые»), под линией снизу для визуального разделения
- * групп. EXECUTION / KNOWLEDGE групп пока нет — их добавим когда подъедет
- * соответствующий контент (cross-channel files, knowledge graph).
- */
-function ContextGroupHeader({ label, marginTop }: { label: string; marginTop?: boolean }) {
-  return (
-    <div
-      style={{
-        marginTop: marginTop ? "var(--ec-space-4)" : 0,
-        marginBottom: "var(--ec-space-2)",
-        padding: "0 var(--ec-space-2) var(--ec-space-2)",
-        fontSize: "0.62rem",
-        fontWeight: 800,
-        letterSpacing: "var(--ec-tracking-brand)",
-        textTransform: "uppercase",
-        color: "var(--ec-text-muted)",
-        borderBottom: "1px solid var(--ec-border-subtle)",
-      }}
-      aria-hidden
-    >
-      {label}
-    </div>
-  );
-}
-
 function ChannelGlyph({
   type,
   emoji,
@@ -311,7 +289,44 @@ function DeafenedGlyph() {
   );
 }
 
+const sidebarTabBar: CSSProperties = {
+  display: "flex",
+  alignItems: "stretch",
+  gap: 0,
+  padding: "var(--ec-space-2) var(--ec-space-3) 0",
+  background: "var(--ec-surface-1)",
+  borderBottom: "1px solid var(--ec-border-subtle)",
+  flexShrink: 0,
+};
+
+function sidebarTabBtn(active: boolean): CSSProperties {
+  return {
+    flex: 1,
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    padding: "0.5rem 0.4rem 0.55rem",
+    background: "transparent",
+    border: 0,
+    borderBottom: active
+      ? "2px solid var(--ec-accent)"
+      : "2px solid transparent",
+    color: active ? "var(--ec-text-strong)" : "var(--ec-text-muted)",
+    fontSize: "var(--ec-text-2xs)",
+    fontWeight: 700,
+    letterSpacing: "var(--ec-tracking-caps)",
+    textTransform: "uppercase",
+    cursor: "pointer",
+    transition:
+      "color var(--ec-dur-fast) var(--ec-ease), border-color var(--ec-dur-fast) var(--ec-ease)",
+    whiteSpace: "nowrap",
+    minWidth: 0,
+  };
+}
+
 export function ChannelList({
+  serverId,
   serverName,
   serverRole,
   inviteCode: _inviteCode,
@@ -349,6 +364,33 @@ export function ChannelList({
   // DnD reorder state
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
+  // v0.96: sidebar tab state — Каналы / Работа / Таблицы. Per-server
+  // persistence в localStorage (key `ec:sidebar-tab:<serverId>`).
+  const sidebarKey = serverId ? `ec:sidebar-tab:${serverId}` : null;
+  const [sidebarTab, setSidebarTab] = useState<SidebarTab>(() => {
+    if (typeof window === "undefined" || !sidebarKey) return "channels";
+    const saved = window.localStorage.getItem(sidebarKey);
+    if (saved === "channels" || saved === "work" || saved === "tables") return saved;
+    return "channels";
+  });
+  // Перечитать saved tab при смене сервера.
+  useEffect(() => {
+    if (typeof window === "undefined" || !sidebarKey) {
+      setSidebarTab("channels");
+      return;
+    }
+    const saved = window.localStorage.getItem(sidebarKey);
+    setSidebarTab(
+      saved === "channels" || saved === "work" || saved === "tables"
+        ? saved
+        : "channels",
+    );
+  }, [sidebarKey]);
+  // Save on change.
+  useEffect(() => {
+    if (typeof window === "undefined" || !sidebarKey) return;
+    window.localStorage.setItem(sidebarKey, sidebarTab);
+  }, [sidebarKey, sidebarTab]);
 
   const manageable = canManage(serverRole);
   const editable = canEditChannel(serverRole);
@@ -790,110 +832,168 @@ export function ChannelList({
         </button>
       </header>
 
-      <div style={listWrap}>
-        {/* Context Tree — operational groupings (brief #3) */}
-        <ContextGroupHeader label="Overview" />
-        {onOpenStatusBoard && (
-          <button
-            type="button"
-            onClick={onOpenStatusBoard}
-            className={
-              statusBoardActive
-                ? "ec-channel-item ec-channel-item--active"
-                : "ec-channel-item"
-            }
-            title="Доска задач — все task / decision / follow-up пространства"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <rect x="3" y="3" width="7" height="9" rx="1" />
-              <rect x="14" y="3" width="7" height="5" rx="1" />
-              <rect x="14" y="12" width="7" height="9" rx="1" />
-              <rect x="3" y="16" width="7" height="5" rx="1" />
-            </svg>
-            <span style={{ flex: 1, minWidth: 0 }}>Доска задач</span>
-          </button>
-        )}
-        {onOpenTeamHealth && (
-          <button
-            type="button"
-            onClick={onOpenTeamHealth}
-            className={
-              teamHealthActive
-                ? "ec-channel-item ec-channel-item--active"
-                : "ec-channel-item"
-            }
-            title="Здоровье команды — сводка по нагрузке и срокам"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-            </svg>
-            <span style={{ flex: 1, minWidth: 0 }}>Здоровье команды</span>
-          </button>
-        )}
-        {/* v0.83 #24 phase 1: Client Portal entry. Видим только в CLIENT-mode
-            workspace'ах. AppShell сам решает кому показывать onOpenClientPortal
-            на основании role (CLIENT/OWNER/ADMIN). */}
-        {serverMode === "CLIENT" && onOpenClientPortal && (
-          <button
-            type="button"
-            onClick={onOpenClientPortal}
-            className="ec-channel-item"
-            title="Клиентский портал — прогресс проекта, одобрения, файлы"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <rect x="3" y="3" width="18" height="18" rx="2" />
-              <path d="M3 9h18" />
-              <path d="M9 21V9" />
-            </svg>
-            <span style={{ flex: 1, minWidth: 0 }}>Клиентский портал</span>
-          </button>
-        )}
-
-        {/* v0.59 phase 1: Operational Tables section */}
-        {(tables !== undefined && onOpenTable !== undefined) && (
-          <>
-            <div
-              className="ec-section-label"
+      {/* v0.96 sidebar tabs: Каналы / Работа / Таблицы. Расщепляет старый
+          plain list ("Доска задач" + "Здоровье" + "Таблицы" + 3 группы каналов
+          подряд) на 3 contextual surfaces. Persisted per-server. */}
+      <div style={sidebarTabBar} role="tablist" aria-label="Разделы пространства">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={sidebarTab === "channels"}
+          onClick={() => setSidebarTab("channels")}
+          style={sidebarTabBtn(sidebarTab === "channels")}
+          title="Каналы — текстовые, broadcast, голосовые"
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M9 17H5a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v10a2 2 0 01-2 2h-4l-3 4-3-4z" />
+          </svg>
+          <span>Каналы</span>
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={sidebarTab === "work"}
+          onClick={() => setSidebarTab("work")}
+          style={sidebarTabBtn(sidebarTab === "work")}
+          title="Работа — доска задач, здоровье команды"
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <polyline points="9 11 12 14 22 4" />
+            <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
+          </svg>
+          <span>Работа</span>
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={sidebarTab === "tables"}
+          onClick={() => setSidebarTab("tables")}
+          style={sidebarTabBtn(sidebarTab === "tables")}
+          title="Таблицы — operational tables"
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <rect x="3" y="3" width="18" height="18" rx="2" />
+            <line x1="3" y1="9" x2="21" y2="9" />
+            <line x1="9" y1="3" x2="9" y2="21" />
+          </svg>
+          <span>Таблицы</span>
+          {tables !== undefined && tables.length > 0 && (
+            <span
               style={{
-                marginTop: "var(--ec-space-3)",
-                marginBottom: "var(--ec-space-2)",
-                display: "flex",
+                display: "inline-flex",
                 alignItems: "center",
-                justifyContent: "space-between",
+                fontSize: "0.6rem",
+                fontWeight: 700,
+                fontFeatureSettings: '"tnum"',
+                padding: "0.05rem 0.32rem",
+                borderRadius: "var(--ec-radius-full)",
+                background: "var(--ec-surface-3)",
+                color: "var(--ec-text-muted)",
+                letterSpacing: 0,
+                textTransform: "none",
               }}
             >
-              <span>Таблицы</span>
-              {onCreateTable && (
-                <button
-                  type="button"
-                  onClick={onCreateTable}
-                  title="Создать таблицу"
-                  aria-label="Создать таблицу"
-                  style={{
-                    background: "transparent",
-                    border: "1px solid var(--ec-border-subtle)",
-                    color: "var(--ec-text-dim)",
-                    fontSize: "0.7rem",
-                    padding: "0.05rem 0.4rem",
-                    borderRadius: "var(--ec-radius-xs)",
-                    cursor: "pointer",
-                    lineHeight: 1.3,
-                  }}
-                >
-                  +
-                </button>
-              )}
-            </div>
-            {tables.length === 0 ? (
+              {tables.length}
+            </span>
+          )}
+        </button>
+      </div>
+
+      <div style={listWrap}>
+        {sidebarTab === "work" && (
+          <>
+            {onOpenStatusBoard && (
+              <button
+                type="button"
+                onClick={onOpenStatusBoard}
+                className={
+                  statusBoardActive
+                    ? "ec-channel-item ec-channel-item--active"
+                    : "ec-channel-item"
+                }
+                title="Доска задач — все task / decision / follow-up пространства"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <rect x="3" y="3" width="7" height="9" rx="1" />
+                  <rect x="14" y="3" width="7" height="5" rx="1" />
+                  <rect x="14" y="12" width="7" height="9" rx="1" />
+                  <rect x="3" y="16" width="7" height="5" rx="1" />
+                </svg>
+                <span style={{ flex: 1, minWidth: 0 }}>Доска задач</span>
+              </button>
+            )}
+            {onOpenTeamHealth && (
+              <button
+                type="button"
+                onClick={onOpenTeamHealth}
+                className={
+                  teamHealthActive
+                    ? "ec-channel-item ec-channel-item--active"
+                    : "ec-channel-item"
+                }
+                title="Здоровье команды — сводка по нагрузке и срокам"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                </svg>
+                <span style={{ flex: 1, minWidth: 0 }}>Здоровье команды</span>
+              </button>
+            )}
+            {serverMode === "CLIENT" && onOpenClientPortal && (
+              <button
+                type="button"
+                onClick={onOpenClientPortal}
+                className="ec-channel-item"
+                title="Клиентский портал — прогресс проекта, одобрения, файлы"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <rect x="3" y="3" width="18" height="18" rx="2" />
+                  <path d="M3 9h18" />
+                  <path d="M9 21V9" />
+                </svg>
+                <span style={{ flex: 1, minWidth: 0 }}>Клиентский портал</span>
+              </button>
+            )}
+            {!onOpenStatusBoard && !onOpenTeamHealth && (
               <p
                 style={{
                   color: "var(--ec-text-dim)",
-                  fontSize: "var(--ec-text-2xs)",
-                  padding: "0 var(--ec-space-2) var(--ec-space-2)",
+                  fontSize: "var(--ec-text-sm)",
+                  padding: "var(--ec-space-3) var(--ec-space-2)",
                   margin: 0,
                 }}
               >
-                Задачи, CRM, leads — что угодно. Жми +
+                Доска задач и здоровье команды появятся когда в пространстве
+                будет хотя бы одна задача.
+              </p>
+            )}
+          </>
+        )}
+
+        {sidebarTab === "tables" && (
+          <>
+            {tables === undefined || onOpenTable === undefined ? (
+              <p
+                style={{
+                  color: "var(--ec-text-dim)",
+                  fontSize: "var(--ec-text-sm)",
+                  padding: "var(--ec-space-3) var(--ec-space-2)",
+                  margin: 0,
+                }}
+              >
+                Operational Tables недоступны в этом контексте.
+              </p>
+            ) : tables.length === 0 ? (
+              <p
+                style={{
+                  color: "var(--ec-text-dim)",
+                  fontSize: "var(--ec-text-sm)",
+                  padding: "var(--ec-space-3) var(--ec-space-2)",
+                  margin: 0,
+                  lineHeight: "var(--ec-leading-normal)",
+                }}
+              >
+                Задачи, CRM, leads — что угодно. Нажми «+ Новая таблица» внизу.
               </p>
             ) : (
               tables.map((t) => (
@@ -933,85 +1033,102 @@ export function ChannelList({
           </>
         )}
 
-        <ContextGroupHeader label="Communication" marginTop />
-
-        {textChannels.length > 0 && (
+        {sidebarTab === "channels" && (
           <>
-            <div className="ec-section-label" style={{ marginBottom: "var(--ec-space-2)" }}>
-              <span>Текстовые</span>
-              <span style={{ color: "var(--ec-text-dim)", fontFeatureSettings: '"tnum"' }}>{textChannels.length}</span>
-            </div>
-            <div className="ec-reveal-cascade">{textChannels.map(renderChannel)}</div>
-          </>
-        )}
-
-        {broadcastChannels.length > 0 && (
-          <>
-            <div
-              className="ec-section-label"
-              style={{
-                marginTop: textChannels.length > 0 ? "var(--ec-space-4)" : 0,
-                marginBottom: "var(--ec-space-2)",
-              }}
-            >
-              <span>Каналы</span>
-              <span style={{ color: "var(--ec-text-dim)", fontFeatureSettings: '"tnum"' }}>{broadcastChannels.length}</span>
-            </div>
-            {broadcastChannels.map(renderChannel)}
-          </>
-        )}
-
-        {voiceChannels.length > 0 && (
-          <>
-            <div
-              className="ec-section-label"
-              style={{
-                marginTop:
-                  textChannels.length > 0 || broadcastChannels.length > 0
-                    ? "var(--ec-space-4)"
-                    : 0,
-                marginBottom: "var(--ec-space-2)",
-              }}
-            >
-              <span>Голосовые</span>
-              <span style={{ color: "var(--ec-text-dim)", fontFeatureSettings: '"tnum"' }}>{voiceChannels.length}</span>
-            </div>
-            {voiceChannels.map((c) => (
-              <div key={c.id}>
-                {renderChannel(c)}
-                {renderVoiceOccupants(c.id)}
-              </div>
-            ))}
-          </>
-        )}
-
-        {channelsLoading && channels.length === 0 && (
-          <div className="ec-skeleton-list" aria-label="Загрузка комнат">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div
-                key={i}
-                className="ec-skeleton-row"
-                style={{ gridTemplateColumns: "16px 1fr" }}
-              >
-                <div
-                  className="ec-skeleton-row__avatar"
-                  style={{ width: 14, height: 14, borderRadius: 3 }}
-                />
-                <div className="ec-skeleton-row__bars">
-                  <div className="ec-skeleton-row__bar" />
+            {textChannels.length > 0 && (
+              <>
+                <div className="ec-section-label" style={{ marginBottom: "var(--ec-space-2)" }}>
+                  <span>Текстовые</span>
+                  <span style={{ color: "var(--ec-text-dim)", fontFeatureSettings: '"tnum"' }}>{textChannels.length}</span>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
+                <div className="ec-reveal-cascade">{textChannels.map(renderChannel)}</div>
+              </>
+            )}
 
-        {!channelsLoading && channels.length === 0 && (
-          <p style={{ color: "var(--ec-text-dim)", fontSize: "var(--ec-text-sm)", padding: "var(--ec-space-2)", margin: 0 }}>
-            Создайте первую комнату ниже.
-          </p>
+            {broadcastChannels.length > 0 && (
+              <>
+                <div
+                  className="ec-section-label"
+                  style={{
+                    marginTop: textChannels.length > 0 ? "var(--ec-space-4)" : 0,
+                    marginBottom: "var(--ec-space-2)",
+                  }}
+                >
+                  <span>Каналы</span>
+                  <span style={{ color: "var(--ec-text-dim)", fontFeatureSettings: '"tnum"' }}>{broadcastChannels.length}</span>
+                </div>
+                {broadcastChannels.map(renderChannel)}
+              </>
+            )}
+
+            {voiceChannels.length > 0 && (
+              <>
+                <div
+                  className="ec-section-label"
+                  style={{
+                    marginTop:
+                      textChannels.length > 0 || broadcastChannels.length > 0
+                        ? "var(--ec-space-4)"
+                        : 0,
+                    marginBottom: "var(--ec-space-2)",
+                  }}
+                >
+                  <span>Голосовые</span>
+                  <span style={{ color: "var(--ec-text-dim)", fontFeatureSettings: '"tnum"' }}>{voiceChannels.length}</span>
+                </div>
+                {voiceChannels.map((c) => (
+                  <div key={c.id}>
+                    {renderChannel(c)}
+                    {renderVoiceOccupants(c.id)}
+                  </div>
+                ))}
+              </>
+            )}
+
+            {channelsLoading && channels.length === 0 && (
+              <div className="ec-skeleton-list" aria-label="Загрузка комнат">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="ec-skeleton-row"
+                    style={{ gridTemplateColumns: "16px 1fr" }}
+                  >
+                    <div
+                      className="ec-skeleton-row__avatar"
+                      style={{ width: 14, height: 14, borderRadius: 3 }}
+                    />
+                    <div className="ec-skeleton-row__bars">
+                      <div className="ec-skeleton-row__bar" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {!channelsLoading && channels.length === 0 && (
+              <p style={{ color: "var(--ec-text-dim)", fontSize: "var(--ec-text-sm)", padding: "var(--ec-space-2)", margin: 0 }}>
+                Создайте первую комнату ниже.
+              </p>
+            )}
+          </>
         )}
       </div>
 
+      {/* v0.96: composer per-tab — каналы на «Каналы», create-table button
+          на «Таблицы», ничего на «Работа» (только навигация). */}
+      {sidebarTab === "tables" && onCreateTable && (
+        <div style={composerRow}>
+          <button
+            type="button"
+            onClick={onCreateTable}
+            className="ec-btn ec-btn--primary ec-btn--sm"
+            style={{ width: "100%", justifyContent: "center" }}
+          >
+            + Новая таблица
+          </button>
+        </div>
+      )}
+      {sidebarTab === "channels" && (
       <form
         onSubmit={async (e) => {
           e.preventDefault();
@@ -1111,6 +1228,7 @@ export function ChannelList({
           </button>
         </div>
       </form>
+      )}
     </aside>
   );
 }

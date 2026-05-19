@@ -1,28 +1,20 @@
-import { useEffect, useState } from "react";
 import type { CSSProperties } from "react";
-import { Avatar } from "./Avatar";
-import { ChannelDigestPanel } from "./ChannelDigestPanel";
 import { MemberList } from "./MemberList";
-import type { ChannelDigest, DigestAiSummary } from "../hooks/useChannelDigest";
 import type { MemberRow } from "../hooks/useMembers";
-import type { useVoice as useVoiceHook } from "../hooks/useVoice";
 import { resolveAssetUrl } from "../lib/assets";
 
 /**
- * IntelligencePanel — правый rail Eclipse Chat как **context-aware
- * Intelligence Panel** (Фаза A operational redesign).
+ * IntelligencePanel — right rail Eclipse Chat'а.
  *
- * Всегда видим в server-view (и voice, и chat). Tab-bar:
- *  - «Intelligence» — контекст текущего режима:
- *      · chat  → ChannelDigestPanel (задачи / решения / pinned / AI-резюме)
- *      · voice → live-roster эфира (кто говорит, mic/deafen, статус)
- *  - «Участники»   — MemberList сервера (online / offline).
+ * v0.96 UX refactor (Pavel-ask 19.05 «справа должны быть только
+ * участники»): панель упрощена до MemberList'а. Сводка / Память / Дела /
+ * Файлы переехали в новый ChannelInfoPanel (открывается через (i)-кнопку
+ * в chat-header'е).
  *
- * Thread / Incident панели по-прежнему перекрывают этот rail в AppShell —
- * IntelligencePanel это default-состояние правой колонки.
+ * Внутри файла остаются `MemoryView` / `ExecutionView` / `FilesView` как
+ * экспорты — их использует ChannelInfoPanel. VoiceIntelligence (live voice
+ * roster) удалён: для voice-каналов хватает основного voice-room UI.
  */
-
-type RightTab = "intelligence" | "memory" | "execution" | "files" | "members";
 
 export type PinnedMessageBrief = {
   id: string;
@@ -50,8 +42,6 @@ export type ExecutionItemBrief = {
 };
 
 type Props = {
-  mode: "voice" | "chat";
-  // ── Участники ─────────────────────────────────────────────
   members: MemberRow[];
   membersLoading: boolean;
   membersError: string | null;
@@ -63,36 +53,6 @@ type Props = {
   onClose?: () => void;
   /** Collapse rail (desktop) — сворачивает панель чтобы не съедать ширину центра. */
   onCollapse?: () => void;
-  // ── Intelligence: chat-режим (digest) ─────────────────────
-  digest: ChannelDigest | null;
-  digestLoading: boolean;
-  digestError: string | null;
-  onRefreshDigest: () => void;
-  digestCompact?: boolean;
-  aiSummary: DigestAiSummary | null;
-  aiLoading: boolean;
-  aiError: string | null;
-  onRequestAiSummary: () => void;
-  // ── Intelligence: voice-режим (live roster) ───────────────
-  voice: ReturnType<typeof useVoiceHook>;
-  /** id выбранного voice-канала (для определения «я в этой комнате?»). */
-  voiceChannelId: string | null;
-  voiceChannelName: string | null;
-  /** Occupants выбранного voice-канала когда ты в него НЕ подключён. */
-  voiceOccupants: MemberRow[];
-  // ── Memory / Execution / Files (chat-режим, channel-scoped) ───────
-  pinnedMessages: PinnedMessageBrief[];
-  attachments: AttachmentBrief[];
-  executionItems: ExecutionItemBrief[];
-  onToggleExecutionStatus?: (id: string, status: import("../lib/socket").ActionItemStatus) => void;
-  /** v0.54: открыть ActionItemDrawer по клику на execution row. */
-  onOpenAction?: (actionItemId: string) => void;
-  /**
-   * Client Mode: скрыть operator-tabs Дела и Файлы. В CLIENT-серверах
-   * остаются Сводка / Память / Люди — calm portal для клиента, без
-   * developer-chrome. Default tab переключается на «Люди».
-   */
-  clientMode?: boolean;
 };
 
 const wrap: CSSProperties = {
@@ -106,65 +66,53 @@ const wrap: CSSProperties = {
   minHeight: 0,
 };
 
-/**
- * Tab bar layout: class-based для responsive.css hooks (hide label на
- * narrow viewport, overflow-x scroll fallback на overcrowded states).
- *
- * Структура:
- *   `.ec-intel-tabs`     — wrapper flex с horizontal scroll fallback
- *   `.ec-intel-tab`      — индивидуальный tab button (icon + label + count)
- *   `.ec-intel-tab__icon`
- *   `.ec-intel-tab__label`
- *   `.ec-intel-tab__count`
- *   `.ec-intel-tabs__utils` — sticky-right группа utility buttons (collapse/close),
- *                              не сжимаются и не скроллятся
- */
-const tabBarInline: CSSProperties = {
-  background: "var(--ec-surface-1)",
+const headerStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: "var(--ec-space-2)",
+  padding: "var(--ec-space-3) var(--ec-space-3)",
   borderBottom: "1px solid var(--ec-border-subtle)",
+  background: "var(--ec-surface-1)",
 };
 
-/** Inline-стили только для visual variant; класс делает layout. */
-function tabBtnInline(active: boolean): CSSProperties {
-  return {
-    borderBottom: active
-      ? "2px solid var(--ec-accent)"
-      : "2px solid transparent",
-    color: active ? "var(--ec-text-strong)" : "var(--ec-text-muted)",
-  };
-}
+const headerLabel: CSSProperties = {
+  fontSize: "var(--ec-text-2xs)",
+  fontWeight: 800,
+  letterSpacing: "var(--ec-tracking-caps)",
+  textTransform: "uppercase",
+  color: "var(--ec-text-strong)",
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 6,
+  minWidth: 0,
+};
 
-/** Иконки для табов — минимальный SVG-сет, 14×14. */
-function IconSummary() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M3 5h18M3 12h12M3 19h18" />
-    </svg>
-  );
-}
-function IconMemory() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z" />
-    </svg>
-  );
-}
-function IconExecution() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <polyline points="9 11 12 14 22 4" />
-      <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
-    </svg>
-  );
-}
-function IconFiles() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z" />
-      <polyline points="13 2 13 9 20 9" />
-    </svg>
-  );
-}
+const headerCount: CSSProperties = {
+  fontSize: "var(--ec-text-2xs)",
+  color: "var(--ec-text-muted)",
+  fontWeight: 600,
+  fontFeatureSettings: '"tnum"',
+  letterSpacing: 0,
+  textTransform: "none",
+};
+
+const utilBtn: CSSProperties = {
+  width: 28,
+  height: 28,
+  padding: 0,
+  flexShrink: 0,
+  display: "grid",
+  placeItems: "center",
+};
+
+const scrollArea: CSSProperties = {
+  flex: 1,
+  minHeight: 0,
+  overflow: "auto",
+  display: "flex",
+  flexDirection: "column",
+};
+
 function IconMembers() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -175,294 +123,7 @@ function IconMembers() {
   );
 }
 
-// countPill стилизуется через .ec-intel-tab__count в responsive.css.
-
-const scrollArea: CSSProperties = {
-  flex: 1,
-  minHeight: 0,
-  overflow: "auto",
-  display: "flex",
-  flexDirection: "column",
-};
-
-const voiceWrap: CSSProperties = {
-  padding: "var(--ec-space-3)",
-  display: "flex",
-  flexDirection: "column",
-  gap: "var(--ec-space-3)",
-};
-
-const voiceHeader: CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: 4,
-};
-
-const voiceTitle: CSSProperties = {
-  fontSize: "var(--ec-text-2xs)",
-  fontWeight: 800,
-  letterSpacing: "var(--ec-tracking-caps)",
-  textTransform: "uppercase",
-  color: "var(--ec-text-strong)",
-  display: "flex",
-  alignItems: "center",
-  gap: 6,
-};
-
-const rosterRow: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "auto 1fr auto",
-  alignItems: "center",
-  gap: 8,
-  padding: "0.4rem 0.5rem",
-  borderRadius: "var(--ec-radius-sm)",
-  border: "1px solid var(--ec-border-subtle)",
-  background: "var(--ec-surface-2)",
-  fontSize: "var(--ec-text-sm)",
-};
-
-type RosterEntry = {
-  id: string;
-  name: string;
-  avatar: string | null;
-  speaking: boolean;
-  micMuted: boolean;
-  deafened: boolean;
-  isLocal: boolean;
-};
-
-function MicOffGlyph() {
-  return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <line x1="1" y1="1" x2="23" y2="23" />
-      <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6" />
-      <path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23" />
-      <line x1="12" y1="19" x2="12" y2="23" />
-    </svg>
-  );
-}
-
-function DeafenedGlyph() {
-  return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <line x1="1" y1="1" x2="23" y2="23" />
-      <path d="M3 14v-3a9 9 0 0 1 14.31-7.24M21 13v1a2 2 0 0 1-.18.83" />
-      <path d="M21 15a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3M3 14a2 2 0 0 1 2-2h1a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5" />
-    </svg>
-  );
-}
-
-function CloseButton({ onClose }: { onClose: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClose}
-      className="ec-shell__members-close ec-btn ec-btn--ghost ec-btn--sm"
-      aria-label="Закрыть"
-      style={{ width: 28, height: 28, padding: 0, flexShrink: 0, alignSelf: "center" }}
-    >
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-        <line x1="18" y1="6" x2="6" y2="18" />
-        <line x1="6" y1="6" x2="18" y2="18" />
-      </svg>
-    </button>
-  );
-}
-
-/** Voice-режим Intelligence: live-roster эфира + статус комнаты. */
-function VoiceIntelligence({
-  voice,
-  voiceChannelId,
-  voiceChannelName,
-  voiceOccupants,
-  members,
-}: {
-  voice: ReturnType<typeof useVoiceHook>;
-  voiceChannelId: string | null;
-  voiceChannelName: string | null;
-  voiceOccupants: MemberRow[];
-  members: MemberRow[];
-}) {
-  const joinedHere =
-    voice.activeChannelId != null && voice.activeChannelId === voiceChannelId;
-
-  const avatarFor = (userId: string): string | null =>
-    members.find((m) => m.userId === userId)?.user.avatar ?? null;
-
-  // Joined → live LiveKit участники. Не joined → socket-tracked occupants.
-  const roster: RosterEntry[] = joinedHere
-    ? voice.participants.map((p) => ({
-        id: p.identity,
-        name: p.name,
-        avatar: avatarFor(p.identity),
-        speaking: p.isSpeaking && !p.isMicMuted,
-        micMuted: p.isMicMuted,
-        deafened: p.isDeafened,
-        isLocal: p.isLocal,
-      }))
-    : voiceOccupants.map((m) => ({
-        id: m.userId,
-        name: m.user.displayName,
-        avatar: m.user.avatar,
-        speaking: false,
-        micMuted: false,
-        deafened: false,
-        isLocal: false,
-      }));
-
-  const statusLabel = joinedHere
-    ? voice.state === "connected"
-      ? "ты в эфире"
-      : voice.state === "reconnecting"
-      ? "переподключение"
-      : voice.state === "connecting"
-      ? "подключаемся"
-      : "не в эфире"
-    : roster.length > 0
-    ? "идёт эфир"
-    : "комната свободна";
-
-  // Semantic status-цвет: live → exec green, connecting → warn amber,
-  // свободная комната → idle blue.
-  const statusColor =
-    joinedHere && (voice.state === "connecting" || voice.state === "reconnecting")
-      ? "var(--ec-status-warn)"
-      : roster.length > 0
-      ? "var(--ec-status-exec)"
-      : "var(--ec-status-idle)";
-  const sessionLive = roster.length > 0;
-
-  return (
-    <div
-      style={voiceWrap}
-      className={sessionLive ? "ec-telemetry-edge" : undefined}
-    >
-      <div style={voiceHeader}>
-        <span style={voiceTitle}>
-          <span aria-hidden style={{ color: "var(--ec-accent)" }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M11 5L6 9H2v6h4l5 4V5z" />
-              <path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07" />
-            </svg>
-          </span>
-          Эфир
-        </span>
-        <span
-          style={{
-            fontSize: "var(--ec-text-2xs)",
-            color: "var(--ec-text-muted)",
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-          }}
-        >
-          <span
-            className={sessionLive ? "ec-signal-dot" : undefined}
-            style={{
-              color: statusColor,
-              ...(sessionLive
-                ? {}
-                : {
-                    width: 7,
-                    height: 7,
-                    borderRadius: "50%",
-                    background: "currentColor",
-                    display: "inline-block",
-                    flexShrink: 0,
-                  }),
-            }}
-            aria-hidden
-          />
-          {voiceChannelName ? `#${voiceChannelName} · ` : ""}
-          {roster.length} {roster.length === 1 ? "участник" : "участников"} · {statusLabel}
-        </span>
-      </div>
-
-      {roster.length === 0 ? (
-        <p style={{ margin: 0, color: "var(--ec-text-dim)", fontSize: "var(--ec-text-sm)" }}>
-          В этой голосовой комнате сейчас никого. Зайди первым — другие увидят
-          тебя в эфире.
-        </p>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          {roster.map((r) => (
-            <div
-              key={r.id}
-              style={{
-                ...rosterRow,
-                ...(r.speaking
-                  ? {
-                      borderColor: "var(--ec-accent)",
-                      boxShadow: "0 0 0 1px var(--ec-accent), 0 0 16px -4px hsl(195 70% 60% / 0.5)",
-                    }
-                  : null),
-              }}
-              title={
-                r.deafened
-                  ? `${r.name} — звук выключен`
-                  : r.micMuted
-                  ? `${r.name} — микрофон выключен`
-                  : r.speaking
-                  ? `${r.name} — говорит`
-                  : `${r.name} — в эфире`
-              }
-            >
-              <span
-                style={{
-                  display: "inline-block",
-                  borderRadius: "var(--ec-radius-full)",
-                  boxShadow: r.speaking
-                    ? "0 0 0 2px var(--ec-accent), 0 0 12px hsl(195 70% 60% / 0.6)"
-                    : "none",
-                  opacity: r.deafened || r.micMuted ? 0.65 : 1,
-                  transition: "box-shadow 80ms linear",
-                }}
-              >
-                <Avatar url={r.avatar} name={r.name} size={26} />
-              </span>
-              <span
-                style={{
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                  color: r.speaking ? "var(--ec-accent)" : "var(--ec-text)",
-                  fontWeight: r.speaking ? 600 : 400,
-                }}
-              >
-                {r.name}
-                {r.isLocal && (
-                  <span style={{ color: "var(--ec-text-dim)", fontWeight: 500, marginLeft: 4 }}>
-                    (ты)
-                  </span>
-                )}
-              </span>
-              {(r.deafened || r.micMuted) && (
-                <span aria-hidden style={{ display: "inline-grid", placeItems: "center", color: "var(--ec-danger)" }}>
-                  {r.deafened ? <DeafenedGlyph /> : <MicOffGlyph />}
-                </span>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
-      <p
-        style={{
-          margin: 0,
-          fontSize: "var(--ec-text-2xs)",
-          color: "var(--ec-text-dim)",
-          lineHeight: "var(--ec-leading-normal)",
-        }}
-      >
-        Live AI-резюме эфира и action items появятся здесь — слой Intelligence
-        в работе.
-      </p>
-    </div>
-  );
-}
-
 export function IntelligencePanel({
-  mode,
   members,
   membersLoading,
   membersError,
@@ -472,204 +133,73 @@ export function IntelligencePanel({
   onOpenDm,
   onClose,
   onCollapse,
-  digest,
-  digestLoading,
-  digestError,
-  onRefreshDigest,
-  digestCompact,
-  aiSummary,
-  aiLoading,
-  aiError,
-  onRequestAiSummary,
-  voice,
-  voiceChannelId,
-  voiceChannelName,
-  voiceOccupants,
-  pinnedMessages,
-  attachments,
-  executionItems,
-  onToggleExecutionStatus,
-  onOpenAction,
-  clientMode = false,
 }: Props) {
-  // Default-вкладка: voice → Люди, chat operator → Сводка, chat client → Люди.
-  // CLIENT-серверы прячут Дела + Файлы — клиенту важнее «кто есть в комнате».
-  const defaultTab: RightTab =
-    mode === "voice" || clientMode ? "members" : "intelligence";
-  const [tab, setTab] = useState<RightTab>(defaultTab);
-
-  // При смене режима или CLIENT-флага — сброс на актуальный default.
-  useEffect(() => {
-    setTab(defaultTab);
-  }, [defaultTab]);
-  // Если ранее выбран запрещённый в client-mode таб — переключаем.
-  useEffect(() => {
-    if (clientMode && (tab === "execution" || tab === "files")) {
-      setTab("members");
-    }
-  }, [clientMode, tab]);
-
   const onlineCount = members.filter((m) => m.online).length;
 
   return (
-    <aside style={wrap} aria-label="Intelligence-панель">
-      <div className="ec-intel-tabs" style={tabBarInline} role="tablist">
-        <button
-          type="button"
-          className="ec-intel-tab"
-          style={tabBtnInline(tab === "intelligence")}
-          onClick={() => setTab("intelligence")}
-          aria-selected={tab === "intelligence"}
-          role="tab"
-          title="Сводка / контекст комнаты"
-        >
-          <span className="ec-intel-tab__icon"><IconSummary /></span>
-          <span className="ec-intel-tab__label">Сводка</span>
-        </button>
-        {mode === "chat" && (
-          <>
-            <button
-              type="button"
-              className="ec-intel-tab"
-              style={tabBtnInline(tab === "memory")}
-              onClick={() => setTab("memory")}
-              aria-selected={tab === "memory"}
-              role="tab"
-              title="Закреплённое — память комнаты"
-            >
-              <span className="ec-intel-tab__icon"><IconMemory /></span>
-              <span className="ec-intel-tab__label">Память</span>
-              {pinnedMessages.length > 0 && (
-                <span className="ec-intel-tab__count">{pinnedMessages.length}</span>
-              )}
-            </button>
-            {!clientMode && (
-              <button
-                type="button"
-                className="ec-intel-tab"
-                style={tabBtnInline(tab === "execution")}
-                onClick={() => setTab("execution")}
-                aria-selected={tab === "execution"}
-                role="tab"
-                title="Задачи / решения / follow-up комнаты"
-              >
-                <span className="ec-intel-tab__icon"><IconExecution /></span>
-                <span className="ec-intel-tab__label">Дела</span>
-                {executionItems.length > 0 && (
-                  <span className="ec-intel-tab__count">{executionItems.length}</span>
-                )}
-              </button>
-            )}
-            {!clientMode && (
-              <button
-                type="button"
-                className="ec-intel-tab"
-                style={tabBtnInline(tab === "files")}
-                onClick={() => setTab("files")}
-                aria-selected={tab === "files"}
-                role="tab"
-                title="Файлы комнаты"
-              >
-                <span className="ec-intel-tab__icon"><IconFiles /></span>
-                <span className="ec-intel-tab__label">Файлы</span>
-                {attachments.length > 0 && (
-                  <span className="ec-intel-tab__count">{attachments.length}</span>
-                )}
-              </button>
-            )}
-          </>
-        )}
-        <button
-          type="button"
-          className="ec-intel-tab"
-          style={tabBtnInline(tab === "members")}
-          onClick={() => setTab("members")}
-          aria-selected={tab === "members"}
-          role="tab"
-          title={`Участники пространства · ${onlineCount}/${members.length}`}
-        >
-          <span className="ec-intel-tab__icon"><IconMembers /></span>
-          <span className="ec-intel-tab__label">Люди</span>
-        </button>
-        <div className="ec-intel-tabs__utils">
+    <aside style={wrap} aria-label="Участники">
+      <header style={headerStyle}>
+        <span style={headerLabel}>
+          <span aria-hidden style={{ color: "var(--ec-accent)" }}>
+            <IconMembers />
+          </span>
+          <span>Участники</span>
+        </span>
+        <span style={headerCount}>
+          {onlineCount}/{members.length}
+        </span>
+        <div style={{ marginLeft: "auto", display: "inline-flex", gap: 2 }}>
           {onCollapse && (
             <button
               type="button"
               onClick={onCollapse}
               aria-label="Свернуть панель"
               title="Свернуть панель"
-              className="ec-btn ec-btn--ghost ec-btn--sm ec-intel-tabs__util"
+              className="ec-btn ec-btn--ghost ec-btn--sm"
+              style={utilBtn}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <path d="M9 6l6 6-6 6" />
               </svg>
             </button>
           )}
-          {onClose && <CloseButton onClose={onClose} />}
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Закрыть"
+              title="Закрыть"
+              className="ec-shell__members-close ec-btn ec-btn--ghost ec-btn--sm"
+              style={utilBtn}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          )}
         </div>
-      </div>
+      </header>
 
-      {tab === "members" ? (
-        <div style={scrollArea}>
-          <MemberList
-            members={members}
-            loading={membersLoading}
-            error={membersError}
-            voiceChannelByUser={voiceChannelByUser}
-            channelNameById={channelNameById}
-            currentUserId={currentUserId}
-            onOpenDm={onOpenDm}
-            hideHeader
-          />
-        </div>
-      ) : tab === "memory" ? (
-        <div style={{ ...scrollArea, padding: "var(--ec-space-3)" }}>
-          <MemoryView items={pinnedMessages} />
-        </div>
-      ) : tab === "execution" ? (
-        <div style={{ ...scrollArea, padding: "var(--ec-space-3)" }}>
-          <ExecutionView
-            items={executionItems}
-            onToggle={onToggleExecutionStatus}
-            onOpen={onOpenAction}
-          />
-        </div>
-      ) : tab === "files" ? (
-        <div style={{ ...scrollArea, padding: "var(--ec-space-3)" }}>
-          <FilesView items={attachments} />
-        </div>
-      ) : mode === "voice" ? (
-        <div style={scrollArea}>
-          <VoiceIntelligence
-            voice={voice}
-            voiceChannelId={voiceChannelId}
-            voiceChannelName={voiceChannelName}
-            voiceOccupants={voiceOccupants}
-            members={members}
-          />
-        </div>
-      ) : (
-        <div style={{ ...scrollArea, padding: "var(--ec-space-3)" }}>
-          <ChannelDigestPanel
-            digest={digest}
-            loading={digestLoading}
-            error={digestError}
-            onRefresh={onRefreshDigest}
-            compact={digestCompact}
-            aiSummary={aiSummary}
-            aiLoading={aiLoading}
-            aiError={aiError}
-            onRequestAiSummary={onRequestAiSummary}
-          />
-        </div>
-      )}
+      <div style={scrollArea}>
+        <MemberList
+          members={members}
+          loading={membersLoading}
+          error={membersError}
+          voiceChannelByUser={voiceChannelByUser}
+          channelNameById={channelNameById}
+          currentUserId={currentUserId}
+          onOpenDm={onOpenDm}
+          hideHeader
+        />
+      </div>
     </aside>
   );
 }
 
-/* ===== Memory tab ========================================== */
+/* ===== Inner views exported for ChannelInfoPanel ============= */
 
-function MemoryView({ items }: { items: PinnedMessageBrief[] }) {
+export function MemoryView({ items }: { items: PinnedMessageBrief[] }) {
   if (items.length === 0) {
     return (
       <p style={{ margin: 0, color: "var(--ec-text-dim)", fontSize: "var(--ec-text-sm)" }}>
@@ -726,15 +256,13 @@ function MemoryView({ items }: { items: PinnedMessageBrief[] }) {
   );
 }
 
-/* ===== Execution tab ======================================= */
-
 function execTypeMeta(type: "TASK" | "DECISION" | "FOLLOW_UP") {
   if (type === "DECISION") return { glyph: "◆", color: "var(--ec-status-ai)" };
   if (type === "FOLLOW_UP") return { glyph: "↻", color: "var(--ec-status-warn)" };
   return { glyph: "□", color: "var(--ec-status-exec)" };
 }
 
-function ExecutionView({
+export function ExecutionView({
   items,
   onToggle,
   onOpen,
@@ -832,15 +360,13 @@ function ExecutionView({
   );
 }
 
-/* ===== Files tab =========================================== */
-
 function humanSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
-function FilesView({ items }: { items: AttachmentBrief[] }) {
+export function FilesView({ items }: { items: AttachmentBrief[] }) {
   if (items.length === 0) {
     return (
       <p style={{ margin: 0, color: "var(--ec-text-dim)", fontSize: "var(--ec-text-sm)" }}>

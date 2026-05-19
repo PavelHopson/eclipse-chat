@@ -11,6 +11,7 @@ import { CreateGroupDmModal, type AvailableUser } from "../components/CreateGrou
 import { GroupAvatar } from "../components/GroupAvatar";
 import { HomeToday } from "../components/HomeToday";
 import { IntelligencePanel } from "../components/IntelligencePanel";
+import { ChannelInfoPanel } from "../components/ChannelInfoPanel";
 import { ActionItemDrawer } from "../components/ActionItemDrawer";
 import { OperationalTablePanel } from "../components/OperationalTablePanel";
 import { useOperationalTables } from "../hooks/useOperationalTables";
@@ -141,6 +142,10 @@ const chatColumn: CSSProperties = {
   flexDirection: "column",
   minWidth: 0,
   background: "var(--ec-bg)",
+  // v0.96: position: relative — нужно чтобы ChannelInfoPanel overlay
+  // (absolute) корректно позиционировался поверх MessageList'а внутри
+  // chat-section'а.
+  position: "relative",
 };
 
 const chatHeader: CSSProperties = {
@@ -298,6 +303,17 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   const [showVoiceMusicPicker, setShowVoiceMusicPicker] = useState(false);
   /** v0.74 #32 phase 3: открыт ли expand modal плеера. */
   const [showMusicExpand, setShowMusicExpand] = useState(false);
+  /** v0.96 UX refactor: открыт ли ChannelInfoPanel overlay (Сводка/Память/
+   *  Дела/Файлы) поверх MessageList. Раньше эти 4 вкладки жили в right rail. */
+  const [infoPanelOpen, setInfoPanelOpen] = useState(false);
+  const [infoPanelTab, setInfoPanelTab] = useState<
+    "summary" | "memory" | "execution" | "files"
+  >("summary");
+  // Закрываем info panel при смене канала — context меняется, panel может
+  // не иметь смысла. User снова откроет если нужно.
+  useEffect(() => {
+    setInfoPanelOpen(false);
+  }, [selectedChannelId]);
   // v0.61 shared listening room. Scoped per selected TEXT/BROADCAST channel —
   // в VOICE сессии не активны (backend отвергнёт).
   const music = useChannelMusic(selectedChannelId, socket);
@@ -1087,6 +1103,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           />
         ) : (
           <ChannelList
+            serverId={activeServer?.id ?? null}
             serverName={activeServer?.name ?? null}
             serverRole={activeServer?.role ?? null}
             inviteCode={activeServer?.inviteCode ?? null}
@@ -1387,6 +1404,44 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                   Музыка
                 </button>
               )}
+              {/* v0.96: (i) кнопка — открывает ChannelInfoPanel overlay
+                  с 4 inner tabs (Сводка/Память/Дела/Файлы). Раньше эти
+                  вкладки жили в right rail; теперь rail = только Участники. */}
+              <button
+                type="button"
+                onClick={() => setInfoPanelOpen((v) => !v)}
+                aria-label={infoPanelOpen ? "Закрыть информацию о комнате" : "Информация о комнате"}
+                aria-pressed={infoPanelOpen}
+                title={infoPanelOpen ? "Закрыть информацию" : "Сводка / Память / Дела / Файлы"}
+                style={{
+                  flexShrink: 0,
+                  width: 26,
+                  height: 26,
+                  display: "grid",
+                  placeItems: "center",
+                  background: infoPanelOpen ? "var(--ec-accent-soft)" : "transparent",
+                  border: 0,
+                  borderRadius: "var(--ec-radius-sm)",
+                  color: infoPanelOpen ? "var(--ec-accent)" : "var(--ec-text-dim)",
+                  cursor: "pointer",
+                  transition: "background var(--ec-dur-fast) var(--ec-ease), color var(--ec-dur-fast) var(--ec-ease)",
+                }}
+                onMouseEnter={(e) => {
+                  if (infoPanelOpen) return;
+                  e.currentTarget.style.background = "var(--ec-surface-2)";
+                  e.currentTarget.style.color = "var(--ec-text)";
+                }}
+                onMouseLeave={(e) => {
+                  if (infoPanelOpen) return;
+                  e.currentTarget.style.background = "transparent";
+                  e.currentTarget.style.color = "var(--ec-text-dim)";
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M12 16v-4M12 8h.01" />
+                </svg>
+              </button>
               {(activeServer?.role === "OWNER" ||
                 activeServer?.role === "ADMIN" ||
                 activeServer?.role === "MODERATOR") && (
@@ -1435,6 +1490,67 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           <div style={errorBanner}>
             {serversError ?? messagesError ?? dmError ?? dmMessagesError}
           </div>
+        )}
+
+        {/* v0.96: ChannelInfoPanel — открывается (i)-кнопкой в chat-header.
+            4 inner tabs: Сводка/Память/Дела/Файлы. Раньше эти вкладки жили
+            в right rail (IntelligencePanel) — теперь rail = только Участники. */}
+        {selectedChannel && infoPanelOpen && !inDmMode && (
+          <ChannelInfoPanel
+            channelId={selectedChannel.id}
+            open={infoPanelOpen}
+            onClose={() => setInfoPanelOpen(false)}
+            activeTab={infoPanelTab}
+            onTabChange={setInfoPanelTab}
+            digest={channelDigest}
+            digestLoading={digestLoading}
+            digestError={digestError}
+            onRefreshDigest={() => void refreshDigest()}
+            digestCompact={isMobile}
+            aiSummary={digestAiSummary}
+            aiLoading={digestAiLoading}
+            aiError={digestAiError}
+            onRequestAiSummary={() => void requestDigestAiSummary(7)}
+            pinnedMessages={messages
+              .filter((m) => m.pinnedAt && !m.deletedAt)
+              .map((m) => ({
+                id: m.id,
+                content: m.content,
+                pinnedAt: m.pinnedAt,
+                user: {
+                  displayName: m.user.displayName,
+                  avatar: m.user.avatar,
+                },
+              }))}
+            attachments={messages.flatMap((m) =>
+              m.attachments.map((a) => ({
+                id: a.id,
+                filename: a.filename,
+                mimeType: a.mimeType,
+                size: a.size,
+                url: a.url,
+                thumbnailUrl: a.thumbnailUrl,
+              })),
+            )}
+            executionItems={openActionItems.map((a) => ({
+              id: a.id,
+              title: a.title,
+              type: a.type,
+              status: a.status,
+              dueAt: a.dueAt ?? null,
+              assignee: a.assignee
+                ? {
+                    displayName: a.assignee.displayName,
+                    avatar: a.assignee.avatar,
+                  }
+                : null,
+            }))}
+            onToggleExecutionStatus={(id, status) =>
+              void updateActionItemStatus(id, status)
+            }
+            onOpenAction={(id) => setOpenActionItemId(id)}
+            clientMode={isClientMode}
+          />
         )}
 
         {helpOpen ? (
@@ -1868,7 +1984,6 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             />
           ) : (
             <IntelligencePanel
-              mode={isVoiceView ? "voice" : "chat"}
               members={members}
               membersLoading={membersLoading}
               membersError={membersError}
@@ -1887,60 +2002,6 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                   }
                 });
               }}
-              digest={channelDigest}
-              digestLoading={digestLoading}
-              digestError={digestError}
-              onRefreshDigest={() => void refreshDigest()}
-              digestCompact={isMobile}
-              aiSummary={digestAiSummary}
-              aiLoading={digestAiLoading}
-              aiError={digestAiError}
-              onRequestAiSummary={() => void requestDigestAiSummary(7)}
-              voice={voice}
-              voiceChannelId={
-                selectedChannel?.type === "VOICE" ? selectedChannel.id : null
-              }
-              voiceChannelName={isVoiceView ? selectedChannel?.name ?? null : null}
-              voiceOccupants={selectedVoiceOccupants}
-              pinnedMessages={messages
-                .filter((m) => m.pinnedAt && !m.deletedAt)
-                .map((m) => ({
-                  id: m.id,
-                  content: m.content,
-                  pinnedAt: m.pinnedAt,
-                  user: {
-                    displayName: m.user.displayName,
-                    avatar: m.user.avatar,
-                  },
-                }))}
-              attachments={messages.flatMap((m) =>
-                m.attachments.map((a) => ({
-                  id: a.id,
-                  filename: a.filename,
-                  mimeType: a.mimeType,
-                  size: a.size,
-                  url: a.url,
-                  thumbnailUrl: a.thumbnailUrl,
-                })),
-              )}
-              executionItems={openActionItems.map((a) => ({
-                id: a.id,
-                title: a.title,
-                type: a.type,
-                status: a.status,
-                dueAt: a.dueAt ?? null,
-                assignee: a.assignee
-                  ? {
-                      displayName: a.assignee.displayName,
-                      avatar: a.assignee.avatar,
-                    }
-                  : null,
-              }))}
-              onToggleExecutionStatus={(id, status) =>
-                void updateActionItemStatus(id, status)
-              }
-              onOpenAction={(id) => setOpenActionItemId(id)}
-              clientMode={isClientMode}
             />
           )}
         </div>
