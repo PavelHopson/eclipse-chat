@@ -1,0 +1,126 @@
+@import "tailwindcss";
+
+:root {
+  /* Layered blacks */
+  --ec-bg: #07090D;
+  --ec-surface-1: #0B0F14;
+  --ec-surface-2: #11161D;
+  --ec-surface-3: #141A22;
+  --ec-surface-glass: rgba(11, 15, 20, 0.45); /* Glass layer */
+
+  /* Text */
+  --ec-text: hsl(210 18% 88%);
+  --ec-text-strong: hsl(210 22% 96%);
+  /* Text and borders exist here too but are mostly tailwind classes now */
+  --ec-header-height: 60px;
+  --ec-rail-width: 68px;
+  --ec-sidebar-width: 260px;
+  --ec-members-width: 250px;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, "SF Pro Display", "Segoe UI", system-ui, sans-serif;
+  background: var(--ec-bg);
+  color: var(--ec-text);
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+/* Light Theme (Flux) */
+.theme-light body {
+  /* Invert all rendering, then correct hue to maintain basic layout logic while flipping white/black */
+  filter: invert(1) hue-rotate(180deg);
+  background: #fff; 
+}
+.theme-light img,
+.theme-light video,
+.theme-light canvas,
+.theme-light .ec-no-invert {
+  /* Restore images and media back to normal inside the inverted shell */
+  filter: invert(1) hue-rotate(180deg) !important;
+}
+.theme-light .filter-none {
+  filter: invert(1) hue-rotate(180deg) !important;
+}
+
+/* Eclipse Theme (Cosmic Orange / Deep Red) */
+.theme-eclipse body {
+  /* Shifts the entire UI colorscape to an intense cosmic warmth */
+  filter: hue-rotate(160deg) saturate(1.8) contrast(1.1);
+}
+.theme-eclipse img {
+  /* Counteract the hue shift on avatars/images */
+  filter: hue-rotate(-160deg) saturate(0.6) !important;
+}
+
+/* App Shell Grid setup */
+.ec-shell {
+  height: 100vh;
+  display: grid;
+  grid-template-rows: var(--ec-header-height) 1fr;
+  grid-template-columns: var(--ec-rail-width) var(--ec-sidebar-width) 1fr var(--ec-members-width);
+  grid-template-areas:
+    "top top top top"
+    "rail channels chat members";
+}
+
+@media (max-width: 1024px) {
+  .ec-shell {
+    grid-template-columns: var(--ec-rail-width) 0 1fr 0;
+    grid-template-areas:
+      "top top top top"
+      "rail channels chat members";
+  }
+}
+@media (max-width: 768px) {
+  .ec-shell {
+    grid-template-columns: 0 0 1fr 0;
+  }
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #18202A; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #5db5d9; }
+
+.protocol-scrollbar::-webkit-scrollbar { width: 2px; }
+.protocol-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.protocol-scrollbar::-webkit-scrollbar-thumb { background: #18202A; border-radius: 0; }
+.protocol-scrollbar::-webkit-scrollbar-thumb:hover { background: #5db5d9; }
+
+/* Glassmorphism Surface */
+.ec-glass-panel {
+  background: var(--ec-surface-glass);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+}
+
+/* Telemetry / Scanlines */
+.ec-telemetry-edge {
+  position: relative;
+}
+.ec-telemetry-edge::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: var(--ec-holo-cyan);
+}
+
+/* Animated Shimmer Text */
+.ec-shimmer-text {
+  background: linear-gradient(90deg, var(--ec-text-strong) 0%, var(--ec-accent) 50%, var(--ec-text-strong) 100%);
+  background-size: 200% auto;
+  color: transparent;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: shimmer 3s linear infinite;
+}
+@keyframes shimmer { to { background-position: 200% center; } }
+
+/* Holographic Avatar Glow */
+.ec-avatar-glow {
+  box-shadow: 0 0 10px 1px hsl(260 80% 60% / 0.4);
+}
+

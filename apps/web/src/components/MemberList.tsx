@@ -310,7 +310,7 @@ export function MemberList({
               <>
                 <div className="ec-section-label" style={{ marginBottom: "var(--ec-space-2)" }}>
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                    <span className="ec-dot ec-dot--online" />В сети
+                    <span className="ec-dot ec-dot--online" />LINKED_NODES
                   </span>
                   <span style={{ color: "var(--ec-text-dim)", fontFeatureSettings: '"tnum"' }}>{online.length}</span>
                 </div>
@@ -337,7 +337,7 @@ export function MemberList({
                   style={{ marginTop: online.length > 0 ? "var(--ec-space-4)" : 0, marginBottom: "var(--ec-space-2)" }}
                 >
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                    <span className="ec-dot ec-dot--offline" />Не в сети
+                    <span className="ec-dot ec-dot--offline" />SLEEP_STATE
                   </span>
                   <span style={{ color: "var(--ec-text-dim)", fontFeatureSettings: '"tnum"' }}>{offline.length}</span>
                 </div>

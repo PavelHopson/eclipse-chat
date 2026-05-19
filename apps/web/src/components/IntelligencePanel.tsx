@@ -143,7 +143,7 @@ export function IntelligencePanel({
           <span aria-hidden style={{ color: "var(--ec-accent)" }}>
             <IconMembers />
           </span>
-          <span>Участники</span>
+          <span>TACTICAL VIEW</span>
         </span>
         <span style={headerCount}>
           {onlineCount}/{members.length}

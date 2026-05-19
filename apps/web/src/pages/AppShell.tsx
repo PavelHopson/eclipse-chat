@@ -761,7 +761,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             title="Главная"
           >
             <span className="ec-brand-mark" style={brandMark} aria-hidden />
-            <span className="ec-shell__brand-title">Eclipse Chat</span>
+            <span className="ec-shell__brand-title" style={{ letterSpacing: "0.18em", fontWeight: 700 }}>ECLIPSE_OS</span>
           </button>
           {homeOpen ? (
             <span className="ec-shell__breadcrumb" style={breadcrumbStyle}>

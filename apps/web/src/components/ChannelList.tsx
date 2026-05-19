@@ -845,7 +845,7 @@ export function ChannelList({
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
             <path d="M9 17H5a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v10a2 2 0 01-2 2h-4l-3 4-3-4z" />
           </svg>
-          <span>Каналы</span>
+          <span>CHANNELS</span>
         </button>
         <button
           type="button"
@@ -859,7 +859,7 @@ export function ChannelList({
             <polyline points="9 11 12 14 22 4" />
             <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
           </svg>
-          <span>Работа</span>
+          <span>TASKS</span>
         </button>
         <button
           type="button"
@@ -874,7 +874,7 @@ export function ChannelList({
             <line x1="3" y1="9" x2="21" y2="9" />
             <line x1="9" y1="3" x2="9" y2="21" />
           </svg>
-          <span>Таблицы</span>
+          <span>DATA</span>
           {tables !== undefined && tables.length > 0 && (
             <span
               style={{
@@ -1037,7 +1037,7 @@ export function ChannelList({
               <>
                 <div className="ec-section-label" style={{ marginBottom: "var(--ec-space-2)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                    <span>Текстовые</span>
+                    <span>DATA STREAMS</span>
                     <span style={{ color: "var(--ec-text-dim)", fontFeatureSettings: '"tnum"' }}>{textChannels.length}</span>
                   </span>
                   {editable && (
@@ -1079,7 +1079,7 @@ export function ChannelList({
                   }}
                 >
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                    <span>Каналы</span>
+                    <span>BROADCAST</span>
                     <span style={{ color: "var(--ec-text-dim)", fontFeatureSettings: '"tnum"' }}>{broadcastChannels.length}</span>
                   </span>
                   {editable && (
@@ -1124,7 +1124,7 @@ export function ChannelList({
                   }}
                 >
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                    <span>Голосовые</span>
+                    <span>VOICE LINKS</span>
                     <span style={{ color: "var(--ec-text-dim)", fontFeatureSettings: '"tnum"' }}>{voiceChannels.length}</span>
                   </span>
                   {editable && (
@@ -1221,7 +1221,7 @@ export function ChannelList({
             className="ec-btn ec-btn--primary ec-btn--sm"
             style={{ width: "100%", justifyContent: "center" }}
           >
-            + Новая комната
+            + INITIALIZE ROOM
           </button>
         </div>
       )}

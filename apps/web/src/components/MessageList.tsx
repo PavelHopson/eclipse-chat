@@ -595,7 +595,12 @@ export function MessageList({
                     {formatTime(m.createdAt)}
                   </span>
                 ) : (
-                  <Avatar url={m.user.avatar} name={m.user.displayName} size={36} />
+                  <span
+                    className={m.user.isBot ? "ec-avatar-halo ec-avatar-halo--ai" : undefined}
+                    style={{ display: "inline-block", borderRadius: "50%" }}
+                  >
+                    <Avatar url={m.user.avatar} name={m.user.displayName} size={36} />
+                  </span>
                 )}
               </div>
               <div style={{ minWidth: 0 }}>
@@ -614,7 +619,7 @@ export function MessageList({
                       const c = useRole
                         ? BOT_ROLE_COLORS[role!]
                         : BOT_ROLE_COLORS.GENERIC;
-                      const label = useRole ? BOT_ROLE_LABELS[role!] : "BOT";
+                      const label = useRole ? BOT_ROLE_LABELS[role!] : "AI_AGENT";
                       return (
                         <span
                           title={

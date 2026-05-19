@@ -244,9 +244,166 @@
   --ec-members-width:       248px;
   --ec-composer-min-height: 48px;
 
+  /* ---- v1.1 Eclipse_OS cyberpunk patterns (из AI Studio mockup'а) -- */
+  /* Frosted glass surface для panels поверх chat-area / overlays. */
+  --ec-surface-glass:       rgba(11, 15, 20, 0.45);
+  /* Holographic edge — linear gradient base для borders / dividers. */
+  --ec-holo-cyan:           linear-gradient(
+                              90deg,
+                              transparent 0%,
+                              hsl(195 70% 60% / 0.8) 50%,
+                              transparent 100%
+                            );
+  /* AI/agent glow ring (violet, reuse --ec-accent-3). */
+  --ec-glow-ai:             0 0 10px 1px hsl(252 70% 70% / 0.4),
+                            inset 0 0 6px hsl(252 70% 70% / 0.15);
+  --ec-glow-live:           0 0 10px 1px hsl(195 70% 60% / 0.4),
+                            inset 0 0 6px hsl(195 70% 60% / 0.15);
+
   /* ---- Breakpoints --------------------------------------------- */
   --ec-bp-mobile:           640px;
   --ec-bp-tablet:           1024px;
+}
+
+/* ============================================================
+ * v1.1 Eclipse_OS effects layer
+ * ============================================================ */
+
+/* Holographic top-edge — 1px accent gradient + subtle glow. Применяется
+ * к chat-header / modal-header / cards с .ec-holo-edge.  Optional --
+ * элементы остаются functional без класса. */
+.ec-holo-edge {
+  position: relative;
+}
+.ec-holo-edge::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--ec-holo-cyan);
+  pointer-events: none;
+}
+
+/* Active channel left-border holographic indicator. Заменяет solid
+ * box-shadow inset 3px 0 0 var(--ec-accent) с breathing gradient. */
+.ec-channel-item--active.ec-channel-item {
+  background: hsl(195 70% 60% / 0.08);
+  box-shadow:
+    inset 3px 0 0 var(--ec-accent),
+    inset 4px 0 12px -4px hsl(195 70% 60% / 0.35);
+}
+
+/* Scan-line animation — horizontal sweep slow infinite. Применяется
+ * к telemetry-bar / header-edge. respects prefers-reduced-motion
+ * через --ec-dur-* tokens (становится 1ms → invisible). */
+.ec-scan-line {
+  position: relative;
+  overflow: hidden;
+}
+.ec-scan-line::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 128px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    hsl(195 70% 60% / 0.45) 50%,
+    transparent 100%
+  );
+  animation: ec-scan-sweep 4s linear infinite;
+  pointer-events: none;
+}
+@keyframes ec-scan-sweep {
+  0%   { left: -128px; }
+  100% { left: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ec-scan-line::after { animation: none; opacity: 0; }
+}
+
+/* Glass panel utility (frosted surface). Уже использует backdrop-filter
+ * паттерн как Modal.tsx, но reusable class. */
+.ec-glass-panel {
+  background: var(--ec-surface-glass);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+}
+
+/* Avatar glow variants — bot / live speaker / online user. */
+.ec-avatar-halo {
+  position: relative;
+}
+.ec-avatar-halo--ai {
+  box-shadow: var(--ec-glow-ai);
+  border-radius: 50%;
+}
+.ec-avatar-halo--live {
+  box-shadow: var(--ec-glow-live);
+  border-radius: 50%;
+  animation: ec-avatar-breathe 4s ease-in-out infinite;
+}
+@keyframes ec-avatar-breathe {
+  0%, 100% { box-shadow: var(--ec-glow-live); }
+  50%      { box-shadow: 0 0 14px 2px hsl(195 70% 60% / 0.55),
+                          inset 0 0 8px hsl(195 70% 60% / 0.2); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ec-avatar-halo--live { animation: none; }
+}
+
+/* Custom scrollbar — cyan accent on hover. Применяется globally (только
+ * у webkit-сразу, Firefox использует scrollbar-color separately). */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: hsl(210 18% 22%);
+  border-radius: 6px;
+  transition: background var(--ec-dur-fast) var(--ec-ease);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(195 70% 60% / 0.65);
+}
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(210 18% 22%) transparent;
+}
+
+/* Telemetry pill — для top-bar status indicators (NET/MEM/CPU style). */
+.ec-telemetry-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0.18rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-family: var(--ec-font-mono, ui-monospace, monospace);
+  font-feature-settings: "tnum";
+  background: hsl(210 18% 12% / 0.6);
+  border: 1px solid hsl(210 18% 22%);
+  color: hsl(210 14% 70%);
+}
+.ec-telemetry-pill--ok {
+  border-color: hsl(160 55% 56% / 0.45);
+  color: hsl(160 55% 70%);
+}
+.ec-telemetry-pill--warn {
+  border-color: hsl(42 90% 64% / 0.45);
+  color: hsl(42 90% 72%);
+}
+.ec-telemetry-pill__dot {
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 6px currentColor;
 }
 
 /* Respect user system preference */

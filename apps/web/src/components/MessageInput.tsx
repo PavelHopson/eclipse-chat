@@ -1016,7 +1016,7 @@ export function MessageInput({
             setTimeout(() => setTrigger(null), 120);
           }}
           placeholder={
-            placeholder ?? (channelName ? `Сообщение в #${channelName}` : "Сообщение")
+            placeholder ?? (channelName ? `INITIALIZE TRANSMISSION в #${channelName}…` : "INITIALIZE TRANSMISSION…")
           }
           disabled={disabled}
           className="ec-composer-textarea"
@@ -1027,13 +1027,13 @@ export function MessageInput({
           disabled={!canSend}
           className="ec-composer-send"
           style={{ ...sendBtn, opacity: canSend ? 1 : 0.4, cursor: canSend ? "pointer" : "default" }}
-          title="Отправить (Enter)"
+          title="TRANSMIT (Enter)"
         >
           {sending ? (
             "…"
           ) : (
             <>
-              <span className="ec-composer-send-label">Отправить</span>
+              <span className="ec-composer-send-label" style={{ letterSpacing: "0.08em" }}>TRANSMIT</span>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <line x1="22" y1="2" x2="11" y2="13" />
                 <polygon points="22 2 15 22 11 13 2 9 22 2" />

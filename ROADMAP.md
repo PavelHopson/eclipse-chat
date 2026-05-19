@@ -5,7 +5,67 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v1.0.2** (Composio AutomationRule UI editor —
+**Текущая версия в проде:** **v1.1.0** (Eclipse_OS visual rebrand —
+из Google AI Studio mockup'а который Pavel получил. Pavel-feedback:
+«мне нравится как визуально он сделал, давай применим». Cyberpunk
+operational system visual language adopted.
+
+**New tokens** (apps/web/src/styles/tokens.css):
+- `--ec-surface-glass` (rgba(11,15,20,0.45)) для frosted panels
+- `--ec-holo-cyan` linear-gradient для holographic edges
+- `--ec-glow-ai` + `--ec-glow-live` multi-layer box-shadow для avatar halos
+- (Existing `--ec-accent-3` violet reused для AI variant — не дублирован)
+
+**New utility classes**:
+- `.ec-holo-edge` — 1px holographic top-edge via ::before
+- `.ec-scan-line` — horizontal sweep keyframe (4s infinite, respects
+  prefers-reduced-motion)
+- `.ec-glass-panel` — frosted blur(20px) + saturate(140%)
+- `.ec-avatar-halo--ai` — violet glow ring для bot avatars
+- `.ec-avatar-halo--live` — cyan breathing 4s для speaking users
+- `.ec-telemetry-pill` + variants (ok/warn) с monospace tnum
+- Active channel — теперь holographic gradient left-border вместо
+  solid (через `.ec-channel-item--active` style update)
+- Custom scrollbar — `:hover` → cyan accent с smooth transition,
+  Firefox через scrollbar-color/width
+
+**Vocabulary rebrand** (Russian UI labels → English sci-fi tech):
+- Sidebar tabs: «Каналы» → **CHANNELS** / «Работа» → **TASKS** /
+  «Таблицы» → **DATA**
+- Section labels: «Текстовые» → **DATA STREAMS** / «Каналы» (broadcast)
+  → **BROADCAST** / «Голосовые» → **VOICE LINKS**
+- Members panel: «Участники» → **TACTICAL VIEW** / «В сети» →
+  **LINKED_NODES** / «Не в сети» → **SLEEP_STATE**
+- Composer: «Сообщение в #X» → **INITIALIZE TRANSMISSION в #X…** /
+  «Отправить» → **TRANSMIT** (+ letter-spacing 0.08em)
+- «+ Новая комната» → **+ INITIALIZE ROOM**
+- Brand: «Eclipse Chat» → **ECLIPSE_OS** (topbar, letter-spacing 0.18em)
+- Bot badge: «BOT» → **AI_AGENT** в MessageList (только для GENERIC,
+  taxonomy-role badges остаются с role-name)
+
+**Russian content** (channel names / message content / display names /
+descriptions) сохраняется — только UI/system labels рекодированы.
+
+**Bot avatars** — теперь wrap'аются в `.ec-avatar-halo--ai` span с
+violet glow ring (`--ec-glow-ai` shadow).
+
+**Trade-offs**:
+- AuthScreen redesign (multi-step biometric scan + 2FA keypad) —
+  отложен в v1.1.1 чтобы scope не разбух
+- Vocabulary доступно только англоязычным/смешанным users — full
+  Russian fallback можно вернуть через i18n позже если потребуется
+- Light theme через filter-invert (AI Studio предложение) — НЕ
+  принят как anti-pattern (ломает image colors)
+
+**Файлы изменены**: tokens.css (+140 строк effects layer),
+ChannelList.tsx (7 vocab points), IntelligencePanel.tsx (1 label),
+MemberList.tsx (2 sections), AppShell.tsx (brand), MessageInput.tsx
+(placeholder + button label + title), MessageList.tsx (bot badge +
+avatar halo wrap).
+
+Полная история — в timeline ниже.)
+
+**Предыдущие версии:** v1.0.2 (Composio AutomationRule UI editor —
 закрывает loop из v1.0.1 (backend был ready, UI extension deferred).
 Теперь OWNER может конфигурировать `COMPOSIO_ACTION` rules через
 visual form вместо manual PATCH JSON. CreateRuleForm (AdminPanel
@@ -897,6 +957,7 @@ base, ✅ Home command center, ✅ responsive cinematic UI pass.
 | ✅ закрыто | **UI hotfix word-wrap v0.92.0** (19.05): «ПЕРЕГЕНЕРИРОВАТЬ» glitch в ChannelDigestPanel «Сводка комнаты» (long RU UPPERCASE слово ломалось mid-word на узком intel-rail). Текст укорочен до «✦ Заново / ✦ Резюме», `whiteSpace: nowrap` + `textOverflow: ellipsis` + `maxWidth: 100%` defensive style. |
 | ✅ закрыто | **#5 phase 2 + #4 AI-write v0.93.0** — AI agent создаёт rows в operational tables по запросу из чата. `ai/taskFromChat.ts`: `hasTaskCreationIntent` regex prescan (RU/EN keywords) → `loadContext(serverId)` (server tables + members) → AI JSON extract intent + table_id + cells → per-type validation (USER displayName→userId, DATE ISO, STATUS options, NUMBER, CHECKBOX) → row.create + bot confirmation reply. Wired в `maybeReplyToMention` (skip normal AI reply если task created). Phase 2 (future) — update existing rows, batch creation, explicit `#tableName` syntax. |
 | 🟡 частично | **#10 phase 4b bidirectional row↔ActionItem sync** — закрыто в v0.94.0. `lib/rowActionSync.ts` pure mappers: `mapCellToActionStatus` / `mapActionStatusToCell` с RU+EN dictionary (Открыто/Open/Todo, В работе/In Progress/Doing, На ревью/Review, Завершено/Done). `resolveMapping(fields)` picks first-by-type (TEXT/STATUS/USER/DATE). `syncRowToAction` + `syncActionToRows` с loop-guard (diff-check «source === target → no-op»). Wired в PATCH row + PATCH action endpoints с re-emit для UI realtime. v0.93 taskFromChat auto-link ActionItem после row create если table.channelId set. Phase 4c — explicit per-field mapping config UI (current convention-based). |
+| ✅ закрыто | **Eclipse_OS visual rebrand v1.1.0** (19.05) — adoption из Google AI Studio mockup'а. Pavel-feedback после v1.0.2: «мне нравится как визуально он сделал, давай применим, хочу пощупать в проде». AI Studio прислал full React+Vite+Tailwind+Motion+Lucide standalone app — incompatible stack с Eclipse Chat (vanilla CSS + tokens). Извлекли design patterns + переписали под наш stack: новые tokens (`--ec-surface-glass` rgba(11,15,20,0.45), `--ec-holo-cyan` linear-gradient base, `--ec-glow-ai` + `--ec-glow-live` multi-layer shadows; existing `--ec-accent-3` violet reused), новые utility classes (`.ec-holo-edge` 1px top-edge via ::before, `.ec-scan-line` horizontal sweep keyframe 4s infinite с reduced-motion guard, `.ec-glass-panel` frosted blur(20)+saturate(140%), `.ec-avatar-halo--ai` violet glow, `.ec-avatar-halo--live` cyan breathing 4s, `.ec-telemetry-pill` + ok/warn variants), active channel left-border заменён на holographic gradient через inset box-shadow, custom scrollbar webkit + Firefox с cyan-accent hover. **Vocabulary rebrand** (Russian UI labels → English sci-fi): sidebar tabs (CHANNELS/TASKS/DATA), section labels (DATA STREAMS/BROADCAST/VOICE LINKS), members panel (TACTICAL VIEW/LINKED_NODES/SLEEP_STATE), composer (INITIALIZE TRANSMISSION/TRANSMIT/INITIALIZE ROOM), brand (ECLIPSE_OS с letter-spacing 0.18em в topbar), bot badge (AI_AGENT вместо BOT для GENERIC). **Russian content сохраняется** — только UI labels recoded. Bot avatars wrap'аются в span.ec-avatar-halo--ai для violet glow ring через box-shadow tokens. AuthScreen multi-step redesign — deferred в v1.1.1. SW_VERSION bumped → v1.1.0. Ноль schema/API изменений, pure visual+text. Files: tokens.css (+140), ChannelList.tsx, IntelligencePanel.tsx, MemberList.tsx, AppShell.tsx, MessageInput.tsx, MessageList.tsx. |
 | ✅ закрыто | **Composio AutomationRule UI editor v1.0.2** (19.05) — закрывает loop из v1.0.1 (backend был ready, UI explicitly deferred). Extends CreateRuleForm (apps/web/src/components/AdminPanel.tsx, ~1500 строк component) с 4-м action type. Type additions: `AutomationActionComposio` (type: "COMPOSIO_ACTION" + connectionId + actionName + paramsTemplate JSON-string), extended ActionKind union, AutomationAction union extended. CreateRuleForm extended с serverId prop (для useComposio hook). Hook integration: useComposio loads server's Composio connections + status, filtered to activeConnections (status === "ACTIVE"). New state: composioConnectionId / composioActions[] / composioActionName / composioParams (JSON textarea с default Gmail template). useEffect lazy-loads actions list через `/api/servers/:id/composio/connections/:id/actions` endpoint когда connection selected. useMemo composioParamsValid — JSON.parse + object-type check. canSubmit + handleSubmit dispatcher extended. UI block (~120 строк): conditional disable banners (Composio not configured / no active connections), connection picker dropdown, lazy-loaded action picker dropdown с loading state, monospace JSON textarea с realtime border-color по validity, hint с code-styled placeholders. AutomationRow display extension: actionLabel «Composio →», actionPreview — monospace actionName в accent color. Ноль schema/backend changes (backend в v1.0.1). |
 | ✅ закрыто | **Composio Automation Expansion v1.0.1** (19.05) — из eclipse-library scan, Pavel-pick «делаем по максимуму». 500+ OAuth apps через Composio (https://composio.dev) proxy. Schema migration #46: новая ComposioConnection model + 3 AuditEventType значения. New file `apps/server/src/lib/composio.ts` — pure-fetch wrapper (listSupportedApps / initiateConnection / verifyConnection / disconnectConnection / executeAction / listActionsForApp), AbortController timeout 12s, ComposioError class с status code. 6 endpoints в `apps/server/src/routes/composio.ts` (status / apps / connections list / connect initiate / OAuth callback handler с auto-close HTML / disconnect / actions / manual execute). Graceful disable если COMPOSIO_API_KEY env not set — UI показывает setup instructions с callback URL. Automation engine extension (`apps/server/src/automation.ts`): новый ActionDef `COMPOSIO_ACTION` + `fireActionComposio` handler с recursive params template rendering (placeholders {{user}}/{{message}}/{{channel}} в strings deep через objects+arrays). New frontend hook `useComposio.ts` + new component `ComposioConnections.tsx` (status banner / connection list с chips / app picker overlay с search + OAuth window opener + postMessage listener для auto-reload). AdminPanel «Интеграции» tab расширен — секция Composio под IntegrationsTabContent. AES-256-GCM encryption через existing twoFactor `encryptSecret` (reuse TWOFA_ENCRYPTION_KEY pattern). Audit log: COMPOSIO_CONNECTED при successful OAuth callback, COMPOSIO_DISCONNECTED, COMPOSIO_ACTION_EXECUTED (с success / latencyMs / triggeredByAutomation metadata). Pavel-side setup ENV: COMPOSIO_API_KEY + optional COMPOSIO_BASE_URL + PUBLIC_BASE_URL (для OAuth callback). Migration 46-я additive. Ноль breaking changes. AutomationRule editor UI для COMPOSIO_ACTION — deferred в v1.0.2 (current scope: connection management). |
 | ✅ закрыто | **#11 AI Controls v1.0.0** 🎉 (19.05) — major release, Eclipse Chat exits 0.x. Расширили BotsTab (apps/web/src/components/BotsTab.tsx) с full AI controls per bot: **Test panel** (новая «Тест» кнопка → inline textarea + Run + result display с provider/model/latency badges + response в monospace), **Usage panel** (новая «Стата» кнопка → inline stat-grid 24h/7d/total + top-3 channels с type icons + last API usage). Backend (apps/server/src/routes/bots.ts): **POST /api/servers/:id/bots/:botId/test** — OWNER-only, прогоняет system prompt через `chat()` provider chain с user input (max 2000 chars) и returns `{response, provider, model, latencyMs, systemPromptLength, isOverride}` без message create. **GET /api/servers/:id/bots/:botId/usage** — member-readable, aggregate из существующей Message table (db.message.count × 3 windows + groupBy channelId top-3). Audit (`recordAudit`): новые типы `BOT_PROMPT_UPDATE` / `BOT_PROMPT_RESET` / `BOT_TEST_INVOKE` в AuditEventType enum (Prisma). Migration `20260519120000_bot_ai_audit_events` — postgres `ALTER TYPE ADD VALUE IF NOT EXISTS` (idempotent, outside transaction safe). PATCH handler теперь diff-checks systemPromptOverride и emit'ит UPDATE/RESET event. SW_VERSION bumped `v0.99` → `v1.0`. Hook useBots extended с `fetchUsage` / `testBot` + new types `BotUsage` / `BotTestResult`. Per-bot busy state (perBotBusy map) — UI не блокирует whole tab при одной test-run. Idempotent migration на 45-ю позицию. Pure additive, ноль breaking. |
