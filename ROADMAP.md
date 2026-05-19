@@ -5,7 +5,34 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v1.1.10** (ChannelInfoPanel +
+**Текущая версия в проде:** **v1.1.11** (ActionItemDrawer +
+ThreadPanel cyber polish — продолжение polish track по Pavel
+«давай доработаем дизайн»).
+
+**Изменения v1.1.11:**
+
+**ActionItemDrawer** (детали задачи):
+- header `.ec-server-header-edge` (holo bottom-line) + darker bg
+- sectionLabel monospace 0.65rem 0.18em + display:flex для diamond
+- 4 sections получили color-coded ◆ diamond prefix:
+  - «Название» cyan
+  - «Свойства» cyan
+  - «Одобрение» warn-yellow
+  - «Описание» cyan
+
+**ThreadPanel** (thread replies overlay):
+- header `.ec-server-header-edge` + darker bg
+- headerLabel monospace 0.65rem 0.18em
+- Title «Тред» → «ТРЕД_ОБСУЖДЕНИЯ» (cyber framing)
+- Reply count → cyan bordered pill (accent-soft bg + accent
+  border, consistent с IntelligencePanel count badge)
+- Thread icon → cyan accent
+- separator monospace 0.6rem 0.18em
+
+**Сборка**: 6 files changed, +43/-22. CSS bundle unchanged 100.15
+KB (existing classes + inline tweaks).
+
+**Предыдущие версии:** v1.1.10 (ChannelInfoPanel +
 IntelligencePanel cyber polish — продолжение polish track по
 Pavel «продолжай»).
 
