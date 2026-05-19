@@ -56,6 +56,9 @@ const header: CSSProperties = {
   display: "flex",
   alignItems: "center",
   gap: "var(--ec-space-3)",
+  // v1.1.12: position:relative для .ec-server-header-edge::after
+  position: "relative",
+  background: "hsl(210 25% 4% / 0.55)",
 };
 
 const titleInput: CSSProperties = {
@@ -64,7 +67,10 @@ const titleInput: CSSProperties = {
   border: 0,
   color: "var(--ec-text-strong)",
   fontSize: "var(--ec-text-lg)",
-  fontWeight: 600,
+  fontWeight: 700,
+  letterSpacing: "0.08em",
+  textTransform: "uppercase",
+  fontFamily: "var(--ec-font-display, var(--ec-font-sans))",
   outline: "none",
   padding: "0.2rem 0.4rem",
   borderRadius: "var(--ec-radius-sm)",
@@ -102,10 +108,11 @@ const thStyle: CSSProperties = {
   borderBottom: "1px solid var(--ec-border-default)",
   background: "var(--ec-surface-2)",
   color: "var(--ec-text-muted)",
-  fontWeight: 600,
-  fontSize: "var(--ec-text-2xs)",
-  letterSpacing: "var(--ec-tracking-wide)",
+  fontWeight: 700,
+  fontSize: "0.6rem",
+  letterSpacing: "0.16em",
   textTransform: "uppercase",
+  fontFamily: "var(--ec-font-mono, ui-monospace, monospace)",
   position: "sticky",
   top: 0,
   zIndex: 1,
@@ -244,8 +251,8 @@ export function OperationalTablePanel({
 
   return (
     <div style={wrap}>
-      <header style={header}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--ec-accent)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <header className="ec-server-header-edge" style={header}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--ec-accent)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ filter: "drop-shadow(0 0 4px hsl(195 70% 60% / 0.4))" }}>
           <rect x="3" y="3" width="18" height="18" rx="2" />
           <line x1="3" y1="9" x2="21" y2="9" />
           <line x1="9" y1="3" x2="9" y2="21" />
