@@ -1,4 +1,5 @@
 import "dotenv/config";
+import os from "node:os";
 import path from "node:path";
 import Fastify from "fastify";
 import cors from "@fastify/cors";
@@ -146,6 +147,19 @@ await app.register(fastifyStatic, {
 });
 
 app.get("/health", async () => ({ ok: true, service: "eclipse-chat-server" }));
+// v1.1.7: previous-CPU-sample state для расчёта delta-percent (raw cpus()
+// возвращает cumulative ticks). На первом /api/health отдаём loadavg-based
+// fallback пока не накопится первый sample.
+let prevCpuSample: { idle: number; total: number } | null = null;
+function sampleCpu(): { idle: number; total: number } {
+  let idle = 0;
+  let total = 0;
+  for (const c of os.cpus()) {
+    idle += c.times.idle;
+    total += c.times.user + c.times.nice + c.times.sys + c.times.idle + c.times.irq;
+  }
+  return { idle, total };
+}
 app.get("/api/health", async () => {
   let dbOk = true;
   // v0.91 stability hardening: возвращаем pg_stat_activity breakdown
@@ -166,14 +180,54 @@ app.get("/api/health", async () => {
     dbOk = false;
     pg = null;
   }
+
+  // v1.1.7: real-time telemetry для topbar pills (СЕТЬ/ПАМ/ЦП).
+  // mem.percent = process.rss / os.totalmem (% занято Node-процессом
+  // относительно machine RAM). cpu.percent = delta-busy / delta-total
+  // между двумя последовательными samples (накопляется при последова-
+  // тельных /api/health вызовах).
+  const totalMem = os.totalmem();
+  const freeMem = os.freemem();
+  const usedMemSystem = totalMem - freeMem;
+  const memProc = process.memoryUsage();
+  const cpuCount = os.cpus().length;
+  const loadavg = os.loadavg();
+
+  const sample = sampleCpu();
+  let cpuPercent: number;
+  if (prevCpuSample) {
+    const dIdle = sample.idle - prevCpuSample.idle;
+    const dTotal = sample.total - prevCpuSample.total;
+    cpuPercent = dTotal > 0
+      ? Math.max(0, Math.min(100, ((dTotal - dIdle) / dTotal) * 100))
+      : 0;
+  } else {
+    // Fallback на 1-минутный loadavg / cpuCount (более стабильно но
+    // не отражает мгновенную нагрузку).
+    cpuPercent = Math.max(0, Math.min(100, (loadavg[0] / cpuCount) * 100));
+  }
+  prevCpuSample = sample;
+
   return {
     ok: true,
     service: "eclipse-chat-server",
     database: dbOk,
     pg,
+    mem: {
+      processRss: memProc.rss,
+      processHeap: memProc.heapUsed,
+      systemUsed: usedMemSystem,
+      systemTotal: totalMem,
+      percent: Math.round((usedMemSystem / totalMem) * 1000) / 10,
+    },
+    cpu: {
+      cores: cpuCount,
+      load1m: loadavg[0],
+      percent: Math.round(cpuPercent * 10) / 10,
+    },
   };
 });
-app.get("/api/version", async () => ({ name: "@eclipse-chat/server", version: "1.1.6" }));
+app.get("/api/version", async () => ({ name: "@eclipse-chat/server", version: "1.1.7" }));
 
 await registerAuthRoutes(app);
 await registerTwoFactorRoutes(app);

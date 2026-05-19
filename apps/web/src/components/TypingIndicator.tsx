@@ -33,9 +33,11 @@ export function TypingIndicator({ users }: Props) {
   return (
     <div style={wrap} aria-live="polite" aria-atomic="true">
       <span className="ec-typing">
-        <span className="ec-typing-dot" />
-        <span className="ec-typing-dot" />
-        <span className="ec-typing-dot" />
+        {/* v1.1.7: 5-bar cipher equalizer вместо 3-dot loader.
+            Используется для всех typing states (humans + bots). */}
+        <span className="ec-cipher-bars" aria-hidden>
+          <span /><span /><span /><span /><span />
+        </span>
       </span>
       <span style={{ marginLeft: 8 }}>{format(users)}…</span>
     </div>

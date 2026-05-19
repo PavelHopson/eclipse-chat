@@ -66,6 +66,7 @@ import { useTeamHealth } from "../hooks/useTeamHealth";
 import { useServers } from "../hooks/useServers";
 import { useSinceLastVisit } from "../hooks/useSinceLastVisit";
 import { useSocket } from "../hooks/useSocket";
+import { useTelemetry } from "../hooks/useTelemetry";
 import { useVoice } from "../hooks/useVoice";
 import { useVoiceHealth } from "../hooks/useVoiceHealth";
 import { useVoicePresence, reverseVoiceMap } from "../hooks/useVoicePresence";
@@ -164,6 +165,8 @@ const errorBanner: CSSProperties = {
 
 export function AppShell({ user, socketRev, onLogout }: Props) {
   const socket = useSocket(socketRev);
+  // v1.1.7: live mem/cpu/pg pills (poll /api/health каждые 10s).
+  const telemetry = useTelemetry();
 
   const isReady = socket != null;
   const {
@@ -771,16 +774,72 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           )}
         </div>
         <div className="ec-shell__top-actions" style={{ display: "flex", alignItems: "center", gap: "var(--ec-space-2)" }}>
-          {/* v1.1.1 Eclipse_OS telemetry pills — HUD status strip. */}
-          <span className="ec-telemetry-pill ec-telemetry-pill--ok" title={isReady ? "Соединение установлено" : "Соединение потеряно"}>
+          {/* v1.1.1+v1.1.7 Eclipse_OS telemetry pills — HUD status strip.
+              v1.1.7: pills читают live data из useTelemetry (poll
+              /api/health каждые 10s). Color по threshold:
+              ok < 70%, warn 70–89%, risk ≥ 90%. */}
+          <span
+            className={
+              "ec-telemetry-pill " +
+              (isReady && telemetry.online
+                ? "ec-telemetry-pill--ok"
+                : "ec-telemetry-pill--warn")
+            }
+            title={
+              !isReady
+                ? "Socket: соединение потеряно"
+                : !telemetry.online
+                ? "Health endpoint недоступен"
+                : `Socket OK · pg.active=${telemetry.pgActive ?? "—"}`
+            }
+          >
             <span className="ec-telemetry-pill__dot" />
-            СЕТЬ: {isReady ? "СТАБИЛЬНА" : "ОБРЫВ"}
+            СЕТЬ:{" "}
+            {isReady && telemetry.online
+              ? "СТАБИЛЬНА"
+              : !isReady
+              ? "ОБРЫВ"
+              : "ДЕГРАД"}
           </span>
-          <span className="ec-telemetry-pill" title="Использование памяти (placeholder)">
-            ПАМ: 12%
+          <span
+            className={
+              "ec-telemetry-pill" +
+              (telemetry.memStatus === "warn"
+                ? " ec-telemetry-pill--warn"
+                : telemetry.memStatus === "risk"
+                ? " ec-telemetry-pill--risk"
+                : "")
+            }
+            title={
+              telemetry.memPercent != null
+                ? `Память (system used / total): ${telemetry.memPercent}%`
+                : "Память: ожидание данных"
+            }
+          >
+            ПАМ:{" "}
+            {telemetry.memPercent != null
+              ? `${telemetry.memPercent.toFixed(0).padStart(2, "0")}%`
+              : "—"}
           </span>
-          <span className="ec-telemetry-pill" title="Загрузка CPU (placeholder)">
-            ЦП: 04%
+          <span
+            className={
+              "ec-telemetry-pill" +
+              (telemetry.cpuStatus === "warn"
+                ? " ec-telemetry-pill--warn"
+                : telemetry.cpuStatus === "risk"
+                ? " ec-telemetry-pill--risk"
+                : "")
+            }
+            title={
+              telemetry.cpuPercent != null
+                ? `CPU (delta between samples): ${telemetry.cpuPercent}%`
+                : "CPU: ожидание данных"
+            }
+          >
+            ЦП:{" "}
+            {telemetry.cpuPercent != null
+              ? `${telemetry.cpuPercent.toFixed(0).padStart(2, "0")}%`
+              : "—"}
           </span>
           <span
             className={isReady ? "ec-dot ec-dot--online" : "ec-dot ec-dot--offline"}
