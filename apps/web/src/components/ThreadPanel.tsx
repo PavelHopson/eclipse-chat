@@ -37,18 +37,20 @@ const header: CSSProperties = {
   padding: "0 var(--ec-space-4)",
   height: 48,
   borderBottom: "1px solid var(--ec-border-subtle)",
-  background: "var(--ec-bg)",
+  background: "hsl(210 25% 4% / 0.55)",
+  position: "relative",
 };
 
 const headerLabel: CSSProperties = {
   display: "flex",
   alignItems: "center",
-  gap: 6,
-  fontSize: "var(--ec-text-2xs)",
+  gap: 8,
+  fontSize: "0.65rem",
   fontWeight: 700,
-  letterSpacing: "var(--ec-tracking-caps)",
+  letterSpacing: "0.18em",
   textTransform: "uppercase",
   color: "var(--ec-text-muted)",
+  fontFamily: "var(--ec-font-mono, ui-monospace, monospace)",
 };
 
 const closeBtn: CSSProperties = {
@@ -88,10 +90,11 @@ const separator: CSSProperties = {
   alignItems: "center",
   gap: "var(--ec-space-2)",
   margin: "var(--ec-space-2) 0",
-  fontSize: "var(--ec-text-2xs)",
-  letterSpacing: "var(--ec-tracking-caps)",
+  fontSize: "0.6rem",
+  letterSpacing: "0.18em",
   textTransform: "uppercase",
   color: "var(--ec-text-dim)",
+  fontFamily: "var(--ec-font-mono, ui-monospace, monospace)",
 };
 
 const sepLine: CSSProperties = {
@@ -171,15 +174,26 @@ export function ThreadPanel({
 
   return (
     <aside className="ec-thread-panel" style={panel} aria-label="Thread panel">
-      <header style={header}>
+      <header className="ec-server-header-edge" style={header}>
         <div style={headerLabel}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ color: "var(--ec-accent)" }}>
             <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" />
           </svg>
-          Тред
+          ТРЕД_ОБСУЖДЕНИЯ
           {data && (
-            <span style={{ color: "var(--ec-text-dim)", marginLeft: 4 }}>
-              · {data.replies.length} {data.replies.length === 1 ? "ответ" : "ответов"}
+            <span
+              style={{
+                color: "var(--ec-accent)",
+                marginLeft: 6,
+                padding: "0.08rem 0.4rem",
+                borderRadius: "var(--ec-radius-xs)",
+                background: "var(--ec-accent-soft)",
+                border: "1px solid var(--ec-border-accent)",
+                fontFeatureSettings: '"tnum"',
+                fontSize: "0.6rem",
+              }}
+            >
+              {data.replies.length}
             </span>
           )}
         </div>

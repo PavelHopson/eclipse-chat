@@ -86,6 +86,9 @@ const headerStyle: CSSProperties = {
   display: "flex",
   alignItems: "center",
   gap: "var(--ec-space-2)",
+  // v1.1.11: position:relative для .ec-server-header-edge::after
+  position: "relative",
+  background: "hsl(210 25% 4% / 0.55)",
 };
 
 const bodyStyle: CSSProperties = {
@@ -98,12 +101,16 @@ const bodyStyle: CSSProperties = {
 };
 
 const sectionLabel: CSSProperties = {
-  fontSize: "var(--ec-text-2xs)",
+  fontSize: "0.65rem",
   fontWeight: 700,
-  letterSpacing: "var(--ec-tracking-caps)",
+  letterSpacing: "0.18em",
   textTransform: "uppercase",
   color: "var(--ec-text-dim)",
   margin: "0 0 var(--ec-space-2)",
+  fontFamily: "var(--ec-font-mono, ui-monospace, monospace)",
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
 };
 
 const propRow: CSSProperties = {
@@ -410,7 +417,7 @@ export function ActionItemDrawer({
     <>
       <div style={backdrop} onClick={onClose} aria-hidden />
       <aside className="ec-action-drawer" style={drawer} role="dialog" aria-label="Детали задачи">
-        <header style={headerStyle}>
+        <header className="ec-server-header-edge" style={headerStyle}>
           {detail && typeMeta ? (
             <>
               <span
@@ -511,7 +518,7 @@ export function ActionItemDrawer({
             <>
               {/* Title */}
               <section>
-                <h3 style={sectionLabel}>Название</h3>
+                <h3 style={sectionLabel}><span aria-hidden style={{ color: "var(--ec-accent)" }}>◆</span>Название</h3>
                 <input
                   type="text"
                   value={titleDraft}
@@ -530,7 +537,7 @@ export function ActionItemDrawer({
 
               {/* Properties */}
               <section>
-                <h3 style={sectionLabel}>Свойства</h3>
+                <h3 style={sectionLabel}><span aria-hidden style={{ color: "var(--ec-accent)" }}>◆</span>Свойства</h3>
                 <div style={propRow}>
                   <span style={propLabel}>Приоритет</span>
                   <select
@@ -612,7 +619,7 @@ export function ActionItemDrawer({
 
               {/* Approval */}
               <section>
-                <h3 style={sectionLabel}>Одобрение</h3>
+                <h3 style={sectionLabel}><span aria-hidden style={{ color: "var(--ec-status-warn)" }}>◆</span>Одобрение</h3>
                 <ApprovalSection
                   status={detail.approvalStatus}
                   approver={detail.approver}
@@ -690,7 +697,7 @@ export function ActionItemDrawer({
 
               {/* Description */}
               <section>
-                <h3 style={sectionLabel}>Описание</h3>
+                <h3 style={sectionLabel}><span aria-hidden style={{ color: "var(--ec-accent)" }}>◆</span>Описание</h3>
                 <textarea
                   value={descDraft}
                   onChange={(e) => setDescDraft(e.target.value)}
