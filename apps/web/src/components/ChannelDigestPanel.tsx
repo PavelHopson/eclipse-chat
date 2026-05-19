@@ -224,7 +224,14 @@ export function ChannelDigestPanel({
             onClick={onRefresh}
             disabled={loading}
             className="ec-btn ec-btn--ghost"
-            style={{ minHeight: 28, padding: "0.25rem 0.7rem", fontSize: "var(--ec-text-2xs)" }}
+            style={{
+              minHeight: 28,
+              padding: "0.25rem 0.7rem",
+              fontSize: "var(--ec-text-2xs)",
+              // v0.92: defensive nowrap чтобы «Собрать сводку» не ломался
+              // на узкой колонке.
+              whiteSpace: "nowrap",
+            }}
           >
             {loading ? "Собираем…" : "Собрать сводку"}
           </button>
@@ -246,10 +253,18 @@ export function ChannelDigestPanel({
                 border: "1px solid var(--ec-accent-3)",
                 cursor: aiLoading ? "wait" : "pointer",
                 transition: "background var(--ec-dur-fast) var(--ec-ease)",
+                // v0.92 fix: ru-слова длинные («ПЕРЕГЕНЕРИРОВАТЬ ИИ» 21 chars
+                // в uppercase) на узкой intel-rail колонке (≈120-140px)
+                // wrap'ились по букве → «ПЕРЕГЕНЕРИРОВАТИИ» glitch.
+                // Fix: nowrap + ellipsis overflow. И текст укорочен.
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                maxWidth: "100%",
               }}
-              title="Сгенерировать резюме через ИИ"
+              title={aiSummary ? "Сгенерировать резюме заново" : "Сгенерировать резюме через ИИ"}
             >
-              {aiLoading ? "ИИ думает…" : aiSummary ? "Перегенерировать ИИ" : "✦ Резюме ИИ"}
+              {aiLoading ? "ИИ думает…" : aiSummary ? "✦ Заново" : "✦ Резюме"}
             </button>
           )}
         </div>
