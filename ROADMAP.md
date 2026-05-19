@@ -5,9 +5,61 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v1.1.11** (ActionItemDrawer +
-ThreadPanel cyber polish — продолжение polish track по Pavel
-«давай доработаем дизайн»).
+**Текущая версия в проде:** **v1.1.13** (mobile topbar overflow
+fix после Pavel screenshot с iPhone — telemetry pills съедали
+весь header).
+
+**Изменения v1.1.13 (mobile fix):**
+
+Pavel прислал screenshot с телефона: pills СТАБИЛЬНА / ПАМ 11% /
+ЦП 23% доминировали topbar, ECLIPSE_CHAT brand-title обрезан,
+breadcrumb «УЗЕЛ //» не виден.
+
+Root cause: v1.1.7 telemetry pills + v1.1.4 breadcrumb cyber
+добавлены без mobile breakpoints.
+
+Fix (responsive.css):
+- **< 900px**: hide ПАМ + ЦП pills (оставляем только СЕТЬ
+  индикатор)
+- **< 640px**: hide ВСЕ telemetry pills + весь breadcrumb (он
+  дублируется в chat-header sticky-bar)
+- **< 480px**: hide brand-title text (остаётся только icon)
+
+CSS bundle 100.15 → 100.59 KB (+0.44 KB).
+
+**Изменения v1.1.12:**
+
+OperationalTablePanel (таблицы) cyber polish:
+- header `.ec-server-header-edge` + darker bg
+- titleInput uppercase 0.08em display font (Orbitron)
+- thStyle (column headers) monospace 0.6rem 0.16em JetBrains Mono
+- Table icon в header → cyan drop-shadow glow (4px halo)
+
+CSS bundle unchanged.
+
+**Изменения v1.1.11:**
+
+ActionItemDrawer (детали задачи):
+- header `.ec-server-header-edge` + darker bg
+- sectionLabel monospace 0.65rem 0.18em + display:flex для diamond
+- 4 sections с color-coded ◆ diamond prefix:
+  - «Название» cyan
+  - «Свойства» cyan
+  - «Одобрение» warn-yellow
+  - «Описание» cyan
+
+ThreadPanel (thread replies overlay):
+- header `.ec-server-header-edge` + darker bg
+- headerLabel monospace 0.65rem 0.18em
+- Title «Тред» → «ТРЕД_ОБСУЖДЕНИЯ» (cyber framing)
+- Reply count → cyan bordered pill (accent-soft bg + accent
+  border, consistent с IntelligencePanel count badge)
+- Thread icon → cyan accent
+- separator monospace 0.6rem 0.18em
+
+**Предыдущие версии:** v1.1.10 (ChannelInfoPanel +
+IntelligencePanel cyber polish — продолжение polish track по
+Pavel «продолжай»).
 
 **Изменения v1.1.11:**
 
