@@ -271,6 +271,10 @@ enum AuditEventType {
   BOT_CREATED
   BOT_DELETED
   BOT_KEY_REGENERATED
+  /// v1.0 #11 AI controls: prompt overrides + test invocation observability.
+  BOT_PROMPT_UPDATE
+  BOT_PROMPT_RESET
+  BOT_TEST_INVOKE
 }
 
 model AuditLog {

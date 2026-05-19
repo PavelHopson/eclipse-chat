@@ -1,6 +1,12 @@
 import type { CSSProperties } from "react";
 import { useState } from "react";
-import { useBots, type BotKeyReveal, type BotRow } from "../hooks/useBots";
+import {
+  useBots,
+  type BotKeyReveal,
+  type BotRow,
+  type BotTestResult,
+  type BotUsage,
+} from "../hooks/useBots";
 import {
   BOT_ROLES,
   BOT_ROLE_COLORS,
@@ -410,6 +416,8 @@ export function BotsTab({ serverId }: Props) {
     regenerateKey,
     deleteBot,
     dismissRevealedKey,
+    fetchUsage,
+    testBot,
   } = useBots(serverId);
   const [showCreate, setShowCreate] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -419,9 +427,21 @@ export function BotsTab({ serverId }: Props) {
   const [roleEditOpen, setRoleEditOpen] = useState<string | null>(null);
   /** Bot id у которого открыт редактор system prompt. */
   const [promptEditOpen, setPromptEditOpen] = useState<string | null>(null);
+  /** v1.0 #11 AI controls: bot id у которого открыт test-run panel. */
+  const [testOpen, setTestOpen] = useState<string | null>(null);
+  /** v1.0 #11 AI controls: bot id у которого открыта statistics panel. */
+  const [usageOpen, setUsageOpen] = useState<string | null>(null);
   /** Drafts of webhook URLs + secrets, keyed by botId. */
   const [webhookDrafts, setWebhookDrafts] = useState<Record<string, { url: string; secret: string }>>({});
   const [promptDrafts, setPromptDrafts] = useState<Record<string, string>>({});
+  /** v1.0: drafts of test-input (последний typed text) per bot. */
+  const [testDrafts, setTestDrafts] = useState<Record<string, string>>({});
+  /** v1.0: last test-run result per bot (response + provider + latency). */
+  const [testResults, setTestResults] = useState<Record<string, BotTestResult | null>>({});
+  /** v1.0: usage stats cache per bot. Lazy-fetched on first open. */
+  const [usageCache, setUsageCache] = useState<Record<string, BotUsage>>({});
+  /** v1.0: per-bot busy flag для test/usage operations (не блокирует whole tab). */
+  const [perBotBusy, setPerBotBusy] = useState<Record<string, boolean>>({});
 
   const ensureDraft = (bot: BotRow) => {
     if (webhookDrafts[bot.id]) return;
@@ -554,6 +574,46 @@ export function BotsTab({ serverId }: Props) {
       await regenerateKey(botId);
     } finally {
       setBusy(false);
+    }
+  };
+
+  /** v1.0: load usage stats для bot. Cached after first load. */
+  const handleOpenUsage = async (bot: BotRow) => {
+    setUsageOpen((cur) => (cur === bot.id ? null : bot.id));
+    if (usageCache[bot.id]) return; // already cached
+    setPerBotBusy((prev) => ({ ...prev, [bot.id]: true }));
+    try {
+      const data = await fetchUsage(bot.id);
+      if (data) {
+        setUsageCache((prev) => ({ ...prev, [bot.id]: data }));
+      }
+    } finally {
+      setPerBotBusy((prev) => ({ ...prev, [bot.id]: false }));
+    }
+  };
+
+  /** v1.0: open test panel + init draft если пустой. */
+  const handleOpenTest = (bot: BotRow) => {
+    setTestOpen((cur) => (cur === bot.id ? null : bot.id));
+    if (testDrafts[bot.id] === undefined) {
+      setTestDrafts((prev) => ({
+        ...prev,
+        [bot.id]: "Привет! Кратко скажи кто ты и что умеешь.",
+      }));
+    }
+  };
+
+  /** v1.0: run test prompt. Не отправляет в канал — только preview. */
+  const handleRunTest = async (bot: BotRow) => {
+    const input = testDrafts[bot.id]?.trim();
+    if (!input) return;
+    setPerBotBusy((prev) => ({ ...prev, [bot.id]: true }));
+    setTestResults((prev) => ({ ...prev, [bot.id]: null })); // clear stale
+    try {
+      const result = await testBot(bot.id, input);
+      setTestResults((prev) => ({ ...prev, [bot.id]: result }));
+    } finally {
+      setPerBotBusy((prev) => ({ ...prev, [bot.id]: false }));
     }
   };
 
@@ -843,6 +903,34 @@ export function BotsTab({ serverId }: Props) {
               </button>
               <button
                 type="button"
+                onClick={() => handleOpenTest(bot)}
+                disabled={busy}
+                className="ec-btn ec-btn--ghost ec-btn--sm"
+                title="Тест AI-промпта без отправки в канал"
+                style={
+                  testOpen === bot.id
+                    ? { color: "var(--ec-accent)", borderColor: "var(--ec-border-accent)" }
+                    : undefined
+                }
+              >
+                Тест
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleOpenUsage(bot)}
+                disabled={busy}
+                className="ec-btn ec-btn--ghost ec-btn--sm"
+                title="Статистика использования"
+                style={
+                  usageOpen === bot.id
+                    ? { color: "var(--ec-accent)", borderColor: "var(--ec-border-accent)" }
+                    : undefined
+                }
+              >
+                Стата
+              </button>
+              <button
+                type="button"
                 onClick={() => {
                   ensureDraft(bot);
                   setWebhookOpen((cur) => (cur === bot.id ? null : bot.id));
@@ -1086,6 +1174,274 @@ export function BotsTab({ serverId }: Props) {
                   {busy ? "Сохраняем…" : "Сохранить"}
                 </button>
               </div>
+            </div>
+          );
+        })()}
+
+        {/* v1.0 #11 AI controls: test-run panel — inline под bot card. */}
+        {testOpen && (() => {
+          const bot = bots.find((b) => b.id === testOpen);
+          if (!bot) return null;
+          const draft = testDrafts[bot.id] ?? "";
+          const result = testResults[bot.id] ?? null;
+          const running = perBotBusy[bot.id] === true;
+          return (
+            <div
+              key={`test-${bot.id}`}
+              style={{
+                marginTop: "var(--ec-space-2)",
+                padding: "var(--ec-space-3)",
+                background: "var(--ec-surface-2)",
+                border: "1px solid var(--ec-border-accent)",
+                borderRadius: "var(--ec-radius-md)",
+                display: "flex",
+                flexDirection: "column",
+                gap: "var(--ec-space-2)",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <strong style={{ fontSize: "var(--ec-text-sm)" }}>
+                  Тест AI · «{bot.name}»
+                </strong>
+                <button
+                  type="button"
+                  onClick={() => setTestOpen(null)}
+                  className="ec-btn ec-btn--ghost ec-btn--sm"
+                  style={{ padding: "0.2rem 0.5rem" }}
+                  title="Закрыть"
+                >
+                  ✕
+                </button>
+              </div>
+              <p style={fieldHint}>
+                Прогон system prompt с твоим input'ом — НЕ отправляется в канал.
+                Преглу для проверки prompt-override'а перед production-использованием.
+              </p>
+              <textarea
+                value={draft}
+                onChange={(e) =>
+                  setTestDrafts((prev) => ({ ...prev, [bot.id]: e.target.value }))
+                }
+                rows={3}
+                maxLength={2000}
+                placeholder="Что спросить у бота — будет передано как user message"
+                style={{ ...inputStyle, resize: "vertical", minHeight: 70 }}
+                disabled={running}
+              />
+              <div style={{ display: "flex", gap: "var(--ec-space-2)", justifyContent: "flex-end" }}>
+                <button
+                  type="button"
+                  onClick={() => void handleRunTest(bot)}
+                  disabled={running || !draft.trim()}
+                  className="ec-btn ec-btn--primary ec-btn--sm"
+                >
+                  {running ? "Запрашиваю…" : "Запустить тест"}
+                </button>
+              </div>
+              {result && (
+                <div
+                  style={{
+                    marginTop: "var(--ec-space-1)",
+                    padding: "var(--ec-space-3)",
+                    background: "var(--ec-surface-1)",
+                    border: "1px solid var(--ec-border-subtle)",
+                    borderRadius: "var(--ec-radius-md)",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "var(--ec-space-2)",
+                  }}
+                >
+                  {result.ok ? (
+                    <>
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: "var(--ec-space-2)",
+                          flexWrap: "wrap",
+                          fontSize: "var(--ec-text-2xs)",
+                          color: "var(--ec-text-muted)",
+                        }}
+                      >
+                        <span style={monoChip}>provider: {result.provider}</span>
+                        {result.model && <span style={monoChip}>model: {result.model}</span>}
+                        <span style={monoChip}>{result.latencyMs} ms</span>
+                        <span style={monoChip}>
+                          prompt: {result.systemPromptLength} chars
+                          {result.isOverride ? " (override)" : " (template)"}
+                        </span>
+                      </div>
+                      <div
+                        style={{
+                          color: "var(--ec-text)",
+                          fontSize: "var(--ec-text-sm)",
+                          lineHeight: 1.5,
+                          whiteSpace: "pre-wrap",
+                          wordBreak: "break-word",
+                        }}
+                      >
+                        {result.response}
+                      </div>
+                    </>
+                  ) : (
+                    <div
+                      style={{
+                        color: "var(--ec-danger)",
+                        fontSize: "var(--ec-text-sm)",
+                        lineHeight: 1.4,
+                      }}
+                    >
+                      ⚠ {result.error}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
+        {/* v1.0 #11 AI controls: usage stats panel. */}
+        {usageOpen && (() => {
+          const bot = bots.find((b) => b.id === usageOpen);
+          if (!bot) return null;
+          const usage = usageCache[bot.id];
+          const loading = perBotBusy[bot.id] === true && !usage;
+          return (
+            <div
+              key={`usage-${bot.id}`}
+              style={{
+                marginTop: "var(--ec-space-2)",
+                padding: "var(--ec-space-3)",
+                background: "var(--ec-surface-2)",
+                border: "1px solid var(--ec-border-accent)",
+                borderRadius: "var(--ec-radius-md)",
+                display: "flex",
+                flexDirection: "column",
+                gap: "var(--ec-space-2)",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <strong style={{ fontSize: "var(--ec-text-sm)" }}>
+                  Статистика · «{bot.name}»
+                </strong>
+                <button
+                  type="button"
+                  onClick={() => setUsageOpen(null)}
+                  className="ec-btn ec-btn--ghost ec-btn--sm"
+                  style={{ padding: "0.2rem 0.5rem" }}
+                  title="Закрыть"
+                >
+                  ✕
+                </button>
+              </div>
+              {loading && (
+                <p style={fieldHint}>Загружаем статистику…</p>
+              )}
+              {!loading && usage && (
+                <>
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))",
+                      gap: "var(--ec-space-2)",
+                    }}
+                  >
+                    <div
+                      style={{
+                        padding: "var(--ec-space-2) var(--ec-space-3)",
+                        background: "var(--ec-surface-1)",
+                        border: "1px solid var(--ec-border-subtle)",
+                        borderRadius: "var(--ec-radius-md)",
+                      }}
+                    >
+                      <div style={{ fontSize: "0.6rem", color: "var(--ec-text-dim)", textTransform: "uppercase", letterSpacing: "var(--ec-tracking-caps)" }}>
+                        24 часа
+                      </div>
+                      <div style={{ fontSize: "var(--ec-text-lg)", fontWeight: 700, color: "var(--ec-text-strong)", fontFeatureSettings: '"tnum"' }}>
+                        {usage.messages24h}
+                      </div>
+                    </div>
+                    <div
+                      style={{
+                        padding: "var(--ec-space-2) var(--ec-space-3)",
+                        background: "var(--ec-surface-1)",
+                        border: "1px solid var(--ec-border-subtle)",
+                        borderRadius: "var(--ec-radius-md)",
+                      }}
+                    >
+                      <div style={{ fontSize: "0.6rem", color: "var(--ec-text-dim)", textTransform: "uppercase", letterSpacing: "var(--ec-tracking-caps)" }}>
+                        7 дней
+                      </div>
+                      <div style={{ fontSize: "var(--ec-text-lg)", fontWeight: 700, color: "var(--ec-text-strong)", fontFeatureSettings: '"tnum"' }}>
+                        {usage.messages7d}
+                      </div>
+                    </div>
+                    <div
+                      style={{
+                        padding: "var(--ec-space-2) var(--ec-space-3)",
+                        background: "var(--ec-surface-1)",
+                        border: "1px solid var(--ec-border-subtle)",
+                        borderRadius: "var(--ec-radius-md)",
+                      }}
+                    >
+                      <div style={{ fontSize: "0.6rem", color: "var(--ec-text-dim)", textTransform: "uppercase", letterSpacing: "var(--ec-tracking-caps)" }}>
+                        Всего
+                      </div>
+                      <div style={{ fontSize: "var(--ec-text-lg)", fontWeight: 700, color: "var(--ec-text-strong)", fontFeatureSettings: '"tnum"' }}>
+                        {usage.totalMessages}
+                      </div>
+                    </div>
+                  </div>
+                  {usage.topChannels.length > 0 ? (
+                    <div>
+                      <div
+                        style={{
+                          fontSize: "0.6rem",
+                          color: "var(--ec-text-dim)",
+                          textTransform: "uppercase",
+                          letterSpacing: "var(--ec-tracking-caps)",
+                          marginBottom: 6,
+                        }}
+                      >
+                        Топ комнат
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                        {usage.topChannels.map((ch) => (
+                          <div
+                            key={ch.id}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              padding: "0.3rem 0.6rem",
+                              background: "var(--ec-surface-1)",
+                              border: "1px solid var(--ec-border-subtle)",
+                              borderRadius: "var(--ec-radius-sm)",
+                              fontSize: "var(--ec-text-sm)",
+                            }}
+                          >
+                            <span style={{ color: "var(--ec-text)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {ch.type === "VOICE" ? "🔊 " : ch.type === "BROADCAST" ? "📣 " : ch.type === "EXECUTION" ? "▢ " : "# "}
+                              {ch.name}
+                            </span>
+                            <span style={monoChip}>{ch.count}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <p style={fieldHint}>Бот ещё ничего не написал.</p>
+                  )}
+                  <p style={{ ...fieldHint, marginTop: 0 }}>
+                    Последнее использование API:{" "}
+                    <strong style={{ color: "var(--ec-text)" }}>
+                      {formatRelative(usage.lastUsedAt)}
+                    </strong>
+                  </p>
+                </>
+              )}
+              {!loading && !usage && (
+                <p style={fieldHint}>Не удалось загрузить статистику.</p>
+              )}
             </div>
           );
         })()}

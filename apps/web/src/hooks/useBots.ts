@@ -210,6 +210,48 @@ export function useBots(serverId: string | null) {
     setRevealed(null);
   }, []);
 
+  /** v1.0 #11 AI controls: usage stats per bot. */
+  const fetchUsage = useCallback(
+    async (botId: string): Promise<BotUsage | null> => {
+      if (!serverId) return null;
+      try {
+        const data = await apiJson<BotUsage>(
+          `/api/servers/${encodeURIComponent(serverId)}/bots/${encodeURIComponent(botId)}/usage`,
+        );
+        return data;
+      } catch (e) {
+        setError(e instanceof ApiError ? e.message : "Не удалось получить статистику");
+        return null;
+      }
+    },
+    [serverId],
+  );
+
+  /** v1.0 #11 AI controls: test-run prompt без отправки в канал. */
+  const testBot = useCallback(
+    async (botId: string, userInput: string): Promise<BotTestResult | null> => {
+      if (!serverId) return null;
+      try {
+        const data = await apiJson<BotTestResult>(
+          `/api/servers/${encodeURIComponent(serverId)}/bots/${encodeURIComponent(botId)}/test`,
+          {
+            method: "POST",
+            body: JSON.stringify({ userInput }),
+          },
+        );
+        return data;
+      } catch (e) {
+        const message =
+          e instanceof ApiError ? e.message : "AI test failed";
+        return {
+          ok: false,
+          error: message,
+        } as BotTestResult;
+      }
+    },
+    [serverId],
+  );
+
   return {
     bots,
     loading,
@@ -221,5 +263,38 @@ export function useBots(serverId: string | null) {
     regenerateKey,
     deleteBot,
     dismissRevealedKey,
+    fetchUsage,
+    testBot,
   };
 }
+
+/** v1.0 #11 AI controls: usage payload. */
+export type BotUsage = {
+  totalMessages: number;
+  messages7d: number;
+  messages24h: number;
+  lastUsedAt: string | null;
+  topChannels: Array<{
+    id: string;
+    name: string;
+    type: "TEXT" | "VOICE" | "BROADCAST" | "EXECUTION";
+    count: number;
+  }>;
+};
+
+/** v1.0 #11 AI controls: test-run response. */
+export type BotTestResult =
+  | {
+      ok: true;
+      response: string;
+      provider: string;
+      model: string | null;
+      latencyMs: number;
+      systemPromptLength: number;
+      isOverride: boolean;
+    }
+  | {
+      ok: false;
+      error: string;
+      latencyMs?: number;
+    };

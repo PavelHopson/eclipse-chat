@@ -15,6 +15,7 @@ import {
   resolveBotSystemPrompt,
   type BotRoleValue,
 } from "../ai/botRoles.js";
+import { chat, AINotConfiguredError, AIProviderError } from "../ai/provider.js";
 
 const botRoleSchema = z.enum(BOT_ROLES as readonly [BotRoleValue, ...BotRoleValue[]]);
 
@@ -307,7 +308,7 @@ export async function registerBotRoutes(app: FastifyInstance) {
       }
       const bot = await db.bot.findUnique({
         where: { id: botId },
-        select: { id: true, serverId: true, userId: true },
+        select: { id: true, serverId: true, userId: true, systemPromptOverride: true },
       });
       if (!bot || bot.serverId !== serverId) {
         return reply.status(404).send({ error: "Bot not found" });
@@ -328,9 +329,17 @@ export async function registerBotRoutes(app: FastifyInstance) {
       }
       if (parsed.data.role !== undefined) data.role = parsed.data.role;
       if (parsed.data.autoRespond !== undefined) data.autoRespond = parsed.data.autoRespond;
+      // v1.0: audit prompt update/reset для AI controls observability.
+      let promptAuditEvent: "BOT_PROMPT_UPDATE" | "BOT_PROMPT_RESET" | null = null;
       if (parsed.data.systemPromptOverride !== undefined) {
         const p = parsed.data.systemPromptOverride?.trim();
         data.systemPromptOverride = p ? p : null;
+        // Audit только если что-то реально меняется.
+        if (p && p !== bot.systemPromptOverride) {
+          promptAuditEvent = "BOT_PROMPT_UPDATE";
+        } else if (!p && bot.systemPromptOverride) {
+          promptAuditEvent = "BOT_PROMPT_RESET";
+        }
       }
       if (parsed.data.webhookUrl !== undefined) {
         const u = parsed.data.webhookUrl?.trim();
@@ -365,6 +374,17 @@ export async function registerBotRoutes(app: FastifyInstance) {
         await db.user.update({
           where: { id: updated.userId },
           data: { displayName: data.name },
+        });
+      }
+      if (promptAuditEvent) {
+        recordAudit(promptAuditEvent, {
+          userId,
+          req,
+          metadata: {
+            botId,
+            serverId,
+            promptLength: data.systemPromptOverride?.length ?? 0,
+          },
         });
       }
       return {
@@ -415,6 +435,199 @@ export async function registerBotRoutes(app: FastifyInstance) {
         metadata: { botId, serverId, name: bot.name },
       });
       return { ok: true };
+    },
+  );
+
+  /**
+   * v1.0 #11 AI controls: GET /api/servers/:id/bots/:botId/usage —
+   * aggregate stats для bot. Pull from existing Message table (no logs
+   * schema migration). Возвращает:
+   *   - totalMessages: lifetime count of messages from bot's shadow user
+   *   - messages7d: last 7 days count
+   *   - messages24h: last 24 hours count
+   *   - lastUsedAt: from Bot.lastUsedAt (auto-updated при bot.token usage)
+   *   - topChannels: top 3 channels by message count
+   *
+   * Member-only (любой member видит usage, не secret).
+   */
+  app.get(
+    "/api/servers/:id/bots/:botId/usage",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const { id: serverId, botId } = req.params as { id: string; botId: string };
+      const userId = getUserId(req);
+      if (!userId) return reply.status(401).send({ error: "Unauthorized" });
+      const member = await db.member.findUnique({
+        where: { userId_serverId: { userId, serverId } },
+        select: { role: true },
+      });
+      if (!member) return reply.status(403).send({ error: "Not a member" });
+      const bot = await db.bot.findUnique({
+        where: { id: botId },
+        select: { id: true, serverId: true, userId: true, lastUsedAt: true },
+      });
+      if (!bot || bot.serverId !== serverId) {
+        return reply.status(404).send({ error: "Bot not found" });
+      }
+      const now = Date.now();
+      const start7d = new Date(now - 7 * 24 * 3600 * 1000);
+      const start24h = new Date(now - 24 * 3600 * 1000);
+      const [totalMessages, messages7d, messages24h, perChannel] = await Promise.all([
+        db.message.count({
+          where: {
+            userId: bot.userId,
+            deletedAt: null,
+          },
+        }),
+        db.message.count({
+          where: {
+            userId: bot.userId,
+            deletedAt: null,
+            createdAt: { gte: start7d },
+          },
+        }),
+        db.message.count({
+          where: {
+            userId: bot.userId,
+            deletedAt: null,
+            createdAt: { gte: start24h },
+          },
+        }),
+        db.message.groupBy({
+          by: ["channelId"],
+          where: {
+            userId: bot.userId,
+            deletedAt: null,
+          },
+          _count: { _all: true },
+          orderBy: { _count: { id: "desc" } },
+          take: 3,
+        }),
+      ]);
+      const channelIds = perChannel
+        .map((c) => c.channelId)
+        .filter((id): id is string => id !== null);
+      const channels = channelIds.length
+        ? await db.channel.findMany({
+            where: { id: { in: channelIds }, serverId },
+            select: { id: true, name: true, type: true },
+          })
+        : [];
+      const channelById = new Map(channels.map((c) => [c.id, c]));
+      const topChannels = perChannel
+        .map((c) => {
+          if (c.channelId == null) return null;
+          const ch = channelById.get(c.channelId);
+          if (!ch) return null;
+          return {
+            id: ch.id,
+            name: ch.name,
+            type: ch.type,
+            count: c._count._all,
+          };
+        })
+        .filter((c): c is NonNullable<typeof c> => c !== null);
+      return {
+        totalMessages,
+        messages7d,
+        messages24h,
+        lastUsedAt: bot.lastUsedAt?.toISOString() ?? null,
+        topChannels,
+      };
+    },
+  );
+
+  /**
+   * v1.0 #11 AI controls: POST /api/servers/:id/bots/:botId/test —
+   * test-run AI response для bot'а с текущим system prompt (override или
+   * role template). НЕ создаёт message в канале — только runs chat() и
+   * возвращает response. Для preview prompt-changes без spam'а каналов.
+   *
+   * Rate limit: 10 per minute per user через Fastify rate-limit на уровне
+   * application (если применяется глобально).
+   *
+   * OWNER only — управление AI controls.
+   */
+  app.post(
+    "/api/servers/:id/bots/:botId/test",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const { id: serverId, botId } = req.params as { id: string; botId: string };
+      const userId = getUserId(req);
+      const auth = await requireServerOwner(serverId, userId);
+      if (!auth.ok) return reply.status(auth.status).send({ error: auth.error });
+      const testBody = z.object({
+        userInput: z.string().trim().min(1).max(2000),
+      });
+      const parsed = testBody.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.status(400).send({
+          error: parsed.error.issues[0]?.message ?? "Invalid body",
+        });
+      }
+      const bot = await db.bot.findUnique({
+        where: { id: botId },
+        select: {
+          id: true,
+          serverId: true,
+          name: true,
+          role: true,
+          systemPromptOverride: true,
+        },
+      });
+      if (!bot || bot.serverId !== serverId) {
+        return reply.status(404).send({ error: "Bot not found" });
+      }
+      const systemPrompt = resolveBotSystemPrompt(
+        bot.role as BotRoleValue,
+        bot.systemPromptOverride,
+      );
+      const started = Date.now();
+      try {
+        const result = await chat(
+          [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: parsed.data.userInput },
+          ],
+          { temperature: 0.7, maxTokens: 600 },
+        );
+        const latencyMs = Date.now() - started;
+        recordAudit("BOT_TEST_INVOKE", {
+          userId: userId!,
+          req,
+          metadata: {
+            botId,
+            serverId,
+            inputLength: parsed.data.userInput.length,
+            outputLength: result.text.length,
+            provider: result.provider,
+            latencyMs,
+          },
+        });
+        return {
+          ok: true,
+          response: result.text,
+          provider: result.provider,
+          model: result.model ?? null,
+          latencyMs,
+          systemPromptLength: systemPrompt.length,
+          isOverride: Boolean(bot.systemPromptOverride),
+        };
+      } catch (err) {
+        const latencyMs = Date.now() - started;
+        if (err instanceof AINotConfiguredError) {
+          return reply.status(503).send({
+            error: "AI providers не сконфигурированы (нет API ключей в .env)",
+          });
+        }
+        if (err instanceof AIProviderError) {
+          return reply.status(502).send({
+            error: `AI provider ${err.provider} failed: ${err.message}`,
+            latencyMs,
+          });
+        }
+        throw err;
+      }
     },
   );
 

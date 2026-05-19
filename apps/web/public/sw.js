@@ -18,10 +18,8 @@
  * Version bump в SW_VERSION гарантирует invalidate стары кэшей при deploy.
  */
 
-// v0.99: bumped from v0.84 to invalidate stale chunks от users которые
-// ещё держат cache pre-v0.95. Должен bump-иться при каждом релизе для
-// гарантированного refresh.
-const SW_VERSION = "eclipse-v0.99";
+// v1.0: bumped per release для гарантированного refresh новых JS chunks.
+const SW_VERSION = "eclipse-v1.0";
 const APP_SHELL_CACHE = `${SW_VERSION}-shell`;
 const ASSETS_CACHE = `${SW_VERSION}-assets`;
 const UPLOADS_CACHE = `${SW_VERSION}-uploads`;
