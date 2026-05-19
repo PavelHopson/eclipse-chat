@@ -5,9 +5,55 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v1.1.13** (mobile topbar overflow
-fix после Pavel screenshot с iPhone — telemetry pills съедали
-весь header).
+**Текущая версия в проде:** **v1.1.14** (cinematic multi-step
+AuthScreen — Pavel прислал 4 mockup screenshot'а из eclipse-os-v1
+«это просто пушка, вот так нам надо сделать»).
+
+**Изменения v1.1.14:**
+
+Полный rewrite AuthPage (single-page board → HUD-style terminal
+со step-flow credentials → twofa → success).
+
+**Shell:**
+- Rotating radar grid bg (concentric rings 90s spin + 64px grid
+  + crosshairs)
+- 4 viewport tactical corner brackets (64×64 L-shapes)
+- Top HUD: «СЕТЬ ECLIPSE … POS+СИНХР+T» (fake telemetry 1.2s)
+- Bottom HUD: «● ЗАЩИЩЁННАЯ СВЯЗЬ АКТИВНА … ВЕРСИЯ 1.0.0.99»
+- Eclipse logo (pure-CSS square frame + radial eclipse symbol +
+  breathing aura)
+- ECLIPSE title (Orbitron + shimmer) + ПРОТОКОЛ_ШЛЮЗА_V1.0
+- Central terminal box cut-corner clip-path + cyan/violet accent
+  bars
+
+**Step credentials:** lock icon + Вход/Регистрация toggle +
+monospace fields (Личность оператора / Секретный код / Имя) +
+ПРОДОЛЖИТЬ slide-fill button.
+
+**Step twofa:** shield icon + 6 pin slots (blinking caret) +
+3×4 numeric keypad (auto-submit) + RECOVERY-КОД переключатель.
+
+**Step success:** unlock icon + pinging green ring + ДОСТУП
+РАЗРЕШЁН.
+
+Auth API (onLogin/onRegister/2FA/recovery) сохранена без
+изменений — только presentation layer переписан.
+
+**Сборка**: 6 files, +1055/-418. CSS bundle 100.59 → 112.98 KB
+raw (+12.4 KB), gzip 18.75 → 20.74 KB. Old `.ec-auth-board-*` /
+`.ec-auth-preview*` classes теперь dead (cleanup отдельно).
+
+**Изменения v1.1.13 (mobile fix):**
+
+Pavel прислал screenshot с телефона: telemetry pills съедали
+topbar. responsive.css fix:
+- < 900px: hide ПАМ + ЦП pills
+- < 640px: hide ВСЕ telemetry pills + breadcrumb
+- < 480px: hide brand-title text
+
+**Предыдущие версии:** v1.1.12 (OperationalTablePanel cyber
+polish), v1.1.11 (ActionItemDrawer + ThreadPanel), v1.1.10
+(ChannelInfoPanel + IntelligencePanel).
 
 **Изменения v1.1.13 (mobile fix):**
 
