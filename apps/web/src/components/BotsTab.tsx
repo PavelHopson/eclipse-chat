@@ -58,7 +58,11 @@ const inputStyle: CSSProperties = {
 
 const botCard: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "auto 1fr auto",
+  // v1.1.5: minmax(0, 1fr) для col 2 — без него длинный actions-block (7
+  // кнопок) растягивал col 3 до max-content и col 2 сжимался до 1 буквы
+  // в столбец (см. Pavel screenshot v1.1.4). 280px cap для col 3 заставляет
+  // кнопки wrap в 2-3 ряда вместо single horizontal mega-row.
+  gridTemplateColumns: "auto minmax(0, 1fr) minmax(0, 280px)",
   gap: "var(--ec-space-3)",
   alignItems: "start",
   padding: "var(--ec-space-3)",

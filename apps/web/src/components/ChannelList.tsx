@@ -91,6 +91,9 @@ const headerStyle: CSSProperties = {
   padding: "var(--ec-space-3) var(--ec-space-4)",
   borderBottom: "1px solid var(--ec-border-subtle)",
   background: "var(--ec-surface-1)",
+  // v1.1.5: position:relative — нужно для .ec-server-header-edge::after
+  // holographic bottom line.
+  position: "relative",
 };
 
 const serverTrigger: CSSProperties = {
@@ -796,7 +799,7 @@ export function ChannelList({
 
   return (
     <aside style={wrap}>
-      <header style={headerStyle}>
+      <header className="ec-server-header-edge" style={headerStyle}>
         <button type="button" onClick={onShowServerInfo} style={serverTrigger} title="Подробнее о пространстве">
           <span style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
             <span
@@ -862,6 +865,7 @@ export function ChannelList({
           aria-selected={sidebarTab === "channels"}
           onClick={() => setSidebarTab("channels")}
           style={sidebarTabBtn(sidebarTab === "channels")}
+          className="ec-hud-tab"
           title="Каналы — текстовые, broadcast, голосовые"
         >
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -875,6 +879,7 @@ export function ChannelList({
           aria-selected={sidebarTab === "work"}
           onClick={() => setSidebarTab("work")}
           style={sidebarTabBtn(sidebarTab === "work")}
+          className="ec-hud-tab"
           title="Работа — доска задач, здоровье команды"
         >
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -889,6 +894,7 @@ export function ChannelList({
           aria-selected={sidebarTab === "tables"}
           onClick={() => setSidebarTab("tables")}
           style={sidebarTabBtn(sidebarTab === "tables")}
+          className="ec-hud-tab"
           title="Таблицы — operational tables"
         >
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -1058,7 +1064,7 @@ export function ChannelList({
             {textChannels.length > 0 && (
               <>
                 <div className="ec-section-label" style={{ marginBottom: "var(--ec-space-2)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                  <span className="ec-section-label--diamond">
                     <span>ПОТОКИ ДАННЫХ</span>
                     <span style={{ color: "var(--ec-text-dim)", fontFeatureSettings: '"tnum"' }}>{textChannels.length}</span>
                   </span>
@@ -1100,7 +1106,7 @@ export function ChannelList({
                     justifyContent: "space-between",
                   }}
                 >
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                  <span className="ec-section-label--diamond ec-section-label--diamond-violet">
                     <span>ВЕЩАНИЕ</span>
                     <span style={{ color: "var(--ec-text-dim)", fontFeatureSettings: '"tnum"' }}>{broadcastChannels.length}</span>
                   </span>
@@ -1145,7 +1151,7 @@ export function ChannelList({
                     justifyContent: "space-between",
                   }}
                 >
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                  <span className="ec-section-label--diamond ec-section-label--diamond-mint">
                     <span>ГОЛОСОВЫЕ СВЯЗИ</span>
                     <span style={{ color: "var(--ec-text-dim)", fontFeatureSettings: '"tnum"' }}>{voiceChannels.length}</span>
                   </span>

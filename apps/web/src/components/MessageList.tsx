@@ -585,7 +585,10 @@ export function MessageList({
               </div>
             )}
             <article
-              className="ec-message-row ec-anim-message-enter"
+              className={
+                "ec-message-row ec-anim-message-enter" +
+                (m.user.isBot ? " ec-message-row--ai" : "")
+              }
               style={{
                 ...rowStyle,
                 opacity: m.pending ? 0.6 : 1,
@@ -595,7 +598,7 @@ export function MessageList({
                 animationDelay: i < 12 ? `${i * 25}ms` : "0ms",
               }}
               onMouseEnter={(e) => {
-                if (!isPinned) e.currentTarget.style.background = "var(--ec-surface-1)";
+                if (!isPinned && !m.user.isBot) e.currentTarget.style.background = "var(--ec-surface-1)";
                 const time = e.currentTarget.querySelector<HTMLElement>("[data-sticky-time]");
                 if (time) time.style.opacity = "1";
                 const bar = e.currentTarget.querySelector<HTMLElement>("[data-actions]");
@@ -605,7 +608,7 @@ export function MessageList({
                 }
               }}
               onMouseLeave={(e) => {
-                if (!isPinned) e.currentTarget.style.background = "transparent";
+                if (!isPinned && !m.user.isBot) e.currentTarget.style.background = "transparent";
                 const time = e.currentTarget.querySelector<HTMLElement>("[data-sticky-time]");
                 if (time) time.style.opacity = "0";
                 const bar = e.currentTarget.querySelector<HTMLElement>("[data-actions]");

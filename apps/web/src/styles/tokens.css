@@ -707,3 +707,119 @@
   .ec-rotate-hover:hover svg,
   .ec-rotate-hover:hover .ec-rotate-hover-target { transform: none; }
 }
+
+/* ============================================================
+ * v1.1.5 — AI message card + section labels + HUD tabs polish
+ * ============================================================ */
+
+/* AI message row — bordered violet card distinct от human messages.
+ * Translucent surface, violet glow halo top-right corner, bordered
+ * accent на стыке row'а с chat-area. Делает bot-сообщения мгновенно
+ * узнаваемыми без зависимости от bot badge label.
+ */
+.ec-message-row--ai {
+  background: linear-gradient(
+    90deg,
+    hsl(252 70% 70% / 0.045) 0%,
+    hsl(252 70% 70% / 0.012) 60%,
+    transparent 100%
+  ) !important;
+  border-left: 2px solid hsl(252 70% 70% / 0.45);
+  padding-left: calc(var(--ec-space-3) - 2px) !important;
+  position: relative;
+}
+.ec-message-row--ai::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 80px;
+  height: 80px;
+  background: radial-gradient(
+    circle at top right,
+    hsl(252 70% 70% / 0.14) 0%,
+    transparent 65%
+  );
+  pointer-events: none;
+  opacity: 0.7;
+  transition: opacity var(--ec-dur-base) var(--ec-ease);
+}
+.ec-message-row--ai:hover {
+  background: linear-gradient(
+    90deg,
+    hsl(252 70% 70% / 0.085) 0%,
+    hsl(252 70% 70% / 0.025) 60%,
+    transparent 100%
+  ) !important;
+}
+.ec-message-row--ai:hover::after { opacity: 1; }
+
+/* Section-label diamond accent (sidebar group headings). Pseudo
+ * adds rotated cyan diamond + glow слева от текста section'а. */
+.ec-section-label--diamond {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.ec-section-label--diamond::before {
+  content: "";
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  background: var(--ec-accent);
+  transform: rotate(45deg);
+  box-shadow: 0 0 6px hsl(195 70% 60% / 0.65);
+  flex-shrink: 0;
+}
+.ec-section-label--diamond.ec-section-label--diamond-violet::before {
+  background: var(--ec-accent-3);
+  box-shadow: 0 0 6px hsl(252 70% 70% / 0.65);
+}
+.ec-section-label--diamond.ec-section-label--diamond-mint::before {
+  background: var(--ec-ok);
+  box-shadow: 0 0 6px hsl(160 55% 56% / 0.65);
+}
+
+/* HUD tab — stronger active state с top-fade gradient + bottom accent
+ * bar + glow. Применяется к sidebar tabs (КАНАЛЫ / ЗАДАЧИ / ДАННЫЕ). */
+.ec-hud-tab {
+  position: relative;
+  overflow: hidden;
+}
+.ec-hud-tab[aria-selected="true"]::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 50% 0;
+  background: linear-gradient(
+    180deg,
+    hsl(195 70% 60% / 0.12) 0%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+.ec-hud-tab[aria-selected="true"]::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--ec-accent);
+  box-shadow: 0 0 8px hsl(195 70% 60% / 0.5);
+  pointer-events: none;
+}
+
+/* Server header holographic bottom-edge — accent line gradient. */
+.ec-server-header-edge {
+  position: relative;
+}
+.ec-server-header-edge::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--ec-holo-cyan);
+  pointer-events: none;
+}
