@@ -4,6 +4,7 @@ import { emitBotTyping, emitMessageOnChannel } from "../realtime.js";
 import { chat, isAiConfigured } from "./provider.js";
 import { assistantPrompt } from "./prompts.js";
 import { resolveBotSystemPrompt, type BotRoleValue } from "./botRoles.js";
+import { attemptCreateRowFromMention } from "./taskFromChat.js";
 import type { FastifyBaseLogger } from "fastify";
 
 /**
@@ -363,6 +364,22 @@ export async function maybeReplyToMention(
 
       const responder = await getResponderForRole(channel.serverId, mention.role);
       if (!responder) return;
+
+      // v0.93 #5 ph2 + #4: try task-creation first. Если AI сочтёт
+      // это запросом на создание row в таблице → создаст row + reply
+      // confirmation, и мы skip'аем normal reply (один bot message).
+      // Иначе fall through к normal AI reply.
+      const taskCreated = await attemptCreateRowFromMention({
+        channelId,
+        serverId: channel.serverId,
+        senderUserId: triggerUserId,
+        content: triggerContent,
+        responder,
+        log,
+      });
+      if (taskCreated) {
+        return;
+      }
 
       await executeChannelBotReply({
         channelId,
