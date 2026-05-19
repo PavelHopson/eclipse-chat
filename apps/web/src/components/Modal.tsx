@@ -88,7 +88,11 @@ export function Modal({ title, onClose, children, footer, width = 440 }: Props) 
     boxShadow: "var(--ec-shadow-modal)",
     borderRadius: "var(--ec-radius-lg)",
     border: "1px solid var(--ec-border-default)",
-    width: `min(${width}px, 100%)`,
+    // v0.99: было `min(${width}px, 100%)` — на mobile с width=620
+    // (ServerHubModal) модал растягивался во весь экран без breathing
+    // room, tab-bar overflow'ил. calc(100vw - 32px) гарантирует 16px
+    // gap с каждой стороны (matches backdrop padding var(--ec-space-4)).
+    width: `min(${width}px, calc(100vw - 32px))`,
     maxHeight: "min(calc(100dvh - 64px), 92vh)",
     display: "flex",
     flexDirection: "column",

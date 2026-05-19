@@ -1127,3 +1127,97 @@
   }
 }
 
+/* ==============================================================
+ * v0.99 polish pass — responsive optimization для v0.95-v0.98 changes.
+ * ============================================================== */
+
+/* ChannelInfoPanel (v0.96): на landscape mobile (≤500px высоты) panel
+ * максимальной высотой ел почти весь chat-area. 30vh оставляет
+ * MessageList'у достаточно места для контекста под панелью. */
+@media (max-height: 500px) {
+  .ec-channel-info-panel {
+    max-height: min(30vh, 240px) !important;
+  }
+}
+
+/* ChannelInfoPanel tab-bar на узких viewport'ах — 4 inner tabs
+ * (Сводка / Память / Дела / Файлы) с count pills могут overflow'ить
+ * на mobile <400px. Делаем tabs horizontally scrollable. */
+@media (max-width: 400px) {
+  .ec-channel-info-panel__tabs {
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .ec-channel-info-panel__tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .ec-channel-info-panel__tabs > button {
+    flex-shrink: 0;
+  }
+}
+
+/* Chat-header touch targets на mobile: inline-styled buttons по 26×26px
+ * не дотягивают до Apple HIG 44×44 / Material 48×48. Bump до 38×38 на
+ * ≤640px — компромисс между HIG и chat-header heightом (44px). Применяем
+ * через child selector — все <button>, <span role="button"> внутри
+ * chat-header'а. */
+@media (max-width: 640px) {
+  .ec-chat-header button,
+  .ec-chat-header [role="button"] {
+    min-width: 38px;
+    min-height: 38px;
+  }
+  /* Кнопки которые сами визуально remain 26px, но имеют 38px hit-area
+   * через padding — пока без override, потому что современный layout
+   * dock'ает их в ряд с music-mini-player; bump min-width = bumped row
+   * height. Это OK trade-off для touch UX. */
+}
+
+/* Chat-header overflow safety: на tight laptop (1025-1366) chat-header
+ * несёт title + emoji + description + music-mini-player + 2 hover buttons +
+ * (i) + ⚙. Гарантируем что title flex-shrink'ит правильно и description
+ * truncate'ится. */
+@media (min-width: 1025px) and (max-width: 1366px) {
+  .ec-chat-header .ec-chat-title {
+    flex-shrink: 1;
+    min-width: 0;
+  }
+  /* Music mini-player на этом breakpoint имеет естественный max-width 220px;
+   * на ещё более узком — ellipsis работает через own component. */
+  .ec-music-mini-player {
+    max-width: 200px;
+  }
+}
+
+/* ServerHubModal tabs (v0.97): 4 tabs (Обзор / Оформление / Настройки /
+ * Боты) с RU labels могут overflow'ить на mobile modal (~290px width).
+ * Делаем горизонтальный scroll fallback. */
+@media (max-width: 600px) {
+  .ec-server-hub__tabs {
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .ec-server-hub__tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .ec-server-hub__tabs > button {
+    flex: 0 0 auto;
+    min-width: max-content;
+  }
+}
+
+/* Global prefers-reduced-motion guard для новых v0.96-v0.98 elements.
+ * Tokens.css уже override'ит --ec-dur-fast/base/slow → 1ms, но defensive
+ * фикс для animations не использующих var(). */
+@media (prefers-reduced-motion: reduce) {
+  .ec-channel-info-panel,
+  .ec-channel-info-panel * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+

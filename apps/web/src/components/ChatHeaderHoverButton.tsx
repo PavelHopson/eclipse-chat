@@ -81,8 +81,10 @@ const popover: CSSProperties = {
   position: "absolute",
   top: "calc(100% + 6px)",
   right: 0,
-  width: 320,
-  maxWidth: "calc(100vw - 32px)",
+  // v0.99: гарантируем что popover никогда не уезжает за viewport.
+  // min(320, calc(100vw - 64px)) — на 360px mobile получится 296px,
+  // оставляя 32px margin'а с каждой стороны.
+  width: "min(320px, calc(100vw - 64px))",
   background: "var(--ec-surface-1)",
   border: "1px solid var(--ec-border-default)",
   borderRadius: "var(--ec-radius-lg)",

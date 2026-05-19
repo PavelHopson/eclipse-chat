@@ -374,7 +374,12 @@ export function ServerHubModal({
 
   return (
     <Modal title={server.name} onClose={onClose} width={620}>
-      <div style={tabBar} role="tablist" aria-label="Разделы пространства">
+      <div
+        style={tabBar}
+        className="ec-server-hub__tabs"
+        role="tablist"
+        aria-label="Разделы пространства"
+      >
         {visibleTabs.map((t) => (
           <button
             key={t.id}

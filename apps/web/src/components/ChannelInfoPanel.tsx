@@ -217,11 +217,11 @@ export function ChannelInfoPanel({
   return (
     <section
       style={sheet}
-      className="ec-anim-reveal"
+      className="ec-channel-info-panel ec-anim-reveal"
       role="region"
       aria-label="Информация о комнате"
     >
-      <div style={tabBar} role="tablist">
+      <div style={tabBar} className="ec-channel-info-panel__tabs" role="tablist">
           <button
             type="button"
             style={tabBtn(activeTab === "summary")}
