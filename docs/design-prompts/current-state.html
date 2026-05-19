@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Eclipse Chat — Current State Snapshot (v1.0.0)</title>
+  <!--
+    Это структурный снимок Eclipse Chat v1.0.0 для AI design-tools (Google
+    AI Studio / Stitch / Gemini Vision). Single-file HTML с inline CSS
+    приближённо рендерит current UI architecture. AI должен видеть:
+
+      1. Layered black dark theme (4 surface levels)
+      2. Cool sky cyan accent (#5db5d9) — main accent color
+      3. 4-column shell layout: rail / channels / chat / members
+      4. v0.96 sidebar tabs (Каналы / Работа / Таблицы)
+      5. v0.96 IntelligencePanel simplified to Members-only
+      6. v0.97 chat-header (i) info button + channel emoji + description
+      7. v0.98 hover-buttons (📌 pinned + ✓ tasks) с count badges
+      8. v1.0 BotsTab AI controls (Тест / Стата / Промпт panels)
+
+    AI задача: предложить futuristic redesign EVOLUTION текущего UI.
+    См. сопровождающий google-ai-studio-prompt.md для full briefing.
+
+    NOT a production render — упрощённый approximation для visual reference.
+  -->
+  <style>
+    /* ============================================================
+       Design tokens (calm cinematic dark theme)
+       ============================================================ */
+    :root {
+      /* Layered blacks */
+      --ec-bg: #07090D;
+      --ec-surface-1: #0B0F14;
+      --ec-surface-2: #11161D;
+      --ec-surface-3: #141A22;
+
+      /* Text */
+      --ec-text: hsl(210 18% 88%);
+      --ec-text-strong: hsl(210 22% 96%);
+      --ec-text-muted: hsl(210 14% 62%);
+      --ec-text-dim: hsl(210 12% 44%);
+
+      /* Borders */
+      --ec-border-subtle: hsl(210 16% 18%);
+      --ec-border-default: hsl(210 18% 24%);
+      --ec-border-emphasis: hsl(210 22% 32%);
+      --ec-border-accent: hsl(195 70% 60% / 0.5);
+
+      /* Accents — COOL TONE ONLY, никогда warm orange */
+      --ec-accent: hsl(195 70% 60%);          /* sky cyan */
+      --ec-accent-soft: hsl(195 70% 60% / 0.12);
+      --ec-accent-text: hsl(210 20% 8%);
+
+      /* Semantic statuses */
+      --ec-status-exec: hsl(152 58% 52%);     /* green = execution / done */
+      --ec-status-warn: hsl(38 90% 60%);      /* amber = warning */
+      --ec-status-risk: hsl(0 72% 60%);       /* red = overdue / critical */
+      --ec-status-ai: hsl(252 70% 70%);       /* violet = AI / agent */
+      --ec-status-idle: hsl(215 50% 60%);     /* muted blue = idle */
+
+      /* Headers */
+      --ec-header-height: 54px;
+      --ec-rail-width: 68px;
+      --ec-sidebar-width: 248px;
+      --ec-members-width: 248px;
+
+      /* Animation */
+      --ec-dur-fast: 120ms;
+      --ec-dur-base: 180ms;
+      --ec-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+
+      /* Typography */
+      --ec-tracking-caps: 0.08em;
+      --ec-tracking-wide: 0.04em;
+      --ec-tracking-brand: 0.16em;
+      --ec-text-2xs: 0.7rem;
+      --ec-text-xs: 0.78rem;
+      --ec-text-sm: 0.88rem;
+      --ec-text-base: 0.96rem;
+      --ec-text-md: 1.04rem;
+      --ec-text-lg: 1.18rem;
+      --ec-text-2xl: 1.5rem;
+
+      /* Radii */
+      --ec-radius-xs: 3px;
+      --ec-radius-sm: 5px;
+      --ec-radius-md: 8px;
+      --ec-radius-lg: 12px;
+      --ec-radius-xl: 16px;
+      --ec-radius-full: 9999px;
+
+      /* Space scale */
+      --ec-space-1: 4px;
+      --ec-space-2: 8px;
+      --ec-space-3: 12px;
+      --ec-space-4: 16px;
+      --ec-space-5: 20px;
+      --ec-space-6: 28px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      :root { --ec-dur-fast: 1ms; --ec-dur-base: 1ms; }
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, "SF Pro Display", "Segoe UI", system-ui, sans-serif;
+      background: var(--ec-bg);
+      color: var(--ec-text);
+      font-size: 14px;
+      line-height: 1.5;
+      /* Atmospheric grid background — subtle dot pattern */
+      background-image:
+        radial-gradient(circle at 25% 30%, hsl(195 70% 60% / 0.04) 0, transparent 35%),
+        radial-gradient(circle at 75% 80%, hsl(252 70% 60% / 0.03) 0, transparent 30%),
+        linear-gradient(180deg, var(--ec-bg) 0%, hsl(210 22% 4%) 100%);
+      min-height: 100vh;
+    }
+
+    /* ============================================================
+       Layout shell — 4 columns на desktop
+       ============================================================ */
+    .ec-shell {
+      display: grid;
+      height: 100vh;
+      grid-template-rows: var(--ec-header-height) 1fr;
+      grid-template-columns: var(--ec-rail-width) var(--ec-sidebar-width) 1fr var(--ec-members-width);
+      grid-template-areas:
+        "top top top top"
+        "rail channels chat members";
+    }
+
+    /* ============================================================
+       Top bar (header)
+       ============================================================ */
+    .ec-shell__top {
+      grid-area: top;
+      display: flex;
+      align-items: center;
+      gap: var(--ec-space-3);
+      padding: 0 var(--ec-space-4);
+      border-bottom: 1px solid var(--ec-border-subtle);
+      background: var(--ec-surface-1);
+    }
+    .ec-brand {
+      display: flex;
+      align-items: center;
+      gap: var(--ec-space-2);
+      color: var(--ec-accent);
+      font-weight: 700;
+      letter-spacing: var(--ec-tracking-brand);
+      text-transform: uppercase;
+      font-size: var(--ec-text-2xs);
+    }
+    .ec-brand-mark {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, hsl(195 70% 60% / 0.8), hsl(252 50% 30%));
+      box-shadow: 0 0 12px hsl(195 70% 60% / 0.45);
+    }
+    .ec-shell__breadcrumb {
+      color: var(--ec-text-muted);
+      font-size: var(--ec-text-xs);
+      letter-spacing: var(--ec-tracking-wide);
+      display: flex; gap: var(--ec-space-2); align-items: center;
+    }
+    .ec-shell__top-actions {
+      margin-left: auto;
+      display: flex; gap: var(--ec-space-2); align-items: center;
+    }
+    .ec-icon-btn {
+      width: 36px; height: 36px;
+      display: grid; place-items: center;
+      background: transparent; border: 1px solid transparent;
+      border-radius: var(--ec-radius-md);
+      color: var(--ec-text-muted);
+      cursor: pointer;
+      transition: background var(--ec-dur-fast) var(--ec-ease);
+    }
+    .ec-icon-btn:hover { background: var(--ec-surface-2); color: var(--ec-text); }
+    .ec-user-chip {
+      display: flex; align-items: center; gap: var(--ec-space-2);
+      padding: 0 var(--ec-space-2) 0 var(--ec-space-1);
+      background: var(--ec-surface-2);
+      border: 1px solid var(--ec-border-subtle);
+      border-radius: var(--ec-radius-full);
+      height: 34px;
+    }
+    .ec-avatar {
+      width: 26px; height: 26px; border-radius: 50%;
+      background: linear-gradient(135deg, hsl(195 70% 60%), hsl(252 60% 60%));
+      display: grid; place-items: center;
+      color: white; font-weight: 600; font-size: 0.75rem;
+    }
+
+    /* ============================================================
+       Rail (server picker, left-most narrow)
+       ============================================================ */
+    .ec-shell__rail {
+      grid-area: rail;
+      background: var(--ec-surface-1);
+      border-right: 1px solid var(--ec-border-subtle);
+      display: flex; flex-direction: column;
+      gap: 6px;
+      padding: var(--ec-space-2) 0;
+      align-items: center;
+    }
+    .ec-rail-tile {
+      width: 44px; height: 44px; border-radius: var(--ec-radius-md);
+      display: grid; place-items: center;
+      background: var(--ec-surface-2);
+      border: 1px solid var(--ec-border-subtle);
+      color: var(--ec-text-muted);
+      cursor: pointer; transition: all var(--ec-dur-fast) var(--ec-ease);
+      font-weight: 700;
+    }
+    .ec-rail-tile:hover {
+      border-color: var(--ec-border-accent);
+      color: var(--ec-accent);
+    }
+    .ec-rail-tile--active {
+      background: var(--ec-accent-soft);
+      border-color: var(--ec-border-accent);
+      color: var(--ec-accent);
+      box-shadow: 0 0 0 2px var(--ec-bg), 0 0 0 4px var(--ec-accent);
+    }
+
+    /* ============================================================
+       Sidebar — Channels / Работа / Таблицы tabs (v0.96)
+       ============================================================ */
+    .ec-shell__channels {
+      grid-area: channels;
+      background: var(--ec-surface-1);
+      border-right: 1px solid var(--ec-border-subtle);
+      display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+    .ec-sidebar-header {
+      padding: var(--ec-space-3) var(--ec-space-4);
+      border-bottom: 1px solid var(--ec-border-subtle);
+    }
+    .ec-sidebar-title { font-size: var(--ec-text-base); font-weight: 700; color: var(--ec-text-strong); }
+    .ec-badge {
+      display: inline-block;
+      padding: 0 var(--ec-space-2);
+      font-size: 0.6rem;
+      font-weight: 700;
+      letter-spacing: var(--ec-tracking-caps);
+      text-transform: uppercase;
+      border-radius: var(--ec-radius-full);
+      background: var(--ec-surface-3);
+      color: var(--ec-text-muted);
+      margin-top: 4px;
+    }
+    .ec-badge--owner {
+      background: linear-gradient(135deg, hsl(38 90% 60% / 0.18), hsl(38 90% 60% / 0.08));
+      color: hsl(38 90% 70%);
+      border: 1px solid hsl(38 90% 60% / 0.35);
+    }
+
+    /* v0.96 sidebar tab bar */
+    .ec-sidebar-tabs {
+      display: flex;
+      padding: var(--ec-space-2) var(--ec-space-3) 0;
+      background: var(--ec-surface-1);
+      border-bottom: 1px solid var(--ec-border-subtle);
+      gap: 0;
+    }
+    .ec-sidebar-tab {
+      flex: 1;
+      display: inline-flex; align-items: center; justify-content: center;
+      gap: 6px;
+      padding: 0.5rem 0.4rem 0.55rem;
+      background: transparent; border: 0;
+      border-bottom: 2px solid transparent;
+      color: var(--ec-text-muted);
+      font-size: var(--ec-text-2xs);
+      font-weight: 700;
+      letter-spacing: var(--ec-tracking-caps);
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: color var(--ec-dur-fast) var(--ec-ease), border-color var(--ec-dur-fast) var(--ec-ease);
+    }
+    .ec-sidebar-tab--active {
+      color: var(--ec-text-strong);
+      border-bottom-color: var(--ec-accent);
+    }
+
+    /* Channel list */
+    .ec-channel-list {
+      flex: 1; overflow: auto;
+      padding: var(--ec-space-3) var(--ec-space-2);
+      display: flex; flex-direction: column;
+      gap: 2px;
+    }
+    .ec-section-label {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 0 var(--ec-space-2);
+      margin: var(--ec-space-2) 0 var(--ec-space-1);
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: var(--ec-tracking-caps);
+      text-transform: uppercase;
+      color: var(--ec-text-muted);
+    }
+    .ec-section-add {
+      width: 18px; height: 18px;
+      padding: 0;
+      display: grid; place-items: center;
+      background: transparent;
+      border: 1px solid var(--ec-border-subtle);
+      color: var(--ec-text-dim);
+      border-radius: var(--ec-radius-xs);
+      cursor: pointer; font-size: 0.7rem;
+      line-height: 1;
+    }
+    .ec-section-add:hover {
+      background: var(--ec-surface-3); color: var(--ec-text);
+      border-color: var(--ec-border-default);
+    }
+    .ec-channel-item {
+      display: flex; align-items: center; gap: var(--ec-space-2);
+      padding: 0.4rem 0.65rem;
+      border-radius: var(--ec-radius-sm);
+      background: transparent; border: 0;
+      color: var(--ec-text-muted);
+      font-size: var(--ec-text-sm);
+      cursor: pointer;
+      transition: background var(--ec-dur-fast) var(--ec-ease), color var(--ec-dur-fast) var(--ec-ease);
+      text-align: left; width: 100%;
+    }
+    .ec-channel-item:hover { background: var(--ec-surface-2); color: var(--ec-text); }
+    .ec-channel-item--active {
+      background: var(--ec-accent-soft);
+      color: var(--ec-text-strong);
+      box-shadow: inset 3px 0 0 var(--ec-accent);
+    }
+    .ec-channel-hash {
+      font-family: ui-monospace, "SF Mono", monospace;
+      color: var(--ec-text-dim);
+      font-weight: 600;
+    }
+    .ec-channel-count {
+      margin-left: auto;
+      font-size: 0.62rem;
+      color: var(--ec-text-dim);
+      font-feature-settings: "tnum";
+    }
+
+    /* Composer row at bottom — primary action */
+    .ec-composer-row {
+      padding: var(--ec-space-3);
+      border-top: 1px solid var(--ec-border-subtle);
+    }
+    .ec-btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      gap: var(--ec-space-2);
+      height: 32px; padding: 0 var(--ec-space-3);
+      background: var(--ec-surface-3);
+      border: 1px solid var(--ec-border-default);
+      border-radius: var(--ec-radius-md);
+      color: var(--ec-text);
+      cursor: pointer; font-family: inherit;
+      font-size: var(--ec-text-sm); font-weight: 600;
+      transition: all var(--ec-dur-fast) var(--ec-ease);
+    }
+    .ec-btn:hover { background: var(--ec-surface-2); border-color: var(--ec-border-emphasis); }
+    .ec-btn--primary {
+      background: var(--ec-accent);
+      color: var(--ec-accent-text);
+      border-color: var(--ec-accent);
+      box-shadow: 0 0 0 1px var(--ec-accent), 0 0 16px -4px hsl(195 70% 60% / 0.5);
+    }
+    .ec-btn--primary:hover { filter: brightness(1.1); }
+    .ec-btn--ghost { background: transparent; }
+    .ec-btn--block { width: 100%; }
+
+    /* ============================================================
+       Chat area (central column)
+       ============================================================ */
+    .ec-shell__chat {
+      grid-area: chat;
+      display: flex; flex-direction: column;
+      min-width: 0;
+      position: relative;
+    }
+    .ec-chat-header {
+      display: flex; align-items: center; gap: var(--ec-space-3);
+      padding: 0 var(--ec-space-5);
+      height: 48px;
+      border-bottom: 1px solid var(--ec-border-subtle);
+      background: var(--ec-bg);
+    }
+    .ec-chat-title {
+      display: flex; align-items: baseline; gap: var(--ec-space-2);
+      min-width: 0; flex-shrink: 1;
+      font-size: var(--ec-text-base); font-weight: 700;
+      color: var(--ec-text-strong);
+    }
+    .ec-chat-title-icon { color: var(--ec-accent); font-size: 1rem; }
+    .ec-chat-description {
+      font-size: var(--ec-text-2xs);
+      color: var(--ec-text-muted);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      min-width: 0; flex: 1;
+      padding-left: var(--ec-space-2);
+      border-left: 1px solid var(--ec-border-default);
+    }
+
+    /* v0.98 hover-buttons в chat-header (pins + tasks) */
+    .ec-hover-btn {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 0 0.5rem; height: 26px;
+      background: transparent; border: 0; border-radius: var(--ec-radius-sm);
+      color: var(--ec-text-dim);
+      cursor: pointer; font-size: var(--ec-text-2xs); font-weight: 600;
+      transition: background var(--ec-dur-fast) var(--ec-ease);
+    }
+    .ec-hover-btn:hover { background: var(--ec-surface-2); color: var(--ec-text); }
+    .ec-hover-btn__count {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-width: 16px; height: 16px; padding: 0 4px;
+      border-radius: var(--ec-radius-full);
+      font-size: 0.6rem; font-weight: 700;
+    }
+    .ec-hover-btn--pin { color: var(--ec-status-warn); }
+    .ec-hover-btn--pin .ec-hover-btn__count {
+      background: color-mix(in srgb, var(--ec-status-warn) 18%, transparent);
+      color: var(--ec-status-warn);
+    }
+    .ec-hover-btn--task { color: var(--ec-status-exec); }
+    .ec-hover-btn--task .ec-hover-btn__count {
+      background: color-mix(in srgb, var(--ec-status-exec) 18%, transparent);
+      color: var(--ec-status-exec);
+    }
+    .ec-info-btn {
+      width: 26px; height: 26px;
+      display: grid; place-items: center;
+      background: transparent; border: 0; border-radius: var(--ec-radius-sm);
+      color: var(--ec-text-dim);
+      cursor: pointer;
+      transition: all var(--ec-dur-fast) var(--ec-ease);
+    }
+    .ec-info-btn:hover { background: var(--ec-surface-2); color: var(--ec-text); }
+
+    /* Message list */
+    .ec-message-list {
+      flex: 1; overflow: auto;
+      padding: var(--ec-space-4) var(--ec-space-5);
+      display: flex; flex-direction: column;
+      gap: var(--ec-space-3);
+    }
+    .ec-message {
+      display: grid; grid-template-columns: 36px 1fr;
+      gap: var(--ec-space-3);
+      padding: 0.5rem 0.65rem;
+      border-radius: var(--ec-radius-md);
+      transition: background var(--ec-dur-fast) var(--ec-ease);
+    }
+    .ec-message:hover { background: var(--ec-surface-1); }
+    .ec-message__avatar {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: linear-gradient(135deg, hsl(165 50% 50%), hsl(195 60% 55%));
+      display: grid; place-items: center;
+      color: white; font-weight: 700; font-size: 0.75rem;
+    }
+    .ec-message__header {
+      display: flex; align-items: baseline; gap: var(--ec-space-2);
+      margin-bottom: 2px;
+    }
+    .ec-message__author { font-weight: 700; color: var(--ec-text-strong); font-size: var(--ec-text-sm); }
+    .ec-message__time { font-size: var(--ec-text-2xs); color: var(--ec-text-dim); }
+    .ec-bot-badge {
+      padding: 0 var(--ec-space-1);
+      font-size: 0.58rem;
+      letter-spacing: var(--ec-tracking-caps);
+      text-transform: uppercase;
+      background: color-mix(in srgb, var(--ec-status-ai) 18%, transparent);
+      color: var(--ec-status-ai);
+      border: 1px solid color-mix(in srgb, var(--ec-status-ai) 35%, transparent);
+      border-radius: var(--ec-radius-xs);
+      font-weight: 700;
+    }
+    .ec-message__body { color: var(--ec-text); font-size: var(--ec-text-sm); line-height: 1.55; }
+
+    /* Composer (input) */
+    .ec-composer {
+      padding: var(--ec-space-3) var(--ec-space-5);
+      border-top: 1px solid var(--ec-border-subtle);
+      background: var(--ec-bg);
+    }
+    .ec-composer-box {
+      display: grid; grid-template-columns: 38px 1fr 44px;
+      gap: var(--ec-space-2);
+      padding: var(--ec-space-2);
+      background: var(--ec-surface-2);
+      border: 1px solid var(--ec-border-default);
+      border-radius: var(--ec-radius-md);
+      align-items: center;
+      box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.03);
+    }
+    .ec-composer-input {
+      background: transparent; border: 0; outline: 0;
+      color: var(--ec-text);
+      font-family: inherit; font-size: var(--ec-text-sm);
+      width: 100%; min-width: 0;
+    }
+    .ec-composer-input::placeholder { color: var(--ec-text-dim); }
+
+    /* ============================================================
+       Members panel (right rail, v0.96 simplified to members-only)
+       ============================================================ */
+    .ec-shell__members {
+      grid-area: members;
+      background: var(--ec-surface-1);
+      border-left: 1px solid var(--ec-border-subtle);
+      display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+    .ec-members-header {
+      display: flex; align-items: center; gap: var(--ec-space-2);
+      padding: var(--ec-space-3);
+      border-bottom: 1px solid var(--ec-border-subtle);
+    }
+    .ec-members-label {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: var(--ec-text-2xs);
+      font-weight: 800;
+      letter-spacing: var(--ec-tracking-caps);
+      text-transform: uppercase;
+      color: var(--ec-text-strong);
+    }
+    .ec-members-label svg { color: var(--ec-accent); }
+    .ec-members-count {
+      font-size: var(--ec-text-2xs);
+      color: var(--ec-text-muted);
+      font-weight: 600;
+      font-feature-settings: "tnum";
+    }
+
+    .ec-members-section-label {
+      padding: var(--ec-space-2) var(--ec-space-4);
+      font-size: 0.6rem;
+      letter-spacing: var(--ec-tracking-caps);
+      text-transform: uppercase;
+      color: var(--ec-text-muted);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .ec-members-section-label .dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      display: inline-block;
+      background: var(--ec-status-exec);
+      margin-right: 4px;
+      box-shadow: 0 0 6px var(--ec-status-exec);
+    }
+    .ec-members-section-label .dot--offline { background: var(--ec-text-dim); box-shadow: none; }
+    .ec-member-row {
+      display: grid; grid-template-columns: 28px 1fr auto;
+      gap: var(--ec-space-2); align-items: center;
+      padding: 0.35rem var(--ec-space-3);
+      cursor: pointer;
+      transition: background var(--ec-dur-fast) var(--ec-ease);
+    }
+    .ec-member-row:hover { background: var(--ec-surface-2); }
+    .ec-member-name { color: var(--ec-text); font-size: var(--ec-text-sm); }
+    .ec-member-role-chip {
+      font-size: 0.55rem; font-weight: 700;
+      letter-spacing: var(--ec-tracking-caps);
+      text-transform: uppercase;
+      padding: 0.05rem 0.4rem;
+      background: var(--ec-surface-3);
+      color: var(--ec-text-muted);
+      border-radius: var(--ec-radius-xs);
+      border: 1px solid var(--ec-border-subtle);
+    }
+    .ec-member-role-chip--owner {
+      color: hsl(38 90% 70%);
+      background: hsl(38 90% 60% / 0.1);
+      border-color: hsl(38 90% 60% / 0.35);
+    }
+    .ec-member-role-chip--admin {
+      color: var(--ec-accent);
+      background: var(--ec-accent-soft);
+      border-color: var(--ec-border-accent);
+    }
+  </style>
+</head>
+<body>
+  <!--
+    Main app shell — desktop view. 4 columns:
+      [rail 68] [sidebar 248] [chat 1fr] [members 248]
+  -->
+  <div class="ec-shell">
+    <!-- Top bar -->
+    <header class="ec-shell__top">
+      <div class="ec-brand">
+        <span class="ec-brand-mark"></span>
+        <span>ECLIPSE CHAT</span>
+      </div>
+      <div class="ec-shell__breadcrumb">
+        <span>/ Eclipse Forge / #Эксперимент</span>
+      </div>
+      <div class="ec-shell__top-actions">
+        <button class="ec-icon-btn" title="Поиск (Ctrl+K)">🔍</button>
+        <button class="ec-icon-btn" title="Помощь">?</button>
+        <button class="ec-icon-btn" title="Инциденты">🛡</button>
+        <button class="ec-icon-btn" title="Уведомления">🔔</button>
+        <div class="ec-user-chip">
+          <span class="ec-avatar">П</span>
+          <span style="color: var(--ec-text); font-weight: 600; font-size: var(--ec-text-sm);">Павел</span>
+        </div>
+        <button class="ec-btn">Выйти</button>
+      </div>
+    </header>
+
+    <!-- Server rail (left-most, narrow) -->
+    <aside class="ec-shell__rail">
+      <button class="ec-rail-tile" title="Home">🏠</button>
+      <button class="ec-rail-tile" title="Search">⌕</button>
+      <div style="width: 28px; height: 1px; background: var(--ec-border-subtle); margin: 4px 0;"></div>
+      <button class="ec-rail-tile">SP</button>
+      <button class="ec-rail-tile">💬</button>
+      <button class="ec-rail-tile ec-rail-tile--active">EF</button>
+      <button class="ec-rail-tile">T</button>
+      <button class="ec-rail-tile">SM</button>
+      <div style="width: 28px; height: 1px; background: var(--ec-border-subtle); margin: 4px 0;"></div>
+      <button class="ec-rail-tile" title="Create server">+</button>
+    </aside>
+
+    <!-- Sidebar (channels + tabs) -->
+    <aside class="ec-shell__channels">
+      <div class="ec-sidebar-header">
+        <div class="ec-sidebar-title">Eclipse Forge</div>
+        <span class="ec-badge ec-badge--owner">OWNER</span>
+      </div>
+
+      <!-- v0.96: 3-tab sidebar -->
+      <div class="ec-sidebar-tabs" role="tablist">
+        <button class="ec-sidebar-tab ec-sidebar-tab--active">📁 Каналы</button>
+        <button class="ec-sidebar-tab">✓ Работа</button>
+        <button class="ec-sidebar-tab">▦ Таблицы</button>
+      </div>
+
+      <div class="ec-channel-list">
+        <div class="ec-section-label">
+          <span>Текстовые · 4</span>
+          <button class="ec-section-add" title="Создать канал">+</button>
+        </div>
+        <button class="ec-channel-item"><span class="ec-channel-hash">📌</span><span>Задачи</span><span class="ec-channel-count">5</span></button>
+        <button class="ec-channel-item ec-channel-item--active"><span class="ec-channel-hash">⭐</span><span>Эксперимент</span><span class="ec-channel-count">6</span></button>
+        <button class="ec-channel-item"><span class="ec-channel-hash">💬</span><span>ЧАТИК</span><span class="ec-channel-count">1</span></button>
+        <button class="ec-channel-item"><span class="ec-channel-hash">🎵</span><span>Музыка</span></button>
+
+        <div class="ec-section-label" style="margin-top: 16px;">
+          <span>Каналы · 1</span>
+          <button class="ec-section-add" title="Создать broadcast">+</button>
+        </div>
+        <button class="ec-channel-item"><span class="ec-channel-hash">🌍</span><span>Новости</span></button>
+
+        <div class="ec-section-label" style="margin-top: 16px;">
+          <span>Голосовые · 2</span>
+          <button class="ec-section-add" title="Создать голосовую">+</button>
+        </div>
+        <button class="ec-channel-item"><span class="ec-channel-hash">🎙</span><span>Обсуждение</span></button>
+        <button class="ec-channel-item"><span class="ec-channel-hash">🎮</span><span>Играем</span></button>
+      </div>
+
+      <div class="ec-composer-row">
+        <button class="ec-btn ec-btn--primary ec-btn--block">+ Новая комната</button>
+      </div>
+    </aside>
+
+    <!-- Chat area (central column) -->
+    <section class="ec-shell__chat">
+      <!--
+        Chat header — v1.0.0 state:
+          [channel-title + emoji] [description] [hover-buttons: 📌 ✓] [(i) info] [⚙ settings]
+      -->
+      <div class="ec-chat-header">
+        <span class="ec-chat-title">
+          <span class="ec-chat-title-icon">⭐</span>
+          <span>Эксперимент</span>
+        </span>
+        <span class="ec-chat-description">Тестируем новые возможности</span>
+        <!-- v0.98 hover buttons -->
+        <button class="ec-hover-btn ec-hover-btn--pin" title="Закреплённые">
+          📌 <span class="ec-hover-btn__count">1</span>
+        </button>
+        <button class="ec-hover-btn ec-hover-btn--task" title="Открытые дела">
+          ✓ <span class="ec-hover-btn__count">5</span>
+        </button>
+        <!-- v0.96 (i) info button → opens ChannelInfoPanel slide-down -->
+        <button class="ec-info-btn" title="Информация о комнате">ⓘ</button>
+        <button class="ec-info-btn" title="Настройки">⚙</button>
+      </div>
+
+      <!-- Message list -->
+      <div class="ec-message-list">
+        <article class="ec-message">
+          <div class="ec-message__avatar" style="background: linear-gradient(135deg, hsl(165 50% 50%), hsl(195 60% 55%));">S</div>
+          <div>
+            <div class="ec-message__header">
+              <span class="ec-message__author">Smoke</span>
+              <span class="ec-bot-badge">BOT</span>
+              <span class="ec-message__time">13:21</span>
+            </div>
+            <div class="ec-message__body">
+              Павел хочет обсудить план разработки Next Generation Operational Platform,
+              подчёркивая, что это не копия Discord, Slack или Telegram, а платформа для
+              коммуникации, выполнения задач, использования AI и управления рабочими потоками.
+            </div>
+          </div>
+        </article>
+
+        <article class="ec-message">
+          <div class="ec-message__avatar" style="background: linear-gradient(135deg, hsl(252 50% 50%), hsl(310 60% 55%));">П</div>
+          <div>
+            <div class="ec-message__header">
+              <span class="ec-message__author">Павел</span>
+              <span class="ec-message__time">15:45</span>
+            </div>
+            <div class="ec-message__body">
+              <div style="padding: 12px; background: var(--ec-surface-2); border: 1px solid var(--ec-border-subtle); border-radius: 8px; display: grid; grid-template-columns: 32px 1fr auto; gap: 8px; align-items: center; max-width: 480px;">
+                <span style="width: 32px; height: 32px; border-radius: 50%; background: var(--ec-accent-soft); color: var(--ec-accent); display: grid; place-items: center;">▶</span>
+                <div>
+                  <div style="font-size: var(--ec-text-sm); color: var(--ec-text);">Bury_The_Light__DC_Showdown_Remix</div>
+                  <div style="font-size: var(--ec-text-2xs); color: var(--ec-text-dim);">0:00 / 7:45 · 17.8 MB</div>
+                </div>
+                <span style="color: var(--ec-text-dim);">⬇</span>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="ec-message">
+          <div class="ec-message__avatar" style="background: linear-gradient(135deg, hsl(195 60% 50%), hsl(210 50% 40%));">S</div>
+          <div>
+            <div class="ec-message__header">
+              <span class="ec-message__author">Smoke</span>
+              <span class="ec-bot-badge">BOT</span>
+              <span class="ec-message__time">15:46</span>
+            </div>
+            <div class="ec-message__body" style="color: var(--ec-text-dim); font-style: italic;">
+              сообщение удалено
+            </div>
+          </div>
+        </article>
+      </div>
+
+      <!-- Composer -->
+      <div class="ec-composer">
+        <div class="ec-composer-box">
+          <button class="ec-icon-btn" style="height: 30px; width: 30px;">📎</button>
+          <input class="ec-composer-input" placeholder="Сообщение в #Эксперимент" />
+          <button class="ec-btn ec-btn--primary" style="height: 30px;">Отправить</button>
+        </div>
+        <div style="margin-top: 6px; font-size: var(--ec-text-2xs); color: var(--ec-text-dim); display: flex; gap: 12px;">
+          <span><code>Enter</code> — отправить</span>
+          <span><code>Shift+Enter</code> — новая строка</span>
+          <span>drop файлы</span>
+          <span><code>@</code> участник</span>
+          <span><code>/task</code> задача</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Members panel (right rail, v0.96 simplified) -->
+    <aside class="ec-shell__members">
+      <header class="ec-members-header">
+        <span class="ec-members-label">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden>
+            <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>
+          </svg>
+          Участники
+        </span>
+        <span class="ec-members-count">1/10</span>
+        <div style="margin-left: auto; display: flex; gap: 2px;">
+          <button class="ec-icon-btn" style="width: 28px; height: 28px;">›</button>
+        </div>
+      </header>
+
+      <div class="ec-members-section-label">
+        <span><span class="dot"></span>В сети</span>
+        <span>1</span>
+      </div>
+      <div class="ec-member-row">
+        <span class="ec-avatar" style="background: linear-gradient(135deg, hsl(252 60% 60%), hsl(195 70% 60%));">П</span>
+        <span class="ec-member-name">Павел</span>
+        <span class="ec-member-role-chip ec-member-role-chip--owner">Owner</span>
+      </div>
+
+      <div class="ec-members-section-label">
+        <span><span class="dot dot--offline"></span>Не в сети</span>
+        <span>9</span>
+      </div>
+      <div class="ec-member-row">
+        <span class="ec-avatar" style="background: linear-gradient(135deg, hsl(280 40% 40%), hsl(310 40% 35%)); opacity: 0.55;">П</span>
+        <span class="ec-member-name">Повелитель</span>
+        <span class="ec-member-role-chip ec-member-role-chip--admin">Admin</span>
+      </div>
+      <div class="ec-member-row">
+        <span class="ec-avatar" style="background: linear-gradient(135deg, hsl(195 40% 40%), hsl(210 40% 35%)); opacity: 0.55;">B</span>
+        <span class="ec-member-name">BigYtka</span>
+        <span class="ec-member-role-chip ec-member-role-chip--admin">Admin</span>
+      </div>
+      <div class="ec-member-row">
+        <span class="ec-avatar" style="background: linear-gradient(135deg, hsl(45 40% 40%), hsl(20 40% 35%)); opacity: 0.55;">R</span>
+        <span class="ec-member-name">Reptail</span>
+        <span class="ec-member-role-chip ec-member-role-chip--admin">Admin</span>
+      </div>
+      <div class="ec-member-row">
+        <span class="ec-avatar" style="background: linear-gradient(135deg, hsl(165 40% 40%), hsl(135 40% 35%)); opacity: 0.55;">V</span>
+        <span class="ec-member-name">Victor</span>
+        <span class="ec-member-role-chip ec-member-role-chip--admin">Admin</span>
+      </div>
+      <div class="ec-member-row">
+        <span class="ec-avatar" style="background: linear-gradient(135deg, hsl(225 40% 40%), hsl(245 40% 35%)); opacity: 0.55;">S</span>
+        <span class="ec-member-name">Smoke</span>
+        <span class="ec-member-role-chip">MOD</span>
+      </div>
+      <div class="ec-member-row">
+        <span class="ec-avatar" style="background: linear-gradient(135deg, hsl(195 30% 40%), hsl(210 30% 35%)); opacity: 0.55;">В</span>
+        <span class="ec-member-name">Василий</span>
+        <span class="ec-member-role-chip">Member</span>
+      </div>
+      <div class="ec-member-row">
+        <span class="ec-avatar" style="background: linear-gradient(135deg, hsl(195 30% 40%), hsl(210 30% 35%)); opacity: 0.55;">В</span>
+        <span class="ec-member-name">Василий</span>
+        <span class="ec-member-role-chip">Member</span>
+      </div>
+      <div class="ec-member-row">
+        <span class="ec-avatar" style="background: linear-gradient(135deg, hsl(15 30% 40%), hsl(35 30% 35%)); opacity: 0.55;">д</span>
+        <span class="ec-member-name">данила</span>
+        <span class="ec-member-role-chip">Member</span>
+      </div>
+      <div class="ec-member-row">
+        <span class="ec-avatar" style="background: linear-gradient(135deg, hsl(75 30% 40%), hsl(105 30% 35%)); opacity: 0.55;">c</span>
+        <span class="ec-member-name">chepokayfu_baby</span>
+        <span class="ec-member-role-chip">Member</span>
+      </div>
+    </aside>
+  </div>
+
+  <!--
+    ============================================================
+    ADDITIONAL VISUAL ELEMENTS (out-of-shell modals и overlays)
+    Скрыты по умолчанию — это reference что AI должен учитывать.
+    ============================================================
+
+    1. ChannelInfoPanel (v0.96)
+       - Slide-down overlay в chat-area под chat-header
+       - 4 inner tabs: Сводка / Память / Дела / Файлы
+       - max-height 48vh (mobile landscape → 30vh)
+       - Background: var(--ec-surface-1), border-bottom emphasized
+       - Triggered via (i) button в chat-header
+
+    2. ServerHubModal (v0.97)
+       - Modal с 4 tabs: Обзор / Оформление / Настройки / Боты
+       - width: min(620px, calc(100vw - 32px))
+       - Backdrop: rgba(0,0,0,0.55) + backdrop-filter blur(8px) saturate(140%)
+       - Body uses sectionCard pattern: surface-2 + border + padding
+
+    3. CreateChannelModal (v0.97)
+       - Width 520px
+       - 4 type-cards grid (TEXT / BROADCAST / VOICE / EXECUTION) с icons + descriptions
+       - Name input с auto-focus
+       - Footer: Cancel + Создать
+
+    4. BotsTab (v1.0)
+       - Inside ServerHubModal "Боты" tab
+       - Per-bot card: avatar + name + role chip + apiKeyPrefix + buttons row
+         (Auto / Промпт / Тест / Стата / Webhook / Новый ключ / Удалить)
+       - Inline expandable panels under cards:
+         · Promptpanel — textarea (monospace, 8 rows) + Reset/Save
+         · Test panel — input textarea + Run button + result display с
+           provider/model/latency badges
+         · Stats panel — 3-col stat grid (24h / 7d / Total) + top-3 channels
+
+    5. ChatHeaderHoverButton popovers (v0.98)
+       - 320px wide (min vs calc(100vw - 64px) на mobile)
+       - Positioned absolute top: calc(100% + 6px), right: 0
+       - Header label + count, top-3 items, "Показать все (N)" footer link
+       - Subtle elevation shadow 0 16px 40px -8px hsl(210 40% 2% / 0.65)
+
+    6. Voice Room (immersive)
+       - Cinematic hero stage с multi-publisher video grid
+       - LiveKit auto-fit tile grid (6+ camera+screen)
+       - Floating control dock внизу
+       - VoiceNotePanel — shared markdown notepad сбоку
+       - Music Mini Player в top — synchronous playback indicator
+
+    7. Operational Tables
+       - Sticky header row + sticky first column
+       - 8 field types: TEXT / NUMBER / STATUS / DATE / USER / CHECKBOX / RELATION / FILE
+       - Aggregations footer (SUM/AVG/COUNT/MIN/MAX) sticky bottom
+       - AI-fill button per row (lightning icon) если есть пустые fillable cells
+
+    8. Home «СЕГОДНЯ»
+       - Operational summary с 7 stat cards
+       - Sections: Назначено мне / Активные инциденты / На моём одобрении /
+         Активные комнаты / AI-алерты / Голосовые сессии
+       - Stat grid: repeat(auto-fit, minmax(132px, 1fr))
+
+    9. AdminPanel (full-screen для OWNER/ADMIN)
+       - 8 tabs: Обзор / Участники / Комнаты / Роли / Автоматизация /
+         Счета / Интеграции / Аудит / Аналитика
+       - Replaces chat-area when open
+       - Tab content scrollable
+
+   10. Status Board (kanban)
+       - 4 columns: OPEN / IN_PROGRESS / REVIEW / DONE
+       - Drag-drop cards между колонками
+       - Card content: title + assignee + due chip + type glyph
+
+   11. ActionItem Drawer
+       - Right-side drawer, width: clamp(min(100vw, 360px), 38vw, 520px)
+       - Sections: properties / description / activity log / comments /
+         dependencies DAG (mini-SVG) / approvals / AI summary
+
+   12. Empty states
+       - Calm line-art SVG icons (40×40) с monoline + single cyan accent
+       - Иконы: EmptyHome / EmptyBoard / EmptyFiles / EmptyDm
+       - Centered с title + hint text + optional CTA button
+  -->
+
+  <footer style="padding: 32px; color: var(--ec-text-dim); font-size: var(--ec-text-2xs); border-top: 1px solid var(--ec-border-subtle); margin-top: 16px;">
+    Eclipse Chat v1.0.0 — current state snapshot, 2026-05-19.<br />
+    Это approximation для AI design tools. Production app live at
+    <code style="color: var(--ec-accent);">https://app.star-crm.ru/eclipse-chat/</code>
+  </footer>
+</body>
+</html>

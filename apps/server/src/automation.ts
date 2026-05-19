@@ -9,6 +9,8 @@ import {
   emitActionItemCreated,
   emitMessageOnChannel,
 } from "./realtime.js";
+import { executeAction as composioExecuteAction, isComposioEnabled } from "./lib/composio.js";
+import { recordAudit } from "./security/audit.js";
 
 /**
  * v0.80 #26 phase 1: Automation engine.
@@ -91,7 +93,23 @@ type SendWebhookAction = {
   secret?: string;
 };
 
-type ActionDef = PostMessageAction | CreateTaskAction | SendWebhookAction;
+/** v1.0.1 #11.5: execute action на подключённом Composio app'е.
+ *  ComposioConnection.id (Eclipse-side row) + action name + JSON params
+ *  с placeholders {{user}} / {{message}} / {{channel}}. Params JSON
+ *  парсится и рендерится на каждый fire. */
+type ComposioActionDef = {
+  type: "COMPOSIO_ACTION";
+  connectionId: string;
+  actionName: string;
+  /** JSON-stringified params object с template placeholders. */
+  paramsTemplate: string;
+};
+
+type ActionDef =
+  | PostMessageAction
+  | CreateTaskAction
+  | SendWebhookAction
+  | ComposioActionDef;
 
 function parseTrigger(raw: string): MessageTrigger | null {
   try {
@@ -125,6 +143,14 @@ function parseAction(raw: string): ActionDef | null {
     }
     if (a.type === "SEND_WEBHOOK" && typeof a.url === "string") {
       return a as SendWebhookAction;
+    }
+    if (
+      a.type === "COMPOSIO_ACTION" &&
+      typeof a.connectionId === "string" &&
+      typeof a.actionName === "string" &&
+      typeof a.paramsTemplate === "string"
+    ) {
+      return a as ComposioActionDef;
     }
   } catch {
     /* ignore */
@@ -276,6 +302,14 @@ async function doEvaluate(
           content,
           rule.id,
           rule.name,
+          log,
+        );
+      } else if (act.type === "COMPOSIO_ACTION") {
+        fired = await fireActionComposio(
+          act,
+          serverId,
+          tplCtx,
+          rule.id,
           log,
         );
       }
@@ -479,4 +513,130 @@ async function fireActionSendWebhook(
   } finally {
     clearTimeout(t);
   }
+}
+
+/**
+ * v1.0.1 #11.5: execute Composio action на behalf того, кто настроил
+ * rule. Загружает ComposioConnection row → парсит paramsTemplate →
+ * рендерит placeholders → вызывает composio.executeAction.
+ *
+ * Anti-abuse: только для ACTIVE connections. Если connection expired —
+ * skip silent + audit failure (на UI будет видно красный flag).
+ */
+async function fireActionComposio(
+  act: ComposioActionDef,
+  serverId: string,
+  tplCtx: { user: string; message: string; channel: string },
+  ruleId: string,
+  log: FastifyBaseLogger,
+): Promise<boolean> {
+  if (!isComposioEnabled()) {
+    log.warn({ ruleId }, "composio action skipped — COMPOSIO_API_KEY not set");
+    return false;
+  }
+  const conn = await db.composioConnection.findUnique({
+    where: { id: act.connectionId },
+    select: {
+      id: true,
+      serverId: true,
+      appName: true,
+      composioConnId: true,
+      status: true,
+    },
+  });
+  if (!conn || conn.serverId !== serverId) {
+    log.warn({ ruleId, connectionId: act.connectionId }, "composio connection not found / wrong server");
+    return false;
+  }
+  if (conn.status !== "ACTIVE") {
+    log.warn(
+      { ruleId, connectionId: conn.id, status: conn.status },
+      "composio connection not active — skip",
+    );
+    return false;
+  }
+
+  // Parse + render params. Каждое строковое значение получает placeholder
+  // substitution. Числа / booleans / nested objects пропускаем без изменения.
+  let params: Record<string, unknown>;
+  try {
+    const raw = JSON.parse(act.paramsTemplate);
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+      log.warn({ ruleId }, "composio params template must be a JSON object");
+      return false;
+    }
+    params = renderParamsDeep(raw as Record<string, unknown>, tplCtx);
+  } catch (err) {
+    log.warn({ err, ruleId }, "composio params template invalid JSON");
+    return false;
+  }
+
+  const started = Date.now();
+  try {
+    const result = await composioExecuteAction({
+      connectionId: conn.composioConnId,
+      actionName: act.actionName,
+      params,
+    });
+    const latencyMs = Date.now() - started;
+    await db.composioConnection.update({
+      where: { id: conn.id },
+      data: { lastUsedAt: new Date() },
+    });
+    recordAudit("COMPOSIO_ACTION_EXECUTED", {
+      userId: null,
+      metadata: {
+        ruleId,
+        connectionId: conn.id,
+        appName: conn.appName,
+        actionName: act.actionName,
+        success: result.success,
+        latencyMs,
+        triggeredByAutomation: true,
+      },
+    });
+    if (!result.success) {
+      log.warn(
+        { ruleId, actionName: act.actionName, error: result.error },
+        "composio action returned success=false",
+      );
+    }
+    return result.success;
+  } catch (err) {
+    log.warn(
+      { err, ruleId, connectionId: conn.id, actionName: act.actionName },
+      "composio action execution failed",
+    );
+    return false;
+  }
+}
+
+/** Render placeholders {{user}}/{{message}}/{{channel}} в string values
+ *  рекурсивно (объекты / массивы). Non-string values остаются as-is. */
+function renderParamsDeep(
+  obj: Record<string, unknown>,
+  ctx: { user: string; message: string; channel: string },
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(obj)) {
+    out[k] = renderValue(v, ctx);
+  }
+  return out;
+}
+
+function renderValue(
+  v: unknown,
+  ctx: { user: string; message: string; channel: string },
+): unknown {
+  if (typeof v === "string") {
+    return v
+      .replace(/\{\{\s*user\s*\}\}/g, ctx.user)
+      .replace(/\{\{\s*message\s*\}\}/g, ctx.message.slice(0, 1500))
+      .replace(/\{\{\s*channel\s*\}\}/g, ctx.channel);
+  }
+  if (Array.isArray(v)) return v.map((x) => renderValue(x, ctx));
+  if (v && typeof v === "object") {
+    return renderParamsDeep(v as Record<string, unknown>, ctx);
+  }
+  return v;
 }

@@ -59,6 +59,9 @@ model User {
   createdTables      Table[]             @relation("TableCreator")
   /// v0.80 #26: Automation rules, созданные этим user'ом.
   createdAutomations AutomationRule[]    @relation("AutomationRuleCreator")
+  /// v1.0.1: Composio app connections, созданные этим user'ом. Auto-set null
+  /// при удалении user'а — connection остаётся, владельцем становится server OWNER.
+  createdComposioConnections ComposioConnection[] @relation("ComposioConnectionCreator")
   /// Music sessions где user — host (v0.61). Один user может быть host'ом
   /// в нескольких channels одновременно.
   hostedMusicSessions MusicSession[]
@@ -275,6 +278,10 @@ enum AuditEventType {
   BOT_PROMPT_UPDATE
   BOT_PROMPT_RESET
   BOT_TEST_INVOKE
+  /// v1.0.1 Composio integration: OAuth-managed external apps.
+  COMPOSIO_CONNECTED
+  COMPOSIO_DISCONNECTED
+  COMPOSIO_ACTION_EXECUTED
 }
 
 model AuditLog {
@@ -522,6 +529,9 @@ model Server {
   /// v0.89 #26 phase 2: external integrations (Telegram outgoing, GitHub
   /// incoming webhook). Cascade при удалении server'а.
   integrations Integration[]
+  /// v1.0.1 #11.5 Composio integration: per-server OAuth-managed apps
+  /// (500+ через единый Composio proxy). Cascade при удалении server'а.
+  composioConnections ComposioConnection[]
 }
 
 /// v0.80 #26 phase 1: Automation system — declarative trigger/action правила
@@ -703,6 +713,52 @@ model Integration {
 
   @@index([serverId, enabled])
   @@index([type])
+}
+
+/// v1.0.1 #11.5: Composio integration — per-server OAuth-managed external
+/// app connection. Composio acts as proxy к 500+ apps (Gmail / Slack / Notion /
+/// Jira / Asana / Airtable / Twilio / etc) с unified action-execute API.
+///
+/// Eclipse Chat хранит:
+///   - `composioConnId` — Composio-side connection ID (returned после OAuth completion)
+///   - `encryptedAuth` — AES-256-GCM encrypted JSON с access/refresh tokens
+///     если Composio отдаёт их клиенту (некоторые apps — opaque на стороне Composio)
+///   - `appName` — slug app'а ("gmail", "slack", "notion") — unique per server
+///   - `status` — ACTIVE / EXPIRED / DISCONNECTED (string для будущей extensibility)
+///
+/// Usage:
+///   1. OWNER инициирует connect через UI → backend вызывает Composio's
+///      `initiate_connection` endpoint → returns auth URL → user redirected
+///   2. После OAuth user redirected обратно (callback handler validates +
+///      stores connectionId)
+///   3. Automation rules с COMPOSIO_ACTION действиями reference connectionId +
+///      actionName + params template
+///
+/// Encryption: encryptedAuth опционален — некоторые apps в Composio
+/// keep tokens server-side, мы храним только connectionId. Если Composio
+/// возвращает tokens — encrypt с TWOFA_ENCRYPTION_KEY как для Integration.config.
+model ComposioConnection {
+  id              String   @id @default(cuid())
+  serverId        String
+  server          Server   @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  /// App slug в Composio ("gmail", "slack", "notion", etc).
+  appName         String
+  /// User-friendly display name ("Gmail для команды Marketing").
+  displayName     String
+  /// Composio's connection identifier (returned после OAuth).
+  composioConnId  String
+  /// AES-256-GCM encrypted JSON с client-side tokens (если есть).
+  /// Пустая string = tokens хранятся на стороне Composio.
+  encryptedAuth   String
+  /// ACTIVE / EXPIRED / DISCONNECTED. String для будущей extensibility.
+  status          String   @default("ACTIVE")
+  createdByUserId String?
+  createdBy       User?    @relation("ComposioConnectionCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdAt       DateTime @default(now())
+  lastUsedAt      DateTime?
+
+  @@index([serverId])
+  @@unique([serverId, appName])
 }
 
 /// v0.88 #23 phase 1a: shared notepad attached to a VOICE channel.

@@ -4,6 +4,7 @@ import { apiJson } from "../lib/api";
 import { Avatar } from "./Avatar";
 import { InvoicesTabContent } from "./AdminInvoicesTab";
 import { IntegrationsTabContent, type AdminIntegration } from "./AdminIntegrationsTab";
+import { ComposioConnections } from "./ComposioConnections";
 import type { MemberRole, MemberRow } from "../hooks/useMembers";
 import type { ChannelRow } from "../hooks/useChannels";
 import type { TeamHealthData } from "../hooks/useTeamHealth";
@@ -1079,18 +1080,22 @@ export function AdminPanel({
       )}
 
       {tab === "integrations" && (
-        <IntegrationsTabContent
-          serverId={serverId}
-          channels={channels}
-          integrations={integrations}
-          loading={integrationsLoading}
-          error={integrationsError}
-          showCreate={showCreateIntegration}
-          onShowCreate={() => setShowCreateIntegration(true)}
-          onHideCreate={() => setShowCreateIntegration(false)}
-          onChange={(next) => setIntegrations(next)}
-          onError={(msg) => setIntegrationsError(msg)}
-        />
+        <>
+          <IntegrationsTabContent
+            serverId={serverId}
+            channels={channels}
+            integrations={integrations}
+            loading={integrationsLoading}
+            error={integrationsError}
+            showCreate={showCreateIntegration}
+            onShowCreate={() => setShowCreateIntegration(true)}
+            onHideCreate={() => setShowCreateIntegration(false)}
+            onChange={(next) => setIntegrations(next)}
+            onError={(msg) => setIntegrationsError(msg)}
+          />
+          {/* v1.0.1 #11.5 Composio Automation Expansion. */}
+          <ComposioConnections serverId={serverId} />
+        </>
       )}
 
       {tab === "invoices" && (

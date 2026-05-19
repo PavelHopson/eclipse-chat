@@ -5,7 +5,58 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v1.0.0** 🎉 (AI Controls milestone —
+**Текущая версия в проде:** **v1.0.1** (Composio Automation Expansion —
+из Pavel'ого Eclipse Library scan. **500+ OAuth-managed apps** через
+единый Composio proxy: Gmail / Slack / Notion / Jira / Asana / Airtable /
+Twilio / Stripe / Telegram / Discord / GitHub и ещё 490+. Massive
+расширение #12 Automation system от 3 action types к ~500 connection
+surfaces.
+
+**Schema migration #46** — `ComposioConnection` model (per-server, OAuth
+tokens AES-256-GCM encrypted с TWOFA_ENCRYPTION_KEY) + `AuditEventType`
+расширён 3 значениями (COMPOSIO_CONNECTED / COMPOSIO_DISCONNECTED /
+COMPOSIO_ACTION_EXECUTED).
+
+**Backend** (`apps/server/src/lib/composio.ts`): pure-fetch wrapper к
+Composio API — listSupportedApps / initiateConnection / verifyConnection /
+disconnectConnection / executeAction / listActionsForApp. Никаких npm
+deps (anti-pattern guard). Graceful disable: если COMPOSIO_API_KEY не
+set — service возвращает 503, UI показывает «not configured» с setup
+instructions.
+
+**6 endpoints** (`apps/server/src/routes/composio.ts`):
+GET /status, GET /apps, GET /servers/:id/composio/connections,
+POST /servers/:id/composio/connect (initiate OAuth → return redirectUrl),
+GET /api/composio/callback (OAuth return handler, validate via Composio
+verify endpoint, promote PENDING → ACTIVE, audit, inline HTML auto-close),
+DELETE /servers/:id/composio/connections/:id (Composio + Eclipse cleanup),
+GET /servers/:id/composio/connections/:id/actions (list actions per app),
+POST /servers/:id/composio/connections/:id/execute (manual test).
+
+**Automation engine extended** (`apps/server/src/automation.ts`): new
+ActionType `COMPOSIO_ACTION` discriminator (connectionId + actionName +
+paramsTemplate JSON). `fireActionComposio` handler парсит template +
+рендерит {{user}}/{{message}}/{{channel}} placeholders рекурсивно
+(strings deep through objects/arrays) + executes через
+composio.executeAction + audit logs.
+
+**Frontend** (`apps/web/src/components/ComposioConnections.tsx`,
+`apps/web/src/hooks/useComposio.ts`): новая secция в AdminPanel
+«Интеграции» tab. Connection list с status chips (ACTIVE/PENDING/
+EXPIRED), per-app icons из Composio metadata, last-used relative
+display. App picker overlay с search filter, OAuth opens в new tab,
+postMessage listener auto-reload'ает после callback.
+
+Pavel-side setup: установить ENV `COMPOSIO_API_KEY` и опционально
+`PUBLIC_BASE_URL` (для OAuth callback). После этого OWNER в каждом
+workspace может connect apps.
+
+**Версия v1.0.1** — patch number, хотя добавлен feature (compromise
+с Pavel decision — keep 1.0.x family для UX iteration перед v1.1).
+
+Полная история — в timeline ниже.)
+
+**Предыдущие версии:** v1.0.0 🎉 (AI Controls milestone —
 #11 закрыто. Major release: Eclipse Chat exits 0.x. Pavel-pick
 после UX-серии (v0.95-v0.99). Расширили BotsTab (живёт в ServerHub
 «Боты» tab) с full AI controls panel:
@@ -822,6 +873,7 @@ base, ✅ Home command center, ✅ responsive cinematic UI pass.
 | ✅ закрыто | **UI hotfix word-wrap v0.92.0** (19.05): «ПЕРЕГЕНЕРИРОВАТЬ» glitch в ChannelDigestPanel «Сводка комнаты» (long RU UPPERCASE слово ломалось mid-word на узком intel-rail). Текст укорочен до «✦ Заново / ✦ Резюме», `whiteSpace: nowrap` + `textOverflow: ellipsis` + `maxWidth: 100%` defensive style. |
 | ✅ закрыто | **#5 phase 2 + #4 AI-write v0.93.0** — AI agent создаёт rows в operational tables по запросу из чата. `ai/taskFromChat.ts`: `hasTaskCreationIntent` regex prescan (RU/EN keywords) → `loadContext(serverId)` (server tables + members) → AI JSON extract intent + table_id + cells → per-type validation (USER displayName→userId, DATE ISO, STATUS options, NUMBER, CHECKBOX) → row.create + bot confirmation reply. Wired в `maybeReplyToMention` (skip normal AI reply если task created). Phase 2 (future) — update existing rows, batch creation, explicit `#tableName` syntax. |
 | 🟡 частично | **#10 phase 4b bidirectional row↔ActionItem sync** — закрыто в v0.94.0. `lib/rowActionSync.ts` pure mappers: `mapCellToActionStatus` / `mapActionStatusToCell` с RU+EN dictionary (Открыто/Open/Todo, В работе/In Progress/Doing, На ревью/Review, Завершено/Done). `resolveMapping(fields)` picks first-by-type (TEXT/STATUS/USER/DATE). `syncRowToAction` + `syncActionToRows` с loop-guard (diff-check «source === target → no-op»). Wired в PATCH row + PATCH action endpoints с re-emit для UI realtime. v0.93 taskFromChat auto-link ActionItem после row create если table.channelId set. Phase 4c — explicit per-field mapping config UI (current convention-based). |
+| ✅ закрыто | **Composio Automation Expansion v1.0.1** (19.05) — из eclipse-library scan, Pavel-pick «делаем по максимуму». 500+ OAuth apps через Composio (https://composio.dev) proxy. Schema migration #46: новая ComposioConnection model + 3 AuditEventType значения. New file `apps/server/src/lib/composio.ts` — pure-fetch wrapper (listSupportedApps / initiateConnection / verifyConnection / disconnectConnection / executeAction / listActionsForApp), AbortController timeout 12s, ComposioError class с status code. 6 endpoints в `apps/server/src/routes/composio.ts` (status / apps / connections list / connect initiate / OAuth callback handler с auto-close HTML / disconnect / actions / manual execute). Graceful disable если COMPOSIO_API_KEY env not set — UI показывает setup instructions с callback URL. Automation engine extension (`apps/server/src/automation.ts`): новый ActionDef `COMPOSIO_ACTION` + `fireActionComposio` handler с recursive params template rendering (placeholders {{user}}/{{message}}/{{channel}} в strings deep через objects+arrays). New frontend hook `useComposio.ts` + new component `ComposioConnections.tsx` (status banner / connection list с chips / app picker overlay с search + OAuth window opener + postMessage listener для auto-reload). AdminPanel «Интеграции» tab расширен — секция Composio под IntegrationsTabContent. AES-256-GCM encryption через existing twoFactor `encryptSecret` (reuse TWOFA_ENCRYPTION_KEY pattern). Audit log: COMPOSIO_CONNECTED при successful OAuth callback, COMPOSIO_DISCONNECTED, COMPOSIO_ACTION_EXECUTED (с success / latencyMs / triggeredByAutomation metadata). Pavel-side setup ENV: COMPOSIO_API_KEY + optional COMPOSIO_BASE_URL + PUBLIC_BASE_URL (для OAuth callback). Migration 46-я additive. Ноль breaking changes. AutomationRule editor UI для COMPOSIO_ACTION — deferred в v1.0.2 (current scope: connection management). |
 | ✅ закрыто | **#11 AI Controls v1.0.0** 🎉 (19.05) — major release, Eclipse Chat exits 0.x. Расширили BotsTab (apps/web/src/components/BotsTab.tsx) с full AI controls per bot: **Test panel** (новая «Тест» кнопка → inline textarea + Run + result display с provider/model/latency badges + response в monospace), **Usage panel** (новая «Стата» кнопка → inline stat-grid 24h/7d/total + top-3 channels с type icons + last API usage). Backend (apps/server/src/routes/bots.ts): **POST /api/servers/:id/bots/:botId/test** — OWNER-only, прогоняет system prompt через `chat()` provider chain с user input (max 2000 chars) и returns `{response, provider, model, latencyMs, systemPromptLength, isOverride}` без message create. **GET /api/servers/:id/bots/:botId/usage** — member-readable, aggregate из существующей Message table (db.message.count × 3 windows + groupBy channelId top-3). Audit (`recordAudit`): новые типы `BOT_PROMPT_UPDATE` / `BOT_PROMPT_RESET` / `BOT_TEST_INVOKE` в AuditEventType enum (Prisma). Migration `20260519120000_bot_ai_audit_events` — postgres `ALTER TYPE ADD VALUE IF NOT EXISTS` (idempotent, outside transaction safe). PATCH handler теперь diff-checks systemPromptOverride и emit'ит UPDATE/RESET event. SW_VERSION bumped `v0.99` → `v1.0`. Hook useBots extended с `fetchUsage` / `testBot` + new types `BotUsage` / `BotTestResult`. Per-bot busy state (perBotBusy map) — UI не блокирует whole tab при одной test-run. Idempotent migration на 45-ю позицию. Pure additive, ноль breaking. |
 | ✅ закрыто | **Responsive polish pass v0.99.0** (19.05) — Pavel-ask «проверь чтобы всё было максимально оптимизовано и правильно показывалось на всех устройствах». Запущен Explore audit на recent v0.95-v0.98 changes → 12 findings (4 HIGH / 5 MED / 3 LOW). Закрыты HIGH+MED issues: **SW cache bump** (apps/web/public/sw.js): SW_VERSION с `eclipse-v0.84` → `eclipse-v0.99` — critical, users с pre-v0.95 cache получали stale chunks для всех новых components (ChatHeaderHoverButton, ChannelInfoPanel, Modal, ChannelList tabs, ServerHubModal); auto-invalidate при следующем deploy. **ChatHeaderHoverButton popover width** (apps/web/src/components/ChatHeaderHoverButton.tsx): `width: 320` → `min(320px, calc(100vw - 64px))` — гарантирует popover не уезжает за edge на ≤360px mobile. **Modal.tsx width formula** (apps/web/src/components/Modal.tsx): `min(${width}px, 100%)` → `min(${width}px, calc(100vw - 32px))` — на mobile с ServerHubModal width=620 раньше растягивался во весь экран без breathing room, теперь 16px gap с каждой стороны. **ChannelInfoPanel + ServerHubModal tab-bars**: добавлены `ec-channel-info-panel__tabs` + `ec-server-hub__tabs` class hooks + responsive.css rules `overflow-x: auto` на ≤400px / ≤600px — раньше RU labels («Оформление» и др) overflow'или на mobile. **Chat-header touch targets**: responsive.css rule `.ec-chat-header button { min-width: 38px; min-height: 38px }` на ≤640px — раньше inline 26×26 кнопки не достигали HIG min. **Chat-header overflow safety**: `.ec-chat-header .ec-chat-title { flex-shrink: 1; min-width: 0 }` + `.ec-music-mini-player { max-width: 200px }` на laptop 1025-1366 — title + description + music-player + 4 right-side buttons теперь умещаются без layout break. **ChannelInfoPanel max-height**: `@media (max-height: 500px) { max-height: min(30vh, 240px) }` — на landscape mobile panel раньше ел весь chat-area. **prefers-reduced-motion global guard** для .ec-channel-info-panel descendants — defensive против любых будущих animations не использующих var(--ec-dur-*). Pure CSS + 2 inline-style fixes, ноль logic/API/schema changes. |
 | ✅ закрыто | **Chat surface cleanup v0.98.0** (19.05) — Pavel-ask «середина чата должна быть чистой, все закрепы и задачи при наведении отображались поверх экрана». Убраны 2 постоянно-видимых banner'а с топа MessageList'а: **ActionQueueBar** («Контур исполнения» с onboarding-текстом «Превращай сообщения в задачи, решения и follow-up» + SLA/digest rail + горизонтальный список карточек) и **PinnedBar** (collapsible «Закреплённые: N» strip с pinned messages). Оба ели вертикальное место даже когда пользователю нужно было просто читать ленту. Функционал переехал в **hover-buttons chat-header'а** — два compact icons рядом с (i) кнопкой: **📌** (warn-tone) для pinned messages + **✓** (exec-tone) для open tasks. Render gated count > 0 (если нет items — button скрыт). Hover → popover (320px wide, top-3 preview items с titler-line + subtitle) + «Показать все (N)» footer link. Click на icon ИЛИ на item ИЛИ на «Показать все» → opens ChannelInfoPanel на соответствующем tab (memory / execution). Новый generic компонент `ChatHeaderHoverButton<T>` с props: icon / label / count / items / renderItem / itemKey / onOpenFull / accent. Mouse-leave с задержкой 160ms чтобы popover не пропадал при движении мышки. ESC/focus blur через onBlur. Удалены: apps/web/src/components/ActionQueueBar.tsx (~530 строк), apps/web/src/components/PinnedBar.tsx (~150 строк). Уделен `updateActionItem` destructure из useMessages (был для ActionQueueBar onUpdateAction prop). Chat-area теперь: chat-header (с brand/title/music/hover-buttons/settings) → MessageList → composer. Никаких banner'ов. |
