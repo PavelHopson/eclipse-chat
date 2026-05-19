@@ -5,7 +5,46 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v1.1.6** (composer / chat header /
+**Текущая версия в проде:** **v1.1.7** (real telemetry pills +
+cipher shimmer typing — продолжение polish track по Pavel
+«продолжай»).
+
+**Изменения v1.1.7:**
+
+**(1) Real telemetry pills** — backend `/api/health` теперь
+включает live `mem` + `cpu`:
+- `mem.percent` = system used / total в %
+- `cpu.percent` = delta-busy/delta-total между samples (fallback на
+  loadavg для первого вызова)
+- `mem.processRss/heap`, `cpu.cores/load1m` — debug detail
+
+Frontend новый `hooks/useTelemetry.ts` polls /api/health каждые
+10s (cache:no-store), exposes `{memPercent, cpuPercent, pgActive,
+online}` + status thresholds (ok<70, warn 70-89, risk≥90).
+
+AppShell topbar pills читают live values:
+- СЕТЬ — combined socket isReady + health endpoint online (3
+  состояния: СТАБИЛЬНА / ДЕГРАД / ОБРЫВ)
+- ПАМ / ЦП — real percent с color по threshold + tooltip с
+  raw % + pg.active
+- На проде сейчас показывают ПАМ 10.6% / ЦП ~17% (vs fake 12%/04%
+  до v1.1.7)
+
+**(2) `.ec-telemetry-pill--risk` variant** — для percent ≥ 90:
+красно-розовая палитра + pulsing box-shadow (1.6s) — обращает
+внимание когда система под нагрузкой. Respects reduced-motion.
+
+**(3) Cipher shimmer typing indicator** (`.ec-cipher-bars`):
+5-bar vertical equalizer (130ms stagger height oscillation +
+cyan glow box-shadow) заменил 3-dot loader в TypingIndicator.
+Выглядит как audio/cipher data-stream. Используется для всех
+typing states (humans + bots).
+
+**Сборка**: 8 files changed, +267/-14 (включая новый useTelemetry
+hook). CSS bundle 99.04 → 100.15 KB raw (+1.11 KB), gzip 18.48 →
+18.68 KB. Build 2.73s.
+
+**Предыдущие версии:** v1.1.6 (composer / chat header /
 modal cyber framing — продолжение polish track по Pavel feedback
 «хорошо, продолжай делать дизайн»).
 
