@@ -121,6 +121,36 @@
   .ec-chat-header {
     padding: 0 var(--ec-space-4) !important;
   }
+
+  /* v1.1.13 mobile fix: telemetry pills ПАМ/ЦП съедали topbar на mobile —
+   * скрываем percent pills, оставляем только сетевой статус. */
+  .ec-shell__top-actions .ec-telemetry-pill:not(.ec-telemetry-pill--ok):not(.ec-telemetry-pill--warn):not(.ec-telemetry-pill--risk),
+  .ec-shell__top-actions .ec-telemetry-pill:nth-of-type(2),
+  .ec-shell__top-actions .ec-telemetry-pill:nth-of-type(3) {
+    display: none;
+  }
+}
+
+/* v1.1.13 mobile telemetry / breadcrumb collapse */
+@media (max-width: 640px) {
+  /* Hide ВСЕ telemetry pills на узких экранах — освобождаем место под brand
+   * + breadcrumb + кнопки действий. Status показан через ec-shell__brand-title
+   * + connection icon в profile chip. */
+  .ec-shell__top-actions .ec-telemetry-pill {
+    display: none !important;
+  }
+  /* Breadcrumb «УЗЕЛ // … / #…» уходит — слишком длинный для mobile topbar.
+   * Channel name дублируется в chat-header sticky-bar и в sidebar tabs. */
+  .ec-shell__breadcrumb {
+    display: none !important;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Ultra-compact: brand-title hide, оставляем только icon. */
+  .ec-shell__brand-title {
+    display: none !important;
+  }
 }
 
 /* ===== Mobile (< 640px): rail+channels → drawer, single column ==== */
