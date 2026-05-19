@@ -823,3 +823,94 @@
   background: var(--ec-holo-cyan);
   pointer-events: none;
 }
+
+/* ============================================================
+ * v1.1.6 — composer enhanced glow + modal cyber framing
+ * ============================================================ */
+
+/* Composer box (textarea wrapper) — focus state получает stronger
+ * outer cyan glow (тонкий orbital). Уже existing focus-within
+ * border-accent в components.css; додавим atmospheric halo. */
+.ec-composer-box:focus-within {
+  box-shadow:
+    0 0 0 1px hsl(195 70% 60% / 0.45),
+    0 0 32px -8px hsl(195 70% 60% / 0.45),
+    0 6px 22px hsl(210 70% 2% / 0.45);
+  transition: box-shadow var(--ec-dur-base) var(--ec-ease-out);
+}
+
+/* Send button — enhanced hover/focus state с pulse glow. */
+.ec-composer-send {
+  position: relative;
+  overflow: hidden;
+}
+.ec-composer-send::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    hsl(0 0% 100% / 0.18) 50%,
+    transparent 100%
+  );
+  transform: translateX(-110%);
+  transition: transform 600ms ease-out;
+  pointer-events: none;
+}
+.ec-composer-send:hover::before { transform: translateX(110%); }
+.ec-composer-send:not(:disabled):hover {
+  box-shadow:
+    0 10px 28px hsl(195 80% 38% / 0.32),
+    0 0 0 1px hsl(195 80% 70% / 0.5),
+    0 0 18px hsl(195 70% 60% / 0.42) !important;
+}
+.ec-composer-send > * { position: relative; z-index: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .ec-composer-send::before { transition: none; }
+}
+
+/* Modal header — uppercase brand framing когда ec-holo-edge applied.
+ * Title inherits .ec-holo-edge::before holographic line; добавим
+ * subtle uppercase tracking. */
+.ec-modal-backdrop [role="dialog"] header.ec-holo-edge h2 {
+  text-transform: uppercase;
+  font-size: 0.82rem;
+  letter-spacing: 0.18em;
+  font-weight: 700;
+  color: var(--ec-text-strong);
+}
+
+/* Composer status strip animated scan dots — 3 dots fade in/out
+ * sequentially возле «ОЖИДАНИЕ СИГНАЛА…» / «ВВОД ПОТОКА…». */
+.ec-composer-scan-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 4px;
+}
+.ec-composer-scan-dots > span {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.3;
+  animation: ec-scan-dot-blink 1.6s ease-in-out infinite;
+}
+.ec-composer-scan-dots > span:nth-child(2) { animation-delay: 0.2s; }
+.ec-composer-scan-dots > span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes ec-scan-dot-blink {
+  0%, 100% { opacity: 0.2; transform: scale(1); }
+  50%      { opacity: 1;   transform: scale(1.3); box-shadow: 0 0 4px currentColor; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ec-composer-scan-dots > span { animation: none; opacity: 0.55; }
+}
+
+/* Chat header — channel title icon receives subtle accent glow. */
+.ec-chat-title svg {
+  filter: drop-shadow(0 0 4px hsl(195 70% 60% / 0.25));
+}
+@media (prefers-reduced-motion: reduce) {
+  .ec-chat-title svg { filter: none; }
+}

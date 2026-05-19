@@ -109,7 +109,7 @@ export function Modal({ title, onClose, children, footer, width = 440 }: Props) 
       }}
     >
       <div style={box} role="dialog" aria-labelledby="modal-title" aria-modal="true">
-        <header style={headerStyle}>
+        <header className="ec-holo-edge" style={headerStyle}>
           <h2
             id="modal-title"
             style={{
@@ -117,7 +117,8 @@ export function Modal({ title, onClose, children, footer, width = 440 }: Props) 
               fontSize: "var(--ec-text-md)",
               fontWeight: 600,
               color: "var(--ec-text-strong)",
-              letterSpacing: "var(--ec-tracking-tight)",
+              letterSpacing: "0.06em",
+              fontFamily: "var(--ec-font-display, var(--ec-font-sans))",
             }}
           >
             {title}

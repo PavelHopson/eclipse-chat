@@ -388,6 +388,7 @@ export function ServerHubModal({
             aria-selected={tab === t.id}
             onClick={() => setTab(t.id)}
             style={tabBtn(tab === t.id)}
+            className="ec-hud-tab"
           >
             {t.label}
           </button>

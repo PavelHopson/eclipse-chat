@@ -951,8 +951,11 @@ export function MessageInput({
         >
           {">_"} ЗАЩИЩЁННЫЙ_КАНАЛ
         </span>
-        <span style={{ textTransform: "uppercase" }}>
-          {focused ? "ВВОД ПОТОКА…" : "ОЖИДАНИЕ СИГНАЛА…"}
+        <span style={{ textTransform: "uppercase", display: "inline-flex", alignItems: "center" }}>
+          {focused ? "ВВОД ПОТОКА" : "ОЖИДАНИЕ СИГНАЛА"}
+          <span className="ec-composer-scan-dots" aria-hidden>
+            <span /><span /><span />
+          </span>
         </span>
       </div>
       <div className="ec-composer-box" style={boxStyle}>
