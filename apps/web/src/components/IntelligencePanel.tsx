@@ -72,15 +72,19 @@ const headerStyle: CSSProperties = {
   gap: "var(--ec-space-2)",
   padding: "var(--ec-space-3) var(--ec-space-3)",
   borderBottom: "1px solid var(--ec-border-subtle)",
-  background: "var(--ec-surface-1)",
+  background: "hsl(210 25% 4% / 0.55)",
+  // v1.1.10: position:relative для .ec-server-header-edge::after holographic
+  // bottom line accent.
+  position: "relative",
 };
 
 const headerLabel: CSSProperties = {
-  fontSize: "var(--ec-text-2xs)",
-  fontWeight: 800,
-  letterSpacing: "var(--ec-tracking-caps)",
+  fontSize: "0.62rem",
+  fontWeight: 700,
+  letterSpacing: "0.18em",
   textTransform: "uppercase",
-  color: "var(--ec-text-strong)",
+  color: "var(--ec-text-muted)",
+  fontFamily: "var(--ec-font-mono, ui-monospace, monospace)",
   display: "inline-flex",
   alignItems: "center",
   gap: 6,
@@ -88,12 +92,17 @@ const headerLabel: CSSProperties = {
 };
 
 const headerCount: CSSProperties = {
-  fontSize: "var(--ec-text-2xs)",
-  color: "var(--ec-text-muted)",
-  fontWeight: 600,
+  fontSize: "0.6rem",
+  color: "var(--ec-accent-3)",
+  fontWeight: 700,
   fontFeatureSettings: '"tnum"',
-  letterSpacing: 0,
+  letterSpacing: "0.08em",
   textTransform: "none",
+  padding: "0.12rem 0.42rem",
+  borderRadius: "var(--ec-radius-xs)",
+  background: "var(--ec-accent-3-soft)",
+  border: "1px solid hsl(252 70% 70% / 0.3)",
+  fontFamily: "var(--ec-font-mono, ui-monospace, monospace)",
 };
 
 const utilBtn: CSSProperties = {
@@ -138,9 +147,9 @@ export function IntelligencePanel({
 
   return (
     <aside style={wrap} aria-label="Участники">
-      <header style={headerStyle}>
+      <header className="ec-server-header-edge" style={headerStyle}>
         <span style={headerLabel}>
-          <span aria-hidden style={{ color: "var(--ec-accent)" }}>
+          <span aria-hidden style={{ color: "var(--ec-accent-3)" }}>
             <IconMembers />
           </span>
           <span>ТАКТИЧЕСКИЙ ВИД</span>

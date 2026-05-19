@@ -92,14 +92,14 @@ function tabBtn(active: boolean): CSSProperties {
     padding: "0.55rem 0.85rem 0.6rem",
     background: "transparent",
     border: 0,
-    borderBottom: active
-      ? "2px solid var(--ec-accent)"
-      : "2px solid transparent",
+    // v1.1.10: borderBottom удалён — .ec-hud-tab[aria-selected="true"]::after
+    // даёт 2px bottom accent bar с cyan glow (consistent с sidebar tabs).
     color: active ? "var(--ec-text-strong)" : "var(--ec-text-muted)",
-    fontSize: "var(--ec-text-2xs)",
+    fontSize: "0.62rem",
     fontWeight: 700,
-    letterSpacing: "var(--ec-tracking-caps)",
+    letterSpacing: "0.16em",
     textTransform: "uppercase",
+    fontFamily: "var(--ec-font-mono, ui-monospace, monospace)",
     cursor: "pointer",
     transition:
       "color var(--ec-dur-fast) var(--ec-ease), border-color var(--ec-dur-fast) var(--ec-ease)",
@@ -228,6 +228,7 @@ export function ChannelInfoPanel({
             onClick={() => onTabChange("summary")}
             aria-selected={activeTab === "summary"}
             role="tab"
+            className="ec-hud-tab"
             title="Сводка комнаты"
           >
             <IconSummary />
@@ -239,6 +240,7 @@ export function ChannelInfoPanel({
             onClick={() => onTabChange("memory")}
             aria-selected={activeTab === "memory"}
             role="tab"
+            className="ec-hud-tab"
             title="Закреплённое — память комнаты"
           >
             <IconMemory />
@@ -254,6 +256,7 @@ export function ChannelInfoPanel({
               onClick={() => onTabChange("execution")}
               aria-selected={activeTab === "execution"}
               role="tab"
+              className="ec-hud-tab"
               title="Задачи / решения / follow-up комнаты"
             >
               <IconExecution />
@@ -270,6 +273,7 @@ export function ChannelInfoPanel({
               onClick={() => onTabChange("files")}
               aria-selected={activeTab === "files"}
               role="tab"
+              className="ec-hud-tab"
               title="Файлы комнаты"
             >
               <IconFiles />
