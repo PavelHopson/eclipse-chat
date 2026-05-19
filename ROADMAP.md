@@ -5,9 +5,60 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v1.1.1** (Eclipse_OS full visual adoption —
-v1.1.0 был too minimal по Pavel'у («ну такое»). Полная adoption из AI
-Studio mockup'а:
+**Текущая версия в проде:** **v1.1.4** (ECLIPSE_CHAT rebrand +
+cinematic polish pass — Pavel feedback «надо дизайн доработать»
+после v1.1.3 LIVE).
+
+**Изменения v1.1.4:**
+
+**(0) Brand rename**: `ECLIPSE_OS` → `ECLIPSE_CHAT` в topbar
+(Pavel preference).
+
+**(1) Shimmer brand caption** (tokens.css `.ec-shimmer-text`):
+animated gradient sweep по тексту brand title через
+`background-clip: text` + `background-position` keyframes (4.5s
+linear infinite, respects prefers-reduced-motion).
+
+**(2) Cyber breadcrumb framing** (tokens.css `.ec-breadcrumb-cyber`):
+заменил старый `/ name / #channel` на monospace «УЗЕЛ // <server>
+/ #<channel>» с accent-цветом для active channel и opacity-ed
+separator. AppShell.tsx topbar получает new structure.
+
+**(3) Shimmer-sweep CTA hover** (tokens.css `.ec-shimmer-sweep`):
+horizontal gradient sweep `translateX(-110% → 110%)` за 700ms
+ease-out. Применён к «+ СОЗДАТЬ КОМНАТУ» и «+ НОВАЯ ТАБЛИЦА»
+buttons в ChannelList footer.
+
+**(4) Composer attach rotate** (tokens.css `.ec-rotate-hover`):
+paperclip svg крутится на 90° при hover (320ms ease-out). Subtle
+personality для composer.
+
+**(5) MemberList full tactical-view redesign**:
+- Header «Участники X/Y» → «ТАКТИЧЕСКИЙ ВИД» с violet map-icon
+  (`--ec-accent-3`) + violet count-badge (X/Y) через
+  `.ec-tactical-header` class.
+- Per-row badge: вместо conditional ec-badge (showed только
+  OWNER/ADMIN/MOD) — все 10 ролей получают 3-char monospace tag
+  (OWN/ADM/MOD/ARC/DEV/OPR/MEM/CLI/VWR/GST) через
+  `.ec-status-pill` variants (owner=orange, admin/mod=accent
+  cyan, остальные=neutral dim).
+- Row container получает `.ec-corner-brackets` — top-right +
+  bottom-left tactical-corner accents opacity:0 → :hover 0.75.
+- Wrap container получает `.ec-tactical-grid` — subtle 24px
+  dot-grid bg (rgba 0.025 lines) создаёт sci-fi подложку.
+
+**Сборка**: 9 files changed, +307/-76. CSS bundle 93→95.55 KB raw
+(+2 KB), gzip 17.1→17.91 KB. Build 5.14s.
+
+**Deferred в v1.1.5+**:
+- Animated voice waveform (нужен refactor Attachments.tsx —
+  существующий статичен через Web Audio peaks pre-computed).
+- Light/Eclipse theme через `filter: invert(1) hue-rotate()`
+  (mockup имел 3-mode ThemeContext).
+
+**Предыдущие версии:** v1.1.3 (latest), v1.1.2, v1.1.1
+(Eclipse_OS full visual adoption — v1.1.0 был too minimal по
+Pavel'у («ну такое»). Полная adoption из AI Studio mockup'а:
 
 **(1) Vocabulary correction** — все English labels из v1.1.0
 переключены на **Russian cyberpunk** (mockup был на русском, не
