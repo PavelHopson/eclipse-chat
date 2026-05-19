@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import { useEffect, useState } from "react";
 import { Avatar } from "./Avatar";
+import { CreateChannelModal } from "./CreateChannelModal";
 import type { ChannelRow } from "../hooks/useChannels";
 import type { MemberRow } from "../hooks/useMembers";
 import type { ChannelType, VoiceMeta } from "../lib/socket";
@@ -124,32 +125,23 @@ const composerRow: CSSProperties = {
   gap: "var(--ec-space-2)",
 };
 
-const typeToggle: CSSProperties = {
-  display: "flex",
-  gap: 2,
-  padding: 3,
-  background: "var(--ec-surface-2)",
-  borderRadius: "var(--ec-radius-sm)",
+/** v0.97: «+» icon button рядом с section-label'ом (Текстовые / Каналы /
+ *  Голосовые) — pre-select type при открытии CreateChannelModal. */
+const sectionAddBtn: CSSProperties = {
+  display: "inline-grid",
+  placeItems: "center",
+  width: 18,
+  height: 18,
+  padding: 0,
+  background: "transparent",
+  border: "1px solid var(--ec-border-subtle)",
+  color: "var(--ec-text-dim)",
+  borderRadius: "var(--ec-radius-xs)",
+  cursor: "pointer",
+  fontSize: "0.7rem",
+  lineHeight: 1,
+  transition: "background var(--ec-dur-fast) var(--ec-ease), color var(--ec-dur-fast) var(--ec-ease), border-color var(--ec-dur-fast) var(--ec-ease)",
 };
-
-function typeBtn(active: boolean): CSSProperties {
-  return {
-    flex: 1,
-    padding: "0.3rem 0.4rem",
-    fontSize: "var(--ec-text-2xs)",
-    color: active ? "var(--ec-text-strong)" : "var(--ec-text-muted)",
-    background: active ? "var(--ec-surface-3)" : "transparent",
-    border: 0,
-    borderRadius: "var(--ec-radius-xs)",
-    cursor: "pointer",
-    fontWeight: 600,
-    letterSpacing: "var(--ec-tracking-wide)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: "var(--ec-space-1)",
-  };
-}
 
 const deleteBtn: CSSProperties = {
   width: 20,
@@ -357,13 +349,19 @@ export function ChannelList({
   members,
   speakingUserIds,
 }: Props) {
-  const [draft, setDraft] = useState("");
-  const [draftType, setDraftType] = useState<ChannelType>("TEXT");
-  const [submitting, setSubmitting] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
   // DnD reorder state
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
+  // v0.97: CreateChannelModal state. Открывается через primary button
+  // сверху Channels tab + через «+» icon в каждом section-header'е
+  // (pre-selected тип через initialType).
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [createModalType, setCreateModalType] = useState<ChannelType>("TEXT");
+  const openCreateModal = (type: ChannelType) => {
+    setCreateModalType(type);
+    setCreateModalOpen(true);
+  };
   // v0.96: sidebar tab state — Каналы / Работа / Таблицы. Per-server
   // persistence в localStorage (key `ec:sidebar-tab:<serverId>`).
   const sidebarKey = serverId ? `ec:sidebar-tab:${serverId}` : null;
@@ -1037,9 +1035,32 @@ export function ChannelList({
           <>
             {textChannels.length > 0 && (
               <>
-                <div className="ec-section-label" style={{ marginBottom: "var(--ec-space-2)" }}>
-                  <span>Текстовые</span>
-                  <span style={{ color: "var(--ec-text-dim)", fontFeatureSettings: '"tnum"' }}>{textChannels.length}</span>
+                <div className="ec-section-label" style={{ marginBottom: "var(--ec-space-2)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                    <span>Текстовые</span>
+                    <span style={{ color: "var(--ec-text-dim)", fontFeatureSettings: '"tnum"' }}>{textChannels.length}</span>
+                  </span>
+                  {editable && (
+                    <button
+                      type="button"
+                      onClick={() => openCreateModal("TEXT")}
+                      title="Создать текстовую комнату"
+                      aria-label="Создать текстовую комнату"
+                      style={sectionAddBtn}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = "var(--ec-surface-3)";
+                        e.currentTarget.style.color = "var(--ec-text)";
+                        e.currentTarget.style.borderColor = "var(--ec-border-default)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "transparent";
+                        e.currentTarget.style.color = "var(--ec-text-dim)";
+                        e.currentTarget.style.borderColor = "var(--ec-border-subtle)";
+                      }}
+                    >
+                      +
+                    </button>
+                  )}
                 </div>
                 <div className="ec-reveal-cascade">{textChannels.map(renderChannel)}</div>
               </>
@@ -1052,10 +1073,36 @@ export function ChannelList({
                   style={{
                     marginTop: textChannels.length > 0 ? "var(--ec-space-4)" : 0,
                     marginBottom: "var(--ec-space-2)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
                   }}
                 >
-                  <span>Каналы</span>
-                  <span style={{ color: "var(--ec-text-dim)", fontFeatureSettings: '"tnum"' }}>{broadcastChannels.length}</span>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                    <span>Каналы</span>
+                    <span style={{ color: "var(--ec-text-dim)", fontFeatureSettings: '"tnum"' }}>{broadcastChannels.length}</span>
+                  </span>
+                  {editable && (
+                    <button
+                      type="button"
+                      onClick={() => openCreateModal("BROADCAST")}
+                      title="Создать канал-вещание"
+                      aria-label="Создать канал-вещание"
+                      style={sectionAddBtn}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = "var(--ec-surface-3)";
+                        e.currentTarget.style.color = "var(--ec-text)";
+                        e.currentTarget.style.borderColor = "var(--ec-border-default)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "transparent";
+                        e.currentTarget.style.color = "var(--ec-text-dim)";
+                        e.currentTarget.style.borderColor = "var(--ec-border-subtle)";
+                      }}
+                    >
+                      +
+                    </button>
+                  )}
                 </div>
                 {broadcastChannels.map(renderChannel)}
               </>
@@ -1071,10 +1118,36 @@ export function ChannelList({
                         ? "var(--ec-space-4)"
                         : 0,
                     marginBottom: "var(--ec-space-2)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
                   }}
                 >
-                  <span>Голосовые</span>
-                  <span style={{ color: "var(--ec-text-dim)", fontFeatureSettings: '"tnum"' }}>{voiceChannels.length}</span>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                    <span>Голосовые</span>
+                    <span style={{ color: "var(--ec-text-dim)", fontFeatureSettings: '"tnum"' }}>{voiceChannels.length}</span>
+                  </span>
+                  {editable && (
+                    <button
+                      type="button"
+                      onClick={() => openCreateModal("VOICE")}
+                      title="Создать голосовую комнату"
+                      aria-label="Создать голосовую комнату"
+                      style={sectionAddBtn}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = "var(--ec-surface-3)";
+                        e.currentTarget.style.color = "var(--ec-text)";
+                        e.currentTarget.style.borderColor = "var(--ec-border-default)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "transparent";
+                        e.currentTarget.style.color = "var(--ec-text-dim)";
+                        e.currentTarget.style.borderColor = "var(--ec-border-subtle)";
+                      }}
+                    >
+                      +
+                    </button>
+                  )}
                 </div>
                 {voiceChannels.map((c) => (
                   <div key={c.id}>
@@ -1106,16 +1179,28 @@ export function ChannelList({
             )}
 
             {!channelsLoading && channels.length === 0 && (
-              <p style={{ color: "var(--ec-text-dim)", fontSize: "var(--ec-text-sm)", padding: "var(--ec-space-2)", margin: 0 }}>
-                Создайте первую комнату ниже.
-              </p>
+              <div style={{ padding: "var(--ec-space-4) var(--ec-space-2)", textAlign: "center" }}>
+                <p style={{ color: "var(--ec-text-dim)", fontSize: "var(--ec-text-sm)", margin: "0 0 var(--ec-space-3)" }}>
+                  Пока нет ни одной комнаты.
+                </p>
+                {editable && (
+                  <button
+                    type="button"
+                    onClick={() => openCreateModal("TEXT")}
+                    className="ec-btn ec-btn--primary ec-btn--sm"
+                  >
+                    + Создать первую комнату
+                  </button>
+                )}
+              </div>
             )}
           </>
         )}
       </div>
 
-      {/* v0.96: composer per-tab — каналы на «Каналы», create-table button
-          на «Таблицы», ничего на «Работа» (только навигация). */}
+      {/* v0.97: composer per-tab — channels: «+ Новая комната» modal trigger,
+          tables: «+ Новая таблица» button, работа: ничего (только навигация).
+          Старый inline-composer (4 type buttons + input + send) удалён. */}
       {sidebarTab === "tables" && onCreateTable && (
         <div style={composerRow}>
           <button
@@ -1128,107 +1213,25 @@ export function ChannelList({
           </button>
         </div>
       )}
-      {sidebarTab === "channels" && (
-      <form
-        onSubmit={async (e) => {
-          e.preventDefault();
-          if (!draft.trim() || submitting) return;
-          setSubmitting(true);
-          try {
-            await onCreate(draft.trim(), draftType);
-            setDraft("");
-          } finally {
-            setSubmitting(false);
-          }
-        }}
-        style={composerRow}
-      >
-        <div style={typeToggle} role="tablist" aria-label="Тип комнаты">
+      {sidebarTab === "channels" && editable && (
+        <div style={composerRow}>
           <button
             type="button"
-            onClick={() => setDraftType("TEXT")}
-            style={typeBtn(draftType === "TEXT")}
-            role="tab"
-            aria-selected={draftType === "TEXT"}
-            title="Текстовая комната"
-          >
-            <span aria-hidden style={{ fontSize: "0.8rem" }}>#</span>
-            Текст
-          </button>
-          <button
-            type="button"
-            onClick={() => setDraftType("BROADCAST")}
-            style={typeBtn(draftType === "BROADCAST")}
-            role="tab"
-            aria-selected={draftType === "BROADCAST"}
-            title="Канал-вещание — публикуют модераторы, читают все"
-          >
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <path d="M3 11l15-5v12L3 13v-2z" />
-              <path d="M11.6 16.8a3 3 0 11-5.8-1.6" />
-            </svg>
-            Канал
-          </button>
-          <button
-            type="button"
-            onClick={() => setDraftType("VOICE")}
-            style={typeBtn(draftType === "VOICE")}
-            role="tab"
-            aria-selected={draftType === "VOICE"}
-            title="Голосовая комната"
-          >
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <path d="M11 5L6 9H2v6h4l5 4V5z" />
-            </svg>
-            Голос
-          </button>
-          <button
-            type="button"
-            onClick={() => setDraftType("EXECUTION")}
-            style={typeBtn(draftType === "EXECUTION")}
-            role="tab"
-            aria-selected={draftType === "EXECUTION"}
-            title="Execution-комната — kanban-доска для выполнения задач"
-          >
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <rect x="3" y="3" width="7" height="9" rx="1" />
-              <rect x="14" y="3" width="7" height="5" rx="1" />
-              <rect x="14" y="12" width="7" height="9" rx="1" />
-              <rect x="3" y="16" width="7" height="5" rx="1" />
-            </svg>
-            Канбан
-          </button>
-        </div>
-        <div style={{ display: "flex", gap: "var(--ec-space-2)" }}>
-          <input
-            className="ec-field"
-            placeholder={
-              draftType === "VOICE"
-                ? "Новая голосовая комната…"
-                : draftType === "BROADCAST"
-                ? "Новый канал-вещание…"
-                : draftType === "EXECUTION"
-                ? "Новая kanban-комната…"
-                : "Новая комната…"
-            }
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            maxLength={80}
-            style={{ flex: 1, padding: "0.45rem 0.65rem", fontSize: "var(--ec-text-sm)" }}
-          />
-          <button
-            type="submit"
-            disabled={!draft.trim() || submitting}
+            onClick={() => openCreateModal("TEXT")}
             className="ec-btn ec-btn--primary ec-btn--sm"
-            aria-label="Создать комнату"
-            title="Создать комнату"
-            style={{ minWidth: 36, padding: "0 0.6rem" }}
+            style={{ width: "100%", justifyContent: "center" }}
           >
-            {submitting ? "…" : "+"}
+            + Новая комната
           </button>
         </div>
-      </form>
       )}
+
+      <CreateChannelModal
+        open={createModalOpen}
+        initialType={createModalType}
+        onClose={() => setCreateModalOpen(false)}
+        onCreate={onCreate}
+      />
     </aside>
   );
 }

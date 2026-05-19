@@ -26,8 +26,7 @@ import { MessageList } from "../components/MessageList";
 import { PinnedBar } from "../components/PinnedBar";
 import { ProfileModal } from "../components/ProfileModal";
 import { SearchOverlay } from "../components/SearchOverlay";
-import { ServerInfoModal } from "../components/ServerInfoModal";
-import { ServerSettingsModal } from "../components/ServerSettingsModal";
+import { ServerHubModal } from "../components/ServerHubModal";
 import { CreateTableModal } from "../components/CreateTableModal";
 import { VoiceMusicPicker } from "../components/VoiceMusicPicker";
 import { ServerList } from "../components/ServerList";
@@ -362,8 +361,13 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
 
   const [showCreateServer, setShowCreateServer] = useState(false);
   const [showJoinServer, setShowJoinServer] = useState(false);
-  const [showServerInfo, setShowServerInfo] = useState(false);
-  const [showServerSettings, setShowServerSettings] = useState(false);
+  // v0.97: один Hub-модал вместо разделённых Info + Settings. initialTab
+  // позволяет открыть его сразу на нужной вкладке (например settings-icon
+  // в chat-header → tab="settings").
+  const [serverHubOpen, setServerHubOpen] = useState(false);
+  const [serverHubTab, setServerHubTab] = useState<
+    "overview" | "branding" | "settings" | "bots"
+  >("overview");
   const [showProfile, setShowProfile] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [homeOpen, setHomeOpen] = useState(false);
@@ -1119,7 +1123,11 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             onDelete={deleteChannel}
             onOpenSettings={(channelId) => setSettingsChannelId(channelId)}
             onReorder={reorderChannels}
-            onShowServerInfo={() => activeServer && setShowServerInfo(true)}
+            onShowServerInfo={() => {
+              if (!activeServer) return;
+              setServerHubTab("overview");
+              setServerHubOpen(true);
+            }}
             onOpenStatusBoard={
               isClientMode
                 ? undefined
@@ -1570,7 +1578,10 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             onOpenChannelSettings={(channelId) => {
               setSettingsChannelId(channelId);
             }}
-            onOpenServerSettings={() => setShowServerSettings(true)}
+            onOpenServerSettings={() => {
+              setServerHubTab("settings");
+              setServerHubOpen(true);
+            }}
             onOpenClientPortal={() => {
               window.location.hash = `#/portal/${activeServer.id}`;
             }}
@@ -2117,32 +2128,18 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
         />
       )}
 
-      {showServerInfo && activeServer && (
-        <ServerInfoModal
+      {serverHubOpen && activeServer && (
+        <ServerHubModal
           server={activeServer}
           members={members}
           currentUserId={user.id}
-          onClose={() => setShowServerInfo(false)}
+          initialTab={serverHubTab}
+          onClose={() => setServerHubOpen(false)}
           onLeave={() => leaveServer(activeServer.id)}
           onDelete={() => deleteServer(activeServer.id)}
           onUploadIcon={(file) => uploadServerIcon(activeServer.id, file)}
           onDeleteIcon={() => deleteServerIcon(activeServer.id)}
           onUpdateRole={updateMemberRole}
-          onOpenSettings={
-            activeServer.role === "OWNER"
-              ? () => {
-                  setShowServerInfo(false);
-                  setShowServerSettings(true);
-                }
-              : undefined
-          }
-        />
-      )}
-
-      {showServerSettings && activeServer && activeServer.role === "OWNER" && (
-        <ServerSettingsModal
-          server={activeServer}
-          onClose={() => setShowServerSettings(false)}
           onUploadBanner={(file) => uploadServerBanner(activeServer.id, file)}
           onDeleteBanner={() => deleteServerBanner(activeServer.id)}
           onUpdateIdentity={(patch) => updateServerIdentity(activeServer.id, patch)}
