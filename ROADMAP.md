@@ -5,10 +5,10 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v1.1.47** (Galaxy/Clock/Theme/Deadline effects +
+**Текущая версия в проде:** **v1.1.48** (Galaxy/Clock/Theme/Deadline effects +
 UX-copy + дизайн-полиш + редизайн WS-1 + фикс AuthScreen + смена пароля).
 
-**Изменения v1.1.25 → v1.1.47:**
+**Изменения v1.1.25 → v1.1.48:**
 
 - **v1.1.46** — новая волна эффектов из папки Pavel'я `Эффекты`:
   lightweight `EclipseGalaxy` без WebGL/CDN для AuthScreen и HomeToday,
@@ -16,6 +16,10 @@ UX-copy + дизайн-полиш + редизайн WS-1 + фикс AuthScreen 
   (`VOID`/`SOLAR`) с сохранением в localStorage и `DeadlineSignal` для
   задач с дедлайном. Все эффекты переписаны нативно на React/CSS, без
   GSAP/jQuery/Three.js, с поддержкой `prefers-reduced-motion`.
+- **v1.1.48** — редизайн **WS-1 slice 2 — раскатка #6: ActionItemDrawer**.
+  5 card/section-контейнеров drawer'а задач — `border` →
+  `--ec-elev-1`. Compact dep-rows, инпуты, кнопки, accent-боксы
+  оставлены. ChannelInfoPanel проверен — token-border'ов нет.
 - **v1.1.47** — редизайн **WS-1 slice 2 — раскатка #5: voice-зона**.
   VoiceStatsOverlay + ParticipantContextMenu — убран дублирующий
   `border` (`--ec-shadow-modal` уже несёт hairline-ring).

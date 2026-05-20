@@ -1009,7 +1009,7 @@ function ApprovalSection({
               padding: "var(--ec-space-2) var(--ec-space-3)",
               background: "var(--ec-surface-2)",
               borderRadius: "var(--ec-radius-md)",
-              border: "1px solid var(--ec-border-subtle)",
+              boxShadow: "var(--ec-elev-1)",
               display: "flex",
               flexDirection: "column",
               gap: "var(--ec-space-2)",
@@ -1250,7 +1250,7 @@ function ApprovalSection({
             padding: "var(--ec-space-2) var(--ec-space-3)",
             background: "var(--ec-surface-1)",
             borderRadius: "var(--ec-radius-md)",
-            border: "1px solid var(--ec-border-subtle)",
+            boxShadow: "var(--ec-elev-1)",
             display: "flex",
             flexDirection: "column",
             gap: "var(--ec-space-2)",
@@ -1335,7 +1335,7 @@ function CommentRow({
         padding: "var(--ec-space-2) var(--ec-space-3)",
         background: "var(--ec-surface-2)",
         borderRadius: "var(--ec-radius-md)",
-        border: "1px solid var(--ec-border-subtle)",
+        boxShadow: "var(--ec-elev-1)",
         position: "relative",
       }}
       onMouseEnter={() => setHover(true)}
@@ -1536,7 +1536,7 @@ function DepDagViz({
     <details
       style={{
         background: "var(--ec-surface-2)",
-        border: "1px solid var(--ec-border-subtle)",
+        boxShadow: "var(--ec-elev-1)",
         borderRadius: "var(--ec-radius-md)",
         padding: "var(--ec-space-2) var(--ec-space-3)",
       }}
@@ -1933,7 +1933,7 @@ function DependencySection({
             padding: "var(--ec-space-2)",
             borderRadius: "var(--ec-radius-md)",
             background: "var(--ec-surface-2)",
-            border: "1px solid var(--ec-border-default)",
+            boxShadow: "var(--ec-elev-1)",
           }}
         >
           <input
