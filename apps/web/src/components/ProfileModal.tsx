@@ -29,7 +29,9 @@ const avatarSection: CSSProperties = {
   gap: "var(--ec-space-4)",
   padding: "var(--ec-space-3)",
   background: "var(--ec-surface-2)",
-  border: "1px solid var(--ec-border-subtle)",
+  // WS-1 v1.1.45: border → глубина (elevation). Секции 2FA/push
+  // переключают elev-1 ↔ elev-2 как enabled-сигнал.
+  boxShadow: "var(--ec-elev-1)",
   borderRadius: "var(--ec-radius-md)",
 };
 
@@ -173,7 +175,7 @@ export function ProfileModal({
         style={{
           ...avatarSection,
           background: twoFaOn ? "var(--ec-accent-soft)" : "var(--ec-surface-2)",
-          borderColor: twoFaOn ? "var(--ec-accent)" : "var(--ec-border-subtle)",
+          boxShadow: twoFaOn ? "var(--ec-elev-2)" : "var(--ec-elev-1)",
         }}
       >
         <div
@@ -366,7 +368,7 @@ export function ProfileModal({
         style={{
           ...avatarSection,
           background: push.enabled ? "var(--ec-accent-soft)" : "var(--ec-surface-2)",
-          borderColor: push.enabled ? "var(--ec-accent)" : "var(--ec-border-subtle)",
+          boxShadow: push.enabled ? "var(--ec-elev-2)" : "var(--ec-elev-1)",
         }}
       >
         <div

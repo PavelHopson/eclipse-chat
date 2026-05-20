@@ -5,10 +5,10 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v1.1.44** (effects + UX-copy +
+**Текущая версия в проде:** **v1.1.45** (effects + UX-copy +
 дизайн-полиш + редизайн WS-1 + фикс AuthScreen + смена пароля).
 
-**Изменения v1.1.25 → v1.1.44:**
+**Изменения v1.1.25 → v1.1.45:**
 
 - **v1.1.25** — убран Electric Border (SVG-turbulence давал шум на
   AuthScreen terminal) + фикс AuthScreen layout + `thinking_orb` —
@@ -145,6 +145,13 @@
   подъём по `--ec-elev-2`) и ChannelDigestPanel (wrap + statCard).
   Откалибровано: панели/карточки → глубина; инпуты, dense-rows
   (`itemRow`), функциональные/сигнальные border'ы оставлены.
+
+- **v1.1.45** — редизайн **WS-1 slice 2 — раскатка #4: модалки**.
+  `Modal.tsx` — убран дублирующий `border` (`--ec-shadow-modal`
+  уже несёт hairline-ring + глубину). `ProfileModal` —
+  `avatarSection` (карточки avatar / 2FA / push / пароль) на
+  `--ec-elev-1`; секции 2FA/push переключают elev-1 ↔ elev-2 как
+  enabled-сигнал вместо accent-border.
 
 > **Дизайн-аудит — хвост.** Waves 1–3 закрыли все P1 + ключевые
 > P2 (warm-цвета, битые места, хардкод-hex). Остаток аудита —

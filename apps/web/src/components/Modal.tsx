@@ -87,7 +87,8 @@ export function Modal({ title, onClose, children, footer, width = 440 }: Props) 
     WebkitBackdropFilter: "saturate(180%) blur(20px)",
     boxShadow: "var(--ec-shadow-modal)",
     borderRadius: "var(--ec-radius-lg)",
-    border: "1px solid var(--ec-border-default)",
+    // WS-1 v1.1.45: явный border убран — --ec-shadow-modal уже несёт
+    // hairline-ring (0 0 0 1px) + глубину, border дублировал край.
     // v0.99: было `min(${width}px, 100%)` — на mobile с width=620
     // (ServerHubModal) модал растягивался во весь экран без breathing
     // room, tab-bar overflow'ил. calc(100vw - 32px) гарантирует 16px
