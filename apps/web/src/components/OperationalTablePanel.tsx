@@ -1535,10 +1535,12 @@ function RelationCell({
             zIndex: 30,
             marginTop: 4,
             background: "var(--ec-surface-2)",
-            border: "1px solid var(--ec-border-default)",
             borderRadius: "var(--ec-radius-md)",
             padding: "var(--ec-space-2)",
-            boxShadow: "0 12px 32px -16px rgba(0,0,0,0.55)",
+            // v1.1.49 WS-1 slice 2: raised floating-карточка отделяется
+            // глубиной/светом — cool-tinted hairline-ring + тень через
+            // --ec-elev-2 (замена border:1px + pure-black drop-shadow).
+            boxShadow: "var(--ec-elev-2)",
             minWidth: 240,
             maxHeight: 280,
             overflow: "auto",

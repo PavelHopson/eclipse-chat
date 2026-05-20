@@ -5,11 +5,23 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v1.1.48** (Galaxy/Clock/Theme/Deadline effects +
+**Текущая версия в проде:** **v1.1.49** (Galaxy/Clock/Theme/Deadline effects +
 UX-copy + дизайн-полиш + редизайн WS-1 + фикс AuthScreen + смена пароля).
 
-**Изменения v1.1.25 → v1.1.48:**
+**Изменения v1.1.25 → v1.1.49:**
 
+- **v1.1.49** — редизайн **WS-1 slice 2 — раскатка #7: OperationalTablePanel**.
+  Триаж табличной зоны: сетка ячеек (thead/tbody/tfoot border'ы),
+  header double-line (`border` + holo-edge — паттерн сквозной по
+  всем panel-header'ам, ActionItemDrawer его сознательно оставил),
+  кнопки / инпуты / чипы / drag-сигналы / статус-badge'и —
+  функциональны по калибровке, оставлены. Depth-язык применён к
+  единственной не-табличной floating-поверхности —
+  RelationCell-dropdown'у: `border: 1px solid` + pure-black
+  drop-shadow → `--ec-elev-2` (cool-tinted hairline-ring +
+  глубина; бонус — уход pure-black тени на cool-tinted токен).
+  Тонкий результат ожидаем: таблица legitimно использует border'ы
+  как структурную сетку. **slice 2 осталось: MessageList (чат).**
 - **v1.1.46** — новая волна эффектов из папки Pavel'я `Эффекты`:
   lightweight `EclipseGalaxy` без WebGL/CDN для AuthScreen и HomeToday,
   `SpiderClock` в topbar как системный live-time widget, `ThemeToggle`
