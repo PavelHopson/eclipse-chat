@@ -1238,12 +1238,47 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  clip-path: polygon(
-    20px 0, 100% 0,
-    100% calc(100% - 20px), calc(100% - 20px) 100%,
-    0 100%, 0 20px
-  );
+  /* v1.1.23: clip-path убран — конфликтовал с electric-border overlay
+   * (clip-path обрезает displaced wavy-границу filter'а). border-radius
+   * вместо него — electric-border ring совпадает по форме. */
+  border-radius: 10px;
   border: 1px solid hsl(195 70% 60% / 0.28);
+}
+
+/* ============================================================
+ * v1.1.23 — Electric Border (SVG turbulence из эффект-набора)
+ * ============================================================
+ * Использует #ec-electric filter (инжектится в App.tsx). 3 слоя:
+ * line (резкая электрическая граница) + 2 glow (blur'ы). Overlay
+ * absolute-positioned внутри positioned-родителя. */
+.ec-electric-border {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 0;
+}
+.ec-electric-border > span {
+  position: absolute;
+  inset: 0;
+  border: 2px solid var(--ec-accent);
+  border-radius: inherit;
+}
+.ec-electric-border__line {
+  filter: url(#ec-electric);
+}
+.ec-electric-border__glow-1 {
+  filter: blur(2px);
+  opacity: 0.7;
+}
+.ec-electric-border__glow-2 {
+  filter: blur(7px);
+  opacity: 0.45;
+}
+@media (prefers-reduced-motion: reduce) {
+  /* turbulence-анимация внутри SVG filter не глушится через CSS —
+   * заменяем filter на статичную границу. */
+  .ec-electric-border__line { filter: none; }
 }
 .ec-auth-terminal__accent-tl {
   position: absolute;

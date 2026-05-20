@@ -180,6 +180,12 @@ export function AuthPage({ error, onLogin, onRegister }: Props) {
         <div className="ec-auth-subtitle">ПРОТОКОЛ_ШЛЮЗА_V1.0</div>
 
         <section className="ec-auth-terminal" aria-live="polite">
+          {/* v1.1.23 Electric Border — wavy turbulent cyan-ring (#ec-electric). */}
+          <div className="ec-electric-border" aria-hidden>
+            <span className="ec-electric-border__glow-2" />
+            <span className="ec-electric-border__glow-1" />
+            <span className="ec-electric-border__line" />
+          </div>
           <span className="ec-auth-terminal__accent-tl" aria-hidden />
           <span className="ec-auth-terminal__accent-br" aria-hidden />
 
