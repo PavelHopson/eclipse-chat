@@ -159,7 +159,7 @@ const checkbox = (done: boolean): CSSProperties => ({
   borderRadius: "var(--ec-radius-xs)",
   border: `1.5px solid ${done ? "var(--ec-status-exec)" : "var(--ec-border-emphasis)"}`,
   background: done ? "var(--ec-status-exec)" : "transparent",
-  color: "#fff",
+  color: "var(--ec-accent-text)",
   cursor: "pointer",
   display: "grid",
   placeItems: "center",

@@ -357,7 +357,7 @@ function AudioItem({
         className="ec-audio-attachment__icon"
         style={{
           background: "var(--ec-accent)",
-          color: "var(--ec-accent-text, #fff)",
+          color: "var(--ec-accent-text)",
           border: 0,
           cursor: "pointer",
           borderRadius: "var(--ec-radius-full)",

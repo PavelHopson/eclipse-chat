@@ -1353,7 +1353,7 @@ function AddFieldForm({
         style={{
           padding: "0.4rem 0.9rem",
           background: "var(--ec-accent)",
-          color: "var(--ec-accent-text, #fff)",
+          color: "var(--ec-accent-text)",
           border: "1px solid var(--ec-accent)",
           borderRadius: "var(--ec-radius-sm)",
           fontSize: "var(--ec-text-sm)",

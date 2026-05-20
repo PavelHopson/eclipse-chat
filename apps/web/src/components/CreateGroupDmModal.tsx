@@ -270,7 +270,7 @@ export function CreateGroupDmModal({
                       ? "1px solid var(--ec-accent)"
                       : "1px solid var(--ec-border-default)",
                     background: selected ? "var(--ec-accent)" : "transparent",
-                    color: selected ? "var(--ec-accent-text, #fff)" : "transparent",
+                    color: selected ? "var(--ec-accent-text)" : "transparent",
                     display: "grid",
                     placeItems: "center",
                     fontSize: "0.7rem",

@@ -192,7 +192,7 @@ const composerInput: CSSProperties = {
 const sendBtn: CSSProperties = {
   padding: "0.5rem 0.95rem",
   background: "var(--ec-accent)",
-  color: "var(--ec-accent-text, #fff)",
+  color: "var(--ec-accent-text)",
   border: "1px solid var(--ec-accent)",
   borderRadius: "var(--ec-radius-sm)",
   fontSize: "var(--ec-text-sm)",
@@ -474,7 +474,7 @@ export function ActionItemDrawer({
                     ? "var(--ec-status-exec)"
                     : "var(--ec-surface-2)",
                   color: detail.status === "DONE"
-                    ? "var(--ec-accent-text, #fff)"
+                    ? "var(--ec-accent-text)"
                     : "var(--ec-text)",
                   fontSize: "var(--ec-text-xs)",
                   fontWeight: 600,
@@ -1158,7 +1158,7 @@ function ApprovalSection({
                 disabled={submitting}
                 style={{
                   background: "var(--ec-status-exec)",
-                  color: "var(--ec-accent-text, #fff)",
+                  color: "var(--ec-accent-text)",
                   border: "1px solid var(--ec-status-exec)",
                   padding: "0.4rem 0.75rem",
                   borderRadius: "var(--ec-radius-sm)",
@@ -1641,7 +1641,7 @@ function DepDagViz({
             textAnchor="middle"
             fontSize={11}
             fontWeight={700}
-            fill="var(--ec-accent-text, #fff)"
+            fill="var(--ec-accent-text)"
           >
             Эта задача
           </text>

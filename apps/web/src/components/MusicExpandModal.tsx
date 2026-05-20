@@ -67,7 +67,7 @@ function iconButton(active = false): CSSProperties {
     placeItems: "center",
     borderRadius: "var(--ec-radius-full)",
     background: active ? "var(--ec-accent)" : "var(--ec-surface-2)",
-    color: active ? "var(--ec-accent-text, #fff)" : "var(--ec-text)",
+    color: active ? "var(--ec-accent-text)" : "var(--ec-text)",
     border: "1px solid var(--ec-border-default)",
     cursor: "pointer",
   };
@@ -80,7 +80,7 @@ const playButton: CSSProperties = {
   placeItems: "center",
   borderRadius: "var(--ec-radius-full)",
   background: "var(--ec-accent)",
-  color: "var(--ec-accent-text, #fff)",
+  color: "var(--ec-accent-text)",
   border: 0,
   cursor: "pointer",
   boxShadow: "0 18px 40px -16px hsl(195 90% 40% / 0.55)",

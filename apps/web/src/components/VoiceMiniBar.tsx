@@ -48,7 +48,7 @@ const ctrlBtn: CSSProperties = {
 const leaveBtn: CSSProperties = {
   ...ctrlBtn,
   background: "var(--ec-danger)",
-  color: "#fff",
+  color: "var(--ec-accent-text)",
   borderColor: "var(--ec-danger)",
 };
 

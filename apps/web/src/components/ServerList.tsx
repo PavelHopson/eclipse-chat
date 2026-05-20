@@ -281,7 +281,7 @@ export function ServerList({
                 padding: "0 4px",
                 borderRadius: "var(--ec-radius-full)",
                 background: "var(--ec-accent)",
-                color: "#fff",
+                color: "var(--ec-accent-text)",
                 fontSize: "0.55rem",
                 fontWeight: 700,
                 display: "inline-flex",

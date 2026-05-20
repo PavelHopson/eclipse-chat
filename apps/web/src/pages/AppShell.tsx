@@ -970,7 +970,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                     padding: "0 3px",
                     borderRadius: "var(--ec-radius-full)",
                     background: "var(--ec-danger)",
-                    color: "#fff",
+                    color: "var(--ec-accent-text)",
                     fontSize: "0.55rem",
                     fontWeight: 700,
                     display: "grid",

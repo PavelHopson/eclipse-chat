@@ -57,7 +57,7 @@ export function Avatar({ url, name, size = 32, glow = false }: Props) {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    color: "var(--ec-text, #e8e8ed)",
+    color: "var(--ec-text)",
     fontWeight: 600,
     fontSize,
     letterSpacing: 0,

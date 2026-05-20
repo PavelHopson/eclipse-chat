@@ -45,7 +45,7 @@ const segmentBtn = (active: boolean): CSSProperties => ({
   padding: "0.5rem 0.6rem",
   borderRadius: "var(--ec-radius-sm)",
   background: active ? "var(--ec-accent)" : "transparent",
-  color: active ? "#fff" : "var(--ec-text-muted)",
+  color: active ? "var(--ec-accent-text)" : "var(--ec-text-muted)",
   border: 0,
   cursor: "pointer",
   fontSize: "var(--ec-text-2xs)",

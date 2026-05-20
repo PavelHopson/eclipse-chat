@@ -104,7 +104,7 @@ export function GroupAvatar({ participants, size = 32 }: Props) {
             justifyContent: "center",
             borderRadius: "var(--ec-radius-full)",
             background: "var(--ec-accent)",
-            color: "var(--ec-accent-text, #fff)",
+            color: "var(--ec-accent-text)",
             fontSize: "0.55rem",
             fontWeight: 700,
             fontFeatureSettings: '"tnum"',

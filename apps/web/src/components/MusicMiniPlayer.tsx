@@ -63,7 +63,7 @@ const iconBtn: CSSProperties = {
 const playBtn: CSSProperties = {
   ...iconBtn,
   background: "var(--ec-accent)",
-  color: "var(--ec-accent-text, #fff)",
+  color: "var(--ec-accent-text)",
 };
 
 function formatTime(ms: number, durationMs?: number): string {

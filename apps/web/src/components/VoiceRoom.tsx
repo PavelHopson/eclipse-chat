@@ -124,7 +124,7 @@ const controlBtn: CSSProperties = {
 const controlBtnDanger: CSSProperties = {
   ...controlBtn,
   background: "var(--ec-danger)",
-  color: "#fff",
+  color: "var(--ec-accent-text)",
   borderColor: "var(--ec-danger)",
 };
 
@@ -179,7 +179,7 @@ const muteBadge: CSSProperties = {
   height: 22,
   borderRadius: "var(--ec-radius-full)",
   background: "var(--ec-danger)",
-  color: "#fff",
+  color: "var(--ec-accent-text)",
   display: "grid",
   placeItems: "center",
   border: "2px solid hsl(208 16% 9%)",
@@ -344,7 +344,7 @@ function VideoTrackTile({
     element.style.width = "100%";
     element.style.height = "100%";
     element.style.objectFit = "contain";
-    element.style.background = "#070b0f";
+    element.style.background = "var(--ec-void)";
     host.appendChild(element);
     return () => {
       try {
