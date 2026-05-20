@@ -26,19 +26,20 @@
   background: var(--ec-bg);
   color: var(--ec-text);
   grid-template-rows: var(--ec-header-height) 1fr;
-  /* default: desktop layout с members */
-  grid-template-columns: var(--ec-rail-width) var(--ec-sidebar-width) 1fr var(--ec-members-width);
+  /* v1.1.51: far-left server-rail свёрнут в topbar-control (ServerSwitcher)
+     — rail-колонка убрана из grid. */
+  grid-template-columns: var(--ec-sidebar-width) 1fr var(--ec-members-width);
   grid-template-areas:
-    "top    top      top      top"
-    "rail   channels chat     members";
+    "top      top   top"
+    "channels chat  members";
 }
 
 /* Без активного сервера — members колонка не нужна */
 .ec-shell:not(.ec-shell--has-server) {
-  grid-template-columns: var(--ec-rail-width) var(--ec-sidebar-width) 1fr;
+  grid-template-columns: var(--ec-sidebar-width) 1fr;
   grid-template-areas:
-    "top    top      top"
-    "rail   channels chat";
+    "top      top"
+    "channels chat";
 }
 
 /* v0.68: min-height:0 на каждой grid-area обязательно — без него grid-row
@@ -46,7 +47,6 @@
    header app уходит за viewport, никаких scroll'ов не появляется.
    Pavel-ask 17.05 «не у всех экран показывает все каналы». */
 .ec-shell__top      { grid-area: top; min-width: 0; }
-.ec-shell__rail     { grid-area: rail; min-width: 0; min-height: 0; overflow: hidden; }
 .ec-shell__channels { grid-area: channels; min-width: 0; min-height: 0; overflow: hidden; }
 .ec-shell__chat     { grid-area: chat; min-width: 0; min-height: 0; }
 .ec-shell__members  { grid-area: members; min-width: 0; min-height: 0; overflow: hidden; }
@@ -56,7 +56,7 @@
    operational surface оставался читаемым. */
 @media (min-width: 1025px) and (max-width: 1366px) {
   .ec-shell.ec-shell--has-server {
-    grid-template-columns: var(--ec-rail-width) 220px 1fr 224px;
+    grid-template-columns: 220px 1fr 224px;
   }
 }
 
@@ -195,27 +195,18 @@
     text-overflow: ellipsis;
   }
 
-  .ec-shell__rail,
   .ec-shell__channels {
     position: fixed;
     top: var(--ec-header-height);
     bottom: 0;
     bottom: env(safe-area-inset-bottom, 0);
+    left: 0;
     z-index: var(--ec-z-sidebar);
+    width: min(320px, 86vw);
     transform: translateX(-100%);
     transition: transform var(--ec-dur-base) var(--ec-ease);
     box-shadow: 20px 0 40px rgba(0, 0, 0, 0.4);
   }
-  .ec-shell__rail {
-    left: 0;
-    width: var(--ec-rail-width);
-  }
-  .ec-shell__channels {
-    left: var(--ec-rail-width);
-    width: calc(100vw - var(--ec-rail-width));
-    max-width: min(320px, calc(100vw - var(--ec-rail-width)));
-  }
-  .ec-shell--nav-open .ec-shell__rail,
   .ec-shell--nav-open .ec-shell__channels {
     transform: translateX(0);
   }
@@ -800,7 +791,7 @@
 
 @media (min-width: 1367px) {
   .ec-shell.ec-shell--has-server {
-    grid-template-columns: 72px 264px minmax(0, 1fr) 272px;
+    grid-template-columns: 264px minmax(0, 1fr) 272px;
   }
 }
 
@@ -887,25 +878,10 @@
     min-width: 34px;
   }
 
-  .ec-shell__rail {
-    width: 64px;
-  }
-
   .ec-shell__channels {
-    left: 64px;
-    width: calc(100vw - 64px);
-    max-width: min(336px, calc(100vw - 64px));
-  }
-
-  .ec-server-rail {
-    padding-top: var(--ec-space-2) !important;
-    gap: 7px !important;
-  }
-
-  .ec-rail-nav-btn,
-  .ec-server-tile {
-    width: 42px !important;
-    height: 42px !important;
+    left: 0;
+    width: min(336px, 86vw);
+    max-width: min(336px, calc(100vw - 16px));
   }
 
   .ec-shell__members {

@@ -30,7 +30,7 @@ import { ServerHubModal } from "../components/ServerHubModal";
 import { CreateTableModal } from "../components/CreateTableModal";
 import { VoiceMusicPicker } from "../components/VoiceMusicPicker";
 import { SpiderClock } from "../components/SpiderClock";
-import { ServerList } from "../components/ServerList";
+import { ServerSwitcher } from "../components/ServerSwitcher";
 import { SinceLastVisitBanner } from "../components/SinceLastVisitBanner";
 import { StatusBoard } from "../components/StatusBoard";
 import { TeamHealth } from "../components/TeamHealth";
@@ -267,8 +267,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   } = useChannelDigest(selectedChannelId, socket);
 
   // ===== DMs =====
-  // DM-mode активируется когда activeServerId === null (после клика «📩 DMs»
-  // в ServerList). Список конверсаций + текущий выбранный + open-or-create.
+  // DM-mode активируется когда activeServerId === null (после клика «Личные
+  // сообщения» в ServerSwitcher). Список конверсаций + open-or-create.
   const {
     conversations: dmConversations,
     loading: dmLoading,
@@ -734,7 +734,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               className="ec-shell__drawer-btn ec-shell__drawer-btn--nav"
               onClick={() => setNavOpen((v) => !v)}
               aria-label={navOpen ? "Закрыть навигацию" : "Открыть навигацию"}
-              title="Пространства и комнаты"
+              title="Комнаты пространства"
             >
               {navOpen ? (
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -761,6 +761,41 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             <span className="ec-brand-mark" style={brandMark} aria-hidden />
             <span className="ec-shell__brand-title ec-shimmer-text" style={{ letterSpacing: "0.18em", fontWeight: 700 }}>ECLIPSE_CHAT</span>
           </button>
+          {/* v1.1.51: бывший far-left server-rail свёрнут в topbar-control. */}
+          <ServerSwitcher
+            servers={servers}
+            activeServerId={activeServerId}
+            onSelect={(id) => {
+              setHomeOpen(false);
+              setHelpOpen(false);
+              setAdminOpen(false);
+              setActiveServerId(id);
+              if (isMobile) setNavOpen(false);
+            }}
+            onCreateRequest={() => {
+              if (!canCreateServer) return;
+              setShowCreateServer(true);
+            }}
+            onJoinRequest={() => setShowJoinServer(true)}
+            onHomeRequest={openHome}
+            homeActive={homeOpen}
+            onSearchRequest={() => {
+              if (activeServerId) setShowSearch(true);
+            }}
+            searchEnabled={Boolean(activeServerId)}
+            dmsActive={inDmMode}
+            dmsUnread={dmConversations.reduce((sum, c) => sum + c.unread, 0)}
+            onDmsRequest={() => {
+              setHomeOpen(false);
+              setHelpOpen(false);
+              setAdminOpen(false);
+              setActiveServerId(null);
+              if (isMobile) setNavOpen(false);
+            }}
+            canCreateServer={canCreateServer}
+            ownedCount={ownedServersCount}
+            maxOwnedServers={serverLimits.maxOwnedServers}
+          />
           {homeOpen ? (
             <span className="ec-shell__breadcrumb ec-breadcrumb-cyber">
               <span className="ec-breadcrumb-cyber__label">УЗЕЛ //</span>
@@ -1104,46 +1139,6 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
         }}
         aria-hidden
       />
-
-      <div className="ec-shell__rail">
-        <ServerList
-          servers={servers}
-          activeServerId={activeServerId}
-          onSelect={(id) => {
-            setHomeOpen(false);
-            setHelpOpen(false);
-            setAdminOpen(false);
-            setActiveServerId(id);
-            if (isMobile) setNavOpen(false);
-          }}
-          onCreateRequest={() => {
-            // v0.64: silently no-op если backend-лимит достигнут.
-            // Tooltip на самой кнопке уже объясняет причину; модалка не
-            // открывается, чтобы не путать «открыл → нажал → ошибка».
-            if (!canCreateServer) return;
-            setShowCreateServer(true);
-          }}
-          onJoinRequest={() => setShowJoinServer(true)}
-          onHomeRequest={openHome}
-          homeActive={homeOpen}
-          onSearchRequest={() => {
-            if (activeServerId) setShowSearch(true);
-          }}
-          searchEnabled={Boolean(activeServerId)}
-          dmsActive={inDmMode}
-          dmsUnread={dmConversations.reduce((sum, c) => sum + c.unread, 0)}
-          onDmsRequest={() => {
-            setHomeOpen(false);
-            setHelpOpen(false);
-            setAdminOpen(false);
-            setActiveServerId(null);
-            if (isMobile) setNavOpen(false);
-          }}
-          canCreateServer={canCreateServer}
-          ownedCount={ownedServersCount}
-          maxOwnedServers={serverLimits.maxOwnedServers}
-        />
-      </div>
 
       <div className="ec-shell__channels">
         {inDmMode ? (

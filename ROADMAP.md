@@ -5,11 +5,27 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v1.1.50** (Galaxy/Clock/Theme/Deadline effects +
+**Текущая версия в проде:** **v1.1.51** (Galaxy/Clock/Theme/Deadline effects +
 UX-copy + дизайн-полиш + редизайн WS-1 + фикс AuthScreen + смена пароля).
 
-**Изменения v1.1.25 → v1.1.50:**
+**Изменения v1.1.25 → v1.1.51:**
 
+- **v1.1.51** — **server-rail → topbar-control** (запрос Pavel'я).
+  Вертикальный far-left rail (`ServerList`) убран целиком; вместо
+  него в topbar — кнопка `ServerSwitcher` (иконка + имя активного
+  пространства; DM-режим → «Личные сообщения»). Клик раскрывает
+  выпадающую панель со ВСЕМ содержимым прежнего rail: Главная,
+  Поиск, Личные сообщения, список пространств, Создать, Вступить.
+  Панель рендерится через React-portal в `document.body` —
+  `.ec-shell__top` несёт `overflow:hidden` + `backdrop-filter`
+  (containing-block для fixed-потомков), внутри неё popover был бы
+  обрезан; portal + `position:fixed` + clamp к viewport обходят это.
+  Grid: rail-колонка убрана из `.ec-shell` (база + 2 desktop-
+  breakpoint'а + mobile off-canvas). Постоянный визуальный вес ↓.
+  Хвост: `--ec-rail-width` токен + `.ec-server-tile`/`.ec-rail-*`/
+  `.ec-shell__rail` cosmetic-CSS остались мёртвыми — отдельная
+  чистка. breadcrumb «УЗЕЛ //» дублирует имя сервера со switcher'ом
+  — можно подрезать.
 - **v1.1.50** — редизайн **WS-1: slice 2 закрыт + slice 3 ChannelList**.
   *slice 2 — MessageList:* триаж (inline + CSS) показал — чат-зона
   состоит из чипов, сигналов, dense-rows и уже-glass floating-
