@@ -2,9 +2,12 @@
  * Eclipse Chat — Responsive layout
  *
  * Breakpoints (мобильно-сначала):
- *   < 640px   — mobile: drawer-based, single column для чата, off-canvas
- *               server-rail+channels (left) и members (right)
- *   640–1024  — tablet: server-rail + channels visible, members off-canvas
+ *   < 900px   — mobile/phone: drawer-based, single column для чата,
+ *               off-canvas server-rail+channels (left) и members (right).
+ *               v1.1.17: было 640 — но телефоны в 640-1024px CSS-ширине
+ *               (large phones / low-DPI режимы) получали cramped 3-col
+ *               layout. 900 надёжно покрывает все телефоны.
+ *   900–1024  — tablet: server-rail + channels visible, members off-canvas
  *   > 1024    — desktop: все 4 columns (server-rail + channels + chat + members)
  *
  * AppShell использует класс `.ec-shell` + `.ec-shell--has-server` (когда есть
@@ -132,7 +135,7 @@
 }
 
 /* v1.1.13 mobile telemetry / breadcrumb collapse */
-@media (max-width: 640px) {
+@media (max-width: 900px) {
   /* Hide ВСЕ telemetry pills на узких экранах — освобождаем место под brand
    * + breadcrumb + кнопки действий. Status показан через ec-shell__brand-title
    * + connection icon в profile chip. */
@@ -155,7 +158,7 @@
 
 /* ===== Mobile (< 640px): rail+channels → drawer, single column ==== */
 
-@media (max-width: 640px) {
+@media (max-width: 900px) {
   .ec-shell,
   .ec-shell.ec-shell--has-server {
     grid-template-columns: 1fr;
@@ -229,7 +232,7 @@
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 900px) {
   .ec-shell--nav-open .ec-shell__backdrop {
     opacity: 1;
     pointer-events: auto;
@@ -263,7 +266,7 @@
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 900px) {
   .ec-shell__drawer-btn--nav {
     display: inline-flex;
   }
@@ -281,7 +284,7 @@
     display: none !important;
   }
 }
-@media (max-width: 640px) {
+@media (max-width: 900px) {
   /* safe-area-inset для bottom (iOS PWA / standalone) */
   .ec-composer-safe {
     padding-bottom: max(var(--ec-space-4), env(safe-area-inset-bottom, 0));
@@ -630,7 +633,7 @@
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 900px) {
   .ec-voice-room__body {
     padding: var(--ec-space-3) !important;
     gap: var(--ec-space-3) !important;
@@ -648,7 +651,7 @@
 
 /* v0.43: Modal на mobile — меньше backdrop padding, smaller body padding.
    v0.65: + safe-area-inset для iOS keyboard / notch; touch close-btn 44×44. */
-@media (max-width: 640px) {
+@media (max-width: 900px) {
   .ec-modal-backdrop {
     padding: var(--ec-space-2) !important;
     padding-bottom: max(var(--ec-space-2), env(safe-area-inset-bottom, 0)) !important;
@@ -671,7 +674,7 @@
 
 /* (a) DM-button в MemberList был hover-only opacity:0 — на touch
        полностью невидим. Принудительно показываем на mobile. */
-@media (max-width: 640px) {
+@media (max-width: 900px) {
   [data-dm-btn] {
     opacity: 0.85 !important;
   }
@@ -679,7 +682,7 @@
 
 /* (f) ChannelList delete/settings buttons тоже были hover-only —
        та же фиксация. Уже помечены `data-channel-action`. */
-@media (max-width: 640px) {
+@media (max-width: 900px) {
   [data-channel-action] {
     opacity: 0.6 !important;
   }
@@ -687,7 +690,7 @@
 
 /* (i) MusicMiniPlayer pill на узком топбаре съедает место под chat-
        header title. Ограничиваем max-width на mobile + ellipsis. */
-@media (max-width: 640px) {
+@media (max-width: 900px) {
   .ec-music-mini-player {
     max-width: 180px !important;
     overflow: hidden;
@@ -843,7 +846,7 @@
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 900px) {
   .ec-shell {
     min-height: 100dvh;
   }
@@ -1001,7 +1004,7 @@
  *      на flex-родителе, чтобы placeholder не падал в столбец-по-1.
  * ============================================================== */
 
-@media (max-width: 640px) {
+@media (max-width: 900px) {
   /* Drawer width — почти fullscreen, чтобы чат не светил из-под backdrop'а.
      На ≤400px — full 100vw (минус rail для левого drawer). */
   .ec-shell__channels {
@@ -1123,7 +1126,7 @@
  * Pavel positioning: voice-first для operational quick-capture.
  * ============================================================ */
 
-@media (max-width: 640px) {
+@media (max-width: 900px) {
   .ec-composer-icon-btn {
     width: 40px !important;
     height: 40px !important;
@@ -1193,7 +1196,7 @@
  * ≤640px — компромисс между HIG и chat-header heightом (44px). Применяем
  * через child selector — все <button>, <span role="button"> внутри
  * chat-header'а. */
-@media (max-width: 640px) {
+@media (max-width: 900px) {
   .ec-chat-header button,
   .ec-chat-header [role="button"] {
     min-width: 38px;

@@ -27,6 +27,10 @@ export function useMediaQuery(query: string): boolean {
   return matches;
 }
 
-/** Convenience-хуки под breakpoints из tokens.css. */
-export const useIsMobile = () => useMediaQuery("(max-width: 640px)");
+/** Convenience-хуки под breakpoints из tokens.css.
+ *  v1.1.17: mobile breakpoint 640 → 900 — телефоны Pavel'я попадали
+ *  в диапазон 640-1024 и получали cramped 3-колоночный «планшетный»
+ *  layout (rail+channels+chat squeeze). 900px надёжно покрывает все
+ *  телефоны (даже large / landscape / low-DPI режимы). */
+export const useIsMobile = () => useMediaQuery("(max-width: 900px)");
 export const useIsTabletOrSmaller = () => useMediaQuery("(max-width: 1024px)");
