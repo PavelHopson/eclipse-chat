@@ -5,8 +5,37 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v1.1.24** (game-icons + effects
-adoption — Pavel прислал 27 кастомных 3D-иконок + 20 CSS-эффектов).
+**Текущая версия в проде:** **v1.1.32** (effects-марафон —
+adoption 20 CSS-эффектов из набора Pavel'я + 27 кастомных 3D-иконок).
+
+**Изменения v1.1.25 → v1.1.32:**
+
+- **v1.1.25** — убран Electric Border (SVG-turbulence давал шум на
+  AuthScreen terminal) + фикс AuthScreen layout + `thinking_orb` —
+  вращающаяся game-иконка пока AI генерирует ответ.
+- **v1.1.26** — animated rotating-ray border на AuthScreen terminal:
+  conic-gradient луч обегает рамку терминала (замена Electric Border).
+- **v1.1.27** — анимированная кнопка выхода (`components/LogoutButton.tsx`):
+  при клике фигурка-оператор проходит сквозь дверь, створка
+  захлопывается → logout. Эффект «Logout Button» из набора.
+- **v1.1.28** — Active Navbar Indicator: скользящий индикатор
+  активного таба sidebar (эффект «Active Navbar Indicator»).
+- **v1.1.29** — parallax mouse-tilt на 7 stat-карточках HomeToday
+  (`lib/tilt.ts` — `perspective rotateX/rotateY` по курсору, max 6°,
+  desktop-only, respects reduced-motion). Эффект «Animated Parallax Card».
+- **v1.1.30** — Animated Delete Button (`components/DeleteButton.tsx`):
+  урна с откидной крышкой, «документ» падает внутрь и разрезается,
+  финал — зелёная галочка. Применён к «Удалить» в Danger Zone
+  ServerHubModal (owner). `confirm()` → анимация ∥ `onDelete()`.
+- **v1.1.31** — Animated Password Field на AuthScreen: eye-toggle
+  (slashed-eye → open-eye) + cyan scan-полоса по полю при
+  переключении password↔text. `PasswordReveal` в `pages/AuthPage.tsx`.
+- **v1.1.32** — parallax-tilt расширен на 5 stat-карточек TeamHealth
+  (переиспользован `lib/tilt.ts`, hover-тень `.ec-lift-md` сохранена).
+
+> Backlog CSS-эффектов из набора Pavel'я **закрыт** (v1.1.22–v1.1.32).
+> Остаток набора — standalone-демки (галактика / 404 / паук-часы),
+> не применимы к продукту.
 
 **Изменения v1.1.19 → v1.1.24:**
 
