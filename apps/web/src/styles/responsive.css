@@ -78,12 +78,18 @@
 /* ===== Tablet (640 - 1024px): members → drawer ============== */
 
 @media (max-width: 1024px) {
+  /* v1.1.18: ВСЕ три формы селектора + !important. Base-правило
+   * `.ec-shell:not(.ec-shell--has-server)` имеет specificity (0,2,0)
+   * и БЕЗ этого перебивало media-query (0,1,0) — grid не сворачивался
+   * на home-page / no-server состояниях. Это был корень «криво на
+   * телефоне» (incognito тоже ломался — баг в самом CSS, не в кэше). */
   .ec-shell,
-  .ec-shell.ec-shell--has-server {
-    grid-template-columns: var(--ec-rail-width) var(--ec-sidebar-width) 1fr;
+  .ec-shell.ec-shell--has-server,
+  .ec-shell:not(.ec-shell--has-server) {
+    grid-template-columns: var(--ec-rail-width) var(--ec-sidebar-width) 1fr !important;
     grid-template-areas:
       "top    top      top"
-      "rail   channels chat";
+      "rail   channels chat" !important;
   }
   /* Members столбец рендерится — но в drawer (fixed) */
   .ec-shell__members {
@@ -159,12 +165,17 @@
 /* ===== Mobile (< 640px): rail+channels → drawer, single column ==== */
 
 @media (max-width: 900px) {
+  /* v1.1.18: bulletproof — все три формы селектора + !important
+   * чтобы перебить base `.ec-shell:not(.ec-shell--has-server)`
+   * (0,2,0). Без этого grid на mobile не сворачивался в одну
+   * колонку → rail+channels перекрывали chat (Pavel screenshots). */
   .ec-shell,
-  .ec-shell.ec-shell--has-server {
-    grid-template-columns: 1fr;
+  .ec-shell.ec-shell--has-server,
+  .ec-shell:not(.ec-shell--has-server) {
+    grid-template-columns: 1fr !important;
     grid-template-areas:
       "top"
-      "chat";
+      "chat" !important;
   }
   .ec-shell__top {
     gap: var(--ec-space-2) !important;
