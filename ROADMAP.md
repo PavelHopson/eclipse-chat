@@ -160,6 +160,54 @@
 
 ---
 
+## Карта функционала — срез 20.05.2026 (Pavel)
+
+> Полный feature-status по 17 направлениям. Сверено с кодом —
+> точно. ✅ done · 🟡 partial · ❌ нет.
+
+1. **Core chat** ✅ — markdown/code/replies/reactions/edit/delete/
+   pin/embeds/uploads/media-viewer/voice-msg/drag&drop/unread/
+   draft-sync/threads/audio-waveforms.
+2. **Workspaces & rooms** ✅ — TEXT/VOICE/BROADCAST/EXECUTION/
+   temporary/focus/client. ❌ AI-rooms как отдельный тип.
+3. **Role system** ✅ — 10 ролей + 20-perm matrix, AdminPanel viewer.
+   ❌ AI-Agent/Observer роли. 🟡 glow/live-states. ❌ phase 2
+   (custom roles / editable RBAC).
+4. **Tables** 🟡 — 8 field-types/realtime/RBAC/aggregations/AI-fill/
+   row→ActionItem. ❌ formulas/filters/sorting, pre-built types,
+   AI-classify.
+5. **AI agents** 🟡 reactive-only — 7 bot-ролей + mention-responder.
+   ❌ background-tasks по ролям (proactive).
+6. **Bot builder** 🟡 — AutomationRule JSON (3 actions). ❌ visual
+   node-editor.
+7. **Execution** ✅ — msg→task/decision/follow-up, kanban,
+   priorities/due/assignees, DAG, approvals, escalation+AI-summary.
+8. **AI memory** 🟡 single-room — embeddings/semantic-search/
+   since-last-visit/portal-digest. ❌ cross-room knowledge graph,
+   agent-memory.
+9. **Voice** ✅ — live/noise-suppr/screen-share/video/music/whisper/
+   AI-extract/notepad. ❌ recording(Egress), live-summaries,
+   whiteboard(yjs blocked).
+10. **Client portals** ✅ — CLIENT-mode/hash-route/progress/
+    approvals/invoices. ❌ PDF-reports(pdfkit blocked), public
+    token-access, email.
+11. **Admin panel** 🟡 — 7 tabs + audit + analytics. ❌ AI-controls,
+    moderation queue, AI-usage analytics.
+12. **Automation** 🟡 — MESSAGE_NEW trigger + 3 actions + 2/10
+    интеграций (Telegram/GitHub). ❌ др. triggers/actions/
+    интеграции.
+13. **Design & UX** ✅ — calm operational UI, motion-suite, adaptive
+    room modes. (Идёт редизайн WS-1 — см. design-vision выше.)
+14. **Mobile** ✅ — responsive + PWA + push (5 triggers). ❌ offline
+    queue, native shell (Capacitor).
+15. **Operational dashboard** ✅ — Home «СЕГОДНЯ» 7 stat-cards.
+    ❌ cross-workspace blockers, live socket-updates (manual reload).
+16. **Advanced** 🟡 — focus/temporary rooms. ❌ per-room health,
+    replay timeline.
+17. **Long-term** ❌ — agent/workflow marketplace, industry runtimes.
+
+---
+
 ## Дизайн-vision Pavel (20.05.2026) — «Communication OS»
 
 > **Источник истины** по направлению редизайна. Pavel прислал
