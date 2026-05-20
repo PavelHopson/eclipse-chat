@@ -991,24 +991,24 @@ const TASK_STATUS_TONE: Record<
   { bg: string; border: string; fg: string }
 > = {
   OPEN: {
-    bg: "hsl(200 30% 16% / 0.5)",
-    border: "hsl(200 40% 35% / 0.4)",
-    fg: "hsl(200 70% 75%)",
+    bg: "var(--ec-status-idle-soft)",
+    border: "color-mix(in srgb, var(--ec-status-idle) 32%, transparent)",
+    fg: "var(--ec-status-idle)",
   },
   IN_PROGRESS: {
-    bg: "hsl(36 50% 18% / 0.5)",
-    border: "hsl(36 60% 40% / 0.4)",
-    fg: "hsl(36 80% 75%)",
+    bg: "var(--ec-status-warn-soft)",
+    border: "color-mix(in srgb, var(--ec-status-warn) 32%, transparent)",
+    fg: "var(--ec-status-warn)",
   },
   REVIEW: {
-    bg: "hsl(280 30% 18% / 0.5)",
-    border: "hsl(280 50% 40% / 0.4)",
-    fg: "hsl(280 60% 75%)",
+    bg: "var(--ec-status-ai-soft)",
+    border: "color-mix(in srgb, var(--ec-status-ai) 32%, transparent)",
+    fg: "var(--ec-status-ai)",
   },
   DONE: {
-    bg: "hsl(150 30% 14% / 0.5)",
-    border: "hsl(150 50% 35% / 0.4)",
-    fg: "hsl(150 60% 75%)",
+    bg: "var(--ec-status-exec-soft)",
+    border: "color-mix(in srgb, var(--ec-status-exec) 32%, transparent)",
+    fg: "var(--ec-status-exec)",
   },
 };
 

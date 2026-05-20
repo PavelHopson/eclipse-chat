@@ -342,7 +342,7 @@ export function IncidentPanel({
                       style={{
                         padding: "0.3rem 0.5rem",
                         marginTop: 4,
-                        background: "hsl(40 70% 60% / 0.06)",
+                        background: "color-mix(in srgb, var(--ec-warn) 6%, transparent)",
                         borderLeft: "2px solid var(--ec-warn)",
                         borderRadius: "var(--ec-radius-sm)",
                         fontSize: "var(--ec-text-xs)",

@@ -75,7 +75,7 @@ function fmtPing(rtt: number | null) {
 function pingColor(rtt: number | null): string {
   if (rtt == null) return "var(--ec-text-dim)";
   if (rtt < 80) return "var(--ec-presence-online)";
-  if (rtt < 200) return "#e6c45e";
+  if (rtt < 200) return "var(--ec-warn)";
   return "var(--ec-danger)";
 }
 

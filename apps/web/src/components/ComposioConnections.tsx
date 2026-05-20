@@ -219,7 +219,7 @@ export function ComposioConnections({ serverId }: Props) {
           style={{
             ...groupCard,
             background: "var(--ec-surface-1)",
-            borderColor: "hsl(38 90% 60% / 0.35)",
+            borderColor: "color-mix(in srgb, var(--ec-status-warn) 35%, transparent)",
           }}
         >
           <strong style={{ color: "var(--ec-status-warn)", fontSize: "var(--ec-text-sm)" }}>

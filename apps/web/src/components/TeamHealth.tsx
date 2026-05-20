@@ -75,24 +75,24 @@ const grid: CSSProperties = {
 function statCardStyle(tone: "exec" | "warn" | "idle" | "risk"): CSSProperties {
   const toneColors: Record<typeof tone, { fg: string; bg: string; border: string }> = {
     exec: {
-      fg: "hsl(195 85% 70%)",
-      bg: "hsl(195 75% 60% / 0.08)",
-      border: "hsl(195 75% 55% / 0.35)",
+      fg: "var(--ec-status-exec)",
+      bg: "var(--ec-status-exec-soft)",
+      border: "color-mix(in srgb, var(--ec-status-exec) 35%, transparent)",
     },
     warn: {
-      fg: "hsl(38 95% 70%)",
-      bg: "hsl(38 90% 60% / 0.08)",
-      border: "hsl(38 90% 55% / 0.35)",
+      fg: "var(--ec-status-warn)",
+      bg: "var(--ec-status-warn-soft)",
+      border: "color-mix(in srgb, var(--ec-status-warn) 35%, transparent)",
     },
     idle: {
-      fg: "hsl(215 85% 75%)",
-      bg: "hsl(215 70% 65% / 0.08)",
-      border: "hsl(215 70% 60% / 0.35)",
+      fg: "var(--ec-status-idle)",
+      bg: "var(--ec-status-idle-soft)",
+      border: "color-mix(in srgb, var(--ec-status-idle) 35%, transparent)",
     },
     risk: {
-      fg: "hsl(0 70% 70%)",
-      bg: "hsl(0 60% 55% / 0.08)",
-      border: "hsl(0 60% 50% / 0.35)",
+      fg: "var(--ec-status-risk)",
+      bg: "var(--ec-status-risk-soft)",
+      border: "color-mix(in srgb, var(--ec-status-risk) 35%, transparent)",
     },
   };
   const c = toneColors[tone];
@@ -178,9 +178,9 @@ const blockedChip: CSSProperties = {
   letterSpacing: "var(--ec-tracking-caps)",
   textTransform: "uppercase",
   borderRadius: "var(--ec-radius-full)",
-  background: "hsl(0 60% 55% / 0.14)",
-  color: "hsl(0 70% 70%)",
-  border: "1px solid hsl(0 60% 50% / 0.45)",
+  background: "var(--ec-status-risk-soft)",
+  color: "var(--ec-status-risk)",
+  border: "1px solid color-mix(in srgb, var(--ec-status-risk) 45%, transparent)",
 };
 
 const chatTitle: CSSProperties = {

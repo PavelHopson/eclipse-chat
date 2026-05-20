@@ -35,9 +35,9 @@ const mentionStyle: CSSProperties = {
 
 const meMentionStyle: CSSProperties = {
   ...mentionStyle,
-  background: "hsl(40 70% 60% / 0.18)",
+  background: "color-mix(in srgb, var(--ec-warn) 18%, transparent)",
   color: "var(--ec-warn)",
-  boxShadow: "0 0 6px hsl(40 70% 60% / 0.4)",
+  boxShadow: "0 0 6px color-mix(in srgb, var(--ec-warn) 40%, transparent)",
 };
 
 const urlStyle: CSSProperties = {

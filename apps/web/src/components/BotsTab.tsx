@@ -193,8 +193,8 @@ function RevealedKeyPanel({
     <div
       style={{
         ...groupCard,
-        border: "1px solid hsl(38 90% 60% / 0.55)",
-        background: "hsl(38 90% 60% / 0.06)",
+        border: "1px solid color-mix(in srgb, var(--ec-warn) 55%, transparent)",
+        background: "color-mix(in srgb, var(--ec-warn) 6%, transparent)",
         marginTop: "var(--ec-space-3)",
       }}
       role="alert"

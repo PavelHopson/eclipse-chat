@@ -74,8 +74,9 @@ const textareaStyle: CSSProperties = {
 
 const conflictBanner: CSSProperties = {
   padding: "0.4rem 0.6rem",
-  background: "hsl(36 70% 18%)",
-  color: "hsl(36 80% 80%)",
+  background: "var(--ec-status-warn-soft)",
+  color: "var(--ec-warn)",
+  border: "1px solid color-mix(in srgb, var(--ec-warn) 30%, transparent)",
   borderRadius: "var(--ec-radius-sm)",
   fontSize: "var(--ec-text-2xs)",
 };

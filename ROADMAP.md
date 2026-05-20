@@ -5,10 +5,11 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v1.1.34** (effects-марафон
-v1.1.22–v1.1.32 + UX-copy v1.1.33 + docs-accuracy v1.1.34).
+**Текущая версия в проде:** **v1.1.35** (effects-марафон
+v1.1.22–v1.1.32 + UX-copy v1.1.33 + docs-fix v1.1.34 +
+дизайн-полиш Wave 1 v1.1.35).
 
-**Изменения v1.1.25 → v1.1.34:**
+**Изменения v1.1.25 → v1.1.35:**
 
 - **v1.1.25** — убран Electric Border (SVG-turbulence давал шум на
   AuthScreen terminal) + фикс AuthScreen layout + `thinking_orb` —
@@ -47,6 +48,21 @@ v1.1.22–v1.1.32 + UX-copy v1.1.33 + docs-accuracy v1.1.34).
   «Информация о комнате» ((i)-кнопка → 4 таба Сводка/Память/Дела/
   Файлы) + «Участники» (правый rail = MemberList). Проверено по
   коду: ChannelInfoPanel `ChannelInfoTab` + IntelligencePanel.
+
+- **v1.1.35** — дизайн-полиш **Wave 1** (чистка warm-цветов).
+  Проведён 4-зонный дизайн-аудит (чат / модалки / voice / панели,
+  4 параллельных агента) — ~60 находок. Wave 1 закрыл системное
+  нарушение холодного правила: 13 мест с сырым оранжевым/янтарным
+  `hsl(28–47°)` и хардкодом `#e6c45e` переведены на санкционированные
+  `--ec-status-*` / `--ec-warn` токены (MessageList pinned+DECISION-
+  tint, RichContent self-mention, TeamHealth stat-карточки +
+  blockedChip, OperationalTablePanel TASK_STATUS_TONE, VoiceNotePanel
+  conflict-banner, VoiceStatsOverlay + VoiceSettingsModal VU-метры,
+  IncidentPanel pinned-блок, BotsTab key-alert, AdminInvoicesTab
+  STATUS_TONE, ComposioConnections). Wave 2 (битые/незаконченные
+  места: голые кнопки → `.ec-btn`, мёртвый код) + Wave 3
+  (консистентность: токены типографики, унификация stat-карточек /
+  section-label, `focus-visible`) — в очереди.
 
 > Backlog CSS-эффектов из набора Pavel'я **закрыт** (v1.1.22–v1.1.32).
 > Остаток набора — standalone-демки (галактика / 404 / паук-часы),

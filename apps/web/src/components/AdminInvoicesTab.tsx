@@ -62,10 +62,10 @@ const STATUS_LABEL: Record<AdminInvoice["status"], string> = {
 };
 
 const STATUS_TONE: Record<AdminInvoice["status"], string> = {
-  DRAFT: "hsl(210 15% 55%)",
-  SENT: "hsl(36 70% 60%)",
-  PAID: "hsl(150 50% 55%)",
-  CANCELLED: "hsl(0 50% 55%)",
+  DRAFT: "var(--ec-text-dim)",
+  SENT: "var(--ec-warn)",
+  PAID: "var(--ec-status-exec)",
+  CANCELLED: "var(--ec-status-risk)",
 };
 
 function formatMoney(amountKopeks: number, currency: string): string {

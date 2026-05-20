@@ -79,7 +79,7 @@ const rowGrouped: CSSProperties = {
 
 const rowPinned: CSSProperties = {
   ...rowBase,
-  background: "hsl(40 70% 60% / 0.06)",
+  background: "color-mix(in srgb, var(--ec-warn) 6%, transparent)",
   borderLeft: "2px solid var(--ec-warn)",
   paddingLeft: 6,
 };
@@ -180,16 +180,16 @@ function tintForAction(type: ActionItemType, status: ActionItemStatus) {
   }
   if (type === "DECISION") {
     return {
-      bg: "hsl(47 85% 58% / 0.12)",
-      fg: "hsl(47 88% 68%)",
-      border: "hsl(47 72% 46% / 0.32)",
+      bg: "var(--ec-status-warn-soft)",
+      fg: "var(--ec-status-warn)",
+      border: "color-mix(in srgb, var(--ec-status-warn) 32%, transparent)",
     };
   }
   if (type === "FOLLOW_UP") {
     return {
-      bg: "hsl(170 70% 52% / 0.12)",
-      fg: "hsl(170 74% 64%)",
-      border: "hsl(170 64% 46% / 0.28)",
+      bg: "var(--ec-accent-2-soft)",
+      fg: "var(--ec-accent-2)",
+      border: "color-mix(in srgb, var(--ec-accent-2) 28%, transparent)",
     };
   }
   return {
@@ -1091,8 +1091,8 @@ export function MessageList({
                       title="Зафиксировать решение"
                       onClick={() => void onCreateAction?.(m.id, "DECISION")}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.background = "hsl(47 85% 58% / 0.12)";
-                        e.currentTarget.style.color = "var(--ec-warn)";
+                        e.currentTarget.style.background = "var(--ec-status-warn-soft)";
+                        e.currentTarget.style.color = "var(--ec-status-warn)";
                       }}
                       onMouseLeave={(e) => {
                         e.currentTarget.style.background = "transparent";
@@ -1112,8 +1112,8 @@ export function MessageList({
                       title="Поставить follow-up"
                       onClick={() => void onCreateAction?.(m.id, "FOLLOW_UP")}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.background = "hsl(170 70% 52% / 0.12)";
-                        e.currentTarget.style.color = "var(--ec-ok)";
+                        e.currentTarget.style.background = "var(--ec-accent-2-soft)";
+                        e.currentTarget.style.color = "var(--ec-accent-2)";
                       }}
                       onMouseLeave={(e) => {
                         e.currentTarget.style.background = "transparent";
@@ -1134,7 +1134,7 @@ export function MessageList({
                       title="Открепить"
                       onClick={() => void onUnpin?.(m.id)}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.background = "hsl(40 70% 60% / 0.14)";
+                        e.currentTarget.style.background = "color-mix(in srgb, var(--ec-warn) 14%, transparent)";
                       }}
                       onMouseLeave={(e) => {
                         e.currentTarget.style.background = "transparent";

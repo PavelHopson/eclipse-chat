@@ -110,7 +110,7 @@ function VuMeter({ value }: { value: number }) {
                 : hot
                 ? "var(--ec-danger)"
                 : warm
-                ? "#e6c45e"
+                ? "var(--ec-warn)"
                 : "var(--ec-accent)",
               transition: "background 60ms linear",
             }}
