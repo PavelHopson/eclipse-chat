@@ -5,11 +5,26 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v1.1.49** (Galaxy/Clock/Theme/Deadline effects +
+**Текущая версия в проде:** **v1.1.50** (Galaxy/Clock/Theme/Deadline effects +
 UX-copy + дизайн-полиш + редизайн WS-1 + фикс AuthScreen + смена пароля).
 
-**Изменения v1.1.25 → v1.1.49:**
+**Изменения v1.1.25 → v1.1.50:**
 
+- **v1.1.50** — редизайн **WS-1: slice 2 закрыт + slice 3 ChannelList**.
+  *slice 2 — MessageList:* триаж (inline + CSS) показал — чат-зона
+  состоит из чипов, сигналов, dense-rows и уже-glass floating-
+  элементов; плоских `border: 1px solid`-панелей под depth-конвертацию
+  здесь нет. Сами сообщения (`.ec-message-row`) — это **slice 4**.
+  Искусственное изменение не вносилось → **slice 2 завершён по всем
+  зонам** (8 раскаток).
+  *slice 3 — иерархия левой панели:* три тира внимания в ChannelList.
+  `.ec-channel-item` base-цвет `--ec-text-muted` (66%) → `--ec-text-dim`
+  (50%) — спокойный «rest»-канал рецессивен («почти исчезает»). hover
+  поднимает до `--ec-text`, unread (`text-strong` + 600 + cyan-badge) и
+  active (gradient-bg + accent-bar + glow) уже громкие — не тронуты.
+  Затемнение rest автоматически обостряет контраст всех трёх тиров.
+  Найдено для будущего: на active-канале два accent-бара (`::before`
+  pill + `inset 3px` box-shadow из tokens.css) — кандидат на declutter.
 - **v1.1.49** — редизайн **WS-1 slice 2 — раскатка #7: OperationalTablePanel**.
   Триаж табличной зоны: сетка ячеек (thead/tbody/tfoot border'ы),
   header double-line (`border` + holo-edge — паттерн сквозной по

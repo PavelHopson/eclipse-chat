@@ -260,7 +260,11 @@
   width: 100%;
   padding: 0.4rem 0.6rem;
   border-radius: var(--ec-radius-sm);
-  color: var(--ec-text-muted);
+  /* v1.1.50 WS-1 slice 3 — иерархия левой панели: rest-канал «почти
+     исчезает». text-dim (tertiary) вместо text-muted (secondary) —
+     спокойный канал рецессивен; hover поднимает до --ec-text, active/
+     unread — до --ec-text-strong. Три тира внимания читаются явно. */
+  color: var(--ec-text-dim);
   font-size: var(--ec-text-sm);
   cursor: pointer;
   transition:
