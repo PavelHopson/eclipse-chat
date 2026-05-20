@@ -5,8 +5,35 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v1.1.18** (fix mobile layout —
-РЕАЛЬНЫЙ root cause: CSS specificity bug).
+**Текущая версия в проде:** **v1.1.24** (game-icons + effects
+adoption — Pavel прислал 27 кастомных 3D-иконок + 20 CSS-эффектов).
+
+**Изменения v1.1.19 → v1.1.24:**
+
+- **v1.1.19** — CI: `paths-ignore` в deploy-prod.yml — docs-only
+  коммиты больше не триггерят deploy (убрана путающая красная
+  «cancelled» история).
+- **v1.1.20** — mobile: убран промежуточный планшетный 3-кол режим,
+  всё ≤1024px = single-column + drawers (breakpoint 900→1024).
+- **v1.1.21** — ВРЕМЕННЫЙ viewport-diagnostic badge (mobile debug,
+  удалён в v1.1.22).
+- **v1.1.22** — game-иконки в empty states. 22 PNG в
+  `public/game-icons/`, `lib/gameIcons.ts` helper, EmptyIcons
+  переписан (eclipse_core / task_pin / bug_core / data_shard /
+  bot_eye / void_signal / focus_ring / gold_orbit). `.ec-game-icon`
+  — cyan drop-shadow + breathing-float.
+- **v1.1.23** — Electric Border на AuthScreen terminal. SVG
+  turbulence filter `#ec-electric` (инжектится 1× в App.tsx,
+  numOctaves 3, scale 18). `.ec-electric-border` overlay из 3
+  слоёв (line + 2 glow). Terminal clip-path → border-radius.
+- **v1.1.24** — role game-иконки в MemberList: OWNER→owner_crown,
+  ADMIN→admin_rune, MODERATOR→mod_shield. `.ec-role-icon` 15px.
+
+**⚠️ Mobile layout — НЕ решён.** v1.1.13/17/18/20 — серия попыток
+(breakpoint 640→900→1024, specificity fix, !important). Pavel:
+телефон на v1.1.21 всё равно показывает cramped layout. Диагностика
+неубедительна (badge не дал данных). ОТЛОЖЕНО — нужен device-side
+debug (DevTools remote / точная CSS-ширина viewport'а).
 
 **Изменения v1.1.18 (mobile bug — настоящая причина):**
 
