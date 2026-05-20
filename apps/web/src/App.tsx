@@ -128,10 +128,56 @@ export function App() {
 
   const isAuthenticated = view !== "loading" && view !== "auth" && user;
 
+  // v1.1.21 ВРЕМЕННЫЙ диагностический badge — показывает реальную
+  // ширину viewport'а на устройстве. Pavel: layout криво на телефоне
+  // несмотря на ≤1024 media-query. Этот readout даст ground truth
+  // (innerWidth / DPR / matchMedia) вместо догадок. Удалить после
+  // диагностики.
+  const [diag, setDiag] = useState(() => ({
+    w: typeof window !== "undefined" ? window.innerWidth : 0,
+    h: typeof window !== "undefined" ? window.innerHeight : 0,
+    dpr: typeof window !== "undefined" ? window.devicePixelRatio : 0,
+    mq: typeof window !== "undefined"
+      ? window.matchMedia("(max-width: 1024px)").matches
+      : false,
+  }));
+  useEffect(() => {
+    const upd = () =>
+      setDiag({
+        w: window.innerWidth,
+        h: window.innerHeight,
+        dpr: window.devicePixelRatio,
+        mq: window.matchMedia("(max-width: 1024px)").matches,
+      });
+    window.addEventListener("resize", upd);
+    window.addEventListener("orientationchange", upd);
+    return () => {
+      window.removeEventListener("resize", upd);
+      window.removeEventListener("orientationchange", upd);
+    };
+  }, []);
+
   return (
     <>
       {/* Ambient background layer — visible на всех view'ах через z-index -1 */}
       <div className="ec-ambient" aria-hidden />
+      {/* v1.1.21 ВРЕМЕННЫЙ diagnostic badge — удалить после фикса mobile */}
+      <div
+        style={{
+          position: "fixed",
+          bottom: 0,
+          left: 0,
+          zIndex: 99999,
+          background: "#ff2d55",
+          color: "#fff",
+          font: "700 12px/1.4 monospace",
+          padding: "4px 8px",
+          pointerEvents: "none",
+          letterSpacing: "0.02em",
+        }}
+      >
+        W:{diag.w} H:{diag.h} DPR:{diag.dpr} MQ≤1024:{diag.mq ? "YES" : "NO"} v{CLIENT_VERSION}
+      </div>
       {updateAvailable && (
         <div
           style={{
