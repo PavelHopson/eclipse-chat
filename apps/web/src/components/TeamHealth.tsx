@@ -99,14 +99,14 @@ function statCardStyle(tone: "exec" | "warn" | "idle" | "risk"): CSSProperties {
   return {
     padding: "var(--ec-space-4)",
     background: c.bg,
-    border: `1px solid ${c.border}`,
+    boxShadow: "var(--ec-elev-1)",
     borderRadius: "var(--ec-radius-lg)",
     display: "flex",
     flexDirection: "column",
     gap: "var(--ec-space-1)",
     color: c.fg,
     cursor: "pointer",
-    transition: "transform var(--ec-dur-fast) var(--ec-ease), border-color var(--ec-dur-fast) var(--ec-ease)",
+    transition: "transform var(--ec-dur-fast) var(--ec-ease), box-shadow var(--ec-dur-fast) var(--ec-ease)",
     fontFamily: "inherit",
     textAlign: "left",
     width: "100%",
@@ -157,10 +157,10 @@ const overloadRow: CSSProperties = {
   gap: "var(--ec-space-3)",
   padding: "var(--ec-space-3) var(--ec-space-4)",
   background: "var(--ec-surface-2)",
-  border: "1px solid var(--ec-border-subtle)",
+  boxShadow: "var(--ec-elev-1)",
   borderRadius: "var(--ec-radius-md)",
   cursor: "pointer",
-  transition: "border-color var(--ec-dur-fast) var(--ec-ease), background var(--ec-dur-fast) var(--ec-ease)",
+  transition: "box-shadow var(--ec-dur-fast) var(--ec-ease), background var(--ec-dur-fast) var(--ec-ease)",
 };
 
 const overloadCount: CSSProperties = {
@@ -405,10 +405,10 @@ export function TeamHealth({
                         onOpenBoard({ kind: "assignee", userId: m.userId })
                       }
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = "var(--ec-border-default)";
+                        e.currentTarget.style.boxShadow = "var(--ec-elev-2)";
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = "var(--ec-border-subtle)";
+                        e.currentTarget.style.boxShadow = "var(--ec-elev-1)";
                       }}
                       title={`Открыть задачи ${m.displayName}`}
                     >
