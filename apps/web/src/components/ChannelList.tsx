@@ -858,7 +858,12 @@ export function ChannelList({
       {/* v0.96 sidebar tabs: Каналы / Работа / Таблицы. Расщепляет старый
           plain list ("Доска задач" + "Здоровье" + "Таблицы" + 3 группы каналов
           подряд) на 3 contextual surfaces. Persisted per-server. */}
-      <div style={sidebarTabBar} role="tablist" aria-label="Разделы пространства">
+      <div
+        style={{ ...sidebarTabBar, position: "relative" }}
+        className="ec-sidebar-tabs"
+        role="tablist"
+        aria-label="Разделы пространства"
+      >
         <button
           type="button"
           role="tab"
@@ -923,6 +928,18 @@ export function ChannelList({
             </span>
           )}
         </button>
+        {/* v1.1.28 Active Navbar Indicator — скользящий cyan-бар под
+            активным табом (channels=0 / work=1 / tables=2). */}
+        <span
+          className="ec-hud-slider"
+          aria-hidden
+          style={
+            {
+              "--ec-tab-idx":
+                sidebarTab === "channels" ? 0 : sidebarTab === "work" ? 1 : 2,
+            } as CSSProperties
+          }
+        />
       </div>
 
       <div style={listWrap}>

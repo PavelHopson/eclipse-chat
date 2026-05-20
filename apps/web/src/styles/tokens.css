@@ -837,6 +837,30 @@
   pointer-events: none;
 }
 
+/* v1.1.28 Active Navbar Indicator — скользящий индикатор под
+ * sidebar-табами. Заменяет статичный per-tab `::after` (он
+ * подавлен внутри .ec-sidebar-tabs) — один бар плавно едет
+ * между табами. 3 равных таба → translateX(idx × 100%). */
+.ec-sidebar-tabs .ec-hud-tab[aria-selected="true"]::after {
+  display: none;
+}
+.ec-hud-slider {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  width: calc(100% / 3);
+  background: var(--ec-accent);
+  box-shadow: 0 0 8px hsl(195 70% 60% / 0.6);
+  border-radius: 2px;
+  transform: translateX(calc(var(--ec-tab-idx, 0) * 100%));
+  transition: transform 300ms var(--ec-ease-out);
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ec-hud-slider { transition: none; }
+}
+
 /* Server header holographic bottom-edge — accent line gradient. */
 .ec-server-header-edge {
   position: relative;
