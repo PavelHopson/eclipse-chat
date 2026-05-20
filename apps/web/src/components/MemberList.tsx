@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import { useMemo } from "react";
 import { Avatar } from "./Avatar";
+import { gameIcon, type GameIconName } from "../lib/gameIcons";
 import type { MemberRole, MemberRow } from "../hooks/useMembers";
 
 type Props = {
@@ -112,6 +113,15 @@ function statusPillClass(role: MemberRole): string {
   return "ec-status-pill";
 }
 
+/** v1.1.24: game-иконка для топ-ролей (crown/rune/shield). Null для
+ *  остальных — у них только monospace tag. */
+function roleGameIcon(role: MemberRole): GameIconName | null {
+  if (role === "OWNER") return "owner_crown";
+  if (role === "ADMIN") return "admin_rune";
+  if (role === "MODERATOR") return "mod_shield";
+  return null;
+}
+
 function MemberRowView({
   m,
   inVoiceChannel,
@@ -127,6 +137,7 @@ function MemberRowView({
 }) {
   const tag = ROLE_TAG[m.role];
   const pillClass = statusPillClass(m.role);
+  const roleIcon = roleGameIcon(m.role);
   const tooltip =
     `${m.user.displayName} · ${m.role}` +
     (m.online ? " · в сети" : "") +
@@ -192,7 +203,20 @@ function MemberRowView({
             под voice-каналом в sidebar (ChannelList), дублировать не нужно.
             inVoiceChannel остаётся в tooltip (см. выше). */}
       </span>
-      <span className={pillClass} title={m.role}>{tag}</span>
+      <span className={pillClass} title={m.role}>
+        {roleIcon && (
+          <img
+            className="ec-role-icon"
+            src={gameIcon(roleIcon)}
+            alt=""
+            width={15}
+            height={15}
+            loading="lazy"
+            draggable={false}
+          />
+        )}
+        {tag}
+      </span>
       {showDmButton && onOpenDm && (
         <button
           data-dm-btn

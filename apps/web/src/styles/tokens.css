@@ -674,6 +674,18 @@
   font-feature-settings: "tnum";
 }
 
+/* v1.1.24 — game-icon внутри role-pill (crown/rune/shield). */
+.ec-role-icon {
+  display: inline-block;
+  width: 15px;
+  height: 15px;
+  object-fit: contain;
+  margin-right: 4px;
+  margin-left: -1px;
+  vertical-align: -2px;
+  filter: drop-shadow(0 0 3px hsl(0 0% 0% / 0.7));
+}
+
 /* Monospace status pill (OPR / MEM / OWN / etc). */
 .ec-status-pill {
   display: inline-flex;
