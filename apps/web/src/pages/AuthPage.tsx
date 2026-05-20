@@ -179,6 +179,7 @@ export function AuthPage({ error, onLogin, onRegister }: Props) {
         <h1 className="ec-auth-title">ECLIPSE</h1>
         <div className="ec-auth-subtitle">ПРОТОКОЛ_ШЛЮЗА_V1.0</div>
 
+        <div className="ec-auth-terminal-frame">
         <section className="ec-auth-terminal" aria-live="polite">
           <span className="ec-auth-terminal__accent-tl" aria-hidden />
           <span className="ec-auth-terminal__accent-br" aria-hidden />
@@ -425,6 +426,7 @@ export function AuthPage({ error, onLogin, onRegister }: Props) {
             </div>
           )}
         </section>
+        </div>
       </div>
 
       {/* Bottom HUD */}

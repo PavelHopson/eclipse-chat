@@ -1260,6 +1260,49 @@
   }
 }
 
+/* v1.1.26 — Animated rotating-ray border (Animated Border эффект).
+ * repeating-conic-gradient с анимируемым @property углом — чистый
+ * CSS, performant. Cyan + violet лучи вращаются за terminal'ом,
+ * выглядывая 3px по периметру = живая граница. */
+@property --ec-ray-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+.ec-auth-terminal-frame {
+  position: relative;
+  width: 100%;
+  display: flex;
+}
+.ec-auth-terminal-frame::before {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 14px;
+  background: repeating-conic-gradient(
+    from var(--ec-ray-angle),
+    hsl(195 70% 60%) 0%, hsl(195 70% 60%) 5%,
+    transparent 5%, transparent 45%,
+    hsl(252 70% 70%) 50%, hsl(252 70% 70%) 55%,
+    transparent 55%, transparent 95%
+  );
+  filter: blur(3px);
+  opacity: 0.6;
+  animation: ec-ray-spin 7s linear infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+@keyframes ec-ray-spin {
+  to { --ec-ray-angle: 360deg; }
+}
+.ec-auth-terminal-frame > .ec-auth-terminal {
+  position: relative;
+  z-index: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ec-auth-terminal-frame::before { animation: none; }
+}
+
 /* Center terminal box — cut-corner clip-path с двойной рамкой
  * (cyan top-left accent + violet bottom-right accent). */
 .ec-auth-terminal {
