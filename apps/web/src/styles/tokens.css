@@ -438,6 +438,24 @@
 }
 
 /* Telemetry pill — для top-bar status indicators (NET/MEM/CPU style). */
+/* v1.1.38 — WS-1 «Облегчение»: телеметрия. СЕТЬ-pill всегда виден;
+   ПАМ/ЦП (--detail) свёрнуты, разворачиваются по hover группы или
+   автоматически при warn/risk (problem surfaces itself). */
+.ec-telemetry {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ec-space-2);
+}
+.ec-telemetry-pill--detail {
+  display: none;
+}
+.ec-telemetry:hover .ec-telemetry-pill--detail,
+.ec-telemetry:focus-within .ec-telemetry-pill--detail,
+.ec-telemetry-pill--detail.ec-telemetry-pill--warn,
+.ec-telemetry-pill--detail.ec-telemetry-pill--risk {
+  display: inline-flex;
+}
+
 .ec-telemetry-pill {
   display: inline-flex;
   align-items: center;

@@ -778,10 +778,11 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           )}
         </div>
         <div className="ec-shell__top-actions" style={{ display: "flex", alignItems: "center", gap: "var(--ec-space-2)" }}>
-          {/* v1.1.1+v1.1.7 Eclipse_OS telemetry pills — HUD status strip.
-              v1.1.7: pills читают live data из useTelemetry (poll
-              /api/health каждые 10s). Color по threshold:
-              ok < 70%, warn 70–89%, risk ≥ 90%. */}
+          {/* v1.1.1+v1.1.7 telemetry. v1.1.38 (WS-1 «Облегчение»):
+              ПАМ/ЦП свёрнуты — видны по hover группы ИЛИ авто-разворот
+              при warn/risk. Progressive disclosure: постоянный
+              визуальный вес ↓, но проблемы всплывают сами. */}
+          <div className="ec-telemetry">
           <span
             className={
               "ec-telemetry-pill " +
@@ -794,7 +795,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                 ? "Socket: соединение потеряно"
                 : !telemetry.online
                 ? "Health endpoint недоступен"
-                : `Socket OK · pg.active=${telemetry.pgActive ?? "—"}`
+                : `Socket OK · pg.active=${telemetry.pgActive ?? "—"} · ПАМ ${telemetry.memPercent ?? "—"}% · ЦП ${telemetry.cpuPercent ?? "—"}%`
             }
           >
             <span className="ec-telemetry-pill__dot" />
@@ -807,7 +808,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           </span>
           <span
             className={
-              "ec-telemetry-pill" +
+              "ec-telemetry-pill ec-telemetry-pill--detail" +
               (telemetry.memStatus === "warn"
                 ? " ec-telemetry-pill--warn"
                 : telemetry.memStatus === "risk"
@@ -827,7 +828,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           </span>
           <span
             className={
-              "ec-telemetry-pill" +
+              "ec-telemetry-pill ec-telemetry-pill--detail" +
               (telemetry.cpuStatus === "warn"
                 ? " ec-telemetry-pill--warn"
                 : telemetry.cpuStatus === "risk"
@@ -845,6 +846,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               ? `${telemetry.cpuPercent.toFixed(0).padStart(2, "0")}%`
               : "—"}
           </span>
+          </div>
           <span
             className={isReady ? "ec-dot ec-dot--online" : "ec-dot ec-dot--offline"}
             title={isReady ? "Подключено" : "Соединение разорвано"}

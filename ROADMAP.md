@@ -5,11 +5,10 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v1.1.37** (effects-марафон
-v1.1.22–v1.1.32 + UX-copy v1.1.33 + docs-fix v1.1.34 +
-дизайн-полиш Wave 1–3 v1.1.35–37).
+**Текущая версия в проде:** **v1.1.38** (effects-марафон +
+UX-copy + дизайн-полиш Waves 1–3 + редизайн WS-1 slice 1).
 
-**Изменения v1.1.25 → v1.1.37:**
+**Изменения v1.1.25 → v1.1.38:**
 
 - **v1.1.25** — убран Electric Border (SVG-turbulence давал шум на
   AuthScreen terminal) + фикс AuthScreen layout + `thinking_orb` —
@@ -83,6 +82,13 @@ v1.1.22–v1.1.32 + UX-copy v1.1.33 + docs-fix v1.1.34 +
   fallback убран. Legit `#fff` фон QR-кода (TwoFactorSetupModal)
   оставлен.
 
+- **v1.1.38** — редизайн **WS-1 «Облегчение» slice 1**: declutter
+  телеметрии. Top-bar по принципу progressive disclosure: pill
+  «СЕТЬ» виден всегда, ПАМ/ЦП свёрнуты в `.ec-telemetry`-группу —
+  разворот по hover ИЛИ авто при warn/risk (проблема всплывает
+  сама). mem/cpu продублированы в title СЕТЬ-pill. Постоянный
+  визуальный вес топ-бара ↓ (3 pill → 1).
+
 > **Дизайн-аудит — хвост.** Waves 1–3 закрыли все P1 + ключевые
 > P2 (warm-цвета, битые места, хардкод-hex). Остаток аудита —
 > нормализация typography-шкалы (`0.55–0.7rem` → токены),
@@ -94,6 +100,44 @@ v1.1.22–v1.1.32 + UX-copy v1.1.33 + docs-fix v1.1.34 +
 > Backlog CSS-эффектов из набора Pavel'я **закрыт** (v1.1.22–v1.1.32).
 > Остаток набора — standalone-демки (галактика / 404 / паук-часы),
 > не применимы к продукту.
+
+---
+
+## Дизайн-vision Pavel (20.05.2026) — «Communication OS»
+
+> **Источник истины** по направлению редизайна. Pavel прислал
+> развёрнутый vision. Формула цели:
+> **Discord focus + Linear cleanliness + Notion calmness +
+> Sci-fi atmosphere + Operator workflow logic.**
+
+**Главный диагноз (подтверждён дизайн-аудитом):** UI визуально
+тяжёлый — box-in-box, много границ и постоянного chrome, много
+конкурирующих зон внимания → когнитивная нагрузка, нет «потока».
+
+**Принцип-разрешение** (в vision есть противоречие «Часть 1
+добавить» vs «Часть 2 убрать»): **progressive disclosure** —
+ёмкость растёт, постоянный визуальный вес падает. Ведём по
+Части 2 (уточнённый тезис).
+
+**4 рабочих потока:**
+
+- **WS-1 «Облегчение»** — borders → depth/blur/glow, иерархия
+  левой панели (active ярко / rest почти исчезает), лёгкие
+  «floating» сообщения, declutter телеметрии, снижение
+  cognitive load. Фундамент. ← **выбран первым.**
+- **WS-2 Контекст** — Focus Chat Mode (панели гаснут в потоке
+  чтения/набора), adaptive density (Compact / Balanced /
+  Tactical), contextual UI (voice / AI / tasks меняют layout).
+- **WS-3 Атмосфера** — живой фон (subtle dust / orbital
+  gradients, НЕ cyberpunk-neon), символы каналов по типу,
+  участники-«узлы сети», empty-state eclipse-orb, system-
+  сообщения в стиле терминальных событий («SYSTEM // …»).
+- **WS-4 Communication OS** — сообщение → задача / голосование /
+  AI-prompt / workflow-node / заметка / execution-block.
+
+**Custom emoji** (статусы / роли / задачи / атмосфера / реакции;
+тёмная база + violet/gold + glow; PNG 128/64/32 + SVG) —
+отдельный asset-трек (генерация через Gemini), идёт параллельно.
 
 **Изменения v1.1.19 → v1.1.24:**
 
