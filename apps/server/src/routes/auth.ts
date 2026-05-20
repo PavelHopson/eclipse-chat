@@ -45,6 +45,12 @@ const refreshBody = z.object({
   refreshToken: z.string().min(10),
 });
 
+const changePasswordBody = z.object({
+  currentPassword: z.string().min(1, "Введите текущий пароль"),
+  // Те же правила, что при регистрации (min 8, буквы + цифры).
+  newPassword: registerBody.shape.password,
+});
+
 const ACCESS_TTL = "15m";
 
 function publicUser(u: {
@@ -330,6 +336,62 @@ export async function registerAuthRoutes(app: FastifyInstance) {
         return { user: null as null };
       }
       return { user: publicUser(user) };
+    },
+  );
+
+  /**
+   * Смена пароля из профиля. Требует JWT + текущий пароль.
+   * Успех инвалидирует ВСЕ refresh-токены (защита от компрометации) —
+   * текущему устройству сразу выдаётся свежая пара, оно не вылетает,
+   * остальные сессии завершаются при следующем refresh.
+   * «Неверный текущий пароль» → 400 (не 401 — иначе api() уйдёт в
+   * бессмысленный token-refresh).
+   */
+  app.post(
+    "/api/auth/change-password",
+    {
+      onRequest: [requireJwt],
+      config: {
+        rateLimit: { max: 10, timeWindow: 15 * 60 * 1000 },
+      },
+    },
+    async (req, reply) => {
+      const parsed = changePasswordBody.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.status(400).send({
+          error: parsed.error.issues[0]?.message ?? "Invalid body",
+        });
+      }
+      const payload = req.user as { sub: string; email: string } | undefined;
+      const sub = payload?.sub;
+      if (!sub) {
+        return reply.status(401).send({ error: "Unauthorized" });
+      }
+      const user = await db.user.findUnique({ where: { id: sub } });
+      if (!user) {
+        return reply.status(401).send({ error: "Unauthorized" });
+      }
+      const { currentPassword, newPassword } = parsed.data;
+
+      const currentOk = await bcrypt.compare(currentPassword, user.passwordHash);
+      if (!currentOk) {
+        return reply.status(400).send({ error: "Текущий пароль неверён" });
+      }
+      if (newPassword === currentPassword) {
+        return reply
+          .status(400)
+          .send({ error: "Новый пароль совпадает с текущим" });
+      }
+
+      const passwordHash = await bcrypt.hash(newPassword, 12);
+      const updated = await db.user.update({
+        where: { id: user.id },
+        data: { passwordHash },
+      });
+      recordAudit("AUTH_PASSWORD_CHANGE", { userId: user.id, req });
+
+      await deleteAllUserRefresh(user.id);
+      return await issueSession(reply, updated);
     },
   );
 }

@@ -9,6 +9,7 @@ import {
   usePushPreferences,
   type PushPreferences,
 } from "../hooks/usePushPreferences";
+import { useChangePassword } from "../hooks/useChangePassword";
 
 type Props = {
   profile: Profile;
@@ -53,6 +54,15 @@ export function ProfileModal({
   const pushPrefs = usePushPreferences(push.enabled);
   const [showPrefs, setShowPrefs] = useState(false);
 
+  // Смена пароля — collapsible секция.
+  const { changePassword, busy: pwdBusy } = useChangePassword();
+  const [showPwd, setShowPwd] = useState(false);
+  const [curPwd, setCurPwd] = useState("");
+  const [newPwd, setNewPwd] = useState("");
+  const [confirmPwd, setConfirmPwd] = useState("");
+  const [pwdError, setPwdError] = useState<string | null>(null);
+  const [pwdDone, setPwdDone] = useState(false);
+
   const trimmedName = displayName.trim();
   const trimmedBio = bio.trim();
   const nameChanged = trimmedName !== profile.displayName.trim();
@@ -71,6 +81,31 @@ export function ProfileModal({
     if (Object.keys(data).length === 0) return;
     const ok = await onSave(data);
     if (ok) onClose();
+  };
+
+  // Правила совпадают с backend (registerBody.password): 8+, буквы + цифры.
+  const newPwdValid =
+    newPwd.length >= 8 &&
+    newPwd.length <= 128 &&
+    /[A-Za-z]/.test(newPwd) &&
+    /\d/.test(newPwd);
+  const pwdMatch = confirmPwd === newPwd;
+  const canChangePwd =
+    !pwdBusy && curPwd.length >= 1 && newPwdValid && pwdMatch;
+
+  const handleChangePwd = async () => {
+    if (!canChangePwd) return;
+    setPwdError(null);
+    setPwdDone(false);
+    const r = await changePassword(curPwd, newPwd);
+    if (r.ok) {
+      setPwdDone(true);
+      setCurPwd("");
+      setNewPwd("");
+      setConfirmPwd("");
+    } else {
+      setPwdError(r.error ?? "Не удалось сменить пароль");
+    }
   };
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -176,6 +211,121 @@ export function ProfileModal({
           {twoFaOn ? "Отключить" : "Включить"}
         </button>
       </section>
+
+      {/* Password section */}
+      <section style={avatarSection}>
+        <div
+          aria-hidden
+          style={{
+            width: 48,
+            height: 48,
+            borderRadius: "var(--ec-radius-md)",
+            display: "grid",
+            placeItems: "center",
+            background: "var(--ec-surface-3)",
+            color: "var(--ec-text-muted)",
+          }}
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M2.6 17.4A2 2 0 0 0 2 18.8V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.2a2 2 0 0 0 1.4-.6l.8-.8a6.5 6.5 0 1 0-4-4z" />
+            <circle cx="16.5" cy="7.5" r="0.5" fill="currentColor" />
+          </svg>
+        </div>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
+          <strong style={{ color: "var(--ec-text-strong)", fontSize: "var(--ec-text-sm)" }}>
+            Пароль
+          </strong>
+          <span style={{ fontSize: "var(--ec-text-2xs)", color: "var(--ec-text-muted)", lineHeight: 1.4 }}>
+            Смена завершит все остальные сессии. Текущее устройство останется в системе.
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            setShowPwd((s) => !s);
+            setPwdError(null);
+            setPwdDone(false);
+          }}
+          className="ec-btn ec-btn--ghost ec-btn--sm"
+        >
+          {showPwd ? "Скрыть" : "Сменить"}
+        </button>
+      </section>
+
+      {showPwd && (
+        <section
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "var(--ec-space-2)",
+            padding: "var(--ec-space-3) var(--ec-space-4)",
+            background: "hsl(208 16% 10% / 0.5)",
+            border: "1px solid var(--ec-border-subtle)",
+            borderRadius: "var(--ec-radius-md)",
+          }}
+        >
+          <div>
+            <label className="ec-field-label">Текущий пароль</label>
+            <input
+              className="ec-field"
+              type="password"
+              value={curPwd}
+              onChange={(e) => setCurPwd(e.target.value)}
+              autoComplete="current-password"
+            />
+          </div>
+          <div>
+            <label className="ec-field-label">Новый пароль</label>
+            <input
+              className="ec-field"
+              type="password"
+              value={newPwd}
+              onChange={(e) => setNewPwd(e.target.value)}
+              autoComplete="new-password"
+              placeholder="Минимум 8, буквы и цифры"
+            />
+          </div>
+          <div>
+            <label className="ec-field-label">Повтори новый пароль</label>
+            <input
+              className="ec-field"
+              type="password"
+              value={confirmPwd}
+              onChange={(e) => setConfirmPwd(e.target.value)}
+              autoComplete="new-password"
+            />
+          </div>
+          {newPwd.length > 0 && !newPwdValid && (
+            <span style={{ fontSize: "var(--ec-text-2xs)", color: "var(--ec-text-dim)" }}>
+              Пароль должен быть от 8 символов и содержать буквы и цифры.
+            </span>
+          )}
+          {confirmPwd.length > 0 && !pwdMatch && (
+            <span style={{ fontSize: "var(--ec-text-2xs)", color: "var(--ec-danger)" }}>
+              Пароли не совпадают.
+            </span>
+          )}
+          {pwdError && (
+            <span style={{ fontSize: "var(--ec-text-2xs)", color: "var(--ec-danger)" }}>
+              {pwdError}
+            </span>
+          )}
+          {pwdDone && (
+            <span style={{ fontSize: "var(--ec-text-2xs)", color: "var(--ec-ok)" }}>
+              ✓ Пароль обновлён.
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={() => void handleChangePwd()}
+            className="ec-btn ec-btn--primary ec-btn--sm"
+            disabled={!canChangePwd}
+            style={{ alignSelf: "flex-start" }}
+          >
+            {pwdBusy ? "Обновляем…" : "Обновить пароль"}
+          </button>
+        </section>
+      )}
 
       <div>
         <label className="ec-field-label">Имя</label>
