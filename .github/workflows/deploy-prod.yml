@@ -4,9 +4,21 @@ name: Deploy PROD (master)
 #   - push в master → автоматически валидирует и деплоит
 #   - workflow_dispatch → ручной запуск из GitHub UI (с опциональным initial-setup
 #     для первого деплоя на свежий сервер)
+#
+# v1.1.19: paths-ignore — docs-only коммиты (ROADMAP.md, docs/**, *.md)
+# НЕ триггерят деплой. Раньше после каждого release'а ROADMAP-коммит
+# запускал лишний workflow, который приходилось вручную отменять
+# (`gh run cancel`) → красные "cancelled" checks в истории, путали.
+# paths-ignore matches когда ВСЕ изменённые файлы попадают под паттерн —
+# смешанный code+md коммит всё равно триггерит деплой.
 on:
   push:
     branches: ["master"]
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - ".gitignore"
+      - "LICENSE"
   workflow_dispatch:
     inputs:
       run_initial_setup:
