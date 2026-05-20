@@ -5,8 +5,9 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v1.1.55** (Galaxy/Clock/Theme/Deadline effects +
-UX-copy + дизайн-полиш + редизайн WS-1 + фикс AuthScreen + смена пароля).
+**Текущая версия в проде:** **v1.1.56** (Galaxy/Clock/Theme/Deadline effects +
+UX-copy + дизайн-полиш + редизайн WS-1 + системный редизайн + фикс
+AuthScreen + смена пароля).
 
 > **⚠️ ЦВЕТ-ПРАВИЛО ИЗМЕНЕНО (бриф Pavel'я 20.05.2026).** Прежнее
 > «cool-tone, НИКОГДА warm» — ОТМЕНЕНО. Новая identity: **violet
@@ -14,8 +15,18 @@ UX-copy + дизайн-полиш + редизайн WS-1 + фикс AuthScreen 
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.1.55:**
+**Изменения v1.1.25 → v1.1.56:**
 
+- **v1.1.56** — **системный редизайн, инкремент 2 — top bar** (бриф
+  §7 «calm tactical, не cockpit overload»). Топбар переведён с flex
+  `space-between` на grid `auto / minmax(0,1fr) / auto` — три
+  смысловые зоны: **left** (бренд + ServerSwitcher), **center**
+  (breadcrumb «УЗЕЛ // …» — вынесен из left в `.ec-shell__top-center`,
+  центрирован), **right** (telemetry + utility). Utility-иконки
+  (поиск / справка / админ / фокус / инциденты / уведомления)
+  приглушены в покое (`--ec-text-muted`), проявляются до `--ec-text`
+  на hover; активные остаются accent. Telemetry уже декластеризован
+  (slice 1). Дальше инкременты 3–8.
 - **v1.1.55** — **системный редизайн, инкремент 1 — цвет-фундамент**
   (бриф Pavel'я §4–5). Старт большого редизайна (8 инкрементов).
   Identity сменена cyan → **violet** primary + **gold** premium.

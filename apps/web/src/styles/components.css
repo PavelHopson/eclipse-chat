@@ -688,6 +688,24 @@
     0 0 18px hsl(258 70% 60% / 0.08);
 }
 
+/* v1.1.56 redesign §7 — calm tactical topbar. Три смысловые зоны
+   (left / center / right) через grid; breadcrumb центрирован. */
+.ec-shell__top-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+}
+
+/* Utility-иконки приглушены в покое, проявляются на hover. Активные
+   (accent через inline-style) перебивают это и остаются яркими. */
+.ec-shell__top-actions .ec-btn--ghost {
+  color: var(--ec-text-muted);
+}
+.ec-shell__top-actions .ec-btn--ghost:hover {
+  color: var(--ec-text);
+}
+
 .ec-shell__rail,
 .ec-shell__channels,
 .ec-shell__members {

@@ -82,9 +82,12 @@ type Props = {
 };
 
 const topbar: CSSProperties = {
-  display: "flex",
+  // v1.1.56 redesign §7 — три смысловые зоны: left (бренд + switcher) /
+  // center (breadcrumb) / right (telemetry + utility). Grid вместо flex —
+  // центр-колонка держит breadcrumb визуально между группами.
+  display: "grid",
+  gridTemplateColumns: "auto minmax(0, 1fr) auto",
   alignItems: "center",
-  justifyContent: "space-between",
   padding: "0 var(--ec-space-4)",
   background: "var(--ec-surface-1)",
   borderBottom: "1px solid var(--ec-border-subtle)",
@@ -797,6 +800,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             maxOwnedServers={serverLimits.maxOwnedServers}
             compact={isMobile}
           />
+        </div>
+        <div className="ec-shell__top-center">
           {homeOpen ? (
             <span className="ec-shell__breadcrumb ec-breadcrumb-cyber">
               <span className="ec-breadcrumb-cyber__label">УЗЕЛ //</span>
