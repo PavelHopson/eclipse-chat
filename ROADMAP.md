@@ -5,9 +5,41 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v1.1.14** (cinematic multi-step
-AuthScreen — Pavel прислал 4 mockup screenshot'а из eclipse-os-v1
-«это просто пушка, вот так нам надо сделать»).
+**Текущая версия в проде:** **v1.1.15** (fix SW update delivery —
+Pavel «на телефоне всё так же без изменений» после 11 деплоев).
+
+**Изменения v1.1.15 (critical bug fix):**
+
+Root cause — телефон Pavel'я застрял на старом bundle:
+1. **Banner reload перехватывался SW.** App.tsx update-banner
+   кнопка «ПЕРЕЗАГРУЗИТЬ» делала `window.location.reload()` —
+   но это НЕ обходит Service Worker (navigation идёт через SW
+   fetch handler). Застрявший старый SW вечно отдавал старый
+   bundle.
+2. **main.tsx никогда не перепроверял sw.js.** SW регистрировался
+   один раз без периодического `registration.update()`. Mobile
+   Chrome не перепроверял sw.js неделями если вкладка живёт долго.
+
+Fix:
+- **App.tsx `hardReload()`** — banner-кнопка теперь: unregister
+  ВСЕ SW → clear ВСЕ caches → reload. Чистый fetch без
+  SW-перехвата.
+- **main.tsx** — `registration.update()` сразу + `setInterval`
+  каждые 60s. Форсит mobile Chrome ловить новый sw.js.
+
+nginx уже отдаёт sw.js с `no-cache, must-revalidate` (verified
+на проде) — конфиг был правильный, проблема была чисто
+client-side.
+
+**Изменения v1.1.14:**
+
+Полный rewrite AuthPage → cinematic multi-step AuthScreen
+(credentials → 2FA keypad → success) с HUD shell, radar bg,
+tactical corners. См. commit 670c56e.
+
+**Предыдущие версии:** v1.1.13 (mobile topbar overflow fix),
+v1.1.12 (OperationalTablePanel polish), v1.1.11 (ActionItemDrawer
++ ThreadPanel).
 
 **Изменения v1.1.14:**
 
