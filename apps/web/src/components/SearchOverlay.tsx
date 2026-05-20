@@ -336,7 +336,7 @@ export function SearchOverlay({
                 aria-selected={tab === "semantic"}
                 onClick={() => setTab("semantic")}
                 style={tabBtn(tab === "semantic")}
-                title="Семантический поиск по смыслу (AI embeddings)"
+                title="Поиск по смыслу, а не по точному совпадению слов"
               >
                 Семантика
                 <span style={tabCount(tab === "semantic")}>

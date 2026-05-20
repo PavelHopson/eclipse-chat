@@ -712,7 +712,7 @@ export function ActionItemDrawer({
               {/* v0.73 #20 phase 4: AI summary */}
               <section>
                 <h3 style={sectionLabel}>
-                  AI-сводка
+                  Сводка
                   {detail.aiSummaryUpdatedAt && (
                     <span
                       style={{

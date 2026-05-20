@@ -262,9 +262,9 @@ export function ChannelDigestPanel({
                 textOverflow: "ellipsis",
                 maxWidth: "100%",
               }}
-              title={aiSummary ? "Сгенерировать резюме заново" : "Сгенерировать резюме через ИИ"}
+              title={aiSummary ? "Собрать резюме заново" : "Собрать краткое резюме"}
             >
-              {aiLoading ? "ИИ думает…" : aiSummary ? "✦ Заново" : "✦ Резюме"}
+              {aiLoading ? "Собираем…" : aiSummary ? "✦ Заново" : "✦ Резюме"}
             </button>
           )}
         </div>
@@ -298,7 +298,7 @@ export function ChannelDigestPanel({
             }}
           >
             <span aria-hidden>✦</span>
-            <span>ИИ-резюме</span>
+            <span>Краткое резюме</span>
             {aiSummary && (
               <span
                 style={{

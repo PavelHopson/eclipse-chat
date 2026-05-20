@@ -878,7 +878,7 @@ export function ServerHubModal({
                   {
                     id: "ENGINEERING" as const,
                     title: "Engineering",
-                    desc: "Полный operator-инструментарий — Status Board, slash-commands, AI-сводки. Для внутренних команд.",
+                    desc: "Полный operator-инструментарий — Status Board, slash-commands, сводки. Для внутренних команд.",
                   },
                   {
                     id: "CLIENT" as const,

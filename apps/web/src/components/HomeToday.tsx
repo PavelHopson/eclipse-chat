@@ -347,7 +347,7 @@ export function HomeToday({
             <span style={{ ...statValue, color: "var(--ec-warn)" }}>
               {counts.aiSignals}
             </span>
-            <span style={statLabel}>AI-алерты</span>
+            <span style={statLabel}>Сигналы</span>
           </div>
         )}
       </div>
@@ -539,7 +539,7 @@ export function HomeToday({
           <section>
             <h3 style={sectionTitle}>
               <span aria-hidden style={{ color: "var(--ec-warn)" }}>◆</span>
-              AI-алерты
+              Сигналы
               <span style={{ color: "var(--ec-text-dim)", fontWeight: 600 }}>
                 · требует внимания
               </span>

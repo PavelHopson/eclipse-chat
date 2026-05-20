@@ -159,9 +159,9 @@ export function SinceLastVisitBanner({
               cursor: aiLoading ? "wait" : "pointer",
               transition: "background var(--ec-dur-fast) var(--ec-ease)",
             }}
-            title="Сгенерировать prose-резюме через ИИ"
+            title="Собрать краткое резюме произошедшего"
           >
-            {aiLoading ? "ИИ думает…" : "✦ Что произошло"}
+            {aiLoading ? "Собираем…" : "✦ Что произошло"}
           </button>
         )}
       </div>
@@ -192,7 +192,7 @@ export function SinceLastVisitBanner({
             }}
           >
             <span aria-hidden>✦</span>
-            <span>ИИ-резюме</span>
+            <span>Краткое резюме</span>
             {aiSummary && (
               <span
                 style={{

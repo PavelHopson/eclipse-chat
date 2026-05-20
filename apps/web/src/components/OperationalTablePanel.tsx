@@ -831,7 +831,7 @@ function RowEditor({
                       { method: "POST" },
                     );
                     if (res.suggestions.length === 0) {
-                      setAiError("AI ничего не предложил");
+                      setAiError("Не удалось подобрать значения");
                       return;
                     }
                     // Auto-apply suggestions через onSave (PATCH row через batch).
@@ -842,7 +842,7 @@ function RowEditor({
                       })),
                     );
                   } catch (e) {
-                    const msg = e instanceof Error ? e.message : "AI ошибка";
+                    const msg = e instanceof Error ? e.message : "Ошибка заполнения";
                     setAiError(msg);
                     window.setTimeout(() => setAiError(null), 4000);
                   } finally {
@@ -850,8 +850,8 @@ function RowEditor({
                   }
                 }}
                 disabled={aiBusy}
-                title={aiError ?? "Заполнить пустые ячейки через AI"}
-                aria-label="AI заполнить"
+                title={aiError ?? "Заполнить пустые ячейки автоматически"}
+                aria-label="Заполнить пустые ячейки"
                 style={{
                   background: "transparent",
                   border: "1px solid var(--ec-border-subtle)",
@@ -880,7 +880,7 @@ function RowEditor({
                     <path d="M13 2L3 14h7l-2 8 10-12h-7l2-8z" strokeLinejoin="round" />
                   </svg>
                 )}
-                AI
+                Авто
               </button>
             );
           })()}

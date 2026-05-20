@@ -1031,8 +1031,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               type="button"
               className="ec-shell__drawer-btn ec-shell__drawer-btn--members"
               onClick={() => setMembersOpen((v) => !v)}
-              aria-label={membersOpen ? "Скрыть панель" : "Показать панель"}
-              title="Intelligence-панель"
+              aria-label={membersOpen ? "Скрыть участников" : "Показать участников"}
+              title="Участники"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
@@ -2089,7 +2089,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           type="button"
           className="ec-rail-expand"
           onClick={() => setRightRailCollapsed(false)}
-          aria-label="Развернуть Intelligence-панель"
+          aria-label="Развернуть панель участников"
           title="Развернуть панель"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>

@@ -378,7 +378,7 @@ export function IncidentPanel({
                   </div>
                 ) : detail.incident.status === "RESOLVED" ? (
                   <p style={{ fontSize: "var(--ec-text-xs)", color: "var(--ec-text-dim)", margin: 0 }}>
-                    Post-mortem генерируется AI… (или AI недоступен — тогда не появится).
+                    Post-mortem генерируется… (если сервис недоступен — не появится).
                     Обновится автоматически когда будет готов.
                   </p>
                 ) : (
