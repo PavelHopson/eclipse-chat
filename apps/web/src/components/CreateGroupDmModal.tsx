@@ -95,27 +95,6 @@ const nameInput: CSSProperties = {
   marginTop: "var(--ec-space-3)",
 };
 
-const submitBtn: CSSProperties = {
-  padding: "0.55rem 1rem",
-  background: "var(--ec-accent)",
-  color: "var(--ec-accent-text, #fff)",
-  border: "1px solid var(--ec-accent)",
-  borderRadius: "var(--ec-radius-md)",
-  fontSize: "var(--ec-text-sm)",
-  fontWeight: 600,
-  cursor: "pointer",
-};
-
-const cancelBtn: CSSProperties = {
-  padding: "0.55rem 1rem",
-  background: "transparent",
-  color: "var(--ec-text-muted)",
-  border: "1px solid var(--ec-border-default)",
-  borderRadius: "var(--ec-radius-md)",
-  fontSize: "var(--ec-text-sm)",
-  cursor: "pointer",
-};
-
 export function CreateGroupDmModal({
   availableUsers,
   currentUserId,
@@ -182,16 +161,12 @@ export function CreateGroupDmModal({
       width={480}
       footer={
         <>
-          <button type="button" style={cancelBtn} onClick={onClose} disabled={submitting}>
+          <button type="button" className="ec-btn ec-btn--ghost" onClick={onClose} disabled={submitting}>
             Отмена
           </button>
           <button
             type="button"
-            style={{
-              ...submitBtn,
-              opacity: canSubmit ? 1 : 0.5,
-              cursor: canSubmit ? "pointer" : "not-allowed",
-            }}
+            className="ec-btn ec-btn--primary"
             onClick={submit}
             disabled={!canSubmit}
           >

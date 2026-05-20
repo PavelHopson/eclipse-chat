@@ -25,7 +25,6 @@ import type { MusicSession } from "../hooks/useChannelMusic";
 type Props = {
   session: MusicSession;
   derivedPositionMs: number;
-  currentUserId: string;
   onTogglePlayPause: () => void | Promise<void>;
   onSkip: () => void | Promise<void>;
   onStop: () => void | Promise<void>;
@@ -84,7 +83,6 @@ function formatTime(ms: number, durationMs?: number): string {
 export function MusicMiniPlayer({
   session,
   derivedPositionMs,
-  currentUserId,
   onTogglePlayPause,
   onSkip,
   onStop,
@@ -134,7 +132,6 @@ export function MusicMiniPlayer({
   const isVoiceMessage = session.currentTrack
     ? /^voice-message-/i.test(session.currentTrack.filename)
     : false;
-  const isHost = session.host.id === currentUserId;
   const progressPct =
     durationMs && derivedPositionMs >= 0
       ? Math.min(100, Math.max(0, (derivedPositionMs / durationMs) * 100))
@@ -245,35 +242,32 @@ export function MusicMiniPlayer({
           +{session.queue.length}
         </span>
       )}
-      {(isHost || true) /* host или MOD+, проверяется на backend */ && (
-        <>
-          <button
-            type="button"
-            onClick={() => void onSkip()}
-            style={iconBtn}
-            title="Следующий"
-            aria-label="Следующий трек"
-            disabled={session.queue.length === 0 && !session.currentTrack}
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-              <path d="M5 4l10 8-10 8z" />
-              <rect x="17" y="4" width="2" height="16" />
-            </svg>
-          </button>
-          <button
-            type="button"
-            onClick={() => void onStop()}
-            style={iconBtn}
-            title="Завершить"
-            aria-label="Завершить сессию"
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          </button>
-        </>
-      )}
+      {/* skip / stop — видны всем; права проверяются на backend */}
+      <button
+        type="button"
+        onClick={() => void onSkip()}
+        style={iconBtn}
+        title="Следующий"
+        aria-label="Следующий трек"
+        disabled={session.queue.length === 0 && !session.currentTrack}
+      >
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+          <path d="M5 4l10 8-10 8z" />
+          <rect x="17" y="4" width="2" height="16" />
+        </svg>
+      </button>
+      <button
+        type="button"
+        onClick={() => void onStop()}
+        style={iconBtn}
+        title="Завершить"
+        aria-label="Завершить сессию"
+      >
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <line x1="18" y1="6" x2="6" y2="18" />
+          <line x1="6" y1="6" x2="18" y2="18" />
+        </svg>
+      </button>
       <audio
         ref={audioRef}
         onLoadedMetadata={(e) => {

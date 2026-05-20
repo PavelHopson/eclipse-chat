@@ -5,11 +5,11 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v1.1.35** (effects-марафон
+**Текущая версия в проде:** **v1.1.36** (effects-марафон
 v1.1.22–v1.1.32 + UX-copy v1.1.33 + docs-fix v1.1.34 +
-дизайн-полиш Wave 1 v1.1.35).
+дизайн-полиш Wave 1–2 v1.1.35–36).
 
-**Изменения v1.1.25 → v1.1.35:**
+**Изменения v1.1.25 → v1.1.36:**
 
 - **v1.1.25** — убран Electric Border (SVG-turbulence давал шум на
   AuthScreen terminal) + фикс AuthScreen layout + `thinking_orb` —
@@ -63,6 +63,16 @@ v1.1.22–v1.1.32 + UX-copy v1.1.33 + docs-fix v1.1.34 +
   места: голые кнопки → `.ec-btn`, мёртвый код) + Wave 3
   (консистентность: токены типографики, унификация stat-карточек /
   section-label, `focus-visible`) — в очереди.
+
+- **v1.1.36** — дизайн-полиш **Wave 2** (битые/незаконченные места).
+  Голые браузерные кнопки → `.ec-btn` (MessageInput voice-recorder
+  «Отмена»/«Готово», CreateGroupDmModal footer — теперь с hover /
+  focus-visible / disabled из дизайн-системы). Удалён мёртвый код
+  `(isHost || true)` в MusicMiniPlayer + неиспользуемый проп
+  `currentUserId` (skip/stop видны всем, права проверяет backend).
+  Удалены ad-hoc `submitBtn` / `cancelBtn` стили. Wave 3
+  (консистентность: токены типографики, унификация stat-карточек /
+  section-label, `focus-visible`, `#fff` → токен) — в очереди.
 
 > Backlog CSS-эффектов из набора Pavel'я **закрыт** (v1.1.22–v1.1.32).
 > Остаток набора — standalone-демки (галактика / 404 / паук-часы),

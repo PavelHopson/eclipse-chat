@@ -1424,7 +1424,6 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                 <MusicMiniPlayer
                   session={music.session}
                   derivedPositionMs={music.derivedPositionMs}
-                  currentUserId={user.id}
                   onTogglePlayPause={() => void music.togglePlayPause()}
                   onSkip={() => void music.skip()}
                   onStop={() => void music.stop()}

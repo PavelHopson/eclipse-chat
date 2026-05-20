@@ -879,10 +879,18 @@ export function MessageInput({
           <span className="ec-voice-recorder-bar__pulse" aria-hidden />
           <span className="ec-voice-recorder-bar__label">Запись голоса</span>
           <span className="ec-voice-recorder-bar__time">{formatDuration(recordingMs)}</span>
-          <button type="button" onClick={() => stopVoiceRecording(false)}>
+          <button
+            type="button"
+            className="ec-btn ec-btn--ghost ec-btn--sm"
+            onClick={() => stopVoiceRecording(false)}
+          >
             Отмена
           </button>
-          <button type="button" onClick={() => stopVoiceRecording(true)}>
+          <button
+            type="button"
+            className="ec-btn ec-btn--primary ec-btn--sm"
+            onClick={() => stopVoiceRecording(true)}
+          >
             Готово
           </button>
         </div>
