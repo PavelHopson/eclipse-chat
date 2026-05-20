@@ -6,6 +6,7 @@ import { EmojiPicker } from "./EmojiPicker";
 import { RichContent } from "./RichContent";
 import { LinkEmbedCard } from "./LinkEmbedCard";
 import { extractFirstUrl } from "../lib/linkExtract";
+import { gameIcon } from "../lib/gameIcons";
 import type { ActionItemStatus, ActionItemType, MessageRow } from "../hooks/useMessages";
 import type { MemberRole } from "../hooks/useMembers";
 import {
@@ -1197,14 +1198,15 @@ export function MessageList({
       })}
       {pendingBotTyping && (
         <div
+          className="ec-bot-thinking"
           style={{
             display: "flex",
             alignItems: "center",
-            gap: 8,
-            padding: "0.45rem 0.65rem",
+            gap: 10,
+            padding: "0.5rem 0.8rem 0.5rem 0.55rem",
             margin: "var(--ec-space-2) 0 var(--ec-space-3)",
             background: "var(--ec-surface-2)",
-            border: "1px solid var(--ec-border-subtle)",
+            border: "1px solid hsl(252 70% 70% / 0.32)",
             borderRadius: "var(--ec-radius-md)",
             fontSize: "var(--ec-text-sm)",
             maxWidth: "fit-content",
@@ -1212,11 +1214,15 @@ export function MessageList({
           role="status"
           aria-live="polite"
         >
-          <span className="ec-typing" style={{ background: "transparent", border: 0, padding: 0 }}>
-            <span className="ec-typing-dot" />
-            <span className="ec-typing-dot" />
-            <span className="ec-typing-dot" />
-          </span>
+          {/* v1.1.25: thinking_orb game-иконка крутится пока AI генерирует. */}
+          <img
+            className="ec-thinking-orb"
+            src={gameIcon("thinking_orb")}
+            alt=""
+            width={30}
+            height={30}
+            draggable={false}
+          />
           <span className="ec-shimmer-text">
             {pendingBotTyping.label} собирает ответ
           </span>

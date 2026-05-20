@@ -132,54 +132,6 @@ export function App() {
     <>
       {/* Ambient background layer — visible на всех view'ах через z-index -1 */}
       <div className="ec-ambient" aria-hidden />
-      {/* v1.1.23 Electric Border — SVG turbulence filter, инжектится один
-          раз. Используется через `filter: url(#ec-electric)` на элементах
-          с .ec-electric-border (сейчас — AuthScreen terminal). numOctaves
-          снижен 10→3 для перформанса. */}
-      <svg
-        width="0"
-        height="0"
-        aria-hidden
-        style={{ position: "absolute", pointerEvents: "none" }}
-      >
-        <defs>
-          <filter
-            id="ec-electric"
-            colorInterpolationFilters="sRGB"
-            x="-20%"
-            y="-20%"
-            width="140%"
-            height="140%"
-          >
-            <feTurbulence type="turbulence" baseFrequency="0.02" numOctaves="3" result="n1" seed="1" />
-            <feOffset in="n1" dx="0" dy="0" result="o1">
-              <animate attributeName="dy" values="700; 0" dur="6s" repeatCount="indefinite" calcMode="linear" />
-            </feOffset>
-            <feTurbulence type="turbulence" baseFrequency="0.02" numOctaves="3" result="n2" seed="1" />
-            <feOffset in="n2" dx="0" dy="0" result="o2">
-              <animate attributeName="dy" values="0; -700" dur="6s" repeatCount="indefinite" calcMode="linear" />
-            </feOffset>
-            <feTurbulence type="turbulence" baseFrequency="0.02" numOctaves="3" result="n3" seed="2" />
-            <feOffset in="n3" dx="0" dy="0" result="o3">
-              <animate attributeName="dx" values="490; 0" dur="6s" repeatCount="indefinite" calcMode="linear" />
-            </feOffset>
-            <feTurbulence type="turbulence" baseFrequency="0.02" numOctaves="3" result="n4" seed="2" />
-            <feOffset in="n4" dx="0" dy="0" result="o4">
-              <animate attributeName="dx" values="0; -490" dur="6s" repeatCount="indefinite" calcMode="linear" />
-            </feOffset>
-            <feComposite in="o1" in2="o2" result="part1" />
-            <feComposite in="o3" in2="o4" result="part2" />
-            <feBlend in="part1" in2="part2" mode="color-dodge" result="combined" />
-            <feDisplacementMap
-              in="SourceGraphic"
-              in2="combined"
-              scale="18"
-              xChannelSelector="R"
-              yChannelSelector="B"
-            />
-          </filter>
-        </defs>
-      </svg>
       {updateAvailable && (
         <div
           style={{

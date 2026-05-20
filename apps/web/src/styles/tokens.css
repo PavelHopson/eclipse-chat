@@ -964,6 +964,22 @@
   .ec-game-icon { animation: none; }
 }
 
+/* v1.1.25 — thinking_orb: вращается пока AI генерирует ответ
+ * (bot-typing indicator в MessageList). */
+.ec-thinking-orb {
+  display: block;
+  object-fit: contain;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 6px hsl(252 70% 70% / 0.55));
+  animation: ec-thinking-spin 2.4s linear infinite;
+}
+@keyframes ec-thinking-spin {
+  to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ec-thinking-orb { animation: none; }
+}
+
 /* ============================================================
  * v1.1.14 — Cinematic AuthScreen (из eclipse-os-v1 mockup'а)
  * ============================================================
@@ -974,8 +990,16 @@
  */
 
 .ec-auth-shell {
+  /* v1.1.25: явные width/height вместо `inset:0` — форма уезжала в
+   * левый-верхний угол (shell схлопывался в content-size, flex-
+   * центрирование внутри схлопнутого бокса невидимо). 100dvh /
+   * 100vw гарантируют viewport-size → flex реально центрирует. */
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -983,7 +1007,6 @@
   color: var(--ec-text-strong);
   overflow: hidden;
   isolation: isolate;
-  selection-color: var(--ec-accent);
 }
 
 /* Radial radar grid + crosshairs background. */
@@ -1250,47 +1273,14 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  /* v1.1.23: clip-path убран — конфликтовал с electric-border overlay
-   * (clip-path обрезает displaced wavy-границу filter'а). border-radius
-   * вместо него — electric-border ring совпадает по форме. */
-  border-radius: 10px;
+  /* v1.1.25: clip-path cut-corners возвращён (electric border убран —
+   * выглядел кривой калякой). */
+  clip-path: polygon(
+    20px 0, 100% 0,
+    100% calc(100% - 20px), calc(100% - 20px) 100%,
+    0 100%, 0 20px
+  );
   border: 1px solid hsl(195 70% 60% / 0.28);
-}
-
-/* ============================================================
- * v1.1.23 — Electric Border (SVG turbulence из эффект-набора)
- * ============================================================
- * Использует #ec-electric filter (инжектится в App.tsx). 3 слоя:
- * line (резкая электрическая граница) + 2 glow (blur'ы). Overlay
- * absolute-positioned внутри positioned-родителя. */
-.ec-electric-border {
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  pointer-events: none;
-  z-index: 0;
-}
-.ec-electric-border > span {
-  position: absolute;
-  inset: 0;
-  border: 2px solid var(--ec-accent);
-  border-radius: inherit;
-}
-.ec-electric-border__line {
-  filter: url(#ec-electric);
-}
-.ec-electric-border__glow-1 {
-  filter: blur(2px);
-  opacity: 0.7;
-}
-.ec-electric-border__glow-2 {
-  filter: blur(7px);
-  opacity: 0.45;
-}
-@media (prefers-reduced-motion: reduce) {
-  /* turbulence-анимация внутри SVG filter не глушится через CSS —
-   * заменяем filter на статичную границу. */
-  .ec-electric-border__line { filter: none; }
 }
 .ec-auth-terminal__accent-tl {
   position: absolute;
