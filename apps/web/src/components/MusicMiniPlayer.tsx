@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import { useEffect, useRef, useState } from "react";
 import { Avatar } from "./Avatar";
 import { resolveAssetUrl } from "../lib/assets";
+import { useMediaVolume } from "../hooks/useMediaVolume";
 import type { MusicSession } from "../hooks/useChannelMusic";
 
 /**
@@ -90,23 +91,14 @@ export function MusicMiniPlayer({
 }: Props) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [durationMs, setDurationMs] = useState<number | null>(null);
-  // v1.1.57 — громкость музыки: client-local (каждый слушатель регулирует
-  // свою), persist в localStorage, применяется к локальному <audio>.
-  const [volume, setVolume] = useState<number>(() => {
-    if (typeof window === "undefined") return 1;
-    const saved = Number(window.localStorage.getItem("eclipse-chat:music-volume"));
-    return Number.isFinite(saved) && saved >= 0 && saved <= 1 ? saved : 1;
-  });
+  // v1.1.58 — общая громкость медиа (музыка + аудио-вложения): shared
+  // хук с live-sync + localStorage. Применяется к локальному <audio>.
+  const [volume, setVolume] = useMediaVolume();
   const lastVolumeRef = useRef(volume > 0 ? volume : 0.7);
 
   useEffect(() => {
     if (audioRef.current) audioRef.current.volume = volume;
     if (volume > 0) lastVolumeRef.current = volume;
-    try {
-      window.localStorage.setItem("eclipse-chat:music-volume", String(volume));
-    } catch {
-      /* localStorage недоступен в private mode — громкость просто не persist */
-    }
   }, [volume]);
 
   // Sync audio element с session.
@@ -267,7 +259,7 @@ export function MusicMiniPlayer({
         <button
           type="button"
           onClick={() =>
-            setVolume((v) => (v > 0 ? 0 : lastVolumeRef.current || 0.7))
+            setVolume(volume > 0 ? 0 : lastVolumeRef.current || 0.7)
           }
           style={iconBtn}
           title={volume > 0 ? "Заглушить музыку" : "Включить звук"}

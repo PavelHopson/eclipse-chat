@@ -5,7 +5,7 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v1.1.57** (Galaxy/Clock/Theme/Deadline effects +
+**Текущая версия в проде:** **v1.1.58** (Galaxy/Clock/Theme/Deadline effects +
 UX-copy + дизайн-полиш + редизайн WS-1 + системный редизайн + фикс
 AuthScreen + смена пароля).
 
@@ -15,8 +15,18 @@ AuthScreen + смена пароля).
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.1.57:**
+**Изменения v1.1.25 → v1.1.58:**
 
+- **v1.1.58** — фича: **регулировка любой громкости** (запрос
+  Pavel'я «надо вообще чтобы любую громкость регулировать»). Введён
+  единый shared-хук `useMediaVolume` — общая громкость non-voice-call
+  медиа (music shared-плеер + аудио-вложения / голосовые сообщения),
+  module-level store с live-sync между всеми плеерами + localStorage
+  + `storage`-event между вкладками. `MusicMiniPlayer` переведён на
+  хук (с собственного state v1.1.57); `AudioItem` (Attachments) —
+  добавлен speaker + слайдер. Теперь все 3 аудио-контура регулируются:
+  **voice-звонок** (`useVoiceSettings` — per-participant + master,
+  было), **музыка**, **аудио-вложения**.
 - **v1.1.57** — фича: **регулировка громкости музыки** (запрос
   Pavel'я). `MusicMiniPlayer` — добавлен регулятор: speaker-кнопка
   (toggle mute, иконка отражает 3 состояния — mute / low / high) +

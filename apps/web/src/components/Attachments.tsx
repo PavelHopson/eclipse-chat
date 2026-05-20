@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Attachment } from "../hooks/useMessages";
 import { apiJson } from "../lib/api";
 import { resolveAssetUrl } from "../lib/assets";
+import { useMediaVolume } from "../hooks/useMediaVolume";
 
 type Props = {
   attachments: Attachment[];
@@ -302,6 +303,14 @@ function AudioItem({
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  // v1.1.58 — общая громкость медиа (shared с music-плеером).
+  const [volume, setVolume] = useMediaVolume();
+  const lastVolumeRef = useRef(volume > 0 ? volume : 0.7);
+
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.volume = volume;
+    if (volume > 0) lastVolumeRef.current = volume;
+  }, [volume]);
 
   useEffect(() => {
     const el = audioRef.current;
@@ -395,6 +404,53 @@ function AudioItem({
               · базовая дорожка
             </span>
           )}
+        </div>
+        {/* v1.1.58 — регулировка громкости (общая для всех медиа-плееров) */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
+          <button
+            type="button"
+            onClick={() =>
+              setVolume(volume > 0 ? 0 : lastVolumeRef.current || 0.7)
+            }
+            title={volume > 0 ? "Заглушить" : "Включить звук"}
+            aria-label={volume > 0 ? "Заглушить" : "Включить звук"}
+            style={{
+              display: "grid",
+              placeItems: "center",
+              width: 22,
+              height: 22,
+              background: "transparent",
+              border: 0,
+              color: "var(--ec-text-muted)",
+              cursor: "pointer",
+              flexShrink: 0,
+            }}
+          >
+            {volume === 0 ? (
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M11 5L6 9H2v6h4l5 4V5z" />
+                <line x1="23" y1="9" x2="17" y2="15" />
+                <line x1="17" y1="9" x2="23" y2="15" />
+              </svg>
+            ) : (
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M11 5L6 9H2v6h4l5 4V5z" />
+                <path d="M15.5 8.5a5 5 0 0 1 0 7" />
+                {volume >= 0.55 && <path d="M18.5 5.5a9 9 0 0 1 0 13" />}
+              </svg>
+            )}
+          </button>
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.05}
+            value={volume}
+            onChange={(e) => setVolume(Number(e.target.value))}
+            aria-label="Громкость"
+            title={`Громкость: ${Math.round(volume * 100)}%`}
+            style={{ width: 84, accentColor: "var(--ec-accent)", cursor: "pointer" }}
+          />
         </div>
         <TranscriptBlock
           attachmentId={a.id}
