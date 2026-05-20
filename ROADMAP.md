@@ -5,11 +5,25 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v1.1.52** (Galaxy/Clock/Theme/Deadline effects +
+**Текущая версия в проде:** **v1.1.53** (Galaxy/Clock/Theme/Deadline effects +
 UX-copy + дизайн-полиш + редизайн WS-1 + фикс AuthScreen + смена пароля).
 
-**Изменения v1.1.25 → v1.1.52:**
+**Изменения v1.1.25 → v1.1.53:**
 
+- **v1.1.53** — **фикс сломанного composer'а на mobile** (root cause
+  давнего mobile-бага). `responsive.css` (`@media ≤1024px`) форсил
+  `.ec-composer-box` в `grid-template-columns: 34px minmax(0,1fr) 38px
+  !important` — 3 колонки. Но `MessageInput` рендерит **4** дочерних
+  (скрепка│микрофон│textarea│отправить) — кнопку голосовой записи
+  добавили позже, а responsive-правило не обновили. 4-й ребёнок не
+  влезал → textarea сваливался в 38px-колонку → плейсхолдер «ВВОД
+  СООБЩЕНИЯ» схлопывался в вертикальную полоску по символу, send-
+  кнопка уезжала на 2-й ряд. Прежняя «заплатка» (`min-width:0` на
+  `.ec-composer-textarea`) чинила симптом, не причину. Фикс:
+  `grid-template-columns`-форс убран из responsive-правила (inline
+  `boxStyle` в MessageInput знает точное число колонок — 4 либо 2
+  для `hideAttachments`); inline `1fr` → `minmax(0,1fr)` для
+  гарантированного сжатия textarea-колонки на узких экранах.
 - **v1.1.52** — **фикс mobile-топбара после v1.1.51** (скриншот Pavel'я,
   Xiaomi). ServerSwitcher с именем+chevron (до 230px) + wordmark
   «ECLIPSE_CHAT» переполняли тесный мобильный топбар — элементы

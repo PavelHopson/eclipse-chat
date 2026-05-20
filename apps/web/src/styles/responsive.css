@@ -302,7 +302,11 @@
   }
 
   .ec-composer-box {
-    grid-template-columns: 34px minmax(0, 1fr) 38px !important;
+    /* v1.1.53: НЕ форсим grid-template-columns. Composer рендерит 4
+       колонки (скрепка│микрофон│textarea│отправить) либо 2
+       (hideAttachments = thread/DM). Inline boxStyle в MessageInput
+       знает точное число; прежний CSS-форс в 3 колонки ронял textarea
+       в 38px-колонку → плейсхолдер схлопывался в вертикальную полоску. */
     gap: var(--ec-space-1) !important;
     padding: var(--ec-space-2) !important;
     border-radius: var(--ec-radius-md) !important;

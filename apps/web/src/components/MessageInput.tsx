@@ -765,7 +765,9 @@ export function MessageInput({
   const baseBoxStyle = focused ? { ...composerBox, ...composerBoxFocused } : composerBox;
   const boxStyle: CSSProperties = {
     ...baseBoxStyle,
-    gridTemplateColumns: hideAttachments ? "1fr auto" : "auto auto 1fr auto",
+    gridTemplateColumns: hideAttachments
+      ? "minmax(0, 1fr) auto"
+      : "auto auto minmax(0, 1fr) auto",
   };
 
   // Slash-command hint: показываем когда юзер набрал «/» + (опц.) часть
