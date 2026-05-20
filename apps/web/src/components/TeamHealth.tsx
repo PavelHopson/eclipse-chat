@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import { Avatar } from "./Avatar";
 import { EmptyState } from "./EmptyState";
 import { EmptyHealthIcon } from "./EmptyIcons";
+import { tiltProps } from "../lib/tilt";
 import type { TeamHealthData } from "../hooks/useTeamHealth";
 
 /**
@@ -309,6 +310,7 @@ export function TeamHealth({
             <div className="ec-team-health-stats" style={grid}>
               <button
                 type="button"
+                {...tiltProps}
                 className="ec-lift-md ec-press ec-corner-brackets"
                 style={statCardStyle("exec")}
                 onClick={() => onOpenBoard(null)}
@@ -320,6 +322,7 @@ export function TeamHealth({
               </button>
               <button
                 type="button"
+                {...tiltProps}
                 className="ec-lift-md ec-press ec-corner-brackets"
                 style={statCardStyle("warn")}
                 onClick={() => onOpenBoard({ kind: "overdue" })}
@@ -334,6 +337,7 @@ export function TeamHealth({
               </button>
               <button
                 type="button"
+                {...tiltProps}
                 className="ec-lift-md ec-press ec-corner-brackets"
                 style={statCardStyle("idle")}
                 onClick={() => onOpenBoard({ kind: "unassigned" })}
@@ -346,7 +350,7 @@ export function TeamHealth({
                   {unassigned === 0 ? "все назначены" : "кто возьмёт?"}
                 </span>
               </button>
-              <div style={{ ...statCardStyle("exec"), cursor: "default" }}>
+              <div {...tiltProps} className="ec-corner-brackets" style={{ ...statCardStyle("exec"), cursor: "default" }}>
                 <span style={statLabel}>Среднее закрытие</span>
                 <span style={statValue}>
                   {data.avgResolutionDays === null
@@ -359,7 +363,7 @@ export function TeamHealth({
                     : `за последние ${data.windowDays} дней (${data.counts.resolvedInWindow} закрыто)`}
                 </span>
               </div>
-              <div style={{ ...statCardStyle("idle"), cursor: "default" }}>
+              <div {...tiltProps} className="ec-corner-brackets" style={{ ...statCardStyle("idle"), cursor: "default" }}>
                 <span style={statLabel}>Время первого ответа</span>
                 <span style={statValue}>
                   {data.responseTime.medianMs === null
