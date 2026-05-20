@@ -37,15 +37,17 @@ const wrap: CSSProperties = {
 };
 
 const iconWrap = (compact: boolean): CSSProperties => ({
-  width: compact ? 56 : 84,
-  height: compact ? 56 : 84,
+  // v1.1.22: размер увеличен (84→96) под detailed game-иконки;
+  // border убран — у game-иконок собственный glow/smoke, лишняя
+  // рамка конфликтует. Остаётся subtle radial-подложка.
+  width: compact ? 64 : 96,
+  height: compact ? 64 : 96,
   borderRadius: "50%",
   display: "grid",
   placeItems: "center",
   color: "var(--ec-text-dim)",
   background:
-    "radial-gradient(circle at 30% 30%, hsl(195 70% 60% / 0.08), hsl(208 30% 12% / 0) 70%)",
-  border: "1px solid var(--ec-border-subtle)",
+    "radial-gradient(circle at 50% 45%, hsl(195 70% 60% / 0.1), hsl(208 30% 12% / 0) 72%)",
 });
 
 const titleStyle: CSSProperties = {

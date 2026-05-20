@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="240" viewBox="0 0 320 240" role="img" aria-hidden="true">
+<defs><style><![CDATA[.bg{fill:#07090D}.line{fill:none;stroke:#8FA3B7;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;opacity:.78}.muted{fill:none;stroke:#8FA3B7;stroke-width:1.25;stroke-linecap:round;stroke-linejoin:round;opacity:.28}.accent{fill:none;stroke:#5db5d9;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}.dot{fill:#5db5d9}.soft{fill:#8FA3B7;opacity:.22}]]></style></defs>
+<g opacity=".35"><path class="muted" d="M20 28V212"/>
+<path class="muted" d="M60 28V212"/>
+<path class="muted" d="M100 28V212"/>
+<path class="muted" d="M140 28V212"/>
+<path class="muted" d="M180 28V212"/>
+<path class="muted" d="M220 28V212"/>
+<path class="muted" d="M260 28V212"/>
+<path class="muted" d="M300 28V212"/>
+<path class="muted" d="M28 40H292"/>
+<path class="muted" d="M28 72H292"/>
+<path class="muted" d="M28 104H292"/>
+<path class="muted" d="M28 136H292"/>
+<path class="muted" d="M28 168H292"/>
+<path class="muted" d="M28 200H292"/></g>
+<circle class="line" cx="142" cy="112" r="48"/>
+<path class="accent" d="M176 146l42 42"/>
+<circle class="accent" cx="142" cy="112" r="18"/>
+<path class="muted" d="M110 112h64M142 80v64"/>
+<circle class="dot" cx="180" cy="74" r="3"/>
+<path class="muted" d="M82 178h72M202 62h38M216 82h16"/>
+</svg>

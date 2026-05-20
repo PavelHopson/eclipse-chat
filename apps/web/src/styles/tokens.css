@@ -932,6 +932,27 @@
 }
 
 /* ============================================================
+ * v1.1.22 — game-icon asset class
+ * ============================================================
+ * Кастомные 3D game-style PNG-иконки (Pavel'я набор). Subtle
+ * cyan drop-shadow привязывает warm-tone иконки к cool палитре +
+ * лёгкое breathing-парение в empty-states. */
+.ec-game-icon {
+  display: block;
+  object-fit: contain;
+  filter: drop-shadow(0 3px 8px hsl(210 40% 2% / 0.6))
+          drop-shadow(0 0 10px hsl(195 70% 60% / 0.22));
+  animation: ec-game-icon-float 5s ease-in-out infinite;
+}
+@keyframes ec-game-icon-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-5px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ec-game-icon { animation: none; }
+}
+
+/* ============================================================
  * v1.1.14 — Cinematic AuthScreen (из eclipse-os-v1 mockup'а)
  * ============================================================
  * Multi-step auth flow: credentials → 2FA keypad → success.

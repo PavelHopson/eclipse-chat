@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="240" viewBox="0 0 320 240" role="img" aria-hidden="true">
+<defs><style><![CDATA[.bg{fill:#07090D}.line{fill:none;stroke:#8FA3B7;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;opacity:.78}.muted{fill:none;stroke:#8FA3B7;stroke-width:1.25;stroke-linecap:round;stroke-linejoin:round;opacity:.28}.accent{fill:none;stroke:#5db5d9;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}.dot{fill:#5db5d9}.soft{fill:#8FA3B7;opacity:.22}]]></style></defs>
+<g opacity=".35"><path class="muted" d="M20 28V212"/>
+<path class="muted" d="M60 28V212"/>
+<path class="muted" d="M100 28V212"/>
+<path class="muted" d="M140 28V212"/>
+<path class="muted" d="M180 28V212"/>
+<path class="muted" d="M220 28V212"/>
+<path class="muted" d="M260 28V212"/>
+<path class="muted" d="M300 28V212"/>
+<path class="muted" d="M28 40H292"/>
+<path class="muted" d="M28 72H292"/>
+<path class="muted" d="M28 104H292"/>
+<path class="muted" d="M28 136H292"/>
+<path class="muted" d="M28 168H292"/>
+<path class="muted" d="M28 200H292"/></g>
+<rect class="line" x="56" y="48" width="208" height="144" rx="12"/>
+<rect class="muted" x="72" y="64" width="32" height="24" rx="4"/><rect class="muted" x="116" y="64" width="32" height="24" rx="4"/><rect class="muted" x="160" y="64" width="32" height="24" rx="4"/><rect class="muted" x="204" y="64" width="32" height="24" rx="4"/><rect class="muted" x="72" y="100" width="32" height="24" rx="4"/><rect class="muted" x="116" y="100" width="32" height="24" rx="4"/><rect class="muted" x="160" y="100" width="32" height="24" rx="4"/><rect class="muted" x="204" y="100" width="32" height="24" rx="4"/><rect class="muted" x="72" y="136" width="32" height="24" rx="4"/><rect class="muted" x="116" y="136" width="32" height="24" rx="4"/><rect class="muted" x="160" y="136" width="32" height="24" rx="4"/><rect class="muted" x="204" y="136" width="32" height="24" rx="4"/>
+<rect class="accent" x="204" y="136" width="32" height="24" rx="4"/>
+<path class="accent" d="M212 148l6 6 11-12"/>
+<path class="muted" d="M56 86h208M56 122h208M56 158h208M116 48v144M160 48v144M204 48v144"/>
+</svg>
