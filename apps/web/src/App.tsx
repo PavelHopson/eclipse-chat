@@ -89,6 +89,43 @@ export function App() {
     };
   }, []);
 
+  const [reloading, setReloading] = useState(false);
+
+  /**
+   * v1.1.15: bulletproof hard reload. Старая banner-кнопка делала просто
+   * `window.location.reload()` — но reload ПЕРЕХВАТЫВАЕТСЯ Service
+   * Worker'ом (navigationStrategy fetch handler). Если на устройстве
+   * застрял старый SW со старой стратегией (или browser-кэш sw.js) —
+   * reload вечно отдаёт старый bundle. Особенно зло на mobile Chrome.
+   *
+   * Fix: перед reload — unregister ВСЕ SW + clear ВСЕ caches. После
+   * этого reload идёт без SW-перехвата, чистый fetch с сервера. SW
+   * заново зарегистрируется уже из свежего bundle.
+   */
+  const hardReload = async () => {
+    if (reloading) return;
+    setReloading(true);
+    try {
+      if ("serviceWorker" in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map((r) => r.unregister()));
+      }
+    } catch {
+      /* ignore — продолжаем к clearing caches + reload */
+    }
+    try {
+      if ("caches" in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map((k) => caches.delete(k)));
+      }
+    } catch {
+      /* ignore */
+    }
+    // reload(true) deprecated; после unregister+clear обычный reload идёт
+    // чистым fetch'ем. HTML отдаётся nginx'ом с no-cache, assets хэшированы.
+    window.location.reload();
+  };
+
   const isAuthenticated = view !== "loading" && view !== "auth" && user;
 
   return (
@@ -141,14 +178,12 @@ export function App() {
           </span>
           <button
             type="button"
-            onClick={() => {
-              // Force full reload bypass'ит и SW и browser HTTP cache.
-              window.location.reload();
-            }}
+            onClick={() => void hardReload()}
+            disabled={reloading}
             className="ec-btn ec-btn--primary ec-btn--sm"
             style={{ flexShrink: 0 }}
           >
-            ПЕРЕЗАГРУЗИТЬ
+            {reloading ? "ОБНОВЛЯЮ…" : "ПЕРЕЗАГРУЗИТЬ"}
           </button>
           <button
             type="button"
