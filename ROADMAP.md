@@ -5,11 +5,24 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v1.1.53** (Galaxy/Clock/Theme/Deadline effects +
+**Текущая версия в проде:** **v1.1.54** (Galaxy/Clock/Theme/Deadline effects +
 UX-copy + дизайн-полиш + редизайн WS-1 + фикс AuthScreen + смена пароля).
 
-**Изменения v1.1.25 → v1.1.53:**
+**Изменения v1.1.25 → v1.1.54:**
 
+- **v1.1.54** — редизайн **WS-1 slice 4 (ПРОТОТИП на ревью) —
+  floating-сообщения**. Завершающий кусок WS-1. Язык: сообщение под
+  курсором «всплывает» — отделяется глубиной/светом, не линией.
+  `.ec-message-row:hover` — убран hover-border (`border-color
+  hsl(.../0.08)`); фон → спокойный cool-tinted (без прежнего
+  cyan-tinted gradient'а); тень → `--ec-elev-1` (hairline-край +
+  мягкая глубина, тот же depth-токен что в slice 2) + внутренний
+  highlight; добавлен `transform: translateY(-2px)` — row физически
+  поднимается к курсору. Rest-state не тронут (уже лёгкий —
+  borderless, без фона). AI-строки (`--ai`) и pinned сохраняют свои
+  сигнальные accent-бары. ⏳ Ждёт ревью Pavel'я: подтвердит язык →
+  при желании докрутка (spacing/air между группами, сила подъёма).
+  **С этим WS-1 закрыт: slices 1–4 на проде.**
 - **v1.1.53** — **фикс сломанного composer'а на mobile** (root cause
   давнего mobile-бага). `responsive.css` (`@media ≤1024px`) форсил
   `.ec-composer-box` в `grid-template-columns: 34px minmax(0,1fr) 38px
