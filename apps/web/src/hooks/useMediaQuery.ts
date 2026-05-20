@@ -28,9 +28,10 @@ export function useMediaQuery(query: string): boolean {
 }
 
 /** Convenience-хуки под breakpoints из tokens.css.
- *  v1.1.17: mobile breakpoint 640 → 900 — телефоны Pavel'я попадали
- *  в диапазон 640-1024 и получали cramped 3-колоночный «планшетный»
- *  layout (rail+channels+chat squeeze). 900px надёжно покрывает все
- *  телефоны (даже large / landscape / low-DPI режимы). */
-export const useIsMobile = () => useMediaQuery("(max-width: 900px)");
+ *  v1.1.20: mobile breakpoint 900 → 1024 — устройства в 901-1024px
+ *  CSS-ширине (large phones, low-DPI / MIUI display-density) получали
+ *  cramped планшетный 3-колоночный layout. Убран промежуточный режим:
+ *  всё ≤1024 = single-column + drawers. useIsMobile теперь совпадает
+ *  с useIsTabletOrSmaller (намеренно — «non-desktop» = единый режим). */
+export const useIsMobile = () => useMediaQuery("(max-width: 1024px)");
 export const useIsTabletOrSmaller = () => useMediaQuery("(max-width: 1024px)");

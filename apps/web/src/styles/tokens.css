@@ -261,9 +261,9 @@
                             inset 0 0 6px hsl(195 70% 60% / 0.15);
 
   /* ---- Breakpoints --------------------------------------------- */
-  /* v1.1.17: mobile 640 → 900 (телефоны 640-1024px попадали в cramped
-   * 3-col tablet layout). Sync с responsive.css + useMediaQuery. */
-  --ec-bp-mobile:           900px;
+  /* v1.1.20: mobile = tablet = 1024px. Промежуточный 3-колоночный
+   * планшетный режим убран — всё ≤1024 single-column + drawers. */
+  --ec-bp-mobile:           1024px;
   --ec-bp-tablet:           1024px;
 }
 

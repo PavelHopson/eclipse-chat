@@ -532,10 +532,10 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   const [rightRailCollapsed, setRightRailCollapsed] = useState(false);
   const rightRailVisible = showRightRail && !rightRailCollapsed;
 
-  // v1.1.17: mobile breakpoint 640 → 900 (sync с responsive.css). Без
-  // этого телефоны в 640-1024px CSS-ширине получали 3-колоночный layout
-  // с перекрытым chat'ом и сжатым composer'ом.
-  const isMobile = useMediaQuery("(max-width: 900px)");
+  // v1.1.20: mobile breakpoint 900 → 1024 (sync с responsive.css).
+  // Всё ≤1024px = single-column + drawers; промежуточный планшетный
+  // 3-колоночный режим убран (cramped на large phones / low-DPI).
+  const isMobile = useMediaQuery("(max-width: 1024px)");
   const isTabletOrSmaller = useMediaQuery("(max-width: 1024px)");
   const voiceHealth = useVoiceHealth();
   const {

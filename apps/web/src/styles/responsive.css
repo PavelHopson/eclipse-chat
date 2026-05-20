@@ -78,18 +78,21 @@
 /* ===== Tablet (640 - 1024px): members → drawer ============== */
 
 @media (max-width: 1024px) {
-  /* v1.1.18: ВСЕ три формы селектора + !important. Base-правило
-   * `.ec-shell:not(.ec-shell--has-server)` имеет specificity (0,2,0)
-   * и БЕЗ этого перебивало media-query (0,1,0) — grid не сворачивался
-   * на home-page / no-server состояниях. Это был корень «криво на
-   * телефоне» (incognito тоже ломался — баг в самом CSS, не в кэше). */
+  /* v1.1.20: всё ниже 1025px = ОДНА колонка + drawers. Убран
+   * промежуточный «планшетный» 3-колоночный режим — любое
+   * устройство в 901-1024px CSS-ширине (large phones, low-DPI /
+   * MIUI display-density режимы) получало cramped layout с
+   * перекрытым chat'ом. Теперь single-column от 0 до 1024px,
+   * multi-column только на настоящем desktop (≥1025px).
+   * !important + все 3 формы селектора — перебивает base
+   * `.ec-shell:not(.ec-shell--has-server)` (0,2,0). */
   .ec-shell,
   .ec-shell.ec-shell--has-server,
   .ec-shell:not(.ec-shell--has-server) {
-    grid-template-columns: var(--ec-rail-width) var(--ec-sidebar-width) 1fr !important;
+    grid-template-columns: 1fr !important;
     grid-template-areas:
-      "top    top      top"
-      "rail   channels chat" !important;
+      "top"
+      "chat" !important;
   }
   /* Members столбец рендерится — но в drawer (fixed) */
   .ec-shell__members {
@@ -109,7 +112,7 @@
   }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
   .ec-shell__top {
     padding: 0 var(--ec-space-3) !important;
   }
@@ -141,7 +144,7 @@
 }
 
 /* v1.1.13 mobile telemetry / breadcrumb collapse */
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
   /* Hide ВСЕ telemetry pills на узких экранах — освобождаем место под brand
    * + breadcrumb + кнопки действий. Status показан через ec-shell__brand-title
    * + connection icon в profile chip. */
@@ -164,7 +167,7 @@
 
 /* ===== Mobile (< 640px): rail+channels → drawer, single column ==== */
 
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
   /* v1.1.18: bulletproof — все три формы селектора + !important
    * чтобы перебить base `.ec-shell:not(.ec-shell--has-server)`
    * (0,2,0). Без этого grid на mobile не сворачивался в одну
@@ -243,7 +246,7 @@
   }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
   .ec-shell--nav-open .ec-shell__backdrop {
     opacity: 1;
     pointer-events: auto;
@@ -277,7 +280,7 @@
   }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
   .ec-shell__drawer-btn--nav {
     display: inline-flex;
   }
@@ -290,12 +293,12 @@
    • 641-900px: hide --lg хинты (drop / @/:/emoji)
    • ≤640px:   hide и --md хинты (Shift+Enter) — оставляется только
      Enter + /task если activate'нут */
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
   .ec-composer-hint--lg {
     display: none !important;
   }
 }
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
   /* safe-area-inset для bottom (iOS PWA / standalone) */
   .ec-composer-safe {
     padding-bottom: max(var(--ec-space-4), env(safe-area-inset-bottom, 0));
@@ -644,7 +647,7 @@
   }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
   .ec-voice-room__body {
     padding: var(--ec-space-3) !important;
     gap: var(--ec-space-3) !important;
@@ -662,7 +665,7 @@
 
 /* v0.43: Modal на mobile — меньше backdrop padding, smaller body padding.
    v0.65: + safe-area-inset для iOS keyboard / notch; touch close-btn 44×44. */
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
   .ec-modal-backdrop {
     padding: var(--ec-space-2) !important;
     padding-bottom: max(var(--ec-space-2), env(safe-area-inset-bottom, 0)) !important;
@@ -685,7 +688,7 @@
 
 /* (a) DM-button в MemberList был hover-only opacity:0 — на touch
        полностью невидим. Принудительно показываем на mobile. */
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
   [data-dm-btn] {
     opacity: 0.85 !important;
   }
@@ -693,7 +696,7 @@
 
 /* (f) ChannelList delete/settings buttons тоже были hover-only —
        та же фиксация. Уже помечены `data-channel-action`. */
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
   [data-channel-action] {
     opacity: 0.6 !important;
   }
@@ -701,7 +704,7 @@
 
 /* (i) MusicMiniPlayer pill на узком топбаре съедает место под chat-
        header title. Ограничиваем max-width на mobile + ellipsis. */
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
   .ec-music-mini-player {
     max-width: 180px !important;
     overflow: hidden;
@@ -770,7 +773,7 @@
   opacity: 0;
   transition: opacity var(--ec-dur-fast) var(--ec-ease);
 }
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
   .ec-op-table-scroll::after {
     opacity: 1;
   }
@@ -857,7 +860,7 @@
   }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
   .ec-shell {
     min-height: 100dvh;
   }
@@ -1015,7 +1018,7 @@
  *      на flex-родителе, чтобы placeholder не падал в столбец-по-1.
  * ============================================================== */
 
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
   /* Drawer width — почти fullscreen, чтобы чат не светил из-под backdrop'а.
      На ≤400px — full 100vw (минус rail для левого drawer). */
   .ec-shell__channels {
@@ -1137,7 +1140,7 @@
  * Pavel positioning: voice-first для operational quick-capture.
  * ============================================================ */
 
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
   .ec-composer-icon-btn {
     width: 40px !important;
     height: 40px !important;
@@ -1207,7 +1210,7 @@
  * ≤640px — компромисс между HIG и chat-header heightом (44px). Применяем
  * через child selector — все <button>, <span role="button"> внутри
  * chat-header'а. */
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
   .ec-chat-header button,
   .ec-chat-header [role="button"] {
     min-width: 38px;
