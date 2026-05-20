@@ -71,6 +71,8 @@ const searchInputWrap: CSSProperties = {
   gap: 10,
   padding: "var(--ec-space-3) var(--ec-space-4)",
   borderBottom: "1px solid var(--ec-border-subtle)",
+  background: "hsl(210 25% 4% / 0.55)",
+  position: "relative",
 };
 
 const searchInput: CSSProperties = {
@@ -79,6 +81,8 @@ const searchInput: CSSProperties = {
   border: 0,
   color: "var(--ec-text)",
   fontSize: "var(--ec-text-md)",
+  fontFamily: "var(--ec-font-mono, ui-monospace, monospace)",
+  letterSpacing: "0.02em",
   outline: "none",
 };
 
@@ -95,8 +99,11 @@ const tabBtn = (active: boolean): CSSProperties => ({
   border: 0,
   borderBottom: active ? "2px solid var(--ec-accent)" : "2px solid transparent",
   color: active ? "var(--ec-text-strong)" : "var(--ec-text-muted)",
-  fontSize: "var(--ec-text-sm)",
-  fontWeight: active ? 600 : 500,
+  fontSize: "0.65rem",
+  fontWeight: 700,
+  letterSpacing: "0.14em",
+  textTransform: "uppercase",
+  fontFamily: "var(--ec-font-mono, ui-monospace, monospace)",
   cursor: "pointer",
   display: "inline-flex",
   alignItems: "center",
@@ -274,8 +281,8 @@ export function SearchOverlay({
       aria-label="Операционный поиск"
     >
       <div style={panel}>
-        <div style={searchInputWrap}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ec-text-muted)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <div className="ec-server-header-edge" style={searchInputWrap}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ec-accent)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ filter: "drop-shadow(0 0 4px hsl(195 70% 60% / 0.4))" }}>
             <circle cx="11" cy="11" r="8" />
             <line x1="21" y1="21" x2="16.65" y2="16.65" />
           </svg>
@@ -284,7 +291,7 @@ export function SearchOverlay({
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Поиск по сообщениям, задачам и файлам пространства…"
+            placeholder="ЗАПРОС_ПОИСКА // сообщения · задачи · файлы…"
             style={searchInput}
           />
           <span style={kbd}>Esc</span>
