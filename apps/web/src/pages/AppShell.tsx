@@ -795,6 +795,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             canCreateServer={canCreateServer}
             ownedCount={ownedServersCount}
             maxOwnedServers={serverLimits.maxOwnedServers}
+            compact={isMobile}
           />
           {homeOpen ? (
             <span className="ec-shell__breadcrumb ec-breadcrumb-cyber">

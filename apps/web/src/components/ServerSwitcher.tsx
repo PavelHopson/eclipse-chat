@@ -45,6 +45,8 @@ type Props = {
   canCreateServer?: boolean;
   ownedCount?: number;
   maxOwnedServers?: number;
+  /** v1.1.52: компактный режим (mobile) — триггер icon-only без лейбла. */
+  compact?: boolean;
 };
 
 const PANEL_WIDTH = 264;
@@ -252,6 +254,7 @@ export function ServerSwitcher({
   canCreateServer = true,
   ownedCount = 0,
   maxOwnedServers = 2,
+  compact = false,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [anchor, setAnchor] = useState<{ top: number; left: number } | null>(
@@ -468,10 +471,20 @@ export function ServerSwitcher({
         type="button"
         aria-haspopup="menu"
         aria-expanded={open}
+        aria-label="Пространства и навигация"
         title="Пространства и навигация"
         onClick={toggle}
         style={{
           ...triggerBase,
+          ...(compact
+            ? ({
+                width: 36,
+                maxWidth: 36,
+                padding: 0,
+                gap: 0,
+                justifyContent: "center",
+              } as CSSProperties)
+            : null),
           borderColor: open
             ? "hsl(195 70% 60% / 0.34)"
             : "hsl(205 70% 72% / 0.12)",
@@ -491,35 +504,39 @@ export function ServerSwitcher({
         }}
       >
         {triggerIcon}
-        <span
-          style={{
-            minWidth: 0,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-            letterSpacing: "0.01em",
-          }}
-        >
-          {triggerLabel}
-        </span>
-        <svg
-          width="13"
-          height="13"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="var(--ec-text-dim)"
-          strokeWidth="2.4"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden
-          style={{
-            flexShrink: 0,
-            transform: open ? "rotate(180deg)" : "rotate(0deg)",
-            transition: "transform var(--ec-dur-fast) var(--ec-ease)",
-          }}
-        >
-          <polyline points="6 9 12 15 18 9" />
-        </svg>
+        {!compact && (
+          <>
+            <span
+              style={{
+                minWidth: 0,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                letterSpacing: "0.01em",
+              }}
+            >
+              {triggerLabel}
+            </span>
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="var(--ec-text-dim)"
+              strokeWidth="2.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden
+              style={{
+                flexShrink: 0,
+                transform: open ? "rotate(180deg)" : "rotate(0deg)",
+                transition: "transform var(--ec-dur-fast) var(--ec-ease)",
+              }}
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </>
+        )}
       </button>
 
       {open && panel ? createPortal(panel, document.body) : null}

@@ -190,9 +190,9 @@
   }
 
   .ec-shell__brand-title {
-    max-width: 10ch;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    /* v1.1.52: на mobile/tablet wordmark скрыт — освобождаем место под
+       ServerSwitcher. Brand-mark (иконка-затмение) остаётся home-кнопкой. */
+    display: none;
   }
 
   .ec-shell__channels {

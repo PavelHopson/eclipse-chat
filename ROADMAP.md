@@ -5,11 +5,23 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v1.1.51** (Galaxy/Clock/Theme/Deadline effects +
+**Текущая версия в проде:** **v1.1.52** (Galaxy/Clock/Theme/Deadline effects +
 UX-copy + дизайн-полиш + редизайн WS-1 + фикс AuthScreen + смена пароля).
 
-**Изменения v1.1.25 → v1.1.51:**
+**Изменения v1.1.25 → v1.1.52:**
 
+- **v1.1.52** — **фикс mobile-топбара после v1.1.51** (скриншот Pavel'я,
+  Xiaomi). ServerSwitcher с именем+chevron (до 230px) + wordmark
+  «ECLIPSE_CHAT» переполняли тесный мобильный топбар — элементы
+  наезжали. Фикс: (1) `ServerSwitcher` получил проп `compact` —
+  на mobile триггер icon-only (квадрат 36×36, без лейбла и chevron;
+  имена видны в дропдауне); (2) `.ec-shell__brand-title` —
+  `display:none` на ≤1024 (wordmark убран, brand-mark-иконка
+  остаётся home-кнопкой). Десктоп не затронут.
+  ⚠️ На скриншоте также виден сжатый composer (плейсхолдер в
+  вертикальную полоску) — НЕ от этой серии правок (chat-колонка на
+  mobile не менялась); вероятно давний нерешённый mobile-баг, нужен
+  Chrome DevTools remote.
 - **v1.1.51** — **server-rail → topbar-control** (запрос Pavel'я).
   Вертикальный far-left rail (`ServerList`) убран целиком; вместо
   него в topbar — кнопка `ServerSwitcher` (иконка + имя активного
