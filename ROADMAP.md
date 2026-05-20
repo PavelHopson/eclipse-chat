@@ -5,8 +5,36 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v1.1.17** (fix mobile layout —
-sidebar overlap / cramped composer).
+**Текущая версия в проде:** **v1.1.18** (fix mobile layout —
+РЕАЛЬНЫЙ root cause: CSS specificity bug).
+
+**Изменения v1.1.18 (mobile bug — настоящая причина):**
+
+Pavel: «не помогло, всё так же криво» — даже в incognito (чистая
+загрузка). Это доказало: баг НЕ в SW-кэше, а в самом CSS.
+
+Root cause — CSS specificity:
+- base `.ec-shell:not(.ec-shell--has-server)` = (0,2,0)
+- mobile media-query `.ec-shell` = (0,1,0)
+- Media-queries не добавляют specificity → base перебивал
+  media-query → grid НЕ сворачивался для shell без активного
+  сервера → rail+channels перекрывали chat.
+
+v1.1.13/.16/.17 breakpoint-правки били мимо — media-query всё
+равно проигрывал по специфичности.
+
+Fix: оба media-блока (900 mobile + 1024 tablet) — селектор
+перечисляет все 3 формы (`.ec-shell` / `.has-server` /
+`:not(.has-server)`) + `!important` на grid-template-*.
+Media-query теперь всегда выигрывает.
+
+**Изменения v1.1.17:** mobile breakpoint 640 → 900 (нужно но
+недостаточно — specificity bug оставался).
+
+**Изменения v1.1.16:** SearchOverlay cyber polish.
+
+**Предыдущие версии:** v1.1.15 (SW update delivery fix), v1.1.14
+(cinematic AuthScreen), v1.1.13 (mobile topbar overflow fix).
 
 **Изменения v1.1.17 (mobile bug fix):**
 
