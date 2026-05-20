@@ -964,6 +964,165 @@
   .ec-game-icon { animation: none; }
 }
 
+/* ============================================================
+ * v1.1.27 — Logout button (фигурка уходит в дверь)
+ * ============================================================
+ * Эффект из набора «Logout Button». default → walking1 → walking2.
+ * CSS-классы --walking* задают --transform-* конечностей фигурки. */
+.ec-logout-btn {
+  --fig-dur: 100ms;
+  --walk-dur: 100ms;
+  --t-figure: none;
+  --t-arm1: none;
+  --t-wrist1: none;
+  --t-arm2: none;
+  --t-wrist2: none;
+  --t-leg1: none;
+  --t-calf1: none;
+  --t-leg2: none;
+  --t-calf2: none;
+  position: relative;
+  height: 34px;
+  width: 104px;
+  padding: 0 0 0 14px;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  perspective: 120px;
+  text-align: left;
+  outline: none;
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+.ec-logout-btn::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: var(--ec-radius-md);
+  background: hsl(214 22% 9% / 0.6);
+  border: 1px solid hsl(205 70% 72% / 0.12);
+  transition: transform 60ms ease, border-color var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-logout-btn:hover::before {
+  border-color: hsl(195 70% 60% / 0.4);
+}
+.ec-logout-btn:active::before { transform: scale(0.96); }
+
+.ec-logout-btn__text {
+  position: relative;
+  z-index: 10;
+  font-family: var(--ec-font-mono, ui-monospace, monospace);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--ec-text-muted);
+}
+.ec-logout-btn:hover .ec-logout-btn__text { color: var(--ec-text); }
+
+.ec-logout-btn svg {
+  display: block;
+  position: absolute;
+}
+.ec-logout-btn__doorway,
+.ec-logout-btn__door {
+  bottom: 4px;
+  right: 10px;
+  width: 26px;
+}
+.ec-logout-btn__doorway { z-index: 3; fill: hsl(214 18% 22%); }
+.ec-logout-btn__door {
+  z-index: 5;
+  fill: var(--ec-accent);
+  transform: rotateY(16deg);
+  transform-origin: 100% 50%;
+  transform-style: preserve-3d;
+  transition: transform 200ms ease;
+}
+.ec-logout-btn__door path {
+  fill: var(--ec-accent);
+  stroke: var(--ec-accent);
+  stroke-width: 4;
+}
+.ec-logout-btn:hover .ec-logout-btn__door { transform: rotateY(24deg); }
+.ec-logout-btn--walking1 .ec-logout-btn__door,
+.ec-logout-btn--walking2 .ec-logout-btn__door { transform: rotateY(38deg); }
+
+.ec-logout-btn__bang { opacity: 0; }
+
+.ec-logout-btn__figure {
+  bottom: 4px;
+  right: 14px;
+  width: 24px;
+  z-index: 4;
+  fill: var(--ec-accent-hover);
+  transform: var(--t-figure);
+  transition: transform var(--fig-dur) cubic-bezier(0.2, 0.1, 0.8, 0.9);
+}
+.ec-logout-btn__arm1,
+.ec-logout-btn__wrist1,
+.ec-logout-btn__arm2,
+.ec-logout-btn__wrist2,
+.ec-logout-btn__leg1,
+.ec-logout-btn__calf1,
+.ec-logout-btn__leg2,
+.ec-logout-btn__calf2 {
+  transition: transform var(--walk-dur) ease-in-out;
+}
+.ec-logout-btn__arm1  { transform: var(--t-arm1);  transform-origin: 52% 45%; }
+.ec-logout-btn__wrist1{ transform: var(--t-wrist1);transform-origin: 59% 55%; }
+.ec-logout-btn__arm2  { transform: var(--t-arm2);  transform-origin: 47% 43%; }
+.ec-logout-btn__wrist2{ transform: var(--t-wrist2);transform-origin: 35% 47%; }
+.ec-logout-btn__leg1  { transform: var(--t-leg1);  transform-origin: 47% 64.5%; }
+.ec-logout-btn__calf1 { transform: var(--t-calf1); transform-origin: 55.5% 71.5%; }
+.ec-logout-btn__leg2  { transform: var(--t-leg2);  transform-origin: 43% 63%; }
+.ec-logout-btn__calf2 { transform: var(--t-calf2); transform-origin: 41.5% 73%; }
+
+/* hover — фигурка чуть «топчется» */
+.ec-logout-btn:hover {
+  --t-figure: translateX(1.5px);
+  --t-arm1: rotate(-5deg);
+  --t-wrist1: rotate(-15deg);
+  --t-arm2: rotate(5deg);
+  --t-wrist2: rotate(6deg);
+  --t-leg1: rotate(-10deg);
+  --t-calf1: rotate(5deg);
+  --t-leg2: rotate(20deg);
+  --t-calf2: rotate(-20deg);
+}
+/* walking1 — шаг к двери */
+.ec-logout-btn--walking1 {
+  --fig-dur: 300ms;
+  --walk-dur: 300ms;
+  --t-figure: translateX(9px);
+  --t-arm1: translateX(-4px) translateY(-2px) rotate(120deg);
+  --t-wrist1: rotate(-5deg);
+  --t-arm2: translateX(4px) rotate(-110deg);
+  --t-wrist2: rotate(-5deg);
+  --t-leg1: translateX(-3px) rotate(80deg);
+  --t-calf1: rotate(-30deg);
+  --t-leg2: translateX(4px) rotate(-60deg);
+  --t-calf2: rotate(20deg);
+}
+/* walking2 — фигурка уходит в проём */
+.ec-logout-btn--walking2 {
+  --fig-dur: 420ms;
+  --walk-dur: 300ms;
+  --t-figure: translateX(15px);
+  --t-arm1: rotate(60deg);
+  --t-wrist1: rotate(-15deg);
+  --t-arm2: rotate(-45deg);
+  --t-wrist2: rotate(6deg);
+  --t-leg1: rotate(-5deg);
+  --t-calf1: rotate(10deg);
+  --t-leg2: rotate(10deg);
+  --t-calf2: rotate(-20deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ec-logout-btn svg,
+  .ec-logout-btn::before { transition: none; }
+}
+
 /* v1.1.25 — thinking_orb: вращается пока AI генерирует ответ
  * (bot-typing indicator в MessageList). */
 .ec-thinking-orb {

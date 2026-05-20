@@ -12,6 +12,7 @@ import { HomeToday } from "../components/HomeToday";
 import { IntelligencePanel } from "../components/IntelligencePanel";
 import { ChannelInfoPanel } from "../components/ChannelInfoPanel";
 import { ChatHeaderHoverButton } from "../components/ChatHeaderHoverButton";
+import { LogoutButton } from "../components/LogoutButton";
 import { ActionItemDrawer } from "../components/ActionItemDrawer";
 import { OperationalTablePanel } from "../components/OperationalTablePanel";
 import { useOperationalTables } from "../hooks/useOperationalTables";
@@ -1085,19 +1086,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             </span>
             <span className="ec-shell__user-name">{headerName}</span>
           </button>
-          <button
-            type="button"
-            onClick={() => void onLogout()}
-            className="ec-btn ec-btn--ghost ec-btn--sm"
-            aria-label="Выйти"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
-              <polyline points="16 17 21 12 16 7" />
-              <line x1="21" y1="12" x2="9" y2="12" />
-            </svg>
-            <span className="ec-shell__logout-label" style={{ marginLeft: 4 }}>Выйти</span>
-          </button>
+          <LogoutButton onLogout={onLogout} />
         </div>
       </header>
 
