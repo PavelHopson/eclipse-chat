@@ -246,14 +246,10 @@ export function AuthPage({ error, onLogin, onRegister }: Props) {
                   <label className="ec-auth-field__label">
                     Секретный код {mode === "register" && "(8+)"}
                   </label>
-                  <input
-                    className="ec-auth-field__input"
-                    type="password"
+                  <PasswordReveal
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
+                    onChange={setPassword}
                     minLength={8}
-                    required
                     autoComplete={mode === "login" ? "current-password" : "new-password"}
                   />
                 </div>
@@ -438,6 +434,79 @@ export function AuthPage({ error, onLogin, onRegister }: Props) {
         <span>ВЕРСИЯ {VERSION}</span>
       </div>
     </main>
+  );
+}
+
+/**
+ * PasswordReveal — поле пароля с eye-toggle (эффект из набора
+ * «Animated Password Field», упрощённая адаптация). Вместо хрупкого
+ * fakepass-оверлея — показ/скрытие через input.type + cyan scan-sweep
+ * по полю при каждом переключении. Респектит prefers-reduced-motion.
+ */
+function PasswordReveal({
+  value,
+  onChange,
+  minLength,
+  autoComplete,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  minLength?: number;
+  autoComplete: string;
+}) {
+  const [shown, setShown] = useState(false);
+  const [scanId, setScanId] = useState(0);
+  const [scanning, setScanning] = useState(false);
+
+  const toggle = () => {
+    if (!value) return;
+    setShown((s) => !s);
+    const reduced =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduced) return;
+    setScanId((n) => n + 1);
+    setScanning(true);
+    window.setTimeout(() => setScanning(false), 760);
+  };
+
+  return (
+    <div className="ec-auth-pass">
+      <input
+        className="ec-auth-field__input ec-auth-pass__input"
+        type={shown ? "text" : "password"}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="••••••••"
+        minLength={minLength}
+        required
+        autoComplete={autoComplete}
+      />
+      <button
+        type="button"
+        className={"ec-auth-pass__reveal" + (shown ? " ec-auth-pass__reveal--on" : "")}
+        onClick={toggle}
+        disabled={!value}
+        aria-pressed={shown}
+        aria-label={shown ? "Скрыть код" : "Показать код"}
+        title={value ? (shown ? "Скрыть код" : "Показать код") : "Введите код"}
+      >
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+        >
+          <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+          <circle cx="12" cy="12" r="3" />
+          <line className="ec-auth-pass__slash" x1="3.4" y1="3.4" x2="20.6" y2="20.6" />
+        </svg>
+      </button>
+      {scanning && <span key={scanId} className="ec-auth-pass__scanline" aria-hidden />}
+    </div>
   );
 }
 

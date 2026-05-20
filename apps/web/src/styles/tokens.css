@@ -2172,3 +2172,92 @@
   .ec-delete-btn--deleting .ec-delete-btn__paper,
   .ec-delete-btn--deleting .ec-delete-btn__box::after { animation: none; }
 }
+
+/* ============================================================
+ * v1.1.31 — Animated Password Field (eye-toggle + scan-sweep)
+ * ============================================================
+ * Эффект из набора «Animated Password Field» — упрощённая
+ * адаптация: вместо хрупкого fakepass-оверлея — eye-toggle
+ * (slashed eye → open eye) с cyan scan-полосой по полю при
+ * каждом переключении. Поверх .ec-auth-field__input. */
+.ec-auth-pass {
+  position: relative;
+  overflow: hidden;
+}
+.ec-auth-pass__input {
+  padding-right: 52px;
+}
+.ec-auth-pass__reveal {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 44px;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  background: hsl(220 30% 6%);
+  border: 0;
+  border-left: 1px solid hsl(210 18% 14%);
+  color: hsl(210 12% 50%);
+  cursor: pointer;
+  z-index: 2;
+  transition: color 180ms ease, background 180ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.ec-auth-pass__reveal:hover:not(:disabled) {
+  background: hsl(195 70% 60% / 0.1);
+  color: var(--ec-accent);
+}
+.ec-auth-pass__reveal:focus-visible {
+  color: var(--ec-accent);
+  outline: 1px solid var(--ec-accent);
+  outline-offset: -3px;
+}
+.ec-auth-pass__reveal:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+.ec-auth-pass__reveal--on {
+  color: var(--ec-accent);
+}
+.ec-auth-pass__reveal svg {
+  display: block;
+  width: 18px;
+  height: 18px;
+}
+/* slash нарисован по умолчанию (скрытый пароль = «глаз off»),
+   уезжает когда пароль показан (--on). */
+.ec-auth-pass__slash {
+  stroke-dasharray: 26;
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset 260ms ease;
+}
+.ec-auth-pass__reveal--on .ec-auth-pass__slash {
+  stroke-dashoffset: 26;
+}
+/* scan-sweep — тонкая cyan-полоса проходит по полю при toggle.
+   key={scanId} в React пере-монтирует span → animation рестартует. */
+.ec-auth-pass__scanline {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 2px;
+  z-index: 3;
+  background: var(--ec-accent);
+  box-shadow:
+    0 0 6px 1px var(--ec-accent),
+    0 0 14px 3px hsl(195 70% 60% / 0.55);
+  pointer-events: none;
+  animation: ec-pass-scan 700ms ease-out;
+}
+@keyframes ec-pass-scan {
+  0%   { left: 0;    opacity: 0; }
+  12%  { opacity: 1; }
+  88%  { opacity: 1; }
+  100% { left: 100%; opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ec-auth-pass__scanline { display: none; }
+  .ec-auth-pass__slash { transition: none; }
+}
