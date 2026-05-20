@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import { tiltProps } from "../lib/tilt";
 import type { HomeTodayData } from "../hooks/useHomeToday";
 
 /**
@@ -75,7 +76,9 @@ function statCard(color: string): CSSProperties {
     boxShadow: `inset 3px 0 0 0 ${color}, 0 8px 24px -16px hsl(210 40% 2% / 0.7)`,
     // v1.1.8: position:relative для .ec-corner-brackets pseudo overlays.
     position: "relative",
-    transition: "background var(--ec-dur-fast) var(--ec-ease)",
+    // v1.1.29: transform в transition — плавный сброс parallax-tilt.
+    transition:
+      "background var(--ec-dur-fast) var(--ec-ease), transform 170ms var(--ec-ease-out)",
   };
 }
 
@@ -308,39 +311,39 @@ export function HomeToday({
 
       {/* Operational stat cards */}
       <div className="ec-home-today__stats" style={statRow}>
-        <div className="ec-home-stat-card ec-corner-brackets ec-home-stat-card--exec" style={statCard("var(--ec-status-exec)")}>
+        <div {...tiltProps} className="ec-home-stat-card ec-corner-brackets ec-home-stat-card--exec" style={statCard("var(--ec-status-exec)")}>
           <span style={statValue}>{counts.tasks}</span>
           <span style={statLabel}>Задач на мне</span>
         </div>
-        <div className="ec-home-stat-card ec-corner-brackets ec-home-stat-card--risk" style={statCard("var(--ec-status-risk)")}>
+        <div {...tiltProps} className="ec-home-stat-card ec-corner-brackets ec-home-stat-card--risk" style={statCard("var(--ec-status-risk)")}>
           <span style={{ ...statValue, color: counts.overdue > 0 ? "var(--ec-status-risk)" : "var(--ec-text-strong)" }}>
             {counts.overdue}
           </span>
           <span style={statLabel}>Просрочено</span>
         </div>
-        <div className="ec-home-stat-card ec-corner-brackets ec-home-stat-card--warn" style={statCard("var(--ec-status-warn)")}>
+        <div {...tiltProps} className="ec-home-stat-card ec-corner-brackets ec-home-stat-card--warn" style={statCard("var(--ec-status-warn)")}>
           <span style={{ ...statValue, color: counts.incidents > 0 ? "var(--ec-status-warn)" : "var(--ec-text-strong)" }}>
             {counts.incidents}
           </span>
           <span style={statLabel}>Инцидентов</span>
         </div>
-        <div className="ec-home-stat-card ec-corner-brackets ec-home-stat-card--idle" style={statCard("var(--ec-status-idle)")}>
+        <div {...tiltProps} className="ec-home-stat-card ec-corner-brackets ec-home-stat-card--idle" style={statCard("var(--ec-status-idle)")}>
           <span style={statValue}>{counts.activeVoice}</span>
           <span style={statLabel}>Голосовых сессий</span>
         </div>
         {/* v0.69: approvals + active rooms cards */}
-        <div className="ec-home-stat-card ec-corner-brackets ec-home-stat-card--ai" style={statCard("var(--ec-status-ai, var(--ec-accent))")}>
+        <div {...tiltProps} className="ec-home-stat-card ec-corner-brackets ec-home-stat-card--ai" style={statCard("var(--ec-status-ai, var(--ec-accent))")}>
           <span style={{ ...statValue, color: counts.approvals > 0 ? "var(--ec-accent)" : "var(--ec-text-strong)" }}>
             {counts.approvals}
           </span>
           <span style={statLabel}>На моём одобрении</span>
         </div>
-        <div className="ec-home-stat-card ec-corner-brackets ec-home-stat-card--idle" style={statCard("var(--ec-status-idle)")}>
+        <div {...tiltProps} className="ec-home-stat-card ec-corner-brackets ec-home-stat-card--idle" style={statCard("var(--ec-status-idle)")}>
           <span style={statValue}>{counts.activeRooms}</span>
           <span style={statLabel}>Активных комнат</span>
         </div>
         {counts.aiSignals != null && counts.aiSignals > 0 && (
-          <div className="ec-home-stat-card ec-corner-brackets ec-home-stat-card--warn" style={statCard("var(--ec-status-warn)")}>
+          <div {...tiltProps} className="ec-home-stat-card ec-corner-brackets ec-home-stat-card--warn" style={statCard("var(--ec-status-warn)")}>
             <span style={{ ...statValue, color: "var(--ec-warn)" }}>
               {counts.aiSignals}
             </span>
