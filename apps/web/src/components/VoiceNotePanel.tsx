@@ -27,7 +27,7 @@ const wrap: CSSProperties = {
   minHeight: 0,
   flex: 1,
   background: "var(--ec-surface-1)",
-  border: "1px solid var(--ec-border-subtle)",
+  boxShadow: "var(--ec-elev-1)",
   borderRadius: "var(--ec-radius-lg)",
   padding: "var(--ec-space-3)",
   gap: "var(--ec-space-2)",

@@ -18,14 +18,13 @@ const card: CSSProperties = {
   width: "min(440px, 100%)",
   padding: "var(--ec-space-6)",
   background: "var(--ec-surface-1)",
-  border: "1px solid var(--ec-border-default)",
   borderRadius: "var(--ec-radius-lg)",
   textAlign: "center",
   display: "flex",
   flexDirection: "column",
   alignItems: "center",
   gap: "var(--ec-space-3)",
-  boxShadow: "var(--ec-shadow-md)",
+  boxShadow: "var(--ec-elev-1)",
 };
 
 const iconWrap: CSSProperties = {
@@ -60,7 +59,7 @@ const list: CSSProperties = {
   marginTop: "var(--ec-space-2)",
   padding: "var(--ec-space-3) var(--ec-space-4)",
   background: "var(--ec-surface-2)",
-  border: "1px solid var(--ec-border-subtle)",
+  boxShadow: "var(--ec-elev-1)",
   borderRadius: "var(--ec-radius-md)",
   display: "flex",
   flexDirection: "column",

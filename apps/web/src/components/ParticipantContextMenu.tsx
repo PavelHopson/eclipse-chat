@@ -23,7 +23,6 @@ const menu: CSSProperties = {
   background: "hsl(200 8% 10% / 0.96)",
   backdropFilter: "saturate(180%) blur(14px)",
   WebkitBackdropFilter: "saturate(180%) blur(14px)",
-  border: "1px solid var(--ec-border-default)",
   borderRadius: "var(--ec-radius-md)",
   boxShadow: "var(--ec-shadow-modal)",
   padding: "var(--ec-space-3)",

@@ -32,7 +32,6 @@ const wrap: CSSProperties = {
   background: "hsl(200 8% 8% / 0.92)",
   backdropFilter: "saturate(180%) blur(12px)",
   WebkitBackdropFilter: "saturate(180%) blur(12px)",
-  border: "1px solid var(--ec-border-default)",
   borderRadius: "var(--ec-radius-md)",
   boxShadow: "var(--ec-shadow-modal)",
   padding: "var(--ec-space-3)",

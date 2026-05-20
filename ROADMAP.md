@@ -5,10 +5,10 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v1.1.46** (Galaxy/Clock/Theme/Deadline effects +
+**Текущая версия в проде:** **v1.1.47** (Galaxy/Clock/Theme/Deadline effects +
 UX-copy + дизайн-полиш + редизайн WS-1 + фикс AuthScreen + смена пароля).
 
-**Изменения v1.1.25 → v1.1.46:**
+**Изменения v1.1.25 → v1.1.47:**
 
 - **v1.1.46** — новая волна эффектов из папки Pavel'я `Эффекты`:
   lightweight `EclipseGalaxy` без WebGL/CDN для AuthScreen и HomeToday,
@@ -16,6 +16,12 @@ UX-copy + дизайн-полиш + редизайн WS-1 + фикс AuthScreen 
   (`VOID`/`SOLAR`) с сохранением в localStorage и `DeadlineSignal` для
   задач с дедлайном. Все эффекты переписаны нативно на React/CSS, без
   GSAP/jQuery/Three.js, с поддержкой `prefers-reduced-motion`.
+- **v1.1.47** — редизайн **WS-1 slice 2 — раскатка #5: voice-зона**.
+  VoiceStatsOverlay + ParticipantContextMenu — убран дублирующий
+  `border` (`--ec-shadow-modal` уже несёт hairline-ring).
+  VoiceNotePanel / VoicePlaceholder / VoiceRoom-diagnostics —
+  `border` → `--ec-elev-1`. Кнопки / чипы / инпуты / icon-круги
+  voice оставлены (не box-in-box).
 - **v1.1.25** — убран Electric Border (SVG-turbulence давал шум на
   AuthScreen terminal) + фикс AuthScreen layout + `thinking_orb` —
   вращающаяся game-иконка пока AI генерирует ответ.
