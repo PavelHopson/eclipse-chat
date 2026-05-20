@@ -5,8 +5,35 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v1.1.16** (SearchOverlay cyber
-polish — продолжение polish track).
+**Текущая версия в проде:** **v1.1.17** (fix mobile layout —
+sidebar overlap / cramped composer).
+
+**Изменения v1.1.17 (mobile bug fix):**
+
+Pavel: «не могу отправить сообщение — экран перекрыт меню слева».
+Screenshot — rail + channels + chat все side-by-side, composer
+сжат в узкую полосу.
+
+Root cause: mobile breakpoint был 640px. Телефон Pavel'я даёт
+CSS-viewport в диапазоне 640-1024px → срабатывал «tablet»
+3-колоночный layout. На телефонной ширине → chat squeeze.
+
+Fix: mobile/phone breakpoint **640 → 900px** синхронно:
+- responsive.css — 4× `@media (max-width: 640px)` → 900
+- useMediaQuery.ts `useIsMobile` → 900
+- AppShell.tsx inline isMobile → 900
+- tokens.css `--ec-bp-mobile` → 900
+
+Новая раскладка: ≤900 phone (single-column + drawers) /
+901-1024 tablet / >1024 desktop.
+
+**Изменения v1.1.16:**
+
+SearchOverlay cyber polish — cipher input + holo header +
+glowing icon + monospace tabs.
+
+**Предыдущие версии:** v1.1.15 (SW update delivery fix), v1.1.14
+(cinematic AuthScreen), v1.1.13 (mobile topbar overflow fix).
 
 **Изменения v1.1.16:**
 
