@@ -1,9 +1,9 @@
 /**
  * Audio enhancer — Web Audio DSP-цепочка для mic-трека перед publish в LiveKit.
  *
- * Применяется ТОЛЬКО в режиме noiseSuppression="aggressive" (см. useVoice).
- * Режимы "standard"/"off" остаются на чистом WebRTC built-in — это safe
- * fallback если DSP-цепочка где-то поведёт себя плохо.
+ * v1.1.59: применяется во ВСЕХ режимах. "aggressive" — полная DSP-цепочка;
+ * "standard"/"off" — только gain-стадия (`gainOnly`), чтобы регулятор
+ * усиления своего голоса (mic gain) работал в любом режиме.
  *
  * Цепочка (raw mic → ... → processed track):
  *   1. highpass 85Hz   — режет low-frequency rumble: вибрация стола, гул
@@ -45,7 +45,7 @@ function resolveAudioContextCtor(): typeof AudioContext {
 
 export function createAudioEnhancer(
   inputTrack: MediaStreamTrack,
-  opts: { micGain: number },
+  opts: { micGain: number; gainOnly?: boolean },
 ): AudioEnhancerHandle {
   const Ctx = resolveAudioContextCtor();
   const ctx = new Ctx();
@@ -53,36 +53,41 @@ export function createAudioEnhancer(
   const srcStream = new MediaStream([inputTrack]);
   const src = ctx.createMediaStreamSource(srcStream);
 
-  // 1. Highpass — rumble cut
-  const highpass = ctx.createBiquadFilter();
-  highpass.type = "highpass";
-  highpass.frequency.value = 85;
-  highpass.Q.value = 0.7;
-
-  // 2. Lowpass — hiss cut
-  const lowpass = ctx.createBiquadFilter();
-  lowpass.type = "lowpass";
-  lowpass.frequency.value = 12_000;
-  lowpass.Q.value = 0.7;
-
-  // 3. Compressor — dynamics evening-out
-  const compressor = ctx.createDynamicsCompressor();
-  compressor.threshold.value = -28;
-  compressor.knee.value = 24;
-  compressor.ratio.value = 4;
-  compressor.attack.value = 0.004;
-  compressor.release.value = 0.18;
-
-  // 4. Gain — user mic boost
+  // Gain — пользовательский mic boost/attenuate (0..2x). Всегда в цепочке.
   const gain = ctx.createGain();
   gain.gain.value = Math.max(0, Math.min(2, opts.micGain));
 
   const dest = ctx.createMediaStreamDestination();
 
-  src.connect(highpass);
-  highpass.connect(lowpass);
-  lowpass.connect(compressor);
-  compressor.connect(gain);
+  if (opts.gainOnly) {
+    // Режимы standard / off — только усиление, без DSP-фильтров:
+    //   src → gain → dest
+    src.connect(gain);
+  } else {
+    // Режим aggressive — полная DSP-цепочка:
+    //   src → highpass → lowpass → compressor → gain → dest
+    const highpass = ctx.createBiquadFilter();
+    highpass.type = "highpass";
+    highpass.frequency.value = 85;
+    highpass.Q.value = 0.7;
+
+    const lowpass = ctx.createBiquadFilter();
+    lowpass.type = "lowpass";
+    lowpass.frequency.value = 12_000;
+    lowpass.Q.value = 0.7;
+
+    const compressor = ctx.createDynamicsCompressor();
+    compressor.threshold.value = -28;
+    compressor.knee.value = 24;
+    compressor.ratio.value = 4;
+    compressor.attack.value = 0.004;
+    compressor.release.value = 0.18;
+
+    src.connect(highpass);
+    highpass.connect(lowpass);
+    lowpass.connect(compressor);
+    compressor.connect(gain);
+  }
   gain.connect(dest);
 
   const outputTrack = dest.stream.getAudioTracks()[0];

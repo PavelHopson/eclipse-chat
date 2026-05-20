@@ -105,8 +105,9 @@ export function useVoice(socket: Socket | null = null) {
   const remoteTracksRef = useRef<Map<string, RemoteTrackEntry>>(new Map());
 
   /**
-   * Audio enhancer handle — Web Audio DSP-цепочка для mic-трека.
-   * Активен только в режиме noiseSuppression="aggressive". null иначе.
+   * Audio enhancer handle — Web Audio mic-цепочка перед publish. Активен
+   * всегда в эфире: gain-стадия (mic gain) во всех режимах + полная
+   * DSP-цепочка дополнительно в режиме noiseSuppression="aggressive".
    */
   const enhancerRef = useRef<AudioEnhancerHandle | null>(null);
 
@@ -464,29 +465,31 @@ export function useVoice(socket: Socket | null = null) {
           );
           setIsMicMuted(isPtt);
 
-          // Aggressive mode → вставляем Web Audio DSP-цепочку перед publish.
-          // highpass + lowpass + compressor + gain. replaceTrack — clean
-          // LiveKit API, LiveKit отправит обработанный сигнал. Если что-то
-          // упадёт — fallback на raw track (mic всё равно работает).
-          if (settingsRef.current.noiseSuppression === "aggressive") {
-            try {
-              const lk = await import("livekit-client");
-              const micPub = r.localParticipant.getTrackPublication(
-                lk.Track.Source.Microphone,
-              );
-              const localAudioTrack = micPub?.audioTrack;
-              const rawMs = localAudioTrack?.mediaStreamTrack;
-              if (localAudioTrack && rawMs) {
-                const enhancer = createAudioEnhancer(rawMs, {
-                  micGain: settingsRef.current.micGain,
-                });
-                await localAudioTrack.replaceTrack(enhancer.outputTrack);
-                enhancerRef.current = enhancer;
-              }
-            } catch (enhErr) {
-              // DSP-цепочка не критична — mic работает на raw track.
-              console.warn("Audio enhancer failed, using raw mic:", enhErr);
+          // Web Audio mic-цепочка перед publish. Создаётся ВСЕГДА — чтобы
+          // регулятор усиления своего голоса (mic gain) работал на лету в
+          // любом режиме. "aggressive" → полная DSP-цепочка (highpass +
+          // lowpass + compressor + gain); "standard"/"off" → только
+          // gain-стадия (gainOnly). replaceTrack — чистый LiveKit API;
+          // при ошибке fallback на raw track (mic всё равно работает).
+          try {
+            const lk = await import("livekit-client");
+            const micPub = r.localParticipant.getTrackPublication(
+              lk.Track.Source.Microphone,
+            );
+            const localAudioTrack = micPub?.audioTrack;
+            const rawMs = localAudioTrack?.mediaStreamTrack;
+            if (localAudioTrack && rawMs) {
+              const enhancer = createAudioEnhancer(rawMs, {
+                micGain: settingsRef.current.micGain,
+                gainOnly:
+                  settingsRef.current.noiseSuppression !== "aggressive",
+              });
+              await localAudioTrack.replaceTrack(enhancer.outputTrack);
+              enhancerRef.current = enhancer;
             }
+          } catch (enhErr) {
+            // Web Audio-цепочка не критична — mic работает на raw track.
+            console.warn("Audio enhancer failed, using raw mic:", enhErr);
           }
         } catch (micErr) {
           setError(

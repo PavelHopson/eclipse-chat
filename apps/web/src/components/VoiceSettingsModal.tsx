@@ -133,6 +133,7 @@ export function VoiceSettingsModal({ onClose }: Props) {
     setVadThreshold,
     setAfkTimeout,
     setMasterOutputVolume,
+    setMicGain,
     resetSettings,
   } = useVoiceSettings();
 
@@ -327,6 +328,42 @@ export function VoiceSettingsModal({ onClose }: Props) {
           <p style={fieldHint}>
             Общий уровень всех голосов в эфире. Для отдельных участников можно
             настроить индивидуально — кликни правой кнопкой по плитке в голосовой комнате.
+          </p>
+        </div>
+      </section>
+
+      {/* ===== Mic gain — усиление своего голоса ===== */}
+      <section>
+        <h3 style={sectionLabel}>Усиление микрофона</h3>
+        <div style={groupCard}>
+          <div style={{ display: "flex", alignItems: "center", gap: "var(--ec-space-3)" }}>
+            <span style={{ color: "var(--ec-text-muted)", fontSize: "var(--ec-text-sm)", minWidth: 28 }} aria-hidden>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                <line x1="12" y1="19" x2="12" y2="23" />
+                <line x1="8" y1="23" x2="16" y2="23" />
+              </svg>
+            </span>
+            <input
+              type="range"
+              min={0}
+              max={200}
+              step={5}
+              value={Math.round(settings.micGain * 100)}
+              onChange={(e) => setMicGain(Number(e.target.value) / 100)}
+              aria-label="Усиление микрофона"
+              style={{ flex: 1, accentColor: "var(--ec-accent)" }}
+            />
+            <span style={{ color: "var(--ec-text)", fontSize: "var(--ec-text-sm)", fontFamily: "var(--ec-font-mono)", minWidth: 44, textAlign: "right" }}>
+              {Math.round(settings.micGain * 100)}%
+            </span>
+          </div>
+          <p style={fieldHint}>
+            Громкость твоего голоса для остальных в эфире. 100&nbsp;% — без
+            изменений, выше — усиление (если тебя плохо слышно), ниже —
+            приглушение. Применяется на лету. Сильное усиление может
+            добавить шум и искажения.
           </p>
         </div>
       </section>
