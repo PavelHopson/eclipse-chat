@@ -5,10 +5,10 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v1.1.43** (effects + UX-copy +
+**Текущая версия в проде:** **v1.1.44** (effects + UX-copy +
 дизайн-полиш + редизайн WS-1 + фикс AuthScreen + смена пароля).
 
-**Изменения v1.1.25 → v1.1.43:**
+**Изменения v1.1.25 → v1.1.44:**
 
 - **v1.1.25** — убран Electric Border (SVG-turbulence давал шум на
   AuthScreen terminal) + фикс AuthScreen layout + `thinking_orb` —
@@ -138,6 +138,13 @@
   колонки = подъём по `--ec-elev-2` (cool-tinted край) вместо
   смены border-color. Dashboard-family (HomeToday + TeamHealth +
   StatusBoard) переведён на depth-разделение.
+
+- **v1.1.44** — редизайн **WS-1 slice 2 — раскатка #3: info-панели**.
+  Depth-язык на IncidentPanel (incidentCard + post-mortem-боксы;
+  OPEN-инцидент сохраняет danger-рамку как статус-сигнал, hover =
+  подъём по `--ec-elev-2`) и ChannelDigestPanel (wrap + statCard).
+  Откалибровано: панели/карточки → глубина; инпуты, dense-rows
+  (`itemRow`), функциональные/сигнальные border'ы оставлены.
 
 > **Дизайн-аудит — хвост.** Waves 1–3 закрыли все P1 + ключевые
 > P2 (warm-цвета, битые места, хардкод-hex). Остаток аудита —

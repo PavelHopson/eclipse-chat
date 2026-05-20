@@ -20,7 +20,7 @@ type Props = {
 };
 
 const wrap: CSSProperties = {
-  border: "1px solid var(--ec-border-subtle)",
+  boxShadow: "var(--ec-elev-1)",
   borderRadius: "var(--ec-radius-lg)",
   background:
     "linear-gradient(180deg, color-mix(in srgb, var(--ec-accent) 6%, transparent), transparent)",
@@ -60,7 +60,7 @@ const statsRow: CSSProperties = {
 const statCard: CSSProperties = {
   padding: "var(--ec-space-2) var(--ec-space-3)",
   background: "var(--ec-surface-2)",
-  border: "1px solid var(--ec-border-subtle)",
+  boxShadow: "var(--ec-elev-1)",
   borderRadius: "var(--ec-radius-md)",
   display: "flex",
   flexDirection: "column",

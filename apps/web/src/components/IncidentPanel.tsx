@@ -88,10 +88,12 @@ const inputStyle: CSSProperties = {
 const incidentCard: CSSProperties = {
   padding: "var(--ec-space-3)",
   borderRadius: "var(--ec-radius-md)",
-  border: "1px solid var(--ec-border-subtle)",
+  // WS-1 v1.1.44: border → глубина; OPEN-инцидент сохраняет
+  // danger-рамку как статус-сигнал (см. renderCard).
+  boxShadow: "var(--ec-elev-1)",
   background: "var(--ec-surface-1)",
   cursor: "pointer",
-  transition: "border-color var(--ec-dur-fast) var(--ec-ease)",
+  transition: "box-shadow var(--ec-dur-fast) var(--ec-ease)",
 };
 
 function statusBadge(status: "OPEN" | "RESOLVED"): CSSProperties {
@@ -365,7 +367,7 @@ export function IncidentPanel({
                     style={{
                       padding: "var(--ec-space-3)",
                       background: "var(--ec-surface-2)",
-                      border: "1px solid var(--ec-border-subtle)",
+                      boxShadow: "var(--ec-elev-1)",
                       borderRadius: "var(--ec-radius-md)",
                       fontSize: "var(--ec-text-sm)",
                       lineHeight: "var(--ec-leading-normal)",
@@ -416,15 +418,15 @@ export function IncidentPanel({
       style={{
         ...incidentCard,
         ...(inc.status === "OPEN"
-          ? { borderColor: "var(--ec-danger)", background: "var(--ec-danger-soft)" }
+          ? { border: "1px solid var(--ec-danger)", background: "var(--ec-danger-soft)" }
           : {}),
       }}
       onClick={() => setDetailId(inc.id)}
       onMouseEnter={(e) => {
-        if (inc.status !== "OPEN") e.currentTarget.style.borderColor = "var(--ec-border-default)";
+        if (inc.status !== "OPEN") e.currentTarget.style.boxShadow = "var(--ec-elev-2)";
       }}
       onMouseLeave={(e) => {
-        if (inc.status !== "OPEN") e.currentTarget.style.borderColor = "var(--ec-border-subtle)";
+        if (inc.status !== "OPEN") e.currentTarget.style.boxShadow = "var(--ec-elev-1)";
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: "var(--ec-space-2)", flexWrap: "wrap" }}>
@@ -474,7 +476,7 @@ export function IncidentPanel({
             style={{
               padding: "var(--ec-space-3)",
               background: "var(--ec-surface-2)",
-              border: "1px solid var(--ec-border-accent)",
+              boxShadow: "var(--ec-elev-2)",
               borderRadius: "var(--ec-radius-md)",
               display: "flex",
               flexDirection: "column",
