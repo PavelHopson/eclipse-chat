@@ -1894,3 +1894,281 @@
     opacity: 0.7;
   }
 }
+
+/* ============================================================
+ * v1.1.30 — Animated Delete Button (урна + падающий документ)
+ * ============================================================
+ * Эффект из набора «Animated Delete Button». Плоская версия —
+ * исходник на CSS-nesting развёрнут в flat-селекторы с префиксом
+ * .ec-delete-btn__*. Палитра адаптирована: danger-red урна,
+ * accent-cyan «документ», ok-green финальная галочка.
+ * Класс .ec-delete-btn--deleting задаёт --* переменные кадра. */
+.ec-delete-btn {
+  --background: hsl(355 36% 13%);
+  --background-hover: hsl(355 40% 17%);
+  --text: var(--ec-danger);
+  --shadow: hsl(355 80% 4% / 0.5);
+  --paper: var(--ec-accent);
+  --paper-lines: hsl(195 80% 92%);
+  --trash: var(--ec-danger);
+  --trash-lines: hsl(355 42% 54%);
+  --check: #fff;
+  --check-background: var(--ec-ok);
+  position: relative;
+  border: 1px solid hsl(355 72% 68% / 0.42);
+  outline: none;
+  padding: 10px 24px;
+  border-radius: var(--ec-radius-md);
+  min-width: 142px;
+  -webkit-appearance: none;
+  -webkit-tap-highlight-color: transparent;
+  cursor: pointer;
+  display: flex;
+  color: var(--text);
+  background: var(--btn, var(--background));
+  box-shadow: 0 var(--shadow-y, 4px) var(--shadow-blur, 8px) var(--shadow);
+  transform: scale(var(--scale, 1));
+  transition: transform .3s, box-shadow .3s, background .3s, border-color .3s;
+}
+.ec-delete-btn:disabled { opacity: 0.5; cursor: default; }
+
+.ec-delete-btn__label {
+  display: block;
+  font-size: 13px;
+  line-height: 25px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  opacity: var(--span-opacity, 1);
+  transform: translateX(var(--span-x, 0)) translateZ(0);
+  transition:
+    transform .4s ease var(--span-delay, .2s),
+    opacity .3s ease var(--span-delay, .2s);
+}
+
+.ec-delete-btn__trash {
+  display: block;
+  position: relative;
+  left: -8px;
+  transform:
+    translate(var(--trash-x, 0), var(--trash-y, 1px))
+    translateZ(0) scale(var(--trash-scale, .64));
+  transition: transform .5s;
+}
+.ec-delete-btn__trash::before,
+.ec-delete-btn__trash::after {
+  content: '';
+  position: absolute;
+  height: 8px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--icon, var(--trash));
+  bottom: 100%;
+  transform-origin: 50% 6px;
+  transform:
+    translate(var(--x, 3px), 2px)
+    scaleY(var(--sy, .7)) rotate(var(--r, 0deg));
+  transition: transform .4s, background .3s;
+}
+.ec-delete-btn__trash::before { left: 1px; }
+.ec-delete-btn__trash::after { right: 1px; --x: -3px; }
+
+.ec-delete-btn__top {
+  position: absolute;
+  overflow: hidden;
+  left: -4px;
+  right: -4px;
+  bottom: 100%;
+  height: 40px;
+  z-index: 1;
+  transform: translateY(2px);
+}
+.ec-delete-btn__top::before,
+.ec-delete-btn__top::after {
+  content: '';
+  position: absolute;
+  border-radius: 1px;
+  background: var(--icon, var(--trash));
+  width: var(--w, 12px);
+  height: var(--h, 2px);
+  left: var(--l, 8px);
+  bottom: var(--b, 5px);
+  transition: background .3s, transform .4s;
+}
+.ec-delete-btn__top::after {
+  --w: 28px;
+  --h: 2px;
+  --l: 0;
+  --b: 0;
+  transform: scaleX(var(--trash-line-scale, 1));
+}
+
+.ec-delete-btn__paper {
+  width: 14px;
+  height: 18px;
+  background: var(--paper);
+  left: 7px;
+  bottom: 0;
+  border-radius: 1px;
+  position: absolute;
+  transform: translateY(-16px);
+  opacity: 0;
+}
+.ec-delete-btn__paper::before,
+.ec-delete-btn__paper::after {
+  content: '';
+  width: var(--w, 10px);
+  height: 2px;
+  border-radius: 1px;
+  position: absolute;
+  left: 2px;
+  top: var(--t, 2px);
+  background: var(--paper-lines);
+  transform: scaleY(.7);
+  box-shadow: 0 9px 0 var(--paper-lines);
+}
+.ec-delete-btn__paper::after { --t: 5px; --w: 7px; }
+
+.ec-delete-btn__box {
+  display: block;
+  width: 20px;
+  height: 25px;
+  border: 2px solid var(--icon, var(--trash));
+  border-radius: 1px 1px 4px 4px;
+  position: relative;
+  overflow: hidden;
+  z-index: 2;
+  transition: border-color .3s;
+}
+.ec-delete-btn__box::before,
+.ec-delete-btn__box::after {
+  content: '';
+  position: absolute;
+  width: 4px;
+  height: var(--h, 20px);
+  top: 0;
+  left: var(--l, 50%);
+  background: var(--b, var(--trash-lines));
+}
+.ec-delete-btn__box::before {
+  border-radius: 2px;
+  margin-left: -2px;
+  transform: translateX(-3px) scale(.6);
+  box-shadow: 10px 0 0 var(--trash-lines);
+  opacity: var(--trash-lines-opacity, 1);
+  transition: transform .4s, opacity .4s;
+}
+.ec-delete-btn__box::after {
+  --h: 16px;
+  --b: var(--paper);
+  --l: 1px;
+  transform: translate(-.5px, -16px) scaleX(.5);
+  box-shadow:
+    7px 0 0 var(--paper),
+    14px 0 0 var(--paper),
+    21px 0 0 var(--paper);
+}
+
+.ec-delete-btn__check {
+  padding: 4px 3px;
+  border-radius: 50%;
+  background: var(--check-background);
+  position: absolute;
+  left: 2px;
+  top: 24px;
+  opacity: var(--check-opacity, 0);
+  transform: translateY(var(--check-y, 0)) scale(var(--check-scale, .2));
+  transition:
+    transform var(--check-duration, .2s) ease var(--check-delay, 0s),
+    opacity var(--check-duration-opacity, .2s) ease var(--check-delay, 0s);
+}
+.ec-delete-btn__check svg {
+  width: 8px;
+  height: 6px;
+  display: block;
+  fill: none;
+  stroke-width: 1.5;
+  stroke-dasharray: 9px;
+  stroke-dashoffset: var(--check-offset, 9px);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke: var(--check);
+  transition: stroke-dashoffset .4s ease var(--checkmark-delay, .4s);
+}
+
+/* deleting — кадр анимации: текст уезжает, урна скользит вправо,
+   документ падает и режется, всплывает галочка. */
+.ec-delete-btn--deleting {
+  --span-opacity: 0;
+  --span-x: 16px;
+  --span-delay: 0s;
+  --trash-x: 46px;
+  --trash-y: 2px;
+  --trash-scale: 1;
+  --trash-lines-opacity: 0;
+  --trash-line-scale: 0;
+  --check-offset: 0;
+  --check-opacity: 1;
+  --check-scale: 1;
+  --check-y: 16px;
+  --check-delay: 1.7s;
+  --checkmark-delay: 2.1s;
+  --check-duration: .55s;
+  --check-duration-opacity: .3s;
+}
+.ec-delete-btn--deleting .ec-delete-btn__trash::before,
+.ec-delete-btn--deleting .ec-delete-btn__trash::after {
+  --sy: 1;
+  --x: 0;
+}
+.ec-delete-btn--deleting .ec-delete-btn__trash::before { --r: 40deg; }
+.ec-delete-btn--deleting .ec-delete-btn__trash::after { --r: -40deg; }
+.ec-delete-btn--deleting .ec-delete-btn__paper {
+  animation: ec-delete-paper 1.5s linear forwards .5s;
+}
+.ec-delete-btn--deleting .ec-delete-btn__box::after {
+  animation: ec-delete-cut 1.5s linear forwards .5s;
+}
+
+.ec-delete-btn--deleting,
+.ec-delete-btn:hover:not(:disabled) {
+  --btn: var(--background-hover);
+  --shadow-y: 5px;
+  --shadow-blur: 9px;
+}
+.ec-delete-btn:hover:not(:disabled) {
+  border-color: hsl(355 72% 68% / 0.7);
+}
+.ec-delete-btn:active:not(:disabled) {
+  --shadow-y: 2px;
+  --shadow-blur: 5px;
+  --scale: .94;
+}
+
+@keyframes ec-delete-paper {
+  10%, 100% { opacity: 1; }
+  20%       { transform: translateY(-16px); }
+  40%       { transform: translateY(0); }
+  70%, 100% { transform: translateY(24px); }
+}
+@keyframes ec-delete-cut {
+  0%, 40% { transform: translate(-.5px, -16px) scaleX(.5); }
+  100%    { transform: translate(-.5px, 24px) scaleX(.5); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ec-delete-btn,
+  .ec-delete-btn__label,
+  .ec-delete-btn__trash,
+  .ec-delete-btn__trash::before,
+  .ec-delete-btn__trash::after,
+  .ec-delete-btn__top::before,
+  .ec-delete-btn__top::after,
+  .ec-delete-btn__box,
+  .ec-delete-btn__box::before,
+  .ec-delete-btn__box::after,
+  .ec-delete-btn__check,
+  .ec-delete-btn__check svg { transition: none; }
+  .ec-delete-btn--deleting .ec-delete-btn__paper,
+  .ec-delete-btn--deleting .ec-delete-btn__box::after { animation: none; }
+}

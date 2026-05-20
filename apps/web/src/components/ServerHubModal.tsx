@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import { useRef, useState } from "react";
 import { Avatar } from "./Avatar";
 import { BotsTab } from "./BotsTab";
+import { DeleteButton } from "./DeleteButton";
 import { Modal } from "./Modal";
 import type { MemberRole, MemberRow } from "../hooks/useMembers";
 import type { ServerRow } from "../hooks/useServers";
@@ -350,11 +351,9 @@ export function ServerHubModal({
     setBusy(false);
   };
 
+  // confirm() — внутри DeleteButton (см. confirmMessage ниже).
   const handleDelete = async () => {
     if (busy) return;
-    if (!window.confirm(`Удалить пространство «${server.name}»? Это удалит все комнаты и сообщения. Действие необратимо.`)) {
-      return;
-    }
     setBusy(true);
     setError(null);
     const ok = await onDelete();
@@ -1053,14 +1052,12 @@ export function ServerHubModal({
             </p>
             <div style={{ display: "flex", gap: "var(--ec-space-2)" }}>
               {isOwner ? (
-                <button
-                  type="button"
-                  onClick={() => void handleDelete()}
+                <DeleteButton
+                  label="Удалить"
+                  confirmMessage={`Удалить пространство «${server.name}»? Это удалит все комнаты и сообщения. Действие необратимо.`}
+                  onDelete={handleDelete}
                   disabled={busy}
-                  className="ec-btn ec-btn--danger"
-                >
-                  Удалить пространство
-                </button>
+                />
               ) : (
                 <button
                   type="button"
