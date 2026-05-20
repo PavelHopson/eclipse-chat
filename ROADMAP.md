@@ -5,10 +5,10 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v1.1.42** (effects + UX-copy +
+**Текущая версия в проде:** **v1.1.43** (effects + UX-copy +
 дизайн-полиш + редизайн WS-1 + фикс AuthScreen + смена пароля).
 
-**Изменения v1.1.25 → v1.1.42:**
+**Изменения v1.1.25 → v1.1.43:**
 
 - **v1.1.25** — убран Electric Border (SVG-turbulence давал шум на
   AuthScreen terminal) + фикс AuthScreen layout + `thinking_orb` —
@@ -131,6 +131,13 @@
   CHANGE` (enum уже был — миграция не нужна). Frontend — хук
   `useChangePassword` + collapsible-секция «Пароль» в ProfileModal
   (3 поля, клиент-валидация зеркалит backend).
+
+- **v1.1.43** — редизайн **WS-1 slice 2 — раскатка #2: StatusBoard**.
+  «Язык разделения» на kanban-доске: у column'ов и task-карточек
+  убран `border: 1px solid` → `--ec-elev-1`-тень. Drop-target
+  колонки = подъём по `--ec-elev-2` (cool-tinted край) вместо
+  смены border-color. Dashboard-family (HomeToday + TeamHealth +
+  StatusBoard) переведён на depth-разделение.
 
 > **Дизайн-аудит — хвост.** Waves 1–3 закрыли все P1 + ключевые
 > P2 (warm-цвета, битые места, хардкод-hex). Остаток аудита —

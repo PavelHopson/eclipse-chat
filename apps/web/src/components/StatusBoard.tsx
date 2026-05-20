@@ -114,7 +114,8 @@ const column: CSSProperties = {
   minHeight: 0,
   borderRadius: "var(--ec-radius-lg)",
   background: "hsl(208 16% 9% / 0.55)",
-  border: "1px solid var(--ec-border-subtle)",
+  // WS-1 v1.1.43: border → глубина (elevation); drop-target = подъём.
+  boxShadow: "var(--ec-elev-1)",
 };
 
 const columnHead: CSSProperties = {
@@ -148,9 +149,8 @@ const card: CSSProperties = {
   padding: "0.6rem 0.7rem",
   borderRadius: "var(--ec-radius-md)",
   background: "var(--ec-surface-2)",
-  border: "1px solid var(--ec-border-subtle)",
-  // v1.1.9: hover corner brackets via .ec-corner-brackets class.
-  transition: "border-color var(--ec-dur-fast) var(--ec-ease)",
+  // WS-1 v1.1.43: border → глубина (elevation); hover-lift через класс.
+  boxShadow: "var(--ec-elev-1)",
 };
 
 const checkbox = (done: boolean): CSSProperties => ({
@@ -610,14 +610,14 @@ export function StatusBoard({
               key={col.key}
               style={{
                 ...column,
-                borderColor: isDropTarget
-                  ? "var(--ec-border-accent)"
-                  : "var(--ec-border-subtle)",
+                boxShadow: isDropTarget
+                  ? "var(--ec-elev-2)"
+                  : "var(--ec-elev-1)",
                 background: isDropTarget
                   ? "color-mix(in srgb, var(--ec-accent) 6%, hsl(208 16% 9% / 0.55))"
                   : "hsl(208 16% 9% / 0.55)",
                 transition:
-                  "border-color var(--ec-dur-fast) var(--ec-ease), background var(--ec-dur-fast) var(--ec-ease)",
+                  "box-shadow var(--ec-dur-fast) var(--ec-ease), background var(--ec-dur-fast) var(--ec-ease)",
               }}
               onDragEnter={() => {
                 if (dragId) setDropCol(col.key);
