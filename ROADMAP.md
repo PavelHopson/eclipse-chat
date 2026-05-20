@@ -5,8 +5,29 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v1.1.15** (fix SW update delivery —
-Pavel «на телефоне всё так же без изменений» после 11 деплоев).
+**Текущая версия в проде:** **v1.1.16** (SearchOverlay cyber
+polish — продолжение polish track).
+
+**Изменения v1.1.16:**
+
+SearchOverlay (Ctrl+K операционный поиск):
+- Search input — monospace JetBrains Mono + 0.02em tracking,
+  placeholder «ЗАПРОС_ПОИСКА // сообщения · задачи · файлы…»
+- Input wrap header — darker bg + `.ec-server-header-edge` holo
+  bottom line
+- Search icon — cyan accent + 4px drop-shadow glow
+- Result tabs (Сообщения/Задачи/Файлы) — monospace 0.65rem 0.14em
+  uppercase cipher
+
+**Изменения v1.1.15 (critical fix):**
+
+SW update delivery fix — телефон Pavel'я застрял на старом bundle
+11 версий. Root cause: banner reload перехватывался SW + не было
+periodic `reg.update()`. Fix: `hardReload()` (unregister SW +
+clear caches) + `setInterval(reg.update, 60s)`.
+
+**Предыдущие версии:** v1.1.14 (cinematic AuthScreen rewrite),
+v1.1.13 (mobile topbar fix), v1.1.12 (OperationalTablePanel).
 
 **Изменения v1.1.15 (critical bug fix):**
 
