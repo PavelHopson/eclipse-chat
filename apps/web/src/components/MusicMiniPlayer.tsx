@@ -90,6 +90,24 @@ export function MusicMiniPlayer({
 }: Props) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [durationMs, setDurationMs] = useState<number | null>(null);
+  // v1.1.57 — громкость музыки: client-local (каждый слушатель регулирует
+  // свою), persist в localStorage, применяется к локальному <audio>.
+  const [volume, setVolume] = useState<number>(() => {
+    if (typeof window === "undefined") return 1;
+    const saved = Number(window.localStorage.getItem("eclipse-chat:music-volume"));
+    return Number.isFinite(saved) && saved >= 0 && saved <= 1 ? saved : 1;
+  });
+  const lastVolumeRef = useRef(volume > 0 ? volume : 0.7);
+
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.volume = volume;
+    if (volume > 0) lastVolumeRef.current = volume;
+    try {
+      window.localStorage.setItem("eclipse-chat:music-volume", String(volume));
+    } catch {
+      /* localStorage недоступен в private mode — громкость просто не persist */
+    }
+  }, [volume]);
 
   // Sync audio element с session.
   useEffect(() => {
@@ -242,6 +260,45 @@ export function MusicMiniPlayer({
           +{session.queue.length}
         </span>
       )}
+      {/* v1.1.57 — регулировка громкости (локально для каждого слушателя) */}
+      <span
+        style={{ display: "inline-flex", alignItems: "center", gap: 3, flexShrink: 0 }}
+      >
+        <button
+          type="button"
+          onClick={() =>
+            setVolume((v) => (v > 0 ? 0 : lastVolumeRef.current || 0.7))
+          }
+          style={iconBtn}
+          title={volume > 0 ? "Заглушить музыку" : "Включить звук"}
+          aria-label={volume > 0 ? "Заглушить музыку" : "Включить звук"}
+        >
+          {volume === 0 ? (
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M11 5L6 9H2v6h4l5 4V5z" />
+              <line x1="23" y1="9" x2="17" y2="15" />
+              <line x1="17" y1="9" x2="23" y2="15" />
+            </svg>
+          ) : (
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M11 5L6 9H2v6h4l5 4V5z" />
+              <path d="M15.5 8.5a5 5 0 0 1 0 7" />
+              {volume >= 0.55 && <path d="M18.5 5.5a9 9 0 0 1 0 13" />}
+            </svg>
+          )}
+        </button>
+        <input
+          type="range"
+          min={0}
+          max={1}
+          step={0.05}
+          value={volume}
+          onChange={(e) => setVolume(Number(e.target.value))}
+          aria-label="Громкость музыки"
+          title={`Громкость: ${Math.round(volume * 100)}%`}
+          style={{ width: 56, accentColor: "var(--ec-accent)", cursor: "pointer" }}
+        />
+      </span>
       {/* skip / stop — видны всем; права проверяются на backend */}
       <button
         type="button"

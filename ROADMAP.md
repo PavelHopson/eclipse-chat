@@ -5,7 +5,7 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v1.1.56** (Galaxy/Clock/Theme/Deadline effects +
+**Текущая версия в проде:** **v1.1.57** (Galaxy/Clock/Theme/Deadline effects +
 UX-copy + дизайн-полиш + редизайн WS-1 + системный редизайн + фикс
 AuthScreen + смена пароля).
 
@@ -15,8 +15,16 @@ AuthScreen + смена пароля).
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.1.56:**
+**Изменения v1.1.25 → v1.1.57:**
 
+- **v1.1.57** — фича: **регулировка громкости музыки** (запрос
+  Pavel'я). `MusicMiniPlayer` — добавлен регулятор: speaker-кнопка
+  (toggle mute, иконка отражает 3 состояния — mute / low / high) +
+  `<input type=range>` (`accent-color` violet). Громкость
+  client-local (каждый слушатель свою — НЕ shared session-property),
+  persist в `localStorage` (`eclipse-chat:music-volume`), применяется
+  к локальному `<audio>` через effect. Mute восстанавливает прошлый
+  уровень.
 - **v1.1.56** — **системный редизайн, инкремент 2 — top bar** (бриф
   §7 «calm tactical, не cockpit overload»). Топбар переведён с flex
   `space-between` на grid `auto / minmax(0,1fr) / auto` — три
