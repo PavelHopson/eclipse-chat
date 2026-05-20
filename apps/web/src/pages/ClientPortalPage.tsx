@@ -119,8 +119,8 @@ const brandMark: CSSProperties = {
   height: 32,
   borderRadius: "50%",
   background:
-    "radial-gradient(circle at 35% 30%, hsl(195 60% 45% / 0.7), hsl(220 40% 12%) 70%)",
-  boxShadow: "inset 0 0 0 1px hsl(195 60% 60% / 0.35)",
+    "radial-gradient(circle at 35% 30%, hsl(258 60% 45% / 0.7), hsl(220 40% 12%) 70%)",
+  boxShadow: "inset 0 0 0 1px hsl(258 60% 60% / 0.35)",
 };
 
 const brandText: CSSProperties = {
@@ -602,11 +602,11 @@ function FileItem({ file }: { file: PortalFile }) {
           fontWeight: 700,
           letterSpacing: "var(--ec-tracking-caps)",
           textTransform: "uppercase",
-          color: "var(--ec-accent-soft, hsl(195 60% 60%))",
+          color: "var(--ec-accent-soft, hsl(258 60% 60%))",
           textDecoration: "none",
           padding: "0.3rem 0.6rem",
           borderRadius: "var(--ec-radius-md)",
-          border: "1px solid hsl(195 60% 35% / 0.35)",
+          border: "1px solid hsl(258 60% 35% / 0.35)",
         }}
       >
         Скачать
@@ -727,8 +727,8 @@ export function ClientPortalPage({ data, loading, error, onReload, onExit }: Pro
               padding: "var(--ec-space-4) var(--ec-space-5)",
               borderRadius: "var(--ec-radius-lg)",
               background:
-                "linear-gradient(135deg, hsl(195 50% 12% / 0.65), hsl(208 30% 8% / 0.85))",
-              border: "1px solid hsl(195 60% 35% / 0.3)",
+                "linear-gradient(135deg, hsl(258 50% 12% / 0.65), hsl(208 30% 8% / 0.85))",
+              border: "1px solid hsl(258 60% 35% / 0.3)",
               display: "flex",
               flexDirection: "column",
               gap: 6,
@@ -740,7 +740,7 @@ export function ClientPortalPage({ data, loading, error, onReload, onExit }: Pro
                 fontWeight: 800,
                 letterSpacing: "var(--ec-tracking-caps)",
                 textTransform: "uppercase",
-                color: "hsl(195 60% 70%)",
+                color: "hsl(258 60% 70%)",
               }}
             >
               Сводка

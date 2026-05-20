@@ -148,7 +148,7 @@ export function App() {
             border: "1px solid var(--ec-accent)",
             borderRadius: "var(--ec-radius-md)",
             boxShadow:
-              "0 0 0 1px var(--ec-accent), 0 0 24px -4px hsl(195 70% 60% / 0.5), 0 8px 32px hsl(210 40% 2% / 0.6)",
+              "0 0 0 1px var(--ec-accent), 0 0 24px -4px hsl(258 90% 66% / 0.5), 0 8px 32px hsl(210 40% 2% / 0.6)",
             fontSize: "var(--ec-text-sm)",
             color: "var(--ec-text)",
             backdropFilter: "blur(12px)",

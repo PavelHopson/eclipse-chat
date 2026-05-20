@@ -40,8 +40,8 @@
    *   --ec-surface-3          hover / chips                         (#141A22)
    *   --ec-surface-4          active-state / выраженный elevation
    */
-  --ec-void:                #07090D;
-  --ec-bg:                  #07090D;             /* alias на --ec-void */
+  --ec-void:                #05070A;
+  --ec-bg:                  #05070A;             /* alias на --ec-void (бриф §5) */
   --ec-surface-1:           #0B0F14;
   --ec-surface-2:           #11161D;
   --ec-surface-3:           #141A22;
@@ -52,27 +52,37 @@
   --ec-input-bg-focus:      hsl(210 18% 11%);
 
   /* ---- Borders / dividers -------------------------------------- */
-  --ec-border-subtle:       rgba(180, 210, 240, 0.05);
-  --ec-border-default:      rgba(180, 210, 240, 0.10);
-  --ec-border-emphasis:     rgba(180, 210, 240, 0.18);
-  --ec-border-accent:       hsl(195 70% 60% / 0.55);
+  --ec-border-subtle:       rgba(190, 195, 220, 0.05);
+  --ec-border-default:      rgba(190, 195, 220, 0.10);
+  --ec-border-emphasis:     rgba(190, 195, 220, 0.18);
+  --ec-border-accent:       hsl(258 90% 66% / 0.55);
 
-  /* ---- Accent: cool sky (Eclipse limbus light) ----------------- */
-  --ec-accent:              hsl(195 70% 60%);    /* #5db5d9 cool sky */
-  --ec-accent-hover:        hsl(195 75% 66%);
-  --ec-accent-soft:         hsl(195 70% 60% / 0.14);
+  /*
+   * ---- Accent: violet primary (бриф 20.05.2026 — «violet + gold») --
+   * Primary акцент проекта — фиолетовый #8B5CF6. Cyan/teal демотированы
+   * в status-only (см. --ec-status-*). Gold — premium-точечный акцент.
+   * Переопределяет прежнее правило «cool-tone, никогда warm».
+   */
+  --ec-accent:              hsl(258 90% 66%);    /* #8B5CF6 violet */
+  --ec-accent-hover:        hsl(258 95% 73%);
+  --ec-accent-soft:         hsl(258 90% 66% / 0.14);
   --ec-accent-text:         hsl(0 0% 100%);
   /* Multi-layer glow: тонкий outline + outer halo */
-  --ec-accent-glow:         0 0 0 1px hsl(195 70% 60% / 0.45),
-                            0 0 22px -2px hsl(195 70% 60% / 0.42),
-                            0 0 40px -8px hsl(180 80% 60% / 0.18);
+  --ec-accent-glow:         0 0 0 1px hsl(258 90% 66% / 0.45),
+                            0 0 22px -2px hsl(258 90% 66% / 0.42),
+                            0 0 40px -8px hsl(258 80% 72% / 0.18);
 
-  /* Secondary accent: teal-mint (для info/secondary CTA) */
+  /* Gold — premium-акцент, точечно (emphasis CTA, owner, награды). */
+  --ec-accent-gold:         hsl(46 65% 52%);     /* #D4AF37 */
+  --ec-accent-gold-soft:    hsl(46 65% 52% / 0.14);
+  --ec-accent-gold-hover:   hsl(46 72% 61%);
+
+  /* Secondary accent: teal-mint (status-tier — info/secondary) */
   --ec-accent-2:            hsl(168 60% 58%);    /* teal-mint */
   --ec-accent-2-soft:       hsl(168 60% 58% / 0.14);
   --ec-accent-2-hover:      hsl(168 65% 64%);
 
-  /* Tertiary: violet-indigo (для experimental/AI features) */
+  /* Tertiary: violet-indigo (AI/agent features) */
   --ec-accent-3:            hsl(252 70% 70%);    /* electric violet */
   --ec-accent-3-soft:       hsl(252 70% 70% / 0.14);
 
@@ -83,18 +93,18 @@
    *   - text-dim удовлетворяет 4.5:1 contrast на ec-bg (#0a0d10).
    *   - placeholder ниже body но всё ещё readable (3:1 для placeholders OK).
    */
-  --ec-text:                hsl(210 18% 90%);   /* #DDE3E9 — primary */
-  --ec-text-strong:         hsl(200 22% 96%);   /* #F0F4F7 — headings */
-  --ec-text-muted:          hsl(210 12% 66%);   /* #9DA6AE — secondary */
-  --ec-text-dim:            hsl(210 10% 50%);   /* #757F87 — tertiary */
-  --ec-text-placeholder:    hsl(210 8% 42%);    /* #61686E — placeholders */
+  --ec-text:                hsl(220 24% 92%);   /* #E7EAF0 — primary (бриф §5) */
+  --ec-text-strong:         hsl(216 30% 97%);   /* near-white — headings */
+  --ec-text-muted:          hsl(220 13% 59%);   /* #8B93A3 — secondary */
+  --ec-text-dim:            hsl(220 11% 44%);   /* tertiary */
+  --ec-text-placeholder:    hsl(220 10% 40%);   /* placeholders */
 
   /* ---- Semantic ------------------------------------------------ */
   --ec-ok:                  hsl(160 55% 56%);    /* cool mint-green */
   --ec-warn:                hsl(42 90% 64%);     /* warm signal yellow */
   --ec-warn-2:              hsl(28 95% 62%);     /* eclipse orange (rare emphasis) */
-  --ec-danger:              hsl(355 72% 68%);    /* berry-red */
-  --ec-danger-soft:         hsl(355 72% 68% / 0.14);
+  --ec-danger:              hsl(349 100% 65%);   /* #FF4D6D (бриф §5) */
+  --ec-danger-soft:         hsl(349 100% 65% / 0.14);
 
   /*
    * ---- Operational status palette (Фаза A — operational redesign) ----
@@ -185,7 +195,7 @@
                             0 0 0 1px hsl(210 15% 18% / 0.6);
   --ec-shadow-modal:        0 30px 80px hsl(210 35% 2% / 0.65),
                             0 0 0 1px var(--ec-border-default),
-                            inset 0 1px 0 hsl(195 70% 60% / 0.06);
+                            inset 0 1px 0 hsl(258 70% 60% / 0.06);
   --ec-glow-active:         var(--ec-accent-glow);
 
   /*
@@ -198,11 +208,22 @@
    *   --ec-elev-1    — карточка покоя: hairline + мягкая глубина
    *   --ec-elev-2    — карточка hover/raised: cool-tinted край + глубже
    */
-  --ec-edge:                0 0 0 1px hsl(205 50% 82% / 0.05);
-  --ec-elev-1:              0 0 0 1px hsl(205 50% 82% / 0.05),
+  --ec-edge:                0 0 0 1px hsl(258 50% 82% / 0.05);
+  --ec-elev-1:              0 0 0 1px hsl(258 50% 82% / 0.05),
                             0 10px 28px -14px hsl(210 60% 2% / 0.6);
-  --ec-elev-2:              0 0 0 1px hsl(195 70% 62% / 0.14),
+  --ec-elev-2:              0 0 0 1px hsl(258 70% 62% / 0.14),
                             0 18px 44px -16px hsl(210 60% 2% / 0.72);
+
+  /*
+   * ---- De-box glass (бриф §4) — панели отделяются стеклом и глубиной,
+   * не рамкой. Нейтральный hairline-ring (белый, не цветной) + мягкая
+   * тень + blur. Цель: уйти от box-in-box.
+   */
+  --ec-glass-bg:            rgba(255, 255, 255, 0.022);
+  --ec-glass-ring:          0 0 0 1px rgba(255, 255, 255, 0.03);
+  --ec-glass-shadow:        0 0 0 1px rgba(255, 255, 255, 0.03),
+                            0 10px 30px rgba(0, 0, 0, 0.45);
+  --ec-glass-blur:          20px;
 
   /*
    * Atmospheric glows — для accent-areas (AI blocks, live status, voice
@@ -210,7 +231,7 @@
    * везде. Цвет наносится через box-shadow или background gradient на
    * существующие surfaces.
    */
-  --ec-glow-cyan:           0 0 32px -6px hsl(195 70% 55% / 0.4);
+  --ec-glow-cyan:           0 0 32px -6px hsl(258 70% 55% / 0.4);
   --ec-glow-violet:         0 0 32px -6px hsl(252 65% 65% / 0.32);
   --ec-glow-gold:           0 0 28px -8px hsl(38 90% 60% / 0.24);
   --ec-glow-mint:           0 0 28px -8px hsl(152 58% 52% / 0.26);
@@ -221,19 +242,19 @@
                             0 0 0 1px hsl(212 24% 16% / 0.4);
   --ec-atmos-strong:        0 28px 72px -22px hsl(210 40% 2% / 0.75),
                             0 0 0 1px hsl(212 24% 18% / 0.5),
-                            inset 0 1px 0 hsl(195 70% 60% / 0.05);
+                            inset 0 1px 0 hsl(258 70% 60% / 0.05);
 
   /* Ambient gradients для empty-states и hero блоков */
   --ec-gradient-aurora:     radial-gradient(ellipse 90% 70% at 20% 0%,
-                              hsl(195 70% 50% / 0.18), transparent 55%),
+                              hsl(258 70% 50% / 0.18), transparent 55%),
                             radial-gradient(ellipse 80% 60% at 80% 100%,
                               hsl(252 70% 60% / 0.12), transparent 60%);
   --ec-gradient-eclipse:    radial-gradient(circle at 50% 50%,
                               transparent 40%,
-                              hsl(195 70% 60% / 0.08) 50%,
+                              hsl(258 70% 60% / 0.08) 50%,
                               transparent 60%);
-  --ec-grid-blueprint:      linear-gradient(hsl(195 30% 30% / 0.04) 1px, transparent 1px),
-                            linear-gradient(90deg, hsl(195 30% 30% / 0.04) 1px, transparent 1px);
+  --ec-grid-blueprint:      linear-gradient(hsl(258 30% 30% / 0.04) 1px, transparent 1px),
+                            linear-gradient(90deg, hsl(258 30% 30% / 0.04) 1px, transparent 1px);
 
   /* ---- Z-index ------------------------------------------------- */
   --ec-z-base:              1;
@@ -267,14 +288,14 @@
   --ec-holo-cyan:           linear-gradient(
                               90deg,
                               transparent 0%,
-                              hsl(195 70% 60% / 0.8) 50%,
+                              hsl(258 70% 60% / 0.8) 50%,
                               transparent 100%
                             );
   /* AI/agent glow ring (violet, reuse --ec-accent-3). */
   --ec-glow-ai:             0 0 10px 1px hsl(252 70% 70% / 0.4),
                             inset 0 0 6px hsl(252 70% 70% / 0.15);
-  --ec-glow-live:           0 0 10px 1px hsl(195 70% 60% / 0.4),
-                            inset 0 0 6px hsl(195 70% 60% / 0.15);
+  --ec-glow-live:           0 0 10px 1px hsl(258 70% 60% / 0.4),
+                            inset 0 0 6px hsl(258 70% 60% / 0.15);
 
   /* ---- Breakpoints --------------------------------------------- */
   /* v1.1.20: mobile = tablet = 1024px. Промежуточный 3-колоночный
@@ -307,10 +328,10 @@
 /* Active channel left-border holographic indicator. Заменяет solid
  * box-shadow inset 3px 0 0 var(--ec-accent) с breathing gradient. */
 .ec-channel-item--active.ec-channel-item {
-  background: hsl(195 70% 60% / 0.08);
+  background: hsl(258 70% 60% / 0.08);
   box-shadow:
     inset 3px 0 0 var(--ec-accent),
-    inset 4px 0 12px -4px hsl(195 70% 60% / 0.35);
+    inset 4px 0 12px -4px hsl(258 70% 60% / 0.35);
 }
 
 /* Scan-line animation — horizontal sweep slow infinite. Применяется
@@ -329,7 +350,7 @@
   background: linear-gradient(
     90deg,
     transparent 0%,
-    hsl(195 70% 60% / 0.45) 50%,
+    hsl(258 70% 60% / 0.45) 50%,
     transparent 100%
   );
   animation: ec-scan-sweep 4s linear infinite;
@@ -366,8 +387,8 @@
 }
 @keyframes ec-avatar-breathe {
   0%, 100% { box-shadow: var(--ec-glow-live); }
-  50%      { box-shadow: 0 0 14px 2px hsl(195 70% 60% / 0.55),
-                          inset 0 0 8px hsl(195 70% 60% / 0.2); }
+  50%      { box-shadow: 0 0 14px 2px hsl(258 70% 60% / 0.55),
+                          inset 0 0 8px hsl(258 70% 60% / 0.2); }
 }
 @media (prefers-reduced-motion: reduce) {
   .ec-avatar-halo--live { animation: none; }
@@ -383,7 +404,7 @@
   transition: background var(--ec-dur-fast) var(--ec-ease);
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(195 70% 60% / 0.65);
+  background: hsl(258 70% 60% / 0.65);
 }
 /* Firefox */
 * {
@@ -409,19 +430,19 @@
     /* Grid lines (vertical) */
     linear-gradient(
       90deg,
-      hsl(195 70% 60% / 0.06) 1px,
+      hsl(258 70% 60% / 0.06) 1px,
       transparent 1px
     ),
     /* Grid lines (horizontal) */
     linear-gradient(
       0deg,
-      hsl(195 70% 60% / 0.06) 1px,
+      hsl(258 70% 60% / 0.06) 1px,
       transparent 1px
     ),
     /* Radial fade — center spotlight */
     radial-gradient(
       ellipse at 50% 0%,
-      hsl(195 70% 60% / 0.06) 0%,
+      hsl(258 70% 60% / 0.06) 0%,
       transparent 40%
     ),
     /* Bottom shadow */
@@ -616,7 +637,7 @@
   background: linear-gradient(
     100deg,
     transparent 0%,
-    hsl(195 70% 60% / 0.22) 50%,
+    hsl(258 70% 60% / 0.22) 50%,
     transparent 100%
   );
   transform: translateX(-110%);
@@ -830,7 +851,7 @@
   height: 5px;
   background: var(--ec-accent);
   transform: rotate(45deg);
-  box-shadow: 0 0 6px hsl(195 70% 60% / 0.65);
+  box-shadow: 0 0 6px hsl(258 70% 60% / 0.65);
   flex-shrink: 0;
 }
 .ec-section-label--diamond.ec-section-label--diamond-violet::before {
@@ -854,7 +875,7 @@
   inset: 0 0 50% 0;
   background: linear-gradient(
     180deg,
-    hsl(195 70% 60% / 0.12) 0%,
+    hsl(258 70% 60% / 0.12) 0%,
     transparent 100%
   );
   pointer-events: none;
@@ -867,7 +888,7 @@
   right: 0;
   height: 2px;
   background: var(--ec-accent);
-  box-shadow: 0 0 8px hsl(195 70% 60% / 0.5);
+  box-shadow: 0 0 8px hsl(258 70% 60% / 0.5);
   pointer-events: none;
 }
 
@@ -885,7 +906,7 @@
   height: 2px;
   width: calc(100% / 3);
   background: var(--ec-accent);
-  box-shadow: 0 0 8px hsl(195 70% 60% / 0.6);
+  box-shadow: 0 0 8px hsl(258 70% 60% / 0.6);
   border-radius: 2px;
   transform: translateX(calc(var(--ec-tab-idx, 0) * 100%));
   transition: transform 300ms var(--ec-ease-out);
@@ -919,8 +940,8 @@
  * border-accent в components.css; додавим atmospheric halo. */
 .ec-composer-box:focus-within {
   box-shadow:
-    0 0 0 1px hsl(195 70% 60% / 0.45),
-    0 0 32px -8px hsl(195 70% 60% / 0.45),
+    0 0 0 1px hsl(258 70% 60% / 0.45),
+    0 0 32px -8px hsl(258 70% 60% / 0.45),
     0 6px 22px hsl(210 70% 2% / 0.45);
   transition: box-shadow var(--ec-dur-base) var(--ec-ease-out);
 }
@@ -947,9 +968,9 @@
 .ec-composer-send:hover::before { transform: translateX(110%); }
 .ec-composer-send:not(:disabled):hover {
   box-shadow:
-    0 10px 28px hsl(195 80% 38% / 0.32),
-    0 0 0 1px hsl(195 80% 70% / 0.5),
-    0 0 18px hsl(195 70% 60% / 0.42) !important;
+    0 10px 28px hsl(258 80% 38% / 0.32),
+    0 0 0 1px hsl(258 80% 70% / 0.5),
+    0 0 18px hsl(258 70% 60% / 0.42) !important;
 }
 .ec-composer-send > * { position: relative; z-index: 1; }
 @media (prefers-reduced-motion: reduce) {
@@ -995,7 +1016,7 @@
 
 /* Chat header — channel title icon receives subtle accent glow. */
 .ec-chat-title svg {
-  filter: drop-shadow(0 0 4px hsl(195 70% 60% / 0.25));
+  filter: drop-shadow(0 0 4px hsl(258 70% 60% / 0.25));
 }
 @media (prefers-reduced-motion: reduce) {
   .ec-chat-title svg { filter: none; }
@@ -1011,7 +1032,7 @@
   display: block;
   object-fit: contain;
   filter: drop-shadow(0 3px 8px hsl(210 40% 2% / 0.6))
-          drop-shadow(0 0 10px hsl(195 70% 60% / 0.22));
+          drop-shadow(0 0 10px hsl(258 70% 60% / 0.22));
   animation: ec-game-icon-float 5s ease-in-out infinite;
 }
 @keyframes ec-game-icon-float {
@@ -1059,11 +1080,11 @@
   z-index: 2;
   border-radius: var(--ec-radius-md);
   background: hsl(214 22% 9% / 0.6);
-  border: 1px solid hsl(205 70% 72% / 0.12);
+  border: 1px solid hsl(258 70% 72% / 0.12);
   transition: transform 60ms ease, border-color var(--ec-dur-fast) var(--ec-ease);
 }
 .ec-logout-btn:hover::before {
-  border-color: hsl(195 70% 60% / 0.4);
+  border-color: hsl(258 70% 60% / 0.4);
 }
 .ec-logout-btn:active::before { transform: scale(0.96); }
 
@@ -1243,7 +1264,7 @@
   top: 50%;
   left: 50%;
   border-radius: 50%;
-  border: 1px solid hsl(195 70% 60% / 0.08);
+  border: 1px solid hsl(258 70% 60% / 0.08);
   pointer-events: none;
 }
 .ec-auth-radar::before {
@@ -1251,13 +1272,13 @@
   height: 150vmax;
   transform: translate(-50%, -50%);
   animation: ec-auth-radar-spin 90s linear infinite;
-  box-shadow: inset 0 0 120px hsl(195 70% 60% / 0.06);
+  box-shadow: inset 0 0 120px hsl(258 70% 60% / 0.06);
 }
 .ec-auth-radar::after {
   width: 100vmax;
   height: 100vmax;
   transform: translate(-50%, -50%);
-  border-color: hsl(195 70% 60% / 0.1);
+  border-color: hsl(258 70% 60% / 0.1);
 }
 @keyframes ec-auth-radar-spin {
   to { transform: translate(-50%, -50%) rotate(360deg); }
@@ -1266,14 +1287,14 @@
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(hsl(195 70% 60% / 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, hsl(195 70% 60% / 0.04) 1px, transparent 1px);
+    linear-gradient(hsl(258 70% 60% / 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(258 70% 60% / 0.04) 1px, transparent 1px);
   background-size: 64px 64px;
 }
 .ec-auth-radar__crosshair-v,
 .ec-auth-radar__crosshair-h {
   position: absolute;
-  background: hsl(195 70% 60% / 0.16);
+  background: hsl(258 70% 60% / 0.16);
 }
 .ec-auth-radar__crosshair-h {
   top: 50%; left: 0; right: 0; height: 1px;
@@ -1296,23 +1317,23 @@
 }
 .ec-auth-corner--tl {
   top: 24px; left: 24px;
-  border-top: 2px solid hsl(195 70% 60% / 0.45);
-  border-left: 2px solid hsl(195 70% 60% / 0.45);
+  border-top: 2px solid hsl(258 70% 60% / 0.45);
+  border-left: 2px solid hsl(258 70% 60% / 0.45);
 }
 .ec-auth-corner--tr {
   top: 24px; right: 24px;
-  border-top: 2px solid hsl(195 70% 60% / 0.45);
-  border-right: 2px solid hsl(195 70% 60% / 0.45);
+  border-top: 2px solid hsl(258 70% 60% / 0.45);
+  border-right: 2px solid hsl(258 70% 60% / 0.45);
 }
 .ec-auth-corner--bl {
   bottom: 24px; left: 24px;
-  border-bottom: 2px solid hsl(195 70% 60% / 0.45);
-  border-left: 2px solid hsl(195 70% 60% / 0.45);
+  border-bottom: 2px solid hsl(258 70% 60% / 0.45);
+  border-left: 2px solid hsl(258 70% 60% / 0.45);
 }
 .ec-auth-corner--br {
   bottom: 24px; right: 24px;
-  border-bottom: 2px solid hsl(195 70% 60% / 0.45);
-  border-right: 2px solid hsl(195 70% 60% / 0.45);
+  border-bottom: 2px solid hsl(258 70% 60% / 0.45);
+  border-right: 2px solid hsl(258 70% 60% / 0.45);
 }
 
 /* Top HUD status bar — "СЕТЬ ECLIPSE … POS+СИНХР+T". */
@@ -1327,7 +1348,7 @@
   font-size: 0.6rem;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: hsl(195 70% 60% / 0.78);
+  color: hsl(258 70% 60% / 0.78);
 }
 .ec-auth-top-hud__row {
   display: flex;
@@ -1339,7 +1360,7 @@
   margin-top: 6px;
   height: 1px;
   background: linear-gradient(
-    90deg, transparent, hsl(195 70% 60% / 0.5), transparent
+    90deg, transparent, hsl(258 70% 60% / 0.5), transparent
   );
 }
 
@@ -1397,15 +1418,15 @@
   position: relative;
   width: 80px;
   height: 80px;
-  border: 1px solid hsl(195 70% 60% / 0.3);
+  border: 1px solid hsl(258 70% 60% / 0.3);
   border-radius: var(--ec-radius-md);
   background: #000;
   display: grid;
   place-items: center;
   margin-bottom: 24px;
   box-shadow:
-    inset 0 0 24px hsl(195 70% 60% / 0.15),
-    0 0 24px -4px hsl(195 70% 60% / 0.35);
+    inset 0 0 24px hsl(258 70% 60% / 0.15),
+    0 0 24px -4px hsl(258 70% 60% / 0.35);
   overflow: hidden;
 }
 .ec-auth-logo::before {
@@ -1415,12 +1436,12 @@
   border-radius: 50%;
   background: radial-gradient(
     circle at 35% 35%,
-    hsl(195 90% 70%) 0%,
-    hsl(195 70% 50%) 25%,
+    hsl(258 90% 70%) 0%,
+    hsl(258 70% 50%) 25%,
     hsl(252 60% 35%) 55%,
     #000 80%
   );
-  box-shadow: 0 0 16px hsl(195 70% 60% / 0.5);
+  box-shadow: 0 0 16px hsl(258 70% 60% / 0.5);
   animation: ec-auth-logo-breathe 4s ease-in-out infinite;
 }
 .ec-auth-logo::after {
@@ -1498,7 +1519,7 @@
   border-radius: 14px;
   background: repeating-conic-gradient(
     from var(--ec-ray-angle),
-    hsl(195 70% 60%) 0%, hsl(195 70% 60%) 5%,
+    hsl(258 70% 60%) 0%, hsl(258 70% 60%) 5%,
     transparent 5%, transparent 45%,
     hsl(252 70% 70%) 50%, hsl(252 70% 70%) 55%,
     transparent 55%, transparent 95%
@@ -1540,7 +1561,7 @@
     100% calc(100% - 20px), calc(100% - 20px) 100%,
     0 100%, 0 20px
   );
-  border: 1px solid hsl(195 70% 60% / 0.28);
+  border: 1px solid hsl(258 70% 60% / 0.28);
 }
 .ec-auth-terminal__accent-tl {
   position: absolute;
@@ -1789,8 +1810,8 @@
   border-radius: 0;
 }
 .ec-auth-keypad__key:hover:not(:disabled) {
-  background: hsl(195 70% 60% / 0.12);
-  border-color: hsl(195 70% 60% / 0.5);
+  background: hsl(258 70% 60% / 0.12);
+  border-color: hsl(258 70% 60% / 0.5);
   color: var(--ec-accent);
 }
 .ec-auth-keypad__key:active:not(:disabled) {
@@ -1908,7 +1929,7 @@
   height: 30%;
   background: var(--ec-accent);
   border-radius: 1px;
-  box-shadow: 0 0 4px hsl(195 70% 60% / 0.45);
+  box-shadow: 0 0 4px hsl(258 70% 60% / 0.45);
   animation: ec-cipher-bar 1s ease-in-out infinite;
   transform-origin: bottom;
 }
@@ -1943,7 +1964,7 @@
   --text: var(--ec-danger);
   --shadow: hsl(355 80% 4% / 0.5);
   --paper: var(--ec-accent);
-  --paper-lines: hsl(195 80% 92%);
+  --paper-lines: hsl(258 80% 92%);
   --trash: var(--ec-danger);
   --trash-lines: hsl(355 42% 54%);
   --check: #fff;
@@ -2239,7 +2260,7 @@
   -webkit-tap-highlight-color: transparent;
 }
 .ec-auth-pass__reveal:hover:not(:disabled) {
-  background: hsl(195 70% 60% / 0.1);
+  background: hsl(258 70% 60% / 0.1);
   color: var(--ec-accent);
 }
 .ec-auth-pass__reveal:focus-visible {
@@ -2281,7 +2302,7 @@
   background: var(--ec-accent);
   box-shadow:
     0 0 6px 1px var(--ec-accent),
-    0 0 14px 3px hsl(195 70% 60% / 0.55);
+    0 0 14px 3px hsl(258 70% 60% / 0.55);
   pointer-events: none;
   animation: ec-pass-scan 700ms ease-out;
 }

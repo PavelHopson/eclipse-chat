@@ -282,7 +282,7 @@ export function SearchOverlay({
     >
       <div style={panel}>
         <div className="ec-server-header-edge" style={searchInputWrap}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ec-accent)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ filter: "drop-shadow(0 0 4px hsl(195 70% 60% / 0.4))" }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ec-accent)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ filter: "drop-shadow(0 0 4px hsl(258 90% 66% / 0.4))" }}>
             <circle cx="11" cy="11" r="8" />
             <line x1="21" y1="21" x2="16.65" y2="16.65" />
           </svg>

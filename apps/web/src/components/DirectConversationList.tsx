@@ -177,7 +177,7 @@ function GroupRow({
               fontSize: "0.6rem",
               fontWeight: 700,
               fontFeatureSettings: '"tnum"',
-              boxShadow: "0 0 8px hsl(195 70% 60% / 0.5)",
+              boxShadow: "0 0 8px hsl(258 90% 66% / 0.5)",
             }}
           >
             {c.unread > 99 ? "99+" : c.unread}
@@ -428,7 +428,7 @@ export function DirectConversationList({
                       fontSize: "0.6rem",
                       fontWeight: 700,
                       fontFeatureSettings: '"tnum"',
-                      boxShadow: "0 0 8px hsl(195 70% 60% / 0.5)",
+                      boxShadow: "0 0 8px hsl(258 90% 66% / 0.5)",
                     }}
                   >
                     {c.unread > 99 ? "99+" : c.unread}

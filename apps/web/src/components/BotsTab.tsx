@@ -702,7 +702,7 @@ export function BotsTab({ serverId }: Props) {
             style={{
               padding: "var(--ec-space-5) var(--ec-space-4)",
               background:
-                "linear-gradient(135deg, hsl(252 70% 70% / 0.06), hsl(195 70% 60% / 0.04))",
+                "linear-gradient(135deg, hsl(252 70% 70% / 0.06), hsl(258 90% 66% / 0.04))",
               border: "1px dashed var(--ec-border-default)",
               borderRadius: "var(--ec-radius-lg)",
               textAlign: "center",

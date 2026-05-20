@@ -280,7 +280,7 @@ export function ComposioConnections({ serverId }: Props) {
               style={{
                 ...groupCard,
                 background:
-                  "linear-gradient(135deg, hsl(195 70% 60% / 0.04), hsl(252 70% 70% / 0.03))",
+                  "linear-gradient(135deg, hsl(258 90% 66% / 0.04), hsl(252 70% 70% / 0.03))",
                 textAlign: "center",
               }}
             >

@@ -108,7 +108,7 @@ const triggerBase: CSSProperties = {
   height: 36,
   maxWidth: 230,
   padding: "0 0.5rem 0 0.42rem",
-  border: "1px solid hsl(205 70% 72% / 0.12)",
+  border: "1px solid hsl(258 70% 72% / 0.12)",
   borderRadius: "var(--ec-radius-md)",
   color: "var(--ec-text)",
   cursor: "pointer",
@@ -230,7 +230,7 @@ function UnreadBadge({ count }: { count: number }) {
         fontSize: "0.6rem",
         fontWeight: 700,
         fontFeatureSettings: '"tnum"',
-        boxShadow: "0 0 8px hsl(195 70% 60% / 0.5)",
+        boxShadow: "0 0 8px hsl(258 90% 66% / 0.5)",
       }}
     >
       {count > 99 ? "99+" : count}
@@ -486,8 +486,8 @@ export function ServerSwitcher({
               } as CSSProperties)
             : null),
           borderColor: open
-            ? "hsl(195 70% 60% / 0.34)"
-            : "hsl(205 70% 72% / 0.12)",
+            ? "hsl(258 90% 66% / 0.34)"
+            : "hsl(258 70% 72% / 0.12)",
           background: open
             ? "hsl(214 26% 13% / 0.72)"
             : "hsl(214 22% 9% / 0.48)",
@@ -495,12 +495,12 @@ export function ServerSwitcher({
         onMouseEnter={(e) => {
           if (open) return;
           e.currentTarget.style.background = "hsl(214 26% 13% / 0.72)";
-          e.currentTarget.style.borderColor = "hsl(195 70% 60% / 0.22)";
+          e.currentTarget.style.borderColor = "hsl(258 90% 66% / 0.22)";
         }}
         onMouseLeave={(e) => {
           if (open) return;
           e.currentTarget.style.background = "hsl(214 22% 9% / 0.48)";
-          e.currentTarget.style.borderColor = "hsl(205 70% 72% / 0.12)";
+          e.currentTarget.style.borderColor = "hsl(258 70% 72% / 0.12)";
         }}
       >
         {triggerIcon}

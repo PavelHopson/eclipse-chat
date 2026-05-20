@@ -11,7 +11,7 @@ const wrap: CSSProperties = {
   justifyContent: "center",
   padding: "var(--ec-space-6)",
   background:
-    "radial-gradient(ellipse at center, hsl(195 40% 12% / 0.35) 0%, transparent 65%)",
+    "radial-gradient(ellipse at center, hsl(258 40% 12% / 0.35) 0%, transparent 65%)",
 };
 
 const card: CSSProperties = {

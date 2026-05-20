@@ -76,7 +76,7 @@ img { display: block; max-width: 100%; }
 :focus-visible {
   outline: 2px solid var(--ec-accent);
   outline-offset: 2px;
-  box-shadow: 0 0 0 4px hsl(195 70% 60% / 0.18);
+  box-shadow: 0 0 0 4px hsl(258 70% 60% / 0.18);
   border-radius: var(--ec-radius-xs);
   transition: box-shadow var(--ec-dur-fast) var(--ec-ease);
 }

@@ -57,7 +57,7 @@ const roomWrap: CSSProperties = {
   position: "relative",
   overflow: "hidden",
   background:
-    "radial-gradient(ellipse 70% 55% at 22% -8%, hsl(195 70% 18% / 0.5) 0%, transparent 58%)," +
+    "radial-gradient(ellipse 70% 55% at 22% -8%, hsl(258 70% 18% / 0.5) 0%, transparent 58%)," +
     "radial-gradient(ellipse 55% 45% at 100% 108%, hsl(252 60% 24% / 0.32) 0%, transparent 64%)," +
     "var(--ec-bg)",
 };
@@ -73,7 +73,7 @@ const topBar: CSSProperties = {
   zIndex: 2,
   // отделяем не рамкой, а мягкой тенью-градиентом (atmospheric depth)
   background:
-    "linear-gradient(180deg, hsl(205 20% 7% / 0.92), hsl(205 20% 7% / 0))",
+    "linear-gradient(180deg, hsl(258 20% 7% / 0.92), hsl(258 20% 7% / 0))",
 };
 
 const canvas: CSSProperties = {
@@ -100,7 +100,7 @@ const controlsDock: CSSProperties = {
   backdropFilter: "blur(20px)",
   WebkitBackdropFilter: "blur(20px)",
   boxShadow:
-    "0 18px 48px hsl(210 40% 2% / 0.6), 0 0 0 1px hsl(195 30% 40% / 0.12), inset 0 1px 0 hsl(195 70% 60% / 0.06)",
+    "0 18px 48px hsl(210 40% 2% / 0.6), 0 0 0 1px hsl(258 30% 40% / 0.12), inset 0 1px 0 hsl(258 90% 66% / 0.06)",
   position: "relative",
   zIndex: 2,
   flexWrap: "wrap",
@@ -115,7 +115,7 @@ const controlBtn: CSSProperties = {
   placeItems: "center",
   background: "hsl(210 14% 14% / 0.9)",
   color: "var(--ec-text)",
-  border: "1px solid hsl(195 30% 50% / 0.12)",
+  border: "1px solid hsl(258 30% 50% / 0.12)",
   cursor: "pointer",
   transition:
     "background var(--ec-dur-fast) var(--ec-ease), color var(--ec-dur-fast) var(--ec-ease), border-color var(--ec-dur-fast) var(--ec-ease), transform var(--ec-dur-fast) var(--ec-ease)",
@@ -133,7 +133,7 @@ const controlBtnAccent: CSSProperties = {
   background: "var(--ec-accent-soft)",
   color: "var(--ec-accent)",
   borderColor: "var(--ec-accent)",
-  boxShadow: "0 0 0 1px var(--ec-border-accent), 0 0 18px -2px hsl(195 70% 60% / 0.42)",
+  boxShadow: "0 0 0 1px var(--ec-border-accent), 0 0 18px -2px hsl(258 90% 66% / 0.42)",
 };
 
 /* ===== Presence layer ====================================== */
@@ -160,10 +160,10 @@ function presenceCardStyle(speaking: boolean, dimmed: boolean): CSSProperties {
     borderRadius: "var(--ec-radius-xl)",
     // no hard box — мягкая подложка + тень для depth
     background: speaking
-      ? "radial-gradient(ellipse at 50% 30%, hsl(195 70% 60% / 0.16), hsl(208 16% 11% / 0.55))"
+      ? "radial-gradient(ellipse at 50% 30%, hsl(258 90% 66% / 0.16), hsl(208 16% 11% / 0.55))"
       : "hsl(208 16% 11% / 0.45)",
     boxShadow: speaking
-      ? "0 0 0 1px hsl(195 70% 60% / 0.4), 0 12px 40px -8px hsl(195 70% 50% / 0.35)"
+      ? "0 0 0 1px hsl(258 90% 66% / 0.4), 0 12px 40px -8px hsl(258 70% 50% / 0.35)"
       : "0 10px 30px -12px hsl(210 40% 2% / 0.7)",
     opacity: dimmed ? 0.7 : 1,
     transition:
@@ -220,7 +220,7 @@ const videoTileWrap: CSSProperties = {
   borderRadius: "var(--ec-radius-xl)",
   overflow: "hidden",
   background:
-    "radial-gradient(circle at 50% 18%, hsl(195 70% 60% / 0.12), transparent 55%), linear-gradient(180deg, hsl(208 14% 12%), hsl(210 12% 7%))",
+    "radial-gradient(circle at 50% 18%, hsl(258 90% 66% / 0.12), transparent 55%), linear-gradient(180deg, hsl(208 14% 12%), hsl(210 12% 7%))",
   boxShadow: "0 10px 30px -16px hsl(210 40% 2% / 0.5)",
   transition: "box-shadow var(--ec-dur-base) var(--ec-ease-out)",
 };
@@ -255,7 +255,7 @@ function stripChipStyle(speaking: boolean): CSSProperties {
     borderRadius: "var(--ec-radius-full)",
     background: "hsl(208 16% 11% / 0.7)",
     boxShadow: speaking
-      ? "0 0 0 1px hsl(195 70% 60% / 0.45), 0 0 14px -3px hsl(195 70% 55% / 0.5)"
+      ? "0 0 0 1px hsl(258 90% 66% / 0.45), 0 0 14px -3px hsl(258 70% 55% / 0.5)"
       : "0 6px 18px -10px hsl(210 40% 2% / 0.7)",
     color: speaking ? "var(--ec-accent)" : "var(--ec-text)",
     fontSize: "var(--ec-text-xs)",
@@ -293,8 +293,8 @@ function PresenceAvatar({
         display: "inline-block",
         borderRadius: "var(--ec-radius-full)",
         boxShadow: speaking
-          ? "0 0 0 2.5px var(--ec-accent), 0 0 26px hsl(195 70% 60% / 0.6)"
-          : "0 0 0 1px hsl(195 30% 50% / 0.1)",
+          ? "0 0 0 2.5px var(--ec-accent), 0 0 26px hsl(258 90% 66% / 0.6)"
+          : "0 0 0 1px hsl(258 30% 50% / 0.1)",
         transition: "box-shadow 120ms var(--ec-ease)",
       }}
     >
@@ -308,7 +308,7 @@ function PresenceAvatar({
             position: "absolute",
             inset: -7,
             borderRadius: "var(--ec-radius-full)",
-            border: "1.5px solid hsl(195 70% 65% / 0.55)",
+            border: "1.5px solid hsl(258 70% 65% / 0.55)",
             pointerEvents: "none",
           }}
         />
@@ -544,7 +544,7 @@ export function VoiceRoom({
             display: "grid",
             placeItems: "center",
             color: "var(--ec-accent)",
-            background: "hsl(195 70% 60% / 0.12)",
+            background: "hsl(258 90% 66% / 0.12)",
             border: "1px solid var(--ec-border-accent)",
           }}
           aria-hidden
@@ -777,8 +777,8 @@ export function VoiceRoom({
                 placeItems: "center",
                 color: "var(--ec-accent)",
                 background:
-                  "radial-gradient(circle at 50% 40%, hsl(195 70% 60% / 0.22), hsl(195 70% 60% / 0.04) 70%)",
-                boxShadow: "0 0 60px -6px hsl(195 70% 55% / 0.4)",
+                  "radial-gradient(circle at 50% 40%, hsl(258 90% 66% / 0.22), hsl(258 90% 66% / 0.04) 70%)",
+                boxShadow: "0 0 60px -6px hsl(258 70% 55% / 0.4)",
               }}
             >
               <VoiceChannelIcon size={36} />
@@ -1035,7 +1035,7 @@ export function VoiceRoom({
                 alignItems: "center",
                 gap: 8,
                 background: "hsl(210 14% 14% / 0.9)",
-                border: "1px solid hsl(195 30% 50% / 0.12)",
+                border: "1px solid hsl(258 30% 50% / 0.12)",
                 borderRadius: "var(--ec-radius-full)",
                 padding: "0 12px",
                 height: 44,

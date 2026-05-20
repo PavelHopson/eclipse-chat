@@ -47,7 +47,7 @@ const iconWrap = (compact: boolean): CSSProperties => ({
   placeItems: "center",
   color: "var(--ec-text-dim)",
   background:
-    "radial-gradient(circle at 50% 45%, hsl(195 70% 60% / 0.1), hsl(208 30% 12% / 0) 72%)",
+    "radial-gradient(circle at 50% 45%, hsl(258 90% 66% / 0.1), hsl(208 30% 12% / 0) 72%)",
 });
 
 const titleStyle: CSSProperties = {

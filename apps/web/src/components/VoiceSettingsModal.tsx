@@ -52,7 +52,7 @@ const segmentBtn = (active: boolean): CSSProperties => ({
   fontWeight: 600,
   letterSpacing: "0.02em",
   transition: "background var(--ec-dur-fast) var(--ec-ease), color var(--ec-dur-fast) var(--ec-ease)",
-  boxShadow: active ? "0 0 0 1px var(--ec-accent), 0 0 12px -2px hsl(195 70% 60% / 0.38)" : "none",
+  boxShadow: active ? "0 0 0 1px var(--ec-accent), 0 0 12px -2px hsl(258 90% 66% / 0.38)" : "none",
 });
 
 const fieldHint: CSSProperties = {

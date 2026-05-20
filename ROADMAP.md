@@ -5,11 +5,30 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v1.1.54** (Galaxy/Clock/Theme/Deadline effects +
+**Текущая версия в проде:** **v1.1.55** (Galaxy/Clock/Theme/Deadline effects +
 UX-copy + дизайн-полиш + редизайн WS-1 + фикс AuthScreen + смена пароля).
 
-**Изменения v1.1.25 → v1.1.54:**
+> **⚠️ ЦВЕТ-ПРАВИЛО ИЗМЕНЕНО (бриф Pavel'я 20.05.2026).** Прежнее
+> «cool-tone, НИКОГДА warm» — ОТМЕНЕНО. Новая identity: **violet
+> `#8B5CF6` — primary акцент**, **gold `#D4AF37` — premium-точечно**,
+> cyan/teal демотированы в **status-only**. Не «фиксить» violet
+> обратно на cyan.
 
+**Изменения v1.1.25 → v1.1.55:**
+
+- **v1.1.55** — **системный редизайн, инкремент 1 — цвет-фундамент**
+  (бриф Pavel'я §4–5). Старт большого редизайна (8 инкрементов).
+  Identity сменена cyan → **violet** primary + **gold** premium.
+  tokens.css: `--ec-accent` → `hsl(258 90% 66%)` (#8B5CF6), новый
+  `--ec-accent-gold` (#D4AF37), `--ec-bg` глубже (#05070A), текст по
+  брифу (#E7EAF0 / #8B93A3), `--ec-danger` → #FF4D6D, нейтральные
+  border-токены, новые glass-de-box токены (`--ec-glass-*`). Свип
+  всех хардкод cyan-литералов → violet: ~210 в 6 CSS-файлах + 56 в
+  19 TSX-файлах (hue 195/204/205/206/207/180 → 258; S/L сохранены).
+  Статус-цвета (idle-blue, exec-green, warn-amber, risk-red,
+  ai-violet) и тёмные surface-серые (`hsl(200/208`) — НЕ тронуты.
+  Build чист. Дальше инкременты 2–8: top bar, channels, composer,
+  сообщения+медиа, tactical panel, focus/density, полиш.
 - **v1.1.54** — редизайн **WS-1 slice 4 (ПРОТОТИП на ревью) —
   floating-сообщения**. Завершающий кусок WS-1. Язык: сообщение под
   курсором «всплывает» — отделяется глубиной/светом, не линией.

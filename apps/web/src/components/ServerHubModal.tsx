@@ -120,7 +120,7 @@ function tabBtn(active: boolean): CSSProperties {
     letterSpacing: "var(--ec-tracking-wide)",
     transition: "all var(--ec-dur-fast) var(--ec-ease)",
     boxShadow: active
-      ? "0 0 0 1px var(--ec-accent), 0 0 12px -2px hsl(195 70% 60% / 0.4)"
+      ? "0 0 0 1px var(--ec-accent), 0 0 12px -2px hsl(258 90% 66% / 0.4)"
       : "none",
   };
 }
@@ -907,7 +907,7 @@ export function ServerHubModal({
                         gap: 4,
                         transition: "all var(--ec-dur-fast) var(--ec-ease)",
                         boxShadow: active
-                          ? "0 0 0 1px var(--ec-accent), 0 0 14px -2px hsl(195 70% 60% / 0.3)"
+                          ? "0 0 0 1px var(--ec-accent), 0 0 14px -2px hsl(258 90% 66% / 0.3)"
                           : "none",
                       }}
                     >

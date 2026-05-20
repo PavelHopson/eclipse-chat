@@ -83,7 +83,7 @@ const playButton: CSSProperties = {
   color: "var(--ec-accent-text)",
   border: 0,
   cursor: "pointer",
-  boxShadow: "0 18px 40px -16px hsl(195 90% 40% / 0.55)",
+  boxShadow: "0 18px 40px -16px hsl(258 90% 40% / 0.55)",
 };
 
 export function MusicExpandModal({

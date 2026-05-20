@@ -19,10 +19,10 @@ html[data-ec-theme="solar"] {
   --ec-text-strong: hsl(218 30% 9%);
   --ec-text-muted: hsl(214 14% 38%);
   --ec-text-dim: hsl(214 12% 50%);
-  --ec-accent: hsl(204 92% 42%);
-  --ec-accent-hover: hsl(204 96% 35%);
-  --ec-accent-soft: hsl(204 92% 42% / 0.12);
-  --ec-border-accent: hsl(204 92% 42% / 0.38);
+  --ec-accent: hsl(258 92% 42%);
+  --ec-accent-hover: hsl(258 96% 35%);
+  --ec-accent-soft: hsl(258 92% 42% / 0.12);
+  --ec-border-accent: hsl(258 92% 42% / 0.38);
   --ec-edge: 0 0 0 1px hsl(210 22% 100% / 0.9),
     0 1px 2px hsl(218 30% 18% / 0.08);
   --ec-elev-1: 0 14px 32px -24px hsl(216 40% 18% / 0.42);
@@ -84,7 +84,7 @@ html[data-ec-theme="solar"] .ec-shell::before {
 .ec-galaxy__halo {
   border-radius: 50%;
   background:
-    radial-gradient(circle at 50% 50%, hsl(204 90% 58% / 0.22), transparent 22%),
+    radial-gradient(circle at 50% 50%, hsl(258 90% 58% / 0.22), transparent 22%),
     radial-gradient(circle at 58% 48%, hsl(252 80% 68% / 0.16), transparent 34%),
     radial-gradient(circle at 44% 54%, hsl(32 100% 62% / 0.13), transparent 42%);
   filter: blur(22px);
@@ -98,8 +98,8 @@ html[data-ec-theme="solar"] .ec-shell::before {
     radial-gradient(circle at 42% 38%, hsl(218 28% 16%), hsl(225 42% 4%) 58%, #000 100%);
   box-shadow:
     inset -14px -18px 28px hsl(0 0% 0% / 0.72),
-    0 0 0 1px hsl(206 90% 82% / 0.18),
-    0 0 56px hsl(204 86% 52% / 0.28);
+    0 0 0 1px hsl(258 90% 82% / 0.18),
+    0 0 56px hsl(258 86% 52% / 0.28);
   z-index: 4;
 }
 
@@ -111,7 +111,7 @@ html[data-ec-theme="solar"] .ec-shell::before {
       from 24deg,
       transparent 0 11%,
       hsl(32 100% 68% / 0.76) 13%,
-      hsl(204 86% 66% / 0.24) 17%,
+      hsl(258 86% 66% / 0.24) 17%,
       transparent 24% 54%,
       hsl(252 88% 70% / 0.38) 59%,
       transparent 66% 100%
@@ -123,11 +123,11 @@ html[data-ec-theme="solar"] .ec-shell::before {
 
 .ec-galaxy__ring {
   border-radius: 50%;
-  border: 1px solid hsl(204 70% 68% / 0.14);
+  border: 1px solid hsl(258 70% 68% / 0.14);
   background:
     repeating-conic-gradient(
       from 0deg,
-      hsl(204 80% 60% / 0.18) 0 1deg,
+      hsl(258 80% 60% / 0.18) 0 1deg,
       transparent 1deg 10deg
     );
   mask: radial-gradient(circle, transparent 45%, #000 46% 47%, transparent 48%);
@@ -156,7 +156,7 @@ html[data-ec-theme="solar"] .ec-shell::before {
 .ec-galaxy__streams span {
   width: clamp(54px, 10vw, 132px);
   height: 1px;
-  background: linear-gradient(90deg, hsl(204 90% 70% / 0), hsl(204 90% 70% / 0.42), transparent);
+  background: linear-gradient(90deg, hsl(258 90% 70% / 0), hsl(258 90% 70% / 0.42), transparent);
   transform:
     rotate(var(--stream-angle))
     translateX(clamp(70px, 12vw, 150px));
@@ -170,7 +170,7 @@ html[data-ec-theme="solar"] .ec-shell::before {
   height: 2px;
   border-radius: 50%;
   background: var(--ec-accent);
-  box-shadow: 0 0 12px hsl(204 90% 68% / 0.8);
+  box-shadow: 0 0 12px hsl(258 90% 68% / 0.8);
   transform:
     rotate(var(--star-angle))
     translateX(var(--star-distance))
@@ -207,8 +207,8 @@ html[data-ec-theme="solar"] .ec-shell::before {
   border-radius: 50%;
   background:
     radial-gradient(circle at 50% 50%, var(--ec-accent) 0 1px, transparent 1.5px),
-    repeating-conic-gradient(from 0deg, hsl(204 70% 64% / 0.38) 0 1deg, transparent 1deg 30deg);
-  box-shadow: inset 0 0 0 1px hsl(204 70% 64% / 0.24);
+    repeating-conic-gradient(from 0deg, hsl(258 70% 64% / 0.38) 0 1deg, transparent 1deg 30deg);
+  box-shadow: inset 0 0 0 1px hsl(258 70% 64% / 0.24);
 }
 
 .ec-spider-clock__web,
@@ -222,7 +222,7 @@ html[data-ec-theme="solar"] .ec-shell::before {
 .ec-spider-clock__web {
   width: 100%;
   height: 1px;
-  background: linear-gradient(90deg, transparent, hsl(204 70% 70% / 0.32), transparent);
+  background: linear-gradient(90deg, transparent, hsl(258 70% 70% / 0.32), transparent);
   transform-origin: 0 0;
 }
 
@@ -257,7 +257,7 @@ html[data-ec-theme="solar"] .ec-shell::before {
   height: 4px;
   border-radius: 50%;
   background: var(--ec-bg);
-  box-shadow: 0 0 0 1px var(--ec-accent), 0 0 8px hsl(204 80% 62% / 0.34);
+  box-shadow: 0 0 0 1px var(--ec-accent), 0 0 8px hsl(258 80% 62% / 0.34);
   transform: translate(-50%, -50%);
 }
 
@@ -306,9 +306,9 @@ html[data-ec-theme="solar"] .ec-shell::before {
   overflow: hidden;
   border-radius: var(--ec-radius-full);
   background:
-    radial-gradient(circle at 22% 50%, hsl(204 80% 64% / 0.2), transparent 38%),
+    radial-gradient(circle at 22% 50%, hsl(258 80% 64% / 0.2), transparent 38%),
     linear-gradient(90deg, hsl(224 38% 8%), hsl(218 28% 14%));
-  box-shadow: inset 0 0 0 1px hsl(204 70% 64% / 0.2);
+  box-shadow: inset 0 0 0 1px hsl(258 70% 64% / 0.2);
 }
 
 .ec-theme-toggle__stars {
@@ -330,8 +330,8 @@ html[data-ec-theme="solar"] .ec-shell::before {
   border-radius: 50%;
   background: #05070a;
   box-shadow:
-    0 0 0 1px hsl(204 84% 78% / 0.42),
-    0 0 12px hsl(204 80% 62% / 0.3);
+    0 0 0 1px hsl(258 84% 78% / 0.42),
+    0 0 12px hsl(258 80% 62% / 0.3);
   transition:
     transform 260ms var(--ec-ease-out),
     background var(--ec-dur-base) var(--ec-ease),
@@ -347,7 +347,7 @@ html[data-ec-theme="solar"] .ec-shell::before {
 }
 
 .ec-theme-toggle[aria-pressed="true"] .ec-theme-toggle__track {
-  background: linear-gradient(90deg, hsl(204 88% 82%), hsl(38 94% 76%));
+  background: linear-gradient(90deg, hsl(258 88% 82%), hsl(38 94% 76%));
 }
 
 .ec-theme-toggle[aria-pressed="true"] .ec-theme-toggle__stars {

@@ -187,8 +187,8 @@ export function IntegrationsTabContent({
         <div
           style={{
             padding: "var(--ec-space-4)",
-            background: "hsl(195 50% 12% / 0.65)",
-            border: "1px solid hsl(195 60% 35% / 0.3)",
+            background: "hsl(258 50% 12% / 0.65)",
+            border: "1px solid hsl(258 60% 35% / 0.3)",
             borderRadius: "var(--ec-radius-lg)",
             display: "flex",
             flexDirection: "column",

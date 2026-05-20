@@ -252,7 +252,7 @@ export function OperationalTablePanel({
   return (
     <div style={wrap}>
       <header className="ec-server-header-edge" style={header}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--ec-accent)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ filter: "drop-shadow(0 0 4px hsl(195 70% 60% / 0.4))" }}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--ec-accent)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ filter: "drop-shadow(0 0 4px hsl(258 90% 66% / 0.4))" }}>
           <rect x="3" y="3" width="18" height="18" rx="2" />
           <line x1="3" y1="9" x2="21" y2="9" />
           <line x1="9" y1="3" x2="9" y2="21" />

@@ -45,7 +45,7 @@ function typeOptionActive(active: boolean): CSSProperties {
         background: "var(--ec-accent-soft)",
         borderColor: "var(--ec-border-accent)",
         boxShadow:
-          "0 0 0 1px var(--ec-accent), 0 0 12px -2px hsl(195 70% 60% / 0.3)",
+          "0 0 0 1px var(--ec-accent), 0 0 12px -2px hsl(258 90% 66% / 0.3)",
       }
     : {};
 }

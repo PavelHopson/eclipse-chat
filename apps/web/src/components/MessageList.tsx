@@ -487,7 +487,7 @@ export function MessageList({
               background: "var(--ec-accent-soft)",
               color: "var(--ec-accent)",
               boxShadow:
-                "0 0 0 1px var(--ec-accent), 0 0 28px hsl(195 70% 60% / 0.35), inset 0 0 18px hsl(195 70% 60% / 0.18)",
+                "0 0 0 1px var(--ec-accent), 0 0 28px hsl(258 90% 66% / 0.35), inset 0 0 18px hsl(258 90% 66% / 0.18)",
             }}
             aria-hidden
           >

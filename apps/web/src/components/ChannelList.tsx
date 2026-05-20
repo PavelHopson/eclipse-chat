@@ -501,7 +501,7 @@ export function ChannelList({
                   display: "inline-block",
                   borderRadius: "var(--ec-radius-full)",
                   boxShadow: speaking
-                    ? "0 0 0 1.5px var(--ec-accent), 0 0 10px hsl(195 70% 60% / 0.55)"
+                    ? "0 0 0 1.5px var(--ec-accent), 0 0 10px hsl(258 90% 66% / 0.55)"
                     : "none",
                   transition: "box-shadow 80ms linear",
                   opacity: deafened || micMuted ? 0.6 : 1,
@@ -657,7 +657,7 @@ export function ChannelList({
               fontSize: "0.6rem",
               fontWeight: 700,
               fontFeatureSettings: '"tnum"',
-              boxShadow: "0 0 8px hsl(195 70% 60% / 0.5)",
+              boxShadow: "0 0 8px hsl(258 90% 66% / 0.5)",
             }}
           >
             {unreadCount > 99 ? "99+" : unreadCount}
