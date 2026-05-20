@@ -1,6 +1,8 @@
 import type { CSSProperties } from "react";
 import { tiltProps } from "../lib/tilt";
 import type { HomeTodayData } from "../hooks/useHomeToday";
+import { DeadlineSignal } from "./DeadlineSignal";
+import { EclipseGalaxy } from "./EclipseGalaxy";
 
 /**
  * HomeToday — операционный Home-экран «СЕГОДНЯ». Не список серверов, а
@@ -260,6 +262,7 @@ export function HomeToday({
 
   return (
     <div style={wrap} className="ec-home">
+      <EclipseGalaxy variant="home" />
       <header className="ec-home-today__header" style={header}>
         <div style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
           <span style={eyebrow}>ОПЕРАТИВНАЯ_СВОДКА //</span>
@@ -404,21 +407,12 @@ export function HomeToday({
                   context={`${t.serverName} · #${t.channelName}`}
                   trailing={
                     chip ? (
-                      <span
-                        style={{
-                          fontSize: "0.6rem",
-                          fontWeight: 700,
-                          textTransform: "uppercase",
-                          letterSpacing: "0.04em",
-                          padding: "0.12rem 0.45rem",
-                          borderRadius: "var(--ec-radius-full)",
-                          color: chip.color,
-                          background: `color-mix(in srgb, ${chip.color} 14%, transparent)`,
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {chip.label}
-                      </span>
+                      <DeadlineSignal
+                        label={chip.label}
+                        color={chip.color}
+                        overdue={t.overdue}
+                        dueAt={t.dueAt}
+                      />
                     ) : undefined
                   }
                 />

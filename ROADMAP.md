@@ -5,11 +5,17 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v1.1.45** (effects + UX-copy +
-дизайн-полиш + редизайн WS-1 + фикс AuthScreen + смена пароля).
+**Текущая версия в проде:** **v1.1.46** (Galaxy/Clock/Theme/Deadline effects +
+UX-copy + дизайн-полиш + редизайн WS-1 + фикс AuthScreen + смена пароля).
 
-**Изменения v1.1.25 → v1.1.45:**
+**Изменения v1.1.25 → v1.1.46:**
 
+- **v1.1.46** — новая волна эффектов из папки Pavel'я `Эффекты`:
+  lightweight `EclipseGalaxy` без WebGL/CDN для AuthScreen и HomeToday,
+  `SpiderClock` в topbar как системный live-time widget, `ThemeToggle`
+  (`VOID`/`SOLAR`) с сохранением в localStorage и `DeadlineSignal` для
+  задач с дедлайном. Все эффекты переписаны нативно на React/CSS, без
+  GSAP/jQuery/Three.js, с поддержкой `prefers-reduced-motion`.
 - **v1.1.25** — убран Electric Border (SVG-turbulence давал шум на
   AuthScreen terminal) + фикс AuthScreen layout + `thinking_orb` —
   вращающаяся game-иконка пока AI генерирует ответ.

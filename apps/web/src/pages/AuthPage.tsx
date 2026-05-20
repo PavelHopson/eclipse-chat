@@ -15,6 +15,7 @@
  */
 
 import { useEffect, useState } from "react";
+import { EclipseGalaxy } from "../components/EclipseGalaxy";
 
 type Props = {
   error: string | null;
@@ -157,6 +158,7 @@ export function AuthPage({ error, onLogin, onRegister }: Props) {
         <div className="ec-auth-radar__crosshair-h" />
         <div className="ec-auth-radar__crosshair-v" />
       </div>
+      <EclipseGalaxy variant="auth" />
 
       {/* Viewport tactical corners */}
       <span className="ec-auth-corner ec-auth-corner--tl" aria-hidden />

@@ -29,10 +29,12 @@ import { SearchOverlay } from "../components/SearchOverlay";
 import { ServerHubModal } from "../components/ServerHubModal";
 import { CreateTableModal } from "../components/CreateTableModal";
 import { VoiceMusicPicker } from "../components/VoiceMusicPicker";
+import { SpiderClock } from "../components/SpiderClock";
 import { ServerList } from "../components/ServerList";
 import { SinceLastVisitBanner } from "../components/SinceLastVisitBanner";
 import { StatusBoard } from "../components/StatusBoard";
 import { TeamHealth } from "../components/TeamHealth";
+import { ThemeToggle } from "../components/ThemeToggle";
 import { EmptyState } from "../components/EmptyState";
 import { ExpiryBadge } from "../components/ExpiryBadge";
 import {
@@ -1028,6 +1030,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               )}
             </button>
           )}
+          <SpiderClock />
+          <ThemeToggle />
           {showRightRail && (
             <button
               type="button"

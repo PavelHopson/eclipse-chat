@@ -2,6 +2,7 @@
 @import "./styles/tokens.css";
 @import "./styles/reset.css";
 @import "./styles/components.css";
+@import "./styles/effects.css";
 @import "./styles/responsive.css";
 @import "./styles/motion.css";
 

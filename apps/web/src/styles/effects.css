@@ -1,0 +1,497 @@
+/*
+ * Eclipse Chat effect layer.
+ * Local production rewrites inspired by Pavel's effects folder:
+ * Deadline Animation, Interactive Galaxy, Interactive Spider Clock,
+ * Dark/Light Toggle Switch. No CDN, no WebGL, no GSAP.
+ */
+
+html[data-ec-theme="solar"] {
+  --ec-bg: #eef3f7;
+  --ec-surface-1: #e2e9f0;
+  --ec-surface-2: #f7fafc;
+  --ec-surface-3: #ffffff;
+  --ec-surface-4: hsl(210 28% 88%);
+  --ec-input-bg: #ffffff;
+  --ec-border-subtle: hsl(210 24% 74% / 0.7);
+  --ec-border-default: hsl(210 28% 68% / 0.78);
+  --ec-border-strong: hsl(210 35% 56% / 0.7);
+  --ec-text: hsl(216 22% 17%);
+  --ec-text-strong: hsl(218 30% 9%);
+  --ec-text-muted: hsl(214 14% 38%);
+  --ec-text-dim: hsl(214 12% 50%);
+  --ec-accent: hsl(204 92% 42%);
+  --ec-accent-hover: hsl(204 96% 35%);
+  --ec-accent-soft: hsl(204 92% 42% / 0.12);
+  --ec-border-accent: hsl(204 92% 42% / 0.38);
+  --ec-edge: 0 0 0 1px hsl(210 22% 100% / 0.9),
+    0 1px 2px hsl(218 30% 18% / 0.08);
+  --ec-elev-1: 0 14px 32px -24px hsl(216 40% 18% / 0.42);
+  --ec-elev-2: 0 20px 46px -26px hsl(216 45% 18% / 0.5);
+  color-scheme: light;
+}
+
+html[data-ec-theme="solar"] .ec-ambient,
+html[data-ec-theme="solar"] .ec-shell::before {
+  opacity: 0.32;
+  filter: saturate(0.72) brightness(1.18);
+}
+
+.ec-galaxy {
+  position: absolute;
+  pointer-events: none;
+  contain: layout paint;
+  isolation: isolate;
+}
+
+.ec-galaxy--auth {
+  width: min(58vw, 760px);
+  aspect-ratio: 1;
+  right: -18vw;
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0.62;
+  z-index: 0;
+}
+
+.ec-galaxy--home {
+  width: min(44vw, 560px);
+  aspect-ratio: 1;
+  right: -24%;
+  top: -180px;
+  opacity: 0.42;
+  z-index: -1;
+}
+
+.ec-galaxy--shell {
+  width: min(34vw, 460px);
+  aspect-ratio: 1;
+  right: 6%;
+  top: 8%;
+  opacity: 0.25;
+  z-index: -1;
+}
+
+.ec-galaxy__halo,
+.ec-galaxy__ring,
+.ec-galaxy__core,
+.ec-galaxy__corona,
+.ec-galaxy__streams,
+.ec-galaxy__stars {
+  position: absolute;
+  inset: 0;
+}
+
+.ec-galaxy__halo {
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 50%, hsl(204 90% 58% / 0.22), transparent 22%),
+    radial-gradient(circle at 58% 48%, hsl(252 80% 68% / 0.16), transparent 34%),
+    radial-gradient(circle at 44% 54%, hsl(32 100% 62% / 0.13), transparent 42%);
+  filter: blur(22px);
+  animation: ec-galaxy-breathe 9s ease-in-out infinite;
+}
+
+.ec-galaxy__core {
+  inset: 36%;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 42% 38%, hsl(218 28% 16%), hsl(225 42% 4%) 58%, #000 100%);
+  box-shadow:
+    inset -14px -18px 28px hsl(0 0% 0% / 0.72),
+    0 0 0 1px hsl(206 90% 82% / 0.18),
+    0 0 56px hsl(204 86% 52% / 0.28);
+  z-index: 4;
+}
+
+.ec-galaxy__corona {
+  inset: 33.5%;
+  border-radius: 50%;
+  background:
+    conic-gradient(
+      from 24deg,
+      transparent 0 11%,
+      hsl(32 100% 68% / 0.76) 13%,
+      hsl(204 86% 66% / 0.24) 17%,
+      transparent 24% 54%,
+      hsl(252 88% 70% / 0.38) 59%,
+      transparent 66% 100%
+    );
+  filter: blur(4px);
+  animation: ec-galaxy-spin 24s linear infinite;
+  z-index: 3;
+}
+
+.ec-galaxy__ring {
+  border-radius: 50%;
+  border: 1px solid hsl(204 70% 68% / 0.14);
+  background:
+    repeating-conic-gradient(
+      from 0deg,
+      hsl(204 80% 60% / 0.18) 0 1deg,
+      transparent 1deg 10deg
+    );
+  mask: radial-gradient(circle, transparent 45%, #000 46% 47%, transparent 48%);
+  -webkit-mask: radial-gradient(circle, transparent 45%, #000 46% 47%, transparent 48%);
+}
+
+.ec-galaxy__ring--outer {
+  inset: 7%;
+  animation: ec-galaxy-spin 52s linear infinite;
+}
+
+.ec-galaxy__ring--inner {
+  inset: 22%;
+  opacity: 0.72;
+  animation: ec-galaxy-spin-reverse 34s linear infinite;
+}
+
+.ec-galaxy__streams span,
+.ec-galaxy__stars span {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform-origin: 0 0;
+}
+
+.ec-galaxy__streams span {
+  width: clamp(54px, 10vw, 132px);
+  height: 1px;
+  background: linear-gradient(90deg, hsl(204 90% 70% / 0), hsl(204 90% 70% / 0.42), transparent);
+  transform:
+    rotate(var(--stream-angle))
+    translateX(clamp(70px, 12vw, 150px));
+  opacity: var(--stream-opacity);
+  animation: ec-galaxy-stream 4.8s ease-in-out infinite;
+  animation-delay: var(--stream-delay);
+}
+
+.ec-galaxy__stars span {
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: var(--ec-accent);
+  box-shadow: 0 0 12px hsl(204 90% 68% / 0.8);
+  transform:
+    rotate(var(--star-angle))
+    translateX(var(--star-distance))
+    translateY(var(--star-offset));
+  opacity: var(--star-opacity);
+  animation: ec-galaxy-star 3.6s ease-in-out infinite;
+  animation-delay: var(--star-delay);
+}
+
+.ec-spider-clock {
+  display: inline-grid;
+  grid-template-columns: 28px auto auto;
+  align-items: center;
+  gap: 7px;
+  min-height: 30px;
+  padding: 0.24rem 0.62rem 0.24rem 0.36rem;
+  border-radius: var(--ec-radius-full);
+  background:
+    radial-gradient(circle at 18% 50%, var(--ec-accent-soft), transparent 46%),
+    hsl(216 24% 8% / 0.58);
+  box-shadow: var(--ec-edge), inset 0 1px 0 hsl(0 0% 100% / 0.03);
+  color: var(--ec-text-muted);
+  font-family: var(--ec-font-mono, ui-monospace, monospace);
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+}
+
+.ec-spider-clock__dial {
+  position: relative;
+  display: block;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 50%, var(--ec-accent) 0 1px, transparent 1.5px),
+    repeating-conic-gradient(from 0deg, hsl(204 70% 64% / 0.38) 0 1deg, transparent 1deg 30deg);
+  box-shadow: inset 0 0 0 1px hsl(204 70% 64% / 0.24);
+}
+
+.ec-spider-clock__web,
+.ec-spider-clock__hand,
+.ec-spider-clock__node {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+}
+
+.ec-spider-clock__web {
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, hsl(204 70% 70% / 0.32), transparent);
+  transform-origin: 0 0;
+}
+
+.ec-spider-clock__web--a { transform: rotate(35deg) translateX(-50%); }
+.ec-spider-clock__web--b { transform: rotate(145deg) translateX(-50%); }
+
+.ec-spider-clock__hand {
+  width: 10px;
+  height: 1px;
+  transform-origin: 0 50%;
+  background: var(--ec-text-muted);
+}
+
+.ec-spider-clock__hand--hour {
+  width: 7px;
+  background: var(--ec-text-strong);
+}
+
+.ec-spider-clock__hand--minute {
+  width: 9px;
+  background: var(--ec-accent);
+}
+
+.ec-spider-clock__hand--second {
+  width: 11px;
+  background: var(--ec-status-warn);
+  box-shadow: 0 0 8px hsl(42 90% 62% / 0.44);
+}
+
+.ec-spider-clock__node {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--ec-bg);
+  box-shadow: 0 0 0 1px var(--ec-accent), 0 0 8px hsl(204 80% 62% / 0.34);
+  transform: translate(-50%, -50%);
+}
+
+.ec-spider-clock__time {
+  color: var(--ec-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.ec-spider-clock__sec {
+  color: var(--ec-text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.ec-theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0.22rem 0.62rem 0.22rem 0.24rem;
+  border: 0;
+  border-radius: var(--ec-radius-full);
+  background: hsl(216 24% 8% / 0.58);
+  box-shadow: var(--ec-edge), inset 0 1px 0 hsl(0 0% 100% / 0.03);
+  color: var(--ec-text-muted);
+  cursor: pointer;
+  font-family: var(--ec-font-mono, ui-monospace, monospace);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  transition:
+    color var(--ec-dur-fast) var(--ec-ease),
+    transform 160ms var(--ec-ease-out),
+    box-shadow var(--ec-dur-fast) var(--ec-ease);
+}
+
+.ec-theme-toggle:hover {
+  color: var(--ec-text);
+  transform: translateY(-1px);
+  box-shadow: var(--ec-edge), 0 0 24px -14px var(--ec-accent);
+}
+
+.ec-theme-toggle__track {
+  position: relative;
+  width: 42px;
+  height: 20px;
+  overflow: hidden;
+  border-radius: var(--ec-radius-full);
+  background:
+    radial-gradient(circle at 22% 50%, hsl(204 80% 64% / 0.2), transparent 38%),
+    linear-gradient(90deg, hsl(224 38% 8%), hsl(218 28% 14%));
+  box-shadow: inset 0 0 0 1px hsl(204 70% 64% / 0.2);
+}
+
+.ec-theme-toggle__stars {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 24% 42%, hsl(0 0% 100% / 0.72) 0 1px, transparent 1.5px),
+    radial-gradient(circle at 56% 64%, hsl(0 0% 100% / 0.46) 0 1px, transparent 1.5px),
+    radial-gradient(circle at 76% 34%, hsl(0 0% 100% / 0.54) 0 1px, transparent 1.5px);
+  transition: opacity var(--ec-dur-base) var(--ec-ease);
+}
+
+.ec-theme-toggle__knob {
+  position: absolute;
+  left: 3px;
+  top: 3px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #05070a;
+  box-shadow:
+    0 0 0 1px hsl(204 84% 78% / 0.42),
+    0 0 12px hsl(204 80% 62% / 0.3);
+  transition:
+    transform 260ms var(--ec-ease-out),
+    background var(--ec-dur-base) var(--ec-ease),
+    box-shadow var(--ec-dur-base) var(--ec-ease);
+}
+
+.ec-theme-toggle__eclipse {
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  background: conic-gradient(from 45deg, transparent, hsl(32 100% 66% / 0.88), transparent 34%);
+  filter: blur(1px);
+}
+
+.ec-theme-toggle[aria-pressed="true"] .ec-theme-toggle__track {
+  background: linear-gradient(90deg, hsl(204 88% 82%), hsl(38 94% 76%));
+}
+
+.ec-theme-toggle[aria-pressed="true"] .ec-theme-toggle__stars {
+  opacity: 0;
+}
+
+.ec-theme-toggle[aria-pressed="true"] .ec-theme-toggle__knob {
+  transform: translateX(22px);
+  background: hsl(42 96% 62%);
+  box-shadow:
+    0 0 0 1px hsl(42 96% 82% / 0.8),
+    0 0 16px hsl(42 96% 62% / 0.58);
+}
+
+.ec-deadline-signal {
+  --deadline-color: var(--ec-text-dim);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.34rem;
+  padding: 0.12rem 0.48rem 0.12rem 0.24rem;
+  border-radius: var(--ec-radius-full);
+  color: var(--deadline-color);
+  background: color-mix(in srgb, var(--deadline-color) 14%, transparent);
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.ec-deadline-signal__ring {
+  width: 14px;
+  height: 14px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 50%;
+}
+
+.ec-deadline-signal__ring svg {
+  width: 14px;
+  height: 14px;
+  transform: rotate(-90deg);
+}
+
+.ec-deadline-signal__ring circle {
+  fill: none;
+  stroke-width: 1.8;
+}
+
+.ec-deadline-signal__ring circle:first-child {
+  stroke: currentColor;
+  opacity: 0.18;
+}
+
+.ec-deadline-signal__ring circle:last-child {
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-dasharray: var(--deadline-dash) 28;
+  filter: drop-shadow(0 0 3px currentColor);
+}
+
+.ec-deadline-signal--overdue {
+  animation: ec-deadline-alert 1.6s ease-in-out infinite;
+}
+
+.ec-home {
+  position: relative;
+  isolation: isolate;
+}
+
+@keyframes ec-galaxy-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes ec-galaxy-spin-reverse {
+  to { transform: rotate(-360deg); }
+}
+
+@keyframes ec-galaxy-breathe {
+  0%, 100% { opacity: 0.62; transform: scale(1); }
+  50% { opacity: 0.92; transform: scale(1.035); }
+}
+
+@keyframes ec-galaxy-stream {
+  0%, 100% { opacity: 0.14; filter: blur(0); }
+  50% { opacity: 0.44; filter: blur(0.4px); }
+}
+
+@keyframes ec-galaxy-star {
+  0%, 100% {
+    opacity: 0.18;
+    transform: rotate(var(--star-angle)) translateX(var(--star-distance)) translateY(var(--star-offset)) scale(0.82);
+  }
+  50% {
+    opacity: 0.82;
+    transform: rotate(var(--star-angle)) translateX(var(--star-distance)) translateY(var(--star-offset)) scale(1.08);
+  }
+}
+
+@keyframes ec-deadline-alert {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--deadline-color) 38%, transparent); }
+  50% { box-shadow: 0 0 0 4px transparent; }
+}
+
+@media (max-width: 900px) {
+  .ec-spider-clock {
+    display: none;
+  }
+
+  .ec-galaxy--auth {
+    width: 92vw;
+    right: -46vw;
+    opacity: 0.34;
+  }
+
+  .ec-galaxy--home {
+    width: 96vw;
+    right: -58vw;
+    top: -120px;
+    opacity: 0.25;
+  }
+}
+
+@media (max-width: 620px) {
+  .ec-theme-toggle__label {
+    display: none;
+  }
+
+  .ec-theme-toggle {
+    padding-right: 0.24rem;
+  }
+
+  .ec-deadline-signal {
+    max-width: 112px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ec-galaxy__halo,
+  .ec-galaxy__corona,
+  .ec-galaxy__ring,
+  .ec-galaxy__streams span,
+  .ec-galaxy__stars span,
+  .ec-deadline-signal--overdue {
+    animation: none !important;
+  }
+}
