@@ -73,7 +73,9 @@ function statCard(color: string): CSSProperties {
     padding: "var(--ec-space-3) var(--ec-space-4)",
     borderRadius: "var(--ec-radius-lg)",
     background: "hsl(208 16% 10% / 0.6)",
-    boxShadow: `inset 3px 0 0 0 ${color}, 0 8px 24px -16px hsl(210 40% 2% / 0.7)`,
+    // WS-1 v1.1.39: accent-bar + hairline-край + мягкая глубина —
+    // карточка «парит», без линии-рамки.
+    boxShadow: `inset 3px 0 0 0 ${color}, var(--ec-edge), 0 8px 24px -16px hsl(210 40% 2% / 0.7)`,
     // v1.1.8: position:relative для .ec-corner-brackets pseudo overlays.
     position: "relative",
     // v1.1.29: transform в transition — плавный сброс parallax-tilt.
@@ -123,12 +125,11 @@ const rowBtn: CSSProperties = {
   padding: "0.6rem 0.8rem",
   borderRadius: "var(--ec-radius-md)",
   background: "var(--ec-surface-2)",
-  border: "1px solid var(--ec-border-subtle)",
   color: "var(--ec-text)",
   cursor: "pointer",
   textAlign: "left",
   transition:
-    "background var(--ec-dur-fast) var(--ec-ease), border-color var(--ec-dur-fast) var(--ec-ease)",
+    "background var(--ec-dur-fast) var(--ec-ease), box-shadow var(--ec-dur-fast) var(--ec-ease)",
 };
 
 const ctxLine: CSSProperties = {
@@ -187,14 +188,6 @@ function Row({
       onClick={onClick}
       className="ec-home-today-row"
       style={rowBtn}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.background = "var(--ec-surface-3)";
-        e.currentTarget.style.borderColor = "var(--ec-border-default)";
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.background = "var(--ec-surface-2)";
-        e.currentTarget.style.borderColor = "var(--ec-border-subtle)";
-      }}
     >
       <span
         aria-hidden

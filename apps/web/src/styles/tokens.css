@@ -189,6 +189,22 @@
   --ec-glow-active:         var(--ec-accent-glow);
 
   /*
+   * ---- Elevation — «язык разделения» (WS-1 «Облегчение», v1.1.39) --
+   * Карточки/панели отделяются от поверхности ГЛУБИНОЙ И СВЕТОМ, не
+   * линиями. Вместо `border: 1px solid` — почти-невидимый hairline-
+   * край (0 0 0 1px) + мягкая тень глубины. Уходит box-in-box,
+   * взгляд не цепляется за рамки.
+   *   --ec-edge      — одиночный hairline-край (замена тонкого border)
+   *   --ec-elev-1    — карточка покоя: hairline + мягкая глубина
+   *   --ec-elev-2    — карточка hover/raised: cool-tinted край + глубже
+   */
+  --ec-edge:                0 0 0 1px hsl(205 50% 82% / 0.05);
+  --ec-elev-1:              0 0 0 1px hsl(205 50% 82% / 0.05),
+                            0 10px 28px -14px hsl(210 60% 2% / 0.6);
+  --ec-elev-2:              0 0 0 1px hsl(195 70% 62% / 0.14),
+                            0 18px 44px -16px hsl(210 60% 2% / 0.72);
+
+  /*
    * Atmospheric glows — для accent-areas (AI blocks, live status, voice
    * rooms). По brief используем как atmospheric layer, не яркие акценты
    * везде. Цвет наносится через box-shadow или background gradient на
