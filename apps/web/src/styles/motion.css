@@ -733,7 +733,6 @@
   }
 }
 @media (max-width: 640px) {
-  .ec-shell__rail,
   .ec-shell__channels {
     transition: transform var(--ec-dur-slow) var(--ec-ease-out);
   }
