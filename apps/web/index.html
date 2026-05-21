@@ -44,14 +44,18 @@
     <meta name="robots" content="noindex" />
     <!-- noindex пока private alpha; снять когда выйдем на public landing -->
 
-    <!-- v1.1.64 §12 — density mode: применяем data-density до первой
-         отрисовки (анти-FOUC), иначе layout прыгнул бы после mount React. -->
+    <!-- v1.1.64 §12 / v1.1.65 §11 — применяем display-настройки
+         (density + focus-dim) до первой отрисовки: анти-FOUC. -->
     <script>
       (function () {
         try {
+          var root = document.documentElement;
           var d = localStorage.getItem("eclipse_chat_density");
           if (d === "compact" || d === "tactical") {
-            document.documentElement.setAttribute("data-density", d);
+            root.setAttribute("data-density", d);
+          }
+          if (localStorage.getItem("eclipse_chat_focus_dim") === "0") {
+            root.setAttribute("data-focus-dim", "off");
           }
         } catch (e) {
           /* ignore */

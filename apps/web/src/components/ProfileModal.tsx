@@ -11,6 +11,7 @@ import {
 } from "../hooks/usePushPreferences";
 import { useChangePassword } from "../hooks/useChangePassword";
 import { useDensity, type Density } from "../hooks/useDensity";
+import { useFocusDim } from "../hooks/useFocusDim";
 
 /** v1.1.64 §12 — варианты плотности для сегмент-контрола. */
 const DENSITY_OPTIONS: Array<{ id: Density; label: string }> = [
@@ -66,6 +67,8 @@ export function ProfileModal({
 
   // v1.1.64 §12 — плотность интерфейса.
   const { density, setDensity } = useDensity();
+  // v1.1.65 §11 — выключатель «Тихого фокуса».
+  const focusDim = useFocusDim();
 
   // Смена пароля — collapsible секция.
   const { changePassword, busy: pwdBusy } = useChangePassword();
@@ -431,6 +434,54 @@ export function ProfileModal({
             );
           })}
         </div>
+      </section>
+
+      {/* v1.1.65 §11 — focus dimming («Тихий фокус») kill-switch. */}
+      <section
+        style={{
+          ...avatarSection,
+          background: focusDim.enabled ? "var(--ec-accent-soft)" : "var(--ec-surface-2)",
+          boxShadow: focusDim.enabled ? "var(--ec-elev-2)" : "var(--ec-elev-1)",
+        }}
+      >
+        <div
+          aria-hidden
+          style={{
+            width: 48,
+            height: 48,
+            flexShrink: 0,
+            borderRadius: "var(--ec-radius-md)",
+            display: "grid",
+            placeItems: "center",
+            background: focusDim.enabled ? "var(--ec-accent)" : "var(--ec-surface-3)",
+            color: focusDim.enabled ? "var(--ec-accent-text)" : "var(--ec-text-muted)",
+          }}
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="7" />
+            <line x1="12" y1="1.5" x2="12" y2="4.5" />
+            <line x1="12" y1="19.5" x2="12" y2="22.5" />
+            <line x1="1.5" y1="12" x2="4.5" y2="12" />
+            <line x1="19.5" y1="12" x2="22.5" y2="12" />
+          </svg>
+        </div>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
+          <strong style={{ color: "var(--ec-text-strong)", fontSize: "var(--ec-text-sm)" }}>
+            Затемнение панелей при наборе
+          </strong>
+          <span style={{ fontSize: "var(--ec-text-2xs)", color: "var(--ec-text-muted)", lineHeight: 1.4 }}>
+            Пока пишешь сообщение, боковые панели мягко гаснут — чат-колонка в центре внимания. Наведи на панель, чтобы вернуть её.
+          </span>
+        </div>
+        <label style={{ display: "inline-flex", alignItems: "center", cursor: "pointer", flexShrink: 0 }}>
+          <input
+            type="checkbox"
+            checked={focusDim.enabled}
+            onChange={(e) => focusDim.setEnabled(e.target.checked)}
+            aria-label="Затемнение панелей при наборе"
+            style={{ accentColor: "var(--ec-accent)", width: 18, height: 18, cursor: "pointer" }}
+          />
+        </label>
       </section>
 
       {/* v0.84 #27 phase 3: Push notifications section */}

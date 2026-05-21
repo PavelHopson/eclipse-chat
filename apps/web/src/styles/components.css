@@ -254,6 +254,42 @@
   outline-offset: 1px;
 }
 
+/* ===== Focus dimming — «Тихий фокус» (v1.1.65 §11) =========
+   Пока курсор в composer'е, боковые панели мягко гаснут — чат-колонка
+   выходит в центр внимания. Pure-CSS через :has() — без JS-трекинга
+   фокуса. Возврат панели: blur composer'а ИЛИ наведение на панель.
+   Kill-switch — data-focus-dim="off" на <html>. */
+.ec-shell__channels,
+.ec-shell__members {
+  transition:
+    opacity var(--ec-dur-slow) var(--ec-ease),
+    filter var(--ec-dur-slow) var(--ec-ease);
+}
+.ec-shell:has(.ec-composer-textarea:focus) .ec-shell__channels,
+.ec-shell:has(.ec-composer-textarea:focus) .ec-shell__members {
+  opacity: 0.6;
+  filter: blur(1px);
+}
+.ec-shell:has(.ec-composer-textarea:focus) .ec-shell__channels:hover,
+.ec-shell:has(.ec-composer-textarea:focus) .ec-shell__members:hover {
+  opacity: 1;
+  filter: none;
+}
+/* kill-switch — эффект отключён пользователем в настройках */
+:root[data-focus-dim="off"] .ec-shell:has(.ec-composer-textarea:focus) .ec-shell__channels,
+:root[data-focus-dim="off"] .ec-shell:has(.ec-composer-textarea:focus) .ec-shell__members {
+  opacity: 1;
+  filter: none;
+}
+/* reduced-motion — авто-затухание выключаем целиком */
+@media (prefers-reduced-motion: reduce) {
+  .ec-shell:has(.ec-composer-textarea:focus) .ec-shell__channels,
+  .ec-shell:has(.ec-composer-textarea:focus) .ec-shell__members {
+    opacity: 1;
+    filter: none;
+  }
+}
+
 /* ===== Empty states ======================================= */
 
 .ec-empty {
