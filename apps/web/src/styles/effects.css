@@ -36,6 +36,64 @@ html[data-ec-theme="solar"] .ec-shell::before {
   filter: saturate(0.72) brightness(1.18);
 }
 
+/* ===== SOLAR theme — shell-каркас (v1.1.67, слайс 1) =========
+   Декоративный слой «Immersive app surface» (components.css) хардкодит
+   тёмные поверхности через !important — перекрываем их theme-scoped
+   !important-правилами: специфичность html[data-ec-theme] .x (0,2,1)
+   бьёт .x (0,1,0). Затрагивает ТОЛЬКО SOLAR; VOID (тёмная) не меняется.
+   Значения — через SOLAR-токены (см. блок выше). */
+html[data-ec-theme="solar"] .ec-shell {
+  background:
+    linear-gradient(135deg, hsl(210 34% 96%), hsl(210 28% 92%) 58%, hsl(210 32% 95%)) !important;
+}
+/* тёмный vignette ::after в светлой теме затемнял бы края — гасим */
+html[data-ec-theme="solar"] .ec-shell::after {
+  opacity: 0;
+}
+html[data-ec-theme="solar"] .ec-shell__top {
+  background:
+    linear-gradient(180deg, hsl(210 38% 99% / 0.92), hsl(210 30% 96% / 0.86)) !important;
+  border-bottom-color: var(--ec-border-default) !important;
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.7),
+    0 10px 28px -18px hsl(216 38% 28% / 0.28) !important;
+}
+html[data-ec-theme="solar"] .ec-shell__brand-home {
+  background: linear-gradient(180deg, var(--ec-surface-3), var(--ec-surface-2)) !important;
+  border-color: var(--ec-border-subtle) !important;
+}
+html[data-ec-theme="solar"] .ec-shell__top-actions .ec-btn,
+html[data-ec-theme="solar"] .ec-shell__drawer-btn,
+html[data-ec-theme="solar"] .ec-shell__user-chip {
+  background: var(--ec-surface-3) !important;
+  border-color: var(--ec-border-subtle) !important;
+  box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.6);
+}
+html[data-ec-theme="solar"] .ec-shell__top-actions .ec-btn:hover,
+html[data-ec-theme="solar"] .ec-shell__drawer-btn:hover,
+html[data-ec-theme="solar"] .ec-shell__user-chip:hover {
+  background: var(--ec-surface-4) !important;
+  border-color: var(--ec-border-accent) !important;
+}
+html[data-ec-theme="solar"] .ec-shell__channels,
+html[data-ec-theme="solar"] .ec-shell__members {
+  background: var(--ec-surface-1) !important;
+}
+html[data-ec-theme="solar"] .ec-chat-header {
+  background: linear-gradient(180deg, var(--ec-surface-2), var(--ec-surface-1)) !important;
+  border-bottom-color: var(--ec-border-subtle) !important;
+}
+html[data-ec-theme="solar"] .ec-shell__chat {
+  background:
+    radial-gradient(ellipse 40rem 26rem at 62% 4%, hsl(258 80% 55% / 0.05), transparent 62%),
+    var(--ec-bg) !important;
+}
+html[data-ec-theme="solar"] .ec-composer-box {
+  background:
+    radial-gradient(circle at 0% 0%, hsl(258 92% 42% / 0.06), transparent 42%),
+    hsl(0 0% 100% / 0.74) !important;
+}
+
 .ec-galaxy {
   position: absolute;
   pointer-events: none;
