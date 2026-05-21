@@ -52,7 +52,12 @@ const rowStyle: CSSProperties = {
   fontSize: "var(--ec-text-sm)",
   color: "var(--ec-text)",
   position: "relative",
-  transition: "background var(--ec-dur-fast) var(--ec-ease)",
+  // v1.1.63 §10 — floating depth-hover (как у сообщений slice 4 / composer),
+  // на смену tactical 1px-уголкам (.ec-corner-brackets снят со строки).
+  transition:
+    "background var(--ec-dur-fast) var(--ec-ease)," +
+    " transform var(--ec-dur-fast) var(--ec-ease)," +
+    " box-shadow var(--ec-dur-fast) var(--ec-ease)",
 };
 
 const avatarWrap: CSSProperties = {
@@ -107,6 +112,15 @@ const ROLE_TAG: Record<MemberRole, string> = {
   GUEST: "GST",
 };
 
+/** v1.1.63 §10 — русская плюрализация «узел» для network-signal-строки. */
+function pluralNodes(n: number): string {
+  const m10 = n % 10;
+  const m100 = n % 100;
+  if (m10 === 1 && m100 !== 11) return "узел";
+  if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return "узла";
+  return "узлов";
+}
+
 function statusPillClass(role: MemberRole): string {
   if (role === "OWNER") return "ec-status-pill ec-status-pill--owner";
   if (role === "ADMIN" || role === "MODERATOR") return "ec-status-pill ec-status-pill--admin";
@@ -148,15 +162,18 @@ function MemberRowView({
       : "");
   return (
     <div
-      className="ec-corner-brackets"
       style={rowStyle}
       onMouseEnter={(e) => {
         e.currentTarget.style.background = "var(--ec-surface-2)";
+        e.currentTarget.style.transform = "translateY(-1px)";
+        e.currentTarget.style.boxShadow = "var(--ec-elev-1)";
         const dmBtn = e.currentTarget.querySelector<HTMLElement>("[data-dm-btn]");
         if (dmBtn) dmBtn.style.opacity = "1";
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.background = "transparent";
+        e.currentTarget.style.transform = "";
+        e.currentTarget.style.boxShadow = "";
         const dmBtn = e.currentTarget.querySelector<HTMLElement>("[data-dm-btn]");
         if (dmBtn) dmBtn.style.opacity = "0";
       }}
@@ -268,13 +285,17 @@ export function MemberList({
   onOpenDm,
   hideHeader,
 }: Props) {
-  const { online, offline } = useMemo(() => {
+  const { online, offline, inVoiceCount } = useMemo(() => {
     const sorted = sortMembers(members);
+    const inVoice = voiceChannelByUser
+      ? members.reduce((n, m) => (voiceChannelByUser[m.userId] ? n + 1 : n), 0)
+      : 0;
     return {
       online: sorted.filter((m) => m.online),
       offline: sorted.filter((m) => !m.online),
+      inVoiceCount: inVoice,
     };
-  }, [members]);
+  }, [members, voiceChannelByUser]);
 
   return (
     <aside
@@ -321,6 +342,31 @@ export function MemberList({
             </button>
           )}
         </header>
+      )}
+
+      {/* v1.1.63 §10 — network intelligence layer: спокойная signal-строка
+          (узлы в сети / в эфире). Фиксирована под header'ом, не скроллится. */}
+      {!error && !(loading && members.length === 0) && (
+        <div className="ec-net-signal" aria-label="Состояние сети">
+          <span className="ec-net-signal__glyph" aria-hidden>
+            ◇
+          </span>
+          {online.length === 0 ? (
+            <span>сеть в покое</span>
+          ) : (
+            <span>
+              <span className="ec-net-signal__num">{online.length}</span>{" "}
+              {pluralNodes(online.length)} в сети
+              {inVoiceCount > 0 && (
+                <span className="ec-net-signal__air">
+                  {" · "}
+                  <span className="ec-net-signal__num">{inVoiceCount}</span> в
+                  эфире
+                </span>
+              )}
+            </span>
+          )}
+        </div>
       )}
 
       <div style={listScroll}>

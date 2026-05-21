@@ -5,7 +5,7 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v1.1.62** (Galaxy/Clock/Theme/Deadline effects +
+**Текущая версия в проде:** **v1.1.63** (Galaxy/Clock/Theme/Deadline effects +
 UX-copy + дизайн-полиш + редизайн WS-1 + системный редизайн + фикс
 AuthScreen + смена пароля).
 
@@ -15,8 +15,28 @@ AuthScreen + смена пароля).
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.1.62:**
+**Изменения v1.1.25 → v1.1.63:**
 
+- **v1.1.63** — **системный редизайн, инкремент 6 — tactical panel**
+  (бриф §10 «network intelligence layer»). Правая панель «ТАКТИЧЕСКИЙ
+  ВИД» (`IntelligencePanel` + `MemberList`). (1) **Premium role-badges:**
+  `.ec-status-pill--owner` был warm-orange (`hsl(28 90%)`) — свип
+  v1.1.55 тронул только cyan, этот badge остался off-identity. OWNER =
+  премиум-роль → переведён на **gold** (`--ec-accent-gold*`, #D4AF37) +
+  мягкий glow (единственный бейдж со свечением — gold-точечно). Всем
+  pill'ам добавлен тонкий inset-highlight — лёгкая глубина вместо
+  плоской заливки. (2) **Компактные строки:** per-row
+  `.ec-corner-brackets` (tactical 1px-уголки на hover) сняты со строки
+  участника — заменены floating depth-hover'ом (`translateY(-1px)` +
+  `--ec-elev-1`), консистентно со slice 4 (сообщения) и composer'ом.
+  CSS-правило `.ec-corner-brackets` живёт — ещё 3 потребителя
+  (HomeToday / StatusBoard / TeamHealth). (3) **Network intelligence
+  layer:** под header'ом панели — спокойная monospace signal-строка
+  `◇ N УЗЛОВ В СЕТИ · M В ЭФИРЕ` (online-узлы + считанные из
+  `voiceChannelByUser` voice-активные). Одна линия, без бокса/border'а
+  — тихий system-readout, постоянного веса почти не добавляет
+  (progressive disclosure). «в эфире» — teal (voice = статус).
+  CSS-бандл 113.0 → 114.1 KB raw. Дальше 7–8.
 - **v1.1.62** — **системный редизайн, инкремент 5 — сообщения + медиа**
   (бриф §8). Сами сообщения переделаны раньше (WS-1 slice 4 —
   floating-hover). Остаток §8 — медиа: у изображений (`imageWrap`)
