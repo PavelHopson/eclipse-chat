@@ -407,7 +407,7 @@ export function ComposioConnections({ serverId }: Props) {
         >
           <div
             style={{
-              background: "hsl(200 8% 9% / 0.96)",
+              background: "var(--ec-overlay-bg)",
               border: "1px solid var(--ec-border-default)",
               borderRadius: "var(--ec-radius-lg)",
               width: "min(560px, calc(100vw - 32px))",

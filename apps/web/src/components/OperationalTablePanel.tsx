@@ -58,7 +58,7 @@ const header: CSSProperties = {
   gap: "var(--ec-space-3)",
   // v1.1.12: position:relative для .ec-server-header-edge::after
   position: "relative",
-  background: "hsl(210 25% 4% / 0.55)",
+  background: "var(--ec-overlay-header-bg)",
 };
 
 const titleInput: CSSProperties = {

@@ -88,7 +88,7 @@ const headerStyle: CSSProperties = {
   gap: "var(--ec-space-2)",
   // v1.1.11: position:relative для .ec-server-header-edge::after
   position: "relative",
-  background: "hsl(210 25% 4% / 0.55)",
+  background: "var(--ec-overlay-header-bg)",
 };
 
 const bodyStyle: CSSProperties = {

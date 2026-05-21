@@ -37,7 +37,7 @@ const header: CSSProperties = {
   padding: "0 var(--ec-space-4)",
   height: 48,
   borderBottom: "1px solid var(--ec-border-subtle)",
-  background: "hsl(210 25% 4% / 0.55)",
+  background: "var(--ec-overlay-header-bg)",
   position: "relative",
 };
 

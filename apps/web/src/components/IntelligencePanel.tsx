@@ -72,7 +72,7 @@ const headerStyle: CSSProperties = {
   gap: "var(--ec-space-2)",
   padding: "var(--ec-space-3) var(--ec-space-3)",
   borderBottom: "1px solid var(--ec-border-subtle)",
-  background: "hsl(210 25% 4% / 0.55)",
+  background: "var(--ec-overlay-header-bg)",
   // v1.1.10: position:relative для .ec-server-header-edge::after holographic
   // bottom line accent.
   position: "relative",

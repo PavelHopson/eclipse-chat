@@ -29,7 +29,7 @@ const wrap: CSSProperties = {
   position: "absolute",
   bottom: 80,
   right: 16,
-  background: "hsl(200 8% 8% / 0.92)",
+  background: "var(--ec-overlay-bg)",
   backdropFilter: "saturate(180%) blur(12px)",
   WebkitBackdropFilter: "saturate(180%) blur(12px)",
   borderRadius: "var(--ec-radius-md)",
