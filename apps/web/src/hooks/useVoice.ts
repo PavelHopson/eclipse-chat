@@ -448,9 +448,11 @@ export function useVoice(socket: Socket | null = null) {
         }
 
         // Включаем mic c noise/echo/AGC constraints + selected input device.
-        // Если PTT — mic стартует MUTED. Open/VAD — стартуем enabled
-        // (VAD gate потом отключит трансляцию пока голос ниже порога,
-        // но publication остаётся live — это важно для LiveKit).
+        // v1.1.75 — mic публикуется ВСЕГДА (в т.ч. в PTT-режиме): тогда
+        // enhancer-цепочка прикрепляется один раз на join и переживает
+        // PTT. PTT/VAD глушат трек через mediaStreamTrack.enabled, не
+        // пере-publish'ат (publication остаётся live — это важно для
+        // LiveKit; muted-состояние сразу выставляется ниже).
         try {
           const constraints = noiseModeToConstraints(
             settingsRef.current.noiseSuppression,
@@ -459,7 +461,7 @@ export function useVoice(socket: Socket | null = null) {
           const isPtt = settingsRef.current.micActivationMode === "push_to_talk";
 
           await r.localParticipant.setMicrophoneEnabled(
-            !isPtt,
+            true,
             {
               ...constraints,
               ...(inputId ? { deviceId: { exact: inputId } } : {}),
@@ -500,6 +502,22 @@ export function useVoice(socket: Socket | null = null) {
           } catch (enhErr) {
             // Web Audio-цепочка не критична — mic работает на raw track.
             console.warn("Audio enhancer failed, using raw mic:", enhErr);
+          }
+
+          // v1.1.75 — PTT: трек опубликован (+ enhancer уже прикреплён),
+          // глушим его до первого нажатия клавиши через
+          // mediaStreamTrack.enabled=false. PTT-хендлеры дальше толкают
+          // тот же флаг — enhancer-цепочка переживает нажатия.
+          if (isPtt) {
+            try {
+              const lkm = await import("livekit-client");
+              const ms = r.localParticipant
+                .getTrackPublication(lkm.Track.Source.Microphone)
+                ?.audioTrack?.mediaStreamTrack;
+              if (ms) ms.enabled = false;
+            } catch {
+              /* no-op */
+            }
           }
         } catch (micErr) {
           setError(
@@ -616,6 +634,38 @@ export function useVoice(socket: Socket | null = null) {
     const key = settings.pttKey;
     let pressed = false;
 
+    // v1.1.75 — PTT толкает mediaStreamTrack.enabled опубликованного
+    // mic-трека (как VAD-gate), а НЕ setMicrophoneEnabled — последний
+    // пере-acquire'ил raw-трек на каждое нажатие и ронял enhancer-цепочку
+    // (mic gain + DSP). lk импортируем один раз для резолва публикации;
+    // пока не загрузился / трек недоступен — fallback на старый
+    // setMicrophoneEnabled (PTT не ломается, просто без enhancer).
+    let lkMod: typeof import("livekit-client") | null = null;
+    void import("livekit-client").then((m) => {
+      lkMod = m;
+    });
+
+    const setMicLive = (live: boolean) => {
+      const r = roomRef.current;
+      const ms =
+        lkMod && r
+          ? r.localParticipant
+              .getTrackPublication(lkMod.Track.Source.Microphone)
+              ?.audioTrack?.mediaStreamTrack ?? null
+          : null;
+      if (ms) {
+        ms.enabled = live;
+        setIsMicMuted(!live);
+        refreshParticipants();
+      } else if (r) {
+        // fallback — трек ещё не резолвится: старый путь.
+        void r.localParticipant.setMicrophoneEnabled(live).then(() => {
+          setIsMicMuted(!live);
+          refreshParticipants();
+        });
+      }
+    };
+
     const isPttKey = (e: KeyboardEvent) => e.code === key;
     const isTypingTarget = (target: EventTarget | null) => {
       if (!(target instanceof HTMLElement)) return false;
@@ -635,13 +685,7 @@ export function useVoice(socket: Socket | null = null) {
       if (pressed) return;
       pressed = true;
       setPttActive(true);
-      const r = roomRef.current;
-      if (r) {
-        void r.localParticipant.setMicrophoneEnabled(true).then(() => {
-          setIsMicMuted(false);
-          refreshParticipants();
-        });
-      }
+      setMicLive(true);
       e.preventDefault();
     };
 
@@ -650,13 +694,7 @@ export function useVoice(socket: Socket | null = null) {
       if (!pressed) return;
       pressed = false;
       setPttActive(false);
-      const r = roomRef.current;
-      if (r) {
-        void r.localParticipant.setMicrophoneEnabled(false).then(() => {
-          setIsMicMuted(true);
-          refreshParticipants();
-        });
-      }
+      setMicLive(false);
       e.preventDefault();
     };
 
@@ -665,13 +703,7 @@ export function useVoice(socket: Socket | null = null) {
       if (pressed) {
         pressed = false;
         setPttActive(false);
-        const r = roomRef.current;
-        if (r) {
-          void r.localParticipant.setMicrophoneEnabled(false).then(() => {
-            setIsMicMuted(true);
-            refreshParticipants();
-          });
-        }
+        setMicLive(false);
       }
     };
 
