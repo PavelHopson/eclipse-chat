@@ -1,0 +1,29 @@
+/*
+ * Eclipse Chat — self-hosted typeface (v1.1.76, редизайн слайс 1).
+ *
+ * Geist + Geist Mono (Vercel, OFL-1.1) — variable woff2, веса 100–900,
+ * Latin + Cyrillic (Geist 1.7.0+ добавил кириллицу — критично для
+ * Russian-first UI). Self-host: без внешнего CDN-запроса, надёжно для
+ * RU-аудитории, файлы фингерпринтятся Vite'ом.
+ *
+ * ⚠️ Контекст: до этой версии tokens.css ссылался на Orbitron / Inter /
+ * JetBrains Mono, но НИ ОДИН шрифт не был подключён (@font-face не было
+ * нигде) — весь интерфейс рендерился системным fallback'ом. Это и был
+ * корень «дешёвого/generic» вида. Здесь шрифты впервые реально грузятся.
+ */
+
+@font-face {
+  font-family: "Geist";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("./fonts/Geist-Variable.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Geist Mono";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("./fonts/GeistMono-Variable.woff2") format("woff2");
+}

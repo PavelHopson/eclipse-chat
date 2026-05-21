@@ -1,4 +1,5 @@
-/* Global stylesheet. Импортирует tokens → reset → components → responsive → motion. */
+/* Global stylesheet. Импортирует fonts → tokens → reset → components → responsive → motion. */
+@import "./styles/fonts.css";
 @import "./styles/tokens.css";
 @import "./styles/reset.css";
 @import "./styles/components.css";

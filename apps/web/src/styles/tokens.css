@@ -130,14 +130,18 @@
   --ec-presence-dnd:        hsl(355 70% 62%);
   --ec-presence-offline:    hsl(210 10% 40%);
 
-  /* ---- Typography ---------------------------------------------- */
-  --ec-font-display:        "Orbitron", "Eurostile Extended", "Bank Gothic",
-                            "Inter Variable", "Inter", system-ui, sans-serif;
-  --ec-font-sans:           "Inter Variable", "Inter", "Segoe UI Variable",
-                            -apple-system, BlinkMacSystemFont, system-ui,
-                            "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --ec-font-mono:           "JetBrains Mono", "SF Mono", "Cascadia Mono",
-                            Consolas, "Liberation Mono", Menlo, monospace;
+  /* ---- Typography ----------------------------------------------
+     v1.1.76 — Geist (self-hosted, см. fonts.css). Display = тот же
+     Geist: иерархия строится весом + размером, без отдельного
+     sci-fi-шрифта (Orbitron убран — это было generic-клише). */
+  --ec-font-display:        "Geist", -apple-system, BlinkMacSystemFont,
+                            "Segoe UI", system-ui, sans-serif;
+  --ec-font-sans:           "Geist", -apple-system, BlinkMacSystemFont,
+                            "Segoe UI", system-ui, Roboto, "Helvetica Neue",
+                            Arial, sans-serif;
+  --ec-font-mono:           "Geist Mono", ui-monospace, "SF Mono",
+                            "Cascadia Mono", Consolas, "Liberation Mono",
+                            Menlo, monospace;
 
   /*
    * Type scale — modular ratio 1.25 (major third). Применён после
