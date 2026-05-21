@@ -20,7 +20,7 @@ type Props = {
 
 const menu: CSSProperties = {
   position: "fixed",
-  background: "hsl(200 8% 10% / 0.96)",
+  background: "var(--ec-overlay-bg)",
   backdropFilter: "saturate(180%) blur(14px)",
   WebkitBackdropFilter: "saturate(180%) blur(14px)",
   borderRadius: "var(--ec-radius-md)",

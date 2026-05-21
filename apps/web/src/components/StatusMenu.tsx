@@ -12,7 +12,7 @@ type Props = {
 
 const popover: CSSProperties = {
   position: "fixed",
-  background: "hsl(200 8% 12% / 0.92)",
+  background: "var(--ec-overlay-bg)",
   backdropFilter: "saturate(180%) blur(14px)",
   WebkitBackdropFilter: "saturate(180%) blur(14px)",
   border: "1px solid var(--ec-border-default)",

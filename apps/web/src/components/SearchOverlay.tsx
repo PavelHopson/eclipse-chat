@@ -55,7 +55,7 @@ const panel: CSSProperties = {
   maxHeight: "75vh",
   display: "flex",
   flexDirection: "column",
-  background: "hsl(200 8% 9% / 0.94)",
+  background: "var(--ec-overlay-bg)",
   backdropFilter: "saturate(180%) blur(20px)",
   WebkitBackdropFilter: "saturate(180%) blur(20px)",
   border: "1px solid var(--ec-border-default)",
@@ -71,7 +71,7 @@ const searchInputWrap: CSSProperties = {
   gap: 10,
   padding: "var(--ec-space-3) var(--ec-space-4)",
   borderBottom: "1px solid var(--ec-border-subtle)",
-  background: "hsl(210 25% 4% / 0.55)",
+  background: "var(--ec-overlay-header-bg)",
   position: "relative",
 };
 

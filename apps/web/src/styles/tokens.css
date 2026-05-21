@@ -225,6 +225,12 @@
                             0 10px 30px rgba(0, 0, 0, 0.45);
   --ec-glass-blur:          20px;
 
+  /* Floating overlay surfaces — модалки / меню / popover'ы / search.
+     Theme-aware: SOLAR-значения переопределяются в effects.css.
+     v1.1.70 — SOLAR слайс 2. */
+  --ec-overlay-bg:          hsl(200 9% 10% / 0.93);
+  --ec-overlay-header-bg:   hsl(210 25% 4% / 0.55);
+
   /*
    * Atmospheric glows — для accent-areas (AI blocks, live status, voice
    * rooms). По brief используем как atmospheric layer, не яркие акценты

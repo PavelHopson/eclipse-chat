@@ -27,6 +27,9 @@ html[data-ec-theme="solar"] {
     0 1px 2px hsl(218 30% 18% / 0.08);
   --ec-elev-1: 0 14px 32px -24px hsl(216 40% 18% / 0.42);
   --ec-elev-2: 0 20px 46px -26px hsl(216 45% 18% / 0.5);
+  /* v1.1.70 SOLAR слайс 2 — плавающие overlay-поверхности. */
+  --ec-overlay-bg: hsl(210 33% 99% / 0.97);
+  --ec-overlay-header-bg: hsl(210 24% 91% / 0.62);
   color-scheme: light;
 }
 

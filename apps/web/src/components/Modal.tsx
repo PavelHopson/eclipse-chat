@@ -82,7 +82,7 @@ export function Modal({ title, onClose, children, footer, width = 440 }: Props) 
   // обрезает modal под виртуальной клавиатурой. min() гарантирует
   // что на desktop с большим экраном не растягиваем без надобности.
   const box: CSSProperties = {
-    background: "hsl(200 8% 9% / 0.92)",
+    background: "var(--ec-overlay-bg)",
     backdropFilter: "saturate(180%) blur(20px)",
     WebkitBackdropFilter: "saturate(180%) blur(20px)",
     boxShadow: "var(--ec-shadow-modal)",
