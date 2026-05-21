@@ -43,6 +43,21 @@
     <link rel="canonical" href="https://app.star-crm.ru/eclipse-chat/" />
     <meta name="robots" content="noindex" />
     <!-- noindex пока private alpha; снять когда выйдем на public landing -->
+
+    <!-- v1.1.64 §12 — density mode: применяем data-density до первой
+         отрисовки (анти-FOUC), иначе layout прыгнул бы после mount React. -->
+    <script>
+      (function () {
+        try {
+          var d = localStorage.getItem("eclipse_chat_density");
+          if (d === "compact" || d === "tactical") {
+            document.documentElement.setAttribute("data-density", d);
+          }
+        } catch (e) {
+          /* ignore */
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

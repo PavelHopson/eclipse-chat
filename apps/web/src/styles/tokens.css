@@ -822,6 +822,31 @@
   color: var(--ec-accent-2);
 }
 
+/* ===== Density modes (v1.1.64 §12) =========================
+   data-density на <html> переопределяет примитивную spacing-шкалу —
+   density меняет ритм всего интерфейса разом (компоненты используют
+   --ec-space-* повсеместно). balanced = default, атрибут не ставится.
+   Селектор :root[data-density] (0,2,0) гарантированно бьёт :root (0,1,0)
+   независимо от порядка в файле. */
+:root[data-density="compact"] {
+  --ec-space-1: 0.25rem;     /* 4  — пол: micro-gap не сжимаем */
+  --ec-space-2: 0.4375rem;   /* 7  */
+  --ec-space-3: 0.625rem;    /* 10 */
+  --ec-space-4: 0.8125rem;   /* 13 */
+  --ec-space-5: 1rem;        /* 16 */
+  --ec-space-6: 1.25rem;     /* 20 */
+  --ec-space-8: 1.6875rem;   /* 27 */
+}
+:root[data-density="tactical"] {
+  --ec-space-1: 0.1875rem;   /* 3  */
+  --ec-space-2: 0.375rem;    /* 6  */
+  --ec-space-3: 0.5625rem;   /* 9  */
+  --ec-space-4: 0.75rem;     /* 12 */
+  --ec-space-5: 0.875rem;    /* 14 */
+  --ec-space-6: 1.0625rem;   /* 17 */
+  --ec-space-8: 1.4375rem;   /* 23 */
+}
+
 /* Rotate child on hover — для composer Plus icon. */
 .ec-rotate-hover svg,
 .ec-rotate-hover-target {

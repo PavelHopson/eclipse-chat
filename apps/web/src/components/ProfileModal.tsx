@@ -10,6 +10,14 @@ import {
   type PushPreferences,
 } from "../hooks/usePushPreferences";
 import { useChangePassword } from "../hooks/useChangePassword";
+import { useDensity, type Density } from "../hooks/useDensity";
+
+/** v1.1.64 §12 — варианты плотности для сегмент-контрола. */
+const DENSITY_OPTIONS: Array<{ id: Density; label: string }> = [
+  { id: "balanced", label: "Стандарт" },
+  { id: "compact", label: "Компактно" },
+  { id: "tactical", label: "Тактика" },
+];
 
 type Props = {
   profile: Profile;
@@ -55,6 +63,9 @@ export function ProfileModal({
   // v0.85 #27 phase 4: per-event-type toggles. Fetch только когда push enabled.
   const pushPrefs = usePushPreferences(push.enabled);
   const [showPrefs, setShowPrefs] = useState(false);
+
+  // v1.1.64 §12 — плотность интерфейса.
+  const { density, setDensity } = useDensity();
 
   // Смена пароля — collapsible секция.
   const { changePassword, busy: pwdBusy } = useChangePassword();
@@ -362,6 +373,65 @@ export function ProfileModal({
       {error && (
         <p style={{ margin: 0, color: "var(--ec-danger)", fontSize: "var(--ec-text-sm)" }}>{error}</p>
       )}
+
+      {/* v1.1.64 §12 — density modes: плотность интерфейса. */}
+      <section
+        style={{
+          ...avatarSection,
+          flexDirection: "column",
+          alignItems: "stretch",
+          gap: "var(--ec-space-3)",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "var(--ec-space-4)" }}>
+          <div
+            aria-hidden
+            style={{
+              width: 48,
+              height: 48,
+              flexShrink: 0,
+              borderRadius: "var(--ec-radius-md)",
+              display: "grid",
+              placeItems: "center",
+              background: "var(--ec-surface-3)",
+              color: "var(--ec-text-muted)",
+            }}
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <line x1="3" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="18" x2="21" y2="18" />
+            </svg>
+          </div>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
+            <strong style={{ color: "var(--ec-text-strong)", fontSize: "var(--ec-text-sm)" }}>
+              Плотность интерфейса
+            </strong>
+            <span style={{ fontSize: "var(--ec-text-2xs)", color: "var(--ec-text-muted)", lineHeight: 1.4 }}>
+              Насколько компактно показывать сообщения, каналы и списки. Применяется сразу, хранится на этом устройстве.
+            </span>
+          </div>
+        </div>
+        <div role="radiogroup" aria-label="Плотность интерфейса" className="ec-density-seg">
+          {DENSITY_OPTIONS.map((opt) => {
+            const active = density === opt.id;
+            return (
+              <button
+                key={opt.id}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                onClick={() => setDensity(opt.id)}
+                className={
+                  "ec-density-seg__btn" + (active ? " ec-density-seg__btn--active" : "")
+                }
+              >
+                {opt.label}
+              </button>
+            );
+          })}
+        </div>
+      </section>
 
       {/* v0.84 #27 phase 3: Push notifications section */}
       <section

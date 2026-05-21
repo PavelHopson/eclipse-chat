@@ -5,7 +5,7 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v1.1.63** (Galaxy/Clock/Theme/Deadline effects +
+**Текущая версия в проде:** **v1.1.64** (Galaxy/Clock/Theme/Deadline effects +
 UX-copy + дизайн-полиш + редизайн WS-1 + системный редизайн + фикс
 AuthScreen + смена пароля).
 
@@ -15,8 +15,24 @@ AuthScreen + смена пароля).
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.1.63:**
+**Изменения v1.1.25 → v1.1.64:**
 
+- **v1.1.64** — **системный редизайн, инкремент 7a — density modes**
+  (бриф §12). Инкремент 7 раздроблён на два слайса: **7a density**
+  (этот) + **7b focus dimming** (§11, следующий). Пользовательская
+  плотность интерфейса: 3 уровня **Стандарт / Компактно / Тактика**
+  (Balanced / Compact / Tactical). Архитектура: `data-density` на
+  `<html>` → CSS `:root[data-density]` переопределяет примитивную
+  spacing-шкалу `--ec-space-*` (density модифицирует primitive-слой
+  three-layer-токенов — ритм всего UI меняется разом, компоненты не
+  трогаются). Compact ≈ −18%, Tactical ≈ −27% по вертикали. Хук
+  `useDensity` (localStorage), контрол — сегментированный 3-way в
+  `ProfileModal` (новая секция «Плотность интерфейса»). Анти-FOUC:
+  inline-скрипт в `index.html` ставит `data-density` до первой
+  отрисовки. **Default = Стандарт** — для всех существующих юзеров
+  ничего не меняется (нулевой риск деплоя), Compact/Tactical строго
+  opt-in. Tactical = «плотнее всех» (выбор Pavel'я). Дальше 7b
+  (focus dimming §11) + инкремент 8.
 - **v1.1.63** — **системный редизайн, инкремент 6 — tactical panel**
   (бриф §10 «network intelligence layer»). Правая панель «ТАКТИЧЕСКИЙ
   ВИД» (`IntelligencePanel` + `MemberList`). (1) **Premium role-badges:**

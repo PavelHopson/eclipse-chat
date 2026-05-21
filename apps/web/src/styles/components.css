@@ -215,6 +215,45 @@
 .ec-dot--dnd     { background: var(--ec-presence-dnd); }
 .ec-dot--offline { background: var(--ec-presence-offline); }
 
+/* ===== Density segmented control (v1.1.64 §12) =============
+   3-way переключатель плотности в ProfileModal. Внутренние отступы
+   хардкод (px) — контрол не должен сжиматься в compact/tactical. */
+.ec-density-seg {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 3px;
+  padding: 3px;
+  background: var(--ec-surface-3);
+  border-radius: var(--ec-radius-md);
+  box-shadow: var(--ec-elev-1);
+}
+.ec-density-seg__btn {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--ec-text-muted);
+  font: inherit;
+  font-size: var(--ec-text-xs);
+  font-weight: 600;
+  padding: 0.42rem 0.4rem;
+  border-radius: var(--ec-radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background var(--ec-dur-fast) var(--ec-ease),
+    color var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-density-seg__btn:hover { color: var(--ec-text); }
+.ec-density-seg__btn--active,
+.ec-density-seg__btn--active:hover {
+  background: var(--ec-accent);
+  color: var(--ec-accent-text);
+}
+.ec-density-seg__btn:focus-visible {
+  outline: 2px solid var(--ec-accent);
+  outline-offset: 1px;
+}
+
 /* ===== Empty states ======================================= */
 
 .ec-empty {
