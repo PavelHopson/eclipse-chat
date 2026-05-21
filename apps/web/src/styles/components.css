@@ -290,41 +290,8 @@
   }
 }
 
-/* ===== Empty states ======================================= */
-
-.ec-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--ec-space-3);
-  padding: var(--ec-space-8) var(--ec-space-6);
-  color: var(--ec-text-muted);
-  text-align: center;
-  flex: 1;
-}
-
-.ec-empty-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: var(--ec-radius-full);
-  background: var(--ec-surface-2);
-  display: grid;
-  place-items: center;
-  color: var(--ec-text-dim);
-}
-
-.ec-empty-title {
-  font-size: var(--ec-text-base);
-  font-weight: 600;
-  color: var(--ec-text);
-}
-
-.ec-empty-hint {
-  font-size: var(--ec-text-sm);
-  color: var(--ec-text-muted);
-  max-width: 28ch;
-}
+/* v1.1.66 §15 — ad-hoc .ec-empty* классы удалены: все empty-states
+   мигрированы на единый компонент <EmptyState> (см. EmptyState.tsx). */
 
 /* ===== Channel/Server list items ========================== */
 

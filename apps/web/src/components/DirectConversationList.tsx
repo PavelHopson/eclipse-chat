@@ -1,6 +1,8 @@
 import type { CSSProperties } from "react";
 import { Avatar } from "./Avatar";
 import { GroupAvatar, deriveGroupTitle } from "./GroupAvatar";
+import { EmptyState } from "./EmptyState";
+import { EmptyDmIcon } from "./EmptyIcons";
 import type {
   DmConversation,
   DmConversationGroup,
@@ -326,17 +328,11 @@ export function DirectConversationList({
         )}
 
         {!loading && !error && regularConvos.length === 0 && (
-          <div className="ec-empty" style={{ padding: "var(--ec-space-5) var(--ec-space-3)" }}>
-            <div className="ec-empty-icon" aria-hidden>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
-              </svg>
-            </div>
-            <div className="ec-empty-title">Пусто</div>
-            <div className="ec-empty-hint">
-              Открой профиль участника и нажми «Написать в личку», либо собери группу через ＋ в заголовке.
-            </div>
-          </div>
+          <EmptyState
+            icon={<EmptyDmIcon />}
+            title="Пусто"
+            hint="Открой профиль участника и нажми «Написать в личку», либо собери группу через ＋ в заголовке."
+          />
         )}
 
         {regularConvos.map((c) => {

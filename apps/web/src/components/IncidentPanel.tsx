@@ -1,6 +1,8 @@
 import type { CSSProperties } from "react";
 import { useEffect, useRef, useState } from "react";
 import { RichContent } from "./RichContent";
+import { EmptyState } from "./EmptyState";
+import { EmptyIncidentIcon } from "./EmptyIcons";
 import {
   useIncidents,
   type IncidentDetail,
@@ -560,21 +562,11 @@ export function IncidentPanel({
         )}
 
         {!loading && incidents.length === 0 && (
-          <div
-            className="ec-empty"
-            style={{
-              padding: "var(--ec-space-5) var(--ec-space-3)",
-              textAlign: "center",
-            }}
-          >
-            <div className="ec-empty-title" style={{ fontSize: "var(--ec-text-base)" }}>
-              Инцидентов нет
-            </div>
-            <div className="ec-empty-hint" style={{ maxWidth: 300, margin: "0 auto" }}>
-              Когда что-то ломается — открой инцидент. Eclipse Chat создаст
-              dedicated комнату и соберёт timeline для разбора.
-            </div>
-          </div>
+          <EmptyState
+            icon={<EmptyIncidentIcon />}
+            title="Инцидентов нет"
+            hint="Когда что-то ломается — открой инцидент. Eclipse Chat создаст dedicated комнату и соберёт timeline для разбора."
+          />
         )}
 
         {openIncidents.length > 0 && (

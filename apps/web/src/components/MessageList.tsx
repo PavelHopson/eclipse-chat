@@ -5,6 +5,8 @@ import { Avatar } from "./Avatar";
 import { EmojiPicker } from "./EmojiPicker";
 import { RichContent } from "./RichContent";
 import { LinkEmbedCard } from "./LinkEmbedCard";
+import { EmptyState } from "./EmptyState";
+import { EmptyChannelIcon } from "./EmptyIcons";
 import { extractFirstUrl } from "../lib/linkExtract";
 import { gameIcon } from "../lib/gameIcons";
 import type { ActionItemStatus, ActionItemType, MessageRow } from "../hooks/useMessages";
@@ -480,38 +482,20 @@ export function MessageList({
         className="ec-message-list ec-aurora-bg"
         style={{ ...wrap, justifyContent: "center" }}
       >
-        <div className="ec-empty">
-          <div
-            className="ec-empty-icon ec-anim-limbus"
-            style={{
-              background: "var(--ec-accent-soft)",
-              color: "var(--ec-accent)",
-              boxShadow:
-                "0 0 0 1px var(--ec-accent), 0 0 28px hsl(258 90% 66% / 0.35), inset 0 0 18px hsl(258 90% 66% / 0.18)",
-            }}
-            aria-hidden
-          >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" />
-            </svg>
-          </div>
-          <div
-            className="ec-empty-title"
-            style={{ fontSize: "var(--ec-text-2xl)", letterSpacing: "var(--ec-tracking-tight)" }}
-          >
-            {channelName ? (
+        <EmptyState
+          icon={<EmptyChannelIcon />}
+          title={
+            channelName ? (
               <>
                 Начните разговор в{" "}
                 <span style={{ color: "var(--ec-accent)" }}>#{channelName}</span>
               </>
             ) : (
               "Сообщений пока нет"
-            )}
-          </div>
-          <div className="ec-empty-hint" style={{ maxWidth: 380 }}>
-            {emptyHint ?? "Будьте первым — напишите что-нибудь ниже."}
-          </div>
-        </div>
+            )
+          }
+          hint={emptyHint ?? "Будьте первым — напишите что-нибудь ниже."}
+        />
       </div>
     );
   }

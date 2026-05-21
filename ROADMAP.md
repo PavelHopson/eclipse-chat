@@ -5,9 +5,9 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v1.1.65** (Galaxy/Clock/Theme/Deadline effects +
-UX-copy + дизайн-полиш + редизайн WS-1 + системный редизайн + фикс
-AuthScreen + смена пароля).
+**Текущая версия в проде:** **v1.1.66** (Galaxy/Clock/Theme/Deadline effects +
+UX-copy + дизайн-полиш + редизайн WS-1 + системный редизайн ЗАКРЫТ 8/8 +
+фикс AuthScreen + смена пароля).
 
 > **⚠️ ЦВЕТ-ПРАВИЛО ИЗМЕНЕНО (бриф Pavel'я 20.05.2026).** Прежнее
 > «cool-tone, НИКОГДА warm» — ОТМЕНЕНО. Новая identity: **violet
@@ -15,8 +15,26 @@ AuthScreen + смена пароля).
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.1.65:**
+**Изменения v1.1.25 → v1.1.66:**
 
+- **v1.1.66** — **системный редизайн, инкремент 8 — полиш (empty
+  states)** (бриф §15). **Завершает системный редизайн — 8/8.**
+  Триаж §15: компонент `EmptyState` + game-icon-set `EmptyIcons`
+  были созданы (v1.1.22) как единый паттерн, но миграция не была
+  доведена — 4 компонента (`MessageList`, `DirectConversationList`,
+  `IncidentPanel`, `BotsTab`) всё ещё держали ad-hoc
+  `<div className="ec-empty">` со своей вёрсткой. Все 4 мигрированы
+  на `<EmptyState>` + game-иконки (void_signal / data_shard /
+  bug_core / bot_eye) — единый calm-ритм, floating-иконка,
+  консистентная типографика. `EmptyState.title` расширен `string`
+  → `ReactNode` (для inline-акцента «#канал» в empty-channel).
+  Мёртвый CSS `.ec-empty*` (4 правила в components.css + 1 в
+  responsive.css) удалён. CSS-бандл 116.2 → 115.5 KB (−0.6 KB).
+  Motion отдельной правки не потребовал — motion.css организован,
+  без leftover cyan, reduced-motion покрыт; миграция заодно
+  унифицировала motion empty-states (общий game-icon-float). Custom
+  emoji (§16) — отдельным треком (нужны Gemini-ассеты + backend),
+  в инкремент не входит. **Системный редизайн закрыт 8/8.**
 - **v1.1.65** — **системный редизайн, инкремент 7b — focus dimming**
   (бриф §11, «Тихий фокус»). Завершает инкремент 7. Пока курсор в
   composer'е (набор сообщения), боковые панели `.ec-shell__channels`

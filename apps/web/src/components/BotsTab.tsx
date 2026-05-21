@@ -7,6 +7,8 @@ import {
   type BotTestResult,
   type BotUsage,
 } from "../hooks/useBots";
+import { EmptyState } from "./EmptyState";
+import { EmptyBotsIcon } from "./EmptyIcons";
 import {
   BOT_ROLES,
   BOT_ROLE_COLORS,
@@ -697,41 +699,11 @@ export function BotsTab({ serverId }: Props) {
         )}
 
         {!loading && bots.length === 0 && !showCreate && (
-          <div
-            className="ec-empty"
-            style={{
-              padding: "var(--ec-space-5) var(--ec-space-4)",
-              background:
-                "linear-gradient(135deg, hsl(252 70% 70% / 0.06), hsl(258 90% 66% / 0.04))",
-              border: "1px dashed var(--ec-border-default)",
-              borderRadius: "var(--ec-radius-lg)",
-              textAlign: "center",
-            }}
-          >
-            <div
-              style={{
-                width: 44,
-                height: 44,
-                margin: "0 auto var(--ec-space-2)",
-                borderRadius: "50%",
-                background: "hsl(252 70% 70% / 0.18)",
-                color: "hsl(252 80% 78%)",
-                display: "grid",
-                placeItems: "center",
-                border: "1px solid hsl(252 70% 60% / 0.35)",
-              }}
-              aria-hidden
-            >
-              <BotIcon />
-            </div>
-            <div className="ec-empty-title" style={{ fontSize: "var(--ec-text-lg)" }}>
-              Пока ни одного бота
-            </div>
-            <div className="ec-empty-hint" style={{ maxWidth: 360, margin: "0 auto" }}>
-              Боты — это сервисные участники: Telegram-мост, мониторинг, AI-агенты.
-              Каждый получает API-ключ и пишет в комнаты через REST.
-            </div>
-          </div>
+          <EmptyState
+            icon={<EmptyBotsIcon />}
+            title="Пока ни одного бота"
+            hint="Боты — это сервисные участники: Telegram-мост, мониторинг, AI-агенты. Каждый получает API-ключ и пишет в комнаты через REST."
+          />
         )}
 
         {bots.map((bot) => (

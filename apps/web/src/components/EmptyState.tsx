@@ -18,7 +18,8 @@ import type { CSSProperties, ReactNode } from "react";
 
 type Props = {
   icon: ReactNode;
-  title: string;
+  /** ReactNode (а не string) — title допускает inline-акценты (#канал и т.п.). */
+  title: ReactNode;
   hint?: string;
   action?: ReactNode;
   /** compact = меньше padding, smaller icon. Default false. */

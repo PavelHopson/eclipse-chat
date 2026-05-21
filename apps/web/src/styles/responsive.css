@@ -415,10 +415,6 @@
     white-space: nowrap;
     text-overflow: ellipsis;
   }
-  /* MessageList на mobile — меньше horizontal padding */
-  .ec-shell__chat .ec-empty {
-    padding: var(--ec-space-4) var(--ec-space-3);
-  }
 }
 
 /* ===== IntelligencePanel tab bar — overflow-safe layout =========
