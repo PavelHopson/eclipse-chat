@@ -74,7 +74,7 @@ function statCard(color: string): CSSProperties {
     gap: 4,
     padding: "var(--ec-space-3) var(--ec-space-4)",
     borderRadius: "var(--ec-radius-lg)",
-    background: "hsl(208 16% 10% / 0.6)",
+    background: "var(--ec-surface-sunken)",
     // WS-1 v1.1.39: accent-bar + hairline-край + мягкая глубина —
     // карточка «парит», без линии-рамки.
     boxShadow: `inset 3px 0 0 0 ${color}, var(--ec-edge), 0 8px 24px -16px hsl(210 40% 2% / 0.7)`,

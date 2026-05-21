@@ -54,7 +54,7 @@ const row: CSSProperties = {
   gap: 12,
   padding: "var(--ec-space-3)",
   borderRadius: "var(--ec-radius-md)",
-  background: "hsl(208 16% 10% / 0.4)",
+  background: "var(--ec-surface-sunken)",
   border: "1px solid var(--ec-border-subtle)",
 };
 
@@ -261,7 +261,7 @@ export function IntegrationsTabContent({
                   style={{
                     fontSize: "0.7rem",
                     color: "var(--ec-text-dim)",
-                    background: "hsl(208 16% 8% / 0.6)",
+                    background: "var(--ec-surface-sunken)",
                     padding: "0.15rem 0.4rem",
                     borderRadius: "var(--ec-radius-xs)",
                     fontFamily: "var(--ec-font-mono)",

@@ -113,7 +113,7 @@ const column: CSSProperties = {
   flexDirection: "column",
   minHeight: 0,
   borderRadius: "var(--ec-radius-lg)",
-  background: "hsl(208 16% 9% / 0.55)",
+  background: "var(--ec-surface-sunken)",
   // WS-1 v1.1.43: border → глубина (elevation); drop-target = подъём.
   boxShadow: "var(--ec-elev-1)",
 };

@@ -101,7 +101,7 @@ const row: CSSProperties = {
   gap: 12,
   padding: "var(--ec-space-3)",
   borderRadius: "var(--ec-radius-md)",
-  background: "hsl(208 16% 10% / 0.4)",
+  background: "var(--ec-surface-sunken)",
   border: "1px solid var(--ec-border-subtle)",
 };
 

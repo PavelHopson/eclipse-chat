@@ -230,6 +230,9 @@
      v1.1.70 — SOLAR слайс 2. */
   --ec-overlay-bg:          hsl(200 9% 10% / 0.93);
   --ec-overlay-header-bg:   hsl(210 25% 4% / 0.55);
+  /* Recessed / sunken sub-panel — карточки, табы, code-блоки внутри
+     панелей. Theme-aware (SOLAR — в effects.css). v1.1.73. */
+  --ec-surface-sunken:      hsl(208 16% 9% / 0.55);
 
   /*
    * Atmospheric glows — для accent-areas (AI blocks, live status, voice

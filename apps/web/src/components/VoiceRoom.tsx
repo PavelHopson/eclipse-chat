@@ -397,7 +397,10 @@ function VideoTrackTile({
           <span
             style={{
               display: "block",
-              color: "var(--ec-text-strong)",
+              // v1.1.73 — метка над видео-scrim'ом: фиксированно-светлый
+              // текст (white-on-scrim читается в обеих темах; --ec-text-*
+              // в SOLAR тёмный → на тёмном scrim'е был бы нечитаем).
+              color: "hsl(0 0% 100%)",
               fontWeight: 600,
               fontSize: "var(--ec-text-sm)",
               overflow: "hidden",
@@ -413,7 +416,7 @@ function VideoTrackTile({
               display: "inline-flex",
               alignItems: "center",
               gap: 5,
-              color: "var(--ec-text-muted)",
+              color: "hsl(218 14% 82%)",
               fontSize: "var(--ec-text-2xs)",
             }}
           >

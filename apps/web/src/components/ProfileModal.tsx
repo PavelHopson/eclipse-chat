@@ -275,7 +275,7 @@ export function ProfileModal({
             flexDirection: "column",
             gap: "var(--ec-space-2)",
             padding: "var(--ec-space-3) var(--ec-space-4)",
-            background: "hsl(208 16% 10% / 0.5)",
+            background: "var(--ec-surface-sunken)",
             border: "1px solid var(--ec-border-subtle)",
             borderRadius: "var(--ec-radius-md)",
           }}
@@ -575,7 +575,7 @@ export function ProfileModal({
             flexDirection: "column",
             gap: "var(--ec-space-2)",
             padding: "var(--ec-space-3) var(--ec-space-4)",
-            background: "hsl(208 16% 10% / 0.5)",
+            background: "var(--ec-surface-sunken)",
             border: "1px solid var(--ec-border-subtle)",
             borderRadius: "var(--ec-radius-md)",
           }}

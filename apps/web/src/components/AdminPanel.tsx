@@ -216,7 +216,7 @@ const tabBar: CSSProperties = {
   display: "flex",
   gap: "var(--ec-space-1)",
   padding: 4,
-  background: "hsl(208 16% 8% / 0.6)",
+  background: "var(--ec-surface-sunken)",
   border: "1px solid var(--ec-border-subtle)",
   borderRadius: "var(--ec-radius-lg)",
   alignSelf: "flex-start",
@@ -241,7 +241,7 @@ function tabBtn(active: boolean): CSSProperties {
 const card: CSSProperties = {
   padding: "var(--ec-space-4)",
   borderRadius: "var(--ec-radius-lg)",
-  background: "hsl(208 16% 10% / 0.55)",
+  background: "var(--ec-surface-sunken)",
   border: "1px solid var(--ec-border-subtle)",
   display: "flex",
   flexDirection: "column",
@@ -269,7 +269,7 @@ const row: CSSProperties = {
   gap: 12,
   padding: "var(--ec-space-2) var(--ec-space-3)",
   borderRadius: "var(--ec-radius-md)",
-  background: "hsl(208 16% 10% / 0.4)",
+  background: "var(--ec-surface-sunken)",
   border: "1px solid var(--ec-border-subtle)",
 };
 
@@ -953,7 +953,7 @@ export function AdminPanel({
                         colSpan={ROLE_ORDER.length + 1}
                         style={{
                           padding: "0.45rem 0.6rem",
-                          background: "hsl(208 16% 10% / 0.6)",
+                          background: "var(--ec-surface-sunken)",
                           color: "var(--ec-text-dim)",
                           fontWeight: 700,
                           letterSpacing: "var(--ec-tracking-caps)",
@@ -1405,7 +1405,7 @@ function AutomationRow({
         gap: "var(--ec-space-3)",
         padding: "var(--ec-space-3) var(--ec-space-4)",
         borderRadius: "var(--ec-radius-md)",
-        background: "hsl(208 16% 10% / 0.55)",
+        background: "var(--ec-surface-sunken)",
         border: "1px solid var(--ec-border-subtle)",
         alignItems: "center",
       }}
@@ -1686,7 +1686,7 @@ function CreateRuleForm({
       style={{
         padding: "var(--ec-space-4)",
         borderRadius: "var(--ec-radius-lg)",
-        background: "hsl(208 16% 8% / 0.8)",
+        background: "var(--ec-surface-sunken)",
         border: "1px solid var(--ec-border-accent)",
         display: "flex",
         flexDirection: "column",
