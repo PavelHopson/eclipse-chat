@@ -1223,20 +1223,24 @@
 
 .ec-composer-box {
   overflow: hidden;
+  /* v1.1.61 redesign §9 — полупрозрачный glass-composer: стекло +
+     backdrop-blur, мягкая тень глубины для «floating». */
   background:
-    radial-gradient(circle at 0% 0%, hsl(258 70% 60% / 0.10), transparent 34%),
-    linear-gradient(180deg, hsl(216 24% 11% / 0.92), hsl(216 24% 8% / 0.94)) !important;
-  border-color: hsl(258 70% 72% / 0.12) !important;
+    radial-gradient(circle at 0% 0%, hsl(258 90% 66% / 0.07), transparent 42%),
+    hsl(216 24% 10% / 0.55) !important;
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  border-color: hsl(258 70% 72% / 0.10) !important;
   box-shadow:
     inset 0 1px 0 hsl(0 0% 100% / 0.04),
-    0 18px 48px hsl(210 70% 2% / 0.28);
+    0 14px 36px -10px hsl(210 70% 2% / 0.5);
 }
 
+/* Focus — мягкое свечение вместо жёсткого ring'а (§9 «soft glow»). */
 .ec-composer-box:focus-within {
-  border-color: hsl(258 70% 60% / 0.42) !important;
+  border-color: hsl(258 90% 66% / 0.32) !important;
   box-shadow:
-    0 0 0 1px hsl(258 70% 60% / 0.16),
-    0 0 34px hsl(258 70% 60% / 0.10),
+    0 0 22px -2px hsl(258 90% 66% / 0.3),
     inset 0 1px 0 hsl(0 0% 100% / 0.05) !important;
 }
 

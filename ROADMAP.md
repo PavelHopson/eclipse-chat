@@ -5,7 +5,7 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия в проде:** **v1.1.60** (Galaxy/Clock/Theme/Deadline effects +
+**Текущая версия в проде:** **v1.1.61** (Galaxy/Clock/Theme/Deadline effects +
 UX-copy + дизайн-полиш + редизайн WS-1 + системный редизайн + фикс
 AuthScreen + смена пароля).
 
@@ -15,8 +15,19 @@ AuthScreen + смена пароля).
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.1.60:**
+**Изменения v1.1.25 → v1.1.61:**
 
+- **v1.1.61** — **системный редизайн, инкремент 4 — composer** (бриф
+  §9 «command / signal composer»). `.ec-composer-box` — полупрозрачный
+  glass: фон `hsl(216 24% 10% / 0.55)` + `backdrop-filter: blur(20px)`
+  + мягкая тень глубины («floating»). Focus — мягкое свечение
+  (`0 0 22px` glow) вместо жёсткого 1px-ring'а. Высота ↓ (vertical
+  padding `space-2`→`space-1`). icon-кнопки компактнее (32→28),
+  send-кнопка компактнее (padding `0.55/0.9`→`0.4/0.7`). Плейсхолдер
+  в Eclipse-стиле: «Передача сигнала в #канал…» / «Открыт защищённый
+  канал…». Slash-command-first (новые `/poll /ai /note /deploy
+  /remind` из брифа) НЕ добавлены — требуют backend-обработчиков;
+  текущие `/task /decision /followup` сохранены. Дальше 5–8.
 - **v1.1.60** — **системный редизайн, инкремент 3 — channels panel**
   (бриф §3). Дополняет WS-1 slice 3 (иерархия rest/unread/active
   была сделана). active-канал: убран дублирующий accent-бар

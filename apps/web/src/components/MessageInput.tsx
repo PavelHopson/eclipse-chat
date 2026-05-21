@@ -77,7 +77,7 @@ const composerBox: CSSProperties = {
   gridTemplateColumns: "auto 1fr auto",
   gap: "var(--ec-space-2)",
   alignItems: "end",
-  padding: "var(--ec-space-2) var(--ec-space-3)",
+  padding: "var(--ec-space-1) var(--ec-space-3)",
   background: "var(--ec-input-bg)",
   border: "1px solid var(--ec-border-default)",
   borderRadius: "var(--ec-radius-lg)",
@@ -106,8 +106,8 @@ const textarea: CSSProperties = {
 };
 
 const iconBtn: CSSProperties = {
-  width: 32,
-  height: 32,
+  width: 28,
+  height: 28,
   borderRadius: "var(--ec-radius-md)",
   display: "flex",
   alignItems: "center",
@@ -124,7 +124,7 @@ const sendBtn: CSSProperties = {
   alignItems: "center",
   justifyContent: "center",
   gap: "var(--ec-space-2)",
-  padding: "0.55rem 0.9rem",
+  padding: "0.4rem 0.7rem",
   background: "var(--ec-accent)",
   color: "var(--ec-accent-text)",
   border: "1px solid var(--ec-accent)",
@@ -1061,7 +1061,7 @@ export function MessageInput({
             setTimeout(() => setTrigger(null), 120);
           }}
           placeholder={
-            placeholder ?? (channelName ? `ВВОД СООБЩЕНИЯ в #${channelName}…` : "ВВОД СООБЩЕНИЯ…")
+            placeholder ?? (channelName ? `Передача сигнала в #${channelName}…` : "Открыт защищённый канал…")
           }
           disabled={disabled}
           className="ec-composer-textarea"
