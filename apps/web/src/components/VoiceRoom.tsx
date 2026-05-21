@@ -73,7 +73,7 @@ const topBar: CSSProperties = {
   zIndex: 2,
   // отделяем не рамкой, а мягкой тенью-градиентом (atmospheric depth)
   background:
-    "linear-gradient(180deg, hsl(258 20% 7% / 0.92), hsl(258 20% 7% / 0))",
+    "linear-gradient(180deg, var(--ec-surface-1), transparent)",
 };
 
 const canvas: CSSProperties = {
@@ -96,7 +96,7 @@ const controlsDock: CSSProperties = {
   margin: "0 auto var(--ec-space-4)",
   padding: "var(--ec-space-2) var(--ec-space-3)",
   borderRadius: "var(--ec-radius-full)",
-  background: "hsl(208 16% 9% / 0.82)",
+  background: "var(--ec-overlay-bg)",
   backdropFilter: "blur(20px)",
   WebkitBackdropFilter: "blur(20px)",
   boxShadow:
@@ -113,9 +113,9 @@ const controlBtn: CSSProperties = {
   borderRadius: "var(--ec-radius-full)",
   display: "grid",
   placeItems: "center",
-  background: "hsl(210 14% 14% / 0.9)",
+  background: "var(--ec-surface-3)",
   color: "var(--ec-text)",
-  border: "1px solid hsl(258 30% 50% / 0.12)",
+  border: "1px solid var(--ec-border-subtle)",
   cursor: "pointer",
   transition:
     "background var(--ec-dur-fast) var(--ec-ease), color var(--ec-dur-fast) var(--ec-ease), border-color var(--ec-dur-fast) var(--ec-ease), transform var(--ec-dur-fast) var(--ec-ease)",
@@ -160,8 +160,8 @@ function presenceCardStyle(speaking: boolean, dimmed: boolean): CSSProperties {
     borderRadius: "var(--ec-radius-xl)",
     // no hard box — мягкая подложка + тень для depth
     background: speaking
-      ? "radial-gradient(ellipse at 50% 30%, hsl(258 90% 66% / 0.16), hsl(208 16% 11% / 0.55))"
-      : "hsl(208 16% 11% / 0.45)",
+      ? "radial-gradient(ellipse at 50% 30%, hsl(258 90% 66% / 0.16), var(--ec-surface-2))"
+      : "var(--ec-surface-2)",
     boxShadow: speaking
       ? "0 0 0 1px hsl(258 90% 66% / 0.4), 0 12px 40px -8px hsl(258 70% 50% / 0.35)"
       : "0 10px 30px -12px hsl(210 40% 2% / 0.7)",
@@ -182,7 +182,7 @@ const muteBadge: CSSProperties = {
   color: "var(--ec-accent-text)",
   display: "grid",
   placeItems: "center",
-  border: "2px solid hsl(208 16% 9%)",
+  border: "2px solid var(--ec-bg)",
 };
 
 /* ===== Video stage ========================================= */
@@ -253,7 +253,7 @@ function stripChipStyle(speaking: boolean): CSSProperties {
     gap: 8,
     padding: "0.3rem 0.7rem 0.3rem 0.3rem",
     borderRadius: "var(--ec-radius-full)",
-    background: "hsl(208 16% 11% / 0.7)",
+    background: "var(--ec-surface-2)",
     boxShadow: speaking
       ? "0 0 0 1px hsl(258 90% 66% / 0.45), 0 0 14px -3px hsl(258 70% 55% / 0.5)"
       : "0 6px 18px -10px hsl(210 40% 2% / 0.7)",
@@ -1056,8 +1056,8 @@ export function VoiceRoom({
                 display: "flex",
                 alignItems: "center",
                 gap: 8,
-                background: "hsl(210 14% 14% / 0.9)",
-                border: "1px solid hsl(258 30% 50% / 0.12)",
+                background: "var(--ec-surface-3)",
+                border: "1px solid var(--ec-border-subtle)",
                 borderRadius: "var(--ec-radius-full)",
                 padding: "0 12px",
                 height: 44,

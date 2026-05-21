@@ -97,6 +97,14 @@ html[data-ec-theme="solar"] .ec-composer-box {
     hsl(0 0% 100% / 0.74) !important;
 }
 
+/* v1.1.71 SOLAR слайс 3 — voice-room фон: тёмные atmospheric-радиалы
+   roomWrap'а в светлой теме давали бы тёмные фиолетовые пятна. */
+html[data-ec-theme="solar"] .ec-voice-room {
+  background:
+    radial-gradient(ellipse 70% 55% at 22% -8%, hsl(258 70% 60% / 0.08), transparent 58%),
+    var(--ec-bg) !important;
+}
+
 .ec-galaxy {
   position: absolute;
   pointer-events: none;
