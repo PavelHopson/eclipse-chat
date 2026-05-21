@@ -46,7 +46,11 @@ const imageWrap: CSSProperties = {
   overflow: "hidden",
   cursor: "zoom-in",
   position: "relative",
-  transition: "transform var(--ec-dur-fast) var(--ec-ease)",
+  // v1.1.62 redesign §8 — «subtle media frame»: мягкая тень глубины,
+  // картинка читается как лёгкая floating-карточка, не ломает поток чата.
+  boxShadow: "0 8px 24px -12px hsl(210 60% 2% / 0.6)",
+  transition:
+    "transform var(--ec-dur-fast) var(--ec-ease), box-shadow var(--ec-dur-fast) var(--ec-ease)",
 };
 
 const fileChip: CSSProperties = {
@@ -724,10 +728,15 @@ function ImageItem({ a, onOpen }: { a: Attachment; onOpen: (a: Attachment) => vo
       }}
       aria-label={`Открыть изображение ${a.filename}`}
       onMouseEnter={(e) => {
-        e.currentTarget.style.transform = "scale(1.005)";
+        // v1.1.62 §8 — медиа «всплывает» на hover, как floating-сообщения.
+        e.currentTarget.style.transform = "translateY(-2px)";
+        e.currentTarget.style.boxShadow =
+          "0 16px 36px -12px hsl(210 60% 2% / 0.7)";
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.transform = "scale(1)";
+        e.currentTarget.style.transform = "translateY(0)";
+        e.currentTarget.style.boxShadow =
+          "0 8px 24px -12px hsl(210 60% 2% / 0.6)";
       }}
     >
       {errored ? (
