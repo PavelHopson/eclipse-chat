@@ -332,6 +332,8 @@ function VideoTrackTile({
   lookupAvatar: (identity: string) => string | null;
 }) {
   const mountRef = useRef<HTMLDivElement | null>(null);
+  // v1.1.68 — натуральные пропорции источника (см. ниже).
+  const [aspect, setAspect] = useState<number | null>(null);
 
   useEffect(() => {
     const host = mountRef.current;
@@ -343,10 +345,27 @@ function VideoTrackTile({
     element.muted = visual.isLocal;
     element.style.width = "100%";
     element.style.height = "100%";
-    element.style.objectFit = "contain";
+    // important — защита от любого CSS, который мог бы навязать cover-кроп.
+    element.style.setProperty("object-fit", "contain", "important");
     element.style.background = "var(--ec-void)";
+
+    // v1.1.68 fix «обрезано»: тайл подстраивается под натуральные пропорции
+    // источника (videoWidth/videoHeight) → box совпадает с content → нет ни
+    // обрезки (cover), ни чёрных полос (contain), ни искажения (fill).
+    // resize ловит смену разрешения screen-share (другое окно / ресайз).
+    const syncAspect = () => {
+      if (element.videoWidth > 0 && element.videoHeight > 0) {
+        setAspect(element.videoWidth / element.videoHeight);
+      }
+    };
+    syncAspect();
+    element.addEventListener("loadedmetadata", syncAspect);
+    element.addEventListener("resize", syncAspect);
+
     host.appendChild(element);
     return () => {
+      element.removeEventListener("loadedmetadata", syncAspect);
+      element.removeEventListener("resize", syncAspect);
       try {
         visual.track.detach(element);
       } catch {
@@ -364,6 +383,9 @@ function VideoTrackTile({
     <article
       style={{
         ...videoTileWrap,
+        // v1.1.68 — пропорции тайла = пропорции источника (fallback 16:9 пока
+        // не пришла metadata). Источник больше не «обрезается» под 16:9.
+        aspectRatio: aspect ?? videoTileWrap.aspectRatio,
         // Демонстрация экрана — широкий cinematic-тайл на всю строку.
         ...(isScreen ? { flexBasis: "100%", maxWidth: "100%" } : null),
       }}
