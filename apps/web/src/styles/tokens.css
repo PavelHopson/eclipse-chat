@@ -327,11 +327,12 @@
 
 /* Active channel left-border holographic indicator. Заменяет solid
  * box-shadow inset 3px 0 0 var(--ec-accent) с breathing gradient. */
+/* v1.1.60 redesign §3 — active-канал: один чистый маркер. Hard-бар
+   `inset 3px` убран (дублировал ::before-pill); остаётся мягкое
+   внутреннее свечение слева + ::before-pill как единственный акцент. */
 .ec-channel-item--active.ec-channel-item {
   background: hsl(258 70% 60% / 0.08);
-  box-shadow:
-    inset 3px 0 0 var(--ec-accent),
-    inset 4px 0 12px -4px hsl(258 70% 60% / 0.35);
+  box-shadow: inset 4px 0 12px -4px hsl(258 70% 60% / 0.35);
 }
 
 /* Scan-line animation — horizontal sweep slow infinite. Применяется
@@ -837,8 +838,10 @@
 }
 .ec-message-row--ai:hover::after { opacity: 1; }
 
-/* Section-label diamond accent (sidebar group headings). Pseudo
- * adds rotated cyan diamond + glow слева от текста section'а. */
+/* Section-label diamond accent (sidebar group headings).
+ * v1.1.60 redesign §3 — категории каналов упрощены: единый спокойный
+ * muted-маркер, без per-type цветов и без glow. Тип канала и так
+ * виден по тексту категории + по глифам каналов. */
 .ec-section-label--diamond {
   display: inline-flex;
   align-items: center;
@@ -847,20 +850,11 @@
 .ec-section-label--diamond::before {
   content: "";
   display: inline-block;
-  width: 5px;
-  height: 5px;
-  background: var(--ec-accent);
+  width: 4px;
+  height: 4px;
+  background: var(--ec-text-dim);
   transform: rotate(45deg);
-  box-shadow: 0 0 6px hsl(258 70% 60% / 0.65);
   flex-shrink: 0;
-}
-.ec-section-label--diamond.ec-section-label--diamond-violet::before {
-  background: var(--ec-accent-3);
-  box-shadow: 0 0 6px hsl(252 70% 70% / 0.65);
-}
-.ec-section-label--diamond.ec-section-label--diamond-mint::before {
-  background: var(--ec-ok);
-  box-shadow: 0 0 6px hsl(160 55% 56% / 0.65);
 }
 
 /* HUD tab — stronger active state с top-fade gradient + bottom accent
