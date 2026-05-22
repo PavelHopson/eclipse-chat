@@ -44,7 +44,11 @@ const listScroll: CSSProperties = {
 
 const rowStyle: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "auto 1fr auto",
+  // v1.1.82 фикс: 4 трека (аватар | имя | роль-пилл | DM-кнопка).
+  // Было 3 — DM-кнопка (4-й элемент) переносилась на 2-ю grid-строку,
+  // удваивая высоту КАЖДОЙ строки участника (~36 → ~66px). 4-й auto-трек
+  // схлопывается в 0, когда DM-кнопки нет (свой профиль).
+  gridTemplateColumns: "auto 1fr auto auto",
   alignItems: "center",
   gap: "var(--ec-space-2)",
   padding: "var(--ec-space-1) var(--ec-space-2)",
