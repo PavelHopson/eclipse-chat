@@ -34,8 +34,7 @@ html[data-ec-theme="solar"] {
   color-scheme: light;
 }
 
-html[data-ec-theme="solar"] .ec-ambient,
-html[data-ec-theme="solar"] .ec-shell::before {
+html[data-ec-theme="solar"] .ec-ambient {
   opacity: 0.32;
   filter: saturate(0.72) brightness(1.18);
 }
@@ -49,10 +48,6 @@ html[data-ec-theme="solar"] .ec-shell::before {
 html[data-ec-theme="solar"] .ec-shell {
   background:
     linear-gradient(135deg, hsl(210 34% 96%), hsl(210 28% 92%) 58%, hsl(210 32% 95%)) !important;
-}
-/* тёмный vignette ::after в светлой теме затемнял бы края — гасим */
-html[data-ec-theme="solar"] .ec-shell::after {
-  opacity: 0;
 }
 html[data-ec-theme="solar"] .ec-shell__top {
   background:

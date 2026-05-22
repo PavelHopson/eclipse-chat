@@ -299,7 +299,6 @@ export function MemberList({
 
   return (
     <aside
-      className="ec-tactical-grid"
       style={hideHeader ? { ...wrap, borderLeft: "none" } : wrap}
       aria-label="Участники пространства"
     >

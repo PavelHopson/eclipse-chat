@@ -189,11 +189,6 @@
   50%      { transform: translate3d(-10px, 8px, 0); opacity: 1; }
 }
 
-@keyframes ec-console-field-drift {
-  0%, 100% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.86; }
-  50%      { transform: translate3d(-18px, 10px, 0) scale(1.015); opacity: 1; }
-}
-
 @keyframes ec-panel-glint {
   0%, 52%, 100% { transform: translateX(-135%) skewX(-18deg); opacity: 0; }
   64%           { opacity: 0.72; }

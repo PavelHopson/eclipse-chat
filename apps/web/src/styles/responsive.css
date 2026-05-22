@@ -856,11 +856,6 @@
     min-height: 100dvh;
   }
 
-  .ec-shell::before {
-    opacity: 0.58;
-    background-size: 44px 44px, 44px 44px, 280px 220px, 340px 280px, 300px 260px;
-  }
-
   .ec-shell__top {
     height: var(--ec-header-height);
     padding-inline: max(var(--ec-space-2), env(safe-area-inset-left, 0)) max(var(--ec-space-2), env(safe-area-inset-right, 0)) !important;

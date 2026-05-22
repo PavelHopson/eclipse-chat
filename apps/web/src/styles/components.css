@@ -623,49 +623,22 @@
  * живых состояний. Это декоративный слой поверх текущей логики.
  */
 
+/* v1.1.77 декластер (слайс 2): декоративный blueprint-chrome снят.
+   Раньше .ec-shell нёс 3 радиальных glow + два псевдо-слоя (dot-grid с
+   console-field-drift + диагональные accent-линии + vignette). Теперь —
+   почти флэт с одним очень слабым верхним violet-wash'ем. Linear/Notion
+   тишина вместо sci-fi подложки. */
 .ec-shell {
   position: relative;
   isolation: isolate;
   background:
-    radial-gradient(ellipse 46rem 34rem at 82% 2%, hsl(224 86% 55% / 0.13), transparent 62%),
-    radial-gradient(ellipse 34rem 28rem at 14% 92%, hsl(258 78% 45% / 0.09), transparent 64%),
-    radial-gradient(circle at 50% -18%, hsl(32 100% 64% / 0.065), transparent 36%),
-    linear-gradient(135deg, #05070a 0%, #080c12 42%, #07090d 100%) !important;
+    radial-gradient(ellipse 70rem 48rem at 50% -16%, hsl(258 55% 50% / 0.05), transparent 72%),
+    #07090d !important;
 }
 
 .ec-shell > * {
   position: relative;
   z-index: 1;
-}
-
-.ec-shell::before,
-.ec-shell::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-}
-
-.ec-shell::before {
-  background-image:
-    linear-gradient(hsl(258 90% 82% / 0.027) 1px, transparent 1px),
-    linear-gradient(90deg, hsl(258 90% 82% / 0.022) 1px, transparent 1px),
-    radial-gradient(circle at 12% 18%, hsl(258 90% 75% / 0.16) 0 1px, transparent 2px),
-    radial-gradient(circle at 78% 24%, hsl(223 90% 76% / 0.14) 0 1px, transparent 2px),
-    radial-gradient(circle at 61% 78%, hsl(32 100% 70% / 0.10) 0 1px, transparent 2px);
-  background-size: 56px 56px, 56px 56px, 320px 260px, 420px 330px, 360px 300px;
-  mask-image: radial-gradient(ellipse 86% 78% at 56% 42%, black 30%, transparent 84%);
-  -webkit-mask-image: radial-gradient(ellipse 86% 78% at 56% 42%, black 30%, transparent 84%);
-  animation: ec-console-field-drift 26s ease-in-out infinite;
-}
-
-.ec-shell::after {
-  background:
-    linear-gradient(120deg, transparent 0 24%, hsl(258 80% 70% / 0.05) 24.2%, transparent 24.5% 100%),
-    linear-gradient(104deg, transparent 0 68%, hsl(223 90% 70% / 0.055) 68.15%, transparent 68.5% 100%),
-    radial-gradient(ellipse 70% 54% at 50% 52%, transparent 42%, hsl(0 0% 0% / 0.42) 100%);
-  opacity: 0.82;
 }
 
 .ec-shell__top {
@@ -678,19 +651,6 @@
   box-shadow:
     0 1px 0 hsl(258 70% 60% / 0.10),
     0 16px 40px hsl(210 70% 2% / 0.28) !important;
-}
-
-.ec-shell__top::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, hsl(258 88% 72% / 0.72), hsl(32 100% 68% / 0.42), transparent);
-  background-size: 44% 100%;
-  background-repeat: no-repeat;
-  animation: ec-orbit-sweep 5.2s linear infinite;
 }
 
 .ec-shell__brand-home {
@@ -824,18 +784,6 @@
   box-shadow: 0 16px 38px hsl(210 70% 2% / 0.18);
 }
 
-.ec-chat-header::after {
-  content: "";
-  position: absolute;
-  left: -20%;
-  right: -20%;
-  bottom: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, hsl(258 70% 60% / 0.45), transparent);
-  background-size: 36% 100%;
-  animation: ec-orbit-sweep 6.4s linear infinite;
-}
-
 .ec-chat-title {
   font-family: var(--ec-font-display);
   font-size: 0.86rem !important;
@@ -854,10 +802,6 @@
 .ec-message-list {
   position: relative;
   scrollbar-color: hsl(258 70% 72% / 0.20) transparent;
-  background-image:
-    linear-gradient(hsl(258 70% 72% / 0.014) 1px, transparent 1px),
-    linear-gradient(90deg, hsl(258 70% 72% / 0.012) 1px, transparent 1px);
-  background-size: 44px 44px;
 }
 
 .ec-message-list-shell {
@@ -1383,9 +1327,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ec-shell::before,
-  .ec-shell__top::after,
-  .ec-chat-header::after,
   .ec-home-today__header::after {
     animation: none !important;
   }

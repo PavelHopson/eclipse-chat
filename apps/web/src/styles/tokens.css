@@ -425,67 +425,11 @@
   scrollbar-color: hsl(210 18% 22%) transparent;
 }
 
-/* ============================================================
- * v1.1.1 Atmospheric grid background (из AI Studio mockup'а)
- * ============================================================
- * Subtle perspective grid + low-poly geometric fragments создают
- * sci-fi cyberspace feel. Применяется к main shell via ::before
- * pseudo чтобы не interfere с layout / scrolling.
- */
-.ec-shell::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  opacity: 0.45;
-  background-image:
-    /* Grid lines (vertical) */
-    linear-gradient(
-      90deg,
-      hsl(258 70% 60% / 0.06) 1px,
-      transparent 1px
-    ),
-    /* Grid lines (horizontal) */
-    linear-gradient(
-      0deg,
-      hsl(258 70% 60% / 0.06) 1px,
-      transparent 1px
-    ),
-    /* Radial fade — center spotlight */
-    radial-gradient(
-      ellipse at 50% 0%,
-      hsl(258 70% 60% / 0.06) 0%,
-      transparent 40%
-    ),
-    /* Bottom shadow */
-    radial-gradient(
-      ellipse at 50% 100%,
-      hsl(220 30% 4% / 0.6) 0%,
-      transparent 60%
-    );
-  background-size: 60px 60px, 60px 60px, 100% 100%, 100% 100%;
-  background-position: 0 0, 0 0, 0 0, 0 0;
-}
-
-/* Slow drift на background grid (perspective movement illusion).
-   Respects prefers-reduced-motion через duration token. */
-@keyframes ec-grid-drift {
-  0%   { background-position: 0 0, 0 0, 0 0, 0 0; }
-  100% { background-position: 60px 60px, -60px 60px, 0 0, 0 0; }
-}
-.ec-shell::before {
-  animation: ec-grid-drift 60s linear infinite;
-}
-@media (prefers-reduced-motion: reduce) {
-  .ec-shell::before { animation: none; }
-}
-
-/* Все grid-area children должны быть above the background. */
-.ec-shell > * {
-  position: relative;
-  z-index: 1;
-}
+/* v1.1.77 декластер (слайс 2): v1.1.1 «Atmospheric grid background»
+   (.ec-shell::before perspective-grid + ec-grid-drift) удалён целиком —
+   sci-fi подложка перекрывалась более новым blueprint-слоем из
+   components.css, который тоже снят. Дубль .ec-shell > * остался в
+   components.css. */
 
 /* Telemetry pill — для top-bar status indicators (NET/MEM/CPU style). */
 /* v1.1.38 — WS-1 «Облегчение»: телеметрия. СЕТЬ-pill всегда виден;
@@ -570,7 +514,6 @@
  *   shimmer-sweep  — hover gradient horizontal sweep (CTA buttons)
  *   breadcrumb-cyber — monospace «УЗЕЛ //» framing
  *   corner-brackets — top-right + bottom-left brackets opacity:0 → :hover 1
- *   tactical-grid  — subtle dot-grid background (panels)
  *   tactical-header — «ТАКТИЧЕСКИЙ ВИД» style header (MemberList)
  *   status-pill    — monospace OPR/MEM/etc badge
  *   rotate-hover   — child SVG rotate 90deg on hover
@@ -692,15 +635,6 @@
 }
 .ec-corner-brackets:hover::before,
 .ec-corner-brackets:hover::after { opacity: 0.75; }
-
-/* Tactical dot-grid background — subtle sci-fi подложка. */
-.ec-tactical-grid {
-  background-image:
-    linear-gradient(rgba(180, 210, 240, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(180, 210, 240, 0.025) 1px, transparent 1px);
-  background-size: 24px 24px;
-  background-position: 0 0, 0 0;
-}
 
 /* Tactical view header (MemberList top section). */
 .ec-tactical-header {
