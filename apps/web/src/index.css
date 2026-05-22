@@ -1,4 +1,4 @@
-/* Global stylesheet. Импортирует fonts → tokens → reset → components → effects → responsive → motion → player. */
+/* Global stylesheet. Импортирует fonts → tokens → reset → components → effects → responsive → motion → player → cockpit. */
 @import "./styles/fonts.css";
 @import "./styles/tokens.css";
 @import "./styles/reset.css";
@@ -7,6 +7,7 @@
 @import "./styles/responsive.css";
 @import "./styles/motion.css";
 @import "./styles/player.css";
+@import "./styles/cockpit.css";
 
 /* inline `<code>` tag — для backward compat (JoinServerModal). */
 code {

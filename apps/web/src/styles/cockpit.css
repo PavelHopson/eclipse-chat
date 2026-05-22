@@ -1,0 +1,365 @@
+/**
+ * Eclipse Chat — Execution Cockpit
+ * ============================================================
+ * v1.2.2 (трек R2). Общий визуальный язык операционных
+ * поверхностей — доска / таблица / drawer должны читаться как одна
+ * командная станция, а не «чат с таблицами».
+ *
+ * Принцип: calm command center — плотно, структурно, signal over
+ * decoration. Сдержанное движение: motion помогает понять состояние
+ * (drop-target, attention, loading), а не украшает.
+ *
+ * Все surfaces строятся из примитивов ниже — chips / cards / columns
+ * / head / state-язык — заданных ОДИН раз токенами. Никаких
+ * module-level CSSProperties-объектов и inline-консолей в touched
+ * компонентах. Цвет статуса/приоритета — динамический, передаётся
+ * через `--tone` (единственное, что допустимо инлайном).
+ *
+ * Theme-aware: VOID и SOLAR — на токенах, без оверрайдов.
+ * Префикс — `.ec-cck-*`.
+ */
+
+/* ===== Panel shell ========================================== */
+.ec-cck {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--ec-bg);
+}
+
+/* Header — композиция: identity слева, tooling справа. Спокойно:
+   chrome рецессивен, не sci-fi-крик. */
+.ec-cck__head {
+  display: flex;
+  align-items: center;
+  gap: var(--ec-space-4);
+  flex-wrap: wrap;
+  padding: var(--ec-space-3) var(--ec-space-5);
+  background: var(--ec-surface-1);
+  box-shadow: inset 0 -1px 0 var(--ec-border-subtle);
+}
+.ec-cck__headline {
+  display: flex;
+  align-items: baseline;
+  gap: var(--ec-space-2);
+  min-width: 0;
+}
+.ec-cck__title {
+  margin: 0;
+  font-size: var(--ec-text-lg);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--ec-text-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Счётчик при заголовке — тихий mono, не борется с титулом. */
+.ec-cck__count {
+  font-family: var(--ec-font-mono);
+  font-feature-settings: "tnum";
+  font-size: var(--ec-text-sm);
+  font-weight: 600;
+  color: var(--ec-text-dim);
+  flex-shrink: 0;
+}
+.ec-cck__sub {
+  font-size: var(--ec-text-2xs);
+  color: var(--ec-text-dim);
+  white-space: nowrap;
+}
+.ec-cck__tools {
+  display: flex;
+  align-items: center;
+  gap: var(--ec-space-2);
+  flex-wrap: wrap;
+}
+.ec-cck__tools--end { margin-left: auto; }
+
+/* ===== Filter chip — toggle-фильтр =========================== */
+.ec-cck-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0.3rem 0.66rem;
+  border-radius: var(--ec-radius-full);
+  border: 1px solid var(--ec-border-subtle);
+  background: transparent;
+  color: var(--ec-text-muted);
+  font-size: var(--ec-text-2xs);
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background var(--ec-dur-fast) var(--ec-ease),
+    border-color var(--ec-dur-fast) var(--ec-ease),
+    color var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-cck-filter:hover {
+  border-color: var(--ec-border-default);
+  color: var(--ec-text);
+}
+.ec-cck-filter:active { transform: translateY(0.5px); }
+.ec-cck-filter:focus-visible {
+  outline: 2px solid var(--ec-border-accent);
+  outline-offset: 1px;
+}
+.ec-cck-filter[aria-pressed="true"],
+.ec-cck-filter--active {
+  border-color: var(--ec-border-accent);
+  background: var(--ec-accent-soft);
+  color: var(--ec-accent);
+}
+/* Сброс активного фильтра — ✕ внутри chip'а. */
+.ec-cck-filter__clear {
+  display: inline-grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  margin-left: 1px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: var(--ec-radius-xs);
+  color: inherit;
+  font-size: 0.66rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-cck-filter__clear:hover { opacity: 1; }
+
+/* ===== Data chip — tone-driven сигнал ========================
+   ОДИН примитив на все status/priority/due/approval/relation
+   чипы. Цвет — динамический, через --tone (статусы не фиксированы
+   на уровне CSS). Console-радиус (xs), не pill: это метка-сигнал. */
+.ec-cck-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0.1rem 0.44rem;
+  border-radius: var(--ec-radius-xs);
+  font-size: 0.56rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--tone, var(--ec-text-muted));
+  background: color-mix(in srgb, var(--tone, var(--ec-text-muted)) 14%, transparent);
+  box-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--tone, var(--ec-text-muted)) 34%, transparent);
+}
+/* Solid-вариант — для критичных сигналов (overdue, blocker). */
+.ec-cck-chip--solid {
+  color: var(--ec-accent-text);
+  background: var(--tone, var(--ec-text-muted));
+  box-shadow: none;
+}
+
+/* User-чип — аватар + имя. Нейтральный, без caps. */
+.ec-cck-user {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  font-size: var(--ec-text-2xs);
+  color: var(--ec-text-muted);
+}
+.ec-cck-user__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ===== Board — колонки исполнения ============================ */
+.ec-cck-board {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 270px), 1fr));
+  gap: var(--ec-space-3);
+  padding: var(--ec-space-4) var(--ec-space-5);
+  overflow: auto;
+}
+
+.ec-cck-col {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-radius: var(--ec-radius-lg);
+  background: var(--ec-surface-sunken);
+  box-shadow: var(--ec-edge);
+  transition:
+    background var(--ec-dur-fast) var(--ec-ease),
+    box-shadow var(--ec-dur-fast) var(--ec-ease);
+}
+/* Drop-target — колонка приподнимается и тонирует accent'ом:
+   motion как сигнал «брось сюда». */
+.ec-cck-col[data-drop="true"] {
+  background: color-mix(in srgb, var(--ec-accent) 7%, var(--ec-surface-sunken));
+  box-shadow:
+    var(--ec-elev-2),
+    inset 0 0 0 1px var(--ec-border-accent);
+}
+.ec-cck-col__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: var(--ec-space-3) var(--ec-space-3) var(--ec-space-2);
+  font-size: var(--ec-text-2xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ec-text-muted);
+}
+/* Status-точка колонки — несёт --tone. */
+.ec-cck-col__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--tone, var(--ec-text-dim));
+  box-shadow: 0 0 7px color-mix(in srgb, var(--tone, var(--ec-text-dim)) 60%, transparent);
+}
+.ec-cck-col__count {
+  margin-left: auto;
+  font-family: var(--ec-font-mono);
+  font-feature-settings: "tnum";
+  font-weight: 600;
+  color: var(--ec-text-dim);
+}
+.ec-cck-col__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ec-space-2);
+  padding: 0 var(--ec-space-2) var(--ec-space-2);
+}
+
+/* ===== Cockpit card — единица исполнения ===================== */
+.ec-cck-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--ec-space-2);
+  padding: 0.6rem 0.7rem;
+  border-radius: var(--ec-radius-md);
+  background: var(--ec-surface-2);
+  box-shadow: var(--ec-edge);
+  cursor: grab;
+  transition:
+    transform var(--ec-dur-fast) var(--ec-ease-out),
+    box-shadow var(--ec-dur-fast) var(--ec-ease),
+    opacity var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-cck-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--ec-elev-2);
+}
+.ec-cck-card:active { cursor: grabbing; }
+/* Перетаскивается — гаснет (исходная позиция «отпущена»). */
+.ec-cck-card[data-dragging="true"] {
+  opacity: 0.4;
+  transform: none;
+}
+.ec-cck-card__body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+.ec-cck-card__title {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: var(--ec-text-sm);
+  color: var(--ec-text);
+}
+.ec-cck-card[data-done="true"] .ec-cck-card__title {
+  color: var(--ec-text-dim);
+  text-decoration: line-through;
+}
+.ec-cck-card__glyph {
+  flex-shrink: 0;
+  font-family: var(--ec-font-mono);
+  color: var(--tone, var(--ec-text-dim));
+}
+.ec-cck-card__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ec-cck-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: var(--ec-text-2xs);
+  color: var(--ec-text-dim);
+}
+
+/* Чек-бокс «сделано» — единый. data-done гасит/зажигает exec-green. */
+.ec-cck-check {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  margin-top: 1px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--ec-radius-xs);
+  border: 1.5px solid var(--ec-border-emphasis);
+  background: transparent;
+  color: var(--ec-accent-text);
+  cursor: pointer;
+  transition:
+    border-color var(--ec-dur-fast) var(--ec-ease),
+    background var(--ec-dur-fast) var(--ec-ease),
+    transform var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-cck-check:hover { border-color: var(--ec-status-exec); }
+.ec-cck-check:active { transform: scale(0.88); }
+.ec-cck-check:focus-visible {
+  outline: 2px solid var(--ec-border-accent);
+  outline-offset: 2px;
+}
+.ec-cck-check[data-done="true"] {
+  border-color: var(--ec-status-exec);
+  background: var(--ec-status-exec);
+}
+
+/* ===== States: empty / loading / error ====================== */
+.ec-cck-empty {
+  margin: 0;
+  padding: var(--ec-space-5) var(--ec-space-3);
+  text-align: center;
+  color: var(--ec-text-dim);
+  font-size: var(--ec-text-sm);
+}
+.ec-cck-banner {
+  margin: var(--ec-space-2) var(--ec-space-5) 0;
+  padding: var(--ec-space-2) var(--ec-space-3);
+  border-radius: var(--ec-radius-md);
+  font-size: var(--ec-text-sm);
+}
+.ec-cck-banner--error {
+  color: var(--ec-danger);
+  background: var(--ec-danger-soft);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ec-danger) 30%, transparent);
+}
+
+/* ===== Reduced motion ======================================= */
+@media (prefers-reduced-motion: reduce) {
+  .ec-cck-card:hover { transform: none; }
+  .ec-cck-card:active,
+  .ec-cck-check:active,
+  .ec-cck-filter:active { transform: none; }
+}

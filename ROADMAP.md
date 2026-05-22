@@ -5,7 +5,7 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.2.1** (Galaxy/Clock/Theme/Deadline effects +
+**Текущая версия:** **v1.2.2** (Galaxy/Clock/Theme/Deadline effects +
 UX-copy + дизайн-полиш + редизайн WS-1 + системный редизайн ЗАКРЫТ 8/8 +
 светлая тема SOLAR (Notion-crisp) + фикс AuthScreen + смена пароля +
 визуальный передел AppShell ЗАКРЫТ 4/4 + топбар-полиш +
@@ -22,10 +22,11 @@ redesign slice 7 — ServerHubModal +
 фикс version-дрейфа `/api/version` + smoke-тавтологии +
 logout-надёжность + identity-фикс пресетов + topbar на `.ec-icon-btn` +
 трек R1 — media-плеер «Signal Desk» v2 +
-рекомпозиция каркаса — командный хребет + центр-бар).
+рекомпозиция каркаса — командный хребет + центр-бар +
+трек R2 — Execution Cockpit: cockpit-система + StatusBoard).
 
-> **v1.1.90 … v1.2.0 задеплоены — в проде v1.2.0. v1.2.1 запушен и
-> ждёт approve-gate Pavel'я в GitHub Actions (environment
+> **v1.1.90 … v1.2.0 задеплоены — в проде v1.2.0. v1.2.1 … v1.2.2
+> запушены и ждут approve-gate Pavel'я в GitHub Actions (environment
 > `production`). Деплой НЕ автоматический по пушу.**
 
 > **⚠️ ЦВЕТ-ПРАВИЛО ИЗМЕНЕНО (бриф Pavel'я 20.05.2026).** Прежнее
@@ -34,8 +35,30 @@ logout-надёжность + identity-фикс пресетов + topbar на `
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.2.1:**
+**Изменения v1.1.25 → v1.2.2:**
 
+- **v1.2.2** — **трек R2: Execution Cockpit — система + StatusBoard**
+  (ТЗ Pavel'я: ядро execution-части ощущалось «старым слоем с
+  косметикой»). Заход — design-system, не patch-machine.
+  - **`cockpit.css` — общий язык операционных поверхностей.**
+    Примитивы заданы один раз токенами: `.ec-cck__head` (композиция
+    identity / tooling), `.ec-cck-filter` (toggle-фильтр),
+    `.ec-cck-chip` — ОДИН tone-driven chip на все
+    status/due/approval/blocker (цвет через `--tone`),
+    `.ec-cck-card` / `.ec-cck-col` (карта и колонка с
+    hover/drag/drop-target состояниями), `.ec-cck-check`,
+    `.ec-cck-empty`, `.ec-cck-banner`. State-язык
+    (hover/press/focus/drop/done) — в CSS один раз.
+  - **StatusBoard переведён на cockpit-язык целиком.** Убраны все
+    module-level `CSSProperties`-консоли (`wrap` / `header` /
+    `board` / `column` / `card` / `checkbox` / `filterBtn` …) и
+    inline-стили. Sci-fi-заголовок «EXECUTION_BOARD //» (mono +
+    caps) убран → спокойный `.ec-cck__title`. Три разрозненных
+    inline-чипа (due / approval / blocked) → один `.ec-cck-chip`.
+    Логика (фильтры, drag-drop, 4-status buckets) не тронута.
+  Первый из трёх execution-surface'ов; OperationalTablePanel и
+  ActionItemDrawer — следующими, на готовой cockpit-системе.
+  Чистый фронт, без миграций. Сборка зелёная (tsc + vite).
 - **v1.2.1** — **рекомпозиция каркаса: командный хребет + центр-бар**
   (трек R, shell). Полноширинный SaaS-топбар убран — самый
   generic-элемент композиции. Бренд + переключатель пространств
