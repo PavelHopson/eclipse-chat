@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { Attachment } from "../hooks/useMessages";
 import { apiJson } from "../lib/api";
 import { resolveAssetUrl } from "../lib/assets";
@@ -920,7 +921,12 @@ function Lightbox({
   const fullUrl = resolveAssetUrl(a.url) ?? "";
   const video = isVideo(a);
 
-  return (
+  // Портал в document.body: лайтбокс рендерится внутри message-row, у
+  // которой остаётся transform:translateY(0) от ec-anim-message-enter
+  // (fill-mode:both). Любой не-none transform у предка делает его
+  // containing-block'ом для position:fixed — без портала оверлей
+  // позиционировался бы относительно строки сообщения, а не вьюпорта.
+  return createPortal(
     <div style={lightboxBackdrop} onClick={(e) => e.target === e.currentTarget && onClose()} role="dialog" aria-modal="true">
       {video ? (
         <VideoPlayer
@@ -997,7 +1003,8 @@ function Lightbox({
           </button>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
