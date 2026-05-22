@@ -1,4 +1,3 @@
-import type { CSSProperties } from "react";
 import { useEffect } from "react";
 import { ChannelDigestPanel } from "./ChannelDigestPanel";
 import {
@@ -61,86 +60,8 @@ type Props = {
   clientMode?: boolean;
 };
 
-/** Render-как-flex-child (не absolute overlay) — занимает верх chat-area,
- *  pushes MessageList ниже. Лучшая UX чем backdrop overlay: видимо что
- *  это часть чата, нет dimming MessageList'а, нет zIndex collision'ов. */
-const sheet: CSSProperties = {
-  flex: "0 0 auto",
-  maxHeight: "min(48vh, 480px)",
-  display: "flex",
-  flexDirection: "column",
-  background: "var(--ec-surface-1)",
-  borderBottom: "1px solid var(--ec-border-default)",
-  boxShadow: "0 6px 20px -8px hsl(210 40% 2% / 0.5)",
-};
-
-const tabBar: CSSProperties = {
-  display: "flex",
-  alignItems: "stretch",
-  gap: 0,
-  padding: "var(--ec-space-2) var(--ec-space-3) 0",
-  borderBottom: "1px solid var(--ec-border-subtle)",
-  background: "var(--ec-surface-1)",
-  flexShrink: 0,
-};
-
-function tabBtn(active: boolean): CSSProperties {
-  return {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 6,
-    padding: "0.55rem 0.85rem 0.6rem",
-    background: "transparent",
-    border: 0,
-    // v1.1.10: borderBottom удалён — .ec-hud-tab[aria-selected="true"]::after
-    // даёт 2px bottom accent bar с cyan glow (consistent с sidebar tabs).
-    color: active ? "var(--ec-text-strong)" : "var(--ec-text-muted)",
-    fontSize: "0.62rem",
-    fontWeight: 700,
-    letterSpacing: "0.16em",
-    textTransform: "uppercase",
-    fontFamily: "var(--ec-font-mono, ui-monospace, monospace)",
-    cursor: "pointer",
-    transition:
-      "color var(--ec-dur-fast) var(--ec-ease), border-color var(--ec-dur-fast) var(--ec-ease)",
-    whiteSpace: "nowrap",
-  };
-}
-
-const countPill: CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  fontSize: "0.6rem",
-  fontWeight: 700,
-  fontFeatureSettings: '"tnum"',
-  padding: "0.05rem 0.32rem",
-  borderRadius: "var(--ec-radius-full)",
-  background: "var(--ec-surface-3)",
-  color: "var(--ec-text-muted)",
-  letterSpacing: 0,
-  textTransform: "none",
-};
-
-const closeBtn: CSSProperties = {
-  marginLeft: "auto",
-  alignSelf: "center",
-  width: 28,
-  height: 28,
-  display: "grid",
-  placeItems: "center",
-  background: "transparent",
-  border: 0,
-  borderRadius: "var(--ec-radius-sm)",
-  color: "var(--ec-text-muted)",
-  cursor: "pointer",
-};
-
-const body: CSSProperties = {
-  flex: 1,
-  minHeight: 0,
-  overflow: "auto",
-  padding: "var(--ec-space-3) var(--ec-space-4)",
-};
+// v1.1.94 slice 5: inline-style консоли ChannelInfoPanel вынесены в
+// классы .ec-channel-info-panel* / .ec-info-tab* (components.css).
 
 function IconSummary() {
   return (
@@ -216,19 +137,17 @@ export function ChannelInfoPanel({
 
   return (
     <section
-      style={sheet}
       className="ec-channel-info-panel ec-anim-reveal"
       role="region"
       aria-label="Информация о комнате"
     >
-      <div style={tabBar} className="ec-channel-info-panel__tabs" role="tablist">
+      <div className="ec-channel-info-panel__tabs" role="tablist">
           <button
             type="button"
-            style={tabBtn(activeTab === "summary")}
             onClick={() => onTabChange("summary")}
             aria-selected={activeTab === "summary"}
             role="tab"
-            className="ec-hud-tab"
+            className="ec-info-tab ec-hud-tab"
             title="Сводка комнаты"
           >
             <IconSummary />
@@ -236,50 +155,47 @@ export function ChannelInfoPanel({
           </button>
           <button
             type="button"
-            style={tabBtn(activeTab === "memory")}
             onClick={() => onTabChange("memory")}
             aria-selected={activeTab === "memory"}
             role="tab"
-            className="ec-hud-tab"
+            className="ec-info-tab ec-hud-tab"
             title="Закреплённое — память комнаты"
           >
             <IconMemory />
             <span>Память</span>
             {pinnedMessages.length > 0 && (
-              <span style={countPill}>{pinnedMessages.length}</span>
+              <span className="ec-info-tab__count">{pinnedMessages.length}</span>
             )}
           </button>
           {!clientMode && (
             <button
               type="button"
-              style={tabBtn(activeTab === "execution")}
               onClick={() => onTabChange("execution")}
               aria-selected={activeTab === "execution"}
               role="tab"
-              className="ec-hud-tab"
+              className="ec-info-tab ec-hud-tab"
               title="Задачи / решения / follow-up комнаты"
             >
               <IconExecution />
               <span>Дела</span>
               {executionItems.length > 0 && (
-                <span style={countPill}>{executionItems.length}</span>
+                <span className="ec-info-tab__count">{executionItems.length}</span>
               )}
             </button>
           )}
           {!clientMode && (
             <button
               type="button"
-              style={tabBtn(activeTab === "files")}
               onClick={() => onTabChange("files")}
               aria-selected={activeTab === "files"}
               role="tab"
-              className="ec-hud-tab"
+              className="ec-info-tab ec-hud-tab"
               title="Файлы комнаты"
             >
               <IconFiles />
               <span>Файлы</span>
               {attachments.length > 0 && (
-                <span style={countPill}>{attachments.length}</span>
+                <span className="ec-info-tab__count">{attachments.length}</span>
               )}
             </button>
           )}
@@ -288,15 +204,7 @@ export function ChannelInfoPanel({
             onClick={onClose}
             aria-label="Закрыть"
             title="Закрыть (Esc)"
-            style={closeBtn}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = "var(--ec-surface-2)";
-              e.currentTarget.style.color = "var(--ec-text)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = "transparent";
-              e.currentTarget.style.color = "var(--ec-text-muted)";
-            }}
+            className="ec-channel-info-panel__close ec-icon-btn"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
               <line x1="18" y1="6" x2="6" y2="18" />
@@ -305,7 +213,7 @@ export function ChannelInfoPanel({
           </button>
         </div>
 
-        <div style={body}>
+        <div className="ec-channel-info-panel__body">
           {activeTab === "summary" ? (
             <ChannelDigestPanel
               digest={digest}

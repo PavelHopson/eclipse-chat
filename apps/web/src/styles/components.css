@@ -2668,3 +2668,131 @@
 }
 .ec-thread-reply--pending { opacity: 0.7; }
 
+/* ============================================================
+ * v1.1.94 — Redesign slice 5: overlays (Modal база + ChannelInfoPanel).
+ * Inline-консоли в классы, JS-hover → CSS.
+ * ============================================================ */
+
+/* --- Modal (база — её используют все модалки) ---------------- */
+.ec-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--ec-z-modal-backdrop);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--ec-space-4);
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: saturate(140%) blur(8px);
+  -webkit-backdrop-filter: saturate(140%) blur(8px);
+  animation: ec-fade-in var(--ec-dur-base) var(--ec-ease) both;
+}
+.ec-modal-box {
+  display: flex;
+  flex-direction: column;
+  max-height: min(calc(100dvh - 64px), 92vh);
+  overflow: hidden;
+  background: var(--ec-overlay-bg);
+  border-radius: var(--ec-radius-lg);
+  box-shadow: var(--ec-shadow-modal);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  animation: ec-modal-zoom-in var(--ec-dur-base) var(--ec-ease-out) both;
+}
+.ec-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--ec-space-4) var(--ec-space-5);
+  border-bottom: 1px solid var(--ec-border-subtle);
+}
+.ec-modal-title {
+  margin: 0;
+  font-family: var(--ec-font-display);
+  font-size: var(--ec-text-md);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--ec-text-strong);
+}
+.ec-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ec-space-4);
+  padding: var(--ec-space-5);
+  overflow: auto;
+}
+.ec-modal-footer {
+  display: flex;
+  gap: var(--ec-space-2);
+  justify-content: flex-end;
+  padding: var(--ec-space-3) var(--ec-space-5);
+  border-top: 1px solid var(--ec-border-subtle);
+  background: var(--ec-surface-1);
+}
+
+/* --- ChannelInfoPanel (выезжает из chat-header) -------------- */
+.ec-channel-info-panel {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  max-height: min(48vh, 480px);
+  background: var(--ec-surface-1);
+  border-bottom: 1px solid var(--ec-border-default);
+  box-shadow: 0 6px 20px -8px hsl(210 40% 2% / 0.5);
+}
+.ec-channel-info-panel__tabs {
+  display: flex;
+  align-items: stretch;
+  padding: var(--ec-space-2) var(--ec-space-3) 0;
+  border-bottom: 1px solid var(--ec-border-subtle);
+  background: var(--ec-surface-1);
+  flex-shrink: 0;
+}
+.ec-channel-info-panel__body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--ec-space-3) var(--ec-space-4);
+}
+.ec-channel-info-panel__close {
+  margin-left: auto;
+  align-self: center;
+}
+/* Таб инфо-панели — спокойный eyebrow (не mono-«крик» 0.16em). */
+.ec-info-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0.55rem 0.85rem 0.6rem;
+  background: transparent;
+  border: 0;
+  font-family: var(--ec-font-sans);
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--ec-text-muted);
+  cursor: pointer;
+  transition: color var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-info-tab:hover { color: var(--ec-text); }
+.ec-info-tab[aria-selected="true"] { color: var(--ec-text-strong); }
+.ec-info-tab:focus-visible {
+  outline: 2px solid var(--ec-border-accent);
+  outline-offset: -2px;
+}
+.ec-info-tab__count {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.05rem 0.32rem;
+  border-radius: var(--ec-radius-full);
+  background: var(--ec-surface-3);
+  color: var(--ec-text-muted);
+  font-size: 0.6rem;
+  font-weight: 700;
+  font-feature-settings: "tnum";
+  letter-spacing: 0;
+  text-transform: none;
+}
+

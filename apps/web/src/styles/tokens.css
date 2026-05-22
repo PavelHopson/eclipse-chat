@@ -999,16 +999,10 @@
   .ec-composer-send::before { transition: none; }
 }
 
-/* Modal header — uppercase brand framing когда ec-holo-edge applied.
- * Title inherits .ec-holo-edge::before holographic line; добавим
- * subtle uppercase tracking. */
-.ec-modal-backdrop [role="dialog"] header.ec-holo-edge h2 {
-  text-transform: uppercase;
-  font-size: 0.82rem;
-  letter-spacing: 0.18em;
-  font-weight: 700;
-  color: var(--ec-text-strong);
-}
+/* v1.1.94 slice 5 — старое «uppercase brand framing» правило для
+   заголовка модалки удалено: оно всегда перекрывалось inline-стилем
+   (то есть было мёртвым) и тянуло off-grammar sci-fi-капс. Заголовок
+   теперь — спокойный .ec-modal-title (components.css). */
 
 /* Composer status strip animated scan dots — 3 dots fade in/out
  * sequentially возле «ОЖИДАНИЕ СИГНАЛА…» / «ВВОД ПОТОКА…». */
