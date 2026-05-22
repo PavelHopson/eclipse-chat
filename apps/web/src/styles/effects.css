@@ -5,32 +5,44 @@
  * Dark/Light Toggle Switch. No CDN, no WebGL, no GSAP.
  */
 
+/* v1.1.78 — SOLAR переписан под Notion-crisp (бриф Pavel'я).
+   Прежний ramp был немонотонным — surface-1 (#e2e9f0) ТЕМНЕЕ bg
+   (#eef3f7), а surface-2 (#f7fafc) светлее → не было иерархии глубины,
+   панели читались как тяжёлые серые блоки, вся тема — «вымытая».
+   Теперь: bg/cards/inputs — белые; panels — whisper-cool-grey;
+   структуру держат волосяные бордеры; hover/active — заметный
+   нейтральный серый. Лёгкий cool undertone (hue ~225) — в тон
+   night-blue VOID-теме. */
 html[data-ec-theme="solar"] {
-  --ec-bg: #eef3f7;
-  --ec-surface-1: #e2e9f0;
-  --ec-surface-2: #f7fafc;
-  --ec-surface-3: #ffffff;
-  --ec-surface-4: hsl(210 28% 88%);
+  --ec-bg: #ffffff;
+  --ec-surface-1: hsl(225 20% 97.5%);
+  --ec-surface-2: hsl(228 24% 99%);
+  --ec-surface-3: hsl(225 17% 94.5%);
+  --ec-surface-4: hsl(225 16% 90.5%);
   --ec-input-bg: #ffffff;
-  --ec-border-subtle: hsl(210 24% 74% / 0.7);
-  --ec-border-default: hsl(210 28% 68% / 0.78);
-  --ec-border-strong: hsl(210 35% 56% / 0.7);
-  --ec-text: hsl(216 22% 17%);
-  --ec-text-strong: hsl(218 30% 9%);
-  --ec-text-muted: hsl(214 14% 38%);
-  --ec-text-dim: hsl(214 12% 50%);
+  --ec-input-bg-focus: #ffffff;
+  --ec-border-subtle: hsl(225 16% 90%);
+  --ec-border-default: hsl(225 15% 84%);
+  --ec-border-strong: hsl(225 14% 72%);
+  --ec-text: hsl(222 22% 20%);
+  --ec-text-strong: hsl(224 30% 11%);
+  --ec-text-muted: hsl(222 12% 44%);
+  --ec-text-dim: hsl(222 10% 56%);
+  --ec-text-placeholder: hsl(222 10% 67%);
   --ec-accent: hsl(258 92% 42%);
   --ec-accent-hover: hsl(258 96% 35%);
-  --ec-accent-soft: hsl(258 92% 42% / 0.12);
+  --ec-accent-soft: hsl(258 92% 42% / 0.10);
   --ec-border-accent: hsl(258 92% 42% / 0.38);
-  --ec-edge: 0 0 0 1px hsl(210 22% 100% / 0.9),
-    0 1px 2px hsl(218 30% 18% / 0.08);
-  --ec-elev-1: 0 14px 32px -24px hsl(216 40% 18% / 0.42);
-  --ec-elev-2: 0 20px 46px -26px hsl(216 45% 18% / 0.5);
-  /* v1.1.70 SOLAR слайс 2 — плавающие overlay-поверхности. */
-  --ec-overlay-bg: hsl(210 33% 99% / 0.97);
-  --ec-overlay-header-bg: hsl(210 24% 91% / 0.62);
-  --ec-surface-sunken: hsl(210 22% 90% / 0.55);
+  /* Crisp hairline-ring edge (white-glow на белом был бесполезен) +
+     мягкие нейтральные тени вместо blue-tinted heavy. */
+  --ec-edge: 0 0 0 1px hsl(225 16% 88%);
+  --ec-elev-1: 0 1px 2px hsl(225 24% 18% / 0.06),
+    0 3px 10px hsl(225 24% 18% / 0.07);
+  --ec-elev-2: 0 2px 6px hsl(225 24% 18% / 0.08),
+    0 12px 30px hsl(225 28% 18% / 0.12);
+  --ec-overlay-bg: hsl(228 24% 99.5% / 0.98);
+  --ec-overlay-header-bg: hsl(225 18% 96.5%);
+  --ec-surface-sunken: hsl(225 18% 96%);
   color-scheme: light;
 }
 
@@ -46,16 +58,12 @@ html[data-ec-theme="solar"] .ec-ambient {
    бьёт .x (0,1,0). Затрагивает ТОЛЬКО SOLAR; VOID (тёмная) не меняется.
    Значения — через SOLAR-токены (см. блок выше). */
 html[data-ec-theme="solar"] .ec-shell {
-  background:
-    linear-gradient(135deg, hsl(210 34% 96%), hsl(210 28% 92%) 58%, hsl(210 32% 95%)) !important;
+  background: var(--ec-bg) !important;
 }
 html[data-ec-theme="solar"] .ec-shell__top {
-  background:
-    linear-gradient(180deg, hsl(210 38% 99% / 0.92), hsl(210 30% 96% / 0.86)) !important;
+  background: var(--ec-surface-1) !important;
   border-bottom-color: var(--ec-border-default) !important;
-  box-shadow:
-    inset 0 1px 0 hsl(0 0% 100% / 0.7),
-    0 10px 28px -18px hsl(216 38% 28% / 0.28) !important;
+  box-shadow: none !important;
 }
 html[data-ec-theme="solar"] .ec-shell__brand-home {
   background: linear-gradient(180deg, var(--ec-surface-3), var(--ec-surface-2)) !important;
