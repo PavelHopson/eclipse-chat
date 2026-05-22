@@ -1,82 +1,82 @@
 # Eclipse Chat — handoff для нового чата
 
-> Обновлено **2026-05-22, после v1.1.89**. Прошлая сессия — 13 prod-деплоев
-> (v1.1.77 → v1.1.89). Скопируй блок ниже в новый чат.
->
-> Роль, стиль, процессы, архитектура — в `Agents.md` / `Context.md` /
-> `Memory.md` / `Skills.md` (грузятся автоматически через `CLAUDE.md`).
-> Поэтому здесь — только **передача состояния**.
+> Обновлено **2026-05-22, после v1.2.4**. Прошлая сессия — 7 версий
+> (v1.1.98 → v1.2.4): integrity-фиксы, плеер, рекомпозиция каркаса,
+> закрыт трек Execution Cockpit. Скопируй блок ниже в новый чат.
 
 ---
 
-```
 Привет. Я Pavel Hopson. Eclipse Chat — продолжаем из нового чата.
 
+## Старт
+
+Прочитай `E:\projects\eclipse-chat\ROADMAP.md` (синхронен по v1.2.4 —
+header + version-log). `CLAUDE.md` подтянет Agents/Context/Memory/
+Skills.md автоматически. Source of truth по дизайну — `docs/design/
+design-brief-v2.md` + `surface-map.md`. Подтверди состояние
+(`/api/version` + `/api/health`), затем спроси, что брать.
+
 ## Текущее состояние
-v1.1.89 LIVE — https://app.star-crm.ru/eclipse-chat/
-/api/version → 1.1.89 · /api/health → ok
-~50 миграций на проде, новых за прошлую сессию нет (вся работа —
-фронтенд + музыкальные REST-эндпоинты без миграций).
-В корне репо есть CLAUDE.md + Agents/Context/Memory/Skills.md —
-агент-контекст, грузится автоматически.
 
-## Сделано за прошлую сессию (v1.1.76 → v1.1.89, 13 деплоев)
+**Прод (LIVE):** **v1.2.0** — https://app.star-crm.ru/eclipse-chat/
+**master HEAD = `f07e1a9` = v1.2.4.** Локально и на GitHub совпадает.
 
-Визуальный передел AppShell — ЗАКРЫТ 4/4:
-  1 type-система (self-host Geist) — v1.1.76
-  2 декластер chrome (снят sci-fi-слой) — v1.1.77
-  3 цвет-дисциплина (структурный violet → нейтраль) — v1.1.79
-  4 иерархия масштаба + воздух — v1.1.80
-  + топбар-полиш (кластеризация правой зоны) — v1.1.81
+⚠️ **4 версии (v1.2.1 … v1.2.4) запушены, CI зелёный, но висят на
+approve-gate** (environment `production`). Деплой не автоматический —
+Pavel жмёт Approve на последнем «Deploy PROD»-ране (`f07e1a9`); он
+задеплоит всё разом. Стейл-раны можно отменить (освобождает
+concurrency-лок). Команда апрува — в `Agents.md` → Deploy.
 
-SOLAR (светлая тема) переписана под Notion-crisp — v1.1.78
-(был сломан surface-ramp: surface-1 темнее bg, всё «вымыто»).
+## Сделано за прошлую сессию (v1.1.97 → v1.2.4)
 
-Фиксы из аудита главного экрана:
-  высота строк участников (grid 3→4 колонки — строки были ×2) — v1.1.82
-  читаемый разделитель даты («Сегодня/Вчера/20 мая») — v1.1.83
+- **v1.1.98** — integrity-фикс: `/api/version` врал (хардкод застрял
+  на 1.1.89, не бампался 8 релизов); smoke-тест был тавтологичен.
+  `deploy.sh` теперь сверяет `package.json` ↔ `/api/version`.
+- **v1.1.99** — integrity-пакет: фикс регресса logout (`busyRef`-латч
+  без сброса — кнопка мертвела); ServerHubModal color-пресеты
+  выровнены по identity (убраны cyan/teal/warm); doc-sync; topbar-
+  кнопки → канонический `.ec-icon-btn`.
+- **v1.2.0** — трек R1: фирменный media-плеер «Signal Desk» v2 —
+  scrubber с буфером/hover-preview/loading, mini-player с иерархией,
+  expand-плеер без 64-барного шума, radar-ping loader видео.
+- **v1.2.1** — рекомпозиция каркаса: полноширинный SaaS-топбар убран
+  → командный хребет (brandbar + каналы = одна вертикаль) + центр-
+  командный бар (cmdbar). Sci-fi-breadcrumb «УЗЕЛ //» убран.
+- **v1.2.2 → v1.2.4 — трек R2, Execution Cockpit, ЗАКРЫТ 3/3:**
+  - v1.2.2 — `cockpit.css` (общий язык: chips/cards/cols/state) +
+    StatusBoard.
+  - v1.2.3 — OperationalTablePanel → control desk (sticky-header,
+    row-язык, inline-edit как состояние системы).
+  - v1.2.4 — ActionItemDrawer → mission detail panel.
+  Все три execution-поверхности на единой cockpit-системе; снят
+  ~250 inline-стилей и module-level CSS-консолей, JS-hover.
 
-Медиа-плеер — новая фича, ЗАКРЫТА 4/4:
-  1 перемотка + анимированный MediaScrubber (ядро) — v1.1.84
-  2 видимая очередь + перемотка вейвформы — v1.1.85
-  3 кастомный VideoPlayer + лайтбокс-галерея — v1.1.86
-  4 watch-party (синхро-видео, переиспользует MusicSession) — v1.1.87
-  фикс лайтбокса (createPortal: position:fixed ломался transform'ом
-  предка .ec-message-row) — v1.1.88
-  живые анимации (вейвформа «дышит» + мини-эквалайзер) — v1.1.89
+Принцип сессии: design-system engineer, не patch-machine. Каждый
+слайс — сборка зелёная (tsc + vite), коммит, push.
 
-Прочее: агент-контекст файлы в репо; промпт humanize-rewriter
-импортирован из eclipse-library в docs/prompts/.
+## ⚠️ Главный риск — за тобой, Pavel
 
-## ⚠️ Ждёт верификации вживую (за тобой, Pavel)
-- Весь медиа-плеер: перемотка музыки, очередь, видео-плеер,
-  watch-party (синхро-видео — лучше вдвоём с двух устройств),
-  живые анимации.
-- 3 voice-фикса v1.1.68/69/75 — всё ещё ждут живого звонка.
+**Ни shell-рекомпозиция (v1.2.1), ни весь Execution Cockpit
+(v1.2.2–v1.2.4) не на проде** — висят на approve-gate. Плеер
+(v1.2.0) на проде, но живого ревью по нему ты ещё не давал.
+
+Сильно рекомендую: апрувнуть гейт и пройтись глазами по проду —
+плеер, каркас (хребет/центр-бар, обе темы VOID/SOLAR), execution-
+поверхности (доска, таблица, drawer задачи) — **до** того, как
+копить следующий слайс. Агент рендер не видит; визуальная
+верификация — за тобой.
 
 ## Открытые направления
-- Дизайн-вкус (твоё решение): sci-fi underscore-CAPS копирайт —
-  «СВЯЗАННЫЕ_УЗЛЫ / СПЯЩИЙ_РЕЖИМ», «Передача сигнала», «УЗЕЛ //»,
-  «ОЖИДАНИЕ СИГНАЛА» — оставить как «operator console» identity
-  или вычистить в человеческий язык.
-- ⚠️ Ложный ярлык «ШИФРОВАНИЕ / ЗАЩИЩЁННЫЙ_КАНАЛ» в композере —
-  реального E2E-шифрования нет, ярлык врёт. Integrity-вопрос:
-  сделать настоящим или снять.
-- Медиа-плеер апгрейд (опц.): audio-reactive визуализатор через
-  Web Audio AnalyserNode вместо CSS-loop-анимаций.
-- GoofCord-трек (github.com/Milkshiift/GoofCord): настоящий E2E
-  для DM/приватных каналов, privacy-by-default.
-- Из старого ROADMAP: slash-команды backend (/poll /ai /note
-  /deploy /remind), custom emoji (крупный трек: DB+миграция,
-  upload/API, picker), toggleMute enhancer follow-up, mic-gain
-  rejoin follow-up.
-- Дизайн-референс: docs/design-mockups/eclipse-os-v1 — прототип
-  Pavel'я, дизайн-язык hover-glow.
 
-## Старт
-Прочитай E:\projects\eclipse-chat\ROADMAP.md (синхронен по v1.1.89 —
-header + version-log). CLAUDE.md подтянет Agents/Context/Memory/
-Skills автоматически. Подтверди состояние (/api/version +
-/api/health), затем спроси, что брать — или предложи из открытых
-направлений.
-```
+- **Деплой + живое ревью** всего R-трека (см. риск выше).
+- **R-CSS-консолидация** (brief slice 7) — дубль-блоки `.ec-shell*` /
+  `.ec-chat-header` и `!important`-войны в `components.css`.
+  Единственный крупный нетронутый системный долг каркаса.
+- **AdminPanel / BotsTab** (brief slice 6, data surfaces) — крупный
+  inline-долг; в Execution-Cockpit-ТЗ их просили НЕ трогать,
+  отдельный слайс.
+- Из прежних: sci-fi-копирайт sweep, audio-reactive визуализатор
+  плеера, slash-команды backend, custom emoji, настоящий E2E
+  (GoofCord-трек).
+- Ждёт живой верификации: media-плеер, shell-рекомпозиция, все
+  3 execution-поверхности, 3 voice-фикса v1.1.68/69/75.
