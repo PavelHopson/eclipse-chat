@@ -5,7 +5,7 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.1.96** (Galaxy/Clock/Theme/Deadline effects +
+**Текущая версия:** **v1.1.97** (Galaxy/Clock/Theme/Deadline effects +
 UX-copy + дизайн-полиш + редизайн WS-1 + системный редизайн ЗАКРЫТ 8/8 +
 светлая тема SOLAR (Notion-crisp) + фикс AuthScreen + смена пароля +
 визуальный передел AppShell ЗАКРЫТ 4/4 + топбар-полиш +
@@ -17,9 +17,10 @@ redesign slice 2 — навигация ServerSwitcher + ChannelList +
 redesign slice 3 — центральная сцена MessageList + MessageInput +
 redesign slice 4 — правый rail IntelligencePanel / MemberList / ThreadPanel +
 redesign slice 5 — Modal-база + ChannelInfoPanel +
-redesign slice 6 — SearchOverlay).
+redesign slice 6 — SearchOverlay +
+redesign slice 7 — ServerHubModal).
 
-> **Слайсы v1.1.90 … v1.1.96 запушены, но ждут approve-gate Pavel'я
+> **Слайсы v1.1.90 … v1.1.97 запушены, но ждут approve-gate Pavel'я
 > в GitHub Actions (environment `production`) — на момент записи в
 > проде ещё v1.1.89. Деплой НЕ автоматический по пушу.**
 
@@ -29,8 +30,16 @@ redesign slice 6 — SearchOverlay).
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.1.96:**
+**Изменения v1.1.25 → v1.1.97:**
 
+- **v1.1.97** — **redesign slice 7: ServerHubModal под grammar v2**.
+  12 inline-style консолей (`tabBar`, `tabBtn`, `sectionCard`,
+  `sectionLabel`, `fieldHint`, `inputStyle`, `stat`, `statLabel`,
+  `statValue`, `codeBox`, `memberRowStyle`, `roleSelect`) → классы
+  `.ec-hub-*`. JS-hover в компоненте не было. Глубокий one-off inline
+  (баннер, icon-box, color-presets, mode-карточки, danger-зона) —
+  оставлен (не reused, не drift-механизм), помечен follow-up'ом.
+  Сборка зелёная (tsc + vite). Живой визуальный smoke не делался.
 - **v1.1.96** — **redesign slice 6: SearchOverlay под grammar v2**.
   10 inline-style консолей → классы `.ec-search-*`. JS-hover hit-строк
   убран целиком (4 списка — сообщения / дела / файлы / семантика —

@@ -2935,3 +2935,135 @@
   outline-offset: -2px;
 }
 
+/* ============================================================
+ * v1.1.96 — Redesign slice 7: ServerHubModal. 12 inline-консолей
+ * в классы .ec-hub-* (JS-hover в этом компоненте не было).
+ * ============================================================ */
+.ec-hub-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  margin-bottom: var(--ec-space-4);
+  background: var(--ec-surface-1);
+  border: 1px solid var(--ec-border-subtle);
+  border-radius: var(--ec-radius-md);
+}
+/* Таб-пилл хаба — active заливается accent'ом. */
+.ec-hub-tab {
+  flex: 1;
+  padding: 0.55rem 0.8rem;
+  background: transparent;
+  border: 0;
+  border-radius: var(--ec-radius-sm);
+  color: var(--ec-text-muted);
+  font-size: var(--ec-text-sm);
+  font-weight: 600;
+  letter-spacing: var(--ec-tracking-wide);
+  cursor: pointer;
+  transition:
+    background var(--ec-dur-fast) var(--ec-ease),
+    color var(--ec-dur-fast) var(--ec-ease),
+    box-shadow var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-hub-tab:hover { color: var(--ec-text); }
+.ec-hub-tab[aria-selected="true"] {
+  background: var(--ec-accent);
+  color: var(--ec-accent-text);
+  box-shadow: 0 0 14px -3px hsl(258 90% 66% / 0.5);
+}
+.ec-hub-tab:focus-visible {
+  outline: 2px solid var(--ec-border-accent);
+  outline-offset: 1px;
+}
+.ec-hub-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ec-space-3);
+  padding: var(--ec-space-4);
+  background: var(--ec-surface-2);
+  border: 1px solid var(--ec-border-default);
+  border-radius: var(--ec-radius-lg);
+}
+.ec-hub-label {
+  margin: 0 0 var(--ec-space-2);
+  font-size: var(--ec-text-2xs);
+  font-weight: 700;
+  letter-spacing: var(--ec-tracking-caps);
+  text-transform: uppercase;
+  color: var(--ec-text-muted);
+}
+.ec-hub-hint {
+  margin: 0;
+  font-size: var(--ec-text-2xs);
+  color: var(--ec-text-dim);
+  line-height: 1.5;
+}
+.ec-hub-input {
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  background: var(--ec-surface-1);
+  border: 1px solid var(--ec-border-default);
+  border-radius: var(--ec-radius-md);
+  color: var(--ec-text);
+  font-size: var(--ec-text-sm);
+  font-family: inherit;
+  transition: border-color var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-hub-input:focus {
+  border-color: var(--ec-accent);
+  outline: none;
+}
+.ec-hub-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--ec-space-2) var(--ec-space-3);
+  background: var(--ec-surface-2);
+  border: 1px solid var(--ec-border-subtle);
+  border-radius: var(--ec-radius-md);
+}
+.ec-hub-stat__label {
+  font-size: var(--ec-text-2xs);
+  font-weight: 600;
+  letter-spacing: var(--ec-tracking-caps);
+  text-transform: uppercase;
+  color: var(--ec-text-dim);
+}
+.ec-hub-stat__value {
+  font-size: var(--ec-text-md);
+  font-weight: 600;
+  color: var(--ec-text-strong);
+  font-feature-settings: "tnum";
+}
+.ec-hub-code {
+  padding: 0.55rem 0.7rem;
+  background: var(--ec-input-bg);
+  border: 1px solid var(--ec-border-default);
+  border-radius: var(--ec-radius-md);
+  color: var(--ec-text);
+  font-family: var(--ec-font-mono);
+  font-size: var(--ec-text-sm);
+  word-break: break-all;
+}
+.ec-hub-member {
+  display: grid;
+  grid-template-columns: 32px 1fr auto;
+  align-items: center;
+  gap: var(--ec-space-2);
+  padding: var(--ec-space-2);
+  border-radius: var(--ec-radius-sm);
+  transition: background var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-hub-member:hover { background: var(--ec-surface-3); }
+.ec-hub-role-select {
+  padding: 0.2rem 0.4rem;
+  background: var(--ec-surface-3);
+  border: 1px solid var(--ec-border-default);
+  border-radius: var(--ec-radius-sm);
+  color: var(--ec-text);
+  font-size: var(--ec-text-2xs);
+  font-weight: 600;
+  letter-spacing: var(--ec-tracking-wide);
+  cursor: pointer;
+}
+

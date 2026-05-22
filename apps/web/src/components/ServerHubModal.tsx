@@ -1,4 +1,3 @@
-import type { CSSProperties } from "react";
 import { useRef, useState } from "react";
 import { Avatar } from "./Avatar";
 import { BotsTab } from "./BotsTab";
@@ -96,128 +95,8 @@ function roleBadgeClass(role: MemberRole | string): string {
   return "ec-badge";
 }
 
-const tabBar: CSSProperties = {
-  display: "flex",
-  gap: 4,
-  padding: 4,
-  background: "var(--ec-surface-1)",
-  borderRadius: "var(--ec-radius-md)",
-  border: "1px solid var(--ec-border-subtle)",
-  marginBottom: "var(--ec-space-4)",
-};
-
-function tabBtn(active: boolean): CSSProperties {
-  return {
-    flex: 1,
-    padding: "0.55rem 0.8rem",
-    borderRadius: "var(--ec-radius-sm)",
-    background: active ? "var(--ec-accent)" : "transparent",
-    color: active ? "var(--ec-accent-text)" : "var(--ec-text-muted)",
-    border: 0,
-    cursor: "pointer",
-    fontSize: "var(--ec-text-sm)",
-    fontWeight: 600,
-    letterSpacing: "var(--ec-tracking-wide)",
-    transition: "all var(--ec-dur-fast) var(--ec-ease)",
-    boxShadow: active
-      ? "0 0 0 1px var(--ec-accent), 0 0 12px -2px hsl(258 90% 66% / 0.4)"
-      : "none",
-  };
-}
-
-const sectionCard: CSSProperties = {
-  background: "var(--ec-surface-2)",
-  border: "1px solid var(--ec-border-default)",
-  borderRadius: "var(--ec-radius-lg)",
-  padding: "var(--ec-space-4)",
-  display: "flex",
-  flexDirection: "column",
-  gap: "var(--ec-space-3)",
-};
-
-const sectionLabel: CSSProperties = {
-  fontSize: "var(--ec-text-2xs)",
-  fontWeight: 700,
-  letterSpacing: "var(--ec-tracking-caps)",
-  textTransform: "uppercase",
-  color: "var(--ec-text-muted)",
-  margin: "0 0 var(--ec-space-2)",
-};
-
-const fieldHint: CSSProperties = {
-  fontSize: "var(--ec-text-2xs)",
-  color: "var(--ec-text-dim)",
-  lineHeight: 1.5,
-  margin: 0,
-};
-
-const inputStyle: CSSProperties = {
-  width: "100%",
-  padding: "0.55rem 0.7rem",
-  borderRadius: "var(--ec-radius-md)",
-  border: "1px solid var(--ec-border-default)",
-  background: "var(--ec-surface-1)",
-  color: "var(--ec-text)",
-  fontSize: "var(--ec-text-sm)",
-  fontFamily: "inherit",
-};
-
-const stat: CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: 2,
-  padding: "var(--ec-space-2) var(--ec-space-3)",
-  background: "var(--ec-surface-2)",
-  border: "1px solid var(--ec-border-subtle)",
-  borderRadius: "var(--ec-radius-md)",
-};
-
-const statLabel: CSSProperties = {
-  fontSize: "var(--ec-text-2xs)",
-  letterSpacing: "var(--ec-tracking-caps)",
-  textTransform: "uppercase",
-  color: "var(--ec-text-dim)",
-  fontWeight: 600,
-};
-
-const statValue: CSSProperties = {
-  fontSize: "var(--ec-text-md)",
-  fontWeight: 600,
-  color: "var(--ec-text-strong)",
-  fontFeatureSettings: '"tnum"',
-};
-
-const codeBox: CSSProperties = {
-  padding: "0.55rem 0.7rem",
-  borderRadius: "var(--ec-radius-md)",
-  border: "1px solid var(--ec-border-default)",
-  background: "var(--ec-input-bg)",
-  color: "var(--ec-text)",
-  fontFamily: "var(--ec-font-mono)",
-  fontSize: "var(--ec-text-sm)",
-  wordBreak: "break-all",
-};
-
-const memberRowStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "32px 1fr auto",
-  alignItems: "center",
-  gap: "var(--ec-space-2)",
-  padding: "var(--ec-space-2)",
-  borderRadius: "var(--ec-radius-sm)",
-};
-
-const roleSelect: CSSProperties = {
-  background: "var(--ec-surface-3)",
-  border: "1px solid var(--ec-border-default)",
-  borderRadius: "var(--ec-radius-sm)",
-  padding: "0.2rem 0.4rem",
-  color: "var(--ec-text)",
-  fontSize: "var(--ec-text-2xs)",
-  fontWeight: 600,
-  letterSpacing: "var(--ec-tracking-wide)",
-  cursor: "pointer",
-};
+// v1.1.96 slice 7: inline-style консоли ServerHubModal вынесены в
+// классы .ec-hub-* (components.css). JS-hover в компоненте не было.
 
 export function ServerHubModal({
   server,
@@ -374,8 +253,7 @@ export function ServerHubModal({
   return (
     <Modal title={server.name} onClose={onClose} width={620}>
       <div
-        style={tabBar}
-        className="ec-server-hub__tabs"
+        className="ec-server-hub__tabs ec-hub-tabs"
         role="tablist"
         aria-label="Разделы пространства"
       >
@@ -386,8 +264,7 @@ export function ServerHubModal({
             role="tab"
             aria-selected={tab === t.id}
             onClick={() => setTab(t.id)}
-            style={tabBtn(tab === t.id)}
-            className="ec-hud-tab"
+            className="ec-hub-tab"
           >
             {t.label}
           </button>
@@ -426,7 +303,7 @@ export function ServerHubModal({
           )}
 
           {/* Icon + identity */}
-          <section style={sectionCard}>
+          <section className="ec-hub-card">
             <div style={{ display: "flex", alignItems: "center", gap: "var(--ec-space-4)" }}>
               <div
                 style={{
@@ -496,17 +373,17 @@ export function ServerHubModal({
 
           {/* Stats */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 120px), 1fr))", gap: "var(--ec-space-2)" }}>
-            <div style={stat}>
-              <span style={statLabel}>Комнат</span>
-              <span style={statValue}>{server.channelCount}</span>
+            <div className="ec-hub-stat">
+              <span className="ec-hub-stat__label">Комнат</span>
+              <span className="ec-hub-stat__value">{server.channelCount}</span>
             </div>
-            <div style={stat}>
-              <span style={statLabel}>Участников</span>
-              <span style={statValue}>{server.memberCount}</span>
+            <div className="ec-hub-stat">
+              <span className="ec-hub-stat__label">Участников</span>
+              <span className="ec-hub-stat__value">{server.memberCount}</span>
             </div>
-            <div style={stat}>
-              <span style={statLabel}>Создан</span>
-              <span style={{ ...statValue, fontSize: "var(--ec-text-sm)" }}>
+            <div className="ec-hub-stat">
+              <span className="ec-hub-stat__label">Создан</span>
+              <span className="ec-hub-stat__value" style={{ fontSize: "var(--ec-text-sm)" }}>
                 {new Date(server.createdAt).toLocaleDateString("ru-RU", {
                   day: "numeric",
                   month: "short",
@@ -519,8 +396,8 @@ export function ServerHubModal({
           {/* Description preview */}
           {server.description && (
             <section>
-              <h3 style={sectionLabel}>Описание</h3>
-              <div style={{ ...sectionCard, gap: 0 }}>
+              <h3 className="ec-hub-label">Описание</h3>
+              <div className="ec-hub-card" style={{ gap: 0 }}>
                 <p
                   style={{
                     margin: 0,
@@ -538,9 +415,9 @@ export function ServerHubModal({
 
           {/* Invite */}
           <section>
-            <h3 style={sectionLabel}>Приглашение</h3>
-            <div style={sectionCard}>
-              <div style={codeBox}>{server.inviteCode}</div>
+            <h3 className="ec-hub-label">Приглашение</h3>
+            <div className="ec-hub-card">
+              <div className="ec-hub-code">{server.inviteCode}</div>
               <div style={{ display: "flex", gap: "var(--ec-space-2)", flexWrap: "wrap" }}>
                 <button
                   type="button"
@@ -572,10 +449,10 @@ export function ServerHubModal({
           {/* Members compact */}
           {members && members.length > 0 && (
             <section>
-              <h3 style={sectionLabel}>Участники · {members.length}</h3>
+              <h3 className="ec-hub-label">Участники · {members.length}</h3>
               <div
+                className="ec-hub-card"
                 style={{
-                  ...sectionCard,
                   padding: "var(--ec-space-2)",
                   maxHeight: 260,
                   overflowY: "auto",
@@ -586,7 +463,7 @@ export function ServerHubModal({
                   const isMe = currentUserId === m.userId;
                   const isOwnerRow = m.role === "OWNER";
                   return (
-                    <div key={m.id} style={memberRowStyle}>
+                    <div key={m.id} className="ec-hub-member">
                       <Avatar url={m.user.avatar} name={m.user.displayName} size={28} />
                       <span
                         style={{
@@ -612,7 +489,7 @@ export function ServerHubModal({
                               e.target.value as "ADMIN" | "MODERATOR" | "MEMBER",
                             )
                           }
-                          style={roleSelect}
+                          className="ec-hub-role-select"
                           title="Изменить роль"
                         >
                           <option value="ADMIN">ADMIN</option>
@@ -638,8 +515,8 @@ export function ServerHubModal({
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--ec-space-4)" }}>
           {/* Banner */}
           <section>
-            <h3 style={sectionLabel}>Баннер</h3>
-            <div style={sectionCard}>
+            <h3 className="ec-hub-label">Баннер</h3>
+            <div className="ec-hub-card">
               {server.banner ? (
                 <div
                   style={{
@@ -700,7 +577,7 @@ export function ServerHubModal({
                   </button>
                 )}
               </div>
-              <p style={fieldHint}>
+              <p className="ec-hub-hint">
                 1500×500, до 25 MB. Конвертируется в webp. Показывается в шапке
                 чата при пустой комнате и в Обзоре пространства.
               </p>
@@ -709,8 +586,8 @@ export function ServerHubModal({
 
           {/* Brand color */}
           <section>
-            <h3 style={sectionLabel}>Цвет акцента</h3>
-            <div style={sectionCard}>
+            <h3 className="ec-hub-label">Цвет акцента</h3>
+            <div className="ec-hub-card">
               <div
                 style={{
                   display: "grid",
@@ -835,7 +712,7 @@ export function ServerHubModal({
                   {saving ? "Сохраняем…" : savedFlash ? "✓ Сохранено" : "Сохранить цвет"}
                 </button>
               </div>
-              <p style={fieldHint}>
+              <p className="ec-hub-hint">
                 Цвет применяется к accent-элементам (кнопки, badges, focus rings,
                 glow) для всех участников пространства.
               </p>
@@ -848,20 +725,18 @@ export function ServerHubModal({
       {tab === "settings" && isOwner && (
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--ec-space-4)" }}>
           <section>
-            <h3 style={sectionLabel}>Название пространства</h3>
-            <div style={sectionCard}>
+            <h3 className="ec-hub-label">Название пространства</h3>
+            <div className="ec-hub-card">
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 maxLength={80}
                 placeholder="Название пространства"
-                style={{
-                  ...inputStyle,
-                  borderColor: nameValid ? "var(--ec-border-default)" : "var(--ec-danger)",
-                }}
+                className="ec-hub-input"
+                style={nameValid ? undefined : { borderColor: "var(--ec-danger)" }}
               />
-              <p style={fieldHint}>
+              <p className="ec-hub-hint">
                 Видно всем участникам в списке пространств и в шапке. 1–80 символов.
                 <span style={{ marginLeft: 6, color: "var(--ec-text-muted)" }}>
                   {trimmedName.length}/80
@@ -871,8 +746,8 @@ export function ServerHubModal({
           </section>
 
           <section>
-            <h3 style={sectionLabel}>Режим работы</h3>
-            <div style={sectionCard}>
+            <h3 className="ec-hub-label">Режим работы</h3>
+            <div className="ec-hub-card">
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--ec-space-2)" }}>
                 {([
                   {
@@ -921,7 +796,7 @@ export function ServerHubModal({
                   );
                 })}
               </div>
-              <p style={fieldHint}>
+              <p className="ec-hub-hint">
                 В Client-режиме скрыты operator-инструменты (Доска задач, slash-hints).
                 Менять можно в любой момент.
               </p>
@@ -929,17 +804,18 @@ export function ServerHubModal({
           </section>
 
           <section>
-            <h3 style={sectionLabel}>Описание</h3>
-            <div style={sectionCard}>
+            <h3 className="ec-hub-label">Описание</h3>
+            <div className="ec-hub-card">
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 maxLength={1000}
                 rows={6}
                 placeholder="О чём это пространство. Что обсуждается. Кому подходит."
-                style={{ ...inputStyle, resize: "vertical", minHeight: 120 }}
+                className="ec-hub-input"
+                style={{ resize: "vertical", minHeight: 120 }}
               />
-              <p style={fieldHint}>
+              <p className="ec-hub-hint">
                 Видно в «Обзоре» всем участникам. До 1000 символов.
                 <span style={{ marginLeft: 6, color: "var(--ec-text-muted)" }}>
                   {description.length}/1000
@@ -949,17 +825,18 @@ export function ServerHubModal({
           </section>
 
           <section>
-            <h3 style={sectionLabel}>Приветствие новым участникам</h3>
-            <div style={sectionCard}>
+            <h3 className="ec-hub-label">Приветствие новым участникам</h3>
+            <div className="ec-hub-card">
               <textarea
                 value={welcomeMessage}
                 onChange={(e) => setWelcomeMessage(e.target.value)}
                 maxLength={500}
                 rows={3}
                 placeholder="Сообщение которое увидит новый участник при первом заходе."
-                style={{ ...inputStyle, resize: "vertical", minHeight: 80 }}
+                className="ec-hub-input"
+                style={{ resize: "vertical", minHeight: 80 }}
               />
-              <p style={fieldHint}>
+              <p className="ec-hub-hint">
                 Показывается один раз в первой текстовой комнате как dismissible
                 welcome-card. До 500 символов.
                 <span style={{ marginLeft: 6, color: "var(--ec-text-muted)" }}>
