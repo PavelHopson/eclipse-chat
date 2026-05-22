@@ -199,6 +199,14 @@ export function MusicExpandModal({
     return out;
   }, [track?.waveformPeaks]);
 
+  // v1.1.89 — гасим «живые» анимации при prefers-reduced-motion.
+  const reduceMotion = useMemo(
+    () =>
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    [],
+  );
+
   const isHost = session.host.id === currentUserId;
   const seekable = isHost && durationMs != null && durationMs > 0 && !!track;
 
@@ -362,6 +370,16 @@ export function MusicExpandModal({
                       rx={1}
                       fill={played ? "var(--ec-accent)" : "var(--ec-text-dim)"}
                       opacity={played ? 0.95 : 0.45}
+                      style={{
+                        transformBox: "fill-box",
+                        transformOrigin: "center",
+                        animation:
+                          session.isPlaying && !reduceMotion
+                            ? `ec-wave-pulse ${
+                                0.85 + (i % 6) * 0.13
+                              }s ease-in-out ${-(i % 11) * 0.09}s infinite`
+                            : undefined,
+                      }}
                     />
                   );
                 })}

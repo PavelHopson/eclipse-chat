@@ -176,6 +176,17 @@ export function MusicMiniPlayer({
           </svg>
         )}
       </button>
+      {/* v1.1.89 — мини-эквалайзер «now playing»: живой ритм при игре. */}
+      {session.currentTrack && (
+        <span
+          className={"ec-eq" + (session.isPlaying ? " ec-eq--playing" : "")}
+          aria-hidden
+        >
+          <span />
+          <span />
+          <span />
+        </span>
+      )}
       <button
         type="button"
         onClick={onExpand}
