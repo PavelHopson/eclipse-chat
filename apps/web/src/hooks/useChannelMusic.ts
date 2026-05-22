@@ -162,6 +162,30 @@ export function useChannelMusic(channelId: string | null, socket: Socket | null)
     }
   }, [channelId]);
 
+  /** v1.1.84 — перемотка. Сервер двигает positionMs и ре-броадкастит
+   *  сессию → все слушатели ре-синхронятся (как при skip). host / MOD+. */
+  const seek = useCallback(
+    async (positionMs: number): Promise<boolean> => {
+      if (!channelId) return false;
+      try {
+        const data = await apiJson<{ session: MusicSession }>(
+          `/api/channels/${encodeURIComponent(channelId)}/music/seek`,
+          {
+            method: "POST",
+            body: JSON.stringify({ positionMs: Math.max(0, Math.round(positionMs)) }),
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+        setSession(data.session);
+        return true;
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Не удалось перемотать");
+        return false;
+      }
+    },
+    [channelId],
+  );
+
   const stop = useCallback(async (): Promise<boolean> => {
     if (!channelId) return false;
     try {
@@ -208,6 +232,7 @@ export function useChannelMusic(channelId: string | null, socket: Socket | null)
     start,
     togglePlayPause,
     skip,
+    seek,
     stop,
     addToQueue,
   };

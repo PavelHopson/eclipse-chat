@@ -35,6 +35,10 @@ const queueBody = z.object({
   attachmentId: z.string().min(1),
 });
 
+const seekBody = z.object({
+  positionMs: z.number().int().min(0),
+});
+
 async function loadChannelMembership(userId: string, channelId: string) {
   const channel = await db.channel.findUnique({
     where: { id: channelId },
@@ -461,6 +465,56 @@ export async function registerMusicRoutes(app: FastifyInstance) {
           positionMs: 0,
           isPlaying: true,
           queue: JSON.stringify(nextQueue),
+        },
+        include: sessionInclude,
+      });
+      const payload = serializeSession(updated);
+      emitMusicSessionUpdated(channelId, payload);
+      return { session: payload };
+    },
+  );
+
+  /** POST seek — host / MOD+. Перемотка: позиция прыгает на positionMs.
+   *  playing → startedAt=now (derived позиция = positionMs мгновенно);
+   *  paused → startedAt остаётся null (derived = positionMs). Все
+   *  слушатели ре-синхронятся через broadcast — тот же механизм, что
+   *  у skip/pause/resume. */
+  app.post(
+    "/api/channels/:id/music/seek",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const userId = getUserId(req);
+      if (!userId) return reply.status(401).send({ error: "Unauthorized" });
+      const { id: channelId } = req.params as { id: string };
+      const parsed = seekBody.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.status(400).send({ error: "Invalid body" });
+      }
+      const ctx = await loadChannelMembership(userId, channelId);
+      if ("error" in ctx) {
+        return reply.status(ctx.error === "Channel not found" ? 404 : 403).send({
+          error: ctx.error,
+        });
+      }
+      const session = await db.musicSession.findUnique({
+        where: { channelId },
+        include: sessionInclude,
+      });
+      if (!session) {
+        return reply.status(404).send({ error: "No active session" });
+      }
+      if (session.hostUserId !== userId && !isMod(ctx.member.role)) {
+        return reply.status(403).send({ error: "Only host or moderator can seek" });
+      }
+      if (!session.currentTrackAttachmentId) {
+        return reply.status(400).send({ error: "Нет текущего трека" });
+      }
+      const target = Math.max(0, Math.floor(parsed.data.positionMs));
+      const updated = await db.musicSession.update({
+        where: { channelId },
+        data: {
+          positionMs: target,
+          startedAt: session.isPlaying ? new Date() : null,
         },
         include: sessionInclude,
       });

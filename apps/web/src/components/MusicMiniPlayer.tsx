@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import { useEffect, useRef, useState } from "react";
 import { Avatar } from "./Avatar";
+import { MediaScrubber } from "./MediaScrubber";
 import { resolveAssetUrl } from "../lib/assets";
 import { useMediaVolume } from "../hooks/useMediaVolume";
 import type { MusicSession } from "../hooks/useChannelMusic";
@@ -28,6 +29,8 @@ type Props = {
   derivedPositionMs: number;
   onTogglePlayPause: () => void | Promise<void>;
   onSkip: () => void | Promise<void>;
+  /** v1.1.84 — перемотка: коммитит позицию (мс) на сервер. */
+  onSeek: (positionMs: number) => void | Promise<void>;
   onStop: () => void | Promise<void>;
   /** v0.74 #32 phase 3: open big expand-view modal. */
   onExpand?: () => void;
@@ -86,6 +89,7 @@ export function MusicMiniPlayer({
   derivedPositionMs,
   onTogglePlayPause,
   onSkip,
+  onSeek,
   onStop,
   onExpand,
 }: Props) {
@@ -142,10 +146,6 @@ export function MusicMiniPlayer({
   const isVoiceMessage = session.currentTrack
     ? /^voice-message-/i.test(session.currentTrack.filename)
     : false;
-  const progressPct =
-    durationMs && derivedPositionMs >= 0
-      ? Math.min(100, Math.max(0, (derivedPositionMs / durationMs) * 100))
-      : 0;
 
   return (
     <div className="ec-music-mini-player" style={wrap} role="region" aria-label="Общий плеер канала">
@@ -191,29 +191,12 @@ export function MusicMiniPlayer({
       >
         {isVoiceMessage ? "Голосовое" : trackName}
       </button>
-      <span
-        style={{
-          width: 70,
-          height: 3,
-          background: "var(--ec-surface-3)",
-          borderRadius: "var(--ec-radius-full)",
-          position: "relative",
-          overflow: "hidden",
-          flexShrink: 0,
-        }}
-        aria-hidden
-      >
-        <span
-          style={{
-            position: "absolute",
-            inset: 0,
-            width: `${progressPct}%`,
-            background: "var(--ec-accent)",
-            borderRadius: "var(--ec-radius-full)",
-            transition: "width 400ms linear",
-          }}
-        />
-      </span>
+      <MediaScrubber
+        positionMs={derivedPositionMs}
+        durationMs={durationMs ?? 0}
+        onSeek={(ms) => void onSeek(ms)}
+        disabled={!session.currentTrack}
+      />
       <span
         style={{
           fontFamily: "var(--ec-font-mono)",

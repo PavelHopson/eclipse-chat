@@ -720,6 +720,19 @@
   background: var(--ec-border-default);
 }
 
+/* v1.1.84 — music mini-player: hover-glow на кнопках (дизайн-язык
+   eclipse-os-v1 — элемент подсвечивается при наведении). */
+.ec-music-mini-player button:not(:disabled) {
+  transition:
+    transform var(--ec-dur-fast) var(--ec-ease),
+    background var(--ec-dur-fast) var(--ec-ease),
+    filter var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-music-mini-player button:not(:disabled):hover {
+  transform: translateY(-1px);
+  filter: drop-shadow(0 0 5px hsl(258 90% 66% / 0.5));
+}
+
 .ec-shell__channels,
 .ec-shell__members {
   backdrop-filter: blur(18px) saturate(130%);

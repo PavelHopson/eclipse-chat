@@ -6,15 +6,6 @@ import eclipseLogo from './assets/images/eclipse_logo_1779198030363.png';
 export default function AuthScreen({ onLogin }: { onLogin: () => void }) {
   const [step, setStep] = useState<'scan' | 'credentials' | '2fa' | 'success'>('scan');
   const [pin, setPin] = useState('');
-  const [telemetry, setTelemetry] = useState('SYS.INIT');
-
-  useEffect(() => {
-    // Fake telemetry
-    const interval = setInterval(() => {
-      setTelemetry(`POS: ${Math.floor(Math.random() * 90)}.${Math.floor(Math.random() * 999)} N | СИНХР: ${Math.floor(Math.random() * 100)}% | T-${Math.floor(Math.random() * 9999)}`);
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
 
   const handleStart = () => setStep('credentials');
 
@@ -61,8 +52,8 @@ export default function AuthScreen({ onLogin }: { onLogin: () => void }) {
       {/* Header HUD */}
       <motion.div initial={{ y: -50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="fixed top-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 z-10 w-full px-8">
         <div className="flex justify-between w-full max-w-4xl font-mono text-[0.6rem] text-[#5db5d9] uppercase tracking-widest opacity-80">
-          <span>СЕТЬ ECLIPSE</span>
-          <span>{telemetry}</span>
+          <span>СИСТЕМА ECLIPSE</span>
+          <span>АВТОРИЗАЦИЯ ЗАЩИЩЕНА</span>
         </div>
         <div className="w-full max-w-4xl h-px bg-gradient-to-r from-transparent via-[#5db5d9]/50 to-transparent mt-2 relative">
            <div className="absolute top-0 left-1/4 w-12 h-px bg-[#f1f3f5] animate-[ping_4s_ease-in-out_infinite]" />
@@ -98,13 +89,19 @@ export default function AuthScreen({ onLogin }: { onLogin: () => void }) {
           <div className="p-8 min-h-[300px] flex flex-col justify-center">
             <AnimatePresence mode="wait">
               {step === 'scan' && (
-                 <motion.div key="scan" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 1.05 }} className="flex flex-col items-center justify-center py-8">
-                   <div className="w-24 h-24 border border-[#18202A] rounded-full flex items-center justify-center mb-6 relative group cursor-pointer" onClick={handleStart}>
-                      <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-[#5db5d9] animate-spin" />
-                      <Fingerprint className="w-10 h-10 text-[#323640] group-hover:text-[#5db5d9] transition-colors" />
-                      <div className="absolute inset-0 rounded-full bg-[#5db5d9]/5 group-hover:bg-[#5db5d9]/20 transition-colors" />
-                   </div>
-                   <div className="text-[#88909c] font-mono text-xs tracking-widest text-center uppercase animate-pulse">ИНИЦИАЛИЗАЦИЯ РУКОПОЖАТИЯ</div>
+                 <motion.div key="scan" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 1.1 }} transition={{ duration: 0.4 }} className="flex flex-col items-center justify-center py-8">
+                   <motion.div 
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      className="w-28 h-28 border border-[#5db5d9]/20 rounded-full flex items-center justify-center mb-8 relative group cursor-pointer shadow-[0_0_30px_rgba(93,181,217,0.1)]" 
+                      onClick={handleStart}
+                   >
+                      <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-[#5db5d9] border-r-[#a380eb]/50 animate-spin" style={{ animationDuration: '3s' }} />
+                      <div className="absolute inset-2 rounded-full border border-[#18202A] border-b-[#5db5d9]/50 animate-[spin_4s_linear_infinite_reverse]" />
+                      <Fingerprint className="w-12 h-12 text-[#323640] group-hover:text-[#f1f3f5] transition-colors relative z-10 drop-shadow-[0_0_8px_rgba(93,181,217,0.8)]" />
+                      <div className="absolute inset-0 rounded-full bg-[#5db5d9]/5 group-hover:bg-[#5db5d9]/10 transition-colors" />
+                   </motion.div>
+                   <div className="text-[#88909c] font-mono text-xs tracking-[0.3em] text-center uppercase animate-pulse">РАСПОЗНАВАНИЕ БИОМЕТРИИ</div>
                  </motion.div>
               )}
 
@@ -142,10 +139,13 @@ export default function AuthScreen({ onLogin }: { onLogin: () => void }) {
                     </div>
                   </div>
                   
-                  <button type="submit" className="w-full mt-8 relative group overflow-hidden bg-[#11161D] border border-[#222B36] hover:border-[#5db5d9] transition-all duration-300">
-                    <div className="absolute inset-0 bg-[#5db5d9] translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out" />
-                    <div className="relative py-4 flex justify-center items-center gap-2 text-xs font-mono tracking-widest text-[#88909c] group-hover:text-[#000] font-bold uppercase transition-colors">
-                      ПРОДОЛЖИТЬ <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                  <button type="submit" className="w-full mt-8 relative group overflow-hidden rounded border border-[#18202A] bg-[#000] hover:border-[#5db5d9] transition-all duration-300 shadow-[inset_0_0_20px_rgba(0,0,0,1)] hover:shadow-[0_0_30px_rgba(93,181,217,0.4)]">
+                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 overflow-hidden">
+                       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#5db5d9]/60 via-[#0B0F14] to-[#000]" />
+                       <div className="absolute w-[200%] h-[100%] top-0 left-[-50%] bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.3),transparent)] animate-[translate-x-[200%]_1.5s_ease-in-out_infinite]" />
+                    </div>
+                    <div className="relative py-4 flex justify-center items-center gap-3 text-xs font-mono tracking-[0.2em] text-[#5db5d9] group-hover:text-[#fff] font-bold uppercase transition-all z-10 group-hover:tracking-[0.3em] duration-500">
+                      АВТОРИЗАЦИЯ <ArrowRight size={16} className="group-hover:translate-x-3 group-hover:scale-125 transition-all duration-500 filter group-hover:drop-shadow-[0_0_8px_#fff]" />
                     </div>
                   </button>
                 </motion.form>
@@ -158,53 +158,65 @@ export default function AuthScreen({ onLogin }: { onLogin: () => void }) {
                     <div className="text-[#f1f3f5] text-xs font-mono tracking-[0.2em] uppercase text-center">ПРОВЕРКА 2FA</div>
                   </div>
 
-                  <div className="flex justify-center gap-2 mb-8 perspective-[800px]">
+                  <div className="flex justify-center gap-3 mb-8 perspective-[800px]">
                     {[0, 1, 2, 3, 4, 5].map((i) => (
-                      <div 
+                      <motion.div 
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: pin.length === i ? -4 : 0 }}
+                        transition={{ delay: i * 0.05, duration: 0.3 }}
                         key={i} 
-                        className={`w-10 h-14 bg-[#030406] border-b-2 flex items-center justify-center text-xl font-mono transition-all duration-300 ${
+                        className={`w-12 h-16 bg-[#030406]/50 backdrop-blur-sm border flex items-center justify-center text-2xl font-mono transition-all duration-300 rounded-md ${
                           pin.length > i 
-                            ? 'border-[#5db5d9] text-[#f1f3f5] shadow-[0_4px_10px_-4px_#5db5d9]' 
-                            : 'border-[#18202A] text-[#323640]'
+                            ? 'border-[#5db5d9] text-[#f1f3f5] shadow-[0_0_15px_rgba(93,181,217,0.4)]' 
+                            : 'border-[#18202A] text-[#323640] shadow-inner-[0_0_10px_rgba(0,0,0,0.5)]'
                         }`}
-                        style={{
-                          transform: pin.length === i ? 'translateY(-2px)' : 'none'
-                        }}
                       >
-                        {pin[i] ? '*' : ''}
-                        {pin.length === i && <span className="w-4 h-[2px] bg-[#5db5d9] absolute bottom-2 animate-pulse" />}
-                      </div>
+                        {pin[i] ? <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-2 h-2 rounded-full bg-[#5db5d9]" /> : ''}
+                        {pin.length === i && <span className="w-6 h-[2px] bg-[#5db5d9] absolute bottom-3 shadow-[0_0_8px_#5db5d9] animate-pulse" />}
+                      </motion.div>
                     ))}
                   </div>
 
-                  <div className="grid grid-cols-3 gap-2">
-                    {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
-                      <button
+                  <div className="grid grid-cols-3 gap-3">
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num, i) => (
+                      <motion.button
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: 0.2 + i * 0.05 }}
                         key={num}
                         onClick={() => handlePinClick(num.toString())}
-                        className="h-12 bg-[#0B0F14] border border-[#18202A] hover:bg-[#5db5d9]/10 hover:border-[#5db5d9]/50 text-[#88909c] hover:text-[#5db5d9] font-mono text-lg transition-all active:scale-95 flex items-center justify-center"
+                        whileHover={{ scale: 1.05, backgroundColor: 'rgba(93,181,217,0.1)' }}
+                        whileTap={{ scale: 0.95 }}
+                        className="h-14 bg-[#0B0F14]/80 backdrop-blur-md rounded-md border border-[#18202A] text-[#88909c] hover:text-[#5db5d9] hover:border-[#5db5d9]/50 font-mono text-xl transition-all flex items-center justify-center relative overflow-hidden group"
                       >
+                        <div className="absolute inset-0 bg-gradient-to-t from-[#5db5d9]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                         {num}
-                      </button>
+                      </motion.button>
                     ))}
-                    <button
+                    <motion.button
+                      initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }}
                       onClick={() => setStep('credentials')}
-                      className="h-12 bg-[#000000] text-[#5b6371] hover:text-[#f1f3f5] font-mono text-xs transition-all flex justify-center items-center uppercase tracking-widest"
+                      whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                      className="h-14 bg-[#000000]/80 rounded-md border border-transparent text-[#5b6371] hover:text-[#f1f3f5] font-mono text-xs transition-all flex justify-center items-center uppercase tracking-widest"
                     >
                       ОТМЕНА
-                    </button>
-                    <button
+                    </motion.button>
+                    <motion.button
+                      initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.65 }}
                       onClick={() => handlePinClick('0')}
-                      className="h-12 bg-[#0B0F14] border border-[#18202A] hover:bg-[#5db5d9]/10 hover:border-[#5db5d9]/50 text-[#88909c] hover:text-[#5db5d9] font-mono text-lg transition-all active:scale-95 flex items-center justify-center"
+                      whileHover={{ scale: 1.05, backgroundColor: 'rgba(93,181,217,0.1)' }} whileTap={{ scale: 0.95 }}
+                      className="h-14 bg-[#0B0F14]/80 backdrop-blur-md rounded-md border border-[#18202A] text-[#88909c] hover:text-[#5db5d9] hover:border-[#5db5d9]/50 font-mono text-xl transition-all flex items-center justify-center relative overflow-hidden group"
                     >
                       0
-                    </button>
-                    <button
+                    </motion.button>
+                    <motion.button
+                      initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.75 }}
                       onClick={() => setPin(prev => prev.slice(0, -1))}
-                      className="h-12 bg-[#000000] text-[#5b6371] hover:text-[#f1f3f5] font-mono text-sm transition-all flex justify-center items-center"
+                      whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                      className="h-14 bg-[#000000]/80 rounded-md border border-transparent text-[#5b6371] hover:text-[#f1f3f5] font-mono text-sm transition-all flex justify-center items-center"
                     >
                       ⌫
-                    </button>
+                    </motion.button>
                   </div>
                 </motion.div>
               )}

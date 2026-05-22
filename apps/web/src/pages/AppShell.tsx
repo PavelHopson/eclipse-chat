@@ -1431,6 +1431,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                   derivedPositionMs={music.derivedPositionMs}
                   onTogglePlayPause={() => void music.togglePlayPause()}
                   onSkip={() => void music.skip()}
+                  onSeek={(ms) => void music.seek(ms)}
                   onStop={() => void music.stop()}
                   onExpand={() => setShowMusicExpand(true)}
                 />

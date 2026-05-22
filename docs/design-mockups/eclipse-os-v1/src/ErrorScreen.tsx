@@ -22,12 +22,19 @@ export default function ErrorScreen({ code = 500, message = "CRITICAL SYSTEM FAI
   return (
     <div className="min-h-screen bg-[#030406] flex flex-col items-center justify-center p-6 relative overflow-hidden font-sans text-[#f1f3f5] selection:bg-red-500/30">
       
-      {/* Background Glitch Effects */}
-      <div className="absolute inset-0 z-0 pointer-events-none opacity-40 mix-blend-screen" style={{
-        backgroundImage: 'linear-gradient(rgba(255,0,0,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,0,0,0.03) 1px, transparent 1px)',
-        backgroundSize: '16px 16px'
+      {/* Background Glitch Effects & Eclipse Sphere */}
+      <div className="absolute top-[-20%] right-[-10%] w-[80vw] h-[80vw] max-w-[800px] max-h-[800px] rounded-full border border-red-500/10 pointer-events-none opacity-50 flex items-center justify-center shadow-[inset_0_0_100px_rgba(255,0,0,0.05),0_0_200px_rgba(255,0,0,0.1)]">
+        <div className="absolute inset-0 rounded-full border border-red-500/20 animate-[spin_30s_linear_infinite_reverse]" style={{ clipPath: 'polygon(0 0, 100% 0, 100% 50%, 0 50%)' }} />
+        <div className="w-[60%] h-[60%] rounded-full bg-[#000] shadow-[0_0_100px_rgba(255,51,51,0.3)] relative overflow-hidden flex items-center justify-center">
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(255,51,51,0.2),_transparent_60%)]" />
+        </div>
+      </div>
+
+      <div className="absolute inset-0 z-0 pointer-events-none opacity-20 mix-blend-screen" style={{
+        backgroundImage: 'linear-gradient(rgba(255,0,0,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,0,0,0.05) 1px, transparent 1px)',
+        backgroundSize: '24px 24px'
       }} />
-      <div className="absolute inset-0 z-0 bg-[radial-gradient(ellipse_at_center,_transparent_20%,_#030406_100%)] pointer-events-none" />
+      <div className="absolute inset-0 z-0 bg-[radial-gradient(ellipse_at_center,_transparent_10%,_#030406_100%)] pointer-events-none" />
 
       {glitch && (
         <div className="absolute inset-0 bg-red-500/10 mix-blend-overlay z-50 pointer-events-none" />
