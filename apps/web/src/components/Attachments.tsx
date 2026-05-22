@@ -1,9 +1,10 @@
 import type { CSSProperties } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Attachment } from "../hooks/useMessages";
 import { apiJson } from "../lib/api";
 import { resolveAssetUrl } from "../lib/assets";
 import { useMediaVolume } from "../hooks/useMediaVolume";
+import { VideoPlayer } from "./VideoPlayer";
 
 type Props = {
   attachments: Attachment[];
@@ -862,10 +863,46 @@ const lightboxCaption: CSSProperties = {
   margin: "0 auto",
 };
 
-function Lightbox({ a, onClose }: { a: Attachment; onClose: () => void }) {
+const lightboxNavBtn: CSSProperties = {
+  width: 30,
+  height: 30,
+  display: "grid",
+  placeItems: "center",
+  borderRadius: "var(--ec-radius-sm)",
+  background: "transparent",
+  border: "1px solid var(--ec-border-default)",
+  color: "var(--ec-text)",
+  cursor: "pointer",
+  flexShrink: 0,
+};
+
+/**
+ * Lightbox-галерея (v1.1.86 — слайс 3): листает соседние вложения
+ * (видео — внутри VideoPlayer кнопками next/prev + onEnded; картинки —
+ * стрелками ‹ › в подписи / клавишами ←/→).
+ */
+function Lightbox({
+  items,
+  index,
+  onClose,
+}: {
+  items: Attachment[];
+  index: number;
+  onClose: () => void;
+}) {
+  const [idx, setIdx] = useState(index);
+  const go = useCallback(
+    (delta: number) => {
+      setIdx((i) => (i + delta + items.length) % items.length);
+    },
+    [items.length],
+  );
+  const multi = items.length > 1;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
+      else if (multi && e.key === "ArrowLeft") go(-1);
+      else if (multi && e.key === "ArrowRight") go(1);
     };
     document.addEventListener("keydown", onKey);
     const prev = document.body.style.overflow;
@@ -874,12 +911,22 @@ function Lightbox({ a, onClose }: { a: Attachment; onClose: () => void }) {
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = prev;
     };
-  }, [onClose]);
+  }, [onClose, multi, go]);
+
+  const a = items[idx] ?? items[0];
+  if (!a) return null;
   const fullUrl = resolveAssetUrl(a.url) ?? "";
+  const video = isVideo(a);
+
   return (
     <div style={lightboxBackdrop} onClick={(e) => e.target === e.currentTarget && onClose()} role="dialog" aria-modal="true">
-      {isVideo(a) ? (
-        <video src={fullUrl} controls autoPlay playsInline style={lightboxImg} />
+      {video ? (
+        <VideoPlayer
+          key={a.id}
+          src={fullUrl}
+          onNext={multi ? () => go(1) : undefined}
+          onPrev={multi ? () => go(-1) : undefined}
+        />
       ) : (
         <img src={fullUrl} alt={a.filename} style={lightboxImg} />
       )}
@@ -905,26 +952,53 @@ function Lightbox({ a, onClose }: { a: Attachment; onClose: () => void }) {
         </button>
       </div>
       <div style={lightboxCaption}>
+        {/* Для картинок навигация — стрелками в подписи; у видео next/prev
+            живут в самом плеере, поэтому здесь не дублируем. */}
+        {multi && !video && (
+          <button type="button" onClick={() => go(-1)} style={lightboxNavBtn} title="Предыдущее" aria-label="Предыдущее">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+          </button>
+        )}
         <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }} title={a.filename}>
           {a.filename}
         </span>
         <span style={{ color: "var(--ec-text-dim)", fontSize: "var(--ec-text-xs)", fontFeatureSettings: '"tnum"' }}>
           {humanSize(a.size)}
           {a.width && a.height ? ` · ${a.width}×${a.height}` : ""}
+          {multi ? ` · ${idx + 1}/${items.length}` : ""}
         </span>
+        {multi && !video && (
+          <button type="button" onClick={() => go(1)} style={lightboxNavBtn} title="Следующее" aria-label="Следующее">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </button>
+        )}
       </div>
     </div>
   );
 }
 
 export function Attachments({ attachments, onPlayShared }: Props) {
-  const [lightbox, setLightbox] = useState<Attachment | null>(null);
+  const [lightbox, setLightbox] = useState<{
+    items: Attachment[];
+    index: number;
+  } | null>(null);
   if (attachments.length === 0) return null;
 
   const images = attachments.filter(isImage);
   const videos = attachments.filter(isVideo);
   const audios = attachments.filter(isAudio);
   const files = attachments.filter((a) => !isImage(a) && !isVideo(a) && !isAudio(a));
+
+  // Открыть lightbox-галерею. Соседи для навигации — однотипные вложения
+  // того же сообщения (видео листается среди видео, картинки — среди картинок).
+  const openLightbox = (att: Attachment) => {
+    const list = isVideo(att) ? videos : isImage(att) ? images : [att];
+    setLightbox({ items: list, index: Math.max(0, list.indexOf(att)) });
+  };
 
   return (
     <div style={wrap}>
@@ -947,14 +1021,14 @@ export function Attachments({ attachments, onPlayShared }: Props) {
           }
         >
           {images.map((a) => (
-            <ImageItem key={a.id} a={a} onOpen={setLightbox} />
+            <ImageItem key={a.id} a={a} onOpen={openLightbox} />
           ))}
         </div>
       )}
       {videos.length > 0 && (
         <div className="ec-video-attachment-grid">
           {videos.map((a) => (
-            <VideoItem key={a.id} a={a} onOpen={setLightbox} />
+            <VideoItem key={a.id} a={a} onOpen={openLightbox} />
           ))}
         </div>
       )}
@@ -1007,7 +1081,13 @@ export function Attachments({ attachments, onPlayShared }: Props) {
           ))}
         </div>
       )}
-      {lightbox && <Lightbox a={lightbox} onClose={() => setLightbox(null)} />}
+      {lightbox && (
+        <Lightbox
+          items={lightbox.items}
+          index={lightbox.index}
+          onClose={() => setLightbox(null)}
+        />
+      )}
     </div>
   );
 }

@@ -733,6 +733,17 @@
   filter: drop-shadow(0 0 5px hsl(258 90% 66% / 0.5));
 }
 
+/* v1.1.86 — video player: hover-glow на кнопках панели управления. */
+.ec-video-player__bar button:not(:disabled) {
+  transition:
+    transform var(--ec-dur-fast) var(--ec-ease),
+    filter var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-video-player__bar button:not(:disabled):hover {
+  transform: translateY(-1px);
+  filter: drop-shadow(0 0 6px hsl(258 90% 66% / 0.6));
+}
+
 .ec-shell__channels,
 .ec-shell__members {
   backdrop-filter: blur(18px) saturate(130%);
