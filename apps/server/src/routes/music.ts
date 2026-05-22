@@ -84,7 +84,14 @@ async function loadAudioAttachment(attachmentId: string, serverId: string) {
     },
   });
   if (!att) return null;
-  if (!att.mimeType.startsWith("audio/")) return null;
+  // v1.1.87 — медиа-сессия принимает audio И video (watch-party):
+  // сессия media-агностична, тип влияет только на рендер на клиенте.
+  if (
+    !att.mimeType.startsWith("audio/") &&
+    !att.mimeType.startsWith("video/")
+  ) {
+    return null;
+  }
   // Attachment может быть в DM (att.message.channel = null) или в server-канале.
   // Принимаем только server attachments из этого же сервера — DM tracks
   // не делимся (privacy).

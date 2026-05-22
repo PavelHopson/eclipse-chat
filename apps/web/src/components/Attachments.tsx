@@ -885,10 +885,12 @@ function Lightbox({
   items,
   index,
   onClose,
+  onPlayShared,
 }: {
   items: Attachment[];
   index: number;
   onClose: () => void;
+  onPlayShared?: (attachmentId: string) => void | Promise<void>;
 }) {
   const [idx, setIdx] = useState(index);
   const go = useCallback(
@@ -931,6 +933,24 @@ function Lightbox({
         <img src={fullUrl} alt={a.filename} style={lightboxImg} />
       )}
       <div style={lightboxControls}>
+        {video && onPlayShared && (
+          <button
+            type="button"
+            onClick={() => {
+              void onPlayShared(a.id);
+              onClose();
+            }}
+            style={lightboxBtn}
+            title="Смотреть вместе с комнатой"
+            aria-label="Смотреть вместе"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <rect x="2" y="4" width="20" height="14" rx="2" />
+              <path d="M10 9.2l5 2.8-5 2.8z" fill="currentColor" stroke="none" />
+              <line x1="8" y1="21" x2="16" y2="21" />
+            </svg>
+          </button>
+        )}
         <a
           href={fullUrl}
           download={a.filename}
@@ -1086,6 +1106,7 @@ export function Attachments({ attachments, onPlayShared }: Props) {
           items={lightbox.items}
           index={lightbox.index}
           onClose={() => setLightbox(null)}
+          onPlayShared={onPlayShared}
         />
       )}
     </div>

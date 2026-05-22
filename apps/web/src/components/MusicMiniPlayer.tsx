@@ -115,6 +115,14 @@ export function MusicMiniPlayer({
       audio.load();
       return;
     }
+    // v1.1.87 — видео-сессия (watch-party): синхро-<video> играет в
+    // expand-плеере; фоновый <audio> мини-плеера не дублирует звук.
+    if (session.currentTrack.mimeType?.startsWith("video/")) {
+      audio.pause();
+      audio.removeAttribute("src");
+      audio.load();
+      return;
+    }
     const src = resolveAssetUrl(session.currentTrack.url) ?? "";
     if (audio.src !== src) {
       audio.src = src;

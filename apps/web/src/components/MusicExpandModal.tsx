@@ -3,6 +3,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Avatar } from "./Avatar";
 import { Modal } from "./Modal";
 import { apiJson } from "../lib/api";
+import { resolveAssetUrl } from "../lib/assets";
+import { MediaScrubber } from "./MediaScrubber";
 import type { MusicSession } from "../hooks/useChannelMusic";
 
 /**
@@ -113,22 +115,53 @@ export function MusicExpandModal({
   onStop,
 }: Props) {
   const track = session.currentTrack;
+  // v1.1.87 — watch-party: видео-трек в той же синхро-сессии.
+  const isVideoTrack = !!track && track.mimeType.startsWith("video/");
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const waveformRef = useRef<SVGSVGElement | null>(null);
+  const videoElRef = useRef<HTMLVideoElement | null>(null);
   const [durationMs, setDurationMs] = useState<number | null>(null);
   const [dragFrac, setDragFrac] = useState<number | null>(null);
   const [queueTracks, setQueueTracks] = useState<
     { id: string; filename: string }[]
   >([]);
 
-  // Probe audio duration без воспроизведения.
+  // Probe длительности аудио-трека (для видео длительность даёт сам
+  // <video> через onLoadedMetadata).
   useEffect(() => {
-    if (!track) return;
+    if (!track || isVideoTrack) return;
     const a = audioRef.current;
     if (!a) return;
     a.src = track.url;
     a.load();
-  }, [track?.url]);
+  }, [track?.url, isVideoTrack]);
+
+  // v1.1.87 — синхро-видео (watch-party): <video> следует за серверной
+  // позицией сессии — тот же алгоритм, что у <audio> мини-плеера.
+  useEffect(() => {
+    const v = videoElRef.current;
+    if (!v || !isVideoTrack || !track) return;
+    const src = resolveAssetUrl(track.url) ?? "";
+    if (v.src !== src) {
+      v.src = src;
+      v.load();
+    }
+    const targetSec = Math.max(0, derivedPositionMs / 1000 - 0.15);
+    if (Math.abs(v.currentTime - targetSec) > 1.5) {
+      v.currentTime = targetSec;
+    }
+    if (session.isPlaying) {
+      void v.play().catch(() => undefined);
+    } else {
+      v.pause();
+    }
+  }, [
+    isVideoTrack,
+    track?.id,
+    session.isPlaying,
+    session.startedAt,
+    session.updatedAt,
+  ]);
 
   // Резолв очереди (attachment IDs → имена) для списка. Перезапрос при
   // изменении состава очереди.
@@ -200,7 +233,11 @@ export function MusicExpandModal({
   };
 
   return (
-    <Modal title="Совместное прослушивание" width={620} onClose={onClose}>
+    <Modal
+      title={isVideoTrack ? "Совместный просмотр" : "Совместное прослушивание"}
+      width={620}
+      onClose={onClose}
+    >
       <div style={wrap}>
         <div style={waveformWrap}>
           <div
@@ -260,56 +297,97 @@ export function MusicExpandModal({
             </span>
           </div>
 
-          {/* Big waveform — peaks 0..1; сыгранные bars accent, остальные
-              приглушены. Host может кликать/тащить → server-side seek. */}
-          <svg
-            ref={waveformRef}
-            viewBox={`0 0 ${peaks.length * 4} 100`}
-            preserveAspectRatio="none"
-            style={{ ...waveformSvg, cursor: seekable ? "pointer" : "default" }}
-            onPointerDown={onWavePointerDown}
-            onPointerMove={onWavePointerMove}
-            onPointerUp={onWavePointerUp}
-            onPointerCancel={() => setDragFrac(null)}
-          >
-            {peaks.map((p, i) => {
-              const h = Math.max(2, p);
-              const y = (100 - h) / 2;
-              const played = i / peaks.length <= progress;
-              return (
-                <rect
-                  key={i}
-                  x={i * 4 + 0.5}
-                  y={y}
-                  width={3}
-                  height={h}
-                  rx={1}
-                  fill={played ? "var(--ec-accent)" : "var(--ec-text-dim)"}
-                  opacity={played ? 0.95 : 0.45}
+          {isVideoTrack ? (
+            <>
+              {/* Синхро-видео (watch-party) — <video> следует за сессией. */}
+              <video
+                ref={videoElRef}
+                playsInline
+                onLoadedMetadata={(e) => {
+                  const d = e.currentTarget.duration;
+                  if (Number.isFinite(d)) setDurationMs(d * 1000);
+                }}
+                style={{
+                  width: "100%",
+                  maxHeight: 360,
+                  background: "#000",
+                  borderRadius: "var(--ec-radius-md)",
+                  display: "block",
+                }}
+              />
+              <MediaScrubber
+                positionMs={derivedPositionMs}
+                durationMs={durationMs ?? 0}
+                onSeek={(ms) => void onSeek(ms)}
+                disabled={!isHost}
+                width="100%"
+              />
+              <div
+                style={{
+                  fontSize: "0.6rem",
+                  color: "var(--ec-text-dim)",
+                  textAlign: "center",
+                }}
+              >
+                {isHost
+                  ? "Перемотка по дорожке — синхронно для всех зрителей"
+                  : "Смотрите синхронно — перемоткой управляет ведущий"}
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Big waveform — peaks 0..1; сыгранные bars accent, остальные
+                  приглушены. Host может кликать/тащить → server-side seek. */}
+              <svg
+                ref={waveformRef}
+                viewBox={`0 0 ${peaks.length * 4} 100`}
+                preserveAspectRatio="none"
+                style={{ ...waveformSvg, cursor: seekable ? "pointer" : "default" }}
+                onPointerDown={onWavePointerDown}
+                onPointerMove={onWavePointerMove}
+                onPointerUp={onWavePointerUp}
+                onPointerCancel={() => setDragFrac(null)}
+              >
+                {peaks.map((p, i) => {
+                  const h = Math.max(2, p);
+                  const y = (100 - h) / 2;
+                  const played = i / peaks.length <= progress;
+                  return (
+                    <rect
+                      key={i}
+                      x={i * 4 + 0.5}
+                      y={y}
+                      width={3}
+                      height={h}
+                      rx={1}
+                      fill={played ? "var(--ec-accent)" : "var(--ec-text-dim)"}
+                      opacity={played ? 0.95 : 0.45}
+                    />
+                  );
+                })}
+                {/* playhead cursor */}
+                <line
+                  x1={peaks.length * 4 * progress}
+                  y1={0}
+                  x2={peaks.length * 4 * progress}
+                  y2={100}
+                  stroke="var(--ec-accent)"
+                  strokeWidth={dragFrac != null ? 2.4 : 1.5}
+                  opacity={dragFrac != null ? 1 : 0.8}
                 />
-              );
-            })}
-            {/* playhead cursor */}
-            <line
-              x1={peaks.length * 4 * progress}
-              y1={0}
-              x2={peaks.length * 4 * progress}
-              y2={100}
-              stroke="var(--ec-accent)"
-              strokeWidth={dragFrac != null ? 2.4 : 1.5}
-              opacity={dragFrac != null ? 1 : 0.8}
-            />
-          </svg>
-          {seekable && (
-            <div
-              style={{
-                fontSize: "0.6rem",
-                color: "var(--ec-text-dim)",
-                textAlign: "center",
-              }}
-            >
-              Клик или перетаскивание по дорожке — перемотка для всех
-            </div>
+              </svg>
+              {seekable && (
+                <div
+                  style={{
+                    fontSize: "0.6rem",
+                    color: "var(--ec-text-dim)",
+                    textAlign: "center",
+                  }}
+                >
+                  Клик или перетаскивание по дорожке — перемотка для всех
+                </div>
+              )}
+            </>
           )}
         </div>
 
