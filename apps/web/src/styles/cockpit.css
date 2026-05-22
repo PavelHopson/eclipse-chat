@@ -691,6 +691,323 @@
   text-decoration: none;
 }
 
+/* ===== Mission detail drawer ================================
+   ActionItemDrawer — не длинная тех-форма, а панель, где двигают
+   исполнение: сильный identity-блок, ясная иерархия секций. */
+.ec-cck-drawer__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: hsl(220 30% 3% / 0.55);
+  backdrop-filter: blur(6px) saturate(140%);
+  -webkit-backdrop-filter: blur(6px) saturate(140%);
+  animation: ec-fade-in var(--ec-dur-base) var(--ec-ease) both;
+}
+.ec-cck-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 201;
+  width: min(480px, 100vw);
+  display: flex;
+  flex-direction: column;
+  background: var(--ec-surface-1);
+  box-shadow: var(--ec-shadow-lg);
+  animation: ec-slide-in-right var(--ec-dur-base) var(--ec-ease-out) both;
+}
+.ec-cck-drawer__head {
+  display: flex;
+  align-items: center;
+  gap: var(--ec-space-2);
+  padding: var(--ec-space-3) var(--ec-space-4);
+  background: var(--ec-surface-1);
+  box-shadow: inset 0 -1px 0 var(--ec-border-subtle);
+}
+.ec-cck-drawer__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ec-space-5);
+  padding: var(--ec-space-4);
+}
+.ec-cck-drawer__foot {
+  padding: var(--ec-space-3) var(--ec-space-4);
+  background: var(--ec-surface-1);
+  box-shadow: inset 0 1px 0 var(--ec-border-subtle);
+}
+.ec-cck-drawer__glyph {
+  display: grid;
+  place-items: center;
+  width: 27px;
+  height: 27px;
+  flex-shrink: 0;
+  border-radius: var(--ec-radius-sm);
+  background: var(--ec-surface-2);
+  color: var(--tone, var(--ec-accent));
+  font-family: var(--ec-font-mono);
+  font-size: var(--ec-text-sm);
+}
+.ec-cck-drawer__type {
+  font-size: var(--ec-text-2xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--tone, var(--ec-text-muted));
+}
+/* Status-select в шапке — tone-driven капсула. */
+.ec-cck-statussel {
+  padding: 0.32rem 0.66rem;
+  border-radius: var(--ec-radius-full);
+  border: 1px solid
+    color-mix(in srgb, var(--tone, var(--ec-text-muted)) 50%, transparent);
+  background: color-mix(in srgb, var(--tone, var(--ec-text-muted)) 15%, transparent);
+  color: var(--tone, var(--ec-text));
+  font-size: var(--ec-text-xs);
+  font-weight: 700;
+  cursor: pointer;
+  outline: none;
+}
+
+/* Section + ясная иерархия. */
+.ec-cck-sec {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ec-space-2);
+}
+.ec-cck-sec__label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  font-size: var(--ec-text-2xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ec-text-dim);
+}
+.ec-cck-sec__count {
+  font-family: var(--ec-font-mono);
+  font-weight: 600;
+  color: var(--ec-text-dim);
+}
+
+/* Identity-заголовок — hero задачи: крупное editable-поле. */
+.ec-cck-titleinput {
+  width: 100%;
+  background: var(--ec-input-bg);
+  border: 1px solid var(--ec-border-default);
+  border-radius: var(--ec-radius-md);
+  padding: 0.5rem 0.65rem;
+  color: var(--ec-text-strong);
+  font-size: var(--ec-text-lg);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  font-family: inherit;
+  outline: none;
+  transition: border-color var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-cck-titleinput:focus { border-color: var(--ec-accent); }
+
+/* Property row — label · значение/редактор. */
+.ec-cck-prop {
+  display: grid;
+  grid-template-columns: 104px 1fr;
+  align-items: center;
+  gap: var(--ec-space-2);
+}
+.ec-cck-prop__label {
+  font-size: var(--ec-text-2xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ec-text-dim);
+}
+.ec-cck-prop__val {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--ec-text-xs);
+  color: var(--ec-text-muted);
+}
+
+/* Field — inline input / select / textarea. */
+.ec-cck-field {
+  width: 100%;
+  background: var(--ec-input-bg);
+  border: 1px solid var(--ec-border-default);
+  border-radius: var(--ec-radius-sm);
+  padding: 0.4rem 0.55rem;
+  color: var(--ec-text);
+  font-size: var(--ec-text-sm);
+  font-family: inherit;
+  outline: none;
+  transition: border-color var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-cck-field:focus { border-color: var(--ec-accent); }
+.ec-cck-field--area {
+  min-height: 92px;
+  resize: vertical;
+  line-height: var(--ec-leading-relaxed);
+}
+.ec-cck-field--mono {
+  font-family: var(--ec-font-mono);
+  font-size: var(--ec-text-xs);
+}
+.ec-cck-field--tone {
+  color: var(--tone, var(--ec-text));
+  font-weight: 600;
+}
+
+/* Inset-панель — форма одобрения / dep-picker / dag. */
+.ec-cck-inset {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ec-space-2);
+  padding: var(--ec-space-3);
+  border-radius: var(--ec-radius-md);
+  background: var(--ec-surface-2);
+  box-shadow: var(--ec-edge);
+}
+.ec-cck-inset[data-tone] {
+  box-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--tone) 48%, transparent);
+}
+.ec-cck-inset__row {
+  display: flex;
+  align-items: center;
+  gap: var(--ec-space-2);
+  flex-wrap: wrap;
+}
+.ec-cck-inset__row--end { justify-content: flex-end; }
+
+/* Comment row — hover раскрывает удаление (был JS hover-state). */
+.ec-cck-comment {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px;
+  padding: var(--ec-space-2) var(--ec-space-3);
+  border-radius: var(--ec-radius-md);
+  background: var(--ec-surface-2);
+  box-shadow: var(--ec-edge);
+}
+.ec-cck-comment__head {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  margin-bottom: 3px;
+}
+.ec-cck-comment__author {
+  font-size: var(--ec-text-sm);
+  font-weight: 600;
+  color: var(--ec-text-strong);
+}
+.ec-cck-comment__time {
+  font-size: var(--ec-text-2xs);
+  color: var(--ec-text-dim);
+}
+.ec-cck-comment__body {
+  font-size: var(--ec-text-sm);
+  color: var(--ec-text);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.ec-cck-comment__del {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  background: var(--ec-surface-3);
+  border: 0;
+  border-radius: var(--ec-radius-xs);
+  color: var(--ec-text-dim);
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity var(--ec-dur-fast) var(--ec-ease),
+    background var(--ec-dur-fast) var(--ec-ease),
+    color var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-cck-comment:hover .ec-cck-comment__del,
+.ec-cck-comment__del:focus-visible { opacity: 1; }
+.ec-cck-comment__del:hover {
+  background: var(--ec-danger-soft);
+  color: var(--ec-danger);
+}
+
+/* Dependency row. */
+.ec-cck-deprow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: var(--ec-space-1) var(--ec-space-2);
+  border-radius: var(--ec-radius-md);
+  background: var(--ec-surface-2);
+  box-shadow: var(--ec-edge);
+  font-size: var(--ec-text-sm);
+}
+.ec-cck-deprow[data-done="true"] { opacity: 0.62; }
+.ec-cck-deprow__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ec-text);
+}
+
+/* AI-summary card. */
+.ec-cck-aicard {
+  margin: 0;
+  padding: var(--ec-space-3);
+  border-radius: var(--ec-radius-md);
+  background: var(--ec-accent-soft);
+  box-shadow: inset 0 0 0 1px var(--ec-border-accent);
+  color: var(--ec-text);
+  font-size: var(--ec-text-sm);
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+/* Activity log. */
+.ec-cck-actrow {
+  display: flex;
+  gap: 7px;
+  align-items: baseline;
+  font-size: var(--ec-text-2xs);
+  color: var(--ec-text-muted);
+}
+.ec-cck-actrow__time {
+  min-width: 38px;
+  flex-shrink: 0;
+  color: var(--ec-text-dim);
+  font-feature-settings: "tnum";
+}
+
+/* Collapsible toggle (история / граф). */
+.ec-cck-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  color: var(--ec-text-muted);
+  font-size: var(--ec-text-2xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-cck-toggle:hover { color: var(--ec-text); }
+
 /* ===== Reduced motion ======================================= */
 @media (prefers-reduced-motion: reduce) {
   .ec-cck-card:hover { transform: none; }

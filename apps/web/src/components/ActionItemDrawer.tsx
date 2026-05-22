@@ -15,208 +15,67 @@ import type {
 } from "../lib/socket";
 
 /**
- * ActionItemDrawer — first-class detail для task / decision / follow-up
- * (v0.54). Right-side floating panel поверх chat-shell'а; не ломает layout
- * (не использует grid-column как IntelligencePanel — full overlay через
- * fixed positioning).
+ * ActionItemDrawer — mission detail panel для task / decision /
+ * follow-up. Right-side floating panel поверх chat-shell'а.
  *
- * Содержимое:
- *   - Header: type-icon, title (inline edit), status toggle, close.
- *   - Properties row: priority / assignee / dueAt — inline editors.
- *   - Description (markdown textarea), сохраняется по blur.
- *   - Comments thread: список + composer внизу.
- *   - Activity log (collapsed section).
+ * v1.2.4 (R2, Execution Cockpit 3/3) — переведён на cockpit-язык
+ * (`cockpit.css`, `.ec-cck-*`): убраны все module-level
+ * `CSSProperties`-консоли и inline-style долг (~95), JS-hover в
+ * CommentRow / dep-picker → CSS. Сильный identity-блок, ясная
+ * иерархия секций (свойства / одобрение / зависимости / описание /
+ * сводка / комментарии / история).
  *
- * Permissions: любой member server'а может update + комментировать. Delete
- * comment'а — только автор. Delete всего ActionItem не реализован в v1
- * (требует отдельного route + confirmation; сейчас удаление через
- * delete source-message также удалит item через cascade).
+ * Содержание и логика (inline-edit, approval workflow, dependency
+ * DAG, AI summary, realtime sync) не тронуты.
  */
 
 type Props = {
   actionItemId: string;
   socket: Socket | null;
   currentUserId: string;
-  /** Member list активного сервера — для assignee picker. */
   members: Array<{
     userId: string;
     user: { displayName: string; avatar: string | null };
   }>;
-  /** Резолв channel name по id (для строки источника). */
   channelNameById: (channelId: string) => string | null;
   onClose: () => void;
-  /** Optional: jump к source message в основном чате. */
   onJumpToSource?: (channelId: string, messageId: string) => void;
-  /** v0.73 #20 phase 2: список ActionItem'ов активного сервера для
-   *  dependency picker. Optional — если не передан, секция «Зависимости»
-   *  работает в read-only режиме (без add). */
   serverActions?: ActionItemPayload[];
 };
 
-/* ===== Styles ============================================== */
-
-const backdrop: CSSProperties = {
-  position: "fixed",
-  inset: 0,
-  background: "rgba(0, 0, 0, 0.45)",
-  backdropFilter: "saturate(140%) blur(6px)",
-  WebkitBackdropFilter: "saturate(140%) blur(6px)",
-  zIndex: 200,
-  animation: "ec-fade-in var(--ec-dur-base) var(--ec-ease) both",
-};
-
-const drawer: CSSProperties = {
-  position: "fixed",
-  top: 0,
-  right: 0,
-  bottom: 0,
-  width: "min(460px, 100vw)",
-  background: "var(--ec-surface-1)",
-  borderLeft: "1px solid var(--ec-border-subtle)",
-  boxShadow: "var(--ec-shadow-lg, 0 30px 80px -20px rgba(0,0,0,0.55))",
-  display: "flex",
-  flexDirection: "column",
-  zIndex: 201,
-  animation: "ec-slide-in-right var(--ec-dur-base) var(--ec-ease-out) both",
-};
-
-const headerStyle: CSSProperties = {
-  padding: "var(--ec-space-3) var(--ec-space-4)",
-  borderBottom: "1px solid var(--ec-border-subtle)",
-  display: "flex",
-  alignItems: "center",
-  gap: "var(--ec-space-2)",
-  // v1.1.11: position:relative для .ec-server-header-edge::after
-  position: "relative",
-  background: "var(--ec-overlay-header-bg)",
-};
-
-const bodyStyle: CSSProperties = {
-  flex: 1,
-  overflowY: "auto",
-  padding: "var(--ec-space-4)",
-  display: "flex",
-  flexDirection: "column",
-  gap: "var(--ec-space-4)",
-};
-
-const sectionLabel: CSSProperties = {
-  fontSize: "0.65rem",
-  fontWeight: 700,
-  letterSpacing: "0.18em",
-  textTransform: "uppercase",
-  color: "var(--ec-text-dim)",
-  margin: "0 0 var(--ec-space-2)",
-  fontFamily: "var(--ec-font-mono, ui-monospace, monospace)",
-  display: "flex",
-  alignItems: "center",
-  gap: 8,
-};
-
-const propRow: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "100px 1fr",
-  alignItems: "center",
-  gap: "var(--ec-space-2)",
-  padding: "var(--ec-space-1) 0",
-  fontSize: "var(--ec-text-sm)",
-};
-
-const propLabel: CSSProperties = {
-  color: "var(--ec-text-dim)",
-  fontSize: "var(--ec-text-2xs)",
-  textTransform: "uppercase",
-  letterSpacing: "var(--ec-tracking-wide)",
-};
-
-const inlineInput: CSSProperties = {
-  width: "100%",
-  background: "var(--ec-input-bg)",
-  border: "1px solid var(--ec-border-default)",
-  borderRadius: "var(--ec-radius-sm)",
-  color: "var(--ec-text)",
-  padding: "0.35rem 0.55rem",
-  fontSize: "var(--ec-text-sm)",
-  outline: "none",
-};
-
-const titleInput: CSSProperties = {
-  ...inlineInput,
-  fontSize: "var(--ec-text-lg)",
-  fontWeight: 600,
-  padding: "0.45rem 0.6rem",
-};
-
-const dueInput: CSSProperties = {
-  ...inlineInput,
-  fontFamily: "var(--ec-font-mono)",
-  fontSize: "var(--ec-text-xs)",
-};
-
-const descTextarea: CSSProperties = {
-  ...inlineInput,
-  minHeight: 100,
-  resize: "vertical",
-  fontFamily: "inherit",
-  lineHeight: "var(--ec-leading-relaxed)",
-};
-
-const closeBtn: CSSProperties = {
-  width: 32,
-  height: 32,
-  display: "grid",
-  placeItems: "center",
-  border: 0,
-  background: "transparent",
-  borderRadius: "var(--ec-radius-md)",
-  color: "var(--ec-text-muted)",
-  cursor: "pointer",
-};
-
-// v0.71: legacy binary statusToggle убран — теперь 4-status native select
-// в headerStyle. handleStatusToggle тоже больше не нужен.
-
-const composerWrap: CSSProperties = {
-  borderTop: "1px solid var(--ec-border-subtle)",
-  padding: "var(--ec-space-3) var(--ec-space-4)",
-  background: "var(--ec-surface-1)",
-};
-
-const composerInput: CSSProperties = {
-  ...inlineInput,
-  minHeight: 36,
-  resize: "vertical",
-  paddingRight: 80,
-};
-
-const sendBtn: CSSProperties = {
-  padding: "0.5rem 0.95rem",
-  background: "var(--ec-accent)",
-  color: "var(--ec-accent-text)",
-  border: "1px solid var(--ec-accent)",
-  borderRadius: "var(--ec-radius-sm)",
-  fontSize: "var(--ec-text-sm)",
-  fontWeight: 600,
-  cursor: "pointer",
-};
+/** tone-токен → `--tone` (динамика — единственное, что допустимо инлайном). */
+const tone = (t: string): CSSProperties => ({ "--tone": t } as CSSProperties);
 
 const TYPE_META: Record<
   "TASK" | "DECISION" | "FOLLOW_UP",
-  { label: string; color: string; glyph: string }
+  { label: string; tone: string; glyph: string }
 > = {
-  TASK: { label: "Задача", color: "var(--ec-status-exec)", glyph: "▣" },
-  DECISION: { label: "Решение", color: "var(--ec-accent)", glyph: "◆" },
-  FOLLOW_UP: { label: "Follow-up", color: "var(--ec-status-warn)", glyph: "○" },
+  TASK: { label: "Задача", tone: "var(--ec-status-exec)", glyph: "▣" },
+  DECISION: { label: "Решение", tone: "var(--ec-accent)", glyph: "◆" },
+  FOLLOW_UP: { label: "Follow-up", tone: "var(--ec-status-warn)", glyph: "○" },
 };
 
-const PRIORITY_META: Record<
-  ActionItemPriority,
-  { label: string; color: string }
-> = {
-  LOW:    { label: "Low",     color: "var(--ec-status-idle)" },
-  NORMAL: { label: "Normal",  color: "var(--ec-text-muted)" },
-  HIGH:   { label: "High",    color: "var(--ec-status-warn)" },
-  URGENT: { label: "Urgent",  color: "var(--ec-status-risk, var(--ec-danger))" },
+const PRIORITY_META: Record<ActionItemPriority, { label: string; tone: string }> = {
+  LOW: { label: "Low", tone: "var(--ec-status-idle)" },
+  NORMAL: { label: "Normal", tone: "var(--ec-text-muted)" },
+  HIGH: { label: "High", tone: "var(--ec-status-warn)" },
+  URGENT: { label: "Urgent", tone: "var(--ec-status-risk)" },
+};
+
+type TaskStatus = "OPEN" | "IN_PROGRESS" | "REVIEW" | "DONE";
+
+const STATUS_TONE: Record<TaskStatus, string> = {
+  OPEN: "var(--ec-status-idle)",
+  IN_PROGRESS: "var(--ec-accent)",
+  REVIEW: "var(--ec-status-ai)",
+  DONE: "var(--ec-status-exec)",
+};
+
+const STATUS_RU: Record<TaskStatus, string> = {
+  OPEN: "Открыто",
+  IN_PROGRESS: "В работе",
+  REVIEW: "На ревью",
+  DONE: "Выполнено",
 };
 
 function relativeTime(iso: string): string {
@@ -229,6 +88,14 @@ function relativeTime(iso: string): string {
   const diffD = Math.round(diffH / 24);
   if (diffD < 7) return `${diffD}д`;
   return new Date(iso).toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
+}
+
+function safeParse(s: string): Record<string, unknown> {
+  try {
+    return JSON.parse(s) as Record<string, unknown>;
+  } catch {
+    return {};
+  }
 }
 
 function formatActivity(a: ActionItemActivity): string {
@@ -265,14 +132,6 @@ function formatActivity(a: ActionItemActivity): string {
   }
 }
 
-function safeParse(s: string): Record<string, unknown> {
-  try {
-    return JSON.parse(s) as Record<string, unknown>;
-  } catch {
-    return {};
-  }
-}
-
 /* ===== Component =========================================== */
 
 export function ActionItemDrawer({
@@ -304,22 +163,18 @@ export function ActionItemDrawer({
   const [commentDraft, setCommentDraft] = useState("");
   const [submittingComment, setSubmittingComment] = useState(false);
   const [showActivity, setShowActivity] = useState(false);
-  // Approval section state.
   const [showApprovalForm, setShowApprovalForm] = useState(false);
   const [approvalApproverId, setApprovalApproverId] = useState<string>("");
   const [approvalNote, setApprovalNote] = useState("");
   const [decisionNote, setDecisionNote] = useState("");
   const [submittingApproval, setSubmittingApproval] = useState(false);
-  // v0.73 #20 phase 2: dependency picker state.
   const [depPickerOpen, setDepPickerOpen] = useState(false);
   const [depQuery, setDepQuery] = useState("");
   const [depError, setDepError] = useState<string | null>(null);
   const [submittingDep, setSubmittingDep] = useState(false);
-  // v0.73 #20 phase 4: AI summary state.
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
 
-  // Sync drafts when detail loads / external update arrives.
   useEffect(() => {
     if (detail) {
       setTitleDraft(detail.title);
@@ -328,7 +183,6 @@ export function ActionItemDrawer({
   }, [detail?.id, detail?.updatedAt]);
 
   // Escape closes drawer + body scroll-lock пока drawer открыт.
-  // v0.65: на mobile drawer fullscreen, background scroll'ил под backdrop.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -346,7 +200,6 @@ export function ActionItemDrawer({
 
   const dueValue = useMemo(() => {
     if (!detail?.dueAt) return "";
-    // <input type="datetime-local"> needs "YYYY-MM-DDTHH:mm" without TZ.
     const d = new Date(detail.dueAt);
     const pad = (n: number) => String(n).padStart(2, "0");
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
@@ -365,25 +218,6 @@ export function ActionItemDrawer({
     const value = descDraft.trim() ? descDraft : null;
     if ((value ?? null) === (detail.description ?? null)) return;
     await update({ description: value });
-  };
-
-  const handleAssigneeChange = async (value: string) => {
-    await update({ assigneeUserId: value === "" ? null : value });
-  };
-
-  const handlePriorityChange = async (value: ActionItemPriority) => {
-    await update({ priority: value });
-  };
-
-  const handleDueChange = async (value: string) => {
-    if (!value) {
-      await update({ dueAt: null });
-      return;
-    }
-    // datetime-local не имеет TZ — интерпретируем как локальное время.
-    const local = new Date(value);
-    if (Number.isNaN(local.getTime())) return;
-    await update({ dueAt: local.toISOString() });
   };
 
   const submitComment = async () => {
@@ -415,90 +249,45 @@ export function ActionItemDrawer({
 
   return (
     <>
-      <div style={backdrop} onClick={onClose} aria-hidden />
-      <aside className="ec-action-drawer" style={drawer} role="dialog" aria-label="Детали задачи">
-        <header className="ec-server-header-edge" style={headerStyle}>
+      <div className="ec-cck-drawer__backdrop" onClick={onClose} aria-hidden />
+      <aside
+        className="ec-cck-drawer ec-action-drawer"
+        role="dialog"
+        aria-label="Детали задачи"
+      >
+        <header className="ec-cck-drawer__head">
           {detail && typeMeta ? (
             <>
-              <span
-                aria-hidden
-                style={{
-                  width: 26,
-                  height: 26,
-                  display: "grid",
-                  placeItems: "center",
-                  borderRadius: "var(--ec-radius-sm)",
-                  background: "var(--ec-surface-2)",
-                  color: typeMeta.color,
-                  fontFamily: "var(--ec-font-mono)",
-                  fontSize: "var(--ec-text-sm)",
-                }}
-              >
+              <span className="ec-cck-drawer__glyph" style={tone(typeMeta.tone)} aria-hidden>
                 {typeMeta.glyph}
               </span>
-              <span
-                style={{
-                  fontSize: "var(--ec-text-2xs)",
-                  textTransform: "uppercase",
-                  letterSpacing: "var(--ec-tracking-caps)",
-                  color: typeMeta.color,
-                  fontWeight: 700,
-                }}
-              >
+              <span className="ec-cck-drawer__type" style={tone(typeMeta.tone)}>
                 {typeMeta.label}
               </span>
               <span style={{ flex: 1 }} />
-              {/* v0.71: 4-status select вместо binary toggle. Native
-                  <select> достаточно для inline-edit (drag-and-drop
-                  доступен в StatusBoard). */}
               <select
+                className="ec-cck-statussel"
+                style={tone(STATUS_TONE[detail.status])}
                 value={detail.status}
-                onChange={(e) =>
-                  void update({
-                    status: e.target.value as "OPEN" | "IN_PROGRESS" | "REVIEW" | "DONE",
-                  })
-                }
-                style={{
-                  padding: "0.35rem 0.7rem",
-                  borderRadius: "var(--ec-radius-full)",
-                  border: `1px solid ${
-                    detail.status === "DONE"
-                      ? "var(--ec-status-exec)"
-                      : detail.status === "REVIEW"
-                      ? "var(--ec-status-ai, var(--ec-accent))"
-                      : detail.status === "IN_PROGRESS"
-                      ? "var(--ec-accent)"
-                      : "var(--ec-border-default)"
-                  }`,
-                  background: detail.status === "DONE"
-                    ? "var(--ec-status-exec)"
-                    : "var(--ec-surface-2)",
-                  color: detail.status === "DONE"
-                    ? "var(--ec-accent-text)"
-                    : "var(--ec-text)",
-                  fontSize: "var(--ec-text-xs)",
-                  fontWeight: 600,
-                  letterSpacing: "var(--ec-tracking-wide)",
-                  cursor: "pointer",
-                  outline: "none",
-                }}
+                onChange={(e) => void update({ status: e.target.value as TaskStatus })}
+                aria-label="Статус"
               >
-                <option value="OPEN">Открыто</option>
-                <option value="IN_PROGRESS">В работе</option>
-                <option value="REVIEW">На ревью</option>
-                <option value="DONE">Выполнено</option>
+                {(Object.keys(STATUS_RU) as TaskStatus[]).map((s) => (
+                  <option key={s} value={s}>
+                    {STATUS_RU[s]}
+                  </option>
+                ))}
               </select>
             </>
           ) : (
-            <strong style={{ fontSize: "var(--ec-text-sm)", color: "var(--ec-text-muted)" }}>
+            <strong style={{ flex: 1, fontSize: "var(--ec-text-sm)", color: "var(--ec-text-muted)" }}>
               {loading ? "Загрузка…" : "Задача"}
             </strong>
           )}
           <button
             type="button"
             onClick={onClose}
-            className="ec-drawer-close"
-            style={closeBtn}
+            className="ec-icon-btn ec-drawer-close"
             aria-label="Закрыть"
             title="Закрыть · Esc"
           >
@@ -509,18 +298,17 @@ export function ActionItemDrawer({
           </button>
         </header>
 
-        <div style={bodyStyle}>
-          {error && (
-            <p style={{ margin: 0, color: "var(--ec-danger)", fontSize: "var(--ec-text-sm)" }}>{error}</p>
-          )}
+        <div className="ec-cck-drawer__body">
+          {error && <p className="ec-cck-banner ec-cck-banner--error">{error}</p>}
 
           {detail && (
             <>
-              {/* Title */}
-              <section>
-                <h3 style={sectionLabel}><span aria-hidden style={{ color: "var(--ec-accent)" }}>◆</span>Название</h3>
+              {/* Identity — заголовок задачи (hero). */}
+              <section className="ec-cck-sec">
+                <h3 className="ec-cck-sec__label">Задача</h3>
                 <input
                   type="text"
+                  className="ec-cck-titleinput"
                   value={titleDraft}
                   onChange={(e) => setTitleDraft(e.target.value)}
                   onBlur={() => void saveTitle()}
@@ -530,20 +318,23 @@ export function ActionItemDrawer({
                       (e.target as HTMLInputElement).blur();
                     }
                   }}
-                  style={titleInput}
                   maxLength={160}
+                  aria-label="Название задачи"
                 />
               </section>
 
               {/* Properties */}
-              <section>
-                <h3 style={sectionLabel}><span aria-hidden style={{ color: "var(--ec-accent)" }}>◆</span>Свойства</h3>
-                <div style={propRow}>
-                  <span style={propLabel}>Приоритет</span>
+              <section className="ec-cck-sec">
+                <h3 className="ec-cck-sec__label">Свойства</h3>
+                <div className="ec-cck-prop">
+                  <span className="ec-cck-prop__label">Приоритет</span>
                   <select
+                    className="ec-cck-field ec-cck-field--tone"
+                    style={tone(PRIORITY_META[detail.priority].tone)}
                     value={detail.priority}
-                    onChange={(e) => void handlePriorityChange(e.target.value as ActionItemPriority)}
-                    style={{ ...inlineInput, color: PRIORITY_META[detail.priority].color, fontWeight: 600 }}
+                    onChange={(e) =>
+                      void update({ priority: e.target.value as ActionItemPriority })
+                    }
                   >
                     {(Object.keys(PRIORITY_META) as ActionItemPriority[]).map((p) => (
                       <option key={p} value={p}>
@@ -552,12 +343,16 @@ export function ActionItemDrawer({
                     ))}
                   </select>
                 </div>
-                <div style={propRow}>
-                  <span style={propLabel}>Ответственный</span>
+                <div className="ec-cck-prop">
+                  <span className="ec-cck-prop__label">Ответственный</span>
                   <select
+                    className="ec-cck-field"
                     value={detail.assignee?.id ?? ""}
-                    onChange={(e) => void handleAssigneeChange(e.target.value)}
-                    style={inlineInput}
+                    onChange={(e) =>
+                      void update({
+                        assigneeUserId: e.target.value === "" ? null : e.target.value,
+                      })
+                    }
                   >
                     <option value="">— не назначен —</option>
                     {members.map((m) => (
@@ -568,32 +363,37 @@ export function ActionItemDrawer({
                     ))}
                   </select>
                 </div>
-                <div style={propRow}>
-                  <span style={propLabel}>Срок</span>
+                <div className="ec-cck-prop">
+                  <span className="ec-cck-prop__label">Срок</span>
                   <input
                     type="datetime-local"
+                    className="ec-cck-field ec-cck-field--mono"
                     value={dueValue}
-                    onChange={(e) => void handleDueChange(e.target.value)}
-                    style={dueInput}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (!v) {
+                        void update({ dueAt: null });
+                        return;
+                      }
+                      const local = new Date(v);
+                      if (!Number.isNaN(local.getTime())) {
+                        void update({ dueAt: local.toISOString() });
+                      }
+                    }}
                   />
                 </div>
-                <div style={propRow}>
-                  <span style={propLabel}>Источник</span>
-                  <span style={{ color: "var(--ec-text-muted)", fontSize: "var(--ec-text-xs)", display: "flex", alignItems: "center", gap: 6 }}>
+                <div className="ec-cck-prop">
+                  <span className="ec-cck-prop__label">Источник</span>
+                  <span className="ec-cck-prop__val">
                     <span>#{channelNameById(detail.channelId) ?? "комната"}</span>
                     {onJumpToSource && (
                       <button
                         type="button"
-                        onClick={() => onJumpToSource(detail.channelId, detail.sourceMessageId)}
-                        style={{
-                          background: "transparent",
-                          border: "1px solid var(--ec-border-subtle)",
-                          borderRadius: "var(--ec-radius-xs)",
-                          color: "var(--ec-accent)",
-                          fontSize: "var(--ec-text-2xs)",
-                          padding: "0.1rem 0.4rem",
-                          cursor: "pointer",
-                        }}
+                        className="ec-cck-rowbtn"
+                        data-tone="accent"
+                        onClick={() =>
+                          onJumpToSource(detail.channelId, detail.sourceMessageId)
+                        }
                         title="Открыть исходное сообщение"
                       >
                         к сообщению
@@ -601,16 +401,16 @@ export function ActionItemDrawer({
                     )}
                   </span>
                 </div>
-                <div style={propRow}>
-                  <span style={propLabel}>Автор</span>
-                  <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "var(--ec-text-xs)" }}>
+                <div className="ec-cck-prop">
+                  <span className="ec-cck-prop__label">Автор</span>
+                  <span className="ec-cck-prop__val">
                     <Avatar
                       url={detail.createdBy.avatar}
                       name={detail.createdBy.displayName}
                       size={18}
                     />
                     {detail.createdBy.displayName}
-                    <span style={{ color: "var(--ec-text-dim)", marginLeft: 6 }}>
+                    <span style={{ color: "var(--ec-text-dim)" }}>
                       · {relativeTime(detail.createdAt)}
                     </span>
                   </span>
@@ -618,8 +418,8 @@ export function ActionItemDrawer({
               </section>
 
               {/* Approval */}
-              <section>
-                <h3 style={sectionLabel}><span aria-hidden style={{ color: "var(--ec-status-warn)" }}>◆</span>Одобрение</h3>
+              <section className="ec-cck-sec">
+                <h3 className="ec-cck-sec__label">Одобрение</h3>
                 <ApprovalSection
                   status={detail.approvalStatus}
                   approver={detail.approver}
@@ -642,26 +442,15 @@ export function ActionItemDrawer({
                 />
               </section>
 
-              {/* v0.73 #20 phase 2: Dependencies */}
-              <section>
-                <h3 style={sectionLabel}>
+              {/* Dependencies */}
+              <section className="ec-cck-sec">
+                <h3 className="ec-cck-sec__label">
                   Зависимости
-                  {detail.blockedByOpen > 0 ? (
-                    <span
-                      style={{
-                        marginLeft: 8,
-                        padding: "1px 6px",
-                        borderRadius: 4,
-                        background: "var(--ec-warn-soft)",
-                        color: "var(--ec-warn)",
-                        fontSize: "0.7em",
-                        letterSpacing: 0,
-                        textTransform: "none",
-                      }}
-                    >
-                      🚧 blocked by {detail.blockedByOpen}
+                  {detail.blockedByOpen > 0 && (
+                    <span className="ec-cck-chip" style={tone("var(--ec-status-risk)")}>
+                      блок ×{detail.blockedByOpen}
                     </span>
-                  ) : null}
+                  )}
                 </h3>
                 <DependencySection
                   dependencies={detail.dependencies}
@@ -696,77 +485,46 @@ export function ActionItemDrawer({
               </section>
 
               {/* Description */}
-              <section>
-                <h3 style={sectionLabel}><span aria-hidden style={{ color: "var(--ec-accent)" }}>◆</span>Описание</h3>
+              <section className="ec-cck-sec">
+                <h3 className="ec-cck-sec__label">Описание</h3>
                 <textarea
+                  className="ec-cck-field ec-cck-field--area"
                   value={descDraft}
                   onChange={(e) => setDescDraft(e.target.value)}
                   onBlur={() => void saveDescription()}
                   placeholder="Детали, контекст, ссылки. Сохраняется автоматически."
-                  style={descTextarea}
                   maxLength={4000}
                   rows={4}
                 />
               </section>
 
-              {/* v0.73 #20 phase 4: AI summary */}
-              <section>
-                <h3 style={sectionLabel}>
+              {/* AI summary */}
+              <section className="ec-cck-sec">
+                <h3 className="ec-cck-sec__label">
                   Сводка
                   {detail.aiSummaryUpdatedAt && (
-                    <span
-                      style={{
-                        marginLeft: 8,
-                        color: "var(--ec-text-dim)",
-                        fontSize: "0.7em",
-                        letterSpacing: 0,
-                        textTransform: "none",
-                      }}
-                    >
+                    <span className="ec-cck-sec__count">
                       {relativeTime(detail.aiSummaryUpdatedAt)}
                     </span>
                   )}
                 </h3>
                 {detail.aiSummary ? (
-                  <p
-                    style={{
-                      margin: 0,
-                      padding: "var(--ec-space-3)",
-                      borderRadius: "var(--ec-radius-md)",
-                      background: "var(--ec-accent-soft)",
-                      border: "1px solid var(--ec-border-accent)",
-                      color: "var(--ec-text)",
-                      fontSize: "var(--ec-text-sm)",
-                      lineHeight: 1.55,
-                      whiteSpace: "pre-wrap",
-                    }}
-                  >
-                    {detail.aiSummary}
-                  </p>
+                  <p className="ec-cck-aicard">{detail.aiSummary}</p>
                 ) : (
-                  <p
-                    style={{
-                      margin: 0,
-                      color: "var(--ec-text-dim)",
-                      fontSize: "var(--ec-text-sm)",
-                    }}
-                  >
+                  <p className="ec-cck-empty" style={{ padding: 0, textAlign: "left" }}>
                     Сводка ещё не сгенерирована.
                   </p>
                 )}
                 {aiError && (
-                  <p
-                    style={{
-                      margin: "6px 0 0",
-                      color: "var(--ec-danger)",
-                      fontSize: "var(--ec-text-2xs)",
-                    }}
-                  >
+                  <p className="ec-cck-banner ec-cck-banner--error" style={{ margin: 0 }}>
                     {aiError}
                   </p>
                 )}
                 <button
                   type="button"
+                  className="ec-cck-rowbtn"
+                  data-tone={aiLoading ? "accent" : undefined}
+                  style={{ alignSelf: "flex-start" }}
                   onClick={async () => {
                     setAiLoading(true);
                     setAiError(null);
@@ -775,20 +533,6 @@ export function ActionItemDrawer({
                     if (!r.ok) setAiError(r.error);
                   }}
                   disabled={aiLoading}
-                  className="ec-press"
-                  style={{
-                    marginTop: 6,
-                    padding: "0.3rem 0.7rem",
-                    borderRadius: "var(--ec-radius-md)",
-                    background: "transparent",
-                    border: "1px dashed var(--ec-border-default)",
-                    color: aiLoading ? "var(--ec-text-dim)" : "var(--ec-text-muted)",
-                    cursor: aiLoading ? "wait" : "pointer",
-                    fontSize: "var(--ec-text-2xs)",
-                    fontWeight: 600,
-                    letterSpacing: "var(--ec-tracking-caps)",
-                    textTransform: "uppercase",
-                  }}
                 >
                   {aiLoading
                     ? "Генерирую…"
@@ -799,76 +543,45 @@ export function ActionItemDrawer({
               </section>
 
               {/* Comments */}
-              <section>
-                <h3 style={sectionLabel}>Комментарии · {detail.comments.length}</h3>
+              <section className="ec-cck-sec">
+                <h3 className="ec-cck-sec__label">
+                  Комментарии
+                  <span className="ec-cck-sec__count">{detail.comments.length}</span>
+                </h3>
                 {detail.comments.length === 0 ? (
-                  <p
-                    style={{
-                      margin: 0,
-                      color: "var(--ec-text-dim)",
-                      fontSize: "var(--ec-text-sm)",
-                    }}
-                  >
+                  <p className="ec-cck-empty" style={{ padding: 0, textAlign: "left" }}>
                     Никто ещё ничего не написал.
                   </p>
                 ) : (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "var(--ec-space-2)" }}>
-                    {detail.comments.map((c) => (
-                      <CommentRow
-                        key={c.id}
-                        comment={c}
-                        currentUserId={currentUserId}
-                        onDelete={async () => void removeComment(c.id)}
-                      />
-                    ))}
-                  </div>
+                  detail.comments.map((c) => (
+                    <CommentRow
+                      key={c.id}
+                      comment={c}
+                      currentUserId={currentUserId}
+                      onDelete={async () => void removeComment(c.id)}
+                    />
+                  ))
                 )}
               </section>
 
               {/* Activity */}
-              <section>
+              <section className="ec-cck-sec">
                 <button
                   type="button"
+                  className="ec-cck-toggle"
                   onClick={() => setShowActivity((v) => !v)}
-                  style={{
-                    background: "transparent",
-                    border: 0,
-                    color: "var(--ec-text-muted)",
-                    fontSize: "var(--ec-text-2xs)",
-                    textTransform: "uppercase",
-                    letterSpacing: "var(--ec-tracking-caps)",
-                    cursor: "pointer",
-                    padding: 0,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6,
-                  }}
                   aria-expanded={showActivity}
                 >
                   <span>История · {detail.activities.length}</span>
-                  <span aria-hidden style={{ fontSize: "0.7rem" }}>{showActivity ? "▲" : "▼"}</span>
+                  <span aria-hidden style={{ fontSize: "0.7rem" }}>
+                    {showActivity ? "▲" : "▼"}
+                  </span>
                 </button>
                 {showActivity && detail.activities.length > 0 && (
-                  <div
-                    style={{
-                      marginTop: "var(--ec-space-2)",
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: 4,
-                    }}
-                  >
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                     {detail.activities.map((a) => (
-                      <div
-                        key={a.id}
-                        style={{
-                          fontSize: "var(--ec-text-2xs)",
-                          color: "var(--ec-text-muted)",
-                          display: "flex",
-                          gap: 6,
-                          alignItems: "baseline",
-                        }}
-                      >
-                        <span style={{ color: "var(--ec-text-dim)", minWidth: 36, fontFeatureSettings: '"tnum"' }}>
+                      <div key={a.id} className="ec-cck-actrow">
+                        <span className="ec-cck-actrow__time">
                           {relativeTime(a.createdAt)}
                         </span>
                         <span>{formatActivity(a)}</span>
@@ -883,8 +596,10 @@ export function ActionItemDrawer({
 
         {/* Comment composer */}
         {detail && (
-          <div style={composerWrap}>
+          <div className="ec-cck-drawer__foot">
             <textarea
+              className="ec-cck-field ec-cck-field--area"
+              style={{ minHeight: 38 }}
               value={commentDraft}
               onChange={(e) => setCommentDraft(e.target.value)}
               onKeyDown={(e) => {
@@ -894,21 +609,16 @@ export function ActionItemDrawer({
                 }
               }}
               placeholder="Комментарий · Enter — отправить, Shift+Enter — перенос"
-              style={composerInput}
               rows={2}
               maxLength={2000}
               disabled={submittingComment}
             />
-            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "var(--ec-space-2)" }}>
+            <div className="ec-cck-inset__row ec-cck-inset__row--end" style={{ marginTop: "var(--ec-space-2)" }}>
               <button
                 type="button"
+                className="ec-btn ec-btn--primary ec-btn--sm"
                 onClick={() => void submitComment()}
                 disabled={submittingComment || !commentDraft.trim()}
-                style={{
-                  ...sendBtn,
-                  opacity: !commentDraft.trim() || submittingComment ? 0.55 : 1,
-                  cursor: !commentDraft.trim() || submittingComment ? "not-allowed" : "pointer",
-                }}
               >
                 {submittingComment ? "Отправляем…" : "Отправить"}
               </button>
@@ -967,144 +677,83 @@ function ApprovalSection({
   const eligible = members.filter((m) => m.userId !== currentUserId);
   const isApprover = approver?.id === currentUserId;
 
-  const statusBadge = (label: string, color: string) => (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 6,
-        padding: "0.25rem 0.55rem",
-        borderRadius: "var(--ec-radius-full)",
-        background: "var(--ec-surface-2)",
-        border: `1px solid ${color}`,
-        color,
-        fontSize: "var(--ec-text-2xs)",
-        fontWeight: 700,
-        textTransform: "uppercase",
-        letterSpacing: "var(--ec-tracking-caps)",
-      }}
-    >
-      {label}
-    </span>
+  const approverPicker = (
+    <>
+      <select
+        className="ec-cck-field"
+        value={approverId}
+        onChange={(e) => setApproverId(e.target.value)}
+      >
+        <option value="">— выбери участника —</option>
+        {eligible.map((m) => (
+          <option key={m.userId} value={m.userId}>
+            {m.user.displayName}
+          </option>
+        ))}
+      </select>
+      <textarea
+        className="ec-cck-field ec-cck-field--area"
+        style={{ minHeight: 50 }}
+        value={noteDraft}
+        onChange={(e) => setNoteDraft(e.target.value)}
+        placeholder="Комментарий для approver (необязательно)"
+        maxLength={500}
+        rows={2}
+      />
+      <div className="ec-cck-inset__row ec-cck-inset__row--end">
+        <button
+          type="button"
+          className="ec-btn ec-btn--ghost ec-btn--sm"
+          onClick={() => {
+            setShowForm(false);
+            setNoteDraft("");
+          }}
+          disabled={submitting}
+        >
+          Отмена
+        </button>
+        <button
+          type="button"
+          className="ec-btn ec-btn--primary ec-btn--sm"
+          onClick={onRequest}
+          disabled={submitting || !approverId}
+        >
+          {submitting ? "Отправляем…" : "Запросить"}
+        </button>
+      </div>
+    </>
   );
 
   if (status === "NONE") {
-    return (
-      <div>
-        {!showForm ? (
-          <button
-            type="button"
-            onClick={() => setShowForm(true)}
-            className="ec-btn ec-btn--ghost ec-btn--sm"
-            style={{
-              border: "1px solid var(--ec-border-default)",
-              padding: "0.4rem 0.75rem",
-            }}
-          >
-            Запросить одобрение
-          </button>
-        ) : (
-          <div
-            style={{
-              padding: "var(--ec-space-2) var(--ec-space-3)",
-              background: "var(--ec-surface-2)",
-              borderRadius: "var(--ec-radius-md)",
-              boxShadow: "var(--ec-elev-1)",
-              display: "flex",
-              flexDirection: "column",
-              gap: "var(--ec-space-2)",
-            }}
-          >
-            <label
-              style={{
-                fontSize: "var(--ec-text-2xs)",
-                color: "var(--ec-text-dim)",
-                textTransform: "uppercase",
-                letterSpacing: "var(--ec-tracking-wide)",
-              }}
-            >
-              Кто одобряет
-            </label>
-            <select
-              value={approverId}
-              onChange={(e) => setApproverId(e.target.value)}
-              style={{ ...inlineInput }}
-            >
-              <option value="">— выбери участника —</option>
-              {eligible.map((m) => (
-                <option key={m.userId} value={m.userId}>
-                  {m.user.displayName}
-                </option>
-              ))}
-            </select>
-            <textarea
-              value={noteDraft}
-              onChange={(e) => setNoteDraft(e.target.value)}
-              placeholder="Комментарий для approver (необязательно)"
-              style={{ ...inlineInput, minHeight: 50, resize: "vertical" }}
-              maxLength={500}
-              rows={2}
-            />
-            <div style={{ display: "flex", gap: "var(--ec-space-2)", justifyContent: "flex-end" }}>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowForm(false);
-                  setNoteDraft("");
-                }}
-                disabled={submitting}
-                style={{
-                  background: "transparent",
-                  border: "1px solid var(--ec-border-default)",
-                  color: "var(--ec-text-muted)",
-                  padding: "0.4rem 0.75rem",
-                  borderRadius: "var(--ec-radius-sm)",
-                  fontSize: "var(--ec-text-sm)",
-                  cursor: submitting ? "not-allowed" : "pointer",
-                }}
-              >
-                Отмена
-              </button>
-              <button
-                type="button"
-                onClick={onRequest}
-                disabled={submitting || !approverId}
-                style={{
-                  ...sendBtn,
-                  opacity: !approverId || submitting ? 0.55 : 1,
-                  cursor: !approverId || submitting ? "not-allowed" : "pointer",
-                }}
-              >
-                {submitting ? "Отправляем…" : "Запросить"}
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
+    return !showForm ? (
+      <button
+        type="button"
+        className="ec-btn ec-btn--ghost ec-btn--sm"
+        style={{ alignSelf: "flex-start" }}
+        onClick={() => setShowForm(true)}
+      >
+        Запросить одобрение
+      </button>
+    ) : (
+      <div className="ec-cck-inset">{approverPicker}</div>
     );
   }
 
   if (status === "PENDING") {
     return (
-      <div
-        style={{
-          padding: "var(--ec-space-3)",
-          background: "var(--ec-surface-2)",
-          borderRadius: "var(--ec-radius-md)",
-          border: "1px solid var(--ec-status-warn)",
-          display: "flex",
-          flexDirection: "column",
-          gap: "var(--ec-space-2)",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          {statusBadge("Ожидает", "var(--ec-status-warn)")}
+      <div className="ec-cck-inset" data-tone="var(--ec-status-warn)" style={tone("var(--ec-status-warn)")}>
+        <div className="ec-cck-inset__row">
+          <span className="ec-cck-chip" style={tone("var(--ec-status-warn)")}>
+            Ожидает
+          </span>
           <span style={{ fontSize: "var(--ec-text-sm)", color: "var(--ec-text)" }}>
             Решение от{" "}
             {approver ? (
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 4, verticalAlign: "middle" }}>
                 <Avatar url={approver.avatar} name={approver.displayName} size={16} />
-                <strong style={{ color: "var(--ec-text-strong)" }}>{approver.displayName}</strong>
+                <strong style={{ color: "var(--ec-text-strong)" }}>
+                  {approver.displayName}
+                </strong>
               </span>
             ) : (
               "неизвестно"
@@ -1112,60 +761,35 @@ function ApprovalSection({
           </span>
         </div>
         {approvalNote && (
-          <p
-            style={{
-              margin: 0,
-              fontSize: "var(--ec-text-xs)",
-              color: "var(--ec-text-muted)",
-              fontStyle: "italic",
-              whiteSpace: "pre-wrap",
-            }}
-          >
+          <p style={{ margin: 0, fontSize: "var(--ec-text-xs)", color: "var(--ec-text-muted)", fontStyle: "italic", whiteSpace: "pre-wrap" }}>
             Запрос: {approvalNote}
           </p>
         )}
         {isApprover && (
           <>
             <textarea
+              className="ec-cck-field ec-cck-field--area"
+              style={{ minHeight: 50 }}
               value={decisionNote}
               onChange={(e) => setDecisionNote(e.target.value)}
               placeholder="Причина / комментарий (особенно при отклонении)"
-              style={{ ...inlineInput, minHeight: 50, resize: "vertical" }}
               maxLength={500}
               rows={2}
             />
-            <div style={{ display: "flex", gap: "var(--ec-space-2)", justifyContent: "flex-end" }}>
+            <div className="ec-cck-inset__row ec-cck-inset__row--end">
               <button
                 type="button"
+                className="ec-btn ec-btn--danger ec-btn--sm"
                 onClick={onReject}
                 disabled={submitting}
-                style={{
-                  background: "transparent",
-                  border: "1px solid var(--ec-danger)",
-                  color: "var(--ec-danger)",
-                  padding: "0.4rem 0.75rem",
-                  borderRadius: "var(--ec-radius-sm)",
-                  fontSize: "var(--ec-text-sm)",
-                  fontWeight: 600,
-                  cursor: submitting ? "not-allowed" : "pointer",
-                }}
               >
                 Отклонить
               </button>
               <button
                 type="button"
+                className="ec-btn ec-btn--primary ec-btn--sm"
                 onClick={onApprove}
                 disabled={submitting}
-                style={{
-                  background: "var(--ec-status-exec)",
-                  color: "var(--ec-accent-text)",
-                  border: "1px solid var(--ec-status-exec)",
-                  padding: "0.4rem 0.75rem",
-                  borderRadius: "var(--ec-radius-sm)",
-                  fontSize: "var(--ec-text-sm)",
-                  fontWeight: 600,
-                  cursor: submitting ? "not-allowed" : "pointer",
-                }}
               >
                 Одобрить
               </button>
@@ -1176,35 +800,17 @@ function ApprovalSection({
     );
   }
 
-  // APPROVED / REJECTED — read-only display + re-request option.
+  // APPROVED / REJECTED
   const isApproved = status === "APPROVED";
+  const resultTone = isApproved ? "var(--ec-status-exec)" : "var(--ec-danger)";
   return (
-    <div
-      style={{
-        padding: "var(--ec-space-3)",
-        background: "var(--ec-surface-2)",
-        borderRadius: "var(--ec-radius-md)",
-        border: `1px solid ${isApproved ? "var(--ec-status-exec)" : "var(--ec-danger)"}`,
-        display: "flex",
-        flexDirection: "column",
-        gap: "var(--ec-space-2)",
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-        {statusBadge(
-          isApproved ? "Одобрено" : "Отклонено",
-          isApproved ? "var(--ec-status-exec)" : "var(--ec-danger)",
-        )}
+    <div className="ec-cck-inset" data-tone={resultTone} style={tone(resultTone)}>
+      <div className="ec-cck-inset__row">
+        <span className="ec-cck-chip" style={tone(resultTone)}>
+          {isApproved ? "Одобрено" : "Отклонено"}
+        </span>
         {approver && (
-          <span
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 4,
-              fontSize: "var(--ec-text-xs)",
-              color: "var(--ec-text-muted)",
-            }}
-          >
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: "var(--ec-text-xs)", color: "var(--ec-text-muted)" }}>
             <Avatar url={approver.avatar} name={approver.displayName} size={16} />
             {approver.displayName}
           </span>
@@ -1216,100 +822,21 @@ function ApprovalSection({
         )}
       </div>
       {approvalNote && (
-        <p
-          style={{
-            margin: 0,
-            fontSize: "var(--ec-text-sm)",
-            color: "var(--ec-text)",
-            whiteSpace: "pre-wrap",
-          }}
-        >
+        <p style={{ margin: 0, fontSize: "var(--ec-text-sm)", color: "var(--ec-text)", whiteSpace: "pre-wrap" }}>
           {approvalNote}
         </p>
       )}
-      <button
-        type="button"
-        onClick={() => setShowForm(true)}
-        style={{
-          alignSelf: "flex-start",
-          background: "transparent",
-          border: "1px solid var(--ec-border-default)",
-          color: "var(--ec-text-muted)",
-          padding: "0.3rem 0.6rem",
-          borderRadius: "var(--ec-radius-sm)",
-          fontSize: "var(--ec-text-2xs)",
-          cursor: "pointer",
-        }}
-      >
-        Запросить заново
-      </button>
-      {showForm && (
-        <div
-          style={{
-            marginTop: "var(--ec-space-2)",
-            padding: "var(--ec-space-2) var(--ec-space-3)",
-            background: "var(--ec-surface-1)",
-            borderRadius: "var(--ec-radius-md)",
-            boxShadow: "var(--ec-elev-1)",
-            display: "flex",
-            flexDirection: "column",
-            gap: "var(--ec-space-2)",
-          }}
+      {!showForm ? (
+        <button
+          type="button"
+          className="ec-btn ec-btn--ghost ec-btn--sm"
+          style={{ alignSelf: "flex-start" }}
+          onClick={() => setShowForm(true)}
         >
-          <select
-            value={approverId}
-            onChange={(e) => setApproverId(e.target.value)}
-            style={{ ...inlineInput }}
-          >
-            <option value="">— выбери участника —</option>
-            {eligible.map((m) => (
-              <option key={m.userId} value={m.userId}>
-                {m.user.displayName}
-              </option>
-            ))}
-          </select>
-          <textarea
-            value={noteDraft}
-            onChange={(e) => setNoteDraft(e.target.value)}
-            placeholder="Комментарий для approver (необязательно)"
-            style={{ ...inlineInput, minHeight: 50, resize: "vertical" }}
-            maxLength={500}
-            rows={2}
-          />
-          <div style={{ display: "flex", gap: "var(--ec-space-2)", justifyContent: "flex-end" }}>
-            <button
-              type="button"
-              onClick={() => {
-                setShowForm(false);
-                setNoteDraft("");
-              }}
-              disabled={submitting}
-              style={{
-                background: "transparent",
-                border: "1px solid var(--ec-border-default)",
-                color: "var(--ec-text-muted)",
-                padding: "0.4rem 0.75rem",
-                borderRadius: "var(--ec-radius-sm)",
-                fontSize: "var(--ec-text-sm)",
-                cursor: submitting ? "not-allowed" : "pointer",
-              }}
-            >
-              Отмена
-            </button>
-            <button
-              type="button"
-              onClick={onRequest}
-              disabled={submitting || !approverId}
-              style={{
-                ...sendBtn,
-                opacity: !approverId || submitting ? 0.55 : 1,
-                cursor: !approverId || submitting ? "not-allowed" : "pointer",
-              }}
-            >
-              {submitting ? "Отправляем…" : "Запросить"}
-            </button>
-          </div>
-        </div>
+          Запросить заново
+        </button>
+      ) : (
+        approverPicker
       )}
     </div>
   );
@@ -1325,74 +852,31 @@ function CommentRow({
   onDelete: () => Promise<void>;
 }) {
   const isMine = comment.user.id === currentUserId;
-  const [hover, setHover] = useState(false);
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "auto 1fr",
-        gap: 8,
-        padding: "var(--ec-space-2) var(--ec-space-3)",
-        background: "var(--ec-surface-2)",
-        borderRadius: "var(--ec-radius-md)",
-        boxShadow: "var(--ec-elev-1)",
-        position: "relative",
-      }}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-    >
+    <div className="ec-cck-comment">
       <Avatar url={comment.user.avatar} name={comment.user.displayName} size={28} />
       <div style={{ minWidth: 0 }}>
-        <div
-          style={{
-            display: "flex",
-            gap: 6,
-            alignItems: "baseline",
-            marginBottom: 4,
-          }}
-        >
-          <span style={{ fontSize: "var(--ec-text-sm)", fontWeight: 600, color: "var(--ec-text-strong)" }}>
-            {comment.user.displayName}
-          </span>
-          <span style={{ fontSize: "var(--ec-text-2xs)", color: "var(--ec-text-dim)" }}>
+        <div className="ec-cck-comment__head">
+          <span className="ec-cck-comment__author">{comment.user.displayName}</span>
+          <span className="ec-cck-comment__time">
             {relativeTime(comment.createdAt)}
             {comment.editedAt ? " · ред." : ""}
           </span>
         </div>
-        <div
-          style={{
-            fontSize: "var(--ec-text-sm)",
-            color: "var(--ec-text)",
-            whiteSpace: "pre-wrap",
-            wordBreak: "break-word",
-          }}
-        >
-          {comment.content}
-        </div>
+        <div className="ec-cck-comment__body">{comment.content}</div>
       </div>
-      {isMine && hover && (
+      {isMine && (
         <button
           type="button"
+          className="ec-cck-comment__del"
           onClick={() => void onDelete()}
           title="Удалить комментарий"
           aria-label="Удалить комментарий"
-          style={{
-            position: "absolute",
-            top: 6,
-            right: 6,
-            width: 22,
-            height: 22,
-            display: "grid",
-            placeItems: "center",
-            background: "var(--ec-surface-3)",
-            border: 0,
-            borderRadius: "var(--ec-radius-xs)",
-            color: "var(--ec-text-dim)",
-            cursor: "pointer",
-            fontSize: "0.7rem",
-          }}
         >
-          ×
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden>
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
         </button>
       )}
     </div>
@@ -1400,73 +884,29 @@ function CommentRow({
 }
 
 /* ============================================================
- * v0.73 #20 phase 2: Dependencies — задачи, от которых зависит
- * текущая (blockers), и задачи, которые она блокирует (blocks).
- * Picker лениво открывается, фильтрует по title (substring) и
- * исключает: саму задачу, уже добавленные blockers, и циклически
- * связанные (последнее проверяет backend и возвращает 409).
+ * Dependencies — blockers (от чего зависит) + blocks (что блокирует).
  * ============================================================ */
 
-const DEP_STATUS_TONE: Record<
-  "OPEN" | "IN_PROGRESS" | "REVIEW" | "DONE",
-  { fg: string; bg: string; label: string }
-> = {
-  OPEN: { fg: "var(--ec-text)", bg: "var(--ec-surface-3)", label: "OPEN" },
-  IN_PROGRESS: {
-    fg: "var(--ec-accent)",
-    bg: "var(--ec-accent-soft)",
-    label: "В работе",
-  },
-  REVIEW: {
-    fg: "var(--ec-ai, var(--ec-accent))",
-    bg: "var(--ec-ai-soft, var(--ec-accent-soft))",
-    label: "Review",
-  },
-  DONE: {
-    fg: "var(--ec-exec, var(--ec-text-muted))",
-    bg: "var(--ec-exec-soft, var(--ec-surface-3))",
-    label: "Done",
-  },
+const DEP_STATUS: Record<TaskStatus, { tone: string; label: string }> = {
+  OPEN: { tone: "var(--ec-status-idle)", label: "open" },
+  IN_PROGRESS: { tone: "var(--ec-accent)", label: "работа" },
+  REVIEW: { tone: "var(--ec-status-ai)", label: "ревью" },
+  DONE: { tone: "var(--ec-status-exec)", label: "done" },
 };
-
-function depRowStyle(done: boolean): CSSProperties {
-  return {
-    display: "flex",
-    alignItems: "center",
-    gap: 8,
-    padding: "var(--ec-space-1) var(--ec-space-2)",
-    borderRadius: "var(--ec-radius-md)",
-    background: "var(--ec-surface-2)",
-    border: "1px solid var(--ec-border-subtle)",
-    opacity: done ? 0.7 : 1,
-    fontSize: "var(--ec-text-sm)",
-  };
-}
-
-/* ============================================================
- * v0.76 #20 phase 2: mini DAG visualization для зависимостей.
- *
- * Layered layout, 3 уровня:
- *   - row 0 (top): blockers (`dependencies` — то, что блокирует меня)
- *   - row 1 (mid): current task
- *   - row 2 (bot): tasks-я-блокирую (`blocks`)
- *
- * Compact: max 6 nodes per row (overflow → «+N» chip). Edges рисуются
- * от blocker.bottom → current.top и current.bottom → blocked.top.
- * SVG, без библиотек.
- * ============================================================ */
 
 function truncateLabel(s: string, max = 18): string {
   return s.length > max ? s.slice(0, max - 1) + "…" : s;
 }
 
-function dagNodeColors(
-  status: "OPEN" | "IN_PROGRESS" | "REVIEW" | "DONE",
-): { fill: string; stroke: string; text: string } {
+function dagNodeColors(status: TaskStatus): {
+  fill: string;
+  stroke: string;
+  text: string;
+} {
   if (status === "DONE")
     return {
-      fill: "var(--ec-exec-soft, var(--ec-surface-3))",
-      stroke: "var(--ec-exec, var(--ec-text-dim))",
+      fill: "var(--ec-status-exec-soft)",
+      stroke: "var(--ec-status-exec)",
       text: "var(--ec-text-muted)",
     };
   if (status === "IN_PROGRESS")
@@ -1477,8 +917,8 @@ function dagNodeColors(
     };
   if (status === "REVIEW")
     return {
-      fill: "var(--ec-ai-soft, var(--ec-accent-soft))",
-      stroke: "var(--ec-ai, var(--ec-accent))",
+      fill: "var(--ec-status-ai-soft)",
+      stroke: "var(--ec-status-ai)",
       text: "var(--ec-text)",
     };
   return {
@@ -1501,7 +941,6 @@ function DepDagViz({
   const visibleBlocks = blocks.slice(0, MAX);
   const moreBlocks = blocks.length - visibleBlocks.length;
 
-  // Геометрия: каждая node 96×26, gap 8, layered y-padding 14.
   const nodeW = 96;
   const nodeH = 26;
   const gapX = 10;
@@ -1511,19 +950,11 @@ function DepDagViz({
   const cols = Math.max(
     1,
     visibleDeps.length + (moreDeps > 0 ? 1 : 0),
-    1,
     visibleBlocks.length + (moreBlocks > 0 ? 1 : 0),
   );
   const innerW = cols * nodeW + (cols - 1) * gapX;
   const w = innerW + 24;
   const h = padTop + nodeH + ySpace + nodeH + ySpace + nodeH + padBottom;
-
-  // helper coordinates: layout центрирует ряд относительно средней оси.
-  function rowCoords(count: number, idx: number): { x: number; y: number } {
-    const rowWidth = count * nodeW + (count - 1) * gapX;
-    const x = (w - rowWidth) / 2 + idx * (nodeW + gapX);
-    return { x, y: 0 };
-  }
 
   const depRowCount = visibleDeps.length + (moreDeps > 0 ? 1 : 0);
   const blockRowCount = visibleBlocks.length + (moreBlocks > 0 ? 1 : 0);
@@ -1532,26 +963,15 @@ function DepDagViz({
   const yBlocks = padTop + nodeH + ySpace + nodeH + ySpace;
   const meX = (w - nodeW) / 2;
 
+  function rowX(count: number, idx: number): number {
+    const rowWidth = count * nodeW + (count - 1) * gapX;
+    return (w - rowWidth) / 2 + idx * (nodeW + gapX);
+  }
+
   return (
-    <details
-      style={{
-        background: "var(--ec-surface-2)",
-        boxShadow: "var(--ec-elev-1)",
-        borderRadius: "var(--ec-radius-md)",
-        padding: "var(--ec-space-2) var(--ec-space-3)",
-      }}
-    >
-      <summary
-        style={{
-          cursor: "pointer",
-          color: "var(--ec-text-muted)",
-          fontSize: "var(--ec-text-2xs)",
-          letterSpacing: "var(--ec-tracking-caps)",
-          textTransform: "uppercase",
-          fontWeight: 700,
-        }}
-      >
-        Граф зависимостей · {dependencies.length} ← me → {blocks.length}
+    <details className="ec-cck-inset">
+      <summary className="ec-cck-toggle">
+        Граф зависимостей · {dependencies.length} ← задача → {blocks.length}
       </summary>
       <div style={{ marginTop: 8, overflowX: "auto" }}>
         <svg
@@ -1561,124 +981,41 @@ function DepDagViz({
           style={{ display: "block", margin: "0 auto", maxWidth: "100%" }}
           aria-label="Граф зависимостей"
         >
-          {/* Top row: blockers (dependencies) */}
           {visibleDeps.map((d, i) => {
-            const { x } = rowCoords(depRowCount, i);
+            const x = rowX(depRowCount, i);
             const c = dagNodeColors(d.status);
             return (
               <g key={d.id}>
-                <rect
-                  x={x}
-                  y={yDeps}
-                  width={nodeW}
-                  height={nodeH}
-                  rx={6}
-                  fill={c.fill}
-                  stroke={c.stroke}
-                  strokeWidth={1}
-                />
-                <text
-                  x={x + nodeW / 2}
-                  y={yDeps + nodeH / 2 + 4}
-                  textAnchor="middle"
-                  fontSize={11}
-                  fill={c.text}
-                  style={{ fontFamily: "var(--ec-font)" }}
-                >
+                <rect x={x} y={yDeps} width={nodeW} height={nodeH} rx={6} fill={c.fill} stroke={c.stroke} strokeWidth={1} />
+                <text x={x + nodeW / 2} y={yDeps + nodeH / 2 + 4} textAnchor="middle" fontSize={11} fill={c.text}>
                   {truncateLabel(d.title)}
                 </text>
-                {/* arrow blocker→me */}
-                <line
-                  x1={x + nodeW / 2}
-                  y1={yDeps + nodeH}
-                  x2={meX + nodeW / 2}
-                  y2={yMe}
-                  stroke="var(--ec-border-default)"
-                  strokeWidth={1.2}
-                  markerEnd="url(#ec-dag-arrow)"
-                />
+                <line x1={x + nodeW / 2} y1={yDeps + nodeH} x2={meX + nodeW / 2} y2={yMe} stroke="var(--ec-border-default)" strokeWidth={1.2} markerEnd="url(#ec-dag-arrow)" />
               </g>
             );
           })}
           {moreDeps > 0 && (
             <g>
-              <rect
-                x={rowCoords(depRowCount, visibleDeps.length).x}
-                y={yDeps}
-                width={nodeW}
-                height={nodeH}
-                rx={6}
-                fill="var(--ec-surface-3)"
-                stroke="var(--ec-border-default)"
-                strokeDasharray="3 3"
-              />
-              <text
-                x={rowCoords(depRowCount, visibleDeps.length).x + nodeW / 2}
-                y={yDeps + nodeH / 2 + 4}
-                textAnchor="middle"
-                fontSize={11}
-                fill="var(--ec-text-muted)"
-              >
+              <rect x={rowX(depRowCount, visibleDeps.length)} y={yDeps} width={nodeW} height={nodeH} rx={6} fill="var(--ec-surface-3)" stroke="var(--ec-border-default)" strokeDasharray="3 3" />
+              <text x={rowX(depRowCount, visibleDeps.length) + nodeW / 2} y={yDeps + nodeH / 2 + 4} textAnchor="middle" fontSize={11} fill="var(--ec-text-muted)">
                 +{moreDeps} ещё
               </text>
             </g>
           )}
 
-          {/* Middle: current task */}
-          <rect
-            x={meX}
-            y={yMe}
-            width={nodeW}
-            height={nodeH}
-            rx={6}
-            fill="var(--ec-accent)"
-            stroke="var(--ec-accent)"
-            opacity={0.95}
-          />
-          <text
-            x={meX + nodeW / 2}
-            y={yMe + nodeH / 2 + 4}
-            textAnchor="middle"
-            fontSize={11}
-            fontWeight={700}
-            fill="var(--ec-accent-text)"
-          >
+          <rect x={meX} y={yMe} width={nodeW} height={nodeH} rx={6} fill="var(--ec-accent)" stroke="var(--ec-accent)" opacity={0.95} />
+          <text x={meX + nodeW / 2} y={yMe + nodeH / 2 + 4} textAnchor="middle" fontSize={11} fontWeight={700} fill="var(--ec-accent-text)">
             Эта задача
           </text>
 
-          {/* Bottom row: blocks (исходящие edges) */}
           {visibleBlocks.map((b, i) => {
-            const { x } = rowCoords(blockRowCount, i);
+            const x = rowX(blockRowCount, i);
             const c = dagNodeColors(b.status);
             return (
               <g key={b.id}>
-                <line
-                  x1={meX + nodeW / 2}
-                  y1={yMe + nodeH}
-                  x2={x + nodeW / 2}
-                  y2={yBlocks}
-                  stroke="var(--ec-border-default)"
-                  strokeWidth={1.2}
-                  markerEnd="url(#ec-dag-arrow)"
-                />
-                <rect
-                  x={x}
-                  y={yBlocks}
-                  width={nodeW}
-                  height={nodeH}
-                  rx={6}
-                  fill={c.fill}
-                  stroke={c.stroke}
-                  strokeWidth={1}
-                />
-                <text
-                  x={x + nodeW / 2}
-                  y={yBlocks + nodeH / 2 + 4}
-                  textAnchor="middle"
-                  fontSize={11}
-                  fill={c.text}
-                  style={{ fontFamily: "var(--ec-font)" }}
-                >
+                <line x1={meX + nodeW / 2} y1={yMe + nodeH} x2={x + nodeW / 2} y2={yBlocks} stroke="var(--ec-border-default)" strokeWidth={1.2} markerEnd="url(#ec-dag-arrow)" />
+                <rect x={x} y={yBlocks} width={nodeW} height={nodeH} rx={6} fill={c.fill} stroke={c.stroke} strokeWidth={1} />
+                <text x={x + nodeW / 2} y={yBlocks + nodeH / 2 + 4} textAnchor="middle" fontSize={11} fill={c.text}>
                   {truncateLabel(b.title)}
                 </text>
               </g>
@@ -1686,55 +1023,17 @@ function DepDagViz({
           })}
           {moreBlocks > 0 && (
             <g>
-              <line
-                x1={meX + nodeW / 2}
-                y1={yMe + nodeH}
-                x2={
-                  rowCoords(blockRowCount, visibleBlocks.length).x + nodeW / 2
-                }
-                y2={yBlocks}
-                stroke="var(--ec-border-default)"
-                strokeWidth={1.2}
-                strokeDasharray="3 3"
-              />
-              <rect
-                x={rowCoords(blockRowCount, visibleBlocks.length).x}
-                y={yBlocks}
-                width={nodeW}
-                height={nodeH}
-                rx={6}
-                fill="var(--ec-surface-3)"
-                stroke="var(--ec-border-default)"
-                strokeDasharray="3 3"
-              />
-              <text
-                x={
-                  rowCoords(blockRowCount, visibleBlocks.length).x + nodeW / 2
-                }
-                y={yBlocks + nodeH / 2 + 4}
-                textAnchor="middle"
-                fontSize={11}
-                fill="var(--ec-text-muted)"
-              >
+              <line x1={meX + nodeW / 2} y1={yMe + nodeH} x2={rowX(blockRowCount, visibleBlocks.length) + nodeW / 2} y2={yBlocks} stroke="var(--ec-border-default)" strokeWidth={1.2} strokeDasharray="3 3" />
+              <rect x={rowX(blockRowCount, visibleBlocks.length)} y={yBlocks} width={nodeW} height={nodeH} rx={6} fill="var(--ec-surface-3)" stroke="var(--ec-border-default)" strokeDasharray="3 3" />
+              <text x={rowX(blockRowCount, visibleBlocks.length) + nodeW / 2} y={yBlocks + nodeH / 2 + 4} textAnchor="middle" fontSize={11} fill="var(--ec-text-muted)">
                 +{moreBlocks} ещё
               </text>
             </g>
           )}
 
           <defs>
-            <marker
-              id="ec-dag-arrow"
-              viewBox="0 0 10 10"
-              refX="8"
-              refY="5"
-              markerWidth="6"
-              markerHeight="6"
-              orient="auto-start-reverse"
-            >
-              <path
-                d="M 0 0 L 10 5 L 0 10 z"
-                fill="var(--ec-border-default)"
-              />
+            <marker id="ec-dag-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--ec-border-default)" />
             </marker>
           </defs>
         </svg>
@@ -1783,161 +1082,65 @@ function DependencySection({
       .slice(0, 30);
   }, [serverActions, dependencies, currentActionId, query]);
 
-  // v0.76 #20 phase 2: показываем mini-DAG только если есть >=1 edge — иначе
-  // картинка пустая. Toggle-collapsible чтобы не давить когда не нужно.
   const hasGraph = dependencies.length > 0 || blocks.length > 0;
 
+  const depChip = (status: TaskStatus) => (
+    <span className="ec-cck-chip" style={tone(DEP_STATUS[status].tone)}>
+      {DEP_STATUS[status].label}
+    </span>
+  );
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      {hasGraph && (
-        <DepDagViz dependencies={dependencies} blocks={blocks} />
-      )}
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--ec-space-2)" }}>
+      {hasGraph && <DepDagViz dependencies={dependencies} blocks={blocks} />}
+
       {dependencies.length === 0 ? (
-        <p
-          style={{
-            margin: 0,
-            color: "var(--ec-text-dim)",
-            fontSize: "var(--ec-text-sm)",
-          }}
-        >
+        <p className="ec-cck-empty" style={{ padding: 0, textAlign: "left" }}>
           Эта задача ни от чего не зависит.
         </p>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          {dependencies.map((d) => {
-            const tone = DEP_STATUS_TONE[d.status];
-            return (
-              <div key={d.id} style={depRowStyle(d.status === "DONE")}>
-                <span
-                  style={{
-                    padding: "1px 6px",
-                    borderRadius: 4,
-                    background: tone.bg,
-                    color: tone.fg,
-                    fontSize: "0.65rem",
-                    fontWeight: 700,
-                    textTransform: "uppercase",
-                    letterSpacing: "var(--ec-tracking-caps)",
-                    flexShrink: 0,
-                  }}
-                >
-                  {tone.label}
-                </span>
-                <span
-                  style={{
-                    flex: 1,
-                    minWidth: 0,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                    color: "var(--ec-text)",
-                  }}
-                  title={d.title}
-                >
-                  {d.title}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => void onRemove(d.id)}
-                  disabled={submitting}
-                  title="Убрать зависимость"
-                  aria-label="Убрать зависимость"
-                  style={{
-                    width: 22,
-                    height: 22,
-                    display: "grid",
-                    placeItems: "center",
-                    background: "transparent",
-                    border: 0,
-                    color: "var(--ec-text-dim)",
-                    cursor: submitting ? "not-allowed" : "pointer",
-                    fontSize: "0.9rem",
-                    flexShrink: 0,
-                  }}
-                >
-                  ×
-                </button>
-              </div>
-            );
-          })}
+          {dependencies.map((d) => (
+            <div key={d.id} className="ec-cck-deprow" data-done={d.status === "DONE" ? "true" : "false"}>
+              {depChip(d.status)}
+              <span className="ec-cck-deprow__name" title={d.title}>{d.title}</span>
+              <button
+                type="button"
+                className="ec-cck-act ec-cck-act--danger"
+                onClick={() => void onRemove(d.id)}
+                disabled={submitting}
+                title="Убрать зависимость"
+                aria-label="Убрать зависимость"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden>
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+          ))}
         </div>
       )}
 
       {blocks.length > 0 && (
         <details>
-          <summary
-            style={{
-              cursor: "pointer",
-              fontSize: "var(--ec-text-2xs)",
-              color: "var(--ec-text-dim)",
-              letterSpacing: "var(--ec-tracking-caps)",
-              textTransform: "uppercase",
-              fontWeight: 700,
-            }}
-          >
-            Блокирует {blocks.length}
-          </summary>
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 4,
-              marginTop: 6,
-            }}
-          >
-            {blocks.map((b) => {
-              const tone = DEP_STATUS_TONE[b.status];
-              return (
-                <div key={b.id} style={depRowStyle(b.status === "DONE")}>
-                  <span
-                    style={{
-                      padding: "1px 6px",
-                      borderRadius: 4,
-                      background: tone.bg,
-                      color: tone.fg,
-                      fontSize: "0.65rem",
-                      fontWeight: 700,
-                      textTransform: "uppercase",
-                      letterSpacing: "var(--ec-tracking-caps)",
-                      flexShrink: 0,
-                    }}
-                  >
-                    {tone.label}
-                  </span>
-                  <span
-                    style={{
-                      flex: 1,
-                      minWidth: 0,
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                      color: "var(--ec-text)",
-                    }}
-                    title={b.title}
-                  >
-                    {b.title}
-                  </span>
-                </div>
-              );
-            })}
+          <summary className="ec-cck-toggle">Блокирует · {blocks.length}</summary>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 6 }}>
+            {blocks.map((b) => (
+              <div key={b.id} className="ec-cck-deprow" data-done={b.status === "DONE" ? "true" : "false"}>
+                {depChip(b.status)}
+                <span className="ec-cck-deprow__name" title={b.title}>{b.title}</span>
+              </div>
+            ))}
           </div>
         </details>
       )}
 
       {pickerOpen ? (
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: 6,
-            padding: "var(--ec-space-2)",
-            borderRadius: "var(--ec-radius-md)",
-            background: "var(--ec-surface-2)",
-            boxShadow: "var(--ec-elev-1)",
-          }}
-        >
+        <div className="ec-cck-inset">
           <input
             type="text"
+            className="ec-cck-field"
             value={query}
             onChange={(e) => {
               setQuery(e.target.value);
@@ -1945,140 +1148,56 @@ function DependencySection({
             }}
             placeholder="Поиск задачи по названию…"
             autoFocus
-            style={{
-              padding: "0.4rem 0.6rem",
-              borderRadius: "var(--ec-radius-sm)",
-              border: "1px solid var(--ec-border-default)",
-              background: "var(--ec-surface-1)",
-              color: "var(--ec-text)",
-              fontSize: "var(--ec-text-sm)",
-            }}
           />
           {!serverActions ? (
-            <p
-              style={{
-                margin: 0,
-                color: "var(--ec-text-dim)",
-                fontSize: "var(--ec-text-2xs)",
-              }}
-            >
+            <p className="ec-cck-empty" style={{ padding: 0, textAlign: "left" }}>
               Открой пространство, чтобы выбрать задачу-блокер.
             </p>
           ) : candidates.length === 0 ? (
-            <p
-              style={{
-                margin: 0,
-                color: "var(--ec-text-dim)",
-                fontSize: "var(--ec-text-2xs)",
-              }}
-            >
+            <p className="ec-cck-empty" style={{ padding: 0, textAlign: "left" }}>
               Подходящих задач нет.
             </p>
           ) : (
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: 2,
-                maxHeight: 220,
-                overflowY: "auto",
-              }}
-            >
-              {candidates.map((c) => {
-                const tone = DEP_STATUS_TONE[c.status];
-                return (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => void onAdd(c.id)}
-                    disabled={submitting}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                      padding: "var(--ec-space-1) var(--ec-space-2)",
-                      borderRadius: "var(--ec-radius-sm)",
-                      background: "transparent",
-                      border: "1px solid transparent",
-                      color: "var(--ec-text)",
-                      cursor: submitting ? "not-allowed" : "pointer",
-                      textAlign: "left",
-                      fontSize: "var(--ec-text-sm)",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = "var(--ec-surface-3)";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = "transparent";
-                    }}
-                  >
-                    <span
-                      style={{
-                        padding: "1px 5px",
-                        borderRadius: 4,
-                        background: tone.bg,
-                        color: tone.fg,
-                        fontSize: "0.6rem",
-                        fontWeight: 700,
-                        textTransform: "uppercase",
-                        letterSpacing: "var(--ec-tracking-caps)",
-                        flexShrink: 0,
-                      }}
-                    >
-                      {tone.label}
-                    </span>
-                    <span
-                      style={{
-                        flex: 1,
-                        minWidth: 0,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}
-                      title={c.title}
-                    >
-                      {c.title}
-                    </span>
-                  </button>
-                );
-              })}
+            <div style={{ display: "flex", flexDirection: "column", gap: 2, maxHeight: 220, overflowY: "auto" }}>
+              {candidates.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  className="ec-cck-pop__row"
+                  onClick={() => void onAdd(c.id)}
+                  disabled={submitting}
+                  style={{ border: 0, background: "transparent", textAlign: "left", width: "100%" }}
+                >
+                  {depChip(c.status)}
+                  <span className="ec-cck-deprow__name" title={c.title}>{c.title}</span>
+                </button>
+              ))}
             </div>
           )}
           {error && (
-            <p
-              style={{
-                margin: 0,
-                color: "var(--ec-danger)",
-                fontSize: "var(--ec-text-2xs)",
-              }}
-            >
+            <p className="ec-cck-banner ec-cck-banner--error" style={{ margin: 0 }}>
               {error}
             </p>
           )}
-          <button
-            type="button"
-            onClick={() => {
-              setPickerOpen(false);
-              setQuery("");
-              setError(null);
-            }}
-            style={{
-              alignSelf: "flex-end",
-              padding: "0.25rem 0.6rem",
-              background: "transparent",
-              border: "1px solid var(--ec-border-default)",
-              borderRadius: "var(--ec-radius-sm)",
-              color: "var(--ec-text-muted)",
-              cursor: "pointer",
-              fontSize: "var(--ec-text-2xs)",
-            }}
-          >
-            Отмена
-          </button>
+          <div className="ec-cck-inset__row ec-cck-inset__row--end">
+            <button
+              type="button"
+              className="ec-btn ec-btn--ghost ec-btn--sm"
+              onClick={() => {
+                setPickerOpen(false);
+                setQuery("");
+                setError(null);
+              }}
+            >
+              Отмена
+            </button>
+          </div>
         </div>
       ) : (
         <button
           type="button"
+          className="ec-cck-rowbtn"
+          style={{ alignSelf: "flex-start" }}
           onClick={() => setPickerOpen(true)}
           disabled={!serverActions}
           title={
@@ -2086,19 +1205,6 @@ function DependencySection({
               ? "Открой пространство, чтобы выбрать задачу"
               : "Добавить blocker"
           }
-          style={{
-            alignSelf: "flex-start",
-            padding: "0.3rem 0.7rem",
-            borderRadius: "var(--ec-radius-md)",
-            background: "transparent",
-            border: "1px dashed var(--ec-border-default)",
-            color: serverActions ? "var(--ec-text-muted)" : "var(--ec-text-dim)",
-            cursor: serverActions ? "pointer" : "not-allowed",
-            fontSize: "var(--ec-text-2xs)",
-            fontWeight: 600,
-            letterSpacing: "var(--ec-tracking-caps)",
-            textTransform: "uppercase",
-          }}
         >
           + Добавить блокер
         </button>

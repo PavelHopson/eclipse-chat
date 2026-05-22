@@ -5,7 +5,7 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.2.3** (Galaxy/Clock/Theme/Deadline effects +
+**Текущая версия:** **v1.2.4** (Galaxy/Clock/Theme/Deadline effects +
 UX-copy + дизайн-полиш + редизайн WS-1 + системный редизайн ЗАКРЫТ 8/8 +
 светлая тема SOLAR (Notion-crisp) + фикс AuthScreen + смена пароля +
 визуальный передел AppShell ЗАКРЫТ 4/4 + топбар-полиш +
@@ -23,10 +23,10 @@ redesign slice 7 — ServerHubModal +
 logout-надёжность + identity-фикс пресетов + topbar на `.ec-icon-btn` +
 трек R1 — media-плеер «Signal Desk» v2 +
 рекомпозиция каркаса — командный хребет + центр-бар +
-трек R2 — Execution Cockpit: cockpit-система + StatusBoard +
-OperationalTablePanel control-desk).
+трек R2 — Execution Cockpit ЗАКРЫТ 3/3: cockpit-система +
+StatusBoard + OperationalTablePanel + ActionItemDrawer).
 
-> **v1.1.90 … v1.2.0 задеплоены — в проде v1.2.0. v1.2.1 … v1.2.3
+> **v1.1.90 … v1.2.0 задеплоены — в проде v1.2.0. v1.2.1 … v1.2.4
 > запушены и ждут approve-gate Pavel'я в GitHub Actions (environment
 > `production`). Деплой НЕ автоматический по пушу.**
 
@@ -36,8 +36,32 @@ OperationalTablePanel control-desk).
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.2.3:**
+**Изменения v1.1.25 → v1.2.4:**
 
+- **v1.2.4** — **Execution Cockpit 3/3 ЗАКРЫТ: ActionItemDrawer →
+  mission detail panel**. Drawer задачи (2109 строк) переведён на
+  cockpit-язык.
+  - **Долг убран:** ~25 module-level `CSSProperties`-консолей
+    (`backdrop` / `drawer` / `headerStyle` / `bodyStyle` /
+    `sectionLabel` / `propRow` / `inlineInput` / `titleInput` /
+    `descTextarea` / `composerWrap` / `sendBtn` …) и весь
+    inline-style долг (~95) → cockpit-классы. JS-hover в CommentRow
+    (`hover`-state) и dep-picker (`onMouseEnter`-мутация `.style`)
+    → CSS.
+  - **Mission detail panel:** сильный identity-блок (type-glyph +
+    тип + status-капсула + hero-заголовок); ясная иерархия секций
+    (свойства / одобрение / зависимости / описание / сводка /
+    комментарии / история); approval/dependency-формы — inset-
+    панели; кастомные кнопки → канонические `.ec-btn`.
+  - `cockpit.css` дорос drawer-слоем (`.ec-cck-drawer*` /
+    `.ec-cck-sec*` / `.ec-cck-prop*` / `.ec-cck-field*` /
+    `.ec-cck-comment*` / `.ec-cck-inset` / `.ec-cck-deprow` /
+    `.ec-cck-statussel`). DAG-граф зависимостей (SVG) сохранён,
+    токены приведены к реальным (`--ec-status-*-soft`).
+  Логика (approval workflow, dependency DAG, AI summary, realtime
+  sync) не тронута. **Трек R2 — Execution Cockpit — закрыт 3/3**:
+  StatusBoard + OperationalTablePanel + ActionItemDrawer на единой
+  cockpit-системе. Сборка зелёная (tsc + vite).
 - **v1.2.3** — **Execution Cockpit 2/3: OperationalTablePanel →
   control desk**. Операционная таблица (1762 строки) переведена на
   cockpit-язык.
