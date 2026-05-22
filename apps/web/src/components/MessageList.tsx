@@ -220,20 +220,6 @@ function formatTime(iso: string): string {
   return iso.slice(11, 16);
 }
 
-/** v1.1.1 Eclipse_OS: cyberpunk log-entry style date divider.
- *  Formats: «ЗАПИСЬ_ЖУРНАЛА_19_МАЯ_2026 // СИНХР_ВРЕМЕНИ». */
-function formatLogEntryDay(iso: string): string {
-  const d = new Date(iso);
-  const months = [
-    "ЯНВ", "ФЕВ", "МАР", "АПР", "МАЯ", "ИЮН",
-    "ИЮЛ", "АВГ", "СЕН", "ОКТ", "НОЯ", "ДЕК",
-  ];
-  const day = String(d.getDate()).padStart(2, "0");
-  const month = months[d.getMonth()];
-  const year = d.getFullYear();
-  return `ЗАПИСЬ_ЖУРНАЛА_${day}_${month}_${year} // СИНХР_ВРЕМЕНИ`;
-}
-
 function formatDay(iso: string): string {
   const d = new Date(iso);
   const today = new Date();
@@ -557,9 +543,8 @@ export function MessageList({
                     opacity: 0.85,
                     textTransform: "uppercase",
                   }}
-                  title={formatDay(m.createdAt)}
                 >
-                  {formatLogEntryDay(m.createdAt)}
+                  {formatDay(m.createdAt)}
                 </span>
                 <span style={dayLine} aria-hidden />
               </div>
