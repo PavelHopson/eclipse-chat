@@ -262,6 +262,41 @@ export async function registerMusicRoutes(app: FastifyInstance) {
     },
   );
 
+  /** GET queue — резолвит очередь (attachment IDs) в треки с именами,
+   *  в порядке очереди. Для UI-списка в expand-плеере. Membership-only.
+   *  Битые/удалённые id молча пропускаются. */
+  app.get(
+    "/api/channels/:id/music/queue",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const userId = getUserId(req);
+      if (!userId) return reply.status(401).send({ error: "Unauthorized" });
+      const { id: channelId } = req.params as { id: string };
+      const ctx = await loadChannelMembership(userId, channelId);
+      if ("error" in ctx) {
+        return reply.status(ctx.error === "Channel not found" ? 404 : 403).send({
+          error: ctx.error,
+        });
+      }
+      const session = await db.musicSession.findUnique({
+        where: { channelId },
+        select: { queue: true },
+      });
+      if (!session) return { queue: [] };
+      const ids = parseQueue(session.queue);
+      if (ids.length === 0) return { queue: [] };
+      const rows = await db.attachment.findMany({
+        where: { id: { in: ids } },
+        select: { id: true, filename: true },
+      });
+      const byId = new Map(rows.map((r) => [r.id, r] as const));
+      const queue = ids
+        .map((id) => byId.get(id))
+        .filter((t): t is { id: string; filename: string } => t != null);
+      return { queue };
+    },
+  );
+
   /** POST start — start новый track. Создаёт session если нет, replace
    *  current track если есть (host берёт control). */
   app.post(
