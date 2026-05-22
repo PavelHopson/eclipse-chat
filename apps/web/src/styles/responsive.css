@@ -613,8 +613,9 @@
   display: none;
 }
 @media (max-width: 1024px) {
+  /* v1.1.93 — close-кнопки rail'а теперь .ec-icon-btn (inline-grid). */
   .ec-shell__members-close {
-    display: inline-flex;
+    display: inline-grid;
   }
 
   .ec-voice-room__hero {

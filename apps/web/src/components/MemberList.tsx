@@ -1,4 +1,3 @@
-import type { CSSProperties } from "react";
 import { useMemo } from "react";
 import { Avatar } from "./Avatar";
 import { gameIcon, type GameIconName } from "../lib/gameIcons";
@@ -23,62 +22,8 @@ type Props = {
   onOpenDm?: (userId: string) => void;
 };
 
-const wrap: CSSProperties = {
-  width: "100%",
-  height: "100%",
-  background: "var(--ec-surface-1)",
-  borderLeft: "1px solid var(--ec-border-subtle)",
-  display: "flex",
-  flexDirection: "column",
-  overflow: "hidden",
-};
-
-const listScroll: CSSProperties = {
-  flex: 1,
-  overflow: "auto",
-  padding: "var(--ec-space-3) var(--ec-space-2)",
-  display: "flex",
-  flexDirection: "column",
-  gap: 2,
-};
-
-const rowStyle: CSSProperties = {
-  display: "grid",
-  // v1.1.82 фикс: 4 трека (аватар | имя | роль-пилл | DM-кнопка).
-  // Было 3 — DM-кнопка (4-й элемент) переносилась на 2-ю grid-строку,
-  // удваивая высоту КАЖДОЙ строки участника (~36 → ~66px). 4-й auto-трек
-  // схлопывается в 0, когда DM-кнопки нет (свой профиль).
-  gridTemplateColumns: "auto 1fr auto auto",
-  alignItems: "center",
-  gap: "var(--ec-space-2)",
-  padding: "var(--ec-space-1) var(--ec-space-2)",
-  borderRadius: "var(--ec-radius-sm)",
-  fontSize: "var(--ec-text-sm)",
-  color: "var(--ec-text)",
-  position: "relative",
-  // v1.1.63 §10 — floating depth-hover (как у сообщений slice 4 / composer),
-  // на смену tactical 1px-уголкам (.ec-corner-brackets снят со строки).
-  transition:
-    "background var(--ec-dur-fast) var(--ec-ease)," +
-    " transform var(--ec-dur-fast) var(--ec-ease)," +
-    " box-shadow var(--ec-dur-fast) var(--ec-ease)",
-};
-
-const avatarWrap: CSSProperties = {
-  position: "relative",
-  display: "inline-block",
-  flexShrink: 0,
-};
-
-const presenceDot: CSSProperties = {
-  position: "absolute",
-  bottom: -1,
-  right: -1,
-  width: 10,
-  height: 10,
-  borderRadius: "var(--ec-radius-full)",
-  border: "2px solid var(--ec-surface-1)",
-};
+// v1.1.93 slice 4: inline-style консоли MemberList вынесены в классы
+// .ec-member-list* / .ec-member-row* (components.css). JS-hover убран.
 
 /** v0.78 #17: ранжирование 10 ролей. Outliers OWNER first, GUEST last. */
 const ROLE_RANK: Record<MemberRole, number> = {
@@ -166,24 +111,10 @@ function MemberRowView({
       : "");
   return (
     <div
-      style={rowStyle}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.background = "var(--ec-surface-2)";
-        e.currentTarget.style.transform = "translateY(-1px)";
-        e.currentTarget.style.boxShadow = "var(--ec-elev-1)";
-        const dmBtn = e.currentTarget.querySelector<HTMLElement>("[data-dm-btn]");
-        if (dmBtn) dmBtn.style.opacity = "1";
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.background = "transparent";
-        e.currentTarget.style.transform = "";
-        e.currentTarget.style.boxShadow = "";
-        const dmBtn = e.currentTarget.querySelector<HTMLElement>("[data-dm-btn]");
-        if (dmBtn) dmBtn.style.opacity = "0";
-      }}
+      className={"ec-member-row" + (m.online ? "" : " ec-member-row--offline")}
       title={tooltip}
     >
-      <span style={avatarWrap}>
+      <span className="ec-member-row__avatar">
         <Avatar
           url={m.user.avatar}
           name={m.user.displayName}
@@ -192,8 +123,8 @@ function MemberRowView({
         />
         <span
           aria-hidden
+          className="ec-member-row__presence"
           style={{
-            ...presenceDot,
             background: !m.online
               ? "var(--ec-presence-offline)"
               : m.manualStatus === "IDLE"
@@ -208,17 +139,7 @@ function MemberRowView({
           }}
         />
       </span>
-      <span
-        style={{
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-          color: m.online ? "var(--ec-text)" : "var(--ec-text-muted)",
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 6,
-        }}
-      >
+      <span className="ec-member-row__name">
         {m.user.displayName}
         {/* voice-индикатор намеренно убран: кто в голосовом — видно списком
             под voice-каналом в sidebar (ChannelList), дублировать не нужно.
@@ -240,34 +161,14 @@ function MemberRowView({
       </span>
       {showDmButton && onOpenDm && (
         <button
-          data-dm-btn
           type="button"
+          className="ec-member-row__dm"
           onClick={(e) => {
             e.stopPropagation();
             onOpenDm(m.userId);
           }}
           aria-label={`Написать ${m.user.displayName} в личку`}
           title="Написать в личку"
-          style={{
-            width: 22,
-            height: 22,
-            border: "1px solid var(--ec-border-default)",
-            background: "var(--ec-surface-1)",
-            color: "var(--ec-accent)",
-            borderRadius: "var(--ec-radius-xs)",
-            cursor: "pointer",
-            display: "grid",
-            placeItems: "center",
-            opacity: 0,
-            transition: "opacity var(--ec-dur-fast) var(--ec-ease), background var(--ec-dur-fast) var(--ec-ease)",
-            marginLeft: 4,
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = "var(--ec-accent-soft)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = "var(--ec-surface-1)";
-          }}
         >
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
             <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
@@ -302,10 +203,7 @@ export function MemberList({
   }, [members, voiceChannelByUser]);
 
   return (
-    <aside
-      style={hideHeader ? { ...wrap, borderLeft: "none" } : wrap}
-      aria-label="Участники пространства"
-    >
+    <aside className="ec-member-list" aria-label="Участники пространства">
       {!hideHeader && (
         <header className="ec-tactical-header">
           <span className="ec-tactical-header__title">
@@ -372,7 +270,7 @@ export function MemberList({
         </div>
       )}
 
-      <div style={listScroll}>
+      <div className="ec-member-list__scroll">
         {loading && members.length === 0 ? (
           <div className="ec-skeleton-list" aria-label="Загрузка участников">
             {Array.from({ length: 5 }).map((_, i) => (
@@ -386,18 +284,16 @@ export function MemberList({
             ))}
           </div>
         ) : error ? (
-          <p style={{ color: "var(--ec-danger)", fontSize: "var(--ec-text-sm)", padding: "var(--ec-space-2)", margin: 0 }}>
-            {error}
-          </p>
+          <p className="ec-member-list__error">{error}</p>
         ) : (
           <>
             {online.length > 0 && (
               <>
-                <div className="ec-section-label" style={{ marginBottom: "var(--ec-space-2)" }}>
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <div className="ec-section-label">
+                  <span className="ec-section-label__group">
                     <span className="ec-dot ec-dot--online" />СВЯЗАННЫЕ_УЗЛЫ
                   </span>
-                  <span style={{ color: "var(--ec-text-dim)", fontFeatureSettings: '"tnum"' }}>{online.length}</span>
+                  <span className="ec-channel-section__count">{online.length}</span>
                 </div>
                 {online.map((m) => {
                   const vc = voiceChannelByUser?.[m.userId];
@@ -419,12 +315,12 @@ export function MemberList({
               <>
                 <div
                   className="ec-section-label"
-                  style={{ marginTop: online.length > 0 ? "var(--ec-space-4)" : 0, marginBottom: "var(--ec-space-2)" }}
+                  style={{ marginTop: online.length > 0 ? "var(--ec-space-4)" : 0 }}
                 >
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  <span className="ec-section-label__group">
                     <span className="ec-dot ec-dot--offline" />СПЯЩИЙ_РЕЖИМ
                   </span>
-                  <span style={{ color: "var(--ec-text-dim)", fontFeatureSettings: '"tnum"' }}>{offline.length}</span>
+                  <span className="ec-channel-section__count">{offline.length}</span>
                 </div>
                 {offline.map((m) => (
                   <MemberRowView
@@ -439,9 +335,7 @@ export function MemberList({
             )}
 
             {members.length === 0 && !loading && (
-              <p style={{ color: "var(--ec-text-dim)", fontSize: "var(--ec-text-sm)", padding: "var(--ec-space-2)", margin: 0 }}>
-                Никого пока нет.
-              </p>
+              <p className="ec-member-list__hint">Никого пока нет.</p>
             )}
           </>
         )}

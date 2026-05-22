@@ -1,4 +1,3 @@
-import type { CSSProperties } from "react";
 import { MemberList } from "./MemberList";
 import type { MemberRow } from "../hooks/useMembers";
 import { resolveAssetUrl } from "../lib/assets";
@@ -55,72 +54,8 @@ type Props = {
   onCollapse?: () => void;
 };
 
-const wrap: CSSProperties = {
-  width: "100%",
-  height: "100%",
-  background: "var(--ec-surface-1)",
-  borderLeft: "1px solid var(--ec-border-subtle)",
-  display: "flex",
-  flexDirection: "column",
-  overflow: "hidden",
-  minHeight: 0,
-};
-
-const headerStyle: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: "var(--ec-space-2)",
-  padding: "var(--ec-space-3) var(--ec-space-3)",
-  borderBottom: "1px solid var(--ec-border-subtle)",
-  background: "var(--ec-overlay-header-bg)",
-  // v1.1.10: position:relative для .ec-server-header-edge::after holographic
-  // bottom line accent.
-  position: "relative",
-};
-
-const headerLabel: CSSProperties = {
-  fontSize: "0.62rem",
-  fontWeight: 700,
-  letterSpacing: "0.18em",
-  textTransform: "uppercase",
-  color: "var(--ec-text-muted)",
-  fontFamily: "var(--ec-font-mono, ui-monospace, monospace)",
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 6,
-  minWidth: 0,
-};
-
-const headerCount: CSSProperties = {
-  fontSize: "0.6rem",
-  color: "var(--ec-accent-3)",
-  fontWeight: 700,
-  fontFeatureSettings: '"tnum"',
-  letterSpacing: "0.08em",
-  textTransform: "none",
-  padding: "0.12rem 0.42rem",
-  borderRadius: "var(--ec-radius-xs)",
-  background: "var(--ec-accent-3-soft)",
-  border: "1px solid hsl(252 70% 70% / 0.3)",
-  fontFamily: "var(--ec-font-mono, ui-monospace, monospace)",
-};
-
-const utilBtn: CSSProperties = {
-  width: 28,
-  height: 28,
-  padding: 0,
-  flexShrink: 0,
-  display: "grid",
-  placeItems: "center",
-};
-
-const scrollArea: CSSProperties = {
-  flex: 1,
-  minHeight: 0,
-  overflow: "auto",
-  display: "flex",
-  flexDirection: "column",
-};
+// v1.1.93 slice 4: inline-style консоли IntelligencePanel вынесены в
+// классы .ec-rail* (components.css).
 
 function IconMembers() {
   return (
@@ -146,26 +81,25 @@ export function IntelligencePanel({
   const onlineCount = members.filter((m) => m.online).length;
 
   return (
-    <aside style={wrap} aria-label="Участники">
-      <header className="ec-server-header-edge" style={headerStyle}>
-        <span style={headerLabel}>
-          <span aria-hidden style={{ color: "var(--ec-accent-3)" }}>
+    <aside className="ec-rail" aria-label="Участники">
+      <header className="ec-server-header-edge ec-rail__header">
+        <span className="ec-rail__title">
+          <span className="ec-rail__title-icon" aria-hidden>
             <IconMembers />
           </span>
           <span>ТАКТИЧЕСКИЙ ВИД</span>
         </span>
-        <span style={headerCount}>
+        <span className="ec-rail__count">
           {onlineCount}/{members.length}
         </span>
-        <div style={{ marginLeft: "auto", display: "inline-flex", gap: 2 }}>
+        <div className="ec-rail__header-actions">
           {onCollapse && (
             <button
               type="button"
               onClick={onCollapse}
               aria-label="Свернуть панель"
               title="Свернуть панель"
-              className="ec-btn ec-btn--ghost ec-btn--sm"
-              style={utilBtn}
+              className="ec-icon-btn"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <path d="M9 6l6 6-6 6" />
@@ -178,8 +112,7 @@ export function IntelligencePanel({
               onClick={onClose}
               aria-label="Закрыть"
               title="Закрыть"
-              className="ec-shell__members-close ec-btn ec-btn--ghost ec-btn--sm"
-              style={utilBtn}
+              className="ec-shell__members-close ec-icon-btn"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <line x1="18" y1="6" x2="6" y2="18" />
@@ -190,7 +123,7 @@ export function IntelligencePanel({
         </div>
       </header>
 
-      <div style={scrollArea}>
+      <div className="ec-rail__scroll">
         <MemberList
           members={members}
           loading={membersLoading}

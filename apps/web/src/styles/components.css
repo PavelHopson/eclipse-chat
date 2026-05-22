@@ -2413,3 +2413,258 @@
   color: var(--ec-danger);
 }
 
+/* ============================================================
+ * v1.1.93 — Redesign slice 4: правый rail (IntelligencePanel /
+ * MemberList / ThreadPanel). Inline-консоли в классы, JS-hover → CSS.
+ * ============================================================ */
+
+/* --- Каркас rail-панели -------------------------------------- */
+.ec-rail {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+.ec-rail__header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--ec-space-2);
+  padding: var(--ec-space-3);
+  background: var(--ec-overlay-header-bg);
+}
+/* Спокойный section-eyebrow — НЕ «терминальный крик» (0.18em mono 700). */
+.ec-rail__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-family: var(--ec-font-sans);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ec-text-muted);
+}
+.ec-rail__title-icon {
+  color: var(--ec-accent-3);
+  flex-shrink: 0;
+}
+.ec-rail__count {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.12rem 0.42rem;
+  border-radius: var(--ec-radius-xs);
+  font-family: var(--ec-font-mono);
+  font-size: 0.6rem;
+  font-weight: 700;
+  font-feature-settings: "tnum";
+  letter-spacing: 0.06em;
+  color: var(--ec-accent-3);
+  background: var(--ec-accent-3-soft);
+  border: 1px solid hsl(252 70% 70% / 0.3);
+}
+.ec-rail__header-actions {
+  margin-left: auto;
+  display: inline-flex;
+  gap: 2px;
+}
+.ec-rail__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+/* --- MemberList ---------------------------------------------- */
+.ec-member-list {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+.ec-member-list__scroll {
+  flex: 1;
+  overflow: auto;
+  padding: var(--ec-space-3) var(--ec-space-2);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ec-member-list__hint {
+  margin: 0;
+  padding: var(--ec-space-2);
+  color: var(--ec-text-dim);
+  font-size: var(--ec-text-sm);
+}
+.ec-member-list__error {
+  margin: 0;
+  padding: var(--ec-space-2);
+  color: var(--ec-danger);
+  font-size: var(--ec-text-sm);
+}
+/* Строка участника — спокойный hover-tint (без подъёма, ровное
+   сканирование списка); DM-кнопка проявляется на hover/focus. */
+.ec-member-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: var(--ec-space-2);
+  padding: var(--ec-space-1) var(--ec-space-2);
+  border-radius: var(--ec-radius-sm);
+  font-size: var(--ec-text-sm);
+  color: var(--ec-text);
+  position: relative;
+  transition: background var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-member-row:hover { background: var(--ec-surface-2); }
+.ec-member-row__avatar {
+  position: relative;
+  display: inline-block;
+  flex-shrink: 0;
+}
+.ec-member-row__presence {
+  position: absolute;
+  bottom: -1px;
+  right: -1px;
+  width: 10px;
+  height: 10px;
+  border-radius: var(--ec-radius-full);
+  border: 2px solid var(--ec-surface-1);
+}
+.ec-member-row__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.ec-member-row--offline .ec-member-row__name { color: var(--ec-text-muted); }
+.ec-member-row__dm {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  margin-left: 4px;
+  border: 1px solid var(--ec-border-default);
+  border-radius: var(--ec-radius-xs);
+  background: var(--ec-surface-1);
+  color: var(--ec-accent);
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity var(--ec-dur-fast) var(--ec-ease),
+    background var(--ec-dur-fast) var(--ec-ease),
+    transform var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-member-row:hover .ec-member-row__dm,
+.ec-member-row:focus-within .ec-member-row__dm {
+  opacity: 1;
+}
+.ec-member-row__dm:hover {
+  background: var(--ec-accent-soft);
+  transform: translateY(-1px);
+}
+.ec-member-row__dm:active {
+  transform: translateY(0) scale(0.9);
+  transition-duration: 60ms;
+}
+.ec-member-row__dm:focus-visible {
+  opacity: 1;
+  outline: 2px solid var(--ec-border-accent);
+  outline-offset: 1px;
+}
+/* Группа section-label'а (точка + текст). */
+.ec-section-label__group {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* --- ThreadPanel --------------------------------------------- */
+.ec-thread-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-width: 0;
+}
+.ec-thread__header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ec-space-2);
+  height: 48px;
+  padding: 0 var(--ec-space-4);
+  background: var(--ec-overlay-header-bg);
+}
+.ec-thread__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--ec-font-sans);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ec-text-muted);
+}
+.ec-thread__label-icon { color: var(--ec-accent); flex-shrink: 0; }
+.ec-thread__count {
+  margin-left: 2px;
+  padding: 0.08rem 0.4rem;
+  border-radius: var(--ec-radius-xs);
+  background: var(--ec-accent-soft);
+  border: 1px solid var(--ec-border-accent);
+  color: var(--ec-accent);
+  font-family: var(--ec-font-mono);
+  font-size: 0.6rem;
+  font-feature-settings: "tnum";
+}
+.ec-thread__content {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--ec-space-3) var(--ec-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ec-space-3);
+}
+.ec-thread__root {
+  display: grid;
+  grid-template-columns: 36px 1fr;
+  gap: var(--ec-space-2);
+  padding: var(--ec-space-3);
+  background: var(--ec-surface-2);
+  border: 1px solid var(--ec-border-accent);
+  border-radius: var(--ec-radius-md);
+}
+.ec-thread__sep {
+  display: flex;
+  align-items: center;
+  gap: var(--ec-space-2);
+  margin: var(--ec-space-2) 0;
+  font-family: var(--ec-font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ec-text-dim);
+}
+.ec-thread__sep-line {
+  flex: 1;
+  height: 1px;
+  background: var(--ec-border-subtle);
+}
+.ec-thread-reply {
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  gap: var(--ec-space-2);
+  padding: var(--ec-space-1) 0;
+}
+.ec-thread-reply--pending { opacity: 0.7; }
+
