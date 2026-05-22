@@ -5,17 +5,19 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.1.91** (Galaxy/Clock/Theme/Deadline effects +
+**Текущая версия:** **v1.1.92** (Galaxy/Clock/Theme/Deadline effects +
 UX-copy + дизайн-полиш + редизайн WS-1 + системный редизайн ЗАКРЫТ 8/8 +
 светлая тема SOLAR (Notion-crisp) + фикс AuthScreen + смена пароля +
 визуальный передел AppShell ЗАКРЫТ 4/4 + топбар-полиш +
 фикс высоты строк участников + читаемый разделитель даты +
 медиа-плеер ЗАКРЫТ 4/4 (перемотка + очередь + видео + watch-party) +
 фикс лайтбокса + живые анимации плеера + честный TLS-ярлык композера +
-redesign slice 1 — grammar v2 + фирменный плеер + кнопки + logout).
+redesign slice 1 — grammar v2 + фирменный плеер + кнопки + logout +
+redesign slice 2 — навигация ServerSwitcher + ChannelList).
 
-> **Слайсы v1.1.90 и v1.1.91 запушены, но ждут approve-gate Pavel'я
-> — на момент записи в проде ещё v1.1.89.**
+> **Слайсы v1.1.90 / v1.1.91 / v1.1.92 запушены, но ждут approve-gate
+> Pavel'я в GitHub Actions (environment `production`) — на момент
+> записи в проде ещё v1.1.89. Деплой НЕ автоматический по пушу.**
 
 > **⚠️ ЦВЕТ-ПРАВИЛО ИЗМЕНЕНО (бриф Pavel'я 20.05.2026).** Прежнее
 > «cool-tone, НИКОГДА warm» — ОТМЕНЕНО. Новая identity: **violet
@@ -23,8 +25,27 @@ redesign slice 1 — grammar v2 + фирменный плеер + кнопки +
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.1.91:**
+**Изменения v1.1.25 → v1.1.92:**
 
+- **v1.1.92** — **redesign slice 2: навигация (ServerSwitcher +
+  ChannelList) под grammar v2**. Продолжение передела.
+  - **ServerSwitcher** — триггер и пункты меню переведены на классы
+    `.ec-srv-*` (theme-aware токены). Исправлен **SOLAR-баг**: триггер
+    «Пространства» жил на хардкоде `hsl(214 …)` — в светлой теме был
+    тёмным пятном; теперь корректен в обеих темах. JS-hover убран.
+  - **ChannelList** — все inline-style консоли (`wrap`, `headerStyle`,
+    `serverTrigger`, `listWrap`, `composerRow`, `sectionAddBtn`,
+    `deleteBtn`, `sidebarTabBar`, `sidebarTabBtn`) вынесены в классы
+    `.ec-channel-list*` / `.ec-channel-action` / `.ec-section-add` /
+    `.ec-sidebar-tab*`. JS-hover убран целиком: действия комнаты
+    (mute/settings/delete) проявляются через CSS `:hover`/`:focus-within`,
+    а не через `onMouseEnter`-мутацию `.style`. Кнопка «+» секции
+    крутится на hover; действия — единый icon-character.
+  - **Убран фейковый sci-fi server-ID хэш** («◆ ID_XXXXXX_SYS_…») из
+    шапки пространства — декоративный мусор без смысла (cyberpunk
+    «превратился в шум»). Заголовок чище: имя + роль.
+  Чистый фронт, без миграций. Сборка зелёная (tsc + vite). Живой
+  визуальный smoke не делался.
 - **v1.1.91** — **redesign slice 1: visual grammar v2 + фирменный
   медиа-плеер + кнопки с характером + logout-микровзаимодействие**.
   Крупный креативный передел (запрос Pavel'я). Source of truth по

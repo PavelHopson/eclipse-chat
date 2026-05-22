@@ -5,23 +5,16 @@ import type { ServerRow } from "../hooks/useServers";
 import { resolveAssetUrl } from "../lib/assets";
 
 /**
- * ServerSwitcher — topbar-кнопка «Серверы» + выпадающая панель.
+ * ServerSwitcher (v1.1.91 redesign slice 2) — topbar-кнопка
+ * «Пространства» + выпадающая навигационная панель.
  *
- * v1.1.51: бывший вертикальный far-left rail (`ServerList`) свёрнут в
- * один topbar-control. Кнопка показывает иконку + имя активного
- * пространства (DM-режим → «Личные сообщения»); клик раскрывает панель
- * со всем содержимым прежнего rail:
- *   ┌─ NAV     — Главная / Поиск
- *   ├─ SPACES  — Личные сообщения + список пространств
- *   └─ ADD     — Создать / Вступить
+ * Бывший far-left rail свёрнут в один topbar-control. Панель
+ * рендерится через portal в document.body (`.ec-shell__top` несёт
+ * overflow:hidden + backdrop-filter — обрезал бы absolute-потомка).
  *
- * Панель рендерится через portal в document.body — `.ec-shell__top`
- * несёт `overflow:hidden` + `backdrop-filter` (containing block для
- * fixed-потомков), внутри неё absolute/fixed-popover был бы обрезан.
- * Portal + position:fixed + clamp к viewport — popover свободен.
- *
- * Постоянный визуальный вес ↓ (vertical rail убран целиком), доступ к
- * пространствам — progressive disclosure по клику. Согласуется с WS-1.
+ * Визуальный слой — `.ec-srv-*` в components.css (grammar v2):
+ * theme-aware токены вместо прежнего хардкода hsl(214 …), который
+ * ломал триггер в светлой теме SOLAR. Hover/focus — только CSS.
  */
 
 type Props = {
@@ -30,22 +23,16 @@ type Props = {
   onSelect: (id: string) => void;
   onCreateRequest: () => void;
   onJoinRequest: () => void;
-  /** DM mode active (activeServerId === null + user в DM-view). */
   dmsActive?: boolean;
-  /** Total unread DM count для badge. */
   dmsUnread?: number;
   onDmsRequest?: () => void;
-  /** NAV — Home (operational overview). */
   onHomeRequest: () => void;
   homeActive: boolean;
-  /** NAV — Search. Server-scoped: disabled без активного сервера. */
   onSearchRequest: () => void;
   searchEnabled: boolean;
-  /** v0.64: лимит OWNER-серверов на аккаунт (backend-enforced). */
   canCreateServer?: boolean;
   ownedCount?: number;
   maxOwnedServers?: number;
-  /** v1.1.52: компактный режим (mobile) — триггер icon-only без лейбла. */
   compact?: boolean;
 };
 
@@ -65,65 +52,31 @@ function ServerIcon({ server, size }: { server: ServerRow; size: number }) {
     setErrored(false);
   }, [server.icon]);
 
-  const box: CSSProperties = {
+  const sizeStyle: CSSProperties = {
     width: size,
     height: size,
-    flexShrink: 0,
-    borderRadius: "var(--ec-radius-sm)",
-    background: "var(--ec-surface-3)",
-    color: "var(--ec-text)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontWeight: 700,
     fontSize: size <= 22 ? "0.6rem" : "var(--ec-text-sm)",
-    overflow: "hidden",
   };
 
   if (!iconUrl || errored) {
     return (
-      <span style={box} aria-hidden>
+      <span className="ec-srv-icon" style={sizeStyle} aria-hidden>
         {initials(server.name)}
       </span>
     );
   }
   return (
-    <span style={box} aria-hidden>
+    <span className="ec-srv-icon" style={sizeStyle} aria-hidden>
       <img
         src={iconUrl}
         alt=""
         loading="lazy"
         decoding="async"
         onError={() => setErrored(true)}
-        style={{ width: "100%", height: "100%", objectFit: "cover" }}
       />
     </span>
   );
 }
-
-const triggerBase: CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 8,
-  height: 36,
-  maxWidth: 230,
-  padding: "0 0.5rem 0 0.42rem",
-  border: "1px solid hsl(258 70% 72% / 0.12)",
-  borderRadius: "var(--ec-radius-md)",
-  color: "var(--ec-text)",
-  cursor: "pointer",
-  fontSize: "var(--ec-text-sm)",
-  fontWeight: 600,
-  boxShadow: "inset 0 1px 0 hsl(0 0% 100% / 0.035)",
-  transition:
-    "background var(--ec-dur-fast) var(--ec-ease), border-color var(--ec-dur-fast) var(--ec-ease)",
-};
-
-const dividerStyle: CSSProperties = {
-  height: 1,
-  background: "var(--ec-border-subtle)",
-  margin: "var(--ec-space-1) var(--ec-space-1)",
-};
 
 /** Один пункт меню — icon + label + опц. правый слот (badge/marker). */
 function MenuRow({
@@ -147,66 +100,16 @@ function MenuRow({
     <button
       type="button"
       role="menuitem"
+      className="ec-srv-menu-row"
       title={title ?? label}
       disabled={disabled}
       aria-current={active || undefined}
       onClick={onClick}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-        width: "100%",
-        padding: "0.46rem 0.5rem",
-        background: active ? "var(--ec-accent-soft)" : "transparent",
-        border: 0,
-        borderRadius: "var(--ec-radius-sm)",
-        color: active
-          ? "var(--ec-accent)"
-          : disabled
-          ? "var(--ec-text-dim)"
-          : "var(--ec-text-muted)",
-        fontSize: "var(--ec-text-sm)",
-        fontWeight: active ? 600 : 500,
-        textAlign: "left",
-        cursor: disabled ? "not-allowed" : "pointer",
-        opacity: disabled ? 0.5 : 1,
-        transition:
-          "background var(--ec-dur-fast) var(--ec-ease), color var(--ec-dur-fast) var(--ec-ease)",
-      }}
-      onMouseEnter={(e) => {
-        if (active || disabled) return;
-        e.currentTarget.style.background = "var(--ec-surface-3)";
-        e.currentTarget.style.color = "var(--ec-text)";
-      }}
-      onMouseLeave={(e) => {
-        if (active || disabled) return;
-        e.currentTarget.style.background = "transparent";
-        e.currentTarget.style.color = "var(--ec-text-muted)";
-      }}
     >
-      <span
-        aria-hidden
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          width: 22,
-          flexShrink: 0,
-        }}
-      >
+      <span className="ec-srv-menu-row__icon" aria-hidden>
         {icon}
       </span>
-      <span
-        style={{
-          flex: 1,
-          minWidth: 0,
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-        }}
-      >
-        {label}
-      </span>
+      <span className="ec-srv-menu-row__label">{label}</span>
       {trailing}
     </button>
   );
@@ -214,25 +117,7 @@ function MenuRow({
 
 function UnreadBadge({ count }: { count: number }) {
   return (
-    <span
-      aria-label={`${count} непрочитанных`}
-      style={{
-        flexShrink: 0,
-        minWidth: 18,
-        height: 18,
-        padding: "0 5px",
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        borderRadius: "var(--ec-radius-full)",
-        background: "var(--ec-accent)",
-        color: "var(--ec-accent-text)",
-        fontSize: "0.6rem",
-        fontWeight: 700,
-        fontFeatureSettings: '"tnum"',
-        boxShadow: "0 0 8px hsl(258 90% 66% / 0.5)",
-      }}
-    >
+    <span className="ec-unread-badge" aria-label={`${count} непрочитанных`}>
       {count > 99 ? "99+" : count}
     </span>
   );
@@ -344,22 +229,11 @@ export function ServerSwitcher({
       ref={panelRef}
       role="menu"
       aria-label="Пространства и навигация"
+      className="ec-srv-panel"
       style={{
-        position: "fixed",
         top: anchor.top,
         left: anchor.left,
-        zIndex: 200,
-        width: PANEL_WIDTH,
-        maxWidth: "calc(100vw - 16px)",
         maxHeight: `calc(100dvh - ${Math.round(anchor.top) + 16}px)`,
-        overflowY: "auto",
-        background: "var(--ec-surface-2)",
-        borderRadius: "var(--ec-radius-md)",
-        boxShadow: "var(--ec-shadow-modal)",
-        padding: "var(--ec-space-2)",
-        display: "flex",
-        flexDirection: "column",
-        gap: 1,
       }}
     >
       {/* ── NAV ─────────────────────────────────────────────── */}
@@ -388,7 +262,7 @@ export function ServerSwitcher({
         }
       />
 
-      <div style={dividerStyle} aria-hidden />
+      <div className="ec-srv-divider" aria-hidden />
 
       {/* ── SPACES ──────────────────────────────────────────── */}
       {onDmsRequest && (
@@ -422,19 +296,12 @@ export function ServerSwitcher({
         );
       })}
       {servers.length === 0 && (
-        <p
-          style={{
-            margin: 0,
-            padding: "0.4rem 0.5rem",
-            color: "var(--ec-text-dim)",
-            fontSize: "var(--ec-text-xs)",
-          }}
-        >
+        <p className="ec-srv-empty">
           Пространств пока нет — создайте первое ниже.
         </p>
       )}
 
-      <div style={dividerStyle} aria-hidden />
+      <div className="ec-srv-divider" aria-hidden />
 
       {/* ── ADD ─────────────────────────────────────────────── */}
       <MenuRow
@@ -474,64 +341,23 @@ export function ServerSwitcher({
         aria-label="Пространства и навигация"
         title="Пространства и навигация"
         onClick={toggle}
-        style={{
-          ...triggerBase,
-          ...(compact
-            ? ({
-                width: 36,
-                maxWidth: 36,
-                padding: 0,
-                gap: 0,
-                justifyContent: "center",
-              } as CSSProperties)
-            : null),
-          borderColor: open
-            ? "hsl(258 90% 66% / 0.34)"
-            : "hsl(258 70% 72% / 0.12)",
-          background: open
-            ? "hsl(214 26% 13% / 0.72)"
-            : "hsl(214 22% 9% / 0.48)",
-        }}
-        onMouseEnter={(e) => {
-          if (open) return;
-          e.currentTarget.style.background = "hsl(214 26% 13% / 0.72)";
-          e.currentTarget.style.borderColor = "hsl(258 90% 66% / 0.22)";
-        }}
-        onMouseLeave={(e) => {
-          if (open) return;
-          e.currentTarget.style.background = "hsl(214 22% 9% / 0.48)";
-          e.currentTarget.style.borderColor = "hsl(258 70% 72% / 0.12)";
-        }}
+        className={"ec-srv-trigger" + (compact ? " ec-srv-trigger--compact" : "")}
       >
         {triggerIcon}
         {!compact && (
           <>
-            <span
-              style={{
-                minWidth: 0,
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-                letterSpacing: "0.01em",
-              }}
-            >
-              {triggerLabel}
-            </span>
+            <span className="ec-srv-trigger__label">{triggerLabel}</span>
             <svg
+              className="ec-srv-trigger__caret"
               width="13"
               height="13"
               viewBox="0 0 24 24"
               fill="none"
-              stroke="var(--ec-text-dim)"
+              stroke="currentColor"
               strokeWidth="2.4"
               strokeLinecap="round"
               strokeLinejoin="round"
               aria-hidden
-              style={{
-                flexShrink: 0,
-                transform: open ? "rotate(180deg)" : "rotate(0deg)",
-                transition: "transform var(--ec-dur-fast) var(--ec-ease)",
-              }}
             >
               <polyline points="6 9 12 15 18 9" />
             </svg>

@@ -71,97 +71,9 @@ type Props = {
   speakingUserIds?: Set<string>;
 };
 
-const wrap: CSSProperties = {
-  background: "var(--ec-surface-1)",
-  borderRight: "1px solid var(--ec-border-subtle)",
-  display: "flex",
-  flexDirection: "column",
-  minWidth: 0,
-  // v0.68: height:100% + min-height:0 + overflow:hidden обязательны чтобы
-  // listWrap (flex:1; overflow:auto) реально получил bounded height и начал
-  // scrollить. Без них на коротком viewport (≤700px) или с большим числом
-  // каналов content overflows за пределы grid-area и пропадает за footer'ом
-  // экрана. Pavel-ask 17.05: «не у всех всё видно».
-  height: "100%",
-  minHeight: 0,
-  overflow: "hidden",
-};
-
-const headerStyle: CSSProperties = {
-  padding: "var(--ec-space-3) var(--ec-space-4)",
-  borderBottom: "1px solid var(--ec-border-subtle)",
-  background: "var(--ec-surface-1)",
-  // v1.1.5: position:relative — нужно для .ec-server-header-edge::after
-  // holographic bottom line.
-  position: "relative",
-};
-
-const serverTrigger: CSSProperties = {
-  background: "transparent",
-  border: 0,
-  padding: 0,
-  width: "100%",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  gap: "var(--ec-space-2)",
-  cursor: "pointer",
-  color: "var(--ec-text-strong)",
-  textAlign: "left",
-  borderRadius: "var(--ec-radius-sm)",
-};
-
-const listWrap: CSSProperties = {
-  flex: 1,
-  overflow: "auto",
-  padding: "var(--ec-space-3) var(--ec-space-2)",
-  display: "flex",
-  flexDirection: "column",
-  gap: 2,
-};
-
-const composerRow: CSSProperties = {
-  padding: "var(--ec-space-3)",
-  borderTop: "1px solid var(--ec-border-subtle)",
-  display: "flex",
-  flexDirection: "column",
-  gap: "var(--ec-space-2)",
-};
-
-/** v0.97: «+» icon button рядом с section-label'ом (Текстовые / Каналы /
- *  Голосовые) — pre-select type при открытии CreateChannelModal. */
-const sectionAddBtn: CSSProperties = {
-  display: "inline-grid",
-  placeItems: "center",
-  width: 18,
-  height: 18,
-  padding: 0,
-  background: "transparent",
-  border: "1px solid var(--ec-border-subtle)",
-  color: "var(--ec-text-dim)",
-  borderRadius: "var(--ec-radius-xs)",
-  cursor: "pointer",
-  fontSize: "0.7rem",
-  lineHeight: 1,
-  transition: "background var(--ec-dur-fast) var(--ec-ease), color var(--ec-dur-fast) var(--ec-ease), border-color var(--ec-dur-fast) var(--ec-ease)",
-};
-
-const deleteBtn: CSSProperties = {
-  width: 20,
-  height: 20,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  background: "transparent",
-  border: 0,
-  borderRadius: "var(--ec-radius-xs)",
-  color: "var(--ec-text-dim)",
-  cursor: "pointer",
-  opacity: 0,
-  transition: "opacity var(--ec-dur-fast) var(--ec-ease), color var(--ec-dur-fast) var(--ec-ease), background var(--ec-dur-fast) var(--ec-ease)",
-  marginLeft: "auto",
-  flexShrink: 0,
-};
+// v1.1.91 slice 2: inline-style консоли ChannelList вынесены в классы
+// .ec-channel-list* / .ec-channel-action / .ec-section-add / .ec-sidebar-tab*
+// (components.css). JS-hover убран — состояния через CSS.
 
 function roleClass(role: string): string {
   if (role === "OWNER") return "ec-badge ec-badge--owner";
@@ -282,42 +194,6 @@ function DeafenedGlyph() {
       <path d="M21 15a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3M3 14a2 2 0 0 1 2-2h1a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5" />
     </svg>
   );
-}
-
-const sidebarTabBar: CSSProperties = {
-  display: "flex",
-  alignItems: "stretch",
-  gap: 0,
-  padding: "var(--ec-space-2) var(--ec-space-3) 0",
-  background: "var(--ec-surface-1)",
-  borderBottom: "1px solid var(--ec-border-subtle)",
-  flexShrink: 0,
-};
-
-function sidebarTabBtn(active: boolean): CSSProperties {
-  return {
-    flex: 1,
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    padding: "0.5rem 0.4rem 0.55rem",
-    background: "transparent",
-    border: 0,
-    borderBottom: active
-      ? "2px solid var(--ec-accent)"
-      : "2px solid transparent",
-    color: active ? "var(--ec-text-strong)" : "var(--ec-text-muted)",
-    fontSize: "var(--ec-text-2xs)",
-    fontWeight: 700,
-    letterSpacing: "var(--ec-tracking-caps)",
-    textTransform: "uppercase",
-    cursor: "pointer",
-    transition:
-      "color var(--ec-dur-fast) var(--ec-ease), border-color var(--ec-dur-fast) var(--ec-ease)",
-    whiteSpace: "nowrap",
-    minWidth: 0,
-  };
 }
 
 export function ChannelList({
@@ -599,29 +475,9 @@ export function ChannelList({
             : undefined),
           cursor: canDrag ? "grab" : "pointer",
         }}
-        onMouseEnter={(e) => {
-          e.currentTarget.querySelectorAll<HTMLElement>("[data-channel-action]").forEach((el) => {
-            el.style.opacity = "1";
-          });
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.querySelectorAll<HTMLElement>("[data-channel-action]").forEach((el) => {
-            el.style.opacity = "0";
-          });
-        }}
       >
         <ChannelGlyph type={c.type} emoji={c.emoji} />
-        <span
-          style={{
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-            minWidth: 0,
-            flex: 1,
-          }}
-        >
-          {c.name}
-        </span>
+        <span className="ec-channel-item__name">{c.name}</span>
         {c.internal && (
           <span
             aria-label="Внутренняя комната — скрыта от клиентов"
@@ -642,23 +498,9 @@ export function ChannelList({
         )}
         {hasUnread && (
           <span
+            className="ec-unread-badge"
             aria-label={`${unreadCount} непрочитанных`}
             title={`${unreadCount} непрочитанных`}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              minWidth: 18,
-              height: 18,
-              padding: "0 5px",
-              borderRadius: "var(--ec-radius-full)",
-              background: "var(--ec-accent)",
-              color: "var(--ec-accent-text)",
-              fontSize: "0.6rem",
-              fontWeight: 700,
-              fontFeatureSettings: '"tnum"',
-              boxShadow: "0 0 8px hsl(258 90% 66% / 0.5)",
-            }}
           >
             {unreadCount > 99 ? "99+" : unreadCount}
           </span>
@@ -672,15 +514,12 @@ export function ChannelList({
             <span
               role="button"
               tabIndex={0}
+              className={
+                "ec-channel-action" +
+                (isMuted ? " ec-channel-action--shown" : "")
+              }
               aria-label={isMuted ? `Снять заглушку с ${c.name}` : `Заглушить ${c.name}`}
               title={isMuted ? "Заглушено — клик чтобы вернуть push" : "Заглушить push"}
-              style={{
-                ...deleteBtn,
-                // Muted каналы — bell-off иконка всегда видна (не hover-only).
-                opacity: isMuted ? 0.7 : 0,
-                color: isMuted ? "var(--ec-warn)" : "var(--ec-text-dim)",
-              }}
-              data-channel-action={isMuted ? undefined : "true"}
               onClick={(e) => {
                 e.stopPropagation();
                 onToggleMute(c.id, !isMuted);
@@ -691,20 +530,6 @@ export function ChannelList({
                   e.stopPropagation();
                   onToggleMute(c.id, !isMuted);
                 }
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "var(--ec-surface-3)";
-                e.currentTarget.style.color = isMuted
-                  ? "var(--ec-warn)"
-                  : "var(--ec-text)";
-                e.currentTarget.style.opacity = "1";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "transparent";
-                e.currentTarget.style.color = isMuted
-                  ? "var(--ec-warn)"
-                  : "var(--ec-text-dim)";
-                e.currentTarget.style.opacity = isMuted ? "0.7" : "0";
               }}
             >
               {isMuted ? (
@@ -725,12 +550,11 @@ export function ChannelList({
         })()}
         {editable && onOpenSettings && (
           <span
-            data-channel-action
             role="button"
             tabIndex={0}
+            className="ec-channel-action"
             aria-label={`Настройки комнаты ${c.name}`}
             title="Редактировать комнату"
-            style={deleteBtn}
             onClick={(e) => {
               e.stopPropagation();
               onOpenSettings(c.id);
@@ -742,14 +566,6 @@ export function ChannelList({
                 onOpenSettings(c.id);
               }
             }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = "var(--ec-surface-3)";
-              e.currentTarget.style.color = "var(--ec-text)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = "transparent";
-              e.currentTarget.style.color = "var(--ec-text-dim)";
-            }}
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
               <circle cx="12" cy="12" r="3" />
@@ -759,12 +575,11 @@ export function ChannelList({
         )}
         {manageable && (
           <span
-            data-channel-action
             role="button"
             tabIndex={0}
+            className="ec-channel-action ec-channel-action--danger"
             aria-label={`Удалить комнату ${c.name}`}
             title="Удалить комнату"
-            style={deleteBtn}
             onClick={(e) => {
               e.stopPropagation();
               void handleDelete(c.id, c.name);
@@ -775,14 +590,6 @@ export function ChannelList({
                 e.stopPropagation();
                 void handleDelete(c.id, c.name);
               }
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = "var(--ec-danger-soft)";
-              e.currentTarget.style.color = "var(--ec-danger)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = "transparent";
-              e.currentTarget.style.color = "var(--ec-text-dim)";
             }}
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -798,42 +605,24 @@ export function ChannelList({
   };
 
   return (
-    <aside style={wrap}>
-      <header className="ec-server-header-edge" style={headerStyle}>
-        <button type="button" onClick={onShowServerInfo} style={serverTrigger} title="Подробнее о пространстве">
-          <span style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
-            <span
-              style={{
-                fontSize: "var(--ec-text-base)",
-                fontWeight: 700,
-                letterSpacing: "0.08em",
-                textTransform: "uppercase",
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                color: "var(--ec-text-strong)",
-              }}
-            >
+    <aside className="ec-channel-list">
+      <header className="ec-server-header-edge ec-channel-list__header">
+        <button
+          type="button"
+          onClick={onShowServerInfo}
+          className="ec-channel-list__server-btn"
+          title="Подробнее о пространстве"
+        >
+          <span style={{ display: "flex", flexDirection: "column", gap: 3, minWidth: 0 }}>
+            <span className="ec-channel-list__server-name">
               {serverName ?? "Нет пространства"}
             </span>
-            {serverRole && <span className={roleClass(serverRole)} style={{ alignSelf: "flex-start" }}>{serverRole}</span>}
-            {/* v1.1.1 Eclipse_OS server ID hash — cyberpunk identity marker.
-                Generated deterministic from serverId для consistency. */}
-            {serverId && (
+            {serverRole && (
               <span
-                style={{
-                  marginTop: 4,
-                  fontSize: "0.62rem",
-                  color: "var(--ec-text-dim)",
-                  fontFamily: "var(--ec-font-mono, ui-monospace, monospace)",
-                  letterSpacing: "0.05em",
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                }}
-                title="Идентификатор пространства"
+                className={roleClass(serverRole)}
+                style={{ alignSelf: "flex-start" }}
               >
-                ◆ ID_{serverId.slice(-6).toUpperCase()}_SYS_{serverName?.slice(0, 6).replace(/\s+/g, "").toUpperCase() || "ECLIPSE"}
+                {serverRole}
               </span>
             )}
           </span>
@@ -859,7 +648,6 @@ export function ChannelList({
           plain list ("Доска задач" + "Здоровье" + "Таблицы" + 3 группы каналов
           подряд) на 3 contextual surfaces. Persisted per-server. */}
       <div
-        style={{ ...sidebarTabBar, position: "relative" }}
         className="ec-sidebar-tabs"
         role="tablist"
         aria-label="Разделы пространства"
@@ -869,8 +657,7 @@ export function ChannelList({
           role="tab"
           aria-selected={sidebarTab === "channels"}
           onClick={() => setSidebarTab("channels")}
-          style={sidebarTabBtn(sidebarTab === "channels")}
-          className="ec-hud-tab"
+          className="ec-sidebar-tab ec-hud-tab"
           title="Каналы — текстовые, broadcast, голосовые"
         >
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -883,8 +670,7 @@ export function ChannelList({
           role="tab"
           aria-selected={sidebarTab === "work"}
           onClick={() => setSidebarTab("work")}
-          style={sidebarTabBtn(sidebarTab === "work")}
-          className="ec-hud-tab"
+          className="ec-sidebar-tab ec-hud-tab"
           title="Работа — доска задач, здоровье команды"
         >
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -898,8 +684,7 @@ export function ChannelList({
           role="tab"
           aria-selected={sidebarTab === "tables"}
           onClick={() => setSidebarTab("tables")}
-          style={sidebarTabBtn(sidebarTab === "tables")}
-          className="ec-hud-tab"
+          className="ec-sidebar-tab ec-hud-tab"
           title="Таблицы — operational tables"
         >
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -909,23 +694,7 @@ export function ChannelList({
           </svg>
           <span>ДАННЫЕ</span>
           {tables !== undefined && tables.length > 0 && (
-            <span
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                fontSize: "0.6rem",
-                fontWeight: 700,
-                fontFeatureSettings: '"tnum"',
-                padding: "0.05rem 0.32rem",
-                borderRadius: "var(--ec-radius-full)",
-                background: "var(--ec-surface-3)",
-                color: "var(--ec-text-muted)",
-                letterSpacing: 0,
-                textTransform: "none",
-              }}
-            >
-              {tables.length}
-            </span>
+            <span className="ec-sidebar-tab__count">{tables.length}</span>
           )}
         </button>
         {/* v1.1.28 Active Navbar Indicator — скользящий cyan-бар под
@@ -942,7 +711,7 @@ export function ChannelList({
         />
       </div>
 
-      <div style={listWrap}>
+      <div className="ec-channel-list__list">
         {sidebarTab === "work" && (
           <>
             {onOpenStatusBoard && (
@@ -998,14 +767,7 @@ export function ChannelList({
               </button>
             )}
             {!onOpenStatusBoard && !onOpenTeamHealth && (
-              <p
-                style={{
-                  color: "var(--ec-text-dim)",
-                  fontSize: "var(--ec-text-sm)",
-                  padding: "var(--ec-space-3) var(--ec-space-2)",
-                  margin: 0,
-                }}
-              >
+              <p className="ec-channel-list__hint">
                 Доска задач и здоровье команды появятся когда в пространстве
                 будет хотя бы одна задача.
               </p>
@@ -1016,26 +778,11 @@ export function ChannelList({
         {sidebarTab === "tables" && (
           <>
             {tables === undefined || onOpenTable === undefined ? (
-              <p
-                style={{
-                  color: "var(--ec-text-dim)",
-                  fontSize: "var(--ec-text-sm)",
-                  padding: "var(--ec-space-3) var(--ec-space-2)",
-                  margin: 0,
-                }}
-              >
+              <p className="ec-channel-list__hint">
                 Operational Tables недоступны в этом контексте.
               </p>
             ) : tables.length === 0 ? (
-              <p
-                style={{
-                  color: "var(--ec-text-dim)",
-                  fontSize: "var(--ec-text-sm)",
-                  padding: "var(--ec-space-3) var(--ec-space-2)",
-                  margin: 0,
-                  lineHeight: "var(--ec-leading-normal)",
-                }}
-              >
+              <p className="ec-channel-list__hint">
                 Задачи, CRM, leads — что угодно. Нажми «+ Новая таблица» внизу.
               </p>
             ) : (
@@ -1080,10 +827,10 @@ export function ChannelList({
           <>
             {textChannels.length > 0 && (
               <>
-                <div className="ec-section-label" style={{ marginBottom: "var(--ec-space-2)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div className="ec-section-label">
                   <span className="ec-section-label--diamond">
                     <span>ПОТОКИ ДАННЫХ</span>
-                    <span style={{ color: "var(--ec-text-dim)", fontFeatureSettings: '"tnum"' }}>{textChannels.length}</span>
+                    <span className="ec-channel-section__count">{textChannels.length}</span>
                   </span>
                   {editable && (
                     <button
@@ -1091,17 +838,7 @@ export function ChannelList({
                       onClick={() => openCreateModal("TEXT")}
                       title="Создать текстовую комнату"
                       aria-label="Создать текстовую комнату"
-                      style={sectionAddBtn}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = "var(--ec-surface-3)";
-                        e.currentTarget.style.color = "var(--ec-text)";
-                        e.currentTarget.style.borderColor = "var(--ec-border-default)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = "transparent";
-                        e.currentTarget.style.color = "var(--ec-text-dim)";
-                        e.currentTarget.style.borderColor = "var(--ec-border-subtle)";
-                      }}
+                      className="ec-section-add"
                     >
                       +
                     </button>
@@ -1117,15 +854,11 @@ export function ChannelList({
                   className="ec-section-label"
                   style={{
                     marginTop: textChannels.length > 0 ? "var(--ec-space-4)" : 0,
-                    marginBottom: "var(--ec-space-2)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
                   }}
                 >
-                  <span className="ec-section-label--diamond ec-section-label--diamond-violet">
+                  <span className="ec-section-label--diamond">
                     <span>ВЕЩАНИЕ</span>
-                    <span style={{ color: "var(--ec-text-dim)", fontFeatureSettings: '"tnum"' }}>{broadcastChannels.length}</span>
+                    <span className="ec-channel-section__count">{broadcastChannels.length}</span>
                   </span>
                   {editable && (
                     <button
@@ -1133,17 +866,7 @@ export function ChannelList({
                       onClick={() => openCreateModal("BROADCAST")}
                       title="Создать канал-вещание"
                       aria-label="Создать канал-вещание"
-                      style={sectionAddBtn}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = "var(--ec-surface-3)";
-                        e.currentTarget.style.color = "var(--ec-text)";
-                        e.currentTarget.style.borderColor = "var(--ec-border-default)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = "transparent";
-                        e.currentTarget.style.color = "var(--ec-text-dim)";
-                        e.currentTarget.style.borderColor = "var(--ec-border-subtle)";
-                      }}
+                      className="ec-section-add"
                     >
                       +
                     </button>
@@ -1162,15 +885,11 @@ export function ChannelList({
                       textChannels.length > 0 || broadcastChannels.length > 0
                         ? "var(--ec-space-4)"
                         : 0,
-                    marginBottom: "var(--ec-space-2)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
                   }}
                 >
-                  <span className="ec-section-label--diamond ec-section-label--diamond-mint">
+                  <span className="ec-section-label--diamond">
                     <span>ГОЛОСОВЫЕ СВЯЗИ</span>
-                    <span style={{ color: "var(--ec-text-dim)", fontFeatureSettings: '"tnum"' }}>{voiceChannels.length}</span>
+                    <span className="ec-channel-section__count">{voiceChannels.length}</span>
                   </span>
                   {editable && (
                     <button
@@ -1178,17 +897,7 @@ export function ChannelList({
                       onClick={() => openCreateModal("VOICE")}
                       title="Создать голосовую комнату"
                       aria-label="Создать голосовую комнату"
-                      style={sectionAddBtn}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = "var(--ec-surface-3)";
-                        e.currentTarget.style.color = "var(--ec-text)";
-                        e.currentTarget.style.borderColor = "var(--ec-border-default)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = "transparent";
-                        e.currentTarget.style.color = "var(--ec-text-dim)";
-                        e.currentTarget.style.borderColor = "var(--ec-border-subtle)";
-                      }}
+                      className="ec-section-add"
                     >
                       +
                     </button>
@@ -1247,7 +956,7 @@ export function ChannelList({
           tables: «+ Новая таблица» button, работа: ничего (только навигация).
           Старый inline-composer (4 type buttons + input + send) удалён. */}
       {sidebarTab === "tables" && onCreateTable && (
-        <div style={composerRow}>
+        <div className="ec-channel-list__composer">
           <button
             type="button"
             onClick={onCreateTable}
@@ -1259,7 +968,7 @@ export function ChannelList({
         </div>
       )}
       {sidebarTab === "channels" && editable && (
-        <div style={composerRow}>
+        <div className="ec-channel-list__composer">
           <button
             type="button"
             onClick={() => openCreateModal("TEXT")}
