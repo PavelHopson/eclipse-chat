@@ -1,19 +1,17 @@
 import { useEffect, useRef, useState } from "react";
-import type { CSSProperties } from "react";
 import { MediaScrubber } from "./MediaScrubber";
 import { useMediaVolume } from "../hooks/useMediaVolume";
 
 /**
- * VideoPlayer (v1.1.86 — медиа-плеер, слайс 3) — кастомный анимированный
- * плеер для видео-вложений. Нативные controls заменены: перемотка через
- * общий MediaScrubber (слайс 1), своя панель play/volume/fullscreen,
- * hover-glow из дизайн-макета eclipse-os-v1.
+ * VideoPlayer (v1.1.91 redesign) — кастомный фирменный плеер для
+ * видео-вложений. Нативные controls заменены целиком: единый язык
+ * плеера (player.css) — `.ec-player-ctrl`, `.ec-player-play`,
+ * общий `MediaScrubber`. Панель управления авто-скрывается во время
+ * воспроизведения и возвращается на hover; есть фирменное
+ * loading-кольцо вместо браузерного спиннера.
  *
- * Воспроизведение локальное (видео-файл играет в браузере зрителя).
- * Синхронный watch-party в голосовой комнате — отдельный слайс 4.
- *
- * onNext/onPrev — переход к соседнему видео (кнопки видны, если заданы;
- * onEnded авто-переходит на следующее).
+ * Воспроизведение локальное. Синхро watch-party — MusicExpandModal.
+ * onNext/onPrev — переход к соседнему видео в лайтбокс-галерее.
  */
 
 type Props = {
@@ -30,23 +28,11 @@ function fmt(sec: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-const ctrlBtn: CSSProperties = {
-  width: 32,
-  height: 32,
-  display: "grid",
-  placeItems: "center",
-  borderRadius: "var(--ec-radius-md)",
-  background: "transparent",
-  border: 0,
-  color: "var(--ec-text-strong)",
-  cursor: "pointer",
-  flexShrink: 0,
-};
-
 export function VideoPlayer({ src, poster, onNext, onPrev }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [playing, setPlaying] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [currentMs, setCurrentMs] = useState(0);
   const [durationMs, setDurationMs] = useState(0);
   const [fullscreen, setFullscreen] = useState(false);
@@ -91,19 +77,12 @@ export function VideoPlayer({ src, poster, onNext, onPrev }: Props) {
     <div
       ref={containerRef}
       className="ec-video-player"
-      style={{
-        position: "relative",
-        display: "inline-flex",
-        background: "#000",
-        borderRadius: fullscreen ? 0 : "var(--ec-radius-lg)",
-        overflow: "hidden",
-        maxWidth: "92vw",
-        maxHeight: "88vh",
-        lineHeight: 0,
-      }}
+      data-playing={playing ? "true" : "false"}
+      data-fullscreen={fullscreen ? "true" : "false"}
     >
       <video
         ref={videoRef}
+        className="ec-video-player__video"
         src={src}
         poster={poster}
         autoPlay
@@ -111,6 +90,12 @@ export function VideoPlayer({ src, poster, onNext, onPrev }: Props) {
         onClick={togglePlay}
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}
+        onWaiting={() => setLoading(true)}
+        onPlaying={() => {
+          setPlaying(true);
+          setLoading(false);
+        }}
+        onCanPlay={() => setLoading(false)}
         onTimeUpdate={(e) => setCurrentMs(e.currentTarget.currentTime * 1000)}
         onLoadedMetadata={(e) => {
           const d = e.currentTarget.duration;
@@ -120,65 +105,31 @@ export function VideoPlayer({ src, poster, onNext, onPrev }: Props) {
           setPlaying(false);
           if (onNext) onNext();
         }}
-        style={{
-          display: "block",
-          maxWidth: "92vw",
-          maxHeight: "88vh",
-          cursor: "pointer",
-        }}
       />
 
-      {/* Центральная play-кнопка — когда на паузе. */}
-      {!playing && (
+      {/* Фирменное loading-кольцо «сигнала» вместо браузерного спиннера. */}
+      {loading && <div className="ec-video-player__spinner" aria-hidden />}
+
+      {/* Центральная play-кнопка — на паузе, когда не грузится. */}
+      {!playing && !loading && (
         <button
           type="button"
           onClick={togglePlay}
           aria-label="Воспроизвести"
-          className="ec-video-player__big-play"
-          style={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            width: 72,
-            height: 72,
-            display: "grid",
-            placeItems: "center",
-            borderRadius: "50%",
-            background: "hsl(258 90% 66% / 0.92)",
-            color: "#fff",
-            border: 0,
-            cursor: "pointer",
-            boxShadow: "0 0 0 1px hsl(258 90% 80% / 0.4), 0 0 32px hsl(258 90% 60% / 0.55)",
-          }}
+          className="ec-player-play ec-player-play--lg ec-video-player__center"
         >
-          <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
             <path d="M8 5v14l11-7z" />
           </svg>
         </button>
       )}
 
-      {/* Панель управления — поверх нижней кромки, со scrim'ом. */}
-      <div
-        className="ec-video-player__bar"
-        style={{
-          position: "absolute",
-          left: 0,
-          right: 0,
-          bottom: 0,
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          padding: "10px 12px",
-          lineHeight: 1.4,
-          background:
-            "linear-gradient(180deg, transparent, hsl(220 30% 3% / 0.82))",
-        }}
-      >
+      {/* Панель управления — фирменная, авто-скрывается при игре. */}
+      <div className="ec-video-player__bar">
         <button
           type="button"
+          className="ec-player-ctrl"
           onClick={togglePlay}
-          style={ctrlBtn}
           title={playing ? "Пауза" : "Воспроизвести"}
           aria-label={playing ? "Пауза" : "Воспроизвести"}
         >
@@ -194,7 +145,7 @@ export function VideoPlayer({ src, poster, onNext, onPrev }: Props) {
           )}
         </button>
         {onPrev && (
-          <button type="button" onClick={onPrev} style={ctrlBtn} title="Предыдущее" aria-label="Предыдущее видео">
+          <button type="button" className="ec-player-ctrl" onClick={onPrev} title="Предыдущее" aria-label="Предыдущее видео">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
               <path d="M19 20L9 12l10-8z" />
               <rect x="5" y="4" width="2" height="16" />
@@ -202,14 +153,14 @@ export function VideoPlayer({ src, poster, onNext, onPrev }: Props) {
           </button>
         )}
         {onNext && (
-          <button type="button" onClick={onNext} style={ctrlBtn} title="Следующее" aria-label="Следующее видео">
+          <button type="button" className="ec-player-ctrl" onClick={onNext} title="Следующее" aria-label="Следующее видео">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
               <path d="M5 4l10 8-10 8z" />
               <rect x="17" y="4" width="2" height="16" />
             </svg>
           </button>
         )}
-        <div style={{ flex: 1, minWidth: 40 }}>
+        <div className="ec-video-player__scrub">
           <MediaScrubber
             positionMs={currentMs}
             durationMs={durationMs}
@@ -217,22 +168,13 @@ export function VideoPlayer({ src, poster, onNext, onPrev }: Props) {
             width="100%"
           />
         </div>
-        <span
-          style={{
-            fontFamily: "var(--ec-font-mono)",
-            fontFeatureSettings: '"tnum"',
-            fontSize: "0.7rem",
-            color: "var(--ec-text)",
-            whiteSpace: "nowrap",
-            flexShrink: 0,
-          }}
-        >
+        <span className="ec-video-player__time">
           {fmt(currentMs / 1000)} / {fmt(durationMs / 1000)}
         </span>
         <button
           type="button"
+          className="ec-player-ctrl"
           onClick={() => setVolume(volume > 0 ? 0 : lastVol.current || 0.7)}
-          style={ctrlBtn}
           title={volume > 0 ? "Заглушить" : "Включить звук"}
           aria-label={volume > 0 ? "Заглушить" : "Включить звук"}
         >
@@ -251,6 +193,7 @@ export function VideoPlayer({ src, poster, onNext, onPrev }: Props) {
           )}
         </button>
         <input
+          className="ec-player-range"
           type="range"
           min={0}
           max={1}
@@ -258,12 +201,12 @@ export function VideoPlayer({ src, poster, onNext, onPrev }: Props) {
           value={volume}
           onChange={(e) => setVolume(Number(e.target.value))}
           aria-label="Громкость"
-          style={{ width: 64, accentColor: "var(--ec-accent)", cursor: "pointer", flexShrink: 0 }}
+          style={{ width: 64 }}
         />
         <button
           type="button"
+          className="ec-player-ctrl"
           onClick={toggleFullscreen}
-          style={ctrlBtn}
           title={fullscreen ? "Выйти из полноэкранного" : "Полный экран"}
           aria-label={fullscreen ? "Выйти из полноэкранного" : "Полный экран"}
         >

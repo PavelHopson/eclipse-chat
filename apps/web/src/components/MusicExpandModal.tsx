@@ -1,4 +1,4 @@
-import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
+import type { PointerEvent as ReactPointerEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Avatar } from "./Avatar";
 import { Modal } from "./Modal";
@@ -8,13 +8,14 @@ import { MediaScrubber } from "./MediaScrubber";
 import type { MusicSession } from "../hooks/useChannelMusic";
 
 /**
- * MusicMiniPlayer expand view (v0.74 #32 phase 3; v1.1.85 — слайс 2
- * медиа-плеера: перематываемая вейвформа + видимый список очереди).
+ * MusicExpandModal (v1.1.91 redesign) — расширенный плеер, «сигнальный
+ * пульт». Showpiece фирменного медиа-языка (см. player.css):
+ * большая waveform-дорожка с атмосферной violet-подложкой,
+ * выразительный transport, очередь с подсветкой «следующего».
  *
- * Большая waveform-дорожка с peaks из Attachment.waveformPeaks.
- * Host (или MOD на backend) может кликать/тащить по вейвформе —
- * server-side seek, все слушатели ре-синхронятся. Под контролами —
- * список очереди с именами треков.
+ * Host (или MOD на backend) перематывает кликом/перетаскиванием по
+ * вейвформе — server-side seek, все слушатели ре-синхронятся.
+ * Для видео-трека (watch-party) — синхро-<video> + MediaScrubber.
  */
 
 type Props = {
@@ -24,7 +25,6 @@ type Props = {
   onClose: () => void;
   onTogglePlayPause: () => void | Promise<void>;
   onSkip: () => void | Promise<void>;
-  /** v1.1.85 — перемотка по вейвформе (host / MOD+). */
   onSeek: (positionMs: number) => void | Promise<void>;
   onStop: () => void | Promise<void>;
 };
@@ -35,74 +35,6 @@ function formatClock(ms: number): string {
   const s = total % 60;
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
-
-const wrap: CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: "var(--ec-space-5)",
-};
-
-const waveformWrap: CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: "var(--ec-space-2)",
-};
-
-const waveformSvg: CSSProperties = {
-  width: "100%",
-  height: 96,
-  display: "block",
-  touchAction: "none",
-};
-
-const controlsRow: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: "var(--ec-space-3)",
-  justifyContent: "center",
-  padding: "var(--ec-space-2) 0",
-};
-
-function iconButton(active = false): CSSProperties {
-  return {
-    width: 44,
-    height: 44,
-    display: "grid",
-    placeItems: "center",
-    borderRadius: "var(--ec-radius-full)",
-    background: active ? "var(--ec-accent)" : "var(--ec-surface-2)",
-    color: active ? "var(--ec-accent-text)" : "var(--ec-text)",
-    border: "1px solid var(--ec-border-default)",
-    cursor: "pointer",
-  };
-}
-
-const playButton: CSSProperties = {
-  width: 64,
-  height: 64,
-  display: "grid",
-  placeItems: "center",
-  borderRadius: "var(--ec-radius-full)",
-  background: "var(--ec-accent)",
-  color: "var(--ec-accent-text)",
-  border: 0,
-  cursor: "pointer",
-  boxShadow: "0 18px 40px -16px hsl(258 90% 40% / 0.55)",
-};
-
-const queueRowBase: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "auto 1fr",
-  alignItems: "center",
-  gap: "var(--ec-space-3)",
-  padding: "0.5rem 0.65rem",
-  borderRadius: "var(--ec-radius-md)",
-  border: "1px solid transparent",
-  cursor: "default",
-  transition:
-    "background var(--ec-dur-fast) var(--ec-ease)," +
-    " border-color var(--ec-dur-fast) var(--ec-ease)",
-};
 
 export function MusicExpandModal({
   session,
@@ -126,8 +58,7 @@ export function MusicExpandModal({
     { id: string; filename: string }[]
   >([]);
 
-  // Probe длительности аудио-трека (для видео длительность даёт сам
-  // <video> через onLoadedMetadata).
+  // Probe длительности аудио-трека.
   useEffect(() => {
     if (!track || isVideoTrack) return;
     const a = audioRef.current;
@@ -163,8 +94,7 @@ export function MusicExpandModal({
     session.updatedAt,
   ]);
 
-  // Резолв очереди (attachment IDs → имена) для списка. Перезапрос при
-  // изменении состава очереди.
+  // Резолв очереди (attachment IDs → имена).
   const queueKey = session.queue.join(",");
   useEffect(() => {
     let cancelled = false;
@@ -199,7 +129,6 @@ export function MusicExpandModal({
     return out;
   }, [track?.waveformPeaks]);
 
-  // v1.1.89 — гасим «живые» анимации при prefers-reduced-motion.
   const reduceMotion = useMemo(
     () =>
       typeof window !== "undefined" &&
@@ -214,7 +143,6 @@ export function MusicExpandModal({
     durationMs && derivedPositionMs >= 0
       ? Math.min(1, Math.max(0, derivedPositionMs / durationMs))
       : 0;
-  // Во время drag показываем локальную позицию (плейхед следует за курсором).
   const progress = dragFrac != null ? dragFrac : basePos;
 
   const fracFromClientX = (clientX: number): number => {
@@ -240,103 +168,71 @@ export function MusicExpandModal({
     void onSeek(committed * durationMs);
   };
 
+  const playing = session.isPlaying;
+
   return (
     <Modal
       title={isVideoTrack ? "Совместный просмотр" : "Совместное прослушивание"}
       width={620}
       onClose={onClose}
     >
-      <div style={wrap}>
-        <div style={waveformWrap}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: "var(--ec-space-3)",
-            }}
-          >
-            <div style={{ minWidth: 0 }}>
-              <div
-                style={{
-                  fontSize: "var(--ec-text-md)",
-                  fontWeight: 600,
-                  color: "var(--ec-text-strong)",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}
-                title={track?.filename ?? "Очередь пуста"}
-              >
-                {track?.filename ?? "Очередь пуста"}
-              </div>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                  marginTop: 4,
-                  color: "var(--ec-text-muted)",
-                  fontSize: "var(--ec-text-2xs)",
-                }}
-              >
+      <div className="ec-player-expand">
+        {/* Заголовок — трек + ведущий + часы. */}
+        <div className="ec-player-expand__head">
+          <div style={{ minWidth: 0 }}>
+            <h3
+              className="ec-player-expand__title"
+              title={track?.filename ?? "Очередь пуста"}
+            >
+              {track?.filename ?? "Очередь пуста"}
+            </h3>
+            <div className="ec-player-expand__host">
+              <span className="ec-player-expand__host-ring">
                 <Avatar
                   url={session.host.avatar}
                   name={session.host.displayName}
-                  size={16}
+                  size={18}
                 />
-                <span>Запустил: {session.host.displayName}</span>
-              </div>
+              </span>
+              <span className="ec-player-expand__host-tag">Ведущий</span>
+              <span>· {session.host.displayName}</span>
             </div>
-            <span
-              style={{
-                fontFamily: "var(--ec-font-mono)",
-                fontFeatureSettings: '"tnum"',
-                color: "var(--ec-text-muted)",
-                fontSize: "var(--ec-text-2xs)",
-                whiteSpace: "nowrap",
-                flexShrink: 0,
-              }}
-            >
-              {formatClock(dragFrac != null && durationMs
-                ? dragFrac * durationMs
-                : derivedPositionMs)}
-              {durationMs ? ` / ${formatClock(durationMs)}` : ""}
-            </span>
           </div>
+          <span className="ec-player-expand__clock">
+            {formatClock(
+              dragFrac != null && durationMs
+                ? dragFrac * durationMs
+                : derivedPositionMs,
+            )}
+            {durationMs ? ` / ${formatClock(durationMs)}` : ""}
+          </span>
+        </div>
 
+        {/* Сцена — waveform / синхро-видео + атмосферная подложка. */}
+        <div
+          className={"ec-player-expand__stage" + (playing ? " is-playing" : "")}
+        >
           {isVideoTrack ? (
             <>
-              {/* Синхро-видео (watch-party) — <video> следует за сессией. */}
               <video
                 ref={videoElRef}
+                className="ec-player-expand__video"
                 playsInline
                 onLoadedMetadata={(e) => {
                   const d = e.currentTarget.duration;
                   if (Number.isFinite(d)) setDurationMs(d * 1000);
                 }}
-                style={{
-                  width: "100%",
-                  maxHeight: 360,
-                  background: "#000",
-                  borderRadius: "var(--ec-radius-md)",
-                  display: "block",
-                }}
               />
-              <MediaScrubber
-                positionMs={derivedPositionMs}
-                durationMs={durationMs ?? 0}
-                onSeek={(ms) => void onSeek(ms)}
-                disabled={!isHost}
-                width="100%"
-              />
-              <div
-                style={{
-                  fontSize: "0.6rem",
-                  color: "var(--ec-text-dim)",
-                  textAlign: "center",
-                }}
-              >
+              <div style={{ marginTop: "var(--ec-space-3)" }}>
+                <MediaScrubber
+                  positionMs={derivedPositionMs}
+                  durationMs={durationMs ?? 0}
+                  onSeek={(ms) => void onSeek(ms)}
+                  disabled={!isHost}
+                  width="100%"
+                />
+              </div>
+              <div className="ec-player-expand__hint">
                 {isHost
                   ? "Перемотка по дорожке — синхронно для всех зрителей"
                   : "Смотрите синхронно — перемоткой управляет ведущий"}
@@ -344,13 +240,14 @@ export function MusicExpandModal({
             </>
           ) : (
             <>
-              {/* Big waveform — peaks 0..1; сыгранные bars accent, остальные
-                  приглушены. Host может кликать/тащить → server-side seek. */}
+              {/* Большая waveform — сыгранные bars accent + glow, остальные
+                  приглушены. Host кликает/тащит → server-side seek. */}
               <svg
                 ref={waveformRef}
+                className="ec-player-expand__wave"
                 viewBox={`0 0 ${peaks.length * 4} 100`}
                 preserveAspectRatio="none"
-                style={{ ...waveformSvg, cursor: seekable ? "pointer" : "default" }}
+                style={{ cursor: seekable ? "pointer" : "default" }}
                 onPointerDown={onWavePointerDown}
                 onPointerMove={onWavePointerMove}
                 onPointerUp={onWavePointerUp}
@@ -367,14 +264,14 @@ export function MusicExpandModal({
                       y={y}
                       width={3}
                       height={h}
-                      rx={1}
+                      rx={1.5}
                       fill={played ? "var(--ec-accent)" : "var(--ec-text-dim)"}
-                      opacity={played ? 0.95 : 0.45}
+                      opacity={played ? 0.96 : 0.4}
                       style={{
                         transformBox: "fill-box",
                         transformOrigin: "center",
                         animation:
-                          session.isPlaying && !reduceMotion
+                          playing && !reduceMotion
                             ? `ec-wave-pulse ${
                                 0.85 + (i % 6) * 0.13
                               }s ease-in-out ${-(i % 11) * 0.09}s infinite`
@@ -383,7 +280,7 @@ export function MusicExpandModal({
                     />
                   );
                 })}
-                {/* playhead cursor */}
+                {/* playhead */}
                 <line
                   x1={peaks.length * 4 * progress}
                   y1={0}
@@ -391,17 +288,11 @@ export function MusicExpandModal({
                   y2={100}
                   stroke="var(--ec-accent)"
                   strokeWidth={dragFrac != null ? 2.4 : 1.5}
-                  opacity={dragFrac != null ? 1 : 0.8}
+                  opacity={dragFrac != null ? 1 : 0.85}
                 />
               </svg>
               {seekable && (
-                <div
-                  style={{
-                    fontSize: "0.6rem",
-                    color: "var(--ec-text-dim)",
-                    textAlign: "center",
-                  }}
-                >
+                <div className="ec-player-expand__hint">
                   Клик или перетаскивание по дорожке — перемотка для всех
                 </div>
               )}
@@ -409,116 +300,76 @@ export function MusicExpandModal({
           )}
         </div>
 
-        <div style={controlsRow}>
+        {/* Transport — выразительные контролы. */}
+        <div className="ec-player-expand__transport">
           <button
             type="button"
+            className="ec-player-ctrl ec-player-ctrl--lg"
             onClick={() => void onSkip()}
-            style={iconButton()}
             title="Следующий трек"
             aria-label="Следующий"
             disabled={!isHost}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
               <path d="M5 4l10 8-10 8z" />
               <rect x="17" y="4" width="2" height="16" />
             </svg>
           </button>
           <button
             type="button"
+            className={"ec-player-play ec-player-play--lg" + (playing ? " is-playing" : "")}
             onClick={() => void onTogglePlayPause()}
-            style={playButton}
-            title={session.isPlaying ? "Пауза" : "Воспроизвести"}
-            aria-label={session.isPlaying ? "Пауза" : "Воспроизвести"}
+            title={playing ? "Пауза" : "Воспроизвести"}
+            aria-label={playing ? "Пауза" : "Воспроизвести"}
             disabled={!track}
           >
-            {session.isPlaying ? (
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+            {playing ? (
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
                 <rect x="6" y="5" width="4" height="14" rx="1" />
                 <rect x="14" y="5" width="4" height="14" rx="1" />
               </svg>
             ) : (
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
                 <path d="M8 5v14l11-7z" />
               </svg>
             )}
           </button>
           <button
             type="button"
+            className="ec-player-ctrl ec-player-ctrl--lg"
             onClick={() => void onStop()}
-            style={iconButton()}
             title="Завершить сессию"
             aria-label="Завершить"
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
               <line x1="18" y1="6" x2="6" y2="18" />
               <line x1="6" y1="6" x2="18" y2="18" />
             </svg>
           </button>
         </div>
 
-        {/* Очередь — список ближайших треков. */}
+        {/* Очередь — список ближайших треков, «следующий» подсвечен. */}
         {queueTracks.length > 0 && (
-          <div style={{ display: "flex", flexDirection: "column", gap: "var(--ec-space-2)" }}>
-            <div
-              style={{
-                fontSize: "var(--ec-text-2xs)",
-                fontWeight: 600,
-                letterSpacing: "var(--ec-tracking-caps)",
-                textTransform: "uppercase",
-                color: "var(--ec-text-dim)",
-              }}
-            >
+          <div className="ec-player-queue">
+            <div className="ec-player-queue__label">
               Очередь · {queueTracks.length}
             </div>
-            <ol
-              style={{
-                listStyle: "none",
-                margin: 0,
-                padding: 0,
-                display: "flex",
-                flexDirection: "column",
-                gap: 3,
-                maxHeight: 220,
-                overflowY: "auto",
-              }}
-            >
+            <ol className="ec-player-queue__list">
               {queueTracks.map((t, i) => (
                 <li
                   key={`${t.id}-${i}`}
-                  style={queueRowBase}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = "var(--ec-surface-2)";
-                    e.currentTarget.style.borderColor = "var(--ec-border-accent)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = "transparent";
-                    e.currentTarget.style.borderColor = "transparent";
-                  }}
+                  className={
+                    "ec-player-queue-row" +
+                    (i === 0 ? " ec-player-queue-row--next" : "")
+                  }
                 >
-                  <span
-                    style={{
-                      fontFamily: "var(--ec-font-mono)",
-                      fontFeatureSettings: '"tnum"',
-                      fontSize: "0.7rem",
-                      color: "var(--ec-text-dim)",
-                      minWidth: 18,
-                      textAlign: "right",
-                    }}
-                  >
-                    {i + 1}
-                  </span>
-                  <span
-                    style={{
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                      color: "var(--ec-text)",
-                      fontSize: "var(--ec-text-sm)",
-                    }}
-                    title={t.filename}
-                  >
+                  <span className="ec-player-queue-row__idx">{i + 1}</span>
+                  <span className="ec-player-queue-row__name" title={t.filename}>
                     {t.filename}
                   </span>
+                  {i === 0 && (
+                    <span className="ec-player-queue-row__tag">Далее</span>
+                  )}
                 </li>
               ))}
             </ol>
@@ -526,14 +377,7 @@ export function MusicExpandModal({
         )}
 
         {!track && (
-          <p
-            style={{
-              margin: 0,
-              color: "var(--ec-text-dim)",
-              fontSize: "var(--ec-text-sm)",
-              textAlign: "center",
-            }}
-          >
+          <p className="ec-player-empty">
             Очередь пуста. Добавь audio-attachment в чат и нажми «Слушать
             вместе».
           </p>

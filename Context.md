@@ -32,8 +32,9 @@ deploy/        — деплой-конфиги
 - PWA: `public/sw.js` (service worker, кэш ассетов, `SW_VERSION`)
 - Стили — vanilla CSS, слоями: `src/styles/`
   (`tokens.css` → `reset.css` → `components.css` → `effects.css` →
-  `responsive.css` → `motion.css`, плюс `fonts.css`). Дизайн-токены
-  в `tokens.css`, SOLAR-тема (светлая) — оверрайды в `effects.css`.
+  `responsive.css` → `motion.css` → `player.css`, плюс `fonts.css`).
+  Дизайн-токены в `tokens.css`, SOLAR-тема (светлая) — оверрайды в
+  `effects.css`, медиа-плеер — `player.css`.
 
 ## Домен
 
@@ -67,6 +68,10 @@ deploy/        — деплой-конфиги
 ## Где что
 
 - `ROADMAP.md` — состояние, версии, открытые направления.
+- `docs/design/` — **source of truth по визуальному языку**:
+  `design-brief-v2.md` (grammar v2, identity, slice-план) +
+  `surface-map.md`. `docs/design-prompts/*` — устаревшая cyan-era,
+  помечена DEPRECATED, не использовать.
 - `docs/` — `API.md`, `BOT-API.md`, `SOCKET_EVENTS.md`,
   `DEPLOY-TO-STAR-CRM.md`, `CI-SETUP.md`, `LIVEKIT-SETUP.md`,
   `DEVELOPMENT.md`, `AI-SETUP.md`, `NEXT-GEN-OPERATIONAL-PLATFORM.md`.

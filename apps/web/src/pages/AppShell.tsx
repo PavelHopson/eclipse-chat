@@ -1,4 +1,3 @@
-import type { CSSProperties } from "react";
 import { useEffect, useRef, useState } from "react";
 import { Avatar } from "../components/Avatar";
 import { ChannelList } from "../components/ChannelList";
@@ -81,93 +80,9 @@ type Props = {
   onLogout: () => Promise<void>;
 };
 
-const topbar: CSSProperties = {
-  // v1.1.56 redesign §7 — три смысловые зоны: left (бренд + switcher) /
-  // center (breadcrumb) / right (telemetry + utility). Grid вместо flex —
-  // центр-колонка держит breadcrumb визуально между группами.
-  display: "grid",
-  gridTemplateColumns: "auto minmax(0, 1fr) auto",
-  alignItems: "center",
-  padding: "0 var(--ec-space-4)",
-  background: "var(--ec-surface-1)",
-  borderBottom: "1px solid var(--ec-border-subtle)",
-  gap: "var(--ec-space-3)",
-};
-
-const brand: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: "var(--ec-space-2)",
-  padding: "0.28rem 0.58rem 0.28rem 0.32rem",
-  border: "1px solid transparent",
-  borderRadius: "var(--ec-radius-full)",
-  background: "transparent",
-  fontSize: "var(--ec-text-sm)",
-  fontWeight: 600,
-  letterSpacing: "var(--ec-tracking-tight)",
-  color: "var(--ec-text-strong)",
-  cursor: "pointer",
-};
-
-const brandMark: CSSProperties = {
-  width: 22,
-  height: 22,
-  borderRadius: "50%",
-  position: "relative",
-  overflow: "hidden",
-};
-
-const userChip: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: "var(--ec-space-2)",
-  padding: "var(--ec-space-1) var(--ec-space-3) var(--ec-space-1) var(--ec-space-1)",
-  background: "transparent",
-  color: "var(--ec-text)",
-  border: "1px solid transparent",
-  borderRadius: "var(--ec-radius-full)",
-  cursor: "pointer",
-  fontSize: "var(--ec-text-sm)",
-  transition: "background var(--ec-dur-fast) var(--ec-ease), border-color var(--ec-dur-fast) var(--ec-ease)",
-};
-
-const chatColumn: CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  minWidth: 0,
-  background: "var(--ec-bg)",
-  // v0.96: position: relative — нужно чтобы ChannelInfoPanel overlay
-  // (absolute) корректно позиционировался поверх MessageList'а внутри
-  // chat-section'а.
-  position: "relative",
-};
-
-const chatHeader: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: "var(--ec-space-3)",
-  padding: "0 var(--ec-space-5)",
-  height: 48,
-  borderBottom: "1px solid var(--ec-border-subtle)",
-  background: "var(--ec-bg)",
-};
-
-const chatTitle: CSSProperties = {
-  display: "flex",
-  alignItems: "baseline",
-  gap: "var(--ec-space-2)",
-  fontSize: "var(--ec-text-base)",
-  fontWeight: 600,
-  color: "var(--ec-text-strong)",
-};
-
-const errorBanner: CSSProperties = {
-  padding: "var(--ec-space-2) var(--ec-space-5)",
-  color: "var(--ec-danger)",
-  background: "var(--ec-danger-soft)",
-  borderBottom: "1px solid var(--ec-border-subtle)",
-  fontSize: "var(--ec-text-sm)",
-};
+// v1.1.91 redesign slice 1: module-level inline-style консоли убраны —
+// каркас одет в классы (.ec-shell__top / .ec-chat-header / .ec-chat-title
+// / .ec-error-banner …) в components.css. См. docs/design/design-brief-v2.
 
 export function AppShell({ user, socketRev, onLogout }: Props) {
   const socket = useSocket(socketRev);
@@ -729,8 +644,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
 
   return (
     <div className={shellClass}>
-      <header className="ec-shell__top" style={topbar}>
-        <div className="ec-shell__top-left" style={{ display: "flex", alignItems: "center", minWidth: 0, gap: "var(--ec-space-2)" }}>
+      <header className="ec-shell__top">
+        <div className="ec-shell__top-left">
           {isMobile && (
             <button
               type="button"
@@ -756,13 +671,12 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           <button
             type="button"
             className="ec-shell__brand-home"
-            style={brand}
             onClick={openHome}
             aria-label="Открыть главную страницу"
             title="Главная"
           >
-            <span className="ec-brand-mark" style={brandMark} aria-hidden />
-            <span className="ec-shell__brand-title ec-shimmer-text" style={{ letterSpacing: "0.18em", fontWeight: 700 }}>ECLIPSE_CHAT</span>
+            <span className="ec-brand-mark" aria-hidden />
+            <span className="ec-shell__brand-title">ECLIPSE_CHAT</span>
           </button>
           {/* v1.1.51: бывший far-left server-rail свёрнут в topbar-control. */}
           <ServerSwitcher
@@ -820,7 +734,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             </span>
           )}
         </div>
-        <div className="ec-shell__top-actions" style={{ display: "flex", alignItems: "center", gap: "var(--ec-space-1)" }}>
+        <div className="ec-shell__top-actions">
           {/* v1.1.1+v1.1.7 telemetry. v1.1.38 (WS-1 «Облегчение»):
               ПАМ/ЦП свёрнуты — видны по hover группы ИЛИ авто-разворот
               при warn/risk. Progressive disclosure: постоянный
@@ -1095,15 +1009,6 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             }}
             title="Статус и профиль"
             className="ec-shell__user-chip"
-            style={userChip}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = "var(--ec-surface-2)";
-              e.currentTarget.style.borderColor = "var(--ec-border-default)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = "transparent";
-              e.currentTarget.style.borderColor = "transparent";
-            }}
           >
             <span style={{ position: "relative", display: "inline-block" }}>
               <Avatar url={headerAvatar} name={headerName} size={26} />
@@ -1258,15 +1163,15 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
         )}
       </div>
 
-      <section className="ec-shell__chat" style={chatColumn}>
-        <div className="ec-chat-header" style={chatHeader}>
+      <section className="ec-shell__chat">
+        <div className="ec-chat-header">
           {homeOpen ? (
-            <span className="ec-chat-title" style={chatTitle}>
-              <span className="ec-brand-mark" style={{ ...brandMark, width: 18, height: 18 }} aria-hidden />
+            <span className="ec-chat-title">
+              <span className="ec-brand-mark ec-brand-mark--sm" aria-hidden />
               Главная
             </span>
           ) : helpOpen ? (
-            <span className="ec-chat-title" style={chatTitle}>
+            <span className="ec-chat-title">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--ec-accent)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <circle cx="12" cy="12" r="10" />
                 <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
@@ -1275,7 +1180,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               Справка
             </span>
           ) : adminOpen ? (
-            <span className="ec-chat-title" style={chatTitle}>
+            <span className="ec-chat-title">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--ec-accent)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <path d="M12 2l9 4v6c0 5-3.5 9.5-9 10-5.5-.5-9-5-9-10V6l9-4z" />
                 <path d="M9 12l2 2 4-4" />
@@ -1283,7 +1188,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               Админ-панель
             </span>
           ) : statusBoardOpen ? (
-            <span className="ec-chat-title" style={chatTitle}>
+            <span className="ec-chat-title">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--ec-accent)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <rect x="3" y="3" width="7" height="9" rx="1" />
                 <rect x="14" y="3" width="7" height="5" rx="1" />
@@ -1293,14 +1198,14 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               Доска задач
             </span>
           ) : teamHealthOpen ? (
-            <span className="ec-chat-title" style={chatTitle}>
+            <span className="ec-chat-title">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--ec-accent)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
               </svg>
               Здоровье команды
             </span>
           ) : inDmMode && selectedDm ? (
-            <span className="ec-chat-title" style={chatTitle}>
+            <span className="ec-chat-title">
               {dmIsSaved(selectedDm) ? (
                 <>
                   <span
@@ -1347,7 +1252,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                 flex: 1,
               }}
             >
-              <span className="ec-chat-title" style={chatTitle}>
+              <span className="ec-chat-title">
                 {selectedChannel.emoji ? (
                   <span style={{ fontSize: "1rem", lineHeight: 1 }}>{selectedChannel.emoji}</span>
                 ) : selectedChannel.type === "VOICE" ? (
@@ -1561,29 +1466,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                 aria-label={infoPanelOpen ? "Закрыть информацию о комнате" : "Информация о комнате"}
                 aria-pressed={infoPanelOpen}
                 title={infoPanelOpen ? "Закрыть информацию" : "Сводка / Память / Дела / Файлы"}
-                style={{
-                  flexShrink: 0,
-                  width: 26,
-                  height: 26,
-                  display: "grid",
-                  placeItems: "center",
-                  background: infoPanelOpen ? "var(--ec-accent-soft)" : "transparent",
-                  border: 0,
-                  borderRadius: "var(--ec-radius-sm)",
-                  color: infoPanelOpen ? "var(--ec-accent)" : "var(--ec-text-dim)",
-                  cursor: "pointer",
-                  transition: "background var(--ec-dur-fast) var(--ec-ease), color var(--ec-dur-fast) var(--ec-ease)",
-                }}
-                onMouseEnter={(e) => {
-                  if (infoPanelOpen) return;
-                  e.currentTarget.style.background = "var(--ec-surface-2)";
-                  e.currentTarget.style.color = "var(--ec-text)";
-                }}
-                onMouseLeave={(e) => {
-                  if (infoPanelOpen) return;
-                  e.currentTarget.style.background = "transparent";
-                  e.currentTarget.style.color = "var(--ec-text-dim)";
-                }}
+                className="ec-icon-btn"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                   <circle cx="12" cy="12" r="9" />
@@ -1598,27 +1481,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                   onClick={() => setSettingsChannelId(selectedChannel.id)}
                   aria-label="Настройки комнаты"
                   title="Настройки комнаты"
-                  style={{
-                    flexShrink: 0,
-                    width: 26,
-                    height: 26,
-                    display: "grid",
-                    placeItems: "center",
-                    background: "transparent",
-                    border: 0,
-                    borderRadius: "var(--ec-radius-sm)",
-                    color: "var(--ec-text-dim)",
-                    cursor: "pointer",
-                    transition: "background var(--ec-dur-fast) var(--ec-ease), color var(--ec-dur-fast) var(--ec-ease)",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = "var(--ec-surface-2)";
-                    e.currentTarget.style.color = "var(--ec-text)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = "transparent";
-                    e.currentTarget.style.color = "var(--ec-text-dim)";
-                  }}
+                  className="ec-icon-btn"
                 >
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                     <circle cx="12" cy="12" r="3" />
@@ -1635,7 +1498,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
         </div>
 
         {(serversError || messagesError || dmError || dmMessagesError) && (
-          <div style={errorBanner}>
+          <div className="ec-error-banner">
             {serversError ?? messagesError ?? dmError ?? dmMessagesError}
           </div>
         )}

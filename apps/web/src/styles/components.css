@@ -27,17 +27,27 @@
     background var(--ec-dur-fast) var(--ec-ease),
     border-color var(--ec-dur-fast) var(--ec-ease),
     color var(--ec-dur-fast) var(--ec-ease),
+    box-shadow var(--ec-dur-fast) var(--ec-ease),
+    filter var(--ec-dur-fast) var(--ec-ease),
     transform var(--ec-dur-fast) var(--ec-ease);
   user-select: none;
   white-space: nowrap;
 }
 
+/* v1.1.91 — кнопка «подаётся навстречу» курсору: микро-подъём + тень.
+   Press гасит подъём — палец будто вдавливает клавишу. */
 .ec-btn:hover {
   background: var(--ec-surface-3);
   border-color: var(--ec-border-emphasis);
+  transform: translateY(-1px);
+  box-shadow: var(--ec-elev-1);
 }
 
-.ec-btn:active { transform: translateY(0.5px); }
+.ec-btn:active {
+  transform: translateY(0) scale(0.985);
+  box-shadow: none;
+  transition-duration: 60ms;
+}
 
 /* v0.34: accessibility — focus-visible ring для keyboard navigation.
    Mouse-click НЕ показывает ring (`:focus-visible` discriminates). */
@@ -66,16 +76,34 @@
   outline: none;  /* border-color уже даёт visual focus signal */
 }
 
+/* Primary — «commit»-кнопка. Violet с вертикальным sheen'ом (читается
+   как подсвеченная физическая клавиша). Прежний violet→teal градиент
+   убран — teal off-identity (status-only). Hover — подъём + violet-halo
+   + brightness; active — кнопка «вдавливается» (inset-тень). */
 .ec-btn--primary {
-  background: linear-gradient(135deg, var(--ec-accent), hsl(168 60% 48%));
+  background: linear-gradient(180deg, var(--ec-accent-hover), var(--ec-accent));
   color: var(--ec-accent-text);
-  border-color: var(--ec-accent);
+  border-color: transparent;
   font-weight: 600;
-  box-shadow: 0 0 0 1px hsl(225 14% 70% / 0.14), 0 10px 28px hsl(225 14% 35% / 0.14);
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.20),
+    0 6px 18px -6px hsl(258 80% 48% / 0.55);
 }
 .ec-btn--primary:hover {
-  background: linear-gradient(135deg, var(--ec-accent-hover), hsl(168 60% 54%));
-  border-color: var(--ec-accent-hover);
+  border-color: transparent;
+  filter: brightness(1.07);
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.24),
+    0 11px 26px -6px hsl(258 80% 50% / 0.62),
+    0 0 24px -5px hsl(258 90% 66% / 0.5);
+}
+.ec-btn--primary:active {
+  filter: brightness(0.97);
+  transform: translateY(0) scale(0.985);
+  box-shadow:
+    inset 0 2px 6px hsl(258 55% 20% / 0.55),
+    0 3px 10px -6px hsl(258 80% 48% / 0.45);
 }
 
 .ec-btn--ghost {
@@ -92,10 +120,18 @@
   color: var(--ec-danger);
   border-color: var(--ec-border-default);
 }
+/* Danger «означает то, что говорит» — на hover наливается красным
+   с мягким тревожным свечением, на press — твёрдо вдавливается. */
 .ec-btn--danger:hover {
   background: var(--ec-danger-soft);
   border-color: var(--ec-danger);
   color: var(--ec-danger);
+  box-shadow:
+    var(--ec-elev-1),
+    0 0 20px -6px hsl(349 100% 65% / 0.5);
+}
+.ec-btn--danger:active {
+  box-shadow: inset 0 2px 6px hsl(349 70% 26% / 0.45);
 }
 
 .ec-btn--sm {
@@ -668,6 +704,8 @@
 
 .ec-shell__brand-title {
   font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
 }
 
 .ec-shell__top-actions .ec-btn,
@@ -720,29 +758,8 @@
   background: var(--ec-border-default);
 }
 
-/* v1.1.84 — music mini-player: hover-glow на кнопках (дизайн-язык
-   eclipse-os-v1 — элемент подсвечивается при наведении). */
-.ec-music-mini-player button:not(:disabled) {
-  transition:
-    transform var(--ec-dur-fast) var(--ec-ease),
-    background var(--ec-dur-fast) var(--ec-ease),
-    filter var(--ec-dur-fast) var(--ec-ease);
-}
-.ec-music-mini-player button:not(:disabled):hover {
-  transform: translateY(-1px);
-  filter: drop-shadow(0 0 5px hsl(258 90% 66% / 0.5));
-}
-
-/* v1.1.86 — video player: hover-glow на кнопках панели управления. */
-.ec-video-player__bar button:not(:disabled) {
-  transition:
-    transform var(--ec-dur-fast) var(--ec-ease),
-    filter var(--ec-dur-fast) var(--ec-ease);
-}
-.ec-video-player__bar button:not(:disabled):hover {
-  transform: translateY(-1px);
-  filter: drop-shadow(0 0 6px hsl(258 90% 66% / 0.6));
-}
+/* v1.1.91 — player-кнопки переведены на .ec-player-ctrl / .ec-player-play
+   (см. player.css). Прежние ad-hoc hover-glow правила убраны. */
 
 /* v1.1.89 — мини-эквалайзер «now playing» в музыкальном плеере.
    3 столбика, каждый со своей длительностью/фазой → живой неровный
@@ -1412,5 +1429,162 @@
   .ec-home-today__header::after {
     animation: none !important;
   }
+}
+
+/* ============================================================
+ * v1.1.91 — Redesign slice 1: shell grammar
+ * ============================================================
+ * Канонические примитивы + вынос inline-style консолей AppShell
+ * в классы. Был root-cause drift'а: статичные inline-стили и
+ * JS-hover (onMouseEnter/Leave, мутирующие .style). См.
+ * docs/design/design-brief-v2.md §3.
+ *
+ * Все правила ниже опираются на theme-aware токены — отдельный
+ * SOLAR-оверрайд не нужен, тема подхватывается автоматически.
+ * Декор surface'ов (фон/blur/тени) остаётся за блоками
+ * «Immersive app surface» выше; их дубли консолидирует slice 7.
+ */
+
+/* --- Icon button — КАНОНИЧЕСКИЙ примитив иконочной кнопки.
+   Топбар, заголовки, тулбары. Призрачный в покое → surface на
+   hover → accent на [aria-pressed="true"]. Hover/active/focus —
+   только CSS, без JS-обработчиков. ------------------------------ */
+.ec-icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  padding: 0;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--ec-radius-sm);
+  color: var(--ec-text-dim);
+  cursor: pointer;
+  transition:
+    background var(--ec-dur-fast) var(--ec-ease),
+    color var(--ec-dur-fast) var(--ec-ease),
+    border-color var(--ec-dur-fast) var(--ec-ease),
+    transform var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-icon-btn:hover {
+  background: var(--ec-surface-3);
+  color: var(--ec-text);
+  transform: translateY(-1px);
+}
+/* Press — кнопка резко «щёлкает» вниз и слегка сжимается. */
+.ec-icon-btn:active {
+  transform: translateY(0) scale(0.9);
+  transition-duration: 60ms;
+}
+.ec-icon-btn:focus-visible {
+  outline: 2px solid var(--ec-border-accent);
+  outline-offset: 1px;
+}
+.ec-icon-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+/* Активное / включённое — единый accent-сигнал (см. grammar §3.4). */
+.ec-icon-btn[aria-pressed="true"] {
+  background: var(--ec-accent-soft);
+  color: var(--ec-accent);
+}
+
+/* --- Error banner (AppShell) — был module-level inline-объект. -- */
+.ec-error-banner {
+  padding: var(--ec-space-2) var(--ec-space-5);
+  color: var(--ec-danger);
+  background: var(--ec-danger-soft);
+  border-bottom: 1px solid var(--ec-border-subtle);
+  font-size: var(--ec-text-sm);
+}
+
+/* --- Вынос inline-style консолей AppShell-каркаса в классы.
+   Только layout-свойства (декор surface'ов — за блоками выше). -- */
+
+/* Топбар: три смысловые зоны через grid (left / center / right). */
+.ec-shell__top {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--ec-space-3);
+  padding: 0 var(--ec-space-4);
+}
+.ec-shell__top-left {
+  display: flex;
+  align-items: center;
+  gap: var(--ec-space-2);
+}
+.ec-shell__top-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--ec-space-1);
+}
+
+/* Бренд-кнопка «домой». */
+.ec-shell__brand-home {
+  display: flex;
+  align-items: center;
+  gap: var(--ec-space-2);
+  padding: 0.28rem 0.58rem 0.28rem 0.32rem;
+  border-radius: var(--ec-radius-full);
+  font-size: var(--ec-text-sm);
+  font-weight: 700;
+  color: var(--ec-text-strong);
+  cursor: pointer;
+}
+
+/* Профиль-чип в правой зоне топбара. */
+.ec-shell__user-chip {
+  display: flex;
+  align-items: center;
+  gap: var(--ec-space-2);
+  padding: var(--ec-space-1) var(--ec-space-3) var(--ec-space-1) var(--ec-space-1);
+  border-radius: var(--ec-radius-full);
+  color: var(--ec-text);
+  font-size: var(--ec-text-sm);
+  cursor: pointer;
+  transition:
+    filter var(--ec-dur-slow) var(--ec-ease),
+    opacity var(--ec-dur-slow) var(--ec-ease),
+    transform var(--ec-dur-slow) var(--ec-ease);
+}
+
+/* «Оператор гаснет» — при наведении на logout-кнопку профиль-чип
+   обесцвечивается, тускнеет и слегка сжимается: сухой предпросмотр
+   собственного отсутствия. Зелёная presence-точка гаснет вместе
+   с аватаром (grayscale у родителя гасит её inline-цвет). */
+.ec-shell__top-actions:has(.ec-logout-btn:hover) .ec-shell__user-chip {
+  filter: grayscale(0.9) brightness(0.7);
+  opacity: 0.5;
+  transform: scale(0.97);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ec-shell__top-actions:has(.ec-logout-btn:hover) .ec-shell__user-chip {
+    transform: none;
+  }
+}
+
+/* Центральная колонка чата — вертикальный стек. */
+.ec-shell__chat {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Заголовок чат-области. */
+.ec-chat-header {
+  display: flex;
+  align-items: center;
+  gap: var(--ec-space-3);
+  height: 48px;
+  padding: 0 var(--ec-space-5);
+}
+.ec-chat-title {
+  display: flex;
+  align-items: baseline;
+  gap: var(--ec-space-2);
+  color: var(--ec-text-strong);
 }
 

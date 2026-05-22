@@ -6,17 +6,16 @@ import type {
 } from "react";
 
 /**
- * MediaScrubber (v1.1.84) — анимированная перематываемая дорожка для
- * медиа-плеера. Сейчас используется музыкой; видео-плеер переиспользует
- * её в слайсе 3 — это «ядро» единого плеера.
+ * MediaScrubber (v1.1.91 redesign) — фирменная перематываемая дорожка
+ * медиа-плеера. Единое «ядро» таймлайна для аудио и видео.
  *
- * Взаимодействие: click-to-seek + drag. Hover/drag → дорожка утолщается,
- * thumb проявляется и светится (hover-glow — язык дизайн-макета
- * eclipse-os-v1). Клавиатура: ←/→ перематывают на ±5 c.
+ * Взаимодействие: click-to-seek + drag. Hover/drag утолщают дорожку,
+ * thumb проявляется и зажигается. Клавиши ←/→ — перемотка на ±5 c.
  *
- * Во время drag показывается локальная позиция; коммит (`onSeek`) — один
- * раз на отпускании указателя. Для синхро-сессии это один запрос на
- * сервер, без спама во время перетаскивания.
+ * Во время drag показывается локальная позиция; коммит (`onSeek`) —
+ * один раз на отпускании указателя. Визуальный слой — `.ec-scrubber*`
+ * в player.css; компонент отдаёт только динамику: `--frac` (0..1) и
+ * data-active / data-dragging.
  */
 
 type Props = {
@@ -84,24 +83,17 @@ export function MediaScrubber({
     }
   };
 
-  const hitArea: CSSProperties = {
-    width,
-    flexShrink: 0,
-    padding: "7px 0",
-    cursor: seekable ? "pointer" : "default",
-    touchAction: "none",
-    outline: "none",
-  };
-  const motion = dragging ? "none" : "var(--ec-dur-fast) var(--ec-ease)";
-
   return (
     <div
+      className="ec-scrubber"
       role="slider"
       aria-label="Перемотка"
       aria-valuemin={0}
       aria-valuemax={Math.round(durationMs)}
       aria-valuenow={Math.round(frac * durationMs)}
       aria-disabled={!seekable}
+      data-active={active ? "true" : "false"}
+      data-dragging={dragging ? "true" : "false"}
       tabIndex={seekable ? 0 : -1}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
@@ -110,53 +102,11 @@ export function MediaScrubber({
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       onKeyDown={onKeyDown}
-      style={hitArea}
+      style={{ width, "--frac": frac } as CSSProperties}
     >
-      <div
-        ref={trackRef}
-        style={{
-          position: "relative",
-          height: active ? 6 : 4,
-          borderRadius: 999,
-          background: "var(--ec-surface-3)",
-          transition: `height ${motion}`,
-        }}
-      >
-        <div
-          style={{
-            position: "absolute",
-            insetBlock: 0,
-            left: 0,
-            width: `${frac * 100}%`,
-            background: "var(--ec-accent)",
-            borderRadius: 999,
-            boxShadow: active ? "0 0 8px hsl(258 90% 66% / 0.55)" : "none",
-            transition: dragging
-              ? "none"
-              : `width 320ms linear, box-shadow ${motion}`,
-          }}
-        />
-        <div
-          aria-hidden
-          style={{
-            position: "absolute",
-            top: "50%",
-            left: `${frac * 100}%`,
-            width: 11,
-            height: 11,
-            borderRadius: "50%",
-            background: "var(--ec-accent)",
-            transform: `translate(-50%, -50%) scale(${active ? 1 : 0})`,
-            opacity: active ? 1 : 0,
-            boxShadow: active
-              ? `0 0 0 3px hsl(258 90% 66% / 0.22), 0 0 12px hsl(258 90% 66% / 0.7)`
-              : "none",
-            transition: dragging
-              ? "none"
-              : `transform ${motion}, opacity ${motion}, left 320ms linear`,
-            pointerEvents: "none",
-          }}
-        />
+      <div ref={trackRef} className="ec-scrubber__track">
+        <div className="ec-scrubber__fill" />
+        <div className="ec-scrubber__thumb" aria-hidden />
       </div>
     </div>
   );

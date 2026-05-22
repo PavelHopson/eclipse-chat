@@ -1,4 +1,20 @@
-# Eclipse Chat — Futuristic Redesign Brief
+> # ⚠️ DEPRECATED — НЕ ИСТИНА (с 22.05.2026)
+>
+> Этот документ — **cyan-era**: он описывает отменённую identity
+> (cyan `#5db5d9` как primary accent, **только** dark theme, старый
+> 4-колоночный shell с far-left rail). Всё это устарело:
+> - primary accent теперь **violet `#8B5CF6`**, premium — **gold
+>   `#D4AF37`**, cyan/teal — status-only;
+> - светлая тема **SOLAR** существует и обязательна;
+> - far-left rail свёрнут в topbar-switcher.
+>
+> **Актуальный source of truth — `docs/design/design-brief-v2.md` +
+> `docs/design/surface-map.md`.** Файл оставлен только как история.
+> Не использовать как baseline для редизайна.
+
+---
+
+# Eclipse Chat — Futuristic Redesign Brief (DEPRECATED)
 
 > **Для:** Google AI Studio / Stitch / Gemini Pro Vision / любой UI-design AI
 > **Задача:** редизайн existing operational chat platform в **максимально футуристичный visual language** — calm cinematic sci-fi, не cluttered, не gamer.

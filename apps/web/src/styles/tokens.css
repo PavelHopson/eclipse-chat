@@ -1,29 +1,37 @@
 /**
- * Eclipse Chat — Design tokens (v0.10 "Cold Operator Console")
+ * Eclipse Chat — Design tokens
  * ============================================================
  *
- * Контракт почерка:
- *   — Глубокий night-blue void с лёгким cyan undertone, не «mid grey».
- *   — Edge-light accent — cool sky #5db5d9 с лёгким cyan хвостом.
- *   — Тонкие линии (rgba(255,255,255,0.06-0.16)), никаких толстых borders.
- *   — Motion бытра (120ms), modal/glow 200ms; ambient breathing 4s.
- *   — Type: Orbitron только для display/brand caps; основной — Inter.
+ * Source of truth по визуальному языку — docs/design/design-brief-v2.md.
+ * Этот файл — его реализация в CSS-переменных.
  *
- * Палитра вернулась к холодной после фидбека Pavel'я 13.05.2026
- * («дизайн слабый, верни холодные тона, добавь креатив»). Eclipse Forge
- * orange теперь только как `--ec-warn-2` для редких action-emphasis,
- * не как primary accent.
+ * Контракт почерка (grammar v2):
+ *   — Calm command center: плотный, структурный, уверенный chrome,
+ *     рецессивный к контенту.
+ *   — Глубокий night-blue void (VOID-тема), 4 чёткие глубины surface.
+ *   — Primary accent — violet #8B5CF6. Premium — gold #D4AF37,
+ *     точечно. Cyan/teal демотированы в status-only (--ec-accent-2 /
+ *     --ec-status-*). Warm orange в брендинге/акцентах НЕ используем.
+ *   — Глубина и свет (--ec-edge / --ec-elev-*), не толстые бордеры.
+ *   — Шрифт — Geist (sans) + Geist Mono. Отдельного display-шрифта
+ *     нет: иерархия строится весом и размером.
+ *   — Motion быстрый (--ec-dur-fast 120ms / base 180ms); ambient-петли
+ *     только осмысленно (live / AI / бренд-марка), не на chrome.
+ *
+ * Две темы, обе обязательны: VOID (тёмная, тут) и SOLAR (светлая —
+ * оверрайды в effects.css, html[data-ec-theme="solar"]). Любой новый
+ * surface-токен/класс обязан иметь SOLAR-вариант.
  *
  * Per-server brand-color override: AppShell инжектит
  * `:root { --ec-accent: hsl(X Y% Z%) }` когда у активного сервера задан
  * `brandColor`. Все компоненты автоматически подхватят.
  *
  * Иерархия surface'ов:
- *   ec-bg            — фон страницы (deepest)
- *   ec-surface-1     — sidebar/header
- *   ec-surface-2     — карточки/inputs
- *   ec-surface-3     — hover
- *   ec-surface-4     — active
+ *   ec-bg / ec-void  — фон страницы (deepest)
+ *   ec-surface-1     — sidebar / topbar / rails
+ *   ec-surface-2     — карточки / inputs
+ *   ec-surface-3     — hover / chips
+ *   ec-surface-4     — active / выраженный elevation
  */
 
 :root {
@@ -1058,10 +1066,17 @@
 }
 
 /* ============================================================
- * v1.1.27 — Logout button (фигурка уходит в дверь)
+ * v1.1.91 — Logout button (оператор уходит в дверь)
  * ============================================================
- * Эффект из набора «Logout Button». default → walking1 → walking2.
- * CSS-классы --walking* задают --transform-* конечностей фигурки. */
+ * Showpiece-микровзаимодействие. Покой — нейтральный оператор за
+ * пультом. Hover — «красная тревога»: рамка наливается красным,
+ * дверь распахивается, оператор разворачивается и делает шаг к
+ * порогу, а профиль-чип рядом гаснет (см. .ec-shell__user-chip в
+ * components.css — предпросмотр собственного отсутствия). Click —
+ * фигурка уходит сквозь проём, дверь захлопывается за ней → onLogout.
+ * Цепочка состояний: default → walking1 → walking2; --t-* задают
+ * трансформы конечностей. reduced-motion: hover красит, но фигурка
+ * не шагает; click логаутит сразу (см. LogoutButton.tsx). */
 .ec-logout-btn {
   --fig-dur: 100ms;
   --walk-dur: 100ms;
@@ -1081,7 +1096,7 @@
   background: none;
   border: 0;
   cursor: pointer;
-  perspective: 120px;
+  perspective: 140px;
   text-align: left;
   outline: none;
   flex-shrink: 0;
@@ -1094,13 +1109,28 @@
   z-index: 2;
   border-radius: var(--ec-radius-md);
   background: hsl(214 22% 9% / 0.6);
-  border: 1px solid hsl(258 70% 72% / 0.12);
-  transition: transform 60ms ease, border-color var(--ec-dur-fast) var(--ec-ease);
+  border: 1px solid var(--ec-border-default);
+  transition:
+    transform 70ms ease,
+    background var(--ec-dur-base) var(--ec-ease),
+    border-color var(--ec-dur-base) var(--ec-ease),
+    box-shadow var(--ec-dur-base) var(--ec-ease);
 }
-.ec-logout-btn:hover::before {
-  border-color: hsl(258 70% 60% / 0.4);
+/* Hover / уход — «красная тревога»: рамка наливается, мягкий аларм-glow. */
+.ec-logout-btn:hover::before,
+.ec-logout-btn--walking1::before,
+.ec-logout-btn--walking2::before {
+  background: var(--ec-danger-soft);
+  border-color: hsl(349 100% 65% / 0.6);
+  box-shadow:
+    0 0 22px -6px hsl(349 100% 60% / 0.5),
+    inset 0 0 14px hsl(349 100% 60% / 0.12);
 }
 .ec-logout-btn:active::before { transform: scale(0.96); }
+.ec-logout-btn:focus-visible::before {
+  border-color: hsl(349 100% 65% / 0.7);
+  box-shadow: 0 0 0 2px hsl(349 100% 65% / 0.4);
+}
 
 .ec-logout-btn__text {
   position: relative;
@@ -1110,8 +1140,13 @@
   font-weight: 700;
   letter-spacing: 0.14em;
   color: var(--ec-text-muted);
+  transition: color var(--ec-dur-fast) var(--ec-ease);
 }
-.ec-logout-btn:hover .ec-logout-btn__text { color: var(--ec-text); }
+.ec-logout-btn:hover .ec-logout-btn__text,
+.ec-logout-btn--walking1 .ec-logout-btn__text,
+.ec-logout-btn--walking2 .ec-logout-btn__text {
+  color: var(--ec-danger);
+}
 
 .ec-logout-btn svg {
   display: block;
@@ -1123,35 +1158,80 @@
   right: 10px;
   width: 26px;
 }
-.ec-logout-btn__doorway { z-index: 3; fill: hsl(214 18% 22%); }
+.ec-logout-btn__doorway {
+  z-index: 3;
+  fill: hsl(214 18% 22%);
+  transition: fill var(--ec-dur-base) var(--ec-ease);
+}
+/* Проём за дверью «теплеет» — дальний красный свет «выхода». */
+.ec-logout-btn:hover .ec-logout-btn__doorway,
+.ec-logout-btn--walking1 .ec-logout-btn__doorway,
+.ec-logout-btn--walking2 .ec-logout-btn__doorway {
+  fill: hsl(349 44% 17%);
+}
 .ec-logout-btn__door {
   z-index: 5;
-  fill: var(--ec-accent);
-  transform: rotateY(16deg);
+  fill: var(--ec-text-dim);
+  transform: rotateY(8deg);
   transform-origin: 100% 50%;
   transform-style: preserve-3d;
-  transition: transform 200ms ease;
+  transition:
+    transform 280ms var(--ec-ease-spring),
+    fill var(--ec-dur-base) var(--ec-ease);
 }
 .ec-logout-btn__door path {
-  fill: var(--ec-accent);
-  stroke: var(--ec-accent);
+  fill: var(--ec-text-dim);
+  stroke: var(--ec-text-dim);
   stroke-width: 4;
+  transition:
+    fill var(--ec-dur-base) var(--ec-ease),
+    stroke var(--ec-dur-base) var(--ec-ease);
 }
-.ec-logout-btn:hover .ec-logout-btn__door { transform: rotateY(24deg); }
+.ec-logout-btn:hover .ec-logout-btn__door,
 .ec-logout-btn--walking1 .ec-logout-btn__door,
-.ec-logout-btn--walking2 .ec-logout-btn__door { transform: rotateY(38deg); }
+.ec-logout-btn--walking2 .ec-logout-btn__door {
+  fill: var(--ec-danger);
+}
+.ec-logout-btn:hover .ec-logout-btn__door path,
+.ec-logout-btn--walking1 .ec-logout-btn__door path,
+.ec-logout-btn--walking2 .ec-logout-btn__door path {
+  fill: var(--ec-danger);
+  stroke: var(--ec-danger);
+}
+/* Дверь: ajar → распахнута на hover/шаге → захлопывается за ушедшим. */
+.ec-logout-btn:hover .ec-logout-btn__door { transform: rotateY(32deg); }
+.ec-logout-btn--walking1 .ec-logout-btn__door { transform: rotateY(46deg); }
+.ec-logout-btn--walking2 .ec-logout-btn__door { transform: rotateY(5deg); }
 
-.ec-logout-btn__bang { opacity: 0; }
+/* «Пыль вслед» — speed-lines мелькают, пока оператор делает рывок. */
+.ec-logout-btn__bang {
+  opacity: 0;
+  fill: var(--ec-danger);
+  transition: opacity var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-logout-btn--walking1 .ec-logout-btn__bang { opacity: 0.7; }
+.ec-logout-btn--walking2 .ec-logout-btn__bang { opacity: 0; }
 
 .ec-logout-btn__figure {
   bottom: 4px;
   right: 14px;
   width: 24px;
   z-index: 4;
-  fill: var(--ec-accent-hover);
+  fill: var(--ec-text-dim);
   transform: var(--t-figure);
-  transition: transform var(--fig-dur) cubic-bezier(0.2, 0.1, 0.8, 0.9);
+  transition:
+    transform var(--fig-dur) cubic-bezier(0.2, 0.1, 0.8, 0.9),
+    fill var(--ec-dur-base) var(--ec-ease),
+    opacity 260ms var(--ec-ease);
 }
+.ec-logout-btn:hover .ec-logout-btn__figure,
+.ec-logout-btn--walking1 .ec-logout-btn__figure,
+.ec-logout-btn--walking2 .ec-logout-btn__figure {
+  fill: var(--ec-danger);
+}
+/* Уйдя в проём, фигурка растворяется — дверь захлопывается над пустотой. */
+.ec-logout-btn--walking2 .ec-logout-btn__figure { opacity: 0; }
+
 .ec-logout-btn__arm1,
 .ec-logout-btn__wrist1,
 .ec-logout-btn__arm2,
@@ -1171,17 +1251,19 @@
 .ec-logout-btn__leg2  { transform: var(--t-leg2);  transform-origin: 43% 63%; }
 .ec-logout-btn__calf2 { transform: var(--t-calf2); transform-origin: 41.5% 73%; }
 
-/* hover — фигурка чуть «топчется» */
+/* hover — оператор разворачивается и делает шаг к порогу (anticipation) */
 .ec-logout-btn:hover {
-  --t-figure: translateX(1.5px);
-  --t-arm1: rotate(-5deg);
-  --t-wrist1: rotate(-15deg);
-  --t-arm2: rotate(5deg);
-  --t-wrist2: rotate(6deg);
-  --t-leg1: rotate(-10deg);
-  --t-calf1: rotate(5deg);
-  --t-leg2: rotate(20deg);
-  --t-calf2: rotate(-20deg);
+  --fig-dur: 240ms;
+  --walk-dur: 240ms;
+  --t-figure: translateX(6px);
+  --t-arm1: translateX(-2px) rotate(48deg);
+  --t-wrist1: rotate(-10deg);
+  --t-arm2: translateX(2px) rotate(-42deg);
+  --t-wrist2: rotate(2deg);
+  --t-leg1: translateX(-1px) rotate(34deg);
+  --t-calf1: rotate(-14deg);
+  --t-leg2: translateX(2px) rotate(-26deg);
+  --t-calf2: rotate(12deg);
 }
 /* walking1 — шаг к двери */
 .ec-logout-btn--walking1 {
@@ -1213,7 +1295,20 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .ec-logout-btn svg,
+  .ec-logout-btn__door,
   .ec-logout-btn::before { transition: none; }
+  /* hover — только цвет; фигурка остаётся на месте */
+  .ec-logout-btn:hover {
+    --t-figure: none;
+    --t-arm1: none;
+    --t-wrist1: none;
+    --t-arm2: none;
+    --t-wrist2: none;
+    --t-leg1: none;
+    --t-calf1: none;
+    --t-leg2: none;
+    --t-calf2: none;
+  }
 }
 
 /* v1.1.25 — thinking_orb: вращается пока AI генерирует ответ

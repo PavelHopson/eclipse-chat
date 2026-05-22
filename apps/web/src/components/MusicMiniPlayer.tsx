@@ -1,4 +1,3 @@
-import type { CSSProperties } from "react";
 import { useEffect, useRef, useState } from "react";
 import { Avatar } from "./Avatar";
 import { MediaScrubber } from "./MediaScrubber";
@@ -7,21 +6,16 @@ import { useMediaVolume } from "../hooks/useMediaVolume";
 import type { MusicSession } from "../hooks/useChannelMusic";
 
 /**
- * MusicMiniPlayer (v0.61) — floating audio player в шапке канала.
+ * MusicMiniPlayer (v1.1.91 redesign) — фирменная капсула «сейчас
+ * играет» в шапке канала. Единый язык плеера (см. player.css):
+ * violet-«живой сигнал», equalizer-мотив, gold-кольцо ведущего.
  *
  * Render:
- *   ▶/⏸  Track name · host  ━━━●━━  0:42 / 3:14  [⏭] [✕]
+ *   [▶/⏸] ≋ Track name  ━━●━━  0:42 / 3:14  (host) +N  [vol][⏭][⤢][✕]
  *
- * Audio element скрыт (visibility:hidden), управляется через ref:
- *   - При isPlaying=true и есть currentTrack — audio.play() с currentTime
- *     = derivedPositionMs/1000.
- *   - При pause — audio.pause().
- *   - При смене track — audio.src обновляется, currentTime сбрасывается.
- *
- * Latency budget: разница между server-time и client-time может быть
- * до 500ms (без NTP). Late-join slight drift приемлем (Spotify Group тоже
- * допускает ~1с). v2 — periodic position-sync emit + auto-seek correction
- * если drift > 1.5s.
+ * Audio element скрыт, управляется через ref (sync с серверной
+ * сессией). Latency budget — до ~500ms; late-join slight drift
+ * приемлем (как Spotify Group).
  */
 
 type Props = {
@@ -29,45 +23,9 @@ type Props = {
   derivedPositionMs: number;
   onTogglePlayPause: () => void | Promise<void>;
   onSkip: () => void | Promise<void>;
-  /** v1.1.84 — перемотка: коммитит позицию (мс) на сервер. */
   onSeek: (positionMs: number) => void | Promise<void>;
   onStop: () => void | Promise<void>;
-  /** v0.74 #32 phase 3: open big expand-view modal. */
   onExpand?: () => void;
-};
-
-const wrap: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: "var(--ec-space-2)",
-  padding: "0.4rem 0.7rem",
-  background: "var(--ec-surface-2)",
-  border: "1px solid var(--ec-border-subtle)",
-  borderRadius: "var(--ec-radius-full)",
-  fontSize: "var(--ec-text-2xs)",
-  color: "var(--ec-text-muted)",
-  flexShrink: 0,
-  minWidth: 0,
-};
-
-const iconBtn: CSSProperties = {
-  width: 26,
-  height: 26,
-  display: "grid",
-  placeItems: "center",
-  borderRadius: "var(--ec-radius-full)",
-  background: "transparent",
-  border: 0,
-  color: "var(--ec-text)",
-  cursor: "pointer",
-  transition: "background var(--ec-dur-fast) var(--ec-ease)",
-  flexShrink: 0,
-};
-
-const playBtn: CSSProperties = {
-  ...iconBtn,
-  background: "var(--ec-accent)",
-  color: "var(--ec-accent-text)",
 };
 
 function formatTime(ms: number, durationMs?: number): string {
@@ -95,8 +53,7 @@ export function MusicMiniPlayer({
 }: Props) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [durationMs, setDurationMs] = useState<number | null>(null);
-  // v1.1.58 — общая громкость медиа (музыка + аудио-вложения): shared
-  // хук с live-sync + localStorage. Применяется к локальному <audio>.
+  // v1.1.58 — общая громкость медиа: shared хук с live-sync + localStorage.
   const [volume, setVolume] = useMediaVolume();
   const lastVolumeRef = useRef(volume > 0 ? volume : 0.7);
 
@@ -128,8 +85,6 @@ export function MusicMiniPlayer({
       audio.src = src;
       audio.load();
     }
-    // Seek к серверной позиции (минус ~150ms на reasonable latency
-    // компенсацию — лучше слушать раньше, чем позже).
     const targetSec = Math.max(0, derivedPositionMs / 1000 - 0.15);
     if (Math.abs(audio.currentTime - targetSec) > 1.5) {
       audio.currentTime = targetSec;
@@ -141,8 +96,6 @@ export function MusicMiniPlayer({
     } else {
       audio.pause();
     }
-    // session.updatedAt включаем в deps чтобы re-sync при server-side
-    // изменениях (даже если тот же track).
   }, [
     session.currentTrack?.id,
     session.isPlaying,
@@ -154,32 +107,39 @@ export function MusicMiniPlayer({
   const isVoiceMessage = session.currentTrack
     ? /^voice-message-/i.test(session.currentTrack.filename)
     : false;
+  const playing = session.isPlaying;
+  const hasTrack = !!session.currentTrack;
 
   return (
-    <div className="ec-music-mini-player" style={wrap} role="region" aria-label="Общий плеер канала">
+    <div
+      className={"ec-player-mini" + (playing && hasTrack ? " is-playing" : "")}
+      role="region"
+      aria-label="Общий плеер канала"
+    >
       <button
         type="button"
+        className="ec-player-play"
         onClick={() => void onTogglePlayPause()}
-        style={playBtn}
-        title={session.isPlaying ? "Пауза" : "Воспроизвести"}
-        aria-label={session.isPlaying ? "Пауза" : "Воспроизвести"}
-        disabled={!session.currentTrack}
+        title={playing ? "Пауза" : "Воспроизвести"}
+        aria-label={playing ? "Пауза" : "Воспроизвести"}
+        disabled={!hasTrack}
       >
-        {session.isPlaying ? (
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+        {playing ? (
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
             <rect x="6" y="5" width="4" height="14" rx="1" />
             <rect x="14" y="5" width="4" height="14" rx="1" />
           </svg>
         ) : (
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
             <path d="M8 5v14l11-7z" />
           </svg>
         )}
       </button>
-      {/* v1.1.89 — мини-эквалайзер «now playing»: живой ритм при игре. */}
-      {session.currentTrack && (
+
+      {/* Мини-эквалайзер «now playing» — живой ритм при игре. */}
+      {hasTrack && (
         <span
-          className={"ec-eq" + (session.isPlaying ? " ec-eq--playing" : "")}
+          className={"ec-eq" + (playing ? " ec-eq--playing" : "")}
           aria-hidden
         >
           <span />
@@ -187,94 +147,65 @@ export function MusicMiniPlayer({
           <span />
         </span>
       )}
+
       <button
         type="button"
+        className="ec-player-mini__name"
         onClick={onExpand}
         disabled={!onExpand}
-        style={{
-          minWidth: 0,
-          maxWidth: 200,
-          color: "var(--ec-text-strong)",
-          fontWeight: 500,
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-          background: "transparent",
-          border: 0,
-          padding: 0,
-          cursor: onExpand ? "pointer" : "default",
-          fontSize: "inherit",
-          textAlign: "left",
-        }}
         title={onExpand ? `${trackName} — открыть плеер` : trackName}
       >
         {isVoiceMessage ? "Голосовое" : trackName}
       </button>
+
       <MediaScrubber
         positionMs={derivedPositionMs}
         durationMs={durationMs ?? 0}
         onSeek={(ms) => void onSeek(ms)}
-        disabled={!session.currentTrack}
+        disabled={!hasTrack}
       />
-      <span
-        style={{
-          fontFamily: "var(--ec-font-mono)",
-          fontFeatureSettings: '"tnum"',
-          fontSize: "0.65rem",
-          color: "var(--ec-text-dim)",
-          minWidth: 55,
-        }}
-      >
+
+      <span className="ec-player-mini__time">
         {formatTime(derivedPositionMs, durationMs ?? undefined)}
       </span>
+
       <span
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 4,
-          color: "var(--ec-text-dim)",
-          fontSize: "var(--ec-text-2xs)",
-        }}
+        className="ec-player-mini__host"
         title={`Запустил: ${session.host.displayName}`}
       >
-        <Avatar url={session.host.avatar} name={session.host.displayName} size={16} />
+        <Avatar
+          url={session.host.avatar}
+          name={session.host.displayName}
+          size={16}
+        />
       </span>
+
       {session.queue.length > 0 && (
         <span
-          style={{
-            padding: "0 0.45rem",
-            background: "var(--ec-surface-3)",
-            borderRadius: "var(--ec-radius-full)",
-            color: "var(--ec-text-muted)",
-            fontSize: "0.6rem",
-            fontWeight: 700,
-          }}
+          className="ec-player-mini__queue"
           title={`В очереди: ${session.queue.length}`}
         >
           +{session.queue.length}
         </span>
       )}
-      {/* v1.1.57 — регулировка громкости (локально для каждого слушателя) */}
-      <span
-        style={{ display: "inline-flex", alignItems: "center", gap: 3, flexShrink: 0 }}
-      >
+
+      {/* Громкость — слайдер раскрывается по наведению на группу. */}
+      <span className="ec-player-mini__vol">
         <button
           type="button"
-          onClick={() =>
-            setVolume(volume > 0 ? 0 : lastVolumeRef.current || 0.7)
-          }
-          style={iconBtn}
+          className="ec-player-ctrl"
+          onClick={() => setVolume(volume > 0 ? 0 : lastVolumeRef.current || 0.7)}
           title={volume > 0 ? "Заглушить музыку" : "Включить звук"}
           aria-label={volume > 0 ? "Заглушить музыку" : "Включить звук"}
         >
           {volume === 0 ? (
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
               <path d="M11 5L6 9H2v6h4l5 4V5z" />
               <line x1="23" y1="9" x2="17" y2="15" />
               <line x1="17" y1="9" x2="23" y2="15" />
             </svg>
           ) : (
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
               <path d="M11 5L6 9H2v6h4l5 4V5z" />
               <path d="M15.5 8.5a5 5 0 0 1 0 7" />
               {volume >= 0.55 && <path d="M18.5 5.5a9 9 0 0 1 0 13" />}
@@ -282,6 +213,7 @@ export function MusicMiniPlayer({
           )}
         </button>
         <input
+          className="ec-player-range"
           type="range"
           min={0}
           max={1}
@@ -290,35 +222,50 @@ export function MusicMiniPlayer({
           onChange={(e) => setVolume(Number(e.target.value))}
           aria-label="Громкость музыки"
           title={`Громкость: ${Math.round(volume * 100)}%`}
-          style={{ width: 56, accentColor: "var(--ec-accent)", cursor: "pointer" }}
         />
       </span>
-      {/* skip / stop — видны всем; права проверяются на backend */}
+
       <button
         type="button"
+        className="ec-player-ctrl"
         onClick={() => void onSkip()}
-        style={iconBtn}
         title="Следующий"
         aria-label="Следующий трек"
-        disabled={session.queue.length === 0 && !session.currentTrack}
+        disabled={session.queue.length === 0 && !hasTrack}
       >
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
           <path d="M5 4l10 8-10 8z" />
           <rect x="17" y="4" width="2" height="16" />
         </svg>
       </button>
+
+      {onExpand && (
+        <button
+          type="button"
+          className="ec-player-ctrl"
+          onClick={onExpand}
+          title="Открыть плеер"
+          aria-label="Открыть расширенный плеер"
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3" />
+          </svg>
+        </button>
+      )}
+
       <button
         type="button"
+        className="ec-player-ctrl"
         onClick={() => void onStop()}
-        style={iconBtn}
         title="Завершить"
         aria-label="Завершить сессию"
       >
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
           <line x1="18" y1="6" x2="6" y2="18" />
           <line x1="6" y1="6" x2="18" y2="18" />
         </svg>
       </button>
+
       <audio
         ref={audioRef}
         onLoadedMetadata={(e) => {
