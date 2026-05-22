@@ -1,4 +1,3 @@
-import type { CSSProperties } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Avatar } from "./Avatar";
 import { EmptyState } from "./EmptyState";
@@ -36,127 +35,8 @@ type Props = {
 
 type Tab = "messages" | "actions" | "files" | "semantic";
 
-const backdrop: CSSProperties = {
-  position: "fixed",
-  inset: 0,
-  background: "rgba(0, 0, 0, 0.6)",
-  backdropFilter: "saturate(140%) blur(10px)",
-  WebkitBackdropFilter: "saturate(140%) blur(10px)",
-  zIndex: 200,
-  display: "flex",
-  alignItems: "flex-start",
-  justifyContent: "center",
-  padding: "10vh var(--ec-space-4) var(--ec-space-4)",
-  animation: "ec-fade-in var(--ec-dur-base) var(--ec-ease) both",
-};
-
-const panel: CSSProperties = {
-  width: "min(620px, 100%)",
-  maxHeight: "75vh",
-  display: "flex",
-  flexDirection: "column",
-  background: "var(--ec-overlay-bg)",
-  backdropFilter: "saturate(180%) blur(20px)",
-  WebkitBackdropFilter: "saturate(180%) blur(20px)",
-  border: "1px solid var(--ec-border-default)",
-  borderRadius: "var(--ec-radius-lg)",
-  boxShadow: "var(--ec-shadow-modal)",
-  overflow: "hidden",
-  animation: "ec-modal-zoom-in var(--ec-dur-base) var(--ec-ease-out) both",
-};
-
-const searchInputWrap: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 10,
-  padding: "var(--ec-space-3) var(--ec-space-4)",
-  borderBottom: "1px solid var(--ec-border-subtle)",
-  background: "var(--ec-overlay-header-bg)",
-  position: "relative",
-};
-
-const searchInput: CSSProperties = {
-  flex: 1,
-  background: "transparent",
-  border: 0,
-  color: "var(--ec-text)",
-  fontSize: "var(--ec-text-md)",
-  fontFamily: "var(--ec-font-mono, ui-monospace, monospace)",
-  letterSpacing: "0.02em",
-  outline: "none",
-};
-
-const tabsRow: CSSProperties = {
-  display: "flex",
-  gap: 2,
-  padding: "var(--ec-space-2) var(--ec-space-3) 0",
-  borderBottom: "1px solid var(--ec-border-subtle)",
-};
-
-const tabBtn = (active: boolean): CSSProperties => ({
-  padding: "var(--ec-space-2) var(--ec-space-3)",
-  background: "transparent",
-  border: 0,
-  borderBottom: active ? "2px solid var(--ec-accent)" : "2px solid transparent",
-  color: active ? "var(--ec-text-strong)" : "var(--ec-text-muted)",
-  fontSize: "0.65rem",
-  fontWeight: 700,
-  letterSpacing: "0.14em",
-  textTransform: "uppercase",
-  fontFamily: "var(--ec-font-mono, ui-monospace, monospace)",
-  cursor: "pointer",
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 6,
-  transition: "color var(--ec-dur-fast) var(--ec-ease)",
-});
-
-const tabCount = (active: boolean): CSSProperties => ({
-  fontSize: "0.65rem",
-  fontWeight: 700,
-  padding: "0 6px",
-  borderRadius: "var(--ec-radius-full)",
-  background: active ? "var(--ec-accent-soft)" : "var(--ec-surface-2)",
-  color: active ? "var(--ec-accent)" : "var(--ec-text-dim)",
-  fontFeatureSettings: '"tnum"',
-  minWidth: 18,
-  textAlign: "center",
-  display: "inline-block",
-});
-
-const listWrap: CSSProperties = {
-  flex: 1,
-  overflow: "auto",
-  padding: "var(--ec-space-2) var(--ec-space-2) var(--ec-space-3)",
-};
-
-const hitRow: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "32px 1fr auto",
-  alignItems: "start",
-  gap: "var(--ec-space-3)",
-  padding: "var(--ec-space-2) var(--ec-space-3)",
-  width: "100%",
-  background: "transparent",
-  border: 0,
-  borderRadius: "var(--ec-radius-md)",
-  color: "var(--ec-text)",
-  cursor: "pointer",
-  textAlign: "left",
-  transition: "background var(--ec-dur-fast) var(--ec-ease)",
-};
-
-const kbd: CSSProperties = {
-  display: "inline-block",
-  padding: "0 5px",
-  background: "var(--ec-surface-2)",
-  border: "1px solid var(--ec-border-subtle)",
-  borderRadius: "var(--ec-radius-xs)",
-  fontFamily: "var(--ec-font-mono)",
-  fontSize: "0.62rem",
-  color: "var(--ec-text-muted)",
-  lineHeight: 1.6,
-};
+// v1.1.95 slice 6: inline-style консоли SearchOverlay вынесены в
+// классы .ec-search-* (components.css). JS-hover hit-row убран.
 
 const ACTION_TYPE_META: Record<
   "TASK" | "DECISION" | "FOLLOW_UP",
@@ -274,14 +154,13 @@ export function SearchOverlay({
   return (
     <div
       className="ec-search-overlay"
-      style={backdrop}
       onClick={(e) => e.target === e.currentTarget && onClose()}
       role="dialog"
       aria-modal="true"
       aria-label="Операционный поиск"
     >
-      <div style={panel}>
-        <div className="ec-server-header-edge" style={searchInputWrap}>
+      <div className="ec-search-panel">
+        <div className="ec-server-header-edge ec-search-bar">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ec-accent)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ filter: "drop-shadow(0 0 4px hsl(258 90% 66% / 0.4))" }}>
             <circle cx="11" cy="11" r="8" />
             <line x1="21" y1="21" x2="16.65" y2="16.65" />
@@ -292,42 +171,42 @@ export function SearchOverlay({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="ЗАПРОС_ПОИСКА // сообщения · задачи · файлы…"
-            style={searchInput}
+            className="ec-search-input"
           />
-          <span style={kbd}>Esc</span>
+          <span className="ec-kbd">Esc</span>
         </div>
 
         {truncated && (totalHits > 0 || semanticAvailable) && (
-          <div style={tabsRow} role="tablist">
+          <div className="ec-search-tabs" role="tablist">
             <button
               type="button"
               role="tab"
               aria-selected={tab === "messages"}
               onClick={() => setTab("messages")}
-              style={tabBtn(tab === "messages")}
+              className="ec-search-tab"
             >
               Сообщения
-              <span style={tabCount(tab === "messages")}>{counts.messages}</span>
+              <span className="ec-search-tab__count">{counts.messages}</span>
             </button>
             <button
               type="button"
               role="tab"
               aria-selected={tab === "actions"}
               onClick={() => setTab("actions")}
-              style={tabBtn(tab === "actions")}
+              className="ec-search-tab"
             >
               Дела
-              <span style={tabCount(tab === "actions")}>{counts.actions}</span>
+              <span className="ec-search-tab__count">{counts.actions}</span>
             </button>
             <button
               type="button"
               role="tab"
               aria-selected={tab === "files"}
               onClick={() => setTab("files")}
-              style={tabBtn(tab === "files")}
+              className="ec-search-tab"
             >
               Файлы
-              <span style={tabCount(tab === "files")}>{counts.files}</span>
+              <span className="ec-search-tab__count">{counts.files}</span>
             </button>
             {semanticAvailable && (
               <button
@@ -335,11 +214,11 @@ export function SearchOverlay({
                 role="tab"
                 aria-selected={tab === "semantic"}
                 onClick={() => setTab("semantic")}
-                style={tabBtn(tab === "semantic")}
+                className="ec-search-tab"
                 title="Поиск по смыслу, а не по точному совпадению слов"
               >
                 Семантика
-                <span style={tabCount(tab === "semantic")}>
+                <span className="ec-search-tab__count">
                   {tab === "semantic" && semantic.loading
                     ? "…"
                     : counts.semantic}
@@ -349,7 +228,7 @@ export function SearchOverlay({
           </div>
         )}
 
-        <div style={listWrap}>
+        <div className="ec-search-list">
           {!truncated && (
             <EmptyState
               icon={<EmptySearchIcon />}
@@ -359,14 +238,10 @@ export function SearchOverlay({
             />
           )}
           {truncated && loading && (
-            <p style={{ color: "var(--ec-text-dim)", fontSize: "var(--ec-text-sm)", padding: "var(--ec-space-3) var(--ec-space-3)", margin: 0 }}>
-              Ищу…
-            </p>
+            <p className="ec-search-hint">Ищу…</p>
           )}
           {truncated && !loading && error && (
-            <p style={{ color: "var(--ec-danger)", fontSize: "var(--ec-text-sm)", padding: "var(--ec-space-3) var(--ec-space-3)", margin: 0 }}>
-              {error}
-            </p>
+            <p className="ec-search-hint ec-search-hint--error">{error}</p>
           )}
           {truncated && !loading && !error && totalHits === 0 && (
             <EmptyState
@@ -467,28 +342,14 @@ function SemanticList({
 }) {
   if (loading) {
     return (
-      <p
-        style={{
-          color: "var(--ec-text-dim)",
-          fontSize: "var(--ec-text-sm)",
-          padding: "var(--ec-space-3) var(--ec-space-3)",
-          margin: 0,
-        }}
-      >
+      <p className="ec-search-hint">
         Ищу по смыслу…
       </p>
     );
   }
   if (error) {
     return (
-      <p
-        style={{
-          color: "var(--ec-danger)",
-          fontSize: "var(--ec-text-sm)",
-          padding: "var(--ec-space-3) var(--ec-space-3)",
-          margin: 0,
-        }}
-      >
+      <p className="ec-search-hint ec-search-hint--error">
         {error}
       </p>
     );
@@ -505,32 +366,19 @@ function SemanticList({
   }
   if (hits.length === 0) {
     return (
-      <p
-        style={{
-          color: "var(--ec-text-dim)",
-          fontSize: "var(--ec-text-sm)",
-          padding: "var(--ec-space-3) var(--ec-space-3)",
-          margin: 0,
-        }}
-      >
+      <p className="ec-search-hint">
         Введи хотя бы 3 символа.
       </p>
     );
   }
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+    <div className="ec-search-results">
       {hits.map((h) => (
         <button
           key={h.messageId}
           type="button"
           onClick={() => onSelect(h)}
-          style={hitRow}
-          onMouseEnter={(e) =>
-            (e.currentTarget.style.background = "var(--ec-surface-2)")
-          }
-          onMouseLeave={(e) =>
-            (e.currentTarget.style.background = "transparent")
-          }
+          className="ec-search-hit"
         >
           <Avatar url={h.avatar} name={h.displayName ?? "?"} size={28} />
           <span
@@ -618,15 +466,13 @@ function MessageList({
 }) {
   if (hits.length === 0) return null;
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+    <div className="ec-search-results">
       {hits.map((h) => (
         <button
           key={h.id}
           type="button"
           onClick={() => onSelect(h)}
-          style={hitRow}
-          onMouseEnter={(e) => (e.currentTarget.style.background = "var(--ec-surface-2)")}
-          onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+          className="ec-search-hit"
         >
           <Avatar url={h.user.avatar} name={h.user.displayName} size={28} />
           <span style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
@@ -679,7 +525,7 @@ function ActionList({
 }) {
   if (hits.length === 0) return null;
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+    <div className="ec-search-results">
       {hits.map((h) => {
         const meta = ACTION_TYPE_META[h.type];
         const done = h.status === "DONE";
@@ -688,9 +534,7 @@ function ActionList({
             key={h.id}
             type="button"
             onClick={() => onSelect(h)}
-            style={hitRow}
-            onMouseEnter={(e) => (e.currentTarget.style.background = "var(--ec-surface-2)")}
-            onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+            className="ec-search-hit"
           >
             <span
               aria-hidden
@@ -780,7 +624,7 @@ function FileList({
 }) {
   if (hits.length === 0) return null;
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+    <div className="ec-search-results">
       {hits.map((h) => {
         const isImage = h.mimeType.startsWith("image/");
         const previewUrl = isImage ? resolveAssetUrl(h.thumbnailUrl ?? h.url) : null;
@@ -789,9 +633,7 @@ function FileList({
             key={h.id}
             type="button"
             onClick={() => onSelect(h)}
-            style={hitRow}
-            onMouseEnter={(e) => (e.currentTarget.style.background = "var(--ec-surface-2)")}
-            onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+            className="ec-search-hit"
           >
             <span
               aria-hidden
