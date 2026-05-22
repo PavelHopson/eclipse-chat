@@ -5,7 +5,7 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.2.0** (Galaxy/Clock/Theme/Deadline effects +
+**Текущая версия:** **v1.2.1** (Galaxy/Clock/Theme/Deadline effects +
 UX-copy + дизайн-полиш + редизайн WS-1 + системный редизайн ЗАКРЫТ 8/8 +
 светлая тема SOLAR (Notion-crisp) + фикс AuthScreen + смена пароля +
 визуальный передел AppShell ЗАКРЫТ 4/4 + топбар-полиш +
@@ -21,10 +21,11 @@ redesign slice 6 — SearchOverlay +
 redesign slice 7 — ServerHubModal +
 фикс version-дрейфа `/api/version` + smoke-тавтологии +
 logout-надёжность + identity-фикс пресетов + topbar на `.ec-icon-btn` +
-трек R1 — фирменный media-плеер «Signal Desk» v2).
+трек R1 — media-плеер «Signal Desk» v2 +
+рекомпозиция каркаса — командный хребет + центр-бар).
 
-> **v1.1.90 … v1.1.98 задеплоены — в проде v1.1.98. v1.1.99 … v1.2.0
-> запушены и ждут approve-gate Pavel'я в GitHub Actions (environment
+> **v1.1.90 … v1.2.0 задеплоены — в проде v1.2.0. v1.2.1 запушен и
+> ждёт approve-gate Pavel'я в GitHub Actions (environment
 > `production`). Деплой НЕ автоматический по пушу.**
 
 > **⚠️ ЦВЕТ-ПРАВИЛО ИЗМЕНЕНО (бриф Pavel'я 20.05.2026).** Прежнее
@@ -33,8 +34,23 @@ logout-надёжность + identity-фикс пресетов + topbar на `
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.2.0:**
+**Изменения v1.1.25 → v1.2.1:**
 
+- **v1.2.1** — **рекомпозиция каркаса: командный хребет + центр-бар**
+  (трек R, shell). Полноширинный SaaS-топбар убран — самый
+  generic-элемент композиции. Бренд + переключатель пространств
+  уехали в левую колонку: `brandbar` + список каналов теперь одна
+  вертикаль — «командный хребет» с общей правой кромкой и тенью.
+  Глобальный бар сжат до центра над чатом (`cmdbar`): локация
+  слева, действия справа. Грид `.ec-shell` пересобран —
+  `"brand cmd cmd" / "channels chat members"`, асимметрия (хребет
+  272px шире правого рейла 248px). Sci-fi-breadcrumb «УЗЕЛ //»
+  (mono + caps + tracking) убран → спокойный `.ec-shell__loc`
+  (пространство приглушено, канал — акцент). Wordmark «ECLIPSE_CHAT»
+  убран из chrome — компактная бренд-марка как home-кнопка.
+  Дубль-правила `.ec-shell__top` ретаргечены на brandbar/cmdbar
+  (без нового слоя поверх старого). Responsive: все breakpoints +
+  mobile `"brand cmd"`. SOLAR-варианты. Сборка зелёная (tsc + vite).
 - **v1.2.0** — **трек R1: фирменный media-плеер «Signal Desk» v2**
   (ТЗ Pavel'я — плеер ощущался «utilitarian browser-feel»).
   Root cause: плеер был набором стандартных медиа-виджетов под

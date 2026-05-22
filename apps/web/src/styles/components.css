@@ -400,7 +400,7 @@
     var(--ec-bg);
 }
 
-.ec-shell__top {
+.ec-shell__cmdbar {
   background:
     linear-gradient(180deg, hsl(220 18% 5% / 0.96), hsl(220 18% 4% / 0.94)) !important;
   border-bottom-color: hsl(0 0% 100% / 0.07) !important;
@@ -680,7 +680,7 @@
   z-index: 1;
 }
 
-.ec-shell__top {
+.ec-shell__cmdbar {
   overflow: hidden;
   backdrop-filter: blur(18px) saturate(140%);
   -webkit-backdrop-filter: blur(18px) saturate(140%);
@@ -728,14 +728,8 @@
     0 0 18px hsl(225 14% 60% / 0.08);
 }
 
-/* v1.1.56 redesign §7 — calm tactical topbar. Три смысловые зоны
-   (left / center / right) через grid; breadcrumb центрирован. */
-.ec-shell__top-center {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 0;
-}
+/* v1.2.1 (R2) — `.ec-shell__top-center` убран: топбар пересобран,
+   локация теперь левый якорь cmdbar'а (`.ec-shell__loc`). */
 
 /* v1.1.99 — utility-иконки топбара живут на .ec-icon-btn: ghost в
    покое → surface на hover → accent на [aria-pressed]. Прежние
@@ -794,6 +788,7 @@
   }
 }
 
+.ec-shell__brandbar,
 .ec-shell__channels,
 .ec-shell__members {
   backdrop-filter: blur(18px) saturate(130%);
@@ -802,6 +797,9 @@
     linear-gradient(180deg, hsl(216 24% 7% / 0.90), hsl(216 24% 5% / 0.96)) !important;
 }
 
+/* Хребет (brandbar + channels) — общая правая кромка и тень: единая
+   приподнятая вертикаль. */
+.ec-shell__brandbar,
 .ec-shell__channels {
   box-shadow:
     inset -1px 0 0 hsl(225 14% 72% / 0.07),
@@ -1525,24 +1523,62 @@
 /* --- Вынос inline-style консолей AppShell-каркаса в классы.
    Только layout-свойства (декор surface'ов — за блоками выше). -- */
 
-/* Топбар: три смысловые зоны через grid (left / center / right). */
-.ec-shell__top {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: var(--ec-space-3);
-  padding: 0 var(--ec-space-4);
-}
-.ec-shell__top-left {
+/* v1.2.1 (R2) — каркас пересобран: полноширинный SaaS-топбар убран.
+   Слева — командный хребет (brandbar + channels = одна вертикаль),
+   над чатом — командный бар. Brandbar держит бренд + переключатель
+   пространств; cmdbar держит локацию (слева) и действия (справа). */
+.ec-shell__brandbar {
   display: flex;
   align-items: center;
   gap: var(--ec-space-2);
+  min-width: 0;
+  padding: 0 var(--ec-space-3);
+}
+.ec-shell__cmdbar {
+  display: flex;
+  align-items: center;
+  gap: var(--ec-space-3);
+  padding: 0 var(--ec-space-4);
 }
 .ec-shell__top-actions {
   display: flex;
   align-items: center;
   gap: var(--ec-space-1);
+  margin-left: auto;
+  flex-shrink: 0;
 }
+
+/* Локация — спокойный лейбл «где я» в cmdbar (заменил sci-fi
+   breadcrumb «УЗЕЛ //»). Пространство приглушено, канал — акцент. */
+.ec-shell__loc {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  font-size: var(--ec-text-sm);
+}
+.ec-shell__loc-space {
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ec-text-muted);
+}
+.ec-shell__loc-sep {
+  flex-shrink: 0;
+  color: var(--ec-text-dim);
+}
+.ec-shell__loc-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ec-text-strong);
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+.ec-shell__loc-hash { color: var(--ec-accent); }
 
 /* Бренд-кнопка «домой». */
 .ec-shell__brand-home {

@@ -297,7 +297,8 @@
 
   /* ---- Component-level slots ----------------------------------- */
   --ec-header-height:       54px;
-  --ec-sidebar-width:       248px;
+  --ec-spine-width:         272px;    /* левый командный хребет (R2) */
+  --ec-sidebar-width:       248px;    /* mobile-drawer ширина каналов */
   --ec-members-width:       248px;
   --ec-composer-min-height: 48px;
 
@@ -553,40 +554,10 @@
   }
 }
 
-/* Cyber breadcrumb — monospace «УЗЕЛ //» framing для topbar path. */
-.ec-breadcrumb-cyber {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--ec-space-2);
-  margin-left: var(--ec-space-4);
-  padding-left: var(--ec-space-4);
-  border-left: 1px solid var(--ec-border-subtle);
-  font-family: var(--ec-font-mono, ui-monospace, monospace);
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--ec-text-dim);
-  min-width: 0;
-  overflow: hidden;
-}
-.ec-breadcrumb-cyber__label { color: var(--ec-text-dim); }
-.ec-breadcrumb-cyber__name {
-  color: var(--ec-text);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.ec-breadcrumb-cyber__sep { opacity: 0.45; }
-.ec-breadcrumb-cyber__active {
-  color: var(--ec-accent);
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+/* v1.2.1 (R2) — `.ec-breadcrumb-cyber` («УЗЕЛ //», mono + caps +
+   tracking 0.12em) удалён: sci-fi-театр в chrome (brief §3.6).
+   Локация теперь — спокойный `.ec-shell__loc` в командном баре
+   (см. components.css). */
 
 /* Shimmer-sweep — diagonal hover gradient sweep на full-width CTA. */
 .ec-shimmer-sweep {

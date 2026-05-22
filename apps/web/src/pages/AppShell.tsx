@@ -644,9 +644,10 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
 
   return (
     <div className={shellClass}>
-      <header className="ec-shell__top">
-        <div className="ec-shell__top-left">
-          {isMobile && (
+      {/* Командный хребет — шапка: бренд + переключатель пространств.
+          Визуально сливается с колонкой каналов ниже в одну вертикаль. */}
+      <div className="ec-shell__brandbar">
+        {isMobile && (
             <button
               type="button"
               className="ec-shell__drawer-btn ec-shell__drawer-btn--nav"
@@ -676,7 +677,6 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             title="Главная"
           >
             <span className="ec-brand-mark" aria-hidden />
-            <span className="ec-shell__brand-title">ECLIPSE_CHAT</span>
           </button>
           {/* v1.1.51: бывший far-left server-rail свёрнут в topbar-control. */}
           <ServerSwitcher
@@ -714,26 +714,28 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             maxOwnedServers={serverLimits.maxOwnedServers}
             compact={isMobile}
           />
-        </div>
-        <div className="ec-shell__top-center">
-          {homeOpen ? (
-            <span className="ec-shell__breadcrumb ec-breadcrumb-cyber">
-              <span className="ec-breadcrumb-cyber__label">УЗЕЛ //</span>
-              <span className="ec-breadcrumb-cyber__active">ГЛАВНАЯ</span>
-            </span>
-          ) : activeServer && (
-            <span className="ec-shell__breadcrumb ec-breadcrumb-cyber">
-              <span className="ec-breadcrumb-cyber__label">УЗЕЛ //</span>
-              <span className="ec-breadcrumb-cyber__name">{activeServer.name}</span>
-              {selectedChannel && (
-                <>
-                  <span className="ec-breadcrumb-cyber__sep">/</span>
-                  <span className="ec-breadcrumb-cyber__active">#{selectedChannel.name}</span>
-                </>
-              )}
-            </span>
-          )}
-        </div>
+      </div>
+
+      {/* Командный бар над чатом: локация (слева) · действия (справа). */}
+      <header className="ec-shell__cmdbar">
+        {homeOpen ? (
+          <div className="ec-shell__breadcrumb ec-shell__loc">
+            <span className="ec-shell__loc-name">Главная</span>
+          </div>
+        ) : activeServer ? (
+          <div className="ec-shell__breadcrumb ec-shell__loc">
+            <span className="ec-shell__loc-space">{activeServer.name}</span>
+            {selectedChannel && (
+              <>
+                <span className="ec-shell__loc-sep">/</span>
+                <span className="ec-shell__loc-name">
+                  <span className="ec-shell__loc-hash">#</span>
+                  {selectedChannel.name}
+                </span>
+              </>
+            )}
+          </div>
+        ) : null}
         <div className="ec-shell__top-actions">
           {/* v1.1.1+v1.1.7 telemetry. v1.1.38 (WS-1 «Облегчение»):
               ПАМ/ЦП свёрнуты — видны по hover группы ИЛИ авто-разворот
