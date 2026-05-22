@@ -71,7 +71,7 @@
   color: var(--ec-accent-text);
   border-color: var(--ec-accent);
   font-weight: 600;
-  box-shadow: 0 0 0 1px hsl(258 70% 70% / 0.14), 0 10px 28px hsl(258 70% 35% / 0.14);
+  box-shadow: 0 0 0 1px hsl(225 14% 70% / 0.14), 0 10px 28px hsl(225 14% 35% / 0.14);
 }
 .ec-btn--primary:hover {
   background: linear-gradient(135deg, var(--ec-accent-hover), hsl(168 60% 54%));
@@ -134,7 +134,7 @@
 .ec-field:focus {
   background: var(--ec-input-bg-focus);
   border-color: var(--ec-accent);
-  box-shadow: 0 0 0 2px var(--ec-accent-soft), 0 0 18px hsl(258 70% 60% / 0.12);
+  box-shadow: 0 0 0 2px var(--ec-accent-soft), 0 0 18px hsl(258 90% 66% / 0.12);
   outline: none;
 }
 
@@ -357,7 +357,7 @@
 .ec-shell {
   background:
     radial-gradient(ellipse 34rem 26rem at 82% 18%, hsl(220 92% 68% / 0.08), transparent 62%),
-    radial-gradient(ellipse 28rem 20rem at 8% 94%, hsl(258 70% 60% / 0.06), transparent 58%),
+    radial-gradient(ellipse 28rem 20rem at 8% 94%, hsl(225 14% 60% / 0.06), transparent 58%),
     var(--ec-bg);
 }
 
@@ -365,7 +365,7 @@
   background:
     linear-gradient(180deg, hsl(220 18% 5% / 0.96), hsl(220 18% 4% / 0.94)) !important;
   border-bottom-color: hsl(0 0% 100% / 0.07) !important;
-  box-shadow: 0 1px 0 hsl(258 70% 60% / 0.06);
+  box-shadow: 0 1px 0 hsl(225 14% 60% / 0.06);
 }
 
 .ec-shell__channels,
@@ -399,8 +399,8 @@
 
 .ec-shell__brand-home:hover {
   background: var(--ec-surface-2) !important;
-  border-color: hsl(258 70% 60% / 0.22) !important;
-  box-shadow: 0 0 22px hsl(258 70% 60% / 0.1);
+  border-color: hsl(225 14% 60% / 0.22) !important;
+  box-shadow: 0 0 22px hsl(225 14% 60% / 0.1);
 }
 
 .ec-shell__brand-home:active {
@@ -414,7 +414,7 @@
   overflow: auto;
   padding: var(--ec-space-6);
   background:
-    radial-gradient(circle at 76% 18%, hsl(258 70% 60% / 0.12), transparent 34%),
+    radial-gradient(circle at 76% 18%, hsl(225 14% 60% / 0.12), transparent 34%),
     radial-gradient(circle at 18% 82%, hsl(220 92% 68% / 0.08), transparent 36%);
 }
 
@@ -449,7 +449,7 @@
   border-radius: var(--ec-radius-md);
   background:
     linear-gradient(180deg, hsl(222 20% 10% / 0.88), hsl(222 20% 7% / 0.78)),
-    radial-gradient(circle at 0% 0%, hsl(258 70% 60% / 0.18), transparent 42%);
+    radial-gradient(circle at 0% 0%, hsl(225 14% 60% / 0.18), transparent 42%);
   box-shadow:
     inset 0 1px 0 hsl(0 0% 100% / 0.05),
     0 24px 80px hsl(220 72% 3% / 0.38);
@@ -567,7 +567,7 @@
   place-items: center;
   width: 44px;
   height: 44px;
-  border: 1px solid hsl(258 70% 68% / 0.22);
+  border: 1px solid hsl(225 14% 68% / 0.22);
   border-radius: var(--ec-radius-md);
   background: hsl(200 50% 12% / 0.22);
   color: hsl(258 75% 72%);
@@ -647,9 +647,9 @@
   -webkit-backdrop-filter: blur(18px) saturate(140%);
   background:
     linear-gradient(180deg, hsl(218 24% 8% / 0.88), hsl(218 24% 5% / 0.82)) !important;
-  border-bottom-color: hsl(258 70% 72% / 0.10) !important;
+  border-bottom-color: hsl(225 14% 72% / 0.10) !important;
   box-shadow:
-    0 1px 0 hsl(258 70% 60% / 0.10),
+    0 1px 0 hsl(225 14% 60% / 0.10),
     0 16px 40px hsl(210 70% 2% / 0.28) !important;
 }
 
@@ -660,7 +660,7 @@
   text-transform: uppercase;
   background:
     linear-gradient(180deg, hsl(213 26% 11% / 0.52), hsl(213 26% 7% / 0.34)) !important;
-  border-color: hsl(258 70% 72% / 0.10) !important;
+  border-color: hsl(225 14% 72% / 0.10) !important;
 }
 
 .ec-shell__brand-title {
@@ -671,7 +671,7 @@
 .ec-shell__drawer-btn,
 .ec-shell__user-chip {
   background: hsl(214 22% 9% / 0.48) !important;
-  border-color: hsl(258 70% 72% / 0.09) !important;
+  border-color: hsl(225 14% 72% / 0.09) !important;
   box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.035);
 }
 
@@ -679,10 +679,10 @@
 .ec-shell__drawer-btn:hover,
 .ec-shell__user-chip:hover {
   background: hsl(214 26% 13% / 0.72) !important;
-  border-color: hsl(258 70% 60% / 0.22) !important;
+  border-color: hsl(225 14% 60% / 0.22) !important;
   box-shadow:
     inset 0 1px 0 hsl(0 0% 100% / 0.06),
-    0 0 18px hsl(258 70% 60% / 0.08);
+    0 0 18px hsl(225 14% 60% / 0.08);
 }
 
 /* v1.1.56 redesign §7 — calm tactical topbar. Три смысловые зоны
@@ -713,19 +713,19 @@
 
 .ec-shell__channels {
   box-shadow:
-    inset -1px 0 0 hsl(258 70% 72% / 0.07),
+    inset -1px 0 0 hsl(225 14% 72% / 0.07),
     18px 0 48px hsl(210 70% 2% / 0.18) !important;
 }
 
 .ec-shell__channels > aside {
   background: transparent !important;
-  border-right-color: hsl(258 70% 72% / 0.07) !important;
+  border-right-color: hsl(225 14% 72% / 0.07) !important;
 }
 
 .ec-shell__channels > aside > header {
   background:
     linear-gradient(180deg, hsl(214 26% 10% / 0.62), hsl(214 26% 7% / 0.36)) !important;
-  border-bottom-color: hsl(258 70% 72% / 0.075) !important;
+  border-bottom-color: hsl(225 14% 72% / 0.075) !important;
   box-shadow: inset 0 -1px 0 hsl(0 0% 100% / 0.02);
 }
 
@@ -743,8 +743,8 @@
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at 0% 50%, hsl(258 70% 60% / 0.15), transparent 42%),
-    linear-gradient(90deg, hsl(258 70% 60% / 0.08), transparent 70%);
+    radial-gradient(circle at 0% 50%, hsl(225 14% 60% / 0.15), transparent 42%),
+    linear-gradient(90deg, hsl(225 14% 60% / 0.08), transparent 70%);
   opacity: 0;
   transition: opacity var(--ec-dur-fast) var(--ec-ease);
   pointer-events: none;
@@ -752,7 +752,7 @@
 
 .ec-channel-item:hover {
   background: hsl(214 28% 13% / 0.64);
-  border-color: hsl(258 70% 72% / 0.08);
+  border-color: hsl(225 14% 72% / 0.08);
 }
 
 .ec-channel-item:hover::after,
@@ -762,15 +762,15 @@
 
 .ec-channel-item--active {
   background:
-    linear-gradient(90deg, hsl(258 70% 60% / 0.15), hsl(214 28% 14% / 0.76) 42%, hsl(214 28% 12% / 0.72)) !important;
-  border-color: hsl(258 70% 60% / 0.18);
+    linear-gradient(90deg, hsl(258 90% 66% / 0.15), hsl(214 28% 14% / 0.76) 42%, hsl(214 28% 12% / 0.72)) !important;
+  border-color: hsl(258 90% 66% / 0.18);
   box-shadow:
     inset 0 1px 0 hsl(0 0% 100% / 0.04),
-    0 0 22px hsl(258 70% 60% / 0.06);
+    0 0 22px hsl(258 90% 66% / 0.06);
 }
 
 .ec-channel-item--active::before {
-  box-shadow: 0 0 14px hsl(258 70% 60% / 0.55);
+  box-shadow: 0 0 14px hsl(258 90% 66% / 0.55);
 }
 
 .ec-chat-header {
@@ -780,7 +780,7 @@
     linear-gradient(180deg, hsl(216 24% 7% / 0.82), hsl(216 24% 5% / 0.72)) !important;
   backdrop-filter: blur(18px) saturate(130%);
   -webkit-backdrop-filter: blur(18px) saturate(130%);
-  border-bottom-color: hsl(258 70% 72% / 0.08) !important;
+  border-bottom-color: hsl(225 14% 72% / 0.08) !important;
   box-shadow: 0 16px 38px hsl(210 70% 2% / 0.18);
 }
 
@@ -794,14 +794,14 @@
 .ec-shell__chat {
   position: relative;
   background:
-    radial-gradient(ellipse 40rem 26rem at 62% 4%, hsl(258 70% 60% / 0.045), transparent 62%),
+    radial-gradient(ellipse 40rem 26rem at 62% 4%, hsl(225 14% 60% / 0.045), transparent 62%),
     radial-gradient(ellipse 36rem 30rem at 96% 86%, hsl(252 70% 60% / 0.045), transparent 64%),
     linear-gradient(180deg, hsl(216 24% 5% / 0.72), hsl(216 24% 4% / 0.94)) !important;
 }
 
 .ec-message-list {
   position: relative;
-  scrollbar-color: hsl(258 70% 72% / 0.20) transparent;
+  scrollbar-color: hsl(225 14% 72% / 0.20) transparent;
 }
 
 .ec-message-list-shell {
@@ -925,10 +925,10 @@
 .ec-message-actions {
   background:
     linear-gradient(180deg, hsl(214 28% 13% / 0.94), hsl(214 28% 9% / 0.94)) !important;
-  border-color: hsl(258 70% 72% / 0.12) !important;
+  border-color: hsl(225 14% 72% / 0.12) !important;
   box-shadow:
     var(--ec-shadow-md),
-    0 0 18px hsl(258 70% 60% / 0.08) !important;
+    0 0 18px hsl(225 14% 60% / 0.08) !important;
   backdrop-filter: blur(14px) saturate(140%);
   -webkit-backdrop-filter: blur(14px) saturate(140%);
 }
@@ -947,10 +947,10 @@
   width: min(480px, 100%);
   overflow: hidden;
   padding: 0;
-  border: 1px solid hsl(258 70% 72% / 0.12);
+  border: 1px solid hsl(225 14% 72% / 0.12);
   border-radius: var(--ec-radius-lg);
   background:
-    radial-gradient(circle at 18% 0%, hsl(258 70% 60% / 0.12), transparent 44%),
+    radial-gradient(circle at 18% 0%, hsl(225 14% 60% / 0.12), transparent 44%),
     var(--ec-surface-2);
   color: var(--ec-text);
   cursor: zoom-in;
@@ -1007,7 +1007,7 @@
   justify-content: space-between;
   gap: 10px;
   padding: 0.45rem 0.62rem;
-  border: 1px solid hsl(258 70% 72% / 0.12);
+  border: 1px solid hsl(225 14% 72% / 0.12);
   border-radius: var(--ec-radius-md);
   background: hsl(214 28% 5% / 0.62);
   color: var(--ec-text);
@@ -1035,10 +1035,10 @@
   gap: 10px;
   width: min(500px, 100%);
   padding: 0.65rem;
-  border: 1px solid hsl(258 70% 72% / 0.12);
+  border: 1px solid hsl(225 14% 72% / 0.12);
   border-radius: var(--ec-radius-lg);
   background:
-    radial-gradient(circle at 0% 0%, hsl(258 70% 60% / 0.10), transparent 42%),
+    radial-gradient(circle at 0% 0%, hsl(225 14% 60% / 0.10), transparent 42%),
     linear-gradient(180deg, hsl(214 28% 12% / 0.88), hsl(214 28% 8% / 0.88));
   box-shadow: 0 12px 30px hsl(210 70% 2% / 0.18);
 }
@@ -1054,7 +1054,7 @@
   place-items: center;
   border: 1px solid hsl(258 86% 62% / 0.18);
   border-radius: 999px;
-  background: hsl(258 70% 60% / 0.10);
+  background: hsl(225 14% 60% / 0.10);
   color: hsl(258 86% 72%);
   box-shadow: inset 0 0 18px hsl(258 86% 62% / 0.08);
 }
@@ -1092,7 +1092,7 @@
   height: 32px;
   display: grid;
   place-items: center;
-  border: 1px solid hsl(258 70% 72% / 0.12);
+  border: 1px solid hsl(225 14% 72% / 0.12);
   border-radius: var(--ec-radius-md);
   color: var(--ec-text-muted);
   text-decoration: none;
@@ -1112,7 +1112,7 @@
   position: relative;
   background:
     linear-gradient(180deg, transparent, hsl(216 24% 4% / 0.96) 32%) !important;
-  border-top: 1px solid hsl(258 70% 72% / 0.065);
+  border-top: 1px solid hsl(225 14% 72% / 0.065);
 }
 
 .ec-composer::before {
@@ -1122,7 +1122,7 @@
   right: var(--ec-space-5);
   top: 0;
   height: 1px;
-  background: linear-gradient(90deg, transparent, hsl(258 70% 60% / 0.34), transparent);
+  background: linear-gradient(90deg, transparent, hsl(225 14% 60% / 0.34), transparent);
   opacity: 0.8;
 }
 
@@ -1135,7 +1135,7 @@
     hsl(216 24% 10% / 0.55) !important;
   backdrop-filter: blur(20px) saturate(140%);
   -webkit-backdrop-filter: blur(20px) saturate(140%);
-  border-color: hsl(258 70% 72% / 0.10) !important;
+  border-color: hsl(225 14% 72% / 0.10) !important;
   box-shadow:
     inset 0 1px 0 hsl(0 0% 100% / 0.04),
     0 14px 36px -10px hsl(210 70% 2% / 0.5);
@@ -1201,7 +1201,7 @@
 
 .ec-voice-recorder-bar button {
   padding: 0.35rem 0.6rem;
-  border: 1px solid hsl(258 70% 72% / 0.12);
+  border: 1px solid hsl(225 14% 72% / 0.12);
   border-radius: var(--ec-radius-md);
   background: hsl(214 28% 6% / 0.42);
   color: var(--ec-text-muted);
@@ -1235,7 +1235,7 @@
 .ec-home {
   max-width: none !important;
   background:
-    radial-gradient(ellipse 44rem 30rem at 74% 10%, hsl(258 70% 60% / 0.13), transparent 62%),
+    radial-gradient(ellipse 44rem 30rem at 74% 10%, hsl(225 14% 60% / 0.13), transparent 62%),
     radial-gradient(ellipse 34rem 24rem at 18% 82%, hsl(32 100% 64% / 0.055), transparent 62%),
     linear-gradient(180deg, hsl(216 24% 5% / 0.18), transparent) !important;
 }
@@ -1250,11 +1250,11 @@
   position: relative;
   overflow: hidden;
   padding: var(--ec-space-5);
-  border: 1px solid hsl(258 70% 72% / 0.12);
+  border: 1px solid hsl(225 14% 72% / 0.12);
   border-radius: var(--ec-radius-2xl);
   background:
     radial-gradient(circle at 88% 18%, hsl(32 100% 64% / 0.10), transparent 26%),
-    radial-gradient(circle at 6% 0%, hsl(258 70% 60% / 0.16), transparent 42%),
+    radial-gradient(circle at 6% 0%, hsl(225 14% 60% / 0.16), transparent 42%),
     linear-gradient(180deg, hsl(216 24% 10% / 0.84), hsl(216 24% 7% / 0.72));
   box-shadow: var(--ec-atmos-strong);
 }
@@ -1317,12 +1317,12 @@
 }
 
 .ec-home-quick-actions {
-  border-top-color: hsl(258 70% 72% / 0.10) !important;
+  border-top-color: hsl(225 14% 72% / 0.10) !important;
 }
 
 .ec-shell__members {
   box-shadow:
-    inset 1px 0 0 hsl(258 70% 72% / 0.07),
+    inset 1px 0 0 hsl(225 14% 72% / 0.07),
     -18px 0 52px hsl(210 70% 2% / 0.20) !important;
 }
 

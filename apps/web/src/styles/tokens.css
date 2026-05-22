@@ -199,7 +199,7 @@
                             0 0 0 1px hsl(210 15% 18% / 0.6);
   --ec-shadow-modal:        0 30px 80px hsl(210 35% 2% / 0.65),
                             0 0 0 1px var(--ec-border-default),
-                            inset 0 1px 0 hsl(258 70% 60% / 0.06);
+                            inset 0 1px 0 hsl(225 14% 60% / 0.06);
   --ec-glow-active:         var(--ec-accent-glow);
 
   /*
@@ -212,10 +212,10 @@
    *   --ec-elev-1    — карточка покоя: hairline + мягкая глубина
    *   --ec-elev-2    — карточка hover/raised: cool-tinted край + глубже
    */
-  --ec-edge:                0 0 0 1px hsl(258 50% 82% / 0.05);
-  --ec-elev-1:              0 0 0 1px hsl(258 50% 82% / 0.05),
+  --ec-edge:                0 0 0 1px hsl(220 14% 82% / 0.05);
+  --ec-elev-1:              0 0 0 1px hsl(220 14% 82% / 0.05),
                             0 10px 28px -14px hsl(210 60% 2% / 0.6);
-  --ec-elev-2:              0 0 0 1px hsl(258 70% 62% / 0.14),
+  --ec-elev-2:              0 0 0 1px hsl(220 14% 62% / 0.14),
                             0 18px 44px -16px hsl(210 60% 2% / 0.72);
 
   /*
@@ -255,7 +255,7 @@
                             0 0 0 1px hsl(212 24% 16% / 0.4);
   --ec-atmos-strong:        0 28px 72px -22px hsl(210 40% 2% / 0.75),
                             0 0 0 1px hsl(212 24% 18% / 0.5),
-                            inset 0 1px 0 hsl(258 70% 60% / 0.05);
+                            inset 0 1px 0 hsl(225 14% 60% / 0.05);
 
   /* Ambient gradients для empty-states и hero блоков */
   --ec-gradient-aurora:     radial-gradient(ellipse 90% 70% at 20% 0%,
