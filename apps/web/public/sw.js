@@ -19,7 +19,7 @@
  */
 
 // v1.0: bumped per release для гарантированного refresh новых JS chunks.
-const SW_VERSION = "eclipse-v1.1.99";
+const SW_VERSION = "eclipse-v1.2.0";
 const APP_SHELL_CACHE = `${SW_VERSION}-shell`;
 const ASSETS_CACHE = `${SW_VERSION}-assets`;
 const UPLOADS_CACHE = `${SW_VERSION}-uploads`;

@@ -54,6 +54,7 @@ export function MusicExpandModal({
   const videoElRef = useRef<HTMLVideoElement | null>(null);
   const [durationMs, setDurationMs] = useState<number | null>(null);
   const [dragFrac, setDragFrac] = useState<number | null>(null);
+  const [hoverFrac, setHoverFrac] = useState<number | null>(null);
   const [queueTracks, setQueueTracks] = useState<
     { id: string; filename: string }[]
   >([]);
@@ -129,13 +130,6 @@ export function MusicExpandModal({
     return out;
   }, [track?.waveformPeaks]);
 
-  const reduceMotion = useMemo(
-    () =>
-      typeof window !== "undefined" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches,
-    [],
-  );
-
   const isHost = session.host.id === currentUserId;
   const seekable = isHost && durationMs != null && durationMs > 0 && !!track;
 
@@ -144,6 +138,7 @@ export function MusicExpandModal({
       ? Math.min(1, Math.max(0, derivedPositionMs / durationMs))
       : 0;
   const progress = dragFrac != null ? dragFrac : basePos;
+  const previewFrac = dragFrac != null ? dragFrac : hoverFrac;
 
   const fracFromClientX = (clientX: number): number => {
     const el = waveformRef.current;
@@ -158,8 +153,10 @@ export function MusicExpandModal({
     setDragFrac(fracFromClientX(e.clientX));
   };
   const onWavePointerMove = (e: ReactPointerEvent<SVGSVGElement>) => {
-    if (dragFrac == null) return;
-    setDragFrac(fracFromClientX(e.clientX));
+    if (!seekable) return;
+    const f = fracFromClientX(e.clientX);
+    if (dragFrac != null) setDragFrac(f);
+    else setHoverFrac(f);
   };
   const onWavePointerUp = (e: ReactPointerEvent<SVGSVGElement>) => {
     if (dragFrac == null || durationMs == null) return;
@@ -199,11 +196,13 @@ export function MusicExpandModal({
             </div>
           </div>
           <span className="ec-player-expand__clock">
-            {formatClock(
-              dragFrac != null && durationMs
-                ? dragFrac * durationMs
-                : derivedPositionMs,
-            )}
+            <b>
+              {formatClock(
+                dragFrac != null && durationMs
+                  ? dragFrac * durationMs
+                  : derivedPositionMs,
+              )}
+            </b>
             {durationMs ? ` / ${formatClock(durationMs)}` : ""}
           </span>
         </div>
@@ -240,57 +239,80 @@ export function MusicExpandModal({
             </>
           ) : (
             <>
-              {/* Большая waveform — сыгранные bars accent + glow, остальные
-                  приглушены. Host кликает/тащит → server-side seek. */}
-              <svg
-                ref={waveformRef}
-                className="ec-player-expand__wave"
-                viewBox={`0 0 ${peaks.length * 4} 100`}
-                preserveAspectRatio="none"
-                style={{ cursor: seekable ? "pointer" : "default" }}
-                onPointerDown={onWavePointerDown}
-                onPointerMove={onWavePointerMove}
-                onPointerUp={onWavePointerUp}
-                onPointerCancel={() => setDragFrac(null)}
-              >
-                {peaks.map((p, i) => {
-                  const h = Math.max(2, p);
-                  const y = (100 - h) / 2;
-                  const played = i / peaks.length <= progress;
-                  return (
-                    <rect
-                      key={i}
-                      x={i * 4 + 0.5}
-                      y={y}
-                      width={3}
-                      height={h}
-                      rx={1.5}
-                      fill={played ? "var(--ec-accent)" : "var(--ec-text-dim)"}
-                      opacity={played ? 0.96 : 0.4}
-                      style={{
-                        transformBox: "fill-box",
-                        transformOrigin: "center",
-                        animation:
-                          playing && !reduceMotion
-                            ? `ec-wave-pulse ${
-                                0.85 + (i % 6) * 0.13
-                              }s ease-in-out ${-(i % 11) * 0.09}s infinite`
-                            : undefined,
-                      }}
+              {/* Большая waveform — реальные peaks трека: сыгранное в
+                  accent, остальное приглушено. Бары статичны (это
+                  данные, не декор). Единственный «живой» элемент —
+                  playhead: линия + светящийся узел, движется с
+                  прогрессом. Host кликает/тащит → server-side seek;
+                  hover показывает время точки до коммита. */}
+              <div className="ec-player-expand__wave-wrap">
+                <svg
+                  ref={waveformRef}
+                  className="ec-player-expand__wave"
+                  viewBox={`0 0 ${peaks.length * 4} 100`}
+                  preserveAspectRatio="none"
+                  style={{ cursor: seekable ? "pointer" : "default" }}
+                  onPointerDown={onWavePointerDown}
+                  onPointerMove={onWavePointerMove}
+                  onPointerUp={onWavePointerUp}
+                  onPointerCancel={() => setDragFrac(null)}
+                  onPointerLeave={() => setHoverFrac(null)}
+                >
+                  {peaks.map((p, i) => {
+                    const h = Math.max(2, p);
+                    const y = (100 - h) / 2;
+                    const played = i / peaks.length <= progress;
+                    return (
+                      <rect
+                        key={i}
+                        x={i * 4 + 0.5}
+                        y={y}
+                        width={3}
+                        height={h}
+                        rx={1.5}
+                        fill={played ? "var(--ec-accent)" : "var(--ec-text-dim)"}
+                        opacity={played ? 0.96 : 0.36}
+                      />
+                    );
+                  })}
+                  {previewFrac != null && seekable && (
+                    <line
+                      x1={peaks.length * 4 * previewFrac}
+                      y1={0}
+                      x2={peaks.length * 4 * previewFrac}
+                      y2={100}
+                      stroke="var(--ec-text-strong)"
+                      strokeWidth={1.5}
+                      opacity={0.55}
+                      strokeDasharray="3 4"
                     />
-                  );
-                })}
-                {/* playhead */}
-                <line
-                  x1={peaks.length * 4 * progress}
-                  y1={0}
-                  x2={peaks.length * 4 * progress}
-                  y2={100}
-                  stroke="var(--ec-accent)"
-                  strokeWidth={dragFrac != null ? 2.4 : 1.5}
-                  opacity={dragFrac != null ? 1 : 0.85}
-                />
-              </svg>
+                  )}
+                  <line
+                    x1={peaks.length * 4 * progress}
+                    y1={0}
+                    x2={peaks.length * 4 * progress}
+                    y2={100}
+                    stroke="var(--ec-accent)"
+                    strokeWidth={dragFrac != null ? 2.6 : 1.8}
+                    opacity={dragFrac != null ? 1 : 0.9}
+                  />
+                  <circle
+                    cx={peaks.length * 4 * progress}
+                    cy={6}
+                    r={dragFrac != null ? 5 : 4}
+                    fill="var(--ec-accent)"
+                    className="ec-wave-node"
+                  />
+                </svg>
+                {previewFrac != null && durationMs && seekable && (
+                  <div
+                    className="ec-player-expand__wave-tip"
+                    style={{ left: `${previewFrac * 100}%` }}
+                  >
+                    {formatClock(previewFrac * durationMs)}
+                  </div>
+                )}
+              </div>
               {seekable && (
                 <div className="ec-player-expand__hint">
                   Клик или перетаскивание по дорожке — перемотка для всех
@@ -318,6 +340,7 @@ export function MusicExpandModal({
           <button
             type="button"
             className={"ec-player-play ec-player-play--lg" + (playing ? " is-playing" : "")}
+            data-state={playing ? "playing" : "paused"}
             onClick={() => void onTogglePlayPause()}
             title={playing ? "Пауза" : "Воспроизвести"}
             aria-label={playing ? "Пауза" : "Воспроизвести"}

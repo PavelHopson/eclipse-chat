@@ -1,14 +1,22 @@
 /**
  * Eclipse Chat — Media player ("Signal Desk")
  * ============================================================
- * v1.1.91 redesign. Единый фирменный визуальный язык для аудио и
- * видео: мини-плеер в шапке канала, расширенный плеер, видео-плеер.
- * Плеер — не браузерный довесок, а «сигнальная панель» оператора:
- * waveform / equalizer / pulse как сквозной мотив, violet —
- * «живой сигнал», gold — точечная пометка ведущего сессии.
+ * v1.2.0 redesign (трек R1). Фирменный медиа-язык — не браузерный
+ * довесок, а «сигнальная панель» оператора. Сквозные мотивы:
+ *   — timeline с тремя слоями (буфер / сыграно / playhead) и
+ *     hover-предпросмотром времени — плеер «подсказывает», куда
+ *     попадёшь, до коммита перемотки;
+ *   — «живой сигнал»: играющая hero-кнопка дышит и испускает кольцо
+ *     (один осмысленный сигнал, не декоративный шум);
+ *   — radar-ping loader вместо браузерного спиннера;
+ *   — violet — primary-сигнал, gold — точечная пометка ведущего.
  *
- * Все цвета — theme-aware токены: VOID и SOLAR работают без
- * отдельных оверрайдов. См. docs/design/design-brief-v2.md.
+ * Грамматика взаимодействия — общая с .ec-icon-btn: rest ghost →
+ * hover surface+brighten → press crisp. Glow зарезервирован за hero-
+ * play и за live-сигналом, НЕ висит на каждом контроле.
+ *
+ * Все цвета — theme-aware токены: VOID и SOLAR без оверрайдов.
+ * См. docs/design/design-brief-v2.md.
  */
 
 /* ===== Keyframes ============================================ */
@@ -16,16 +24,25 @@
   0%, 100% { transform: scale(1); }
   50%      { transform: scale(1.05); }
 }
-/* Кольцо «живого сигнала» — расходится от играющей кнопки. */
+/* Кольцо «живого сигнала» — расходится от играющей hero-кнопки. */
 @keyframes ec-player-emit {
   0%        { opacity: 0.55; transform: scale(1); }
-  70%, 100% { opacity: 0;    transform: scale(1.9); }
+  70%, 100% { opacity: 0;    transform: scale(1.85); }
 }
-@keyframes ec-player-spin {
-  to { transform: rotate(360deg); }
+/* Radar-ping — концентрические кольца loader'а «ищу сигнал». */
+@keyframes ec-signal-ping {
+  0%   { opacity: 0.7; transform: scale(0.25); }
+  100% { opacity: 0;   transform: scale(1); }
+}
+/* Shimmer по таймлайну, пока длительность/буфер неизвестны. */
+@keyframes ec-scrubber-shimmer {
+  0%   { transform: translateX(-130%); }
+  100% { transform: translateX(330%); }
 }
 
-/* ===== Control button — единый icon-control плеера =========== */
+/* ===== Control button — единый icon-control плеера ===========
+   Грамматика как у .ec-icon-btn: ghost → surface+brighten → press.
+   Без drop-shadow-glow на каждом hover (это был AI-slop). */
 .ec-player-ctrl {
   display: inline-grid;
   place-items: center;
@@ -41,14 +58,12 @@
   transition:
     background var(--ec-dur-fast) var(--ec-ease),
     color var(--ec-dur-fast) var(--ec-ease),
-    transform var(--ec-dur-fast) var(--ec-ease),
-    filter var(--ec-dur-fast) var(--ec-ease);
+    transform var(--ec-dur-fast) var(--ec-ease);
 }
 .ec-player-ctrl:hover {
   background: var(--ec-surface-3);
-  color: var(--ec-accent);
+  color: var(--ec-text-strong);
   transform: translateY(-1px);
-  filter: drop-shadow(0 0 6px hsl(258 90% 66% / 0.5));
 }
 /* Press — резкий «щелчок» вниз. */
 .ec-player-ctrl:active {
@@ -60,142 +75,251 @@
   outline-offset: 1px;
 }
 .ec-player-ctrl:disabled {
-  opacity: 0.32;
+  opacity: 0.3;
   cursor: not-allowed;
   pointer-events: none;
-  filter: none;
 }
 .ec-player-ctrl--lg {
-  width: 46px;
-  height: 46px;
+  width: 44px;
+  height: 44px;
   border-radius: var(--ec-radius-md);
 }
 
-/* ===== Hero play / pause ==================================== */
+/* ===== Hero play / pause — единственный «сигнальный» элемент == */
 .ec-player-play {
   position: relative;
   display: inline-grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   flex-shrink: 0;
   padding: 0;
   border: 0;
   border-radius: 50%;
-  background: linear-gradient(180deg, var(--ec-accent-hover), var(--ec-accent));
+  background: linear-gradient(158deg, var(--ec-accent-hover), var(--ec-accent) 72%);
   color: var(--ec-accent-text);
   cursor: pointer;
   box-shadow:
-    inset 0 1px 0 hsl(0 0% 100% / 0.28),
-    0 4px 12px -3px hsl(258 80% 46% / 0.6);
+    inset 0 1px 0 hsl(0 0% 100% / 0.30),
+    0 4px 14px -4px hsl(258 80% 46% / 0.7);
   transition:
-    transform var(--ec-dur-fast) var(--ec-ease),
+    transform var(--ec-dur-fast) var(--ec-ease-spring),
     filter var(--ec-dur-fast) var(--ec-ease),
-    box-shadow var(--ec-dur-fast) var(--ec-ease);
+    box-shadow var(--ec-dur-base) var(--ec-ease);
+}
+/* Play-треугольник оптически смещён влево — нудж к центру круга. */
+.ec-player-play[data-state="paused"] svg {
+  transform: translateX(1.5px);
 }
 .ec-player-play:hover {
-  filter: brightness(1.08);
-  transform: translateY(-1px);
+  filter: brightness(1.09);
+  transform: scale(1.07);
   box-shadow:
-    inset 0 1px 0 hsl(0 0% 100% / 0.32),
-    0 8px 18px -4px hsl(258 80% 48% / 0.7),
-    0 0 22px -4px hsl(258 90% 66% / 0.6);
+    inset 0 1px 0 hsl(0 0% 100% / 0.34),
+    0 6px 20px -4px hsl(258 80% 48% / 0.78),
+    0 0 26px -6px hsl(258 90% 70% / 0.6);
 }
 .ec-player-play:active {
-  transform: translateY(0) scale(0.92);
+  transform: scale(0.93);
   filter: brightness(0.97);
-  transition-duration: 60ms;
+  transition-duration: 70ms;
 }
 .ec-player-play:focus-visible {
   outline: 2px solid var(--ec-border-accent);
-  outline-offset: 2px;
+  outline-offset: 3px;
 }
 .ec-player-play:disabled {
   opacity: 0.4;
   cursor: not-allowed;
   pointer-events: none;
+  filter: grayscale(0.4);
 }
 .ec-player-play--lg {
-  width: 66px;
-  height: 66px;
+  width: 64px;
+  height: 64px;
   box-shadow:
-    inset 0 1px 0 hsl(0 0% 100% / 0.28),
-    0 14px 32px -10px hsl(258 80% 44% / 0.72);
+    inset 0 1px 0 hsl(0 0% 100% / 0.30),
+    0 14px 34px -10px hsl(258 80% 44% / 0.78);
 }
 /* «Живой сигнал» — большая играющая кнопка дышит и испускает кольцо. */
 .ec-player-play--lg.is-playing {
-  animation: ec-player-breathe 2.8s ease-in-out infinite;
+  animation: ec-player-breathe 3s ease-in-out infinite;
 }
 .ec-player-play--lg.is-playing::after {
   content: "";
   position: absolute;
   inset: -2px;
   border-radius: 50%;
-  border: 1.5px solid hsl(258 90% 72% / 0.7);
-  animation: ec-player-emit 2.8s ease-out infinite;
+  border: 1.5px solid hsl(258 90% 74% / 0.7);
+  animation: ec-player-emit 3s ease-out infinite;
   pointer-events: none;
 }
 
-/* ===== Scrubber / timeline (MediaScrubber) ==================
-   Компонент задаёт --frac (0..1) и data-active / data-dragging. */
+/* ===== Signal loader — фирменный radar-ping ==================
+   Заменяет браузерный border-спиннер. «Ищу сигнал»: ядро дышит,
+   от него концентрически расходятся кольца. */
+.ec-signal-loader {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  pointer-events: none;
+}
+.ec-signal-loader__core {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--ec-accent);
+  box-shadow: 0 0 14px hsl(258 90% 66% / 0.9);
+  animation: ec-player-breathe 1.5s ease-in-out infinite;
+}
+.ec-signal-loader::before,
+.ec-signal-loader::after {
+  content: "";
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 1.5px solid hsl(258 90% 72% / 0.65);
+  animation: ec-signal-ping 1.7s ease-out infinite;
+}
+.ec-signal-loader::after {
+  animation-delay: 0.85s;
+}
+
+/* ===== Scrubber / timeline — фирменное ядро таймлайна ========
+   MediaScrubber задаёт --frac / --buffered / --preview (0..1) и
+   data-active / data-dragging / data-loading. */
 .ec-scrubber {
   --frac: 0;
+  --buffered: 0;
+  --preview: 0;
+  position: relative;
   flex-shrink: 0;
-  padding: 7px 0;
+  padding: 9px 0;
   cursor: pointer;
   touch-action: none;
   outline: none;
 }
 .ec-scrubber[aria-disabled="true"] { cursor: default; }
+
 .ec-scrubber__track {
   position: relative;
   height: 4px;
   border-radius: 999px;
   background: var(--ec-surface-3);
-  box-shadow: inset 0 1px 2px hsl(220 40% 2% / 0.4);
+  box-shadow: inset 0 1px 2px hsl(220 40% 2% / 0.45);
+  overflow: hidden;
   transition: height var(--ec-dur-fast) var(--ec-ease);
 }
-.ec-scrubber[data-active="true"] .ec-scrubber__track { height: 7px; }
-.ec-scrubber[data-dragging="true"] .ec-scrubber__track { transition: none; }
+.ec-scrubber[data-active="true"] .ec-scrubber__track,
+.ec-scrubber[data-dragging="true"] .ec-scrubber__track {
+  height: 8px;
+}
+
+/* Buffered — сколько реально загружено: тихий слой под fill. */
+.ec-scrubber__buffered {
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  width: calc(var(--buffered) * 100%);
+  /* Буфер — бледное «эхо» fill'а: загружено, но ещё не сыграно.
+     Faint accent читается и на тёмной, и на светлой дорожке. */
+  background: hsl(258 90% 66% / 0.24);
+  transition: width var(--ec-dur-base) var(--ec-ease);
+}
+
+/* Fill — сыграно. */
 .ec-scrubber__fill {
   position: absolute;
   inset-block: 0;
   left: 0;
   width: calc(var(--frac) * 100%);
-  border-radius: 999px;
-  background: linear-gradient(90deg, var(--ec-accent), hsl(258 96% 76%));
-  transition:
-    width 320ms linear,
-    box-shadow var(--ec-dur-fast) var(--ec-ease);
+  background: linear-gradient(90deg, var(--ec-accent), hsl(258 96% 78%));
+  transition: width 0.28s linear;
 }
 .ec-scrubber[data-active="true"] .ec-scrubber__fill {
-  box-shadow: 0 0 10px hsl(258 90% 66% / 0.7);
+  box-shadow: 0 0 12px hsl(258 90% 66% / 0.75);
 }
 .ec-scrubber[data-dragging="true"] .ec-scrubber__fill { transition: none; }
+
+/* Ghost — вертикальный маркер в точке курсора: «сюда попадёшь». */
+.ec-scrubber__ghost {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: calc(var(--preview) * 100%);
+  width: 2px;
+  margin-left: -1px;
+  /* theme-aware: контраст с дорожкой в VOID и SOLAR (видео — ниже). */
+  background: var(--ec-text-strong);
+  border-radius: 1px;
+  opacity: 0;
+  transition: opacity var(--ec-dur-fast) var(--ec-ease);
+  pointer-events: none;
+}
+.ec-scrubber[data-active="true"] .ec-scrubber__ghost { opacity: 0.65; }
+
+/* Thumb — текущая позиция. */
 .ec-scrubber__thumb {
   position: absolute;
   top: 50%;
   left: calc(var(--frac) * 100%);
-  width: 12px;
-  height: 12px;
+  width: 13px;
+  height: 13px;
   border-radius: 50%;
   background: var(--ec-accent);
   transform: translate(-50%, -50%) scale(0);
-  opacity: 0;
   box-shadow:
-    0 0 0 3px hsl(258 90% 66% / 0.22),
-    0 0 12px hsl(258 90% 66% / 0.78);
+    0 0 0 3px hsl(258 90% 66% / 0.25),
+    0 2px 6px hsl(220 40% 2% / 0.6);
   transition:
-    transform var(--ec-dur-fast) var(--ec-ease),
-    opacity var(--ec-dur-fast) var(--ec-ease),
-    left 320ms linear;
+    transform var(--ec-dur-fast) var(--ec-ease-spring),
+    left 0.28s linear;
   pointer-events: none;
 }
 .ec-scrubber[data-active="true"] .ec-scrubber__thumb {
   transform: translate(-50%, -50%) scale(1);
-  opacity: 1;
 }
-.ec-scrubber[data-dragging="true"] .ec-scrubber__thumb { transition: none; }
+.ec-scrubber[data-dragging="true"] .ec-scrubber__thumb {
+  transform: translate(-50%, -50%) scale(1.18);
+  transition: transform var(--ec-dur-fast) var(--ec-ease-spring);
+}
+
+/* Preview — время точки курсора, всплывает над дорожкой. */
+.ec-scrubber__preview {
+  position: absolute;
+  bottom: calc(100% - 6px);
+  left: calc(var(--preview) * 100%);
+  transform: translateX(-50%);
+  padding: 2px 6px;
+  border-radius: var(--ec-radius-xs);
+  background: var(--ec-surface-4);
+  box-shadow: var(--ec-elev-1);
+  color: var(--ec-text-strong);
+  font-family: var(--ec-font-mono);
+  font-size: 0.62rem;
+  font-feature-settings: "tnum";
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* Loading — длительность/буфер неизвестны: дорожка идёт shimmer'ом. */
+.ec-scrubber[data-loading="true"] { cursor: default; }
+.ec-scrubber[data-loading="true"] .ec-scrubber__track::after {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  width: 42%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    hsl(258 90% 66% / 0.6),
+    transparent
+  );
+  animation: ec-scrubber-shimmer 1.25s ease-in-out infinite;
+}
 
 /* ===== Volume — кастомный range ============================= */
 .ec-player-range {
@@ -214,18 +338,19 @@
   height: 12px;
   border-radius: 50%;
   background: var(--ec-accent);
-  box-shadow: 0 0 6px hsl(258 90% 66% / 0.6);
+  box-shadow: 0 0 6px hsl(258 90% 66% / 0.55);
   cursor: pointer;
-  transition: transform var(--ec-dur-fast) var(--ec-ease);
+  transition: transform var(--ec-dur-fast) var(--ec-ease-spring);
 }
-.ec-player-range::-webkit-slider-thumb:hover { transform: scale(1.25); }
+.ec-player-range::-webkit-slider-thumb:hover { transform: scale(1.28); }
+.ec-player-range::-webkit-slider-thumb:active { transform: scale(1.05); }
 .ec-player-range::-moz-range-thumb {
   width: 12px;
   height: 12px;
   border: 0;
   border-radius: 50%;
   background: var(--ec-accent);
-  box-shadow: 0 0 6px hsl(258 90% 66% / 0.6);
+  box-shadow: 0 0 6px hsl(258 90% 66% / 0.55);
   cursor: pointer;
 }
 .ec-player-range::-moz-range-track {
@@ -233,32 +358,43 @@
   border-radius: 999px;
   background: var(--ec-surface-4);
 }
+.ec-player-range:focus-visible {
+  outline: 2px solid var(--ec-border-accent);
+  outline-offset: 3px;
+}
 
-/* ===== Mini player — капсула «сейчас играет» в шапке ======== */
+/* ===== Mini player — модуль «сейчас играет» в шапке ==========
+   Иерархия: primary-зона (play · имя · таймлайн · время) ведёт;
+   utility-кластер (громкость / next / expand / stop) за hairline-
+   разделителем и приглушён — вторая роль. */
 .ec-player-mini {
   display: flex;
   align-items: center;
   gap: var(--ec-space-2);
-  padding: 0.32rem 0.5rem;
+  padding: 0.28rem 0.4rem 0.28rem 0.3rem;
   min-width: 0;
   flex-shrink: 0;
-  border-radius: var(--ec-radius-full);
+  border-radius: var(--ec-radius-md);
   background: var(--ec-surface-2);
   box-shadow: var(--ec-edge);
   font-size: var(--ec-text-2xs);
   color: var(--ec-text-muted);
   transition: box-shadow var(--ec-dur-base) var(--ec-ease);
 }
-/* Играет — капсула «под напряжением»: левый край подсвечен violet'ом. */
+/* Играет — модуль «под напряжением»: левый край горит violet'ом. */
 .ec-player-mini.is-playing {
   box-shadow:
     var(--ec-edge),
-    inset 3px 0 0 -1px hsl(258 90% 66%),
-    0 0 0 1px hsl(258 90% 66% / 0.14);
+    inset 3px 0 0 -1px var(--ec-accent),
+    0 0 0 1px hsl(258 90% 66% / 0.15);
+}
+.ec-player-mini .ec-player-play {
+  width: 30px;
+  height: 30px;
 }
 .ec-player-mini__name {
-  min-width: 0;
-  max-width: 190px;
+  min-width: 54px;
+  max-width: 200px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -301,11 +437,26 @@
   font-feature-settings: "tnum";
   flex-shrink: 0;
 }
+/* Utility-кластер — вторая роль: за hairline, контролы приглушены. */
+.ec-player-mini__util {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  flex-shrink: 0;
+  padding-left: 3px;
+  border-left: 1px solid var(--ec-border-subtle);
+}
+.ec-player-mini__util .ec-player-ctrl {
+  width: 26px;
+  height: 26px;
+  color: var(--ec-text-dim);
+}
+.ec-player-mini__util .ec-player-ctrl:hover { color: var(--ec-text-strong); }
 /* Громкость — слайдер раскрывается по наведению на группу. */
 .ec-player-mini__vol {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
+  gap: 1px;
   flex-shrink: 0;
 }
 .ec-player-mini__vol .ec-player-range {
@@ -321,7 +472,7 @@
   opacity: 1;
 }
 
-/* ===== Expanded player — «сигнальный пульт» ================= */
+/* ===== Expanded player — «сигнальный пульт» (showpiece) ===== */
 .ec-player-expand {
   display: flex;
   flex-direction: column;
@@ -335,8 +486,9 @@
 }
 .ec-player-expand__title {
   margin: 0;
-  font-size: var(--ec-text-md);
+  font-size: var(--ec-text-lg);
   font-weight: 650;
+  letter-spacing: -0.01em;
   color: var(--ec-text-strong);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -346,7 +498,7 @@
   display: flex;
   align-items: center;
   gap: 7px;
-  margin-top: 6px;
+  margin-top: 7px;
   color: var(--ec-text-muted);
   font-size: var(--ec-text-2xs);
 }
@@ -368,17 +520,22 @@
 .ec-player-expand__clock {
   font-family: var(--ec-font-mono);
   font-feature-settings: "tnum";
-  font-size: var(--ec-text-2xs);
+  font-size: var(--ec-text-sm);
   color: var(--ec-text-muted);
   white-space: nowrap;
   flex-shrink: 0;
+  padding-top: 3px;
+}
+.ec-player-expand__clock b {
+  color: var(--ec-text-strong);
+  font-weight: 650;
 }
 
 /* Сцена — waveform / видео + атмосферная подложка снизу. */
 .ec-player-expand__stage {
   position: relative;
   border-radius: var(--ec-radius-lg);
-  padding: var(--ec-space-4);
+  padding: var(--ec-space-5) var(--ec-space-4) var(--ec-space-4);
   background: linear-gradient(180deg, var(--ec-surface-sunken), transparent);
   box-shadow: var(--ec-edge);
   overflow: hidden;
@@ -388,21 +545,48 @@
   position: absolute;
   inset: 0;
   background: radial-gradient(
-    ellipse 70% 90% at 50% 118%,
-    hsl(258 80% 56% / 0.2),
+    ellipse 70% 92% at 50% 122%,
+    hsl(258 80% 56% / 0.24),
     transparent 70%
   );
-  opacity: 0.32;
+  opacity: 0.3;
   transition: opacity var(--ec-dur-slow) var(--ec-ease);
   pointer-events: none;
 }
 .ec-player-expand__stage.is-playing::before { opacity: 1; }
 .ec-player-expand__stage > * { position: relative; }
+
+/* Waveform-обёртка — нужна для hover-tip позиционирования. */
+.ec-player-expand__wave-wrap {
+  position: relative;
+}
 .ec-player-expand__wave {
   width: 100%;
-  height: 104px;
+  height: 112px;
   display: block;
   touch-action: none;
+}
+/* Playhead-узел — единственный «живой» элемент вейвформы: светится,
+   движется вместе с прогрессом. Бары статичны (это реальные peaks
+   трека — данные, не декор; пульсировать всеми барами = шум). */
+.ec-wave-node {
+  filter: drop-shadow(0 0 5px hsl(258 90% 66% / 0.95));
+}
+/* Hover-tip над вейвформой — время точки курсора (как у scrubber). */
+.ec-player-expand__wave-tip {
+  position: absolute;
+  bottom: calc(100% - 2px);
+  transform: translateX(-50%);
+  padding: 2px 6px;
+  border-radius: var(--ec-radius-xs);
+  background: var(--ec-surface-4);
+  box-shadow: var(--ec-elev-1);
+  color: var(--ec-text-strong);
+  font-family: var(--ec-font-mono);
+  font-size: 0.62rem;
+  font-feature-settings: "tnum";
+  white-space: nowrap;
+  pointer-events: none;
 }
 .ec-player-expand__video {
   width: 100%;
@@ -412,8 +596,8 @@
   background: #000;
 }
 .ec-player-expand__hint {
-  margin-top: var(--ec-space-2);
-  font-size: 0.6rem;
+  margin-top: var(--ec-space-3);
+  font-size: 0.62rem;
   color: var(--ec-text-dim);
   text-align: center;
 }
@@ -421,7 +605,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: var(--ec-space-4);
+  gap: var(--ec-space-5);
 }
 
 /* Очередь — список ближайших треков. */
@@ -465,7 +649,7 @@
 }
 .ec-player-queue-row:hover {
   background: var(--ec-surface-2);
-  border-color: var(--ec-border-accent);
+  border-color: var(--ec-border-default);
   transform: translateX(2px);
 }
 /* «Следующий» — первый в очереди подсвечен. */
@@ -531,9 +715,9 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 12px 14px 13px;
+  padding: 16px 14px 12px;
   line-height: 1.4;
-  background: linear-gradient(180deg, transparent, hsl(220 35% 3% / 0.88));
+  background: linear-gradient(180deg, transparent, hsl(220 35% 3% / 0.9));
   transition:
     opacity var(--ec-dur-base) var(--ec-ease),
     transform var(--ec-dur-base) var(--ec-ease);
@@ -549,8 +733,12 @@
 /* ctrl-кнопки поверх тёмного видео — светлые. */
 .ec-video-player .ec-player-ctrl { color: hsl(0 0% 100% / 0.86); }
 .ec-video-player .ec-player-ctrl:hover {
-  background: hsl(0 0% 100% / 0.14);
+  background: hsl(0 0% 100% / 0.16);
   color: #fff;
+}
+/* Видео всегда тёмное — ghost-маркер скраббера здесь белый. */
+.ec-video-player .ec-scrubber__ghost {
+  background: hsl(0 0% 100% / 0.92);
 }
 .ec-video-player__time {
   font-family: var(--ec-font-mono);
@@ -567,24 +755,30 @@
   left: 50%;
   transform: translate(-50%, -50%);
 }
-/* Состояние загрузки — фирменное «кольцо сигнала», не браузерный спиннер. */
-.ec-video-player__spinner {
+.ec-video-player__center:hover {
+  transform: translate(-50%, -50%) scale(1.07);
+}
+.ec-video-player__center:active {
+  transform: translate(-50%, -50%) scale(0.93);
+}
+/* Загрузка — фирменный radar-ping по центру кадра. */
+.ec-video-player__loader {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 46px;
-  height: 46px;
-  margin: -23px 0 0 -23px;
-  border-radius: 50%;
-  border: 2px solid hsl(258 90% 66% / 0.2);
-  border-top-color: var(--ec-accent);
-  animation: ec-player-spin 0.7s linear infinite;
-  pointer-events: none;
+  transform: translate(-50%, -50%);
 }
 
 /* ===== Reduced motion ======================================= */
 @media (prefers-reduced-motion: reduce) {
   .ec-player-play--lg.is-playing { animation: none; }
   .ec-player-play--lg.is-playing::after { animation: none; opacity: 0; }
-  .ec-video-player__spinner { animation-duration: 1.6s; }
+  .ec-signal-loader__core { animation: none; }
+  .ec-signal-loader::before,
+  .ec-signal-loader::after { animation: none; opacity: 0.5; transform: scale(0.7); }
+  .ec-scrubber[data-loading="true"] .ec-scrubber__track::after {
+    animation: none;
+    width: 100%;
+    opacity: 0.4;
+  }
 }

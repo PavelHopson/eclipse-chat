@@ -35,6 +35,7 @@ export function VideoPlayer({ src, poster, onNext, onPrev }: Props) {
   const [loading, setLoading] = useState(false);
   const [currentMs, setCurrentMs] = useState(0);
   const [durationMs, setDurationMs] = useState(0);
+  const [bufferedMs, setBufferedMs] = useState(0);
   const [fullscreen, setFullscreen] = useState(false);
   const [volume, setVolume] = useMediaVolume();
   const lastVol = useRef(volume > 0 ? volume : 0.7);
@@ -97,6 +98,13 @@ export function VideoPlayer({ src, poster, onNext, onPrev }: Props) {
         }}
         onCanPlay={() => setLoading(false)}
         onTimeUpdate={(e) => setCurrentMs(e.currentTarget.currentTime * 1000)}
+        onProgress={(e) => {
+          const b = e.currentTarget.buffered;
+          if (b.length === 0) return;
+          let end = 0;
+          for (let i = 0; i < b.length; i++) end = Math.max(end, b.end(i));
+          setBufferedMs(end * 1000);
+        }}
         onLoadedMetadata={(e) => {
           const d = e.currentTarget.duration;
           if (Number.isFinite(d)) setDurationMs(d * 1000);
@@ -107,8 +115,12 @@ export function VideoPlayer({ src, poster, onNext, onPrev }: Props) {
         }}
       />
 
-      {/* Фирменное loading-кольцо «сигнала» вместо браузерного спиннера. */}
-      {loading && <div className="ec-video-player__spinner" aria-hidden />}
+      {/* Фирменный radar-ping loader «ищу сигнал» — не браузерный спиннер. */}
+      {loading && (
+        <div className="ec-video-player__loader ec-signal-loader" aria-hidden>
+          <span className="ec-signal-loader__core" />
+        </div>
+      )}
 
       {/* Центральная play-кнопка — на паузе, когда не грузится. */}
       {!playing && !loading && (
@@ -116,6 +128,7 @@ export function VideoPlayer({ src, poster, onNext, onPrev }: Props) {
           type="button"
           onClick={togglePlay}
           aria-label="Воспроизвести"
+          data-state="paused"
           className="ec-player-play ec-player-play--lg ec-video-player__center"
         >
           <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
@@ -164,6 +177,7 @@ export function VideoPlayer({ src, poster, onNext, onPrev }: Props) {
           <MediaScrubber
             positionMs={currentMs}
             durationMs={durationMs}
+            bufferedMs={bufferedMs}
             onSeek={seek}
             width="100%"
           />

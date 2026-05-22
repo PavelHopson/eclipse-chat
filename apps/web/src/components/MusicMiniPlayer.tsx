@@ -53,6 +53,7 @@ export function MusicMiniPlayer({
 }: Props) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [durationMs, setDurationMs] = useState<number | null>(null);
+  const [bufferedMs, setBufferedMs] = useState(0);
   // v1.1.58 — общая громкость медиа: shared хук с live-sync + localStorage.
   const [volume, setVolume] = useMediaVolume();
   const lastVolumeRef = useRef(volume > 0 ? volume : 0.7);
@@ -119,6 +120,7 @@ export function MusicMiniPlayer({
       <button
         type="button"
         className="ec-player-play"
+        data-state={playing ? "playing" : "paused"}
         onClick={() => void onTogglePlayPause()}
         title={playing ? "Пауза" : "Воспроизвести"}
         aria-label={playing ? "Пауза" : "Воспроизвести"}
@@ -161,8 +163,10 @@ export function MusicMiniPlayer({
       <MediaScrubber
         positionMs={derivedPositionMs}
         durationMs={durationMs ?? 0}
+        bufferedMs={bufferedMs}
         onSeek={(ms) => void onSeek(ms)}
         disabled={!hasTrack}
+        loading={hasTrack && durationMs == null}
       />
 
       <span className="ec-player-mini__time">
@@ -189,6 +193,8 @@ export function MusicMiniPlayer({
         </span>
       )}
 
+      {/* Utility-кластер — вторая роль: за hairline, приглушён. */}
+      <span className="ec-player-mini__util">
       {/* Громкость — слайдер раскрывается по наведению на группу. */}
       <span className="ec-player-mini__vol">
         <button
@@ -265,6 +271,7 @@ export function MusicMiniPlayer({
           <line x1="6" y1="6" x2="18" y2="18" />
         </svg>
       </button>
+      </span>
 
       <audio
         ref={audioRef}
@@ -273,6 +280,13 @@ export function MusicMiniPlayer({
           if (Number.isFinite(audio.duration)) {
             setDurationMs(audio.duration * 1000);
           }
+        }}
+        onProgress={(e) => {
+          const b = e.currentTarget.buffered;
+          if (b.length === 0) return;
+          let end = 0;
+          for (let i = 0; i < b.length; i++) end = Math.max(end, b.end(i));
+          setBufferedMs(end * 1000);
         }}
         preload="metadata"
         style={{ display: "none" }}

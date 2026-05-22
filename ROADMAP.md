@@ -5,7 +5,7 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.1.99** (Galaxy/Clock/Theme/Deadline effects +
+**Текущая версия:** **v1.2.0** (Galaxy/Clock/Theme/Deadline effects +
 UX-copy + дизайн-полиш + редизайн WS-1 + системный редизайн ЗАКРЫТ 8/8 +
 светлая тема SOLAR (Notion-crisp) + фикс AuthScreen + смена пароля +
 визуальный передел AppShell ЗАКРЫТ 4/4 + топбар-полиш +
@@ -20,10 +20,11 @@ redesign slice 5 — Modal-база + ChannelInfoPanel +
 redesign slice 6 — SearchOverlay +
 redesign slice 7 — ServerHubModal +
 фикс version-дрейфа `/api/version` + smoke-тавтологии +
-logout-надёжность + identity-фикс пресетов + topbar на `.ec-icon-btn`).
+logout-надёжность + identity-фикс пресетов + topbar на `.ec-icon-btn` +
+трек R1 — фирменный media-плеер «Signal Desk» v2).
 
-> **v1.1.90 … v1.1.98 задеплоены — в проде v1.1.98. v1.1.99 запушен
-> и ждёт approve-gate Pavel'я в GitHub Actions (environment
+> **v1.1.90 … v1.1.98 задеплоены — в проде v1.1.98. v1.1.99 … v1.2.0
+> запушены и ждут approve-gate Pavel'я в GitHub Actions (environment
 > `production`). Деплой НЕ автоматический по пушу.**
 
 > **⚠️ ЦВЕТ-ПРАВИЛО ИЗМЕНЕНО (бриф Pavel'я 20.05.2026).** Прежнее
@@ -32,8 +33,40 @@ logout-надёжность + identity-фикс пресетов + topbar на `
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.1.99:**
+**Изменения v1.1.25 → v1.2.0:**
 
+- **v1.2.0** — **трек R1: фирменный media-плеер «Signal Desk» v2**
+  (ТЗ Pavel'я — плеер ощущался «utilitarian browser-feel»).
+  Root cause: плеер был набором стандартных медиа-виджетов под
+  violet-glow'ом, не авторский объект. Передел:
+  - **MediaScrubber → фирменное ядро таймлайна.** Было: дефолтная
+    браузерная полоска fill+dot. Стало: три слоя — buffered
+    (загружено) / fill (сыграно) / playhead; hover-предпросмотр —
+    над курсором всплывает время точки, куда попадёшь при клике
+    («подсказка» до коммита); drag с pointer-capture, thumb растёт;
+    loading — дорожка идёт shimmer'ом, пока длительность неизвестна.
+    `bufferedMs` читается из `<audio>/<video>.buffered`.
+  - **Mini-player → объект с иерархией.** Было: 11 равновесных
+    контролов в пилюле (контрол-стрип). Стало: primary-зона (play ·
+    имя · таймлайн · время) ведёт; utility-кластер (громкость / next
+    / expand / stop) за hairline-разделителем и приглушён.
+  - **Expand-player → showpiece.** Убран шум: вейвформа больше НЕ
+    пульсирует всеми 64 барами (`ec-wave-pulse` удалён) — бары
+    статичны (это реальные peaks трека, данные). Единственный
+    «живой» элемент — playhead: линия + светящийся узел. Добавлен
+    hover-предпросмотр времени по вейвформе.
+  - **VideoPlayer — фирменный radar-ping loader** `.ec-signal-loader`
+    («ищу сигнал»: ядро дышит, расходятся концентрические кольца)
+    вместо браузерного border-спиннера. Buffered-слой в скраббере.
+  - **Control language — убран AI-slop.** `.ec-player-ctrl` больше
+    не светится drop-shadow-glow'ом на каждом hover (grammar v2 §3.4:
+    accent — сигнал, не декор). Glow зарезервирован за hero-play и
+    live-сигналом; hover = surface + brighten, как у `.ec-icon-btn`.
+  - Hero-play: `data-state` оптически центрирует play-треугольник
+    в круге.
+  SOLAR-корректность: ghost-маркеры переведены на theme-aware токены
+  (+ override для всегда-тёмного видео). reduced-motion — петли
+  гаснут. Чистый фронт, без миграций. Сборка зелёная (tsc + vite).
 - **v1.1.99** — **integrity-фиксы + честная сверка docs↔код**
   (ТЗ Pavel'я «redesign недотянут, много эффекта — мало цельности»).
   - **Logout — регресс надёжности.** `LogoutButton`: `busyRef`
