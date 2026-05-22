@@ -706,6 +706,20 @@
   color: var(--ec-text);
 }
 
+/* v1.1.81 — топбар-полиш. Правая зона была «свалкой» из ~12 элементов
+   в один ряд. Hairline-разделители режут её на 3 читаемых кластера:
+   статус (телеметрия) | инструменты (иконки + часы + тема) |
+   идентичность (профиль). Плотный gap внутри кластера, воздух — на
+   разделителях. */
+.ec-topbar-sep {
+  width: 1px;
+  height: 18px;
+  align-self: center;
+  flex-shrink: 0;
+  margin-inline: 5px;
+  background: var(--ec-border-default);
+}
+
 .ec-shell__channels,
 .ec-shell__members {
   backdrop-filter: blur(18px) saturate(130%);

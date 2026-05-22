@@ -820,7 +820,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             </span>
           )}
         </div>
-        <div className="ec-shell__top-actions" style={{ display: "flex", alignItems: "center", gap: "var(--ec-space-2)" }}>
+        <div className="ec-shell__top-actions" style={{ display: "flex", alignItems: "center", gap: "var(--ec-space-1)" }}>
           {/* v1.1.1+v1.1.7 telemetry. v1.1.38 (WS-1 «Облегчение»):
               ПАМ/ЦП свёрнуты — видны по hover группы ИЛИ авто-разворот
               при warn/risk. Progressive disclosure: постоянный
@@ -890,12 +890,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               : "—"}
           </span>
           </div>
-          <span
-            className={isReady ? "ec-dot ec-dot--online" : "ec-dot ec-dot--offline"}
-            title={isReady ? "Подключено" : "Соединение разорвано"}
-            aria-label={isReady ? "online" : "offline"}
-            style={{ display: "none" }}
-          />
+          {/* v1.1.81 — кластер-разделитель: статус | инструменты */}
+          <span className="ec-topbar-sep" aria-hidden />
           {inServerView && (
             <button
               type="button"
@@ -1089,6 +1085,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               </svg>
             </button>
           )}
+          {/* v1.1.81 — кластер-разделитель: инструменты | идентичность */}
+          <span className="ec-topbar-sep" aria-hidden />
           <button
             type="button"
             onClick={(e) => {
