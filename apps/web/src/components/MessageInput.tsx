@@ -1109,7 +1109,8 @@ export function MessageInput({
             </span>
           </>
         )}
-        {/* v1.1.1 E2E encryption indicator — sticks вправо. */}
+        {/* v1.1.90 TLS-транспорт индикатор — sticks вправо. Честно: это
+            транспортное шифрование (HTTPS/WSS), НЕ сквозное (E2E). */}
         <span
           style={{
             marginLeft: "auto",
@@ -1122,7 +1123,7 @@ export function MessageInput({
             color: "var(--ec-accent)",
             textTransform: "uppercase",
           }}
-          title="End-to-end encryption активно"
+          title="Соединение защищено TLS — сквозного (E2E) шифрования нет"
         >
           <span
             aria-hidden
@@ -1134,7 +1135,7 @@ export function MessageInput({
               boxShadow: "0 0 6px var(--ec-accent)",
             }}
           />
-          ШИФРОВАНИЕ
+          TLS
         </span>
       </div>
       {trigger && (
