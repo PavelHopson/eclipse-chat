@@ -1007,18 +1007,13 @@
     transform var(--ec-dur-fast) var(--ec-ease-out);
 }
 
-/* v1.1.54 WS-1 slice 4 (ПРОТОТИП на ревью) — «floating»-сообщения.
-   Сообщение под курсором всплывает: подъём (translateY) + глубина/свет
-   вместо линии. Hover-border убран — разделяем глубиной, не рамкой.
-   Cool-tinted спокойный фон; --ec-elev-1 несёт hairline-край + мягкую
-   тень глубины. Согласовано с depth-языком slice 2. */
+/* v1.1.92 slice 3 — спокойный row-hover. Прежний «floating»-прототип
+   (translateY-подъём + градиент + тень) убран: на плотной ленте подъём
+   каждой строки под курсором — твичи. Лента сканируется ровнее со
+   спокойным surface-tint'ом; характер живёт в action-toolbar и кнопках.
+   Theme-aware токен — корректно в VOID и SOLAR. */
 .ec-message-row:hover {
-  background:
-    linear-gradient(90deg, hsl(200 30% 13% / 0.52), hsl(214 26% 11% / 0.34)) !important;
-  box-shadow:
-    var(--ec-elev-1),
-    inset 0 1px 0 hsl(0 0% 100% / 0.04);
-  transform: translateY(-2px);
+  background: var(--ec-surface-1);
 }
 
 .ec-message-actions {
@@ -1971,4 +1966,450 @@
   color: var(--ec-warn);
 }
 .ec-channel-action--shown:hover { color: var(--ec-warn); }
+
+/* ============================================================
+ * v1.1.92 — Redesign slice 3: центральная сцена (MessageList +
+ * MessageInput). Inline-консоли в классы, JS-hover → CSS.
+ * ============================================================ */
+
+/* --- MessageList: каркас ленты -------------------------------- */
+.ec-message-list-shell {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.ec-message-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--ec-space-4) var(--ec-space-5) var(--ec-space-2);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Разделитель дня. */
+.ec-msg-day {
+  display: flex;
+  align-items: center;
+  gap: var(--ec-space-3);
+  margin: var(--ec-space-4) 0 var(--ec-space-2);
+}
+.ec-msg-day__line {
+  flex: 1;
+  height: 1px;
+  background: var(--ec-border-subtle);
+}
+.ec-msg-day__label {
+  font-family: var(--ec-font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ec-accent);
+  opacity: 0.85;
+}
+
+/* --- Ряд сообщения ------------------------------------------- */
+.ec-message-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  column-gap: var(--ec-space-3);
+  padding: var(--ec-space-2);
+  padding-right: 12px;
+  border-radius: var(--ec-radius-md);
+}
+.ec-message-row--grouped {
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+.ec-message-row--pinned,
+.ec-message-row--pinned:hover {
+  background: color-mix(in srgb, var(--ec-warn) 6%, transparent);
+  border-left: 2px solid var(--ec-warn);
+  padding-left: 6px;
+}
+
+/* Время-«липучка» у сгруппированных сообщений — проявляется на hover. */
+.ec-msg-sticky-time {
+  font-family: var(--ec-font-mono);
+  font-size: var(--ec-text-2xs);
+  color: var(--ec-text-dim);
+  white-space: nowrap;
+  padding-top: 4px;
+  opacity: 0;
+  transition: opacity var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-message-row:hover .ec-msg-sticky-time,
+.ec-message-row:focus-within .ec-msg-sticky-time {
+  opacity: 1;
+}
+
+/* --- Floating action-toolbar сообщения ----------------------- */
+.ec-message-actions {
+  position: absolute;
+  top: -10px;
+  right: 12px;
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid transparent;
+  border-radius: var(--ec-radius-md);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 2;
+  transition: opacity var(--ec-dur-fast) var(--ec-ease);
+}
+/* Раскрытие — toolbar проявляется на hover/focus ряда (вместо JS). */
+.ec-message-row:hover .ec-message-actions,
+.ec-message-row:focus-within .ec-message-actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+/* Кнопка тулбара — единый icon-character + семантические тона. */
+.ec-msg-action {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: var(--ec-radius-sm);
+  color: var(--ec-text-muted);
+  cursor: pointer;
+  transition:
+    background var(--ec-dur-fast) var(--ec-ease),
+    color var(--ec-dur-fast) var(--ec-ease),
+    transform var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-msg-action:hover {
+  background: var(--ec-surface-3);
+  color: var(--ec-text);
+  transform: translateY(-1px);
+}
+.ec-msg-action:active {
+  transform: translateY(0) scale(0.9);
+  transition-duration: 60ms;
+}
+.ec-msg-action:focus-visible {
+  outline: 2px solid var(--ec-border-accent);
+  outline-offset: 1px;
+}
+.ec-msg-action--accent:hover {
+  background: var(--ec-accent-soft);
+  color: var(--ec-accent);
+}
+.ec-msg-action--warn { color: var(--ec-warn); }
+.ec-msg-action--warn:hover {
+  background: color-mix(in srgb, var(--ec-warn) 14%, transparent);
+  color: var(--ec-warn);
+}
+.ec-msg-action--danger { color: var(--ec-danger); }
+.ec-msg-action--danger:hover {
+  background: var(--ec-danger-soft);
+  color: var(--ec-danger);
+}
+
+/* Тег «ошибка отправки». */
+.ec-msg-failed-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: var(--ec-space-2);
+  padding: 0.05rem 0.45rem;
+  background: var(--ec-danger-soft);
+  color: var(--ec-danger);
+  border: 1px solid var(--ec-danger);
+  border-radius: var(--ec-radius-full);
+  font-size: var(--ec-text-2xs);
+  font-weight: 600;
+  letter-spacing: var(--ec-tracking-wide);
+}
+
+/* Инлайн-редактирование сообщения. */
+.ec-msg-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+.ec-msg-edit__textarea {
+  width: 100%;
+  min-height: 60px;
+  padding: 0.5rem 0.6rem;
+  background: var(--ec-input-bg);
+  color: var(--ec-text);
+  border: 1px solid var(--ec-accent);
+  box-shadow: 0 0 0 3px var(--ec-accent-soft);
+  border-radius: var(--ec-radius-md);
+  font-size: var(--ec-text-base);
+  line-height: var(--ec-leading-normal);
+  font-family: var(--ec-font-sans);
+  resize: vertical;
+}
+.ec-msg-edit__row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+/* Интерактивные «таблетки» под сообщением (реакции, тред, action-items)
+   — единый hover-подъём вместо JS-обработчиков. */
+.ec-msg-pill {
+  transition: transform var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-msg-pill:hover { transform: translateY(-1px); }
+.ec-msg-pill:active { transform: translateY(0) scale(0.98); }
+
+/* --- MessageInput: композер ---------------------------------- */
+.ec-composer {
+  padding: var(--ec-space-3) var(--ec-space-5) var(--ec-space-4);
+}
+/* Drag-over — violet-ring (фон композера под !important, ring надёжнее). */
+.ec-composer.is-drag {
+  box-shadow: inset 0 0 0 2px var(--ec-border-accent);
+}
+.ec-composer-box {
+  position: relative;
+  display: grid;
+  gap: var(--ec-space-2);
+  align-items: end;
+  padding: var(--ec-space-1) var(--ec-space-3);
+  border: 1px solid var(--ec-border-default);
+  border-radius: var(--ec-radius-lg);
+  transition:
+    border-color var(--ec-dur-fast) var(--ec-ease),
+    box-shadow var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-composer-textarea {
+  display: block;
+  width: 100%;
+  background: transparent;
+  border: 0;
+  color: var(--ec-text);
+  font-size: var(--ec-text-base);
+  line-height: var(--ec-leading-normal);
+  font-family: var(--ec-font-sans);
+  resize: none;
+  outline: none;
+  padding: var(--ec-space-1) 0;
+  max-height: 200px;
+  overflow-y: auto;
+}
+/* Иконочные кнопки композера (attach / voice). */
+.ec-composer-icon-btn {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--ec-radius-md);
+  background: transparent;
+  border: 0;
+  color: var(--ec-text-muted);
+  cursor: pointer;
+  transition:
+    background var(--ec-dur-fast) var(--ec-ease),
+    color var(--ec-dur-fast) var(--ec-ease),
+    transform var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-composer-icon-btn:hover:not(:disabled) {
+  background: var(--ec-surface-3);
+  color: var(--ec-text);
+  transform: translateY(-1px);
+}
+.ec-composer-icon-btn:active:not(:disabled) {
+  transform: translateY(0) scale(0.9);
+}
+.ec-composer-icon-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.ec-composer-send {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ec-space-2);
+  padding: 0.4rem 0.7rem;
+  color: var(--ec-accent-text);
+  border: 0;
+  border-radius: var(--ec-radius-md);
+  font-size: var(--ec-text-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+.ec-composer-hints {
+  margin-top: var(--ec-space-1);
+  padding-left: var(--ec-space-2);
+  display: flex;
+  align-items: center;
+  gap: var(--ec-space-2);
+  font-size: var(--ec-text-2xs);
+  color: var(--ec-text-dim);
+  letter-spacing: var(--ec-tracking-wide);
+}
+.ec-kbd {
+  display: inline-block;
+  padding: 0 5px;
+  background: var(--ec-surface-2);
+  border: 1px solid var(--ec-border-subtle);
+  border-radius: var(--ec-radius-xs);
+  font-family: var(--ec-font-mono);
+  font-size: 0.62rem;
+  color: var(--ec-text-muted);
+  line-height: 1.6;
+}
+.ec-composer-hints__sep { color: var(--ec-border-emphasis); }
+/* TLS-индикатор — честная метка транспорта (см. v1.1.90). */
+.ec-composer-tls {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.58rem;
+  font-family: var(--ec-font-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ec-accent);
+}
+.ec-composer-tls__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ec-accent);
+  box-shadow: 0 0 6px var(--ec-accent);
+}
+
+/* Operator-strip над композером (см. v1.1.90 — оставлен как identity). */
+.ec-composer-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 0 6px;
+  font-size: 0.6rem;
+  color: var(--ec-text-dim);
+  font-family: var(--ec-font-mono);
+  letter-spacing: 0.06em;
+}
+.ec-composer-strip__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0.16rem 0.5rem;
+  border-radius: var(--ec-radius-sm);
+  background: color-mix(in srgb, var(--ec-accent) 12%, transparent);
+  border: 1px solid var(--ec-border-accent);
+  color: var(--ec-accent);
+  font-weight: 700;
+}
+.ec-composer-strip__signal {
+  display: inline-flex;
+  align-items: center;
+  text-transform: uppercase;
+}
+
+/* Slash-command подсказка. */
+.ec-slash-hint {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: var(--ec-space-2);
+  padding: 4px;
+  background: var(--ec-surface-2);
+  border: 1px solid var(--ec-border-default);
+  border-radius: var(--ec-radius-md);
+}
+.ec-slash-hint__item {
+  display: flex;
+  align-items: baseline;
+  gap: var(--ec-space-2);
+  width: 100%;
+  padding: 0.35rem 0.55rem;
+  background: transparent;
+  border: 0;
+  border-radius: var(--ec-radius-sm);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-slash-hint__item:hover { background: var(--ec-surface-3); }
+.ec-slash-hint__cmd {
+  font-family: var(--ec-font-mono);
+  font-size: var(--ec-text-xs);
+  color: var(--ec-accent);
+}
+.ec-slash-hint__desc {
+  font-size: var(--ec-text-2xs);
+  color: var(--ec-text-muted);
+}
+
+/* Превью вложений в композере. */
+.ec-composer-previews {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ec-space-2);
+  margin-bottom: var(--ec-space-2);
+}
+.ec-composer-preview {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 28px 4px 4px;
+  background: var(--ec-surface-2);
+  border: 1px solid var(--ec-border-subtle);
+  border-radius: var(--ec-radius-md);
+  font-size: var(--ec-text-xs);
+  color: var(--ec-text-muted);
+  max-width: 180px;
+}
+.ec-composer-preview__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+.ec-composer-preview__size {
+  font-size: 0.65rem;
+  color: var(--ec-text-dim);
+}
+.ec-composer-preview__thumb {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--ec-radius-sm);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.ec-composer-preview__file {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--ec-radius-sm);
+  background: var(--ec-surface-3);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  color: var(--ec-text-muted);
+}
+.ec-composer-preview__remove {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--ec-radius-full);
+  background: var(--ec-surface-3);
+  border: 0;
+  color: var(--ec-text-muted);
+  cursor: pointer;
+  transition:
+    background var(--ec-dur-fast) var(--ec-ease),
+    color var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-composer-preview__remove:hover {
+  background: var(--ec-danger-soft);
+  color: var(--ec-danger);
+}
 

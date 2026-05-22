@@ -1,4 +1,3 @@
-import type { CSSProperties } from "react";
 import { useEffect, useRef, useState } from "react";
 import { fileToBase64 } from "../lib/fileToBase64";
 import { computeWaveformPeaks } from "../lib/audioPeaks";
@@ -66,166 +65,9 @@ type Props = {
   hideSlashCommands?: boolean;
 };
 
-const wrap: CSSProperties = {
-  padding: "var(--ec-space-3) var(--ec-space-5) var(--ec-space-4)",
-  background: "var(--ec-bg)",
-};
-
-const composerBox: CSSProperties = {
-  position: "relative",
-  display: "grid",
-  gridTemplateColumns: "auto 1fr auto",
-  gap: "var(--ec-space-2)",
-  alignItems: "end",
-  padding: "var(--ec-space-1) var(--ec-space-3)",
-  background: "var(--ec-input-bg)",
-  border: "1px solid var(--ec-border-default)",
-  borderRadius: "var(--ec-radius-lg)",
-  transition: "border-color var(--ec-dur-fast) var(--ec-ease), box-shadow var(--ec-dur-fast) var(--ec-ease)",
-};
-
-const composerBoxFocused: CSSProperties = {
-  borderColor: "var(--ec-accent)",
-  boxShadow: "0 0 0 3px var(--ec-accent-soft)",
-};
-
-const textarea: CSSProperties = {
-  display: "block",
-  width: "100%",
-  background: "transparent",
-  border: 0,
-  color: "var(--ec-text)",
-  fontSize: "var(--ec-text-base)",
-  lineHeight: "var(--ec-leading-normal)",
-  fontFamily: "var(--ec-font-sans)",
-  resize: "none",
-  outline: "none",
-  padding: "var(--ec-space-1) 0",
-  maxHeight: 200,
-  overflowY: "auto",
-};
-
-const iconBtn: CSSProperties = {
-  width: 28,
-  height: 28,
-  borderRadius: "var(--ec-radius-md)",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  color: "var(--ec-text-muted)",
-  background: "transparent",
-  border: 0,
-  cursor: "pointer",
-  transition: "color var(--ec-dur-fast) var(--ec-ease), background var(--ec-dur-fast) var(--ec-ease)",
-};
-
-const sendBtn: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  gap: "var(--ec-space-2)",
-  padding: "0.4rem 0.7rem",
-  background: "var(--ec-accent)",
-  color: "var(--ec-accent-text)",
-  border: "1px solid var(--ec-accent)",
-  borderRadius: "var(--ec-radius-md)",
-  fontSize: "var(--ec-text-sm)",
-  fontWeight: 600,
-  cursor: "pointer",
-  transition: "background var(--ec-dur-fast) var(--ec-ease), opacity var(--ec-dur-fast) var(--ec-ease)",
-};
-
-const hintRow: CSSProperties = {
-  marginTop: "var(--ec-space-1)",
-  paddingLeft: "var(--ec-space-2)",
-  fontSize: "var(--ec-text-2xs)",
-  color: "var(--ec-text-dim)",
-  display: "flex",
-  alignItems: "center",
-  gap: "var(--ec-space-2)",
-  letterSpacing: "var(--ec-tracking-wide)",
-};
-
-const kbd: CSSProperties = {
-  display: "inline-block",
-  padding: "0 5px",
-  background: "var(--ec-surface-2)",
-  border: "1px solid var(--ec-border-subtle)",
-  borderRadius: "var(--ec-radius-xs)",
-  fontFamily: "var(--ec-font-mono)",
-  fontSize: "0.62rem",
-  color: "var(--ec-text-muted)",
-  lineHeight: 1.6,
-};
-
-const slashHintStrip: CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: 2,
-  marginBottom: "var(--ec-space-2)",
-  padding: 4,
-  background: "var(--ec-surface-2)",
-  border: "1px solid var(--ec-border-default)",
-  borderRadius: "var(--ec-radius-md)",
-};
-
-const slashHintItem: CSSProperties = {
-  display: "flex",
-  alignItems: "baseline",
-  gap: "var(--ec-space-2)",
-  padding: "0.35rem 0.55rem",
-  background: "transparent",
-  border: 0,
-  borderRadius: "var(--ec-radius-sm)",
-  cursor: "pointer",
-  textAlign: "left",
-  width: "100%",
-  transition: "background var(--ec-dur-fast) var(--ec-ease)",
-};
-
-const previewRow: CSSProperties = {
-  display: "flex",
-  flexWrap: "wrap",
-  gap: "var(--ec-space-2)",
-  marginBottom: "var(--ec-space-2)",
-};
-
-const previewChip: CSSProperties = {
-  position: "relative",
-  display: "flex",
-  alignItems: "center",
-  gap: 6,
-  padding: "4px 28px 4px 4px",
-  background: "var(--ec-surface-2)",
-  border: "1px solid var(--ec-border-subtle)",
-  borderRadius: "var(--ec-radius-md)",
-  fontSize: "var(--ec-text-xs)",
-  color: "var(--ec-text-muted)",
-  maxWidth: 180,
-};
-
-const previewThumb: CSSProperties = {
-  width: 28,
-  height: 28,
-  borderRadius: "var(--ec-radius-sm)",
-  objectFit: "cover",
-  flexShrink: 0,
-};
-
-const previewRemove: CSSProperties = {
-  position: "absolute",
-  top: 2,
-  right: 2,
-  width: 18,
-  height: 18,
-  display: "grid",
-  placeItems: "center",
-  borderRadius: "var(--ec-radius-full)",
-  background: "var(--ec-surface-3)",
-  border: 0,
-  color: "var(--ec-text-muted)",
-  cursor: "pointer",
-};
+// v1.1.92 slice 3: inline-style консоли композера вынесены в классы
+// .ec-composer* / .ec-slash-hint* / .ec-kbd (components.css).
+// JS-hover убран — состояния через CSS.
 
 // Лимиты в синхроне с backend (apps/server/src/attachments.ts).
 // Не-видео: 50 MB. Видео: 200 MB (4K phone clip без транскода).
@@ -762,13 +604,11 @@ export function MessageInput({
   };
 
   const canSend = (draft.trim().length > 0 || pending.length > 0) && !disabled && !sending && !isRecording;
-  const baseBoxStyle = focused ? { ...composerBox, ...composerBoxFocused } : composerBox;
-  const boxStyle: CSSProperties = {
-    ...baseBoxStyle,
-    gridTemplateColumns: hideAttachments
-      ? "minmax(0, 1fr) auto"
-      : "auto auto minmax(0, 1fr) auto",
-  };
+  // Grid-колонки композера зависят от hideAttachments — единственное
+  // динамическое значение; фокус-состояние коробки — CSS :focus-within.
+  const boxGridColumns = hideAttachments
+    ? "minmax(0, 1fr) auto"
+    : "auto auto minmax(0, 1fr) auto";
 
   // Slash-command hint: показываем когда юзер набрал «/» + (опц.) часть
   // команды, но ещё не дошёл до пробела. @/:-popover имеет приоритет.
@@ -808,51 +648,26 @@ export function MessageInput({
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={onDrop}
-      style={{
-        ...wrap,
-        ...(dragOver ? { background: "var(--ec-accent-soft)" } : {}),
-      }}
-      className="ec-composer ec-composer-safe"
+      className={"ec-composer ec-composer-safe" + (dragOver ? " is-drag" : "")}
     >
       {pending.length > 0 && (
-        <div style={previewRow}>
+        <div className="ec-composer-previews">
           {pending.map((p) => (
-            <div key={p.id} style={previewChip} className="ec-anim-fade">
+            <div key={p.id} className="ec-composer-preview ec-anim-fade">
               {p.previewUrl ? (
-                <img src={p.previewUrl} alt="" style={previewThumb} />
+                <img src={p.previewUrl} alt="" className="ec-composer-preview__thumb" />
               ) : (
-                <span
-                  aria-hidden
-                  style={{
-                    width: 28,
-                    height: 28,
-                    borderRadius: "var(--ec-radius-sm)",
-                    background: "var(--ec-surface-3)",
-                    display: "grid",
-                    placeItems: "center",
-                    flexShrink: 0,
-                    color: "var(--ec-text-muted)",
-                  }}
-                >
+                <span className="ec-composer-preview__file" aria-hidden>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
                     <polyline points="14 2 14 8 20 8" />
                   </svg>
                 </span>
               )}
-              <span
-                style={{
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                  flex: 1,
-                  minWidth: 0,
-                }}
-                title={p.file.name}
-              >
+              <span className="ec-composer-preview__name" title={p.file.name}>
                 {p.file.name}
               </span>
-              <span style={{ fontSize: "0.65rem", color: "var(--ec-text-dim)" }}>
+              <span className="ec-composer-preview__size">
                 {humanSize(p.file.size)}
               </span>
               <button
@@ -860,7 +675,7 @@ export function MessageInput({
                 onClick={() => removePending(p.id)}
                 aria-label="Убрать"
                 title="Убрать"
-                style={previewRemove}
+                className="ec-composer-preview__remove"
               >
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                   <line x1="18" y1="6" x2="6" y2="18" />
@@ -898,77 +713,38 @@ export function MessageInput({
         </div>
       )}
       {slashMatches.length > 0 && (
-        <div style={slashHintStrip}>
+        <div className="ec-slash-hint">
           {slashMatches.map((c) => (
             <button
               key={c.cmd}
               type="button"
-              style={slashHintItem}
+              className="ec-slash-hint__item"
               onMouseDown={(e) => {
                 // mousedown (не click) — чтобы успеть до blur textarea
                 e.preventDefault();
                 setDraftValue(`/${c.cmd} `);
                 queueMicrotask(() => textareaRef.current?.focus());
               }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "var(--ec-surface-3)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "transparent";
-              }}
             >
-              <strong
-                style={{
-                  fontFamily: "var(--ec-font-mono)",
-                  fontSize: "var(--ec-text-xs)",
-                  color: "var(--ec-accent)",
-                }}
-              >
-                {c.label}
-              </strong>
-              <span style={{ fontSize: "var(--ec-text-2xs)", color: "var(--ec-text-muted)" }}>
-                {c.desc}
-              </span>
+              <strong className="ec-slash-hint__cmd">{c.label}</strong>
+              <span className="ec-slash-hint__desc">{c.desc}</span>
             </button>
           ))}
         </div>
       )}
-      {/* v1.1.1 Eclipse_OS secure-channel status strip над composer'ом. */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          padding: "0 0 6px",
-          fontSize: "0.6rem",
-          color: "var(--ec-text-dim)",
-          fontFamily: "var(--ec-font-mono, ui-monospace, monospace)",
-          letterSpacing: "0.06em",
-        }}
-      >
-        <span
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 4,
-            padding: "0.16rem 0.5rem",
-            borderRadius: "var(--ec-radius-sm)",
-            background: "color-mix(in srgb, var(--ec-accent) 12%, transparent)",
-            border: "1px solid var(--ec-border-accent)",
-            color: "var(--ec-accent)",
-            fontWeight: 700,
-          }}
-        >
+      {/* Operator-strip над композером (см. v1.1.90 — оставлен как identity). */}
+      <div className="ec-composer-strip">
+        <span className="ec-composer-strip__pill">
           {">_"} ЗАЩИЩЁННЫЙ_КАНАЛ
         </span>
-        <span style={{ textTransform: "uppercase", display: "inline-flex", alignItems: "center" }}>
+        <span className="ec-composer-strip__signal">
           {focused ? "ВВОД ПОТОКА" : "ОЖИДАНИЕ СИГНАЛА"}
           <span className="ec-composer-scan-dots" aria-hidden>
             <span /><span /><span />
           </span>
         </span>
       </div>
-      <div className="ec-composer-box" style={boxStyle}>
+      <div className="ec-composer-box" style={{ gridTemplateColumns: boxGridColumns }}>
         {!hideAttachments && (
           <>
         <input
@@ -989,15 +765,6 @@ export function MessageInput({
           className="ec-composer-icon-btn ec-rotate-hover"
           title="Прикрепить файлы"
           aria-label="Прикрепить файлы"
-          style={iconBtn}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = "var(--ec-surface-3)";
-            e.currentTarget.style.color = "var(--ec-text)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = "transparent";
-            e.currentTarget.style.color = "var(--ec-text-muted)";
-          }}
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
             <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.49" />
@@ -1010,15 +777,6 @@ export function MessageInput({
               className={isRecording ? "ec-composer-icon-btn ec-composer-icon-btn--recording" : "ec-composer-icon-btn"}
               title={isRecording ? "Завершить запись" : "Записать голосовое"}
               aria-label={isRecording ? "Завершить запись голосового" : "Записать голосовое сообщение"}
-              style={iconBtn}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = isRecording ? "var(--ec-danger-soft)" : "var(--ec-surface-3)";
-                e.currentTarget.style.color = isRecording ? "var(--ec-danger)" : "var(--ec-text)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "transparent";
-                e.currentTarget.style.color = "var(--ec-text-muted)";
-              }}
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
@@ -1065,13 +823,12 @@ export function MessageInput({
           }
           disabled={disabled}
           className="ec-composer-textarea"
-          style={textarea}
         />
         <button
           type="submit"
           disabled={!canSend}
           className="ec-composer-send"
-          style={{ ...sendBtn, opacity: canSend ? 1 : 0.4, cursor: canSend ? "pointer" : "default" }}
+          style={{ opacity: canSend ? 1 : 0.4, cursor: canSend ? "pointer" : "default" }}
           title="ПЕРЕДАТЬ (Enter)"
         >
           {sending ? (
@@ -1087,54 +844,35 @@ export function MessageInput({
           )}
         </button>
       </div>
-      <div className="ec-composer-hints" style={hintRow}>
-        <span><span style={kbd}>Enter</span> — отправить</span>
-        <span className="ec-composer-hint--md" style={{ color: "var(--ec-border-emphasis)" }}>·</span>
-        <span className="ec-composer-hint--md"><span style={kbd}>Shift+Enter</span> — новая строка</span>
+      <div className="ec-composer-hints">
+        <span><span className="ec-kbd">Enter</span> — отправить</span>
+        <span className="ec-composer-hint--md ec-composer-hints__sep">·</span>
+        <span className="ec-composer-hint--md"><span className="ec-kbd">Shift+Enter</span> — новая строка</span>
         {!hideAttachments && (
           <>
-            <span className="ec-composer-hint--lg" style={{ color: "var(--ec-border-emphasis)" }}>·</span>
+            <span className="ec-composer-hint--lg ec-composer-hints__sep">·</span>
             <span className="ec-composer-hint--lg">drop файлы</span>
           </>
         )}
         <span className="ec-composer-hint--lg" style={{ color: "var(--ec-border-emphasis)" }}>·</span>
         <span className="ec-composer-hint--lg">
-          <span style={kbd}>@</span> участник · <span style={kbd}>:</span>emoji
+          <span className="ec-kbd">@</span> участник · <span className="ec-kbd">:</span>emoji
         </span>
         {!hideSlashCommands && (
           <>
-            <span style={{ color: "var(--ec-border-emphasis)" }}>·</span>
+            <span className="ec-composer-hints__sep">·</span>
             <span>
-              <span style={kbd}>/task</span> задача
+              <span className="ec-kbd">/task</span> задача
             </span>
           </>
         )}
-        {/* v1.1.90 TLS-транспорт индикатор — sticks вправо. Честно: это
-            транспортное шифрование (HTTPS/WSS), НЕ сквозное (E2E). */}
+        {/* v1.1.90 TLS-транспорт индикатор — честная метка транспорта
+            (HTTPS/WSS), НЕ сквозное (E2E) шифрование. */}
         <span
-          style={{
-            marginLeft: "auto",
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 4,
-            fontSize: "0.58rem",
-            fontFamily: "var(--ec-font-mono, ui-monospace, monospace)",
-            letterSpacing: "0.06em",
-            color: "var(--ec-accent)",
-            textTransform: "uppercase",
-          }}
+          className="ec-composer-tls"
           title="Соединение защищено TLS — сквозного (E2E) шифрования нет"
         >
-          <span
-            aria-hidden
-            style={{
-              width: 6,
-              height: 6,
-              borderRadius: "50%",
-              background: "var(--ec-accent)",
-              boxShadow: "0 0 6px var(--ec-accent)",
-            }}
-          />
+          <span className="ec-composer-tls__dot" aria-hidden />
           TLS
         </span>
       </div>

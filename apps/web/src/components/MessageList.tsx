@@ -1,4 +1,3 @@
-import type { CSSProperties } from "react";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { Attachments } from "./Attachments";
 import { Avatar } from "./Avatar";
@@ -44,127 +43,9 @@ type Props = {
   onPlayShared?: (attachmentId: string) => void | Promise<void>;
 };
 
-const shell: CSSProperties = {
-  flex: 1,
-  minHeight: 0,
-  position: "relative",
-  display: "flex",
-  flexDirection: "column",
-  overflow: "hidden",
-};
-
-const wrap: CSSProperties = {
-  flex: 1,
-  overflowY: "auto",
-  padding: "var(--ec-space-4) var(--ec-space-5) var(--ec-space-2)",
-  display: "flex",
-  flexDirection: "column",
-  gap: 2,
-};
-
-const rowBase: CSSProperties = {
-  position: "relative",
-  display: "grid",
-  gridTemplateColumns: "44px 1fr",
-  columnGap: "var(--ec-space-3)",
-  padding: "var(--ec-space-2) var(--ec-space-2)",
-  paddingRight: 12,
-  borderRadius: "var(--ec-radius-md)",
-  transition: "background var(--ec-dur-fast) var(--ec-ease)",
-};
-
-const rowGrouped: CSSProperties = {
-  ...rowBase,
-  paddingTop: 2,
-  paddingBottom: 2,
-};
-
-const rowPinned: CSSProperties = {
-  ...rowBase,
-  background: "color-mix(in srgb, var(--ec-warn) 6%, transparent)",
-  borderLeft: "2px solid var(--ec-warn)",
-  paddingLeft: 6,
-};
-
-const daySeparator: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: "var(--ec-space-3)",
-  margin: "var(--ec-space-4) 0 var(--ec-space-2)",
-  fontSize: "var(--ec-text-2xs)",
-  letterSpacing: "var(--ec-tracking-caps)",
-  textTransform: "uppercase",
-  color: "var(--ec-text-dim)",
-};
-
-const dayLine: CSSProperties = {
-  flex: 1,
-  height: 1,
-  background: "var(--ec-border-subtle)",
-};
-
-const stickyTime: CSSProperties = {
-  fontFamily: "var(--ec-font-mono)",
-  fontSize: "var(--ec-text-2xs)",
-  color: "var(--ec-text-dim)",
-  whiteSpace: "nowrap",
-  paddingTop: 4,
-  opacity: 0,
-  transition: "opacity var(--ec-dur-fast) var(--ec-ease)",
-};
-
-const actionsBar: CSSProperties = {
-  position: "absolute",
-  top: -10,
-  right: 12,
-  display: "flex",
-  gap: 2,
-  padding: 2,
-  background: "var(--ec-surface-2)",
-  border: "1px solid var(--ec-border-subtle)",
-  borderRadius: "var(--ec-radius-md)",
-  boxShadow: "var(--ec-shadow-sm)",
-  opacity: 0,
-  transition: "opacity var(--ec-dur-fast) var(--ec-ease)",
-  pointerEvents: "none",
-  zIndex: 2,
-};
-
-const actionBtn: CSSProperties = {
-  width: 26,
-  height: 26,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  background: "transparent",
-  border: 0,
-  borderRadius: "var(--ec-radius-sm)",
-  color: "var(--ec-text-muted)",
-  cursor: "pointer",
-  transition: "background var(--ec-dur-fast) var(--ec-ease), color var(--ec-dur-fast) var(--ec-ease)",
-};
-
-const failedTag: CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 4,
-  marginLeft: "var(--ec-space-2)",
-  padding: "0.05rem 0.45rem",
-  background: "var(--ec-danger-soft)",
-  color: "var(--ec-danger)",
-  border: "1px solid var(--ec-danger)",
-  borderRadius: "var(--ec-radius-full)",
-  fontSize: "var(--ec-text-2xs)",
-  fontWeight: 600,
-  letterSpacing: "var(--ec-tracking-wide)",
-};
-
-const editAreaWrap: CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: 6,
-  marginTop: 4,
-};
+// v1.1.92 slice 3: inline-style консоли MessageList вынесены в классы
+// .ec-message-list* / .ec-message-row* / .ec-msg-* (components.css).
+// JS-hover убран — состояния через CSS.
 
 function labelForAction(type: ActionItemType): string {
   if (type === "DECISION") return "Decision";
@@ -200,21 +81,6 @@ function tintForAction(type: ActionItemType, status: ActionItemStatus) {
     border: "var(--ec-border-accent)",
   };
 }
-
-const editTextarea: CSSProperties = {
-  width: "100%",
-  minHeight: 60,
-  padding: "0.5rem 0.6rem",
-  background: "var(--ec-input-bg)",
-  color: "var(--ec-text)",
-  border: "1px solid var(--ec-accent)",
-  boxShadow: "0 0 0 3px var(--ec-accent-soft)",
-  borderRadius: "var(--ec-radius-md)",
-  fontSize: "var(--ec-text-base)",
-  lineHeight: "var(--ec-leading-normal)",
-  fontFamily: "var(--ec-font-sans)",
-  resize: "vertical",
-};
 
 function formatTime(iso: string): string {
   return iso.slice(11, 16);
@@ -423,7 +289,7 @@ export function MessageList({
       <div
         ref={containerRef}
         className="ec-message-list"
-        style={{ ...wrap, paddingTop: "var(--ec-space-6)" }}
+        style={{ paddingTop: "var(--ec-space-6)" }}
         aria-busy="true"
         aria-label="Загружаем сообщения"
       >
@@ -466,7 +332,7 @@ export function MessageList({
       <div
         ref={containerRef}
         className="ec-message-list ec-aurora-bg"
-        style={{ ...wrap, justifyContent: "center" }}
+        style={{ justifyContent: "center" }}
       >
         <EmptyState
           icon={<EmptyChannelIcon />}
@@ -489,8 +355,8 @@ export function MessageList({
   const canMod = canModerate(currentRole);
 
   return (
-    <div className="ec-message-list-shell" style={shell}>
-      <div ref={containerRef} className="ec-message-list" style={wrap} onScroll={handleScroll}>
+    <div className="ec-message-list-shell">
+      <div ref={containerRef} className="ec-message-list" onScroll={handleScroll}>
       {pickerFor && onToggleReaction && (
         <EmojiPicker
           anchorRect={pickerFor.rect}
@@ -527,26 +393,19 @@ export function MessageList({
         const canCreateActions = showActions && Boolean(onCreateAction);
         const existingTypes = new Set(m.actionItems.map((item) => item.type));
 
-        const rowStyle = isPinned ? rowPinned : grouped && !newDay ? rowGrouped : rowBase;
+        const rowClass = isPinned
+          ? " ec-message-row--pinned"
+          : grouped && !newDay
+          ? " ec-message-row--grouped"
+          : "";
 
         return (
           <Fragment key={m.id}>
             {newDay && (
-              <div style={daySeparator} role="separator">
-                <span style={dayLine} aria-hidden />
-                <span
-                  style={{
-                    fontFamily: "var(--ec-font-mono, ui-monospace, monospace)",
-                    fontSize: "0.62rem",
-                    letterSpacing: "0.08em",
-                    color: "var(--ec-accent)",
-                    opacity: 0.85,
-                    textTransform: "uppercase",
-                  }}
-                >
-                  {formatDay(m.createdAt)}
-                </span>
-                <span style={dayLine} aria-hidden />
+              <div className="ec-msg-day" role="separator">
+                <span className="ec-msg-day__line" aria-hidden />
+                <span className="ec-msg-day__label">{formatDay(m.createdAt)}</span>
+                <span className="ec-msg-day__line" aria-hidden />
               </div>
             )}
             {unreadAnchorId === m.id && (
@@ -557,40 +416,20 @@ export function MessageList({
             <article
               className={
                 "ec-message-row ec-anim-message-enter" +
+                rowClass +
                 (m.user.isBot ? " ec-message-row--ai" : "")
               }
               style={{
-                ...rowStyle,
                 opacity: m.pending ? 0.6 : 1,
                 /* v0.39: stagger cascade на первые 12 messages при mount.
                    Socket-arrival messages в established channel'е получают
                    0ms delay = instant fade-up. */
                 animationDelay: i < 12 ? `${i * 25}ms` : "0ms",
               }}
-              onMouseEnter={(e) => {
-                if (!isPinned && !m.user.isBot) e.currentTarget.style.background = "var(--ec-surface-1)";
-                const time = e.currentTarget.querySelector<HTMLElement>("[data-sticky-time]");
-                if (time) time.style.opacity = "1";
-                const bar = e.currentTarget.querySelector<HTMLElement>("[data-actions]");
-                if (bar) {
-                  bar.style.opacity = "1";
-                  bar.style.pointerEvents = "auto";
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!isPinned && !m.user.isBot) e.currentTarget.style.background = "transparent";
-                const time = e.currentTarget.querySelector<HTMLElement>("[data-sticky-time]");
-                if (time) time.style.opacity = "0";
-                const bar = e.currentTarget.querySelector<HTMLElement>("[data-actions]");
-                if (bar) {
-                  bar.style.opacity = "0";
-                  bar.style.pointerEvents = "none";
-                }
-              }}
             >
               <div style={{ display: "flex", justifyContent: "center" }}>
                 {grouped && !newDay && !isPinned ? (
-                  <span data-sticky-time style={stickyTime}>
+                  <span className="ec-msg-sticky-time">
                     {formatTime(m.createdAt)}
                   </span>
                 ) : (
@@ -688,7 +527,7 @@ export function MessageList({
                       <span style={{ fontSize: "var(--ec-text-2xs)", color: "var(--ec-text-dim)" }}>отправляется…</span>
                     )}
                     {m.failed && (
-                      <span style={failedTag}>
+                      <span className="ec-msg-failed-tag">
                         <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                           <circle cx="12" cy="12" r="10" />
                           <line x1="12" y1="8" x2="12" y2="12" />
@@ -700,12 +539,12 @@ export function MessageList({
                   </header>
                 )}
                 {isEditing ? (
-                  <div style={editAreaWrap}>
+                  <div className="ec-msg-edit">
                     <textarea
                       value={editDraft}
                       onChange={(e) => setEditDraft(e.target.value)}
                       autoFocus
-                      style={editTextarea}
+                      className="ec-msg-edit__textarea"
                       onKeyDown={(e) => {
                         if (e.key === "Enter" && !e.shiftKey) {
                           e.preventDefault();
@@ -715,7 +554,7 @@ export function MessageList({
                         }
                       }}
                     />
-                    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                    <div className="ec-msg-edit__row">
                       <button type="button" className="ec-btn ec-btn--primary ec-btn--sm" onClick={() => void commitEdit(m)}>
                         Сохранить
                       </button>
@@ -801,7 +640,7 @@ export function MessageList({
                       <button
                         key={r.emoji}
                         type="button"
-                        className="ec-anim-reaction-pop"
+                        className="ec-anim-reaction-pop ec-msg-pill"
                         onClick={() => void onToggleReaction?.(m.id, r.emoji)}
                         title={r.mine ? "Снять реакцию" : "Поддержать"}
                         style={{
@@ -818,12 +657,6 @@ export function MessageList({
                           lineHeight: 1.4,
                           transition: "background var(--ec-dur-fast) var(--ec-ease), border-color var(--ec-dur-fast) var(--ec-ease), transform var(--ec-dur-fast) var(--ec-ease)",
                         }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.transform = "translateY(-1px)";
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.transform = "translateY(0)";
-                        }}
                       >
                         <span aria-hidden style={{ fontSize: "0.95rem" }}>{r.emoji}</span>
                         <span style={{ fontWeight: 600, fontFeatureSettings: '"tnum"' }}>{r.count}</span>
@@ -834,6 +667,7 @@ export function MessageList({
                 {!isDeleted && !isEditing && (m.threadReplyCount ?? 0) > 0 && onOpenThread && (
                   <button
                     type="button"
+                    className="ec-msg-pill"
                     onClick={() => onOpenThread(m.id)}
                     style={{
                       display: "inline-flex",
@@ -851,12 +685,6 @@ export function MessageList({
                       letterSpacing: "var(--ec-tracking-wide)",
                       transition: "transform var(--ec-dur-fast) var(--ec-ease)",
                     }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = "translateY(-1px)";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = "translateY(0)";
-                    }}
                   >
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                       <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" />
@@ -872,6 +700,7 @@ export function MessageList({
                         <button
                           key={action.id}
                           type="button"
+                          className="ec-msg-pill"
                           title={
                             action.status === "OPEN"
                               ? "Отметить как выполненное"
@@ -895,12 +724,6 @@ export function MessageList({
                             color: tint.fg,
                             cursor: onToggleActionStatus ? "pointer" : "default",
                             transition: "transform var(--ec-dur-fast) var(--ec-ease)",
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.transform = "translateY(-1px)";
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.transform = "translateY(0)";
                           }}
                         >
                           <span
@@ -933,22 +756,14 @@ export function MessageList({
                 )}
               </div>
               {showActions && (
-                <div data-actions className="ec-message-actions" style={actionsBar}>
+                <div className="ec-message-actions">
                   {onOpenThread && (
                     <button
                       type="button"
-                      style={actionBtn}
+                      className="ec-msg-action ec-msg-action--accent"
                       aria-label="Открыть тред"
                       title="Ответить в треде"
                       onClick={() => onOpenThread(m.id)}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = "var(--ec-accent-soft)";
-                        e.currentTarget.style.color = "var(--ec-accent)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = "transparent";
-                        e.currentTarget.style.color = "var(--ec-text-muted)";
-                      }}
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                         <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" />
@@ -958,20 +773,12 @@ export function MessageList({
                   {onToggleReaction && (
                     <button
                       type="button"
-                      style={actionBtn}
+                      className="ec-msg-action"
                       aria-label="Добавить реакцию"
                       title="Реакция"
                       onClick={(e) => {
                         const rect = e.currentTarget.getBoundingClientRect();
                         setPickerFor({ messageId: m.id, rect });
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = "var(--ec-surface-3)";
-                        e.currentTarget.style.color = "var(--ec-text)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = "transparent";
-                        e.currentTarget.style.color = "var(--ec-text-muted)";
                       }}
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -984,18 +791,10 @@ export function MessageList({
                   )}
                   <button
                     type="button"
-                    style={actionBtn}
+                    className="ec-msg-action"
                     aria-label="Копировать"
                     title={isCopied ? "Скопировано" : "Копировать"}
                     onClick={() => void handleCopy(m)}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = "var(--ec-surface-3)";
-                      e.currentTarget.style.color = "var(--ec-text)";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = "transparent";
-                      e.currentTarget.style.color = "var(--ec-text-muted)";
-                    }}
                   >
                     {isCopied ? (
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ec-ok)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -1011,18 +810,10 @@ export function MessageList({
                   {showEdit && (
                     <button
                       type="button"
-                      style={actionBtn}
+                      className="ec-msg-action"
                       aria-label="Редактировать"
                       title="Редактировать"
                       onClick={() => beginEdit(m)}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = "var(--ec-surface-3)";
-                        e.currentTarget.style.color = "var(--ec-text)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = "transparent";
-                        e.currentTarget.style.color = "var(--ec-text-muted)";
-                      }}
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                         <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
@@ -1033,18 +824,10 @@ export function MessageList({
                   {canCreateActions && !existingTypes.has("TASK") && (
                     <button
                       type="button"
-                      style={actionBtn}
+                      className="ec-msg-action ec-msg-action--accent"
                       aria-label="Сделать задачей"
                       title="Сделать задачей"
                       onClick={() => void onCreateAction?.(m.id, "TASK")}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = "var(--ec-surface-3)";
-                        e.currentTarget.style.color = "var(--ec-accent)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = "transparent";
-                        e.currentTarget.style.color = "var(--ec-text-muted)";
-                      }}
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                         <path d="M9 11l3 3L22 4" />
@@ -1055,18 +838,10 @@ export function MessageList({
                   {canCreateActions && !existingTypes.has("DECISION") && (
                     <button
                       type="button"
-                      style={actionBtn}
+                      className="ec-msg-action ec-msg-action--accent"
                       aria-label="Зафиксировать решение"
                       title="Зафиксировать решение"
                       onClick={() => void onCreateAction?.(m.id, "DECISION")}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = "var(--ec-status-warn-soft)";
-                        e.currentTarget.style.color = "var(--ec-status-warn)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = "transparent";
-                        e.currentTarget.style.color = "var(--ec-text-muted)";
-                      }}
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                         <path d="M12 2l7 4v6c0 5-3.8 8.7-7 10-3.2-1.3-7-5-7-10V6l7-4z" />
@@ -1076,18 +851,10 @@ export function MessageList({
                   {canCreateActions && !existingTypes.has("FOLLOW_UP") && (
                     <button
                       type="button"
-                      style={actionBtn}
+                      className="ec-msg-action ec-msg-action--accent"
                       aria-label="Поставить follow-up"
                       title="Поставить follow-up"
                       onClick={() => void onCreateAction?.(m.id, "FOLLOW_UP")}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = "var(--ec-accent-2-soft)";
-                        e.currentTarget.style.color = "var(--ec-accent-2)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = "transparent";
-                        e.currentTarget.style.color = "var(--ec-text-muted)";
-                      }}
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                         <path d="M5 12h14" />
@@ -1098,16 +865,10 @@ export function MessageList({
                   {showUnpin && (
                     <button
                       type="button"
-                      style={{ ...actionBtn, color: "var(--ec-warn)" }}
+                      className="ec-msg-action ec-msg-action--warn"
                       aria-label="Открепить"
                       title="Открепить"
                       onClick={() => void onUnpin?.(m.id)}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = "color-mix(in srgb, var(--ec-warn) 14%, transparent)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = "transparent";
-                      }}
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                         <line x1="2" y1="2" x2="22" y2="22" />
@@ -1119,18 +880,10 @@ export function MessageList({
                   {showPin && (
                     <button
                       type="button"
-                      style={actionBtn}
+                      className="ec-msg-action ec-msg-action--warn"
                       aria-label="Закрепить"
                       title="Закрепить"
                       onClick={() => void onPin?.(m.id)}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = "var(--ec-surface-3)";
-                        e.currentTarget.style.color = "var(--ec-warn)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = "transparent";
-                        e.currentTarget.style.color = "var(--ec-text-muted)";
-                      }}
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                         <line x1="12" y1="17" x2="12" y2="22" />
@@ -1141,16 +894,10 @@ export function MessageList({
                   {showDelete && (
                     <button
                       type="button"
-                      style={{ ...actionBtn, color: "var(--ec-danger)" }}
+                      className="ec-msg-action ec-msg-action--danger"
                       aria-label="Удалить"
                       title="Удалить"
                       onClick={() => void handleDelete(m)}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = "var(--ec-danger-soft)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = "transparent";
-                      }}
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                         <polyline points="3 6 5 6 21 6" />
