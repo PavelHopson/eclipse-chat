@@ -356,6 +356,341 @@
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ec-danger) 30%, transparent);
 }
 
+/* ===== Operational table — control desk =====================
+   Не spreadsheet-заготовка: плотная sticky-шапка, column rhythm,
+   строка реагирует целиком, inline-edit — часть системы. */
+.ec-cck-table-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+.ec-cck-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--ec-text-sm);
+}
+
+/* Sticky header — плотный, чёткий, реально приклеен к верху. */
+.ec-cck-th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  text-align: left;
+  padding: var(--ec-space-2) var(--ec-space-3);
+  background: var(--ec-surface-2);
+  box-shadow: inset 0 -1px 0 var(--ec-border-default);
+  color: var(--ec-text-muted);
+  font-weight: 600;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.ec-cck-th--rail { width: 30px; padding: 0; }
+.ec-cck-th--act { width: 62px; }
+.ec-cck-th[data-dragging="true"] { opacity: 0.4; }
+.ec-cck-th[data-drop="true"] {
+  box-shadow:
+    inset 3px 0 0 0 var(--ec-accent),
+    inset 0 -1px 0 var(--ec-border-default);
+}
+
+/* Body-cell. */
+.ec-cck-td {
+  padding: 0;
+  background: var(--ec-surface-1);
+  box-shadow: inset 0 -1px 0 var(--ec-border-subtle);
+  vertical-align: middle;
+}
+/* Строка реагирует на курсор целиком — активная строка читается. */
+.ec-cck-row .ec-cck-td {
+  transition: background var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-cck-row:hover .ec-cck-td { background: var(--ec-surface-2); }
+.ec-cck-row[data-dragging="true"] { opacity: 0.4; }
+.ec-cck-row[data-drop="true"] .ec-cck-td {
+  box-shadow:
+    inset 0 2px 0 0 var(--ec-accent),
+    inset 0 -1px 0 var(--ec-border-subtle);
+}
+
+/* Inline-edit cell — rest выглядит как текст, focus = «редактирую»:
+   input-bg + accent-кольцо. Редактирование — часть системы. */
+.ec-cck-cell {
+  width: 100%;
+  background: transparent;
+  border: 0;
+  padding: var(--ec-space-2) var(--ec-space-3);
+  color: var(--ec-text);
+  font-size: var(--ec-text-sm);
+  font-family: inherit;
+  outline: none;
+  transition:
+    background var(--ec-dur-fast) var(--ec-ease),
+    box-shadow var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-cck-cell:focus {
+  background: var(--ec-input-bg);
+  box-shadow: inset 0 0 0 1.5px var(--ec-accent);
+}
+.ec-cck-cell--num {
+  font-family: var(--ec-font-mono);
+  font-feature-settings: "tnum";
+  text-align: right;
+}
+.ec-cck-cell--ghost { color: var(--ec-text-dim); }
+.ec-cck-cell--check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.ec-cck-checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--ec-accent);
+  cursor: pointer;
+}
+
+/* Field-header — grip · имя · тип · действия. */
+.ec-cck-fh {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ec-cck-fh__name {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  color: var(--ec-text-strong);
+  font-size: var(--ec-text-2xs);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ec-cck-fh__name:hover { color: var(--ec-accent); }
+.ec-cck-fh__type {
+  flex-shrink: 0;
+  padding: 0.06rem 0.36rem;
+  border-radius: var(--ec-radius-xs);
+  background: var(--ec-surface-3);
+  color: var(--ec-text-dim);
+  font-size: 0.52rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.ec-cck-fh__spacer { margin-left: auto; }
+
+/* Grip — drag-handle колонок / строк. */
+.ec-cck-grip {
+  display: inline-grid;
+  place-items: center;
+  width: 100%;
+  color: var(--ec-text-dim);
+  cursor: grab;
+  user-select: none;
+  font-size: 0.7rem;
+  letter-spacing: -2px;
+  opacity: 0.45;
+  transition: opacity var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-cck-grip:hover { opacity: 1; }
+
+/* Micro-action — gear / × в таблице. */
+.ec-cck-act {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: var(--ec-radius-xs);
+  color: var(--ec-text-dim);
+  cursor: pointer;
+  transition:
+    background var(--ec-dur-fast) var(--ec-ease),
+    color var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-cck-act:hover { background: var(--ec-surface-3); color: var(--ec-text); }
+.ec-cck-act--danger:hover { background: var(--ec-danger-soft); color: var(--ec-danger); }
+
+/* Row-action cluster + mini-кнопки. */
+.ec-cck-rowact {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: var(--ec-space-1) 2px;
+}
+.ec-cck-rowbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0.14rem 0.42rem;
+  border-radius: var(--ec-radius-xs);
+  border: 1px solid var(--ec-border-subtle);
+  background: transparent;
+  color: var(--ec-text-dim);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background var(--ec-dur-fast) var(--ec-ease),
+    border-color var(--ec-dur-fast) var(--ec-ease),
+    color var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-cck-rowbtn:hover {
+  border-color: var(--ec-border-default);
+  color: var(--ec-text);
+}
+.ec-cck-rowbtn[data-tone="accent"] { color: var(--ec-accent); }
+.ec-cck-rowbtn[data-tone="danger"] { color: var(--ec-danger); }
+.ec-cck-rowbtn:disabled { opacity: 0.5; cursor: wait; }
+/* Linked-action badge — tone-driven (status задачи). */
+.ec-cck-rowbtn--badge {
+  color: var(--tone, var(--ec-text-dim));
+  border-color: color-mix(in srgb, var(--tone, var(--ec-text-dim)) 34%, transparent);
+  background: color-mix(in srgb, var(--tone, var(--ec-text-dim)) 13%, transparent);
+}
+
+/* Shared form input (AddFieldForm, селекты). */
+.ec-cck-input {
+  padding: 0.4rem 0.6rem;
+  background: var(--ec-input-bg);
+  border: 1px solid var(--ec-border-default);
+  border-radius: var(--ec-radius-sm);
+  color: var(--ec-text);
+  font-size: var(--ec-text-sm);
+  font-family: inherit;
+  outline: none;
+  transition: border-color var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-cck-input:focus { border-color: var(--ec-accent); }
+
+/* Title-поле — крупный editable заголовок поверхности. */
+.ec-cck-titlefield {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  padding: 0.2rem 0.4rem;
+  margin: -0.2rem 0;
+  border-radius: var(--ec-radius-sm);
+  color: var(--ec-text-strong);
+  font-size: var(--ec-text-lg);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  font-family: inherit;
+  outline: none;
+  transition: background var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-cck-titlefield:hover { background: var(--ec-surface-2); }
+.ec-cck-titlefield:focus {
+  background: var(--ec-input-bg);
+  box-shadow: inset 0 0 0 1.5px var(--ec-accent);
+}
+
+/* Field-form bar — добавление колонки. */
+.ec-cck-fieldform {
+  display: flex;
+  align-items: center;
+  gap: var(--ec-space-2);
+  flex-wrap: wrap;
+  padding: var(--ec-space-3) var(--ec-space-5);
+  background: var(--ec-surface-2);
+  box-shadow: inset 0 -1px 0 var(--ec-border-subtle);
+}
+
+/* Aggregation footer. */
+.ec-cck-tfoot th,
+.ec-cck-tfoot td {
+  padding: var(--ec-space-2) var(--ec-space-3);
+  background: var(--ec-surface-2);
+  box-shadow: inset 0 1px 0 var(--ec-border-default);
+  vertical-align: middle;
+}
+.ec-cck-tfoot__label {
+  font-size: var(--ec-text-2xs);
+  font-weight: 700;
+  letter-spacing: var(--ec-tracking-caps);
+  text-transform: uppercase;
+  color: var(--ec-text-dim);
+}
+.ec-cck-tfoot__sum {
+  font-family: var(--ec-font-mono);
+  font-feature-settings: "tnum";
+  color: var(--ec-text-strong);
+  font-weight: 650;
+}
+.ec-cck-tfoot__meta {
+  font-size: var(--ec-text-2xs);
+  color: var(--ec-text-dim);
+}
+
+/* Relation-popover — список связей. CSS-hover (был JS-hover-drift). */
+.ec-cck-pop {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 30;
+  margin-top: 4px;
+  min-width: 240px;
+  max-height: 280px;
+  overflow: auto;
+  padding: var(--ec-space-2);
+  background: var(--ec-surface-2);
+  border-radius: var(--ec-radius-md);
+  box-shadow: var(--ec-elev-2);
+}
+.ec-cck-pop__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0.3rem 0.5rem;
+  border-radius: var(--ec-radius-sm);
+  cursor: pointer;
+  font-size: var(--ec-text-sm);
+  color: var(--ec-text);
+}
+.ec-cck-pop__row:hover { background: var(--ec-surface-3); }
+.ec-cck-pop__foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 6px;
+  padding-top: 6px;
+  box-shadow: inset 0 1px 0 var(--ec-border-subtle);
+  font-size: var(--ec-text-2xs);
+  color: var(--ec-text-dim);
+}
+
+/* File-chip в FILE-ячейке. */
+.ec-cck-file {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 200px;
+  padding: 0.1rem 0.2rem 0.1rem 0.45rem;
+  border-radius: var(--ec-radius-full);
+  background: var(--ec-surface-2);
+  box-shadow: inset 0 0 0 1px var(--ec-border-subtle);
+  font-size: var(--ec-text-2xs);
+}
+.ec-cck-file__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ec-text);
+  text-decoration: none;
+}
+
 /* ===== Reduced motion ======================================= */
 @media (prefers-reduced-motion: reduce) {
   .ec-cck-card:hover { transform: none; }

@@ -10,135 +10,34 @@ import {
 } from "../hooks/useOperationalTables";
 
 /**
- * Operational Table phase 1 (v0.59) — main view.
+ * OperationalTablePanel — операционная таблица: control desk Execution
+ * Cockpit, не spreadsheet-заготовка.
  *
- * Render: HTML <table> с inline editable cells. Каждая cell — input/select/
- * textarea в зависимости от field.type. Save on blur (debounced + batched
- * через updateRow). Без drag-reorder, без advanced filters/sort, без AI fill
- * — это foundation. Phase 2 наращивает функциональность.
+ * v1.2.3 (R2) — переведена на cockpit-язык (`cockpit.css`,
+ * `.ec-cck-*`): убраны module-level `CSSProperties`-консоли и весь
+ * inline-style долг, JS-hover в RelationCell → CSS. Sticky-header,
+ * column rhythm, row-hover, inline-edit-состояния — из общей системы.
  *
- * Layout: occupies main content area (где обычно chat) когда selectedTableId
- * выставлен. AppShell render conditionally.
+ * Render: HTML <table> с inline-editable cells. Save on blur через
+ * updateRow. Логика (drag-reorder полей/строк, AI-fill, realtime
+ * sync, RELATION/FILE) не тронута.
  */
 
 type Props = {
   tableId: string;
   onClose: () => void;
   onDelete?: () => void;
-  /** v0.62 phase 2: список member'ов активного сервера — для USER-field
-   *  dropdown. Empty array = UI рендерит «—» в USER cells. */
+  /** Список member'ов активного сервера — для USER-field dropdown. */
   members?: Array<{
     userId: string;
     user: { displayName: string; avatar: string | null };
   }>;
-  /** v0.62: socket для realtime sync. Optional — без него поведение как
-   *  в v0.59 phase 1 (manual reload). */
+  /** socket для realtime sync. Optional — без него manual reload. */
   socket?: import("socket.io-client").Socket | null;
-  /** v0.75 #10 phase 2.5b: список таблиц активного сервера — для RELATION
-   *  picker'а в AddFieldForm. Empty array = «нет таблиц для связи». */
+  /** Список таблиц активного сервера — для RELATION picker'а. */
   availableTables?: Array<{ id: string; name: string }>;
-  /** v0.90 #10 phase 4: открыть ActionItemDrawer (для linked rows). Если
-   *  undefined — badge всё равно показывается, но click — noop. */
+  /** Открыть ActionItemDrawer для linked rows. */
   onOpenLinkedAction?: (actionItemId: string, channelId: string) => void;
-};
-
-const wrap: CSSProperties = {
-  flex: 1,
-  display: "flex",
-  flexDirection: "column",
-  minHeight: 0,
-  background: "var(--ec-bg)",
-};
-
-const header: CSSProperties = {
-  padding: "var(--ec-space-3) var(--ec-space-5)",
-  borderBottom: "1px solid var(--ec-border-subtle)",
-  display: "flex",
-  alignItems: "center",
-  gap: "var(--ec-space-3)",
-  // v1.1.12: position:relative для .ec-server-header-edge::after
-  position: "relative",
-  background: "var(--ec-overlay-header-bg)",
-};
-
-const titleInput: CSSProperties = {
-  flex: 1,
-  background: "transparent",
-  border: 0,
-  color: "var(--ec-text-strong)",
-  fontSize: "var(--ec-text-lg)",
-  fontWeight: 700,
-  letterSpacing: "0.08em",
-  textTransform: "uppercase",
-  fontFamily: "var(--ec-font-display, var(--ec-font-sans))",
-  outline: "none",
-  padding: "0.2rem 0.4rem",
-  borderRadius: "var(--ec-radius-sm)",
-};
-
-const actionBtn: CSSProperties = {
-  background: "transparent",
-  border: "1px solid var(--ec-border-default)",
-  color: "var(--ec-text-muted)",
-  padding: "0.4rem 0.75rem",
-  borderRadius: "var(--ec-radius-sm)",
-  fontSize: "var(--ec-text-sm)",
-  cursor: "pointer",
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 6,
-};
-
-const bodyScroll: CSSProperties = {
-  flex: 1,
-  overflow: "auto",
-  padding: "var(--ec-space-4) var(--ec-space-5)",
-};
-
-const tableStyle: CSSProperties = {
-  width: "100%",
-  borderCollapse: "separate",
-  borderSpacing: 0,
-  fontSize: "var(--ec-text-sm)",
-};
-
-const thStyle: CSSProperties = {
-  textAlign: "left",
-  padding: "var(--ec-space-2) var(--ec-space-3)",
-  borderBottom: "1px solid var(--ec-border-default)",
-  background: "var(--ec-surface-2)",
-  color: "var(--ec-text-muted)",
-  fontWeight: 700,
-  fontSize: "0.6rem",
-  letterSpacing: "0.16em",
-  textTransform: "uppercase",
-  fontFamily: "var(--ec-font-mono, ui-monospace, monospace)",
-  position: "sticky",
-  top: 0,
-  zIndex: 1,
-};
-
-const tdStyle: CSSProperties = {
-  padding: 0,
-  borderBottom: "1px solid var(--ec-border-subtle)",
-  background: "var(--ec-surface-1)",
-  verticalAlign: "top",
-};
-
-const cellInput: CSSProperties = {
-  width: "100%",
-  background: "transparent",
-  border: 0,
-  padding: "var(--ec-space-2) var(--ec-space-3)",
-  color: "var(--ec-text)",
-  fontSize: "var(--ec-text-sm)",
-  fontFamily: "inherit",
-  outline: "none",
-};
-
-const cellInputFocus: CSSProperties = {
-  background: "var(--ec-input-bg)",
-  boxShadow: "inset 0 0 0 1px var(--ec-accent)",
 };
 
 const TYPE_LABELS: Record<TableFieldType, string> = {
@@ -152,20 +51,23 @@ const TYPE_LABELS: Record<TableFieldType, string> = {
   FILE: "Файл",
 };
 
-const STATUS_COLOR_POOL = [
+/** tone-токен → `--tone` (динамика — единственное, что допустимо инлайном). */
+const tone = (t: string): CSSProperties => ({ "--tone": t } as CSSProperties);
+
+const STATUS_TONE_POOL = [
   "var(--ec-status-idle)",
   "var(--ec-status-exec)",
   "var(--ec-status-warn)",
   "var(--ec-accent)",
   "var(--ec-status-ai)",
-  "var(--ec-status-risk, var(--ec-danger))",
+  "var(--ec-status-risk)",
 ];
 
-function statusColor(value: string, options: string[] | null): string {
+function statusTone(value: string, options: string[] | null): string {
   if (!options) return "var(--ec-text-muted)";
   const idx = options.indexOf(value);
   if (idx < 0) return "var(--ec-text-muted)";
-  return STATUS_COLOR_POOL[idx % STATUS_COLOR_POOL.length];
+  return STATUS_TONE_POOL[idx % STATUS_TONE_POOL.length];
 }
 
 export function OperationalTablePanel({
@@ -196,14 +98,12 @@ export function OperationalTablePanel({
 
   const [nameDraft, setNameDraft] = useState("");
   const [showFieldForm, setShowFieldForm] = useState(false);
-  // v0.70: drag-and-drop state. Один на каждый axis (поля / строки) —
-  // нельзя drag одновременно field+row, но они независимы visually.
   const [dragFieldId, setDragFieldId] = useState<string | null>(null);
   const [dropFieldTarget, setDropFieldTarget] = useState<string | null>(null);
   const [dragRowId, setDragRowId] = useState<string | null>(null);
   const [dropRowTarget, setDropRowTarget] = useState<string | null>(null);
 
-  // v0.70: всегда sorted by position на render — realtime emit'ы могут
+  // Всегда sorted by position на render — realtime emit'ы могут
   // прислать field/row updates в произвольном порядке.
   const sortedFields = useMemo(
     () => (table ? [...table.fields].sort((a, b) => a.position - b.position) : []),
@@ -220,24 +120,29 @@ export function OperationalTablePanel({
 
   if (loading && !table) {
     return (
-      <div style={wrap}>
-        <div style={header}>
-          <span style={{ color: "var(--ec-text-muted)" }}>Загружаем таблицу…</span>
+      <div className="ec-cck">
+        <div className="ec-cck__head">
+          <span className="ec-cck__sub">Загружаем таблицу…</span>
         </div>
       </div>
     );
   }
   if (!table) {
     return (
-      <div style={wrap}>
-        <div style={header}>
-          <span style={{ color: "var(--ec-danger)" }}>
+      <div className="ec-cck">
+        <div className="ec-cck__head">
+          <span className="ec-cck__title" style={{ color: "var(--ec-danger)" }}>
             {error ?? "Таблица не найдена"}
           </span>
-          <span style={{ marginLeft: "auto" }} />
-          <button type="button" style={actionBtn} onClick={onClose}>
-            Закрыть
-          </button>
+          <div className="ec-cck__tools ec-cck__tools--end">
+            <button
+              type="button"
+              className="ec-btn ec-btn--ghost ec-btn--sm"
+              onClick={onClose}
+            >
+              Закрыть
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -250,15 +155,26 @@ export function OperationalTablePanel({
   };
 
   return (
-    <div style={wrap}>
-      <header className="ec-server-header-edge" style={header}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--ec-accent)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ filter: "drop-shadow(0 0 4px hsl(258 90% 66% / 0.4))" }}>
+    <div className="ec-cck">
+      <header className="ec-cck__head">
+        <svg
+          width="17"
+          height="17"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="var(--ec-accent)"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+        >
           <rect x="3" y="3" width="18" height="18" rx="2" />
           <line x1="3" y1="9" x2="21" y2="9" />
           <line x1="9" y1="3" x2="9" y2="21" />
         </svg>
         <input
           type="text"
+          className="ec-cck-titlefield"
           value={nameDraft}
           onChange={(e) => setNameDraft(e.target.value)}
           onBlur={() => void saveTitle()}
@@ -268,31 +184,42 @@ export function OperationalTablePanel({
               (e.target as HTMLInputElement).blur();
             }
           }}
-          style={titleInput}
           maxLength={120}
+          aria-label="Название таблицы"
         />
-        <button
-          type="button"
-          style={actionBtn}
-          onClick={() => setShowFieldForm((v) => !v)}
-        >
-          + Колонка
-        </button>
-        <button type="button" style={actionBtn} onClick={() => void addRow()}>
-          + Строка
-        </button>
-        {onDelete && (
+        <div className="ec-cck__tools ec-cck__tools--end">
           <button
             type="button"
-            style={{ ...actionBtn, borderColor: "var(--ec-danger)", color: "var(--ec-danger)" }}
-            onClick={onDelete}
+            className="ec-btn ec-btn--ghost ec-btn--sm"
+            onClick={() => setShowFieldForm((v) => !v)}
+            aria-pressed={showFieldForm}
           >
-            Удалить
+            + Колонка
           </button>
-        )}
-        <button type="button" style={actionBtn} onClick={onClose}>
-          Закрыть
-        </button>
+          <button
+            type="button"
+            className="ec-btn ec-btn--ghost ec-btn--sm"
+            onClick={() => void addRow()}
+          >
+            + Строка
+          </button>
+          {onDelete && (
+            <button
+              type="button"
+              className="ec-btn ec-btn--danger ec-btn--sm"
+              onClick={onDelete}
+            >
+              Удалить
+            </button>
+          )}
+          <button
+            type="button"
+            className="ec-btn ec-btn--ghost ec-btn--sm"
+            onClick={onClose}
+          >
+            Закрыть
+          </button>
+        </div>
       </header>
 
       {showFieldForm && (
@@ -306,17 +233,12 @@ export function OperationalTablePanel({
         />
       )}
 
-      <div className="ec-op-table-scroll" style={bodyScroll}>
-        {error && (
-          <p style={{ color: "var(--ec-danger)", margin: "0 0 var(--ec-space-2)" }}>
-            {error}
-          </p>
-        )}
-        <table style={tableStyle}>
+      <div className="ec-cck-table-scroll ec-op-table-scroll">
+        {error && <p className="ec-cck-banner ec-cck-banner--error">{error}</p>}
+        <table className="ec-cck-table">
           <thead>
             <tr>
-              {/* v0.70: row-drag-handle column placeholder в thead */}
-              <th style={{ ...thStyle, width: 28 }} aria-hidden />
+              <th className="ec-cck-th ec-cck-th--rail" aria-hidden />
               {sortedFields.map((field) => (
                 <FieldHeader
                   key={field.id}
@@ -334,8 +256,6 @@ export function OperationalTablePanel({
                   }}
                   onDragEnd={() => {
                     if (dragFieldId && dropFieldTarget && dragFieldId !== dropFieldTarget) {
-                      // v0.70: построить новый порядок ids перемещая dragFieldId
-                      // на позицию dropFieldTarget.
                       const ids = sortedFields.map((f) => f.id);
                       const from = ids.indexOf(dragFieldId);
                       const to = ids.indexOf(dropFieldTarget);
@@ -351,11 +271,9 @@ export function OperationalTablePanel({
                 />
               ))}
               {sortedFields.length === 0 && (
-                <th style={thStyle}>
-                  Добавьте колонку →
-                </th>
+                <th className="ec-cck-th">Добавьте колонку →</th>
               )}
-              <th style={{ ...thStyle, width: 32 }} aria-label="actions" />
+              <th className="ec-cck-th ec-cck-th--act" aria-label="Действия" />
             </tr>
           </thead>
           <tbody>
@@ -363,15 +281,12 @@ export function OperationalTablePanel({
               <tr>
                 <td
                   colSpan={Math.max(1, sortedFields.length + 2)}
-                  style={{
-                    padding: "var(--ec-space-5)",
-                    textAlign: "center",
-                    color: "var(--ec-text-dim)",
-                    background: "var(--ec-surface-1)",
-                  }}
+                  className="ec-cck-td"
                 >
-                  Пока пусто. Жми <strong>«+ Строка»</strong> чтобы начать
-                  набивать данные.
+                  <p className="ec-cck-empty">
+                    Пока пусто. Жми <strong>«+ Строка»</strong>, чтобы начать
+                    набивать данные.
+                  </p>
                 </td>
               </tr>
             ) : (
@@ -413,79 +328,41 @@ export function OperationalTablePanel({
               ))
             )}
           </tbody>
-          {/* v0.87 #10 phase 3: aggregations footer для NUMBER колонок. */}
+          {/* Aggregations footer для NUMBER колонок. */}
           {table.aggregations.length > 0 && sortedRows.length > 0 && (
-            <tfoot>
+            <tfoot className="ec-cck-tfoot">
               <tr>
-                <th
-                  scope="row"
-                  style={{
-                    ...tdStyle,
-                    fontWeight: 700,
-                    color: "var(--ec-text-dim)",
-                    fontSize: "var(--ec-text-2xs)",
-                    letterSpacing: "var(--ec-tracking-caps)",
-                    textTransform: "uppercase",
-                    background: "var(--ec-surface-1)",
-                    borderTop: "1px solid var(--ec-border-subtle)",
-                  }}
-                >
+                <th scope="row" className="ec-cck-tfoot__label" colSpan={2}>
                   Итого
                 </th>
-                {sortedFields.map((field) => {
+                {sortedFields.map((field, idx) => {
+                  if (idx === 0) return null;
                   const agg = table.aggregations.find(
                     (a) => a.fieldId === field.id,
                   );
                   if (!agg || field.type !== "NUMBER") {
-                    return (
-                      <td
-                        key={field.id}
-                        style={{
-                          ...tdStyle,
-                          background: "var(--ec-surface-1)",
-                          borderTop: "1px solid var(--ec-border-subtle)",
-                        }}
-                      />
-                    );
+                    return <td key={field.id} />;
                   }
                   return (
                     <td
                       key={field.id}
-                      style={{
-                        ...tdStyle,
-                        background: "var(--ec-surface-1)",
-                        borderTop: "1px solid var(--ec-border-subtle)",
-                        fontFeatureSettings: '"tnum"',
-                        fontSize: "var(--ec-text-xs)",
-                      }}
                       title={`SUM ${agg.sum.toLocaleString("ru-RU")} · AVG ${
                         agg.avg !== null ? agg.avg.toFixed(2) : "—"
                       } · MIN ${agg.min ?? "—"} · MAX ${agg.max ?? "—"} · COUNT ${agg.count}`}
                     >
                       <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                        <strong style={{ color: "var(--ec-text-strong)" }}>
+                        <span className="ec-cck-tfoot__sum">
                           Σ {agg.sum.toLocaleString("ru-RU")}
-                        </strong>
-                        <span
-                          style={{
-                            color: "var(--ec-text-dim)",
-                            fontSize: "var(--ec-text-2xs)",
-                          }}
-                        >
-                          ⌀ {agg.avg !== null ? agg.avg.toFixed(2) : "—"} · {agg.count}{" "}
-                          из {sortedRows.length}
+                        </span>
+                        <span className="ec-cck-tfoot__meta">
+                          ⌀ {agg.avg !== null ? agg.avg.toFixed(2) : "—"} ·{" "}
+                          {agg.count} из {sortedRows.length}
                         </span>
                       </div>
                     </td>
                   );
                 })}
-                <td
-                  style={{
-                    ...tdStyle,
-                    background: "var(--ec-surface-1)",
-                    borderTop: "1px solid var(--ec-border-subtle)",
-                  }}
-                />
+                <td />
               </tr>
             </tfoot>
           )}
@@ -523,24 +400,17 @@ function FieldHeader({
 
   return (
     <th
-      style={{
-        ...thStyle,
-        opacity: dragging ? 0.4 : 1,
-        boxShadow: dropTarget
-          ? "inset 3px 0 0 0 var(--ec-accent)"
-          : undefined,
-        transition: "opacity var(--ec-dur-fast) var(--ec-ease)",
-      }}
+      className="ec-cck-th"
+      data-dragging={dragging ? "true" : "false"}
+      data-drop={dropTarget ? "true" : "false"}
       draggable={!editing}
       onDragStart={(e) => {
-        // editable input swallows drag — этот path только для th в idle.
         e.dataTransfer.effectAllowed = "move";
         e.dataTransfer.setData("text/plain", field.id);
         onDragStart();
       }}
       onDragEnter={onDragEnter}
       onDragOver={(e) => {
-        // allow drop
         if (dragging) return;
         e.preventDefault();
       }}
@@ -550,24 +420,18 @@ function FieldHeader({
         onDragEnd();
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        {/* v0.70: drag handle visual hint — pure CSS, no logic */}
+      <div className="ec-cck-fh">
         <span
+          className="ec-cck-grip"
           aria-hidden
-          title="Тяни чтобы поменять порядок колонок"
-          style={{
-            color: "var(--ec-text-faint)",
-            fontSize: "0.7rem",
-            cursor: "grab",
-            userSelect: "none",
-            letterSpacing: "-2px",
-            marginRight: 2,
-          }}
+          title="Тяни, чтобы поменять порядок колонок"
+          style={{ width: "auto" }}
         >
           ⋮⋮
         </span>
         {editing ? (
           <input
+            className="ec-cck-cell"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onBlur={() => {
@@ -584,51 +448,23 @@ function FieldHeader({
               }
             }}
             autoFocus
-            style={{
-              ...cellInput,
-              padding: "0.15rem 0.35rem",
-              fontSize: "var(--ec-text-2xs)",
-              color: "var(--ec-text-strong)",
-            }}
             maxLength={80}
           />
         ) : (
           <button
             type="button"
+            className="ec-cck-fh__name"
             onClick={() => setEditing(true)}
-            style={{
-              background: "transparent",
-              border: 0,
-              color: "var(--ec-text-strong)",
-              fontSize: "var(--ec-text-2xs)",
-              fontWeight: 700,
-              letterSpacing: "var(--ec-tracking-caps)",
-              textTransform: "uppercase",
-              cursor: "pointer",
-              padding: 0,
-            }}
           >
             {field.name}
           </button>
         )}
-        <span
-          style={{
-            fontSize: "0.55rem",
-            color: "var(--ec-text-dim)",
-            fontWeight: 500,
-            padding: "0.1rem 0.4rem",
-            borderRadius: "var(--ec-radius-xs)",
-            background: "var(--ec-surface-3)",
-            textTransform: "uppercase",
-            letterSpacing: "0.04em",
-          }}
-        >
-          {TYPE_LABELS[field.type]}
-        </span>
-        <span style={{ marginLeft: "auto" }} />
+        <span className="ec-cck-fh__type">{TYPE_LABELS[field.type]}</span>
+        <span className="ec-cck-fh__spacer" />
         {field.type === "STATUS" && (
           <button
             type="button"
+            className="ec-cck-act"
             onClick={() => {
               const next = prompt(
                 "Список значений через запятую",
@@ -642,39 +478,53 @@ function FieldHeader({
               onUpdateOptions(parsed.length > 0 ? parsed : null);
             }}
             title="Изменить набор значений"
-            style={{
-              background: "transparent",
-              border: 0,
-              color: "var(--ec-text-dim)",
-              cursor: "pointer",
-              padding: 0,
-              fontSize: "0.7rem",
-            }}
+            aria-label="Значения статуса"
           >
-            ⚙
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+            </svg>
           </button>
         )}
         <button
           type="button"
+          className="ec-cck-act ec-cck-act--danger"
           onClick={() => {
             if (window.confirm(`Удалить колонку «${field.name}»?`)) onRemove();
           }}
           title="Удалить колонку"
-          style={{
-            background: "transparent",
-            border: 0,
-            color: "var(--ec-text-dim)",
-            cursor: "pointer",
-            padding: 0,
-            fontSize: "0.85rem",
-          }}
+          aria-label="Удалить колонку"
         >
-          ×
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
         </button>
       </div>
     </th>
   );
 }
+
+const TASK_STATUS_TONE: Record<"OPEN" | "IN_PROGRESS" | "REVIEW" | "DONE", string> = {
+  OPEN: "var(--ec-status-idle)",
+  IN_PROGRESS: "var(--ec-status-warn)",
+  REVIEW: "var(--ec-status-ai)",
+  DONE: "var(--ec-status-exec)",
+};
+
+const TASK_STATUS_RU: Record<"OPEN" | "IN_PROGRESS" | "REVIEW" | "DONE", string> = {
+  OPEN: "Открыто",
+  IN_PROGRESS: "В работе",
+  REVIEW: "На ревью",
+  DONE: "Завершено",
+};
+
+const TASK_STATUS_SHORT: Record<"OPEN" | "IN_PROGRESS" | "REVIEW" | "DONE", string> = {
+  OPEN: "open",
+  IN_PROGRESS: "work",
+  REVIEW: "rev",
+  DONE: "done",
+};
 
 function RowEditor({
   tableId,
@@ -692,7 +542,6 @@ function RowEditor({
   onDragEnd,
   onOpenLinkedAction,
 }: {
-  /** v0.87 #10 phase 3: для AI-fill endpoint. */
   tableId: string;
   row: TableRowType;
   fields: TableField[];
@@ -716,16 +565,13 @@ function RowEditor({
   onDragStart: () => void;
   onDragEnter: () => void;
   onDragEnd: () => void;
-  /** v0.90 #10 phase 4: открыть ActionItemDrawer для linked row'а. */
   onOpenLinkedAction?: (actionItemId: string, channelId: string) => void;
 }) {
-  // v0.87 #10 phase 3: AI-fill state.
   const [aiBusy, setAiBusy] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
-  // v0.90 #10 phase 4: row → action conversion state.
   const [actionBusy, setActionBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
-  // Local draft per field. Save on blur.
+
   const cellMap = useMemo(() => {
     const m = new Map<string, string>();
     for (const c of row.cells) m.set(c.fieldId, c.value);
@@ -734,7 +580,6 @@ function RowEditor({
 
   const [drafts, setDrafts] = useState<Record<string, string>>({});
 
-  // Sync drafts when row.cells changes externally.
   useEffect(() => {
     const next: Record<string, string> = {};
     for (const c of row.cells) next[c.fieldId] = c.value;
@@ -747,15 +592,17 @@ function RowEditor({
     onSave([{ fieldId, value }]);
   };
 
+  const fillableEmpty = fields.some(
+    (f) =>
+      ["TEXT", "NUMBER", "STATUS", "DATE", "CHECKBOX"].includes(f.type) &&
+      (!cellMap.get(f.id) || cellMap.get(f.id) === ""),
+  );
+
   return (
     <tr
-      style={{
-        opacity: dragging ? 0.4 : 1,
-        boxShadow: dropTarget
-          ? "inset 0 3px 0 0 var(--ec-accent)"
-          : undefined,
-        transition: "opacity var(--ec-dur-fast) var(--ec-ease)",
-      }}
+      className="ec-cck-row"
+      data-dragging={dragging ? "true" : "false"}
+      data-drop={dropTarget ? "true" : "false"}
       onDragEnter={onDragEnter}
       onDragOver={(e) => {
         if (dragging) return;
@@ -766,18 +613,8 @@ function RowEditor({
         onDragEnd();
       }}
     >
-      {/* v0.70: drag handle column — initiate row reorder by dragging it. */}
       <td
-        style={{
-          ...tdStyle,
-          width: 28,
-          textAlign: "center",
-          verticalAlign: "middle",
-          cursor: "grab",
-          color: "var(--ec-text-faint)",
-          userSelect: "none",
-          padding: "var(--ec-space-2) 0",
-        }}
+        className="ec-cck-td"
         draggable
         onDragStart={(e) => {
           e.dataTransfer.effectAllowed = "move";
@@ -785,145 +622,78 @@ function RowEditor({
           onDragStart();
         }}
         onDragEnd={onDragEnd}
-        title="Тяни чтобы поменять порядок строк"
+        title="Тяни, чтобы поменять порядок строк"
         aria-label="Перетащить строку"
       >
-        ⋮⋮
+        <span className="ec-cck-grip" aria-hidden>⋮⋮</span>
       </td>
       {fields.map((field) => (
-        <td key={field.id} style={tdStyle}>
+        <td key={field.id} className="ec-cck-td">
           <CellEditor
             field={field}
             value={drafts[field.id] ?? ""}
             members={members}
-            onChange={(v) =>
-              setDrafts((prev) => ({ ...prev, [field.id]: v }))
-            }
+            onChange={(v) => setDrafts((prev) => ({ ...prev, [field.id]: v }))}
             onCommit={(v) => saveSingle(field.id, v)}
             loadRelatedRows={loadRelatedRows}
             uploadFiles={uploadFiles}
           />
         </td>
       ))}
-      <td style={{ ...tdStyle, width: 56, textAlign: "center", verticalAlign: "middle", padding: "var(--ec-space-1) 0" }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 2, alignItems: "center" }}>
-          {/* v0.87 #10 phase 3: AI-fill row button. Видна если есть пустые
-              fillable cells (TEXT/NUMBER/STATUS/DATE/CHECKBOX). */}
-          {(() => {
-            const fillableEmpty = fields.some(
-              (f) =>
-                ["TEXT", "NUMBER", "STATUS", "DATE", "CHECKBOX"].includes(f.type) &&
-                (!cellMap.get(f.id) || cellMap.get(f.id) === ""),
-            );
-            if (!fillableEmpty) return null;
-            return (
-              <button
-                type="button"
-                onClick={async () => {
-                  setAiBusy(true);
-                  setAiError(null);
-                  try {
-                    const res = await apiJson<{
-                      rowId: string;
-                      suggestions: Array<{ fieldId: string; fieldName: string; value: string }>;
-                    }>(
-                      `/api/tables/${encodeURIComponent(tableId)}/rows/${encodeURIComponent(row.id)}/ai-fill`,
-                      { method: "POST" },
-                    );
-                    if (res.suggestions.length === 0) {
-                      setAiError("Не удалось подобрать значения");
-                      return;
-                    }
-                    // Auto-apply suggestions через onSave (PATCH row через batch).
-                    onSave(
-                      res.suggestions.map((s) => ({
-                        fieldId: s.fieldId,
-                        value: s.value,
-                      })),
-                    );
-                  } catch (e) {
-                    const msg = e instanceof Error ? e.message : "Ошибка заполнения";
-                    setAiError(msg);
-                    window.setTimeout(() => setAiError(null), 4000);
-                  } finally {
-                    setAiBusy(false);
+      <td className="ec-cck-td">
+        <div className="ec-cck-rowact">
+          {fillableEmpty && (
+            <button
+              type="button"
+              className="ec-cck-rowbtn"
+              data-tone={aiError ? "danger" : aiBusy ? "accent" : undefined}
+              onClick={async () => {
+                setAiBusy(true);
+                setAiError(null);
+                try {
+                  const res = await apiJson<{
+                    rowId: string;
+                    suggestions: Array<{ fieldId: string; fieldName: string; value: string }>;
+                  }>(
+                    `/api/tables/${encodeURIComponent(tableId)}/rows/${encodeURIComponent(row.id)}/ai-fill`,
+                    { method: "POST" },
+                  );
+                  if (res.suggestions.length === 0) {
+                    setAiError("Не удалось подобрать значения");
+                    return;
                   }
-                }}
-                disabled={aiBusy}
-                title={aiError ?? "Заполнить пустые ячейки автоматически"}
-                aria-label="Заполнить пустые ячейки"
-                style={{
-                  background: "transparent",
-                  border: "1px solid var(--ec-border-subtle)",
-                  color: aiError
-                    ? "var(--ec-danger)"
-                    : aiBusy
-                      ? "var(--ec-accent)"
-                      : "var(--ec-text-dim)",
-                  cursor: aiBusy ? "wait" : "pointer",
-                  fontSize: "0.7rem",
-                  padding: "0.18rem 0.42rem",
-                  borderRadius: "var(--ec-radius-xs)",
-                  lineHeight: 1,
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 3,
-                }}
-              >
-                {aiBusy ? (
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-                    <circle cx="12" cy="12" r="9" opacity="0.3" />
-                    <path d="M12 3a9 9 0 0 1 9 9" />
-                  </svg>
-                ) : (
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden>
-                    <path d="M13 2L3 14h7l-2 8 10-12h-7l2-8z" strokeLinejoin="round" />
-                  </svg>
-                )}
-                Авто
-              </button>
-            );
-          })()}
-          <button
-            type="button"
-            onClick={() => {
-              if (window.confirm("Удалить строку?")) onRemove();
-            }}
-            title="Удалить строку"
-            style={{
-              background: "transparent",
-              border: 0,
-              color: "var(--ec-text-dim)",
-              cursor: "pointer",
-              fontSize: "0.95rem",
-              padding: "0.18rem 0.4rem",
-            }}
-          >
-            ×
-          </button>
-          {/* v0.90 #10 phase 4: «→ Задача» button (если row не linked) или
-              status badge (если linked). */}
+                  onSave(
+                    res.suggestions.map((s) => ({
+                      fieldId: s.fieldId,
+                      value: s.value,
+                    })),
+                  );
+                } catch (e) {
+                  const msg = e instanceof Error ? e.message : "Ошибка заполнения";
+                  setAiError(msg);
+                  window.setTimeout(() => setAiError(null), 4000);
+                } finally {
+                  setAiBusy(false);
+                }
+              }}
+              disabled={aiBusy}
+              title={aiError ?? "Заполнить пустые ячейки автоматически"}
+            >
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden>
+                <path d="M13 2L3 14h7l-2 8 10-12h-7l2-8z" strokeLinejoin="round" />
+              </svg>
+              Авто
+            </button>
+          )}
           {row.linkedAction ? (
             <button
               type="button"
-              onClick={() => onOpenLinkedAction?.(row.linkedAction!.id, row.linkedAction!.channelId)}
+              className="ec-cck-rowbtn ec-cck-rowbtn--badge"
+              style={tone(TASK_STATUS_TONE[row.linkedAction.status])}
+              onClick={() =>
+                onOpenLinkedAction?.(row.linkedAction!.id, row.linkedAction!.channelId)
+              }
               title={`Задача: ${row.linkedAction.title} · ${TASK_STATUS_RU[row.linkedAction.status]}`}
-              style={{
-                background: TASK_STATUS_TONE[row.linkedAction.status].bg,
-                border: `1px solid ${TASK_STATUS_TONE[row.linkedAction.status].border}`,
-                color: TASK_STATUS_TONE[row.linkedAction.status].fg,
-                cursor: "pointer",
-                fontSize: "0.62rem",
-                fontWeight: 700,
-                letterSpacing: "var(--ec-tracking-wide)",
-                textTransform: "uppercase",
-                padding: "0.14rem 0.42rem",
-                borderRadius: "var(--ec-radius-xs)",
-                lineHeight: 1.1,
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 3,
-              }}
             >
               <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden>
                 <path d="M9 11l3 3L22 4" />
@@ -934,6 +704,8 @@ function RowEditor({
           ) : (
             <button
               type="button"
+              className="ec-cck-rowbtn"
+              data-tone={actionError ? "danger" : actionBusy ? "accent" : undefined}
               onClick={async () => {
                 setActionBusy(true);
                 setActionError(null);
@@ -942,7 +714,6 @@ function RowEditor({
                     `/api/tables/${encodeURIComponent(tableId)}/rows/${encodeURIComponent(row.id)}/to-action`,
                     { method: "POST", body: JSON.stringify({}) },
                   );
-                  // Socket emit table:row:updated прилетит и обновит state.
                 } catch (e) {
                   const msg = e instanceof Error ? e.message : "Не удалось";
                   setActionError(msg);
@@ -953,78 +724,32 @@ function RowEditor({
               }}
               disabled={actionBusy}
               title={actionError ?? "Создать задачу из этой строки"}
-              style={{
-                background: "transparent",
-                border: "1px solid var(--ec-border-subtle)",
-                color: actionError
-                  ? "var(--ec-danger)"
-                  : actionBusy
-                    ? "var(--ec-accent)"
-                    : "var(--ec-text-dim)",
-                cursor: actionBusy ? "wait" : "pointer",
-                fontSize: "0.62rem",
-                fontWeight: 700,
-                letterSpacing: "var(--ec-tracking-wide)",
-                textTransform: "uppercase",
-                padding: "0.14rem 0.42rem",
-                borderRadius: "var(--ec-radius-xs)",
-                lineHeight: 1.1,
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 3,
-              }}
             >
               <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden>
                 <path d="M9 11l3 3L22 4" />
               </svg>
-              → задача
+              задача
             </button>
           )}
+          <button
+            type="button"
+            className="ec-cck-act ec-cck-act--danger"
+            onClick={() => {
+              if (window.confirm("Удалить строку?")) onRemove();
+            }}
+            title="Удалить строку"
+            aria-label="Удалить строку"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
         </div>
       </td>
     </tr>
   );
 }
-
-const TASK_STATUS_TONE: Record<
-  "OPEN" | "IN_PROGRESS" | "REVIEW" | "DONE",
-  { bg: string; border: string; fg: string }
-> = {
-  OPEN: {
-    bg: "var(--ec-status-idle-soft)",
-    border: "color-mix(in srgb, var(--ec-status-idle) 32%, transparent)",
-    fg: "var(--ec-status-idle)",
-  },
-  IN_PROGRESS: {
-    bg: "var(--ec-status-warn-soft)",
-    border: "color-mix(in srgb, var(--ec-status-warn) 32%, transparent)",
-    fg: "var(--ec-status-warn)",
-  },
-  REVIEW: {
-    bg: "var(--ec-status-ai-soft)",
-    border: "color-mix(in srgb, var(--ec-status-ai) 32%, transparent)",
-    fg: "var(--ec-status-ai)",
-  },
-  DONE: {
-    bg: "var(--ec-status-exec-soft)",
-    border: "color-mix(in srgb, var(--ec-status-exec) 32%, transparent)",
-    fg: "var(--ec-status-exec)",
-  },
-};
-
-const TASK_STATUS_RU: Record<"OPEN" | "IN_PROGRESS" | "REVIEW" | "DONE", string> = {
-  OPEN: "Открыто",
-  IN_PROGRESS: "В работе",
-  REVIEW: "На ревью",
-  DONE: "Завершено",
-};
-
-const TASK_STATUS_SHORT: Record<"OPEN" | "IN_PROGRESS" | "REVIEW" | "DONE", string> = {
-  OPEN: "open",
-  IN_PROGRESS: "work",
-  REVIEW: "rev",
-  DONE: "done",
-};
 
 function CellEditor({
   field,
@@ -1043,7 +768,6 @@ function CellEditor({
   }>;
   onChange: (v: string) => void;
   onCommit: (v: string) => void;
-  /** v0.75 #10 phase 2.5b: RELATION/FILE editors используют. */
   loadRelatedRows?: (fieldId: string) => Promise<{
     linkedTableId: string;
     displayFieldName: string | null;
@@ -1054,33 +778,18 @@ function CellEditor({
     | null
   >;
 }) {
-  const [focused, setFocused] = useState(false);
-
   if (field.type === "CHECKBOX") {
     const checked = value === "true";
     return (
-      <label
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: "var(--ec-space-2) var(--ec-space-3)",
-          cursor: "pointer",
-        }}
-      >
+      <label className="ec-cck-cell ec-cck-cell--check">
         <input
           type="checkbox"
+          className="ec-cck-checkbox"
           checked={checked}
           onChange={(e) => {
             const next = e.target.checked ? "true" : "false";
             onChange(next);
             onCommit(next);
-          }}
-          style={{
-            width: 16,
-            height: 16,
-            accentColor: "var(--ec-accent)",
-            cursor: "pointer",
           }}
         />
       </label>
@@ -1090,18 +799,12 @@ function CellEditor({
   if (field.type === "USER") {
     return (
       <select
+        className={"ec-cck-cell" + (value ? "" : " ec-cck-cell--ghost")}
         value={value}
         onChange={(e) => {
           onChange(e.target.value);
           onCommit(e.target.value);
         }}
-        style={{
-          ...cellInput,
-          ...(focused ? cellInputFocus : null),
-          color: value ? "var(--ec-text-strong)" : "var(--ec-text-dim)",
-        }}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
       >
         <option value="">— не назначен —</option>
         {members.map((m) => (
@@ -1115,22 +818,15 @@ function CellEditor({
 
   if (field.type === "STATUS") {
     const options = field.options ?? [];
-    const color = statusColor(value, field.options);
     return (
       <select
+        className={"ec-cck-cell" + (value ? " ec-cck-cell--status" : " ec-cck-cell--ghost")}
         value={value}
         onChange={(e) => {
           onChange(e.target.value);
           onCommit(e.target.value);
         }}
-        style={{
-          ...cellInput,
-          ...(focused ? cellInputFocus : null),
-          color,
-          fontWeight: value ? 600 : 400,
-        }}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
+        style={value ? { color: statusTone(value, field.options) } : undefined}
       >
         <option value="">—</option>
         {options.map((opt) => (
@@ -1146,14 +842,10 @@ function CellEditor({
     return (
       <input
         type="date"
+        className="ec-cck-cell"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        onBlur={(e) => {
-          setFocused(false);
-          onCommit(e.target.value);
-        }}
-        onFocus={() => setFocused(true)}
-        style={{ ...cellInput, ...(focused ? cellInputFocus : null) }}
+        onBlur={(e) => onCommit(e.target.value)}
       />
     );
   }
@@ -1162,24 +854,14 @@ function CellEditor({
     return (
       <input
         type="number"
+        className="ec-cck-cell ec-cck-cell--num"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        onBlur={(e) => {
-          setFocused(false);
-          onCommit(e.target.value);
-        }}
-        onFocus={() => setFocused(true)}
-        style={{
-          ...cellInput,
-          ...(focused ? cellInputFocus : null),
-          fontFamily: "var(--ec-font-mono)",
-          textAlign: "right",
-        }}
+        onBlur={(e) => onCommit(e.target.value)}
       />
     );
   }
 
-  // v0.75 #10 phase 2.5b — RELATION cell
   if (field.type === "RELATION") {
     return (
       <RelationCell
@@ -1191,7 +873,6 @@ function CellEditor({
     );
   }
 
-  // v0.75 #10 phase 2.5b — FILE cell
   if (field.type === "FILE") {
     return (
       <FileCell value={value} onCommit={onCommit} uploadFiles={uploadFiles} />
@@ -1202,14 +883,10 @@ function CellEditor({
   return (
     <input
       type="text"
+      className="ec-cck-cell"
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      onBlur={(e) => {
-        setFocused(false);
-        onCommit(e.target.value);
-      }}
-      onFocus={() => setFocused(true)}
-      style={{ ...cellInput, ...(focused ? cellInputFocus : null) }}
+      onBlur={(e) => onCommit(e.target.value)}
     />
   );
 }
@@ -1226,7 +903,6 @@ function AddFieldForm({
     linkedTableId?: string,
   ) => Promise<void>;
   onCancel: () => void;
-  /** v0.75 #10 phase 2.5b: список доступных таблиц для RELATION picker'а. */
   availableTables?: Array<{ id: string; name: string }>;
 }) {
   const [name, setName] = useState("");
@@ -1236,45 +912,21 @@ function AddFieldForm({
   const [busy, setBusy] = useState(false);
 
   return (
-    <div
-      style={{
-        padding: "var(--ec-space-3) var(--ec-space-5)",
-        background: "var(--ec-surface-2)",
-        borderBottom: "1px solid var(--ec-border-subtle)",
-        display: "flex",
-        gap: "var(--ec-space-2)",
-        alignItems: "center",
-        flexWrap: "wrap",
-      }}
-    >
+    <div className="ec-cck-fieldform">
       <input
         type="text"
+        className="ec-cck-input"
         value={name}
         onChange={(e) => setName(e.target.value)}
         placeholder="Название колонки"
         maxLength={80}
         autoFocus
-        style={{
-          padding: "0.4rem 0.6rem",
-          background: "var(--ec-input-bg)",
-          border: "1px solid var(--ec-border-default)",
-          borderRadius: "var(--ec-radius-sm)",
-          color: "var(--ec-text)",
-          fontSize: "var(--ec-text-sm)",
-          minWidth: 200,
-        }}
+        style={{ minWidth: 200 }}
       />
       <select
+        className="ec-cck-input"
         value={type}
         onChange={(e) => setType(e.target.value as TableFieldType)}
-        style={{
-          padding: "0.4rem 0.6rem",
-          background: "var(--ec-input-bg)",
-          border: "1px solid var(--ec-border-default)",
-          borderRadius: "var(--ec-radius-sm)",
-          color: "var(--ec-text)",
-          fontSize: "var(--ec-text-sm)",
-        }}
       >
         <option value="TEXT">Текст</option>
         <option value="NUMBER">Число</option>
@@ -1287,17 +939,10 @@ function AddFieldForm({
       </select>
       {type === "RELATION" && (
         <select
+          className="ec-cck-input"
           value={linkedTableId}
           onChange={(e) => setLinkedTableId(e.target.value)}
-          style={{
-            padding: "0.4rem 0.6rem",
-            background: "var(--ec-input-bg)",
-            border: "1px solid var(--ec-border-default)",
-            borderRadius: "var(--ec-radius-sm)",
-            color: linkedTableId ? "var(--ec-text)" : "var(--ec-text-dim)",
-            fontSize: "var(--ec-text-sm)",
-            minWidth: 200,
-          }}
+          style={{ minWidth: 200 }}
         >
           <option value="">— Выберите таблицу —</option>
           {(availableTables ?? []).map((t) => (
@@ -1310,23 +955,16 @@ function AddFieldForm({
       {type === "STATUS" && (
         <input
           type="text"
+          className="ec-cck-input"
           value={optionsText}
           onChange={(e) => setOptionsText(e.target.value)}
           placeholder="Значения через запятую (TODO, IN PROGRESS, DONE)"
-          style={{
-            padding: "0.4rem 0.6rem",
-            background: "var(--ec-input-bg)",
-            border: "1px solid var(--ec-border-default)",
-            borderRadius: "var(--ec-radius-sm)",
-            color: "var(--ec-text)",
-            fontSize: "var(--ec-text-sm)",
-            flex: 1,
-            minWidth: 240,
-          }}
+          style={{ flex: 1, minWidth: 240 }}
         />
       )}
       <button
         type="button"
+        className="ec-btn ec-btn--primary ec-btn--sm"
         onClick={async () => {
           const trimmed = name.trim();
           if (!trimmed) return;
@@ -1347,35 +985,14 @@ function AddFieldForm({
           );
           setBusy(false);
         }}
-        disabled={
-          busy || !name.trim() || (type === "RELATION" && !linkedTableId)
-        }
-        style={{
-          padding: "0.4rem 0.9rem",
-          background: "var(--ec-accent)",
-          color: "var(--ec-accent-text)",
-          border: "1px solid var(--ec-accent)",
-          borderRadius: "var(--ec-radius-sm)",
-          fontSize: "var(--ec-text-sm)",
-          fontWeight: 600,
-          cursor: busy ? "not-allowed" : "pointer",
-          opacity: !name.trim() ? 0.55 : 1,
-        }}
+        disabled={busy || !name.trim() || (type === "RELATION" && !linkedTableId)}
       >
         {busy ? "Создаём…" : "Добавить"}
       </button>
       <button
         type="button"
+        className="ec-btn ec-btn--ghost ec-btn--sm"
         onClick={onCancel}
-        style={{
-          padding: "0.4rem 0.9rem",
-          background: "transparent",
-          color: "var(--ec-text-muted)",
-          border: "1px solid var(--ec-border-default)",
-          borderRadius: "var(--ec-radius-sm)",
-          fontSize: "var(--ec-text-sm)",
-          cursor: "pointer",
-        }}
       >
         Отмена
       </button>
@@ -1383,11 +1000,11 @@ function AddFieldForm({
   );
 }
 
-// Helper экспорт TableCell для дальнейших импортов (если понадобится).
+// Helper экспорт TableCell для дальнейших импортов.
 export type { TableCell };
 
 /* ============================================================
- * v0.75 #10 phase 2.5b — RelationCell + FileCell editors
+ * RelationCell + FileCell editors
  * ============================================================ */
 
 type TableFileItem = {
@@ -1480,14 +1097,7 @@ function RelationCell({
 
   if (!field.linkedTableId) {
     return (
-      <span
-        style={{
-          ...cellInput,
-          color: "var(--ec-text-dim)",
-          fontStyle: "italic",
-        }}
-        title="Связанная таблица была удалена"
-      >
+      <span className="ec-cck-cell ec-cck-cell--ghost" title="Связанная таблица была удалена">
         — связь сломана —
       </span>
     );
@@ -1497,19 +1107,9 @@ function RelationCell({
     <div style={{ position: "relative" }}>
       <button
         type="button"
+        className={"ec-cck-cell" + (selectedIds.size > 0 ? "" : " ec-cck-cell--ghost")}
         onClick={() => setOpen((v) => !v)}
-        style={{
-          ...cellInput,
-          textAlign: "left",
-          cursor: "pointer",
-          background: "transparent",
-          border: "1px solid transparent",
-          color: selectedIds.size > 0 ? "var(--ec-text)" : "var(--ec-text-dim)",
-          fontSize: "var(--ec-text-sm)",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-        }}
+        style={{ textAlign: "left", cursor: "pointer" }}
         title={
           selectedIds.size > 0
             ? Array.from(selectedIds)
@@ -1527,100 +1127,35 @@ function RelationCell({
             : `${selectedIds.size} связей`}
       </button>
       {open && (
-        <div
-          style={{
-            position: "absolute",
-            top: "100%",
-            left: 0,
-            zIndex: 30,
-            marginTop: 4,
-            background: "var(--ec-surface-2)",
-            borderRadius: "var(--ec-radius-md)",
-            padding: "var(--ec-space-2)",
-            // v1.1.49 WS-1 slice 2: raised floating-карточка отделяется
-            // глубиной/светом — cool-tinted hairline-ring + тень через
-            // --ec-elev-2 (замена border:1px + pure-black drop-shadow).
-            boxShadow: "var(--ec-elev-2)",
-            minWidth: 240,
-            maxHeight: 280,
-            overflow: "auto",
-          }}
-        >
+        <div className="ec-cck-pop">
           {!rows ? (
-            <div style={{ color: "var(--ec-text-dim)", padding: 6 }}>
-              Загрузка…
-            </div>
+            <p className="ec-cck-empty">Загрузка…</p>
           ) : rows.length === 0 ? (
-            <div style={{ color: "var(--ec-text-dim)", padding: 6 }}>
-              Целевая таблица пустая.
-            </div>
+            <p className="ec-cck-empty">Целевая таблица пустая.</p>
           ) : (
             rows.map((r) => {
               const checked = selectedIds.has(r.id);
               return (
-                <label
-                  key={r.id}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6,
-                    padding: "0.3rem 0.5rem",
-                    borderRadius: "var(--ec-radius-sm)",
-                    cursor: "pointer",
-                    fontSize: "var(--ec-text-sm)",
-                    color: "var(--ec-text)",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = "var(--ec-surface-3)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = "transparent";
-                  }}
-                >
+                <label key={r.id} className="ec-cck-pop__row">
                   <input
                     type="checkbox"
+                    className="ec-cck-checkbox"
                     checked={checked}
                     onChange={() => toggle(r.id)}
-                    style={{ accentColor: "var(--ec-accent)" }}
                   />
-                  <span
-                    style={{
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
+                  <span className="ec-cck-card__name">
                     {r.display || `(пусто) #${r.id.slice(-6)}`}
                   </span>
                 </label>
               );
             })
           )}
-          <div
-            style={{
-              borderTop: "1px solid var(--ec-border-subtle)",
-              marginTop: 6,
-              paddingTop: 6,
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              fontSize: "var(--ec-text-2xs)",
-              color: "var(--ec-text-dim)",
-            }}
-          >
+          <div className="ec-cck-pop__foot">
             <span>{selectedIds.size}/5</span>
             <button
               type="button"
+              className="ec-btn ec-btn--ghost ec-btn--sm"
               onClick={() => setOpen(false)}
-              style={{
-                padding: "0.2rem 0.5rem",
-                background: "transparent",
-                border: "1px solid var(--ec-border-default)",
-                borderRadius: "var(--ec-radius-sm)",
-                color: "var(--ec-text-muted)",
-                cursor: "pointer",
-                fontSize: "var(--ec-text-2xs)",
-              }}
             >
               Закрыть
             </button>
@@ -1667,63 +1202,31 @@ function FileCell({
   };
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexWrap: "wrap",
-        gap: 4,
-        alignItems: "center",
-        padding: "0.25rem 0.4rem",
-      }}
-    >
+    <div className="ec-cck-cell" style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
       {files.map((f, i) => (
         <span
           key={`${f.url}-${i}`}
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 4,
-            padding: "0.1rem 0.45rem",
-            borderRadius: "var(--ec-radius-full)",
-            background: "var(--ec-surface-2)",
-            border: "1px solid var(--ec-border-subtle)",
-            fontSize: "var(--ec-text-2xs)",
-            maxWidth: 200,
-          }}
+          className="ec-cck-file"
           title={`${f.filename} · ${fmtBytes(f.size)}`}
         >
           <a
             href={f.url}
             target="_blank"
             rel="noreferrer"
-            style={{
-              color: "var(--ec-text)",
-              textDecoration: "none",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
+            className="ec-cck-file__name"
           >
             {f.filename}
           </a>
           <button
             type="button"
+            className="ec-cck-act"
             onClick={() => removeAt(i)}
             aria-label="Удалить файл"
-            style={{
-              width: 16,
-              height: 16,
-              display: "grid",
-              placeItems: "center",
-              background: "transparent",
-              border: 0,
-              color: "var(--ec-text-dim)",
-              cursor: "pointer",
-              fontSize: "0.8rem",
-              lineHeight: 1,
-            }}
           >
-            ×
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden>
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
           </button>
         </span>
       ))}
@@ -1731,18 +1234,9 @@ function FileCell({
         <>
           <button
             type="button"
+            className="ec-cck-rowbtn"
             onClick={() => inputRef.current?.click()}
             disabled={busy || !uploadFiles}
-            style={{
-              padding: "0.18rem 0.6rem",
-              background: "transparent",
-              border: "1px dashed var(--ec-border-default)",
-              borderRadius: "var(--ec-radius-sm)",
-              color: busy ? "var(--ec-text-dim)" : "var(--ec-text-muted)",
-              cursor: busy ? "wait" : "pointer",
-              fontSize: "var(--ec-text-2xs)",
-              fontWeight: 600,
-            }}
             title="Прикрепить файл (до 5 на ячейку)"
           >
             {busy ? "Загрузка…" : "+ файл"}

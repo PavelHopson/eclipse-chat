@@ -5,7 +5,7 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.2.2** (Galaxy/Clock/Theme/Deadline effects +
+**Текущая версия:** **v1.2.3** (Galaxy/Clock/Theme/Deadline effects +
 UX-copy + дизайн-полиш + редизайн WS-1 + системный редизайн ЗАКРЫТ 8/8 +
 светлая тема SOLAR (Notion-crisp) + фикс AuthScreen + смена пароля +
 визуальный передел AppShell ЗАКРЫТ 4/4 + топбар-полиш +
@@ -23,9 +23,10 @@ redesign slice 7 — ServerHubModal +
 logout-надёжность + identity-фикс пресетов + topbar на `.ec-icon-btn` +
 трек R1 — media-плеер «Signal Desk» v2 +
 рекомпозиция каркаса — командный хребет + центр-бар +
-трек R2 — Execution Cockpit: cockpit-система + StatusBoard).
+трек R2 — Execution Cockpit: cockpit-система + StatusBoard +
+OperationalTablePanel control-desk).
 
-> **v1.1.90 … v1.2.0 задеплоены — в проде v1.2.0. v1.2.1 … v1.2.2
+> **v1.1.90 … v1.2.0 задеплоены — в проде v1.2.0. v1.2.1 … v1.2.3
 > запушены и ждут approve-gate Pavel'я в GitHub Actions (environment
 > `production`). Деплой НЕ автоматический по пушу.**
 
@@ -35,8 +36,32 @@ logout-надёжность + identity-фикс пресетов + topbar на `
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.2.2:**
+**Изменения v1.1.25 → v1.2.3:**
 
+- **v1.2.3** — **Execution Cockpit 2/3: OperationalTablePanel →
+  control desk**. Операционная таблица (1762 строки) переведена на
+  cockpit-язык.
+  - **Долг убран:** ВСЕ module-level `CSSProperties`-консоли
+    (`wrap` / `header` / `titleInput` / `actionBtn` / `bodyScroll` /
+    `tableStyle` / `thStyle` / `tdStyle` / `cellInput` /
+    `cellInputFocus`) удалены, весь inline-style долг (~64) → классы.
+    JS-hover в RelationCell (`onMouseEnter`-мутация `.style`) → CSS
+    `.ec-cck-pop__row:hover`.
+  - **Control desk, не spreadsheet:** sticky-header `.ec-cck-th` —
+    плотный, чёткий; строка реагирует на курсор целиком
+    (`.ec-cck-row:hover`); column rhythm; drag/drop — data-атрибуты.
+  - **Inline-edit как состояние системы:** `.ec-cck-cell` в покое
+    выглядит текстом, focus = input-bg + accent-кольцо.
+  - Sci-fi-заголовок (uppercase + tracking + display-font) →
+    спокойное editable-поле `.ec-cck-titlefield`. Кастомные
+    `actionBtn` → канонические `.ec-btn`. Row-action-язык
+    (`.ec-cck-rowbtn` / `.ec-cck-act`), linked-action badge —
+    tone-driven.
+  - `cockpit.css` дорос table-слоем (`.ec-cck-table*` /
+    `.ec-cck-cell*` / field-header / row-action / relation-popover /
+    file-chip).
+  Логика (drag-reorder, AI-fill, realtime sync, RELATION/FILE) не
+  тронута. Остаётся ActionItemDrawer (3/3). Сборка зелёная.
 - **v1.2.2** — **трек R2: Execution Cockpit — система + StatusBoard**
   (ТЗ Pavel'я: ядро execution-части ощущалось «старым слоем с
   косметикой»). Заход — design-system, не patch-machine.
