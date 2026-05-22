@@ -812,8 +812,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               onClick={() => setShowSearch(true)}
               title="Поиск (Ctrl+K)"
               aria-label="Поиск"
-              className="ec-btn ec-btn--ghost ec-btn--sm"
-              style={{ padding: "0.35rem 0.65rem" }}
+              className="ec-icon-btn"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <circle cx="11" cy="11" r="8" />
@@ -827,11 +826,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             title="Справка и онбординг"
             aria-label="Справка"
             aria-pressed={helpOpen}
-            className="ec-btn ec-btn--ghost ec-btn--sm"
-            style={{
-              padding: "0.35rem 0.65rem",
-              color: helpOpen ? "var(--ec-accent)" : undefined,
-            }}
+            className="ec-icon-btn"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
               <circle cx="12" cy="12" r="10" />
@@ -850,11 +845,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                 title="Админ-панель"
                 aria-label="Админ-панель"
                 aria-pressed={adminOpen}
-                className="ec-btn ec-btn--ghost ec-btn--sm"
-                style={{
-                  padding: "0.35rem 0.65rem",
-                  color: adminOpen ? "var(--ec-accent)" : undefined,
-                }}
+                className="ec-icon-btn"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                   <path d="M12 2l9 4v6c0 5-3.5 9.5-9 10-5.5-.5-9-5-9-10V6l9-4z" />
@@ -875,11 +866,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             }
             aria-label="Фокус-режим"
             aria-pressed={focus.enabled}
-            className="ec-btn ec-btn--ghost ec-btn--sm ec-focus-toggle"
-            style={{
-              padding: "0.35rem 0.65rem",
-              color: focus.enabled ? "var(--ec-accent)" : undefined,
-            }}
+            className="ec-icon-btn"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
               <circle cx="12" cy="12" r="10" />
@@ -901,12 +888,10 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                   : "Инциденты"
               }
               aria-label="Инциденты"
-              className="ec-btn ec-btn--ghost ec-btn--sm"
-              style={{
-                padding: "0.35rem 0.65rem",
-                position: "relative",
-                color: incidentOpenCount > 0 ? "var(--ec-danger)" : undefined,
-              }}
+              className={
+                "ec-icon-btn" +
+                (incidentOpenCount > 0 ? " ec-icon-btn--alert" : "")
+              }
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
@@ -914,25 +899,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                 <line x1="12" y1="17" x2="12.01" y2="17" />
               </svg>
               {incidentOpenCount > 0 && (
-                <span
-                  aria-hidden
-                  style={{
-                    position: "absolute",
-                    top: -2,
-                    right: -2,
-                    minWidth: 14,
-                    height: 14,
-                    padding: "0 3px",
-                    borderRadius: "var(--ec-radius-full)",
-                    background: "var(--ec-danger)",
-                    color: "var(--ec-accent-text)",
-                    fontSize: "0.55rem",
-                    fontWeight: 700,
-                    display: "grid",
-                    placeItems: "center",
-                    lineHeight: 1,
-                  }}
-                >
+                <span aria-hidden className="ec-count-badge">
                   {incidentOpenCount > 9 ? "9+" : incidentOpenCount}
                 </span>
               )}
@@ -955,15 +922,11 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                   : "Уведомления выключены — включить"
               }
               aria-label="Уведомления"
-              className="ec-btn ec-btn--ghost ec-btn--sm"
-              style={{
-                padding: "0.35rem 0.65rem",
-                color:
-                  notif.permission === "granted" && notif.enabled
-                    ? "var(--ec-accent)"
-                    : "var(--ec-text-muted)",
-                opacity: notif.permission === "denied" ? 0.45 : 1,
-              }}
+              aria-pressed={notif.permission === "granted" && notif.enabled}
+              className="ec-icon-btn"
+              style={
+                notif.permission === "denied" ? { opacity: 0.45 } : undefined
+              }
             >
               {notif.permission === "granted" && notif.enabled ? (
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>

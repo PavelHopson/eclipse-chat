@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, type CSSProperties } from "react";
 import { Avatar } from "./Avatar";
 import { BotsTab } from "./BotsTab";
 import { DeleteButton } from "./DeleteButton";
@@ -57,15 +57,20 @@ type Props = {
 
 type HubTab = "overview" | "branding" | "settings" | "bots";
 
+// Пресеты ограничены identity-палитрой (design-brief-v2 §2). Каждый
+// пресет задаёт серверу --ec-accent — это PRIMARY-акцент, поэтому
+// допустимы только violet-семья, gold и холодные/нейтральные тона.
+// Запрещены: cyan/teal как primary, warm orange, тропический неон
+// (acid green, hot pink). Раньше здесь были Cool sky / Teal mint /
+// Amber / Coral / Plasma pink / Lime — прямой откат identity. Не
+// возвращать: список — часть контракта визуального языка.
 const COLOR_PRESETS: { name: string; hsl: string }[] = [
-  { name: "Cool sky", hsl: "195 70% 60%" },
-  { name: "Teal mint", hsl: "168 60% 58%" },
-  { name: "Electric violet", hsl: "252 70% 70%" },
-  { name: "Plasma pink", hsl: "320 75% 68%" },
-  { name: "Azure", hsl: "215 80% 68%" },
-  { name: "Lime", hsl: "85 60% 62%" },
-  { name: "Amber", hsl: "38 90% 60%" },
-  { name: "Coral", hsl: "12 85% 65%" },
+  { name: "Затмение", hsl: "258 90% 66%" },
+  { name: "Аметист", hsl: "272 60% 64%" },
+  { name: "Индиго", hsl: "236 56% 66%" },
+  { name: "Лазурь", hsl: "212 60% 62%" },
+  { name: "Золото", hsl: "46 65% 52%" },
+  { name: "Сталь", hsl: "216 20% 56%" },
 ];
 
 function parseHsl(value: string | null | undefined): { h: number; s: number; l: number } | null {
@@ -588,13 +593,7 @@ export function ServerHubModal({
           <section>
             <h3 className="ec-hub-label">Цвет акцента</h3>
             <div className="ec-hub-card">
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fill, minmax(72px, 1fr))",
-                  gap: "var(--ec-space-2)",
-                }}
-              >
+              <div className="ec-hub-swatch-grid">
                 {COLOR_PRESETS.map((p) => {
                   const active = brandColor.trim() === p.hsl;
                   return (
@@ -606,57 +605,18 @@ export function ServerHubModal({
                         applyBrandPreview(p.hsl);
                       }}
                       title={p.name}
-                      style={{
-                        position: "relative",
-                        height: 56,
-                        borderRadius: "var(--ec-radius-md)",
-                        background: `hsl(${p.hsl})`,
-                        border: active
-                          ? "2px solid var(--ec-text-strong)"
-                          : "1px solid var(--ec-border-default)",
-                        cursor: "pointer",
-                        transition: "transform var(--ec-dur-fast) var(--ec-ease)",
-                        boxShadow: active
-                          ? `0 0 0 1px hsl(${p.hsl}), 0 0 20px -2px hsl(${p.hsl})`
-                          : "none",
-                      }}
+                      aria-pressed={active}
+                      className="ec-hub-swatch"
+                      style={{ "--sw": `hsl(${p.hsl})` } as CSSProperties}
                     >
-                      <span
-                        style={{
-                          position: "absolute",
-                          bottom: 4,
-                          left: 6,
-                          right: 6,
-                          fontSize: "0.55rem",
-                          color: "var(--ec-accent-text)",
-                          textShadow: "0 1px 2px rgba(0,0,0,0.6)",
-                          fontWeight: 600,
-                          letterSpacing: "0.04em",
-                          textAlign: "left",
-                          whiteSpace: "nowrap",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                        }}
-                      >
-                        {p.name}
-                      </span>
+                      <span className="ec-hub-swatch__name">{p.name}</span>
                     </button>
                   );
                 })}
               </div>
 
               {parsed && (
-                <div
-                  style={{
-                    background: "var(--ec-surface-1)",
-                    border: "1px solid var(--ec-border-subtle)",
-                    borderRadius: "var(--ec-radius-md)",
-                    padding: "var(--ec-space-3)",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 6,
-                  }}
-                >
+                <div className="ec-hub-hsl">
                   {(["h", "s", "l"] as const).map((k) => {
                     const max = k === "h" ? 360 : k === "l" ? 90 : 100;
                     const min = k === "l" ? 20 : 0;
@@ -664,11 +624,8 @@ export function ServerHubModal({
                     const label = k === "h" ? "Hue" : k === "s" ? "Sat" : "Light";
                     const suffix = k === "h" ? "°" : "%";
                     return (
-                      <label
-                        key={k}
-                        style={{ display: "flex", gap: 8, alignItems: "center", fontSize: "var(--ec-text-2xs)", color: "var(--ec-text-muted)" }}
-                      >
-                        <span style={{ minWidth: 56 }}>{label}</span>
+                      <label key={k} className="ec-hub-hsl__row">
+                        <span className="ec-hub-hsl__label">{label}</span>
                         <input
                           type="range"
                           min={min}
@@ -680,9 +637,9 @@ export function ServerHubModal({
                             setBrandColor(hsl);
                             applyBrandPreview(hsl);
                           }}
-                          style={{ flex: 1, accentColor: "var(--ec-accent)" }}
+                          className="ec-hub-hsl__range"
                         />
-                        <span style={{ minWidth: 32, textAlign: "right", fontFamily: "var(--ec-font-mono)", color: "var(--ec-text)" }}>
+                        <span className="ec-hub-hsl__value">
                           {v}{suffix}
                         </span>
                       </label>
@@ -691,7 +648,7 @@ export function ServerHubModal({
                 </div>
               )}
 
-              <div style={{ display: "flex", gap: "var(--ec-space-2)", justifyContent: "space-between", alignItems: "center" }}>
+              <div className="ec-hub-actions">
                 <button
                   type="button"
                   onClick={() => {

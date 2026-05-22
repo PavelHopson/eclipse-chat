@@ -870,8 +870,9 @@
     display: none;
   }
 
-  .ec-shell__top-actions .ec-btn {
-    min-width: 34px;
+  .ec-shell__top-actions .ec-icon-btn {
+    width: 34px;
+    height: 34px;
   }
 
   .ec-shell__channels {
@@ -934,9 +935,9 @@
     grid-template-columns: 1fr !important;
   }
 
-  .ec-shell__top-actions .ec-btn[title="Поиск (Ctrl+K)"],
-  .ec-shell__top-actions .ec-btn[aria-label="Инциденты"],
-  .ec-shell__top-actions .ec-btn[aria-label="Уведомления"] {
+  .ec-shell__top-actions .ec-icon-btn[title="Поиск (Ctrl+K)"],
+  .ec-shell__top-actions .ec-icon-btn[aria-label="Инциденты"],
+  .ec-shell__top-actions .ec-icon-btn[aria-label="Уведомления"] {
     display: none;
   }
 
@@ -954,7 +955,8 @@
   }
 
   .ec-shell__drawer-btn,
-  .ec-shell__top-actions .ec-btn {
+  .ec-shell__top-actions .ec-btn,
+  .ec-shell__top-actions .ec-icon-btn {
     width: 32px !important;
     height: 32px !important;
     min-width: 32px !important;

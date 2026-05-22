@@ -1,24 +1,61 @@
 /**
- * LogoutButton — анимированная кнопка выхода (эффект из набора
- * «Logout Button»): при клике фигурка проходит сквозь дверь, дверь
+ * LogoutButton — кнопка выхода с характером (набор «Logout Button»):
+ * при клике оператор разворачивается, проходит сквозь дверь, дверь
  * захлопывается → вызывается onLogout.
  *
- * Состояния (CSS-классы задают --transform-* переменные конечностей):
- *   default → walking1 (300ms) → walking2 (400ms) → onLogout()
+ * Состояния (CSS-классы в tokens.css задают transform-переменные
+ * конечностей фигурки):
+ *   default → walking1 (320ms) → walking2 (480ms) → onLogout()
  *
- * Адаптировано под Eclipse-палитру (cyan accent вместо синего).
- * Респектит prefers-reduced-motion — там клик сразу вызывает logout.
+ * Палитра — danger-red: logout это «красная тревога», не cyan.
+ * Респектит prefers-reduced-motion — там клик вызывает logout сразу.
+ *
+ * Надёжность (фикс v1.1.99): onLogout по типу `void | Promise<void>`
+ * может быть async и может упасть либо не увести со страницы. Раньше
+ * busy-латч ставился в true и НИКОГДА не сбрасывался — при неудачном
+ * logout'е кнопка после первого клика становилась мёртвой (`if
+ * (busyRef.current) return`), выйти было нельзя без перезагрузки.
+ * Теперь вызов обёрнут в try/finally: латч и состояние откатываются,
+ * если компонент пережил logout — пользователь может повторить.
  */
 
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type LogoutState = "default" | "walking1" | "walking2";
 
 export function LogoutButton({ onLogout }: { onLogout: () => void | Promise<void> }) {
   const [state, setState] = useState<LogoutState>("default");
   const busyRef = useRef(false);
+  const mountedRef = useRef(true);
+  const timersRef = useRef<number[]>([]);
 
-  const handleClick = () => {
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+      timersRef.current.forEach((t) => window.clearTimeout(t));
+      timersRef.current = [];
+    };
+  }, []);
+
+  // Реальный вызов logout. Успех обычно уносит со страницы (unmount) —
+  // тогда mountedRef уже false и откат не нужен. Если logout упал ИЛИ
+  // не увёл со страницы — откатываем латч и анимацию в рабочее
+  // состояние, чтобы выход можно было повторить.
+  const finish = useCallback(async () => {
+    try {
+      await onLogout();
+    } catch {
+      // logout не удался — не падаем (rejection не должен всплывать
+      // unhandled); откат состояния ниже даёт повторить попытку.
+    } finally {
+      if (mountedRef.current) {
+        busyRef.current = false;
+        setState("default");
+      }
+    }
+  }, [onLogout]);
+
+  const handleClick = useCallback(() => {
     if (busyRef.current) return;
     busyRef.current = true;
 
@@ -26,18 +63,21 @@ export function LogoutButton({ onLogout }: { onLogout: () => void | Promise<void
       typeof window !== "undefined" &&
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (reduced) {
-      void onLogout();
+      void finish();
       return;
     }
 
     setState("walking1");
-    window.setTimeout(() => {
+    const t1 = window.setTimeout(() => {
+      if (!mountedRef.current) return;
       setState("walking2");
-      window.setTimeout(() => {
-        void onLogout();
+      const t2 = window.setTimeout(() => {
+        void finish();
       }, 480);
+      timersRef.current.push(t2);
     }, 320);
-  };
+    timersRef.current.push(t1);
+  }, [finish]);
 
   return (
     <button
@@ -45,6 +85,7 @@ export function LogoutButton({ onLogout }: { onLogout: () => void | Promise<void
       className={`ec-logout-btn ec-logout-btn--${state}`}
       onClick={handleClick}
       aria-label="Выйти"
+      aria-busy={state !== "default"}
       title="Выйти из системы"
     >
       {/* doorway (фон-проём) */}

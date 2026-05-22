@@ -708,7 +708,10 @@
   letter-spacing: 0.16em;
 }
 
-.ec-shell__top-actions .ec-btn,
+/* v1.1.99 — topbar action-кнопки переведены на канонический
+   примитив .ec-icon-btn (был .ec-btn--ghost + inline padding/color —
+   drift). Заполненная surface-плашка осталась только у drawer-btn и
+   профиль-чипа; .ec-icon-btn держит свой ghost→surface язык сам. */
 .ec-shell__drawer-btn,
 .ec-shell__user-chip {
   background: hsl(214 22% 9% / 0.48) !important;
@@ -716,7 +719,6 @@
   box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.035);
 }
 
-.ec-shell__top-actions .ec-btn:hover,
 .ec-shell__drawer-btn:hover,
 .ec-shell__user-chip:hover {
   background: hsl(214 26% 13% / 0.72) !important;
@@ -735,14 +737,9 @@
   min-width: 0;
 }
 
-/* Utility-иконки приглушены в покое, проявляются на hover. Активные
-   (accent через inline-style) перебивают это и остаются яркими. */
-.ec-shell__top-actions .ec-btn--ghost {
-  color: var(--ec-text-muted);
-}
-.ec-shell__top-actions .ec-btn--ghost:hover {
-  color: var(--ec-text);
-}
+/* v1.1.99 — utility-иконки топбара живут на .ec-icon-btn: ghost в
+   покое → surface на hover → accent на [aria-pressed]. Прежние
+   .ec-btn--ghost-правила + inline-color убраны как drift. */
 
 /* v1.1.81 — топбар-полиш. Правая зона была «свалкой» из ~12 элементов
    в один ряд. Hairline-разделители режут её на 3 читаемых кластера:
@@ -1447,6 +1444,7 @@
 .ec-icon-btn {
   display: inline-grid;
   place-items: center;
+  position: relative;
   width: 28px;
   height: 28px;
   flex-shrink: 0;
@@ -1485,6 +1483,34 @@
 .ec-icon-btn[aria-pressed="true"] {
   background: var(--ec-accent-soft);
   color: var(--ec-accent);
+}
+
+/* Alert-модификатор — иконка несёт активный риск (открытые инциденты).
+   Danger держится и в покое, и на hover: сигнал не должен гаснуть. */
+.ec-icon-btn--alert,
+.ec-icon-btn--alert:hover {
+  color: var(--ec-danger);
+}
+
+/* Счётчик-бейдж на иконочной кнопке (инциденты, уведомления). Кольцо
+   surface-1 «вырезает» бейдж из иконки — читается чисто на любом фоне. */
+.ec-count-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--ec-radius-full);
+  background: var(--ec-danger);
+  color: hsl(0 0% 100%);
+  font-size: 0.55rem;
+  font-weight: 700;
+  line-height: 1;
+  font-feature-settings: "tnum";
+  box-shadow: 0 0 0 2px var(--ec-surface-1);
 }
 
 /* --- Error banner (AppShell) — был module-level inline-объект. -- */
@@ -3065,5 +3091,97 @@
   font-weight: 600;
   letter-spacing: var(--ec-tracking-wide);
   cursor: pointer;
+}
+
+/* --- Оформление → цвет акцента: пресет-свотчи + HSL-тюнер.
+   v1.1.99 — вынос inline-консолей секции в классы (был drift).
+   Свотч несёт цвет пресета через --sw (динамика — допустимо). --- */
+.ec-hub-swatch-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(74px, 1fr));
+  gap: var(--ec-space-2);
+}
+.ec-hub-swatch {
+  position: relative;
+  height: 56px;
+  border: 1px solid var(--ec-border-default);
+  border-radius: var(--ec-radius-md);
+  background: var(--sw, var(--ec-surface-3));
+  cursor: pointer;
+  transition:
+    transform var(--ec-dur-fast) var(--ec-ease-out),
+    box-shadow var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-hub-swatch:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px -8px var(--sw);
+}
+.ec-hub-swatch:active {
+  transform: translateY(0) scale(0.97);
+  transition-duration: 60ms;
+}
+.ec-hub-swatch:focus-visible {
+  outline: 2px solid var(--ec-text-strong);
+  outline-offset: 2px;
+}
+.ec-hub-swatch[aria-pressed="true"] {
+  border-color: var(--ec-text-strong);
+  box-shadow:
+    0 0 0 1px var(--ec-text-strong),
+    0 0 22px -4px var(--sw);
+}
+.ec-hub-swatch__name {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  bottom: 4px;
+  font-size: 0.55rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-align: left;
+  color: hsl(0 0% 100%);
+  text-shadow: 0 1px 3px hsl(0 0% 0% / 0.75);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ec-hub-hsl {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ec-space-2);
+  padding: var(--ec-space-3);
+  background: var(--ec-surface-1);
+  border: 1px solid var(--ec-border-subtle);
+  border-radius: var(--ec-radius-md);
+}
+.ec-hub-hsl__row {
+  display: flex;
+  align-items: center;
+  gap: var(--ec-space-2);
+  font-size: var(--ec-text-2xs);
+  color: var(--ec-text-muted);
+}
+.ec-hub-hsl__label {
+  min-width: 56px;
+}
+.ec-hub-hsl__range {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--ec-accent);
+}
+.ec-hub-hsl__value {
+  min-width: 36px;
+  text-align: right;
+  font-family: var(--ec-font-mono);
+  font-feature-settings: "tnum";
+  color: var(--ec-text);
+}
+
+.ec-hub-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ec-space-2);
 }
 

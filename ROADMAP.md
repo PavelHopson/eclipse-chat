@@ -5,7 +5,7 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.1.98** (Galaxy/Clock/Theme/Deadline effects +
+**Текущая версия:** **v1.1.99** (Galaxy/Clock/Theme/Deadline effects +
 UX-copy + дизайн-полиш + редизайн WS-1 + системный редизайн ЗАКРЫТ 8/8 +
 светлая тема SOLAR (Notion-crisp) + фикс AuthScreen + смена пароля +
 визуальный передел AppShell ЗАКРЫТ 4/4 + топбар-полиш +
@@ -19,10 +19,11 @@ redesign slice 4 — правый rail IntelligencePanel / MemberList / ThreadPa
 redesign slice 5 — Modal-база + ChannelInfoPanel +
 redesign slice 6 — SearchOverlay +
 redesign slice 7 — ServerHubModal +
-фикс version-дрейфа `/api/version` + smoke-тавтологии).
+фикс version-дрейфа `/api/version` + smoke-тавтологии +
+logout-надёжность + identity-фикс пресетов + topbar на `.ec-icon-btn`).
 
-> **Слайсы v1.1.90 … v1.1.97 задеплоены — в проде v1.1.97. v1.1.98
-> запушен и ждёт approve-gate Pavel'я в GitHub Actions (environment
+> **v1.1.90 … v1.1.98 задеплоены — в проде v1.1.98. v1.1.99 запушен
+> и ждёт approve-gate Pavel'я в GitHub Actions (environment
 > `production`). Деплой НЕ автоматический по пушу.**
 
 > **⚠️ ЦВЕТ-ПРАВИЛО ИЗМЕНЕНО (бриф Pavel'я 20.05.2026).** Прежнее
@@ -31,8 +32,46 @@ redesign slice 7 — ServerHubModal +
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.1.98:**
+**Изменения v1.1.25 → v1.1.99:**
 
+- **v1.1.99** — **integrity-фиксы + честная сверка docs↔код**
+  (ТЗ Pavel'я «redesign недотянут, много эффекта — мало цельности»).
+  - **Logout — регресс надёжности.** `LogoutButton`: `busyRef`
+    ставился в `true` и НИКОГДА не сбрасывался — латч в один конец.
+    `onLogout` по типу `void | Promise<void>` может быть async и
+    упасть; `void onLogout()` глотал rejection. Если logout падал
+    или не уводил со страницы — кнопка после первого клика мертва
+    (`if (busyRef.current) return`), выйти нельзя без перезагрузки.
+    Фикс: вызов обёрнут в `finish()` с try/finally — латч и
+    состояние откатываются, если компонент пережил logout; таймеры
+    чистятся на unmount, `setState` гейтится `mountedRef`. Театр
+    (дверь/фигурка) не тронут — надёжность первой.
+  - **Identity-конфликт.** `ServerHubModal` color-пресеты
+    (`Cool sky` cyan, `Teal mint` teal, `Amber`/`Coral` warm,
+    `Plasma pink`/`Lime` тропик-неон) противоречили design-brief-v2
+    §2 — каждый задаёт серверу `--ec-accent` (primary). Заменены на
+    identity-набор: Затмение / Аметист / Индиго / Лазурь / Золото /
+    Сталь (violet-семья + gold + холодные). Комментарий-контракт
+    против повторного дрейфа.
+  - **Враньё доков.** `design-brief-v2.md` §5: slice'ы 2–7 висели
+    «план» — приведено к реальности + честная пометка, что slice
+    1–5 были применением грамматики, не композиционным переделом
+    (новая строка R). `surface-map.md` — снимок v1.1.90 → v1.1.99,
+    статусы синхронизированы.
+  - **Topbar button drift → система.** 6 action-кнопок топбара
+    сидели на `.ec-btn--ghost` + 6× повторённый inline
+    `style={{padding}}` + inline-color по open-state. Переведены на
+    канонический `.ec-icon-btn`: accent активного — через
+    `[aria-pressed]` + CSS, счётчик инцидентов → `.ec-count-badge`,
+    danger-иконка → `.ec-icon-btn--alert`. Мёртвые
+    `.ec-shell__top-actions .ec-btn*` правила и класс-сирота
+    `.ec-focus-toggle` убраны.
+  - `ServerHubModal` brand-color секция: inline-консоли свотчей /
+    HSL-тюнера / actions-ряда → классы `.ec-hub-swatch*` /
+    `.ec-hub-hsl*` / `.ec-hub-actions`.
+  Чистый фронт, без миграций. Сборка зелёная (tsc + vite). Большой
+  визуальный передел (топбар/shell-композиция, фирменный плеер,
+  кнопки как система) — отдельный трек R, следующими слайсами.
 - **v1.1.98** — **фикс: `/api/version` врал + smoke-тавтология
   (integrity-фикс)**. После деплоя v1.1.97 прод отдавал
   `/api/version` → `1.1.89`, хотя редизайн (слайсы 1-7) реально
