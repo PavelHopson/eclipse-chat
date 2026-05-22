@@ -23,7 +23,9 @@
   height: 100dvh;
   min-width: 0;
   overflow: hidden;
-  background: var(--ec-bg);
+  /* v1.2.5 slice 7 — surface-фон каркаса живёт в components.css
+     (.ec-shell в секции «Shell — поверхности»); здесь его держать
+     незачем — это был источник !important-войны. */
   color: var(--ec-text);
   grid-template-rows: var(--ec-header-height) 1fr;
   /* v1.1.51: far-left server-rail свёрнут в topbar-control (ServerSwitcher)
@@ -248,23 +250,27 @@
 
 /* ===== Header buttons (drawer toggles): hidden by default ==== */
 
+/* v1.2.5 slice 7 — структура и layout drawer-кнопки. Фон, цвет
+   бордера и hover-фон — за components.css (.ec-shell__drawer-btn в
+   секции «Shell — поверхности», заполненная плашка с v1.1.99).
+   Раньше здешний transparent-фон/бордер были мёртвым кодом под
+   !important components.css. border-width/style — здесь, чтобы
+   border-color из components.css получил рамку для отрисовки. */
 .ec-shell__drawer-btn {
   display: none;
   width: 36px;
   height: 36px;
   align-items: center;
   justify-content: center;
-  background: transparent;
-  border: 1px solid transparent;
+  border-width: 1px;
+  border-style: solid;
   border-radius: var(--ec-radius-md);
   color: var(--ec-text-muted);
   cursor: pointer;
   transition: background var(--ec-dur-fast) var(--ec-ease), color var(--ec-dur-fast) var(--ec-ease), border-color var(--ec-dur-fast) var(--ec-ease);
 }
 .ec-shell__drawer-btn:hover {
-  background: var(--ec-surface-2);
   color: var(--ec-text);
-  border-color: var(--ec-border-default);
 }
 
 @media (max-width: 1024px) {
@@ -895,7 +901,7 @@
   }
 
   .ec-chat-title {
-    font-size: 0.72rem !important;
+    font-size: 0.72rem;
     letter-spacing: 0.04em;
   }
 

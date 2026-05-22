@@ -52,49 +52,51 @@ html[data-ec-theme="solar"] .ec-ambient {
 }
 
 /* ===== SOLAR theme — shell-каркас (v1.1.67, слайс 1) =========
-   Декоративный слой «Immersive app surface» (components.css) хардкодит
-   тёмные поверхности через !important — перекрываем их theme-scoped
-   !important-правилами: специфичность html[data-ec-theme] .x (0,2,1)
-   бьёт .x (0,1,0). Затрагивает ТОЛЬКО SOLAR; VOID (тёмная) не меняется.
+   components.css задаёт surface-каркас в тёмных тонах для VOID
+   (секция «Shell — поверхности»). Здесь — SOLAR-вариант тех же
+   селекторов под html[data-ec-theme="solar"]. Специфичность
+   html[data-ec-theme] .x (0,2,1) сама бьёт базовое .x (0,1,0) —
+   !important не нужен (v1.2.5 slice 7 снял !important-войну с
+   components.css). Затрагивает ТОЛЬКО SOLAR; VOID не меняется.
    Значения — через SOLAR-токены (см. блок выше). */
 html[data-ec-theme="solar"] .ec-shell {
-  background: var(--ec-bg) !important;
+  background: var(--ec-bg);
 }
 html[data-ec-theme="solar"] .ec-shell__cmdbar {
-  background: var(--ec-surface-1) !important;
-  border-bottom-color: var(--ec-border-default) !important;
-  box-shadow: none !important;
+  background: var(--ec-surface-1);
+  border-bottom-color: var(--ec-border-default);
+  box-shadow: none;
 }
 html[data-ec-theme="solar"] .ec-shell__brand-home {
-  background: linear-gradient(180deg, var(--ec-surface-3), var(--ec-surface-2)) !important;
-  border-color: var(--ec-border-subtle) !important;
+  background: linear-gradient(180deg, var(--ec-surface-3), var(--ec-surface-2));
+  border-color: var(--ec-border-subtle);
 }
 html[data-ec-theme="solar"] .ec-shell__top-actions .ec-btn,
 html[data-ec-theme="solar"] .ec-shell__drawer-btn,
 html[data-ec-theme="solar"] .ec-shell__user-chip {
-  background: var(--ec-surface-3) !important;
-  border-color: var(--ec-border-subtle) !important;
+  background: var(--ec-surface-3);
+  border-color: var(--ec-border-subtle);
   box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.6);
 }
 html[data-ec-theme="solar"] .ec-shell__top-actions .ec-btn:hover,
 html[data-ec-theme="solar"] .ec-shell__drawer-btn:hover,
 html[data-ec-theme="solar"] .ec-shell__user-chip:hover {
-  background: var(--ec-surface-4) !important;
-  border-color: var(--ec-border-accent) !important;
+  background: var(--ec-surface-4);
+  border-color: var(--ec-border-accent);
 }
 html[data-ec-theme="solar"] .ec-shell__brandbar,
 html[data-ec-theme="solar"] .ec-shell__channels,
 html[data-ec-theme="solar"] .ec-shell__members {
-  background: var(--ec-surface-1) !important;
+  background: var(--ec-surface-1);
 }
 html[data-ec-theme="solar"] .ec-chat-header {
-  background: linear-gradient(180deg, var(--ec-surface-2), var(--ec-surface-1)) !important;
-  border-bottom-color: var(--ec-border-subtle) !important;
+  background: linear-gradient(180deg, var(--ec-surface-2), var(--ec-surface-1));
+  border-bottom-color: var(--ec-border-subtle);
 }
 html[data-ec-theme="solar"] .ec-shell__chat {
   background:
     radial-gradient(ellipse 40rem 26rem at 62% 4%, hsl(258 80% 55% / 0.05), transparent 62%),
-    var(--ec-bg) !important;
+    var(--ec-bg);
 }
 html[data-ec-theme="solar"] .ec-composer-box {
   background:

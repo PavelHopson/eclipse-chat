@@ -5,7 +5,7 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.2.4** (Galaxy/Clock/Theme/Deadline effects +
+**Текущая версия:** **v1.2.5** (Galaxy/Clock/Theme/Deadline effects +
 UX-copy + дизайн-полиш + редизайн WS-1 + системный редизайн ЗАКРЫТ 8/8 +
 светлая тема SOLAR (Notion-crisp) + фикс AuthScreen + смена пароля +
 визуальный передел AppShell ЗАКРЫТ 4/4 + топбар-полиш +
@@ -24,9 +24,10 @@ logout-надёжность + identity-фикс пресетов + topbar на `
 трек R1 — media-плеер «Signal Desk» v2 +
 рекомпозиция каркаса — командный хребет + центр-бар +
 трек R2 — Execution Cockpit ЗАКРЫТ 3/3: cockpit-система +
-StatusBoard + OperationalTablePanel + ActionItemDrawer).
+StatusBoard + OperationalTablePanel + ActionItemDrawer +
+CSS-консолидация slice 7 — дубль-блоки .ec-shell* и !important-война).
 
-> **v1.1.90 … v1.2.0 задеплоены — в проде v1.2.0. v1.2.1 … v1.2.4
+> **v1.1.90 … v1.2.0 задеплоены — в проде v1.2.0. v1.2.1 … v1.2.5
 > запушены и ждут approve-gate Pavel'я в GitHub Actions (environment
 > `production`). Деплой НЕ автоматический по пушу.**
 
@@ -36,8 +37,36 @@ StatusBoard + OperationalTablePanel + ActionItemDrawer).
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.2.4:**
+**Изменения v1.1.25 → v1.2.5:**
 
+- **v1.2.5** — **slice 7: CSS-консолидация — дубль-блоки `.ec-shell*`
+  + `!important`-война (3 файла)**. Закрытие brief-slice 7.
+  - **Корень.** Декор каркаса определялся дважды: «Shell home /
+    brand» (регион A) и «Immersive app surface» (регион B) в
+    `components.css` задавали одни и те же селекторы (`.ec-shell`,
+    `.ec-shell__cmdbar`, `.ec-chat-header`, `.ec-channel-item*` …);
+    поздний блок перебивал ранний через `!important`. Война
+    оказалась трёхфайловой — часть `!important` в `components.css`
+    была load-bearing против `responsive.css` (фон `.ec-shell`,
+    drawer-тени) и зеркалилась `!important`'ом в SOLAR-блоке
+    `effects.css`.
+  - **`components.css`:** дубль-блоки слиты — один канонический блок
+    на селектор (декор — в секции «Shell — поверхности», nav — в
+    «Channel list», layout/типографика — в grammar-блоке slice 1).
+    Все ~25 shell-декор `!important` сняты.
+  - **`responsive.css`:** убран misplaced `.ec-shell { background }`
+    (appearance в layout-файле — корень одной из войн);
+    `.ec-shell__drawer-btn` — мёртвый `background: transparent` под
+    `!important`'ом components.css удалён, файл оставлен layout-only;
+    снят `!important` у mobile `.ec-chat-title`.
+  - **`effects.css`:** SOLAR shell-блок — `!important` снят, тему
+    держит специфичность `html[data-ec-theme] .x` (0,2,1) над
+    `.x` (0,1,0).
+  - **Один видимый эффект (latent-баг войны исправлен):** на мобиле
+    off-canvas drawer каналов/участников теперь показывает свою
+    drawer-тень (`responsive.css`), а не десктопную «хребет»-тень —
+    раньше `!important` глушил drawer-правило.
+  Чистый фронт, без миграций. Сборка зелёная (tsc + vite).
 - **v1.2.4** — **Execution Cockpit 3/3 ЗАКРЫТ: ActionItemDrawer →
   mission detail panel**. Drawer задачи (2109 строк) переведён на
   cockpit-язык.
