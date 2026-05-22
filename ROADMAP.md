@@ -5,7 +5,7 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.1.97** (Galaxy/Clock/Theme/Deadline effects +
+**Текущая версия:** **v1.1.98** (Galaxy/Clock/Theme/Deadline effects +
 UX-copy + дизайн-полиш + редизайн WS-1 + системный редизайн ЗАКРЫТ 8/8 +
 светлая тема SOLAR (Notion-crisp) + фикс AuthScreen + смена пароля +
 визуальный передел AppShell ЗАКРЫТ 4/4 + топбар-полиш +
@@ -18,11 +18,12 @@ redesign slice 3 — центральная сцена MessageList + MessageInpu
 redesign slice 4 — правый rail IntelligencePanel / MemberList / ThreadPanel +
 redesign slice 5 — Modal-база + ChannelInfoPanel +
 redesign slice 6 — SearchOverlay +
-redesign slice 7 — ServerHubModal).
+redesign slice 7 — ServerHubModal +
+фикс version-дрейфа `/api/version` + smoke-тавтологии).
 
-> **Слайсы v1.1.90 … v1.1.97 запушены, но ждут approve-gate Pavel'я
-> в GitHub Actions (environment `production`) — на момент записи в
-> проде ещё v1.1.89. Деплой НЕ автоматический по пушу.**
+> **Слайсы v1.1.90 … v1.1.97 задеплоены — в проде v1.1.97. v1.1.98
+> запушен и ждёт approve-gate Pavel'я в GitHub Actions (environment
+> `production`). Деплой НЕ автоматический по пушу.**
 
 > **⚠️ ЦВЕТ-ПРАВИЛО ИЗМЕНЕНО (бриф Pavel'я 20.05.2026).** Прежнее
 > «cool-tone, НИКОГДА warm» — ОТМЕНЕНО. Новая identity: **violet
@@ -30,8 +31,24 @@ redesign slice 7 — ServerHubModal).
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.1.97:**
+**Изменения v1.1.25 → v1.1.98:**
 
+- **v1.1.98** — **фикс: `/api/version` врал + smoke-тавтология
+  (integrity-фикс)**. После деплоя v1.1.97 прод отдавал
+  `/api/version` → `1.1.89`, хотя редизайн (слайсы 1-7) реально
+  выкачен. Корень: хардкод версии в `apps/server/src/index.ts`
+  (эндпойнт `/api/version`) застрял на `1.1.89` — не бампался 8
+  релизов (v1.1.90…v1.1.97), хотя три других места бампа
+  (`package.json` ×2, `sw.js`) шли в ногу. Почему дрейф не ловился:
+  `deploy.sh` брал `EXPECTED_VERSION` для smoke ИЗ ТОГО ЖЕ хардкода
+  `index.ts` и сверял с `/api/version`, который этот хардкод и
+  возвращает → проверка сравнивала строку саму с собой, упасть не
+  могла структурно. Фикс: (1) все 4 места бампа синхронизированы на
+  1.1.98, включая хардкод `index.ts`; (2) `deploy.sh` читает
+  `EXPECTED_VERSION` из `apps/server/package.json` — независимый
+  источник, smoke стал реальной кросс-сверкой package.json ↔
+  `/api/version` и поймает любой будущий дрейф хардкода. Чистый
+  фикс, без миграций. Сборка зелёная (tsc + vite).
 - **v1.1.97** — **redesign slice 7: ServerHubModal под grammar v2**.
   12 inline-style консолей (`tabBar`, `tabBtn`, `sectionCard`,
   `sectionLabel`, `fieldHint`, `inputStyle`, `stat`, `statLabel`,

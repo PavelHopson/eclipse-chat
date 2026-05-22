@@ -103,11 +103,16 @@ sudo supervisorctl restart eclipse-chat-server
 echo
 echo "==> [10/10] smoke test (wait 4s for server start)"
 sleep 4
-# Версия — берём строку 'version: "0.X.Y"' из apps/server/src/index.ts
-EXPECTED_VERSION=$(grep -oE 'version: "[0-9]+\.[0-9]+\.[0-9]+"' \
-    "$DEPLOY_PATH/apps/server/src/index.ts" | \
-    head -1 | sed 's/version: "//;s/"//')
-echo "    Expected version (from source): $EXPECTED_VERSION"
+# Версия — каноничный источник: apps/server/package.json.
+# WHY НЕ index.ts: /api/version отдаёт хардкод из index.ts. Читать
+# EXPECTED_VERSION оттуда же — тавтология: smoke сверял бы строку саму
+# с собой и не ловил дрейф (так 8 релизов v1.1.90…v1.1.97 прошли с
+# застрявшим в index.ts 1.1.89). package.json — независимый источник
+# → smoke реально сверяет package.json ↔ /api/version.
+EXPECTED_VERSION=$(grep -oE '"version"[[:space:]]*:[[:space:]]*"[0-9]+\.[0-9]+\.[0-9]+"' \
+    "$DEPLOY_PATH/apps/server/package.json" | \
+    head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+echo "    Expected version (from package.json): $EXPECTED_VERSION"
 
 if SMOKE_EXPECTED_VERSION="$EXPECTED_VERSION" bash "$SCRIPT_DIR/smoke.sh"; then
     echo
