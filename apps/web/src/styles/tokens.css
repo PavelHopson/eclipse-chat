@@ -645,14 +645,17 @@
   border-bottom: 1px solid var(--ec-border-subtle);
   background: hsl(210 25% 4% / 0.5);
 }
+/* v1.1.80 слайс 4 — calm section-eyebrow. Было: mono + weight 700 +
+   tracking 0.18em — «терминальный» крик. Стало: sans, спокойный вес и
+   трекинг — чистый секционный лейбл, не sci-fi-readout. */
 .ec-tactical-header__title {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-family: var(--ec-font-mono, ui-monospace, monospace);
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.18em;
+  font-family: var(--ec-font-sans);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--ec-text-muted);
 }

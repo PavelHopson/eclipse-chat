@@ -169,7 +169,10 @@
   align-items: center;
   justify-content: space-between;
   padding: 0 var(--ec-space-2);
-  margin-bottom: var(--ec-space-1);
+  /* v1.1.80 слайс 4 — воздух: секционный лейбл отделён от списка
+     (4 → 8px снизу, 12px сверху для разрыва между секциями). */
+  margin-top: var(--ec-space-3);
+  margin-bottom: var(--ec-space-2);
   font-size: var(--ec-text-2xs);
   text-transform: uppercase;
   letter-spacing: var(--ec-tracking-caps);
@@ -732,7 +735,8 @@
 .ec-channel-item {
   position: relative;
   overflow: hidden;
-  min-height: 34px;
+  /* v1.1.80 слайс 4 — воздух: nav-элемент дышит (34 → 38px). */
+  min-height: 38px;
   border: 1px solid transparent;
   background: transparent;
   letter-spacing: 0.005em;
@@ -784,11 +788,15 @@
   box-shadow: 0 16px 38px hsl(210 70% 2% / 0.18);
 }
 
+/* v1.1.80 слайс 4 — иерархия. Название канала — главный заголовок
+   контент-области: читаемый размер, естественный регистр (имя канала
+   «Музыка», не «МУЗЫКА»), плотный трекинг. Было: мелкий uppercase-mono
+   chrome — инвертированная иерархия. */
 .ec-chat-title {
   font-family: var(--ec-font-display);
-  font-size: 0.86rem !important;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: var(--ec-text-md) !important;
+  font-weight: 650;
+  letter-spacing: -0.005em;
 }
 
 .ec-shell__chat {
