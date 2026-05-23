@@ -124,24 +124,55 @@ export function botRolePrompt(role: BotRoleValue | null | undefined): string {
 }
 
 const MAX_SYSTEM_PROMPT_OVERRIDE = 8000;
+const MAX_PERSONALITY = 1000;
 
 /**
- * Effective system prompt: per-bot override > role template.
+ * v1.2.27 — Personality overlay. Прикручивается к base-prompt'у когда
+ * нет full override. Дает боту «характер» без переписывания всего.
+ *
+ * Tone: friendly directive, без RP-кавычек («играй роль ...»), потому что
+ * LLM'ы на free-tier (DeepSeek/Qwen/Llama) лучше следуют прямым инструкциям
+ * чем roleplay-обёрткам.
+ */
+function buildPersonalityOverlay(personality: string): string {
+  const trimmed = personality.trim().slice(0, MAX_PERSONALITY);
+  if (!trimmed) return "";
+  return [
+    "",
+    "## Твоя личность",
+    trimmed,
+    "",
+    "Оставайся в этом характере во всех ответах. Используй юмор там, где он уместен. Реагируй как живой человек, не как робот. Говори от своего имени.",
+  ].join("\n");
+}
+
+/**
+ * Effective system prompt: per-bot override > role template + personality overlay.
  * Для system @ai (GENERIC, без Bot row) — optional assistant channel prompt.
+ *
+ * Argument order (legacy + new):
+ *   role, systemPromptOverride, [genericAssistantSystem], [personality]
+ * Old callers без `personality` остаются работающими (default null).
  */
 export function resolveBotSystemPrompt(
   role: BotRoleValue,
   systemPromptOverride: string | null | undefined,
   genericAssistantSystem?: string,
+  personality?: string | null,
 ): string {
   const trimmed = systemPromptOverride?.trim();
   if (trimmed) {
+    // Full override: personality НЕ применяется (admin сам всё описал).
     return trimmed.length > MAX_SYSTEM_PROMPT_OVERRIDE
       ? trimmed.slice(0, MAX_SYSTEM_PROMPT_OVERRIDE)
       : trimmed;
   }
-  if (role === "GENERIC" && genericAssistantSystem?.trim()) {
-    return genericAssistantSystem.trim();
+  const base =
+    role === "GENERIC" && genericAssistantSystem?.trim()
+      ? genericAssistantSystem.trim()
+      : botRolePrompt(role);
+  if (personality && personality.trim()) {
+    return base + buildPersonalityOverlay(personality);
   }
-  return botRolePrompt(role);
+  return base;
 }

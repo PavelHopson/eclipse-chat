@@ -5,7 +5,7 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.2.26** (Galaxy/Clock/Theme/Deadline effects +
+**Текущая версия:** **v1.2.27** (Galaxy/Clock/Theme/Deadline effects +
 UX-copy + дизайн-полиш + редизайн WS-1 + системный редизайн ЗАКРЫТ 8/8 +
 светлая тема SOLAR (Notion-crisp) + фикс AuthScreen + смена пароля +
 визуальный передел AppShell ЗАКРЫТ 4/4 + топбар-полиш +
@@ -58,13 +58,16 @@ custom emoji slice 4: reactions с custom emoji (backend whitelist
 custom emoji slice 5: real-time invalidation через socket
 (emoji:created / emoji:deleted events) +
 sci-fi sweep slice 1: композер UX-copy (ЗАЩИЩЁННЫЙ_КАНАЛ →
-«Защищённый канал», ВВОД ПОТОКА → «печатает», ПЕРЕДАТЬ → «Отправить»)).
+«Защищённый канал», ВВОД ПОТОКА → «печатает», ПЕРЕДАТЬ → «Отправить») +
+AI agents Партия 1 slice 1: Bot.personality overlay — admin даёт боту
+характер/юмор поверх роли + UI «Личность» в BotsTab).
 
 > **v1.1.90 … v1.2.14 задеплоены — в проде v1.2.14. v1.2.15 …
-> v1.2.26 запушены и ждут approve-gate Pavel'я. Деплой НЕ
-> автоматический по пушу. ⚠️ v1.2.20 включает Prisma migration
-> `20260523200000_add_custom_emojis` — при деплое нужен `prisma
-> migrate deploy`.**
+> v1.2.27 запушены и ждут approve-gate Pavel'я. Деплой НЕ
+> автоматический по пушу. ⚠️ v1.2.20 + v1.2.27 включают Prisma
+> migrations — при деплое нужен `prisma migrate deploy`:
+>   - `20260523200000_add_custom_emojis`
+>   - `20260523210000_add_bot_personality`**
 
 > **⚠️ ЦВЕТ-ПРАВИЛО ИЗМЕНЕНО (бриф Pavel'я 20.05.2026).** Прежнее
 > «cool-tone, НИКОГДА warm» — ОТМЕНЕНО. Новая identity: **violet
@@ -72,8 +75,61 @@ sci-fi sweep slice 1: композер UX-copy (ЗАЩИЩЁННЫЙ_КАНАЛ 
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.2.26:**
+**Изменения v1.1.25 → v1.2.27:**
 
+- **v1.2.27** — **AI agents Партия 1 slice 1: Bot.personality
+  overlay**. Начало большого AI-agents trek'а (по запросу Pavel'я
+  24.05.2026). Цель: боты как **личности** с именами, характерами,
+  чувством юмора — не безличные ассистенты. Этот слайс — foundation
+  (личность как короткий overlay поверх role-prompt'а), без tool-use
+  и full-agentic loop'а ещё.
+
+  Trek plan:
+  - **Партия 1: Personalities** ← здесь
+  - **Партия 2: Tool foundation** (post_message / create_task /
+    update_table_row) — bot реально действует в server'е
+  - **Партия 3: Free model fallback** (OpenRouter chain DeepSeek →
+    Llama → Qwen)
+  - **Партия 4: Voice agents** (LiveKit join + Whisper STT +
+    Cloudflare TTS) — большой track, после tools
+
+  v1.2.27 changes:
+  - **Schema**: `Bot.personality String?` (nullable, до 1000
+    символов). Migration `20260523210000_add_bot_personality`:
+    `ALTER TABLE "Bot" ADD COLUMN "personality" TEXT;` Additive.
+  - **`resolveBotSystemPrompt`** в `ai/botRoles.ts` принимает
+    четвёртый optional аргумент `personality`. Если задан и нет
+    full `systemPromptOverride` — append «## Твоя личность»
+    overlay'ом к role base-prompt. Tone — directive («оставайся в
+    характере, используй юмор где уместен, реагируй как живой
+    человек»), без RP-кавычек (бесплатные модели лучше следуют
+    прямым инструкциям).
+  - **`BotResponder`** type расширен `personality: string | null`.
+    Все 2 caller'а (@mention + autoRespond paths) загружают
+    `personality` и пробрасывают в resolve.
+  - **`bots.ts` routes**:
+    - `GET /api/servers/:id/bots` — `personality` в response.
+    - `PATCH /api/servers/:id/bots/:botId` — принимает
+      `personality?: string | null`, max 1000 chars, trim, пустая
+      строка → null.
+    - `GET /api/bot/me` — `systemPrompt` теперь рассчитывается с
+      `personality` для self-aware debug'а.
+    - Test-invoke endpoint тоже использует personality.
+  - **Frontend**:
+    - `useBots.ts` — `BotRow.personality` + `updateBot({ personality
+      })`.
+    - `BotsTab.tsx` — новая кнопка «Личность» рядом с «Промпт». При
+      открытии — textarea с placeholder-примером для UX
+      («Тебя зовут Алёша. Ты дружелюбный senior dev…»). Counter
+      «{N} / 1000». «Очистить» (если personality задан) +
+      «Сохранить».
+  - **Не делано** (следующие slice'ы Партии 1):
+    - Edit bot avatar (пока берётся auto). Pavel хотел чтобы можно
+      было «называть» бота — `bot.name` редактируется через
+      существующее поле «Название», `user.displayName` syncs auto.
+      Slice 2 при необходимости — отдельный аватар-uploader.
+  Сборка зелёная (tsc + vite + tsc server). ⚠️ Migration deploy
+  на проде: `cd apps/server && npx prisma migrate deploy`.
 - **v1.2.26** — **sci-fi sweep slice 1: композер UX-copy**.
   Начало sci-fi-копирайт sweep'а (brief §3.6 — «привести ALL-CAPS
   телеметрию к спокойному русскому»). Conservative подход: только

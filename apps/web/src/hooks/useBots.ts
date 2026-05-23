@@ -15,6 +15,8 @@ export type BotRow = {
   role: BotRole;
   autoRespond: boolean;
   systemPromptOverride: string | null;
+  /** v1.2.27 — character/humor overlay (до 1000 символов). */
+  personality: string | null;
   owner: { id: string; displayName: string };
   shadowUserId: string;
   /** Префикс API key для display ("ecb_AbCd…"). Не secret. */
@@ -152,6 +154,7 @@ export function useBots(serverId: string | null) {
         role?: BotRole;
         autoRespond?: boolean;
         systemPromptOverride?: string | null;
+        personality?: string | null;
         webhookUrl?: string | null;
         webhookSecret?: string | null;
       },

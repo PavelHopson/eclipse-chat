@@ -107,6 +107,8 @@ export type BotResponder = {
   role: BotRoleValue;
   displayName: string;
   systemPromptOverride: string | null;
+  /** v1.2.27 — character/humor overlay (см. botRoles.ts). */
+  personality: string | null;
   isRealBot: boolean;
 };
 
@@ -123,6 +125,7 @@ export async function getResponderForRole(
         role: true,
         capabilities: true,
         systemPromptOverride: true,
+        personality: true,
         user: { select: { displayName: true } },
       },
     });
@@ -139,6 +142,7 @@ export async function getResponderForRole(
           role: bot.role as BotRoleValue,
           displayName: bot.user.displayName,
           systemPromptOverride: bot.systemPromptOverride,
+          personality: bot.personality,
           isRealBot: true,
         };
       }
@@ -155,6 +159,7 @@ export async function getResponderForRole(
     role: "GENERIC",
     displayName: user?.displayName ?? "AI",
     systemPromptOverride: null,
+    personality: null,
     isRealBot: false,
   };
 }
@@ -285,6 +290,7 @@ async function executeChannelBotReply(params: {
     promptRole,
     responder.systemPromptOverride,
     genericAssistant,
+    responder.personality,
   );
 
   emitBotTyping(channelId, {
@@ -430,6 +436,7 @@ export async function maybeAutoRespond(
           role: true,
           capabilities: true,
           systemPromptOverride: true,
+          personality: true,
           user: { select: { displayName: true } },
         },
       });
@@ -453,6 +460,7 @@ export async function maybeAutoRespond(
           role: autoBot.role as BotRoleValue,
           displayName: autoBot.user.displayName,
           systemPromptOverride: autoBot.systemPromptOverride,
+          personality: autoBot.personality,
           isRealBot: true,
         },
         mentionRole: autoBot.role as BotRoleValue,

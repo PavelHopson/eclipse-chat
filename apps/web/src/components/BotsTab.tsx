@@ -375,6 +375,10 @@ export function BotsTab({ serverId }: Props) {
   const [roleEditOpen, setRoleEditOpen] = useState<string | null>(null);
   /** Bot id у которого открыт редактор system prompt. */
   const [promptEditOpen, setPromptEditOpen] = useState<string | null>(null);
+  /** v1.2.27 — Bot id у которого открыт редактор personality. */
+  const [personalityEditOpen, setPersonalityEditOpen] = useState<string | null>(null);
+  /** v1.2.27 — Drafts of personality, keyed by botId. */
+  const [personalityDrafts, setPersonalityDrafts] = useState<Record<string, string>>({});
   /** v1.0 #11 AI controls: bot id у которого открыт test-run panel. */
   const [testOpen, setTestOpen] = useState<string | null>(null);
   /** v1.0 #11 AI controls: bot id у которого открыта statistics panel. */
@@ -489,6 +493,42 @@ export function BotsTab({ serverId }: Props) {
       if (ok) {
         setPromptDrafts((prev) => ({ ...prev, [bot.id]: "" }));
         setPromptEditOpen(null);
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const ensurePersonalityDraft = (bot: BotRow) => {
+    if (personalityDrafts[bot.id] !== undefined) return;
+    setPersonalityDrafts((prev) => ({
+      ...prev,
+      [bot.id]: bot.personality ?? "",
+    }));
+  };
+
+  const handleSavePersonality = async (bot: BotRow) => {
+    const draft = personalityDrafts[bot.id];
+    if (draft === undefined) return;
+    setBusy(true);
+    try {
+      const trimmed = draft.trim().slice(0, 1000);
+      const ok = await updateBot(bot.id, {
+        personality: trimmed ? trimmed : null,
+      });
+      if (ok) setPersonalityEditOpen(null);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleClearPersonality = async (bot: BotRow) => {
+    setBusy(true);
+    try {
+      const ok = await updateBot(bot.id, { personality: null });
+      if (ok) {
+        setPersonalityDrafts((prev) => ({ ...prev, [bot.id]: "" }));
+        setPersonalityEditOpen(null);
       }
     } finally {
       setBusy(false);
@@ -790,12 +830,32 @@ export function BotsTab({ serverId }: Props) {
               <button
                 type="button"
                 onClick={() => {
+                  ensurePersonalityDraft(bot);
+                  setPersonalityEditOpen((cur) => (cur === bot.id ? null : bot.id));
+                }}
+                disabled={busy}
+                className="ec-btn ec-btn--ghost ec-btn--sm"
+                title="Характер бота: имя, манера, юмор"
+                style={
+                  bot.personality
+                    ? {
+                        color: "var(--ec-accent)",
+                        borderColor: "var(--ec-border-accent)",
+                      }
+                    : undefined
+                }
+              >
+                Личность
+              </button>
+              <button
+                type="button"
+                onClick={() => {
                   ensurePromptDraft(bot);
                   setPromptEditOpen((cur) => (cur === bot.id ? null : bot.id));
                 }}
                 disabled={busy}
                 className="ec-btn ec-btn--ghost ec-btn--sm"
-                title="Кастомный system prompt"
+                title="Кастомный system prompt (advanced)"
                 style={
                   bot.systemPromptOverride
                     ? {
@@ -997,6 +1057,88 @@ export function BotsTab({ serverId }: Props) {
                 >
                   {busy ? "Сохраняем…" : "Сохранить"}
                 </button>
+              </div>
+            </div>
+          );
+        })()}
+
+        {personalityEditOpen && (() => {
+          const bot = bots.find((b) => b.id === personalityEditOpen);
+          if (!bot) return null;
+          const draft = personalityDrafts[bot.id] ?? bot.personality ?? "";
+          return (
+            <div
+              key={`personality-${bot.id}`}
+              style={{
+                marginTop: "var(--ec-space-2)",
+                padding: "var(--ec-space-3)",
+                background: "var(--ec-surface-2)",
+                border: "1px solid var(--ec-border-accent)",
+                borderRadius: "var(--ec-radius-md)",
+                display: "flex",
+                flexDirection: "column",
+                gap: "var(--ec-space-2)",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <strong style={{ fontSize: "var(--ec-text-sm)" }}>
+                  Личность — «{bot.name}»
+                </strong>
+                <button
+                  type="button"
+                  onClick={() => setPersonalityEditOpen(null)}
+                  className="ec-btn ec-btn--ghost ec-btn--sm"
+                  style={{ padding: "0.2rem 0.5rem" }}
+                  title="Закрыть"
+                >
+                  ✕
+                </button>
+              </div>
+              <p className="ec-bots-field-hint">
+                Опиши характер и манеру общения бота — имя, юмор, любимые
+                фразы, на что реагирует. Это «оверлей» поверх роли{" "}
+                <span style={roleChipStyle(bot.role)}>{BOT_ROLE_LABELS[bot.role]}</span>;
+                бот будет отвечать в этом стиле, оставаясь в своей зоне
+                ответственности. Имя бота для отображения меняй полем
+                «Название» выше. До 1000 символов.
+              </p>
+              <textarea
+                value={draft}
+                onChange={(e) =>
+                  setPersonalityDrafts((prev) => ({
+                    ...prev,
+                    [bot.id]: e.target.value,
+                  }))
+                }
+                rows={6}
+                maxLength={1000}
+                className="ec-bots-input"
+                style={{ fontFamily: "var(--ec-font-sans)" }}
+                placeholder={`Пример:\n\nТебя зовут Алёша. Ты дружелюбный senior dev, любишь шутить про code smells и legacy. Говоришь по-русски, иногда вставляешь «короче», «по-братски», «жесть». Не любишь когда деплоят в пятницу. Эмодзи используй сдержанно: 🔥 / 👀 / 😅.`}
+              />
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "var(--ec-space-2)" }}>
+                <span style={{ fontSize: "var(--ec-text-2xs)", color: "var(--ec-text-dim)", fontFamily: "var(--ec-font-mono)" }}>
+                  {draft.length} / 1000
+                </span>
+                <div style={{ display: "flex", gap: "var(--ec-space-2)" }}>
+                  <button
+                    type="button"
+                    onClick={() => void handleClearPersonality(bot)}
+                    disabled={busy || !bot.personality}
+                    className="ec-btn ec-btn--ghost ec-btn--sm"
+                    title="Убрать личность (вернуться к чистой роли)"
+                  >
+                    Очистить
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleSavePersonality(bot)}
+                    disabled={busy}
+                    className="ec-btn ec-btn--primary ec-btn--sm"
+                  >
+                    {busy ? "Сохраняем…" : "Сохранить"}
+                  </button>
+                </div>
               </div>
             </div>
           );

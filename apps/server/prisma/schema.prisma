@@ -266,6 +266,14 @@ model Bot {
   autoRespond  Boolean  @default(false)
   /// Кастомный system prompt (приоритет над role-template). Max 8000 в API.
   systemPromptOverride String?
+  /// v1.2.27 — Personality / character overlay (до 1000 символов). В
+  /// отличие от systemPromptOverride, это short tone/humor описание
+  /// которое **дописывается** к role-prompt'у (а не заменяет). Цель:
+  /// чтобы admin/MOD мог дать боту «характер» (имя «Алёша», шутит про
+  /// senior dev'ов, любит уличный сленг) без переписывания всего
+  /// system prompt'а. Применяется только когда systemPromptOverride
+  /// пустой — full override остаётся advanced-режимом.
+  personality          String?
   /// JSON array capabilities: ["send_message", "create_action_item", "react"].
   /// Сейчас всё разрешено — но field готов под granular ACL в v0.12.1.
   capabilities String   @default("[\"send_message\",\"react\"]")

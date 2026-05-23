@@ -52,6 +52,8 @@ const updateBotBody = z.object({
   role: botRoleSchema.optional(),
   autoRespond: z.boolean().optional(),
   systemPromptOverride: z.string().max(8000).optional().nullable(),
+  /** v1.2.27 — personality overlay (character/humor) до 1000 символов. */
+  personality: z.string().max(1000).optional().nullable(),
   webhookUrl: z
     .string()
     .max(512)
@@ -146,6 +148,7 @@ export async function registerBotRoutes(app: FastifyInstance) {
           role: b.role as BotRoleValue,
           autoRespond: b.autoRespond,
           systemPromptOverride: b.systemPromptOverride,
+          personality: b.personality,
           owner: b.owner,
           shadowUserId: b.userId,
           // Только префикс — не secret, для UX «ecb_AbCd…» display
@@ -319,6 +322,7 @@ export async function registerBotRoutes(app: FastifyInstance) {
         role?: BotRoleValue;
         autoRespond?: boolean;
         systemPromptOverride?: string | null;
+        personality?: string | null;
         webhookUrl?: string | null;
         webhookSecret?: string | null;
       } = {};
@@ -329,6 +333,10 @@ export async function registerBotRoutes(app: FastifyInstance) {
       }
       if (parsed.data.role !== undefined) data.role = parsed.data.role;
       if (parsed.data.autoRespond !== undefined) data.autoRespond = parsed.data.autoRespond;
+      if (parsed.data.personality !== undefined) {
+        const p = parsed.data.personality?.trim();
+        data.personality = p ? p : null;
+      }
       // v1.0: audit prompt update/reset для AI controls observability.
       let promptAuditEvent: "BOT_PROMPT_UPDATE" | "BOT_PROMPT_RESET" | null = null;
       if (parsed.data.systemPromptOverride !== undefined) {
@@ -360,6 +368,7 @@ export async function registerBotRoutes(app: FastifyInstance) {
           role: true,
           autoRespond: true,
           systemPromptOverride: true,
+          personality: true,
           avatar: true,
           apiKeyPrefix: true,
           webhookUrl: true,
@@ -573,6 +582,7 @@ export async function registerBotRoutes(app: FastifyInstance) {
           name: true,
           role: true,
           systemPromptOverride: true,
+          personality: true,
         },
       });
       if (!bot || bot.serverId !== serverId) {
@@ -581,6 +591,8 @@ export async function registerBotRoutes(app: FastifyInstance) {
       const systemPrompt = resolveBotSystemPrompt(
         bot.role as BotRoleValue,
         bot.systemPromptOverride,
+        undefined,
+        bot.personality,
       );
       const started = Date.now();
       try {
@@ -827,10 +839,12 @@ export async function registerBotRoutes(app: FastifyInstance) {
           role: true,
           autoRespond: true,
           systemPromptOverride: true,
+          personality: true,
         },
       });
       const role = (row?.role ?? ctx.role) as BotRoleValue;
       const override = row?.systemPromptOverride ?? null;
+      const personality = row?.personality ?? null;
       return {
         bot: {
           id: ctx.id,
@@ -841,8 +855,9 @@ export async function registerBotRoutes(app: FastifyInstance) {
           role,
           roleLabel: BOT_ROLE_LABELS[role] ?? BOT_ROLE_LABELS.GENERIC,
           autoRespond: row?.autoRespond ?? false,
-          systemPrompt: resolveBotSystemPrompt(role, override),
+          systemPrompt: resolveBotSystemPrompt(role, override, undefined, personality),
           systemPromptOverride: override,
+          personality,
           roleTemplatePrompt: botRolePrompt(role),
         },
       };
