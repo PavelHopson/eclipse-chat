@@ -5,7 +5,7 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.2.25** (Galaxy/Clock/Theme/Deadline effects +
+**Текущая версия:** **v1.2.26** (Galaxy/Clock/Theme/Deadline effects +
 UX-copy + дизайн-полиш + редизайн WS-1 + системный редизайн ЗАКРЫТ 8/8 +
 светлая тема SOLAR (Notion-crisp) + фикс AuthScreen + смена пароля +
 визуальный передел AppShell ЗАКРЫТ 4/4 + топбар-полиш +
@@ -56,10 +56,12 @@ preview в popover +
 custom emoji slice 4: reactions с custom emoji (backend whitelist
 расширен + EmojiPicker secondary section + img-render reaction pill) +
 custom emoji slice 5: real-time invalidation через socket
-(emoji:created / emoji:deleted events)).
+(emoji:created / emoji:deleted events) +
+sci-fi sweep slice 1: композер UX-copy (ЗАЩИЩЁННЫЙ_КАНАЛ →
+«Защищённый канал», ВВОД ПОТОКА → «печатает», ПЕРЕДАТЬ → «Отправить»)).
 
 > **v1.1.90 … v1.2.14 задеплоены — в проде v1.2.14. v1.2.15 …
-> v1.2.25 запушены и ждут approve-gate Pavel'я. Деплой НЕ
+> v1.2.26 запушены и ждут approve-gate Pavel'я. Деплой НЕ
 > автоматический по пушу. ⚠️ v1.2.20 включает Prisma migration
 > `20260523200000_add_custom_emojis` — при деплое нужен `prisma
 > migrate deploy`.**
@@ -70,8 +72,31 @@ custom emoji slice 5: real-time invalidation через socket
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.2.25:**
+**Изменения v1.1.25 → v1.2.26:**
 
+- **v1.2.26** — **sci-fi sweep slice 1: композер UX-copy**.
+  Начало sci-fi-копирайт sweep'а (brief §3.6 — «привести ALL-CAPS
+  телеметрию к спокойному русскому»). Conservative подход: только
+  места, которые я сам трогал в этой sessии. Identity-сильные строки
+  (AuthPage / branding) — не трогаю, Pavel/Codex их редизайнили
+  в `0e999ef`.
+  - **Композер `MessageInput.tsx`:**
+    - `ЗАЩИЩЁННЫЙ_КАНАЛ` → `Защищённый канал` (snake-case CAPS →
+      обычный).
+    - `ВВОД ПОТОКА` / `ОЖИДАНИЕ СИГНАЛА` → `печатает…` / `в эфире`
+      (лаконично, не military-ops тон).
+    - `Передача сигнала в #...` → `Сообщение в #...` (placeholder).
+    - `Открыт защищённый канал…` → `Канал открыт…` (DM placeholder).
+    - `ПЕРЕДАТЬ` (button) → `Отправить`. Letter-spacing 0.08em →
+      0.06em (CAPS-tracking ослаблен).
+    - Title `ПЕРЕДАТЬ (Enter)` → `Отправить (Enter)`.
+  - **Не трогал** `tokens.css` (Codex активная зона) — комментарий
+    `«ОЖИДАНИЕ СИГНАЛА…» / «ВВОД ПОТОКА…»` на line 979 устарел, но
+    safe leave (косметика, не функционал).
+  - Slice 2+ sweep'а: ChannelList / IncidentPanel / VoiceRoom /
+    Composer-strip CSS-tracking — отдельными слайсами с Pavel'я
+    подтверждением тона.
+  Сборка зелёная (tsc + vite). Без миграций.
 - **v1.2.25** — **custom emoji slice 5: real-time invalidation
   через socket**. Завершает custom-emoji track (5 слайсов). После
   upload/delete admin'ом — emoji мгновенно появляется/исчезает у

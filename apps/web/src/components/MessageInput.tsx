@@ -812,10 +812,10 @@ export function MessageInput({
       {/* Operator-strip над композером (см. v1.1.90 — оставлен как identity). */}
       <div className="ec-composer-strip">
         <span className="ec-composer-strip__pill">
-          {">_"} ЗАЩИЩЁННЫЙ_КАНАЛ
+          {">_"} Защищённый канал
         </span>
         <span className="ec-composer-strip__signal">
-          {focused ? "ВВОД ПОТОКА" : "ОЖИДАНИЕ СИГНАЛА"}
+          {focused ? "печатает…" : "в эфире"}
           <span className="ec-composer-scan-dots" aria-hidden>
             <span /><span /><span />
           </span>
@@ -913,7 +913,7 @@ export function MessageInput({
             setTimeout(() => setTrigger(null), 120);
           }}
           placeholder={
-            placeholder ?? (channelName ? `Передача сигнала в #${channelName}…` : "Открыт защищённый канал…")
+            placeholder ?? (channelName ? `Сообщение в #${channelName}…` : "Канал открыт…")
           }
           disabled={disabled}
           className="ec-composer-textarea"
@@ -923,13 +923,13 @@ export function MessageInput({
           disabled={!canSend}
           className="ec-composer-send"
           style={{ opacity: canSend ? 1 : 0.4, cursor: canSend ? "pointer" : "default" }}
-          title="ПЕРЕДАТЬ (Enter)"
+          title="Отправить (Enter)"
         >
           {sending ? (
             "…"
           ) : (
             <>
-              <span className="ec-composer-send-label" style={{ letterSpacing: "0.08em" }}>ПЕРЕДАТЬ</span>
+              <span className="ec-composer-send-label" style={{ letterSpacing: "0.06em" }}>Отправить</span>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <line x1="22" y1="2" x2="11" y2="13" />
                 <polygon points="22 2 15 22 11 13 2 9 22 2" />
