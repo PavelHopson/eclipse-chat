@@ -30,6 +30,7 @@ import { registerPlatformRoutes } from "./routes/platform.js";
 import { registerInvoiceRoutes } from "./routes/invoices.js";
 import { registerMusicRoutes } from "./routes/music.js";
 import { registerPushRoutes } from "./routes/push.js";
+import { registerEmojiRoutes } from "./routes/emojis.js";
 import { registerServerRoutes } from "./routes/servers.js";
 import { registerTableRoutes } from "./routes/tables.js";
 import { registerThreadRoutes } from "./routes/threads.js";
@@ -228,7 +229,7 @@ app.get("/api/health", async () => {
     },
   };
 });
-app.get("/api/version", async () => ({ name: "@eclipse-chat/server", version: "1.2.19" }));
+app.get("/api/version", async () => ({ name: "@eclipse-chat/server", version: "1.2.20" }));
 
 await registerAuthRoutes(app);
 await registerTwoFactorRoutes(app);
@@ -271,6 +272,7 @@ await registerServerRoutes(app);
 await registerUserRoutes(app);
 await registerMessageRoutes(app);
 await registerThreadRoutes(app);
+await registerEmojiRoutes(app);
 await registerIncidentRoutes(app);
 await registerVoiceRoutes(app);
 await registerDmRoutes(app);

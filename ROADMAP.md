@@ -5,7 +5,7 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.2.19** (Galaxy/Clock/Theme/Deadline effects +
+**Текущая версия:** **v1.2.20** (Galaxy/Clock/Theme/Deadline effects +
 UX-copy + дизайн-полиш + редизайн WS-1 + системный редизайн ЗАКРЫТ 8/8 +
 светлая тема SOLAR (Notion-crisp) + фикс AuthScreen + смена пароля +
 визуальный передел AppShell ЗАКРЫТ 4/4 + топбар-полиш +
@@ -46,11 +46,14 @@ Platform Admin details: action-buttons inside modal (Ban / Unban /
 Reset PW / Delete для user, Suspend / Unsuspend для server) +
 slash-команды autocomplete UI: backend-команды /me /shrug /tableflip
 /unflip /help в slash-hint strip +
-Platform Admin pagination jump-to-page (Стр. [_] / N) во все табы).
+Platform Admin pagination jump-to-page (Стр. [_] / N) во все табы +
+custom emoji backend MVP: schema + 3 endpoints (list / upload / delete)).
 
 > **v1.1.90 … v1.2.14 задеплоены — в проде v1.2.14. v1.2.15 …
-> v1.2.19 запушены и ждут approve-gate Pavel'я. Деплой НЕ
-> автоматический по пушу.**
+> v1.2.20 запушены и ждут approve-gate Pavel'я. Деплой НЕ
+> автоматический по пушу. ⚠️ v1.2.20 включает Prisma migration
+> `20260523200000_add_custom_emojis` — при деплое нужен `prisma
+> migrate deploy`.**
 
 > **⚠️ ЦВЕТ-ПРАВИЛО ИЗМЕНЕНО (бриф Pavel'я 20.05.2026).** Прежнее
 > «cool-tone, НИКОГДА warm» — ОТМЕНЕНО. Новая identity: **violet
@@ -58,8 +61,39 @@ Platform Admin pagination jump-to-page (Стр. [_] / N) во все табы).
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.2.19:**
+**Изменения v1.1.25 → v1.2.20:**
 
+- **v1.2.20** — **custom emoji backend MVP**. Из handoff'а: «Custom
+  emoji — давний open. Per-server эмодзи, upload (image → sharp
+  resize), unique `:shortcode:`, autocomplete в композере, в
+  reactions». Этот слайс — только **backend foundation** (schema +
+  3 endpoints). Frontend (autocomplete, picker, parser, reactions)
+  — отдельными слайсами.
+  - **Schema** `prisma/schema.prisma`: новый `Emoji` model — id /
+    serverId (FK Cascade) / shortcode / url / uploaderId (FK
+    SetNull) / createdAt. `@@unique([serverId, shortcode])` +
+    `@@index([serverId])`. Relations: `Server.emojis Emoji[]`,
+    `User.uploadedEmojis Emoji[]`.
+  - **Migration** `20260523200000_add_custom_emojis/migration.sql`:
+    CREATE TABLE + FK constraints (Cascade server, SetNull
+    uploader) + unique + index.
+  - **Routes** `apps/server/src/routes/emojis.ts`:
+    - `GET /api/servers/:id/emojis` — list. Member-only. Возвращает
+      `{ id, shortcode, url, uploader, createdAt }[]`.
+    - `POST /api/servers/:id/emojis` — upload. OWNER + ADMIN.
+      JSON+base64 (как server-icon). Shortcode validation
+      `[a-z0-9_-]{2,30}` lowercase. Sharp resize 128×128 webp
+      quality=85. Лимит `MAX_EMOJIS_PER_SERVER=100`, body 8 MB,
+      binary 5 MB, mime: jpeg/png/webp/gif/avif. Conflict 409 на
+      дубль shortcode + при достижении лимита.
+    - `DELETE /api/emojis/:id` — uploader OR OWNER/ADMIN. Cleanup
+      файла best-effort.
+  - Все mutation-endpoints через `ensureServerActive` —
+    suspend-gating Platform Admin'а распространяется.
+  - Файлы: `/uploads/emojis/<serverId>-<emojiId>.webp`.
+  - Registration в `apps/server/src/index.ts`.
+  Сборка зелёная (tsc server). **⚠️ Migration deploy:** на проде
+  `cd apps/server && npx prisma migrate deploy` после `git pull`.
 - **v1.2.19** — **Platform Admin pagination jump-to-page**. Из
   handoff'а: «Pagination jump-to-page в Platform Admin — UI
   принимает только offset/limit, без skip-N кнопок».

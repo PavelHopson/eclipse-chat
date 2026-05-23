@@ -139,6 +139,10 @@ model User {
   editedVoiceNotes VoiceNote[]
   /// v0.89 #26 phase 2: интеграции, которые этот user настроил.
   createdIntegrations Integration[]
+  /// v1.2.20: custom-emoji, загруженные этим user'ом. SetNull при
+  /// удалении user'а — emoji остаётся на сервере, владельцем становится
+  /// «—».
+  uploadedEmojis      Emoji[]
 }
 
 /// v0.85 #27 phase 4: per-event-type notification toggles.
@@ -587,6 +591,8 @@ model Server {
   /// v1.0.1 #11.5 Composio integration: per-server OAuth-managed apps
   /// (500+ через единый Composio proxy). Cascade при удалении server'а.
   composioConnections ComposioConnection[]
+  /// v1.2.20: custom-emoji per-server. Cascade при удалении server'а.
+  emojis              Emoji[]
 }
 
 /// v0.80 #26 phase 1: Automation system — declarative trigger/action правила
@@ -1423,4 +1429,30 @@ model MusicSession {
   host                     User        @relation(fields: [hostUserId], references: [id], onDelete: Cascade)
   createdAt                DateTime    @default(now())
   updatedAt                DateTime    @updatedAt
+}
+
+/// v1.2.20 — Custom emoji per-server. Server owners + admins загружают
+/// изображения и привязывают `:shortcode:` для использования в сообщениях
+/// и реакциях. Парсер `:shortcode:` → `<img>` в RichContent на frontend'е
+/// смотрит per-server registry.
+///
+/// Storage: webp 128×128 (sharp resize) в `/uploads/emojis/<serverId>-<id>.webp`.
+/// Cascade на server delete → файлы остаются (cleanup отдельным cron'ом,
+/// если приоритизируется). Setnull на uploader удалении.
+model Emoji {
+  id         String   @id @default(cuid())
+  serverId   String
+  server     Server   @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  /// Lower-case [a-z0-9_-], 2–30 chars. Unique per server.
+  shortcode  String
+  /// URL webp-картинки под /uploads/emojis/. После DELETE row файл best-effort
+  /// удаляется в backend route.
+  url        String
+  /// FK на User. SetNull при удалении uploader'а — emoji остаётся в сервере.
+  uploaderId String?
+  uploader   User?    @relation(fields: [uploaderId], references: [id], onDelete: SetNull)
+  createdAt  DateTime @default(now())
+
+  @@unique([serverId, shortcode])
+  @@index([serverId])
 }
