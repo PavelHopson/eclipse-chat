@@ -17,6 +17,8 @@ export type BotRow = {
   systemPromptOverride: string | null;
   /** v1.2.27 — character/humor overlay (до 1000 символов). */
   personality: string | null;
+  /** v1.2.29 — agent mode: bot может вызывать tools (post_message / create_task / update_table_row). */
+  agentMode: boolean;
   owner: { id: string; displayName: string };
   shadowUserId: string;
   /** Префикс API key для display ("ecb_AbCd…"). Не secret. */
@@ -155,6 +157,7 @@ export function useBots(serverId: string | null) {
         autoRespond?: boolean;
         systemPromptOverride?: string | null;
         personality?: string | null;
+        agentMode?: boolean;
         webhookUrl?: string | null;
         webhookSecret?: string | null;
       },

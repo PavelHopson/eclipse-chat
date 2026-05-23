@@ -52,13 +52,60 @@ export class AIProviderError extends Error {
   }
 }
 
-export type ChatMessage = {
-  role: "system" | "user" | "assistant";
-  content: string;
+/**
+ * v1.2.29 — Function calling поддержка.
+ *
+ * Базовое: { role: "user|assistant|system"; content: string }.
+ * Расширения:
+ *   - assistant с tool_calls (LLM хочет вызвать функцию)
+ *   - "tool" role с tool_call_id + content (результат функции)
+ *
+ * Совместимо с OpenAI Chat Completions API (OpenRouter / Ollama в Tools-mode /
+ * NVIDIA Build / native OpenAI).
+ */
+export type ChatToolCall = {
+  id: string;
+  /** function-name из tool spec, snake_case. */
+  name: string;
+  /** Сырая строка args от LLM (JSON.parse — caller'а). */
+  arguments: string;
+};
+
+export type ChatMessage =
+  | { role: "system"; content: string }
+  | { role: "user"; content: string }
+  | {
+      role: "assistant";
+      content: string;
+      /** v1.2.29 — если LLM вызвал функции, content может быть пустым. */
+      tool_calls?: ChatToolCall[];
+    }
+  | {
+      /** v1.2.29 — результат выполнения tool'а. */
+      role: "tool";
+      tool_call_id: string;
+      content: string;
+    };
+
+/** v1.2.29 — OpenAI-compatible tool spec для passing в chat() opts. */
+export type ChatToolSpec = {
+  type: "function";
+  function: {
+    name: string;
+    description: string;
+    parameters: {
+      type: "object";
+      properties: Record<string, unknown>;
+      required: string[];
+      additionalProperties?: boolean;
+    };
+  };
 };
 
 export type ChatResult = {
   text: string;
+  /** v1.2.29 — Tool calls если LLM решил позвать функции. Empty array = pure text reply. */
+  toolCalls: ChatToolCall[];
   model: string;
   provider: string;
   latencyMs: number;
@@ -143,19 +190,28 @@ const DEFAULT_TIMEOUT_MS = Number(process.env.AI_TIMEOUT_MS) || 60_000;
 async function callProvider(
   cfg: ProviderConfig,
   messages: ChatMessage[],
-  opts: { temperature?: number; maxTokens?: number },
+  opts: {
+    temperature?: number;
+    maxTokens?: number;
+    tools?: ChatToolSpec[];
+    toolChoice?: "auto" | "none" | "required";
+  },
 ): Promise<ChatResult> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
   const started = Date.now();
   try {
-    const body = {
+    const body: Record<string, unknown> = {
       model: cfg.model,
       messages,
       temperature: opts.temperature ?? 0.4,
       max_tokens: opts.maxTokens ?? 600,
       stream: false,
     };
+    if (opts.tools && opts.tools.length > 0) {
+      body.tools = opts.tools;
+      body.tool_choice = opts.toolChoice ?? "auto";
+    }
     const res = await fetch(`${cfg.baseUrl}/chat/completions`, {
       method: "POST",
       headers: {
@@ -180,16 +236,34 @@ async function callProvider(
       );
     }
     const json = (await res.json()) as {
-      choices?: Array<{ message?: { content?: string } }>;
+      choices?: Array<{
+        message?: {
+          content?: string | null;
+          tool_calls?: Array<{
+            id?: string;
+            type?: string;
+            function?: { name?: string; arguments?: string };
+          }>;
+        };
+      }>;
       usage?: { prompt_tokens?: number; completion_tokens?: number };
       model?: string;
     };
-    const text = json.choices?.[0]?.message?.content?.trim() ?? "";
-    if (!text) {
+    const msg = json.choices?.[0]?.message;
+    const text = (msg?.content ?? "").trim();
+    const toolCalls: ChatToolCall[] = (msg?.tool_calls ?? [])
+      .filter((tc) => tc.function?.name)
+      .map((tc, idx) => ({
+        id: tc.id ?? `call_${idx}`,
+        name: tc.function!.name!,
+        arguments: tc.function!.arguments ?? "{}",
+      }));
+    if (!text && toolCalls.length === 0) {
       throw new AIProviderError(cfg.name, res.status, "Empty completion");
     }
     return {
       text,
+      toolCalls,
       model: json.model ?? cfg.model,
       provider: cfg.name,
       latencyMs: Date.now() - started,
@@ -209,7 +283,14 @@ async function callProvider(
  */
 export async function chat(
   messages: ChatMessage[],
-  opts: { temperature?: number; maxTokens?: number } = {},
+  opts: {
+    temperature?: number;
+    maxTokens?: number;
+    /** v1.2.29 — tools spec для function calling. */
+    tools?: ChatToolSpec[];
+    /** v1.2.29 — "auto" (default) / "none" / "required". */
+    toolChoice?: "auto" | "none" | "required";
+  } = {},
 ): Promise<ChatResult> {
   const providers = getProviders();
   if (providers.length === 0) {

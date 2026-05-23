@@ -5,7 +5,7 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.2.28** (Galaxy/Clock/Theme/Deadline effects +
+**Текущая версия:** **v1.2.29** (Galaxy/Clock/Theme/Deadline effects +
 UX-copy + дизайн-полиш + редизайн WS-1 + системный редизайн ЗАКРЫТ 8/8 +
 светлая тема SOLAR (Notion-crisp) + фикс AuthScreen + смена пароля +
 визуальный передел AppShell ЗАКРЫТ 4/4 + топбар-полиш +
@@ -62,10 +62,12 @@ sci-fi sweep slice 1: композер UX-copy (ЗАЩИЩЁННЫЙ_КАНАЛ 
 AI agents Партия 1 slice 1: Bot.personality overlay — admin даёт боту
 характер/юмор поверх роли + UI «Личность» в BotsTab +
 AI agents Партия 2 slice 1: Tool foundation — registry + 3 базовых
-tool'а (post_message / create_task / update_table_row)).
+tool'а (post_message / create_task / update_table_row) +
+AI agents Партия 2 slice 2: Agent loop runtime + @mention integration +
+agent-mode toggle в BotsTab).
 
 > **v1.1.90 … v1.2.14 задеплоены — в проде v1.2.14. v1.2.15 …
-> v1.2.28 запушены и ждут approve-gate Pavel'я. Деплой НЕ
+> v1.2.29 запушены и ждут approve-gate Pavel'я. Деплой НЕ
 > автоматический по пушу. ⚠️ v1.2.20 + v1.2.27 включают Prisma
 > migrations — при деплое нужен `prisma migrate deploy`:
 >   - `20260523200000_add_custom_emojis`
@@ -77,8 +79,67 @@ tool'а (post_message / create_task / update_table_row)).
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.2.28:**
+**Изменения v1.1.25 → v1.2.29:**
 
+- **v1.2.29** — **AI agents Партия 2 slice 2: Agent loop runtime +
+  @mention integration**. Closes основной loop AI-agents trek'а.
+  Бот теперь реально **действует** — пишет в каналы, создаёт
+  задачи, правит таблицы. Не только отвечает.
+  - **Provider extension** (`ai/provider.ts`):
+    - `ChatMessage` теперь discriminated union с `tool_calls`
+      (assistant) и `role: "tool"` (function-result).
+    - `ChatToolCall` / `ChatToolSpec` (OpenAI-compatible).
+    - `chat(messages, { tools?, toolChoice? })` — пробрасывает
+      tools в body, парсит `choices[0].message.tool_calls`.
+    - `ChatResult.toolCalls: ChatToolCall[]` — empty если LLM
+      ответил текстом, иначе содержит function-вызовы.
+    - Empty-completion check учитывает tool_calls (не fail если
+      content='' но tool_calls есть).
+  - **`ai/agentLoop.ts`** — `runAgentLoop({ systemPrompt,
+    initialMessages, toolContext, log, ... })`:
+    - Limits: `MAX_TURNS=5`, `MAX_TOTAL_MS=45_000`,
+      `MAX_TOOL_CALLS_PER_TURN=5`.
+    - Loop: chat → parse tool_calls → execute via
+      `executeToolCall` → append `role: "tool"` messages → loop.
+    - На no tool_calls — финальный text return.
+    - На timeout / max-turns — возвращает partial text + flag
+      `truncated`.
+    - На JSON-parse fail args — append error к LLM, продолжаем
+      (self-heal'инг).
+  - **Integration** (`ai/assistant.ts`):
+    - `BotResponder.capabilities: string[]` + загрузка через
+      `bot.capabilities` JSON в getResponderForRole.
+    - `executeChannelBotReply` ветка `agentMode =
+      responder.capabilities.includes("agent")`. Если true →
+      `runAgentLoop` с augmented system prompt'ом (включает
+      описание tools + channel/server context); иначе старый
+      `chat()` flow.
+    - Augmented prompt просит **не вызывать `post_message` для
+      текущего канала** — финальный text сам уходит в trigger-
+      channel. `post_message` — для **других** каналов.
+    - Финальный bot message пропускается если `replyText.trim()
+      === ""` (только tools, без summary).
+    - Log включает `agentMode`, `toolCallCount` для
+      observability.
+  - **UI toggle** (`BotsTab.tsx`):
+    - Новая кнопка «Agent» (рядом с «Авто»). Active = agent mode
+      ON.
+    - PATCH `agentMode: boolean` — backend меняет capabilities
+      list: добавляет/убирает «agent» entry.
+  - **Backend** (`routes/bots.ts`):
+    - `updateBotBody.agentMode?: boolean`.
+    - PATCH handler: parse capabilities JSON → filter «agent» →
+      conditionally add → stringify back.
+    - GET response — computed `agentMode: boolean` (capabilities
+      includes "agent").
+  - **Что НЕ сделано** (для будущего):
+    - Bot Builder visual flow editor (Партия 1 финиш).
+    - Voice agents (Партия 4).
+    - Free model fallback chain detailed (Партия 3) —
+      OpenRouter уже работает, но без robust retry.
+    - Per-tool capability gating (сейчас all-or-nothing agent
+      mode).
+  Сборка зелёная (tsc + vite + tsc server). Без миграций.
 - **v1.2.28** — **AI agents Партия 2 slice 1: Tool foundation**.
   Backend infrastructure для tool-use loop'а. Сами tools созданы и
   готовы к вызову; **integration в @mention agent loop — следующий

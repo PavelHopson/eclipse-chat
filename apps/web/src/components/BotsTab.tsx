@@ -829,6 +829,27 @@ export function BotsTab({ serverId }: Props) {
               </button>
               <button
                 type="button"
+                onClick={() => void updateBot(bot.id, { agentMode: !bot.agentMode })}
+                disabled={busy}
+                className="ec-btn ec-btn--ghost ec-btn--sm"
+                title={
+                  bot.agentMode
+                    ? "Agent mode: бот может вызывать tools (отправлять сообщения / создавать задачи / править таблицы)"
+                    : "Включить agent mode — бот сможет действовать в сервере, не только отвечать"
+                }
+                style={
+                  bot.agentMode
+                    ? {
+                        color: "var(--ec-status-ai)",
+                        borderColor: "hsl(252 70% 60% / 0.35)",
+                      }
+                    : undefined
+                }
+              >
+                {bot.agentMode ? "Agent ✓" : "Agent"}
+              </button>
+              <button
+                type="button"
                 onClick={() => {
                   ensurePersonalityDraft(bot);
                   setPersonalityEditOpen((cur) => (cur === bot.id ? null : bot.id));

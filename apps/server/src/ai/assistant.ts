@@ -5,6 +5,7 @@ import { chat, isAiConfigured } from "./provider.js";
 import { assistantPrompt } from "./prompts.js";
 import { resolveBotSystemPrompt, type BotRoleValue } from "./botRoles.js";
 import { attemptCreateRowFromMention } from "./taskFromChat.js";
+import { runAgentLoop } from "./agentLoop.js";
 import type { FastifyBaseLogger } from "fastify";
 
 /**
@@ -109,6 +110,8 @@ export type BotResponder = {
   systemPromptOverride: string | null;
   /** v1.2.27 — character/humor overlay (см. botRoles.ts). */
   personality: string | null;
+  /** v1.2.29 — capabilities из Bot row (`agent` → tool-use loop). */
+  capabilities: string[];
   isRealBot: boolean;
 };
 
@@ -143,6 +146,7 @@ export async function getResponderForRole(
           displayName: bot.user.displayName,
           systemPromptOverride: bot.systemPromptOverride,
           personality: bot.personality,
+          capabilities: caps,
           isRealBot: true,
         };
       }
@@ -160,6 +164,7 @@ export async function getResponderForRole(
     displayName: user?.displayName ?? "AI",
     systemPromptOverride: null,
     personality: null,
+    capabilities: [],
     isRealBot: false,
   };
 }
@@ -286,7 +291,7 @@ async function executeChannelBotReply(params: {
   const promptRole = responder.isRealBot ? responder.role : mentionRole;
   const genericAssistant =
     mentionRole === "GENERIC" && !responder.isRealBot ? ctx.basePrompt.system : undefined;
-  const systemPrompt = resolveBotSystemPrompt(
+  const baseSystemPrompt = resolveBotSystemPrompt(
     promptRole,
     responder.systemPromptOverride,
     genericAssistant,
@@ -300,13 +305,60 @@ async function executeChannelBotReply(params: {
     botRole: promptRole,
   });
 
-  const result = await chat(
-    [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: ctx.basePrompt.user },
-    ],
-    { temperature: 0.5, maxTokens: 450 },
-  );
+  // v1.2.29 — agent mode: если bot имеет capability "agent" → tool-use loop.
+  // Иначе — старый flow (обычный chat без tools).
+  const agentMode = responder.isRealBot && responder.capabilities.includes("agent");
+
+  let replyText: string;
+  let providerLabel: string;
+  let modelLabel: string | null = null;
+  let latencyMs: number;
+  let toolCallCount = 0;
+
+  if (agentMode) {
+    const augmented =
+      baseSystemPrompt +
+      "\n\n## Доступные инструменты\n" +
+      "У тебя есть функции для действий в сервере:\n" +
+      "- `post_message(channel_id, content)` — написать в ДРУГОЙ канал. Для ответа в текущем — просто отвечай текстом, не вызывай tool.\n" +
+      "- `create_task(channel_id, title, type?, assignee_email?, due_at?)` — создать задачу / решение / follow-up.\n" +
+      "- `update_table_row(table_id, row_id, cell_updates[])` — обновить ячейки operational table.\n\n" +
+      "## Контекст\n" +
+      `- channel_id (текущий): ${ctx.channel.id}\n` +
+      `- channel name: #${ctx.channel.name}\n` +
+      `- server_id: ${ctx.channel.serverId}\n\n` +
+      "Если задача требует действия — вызови нужный tool. Если просто ответить — пиши текстом. Не вызывай post_message для текущего канала — твой финальный текст и так попадёт сюда.";
+
+    const result = await runAgentLoop({
+      systemPrompt: augmented,
+      initialMessages: [{ role: "user", content: ctx.basePrompt.user }],
+      toolContext: {
+        botUserId: responder.userId,
+        botName: responder.displayName,
+        serverId: ctx.channel.serverId,
+        channelId,
+        log,
+      },
+      log,
+      temperature: 0.5,
+    });
+    replyText = result.text;
+    providerLabel = result.provider;
+    latencyMs = result.latencyMs;
+    toolCallCount = result.toolCallCount;
+  } else {
+    const result = await chat(
+      [
+        { role: "system", content: baseSystemPrompt },
+        { role: "user", content: ctx.basePrompt.user },
+      ],
+      { temperature: 0.5, maxTokens: 450 },
+    );
+    replyText = result.text;
+    providerLabel = result.provider;
+    modelLabel = result.model;
+    latencyMs = result.latencyMs;
+  }
 
   const botUser = await db.user.findUnique({
     where: { id: responder.userId },
@@ -314,25 +366,27 @@ async function executeChannelBotReply(params: {
   });
   if (!botUser) return;
 
-  const reply = await db.message.create({
-    data: {
-      content: result.text,
-      userId: responder.userId,
-      channelId,
-    },
-  });
+  if (replyText.trim()) {
+    const reply = await db.message.create({
+      data: {
+        content: replyText,
+        userId: responder.userId,
+        channelId,
+      },
+    });
 
-  emitMessageOnChannel(channelId, {
-    messageId: reply.id,
-    content: reply.content,
-    channelId,
-    userId: botUser.id,
-    displayName: botUser.displayName,
-    avatar: botUser.avatar,
-    isBot: true,
-    botRole: promptRole,
-    createdAt: reply.createdAt.toISOString(),
-  });
+    emitMessageOnChannel(channelId, {
+      messageId: reply.id,
+      content: reply.content,
+      channelId,
+      userId: botUser.id,
+      displayName: botUser.displayName,
+      avatar: botUser.avatar,
+      isBot: true,
+      botRole: promptRole,
+      createdAt: reply.createdAt.toISOString(),
+    });
+  }
 
   log.info(
     {
@@ -340,9 +394,11 @@ async function executeChannelBotReply(params: {
       role: promptRole,
       source,
       responder: responder.isRealBot ? "bot-row" : "system-ai",
-      provider: result.provider,
-      model: result.model,
-      latencyMs: result.latencyMs,
+      provider: providerLabel,
+      model: modelLabel,
+      latencyMs,
+      agentMode,
+      toolCallCount,
     },
     "Bot assistant replied",
   );
@@ -461,6 +517,7 @@ export async function maybeAutoRespond(
           displayName: autoBot.user.displayName,
           systemPromptOverride: autoBot.systemPromptOverride,
           personality: autoBot.personality,
+          capabilities: caps,
           isRealBot: true,
         },
         mentionRole: autoBot.role as BotRoleValue,

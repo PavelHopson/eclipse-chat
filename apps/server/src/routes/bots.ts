@@ -54,6 +54,8 @@ const updateBotBody = z.object({
   systemPromptOverride: z.string().max(8000).optional().nullable(),
   /** v1.2.27 — personality overlay (character/humor) до 1000 символов. */
   personality: z.string().max(1000).optional().nullable(),
+  /** v1.2.29 — agent mode toggle. true → capabilities += "agent" (tool-use loop). */
+  agentMode: z.boolean().optional(),
   webhookUrl: z
     .string()
     .max(512)
@@ -149,6 +151,14 @@ export async function registerBotRoutes(app: FastifyInstance) {
           autoRespond: b.autoRespond,
           systemPromptOverride: b.systemPromptOverride,
           personality: b.personality,
+          /** v1.2.29 — true если "agent" в capabilities. */
+          agentMode: (() => {
+            try {
+              return (JSON.parse(b.capabilities) as string[]).includes("agent");
+            } catch {
+              return false;
+            }
+          })(),
           owner: b.owner,
           shadowUserId: b.userId,
           // Только префикс — не secret, для UX «ecb_AbCd…» display
@@ -311,7 +321,13 @@ export async function registerBotRoutes(app: FastifyInstance) {
       }
       const bot = await db.bot.findUnique({
         where: { id: botId },
-        select: { id: true, serverId: true, userId: true, systemPromptOverride: true },
+        select: {
+          id: true,
+          serverId: true,
+          userId: true,
+          systemPromptOverride: true,
+          capabilities: true,
+        },
       });
       if (!bot || bot.serverId !== serverId) {
         return reply.status(404).send({ error: "Bot not found" });
@@ -323,6 +339,7 @@ export async function registerBotRoutes(app: FastifyInstance) {
         autoRespond?: boolean;
         systemPromptOverride?: string | null;
         personality?: string | null;
+        capabilities?: string;
         webhookUrl?: string | null;
         webhookSecret?: string | null;
       } = {};
@@ -336,6 +353,18 @@ export async function registerBotRoutes(app: FastifyInstance) {
       if (parsed.data.personality !== undefined) {
         const p = parsed.data.personality?.trim();
         data.personality = p ? p : null;
+      }
+      // v1.2.29 — toggle "agent" в capabilities (tool-use loop).
+      if (parsed.data.agentMode !== undefined) {
+        let existing: string[] = [];
+        try {
+          existing = JSON.parse(bot.capabilities) as string[];
+        } catch {
+          existing = ["send_message", "react"];
+        }
+        const filtered = existing.filter((c) => c !== "agent");
+        const nextCaps = parsed.data.agentMode ? [...filtered, "agent"] : filtered;
+        data.capabilities = JSON.stringify(nextCaps);
       }
       // v1.0: audit prompt update/reset для AI controls observability.
       let promptAuditEvent: "BOT_PROMPT_UPDATE" | "BOT_PROMPT_RESET" | null = null;
