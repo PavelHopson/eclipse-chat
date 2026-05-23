@@ -164,6 +164,18 @@ export function useMessages(
     label: string;
   } | null>(null);
   const pendingBotTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // v1.2.14 — Slash-команды. Ephemeral content от backend'а (например
+  // /help) — баннер «только вы видите» в композере. Авто-clear через
+  // 15 сек, dismiss-button — мгновенно.
+  const [ephemeralBanner, setEphemeralBanner] = useState<string | null>(null);
+  const ephemeralTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dismissEphemeralBanner = useCallback(() => {
+    if (ephemeralTimerRef.current) {
+      clearTimeout(ephemeralTimerRef.current);
+      ephemeralTimerRef.current = null;
+    }
+    setEphemeralBanner(null);
+  }, []);
 
   const channelIdRef = useRef<string | null>(channelId);
   channelIdRef.current = channelId;
@@ -577,14 +589,43 @@ export function useMessages(
       const aiMatch = resolveAiMention(trimmed);
 
       try {
-        await apiJson(`/api/channels/${encodeURIComponent(channelId)}/messages`, {
-          method: "POST",
-          body: JSON.stringify({
-            content: trimmed,
-            attachments: attachments.length > 0 ? attachments : undefined,
-            actionItem: actionItem ?? undefined,
-          }),
-        });
+        const resp = await apiJson<unknown>(
+          `/api/channels/${encodeURIComponent(channelId)}/messages`,
+          {
+            method: "POST",
+            body: JSON.stringify({
+              content: trimmed,
+              attachments: attachments.length > 0 ? attachments : undefined,
+              actionItem: actionItem ?? undefined,
+            }),
+          },
+        );
+        // v1.2.14 — Slash-команды. Backend для ephemeral (типа /help)
+        // возвращает { ephemeral: { content } } вместо message JSON.
+        // В этом случае:
+        //   - optimistic-row убираем (нет socket message:new — он не
+        //     появится никогда);
+        //   - показываем баннер с content в композере (auto-clear 15s).
+        if (
+          resp &&
+          typeof resp === "object" &&
+          "ephemeral" in resp &&
+          typeof (resp as { ephemeral?: { content?: string } }).ephemeral
+            ?.content === "string"
+        ) {
+          const content = (resp as { ephemeral: { content: string } })
+            .ephemeral.content;
+          setMessages((prev) => prev.filter((m) => m.id !== localId));
+          if (ephemeralTimerRef.current) {
+            clearTimeout(ephemeralTimerRef.current);
+          }
+          setEphemeralBanner(content);
+          ephemeralTimerRef.current = setTimeout(() => {
+            setEphemeralBanner(null);
+            ephemeralTimerRef.current = null;
+          }, 15_000);
+          return true;
+        }
         if (aiMatch) {
           setPendingBotTyping({
             role: aiMatch.role,
@@ -804,6 +845,8 @@ export function useMessages(
     error,
     loading,
     pendingBotTyping,
+    ephemeralBanner,
+    dismissEphemeralBanner,
     sendMessage,
     retryMessage,
     editMessage,

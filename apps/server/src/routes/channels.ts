@@ -7,6 +7,10 @@ import { emitMessageOnChannel, emitActionItemCreated } from "../realtime.js";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
 import { ensureServerActive } from "../lib/serverGating.js";
 import {
+  dispatchSlashCommand,
+  parseSlashCommand,
+} from "../lib/slashCommands.js";
+import {
   ATTACHMENTS_PER_MESSAGE,
   MESSAGE_BODY_LIMIT_WITH_ATTACHMENTS,
   kickoffTranscription,
@@ -347,9 +351,38 @@ export async function registerChannelRoutes(app: FastifyInstance) {
       if (!u) {
         return reply.status(401).send({ error: "User not found" });
       }
+
+      // v1.2.14 — Slash-команды. Если content начинается со `/<name>`:
+      //   transform   — заменяем content, дальше нормальный flow.
+      //   ephemeral   — отвечаем caller'у JSON, message в БД не пишем,
+      //                 attachments игнорируем.
+      //   unknown     — ephemeral-ошибка с hint про /help.
+      // Не slash или slash с / в имени (типа /path/to/file) — пропускаем.
+      let effectiveContent = trimmed;
+      const slashParsed = trimmed ? parseSlashCommand(trimmed) : null;
+      if (slashParsed) {
+        const slashResult = dispatchSlashCommand(slashParsed, {
+          userId,
+          channelId,
+          serverId: ch.serverId,
+          displayName: u.displayName,
+        });
+        if (slashResult.kind === "ephemeral") {
+          return { ephemeral: { content: slashResult.content } };
+        }
+        if (slashResult.kind === "unknown") {
+          return {
+            ephemeral: {
+              content: `Команда /${slashResult.name} не найдена. /help для списка.`,
+            },
+          };
+        }
+        effectiveContent = slashResult.content;
+      }
+
       // Создаём message сначала чтобы получить id для имени файлов
       const m = await db.message.create({
-        data: { content: trimmed, userId, channelId },
+        data: { content: effectiveContent, userId, channelId },
         include: { user: { select: { id: true, displayName: true, avatar: true } } },
       });
       // Обрабатываем attachments

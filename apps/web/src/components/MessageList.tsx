@@ -27,6 +27,10 @@ type Props = {
   currentRole?: MemberRole | null;
   /** Bot typing: shimmer «{label} собирает ответ» (v0.40 local + v0.48 socket). */
   pendingBotTyping?: { role: BotRole; label: string } | null;
+  /** v1.2.14 — Ephemeral реплай от slash-команды (/help). Видим только
+   *  отправителю; auto-clear через 15с или dismiss-кнопкой. */
+  ephemeralBanner?: string | null;
+  onDismissEphemeralBanner?: () => void;
   /** Display names известных members активного сервера — для @mention detection. */
   mentionNames?: string[];
   onRetry?: (messageId: string) => Promise<boolean>;
@@ -125,6 +129,8 @@ export function MessageList({
   currentUserName,
   currentRole,
   pendingBotTyping,
+  ephemeralBanner,
+  onDismissEphemeralBanner,
   mentionNames = [],
   onRetry,
   onEdit,
@@ -942,6 +948,30 @@ export function MessageList({
           <span className="ec-shimmer-text">
             {pendingBotTyping.label} собирает ответ
           </span>
+        </div>
+      )}
+      {ephemeralBanner && (
+        <div
+          className="ec-ephemeral-banner"
+          role="status"
+          aria-live="polite"
+        >
+          <div className="ec-ephemeral-banner__label">только вы видите</div>
+          <pre className="ec-ephemeral-banner__content">{ephemeralBanner}</pre>
+          {onDismissEphemeralBanner && (
+            <button
+              type="button"
+              className="ec-ephemeral-banner__dismiss ec-icon-btn"
+              onClick={onDismissEphemeralBanner}
+              aria-label="Скрыть"
+              title="Скрыть"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          )}
         </div>
       )}
       </div>

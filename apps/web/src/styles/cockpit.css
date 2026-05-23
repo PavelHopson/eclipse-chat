@@ -1516,6 +1516,47 @@
   border: 1px solid var(--ec-border-subtle);
   letter-spacing: 0;
 }
+
+/* ===== Ephemeral banner (v1.2.14 slash-команды) ====================
+   Ответ /help и подобных команд видит только тот, кто их вызвал.
+   Баннер «только вы видите» в конце message-list — приглушённый
+   accent-tint, dismiss-кнопка справа, auto-clear через 15с. */
+.ec-ephemeral-banner {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: start;
+  gap: var(--ec-space-2);
+  margin: var(--ec-space-2) 0 var(--ec-space-3);
+  padding: var(--ec-space-2) var(--ec-space-3);
+  border-radius: var(--ec-radius-md);
+  background: color-mix(in srgb, var(--ec-accent) 8%, var(--ec-surface-sunken));
+  box-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--ec-accent) 26%, transparent);
+  max-width: 100%;
+}
+.ec-ephemeral-banner__label {
+  grid-column: 1 / -1;
+  font-size: var(--ec-text-2xs);
+  font-weight: 700;
+  letter-spacing: var(--ec-tracking-caps);
+  text-transform: uppercase;
+  color: var(--ec-accent);
+}
+.ec-ephemeral-banner__content {
+  margin: 0;
+  font-family: var(--ec-font-mono);
+  font-size: var(--ec-text-xs);
+  line-height: 1.5;
+  color: var(--ec-text);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.ec-ephemeral-banner__dismiss {
+  position: absolute;
+  top: var(--ec-space-1);
+  right: var(--ec-space-1);
+}
 .ec-admin-card-label {
   font-size: var(--ec-text-2xs);
   font-weight: 700;

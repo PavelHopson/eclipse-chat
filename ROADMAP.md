@@ -5,7 +5,7 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.2.13** (Galaxy/Clock/Theme/Deadline effects +
+**Текущая версия:** **v1.2.14** (Galaxy/Clock/Theme/Deadline effects +
 UX-copy + дизайн-полиш + редизайн WS-1 + системный редизайн ЗАКРЫТ 8/8 +
 светлая тема SOLAR (Notion-crisp) + фикс AuthScreen + смена пароля +
 визуальный передел AppShell ЗАКРЫТ 4/4 + топбар-полиш +
@@ -36,10 +36,11 @@ row-click details (user/server) + suspend-gating шире +
 кастомные иконки комнат + биометрический auth-gateway +
 slice 6a — AdminPanel inline-долг очищен +
 slice 6b — BotsTab inline-долг + JS-hover ЗАКРЫТ; brief-slice 6 ✅ +
-audio-реактивный плеер: Web Audio API + AnalyserNode + RAF bars).
+audio-реактивный плеер: Web Audio API + AnalyserNode + RAF bars +
+slash-команды backend: /me /shrug /tableflip /unflip /help).
 
 > **v1.1.90 … v1.2.10 задеплоены — в проде v1.2.10. v1.2.11 …
-> v1.2.13 запушены и ждут approve-gate Pavel'я. Деплой НЕ
+> v1.2.14 запушены и ждут approve-gate Pavel'я. Деплой НЕ
 > автоматический по пушу.**
 
 > **⚠️ ЦВЕТ-ПРАВИЛО ИЗМЕНЕНО (бриф Pavel'я 20.05.2026).** Прежнее
@@ -48,8 +49,36 @@ audio-реактивный плеер: Web Audio API + AnalyserNode + RAF bars).
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.2.13:**
+**Изменения v1.1.25 → v1.2.14:**
 
+- **v1.2.14** — **slash-команды backend MVP** (/me /shrug /tableflip
+  /unflip /help + ephemeral banner).
+  - **Backend** `lib/slashCommands.ts` — registry + парсер.
+    Regex `^/(\w+)(?:\s+(.+))?$` строгий: `/path/to/file` не матчится
+    (после `\w+` ожидается whitespace или EOL), проходит обычным
+    сообщением. Два kind: `transform` (модифицирует content, дальше
+    штатный flow) / `ephemeral` (возврат JSON caller'у без записи в
+    БД и без broadcast). Unknown → ephemeral-ошибка «Команда /xxx не
+    найдена. /help для списка.»
+  - **Integration** в POST `/api/channels/:id/messages`: вызов после
+    permission-checks (member / BROADCAST role / suspend-gate), до
+    создания message. Ephemeral пропускает attachments (нелогично
+    совмещать /help + image).
+  - **Команды:**
+    - `/me <действие>` — `_Pavel <действие>_` (IRC-классика).
+    - `/shrug` / `/tableflip` / `/unflip` — добавляют ASCII-арт к
+      содержимому.
+    - `/help` — ephemeral список команд.
+  - **Frontend.** `useMessages` ловит ephemeral в response: удаляет
+    optimistic-row (никогда не придёт через socket), показывает
+    баннер «только вы видите» (auto-clear 15с, dismiss-кнопка).
+    `MessageList` рисует баннер после pendingBotTyping, перед
+    jump-latest. AppShell прокидывает props через destructure
+    useMessages.
+  - **CSS** `.ec-ephemeral-banner` в cockpit.css: accent 8% tint +
+    inset border, label uppercase accent, content monospace
+    pre-wrap, dismiss absolute top-right.
+  Сборка зелёная (tsc + vite). Без миграций.
 - **v1.2.13** — **audio-реактивный плеер (R-трек продолжение)**.
   Из v1.2.0 (Signal Desk v2) playhead был «живым», но 64 бара
   вейвформы оставались статичными pre-rendered peaks. Теперь —

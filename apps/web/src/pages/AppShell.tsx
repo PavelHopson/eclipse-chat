@@ -88,6 +88,7 @@ type Props = {
 
 export function AppShell({ user, socketRev, onLogout }: Props) {
   const socket = useSocket(socketRev);
+  const brandMarkUrl = `${import.meta.env.BASE_URL}brand-mark.svg`;
   // v1.1.7: live mem/cpu/pg pills (poll /api/health каждые 10s).
   const telemetry = useTelemetry();
 
@@ -270,6 +271,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     loading: messagesLoading,
     openActionItems,
     pendingBotTyping,
+    ephemeralBanner,
+    dismissEphemeralBanner,
   } = useMessages(selectedChannelId, socket, user.id);
 
   const [showCreateServer, setShowCreateServer] = useState(false);
@@ -681,7 +684,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             aria-label="Открыть главную страницу"
             title="Главная"
           >
-            <span className="ec-brand-mark" aria-hidden />
+            <img className="ec-brand-mark" src={brandMarkUrl} alt="" aria-hidden />
           </button>
           {/* v1.1.51: бывший far-left server-rail свёрнут в topbar-control. */}
           <ServerSwitcher
@@ -1156,7 +1159,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
         <div className="ec-chat-header">
           {homeOpen ? (
             <span className="ec-chat-title">
-              <span className="ec-brand-mark ec-brand-mark--sm" aria-hidden />
+              <img className="ec-brand-mark ec-brand-mark--sm" src={brandMarkUrl} alt="" aria-hidden />
               Главная
             </span>
           ) : helpOpen ? (
@@ -1843,6 +1846,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                   : messages
               }
               pendingBotTyping={pendingBotTyping}
+              ephemeralBanner={ephemeralBanner}
+              onDismissEphemeralBanner={dismissEphemeralBanner}
               emptyHint={messagesLoading ? "Загрузка…" : undefined}
               channelName={selectedChannel.name}
               listKey={`channel:${selectedChannel.id}`}
