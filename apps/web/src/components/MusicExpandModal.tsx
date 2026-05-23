@@ -6,6 +6,13 @@ import { apiJson } from "../lib/api";
 import { resolveAssetUrl } from "../lib/assets";
 import { MediaScrubber } from "./MediaScrubber";
 import type { MusicSession } from "../hooks/useChannelMusic";
+import {
+  attachAnalyser,
+  getAttachedAnalyser,
+  getCurrentMusicAudio,
+} from "../hooks/useMusicAnalyser";
+
+const LIVE_BARS = 64;
 
 /**
  * MusicExpandModal (v1.1.91 redesign) — расширенный плеер, «сигнальный
@@ -130,6 +137,12 @@ export function MusicExpandModal({
     return out;
   }, [track?.waveformPeaks]);
 
+  // v1.2.13 — live audio-reactive peaks через Web Audio AnalyserNode.
+  // Активны только когда: трек играет + не reduced-motion + audio
+  // прицеплен к analyser (MiniPlayer на play вызывает attachAnalyser).
+  // Иначе fallback — статичные pre-rendered peaks (поведение v1.2.0).
+  const [livePeaks, setLivePeaks] = useState<number[] | null>(null);
+
   const isHost = session.host.id === currentUserId;
   const seekable = isHost && durationMs != null && durationMs > 0 && !!track;
 
@@ -166,6 +179,51 @@ export function MusicExpandModal({
   };
 
   const playing = session.isPlaying;
+
+  // v1.2.13 — RAF-loop читает frequency-bin'ы из AnalyserNode и
+  // обновляет livePeaks. fftSize=128 → 64 bin'а, ровно столько же, что
+  // и баров в waveform'е. sqrt-curve компенсирует low-freq dominance
+  // (без неё басы доминируют, верха проседают). Иначе аудио-«огонёк»
+  // несёт меньше визуальной информации.
+  useEffect(() => {
+    if (!playing || isVideoTrack) {
+      setLivePeaks(null);
+      return;
+    }
+    const reducedMotion =
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (reducedMotion) {
+      setLivePeaks(null);
+      return;
+    }
+    const audio = getCurrentMusicAudio();
+    if (!audio) return;
+    const analyser =
+      getAttachedAnalyser(audio) ?? attachAnalyser(audio);
+    if (!analyser) return;
+
+    const buffer = new Uint8Array(analyser.frequencyBinCount);
+    const out = new Array<number>(LIVE_BARS);
+    let rafId = 0;
+    const tick = () => {
+      analyser.getByteFrequencyData(buffer);
+      // analyser.frequencyBinCount = fftSize/2 = 64 — совпадает с
+      // LIVE_BARS. Если когда-то fftSize изменится, downsample по
+      // делению индекса (для текущего MVP — 1:1).
+      const N = Math.min(LIVE_BARS, buffer.length);
+      for (let i = 0; i < N; i++) {
+        // bytes [0..255] → высота бара [0..100]. sqrt-curve.
+        out[i] = Math.round(Math.sqrt(buffer[i] / 255) * 100);
+      }
+      setLivePeaks([...out]);
+      rafId = requestAnimationFrame(tick);
+    };
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
+  }, [playing, isVideoTrack]);
+
+  const displayPeaks = livePeaks ?? peaks;
 
   return (
     <Modal
@@ -239,17 +297,20 @@ export function MusicExpandModal({
             </>
           ) : (
             <>
-              {/* Большая waveform — реальные peaks трека: сыгранное в
-                  accent, остальное приглушено. Бары статичны (это
-                  данные, не декор). Единственный «живой» элемент —
-                  playhead: линия + светящийся узел, движется с
-                  прогрессом. Host кликает/тащит → server-side seek;
-                  hover показывает время точки до коммита. */}
+              {/* Большая waveform — accent на сыгранном, остальное
+                  приглушено.
+                  v1.2.13: бары теперь audio-reactive — при playing
+                  читаем frequency-bin'ы из AnalyserNode (Web Audio
+                  API), 60fps. На pause / reduced-motion / без
+                  AudioContext'a — fallback на статичные peaks трека
+                  (поведение v1.2.0). Playhead: линия + узел движется
+                  с прогрессом. Host кликает/тащит → server-side seek;
+                  hover показывает время до коммита. */}
               <div className="ec-player-expand__wave-wrap">
                 <svg
                   ref={waveformRef}
                   className="ec-player-expand__wave"
-                  viewBox={`0 0 ${peaks.length * 4} 100`}
+                  viewBox={`0 0 ${displayPeaks.length * 4} 100`}
                   preserveAspectRatio="none"
                   style={{ cursor: seekable ? "pointer" : "default" }}
                   onPointerDown={onWavePointerDown}
@@ -258,10 +319,10 @@ export function MusicExpandModal({
                   onPointerCancel={() => setDragFrac(null)}
                   onPointerLeave={() => setHoverFrac(null)}
                 >
-                  {peaks.map((p, i) => {
+                  {displayPeaks.map((p, i) => {
                     const h = Math.max(2, p);
                     const y = (100 - h) / 2;
-                    const played = i / peaks.length <= progress;
+                    const played = i / displayPeaks.length <= progress;
                     return (
                       <rect
                         key={i}
@@ -277,9 +338,9 @@ export function MusicExpandModal({
                   })}
                   {previewFrac != null && seekable && (
                     <line
-                      x1={peaks.length * 4 * previewFrac}
+                      x1={displayPeaks.length * 4 * previewFrac}
                       y1={0}
-                      x2={peaks.length * 4 * previewFrac}
+                      x2={displayPeaks.length * 4 * previewFrac}
                       y2={100}
                       stroke="var(--ec-text-strong)"
                       strokeWidth={1.5}
@@ -288,16 +349,16 @@ export function MusicExpandModal({
                     />
                   )}
                   <line
-                    x1={peaks.length * 4 * progress}
+                    x1={displayPeaks.length * 4 * progress}
                     y1={0}
-                    x2={peaks.length * 4 * progress}
+                    x2={displayPeaks.length * 4 * progress}
                     y2={100}
                     stroke="var(--ec-accent)"
                     strokeWidth={dragFrac != null ? 2.6 : 1.8}
                     opacity={dragFrac != null ? 1 : 0.9}
                   />
                   <circle
-                    cx={peaks.length * 4 * progress}
+                    cx={displayPeaks.length * 4 * progress}
                     cy={6}
                     r={dragFrac != null ? 5 : 4}
                     fill="var(--ec-accent)"

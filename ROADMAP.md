@@ -5,7 +5,7 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.2.12** (Galaxy/Clock/Theme/Deadline effects +
+**Текущая версия:** **v1.2.13** (Galaxy/Clock/Theme/Deadline effects +
 UX-copy + дизайн-полиш + редизайн WS-1 + системный редизайн ЗАКРЫТ 8/8 +
 светлая тема SOLAR (Notion-crisp) + фикс AuthScreen + смена пароля +
 визуальный передел AppShell ЗАКРЫТ 4/4 + топбар-полиш +
@@ -35,10 +35,11 @@ row-click details (user/server) + suspend-gating шире +
 удалённые сообщения убраны из истории чата (UI/API фильтр) +
 кастомные иконки комнат + биометрический auth-gateway +
 slice 6a — AdminPanel inline-долг очищен +
-slice 6b — BotsTab inline-долг + JS-hover ЗАКРЫТ; brief-slice 6 ✅).
+slice 6b — BotsTab inline-долг + JS-hover ЗАКРЫТ; brief-slice 6 ✅ +
+audio-реактивный плеер: Web Audio API + AnalyserNode + RAF bars).
 
 > **v1.1.90 … v1.2.10 задеплоены — в проде v1.2.10. v1.2.11 …
-> v1.2.12 запушены и ждут approve-gate Pavel'я. Деплой НЕ
+> v1.2.13 запушены и ждут approve-gate Pavel'я. Деплой НЕ
 > автоматический по пушу.**
 
 > **⚠️ ЦВЕТ-ПРАВИЛО ИЗМЕНЕНО (бриф Pavel'я 20.05.2026).** Прежнее
@@ -47,8 +48,37 @@ slice 6b — BotsTab inline-долг + JS-hover ЗАКРЫТ; brief-slice 6 ✅)
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.2.12:**
+**Изменения v1.1.25 → v1.2.13:**
 
+- **v1.2.13** — **audio-реактивный плеер (R-трек продолжение)**.
+  Из v1.2.0 (Signal Desk v2) playhead был «живым», но 64 бара
+  вейвформы оставались статичными pre-rendered peaks. Теперь —
+  реальная audio-reactive визуализация при playing через Web Audio
+  API.
+  - **Hook `useMusicAnalyser`** — singleton AudioContext +
+    AnalyserNode на каждый `<audio>`-элемент (WeakMap по audio).
+    `attachAnalyser(audio)` идемпотентен, зовётся из user-gesture
+    (play-button onClick) — `context.resume()` снимает suspended-
+    состояние браузера. `createMediaElementSource` ловит
+    InvalidStateError если уже привязан — fallback на статичные
+    peaks. fftSize=128 → 64 frequency-bin'а, ровно столько же что
+    и баров.
+    Singleton `currentMusicAudio` — MiniPlayer регистрирует свой
+    `<audio>` на mount, Expand-modal находит analyser по ссылке.
+  - **MusicMiniPlayer** — на play-button onClick зовёт
+    `attachAnalyser` (user-gesture требование). На mount/unmount
+    регистрирует/убирает audio из singleton.
+  - **MusicExpandModal** — RAF-loop читает
+    `analyser.getByteFrequencyData()`, нормализует через sqrt-curve
+    (компенсирует low-freq dominance, без неё басы доминируют),
+    обновляет `livePeaks` state. Бары в SVG используют
+    `displayPeaks = livePeaks ?? staticPeaks` — на pause или
+    reduced-motion или без AudioContext'а revertится на статичные
+    peaks v1.2.0.
+  - **Reduced-motion** — RAF не стартует, бары статичны.
+  - **Cross-origin** — uploads same-origin, MediaElementSource
+    работает без CORS-проблем.
+  Сборка зелёная (tsc + vite). Без миграций — чистый клиент.
 - **v1.2.12** — **slice 6b: BotsTab inline-долг + JS-hover очищены.
   Brief-slice 6 ЗАКРЫТ полностью** (6a AdminPanel + 6b BotsTab).
   - **Долг убран:** 6 module-level CSSProperties консолей

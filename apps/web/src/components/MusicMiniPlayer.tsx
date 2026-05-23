@@ -4,6 +4,10 @@ import { MediaScrubber } from "./MediaScrubber";
 import { resolveAssetUrl } from "../lib/assets";
 import { useMediaVolume } from "../hooks/useMediaVolume";
 import type { MusicSession } from "../hooks/useChannelMusic";
+import {
+  attachAnalyser,
+  setCurrentMusicAudio,
+} from "../hooks/useMusicAnalyser";
 
 /**
  * MusicMiniPlayer (v1.1.91 redesign) — фирменная капсула «сейчас
@@ -53,6 +57,14 @@ export function MusicMiniPlayer({
 }: Props) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [durationMs, setDurationMs] = useState<number | null>(null);
+
+  // v1.2.13 — регистрируем audio как «текущий music-source» для
+  // useMusicAnalyser. Expand-modal по этой ссылке найдёт прицепленный
+  // AnalyserNode и поедет аудио-реактивная визуализация.
+  useEffect(() => {
+    setCurrentMusicAudio(audioRef.current);
+    return () => setCurrentMusicAudio(null);
+  }, []);
   const [bufferedMs, setBufferedMs] = useState(0);
   // v1.1.58 — общая громкость медиа: shared хук с live-sync + localStorage.
   const [volume, setVolume] = useMediaVolume();
@@ -121,7 +133,15 @@ export function MusicMiniPlayer({
         type="button"
         className="ec-player-play"
         data-state={playing ? "playing" : "paused"}
-        onClick={() => void onTogglePlayPause()}
+        onClick={() => {
+          // v1.2.13 — клик-play даёт user-gesture: прицепляем
+          // AudioContext + AnalyserNode и зовём resume (браузер
+          // создаёт context suspended до первого жеста).
+          if (audioRef.current) {
+            attachAnalyser(audioRef.current);
+          }
+          void onTogglePlayPause();
+        }}
         title={playing ? "Пауза" : "Воспроизвести"}
         aria-label={playing ? "Пауза" : "Воспроизвести"}
         disabled={!hasTrack}
