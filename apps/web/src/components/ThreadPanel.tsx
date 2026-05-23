@@ -16,6 +16,8 @@ type Props = {
   currentUserAvatar: string | null;
   /** Display names known members активного сервера для @mention detection. */
   mentionNames?: string[];
+  /** v1.2.22 — custom-emoji map активного сервера (shortcode → URL). */
+  customEmojis?: Record<string, string>;
   onClose: () => void;
 };
 
@@ -59,6 +61,7 @@ export function ThreadPanel({
   currentUserName,
   currentUserAvatar,
   mentionNames,
+  customEmojis,
   onClose,
 }: Props) {
   const { data, loading, error, sendReply } = useThread(rootId, _socket);
@@ -173,6 +176,7 @@ export function ThreadPanel({
                       content={data.root.content}
                       mentionNames={mentionNames}
                       currentUserName={currentUserName}
+                      customEmojis={customEmojis}
                     />
                   )}
                 </p>
@@ -233,6 +237,7 @@ export function ThreadPanel({
                         content={r.content}
                         mentionNames={mentionNames}
                         currentUserName={currentUserName}
+                        customEmojis={customEmojis}
                       />
                     )}
                   </p>

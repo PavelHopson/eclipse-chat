@@ -6,6 +6,13 @@ type Props = {
   mentionNames?: string[];
   /** Display name текущего user'а — для подсветки «mention касается меня». */
   currentUserName?: string;
+  /**
+   * v1.2.22 — Custom-emoji map активного сервера (shortcode → URL).
+   * Имеет приоритет ниже Unicode `EMOJI_SHORTCODES` (чтобы `:smile:` всегда
+   * был 😄, даже если кто-то загрузит `smile` как картинку). Передаётся из
+   * `useServerEmojis(activeServerId)` через AppShell.
+   */
+  customEmojis?: Record<string, string>;
 };
 
 /**
@@ -63,6 +70,14 @@ const emojiStyle: CSSProperties = {
   verticalAlign: "middle",
 };
 
+const customEmojiStyle: CSSProperties = {
+  display: "inline-block",
+  width: "1.4em",
+  height: "1.4em",
+  verticalAlign: "-0.3em",
+  objectFit: "contain",
+};
+
 /**
  * Whitelist emoji shortcodes — самые популярные. Не пытаемся быть Slack/Discord
  * с тысячами вариантов: hot-list 40+ покрывает 95% использования. Расширение
@@ -111,9 +126,13 @@ type InlineToken =
   | { type: "italic"; text: string }
   | { type: "strike"; text: string }
   | { type: "url"; text: string }
-  | { type: "emoji"; text: string };
+  | { type: "emoji"; text: string }
+  | { type: "customEmoji"; shortcode: string; url: string };
 
-function tokenize(text: string): InlineToken[] {
+function tokenize(
+  text: string,
+  customEmojis?: Record<string, string>,
+): InlineToken[] {
   const tokens: InlineToken[] = [];
   TOKEN_RE.lastIndex = 0;
   let lastIdx = 0;
@@ -134,9 +153,11 @@ function tokenize(text: string): InlineToken[] {
       tokens.push({ type: "url", text: m[5] });
     } else if (m[6]) {
       const code = m[6].slice(1, -1).toLowerCase();
-      const ch = EMOJI_SHORTCODES[code];
-      if (ch) {
-        tokens.push({ type: "emoji", text: ch });
+      const unicode = EMOJI_SHORTCODES[code];
+      if (unicode) {
+        tokens.push({ type: "emoji", text: unicode });
+      } else if (customEmojis && customEmojis[code]) {
+        tokens.push({ type: "customEmoji", shortcode: code, url: customEmojis[code] });
       } else {
         tokens.push({ type: "text", text: m[6] });
       }
@@ -177,6 +198,17 @@ function renderTokens(tokens: InlineToken[], keyPrefix: string): ReactNode[] {
         );
       case "emoji":
         return <span key={key} style={emojiStyle} aria-hidden>{tok.text}</span>;
+      case "customEmoji":
+        return (
+          <img
+            key={key}
+            src={tok.url}
+            alt={`:${tok.shortcode}:`}
+            title={`:${tok.shortcode}:`}
+            loading="lazy"
+            style={customEmojiStyle}
+          />
+        );
     }
   });
 }
@@ -214,7 +246,12 @@ function detectMentions(
   return found;
 }
 
-export function RichContent({ content, mentionNames = [], currentUserName }: Props) {
+export function RichContent({
+  content,
+  mentionNames = [],
+  currentUserName,
+  customEmojis,
+}: Props) {
   const mentions = detectMentions(content, mentionNames);
   const result: ReactNode[] = [];
   let lastIdx = 0;
@@ -223,7 +260,7 @@ export function RichContent({ content, mentionNames = [], currentUserName }: Pro
     const m = mentions[mi];
     if (m.start > lastIdx) {
       const segment = content.slice(lastIdx, m.start);
-      result.push(...renderTokens(tokenize(segment), `t-${mi}`));
+      result.push(...renderTokens(tokenize(segment, customEmojis), `t-${mi}`));
     }
     const isMe =
       currentUserName != null && m.name.toLowerCase() === currentUserName.toLowerCase();
@@ -236,7 +273,7 @@ export function RichContent({ content, mentionNames = [], currentUserName }: Pro
   }
   if (lastIdx < content.length) {
     const tail = content.slice(lastIdx);
-    result.push(...renderTokens(tokenize(tail), "t-tail"));
+    result.push(...renderTokens(tokenize(tail, customEmojis), "t-tail"));
   }
   if (result.length === 0) return <>{content}</>;
   return <>{result}</>;

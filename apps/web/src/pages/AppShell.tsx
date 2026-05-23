@@ -66,6 +66,7 @@ import { useSwipeNavigate } from "../hooks/useSwipeNavigate";
 import { useProfile } from "../hooks/useProfile";
 import { useSearch } from "../hooks/useSearch";
 import { useServerActions } from "../hooks/useServerActions";
+import { useServerEmojis } from "../hooks/useServerEmojis";
 import { useTeamHealth } from "../hooks/useTeamHealth";
 import { useServers } from "../hooks/useServers";
 import { useSinceLastVisit } from "../hooks/useSinceLastVisit";
@@ -172,6 +173,10 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     unread,
     loading: channelsLoading,
   } = useChannels(activeServerId, socket);
+
+  // v1.2.22 — custom-emoji map активного сервера для RichContent
+  // в сообщениях / thread'ах / channel-description / etc.
+  const { emojis: customEmojis } = useServerEmojis(activeServerId);
 
   // ===== Channel digest =====
   // Открытые задачи / решения / follow-ups / pinned — компактная сводка канала.
@@ -1283,6 +1288,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                       content={selectedChannel.description}
                       mentionNames={members.map((m) => m.user.displayName)}
                       currentUserName={headerName}
+                      customEmojis={customEmojis}
                     />
                   </span>
                 </>
@@ -1855,6 +1861,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               currentUserName={headerName}
               currentRole={currentRole}
               mentionNames={members.map((m) => m.user.displayName)}
+              customEmojis={customEmojis}
               onRetry={(mid) => retryMessage(mid, senderForMessages)}
               onEdit={editMessage}
               onDelete={deleteMessage}
@@ -1938,6 +1945,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               currentUserName={headerName}
               currentUserAvatar={headerAvatar}
               mentionNames={members.map((m) => m.user.displayName)}
+              customEmojis={customEmojis}
               onClose={() => setSelectedThreadId(null)}
             />
           ) : showIncidents && activeServerId ? (

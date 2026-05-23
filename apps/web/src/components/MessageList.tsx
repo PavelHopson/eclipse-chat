@@ -33,6 +33,8 @@ type Props = {
   onDismissEphemeralBanner?: () => void;
   /** Display names известных members активного сервера — для @mention detection. */
   mentionNames?: string[];
+  /** v1.2.22 — custom-emoji map активного сервера (shortcode → URL). */
+  customEmojis?: Record<string, string>;
   onRetry?: (messageId: string) => Promise<boolean>;
   onEdit?: (messageId: string, content: string) => Promise<boolean>;
   onDelete?: (messageId: string) => Promise<boolean>;
@@ -132,6 +134,7 @@ export function MessageList({
   ephemeralBanner,
   onDismissEphemeralBanner,
   mentionNames = [],
+  customEmojis,
   onRetry,
   onEdit,
   onDelete,
@@ -600,6 +603,7 @@ export function MessageList({
                           content={m.content}
                           mentionNames={mentionNames}
                           currentUserName={currentUserName}
+                          customEmojis={customEmojis}
                         />
                         {m.editedAt && (
                           <span

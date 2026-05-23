@@ -7,6 +7,7 @@ import {
 } from "../lib/emojis";
 import { ApiError } from "../lib/api";
 import { fileToBase64 } from "../lib/fileToBase64";
+import { notifyEmojisChanged } from "../hooks/useServerEmojis";
 
 /**
  * v1.2.21 — Admin Emojis tab: upload + delete custom-emoji сервера.
@@ -115,6 +116,7 @@ export function AdminEmojisTab({ serverId }: Props) {
       setEmojis((prev) => [created, ...(prev ?? [])]);
       setFile(null);
       setShortcode("");
+      notifyEmojisChanged(serverId);
     } catch (e) {
       setUploadError(
         e instanceof ApiError ? e.message : "Не удалось загрузить эмодзи.",
@@ -129,6 +131,7 @@ export function AdminEmojisTab({ serverId }: Props) {
     try {
       await deleteServerEmoji(id);
       setEmojis((prev) => prev?.filter((e) => e.id !== id) ?? null);
+      notifyEmojisChanged(serverId);
     } catch (e) {
       const msg = e instanceof ApiError ? e.message : "Не удалось удалить.";
       window.alert(msg);

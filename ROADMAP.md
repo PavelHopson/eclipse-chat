@@ -5,7 +5,7 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.2.21** (Galaxy/Clock/Theme/Deadline effects +
+**Текущая версия:** **v1.2.22** (Galaxy/Clock/Theme/Deadline effects +
 UX-copy + дизайн-полиш + редизайн WS-1 + системный редизайн ЗАКРЫТ 8/8 +
 светлая тема SOLAR (Notion-crisp) + фикс AuthScreen + смена пароля +
 визуальный передел AppShell ЗАКРЫТ 4/4 + топбар-полиш +
@@ -48,10 +48,12 @@ slash-команды autocomplete UI: backend-команды /me /shrug /tablefl
 /unflip /help в slash-hint strip +
 Platform Admin pagination jump-to-page (Стр. [_] / N) во все табы +
 custom emoji backend MVP: schema + 3 endpoints (list / upload / delete) +
-custom emoji frontend slice 1: AdminPanel «Эмодзи» tab + upload/delete UI).
+custom emoji frontend slice 1: AdminPanel «Эмодзи» tab + upload/delete UI +
+custom emoji frontend slice 2: parser `:shortcode:` → `<img>` в RichContent +
+useServerEmojis hook + cross-component invalidation через window event).
 
 > **v1.1.90 … v1.2.14 задеплоены — в проде v1.2.14. v1.2.15 …
-> v1.2.21 запушены и ждут approve-gate Pavel'я. Деплой НЕ
+> v1.2.22 запушены и ждут approve-gate Pavel'я. Деплой НЕ
 > автоматический по пушу. ⚠️ v1.2.20 включает Prisma migration
 > `20260523200000_add_custom_emojis` — при деплое нужен `prisma
 > migrate deploy`.**
@@ -62,8 +64,42 @@ custom emoji frontend slice 1: AdminPanel «Эмодзи» tab + upload/delete U
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.2.21:**
+**Изменения v1.1.25 → v1.2.22:**
 
+- **v1.2.22** — **custom emoji frontend slice 2: parser
+  `:shortcode:` → `<img>` в RichContent**. Закрывает «emoji видны в
+  сообщениях» — основное UX-обещание custom-emoji track'а.
+  - **`useServerEmojis(serverId)`** hook — fetches `listServerEmojis`,
+    кэширует как `Record<shortcode, url>`. Refresh на смену
+    `serverId`. Cross-component invalidation через `window` event
+    `eclipse:emojis-changed` (custom-event с `{ serverId }` detail).
+    Helper `notifyEmojisChanged(serverId)`.
+  - **RichContent** — новый optional prop `customEmojis?:
+    Record<string, string>`. Tokenizer: после Unicode-whitelist
+    проверяет custom map; если match — emit token `customEmoji`
+    с URL. Render: `<img src=url style={width:1.4em, height:1.4em,
+    object-fit:contain, vertical-align:-0.3em}>` + alt/title
+    `:shortcode:`. Lazy-loading.
+  - **Priority order** в `tokenize`: Unicode whitelist > custom
+    server emoji > raw text. Тоже самое если `:smile:` loaded как
+    custom — Unicode выиграет, чтобы избежать брендирования общих
+    кодов.
+  - **Wiring** — `AppShell` вызывает `useServerEmojis(activeServerId)`,
+    прокидывает `customEmojis` в:
+    - `<MessageList>` (channel-mode; DM-mode без custom emoji);
+    - `<ThreadPanel>` (root + replies — оба RichContent);
+    - channel description `<RichContent>`.
+  - **AdminEmojisTab** — после upload / delete вызывает
+    `notifyEmojisChanged(serverId)` → useServerEmojis в AppShell
+    перечитывает → emoji появляется в чате без switch'а сервера.
+  - **Не реализовано** (следующие слайсы):
+    - Autocomplete `:shortcode:` в композере с custom emoji
+      (extend AutocompletePopover).
+    - Picker UI custom emoji вкладка.
+    - Использование в reactions (backend `ALLOWED_EMOJI` ограничен —
+      нужно расширить на `:custom:`).
+    - Real-time через socket (вместо window event).
+  Сборка зелёная (tsc + vite). Без миграций (schema из v1.2.20).
 - **v1.2.21** — **custom emoji frontend slice 1: AdminPanel
   «Эмодзи» tab + upload/delete UI**. Следующий слайс custom-emoji
   track'а после backend MVP v1.2.20.
