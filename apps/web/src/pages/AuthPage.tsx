@@ -23,7 +23,8 @@ type Step = "credentials" | "twofa" | "success";
 type Mode = "login" | "register";
 type EntryState = "gate" | "opening" | "panel";
 
-const VERSION = "1.2.10";
+const VERSION =
+  typeof __ECLIPSE_VERSION__ !== "undefined" ? __ECLIPSE_VERSION__ : "0.0.0";
 
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();

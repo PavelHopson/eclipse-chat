@@ -1,10 +1,10 @@
 /**
- * Eclipse Chat — utility classes для общих UI-паттернов
+ * Eclipse Chat вЂ” utility classes РґР»СЏ РѕР±С‰РёС… UI-РїР°С‚С‚РµСЂРЅРѕРІ
  *
- * Используется компонентами через className. Это НЕ Tailwind-стиль
- * (single-purpose utilities), а semantic component-classes — buttons,
- * fields, badges, list items. Inline-стили оставлены только для
- * динамических значений.
+ * РСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ РєРѕРјРїРѕРЅРµРЅС‚Р°РјРё С‡РµСЂРµР· className. Р­С‚Рѕ РќР• Tailwind-СЃС‚РёР»СЊ
+ * (single-purpose utilities), Р° semantic component-classes вЂ” buttons,
+ * fields, badges, list items. Inline-СЃС‚РёР»Рё РѕСЃС‚Р°РІР»РµРЅС‹ С‚РѕР»СЊРєРѕ РґР»СЏ
+ * РґРёРЅР°РјРёС‡РµСЃРєРёС… Р·РЅР°С‡РµРЅРёР№.
  */
 
 /* ===== Buttons ============================================== */
@@ -34,8 +34,8 @@
   white-space: nowrap;
 }
 
-/* v1.1.91 — кнопка «подаётся навстречу» курсору: микро-подъём + тень.
-   Press гасит подъём — палец будто вдавливает клавишу. */
+/* v1.1.91 вЂ” РєРЅРѕРїРєР° В«РїРѕРґР°С‘С‚СЃСЏ РЅР°РІСЃС‚СЂРµС‡СѓВ» РєСѓСЂСЃРѕСЂСѓ: РјРёРєСЂРѕ-РїРѕРґСЉС‘Рј + С‚РµРЅСЊ.
+   Press РіР°СЃРёС‚ РїРѕРґСЉС‘Рј вЂ” РїР°Р»РµС† Р±СѓРґС‚Рѕ РІРґР°РІР»РёРІР°РµС‚ РєР»Р°РІРёС€Сѓ. */
 .ec-btn:hover {
   background: var(--ec-surface-3);
   border-color: var(--ec-border-emphasis);
@@ -49,8 +49,8 @@
   transition-duration: 60ms;
 }
 
-/* v0.34: accessibility — focus-visible ring для keyboard navigation.
-   Mouse-click НЕ показывает ring (`:focus-visible` discriminates). */
+/* v0.34: accessibility вЂ” focus-visible ring РґР»СЏ keyboard navigation.
+   Mouse-click РќР• РїРѕРєР°Р·С‹РІР°РµС‚ ring (`:focus-visible` discriminates). */
 .ec-btn:focus-visible {
   outline: 2px solid var(--ec-border-accent);
   outline-offset: 2px;
@@ -62,7 +62,7 @@
   pointer-events: none;
 }
 
-/* v0.34: channel-item, message-action — same a11y treatment. */
+/* v0.34: channel-item, message-action вЂ” same a11y treatment. */
 .ec-channel-item:focus-visible,
 .ec-message-actions button:focus-visible {
   outline: 2px solid var(--ec-border-accent);
@@ -70,16 +70,16 @@
   border-radius: var(--ec-radius-sm);
 }
 
-/* Inputs (text/url/email/password/textarea) — extend existing
-   .ec-field rule с :focus-visible variant для consistency. */
+/* Inputs (text/url/email/password/textarea) вЂ” extend existing
+   .ec-field rule СЃ :focus-visible variant РґР»СЏ consistency. */
 .ec-field:focus-visible {
-  outline: none;  /* border-color уже даёт visual focus signal */
+  outline: none;  /* border-color СѓР¶Рµ РґР°С‘С‚ visual focus signal */
 }
 
-/* Primary — «commit»-кнопка. Violet с вертикальным sheen'ом (читается
-   как подсвеченная физическая клавиша). Прежний violet→teal градиент
-   убран — teal off-identity (status-only). Hover — подъём + violet-halo
-   + brightness; active — кнопка «вдавливается» (inset-тень). */
+/* Primary вЂ” В«commitВ»-РєРЅРѕРїРєР°. Violet СЃ РІРµСЂС‚РёРєР°Р»СЊРЅС‹Рј sheen'РѕРј (С‡РёС‚Р°РµС‚СЃСЏ
+   РєР°Рє РїРѕРґСЃРІРµС‡РµРЅРЅР°СЏ С„РёР·РёС‡РµСЃРєР°СЏ РєР»Р°РІРёС€Р°). РџСЂРµР¶РЅРёР№ violetв†’teal РіСЂР°РґРёРµРЅС‚
+   СѓР±СЂР°РЅ вЂ” teal off-identity (status-only). Hover вЂ” РїРѕРґСЉС‘Рј + violet-halo
+   + brightness; active вЂ” РєРЅРѕРїРєР° В«РІРґР°РІР»РёРІР°РµС‚СЃСЏВ» (inset-С‚РµРЅСЊ). */
 .ec-btn--primary {
   background: linear-gradient(180deg, var(--ec-accent-hover), var(--ec-accent));
   color: var(--ec-accent-text);
@@ -120,8 +120,8 @@
   color: var(--ec-danger);
   border-color: var(--ec-border-default);
 }
-/* Danger «означает то, что говорит» — на hover наливается красным
-   с мягким тревожным свечением, на press — твёрдо вдавливается. */
+/* Danger В«РѕР·РЅР°С‡Р°РµС‚ С‚Рѕ, С‡С‚Рѕ РіРѕРІРѕСЂРёС‚В» вЂ” РЅР° hover РЅР°Р»РёРІР°РµС‚СЃСЏ РєСЂР°СЃРЅС‹Рј
+   СЃ РјСЏРіРєРёРј С‚СЂРµРІРѕР¶РЅС‹Рј СЃРІРµС‡РµРЅРёРµРј, РЅР° press вЂ” С‚РІС‘СЂРґРѕ РІРґР°РІР»РёРІР°РµС‚СЃСЏ. */
 .ec-btn--danger:hover {
   background: var(--ec-danger-soft);
   border-color: var(--ec-danger);
@@ -205,8 +205,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 0 var(--ec-space-2);
-  /* v1.1.80 слайс 4 — воздух: секционный лейбл отделён от списка
-     (4 → 8px снизу, 12px сверху для разрыва между секциями). */
+  /* v1.1.80 СЃР»Р°Р№СЃ 4 вЂ” РІРѕР·РґСѓС…: СЃРµРєС†РёРѕРЅРЅС‹Р№ Р»РµР№Р±Р» РѕС‚РґРµР»С‘РЅ РѕС‚ СЃРїРёСЃРєР°
+     (4 в†’ 8px СЃРЅРёР·Сѓ, 12px СЃРІРµСЂС…Сѓ РґР»СЏ СЂР°Р·СЂС‹РІР° РјРµР¶РґСѓ СЃРµРєС†РёСЏРјРё). */
   margin-top: var(--ec-space-3);
   margin-bottom: var(--ec-space-2);
   font-size: var(--ec-text-2xs);
@@ -254,9 +254,9 @@
 .ec-dot--dnd     { background: var(--ec-presence-dnd); }
 .ec-dot--offline { background: var(--ec-presence-offline); }
 
-/* ===== Density segmented control (v1.1.64 §12) =============
-   3-way переключатель плотности в ProfileModal. Внутренние отступы
-   хардкод (px) — контрол не должен сжиматься в compact/tactical. */
+/* ===== Density segmented control (v1.1.64 В§12) =============
+   3-way РїРµСЂРµРєР»СЋС‡Р°С‚РµР»СЊ РїР»РѕС‚РЅРѕСЃС‚Рё РІ ProfileModal. Р’РЅСѓС‚СЂРµРЅРЅРёРµ РѕС‚СЃС‚СѓРїС‹
+   С…Р°СЂРґРєРѕРґ (px) вЂ” РєРѕРЅС‚СЂРѕР» РЅРµ РґРѕР»Р¶РµРЅ СЃР¶РёРјР°С‚СЊСЃСЏ РІ compact/tactical. */
 .ec-density-seg {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -293,11 +293,11 @@
   outline-offset: 1px;
 }
 
-/* ===== Focus dimming — «Тихий фокус» (v1.1.65 §11) =========
-   Пока курсор в composer'е, боковые панели мягко гаснут — чат-колонка
-   выходит в центр внимания. Pure-CSS через :has() — без JS-трекинга
-   фокуса. Возврат панели: blur composer'а ИЛИ наведение на панель.
-   Kill-switch — data-focus-dim="off" на <html>. */
+/* ===== Focus dimming вЂ” В«РўРёС…РёР№ С„РѕРєСѓСЃВ» (v1.1.65 В§11) =========
+   РџРѕРєР° РєСѓСЂСЃРѕСЂ РІ composer'Рµ, Р±РѕРєРѕРІС‹Рµ РїР°РЅРµР»Рё РјСЏРіРєРѕ РіР°СЃРЅСѓС‚ вЂ” С‡Р°С‚-РєРѕР»РѕРЅРєР°
+   РІС‹С…РѕРґРёС‚ РІ С†РµРЅС‚СЂ РІРЅРёРјР°РЅРёСЏ. Pure-CSS С‡РµСЂРµР· :has() вЂ” Р±РµР· JS-С‚СЂРµРєРёРЅРіР°
+   С„РѕРєСѓСЃР°. Р’РѕР·РІСЂР°С‚ РїР°РЅРµР»Рё: blur composer'Р° РР›Р РЅР°РІРµРґРµРЅРёРµ РЅР° РїР°РЅРµР»СЊ.
+   Kill-switch вЂ” data-focus-dim="off" РЅР° <html>. */
 .ec-shell__channels,
 .ec-shell__members {
   transition:
@@ -314,13 +314,13 @@
   opacity: 1;
   filter: none;
 }
-/* kill-switch — эффект отключён пользователем в настройках */
+/* kill-switch вЂ” СЌС„С„РµРєС‚ РѕС‚РєР»СЋС‡С‘РЅ РїРѕР»СЊР·РѕРІР°С‚РµР»РµРј РІ РЅР°СЃС‚СЂРѕР№РєР°С… */
 :root[data-focus-dim="off"] .ec-shell:has(.ec-composer-textarea:focus) .ec-shell__channels,
 :root[data-focus-dim="off"] .ec-shell:has(.ec-composer-textarea:focus) .ec-shell__members {
   opacity: 1;
   filter: none;
 }
-/* reduced-motion — авто-затухание выключаем целиком */
+/* reduced-motion вЂ” Р°РІС‚Рѕ-Р·Р°С‚СѓС…Р°РЅРёРµ РІС‹РєР»СЋС‡Р°РµРј С†РµР»РёРєРѕРј */
 @media (prefers-reduced-motion: reduce) {
   .ec-shell:has(.ec-composer-textarea:focus) .ec-shell__channels,
   .ec-shell:has(.ec-composer-textarea:focus) .ec-shell__members {
@@ -329,13 +329,13 @@
   }
 }
 
-/* v1.1.66 §15 — ad-hoc .ec-empty* классы удалены: все empty-states
-   мигрированы на единый компонент <EmptyState> (см. EmptyState.tsx). */
+/* v1.1.66 В§15 вЂ” ad-hoc .ec-empty* РєР»Р°СЃСЃС‹ СѓРґР°Р»РµРЅС‹: РІСЃРµ empty-states
+   РјРёРіСЂРёСЂРѕРІР°РЅС‹ РЅР° РµРґРёРЅС‹Р№ РєРѕРјРїРѕРЅРµРЅС‚ <EmptyState> (СЃРј. EmptyState.tsx). */
 
 /* ===== Channel/Server list items ==========================
-   v1.2.5 slice 7 — единственный дом nav-элемента: декор-слой из
-   блока «Immersive app surface» (регион B) слит сюда, дубль-блок
-   убран. */
+   v1.2.5 slice 7 вЂ” РµРґРёРЅСЃС‚РІРµРЅРЅС‹Р№ РґРѕРј nav-СЌР»РµРјРµРЅС‚Р°: РґРµРєРѕСЂ-СЃР»РѕР№ РёР·
+   Р±Р»РѕРєР° В«Immersive app surfaceВ» (СЂРµРіРёРѕРЅ B) СЃР»РёС‚ СЃСЋРґР°, РґСѓР±Р»СЊ-Р±Р»РѕРє
+   СѓР±СЂР°РЅ. */
 
 .ec-channel-item {
   position: relative;
@@ -343,17 +343,17 @@
   align-items: center;
   gap: var(--ec-space-2);
   width: 100%;
-  /* v1.1.80 слайс 4 — воздух: nav-элемент дышит (34 → 38px). */
+  /* v1.1.80 СЃР»Р°Р№СЃ 4 вЂ” РІРѕР·РґСѓС…: nav-СЌР»РµРјРµРЅС‚ РґС‹С€РёС‚ (34 в†’ 38px). */
   min-height: 38px;
   padding: 0.4rem 0.6rem;
   overflow: hidden;
   border: 1px solid transparent;
   border-radius: var(--ec-radius-sm);
   background: transparent;
-  /* v1.1.50 WS-1 slice 3 — иерархия левой панели: rest-канал «почти
-     исчезает». text-dim (tertiary) вместо text-muted (secondary) —
-     спокойный канал рецессивен; hover поднимает до --ec-text, active/
-     unread — до --ec-text-strong. Три тира внимания читаются явно. */
+  /* v1.1.50 WS-1 slice 3 вЂ” РёРµСЂР°СЂС…РёСЏ Р»РµРІРѕР№ РїР°РЅРµР»Рё: rest-РєР°РЅР°Р» В«РїРѕС‡С‚Рё
+     РёСЃС‡РµР·Р°РµС‚В». text-dim (tertiary) РІРјРµСЃС‚Рѕ text-muted (secondary) вЂ”
+     СЃРїРѕРєРѕР№РЅС‹Р№ РєР°РЅР°Р» СЂРµС†РµСЃСЃРёРІРµРЅ; hover РїРѕРґРЅРёРјР°РµС‚ РґРѕ --ec-text, active/
+     unread вЂ” РґРѕ --ec-text-strong. РўСЂРё С‚РёСЂР° РІРЅРёРјР°РЅРёСЏ С‡РёС‚Р°СЋС‚СЃСЏ СЏРІРЅРѕ. */
   color: var(--ec-text-dim);
   font-size: var(--ec-text-sm);
   letter-spacing: 0.005em;
@@ -365,7 +365,7 @@
   text-align: left;
 }
 
-/* Hover-подсветка — мягкий радиальный tint от левого края. */
+/* Hover-РїРѕРґСЃРІРµС‚РєР° вЂ” РјСЏРіРєРёР№ СЂР°РґРёР°Р»СЊРЅС‹Р№ tint РѕС‚ Р»РµРІРѕРіРѕ РєСЂР°СЏ. */
 .ec-channel-item::after {
   content: "";
   position: absolute;
@@ -382,7 +382,7 @@
   background: hsl(214 28% 13% / 0.64);
   color: var(--ec-text);
   border-color: hsl(225 14% 72% / 0.08);
-  /* v0.38: subtle slide-right hint — channel item «реагирует» на курсор */
+  /* v0.38: subtle slide-right hint вЂ” channel item В«СЂРµР°РіРёСЂСѓРµС‚В» РЅР° РєСѓСЂСЃРѕСЂ */
   transform: translateX(2px);
 }
 .ec-channel-item:hover::after,
@@ -545,10 +545,10 @@
 }
 
 /* ===== Home screen ========================================
-   v1.2.5 slice 7 — дубль-блок shell-декора (.ec-shell* / .ec-chat-*)
-   убран отсюда: единственный дом surface-декора каркаса — секция
-   «Shell — поверхности» ниже. layout/типографика бренд-кнопки —
-   в grammar-блоке slice 1. */
+   v1.2.5 slice 7 вЂ” РґСѓР±Р»СЊ-Р±Р»РѕРє shell-РґРµРєРѕСЂР° (.ec-shell* / .ec-chat-*)
+   СѓР±СЂР°РЅ РѕС‚СЃСЋРґР°: РµРґРёРЅСЃС‚РІРµРЅРЅС‹Р№ РґРѕРј surface-РґРµРєРѕСЂР° РєР°СЂРєР°СЃР° вЂ” СЃРµРєС†РёСЏ
+   В«Shell вЂ” РїРѕРІРµСЂС…РЅРѕСЃС‚РёВ» РЅРёР¶Рµ. layout/С‚РёРїРѕРіСЂР°С„РёРєР° Р±СЂРµРЅРґ-РєРЅРѕРїРєРё вЂ”
+   РІ grammar-Р±Р»РѕРєРµ slice 1. */
 
 .ec-home {
   position: relative;
@@ -759,22 +759,22 @@
   }
 }
 
-/* ===== Shell — поверхности =====================================
+/* ===== Shell вЂ” РїРѕРІРµСЂС…РЅРѕСЃС‚Рё =====================================
  *
- * Единственный дом surface-декора каркаса: фон / blur / тени /
- * border-цвета shell'а, навигации и чат-области. layout живёт в
- * grammar-блоках ниже, адаптив — в responsive.css, SOLAR-вариант —
- * в effects.css.
+ * Р•РґРёРЅСЃС‚РІРµРЅРЅС‹Р№ РґРѕРј surface-РґРµРєРѕСЂР° РєР°СЂРєР°СЃР°: С„РѕРЅ / blur / С‚РµРЅРё /
+ * border-С†РІРµС‚Р° shell'Р°, РЅР°РІРёРіР°С†РёРё Рё С‡Р°С‚-РѕР±Р»Р°СЃС‚Рё. layout Р¶РёРІС‘С‚ РІ
+ * grammar-Р±Р»РѕРєР°С… РЅРёР¶Рµ, Р°РґР°РїС‚РёРІ вЂ” РІ responsive.css, SOLAR-РІР°СЂРёР°РЅС‚ вЂ”
+ * РІ effects.css.
  *
- * v1.2.5 slice 7: дубль-блоки «Immersive app surface» (регион B) и
- * «Shell home / brand» (регион A) слиты сюда. Раньше один и тот же
- * селектор определялся дважды, поздний блок перебивал ранний через
- * !important. !important-война снята — каскад держится порядком
- * слоёв (components → effects → responsive) и специфичностью
- * (см. design-brief-v2 §4).
+ * v1.2.5 slice 7: РґСѓР±Р»СЊ-Р±Р»РѕРєРё В«Immersive app surfaceВ» (СЂРµРіРёРѕРЅ B) Рё
+ * В«Shell home / brandВ» (СЂРµРіРёРѕРЅ A) СЃР»РёС‚С‹ СЃСЋРґР°. Р Р°РЅСЊС€Рµ РѕРґРёРЅ Рё С‚РѕС‚ Р¶Рµ
+ * СЃРµР»РµРєС‚РѕСЂ РѕРїСЂРµРґРµР»СЏР»СЃСЏ РґРІР°Р¶РґС‹, РїРѕР·РґРЅРёР№ Р±Р»РѕРє РїРµСЂРµР±РёРІР°Р» СЂР°РЅРЅРёР№ С‡РµСЂРµР·
+ * !important. !important-РІРѕР№РЅР° СЃРЅСЏС‚Р° вЂ” РєР°СЃРєР°Рґ РґРµСЂР¶РёС‚СЃСЏ РїРѕСЂСЏРґРєРѕРј
+ * СЃР»РѕС‘РІ (components в†’ effects в†’ responsive) Рё СЃРїРµС†РёС„РёС‡РЅРѕСЃС‚СЊСЋ
+ * (СЃРј. design-brief-v2 В§4).
  *
- * v1.1.77 декластер: декоративный blueprint-chrome снят — почти
- * флэт с одним очень слабым верхним violet-wash'ем.
+ * v1.1.77 РґРµРєР»Р°СЃС‚РµСЂ: РґРµРєРѕСЂР°С‚РёРІРЅС‹Р№ blueprint-chrome СЃРЅСЏС‚ вЂ” РїРѕС‡С‚Рё
+ * С„Р»СЌС‚ СЃ РѕРґРЅРёРј РѕС‡РµРЅСЊ СЃР»Р°Р±С‹Рј РІРµСЂС…РЅРёРј violet-wash'РµРј.
  */
 .ec-shell {
   position: relative;
@@ -801,8 +801,8 @@
     0 16px 40px hsl(210 70% 2% / 0.28);
 }
 
-/* Бренд-кнопка — фон/бордер (layout/типографика — в grammar-блоке
-   slice 1). border-color инертен без border-width — оставлен как был. */
+/* Р‘СЂРµРЅРґ-РєРЅРѕРїРєР° вЂ” С„РѕРЅ/Р±РѕСЂРґРµСЂ (layout/С‚РёРїРѕРіСЂР°С„РёРєР° вЂ” РІ grammar-Р±Р»РѕРєРµ
+   slice 1). border-color РёРЅРµСЂС‚РµРЅ Р±РµР· border-width вЂ” РѕСЃС‚Р°РІР»РµРЅ РєР°Рє Р±С‹Р». */
 .ec-shell__brand-home {
   background:
     linear-gradient(180deg, hsl(213 26% 11% / 0.52), hsl(213 26% 7% / 0.34));
@@ -820,10 +820,10 @@
   letter-spacing: 0.16em;
 }
 
-/* v1.1.99 — topbar action-кнопки переведены на канонический
-   примитив .ec-icon-btn (был .ec-btn--ghost + inline padding/color —
-   drift). Заполненная surface-плашка осталась только у drawer-btn и
-   профиль-чипа; .ec-icon-btn держит свой ghost→surface язык сам. */
+/* v1.1.99 вЂ” topbar action-РєРЅРѕРїРєРё РїРµСЂРµРІРµРґРµРЅС‹ РЅР° РєР°РЅРѕРЅРёС‡РµСЃРєРёР№
+   РїСЂРёРјРёС‚РёРІ .ec-icon-btn (Р±С‹Р» .ec-btn--ghost + inline padding/color вЂ”
+   drift). Р—Р°РїРѕР»РЅРµРЅРЅР°СЏ surface-РїР»Р°С€РєР° РѕСЃС‚Р°Р»Р°СЃСЊ С‚РѕР»СЊРєРѕ Сѓ drawer-btn Рё
+   РїСЂРѕС„РёР»СЊ-С‡РёРїР°; .ec-icon-btn РґРµСЂР¶РёС‚ СЃРІРѕР№ ghostв†’surface СЏР·С‹Рє СЃР°Рј. */
 .ec-shell__drawer-btn,
 .ec-shell__user-chip {
   background: hsl(214 22% 9% / 0.48);
@@ -840,18 +840,18 @@
     0 0 18px hsl(225 14% 60% / 0.08);
 }
 
-/* v1.2.1 (R2) — `.ec-shell__top-center` убран: топбар пересобран,
-   локация теперь левый якорь cmdbar'а (`.ec-shell__loc`). */
+/* v1.2.1 (R2) вЂ” `.ec-shell__top-center` СѓР±СЂР°РЅ: С‚РѕРїР±Р°СЂ РїРµСЂРµСЃРѕР±СЂР°РЅ,
+   Р»РѕРєР°С†РёСЏ С‚РµРїРµСЂСЊ Р»РµРІС‹Р№ СЏРєРѕСЂСЊ cmdbar'Р° (`.ec-shell__loc`). */
 
-/* v1.1.99 — utility-иконки топбара живут на .ec-icon-btn: ghost в
-   покое → surface на hover → accent на [aria-pressed]. Прежние
-   .ec-btn--ghost-правила + inline-color убраны как drift. */
+/* v1.1.99 вЂ” utility-РёРєРѕРЅРєРё С‚РѕРїР±Р°СЂР° Р¶РёРІСѓС‚ РЅР° .ec-icon-btn: ghost РІ
+   РїРѕРєРѕРµ в†’ surface РЅР° hover в†’ accent РЅР° [aria-pressed]. РџСЂРµР¶РЅРёРµ
+   .ec-btn--ghost-РїСЂР°РІРёР»Р° + inline-color СѓР±СЂР°РЅС‹ РєР°Рє drift. */
 
-/* v1.1.81 — топбар-полиш. Правая зона была «свалкой» из ~12 элементов
-   в один ряд. Hairline-разделители режут её на 3 читаемых кластера:
-   статус (телеметрия) | инструменты (иконки + часы + тема) |
-   идентичность (профиль). Плотный gap внутри кластера, воздух — на
-   разделителях. */
+/* v1.1.81 вЂ” С‚РѕРїР±Р°СЂ-РїРѕР»РёС€. РџСЂР°РІР°СЏ Р·РѕРЅР° Р±С‹Р»Р° В«СЃРІР°Р»РєРѕР№В» РёР· ~12 СЌР»РµРјРµРЅС‚РѕРІ
+   РІ РѕРґРёРЅ СЂСЏРґ. Hairline-СЂР°Р·РґРµР»РёС‚РµР»Рё СЂРµР¶СѓС‚ РµС‘ РЅР° 3 С‡РёС‚Р°РµРјС‹С… РєР»Р°СЃС‚РµСЂР°:
+   СЃС‚Р°С‚СѓСЃ (С‚РµР»РµРјРµС‚СЂРёСЏ) | РёРЅСЃС‚СЂСѓРјРµРЅС‚С‹ (РёРєРѕРЅРєРё + С‡Р°СЃС‹ + С‚РµРјР°) |
+   РёРґРµРЅС‚РёС‡РЅРѕСЃС‚СЊ (РїСЂРѕС„РёР»СЊ). РџР»РѕС‚РЅС‹Р№ gap РІРЅСѓС‚СЂРё РєР»Р°СЃС‚РµСЂР°, РІРѕР·РґСѓС… вЂ” РЅР°
+   СЂР°Р·РґРµР»РёС‚РµР»СЏС…. */
 .ec-topbar-sep {
   width: 1px;
   height: 18px;
@@ -861,12 +861,12 @@
   background: var(--ec-border-default);
 }
 
-/* v1.1.91 — player-кнопки переведены на .ec-player-ctrl / .ec-player-play
-   (см. player.css). Прежние ad-hoc hover-glow правила убраны. */
+/* v1.1.91 вЂ” player-РєРЅРѕРїРєРё РїРµСЂРµРІРµРґРµРЅС‹ РЅР° .ec-player-ctrl / .ec-player-play
+   (СЃРј. player.css). РџСЂРµР¶РЅРёРµ ad-hoc hover-glow РїСЂР°РІРёР»Р° СѓР±СЂР°РЅС‹. */
 
-/* v1.1.89 — мини-эквалайзер «now playing» в музыкальном плеере.
-   3 столбика, каждый со своей длительностью/фазой → живой неровный
-   ритм. Анимация только при .ec-eq--playing; на паузе бары статичны. */
+/* v1.1.89 вЂ” РјРёРЅРё-СЌРєРІР°Р»Р°Р№Р·РµСЂ В«now playingВ» РІ РјСѓР·С‹РєР°Р»СЊРЅРѕРј РїР»РµРµСЂРµ.
+   3 СЃС‚РѕР»Р±РёРєР°, РєР°Р¶РґС‹Р№ СЃРѕ СЃРІРѕРµР№ РґР»РёС‚РµР»СЊРЅРѕСЃС‚СЊСЋ/С„Р°Р·РѕР№ в†’ Р¶РёРІРѕР№ РЅРµСЂРѕРІРЅС‹Р№
+   СЂРёС‚Рј. РђРЅРёРјР°С†РёСЏ С‚РѕР»СЊРєРѕ РїСЂРё .ec-eq--playing; РЅР° РїР°СѓР·Рµ Р±Р°СЂС‹ СЃС‚Р°С‚РёС‡РЅС‹. */
 .ec-eq {
   display: inline-flex;
   align-items: flex-end;
@@ -909,11 +909,11 @@
     linear-gradient(180deg, hsl(216 24% 7% / 0.90), hsl(216 24% 5% / 0.96));
 }
 
-/* Хребет (brandbar + channels) — общая правая кромка и тень: единая
-   приподнятая вертикаль. members-рейл — зеркальная левая кромка.
-   На мобиле эти панели становятся off-canvas drawer'ами и берут свою
-   drawer-тень из responsive.css (каскад по порядку слоёв, без
-   !important — раньше война её глушила). */
+/* РҐСЂРµР±РµС‚ (brandbar + channels) вЂ” РѕР±С‰Р°СЏ РїСЂР°РІР°СЏ РєСЂРѕРјРєР° Рё С‚РµРЅСЊ: РµРґРёРЅР°СЏ
+   РїСЂРёРїРѕРґРЅСЏС‚Р°СЏ РІРµСЂС‚РёРєР°Р»СЊ. members-СЂРµР№Р» вЂ” Р·РµСЂРєР°Р»СЊРЅР°СЏ Р»РµРІР°СЏ РєСЂРѕРјРєР°.
+   РќР° РјРѕР±РёР»Рµ СЌС‚Рё РїР°РЅРµР»Рё СЃС‚Р°РЅРѕРІСЏС‚СЃСЏ off-canvas drawer'Р°РјРё Рё Р±РµСЂСѓС‚ СЃРІРѕСЋ
+   drawer-С‚РµРЅСЊ РёР· responsive.css (РєР°СЃРєР°Рґ РїРѕ РїРѕСЂСЏРґРєСѓ СЃР»РѕС‘РІ, Р±РµР·
+   !important вЂ” СЂР°РЅСЊС€Рµ РІРѕР№РЅР° РµС‘ РіР»СѓС€РёР»Р°). */
 .ec-shell__brandbar,
 .ec-shell__channels {
   box-shadow:
@@ -1066,11 +1066,11 @@
     transform var(--ec-dur-fast) var(--ec-ease-out);
 }
 
-/* v1.1.92 slice 3 — спокойный row-hover. Прежний «floating»-прототип
-   (translateY-подъём + градиент + тень) убран: на плотной ленте подъём
-   каждой строки под курсором — твичи. Лента сканируется ровнее со
-   спокойным surface-tint'ом; характер живёт в action-toolbar и кнопках.
-   Theme-aware токен — корректно в VOID и SOLAR. */
+/* v1.1.92 slice 3 вЂ” СЃРїРѕРєРѕР№РЅС‹Р№ row-hover. РџСЂРµР¶РЅРёР№ В«floatingВ»-РїСЂРѕС‚РѕС‚РёРї
+   (translateY-РїРѕРґСЉС‘Рј + РіСЂР°РґРёРµРЅС‚ + С‚РµРЅСЊ) СѓР±СЂР°РЅ: РЅР° РїР»РѕС‚РЅРѕР№ Р»РµРЅС‚Рµ РїРѕРґСЉС‘Рј
+   РєР°Р¶РґРѕР№ СЃС‚СЂРѕРєРё РїРѕРґ РєСѓСЂСЃРѕСЂРѕРј вЂ” С‚РІРёС‡Рё. Р›РµРЅС‚Р° СЃРєР°РЅРёСЂСѓРµС‚СЃСЏ СЂРѕРІРЅРµРµ СЃРѕ
+   СЃРїРѕРєРѕР№РЅС‹Рј surface-tint'РѕРј; С…Р°СЂР°РєС‚РµСЂ Р¶РёРІС‘С‚ РІ action-toolbar Рё РєРЅРѕРїРєР°С….
+   Theme-aware С‚РѕРєРµРЅ вЂ” РєРѕСЂСЂРµРєС‚РЅРѕ РІ VOID Рё SOLAR. */
 .ec-message-row:hover {
   background: var(--ec-surface-1);
 }
@@ -1281,8 +1281,8 @@
 
 .ec-composer-box {
   overflow: hidden;
-  /* v1.1.61 redesign §9 — полупрозрачный glass-composer: стекло +
-     backdrop-blur, мягкая тень глубины для «floating». */
+  /* v1.1.61 redesign В§9 вЂ” РїРѕР»СѓРїСЂРѕР·СЂР°С‡РЅС‹Р№ glass-composer: СЃС‚РµРєР»Рѕ +
+     backdrop-blur, РјСЏРіРєР°СЏ С‚РµРЅСЊ РіР»СѓР±РёРЅС‹ РґР»СЏ В«floatingВ». */
   background:
     radial-gradient(circle at 0% 0%, hsl(258 90% 66% / 0.07), transparent 42%),
     hsl(216 24% 10% / 0.55) !important;
@@ -1294,7 +1294,7 @@
     0 14px 36px -10px hsl(210 70% 2% / 0.5);
 }
 
-/* Focus — мягкое свечение вместо жёсткого ring'а (§9 «soft glow»). */
+/* Focus вЂ” РјСЏРіРєРѕРµ СЃРІРµС‡РµРЅРёРµ РІРјРµСЃС‚Рѕ Р¶С‘СЃС‚РєРѕРіРѕ ring'Р° (В§9 В«soft glowВ»). */
 .ec-composer-box:focus-within {
   border-color: hsl(258 90% 66% / 0.32) !important;
   box-shadow:
@@ -1427,8 +1427,8 @@
 .ec-home-stat-card {
   position: relative;
   overflow: hidden;
-  /* WS-1 v1.1.39: border убран — карточка отделяется глубиной
-     (inline statCard() shadow + accent-bar), не линией. */
+  /* WS-1 v1.1.39: border СѓР±СЂР°РЅ вЂ” РєР°СЂС‚РѕС‡РєР° РѕС‚РґРµР»СЏРµС‚СЃСЏ РіР»СѓР±РёРЅРѕР№
+     (inline statCard() shadow + accent-bar), РЅРµ Р»РёРЅРёРµР№. */
   border: 0;
   background:
     linear-gradient(180deg, hsl(216 24% 10% / 0.86), hsl(216 24% 7% / 0.72)) !important;
@@ -1448,8 +1448,8 @@
 .ec-home-stat-card--warn { color: var(--ec-status-warn); }
 .ec-home-stat-card--idle { color: var(--ec-status-idle); }
 
-/* WS-1 v1.1.39: border убран — строки отделяются глубиной/светом
-   (elevation), hover = подъём по тени, без accent-рамки. */
+/* WS-1 v1.1.39: border СѓР±СЂР°РЅ вЂ” СЃС‚СЂРѕРєРё РѕС‚РґРµР»СЏСЋС‚СЃСЏ РіР»СѓР±РёРЅРѕР№/СЃРІРµС‚РѕРј
+   (elevation), hover = РїРѕРґСЉС‘Рј РїРѕ С‚РµРЅРё, Р±РµР· accent-СЂР°РјРєРё. */
 .ec-home-today-row {
   position: relative;
   overflow: hidden;
@@ -1473,8 +1473,8 @@
   border-top-color: hsl(225 14% 72% / 0.10) !important;
 }
 
-/* v1.2.5 slice 7 — .ec-shell__members box-shadow перенесён в секцию
-   «Shell — поверхности», к зеркальному хребту brandbar/channels. */
+/* v1.2.5 slice 7 вЂ” .ec-shell__members box-shadow РїРµСЂРµРЅРµСЃС‘РЅ РІ СЃРµРєС†РёСЋ
+   В«Shell вЂ” РїРѕРІРµСЂС…РЅРѕСЃС‚РёВ», Рє Р·РµСЂРєР°Р»СЊРЅРѕРјСѓ С…СЂРµР±С‚Сѓ brandbar/channels. */
 
 @media (prefers-reduced-motion: reduce) {
   .ec-home-today__header::after {
@@ -1483,23 +1483,23 @@
 }
 
 /* ============================================================
- * v1.1.91 — Redesign slice 1: shell grammar
+ * v1.1.91 вЂ” Redesign slice 1: shell grammar
  * ============================================================
- * Канонические примитивы + вынос inline-style консолей AppShell
- * в классы. Был root-cause drift'а: статичные inline-стили и
- * JS-hover (onMouseEnter/Leave, мутирующие .style). См.
- * docs/design/design-brief-v2.md §3.
+ * РљР°РЅРѕРЅРёС‡РµСЃРєРёРµ РїСЂРёРјРёС‚РёРІС‹ + РІС‹РЅРѕСЃ inline-style РєРѕРЅСЃРѕР»РµР№ AppShell
+ * РІ РєР»Р°СЃСЃС‹. Р‘С‹Р» root-cause drift'Р°: СЃС‚Р°С‚РёС‡РЅС‹Рµ inline-СЃС‚РёР»Рё Рё
+ * JS-hover (onMouseEnter/Leave, РјСѓС‚РёСЂСѓСЋС‰РёРµ .style). РЎРј.
+ * docs/design/design-brief-v2.md В§3.
  *
- * Все правила ниже опираются на theme-aware токены — отдельный
- * SOLAR-оверрайд не нужен, тема подхватывается автоматически.
- * Декор surface'ов (фон/blur/тени) остаётся за блоками
- * «Immersive app surface» выше; их дубли консолидирует slice 7.
+ * Р’СЃРµ РїСЂР°РІРёР»Р° РЅРёР¶Рµ РѕРїРёСЂР°СЋС‚СЃСЏ РЅР° theme-aware С‚РѕРєРµРЅС‹ вЂ” РѕС‚РґРµР»СЊРЅС‹Р№
+ * SOLAR-РѕРІРµСЂСЂР°Р№Рґ РЅРµ РЅСѓР¶РµРЅ, С‚РµРјР° РїРѕРґС…РІР°С‚С‹РІР°РµС‚СЃСЏ Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєРё.
+ * Р”РµРєРѕСЂ surface'РѕРІ (С„РѕРЅ/blur/С‚РµРЅРё) РѕСЃС‚Р°С‘С‚СЃСЏ Р·Р° Р±Р»РѕРєР°РјРё
+ * В«Immersive app surfaceВ» РІС‹С€Рµ; РёС… РґСѓР±Р»Рё РєРѕРЅСЃРѕР»РёРґРёСЂСѓРµС‚ slice 7.
  */
 
-/* --- Icon button — КАНОНИЧЕСКИЙ примитив иконочной кнопки.
-   Топбар, заголовки, тулбары. Призрачный в покое → surface на
-   hover → accent на [aria-pressed="true"]. Hover/active/focus —
-   только CSS, без JS-обработчиков. ------------------------------ */
+/* --- Icon button вЂ” РљРђРќРћРќРР§Р•РЎРљРР™ РїСЂРёРјРёС‚РёРІ РёРєРѕРЅРѕС‡РЅРѕР№ РєРЅРѕРїРєРё.
+   РўРѕРїР±Р°СЂ, Р·Р°РіРѕР»РѕРІРєРё, С‚СѓР»Р±Р°СЂС‹. РџСЂРёР·СЂР°С‡РЅС‹Р№ РІ РїРѕРєРѕРµ в†’ surface РЅР°
+   hover в†’ accent РЅР° [aria-pressed="true"]. Hover/active/focus вЂ”
+   С‚РѕР»СЊРєРѕ CSS, Р±РµР· JS-РѕР±СЂР°Р±РѕС‚С‡РёРєРѕРІ. ------------------------------ */
 .ec-icon-btn {
   display: inline-grid;
   place-items: center;
@@ -1524,7 +1524,7 @@
   color: var(--ec-text);
   transform: translateY(-1px);
 }
-/* Press — кнопка резко «щёлкает» вниз и слегка сжимается. */
+/* Press вЂ” РєРЅРѕРїРєР° СЂРµР·РєРѕ В«С‰С‘Р»РєР°РµС‚В» РІРЅРёР· Рё СЃР»РµРіРєР° СЃР¶РёРјР°РµС‚СЃСЏ. */
 .ec-icon-btn:active {
   transform: translateY(0) scale(0.9);
   transition-duration: 60ms;
@@ -1538,21 +1538,21 @@
   cursor: not-allowed;
   pointer-events: none;
 }
-/* Активное / включённое — единый accent-сигнал (см. grammar §3.4). */
+/* РђРєС‚РёРІРЅРѕРµ / РІРєР»СЋС‡С‘РЅРЅРѕРµ вЂ” РµРґРёРЅС‹Р№ accent-СЃРёРіРЅР°Р» (СЃРј. grammar В§3.4). */
 .ec-icon-btn[aria-pressed="true"] {
   background: var(--ec-accent-soft);
   color: var(--ec-accent);
 }
 
-/* Alert-модификатор — иконка несёт активный риск (открытые инциденты).
-   Danger держится и в покое, и на hover: сигнал не должен гаснуть. */
+/* Alert-РјРѕРґРёС„РёРєР°С‚РѕСЂ вЂ” РёРєРѕРЅРєР° РЅРµСЃС‘С‚ Р°РєС‚РёРІРЅС‹Р№ СЂРёСЃРє (РѕС‚РєСЂС‹С‚С‹Рµ РёРЅС†РёРґРµРЅС‚С‹).
+   Danger РґРµСЂР¶РёС‚СЃСЏ Рё РІ РїРѕРєРѕРµ, Рё РЅР° hover: СЃРёРіРЅР°Р» РЅРµ РґРѕР»Р¶РµРЅ РіР°СЃРЅСѓС‚СЊ. */
 .ec-icon-btn--alert,
 .ec-icon-btn--alert:hover {
   color: var(--ec-danger);
 }
 
-/* Счётчик-бейдж на иконочной кнопке (инциденты, уведомления). Кольцо
-   surface-1 «вырезает» бейдж из иконки — читается чисто на любом фоне. */
+/* РЎС‡С‘С‚С‡РёРє-Р±РµР№РґР¶ РЅР° РёРєРѕРЅРѕС‡РЅРѕР№ РєРЅРѕРїРєРµ (РёРЅС†РёРґРµРЅС‚С‹, СѓРІРµРґРѕРјР»РµРЅРёСЏ). РљРѕР»СЊС†Рѕ
+   surface-1 В«РІС‹СЂРµР·Р°РµС‚В» Р±РµР№РґР¶ РёР· РёРєРѕРЅРєРё вЂ” С‡РёС‚Р°РµС‚СЃСЏ С‡РёСЃС‚Рѕ РЅР° Р»СЋР±РѕРј С„РѕРЅРµ. */
 .ec-count-badge {
   position: absolute;
   top: -2px;
@@ -1572,7 +1572,7 @@
   box-shadow: 0 0 0 2px var(--ec-surface-1);
 }
 
-/* --- Error banner (AppShell) — был module-level inline-объект. -- */
+/* --- Error banner (AppShell) вЂ” Р±С‹Р» module-level inline-РѕР±СЉРµРєС‚. -- */
 .ec-error-banner {
   padding: var(--ec-space-2) var(--ec-space-5);
   color: var(--ec-danger);
@@ -1581,13 +1581,13 @@
   font-size: var(--ec-text-sm);
 }
 
-/* --- Вынос inline-style консолей AppShell-каркаса в классы.
-   Только layout-свойства (декор surface'ов — за блоками выше). -- */
+/* --- Р’С‹РЅРѕСЃ inline-style РєРѕРЅСЃРѕР»РµР№ AppShell-РєР°СЂРєР°СЃР° РІ РєР»Р°СЃСЃС‹.
+   РўРѕР»СЊРєРѕ layout-СЃРІРѕР№СЃС‚РІР° (РґРµРєРѕСЂ surface'РѕРІ вЂ” Р·Р° Р±Р»РѕРєР°РјРё РІС‹С€Рµ). -- */
 
-/* v1.2.1 (R2) — каркас пересобран: полноширинный SaaS-топбар убран.
-   Слева — командный хребет (brandbar + channels = одна вертикаль),
-   над чатом — командный бар. Brandbar держит бренд + переключатель
-   пространств; cmdbar держит локацию (слева) и действия (справа). */
+/* v1.2.1 (R2) вЂ” РєР°СЂРєР°СЃ РїРµСЂРµСЃРѕР±СЂР°РЅ: РїРѕР»РЅРѕС€РёСЂРёРЅРЅС‹Р№ SaaS-С‚РѕРїР±Р°СЂ СѓР±СЂР°РЅ.
+   РЎР»РµРІР° вЂ” РєРѕРјР°РЅРґРЅС‹Р№ С…СЂРµР±РµС‚ (brandbar + channels = РѕРґРЅР° РІРµСЂС‚РёРєР°Р»СЊ),
+   РЅР°Рґ С‡Р°С‚РѕРј вЂ” РєРѕРјР°РЅРґРЅС‹Р№ Р±Р°СЂ. Brandbar РґРµСЂР¶РёС‚ Р±СЂРµРЅРґ + РїРµСЂРµРєР»СЋС‡Р°С‚РµР»СЊ
+   РїСЂРѕСЃС‚СЂР°РЅСЃС‚РІ; cmdbar РґРµСЂР¶РёС‚ Р»РѕРєР°С†РёСЋ (СЃР»РµРІР°) Рё РґРµР№СЃС‚РІРёСЏ (СЃРїСЂР°РІР°). */
 .ec-shell__brandbar {
   display: flex;
   align-items: center;
@@ -1609,8 +1609,8 @@
   flex-shrink: 0;
 }
 
-/* Локация — спокойный лейбл «где я» в cmdbar (заменил sci-fi
-   breadcrumb «УЗЕЛ //»). Пространство приглушено, канал — акцент. */
+/* Р›РѕРєР°С†РёСЏ вЂ” СЃРїРѕРєРѕР№РЅС‹Р№ Р»РµР№Р±Р» В«РіРґРµ СЏВ» РІ cmdbar (Р·Р°РјРµРЅРёР» sci-fi
+   breadcrumb В«РЈР—Р•Р› //В»). РџСЂРѕСЃС‚СЂР°РЅСЃС‚РІРѕ РїСЂРёРіР»СѓС€РµРЅРѕ, РєР°РЅР°Р» вЂ” Р°РєС†РµРЅС‚. */
 .ec-shell__loc {
   display: inline-flex;
   align-items: baseline;
@@ -1641,8 +1641,8 @@
 }
 .ec-shell__loc-hash { color: var(--ec-accent); }
 
-/* Бренд-кнопка «домой» — layout + типографика. Фон/бордер/hover —
-   в секции «Shell — поверхности» выше (v1.2.5 slice 7). */
+/* Р‘СЂРµРЅРґ-РєРЅРѕРїРєР° В«РґРѕРјРѕР№В» вЂ” layout + С‚РёРїРѕРіСЂР°С„РёРєР°. Р¤РѕРЅ/Р±РѕСЂРґРµСЂ/hover вЂ”
+   РІ СЃРµРєС†РёРё В«Shell вЂ” РїРѕРІРµСЂС…РЅРѕСЃС‚РёВ» РІС‹С€Рµ (v1.2.5 slice 7). */
 .ec-shell__brand-home {
   display: flex;
   flex-shrink: 0;
@@ -1668,7 +1668,7 @@
   transform: translateY(1px);
 }
 
-/* Профиль-чип в правой зоне топбара. */
+/* РџСЂРѕС„РёР»СЊ-С‡РёРї РІ РїСЂР°РІРѕР№ Р·РѕРЅРµ С‚РѕРїР±Р°СЂР°. */
 .ec-shell__user-chip {
   display: flex;
   align-items: center;
@@ -1684,10 +1684,10 @@
     transform var(--ec-dur-slow) var(--ec-ease);
 }
 
-/* «Оператор гаснет» — при наведении на logout-кнопку профиль-чип
-   обесцвечивается, тускнеет и слегка сжимается: сухой предпросмотр
-   собственного отсутствия. Зелёная presence-точка гаснет вместе
-   с аватаром (grayscale у родителя гасит её inline-цвет). */
+/* В«РћРїРµСЂР°С‚РѕСЂ РіР°СЃРЅРµС‚В» вЂ” РїСЂРё РЅР°РІРµРґРµРЅРёРё РЅР° logout-РєРЅРѕРїРєСѓ РїСЂРѕС„РёР»СЊ-С‡РёРї
+   РѕР±РµСЃС†РІРµС‡РёРІР°РµС‚СЃСЏ, С‚СѓСЃРєРЅРµРµС‚ Рё СЃР»РµРіРєР° СЃР¶РёРјР°РµС‚СЃСЏ: СЃСѓС…РѕР№ РїСЂРµРґРїСЂРѕСЃРјРѕС‚СЂ
+   СЃРѕР±СЃС‚РІРµРЅРЅРѕРіРѕ РѕС‚СЃСѓС‚СЃС‚РІРёСЏ. Р—РµР»С‘РЅР°СЏ presence-С‚РѕС‡РєР° РіР°СЃРЅРµС‚ РІРјРµСЃС‚Рµ
+   СЃ Р°РІР°С‚Р°СЂРѕРј (grayscale Сѓ СЂРѕРґРёС‚РµР»СЏ РіР°СЃРёС‚ РµС‘ inline-С†РІРµС‚). */
 .ec-shell__top-actions:has(.ec-logout-btn:hover) .ec-shell__user-chip {
   filter: grayscale(0.9) brightness(0.7);
   opacity: 0.5;
@@ -1699,13 +1699,13 @@
   }
 }
 
-/* Центральная колонка чата — вертикальный стек. */
+/* Р¦РµРЅС‚СЂР°Р»СЊРЅР°СЏ РєРѕР»РѕРЅРєР° С‡Р°С‚Р° вЂ” РІРµСЂС‚РёРєР°Р»СЊРЅС‹Р№ СЃС‚РµРє. */
 .ec-shell__chat {
   display: flex;
   flex-direction: column;
 }
 
-/* Заголовок чат-области. */
+/* Р—Р°РіРѕР»РѕРІРѕРє С‡Р°С‚-РѕР±Р»Р°СЃС‚Рё. */
 .ec-chat-header {
   display: flex;
   align-items: center;
@@ -1713,9 +1713,9 @@
   height: 48px;
   padding: 0 var(--ec-space-5);
 }
-/* Название канала — главный заголовок контент-области: читаемый
-   размер, естественный регистр, плотный трекинг (v1.1.80 слайс 4).
-   v1.2.5 slice 7 — типографика слита сюда из дубль-блока. */
+/* РќР°Р·РІР°РЅРёРµ РєР°РЅР°Р»Р° вЂ” РіР»Р°РІРЅС‹Р№ Р·Р°РіРѕР»РѕРІРѕРє РєРѕРЅС‚РµРЅС‚-РѕР±Р»Р°СЃС‚Рё: С‡РёС‚Р°РµРјС‹Р№
+   СЂР°Р·РјРµСЂ, РµСЃС‚РµСЃС‚РІРµРЅРЅС‹Р№ СЂРµРіРёСЃС‚СЂ, РїР»РѕС‚РЅС‹Р№ С‚СЂРµРєРёРЅРі (v1.1.80 СЃР»Р°Р№СЃ 4).
+   v1.2.5 slice 7 вЂ” С‚РёРїРѕРіСЂР°С„РёРєР° СЃР»РёС‚Р° СЃСЋРґР° РёР· РґСѓР±Р»СЊ-Р±Р»РѕРєР°. */
 .ec-chat-title {
   display: flex;
   min-width: 0;
@@ -1734,14 +1734,14 @@
 }
 
 /* ============================================================
- * v1.1.91 — Redesign slice 2: навигация (ServerSwitcher + ChannelList)
+ * v1.1.91 вЂ” Redesign slice 2: РЅР°РІРёРіР°С†РёСЏ (ServerSwitcher + ChannelList)
  * ============================================================
- * Вынос inline-консолей + JS-hover в классы. Все цвета — theme-aware
- * токены (важно: триггер ServerSwitcher'а раньше был на хардкоде
- * hsl(214 …) и ломался в SOLAR — теперь чинится).
+ * Р’С‹РЅРѕСЃ inline-РєРѕРЅСЃРѕР»РµР№ + JS-hover РІ РєР»Р°СЃСЃС‹. Р’СЃРµ С†РІРµС‚Р° вЂ” theme-aware
+ * С‚РѕРєРµРЅС‹ (РІР°Р¶РЅРѕ: С‚СЂРёРіРіРµСЂ ServerSwitcher'Р° СЂР°РЅСЊС€Рµ Р±С‹Р» РЅР° С…Р°СЂРґРєРѕРґРµ
+ * hsl(214 вЂ¦) Рё Р»РѕРјР°Р»СЃСЏ РІ SOLAR вЂ” С‚РµРїРµСЂСЊ С‡РёРЅРёС‚СЃСЏ).
  */
 
-/* --- Общий unread-бейдж (ChannelList + ServerSwitcher). --------- */
+/* --- РћР±С‰РёР№ unread-Р±РµР№РґР¶ (ChannelList + ServerSwitcher). --------- */
 .ec-unread-badge {
   flex-shrink: 0;
   min-width: 18px;
@@ -1855,7 +1855,7 @@
   color: var(--ec-text-dim);
   font-size: var(--ec-text-xs);
 }
-/* Пункт меню — единый язык: hover сдвигает строку, active-пункт — accent. */
+/* РџСѓРЅРєС‚ РјРµРЅСЋ вЂ” РµРґРёРЅС‹Р№ СЏР·С‹Рє: hover СЃРґРІРёРіР°РµС‚ СЃС‚СЂРѕРєСѓ, active-РїСѓРЅРєС‚ вЂ” accent. */
 .ec-srv-menu-row {
   display: flex;
   align-items: center;
@@ -1974,7 +1974,7 @@
   line-height: var(--ec-leading-normal);
 }
 
-/* Sidebar-табы (Каналы / Задачи / Данные). */
+/* Sidebar-С‚Р°Р±С‹ (РљР°РЅР°Р»С‹ / Р—Р°РґР°С‡Рё / Р”Р°РЅРЅС‹Рµ). */
 .ec-sidebar-tabs {
   position: relative;
   display: flex;
@@ -2021,7 +2021,7 @@
   text-transform: none;
 }
 
-/* Кнопка «+» рядом с секционным лейблом. */
+/* РљРЅРѕРїРєР° В«+В» СЂСЏРґРѕРј СЃ СЃРµРєС†РёРѕРЅРЅС‹Рј Р»РµР№Р±Р»РѕРј. */
 .ec-section-add {
   display: inline-grid;
   place-items: center;
@@ -2053,13 +2053,13 @@
   outline-offset: 1px;
 }
 
-/* Счётчик каналов в секционном лейбле (.ec-section-label уже flex). */
+/* РЎС‡С‘С‚С‡РёРє РєР°РЅР°Р»РѕРІ РІ СЃРµРєС†РёРѕРЅРЅРѕРј Р»РµР№Р±Р»Рµ (.ec-section-label СѓР¶Рµ flex). */
 .ec-channel-section__count {
   color: var(--ec-text-dim);
   font-feature-settings: "tnum";
 }
 
-/* Имя канала в строке. */
+/* РРјСЏ РєР°РЅР°Р»Р° РІ СЃС‚СЂРѕРєРµ. */
 .ec-channel-item__name {
   flex: 1;
   min-width: 0;
@@ -2068,8 +2068,8 @@
   white-space: nowrap;
 }
 
-/* Действия комнаты (mute / settings / delete) — проявляются на
-   hover/focus строки. Заменяет JS-toggle opacity по data-атрибуту. */
+/* Р”РµР№СЃС‚РІРёСЏ РєРѕРјРЅР°С‚С‹ (mute / settings / delete) вЂ” РїСЂРѕСЏРІР»СЏСЋС‚СЃСЏ РЅР°
+   hover/focus СЃС‚СЂРѕРєРё. Р—Р°РјРµРЅСЏРµС‚ JS-toggle opacity РїРѕ data-Р°С‚СЂРёР±СѓС‚Сѓ. */
 .ec-channel-action {
   width: 20px;
   height: 20px;
@@ -2110,7 +2110,7 @@
   background: var(--ec-danger-soft);
   color: var(--ec-danger);
 }
-/* Заглушённый канал — bell-off виден всегда (warn), не только на hover. */
+/* Р—Р°РіР»СѓС€С‘РЅРЅС‹Р№ РєР°РЅР°Р» вЂ” bell-off РІРёРґРµРЅ РІСЃРµРіРґР° (warn), РЅРµ С‚РѕР»СЊРєРѕ РЅР° hover. */
 .ec-channel-action--shown {
   opacity: 0.7;
   color: var(--ec-warn);
@@ -2118,11 +2118,11 @@
 .ec-channel-action--shown:hover { color: var(--ec-warn); }
 
 /* ============================================================
- * v1.1.92 — Redesign slice 3: центральная сцена (MessageList +
- * MessageInput). Inline-консоли в классы, JS-hover → CSS.
+ * v1.1.92 вЂ” Redesign slice 3: С†РµРЅС‚СЂР°Р»СЊРЅР°СЏ СЃС†РµРЅР° (MessageList +
+ * MessageInput). Inline-РєРѕРЅСЃРѕР»Рё РІ РєР»Р°СЃСЃС‹, JS-hover в†’ CSS.
  * ============================================================ */
 
-/* --- MessageList: каркас ленты -------------------------------- */
+/* --- MessageList: РєР°СЂРєР°СЃ Р»РµРЅС‚С‹ -------------------------------- */
 .ec-message-list-shell {
   flex: 1;
   min-height: 0;
@@ -2139,7 +2139,7 @@
   gap: 2px;
 }
 
-/* Разделитель дня. */
+/* Р Р°Р·РґРµР»РёС‚РµР»СЊ РґРЅСЏ. */
 .ec-msg-day {
   display: flex;
   align-items: center;
@@ -2160,7 +2160,7 @@
   opacity: 0.85;
 }
 
-/* --- Ряд сообщения ------------------------------------------- */
+/* --- Р СЏРґ СЃРѕРѕР±С‰РµРЅРёСЏ ------------------------------------------- */
 .ec-message-row {
   position: relative;
   display: grid;
@@ -2181,7 +2181,7 @@
   padding-left: 6px;
 }
 
-/* Время-«липучка» у сгруппированных сообщений — проявляется на hover. */
+/* Р’СЂРµРјСЏ-В«Р»РёРїСѓС‡РєР°В» Сѓ СЃРіСЂСѓРїРїРёСЂРѕРІР°РЅРЅС‹С… СЃРѕРѕР±С‰РµРЅРёР№ вЂ” РїСЂРѕСЏРІР»СЏРµС‚СЃСЏ РЅР° hover. */
 .ec-msg-sticky-time {
   font-family: var(--ec-font-mono);
   font-size: var(--ec-text-2xs);
@@ -2196,7 +2196,7 @@
   opacity: 1;
 }
 
-/* --- Floating action-toolbar сообщения ----------------------- */
+/* --- Floating action-toolbar СЃРѕРѕР±С‰РµРЅРёСЏ ----------------------- */
 .ec-message-actions {
   position: absolute;
   top: -10px;
@@ -2211,13 +2211,13 @@
   z-index: 2;
   transition: opacity var(--ec-dur-fast) var(--ec-ease);
 }
-/* Раскрытие — toolbar проявляется на hover/focus ряда (вместо JS). */
+/* Р Р°СЃРєСЂС‹С‚РёРµ вЂ” toolbar РїСЂРѕСЏРІР»СЏРµС‚СЃСЏ РЅР° hover/focus СЂСЏРґР° (РІРјРµСЃС‚Рѕ JS). */
 .ec-message-row:hover .ec-message-actions,
 .ec-message-row:focus-within .ec-message-actions {
   opacity: 1;
   pointer-events: auto;
 }
-/* Кнопка тулбара — единый icon-character + семантические тона. */
+/* РљРЅРѕРїРєР° С‚СѓР»Р±Р°СЂР° вЂ” РµРґРёРЅС‹Р№ icon-character + СЃРµРјР°РЅС‚РёС‡РµСЃРєРёРµ С‚РѕРЅР°. */
 .ec-msg-action {
   width: 26px;
   height: 26px;
@@ -2261,7 +2261,7 @@
   color: var(--ec-danger);
 }
 
-/* Тег «ошибка отправки». */
+/* РўРµРі В«РѕС€РёР±РєР° РѕС‚РїСЂР°РІРєРёВ». */
 .ec-msg-failed-tag {
   display: inline-flex;
   align-items: center;
@@ -2277,7 +2277,7 @@
   letter-spacing: var(--ec-tracking-wide);
 }
 
-/* Инлайн-редактирование сообщения. */
+/* РРЅР»Р°Р№РЅ-СЂРµРґР°РєС‚РёСЂРѕРІР°РЅРёРµ СЃРѕРѕР±С‰РµРЅРёСЏ. */
 .ec-msg-edit {
   display: flex;
   flex-direction: column;
@@ -2304,19 +2304,19 @@
   align-items: center;
 }
 
-/* Интерактивные «таблетки» под сообщением (реакции, тред, action-items)
-   — единый hover-подъём вместо JS-обработчиков. */
+/* РРЅС‚РµСЂР°РєС‚РёРІРЅС‹Рµ В«С‚Р°Р±Р»РµС‚РєРёВ» РїРѕРґ СЃРѕРѕР±С‰РµРЅРёРµРј (СЂРµР°РєС†РёРё, С‚СЂРµРґ, action-items)
+   вЂ” РµРґРёРЅС‹Р№ hover-РїРѕРґСЉС‘Рј РІРјРµСЃС‚Рѕ JS-РѕР±СЂР°Р±РѕС‚С‡РёРєРѕРІ. */
 .ec-msg-pill {
   transition: transform var(--ec-dur-fast) var(--ec-ease);
 }
 .ec-msg-pill:hover { transform: translateY(-1px); }
 .ec-msg-pill:active { transform: translateY(0) scale(0.98); }
 
-/* --- MessageInput: композер ---------------------------------- */
+/* --- MessageInput: РєРѕРјРїРѕР·РµСЂ ---------------------------------- */
 .ec-composer {
   padding: var(--ec-space-3) var(--ec-space-5) var(--ec-space-4);
 }
-/* Drag-over — violet-ring (фон композера под !important, ring надёжнее). */
+/* Drag-over вЂ” violet-ring (С„РѕРЅ РєРѕРјРїРѕР·РµСЂР° РїРѕРґ !important, ring РЅР°РґС‘Р¶РЅРµРµ). */
 .ec-composer.is-drag {
   box-shadow: inset 0 0 0 2px var(--ec-border-accent);
 }
@@ -2347,7 +2347,7 @@
   max-height: 200px;
   overflow-y: auto;
 }
-/* Иконочные кнопки композера (attach / voice). */
+/* РРєРѕРЅРѕС‡РЅС‹Рµ РєРЅРѕРїРєРё РєРѕРјРїРѕР·РµСЂР° (attach / voice). */
 .ec-composer-icon-btn {
   width: 28px;
   height: 28px;
@@ -2376,7 +2376,7 @@
   cursor: not-allowed;
 }
 
-/* Emoji-picker композера — popover с табами категорий + grid. */
+/* Emoji-picker РєРѕРјРїРѕР·РµСЂР° вЂ” popover СЃ С‚Р°Р±Р°РјРё РєР°С‚РµРіРѕСЂРёР№ + grid. */
 .ec-emoji-picker {
   width: 320px;
   max-width: calc(100vw - 16px);
@@ -2490,7 +2490,7 @@
   line-height: 1.6;
 }
 .ec-composer-hints__sep { color: var(--ec-border-emphasis); }
-/* TLS-индикатор — честная метка транспорта (см. v1.1.90). */
+/* TLS-РёРЅРґРёРєР°С‚РѕСЂ вЂ” С‡РµСЃС‚РЅР°СЏ РјРµС‚РєР° С‚СЂР°РЅСЃРїРѕСЂС‚Р° (СЃРј. v1.1.90). */
 .ec-composer-tls {
   margin-left: auto;
   display: inline-flex;
@@ -2510,7 +2510,7 @@
   box-shadow: 0 0 6px var(--ec-accent);
 }
 
-/* Operator-strip над композером (см. v1.1.90 — оставлен как identity). */
+/* Operator-strip РЅР°Рґ РєРѕРјРїРѕР·РµСЂРѕРј (СЃРј. v1.1.90 вЂ” РѕСЃС‚Р°РІР»РµРЅ РєР°Рє identity). */
 .ec-composer-strip {
   display: flex;
   align-items: center;
@@ -2538,7 +2538,7 @@
   text-transform: uppercase;
 }
 
-/* Slash-command подсказка. */
+/* Slash-command РїРѕРґСЃРєР°Р·РєР°. */
 .ec-slash-hint {
   display: flex;
   flex-direction: column;
@@ -2573,7 +2573,7 @@
   color: var(--ec-text-muted);
 }
 
-/* Превью вложений в композере. */
+/* РџСЂРµРІСЊСЋ РІР»РѕР¶РµРЅРёР№ РІ РєРѕРјРїРѕР·РµСЂРµ. */
 .ec-composer-previews {
   display: flex;
   flex-wrap: wrap;
@@ -2644,11 +2644,11 @@
 }
 
 /* ============================================================
- * v1.1.93 — Redesign slice 4: правый rail (IntelligencePanel /
- * MemberList / ThreadPanel). Inline-консоли в классы, JS-hover → CSS.
+ * v1.1.93 вЂ” Redesign slice 4: РїСЂР°РІС‹Р№ rail (IntelligencePanel /
+ * MemberList / ThreadPanel). Inline-РєРѕРЅСЃРѕР»Рё РІ РєР»Р°СЃСЃС‹, JS-hover в†’ CSS.
  * ============================================================ */
 
-/* --- Каркас rail-панели -------------------------------------- */
+/* --- РљР°СЂРєР°СЃ rail-РїР°РЅРµР»Рё -------------------------------------- */
 .ec-rail {
   width: 100%;
   height: 100%;
@@ -2665,7 +2665,7 @@
   padding: var(--ec-space-3);
   background: var(--ec-overlay-header-bg);
 }
-/* Спокойный section-eyebrow — НЕ «терминальный крик» (0.18em mono 700). */
+/* РЎРїРѕРєРѕР№РЅС‹Р№ section-eyebrow вЂ” РќР• В«С‚РµСЂРјРёРЅР°Р»СЊРЅС‹Р№ РєСЂРёРєВ» (0.18em mono 700). */
 .ec-rail__title {
   display: inline-flex;
   align-items: center;
@@ -2738,8 +2738,8 @@
   color: var(--ec-danger);
   font-size: var(--ec-text-sm);
 }
-/* Строка участника — спокойный hover-tint (без подъёма, ровное
-   сканирование списка); DM-кнопка проявляется на hover/focus. */
+/* РЎС‚СЂРѕРєР° СѓС‡Р°СЃС‚РЅРёРєР° вЂ” СЃРїРѕРєРѕР№РЅС‹Р№ hover-tint (Р±РµР· РїРѕРґСЉС‘РјР°, СЂРѕРІРЅРѕРµ
+   СЃРєР°РЅРёСЂРѕРІР°РЅРёРµ СЃРїРёСЃРєР°); DM-РєРЅРѕРїРєР° РїСЂРѕСЏРІР»СЏРµС‚СЃСЏ РЅР° hover/focus. */
 .ec-member-row {
   display: grid;
   grid-template-columns: auto 1fr auto auto;
@@ -2810,7 +2810,7 @@
   outline: 2px solid var(--ec-border-accent);
   outline-offset: 1px;
 }
-/* Группа section-label'а (точка + текст). */
+/* Р“СЂСѓРїРїР° section-label'Р° (С‚РѕС‡РєР° + С‚РµРєСЃС‚). */
 .ec-section-label__group {
   display: inline-flex;
   align-items: center;
@@ -2899,11 +2899,11 @@
 .ec-thread-reply--pending { opacity: 0.7; }
 
 /* ============================================================
- * v1.1.94 — Redesign slice 5: overlays (Modal база + ChannelInfoPanel).
- * Inline-консоли в классы, JS-hover → CSS.
+ * v1.1.94 вЂ” Redesign slice 5: overlays (Modal Р±Р°Р·Р° + ChannelInfoPanel).
+ * Inline-РєРѕРЅСЃРѕР»Рё РІ РєР»Р°СЃСЃС‹, JS-hover в†’ CSS.
  * ============================================================ */
 
-/* --- Modal (база — её используют все модалки) ---------------- */
+/* --- Modal (Р±Р°Р·Р° вЂ” РµС‘ РёСЃРїРѕР»СЊР·СѓСЋС‚ РІСЃРµ РјРѕРґР°Р»РєРё) ---------------- */
 .ec-modal-backdrop {
   position: fixed;
   inset: 0;
@@ -3065,7 +3065,7 @@
   background: var(--ec-surface-1);
 }
 
-/* --- ChannelInfoPanel (выезжает из chat-header) -------------- */
+/* --- ChannelInfoPanel (РІС‹РµР·Р¶Р°РµС‚ РёР· chat-header) -------------- */
 .ec-channel-info-panel {
   flex: 0 0 auto;
   display: flex;
@@ -3093,7 +3093,7 @@
   margin-left: auto;
   align-self: center;
 }
-/* Таб инфо-панели — спокойный eyebrow (не mono-«крик» 0.16em). */
+/* РўР°Р± РёРЅС„Рѕ-РїР°РЅРµР»Рё вЂ” СЃРїРѕРєРѕР№РЅС‹Р№ eyebrow (РЅРµ mono-В«РєСЂРёРєВ» 0.16em). */
 .ec-info-tab {
   display: inline-flex;
   align-items: center;
@@ -3132,8 +3132,8 @@
 }
 
 /* ============================================================
- * v1.1.95 — Redesign slice 6: SearchOverlay. Inline-консоли в
- * классы, JS-hover hit-row → CSS.
+ * v1.1.95 вЂ” Redesign slice 6: SearchOverlay. Inline-РєРѕРЅСЃРѕР»Рё РІ
+ * РєР»Р°СЃСЃС‹, JS-hover hit-row в†’ CSS.
  * ============================================================ */
 .ec-search-overlay {
   position: fixed;
@@ -3187,7 +3187,7 @@
   padding: var(--ec-space-2) var(--ec-space-3) 0;
   border-bottom: 1px solid var(--ec-border-subtle);
 }
-/* Таб поиска — спокойный sans-eyebrow (не mono-«крик» 0.14em). */
+/* РўР°Р± РїРѕРёСЃРєР° вЂ” СЃРїРѕРєРѕР№РЅС‹Р№ sans-eyebrow (РЅРµ mono-В«РєСЂРёРєВ» 0.14em). */
 .ec-search-tab {
   display: inline-flex;
   align-items: center;
@@ -3248,7 +3248,7 @@
   color: var(--ec-text-dim);
 }
 .ec-search-hint--error { color: var(--ec-danger); }
-/* Hit-строка — единый hover-tint вместо JS-обработчиков. */
+/* Hit-СЃС‚СЂРѕРєР° вЂ” РµРґРёРЅС‹Р№ hover-tint РІРјРµСЃС‚Рѕ JS-РѕР±СЂР°Р±РѕС‚С‡РёРєРѕРІ. */
 .ec-search-hit {
   display: grid;
   grid-template-columns: 32px 1fr auto;
@@ -3271,8 +3271,8 @@
 }
 
 /* ============================================================
- * v1.1.96 — Redesign slice 7: ServerHubModal. 12 inline-консолей
- * в классы .ec-hub-* (JS-hover в этом компоненте не было).
+ * v1.1.96 вЂ” Redesign slice 7: ServerHubModal. 12 inline-РєРѕРЅСЃРѕР»РµР№
+ * РІ РєР»Р°СЃСЃС‹ .ec-hub-* (JS-hover РІ СЌС‚РѕРј РєРѕРјРїРѕРЅРµРЅС‚Рµ РЅРµ Р±С‹Р»Рѕ).
  * ============================================================ */
 .ec-hub-tabs {
   display: flex;
@@ -3283,7 +3283,7 @@
   border: 1px solid var(--ec-border-subtle);
   border-radius: var(--ec-radius-md);
 }
-/* Таб-пилл хаба — active заливается accent'ом. */
+/* РўР°Р±-РїРёР»Р» С…Р°Р±Р° вЂ” active Р·Р°Р»РёРІР°РµС‚СЃСЏ accent'РѕРј. */
 .ec-hub-tab {
   flex: 1;
   padding: 0.55rem 0.8rem;
@@ -3402,9 +3402,9 @@
   cursor: pointer;
 }
 
-/* --- Оформление → цвет акцента: пресет-свотчи + HSL-тюнер.
-   v1.1.99 — вынос inline-консолей секции в классы (был drift).
-   Свотч несёт цвет пресета через --sw (динамика — допустимо). --- */
+/* --- РћС„РѕСЂРјР»РµРЅРёРµ в†’ С†РІРµС‚ Р°РєС†РµРЅС‚Р°: РїСЂРµСЃРµС‚-СЃРІРѕС‚С‡Рё + HSL-С‚СЋРЅРµСЂ.
+   v1.1.99 вЂ” РІС‹РЅРѕСЃ inline-РєРѕРЅСЃРѕР»РµР№ СЃРµРєС†РёРё РІ РєР»Р°СЃСЃС‹ (Р±С‹Р» drift).
+   РЎРІРѕС‚С‡ РЅРµСЃС‘С‚ С†РІРµС‚ РїСЂРµСЃРµС‚Р° С‡РµСЂРµР· --sw (РґРёРЅР°РјРёРєР° вЂ” РґРѕРїСѓСЃС‚РёРјРѕ). --- */
 .ec-hub-swatch-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(74px, 1fr));
@@ -3494,910 +3494,3 @@
   gap: var(--ec-space-2);
 }
 
-/* ===== Landing ============================================== */
-
-.ec-landing {
-  position: relative;
-  min-height: 100vh;
-  min-height: 100dvh;
-  padding:
-    max(20px, env(safe-area-inset-top))
-    clamp(18px, 4vw, 44px)
-    max(28px, env(safe-area-inset-bottom));
-  display: grid;
-  gap: clamp(28px, 4vw, 56px);
-  color: var(--ec-text-strong);
-  overflow: hidden;
-  isolation: isolate;
-  background:
-    radial-gradient(circle at 18% 18%, hsl(258 92% 62% / 0.16), transparent 28%),
-    radial-gradient(circle at 84% 20%, hsl(38 94% 64% / 0.12), transparent 18%),
-    radial-gradient(circle at 50% 84%, hsl(192 82% 58% / 0.1), transparent 24%),
-    linear-gradient(180deg, hsl(230 24% 8%), hsl(224 24% 4%) 58%, hsl(230 30% 3%) 100%);
-}
-
-.ec-landing::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(90deg, hsl(258 80% 66% / 0.08) 1px, transparent 1px),
-    linear-gradient(hsl(258 80% 66% / 0.06) 1px, transparent 1px);
-  background-size: 118px 118px, 118px 118px;
-  mask-image: linear-gradient(180deg, hsl(0 0% 100% / 0.86), transparent 88%);
-  pointer-events: none;
-  opacity: 0.34;
-}
-
-.ec-landing__galaxy {
-  position: absolute;
-  right: clamp(-160px, -12vw, -96px);
-  top: clamp(120px, 18vw, 220px);
-  opacity: 0.9;
-  transform: scale(1.08);
-  pointer-events: none;
-}
-
-.ec-landing__mesh {
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(circle at center, hsl(258 76% 66% / 0.14), transparent 44%),
-    linear-gradient(125deg, transparent 12%, hsl(0 0% 100% / 0.03) 48%, transparent 68%);
-  pointer-events: none;
-  opacity: 0.82;
-}
-
-.ec-landing__nav,
-.ec-landing__hero,
-.ec-landing__surfaces,
-.ec-landing__flow,
-.ec-landing__cta-band {
-  position: relative;
-  z-index: 1;
-}
-
-.ec-landing__nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18px;
-  width: min(1320px, 100%);
-  margin: 0 auto;
-  padding: 16px 18px;
-  border: 1px solid hsl(0 0% 100% / 0.1);
-  border-radius: 28px;
-  background:
-    linear-gradient(180deg, hsl(226 24% 12% / 0.84), hsl(224 24% 8% / 0.72));
-  box-shadow:
-    0 26px 60px -42px hsl(230 62% 2% / 0.96),
-    inset 0 1px 0 hsl(0 0% 100% / 0.08);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-}
-
-.ec-landing__brand {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  min-width: 0;
-}
-
-.ec-landing__brand-mark {
-  position: relative;
-  width: 56px;
-  height: 56px;
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-  border-radius: 18px;
-  border: 1px solid hsl(258 90% 76% / 0.22);
-  background:
-    radial-gradient(circle at 40% 35%, hsl(258 100% 86% / 0.18), transparent 38%),
-    linear-gradient(180deg, hsl(254 50% 12%), hsl(240 42% 8%));
-  box-shadow:
-    0 14px 36px -20px hsl(258 90% 62% / 0.72),
-    inset 0 1px 0 hsl(0 0% 100% / 0.14);
-}
-
-.ec-landing__brand-mark::after {
-  content: "";
-  position: absolute;
-  inset: -8px;
-  border-radius: 22px;
-  background: radial-gradient(circle, hsl(258 90% 66% / 0.22), transparent 70%);
-  filter: blur(12px);
-  z-index: -1;
-}
-
-.ec-landing__brand-mark img {
-  width: 36px;
-  height: 36px;
-  object-fit: contain;
-  filter: drop-shadow(0 0 10px hsl(258 90% 66% / 0.45));
-}
-
-.ec-landing__brand-copy {
-  display: grid;
-  gap: 3px;
-}
-
-.ec-landing__brand-copy strong {
-  font-size: 0.95rem;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-}
-
-.ec-landing__brand-copy span {
-  color: hsl(225 16% 68%);
-  font-size: 0.84rem;
-  line-height: 1.45;
-}
-
-.ec-landing__nav-actions,
-.ec-landing__hero-actions,
-.ec-landing__cta-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.ec-landing-btn {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 60px;
-  padding: 0 24px;
-  border: 1px solid transparent;
-  border-radius: 999px;
-  color: var(--ec-text-strong);
-  font: inherit;
-  font-size: 0.86rem;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  cursor: pointer;
-  user-select: none;
-  overflow: hidden;
-  touch-action: manipulation;
-  transition:
-    transform 180ms ease,
-    border-color 180ms ease,
-    box-shadow 180ms ease,
-    filter 180ms ease,
-    background 180ms ease;
-}
-
-.ec-landing-btn::before {
-  content: "";
-  position: absolute;
-  inset: 1px;
-  border-radius: inherit;
-  background: linear-gradient(180deg, hsl(0 0% 100% / 0.12), transparent 32%);
-  pointer-events: none;
-}
-
-.ec-landing-btn:hover {
-  transform: translateY(-2px);
-}
-
-.ec-landing-btn:active {
-  transform: translateY(0) scale(0.987);
-}
-
-.ec-landing-btn:focus-visible {
-  outline: 2px solid hsl(258 96% 76%);
-  outline-offset: 3px;
-}
-
-.ec-landing-btn--primary {
-  background:
-    linear-gradient(180deg, hsl(263 90% 62%), hsl(255 82% 46%));
-  box-shadow:
-    0 22px 34px -22px hsl(258 90% 60% / 0.9),
-    inset 0 -12px 22px hsl(248 66% 26% / 0.42),
-    inset 0 1px 0 hsl(0 0% 100% / 0.22);
-}
-
-.ec-landing-btn--primary:hover {
-  filter: brightness(1.06);
-  box-shadow:
-    0 28px 42px -24px hsl(258 90% 60% / 0.94),
-    0 0 28px -10px hsl(268 100% 72% / 0.62),
-    inset 0 -12px 22px hsl(248 66% 26% / 0.42),
-    inset 0 1px 0 hsl(0 0% 100% / 0.24);
-}
-
-.ec-landing-btn--secondary {
-  background:
-    linear-gradient(180deg, hsl(224 22% 15% / 0.96), hsl(223 24% 10% / 0.96));
-  border-color: hsl(192 88% 66% / 0.24);
-  color: hsl(192 88% 80%);
-  box-shadow:
-    inset 0 1px 0 hsl(0 0% 100% / 0.08),
-    0 18px 34px -24px hsl(192 86% 56% / 0.34);
-}
-
-.ec-landing-btn--secondary:hover {
-  border-color: hsl(192 88% 72% / 0.42);
-  box-shadow:
-    inset 0 1px 0 hsl(0 0% 100% / 0.1),
-    0 22px 38px -24px hsl(192 86% 56% / 0.42),
-    0 0 24px -12px hsl(192 96% 66% / 0.46);
-}
-
-.ec-landing-btn--ghost {
-  background:
-    linear-gradient(180deg, hsl(224 24% 16% / 0.76), hsl(224 24% 11% / 0.76));
-  border-color: hsl(0 0% 100% / 0.1);
-  color: hsl(225 18% 84%);
-  box-shadow:
-    inset 0 1px 0 hsl(0 0% 100% / 0.06),
-    0 16px 30px -26px hsl(230 55% 2% / 0.9);
-}
-
-.ec-landing-btn--ghost:hover {
-  border-color: hsl(258 88% 74% / 0.28);
-  color: var(--ec-text-strong);
-  box-shadow:
-    inset 0 1px 0 hsl(0 0% 100% / 0.08),
-    0 20px 34px -26px hsl(230 55% 2% / 0.96),
-    0 0 24px -14px hsl(258 88% 68% / 0.38);
-}
-
-.ec-landing__hero {
-  width: min(1320px, 100%);
-  margin: 0 auto;
-  display: grid;
-  grid-template-columns: minmax(0, 1.04fr) minmax(460px, 0.96fr);
-  gap: clamp(28px, 4vw, 56px);
-  align-items: center;
-}
-
-.ec-landing__hero-copy {
-  display: grid;
-  gap: 22px;
-  max-width: 700px;
-}
-
-.ec-landing__kicker {
-  color: hsl(258 90% 74%);
-  font-size: 0.76rem;
-  font-weight: 700;
-  letter-spacing: 0.28em;
-  text-transform: uppercase;
-}
-
-.ec-landing__hero-copy h1,
-.ec-landing__section-copy h2,
-.ec-landing__cta-band h2 {
-  margin: 0;
-  text-wrap: balance;
-  line-height: 0.96;
-}
-
-.ec-landing__hero-copy h1 {
-  font-size: clamp(3.2rem, 7vw, 6.1rem);
-  letter-spacing: -0.05em;
-  max-width: 12ch;
-}
-
-.ec-landing__hero-copy p,
-.ec-landing__section-copy p,
-.ec-landing-flow-card p,
-.ec-landing-surface p {
-  margin: 0;
-  color: hsl(225 15% 73%);
-  font-size: clamp(1rem, 1.4vw, 1.14rem);
-  line-height: 1.72;
-}
-
-.ec-landing__lane-row {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.ec-landing__lane-chip {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  padding: 0 16px;
-  border-radius: 999px;
-  border: 1px solid hsl(0 0% 100% / 0.1);
-  background:
-    linear-gradient(180deg, hsl(226 22% 14% / 0.82), hsl(224 24% 10% / 0.82));
-  color: hsl(225 18% 84%);
-  font-size: 0.8rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.06);
-}
-
-.ec-landing__hero-stage {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.ec-landing-stage {
-  position: relative;
-  width: min(100%, 580px);
-  padding: 24px 24px 28px;
-  border-radius: 38px;
-  border: 1px solid hsl(258 90% 78% / 0.16);
-  background:
-    radial-gradient(circle at top left, hsl(258 90% 72% / 0.16), transparent 24%),
-    linear-gradient(180deg, hsl(226 26% 12% / 0.9), hsl(225 28% 7% / 0.84));
-  box-shadow:
-    0 38px 80px -46px hsl(240 58% 2% / 1),
-    0 0 0 1px hsl(258 88% 72% / 0.06),
-    inset 0 1px 0 hsl(0 0% 100% / 0.08);
-  transform: perspective(1800px) rotateX(10deg) rotateY(-14deg);
-  transform-style: preserve-3d;
-}
-
-.ec-landing-stage--auth {
-  width: min(100%, 680px);
-  padding: 18px 18px 22px;
-  transform: perspective(1800px) rotateX(5deg) rotateY(-5deg);
-}
-
-.ec-landing-stage::before {
-  content: "";
-  position: absolute;
-  inset: 18px;
-  border-radius: 28px;
-  border: 1px solid hsl(0 0% 100% / 0.06);
-  pointer-events: none;
-}
-
-.ec-landing-stage::after {
-  content: "";
-  position: absolute;
-  inset: auto 44px -18px;
-  height: 34px;
-  border-radius: 50%;
-  background: radial-gradient(circle, hsl(258 90% 60% / 0.28), transparent 72%);
-  filter: blur(18px);
-  pointer-events: none;
-}
-
-.ec-landing-stage__hud {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 22px;
-  color: hsl(225 15% 62%);
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-}
-
-.ec-landing-stage__hud-action {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 44px;
-  padding: 0 16px;
-  border: 1px solid hsl(0 0% 100% / 0.1);
-  border-radius: 999px;
-  background:
-    linear-gradient(180deg, hsl(226 22% 16% / 0.86), hsl(223 24% 10% / 0.9));
-  color: hsl(0 0% 100% / 0.88);
-  font: inherit;
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  cursor: pointer;
-  touch-action: manipulation;
-  box-shadow:
-    0 16px 34px -28px hsl(230 52% 2% / 0.94),
-    inset 0 1px 0 hsl(0 0% 100% / 0.08);
-  transition:
-    transform 180ms ease,
-    border-color 180ms ease,
-    box-shadow 180ms ease,
-    color 180ms ease;
-}
-
-.ec-landing-stage__hud-action:hover {
-  transform: translateY(-1px);
-  border-color: hsl(258 92% 74% / 0.26);
-  color: hsl(258 94% 84%);
-  box-shadow:
-    0 20px 40px -28px hsl(230 52% 2% / 0.96),
-    0 0 24px -18px hsl(258 92% 66% / 0.5),
-    inset 0 1px 0 hsl(0 0% 100% / 0.1);
-}
-
-.ec-landing-stage__hud-action:focus-visible {
-  outline: 2px solid hsl(258 94% 78%);
-  outline-offset: 3px;
-}
-
-.ec-landing-stage__auth {
-  display: grid;
-  gap: 18px;
-}
-
-.ec-landing-stage__auth-copy {
-  display: grid;
-  gap: 8px;
-  padding: 0 8px;
-}
-
-.ec-landing-stage__auth-copy strong {
-  font-size: 1.18rem;
-  line-height: 1.14;
-  color: hsl(0 0% 100% / 0.96);
-}
-
-.ec-landing-stage__auth-copy p {
-  margin: 0;
-  color: hsl(225 16% 72%);
-  font-size: 0.94rem;
-  line-height: 1.6;
-}
-
-.ec-landing-stage__frame {
-  position: relative;
-  min-height: 228px;
-  margin-bottom: 22px;
-  border-radius: 30px;
-  border: 1px solid hsl(0 0% 100% / 0.08);
-  background:
-    radial-gradient(circle at 50% 44%, hsl(258 90% 70% / 0.12), transparent 24%),
-    linear-gradient(180deg, hsl(223 28% 11% / 0.92), hsl(221 28% 7% / 0.94));
-  box-shadow:
-    inset 0 1px 0 hsl(0 0% 100% / 0.08),
-    inset 0 -44px 64px hsl(230 58% 3% / 0.44);
-  overflow: hidden;
-}
-
-.ec-landing-stage__ring,
-.ec-landing-stage__beam {
-  position: absolute;
-  pointer-events: none;
-}
-
-.ec-landing-stage__ring {
-  inset: 32px;
-  border-radius: 50%;
-  border: 1px solid hsl(258 80% 66% / 0.18);
-  box-shadow:
-    0 0 0 14px hsl(258 80% 66% / 0.05),
-    0 0 0 34px hsl(192 86% 58% / 0.04);
-}
-
-.ec-landing-stage__core {
-  position: absolute;
-  inset: 50%;
-  width: 132px;
-  height: 132px;
-  display: grid;
-  place-items: center;
-  border-radius: 34px;
-  transform: translate(-50%, -50%);
-  border: 1px solid hsl(258 90% 78% / 0.2);
-  background:
-    radial-gradient(circle at 42% 32%, hsl(258 100% 88% / 0.18), transparent 34%),
-    linear-gradient(180deg, hsl(254 54% 14%), hsl(239 48% 8%));
-  box-shadow:
-    0 24px 44px -24px hsl(258 92% 56% / 0.82),
-    inset 0 1px 0 hsl(0 0% 100% / 0.12);
-}
-
-.ec-landing-stage__core img {
-  width: 80px;
-  height: 80px;
-  object-fit: contain;
-  filter: drop-shadow(0 0 14px hsl(258 92% 68% / 0.46));
-}
-
-.ec-landing-stage__beam {
-  inset: auto 0 18px 0;
-  height: 110px;
-  background:
-    linear-gradient(180deg, transparent, hsl(258 96% 62% / 0.12) 60%, transparent),
-    radial-gradient(circle at center bottom, hsl(258 96% 62% / 0.2), transparent 64%);
-  filter: blur(10px);
-}
-
-.ec-landing-stage__board {
-  position: relative;
-  padding: 20px;
-  border-radius: 28px;
-  border: 1px solid hsl(0 0% 100% / 0.08);
-  background:
-    linear-gradient(180deg, hsl(224 26% 13% / 0.94), hsl(223 28% 9% / 0.96));
-  box-shadow:
-    inset 0 1px 0 hsl(0 0% 100% / 0.06),
-    inset 0 -24px 42px hsl(230 56% 3% / 0.38);
-}
-
-.ec-landing-stage__board-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 18px;
-  flex-wrap: wrap;
-}
-
-.ec-landing-stage__board-pill,
-.ec-landing-stage__board-status {
-  display: inline-flex;
-  align-items: center;
-  min-height: 38px;
-  padding: 0 14px;
-  border-radius: 999px;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-
-.ec-landing-stage__board-pill {
-  background: hsl(258 94% 68% / 0.14);
-  color: hsl(258 96% 78%);
-  border: 1px solid hsl(258 90% 74% / 0.18);
-}
-
-.ec-landing-stage__board-status {
-  background: hsl(150 70% 44% / 0.12);
-  color: hsl(150 80% 72%);
-  border: 1px solid hsl(150 70% 44% / 0.18);
-}
-
-.ec-landing-stage__board-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
-}
-
-.ec-landing-stage__module {
-  min-height: 148px;
-  padding: 18px;
-  display: grid;
-  align-content: start;
-  gap: 12px;
-  border-radius: 22px;
-  border: 1px solid hsl(0 0% 100% / 0.08);
-  background:
-    linear-gradient(180deg, hsl(225 24% 14% / 0.96), hsl(223 26% 10% / 0.96));
-  box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.05);
-}
-
-.ec-landing-stage__module small {
-  color: hsl(225 15% 60%);
-  font-size: 0.66rem;
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-}
-
-.ec-landing-stage__module strong,
-.ec-landing-surface strong,
-.ec-landing-flow-card strong {
-  font-size: 1.18rem;
-  line-height: 1.15;
-}
-
-.ec-landing-stage__module span {
-  color: hsl(225 16% 70%);
-  font-size: 0.92rem;
-  line-height: 1.58;
-}
-
-.ec-landing-stage__module--voice {
-  box-shadow:
-    inset 0 1px 0 hsl(0 0% 100% / 0.05),
-    0 0 0 1px hsl(192 90% 66% / 0.06);
-}
-
-.ec-landing-stage__module--ops {
-  box-shadow:
-    inset 0 1px 0 hsl(0 0% 100% / 0.05),
-    0 0 0 1px hsl(42 90% 66% / 0.06);
-}
-
-.ec-landing-stage__module--memory {
-  box-shadow:
-    inset 0 1px 0 hsl(0 0% 100% / 0.05),
-    0 0 0 1px hsl(258 90% 66% / 0.08);
-}
-
-.ec-landing__surfaces,
-.ec-landing__flow-grid {
-  width: min(1320px, 100%);
-  margin: 0 auto;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 18px;
-}
-
-.ec-landing-surface,
-.ec-landing-flow-card,
-.ec-landing__cta-band,
-.ec-landing__flow {
-  border: 1px solid hsl(0 0% 100% / 0.08);
-  background:
-    linear-gradient(180deg, hsl(225 22% 13% / 0.84), hsl(223 24% 9% / 0.82));
-  box-shadow:
-    0 28px 58px -42px hsl(230 60% 2% / 0.96),
-    inset 0 1px 0 hsl(0 0% 100% / 0.06);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-}
-
-.ec-landing-surface {
-  position: relative;
-  min-height: 240px;
-  padding: 26px;
-  display: grid;
-  align-content: start;
-  gap: 16px;
-  border-radius: 30px;
-}
-
-.ec-landing-surface__icon {
-  width: 60px;
-  height: 60px;
-  display: grid;
-  place-items: center;
-  border-radius: 18px;
-  border: 1px solid hsl(0 0% 100% / 0.08);
-  background:
-    linear-gradient(180deg, hsl(224 24% 18% / 0.94), hsl(223 26% 12% / 0.94));
-}
-
-.ec-landing-surface__icon svg {
-  width: 26px;
-  height: 26px;
-}
-
-.ec-landing-surface--voice .ec-landing-surface__icon,
-.ec-landing-surface--voice {
-  box-shadow:
-    0 26px 48px -36px hsl(192 88% 54% / 0.28),
-    inset 0 1px 0 hsl(0 0% 100% / 0.06);
-}
-
-.ec-landing-surface--voice .ec-landing-surface__icon {
-  color: hsl(192 88% 72%);
-}
-
-.ec-landing-surface--ops .ec-landing-surface__icon,
-.ec-landing-surface--ops {
-  box-shadow:
-    0 26px 48px -36px hsl(42 92% 58% / 0.24),
-    inset 0 1px 0 hsl(0 0% 100% / 0.06);
-}
-
-.ec-landing-surface--ops .ec-landing-surface__icon {
-  color: hsl(42 92% 68%);
-}
-
-.ec-landing-surface--memory .ec-landing-surface__icon,
-.ec-landing-surface--memory {
-  box-shadow:
-    0 26px 48px -36px hsl(258 88% 60% / 0.3),
-    inset 0 1px 0 hsl(0 0% 100% / 0.06);
-}
-
-.ec-landing-surface--memory .ec-landing-surface__icon {
-  color: hsl(258 92% 76%);
-}
-
-.ec-landing__flow {
-  width: min(1320px, 100%);
-  margin: 0 auto;
-  padding: 28px;
-  display: grid;
-  gap: 24px;
-  border-radius: 34px;
-}
-
-.ec-landing__section-copy {
-  display: grid;
-  gap: 16px;
-  max-width: 880px;
-}
-
-.ec-landing__section-copy h2,
-.ec-landing__cta-band h2 {
-  font-size: clamp(2.1rem, 4vw, 3.4rem);
-  letter-spacing: -0.04em;
-}
-
-.ec-landing-flow-card {
-  min-height: 220px;
-  padding: 24px;
-  display: grid;
-  align-content: start;
-  gap: 16px;
-  border-radius: 28px;
-}
-
-.ec-landing-flow-card__label {
-  color: hsl(258 96% 78%);
-  font-size: 0.74rem;
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-}
-
-.ec-landing__cta-band {
-  width: min(1320px, 100%);
-  margin: 0 auto;
-  padding: 30px;
-  border-radius: 34px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 22px;
-}
-
-.ec-landing__cta-band > div:first-child {
-  display: grid;
-  gap: 12px;
-  max-width: 760px;
-}
-
-@media (max-width: 1120px) {
-  .ec-landing__hero {
-    grid-template-columns: 1fr;
-  }
-
-  .ec-landing__hero-stage {
-    justify-content: center;
-  }
-
-  .ec-landing-stage {
-    width: min(100%, 760px);
-    transform: none;
-  }
-
-  .ec-landing-stage--auth {
-    width: min(100%, 760px);
-  }
-
-  .ec-landing__surfaces,
-  .ec-landing__flow-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .ec-landing__cta-band {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-}
-
-@media (max-width: 720px) {
-  .ec-landing {
-    padding-left: 14px;
-    padding-right: 14px;
-  }
-
-  .ec-landing__nav {
-    padding: 14px;
-    border-radius: 24px;
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .ec-landing__nav-actions,
-  .ec-landing__hero-actions,
-  .ec-landing__cta-actions {
-    width: 100%;
-    display: grid;
-    grid-template-columns: 1fr;
-  }
-
-  .ec-landing-btn {
-    width: 100%;
-    min-height: 58px;
-    padding: 0 18px;
-    font-size: 0.8rem;
-    letter-spacing: 0.12em;
-  }
-
-  .ec-landing__hero-copy {
-    gap: 18px;
-  }
-
-  .ec-landing__hero-copy h1 {
-    max-width: none;
-    font-size: clamp(2.5rem, 12vw, 4rem);
-  }
-
-  .ec-landing__kicker {
-    font-size: 0.68rem;
-    letter-spacing: 0.22em;
-  }
-
-  .ec-landing__lane-chip {
-    min-height: 40px;
-    font-size: 0.72rem;
-    letter-spacing: 0.1em;
-  }
-
-  .ec-landing-stage {
-    padding: 18px;
-    border-radius: 28px;
-  }
-
-  .ec-landing-stage--auth {
-    padding: 16px;
-  }
-
-  .ec-landing-stage__hud {
-    font-size: 0.58rem;
-    letter-spacing: 0.13em;
-  }
-
-  .ec-landing-stage__hud-action {
-    width: 100%;
-    min-height: 48px;
-    font-size: 0.72rem;
-    letter-spacing: 0.12em;
-  }
-
-  .ec-landing-stage__auth-copy {
-    padding: 0 2px;
-  }
-
-  .ec-landing-stage__auth-copy strong {
-    font-size: 1.06rem;
-  }
-
-  .ec-landing-stage__auth-copy p {
-    font-size: 0.88rem;
-  }
-
-  .ec-landing-stage__frame {
-    min-height: 186px;
-  }
-
-  .ec-landing-stage__core {
-    width: 108px;
-    height: 108px;
-  }
-
-  .ec-landing-stage__core img {
-    width: 64px;
-    height: 64px;
-  }
-
-  .ec-landing-stage__board {
-    padding: 16px;
-  }
-
-  .ec-landing-stage__board-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .ec-landing-stage__module,
-  .ec-landing-surface,
-  .ec-landing-flow-card {
-    min-height: 0;
-    padding: 20px;
-  }
-
-  .ec-landing__flow,
-  .ec-landing__cta-band {
-    padding: 20px;
-    border-radius: 28px;
-  }
-
-  .ec-landing__section-copy h2,
-  .ec-landing__cta-band h2 {
-    font-size: clamp(1.8rem, 8vw, 2.6rem);
-  }
-}

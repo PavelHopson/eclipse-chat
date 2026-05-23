@@ -66,7 +66,11 @@ AI agents Партия 1 slice 1: Bot.personality overlay — admin даёт б�
 AI agents Партия 2 slice 1: Tool foundation — registry + 3 базовых
 tool'а (post_message / create_task / update_table_row) +
 AI agents Партия 2 slice 2: Agent loop runtime + @mention integration +
-agent-mode toggle в BotsTab).
+agent-mode toggle в BotsTab +
+Landing redesign v2: operational-infrastructure эстетика (cool cyan
+palette scoped в landing.css, brutal type hierarchy, новый skeleton
+с named slots для Codex'а — hero-stage / memory-diagram /
+security-art)).
 
 > **v1.1.90 … v1.2.26 задеплоены — в проде v1.2.26. v1.2.27 …
 > v1.2.30 запушены и ждут approve-gate Pavel'я. Деплой НЕ
