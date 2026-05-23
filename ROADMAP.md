@@ -5,7 +5,7 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.2.17** (Galaxy/Clock/Theme/Deadline effects +
+**Текущая версия:** **v1.2.18** (Galaxy/Clock/Theme/Deadline effects +
 UX-copy + дизайн-полиш + редизайн WS-1 + системный редизайн ЗАКРЫТ 8/8 +
 светлая тема SOLAR (Notion-crisp) + фикс AuthScreen + смена пароля +
 визуальный передел AppShell ЗАКРЫТ 4/4 + топбар-полиш +
@@ -43,10 +43,12 @@ nginx trailing-slash редирект `/eclipse-chat → /eclipse-chat/` +
 og-image displayed URL с `/` +
 thread-root edge fix v1.2.9 — удалённый root по прямой ссылке 404 +
 Platform Admin details: action-buttons inside modal (Ban / Unban /
-Reset PW / Delete для user, Suspend / Unsuspend для server)).
+Reset PW / Delete для user, Suspend / Unsuspend для server) +
+slash-команды autocomplete UI: backend-команды /me /shrug /tableflip
+/unflip /help в slash-hint strip).
 
 > **v1.1.90 … v1.2.14 задеплоены — в проде v1.2.14. v1.2.15 …
-> v1.2.17 запушены и ждут approve-gate Pavel'я. Деплой НЕ
+> v1.2.18 запушены и ждут approve-gate Pavel'я. Деплой НЕ
 > автоматический по пушу.**
 
 > **⚠️ ЦВЕТ-ПРАВИЛО ИЗМЕНЕНО (бриф Pavel'я 20.05.2026).** Прежнее
@@ -55,8 +57,26 @@ Reset PW / Delete для user, Suspend / Unsuspend для server)).
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.2.17:**
+**Изменения v1.1.25 → v1.2.18:**
 
+- **v1.2.18** — **slash-команды autocomplete UI: backend-команды
+  в slash-hint strip**. Из handoff'а: «Slash-команды расширение
+  → autocomplete UI в композере с registry-listing».
+  - В `MessageInput.tsx` рядом с `SLASH_COMMANDS` (operator:
+    `/task` `/decision` `/followup`) добавлен `BACKEND_COMMANDS`:
+    `/me /shrug /tableflip /unflip /help` (из `lib/slashCommands.ts`
+    backend'а, v1.2.14). Frontend их **не парсит** — отправляет
+    как обычный текст, backend transform'ит (или возвращает
+    ephemeral для `/help`).
+  - `slashMatches` разделён на `operatorMatches` + `backendMatches`.
+    Hint strip рендерит оба flat list'ом, под одним `<div>`.
+    operator-matches скрыты в Client Mode (`hideSlashCommands`),
+    backend-matches видны везде — `/help` и transform-команды
+    работают и для клиента.
+  - `noArg=true` для `/shrug /tableflip /unflip /help` — на выбор
+    заполняется без trailing space (можно сразу Enter). `/me`
+    требует аргумент → space.
+  Сборка зелёная (tsc + vite). Без миграций. Frontend-only.
 - **v1.2.17** — **Platform Admin details: action-buttons inside
   modal**. Закрытие из handoff'а: «per-user/server actions в
   details-view — сейчас детали read-only; action-buttons (Ban /

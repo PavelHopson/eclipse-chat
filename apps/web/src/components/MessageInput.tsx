@@ -28,6 +28,26 @@ const SLASH_COMMANDS: {
   { cmd: "followup", aliases: ["followup", "fu", "f"], type: "FOLLOW_UP", label: "/followup", desc: "поставить follow-up" },
 ];
 
+/**
+ * Backend slash-commands из v1.2.14 (`apps/server/src/lib/slashCommands.ts`).
+ * Frontend их не парсит — отправляет как обычный текст, backend transform'ит
+ * (для `/me /shrug /tableflip /unflip`) или возвращает ephemeral (для `/help`).
+ * Здесь только для autocomplete listing в slash-hint strip. `noArg=true` →
+ * на выбор не добавляем trailing space (можно сразу Enter'ом отправить).
+ */
+const BACKEND_COMMANDS: {
+  cmd: string;
+  label: string;
+  desc: string;
+  noArg?: boolean;
+}[] = [
+  { cmd: "me", label: "/me", desc: "IRC-стиль: «имя <действие>»" },
+  { cmd: "shrug", label: "/shrug", desc: "добавить ¯\\_(ツ)_/¯", noArg: true },
+  { cmd: "tableflip", label: "/tableflip", desc: "(╯°□°)╯︵ ┻━┻", noArg: true },
+  { cmd: "unflip", label: "/unflip", desc: "┬─┬ノ( º_ºノ)", noArg: true },
+  { cmd: "help", label: "/help", desc: "список команд (видно только тебе)", noArg: true },
+];
+
 function parseSlashCommand(
   text: string,
 ): { type: ActionItemType; title: string } | null {
@@ -645,14 +665,19 @@ export function MessageInput({
 
   // Slash-command hint: показываем когда юзер набрал «/» + (опц.) часть
   // команды, но ещё не дошёл до пробела. @/:-popover имеет приоритет.
-  // В Client Mode hint скрыт (hideSlashCommands).
-  const slashQuery = hideSlashCommands
-    ? null
-    : /^\s*\/([a-zA-Zа-яёА-ЯЁ]*)$/.exec(draft);
-  const slashMatches =
-    slashQuery && !trigger
-      ? SLASH_COMMANDS.filter((c) => c.cmd.startsWith(slashQuery[1].toLowerCase()))
+  // В Client Mode operator-команды скрыты (hideSlashCommands), но
+  // backend-команды (/me /shrug ...) остаются — они работают везде.
+  const slashQuery = /^\s*\/([a-zA-Zа-яёА-ЯЁ]*)$/.exec(draft);
+  const slashPrefix = slashQuery?.[1].toLowerCase() ?? "";
+  const operatorMatches =
+    slashQuery && !trigger && !hideSlashCommands
+      ? SLASH_COMMANDS.filter((c) => c.cmd.startsWith(slashPrefix))
       : [];
+  const backendMatches =
+    slashQuery && !trigger
+      ? BACKEND_COMMANDS.filter((c) => c.cmd.startsWith(slashPrefix))
+      : [];
+  const hasSlashMatches = operatorMatches.length + backendMatches.length > 0;
 
   // Drag-drop поддержка
   const [dragOver, setDragOver] = useState(false);
@@ -745,17 +770,33 @@ export function MessageInput({
           </button>
         </div>
       )}
-      {slashMatches.length > 0 && (
+      {hasSlashMatches && (
         <div className="ec-slash-hint">
-          {slashMatches.map((c) => (
+          {operatorMatches.map((c) => (
             <button
-              key={c.cmd}
+              key={`op-${c.cmd}`}
               type="button"
               className="ec-slash-hint__item"
               onMouseDown={(e) => {
                 // mousedown (не click) — чтобы успеть до blur textarea
                 e.preventDefault();
                 setDraftValue(`/${c.cmd} `);
+                queueMicrotask(() => textareaRef.current?.focus());
+              }}
+            >
+              <strong className="ec-slash-hint__cmd">{c.label}</strong>
+              <span className="ec-slash-hint__desc">{c.desc}</span>
+            </button>
+          ))}
+          {backendMatches.map((c) => (
+            <button
+              key={`bk-${c.cmd}`}
+              type="button"
+              className="ec-slash-hint__item"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                // noArg → без trailing space, можно сразу Enter.
+                setDraftValue(c.noArg ? `/${c.cmd}` : `/${c.cmd} `);
                 queueMicrotask(() => textareaRef.current?.focus());
               }}
             >
