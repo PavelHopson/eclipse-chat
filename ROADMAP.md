@@ -5,7 +5,7 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.2.10** (Galaxy/Clock/Theme/Deadline effects +
+**Текущая версия:** **v1.2.11** (Galaxy/Clock/Theme/Deadline effects +
 UX-copy + дизайн-полиш + редизайн WS-1 + системный редизайн ЗАКРЫТ 8/8 +
 светлая тема SOLAR (Notion-crisp) + фикс AuthScreen + смена пароля +
 визуальный передел AppShell ЗАКРЫТ 4/4 + топбар-полиш +
@@ -33,13 +33,12 @@ CSS-консолидация slice 7 — дубль-блоки .ec-shell* и !im
 трек P3 — polish Platform Admin: pagination + search-debounce +
 row-click details (user/server) + suspend-gating шире +
 удалённые сообщения убраны из истории чата (UI/API фильтр) +
-кастомные иконки комнат + биометрический auth-gateway).
+кастомные иконки комнат + биометрический auth-gateway +
+slice 6a — AdminPanel inline-долг очищен).
 
-> **v1.1.90 … v1.2.0 задеплоены — в проде v1.2.0. v1.2.1 … v1.2.10
-> запушены и ждут approve-gate Pavel'я в GitHub Actions (environment
-> `production`). Деплой НЕ автоматический по пушу. ⚠️ v1.2.6 и v1.2.7
-> несут Prisma-миграции — deploy.sh [4/10] применяет
-> `prisma migrate deploy` автоматом.**
+> **v1.1.90 … v1.2.10 задеплоены — в проде v1.2.10. v1.2.11
+> запушен и ждёт approve-gate Pavel'я. Деплой НЕ автоматический
+> по пушу.**
 
 > **⚠️ ЦВЕТ-ПРАВИЛО ИЗМЕНЕНО (бриф Pavel'я 20.05.2026).** Прежнее
 > «cool-tone, НИКОГДА warm» — ОТМЕНЕНО. Новая identity: **violet
@@ -47,7 +46,31 @@ row-click details (user/server) + suspend-gating шире +
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.2.10:**
+**Изменения v1.1.25 → v1.2.11:**
+
+- **v1.2.11** — **slice 6a: AdminPanel inline-долг очищен**. Закрытие
+  первой половины brief-slice 6. Per-server AdminPanel.tsx (~2000 строк)
+  переведён на cockpit-grammar.
+  - **Долг убран:** 10 module-level CSSProperties консолей (`wrap` /
+    `headerRow` / `eyebrow` / `titleStyle` / `tabBar` / `tabBtn(active)` /
+    `card` / `cardLabel` / `cardValue` / `row`) + локальный
+    `inputStyle` (~50 ссылок суммарно) → `.ec-admin-*` классы.
+    `style={NAME}` и spread-сайты `{...card, ...overrides}` →
+    `className="..." style={overrides}`. Импорт `CSSProperties` удалён.
+  - **Tab-кнопки.** `style={tabBtn(active)}` → `className="ec-admin-tab"`
+    + active-state через `aria-selected` (CSS
+    `.ec-admin-tab[aria-selected="true"]`).
+  - **Clickable cards** (Settings / Client Portal) — modifier
+    `.ec-admin-card--clickable` (cursor + hover surface bump).
+  - **JS-hover здесь не было** — никаких onMouseEnter/Leave; всё
+    интерактивное через CSS :hover / [aria-selected].
+  - `cockpit.css` дорос секцией `.ec-admin-*` (wrap / header / eyebrow /
+    title / tabs / tab / card / card-label / card-value / row / input +
+    clickable modifier). SOLAR-совместимо через токены.
+  - **Не делано (slice 6b — следующим):** BotsTab.tsx
+    (1388 строк / 91 inline match) — отдельный слайс v1.2.12.
+  Сборка зелёная (tsc + vite). Без миграций.
+
 
 - **v1.2.10** — **кастомные иконки комнат + новый биометрический шлюз на auth-экране**.
   - **Каналы.** Emoji-пикер в настройках комнаты заменён на фирменный набор

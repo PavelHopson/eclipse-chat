@@ -19,7 +19,7 @@
  */
 
 // v1.0: bumped per release для гарантированного refresh новых JS chunks.
-const SW_VERSION = "eclipse-v1.2.10";
+const SW_VERSION = "eclipse-v1.2.11";
 const APP_SHELL_CACHE = `${SW_VERSION}-shell`;
 const ASSETS_CACHE = `${SW_VERSION}-assets`;
 const UPLOADS_CACHE = `${SW_VERSION}-uploads`;
@@ -30,8 +30,11 @@ const UPLOADS_CACHE = `${SW_VERSION}-uploads`;
 const SHELL_URLS = [
   "./",
   "./manifest.webmanifest",
-  "./favicon.svg",
-  "./apple-touch-icon.svg",
+  "./brand-mark.svg",
+  "./favicon-32.png",
+  "./apple-touch-icon.png",
+  "./icon-192.png",
+  "./icon-512.png",
 ];
 
 self.addEventListener("install", (event) => {
@@ -163,13 +166,13 @@ self.addEventListener("push", (event) => {
   const body = (data && data.body) || "Новое уведомление";
   const url = (data && data.url) || "/eclipse-chat/";
   const tag = (data && data.tag) || undefined;
-  const icon = (data && data.icon) || "./apple-touch-icon.svg";
+  const icon = (data && data.icon) || "./icon-192.png";
 
   event.waitUntil(
     self.registration.showNotification(title, {
       body,
       icon,
-      badge: "./favicon.svg",
+      badge: "./favicon-32.png",
       tag,
       // renotify=true заставит OS повторить звук/вибрацию если tag тот же
       // (например, цепочка mention'ов в одном канале).

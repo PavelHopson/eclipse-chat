@@ -1,4 +1,3 @@
-import type { CSSProperties } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { apiJson } from "../lib/api";
 import { Avatar } from "./Avatar";
@@ -175,103 +174,10 @@ const TYPE_LABELS_RU: Record<string, string> = {
 // v0.78 #17: используем ROLE_LABELS_FROM_LIB (10 ролей) — single source.
 const ROLE_LABELS_RU = ROLE_LABELS_FROM_LIB;
 
-const wrap: CSSProperties = {
-  flex: 1,
-  minHeight: 0,
-  overflow: "auto",
-  padding: "var(--ec-space-6) var(--ec-space-6) var(--ec-space-8)",
-  display: "flex",
-  flexDirection: "column",
-  gap: "var(--ec-space-4)",
-  maxWidth: 1080,
-  width: "100%",
-  margin: "0 auto",
-};
-
-const headerRow: CSSProperties = {
-  display: "flex",
-  alignItems: "flex-end",
-  justifyContent: "space-between",
-  gap: "var(--ec-space-3)",
-  flexWrap: "wrap",
-};
-
-const eyebrow: CSSProperties = {
-  fontSize: "var(--ec-text-2xs)",
-  fontWeight: 800,
-  letterSpacing: "var(--ec-tracking-caps)",
-  textTransform: "uppercase",
-  color: "var(--ec-text-dim)",
-};
-
-const titleStyle: CSSProperties = {
-  margin: 0,
-  fontSize: "var(--ec-text-2xl)",
-  fontWeight: 700,
-  letterSpacing: "var(--ec-tracking-tight)",
-  color: "var(--ec-text-strong)",
-};
-
-const tabBar: CSSProperties = {
-  display: "flex",
-  gap: "var(--ec-space-1)",
-  padding: 4,
-  background: "var(--ec-surface-sunken)",
-  border: "1px solid var(--ec-border-subtle)",
-  borderRadius: "var(--ec-radius-lg)",
-  alignSelf: "flex-start",
-  flexWrap: "wrap",
-};
-
-function tabBtn(active: boolean): CSSProperties {
-  return {
-    padding: "0.45rem 0.95rem",
-    borderRadius: "var(--ec-radius-md)",
-    background: active ? "var(--ec-accent-soft)" : "transparent",
-    border: active ? "1px solid var(--ec-border-accent)" : "1px solid transparent",
-    color: active ? "var(--ec-accent)" : "var(--ec-text-muted)",
-    fontSize: "var(--ec-text-sm)",
-    fontWeight: 600,
-    cursor: "pointer",
-    transition:
-      "background var(--ec-dur-fast) var(--ec-ease), color var(--ec-dur-fast) var(--ec-ease)",
-  };
-}
-
-const card: CSSProperties = {
-  padding: "var(--ec-space-4)",
-  borderRadius: "var(--ec-radius-lg)",
-  background: "var(--ec-surface-sunken)",
-  border: "1px solid var(--ec-border-subtle)",
-  display: "flex",
-  flexDirection: "column",
-  gap: 4,
-};
-
-const cardLabel: CSSProperties = {
-  fontSize: "var(--ec-text-2xs)",
-  fontWeight: 700,
-  letterSpacing: "var(--ec-tracking-caps)",
-  textTransform: "uppercase",
-  color: "var(--ec-text-dim)",
-};
-
-const cardValue: CSSProperties = {
-  fontSize: "var(--ec-text-xl)",
-  fontWeight: 700,
-  color: "var(--ec-text-strong)",
-};
-
-const row: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "auto 1fr auto auto",
-  alignItems: "center",
-  gap: 12,
-  padding: "var(--ec-space-2) var(--ec-space-3)",
-  borderRadius: "var(--ec-radius-md)",
-  background: "var(--ec-surface-sunken)",
-  border: "1px solid var(--ec-border-subtle)",
-};
+// v1.2.11 slice 6a — module-level CSSProperties консоли (wrap / headerRow /
+// eyebrow / titleStyle / tabBar / tabBtn / card / cardLabel / cardValue /
+// row) переехали в cockpit.css как .ec-admin-* классы. JS-hover здесь не
+// было — все интерактивные состояния через CSS.
 
 function formatRel(iso: string): string {
   const t = new Date(iso).getTime();
@@ -466,11 +372,11 @@ export function AdminPanel({
   const accessDenied = currentRole !== "OWNER" && currentRole !== "ADMIN";
   if (accessDenied) {
     return (
-      <div style={wrap}>
-        <div style={headerRow}>
+      <div className="ec-admin-wrap">
+        <div className="ec-admin-header">
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            <span style={eyebrow}>Admin · доступ закрыт</span>
-            <h1 style={titleStyle}>Только для OWNER / ADMIN</h1>
+            <span className="ec-admin-eyebrow">Admin · доступ закрыт</span>
+            <h1 className="ec-admin-title">Только для OWNER / ADMIN</h1>
             <p
               style={{
                 margin: 0,
@@ -497,11 +403,11 @@ export function AdminPanel({
   const canEditRoles = currentRole === "OWNER";
 
   return (
-    <div style={wrap}>
-      <div style={headerRow}>
+    <div className="ec-admin-wrap">
+      <div className="ec-admin-header">
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <span style={eyebrow}>Admin · {serverName}</span>
-          <h1 style={titleStyle}>Управление пространством</h1>
+          <span className="ec-admin-eyebrow">Admin · {serverName}</span>
+          <h1 className="ec-admin-title">Управление пространством</h1>
           <p
             style={{
               margin: 0,
@@ -524,13 +430,13 @@ export function AdminPanel({
         </button>
       </div>
 
-      <div style={tabBar} role="tablist" aria-label="Разделы">
+      <div className="ec-admin-tabs" role="tablist" aria-label="Разделы">
         <button
           type="button"
           role="tab"
           aria-selected={tab === "overview"}
           onClick={() => setTab("overview")}
-          style={tabBtn(tab === "overview")}
+          className="ec-admin-tab"
         >
           Обзор
         </button>
@@ -539,7 +445,7 @@ export function AdminPanel({
           role="tab"
           aria-selected={tab === "members"}
           onClick={() => setTab("members")}
-          style={tabBtn(tab === "members")}
+          className="ec-admin-tab"
         >
           Участники · {members.length}
         </button>
@@ -548,7 +454,7 @@ export function AdminPanel({
           role="tab"
           aria-selected={tab === "channels"}
           onClick={() => setTab("channels")}
-          style={tabBtn(tab === "channels")}
+          className="ec-admin-tab"
         >
           Комнаты · {channels.length}
         </button>
@@ -557,7 +463,7 @@ export function AdminPanel({
           role="tab"
           aria-selected={tab === "roles"}
           onClick={() => setTab("roles")}
-          style={tabBtn(tab === "roles")}
+          className="ec-admin-tab"
         >
           Роли · {ROLE_ORDER.length}
         </button>
@@ -566,7 +472,7 @@ export function AdminPanel({
           role="tab"
           aria-selected={tab === "automation"}
           onClick={() => setTab("automation")}
-          style={tabBtn(tab === "automation")}
+          className="ec-admin-tab"
         >
           Автоматизация{rules ? ` · ${rules.length}` : ""}
         </button>
@@ -576,7 +482,7 @@ export function AdminPanel({
             role="tab"
             aria-selected={tab === "invoices"}
             onClick={() => setTab("invoices")}
-            style={tabBtn(tab === "invoices")}
+            className="ec-admin-tab"
           >
             Счета{invoices ? ` · ${invoices.length}` : ""}
           </button>
@@ -586,7 +492,7 @@ export function AdminPanel({
           role="tab"
           aria-selected={tab === "integrations"}
           onClick={() => setTab("integrations")}
-          style={tabBtn(tab === "integrations")}
+          className="ec-admin-tab"
         >
           Интеграции{integrations ? ` · ${integrations.length}` : ""}
         </button>
@@ -595,7 +501,7 @@ export function AdminPanel({
           role="tab"
           aria-selected={tab === "audit"}
           onClick={() => setTab("audit")}
-          style={tabBtn(tab === "audit")}
+          className="ec-admin-tab"
         >
           Аудит
         </button>
@@ -604,7 +510,7 @@ export function AdminPanel({
           role="tab"
           aria-selected={tab === "analytics"}
           onClick={() => setTab("analytics")}
-          style={tabBtn(tab === "analytics")}
+          className="ec-admin-tab"
         >
           Аналитика
         </button>
@@ -618,36 +524,36 @@ export function AdminPanel({
             gap: "var(--ec-space-3)",
           }}
         >
-          <div style={card}>
-            <span style={cardLabel}>Участников</span>
-            <span style={cardValue}>{members.length}</span>
+          <div className="ec-admin-card">
+            <span className="ec-admin-card-label">Участников</span>
+            <span className="ec-admin-card-value">{members.length}</span>
             <span style={{ fontSize: "var(--ec-text-2xs)", color: "var(--ec-text-dim)" }}>
               {onlineCount} онлайн
             </span>
           </div>
-          <div style={card}>
-            <span style={cardLabel}>Комнат</span>
-            <span style={cardValue}>{channels.length}</span>
+          <div className="ec-admin-card">
+            <span className="ec-admin-card-label">Комнат</span>
+            <span className="ec-admin-card-value">{channels.length}</span>
             <span style={{ fontSize: "var(--ec-text-2xs)", color: "var(--ec-text-dim)" }}>
               {channels.filter((c) => c.type === "TEXT" || c.type === "EXECUTION").length} текст ·{" "}
               {channels.filter((c) => c.type === "VOICE").length} голос ·{" "}
               {channels.filter((c) => c.type === "BROADCAST").length} канал
             </span>
           </div>
-          <div style={card}>
-            <span style={cardLabel}>Открытых задач</span>
-            <span style={cardValue}>
+          <div className="ec-admin-card">
+            <span className="ec-admin-card-label">Открытых задач</span>
+            <span className="ec-admin-card-value">
               {teamHealth?.counts.openTotal ?? "—"}
             </span>
             <span style={{ fontSize: "var(--ec-text-2xs)", color: "var(--ec-text-dim)" }}>
               {teamHealth?.counts.overdueTotal ?? 0} просрочено
             </span>
           </div>
-          <div style={card}>
-            <span style={cardLabel}>Владелец</span>
+          <div className="ec-admin-card">
+            <span className="ec-admin-card-label">Владелец</span>
             <span
+              className="ec-admin-card-value"
               style={{
-                ...cardValue,
                 fontSize: "var(--ec-text-md)",
                 display: "flex",
                 alignItems: "center",
@@ -669,18 +575,12 @@ export function AdminPanel({
           <button
             type="button"
             onClick={onOpenServerSettings}
-            style={{
-              ...card,
-              cursor: "pointer",
-              alignItems: "flex-start",
-              textAlign: "left",
-              transition: "background var(--ec-dur-fast) var(--ec-ease)",
-            }}
+            className="ec-admin-card ec-admin-card--clickable"
           >
-            <span style={cardLabel}>Настройки</span>
+            <span className="ec-admin-card-label">Настройки</span>
             <span
+              className="ec-admin-card-value"
               style={{
-                ...cardValue,
                 fontSize: "var(--ec-text-md)",
                 color: "var(--ec-accent)",
               }}
@@ -697,18 +597,12 @@ export function AdminPanel({
             <button
               type="button"
               onClick={onOpenClientPortal}
-              style={{
-                ...card,
-                cursor: "pointer",
-                alignItems: "flex-start",
-                textAlign: "left",
-                transition: "background var(--ec-dur-fast) var(--ec-ease)",
-              }}
+              className="ec-admin-card ec-admin-card--clickable"
             >
-              <span style={cardLabel}>Клиентский портал</span>
+              <span className="ec-admin-card-label">Клиентский портал</span>
               <span
+                className="ec-admin-card-value"
                 style={{
-                  ...cardValue,
                   fontSize: "var(--ec-text-md)",
                   color: "var(--ec-accent)",
                 }}
@@ -726,7 +620,7 @@ export function AdminPanel({
       {tab === "members" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           {members.map((m) => (
-            <div key={m.userId} style={row}>
+            <div key={m.userId} className="ec-admin-row">
               <Avatar
                 url={m.user.avatar}
                 name={m.user.displayName}
@@ -791,10 +685,7 @@ export function AdminPanel({
           {channels.map((c) => (
             <div
               key={c.id}
-              style={{
-                ...row,
-                gridTemplateColumns: "auto 1fr auto auto",
-              }}
+              className="ec-admin-row"
             >
               <span
                 style={{
@@ -883,7 +774,7 @@ export function AdminPanel({
             }}
           >
             {ROLE_ORDER.map((r) => (
-              <div key={r} style={card}>
+              <div key={r} className="ec-admin-card">
                 <RoleChip role={r} />
                 <p
                   style={{
@@ -1140,10 +1031,8 @@ export function AdminPanel({
           {audit?.map((e) => (
             <div
               key={e.id}
-              style={{
-                ...row,
-                gridTemplateColumns: "auto 1fr auto",
-              }}
+              className="ec-admin-row"
+              style={{ gridTemplateColumns: "auto 1fr auto" }}
             >
               {e.user ? (
                 <Avatar
@@ -1295,13 +1184,11 @@ function StatCard({
           : "var(--ec-accent)";
   return (
     <div
-      style={{
-        ...card,
-        boxShadow: `inset 3px 0 0 0 ${stripe}`,
-      }}
+      className="ec-admin-card"
+      style={{ boxShadow: `inset 3px 0 0 0 ${stripe}` }}
     >
-      <span style={cardLabel}>{label}</span>
-      <span style={cardValue}>{value}</span>
+      <span className="ec-admin-card-label">{label}</span>
+      <span className="ec-admin-card-value">{value}</span>
     </div>
   );
 }
@@ -1631,14 +1518,7 @@ function CreateRuleForm({
             ? !!composioConnectionId && !!composioActionName && composioParamsValid
             : false);
 
-  const inputStyle: React.CSSProperties = {
-    padding: "0.4rem 0.6rem",
-    borderRadius: "var(--ec-radius-sm)",
-    background: "var(--ec-input-bg)",
-    border: "1px solid var(--ec-border-default)",
-    color: "var(--ec-text)",
-    fontSize: "var(--ec-text-sm)",
-  };
+  // v1.2.11 slice 6a — inputStyle переехал в cockpit.css как .ec-admin-input.
 
   const handleSubmit = () => {
     const trigger: AutomationTrigger = {
@@ -1709,10 +1589,10 @@ function CreateRuleForm({
         onChange={(e) => setName(e.target.value)}
         placeholder="Название (например, «'купить' → #sales»)"
         maxLength={120}
-        style={inputStyle}
+        className="ec-admin-input"
       />
 
-      <div style={{ ...cardLabel, marginTop: 4 }}>WHEN — триггер</div>
+      <div className="ec-admin-card-label" style={{ marginTop: 4 }}>WHEN — триггер</div>
       <div
         style={{
           display: "flex",
@@ -1755,8 +1635,8 @@ function CreateRuleForm({
             onChange={(e) => setRegex(e.target.value)}
             placeholder={'Regex: \\bкупит[ьеть]\\b'}
             maxLength={500}
+            className="ec-admin-input"
             style={{
-              ...inputStyle,
               fontFamily: "var(--ec-font-mono)",
               borderColor: regexValid
                 ? "var(--ec-border-default)"
@@ -1770,13 +1650,13 @@ function CreateRuleForm({
             onChange={(e) => setKeyword(e.target.value)}
             placeholder="Keyword (например, «купить»)"
             maxLength={200}
-            style={inputStyle}
+            className="ec-admin-input"
           />
         )}
         <select
           value={trigCh}
           onChange={(e) => setTrigCh(e.target.value)}
-          style={inputStyle}
+          className="ec-admin-input"
         >
           <option value="">— любой канал —</option>
           {textChannels.map((c) => (
@@ -1787,11 +1667,11 @@ function CreateRuleForm({
         </select>
       </div>
 
-      <div style={{ ...cardLabel, marginTop: 4 }}>THEN — действие</div>
+      <div className="ec-admin-card-label" style={{ marginTop: 4 }}>THEN — действие</div>
       <select
         value={actionKind}
         onChange={(e) => setActionKind(e.target.value as ActionKind)}
-        style={inputStyle}
+        className="ec-admin-input"
       >
         <option value="POST_MESSAGE">Запостить сообщение</option>
         <option value="CREATE_TASK">Создать задачу / решение / follow-up</option>
@@ -1805,7 +1685,7 @@ function CreateRuleForm({
           <select
             value={actCh}
             onChange={(e) => setActCh(e.target.value)}
-            style={inputStyle}
+            className="ec-admin-input"
           >
             {textChannels.map((c) => (
               <option key={c.id} value={c.id}>
@@ -1819,7 +1699,7 @@ function CreateRuleForm({
             placeholder="Шаблон: «{{user}} упомянул(а) keyword в #{{channel}}»"
             maxLength={2000}
             rows={3}
-            style={{ ...inputStyle, resize: "vertical", fontFamily: "inherit" }}
+            className="ec-admin-input" style={{ resize: "vertical", fontFamily: "inherit" }}
           />
         </>
       )}
@@ -1830,7 +1710,7 @@ function CreateRuleForm({
             onChange={(e) =>
               setTaskType(e.target.value as "TASK" | "DECISION" | "FOLLOW_UP")
             }
-            style={inputStyle}
+            className="ec-admin-input"
           >
             <option value="TASK">Задача</option>
             <option value="DECISION">Решение</option>
@@ -1842,7 +1722,7 @@ function CreateRuleForm({
             placeholder="Title-шаблон: «Уточнить запрос от {{user}}»"
             maxLength={300}
             rows={2}
-            style={{ ...inputStyle, resize: "vertical", fontFamily: "inherit" }}
+            className="ec-admin-input" style={{ resize: "vertical", fontFamily: "inherit" }}
           />
         </>
       )}
@@ -1854,7 +1734,7 @@ function CreateRuleForm({
             onChange={(e) => setWebhookUrl(e.target.value)}
             placeholder="https://example.com/webhook"
             maxLength={400}
-            style={{ ...inputStyle, fontFamily: "var(--ec-font-mono)" }}
+            className="ec-admin-input" style={{ fontFamily: "var(--ec-font-mono)" }}
           />
           <input
             type="text"
@@ -1862,7 +1742,7 @@ function CreateRuleForm({
             onChange={(e) => setWebhookSecret(e.target.value)}
             placeholder="HMAC secret (опционально, X-Eclipse-Signature)"
             maxLength={200}
-            style={{ ...inputStyle, fontFamily: "var(--ec-font-mono)" }}
+            className="ec-admin-input" style={{ fontFamily: "var(--ec-font-mono)" }}
           />
           <p
             style={{
@@ -1918,7 +1798,7 @@ function CreateRuleForm({
               <select
                 value={composioConnectionId}
                 onChange={(e) => setComposioConnectionId(e.target.value)}
-                style={inputStyle}
+                className="ec-admin-input"
               >
                 <option value="">— выбери подключение —</option>
                 {activeConnections.map((c) => (
@@ -1932,7 +1812,7 @@ function CreateRuleForm({
                   value={composioActionName}
                   onChange={(e) => setComposioActionName(e.target.value)}
                   disabled={composioActionsLoading}
-                  style={inputStyle}
+                  className="ec-admin-input"
                 >
                   <option value="">
                     {composioActionsLoading
@@ -1956,8 +1836,8 @@ function CreateRuleForm({
                     rows={8}
                     maxLength={4000}
                     placeholder='JSON params с placeholders {{user}} / {{message}} / {{channel}}'
+                    className="ec-admin-input"
                     style={{
-                      ...inputStyle,
                       fontFamily: "var(--ec-font-mono)",
                       fontSize: "0.78rem",
                       resize: "vertical",

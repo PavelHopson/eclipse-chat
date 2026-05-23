@@ -1326,3 +1326,139 @@
   flex-wrap: wrap;
   gap: 6px;
 }
+
+/* ===== AdminPanel (per-server admin) — slice 6a, v1.2.11 ============
+   Inline-CSSProperties консоли (wrap / headerRow / eyebrow / titleStyle /
+   tabBar / tabBtn / card / row …) переведены сюда. JS-hover здесь не
+   было — все интерактивные состояния через CSS. */
+.ec-admin-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--ec-space-6) var(--ec-space-6) var(--ec-space-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ec-space-4);
+  max-width: 1080px;
+  width: 100%;
+  margin: 0 auto;
+}
+.ec-admin-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--ec-space-3);
+  flex-wrap: wrap;
+}
+.ec-admin-eyebrow {
+  font-size: var(--ec-text-2xs);
+  font-weight: 800;
+  letter-spacing: var(--ec-tracking-caps);
+  text-transform: uppercase;
+  color: var(--ec-text-dim);
+}
+.ec-admin-title {
+  margin: 0;
+  font-size: var(--ec-text-2xl);
+  font-weight: 700;
+  letter-spacing: var(--ec-tracking-tight);
+  color: var(--ec-text-strong);
+}
+
+/* Tabs — единый pill-контейнер + tone-driven кнопки. Active = aria-selected. */
+.ec-admin-tabs {
+  display: flex;
+  gap: var(--ec-space-1);
+  padding: 4px;
+  background: var(--ec-surface-sunken);
+  border: 1px solid var(--ec-border-subtle);
+  border-radius: var(--ec-radius-lg);
+  align-self: flex-start;
+  flex-wrap: wrap;
+}
+.ec-admin-tab {
+  padding: 0.45rem 0.95rem;
+  border-radius: var(--ec-radius-md);
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--ec-text-muted);
+  font-size: var(--ec-text-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background var(--ec-dur-fast) var(--ec-ease),
+    color var(--ec-dur-fast) var(--ec-ease),
+    border-color var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-admin-tab:hover {
+  color: var(--ec-text);
+}
+.ec-admin-tab[aria-selected="true"] {
+  background: var(--ec-accent-soft);
+  border-color: var(--ec-border-accent);
+  color: var(--ec-accent);
+}
+.ec-admin-tab:focus-visible {
+  outline: 2px solid var(--ec-border-accent);
+  outline-offset: 2px;
+}
+
+/* Cards — info-блоки на overview-табе (счётчики, owner, settings). */
+.ec-admin-card {
+  padding: var(--ec-space-4);
+  border-radius: var(--ec-radius-lg);
+  background: var(--ec-surface-sunken);
+  border: 1px solid var(--ec-border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+/* Кликабельная карточка (Settings / Client Portal) — pointer + лёгкая подсветка. */
+.ec-admin-card--clickable {
+  cursor: pointer;
+  align-items: flex-start;
+  text-align: left;
+  transition: background var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-admin-card--clickable:hover {
+  background: var(--ec-surface-3);
+}
+
+/* Inputs / textareas / selects в automation editor + invoice / integration
+   формах. inputStyle console-стиль из AdminPanel.tsx переехал сюда. */
+.ec-admin-input {
+  padding: 0.4rem 0.6rem;
+  border-radius: var(--ec-radius-sm);
+  background: var(--ec-input-bg);
+  border: 1px solid var(--ec-border-default);
+  color: var(--ec-text);
+  font-size: var(--ec-text-sm);
+}
+.ec-admin-input:focus {
+  outline: none;
+  border-color: var(--ec-border-accent);
+}
+.ec-admin-card-label {
+  font-size: var(--ec-text-2xs);
+  font-weight: 700;
+  letter-spacing: var(--ec-tracking-caps);
+  text-transform: uppercase;
+  color: var(--ec-text-dim);
+}
+.ec-admin-card-value {
+  font-size: var(--ec-text-xl);
+  font-weight: 700;
+  color: var(--ec-text-strong);
+}
+
+/* Row — member-list / channel-list строка с grid-layout. */
+.ec-admin-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: var(--ec-space-2) var(--ec-space-3);
+  border-radius: var(--ec-radius-md);
+  background: var(--ec-surface-sunken);
+  border: 1px solid var(--ec-border-subtle);
+}
