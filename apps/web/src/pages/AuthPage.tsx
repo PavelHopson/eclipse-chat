@@ -13,6 +13,9 @@ type Props = {
     password: string,
     displayName: string,
   ) => Promise<{ success: boolean; error?: string }>;
+  initialMode?: Mode;
+  initialEntryState?: EntryState;
+  onExit?: () => void;
 };
 
 type Step = "credentials" | "twofa" | "success";
@@ -60,11 +63,18 @@ function validateCredentialsForm(args: {
   return null;
 }
 
-export function AuthPage({ error, onLogin, onRegister }: Props) {
-  const brandMarkUrl = `${import.meta.env.BASE_URL}brand-mark.png`;
+export function AuthPage({
+  error,
+  onLogin,
+  onRegister,
+  initialMode = "login",
+  initialEntryState = "gate",
+  onExit,
+}: Props) {
+  const brandMarkUrl = `${import.meta.env.BASE_URL}brand-mark.svg`;
   const [step, setStep] = useState<Step>("credentials");
-  const [mode, setMode] = useState<Mode>("login");
-  const [entryState, setEntryState] = useState<EntryState>("gate");
+  const [mode, setMode] = useState<Mode>(initialMode);
+  const [entryState, setEntryState] = useState<EntryState>(initialEntryState);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -116,6 +126,23 @@ export function AuthPage({ error, onLogin, onRegister }: Props) {
     }
   }, [entryState, step]);
 
+  useEffect(() => {
+    if (!onExit) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onExit();
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [onExit]);
+
   const setSceneDepth = (
     tiltX: number,
     tiltY: number,
@@ -153,6 +180,11 @@ export function AuthPage({ error, onLogin, onRegister }: Props) {
       target?.focus();
     }, prefersReducedMotion() ? 0 : 240);
   };
+
+  useEffect(() => {
+    if (initialEntryState !== "panel") return;
+    focusPrimaryField();
+  }, [initialEntryState, mode]);
 
   const openAuthGate = () => {
     if (busy || step !== "credentials" || entryState !== "gate") return;
@@ -299,7 +331,17 @@ export function AuthPage({ error, onLogin, onRegister }: Props) {
   };
 
   return (
-    <main className="ec-auth-shell" aria-label="Eclipse Chat — вход">
+    <main
+      className="ec-auth-shell"
+      aria-label="Eclipse Chat — вход"
+      data-overlay={onExit ? "true" : undefined}
+    >
+      {onExit && (
+        <button type="button" className="ec-auth-return" onClick={onExit}>
+          <span aria-hidden>←</span>
+          <span>На лендинг</span>
+        </button>
+      )}
       <div className="ec-auth-radar" aria-hidden>
         <div className="ec-auth-radar__grid" />
         <div className="ec-auth-radar__crosshair-h" />
@@ -366,7 +408,7 @@ export function AuthPage({ error, onLogin, onRegister }: Props) {
 
         <div className="ec-auth-stack" data-entry={entryState}>
           <div className="ec-auth-logo" aria-hidden>
-            <img className="ec-auth-logo__mark" src={brandMarkUrl} alt="" />
+            <img className="ec-auth-logo__mark" src={brandMarkUrl} alt="" decoding="async" />
           </div>
           <h1 className="ec-auth-title">ECLIPSE</h1>
           <div className="ec-auth-subtitle">ПРОТОКОЛ_ШЛЮЗА_V1.0</div>
@@ -400,7 +442,14 @@ export function AuthPage({ error, onLogin, onRegister }: Props) {
                     <span className="ec-auth-bio-gate__ring ec-auth-bio-gate__ring--outer" />
                     <span className="ec-auth-bio-gate__ring ec-auth-bio-gate__ring--inner" />
                     <span className="ec-auth-bio-gate__fingerprint">
-                      <FingerprintIcon />
+                      <span className="ec-auth-bio-gate__fingerprint-core">
+                        <img
+                          className="ec-auth-bio-gate__brand-mark"
+                          src={brandMarkUrl}
+                          alt=""
+                          decoding="async"
+                        />
+                      </span>
                     </span>
                   </span>
                   <span className="ec-auth-bio-gate__eyebrow">Биометрический шлюз</span>
@@ -415,7 +464,17 @@ export function AuthPage({ error, onLogin, onRegister }: Props) {
                       : "Стилизация под биометрический сенсор: сначала жест допуска, затем обычная защищённая авторизация."}
                   </span>
                   <span className="ec-auth-bio-gate__cta">
-                    {entryState === "opening" ? "Сканирование..." : "Нажмите, чтобы открыть форму"}
+                    <span className="ec-auth-bio-gate__cta-copy">
+                      <span className="ec-auth-bio-gate__cta-title">
+                        {entryState === "opening" ? "Сканирование доступа" : "Открыть панель входа"}
+                      </span>
+                      <span className="ec-auth-bio-gate__cta-note">
+                        {entryState === "opening"
+                          ? "подготавливаем защищённый терминал"
+                          : "крупная сенсорная кнопка / мгновенный допуск"}
+                      </span>
+                    </span>
+                    <span className="ec-auth-bio-gate__cta-orb" aria-hidden />
                   </span>
                 </button>
 
@@ -800,32 +859,6 @@ function PasswordReveal({
       </button>
       {scanning && <span key={scanId} className="ec-auth-pass__scanline" aria-hidden />}
     </div>
-  );
-}
-
-function FingerprintIcon() {
-  return (
-    <svg
-      width="40"
-      height="40"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.7"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d="M8.2 7.5a5.4 5.4 0 0 1 7.6 0" />
-      <path d="M6.5 9.5a7.8 7.8 0 0 1 11 0" />
-      <path d="M12 8.6c1.7 0 3 1.4 3 3v1.6a8.6 8.6 0 0 1-2.1 5.6" />
-      <path d="M12 11v3.8" />
-      <path d="M9.8 12.2v1.5a5.9 5.9 0 0 1-1.3 3.7" />
-      <path d="M7.2 11.9v1a8.5 8.5 0 0 1-1.1 4.2" />
-      <path d="M14.9 10.8v1.7a10.7 10.7 0 0 1-2.7 7.1" />
-      <path d="M12 18.9a4.4 4.4 0 0 0 2.1-3.8" />
-      <path d="M9.3 16.5a4.1 4.1 0 0 0 1.6 2.2" />
-    </svg>
   );
 }
 

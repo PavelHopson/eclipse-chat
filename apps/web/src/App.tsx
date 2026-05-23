@@ -4,6 +4,7 @@ import { useAuth } from "./hooks/useAuth";
 import { AppShell } from "./pages/AppShell";
 import { AuthPage } from "./pages/AuthPage";
 import { ClientPortalContainer } from "./pages/ClientPortalContainer";
+import { LandingPage } from "./pages/LandingPage";
 
 /**
  * v1.1.2: client-side version embedded at build-time через Vite define.
@@ -45,10 +46,11 @@ const loadingStyle: CSSProperties = {
 };
 
 export function App() {
-  const { view, user, error, login, register, logout, socketRev } = useAuth();
+  const { view, user, error, login, register, logout, socketRev, clearError } = useAuth();
   const [portalServerId, setPortalServerId] = useState<string | null>(() =>
     parsePortalHash(),
   );
+  const [authSurface, setAuthSurface] = useState<null | "login" | "register">(null);
   const [updateAvailable, setUpdateAvailable] = useState<{
     serverVersion: string;
   } | null>(null);
@@ -90,6 +92,11 @@ export function App() {
   }, []);
 
   const [reloading, setReloading] = useState(false);
+  useEffect(() => {
+    if (view !== "auth" && authSurface !== null) {
+      setAuthSurface(null);
+    }
+  }, [authSurface, view]);
 
   /**
    * v1.1.15: bulletproof hard reload. Старая banner-кнопка делала просто
@@ -127,6 +134,16 @@ export function App() {
   };
 
   const isAuthenticated = view !== "loading" && view !== "auth" && user;
+
+  const openAuthSurface = (mode: "login" | "register") => {
+    clearError();
+    setAuthSurface(mode);
+  };
+
+  const closeAuthSurface = () => {
+    clearError();
+    setAuthSurface(null);
+  };
 
   return (
     <>
@@ -211,7 +228,20 @@ export function App() {
       {view === "loading" ? (
         <main style={loadingStyle}>Загрузка…</main>
       ) : !isAuthenticated ? (
-        <AuthPage error={error} onLogin={login} onRegister={register} />
+        <>
+          <LandingPage onOpenAuth={openAuthSurface} />
+          {authSurface && (
+            <AuthPage
+              key={authSurface}
+              error={error}
+              onLogin={login}
+              onRegister={register}
+              initialMode={authSurface}
+              initialEntryState="panel"
+              onExit={closeAuthSurface}
+            />
+          )}
+        </>
       ) : portalServerId ? (
         <ClientPortalContainer serverId={portalServerId} />
       ) : (

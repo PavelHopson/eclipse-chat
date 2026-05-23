@@ -35,6 +35,7 @@ export function useAuth() {
   const [view, setView] = useState<AuthView>("loading");
   const [user, setUser] = useState<PublicUser | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const clearError = useCallback(() => setError(null), []);
 
   /** Пересоздание Socket после смены access-токена. */
   const [socketRev, setSocketRev] = useState(0);
@@ -167,5 +168,5 @@ export function useAuth() {
     bumpSocketRev();
   }, [bumpSocketRev]);
 
-  return { view, user, error, login, register, logout, socketRev, bumpSocketRev };
+  return { view, user, error, login, register, logout, socketRev, bumpSocketRev, clearError };
 }
