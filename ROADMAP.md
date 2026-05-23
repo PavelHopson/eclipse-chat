@@ -5,7 +5,7 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.2.23** (Galaxy/Clock/Theme/Deadline effects +
+**Текущая версия:** **v1.2.24** (Galaxy/Clock/Theme/Deadline effects +
 UX-copy + дизайн-полиш + редизайн WS-1 + системный редизайн ЗАКРЫТ 8/8 +
 светлая тема SOLAR (Notion-crisp) + фикс AuthScreen + смена пароля +
 визуальный передел AppShell ЗАКРЫТ 4/4 + топбар-полиш +
@@ -52,10 +52,12 @@ custom emoji frontend slice 1: AdminPanel «Эмодзи» tab + upload/delete U
 custom emoji frontend slice 2: parser `:shortcode:` → `<img>` в RichContent +
 useServerEmojis hook + cross-component invalidation через window event +
 custom emoji frontend slice 3: `:` autocomplete с custom emoji + image
-preview в popover).
+preview в popover +
+custom emoji slice 4: reactions с custom emoji (backend whitelist
+расширен + EmojiPicker secondary section + img-render reaction pill)).
 
 > **v1.1.90 … v1.2.14 задеплоены — в проде v1.2.14. v1.2.15 …
-> v1.2.23 запушены и ждут approve-gate Pavel'я. Деплой НЕ
+> v1.2.24 запушены и ждут approve-gate Pavel'я. Деплой НЕ
 > автоматический по пушу. ⚠️ v1.2.20 включает Prisma migration
 > `20260523200000_add_custom_emojis` — при деплое нужен `prisma
 > migrate deploy`.**
@@ -66,8 +68,37 @@ preview в popover).
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.2.23:**
+**Изменения v1.1.25 → v1.2.24:**
 
+- **v1.2.24** — **custom emoji slice 4: reactions с custom emoji**.
+  Закрывает «использование в reactions» из handoff'а.
+  - **Backend** `apps/server/src/routes/messages.ts`:
+    - Helper `parseCustomShortcode(emoji)` — `:shortcode:` parser.
+    - Async `validateReactionEmoji(emoji, serverId)` — Unicode из
+      whitelist OR `:shortcode:` существует в `Emoji` table для
+      `serverId`. DM (serverId=null) — custom запрещены (custom
+      emoji per-server).
+    - `reactionBody.emoji` ослаблен с zod refine на просто
+      `string.min(1).max(64)`; реальная валидация — в route после
+      того как knows serverId сообщения.
+    - POST `/api/messages/:id/reactions` — после permission check
+      вызов `validateReactionEmoji` → 400 если не ok.
+    - DELETE `/api/messages/:id/reactions/:emoji` — shape OK
+      (Unicode whitelist OR shortcode format). Если row нет —
+      idempotent ok.
+  - **Frontend** `EmojiPicker.tsx`: новый optional prop
+    `customEmojis`. Если есть entries — popover рендерит вторую
+    секцию `Сервер` с custom emoji thumbnails (img 20×20). onPick
+    отдаёт `:shortcode:` (не URL). Высота popover'а грузится 240px
+    вместо 130px чтобы влезли 2 секции. Layout: flex column с
+    grid-секциями.
+  - **MessageList** — прокидывает `customEmojis` в EmojiPicker.
+    Reaction pill: inline IIFE check `:shortcode:` → если найден в
+    `customEmojis` → `<img 18×18>`, иначе Unicode-as-text.
+  Сборка зелёная (tsc + vite + tsc server). Без миграций.
+
+  Custom emoji track **закрыт** (4 слайса). Осталось — real-time
+  через socket (вместо window event); это polish, не feature.
 - **v1.2.23** — **custom emoji frontend slice 3: `:` autocomplete +
   picker integration**. После slice 2 (parser) emoji видны в
   сообщениях, но discoverable только если вручную набрать

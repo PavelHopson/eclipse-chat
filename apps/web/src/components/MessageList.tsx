@@ -369,6 +369,7 @@ export function MessageList({
       {pickerFor && onToggleReaction && (
         <EmojiPicker
           anchorRect={pickerFor.rect}
+          customEmojis={customEmojis}
           onPick={(emoji) => {
             void onToggleReaction(pickerFor.messageId, emoji);
           }}
@@ -668,7 +669,30 @@ export function MessageList({
                           transition: "background var(--ec-dur-fast) var(--ec-ease), border-color var(--ec-dur-fast) var(--ec-ease), transform var(--ec-dur-fast) var(--ec-ease)",
                         }}
                       >
-                        <span aria-hidden style={{ fontSize: "0.95rem" }}>{r.emoji}</span>
+                        {(() => {
+                          // v1.2.24: custom emoji `:shortcode:` рендерится как
+                          // <img>, если есть в customEmojis. Unicode — текстом.
+                          const sc = /^:([a-z0-9_-]{2,30}):$/.exec(r.emoji);
+                          const url = sc && customEmojis ? customEmojis[sc[1]] : null;
+                          if (url) {
+                            return (
+                              <img
+                                src={url}
+                                alt={r.emoji}
+                                aria-hidden
+                                width={18}
+                                height={18}
+                                loading="lazy"
+                                style={{ objectFit: "contain" }}
+                              />
+                            );
+                          }
+                          return (
+                            <span aria-hidden style={{ fontSize: "0.95rem" }}>
+                              {r.emoji}
+                            </span>
+                          );
+                        })()}
                         <span style={{ fontWeight: 600, fontFeatureSettings: '"tnum"' }}>{r.count}</span>
                       </button>
                     ))}

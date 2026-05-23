@@ -20,21 +20,58 @@ const editBody = z.object({
 });
 
 /**
- * Whitelist эмодзи. Узкий список — гарантирует что в БД не попадёт
- * произвольный Unicode + что emoji-picker фронта и backend синхронизированы.
- * Расширение списка — отдельным изменением.
+ * Whitelist Unicode эмодзи. Узкий список — гарантирует что в БД не попадёт
+ * произвольный Unicode. Расширение списка — отдельным изменением.
+ * v1.2.24 — кроме Unicode whitelist допускаются и custom `:shortcode:`,
+ * если ряд `Emoji` существует на сервере данного сообщения (см.
+ * `validateReactionEmoji` ниже).
  */
 const ALLOWED_EMOJI = [
   "👍", "❤️", "😂", "😮", "😢", "🔥", "🎉", "👀",
   "🚀", "💯", "🙏", "👏",
 ] as const;
-type AllowedEmoji = (typeof ALLOWED_EMOJI)[number];
 const allowedSet = new Set<string>(ALLOWED_EMOJI);
 
+/**
+ * Custom-emoji shortcode format: `:[a-z0-9_-]{2,30}:` (см. emojis.ts).
+ * Возвращает shortcode без двоеточий, если match; иначе null.
+ */
+function parseCustomShortcode(emoji: string): string | null {
+  const m = /^:([a-z0-9_-]{2,30}):$/.exec(emoji);
+  return m ? m[1] : null;
+}
+
+/**
+ * Validate emoji для reaction:
+ *   - Unicode из whitelist → ok.
+ *   - `:shortcode:` → есть ли row в Emoji table для serverId.
+ *     В DM (serverId=null) custom emoji запрещены.
+ */
+async function validateReactionEmoji(
+  emoji: string,
+  serverId: string | null,
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+  if (allowedSet.has(emoji)) return { ok: true };
+  const shortcode = parseCustomShortcode(emoji);
+  if (!shortcode) {
+    return { ok: false, reason: "Emoji not in allowed list" };
+  }
+  if (!serverId) {
+    return { ok: false, reason: "Custom emoji не разрешены в личных сообщениях" };
+  }
+  const row = await db.emoji.findUnique({
+    where: { serverId_shortcode: { serverId, shortcode } },
+    select: { id: true },
+  });
+  return row
+    ? { ok: true }
+    : { ok: false, reason: `:${shortcode}: не найден на этом сервере` };
+}
+
 const reactionBody = z.object({
-  emoji: z.string().refine((v): v is AllowedEmoji => allowedSet.has(v), {
-    message: "Emoji not in allowed list",
-  }),
+  // Базовый shape; реальная server-aware валидация — в route после
+  // того как мы знаем serverId сообщения.
+  emoji: z.string().min(1).max(64),
 });
 
 const DELETED_PLACEHOLDER = "[сообщение удалено]";
@@ -357,6 +394,7 @@ export async function registerMessageRoutes(app: FastifyInstance) {
         return reply.status(410).send({ error: "Cannot react to deleted message" });
       }
       // Проверка участия: либо member сервера, либо участник DM
+      let serverIdForEmoji: string | null = null;
       if (m.channelId && m.channel) {
         const member = await db.member.findUnique({
           where: { userId_serverId: { userId, serverId: m.channel.serverId } },
@@ -365,6 +403,7 @@ export async function registerMessageRoutes(app: FastifyInstance) {
         if (!member) {
           return reply.status(403).send({ error: "Not a member of this server" });
         }
+        serverIdForEmoji = m.channel.serverId;
       } else if (m.conversationId && m.conversation) {
         const ok =
           m.conversation.userAId === userId || m.conversation.userBId === userId;
@@ -375,6 +414,11 @@ export async function registerMessageRoutes(app: FastifyInstance) {
         return reply.status(500).send({ error: "Orphan message" });
       }
       const { emoji } = parsed.data;
+      // v1.2.24: server-aware validation (Unicode whitelist + custom).
+      const validation = await validateReactionEmoji(emoji, serverIdForEmoji);
+      if (!validation.ok) {
+        return reply.status(400).send({ error: validation.reason });
+      }
       // upsert через try/catch: повторный POST = same row, не fail
       try {
         await db.reaction.create({
@@ -419,7 +463,10 @@ export async function registerMessageRoutes(app: FastifyInstance) {
       if (!userId) {
         return reply.status(401).send({ error: "Unauthorized" });
       }
-      if (!allowedSet.has(emoji)) {
+      // v1.2.24 — на DELETE мягче: shape OK (Unicode whitelist или
+      // `:shortcode:` format), полная server-aware проверка не нужна
+      // (если row не существует, ниже idempotent {alreadyAbsent}).
+      if (!allowedSet.has(emoji) && !parseCustomShortcode(emoji)) {
         return reply.status(400).send({ error: "Emoji not in allowed list" });
       }
       const m = await db.message.findUnique({
