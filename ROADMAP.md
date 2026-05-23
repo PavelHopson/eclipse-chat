@@ -5,7 +5,7 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.2.9** (Galaxy/Clock/Theme/Deadline effects +
+**Текущая версия:** **v1.2.10** (Galaxy/Clock/Theme/Deadline effects +
 UX-copy + дизайн-полиш + редизайн WS-1 + системный редизайн ЗАКРЫТ 8/8 +
 светлая тема SOLAR (Notion-crisp) + фикс AuthScreen + смена пароля +
 визуальный передел AppShell ЗАКРЫТ 4/4 + топбар-полиш +
@@ -32,9 +32,10 @@ CSS-консолидация slice 7 — дубль-блоки .ec-shell* и !im
 аудит-таба, soft-delete user, suspend-gating critical writes +
 трек P3 — polish Platform Admin: pagination + search-debounce +
 row-click details (user/server) + suspend-gating шире +
-удалённые сообщения убраны из истории чата (UI/API фильтр) ).
+удалённые сообщения убраны из истории чата (UI/API фильтр) +
+кастомные иконки комнат + биометрический auth-gateway).
 
-> **v1.1.90 … v1.2.0 задеплоены — в проде v1.2.0. v1.2.1 … v1.2.9
+> **v1.1.90 … v1.2.0 задеплоены — в проде v1.2.0. v1.2.1 … v1.2.10
 > запушены и ждут approve-gate Pavel'я в GitHub Actions (environment
 > `production`). Деплой НЕ автоматический по пушу. ⚠️ v1.2.6 и v1.2.7
 > несут Prisma-миграции — deploy.sh [4/10] применяет
@@ -46,7 +47,23 @@ row-click details (user/server) + suspend-gating шире +
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.2.9:**
+**Изменения v1.1.25 → v1.2.10:**
+
+- **v1.2.10** — **кастомные иконки комнат + новый биометрический шлюз на auth-экране**.
+  - **Каналы.** Emoji-пикер в настройках комнаты заменён на фирменный набор
+    SVG-иконок. Добавлен единый registry/renderer для `ec:*`-иконок с
+    обратной совместимостью для старых emoji. Новый glyph-язык подключён
+    в sidebar, chat-header и ChannelSettingsModal.
+  - **Auth.** Экран входа теперь стартует с отдельного biometric gate:
+    idle-вращение линий вокруг сенсора, hover-подсветка панели, click →
+    короткое «сканирование» → раскрытие текущей панели входа. Логика
+    email/password/2FA не менялась по сути, только entrance UX.
+  - **Совместимость.** `useAuth.register()` синхронизирован с текущим
+    контрактом `AuthPage` (возврат `{ success, error? }`), чтобы web-сборка
+    снова была зелёной.
+  - **Проверка.** `npm run build -w @eclipse-chat/web` проходит. Локальный
+    browser-smoke в in-app browser не подписан: среда не открыла localhost
+    preview (`ERR_CONNECTION_REFUSED`).
 
 - **v1.2.9** — **удалённые сообщения убраны из истории чата**. Запрос
   Pavel'я: «надо чтобы удалённые сообщения не сохранялись в истории

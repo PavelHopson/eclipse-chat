@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import { useEffect, useState } from "react";
 import { Avatar } from "./Avatar";
 import { CreateChannelModal } from "./CreateChannelModal";
+import { ChannelGlyph } from "./icons/ChannelCustomIcons";
 import type { ChannelRow } from "../hooks/useChannels";
 import type { MemberRow } from "../hooks/useMembers";
 import type { ChannelType, VoiceMeta } from "../lib/socket";
@@ -88,89 +89,6 @@ function canManage(role: string | null): boolean {
 /** Edit channel name/description. Включает MODERATOR (отличается от delete). */
 function canEditChannel(role: string | null): boolean {
   return role === "OWNER" || role === "ADMIN" || role === "MODERATOR";
-}
-
-function ChannelGlyph({
-  type,
-  emoji,
-}: {
-  type: ChannelType;
-  emoji?: string | null;
-}) {
-  if (emoji) {
-    return (
-      <span
-        aria-hidden
-        style={{ fontSize: "0.95rem", lineHeight: 1, display: "inline-block" }}
-      >
-        {emoji}
-      </span>
-    );
-  }
-  if (type === "VOICE") {
-    return (
-      <svg
-        width="14"
-        height="14"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden
-      >
-        <path d="M11 5L6 9H2v6h4l5 4V5z" />
-        <path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07" />
-      </svg>
-    );
-  }
-  if (type === "BROADCAST") {
-    // Megaphone — канал-вещание (news/blogger)
-    return (
-      <svg
-        width="14"
-        height="14"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden
-      >
-        <path d="M3 11l15-5v12L3 13v-2z" />
-        <path d="M11.6 16.8a3 3 0 11-5.8-1.6" />
-        <path d="M21 9v6" />
-      </svg>
-    );
-  }
-  if (type === "EXECUTION") {
-    // Kanban-board glyph — execution комната, primary view = Status Board.
-    return (
-      <svg
-        width="14"
-        height="14"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden
-      >
-        <rect x="3" y="3" width="7" height="9" rx="1" />
-        <rect x="14" y="3" width="7" height="5" rx="1" />
-        <rect x="14" y="12" width="7" height="9" rx="1" />
-        <rect x="3" y="16" width="7" height="5" rx="1" />
-      </svg>
-    );
-  }
-  return (
-    <span className="ec-channel-hash" aria-hidden>
-      #
-    </span>
-  );
 }
 
 /** Перечёркнутый микрофон — участник эфира с выключенным микрофоном. */
@@ -476,7 +394,7 @@ export function ChannelList({
           cursor: canDrag ? "grab" : "pointer",
         }}
       >
-        <ChannelGlyph type={c.type} emoji={c.emoji} />
+        <ChannelGlyph type={c.type} icon={c.emoji} />
         <span className="ec-channel-item__name">{c.name}</span>
         {c.internal && (
           <span

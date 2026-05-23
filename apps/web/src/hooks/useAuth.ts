@@ -130,8 +130,9 @@ export function useAuth() {
         });
         const data = (await res.json().catch(() => ({}))) as AuthResponse & { error?: string };
         if (!res.ok) {
-          setError(data.error ?? "Ошибка регистрации");
-          return false;
+          const message = data.error ?? "Ошибка регистрации";
+          setError(message);
+          return { success: false, error: message };
         }
         const acc = data.accessToken ?? data.token;
         if (acc && data.refreshToken) {
@@ -142,10 +143,11 @@ export function useAuth() {
         }
         setView("app");
         bumpSocketRev();
-        return true;
+        return { success: true };
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Сетевая ошибка");
-        return false;
+        const message = e instanceof Error ? e.message : "Сетевая ошибка";
+        setError(message);
+        return { success: false, error: message };
       }
     },
     [bumpSocketRev],

@@ -1,6 +1,11 @@
 import type { CSSProperties } from "react";
 import { useEffect, useState } from "react";
 import { Modal } from "./Modal";
+import {
+  ChannelGlyph,
+  CHANNEL_ICON_PRESETS,
+  getChannelIconLabel,
+} from "./icons/ChannelCustomIcons";
 import type { ChannelRow } from "../hooks/useChannels";
 
 type Props = {
@@ -15,19 +20,6 @@ type Props = {
   /** v0.47: показывать toggle «Internal channel». OWNER/ADMIN/MOD + Client mode. */
   showInternalToggle?: boolean;
 };
-
-/**
- * Channel-relevant emoji presets (компактный набор, не overwhelm picker).
- * 5 columns × 6 rows = 30 шт.
- */
-const CHANNEL_EMOJI_PRESETS = [
-  "💬", "🔔", "📢", "📌", "🗣️",
-  "💡", "🧠", "🎯", "🚀", "🔥",
-  "🐛", "🛠️", "⚙️", "🔧", "📦",
-  "📊", "📈", "💰", "💸", "💎",
-  "🎨", "🎮", "🎬", "🎵", "📺",
-  "☕", "🍕", "🌍", "🌙", "⭐",
-] as const;
 
 const sectionLabel: CSSProperties = {
   fontSize: "var(--ec-text-2xs)",
@@ -123,11 +115,11 @@ export function ChannelSettingsModal({
     }
   };
 
-  const channelPrefix = emoji || (channel.type === "VOICE" ? "🔊" : "#");
+  const channelIconLabel = getChannelIconLabel(emoji, channel.type);
 
   return (
     <Modal
-      title={`Настройки комнаты ${channelPrefix} ${channel.name}`}
+      title={`Настройки комнаты ${channel.name}`}
       onClose={onClose}
       width={560}
     >
@@ -161,67 +153,69 @@ export function ChannelSettingsModal({
         </div>
       </section>
 
-      {/* Emoji prefix */}
+      {/* Channel icon */}
       <section style={{ marginTop: "var(--ec-space-4)" }}>
         <h3 style={sectionLabel}>Иконка комнаты</h3>
         <div style={groupCard}>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(10, 1fr)",
-              gap: "var(--ec-space-1)",
-            }}
-          >
+          <div className="ec-channel-icon-picker">
             <button
               type="button"
               onClick={() => setEmoji(null)}
-              title="Сбросить — использовать стандартную #"
-              style={{
-                aspectRatio: "1",
-                display: "grid",
-                placeItems: "center",
-                background: emoji === null ? "var(--ec-accent-soft)" : "var(--ec-surface-1)",
-                border: emoji === null ? "1px solid var(--ec-accent)" : "1px solid var(--ec-border-subtle)",
-                borderRadius: "var(--ec-radius-md)",
-                fontSize: "1.1rem",
-                color: emoji === null ? "var(--ec-accent)" : "var(--ec-text-muted)",
-                cursor: "pointer",
-                fontWeight: 700,
-                transition: "all var(--ec-dur-fast) var(--ec-ease)",
-              }}
+              title="Сбросить — использовать системную иконку по типу комнаты"
+              aria-pressed={emoji === null}
+              className={[
+                "ec-channel-icon-tile",
+                "ec-channel-icon-tile--fallback",
+                emoji === null ? "ec-channel-icon-tile--active" : "",
+              ].filter(Boolean).join(" ")}
             >
-              {channel.type === "VOICE" ? "🔊" : "#"}
+              <ChannelGlyph
+                type={channel.type}
+                icon={null}
+                size={18}
+                className="ec-channel-icon-tile__glyph"
+              />
+              <span className="ec-channel-icon-tile__label">
+                {channel.type === "VOICE" ? "Системная" : "Стандарт"}
+              </span>
             </button>
-            {CHANNEL_EMOJI_PRESETS.map((e) => {
-              const active = emoji === e;
+            {CHANNEL_ICON_PRESETS.map((preset) => {
+              const active = emoji === preset.id;
               return (
                 <button
-                  key={e}
+                  key={preset.id}
                   type="button"
-                  onClick={() => setEmoji(e)}
-                  title={e}
-                  style={{
-                    aspectRatio: "1",
-                    display: "grid",
-                    placeItems: "center",
-                    background: active ? "var(--ec-accent-soft)" : "var(--ec-surface-1)",
-                    border: active
-                      ? "1px solid var(--ec-accent)"
-                      : "1px solid var(--ec-border-subtle)",
-                    borderRadius: "var(--ec-radius-md)",
-                    fontSize: "1.05rem",
-                    cursor: "pointer",
-                    transition: "all var(--ec-dur-fast) var(--ec-ease)",
-                  }}
+                  onClick={() => setEmoji(preset.id)}
+                  title={preset.label}
+                  aria-label={preset.label}
+                  aria-pressed={active}
+                  className={[
+                    "ec-channel-icon-tile",
+                    active ? "ec-channel-icon-tile--active" : "",
+                  ].filter(Boolean).join(" ")}
                 >
-                  {e}
+                  <ChannelGlyph
+                    type={channel.type}
+                    icon={preset.id}
+                    size={18}
+                    className="ec-channel-icon-tile__glyph"
+                  />
+                  <span className="ec-channel-icon-tile__label">{preset.label}</span>
                 </button>
               );
             })}
           </div>
           <p style={fieldHint}>
-            Кастомная иконка показывается вместо # / 🔊 в боковой панели
-            и шапке чата. Сейчас: <span style={{ fontSize: "1rem" }}>{channelPrefix}</span>
+            Кастомная иконка показывается в боковой панели и в шапке чата.
+            <span className="ec-channel-icon-preview">
+              <ChannelGlyph
+                type={channel.type}
+                icon={emoji}
+                size={18}
+                className="ec-channel-icon-preview__glyph"
+              />
+              <span>Сейчас: {channelIconLabel}</span>
+            </span>
           </p>
         </div>
       </section>

@@ -14,6 +14,7 @@ import { ChatHeaderHoverButton } from "../components/ChatHeaderHoverButton";
 import { LogoutButton } from "../components/LogoutButton";
 import { ActionItemDrawer } from "../components/ActionItemDrawer";
 import { OperationalTablePanel } from "../components/OperationalTablePanel";
+import { ChannelGlyph } from "../components/icons/ChannelCustomIcons";
 import { useOperationalTables } from "../hooks/useOperationalTables";
 import { MusicMiniPlayer } from "../components/MusicMiniPlayer";
 import { MusicExpandModal } from "../components/MusicExpandModal";
@@ -1241,44 +1242,12 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               }}
             >
               <span className="ec-chat-title">
-                {selectedChannel.emoji ? (
-                  <span style={{ fontSize: "1rem", lineHeight: 1 }}>{selectedChannel.emoji}</span>
-                ) : selectedChannel.type === "VOICE" ? (
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    style={{ color: "var(--ec-accent)" }}
-                    aria-hidden
-                  >
-                    <path d="M11 5L6 9H2v6h4l5 4V5z" />
-                    <path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07" />
-                  </svg>
-                ) : selectedChannel.type === "BROADCAST" ? (
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    style={{ color: "var(--ec-accent)" }}
-                    aria-hidden
-                  >
-                    <path d="M3 11l15-5v12L3 13v-2z" />
-                    <path d="M11.6 16.8a3 3 0 11-5.8-1.6" />
-                    <path d="M21 9v6" />
-                  </svg>
-                ) : (
-                  <span style={{ color: "var(--ec-accent)" }}>#</span>
-                )}
+                <ChannelGlyph
+                  type={selectedChannel.type}
+                  icon={selectedChannel.emoji}
+                  size={16}
+                  className="ec-chat-title__glyph"
+                />
                 {selectedChannel.name}
               </span>
               {selectedChannel.expiresAt && (
