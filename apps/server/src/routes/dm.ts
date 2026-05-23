@@ -190,6 +190,8 @@ export async function registerDmRoutes(app: FastifyInstance) {
         },
         messages: {
           take: 1,
+          // v1.2.9 — last-message preview берём только из не-удалённых.
+          where: { deletedAt: null },
           orderBy: { createdAt: "desc" },
           select: {
             id: true,
@@ -304,6 +306,8 @@ export async function registerDmRoutes(app: FastifyInstance) {
             deletedAt: true,
             attachments: { select: { id: true } },
           },
+          // v1.2.9 — last-message preview берём только из не-удалённых.
+          where: { deletedAt: null },
         },
       },
     });
@@ -608,7 +612,8 @@ export async function registerDmRoutes(app: FastifyInstance) {
         Math.max(1, Number((req.query as { take?: string }).take) || 50),
       );
       const messages = await db.message.findMany({
-        where: { conversationId },
+        // v1.2.9 — удалённые DM-сообщения не показываем в истории.
+        where: { conversationId, deletedAt: null },
         take,
         orderBy: { createdAt: "desc" },
         include: {

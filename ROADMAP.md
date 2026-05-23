@@ -5,7 +5,7 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.2.8** (Galaxy/Clock/Theme/Deadline effects +
+**Текущая версия:** **v1.2.9** (Galaxy/Clock/Theme/Deadline effects +
 UX-copy + дизайн-полиш + редизайн WS-1 + системный редизайн ЗАКРЫТ 8/8 +
 светлая тема SOLAR (Notion-crisp) + фикс AuthScreen + смена пароля +
 визуальный передел AppShell ЗАКРЫТ 4/4 + топбар-полиш +
@@ -31,9 +31,10 @@ CSS-консолидация slice 7 — дубль-блоки .ec-shell* и !im
 трек P2 — расширение Platform Admin: serverы (заморозка/разморозка),
 аудит-таба, soft-delete user, suspend-gating critical writes +
 трек P3 — polish Platform Admin: pagination + search-debounce +
-row-click details (user/server) + suspend-gating шире).
+row-click details (user/server) + suspend-gating шире +
+удалённые сообщения убраны из истории чата (UI/API фильтр) ).
 
-> **v1.1.90 … v1.2.0 задеплоены — в проде v1.2.0. v1.2.1 … v1.2.8
+> **v1.1.90 … v1.2.0 задеплоены — в проде v1.2.0. v1.2.1 … v1.2.9
 > запушены и ждут approve-gate Pavel'я в GitHub Actions (environment
 > `production`). Деплой НЕ автоматический по пушу. ⚠️ v1.2.6 и v1.2.7
 > несут Prisma-миграции — deploy.sh [4/10] применяет
@@ -45,8 +46,37 @@ row-click details (user/server) + suspend-gating шире).
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.2.8:**
+**Изменения v1.1.25 → v1.2.9:**
 
+- **v1.2.9** — **удалённые сообщения убраны из истории чата**. Запрос
+  Pavel'я: «надо чтобы удалённые сообщения не сохранялись в истории
+  чата» (на скрине — четыре tombstone'а «сообщение удалено» подряд).
+  - **Подход.** Soft-delete в БД остаётся (audit-trail / recovery /
+    moderation). Меняется только UI/API-видимость: сообщения с
+    `deletedAt !== null` не отдаются клиенту и не остаются в state
+    после realtime-события `message:deleted`. Обратимо через SQL:
+    `UPDATE "Message" SET "deletedAt"=NULL WHERE id='...';`
+  - **Backend.** Добавлен `deletedAt: null` в where:
+    + `channels.ts` GET `/api/channels/:id/messages` (main feed)
+    + `threads.ts` GET thread replies
+    + `dm.ts` GET DM messages + last-message preview (nested
+      include `messages.where`)
+    + `messages.ts` GET pinned (defensive; pinnedAt уже null'ится при
+      delete)
+    Search (`servers.ts`) и home-recent (`home.ts`) уже фильтровали
+    `deletedAt: null` — не тронуто. Aggregates (analytics/digest/
+    incidents/visits) — не main feed, оставлены как есть на потом.
+  - **Frontend.** `useMessages` socket-handler `onDeleted` теперь
+    **убирает** message из state (через filter), а не оставляет
+    tombstone (раньше: `{...m, content: "", deletedAt}`). Defensive
+    filter в `MessageList`/`ThreadPanel` render-map: если deletedAt
+    != null проскочит — не рисуем.
+  - **Известное (out of scope).** Thread root, открытый по прямой
+    ссылке после удаления, всё ещё рендерится с tombstone в
+    ThreadPanel (backend отдаёт root отдельно без фильтра). Pavel'я
+    intent касается main feed — это закрыто. Thread-root edge —
+    follow-up.
+  Сборка зелёная (tsc + vite). Без миграций — чистая API/UI правка.
 - **v1.2.8** — **трек P3: polish Platform Admin** — pagination,
   search-debounce, row-click details (user/server), расширенный
   suspend-gating. Закрытие хвоста треkа P.

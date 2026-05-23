@@ -179,6 +179,9 @@ export async function registerChannelRoutes(app: FastifyInstance) {
         channelId: id,
         // Скрываем thread replies из main feed — они показываются в Thread panel
         parentMessageId: null,
+        // v1.2.9 — удалённые сообщения не показываем в истории чата.
+        // Soft-delete в БД остаётся (audit/recovery), но в UI их нет.
+        deletedAt: null,
       },
       take,
       orderBy: { createdAt: "desc" },

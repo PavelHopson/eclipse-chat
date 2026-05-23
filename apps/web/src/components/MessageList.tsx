@@ -366,8 +366,8 @@ export function MessageList({
           onClose={() => setPickerFor(null)}
         />
       )}
-      {messages.map((m, i) => {
-        const prev = i > 0 ? messages[i - 1] : null;
+      {messages.filter((m) => m.deletedAt == null).map((m, i, arr) => {
+        const prev = i > 0 ? arr[i - 1] : null;
         const sameAuthor = prev?.user.id === m.user.id;
         const closeInTime =
           prev != null && new Date(m.createdAt).getTime() - new Date(prev.createdAt).getTime() < 5 * 60 * 1000;

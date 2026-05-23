@@ -189,7 +189,7 @@ export function ThreadPanel({
               <span className="ec-thread__sep-line" aria-hidden />
             </div>
 
-            {data.replies.map((r) => (
+            {data.replies.filter((r) => r.deletedAt == null).map((r) => (
               <article key={r.id} className={r.pending ? "ec-thread-reply ec-thread-reply--pending" : "ec-thread-reply"}>
                 <Avatar url={r.user.avatar} name={r.user.displayName} size={32} />
                 <div style={{ minWidth: 0 }}>

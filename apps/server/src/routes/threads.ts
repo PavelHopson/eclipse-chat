@@ -110,7 +110,8 @@ export async function registerThreadRoutes(app: FastifyInstance) {
     }
 
     const replies = await db.message.findMany({
-      where: { parentMessageId: rootId },
+      // v1.2.9 — удалённые reply не показываем в Thread panel.
+      where: { parentMessageId: rootId, deletedAt: null },
       take,
       orderBy: { createdAt: "asc" },
       include: {

@@ -448,13 +448,10 @@ export function useMessages(
     };
     const onDeleted = (p: MessageDeletedPayload) => {
       if (p.channelId !== channelIdRef.current) return;
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === p.messageId
-            ? { ...m, content: "", deletedAt: p.deletedAt, pinnedAt: null, actionItems: [] }
-            : m,
-        ),
-      );
+      // v1.2.9 — удалённые сообщения убираем из истории чата полностью
+      // (не оставляем tombstone «сообщение удалено»). В БД soft-delete
+      // остаётся для audit/recovery, но в UI их нет.
+      setMessages((prev) => prev.filter((m) => m.id !== p.messageId));
       setOpenActionItems((prev) => prev.filter((item) => item.sourceMessageId !== p.messageId));
     };
     const onPinned = (p: MessagePinnedPayload) => {

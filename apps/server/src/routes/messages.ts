@@ -76,7 +76,9 @@ export async function registerMessageRoutes(app: FastifyInstance) {
         return reply.status(403).send({ error: "Not a member of this server" });
       }
       const pinned = await db.message.findMany({
-        where: { channelId, pinnedAt: { not: null } },
+        // v1.2.9 — deletedAt: null defensively; на самом деле delete-route
+        // ставит pinnedAt=null при удалении, так что вряд ли встретится.
+        where: { channelId, pinnedAt: { not: null }, deletedAt: null },
         orderBy: { pinnedAt: "desc" },
         include: {
           user: {
