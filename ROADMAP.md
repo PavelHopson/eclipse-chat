@@ -5,7 +5,7 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.2.11** (Galaxy/Clock/Theme/Deadline effects +
+**Текущая версия:** **v1.2.12** (Galaxy/Clock/Theme/Deadline effects +
 UX-copy + дизайн-полиш + редизайн WS-1 + системный редизайн ЗАКРЫТ 8/8 +
 светлая тема SOLAR (Notion-crisp) + фикс AuthScreen + смена пароля +
 визуальный передел AppShell ЗАКРЫТ 4/4 + топбар-полиш +
@@ -34,11 +34,12 @@ CSS-консолидация slice 7 — дубль-блоки .ec-shell* и !im
 row-click details (user/server) + suspend-gating шире +
 удалённые сообщения убраны из истории чата (UI/API фильтр) +
 кастомные иконки комнат + биометрический auth-gateway +
-slice 6a — AdminPanel inline-долг очищен).
+slice 6a — AdminPanel inline-долг очищен +
+slice 6b — BotsTab inline-долг + JS-hover ЗАКРЫТ; brief-slice 6 ✅).
 
-> **v1.1.90 … v1.2.10 задеплоены — в проде v1.2.10. v1.2.11
-> запушен и ждёт approve-gate Pavel'я. Деплой НЕ автоматический
-> по пушу.**
+> **v1.1.90 … v1.2.10 задеплоены — в проде v1.2.10. v1.2.11 …
+> v1.2.12 запушены и ждут approve-gate Pavel'я. Деплой НЕ
+> автоматический по пушу.**
 
 > **⚠️ ЦВЕТ-ПРАВИЛО ИЗМЕНЕНО (бриф Pavel'я 20.05.2026).** Прежнее
 > «cool-tone, НИКОГДА warm» — ОТМЕНЕНО. Новая identity: **violet
@@ -46,8 +47,28 @@ slice 6a — AdminPanel inline-долг очищен).
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.2.11:**
+**Изменения v1.1.25 → v1.2.12:**
 
+- **v1.2.12** — **slice 6b: BotsTab inline-долг + JS-hover очищены.
+  Brief-slice 6 ЗАКРЫТ полностью** (6a AdminPanel + 6b BotsTab).
+  - **Долг убран:** 6 module-level CSSProperties консолей
+    (`sectionLabel` / `groupCard` / `fieldHint` / `inputStyle` /
+    `botCard` / `monoChip`) — все ссылки → `.ec-bots-*` классы.
+    Spread-сайты `{...inputStyle, ...overrides}` → `className=
+    "ec-bots-input" style={overrides}`.
+  - **JS-hover на bot-card убран.** onMouseEnter/Leave мутировал
+    `e.currentTarget.style.borderColor` и `.background` — заменено
+    на CSS `:hover` (`.ec-bot-card:hover { background, border-color }`).
+    Главный источник drift'а по brief'у §3.3 закрыт.
+  - **Parametric helpers** `roleAvatarStyle(role)` и `roleChipStyle(role)`
+    оставлены inline — legitimately dynamic (цвета берутся из
+    `BOT_ROLE_COLORS[role]` per-role). Бриф §4 явно разрешает inline
+    для динамических значений.
+  - `cockpit.css` дорос секцией `.ec-bots-*`: section-label /
+    group-card / field-hint / input (+ :focus) / mono-chip + новый
+    `.ec-bot-card` с правильным :hover-переходом surface+border.
+    SOLAR-совместимо через токены.
+  Сборка зелёная (tsc + vite). Без миграций.
 - **v1.2.11** — **slice 6a: AdminPanel inline-долг очищен**. Закрытие
   первой половины brief-slice 6. Per-server AdminPanel.tsx (~2000 строк)
   переведён на cockpit-grammar.

@@ -21,58 +21,11 @@ type Props = {
   serverId: string;
 };
 
-const sectionLabel: CSSProperties = {
-  fontSize: "var(--ec-text-2xs)",
-  fontWeight: 700,
-  letterSpacing: "var(--ec-tracking-caps)",
-  textTransform: "uppercase",
-  color: "var(--ec-text-muted)",
-  margin: "0 0 var(--ec-space-2) 0",
-};
-
-const groupCard: CSSProperties = {
-  background: "var(--ec-surface-2)",
-  border: "1px solid var(--ec-border-default)",
-  borderRadius: "var(--ec-radius-lg)",
-  padding: "var(--ec-space-4)",
-  display: "flex",
-  flexDirection: "column",
-  gap: "var(--ec-space-3)",
-};
-
-const fieldHint: CSSProperties = {
-  fontSize: "var(--ec-text-2xs)",
-  color: "var(--ec-text-dim)",
-  lineHeight: 1.5,
-  margin: 0,
-};
-
-const inputStyle: CSSProperties = {
-  width: "100%",
-  padding: "0.55rem 0.7rem",
-  borderRadius: "var(--ec-radius-md)",
-  border: "1px solid var(--ec-border-default)",
-  background: "var(--ec-surface-1)",
-  color: "var(--ec-text)",
-  fontSize: "var(--ec-text-sm)",
-  fontFamily: "inherit",
-};
-
-const botCard: CSSProperties = {
-  display: "grid",
-  // v1.1.5: minmax(0, 1fr) для col 2 — без него длинный actions-block (7
-  // кнопок) растягивал col 3 до max-content и col 2 сжимался до 1 буквы
-  // в столбец (см. Pavel screenshot v1.1.4). 280px cap для col 3 заставляет
-  // кнопки wrap в 2-3 ряда вместо single horizontal mega-row.
-  gridTemplateColumns: "auto minmax(0, 1fr) minmax(0, 280px)",
-  gap: "var(--ec-space-3)",
-  alignItems: "start",
-  padding: "var(--ec-space-3)",
-  background: "var(--ec-surface-1)",
-  border: "1px solid var(--ec-border-subtle)",
-  borderRadius: "var(--ec-radius-md)",
-  transition: "border-color var(--ec-dur-fast) var(--ec-ease), background var(--ec-dur-fast) var(--ec-ease)",
-};
+// v1.2.12 slice 6b — module-level CSSProperties консоли (sectionLabel /
+// groupCard / fieldHint / inputStyle / botCard / monoChip) переехали в
+// cockpit.css как .ec-bots-* классы. JS-hover на bot-card (мутирующий
+// .style) убран — :hover теперь в CSS. roleAvatarStyle / roleChipStyle
+// остаются inline-helper'ами (legitimately dynamic per BOT_ROLE_COLORS).
 
 function roleAvatarStyle(role: BotRole): CSSProperties {
   const c = BOT_ROLE_COLORS[role];
@@ -106,17 +59,6 @@ function roleChipStyle(role: BotRole): CSSProperties {
     lineHeight: 1.3,
   };
 }
-
-const monoChip: CSSProperties = {
-  fontFamily: "var(--ec-font-mono)",
-  fontSize: "var(--ec-text-2xs)",
-  color: "var(--ec-text-muted)",
-  background: "var(--ec-surface-2)",
-  padding: "0.1rem 0.4rem",
-  borderRadius: "var(--ec-radius-sm)",
-  border: "1px solid var(--ec-border-subtle)",
-  letterSpacing: 0,
-};
 
 /** Основной EN-keyword для роли (для UI hint про @-mention в BotsTab). */
 function primaryRoleKeyword(role: BotRole): string {
@@ -193,8 +135,8 @@ function RevealedKeyPanel({
 }) {
   return (
     <div
+      className="ec-bots-group-card"
       style={{
-        ...groupCard,
         border: "1px solid color-mix(in srgb, var(--ec-warn) 55%, transparent)",
         background: "color-mix(in srgb, var(--ec-warn) 6%, transparent)",
         marginTop: "var(--ec-space-3)",
@@ -211,7 +153,7 @@ function RevealedKeyPanel({
           API-ключ показывается один раз
         </strong>
       </div>
-      <p style={fieldHint}>
+      <p className="ec-bots-field-hint">
         Сохрани его в безопасном месте — secrets manager, password manager или env-переменная
         в коде бота. Восстановить нельзя, только сгенерировать новый.
       </p>
@@ -359,8 +301,8 @@ function CreateBotForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} style={{ ...groupCard, gap: "var(--ec-space-2)" }}>
-      <h3 style={sectionLabel}>Новый бот</h3>
+    <form onSubmit={handleSubmit} className="ec-bots-group-card" style={{ gap: "var(--ec-space-2)" }}>
+      <h3 className="ec-bots-section-label">Новый бот</h3>
       <input
         type="text"
         value={name}
@@ -368,7 +310,7 @@ function CreateBotForm({
         maxLength={80}
         placeholder="Имя бота (например, Telegram Bridge)"
         autoFocus
-        style={inputStyle}
+        className="ec-bots-input"
         required
       />
       <textarea
@@ -377,7 +319,7 @@ function CreateBotForm({
         maxLength={280}
         rows={2}
         placeholder="Что этот бот делает (необязательно, до 280 символов)"
-        style={{ ...inputStyle, resize: "vertical", minHeight: 60 }}
+        className="ec-bots-input" style={{ resize: "vertical", minHeight: 60 }}
       />
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         <span
@@ -390,7 +332,7 @@ function CreateBotForm({
           Роль
         </span>
         <RolePicker value={role} onChange={setRole} busy={busy} />
-        <p style={{ ...fieldHint, marginTop: 2 }}>{BOT_ROLE_DESCRIPTIONS[role]}</p>
+        <p className="ec-bots-field-hint" style={{ marginTop: 2 }}>{BOT_ROLE_DESCRIPTIONS[role]}</p>
       </div>
       <div style={{ display: "flex", gap: "var(--ec-space-2)", justifyContent: "flex-end" }}>
         <button type="button" onClick={onCancel} disabled={busy} className="ec-btn ec-btn--ghost ec-btn--sm">
@@ -404,7 +346,7 @@ function CreateBotForm({
           {busy ? "Создаём…" : "Создать бота"}
         </button>
       </div>
-      <p style={fieldHint}>
+      <p className="ec-bots-field-hint">
         После создания получишь API-ключ — показывается один раз. Сохрани его сразу.
       </p>
     </form>
@@ -651,7 +593,7 @@ export function BotsTab({ serverId }: Props) {
           marginBottom: "var(--ec-space-3)",
         }}
       >
-        <h3 style={{ ...sectionLabel, margin: 0 }}>Боты пространства ({bots.length}/20)</h3>
+        <h3 className="ec-bots-section-label" style={{ margin: 0 }}>Боты пространства ({bots.length}/20)</h3>
         {!showCreate && bots.length < 20 && (
           <button
             type="button"
@@ -693,7 +635,7 @@ export function BotsTab({ serverId }: Props) {
 
       <div style={{ marginTop: "var(--ec-space-3)", display: "flex", flexDirection: "column", gap: "var(--ec-space-2)" }}>
         {loading && bots.length === 0 && (
-          <div style={{ ...fieldHint, padding: "var(--ec-space-4)", textAlign: "center" }}>
+          <div className="ec-bots-field-hint" style={{ padding: "var(--ec-space-4)", textAlign: "center" }}>
             Загружаем ботов…
           </div>
         )}
@@ -707,19 +649,7 @@ export function BotsTab({ serverId }: Props) {
         )}
 
         {bots.map((bot) => (
-          <div
-            key={bot.id}
-            className="ec-hover-lift"
-            style={botCard}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = "var(--ec-border-default)";
-              e.currentTarget.style.background = "var(--ec-surface-2)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = "var(--ec-border-subtle)";
-              e.currentTarget.style.background = "var(--ec-surface-1)";
-            }}
-          >
+          <div key={bot.id} className="ec-hover-lift ec-bot-card">
             <div style={roleAvatarStyle(bot.role)} aria-hidden>
               <BotIcon />
             </div>
@@ -743,7 +673,7 @@ export function BotsTab({ serverId }: Props) {
                 >
                   {BOT_ROLE_LABELS[bot.role]}
                 </button>
-                <span style={monoChip}>{bot.apiKeyPrefix}…</span>
+                <span className="ec-bots-mono-chip">{bot.apiKeyPrefix}…</span>
               </div>
               {bot.description && (
                 <p
@@ -831,7 +761,7 @@ export function BotsTab({ serverId }: Props) {
                     busy={busy}
                     onChange={(next) => void handleRoleChange(bot, next)}
                   />
-                  <p style={fieldHint}>{BOT_ROLE_DESCRIPTIONS[bot.role]}</p>
+                  <p className="ec-bots-field-hint">{BOT_ROLE_DESCRIPTIONS[bot.role]}</p>
                 </div>
               )}
             </div>
@@ -1006,7 +936,7 @@ export function BotsTab({ serverId }: Props) {
                     }))
                   }
                   placeholder="https://my-bot.example.com/eclipse-events"
-                  style={inputStyle}
+                  className="ec-bots-input"
                 />
               </label>
               <label
@@ -1037,14 +967,14 @@ export function BotsTab({ serverId }: Props) {
                       ? "Оставь пустым чтобы не менять, или введи новый"
                       : "Опционально — для signature verification на receiver-side"
                   }
-                  style={inputStyle}
+                  className="ec-bots-input"
                 />
               </label>
-              <p style={fieldHint}>
+              <p className="ec-bots-field-hint">
                 Каждое сообщение в комнатах пространства будет POST'нуто на URL.
-                Headers: <code style={monoChip}>X-Eclipse-Event: message.created</code>,
-                <code style={monoChip}>X-Eclipse-Bot-Id: {bot.id}</code>,
-                и (если secret) <code style={monoChip}>X-Eclipse-Bot-Signature: sha256=&lt;hex&gt;</code>.
+                Headers: <code className="ec-bots-mono-chip">X-Eclipse-Event: message.created</code>,
+                <code className="ec-bots-mono-chip">X-Eclipse-Bot-Id: {bot.id}</code>,
+                и (если secret) <code className="ec-bots-mono-chip">X-Eclipse-Bot-Signature: sha256=&lt;hex&gt;</code>.
                 <br />
                 Timeout 5s, бот не получает свои собственные messages (anti-loop).
               </p>
@@ -1110,7 +1040,7 @@ export function BotsTab({ serverId }: Props) {
                   ✕
                 </button>
               </div>
-              <p style={fieldHint}>
+              <p className="ec-bots-field-hint">
                 Пустое поле = шаблон роли{" "}
                 <span style={roleChipStyle(bot.role)}>{BOT_ROLE_LABELS[bot.role]}</span>.
                 Если включён автоответ и несколько ботов с авто — отвечает самый старый.
@@ -1123,8 +1053,8 @@ export function BotsTab({ serverId }: Props) {
                 rows={8}
                 maxLength={8000}
                 placeholder={BOT_ROLE_DESCRIPTIONS[bot.role]}
+                className="ec-bots-input"
                 style={{
-                  ...inputStyle,
                   resize: "vertical",
                   minHeight: 120,
                   fontFamily: "var(--ec-font-mono)",
@@ -1189,7 +1119,7 @@ export function BotsTab({ serverId }: Props) {
                   ✕
                 </button>
               </div>
-              <p style={fieldHint}>
+              <p className="ec-bots-field-hint">
                 Прогон system prompt с твоим input'ом — НЕ отправляется в канал.
                 Преглу для проверки prompt-override'а перед production-использованием.
               </p>
@@ -1201,7 +1131,7 @@ export function BotsTab({ serverId }: Props) {
                 rows={3}
                 maxLength={2000}
                 placeholder="Что спросить у бота — будет передано как user message"
-                style={{ ...inputStyle, resize: "vertical", minHeight: 70 }}
+                className="ec-bots-input" style={{ resize: "vertical", minHeight: 70 }}
                 disabled={running}
               />
               <div style={{ display: "flex", gap: "var(--ec-space-2)", justifyContent: "flex-end" }}>
@@ -1238,10 +1168,10 @@ export function BotsTab({ serverId }: Props) {
                           color: "var(--ec-text-muted)",
                         }}
                       >
-                        <span style={monoChip}>provider: {result.provider}</span>
-                        {result.model && <span style={monoChip}>model: {result.model}</span>}
-                        <span style={monoChip}>{result.latencyMs} ms</span>
-                        <span style={monoChip}>
+                        <span className="ec-bots-mono-chip">provider: {result.provider}</span>
+                        {result.model && <span className="ec-bots-mono-chip">model: {result.model}</span>}
+                        <span className="ec-bots-mono-chip">{result.latencyMs} ms</span>
+                        <span className="ec-bots-mono-chip">
                           prompt: {result.systemPromptLength} chars
                           {result.isOverride ? " (override)" : " (template)"}
                         </span>
@@ -1310,7 +1240,7 @@ export function BotsTab({ serverId }: Props) {
                 </button>
               </div>
               {loading && (
-                <p style={fieldHint}>Загружаем статистику…</p>
+                <p className="ec-bots-field-hint">Загружаем статистику…</p>
               )}
               {!loading && usage && (
                 <>
@@ -1399,15 +1329,15 @@ export function BotsTab({ serverId }: Props) {
                               {ch.type === "VOICE" ? "🔊 " : ch.type === "BROADCAST" ? "📣 " : ch.type === "EXECUTION" ? "▢ " : "# "}
                               {ch.name}
                             </span>
-                            <span style={monoChip}>{ch.count}</span>
+                            <span className="ec-bots-mono-chip">{ch.count}</span>
                           </div>
                         ))}
                       </div>
                     </div>
                   ) : (
-                    <p style={fieldHint}>Бот ещё ничего не написал.</p>
+                    <p className="ec-bots-field-hint">Бот ещё ничего не написал.</p>
                   )}
-                  <p style={{ ...fieldHint, marginTop: 0 }}>
+                  <p className="ec-bots-field-hint" style={{ marginTop: 0 }}>
                     Последнее использование API:{" "}
                     <strong style={{ color: "var(--ec-text)" }}>
                       {formatRelative(usage.lastUsedAt)}
@@ -1416,14 +1346,14 @@ export function BotsTab({ serverId }: Props) {
                 </>
               )}
               {!loading && !usage && (
-                <p style={fieldHint}>Не удалось загрузить статистику.</p>
+                <p className="ec-bots-field-hint">Не удалось загрузить статистику.</p>
               )}
             </div>
           );
         })()}
 
         {bots.length >= 20 && (
-          <p style={{ ...fieldHint, textAlign: "center" }}>
+          <p className="ec-bots-field-hint" style={{ textAlign: "center" }}>
             Достигнут лимит 20 ботов на пространство. Удали неиспользуемого, чтобы создать нового.
           </p>
         )}

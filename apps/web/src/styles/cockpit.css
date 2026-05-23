@@ -1438,6 +1438,84 @@
   outline: none;
   border-color: var(--ec-border-accent);
 }
+
+/* ===== BotsTab (per-server bots) — slice 6b, v1.2.12 ================
+   Inline-CSSProperties консоли (sectionLabel / groupCard / fieldHint /
+   inputStyle / botCard / monoChip) переведены сюда. JS-hover на
+   .ec-bot-card (onMouseEnter/Leave) убран в CSS :hover. Parametric
+   helpers (roleAvatarStyle / roleChipStyle) остаются inline —
+   legitimately dynamic per BOT_ROLE_COLORS[role]. */
+.ec-bots-section-label {
+  font-size: var(--ec-text-2xs);
+  font-weight: 700;
+  letter-spacing: var(--ec-tracking-caps);
+  text-transform: uppercase;
+  color: var(--ec-text-muted);
+  margin: 0 0 var(--ec-space-2) 0;
+}
+.ec-bots-group-card {
+  background: var(--ec-surface-2);
+  border: 1px solid var(--ec-border-default);
+  border-radius: var(--ec-radius-lg);
+  padding: var(--ec-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ec-space-3);
+}
+.ec-bots-field-hint {
+  font-size: var(--ec-text-2xs);
+  color: var(--ec-text-dim);
+  line-height: 1.5;
+  margin: 0;
+}
+.ec-bots-input {
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  border-radius: var(--ec-radius-md);
+  border: 1px solid var(--ec-border-default);
+  background: var(--ec-surface-1);
+  color: var(--ec-text);
+  font-size: var(--ec-text-sm);
+  font-family: inherit;
+}
+.ec-bots-input:focus {
+  outline: none;
+  border-color: var(--ec-border-accent);
+}
+
+/* Bot row card — hover поднимает surface + борд. Раньше делалось
+   onMouseEnter/Leave мутирующими .style — теперь pure CSS. */
+.ec-bot-card {
+  display: grid;
+  /* v1.1.5: minmax(0, 1fr) для col 2 — длинный actions-block (7 кнопок)
+     иначе растягивал col 3 до max-content и col 2 сжимался. 280px cap
+     на col 3 заставляет кнопки wrap. */
+  grid-template-columns: auto minmax(0, 1fr) minmax(0, 280px);
+  gap: var(--ec-space-3);
+  align-items: start;
+  padding: var(--ec-space-3);
+  background: var(--ec-surface-1);
+  border: 1px solid var(--ec-border-subtle);
+  border-radius: var(--ec-radius-md);
+  transition:
+    border-color var(--ec-dur-fast) var(--ec-ease),
+    background var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-bot-card:hover {
+  border-color: var(--ec-border-default);
+  background: var(--ec-surface-2);
+}
+
+.ec-bots-mono-chip {
+  font-family: var(--ec-font-mono);
+  font-size: var(--ec-text-2xs);
+  color: var(--ec-text-muted);
+  background: var(--ec-surface-2);
+  padding: 0.1rem 0.4rem;
+  border-radius: var(--ec-radius-sm);
+  border: 1px solid var(--ec-border-subtle);
+  letter-spacing: 0;
+}
 .ec-admin-card-label {
   font-size: var(--ec-text-2xs);
   font-weight: 700;
