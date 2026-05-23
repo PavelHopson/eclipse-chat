@@ -90,7 +90,11 @@ export async function registerThreadRoutes(app: FastifyInstance) {
         },
       },
     });
-    if (!root) {
+    if (!root || root.deletedAt) {
+      // v1.2.16 — thread-root edge: удалённый root по прямой ссылке
+      // больше не возвращается. Frontend получает 404 → показывает
+      // error в ThreadPanel вместо tombstone. Дополняет v1.2.9
+      // (main feed / thread replies / DM / pinned).
       return reply.status(404).send({ error: "Root message not found" });
     }
     if (!root.channelId) {

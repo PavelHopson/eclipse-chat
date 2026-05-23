@@ -5,7 +5,7 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.2.15** (Galaxy/Clock/Theme/Deadline effects +
+**Текущая версия:** **v1.2.16** (Galaxy/Clock/Theme/Deadline effects +
 UX-copy + дизайн-полиш + редизайн WS-1 + системный редизайн ЗАКРЫТ 8/8 +
 светлая тема SOLAR (Notion-crisp) + фикс AuthScreen + смена пароля +
 визуальный передел AppShell ЗАКРЫТ 4/4 + топбар-полиш +
@@ -40,11 +40,12 @@ audio-реактивный плеер: Web Audio API + AnalyserNode + RAF bars +
 slash-команды backend: /me /shrug /tableflip /unflip /help +
 emoji-кнопка композера с категорированным picker'ом +
 nginx trailing-slash редирект `/eclipse-chat → /eclipse-chat/` +
-og-image displayed URL с `/`).
+og-image displayed URL с `/` +
+thread-root edge fix v1.2.9 — удалённый root по прямой ссылке 404).
 
-> **v1.1.90 … v1.2.14 задеплоены — в проде v1.2.14. v1.2.15
-> запушено и ждёт approve-gate Pavel'я. Деплой НЕ автоматический
-> по пушу.**
+> **v1.1.90 … v1.2.14 задеплоены — в проде v1.2.14. v1.2.15 …
+> v1.2.16 запушены и ждут approve-gate Pavel'я. Деплой НЕ
+> автоматический по пушу.**
 
 > **⚠️ ЦВЕТ-ПРАВИЛО ИЗМЕНЕНО (бриф Pavel'я 20.05.2026).** Прежнее
 > «cool-tone, НИКОГДА warm» — ОТМЕНЕНО. Новая identity: **violet
@@ -52,8 +53,22 @@ og-image displayed URL с `/`).
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.2.15:**
+**Изменения v1.1.25 → v1.2.16:**
 
+- **v1.2.16** — **thread-root edge fix v1.2.9**. Закрытие из
+  follow-up списка v1.2.9: удалённый root, открытый по прямой
+  ссылке `/thread/:rootId`, всё ещё возвращался backend'ом и
+  фронт рисовал tombstone в ThreadPanel.
+  - **Backend.** `GET /api/messages/:id/thread` теперь отдаёт
+    404 если `root.deletedAt !== null` (раньше — только если root
+    physically not found). Frontend `useThread` ловит `ApiError`
+    через `.catch` → выставляет `error` state → ThreadPanel
+    показывает «Не удалось загрузить thread» вместо tombstone.
+  - **POST** уже корректно отвергал deleted root (410 Gone) —
+    не тронут.
+  - Дополняет v1.2.9 (main feed / thread replies / DM / pinned)
+    — закрывает последний known edge.
+  Сборка зелёная (tsc server). Без миграций. 3 строки в backend.
 - **v1.2.15** — **emoji-кнопка композера + nginx trailing-slash фикс
   + og-image URL коррекция**. Три параллельных фикса в одном bump'е.
   - **Emoji-кнопка композера.** Новый `ComposerEmojiPicker.tsx` —
