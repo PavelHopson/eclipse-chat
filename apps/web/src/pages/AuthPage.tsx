@@ -61,6 +61,7 @@ function validateCredentialsForm(args: {
 }
 
 export function AuthPage({ error, onLogin, onRegister }: Props) {
+  const brandMarkUrl = `${import.meta.env.BASE_URL}brand-mark.png`;
   const [step, setStep] = useState<Step>("credentials");
   const [mode, setMode] = useState<Mode>("login");
   const [entryState, setEntryState] = useState<EntryState>("gate");
@@ -364,7 +365,9 @@ export function AuthPage({ error, onLogin, onRegister }: Props) {
         </div>
 
         <div className="ec-auth-stack" data-entry={entryState}>
-          <div className="ec-auth-logo" aria-hidden />
+          <div className="ec-auth-logo" aria-hidden>
+            <img className="ec-auth-logo__mark" src={brandMarkUrl} alt="" />
+          </div>
           <h1 className="ec-auth-title">ECLIPSE</h1>
           <div className="ec-auth-subtitle">ПРОТОКОЛ_ШЛЮЗА_V1.0</div>
 

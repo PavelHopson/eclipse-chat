@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none">
+  <defs>
+    <linearGradient id="ec-ui-violet-rim" x1="24" y1="18" x2="104" y2="112" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F6EEFF"/>
+      <stop offset="0.34" stop-color="#D3A0FF"/>
+      <stop offset="0.72" stop-color="#A75CFF"/>
+      <stop offset="1" stop-color="#6D22FF"/>
+    </linearGradient>
+    <linearGradient id="ec-ui-violet-crescent" x1="70" y1="28" x2="100" y2="96" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F8F1FF"/>
+      <stop offset="0.22" stop-color="#C97DFF"/>
+      <stop offset="0.68" stop-color="#7A25FF"/>
+      <stop offset="1" stop-color="#44106D"/>
+    </linearGradient>
+    <linearGradient id="ec-ui-gold" x1="76" y1="60" x2="122" y2="60" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFE79A"/>
+      <stop offset="0.44" stop-color="#F6C963"/>
+      <stop offset="1" stop-color="#C88C25"/>
+    </linearGradient>
+    <filter id="ec-ui-violet-glow" x="8" y="7" width="111" height="114" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+      <feGaussianBlur stdDeviation="4.5" result="effect1_foregroundBlur"/>
+    </filter>
+    <filter id="ec-ui-gold-glow" x="67" y="49" width="61" height="30" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+      <feGaussianBlur stdDeviation="1.2" result="effect1_foregroundBlur"/>
+    </filter>
+  </defs>
+
+  <g filter="url(#ec-ui-violet-glow)">
+    <circle cx="64" cy="64" r="42.5" stroke="url(#ec-ui-violet-rim)" stroke-width="5.5"/>
+    <path
+      d="M87.5 28.5a37 37 0 1 1 0 71"
+      stroke="url(#ec-ui-violet-crescent)"
+      stroke-width="12"
+      stroke-linecap="round"
+    />
+  </g>
+
+  <circle cx="56.5" cy="64" r="34.5" fill="#030307"/>
+  <circle cx="56.5" cy="64" r="34.1" stroke="#3B1B62" stroke-opacity="0.38"/>
+
+  <g filter="url(#ec-ui-gold-glow)">
+    <circle cx="80.5" cy="64" r="6.3" fill="#07060C" stroke="url(#ec-ui-gold)" stroke-width="3"/>
+    <path d="M87 64h35" stroke="url(#ec-ui-gold)" stroke-width="4.4" stroke-linecap="round"/>
+  </g>
+</svg>

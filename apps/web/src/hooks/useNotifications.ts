@@ -11,6 +11,7 @@ type Permission = "default" | "granted" | "denied" | "unsupported";
 
 const LS_KEY = "eclipse_chat_notifications_enabled";
 const ORIGINAL_TITLE = "Eclipse Chat";
+const NOTIFICATION_ICON = `${import.meta.env.BASE_URL}icon-192.png`;
 
 function getStoredEnabled(): boolean {
   if (typeof window === "undefined") return false;
@@ -132,7 +133,7 @@ export function useNotifications(
       try {
         const notif = new Notification(p.displayName, {
           body: p.content.slice(0, 120),
-          icon: resolveAssetUrl(p.avatar) ?? `${import.meta.env.BASE_URL}favicon.ico`,
+          icon: resolveAssetUrl(p.avatar) ?? NOTIFICATION_ICON,
           tag: `eclipse-chat-${p.channelId}`,
           silent: false,
         });
@@ -182,7 +183,7 @@ export function useNotifications(
       try {
         const notif = new Notification("Эскалация", {
           body,
-          icon: `${import.meta.env.BASE_URL}favicon.ico`,
+          icon: NOTIFICATION_ICON,
           tag: `eclipse-chat-escalate-${p.actionItemId}`,
           silent: false,
         });

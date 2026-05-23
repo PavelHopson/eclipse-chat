@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" fill="none">
+  <defs>
+    <linearGradient id="ec-app-violet-rim" x1="34" y1="24" x2="146" y2="156" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F6EEFF"/>
+      <stop offset="0.34" stop-color="#D3A0FF"/>
+      <stop offset="0.72" stop-color="#A75CFF"/>
+      <stop offset="1" stop-color="#6D22FF"/>
+    </linearGradient>
+    <linearGradient id="ec-app-violet-crescent" x1="98" y1="39" x2="140" y2="135" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F8F1FF"/>
+      <stop offset="0.22" stop-color="#C97DFF"/>
+      <stop offset="0.68" stop-color="#7A25FF"/>
+      <stop offset="1" stop-color="#44106D"/>
+    </linearGradient>
+    <linearGradient id="ec-app-gold" x1="107" y1="85" x2="171" y2="85" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFE79A"/>
+      <stop offset="0.44" stop-color="#F6C963"/>
+      <stop offset="1" stop-color="#C88C25"/>
+    </linearGradient>
+    <filter id="ec-app-violet-glow" x="11" y="10" width="158" height="159" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+      <feGaussianBlur stdDeviation="6.5" result="effect1_foregroundBlur"/>
+    </filter>
+    <filter id="ec-app-gold-glow" x="90" y="71" width="88" height="29" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+      <feGaussianBlur stdDeviation="1.8" result="effect1_foregroundBlur"/>
+    </filter>
+  </defs>
+
+  <rect width="180" height="180" rx="40" fill="#030307"/>
+  <rect width="180" height="180" rx="40" fill="url(#ec-app-violet-crescent)" opacity="0.1"/>
+
+  <g filter="url(#ec-app-violet-glow)">
+    <circle cx="90" cy="90" r="59" stroke="url(#ec-app-violet-rim)" stroke-width="7.5"/>
+    <path
+      d="M122.5 40.5a51.5 51.5 0 1 1 0 99"
+      stroke="url(#ec-app-violet-crescent)"
+      stroke-width="17"
+      stroke-linecap="round"
+    />
+  </g>
+
+  <circle cx="79.5" cy="90" r="47.5" fill="#030307"/>
+  <circle cx="79.5" cy="90" r="47" stroke="#3B1B62" stroke-opacity="0.38" stroke-width="1.4"/>
+
+  <g filter="url(#ec-app-gold-glow)">
+    <circle cx="112.5" cy="90" r="8.4" fill="#07060C" stroke="url(#ec-app-gold)" stroke-width="4"/>
+    <path d="M121 90h48" stroke="url(#ec-app-gold)" stroke-width="5.8" stroke-linecap="round"/>
+  </g>
+</svg>

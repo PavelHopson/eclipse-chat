@@ -1704,41 +1704,52 @@
  * Без image asset'а — pure CSS eclipse symbol. */
 .ec-auth-logo {
   position: relative;
-  width: 80px;
-  height: 80px;
-  border: 1px solid hsl(258 70% 60% / 0.3);
-  border-radius: var(--ec-radius-md);
-  background: #000;
+  width: 104px;
+  height: 104px;
+  padding: 8px;
+  border: 1px solid hsl(258 70% 60% / 0.18);
+  border-radius: 26px;
+  background:
+    radial-gradient(circle at 50% 50%, hsl(271 100% 70% / 0.18), transparent 62%),
+    linear-gradient(180deg, hsl(224 28% 11% / 0.9), hsl(220 26% 6% / 0.74));
   display: grid;
   place-items: center;
   margin-bottom: 24px;
   box-shadow:
-    inset 0 0 24px hsl(258 70% 60% / 0.15),
-    0 0 24px -4px hsl(258 70% 60% / 0.35);
+    inset 0 1px 0 hsl(0 0% 100% / 0.1),
+    0 24px 42px -28px hsl(258 70% 60% / 0.38),
+    0 0 0 1px hsl(258 70% 60% / 0.08);
   overflow: hidden;
 }
 .ec-auth-logo::before {
   content: "";
   position: absolute;
   inset: 14px;
-  border-radius: 50%;
-  background: radial-gradient(
-    circle at 35% 35%,
-    hsl(258 90% 70%) 0%,
-    hsl(258 70% 50%) 25%,
-    hsl(252 60% 35%) 55%,
-    #000 80%
-  );
-  box-shadow: 0 0 16px hsl(258 70% 60% / 0.5);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 54% 50%, hsl(271 100% 72% / 0.2), transparent 46%);
+  filter: blur(10px);
   animation: ec-auth-logo-breathe 4s ease-in-out infinite;
 }
 .ec-auth-logo::after {
   content: "";
   position: absolute;
-  inset: 14px;
-  border-radius: 50%;
-  background: radial-gradient(circle at center, transparent 50%, #000 78%);
+  inset: 0;
+  border-radius: inherit;
+  border: 1px solid hsl(0 0% 100% / 0.04);
   pointer-events: none;
+}
+.ec-auth-logo__mark {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  mix-blend-mode: screen;
+  filter:
+    drop-shadow(0 0 24px hsl(271 100% 70% / 0.3))
+    drop-shadow(0 0 8px hsl(42 96% 72% / 0.2));
 }
 @keyframes ec-auth-logo-breathe {
   0%, 100% { transform: scale(1); filter: brightness(1); }
@@ -1852,6 +1863,18 @@
     drop-shadow(0 32px 64px hsl(240 55% 4% / 0.42))
     drop-shadow(0 0 44px hsl(258 78% 64% / 0.14));
 }
+.ec-auth-stack[data-entry="panel"] .ec-auth-terminal-frame {
+  transform: none;
+  filter:
+    drop-shadow(0 34px 64px hsl(240 55% 4% / 0.42))
+    drop-shadow(0 0 30px hsl(258 78% 64% / 0.12));
+}
+.ec-auth-stack[data-entry="panel"] .ec-auth-terminal-frame::before {
+  border-radius: 26px;
+}
+.ec-auth-stack[data-entry="panel"] .ec-auth-terminal-frame::after {
+  border-radius: 30px;
+}
 @media (prefers-reduced-motion: reduce) {
   .ec-auth-terminal-frame {
     transform: none;
@@ -1886,6 +1909,10 @@
     inset 0 1px 0 hsl(0 0% 100% / 0.08),
     inset 0 -40px 80px hsl(220 60% 2% / 0.24);
   overflow: hidden;
+}
+.ec-auth-stack[data-entry="panel"] .ec-auth-terminal {
+  clip-path: none;
+  border-radius: 24px;
 }
 .ec-auth-terminal::before,
 .ec-auth-terminal::after {
@@ -2231,7 +2258,8 @@
   align-items: center;
   gap: 10px;
   margin-top: 4px;
-  padding: 10px 14px;
+  min-height: 48px;
+  padding: 12px 18px;
   border-radius: 999px;
   border: 1px solid hsl(195 92% 68% / 0.16);
   background: hsl(220 24% 10% / 0.56);
@@ -2435,7 +2463,8 @@
   background:
     linear-gradient(180deg, hsl(220 24% 10%), hsl(220 28% 5%));
   border: 1px solid hsl(210 18% 18%);
-  padding: 14px 16px;
+  min-height: 58px;
+  padding: 16px 18px;
   color: var(--ec-text-strong);
   font-family: var(--ec-font-mono, ui-monospace, monospace);
   font-size: 0.95rem;
@@ -2452,7 +2481,8 @@
   outline: none;
   -webkit-appearance: none;
   appearance: none;
-  border-radius: 16px;
+  border-radius: 18px;
+  touch-action: manipulation;
 }
 .ec-auth-field__input:focus {
   transform: translateY(-1px);
@@ -2488,13 +2518,14 @@
   overflow: hidden;
   background: linear-gradient(180deg, hsl(222 24% 14%), hsl(220 24% 8%));
   border: 1px solid hsl(258 34% 32% / 0.66);
+  min-height: 64px;
   color: var(--ec-text-strong);
   font-family: var(--ec-font-mono, ui-monospace, monospace);
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   font-weight: 700;
-  letter-spacing: 0.22em;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  padding: 16px;
+  padding: 18px 22px;
   cursor: pointer;
   transition:
     transform 240ms ease,
@@ -2506,8 +2537,9 @@
   align-items: center;
   justify-content: center;
   gap: 10px;
-  margin-top: 12px;
-  border-radius: 18px;
+  margin-top: 16px;
+  border-radius: 20px;
+  touch-action: manipulation;
   box-shadow:
     inset 0 1px 0 hsl(0 0% 100% / 0.12),
     0 24px 36px -24px hsl(258 82% 56% / 0.52);
@@ -2601,11 +2633,11 @@
 /* Mode toggle (Вход / Регистрация). */
 .ec-auth-mode-toggle {
   display: flex;
-  gap: 4px;
-  margin-bottom: 24px;
-  padding: 4px;
+  gap: 8px;
+  margin-bottom: 26px;
+  padding: 6px;
   border: 1px solid hsl(210 18% 18%);
-  border-radius: 20px;
+  border-radius: 22px;
   background: hsl(220 18% 8% / 0.7);
   box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.05);
 }
@@ -2613,15 +2645,17 @@
   flex: 1;
   background: transparent;
   border: 0;
-  padding: 10px 8px;
+  min-height: 58px;
+  padding: 14px 16px;
   font-family: var(--ec-font-mono, ui-monospace, monospace);
-  font-size: 0.65rem;
+  font-size: 0.72rem;
   font-weight: 700;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: hsl(210 12% 45%);
   cursor: pointer;
-  border-radius: 16px;
+  border-radius: 18px;
+  touch-action: manipulation;
   transition:
     transform 180ms ease,
     color 180ms ease,
@@ -2690,13 +2724,14 @@
   margin-top: 8px;
 }
 .ec-auth-keypad__key {
-  height: 48px;
+  height: 56px;
   background: linear-gradient(180deg, hsl(223 28% 11%), hsl(220 26% 7%));
   border: 1px solid hsl(210 18% 14%);
   color: var(--ec-text-muted);
   font-family: var(--ec-font-mono, ui-monospace, monospace);
   font-size: 1.1rem;
   cursor: pointer;
+  touch-action: manipulation;
   transition: all 160ms ease;
   display: grid;
   place-items: center;
@@ -2847,8 +2882,8 @@
     padding: 7px 11px;
   }
   .ec-auth-logo {
-    width: 68px;
-    height: 68px;
+    width: 84px;
+    height: 84px;
     margin-bottom: 18px;
   }
   .ec-auth-title {
@@ -2906,7 +2941,8 @@
     line-height: 1.5;
   }
   .ec-auth-bio-gate__cta {
-    padding: 9px 12px;
+    min-height: 46px;
+    padding: 10px 14px;
     font-size: 0.56rem;
     letter-spacing: 0.14em;
   }
@@ -2935,21 +2971,24 @@
     text-transform: none;
   }
   .ec-auth-field__input {
-    padding: 12px 14px;
+    min-height: 56px;
+    padding: 14px 16px;
     font-size: 16px;
   }
   .ec-auth-mode-toggle {
     margin-bottom: 18px;
   }
   .ec-auth-mode-toggle button {
-    padding: 12px 8px;
-    font-size: 0.74rem;
+    min-height: 56px;
+    padding: 14px 12px;
+    font-size: 0.8rem;
     letter-spacing: 0.04em;
     text-transform: none;
   }
   .ec-auth-submit-btn {
-    padding: 14px;
-    font-size: 0.8rem;
+    min-height: 62px;
+    padding: 16px 18px;
+    font-size: 0.84rem;
     letter-spacing: 0.06em;
     text-transform: none;
   }
@@ -2962,7 +3001,7 @@
     gap: 8px;
   }
   .ec-auth-keypad__key {
-    height: 46px;
+    height: 52px;
     font-size: 1rem;
   }
 }
@@ -3338,13 +3377,13 @@
   overflow: hidden;
 }
 .ec-auth-pass__input {
-  padding-right: 52px;
+  padding-right: 68px;
 }
 .ec-auth-pass__reveal {
   position: absolute;
   top: 0;
   right: 0;
-  width: 44px;
+  width: 60px;
   height: 100%;
   display: grid;
   place-items: center;
@@ -3356,6 +3395,7 @@
   z-index: 2;
   transition: color 180ms ease, background 180ms ease;
   -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 .ec-auth-pass__reveal:hover:not(:disabled) {
   background: hsl(258 70% 60% / 0.1);
