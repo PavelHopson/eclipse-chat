@@ -5,7 +5,7 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.2.16** (Galaxy/Clock/Theme/Deadline effects +
+**Текущая версия:** **v1.2.17** (Galaxy/Clock/Theme/Deadline effects +
 UX-copy + дизайн-полиш + редизайн WS-1 + системный редизайн ЗАКРЫТ 8/8 +
 светлая тема SOLAR (Notion-crisp) + фикс AuthScreen + смена пароля +
 визуальный передел AppShell ЗАКРЫТ 4/4 + топбар-полиш +
@@ -41,10 +41,12 @@ slash-команды backend: /me /shrug /tableflip /unflip /help +
 emoji-кнопка композера с категорированным picker'ом +
 nginx trailing-slash редирект `/eclipse-chat → /eclipse-chat/` +
 og-image displayed URL с `/` +
-thread-root edge fix v1.2.9 — удалённый root по прямой ссылке 404).
+thread-root edge fix v1.2.9 — удалённый root по прямой ссылке 404 +
+Platform Admin details: action-buttons inside modal (Ban / Unban /
+Reset PW / Delete для user, Suspend / Unsuspend для server)).
 
 > **v1.1.90 … v1.2.14 задеплоены — в проде v1.2.14. v1.2.15 …
-> v1.2.16 запушены и ждут approve-gate Pavel'я. Деплой НЕ
+> v1.2.17 запушены и ждут approve-gate Pavel'я. Деплой НЕ
 > автоматический по пушу.**
 
 > **⚠️ ЦВЕТ-ПРАВИЛО ИЗМЕНЕНО (бриф Pavel'я 20.05.2026).** Прежнее
@@ -53,8 +55,29 @@ thread-root edge fix v1.2.9 — удалённый root по прямой ссы
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.2.16:**
+**Изменения v1.1.25 → v1.2.17:**
 
+- **v1.2.17** — **Platform Admin details: action-buttons inside
+  modal**. Закрытие из handoff'а: «per-user/server actions в
+  details-view — сейчас детали read-only; action-buttons (Ban /
+  Reset) только из row table».
+  - **PlatformUserDetailsModal** — новые optional props `onBan` /
+    `onUnban` / `onReset` / `onDelete` принимают `PlatformUser`.
+    Action-bar после chip'ов: condintional buttons по состоянию
+    юзера (bannedAt / deletedAt). Для `isPlatformOwner` — все
+    действия скрыты (как в row).
+  - **PlatformServerDetailsModal** — `onSuspend` / `onUnsuspend`,
+    Action-bar по `suspendedAt`.
+  - **PlatformAdminPanel** — передаёт callbacks: каждый
+    `setActionError(null) + setXTarget(s/u) + setDetailsTargetId
+    (null)` — закрывает details modal и открывает confirm modal с
+    тем же UX, что row table.
+  - **CSS — без правок** в components.css (там сейчас активный
+    Codex'ёв landing-стилей WIP). Action-bar — `<div style=...>`
+    inline (flex/gap/wrap) — это исключение из «inline только для
+    динамики» с explicit reason в коде, чтобы не лезть в conflict
+    с Codex'овым untracked CSS.
+  Сборка зелёная (tsc + vite + tsc server). Без миграций.
 - **v1.2.16** — **thread-root edge fix v1.2.9**. Закрытие из
   follow-up списка v1.2.9: удалённый root, открытый по прямой
   ссылке `/thread/:rootId`, всё ещё возвращался backend'ом и

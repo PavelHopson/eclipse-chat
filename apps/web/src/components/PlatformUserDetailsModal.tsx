@@ -4,6 +4,7 @@ import { Avatar } from "./Avatar";
 import { ApiError } from "../lib/api";
 import {
   getPlatformUserDetails,
+  type PlatformUser,
   type PlatformUserDetailsResponse,
 } from "../lib/platformAdmin";
 
@@ -17,6 +18,15 @@ import {
 type Props = {
   userId: string;
   onClose: () => void;
+  /**
+   * v1.2.17 — action callbacks из parent PlatformAdminPanel. Каждая
+   * закрывает details modal и открывает confirm modal с тем же state,
+   * что и actions из row table. Если не передан — кнопка скрыта.
+   */
+  onBan?: (user: PlatformUser) => void;
+  onUnban?: (user: PlatformUser) => void;
+  onReset?: (user: PlatformUser) => void;
+  onDelete?: (user: PlatformUser) => void;
 };
 
 function formatDateTime(iso: string): string {
@@ -37,7 +47,14 @@ function formatDate(iso: string): string {
   });
 }
 
-export function PlatformUserDetailsModal({ userId, onClose }: Props) {
+export function PlatformUserDetailsModal({
+  userId,
+  onClose,
+  onBan,
+  onUnban,
+  onReset,
+  onDelete,
+}: Props) {
   const [data, setData] = useState<PlatformUserDetailsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -139,6 +156,55 @@ export function PlatformUserDetailsModal({ userId, onClose }: Props) {
                   )}
               </div>
             </div>
+
+            {!data.user.isPlatformOwner &&
+              (onBan || onUnban || onReset || onDelete) && (
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "var(--ec-space-2)",
+                    flexWrap: "wrap",
+                    marginTop: "var(--ec-space-3)",
+                  }}
+                >
+                  {data.user.bannedAt && !data.user.deletedAt && onUnban && (
+                    <button
+                      type="button"
+                      className="ec-btn ec-btn--sm"
+                      onClick={() => onUnban(data.user)}
+                    >
+                      Снять бан
+                    </button>
+                  )}
+                  {!data.user.bannedAt && !data.user.deletedAt && onBan && (
+                    <button
+                      type="button"
+                      className="ec-btn ec-btn--sm ec-btn--danger"
+                      onClick={() => onBan(data.user)}
+                    >
+                      Забанить
+                    </button>
+                  )}
+                  {!data.user.deletedAt && onReset && (
+                    <button
+                      type="button"
+                      className="ec-btn ec-btn--sm"
+                      onClick={() => onReset(data.user)}
+                    >
+                      Сбросить пароль
+                    </button>
+                  )}
+                  {!data.user.deletedAt && onDelete && (
+                    <button
+                      type="button"
+                      className="ec-btn ec-btn--sm ec-btn--danger"
+                      onClick={() => onDelete(data.user)}
+                    >
+                      Удалить
+                    </button>
+                  )}
+                </div>
+              )}
 
             {(data.user.bannedAt || data.user.deletedAt) && (
               <div className="ec-platform-admin__details-section">

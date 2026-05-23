@@ -565,6 +565,29 @@ function UsersTab({ currentUserId }: { currentUserId: string }) {
         <PlatformUserDetailsModal
           userId={detailsTargetId}
           onClose={() => setDetailsTargetId(null)}
+          onBan={(u) => {
+            setActionError(null);
+            setBanReason("");
+            setBanTarget(u);
+            setDetailsTargetId(null);
+          }}
+          onUnban={(u) => {
+            setActionError(null);
+            setUnbanTarget(u);
+            setDetailsTargetId(null);
+          }}
+          onReset={(u) => {
+            setActionError(null);
+            setResetTarget(u);
+            setDetailsTargetId(null);
+          }}
+          onDelete={(u) => {
+            setActionError(null);
+            setDeleteReason("");
+            setDeleteConfirmText("");
+            setDeleteTarget(u);
+            setDetailsTargetId(null);
+          }}
         />
       )}
 
@@ -1119,6 +1142,16 @@ function ServersTab() {
         <PlatformServerDetailsModal
           serverId={detailsServerId}
           onClose={() => setDetailsServerId(null)}
+          onSuspend={(s) => {
+            setActionError(null);
+            setSuspendTarget(s);
+            setDetailsServerId(null);
+          }}
+          onUnsuspend={(s) => {
+            setActionError(null);
+            setUnsuspendTarget(s);
+            setDetailsServerId(null);
+          }}
         />
       )}
 

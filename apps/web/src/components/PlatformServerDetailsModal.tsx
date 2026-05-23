@@ -3,6 +3,7 @@ import { Modal } from "./Modal";
 import { ApiError } from "../lib/api";
 import {
   getPlatformServerDetails,
+  type PlatformServer,
   type PlatformServerDetailsResponse,
 } from "../lib/platformAdmin";
 
@@ -16,6 +17,13 @@ import {
 type Props = {
   serverId: string;
   onClose: () => void;
+  /**
+   * v1.2.17 — action callbacks из parent PlatformAdminPanel. Каждая
+   * закрывает details modal и открывает confirm modal с тем же state,
+   * что и actions из row table.
+   */
+  onSuspend?: (server: PlatformServer) => void;
+  onUnsuspend?: (server: PlatformServer) => void;
 };
 
 function formatDateTime(iso: string): string {
@@ -49,7 +57,12 @@ const ROLE_ORDER = [
   "CLIENT",
 ] as const;
 
-export function PlatformServerDetailsModal({ serverId, onClose }: Props) {
+export function PlatformServerDetailsModal({
+  serverId,
+  onClose,
+  onSuspend,
+  onUnsuspend,
+}: Props) {
   const [data, setData] = useState<PlatformServerDetailsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -169,6 +182,36 @@ export function PlatformServerDetailsModal({ serverId, onClose }: Props) {
                 )}
               </div>
             </div>
+
+            {(onSuspend || onUnsuspend) && (
+              <div
+                style={{
+                  display: "flex",
+                  gap: "var(--ec-space-2)",
+                  flexWrap: "wrap",
+                  marginTop: "var(--ec-space-3)",
+                }}
+              >
+                {data.server.suspendedAt && onUnsuspend && (
+                  <button
+                    type="button"
+                    className="ec-btn ec-btn--sm"
+                    onClick={() => onUnsuspend(data.server)}
+                  >
+                    Разморозить
+                  </button>
+                )}
+                {!data.server.suspendedAt && onSuspend && (
+                  <button
+                    type="button"
+                    className="ec-btn ec-btn--sm ec-btn--danger"
+                    onClick={() => onSuspend(data.server)}
+                  >
+                    Заморозить
+                  </button>
+                )}
+              </div>
+            )}
 
             {data.server.suspendedAt && (
               <div className="ec-platform-admin__details-section">
