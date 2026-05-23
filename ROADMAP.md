@@ -5,7 +5,7 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.2.20** (Galaxy/Clock/Theme/Deadline effects +
+**Текущая версия:** **v1.2.21** (Galaxy/Clock/Theme/Deadline effects +
 UX-copy + дизайн-полиш + редизайн WS-1 + системный редизайн ЗАКРЫТ 8/8 +
 светлая тема SOLAR (Notion-crisp) + фикс AuthScreen + смена пароля +
 визуальный передел AppShell ЗАКРЫТ 4/4 + топбар-полиш +
@@ -47,10 +47,11 @@ Reset PW / Delete для user, Suspend / Unsuspend для server) +
 slash-команды autocomplete UI: backend-команды /me /shrug /tableflip
 /unflip /help в slash-hint strip +
 Platform Admin pagination jump-to-page (Стр. [_] / N) во все табы +
-custom emoji backend MVP: schema + 3 endpoints (list / upload / delete)).
+custom emoji backend MVP: schema + 3 endpoints (list / upload / delete) +
+custom emoji frontend slice 1: AdminPanel «Эмодзи» tab + upload/delete UI).
 
 > **v1.1.90 … v1.2.14 задеплоены — в проде v1.2.14. v1.2.15 …
-> v1.2.20 запушены и ждут approve-gate Pavel'я. Деплой НЕ
+> v1.2.21 запушены и ждут approve-gate Pavel'я. Деплой НЕ
 > автоматический по пушу. ⚠️ v1.2.20 включает Prisma migration
 > `20260523200000_add_custom_emojis` — при деплое нужен `prisma
 > migrate deploy`.**
@@ -61,8 +62,31 @@ custom emoji backend MVP: schema + 3 endpoints (list / upload / delete)).
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.2.20:**
+**Изменения v1.1.25 → v1.2.21:**
 
+- **v1.2.21** — **custom emoji frontend slice 1: AdminPanel
+  «Эмодзи» tab + upload/delete UI**. Следующий слайс custom-emoji
+  track'а после backend MVP v1.2.20.
+  - **`lib/emojis.ts`** — API client (`listServerEmojis`,
+    `uploadServerEmoji`, `deleteServerEmoji`) + тип `ServerEmoji`.
+  - **`AdminEmojisTab.tsx`** — таб «Эмодзи» в AdminPanel.
+    Upload-row: `<input type=file>` + shortcode field +
+    «Загрузить». Auto-suggest shortcode из filename (lowercase
+    `[a-z0-9_-]`). Client-side валидация: mime
+    (jpeg/png/webp/gif/avif), size ≤ 5 MB, shortcode regex
+    `[a-z0-9_-]{2,30}`. Список — grid auto-fill 180px, thumbnail
+    48×48 + shortcode + uploader + «×» удалить (с `confirm()`).
+  - **AdminPanel integration** — новая `tab === "emojis"`, кнопка
+    «Эмодзи» между «Комнаты» и «Роли». Видна только OWNER+ADMIN
+    (как весь AdminPanel — `accessDenied`).
+  - **Не реализовано** (следующие слайсы):
+    - Парсер `:shortcode:` → `<img>` в RichContent.
+    - Autocomplete `:shortcode:` в композере (extend
+      AutocompletePopover).
+    - Picker UI с custom-emoji вкладкой.
+    - Использование в reactions (backend `ALLOWED_EMOJI` → расширить
+      на custom).
+  Сборка зелёная (tsc + vite). Без миграций (schema уже из v1.2.20).
 - **v1.2.20** — **custom emoji backend MVP**. Из handoff'а: «Custom
   emoji — давний open. Per-server эмодзи, upload (image → sharp
   resize), unique `:shortcode:`, autocomplete в композере, в

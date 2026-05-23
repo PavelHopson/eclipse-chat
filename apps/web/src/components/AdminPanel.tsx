@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { apiJson } from "../lib/api";
 import { Avatar } from "./Avatar";
+import { AdminEmojisTab } from "./AdminEmojisTab";
 import { InvoicesTabContent } from "./AdminInvoicesTab";
 import { IntegrationsTabContent, type AdminIntegration } from "./AdminIntegrationsTab";
 import { ComposioConnections } from "./ComposioConnections";
@@ -66,6 +67,7 @@ type Tab =
   | "overview"
   | "members"
   | "channels"
+  | "emojis"
   | "roles"
   | "automation"
   | "invoices"
@@ -461,6 +463,15 @@ export function AdminPanel({
         <button
           type="button"
           role="tab"
+          aria-selected={tab === "emojis"}
+          onClick={() => setTab("emojis")}
+          className="ec-admin-tab"
+        >
+          Эмодзи
+        </button>
+        <button
+          type="button"
+          role="tab"
           aria-selected={tab === "roles"}
           onClick={() => setTab("roles")}
           className="ec-admin-tab"
@@ -750,6 +761,8 @@ export function AdminPanel({
           ))}
         </div>
       )}
+
+      {tab === "emojis" && <AdminEmojisTab serverId={serverId} />}
 
       {tab === "roles" && (
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--ec-space-4)" }}>
