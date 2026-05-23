@@ -176,7 +176,9 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
 
   // v1.2.22 — custom-emoji map активного сервера для RichContent
   // в сообщениях / thread'ах / channel-description / etc.
-  const { emojis: customEmojis } = useServerEmojis(activeServerId);
+  // v1.2.25 — socket для real-time invalidation при upload/delete
+  // другими admin'ами.
+  const { emojis: customEmojis } = useServerEmojis(activeServerId, socket);
 
   // ===== Channel digest =====
   // Открытые задачи / решения / follow-ups / pinned — компактная сводка канала.

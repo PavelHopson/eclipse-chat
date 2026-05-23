@@ -5,7 +5,7 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.2.24** (Galaxy/Clock/Theme/Deadline effects +
+**Текущая версия:** **v1.2.25** (Galaxy/Clock/Theme/Deadline effects +
 UX-copy + дизайн-полиш + редизайн WS-1 + системный редизайн ЗАКРЫТ 8/8 +
 светлая тема SOLAR (Notion-crisp) + фикс AuthScreen + смена пароля +
 визуальный передел AppShell ЗАКРЫТ 4/4 + топбар-полиш +
@@ -54,10 +54,12 @@ useServerEmojis hook + cross-component invalidation через window event +
 custom emoji frontend slice 3: `:` autocomplete с custom emoji + image
 preview в popover +
 custom emoji slice 4: reactions с custom emoji (backend whitelist
-расширен + EmojiPicker secondary section + img-render reaction pill)).
+расширен + EmojiPicker secondary section + img-render reaction pill) +
+custom emoji slice 5: real-time invalidation через socket
+(emoji:created / emoji:deleted events)).
 
 > **v1.1.90 … v1.2.14 задеплоены — в проде v1.2.14. v1.2.15 …
-> v1.2.24 запушены и ждут approve-gate Pavel'я. Деплой НЕ
+> v1.2.25 запушены и ждут approve-gate Pavel'я. Деплой НЕ
 > автоматический по пушу. ⚠️ v1.2.20 включает Prisma migration
 > `20260523200000_add_custom_emojis` — при деплое нужен `prisma
 > migrate deploy`.**
@@ -68,8 +70,31 @@ custom emoji slice 4: reactions с custom emoji (backend whitelist
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.2.24:**
+**Изменения v1.1.25 → v1.2.25:**
 
+- **v1.2.25** — **custom emoji slice 5: real-time invalidation
+  через socket**. Завершает custom-emoji track (5 слайсов). После
+  upload/delete admin'ом — emoji мгновенно появляется/исчезает у
+  всех members сервера без F5.
+  - **Backend** `realtime.ts`: `emitEmojiCreated(serverId, payload)`
+    + `emitEmojiDeleted(serverId, { id })` — broadcast в
+    `server:${serverId}` room. `routes/emojis.ts`: POST вызывает
+    `emitEmojiCreated` после `db.emoji.update` (с URL), DELETE —
+    `emitEmojiDeleted` сразу после `db.emoji.delete`.
+  - **Frontend** `lib/socket.ts`: новые `SocketEvents.EmojiCreated
+    = "emoji:created"`, `EmojiDeleted = "emoji:deleted"`.
+  - **`useServerEmojis(serverId, socket?)`** расширен — принимает
+    optional `Socket`. Если подключён — подписывается на
+    `emoji:created`/`emoji:deleted`, фильтрует по `serverId` в
+    payload, вызывает `refresh()`. Window event оставлен fallback'ом
+    для optimistic AdminEmojisTab-local UX (без socket round-trip).
+  - **AppShell** прокидывает `socket` в `useServerEmojis`.
+  Сборка зелёная (tsc + vite + tsc server). Без миграций.
+
+  **Custom emoji track полностью закрыт** (5 слайсов):
+    v1.2.20 backend MVP / v1.2.21 admin UI / v1.2.22 RichContent
+    parser / v1.2.23 `:` autocomplete / v1.2.24 reactions /
+    v1.2.25 real-time socket.
 - **v1.2.24** — **custom emoji slice 4: reactions с custom emoji**.
   Закрывает «использование в reactions» из handoff'а.
   - **Backend** `apps/server/src/routes/messages.ts`:

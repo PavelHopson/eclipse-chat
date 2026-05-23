@@ -6,6 +6,7 @@ import sharp from "sharp";
 import { db } from "../db.js";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
 import { ensureServerActive } from "../lib/serverGating.js";
+import { emitEmojiCreated, emitEmojiDeleted } from "../realtime.js";
 
 /**
  * v1.2.20 — Custom emoji per-server (backend MVP).
@@ -227,15 +228,15 @@ export async function registerEmojiRoutes(app: FastifyInstance) {
         include: { uploader: { select: { id: true, displayName: true } } },
       });
 
-      return reply.status(201).send({
-        emoji: {
-          id: updated.id,
-          shortcode: updated.shortcode,
-          url: updated.url,
-          createdAt: updated.createdAt.toISOString(),
-          uploader: updated.uploader,
-        },
-      });
+      const payload = {
+        id: updated.id,
+        shortcode: updated.shortcode,
+        url: updated.url,
+        createdAt: updated.createdAt.toISOString(),
+        uploader: updated.uploader,
+      };
+      emitEmojiCreated(serverId, { serverId, ...payload });
+      return reply.status(201).send({ emoji: payload });
     },
   );
 
@@ -277,6 +278,7 @@ export async function registerEmojiRoutes(app: FastifyInstance) {
       if (!active) return reply;
 
       await db.emoji.delete({ where: { id: emojiId } });
+      emitEmojiDeleted(row.serverId, { serverId: row.serverId, id: emojiId });
 
       // Best-effort cleanup файла. Если упало (файл уже исчез) — не fatal.
       if (row.url) {

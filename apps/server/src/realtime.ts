@@ -81,6 +81,31 @@ export function emitBotTyping(
 }
 
 /** Эмит при создании канала в сервере. Подписанные на server room — обновят список каналов. */
+/**
+ * v1.2.25 — Custom emoji создан / удалён на сервере. Frontend
+ * useServerEmojis hook listens и перечитывает map.
+ */
+export function emitEmojiCreated(
+  serverId: string,
+  payload: {
+    serverId: string;
+    id: string;
+    shortcode: string;
+    url: string;
+    createdAt: string;
+    uploader: { id: string; displayName: string } | null;
+  },
+) {
+  io?.to(`server:${serverId}`).emit("emoji:created", payload);
+}
+
+export function emitEmojiDeleted(
+  serverId: string,
+  payload: { serverId: string; id: string },
+) {
+  io?.to(`server:${serverId}`).emit("emoji:deleted", payload);
+}
+
 export function emitChannelCreated(
   serverId: string,
   payload: {

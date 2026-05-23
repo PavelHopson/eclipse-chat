@@ -457,6 +457,9 @@ export const SocketEvents = {
   TableRowDeleted: "table:row:deleted",
   ChannelCreated: "channel:created",
   ChannelDeleted: "channel:deleted",
+  /** v1.2.25 — Custom emoji создан / удалён в server-room. */
+  EmojiCreated: "emoji:created",
+  EmojiDeleted: "emoji:deleted",
   ChannelUpdated: "channel:updated",
   IncidentOpened: "incident:opened",
   IncidentResolved: "incident:resolved",

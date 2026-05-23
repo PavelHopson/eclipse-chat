@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
+import type { Socket } from "socket.io-client";
 import { listServerEmojis } from "../lib/emojis";
+import { SocketEvents } from "../lib/socket";
 
 /**
  * v1.2.22 — Custom emoji map для active server. RichContent / picker /
@@ -7,9 +9,11 @@ import { listServerEmojis } from "../lib/emojis";
  * в `<img src=url>`. Refresh на серверный switch + manual refresh из
  * AdminEmojisTab после upload/delete (через returned refresh callback).
  *
- * Real-time invalidation через socket — следующим слайсом.
+ * v1.2.25 — real-time invalidation через socket (`emoji:created`,
+ * `emoji:deleted`); window event оставлен fallback'ом если socket
+ * disconnected.
  */
-export function useServerEmojis(serverId: string | null) {
+export function useServerEmojis(serverId: string | null, socket?: Socket | null) {
   const [emojis, setEmojis] = useState<Record<string, string>>({});
 
   const refresh = useCallback(async () => {
@@ -34,10 +38,10 @@ export function useServerEmojis(serverId: string | null) {
     void refresh();
   }, [refresh]);
 
-  // Cross-component invalidation: AdminEmojisTab dispatches event после
-  // upload/delete, чтобы все потребители (RichContent в AppShell)
-  // перечитали список без switch'а сервера. Real-time через socket —
-  // следующим слайсом.
+  // Cross-component fallback (если socket не подключён): AdminEmojisTab
+  // dispatch'ит window event после upload/delete. v1.2.25 — основной
+  // канал теперь socket; window event оставлен для optimistic UX в
+  // самом AdminEmojisTab (без round-trip через socket-server-socket).
   useEffect(() => {
     if (!serverId) return;
     const onChanged = (e: Event) => {
@@ -49,6 +53,34 @@ export function useServerEmojis(serverId: string | null) {
     window.addEventListener("eclipse:emojis-changed", onChanged);
     return () => window.removeEventListener("eclipse:emojis-changed", onChanged);
   }, [serverId, refresh]);
+
+  // v1.2.25 — Socket-based real-time invalidation. Other admins на том
+  // же сервере → их upload/delete invalidates Pavel'я cached map
+  // мгновенно. Payload содержит конкретный emoji — можно optimize'ить
+  // patch вместо refetch, но MVP делает refresh (4-6 KB JSON, дешево).
+  useEffect(() => {
+    if (!serverId || !socket) return;
+    const matchesServer = (p: unknown): boolean => {
+      return (
+        typeof p === "object" &&
+        p !== null &&
+        "serverId" in p &&
+        (p as { serverId: string }).serverId === serverId
+      );
+    };
+    const onCreated = (payload: unknown) => {
+      if (matchesServer(payload)) void refresh();
+    };
+    const onDeleted = (payload: unknown) => {
+      if (matchesServer(payload)) void refresh();
+    };
+    socket.on(SocketEvents.EmojiCreated, onCreated);
+    socket.on(SocketEvents.EmojiDeleted, onDeleted);
+    return () => {
+      socket.off(SocketEvents.EmojiCreated, onCreated);
+      socket.off(SocketEvents.EmojiDeleted, onDeleted);
+    };
+  }, [serverId, socket, refresh]);
 
   return { emojis, refresh };
 }
