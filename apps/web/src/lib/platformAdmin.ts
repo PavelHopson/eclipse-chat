@@ -2,9 +2,12 @@ import { apiJson } from "./api";
 
 /**
  * v1.2.6 Platform Admin (trek P1) — API-клиент для super-admin эндпоинтов.
- * Все запросы идут через apiJson (auto-refresh при 401). Эндпоинты за
- * preHandler'ами requireJwt + requirePlatformOwner на сервере.
+ * v1.2.7 (P2) — расширение: servers (suspend/unsuspend), user soft-delete,
+ * audit-log read. Все запросы за preHandler'ами requireJwt +
+ * requirePlatformOwner на сервере (auto-refresh при 401 через apiJson).
  */
+
+// ===== Users ===============================================================
 
 export type PlatformUser = {
   id: string;
@@ -16,7 +19,13 @@ export type PlatformUser = {
   bannedAt: string | null;
   bannedReason: string | null;
   bannedBy: { id: string; email: string; displayName: string } | null;
+  /** v1.2.7 P2 — soft-delete. */
+  deletedAt: string | null;
+  deletedReason: string | null;
+  deletedBy: { id: string; email: string; displayName: string } | null;
 };
+
+export type UserStatusFilter = "all" | "active" | "banned" | "deleted";
 
 export type ListUsersResponse = {
   users: PlatformUser[];
@@ -27,26 +36,98 @@ export type ListUsersResponse = {
 
 export type ListUsersParams = {
   q?: string;
-  banned?: "true" | "false";
+  status?: UserStatusFilter;
   limit?: number;
   offset?: number;
 };
 
-function buildQuery(params: ListUsersParams): string {
+// ===== Servers (v1.2.7 P2) =================================================
+
+export type PlatformServer = {
+  id: string;
+  name: string;
+  icon: string | null;
+  brandColor: string | null;
+  mode: "ENGINEERING" | "CLIENT";
+  createdAt: string;
+  owner: {
+    id: string;
+    email: string;
+    displayName: string;
+    deletedAt: string | null;
+  };
+  memberCount: number;
+  channelCount: number;
+  suspendedAt: string | null;
+  suspendedReason: string | null;
+  suspendedBy: { id: string; email: string; displayName: string } | null;
+};
+
+export type ServerStatusFilter = "all" | "active" | "suspended";
+
+export type ListServersResponse = {
+  servers: PlatformServer[];
+  total: number;
+  limit: number;
+  offset: number;
+};
+
+export type ListServersParams = {
+  q?: string;
+  status?: ServerStatusFilter;
+  limit?: number;
+  offset?: number;
+};
+
+// ===== Audit log (v1.2.7 P2) ===============================================
+
+export type AuditLogEntry = {
+  id: string;
+  type: string;
+  createdAt: string;
+  ipAddress: string | null;
+  metadata: string | null;
+  user: { id: string; email: string; displayName: string } | null;
+};
+
+export type ListAuditResponse = {
+  entries: AuditLogEntry[];
+  total: number;
+  limit: number;
+  offset: number;
+};
+
+export type ListAuditParams = {
+  type?: string;
+  userId?: string;
+  limit?: number;
+  offset?: number;
+};
+
+// ===== Helpers =============================================================
+
+function buildQuery(params: Record<string, string | number | undefined>): string {
   const sp = new URLSearchParams();
-  if (params.q) sp.set("q", params.q);
-  if (params.banned) sp.set("banned", params.banned);
-  if (typeof params.limit === "number") sp.set("limit", String(params.limit));
-  if (typeof params.offset === "number") sp.set("offset", String(params.offset));
+  for (const [k, v] of Object.entries(params)) {
+    if (v === undefined) continue;
+    sp.set(k, String(v));
+  }
   const s = sp.toString();
   return s ? `?${s}` : "";
 }
+
+// ===== Endpoints — users ===================================================
 
 export async function listPlatformUsers(
   params: ListUsersParams = {},
 ): Promise<ListUsersResponse> {
   return apiJson<ListUsersResponse>(
-    `api/platform/users${buildQuery(params)}`,
+    `api/platform/users${buildQuery({
+      q: params.q,
+      status: params.status,
+      limit: params.limit,
+      offset: params.offset,
+    })}`,
   );
 }
 
@@ -79,5 +160,72 @@ export async function resetPlatformUserPassword(
   return apiJson<{ user: PlatformUser; tempPassword: string }>(
     `api/platform/users/${encodeURIComponent(id)}/reset-password`,
     { method: "POST" },
+  );
+}
+
+export async function deletePlatformUser(
+  id: string,
+  reason: string,
+): Promise<{ user: PlatformUser }> {
+  return apiJson<{ user: PlatformUser }>(
+    `api/platform/users/${encodeURIComponent(id)}/delete`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reason }),
+    },
+  );
+}
+
+// ===== Endpoints — servers (v1.2.7 P2) =====================================
+
+export async function listPlatformServers(
+  params: ListServersParams = {},
+): Promise<ListServersResponse> {
+  return apiJson<ListServersResponse>(
+    `api/platform/servers${buildQuery({
+      q: params.q,
+      status: params.status,
+      limit: params.limit,
+      offset: params.offset,
+    })}`,
+  );
+}
+
+export async function suspendPlatformServer(
+  id: string,
+  reason: string,
+): Promise<{ server: PlatformServer }> {
+  return apiJson<{ server: PlatformServer }>(
+    `api/platform/servers/${encodeURIComponent(id)}/suspend`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reason }),
+    },
+  );
+}
+
+export async function unsuspendPlatformServer(
+  id: string,
+): Promise<{ server: PlatformServer }> {
+  return apiJson<{ server: PlatformServer }>(
+    `api/platform/servers/${encodeURIComponent(id)}/unsuspend`,
+    { method: "POST" },
+  );
+}
+
+// ===== Endpoints — audit log (v1.2.7 P2) ===================================
+
+export async function listPlatformAuditLog(
+  params: ListAuditParams = {},
+): Promise<ListAuditResponse> {
+  return apiJson<ListAuditResponse>(
+    `api/platform/audit-log${buildQuery({
+      type: params.type,
+      userId: params.userId,
+      limit: params.limit,
+      offset: params.offset,
+    })}`,
   );
 }

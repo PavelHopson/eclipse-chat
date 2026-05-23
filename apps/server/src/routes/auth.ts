@@ -246,10 +246,25 @@ export async function registerAuthRoutes(app: FastifyInstance) {
           return reply.status(401).send({ error: "Неверный email или пароль" });
         }
 
-        // v1.2.6 Platform Admin (trek P1) — ban-gate. Password уже
-        // проверили (чтобы не утекать "user X banned" перебором email'ов
-        // без пароля). Banned user — 403 с причиной (или общим
-        // сообщением, если reason не задан).
+        // v1.2.6 Platform Admin (trek P1) + v1.2.7 (P2) — ban/delete-gate.
+        // Password уже проверили (чтобы не утекать "user X banned/deleted"
+        // перебором email'ов без пароля). Soft-delete и ban — оба отбивают
+        // login 403; разные сообщения по причине.
+        if (user.deletedAt !== null) {
+          recordAudit("AUTH_LOGIN_FAILED", {
+            userId: user.id,
+            req,
+            metadata: {
+              reason: "deleted",
+              deletedAt: user.deletedAt.toISOString(),
+            },
+          });
+          return reply.status(403).send({
+            error: user.deletedReason
+              ? `Аккаунт удалён администратором: ${user.deletedReason}`
+              : "Аккаунт удалён администратором.",
+          });
+        }
         if (user.bannedAt !== null) {
           recordAudit("AUTH_LOGIN_FAILED", {
             userId: user.id,

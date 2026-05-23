@@ -29,10 +29,15 @@ export async function requirePlatformOwner(
 
   const user = await db.user.findUnique({
     where: { id: userId },
-    select: { isPlatformOwner: true, bannedAt: true },
+    select: { isPlatformOwner: true, bannedAt: true, deletedAt: true },
   });
 
-  if (!user || !user.isPlatformOwner || user.bannedAt !== null) {
+  if (
+    !user ||
+    !user.isPlatformOwner ||
+    user.bannedAt !== null ||
+    user.deletedAt !== null
+  ) {
     return reply.status(403).send({ error: "Forbidden" });
   }
 }

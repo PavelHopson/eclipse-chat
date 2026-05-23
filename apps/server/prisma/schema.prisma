@@ -62,6 +62,17 @@ model User {
   /// чтобы запись о бане у юзера сохранилась даже если админ удалён.
   bannedByUserId       String?
   bannedBy             User?     @relation("UserBannedBy", fields: [bannedByUserId], references: [id], onDelete: SetNull)
+  /// v1.2.7 Platform Admin (trek P2) — soft-delete. NULL = активен.
+  /// При deletedAt !== null login/WS отклоняются, как у banned, но
+  /// «навсегда». Данные пользователя (сообщения, задачи, комментарии)
+  /// остаются в БД — UI рисует их как «удалённый пользователь».
+  /// Обратимо вручную: UPDATE "User" SET "deletedAt"=NULL WHERE id=...
+  deletedAt            DateTime?
+  /// Причина удаления (для аудита и UI).
+  deletedReason        String?
+  /// FK на User, выполнившего удаление. SetNull при удалении админа.
+  deletedByUserId      String?
+  deletedBy            User?     @relation("UserDeletedBy", fields: [deletedByUserId], references: [id], onDelete: SetNull)
 
   messages         Message[]
   refreshTokens    RefreshToken[]
@@ -100,6 +111,11 @@ model User {
   /// v1.2.6 Platform Admin — users, которых ЭТОТ user (platform-owner) забанил.
   /// Reverse-side bannedBy self-relation.
   bannedUsers      User[]                @relation("UserBannedBy")
+  /// v1.2.7 Platform Admin (trek P2) — users, soft-deleted этим admin'ом.
+  deletedUsers     User[]                @relation("UserDeletedBy")
+  /// v1.2.7 Platform Admin (trek P2) — servers, которые этот platform-owner
+  /// suspend'нул. Reverse-side ServerSuspendedBy self-relation.
+  suspendedServers Server[]              @relation("ServerSuspendedBy")
   /// Боты которыми владеет user (как создатель).
   ownedBots        Bot[]                 @relation("BotOwner")
   /// Если user — это shadow user для bot'а (1-to-1). null = обычный User.
@@ -307,6 +323,10 @@ enum AuditEventType {
   PLATFORM_USER_BANNED
   PLATFORM_USER_UNBANNED
   PLATFORM_USER_PASSWORD_RESET
+  /// v1.2.7 Platform Admin (trek P2) — расширение: soft-delete + сервера.
+  PLATFORM_USER_DELETED
+  PLATFORM_SERVER_SUSPENDED
+  PLATFORM_SERVER_UNSUSPENDED
 }
 
 model AuditLog {
@@ -540,6 +560,16 @@ model Server {
   ownerId     String
   owner       User     @relation("ServerOwner", fields: [ownerId], references: [id], onDelete: Restrict)
   createdAt   DateTime @default(now())
+
+  /// v1.2.7 Platform Admin (trek P2) — server suspend (заморозка).
+  /// При suspendedAt !== null write-операции (постинг, создание каналов,
+  /// изменение settings, создание задач) блокируются на уровне роутов
+  /// через assertServerActive(). Чтение остаётся (история не пропадает).
+  /// Обратимо через /api/platform/servers/:id/unsuspend.
+  suspendedAt       DateTime?
+  suspendedReason   String?
+  suspendedByUserId String?
+  suspendedBy       User?    @relation("ServerSuspendedBy", fields: [suspendedByUserId], references: [id], onDelete: SetNull)
 
   channels    Channel[]
   members     Member[]

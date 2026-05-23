@@ -5,6 +5,7 @@ import { db } from "../db.js";
 import { serializeUser, userDisplayName } from "../lib/userView.js";
 import { emitMessageOnChannel, emitActionItemCreated } from "../realtime.js";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
+import { ensureServerActive } from "../lib/serverGating.js";
 import {
   ATTACHMENTS_PER_MESSAGE,
   MESSAGE_BODY_LIMIT_WITH_ATTACHMENTS,
@@ -315,6 +316,10 @@ export async function registerChannelRoutes(app: FastifyInstance) {
         return reply.status(400).send({ error: "Voice channels don't support text messages" });
       }
       if (ch.serverId) {
+        // v1.2.7 Platform Admin (trek P2) — suspended server-у блокируем
+        // write. Read остаётся, history не пропадает.
+        const active = await ensureServerActive(ch.serverId, reply);
+        if (!active) return;
         const member = await db.member.findUnique({
           where: { userId_serverId: { userId, serverId: ch.serverId } },
           select: { id: true, role: true },

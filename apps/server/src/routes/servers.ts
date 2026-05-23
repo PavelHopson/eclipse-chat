@@ -6,6 +6,7 @@ import sharp from "sharp";
 import { db } from "../db.js";
 import { serializeUser, userDisplayName } from "../lib/userView.js";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
+import { ensureServerActive } from "../lib/serverGating.js";
 import {
   emitChannelCreated,
   emitChannelDeleted,
@@ -722,6 +723,9 @@ export async function registerServerRoutes(app: FastifyInstance) {
     if (!me) {
       return reply;
     }
+    // v1.2.7 Platform Admin (trek P2) — заморожен → write-режим выключен.
+    const active = await ensureServerActive(serverId, reply);
+    if (!active) return;
     const parsed = createServerChannelBody.safeParse(req.body);
     if (!parsed.success) {
       return reply.status(400).send({ error: "Invalid body" });
@@ -1244,6 +1248,9 @@ export async function registerServerRoutes(app: FastifyInstance) {
       if (me.role !== "OWNER") {
         return reply.status(403).send({ error: "Только OWNER может менять оформление сервера" });
       }
+      // v1.2.7 Platform Admin (trek P2) — заморожен → settings меняться не могут.
+      const active = await ensureServerActive(serverId, reply);
+      if (!active) return;
       const parsed = updateIdentityBody.safeParse(req.body);
       if (!parsed.success) {
         return reply.status(400).send({

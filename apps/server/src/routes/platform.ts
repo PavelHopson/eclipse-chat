@@ -61,6 +61,12 @@ const PLATFORM_USER_SELECT = {
   bannedBy: {
     select: { id: true, email: true, displayName: true },
   },
+  deletedAt: true,
+  deletedReason: true,
+  deletedByUserId: true,
+  deletedBy: {
+    select: { id: true, email: true, displayName: true },
+  },
 } as const;
 
 type DbPlatformUser = Prisma.UserGetPayload<{
@@ -77,6 +83,9 @@ type PlatformUserView = {
   bannedAt: string | null;
   bannedReason: string | null;
   bannedBy: { id: string; email: string; displayName: string } | null;
+  deletedAt: string | null;
+  deletedReason: string | null;
+  deletedBy: { id: string; email: string; displayName: string } | null;
 };
 
 function toView(u: DbPlatformUser): PlatformUserView {
@@ -96,33 +105,143 @@ function toView(u: DbPlatformUser): PlatformUserView {
           displayName: u.bannedBy.displayName,
         }
       : null,
+    deletedAt: u.deletedAt ? u.deletedAt.toISOString() : null,
+    deletedReason: u.deletedReason,
+    deletedBy: u.deletedBy
+      ? {
+          id: u.deletedBy.id,
+          email: u.deletedBy.email,
+          displayName: u.deletedBy.displayName,
+        }
+      : null,
   };
 }
 
-const listQuery = z.object({
+// v1.2.7 trek P2 — status filter заменил отдельный banned-toggle: теперь
+// единый enum (all/active/banned/deleted). Active = bannedAt=NULL И
+// deletedAt=NULL. Backward-совместимое чтение старого `banned=true/false`
+// дополнительно поддержано в users-list для плавного перехода клиента.
+const userStatusFilter = z.enum(["all", "active", "banned", "deleted"]);
+
+const listUsersQuery = z.object({
   q: z.string().trim().max(120).optional(),
+  status: userStatusFilter.optional(),
   banned: z.enum(["true", "false"]).optional(),
   limit: z.coerce.number().int().min(1).max(200).default(50),
   offset: z.coerce.number().int().min(0).default(0),
 });
 
-const banBody = z.object({
+const reasonBody = z.object({
   reason: z.string().trim().min(1).max(280),
 });
 
 const idParam = z.object({ id: z.string().min(1).max(60) });
 
+// v1.2.7 trek P2 — Server views.
+const PLATFORM_SERVER_SELECT = {
+  id: true,
+  name: true,
+  icon: true,
+  brandColor: true,
+  mode: true,
+  ownerId: true,
+  createdAt: true,
+  suspendedAt: true,
+  suspendedReason: true,
+  suspendedByUserId: true,
+  owner: { select: { id: true, email: true, displayName: true, deletedAt: true } },
+  suspendedBy: { select: { id: true, email: true, displayName: true } },
+  _count: { select: { members: true, channels: true } },
+} as const;
+
+type DbPlatformServer = Prisma.ServerGetPayload<{
+  select: typeof PLATFORM_SERVER_SELECT;
+}>;
+
+type PlatformServerView = {
+  id: string;
+  name: string;
+  icon: string | null;
+  brandColor: string | null;
+  mode: "ENGINEERING" | "CLIENT";
+  createdAt: string;
+  owner: {
+    id: string;
+    email: string;
+    displayName: string;
+    deletedAt: string | null;
+  };
+  memberCount: number;
+  channelCount: number;
+  suspendedAt: string | null;
+  suspendedReason: string | null;
+  suspendedBy: { id: string; email: string; displayName: string } | null;
+};
+
+function toServerView(s: DbPlatformServer): PlatformServerView {
+  return {
+    id: s.id,
+    name: s.name,
+    icon: s.icon,
+    brandColor: s.brandColor,
+    mode: s.mode,
+    createdAt: s.createdAt.toISOString(),
+    owner: {
+      id: s.owner.id,
+      email: s.owner.email,
+      displayName: s.owner.displayName,
+      deletedAt: s.owner.deletedAt ? s.owner.deletedAt.toISOString() : null,
+    },
+    memberCount: s._count.members,
+    channelCount: s._count.channels,
+    suspendedAt: s.suspendedAt ? s.suspendedAt.toISOString() : null,
+    suspendedReason: s.suspendedReason,
+    suspendedBy: s.suspendedBy
+      ? {
+          id: s.suspendedBy.id,
+          email: s.suspendedBy.email,
+          displayName: s.suspendedBy.displayName,
+        }
+      : null,
+  };
+}
+
+const serverStatusFilter = z.enum(["all", "active", "suspended"]);
+
+const listServersQuery = z.object({
+  q: z.string().trim().max(120).optional(),
+  status: serverStatusFilter.optional(),
+  limit: z.coerce.number().int().min(1).max(200).default(50),
+  offset: z.coerce.number().int().min(0).default(0),
+});
+
+const auditQuery = z.object({
+  type: z.string().trim().max(60).optional(),
+  userId: z.string().trim().max(60).optional(),
+  limit: z.coerce.number().int().min(1).max(200).default(100),
+  offset: z.coerce.number().int().min(0).default(0),
+});
+
 export async function registerPlatformRoutes(app: FastifyInstance) {
   // Все routes — за двумя preHandler'ами.
   const guard = { preHandler: [requireJwt, requirePlatformOwner] };
 
-  // GET /api/platform/users — список с пагинацией.
+  // GET /api/platform/users — список с пагинацией и фильтрами.
+  // v1.2.7 trek P2: status=all/active/banned/deleted. Legacy banned=true/false
+  // принимается тоже (для backward-совместимости) — мапится в status.
   app.get("/api/platform/users", guard, async (req, reply) => {
-    const parsed = listQuery.safeParse(req.query);
+    const parsed = listUsersQuery.safeParse(req.query);
     if (!parsed.success) {
       return reply.status(400).send({ error: "Invalid query" });
     }
-    const { q, banned, limit, offset } = parsed.data;
+    const { q, limit, offset } = parsed.data;
+    const status =
+      parsed.data.status ??
+      (parsed.data.banned === "true"
+        ? "banned"
+        : parsed.data.banned === "false"
+          ? "active"
+          : "all");
 
     const where: Prisma.UserWhereInput = {};
     if (q) {
@@ -132,14 +251,25 @@ export async function registerPlatformRoutes(app: FastifyInstance) {
         { displayName: { contains: q, mode: "insensitive" } },
       ];
     }
-    if (banned === "true") where.bannedAt = { not: null };
-    if (banned === "false") where.bannedAt = null;
+    if (status === "active") {
+      where.bannedAt = null;
+      where.deletedAt = null;
+    } else if (status === "banned") {
+      where.bannedAt = { not: null };
+      where.deletedAt = null;
+    } else if (status === "deleted") {
+      where.deletedAt = { not: null };
+    }
 
     const [users, total] = await Promise.all([
       db.user.findMany({
         where,
         select: PLATFORM_USER_SELECT,
-        orderBy: [{ bannedAt: { sort: "desc", nulls: "last" } }, { createdAt: "desc" }],
+        orderBy: [
+          { deletedAt: { sort: "desc", nulls: "last" } },
+          { bannedAt: { sort: "desc", nulls: "last" } },
+          { createdAt: "desc" },
+        ],
         take: limit,
         skip: offset,
       }),
@@ -158,7 +288,7 @@ export async function registerPlatformRoutes(app: FastifyInstance) {
   app.post("/api/platform/users/:id/ban", guard, async (req, reply) => {
     const params = idParam.safeParse(req.params);
     if (!params.success) return reply.status(400).send({ error: "Invalid id" });
-    const body = banBody.safeParse(req.body);
+    const body = reasonBody.safeParse(req.body);
     if (!body.success) {
       return reply
         .status(400)
@@ -177,13 +307,23 @@ export async function registerPlatformRoutes(app: FastifyInstance) {
 
     const target = await db.user.findUnique({
       where: { id: targetId },
-      select: { id: true, isPlatformOwner: true, bannedAt: true },
+      select: {
+        id: true,
+        isPlatformOwner: true,
+        bannedAt: true,
+        deletedAt: true,
+      },
     });
     if (!target) return reply.status(404).send({ error: "Пользователь не найден." });
     if (target.isPlatformOwner) {
       return reply
         .status(403)
         .send({ error: "Нельзя забанить другого platform-owner'а." });
+    }
+    if (target.deletedAt !== null) {
+      return reply
+        .status(409)
+        .send({ error: "Пользователь удалён — бан не нужен." });
     }
     if (target.bannedAt !== null) {
       return reply.status(409).send({ error: "Пользователь уже забанен." });
@@ -276,13 +416,18 @@ export async function registerPlatformRoutes(app: FastifyInstance) {
 
       const target = await db.user.findUnique({
         where: { id: targetId },
-        select: { id: true, isPlatformOwner: true },
+        select: { id: true, isPlatformOwner: true, deletedAt: true },
       });
       if (!target) return reply.status(404).send({ error: "Пользователь не найден." });
       if (target.isPlatformOwner) {
         return reply
           .status(403)
           .send({ error: "Нельзя сбросить пароль другого platform-owner'а." });
+      }
+      if (target.deletedAt !== null) {
+        return reply
+          .status(409)
+          .send({ error: "Пользователь удалён — сбросить пароль нельзя." });
       }
 
       const tempPassword = generateTempPassword();
@@ -312,4 +457,238 @@ export async function registerPlatformRoutes(app: FastifyInstance) {
       });
     },
   );
+
+  // v1.2.7 trek P2 — POST /api/platform/users/:id/delete — soft-delete.
+  // НЕ удаляет данные из БД: ставит deletedAt + revoke refresh + WS-drop.
+  // Login и WS-connect отбиваются «навсегда» (как ban, но с другой
+  // причиной и без unban-flow в этом MVP). Обратимо вручную через SQL:
+  //   UPDATE "User" SET "deletedAt"=NULL, "deletedReason"=NULL,
+  //   "deletedByUserId"=NULL WHERE id='...';
+  app.post("/api/platform/users/:id/delete", guard, async (req, reply) => {
+    const params = idParam.safeParse(req.params);
+    if (!params.success) return reply.status(400).send({ error: "Invalid id" });
+    const body = reasonBody.safeParse(req.body);
+    if (!body.success) {
+      return reply
+        .status(400)
+        .send({ error: "Укажите причину удаления (1..280 символов)." });
+    }
+
+    const adminId = getUserId(req);
+    if (!adminId) return reply.status(401).send({ error: "Unauthorized" });
+    const { id: targetId } = params.data;
+
+    if (targetId === adminId) {
+      return reply.status(400).send({ error: "Нельзя удалить себя." });
+    }
+
+    const target = await db.user.findUnique({
+      where: { id: targetId },
+      select: { id: true, isPlatformOwner: true, deletedAt: true },
+    });
+    if (!target) return reply.status(404).send({ error: "Пользователь не найден." });
+    if (target.isPlatformOwner) {
+      return reply
+        .status(403)
+        .send({ error: "Нельзя удалить другого platform-owner'а." });
+    }
+    if (target.deletedAt !== null) {
+      return reply.status(409).send({ error: "Пользователь уже удалён." });
+    }
+
+    const updated = await db.user.update({
+      where: { id: targetId },
+      data: {
+        deletedAt: new Date(),
+        deletedReason: body.data.reason,
+        deletedByUserId: adminId,
+      },
+      select: PLATFORM_USER_SELECT,
+    });
+
+    await deleteAllUserRefresh(targetId);
+    const dropped = disconnectUser(targetId);
+
+    recordAudit("PLATFORM_USER_DELETED", {
+      userId: adminId,
+      req,
+      metadata: {
+        targetUserId: targetId,
+        reason: body.data.reason,
+        socketsDropped: dropped,
+      },
+    });
+
+    return reply.send({ user: toView(updated) });
+  });
+
+  // v1.2.7 trek P2 — GET /api/platform/servers — список всех серверов
+  // платформы с поиском по name / owner.email и фильтром active/suspended.
+  app.get("/api/platform/servers", guard, async (req, reply) => {
+    const parsed = listServersQuery.safeParse(req.query);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: "Invalid query" });
+    }
+    const { q, limit, offset } = parsed.data;
+    const status = parsed.data.status ?? "all";
+
+    const where: Prisma.ServerWhereInput = {};
+    if (q) {
+      where.OR = [
+        { name: { contains: q, mode: "insensitive" } },
+        { owner: { email: { contains: q, mode: "insensitive" } } },
+        { owner: { displayName: { contains: q, mode: "insensitive" } } },
+      ];
+    }
+    if (status === "active") where.suspendedAt = null;
+    if (status === "suspended") where.suspendedAt = { not: null };
+
+    const [servers, total] = await Promise.all([
+      db.server.findMany({
+        where,
+        select: PLATFORM_SERVER_SELECT,
+        orderBy: [
+          { suspendedAt: { sort: "desc", nulls: "last" } },
+          { createdAt: "desc" },
+        ],
+        take: limit,
+        skip: offset,
+      }),
+      db.server.count({ where }),
+    ]);
+
+    return reply.send({
+      servers: servers.map(toServerView),
+      total,
+      limit,
+      offset,
+    });
+  });
+
+  // v1.2.7 trek P2 — POST /api/platform/servers/:id/suspend — заморозить.
+  // Write-операции (постинг, создание каналов, settings) блокируются
+  // на уровне роутов через assertServerActive (см. lib/serverGating).
+  app.post("/api/platform/servers/:id/suspend", guard, async (req, reply) => {
+    const params = idParam.safeParse(req.params);
+    if (!params.success) return reply.status(400).send({ error: "Invalid id" });
+    const body = reasonBody.safeParse(req.body);
+    if (!body.success) {
+      return reply
+        .status(400)
+        .send({ error: "Укажите причину заморозки (1..280 символов)." });
+    }
+    const adminId = getUserId(req);
+    if (!adminId) return reply.status(401).send({ error: "Unauthorized" });
+    const { id: serverId } = params.data;
+
+    const target = await db.server.findUnique({
+      where: { id: serverId },
+      select: { id: true, suspendedAt: true },
+    });
+    if (!target) return reply.status(404).send({ error: "Сервер не найден." });
+    if (target.suspendedAt !== null) {
+      return reply.status(409).send({ error: "Сервер уже заморожен." });
+    }
+
+    const updated = await db.server.update({
+      where: { id: serverId },
+      data: {
+        suspendedAt: new Date(),
+        suspendedReason: body.data.reason,
+        suspendedByUserId: adminId,
+      },
+      select: PLATFORM_SERVER_SELECT,
+    });
+
+    recordAudit("PLATFORM_SERVER_SUSPENDED", {
+      userId: adminId,
+      req,
+      metadata: { targetServerId: serverId, reason: body.data.reason },
+    });
+
+    return reply.send({ server: toServerView(updated) });
+  });
+
+  // v1.2.7 trek P2 — POST /api/platform/servers/:id/unsuspend.
+  app.post("/api/platform/servers/:id/unsuspend", guard, async (req, reply) => {
+    const params = idParam.safeParse(req.params);
+    if (!params.success) return reply.status(400).send({ error: "Invalid id" });
+    const adminId = getUserId(req);
+    if (!adminId) return reply.status(401).send({ error: "Unauthorized" });
+    const { id: serverId } = params.data;
+
+    const target = await db.server.findUnique({
+      where: { id: serverId },
+      select: { id: true, suspendedAt: true },
+    });
+    if (!target) return reply.status(404).send({ error: "Сервер не найден." });
+    if (target.suspendedAt === null) {
+      return reply.status(409).send({ error: "Сервер не заморожен." });
+    }
+
+    const updated = await db.server.update({
+      where: { id: serverId },
+      data: {
+        suspendedAt: null,
+        suspendedReason: null,
+        suspendedByUserId: null,
+      },
+      select: PLATFORM_SERVER_SELECT,
+    });
+
+    recordAudit("PLATFORM_SERVER_UNSUSPENDED", {
+      userId: adminId,
+      req,
+      metadata: { targetServerId: serverId },
+    });
+
+    return reply.send({ server: toServerView(updated) });
+  });
+
+  // v1.2.7 trek P2 — GET /api/platform/audit-log — read-only audit feed
+  // (filter type / userId, пагинация). UI в Platform Admin → Audit tab.
+  app.get("/api/platform/audit-log", guard, async (req, reply) => {
+    const parsed = auditQuery.safeParse(req.query);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: "Invalid query" });
+    }
+    const { type, userId, limit, offset } = parsed.data;
+
+    const where: Prisma.AuditLogWhereInput = {};
+    if (type) where.type = type as Prisma.AuditLogWhereInput["type"];
+    if (userId) where.userId = userId;
+
+    const [entries, total] = await Promise.all([
+      db.auditLog.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        take: limit,
+        skip: offset,
+        include: {
+          user: { select: { id: true, email: true, displayName: true } },
+        },
+      }),
+      db.auditLog.count({ where }),
+    ]);
+
+    return reply.send({
+      entries: entries.map((e) => ({
+        id: e.id,
+        type: e.type,
+        createdAt: e.createdAt.toISOString(),
+        ipAddress: e.ipAddress,
+        metadata: e.metadata,
+        user: e.user
+          ? {
+              id: e.user.id,
+              email: e.user.email,
+              displayName: e.user.displayName,
+            }
+          : null,
+      })),
+      total,
+      limit,
+      offset,
+    });
+  });
 }

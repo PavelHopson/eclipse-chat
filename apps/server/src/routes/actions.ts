@@ -8,6 +8,7 @@ import {
 } from "../actionItems.js";
 import { AINotConfiguredError, chat } from "../ai/provider.js";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
+import { ensureServerActive } from "../lib/serverGating.js";
 import { db } from "../db.js";
 import { serializeUser } from "../lib/userView.js";
 import { notifyUser } from "../lib/webPush.js";
@@ -247,6 +248,11 @@ export async function registerActionRoutes(app: FastifyInstance) {
       }
       if (!message.channelId || !message.channel) {
         return reply.status(400).send({ error: "Actions are available only for server messages" });
+      }
+      // v1.2.7 Platform Admin (trek P2) — заморожен → action не создаётся.
+      if (message.channel.serverId) {
+        const active = await ensureServerActive(message.channel.serverId, reply);
+        if (!active) return;
       }
       if (message.deletedAt) {
         return reply.status(410).send({ error: "Cannot create action from deleted message" });

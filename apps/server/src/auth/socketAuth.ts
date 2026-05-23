@@ -26,10 +26,11 @@ export function registerSocketAuth(io: Server, secret: string) {
       if (userId) {
         const u = await db.user.findUnique({
           where: { id: userId },
-          select: { bannedAt: true },
+          select: { bannedAt: true, deletedAt: true },
         });
-        if (u && u.bannedAt !== null) {
-          return next(new Error("banned"));
+        if (u) {
+          if (u.deletedAt !== null) return next(new Error("deleted"));
+          if (u.bannedAt !== null) return next(new Error("banned"));
         }
       }
       (socket.data as { userId: string | null }).userId = userId;

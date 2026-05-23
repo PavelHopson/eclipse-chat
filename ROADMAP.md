@@ -5,7 +5,7 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.2.6** (Galaxy/Clock/Theme/Deadline effects +
+**Текущая версия:** **v1.2.7** (Galaxy/Clock/Theme/Deadline effects +
 UX-copy + дизайн-полиш + редизайн WS-1 + системный редизайн ЗАКРЫТ 8/8 +
 светлая тема SOLAR (Notion-crisp) + фикс AuthScreen + смена пароля +
 визуальный передел AppShell ЗАКРЫТ 4/4 + топбар-полиш +
@@ -27,12 +27,15 @@ logout-надёжность + identity-фикс пресетов + topbar на `
 StatusBoard + OperationalTablePanel + ActionItemDrawer +
 CSS-консолидация slice 7 — дубль-блоки .ec-shell* и !important-война +
 трек P1 — Platform Admin для super-admin'а (Users-only: бан / снять
-бан / сброс пароля + login/WS-gate)).
+бан / сброс пароля + login/WS-gate) +
+трек P2 — расширение Platform Admin: serverы (заморозка/разморозка),
+аудит-таба, soft-delete user, suspend-gating critical writes).
 
-> **v1.1.90 … v1.2.0 задеплоены — в проде v1.2.0. v1.2.1 … v1.2.6
+> **v1.1.90 … v1.2.0 задеплоены — в проде v1.2.0. v1.2.1 … v1.2.7
 > запушены и ждут approve-gate Pavel'я в GitHub Actions (environment
-> `production`). Деплой НЕ автоматический по пушу. ⚠️ v1.2.6 несёт
-> Prisma-миграцию — деплой требует `db:migrate:deploy` (см. workflow).**
+> `production`). Деплой НЕ автоматический по пушу. ⚠️ v1.2.6 и v1.2.7
+> несут Prisma-миграции — deploy.sh [4/10] применяет
+> `prisma migrate deploy` автоматом.**
 
 > **⚠️ ЦВЕТ-ПРАВИЛО ИЗМЕНЕНО (бриф Pavel'я 20.05.2026).** Прежнее
 > «cool-tone, НИКОГДА warm» — ОТМЕНЕНО. Новая identity: **violet
@@ -40,8 +43,65 @@ CSS-консолидация slice 7 — дубль-блоки .ec-shell* и !im
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.2.6:**
+**Изменения v1.1.25 → v1.2.7:**
 
+- **v1.2.7** — **трек P2: расширение Platform Admin — Servers + Audit
+  + soft-delete user + suspend-gating**. Закрытие исходного запроса
+  Pavel'я («все пользователи, сброс паролей, баны юзеров, баны
+  серверов»). К P1-набору добавлено: delete-user (soft), список и
+  заморозка серверов, audit-view-таба, реальное блокирование writes
+  в замороженных серверах.
+  - **Schema** (Prisma migration `20260523150000_platform_admin_p2`):
+    `User.deletedAt / deletedReason / deletedByUserId` + self-relation
+    `UserDeletedBy`; `Server.suspendedAt / suspendedReason /
+    suspendedByUserId` + self-relation `ServerSuspendedBy`;
+    `AuditEventType` расширен `PLATFORM_USER_DELETED /
+    PLATFORM_SERVER_SUSPENDED / UNSUSPENDED`. Без data-step.
+  - **Soft-delete vs hard.** Выбран soft: deletedAt + Reason + By.
+    Login / WS отбиваются 403 «навсегда», refresh-токены revoked,
+    сокеты разорваны. Данные пользователя (сообщения, задачи,
+    комментарии) остаются — UI рисует их как «удалённый
+    пользователь», audit-trail цел. Обратимо вручную SQL:
+    `UPDATE "User" SET "deletedAt"=NULL WHERE id='...'`. Серверы,
+    которыми владел deleted user, не каскадят — используй «Заморозить».
+  - **Suspend-gating** (`lib/serverGating.ts` →
+    `ensureServerActive(serverId, reply)`): подключён в 4 critical
+    write-точках — POST `/api/channels/:id/messages` (постинг
+    сообщений), POST `/api/servers/:id/channels` (создание каналов),
+    PATCH `/api/servers/:id/identity` (server settings), POST
+    `/api/messages/:id/actions` (создание задач/решений). Заморожен →
+    403. Чтение (история, member-list, каналы) НЕ блокируется —
+    история не пропадает.
+  - **Login-gate + WS-gate** расширены `deletedAt`-check'ом
+    (рядом с существующим `bannedAt`-check'ом из P1, разные
+    error-messages). `requirePlatformOwner` тоже отклоняет deleted.
+  - **Endpoints (`routes/platform.ts`).** К P1-набору добавлено:
+    POST `/api/platform/users/:id/delete` (double-confirm:
+    reason + ввод слова «удалить»),
+    GET `/api/platform/servers` (поиск по name/ownerEmail + filter
+    active/suspended + пагинация),
+    POST `/api/platform/servers/:id/suspend`,
+    POST `/api/platform/servers/:id/unsuspend`,
+    GET `/api/platform/audit-log` (filter type/userId + пагинация).
+    list-users теперь принимает `status=all/active/banned/deleted`
+    (старый `banned=true/false` поддержан для backward-compat).
+    Safety: cannot self-delete; cannot delete/ban/reset другого
+    platform-owner'а; cannot ban/reset уже удалённого.
+  - **Frontend.** `PlatformAdminPanel` переписан на 3 табы (Users /
+    Servers / Audit). Users-таба получила Delete-кнопку с
+    double-confirm (reason + ввод «удалить») + статус-чип «Удалён».
+    Servers-таба — таблица с favicon-style icon, member/channel
+    counts, mode-chip, suspend/unsuspend confirm-модалки. Audit-таба
+    — read-only таблица с фильтрами type/userId. Все три табы — на
+    cockpit-grammar (`.ec-cck-table` / `chip` / `banner`),
+    SOLAR-совместимые через токены.
+  - **Не делано (можно потом).** Suspend-gating шире (DELETE
+    channel, role-changes, member-kicks) — оставлено на потом, в P2
+    закрыты главные write-точки. Pagination UI («next/prev» кнопки) —
+    list-API уже принимает offset/limit, UI показывает первый
+    page (50/100); можно добавить позже.
+  Сборка зелёная (tsc + vite). ⚠️ деплой = `prisma migrate deploy`
+  применится автоматом (deploy.sh [4/10]).
 - **v1.2.6** — **трек P1: Platform Admin — глобальная super-admin
   панель для владельца платформы (Users-only MVP)**. Новый трек.
   Запрос Pavel'я: «админ панель для супер админа, который будет видеть
