@@ -2375,6 +2375,86 @@
   opacity: 0.4;
   cursor: not-allowed;
 }
+
+/* Emoji-picker композера — popover с табами категорий + grid. */
+.ec-emoji-picker {
+  width: 320px;
+  max-width: calc(100vw - 16px);
+  background: var(--ec-overlay-bg);
+  backdrop-filter: saturate(180%) blur(14px);
+  -webkit-backdrop-filter: saturate(180%) blur(14px);
+  border: 1px solid var(--ec-border-default);
+  border-radius: var(--ec-radius-md);
+  box-shadow: var(--ec-shadow-md);
+  padding: var(--ec-space-2);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ec-space-2);
+  animation: ec-modal-zoom-in var(--ec-dur-fast) var(--ec-ease-out) both;
+}
+.ec-emoji-picker__tabs {
+  display: flex;
+  gap: 2px;
+  padding-bottom: var(--ec-space-2);
+  border-bottom: 1px solid var(--ec-border-subtle);
+  overflow-x: auto;
+}
+.ec-emoji-picker__tab {
+  flex: 1 0 auto;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: var(--ec-radius-sm);
+  cursor: pointer;
+  font-size: 18px;
+  opacity: 0.6;
+  transition:
+    background var(--ec-dur-fast) var(--ec-ease),
+    opacity var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-emoji-picker__tab:hover {
+  background: var(--ec-surface-3);
+  opacity: 1;
+}
+.ec-emoji-picker__tab[aria-selected="true"] {
+  background: var(--ec-surface-3);
+  opacity: 1;
+  box-shadow: inset 0 -2px 0 var(--ec-border-accent);
+}
+.ec-emoji-picker__category-label {
+  font-size: var(--ec-text-2xs);
+  color: var(--ec-text-dim);
+  letter-spacing: var(--ec-tracking-wide);
+  text-transform: uppercase;
+  padding: 0 var(--ec-space-1);
+}
+.ec-emoji-picker__grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 2px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.ec-emoji-picker__cell {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: var(--ec-radius-sm);
+  cursor: pointer;
+  font-size: 20px;
+  transition: background var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-emoji-picker__cell:hover {
+  background: var(--ec-surface-3);
+}
+
 .ec-composer-send {
   display: flex;
   align-items: center;

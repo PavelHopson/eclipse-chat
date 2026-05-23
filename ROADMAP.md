@@ -5,7 +5,7 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.2.14** (Galaxy/Clock/Theme/Deadline effects +
+**Текущая версия:** **v1.2.15** (Galaxy/Clock/Theme/Deadline effects +
 UX-copy + дизайн-полиш + редизайн WS-1 + системный редизайн ЗАКРЫТ 8/8 +
 светлая тема SOLAR (Notion-crisp) + фикс AuthScreen + смена пароля +
 визуальный передел AppShell ЗАКРЫТ 4/4 + топбар-полиш +
@@ -37,11 +37,14 @@ row-click details (user/server) + suspend-gating шире +
 slice 6a — AdminPanel inline-долг очищен +
 slice 6b — BotsTab inline-долг + JS-hover ЗАКРЫТ; brief-slice 6 ✅ +
 audio-реактивный плеер: Web Audio API + AnalyserNode + RAF bars +
-slash-команды backend: /me /shrug /tableflip /unflip /help).
+slash-команды backend: /me /shrug /tableflip /unflip /help +
+emoji-кнопка композера с категорированным picker'ом +
+nginx trailing-slash редирект `/eclipse-chat → /eclipse-chat/` +
+og-image displayed URL с `/`).
 
-> **v1.1.90 … v1.2.10 задеплоены — в проде v1.2.10. v1.2.11 …
-> v1.2.14 запушены и ждут approve-gate Pavel'я. Деплой НЕ
-> автоматический по пушу.**
+> **v1.1.90 … v1.2.14 задеплоены — в проде v1.2.14. v1.2.15
+> запушено и ждёт approve-gate Pavel'я. Деплой НЕ автоматический
+> по пушу.**
 
 > **⚠️ ЦВЕТ-ПРАВИЛО ИЗМЕНЕНО (бриф Pavel'я 20.05.2026).** Прежнее
 > «cool-tone, НИКОГДА warm» — ОТМЕНЕНО. Новая identity: **violet
@@ -49,8 +52,43 @@ slash-команды backend: /me /shrug /tableflip /unflip /help).
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.2.14:**
+**Изменения v1.1.25 → v1.2.15:**
 
+- **v1.2.15** — **emoji-кнопка композера + nginx trailing-slash фикс
+  + og-image URL коррекция**. Три параллельных фикса в одном bump'е.
+  - **Emoji-кнопка композера.** Новый `ComposerEmojiPicker.tsx` —
+    popover с tab-bar (8 категорий: Эмоции / Жесты / Сердца /
+    Природа / Еда / Спорт / Объекты / Знаки) + grid 8 cols, ≈100
+    emoji. Click-outside / Escape — закрывает. Position fixed +
+    clamp в viewport. `MessageInput.tsx` — кнопка-смайлик
+    (lucide-style smiley SVG) между voice и textarea; `insertEmoji`
+    вставляет на caret position (как `applyAutocomplete`-pattern).
+    Grid композера: `hideAttachments=true` → 3 cols `auto / 1fr /
+    auto`, `false` → 5 cols. Работает и в thread/DM.
+    `components.css` дорос `.ec-emoji-picker*` секцией (НЕ
+    tokens.css — Pavel'ёв WIP не зацепили).
+    NB: существующий `EmojiPicker.tsx` оставлен — он специально для
+    reactions с 12-emoji whitelist'ом (`ALLOWED_EMOJI` синхрон с
+    server validation).
+  - **nginx trailing-slash редирект** — root cause «у некоторых не
+    открывается ссылка входа». `deploy/nginx/eclipse-chat.conf` не
+    имел редирект `/eclipse-chat → /eclipse-chat/`; запрос без `/`
+    не матчил ни один `^~ /eclipse-chat/...` location и падал в
+    generic `location /` main-сайта star-crm.ru → SPA-router
+    отдавал брендированный 404 main-сайта. Добавлен exact-match
+    `location = /eclipse-chat { return 301 $scheme://$host/
+    eclipse-chat/; }`. На проде заработает после `sync-nginx.sh` +
+    `nginx -s reload`.
+  - **og-image displayed URL коррекция.** В `og-image.svg` и
+    `og-image-brand.svg` displayed text был `app.star-crm.ru/
+    eclipse-chat` без `/`. При unfurl в Telegram/Slack/WhatsApp/VK
+    люди видели ссылку без `/` на превью-картинке, копировали
+    вручную → попадали на 404 main-сайта. Хотя `og:url` мета был
+    правильный со `/`, но пользователи копируют **то, что видят**,
+    не href. Текст в обоих SVG получил trailing `/`.
+  - **HTTP-Referer для OpenRouter** — `apps/server/src/ai/
+    provider.ts` за компанию получил `/eclipse-chat/` (cosmetic).
+  Сборка зелёная (tsc + vite + tsc server). Без миграций.
 - **v1.2.14** — **slash-команды backend MVP** (/me /shrug /tableflip
   /unflip /help + ephemeral banner).
   - **Backend** `lib/slashCommands.ts` — registry + парсер.
@@ -3037,6 +3075,27 @@ base, ✅ Home command center, ✅ responsive cinematic UI pass.
 
 ## 📋 Открытые follow-ups
 
+- **🆕 Лендинг Eclipse Chat (`/eclipse-chat/` без авторизации)** —
+  публичная маркетинговая страница: hero + ценностные блоки + форма
+  регистрации/входа inline (а не сразу AuthPage за gate'ом). Сейчас
+  заход на `/eclipse-chat/` неавторизованным юзером сразу даёт
+  AuthPage (биометрический шлюз → credentials). Нужен промежуточный
+  лендинг: что такое Eclipse Chat / для кого / call-to-action
+  «Войти» + «Создать аккаунт» с inline-формой. **Делает Pavel через
+  Codex** — заведено как параллельный трек.
+- **🆕 nginx trailing-slash редирект на проде** — `app.star-crm.ru/
+  eclipse-chat` (без `/`) сейчас отдаёт 200 + 24 KB HTML — это
+  404-страница главного сайта star-crm.ru (его SPA-router ловит
+  unknown route). `app.star-crm.ru/eclipse-chat/` (со `/`) работает
+  как надо. Фикс на стороне nginx (вне репозитория Eclipse Chat):
+  `location = /eclipse-chat { return 301 $scheme://$host/eclipse-chat/; }`
+  Однострочник, точечный exact-match.
+- **🆕 «Ссылка входа не открывается у некоторых» — расследование** —
+  у одних пользователей `/eclipse-chat/` открывается, у других —
+  нет. Кандидаты на причину: (а) trailing-slash issue выше, (б) sw.js
+  cache stale, (в) deep-link генерация без `/` в invitation URLs /
+  share-links / магазинной иконке, (г) браузерная нормализация URL,
+  (д) промежуточные прокси/CDN. Открыто в текущей сессии.
 - **E2E-шифрование (DM + приватные каналы)** — крупный отдельный
   трек, заведён после integrity-фикса v1.1.90. Сейчас E2E нет:
   сервер хранит сообщения открытым текстом и читает их (ярлык

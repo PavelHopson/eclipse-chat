@@ -101,7 +101,7 @@ function getProviders(): ProviderConfig[] {
       apiKey: orKey,
       model: process.env.OPENROUTER_MODEL ?? "deepseek/deepseek-chat-v3.1:free",
       extraHeaders: {
-        "HTTP-Referer": "https://app.star-crm.ru/eclipse-chat",
+        "HTTP-Referer": "https://app.star-crm.ru/eclipse-chat/",
         "X-Title": "Eclipse Chat",
       },
     });

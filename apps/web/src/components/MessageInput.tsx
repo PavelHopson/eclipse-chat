@@ -9,6 +9,7 @@ import {
   type AutocompleteItem,
   type AutocompleteTrigger,
 } from "./AutocompletePopover";
+import { ComposerEmojiPicker } from "./ComposerEmojiPicker";
 
 /**
  * Operator slash-commands — `/task` `/decision` `/followup` в композере.
@@ -235,6 +236,38 @@ export function MessageInput({
   // Autocomplete state — @ mentions + : emoji shortcodes
   const [trigger, setTrigger] = useState<AutocompleteTrigger | null>(null);
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
+  // Emoji picker popover (открывается кнопкой в композере).
+  const [emojiOpen, setEmojiOpen] = useState(false);
+  const [emojiAnchor, setEmojiAnchor] = useState<DOMRect | null>(null);
+  const emojiButtonRef = useRef<HTMLButtonElement>(null);
+
+  const insertEmoji = (emoji: string) => {
+    const el = textareaRef.current;
+    if (!el) {
+      setDraftValue(draft + emoji);
+      return;
+    }
+    const caret = el.selectionStart ?? draft.length;
+    const before = draft.slice(0, caret);
+    const after = draft.slice(caret);
+    setDraftValue(before + emoji + after);
+    queueMicrotask(() => {
+      el.focus();
+      const next = before.length + emoji.length;
+      el.setSelectionRange(next, next);
+    });
+  };
+
+  const toggleEmojiPicker = () => {
+    if (emojiOpen) {
+      setEmojiOpen(false);
+      return;
+    }
+    if (emojiButtonRef.current) {
+      setEmojiAnchor(emojiButtonRef.current.getBoundingClientRect());
+    }
+    setEmojiOpen(true);
+  };
 
   const setDraftValue = (value: string) => {
     draftRef.current = value;
@@ -607,8 +640,8 @@ export function MessageInput({
   // Grid-колонки композера зависят от hideAttachments — единственное
   // динамическое значение; фокус-состояние коробки — CSS :focus-within.
   const boxGridColumns = hideAttachments
-    ? "minmax(0, 1fr) auto"
-    : "auto auto minmax(0, 1fr) auto";
+    ? "auto minmax(0, 1fr) auto"
+    : "auto auto auto minmax(0, 1fr) auto";
 
   // Slash-command hint: показываем когда юзер набрал «/» + (опц.) часть
   // команды, но ещё не дошёл до пробела. @/:-popover имеет приоритет.
@@ -787,6 +820,23 @@ export function MessageInput({
             </button>
           </>
         )}
+        <button
+          ref={emojiButtonRef}
+          type="button"
+          onClick={toggleEmojiPicker}
+          disabled={disabled || isRecording}
+          className="ec-composer-icon-btn"
+          title="Эмодзи"
+          aria-label="Выбрать эмодзи"
+          aria-expanded={emojiOpen}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <circle cx="12" cy="12" r="10" />
+            <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+            <line x1="9" y1="9" x2="9.01" y2="9" />
+            <line x1="15" y1="9" x2="15.01" y2="9" />
+          </svg>
+        </button>
         <textarea
           ref={textareaRef}
           rows={1}
@@ -883,6 +933,13 @@ export function MessageInput({
           anchorRect={anchorRect}
           onSelect={applyAutocomplete}
           onDismiss={() => setTrigger(null)}
+        />
+      )}
+      {emojiOpen && (
+        <ComposerEmojiPicker
+          onPick={insertEmoji}
+          onClose={() => setEmojiOpen(false)}
+          anchorRect={emojiAnchor}
         />
       )}
     </form>
