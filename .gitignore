@@ -19,3 +19,8 @@ apps/server/prisma/prisma/dev.db-journal
 # IDE
 .vscode/
 .idea/
+
+# Codex / preview runner артефакты (Pavel'ёва среда)
+.codex-artifacts/
+apps/web/.preview.log
+apps/web/.preview.err.log
