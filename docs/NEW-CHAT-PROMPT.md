@@ -1,9 +1,10 @@
 # Eclipse Chat — handoff для нового чата
 
-> Обновлено **2026-05-23, после v1.2.14 + 398e81e (branding refresh)**.
-> Прошлая сессия — 10 версий (v1.2.5 → v1.2.14) + два Pavel'ёвых
-> commit'а (v1.2.10 deleted-cleanup/channel-icons/auth-gateway,
-> 398e81e branding refresh). Скопируй блок ниже в новый чат.
+> Обновлено **2026-05-23, после v1.2.14 deployed + 398e81e branding +
+> 4c15f9d docs**. Прошлая сессия — 10 версий (v1.2.5 → v1.2.14) + два
+> Pavel'ёвых commit'а (v1.2.10 deleted-cleanup/channel-icons/
+> auth-gateway, 398e81e branding refresh). Pavel апрувнул гейт в конце
+> сессии — всё на проде. Скопируй блок ниже в новый чат.
 
 ---
 
@@ -19,19 +20,17 @@ design-brief-v2.md` + `surface-map.md`. Подтверди состояние
 
 ## Текущее состояние
 
-**Прод (LIVE):** **v1.2.10** — https://app.star-crm.ru/eclipse-chat/
-(содержит весь R-трек до v1.2.0 включительно + slice 7 ⚠️ нет, см.
-ниже — slice 7 на гейте).
+**Прод (LIVE):** **v1.2.14** — https://app.star-crm.ru/eclipse-chat/
+(`/api/version` подтверждает; БД healthy). Всё что накопилось в
+прошлой сессии (v1.2.5 → v1.2.14 + Pavel'ёва branding 398e81e)
+задеплоено — Pavel апрувнул гейт в конце сессии. Гейт сейчас чистый.
 
-**master HEAD = `398e81e` (Pavel'я branding refresh) поверх `6db75ac`
-= v1.2.14 (slash-команды).** Локально и на GitHub совпадает.
+**master HEAD = `4c15f9d` (docs: handoff-prompt)** поверх `398e81e`
+(Pavel'я branding) и `6db75ac` (v1.2.14 slash-команды). Локально и
+на GitHub совпадает.
 
-⚠️ **5 версий на approve-gate, ждут апрува** (environment
-`production`): v1.2.11 / v1.2.12 / v1.2.13 / v1.2.14 / 398e81e.
-В проде задеплоено только v1.2.10. Апрув катит всё разом.
-
-Команда апрува — в `Agents.md` → Deploy. Pavel жмёт Approve на
-последнем «Deploy PROD»-ране (`398e81e`); он деплоит весь batch.
+⚠️ **Гейт пустой** — нечего апрувать. Накопленная работа
+прошлой сессии на проде.
 
 ## Сделано за прошлую сессию (v1.2.5 → v1.2.14 + 398e81e)
 
@@ -102,26 +101,27 @@ design-brief-v2.md` + `surface-map.md`. Подтверди состояние
 слайс — сборка зелёная (tsc + vite), коммит (мой через
 `.commit-message.tmp`, `git add` explicit paths), push.
 
-## ⚠️ Главный риск — за тобой, Pavel
+## ⚠️ Визуальная верификация на проде — за тобой, Pavel
 
-**5 версий на гейте — большой накопленный фронт-визуальный передел
-(slice 6a/6b AdminPanel/BotsTab cockpit-grammar + audio-реактивный
-плеер + slash-команды UI + branding refresh)** + R-трек до v1.2.0
-давно в проде, но плеер до и после audio-реактива выглядят ОЧЕНЬ
-по-разному.
-
-Сильно рекомендую: апрувнуть гейт и пройтись глазами по проду —
-- **AdminPanel** (открой настройки сервера → Admin) — все 9 табов
-  должны выглядеть как раньше (миграция cockpit-классов, computed-
-  values должны быть identical).
-- **BotsTab** (Admin → «Боты») — hover на bot-row должен поднимать
-  surface через CSS (а не мутировать .style).
-- **Audio-реактив**: открой music-сессию, play, разверни expand-
-  player — 64 бара должны пульсировать в такт реальному аудио.
-- **Slash-команды**: набери `/help` в любом канале — должен показаться
-  банер «только вы видите» с listing команд. `/shrug` → `¯\\_(ツ)_/¯`
-  appended в посланном сообщении.
-- **Pavel'ёв branding** в 398e81e — новый brand-mark в топбаре,
+Всё уже задеплоено, но у новых фич ты ещё не делал visual-review.
+Пройдись глазами в подходящий момент:
+- **AdminPanel** (Admin-панель сервера) — все 9 табов должны
+  выглядеть как раньше (миграция cockpit-классов в slice 6a;
+  computed-values identical).
+- **BotsTab** (Admin → «Боты») — hover на bot-row поднимает surface
+  через CSS (slice 6b: JS-hover убран).
+- **Audio-реактив**: music-сессия, play, разверни expand-player —
+  64 бара должны пульсировать в такт реальному аудио (v1.2.13). На
+  pause — статика. Reduced-motion — статика.
+- **Slash-команды**: `/help` в любом канале → банер «только вы
+  видите» с listing команд. `/shrug` → `¯\\_(ツ)_/¯` appended.
+  `/me танцует` → italic «_Pavel танцует_».
+- **Удалённые сообщения**: при удалении сообщение должно полностью
+  исчезать из ленты (v1.2.9), а не оставлять «сообщение удалено».
+- **Platform Admin**: иконка в топбаре (только при isPlatformOwner).
+  3 табы: Users / Servers / Audit. Pagination + search debounce +
+  click-row детали.
+- **Pavel'ёв branding** (398e81e) — brand-mark.svg в топбаре, PWA
   manifest icons.
 - Обе темы VOID/SOLAR — slice 6a/6b SOLAR-совместимы через токены.
 
