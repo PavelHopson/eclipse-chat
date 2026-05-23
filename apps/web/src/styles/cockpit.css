@@ -1015,3 +1015,153 @@
   .ec-cck-check:active,
   .ec-cck-filter:active { transform: none; }
 }
+
+/* ===== Banner variants (extra) ==============================
+   v1.2.6 trek P1 — добавлен warn-вариант для предупреждений (temp-pw
+   show-once banner). error/risk-вариант уже был. */
+.ec-cck-banner--warn {
+  color: var(--ec-status-warn);
+  background: color-mix(in srgb, var(--ec-status-warn) 14%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ec-status-warn) 34%, transparent);
+}
+
+/* ===== Platform Admin panel (v1.2.6 trek P1) =================
+   Глобальная super-admin панель — поверх cockpit-системы. Свои
+   стили — компоновка toolbar / таблицы / temp-pw блока. Базовые
+   table / chip / banner / filter — из cockpit-системы выше. */
+.ec-platform-admin {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ec-space-3);
+  min-width: 0;
+}
+.ec-platform-admin__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ec-space-3);
+}
+.ec-platform-admin__search {
+  display: flex;
+  align-items: center;
+  gap: var(--ec-space-2);
+  flex: 1 1 220px;
+  min-width: 200px;
+}
+.ec-platform-admin__search .ec-field {
+  flex: 1;
+  min-width: 0;
+}
+.ec-platform-admin__filters {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.ec-platform-admin__meta {
+  margin-left: auto;
+  font-size: var(--ec-text-xs);
+  color: var(--ec-text-muted);
+  font-feature-settings: "tnum";
+}
+
+.ec-platform-admin__tablewrap {
+  max-height: min(60vh, 520px);
+  overflow: auto;
+  border-radius: var(--ec-radius-md);
+  background: var(--ec-surface-sunken);
+  box-shadow: var(--ec-edge);
+}
+.ec-platform-admin__table {
+  width: 100%;
+}
+.ec-platform-admin__th-actions {
+  text-align: right;
+}
+
+.ec-platform-admin__user {
+  display: flex;
+  align-items: center;
+  gap: var(--ec-space-2);
+  min-width: 0;
+}
+.ec-platform-admin__user-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+}
+.ec-platform-admin__user-name {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ec-text-strong);
+  font-weight: 600;
+  font-size: var(--ec-text-sm);
+}
+.ec-platform-admin__self-mark {
+  color: var(--ec-text-dim);
+  font-size: var(--ec-text-xs);
+  font-weight: 400;
+}
+.ec-platform-admin__email {
+  color: var(--ec-text-muted);
+  font-family: var(--ec-font-mono);
+  font-size: var(--ec-text-xs);
+}
+.ec-platform-admin__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+/* Confirm-модалки — paragraph styles. */
+.ec-platform-admin__warn {
+  margin: 0 0 var(--ec-space-3);
+  color: var(--ec-text);
+  font-size: var(--ec-text-sm);
+  line-height: 1.55;
+}
+.ec-platform-admin__sub {
+  margin: 0 0 var(--ec-space-2);
+  color: var(--ec-text-muted);
+  font-size: var(--ec-text-sm);
+}
+.ec-platform-admin__label {
+  display: block;
+  margin: var(--ec-space-2) 0 4px;
+  color: var(--ec-text-muted);
+  font-size: var(--ec-text-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* Temp-pw display — show-once code-block + copy. */
+.ec-platform-admin__temppw {
+  display: flex;
+  align-items: center;
+  gap: var(--ec-space-2);
+  margin-top: var(--ec-space-3);
+  padding: var(--ec-space-3);
+  border-radius: var(--ec-radius-md);
+  background: var(--ec-surface-sunken);
+  box-shadow: var(--ec-edge);
+}
+.ec-platform-admin__temppw-value {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  font-family: var(--ec-font-mono);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--ec-text-strong);
+  letter-spacing: 0.02em;
+  user-select: all;
+}

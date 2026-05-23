@@ -46,6 +46,23 @@ model User {
   /// Времянка lockout после 5 неудачных попыток. Null = не залочен.
   lockoutUntil         DateTime?
 
+  /// v1.2.6 Platform Admin (trek P1) — глобальный флаг владельца платформы
+  /// (super-admin). Даёт доступ к /api/platform/* (списки всех users,
+  /// бан/сброс пароля). Per-server роли (MemberRole) — отдельная иерархия;
+  /// этот флаг с ними не связан.
+  isPlatformOwner      Boolean   @default(false)
+  /// v1.2.6 Platform Admin — когда user был забанен platform-owner'ом.
+  /// NULL = активен. Banned user: login отклоняется, активные WS-сессии
+  /// закрываются. Отличается от lockoutUntil (auto-brute-force lockout —
+  /// временный, sec-based).
+  bannedAt             DateTime?
+  /// Причина бана (для аудита и UI). NULL когда не banned.
+  bannedReason         String?
+  /// FK на User, который применил бан. SetNull при удалении админа,
+  /// чтобы запись о бане у юзера сохранилась даже если админ удалён.
+  bannedByUserId       String?
+  bannedBy             User?     @relation("UserBannedBy", fields: [bannedByUserId], references: [id], onDelete: SetNull)
+
   messages         Message[]
   refreshTokens    RefreshToken[]
   memberships      Member[]
@@ -80,6 +97,9 @@ model User {
   /// group DMs — этот join. Membership-check унифицирован в route helper.
   dmParticipations ConversationParticipant[]
   auditLogs        AuditLog[]
+  /// v1.2.6 Platform Admin — users, которых ЭТОТ user (platform-owner) забанил.
+  /// Reverse-side bannedBy self-relation.
+  bannedUsers      User[]                @relation("UserBannedBy")
   /// Боты которыми владеет user (как создатель).
   ownedBots        Bot[]                 @relation("BotOwner")
   /// Если user — это shadow user для bot'а (1-to-1). null = обычный User.
@@ -282,6 +302,11 @@ enum AuditEventType {
   COMPOSIO_CONNECTED
   COMPOSIO_DISCONNECTED
   COMPOSIO_ACTION_EXECUTED
+  /// v1.2.6 Platform Admin (trek P1) — глобальные администраторские
+  /// действия super-admin'а. metadata: { targetUserId, reason? }.
+  PLATFORM_USER_BANNED
+  PLATFORM_USER_UNBANNED
+  PLATFORM_USER_PASSWORD_RESET
 }
 
 model AuditLog {

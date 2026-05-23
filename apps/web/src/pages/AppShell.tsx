@@ -24,6 +24,7 @@ import { JoinServerModal } from "../components/JoinServerModal";
 import { MessageInput } from "../components/MessageInput";
 import { MessageList } from "../components/MessageList";
 import { ProfileModal } from "../components/ProfileModal";
+import { PlatformAdminPanel } from "../components/PlatformAdminPanel";
 import { SearchOverlay } from "../components/SearchOverlay";
 import { ServerHubModal } from "../components/ServerHubModal";
 import { CreateTableModal } from "../components/CreateTableModal";
@@ -287,6 +288,9 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   const [helpOpen, setHelpOpen] = useState(false);
   /** v0.76 #25 phase 1: Admin Panel — полноэкранный view для OWNER/ADMIN. */
   const [adminOpen, setAdminOpen] = useState(false);
+  // v1.2.6 Platform Admin (trek P1) — глобальная super-admin панель.
+  // Иконка в топбаре появляется ТОЛЬКО при user.isPlatformOwner = true.
+  const [platformAdminOpen, setPlatformAdminOpen] = useState(false);
   // Incident panel — toggle в right rail (приоритет ниже thread panel).
   const [showIncidents, setShowIncidents] = useState(false);
   // Thread panel — открыт когда selectedThreadId != null. Replaces MemberList
@@ -855,6 +859,25 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                 </svg>
               </button>
             )}
+          {/* v1.2.6 Platform Admin (trek P1) — кнопка только для владельца
+              платформы. Per-server AdminPanel и Platform Admin — две
+              разные иерархии: первая управляет конкретным workspace'ом,
+              вторая — глобальная (баны, сброс пароля). */}
+          {user.isPlatformOwner === true && (
+            <button
+              type="button"
+              onClick={() => setPlatformAdminOpen((v) => !v)}
+              title="Platform Admin — все пользователи платформы"
+              aria-label="Platform Admin"
+              aria-pressed={platformAdminOpen}
+              className="ec-icon-btn"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <circle cx="12" cy="12" r="3" />
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+              </svg>
+            </button>
+          )}
           {/* v0.74 #29 phase 1: Focus mode toggle — фильтр feed'а на
               direct-mentions + pinned + own messages. Глобальный, не
               привязан к каналу. */}
@@ -2124,6 +2147,13 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             // Refresh profile чтобы twoFactorEnabled flag обновился.
             void reloadProfile?.();
           }}
+        />
+      )}
+
+      {platformAdminOpen && user.isPlatformOwner === true && (
+        <PlatformAdminPanel
+          onClose={() => setPlatformAdminOpen(false)}
+          currentUserId={user.id}
         />
       )}
 

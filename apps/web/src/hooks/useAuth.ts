@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { ApiError, api, apiJson, apiPath } from "../lib/api";
-import { clearAllTokens, getAccess, getRefresh, migrateLegacyToken, setTokenPair } from "../lib/storage";
+import {
+  clearAllTokens,
+  getAccess,
+  getRefresh,
+  migrateLegacyToken,
+  setTokenPair,
+} from "../lib/storage";
 
 export type PublicUser = {
   id: string;
@@ -9,6 +15,10 @@ export type PublicUser = {
   avatar: string | null;
   bio: string | null;
   createdAt: string;
+  /** v1.2.6 Platform Admin (trek P1) — флаг владельца платформы.
+   *  По нему фронт показывает иконку Platform Admin в топбаре.
+   *  По умолчанию false. */
+  isPlatformOwner?: boolean;
 };
 
 type AuthResponse = {
@@ -18,31 +28,61 @@ type AuthResponse = {
   user?: PublicUser;
 };
 
+type LoginResult = { success: boolean; needs2FA?: boolean; error?: string };
+type RegisterResult = { success: boolean; error?: string };
+
 export type AuthView = "loading" | "auth" | "app";
 
-/**
- * Глобальный auth-стейт: текущий user, view (loading/auth/app), действия
- * login/register/logout.
- *
- * Используется в App.tsx один раз через useAuth() и пробрасывается дальше
- * через props (не Context — у нас один потребитель, AppShell).
- */
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+function authErrorMessage(
+  kind: "login" | "register",
+  status: number,
+  fallback?: string,
+): string {
+  if (fallback) return fallback;
+  if (status === 409) return "Этот email уже зарегистрирован.";
+  if (status === 429) {
+    return "Слишком много попыток. Подождите и попробуйте снова.";
+  }
+  if (status >= 500) {
+    return kind === "register"
+      ? "Регистрация временно недоступна. Попробуйте позже."
+      : "Сервис входа временно недоступен. Попробуйте позже.";
+  }
+  return kind === "register"
+    ? "Не удалось создать аккаунт. Проверьте данные и попробуйте снова."
+    : "Не удалось войти. Проверьте email и пароль.";
+}
+
+function transportErrorMessage(kind: "login" | "register", error: unknown): string {
+  if (error instanceof Error) {
+    if (error.message === "Failed to fetch") {
+      return kind === "register"
+        ? "Не удалось связаться с сервером регистрации. Проверьте соединение и попробуйте снова."
+        : "Не удалось связаться с сервером входа. Проверьте соединение и попробуйте снова.";
+    }
+    return error.message;
+  }
+  return "Сетевая ошибка";
+}
+
 export function useAuth() {
   const [view, setView] = useState<AuthView>("loading");
   const [user, setUser] = useState<PublicUser | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  /** Пересоздание Socket после смены access-токена. */
   const [socketRev, setSocketRev] = useState(0);
   const bumpSocketRev = useCallback(() => setSocketRev((v) => v + 1), []);
 
-  /** Загрузка текущего user'а — при boot и после login. */
   const loadMe = useCallback(async () => {
     migrateLegacyToken();
     if (!getAccess() && !getRefresh()) {
       setView("auth");
       return;
     }
+
     try {
       const data = await apiJson<{ user: PublicUser | null }>("/api/auth/me");
       if (data.user) {
@@ -59,13 +99,11 @@ export function useAuth() {
         setUser(null);
         setView("auth");
       } else {
-        /* сетевая ошибка — оставляем loading; UI покажет общую ошибку отдельно */
         setView("auth");
       }
     }
   }, []);
 
-  /** Boot: один раз при mount. */
   useEffect(() => {
     void loadMe();
   }, [loadMe]);
@@ -75,28 +113,38 @@ export function useAuth() {
       email: string,
       password: string,
       opts?: { totpCode?: string; recoveryCode?: string },
-    ): Promise<{ success: boolean; needs2FA?: boolean }> => {
+    ): Promise<LoginResult> => {
       setError(null);
+
       try {
-        const body: Record<string, unknown> = { email, password };
+        const body: Record<string, unknown> = {
+          email: normalizeEmail(email),
+          password,
+        };
         if (opts?.totpCode) body.totpCode = opts.totpCode;
         if (opts?.recoveryCode) body.recoveryCode = opts.recoveryCode;
+
         const res = await fetch(apiPath("api/auth/login"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),
         });
+
         const data = (await res.json().catch(() => ({}))) as AuthResponse & {
           error?: string;
           twoFactorRequired?: boolean;
         };
+
         if (!res.ok) {
-          setError(data.error ?? "Ошибка входа");
+          const message = authErrorMessage("login", res.status, data.error);
+          setError(message);
           return {
             success: false,
             needs2FA: Boolean(data.twoFactorRequired),
+            error: message,
           };
         }
+
         const acc = data.accessToken ?? data.token;
         if (acc && data.refreshToken) {
           setTokenPair(acc, data.refreshToken);
@@ -108,27 +156,43 @@ export function useAuth() {
         bumpSocketRev();
         return { success: true };
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Сетевая ошибка");
-        return { success: false };
+        const message = transportErrorMessage("login", e);
+        setError(message);
+        return { success: false, error: message };
       }
     },
     [bumpSocketRev],
   );
 
   const register = useCallback(
-    async (email: string, password: string, displayName: string) => {
+    async (
+      email: string,
+      password: string,
+      displayName: string,
+    ): Promise<RegisterResult> => {
       setError(null);
+
       try {
         const res = await fetch(apiPath("api/auth/register"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password, displayName: displayName || "User" }),
+          body: JSON.stringify({
+            email: normalizeEmail(email),
+            password,
+            displayName: displayName.trim() || "User",
+          }),
         });
-        const data = (await res.json().catch(() => ({}))) as AuthResponse & { error?: string };
+
+        const data = (await res.json().catch(() => ({}))) as AuthResponse & {
+          error?: string;
+        };
+
         if (!res.ok) {
-          setError(data.error ?? "Ошибка регистрации");
-          return false;
+          const message = authErrorMessage("register", res.status, data.error);
+          setError(message);
+          return { success: false, error: message };
         }
+
         const acc = data.accessToken ?? data.token;
         if (acc && data.refreshToken) {
           setTokenPair(acc, data.refreshToken);
@@ -138,10 +202,11 @@ export function useAuth() {
         }
         setView("app");
         bumpSocketRev();
-        return true;
+        return { success: true };
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Сетевая ошибка");
-        return false;
+        const message = transportErrorMessage("register", e);
+        setError(message);
+        return { success: false, error: message };
       }
     },
     [bumpSocketRev],
@@ -150,11 +215,15 @@ export function useAuth() {
   const logout = useCallback(async () => {
     if (getAccess()) {
       try {
-        await api("/api/auth/logout", { method: "POST", body: JSON.stringify({}) });
+        await api("/api/auth/logout", {
+          method: "POST",
+          body: JSON.stringify({}),
+        });
       } catch {
-        /* logout best-effort — даже если backend упал, локально чистим */
+        // Logout best-effort: локально токены всё равно очищаем.
       }
     }
+
     clearAllTokens();
     setUser(null);
     setView("auth");

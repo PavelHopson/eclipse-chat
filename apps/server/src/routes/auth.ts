@@ -1,4 +1,5 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import { Prisma } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { db } from "../db.js";
@@ -21,7 +22,7 @@ import {
 } from "../security/twoFactor.js";
 
 const registerBody = z.object({
-  email: z.string().email().max(320),
+  email: z.string().trim().email().max(320),
   password: z
     .string()
     .min(8, "Минимум 8 символов")
@@ -29,15 +30,13 @@ const registerBody = z.object({
     .refine((p) => /[A-Za-z]/.test(p) && /\d/.test(p), {
       message: "Пароль должен содержать буквы и цифры",
     }),
-  displayName: z.string().min(1).max(64),
+  displayName: z.string().trim().min(1).max(64),
 });
 
 const loginBody = z.object({
-  email: z.string().email(),
+  email: z.string().trim().email(),
   password: z.string(),
-  /** TOTP 6-digit code, обязателен если у user 2FA включён. */
   totpCode: z.string().regex(/^\d{6}$/).optional(),
-  /** Recovery code (формат XXXXX-XXXXX) — alternative к TOTP. */
   recoveryCode: z.string().max(40).optional(),
 });
 
@@ -47,11 +46,26 @@ const refreshBody = z.object({
 
 const changePasswordBody = z.object({
   currentPassword: z.string().min(1, "Введите текущий пароль"),
-  // Те же правила, что при регистрации (min 8, буквы + цифры).
   newPassword: registerBody.shape.password,
 });
 
 const ACCESS_TTL = "15m";
+const FAKE_PASSWORD_HASH = "$2a$12$fakehashtotallyfakedontuse.....";
+
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+function normalizeDisplayName(displayName: string): string {
+  return displayName.trim().replace(/\s+/g, " ");
+}
+
+function isUniqueEmailError(err: unknown): boolean {
+  return (
+    err instanceof Prisma.PrismaClientKnownRequestError &&
+    err.code === "P2002"
+  );
+}
 
 function publicUser(u: {
   id: string;
@@ -62,6 +76,9 @@ function publicUser(u: {
   status?: "ONLINE" | "IDLE" | "DND" | "INVISIBLE";
   createdAt: Date;
   twoFactorEnabled?: boolean;
+  /// v1.2.6 Platform Admin (trek P1) — глобальный super-admin флаг.
+  /// Фронт по нему включает иконку Platform Admin в топбаре.
+  isPlatformOwner?: boolean;
 }) {
   return {
     id: u.id,
@@ -72,13 +89,13 @@ function publicUser(u: {
     status: u.status ?? "ONLINE",
     twoFactorEnabled: u.twoFactorEnabled ?? false,
     createdAt: u.createdAt.toISOString(),
+    isPlatformOwner: u.isPlatformOwner ?? false,
   };
 }
 
 export type AuthResponseBody = {
   accessToken: string;
   refreshToken: string;
-  /** Совместимость: короткоживущий access, как раньше поле `token` */
   token: string;
   user: ReturnType<typeof publicUser>;
 };
@@ -119,12 +136,6 @@ async function issueSession(
 }
 
 export async function registerAuthRoutes(app: FastifyInstance) {
-  /**
-   * Rate-limit auth routes:
-   *   - register: 5 / 15 min per IP
-   *   - login: 10 / 15 min per IP (с учётом lockout per user в БД)
-   *   - refresh: 60 / 5 min per IP (token rotation)
-   */
   app.post(
     "/api/auth/register",
     {
@@ -140,21 +151,41 @@ export async function registerAuthRoutes(app: FastifyInstance) {
           details: parsed.error.flatten(),
         });
       }
-      const { email, password, displayName } = parsed.data;
-      const exists = await db.user.findUnique({ where: { email } });
-      if (exists) {
-        return reply.status(409).send({ error: "Email уже зарегистрирован" });
+
+      const email = normalizeEmail(parsed.data.email);
+      const displayName = normalizeDisplayName(parsed.data.displayName);
+      const { password } = parsed.data;
+
+      try {
+        const exists = await db.user.findFirst({
+          where: { email: { equals: email, mode: "insensitive" } },
+        });
+        if (exists) {
+          return reply.status(409).send({ error: "Email уже зарегистрирован" });
+        }
+
+        const passwordHash = await bcrypt.hash(password, 12);
+        const user = await db.user.create({
+          data: { email, passwordHash, displayName },
+        });
+
+        recordAudit("AUTH_REGISTER", {
+          userId: user.id,
+          req,
+          metadata: { email },
+        });
+
+        return await issueSession(reply, user);
+      } catch (err) {
+        if (isUniqueEmailError(err)) {
+          return reply.status(409).send({ error: "Email уже зарегистрирован" });
+        }
+
+        app.log.error({ err, email }, "auth register failed");
+        return reply.status(503).send({
+          error: "Сервис регистрации временно недоступен. Попробуйте позже.",
+        });
       }
-      const passwordHash = await bcrypt.hash(password, 12);
-      const user = await db.user.create({
-        data: { email, passwordHash, displayName },
-      });
-      recordAudit("AUTH_REGISTER", {
-        userId: user.id,
-        req,
-        metadata: { email },
-      });
-      return await issueSession(reply, user);
     },
   );
 
@@ -170,105 +201,136 @@ export async function registerAuthRoutes(app: FastifyInstance) {
       if (!parsed.success) {
         return reply.status(400).send({ error: "Invalid body" });
       }
-      const { email, password, totpCode, recoveryCode } = parsed.data;
-      const user = await db.user.findUnique({ where: { email } });
 
-      // Identical error для «не найден» и «неверный пароль» —
-      // anti-enumeration. Lockout трекаем только если user exists.
-      if (!user) {
-        // Симулируем bcrypt с фейк-хэшем — constant-time anti-timing.
-        await bcrypt.compare(password, "$2a$12$fakehashtotallyfakedontuse.....");
-        recordAudit("AUTH_LOGIN_FAILED", {
-          userId: null,
-          req,
-          metadata: { email, reason: "user_not_found" },
-        });
-        return reply.status(401).send({ error: "Неверный email или пароль" });
-      }
+      const email = normalizeEmail(parsed.data.email);
+      const { password, totpCode, recoveryCode } = parsed.data;
 
-      // Проверка lockout — если залочен, не даём даже пробовать пароль.
-      const lockStatus = await checkLockout(user.id);
-      if (lockStatus.locked) {
-        const minsLeft = Math.ceil(
-          ((lockStatus.lockoutUntil?.getTime() ?? 0) - Date.now()) / 60_000,
-        );
-        recordAudit("AUTH_LOGIN_LOCKED", {
-          userId: user.id,
-          req,
-          metadata: { minutesLeft: minsLeft, attempts: lockStatus.attempts },
+      try {
+        const user = await db.user.findFirst({
+          where: { email: { equals: email, mode: "insensitive" } },
         });
-        return reply.status(423).send({
-          error: `Аккаунт временно заблокирован после ${lockStatus.attempts} неудачных попыток. Попробуй через ${minsLeft} мин.`,
-        });
-      }
 
-      const passwordOk = await bcrypt.compare(password, user.passwordHash);
-      if (!passwordOk) {
-        const after = await registerFailedLogin(user.id);
-        recordAudit("AUTH_LOGIN_FAILED", {
-          userId: user.id,
-          req,
-          metadata: { reason: "wrong_password", attempts: after.attempts },
-        });
-        return reply.status(401).send({ error: "Неверный email или пароль" });
-      }
+        if (!user) {
+          await bcrypt.compare(password, FAKE_PASSWORD_HASH);
+          recordAudit("AUTH_LOGIN_FAILED", {
+            userId: null,
+            req,
+            metadata: { email, reason: "user_not_found" },
+          });
+          return reply.status(401).send({ error: "Неверный email или пароль" });
+        }
 
-      // 2FA gate: если включён — требуем totpCode или recoveryCode
-      if (user.twoFactorEnabled) {
-        if (!totpCode && !recoveryCode) {
-          // Special response: «нужен 2FA код». Клиент должен показать поле.
-          return reply.status(401).send({
-            error: "Требуется код 2FA",
-            twoFactorRequired: true,
+        const lockStatus = await checkLockout(user.id);
+        if (lockStatus.locked) {
+          const minsLeft = Math.ceil(
+            ((lockStatus.lockoutUntil?.getTime() ?? 0) - Date.now()) / 60_000,
+          );
+          recordAudit("AUTH_LOGIN_LOCKED", {
+            userId: user.id,
+            req,
+            metadata: { minutesLeft: minsLeft, attempts: lockStatus.attempts },
+          });
+          return reply.status(423).send({
+            error: `Аккаунт временно заблокирован после ${lockStatus.attempts} неудачных попыток. Попробуйте через ${minsLeft} мин.`,
           });
         }
-        let totpOk = false;
-        if (totpCode && user.twoFactorSecret) {
-          try {
-            const secret = decryptSecret(user.twoFactorSecret);
-            totpOk = await verifyCode(secret, totpCode);
-          } catch (err) {
-            app.log.warn({ err, userId: user.id }, "2FA decrypt failed");
-          }
-        }
-        if (!totpOk && recoveryCode) {
-          const used = await verifyRecoveryCode(
-            recoveryCode,
-            user.twoFactorRecoveryCodes,
-          );
-          if (used) {
-            await db.user.update({
-              where: { id: user.id },
-              data: { twoFactorRecoveryCodes: used.remainingJson },
-            });
-            recordAudit("TWOFA_RECOVERY_USED", {
-              userId: user.id,
-              req,
-              metadata: { remaining: JSON.parse(used.remainingJson).length },
-            });
-            totpOk = true;
-          }
-        }
-        if (!totpOk) {
-          await registerFailedLogin(user.id);
+
+        const passwordOk = await bcrypt.compare(password, user.passwordHash);
+        if (!passwordOk) {
+          const after = await registerFailedLogin(user.id);
           recordAudit("AUTH_LOGIN_FAILED", {
             userId: user.id,
             req,
-            metadata: { reason: "2fa_failed" },
+            metadata: { reason: "wrong_password", attempts: after.attempts },
           });
-          return reply.status(401).send({
-            error: "Неверный 2FA код",
-            twoFactorRequired: true,
+          return reply.status(401).send({ error: "Неверный email или пароль" });
+        }
+
+        // v1.2.6 Platform Admin (trek P1) — ban-gate. Password уже
+        // проверили (чтобы не утекать "user X banned" перебором email'ов
+        // без пароля). Banned user — 403 с причиной (или общим
+        // сообщением, если reason не задан).
+        if (user.bannedAt !== null) {
+          recordAudit("AUTH_LOGIN_FAILED", {
+            userId: user.id,
+            req,
+            metadata: {
+              reason: "banned",
+              bannedAt: user.bannedAt.toISOString(),
+            },
+          });
+          return reply.status(403).send({
+            error: user.bannedReason
+              ? `Аккаунт заблокирован администратором: ${user.bannedReason}`
+              : "Аккаунт заблокирован администратором.",
           });
         }
-        recordAudit("TWOFA_VERIFIED", { userId: user.id, req });
-      }
 
-      // Успех: сброс lockout + audit + rotate refresh
-      await resetLockout(user.id);
-      await deleteAllUserRefresh(user.id);
-      recordAudit("AUTH_LOGIN", { userId: user.id, req });
-      return await issueSession(reply, user);
+        if (user.twoFactorEnabled) {
+          if (!totpCode && !recoveryCode) {
+            return reply.status(401).send({
+              error: "Требуется код 2FA",
+              twoFactorRequired: true,
+            });
+          }
+
+          let totpOk = false;
+
+          if (totpCode && user.twoFactorSecret) {
+            try {
+              const secret = decryptSecret(user.twoFactorSecret);
+              totpOk = await verifyCode(secret, totpCode);
+            } catch (err) {
+              app.log.warn({ err, userId: user.id }, "2FA decrypt failed");
+            }
+          }
+
+          if (!totpOk && recoveryCode) {
+            const used = await verifyRecoveryCode(
+              recoveryCode,
+              user.twoFactorRecoveryCodes,
+            );
+
+            if (used) {
+              await db.user.update({
+                where: { id: user.id },
+                data: { twoFactorRecoveryCodes: used.remainingJson },
+              });
+              recordAudit("TWOFA_RECOVERY_USED", {
+                userId: user.id,
+                req,
+                metadata: { remaining: JSON.parse(used.remainingJson).length },
+              });
+              totpOk = true;
+            }
+          }
+
+          if (!totpOk) {
+            await registerFailedLogin(user.id);
+            recordAudit("AUTH_LOGIN_FAILED", {
+              userId: user.id,
+              req,
+              metadata: { reason: "2fa_failed" },
+            });
+            return reply.status(401).send({
+              error: "Неверный 2FA код",
+              twoFactorRequired: true,
+            });
+          }
+
+          recordAudit("TWOFA_VERIFIED", { userId: user.id, req });
+        }
+
+        await resetLockout(user.id);
+        await deleteAllUserRefresh(user.id);
+        recordAudit("AUTH_LOGIN", { userId: user.id, req });
+        return await issueSession(reply, user);
+      } catch (err) {
+        app.log.error({ err, email }, "auth login failed");
+        return reply.status(503).send({
+          error: "Сервис входа временно недоступен. Попробуйте позже.",
+        });
+      }
     },
   );
 
@@ -284,15 +346,18 @@ export async function registerAuthRoutes(app: FastifyInstance) {
       if (!parsed.success) {
         return reply.status(400).send({ error: "Invalid body" });
       }
+
       const row = await findValidRefreshTokenRow(parsed.data.refreshToken);
       if (!row) {
         return reply.status(401).send({ error: "Invalid refresh token" });
       }
+
       const user = await db.user.findUnique({ where: { id: row.userId } });
       if (!user) {
         await db.refreshToken.delete({ where: { id: row.id } });
         return reply.status(401).send({ error: "User not found" });
       }
+
       await db.refreshToken.delete({ where: { id: row.id } });
       const { raw: refreshToken, hash } = makeRefreshTokenPair();
       await storeRefreshToken(user.id, hash);
@@ -300,6 +365,7 @@ export async function registerAuthRoutes(app: FastifyInstance) {
         { sub: user.id, email: user.email },
         { expiresIn: ACCESS_TTL },
       );
+
       return {
         accessToken,
         refreshToken,
@@ -331,22 +397,16 @@ export async function registerAuthRoutes(app: FastifyInstance) {
       if (!sub) {
         return { user: null as null };
       }
+
       const user = await db.user.findUnique({ where: { id: sub } });
       if (!user) {
         return { user: null as null };
       }
+
       return { user: publicUser(user) };
     },
   );
 
-  /**
-   * Смена пароля из профиля. Требует JWT + текущий пароль.
-   * Успех инвалидирует ВСЕ refresh-токены (защита от компрометации) —
-   * текущему устройству сразу выдаётся свежая пара, оно не вылетает,
-   * остальные сессии завершаются при следующем refresh.
-   * «Неверный текущий пароль» → 400 (не 401 — иначе api() уйдёт в
-   * бессмысленный token-refresh).
-   */
   app.post(
     "/api/auth/change-password",
     {
@@ -362,21 +422,24 @@ export async function registerAuthRoutes(app: FastifyInstance) {
           error: parsed.error.issues[0]?.message ?? "Invalid body",
         });
       }
+
       const payload = req.user as { sub: string; email: string } | undefined;
       const sub = payload?.sub;
       if (!sub) {
         return reply.status(401).send({ error: "Unauthorized" });
       }
+
       const user = await db.user.findUnique({ where: { id: sub } });
       if (!user) {
         return reply.status(401).send({ error: "Unauthorized" });
       }
-      const { currentPassword, newPassword } = parsed.data;
 
+      const { currentPassword, newPassword } = parsed.data;
       const currentOk = await bcrypt.compare(currentPassword, user.passwordHash);
       if (!currentOk) {
-        return reply.status(400).send({ error: "Текущий пароль неверён" });
+        return reply.status(400).send({ error: "Текущий пароль неверен" });
       }
+
       if (newPassword === currentPassword) {
         return reply
           .status(400)
@@ -388,8 +451,8 @@ export async function registerAuthRoutes(app: FastifyInstance) {
         where: { id: user.id },
         data: { passwordHash },
       });
-      recordAudit("AUTH_PASSWORD_CHANGE", { userId: user.id, req });
 
+      recordAudit("AUTH_PASSWORD_CHANGE", { userId: user.id, req });
       await deleteAllUserRefresh(user.id);
       return await issueSession(reply, updated);
     },

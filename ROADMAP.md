@@ -5,7 +5,7 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.2.5** (Galaxy/Clock/Theme/Deadline effects +
+**Текущая версия:** **v1.2.6** (Galaxy/Clock/Theme/Deadline effects +
 UX-copy + дизайн-полиш + редизайн WS-1 + системный редизайн ЗАКРЫТ 8/8 +
 светлая тема SOLAR (Notion-crisp) + фикс AuthScreen + смена пароля +
 визуальный передел AppShell ЗАКРЫТ 4/4 + топбар-полиш +
@@ -25,11 +25,14 @@ logout-надёжность + identity-фикс пресетов + topbar на `
 рекомпозиция каркаса — командный хребет + центр-бар +
 трек R2 — Execution Cockpit ЗАКРЫТ 3/3: cockpit-система +
 StatusBoard + OperationalTablePanel + ActionItemDrawer +
-CSS-консолидация slice 7 — дубль-блоки .ec-shell* и !important-война).
+CSS-консолидация slice 7 — дубль-блоки .ec-shell* и !important-война +
+трек P1 — Platform Admin для super-admin'а (Users-only: бан / снять
+бан / сброс пароля + login/WS-gate)).
 
-> **v1.1.90 … v1.2.0 задеплоены — в проде v1.2.0. v1.2.1 … v1.2.5
+> **v1.1.90 … v1.2.0 задеплоены — в проде v1.2.0. v1.2.1 … v1.2.6
 > запушены и ждут approve-gate Pavel'я в GitHub Actions (environment
-> `production`). Деплой НЕ автоматический по пушу.**
+> `production`). Деплой НЕ автоматический по пушу. ⚠️ v1.2.6 несёт
+> Prisma-миграцию — деплой требует `db:migrate:deploy` (см. workflow).**
 
 > **⚠️ ЦВЕТ-ПРАВИЛО ИЗМЕНЕНО (бриф Pavel'я 20.05.2026).** Прежнее
 > «cool-tone, НИКОГДА warm» — ОТМЕНЕНО. Новая identity: **violet
@@ -37,8 +40,51 @@ CSS-консолидация slice 7 — дубль-блоки .ec-shell* и !im
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.2.5:**
+**Изменения v1.1.25 → v1.2.6:**
 
+- **v1.2.6** — **трек P1: Platform Admin — глобальная super-admin
+  панель для владельца платформы (Users-only MVP)**. Новый трек.
+  Запрос Pavel'я: «админ панель для супер админа, который будет видеть
+  всех пользователей … сброс пароля, баны пользователей, баны серверов».
+  - **Корень.** В прежней модели 10 ролей `MemberRole` (OWNER…GUEST)
+    — все per-server; platform-уровня вообще не было. Super-admin —
+    отдельная иерархия (флаг `User.isPlatformOwner`), не пересекается
+    с per-server ролями. **P1 покрывает users; servers/suspend +
+    audit-view-таба — P2.**
+  - **Schema (Prisma migration `20260523120000_platform_admin_p1`):**
+    `User.isPlatformOwner` / `bannedAt` / `bannedReason` /
+    `bannedByUserId` + self-relation `UserBannedBy`; `AuditEventType`
+    расширен `PLATFORM_USER_BANNED/UNBANNED/PASSWORD_RESET`. Data-step
+    seed'ит `isPlatformOwner=true` для `man773608@gmail.com`
+    (idempotent — UPDATE с WHERE).
+  - **Backend.** `requirePlatformOwner` middleware (DB-lookup на
+    каждом запросе — downgrade флага действует сразу). Login-gate в
+    `auth.ts`: password проверяется первым (чтобы не утечь banned-
+    флаг перебором email'ов), затем `bannedAt !== null` → 403 с
+    причиной. WS connect-gate в `socketAuth.ts`: banned → `next(err)`.
+    `routes/platform.ts`: `GET /api/platform/users` (поиск + фильтр
+    banned/active + пагинация), `POST .../ban` (refresh tokens
+    revoke + `disconnectUser` сразу), `POST .../unban`,
+    `POST .../reset-password` (crypto-random 16-char temp pw,
+    bcrypt-hash, возвращает raw ОДИН РАЗ; никогда не пишется в audit
+    metadata). `publicUser` в `/api/auth/me` теперь отдаёт
+    `isPlatformOwner`. Safety: cannot self-ban, cannot ban/reset
+    другого platform-owner'а.
+  - **Frontend.** `PlatformAdminPanel.tsx` — Modal с таблицей
+    пользователей (cockpit-grammar: `.ec-cck-table` / `chip` /
+    `banner`), confirm-модалки для каждого действия, show-once temp-pw
+    модалка с copy-to-clipboard. Иконка в топбаре появляется ТОЛЬКО
+    при `currentUser.isPlatformOwner === true`. SOLAR-совместима через
+    токены.
+  - **Reset-password flow.** Backend возвращает plaintext temp-pw в
+    response один раз; UI показывает в модалке с warning «больше не
+    появится». Pavel передаёт юзеру out-of-band (Telegram / звонок /
+    лично). Email-инфры нет — самый честный flow для admin'а.
+  - **Не реализовано в P1 (P2):** список/suspend серверов;
+    audit-view-таба (логирование событий уже идёт, view впереди);
+    search/filter ярче; details-view per user.
+  Сборка зелёная (tsc + vite). ⚠️ деплой требует
+  `prisma migrate deploy` (новые поля + enum-значения).
 - **v1.2.5** — **slice 7: CSS-консолидация — дубль-блоки `.ec-shell*`
   + `!important`-война (3 файла)**. Закрытие brief-slice 7.
   - **Корень.** Декор каркаса определялся дважды: «Shell home /

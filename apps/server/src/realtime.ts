@@ -7,6 +7,26 @@ export function setSocketIO(server: SocketServer) {
   io = server;
 }
 
+/**
+ * v1.2.6 Platform Admin (trek P1) — принудительный disconnect всех
+ * сокетов конкретного user'а. Используется при бане: ban-route ставит
+ * bannedAt в БД (login/connect-gate начинают отбивать), плюс зовёт это
+ * чтобы текущие открытые сокеты не висели «зомби» до ping-timeout'а.
+ *
+ * Возвращает количество отключённых сокетов.
+ */
+export function disconnectUser(userId: string): number {
+  if (!io) return 0;
+  let count = 0;
+  io.sockets.sockets.forEach((s) => {
+    if ((s.data as { userId: string | null }).userId === userId) {
+      s.disconnect(true);
+      count += 1;
+    }
+  });
+  return count;
+}
+
 /** Attachment в socket-payload — minimal subset для отображения. */
 export type AttachmentPayload = {
   id: string;
