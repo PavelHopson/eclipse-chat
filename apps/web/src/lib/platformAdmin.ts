@@ -229,3 +229,43 @@ export async function listPlatformAuditLog(
     })}`,
   );
 }
+
+// ===== Details views (v1.2.8 P3) ===========================================
+
+export type PlatformOwnedServer = {
+  id: string;
+  name: string;
+  createdAt: string;
+  suspendedAt: string | null;
+  memberCount: number;
+  channelCount: number;
+};
+
+export type PlatformUserDetailsResponse = {
+  user: PlatformUser;
+  ownedServers: PlatformOwnedServer[];
+  memberCount: number;
+  auditTrail: AuditLogEntry[];
+};
+
+export type PlatformServerDetailsResponse = {
+  server: PlatformServer;
+  roleBreakdown: Record<string, number>;
+  auditTrail: AuditLogEntry[];
+};
+
+export async function getPlatformUserDetails(
+  id: string,
+): Promise<PlatformUserDetailsResponse> {
+  return apiJson<PlatformUserDetailsResponse>(
+    `api/platform/users/${encodeURIComponent(id)}/details`,
+  );
+}
+
+export async function getPlatformServerDetails(
+  id: string,
+): Promise<PlatformServerDetailsResponse> {
+  return apiJson<PlatformServerDetailsResponse>(
+    `api/platform/servers/${encodeURIComponent(id)}/details`,
+  );
+}

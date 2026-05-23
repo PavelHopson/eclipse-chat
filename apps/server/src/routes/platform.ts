@@ -645,6 +645,136 @@ export async function registerPlatformRoutes(app: FastifyInstance) {
     return reply.send({ server: toServerView(updated) });
   });
 
+  // v1.2.8 trek P3 — GET /api/platform/users/:id/details — расширенный
+  // профиль: базовая инфа + owned servers + кол-во memberships +
+  // audit-trail (entries где user был actor ИЛИ target в metadata).
+  app.get("/api/platform/users/:id/details", guard, async (req, reply) => {
+    const params = idParam.safeParse(req.params);
+    if (!params.success) return reply.status(400).send({ error: "Invalid id" });
+    const { id: targetId } = params.data;
+
+    const user = await db.user.findUnique({
+      where: { id: targetId },
+      select: PLATFORM_USER_SELECT,
+    });
+    if (!user) return reply.status(404).send({ error: "Пользователь не найден." });
+
+    const [ownedServers, memberCount, auditEntries] = await Promise.all([
+      db.server.findMany({
+        where: { ownerId: targetId },
+        select: {
+          id: true,
+          name: true,
+          createdAt: true,
+          suspendedAt: true,
+          _count: { select: { members: true, channels: true } },
+        },
+        orderBy: { createdAt: "desc" },
+      }),
+      db.member.count({ where: { userId: targetId } }),
+      db.auditLog.findMany({
+        where: {
+          OR: [
+            { userId: targetId },
+            { metadata: { contains: `"targetUserId":"${targetId}"` } },
+          ],
+        },
+        orderBy: { createdAt: "desc" },
+        take: 50,
+        include: {
+          user: { select: { id: true, email: true, displayName: true } },
+        },
+      }),
+    ]);
+
+    return reply.send({
+      user: toView(user),
+      ownedServers: ownedServers.map((s) => ({
+        id: s.id,
+        name: s.name,
+        createdAt: s.createdAt.toISOString(),
+        suspendedAt: s.suspendedAt ? s.suspendedAt.toISOString() : null,
+        memberCount: s._count.members,
+        channelCount: s._count.channels,
+      })),
+      memberCount,
+      auditTrail: auditEntries.map((e) => ({
+        id: e.id,
+        type: e.type,
+        createdAt: e.createdAt.toISOString(),
+        ipAddress: e.ipAddress,
+        metadata: e.metadata,
+        user: e.user
+          ? {
+              id: e.user.id,
+              email: e.user.email,
+              displayName: e.user.displayName,
+            }
+          : null,
+      })),
+    });
+  });
+
+  // v1.2.8 trek P3 — GET /api/platform/servers/:id/details — расширенный
+  // профиль сервера: базовая инфа + members role-breakdown + channelCount +
+  // audit-trail (entries где server упомянут в metadata).
+  app.get("/api/platform/servers/:id/details", guard, async (req, reply) => {
+    const params = idParam.safeParse(req.params);
+    if (!params.success) return reply.status(400).send({ error: "Invalid id" });
+    const { id: serverId } = params.data;
+
+    const server = await db.server.findUnique({
+      where: { id: serverId },
+      select: PLATFORM_SERVER_SELECT,
+    });
+    if (!server) return reply.status(404).send({ error: "Сервер не найден." });
+
+    const [roleBreakdownRaw, auditEntries] = await Promise.all([
+      db.member.groupBy({
+        by: ["role"],
+        where: { serverId },
+        _count: { _all: true },
+      }),
+      db.auditLog.findMany({
+        where: {
+          OR: [
+            { metadata: { contains: `"targetServerId":"${serverId}"` } },
+            { metadata: { contains: `"serverId":"${serverId}"` } },
+          ],
+        },
+        orderBy: { createdAt: "desc" },
+        take: 50,
+        include: {
+          user: { select: { id: true, email: true, displayName: true } },
+        },
+      }),
+    ]);
+
+    const roleBreakdown: Record<string, number> = {};
+    for (const r of roleBreakdownRaw) {
+      roleBreakdown[r.role] = r._count._all;
+    }
+
+    return reply.send({
+      server: toServerView(server),
+      roleBreakdown,
+      auditTrail: auditEntries.map((e) => ({
+        id: e.id,
+        type: e.type,
+        createdAt: e.createdAt.toISOString(),
+        ipAddress: e.ipAddress,
+        metadata: e.metadata,
+        user: e.user
+          ? {
+              id: e.user.id,
+              email: e.user.email,
+              displayName: e.user.displayName,
+            }
+          : null,
+      })),
+    });
+  });
+
   // v1.2.7 trek P2 — GET /api/platform/audit-log — read-only audit feed
   // (filter type / userId, пагинация). UI в Platform Admin → Audit tab.
   app.get("/api/platform/audit-log", guard, async (req, reply) => {

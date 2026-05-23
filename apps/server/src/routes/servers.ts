@@ -802,6 +802,15 @@ export async function registerServerRoutes(app: FastifyInstance) {
       if (!userId) {
         return reply.status(401).send({ error: "Unauthorized" });
       }
+      // v1.2.8 trek P3 — suspend-gate расширен на rename/edit каналов.
+      const chMeta = await db.channel.findUnique({
+        where: { id: channelId },
+        select: { serverId: true },
+      });
+      if (chMeta?.serverId) {
+        const active = await ensureServerActive(chMeta.serverId, reply);
+        if (!active) return;
+      }
       const parsed = updateChannelBody.safeParse(req.body);
       if (!parsed.success) {
         return reply.status(400).send({ error: "Invalid body" });
@@ -1031,6 +1040,11 @@ export async function registerServerRoutes(app: FastifyInstance) {
     if (!channel) {
       return reply.status(404).send({ error: "Channel not found" });
     }
+    // v1.2.8 trek P3 — suspend-gate расширен на удаление каналов.
+    if (channel.serverId) {
+      const active = await ensureServerActive(channel.serverId, reply);
+      if (!active) return;
+    }
     const member = await db.member.findUnique({
       where: { userId_serverId: { userId, serverId: channel.serverId } },
       select: { role: true },
@@ -1149,6 +1163,9 @@ export async function registerServerRoutes(app: FastifyInstance) {
       };
       const me = await loadMember(req, reply, serverId);
       if (!me) return reply;
+      // v1.2.8 trek P3 — suspend-gate: role-changes блокируются.
+      const active = await ensureServerActive(serverId, reply);
+      if (!active) return;
       if (me.role !== "OWNER") {
         return reply.status(403).send({ error: "Only OWNER can change roles" });
       }

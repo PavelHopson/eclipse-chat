@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { Modal } from "./Modal";
 import { Avatar } from "./Avatar";
+import { PlatformUserDetailsModal } from "./PlatformUserDetailsModal";
+import { PlatformServerDetailsModal } from "./PlatformServerDetailsModal";
 import { ApiError } from "../lib/api";
 import {
   banPlatformUser,
@@ -29,13 +31,76 @@ import {
  * delete-user (soft) в Users, suspend/unsuspend в Servers, audit-view
  * read-only feed.
  *
+ * v1.2.8 (trek P3) — polish: pagination footer (prev/next + range),
+ * search debounce 300ms, row-click → details-view модалка с историей
+ * банов / owned servers / audit-trail.
+ *
  * Доступ: только если currentUser.isPlatformOwner === true. Гейтится в
  * AppShell (топбар-кнопка не появляется без флага).
- *
- * Все mutating-действия идут через confirm-модалки. Reset-password
- * возвращает temp pw один раз — показываем в отдельной модалке с
- * copy-to-clipboard.
  */
+
+// Page-size const-ы — общие для всех табов; serverside max=200.
+const USERS_PAGE_SIZE = 50;
+const SERVERS_PAGE_SIZE = 50;
+const AUDIT_PAGE_SIZE = 100;
+const SEARCH_DEBOUNCE_MS = 300;
+
+/** v1.2.8 trek P3 — debounce value, чтобы запросы не летели на каждую клавишу. */
+function useDebounced<T>(value: T, ms: number): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const t = window.setTimeout(() => setDebounced(value), ms);
+    return () => window.clearTimeout(t);
+  }, [value, ms]);
+  return debounced;
+}
+
+/** Pagination footer — общий для всех табов. */
+type PaginationProps = {
+  total: number;
+  offset: number;
+  pageSize: number;
+  onPrev: () => void;
+  onNext: () => void;
+  loading: boolean;
+};
+function PaginationFooter({
+  total,
+  offset,
+  pageSize,
+  onPrev,
+  onNext,
+  loading,
+}: PaginationProps) {
+  if (total === 0) return null;
+  const start = offset + 1;
+  const end = Math.min(offset + pageSize, total);
+  const canPrev = offset > 0 && !loading;
+  const canNext = end < total && !loading;
+  return (
+    <div className="ec-platform-admin__pagination">
+      <span className="ec-platform-admin__pagination-range">
+        {start}–{end} из {total}
+      </span>
+      <button
+        type="button"
+        className="ec-btn ec-btn--sm"
+        onClick={onPrev}
+        disabled={!canPrev}
+      >
+        ← Назад
+      </button>
+      <button
+        type="button"
+        className="ec-btn ec-btn--sm"
+        onClick={onNext}
+        disabled={!canNext}
+      >
+        Вперёд →
+      </button>
+    </div>
+  );
+}
 
 type Props = {
   onClose: () => void;
@@ -115,7 +180,13 @@ function UsersTab({ currentUserId }: { currentUserId: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounced(search, SEARCH_DEBOUNCE_MS);
   const [filter, setFilter] = useState<UserStatusFilter>("all");
+  // v1.2.8 trek P3 — pagination state. При смене search/filter сбрасываем
+  // offset в 0 (useEffect ниже).
+  const [offset, setOffset] = useState(0);
+  // v1.2.8 trek P3 — клик по строке → details modal.
+  const [detailsTargetId, setDetailsTargetId] = useState<string | null>(null);
 
   const [banTarget, setBanTarget] = useState<PlatformUser | null>(null);
   const [banReason, setBanReason] = useState("");
@@ -139,8 +210,11 @@ function UsersTab({ currentUserId }: { currentUserId: string }) {
     setLoading(true);
     setError(null);
     try {
-      const params: ListUsersParams = {};
-      const q = search.trim();
+      const params: ListUsersParams = {
+        limit: USERS_PAGE_SIZE,
+        offset,
+      };
+      const q = debouncedSearch.trim();
       if (q) params.q = q;
       if (filter !== "all") params.status = filter;
       const res = await listPlatformUsers(params);
@@ -155,7 +229,13 @@ function UsersTab({ currentUserId }: { currentUserId: string }) {
     } finally {
       setLoading(false);
     }
-  }, [search, filter]);
+  }, [debouncedSearch, filter, offset]);
+
+  // v1.2.8 trek P3 — при смене search / filter сбрасываем offset в 0,
+  // чтобы не оказаться на пустой странице.
+  useEffect(() => {
+    setOffset(0);
+  }, [debouncedSearch, filter]);
 
   useEffect(() => {
     void load();
@@ -330,7 +410,12 @@ function UsersTab({ currentUserId }: { currentUserId: string }) {
                 const isOtherOwner = u.isPlatformOwner && !isSelf;
                 const locked = isSelf || isOtherOwner || isDeleted;
                 return (
-                  <tr key={u.id} className="ec-cck-row">
+                  <tr
+                    key={u.id}
+                    className="ec-cck-row ec-platform-admin__row--clickable"
+                    onClick={() => setDetailsTargetId(u.id)}
+                    title="Открыть детали"
+                  >
                     <td className="ec-cck-cell">
                       <div className="ec-platform-admin__user">
                         <Avatar name={u.displayName} url={u.avatar} size={28} />
@@ -397,7 +482,8 @@ function UsersTab({ currentUserId }: { currentUserId: string }) {
                         <button
                           type="button"
                           className="ec-btn ec-btn--sm"
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setActionError(null);
                             setUnbanTarget(u);
                           }}
@@ -409,7 +495,8 @@ function UsersTab({ currentUserId }: { currentUserId: string }) {
                         <button
                           type="button"
                           className="ec-btn ec-btn--sm ec-btn--danger"
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setActionError(null);
                             setBanReason("");
                             setBanTarget(u);
@@ -423,7 +510,8 @@ function UsersTab({ currentUserId }: { currentUserId: string }) {
                         <button
                           type="button"
                           className="ec-btn ec-btn--sm"
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setActionError(null);
                             setResetTarget(u);
                           }}
@@ -436,7 +524,8 @@ function UsersTab({ currentUserId }: { currentUserId: string }) {
                         <button
                           type="button"
                           className="ec-btn ec-btn--sm ec-btn--danger"
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setActionError(null);
                             setDeleteReason("");
                             setDeleteConfirmText("");
@@ -461,6 +550,22 @@ function UsersTab({ currentUserId }: { currentUserId: string }) {
             </tbody>
           </table>
         </div>
+      )}
+
+      <PaginationFooter
+        total={total}
+        offset={offset}
+        pageSize={USERS_PAGE_SIZE}
+        onPrev={() => setOffset(Math.max(0, offset - USERS_PAGE_SIZE))}
+        onNext={() => setOffset(offset + USERS_PAGE_SIZE)}
+        loading={loading}
+      />
+
+      {detailsTargetId && (
+        <PlatformUserDetailsModal
+          userId={detailsTargetId}
+          onClose={() => setDetailsTargetId(null)}
+        />
       )}
 
       {/* Confirm: ban */}
@@ -722,7 +827,10 @@ function ServersTab() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounced(search, SEARCH_DEBOUNCE_MS);
   const [filter, setFilter] = useState<ServerStatusFilter>("all");
+  const [offset, setOffset] = useState(0);
+  const [detailsServerId, setDetailsServerId] = useState<string | null>(null);
 
   const [suspendTarget, setSuspendTarget] = useState<PlatformServer | null>(
     null,
@@ -739,8 +847,11 @@ function ServersTab() {
     setLoading(true);
     setError(null);
     try {
-      const params: ListServersParams = {};
-      const q = search.trim();
+      const params: ListServersParams = {
+        limit: SERVERS_PAGE_SIZE,
+        offset,
+      };
+      const q = debouncedSearch.trim();
       if (q) params.q = q;
       if (filter !== "all") params.status = filter;
       const res = await listPlatformServers(params);
@@ -755,7 +866,11 @@ function ServersTab() {
     } finally {
       setLoading(false);
     }
-  }, [search, filter]);
+  }, [debouncedSearch, filter, offset]);
+
+  useEffect(() => {
+    setOffset(0);
+  }, [debouncedSearch, filter]);
 
   useEffect(() => {
     void load();
@@ -877,7 +992,12 @@ function ServersTab() {
               {servers.map((s) => {
                 const isSuspended = s.suspendedAt !== null;
                 return (
-                  <tr key={s.id} className="ec-cck-row">
+                  <tr
+                    key={s.id}
+                    className="ec-cck-row ec-platform-admin__row--clickable"
+                    onClick={() => setDetailsServerId(s.id)}
+                    title="Открыть детали"
+                  >
                     <td className="ec-cck-cell">
                       <div className="ec-platform-admin__server-name">
                         <span
@@ -955,7 +1075,8 @@ function ServersTab() {
                         <button
                           type="button"
                           className="ec-btn ec-btn--sm"
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setActionError(null);
                             setUnsuspendTarget(s);
                           }}
@@ -966,7 +1087,8 @@ function ServersTab() {
                         <button
                           type="button"
                           className="ec-btn ec-btn--sm ec-btn--danger"
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setActionError(null);
                             setSuspendReason("");
                             setSuspendTarget(s);
@@ -982,6 +1104,22 @@ function ServersTab() {
             </tbody>
           </table>
         </div>
+      )}
+
+      <PaginationFooter
+        total={total}
+        offset={offset}
+        pageSize={SERVERS_PAGE_SIZE}
+        onPrev={() => setOffset(Math.max(0, offset - SERVERS_PAGE_SIZE))}
+        onNext={() => setOffset(offset + SERVERS_PAGE_SIZE)}
+        loading={loading}
+      />
+
+      {detailsServerId && (
+        <PlatformServerDetailsModal
+          serverId={detailsServerId}
+          onClose={() => setDetailsServerId(null)}
+        />
       )}
 
       {suspendTarget && (
@@ -1091,6 +1229,7 @@ function AuditTab() {
   const [error, setError] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState("");
   const [userIdFilter, setUserIdFilter] = useState("");
+  const [offset, setOffset] = useState(0);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -1099,7 +1238,8 @@ function AuditTab() {
       const res = await listPlatformAuditLog({
         type: typeFilter.trim() || undefined,
         userId: userIdFilter.trim() || undefined,
-        limit: 100,
+        limit: AUDIT_PAGE_SIZE,
+        offset,
       });
       setEntries(res.entries);
       setTotal(res.total);
@@ -1110,6 +1250,10 @@ function AuditTab() {
     } finally {
       setLoading(false);
     }
+  }, [typeFilter, userIdFilter, offset]);
+
+  useEffect(() => {
+    setOffset(0);
   }, [typeFilter, userIdFilter]);
 
   useEffect(() => {
@@ -1193,6 +1337,15 @@ function AuditTab() {
           </table>
         </div>
       )}
+
+      <PaginationFooter
+        total={total}
+        offset={offset}
+        pageSize={AUDIT_PAGE_SIZE}
+        onPrev={() => setOffset(Math.max(0, offset - AUDIT_PAGE_SIZE))}
+        onNext={() => setOffset(offset + AUDIT_PAGE_SIZE)}
+        loading={loading}
+      />
     </>
   );
 }

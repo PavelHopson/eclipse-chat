@@ -1244,3 +1244,85 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* v1.2.8 trek P3 — кликабельная строка таблицы открывает details modal.
+   Hover делает row чуть-чуть активнее — подсказка что строка кликается. */
+.ec-platform-admin__row--clickable {
+  cursor: pointer;
+}
+.ec-platform-admin__row--clickable:hover .ec-platform-admin__user-name {
+  color: var(--ec-accent);
+}
+
+/* Pagination footer — общий для всех табов. */
+.ec-platform-admin__pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--ec-space-2);
+  margin-top: var(--ec-space-3);
+  padding-top: var(--ec-space-3);
+  border-top: 1px solid var(--ec-border-subtle);
+}
+.ec-platform-admin__pagination-range {
+  margin-right: auto;
+  font-size: var(--ec-text-xs);
+  color: var(--ec-text-muted);
+  font-feature-settings: "tnum";
+}
+
+/* Details modal — header + секции с лейблами + raw-данные. */
+.ec-platform-admin__details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ec-space-4);
+  min-width: 0;
+}
+.ec-platform-admin__details-head {
+  display: flex;
+  align-items: center;
+  gap: var(--ec-space-3);
+  padding-bottom: var(--ec-space-3);
+  border-bottom: 1px solid var(--ec-border-subtle);
+}
+.ec-platform-admin__details-headtext {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ec-platform-admin__details-name {
+  color: var(--ec-text-strong);
+  font-size: var(--ec-text-lg);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.ec-platform-admin__details-sub {
+  color: var(--ec-text-muted);
+  font-size: var(--ec-text-sm);
+}
+.ec-platform-admin__details-meta {
+  color: var(--ec-text-dim);
+  font-size: var(--ec-text-xs);
+  margin-top: 2px;
+}
+.ec-platform-admin__details-chips {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.ec-platform-admin__details-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ec-space-2);
+}
+
+/* Role-breakdown — chips горизонтально, wrap. */
+.ec-platform-admin__role-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}

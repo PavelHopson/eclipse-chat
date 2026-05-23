@@ -5,7 +5,7 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.2.7** (Galaxy/Clock/Theme/Deadline effects +
+**Текущая версия:** **v1.2.8** (Galaxy/Clock/Theme/Deadline effects +
 UX-copy + дизайн-полиш + редизайн WS-1 + системный редизайн ЗАКРЫТ 8/8 +
 светлая тема SOLAR (Notion-crisp) + фикс AuthScreen + смена пароля +
 визуальный передел AppShell ЗАКРЫТ 4/4 + топбар-полиш +
@@ -29,9 +29,11 @@ CSS-консолидация slice 7 — дубль-блоки .ec-shell* и !im
 трек P1 — Platform Admin для super-admin'а (Users-only: бан / снять
 бан / сброс пароля + login/WS-gate) +
 трек P2 — расширение Platform Admin: serverы (заморозка/разморозка),
-аудит-таба, soft-delete user, suspend-gating critical writes).
+аудит-таба, soft-delete user, suspend-gating critical writes +
+трек P3 — polish Platform Admin: pagination + search-debounce +
+row-click details (user/server) + suspend-gating шире).
 
-> **v1.1.90 … v1.2.0 задеплоены — в проде v1.2.0. v1.2.1 … v1.2.7
+> **v1.1.90 … v1.2.0 задеплоены — в проде v1.2.0. v1.2.1 … v1.2.8
 > запушены и ждут approve-gate Pavel'я в GitHub Actions (environment
 > `production`). Деплой НЕ автоматический по пушу. ⚠️ v1.2.6 и v1.2.7
 > несут Prisma-миграции — deploy.sh [4/10] применяет
@@ -43,8 +45,49 @@ CSS-консолидация slice 7 — дубль-блоки .ec-shell* и !im
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.2.7:**
+**Изменения v1.1.25 → v1.2.8:**
 
+- **v1.2.8** — **трек P3: polish Platform Admin** — pagination,
+  search-debounce, row-click details (user/server), расширенный
+  suspend-gating. Закрытие хвоста треkа P.
+  - **Backend.** Suspend-gating расширен на ещё 3 write-точки:
+    DELETE `/api/channels/:id` (удаление каналов), PATCH
+    `/api/channels/:id` (rename/edit), PATCH
+    `/api/servers/:id/members/:userId` (role-changes). Не блокируем
+    DELETE server / leave / icon — это destructive owner-actions /
+    user-exit, suspend не должен запирать выход.
+  - **Backend.** Новые details-endpoints: GET
+    `/api/platform/users/:id/details` (профиль + owned servers +
+    `memberCount` + audit-trail entries где user был actor ИЛИ target
+    в metadata) и GET `/api/platform/servers/:id/details` (профиль +
+    role-breakdown через `groupBy` + audit-trail entries где сервер
+    упомянут в metadata.targetServerId/serverId). Audit-trail —
+    последние 50 событий.
+  - **Frontend.** `PlatformAdminPanel` обогащён:
+    - Pagination footer (общий компонент `PaginationFooter`) на
+      всех 3 табах: range `1–50 из 137` + «← Назад» / «Вперёд →».
+      Page-size: Users 50 / Servers 50 / Audit 100.
+    - Search-debounce 300ms (Users, Servers) через `useDebounced`
+      hook — load летит после паузы в наборе, не на каждую клавишу.
+    - Row-click → details-modal: новые компоненты
+      `PlatformUserDetailsModal` и `PlatformServerDetailsModal`.
+      Action-кнопки в строке делают `stopPropagation`, чтобы клик
+      по кнопке не открывал details. Hover на строке подсвечивает
+      имя accent'ом — подсказка кликабельности.
+    - При смене search/filter offset сбрасывается в 0 (не зависать
+      на пустой странице).
+  - **Details modals.** Header (avatar/icon + name + email/owner +
+    chips статусов), секции:
+    - User: «Состояние» (бан/удаление — when/who/reason), «Серверы в
+      собственности» (table с created/size/status), «История событий»
+      (audit table — time/type/actor/metadata).
+    - Server: «Заморозка» (when/who/reason если suspended), «Состав по
+      ролям» (chips с количеством по каждой роли,
+      OWNER/ADMIN→accent-gold/accent), «История событий».
+  - **CSS** в cockpit.css: `__row--clickable`, `__pagination` /
+    `__pagination-range`, `__details*` blocks (head/headtext/name/sub/
+    meta/chips/section), `__role-chips`. SOLAR-совместимо через токены.
+  Сборка зелёная (tsc + vite). Без миграции, только код.
 - **v1.2.7** — **трек P2: расширение Platform Admin — Servers + Audit
   + soft-delete user + suspend-gating**. Закрытие исходного запроса
   Pavel'я («все пользователи, сброс паролей, баны юзеров, баны
