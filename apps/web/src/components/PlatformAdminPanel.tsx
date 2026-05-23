@@ -62,6 +62,8 @@ type PaginationProps = {
   pageSize: number;
   onPrev: () => void;
   onNext: () => void;
+  /** v1.2.19 — jump-to-page: на Enter/blur input'а переходим к нужной странице. */
+  onJumpToPage?: (page: number) => void;
   loading: boolean;
 };
 function PaginationFooter({
@@ -70,13 +72,31 @@ function PaginationFooter({
   pageSize,
   onPrev,
   onNext,
+  onJumpToPage,
   loading,
 }: PaginationProps) {
+  const currentPage = Math.floor(offset / pageSize) + 1;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const [jumpInput, setJumpInput] = useState("");
+
   if (total === 0) return null;
   const start = offset + 1;
   const end = Math.min(offset + pageSize, total);
   const canPrev = offset > 0 && !loading;
   const canNext = end < total && !loading;
+  // Jump показываем только если > 2 страниц — иначе prev/next хватает.
+  const showJump = onJumpToPage && totalPages > 2;
+
+  const submitJump = () => {
+    const trimmed = jumpInput.trim();
+    if (trimmed === "") return;
+    const n = parseInt(trimmed, 10);
+    setJumpInput("");
+    if (Number.isNaN(n) || n < 1 || n > totalPages) return;
+    if (n === currentPage) return;
+    onJumpToPage?.(n);
+  };
+
   return (
     <div className="ec-platform-admin__pagination">
       <span className="ec-platform-admin__pagination-range">
@@ -90,6 +110,32 @@ function PaginationFooter({
       >
         ← Назад
       </button>
+      {showJump && (
+        <span className="ec-platform-admin__pagination-jump">
+          <span className="ec-platform-admin__pagination-jump-label">Стр.</span>
+          <input
+            type="number"
+            min={1}
+            max={totalPages}
+            value={jumpInput}
+            placeholder={`${currentPage}`}
+            onChange={(e) => setJumpInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                submitJump();
+              }
+            }}
+            onBlur={submitJump}
+            disabled={loading}
+            aria-label={`Перейти к странице, всего ${totalPages}`}
+            className="ec-platform-admin__pagination-jump-input"
+          />
+          <span className="ec-platform-admin__pagination-jump-label">
+            / {totalPages}
+          </span>
+        </span>
+      )}
       <button
         type="button"
         className="ec-btn ec-btn--sm"
@@ -558,6 +604,7 @@ function UsersTab({ currentUserId }: { currentUserId: string }) {
         pageSize={USERS_PAGE_SIZE}
         onPrev={() => setOffset(Math.max(0, offset - USERS_PAGE_SIZE))}
         onNext={() => setOffset(offset + USERS_PAGE_SIZE)}
+        onJumpToPage={(page) => setOffset((page - 1) * USERS_PAGE_SIZE)}
         loading={loading}
       />
 
@@ -1135,6 +1182,7 @@ function ServersTab() {
         pageSize={SERVERS_PAGE_SIZE}
         onPrev={() => setOffset(Math.max(0, offset - SERVERS_PAGE_SIZE))}
         onNext={() => setOffset(offset + SERVERS_PAGE_SIZE)}
+        onJumpToPage={(page) => setOffset((page - 1) * SERVERS_PAGE_SIZE)}
         loading={loading}
       />
 
@@ -1376,6 +1424,7 @@ function AuditTab() {
         offset={offset}
         pageSize={AUDIT_PAGE_SIZE}
         onPrev={() => setOffset(Math.max(0, offset - AUDIT_PAGE_SIZE))}
+        onJumpToPage={(page) => setOffset((page - 1) * AUDIT_PAGE_SIZE)}
         onNext={() => setOffset(offset + AUDIT_PAGE_SIZE)}
         loading={loading}
       />

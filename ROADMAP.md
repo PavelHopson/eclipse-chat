@@ -5,7 +5,7 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.2.18** (Galaxy/Clock/Theme/Deadline effects +
+**Текущая версия:** **v1.2.19** (Galaxy/Clock/Theme/Deadline effects +
 UX-copy + дизайн-полиш + редизайн WS-1 + системный редизайн ЗАКРЫТ 8/8 +
 светлая тема SOLAR (Notion-crisp) + фикс AuthScreen + смена пароля +
 визуальный передел AppShell ЗАКРЫТ 4/4 + топбар-полиш +
@@ -45,10 +45,11 @@ thread-root edge fix v1.2.9 — удалённый root по прямой ссы
 Platform Admin details: action-buttons inside modal (Ban / Unban /
 Reset PW / Delete для user, Suspend / Unsuspend для server) +
 slash-команды autocomplete UI: backend-команды /me /shrug /tableflip
-/unflip /help в slash-hint strip).
+/unflip /help в slash-hint strip +
+Platform Admin pagination jump-to-page (Стр. [_] / N) во все табы).
 
 > **v1.1.90 … v1.2.14 задеплоены — в проде v1.2.14. v1.2.15 …
-> v1.2.18 запушены и ждут approve-gate Pavel'я. Деплой НЕ
+> v1.2.19 запушены и ждут approve-gate Pavel'я. Деплой НЕ
 > автоматический по пушу.**
 
 > **⚠️ ЦВЕТ-ПРАВИЛО ИЗМЕНЕНО (бриф Pavel'я 20.05.2026).** Прежнее
@@ -57,8 +58,24 @@ slash-команды autocomplete UI: backend-команды /me /shrug /tablefl
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.2.18:**
+**Изменения v1.1.25 → v1.2.19:**
 
+- **v1.2.19** — **Platform Admin pagination jump-to-page**. Из
+  handoff'а: «Pagination jump-to-page в Platform Admin — UI
+  принимает только offset/limit, без skip-N кнопок».
+  - `PaginationFooter` получил optional prop `onJumpToPage(page)`.
+    Между «← Назад» и «Вперёд →» появляется compact input «Стр.
+    [_] / N». На Enter / blur валидирует число (1..totalPages) и
+    вызывает callback. Пустой / NaN / out-of-range / совпадение с
+    currentPage — ничего не делает.
+  - Видим только если totalPages > 2 (при ≤ 2 страницах prev/next
+    достаточно).
+  - Прокинут во **все три** табы Platform Admin: Users / Servers /
+    Audit. Каждый передаёт `setOffset((page - 1) * PAGE_SIZE)`.
+  - CSS в `cockpit.css` (стабилен, Codex не лезет): новые классы
+    `.ec-platform-admin__pagination-jump*` — width 52px, tabular
+    nums, hidden spinner arrows (компактнее).
+  Сборка зелёная (tsc + vite). Без миграций. Frontend-only.
 - **v1.2.18** — **slash-команды autocomplete UI: backend-команды
   в slash-hint strip**. Из handoff'а: «Slash-команды расширение
   → autocomplete UI в композере с registry-listing».

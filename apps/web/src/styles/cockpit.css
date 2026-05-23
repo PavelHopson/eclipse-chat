@@ -1271,6 +1271,46 @@
   font-feature-settings: "tnum";
 }
 
+/* v1.2.19 — jump-to-page: компактный inline input «Стр. [_] / N». */
+.ec-platform-admin__pagination-jump {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ec-space-1);
+  font-size: var(--ec-text-xs);
+  color: var(--ec-text-muted);
+  font-feature-settings: "tnum";
+}
+.ec-platform-admin__pagination-jump-label {
+  letter-spacing: var(--ec-tracking-tight);
+}
+.ec-platform-admin__pagination-jump-input {
+  width: 52px;
+  padding: 4px 6px;
+  font: inherit;
+  font-feature-settings: "tnum";
+  text-align: center;
+  background: var(--ec-surface-2);
+  color: var(--ec-text);
+  border: 1px solid var(--ec-border-default);
+  border-radius: var(--ec-radius-sm);
+  outline: none;
+  transition: border-color var(--ec-dur-fast) var(--ec-ease);
+  /* Hide spinner arrows — компактнее. */
+  -moz-appearance: textfield;
+}
+.ec-platform-admin__pagination-jump-input::-webkit-outer-spin-button,
+.ec-platform-admin__pagination-jump-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.ec-platform-admin__pagination-jump-input:focus {
+  border-color: var(--ec-border-accent);
+}
+.ec-platform-admin__pagination-jump-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Details modal — header + секции с лейблами + raw-данные. */
 .ec-platform-admin__details {
   display: flex;
