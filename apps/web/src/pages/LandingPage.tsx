@@ -1,7 +1,12 @@
+import type { ReactNode } from "react";
+import { useEffect, useRef } from "react";
 import { EclipseGalaxy } from "../components/EclipseGalaxy";
 
 type Props = {
+  authMode: "login" | "register" | null;
+  authPanel: ReactNode;
   onOpenAuth: (mode: "login" | "register") => void;
+  onCloseAuth: () => void;
 };
 
 const SURFACES = [
@@ -41,7 +46,7 @@ const FLOW = [
   {
     label: "Шаг 2",
     title: "Сигнал сразу превращается в действие",
-    body: "Из обсуждения появляется задача, владелец и дедлайн — прямо в том же рабочем потоке.",
+    body: "Из обсуждения появляется задача, владелец и дедлайн прямо в том же рабочем потоке.",
   },
   {
     label: "Шаг 3",
@@ -50,8 +55,24 @@ const FLOW = [
   },
 ] as const;
 
-export function LandingPage({ onOpenAuth }: Props) {
+export function LandingPage({ authMode, authPanel, onOpenAuth, onCloseAuth }: Props) {
   const brandMarkUrl = `${import.meta.env.BASE_URL}brand-mark.svg`;
+  const authStageRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (!authMode || !authStageRef.current) return;
+
+    const reducedMotion =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    window.requestAnimationFrame(() => {
+      authStageRef.current?.scrollIntoView({
+        behavior: reducedMotion ? "auto" : "smooth",
+        block: "center",
+      });
+    });
+  }, [authMode]);
 
   return (
     <main className="ec-landing" aria-label="Eclipse Chat — лендинг">
@@ -122,47 +143,84 @@ export function LandingPage({ onOpenAuth }: Props) {
           </div>
         </div>
 
-        <aside className="ec-landing__hero-stage" aria-label="Операционный контур Eclipse Chat">
-          <div className="ec-landing-stage">
+        <aside
+          ref={authStageRef}
+          className="ec-landing__hero-stage"
+          aria-label={
+            authMode
+              ? "Экран доступа Eclipse Chat внутри лендинга"
+              : "Операционный контур Eclipse Chat"
+          }
+        >
+          <div className={`ec-landing-stage${authMode ? " ec-landing-stage--auth" : ""}`}>
             <div className="ec-landing-stage__hud">
-              <span>СЕТЬ ECLIPSE</span>
-              <span>операционный протокол</span>
+              <span>{authMode ? "ВСТРОЕННЫЙ ДОСТУП" : "СЕТЬ ECLIPSE"}</span>
+              {authMode ? (
+                <button
+                  type="button"
+                  className="ec-landing-stage__hud-action"
+                  onClick={onCloseAuth}
+                >
+                  Обзор платформы
+                </button>
+              ) : (
+                <span>операционный протокол</span>
+              )}
             </div>
 
-            <div className="ec-landing-stage__frame">
-              <div className="ec-landing-stage__ring" aria-hidden />
-              <div className="ec-landing-stage__core">
-                <img src={brandMarkUrl} alt="" decoding="async" />
+            {authMode ? (
+              <div className="ec-landing-stage__auth">
+                <div className="ec-landing-stage__auth-copy">
+                  <strong>
+                    {authMode === "login"
+                      ? "Форма входа живёт в самом лендинге"
+                      : "Регистрация команды открывается как часть сцены"}
+                  </strong>
+                  <p>
+                    Мы убрали отдельную страницу: авторизация раскрывается в том же
+                    продуктовом экране и ощущается как экран доступа к рабочему контуру.
+                  </p>
+                </div>
+                {authPanel}
               </div>
-              <div className="ec-landing-stage__beam" aria-hidden />
-            </div>
+            ) : (
+              <>
+                <div className="ec-landing-stage__frame">
+                  <div className="ec-landing-stage__ring" aria-hidden />
+                  <div className="ec-landing-stage__core">
+                    <img src={brandMarkUrl} alt="" decoding="async" />
+                  </div>
+                  <div className="ec-landing-stage__beam" aria-hidden />
+                </div>
 
-            <div className="ec-landing-stage__board">
-              <div className="ec-landing-stage__board-head">
-                <span className="ec-landing-stage__board-pill">Контур команды</span>
-                <span className="ec-landing-stage__board-status">связь активна</span>
-              </div>
+                <div className="ec-landing-stage__board">
+                  <div className="ec-landing-stage__board-head">
+                    <span className="ec-landing-stage__board-pill">Контур команды</span>
+                    <span className="ec-landing-stage__board-status">связь активна</span>
+                  </div>
 
-              <div className="ec-landing-stage__board-grid">
-                <article className="ec-landing-stage__module ec-landing-stage__module--voice">
-                  <small>Голос</small>
-                  <strong>Сигнал в эфире</strong>
-                  <span>быстрый вход в комнату и живой контекст рядом</span>
-                </article>
+                  <div className="ec-landing-stage__board-grid">
+                    <article className="ec-landing-stage__module ec-landing-stage__module--voice">
+                      <small>Голос</small>
+                      <strong>Сигнал в эфире</strong>
+                      <span>быстрый вход в комнату и живой контекст рядом</span>
+                    </article>
 
-                <article className="ec-landing-stage__module ec-landing-stage__module--ops">
-                  <small>Исполнение</small>
-                  <strong>Задачи в фокусе</strong>
-                  <span>ответственные и статус не выпадают из разговора</span>
-                </article>
+                    <article className="ec-landing-stage__module ec-landing-stage__module--ops">
+                      <small>Исполнение</small>
+                      <strong>Задачи в фокусе</strong>
+                      <span>ответственные и статус не выпадают из разговора</span>
+                    </article>
 
-                <article className="ec-landing-stage__module ec-landing-stage__module--memory">
-                  <small>Память</small>
-                  <strong>Контекст сохранён</strong>
-                  <span>история решений, договорённости и файлы под рукой</span>
-                </article>
-              </div>
-            </div>
+                    <article className="ec-landing-stage__module ec-landing-stage__module--memory">
+                      <small>Память</small>
+                      <strong>Контекст сохранён</strong>
+                      <span>история решений, договорённости и файлы под рукой</span>
+                    </article>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </aside>
       </section>
@@ -184,8 +242,8 @@ export function LandingPage({ onOpenAuth }: Props) {
           <div className="ec-landing__kicker">ОТ СИГНАЛА ДО ИСПОЛНЕНИЯ</div>
           <h2>Лендинг ведёт во вход, а вход сразу раскрывает рабочую форму без лишнего шага.</h2>
           <p>
-            Мы оставили выразительный auth-сценарий, но встроили его в нормальный продуктовый вход:
-            сначала лендинг объясняет ценность, потом CTA мгновенно раскрывает форму регистрации или входа.
+            Сначала лендинг объясняет ценность продукта, потом CTA мгновенно раскрывает форму
+            регистрации или входа прямо в той же сцене.
           </p>
         </div>
 

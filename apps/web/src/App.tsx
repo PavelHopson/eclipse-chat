@@ -228,20 +228,24 @@ export function App() {
       {view === "loading" ? (
         <main style={loadingStyle}>Загрузка…</main>
       ) : !isAuthenticated ? (
-        <>
-          <LandingPage onOpenAuth={openAuthSurface} />
-          {authSurface && (
-            <AuthPage
-              key={authSurface}
-              error={error}
-              onLogin={login}
-              onRegister={register}
-              initialMode={authSurface}
-              initialEntryState="panel"
-              onExit={closeAuthSurface}
-            />
-          )}
-        </>
+        <LandingPage
+          authMode={authSurface}
+          onOpenAuth={openAuthSurface}
+          onCloseAuth={closeAuthSurface}
+          authPanel={
+            authSurface ? (
+              <AuthPage
+                key={authSurface}
+                error={error}
+                onLogin={login}
+                onRegister={register}
+                initialMode={authSurface}
+                initialEntryState="panel"
+                presentation="embedded"
+              />
+            ) : null
+          }
+        />
       ) : portalServerId ? (
         <ClientPortalContainer serverId={portalServerId} />
       ) : (

@@ -16,6 +16,7 @@ type Props = {
   initialMode?: Mode;
   initialEntryState?: EntryState;
   onExit?: () => void;
+  presentation?: "fullscreen" | "embedded";
 };
 
 type Step = "credentials" | "twofa" | "success";
@@ -70,8 +71,10 @@ export function AuthPage({
   initialMode = "login",
   initialEntryState = "gate",
   onExit,
+  presentation = "fullscreen",
 }: Props) {
   const brandMarkUrl = `${import.meta.env.BASE_URL}brand-mark.svg`;
+  const isEmbedded = presentation === "embedded";
   const [step, setStep] = useState<Step>("credentials");
   const [mode, setMode] = useState<Mode>(initialMode);
   const [entryState, setEntryState] = useState<EntryState>(initialEntryState);
@@ -88,8 +91,11 @@ export function AuthPage({
   const entryTimerRef = useRef<number | null>(null);
   const emailFieldRef = useRef<HTMLInputElement | null>(null);
   const displayNameFieldRef = useRef<HTMLInputElement | null>(null);
+  const modeToggleRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
+    if (isEmbedded) return;
+
     const tick = () => {
       const pos = `${Math.floor(Math.random() * 90)}.${String(
         Math.floor(Math.random() * 1000),
@@ -102,7 +108,7 @@ export function AuthPage({
     tick();
     const id = window.setInterval(tick, 1200);
     return () => window.clearInterval(id);
-  }, []);
+  }, [isEmbedded]);
 
   useEffect(() => {
     if (error) setLocalError(error);
@@ -127,7 +133,7 @@ export function AuthPage({
   }, [entryState, step]);
 
   useEffect(() => {
-    if (!onExit) return;
+    if (isEmbedded || !onExit) return;
 
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -141,7 +147,27 @@ export function AuthPage({
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, [onExit]);
+  }, [isEmbedded, onExit]);
+
+  useEffect(() => {
+    const syncModeIndicator = () => {
+      const node = modeToggleRef.current;
+      if (!node) return;
+
+      const activeButton = node.querySelector<HTMLButtonElement>('button[aria-selected="true"]');
+      if (!activeButton) return;
+
+      const containerRect = node.getBoundingClientRect();
+      const buttonRect = activeButton.getBoundingClientRect();
+
+      node.style.setProperty("--ec-mode-indicator-x", `${buttonRect.left - containerRect.left}px`);
+      node.style.setProperty("--ec-mode-indicator-width", `${buttonRect.width}px`);
+    };
+
+    syncModeIndicator();
+    window.addEventListener("resize", syncModeIndicator);
+    return () => window.removeEventListener("resize", syncModeIndicator);
+  }, [entryState, mode]);
 
   const setSceneDepth = (
     tiltX: number,
@@ -330,19 +356,23 @@ export function AuthPage({
     setLocalError(null);
   };
 
+  const RootTag = isEmbedded ? "section" : "main";
+
   return (
-    <main
-      className="ec-auth-shell"
+    <RootTag
+      className={`ec-auth-shell${isEmbedded ? " ec-auth-shell--embedded" : ""}`}
       aria-label="Eclipse Chat — вход"
-      data-overlay={onExit ? "true" : undefined}
+      data-overlay={!isEmbedded && onExit ? "true" : undefined}
     >
-      {onExit && (
+      {!isEmbedded && onExit && (
         <button type="button" className="ec-auth-return" onClick={onExit}>
           <span aria-hidden>←</span>
           <span>На лендинг</span>
         </button>
       )}
-      <div className="ec-auth-radar" aria-hidden>
+      {!isEmbedded && (
+        <>
+          <div className="ec-auth-radar" aria-hidden>
         <div className="ec-auth-radar__grid" />
         <div className="ec-auth-radar__crosshair-h" />
         <div className="ec-auth-radar__crosshair-v" />
@@ -361,6 +391,9 @@ export function AuthPage({
         </div>
         <div className="ec-auth-top-hud__line" />
       </div>
+
+        </>
+      )}
 
       <div
         ref={sceneRef}
@@ -511,7 +544,15 @@ export function AuthPage({
                         </div>
                       </div>
 
-                      <div className="ec-auth-mode-toggle" role="tablist" aria-label="Режим">
+                      <div
+                        ref={modeToggleRef}
+                        className="ec-auth-mode-toggle"
+                        role="tablist"
+                        aria-label="Режим"
+                      >
+                        <span className="ec-auth-mode-toggle__indicator" aria-hidden>
+                          <span className="ec-auth-mode-toggle__beam" />
+                        </span>
                         <button
                           type="button"
                           role="tab"
@@ -791,7 +832,7 @@ export function AuthPage({
         </span>
         <span>Версия {VERSION}</span>
       </div>
-    </main>
+    </RootTag>
   );
 }
 
@@ -822,7 +863,13 @@ function PasswordReveal({
   };
 
   return (
-    <div className="ec-auth-pass">
+    <div
+      className={
+        "ec-auth-pass" +
+        (shown ? " ec-auth-pass--shown" : "") +
+        (scanning ? " ec-auth-pass--scanning" : "")
+      }
+    >
       <input
         className="ec-auth-field__input ec-auth-pass__input"
         type={shown ? "text" : "password"}

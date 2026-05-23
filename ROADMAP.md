@@ -5,7 +5,9 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.2.29** (Galaxy/Clock/Theme/Deadline effects +
+**Текущая версия:** **v1.2.30** (landing screen + встроенная auth-сцена +
+premium motion/effects + hit-area polish + auth не отдельной страницей;
+прод сейчас на v1.2.26; включает также: Galaxy/Clock/Theme/Deadline effects +
 UX-copy + дизайн-полиш + редизайн WS-1 + системный редизайн ЗАКРЫТ 8/8 +
 светлая тема SOLAR (Notion-crisp) + фикс AuthScreen + смена пароля +
 визуальный передел AppShell ЗАКРЫТ 4/4 + топбар-полиш +
@@ -66,8 +68,8 @@ tool'а (post_message / create_task / update_table_row) +
 AI agents Партия 2 slice 2: Agent loop runtime + @mention integration +
 agent-mode toggle в BotsTab).
 
-> **v1.1.90 … v1.2.14 задеплоены — в проде v1.2.14. v1.2.15 …
-> v1.2.29 запушены и ждут approve-gate Pavel'я. Деплой НЕ
+> **v1.1.90 … v1.2.26 задеплоены — в проде v1.2.26. v1.2.27 …
+> v1.2.30 запушены и ждут approve-gate Pavel'я. Деплой НЕ
 > автоматический по пушу. ⚠️ v1.2.20 + v1.2.27 включают Prisma
 > migrations — при деплое нужен `prisma migrate deploy`:
 >   - `20260523200000_add_custom_emojis`
@@ -79,7 +81,45 @@ agent-mode toggle в BotsTab).
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.2.29:**
+**Изменения v1.1.25 → v1.2.30:**
+
+- **v1.2.30** — **landing + встроенная auth-сцена вместо отдельной страницы**.
+  Не косметический фикс, а передел входной поверхности Eclipse Chat:
+  авторизация теперь живёт прямо внутри hero-сцены лендинга и
+  раскрывается как экран доступа к продукту, а не как отдельный view.
+  - **App orchestration**:
+    - `apps/web/src/App.tsx` больше не монтирует отдельный fullscreen auth
+      как корневую неавторизованную страницу.
+    - `LandingPage` получает `authMode`, `authPanel`, `onCloseAuth` и
+      управляет встроенным состоянием входа/регистрации прямо внутри
+      лендинга.
+  - **Landing redesign** (`apps/web/src/pages/LandingPage.tsx` +
+    `components.css`):
+    - hero-stage умеет переключаться между обзорной сценой и встроенным
+      экраном доступа;
+    - добавлен возврат `Обзор платформы` без ухода на отдельную страницу;
+    - на mobile есть автоскролл к auth-stage, чтобы форма не жила в
+      сломанной узкой колонке.
+  - **Auth embedded mode** (`apps/web/src/pages/AuthPage.tsx` +
+    `tokens.css`):
+    - введён presentation-mode `embedded`, где auth не лочит `body`,
+      не рендерит отдельный overlay-shell и остаётся частью landing
+      composition;
+    - сохранены режимы `Вход / Регистрация`, но теперь они ощущаются как
+      нативный экран в продуктовой сцене.
+  - **Premium effects из `docs/Эффекты крутые`**:
+    - animated dual-border для auth-контейнера;
+    - beam-индикатор активной вкладки `Вход / Регистрация`;
+    - более выразительное password-field/reveal поведение.
+  - **Usability / touch**:
+    - увеличены hit-area у CTA, mode-toggle, submit и reveal-кнопки;
+    - переключение `Вход / Регистрация` локально проверено кликом с
+      реальной сменой `aria-selected` и индикатора.
+  - **Проверка**:
+    - `npm run build -w @eclipse-chat/web` — зелёный;
+    - локальный browser smoke: landing -> `Открыть вход` -> embedded auth
+      -> `Регистрация` -> `Вход` — проходит;
+    - ошибок `error/warn` в браузерной консоли не было.
 
 - **v1.2.29** — **AI agents Партия 2 slice 2: Agent loop runtime +
   @mention integration**. Closes основной loop AI-agents trek'а.
