@@ -72,6 +72,8 @@ type Props = {
   onTypingStop?: () => void;
   /** Display names known members активного сервера — для @-autocomplete. */
   mentionNames?: string[];
+  /** v1.2.23 — custom-emoji map активного сервера. Расширяет `:` autocomplete. */
+  customEmojis?: Record<string, string>;
   /** Hide attachments — для thread reply composer, где attachments yet not supported. */
   hideAttachments?: boolean;
   /** Custom placeholder. */
@@ -232,6 +234,7 @@ export function MessageInput({
   onTypingStart,
   onTypingStop,
   mentionNames = [],
+  customEmojis,
   hideAttachments = false,
   placeholder,
   draftKey = null,
@@ -971,6 +974,7 @@ export function MessageInput({
         <AutocompletePopover
           trigger={trigger}
           members={mentionNames}
+          customEmojis={customEmojis}
           anchorRect={anchorRect}
           onSelect={applyAutocomplete}
           onDismiss={() => setTrigger(null)}

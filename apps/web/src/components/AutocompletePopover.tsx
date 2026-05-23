@@ -48,12 +48,17 @@ export type AutocompleteItem = {
   display: string;
   /** Текст для вставки в textarea (без trigger char). */
   insertText: string;
+  /** v1.2.23 — для custom-emoji item: URL картинки для preview-img в popover. */
+  imageUrl?: string;
 };
 
 type Props = {
   trigger: AutocompleteTrigger;
   /** Известные member display names — для @-autocomplete. */
   members: string[];
+  /** v1.2.23 — custom-emoji map активного сервера (shortcode → URL).
+   *  Если пустой/undefined — `:` показывает только Unicode shortcodes. */
+  customEmojis?: Record<string, string>;
   anchorRect: DOMRect | null;
   onSelect: (item: AutocompleteItem) => void;
   onDismiss: () => void;
@@ -106,6 +111,7 @@ const headerLabel: CSSProperties = {
 function buildItems(
   trigger: AutocompleteTrigger,
   members: string[],
+  customEmojis?: Record<string, string>,
 ): AutocompleteItem[] {
   const q = trigger.word.toLowerCase();
   if (trigger.kind === "@") {
@@ -141,9 +147,12 @@ function buildItems(
     }));
     return [...aiItems, ...memberItems];
   }
-  // kind === ':' — emoji shortcodes
-  const entries = Object.entries(EMOJI_SHORTCODES);
-  const matches = entries
+  // kind === ':' — Unicode shortcodes + custom server emoji.
+  // Priority: custom server emoji (этот сервер) ВЫШЕ Unicode (более
+  // близкие к контексту). Внутри каждой группы — startsWith матчи
+  // первыми.
+  const unicodeEntries = Object.entries(EMOJI_SHORTCODES);
+  const unicodeMatches = unicodeEntries
     .filter(([code]) => code.toLowerCase().includes(q))
     .sort(([a], [b]) => {
       const sa = a.toLowerCase().startsWith(q) ? 0 : 1;
@@ -152,21 +161,52 @@ function buildItems(
       return a.localeCompare(b);
     })
     .slice(0, 12);
-  return matches.map(([code, emoji]) => ({
-    key: code,
+  const unicodeItems: AutocompleteItem[] = unicodeMatches.map(([code, emoji]) => ({
+    key: `u:${code}`,
     display: `${emoji}  :${code}:`,
     insertText: `${emoji} `,
   }));
+
+  if (!customEmojis) return unicodeItems;
+  const customEntries = Object.entries(customEmojis);
+  // Skip коды которые есть в Unicode whitelist — RichContent отдаёт
+  // приоритет Unicode'у, autocomplete тоже не должен предлагать дубли.
+  const customMatches = customEntries
+    .filter(
+      ([code]) =>
+        code.toLowerCase().includes(q) && !(code in EMOJI_SHORTCODES),
+    )
+    .sort(([a], [b]) => {
+      const sa = a.toLowerCase().startsWith(q) ? 0 : 1;
+      const sb = b.toLowerCase().startsWith(q) ? 0 : 1;
+      if (sa !== sb) return sa - sb;
+      return a.localeCompare(b);
+    })
+    .slice(0, 12);
+  const customItems: AutocompleteItem[] = customMatches.map(([code, url]) => ({
+    key: `c:${code}`,
+    display: `:${code}:`,
+    // Вставляем literal `:shortcode:` — RichContent на render подменит
+    // на <img>. Trailing space для удобства typing'а после.
+    insertText: `:${code}: `,
+    imageUrl: url,
+  }));
+
+  return [...customItems, ...unicodeItems];
 }
 
 export function AutocompletePopover({
   trigger,
   members,
+  customEmojis,
   anchorRect,
   onSelect,
   onDismiss,
 }: Props) {
-  const items = useMemo(() => buildItems(trigger, members), [trigger, members]);
+  const items = useMemo(
+    () => buildItems(trigger, members, customEmojis),
+    [trigger, members, customEmojis],
+  );
   const [activeIdx, setActiveIdx] = useState(0);
 
   // Reset highlighted при смене query
@@ -245,7 +285,20 @@ export function AutocompletePopover({
           }}
           onClick={() => onSelect(item)}
         >
-          {item.display}
+          {item.imageUrl && (
+            <img
+              src={item.imageUrl}
+              alt=""
+              aria-hidden
+              width={18}
+              height={18}
+              loading="lazy"
+              style={{ objectFit: "contain", flexShrink: 0 }}
+            />
+          )}
+          <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>
+            {item.display}
+          </span>
         </button>
       ))}
     </div>

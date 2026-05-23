@@ -5,7 +5,7 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.2.22** (Galaxy/Clock/Theme/Deadline effects +
+**Текущая версия:** **v1.2.23** (Galaxy/Clock/Theme/Deadline effects +
 UX-copy + дизайн-полиш + редизайн WS-1 + системный редизайн ЗАКРЫТ 8/8 +
 светлая тема SOLAR (Notion-crisp) + фикс AuthScreen + смена пароля +
 визуальный передел AppShell ЗАКРЫТ 4/4 + топбар-полиш +
@@ -50,10 +50,12 @@ Platform Admin pagination jump-to-page (Стр. [_] / N) во все табы +
 custom emoji backend MVP: schema + 3 endpoints (list / upload / delete) +
 custom emoji frontend slice 1: AdminPanel «Эмодзи» tab + upload/delete UI +
 custom emoji frontend slice 2: parser `:shortcode:` → `<img>` в RichContent +
-useServerEmojis hook + cross-component invalidation через window event).
+useServerEmojis hook + cross-component invalidation через window event +
+custom emoji frontend slice 3: `:` autocomplete с custom emoji + image
+preview в popover).
 
 > **v1.1.90 … v1.2.14 задеплоены — в проде v1.2.14. v1.2.15 …
-> v1.2.22 запушены и ждут approve-gate Pavel'я. Деплой НЕ
+> v1.2.23 запушены и ждут approve-gate Pavel'я. Деплой НЕ
 > автоматический по пушу. ⚠️ v1.2.20 включает Prisma migration
 > `20260523200000_add_custom_emojis` — при деплое нужен `prisma
 > migrate deploy`.**
@@ -64,8 +66,37 @@ useServerEmojis hook + cross-component invalidation через window event).
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.2.22:**
+**Изменения v1.1.25 → v1.2.23:**
 
+- **v1.2.23** — **custom emoji frontend slice 3: `:` autocomplete +
+  picker integration**. После slice 2 (parser) emoji видны в
+  сообщениях, но discoverable только если вручную набрать
+  `:exact_shortcode:`. Этот слайс даёт popover-autocomplete.
+  - **AutocompletePopover** — Props получили optional
+    `customEmojis?: Record<string, string>`. `AutocompleteItem`
+    получил optional `imageUrl?: string` (для custom emoji
+    preview).
+  - **`buildItems`** для `:`-trigger: после Unicode shortcodes
+    добавляет custom server emoji (priority — выше Unicode,
+    ближе к workspace context). Skip коды, которые есть в Unicode
+    whitelist (избежать дублей).
+  - **Render** — если item имеет `imageUrl`, popover-row показывает
+    `<img width=18 height=18>` слева от display. Lazy-loading.
+  - **MessageInput** — новый optional prop `customEmojis`,
+    прокидывает в AutocompletePopover.
+  - **Wiring** в AppShell — channel-mode MessageInput получает
+    `customEmojis={customEmojis}` (тот же hook'овый map что
+    RichContent). DM остаётся без custom emoji (нет server
+    context).
+  - **Bonus fix** — channel-mode MessageInput раньше **не получал**
+    `mentionNames`, поэтому @-autocomplete не показывал participants
+    канала (только AI keywords). Теперь прокидывается из members.
+  - **Не реализовано** (следующие слайсы):
+    - Picker UI custom-emoji вкладка (для click-based выбор).
+    - Использование в reactions (backend `ALLOWED_EMOJI` — нужно
+      расширить на `:custom:`).
+    - Real-time через socket (вместо window event).
+  Сборка зелёная (tsc + vite). Без миграций.
 - **v1.2.22** — **custom emoji frontend slice 2: parser
   `:shortcode:` → `<img>` в RichContent**. Закрывает «emoji видны в
   сообщениях» — основное UX-обещание custom-emoji track'а.
