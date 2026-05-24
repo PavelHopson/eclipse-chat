@@ -218,10 +218,10 @@
   color: var(--L-base-0);
   border-color: var(--L-signal);
 }
+/* v1.2.31: flat CTA — без hover-bounce (translateY был SaaS-стандарт). */
 .ec-landing-btn--primary:hover {
   background: var(--L-signal-soft);
   border-color: var(--L-signal-soft);
-  transform: translateY(-1px);
 }
 .ec-landing-btn--ghost {
   background: transparent;
@@ -297,8 +297,7 @@
 }
 .ec-landing__hero-title-accent {
   color: var(--L-signal);
-  /* Тонкая cyan-rim glow — не overload. */
-  text-shadow: 0 0 30px hsl(199 58% 60% / 0.25);
+  /* v1.2.31: text-shadow убран — accent даёт сам цвет, glow был overload. */
 }
 .ec-landing__hero-subhead {
   margin: 0;
@@ -750,104 +749,60 @@
   z-index: 1;
 }
 
+/* v1.2.31: signal dots — static (была 4s pulse — calm violated).
+ * Glow ослаблен на signal/active, убран на idle (был «point of light»). */
 .ec-cine-signal-dot {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   display: inline-flex;
   flex: 0 0 auto;
-  animation: ec-cine-signal-pulse 4s linear infinite;
 }
 .ec-cine-signal-dot--signal {
   background: var(--L-signal);
-  box-shadow: 0 0 12px hsl(199 58% 60% / 0.35);
 }
 .ec-cine-signal-dot--active {
   background: var(--L-status-active);
-  box-shadow: 0 0 12px hsl(160 50% 56% / 0.32);
+  /* Точечный glow — active это единственный dot, который сигналит. */
+  box-shadow: 0 0 8px hsl(160 50% 56% / 0.25);
 }
 .ec-cine-signal-dot--amber {
   background: var(--L-amber);
-  box-shadow: 0 0 12px hsl(34 88% 62% / 0.28);
 }
 .ec-cine-signal-dot--idle {
   background: var(--L-status-idle);
-  box-shadow: 0 0 8px hsl(210 14% 54% / 0.18);
+  opacity: 0.6;
 }
 
-@keyframes ec-cine-signal-pulse {
-  0%, 100% { transform: scale(1); opacity: 0.92; }
-  50% { transform: scale(1.14); opacity: 1; }
-}
-
-/* === Hero console === */
+/* === Hero console ===
+   v1.2.31 polish:
+   - backlight удалён (был decorative glow, нарушал «no glow overload»)
+   - eclipse-rim glow + bright border убраны (cyan-glow-overload)
+   - 3D perspective tilt убран (dribbble hover-effect, brief: «no random hover»)
+   - воздух и тонкий border остались — calm operational surface, не SaaS card.
+*/
 .ec-hero-console {
   position: relative;
-  min-height: 620px;
-}
-.ec-hero-console__backlight {
-  position: absolute;
-  inset: 14% 10% 12% 26%;
-  background:
-    radial-gradient(circle at 50% 44%, hsl(199 58% 60% / 0.14), transparent 48%),
-    radial-gradient(circle at 68% 34%, hsl(34 88% 62% / 0.07), transparent 24%);
-  filter: blur(20px);
-  pointer-events: none;
-}
-.ec-hero-console__eclipse-rim {
-  position: absolute;
-  width: min(96vw, 760px);
-  height: min(96vw, 760px);
-  top: -22%;
-  right: -28%;
-  border-radius: 50%;
-  border: 2px solid hsl(199 80% 92% / 0.9);
-  box-shadow:
-    0 0 42px hsl(199 88% 88% / 0.34),
-    0 0 120px hsl(199 58% 60% / 0.12);
-  opacity: 0.9;
-  mask-image: linear-gradient(180deg, black 0 70%, transparent 94%);
-  pointer-events: none;
+  min-height: 540px;
 }
 .ec-hero-console__surface {
   display: flex;
   flex-direction: column;
-  min-height: 620px;
+  min-height: 540px;
   padding: 18px;
-  border-radius: 18px;
-  border: 1px solid hsl(210 18% 50% / 0.22);
-  background:
-    linear-gradient(180deg, hsl(213 28% 7% / 0.94), hsl(215 31% 5% / 0.92)),
-    linear-gradient(90deg, hsl(199 58% 60% / 0.05), transparent 28%, transparent 72%, hsl(34 88% 62% / 0.04));
-  box-shadow:
-    inset 0 1px 0 hsl(0 0% 100% / 0.06),
-    inset 0 0 0 1px hsl(199 58% 60% / 0.04),
-    0 36px 90px -44px hsl(199 58% 60% / 0.16);
+  border-radius: var(--L-r-lg);
+  border: 1px solid var(--L-border-line);
+  background: linear-gradient(180deg, var(--L-base-2), var(--L-base-1));
   overflow: hidden;
-  transform:
-    perspective(1800px)
-    rotateX(var(--ec-orbit-tilt-x))
-    rotateY(var(--ec-orbit-tilt-y));
-  transition: transform 340ms var(--L-ease-out);
 }
-.ec-hero-console__surface::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(hsl(210 18% 38% / 0.08) 1px, transparent 1px),
-    linear-gradient(90deg, hsl(210 18% 38% / 0.08) 1px, transparent 1px);
-  background-size: 120px 120px;
-  mask-image: linear-gradient(180deg, hsl(0 0% 0% / 0.54), transparent 92%);
-  opacity: 0.44;
-  pointer-events: none;
-}
+/* v1.2.31: grid-pattern overlay убран — был «code editor mockup» trope.
+   Chrome-actions (Mac-controls fake) удалены — brief: «no fake futuristic UI». */
 .ec-hero-console__chrome {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--L-gap-3);
-  padding: 4px 4px 18px;
+  padding: 4px 4px 16px;
   border-bottom: 1px solid var(--L-border-hair);
 }
 .ec-hero-console__chrome-brand {
@@ -860,33 +815,20 @@
   text-transform: uppercase;
   color: var(--L-fg-muted);
 }
-.ec-hero-console__chrome-actions {
-  display: inline-flex;
-  gap: 10px;
-}
-.ec-hero-console__chrome-actions span {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: hsl(210 12% 28%);
-  border: 1px solid hsl(210 12% 36%);
-}
+/* v1.2.31: 3-col → 2-col grid (rail + workspace). Metrics column удалена. */
 .ec-hero-console__grid {
   display: grid;
-  grid-template-columns: minmax(164px, 0.25fr) minmax(0, 1fr) minmax(180px, 0.26fr);
+  grid-template-columns: minmax(140px, 0.22fr) minmax(0, 1fr);
   gap: 18px;
   flex: 1;
   min-height: 0;
   padding-top: 18px;
 }
-.ec-hero-console__rail,
-.ec-hero-console__metrics {
+.ec-hero-console__rail {
   display: flex;
   flex-direction: column;
   gap: 12px;
-}
-.ec-hero-console__rail {
-  padding-right: 10px;
+  padding-right: 12px;
   border-right: 1px solid var(--L-border-hair);
 }
 .ec-hero-console__rail-list {
@@ -919,41 +861,18 @@
   border-color: hsl(199 58% 60% / 0.18);
   color: var(--L-fg-strong);
 }
-.ec-hero-console__rail-meta {
-  margin-top: auto;
-  padding: 14px 12px;
-  border-radius: 12px;
-  background: hsl(213 24% 8% / 0.8);
-  border: 1px solid var(--L-border-hair);
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.ec-hero-console__rail-meta span,
+/* v1.2.31: rail-meta + meter/status mono-classes removed — соответствующие
+   JSX-блоки удалены из HeroOperationalStage. */
 .ec-hero-console__workspace-kicker,
 .ec-hero-console__panel-head span,
-.ec-hero-console__meter-card span,
-.ec-hero-console__status-list span,
-.ec-hero-console__auth-label,
-.ec-hero-console__composer-label {
+.ec-hero-console__auth-label {
   font-family: var(--ec-font-mono, ui-monospace, monospace);
   font-size: var(--L-type-mono);
   letter-spacing: var(--L-track-mono-wide);
   text-transform: uppercase;
-}
-.ec-hero-console__rail-meta span,
-.ec-hero-console__workspace-kicker,
-.ec-hero-console__panel-head span,
-.ec-hero-console__meter-card span,
-.ec-hero-console__status-list span,
-.ec-hero-console__auth-label,
-.ec-hero-console__composer-label {
   color: var(--L-fg-dim);
 }
-.ec-hero-console__rail-meta strong,
 .ec-hero-console__panel-head strong,
-.ec-hero-console__meter-card strong,
-.ec-hero-console__status-list strong,
 .ec-hero-console__auth-head strong {
   color: var(--L-fg-strong);
   font-weight: 600;
@@ -966,14 +885,10 @@
 }
 .ec-hero-console__workspace-head,
 .ec-hero-console__panel,
-.ec-hero-console__composer,
-.ec-hero-console__meter-card,
-.ec-hero-console__status-list,
 .ec-hero-console__auth-head {
-  background: linear-gradient(180deg, hsl(214 24% 10% / 0.92), hsl(214 28% 7% / 0.94));
+  background: var(--L-surface);
   border: 1px solid var(--L-border-hair);
-  border-radius: 14px;
-  box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.04);
+  border-radius: var(--L-r-lg);
 }
 .ec-hero-console__workspace-head {
   padding: 18px 20px;
@@ -997,15 +912,16 @@
   gap: 10px;
   flex-wrap: wrap;
 }
+/* v1.2.31: flat — без gradient'ов и hover-bounce.
+   Brief: «no startup gradients, no flashy transitions». */
 .ec-hero-console__cta,
-.ec-hero-console__auth-close,
-.ec-hero-console__meter-link {
+.ec-hero-console__auth-close {
   appearance: none;
   border: 1px solid var(--L-border-line);
   background: transparent;
   color: var(--L-fg);
-  border-radius: 10px;
-  padding: 12px 16px;
+  border-radius: var(--L-r-md);
+  padding: 12px 18px;
   font-family: var(--ec-font-mono, ui-monospace, monospace);
   font-size: 0.78rem;
   letter-spacing: 0.16em;
@@ -1014,32 +930,27 @@
   transition:
     border-color var(--L-dur-fast) var(--L-ease-out),
     background var(--L-dur-fast) var(--L-ease-out),
-    color var(--L-dur-fast) var(--L-ease-out),
-    transform var(--L-dur-fast) var(--L-ease-out);
+    color var(--L-dur-fast) var(--L-ease-out);
 }
 .ec-hero-console__cta:hover,
-.ec-hero-console__auth-close:hover,
-.ec-hero-console__meter-link:hover {
+.ec-hero-console__auth-close:hover {
   border-color: var(--L-signal);
   color: var(--L-fg-strong);
-  transform: translateY(-1px);
 }
 .ec-hero-console__cta--primary {
-  background: linear-gradient(180deg, hsl(199 58% 60%), hsl(199 52% 52%));
+  background: var(--L-signal);
   color: var(--L-base-0);
-  border-color: transparent;
+  border-color: var(--L-signal);
 }
 .ec-hero-console__cta--primary:hover {
+  background: var(--L-signal-soft);
+  border-color: var(--L-signal-soft);
   color: var(--L-base-0);
-  border-color: transparent;
-  background: linear-gradient(180deg, hsl(199 64% 68%), hsl(199 58% 58%));
 }
+/* v1.2.31: 2 panels (primary execution + AI memory). Voice panel удалена. */
 .ec-hero-console__workspace-panels {
   display: grid;
   grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
-  grid-template-areas:
-    "primary memory"
-    "primary voice";
   gap: 14px;
   flex: 1;
   min-height: 0;
@@ -1050,16 +961,6 @@
   flex-direction: column;
   gap: 16px;
   min-height: 0;
-}
-.ec-hero-console__panel--primary {
-  grid-area: primary;
-}
-.ec-hero-console__panel--voice {
-  grid-area: voice;
-  justify-content: space-between;
-}
-.ec-hero-console__panel--memory {
-  grid-area: memory;
 }
 .ec-hero-console__panel-head {
   display: flex;
@@ -1073,10 +974,12 @@
   font-size: 0.82rem;
   letter-spacing: 0.08em;
 }
+/* v1.2.31: progress без gradient и без glow box-shadow (был «glowing progress»
+   dribbble pattern). Flat fill, чистая operational metric. */
 .ec-hero-console__progress {
-  height: 10px;
+  height: 6px;
   border-radius: 999px;
-  background: hsl(214 20% 15%);
+  background: hsl(214 20% 12%);
   overflow: hidden;
 }
 .ec-hero-console__progress-bar {
@@ -1084,8 +987,7 @@
   width: 76%;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, hsl(199 58% 52%), hsl(199 74% 76%));
-  box-shadow: 0 0 18px hsl(199 58% 60% / 0.24);
+  background: var(--L-signal);
 }
 .ec-hero-console__feed {
   display: flex;
@@ -1123,29 +1025,16 @@
   font-size: 0.92rem;
   line-height: 1.55;
 }
-.ec-hero-console__wave {
-  display: grid;
-  grid-template-columns: repeat(24, minmax(0, 1fr));
-  gap: 6px;
-  align-items: end;
-  min-height: 78px;
-}
-.ec-hero-console__wave span {
-  display: block;
-  min-height: 10px;
-  height: calc(18px + (var(--ec-wave-index) % 8) * 7px);
-  border-radius: 999px;
-  background: linear-gradient(180deg, hsl(199 80% 84%), hsl(199 58% 52%));
-  opacity: 0.9;
-  transform-origin: bottom;
-  animation: ec-hero-wave 5.8s var(--L-ease-in-out) infinite;
-  animation-delay: calc(var(--ec-wave-index) * 140ms);
-}
-@keyframes ec-hero-wave {
-  0%, 100% { transform: scaleY(0.58); opacity: 0.54; }
-  35% { transform: scaleY(1); opacity: 1; }
-  70% { transform: scaleY(0.72); opacity: 0.74; }
-}
+/* v1.2.31 polish-pass: блоки удалены —
+ *   .ec-hero-console__wave + keyframes ec-hero-wave (24 анимированных бара,
+ *     last bar delay 3.36s — выглядело как «лагает»)
+ *   .ec-hero-console__composer / composer-actions (бутафорная input-полоса)
+ *   .ec-hero-console__metrics + meter-card + status-list (правая колонка
+ *     из 3 cards — overload)
+ *   .ec-hero-console__dial + dial-ring + dial-core (декоративный кружок,
+ *     не функция)
+ * Соответствующий JSX в HeroOperationalStage тоже удалён.
+ */
 .ec-hero-console__memory-list {
   list-style: none;
   margin: 0;
@@ -1158,83 +1047,9 @@
   display: flex;
   align-items: start;
   gap: 10px;
-}
-.ec-hero-console__composer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 14px 18px;
-}
-.ec-hero-console__composer-actions {
-  display: inline-flex;
-  gap: 8px;
-}
-.ec-hero-console__composer-actions span {
-  width: 30px;
-  height: 30px;
-  border-radius: 9px;
-  border: 1px solid var(--L-border-hair);
-  background: hsl(214 24% 9%);
-}
-.ec-hero-console__metrics {
-  padding-left: 2px;
-}
-.ec-hero-console__meter-card,
-.ec-hero-console__status-list {
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.ec-hero-console__dial {
-  width: 108px;
-  height: 108px;
-  margin-top: auto;
-  position: relative;
-  align-self: center;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-}
-.ec-hero-console__dial-ring,
-.ec-hero-console__dial-core {
-  position: absolute;
-  border-radius: 50%;
-}
-.ec-hero-console__dial-ring {
-  inset: 0;
-  border: 1px solid hsl(199 58% 60% / 0.18);
-}
-.ec-hero-console__dial-ring::before {
-  content: "";
-  position: absolute;
-  inset: 14px;
-  border-radius: 50%;
-  border: 1px solid hsl(199 58% 60% / 0.12);
-}
-.ec-hero-console__dial-core {
-  inset: 30px;
-  background: radial-gradient(circle at 30% 30%, hsl(199 80% 86% / 0.28), hsl(214 34% 9%) 68%);
-  border: 1px solid hsl(199 58% 60% / 0.2);
-  box-shadow: 0 0 20px hsl(199 58% 60% / 0.14);
-}
-.ec-hero-console__status-list div {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--L-border-hair);
-}
-.ec-hero-console__status-list div:first-child {
-  padding-top: 0;
-  border-top: 0;
-}
-.ec-hero-console__status-list strong {
-  color: var(--L-status-active);
-  font-family: var(--ec-font-mono, ui-monospace, monospace);
-  font-size: 0.72rem;
-  letter-spacing: 0.12em;
+  font-size: 0.92rem;
+  color: var(--L-fg-muted);
+  line-height: 1.55;
 }
 
 .ec-hero-console__auth-screen {
@@ -1256,7 +1071,29 @@
   max-width: 30ch;
   line-height: 1.25;
 }
+/* v1.2.31: full cyan/void embedded auth. NO violet, NO gold, NO glow overload.
+ * Pavel: «весь embedded auth должен быть cyan/void, без violet/gold».
+ *
+ * Strategy: override product-tokens (--ec-accent / --ec-accent-gold / -3)
+ * на cyan в landing context. Plus — hide биометрический orbit / radar /
+ * top-hud / product-strip / logo (это identity-сильные элементы Eclipse
+ * product UI, в landing-сцене они дублируют контекст). Оставить чистую
+ * форму вход/регистрация.
+ */
 .ec-hero-console__auth-body {
+  /* Cyan tokens вместо violet/gold по всему AuthPage tree. */
+  --ec-accent: var(--L-signal);
+  --ec-accent-hover: var(--L-signal-soft);
+  --ec-accent-soft: hsl(199 58% 60% / 0.14);
+  --ec-accent-text: var(--L-base-0);
+  /* Single-layer focus ring — без 3-stack glow. */
+  --ec-accent-glow: 0 0 0 1px hsl(199 58% 60% / 0.45);
+  --ec-accent-3: var(--L-signal-soft);
+  --ec-accent-3-soft: hsl(199 58% 60% / 0.14);
+  /* Gold тоже зацианлен — Pavel: «без gold». */
+  --ec-accent-gold: var(--L-signal);
+  --ec-accent-gold-soft: hsl(199 58% 60% / 0.14);
+  --ec-accent-gold-hover: var(--L-signal-soft);
   min-height: 0;
 }
 .ec-hero-console__auth-body .ec-auth-shell--embedded {
@@ -1271,11 +1108,16 @@
   inset: 0;
 }
 .ec-hero-console__auth-body .ec-auth-shell--embedded .ec-auth-stack {
-  gap: 16px;
+  gap: 14px;
 }
+/* Скрываем identity-blocks AuthPage — в landing-сцене они дублируют
+ * brand / kicker уже выше. Оставляем чистую форму. */
 .ec-hero-console__auth-body .ec-auth-shell--embedded .ec-auth-logo,
 .ec-hero-console__auth-body .ec-auth-shell--embedded .ec-auth-product-strip,
-.ec-hero-console__auth-body .ec-auth-shell--embedded .ec-auth-subtitle {
+.ec-hero-console__auth-body .ec-auth-shell--embedded .ec-auth-subtitle,
+.ec-hero-console__auth-body .ec-auth-shell--embedded .ec-auth-radar,
+.ec-hero-console__auth-body .ec-auth-shell--embedded .ec-auth-top-hud,
+.ec-hero-console__auth-body .ec-auth-shell--embedded .ec-auth-orbit {
   display: none;
 }
 .ec-hero-console__auth-body .ec-auth-shell--embedded .ec-auth-scene {
@@ -1283,6 +1125,50 @@
 }
 .ec-hero-console__auth-body .ec-auth-shell--embedded .ec-auth-terminal-frame {
   transform: none;
+}
+.ec-hero-console__auth-body .ec-auth-shell--embedded .ec-auth-title {
+  color: var(--L-fg-strong);
+  /* v1.2.31: text-shadow убран (glow overload). */
+}
+
+/* v1.2.31: Compact mobile status block — заменяет hero-console на ≤700px.
+ * Brief: tight, infrastructural, calm. Не 2-screen scroll тяжёлой консоли. */
+.ec-hero-console__mobile {
+  display: none;
+}
+.ec-hero-console__mobile-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--L-gap-2);
+  font-family: var(--ec-font-mono, ui-monospace, monospace);
+  font-size: var(--L-type-mono);
+  letter-spacing: var(--L-track-mono-wide);
+  text-transform: uppercase;
+  color: var(--L-fg-strong);
+}
+.ec-hero-console__mobile-meta {
+  margin-top: var(--L-gap-2);
+  font-family: var(--ec-font-mono, ui-monospace, monospace);
+  font-size: var(--L-type-mono);
+  letter-spacing: var(--L-track-mono);
+  color: var(--L-fg-muted);
+  text-transform: uppercase;
+}
+.ec-hero-console__mobile-cta {
+  margin-top: var(--L-gap-4);
+  width: 100%;
+  appearance: none;
+  padding: 16px 22px;
+  border: 1px solid var(--L-signal);
+  background: var(--L-signal);
+  color: var(--L-base-0);
+  border-radius: var(--L-r-md);
+  font-family: var(--ec-font-mono, ui-monospace, monospace);
+  font-size: var(--L-type-sm);
+  font-weight: 600;
+  letter-spacing: var(--L-track-mono);
+  text-transform: uppercase;
+  cursor: pointer;
 }
 
 /* === Memory constellation === */
@@ -1485,6 +1371,8 @@
   .ec-hero-console__surface {
     min-height: 0;
   }
+  /* v1.2.31: на 700-980px rail и workspace стек'ятся, но full console остаётся.
+     Metrics column убрана из JSX — её overflow правила не нужны. */
   .ec-hero-console__grid {
     grid-template-columns: 1fr;
   }
@@ -1492,24 +1380,36 @@
     border-right: 0;
     padding-right: 0;
   }
-  .ec-hero-console__rail-list {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
   .ec-hero-console__workspace-panels {
     grid-template-columns: 1fr;
-    grid-template-areas:
-      "primary"
-      "voice"
-      "memory";
-  }
-  .ec-hero-console__metrics {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    padding-left: 0;
   }
   .ec-security-stack__label {
     min-width: 140px;
+  }
+}
+
+/* v1.2.31: ≤700px — hero-console (с rail / workspace / panels) скрывается
+ * целиком. Вместо неё рендерится compact status block: «КОНТУР АКТИВЕН» +
+ * «3 / 5 СИСТЕМ ОНЛАЙН» + CTA. Это убивает 2-screen vertical scroll
+ * тяжёлой console на mobile. */
+@media (max-width: 700px) {
+  .ec-hero-console__surface {
+    display: none;
+  }
+  .ec-hero-console__mobile {
+    display: flex;
+    flex-direction: column;
+    padding: var(--L-gap-5);
+    border: 1px solid var(--L-border-line);
+    border-radius: var(--L-r-lg);
+    background: var(--L-surface);
+  }
+  .ec-hero-console--auth-open .ec-hero-console__mobile {
+    /* Если auth открыт — surface всё-таки нужен для формы. */
+    display: none;
+  }
+  .ec-hero-console--auth-open .ec-hero-console__surface {
+    display: flex;
   }
 }
 
@@ -1538,22 +1438,7 @@
   .ec-hero-console {
     min-height: 0;
   }
-  .ec-hero-console__surface {
-    padding: 14px;
-    border-radius: 16px;
-  }
-  .ec-hero-console__eclipse-rim {
-    width: 118vw;
-    height: 118vw;
-    top: -14%;
-    right: -48%;
-  }
-  .ec-hero-console__chrome {
-    padding-bottom: 14px;
-  }
-  .ec-hero-console__rail-list {
-    grid-template-columns: 1fr;
-  }
+  /* Auth-screen flow на mobile — column + full-width controls. */
   .ec-hero-console__workspace-head,
   .ec-hero-console__auth-head {
     flex-direction: column;
@@ -1564,21 +1449,15 @@
   }
   .ec-hero-console__workspace-cta,
   .ec-hero-console__cta,
-  .ec-hero-console__auth-close,
-  .ec-hero-console__meter-link {
+  .ec-hero-console__auth-close {
     width: 100%;
   }
   .ec-hero-console__workspace-cta {
     display: grid;
     grid-template-columns: 1fr;
   }
-  .ec-hero-console__panel,
-  .ec-hero-console__meter-card,
-  .ec-hero-console__status-list {
+  .ec-hero-console__panel {
     padding: 16px;
-  }
-  .ec-hero-console__metrics {
-    grid-template-columns: 1fr;
   }
   .ec-memory-map {
     min-height: 420px;
@@ -1596,13 +1475,15 @@
     min-height: 420px;
     padding-top: 28px;
   }
+  /* v1.2.31: убран magic-number `margin-top: 220px`. Labels flow'ятся
+   * под art'ом естественно через flex column gap. */
   .ec-security-stack__labels {
     position: static;
     display: flex;
     flex-direction: column;
     gap: 10px;
     width: 100%;
-    margin-top: 220px;
+    margin-top: var(--L-gap-4);
   }
   .ec-security-stack__label {
     position: static;

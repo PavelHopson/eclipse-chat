@@ -1,10 +1,5 @@
-import type { CSSProperties, ReactNode } from "react";
-import {
-  OrbitalSurface,
-  Reveal,
-  SignalDot,
-  revealDelay,
-} from "./CinematicMotion";
+import type { ReactNode } from "react";
+import { Reveal, SignalDot, revealDelay } from "./CinematicMotion";
 
 type AuthMode = "login" | "register" | null;
 
@@ -15,12 +10,21 @@ type HeroOperationalStageProps = {
   onCloseAuth: () => void;
 };
 
+/**
+ * v1.2.31 polish-pass — hero-stage drastically simplified.
+ *   Было (v1.2.30): chrome+mac-controls / rail × 5 / workspace-head + 3 panels
+ *     (progress + voice waveform + memory) / composer strip / metrics column
+ *     (3 cards: dial + meter + status list). 14+ data points в зоне «WOW».
+ *   Стало: rail × 3 (operational) / main execution panel / memory panel.
+ *   Удалено: Mac controls, dial decoration, metrics column, voice waveform,
+ *   composer strip, OrbitalSurface tilt-hover (был intensity=3.6 → dribbble).
+ *   Brief: «low cognitive overload, high operational awareness».
+ */
+
 const CONTOUR_NODES = [
   "Общий контур",
   "Исполнение",
-  "Голосовой канал",
   "AI Memory",
-  "Клиентский портал",
 ] as const;
 
 const LIVE_EVENTS = [
@@ -33,11 +37,6 @@ const LIVE_EVENTS = [
     actor: "Мария",
     time: "10:37",
     body: "Подтвердила обновление по проекту. Файлы в канале.",
-  },
-  {
-    actor: "Иван",
-    time: "11:21",
-    body: "Подключился к голосовому каналу и закрепил следующий шаг.",
   },
 ] as const;
 
@@ -67,20 +66,18 @@ export function HeroOperationalStage({
       className={`ec-hero-console${authMode ? " ec-hero-console--auth-open" : ""}`}
       aria-label="Операционная сцена Eclipse Chat"
     >
-      <div className="ec-hero-console__backlight" aria-hidden />
-      <div className="ec-hero-console__eclipse-rim" aria-hidden />
+      {/* v1.2.31: backlight ослаблен, eclipse-rim вынесен из console
+          в landing-atmosphere — без двойного glow. */}
 
-      <OrbitalSurface className="ec-hero-console__surface" intensity={3.6}>
+      {/* v1.2.31: surface без OrbitalSurface tilt — flat panel,
+          без 3D dribbble feel. */}
+      <div className="ec-hero-console__surface">
+        {/* v1.2.31: Mac-controls chrome удалён (был fake-futuristic UI). */}
         <div className="ec-hero-console__chrome">
           <span className="ec-hero-console__chrome-brand">
             <SignalDot tone="signal" />
             Контур
           </span>
-          <div className="ec-hero-console__chrome-actions" aria-hidden>
-            <span />
-            <span />
-            <span />
-          </div>
         </div>
 
         <div className="ec-hero-console__grid">
@@ -99,10 +96,6 @@ export function HeroOperationalStage({
                 </li>
               ))}
             </Reveal>
-            <Reveal className="ec-hero-console__rail-meta" delay={260} variant="fade">
-              <span>РЕЖИМ КОНТУРА</span>
-              <strong>Стабильный канал</strong>
-            </Reveal>
           </aside>
 
           <div className="ec-hero-console__workspace">
@@ -115,8 +108,8 @@ export function HeroOperationalStage({
                     </span>
                     <strong>
                       {authMode === "login"
-                        ? "Вход происходит прямо внутри рабочего холста"
-                        : "Регистрация встроена в hero-сцену продукта"}
+                        ? "Вход в рабочий контур"
+                        : "Регистрация команды"}
                     </strong>
                   </div>
                   <button
@@ -156,6 +149,8 @@ export function HeroOperationalStage({
                   </div>
                 </Reveal>
 
+                {/* v1.2.31: оставлены только 2 panels (execution + memory).
+                    Voice waveform и composer strip удалены. */}
                 <div className="ec-hero-console__workspace-panels">
                   <Reveal
                     className="ec-hero-console__panel ec-hero-console__panel--primary"
@@ -191,35 +186,9 @@ export function HeroOperationalStage({
                   </Reveal>
 
                   <Reveal
-                    className="ec-hero-console__panel ec-hero-console__panel--voice"
-                    variant="panel"
-                    delay={150}
-                  >
-                    <div className="ec-hero-console__panel-head">
-                      <div>
-                        <span>Голосовой канал</span>
-                        <strong>Оперативный созвон</strong>
-                      </div>
-                      <span className="ec-hero-console__metric">07:48</span>
-                    </div>
-                    <div className="ec-hero-console__wave" aria-hidden>
-                      {Array.from({ length: 24 }, (_, index) => (
-                        <span
-                          key={index}
-                          style={
-                            {
-                              "--ec-wave-index": index,
-                            } as CSSProperties
-                          }
-                        />
-                      ))}
-                    </div>
-                  </Reveal>
-
-                  <Reveal
                     className="ec-hero-console__panel ec-hero-console__panel--memory"
                     variant="panel"
-                    delay={220}
+                    delay={150}
                   >
                     <div className="ec-hero-console__panel-head">
                       <div>
@@ -231,84 +200,51 @@ export function HeroOperationalStage({
                     <ul className="ec-hero-console__memory-list">
                       <li>
                         <SignalDot tone="active" />
-                        Решение по релизу зафиксировано вместе с файлами.
+                        Решение по релизу зафиксировано с файлами.
                       </li>
                       <li>
                         <SignalDot tone="signal" />
-                        Новый голосовой фрагмент привязан к задаче и сроку.
+                        Голосовой фрагмент привязан к задаче.
                       </li>
                       <li>
-                        <SignalDot tone="amber" />
-                        Клиентский контекст не распадается между каналами.
+                        <SignalDot tone="idle" />
+                        Клиентский контекст не распадается.
                       </li>
                     </ul>
                   </Reveal>
                 </div>
-
-                <Reveal
-                  className="ec-hero-console__composer"
-                  variant="panel"
-                  delay={280}
-                >
-                  <span className="ec-hero-console__composer-label">
-                    Команда видит сигнал, действие и результат в одном месте
-                  </span>
-                  <div className="ec-hero-console__composer-actions" aria-hidden>
-                    <span />
-                    <span />
-                    <span />
-                  </div>
-                </Reveal>
               </>
             )}
           </div>
-
-          <aside className="ec-hero-console__metrics">
-            <Reveal className="ec-hero-console__meter-card" variant="panel" delay={120}>
-              <span>Панель оператора</span>
-              <strong>Все системы активны</strong>
-              <div className="ec-hero-console__dial" aria-hidden>
-                <div className="ec-hero-console__dial-ring" />
-                <div className="ec-hero-console__dial-core" />
-              </div>
-            </Reveal>
-
-            <Reveal className="ec-hero-console__meter-card" variant="panel" delay={200}>
-              <span>AI Memory</span>
-              <strong>Контекст команды держится в контуре</strong>
-              <button
-                type="button"
-                className="ec-hero-console__meter-link"
-                onClick={() => onOpenAuth("login")}
-              >
-                Открыть доступ
-              </button>
-            </Reveal>
-
-            <Reveal className="ec-hero-console__status-list" variant="panel" delay={260}>
-              <div>
-                <span>API Gateway</span>
-                <strong>Online</strong>
-              </div>
-              <div>
-                <span>База данных</span>
-                <strong>Online</strong>
-              </div>
-              <div>
-                <span>Сигнальные уведомления</span>
-                <strong>Online</strong>
-              </div>
-            </Reveal>
-          </aside>
+          {/* v1.2.31: metrics column (dial + meter + status list) удалена. */}
         </div>
-      </OrbitalSurface>
+      </div>
+
+      {/* v1.2.31: compact mobile status block — показывается только на ≤700px
+          вместо тяжёлой console. */}
+      <div className="ec-hero-console__mobile" aria-hidden={authMode != null}>
+        <div className="ec-hero-console__mobile-status">
+          <SignalDot tone="active" />
+          <strong>Контур активен</strong>
+        </div>
+        <div className="ec-hero-console__mobile-meta">
+          3 / 5 систем онлайн
+        </div>
+        <button
+          type="button"
+          className="ec-hero-console__mobile-cta"
+          onClick={() => onOpenAuth("login")}
+        >
+          Открыть вход
+        </button>
+      </div>
     </div>
   );
 }
 
 export function MemoryConstellation() {
   return (
-    <OrbitalSurface className="ec-memory-map" intensity={2.8}>
+    <div className="ec-memory-map">
       <svg
         className="ec-memory-map__links"
         viewBox="0 0 760 480"
@@ -349,14 +285,13 @@ export function MemoryConstellation() {
           <span>{node.label}</span>
         </Reveal>
       ))}
-    </OrbitalSurface>
+    </div>
   );
 }
 
 export function SecurityStackArt() {
   return (
-    <OrbitalSurface className="ec-security-stack" intensity={2.4}>
-      <div className="ec-security-stack__halo" aria-hidden />
+    <div className="ec-security-stack">
       <div className="ec-security-stack__platform" aria-hidden />
       <div className="ec-security-stack__layers" aria-hidden>
         {SECURITY_LAYERS.map((layer, index) => (
@@ -388,6 +323,6 @@ export function SecurityStackArt() {
           </Reveal>
         ))}
       </div>
-    </OrbitalSurface>
+    </div>
   );
 }

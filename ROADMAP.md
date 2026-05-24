@@ -5,8 +5,11 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.2.30** (landing screen + встроенная auth-сцена +
-premium motion/effects + hit-area polish + auth не отдельной страницей;
+**Текущая версия:** **v1.2.31** (landing polish-pass: убраны 3D tilt /
+Mac controls / dial / metrics column / voice waveform / composer strip /
+signal-dot pulse / hero-title glow / progress glow / gradient CTAs;
+mobile ≤700px заменён на compact status block; embedded auth теперь
+полностью cyan/void без violet/gold;
 прод сейчас на v1.2.26; включает также: Galaxy/Clock/Theme/Deadline effects +
 UX-copy + дизайн-полиш + редизайн WS-1 + системный редизайн ЗАКРЫТ 8/8 +
 светлая тема SOLAR (Notion-crisp) + фикс AuthScreen + смена пароля +
@@ -85,8 +88,68 @@ security-art)).
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.2.30:**
+**Изменения v1.1.25 → v1.2.31:**
 
+- **v1.2.31** — **landing polish-pass: убираем dribbble/SaaS/crypto-вайб,
+  приводим к calm operational infrastructure**. Реакция на brutal QA
+  v1.2.30 (Claude). Pavel: «меньше, строже, дороже. Не добавлять новых
+  эффектов».
+  - **Удалено** (по списку #1-7 Pavel'я):
+    - 3D tilt в `OrbitalSurface` (`intensity={3.6}`) → flat surface.
+      OrbitalSurface перестал использоваться в visuals.
+    - Fake Mac-controls chrome (`.ec-hero-console__chrome-actions` × 3
+      серых кружка) — brief: «no fake futuristic UI».
+    - Декоративный dial с двумя ring'ами + radial gradient core.
+    - Metrics column (3 cards: dial + meter + status list).
+    - Composer strip (`.ec-hero-console__composer` с fake
+      input-actions).
+    - Voice waveform panel (24 анимированных бара с 3.36s каскадом
+      delay — выглядело как лагающая анимация).
+    - Signal-dot pulse animation 4s (на всех dots глобально —
+      нарушение «calm»).
+    - Glow на progress bar (`box-shadow: 0 0 18px`).
+    - Text-shadow на hero-title-accent (был 0 0 30px glow).
+    - Eclipse-rim glowing border (`0 0 42px + 120px` shadow).
+    - Hero-console backlight (decorative cyan + amber radial).
+    - Grid-pattern overlay на surface (code-editor mockup trope).
+    - Gradient на primary CTA (`linear-gradient` → flat
+      `var(--L-signal)`).
+    - hover-bounce `transform: translateY(-1px)` на primary CTA.
+    - `margin-top: 220px` magic-number на security mobile labels.
+  - **Упрощено**:
+    - HeroOperationalStage: 3-col grid (rail/workspace/metrics) →
+      **2-col** (rail/workspace). Workspace: 3 panels (primary/voice/
+      memory) → **2** (primary execution + memory). Rail: 5 menu
+      items → **3** operational (Общий контур / Исполнение / AI
+      Memory). Минус ~60% data points в hero zone.
+    - LIVE_EVENTS: 3 → 2 (Иван voice-event удалён вместе с voice
+      panel).
+    - `.ec-hero-console__surface` background: 2-layer gradient mix →
+      простой `linear-gradient(var(--L-base-2), var(--L-base-1))`.
+    - Progress bar: 10px height с glow → 6px flat fill.
+    - Signal dots: 7px с глобальным glow + pulse → 6px flat (active
+      сохраняет точечный glow — единственный «сигналит»).
+  - **Embedded auth — cyan/void**:
+    - `--ec-accent-gold` тоже зацианлен (Pavel: «без gold» — было
+      `var(--L-amber)`).
+    - Single-layer focus ring `0 0 0 1px hsl(199 58% 60% / 0.45)`
+      вместо 3-stack shadow (был glow overload).
+    - Hidden identity elements: `.ec-auth-logo` / `.ec-auth-radar` /
+      `.ec-auth-top-hud` / `.ec-auth-orbit` / `.ec-auth-product-strip`
+      / `.ec-auth-subtitle` — дублировали landing-context.
+    - `.ec-auth-title text-shadow` 0 0 24px убран.
+  - **Mobile ≤700px**: hero-console hidden, заменяется на compact
+    status block:
+    ```
+    [●] КОНТУР АКТИВЕН
+        3 / 5 СИСТЕМ ОНЛАЙН
+    [    Открыть вход    ]
+    ```
+    Auth-mode (когда юзер кликнул «Открыть вход») возвращает full
+    surface. Это убивает 2-screen vertical scroll heavy console на
+    mobile.
+  - **Trust band copy**: «Доверие инфраструктурам» → **«Работает на»**.
+  Сборка зелёная (tsc + vite). Без миграций.
 - **v1.2.30** — **landing + встроенная auth-сцена вместо отдельной страницы**.
   Не косметический фикс, а передел входной поверхности Eclipse Chat:
   авторизация теперь живёт прямо внутри hero-сцены лендинга и

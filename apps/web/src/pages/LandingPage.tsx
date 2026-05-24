@@ -262,7 +262,7 @@ export function LandingPage({
 
         {/* ───────── INFRA TRUST ───────── */}
         <section className="ec-landing__trust" aria-label="Инфраструктурный стек">
-          <div className="ec-landing__trust-eyebrow">Доверие инфраструктурам</div>
+          <div className="ec-landing__trust-eyebrow">Работает на</div>
           <div className="ec-landing__trust-grid">
             {INFRA.map((name) => (
               <div key={name} className="ec-landing__trust-item">
