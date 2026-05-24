@@ -11,48 +11,52 @@ type HeroOperationalStageProps = {
 };
 
 /**
- * v1.2.31 polish-pass — hero-stage drastically simplified.
- *   Было (v1.2.30): chrome+mac-controls / rail × 5 / workspace-head + 3 panels
- *     (progress + voice waveform + memory) / composer strip / metrics column
- *     (3 cards: dial + meter + status list). 14+ data points в зоне «WOW».
- *   Стало: rail × 3 (operational) / main execution panel / memory panel.
- *   Удалено: Mac controls, dial decoration, metrics column, voice waveform,
- *   composer strip, OrbitalSurface tilt-hover (был intensity=3.6 → dribbble).
- *   Brief: «low cognitive overload, high operational awareness».
+ * v1.3.2 slice C — hero stage больше не «UI mockup».
+ *   Pavel brief (24.05.2026): «Stop treating it like a UI mockup.
+ *   operational traces / execution continuity / active system surface /
+ *   living infrastructure. Less perfect boxes / dashboard symmetry /
+ *   clean UI showcase.»
+ *
+ *   Из stage убрано (по сравнению с прошлой Codex'овой версией):
+ *     - field overlay (grid lines — «code-editor mockup» trope)
+ *     - 3-row execution stream (feed/dashboard эстетика)
+ *     - access-prompt CTA card (дублировал hero CTAs)
+ *
+ *   Stage = 4 разреженных fragment'а в asymmetric column space, без
+ *   border box внешнего:
+ *     - trace pulse сверху (offset вправо)
+ *     - один primary execution fragment (offset слева, без bubble)
+ *     - memory continuum traces (offset вправо, signal left rule)
+ *     - mono process signature снизу (offset слева)
+ *
+ *   Auth-mode: stage заменяется auth-dock'ом — заголовок + close + auth
+ *   panel. Без stage decorations вокруг (auth не должен быть «внутри
+ *   операционного окна», это отдельный слой доступа).
  */
 
-const CONTOUR_NODES = [
-  "Общий контур",
-  "Исполнение",
-  "AI Memory",
+const EXECUTION_TRACE = {
+  origin: "EXEC / +0034ms",
+  state: "ROUTE STABLE",
+  detail: "Канал договорился сам — без оператора",
+} as const;
+
+const PRIMARY_FRAGMENT = {
+  origin: "канал / release",
+  body: "Решение зафиксировано. Файлы и владельцы привязаны.",
+  actor: "Мария",
+  time: "10:37",
+} as const;
+
+const MEMORY_TRACES = [
+  "Клиентский контекст удержан",
+  "Файл помнит решение",
+  "Смена входит в то же состояние",
 ] as const;
 
-const LIVE_EVENTS = [
-  {
-    actor: "Система",
-    time: "сейчас",
-    body: "Операционный свод за сегодня собран и синхронизирован.",
-  },
-  {
-    actor: "Мария",
-    time: "10:37",
-    body: "Подтвердила обновление по проекту. Файлы в канале.",
-  },
-] as const;
-
-const MEMORY_NODES = [
-  { label: "Решения", className: "ec-memory-map__node--one" },
-  { label: "Документы", className: "ec-memory-map__node--two" },
-  { label: "Обсуждения", className: "ec-memory-map__node--three" },
-  { label: "Участники", className: "ec-memory-map__node--four" },
-  { label: "Файлы", className: "ec-memory-map__node--five" },
-  { label: "Задачи", className: "ec-memory-map__node--six" },
-] as const;
-
-const SECURITY_LAYERS = [
-  { label: "Контур приложений", status: "Изолирован" },
-  { label: "Данные и резерв", status: "Под контролем" },
-  { label: "Каналы и доступ", status: "Шифруются" },
+const PROCESS_META = [
+  { label: "Memory", value: "live" },
+  { label: "Route", value: "stable" },
+  { label: "Ingress", value: "142KB/s" },
 ] as const;
 
 export function HeroOperationalStage({
@@ -61,178 +65,84 @@ export function HeroOperationalStage({
   onOpenAuth,
   onCloseAuth,
 }: HeroOperationalStageProps) {
-  return (
-    <div
-      className={`ec-hero-console${authMode ? " ec-hero-console--auth-open" : ""}`}
-      aria-label="Операционная сцена Eclipse Chat"
-    >
-      {/* v1.2.31: backlight ослаблен, eclipse-rim вынесен из console
-          в landing-atmosphere — без двойного glow. */}
-
-      {/* v1.2.31: surface без OrbitalSurface tilt — flat panel,
-          без 3D dribbble feel. */}
-      <div className="ec-hero-console__surface">
-        {/* v1.2.31: Mac-controls chrome удалён (был fake-futuristic UI). */}
-        <div className="ec-hero-console__chrome">
-          <span className="ec-hero-console__chrome-brand">
-            <SignalDot tone="signal" />
-            Контур
-          </span>
-        </div>
-
-        <div className="ec-hero-console__grid">
-          <aside className="ec-hero-console__rail" aria-label="Разделы платформы">
-            <Reveal as="ul" className="ec-hero-console__rail-list" variant="panel">
-              {CONTOUR_NODES.map((item, index) => (
-                <li
-                  key={item}
-                  className={index === 1 ? "is-active" : undefined}
-                  style={revealDelay(index)}
-                >
-                  <button type="button">
-                    <SignalDot tone={index === 1 ? "active" : "idle"} />
-                    <span>{item}</span>
-                  </button>
-                </li>
-              ))}
-            </Reveal>
-          </aside>
-
-          <div className="ec-hero-console__workspace">
-            {authMode ? (
-              <div className="ec-hero-console__auth-screen">
-                <Reveal className="ec-hero-console__auth-head" variant="panel">
-                  <div>
-                    <span className="ec-hero-console__auth-label">
-                      {authMode === "login" ? "Экран доступа" : "Создание контура"}
-                    </span>
-                    <strong>
-                      {authMode === "login"
-                        ? "Вход в рабочий контур"
-                        : "Регистрация команды"}
-                    </strong>
-                  </div>
-                  <button
-                    type="button"
-                    className="ec-hero-console__auth-close"
-                    onClick={onCloseAuth}
-                  >
-                    Обзор платформы
-                  </button>
-                </Reveal>
-                <div className="ec-hero-console__auth-body">{authPanel}</div>
-              </div>
-            ) : (
-              <>
-                <Reveal className="ec-hero-console__workspace-head" variant="panel">
-                  <div>
-                    <span className="ec-hero-console__workspace-kicker">
-                      Общий контур
-                    </span>
-                    <h3>Команды работают в одном операционном пространстве.</h3>
-                  </div>
-                  <div className="ec-hero-console__workspace-cta">
-                    <button
-                      type="button"
-                      className="ec-hero-console__cta ec-hero-console__cta--primary"
-                      onClick={() => onOpenAuth("register")}
-                    >
-                      Запустить контур
-                    </button>
-                    <button
-                      type="button"
-                      className="ec-hero-console__cta"
-                      onClick={() => onOpenAuth("login")}
-                    >
-                      Открыть вход
-                    </button>
-                  </div>
-                </Reveal>
-
-                {/* v1.2.31: оставлены только 2 panels (execution + memory).
-                    Voice waveform и composer strip удалены. */}
-                <div className="ec-hero-console__workspace-panels">
-                  <Reveal
-                    className="ec-hero-console__panel ec-hero-console__panel--primary"
-                    variant="panel"
-                    delay={90}
-                  >
-                    <div className="ec-hero-console__panel-head">
-                      <div>
-                        <span>Система</span>
-                        <strong>Задачи выполняются</strong>
-                      </div>
-                      <span className="ec-hero-console__metric">75%</span>
-                    </div>
-                    <div className="ec-hero-console__progress">
-                      <span className="ec-hero-console__progress-bar" />
-                    </div>
-
-                    <div className="ec-hero-console__feed">
-                      {LIVE_EVENTS.map((event, index) => (
-                        <article
-                          key={`${event.actor}-${event.time}`}
-                          className="ec-hero-console__feed-item"
-                          style={revealDelay(index, 86)}
-                        >
-                          <header>
-                            <strong>{event.actor}</strong>
-                            <span>{event.time}</span>
-                          </header>
-                          <p>{event.body}</p>
-                        </article>
-                      ))}
-                    </div>
-                  </Reveal>
-
-                  <Reveal
-                    className="ec-hero-console__panel ec-hero-console__panel--memory"
-                    variant="panel"
-                    delay={150}
-                  >
-                    <div className="ec-hero-console__panel-head">
-                      <div>
-                        <span>AI Memory</span>
-                        <strong>Контекст сохранён</strong>
-                      </div>
-                      <span className="ec-hero-console__metric">live</span>
-                    </div>
-                    <ul className="ec-hero-console__memory-list">
-                      <li>
-                        <SignalDot tone="active" />
-                        Решение по релизу зафиксировано с файлами.
-                      </li>
-                      <li>
-                        <SignalDot tone="signal" />
-                        Голосовой фрагмент привязан к задаче.
-                      </li>
-                      <li>
-                        <SignalDot tone="idle" />
-                        Клиентский контекст не распадается.
-                      </li>
-                    </ul>
-                  </Reveal>
-                </div>
-              </>
-            )}
+  if (authMode) {
+    return (
+      <div className="ec-hero-stage ec-hero-stage--auth" aria-label="Экран доступа">
+        <Reveal className="ec-hero-stage__auth-head" variant="panel">
+          <div>
+            <span className="ec-hero-stage__auth-label">
+              {authMode === "login" ? "точка доступа" : "запуск контура"}
+            </span>
+            <strong>
+              {authMode === "login"
+                ? "Вход в рабочий контур"
+                : "Запуск нового контура"}
+            </strong>
           </div>
-          {/* v1.2.31: metrics column (dial + meter + status list) удалена. */}
-        </div>
+          <button
+            type="button"
+            className="ec-hero-stage__auth-close"
+            onClick={onCloseAuth}
+          >
+            Обзор среды
+          </button>
+        </Reveal>
+        <div className="ec-hero-stage__auth-body">{authPanel}</div>
       </div>
+    );
+  }
 
-      {/* v1.2.31: compact mobile status block — показывается только на ≤700px
-          вместо тяжёлой console. */}
-      <div className="ec-hero-console__mobile" aria-hidden={authMode != null}>
-        <div className="ec-hero-console__mobile-status">
+  return (
+    <div className="ec-hero-stage" aria-label="Операционная сцена Eclipse Chat">
+      <Reveal className="ec-hero-stage__trace" variant="fade">
+        <span className="ec-hero-stage__trace-origin">{EXECUTION_TRACE.origin}</span>
+        <span className="ec-hero-stage__trace-state">
           <SignalDot tone="active" />
-          <strong>Контур активен</strong>
-        </div>
-        <div className="ec-hero-console__mobile-meta">
-          3 / 5 систем онлайн
-        </div>
+          {EXECUTION_TRACE.state}
+        </span>
+        <span className="ec-hero-stage__trace-detail">{EXECUTION_TRACE.detail}</span>
+      </Reveal>
+
+      <Reveal className="ec-hero-stage__fragment" variant="panel" delay={120}>
+        <header className="ec-hero-stage__fragment-meta">
+          <span className="ec-hero-stage__fragment-origin">{PRIMARY_FRAGMENT.origin}</span>
+          <span className="ec-hero-stage__fragment-time">{PRIMARY_FRAGMENT.time}</span>
+        </header>
+        <p className="ec-hero-stage__fragment-body">{PRIMARY_FRAGMENT.body}</p>
+        <span className="ec-hero-stage__fragment-actor">— {PRIMARY_FRAGMENT.actor}</span>
+      </Reveal>
+
+      <Reveal className="ec-hero-stage__memory" variant="panel" delay={200}>
+        <span className="ec-hero-stage__memory-label">Контур помнит</span>
+        <ul className="ec-hero-stage__memory-list">
+          {MEMORY_TRACES.map((trace, index) => (
+            <li key={trace} style={revealDelay(index, 70)}>
+              <span className="ec-hero-stage__memory-bar" aria-hidden />
+              {trace}
+            </li>
+          ))}
+        </ul>
+      </Reveal>
+
+      <Reveal className="ec-hero-stage__process" variant="fade" delay={280}>
+        {PROCESS_META.map((meta, index) => (
+          <span key={meta.label} className="ec-hero-stage__process-pair">
+            <span className="ec-hero-stage__process-label">{meta.label}</span>
+            <span className="ec-hero-stage__process-value">{meta.value}</span>
+            {index < PROCESS_META.length - 1 && (
+              <span className="ec-hero-stage__process-sep" aria-hidden>·</span>
+            )}
+          </span>
+        ))}
+      </Reveal>
+
+      <div className="ec-hero-stage__mobile">
+        <span className="ec-hero-stage__mobile-mono">
+          {EXECUTION_TRACE.origin} · {EXECUTION_TRACE.state}
+        </span>
         <button
           type="button"
-          className="ec-hero-console__mobile-cta"
+          className="ec-hero-stage__mobile-cta"
           onClick={() => onOpenAuth("login")}
         >
           Открыть вход
@@ -242,36 +152,40 @@ export function HeroOperationalStage({
   );
 }
 
+/**
+ * v1.3.2 slice C: MemoryConstellation остаётся как legacy slot если
+ * parent передаёт visual через renderHeroStage (preview / dev mode).
+ * Новый MemoryContinuumLayer не использует visual — он full-bleed
+ * text-only continuity field.
+ */
 export function MemoryConstellation() {
+  const MEMORY_NODES = [
+    { label: "решения", className: "ec-memory-map__node--one" },
+    { label: "задачи", className: "ec-memory-map__node--two" },
+    { label: "файлы", className: "ec-memory-map__node--three" },
+    { label: "обсуждения", className: "ec-memory-map__node--four" },
+    { label: "участники", className: "ec-memory-map__node--five" },
+    { label: "порталы", className: "ec-memory-map__node--six" },
+  ] as const;
   return (
-    <div className="ec-memory-map">
+    <div className="ec-memory-map" aria-label="Слой памяти">
       <svg
         className="ec-memory-map__links"
-        viewBox="0 0 760 480"
-        aria-hidden
+        viewBox="0 0 980 360"
         preserveAspectRatio="none"
+        aria-hidden
       >
-        <path d="M380 240 L170 128" />
-        <path d="M380 240 L522 110" />
-        <path d="M380 240 L596 238" />
-        <path d="M380 240 L520 376" />
-        <path d="M380 240 L250 390" />
-        <path d="M380 240 L132 264" />
+        <path d="M40 186H940" />
+        <path d="M118 124L420 186" />
+        <path d="M228 268L420 186" />
+        <path d="M560 186L786 114" />
+        <path d="M558 186L846 262" />
+        <path d="M420 186L560 186" />
       </svg>
 
-      <Reveal className="ec-memory-map__core" variant="panel">
-        <span className="ec-memory-map__core-shell">
-          <svg viewBox="0 0 64 64" fill="none" aria-hidden>
-            <path
-              d="M24 18c-6 0-10 4.5-10 10 0 4.3 2.5 7.9 6.2 9.4M40 18c6 0 10 4.5 10 10 0 4.3-2.5 7.9-6.2 9.4M24 46c0-5.2 3.6-9 8-9s8 3.8 8 9M20 26c0-3.3 2.7-6 6-6s6 2.7 6 6-2.7 6-6 6-6-2.7-6-6zm12 0c0-3.3 2.7-6 6-6s6 2.7 6 6-2.7 6-6 6-6-2.7-6-6z"
-              stroke="currentColor"
-              strokeWidth="1.6"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </span>
-        <strong>AI Memory</strong>
+      <Reveal className="ec-memory-map__spine" variant="panel">
+        <span>memory / persistent</span>
+        <strong>Система удерживает рабочее состояние целиком.</strong>
       </Reveal>
 
       {MEMORY_NODES.map((node, index) => (
@@ -279,26 +193,42 @@ export function MemoryConstellation() {
           key={node.label}
           className={`ec-memory-map__node ${node.className}`}
           variant="panel"
-          delay={index * 90}
+          delay={index * 80}
         >
-          <SignalDot tone={index === 2 ? "active" : "signal"} />
+          <SignalDot tone={index === 0 ? "active" : "signal"} />
           <span>{node.label}</span>
         </Reveal>
       ))}
+
+      <Reveal className="ec-memory-map__anchor" variant="panel" delay={180}>
+        <SignalDot tone="active" />
+        <span>возврат без ресинхронизации</span>
+      </Reveal>
     </div>
   );
 }
 
+/**
+ * v1.3.2 slice C: SecurityStackArt не используется новым
+ * SecurityAuthorityBlock (там dense numerical text-only). Pavel brief:
+ * «infrastructure ownership, self-hosted sovereignty — NOT SaaS
+ * security marketing». Lock-in-rack image — это SaaS-marketing trope.
+ * Остаётся legacy slot.
+ */
 export function SecurityStackArt() {
+  const SECURITY_LAYERS = [
+    { label: "Контур приложений", status: "внутри среды" },
+    { label: "Хранение и резерв", status: "под вашим слоем" },
+    { label: "Каналы и доступ", status: "управляются локально" },
+  ] as const;
   return (
-    <div className="ec-security-stack">
-      <div className="ec-security-stack__platform" aria-hidden />
-      <div className="ec-security-stack__layers" aria-hidden>
-        {SECURITY_LAYERS.map((layer, index) => (
-          <div key={layer.label} className={`ec-security-stack__layer ec-security-stack__layer--${index + 1}`}>
-            <span className="ec-security-stack__layer-edge" />
-          </div>
-        ))}
+    <div className="ec-security-stack" aria-label="Слой развёртывания">
+      <div className="ec-security-stack__bay" aria-hidden>
+        <div className="ec-security-stack__rack">
+          <div className="ec-security-stack__unit ec-security-stack__unit--1" />
+          <div className="ec-security-stack__unit ec-security-stack__unit--2" />
+          <div className="ec-security-stack__unit ec-security-stack__unit--3" />
+        </div>
       </div>
 
       <Reveal className="ec-security-stack__core" variant="panel">
@@ -308,15 +238,16 @@ export function SecurityStackArt() {
             <path d="M11 14v-2.5A5 5 0 0 1 16 6a5 5 0 0 1 5 5.5V14" stroke="currentColor" strokeWidth="1.6" />
           </svg>
         </span>
+        <strong>Развертывание под вашим контролем</strong>
       </Reveal>
 
-      <div className="ec-security-stack__labels">
+      <div className="ec-security-stack__manifest">
         {SECURITY_LAYERS.map((layer, index) => (
           <Reveal
             key={layer.label}
-            className={`ec-security-stack__label ec-security-stack__label--${index + 1}`}
+            className="ec-security-stack__manifest-row"
             variant="panel"
-            delay={140 + index * 90}
+            delay={120 + index * 90}
           >
             <span>{layer.label}</span>
             <strong>{layer.status}</strong>

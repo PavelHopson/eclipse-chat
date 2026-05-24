@@ -5,12 +5,27 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.3.1** (v1.3 visual authority slice B:
-monumental type + asymmetric hero grid 4fr/5fr + vertical signal line
-левее H1 + silence tokens (thin/base/monumental) + asymmetric section
-heads и splits + bigger body line-height; БЕЗ sticky markers / status
-pills / conic-gradient noise / decorative sci-fi gimmicks per Pavel'я
-brief «already running, не trying to impress»;
+**Текущая версия:** **v1.3.2** (v1.3 visual authority slice C:
+hero stage больше не «UI mockup» — убраны chrome / rail / 2-panel
+grid / field overlay / 3-row feed; вместо них 4 разрежённых
+operational fragment'а в asymmetric column (trace pulse / primary
+execution fragment без bubble / memory continuum traces / mono
+process signature); Memory section перевeдена в full-bleed
+`MemoryContinuumLayer` — выламывается из shell padding через
+negative margin (100vw), без grid visual+copy, monumental statement
++ 4 sweeping memory traces (when / entity / body); Security
+переписана в `SecurityAuthorityBlock` — deployment authority, NO
+visual art (lock-in-rack убран как SaaS marketing trope), manifest
+из 4 mono spec/value pairs + numbered ledger из 4 deployment
+assertions; Execution rows получили density variation (primary 38px
+padding / compact 20px / offset 12% indent text-only); copy сжат
+по всем секциям — «implication, not explanation» per Pavel brief;
+v1.3.1: monumental type + asymmetric hero grid 4fr/5fr + vertical
+signal line левее H1 + silence tokens (thin/base/monumental) +
+asymmetric section heads и splits + bigger body line-height; БЕЗ
+sticky markers / status pills / conic-gradient noise / decorative
+sci-fi gimmicks per Pavel'я brief «already running, не trying to
+impress»;
 v1.3.0 LIVE: slice A copy rewrite + nav cleanup —
 hero «Исполнение / без хаоса.», sections переписаны в operational
 verbs, bottom CTA single statement;
@@ -98,7 +113,113 @@ security-art)).
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.3.1:**
+**Изменения v1.1.25 → v1.3.2:**
+
+- **v1.3.2** — **v1.3 visual authority slice C: hero перестаёт
+  быть UI mockup'ом, Memory становится full-bleed continuity layer,
+  Security становится deployment authority block**. Pavel brief
+  (24.05.2026): «Stop treating it like a UI mockup. operational
+  traces / execution continuity / active system surface / living
+  infrastructure. Less perfect boxes / dashboard symmetry / clean
+  UI showcase. Must stop feeling like AI feature section. Need
+  full-width continuity layer feeling. System remembers everything.
+  Must feel deployment authority. Not SaaS security marketing.
+  Infrastructure ownership, self-hosted sovereignty, operational
+  control. Already running.»
+  - **HeroOperationalStage** (`LandingVisuals.tsx`): полная
+    переделка. Из stage убраны:
+    - chrome bar (mac-ish окно) — был «UI window» trope;
+    - rail с 3-layer nav (sidebar of our product);
+    - 2-panel grid (execution feed + memory list) — был mini
+      dashboard;
+    - field overlay из grid lines (code-editor mockup pattern);
+    - 3-row execution stream (feed/dashboard эстетика);
+    - access-prompt CTA card (дублировал hero CTA).
+    Stage теперь = column из 4 разреженных fragment'ов в asymmetric
+    space, без external border box:
+    1. `__trace` (align-self: flex-end) — operational pulse
+       `EXEC / +0034ms · ROUTE STABLE · детали`, mono тонкая.
+    2. `__fragment` (align-self: flex-start) — один primary
+       execution event, plain text без bubble/card, только thin
+       top border-rule; meta line (origin + time) + body
+       monumental statement + actor signature.
+    3. `__memory` (align-self: flex-end, signal-left rule) —
+       3 memory continuum traces «Контур помнит».
+    4. `__process` (align-self: flex-start) — mono signature
+       `Memory live · Route stable · Ingress 142KB/s`.
+    Auth-mode: stage заменяется auth-dock'ом (заголовок + close
+    button + auth panel) без stage decorations — auth это отдельный
+    слой доступа, не «внутри окна продукта».
+  - **MemoryContinuumLayer** (`LandingSections.tsx`, новый):
+    замeняет `MemoryStorySection`. Pavel: «full-width continuity
+    layer feeling». Реализация:
+    - Full-bleed band — выломан из `.ec-landing__shell` через
+      `margin-inline: calc(50% - 50vw); width: 100vw`. Visual
+      явно «другой слой» через elevated background gradient +
+      cyan top border-signal.
+    - Inner container max-width 1280px с shell-matching padding,
+      column flex с silence gaps.
+    - Head: eyebrow `[03] Слой памяти` + monumental statement
+      «Контур помнит всё, что произошло внутри.» (`clamp(2.6rem,
+      5.2vw, 5rem)`), asymmetric left-padded с signal vertical
+      rule.
+    - Stream: 4 memory traces в sweeping column, каждый =
+      `mono when · mono entity · body text`, разделены
+      border-hair rules.
+    - Footer: mono signature `memory / persistent · since deploy`
+      + link к docs.
+    - НЕТ grid visual+copy. НЕТ constellation art.
+  - **SecurityAuthorityBlock** (`LandingSections.tsx`, новый):
+    замeняет `SecurityStorySection`. Pavel: «deployment authority,
+    NOT SaaS security marketing. Infrastructure ownership,
+    self-hosted sovereignty, operational control». Реализация:
+    - Внутри shell (не full-bleed), stacked vertical layout.
+    - Head: eyebrow `[04] Контроль среды` + monumental statement
+      «Развёртывание в вашем слое.».
+    - **Manifest row** (`__authority-manifest`): 4-col grid из mono
+      spec/value pairs (`host: ваш сервер` / `транспорт: TLS · scoped`
+      / `ключи: AES-256-GCM` / `роли: RBAC + 2FA`). Plain text без
+      card chrome — это deployment statement, не attestation badges.
+    - **Numbered ledger** (`__authority-ledger`): 4 нумерованных
+      assertion-строки (`01-04`), каждая = mono index + body
+      text. Statements типа «Контур разворачивается внутри вашей
+      сети без внешнего облака.»
+    - Footer: mono `ваш host · ваши ключи · ваша сеть` + link.
+    - НЕТ visual art. НЕТ lock-in-rack image (SaaS trope). НЕТ
+      3-card attestation grid (badge-style).
+  - **Execution rows density variation** (`__execution-row--*`):
+    rows получили variant per data:
+    - `primary` (rows 0 + 2): full 38px padding, all parts (index +
+      state + tail).
+    - `compact` (row 1): тонкий 20px padding, без tail.
+    - `offset` (row 3): 12% left padding, text-only, italic title,
+      без index / state — «editorial imbalance» per brief.
+  - **Copy compression** по всем секциям: меньше explanation, больше
+    implication. Hero subhead «Сигнал, задача, голос и доступ
+    держатся в одном состоянии.», hero title «Контур уже идёт.»,
+    trust title «Контур остаётся внутри.», system title «Работа не
+    распадается.», memory title «Контур помнит всё, что произошло
+    внутри.», authority title «Развёртывание в вашем слое.».
+  - **CSS**: переписан scoped под slice C. Удалены dead `.ec-hero-console`
+    (старый stage), `.ec-landing__split / story / security-frame /
+    memory-layer / deployment-layer` (Codex'овы intermediate iterations).
+    Добавлены `.ec-hero-stage__*`, `.ec-landing__memory-band-*`,
+    `.ec-landing__authority-*`, `.ec-landing__execution-row--*`
+    variants. Legacy `MemoryConstellation` / `SecurityStackArt`
+    стили оставлены для override через `renderHeroStage` slot
+    (preview / dev mode).
+  - **Брифовые констрейнты соблюдены:**
+    - NO field grid overlay (UI mockup trope) ✓
+    - NO chrome bar (mac-окно reference) ✓
+    - NO multi-row execution feed (dashboard) ✓
+    - NO access-prompt CTA card (дублировал hero CTAs) ✓
+    - NO visual art в Security (SaaS marketing) ✓
+    - NO grid visual+copy в Memory (feature section) ✓
+    - NO new motion gimmicks (existing Reveal + SignalDot only) ✓
+    - asymmetric pacing через silence tokens + offset alignment ✓
+    - dense numerical mono attestations в Security ✓
+    - full-bleed continuity layer Memory ✓
+    - density variation в Execution rows ✓
 
 - **v1.3.1** — **v1.3 visual authority slice B: monumental hero +
   asymmetric pacing + density contrast**. Strict constraints от

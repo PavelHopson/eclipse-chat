@@ -1,5 +1,5 @@
 /**
- * Eclipse Chat — Landing tokens (v1.2.30+).
+ * Eclipse Chat — Landing tokens (v1.3.2 slice C).
  *
  * SCOPED только к `.ec-landing` — не влияет на продукт UI.
  * Product UI остаётся на violet/gold identity (memory rule
@@ -7,69 +7,62 @@
  * операционная эстетика (brief Pavel'я 24.05.2026).
  *
  * Философия:
- *   - operational infrastructure, не messenger
- *   - cinematic dark, brutal minimalism
- *   - cyan signal, warm amber как редкий акцент
- *   - orbital motion, slow + intelligent
- *   - NO purple glow, NO glassmorphism, NO over-rounded
+ *   - operational infrastructure surface, не messenger / dashboard / SaaS
+ *   - already running, не trying to impress
+ *   - continuity через rhythm + discipline, не animation
+ *   - asymmetric pacing, silence zones, density contrast
+ *   - cinematic dark, brutal minimalism, cyan signal
  *
- * Реф: Blade Runner 2049 / Linear / Vercel / Stripe Press / Arc.
+ * v1.3.2 slice C: убрана dashboard-симметрия hero stage (console box с
+ * chrome / rail / 2 panels), Memory переведена в full-bleed continuum
+ * layer без grid visual+copy, Security превращена в deployment authority
+ * block без visual art. Execution rows получили density variation
+ * (primary / compact / offset).
  */
 
 .ec-landing {
-  /* === Base depths === */
   --L-base-0: #05070A;
   --L-base-1: #0A0E12;
   --L-base-2: #11161D;
   --L-base-3: #181E27;
 
-  /* === Surfaces (карточки, поверхности) === */
   --L-surface: hsl(213 28% 6% / 0.72);
   --L-surface-elev: hsl(213 26% 9% / 0.78);
   --L-border-hair: hsl(210 18% 38% / 0.14);
   --L-border-line: hsl(210 18% 50% / 0.22);
   --L-border-signal: hsl(199 58% 60% / 0.32);
 
-  /* === Signal palette (cyan primary) === */
   --L-signal: #5db5d9;
   --L-signal-soft: #9ad8ef;
   --L-signal-deep: #2a7a9b;
   --L-signal-glow: hsl(199 58% 60% / 0.22);
 
-  /* === Foreground === */
   --L-fg-strong: #E6EEF8;
   --L-fg: hsl(210 22% 86%);
   --L-fg-muted: hsl(210 14% 64%);
   --L-fg-dim: hsl(210 10% 44%);
 
-  /* === Rare warm accent (eclipse amber) — для исключительных моментов === */
   --L-amber: hsl(34 88% 62%);
   --L-amber-soft: hsl(34 70% 70% / 0.18);
 
-  /* === Operational status colors (low-saturation) === */
   --L-status-active: hsl(160 50% 56%);
   --L-status-idle: hsl(210 14% 54%);
   --L-status-alert: hsl(8 70% 62%);
 
-  /* === Type scale (brutal hierarchy) ===
-     v1.3.0b: monumental hero + усиленный contrast между уровнями.
-     Body чуть больше — calm reading, не «small UI text». */
-  --L-type-display: clamp(4rem, 11vw, 9rem);    /* hero H1 — monumental */
-  --L-type-h1: clamp(3rem, 6vw, 5.5rem);        /* section headers — больше gap к body */
+  --L-type-display: clamp(4rem, 11vw, 9rem);
+  --L-type-h1: clamp(3rem, 6vw, 5.5rem);
   --L-type-h2: clamp(1.8rem, 3vw, 2.6rem);
   --L-type-h3: 1.25rem;
   --L-type-body: 1.15rem;
   --L-type-sm: 0.95rem;
   --L-type-xs: 0.8rem;
-  --L-type-mono: 0.74rem;  /* eyebrows, chips, tags */
+  --L-type-mono: 0.74rem;
 
-  /* Tracking — brutal type tighter, mono — wide для оператора-чтения. */
-  --L-track-display: -0.035em;     /* tighter — monumental letters прижаты */
+  --L-track-display: -0.035em;
   --L-track-body: -0.005em;
   --L-track-mono: 0.18em;
   --L-track-mono-wide: 0.26em;
 
-  /* === Spacing rhythm (8-base, large gutters) === */
   --L-gap-1: 4px;
   --L-gap-2: 8px;
   --L-gap-3: 16px;
@@ -79,20 +72,14 @@
   --L-gap-7: 96px;
   --L-gap-8: 128px;
 
-  /* === Silence tokens (v1.3.0b) ===
-     Vertical pacing — НЕ uniform. Density contrast: тонкая пауза перед
-     thin band, длинная перед монументальной zone, монументальная перед
-     CTA. Brief: «more brutal pacing, less UI symmetry». */
-  --L-silence-thin: 96px;          /* trust → features mild break */
-  --L-silence-base: 200px;         /* section → section default */
-  --L-silence-monumental: 320px;   /* перед CTA — drama-pause */
+  --L-silence-thin: 96px;
+  --L-silence-base: 200px;
+  --L-silence-monumental: 320px;
 
-  /* === Radius — низкий, не гипер-rounded === */
   --L-r-sm: 4px;
   --L-r-md: 8px;
   --L-r-lg: 14px;
 
-  /* === Motion — orbital, slow, intelligent === */
   --L-dur-fast: 220ms;
   --L-dur-base: 480ms;
   --L-dur-slow: 1200ms;
@@ -122,25 +109,14 @@
   z-index: 1;
 }
 
-/* === Atmospheric backdrop ===
-   Eclipse motif: тонкий cyan rim сверху-справа, fade в глубину.
-   No glow overload — это infrastructure, не SaaS. */
 .ec-landing__atmosphere {
   position: absolute;
   inset: 0;
   pointer-events: none;
   z-index: 0;
   background:
-    radial-gradient(
-      ellipse 60% 50% at 80% 0%,
-      hsl(199 58% 60% / 0.06),
-      transparent 60%
-    ),
-    radial-gradient(
-      circle at 50% 40%,
-      hsl(213 28% 12% / 0.4),
-      transparent 70%
-    ),
+    radial-gradient(ellipse 60% 50% at 80% 0%, hsl(199 58% 60% / 0.06), transparent 60%),
+    radial-gradient(circle at 50% 40%, hsl(213 28% 12% / 0.4), transparent 70%),
     var(--L-base-0);
 }
 
@@ -179,23 +155,6 @@
   height: 18px;
   opacity: 0.92;
 }
-.ec-landing__nav-links {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--L-gap-5);
-}
-.ec-landing__nav-link {
-  background: transparent;
-  border: 0;
-  color: var(--L-fg-muted);
-  font-size: var(--L-type-sm);
-  cursor: pointer;
-  padding: 6px 0;
-  transition: color var(--L-dur-fast) var(--L-ease-out);
-}
-.ec-landing__nav-link:hover {
-  color: var(--L-fg-strong);
-}
 .ec-landing__nav-actions {
   display: inline-flex;
   align-items: center;
@@ -219,15 +178,13 @@
   transition:
     background var(--L-dur-fast) var(--L-ease-out),
     border-color var(--L-dur-fast) var(--L-ease-out),
-    color var(--L-dur-fast) var(--L-ease-out),
-    transform var(--L-dur-fast) var(--L-ease-out);
+    color var(--L-dur-fast) var(--L-ease-out);
 }
 .ec-landing-btn--primary {
   background: var(--L-signal);
   color: var(--L-base-0);
   border-color: var(--L-signal);
 }
-/* v1.2.31: flat CTA — без hover-bounce (translateY был SaaS-стандарт). */
 .ec-landing-btn--primary:hover {
   background: var(--L-signal-soft);
   border-color: var(--L-signal-soft);
@@ -261,7 +218,7 @@
   transform: translateX(3px);
 }
 
-/* === Eyebrow (mono label выше заголовков) === */
+/* === Eyebrow === */
 .ec-landing__eyebrow {
   display: inline-flex;
   align-items: center;
@@ -281,13 +238,7 @@
   opacity: 0.6;
 }
 
-/* === Hero (v1.3.0b: monumental + asymmetric) ===
- * - Grid 4fr/5fr (stage визуально доминирует, не split 50/50).
- * - align-items: end — copy «оседает» к baseline, stage может расти вверх.
- * - min-height ~88vh — почти fullscreen hero для cinematic feel.
- * - vertical 1px signal line левее H1 — infrastructural marker, не decor.
- *   1px, opacity 0.35, mask-image fade на концах — НЕ animation.
- */
+/* === Hero === */
 .ec-landing__hero {
   display: grid;
   grid-template-columns: minmax(0, 4fr) minmax(0, 5fr);
@@ -302,7 +253,6 @@
   flex-direction: column;
   gap: var(--L-gap-4);
   position: relative;
-  /* Vertical signal line левее H1 — занимает оставшееся пространство в gap'е. */
   padding-left: var(--L-gap-4);
 }
 .ec-landing__hero-copy::before {
@@ -314,7 +264,6 @@
   width: 1px;
   background: var(--L-signal);
   opacity: 0.35;
-  /* Fade на концах — не «hard line», а infrastructural rim. */
   mask-image: linear-gradient(180deg, transparent 0%, black 18%, black 82%, transparent 100%);
   -webkit-mask-image: linear-gradient(180deg, transparent 0%, black 18%, black 82%, transparent 100%);
 }
@@ -330,7 +279,6 @@
 }
 .ec-landing__hero-title-accent {
   color: var(--L-signal);
-  /* v1.2.31: text-shadow убран — accent даёт сам цвет, glow был overload. */
 }
 .ec-landing__hero-subhead {
   margin: 0;
@@ -346,214 +294,117 @@
   flex-wrap: wrap;
   margin-top: var(--L-gap-2);
 }
-.ec-landing__hero-tags {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--L-gap-4);
-  flex-wrap: wrap;
-  margin-top: var(--L-gap-3);
-  padding-top: var(--L-gap-3);
-  border-top: 1px solid var(--L-border-hair);
-}
-.ec-landing__tag {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--L-gap-2);
-  font-family: ui-monospace, "JetBrains Mono", "Geist Mono", monospace;
-  font-size: var(--L-type-mono);
-  font-weight: 500;
-  letter-spacing: var(--L-track-mono-wide);
-  text-transform: uppercase;
-  color: var(--L-fg-dim);
-}
-.ec-landing__tag::before {
-  content: "";
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--L-signal);
-  opacity: 0.85;
-  box-shadow: 0 0 8px var(--L-signal-glow);
-}
-
-/* === Hero stage placeholder ===
-   Слот для Codex'овой HTML-replica UI. */
 .ec-landing__hero-stage {
   position: relative;
   min-height: 620px;
   overflow: visible;
 }
-.ec-landing__hero-stage-placeholder {
+
+/* === Hero stage (v1.3.2 slice C) ===
+ * Pavel brief: «Stop treating it like a UI mockup. operational traces /
+ * execution continuity / active system surface / living infrastructure.»
+ *
+ * 4 разреженных fragment'а в asymmetric column space, без border box
+ * внешнего, без chrome / grid overlay / 3-row feed:
+ *   - trace pulse сверху (offset вправо)
+ *   - один основной execution fragment (offset слева, без bubble)
+ *   - memory continuum traces (offset вправо, signal left rule)
+ *   - mono process signature снизу (offset слева)
+ */
+.ec-hero-stage {
   position: relative;
   min-height: 620px;
-  display: grid;
-  place-items: center;
-  font-family: ui-monospace, monospace;
+  display: flex;
+  flex-direction: column;
+  gap: var(--L-gap-5);
+  padding: var(--L-gap-5) 0;
+}
+
+.ec-hero-stage__trace {
+  align-self: flex-end;
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--L-gap-3);
+  font-family: ui-monospace, "JetBrains Mono", monospace;
   font-size: var(--L-type-mono);
-  letter-spacing: var(--L-track-mono-wide);
+  letter-spacing: var(--L-track-mono);
   text-transform: uppercase;
   color: var(--L-fg-dim);
-  text-align: center;
+  max-width: 100%;
+  flex-wrap: wrap;
+}
+.ec-hero-stage__trace-origin {
+  color: var(--L-fg-muted);
+}
+.ec-hero-stage__trace-state {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--L-gap-2);
+  color: var(--L-signal);
+}
+.ec-hero-stage__trace-detail {
+  color: var(--L-fg-dim);
+  font-family: inherit;
+  text-transform: none;
+  letter-spacing: 0.04em;
+}
+
+.ec-hero-stage__fragment {
+  align-self: flex-start;
+  max-width: 32rem;
+  padding: var(--L-gap-4) 0 0;
+  border-top: 1px solid var(--L-border-line);
+  display: flex;
+  flex-direction: column;
   gap: var(--L-gap-2);
 }
-
-/* === Infrastructure trust band ===
- * v1.3.0b: thin silence сверху (96px) — мягкая пауза от hero к thin
- * engineering line. От trust к features — base silence (через section). */
-.ec-landing__trust {
-  padding: var(--L-gap-5) 0;
-  margin-top: var(--L-silence-thin);
-  border-top: 1px solid var(--L-border-hair);
-  border-bottom: 1px solid var(--L-border-hair);
+.ec-hero-stage__fragment-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--L-gap-3);
 }
-.ec-landing__trust-eyebrow {
+.ec-hero-stage__fragment-origin {
   font-family: ui-monospace, monospace;
   font-size: var(--L-type-mono);
-  letter-spacing: var(--L-track-mono-wide);
-  text-transform: uppercase;
-  color: var(--L-fg-dim);
-  margin-bottom: var(--L-gap-3);
-}
-.ec-landing__trust-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: var(--L-gap-5);
-  align-items: center;
-}
-.ec-landing__trust-item {
-  font-family: ui-monospace, monospace;
-  font-size: var(--L-type-sm);
   letter-spacing: var(--L-track-mono);
   text-transform: uppercase;
-  color: var(--L-fg-muted);
-  opacity: 0.7;
-  transition: opacity var(--L-dur-fast) var(--L-ease-out);
-}
-.ec-landing__trust-item:hover {
-  opacity: 1;
-}
-
-/* === Section container ===
- * v1.3.0b: asymmetric pacing. По умолчанию section получает
- * `--L-silence-base` padding-top. Конкретные секции могут override —
- * например CTA получает `--L-silence-monumental`. Это даёт «more
- * brutal pacing, less UI symmetry» из brief'а.
- */
-.ec-landing__section {
-  padding: var(--L-silence-base) 0 var(--L-gap-7);
-}
-/* Section head — asymmetric, title dominant. */
-.ec-landing__section-head {
-  display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(0, 0.8fr);
-  gap: var(--L-gap-6);
-  align-items: end;
-  margin-bottom: var(--L-gap-6);
-}
-.ec-landing__section-title {
-  margin: var(--L-gap-3) 0 0;
-  font-size: var(--L-type-h1);
-  font-family: var(--ec-font-display, var(--ec-font-sans, "Geist", sans-serif));
-  line-height: 0.96;
-  letter-spacing: var(--L-track-display);
-  font-weight: 600;
-  text-transform: uppercase;
-  color: var(--L-fg-strong);
-}
-.ec-landing__section-copy {
-  font-size: var(--L-type-body);
-  line-height: 1.65;
-  color: var(--L-fg-muted);
-}
-
-/* === Features grid (4-cards) === */
-.ec-landing__features {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--L-gap-3);
-}
-.ec-landing__feature {
-  display: flex;
-  flex-direction: column;
-  gap: var(--L-gap-3);
-  padding: var(--L-gap-5) var(--L-gap-4);
-  background: var(--L-surface);
-  border: 1px solid var(--L-border-hair);
-  border-radius: var(--L-r-md);
-  min-height: 240px;
-  transition:
-    border-color var(--L-dur-fast) var(--L-ease-out),
-    background var(--L-dur-fast) var(--L-ease-out);
-}
-.ec-landing__feature:hover {
-  border-color: var(--L-border-signal);
-  background: var(--L-surface-elev);
-}
-.ec-landing__feature-icon {
-  width: 36px;
-  height: 36px;
-  display: grid;
-  place-items: center;
-  border-radius: var(--L-r-sm);
   color: var(--L-signal);
-  background: hsl(199 58% 60% / 0.06);
 }
-.ec-landing__feature-title {
+.ec-hero-stage__fragment-time {
+  font-family: ui-monospace, monospace;
+  font-size: var(--L-type-mono);
+  color: var(--L-fg-dim);
+}
+.ec-hero-stage__fragment-body {
   margin: 0;
-  font-size: var(--L-type-sm);
-  font-weight: 600;
-  letter-spacing: var(--L-track-mono);
-  text-transform: uppercase;
+  font-size: clamp(1.15rem, 1.6vw, 1.45rem);
+  line-height: 1.4;
   color: var(--L-fg-strong);
-  margin-top: auto;
+  letter-spacing: -0.015em;
 }
-.ec-landing__feature-body {
-  margin: 0;
+.ec-hero-stage__fragment-actor {
   font-size: var(--L-type-sm);
-  line-height: 1.5;
   color: var(--L-fg-muted);
 }
 
-/* === AI Memory + Security split sections ===
- * v1.3.0b: asymmetric 5fr/4fr (визуал доминирует над copy для AI Memory,
- * copy доминирует над visual для Security — оба не 50/50). Direction
- * управляется .ec-landing__split--reverse в JSX. */
-.ec-landing__split {
-  display: grid;
-  grid-template-columns: minmax(0, 5fr) minmax(0, 4fr);
-  gap: var(--L-gap-6);
-  align-items: center;
-}
-.ec-landing__split--reverse .ec-landing__split-visual {
-  order: -1;
-}
-.ec-landing__split-copy {
+.ec-hero-stage__memory {
+  align-self: flex-end;
+  max-width: 28rem;
+  padding: var(--L-gap-4) 0 0 var(--L-gap-4);
+  border-left: 1px solid var(--L-border-signal);
   display: flex;
   flex-direction: column;
   gap: var(--L-gap-3);
 }
-.ec-landing__split-visual {
-  position: relative;
-  min-height: 380px;
-  border-radius: var(--L-r-lg);
-  border: 1px solid var(--L-border-hair);
-  background:
-    radial-gradient(circle at 50% 50%, hsl(199 58% 60% / 0.04), transparent 60%),
-    var(--L-base-1);
-  display: grid;
-  place-items: center;
-  overflow: hidden;
-}
-.ec-landing__split-placeholder {
+.ec-hero-stage__memory-label {
   font-family: ui-monospace, monospace;
   font-size: var(--L-type-mono);
   letter-spacing: var(--L-track-mono-wide);
   text-transform: uppercase;
-  color: var(--L-fg-dim);
-  text-align: center;
-  padding: var(--L-gap-4);
+  color: var(--L-signal);
 }
-.ec-landing__split-bullets {
+.ec-hero-stage__memory-list {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -561,66 +412,545 @@
   flex-direction: column;
   gap: var(--L-gap-2);
 }
-.ec-landing__split-bullets li {
+.ec-hero-stage__memory-list li {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: var(--L-gap-2);
-  font-size: var(--L-type-body);
+  font-size: var(--L-type-sm);
   color: var(--L-fg);
+  line-height: 1.5;
+  opacity: 0;
+  transform: translate3d(0, 8px, 0);
+  transition:
+    opacity var(--L-dur-base) var(--L-ease-out),
+    transform var(--L-dur-base) var(--L-ease-out);
+  transition-delay: var(--ec-cine-delay, 0ms);
 }
-.ec-landing__split-bullets li::before {
-  content: "";
-  width: 12px;
+.ec-hero-stage__memory[data-visible="true"] .ec-hero-stage__memory-list li {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+}
+.ec-hero-stage__memory-bar {
+  display: inline-block;
+  width: 10px;
   height: 1px;
+  margin-right: 2px;
   background: var(--L-signal);
+  opacity: 0.6;
   flex-shrink: 0;
+  transform: translateY(-4px);
 }
 
-/* Security side-chips (right-rail в Security section). */
-.ec-landing__security-chips {
-  display: flex;
-  flex-direction: column;
-  gap: var(--L-gap-3);
-  margin-top: var(--L-gap-4);
-}
-.ec-landing__security-chip {
-  display: flex;
-  align-items: center;
-  gap: var(--L-gap-3);
-  padding: var(--L-gap-3) var(--L-gap-4);
-  background: var(--L-surface);
-  border: 1px solid var(--L-border-hair);
-  border-radius: var(--L-r-md);
-}
-.ec-landing__security-chip-icon {
-  width: 28px;
-  height: 28px;
-  display: grid;
-  place-items: center;
-  color: var(--L-signal);
-}
-.ec-landing__security-chip-text {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  font-size: var(--L-type-sm);
-}
-.ec-landing__security-chip-text strong {
-  color: var(--L-fg-strong);
-  font-weight: 600;
-}
-.ec-landing__security-chip-text span {
-  color: var(--L-fg-muted);
+.ec-hero-stage__process {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--L-gap-2);
   font-family: ui-monospace, monospace;
   font-size: var(--L-type-mono);
   letter-spacing: var(--L-track-mono);
   text-transform: uppercase;
+  color: var(--L-fg-dim);
+  margin-top: auto;
+  padding-top: var(--L-gap-4);
+}
+.ec-hero-stage__process-pair {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--L-gap-1);
+}
+.ec-hero-stage__process-label {
+  color: var(--L-fg-dim);
+}
+.ec-hero-stage__process-value {
+  color: var(--L-signal);
+}
+.ec-hero-stage__process-sep {
+  margin: 0 var(--L-gap-2);
+  color: var(--L-fg-dim);
+  opacity: 0.5;
 }
 
-/* === Bottom CTA band ===
- * v1.3.0b: monumental silence перед CTA — drama-pause через margin-top.
- * Brief: «more brutal pacing». Sections выше получают base silence,
- * CTA — monumental, чтобы он «приходил издалека». */
+/* Auth-mode: stage заменяется auth-dock'ом. */
+.ec-hero-stage--auth {
+  justify-content: flex-start;
+}
+.ec-hero-stage__auth-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--L-gap-3);
+  padding: 0 0 var(--L-gap-3);
+  border-bottom: 1px solid var(--L-border-line);
+}
+.ec-hero-stage__auth-label {
+  font-family: ui-monospace, monospace;
+  font-size: var(--L-type-mono);
+  letter-spacing: var(--L-track-mono-wide);
+  text-transform: uppercase;
+  color: var(--L-fg-dim);
+}
+.ec-hero-stage__auth-head strong {
+  display: block;
+  margin-top: var(--L-gap-1);
+  color: var(--L-fg-strong);
+  font-weight: 600;
+  max-width: 28ch;
+}
+.ec-hero-stage__auth-close {
+  appearance: none;
+  border: 1px solid var(--L-border-line);
+  background: transparent;
+  color: var(--L-fg);
+  border-radius: var(--L-r-md);
+  padding: 10px 16px;
+  font-family: ui-monospace, monospace;
+  font-size: var(--L-type-mono);
+  letter-spacing: var(--L-track-mono);
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    border-color var(--L-dur-fast) var(--L-ease-out),
+    color var(--L-dur-fast) var(--L-ease-out);
+}
+.ec-hero-stage__auth-close:hover {
+  border-color: var(--L-signal);
+  color: var(--L-fg-strong);
+}
+.ec-hero-stage__auth-body {
+  --ec-accent: var(--L-signal);
+  --ec-accent-hover: var(--L-signal-soft);
+  --ec-accent-soft: hsl(199 58% 60% / 0.14);
+  --ec-accent-text: var(--L-base-0);
+  --ec-accent-glow: 0 0 0 1px hsl(199 58% 60% / 0.45);
+  --ec-accent-3: var(--L-signal-soft);
+  --ec-accent-3-soft: hsl(199 58% 60% / 0.14);
+  --ec-accent-gold: var(--L-signal);
+  --ec-accent-gold-soft: hsl(199 58% 60% / 0.14);
+  --ec-accent-gold-hover: var(--L-signal-soft);
+  padding-top: var(--L-gap-4);
+}
+.ec-hero-stage__auth-body .ec-auth-shell--embedded {
+  min-height: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+.ec-hero-stage__auth-body .ec-auth-shell--embedded::before,
+.ec-hero-stage__auth-body .ec-auth-shell--embedded::after {
+  inset: 0;
+}
+.ec-hero-stage__auth-body .ec-auth-shell--embedded .ec-auth-stack {
+  gap: 14px;
+}
+.ec-hero-stage__auth-body .ec-auth-shell--embedded .ec-auth-logo,
+.ec-hero-stage__auth-body .ec-auth-shell--embedded .ec-auth-product-strip,
+.ec-hero-stage__auth-body .ec-auth-shell--embedded .ec-auth-subtitle,
+.ec-hero-stage__auth-body .ec-auth-shell--embedded .ec-auth-radar,
+.ec-hero-stage__auth-body .ec-auth-shell--embedded .ec-auth-top-hud,
+.ec-hero-stage__auth-body .ec-auth-shell--embedded .ec-auth-orbit {
+  display: none;
+}
+.ec-hero-stage__auth-body .ec-auth-shell--embedded .ec-auth-scene {
+  gap: 0;
+}
+.ec-hero-stage__auth-body .ec-auth-shell--embedded .ec-auth-terminal-frame {
+  transform: none;
+}
+.ec-hero-stage__auth-body .ec-auth-shell--embedded .ec-auth-title {
+  color: var(--L-fg-strong);
+}
+
+.ec-hero-stage__mobile {
+  display: none;
+}
+
+/* === Infrastructure trust band === */
+.ec-landing__trust {
+  display: grid;
+  grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.38fr);
+  gap: clamp(28px, 6vw, 96px);
+  align-items: start;
+  margin-top: var(--L-silence-thin);
+  padding: 72px 0 52px;
+  border-top: 1px solid var(--L-border-hair);
+  border-bottom: 1px solid var(--L-border-hair);
+}
+.ec-landing__trust-copy {
+  max-width: 31rem;
+}
+.ec-landing__trust-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: ui-monospace, monospace;
+  font-size: var(--L-type-mono);
+  letter-spacing: var(--L-track-mono-wide);
+  text-transform: uppercase;
+  color: var(--L-fg-dim);
+}
+.ec-landing__trust-kicker::before {
+  content: "";
+  width: 18px;
+  height: 1px;
+  background: var(--L-border-line);
+}
+.ec-landing__trust-title {
+  margin: 18px 0 0;
+  font-size: clamp(2.5rem, 4.3vw, 4.4rem);
+  font-family: var(--ec-font-display, var(--ec-font-sans, "Geist", sans-serif));
+  line-height: 0.94;
+  letter-spacing: var(--L-track-display);
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--L-fg-strong);
+}
+.ec-landing__trust-body {
+  margin: 18px 0 0;
+  max-width: 36rem;
+  font-size: 1.02rem;
+  line-height: 1.72;
+  color: var(--L-fg-muted);
+}
+.ec-landing__trust-rail {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  align-self: end;
+}
+.ec-landing__trust-node {
+  min-height: 138px;
+  padding: 18px 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border-top: 1px solid var(--L-border-line);
+  border-bottom: 1px solid var(--L-border-hair);
+  background: linear-gradient(180deg, hsl(214 24% 9% / 0.76), transparent 88%);
+}
+.ec-landing__trust-node-mark {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  color: var(--L-signal-soft);
+}
+.ec-landing__trust-node strong {
+  color: var(--L-fg-strong);
+  font-size: 0.96rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.ec-landing__trust-node span {
+  color: var(--L-fg-dim);
+  font-family: ui-monospace, monospace;
+  font-size: 0.74rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* === Section container === */
+.ec-landing__section {
+  padding: var(--L-silence-base) 0 var(--L-gap-7);
+}
+.ec-landing__section--system,
+.ec-landing__section--authority {
+  padding-top: var(--L-silence-base);
+}
+
+/* === Execution layer — density variation === */
+.ec-landing__system-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.88fr) minmax(0, 1.12fr);
+  gap: clamp(32px, 6vw, 92px);
+  align-items: start;
+}
+.ec-landing__system-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.ec-landing__system-title {
+  margin: 18px 0 0;
+  font-size: clamp(2.5rem, 4.3vw, 4.4rem);
+  font-family: var(--ec-font-display, var(--ec-font-sans, "Geist", sans-serif));
+  line-height: 0.94;
+  letter-spacing: var(--L-track-display);
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--L-fg-strong);
+}
+.ec-landing__system-body {
+  margin: 18px 0 var(--L-gap-4);
+  max-width: 36rem;
+  font-size: 1.02rem;
+  line-height: 1.72;
+  color: var(--L-fg-muted);
+}
+.ec-landing__execution-rail {
+  border-top: 1px solid var(--L-border-line);
+}
+.ec-landing__execution-row {
+  display: grid;
+  grid-template-columns: 70px minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: start;
+  padding: 28px 0;
+  border-bottom: 1px solid var(--L-border-hair);
+}
+.ec-landing__execution-row--primary {
+  padding: 38px 0;
+}
+.ec-landing__execution-row--compact {
+  padding: 20px 0;
+}
+.ec-landing__execution-row--offset {
+  padding: 24px 0 28px 12%;
+  grid-template-columns: 70px minmax(0, 1fr);
+}
+.ec-landing__execution-index,
+.ec-landing__execution-state,
+.ec-landing__execution-tail {
+  font-family: ui-monospace, monospace;
+  font-size: 0.74rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.ec-landing__execution-index {
+  color: var(--L-fg-dim);
+}
+.ec-landing__execution-index--blank {
+  visibility: hidden;
+}
+.ec-landing__execution-content {
+  display: grid;
+  gap: 10px;
+}
+.ec-landing__execution-state {
+  color: var(--L-signal);
+}
+.ec-landing__execution-title {
+  margin: 0;
+  color: var(--L-fg-strong);
+  font-size: clamp(1.05rem, 1.6vw, 1.35rem);
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  line-height: 1.25;
+}
+.ec-landing__execution-row--compact .ec-landing__execution-title {
+  font-size: 1rem;
+}
+.ec-landing__execution-row--offset .ec-landing__execution-title {
+  font-style: italic;
+  color: var(--L-fg);
+  font-weight: 500;
+}
+.ec-landing__execution-body {
+  margin: 0;
+  max-width: 40rem;
+  color: var(--L-fg-muted);
+  line-height: 1.72;
+}
+.ec-landing__execution-row--compact .ec-landing__execution-body {
+  color: var(--L-fg-dim);
+  font-size: 0.95rem;
+}
+.ec-landing__execution-tail {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--L-fg-dim);
+  padding-top: 3px;
+  white-space: nowrap;
+}
+
+/* === Memory continuum layer — full-bleed === */
+.ec-landing__memory-band {
+  position: relative;
+  margin-inline: calc(50% - 50vw);
+  width: 100vw;
+  margin-top: var(--L-silence-base);
+  padding: var(--L-silence-thin) 0 var(--L-gap-7);
+  background: linear-gradient(180deg, transparent 0%, hsl(213 28% 9% / 0.6) 8%, hsl(213 28% 9% / 0.6) 92%, transparent 100%);
+  border-top: 1px solid var(--L-border-signal);
+  border-bottom: 1px solid var(--L-border-hair);
+}
+.ec-landing__memory-band-inner {
+  max-width: 1280px;
+  margin-inline: auto;
+  padding: 0 clamp(20px, 4vw, 56px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--L-gap-6);
+}
+.ec-landing__memory-band-head {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 38rem;
+  padding-left: var(--L-gap-4);
+  border-left: 1px solid var(--L-border-signal);
+}
+.ec-landing__memory-band-title {
+  margin: 0;
+  font-size: clamp(2.6rem, 5.2vw, 5rem);
+  font-family: var(--ec-font-display, var(--ec-font-sans, "Geist", sans-serif));
+  line-height: 0.96;
+  letter-spacing: var(--L-track-display);
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--L-fg-strong);
+}
+.ec-landing__memory-stream {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--L-border-line);
+}
+.ec-landing__memory-trace {
+  display: grid;
+  grid-template-columns: minmax(120px, 9vw) minmax(160px, 14vw) minmax(0, 1fr);
+  gap: var(--L-gap-4);
+  align-items: baseline;
+  padding: var(--L-gap-4) 0;
+  border-bottom: 1px solid var(--L-border-hair);
+}
+.ec-landing__memory-trace-when {
+  font-family: ui-monospace, monospace;
+  font-size: var(--L-type-mono);
+  letter-spacing: var(--L-track-mono);
+  text-transform: uppercase;
+  color: var(--L-signal);
+}
+.ec-landing__memory-trace-entity {
+  font-family: ui-monospace, monospace;
+  font-size: var(--L-type-mono);
+  letter-spacing: var(--L-track-mono);
+  text-transform: uppercase;
+  color: var(--L-fg-dim);
+}
+.ec-landing__memory-trace-body {
+  margin: 0;
+  font-size: clamp(1.05rem, 1.4vw, 1.25rem);
+  color: var(--L-fg);
+  line-height: 1.55;
+  letter-spacing: -0.005em;
+}
+.ec-landing__memory-band-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--L-gap-4);
+  padding-top: var(--L-gap-3);
+  flex-wrap: wrap;
+}
+.ec-landing__memory-band-sig {
+  font-family: ui-monospace, monospace;
+  font-size: var(--L-type-mono);
+  letter-spacing: var(--L-track-mono-wide);
+  text-transform: uppercase;
+  color: var(--L-fg-dim);
+}
+
+/* === Security authority block === */
+.ec-landing__section--authority {
+  padding-bottom: var(--L-gap-7);
+}
+.ec-landing__authority-head {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 38rem;
+  margin-bottom: var(--L-gap-6);
+}
+.ec-landing__authority-title {
+  margin: 0;
+  font-size: clamp(2.5rem, 4.8vw, 4.6rem);
+  font-family: var(--ec-font-display, var(--ec-font-sans, "Geist", sans-serif));
+  line-height: 0.96;
+  letter-spacing: var(--L-track-display);
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--L-fg-strong);
+}
+.ec-landing__authority-manifest {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--L-gap-5);
+  padding: var(--L-gap-4) 0 var(--L-gap-5);
+  margin-bottom: var(--L-gap-5);
+  border-top: 1px solid var(--L-border-line);
+  border-bottom: 1px solid var(--L-border-hair);
+}
+.ec-landing__authority-spec {
+  display: flex;
+  flex-direction: column;
+  gap: var(--L-gap-2);
+}
+.ec-landing__authority-spec-label {
+  font-family: ui-monospace, monospace;
+  font-size: var(--L-type-mono);
+  letter-spacing: var(--L-track-mono-wide);
+  text-transform: uppercase;
+  color: var(--L-fg-dim);
+}
+.ec-landing__authority-spec-value {
+  font-family: var(--ec-font-display, var(--ec-font-sans, "Geist", sans-serif));
+  font-size: clamp(1.1rem, 1.8vw, 1.6rem);
+  font-weight: 600;
+  color: var(--L-fg-strong);
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+}
+.ec-landing__authority-ledger {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.ec-landing__authority-ledger-row {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  gap: var(--L-gap-4);
+  align-items: baseline;
+  padding: var(--L-gap-4) 0;
+  border-bottom: 1px solid var(--L-border-hair);
+}
+.ec-landing__authority-ledger-row:first-child {
+  border-top: 1px solid var(--L-border-hair);
+}
+.ec-landing__authority-ledger-index {
+  font-family: ui-monospace, monospace;
+  font-size: var(--L-type-mono);
+  letter-spacing: var(--L-track-mono);
+  color: var(--L-signal);
+}
+.ec-landing__authority-ledger-body {
+  margin: 0;
+  font-size: clamp(1.05rem, 1.4vw, 1.2rem);
+  color: var(--L-fg);
+  line-height: 1.55;
+  letter-spacing: -0.005em;
+}
+.ec-landing__authority-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--L-gap-4);
+  padding-top: var(--L-gap-5);
+  flex-wrap: wrap;
+}
+.ec-landing__authority-sig {
+  font-family: ui-monospace, monospace;
+  font-size: var(--L-type-mono);
+  letter-spacing: var(--L-track-mono-wide);
+  text-transform: uppercase;
+  color: var(--L-fg-dim);
+}
+
+/* === Bottom CTA band === */
 .ec-landing__cta {
   display: grid;
   grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
@@ -633,6 +963,12 @@
   border: 1px solid var(--L-border-hair);
   border-radius: var(--L-r-lg);
   margin: var(--L-silence-monumental) 0 var(--L-gap-6);
+}
+.ec-landing__cta--system {
+  padding-top: 56px;
+}
+.ec-landing__cta-copy {
+  max-width: 31rem;
 }
 .ec-landing__cta-title {
   margin: 0 0 var(--L-gap-2);
@@ -652,13 +988,6 @@
   gap: var(--L-gap-3);
   justify-content: flex-end;
   flex-wrap: wrap;
-}
-.ec-landing__cta-or {
-  font-family: ui-monospace, monospace;
-  font-size: var(--L-type-mono);
-  letter-spacing: var(--L-track-mono-wide);
-  text-transform: uppercase;
-  color: var(--L-fg-dim);
 }
 
 /* === Footer === */
@@ -777,28 +1106,11 @@
   position: relative;
   isolation: isolate;
 }
-.ec-cine-orbital-surface::after {
-  content: "";
-  position: absolute;
-  inset: -18%;
-  background:
-    radial-gradient(
-      circle at var(--ec-orbit-glow-x) var(--ec-orbit-glow-y),
-      hsl(199 58% 60% / 0.12),
-      transparent 30%
-    );
-  opacity: 0.9;
-  pointer-events: none;
-  z-index: 0;
-  transition: opacity var(--L-dur-base) var(--L-ease-out);
-}
 .ec-cine-orbital-surface > * {
   position: relative;
   z-index: 1;
 }
 
-/* v1.2.31: signal dots — static (была 4s pulse — calm violated).
- * Glow ослаблен на signal/active, убран на idle (был «point of light»). */
 .ec-cine-signal-dot {
   width: 6px;
   height: 6px;
@@ -811,8 +1123,6 @@
 }
 .ec-cine-signal-dot--active {
   background: var(--L-status-active);
-  /* Точечный glow — active это единственный dot, который сигналит. */
-  box-shadow: 0 0 8px hsl(160 50% 56% / 0.25);
 }
 .ec-cine-signal-dot--amber {
   background: var(--L-amber);
@@ -822,405 +1132,13 @@
   opacity: 0.6;
 }
 
-/* === Hero console ===
-   v1.2.31 polish:
-   - backlight удалён (был decorative glow, нарушал «no glow overload»)
-   - eclipse-rim glow + bright border убраны (cyan-glow-overload)
-   - 3D perspective tilt убран (dribbble hover-effect, brief: «no random hover»)
-   - воздух и тонкий border остались — calm operational surface, не SaaS card.
-*/
-.ec-hero-console {
-  position: relative;
-  min-height: 540px;
-}
-.ec-hero-console__surface {
-  display: flex;
-  flex-direction: column;
-  min-height: 540px;
-  padding: 18px;
-  border-radius: var(--L-r-lg);
-  border: 1px solid var(--L-border-line);
-  background: linear-gradient(180deg, var(--L-base-2), var(--L-base-1));
-  overflow: hidden;
-}
-/* v1.2.31: grid-pattern overlay убран — был «code editor mockup» trope.
-   Chrome-actions (Mac-controls fake) удалены — brief: «no fake futuristic UI». */
-.ec-hero-console__chrome {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--L-gap-3);
-  padding: 4px 4px 16px;
-  border-bottom: 1px solid var(--L-border-hair);
-}
-.ec-hero-console__chrome-brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  font-family: var(--ec-font-mono, ui-monospace, monospace);
-  font-size: var(--L-type-mono);
-  letter-spacing: var(--L-track-mono-wide);
-  text-transform: uppercase;
-  color: var(--L-fg-muted);
-}
-/* v1.2.31: 3-col → 2-col grid (rail + workspace). Metrics column удалена. */
-.ec-hero-console__grid {
-  display: grid;
-  grid-template-columns: minmax(140px, 0.22fr) minmax(0, 1fr);
-  gap: 18px;
-  flex: 1;
-  min-height: 0;
-  padding-top: 18px;
-}
-.ec-hero-console__rail {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding-right: 12px;
-  border-right: 1px solid var(--L-border-hair);
-}
-.ec-hero-console__rail-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.ec-hero-console__rail-list li button {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  background: transparent;
-  color: var(--L-fg-muted);
-  border: 1px solid transparent;
-  border-radius: 10px;
-  font-family: var(--ec-font-mono, ui-monospace, monospace);
-  font-size: 0.78rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  text-align: left;
-  cursor: default;
-}
-.ec-hero-console__rail-list li.is-active button {
-  background: hsl(199 58% 60% / 0.08);
-  border-color: hsl(199 58% 60% / 0.18);
-  color: var(--L-fg-strong);
-}
-/* v1.2.31: rail-meta + meter/status mono-classes removed — соответствующие
-   JSX-блоки удалены из HeroOperationalStage. */
-.ec-hero-console__workspace-kicker,
-.ec-hero-console__panel-head span,
-.ec-hero-console__auth-label {
-  font-family: var(--ec-font-mono, ui-monospace, monospace);
-  font-size: var(--L-type-mono);
-  letter-spacing: var(--L-track-mono-wide);
-  text-transform: uppercase;
-  color: var(--L-fg-dim);
-}
-.ec-hero-console__panel-head strong,
-.ec-hero-console__auth-head strong {
-  color: var(--L-fg-strong);
-  font-weight: 600;
-}
-.ec-hero-console__workspace {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  min-width: 0;
-}
-.ec-hero-console__workspace-head,
-.ec-hero-console__panel,
-.ec-hero-console__auth-head {
-  background: var(--L-surface);
-  border: 1px solid var(--L-border-hair);
-  border-radius: var(--L-r-lg);
-}
-.ec-hero-console__workspace-head {
-  padding: 18px 20px;
-  display: flex;
-  align-items: end;
-  justify-content: space-between;
-  gap: 16px;
-}
-.ec-hero-console__workspace-head h3 {
-  margin: 10px 0 0;
-  max-width: 18ch;
-  color: var(--L-fg-strong);
-  font-size: clamp(1.2rem, 2vw, 1.65rem);
-  line-height: 1.05;
-  letter-spacing: -0.03em;
-  text-transform: uppercase;
-}
-.ec-hero-console__workspace-cta {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-/* v1.2.31: flat — без gradient'ов и hover-bounce.
-   Brief: «no startup gradients, no flashy transitions». */
-.ec-hero-console__cta,
-.ec-hero-console__auth-close {
-  appearance: none;
-  border: 1px solid var(--L-border-line);
-  background: transparent;
-  color: var(--L-fg);
-  border-radius: var(--L-r-md);
-  padding: 12px 18px;
-  font-family: var(--ec-font-mono, ui-monospace, monospace);
-  font-size: 0.78rem;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition:
-    border-color var(--L-dur-fast) var(--L-ease-out),
-    background var(--L-dur-fast) var(--L-ease-out),
-    color var(--L-dur-fast) var(--L-ease-out);
-}
-.ec-hero-console__cta:hover,
-.ec-hero-console__auth-close:hover {
-  border-color: var(--L-signal);
-  color: var(--L-fg-strong);
-}
-.ec-hero-console__cta--primary {
-  background: var(--L-signal);
-  color: var(--L-base-0);
-  border-color: var(--L-signal);
-}
-.ec-hero-console__cta--primary:hover {
-  background: var(--L-signal-soft);
-  border-color: var(--L-signal-soft);
-  color: var(--L-base-0);
-}
-/* v1.2.31: 2 panels (primary execution + AI memory). Voice panel удалена. */
-.ec-hero-console__workspace-panels {
-  display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
-  gap: 14px;
-  flex: 1;
-  min-height: 0;
-}
-.ec-hero-console__panel {
-  padding: 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  min-height: 0;
-}
-.ec-hero-console__panel-head {
-  display: flex;
-  align-items: start;
-  justify-content: space-between;
-  gap: 12px;
-}
-.ec-hero-console__metric {
-  color: var(--L-signal);
-  font-family: var(--ec-font-mono, ui-monospace, monospace);
-  font-size: 0.82rem;
-  letter-spacing: 0.08em;
-}
-/* v1.2.31: progress без gradient и без glow box-shadow (был «glowing progress»
-   dribbble pattern). Flat fill, чистая operational metric. */
-.ec-hero-console__progress {
-  height: 6px;
-  border-radius: 999px;
-  background: hsl(214 20% 12%);
-  overflow: hidden;
-}
-.ec-hero-console__progress-bar {
-  display: block;
-  width: 76%;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--L-signal);
-}
-.ec-hero-console__feed {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.ec-hero-console__feed-item {
-  padding-top: 12px;
-  border-top: 1px solid var(--L-border-hair);
-}
-.ec-hero-console__feed-item:first-child {
-  padding-top: 0;
-  border-top: 0;
-}
-.ec-hero-console__feed-item header {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 6px;
-}
-.ec-hero-console__feed-item strong {
-  color: var(--L-fg-strong);
-  font-size: 0.96rem;
-}
-.ec-hero-console__feed-item span {
-  color: var(--L-fg-dim);
-  font-family: var(--ec-font-mono, ui-monospace, monospace);
-  font-size: 0.72rem;
-  letter-spacing: 0.08em;
-}
-.ec-hero-console__feed-item p,
-.ec-hero-console__memory-list li {
-  margin: 0;
-  color: var(--L-fg-muted);
-  font-size: 0.92rem;
-  line-height: 1.55;
-}
-/* v1.2.31 polish-pass: блоки удалены —
- *   .ec-hero-console__wave + keyframes ec-hero-wave (24 анимированных бара,
- *     last bar delay 3.36s — выглядело как «лагает»)
- *   .ec-hero-console__composer / composer-actions (бутафорная input-полоса)
- *   .ec-hero-console__metrics + meter-card + status-list (правая колонка
- *     из 3 cards — overload)
- *   .ec-hero-console__dial + dial-ring + dial-core (декоративный кружок,
- *     не функция)
- * Соответствующий JSX в HeroOperationalStage тоже удалён.
+/* === Legacy MemoryConstellation / SecurityStackArt ===
+ * v1.3.2 slice C: больше не используются по умолчанию (MemoryContinuumLayer
+ * / SecurityAuthorityBlock — text-only). Стили оставлены для override
+ * через renderHeroStage в preview / dev mode.
  */
-.ec-hero-console__memory-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.ec-hero-console__memory-list li {
-  display: flex;
-  align-items: start;
-  gap: 10px;
-  font-size: 0.92rem;
-  color: var(--L-fg-muted);
-  line-height: 1.55;
-}
-
-.ec-hero-console__auth-screen {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  min-height: 100%;
-}
-.ec-hero-console__auth-head {
-  padding: 16px 18px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-}
-.ec-hero-console__auth-head strong {
-  display: block;
-  margin-top: 8px;
-  max-width: 30ch;
-  line-height: 1.25;
-}
-/* v1.2.31: full cyan/void embedded auth. NO violet, NO gold, NO glow overload.
- * Pavel: «весь embedded auth должен быть cyan/void, без violet/gold».
- *
- * Strategy: override product-tokens (--ec-accent / --ec-accent-gold / -3)
- * на cyan в landing context. Plus — hide биометрический orbit / radar /
- * top-hud / product-strip / logo (это identity-сильные элементы Eclipse
- * product UI, в landing-сцене они дублируют контекст). Оставить чистую
- * форму вход/регистрация.
- */
-.ec-hero-console__auth-body {
-  /* Cyan tokens вместо violet/gold по всему AuthPage tree. */
-  --ec-accent: var(--L-signal);
-  --ec-accent-hover: var(--L-signal-soft);
-  --ec-accent-soft: hsl(199 58% 60% / 0.14);
-  --ec-accent-text: var(--L-base-0);
-  /* Single-layer focus ring — без 3-stack glow. */
-  --ec-accent-glow: 0 0 0 1px hsl(199 58% 60% / 0.45);
-  --ec-accent-3: var(--L-signal-soft);
-  --ec-accent-3-soft: hsl(199 58% 60% / 0.14);
-  /* Gold тоже зацианлен — Pavel: «без gold». */
-  --ec-accent-gold: var(--L-signal);
-  --ec-accent-gold-soft: hsl(199 58% 60% / 0.14);
-  --ec-accent-gold-hover: var(--L-signal-soft);
-  min-height: 0;
-}
-.ec-hero-console__auth-body .ec-auth-shell--embedded {
-  min-height: 100%;
-  padding: 0;
-  background: transparent;
-  border: 0;
-  box-shadow: none;
-}
-.ec-hero-console__auth-body .ec-auth-shell--embedded::before,
-.ec-hero-console__auth-body .ec-auth-shell--embedded::after {
-  inset: 0;
-}
-.ec-hero-console__auth-body .ec-auth-shell--embedded .ec-auth-stack {
-  gap: 14px;
-}
-/* Скрываем identity-blocks AuthPage — в landing-сцене они дублируют
- * brand / kicker уже выше. Оставляем чистую форму. */
-.ec-hero-console__auth-body .ec-auth-shell--embedded .ec-auth-logo,
-.ec-hero-console__auth-body .ec-auth-shell--embedded .ec-auth-product-strip,
-.ec-hero-console__auth-body .ec-auth-shell--embedded .ec-auth-subtitle,
-.ec-hero-console__auth-body .ec-auth-shell--embedded .ec-auth-radar,
-.ec-hero-console__auth-body .ec-auth-shell--embedded .ec-auth-top-hud,
-.ec-hero-console__auth-body .ec-auth-shell--embedded .ec-auth-orbit {
-  display: none;
-}
-.ec-hero-console__auth-body .ec-auth-shell--embedded .ec-auth-scene {
-  gap: 0;
-}
-.ec-hero-console__auth-body .ec-auth-shell--embedded .ec-auth-terminal-frame {
-  transform: none;
-}
-.ec-hero-console__auth-body .ec-auth-shell--embedded .ec-auth-title {
-  color: var(--L-fg-strong);
-  /* v1.2.31: text-shadow убран (glow overload). */
-}
-
-/* v1.2.31: Compact mobile status block — заменяет hero-console на ≤700px.
- * Brief: tight, infrastructural, calm. Не 2-screen scroll тяжёлой консоли. */
-.ec-hero-console__mobile {
-  display: none;
-}
-.ec-hero-console__mobile-status {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--L-gap-2);
-  font-family: var(--ec-font-mono, ui-monospace, monospace);
-  font-size: var(--L-type-mono);
-  letter-spacing: var(--L-track-mono-wide);
-  text-transform: uppercase;
-  color: var(--L-fg-strong);
-}
-.ec-hero-console__mobile-meta {
-  margin-top: var(--L-gap-2);
-  font-family: var(--ec-font-mono, ui-monospace, monospace);
-  font-size: var(--L-type-mono);
-  letter-spacing: var(--L-track-mono);
-  color: var(--L-fg-muted);
-  text-transform: uppercase;
-}
-.ec-hero-console__mobile-cta {
-  margin-top: var(--L-gap-4);
-  width: 100%;
-  appearance: none;
-  padding: 16px 22px;
-  border: 1px solid var(--L-signal);
-  background: var(--L-signal);
-  color: var(--L-base-0);
-  border-radius: var(--L-r-md);
-  font-family: var(--ec-font-mono, ui-monospace, monospace);
-  font-size: var(--L-type-sm);
-  font-weight: 600;
-  letter-spacing: var(--L-track-mono);
-  text-transform: uppercase;
-  cursor: pointer;
-}
-
-/* === Memory constellation === */
 .ec-memory-map {
+  position: relative;
   min-height: 380px;
   padding: 26px;
   display: grid;
@@ -1235,177 +1153,152 @@
   stroke-width: 1.2;
   fill: none;
 }
-.ec-memory-map__core {
+.ec-memory-map__spine {
   position: relative;
   z-index: 2;
-  width: 152px;
-  height: 152px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  gap: 12px;
-  text-align: center;
-  background:
-    radial-gradient(circle at 30% 30%, hsl(199 80% 92% / 0.16), transparent 36%),
-    radial-gradient(circle at 50% 50%, hsl(214 24% 12%), hsl(214 28% 7%) 72%);
-  border: 1px solid hsl(199 58% 60% / 0.22);
-  box-shadow:
-    inset 0 0 0 1px hsl(199 58% 60% / 0.06),
-    0 0 36px hsl(199 58% 60% / 0.08);
+  padding: 20px 24px;
+  background: hsl(214 24% 9% / 0.92);
+  border: 1px solid var(--L-border-line);
+  border-radius: var(--L-r-md);
+  max-width: 36rem;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
-.ec-memory-map__core-shell {
-  width: 68px;
-  height: 68px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  color: var(--L-signal-soft);
-  border: 1px solid hsl(199 58% 60% / 0.24);
-}
-.ec-memory-map__core strong {
-  color: var(--L-fg-strong);
-  font-size: 0.92rem;
-  letter-spacing: 0.08em;
+.ec-memory-map__spine span {
+  font-family: ui-monospace, monospace;
+  font-size: var(--L-type-mono);
+  letter-spacing: var(--L-track-mono-wide);
   text-transform: uppercase;
+  color: var(--L-fg-dim);
+}
+.ec-memory-map__spine strong {
+  color: var(--L-fg-strong);
+  font-size: 1.05rem;
+  line-height: 1.3;
 }
 .ec-memory-map__node {
   position: absolute;
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  padding: 12px 16px;
+  padding: 10px 14px;
   background: hsl(214 24% 9% / 0.9);
   border: 1px solid var(--L-border-hair);
-  border-radius: 12px;
+  border-radius: 10px;
   color: var(--L-fg);
-  font-size: 0.88rem;
+  font-size: 0.85rem;
 }
-.ec-memory-map__node--one { top: 18%; left: 8%; }
-.ec-memory-map__node--two { top: 10%; right: 10%; }
-.ec-memory-map__node--three { top: 42%; right: 2%; }
-.ec-memory-map__node--four { right: 14%; bottom: 12%; }
-.ec-memory-map__node--five { bottom: 11%; left: 20%; }
-.ec-memory-map__node--six { top: 49%; left: 6%; }
+.ec-memory-map__node--one { top: 14%; left: 8%; }
+.ec-memory-map__node--two { top: 8%; right: 12%; }
+.ec-memory-map__node--three { top: 42%; right: 4%; }
+.ec-memory-map__node--four { right: 18%; bottom: 12%; }
+.ec-memory-map__node--five { bottom: 11%; left: 22%; }
+.ec-memory-map__node--six { top: 50%; left: 6%; }
+.ec-memory-map__anchor {
+  position: absolute;
+  bottom: 4%;
+  right: 6%;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: hsl(214 24% 9% / 0.9);
+  border: 1px solid var(--L-border-hair);
+  border-radius: 999px;
+  color: var(--L-fg-muted);
+  font-size: 0.8rem;
+}
 
-/* === Security stack === */
 .ec-security-stack {
-  min-height: 240px;
+  position: relative;
+  min-height: 360px;
   display: grid;
   place-items: center;
-  padding: 12px 16px 10px;
+  padding: 16px 18px;
 }
-.ec-security-stack__halo {
+.ec-security-stack__bay {
   position: absolute;
-  inset: 24% 12% 6%;
-  background: radial-gradient(circle at 50% 52%, hsl(199 58% 60% / 0.14), transparent 54%);
-  filter: blur(10px);
+  inset: 12% 14% 22%;
+  border: 1px solid var(--L-border-hair);
+  border-radius: var(--L-r-md);
+  display: grid;
+  place-items: center;
 }
-.ec-security-stack__platform {
-  position: absolute;
-  width: 72%;
-  height: 32px;
-  bottom: 12%;
-  border-radius: 50%;
-  border: 1px solid hsl(199 58% 60% / 0.12);
+.ec-security-stack__rack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 70%;
 }
-.ec-security-stack__platform::before {
-  content: "";
-  position: absolute;
-  inset: 14% 10%;
-  border-radius: 50%;
-  border: 1px solid hsl(199 58% 60% / 0.08);
-}
-.ec-security-stack__layers {
-  position: relative;
-  width: min(72%, 320px);
-  aspect-ratio: 1.05;
-}
-.ec-security-stack__layer {
-  position: absolute;
-  left: 50%;
-  width: 74%;
-  height: 28%;
-  transform: translateX(-50%) skewY(-12deg);
-  border-radius: 18px;
+.ec-security-stack__unit {
+  height: 28px;
+  border-radius: 4px;
   background: linear-gradient(180deg, hsl(214 22% 16%), hsl(214 28% 9%));
   border: 1px solid hsl(199 58% 60% / 0.12);
-  box-shadow: 0 16px 28px -16px hsl(210 48% 3% / 0.7);
-}
-.ec-security-stack__layer--1 { bottom: 6%; }
-.ec-security-stack__layer--2 { bottom: 24%; width: 66%; }
-.ec-security-stack__layer--3 { bottom: 42%; width: 58%; }
-.ec-security-stack__layer-edge {
-  position: absolute;
-  left: 8%;
-  right: 8%;
-  bottom: 6px;
-  height: 3px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, transparent, hsl(199 58% 60% / 0.78), transparent);
 }
 .ec-security-stack__core {
-  position: absolute;
-  bottom: 48%;
-  left: 50%;
-  width: 84px;
-  height: 84px;
-  transform: translateX(-50%);
-  border-radius: 24px;
-  display: grid;
-  place-items: center;
-  color: var(--L-fg-strong);
-  background: radial-gradient(circle at 30% 30%, hsl(199 80% 92% / 0.12), hsl(214 26% 12%) 66%);
-  border: 1px solid hsl(199 58% 60% / 0.18);
+  position: relative;
+  z-index: 2;
+  padding: 18px 22px;
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  background: hsl(214 24% 9% / 0.95);
+  border: 1px solid var(--L-border-signal);
+  border-radius: var(--L-r-md);
 }
 .ec-security-stack__lock-shell {
-  width: 52px;
-  height: 52px;
+  width: 44px;
+  height: 44px;
   display: grid;
   place-items: center;
-  border-radius: 18px;
+  border-radius: var(--L-r-sm);
   color: var(--L-signal-soft);
   background: hsl(214 28% 8%);
   border: 1px solid hsl(199 58% 60% / 0.16);
 }
-.ec-security-stack__labels {
-  position: absolute;
-  inset: 0;
+.ec-security-stack__core strong {
+  color: var(--L-fg-strong);
+  font-size: 0.95rem;
+  max-width: 18ch;
+  line-height: 1.3;
 }
-.ec-security-stack__label {
+.ec-security-stack__manifest {
   position: absolute;
-  min-width: 160px;
-  padding: 12px 14px;
-  background: hsl(214 24% 9% / 0.92);
-  border: 1px solid var(--L-border-hair);
-  border-radius: 12px;
+  left: 0;
+  right: 0;
+  bottom: 4%;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.ec-security-stack__manifest-row {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  padding: 10px 12px;
+  background: hsl(214 24% 9% / 0.85);
+  border: 1px solid var(--L-border-hair);
+  border-radius: var(--L-r-sm);
 }
-.ec-security-stack__label span {
-  color: var(--L-fg-muted);
-  font-size: 0.74rem;
+.ec-security-stack__manifest-row span {
+  color: var(--L-fg-dim);
+  font-family: ui-monospace, monospace;
+  font-size: 0.72rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
-.ec-security-stack__label strong {
+.ec-security-stack__manifest-row strong {
   color: var(--L-fg-strong);
-  font-size: 0.86rem;
+  font-size: 0.85rem;
 }
-.ec-security-stack__label--1 { top: 6%; right: 2%; }
-.ec-security-stack__label--2 { top: 40%; right: 0; }
-.ec-security-stack__label--3 { bottom: 10%; right: 6%; }
 
 /* === Responsive === */
 @media (max-width: 980px) {
   .ec-landing__hero,
-  .ec-landing__split,
-  .ec-landing__section-head,
   .ec-landing__cta {
     grid-template-columns: 1fr;
-  }
-  .ec-landing__features {
-    grid-template-columns: repeat(2, 1fr);
   }
   .ec-landing__nav-links {
     display: none;
@@ -1416,55 +1309,30 @@
   .ec-landing__footer-brand {
     grid-column: 1 / -1;
   }
-  .ec-hero-console__surface {
-    min-height: 0;
-  }
-  /* v1.2.31: на 700-980px rail и workspace стек'ятся, но full console остаётся.
-     Metrics column убрана из JSX — её overflow правила не нужны. */
-  .ec-hero-console__grid {
+  .ec-landing__trust,
+  .ec-landing__system-grid {
     grid-template-columns: 1fr;
+    gap: 32px;
   }
-  .ec-hero-console__rail {
-    border-right: 0;
-    padding-right: 0;
+  .ec-landing__authority-manifest {
+    grid-template-columns: repeat(2, 1fr);
   }
-  .ec-hero-console__workspace-panels {
-    grid-template-columns: 1fr;
+  .ec-landing__memory-trace {
+    grid-template-columns: minmax(100px, 16vw) minmax(0, 1fr);
+    row-gap: var(--L-gap-1);
   }
-  .ec-security-stack__label {
-    min-width: 140px;
+  .ec-landing__memory-trace-entity {
+    grid-column: 2;
+  }
+  .ec-landing__memory-trace-body {
+    grid-column: 1 / -1;
+  }
+  .ec-landing__execution-row--offset {
+    padding-left: 0;
+    grid-template-columns: 70px minmax(0, 1fr);
   }
 }
 
-/* v1.2.31: ≤700px — hero-console (с rail / workspace / panels) скрывается
- * целиком. Вместо неё рендерится compact status block: «КОНТУР АКТИВЕН» +
- * «3 / 5 СИСТЕМ ОНЛАЙН» + CTA. Это убивает 2-screen vertical scroll
- * тяжёлой console на mobile. */
-@media (max-width: 700px) {
-  .ec-hero-console__surface {
-    display: none;
-  }
-  .ec-hero-console__mobile {
-    display: flex;
-    flex-direction: column;
-    padding: var(--L-gap-5);
-    border: 1px solid var(--L-border-line);
-    border-radius: var(--L-r-lg);
-    background: var(--L-surface);
-  }
-  .ec-hero-console--auth-open .ec-hero-console__mobile {
-    /* Если auth открыт — surface всё-таки нужен для формы. */
-    display: none;
-  }
-  .ec-hero-console--auth-open .ec-hero-console__surface {
-    display: flex;
-  }
-}
-
-/* v1.3.0b: на ≤700px monumental silence ужимается, иначе занимает
-   целый экран на mobile. Hero copy получает 0 padding-left (signal
-   line не нужна на mobile — column становится column, нет места для
-   vertical motif). */
 @media (max-width: 700px) {
   .ec-landing {
     --L-silence-thin: 56px;
@@ -1483,20 +1351,64 @@
   .ec-landing__hero-copy::before {
     display: none;
   }
-  .ec-landing__section-head {
-    grid-template-columns: 1fr;
+  .ec-hero-stage:not(.ec-hero-stage--auth) > .ec-hero-stage__trace,
+  .ec-hero-stage:not(.ec-hero-stage--auth) > .ec-hero-stage__fragment,
+  .ec-hero-stage:not(.ec-hero-stage--auth) > .ec-hero-stage__memory,
+  .ec-hero-stage:not(.ec-hero-stage--auth) > .ec-hero-stage__process {
+    display: none;
   }
-  .ec-landing__split {
-    grid-template-columns: 1fr;
+  .ec-hero-stage__mobile {
+    display: flex;
+    flex-direction: column;
+    gap: var(--L-gap-3);
+    padding: var(--L-gap-5);
+    border: 1px solid var(--L-border-line);
+    border-radius: var(--L-r-lg);
+    background: var(--L-surface);
   }
-  .ec-landing__cta {
-    grid-template-columns: 1fr;
+  .ec-hero-stage__mobile-mono {
+    font-family: ui-monospace, monospace;
+    font-size: var(--L-type-mono);
+    letter-spacing: var(--L-track-mono);
+    text-transform: uppercase;
+    color: var(--L-signal);
+  }
+  .ec-hero-stage__mobile-cta {
+    margin-top: var(--L-gap-2);
+    width: 100%;
+    appearance: none;
+    padding: 16px 22px;
+    border: 1px solid var(--L-signal);
+    background: var(--L-signal);
+    color: var(--L-base-0);
+    border-radius: var(--L-r-md);
+    font-family: ui-monospace, monospace;
+    font-size: var(--L-type-sm);
+    font-weight: 600;
+    letter-spacing: var(--L-track-mono);
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+  .ec-landing__memory-band {
+    padding: var(--L-silence-thin) 0 var(--L-gap-6);
+  }
+  .ec-landing__authority-manifest {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--L-gap-4);
   }
 }
 
 @media (max-width: 560px) {
-  .ec-landing__features {
-    grid-template-columns: 1fr;
+  .ec-landing__hero {
+    gap: var(--L-gap-5);
+    padding-top: var(--L-gap-6);
+  }
+  .ec-landing__hero-title {
+    font-size: clamp(2.6rem, 18vw, 4.1rem);
+  }
+  .ec-landing__hero-stage,
+  .ec-hero-stage {
+    min-height: 0;
   }
   .ec-landing__cta-actions {
     justify-content: flex-start;
@@ -1508,37 +1420,20 @@
   .ec-landing__footer {
     grid-template-columns: 1fr;
   }
-  .ec-landing__hero {
-    gap: var(--L-gap-5);
-    padding-top: var(--L-gap-6);
-  }
-  .ec-landing__hero-title {
-    font-size: clamp(2.6rem, 18vw, 4.1rem);
-  }
-  .ec-landing__hero-stage,
-  .ec-hero-console {
-    min-height: 0;
-  }
-  /* Auth-screen flow на mobile — column + full-width controls. */
-  .ec-hero-console__workspace-head,
-  .ec-hero-console__auth-head {
-    flex-direction: column;
-    align-items: start;
-  }
-  .ec-hero-console__workspace-head h3 {
-    max-width: none;
-  }
-  .ec-hero-console__workspace-cta,
-  .ec-hero-console__cta,
-  .ec-hero-console__auth-close {
-    width: 100%;
-  }
-  .ec-hero-console__workspace-cta {
-    display: grid;
+  .ec-landing__authority-manifest {
     grid-template-columns: 1fr;
   }
-  .ec-hero-console__panel {
-    padding: 16px;
+  .ec-landing__memory-trace {
+    grid-template-columns: 1fr;
+  }
+  .ec-landing__memory-trace-entity {
+    grid-column: 1;
+  }
+  .ec-landing__memory-trace-body {
+    grid-column: 1;
+  }
+  .ec-landing__memory-band-head {
+    padding-left: var(--L-gap-3);
   }
   .ec-memory-map {
     min-height: 420px;
@@ -1549,39 +1444,27 @@
     width: 100%;
     justify-content: center;
   }
-  .ec-memory-map__links {
+  .ec-memory-map__links,
+  .ec-memory-map__anchor {
     display: none;
   }
   .ec-security-stack {
-    min-height: 420px;
-    padding-top: 28px;
+    min-height: 380px;
   }
-  /* v1.2.31: убран magic-number `margin-top: 220px`. Labels flow'ятся
-   * под art'ом естественно через flex column gap. */
-  .ec-security-stack__labels {
+  .ec-security-stack__manifest {
     position: static;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    width: 100%;
     margin-top: var(--L-gap-4);
-  }
-  .ec-security-stack__label {
-    position: static;
-    width: 100%;
+    grid-template-columns: 1fr;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .ec-landing-btn,
-  .ec-landing__nav-link,
-  .ec-landing__feature,
   .ec-landing__footer-col a,
   .ec-landing__footer-col button,
   .ec-landing__footer-social a {
     transition: none;
   }
-  .ec-landing-btn:hover,
   .ec-landing-btn:hover .ec-landing-btn__arrow {
     transform: none;
   }
@@ -1592,9 +1475,12 @@
     transform: none;
     transition: none;
   }
+  .ec-hero-stage__memory-list li {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
   .ec-cine-orbital-surface::after,
-  .ec-hero-console__surface,
-  .ec-hero-console__wave span,
   .ec-cine-signal-dot {
     animation: none;
     transition: none;
