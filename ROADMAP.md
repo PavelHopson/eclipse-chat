@@ -5,7 +5,9 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.2.31** (landing polish-pass: убраны 3D tilt /
+**Текущая версия:** **v1.2.32** (clean hash-route `#auth-panel` для cold-open
+embedded auth, без glow-overrides; v1.2.31 уже LIVE на проде с
+landing polish-pass: убраны 3D tilt /
 Mac controls / dial / metrics column / voice waveform / composer strip /
 signal-dot pulse / hero-title glow / progress glow / gradient CTAs;
 mobile ≤700px заменён на compact status block; embedded auth теперь
@@ -88,7 +90,33 @@ security-art)).
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.2.31:**
+**Изменения v1.1.25 → v1.2.32:**
+
+- **v1.2.32** — **clean commit: hash-route `#auth-panel` для cold-open
+  embedded auth**. Follow-up к Codex'овым uncommitted правкам после
+  v1.2.31 polish-pass. Pavel verdict: «оставить только hash-route идею,
+  visual glow-часть выкинуть».
+  - **App.tsx**: новый `AUTH_PANEL_HASH = "#auth-panel"` + regex.
+    `parseLandingHash()` теперь возвращает `{ portalServerId,
+    wantsAuthPanel }` — supports parallel hash routes (existing
+    `#/portal/<serverId>` сохранён). На init — если URL содержит
+    `#auth-panel`, `authSurface` стартует с "login". `hashchange`
+    listener реагирует на runtime смену. `openAuthSurface` пишет
+    hash через `replaceLandingHash(AUTH_PANEL_HASH)`,
+    `closeAuthSurface` — `replaceLandingHash(null)`. Без reload, без
+    отдельной page route.
+  - **NOT включено** (выкинуто из Codex'овой uncommitted работы):
+    - `repeating-conic-gradient` rotating cyan rays на
+      `.ec-auth-terminal-frame`
+    - `radial-gradient` cyan glow по pointer position
+    - `drop-shadow 0 0 24px hsl(199 58% 60% / 0.08)`
+    - `box-shadow inset -40px 80px` на `.ec-auth-terminal`
+    Pavel в polish-pass'е v1.2.31 явно сказал «не добавлять новые
+    эффекты» — revert до clean v1.2.31 landing.css.
+  - **Deploy gate**: v1.2.31 уже LIVE на проде (deployed 24.05 ~07:23
+    UTC, smoke `/api/version=1.2.31` + `/api/health ok:true`
+    зелёные). v1.2.32 — точечный hash-route addition, без миграций.
+  Сборка зелёная (tsc + vite).
 
 - **v1.2.31** — **landing polish-pass: убираем dribbble/SaaS/crypto-вайб,
   приводим к calm operational infrastructure**. Реакция на brutal QA

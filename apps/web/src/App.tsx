@@ -27,11 +27,38 @@ const CLIENT_VERSION =
  * Phase 2 можно мигрировать на path route + nginx try_files.
  */
 const PORTAL_HASH_RE = /^#\/portal\/([\w-]+)\/?$/;
+const AUTH_PANEL_HASH = "#auth-panel";
+const AUTH_PANEL_HASH_RE = /^#auth-panel\/?$/i;
 
-function parsePortalHash(): string | null {
-  if (typeof window === "undefined") return null;
-  const match = window.location.hash.match(PORTAL_HASH_RE);
-  return match ? match[1] : null;
+function parseLandingHash(hash?: string): {
+  portalServerId: string | null;
+  wantsAuthPanel: boolean;
+} {
+  if (typeof window === "undefined" && hash == null) {
+    return { portalServerId: null, wantsAuthPanel: false };
+  }
+
+  const nextHash = hash ?? window.location.hash;
+  const portalMatch = nextHash.match(PORTAL_HASH_RE);
+  if (portalMatch) {
+    return { portalServerId: portalMatch[1], wantsAuthPanel: false };
+  }
+
+  return {
+    portalServerId: null,
+    wantsAuthPanel: AUTH_PANEL_HASH_RE.test(nextHash),
+  };
+}
+
+function replaceLandingHash(nextHash: string | null) {
+  if (typeof window === "undefined") return;
+  const normalizedHash = nextHash ?? "";
+  if ((window.location.hash || "") === normalizedHash) return;
+  window.history.replaceState(
+    null,
+    "",
+    `${window.location.pathname}${window.location.search}${normalizedHash}`,
+  );
 }
 
 const loadingStyle: CSSProperties = {
@@ -48,15 +75,24 @@ const loadingStyle: CSSProperties = {
 export function App() {
   const { view, user, error, login, register, logout, socketRev, clearError } = useAuth();
   const [portalServerId, setPortalServerId] = useState<string | null>(() =>
-    parsePortalHash(),
+    parseLandingHash().portalServerId,
   );
-  const [authSurface, setAuthSurface] = useState<null | "login" | "register">(null);
+  const [authSurface, setAuthSurface] = useState<null | "login" | "register">(() =>
+    parseLandingHash().wantsAuthPanel ? "login" : null,
+  );
   const [updateAvailable, setUpdateAvailable] = useState<{
     serverVersion: string;
   } | null>(null);
 
   useEffect(() => {
-    const onHashChange = () => setPortalServerId(parsePortalHash());
+    const onHashChange = () => {
+      const nextHashState = parseLandingHash();
+      setPortalServerId(nextHashState.portalServerId);
+      setAuthSurface((current) =>
+        nextHashState.wantsAuthPanel ? current ?? "login" : null,
+      );
+    };
+
     window.addEventListener("hashchange", onHashChange);
     return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
@@ -93,7 +129,16 @@ export function App() {
 
   const [reloading, setReloading] = useState(false);
   useEffect(() => {
-    if (view !== "auth" && authSurface !== null) {
+    if (view === "loading") return;
+
+    if (view === "auth") {
+      if (authSurface === null && parseLandingHash().wantsAuthPanel) {
+        setAuthSurface("login");
+      }
+      return;
+    }
+
+    if (authSurface !== null) {
       setAuthSurface(null);
     }
   }, [authSurface, view]);
@@ -137,12 +182,15 @@ export function App() {
 
   const openAuthSurface = (mode: "login" | "register") => {
     clearError();
+    setPortalServerId(null);
     setAuthSurface(mode);
+    replaceLandingHash(AUTH_PANEL_HASH);
   };
 
   const closeAuthSurface = () => {
     clearError();
     setAuthSurface(null);
+    replaceLandingHash(null);
   };
 
   return (
