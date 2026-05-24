@@ -267,7 +267,7 @@ export function HeroOperationalStage({
         >
             {mode === "register" && (
               <div className="ec-hero-access__field">
-                <div className="ec-hero-access__input-wrap ec-hero-access__input-wrap--icon">
+                <div className={`ec-hero-access__input-wrap ec-hero-access__input-wrap--icon${displayName ? " is-filled" : ""}`}>
                   <span className="ec-hero-access__field-icon" aria-hidden>
                     <UserIcon />
                   </span>
@@ -276,7 +276,6 @@ export function HeroOperationalStage({
                     type="text"
                     value={displayName}
                     onChange={(event) => setDisplayName(event.target.value)}
-                    placeholder=" "
                     autoComplete="name"
                     required
                     disabled={loading}
@@ -289,7 +288,7 @@ export function HeroOperationalStage({
             )}
 
             <div className="ec-hero-access__field">
-              <div className="ec-hero-access__input-wrap ec-hero-access__input-wrap--icon">
+              <div className={`ec-hero-access__input-wrap ec-hero-access__input-wrap--icon${email ? " is-filled" : ""}`}>
                 <span className="ec-hero-access__field-icon" aria-hidden>
                   <MailIcon />
                 </span>
@@ -298,7 +297,6 @@ export function HeroOperationalStage({
                   type="email"
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
-                  placeholder=" "
                   autoComplete="email"
                   required
                   disabled={loading}
@@ -311,7 +309,7 @@ export function HeroOperationalStage({
 
             <div className="ec-hero-access__field">
               <div
-                className={`ec-hero-access__input-wrap ec-hero-access__input-wrap--icon ec-hero-access__input-wrap--password${scanning ? " is-scanning" : ""}`}
+                className={`ec-hero-access__input-wrap ec-hero-access__input-wrap--icon ec-hero-access__input-wrap--password${scanning ? " is-scanning" : ""}${password ? " is-filled" : ""}`}
               >
                 <span className="ec-hero-access__field-icon" aria-hidden>
                   <LockIcon />
@@ -321,7 +319,6 @@ export function HeroOperationalStage({
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
-                  placeholder=" "
                   autoComplete={mode === "register" ? "new-password" : "current-password"}
                   required
                   disabled={loading}
