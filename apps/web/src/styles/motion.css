@@ -700,21 +700,22 @@
    (hsl ~46) — premium-акцент текущей identity (см. design-brief-v2). */
 
 /* v1.3.7 — brand mark теперь Eclipse Chat logo PNG с text. Height fixed,
- * width auto держит aspect ratio. Drop-shadow cyan вместо violet. */
+ * width auto держит aspect ratio. Drop-shadow cyan вместо violet.
+ * v1.3.8: размер увеличен — было 22/18, стало 36/26 для visibility. */
 .ec-brand-mark {
   display: block;
   width: auto;
-  height: 22px;
+  height: 36px;
   flex-shrink: 0;
   object-fit: contain;
   transform-origin: center;
-  filter: drop-shadow(0 0 10px rgba(93, 181, 217, 0.32));
+  filter: drop-shadow(0 0 12px rgba(93, 181, 217, 0.4));
   animation: ec-brand-mark-breathe 5.2s ease-in-out infinite;
 }
 
 /* Компактная бренд-марка — для chat-header'а «Главная». */
 .ec-brand-mark--sm {
-  height: 18px;
+  height: 26px;
 }
 
 @keyframes ec-brand-mark-breathe {

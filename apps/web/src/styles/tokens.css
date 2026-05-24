@@ -1868,12 +1868,12 @@
   position: relative;
   display: block;
   width: auto;
-  height: 80px;
+  height: 112px;
   margin-bottom: 28px;
 }
 
 .ec-auth-shell--embedded .ec-auth-logo {
-  height: 64px;
+  height: 88px;
   margin-bottom: 18px;
 }
 .ec-auth-logo::before,

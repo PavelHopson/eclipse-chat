@@ -136,13 +136,21 @@
   color: inherit;
 }
 .ec-landing__brand-logo {
-  height: 40px;
+  height: 64px;
   width: auto;
   display: block;
   user-select: none;
 }
 .ec-landing__footer-brand .ec-landing__brand-logo {
-  height: 36px;
+  height: 52px;
+}
+@media (max-width: 700px) {
+  .ec-landing__brand-logo {
+    height: 48px;
+  }
+  .ec-landing__footer-brand .ec-landing__brand-logo {
+    height: 44px;
+  }
 }
 .ec-landing__nav-links {
   display: inline-flex;
