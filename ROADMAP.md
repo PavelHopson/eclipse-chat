@@ -5,9 +5,12 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.2.32** (clean hash-route `#auth-panel` для cold-open
-embedded auth, без glow-overrides; v1.2.31 уже LIVE на проде с
-landing polish-pass: убраны 3D tilt /
+**Текущая версия:** **v1.3.0** (v1.3 visual authority pass slice A:
+copy rewrite + nav cleanup — hero «Исполнение / без хаоса.», section
+markers `[01-04]`, удалены 4 chip-tags и 5 nav links, sections
+переписаны в operational verbs, bottom CTA = один statement без divider;
+v1.2.32 LIVE: clean hash-route `#auth-panel` для cold-open
+embedded auth, без glow-overrides; landing polish-pass: убраны 3D tilt /
 Mac controls / dial / metrics column / voice waveform / composer strip /
 signal-dot pulse / hero-title glow / progress glow / gradient CTAs;
 mobile ≤700px заменён на compact status block; embedded auth теперь
@@ -90,7 +93,87 @@ security-art)).
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.2.32:**
+**Изменения v1.1.25 → v1.3.0:**
+
+- **v1.3.0** — **v1.3 visual authority pass slice A: copy rewrite +
+  nav cleanup**. Реакция на Pavel'я brief «Принципиальный Product
+  Designer + Cinematic Systems Art Director» (24.05.2026): «landing
+  feels clean dark SaaS вместо mission-critical execution
+  infrastructure; нужна visual authority + operational gravity без
+  glow / glass / gradients».
+  - Решение: phased v1.3 в 5 слайсов (a/b/c/d/e). Slice A — zero
+    visual atom, только copy + cleanup. Минимальный risk, fast
+    iteration.
+  - **HERO copy**:
+    - Eyebrow `ОПЕРАЦИОННАЯ ПЛАТФОРМА ДЛЯ КОМАНД` →
+      `[01] КОНТУР ИСПОЛНЕНИЯ` (engineering pagination + specific).
+    - H1 `Коммуникация которая работает.` →
+      `Исполнение / без хаоса.` (operational verb, sharp,
+      eliminates-chaos promise).
+    - Subhead `Чат, задачи, голос и клиентские порталы…` (feature
+      dump) → `Один контур для команд, которые работают,
+      а не обсуждают работу.`
+    - CTAs `Запустить рабочий контур` / `Посмотреть демо` →
+      `Запустить контур` / `Открыть демо`.
+  - **REMOVED** в hero:
+    - 4 chip-tags `SELF-HOSTED · ENCRYPTED · AI MEMORY · REAL-TIME`
+      (повторяли features секцию + заглушали brutal type).
+  - **NAV cleanup**:
+    - 5 menu links (`Продукт / Возможности / Безопасность / Тарифы
+      / Документация`) удалены. Они scrollIntoView в overlapping
+      секции — semantic noise. Brand + Вход + «Запустить контур» —
+      достаточно.
+  - **SECTION HEADLINES**:
+    - Features: `Одна система. Полный контроль.` →
+      `Одна система. Без пропусков.` + eyebrow `[02] Поверхности`.
+    - AI Memory: `Система помнит важное.` → `Контекст остаётся.` +
+      eyebrow `[03] AI Memory`.
+    - Security: `Ваши данные — ваш контроль.` →
+      `Инфраструктура в ваших руках.` + eyebrow
+      `[04] Архитектурное обещание`.
+    - Bottom CTA: `Готовы запустить рабочий контур?` →
+      `Запустите контур.` (statement, не вопрос).
+  - **FEATURES copy** (4 items):
+    - `Чаты и каналы → Каналы`: «Обсуждения, разделённые по
+      проектам. Без шума, без потерь.»
+    - `Задачи и проекты → Исполнение`: «Из сигнала — задача.
+      Ответственный виден сразу.»
+    - `Голос и видео → Голос`: «Созвон без внешних сервисов.
+      Запись остаётся в контексте.»
+    - `Клиентские порталы → Клиенты`: «Внешний доступ к проекту —
+      без хаоса в переписке.»
+  - **SECURITY bullets**: 4 → 3. Убран «Резервное копирование»
+    (hygiene, не differentiator). Оставлены три сильных утверждения
+    про TLS / RBAC / self-hosted.
+  - **AI MEMORY copy**: feature-dump («сохраняет контекст команды:
+    решения, документы, договорённости…») → outcome statement
+    («Решения, файлы, обсуждения — связаны контекстом. Новый
+    человек в команде включается через минуты, не дни.»). CTA
+    `Узнать больше` → `Открыть AI Memory`.
+  - **SECURITY copy**: «Self-hosted архитектура. Шифрование на всех
+    уровнях. Никаких облаков из вашего разрешения.» →
+    «Self-hosted. On-premise. Шифрование на всех уровнях.
+    Архитектура не требует доверия третьей стороне.» CTA
+    `Подробнее о безопасности` → `Архитектура безопасности`.
+  - **BOTTOM CTA**: ghost backup `Посмотреть демо` + `или` divider
+    удалены. Single CTA = single command.
+    Sub: `Разверните Eclipse Chat…` → `Один сервер. Один контур.
+    Полный контроль.`
+
+  **NOT YET в slice A** (запланировано в slice B-E):
+  - Hero composition: monumental type bump + vertical signal line +
+    60/40 grid (slice B).
+  - Features cards → editorial numbered typography без borders
+    (slice C).
+  - AI Memory constellation + slow signal arc + wireframe sphere
+    (slice C).
+  - Security amber hint на core lock (slice C).
+  - Atmosphere depth: scanline overlay + multi-layer radial +
+    section dividers `[ N / 6 ]` (slice D).
+  - Trust band: text → monoline SVG logos (slice D).
+  - Product scene auth as overlay over live console (slice E).
+
+  Сборка зелёная (tsc + vite). Без миграций.
 
 - **v1.2.32** — **clean commit: hash-route `#auth-panel` для cold-open
   embedded auth**. Follow-up к Codex'овым uncommitted правкам после

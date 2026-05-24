@@ -41,15 +41,9 @@ type Props = {
   renderSecurityArt?: () => ReactNode;
 };
 
-const NAV = [
-  { id: "product", label: "Продукт" },
-  { id: "features", label: "Возможности" },
-  { id: "security", label: "Безопасность" },
-  { id: "pricing", label: "Тарифы" },
-  { id: "docs", label: "Документация" },
-] as const;
-
-const HERO_TAGS = ["SELF-HOSTED", "ENCRYPTED", "AI MEMORY", "REAL-TIME"] as const;
+/* v1.3.0a: nav menu links удалены — semantic noise, scrollIntoView в
+   overlapping секции отвлекал от brand+CTA пары. Hero chip-tags тоже
+   удалены — повторяли features секцию. */
 
 const INFRA = [
   "DOCKER",
@@ -60,34 +54,36 @@ const INFRA = [
   "GRAFANA",
 ] as const;
 
+/* v1.3.0a: editorial copy — короче, операционный тон, без feature-dump'а. */
 const FEATURES = [
   {
-    title: "Чаты и каналы",
-    body: "Структурируйте обсуждения по проектам, отделам и темам.",
+    title: "Каналы",
+    body: "Обсуждения, разделённые по проектам. Без шума, без потерь.",
     icon: ChatIcon,
   },
   {
-    title: "Задачи и проекты",
-    body: "Ставьте задачи, назначайте исполнителей и отслеживайте прогресс.",
+    title: "Исполнение",
+    body: "Из сигнала — задача. Ответственный виден сразу.",
     icon: TaskIcon,
   },
   {
-    title: "Голос и видео",
-    body: "Качественные звонки и созвоны без внешних сервисов.",
+    title: "Голос",
+    body: "Созвон без внешних сервисов. Запись остаётся в контексте.",
     icon: VoiceIcon,
   },
   {
-    title: "Клиентские порталы",
-    body: "Дайте клиентам доступ к проектам без хаоса в переписке.",
+    title: "Клиенты",
+    body: "Внешний доступ к проекту — без хаоса в переписке.",
     icon: PortalIcon,
   },
 ] as const;
 
+/* v1.3.0a: 4 → 3 bullets. «Резервное копирование» — hygiene, не
+   differentiator; убрано чтобы оставить три сильных утверждения. */
 const SECURITY_BULLETS = [
-  "TLS-транспорт и контролируемые каналы",
-  "Self-hosted и on-premise",
-  "Ролевой доступ, 2FA и recovery-коды",
-  "Резервное копирование",
+  "TLS-транспорт, контролируемые каналы",
+  "Ролевой доступ, 2FA, recovery",
+  "Контур разворачивается в вашей сети",
 ] as const;
 
 const SECURITY_CHIPS = [
@@ -167,18 +163,7 @@ export function LandingPage({
             </span>
             Eclipse Chat
           </span>
-          <div className="ec-landing__nav-links">
-            {NAV.map((n) => (
-              <button
-                key={n.id}
-                type="button"
-                className="ec-landing__nav-link"
-                onClick={() => scrollToSection(n.id)}
-              >
-                {n.label}
-              </button>
-            ))}
-          </div>
+          {/* v1.3.0a: 5-link menu удалено — semantic noise. Brand + CTA. */}
           <div className="ec-landing__nav-actions">
             <button
               type="button"
@@ -202,17 +187,16 @@ export function LandingPage({
         <section className="ec-landing__hero" id="product">
           <div className="ec-landing__hero-copy">
             <span className="ec-landing__eyebrow">
-              ОПЕРАЦИОННАЯ ПЛАТФОРМА ДЛЯ КОМАНД
+              [01] КОНТУР ИСПОЛНЕНИЯ
             </span>
             <h1 className="ec-landing__hero-title">
-              Коммуникация
+              Исполнение
               <br />
-              которая{" "}
-              <span className="ec-landing__hero-title-accent">работает.</span>
+              <span className="ec-landing__hero-title-accent">без хаоса.</span>
             </h1>
             <p className="ec-landing__hero-subhead">
-              Чат, задачи, голос и клиентские порталы в единой системе.
-              Никакого хаоса. Только исполнение.
+              Один контур для команд, которые работают,
+              а не обсуждают работу.
             </p>
             <div className="ec-landing__hero-cta">
               <button
@@ -220,7 +204,7 @@ export function LandingPage({
                 className="ec-landing-btn ec-landing-btn--primary"
                 onClick={() => onOpenAuth("register")}
               >
-                Запустить рабочий контур
+                Запустить контур
                 <span className="ec-landing-btn__arrow" aria-hidden>→</span>
               </button>
               <button
@@ -228,16 +212,12 @@ export function LandingPage({
                 className="ec-landing-btn ec-landing-btn--ghost"
                 onClick={() => scrollToSection("features")}
               >
-                Посмотреть демо
+                Открыть демо
               </button>
             </div>
-            <div className="ec-landing__hero-tags" aria-hidden>
-              {HERO_TAGS.map((t) => (
-                <span key={t} className="ec-landing__tag">
-                  {t}
-                </span>
-              ))}
-            </div>
+            {/* v1.3.0a: 4 chip-tags (SELF-HOSTED · ENCRYPTED · AI MEMORY ·
+                REAL-TIME) удалены — дублировали features секцию и заглушали
+                brutal type hierarchy. */}
           </div>
 
           {/* Hero stage — Codex slot. */}
@@ -276,17 +256,17 @@ export function LandingPage({
         <section className="ec-landing__section" id="features">
           <div className="ec-landing__section-head">
             <div>
-              <span className="ec-landing__eyebrow">Всё, что нужно команде</span>
+              <span className="ec-landing__eyebrow">[02] Поверхности</span>
               <h2 className="ec-landing__section-title">
                 Одна система.
                 <br />
-                Полный контроль.
+                Без пропусков.
               </h2>
             </div>
             <div>
               <p className="ec-landing__section-copy">
-                Объедините общение, задачи, файлы и клиентов в одном
-                пространстве. Без лишних инструментов и переключений.
+                Общение, задачи, голос и клиенты — в одном контуре.
+                Без переключений между инструментами.
               </p>
               <div style={{ marginTop: "var(--L-gap-4)" }}>
                 <button
@@ -294,7 +274,7 @@ export function LandingPage({
                   className="ec-landing-btn ec-landing-btn--ghost"
                   onClick={() => scrollToSection("security")}
                 >
-                  Все возможности
+                  Архитектура
                   <span className="ec-landing-btn__arrow" aria-hidden>→</span>
                 </button>
               </div>
@@ -325,13 +305,14 @@ export function LandingPage({
               )}
             </div>
             <div className="ec-landing__split-copy">
-              <span className="ec-landing__eyebrow">AI Memory →</span>
+              <span className="ec-landing__eyebrow">[03] AI Memory</span>
               <h2 className="ec-landing__section-title">
-                Система помнит важное.
+                Контекст остаётся.
               </h2>
               <p className="ec-landing__section-copy">
-                AI Memory сохраняет контекст команды: решения, документы,
-                договорённости и ключевые факты. Ничего не теряется.
+                Решения, файлы, обсуждения — связаны контекстом.
+                Новый человек в команде включается через минуты,
+                не дни.
               </p>
               <div>
                 <button
@@ -339,7 +320,7 @@ export function LandingPage({
                   className="ec-landing-btn ec-landing-btn--ghost"
                   onClick={() => scrollToSection("docs")}
                 >
-                  Узнать больше
+                  Открыть AI Memory
                   <span className="ec-landing-btn__arrow" aria-hidden>→</span>
                 </button>
               </div>
@@ -351,13 +332,15 @@ export function LandingPage({
         <section className="ec-landing__section" id="security">
           <div className="ec-landing__split">
             <div className="ec-landing__split-copy">
-              <span className="ec-landing__eyebrow">Безопасность</span>
+              <span className="ec-landing__eyebrow">[04] Архитектурное обещание</span>
               <h2 className="ec-landing__section-title">
-                Ваши данные — ваш контроль.
+                Инфраструктура
+                <br />
+                в ваших руках.
               </h2>
               <p className="ec-landing__section-copy">
-                Self-hosted архитектура. Шифрование на всех уровнях.
-                Никаких облаков из вашего разрешения.
+                Self-hosted. On-premise. Шифрование на всех уровнях.
+                Архитектура не требует доверия третьей стороне.
               </p>
               <ul className="ec-landing__split-bullets">
                 {SECURITY_BULLETS.map((b) => (
@@ -370,7 +353,7 @@ export function LandingPage({
                   className="ec-landing-btn ec-landing-btn--ghost"
                   onClick={() => scrollToSection("docs")}
                 >
-                  Подробнее о безопасности
+                  Архитектура безопасности
                   <span className="ec-landing-btn__arrow" aria-hidden>→</span>
                 </button>
               </div>
@@ -408,31 +391,22 @@ export function LandingPage({
         <section className="ec-landing__cta" id="pricing">
           <div>
             <h2 className="ec-landing__cta-title">
-              Готовы запустить
-              <br />
-              рабочий контур?
+              Запустите контур.
             </h2>
             <p className="ec-landing__cta-sub">
-              Разверните Eclipse Chat на своём сервере и начните работать
-              уже сегодня.
+              Один сервер. Один контур. Полный контроль.
             </p>
           </div>
           <div className="ec-landing__cta-actions">
+            {/* v1.3.0a: единственный CTA — без «или» divider и ghost backup.
+                Один statement = одна команда. */}
             <button
               type="button"
               className="ec-landing-btn ec-landing-btn--primary"
               onClick={() => onOpenAuth("register")}
             >
-              Запустить рабочий контур
+              Запустить контур
               <span className="ec-landing-btn__arrow" aria-hidden>→</span>
-            </button>
-            <span className="ec-landing__cta-or">или</span>
-            <button
-              type="button"
-              className="ec-landing-btn ec-landing-btn--ghost"
-              onClick={() => scrollToSection("features")}
-            >
-              Посмотреть демо
             </button>
           </div>
         </section>
