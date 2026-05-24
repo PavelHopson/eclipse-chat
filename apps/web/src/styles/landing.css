@@ -126,47 +126,23 @@
   justify-content: space-between;
   border-bottom: 1px solid var(--L-line-2);
 }
+/* v1.3.7 — brand logo PNG (Pavel'я logo 24.05.2026). Image содержит crescent
+ * + text "ECLIPSE CHAT", text label рядом не нужен. Высота 40px (nav) /
+ * 36px (footer), width auto держит aspect ratio. */
 .ec-landing__brand {
   display: inline-flex;
   align-items: center;
-  gap: 14px;
-  color: var(--L-text);
-  font-weight: 800;
-  font-size: 15px;
-  letter-spacing: 0.24em;
-  text-transform: uppercase;
+  text-decoration: none;
+  color: inherit;
 }
-.ec-landing__brand-mark {
-  width: 33px;
-  height: 33px;
-  border: 1px solid var(--L-line-rim);
-  border-radius: 50%;
-  position: relative;
-  background: #050a10;
-  display: inline-block;
-  flex-shrink: 0;
+.ec-landing__brand-logo {
+  height: 40px;
+  width: auto;
+  display: block;
+  user-select: none;
 }
-.ec-landing__brand-mark::before {
-  content: "";
-  position: absolute;
-  inset: -3px;
-  border-radius: 50%;
-  border-top: 2px solid var(--L-signal-soft);
-  border-right: 2px solid var(--L-signal-soft);
-  border-left: 2px solid transparent;
-  border-bottom: 2px solid transparent;
-  transform: rotate(-30deg);
-}
-.ec-landing__brand-mark::after {
-  content: "";
-  position: absolute;
-  right: 1px;
-  top: 4px;
-  width: 4px;
-  height: 4px;
-  background: var(--L-signal-soft);
-  border-radius: 50%;
-  box-shadow: 0 0 10px var(--L-signal-soft);
+.ec-landing__footer-brand .ec-landing__brand-logo {
+  height: 36px;
 }
 .ec-landing__nav-links {
   display: inline-flex;

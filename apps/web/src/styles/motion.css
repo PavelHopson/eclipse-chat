@@ -699,33 +699,32 @@
    (hsl 32 — наследие Eclipse Forge, off-identity) на gold #D4AF37
    (hsl ~46) — premium-акцент текущей identity (см. design-brief-v2). */
 
+/* v1.3.7 — brand mark теперь Eclipse Chat logo PNG с text. Height fixed,
+ * width auto держит aspect ratio. Drop-shadow cyan вместо violet. */
 .ec-brand-mark {
   display: block;
-  width: 22px;
+  width: auto;
   height: 22px;
   flex-shrink: 0;
   object-fit: contain;
   transform-origin: center;
-  filter: drop-shadow(0 0 10px hsl(271 100% 72% / 0.34));
+  filter: drop-shadow(0 0 10px rgba(93, 181, 217, 0.32));
   animation: ec-brand-mark-breathe 5.2s ease-in-out infinite;
 }
 
 /* Компактная бренд-марка — для chat-header'а «Главная». */
 .ec-brand-mark--sm {
-  width: 18px;
   height: 18px;
 }
 
 @keyframes ec-brand-mark-breathe {
   0%, 100% {
     transform: scale(1);
-    filter: drop-shadow(0 0 10px hsl(271 100% 72% / 0.34));
+    filter: drop-shadow(0 0 10px rgba(93, 181, 217, 0.32));
   }
   50% {
-    transform: scale(1.045);
-    filter:
-      drop-shadow(0 0 14px hsl(271 100% 72% / 0.44))
-      drop-shadow(0 0 4px hsl(42 94% 70% / 0.22));
+    transform: scale(1.04);
+    filter: drop-shadow(0 0 16px rgba(93, 181, 217, 0.5));
   }
 }
 

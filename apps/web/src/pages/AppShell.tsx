@@ -89,7 +89,7 @@ type Props = {
 
 export function AppShell({ user, socketRev, onLogout }: Props) {
   const socket = useSocket(socketRev);
-  const brandMarkUrl = `${import.meta.env.BASE_URL}brand-mark.svg`;
+  const brandMarkUrl = `${import.meta.env.BASE_URL}eclipse-chat-logo.png`;
   // v1.1.7: live mem/cpu/pg pills (poll /api/health каждые 10s).
   const telemetry = useTelemetry();
 

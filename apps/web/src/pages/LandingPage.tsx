@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { useEffect, useRef } from "react";
+const ECLIPSE_LOGO_URL = `${import.meta.env.BASE_URL}eclipse-chat-logo.png`;
 import {
   CacheGlyph,
   DatabaseGlyph,
@@ -126,10 +127,15 @@ export function LandingPage({
 
       <div className="ec-landing__shell">
         <nav className="ec-landing__nav" aria-label="Главное">
-          <span className="ec-landing__brand">
-            <span className="ec-landing__brand-mark" aria-hidden />
-            Eclipse Chat
-          </span>
+          <a className="ec-landing__brand" href="#product" aria-label="Eclipse Chat">
+            <img
+              className="ec-landing__brand-logo"
+              src={ECLIPSE_LOGO_URL}
+              alt="Eclipse Chat"
+              decoding="async"
+              loading="eager"
+            />
+          </a>
 
           <div className="ec-landing__nav-links">
             {NAV_LINKS.map((link) => (
@@ -234,8 +240,13 @@ export function LandingPage({
         <footer className="ec-landing__footer" id="docs">
           <div className="ec-landing__footer-brand">
             <span className="ec-landing__brand">
-              <span className="ec-landing__brand-mark" aria-hidden />
-              Eclipse Chat
+              <img
+                className="ec-landing__brand-logo"
+                src={ECLIPSE_LOGO_URL}
+                alt="Eclipse Chat"
+                decoding="async"
+                loading="lazy"
+              />
             </span>
             <p>
               Операционная платформа для команд, которые ценят фокус и результат.
