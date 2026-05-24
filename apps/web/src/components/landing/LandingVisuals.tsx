@@ -257,9 +257,14 @@ export function HeroOperationalStage({
           </button>
         </div>
 
-        {/* Form slider — wraps content для horizontal slide transition */}
-        <div className="ec-hero-access__slider" data-mode={mode}>
-          <form className="ec-hero-access__form" onSubmit={submit} noValidate>
+        {/* Form (re-keyed на mode change → animation fires) */}
+        <form
+          key={mode}
+          className="ec-hero-access__form"
+          data-mode={mode}
+          onSubmit={submit}
+          noValidate
+        >
             {mode === "register" && (
               <div className="ec-hero-access__field">
                 <div className="ec-hero-access__input-wrap ec-hero-access__input-wrap--icon">
@@ -404,8 +409,7 @@ export function HeroOperationalStage({
                 </>
               )}
             </p>
-          </form>
-        </div>
+        </form>
 
         <footer className="ec-hero-access__footer">
           <span className="ec-hero-access__footer-mark">

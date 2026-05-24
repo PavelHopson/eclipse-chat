@@ -446,7 +446,7 @@
   position: relative;
   display: flex;
   justify-content: center;
-  align-items: stretch;
+  align-items: flex-start;
 }
 .ec-hero-access__frame {
   position: relative;
@@ -579,8 +579,9 @@
   opacity: 0.22;
   z-index: -1;
 }
-/* Top cyan signal line */
-.ec-hero-access__frame::before {
+/* Top cyan signal line (moved to ::after to avoid conflict с
+ * holographic shimmer ::before added in v1.4.0) */
+.ec-hero-access__frame::after {
   content: "";
   position: absolute;
   top: 0;
@@ -590,6 +591,7 @@
   background: linear-gradient(90deg, transparent, var(--L-signal), transparent);
   opacity: 0.55;
   z-index: 2;
+  pointer-events: none;
 }
 /* Inner cyan glow at top (premium depth) */
 .ec-hero-access__glow {
@@ -702,16 +704,12 @@
   color: #021018;
 }
 
-/* Form slider (v1.4.1 — horizontal slide on tab switch) */
-.ec-hero-access__slider {
-  overflow: hidden;
-  transition: transform 400ms cubic-bezier(0.4, 0, 0.2, 1);
-  will-change: transform;
-}
-.ec-hero-access__slider[data-mode="login"] .ec-hero-access__form {
+/* v1.4.1 — form slide-in animation. Form has key={mode} в JSX → React
+ * remounts на mode change → animation fires fresh каждый раз. */
+.ec-hero-access__form[data-mode="login"] {
   animation: ec-hero-access-slide-in-right 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
-.ec-hero-access__slider[data-mode="register"] .ec-hero-access__form {
+.ec-hero-access__form[data-mode="register"] {
   animation: ec-hero-access-slide-in-left 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 @keyframes ec-hero-access-slide-in-right {
