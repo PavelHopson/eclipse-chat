@@ -5,7 +5,28 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.3.3** (environmental pressure pass:
+**Текущая версия:** **v1.3.4** (premium SaaS pivot per Pavel verdict
+24.05.2026: v1.3.x ушло слишком abstract/archival/minimal — возврат
+к cinematic premium SaaS landing per HTML reference brief. Eclipse
+halo backdrop в hero (740×740 cyan crescent с drop-shadow glow) +
+полный 3-col product UI console mockup на right side (rail + main
+feed с 3 cards: system progress / Мария сообщение с file / Иван
+голосовой канал с waveform / + side панель оператора с dial +
+status list); huge H1 «Коммуникация которая работает.» (clamp 58-
+112px) + lead + 4 chips (Self-hosted / Encrypted / AI Memory /
+Real-time); trust band flat 6-col row с monoline glyphs (Docker /
+Nginx / Postgres / Minio / Redis / Grafana); features section с
+4-card premium grid (Чаты и каналы / Задачи и проекты / Голос и
+видео / Клиентские порталы); AI Memory split layout с visual
+diagram (2 orbits + central core «AI» + 6 floating nodes) + copy
+«Система помнит важное.»; Security split layout с 3D rotated cube
++ 3 sec-cards (AES-256 / RBAC / self-hosted) + bullets list ✓;
+Final CTA split block с «ИЛИ» separator; gradient primary button
+(linear-gradient cyan bright→deep) + ghost button. v1.3.3:
+environmental pressure pass: edge vignette + fixed left/right
+viewport rules с fade (implied continuation outside viewport);
+hero stage fragments сжаты ещё; Memory band переведена в operational
+archaeology — 8 numbered entries (#0142 .. #0001);
 edge vignette + fixed left/right viewport rules с fade (implied
 continuation outside viewport) → stronger framing без новой
 визуальной сложности; hero stage fragments сжаты ещё (убраны
@@ -134,7 +155,64 @@ security-art)).
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.3.3:**
+**Изменения v1.1.25 → v1.3.4:**
+
+- **v1.3.4** — **premium SaaS pivot** per Pavel verdict (24.05.2026):
+  «v1.3 ушло слишком abstract / archival / minimal. DO NOT make it
+  archival/black-box only. Need cinematic premium SaaS: large eclipse
+  halo in hero, strong product UI mockup on right, big headline left,
+  feature cards, AI memory visual diagram, security visual anchor,
+  final CTA. Like Behance/Linear/Vercel top-tier product landing.»
+  - **Hero** (full reference HTML brief): grid 0.95fr/1.15fr min-height
+    860px. Left = eyebrow «Операционная платформа для команд» + H1
+    monumental «Коммуникация / которая работает.» (clamp 58-112px,
+    accent cyan inline) + lead 460px max + 2 CTA (primary gradient
+    pill + ghost) + chips row (Self-hosted / Encrypted / AI Memory /
+    Real-time, mono dots). Right = product UI console mockup 520px
+    height, 3-col 180/1fr/190: rail (Контур label + 4 nav items active),
+    main (topline + 3 cards — Система операционная сводка с progress 76%,
+    Мария + file attachment, Иван + voice waveform), side (Панель
+    оператора + dial 88px + status list). **Eclipse halo** behind:
+    740×740 circle, right 48 top 48, border 1px cyan + border-top 10px
+    white, drop-shadow двойной cyan glow. **Wow effect.**
+  - **Trust band**: flat 6-col row с monoline SVG glyphs (Docker /
+    Nginx / Postgres / Minio / Redis / Grafana), mono labels uppercase,
+    opacity 0.55.
+  - **Features section**: section-grid 0.55fr/1fr. Left copy + ghost
+    CTA. Right 4-card grid (290px min-height): «Чаты и каналы / Задачи
+    и проекты / Голос и видео / Клиентские порталы», каждая с icon
+    54px + h3 + body.
+  - **AI Memory**: split 1fr/0.78fr. Left = visual diagram 380px
+    height (2 elliptical orbits 270×160 + 470×240 + central core 108px
+    с «AI Memory» mono + 6 floating .node labels: Решения / Документы
+    / Задачи / Обсуждения / Файлы / Участники). Right = copy «Система
+    помнит важное.»
+  - **Security**: split 0.9fr/1.1fr. Left = copy «Ваши данные — ваш
+    контроль.» + 4 ✓ bullets + ghost CTA. Right = 3D rotated cube
+    (rotateX 55deg / rotateZ 45deg, layered shadows + nested rings) +
+    3 sec-cards (Данные защищены AES-256 / Доступ контролируется RBAC
+    / Инфраструктура принадлежит вам).
+  - **Final CTA**: split block 1fr/0.8fr с border + gradient bg, padding
+    60×74. Left h2 «Готовы запустить рабочий контур?» + body. Right
+    vertical actions stack (primary + «ИЛИ» mono separator + ghost).
+  - **Buttons**: primary `linear-gradient(180deg, #6cc3e5, #2d86b1)`,
+    color #021018, radius 3px, box-shadow `0 0 40px rgba(93,181,217,.18)`.
+    Mono font 12px weight 800 letter-spacing 0.14em. **Gradient pill,
+    not flat.** Ghost: bg rgba(5,10,16,0.44), border cyan-hair.
+  - **Atmosphere**: 3 layered radial gradients (top-right cyan rim 18%
+    opacity + center faint 4.5% + linear depth top→bottom). Edge framing
+    rules `body::before/::after` fixed left/right 4.8vw vertical lines
+    с linear-gradient mask fade (kept from v1.3.3).
+  - **Что удалено из v1.3.x**: operational fragments hero stage,
+    archeological memory log (8 numbered entries), deployment authority
+    block (mono spec/value pairs), full-bleed memory band breakout,
+    edge vignette atmosphere, `▸` mono prefix CTA + sharp 2px corners,
+    vertical signal line под H1, asymmetric H1 grid 4fr/5fr, eyebrow
+    `[NN]` prefix, density variation execution rows, process meta in
+    hero stage.
+  - **Что сохранено**: dark/cyan palette (base-0 углублён до #03070b),
+    edge body::before/::after framing rules, cinematic motion primitives
+    (Reveal / SignalDot), footer base structure.
 
 - **v1.3.3** — **environmental pressure pass**. Pavel verdict про v1.3.2:
   «first version that feels like a real operational environment. DO NOT

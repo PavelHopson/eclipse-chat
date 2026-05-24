@@ -1,173 +1,72 @@
 import type { ComponentType, ReactNode } from "react";
-import { Reveal, SignalDot, revealDelay } from "./CinematicMotion";
+import { Reveal } from "./CinematicMotion";
 
 type TrustBandProps = {
   items: ReadonlyArray<{
     label: string;
-    role: string;
     glyph: ComponentType;
   }>;
 };
 
-type ExecutionLayerSectionProps = {
+type ExecutionFeaturesGridProps = {
   onOpenSecurity: () => void;
 };
 
-type MemoryContinuumLayerProps = {
-  /* Slot оставлен для backward-compat / override. По умолчанию не
-     рендерим visual — continuum layer text-only full-bleed. */
-  visual?: ReactNode;
+type MemoryStorySectionProps = {
+  visual: ReactNode;
   onOpenDocs: () => void;
 };
 
-type SecurityAuthorityBlockProps = {
+type SecurityStorySectionProps = {
+  visual: ReactNode;
   bullets: ReadonlyArray<string>;
+  attestations: ReadonlyArray<{
+    title: string;
+    value?: string;
+  }>;
   onOpenDocs: () => void;
 };
 
 type FinalCtaSectionProps = {
   onLaunch: () => void;
+  onDemo?: () => void;
 };
 
-/* v1.3.2 slice C — execution rows density variation: index 0 primary
-   (full padding, all parts), index 1 compact (без tail), index 2 primary
-   (с tail + state), index 3 compact-offset (text-only, offset right,
-   без index column). Editorial imbalance per brief. */
-const EXECUTION_LAYERS = [
+const FEATURES = [
   {
-    index: "[01]",
-    state: "сигнал удержан",
-    title: "Канал не выпадает из среды",
-    body: "Адресат, файл и решение остаются в одном следе.",
-    tail: "route / stable",
-    variant: "primary" as const,
+    title: "Чаты и каналы",
+    body: "Структурируйте обсуждения по проектам, отделам и темам.",
   },
   {
-    index: "[02]",
-    state: "исполнение связано",
-    title: "Задача продолжает сообщение",
-    body: "Передача не требует ручной пересборки.",
-    tail: null,
-    variant: "compact" as const,
+    title: "Задачи и проекты",
+    body: "Ставьте задачи, назначайте исполнителей и отслеживайте прогресс.",
   },
   {
-    index: "[03]",
-    state: "контекст живет",
-    title: "Память не возвращает в ноль",
-    body: "После паузы смена входит в то же состояние.",
-    tail: "memory / live",
-    variant: "primary" as const,
+    title: "Голос и видео",
+    body: "Качественные звонки и созвоны без внешних сервисов.",
   },
   {
-    index: null,
-    state: null,
-    title: "Внешний контур не ломает внутренний",
-    body: "Клиент видит только свой слой.",
-    tail: null,
-    variant: "offset" as const,
+    title: "Клиентские порталы",
+    body: "Дайте клиентам доступ к проектам без хаоса в переписке.",
   },
-] as const;
-
-/* v1.3.3 — operational archaeology. Pavel: «decision traces, persistent
-   context, history embedded into the system». Раньше было 4 свежих
-   trace'а — выглядело как «recent activity». Теперь 8 entries в
-   descending depth от сегодня (+ HH:MM) через вчера и прошлую неделю
-   до глубоких слоёв (12.04 deploy). Numbered prefix `#NNNN` implies
-   массивный непрерывный лог. Older entries faded через opacity-depth
-   класс — это history embedded, не «AI feature». */
-const MEMORY_CONTINUUM = [
-  {
-    id: "#0142",
-    when: "+ 14:02",
-    entity: "release / контур",
-    body: "Решение зафиксировано вместе с владельцами и файлами.",
-    depth: "now" as const,
-  },
-  {
-    id: "#0141",
-    when: "+ 13:48",
-    entity: "voice / room-2",
-    body: "Голосовой фрагмент закреплён за задачей.",
-    depth: "now" as const,
-  },
-  {
-    id: "#0140",
-    when: "+ 11:21",
-    entity: "client / north",
-    body: "Внешний контур помнит границу доступа.",
-    depth: "now" as const,
-  },
-  {
-    id: "#0139",
-    when: "+ 09:07",
-    entity: "team / shift",
-    body: "Новая смена вошла в собранную среду.",
-    depth: "today" as const,
-  },
-  {
-    id: "#0118",
-    when: "~ вчера",
-    entity: "decision / arch-rev",
-    body: "Архитектурное решение связано с PR-1842.",
-    depth: "recent" as const,
-  },
-  {
-    id: "#0093",
-    when: "~ 19.05",
-    entity: "incident / canary",
-    body: "Откат канареечного выпуска привязан к причине.",
-    depth: "recent" as const,
-  },
-  {
-    id: "#0042",
-    when: "~ 12.05",
-    entity: "onboarding / team-3",
-    body: "Новые роли вошли с историей решений.",
-    depth: "deep" as const,
-  },
-  {
-    id: "#0001",
-    when: "~ 12.04",
-    entity: "deploy / contour",
-    body: "Контур развёрнут. Память начала запись.",
-    depth: "deep" as const,
-  },
-] as const;
-
-/* v1.3.2 slice C — Deployment authority manifest. НЕ marketing claims.
-   3 короткие технические assertions, как infrastructure-ownership statement.
-   Заменяет attestations card-grid от Codex. */
-const DEPLOYMENT_MANIFEST = [
-  { spec: "host", value: "ваш сервер" },
-  { spec: "транспорт", value: "TLS · scoped" },
-  { spec: "ключи", value: "AES-256-GCM" },
-  { spec: "роли", value: "RBAC + 2FA" },
 ] as const;
 
 export function TrustBand({ items }: TrustBandProps) {
   return (
-    <section className="ec-landing__trust" aria-label="Инфраструктурный слой">
-      <div className="ec-landing__trust-copy">
-        <span className="ec-landing__trust-kicker">[01] Инфраструктурный слой</span>
-        <h2 className="ec-landing__trust-title">Контур остаётся внутри.</h2>
-        <p className="ec-landing__trust-body">
-          Сервис, данные и telemetry живут в вашей сети.
-        </p>
-      </div>
-
-      <div className="ec-landing__trust-rail">
-        {items.map(({ label, role, glyph: Glyph }, index) => (
+    <section className="ec-landing__trust" aria-label="Инфраструктура">
+      <div className="ec-landing__trust-label">Доверие инфраструктурам —</div>
+      <div className="ec-landing__trust-row">
+        {items.map(({ label, glyph: Glyph }, index) => (
           <Reveal
             key={label}
-            className="ec-landing__trust-node"
-            variant="panel"
-            delay={index * 60}
+            className="ec-landing__trust-item"
+            variant="fade"
+            delay={index * 50}
           >
-            <span className="ec-landing__trust-node-mark" aria-hidden>
+            <span className="ec-landing__trust-glyph" aria-hidden>
               <Glyph />
             </span>
-            <strong>{label}</strong>
-            <span>{role}</span>
+            {label}
           </Reveal>
         ))}
       </div>
@@ -175,63 +74,46 @@ export function TrustBand({ items }: TrustBandProps) {
   );
 }
 
-export function ExecutionLayerSection({
+export function ExecutionFeaturesGrid({
   onOpenSecurity,
-}: ExecutionLayerSectionProps) {
+}: ExecutionFeaturesGridProps) {
   return (
-    <section className="ec-landing__section ec-landing__section--system" id="features">
-      <div className="ec-landing__system-grid">
-        <div className="ec-landing__system-copy">
-          <span className="ec-landing__eyebrow">[02] Слой исполнения</span>
-          <h2 className="ec-landing__system-title">
-            Работа не
+    <section className="ec-landing__section" id="features">
+      <div className="ec-landing__section-grid">
+        <div>
+          <span className="ec-landing__section-eyebrow">Всё, что нужно команде</span>
+          <h2 className="ec-landing__h2">
+            Одна система.
             <br />
-            распадается.
+            <span className="ec-landing__h2-accent">Полный контроль.</span>
           </h2>
-          <p className="ec-landing__system-body">
-            Сигнал, действие и доступ продолжают друг друга.
+          <p className="ec-landing__body">
+            Объедините общение, задачи, файлы и клиентов в одном пространстве.
+            Без лишних инструментов и переключений.
           </p>
           <button
             type="button"
-            className="ec-landing-btn ec-landing-btn--ghost"
+            className="ec-landing-btn ec-landing-btn--ghost ec-landing__section-cta"
             onClick={onOpenSecurity}
           >
-            Схема размещения
-            <span className="ec-landing-btn__arrow" aria-hidden>
-              →
-            </span>
+            Все возможности
+            <span className="ec-landing-btn__arrow" aria-hidden>→</span>
           </button>
         </div>
 
-        <div
-          className="ec-landing__execution-rail"
-          aria-label="Непрерывный операционный поток"
-        >
-          {EXECUTION_LAYERS.map((layer, index) => (
+        <div className="ec-landing__features">
+          {FEATURES.map((feature, index) => (
             <Reveal
-              key={layer.title}
-              className={`ec-landing__execution-row ec-landing__execution-row--${layer.variant}`}
+              key={feature.title}
+              className="ec-landing__feature"
               variant="panel"
               delay={index * 80}
             >
-              {layer.index ? (
-                <span className="ec-landing__execution-index">{layer.index}</span>
-              ) : (
-                <span className="ec-landing__execution-index ec-landing__execution-index--blank" aria-hidden />
-              )}
-              <div className="ec-landing__execution-content">
-                {layer.state && (
-                  <span className="ec-landing__execution-state">{layer.state}</span>
-                )}
-                <h3 className="ec-landing__execution-title">{layer.title}</h3>
-                <p className="ec-landing__execution-body">{layer.body}</p>
+              <span className="ec-landing__feature-icon" aria-hidden />
+              <div>
+                <h3>{feature.title}</h3>
+                <p>{feature.body}</p>
               </div>
-              {layer.tail && (
-                <div className="ec-landing__execution-tail">
-                  <SignalDot tone={index === 0 ? "active" : "signal"} />
-                  <span>{layer.tail}</span>
-                </div>
-              )}
             </Reveal>
           ))}
         </div>
@@ -240,170 +122,123 @@ export function ExecutionLayerSection({
   );
 }
 
-/**
- * v1.3.2 slice C — Memory continuum layer.
- *
- * Pavel brief: «Must stop feeling like AI feature section. Need full-width
- * continuity layer feeling. It should feel like the system remembers
- * everything. Not like a feature explanation.»
- *
- * Implementation:
- *   - Full-bleed band, выламываемся из shell padding (negative margin
- *     техника + 100vw width).
- *   - НЕТ grid с visual + copy. visual prop игнорируется по умолчанию.
- *   - Monumental statement сверху, asymmetric.
- *   - Continuity stream: 4 memory traces в sweeping column, каждый =
- *     mono timestamp + entity + body. Это not «AI features», это
- *     просто state-of-memory прямо сейчас.
- *   - Bottom: тонкая mono signature.
- */
-export function MemoryContinuumLayer({
+export function MemoryStorySection({
+  visual,
   onOpenDocs,
-}: MemoryContinuumLayerProps) {
+}: MemoryStorySectionProps) {
   return (
-    <section className="ec-landing__memory-band" id="memory" aria-label="Операционная археология">
-      <div className="ec-landing__memory-band-inner">
-        <header className="ec-landing__memory-band-head">
-          <span className="ec-landing__eyebrow">[03] Слой памяти</span>
-          <h2 className="ec-landing__memory-band-title">
-            Среда помнит
-            <br />
-            каждое решение.
-          </h2>
-        </header>
-
-        <div className="ec-landing__memory-stream" aria-label="Операционная археология — лог решений">
-          {MEMORY_CONTINUUM.map((trace, index) => (
-            <Reveal
-              key={trace.id}
-              className={`ec-landing__memory-trace ec-landing__memory-trace--${trace.depth}`}
-              variant="fade"
-              style={revealDelay(index, 70)}
-            >
-              <span className="ec-landing__memory-trace-id">{trace.id}</span>
-              <span className="ec-landing__memory-trace-when">{trace.when}</span>
-              <span className="ec-landing__memory-trace-entity">{trace.entity}</span>
-              <p className="ec-landing__memory-trace-body">{trace.body}</p>
-            </Reveal>
-          ))}
-        </div>
-
-        <footer className="ec-landing__memory-band-footer">
-          <span className="ec-landing__memory-band-sig">
-            42 дня записи · 1 847 событий · contour active since 12.04.2026
-          </span>
+    <section className="ec-landing__section" id="memory">
+      <div className="ec-landing__memory-grid">
+        <div>{visual}</div>
+        <div>
+          <span className="ec-landing__section-eyebrow">AI Memory</span>
+          <h2 className="ec-landing__h2">Система помнит важное.</h2>
+          <p className="ec-landing__body">
+            AI Memory сохраняет контекст команды: решения, документы,
+            договорённости и ключевые факты. Ничего не теряется.
+          </p>
           <button
             type="button"
-            className="ec-landing-btn ec-landing-btn--link"
+            className="ec-landing-btn ec-landing-btn--ghost ec-landing__section-cta"
             onClick={onOpenDocs}
           >
-            Архитектура памяти →
+            Узнать больше
+            <span className="ec-landing-btn__arrow" aria-hidden>→</span>
           </button>
-        </footer>
+        </div>
       </div>
     </section>
   );
 }
 
-/**
- * v1.3.2 slice C — Security как deployment authority block.
- *
- * Pavel brief: «Must feel deployment authority. Not SaaS security
- * marketing. Think infrastructure ownership, self-hosted sovereignty,
- * operational control.»
- *
- * Implementation:
- *   - НЕТ visual art (lock-in-stack image убран — SaaS-marketing trope).
- *   - Манифест размещения сверху: 4 mono spec/value pairs в horizontal
- *     row, plain text без card chrome.
- *   - Monumental statement.
- *   - Numbered authority ledger: 4 deployment assertions с index mono.
- *   - Bottom: small mono footer signature.
- */
-export function SecurityAuthorityBlock({
+export function SecurityStorySection({
+  visual,
   bullets,
+  attestations,
   onOpenDocs,
-}: SecurityAuthorityBlockProps) {
+}: SecurityStorySectionProps) {
   return (
-    <section
-      className="ec-landing__section ec-landing__section--authority"
-      id="security"
-      aria-label="Контроль среды"
-    >
-      <header className="ec-landing__authority-head">
-        <span className="ec-landing__eyebrow">[04] Контроль среды</span>
-        <h2 className="ec-landing__authority-title">
-          Среда остаётся
-          <br />
-          у вас.
-        </h2>
-      </header>
-
-      <div className="ec-landing__authority-manifest" aria-label="Манифест размещения">
-        {DEPLOYMENT_MANIFEST.map((pair, index) => (
-          <Reveal
-            key={pair.spec}
-            className="ec-landing__authority-spec"
-            variant="fade"
-            style={revealDelay(index, 80)}
+    <section className="ec-landing__section" id="security">
+      <div className="ec-landing__security-grid">
+        <div>
+          <span className="ec-landing__section-eyebrow">Безопасность —</span>
+          <h2 className="ec-landing__h2">
+            Ваши данные —
+            <br />
+            <span className="ec-landing__h2-accent">ваш контроль.</span>
+          </h2>
+          <p className="ec-landing__body">
+            Self-hosted архитектура. Шифрование на всех уровнях. Никаких облаков
+            без вашего разрешения.
+          </p>
+          <ul className="ec-landing__security-bullets">
+            {bullets.map((bullet) => (
+              <li key={bullet}>{bullet}</li>
+            ))}
+          </ul>
+          <button
+            type="button"
+            className="ec-landing-btn ec-landing-btn--ghost ec-landing__section-cta"
+            onClick={onOpenDocs}
           >
-            <span className="ec-landing__authority-spec-label">{pair.spec}</span>
-            <strong className="ec-landing__authority-spec-value">{pair.value}</strong>
-          </Reveal>
-        ))}
+            Подробнее о безопасности
+            <span className="ec-landing-btn__arrow" aria-hidden>→</span>
+          </button>
+        </div>
+
+        <div className="ec-landing__security-side">
+          {visual}
+          <div className="ec-landing__security-cards">
+            {attestations.map(({ title, value }, index) => (
+              <Reveal
+                key={title}
+                className="ec-landing__sec-card"
+                variant="panel"
+                delay={index * 70}
+              >
+                <b>{title}</b>
+                {value}
+              </Reveal>
+            ))}
+          </div>
+        </div>
       </div>
-
-      <ol className="ec-landing__authority-ledger">
-        {bullets.map((bullet, index) => (
-          <li key={bullet} className="ec-landing__authority-ledger-row">
-            <span className="ec-landing__authority-ledger-index">
-              {String(index + 1).padStart(2, "0")}
-            </span>
-            <p className="ec-landing__authority-ledger-body">{bullet}</p>
-          </li>
-        ))}
-      </ol>
-
-      <footer className="ec-landing__authority-footer">
-        <span className="ec-landing__authority-sig">
-          ваш host · ваши ключи · ваша сеть
-        </span>
-        <button
-          type="button"
-          className="ec-landing-btn ec-landing-btn--link"
-          onClick={onOpenDocs}
-        >
-          Схема размещения →
-        </button>
-      </footer>
     </section>
   );
 }
 
-export function FinalCtaSection({ onLaunch }: FinalCtaSectionProps) {
+export function FinalCtaSection({ onLaunch, onDemo }: FinalCtaSectionProps) {
   return (
-    <section className="ec-landing__cta ec-landing__cta--system" id="pricing">
-      <div className="ec-landing__cta-copy">
-        <span className="ec-landing__eyebrow">[05] Допуск к среде</span>
-        <h2 className="ec-landing__cta-title">Войдите в контур.</h2>
-        <p className="ec-landing__cta-sub">
-          Система уже идёт. Осталось открыть доступ.
+    <div className="ec-landing__final" id="pricing">
+      <div>
+        <h2>
+          Готовы запустить
+          <br />
+          <span className="ec-landing__h2-accent">рабочий контур?</span>
+        </h2>
+        <p className="ec-landing__body">
+          Разверните Eclipse Chat на своём сервере и начните работать уже сегодня.
         </p>
       </div>
-
-      <div className="ec-landing__cta-actions">
+      <div className="ec-landing__final-actions">
         <button
           type="button"
           className="ec-landing-btn ec-landing-btn--primary"
           onClick={onLaunch}
         >
-          Запустить контур
-          <span className="ec-landing-btn__arrow" aria-hidden>
-            →
-          </span>
+          Запустить рабочий контур
+          <span className="ec-landing-btn__arrow" aria-hidden>→</span>
+        </button>
+        <span className="ec-landing__final-or">ИЛИ</span>
+        <button
+          type="button"
+          className="ec-landing-btn ec-landing-btn--ghost"
+          onClick={onDemo ?? onLaunch}
+        >
+          Посмотреть демо
         </button>
       </div>
-    </section>
+    </div>
   );
 }
 
