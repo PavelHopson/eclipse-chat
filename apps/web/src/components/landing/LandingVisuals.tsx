@@ -12,16 +12,19 @@ type HeroOperationalStageProps = {
 };
 
 /**
- * v1.3.12 — S1 effects integration:
- *   - Electric Border Effect (SVG turbulence/displace filter + multi-layer
- *     blur glow) → frame border. Recolor cyan #00fffb → наш #5db5d9.
- *   - Password scanner — beam animation overlay при reveal toggle вместо
- *     simple Eye icon swap.
- *   - Submit success state — после успешного login/register checkmark
- *     scale + cyan→green flash.
+ * v1.4.1 — premium auth form polish (Pavel: «давай ещё с формой
+ * авторизации что-то придумаем»):
+ *   - Floating labels (label shrinks + slides up при focus/filled)
+ *   - Field icons (UserIcon / MailIcon / LockIcon) внутри inputs left
+ *     side, cyan glow pulse при focus
+ *   - Tab switch slide transition — form content translateX horizontal
+ *     при login↔register switch
+ *   - Corner bracket markers (4 cyan SVG corners на frame edges)
  *
- * Pavel sent collection of effects (docs/design/effects/), this is S1
- * (Auth premium polish — trivial complexity, maximum visual win).
+ * Сохраняет v1.4.0 effects:
+ *   - Electric border + holographic shimmer
+ *   - Password scanner beam
+ *   - Submit success state с checkmark
  */
 
 function EyeIcon() {
@@ -61,10 +64,47 @@ function CheckIcon() {
   );
 }
 
+function UserIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
+    </svg>
+  );
+}
+
+function MailIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+      <polyline points="22,6 12,13 2,6" />
+    </svg>
+  );
+}
+
+function LockIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect x="3" y="11" width="18" height="11" rx="2" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+    </svg>
+  );
+}
+
+/** Corner bracket SVG для frame edges. */
+function CornerBracket({ position }: { position: "tl" | "tr" | "bl" | "br" }) {
+  return (
+    <span className={`ec-hero-access__corner ec-hero-access__corner--${position}`} aria-hidden>
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+        <path d="M2 8V2h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        <circle cx="2" cy="2" r="1.5" fill="currentColor" />
+      </svg>
+    </span>
+  );
+}
+
 /**
- * Electric Border SVG filter — turbulence + displacement map даёт
- * animated wavy distortion на border applied через CSS `filter: url(#...)`.
- * Recolored via outer CSS layers — filter сам по себе монохромный.
+ * Electric Border SVG filter — turbulence + displacement map.
  */
 function ElectricBorderFilter() {
   return (
@@ -128,7 +168,6 @@ export function HeroOperationalStage({
 
   const handleRevealToggle = () => {
     if (!password) return;
-    // Beam scan animation 600ms — затем toggle type
     setScanning(true);
     setTimeout(() => {
       setShowPassword((v) => !v);
@@ -152,7 +191,6 @@ export function HeroOperationalStage({
     }
     if (ok) {
       setSuccess(true);
-      // Success state будет видна до redirect; компонент unmount'ится после auth.
     }
   };
 
@@ -167,7 +205,7 @@ export function HeroOperationalStage({
       <ElectricBorderFilter />
 
       <Reveal className="ec-hero-access__frame" variant="panel">
-        {/* Electric border layers (under content via z-index) */}
+        {/* Electric border layers */}
         <div className="ec-hero-access__electric" aria-hidden>
           <div className="ec-hero-access__electric-border" />
           <div className="ec-hero-access__electric-glow ec-hero-access__electric-glow--1" />
@@ -175,6 +213,12 @@ export function HeroOperationalStage({
           <div className="ec-hero-access__electric-overlay" />
           <div className="ec-hero-access__electric-bg" />
         </div>
+
+        {/* Corner bracket markers */}
+        <CornerBracket position="tl" />
+        <CornerBracket position="tr" />
+        <CornerBracket position="bl" />
+        <CornerBracket position="br" />
 
         <div className="ec-hero-access__glow" aria-hidden />
 
@@ -213,138 +257,155 @@ export function HeroOperationalStage({
           </button>
         </div>
 
-        <form className="ec-hero-access__form" onSubmit={submit} noValidate>
-          {mode === "register" && (
+        {/* Form slider — wraps content для horizontal slide transition */}
+        <div className="ec-hero-access__slider" data-mode={mode}>
+          <form className="ec-hero-access__form" onSubmit={submit} noValidate>
+            {mode === "register" && (
+              <div className="ec-hero-access__field">
+                <div className="ec-hero-access__input-wrap ec-hero-access__input-wrap--icon">
+                  <span className="ec-hero-access__field-icon" aria-hidden>
+                    <UserIcon />
+                  </span>
+                  <input
+                    id="hero-access-name"
+                    type="text"
+                    value={displayName}
+                    onChange={(event) => setDisplayName(event.target.value)}
+                    placeholder=" "
+                    autoComplete="name"
+                    required
+                    disabled={loading}
+                  />
+                  <label htmlFor="hero-access-name" className="ec-hero-access__floating-label">
+                    Имя
+                  </label>
+                </div>
+              </div>
+            )}
+
             <div className="ec-hero-access__field">
-              <label htmlFor="hero-access-name">Имя</label>
-              <div className="ec-hero-access__input-wrap">
+              <div className="ec-hero-access__input-wrap ec-hero-access__input-wrap--icon">
+                <span className="ec-hero-access__field-icon" aria-hidden>
+                  <MailIcon />
+                </span>
                 <input
-                  id="hero-access-name"
-                  type="text"
-                  value={displayName}
-                  onChange={(event) => setDisplayName(event.target.value)}
-                  placeholder="Как вас зовут"
-                  autoComplete="name"
+                  id="hero-access-email"
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder=" "
+                  autoComplete="email"
                   required
                   disabled={loading}
                 />
+                <label htmlFor="hero-access-email" className="ec-hero-access__floating-label">
+                  Email
+                </label>
               </div>
             </div>
-          )}
 
-          <div className="ec-hero-access__field">
-            <label htmlFor="hero-access-email">Email</label>
-            <div className="ec-hero-access__input-wrap">
-              <input
-                id="hero-access-email"
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="you@company.com"
-                autoComplete="email"
-                required
-                disabled={loading}
-              />
-            </div>
-          </div>
-
-          <div className="ec-hero-access__field">
-            <label htmlFor="hero-access-password">Пароль</label>
-            <div
-              className={`ec-hero-access__input-wrap ec-hero-access__input-wrap--password${scanning ? " is-scanning" : ""}`}
-            >
-              <input
-                id="hero-access-password"
-                type={showPassword ? "text" : "password"}
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder="••••••••"
-                autoComplete={mode === "register" ? "new-password" : "current-password"}
-                required
-                disabled={loading}
-              />
-              {/* Scanner beam overlay (visible when scanning state active) */}
-              <span className="ec-hero-access__scan" aria-hidden>
-                <span className="ec-hero-access__scan-beam" />
-              </span>
-              <button
-                type="button"
-                className={`ec-hero-access__toggle${showPassword ? " is-open" : ""}`}
-                onClick={handleRevealToggle}
-                aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}
-                tabIndex={-1}
-                disabled={!password || loading}
+            <div className="ec-hero-access__field">
+              <div
+                className={`ec-hero-access__input-wrap ec-hero-access__input-wrap--icon ec-hero-access__input-wrap--password${scanning ? " is-scanning" : ""}`}
               >
-                {showPassword ? <EyeOffIcon /> : <EyeIcon />}
-              </button>
-            </div>
-          </div>
-
-          {authError && (
-            <div className="ec-hero-access__error" role="alert">
-              {authError}
-            </div>
-          )}
-
-          <button
-            type="submit"
-            className={`ec-hero-access__submit${loading ? " is-loading" : ""}${success ? " is-success" : ""}`}
-            disabled={loading || success}
-          >
-            <span className="ec-hero-access__submit-shimmer" aria-hidden />
-            {success ? (
-              <span className="ec-hero-access__submit-success">
-                <span className="ec-hero-access__submit-check">
-                  <CheckIcon />
+                <span className="ec-hero-access__field-icon" aria-hidden>
+                  <LockIcon />
                 </span>
-                {mode === "register" ? "Контур активирован" : "Вход разрешён"}
-              </span>
-            ) : (
-              <>
-                <span className="ec-hero-access__submit-label">
-                  {loading
-                    ? mode === "register"
-                      ? "Создаём контур…"
-                      : "Открываем…"
-                    : mode === "register"
-                      ? "Создать контур"
-                      : "Войти"}
+                <input
+                  id="hero-access-password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder=" "
+                  autoComplete={mode === "register" ? "new-password" : "current-password"}
+                  required
+                  disabled={loading}
+                />
+                <label htmlFor="hero-access-password" className="ec-hero-access__floating-label">
+                  Пароль
+                </label>
+                <span className="ec-hero-access__scan" aria-hidden>
+                  <span className="ec-hero-access__scan-beam" />
                 </span>
-                {!loading && (
-                  <span className="ec-hero-access__submit-arrow" aria-hidden>
-                    <ArrowIcon />
+                <button
+                  type="button"
+                  className={`ec-hero-access__toggle${showPassword ? " is-open" : ""}`}
+                  onClick={handleRevealToggle}
+                  aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}
+                  tabIndex={-1}
+                  disabled={!password || loading}
+                >
+                  {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+                </button>
+              </div>
+            </div>
+
+            {authError && (
+              <div className="ec-hero-access__error" role="alert">
+                {authError}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              className={`ec-hero-access__submit${loading ? " is-loading" : ""}${success ? " is-success" : ""}`}
+              disabled={loading || success}
+            >
+              <span className="ec-hero-access__submit-shimmer" aria-hidden />
+              {success ? (
+                <span className="ec-hero-access__submit-success">
+                  <span className="ec-hero-access__submit-check">
+                    <CheckIcon />
                   </span>
-                )}
-              </>
-            )}
-          </button>
+                  {mode === "register" ? "Контур активирован" : "Вход разрешён"}
+                </span>
+              ) : (
+                <>
+                  <span className="ec-hero-access__submit-label">
+                    {loading
+                      ? mode === "register"
+                        ? "Создаём контур…"
+                        : "Открываем…"
+                      : mode === "register"
+                        ? "Создать контур"
+                        : "Войти"}
+                  </span>
+                  {!loading && (
+                    <span className="ec-hero-access__submit-arrow" aria-hidden>
+                      <ArrowIcon />
+                    </span>
+                  )}
+                </>
+              )}
+            </button>
 
-          <p className="ec-hero-access__hint">
-            {mode === "register" ? (
-              <>
-                Уже есть контур?{" "}
-                <button
-                  type="button"
-                  className="ec-hero-access__hint-link"
-                  onClick={() => onOpenAuth("login")}
-                >
-                  Войти
-                </button>
-              </>
-            ) : (
-              <>
-                Нет контура?{" "}
-                <button
-                  type="button"
-                  className="ec-hero-access__hint-link"
-                  onClick={() => onOpenAuth("register")}
-                >
-                  Создать
-                </button>
-              </>
-            )}
-          </p>
-        </form>
+            <p className="ec-hero-access__hint">
+              {mode === "register" ? (
+                <>
+                  Уже есть контур?{" "}
+                  <button
+                    type="button"
+                    className="ec-hero-access__hint-link"
+                    onClick={() => onOpenAuth("login")}
+                  >
+                    Войти
+                  </button>
+                </>
+              ) : (
+                <>
+                  Нет контура?{" "}
+                  <button
+                    type="button"
+                    className="ec-hero-access__hint-link"
+                    onClick={() => onOpenAuth("register")}
+                  >
+                    Создать
+                  </button>
+                </>
+              )}
+            </p>
+          </form>
+        </div>
 
         <footer className="ec-hero-access__footer">
           <span className="ec-hero-access__footer-mark">

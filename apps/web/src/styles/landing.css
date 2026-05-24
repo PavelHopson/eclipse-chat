@@ -474,6 +474,46 @@
   overflow: hidden;
   pointer-events: none;
 }
+
+/* v1.4.1 — Corner bracket markers (4 cyan SVG corners на frame edges).
+ * Pulse animation breathes glow. Soft cyan signal-soft. */
+.ec-hero-access__corner {
+  position: absolute;
+  z-index: 3;
+  color: var(--L-signal-soft);
+  filter: drop-shadow(0 0 6px rgba(154, 216, 239, 0.55));
+  pointer-events: none;
+  animation: ec-hero-access-corner-pulse 4s ease-in-out infinite;
+}
+.ec-hero-access__corner--tl {
+  top: 10px;
+  left: 10px;
+}
+.ec-hero-access__corner--tr {
+  top: 10px;
+  right: 10px;
+  transform: scaleX(-1);
+}
+.ec-hero-access__corner--bl {
+  bottom: 10px;
+  left: 10px;
+  transform: scaleY(-1);
+}
+.ec-hero-access__corner--br {
+  bottom: 10px;
+  right: 10px;
+  transform: scale(-1, -1);
+}
+@keyframes ec-hero-access-corner-pulse {
+  0%, 100% {
+    opacity: 0.7;
+    filter: drop-shadow(0 0 6px rgba(154, 216, 239, 0.45));
+  }
+  50% {
+    opacity: 1;
+    filter: drop-shadow(0 0 12px rgba(154, 216, 239, 0.85));
+  }
+}
 /* v1.3.12 — Electric Border Effect layered around frame.
  * Adapted from docs/design/effects/Electric Border Effect/.
  * Cyan #00fffb → наш --L-signal #5db5d9. Multi-layer blur stack + SVG
@@ -662,6 +702,27 @@
   color: #021018;
 }
 
+/* Form slider (v1.4.1 — horizontal slide on tab switch) */
+.ec-hero-access__slider {
+  overflow: hidden;
+  transition: transform 400ms cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
+}
+.ec-hero-access__slider[data-mode="login"] .ec-hero-access__form {
+  animation: ec-hero-access-slide-in-right 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.ec-hero-access__slider[data-mode="register"] .ec-hero-access__form {
+  animation: ec-hero-access-slide-in-left 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes ec-hero-access-slide-in-right {
+  from { opacity: 0; transform: translate3d(-24px, 0, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+@keyframes ec-hero-access-slide-in-left {
+  from { opacity: 0; transform: translate3d(24px, 0, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
 /* Form */
 .ec-hero-access__form {
   display: flex;
@@ -673,14 +734,6 @@
   flex-direction: column;
   gap: 8px;
 }
-.ec-hero-access__field label {
-  font-family: var(--ec-font-mono, "JetBrains Mono", ui-monospace, monospace);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: #8fa6b7;
-}
 .ec-hero-access__input-wrap {
   position: relative;
   display: flex;
@@ -688,8 +741,8 @@
 }
 .ec-hero-access__input-wrap input {
   flex: 1;
-  height: 48px;
-  padding: 0 16px;
+  height: 54px;
+  padding: 18px 16px 6px 16px;
   background: rgba(4, 8, 13, 0.72);
   border: 1px solid var(--L-line);
   border-radius: 10px;
@@ -698,13 +751,18 @@
   font-size: 14px;
   letter-spacing: 0;
   text-transform: none;
+  caret-color: var(--L-signal);
   transition:
     border-color 220ms var(--L-ease-out),
     background 220ms var(--L-ease-out),
     box-shadow 220ms var(--L-ease-out);
 }
+/* v1.4.1 — input с иконкой → padding-left увеличен под icon space */
+.ec-hero-access__input-wrap--icon input {
+  padding-left: 44px;
+}
 .ec-hero-access__input-wrap input::placeholder {
-  color: #4f6473;
+  color: transparent;
 }
 .ec-hero-access__input-wrap input:hover:not(:focus):not(:disabled) {
   border-color: rgba(154, 216, 239, 0.32);
@@ -716,6 +774,62 @@
   box-shadow:
     0 0 0 4px rgba(93, 181, 217, 0.14),
     0 0 24px rgba(93, 181, 217, 0.12);
+}
+
+/* v1.4.1 — Field icon (mail/lock/user) inside input left side */
+.ec-hero-access__field-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #6f8595;
+  pointer-events: none;
+  z-index: 2;
+  transition:
+    color 220ms var(--L-ease-out),
+    filter 220ms var(--L-ease-out);
+}
+.ec-hero-access__input-wrap--icon:has(input:focus) .ec-hero-access__field-icon,
+.ec-hero-access__input-wrap--icon:has(input:not(:placeholder-shown)) .ec-hero-access__field-icon {
+  color: var(--L-signal);
+  filter: drop-shadow(0 0 6px rgba(93, 181, 217, 0.65));
+}
+
+/* v1.4.1 — Floating label (positioned absolute, scales/translates on
+ * focus or filled state via :placeholder-shown trick) */
+.ec-hero-access__floating-label {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: var(--ec-font-sans, "Inter", system-ui, sans-serif);
+  font-size: 14px;
+  color: #6f8595;
+  pointer-events: none;
+  letter-spacing: 0;
+  text-transform: none;
+  font-weight: 400;
+  transition:
+    transform 220ms cubic-bezier(0.16, 1, 0.3, 1),
+    color 220ms var(--L-ease-out),
+    font-size 220ms var(--L-ease-out);
+  transform-origin: left center;
+  z-index: 1;
+}
+.ec-hero-access__input-wrap--icon .ec-hero-access__floating-label {
+  left: 44px;
+}
+.ec-hero-access__input-wrap input:focus ~ .ec-hero-access__floating-label,
+.ec-hero-access__input-wrap input:not(:placeholder-shown) ~ .ec-hero-access__floating-label {
+  transform: translateY(-22px) scale(0.78);
+  font-family: var(--ec-font-mono, "JetBrains Mono", ui-monospace, monospace);
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--L-signal);
 }
 .ec-hero-access__input-wrap input:disabled {
   opacity: 0.55;
