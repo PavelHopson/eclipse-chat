@@ -120,10 +120,11 @@
 
 /* === Nav === */
 .ec-landing__nav {
-  height: 84px;
+  min-height: 110px;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  padding: 16px 0;
   border-bottom: 1px solid var(--L-line-2);
 }
 /* v1.3.7 — brand logo PNG (Pavel'я logo 24.05.2026). Image содержит crescent
@@ -136,20 +137,39 @@
   color: inherit;
 }
 .ec-landing__brand-logo {
-  height: 64px;
+  height: 96px;
   width: auto;
   display: block;
   user-select: none;
+  filter: brightness(1.15) contrast(1.1)
+    drop-shadow(0 0 18px rgba(93, 181, 217, 0.45));
+  transition: filter var(--L-dur-fast) var(--L-ease-out), transform var(--L-dur-fast) var(--L-ease-out);
+}
+.ec-landing__brand:hover .ec-landing__brand-logo {
+  filter: brightness(1.25) contrast(1.15)
+    drop-shadow(0 0 28px rgba(93, 181, 217, 0.7));
+  transform: scale(1.02);
 }
 .ec-landing__footer-brand .ec-landing__brand-logo {
-  height: 52px;
+  height: 72px;
 }
-@media (max-width: 700px) {
+@media (max-width: 980px) {
   .ec-landing__brand-logo {
-    height: 48px;
+    height: 76px;
   }
   .ec-landing__footer-brand .ec-landing__brand-logo {
-    height: 44px;
+    height: 60px;
+  }
+}
+@media (max-width: 700px) {
+  .ec-landing__nav {
+    min-height: 84px;
+  }
+  .ec-landing__brand-logo {
+    height: 62px;
+  }
+  .ec-landing__footer-brand .ec-landing__brand-logo {
+    height: 54px;
   }
 }
 .ec-landing__nav-links {
