@@ -5,7 +5,28 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.3.2** (v1.3 visual authority slice C:
+**Текущая версия:** **v1.3.3** (environmental pressure pass:
+edge vignette + fixed left/right viewport rules с fade (implied
+continuation outside viewport) → stronger framing без новой
+визуальной сложности; hero stage fragments сжаты ещё (убраны
+trace.detail + fragment.actor — explanation → implication);
+Memory band переведена в operational archaeology — 8 numbered
+entries (#0142 .. #0001) с descending timestamps от сегодня до
+12.04.2026 (deploy date), depth opacity fade для глубоких слоёв
+(0.5–1.0), archaeology signature footer «42 дня записи · 1 847
+событий»; primary CTA получил deployment-command vibe — mono font,
+sharp corners (2px), `▸` prefix через ::before; slice C: hero stage
+больше не «UI mockup» — убраны chrome / rail / 2-panel grid / field
+overlay / 3-row feed; вместо них 4 разрежённых operational
+fragment'а в asymmetric column (trace pulse / primary execution
+fragment без bubble / memory continuum traces / mono process
+signature); Memory section перевeдена в full-bleed
+`MemoryContinuumLayer` — выламывается из shell padding через
+negative margin (100vw); Security переписана в
+`SecurityAuthorityBlock` — deployment authority, NO visual art;
+Execution rows получили density variation (primary 38px padding /
+compact 20px / offset 12% indent text-only); copy сжат
+по всем секциям; v1.3.1: monumental type + asymmetric hero grid 4fr/5fr +
 hero stage больше не «UI mockup» — убраны chrome / rail / 2-panel
 grid / field overlay / 3-row feed; вместо них 4 разрежённых
 operational fragment'а в asymmetric column (trace pulse / primary
@@ -113,7 +134,54 @@ security-art)).
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.3.2:**
+**Изменения v1.1.25 → v1.3.3:**
+
+- **v1.3.3** — **environmental pressure pass**. Pavel verdict про v1.3.2:
+  «first version that feels like a real operational environment. DO NOT
+  add more visual complexity. Next pass should focus on pressure, scale,
+  continuity, mystery, environmental persistence. Not more design.»
+  - **Atmosphere**: добавлен edge vignette (radial inset darkness
+    55%→100%) — corners глубже, центр читается. Pure darkness, NO
+    chroma, NO particles, NO decoration. Pavel: «deeper edge darkness».
+  - **Edge framing**: `.ec-landing::before/::after` — fixed left/right
+    viewport rules (1px, opacity 0.12, mask fade 22%/78%). Это «рамка
+    системы которая идёт за viewport». Pavel: «stronger framing /
+    implied continuation outside viewport / larger invisible system
+    around the hero».
+  - **Hero stage compression**: убраны explanatory parts — `trace.detail`
+    («Канал договорился сам — без оператора»), `fragment.actor`
+    («— Мария»), memory traces сокращены («Клиентский контекст удержан»
+    → «контекст удержан»). Pavel: «less explanation, more implication.
+    Already active, already alive».
+  - **Memory band → operational archaeology**: основная переработка.
+    Pavel: «can become the iconic section. Operational archaeology /
+    decision traces / persistent context / history embedded into the
+    system». Реализация:
+    - 8 numbered entries вместо 4 (`#0142` → `#0001`) — implies
+      массивный непрерывный лог.
+    - Descending timestamps от сегодня (+ 14:02) через вчера и
+      19.05/12.05 до глубокой даты deploy (12.04). Это history
+      embedded, не «recent activity».
+    - `depth` variant per entry (now/today/recent/deep) — opacity
+      fade (1.0 / 0.92 / 0.7 / 0.5) для archaeological visual depth.
+    - Title: «Среда помнит каждое решение.» (было «Состояние не
+      исчезает.») — more confident, archaeological.
+    - Footer signature: «42 дня записи · 1 847 событий · contour
+      active since 12.04.2026» — implies долгую operational record.
+    - Grid: добавлена id колонка (`#NNNN` mono) перед when/entity/body.
+  - **Primary CTA как deployment command**: Pavel: «Reduce web-button
+    feeling. Deployment action / system initiation / contour
+    activation». `.ec-landing-btn--primary`:
+    - mono font (JetBrains Mono / Geist Mono).
+    - sharp corners (radius 2px вместо 8px).
+    - `▸` prefix через `::before` — terminal/command vibe.
+    - letter-spacing 0.14em — wider tracking.
+  - **Mobile**: clarity сохранён, complexity не возвращена. Memory
+    grid на mobile flow'ится в 2 colums (id+when сверху, entity и
+    body под ними).
+  - **Атмосферный бриф соблюдён**: NO particles, NO noise overlays,
+    NO decorative motion, NO fake sci-fi. Только silence, discipline,
+    negative space, slow persistence. Pavel: «do not over-design».
 
 - **v1.3.2** — **v1.3 visual authority slice C: hero перестаёт
   быть UI mockup'ом, Memory становится full-bleed continuity layer,

@@ -29,28 +29,28 @@ type HeroOperationalStageProps = {
  *     - memory continuum traces (offset вправо, signal left rule)
  *     - mono process signature снизу (offset слева)
  *
- *   Auth-mode: stage заменяется auth-dock'ом — заголовок + close + auth
- *   panel. Без stage decorations вокруг (auth не должен быть «внутри
- *   операционного окна», это отдельный слой доступа).
+ *   Auth-mode: stage заменяется access-layer'ом. Он не объясняет среду,
+ *   а просто открывает допуск.
  */
 
+/* v1.3.3 — compression pass. Pavel: «less explanation, more implication.
+ * Already active, already alive.» Убраны trace.detail и fragment.actor
+ * (explanation), memory traces сокращены до minimal evidence. */
 const EXECUTION_TRACE = {
   origin: "EXEC / +0034ms",
   state: "ROUTE STABLE",
-  detail: "Канал договорился сам — без оператора",
 } as const;
 
 const PRIMARY_FRAGMENT = {
   origin: "канал / release",
-  body: "Решение зафиксировано. Файлы и владельцы привязаны.",
-  actor: "Мария",
+  body: "Решение зафиксировано.",
   time: "10:37",
 } as const;
 
 const MEMORY_TRACES = [
-  "Клиентский контекст удержан",
-  "Файл помнит решение",
-  "Смена входит в то же состояние",
+  "контекст удержан",
+  "файл помнит решение",
+  "смена входит без холода",
 ] as const;
 
 const PROCESS_META = [
@@ -76,7 +76,7 @@ export function HeroOperationalStage({
             <strong>
               {authMode === "login"
                 ? "Вход в рабочий контур"
-                : "Запуск нового контура"}
+                : "Активация нового контура"}
             </strong>
           </div>
           <button
@@ -100,7 +100,6 @@ export function HeroOperationalStage({
           <SignalDot tone="active" />
           {EXECUTION_TRACE.state}
         </span>
-        <span className="ec-hero-stage__trace-detail">{EXECUTION_TRACE.detail}</span>
       </Reveal>
 
       <Reveal className="ec-hero-stage__fragment" variant="panel" delay={120}>
@@ -109,11 +108,10 @@ export function HeroOperationalStage({
           <span className="ec-hero-stage__fragment-time">{PRIMARY_FRAGMENT.time}</span>
         </header>
         <p className="ec-hero-stage__fragment-body">{PRIMARY_FRAGMENT.body}</p>
-        <span className="ec-hero-stage__fragment-actor">— {PRIMARY_FRAGMENT.actor}</span>
       </Reveal>
 
       <Reveal className="ec-hero-stage__memory" variant="panel" delay={200}>
-        <span className="ec-hero-stage__memory-label">Контур помнит</span>
+        <span className="ec-hero-stage__memory-label">След остается</span>
         <ul className="ec-hero-stage__memory-list">
           {MEMORY_TRACES.map((trace, index) => (
             <li key={trace} style={revealDelay(index, 70)}>

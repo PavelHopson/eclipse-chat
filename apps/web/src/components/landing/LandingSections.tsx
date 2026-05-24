@@ -68,29 +68,69 @@ const EXECUTION_LAYERS = [
   },
 ] as const;
 
-/* v1.3.2 slice C — Memory continuum: НЕ explainable feature.
-   Это просто sweeping list traces что система держит прямо сейчас.
-   Каждый trace = mono timestamp + entity + body. */
+/* v1.3.3 — operational archaeology. Pavel: «decision traces, persistent
+   context, history embedded into the system». Раньше было 4 свежих
+   trace'а — выглядело как «recent activity». Теперь 8 entries в
+   descending depth от сегодня (+ HH:MM) через вчера и прошлую неделю
+   до глубоких слоёв (12.04 deploy). Numbered prefix `#NNNN` implies
+   массивный непрерывный лог. Older entries faded через opacity-depth
+   класс — это history embedded, не «AI feature». */
 const MEMORY_CONTINUUM = [
   {
+    id: "#0142",
     when: "+ 14:02",
     entity: "release / контур",
     body: "Решение зафиксировано вместе с владельцами и файлами.",
+    depth: "now" as const,
   },
   {
+    id: "#0141",
     when: "+ 13:48",
-    entity: "voice / канал-2",
-    body: "Голосовой фрагмент закреплён за задачей и контекстом.",
+    entity: "voice / room-2",
+    body: "Голосовой фрагмент закреплён за задачей.",
+    depth: "now" as const,
   },
   {
+    id: "#0140",
     when: "+ 11:21",
     entity: "client / north",
-    body: "Внешний контур помнит границу доступа клиента.",
+    body: "Внешний контур помнит границу доступа.",
+    depth: "now" as const,
   },
   {
+    id: "#0139",
     when: "+ 09:07",
     entity: "team / shift",
-    body: "Новый оператор вошёл в собранную среду без ресинхронизации.",
+    body: "Новая смена вошла в собранную среду.",
+    depth: "today" as const,
+  },
+  {
+    id: "#0118",
+    when: "~ вчера",
+    entity: "decision / arch-rev",
+    body: "Архитектурное решение связано с PR-1842.",
+    depth: "recent" as const,
+  },
+  {
+    id: "#0093",
+    when: "~ 19.05",
+    entity: "incident / canary",
+    body: "Откат канареечного выпуска привязан к причине.",
+    depth: "recent" as const,
+  },
+  {
+    id: "#0042",
+    when: "~ 12.05",
+    entity: "onboarding / team-3",
+    body: "Новые роли вошли с историей решений.",
+    depth: "deep" as const,
+  },
+  {
+    id: "#0001",
+    when: "~ 12.04",
+    entity: "deploy / contour",
+    body: "Контур развёрнут. Память начала запись.",
+    depth: "deep" as const,
   },
 ] as const;
 
@@ -221,28 +261,26 @@ export function MemoryContinuumLayer({
   onOpenDocs,
 }: MemoryContinuumLayerProps) {
   return (
-    <section className="ec-landing__memory-band" id="memory" aria-label="Слой памяти">
+    <section className="ec-landing__memory-band" id="memory" aria-label="Операционная археология">
       <div className="ec-landing__memory-band-inner">
         <header className="ec-landing__memory-band-head">
           <span className="ec-landing__eyebrow">[03] Слой памяти</span>
           <h2 className="ec-landing__memory-band-title">
-            Состояние не
+            Среда помнит
             <br />
-            исчезает.
+            каждое решение.
           </h2>
-          <p className="ec-landing__memory-band-note">
-            Среда не возвращается в пустое состояние между сменами, задачами и голосом.
-          </p>
         </header>
 
-        <div className="ec-landing__memory-stream" aria-label="Память — текущее состояние">
+        <div className="ec-landing__memory-stream" aria-label="Операционная археология — лог решений">
           {MEMORY_CONTINUUM.map((trace, index) => (
             <Reveal
-              key={`${trace.when}-${trace.entity}`}
-              className="ec-landing__memory-trace"
+              key={trace.id}
+              className={`ec-landing__memory-trace ec-landing__memory-trace--${trace.depth}`}
               variant="fade"
-              style={revealDelay(index, 90)}
+              style={revealDelay(index, 70)}
             >
+              <span className="ec-landing__memory-trace-id">{trace.id}</span>
               <span className="ec-landing__memory-trace-when">{trace.when}</span>
               <span className="ec-landing__memory-trace-entity">{trace.entity}</span>
               <p className="ec-landing__memory-trace-body">{trace.body}</p>
@@ -251,13 +289,15 @@ export function MemoryContinuumLayer({
         </div>
 
         <footer className="ec-landing__memory-band-footer">
-          <span className="ec-landing__memory-band-sig">memory / persistent · no cold reset</span>
+          <span className="ec-landing__memory-band-sig">
+            42 дня записи · 1 847 событий · contour active since 12.04.2026
+          </span>
           <button
             type="button"
             className="ec-landing-btn ec-landing-btn--link"
             onClick={onOpenDocs}
           >
-            Схема памяти →
+            Архитектура памяти →
           </button>
         </footer>
       </div>

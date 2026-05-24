@@ -109,16 +109,45 @@
   z-index: 1;
 }
 
+/* v1.3.3 — environmental pressure через edge vignette. Не decoration,
+ * не particles, не noise. Просто deeper darkness по краям viewport,
+ * чтобы center «выживал в среде», а periphery подразумевала
+ * continuation за viewport edge. Pavel brief: «deeper edge darkness,
+ * implied continuation outside viewport, stronger framing, larger
+ * invisible system around the hero». */
 .ec-landing__atmosphere {
   position: absolute;
   inset: 0;
   pointer-events: none;
   z-index: 0;
   background:
+    /* Top-right cyan rim (subtle) */
     radial-gradient(ellipse 60% 50% at 80% 0%, hsl(199 58% 60% / 0.06), transparent 60%),
+    /* Center subtle warmth (not glow) */
     radial-gradient(circle at 50% 40%, hsl(213 28% 12% / 0.4), transparent 70%),
+    /* v1.3.3: edge vignette — corners glub'че, центр читается.
+       Pure darkness, no chroma, no decoration. */
+    radial-gradient(ellipse 110% 90% at 50% 50%, transparent 55%, hsl(210 30% 2% / 0.55) 100%),
     var(--L-base-0);
 }
+/* v1.3.3: edge framing rules — implied continuation. Тонкие vertical
+   lines on far left/right edges of viewport, fade в концах. Это не
+   decoration, это «рамка системы которая идёт за viewport». */
+.ec-landing::before,
+.ec-landing::after {
+  content: "";
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: hsl(199 58% 60% / 0.12);
+  mask-image: linear-gradient(180deg, transparent 0%, black 22%, black 78%, transparent 100%);
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, black 22%, black 78%, transparent 100%);
+  pointer-events: none;
+  z-index: 2;
+}
+.ec-landing::before { left: 0; }
+.ec-landing::after { right: 0; }
 
 /* === Top nav === */
 .ec-landing__nav {
@@ -180,10 +209,26 @@
     border-color var(--L-dur-fast) var(--L-ease-out),
     color var(--L-dur-fast) var(--L-ease-out);
 }
+/* v1.3.3 — primary CTA как deployment command, не «web button».
+ * Pavel: «Reduce web-button feeling. Deployment action, system
+ * initiation, contour activation.» Mono font, sharp corners (2px),
+ * terminal-style `▸` prefix через ::before. */
 .ec-landing-btn--primary {
   background: var(--L-signal);
   color: var(--L-base-0);
   border-color: var(--L-signal);
+  border-radius: 2px;
+  font-family: ui-monospace, "JetBrains Mono", "Geist Mono", monospace;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  padding: 13px 22px 13px 18px;
+}
+.ec-landing-btn--primary::before {
+  content: "▸";
+  display: inline-block;
+  margin-right: var(--L-gap-2);
+  font-weight: 400;
+  transform: translateY(-1px);
 }
 .ec-landing-btn--primary:hover {
   background: var(--L-signal-soft);
@@ -808,13 +853,27 @@
   flex-direction: column;
   border-top: 1px solid var(--L-border-line);
 }
+/* v1.3.3 — archaeological depth grid. Колонки: id `#NNNN` + when +
+   entity + body. depth variants (now/today/recent/deep) дают opacity
+   fade — older = глубже в архив, less prominent. */
 .ec-landing__memory-trace {
   display: grid;
-  grid-template-columns: minmax(120px, 9vw) minmax(160px, 14vw) minmax(0, 1fr);
+  grid-template-columns: minmax(70px, 5vw) minmax(110px, 8vw) minmax(160px, 14vw) minmax(0, 1fr);
   gap: var(--L-gap-4);
   align-items: baseline;
   padding: var(--L-gap-4) 0;
   border-bottom: 1px solid var(--L-border-hair);
+}
+.ec-landing__memory-trace--now { opacity: 1; }
+.ec-landing__memory-trace--today { opacity: 0.92; }
+.ec-landing__memory-trace--recent { opacity: 0.7; }
+.ec-landing__memory-trace--deep { opacity: 0.5; }
+.ec-landing__memory-trace-id {
+  font-family: ui-monospace, monospace;
+  font-size: var(--L-type-mono);
+  letter-spacing: var(--L-track-mono);
+  text-transform: uppercase;
+  color: var(--L-fg-dim);
 }
 .ec-landing__memory-trace-when {
   font-family: ui-monospace, monospace;
@@ -1318,11 +1377,11 @@
     grid-template-columns: repeat(2, 1fr);
   }
   .ec-landing__memory-trace {
-    grid-template-columns: minmax(100px, 16vw) minmax(0, 1fr);
+    grid-template-columns: minmax(70px, 10vw) minmax(100px, 14vw) minmax(0, 1fr);
     row-gap: var(--L-gap-1);
   }
   .ec-landing__memory-trace-entity {
-    grid-column: 2;
+    grid-column: 1 / -1;
   }
   .ec-landing__memory-trace-body {
     grid-column: 1 / -1;
@@ -1424,13 +1483,20 @@
     grid-template-columns: 1fr;
   }
   .ec-landing__memory-trace {
-    grid-template-columns: 1fr;
+    grid-template-columns: auto 1fr;
+    column-gap: var(--L-gap-3);
+  }
+  .ec-landing__memory-trace-id {
+    grid-column: 1;
+  }
+  .ec-landing__memory-trace-when {
+    grid-column: 2;
   }
   .ec-landing__memory-trace-entity {
-    grid-column: 1;
+    grid-column: 1 / -1;
   }
   .ec-landing__memory-trace-body {
-    grid-column: 1;
+    grid-column: 1 / -1;
   }
   .ec-landing__memory-band-head {
     padding-left: var(--L-gap-3);
