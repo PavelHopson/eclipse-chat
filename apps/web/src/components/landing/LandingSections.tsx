@@ -1,5 +1,5 @@
 import type { ComponentType, ReactNode } from "react";
-import { Reveal } from "./CinematicMotion";
+import { TiltCard } from "./LandingEffects";
 
 type TrustBandProps = {
   items: ReadonlyArray<{
@@ -56,18 +56,16 @@ export function TrustBand({ items }: TrustBandProps) {
     <section className="ec-landing__trust" aria-label="Инфраструктура">
       <div className="ec-landing__trust-label">Доверие инфраструктурам —</div>
       <div className="ec-landing__trust-row">
-        {items.map(({ label, glyph: Glyph }, index) => (
-          <Reveal
+        {items.map(({ label, glyph: Glyph }) => (
+          <div
             key={label}
             className="ec-landing__trust-item"
-            variant="fade"
-            delay={index * 50}
           >
             <span className="ec-landing__trust-glyph" aria-hidden>
               <Glyph />
             </span>
             {label}
-          </Reveal>
+          </div>
         ))}
       </div>
     </section>
@@ -102,19 +100,20 @@ export function ExecutionFeaturesGrid({
         </div>
 
         <div className="ec-landing__features">
-          {FEATURES.map((feature, index) => (
-            <Reveal
+          {FEATURES.map((feature) => (
+            <TiltCard
               key={feature.title}
-              className="ec-landing__feature"
-              variant="panel"
-              delay={index * 80}
+              className="ec-landing__feature-tilt"
+              intensity={10}
             >
-              <span className="ec-landing__feature-icon" aria-hidden />
-              <div>
-                <h3>{feature.title}</h3>
-                <p>{feature.body}</p>
-              </div>
-            </Reveal>
+              <article className="ec-landing__feature">
+                <span className="ec-landing__feature-icon" aria-hidden />
+                <div>
+                  <h3>{feature.title}</h3>
+                  <p>{feature.body}</p>
+                </div>
+              </article>
+            </TiltCard>
           ))}
         </div>
       </div>
@@ -189,16 +188,14 @@ export function SecurityStorySection({
         <div className="ec-landing__security-side">
           {visual}
           <div className="ec-landing__security-cards">
-            {attestations.map(({ title, value }, index) => (
-              <Reveal
+            {attestations.map(({ title, value }) => (
+              <article
                 key={title}
                 className="ec-landing__sec-card"
-                variant="panel"
-                delay={index * 70}
               >
                 <b>{title}</b>
                 {value}
-              </Reveal>
+              </article>
             ))}
           </div>
         </div>

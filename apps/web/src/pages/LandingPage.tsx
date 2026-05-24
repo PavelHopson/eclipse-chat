@@ -19,6 +19,11 @@ import {
   MemoryConstellation,
   SecurityStackArt,
 } from "../components/landing/LandingVisuals";
+import {
+  CursorTrail,
+  MagneticButton,
+  SplitTextReveal,
+} from "../components/landing/LandingEffects";
 import "../styles/landing.css";
 
 type Props = {
@@ -170,26 +175,32 @@ export function LandingPage({
         </nav>
 
         <section className="ec-landing__hero" id="product">
+          <CursorTrail className="ec-landing__hero-trail" density={1} />
           <div className="ec-landing__hero-copy">
             <span className="ec-landing__eyebrow">Операционная платформа для команд</span>
             <h1 className="ec-landing__hero-title">
-              Коммуникация
+              <SplitTextReveal stagger={28}>Коммуникация</SplitTextReveal>
               <br />
-              которая <span className="ec-landing__hero-title-accent">работает.</span>
+              <SplitTextReveal delay={260} stagger={28}>которая </SplitTextReveal>
+              <span className="ec-landing__hero-title-accent">
+                <SplitTextReveal delay={500} stagger={36}>работает.</SplitTextReveal>
+              </span>
             </h1>
             <p className="ec-landing__hero-subhead">
               Чат, задачи, голос и клиентские порталы в единой системе.
               Никакого хаоса. Только исполнение.
             </p>
             <div className="ec-landing__hero-cta">
-              <button
-                type="button"
-                className="ec-landing-btn ec-landing-btn--primary"
-                onClick={() => onOpenAuth("register")}
-              >
-                Запустить рабочий контур
-                <span className="ec-landing-btn__arrow" aria-hidden>→</span>
-              </button>
+              <MagneticButton>
+                <button
+                  type="button"
+                  className="ec-landing-btn ec-landing-btn--primary"
+                  onClick={() => onOpenAuth("register")}
+                >
+                  Запустить рабочий контур
+                  <span className="ec-landing-btn__arrow" aria-hidden>→</span>
+                </button>
+              </MagneticButton>
               <button
                 type="button"
                 className="ec-landing-btn ec-landing-btn--ghost"
