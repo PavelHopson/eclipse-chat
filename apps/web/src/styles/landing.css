@@ -52,18 +52,19 @@
   --L-status-alert: hsl(8 70% 62%);
 
   /* === Type scale (brutal hierarchy) ===
-     Hero уровни — большие. Body — компактный. Mono для labels. */
-  --L-type-display: clamp(3.5rem, 9vw, 7.5rem); /* «КОММУНИКАЦИЯ КОТОРАЯ РАБОТАЕТ» */
-  --L-type-h1: clamp(2.5rem, 5vw, 4rem);        /* section headers */
+     v1.3.0b: monumental hero + усиленный contrast между уровнями.
+     Body чуть больше — calm reading, не «small UI text». */
+  --L-type-display: clamp(4rem, 11vw, 9rem);    /* hero H1 — monumental */
+  --L-type-h1: clamp(3rem, 6vw, 5.5rem);        /* section headers — больше gap к body */
   --L-type-h2: clamp(1.8rem, 3vw, 2.6rem);
   --L-type-h3: 1.25rem;
-  --L-type-body: 1.02rem;
-  --L-type-sm: 0.92rem;
-  --L-type-xs: 0.78rem;
+  --L-type-body: 1.15rem;
+  --L-type-sm: 0.95rem;
+  --L-type-xs: 0.8rem;
   --L-type-mono: 0.74rem;  /* eyebrows, chips, tags */
 
-  /* Tracking — brutal type tight, mono — wide для оператора-чтения. */
-  --L-track-display: -0.025em;
+  /* Tracking — brutal type tighter, mono — wide для оператора-чтения. */
+  --L-track-display: -0.035em;     /* tighter — monumental letters прижаты */
   --L-track-body: -0.005em;
   --L-track-mono: 0.18em;
   --L-track-mono-wide: 0.26em;
@@ -77,6 +78,14 @@
   --L-gap-6: 64px;
   --L-gap-7: 96px;
   --L-gap-8: 128px;
+
+  /* === Silence tokens (v1.3.0b) ===
+     Vertical pacing — НЕ uniform. Density contrast: тонкая пауза перед
+     thin band, длинная перед монументальной zone, монументальная перед
+     CTA. Brief: «more brutal pacing, less UI symmetry». */
+  --L-silence-thin: 96px;          /* trust → features mild break */
+  --L-silence-base: 200px;         /* section → section default */
+  --L-silence-monumental: 320px;   /* перед CTA — drama-pause */
 
   /* === Radius — низкий, не гипер-rounded === */
   --L-r-sm: 4px;
@@ -272,24 +281,48 @@
   opacity: 0.6;
 }
 
-/* === Hero === */
+/* === Hero (v1.3.0b: monumental + asymmetric) ===
+ * - Grid 4fr/5fr (stage визуально доминирует, не split 50/50).
+ * - align-items: end — copy «оседает» к baseline, stage может расти вверх.
+ * - min-height ~88vh — почти fullscreen hero для cinematic feel.
+ * - vertical 1px signal line левее H1 — infrastructural marker, не decor.
+ *   1px, opacity 0.35, mask-image fade на концах — НЕ animation.
+ */
 .ec-landing__hero {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+  grid-template-columns: minmax(0, 4fr) minmax(0, 5fr);
   gap: var(--L-gap-6);
-  align-items: center;
+  align-items: end;
   padding: var(--L-gap-7) 0 var(--L-gap-6);
+  min-height: min(720px, 88vh);
+  position: relative;
 }
 .ec-landing__hero-copy {
   display: flex;
   flex-direction: column;
   gap: var(--L-gap-4);
+  position: relative;
+  /* Vertical signal line левее H1 — занимает оставшееся пространство в gap'е. */
+  padding-left: var(--L-gap-4);
+}
+.ec-landing__hero-copy::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 8%;
+  bottom: 12%;
+  width: 1px;
+  background: var(--L-signal);
+  opacity: 0.35;
+  /* Fade на концах — не «hard line», а infrastructural rim. */
+  mask-image: linear-gradient(180deg, transparent 0%, black 18%, black 82%, transparent 100%);
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, black 18%, black 82%, transparent 100%);
 }
 .ec-landing__hero-title {
   margin: 0;
   font-size: var(--L-type-display);
   font-family: var(--ec-font-display, var(--ec-font-sans, "Geist", sans-serif));
-  line-height: 0.95;
+  line-height: 0.92;
   letter-spacing: var(--L-track-display);
   font-weight: 600;
   color: var(--L-fg-strong);
@@ -301,10 +334,10 @@
 }
 .ec-landing__hero-subhead {
   margin: 0;
-  max-width: 38ch;
+  max-width: 50ch;
   font-size: var(--L-type-body);
   color: var(--L-fg-muted);
-  line-height: 1.55;
+  line-height: 1.6;
 }
 .ec-landing__hero-cta {
   display: inline-flex;
@@ -364,9 +397,12 @@
   gap: var(--L-gap-2);
 }
 
-/* === Infrastructure trust band === */
+/* === Infrastructure trust band ===
+ * v1.3.0b: thin silence сверху (96px) — мягкая пауза от hero к thin
+ * engineering line. От trust к features — base silence (через section). */
 .ec-landing__trust {
   padding: var(--L-gap-5) 0;
+  margin-top: var(--L-silence-thin);
   border-top: 1px solid var(--L-border-hair);
   border-bottom: 1px solid var(--L-border-hair);
 }
@@ -397,13 +433,19 @@
   opacity: 1;
 }
 
-/* === Section container === */
+/* === Section container ===
+ * v1.3.0b: asymmetric pacing. По умолчанию section получает
+ * `--L-silence-base` padding-top. Конкретные секции могут override —
+ * например CTA получает `--L-silence-monumental`. Это даёт «more
+ * brutal pacing, less UI symmetry» из brief'а.
+ */
 .ec-landing__section {
-  padding: var(--L-gap-7) 0;
+  padding: var(--L-silence-base) 0 var(--L-gap-7);
 }
+/* Section head — asymmetric, title dominant. */
 .ec-landing__section-head {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 0.8fr);
   gap: var(--L-gap-6);
   align-items: end;
   margin-bottom: var(--L-gap-6);
@@ -412,7 +454,7 @@
   margin: var(--L-gap-3) 0 0;
   font-size: var(--L-type-h1);
   font-family: var(--ec-font-display, var(--ec-font-sans, "Geist", sans-serif));
-  line-height: 1.0;
+  line-height: 0.96;
   letter-spacing: var(--L-track-display);
   font-weight: 600;
   text-transform: uppercase;
@@ -420,7 +462,7 @@
 }
 .ec-landing__section-copy {
   font-size: var(--L-type-body);
-  line-height: 1.6;
+  line-height: 1.65;
   color: var(--L-fg-muted);
 }
 
@@ -472,10 +514,13 @@
   color: var(--L-fg-muted);
 }
 
-/* === AI Memory + Security split sections === */
+/* === AI Memory + Security split sections ===
+ * v1.3.0b: asymmetric 5fr/4fr (визуал доминирует над copy для AI Memory,
+ * copy доминирует над visual для Security — оба не 50/50). Direction
+ * управляется .ec-landing__split--reverse в JSX. */
 .ec-landing__split {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 5fr) minmax(0, 4fr);
   gap: var(--L-gap-6);
   align-items: center;
 }
@@ -572,7 +617,10 @@
   text-transform: uppercase;
 }
 
-/* === Bottom CTA band === */
+/* === Bottom CTA band ===
+ * v1.3.0b: monumental silence перед CTA — drama-pause через margin-top.
+ * Brief: «more brutal pacing». Sections выше получают base silence,
+ * CTA — monumental, чтобы он «приходил издалека». */
 .ec-landing__cta {
   display: grid;
   grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
@@ -584,7 +632,7 @@
     var(--L-base-1);
   border: 1px solid var(--L-border-hair);
   border-radius: var(--L-r-lg);
-  margin: var(--L-gap-6) 0;
+  margin: var(--L-silence-monumental) 0 var(--L-gap-6);
 }
 .ec-landing__cta-title {
   margin: 0 0 var(--L-gap-2);
@@ -1410,6 +1458,39 @@
   }
   .ec-hero-console--auth-open .ec-hero-console__surface {
     display: flex;
+  }
+}
+
+/* v1.3.0b: на ≤700px monumental silence ужимается, иначе занимает
+   целый экран на mobile. Hero copy получает 0 padding-left (signal
+   line не нужна на mobile — column становится column, нет места для
+   vertical motif). */
+@media (max-width: 700px) {
+  .ec-landing {
+    --L-silence-thin: 56px;
+    --L-silence-base: 120px;
+    --L-silence-monumental: 160px;
+  }
+  .ec-landing__hero {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+    min-height: 0;
+    padding-top: var(--L-gap-6);
+  }
+  .ec-landing__hero-copy {
+    padding-left: 0;
+  }
+  .ec-landing__hero-copy::before {
+    display: none;
+  }
+  .ec-landing__section-head {
+    grid-template-columns: 1fr;
+  }
+  .ec-landing__split {
+    grid-template-columns: 1fr;
+  }
+  .ec-landing__cta {
+    grid-template-columns: 1fr;
   }
 }
 

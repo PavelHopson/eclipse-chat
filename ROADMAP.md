@@ -5,10 +5,15 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.3.0** (v1.3 visual authority pass slice A:
-copy rewrite + nav cleanup — hero «Исполнение / без хаоса.», section
-markers `[01-04]`, удалены 4 chip-tags и 5 nav links, sections
-переписаны в operational verbs, bottom CTA = один statement без divider;
+**Текущая версия:** **v1.3.1** (v1.3 visual authority slice B:
+monumental type + asymmetric hero grid 4fr/5fr + vertical signal line
+левее H1 + silence tokens (thin/base/monumental) + asymmetric section
+heads и splits + bigger body line-height; БЕЗ sticky markers / status
+pills / conic-gradient noise / decorative sci-fi gimmicks per Pavel'я
+brief «already running, не trying to impress»;
+v1.3.0 LIVE: slice A copy rewrite + nav cleanup —
+hero «Исполнение / без хаоса.», sections переписаны в operational
+verbs, bottom CTA single statement;
 v1.2.32 LIVE: clean hash-route `#auth-panel` для cold-open
 embedded auth, без glow-overrides; landing polish-pass: убраны 3D tilt /
 Mac controls / dial / metrics column / voice waveform / composer strip /
@@ -93,7 +98,67 @@ security-art)).
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.3.0:**
+**Изменения v1.1.25 → v1.3.1:**
+
+- **v1.3.1** — **v1.3 visual authority slice B: monumental hero +
+  asymmetric pacing + density contrast**. Strict constraints от
+  Pavel'я: «already running, не trying to impress». NO sticky
+  markers / NO animated status pills / NO conic-gradient noise /
+  NO decorative gimmicks. Continuity достигается через rhythm и
+  discipline, не индикаторы.
+  - **Type scale bumped** (monumental hierarchy):
+    - `--L-type-display`: `clamp(3.5rem, 9vw, 7.5rem)` →
+      `clamp(4rem, 11vw, 9rem)` — hero H1 monumental.
+    - `--L-type-h1`: `clamp(2.5rem, 5vw, 4rem)` →
+      `clamp(3rem, 6vw, 5.5rem)` — section headers больше для
+      contrast к body.
+    - `--L-type-body`: `1.02rem` → `1.15rem` — calm reading.
+    - `--L-track-display`: `-0.025em` → `-0.035em` —
+      monumental letters прижаты tighter.
+  - **Silence tokens** (asymmetric vertical pacing):
+    - `--L-silence-thin: 96px`
+    - `--L-silence-base: 200px`
+    - `--L-silence-monumental: 320px`
+    Применены: trust band `margin-top: var(--L-silence-thin)`,
+    sections `padding-top: var(--L-silence-base)`, CTA
+    `margin-top: var(--L-silence-monumental)` — drama-pause перед
+    финальным statement.
+  - **Hero composition** (asymmetric + monumental):
+    - Grid `1fr 1.05fr` (almost 50/50) → `4fr 5fr` — stage
+      доминирует.
+    - `align-items: center` → `end` — copy «оседает» к baseline.
+    - `min-height: 540px` → `min(720px, 88vh)` — почти fullscreen.
+    - Hero copy: `padding-left: var(--L-gap-4)` + `::before`
+      vertical 1px signal line (cyan, opacity 0.35,
+      mask-image fade на концах) — **infrastructural marker**,
+      не animation. Hero subhead: `max-width 38ch` → `50ch`,
+      `line-height 1.55` → `1.6`.
+    - Hero title: `line-height 0.95` → `0.92` — tighter
+      monumental stack.
+  - **Section heads asymmetric**:
+    - Grid `1.2fr 1fr` → `1.4fr 0.8fr` — title dominant.
+    - Section title `line-height 1.0` → `0.96` — tighter.
+    - Section copy `line-height 1.6` → `1.65` — calmer.
+  - **Split sections asymmetric**:
+    - `1fr 1fr` → `5fr 4fr` — visual либо copy доминирует, не 50/50.
+  - **Mobile ≤700px**:
+    - Silence tokens ужимаются (`thin 56`, `base 120`,
+      `monumental 160`) — иначе занимали бы экран целиком.
+    - Hero copy `padding-left: 0` + signal line `display: none`
+      (column-stack mode на mobile, нет места для vertical motif).
+    - Asymmetric grids collapse to 1fr.
+  - **НЕ сделано** (NEXT в slice C-E):
+    - Features cards → editorial numbered narrative
+    - AI Memory full-width takeover
+    - Security dense numerical
+    - Atmosphere depth + monoline SVG trust logos
+    - Product scene auth-overlay
+  - **НЕ сделано** (исключено per Pavel'я brief):
+    - sticky `[01-06]` markers
+    - animated status pill `[●] КОНТУР АКТИВЕН`
+    - conic-gradient noise
+    - decorative atmospheric particles
+  Сборка зелёная (tsc + vite). Без миграций.
 
 - **v1.3.0** — **v1.3 visual authority pass slice A: copy rewrite +
   nav cleanup**. Реакция на Pavel'я brief «Принципиальный Product
