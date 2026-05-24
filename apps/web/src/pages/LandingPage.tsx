@@ -179,11 +179,12 @@ export function LandingPage({
           <div className="ec-landing__hero-copy">
             <span className="ec-landing__eyebrow">Операционная платформа для команд</span>
             <h1 className="ec-landing__hero-title">
-              <SplitTextReveal stagger={28}>Коммуникация</SplitTextReveal>
+              <SplitTextReveal stagger={32}>Работа</SplitTextReveal>
               <br />
-              <SplitTextReveal delay={260} stagger={28}>которая </SplitTextReveal>
+              <SplitTextReveal delay={220} stagger={32}>в одном</SplitTextReveal>
+              <br />
               <span className="ec-landing__hero-title-accent">
-                <SplitTextReveal delay={500} stagger={36}>работает.</SplitTextReveal>
+                <SplitTextReveal delay={460} stagger={36}>контуре.</SplitTextReveal>
               </span>
             </h1>
             <p className="ec-landing__hero-subhead">
