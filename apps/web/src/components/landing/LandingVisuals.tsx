@@ -12,25 +12,16 @@ type HeroOperationalStageProps = {
 };
 
 /**
- * v1.3.6 — premium custom auth form per Pavel verdict (24.05.2026):
- *   «Надо переделать дизайн, сделай полностью переосмысление, чтобы было
- *   в нашей цветовой палитре и градиенте, нужен максимально современный
- *   дизайн и анимации, премиум уровня».
+ * v1.3.12 — S1 effects integration:
+ *   - Electric Border Effect (SVG turbulence/displace filter + multi-layer
+ *     blur glow) → frame border. Recolor cyan #00fffb → наш #5db5d9.
+ *   - Password scanner — beam animation overlay при reveal toggle вместо
+ *     simple Eye icon swap.
+ *   - Submit success state — после успешного login/register checkmark
+ *     scale + cyan→green flash.
  *
- *   Previous v1.3.5: использовали AuthPage embedded — он рендерил own
- *   heading «ВХОД В СИСТЕМУ», status chips, internal Вход/Регистрация
- *   tabs, violet/purple gradient button → дубль с outer frame + не cyan.
- *
- *   v1.3.6: AuthPage embedded полностью убран из landing. Custom inline
- *   form в hero stage:
- *     - Cyan gradient palette (наша palette)
- *     - Animated sliding tab indicator (cubic-bezier)
- *     - Premium inputs (48px, dark, cyan focus ring + glow)
- *     - Gradient submit button с loading spinner
- *     - Error fade-in
- *     - Frame mount animation (fade + slide-up + scale)
- *     - Password show/hide toggle
- *     - Register mode: добавляется поле Имя
+ * Pavel sent collection of effects (docs/design/effects/), this is S1
+ * (Auth premium polish — trivial complexity, maximum visual win).
  */
 
 function EyeIcon() {
@@ -62,6 +53,63 @@ function ArrowIcon() {
   );
 }
 
+function CheckIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
+
+/**
+ * Electric Border SVG filter — turbulence + displacement map даёт
+ * animated wavy distortion на border applied через CSS `filter: url(#...)`.
+ * Recolored via outer CSS layers — filter сам по себе монохромный.
+ */
+function ElectricBorderFilter() {
+  return (
+    <svg className="ec-hero-access__svg-defs" aria-hidden>
+      <defs>
+        <filter
+          id="ec-electric-border"
+          colorInterpolationFilters="sRGB"
+          x="-20%"
+          y="-20%"
+          width="140%"
+          height="140%"
+        >
+          <feTurbulence type="turbulence" baseFrequency="0.02" numOctaves="10" result="noise1" seed="1" />
+          <feOffset in="noise1" dx="0" dy="0" result="offsetNoise1">
+            <animate attributeName="dy" values="700; 0" dur="6s" repeatCount="indefinite" calcMode="linear" />
+          </feOffset>
+          <feTurbulence type="turbulence" baseFrequency="0.02" numOctaves="10" result="noise2" seed="1" />
+          <feOffset in="noise2" dx="0" dy="0" result="offsetNoise2">
+            <animate attributeName="dy" values="0; -700" dur="6s" repeatCount="indefinite" calcMode="linear" />
+          </feOffset>
+          <feTurbulence type="turbulence" baseFrequency="0.02" numOctaves="10" result="noise3" seed="2" />
+          <feOffset in="noise3" dx="0" dy="0" result="offsetNoise3">
+            <animate attributeName="dx" values="490; 0" dur="6s" repeatCount="indefinite" calcMode="linear" />
+          </feOffset>
+          <feTurbulence type="turbulence" baseFrequency="0.02" numOctaves="10" result="noise4" seed="2" />
+          <feOffset in="noise4" dx="0" dy="0" result="offsetNoise4">
+            <animate attributeName="dx" values="0; -490" dur="6s" repeatCount="indefinite" calcMode="linear" />
+          </feOffset>
+          <feComposite in="offsetNoise1" in2="offsetNoise2" result="part1" />
+          <feComposite in="offsetNoise3" in2="offsetNoise4" result="part2" />
+          <feBlend in="part1" in2="part2" mode="color-dodge" result="combinedNoise" />
+          <feDisplacementMap
+            in="SourceGraphic"
+            in2="combinedNoise"
+            scale="22"
+            xChannelSelector="R"
+            yChannelSelector="B"
+          />
+        </filter>
+      </defs>
+    </svg>
+  );
+}
+
 export function HeroOperationalStage({
   authMode,
   onOpenAuth,
@@ -75,19 +123,36 @@ export function HeroOperationalStage({
   const [displayName, setDisplayName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [success, setSuccess] = useState(false);
+
+  const handleRevealToggle = () => {
+    if (!password) return;
+    // Beam scan animation 600ms — затем toggle type
+    setScanning(true);
+    setTimeout(() => {
+      setShowPassword((v) => !v);
+      setScanning(false);
+    }, 600);
+  };
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (loading) return;
     setLoading(true);
+    let ok = false;
     try {
       if (mode === "register") {
-        if (onRegister) await onRegister(email, password, displayName.trim() || "User");
+        if (onRegister) ok = await onRegister(email, password, displayName.trim() || "User");
       } else {
-        if (onLogin) await onLogin(email, password);
+        if (onLogin) ok = await onLogin(email, password);
       }
     } finally {
       setLoading(false);
+    }
+    if (ok) {
+      setSuccess(true);
+      // Success state будет видна до redirect; компонент unmount'ится после auth.
     }
   };
 
@@ -99,7 +164,18 @@ export function HeroOperationalStage({
 
   return (
     <div className="ec-hero-access" aria-label="Доступ к Eclipse Chat">
+      <ElectricBorderFilter />
+
       <Reveal className="ec-hero-access__frame" variant="panel">
+        {/* Electric border layers (under content via z-index) */}
+        <div className="ec-hero-access__electric" aria-hidden>
+          <div className="ec-hero-access__electric-border" />
+          <div className="ec-hero-access__electric-glow ec-hero-access__electric-glow--1" />
+          <div className="ec-hero-access__electric-glow ec-hero-access__electric-glow--2" />
+          <div className="ec-hero-access__electric-overlay" />
+          <div className="ec-hero-access__electric-bg" />
+        </div>
+
         <div className="ec-hero-access__glow" aria-hidden />
 
         <header className="ec-hero-access__head">
@@ -174,7 +250,9 @@ export function HeroOperationalStage({
 
           <div className="ec-hero-access__field">
             <label htmlFor="hero-access-password">Пароль</label>
-            <div className="ec-hero-access__input-wrap">
+            <div
+              className={`ec-hero-access__input-wrap ec-hero-access__input-wrap--password${scanning ? " is-scanning" : ""}`}
+            >
               <input
                 id="hero-access-password"
                 type={showPassword ? "text" : "password"}
@@ -185,12 +263,17 @@ export function HeroOperationalStage({
                 required
                 disabled={loading}
               />
+              {/* Scanner beam overlay (visible when scanning state active) */}
+              <span className="ec-hero-access__scan" aria-hidden>
+                <span className="ec-hero-access__scan-beam" />
+              </span>
               <button
                 type="button"
-                className="ec-hero-access__toggle"
-                onClick={() => setShowPassword((v) => !v)}
+                className={`ec-hero-access__toggle${showPassword ? " is-open" : ""}`}
+                onClick={handleRevealToggle}
                 aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}
                 tabIndex={-1}
+                disabled={!password || loading}
               >
                 {showPassword ? <EyeOffIcon /> : <EyeIcon />}
               </button>
@@ -205,23 +288,34 @@ export function HeroOperationalStage({
 
           <button
             type="submit"
-            className={`ec-hero-access__submit${loading ? " is-loading" : ""}`}
-            disabled={loading}
+            className={`ec-hero-access__submit${loading ? " is-loading" : ""}${success ? " is-success" : ""}`}
+            disabled={loading || success}
           >
             <span className="ec-hero-access__submit-shimmer" aria-hidden />
-            <span className="ec-hero-access__submit-label">
-              {loading
-                ? mode === "register"
-                  ? "Создаём контур…"
-                  : "Открываем…"
-                : mode === "register"
-                  ? "Создать контур"
-                  : "Войти"}
-            </span>
-            {!loading && (
-              <span className="ec-hero-access__submit-arrow" aria-hidden>
-                <ArrowIcon />
+            {success ? (
+              <span className="ec-hero-access__submit-success">
+                <span className="ec-hero-access__submit-check">
+                  <CheckIcon />
+                </span>
+                {mode === "register" ? "Контур активирован" : "Вход разрешён"}
               </span>
+            ) : (
+              <>
+                <span className="ec-hero-access__submit-label">
+                  {loading
+                    ? mode === "register"
+                      ? "Создаём контур…"
+                      : "Открываем…"
+                    : mode === "register"
+                      ? "Создать контур"
+                      : "Войти"}
+                </span>
+                {!loading && (
+                  <span className="ec-hero-access__submit-arrow" aria-hidden>
+                    <ArrowIcon />
+                  </span>
+                )}
+              </>
             )}
           </button>
 

@@ -440,18 +440,88 @@
   flex-direction: column;
   gap: 24px;
   padding: 36px 36px 22px;
-  border: 1px solid rgba(154, 216, 239, 0.22);
   border-radius: 16px;
   background:
     linear-gradient(180deg, rgba(11, 22, 32, 0.94), rgba(3, 8, 13, 0.96));
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.04),
-    0 1px 0 rgba(154, 216, 239, 0.08) inset,
     0 30px 90px rgba(0, 0, 0, 0.55),
     0 0 60px rgba(93, 181, 217, 0.1);
-  overflow: hidden;
   isolation: isolate;
   animation: ec-hero-access-mount 720ms var(--L-ease-out) both;
+}
+/* v1.3.12 — hidden SVG defs (filter not visible itself) */
+.ec-hero-access__svg-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+/* v1.3.12 — Electric Border Effect layered around frame.
+ * Adapted from docs/design/effects/Electric Border Effect/.
+ * Cyan #00fffb → наш --L-signal #5db5d9. Multi-layer blur stack + SVG
+ * turbulence/displacement filter creates wavy electric line.
+ */
+.ec-hero-access__electric {
+  position: absolute;
+  inset: -2px;
+  border-radius: 17px;
+  pointer-events: none;
+  z-index: 0;
+}
+.ec-hero-access__electric-border {
+  position: absolute;
+  inset: 0;
+  border: 2px solid var(--L-signal);
+  border-radius: inherit;
+  filter: url(#ec-electric-border);
+  opacity: 0.85;
+}
+.ec-hero-access__electric-glow {
+  position: absolute;
+  inset: 0;
+  border: 2px solid var(--L-signal);
+  border-radius: inherit;
+  pointer-events: none;
+}
+.ec-hero-access__electric-glow--1 {
+  filter: url(#ec-electric-border) blur(2px);
+  opacity: 0.55;
+}
+.ec-hero-access__electric-glow--2 {
+  border-color: var(--L-signal-soft);
+  filter: url(#ec-electric-border) blur(6px);
+  opacity: 0.5;
+}
+.ec-hero-access__electric-overlay {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    -30deg,
+    rgba(154, 216, 239, 0.5),
+    transparent 30%,
+    transparent 70%,
+    rgba(154, 216, 239, 0.5)
+  );
+  filter: blur(18px);
+  mix-blend-mode: overlay;
+  opacity: 0.45;
+}
+.ec-hero-access__electric-bg {
+  position: absolute;
+  inset: -8px;
+  border-radius: 24px;
+  background: linear-gradient(
+    -30deg,
+    var(--L-signal-soft),
+    transparent,
+    var(--L-signal)
+  );
+  filter: blur(34px);
+  opacity: 0.22;
+  z-index: -1;
 }
 /* Top cyan signal line */
 .ec-hero-access__frame::before {
@@ -647,16 +717,71 @@
   width: 40px;
   display: grid;
   place-items: center;
-  background: transparent;
+  background: linear-gradient(145deg, rgba(93, 181, 217, 0.12), rgba(45, 134, 177, 0.1));
   border: 0;
   border-radius: 8px;
-  color: #6f8595;
+  color: #8fa6b7;
   cursor: pointer;
   transition: color 200ms var(--L-ease-out), background 200ms var(--L-ease-out);
 }
-.ec-hero-access__toggle:hover {
-  color: var(--L-signal);
-  background: rgba(93, 181, 217, 0.08);
+.ec-hero-access__toggle:hover:not(:disabled) {
+  color: var(--L-signal-soft);
+  background: linear-gradient(145deg, rgba(108, 195, 229, 0.28), rgba(45, 134, 177, 0.22));
+}
+.ec-hero-access__toggle.is-open {
+  background: linear-gradient(145deg, rgba(108, 195, 229, 0.3), rgba(45, 134, 177, 0.25));
+  color: var(--L-signal-soft);
+}
+.ec-hero-access__toggle:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* v1.3.12 — Password scanner beam.
+ * Adapted from docs/design/effects/Сканнер пароля/. При scanning state
+ * — вертикальная cyan beam slides слева направо поверх input + scan
+ * background sweep на input. */
+.ec-hero-access__scan {
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 120ms var(--L-ease-out);
+  z-index: 2;
+}
+.ec-hero-access__input-wrap--password.is-scanning .ec-hero-access__scan {
+  opacity: 1;
+}
+.ec-hero-access__input-wrap--password.is-scanning input {
+  background: linear-gradient(90deg, rgba(93, 181, 217, 0.32) 50%, rgba(4, 8, 13, 0.72) 100%);
+  background-size: 200% 100%;
+  animation: ec-hero-access-scan-bg 600ms ease-out both;
+}
+.ec-hero-access__scan-beam {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 0;
+  width: 2px;
+  background: var(--L-signal-soft);
+  box-shadow:
+    0 0 8px 2px rgba(93, 181, 217, 0.85),
+    0 0 16px 6px rgba(93, 181, 217, 0.45);
+  border-radius: 1px;
+}
+.ec-hero-access__input-wrap--password.is-scanning .ec-hero-access__scan-beam {
+  animation: ec-hero-access-scan-beam 600ms ease-out both;
+}
+@keyframes ec-hero-access-scan-bg {
+  0% { background-position: 0 0; }
+  100% { background-position: -200% 0; }
+}
+@keyframes ec-hero-access-scan-beam {
+  0% { left: 0; opacity: 1; }
+  90% { opacity: 1; }
+  100% { left: calc(100% - 2px); opacity: 0; }
 }
 
 /* Error */
@@ -762,6 +887,51 @@
   border-top-color: rgba(2, 16, 24, 0.9);
   border-radius: 50%;
   animation: ec-hero-access-spin 0.9s linear infinite;
+}
+
+/* v1.3.12 — Submit success state.
+ * После successful login/register submit морфирует:
+ *   - gradient green flash
+ *   - checkmark scales in
+ *   - text «Контур активирован» / «Вход разрешён»
+ *   - bigger green glow box-shadow
+ */
+.ec-hero-access__submit.is-success {
+  background: linear-gradient(180deg, #5cebc4, #1ba37a);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    0 12px 36px rgba(65, 215, 154, 0.42),
+    0 0 70px rgba(65, 215, 154, 0.32);
+  cursor: default;
+  animation: ec-hero-access-success-pulse 600ms var(--L-ease-out);
+}
+.ec-hero-access__submit-success {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: #021018;
+  position: relative;
+  z-index: 1;
+}
+.ec-hero-access__submit-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(2, 16, 24, 0.15);
+  animation: ec-hero-access-check-pop 480ms cubic-bezier(0.4, 1.6, 0.6, 1) both;
+}
+@keyframes ec-hero-access-success-pulse {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.04); }
+  100% { transform: scale(1); }
+}
+@keyframes ec-hero-access-check-pop {
+  0% { transform: scale(0); opacity: 0; }
+  60% { transform: scale(1.25); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
 }
 
 .ec-hero-access__hint {
