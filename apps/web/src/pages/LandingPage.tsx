@@ -22,15 +22,12 @@ import "../styles/landing.css";
 
 type Props = {
   authMode: "login" | "register" | null;
-  authPanel: ReactNode;
+  authPanel?: ReactNode;
   onOpenAuth: (mode: "login" | "register") => void;
   onCloseAuth: () => void;
-  renderHeroStage?: (args: {
-    authMode: "login" | "register" | null;
-    authPanel: ReactNode;
-    onOpenAuth: (mode: "login" | "register") => void;
-    onCloseAuth: () => void;
-  }) => ReactNode;
+  authError?: string | null;
+  onLogin?: (email: string, password: string) => Promise<boolean>;
+  onRegister?: (email: string, password: string, displayName: string) => Promise<boolean>;
   renderMemoryDiagram?: () => ReactNode;
   renderSecurityArt?: () => ReactNode;
 };
@@ -101,10 +98,10 @@ const FOOTER_COLS: Array<{
 
 export function LandingPage({
   authMode,
-  authPanel,
   onOpenAuth,
-  onCloseAuth,
-  renderHeroStage,
+  authError,
+  onLogin,
+  onRegister,
   renderMemoryDiagram,
   renderSecurityArt,
 }: Props) {
@@ -203,21 +200,13 @@ export function LandingPage({
           </div>
 
           <div ref={heroStageRef} className="ec-landing__hero-stage">
-            {renderHeroStage ? (
-              renderHeroStage({
-                authMode,
-                authPanel,
-                onOpenAuth,
-                onCloseAuth,
-              })
-            ) : (
-              <HeroOperationalStage
-                authMode={authMode}
-                authPanel={authPanel}
-                onOpenAuth={onOpenAuth}
-                onCloseAuth={onCloseAuth}
-              />
-            )}
+            <HeroOperationalStage
+              authMode={authMode}
+              onOpenAuth={onOpenAuth}
+              authError={authError}
+              onLogin={onLogin}
+              onRegister={onRegister}
+            />
           </div>
         </section>
 

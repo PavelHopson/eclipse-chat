@@ -2,7 +2,6 @@ import type { CSSProperties } from "react";
 import { useEffect, useState } from "react";
 import { useAuth } from "./hooks/useAuth";
 import { AppShell } from "./pages/AppShell";
-import { AuthPage } from "./pages/AuthPage";
 import { ClientPortalContainer } from "./pages/ClientPortalContainer";
 import { LandingPage } from "./pages/LandingPage";
 
@@ -280,17 +279,16 @@ export function App() {
           authMode={authSurface}
           onOpenAuth={openAuthSurface}
           onCloseAuth={closeAuthSurface}
-          authPanel={
-            <AuthPage
-              key={authSurface ?? "login"}
-              error={error}
-              onLogin={login}
-              onRegister={register}
-              initialMode={authSurface ?? "login"}
-              initialEntryState="panel"
-              presentation="embedded"
-            />
-          }
+          authError={error}
+          onLogin={async (email, password) => {
+            const r = await login(email, password);
+            return r.success;
+          }}
+          onRegister={async (email, password, displayName) => {
+            const r = await register(email, password, displayName);
+            return r.success;
+          }}
+          authPanel={null}
         />
       ) : portalServerId ? (
         <ClientPortalContainer serverId={portalServerId} />

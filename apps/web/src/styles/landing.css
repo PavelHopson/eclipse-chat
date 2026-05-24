@@ -374,234 +374,423 @@
  *   - Body: AuthPage embedded form (overridden styles ниже)
  *   - Footer: mono signature signal-dot + meta
  */
+/* === Hero access panel — premium custom auth (v1.3.6) ===
+ * Полностью custom form, NOT AuthPage embedded. Cyan gradient palette.
+ * Анимации: mount fade+slide+scale, tab sliding indicator, input focus
+ * ring transition, submit shimmer + arrow slide, error fade-in.
+ */
+@keyframes ec-hero-access-mount {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes ec-hero-access-pulse {
+  0%, 100% {
+    box-shadow: 0 0 6px rgba(93, 181, 217, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 14px rgba(93, 181, 217, 0.85);
+  }
+}
+@keyframes ec-hero-access-shimmer {
+  0% { transform: translateX(-120%); }
+  100% { transform: translateX(220%); }
+}
+@keyframes ec-hero-access-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes ec-hero-access-error {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 .ec-hero-access {
   position: relative;
   display: flex;
   justify-content: center;
   align-items: stretch;
-  min-height: 600px;
 }
 .ec-hero-access__frame {
   position: relative;
   width: 100%;
-  max-width: 520px;
+  max-width: 480px;
   display: flex;
   flex-direction: column;
-  gap: 28px;
-  padding: 38px 38px 26px;
+  gap: 24px;
+  padding: 36px 36px 22px;
   border: 1px solid rgba(154, 216, 239, 0.22);
-  border-radius: 14px;
+  border-radius: 16px;
   background:
-    linear-gradient(180deg, rgba(10, 20, 30, 0.92), rgba(3, 7, 11, 0.96)),
-    radial-gradient(circle at 50% 0%, rgba(93, 181, 217, 0.08), transparent 70%);
+    linear-gradient(180deg, rgba(11, 22, 32, 0.94), rgba(3, 8, 13, 0.96));
   box-shadow:
-    0 0 0 1px rgba(154, 216, 239, 0.06) inset,
-    0 30px 100px rgba(0, 0, 0, 0.5),
-    0 0 80px rgba(93, 181, 217, 0.08);
-  backdrop-filter: blur(10px);
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 1px 0 rgba(154, 216, 239, 0.08) inset,
+    0 30px 90px rgba(0, 0, 0, 0.55),
+    0 0 60px rgba(93, 181, 217, 0.1);
+  overflow: hidden;
+  isolation: isolate;
+  animation: ec-hero-access-mount 720ms var(--L-ease-out) both;
 }
+/* Top cyan signal line */
 .ec-hero-access__frame::before {
   content: "";
   position: absolute;
   top: 0;
-  left: 38px;
-  right: 38px;
+  left: 30px;
+  right: 30px;
   height: 1px;
   background: linear-gradient(90deg, transparent, var(--L-signal), transparent);
-  opacity: 0.45;
+  opacity: 0.55;
+  z-index: 2;
+}
+/* Inner cyan glow at top (premium depth) */
+.ec-hero-access__glow {
+  position: absolute;
+  top: -60%;
+  left: 50%;
+  width: 140%;
+  height: 100%;
+  transform: translateX(-50%);
+  background: radial-gradient(
+    ellipse at center,
+    rgba(93, 181, 217, 0.14),
+    transparent 65%
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+.ec-hero-access__frame > * {
+  position: relative;
+  z-index: 1;
 }
 
+/* Header */
 .ec-hero-access__head {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
-.ec-hero-access__head-titles {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.ec-hero-access__head-label {
+.ec-hero-access__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
   font-family: var(--ec-font-mono, "JetBrains Mono", ui-monospace, monospace);
-  font-size: var(--L-type-mono-xs);
+  font-size: 11px;
   letter-spacing: 0.22em;
   text-transform: uppercase;
   color: var(--L-signal);
 }
-.ec-hero-access__head-title {
+.ec-hero-access__eyebrow-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--L-signal);
+  animation: ec-hero-access-pulse 2.4s var(--L-ease-in-out) infinite;
+}
+.ec-hero-access__title {
   margin: 0;
-  font-size: clamp(28px, 2.4vw, 34px);
-  line-height: 1.05;
+  font-size: clamp(26px, 2.4vw, 32px);
+  line-height: 1.08;
   letter-spacing: -0.025em;
   font-weight: 800;
   text-transform: uppercase;
   color: var(--L-text);
 }
-.ec-hero-access__head-sub {
+.ec-hero-access__sub {
   margin: 0;
   font-size: 14px;
   line-height: 1.5;
   color: #97abba;
 }
 
+/* Tabs с sliding indicator */
 .ec-hero-access__tabs {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   padding: 4px;
-  background: rgba(5, 10, 16, 0.5);
+  background: rgba(5, 10, 16, 0.7);
   border: 1px solid var(--L-line-2);
-  border-radius: 6px;
-  width: fit-content;
+  border-radius: 10px;
+  isolation: isolate;
+}
+.ec-hero-access__tab-indicator {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc(50% - 4px);
+  background: linear-gradient(180deg, var(--L-signal-bright), var(--L-signal-deep));
+  border-radius: 7px;
+  box-shadow:
+    0 4px 14px rgba(93, 181, 217, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  transition: transform 380ms cubic-bezier(0.4, 0.0, 0.2, 1);
+  z-index: 0;
+}
+.ec-hero-access__tab-indicator[data-mode="register"] {
+  transform: translateX(100%);
 }
 .ec-hero-access__tab {
   appearance: none;
   border: 0;
   background: transparent;
   color: #8198aa;
-  padding: 8px 16px;
+  padding: 11px 12px;
   font-family: var(--ec-font-mono, "JetBrains Mono", ui-monospace, monospace);
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
-  border-radius: 4px;
   cursor: pointer;
-  transition:
-    background var(--L-dur-fast) var(--L-ease-out),
-    color var(--L-dur-fast) var(--L-ease-out);
+  z-index: 1;
+  position: relative;
+  transition: color 380ms cubic-bezier(0.4, 0.0, 0.2, 1);
 }
 .ec-hero-access__tab:hover {
   color: #d4e3f0;
 }
 .ec-hero-access__tab.is-active {
-  background: linear-gradient(180deg, var(--L-signal-bright), var(--L-signal-deep));
   color: #021018;
 }
 
-.ec-hero-access__body {
-  --ec-accent: var(--L-signal);
-  --ec-accent-hover: var(--L-signal-soft);
-  --ec-accent-soft: rgba(93, 181, 217, 0.14);
-  --ec-accent-text: #021018;
-  --ec-accent-glow: 0 0 0 1px rgba(93, 181, 217, 0.45);
-  --ec-accent-3: var(--L-signal-soft);
-  --ec-accent-3-soft: rgba(93, 181, 217, 0.14);
-  --ec-accent-gold: var(--L-signal);
-  --ec-accent-gold-soft: rgba(93, 181, 217, 0.14);
-  --ec-accent-gold-hover: var(--L-signal-soft);
-}
-
-/* AuthPage embedded form premium overrides */
-.ec-hero-access__body .ec-auth-shell--embedded {
-  min-height: 0;
-  padding: 0;
-  background: transparent;
-  border: 0;
-  box-shadow: none;
-}
-.ec-hero-access__body .ec-auth-shell--embedded::before,
-.ec-hero-access__body .ec-auth-shell--embedded::after {
-  display: none;
-}
-.ec-hero-access__body .ec-auth-shell--embedded .ec-auth-logo,
-.ec-hero-access__body .ec-auth-shell--embedded .ec-auth-title,
-.ec-hero-access__body .ec-auth-shell--embedded .ec-auth-subtitle,
-.ec-hero-access__body .ec-auth-shell--embedded .ec-auth-product-strip,
-.ec-hero-access__body .ec-auth-shell--embedded .ec-auth-radar,
-.ec-hero-access__body .ec-auth-shell--embedded .ec-auth-top-hud,
-.ec-hero-access__body .ec-auth-shell--embedded .ec-auth-orbit {
-  display: none;
-}
-.ec-hero-access__body .ec-auth-shell--embedded .ec-auth-scene {
-  gap: 0;
-}
-.ec-hero-access__body .ec-auth-shell--embedded .ec-auth-stack {
-  gap: 16px;
-}
-.ec-hero-access__body .ec-auth-shell--embedded .ec-auth-terminal-frame {
-  transform: none;
-  background: transparent;
-  border: 0;
-  padding: 0;
-  box-shadow: none;
-}
-.ec-hero-access__body .ec-auth-shell--embedded .ec-auth-form {
+/* Form */
+.ec-hero-access__form {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
 }
-.ec-hero-access__body .ec-auth-shell--embedded label,
-.ec-hero-access__body .ec-auth-shell--embedded .ec-auth-label {
+.ec-hero-access__field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ec-hero-access__field label {
   font-family: var(--ec-font-mono, "JetBrains Mono", ui-monospace, monospace);
   font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.2em;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: #97abba;
-  display: block;
-  margin-bottom: 6px;
+  color: #8fa6b7;
 }
-.ec-hero-access__body .ec-auth-shell--embedded input[type="email"],
-.ec-hero-access__body .ec-auth-shell--embedded input[type="password"],
-.ec-hero-access__body .ec-auth-shell--embedded input[type="text"],
-.ec-hero-access__body .ec-auth-shell--embedded input[type="tel"] {
-  width: 100%;
-  height: 44px;
+.ec-hero-access__input-wrap {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+}
+.ec-hero-access__input-wrap input {
+  flex: 1;
+  height: 48px;
   padding: 0 16px;
-  background: rgba(5, 10, 16, 0.6);
+  background: rgba(4, 8, 13, 0.72);
   border: 1px solid var(--L-line);
-  border-radius: 6px;
+  border-radius: 10px;
   color: var(--L-text);
   font-family: var(--ec-font-sans, "Inter", system-ui, sans-serif);
   font-size: 14px;
   letter-spacing: 0;
   text-transform: none;
   transition:
-    border-color var(--L-dur-fast) var(--L-ease-out),
-    box-shadow var(--L-dur-fast) var(--L-ease-out),
-    background var(--L-dur-fast) var(--L-ease-out);
+    border-color 220ms var(--L-ease-out),
+    background 220ms var(--L-ease-out),
+    box-shadow 220ms var(--L-ease-out);
 }
-.ec-hero-access__body .ec-auth-shell--embedded input:focus {
+.ec-hero-access__input-wrap input::placeholder {
+  color: #4f6473;
+}
+.ec-hero-access__input-wrap input:hover:not(:focus):not(:disabled) {
+  border-color: rgba(154, 216, 239, 0.32);
+}
+.ec-hero-access__input-wrap input:focus {
   outline: none;
   border-color: var(--L-signal);
-  background: rgba(5, 10, 16, 0.85);
-  box-shadow: 0 0 0 3px rgba(93, 181, 217, 0.16);
+  background: rgba(4, 8, 13, 0.92);
+  box-shadow:
+    0 0 0 4px rgba(93, 181, 217, 0.14),
+    0 0 24px rgba(93, 181, 217, 0.12);
 }
-.ec-hero-access__body .ec-auth-shell--embedded input::placeholder {
-  color: #526879;
+.ec-hero-access__input-wrap input:disabled {
+  opacity: 0.55;
+  cursor: wait;
 }
-.ec-hero-access__body .ec-auth-shell--embedded button[type="submit"],
-.ec-hero-access__body .ec-auth-shell--embedded .ec-auth-submit {
-  width: 100%;
-  height: 46px;
+.ec-hero-access__input-wrap:has(input:focus) + label,
+.ec-hero-access__field:has(input:focus) label {
+  color: var(--L-signal);
+}
+.ec-hero-access__toggle {
+  position: absolute;
+  right: 4px;
+  top: 4px;
+  bottom: 4px;
+  width: 40px;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  color: #6f8595;
+  cursor: pointer;
+  transition: color 200ms var(--L-ease-out), background 200ms var(--L-ease-out);
+}
+.ec-hero-access__toggle:hover {
+  color: var(--L-signal);
+  background: rgba(93, 181, 217, 0.08);
+}
+
+/* Error */
+.ec-hero-access__error {
+  padding: 12px 14px;
+  background: rgba(232, 122, 122, 0.08);
+  border: 1px solid rgba(232, 122, 122, 0.35);
+  border-radius: 8px;
+  color: #f4b8b8;
+  font-size: 13px;
+  line-height: 1.4;
+  animation: ec-hero-access-error 280ms var(--L-ease-out) both;
+}
+
+/* Submit */
+.ec-hero-access__submit {
+  position: relative;
+  height: 52px;
+  margin-top: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 0 22px;
   background: linear-gradient(180deg, var(--L-signal-bright), var(--L-signal-deep));
   color: #021018;
   border: 0;
-  border-radius: 3px;
+  border-radius: 10px;
   font-family: var(--ec-font-mono, "JetBrains Mono", ui-monospace, monospace);
   font-size: 12px;
   font-weight: 800;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
   cursor: pointer;
-  box-shadow: 0 0 40px rgba(93, 181, 217, 0.18);
-  transition: box-shadow var(--L-dur-fast) var(--L-ease-out);
+  overflow: hidden;
+  isolation: isolate;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.25),
+    0 10px 30px rgba(93, 181, 217, 0.28),
+    0 0 50px rgba(93, 181, 217, 0.18);
+  transition:
+    transform 220ms var(--L-ease-out),
+    box-shadow 220ms var(--L-ease-out);
 }
-.ec-hero-access__body .ec-auth-shell--embedded button[type="submit"]:hover {
-  box-shadow: 0 0 60px rgba(93, 181, 217, 0.32);
+.ec-hero-access__submit:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    0 16px 40px rgba(93, 181, 217, 0.36),
+    0 0 70px rgba(93, 181, 217, 0.3);
 }
-.ec-hero-access__body .ec-auth-shell--embedded button[type="submit"]:disabled {
-  opacity: 0.5;
+.ec-hero-access__submit:active:not(:disabled) {
+  transform: translateY(0);
+}
+.ec-hero-access__submit:disabled {
   cursor: wait;
+  opacity: 0.85;
+}
+.ec-hero-access__submit-shimmer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 50%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.32),
+    transparent
+  );
+  transform: translateX(-120%);
+  pointer-events: none;
+  z-index: 0;
+}
+.ec-hero-access__submit:hover:not(:disabled) .ec-hero-access__submit-shimmer {
+  animation: ec-hero-access-shimmer 1.2s var(--L-ease-out);
+}
+.ec-hero-access__submit-label,
+.ec-hero-access__submit-arrow {
+  position: relative;
+  z-index: 1;
+}
+.ec-hero-access__submit-arrow {
+  display: inline-flex;
+  transition: transform 220ms var(--L-ease-out);
+}
+.ec-hero-access__submit:hover:not(:disabled) .ec-hero-access__submit-arrow {
+  transform: translateX(4px);
+}
+.ec-hero-access__submit.is-loading .ec-hero-access__submit-label {
+  position: relative;
+  padding-left: 24px;
+}
+.ec-hero-access__submit.is-loading .ec-hero-access__submit-label::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  margin-top: -7px;
+  border: 2px solid rgba(2, 16, 24, 0.25);
+  border-top-color: rgba(2, 16, 24, 0.9);
+  border-radius: 50%;
+  animation: ec-hero-access-spin 0.9s linear infinite;
 }
 
+.ec-hero-access__hint {
+  margin: 0;
+  text-align: center;
+  font-size: 13px;
+  color: #8fa6b7;
+}
+.ec-hero-access__hint-link {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  color: var(--L-signal);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  position: relative;
+  transition: color 200ms var(--L-ease-out);
+}
+.ec-hero-access__hint-link::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -2px;
+  height: 1px;
+  background: var(--L-signal);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 220ms var(--L-ease-out);
+}
+.ec-hero-access__hint-link:hover {
+  color: var(--L-signal-soft);
+}
+.ec-hero-access__hint-link:hover::after {
+  transform: scaleX(1);
+}
+
+/* Footer */
 .ec-hero-access__footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding-top: 16px;
+  padding-top: 18px;
   border-top: 1px solid var(--L-line-2);
   font-family: var(--ec-font-mono, "JetBrains Mono", ui-monospace, monospace);
   font-size: 10px;
@@ -619,10 +808,25 @@
   height: 6px;
   border-radius: 50%;
   background: var(--L-status-active);
-  box-shadow: 0 0 8px rgba(65, 215, 154, 0.35);
+  animation: ec-hero-access-pulse 2.4s var(--L-ease-in-out) infinite;
 }
 .ec-hero-access__footer-meta {
   color: #4f6473;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ec-hero-access__frame,
+  .ec-hero-access__eyebrow-dot,
+  .ec-hero-access__footer-dot,
+  .ec-hero-access__tab-indicator,
+  .ec-hero-access__submit,
+  .ec-hero-access__submit-shimmer,
+  .ec-hero-access__submit-arrow,
+  .ec-hero-access__error,
+  .ec-hero-access__hint-link::after {
+    animation: none;
+    transition: none;
+  }
 }
 
 /* === Trust band === */
