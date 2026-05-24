@@ -361,245 +361,125 @@
   align-self: center;
 }
 
-/* === Product console mockup === */
-.ec-hero-console {
+/* === Premium hero access panel (v1.3.5) ===
+ * Console mockup полностью удалён per Pavel verdict 24.05.2026:
+ * «надо вот это полностью убрать и сделать форму входа максимально
+ * профессионально и уникально».
+ *
+ * Hero right column = premium auth frame:
+ *   - Frame: dark elevated card с cyan border + subtle inner cyan glow
+ *   - Eclipse halo (от .ec-landing__hero::before) видна за frame'ом
+ *   - Header: mono kicker label + monumental H2 + lead sub
+ *   - Tabs Вход/Создать с active underline
+ *   - Body: AuthPage embedded form (overridden styles ниже)
+ *   - Footer: mono signature signal-dot + meta
+ */
+.ec-hero-access {
   position: relative;
-}
-.ec-hero-console__surface {
-  height: 520px;
-  border: 1px solid rgba(154, 216, 239, 0.14);
-  background: linear-gradient(180deg, rgba(10, 20, 30, 0.82), rgba(3, 7, 11, 0.92));
-  border-radius: var(--L-r-lg);
-  box-shadow: 0 30px 100px rgba(0, 0, 0, 0.5);
-  display: grid;
-  grid-template-columns: 180px 1fr 190px;
-  overflow: hidden;
-  backdrop-filter: blur(10px);
-  font-family: var(--ec-font-mono, "JetBrains Mono", ui-monospace, monospace);
-}
-
-/* Rail */
-.ec-hero-console__rail {
-  border-right: 1px solid var(--L-line-2);
-  padding: 22px;
-  color: #60788a;
-}
-.ec-hero-console__rail-label {
-  display: block;
-  font-size: 10px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: #60788a;
-}
-.ec-hero-console__rail-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-.ec-hero-console__rail-list li button {
-  width: 100%;
-  margin-top: 20px;
-  padding: 12px 10px;
-  border-radius: 6px;
-  background: transparent;
-  border: 1px solid transparent;
-  color: #8299ab;
-  font-family: inherit;
-  font-size: var(--L-type-mono);
-  text-align: left;
-  cursor: default;
-}
-.ec-hero-console__rail-list li.is-active button {
-  background: rgba(93, 181, 217, 0.12);
-  border-color: rgba(93, 181, 217, 0.18);
-  color: #dff7ff;
-}
-
-/* Main */
-.ec-hero-console__main {
-  padding: 22px;
-  border-right: 1px solid var(--L-line-2);
-  overflow: hidden;
-}
-.ec-hero-console__topline {
   display: flex;
-  justify-content: space-between;
-  margin-bottom: 24px;
-  font-size: var(--L-type-mono);
-  color: #70889a;
+  justify-content: center;
+  align-items: stretch;
+  min-height: 600px;
 }
-.ec-hero-console__card {
-  background: rgba(255, 255, 255, 0.025);
-  border: 1px solid var(--L-line-2);
-  border-radius: 10px;
-  padding: 18px;
-  margin-bottom: 16px;
-}
-.ec-hero-console__card-label {
-  display: block;
-  font-size: 10px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: #60788a;
-  margin-bottom: 6px;
-}
-.ec-hero-console__card strong {
-  font-family: var(--ec-font-sans, "Inter", system-ui, sans-serif);
-  font-size: 14px;
-  color: var(--L-text);
-}
-.ec-hero-console__progress {
-  height: 7px;
-  background: #10202b;
-  border-radius: 10px;
-  overflow: hidden;
-  margin-top: 14px;
-}
-.ec-hero-console__progress-bar {
-  display: block;
-  width: 76%;
-  height: 100%;
-  background: var(--L-signal);
-}
-.ec-hero-console__card-body {
-  font-family: var(--ec-font-sans, "Inter", system-ui, sans-serif);
-  font-size: 13px;
-  color: #a8b8c7;
-  margin: 12px 0 0;
-}
-.ec-hero-console__msg {
-  display: grid;
-  grid-template-columns: 34px 1fr;
-  gap: 12px;
-  align-items: start;
-}
-.ec-hero-console__avatar {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: linear-gradient(#b7896d, #4d2e27);
-}
-.ec-hero-console__msg-content strong {
-  font-family: var(--ec-font-sans, "Inter", system-ui, sans-serif);
-  font-size: 14px;
-}
-.ec-hero-console__msg-content p {
-  font-family: var(--ec-font-sans, "Inter", system-ui, sans-serif);
-  font-size: 13px;
-  color: #a4b5c4;
-  margin: 0.35rem 0;
-}
-.ec-hero-console__file {
-  display: inline-flex;
-  gap: 8px;
-  font-size: var(--L-type-mono);
-  color: #dce7ef;
-  background: rgba(255, 255, 255, 0.05);
-  padding: 9px 12px;
-  border-radius: 6px;
-}
-.ec-hero-console__wave {
-  display: inline-flex;
-  gap: 4px;
-  align-items: center;
-  height: 34px;
-}
-.ec-hero-console__wave i {
-  display: inline-block;
-  width: 3px;
-  background: var(--L-signal);
-  height: 14px;
-  opacity: 0.6;
-}
-.ec-hero-console__wave i:nth-child(2n) { height: 22px; }
-.ec-hero-console__wave i:nth-child(3n) { height: 8px; }
-
-/* Side */
-.ec-hero-console__side {
-  padding: 22px;
-}
-.ec-hero-console__side-label {
-  display: block;
-  font-size: 10px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: #60788a;
-}
-.ec-hero-console__dial {
-  width: 88px;
-  height: 88px;
-  border: 1px solid rgba(93, 181, 217, 0.25);
-  border-radius: 50%;
-  margin: 18px auto;
-  display: grid;
-  place-items: center;
-}
-.ec-hero-console__dial::before {
-  content: "";
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  border: 1px solid var(--L-signal);
-  box-shadow: 0 0 22px rgba(93, 181, 217, 0.25);
-}
-.ec-hero-console__status {
-  font-size: var(--L-type-mono);
-  color: #9fb2c1;
-  line-height: 1.7;
-}
-.ec-hero-console__status-online {
-  color: var(--L-status-active);
-}
-
-/* Auth mode */
-.ec-hero-console__auth {
-  grid-column: 2 / -1;
-  padding: 22px;
+.ec-hero-access__frame {
+  position: relative;
+  width: 100%;
+  max-width: 520px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  min-height: 0;
+  gap: 28px;
+  padding: 38px 38px 26px;
+  border: 1px solid rgba(154, 216, 239, 0.22);
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgba(10, 20, 30, 0.92), rgba(3, 7, 11, 0.96)),
+    radial-gradient(circle at 50% 0%, rgba(93, 181, 217, 0.08), transparent 70%);
+  box-shadow:
+    0 0 0 1px rgba(154, 216, 239, 0.06) inset,
+    0 30px 100px rgba(0, 0, 0, 0.5),
+    0 0 80px rgba(93, 181, 217, 0.08);
+  backdrop-filter: blur(10px);
 }
-.ec-hero-console__auth-head {
+.ec-hero-access__frame::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 38px;
+  right: 38px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--L-signal), transparent);
+  opacity: 0.45;
+}
+
+.ec-hero-access__head {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
   gap: 12px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--L-line-2);
 }
-.ec-hero-console__auth-label {
-  display: block;
-  font-size: 10px;
+.ec-hero-access__head-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ec-hero-access__head-label {
+  font-family: var(--ec-font-mono, "JetBrains Mono", ui-monospace, monospace);
+  font-size: var(--L-type-mono-xs);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--L-signal);
+}
+.ec-hero-access__head-title {
+  margin: 0;
+  font-size: clamp(28px, 2.4vw, 34px);
+  line-height: 1.05;
+  letter-spacing: -0.025em;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--L-text);
+}
+.ec-hero-access__head-sub {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #97abba;
+}
+
+.ec-hero-access__tabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  background: rgba(5, 10, 16, 0.5);
+  border: 1px solid var(--L-line-2);
+  border-radius: 6px;
+  width: fit-content;
+}
+.ec-hero-access__tab {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: #8198aa;
+  padding: 8px 16px;
+  font-family: var(--ec-font-mono, "JetBrains Mono", ui-monospace, monospace);
+  font-size: 11px;
+  font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: #60788a;
-}
-.ec-hero-console__auth-head strong {
-  display: block;
-  margin-top: 6px;
-  color: var(--L-text);
-  font-family: var(--ec-font-sans, "Inter", system-ui, sans-serif);
-  font-size: 16px;
-  font-weight: 600;
-}
-.ec-hero-console__auth-close {
-  appearance: none;
-  border: 1px solid rgba(150, 210, 245, 0.18);
-  background: #0b1620;
-  color: #f2f9ff;
-  border-radius: var(--L-r-sm);
-  padding: 8px 14px;
-  font-family: var(--ec-font-mono, "JetBrains Mono", ui-monospace, monospace);
-  font-size: var(--L-type-mono);
-  letter-spacing: var(--L-track-mono);
-  text-transform: uppercase;
+  border-radius: 4px;
   cursor: pointer;
+  transition:
+    background var(--L-dur-fast) var(--L-ease-out),
+    color var(--L-dur-fast) var(--L-ease-out);
 }
-.ec-hero-console__auth-close:hover {
-  border-color: var(--L-signal);
+.ec-hero-access__tab:hover {
+  color: #d4e3f0;
 }
-.ec-hero-console__auth-body {
+.ec-hero-access__tab.is-active {
+  background: linear-gradient(180deg, var(--L-signal-bright), var(--L-signal-deep));
+  color: #021018;
+}
+
+.ec-hero-access__body {
   --ec-accent: var(--L-signal);
   --ec-accent-hover: var(--L-signal-soft);
   --ec-accent-soft: rgba(93, 181, 217, 0.14);
@@ -610,31 +490,139 @@
   --ec-accent-gold: var(--L-signal);
   --ec-accent-gold-soft: rgba(93, 181, 217, 0.14);
   --ec-accent-gold-hover: var(--L-signal-soft);
-  overflow-y: auto;
-  min-height: 0;
 }
-.ec-hero-console__auth-body .ec-auth-shell--embedded {
+
+/* AuthPage embedded form premium overrides */
+.ec-hero-access__body .ec-auth-shell--embedded {
   min-height: 0;
   padding: 0;
   background: transparent;
   border: 0;
   box-shadow: none;
 }
-.ec-hero-console__auth-body .ec-auth-shell--embedded::before,
-.ec-hero-console__auth-body .ec-auth-shell--embedded::after {
-  inset: 0;
-}
-.ec-hero-console__auth-body .ec-auth-shell--embedded .ec-auth-logo,
-.ec-hero-console__auth-body .ec-auth-shell--embedded .ec-auth-product-strip,
-.ec-hero-console__auth-body .ec-auth-shell--embedded .ec-auth-subtitle,
-.ec-hero-console__auth-body .ec-auth-shell--embedded .ec-auth-radar,
-.ec-hero-console__auth-body .ec-auth-shell--embedded .ec-auth-top-hud,
-.ec-hero-console__auth-body .ec-auth-shell--embedded .ec-auth-orbit {
+.ec-hero-access__body .ec-auth-shell--embedded::before,
+.ec-hero-access__body .ec-auth-shell--embedded::after {
   display: none;
+}
+.ec-hero-access__body .ec-auth-shell--embedded .ec-auth-logo,
+.ec-hero-access__body .ec-auth-shell--embedded .ec-auth-title,
+.ec-hero-access__body .ec-auth-shell--embedded .ec-auth-subtitle,
+.ec-hero-access__body .ec-auth-shell--embedded .ec-auth-product-strip,
+.ec-hero-access__body .ec-auth-shell--embedded .ec-auth-radar,
+.ec-hero-access__body .ec-auth-shell--embedded .ec-auth-top-hud,
+.ec-hero-access__body .ec-auth-shell--embedded .ec-auth-orbit {
+  display: none;
+}
+.ec-hero-access__body .ec-auth-shell--embedded .ec-auth-scene {
+  gap: 0;
+}
+.ec-hero-access__body .ec-auth-shell--embedded .ec-auth-stack {
+  gap: 16px;
+}
+.ec-hero-access__body .ec-auth-shell--embedded .ec-auth-terminal-frame {
+  transform: none;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  box-shadow: none;
+}
+.ec-hero-access__body .ec-auth-shell--embedded .ec-auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.ec-hero-access__body .ec-auth-shell--embedded label,
+.ec-hero-access__body .ec-auth-shell--embedded .ec-auth-label {
+  font-family: var(--ec-font-mono, "JetBrains Mono", ui-monospace, monospace);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #97abba;
+  display: block;
+  margin-bottom: 6px;
+}
+.ec-hero-access__body .ec-auth-shell--embedded input[type="email"],
+.ec-hero-access__body .ec-auth-shell--embedded input[type="password"],
+.ec-hero-access__body .ec-auth-shell--embedded input[type="text"],
+.ec-hero-access__body .ec-auth-shell--embedded input[type="tel"] {
+  width: 100%;
+  height: 44px;
+  padding: 0 16px;
+  background: rgba(5, 10, 16, 0.6);
+  border: 1px solid var(--L-line);
+  border-radius: 6px;
+  color: var(--L-text);
+  font-family: var(--ec-font-sans, "Inter", system-ui, sans-serif);
+  font-size: 14px;
+  letter-spacing: 0;
+  text-transform: none;
+  transition:
+    border-color var(--L-dur-fast) var(--L-ease-out),
+    box-shadow var(--L-dur-fast) var(--L-ease-out),
+    background var(--L-dur-fast) var(--L-ease-out);
+}
+.ec-hero-access__body .ec-auth-shell--embedded input:focus {
+  outline: none;
+  border-color: var(--L-signal);
+  background: rgba(5, 10, 16, 0.85);
+  box-shadow: 0 0 0 3px rgba(93, 181, 217, 0.16);
+}
+.ec-hero-access__body .ec-auth-shell--embedded input::placeholder {
+  color: #526879;
+}
+.ec-hero-access__body .ec-auth-shell--embedded button[type="submit"],
+.ec-hero-access__body .ec-auth-shell--embedded .ec-auth-submit {
+  width: 100%;
+  height: 46px;
+  background: linear-gradient(180deg, var(--L-signal-bright), var(--L-signal-deep));
+  color: #021018;
+  border: 0;
+  border-radius: 3px;
+  font-family: var(--ec-font-mono, "JetBrains Mono", ui-monospace, monospace);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 0 0 40px rgba(93, 181, 217, 0.18);
+  transition: box-shadow var(--L-dur-fast) var(--L-ease-out);
+}
+.ec-hero-access__body .ec-auth-shell--embedded button[type="submit"]:hover {
+  box-shadow: 0 0 60px rgba(93, 181, 217, 0.32);
+}
+.ec-hero-access__body .ec-auth-shell--embedded button[type="submit"]:disabled {
+  opacity: 0.5;
+  cursor: wait;
 }
 
-.ec-hero-console__mobile {
-  display: none;
+.ec-hero-access__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--L-line-2);
+  font-family: var(--ec-font-mono, "JetBrains Mono", ui-monospace, monospace);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #607382;
+}
+.ec-hero-access__footer-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.ec-hero-access__footer-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--L-status-active);
+  box-shadow: 0 0 8px rgba(65, 215, 154, 0.35);
+}
+.ec-hero-access__footer-meta {
+  color: #4f6473;
 }
 
 /* === Trust band === */
@@ -1101,16 +1089,13 @@
     top: 120px;
   }
   .ec-landing__hero-stage { order: 2; }
-  .ec-hero-console__surface {
-    height: auto;
-    display: block;
+  .ec-hero-access {
+    min-height: auto;
   }
-  .ec-hero-console__rail,
-  .ec-hero-console__side {
-    display: none;
-  }
-  .ec-hero-console__main {
-    border-right: 0;
+  .ec-hero-access__frame {
+    max-width: 100%;
+    padding: 28px 22px 20px;
+    gap: 22px;
   }
   .ec-landing__section-grid,
   .ec-landing__memory-grid,
@@ -1136,7 +1121,7 @@
   .ec-landing-btn { padding: 0 16px; height: 38px; }
   .ec-landing__features { grid-template-columns: 1fr; }
   .ec-landing__hero { padding: 40px 0; }
-  .ec-landing__hero-title { font-size: 52px; }
+  .ec-landing__hero-title { font-size: 38px; line-height: 0.92; letter-spacing: -0.05em; }
   .ec-landing__final h2 { font-size: 36px; }
 }
 

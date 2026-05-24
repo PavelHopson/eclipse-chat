@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Reveal, revealDelay } from "./CinematicMotion";
+import { Reveal } from "./CinematicMotion";
 
 type AuthMode = "login" | "register" | null;
 
@@ -11,162 +11,90 @@ type HeroOperationalStageProps = {
 };
 
 /**
- * v1.3.4 — premium SaaS hero stage per Pavel reference HTML brief.
- * Full 3-col product UI console mockup matching reference visual.
+ * v1.3.5 — premium auth panel in hero per Pavel verdict (24.05.2026):
+ *   «надо вот это полностью убрать [console mockup] и сделать форму
+ *   входа максимально профессионально и уникально».
  *
- * Class naming: `ec-hero-console*` (paired с landing.css).
+ *   Console mockup (rail / main feed / side ops panel) удалён полностью.
+ *   Hero stage теперь = premium access panel (login/register form).
  *
- *   - Rail (left, 180px): «Контур» label + 4 nav items (active row)
- *   - Main (center, 1fr): topline + 3 cards (system summary с progress,
- *     message from Мария с file, message from Иван с voice waveform)
- *   - Side (right, 190px): «Панель оператора» + dial + status list
+ *   Auth panel = AuthPage embedded mode injected as `authPanel` prop.
+ *   App.tsx гарантирует что panel рендерится всегда (default login mode
+ *   когда authSurface null), не только в auth surface mode.
  *
- *   Auth mode: rail сохраняется, main+side замeняются auth-dock'ом
- *   (grid-column: 2/-1).
+ *   Premium frame:
+ *     - Eclipse halo (от hero ::before) видна за frame'ом
+ *     - Cyan glow border
+ *     - Monumental heading «Доступ к контуру» / «Активация контура»
+ *     - Tabs Вход/Создать переключают mode
+ *     - Form rendered внутри
+ *     - Footer mono signature
  */
-
-const RAIL_ITEMS = [
-  { label: "Общий контур", active: true },
-  { label: "Разработка", active: false },
-  { label: "Поддержка", active: false },
-  { label: "Клиентский портал", active: false },
-] as const;
-
-const STATUS_ITEMS = [
-  { label: "AI Gateway", state: "Online" },
-  { label: "База данных", state: "Online" },
-  { label: "Файловое хранилище", state: "Online" },
-] as const;
 
 export function HeroOperationalStage({
   authMode,
   authPanel,
   onOpenAuth,
-  onCloseAuth,
+  onCloseAuth: _onCloseAuth,
 }: HeroOperationalStageProps) {
+  const activeMode: "login" | "register" = authMode ?? "login";
+  const heading =
+    activeMode === "register" ? "Активация контура" : "Доступ к контуру";
+  const sub =
+    activeMode === "register"
+      ? "Создайте новый рабочий контур за минуту."
+      : "Войдите в свою рабочую среду.";
+
   return (
-    <div
-      className={`ec-hero-console${authMode ? " ec-hero-console--auth-open" : ""}`}
-      aria-label="Операционная сцена Eclipse Chat"
-    >
-      <div className="ec-hero-console__surface">
-        <aside className="ec-hero-console__rail" aria-label="Разделы">
-          <span className="ec-hero-console__rail-label">Контур</span>
-          <ul className="ec-hero-console__rail-list">
-            {RAIL_ITEMS.map((item, index) => (
-              <li
-                key={item.label}
-                className={item.active ? "is-active" : undefined}
-                style={revealDelay(index, 60)}
-              >
-                <button type="button">{item.label}</button>
-              </li>
-            ))}
-          </ul>
-        </aside>
+    <div className="ec-hero-access" aria-label="Доступ к Eclipse Chat">
+      <Reveal className="ec-hero-access__frame" variant="panel">
+        <header className="ec-hero-access__head">
+          <div className="ec-hero-access__head-titles">
+            <span className="ec-hero-access__head-label">
+              {activeMode === "register" ? "контур / запуск" : "контур / доступ"}
+            </span>
+            <h2 className="ec-hero-access__head-title">{heading}</h2>
+            <p className="ec-hero-access__head-sub">{sub}</p>
+          </div>
 
-        {authMode ? (
-          <section className="ec-hero-console__auth" aria-label="Экран доступа">
-            <Reveal className="ec-hero-console__auth-head" variant="panel">
-              <div>
-                <span className="ec-hero-console__auth-label">
-                  {authMode === "login" ? "Точка доступа" : "Активация контура"}
-                </span>
-                <strong>
-                  {authMode === "login"
-                    ? "Вход в рабочий контур"
-                    : "Регистрация команды"}
-                </strong>
-              </div>
-              <button
-                type="button"
-                className="ec-hero-console__auth-close"
-                onClick={onCloseAuth}
-              >
-                Обзор среды
-              </button>
-            </Reveal>
-            <div className="ec-hero-console__auth-body">{authPanel}</div>
-          </section>
-        ) : (
-          <>
-            <main className="ec-hero-console__main">
-              <div className="ec-hero-console__topline">
-                <span># Общий-контур</span>
-                <span>24 участника · 10 online</span>
-              </div>
+          <div
+            className="ec-hero-access__tabs"
+            role="tablist"
+            aria-label="Режим доступа"
+          >
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeMode === "login"}
+              className={`ec-hero-access__tab${activeMode === "login" ? " is-active" : ""}`}
+              onClick={() => onOpenAuth("login")}
+            >
+              Вход
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeMode === "register"}
+              className={`ec-hero-access__tab${activeMode === "register" ? " is-active" : ""}`}
+              onClick={() => onOpenAuth("register")}
+            >
+              Создать
+            </button>
+          </div>
+        </header>
 
-              <Reveal className="ec-hero-console__card" variant="panel" delay={80}>
-                <span className="ec-hero-console__card-label">Система · 10:34</span>
-                <strong>Операционная сводка за сегодня</strong>
-                <div className="ec-hero-console__progress">
-                  <span className="ec-hero-console__progress-bar" />
-                </div>
-                <p className="ec-hero-console__card-body">Задачи выполнены 18 / 24</p>
-              </Reveal>
+        <div className="ec-hero-access__body">{authPanel}</div>
 
-              <Reveal
-                className="ec-hero-console__card ec-hero-console__msg"
-                variant="panel"
-                delay={140}
-              >
-                <span className="ec-hero-console__avatar" aria-hidden />
-                <div className="ec-hero-console__msg-content">
-                  <strong>Мария · 10:27</strong>
-                  <p>Подготовила обновление по проекту.</p>
-                  <span className="ec-hero-console__file">▣ update_v2.pdf · 2.4MB</span>
-                </div>
-              </Reveal>
-
-              <Reveal
-                className="ec-hero-console__card ec-hero-console__msg"
-                variant="panel"
-                delay={200}
-              >
-                <span className="ec-hero-console__avatar" aria-hidden />
-                <div className="ec-hero-console__msg-content">
-                  <strong>Иван · 11:01</strong>
-                  <p>Подключился к голосовому каналу.</p>
-                  <span className="ec-hero-console__wave" aria-hidden>
-                    {Array.from({ length: 9 }).map((_, i) => (
-                      <i key={i} />
-                    ))}
-                  </span>
-                </div>
-              </Reveal>
-            </main>
-
-            <aside className="ec-hero-console__side" aria-label="Панель оператора">
-              <span className="ec-hero-console__side-label">Панель оператора</span>
-              <div className="ec-hero-console__dial" aria-hidden />
-              <div className="ec-hero-console__status">
-                Статус системы
-                <br />
-                <span className="ec-hero-console__status-online">Все системы активны</span>
-                <br />
-                <br />
-                {STATUS_ITEMS.map((item, index) => (
-                  <span key={item.label}>
-                    {item.label} —{" "}
-                    <span className="ec-hero-console__status-online">{item.state}</span>
-                    {index < STATUS_ITEMS.length - 1 && <br />}
-                  </span>
-                ))}
-              </div>
-            </aside>
-          </>
-        )}
-      </div>
-
-      <div className="ec-hero-console__mobile" aria-hidden>
-        <button
-          type="button"
-          className="ec-landing-btn ec-landing-btn--primary"
-          onClick={() => onOpenAuth("login")}
-        >
-          Открыть вход
-        </button>
-      </div>
+        <footer className="ec-hero-access__footer">
+          <span className="ec-hero-access__footer-mark">
+            <span className="ec-hero-access__footer-dot" aria-hidden />
+            контур / шифрованный канал
+          </span>
+          <span className="ec-hero-access__footer-meta">
+            self-hosted · TLS · 2FA
+          </span>
+        </footer>
+      </Reveal>
     </div>
   );
 }

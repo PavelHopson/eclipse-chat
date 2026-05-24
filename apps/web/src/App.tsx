@@ -281,17 +281,15 @@ export function App() {
           onOpenAuth={openAuthSurface}
           onCloseAuth={closeAuthSurface}
           authPanel={
-            authSurface ? (
-              <AuthPage
-                key={authSurface}
-                error={error}
-                onLogin={login}
-                onRegister={register}
-                initialMode={authSurface}
-                initialEntryState="panel"
-                presentation="embedded"
-              />
-            ) : null
+            <AuthPage
+              key={authSurface ?? "login"}
+              error={error}
+              onLogin={login}
+              onRegister={register}
+              initialMode={authSurface ?? "login"}
+              initialEntryState="panel"
+              presentation="embedded"
+            />
           }
         />
       ) : portalServerId ? (
