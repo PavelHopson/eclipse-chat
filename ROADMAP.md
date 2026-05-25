@@ -5,7 +5,13 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.3.4** (premium SaaS pivot per Pavel verdict
+**Текущая версия:** **v1.5.12** (MemberList row premium polish —
+final list-row surface получивший unified design language; rail
+hover + avatar halo + presence breath + DM slide; deployed
+25.05.2026). **Tagged milestone:** v1.6.0 (`69a08bb`, design polish
+milestone после chain v1.5.3 → v1.5.12 — 10 версий, 25+ surfaces).
+
+**v1.3.4** (historical, pre-pivot — premium SaaS pivot per Pavel verdict
 24.05.2026: v1.3.x ушло слишком abstract/archival/minimal — возврат
 к cinematic premium SaaS landing per HTML reference brief. Eclipse
 halo backdrop в hero (740×740 cyan crescent с drop-shadow glow) +
@@ -593,6 +599,113 @@ security-art)).
     (+1.03). Gzip соразмерный (+0.22 / +0.28).
   - **Tests**: tsc clean, vite build 3.17s OK. Vitest skip (та же
     локальная ECONNRESET к npmjs.org); CI Validate отработает.
+
+- **v1.5.2** — **AppShell wow combo** (24.05.2026, `e1a03b4`). Pavel
+  «комбинация» AppShell effects. Telemetry pills extended с history
+  (last 20 samples / 200s sliding window) → `Sparkline` mini-charts
+  (inline SVG, currentColor matching pill status, 30×16px) в ПАМ и
+  ЦП pills. New `NetworkWave` (4-bar pulse, staggered animation-delay)
+  в СЕТЬ pill. DM rows premium hover: active indicator scaleY +
+  translateX(2px), avatar `breath` pulse у online users, unread
+  badge pulse + violet halo. Quick action buttons получили Material
+  ripple на click (CSS keyframe scale + opacity transition).
+  Hook `useTelemetry` extended с `memHistory` / `cpuHistory` arrays
+  для sparkline'ов.
+
+- **v1.5.1** — **Home dashboard «Сегодня» polish** (24.05.2026, `c2bb212`).
+  `useAnimatedCounter` hook (smooth count-up RAF, easeOutQuart) для
+  numeric stat cards. Time-of-day greeting (4 периода: ночь/утро/день/
+  вечер с accent colors). Premium zen empty state «Всё под контролем»
+  — eclipse orb 56px + 3 radiating rings (concentric, staggered
+  opacity fade) + breath-animated checkmark внутри (scale 0.94→1.0
+  4s ease). Stat-card hover glow усилен (violet box-shadow ramp).
+
+- **v1.5.0** — **wow-pass slice B (section polish)** MILESTONE
+  (24.05.2026, `49dbd4c`, **tagged v1.5.0**). После v1.4 wow-fix
+  Pavel «зафиксируем дизайн» — milestone. Деёп polish на secondary
+  landing sections:
+  - **AI Memory** animated diagram — SVG `<line>` connection lines
+    между central core «AI Memory» и 6 floating nodes (Решения /
+    Документы / Задачи / Обсуждения / Файлы / Участники), data
+    pulses (SVG `<animate>` along path), orbit rotation (52s slow
+    + 34s reverse), node hover triggers connection line accent.
+  - **Security cube** — `transform: rotateX(55deg) rotateZ(45deg)`
+    3D faces, continuous slow spin (40s), layered drop-shadows для
+    depth, nested rings around cube.
+  - **Cyber grid backdrop** — fixed background `repeating-linear-
+    gradient` 1px violet/cyan lines + radial mask fade.
+  - **Shield rings** (security visual) — 3 concentric circles с
+    staggered breath.
+  - **Nav magnetic links** — каждый nav-link получает inline hover
+    rect tracking (mouse x/y → tilt 4deg + accent shift). Scroll-
+    driven sliding cyan indicator под active nav (intersect-based).
+
+- **v1.4.5** — **audit fixes P1/P2** (24.05.2026, `adfcb44`). Pavel'я
+  ultrareview audit verdict. P1 desktop fit (nav 160→104px height,
+  hero 860→640px, auth frame 480→440px — auth frame обрезался на
+  1440×1000), P1 mobile auth-first (order swap stage/copy на
+  ≤700px), P2 off-screen elements fix (memory orbit overflow:hidden),
+  P2 security copy precision (TLS + AES-256-GCM + RBAC+2FA вместо
+  overstated «end-to-end encryption»).
+
+- **v1.4.1 / 1.4.2 / 1.4.3 / 1.4.4** — auth form polish + hotfixes
+  (`9e2b7f9` / `364a6a2` / `d82cc7a` / `34c8a75`). v1.4.1 — premium
+  auth form polish: floating labels (React state-based, нет browser
+  autofill hack'а), field icons (UserIcon/MailIcon/LockIcon),
+  tab horizontal slide indicator, corner brackets pulse. v1.4.2
+  hotfix layout (slider wrapper ломал flex parent, `::before`
+  конфликтовал с border-image). v1.4.3 — hero H1 fix per Pavel
+  («Работа в одном контуре.» вместо «Коммуникация которая
+  работает.»). v1.4.4 hotfix floating labels (наезжали на values
+  когда password не пустой).
+
+- **v1.4.0** — **wow-pass cinematic premium polish** MILESTONE
+  (24.05.2026, `87bad9c`, **tagged v1.4.0**). Phase 3 effects
+  integration. Pavel «зафиксируем дизайн» в этой точке. Что
+  применено из effects folder:
+  - **#1 Cursor trail** — canvas particle system (vanilla, без libs)
+    на landing hero, accent violet/cyan particles trailing mouse,
+    fade-out 800ms.
+  - **#2 Electric border** (применено также в v1.3.12 auth) — SVG
+    feTurbulence + feDisplacementMap filter для accent frame.
+    Animated через CSS step-function на baseFrequency.
+  - **#6 Tilt cards** (concept, без vanilla-tilt lib) — 4 feature
+    cards landing с 3D parallax: rotateX/rotateY tracking mouse
+    relative к card center, perspective(1000px), spring-back
+    transition.
+  - **Magnetic CTA button** — primary CTA «Войти в контур»
+    attracts cursor (transform: translate tracking mouse delta).
+  - **Holographic shimmer** на auth frame — `linear-gradient`
+    rainbow с background-position animation 6s loop.
+  - **Split-text reveal H1** — staggered span-per-letter с
+    animation-delay (50ms per char), `transform: translateY(20px)`
+    → 0 + opacity 0 → 1.
+  - **Logo** теперь 140px desktop с brightness/contrast filter +
+    cyan drop-shadow.
+
+- **v1.3.12** — **S1 auth form effects** (`bb7fd77`). 3 эффекта из
+  Pavel'я effects folder применены на AuthPage:
+  - **#2 Electric Border** — accent frame получает SVG turbulence/
+    displace filter animation. Frame «потрескивает».
+  - **#17 Password scanner beam** — inline scanner line бежит через
+    password field когда user typing (linear-gradient background-
+    position 1.4s linear infinite).
+  - **Submit success state** — на successful auth кнопка checkmark
+    explosion (CSS scale + multiple radial pseudo-elements fade-out).
+
+- **v1.3.5 → v1.3.11** — logo integration chain (`8f9fc4c` →
+  `1eac191`). Pavel прислал `docs/design/logo.png` 49MB original.
+  Через .NET `System.Drawing.Bitmap` resize до 1600×1067 +
+  compressed → 0.14MB (`apps/web/public/eclipse-chat-logo.png`),
+  backup standard size в `eclipse-chat-logo-standard.png` 2.1MB.
+  Везде применён через `${import.meta.env.BASE_URL}eclipse-chat-logo.png`.
+  v1.3.5 — premium hero access panel (console mockup убран —
+  squeezed на узком viewport, заменён custom auth form embedded).
+  v1.3.6 — премиум custom auth form в нашей палитре + анимации.
+  v1.3.7 — Eclipse Chat logo (PNG) везде: landing / AppShell /
+  AuthPage. v1.3.8 — больше logo (visibility fix). v1.3.9 — ещё
+  больше + contrast boost. v1.3.10 — Pavel'я новый увеличенный
+  logo + standard backup. v1.3.11 — logo ещё крупнее (PC visibility).
 
 - **v1.5.3** — **chat surface polish combo** (25.05.2026). Pavel verdict
   «v1.5.2 закрыли AppShell-combo, дальше Chat surface». Делаем premium
