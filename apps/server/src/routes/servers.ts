@@ -491,22 +491,50 @@ export async function registerServerRoutes(app: FastifyInstance) {
       const { id: serverId } = req.params as { id: string };
       const me = await loadMember(req, reply, serverId);
       if (!me) return reply;
-      const q = (req.query as { q?: string }).q?.trim() ?? "";
-      const take = Math.min(
-        25,
-        Math.max(1, Number((req.query as { take?: string }).take) || 15),
-      );
+      const query = req.query as {
+        q?: string;
+        take?: string;
+        since?: string;
+        until?: string;
+        channelId?: string;
+      };
+      const q = query.q?.trim() ?? "";
+      const take = Math.min(25, Math.max(1, Number(query.take) || 15));
       if (q.length < 2) {
         return { query: q, messages: [], actions: [], files: [] };
       }
+      // v1.5.23 — фильтры since/until/channelId. ISO datetime parsed →
+      // gte/lte; invalid string → ignored (тихо). channelId фильтрует
+      // в message/action/attachment.message.channelId.
+      const since =
+        query.since && !Number.isNaN(Date.parse(query.since))
+          ? new Date(query.since)
+          : null;
+      const until =
+        query.until && !Number.isNaN(Date.parse(query.until))
+          ? new Date(query.until)
+          : null;
+      const channelId = query.channelId?.trim() || null;
+      const createdAtFilter =
+        since || until
+          ? {
+              ...(since ? { gte: since } : {}),
+              ...(until ? { lte: until } : {}),
+            }
+          : undefined;
 
       const [messages, actions, files] = await Promise.all([
         // Messages — TEXT channels, не deleted.
         db.message.findMany({
           where: {
-            channel: { serverId, type: "TEXT" },
+            channel: {
+              serverId,
+              type: "TEXT",
+              ...(channelId ? { id: channelId } : {}),
+            },
             deletedAt: null,
             content: { contains: q, mode: "insensitive" },
+            ...(createdAtFilter ? { createdAt: createdAtFilter } : {}),
           },
           take,
           orderBy: { createdAt: "desc" },
@@ -523,7 +551,8 @@ export async function registerServerRoutes(app: FastifyInstance) {
             channel: { select: { id: true, name: true, slug: true } },
           },
         }),
-        // Action items — title OR description.
+        // Action items — title OR description. v1.5.23 — фильтры channelId
+        // (если задан) + createdAt range.
         db.actionItem.findMany({
           where: {
             serverId,
@@ -531,6 +560,8 @@ export async function registerServerRoutes(app: FastifyInstance) {
               { title: { contains: q, mode: "insensitive" } },
               { description: { contains: q, mode: "insensitive" } },
             ],
+            ...(channelId ? { channelId } : {}),
+            ...(createdAtFilter ? { createdAt: createdAtFilter } : {}),
           },
           take,
           orderBy: [{ status: "asc" }, { updatedAt: "desc" }],
@@ -540,13 +571,16 @@ export async function registerServerRoutes(app: FastifyInstance) {
           },
         }),
         // Files — by filename. Через attachments → message → channel.
+        // v1.5.23 — фильтр channelId (если задан) на message.channelId +
+        // createdAt range на attachment.createdAt.
         db.attachment.findMany({
           where: {
             message: {
-              channel: { serverId },
+              channel: { serverId, ...(channelId ? { id: channelId } : {}) },
               deletedAt: null,
             },
             filename: { contains: q, mode: "insensitive" },
+            ...(createdAtFilter ? { createdAt: createdAtFilter } : {}),
           },
           take,
           orderBy: { createdAt: "desc" },

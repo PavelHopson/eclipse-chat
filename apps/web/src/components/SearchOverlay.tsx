@@ -31,6 +31,20 @@ type Props = {
   onClose: () => void;
   /** v0.77 #21: serverId для semantic-search tab. Null = hide tab. */
   semanticServerId?: string | null;
+  /** v1.5.23 — filter row controls. Optional — если parent не передал,
+   *  filters не показываются (backward compat). */
+  filters?: {
+    since: string | null;
+    until: string | null;
+    channelId: string | null;
+  };
+  onChangeFilters?: (next: {
+    since: string | null;
+    until: string | null;
+    channelId: string | null;
+  }) => void;
+  /** Список channels для select'а. */
+  channels?: Array<{ id: string; name: string }>;
 };
 
 type Tab = "messages" | "actions" | "files" | "semantic";
@@ -100,6 +114,9 @@ export function SearchOverlay({
   onSelectFile,
   onClose,
   semanticServerId,
+  filters,
+  onChangeFilters,
+  channels,
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [tab, setTab] = useState<Tab>("messages");
@@ -175,6 +192,83 @@ export function SearchOverlay({
           />
           <span className="ec-kbd">Esc</span>
         </div>
+
+        {/* v1.5.23 — filter row: date range + channel select. Виден всегда
+            если filters props переданы (нет filters → backward compat). */}
+        {filters && onChangeFilters && (
+          <div className="ec-search-filters" role="group" aria-label="Фильтры">
+            <label className="ec-search-filter">
+              <span className="ec-search-filter__label">С</span>
+              <input
+                type="datetime-local"
+                value={filters.since ? filters.since.slice(0, 16) : ""}
+                onChange={(e) =>
+                  onChangeFilters({
+                    ...filters,
+                    since: e.target.value
+                      ? new Date(e.target.value).toISOString()
+                      : null,
+                  })
+                }
+                className="ec-search-filter__input"
+                aria-label="Не раньше даты"
+              />
+            </label>
+            <label className="ec-search-filter">
+              <span className="ec-search-filter__label">По</span>
+              <input
+                type="datetime-local"
+                value={filters.until ? filters.until.slice(0, 16) : ""}
+                onChange={(e) =>
+                  onChangeFilters({
+                    ...filters,
+                    until: e.target.value
+                      ? new Date(e.target.value).toISOString()
+                      : null,
+                  })
+                }
+                className="ec-search-filter__input"
+                aria-label="Не позже даты"
+              />
+            </label>
+            {channels && channels.length > 0 && (
+              <label className="ec-search-filter">
+                <span className="ec-search-filter__label">Канал</span>
+                <select
+                  value={filters.channelId ?? ""}
+                  onChange={(e) =>
+                    onChangeFilters({
+                      ...filters,
+                      channelId: e.target.value || null,
+                    })
+                  }
+                  className="ec-search-filter__input"
+                  aria-label="Канал"
+                >
+                  <option value="">все каналы</option>
+                  {channels.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      #{c.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            {(filters.since || filters.until || filters.channelId) && (
+              <button
+                type="button"
+                onClick={() =>
+                  onChangeFilters({ since: null, until: null, channelId: null })
+                }
+                className="ec-search-filter__reset"
+                title="Сбросить фильтры"
+                aria-label="Сбросить фильтры"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        )}
 
         {truncated && (totalHits > 0 || semanticAvailable) && (
           <div className="ec-search-tabs" role="tablist">

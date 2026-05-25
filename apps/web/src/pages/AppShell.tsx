@@ -349,6 +349,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   const {
     query: searchQuery,
     setQuery: setSearchQuery,
+    filters: searchFilters,
+    setFilters: setSearchFilters,
     results: searchResults,
     loading: searchLoading,
     error: searchError,
@@ -2222,6 +2224,9 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
         <SearchOverlay
           query={searchQuery}
           setQuery={setSearchQuery}
+          filters={searchFilters}
+          onChangeFilters={setSearchFilters}
+          channels={channels.map((c) => ({ id: c.id, name: c.name }))}
           results={searchResults}
           loading={searchLoading}
           error={searchError}

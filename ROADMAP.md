@@ -5,7 +5,13 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.22** (Quick reactions picker: 6 popular emoji
+**Текущая версия:** **v1.5.23** (Search filters: backend
+operational-search query params since/until/channelId; useSearch hook
+state extension; SearchOverlay filter row UI с date range + channel
+select + reset btn; deployed 25.05.2026). **Tagged milestone:** v1.7.0
+(`55971dd`, после chain v1.5.13 → v1.5.22).
+
+**Предыдущая:** v1.5.22 (Quick reactions picker: 6 popular emoji
 (👍 ❤️ 😂 🎉 🔥 👀) inline в message actions toolbar, click — immediate
 toggle without opening full picker. Mine variant с accent ring +
 halo on hover. Separator перед main actions для visual rhythm.
@@ -181,7 +187,44 @@ security-art)).
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.5.22:**
+**Изменения v1.1.25 → v1.5.23:**
+
+- **v1.5.23** — **Search filters: date range + channel select**
+  (25.05.2026). Pavel «продолжаем». Functional feature из открытого
+  списка — расширение `/api/servers/:id/operational-search` фильтрами
+  + UI filter row в SearchOverlay.
+  - **Backend** (`apps/server/src/routes/servers.ts operational-search`):
+    добавлены query params `?since=ISO&until=ISO&channelId=string`.
+    ISO datetime parsed → Date через `Date.parse` (invalid тихо ignored).
+    Все три findMany (messages/actions/files) фильтруются:
+    - createdAt range через единый createdAtFilter (gte/lte combined).
+    - channelId — message.channel.id / actionItem.channelId / attachment.
+      message.channel.id (только messages этого канала).
+  - **Frontend hook** (`useSearch.ts`): новый `filters` state
+    (`{ since, until, channelId }`), новый `setFilters` setter. ОВ
+    useEffect filter values добавлены в deps → refetch при change.
+    URLSearchParams builds query string properly (skips null values).
+  - **SearchOverlay UI** (`SearchOverlay.tsx`): новый блок
+    `.ec-search-filters` под search bar, выше tabs. Три `<label>`
+    с datetime-local inputs (since/until) + select c channels list +
+    reset button (`✕`) появляется только если хотя бы один фильтр
+    активен. backward-compat: filter row показывается только если
+    `filters` + `onChangeFilters` props переданы.
+  - **CSS** (`components.css`): новый блок `.ec-search-filter*` —
+    mono uppercase labels, custom inputs с accent focus ring (unified
+    с `.ec-field`), danger-tinted reset btn с scale hover.
+  - **AppShell wire**: useSearch теперь возвращает `filters` +
+    `setFilters`. SearchOverlay получает `filters`, `onChangeFilters`,
+    `channels` (mapped из существующего channels array).
+  - **Files**: `apps/server/src/routes/servers.ts` (3 findMany фильтры
+    + query parsing), `apps/web/src/hooks/useSearch.ts` (SearchFilters
+    type + state), `apps/web/src/components/SearchOverlay.tsx` (Props
+    extend + filter row JSX), `apps/web/src/pages/AppShell.tsx`
+    (props wire), `apps/web/src/styles/components.css` (.ec-search-
+    filter* ~55 строк).
+  - **Bundle**: CSS 322.31 → 323.84 KB (+1.53 / +0.13 gzip); JS chunks
+    unchanged (минорный +0.4 KB по AppShell от useSearch state).
+  - **Tests**: tsc clean, vite build OK.
 
 - **v1.5.22** — **Quick reactions picker** (25.05.2026). Pavel «продолжай»
   — next item открытого списка functional features. 6 popular emoji

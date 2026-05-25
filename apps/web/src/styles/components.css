@@ -4498,6 +4498,74 @@ input[type="radio"]:focus-visible {
   color: var(--ec-text-dim);
   letter-spacing: 0.03em;
 }
+/* v1.5.23 — filter row под search bar (date range + channel select). */
+.ec-search-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ec-space-2);
+  padding: var(--ec-space-2) var(--ec-space-4);
+  border-bottom: 1px solid var(--ec-border-subtle);
+  background: color-mix(in srgb, var(--ec-accent) 3%, transparent);
+}
+.ec-search-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--ec-font-mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ec-text-dim);
+}
+.ec-search-filter__label {
+  white-space: nowrap;
+}
+.ec-search-filter__input {
+  padding: 0.28rem 0.5rem;
+  background: var(--ec-input-bg);
+  border: 1px solid var(--ec-border-default);
+  border-radius: var(--ec-radius-sm);
+  color: var(--ec-text);
+  font-family: var(--ec-font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.02em;
+  transition:
+    border-color var(--ec-dur-fast) var(--ec-ease),
+    box-shadow var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-search-filter__input:focus {
+  outline: none;
+  border-color: var(--ec-accent);
+  box-shadow:
+    0 0 0 3px var(--ec-accent-soft),
+    0 0 14px hsl(258 90% 66% / 0.18);
+}
+.ec-search-filter__reset {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  background: var(--ec-danger-soft);
+  border: 1px solid color-mix(in srgb, var(--ec-danger) 30%, transparent);
+  border-radius: var(--ec-radius-full);
+  color: var(--ec-danger);
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 700;
+  transition:
+    background var(--ec-dur-fast) var(--ec-ease),
+    border-color var(--ec-dur-fast) var(--ec-ease),
+    transform var(--ec-dur-fast) var(--ec-ease-out);
+}
+.ec-search-filter__reset:hover {
+  background: var(--ec-danger);
+  color: var(--ec-accent-text);
+  transform: scale(1.08);
+}
+
 .ec-search-tabs {
   display: flex;
   gap: 4px;

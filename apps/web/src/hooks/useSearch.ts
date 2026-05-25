@@ -59,8 +59,25 @@ type Response = {
 
 const EMPTY: SearchResults = { messages: [], actions: [], files: [] };
 
+/**
+ * v1.5.23 — search filters. Все optional, тихо ignored backend'ом
+ * если пустые. ISO datetime для since/until, channelId — string id.
+ */
+export type SearchFilters = {
+  since: string | null;
+  until: string | null;
+  channelId: string | null;
+};
+
+const EMPTY_FILTERS: SearchFilters = {
+  since: null,
+  until: null,
+  channelId: null,
+};
+
 export function useSearch(serverId: string | null) {
   const [query, setQuery] = useState("");
+  const [filters, setFilters] = useState<SearchFilters>(EMPTY_FILTERS);
   const [results, setResults] = useState<SearchResults>(EMPTY);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -75,8 +92,12 @@ export function useSearch(serverId: string | null) {
     let cancelled = false;
     setLoading(true);
     const timer = setTimeout(() => {
+      const params = new URLSearchParams({ q: query.trim() });
+      if (filters.since) params.set("since", filters.since);
+      if (filters.until) params.set("until", filters.until);
+      if (filters.channelId) params.set("channelId", filters.channelId);
       apiJson<Response>(
-        `/api/servers/${encodeURIComponent(serverId)}/operational-search?q=${encodeURIComponent(query.trim())}`,
+        `/api/servers/${encodeURIComponent(serverId)}/operational-search?${params.toString()}`,
       )
         .then((data) => {
           if (!cancelled) {
@@ -103,13 +124,23 @@ export function useSearch(serverId: string | null) {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [serverId, query]);
+  }, [serverId, query, filters.since, filters.until, filters.channelId]);
 
   const reset = useCallback(() => {
     setQuery("");
+    setFilters(EMPTY_FILTERS);
     setResults(EMPTY);
     setError(null);
   }, []);
 
-  return { query, setQuery, results, loading, error, reset };
+  return {
+    query,
+    setQuery,
+    filters,
+    setFilters,
+    results,
+    loading,
+    error,
+    reset,
+  };
 }
