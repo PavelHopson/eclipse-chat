@@ -155,13 +155,47 @@ security-art)).
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.5.9:**
+**Изменения v1.1.25 → v1.5.10:**
 
 > Roadmap entries для v1.4.0 → v1.5.2 ещё не дописаны (большой
 > design pass: v1.4.0 wow-pass milestone tag, v1.4.5 audit fixes,
 > v1.5.0 section deep polish milestone tag, v1.5.1 Home dashboard,
 > v1.5.2 AppShell combo). v1.5.3 идёт ниже — следующий chat surface
 > slice. Catch-up по v1.4-v1.5.2 — отдельной сессией.
+
+- **v1.5.10** — **DeadlineSignal premium polish** (effect #5 applied,
+  25.05.2026). Pavel «делаем дальше по списку» — следующий пункт
+  effects folder: дедлайн анимация. Текущая base + overdue alert
+  была слишком простая (плоская pill + плоский box-shadow ring).
+  Переработана с unified design language.
+  - **Base pill**: добавлен `border` (accent-tinted, color-mix
+    deadline 22%) + inset highlight `0 1px 0 hsl(0 0% 100% / 0.04)`.
+    Padding слегка увеличен (0.12rem/0.48rem → 0.14rem/0.50rem)
+    для breathing room. Color background 14% → 16% mix.
+  - **Hover**: `translateY(-1px)` + border bump до 38% mix +
+    `0 4px 14px -6px` deadline-colored halo. Card элевируется
+    при наведении (актуально для long task-list где нужно tap'ать
+    pill).
+  - **Ring (progress arc)**: drop-shadow glow 3px → 4px (brighter
+    baseline).
+  - **Overdue alert**: переписан полностью. Был — single box-shadow
+    ring pulse 0→4px. Стал — multi-layer:
+    - `transform: scale(1 → 1.04)` — pill живёт, не плоско pulse'ит.
+    - Inner ring `0 0 0 0→4px / 10% mix` + outer halo `0 0 12→26px /
+      55→70% mix` + inset highlight. Тройной shadow создаёт depth.
+    - Static border-color (55% mix) + background (22% mix) — overdue
+      pills сразу выделяются среди других даже без animation step.
+    - Ring stroke получает sync'нутую `ec-deadline-ring-glow` 1.6s —
+      filter drop-shadow ramps 4 → 10px (double-stack), визуально
+      «горящий контур».
+  - **prefers-reduced-motion**: оба keyframe (alert + ring-glow) в
+    RM-блоке — fallback `animation: none`.
+  - **Files**: `apps/web/src/styles/effects.css` (signal pill + hover
+    + ring drop-shadow + overdue 3-layer pulse + 1 new keyframe +
+    RM extend). `DeadlineSignal.tsx` НЕ тронут — pure CSS pass.
+  - **Bundle**: CSS 301.89 → 303.17 KB (+1.28 / +0.17 gzip);
+    JS unchanged. Sole element pass — surgical impact.
+  - **Tests**: tsc clean, vite build 4.30s OK.
 
 - **v1.5.9** — **EclipseGalaxy decoration enhancement** (25.05.2026).
   Pavel «делаем дальше по списку» — top открытых направлений был

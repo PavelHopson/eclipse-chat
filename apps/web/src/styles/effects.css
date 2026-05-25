@@ -457,20 +457,37 @@ html[data-ec-theme="solar"] .ec-voice-room {
     0 0 16px hsl(42 96% 62% / 0.58);
 }
 
+/* v1.5.10 — deadline signal premium polish. Базовая pill cинхронизирована
+ * с overall design language (accent-tinted border + inset highlight),
+ * добавлен hover scale + accent halo. */
 .ec-deadline-signal {
   --deadline-color: var(--ec-text-dim);
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 0.34rem;
-  padding: 0.12rem 0.48rem 0.12rem 0.24rem;
+  padding: 0.14rem 0.5rem 0.14rem 0.26rem;
   border-radius: var(--ec-radius-full);
   color: var(--deadline-color);
-  background: color-mix(in srgb, var(--deadline-color) 14%, transparent);
+  background: color-mix(in srgb, var(--deadline-color) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--deadline-color) 22%, transparent);
   font-size: 0.6rem;
   font-weight: 800;
   letter-spacing: 0.05em;
   text-transform: uppercase;
   white-space: nowrap;
+  box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.04);
+  transition:
+    transform var(--ec-dur-fast) var(--ec-ease-out),
+    box-shadow var(--ec-dur-fast) var(--ec-ease),
+    border-color var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-deadline-signal:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--deadline-color) 38%, transparent);
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.08),
+    0 4px 14px -6px color-mix(in srgb, var(--deadline-color) 55%, transparent);
 }
 
 .ec-deadline-signal__ring {
@@ -501,11 +518,22 @@ html[data-ec-theme="solar"] .ec-voice-room {
   stroke: currentColor;
   stroke-linecap: round;
   stroke-dasharray: var(--deadline-dash) 28;
-  filter: drop-shadow(0 0 3px currentColor);
+  /* v1.5.10 — stronger accent glow вокруг progress arc (3 → 4px) для
+   * premium feel; overdue получает усиленный glow через keyframe. */
+  filter: drop-shadow(0 0 4px currentColor);
 }
 
+/* v1.5.10 — overdue: dramatic multi-layer pulse. Sole signal сейчас был
+ * box-shadow ring 0→4px; теперь — scale(1→1.04) + double box-shadow ring
+ * (inner accent + outer halo) + ring stroke glow ramp 4→10px. Это явный
+ * «требует внимания» signal без визуального стресса. */
 .ec-deadline-signal--overdue {
   animation: ec-deadline-alert 1.6s ease-in-out infinite;
+  border-color: color-mix(in srgb, var(--deadline-color) 55%, transparent);
+  background: color-mix(in srgb, var(--deadline-color) 22%, transparent);
+}
+.ec-deadline-signal--overdue .ec-deadline-signal__ring circle:last-child {
+  animation: ec-deadline-ring-glow 1.6s ease-in-out infinite;
 }
 
 .ec-home {
@@ -563,8 +591,26 @@ html[data-ec-theme="solar"] .ec-voice-room {
 }
 
 @keyframes ec-deadline-alert {
-  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--deadline-color) 38%, transparent); }
-  50% { box-shadow: 0 0 0 4px transparent; }
+  0%, 100% {
+    transform: scale(1);
+    box-shadow:
+      inset 0 1px 0 hsl(0 0% 100% / 0.06),
+      0 0 0 0 color-mix(in srgb, var(--deadline-color) 38%, transparent),
+      0 0 12px -4px color-mix(in srgb, var(--deadline-color) 55%, transparent);
+  }
+  50% {
+    transform: scale(1.04);
+    box-shadow:
+      inset 0 1px 0 hsl(0 0% 100% / 0.08),
+      0 0 0 4px color-mix(in srgb, var(--deadline-color) 10%, transparent),
+      0 0 26px -4px color-mix(in srgb, var(--deadline-color) 70%, transparent);
+  }
+}
+
+/* v1.5.10 — ring stroke glow ramp синхронно с pill pulse (1.6s). */
+@keyframes ec-deadline-ring-glow {
+  0%, 100% { filter: drop-shadow(0 0 4px currentColor); }
+  50%      { filter: drop-shadow(0 0 10px currentColor) drop-shadow(0 0 3px currentColor); }
 }
 
 @media (max-width: 900px) {
@@ -607,7 +653,8 @@ html[data-ec-theme="solar"] .ec-voice-room {
   .ec-galaxy__ring,
   .ec-galaxy__streams span,
   .ec-galaxy__stars span,
-  .ec-deadline-signal--overdue {
+  .ec-deadline-signal--overdue,
+  .ec-deadline-signal--overdue .ec-deadline-signal__ring circle:last-child {
     animation: none !important;
   }
 }
