@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import { tiltProps } from "../lib/tilt";
+import { useAnimatedCounter } from "../hooks/useAnimatedCounter";
 import type { HomeTodayData } from "../hooks/useHomeToday";
 import { DeadlineSignal } from "./DeadlineSignal";
 import { EclipseGalaxy } from "./EclipseGalaxy";
@@ -86,16 +87,6 @@ function statCard(color: string): CSSProperties {
   };
 }
 
-const statValue: CSSProperties = {
-  fontSize: "var(--ec-text-2xl)",
-  fontWeight: 700,
-  fontFeatureSettings: '"tnum"',
-  lineHeight: 1,
-  color: "var(--ec-text-strong)",
-  fontFamily: "var(--ec-font-display, var(--ec-font-sans))",
-  letterSpacing: "-0.02em",
-};
-
 const statLabel: CSSProperties = {
   fontSize: "0.6rem",
   color: "var(--ec-text-muted)",
@@ -159,6 +150,44 @@ function typeGlyph(type: "TASK" | "DECISION" | "FOLLOW_UP"): string {
   if (type === "DECISION") return "◆";
   if (type === "FOLLOW_UP") return "↻";
   return "□";
+}
+
+/* v1.5.1 — time-of-day greeting + period color hint */
+function timeOfDayGreeting(): { greeting: string; period: "night" | "morning" | "day" | "evening" } {
+  const hour = new Date().getHours();
+  if (hour < 5) return { greeting: "Доброй ночи", period: "night" };
+  if (hour < 12) return { greeting: "Доброе утро", period: "morning" };
+  if (hour < 17) return { greeting: "Добрый день", period: "day" };
+  if (hour < 22) return { greeting: "Добрый вечер", period: "evening" };
+  return { greeting: "Доброй ночи", period: "night" };
+}
+
+/* v1.5.1 — animated stat value wrapper */
+function StatValue({
+  value,
+  color,
+  delay = 0,
+}: {
+  value: number;
+  color?: string;
+  delay?: number;
+}) {
+  const displayed = useAnimatedCounter(value, { duration: 900, delay });
+  return (
+    <span
+      style={{
+        fontSize: "var(--ec-text-2xl)",
+        fontWeight: 700,
+        fontFeatureSettings: '"tnum"',
+        lineHeight: 1,
+        color: color ?? "var(--ec-text-strong)",
+        fontFamily: "var(--ec-font-display, var(--ec-font-sans))",
+        letterSpacing: "-0.02em",
+      }}
+    >
+      {displayed}
+    </span>
+  );
 }
 
 function relativeShort(iso: string): string {
@@ -260,13 +289,19 @@ export function HomeToday({
     (data.aiSignals?.staleTasks.length ?? 0) === 0 &&
     (data.aiSignals?.escalated.length ?? 0) === 0;
 
+  const tod = timeOfDayGreeting();
+
   return (
-    <div style={wrap} className="ec-home">
+    <div style={wrap} className={`ec-home ec-home--${tod.period}`} data-tod={tod.period}>
       <EclipseGalaxy variant="home" />
-      <header className="ec-home-today__header" style={header}>
+      <header className="ec-home-today__header ec-home-today__header--tod" style={header}>
         <div style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
-          <span style={eyebrow}>ОПЕРАТИВНАЯ_СВОДКА //</span>
+          <span style={eyebrow}>
+            <span className="ec-home-today__tod-dot" aria-hidden /> {tod.greeting.toUpperCase()} ·
+            ОПЕРАТИВНАЯ_СВОДКА //
+          </span>
           <h2
+            className="ec-home-today__title"
             style={{
               margin: 0,
               fontSize: "var(--ec-text-2xl)",
@@ -305,82 +340,67 @@ export function HomeToday({
         </p>
       )}
 
-      {/* Operational stat cards */}
+      {/* Operational stat cards — v1.5.1 animated count-up + hover glow */}
       <div className="ec-home-today__stats" style={statRow}>
         <div {...tiltProps} className="ec-home-stat-card ec-corner-brackets ec-home-stat-card--exec" style={statCard("var(--ec-status-exec)")}>
-          <span style={statValue}>{counts.tasks}</span>
+          <StatValue value={counts.tasks} delay={120} />
           <span style={statLabel}>Задач на мне</span>
         </div>
         <div {...tiltProps} className="ec-home-stat-card ec-corner-brackets ec-home-stat-card--risk" style={statCard("var(--ec-status-risk)")}>
-          <span style={{ ...statValue, color: counts.overdue > 0 ? "var(--ec-status-risk)" : "var(--ec-text-strong)" }}>
-            {counts.overdue}
-          </span>
+          <StatValue
+            value={counts.overdue}
+            color={counts.overdue > 0 ? "var(--ec-status-risk)" : undefined}
+            delay={180}
+          />
           <span style={statLabel}>Просрочено</span>
         </div>
         <div {...tiltProps} className="ec-home-stat-card ec-corner-brackets ec-home-stat-card--warn" style={statCard("var(--ec-status-warn)")}>
-          <span style={{ ...statValue, color: counts.incidents > 0 ? "var(--ec-status-warn)" : "var(--ec-text-strong)" }}>
-            {counts.incidents}
-          </span>
+          <StatValue
+            value={counts.incidents}
+            color={counts.incidents > 0 ? "var(--ec-status-warn)" : undefined}
+            delay={240}
+          />
           <span style={statLabel}>Инцидентов</span>
         </div>
         <div {...tiltProps} className="ec-home-stat-card ec-corner-brackets ec-home-stat-card--idle" style={statCard("var(--ec-status-idle)")}>
-          <span style={statValue}>{counts.activeVoice}</span>
+          <StatValue value={counts.activeVoice} delay={300} />
           <span style={statLabel}>Голосовых сессий</span>
         </div>
         {/* v0.69: approvals + active rooms cards */}
         <div {...tiltProps} className="ec-home-stat-card ec-corner-brackets ec-home-stat-card--ai" style={statCard("var(--ec-status-ai, var(--ec-accent))")}>
-          <span style={{ ...statValue, color: counts.approvals > 0 ? "var(--ec-accent)" : "var(--ec-text-strong)" }}>
-            {counts.approvals}
-          </span>
+          <StatValue
+            value={counts.approvals}
+            color={counts.approvals > 0 ? "var(--ec-accent)" : undefined}
+            delay={360}
+          />
           <span style={statLabel}>На моём одобрении</span>
         </div>
         <div {...tiltProps} className="ec-home-stat-card ec-corner-brackets ec-home-stat-card--idle" style={statCard("var(--ec-status-idle)")}>
-          <span style={statValue}>{counts.activeRooms}</span>
+          <StatValue value={counts.activeRooms} delay={420} />
           <span style={statLabel}>Активных комнат</span>
         </div>
         {counts.aiSignals != null && counts.aiSignals > 0 && (
           <div {...tiltProps} className="ec-home-stat-card ec-corner-brackets ec-home-stat-card--warn" style={statCard("var(--ec-status-warn)")}>
-            <span style={{ ...statValue, color: "var(--ec-warn)" }}>
-              {counts.aiSignals}
-            </span>
+            <StatValue value={counts.aiSignals} color="var(--ec-warn)" delay={480} />
             <span style={statLabel}>Сигналы</span>
           </div>
         )}
       </div>
 
       {isEmpty && (
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: 8,
-            padding: "var(--ec-space-8) var(--ec-space-4)",
-            textAlign: "center",
-            color: "var(--ec-text-muted)",
-          }}
-        >
-          <span
-            className="ec-anim-limbus"
-            aria-hidden
-            style={{
-              width: 56,
-              height: 56,
-              borderRadius: "50%",
-              background:
-                "radial-gradient(circle at 50% 40%, hsl(152 58% 52% / 0.24), transparent 70%)",
-              display: "grid",
-              placeItems: "center",
-              color: "var(--ec-status-exec)",
-              fontSize: "1.4rem",
-            }}
-          >
-            ✓
-          </span>
-          <strong style={{ color: "var(--ec-text-strong)", fontSize: "var(--ec-text-md)" }}>
-            Всё под контролем
-          </strong>
-          <span style={{ fontSize: "var(--ec-text-sm)", maxWidth: 360 }}>
+        <div className="ec-home-today__zen" aria-label="Всё под контролем">
+          <div className="ec-home-today__zen-orb" aria-hidden>
+            <span className="ec-home-today__zen-ring ec-home-today__zen-ring--1" />
+            <span className="ec-home-today__zen-ring ec-home-today__zen-ring--2" />
+            <span className="ec-home-today__zen-ring ec-home-today__zen-ring--3" />
+            <span className="ec-home-today__zen-check">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </span>
+          </div>
+          <strong className="ec-home-today__zen-title">Всё под контролем</strong>
+          <span className="ec-home-today__zen-sub">
             Нет задач на тебе, открытых инцидентов и активных голосовых сессий.
             Можно открыть workspace или личные сообщения.
           </span>

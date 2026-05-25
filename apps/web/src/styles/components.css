@@ -1447,6 +1447,160 @@
 .ec-home-stat-card--risk { color: var(--ec-status-risk); }
 .ec-home-stat-card--warn { color: var(--ec-status-warn); }
 .ec-home-stat-card--idle { color: var(--ec-status-idle); }
+.ec-home-stat-card--ai { color: var(--ec-status-ai, var(--ec-accent)); }
+
+/* v1.5.1 — premium hover glow на stat cards. Радиальный accent glow от
+ * left edge (matching accent-bar inset shadow) + lift translateY. */
+.ec-home-stat-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    ellipse 80% 60% at 0% 50%,
+    color-mix(in srgb, currentColor 16%, transparent),
+    transparent 70%
+  );
+  opacity: 0;
+  transition: opacity 280ms var(--ec-ease-out);
+  pointer-events: none;
+}
+.ec-home-stat-card:hover::before {
+  opacity: 1;
+}
+.ec-home-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    inset 3px 0 0 0 currentColor,
+    var(--ec-edge),
+    0 14px 32px -16px hsl(210 40% 2% / 0.85),
+    0 0 20px -6px color-mix(in srgb, currentColor 35%, transparent) !important;
+}
+
+/* v1.5.1 — Time-of-day greeting dot (header eyebrow prefix) */
+.ec-home-today__tod-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-right: 8px;
+  vertical-align: 1px;
+  background: var(--ec-accent, hsl(258 86% 64%));
+  box-shadow: 0 0 8px var(--ec-accent, hsl(258 86% 64%));
+  animation: ec-tod-pulse 2.8s ease-in-out infinite;
+}
+.ec-home--morning .ec-home-today__tod-dot { background: hsl(42 96% 70%); box-shadow: 0 0 10px hsl(42 96% 70% / 0.7); }
+.ec-home--day     .ec-home-today__tod-dot { background: hsl(195 92% 68%); box-shadow: 0 0 10px hsl(195 92% 68% / 0.7); }
+.ec-home--evening .ec-home-today__tod-dot { background: hsl(28 88% 64%); box-shadow: 0 0 10px hsl(28 88% 64% / 0.7); }
+.ec-home--night   .ec-home-today__tod-dot { background: hsl(258 86% 72%); box-shadow: 0 0 10px hsl(258 86% 72% / 0.7); }
+@keyframes ec-tod-pulse {
+  0%, 100% { opacity: 0.7; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.25); }
+}
+/* Title gets subtle period-color glow */
+.ec-home-today__title {
+  position: relative;
+  text-shadow: 0 0 24px transparent;
+  transition: text-shadow 480ms var(--ec-ease-out);
+}
+.ec-home--morning .ec-home-today__title { text-shadow: 0 0 28px hsl(42 96% 70% / 0.18); }
+.ec-home--day     .ec-home-today__title { text-shadow: 0 0 28px hsl(195 92% 68% / 0.18); }
+.ec-home--evening .ec-home-today__title { text-shadow: 0 0 28px hsl(28 88% 64% / 0.18); }
+.ec-home--night   .ec-home-today__title { text-shadow: 0 0 28px hsl(258 86% 72% / 0.22); }
+
+/* v1.5.1 — Zen empty state «Всё под контролем»: pulsing eclipse orb +
+ * 3 radiating rings + animated checkmark. */
+.ec-home-today__zen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: var(--ec-space-8) var(--ec-space-4) var(--ec-space-7);
+  text-align: center;
+  color: var(--ec-text-muted);
+}
+.ec-home-today__zen-orb {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 38%, hsl(152 60% 56% / 0.34), transparent 64%);
+  isolation: isolate;
+}
+.ec-home-today__zen-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1px solid hsl(152 58% 56% / 0.5);
+  opacity: 0;
+  animation: ec-zen-ring 3.6s ease-out infinite;
+}
+.ec-home-today__zen-ring--2 {
+  animation-delay: 1.2s;
+}
+.ec-home-today__zen-ring--3 {
+  animation-delay: 2.4s;
+}
+@keyframes ec-zen-ring {
+  0%   { transform: scale(0.4); opacity: 0.7; border-width: 2px; }
+  100% { transform: scale(1.7); opacity: 0; border-width: 1px; }
+}
+.ec-home-today__zen-check {
+  position: relative;
+  z-index: 2;
+  width: 56px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 40%, hsl(152 60% 60% / 0.85), hsl(152 65% 30% / 0.6));
+  color: hsl(160 50% 12%);
+  box-shadow:
+    0 0 0 1px hsl(152 60% 56% / 0.4),
+    0 8px 24px hsl(152 60% 30% / 0.45),
+    inset 0 1px 0 hsl(160 80% 88% / 0.4);
+  animation: ec-zen-check-breath 4s ease-in-out infinite;
+}
+.ec-home-today__zen-check svg {
+  animation: ec-zen-check-draw 1.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes ec-zen-check-breath {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 1px hsl(152 60% 56% / 0.4), 0 8px 24px hsl(152 60% 30% / 0.45), inset 0 1px 0 hsl(160 80% 88% / 0.4); }
+  50%      { transform: scale(1.04); box-shadow: 0 0 0 2px hsl(152 60% 56% / 0.55), 0 12px 32px hsl(152 60% 30% / 0.6), inset 0 1px 0 hsl(160 80% 88% / 0.5); }
+}
+@keyframes ec-zen-check-draw {
+  0%   { stroke-dasharray: 24; stroke-dashoffset: 24; opacity: 0; transform: scale(0.6); }
+  60%  { opacity: 1; transform: scale(1.1); }
+  100% { stroke-dasharray: 24; stroke-dashoffset: 0; opacity: 1; transform: scale(1); }
+}
+.ec-home-today__zen-title {
+  color: var(--ec-text-strong);
+  font-size: var(--ec-text-md);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+.ec-home-today__zen-sub {
+  font-size: var(--ec-text-sm);
+  max-width: 380px;
+  line-height: 1.6;
+  color: var(--ec-text-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ec-home-today__tod-dot,
+  .ec-home-today__zen-ring,
+  .ec-home-today__zen-check,
+  .ec-home-today__zen-check svg {
+    animation: none !important;
+  }
+  .ec-home-stat-card:hover {
+    transform: none;
+  }
+}
 
 /* WS-1 v1.1.39: border СѓР±СЂР°РЅ вЂ” СЃС‚СЂРѕРєРё РѕС‚РґРµР»СЏСЋС‚СЃСЏ РіР»СѓР±РёРЅРѕР№/СЃРІРµС‚РѕРј
    (elevation), hover = РїРѕРґСЉС‘Рј РїРѕ С‚РµРЅРё, Р±РµР· accent-СЂР°РјРєРё. */
