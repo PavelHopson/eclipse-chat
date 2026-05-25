@@ -3192,6 +3192,38 @@ input[type="radio"]:focus-visible {
   color: var(--ec-danger);
 }
 
+/* v1.5.22 — quick reaction buttons в actions toolbar. 6 popular emoji
+ * prepended перед main actions, click — toggleReaction immediately
+ * (Slack/Linear pattern). Mine variant — accent halo. */
+.ec-msg-quick-react {
+  font-size: 14px;
+  line-height: 1;
+}
+.ec-msg-quick-react:hover {
+  transform: translateY(-1px) scale(1.18);
+  background: color-mix(in srgb, var(--ec-accent) 10%, var(--ec-surface-3));
+  box-shadow: 0 4px 12px -6px hsl(258 86% 50% / 0.50);
+}
+.ec-msg-quick-react--mine {
+  background: var(--ec-accent-soft);
+  box-shadow: inset 0 0 0 1px var(--ec-border-accent);
+}
+.ec-msg-quick-react--mine:hover {
+  background: var(--ec-accent-soft);
+  box-shadow:
+    inset 0 0 0 1px var(--ec-accent),
+    0 4px 14px -4px hsl(258 86% 50% / 0.60);
+}
+
+/* Separator между quick reactions и main toolbar buttons. */
+.ec-msg-action-sep {
+  display: inline-block;
+  width: 1px;
+  align-self: stretch;
+  margin: 2px 4px;
+  background: var(--ec-border-subtle);
+}
+
 /* РўРµРі В«РѕС€РёР±РєР° РѕС‚РїСЂР°РІРєРёВ». */
 .ec-msg-failed-tag {
   display: inline-flex;

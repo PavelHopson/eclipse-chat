@@ -5,7 +5,13 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.21** (IncidentPanel polish: panel root top
+**Текущая версия:** **v1.5.22** (Quick reactions picker: 6 popular emoji
+(👍 ❤️ 😂 🎉 🔥 👀) inline в message actions toolbar, click — immediate
+toggle without opening full picker. Mine variant с accent ring +
+halo on hover. Separator перед main actions для visual rhythm.
+deployed 25.05.2026).
+
+**Предыдущая:** v1.5.21 (IncidentPanel polish: panel root top
 accent rail, card .ec-incident-card с variant modifiers (--open/
 --resolved). Open variant — danger continuous breath ec-incident-open-
 pulse 3.4s + hover лифт. Resolved variant — subtle calm baseline +
@@ -175,7 +181,34 @@ security-art)).
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.5.21:**
+**Изменения v1.1.25 → v1.5.22:**
+
+- **v1.5.22** — **Quick reactions picker** (25.05.2026). Pavel «продолжай»
+  — next item открытого списка functional features. 6 popular emoji
+  inline в actions toolbar — без opening full picker, Slack/Linear pattern.
+  - **MessageList renderRow**: prepended quick-react buttons (👍 ❤️
+    😂 🎉 🔥 👀) перед main toolbar. Каждый — `.ec-msg-action ec-msg-
+    quick-react`. Click → `onToggleReaction(messageId, emoji)`
+    immediately (мгновенный toggle, нет opening picker'а).
+  - **Mine variant** (`--mine`): если user уже поставил эту реакцию —
+    button accent-soft + inset accent ring. Click — снимает реакцию
+    (toggle behavior).
+  - **Hover effects** (`.ec-msg-quick-react:hover`): `translateY(-1px)
+    scale(1.18)` + accent-mix bg + accent halo `0 4px 12px -6px /
+    0.50`. Mine variant — accent-soft bg + accent ring + halo `0 4px
+    14px -4px / 0.60`.
+  - **Separator** (`.ec-msg-action-sep`): 1px vertical line border-subtle
+    после 6 emojis перед main actions (thread/picker/copy/edit/delete/
+    pin). Visual rhythm разделение.
+  - **Existing picker button** (smiley face) сохранён — открывает
+    full EmojiPicker для случаев когда нужна не из 6 popular.
+  - **Files**: `apps/web/src/components/MessageList.tsx` (quick-reacts
+    render block + separator inside actions toolbar), `apps/web/src/
+    styles/components.css` (.ec-msg-quick-react + --mine + .ec-msg-
+    action-sep, ~30 строк).
+  - **Bundle**: CSS 321.73 → 322.31 KB (+0.58 / +0.10 gzip); AppShell
+    chunk без изменений (.tsx минорный +25 строк JSX).
+  - **Tests**: tsc clean, vite build OK.
 
 - **v1.5.21** — **IncidentPanel polish** (25.05.2026). Pavel «продолжай».
   Single panel surface ещё не получивший unified design language.

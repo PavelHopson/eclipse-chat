@@ -805,6 +805,37 @@ export function MessageList({
               </div>
               {showActions && (
                 <div className="ec-message-actions">
+                  {/* v1.5.22 — quick reactions: 6 popular emoji prepended
+                      перед actions toolbar. Click — toggleReaction immediately,
+                      без opening picker. Existing user reactions get accent
+                      state. Slack/Linear-style. */}
+                  {onToggleReaction && (
+                    <>
+                      {(["👍", "❤️", "😂", "🎉", "🔥", "👀"] as const).map((emoji) => {
+                        const mine = m.reactions.some(
+                          (r) => r.emoji === emoji && r.mine,
+                        );
+                        return (
+                          <button
+                            key={emoji}
+                            type="button"
+                            className={
+                              "ec-msg-action ec-msg-quick-react" +
+                              (mine ? " ec-msg-quick-react--mine" : "")
+                            }
+                            aria-label={`Реакция ${emoji}`}
+                            title={mine ? "Снять реакцию" : `Поставить ${emoji}`}
+                            onClick={() => void onToggleReaction(m.id, emoji)}
+                          >
+                            <span aria-hidden style={{ fontSize: 14, lineHeight: 1 }}>
+                              {emoji}
+                            </span>
+                          </button>
+                        );
+                      })}
+                      <span className="ec-msg-action-sep" aria-hidden />
+                    </>
+                  )}
                   {onOpenThread && (
                     <button
                       type="button"
