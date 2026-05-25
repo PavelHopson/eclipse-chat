@@ -155,13 +155,49 @@ security-art)).
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.5.7:**
+**Изменения v1.1.25 → v1.5.8:**
 
 > Roadmap entries для v1.4.0 → v1.5.2 ещё не дописаны (большой
 > design pass: v1.4.0 wow-pass milestone tag, v1.4.5 audit fixes,
 > v1.5.0 section deep polish milestone tag, v1.5.1 Home dashboard,
 > v1.5.2 AppShell combo). v1.5.3 идёт ниже — следующий chat surface
 > slice. Catch-up по v1.4-v1.5.2 — отдельной сессией.
+
+- **v1.5.8** — **composer premium polish** (25.05.2026). Pavel
+  «продолжаем» — next slice из daily-touched surfaces. Composer
+  (`MessageInput`) — caretакта-сайт пользователя при каждом сообщении,
+  заслуживает hero-treatment как send-button и focus-state.
+  - **Composer box**: triple-layer background (radial violet 0%/0%
+    + radial cyan 100%/100% + base hsl 10% / 0.62). Top accent rail
+    `::before` (cyan→violet gradient, opacity 0.6 idle → 1.0 на focus).
+    Multi-shadow с violet undertone `0 4px 14px -10px / 0.30`.
+    Focus-within state — стronger border accent + 26px violet glow
+    + 8px violet depth shadow.
+  - **Send button**: переведён с flat linear-gradient на radial
+    `hsl(258 86% 72% → 52%)` premium fill (как audio play btn в
+    v1.5.6 — единый visual language для primary actions). Triple
+    inset shadow (highlight + base + bottom shade). Continuous 4.2s
+    breath (`ec-composer-send-breath`) на canSend=true: box-shadow
+    осцилляция + accent glow ramp. Hover — brightness(1.08) +
+    translateY(-1px) + 28px violet halo + paper-plane icon
+    translateX(2px) translateY(-1px) («launch» motion). Active —
+    inset press-in shadow + scale(0.96).
+  - **Icon buttons** (attach/voice/emoji): hover теперь
+    `color-mix accent 10%` bg + accent color + `0 4px 14px / 0.45`
+    violet halo (вместо плоского surface-3).
+  - **Textarea**: `caret-color: var(--ec-accent)` — violet каретка;
+    placeholder получает accent-tinted color на focus (35% mix).
+  - **`.ec-kbd`**: gradient background (surface-2 → violet 6% mix)
+    + inset highlight/shade — выглядит как реальная физическая
+    клавиша вместо плоского tag'а.
+  - **prefers-reduced-motion**: `ec-composer-send-breath` добавлен
+    в RM-блок — fallback animation:none.
+  - **Files**: `apps/web/src/styles/components.css` (composer-box +
+    send + icon-btn + textarea + kbd блоки), `apps/web/src/styles/
+    motion.css` (1 keyframe + RM extend).
+  - **Bundle**: CSS 299.32 → 301.41 KB (+2.09 / +0.29 gzip);
+    JS unchanged (1046.52 / 277.02). Pure CSS pass.
+  - **Tests**: tsc clean, vite build 4.67s OK.
 
 - **v1.5.7** — **design polish combo: 6 surfaces за один pass**
   (25.05.2026). Pavel «продолжаем разработку и доработку дизайна»

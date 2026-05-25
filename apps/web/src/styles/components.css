@@ -1578,26 +1578,51 @@ input[type="radio"]:focus-visible {
 }
 
 .ec-composer-box {
+  position: relative;
   overflow: hidden;
-  /* v1.1.61 redesign В§9 вЂ” РїРѕР»СѓРїСЂРѕР·СЂР°С‡РЅС‹Р№ glass-composer: СЃС‚РµРєР»Рѕ +
-     backdrop-blur, РјСЏРіРєР°СЏ С‚РµРЅСЊ РіР»СѓР±РёРЅС‹ РґР»СЏ В«floatingВ». */
+  /* v1.1.61 redesign §9 — полупрозрачный glass-composer.
+   * v1.5.8 — добавлено: top accent rail, multi-shadow violet undertone. */
   background:
-    radial-gradient(circle at 0% 0%, hsl(258 90% 66% / 0.07), transparent 42%),
-    hsl(216 24% 10% / 0.55) !important;
+    radial-gradient(circle at 0% 0%, hsl(258 90% 66% / 0.09), transparent 50%),
+    radial-gradient(circle at 100% 100%, hsl(180 70% 55% / 0.05), transparent 45%),
+    hsl(216 24% 10% / 0.62) !important;
   backdrop-filter: blur(20px) saturate(140%);
   -webkit-backdrop-filter: blur(20px) saturate(140%);
   border-color: hsl(225 14% 72% / 0.10) !important;
   box-shadow:
     inset 0 1px 0 hsl(0 0% 100% / 0.04),
-    0 14px 36px -10px hsl(210 70% 2% / 0.5);
+    0 14px 36px -10px hsl(210 70% 2% / 0.50),
+    0 4px 14px -10px hsl(258 86% 40% / 0.30);
+}
+/* v1.5.8 — top holo rail (statically present); intensifies на focus-within. */
+.ec-composer-box::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    hsl(180 70% 65% / 0.30) 30%,
+    hsl(258 86% 72% / 0.55) 55%,
+    hsl(258 70% 60% / 0.25) 75%,
+    transparent 100%
+  );
+  pointer-events: none;
+  opacity: 0.6;
+  transition: opacity var(--ec-dur-base) var(--ec-ease);
 }
 
-/* Focus вЂ” РјСЏРіРєРѕРµ СЃРІРµС‡РµРЅРёРµ РІРјРµСЃС‚Рѕ Р¶С‘СЃС‚РєРѕРіРѕ ring'Р° (В§9 В«soft glowВ»). */
+/* Focus — мягкое свечение + усиление holo rail. */
 .ec-composer-box:focus-within {
-  border-color: hsl(258 90% 66% / 0.32) !important;
+  border-color: hsl(258 90% 66% / 0.38) !important;
   box-shadow:
-    0 0 22px -2px hsl(258 90% 66% / 0.3),
-    inset 0 1px 0 hsl(0 0% 100% / 0.05) !important;
+    0 0 26px -2px hsl(258 90% 66% / 0.35),
+    inset 0 1px 0 hsl(0 0% 100% / 0.06),
+    0 8px 28px -12px hsl(258 86% 40% / 0.50) !important;
+}
+.ec-composer-box:focus-within::before {
+  opacity: 1;
 }
 
 .ec-composer-icon-btn--recording {
@@ -1672,15 +1697,46 @@ input[type="radio"]:focus-visible {
 }
 
 .ec-composer-send {
+  position: relative;
   background:
-    linear-gradient(135deg, hsl(258 74% 62%), hsl(214 90% 64%)) !important;
+    radial-gradient(circle at 30% 30%, hsl(258 86% 72%), hsl(258 86% 52%)) !important;
   border-color: hsl(258 74% 62% / 0.7) !important;
-  box-shadow: 0 10px 24px hsl(258 80% 38% / 0.22);
+  color: hsl(0 0% 100%) !important;
+  box-shadow:
+    0 10px 24px -6px hsl(258 80% 38% / 0.45),
+    inset 0 1px 0 hsl(0 0% 100% / 0.22),
+    inset 0 -1px 0 hsl(258 86% 30% / 0.45);
+  transition:
+    transform var(--ec-dur-fast) var(--ec-ease-out),
+    box-shadow var(--ec-dur-fast) var(--ec-ease),
+    filter var(--ec-dur-fast) var(--ec-ease);
 }
-
-.ec-composer-send:hover {
-  filter: brightness(1.06);
+/* v1.5.8 — continuous violet glow breath на enabled-state (canSend=true →
+ * opacity:1). Disabled (opacity 0.4) делает breath неотличимым. */
+.ec-composer-send:not(:disabled) {
+  animation: ec-composer-send-breath 4.2s ease-in-out infinite;
+}
+.ec-composer-send:hover:not(:disabled) {
+  filter: brightness(1.08);
   transform: translateY(-1px);
+  box-shadow:
+    0 14px 32px -4px hsl(258 80% 42% / 0.65),
+    inset 0 1px 0 hsl(0 0% 100% / 0.26),
+    inset 0 -1px 0 hsl(258 86% 30% / 0.45),
+    0 0 28px -6px hsl(258 90% 66% / 0.55);
+}
+.ec-composer-send:hover:not(:disabled) svg {
+  transform: translateX(2px) translateY(-1px);
+}
+.ec-composer-send:active:not(:disabled) {
+  transform: translateY(0) scale(0.96);
+  box-shadow:
+    inset 0 2px 6px hsl(258 55% 20% / 0.55),
+    0 3px 10px -6px hsl(258 80% 48% / 0.45);
+}
+.ec-composer-send svg {
+  transition: transform var(--ec-dur-base) var(--ec-ease-out);
+  filter: drop-shadow(0 1px 1px hsl(258 86% 30% / 0.6));
 }
 
 .ec-home {
@@ -3198,6 +3254,16 @@ input[type="radio"]:focus-visible {
   padding: var(--ec-space-1) 0;
   max-height: 200px;
   overflow-y: auto;
+  /* v1.5.8 — accent caret + placeholder polish. */
+  caret-color: var(--ec-accent);
+}
+.ec-composer-textarea::placeholder {
+  color: var(--ec-text-dim);
+  letter-spacing: 0.01em;
+  transition: color var(--ec-dur-base) var(--ec-ease);
+}
+.ec-composer-textarea:focus::placeholder {
+  color: color-mix(in srgb, var(--ec-accent) 35%, var(--ec-text-dim));
 }
 /* РРєРѕРЅРѕС‡РЅС‹Рµ РєРЅРѕРїРєРё РєРѕРјРїРѕР·РµСЂР° (attach / voice). */
 .ec-composer-icon-btn {
@@ -3216,9 +3282,10 @@ input[type="radio"]:focus-visible {
     transform var(--ec-dur-fast) var(--ec-ease);
 }
 .ec-composer-icon-btn:hover:not(:disabled) {
-  background: var(--ec-surface-3);
-  color: var(--ec-text);
+  background: color-mix(in srgb, var(--ec-accent) 10%, var(--ec-surface-3));
+  color: var(--ec-accent);
   transform: translateY(-1px);
+  box-shadow: 0 4px 14px -6px hsl(258 86% 50% / 0.45);
 }
 .ec-composer-icon-btn:active:not(:disabled) {
   transform: translateY(0) scale(0.9);
@@ -3333,13 +3400,20 @@ input[type="radio"]:focus-visible {
 .ec-kbd {
   display: inline-block;
   padding: 0 5px;
-  background: var(--ec-surface-2);
+  background: linear-gradient(
+    180deg,
+    var(--ec-surface-2),
+    color-mix(in srgb, var(--ec-surface-2) 80%, hsl(258 86% 30% / 0.06))
+  );
   border: 1px solid var(--ec-border-subtle);
   border-radius: var(--ec-radius-xs);
   font-family: var(--ec-font-mono);
   font-size: 0.62rem;
   color: var(--ec-text-muted);
   line-height: 1.6;
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.04),
+    inset 0 -1px 0 hsl(258 86% 20% / 0.18);
 }
 .ec-composer-hints__sep { color: var(--ec-border-emphasis); }
 /* TLS-РёРЅРґРёРєР°С‚РѕСЂ вЂ” С‡РµСЃС‚РЅР°СЏ РјРµС‚РєР° С‚СЂР°РЅСЃРїРѕСЂС‚Р° (СЃРј. v1.1.90). */
