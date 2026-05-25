@@ -267,8 +267,11 @@ function Waveform({
         const y = (h - barH) / 2;
         const x = i * slot;
         const played = i < fillIdx;
-        // v1.5.3 — last LIVE_ZONE played bars under playhead pulse vertically
-        // when audio is playing. Staggered delay creates a trailing ripple.
+        // v1.5.3 — last LIVE_ZONE played bars under playhead pulse stronger
+        // когда audio playing (trailing ripple).
+        // v1.5.13 — все bars получают base idle wave flow с staggered delay
+        // (propagating wave illusion). Active live-zone replaces idle с
+        // stronger pulse keyframe.
         const distFromHead = fillIdx - 1 - i;
         const isLive = isPlaying && played && distFromHead >= 0 && distFromHead < LIVE_ZONE;
         return (
@@ -281,12 +284,17 @@ function Waveform({
             rx={1}
             ry={1}
             fill={played ? "var(--ec-accent)" : "var(--ec-text-dim)"}
-            opacity={played ? 0.95 : 0.45}
-            className={isLive ? "ec-wave-bar--live" : undefined}
+            opacity={played ? 0.95 : 0.5}
+            className={isLive ? "ec-wave-bar ec-wave-bar--live" : "ec-wave-bar"}
             style={
               isLive
                 ? { animationDelay: `${distFromHead * 90}ms` }
-                : undefined
+                : {
+                    // Staggered delay создаёт wave-propagating-illusion слева
+                    // направо. Каждые ~3 bar'а = 1 цикл wave-flow keyframe'а
+                    // (2.4s / 60ms × 40 bars = многократно перекрывается).
+                    animationDelay: `${i * 70}ms`,
+                  }
             }
           />
         );
@@ -382,8 +390,16 @@ function AudioItem({
   const progress = duration > 0 ? currentTime / duration : 0;
 
   // Fallback бары если peaks нет (старые attachments / decode failed).
+  // v1.5.13 — глубокая wave-форма: primary sine + secondary harmonic +
+  // light variation = cinematic waveform даже без actual peak data.
   const fallbackPeaks =
-    peaks ?? Array.from({ length: 48 }, (_, i) => 30 + Math.round(Math.sin(i / 2) * 12));
+    peaks ??
+    Array.from({ length: 64 }, (_, i) => {
+      const primary = Math.sin(i * 0.28) * 28;
+      const harmonic = Math.sin(i * 0.65) * 12;
+      const drift = Math.sin(i * 1.1) * 6;
+      return Math.max(18, Math.min(92, Math.round(48 + primary + harmonic + drift)));
+    });
 
   return (
     <div className={isVoice ? "ec-audio-attachment ec-audio-attachment--voice" : "ec-audio-attachment"}>

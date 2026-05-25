@@ -5,9 +5,10 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.12** (MemberList row premium polish —
-final list-row surface получивший unified design language; rail
-hover + avatar halo + presence breath + DM slide; deployed
+**Текущая версия:** **v1.5.13** (waveform wave-flow animation —
+музыкальный плеер: каждый bar получает continuous idle wave breath с
+staggered per-bar delay = propagating wave illusion; live ripple zone
+сохраняется для playback'а; deeper fallback sine peaks; deployed
 25.05.2026). **Tagged milestone:** v1.6.0 (`69a08bb`, design polish
 milestone после chain v1.5.3 → v1.5.12 — 10 версий, 25+ surfaces).
 
@@ -161,7 +162,45 @@ security-art)).
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.5.12:**
+**Изменения v1.1.25 → v1.5.13:**
+
+- **v1.5.13** — **waveform wave-flow animation** (25.05.2026). Pavel
+  прислал screenshot текущего audio плеера: «давай в музыкальном плеере
+  сделаем дорожку более анимированной с анимациями и ввиде волны».
+  Bars видны хорошо но статичные — добавил continuous wave breath на
+  все bars + deeper sine fallback shape.
+  - **Idle wave**: каждый `<rect>` waveform получает `.ec-wave-bar`
+    класс с `ec-wave-flow` 2.4s ease-in-out infinite — scaleY
+    0.85 ↔ 1.15. Per-bar `animationDelay: ${i * 70}ms` через inline
+    style — wave propagation illusion слева направо (40+ bars × 70ms =
+    больше чем 1 cycle, так что в любой момент wave visible на всей
+    дорожке). `transform-box: fill-box; transform-origin: center` +
+    `will-change: transform` для smooth GPU rendering.
+  - **Live ripple** (existing v1.5.3): `.ec-wave-bar--live` теперь
+    оверайдит `.ec-wave-bar` animation через cascade priority —
+    last 4 played bars near playhead получают stronger `ec-wave-pulse`
+    720ms (scaleY 1 → 1.45) когда playing. Layering — idle wave
+    flows, live zone pulses ярче.
+  - **Fallback peaks**: было `Array.from({length: 48}, (_, i) =>
+    30 + sin(i/2)*12)` — простой sine 18-42 range, 48 bars.
+    Стало 64 bars с тройной composition (primary `sin(i*0.28)*28` +
+    secondary harmonic `sin(i*0.65)*12` + drift `sin(i*1.1)*6`),
+    clamped 18-92. Cinematic waveform shape без actual peak data —
+    выглядит как реальный track даже если decode failed.
+  - **opacity**: unplayed bars 0.45 → 0.5 для лучшей видимости wave
+    animation на background segments.
+  - **prefers-reduced-motion**: `.ec-wave-bar` (новый base class)
+    добавлен в RM-блок наряду с `--live` variant — fallback
+    `animation: none` (статичные bars).
+  - **Files**: `apps/web/src/components/Attachments.tsx` (Waveform
+    bars: className wired, inline animationDelay per-bar + deeper
+    fallback peaks 48→64 + tripple sine), `apps/web/src/styles/
+    motion.css` (1 new keyframe + .ec-wave-bar base + RM extend).
+  - **Bundle**: CSS 305.76 → 305.93 KB (+0.17 / ~+0.03 gzip);
+    JS 1046.52 → 1046.65 KB (+0.13). Minimal — single keyframe + 1
+    style modifier.
+  - **Tests**: tsc clean, vite build OK.
+
 
 > Roadmap entries для v1.4.0 → v1.5.2 ещё не дописаны (большой
 > design pass: v1.4.0 wow-pass milestone tag, v1.4.5 audit fixes,
