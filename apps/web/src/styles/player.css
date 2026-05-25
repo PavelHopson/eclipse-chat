@@ -1055,6 +1055,142 @@
   color: var(--ec-text-dim);
 }
 
+/* v1.5.16 — VoiceRoom premium polish. Inline styles остаются (TSX
+ * 1098 строк, risk-heavy refactor), а через ::before/::after на
+ * existing class names добавляем atmospheric accents + новые classes
+ * для дочерних surfaces. */
+
+/* Top accent rail (cyan→violet bridge) — visible поверх любого
+ * background'а inline. */
+.ec-voice-room {
+  position: relative;
+}
+.ec-voice-room::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    hsl(180 70% 65% / 0.30) 30%,
+    hsl(258 86% 72% / 0.55) 55%,
+    hsl(258 70% 60% / 0.25) 75%,
+    transparent 100%
+  );
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* Bottom soft violet glow — depth (atmospheric «зал затмения»). */
+.ec-voice-room::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 50%;
+  background: radial-gradient(
+    ellipse 80% 60% at 50% 100%,
+    hsl(258 86% 30% / 0.18),
+    transparent 60%
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Controls dock — accent border + violet halo (поверх inline boxShadow). */
+.ec-voice-room__controls {
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 22%, transparent) !important;
+}
+.ec-voice-room__controls::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    hsl(180 70% 65% / 0.40) 30%,
+    hsl(258 86% 72% / 0.70) 55%,
+    hsl(258 70% 60% / 0.35) 75%,
+    transparent 100%
+  );
+  pointer-events: none;
+  border-radius: var(--ec-radius-full) var(--ec-radius-full) 0 0;
+}
+
+/* v1.5.16 — control buttons. Класс добавлен в TSX, базовая структура
+ * остаётся inline; CSS добавляет hover/active polish. */
+.ec-vr-ctrl {
+  position: relative;
+  overflow: hidden;
+}
+.ec-vr-ctrl:hover:not(:disabled) {
+  transform: translateY(-1px) !important;
+  border-color: var(--ec-border-accent) !important;
+  background: color-mix(in srgb, var(--ec-accent) 10%, var(--ec-surface-3)) !important;
+  color: var(--ec-accent) !important;
+  box-shadow: 0 6px 18px -6px hsl(258 86% 50% / 0.55) !important;
+}
+.ec-vr-ctrl:active:not(:disabled) {
+  transform: translateY(0) scale(0.94) !important;
+  transition-duration: 60ms !important;
+}
+.ec-vr-ctrl--danger {
+  /* Override hover для danger варианта — красный halo. */
+}
+.ec-vr-ctrl--danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--ec-danger) 18%, var(--ec-danger)) !important;
+  border-color: var(--ec-danger) !important;
+  color: var(--ec-accent-text) !important;
+  box-shadow: 0 6px 18px -6px hsl(0 70% 55% / 0.65) !important;
+}
+.ec-vr-ctrl--accent {
+  /* Active variant — уже accent. Hover просто усиливает halo. */
+}
+.ec-vr-ctrl--accent:hover:not(:disabled) {
+  background: var(--ec-accent-soft) !important;
+  border-color: var(--ec-accent) !important;
+  box-shadow:
+    0 0 0 1px var(--ec-border-accent),
+    0 8px 26px -4px hsl(258 90% 66% / 0.62) !important;
+}
+
+/* Presence card (avatar tile) — speaking state получает breath
+ * accent glow + ::before halo. */
+.ec-vr-presence-card {
+  position: relative;
+  transition:
+    transform var(--ec-dur-base) var(--ec-ease-out),
+    box-shadow var(--ec-dur-base) var(--ec-ease) !important;
+}
+.ec-vr-presence-card:hover {
+  transform: translateY(-2px);
+}
+.ec-vr-presence-card--speaking {
+  animation: ec-vr-card-pulse 3.2s ease-in-out infinite;
+}
+
+/* Video tile — accent border on hover, lift effect. */
+.ec-vr-video-tile {
+  position: relative;
+  transition:
+    transform var(--ec-dur-base) var(--ec-ease-out),
+    box-shadow var(--ec-dur-base) var(--ec-ease) !important;
+}
+.ec-vr-video-tile:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 16px 38px -14px hsl(258 86% 35% / 0.50),
+    0 0 0 1px hsl(258 86% 62% / 0.30) inset !important;
+}
+.ec-vr-video-tile--speaking {
+  box-shadow:
+    0 0 0 2px hsl(258 86% 62% / 0.7),
+    0 16px 38px -14px hsl(258 86% 35% / 0.55),
+    0 0 32px -4px hsl(258 86% 62% / 0.35) !important;
+  animation: ec-vr-tile-glow 3.2s ease-in-out infinite;
+}
+
 /* ===== Video player ========================================= */
 .ec-video-player {
   position: relative;

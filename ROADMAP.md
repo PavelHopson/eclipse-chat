@@ -5,12 +5,12 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.15** (lightbox premium polish + window-level
-drag-drop overlay; lightbox inline → .ec-lightbox-* classes с radial
-backdrop + accent image frame + premium controls + caption pill;
-MessageInput window-level drag detection через counter pattern +
-portal full-screen cinematic dropzone card с violet glow; deployed
-25.05.2026). **Tagged milestone:** v1.6.0 (`69a08bb`, design
+**Текущая версия:** **v1.5.16** (VoiceRoom premium polish — последний
+major surface получивший unified design language; hybrid стратегия:
+::before/::after atmospheric accents поверх existing classNames +
+ctrlClassFor helper для mapping inline styles → semantic .ec-vr-ctrl
+classNames; 8 controls + presence cards + video tiles с premium
+hover/active states; deployed 25.05.2026). **Tagged milestone:** v1.6.0 (`69a08bb`, design
 polish milestone после chain v1.5.3 → v1.5.12 — 10 версий, 25+ surfaces).
 
 **v1.3.4** (historical, pre-pivot — premium SaaS pivot per Pavel verdict
@@ -163,7 +163,49 @@ security-art)).
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.5.15:**
+**Изменения v1.1.25 → v1.5.16:**
+
+- **v1.5.16** — **VoiceRoom premium polish** (25.05.2026). Pavel
+  «продолжай». Последний major surface не получивший unified design
+  language — voice room (1098 строк TSX, в основном inline styles —
+  rewrite опасный). Hybrid стратегия: атмосферные accents через
+  `::before/::after` поверх existing classNames + новые classNames
+  на ключевых child surfaces (controls, presence cards, video tiles)
+  с CSS-overrides.
+  - **Room atmosphere** (`.ec-voice-room::before/::after`): top
+    accent rail (cyan→violet gradient) + bottom radial violet glow.
+    Без conflict'а с inline radial backgrounds в `roomWrap`.
+  - **Controls dock** (`.ec-voice-room__controls`): accent-tinted
+    border 22% mix !important (override inline shadow's border-like
+    look) + `::before` top holo rail (cyan→violet bridge с border-
+    radius matching `--ec-radius-full`).
+  - **Control buttons** — добавлен helper `ctrlClassFor(style)`:
+    reference-identity mapping inline style → semantic className
+    (`ec-vr-ctrl`/`--danger`/`--accent`). 8 control buttons получили
+    className (mic/deafen/camera/screen-share/stats/diagnostics/
+    settings/leave). Hover behavior per-variant: base — translateY
+    + accent halo `0 6px 18px -6px / 0.55`; danger — red halo
+    `hsl(0 70% 55% / 0.65)`; accent (already-active) — усиленный
+    `0 8px 26px -4px / 0.62` halo.
+  - **Presence cards** (`.ec-vr-presence-card`): added className,
+    hover translateY(-2px). Speaking variant получает continuous
+    `ec-vr-card-pulse` 3.2s — accent box-shadow ramp (40% → 55%
+    + 12 → 14px drop + 28px violet halo на peak).
+  - **Video tiles** (`.ec-vr-video-tile`): hover translateY(-2px)
+    + multi-shadow ramp. (Speaking variant defined in CSS — wire
+    ожидает добавления `speaking: boolean` в `VoiceVisualTrack` type
+    в useVoice.ts; deferred — текущий type не имеет этого field'а.)
+  - **prefers-reduced-motion**: `.ec-vr-presence-card--speaking` +
+    `.ec-vr-video-tile--speaking` в RM-блоке.
+  - **Files**: `apps/web/src/styles/player.css` (.ec-voice-room
+    pseudo-elements + controls override + .ec-vr-ctrl* + .ec-vr-
+    presence-card* + .ec-vr-video-tile* — ~110 строк), `apps/web/
+    src/styles/motion.css` (2 keyframes + RM extend), `apps/web/
+    src/components/VoiceRoom.tsx` (ctrlClassFor helper + className
+    на 8 controls + presence-card + video-tile root).
+  - **Bundle**: CSS 314.13 → 317.11 KB (+2.98 / +0.49 gzip);
+    JS 1050.10 → 1050.59 KB (+0.49 — helper + classNames).
+  - **Tests**: tsc clean, vite build OK.
 
 - **v1.5.15** — **lightbox premium polish + window-level drag-drop overlay**
   (25.05.2026). Pavel «давай это сделаем» — combo из топ-3 рекомендаций.

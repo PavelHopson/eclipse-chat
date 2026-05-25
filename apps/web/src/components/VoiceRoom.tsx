@@ -136,6 +136,15 @@ const controlBtnAccent: CSSProperties = {
   boxShadow: "0 0 0 1px var(--ec-border-accent), 0 0 18px -2px hsl(258 90% 66% / 0.42)",
 };
 
+// v1.5.16 — helper для mapping inline style ref → semantic className.
+// Reference identity check works because controlBtn*-объекты module-scoped
+// и ternary возвращают тот же ref, не новый объект.
+function ctrlClassFor(style: CSSProperties): string {
+  if (style === controlBtnDanger) return "ec-vr-ctrl ec-vr-ctrl--danger";
+  if (style === controlBtnAccent) return "ec-vr-ctrl ec-vr-ctrl--accent";
+  return "ec-vr-ctrl";
+}
+
 /* ===== Presence layer ====================================== */
 
 const presenceLayer: CSSProperties = {
@@ -381,6 +390,7 @@ function VideoTrackTile({
 
   return (
     <article
+      className="ec-vr-video-tile"
       style={{
         ...videoTileWrap,
         // v1.1.68 — пропорции тайла = пропорции источника (fallback 16:9 пока
@@ -736,6 +746,10 @@ export function VoiceRoom({
               return (
                 <div
                   key={p.identity}
+                  className={
+                    "ec-vr-presence-card" +
+                    (speaking ? " ec-vr-presence-card--speaking" : "")
+                  }
                   style={{
                     ...presenceCardStyle(speaking, muted || volume < 1),
                     cursor: p.isLocal ? "default" : "context-menu",
@@ -1007,6 +1021,9 @@ export function VoiceRoom({
               style={
                 v.pttActive ? controlBtnAccent : v.isMicMuted ? controlBtnDanger : controlBtn
               }
+              className={ctrlClassFor(
+                v.pttActive ? controlBtnAccent : v.isMicMuted ? controlBtnDanger : controlBtn,
+              )}
               title={
                 v.settings.micActivationMode === "push_to_talk"
                   ? `Push-to-talk · ${keyCodeToLabel(v.settings.pttKey)}`
@@ -1026,6 +1043,7 @@ export function VoiceRoom({
               type="button"
               onClick={() => v.toggleDeafen()}
               style={v.isDeafened ? controlBtnDanger : controlBtn}
+              className={ctrlClassFor(v.isDeafened ? controlBtnDanger : controlBtn)}
               title={v.isDeafened ? "Включить звук" : "Заглушить всех"}
               aria-label={v.isDeafened ? "Включить звук" : "Заглушить всех"}
             >
@@ -1036,6 +1054,7 @@ export function VoiceRoom({
               type="button"
               onClick={() => void v.toggleCamera()}
               style={v.isCameraEnabled ? controlBtnAccent : controlBtn}
+              className={ctrlClassFor(v.isCameraEnabled ? controlBtnAccent : controlBtn)}
               title={v.isCameraEnabled ? "Выключить камеру" : "Включить камеру"}
               aria-label={v.isCameraEnabled ? "Выключить камеру" : "Включить камеру"}
               disabled={!isConnected}
@@ -1047,6 +1066,7 @@ export function VoiceRoom({
               type="button"
               onClick={() => void v.toggleScreenShare()}
               style={v.isScreenShareEnabled ? controlBtnAccent : controlBtn}
+              className={ctrlClassFor(v.isScreenShareEnabled ? controlBtnAccent : controlBtn)}
               title={v.isScreenShareEnabled ? "Остановить демонстрацию" : "Демонстрация экрана"}
               aria-label={v.isScreenShareEnabled ? "Остановить демонстрацию" : "Демонстрация экрана"}
               disabled={!isConnected}
@@ -1084,6 +1104,7 @@ export function VoiceRoom({
               type="button"
               onClick={() => setShowStats((s) => !s)}
               style={showStats ? controlBtnAccent : controlBtn}
+              className={ctrlClassFor(showStats ? controlBtnAccent : controlBtn)}
               title="Сетевая диагностика (Ctrl+Shift+`)"
               aria-label="Сетевая диагностика"
               aria-pressed={showStats}
@@ -1095,6 +1116,7 @@ export function VoiceRoom({
               type="button"
               onClick={() => setShowDiagnostics((s) => !s)}
               style={showDiagnostics ? controlBtnAccent : controlBtn}
+              className={ctrlClassFor(showDiagnostics ? controlBtnAccent : controlBtn)}
               title="Voice diagnostics — состояние подключения и настроек"
               aria-label="Voice diagnostics"
               aria-pressed={showDiagnostics}
@@ -1110,6 +1132,7 @@ export function VoiceRoom({
               type="button"
               onClick={() => setShowSettings(true)}
               style={controlBtn}
+              className="ec-vr-ctrl"
               title="Настройки голоса"
               aria-label="Настройки голоса"
             >
@@ -1120,6 +1143,7 @@ export function VoiceRoom({
               type="button"
               onClick={() => void v.leave()}
               style={controlBtnDanger}
+              className="ec-vr-ctrl ec-vr-ctrl--danger"
               title="Покинуть голосовую комнату"
               aria-label="Покинуть голосовую комнату"
             >

@@ -69,6 +69,38 @@
   50%      { transform: scaleY(1.15); }
 }
 
+/* v1.5.16 — VoiceRoom speaking presence card pulse. Subtle accent
+ * box-shadow ramp (поверх inline speaking shadow). */
+@keyframes ec-vr-card-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 1px hsl(258 90% 66% / 0.40),
+      0 12px 40px -8px hsl(258 70% 50% / 0.35);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px hsl(258 90% 66% / 0.55),
+      0 14px 48px -8px hsl(258 70% 50% / 0.50),
+      0 0 28px -4px hsl(258 90% 66% / 0.30);
+  }
+}
+
+/* v1.5.16 — VoiceRoom speaking video tile glow ramp. */
+@keyframes ec-vr-tile-glow {
+  0%, 100% {
+    box-shadow:
+      0 0 0 2px hsl(258 86% 62% / 0.70),
+      0 16px 38px -14px hsl(258 86% 35% / 0.55),
+      0 0 32px -4px hsl(258 86% 62% / 0.35);
+  }
+  50% {
+    box-shadow:
+      0 0 0 2px hsl(258 86% 62% / 0.90),
+      0 18px 44px -12px hsl(258 86% 35% / 0.70),
+      0 0 44px -4px hsl(258 86% 62% / 0.55);
+  }
+}
+
 /* v1.5.15 — drag-drop overlay card pulse: дополнительный accent glow
  * ramp (поверх entry zoom). Привлекает внимание к dropzone. */
 @keyframes ec-drag-card-pulse {
@@ -1051,7 +1083,9 @@
   .ec-drag-overlay__card,
   .ec-drag-overlay__icon,
   .ec-lightbox-backdrop,
-  .ec-lightbox-img {
+  .ec-lightbox-img,
+  .ec-vr-presence-card--speaking,
+  .ec-vr-video-tile--speaking {
     animation: none !important;
   }
   .ec-search-hit::before,
