@@ -1,9 +1,28 @@
 import type { CSSProperties } from "react";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useAuth } from "./hooks/useAuth";
-import { AppShell } from "./pages/AppShell";
-import { ClientPortalContainer } from "./pages/ClientPortalContainer";
 import { LandingPage } from "./pages/LandingPage";
+
+/**
+ * v1.5.17 — Bundle split: AppShell и ClientPortalContainer теперь lazy.
+ * LandingPage остаётся eager (visitors видят его instantly без waterfall'а).
+ * Authenticated/portal views — separate chunks, грузятся after login или
+ * при попадании на `#/portal/...` hash.
+ *
+ * Эффект на landing cold-load: ~600KB JS уезжает из main bundle'а в
+ * AppShell chunk (вместе с livekit-client, useVoice, useMusic и пр.),
+ * который грузится только когда нужен.
+ *
+ * Named export → default через мини-shim (React.lazy умеет только default).
+ */
+const AppShell = lazy(() =>
+  import("./pages/AppShell").then((m) => ({ default: m.AppShell })),
+);
+const ClientPortalContainer = lazy(() =>
+  import("./pages/ClientPortalContainer").then((m) => ({
+    default: m.ClientPortalContainer,
+  })),
+);
 
 /**
  * v1.1.2: client-side version embedded at build-time через Vite define.
@@ -290,10 +309,17 @@ export function App() {
           }}
           authPanel={null}
         />
-      ) : portalServerId ? (
-        <ClientPortalContainer serverId={portalServerId} />
       ) : (
-        <AppShell user={user} socketRev={socketRev} onLogout={logout} />
+        /* v1.5.17 — Suspense обнимает оба lazy-сценария. Fallback
+         * совпадает с initial loading state — нет «двойного перехода»
+         * при cold-start с #/portal/X на authenticated пользователя. */
+        <Suspense fallback={<main style={loadingStyle}>Загрузка…</main>}>
+          {portalServerId ? (
+            <ClientPortalContainer serverId={portalServerId} />
+          ) : (
+            <AppShell user={user} socketRev={socketRev} onLogout={logout} />
+          )}
+        </Suspense>
       )}
     </>
   );

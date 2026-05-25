@@ -5,12 +5,11 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.16** (VoiceRoom premium polish — последний
-major surface получивший unified design language; hybrid стратегия:
-::before/::after atmospheric accents поверх existing classNames +
-ctrlClassFor helper для mapping inline styles → semantic .ec-vr-ctrl
-classNames; 8 controls + presence cards + video tiles с premium
-hover/active states; deployed 25.05.2026). **Tagged milestone:** v1.6.0 (`69a08bb`, design
+**Текущая версия:** **v1.5.17** (Bundle split: React.lazy для AppShell
++ ClientPortalContainer, Suspense fallback. Landing visitor main bundle
+1050 → 239 KB (gzip 278 → 74 KB, −73%); AppShell 786 KB chunk lazy;
+ClientPortalContainer 19 KB chunk lazy. Vite config не тронут — default
+Rollup auto-split срабатывает для dynamic imports; deployed 25.05.2026). **Tagged milestone:** v1.6.0 (`69a08bb`, design
 polish milestone после chain v1.5.3 → v1.5.12 — 10 версий, 25+ surfaces).
 
 **v1.3.4** (historical, pre-pivot — premium SaaS pivot per Pavel verdict
@@ -163,7 +162,44 @@ security-art)).
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.5.16:**
+**Изменения v1.1.25 → v1.5.17:**
+
+- **v1.5.17** — **Bundle split: React.lazy + Suspense для AppShell/Portal**
+  (25.05.2026). Pavel «продолжаем по списку» — top открытых направлений
+  был deferred Bundle split. Real perf win для landing visitors.
+  - **App.tsx refactor**: `import { AppShell }` и `import {
+    ClientPortalContainer }` заменены на `React.lazy(() => import(...)
+    .then(m => ({ default: m.X })))` (named-to-default shim — React.lazy
+    умеет только default export). LandingPage остаётся eager — visitors
+    видят его instantly без waterfall'а.
+  - **Suspense wrapper** обнимает оба lazy-сценария (AppShell и Portal),
+    fallback совпадает с initial loading state (`Загрузка…`) — нет
+    «двойного перехода» при cold-start на authenticated user-а.
+  - **Effect on cold-load** (landing visitor):
+    - **Main bundle** (eager): 1050.59 → **239.67 KB** (−77% / gzip
+      278.11 → **73.91 KB** = **−73% gzip**).
+    - **AppShell chunk** (lazy): 786.89 KB / 198.53 gzip — грузится
+      ТОЛЬКО после login. Tucks livekit-client peers, useVoice,
+      useChannelMusic, ServerHubModal, AdminPanel и всё что под
+      AppShell.
+    - **ClientPortalContainer chunk** (lazy): 19.16 KB / 5.22 gzip —
+      грузится только при `#/portal/<id>` hash.
+    - **EmptyIcons chunk**: 3.12 KB auto-split Rollup'ом
+      (используется обоими сценариями).
+    - **livekit-client** chunk (existing, unchanged): 513.91 KB —
+      separate chunk был раньше, теперь tucks к AppShell в graph'е.
+  - **Vite config**: не тронут — default Rollup automatic code-splitting
+    для dynamic imports срабатывает без manualChunks override.
+  - **Edge cases handled**:
+    - `#auth-panel` hash на cold-start — `LandingPage` (eager) рендерится
+      сразу с auth surface.
+    - `#/portal/X` hash на authed user — Suspense fallback показывает
+      Загрузка пока ClientPortalContainer chunk fetch'ится.
+    - Auth → AppShell transition — Suspense fallback ~50-200ms (chunk
+      грузится с network); previous behavior был instant render.
+    - Logout → Re-login — AppShell chunk уже cached, instant.
+  - **Files**: `apps/web/src/App.tsx` (imports → lazy + Suspense wrap).
+  - **Tests**: tsc clean, vite build OK с 5 chunks вместо 2.
 
 - **v1.5.16** — **VoiceRoom premium polish** (25.05.2026). Pavel
   «продолжай». Последний major surface не получивший unified design
