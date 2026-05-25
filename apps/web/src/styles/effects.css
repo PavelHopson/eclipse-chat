@@ -143,7 +143,9 @@ html[data-ec-theme="solar"] .ec-voice-room {
   aspect-ratio: 1;
   right: 6%;
   top: 8%;
-  opacity: 0.25;
+  /* v1.5.9 — opacity 0.25 → 0.32 для большей presence в right rail;
+   * крупная decoration, но не отвлекает от content'а. */
+  opacity: 0.32;
   z-index: -1;
 }
 
@@ -159,12 +161,15 @@ html[data-ec-theme="solar"] .ec-voice-room {
 
 .ec-galaxy__halo {
   border-radius: 50%;
+  /* v1.5.9 — deeper layered halo: violet core + gold mid + cyan distant
+   * (=hybrid identity violet+gold). Bigger amplitude breath. */
   background:
-    radial-gradient(circle at 50% 50%, hsl(258 90% 58% / 0.22), transparent 22%),
-    radial-gradient(circle at 58% 48%, hsl(252 80% 68% / 0.16), transparent 34%),
-    radial-gradient(circle at 44% 54%, hsl(32 100% 62% / 0.13), transparent 42%);
-  filter: blur(22px);
-  animation: ec-galaxy-breathe 9s ease-in-out infinite;
+    radial-gradient(circle at 50% 50%, hsl(258 90% 58% / 0.28), transparent 22%),
+    radial-gradient(circle at 58% 48%, hsl(252 80% 68% / 0.20), transparent 36%),
+    radial-gradient(circle at 44% 54%, hsl(45 90% 60% / 0.16), transparent 44%),
+    radial-gradient(circle at 50% 50%, hsl(180 70% 55% / 0.08), transparent 60%);
+  filter: blur(24px);
+  animation: ec-galaxy-breathe 7s ease-in-out infinite;
 }
 
 .ec-galaxy__core {
@@ -177,23 +182,32 @@ html[data-ec-theme="solar"] .ec-voice-room {
     0 0 0 1px hsl(258 90% 82% / 0.18),
     0 0 56px hsl(258 86% 52% / 0.28);
   z-index: 4;
+  /* v1.5.9 — subtle core pulse breath: подтягивает eye к центру eclipse'а
+   * без агрессивного движения. Box-shadow accent ramps 28% → 48%. */
+  animation: ec-galaxy-core-pulse 5.6s ease-in-out infinite;
 }
 
 .ec-galaxy__corona {
   inset: 33.5%;
   border-radius: 50%;
+  /* v1.5.9 — обогащённый crescent: brighter gold flare + extra violet
+   * accent + cyan bridge. Crescent теперь читается как «солнечный диск
+   * за лунным затмением» — Pavel brand identity (violet+gold). */
   background:
     conic-gradient(
       from 24deg,
-      transparent 0 11%,
-      hsl(32 100% 68% / 0.76) 13%,
-      hsl(258 86% 66% / 0.24) 17%,
-      transparent 24% 54%,
-      hsl(252 88% 70% / 0.38) 59%,
-      transparent 66% 100%
+      transparent 0 9%,
+      hsl(45 100% 70% / 0.92) 12%,
+      hsl(32 100% 65% / 0.65) 16%,
+      hsl(258 86% 66% / 0.30) 22%,
+      transparent 28% 52%,
+      hsl(180 75% 65% / 0.22) 56%,
+      hsl(252 88% 72% / 0.48) 62%,
+      transparent 70% 100%
     );
   filter: blur(4px);
-  animation: ec-galaxy-spin 24s linear infinite;
+  /* v1.5.9 — 24s → 16s rotation: crescent живее, ощущение active eclipse. */
+  animation: ec-galaxy-spin 16s linear infinite;
   z-index: 3;
 }
 
@@ -242,11 +256,16 @@ html[data-ec-theme="solar"] .ec-voice-room {
 }
 
 .ec-galaxy__stars span {
-  width: 2px;
-  height: 2px;
+  /* v1.5.9 — bigger pulse у stars (2→3px) + larger halo + brighter
+   * accent. Каждый star чувствуется как живая точка света, не плоский
+   * dot. */
+  width: 3px;
+  height: 3px;
   border-radius: 50%;
   background: var(--ec-accent);
-  box-shadow: 0 0 12px hsl(258 90% 68% / 0.8);
+  box-shadow:
+    0 0 14px hsl(258 90% 68% / 0.85),
+    0 0 4px hsl(45 100% 70% / 0.45);
   transform:
     rotate(var(--star-angle))
     translateX(var(--star-distance))
@@ -503,8 +522,28 @@ html[data-ec-theme="solar"] .ec-voice-room {
 }
 
 @keyframes ec-galaxy-breathe {
-  0%, 100% { opacity: 0.62; transform: scale(1); }
-  50% { opacity: 0.92; transform: scale(1.035); }
+  0%, 100% { opacity: 0.56; transform: scale(1); }
+  50% { opacity: 1.0; transform: scale(1.06); }
+}
+
+/* v1.5.9 — core pulse (subtle, slower than halo breath). Box-shadow
+ * accent ramps + slight scale, привлекая взгляд к центру затмения. */
+@keyframes ec-galaxy-core-pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow:
+      inset -14px -18px 28px hsl(0 0% 0% / 0.72),
+      0 0 0 1px hsl(258 90% 82% / 0.18),
+      0 0 56px hsl(258 86% 52% / 0.28);
+  }
+  50% {
+    transform: scale(1.025);
+    box-shadow:
+      inset -14px -18px 28px hsl(0 0% 0% / 0.72),
+      0 0 0 1px hsl(258 90% 82% / 0.28),
+      0 0 76px hsl(258 86% 52% / 0.48),
+      0 0 32px hsl(45 100% 70% / 0.18);
+  }
 }
 
 @keyframes ec-galaxy-stream {
@@ -563,6 +602,7 @@ html[data-ec-theme="solar"] .ec-voice-room {
 
 @media (prefers-reduced-motion: reduce) {
   .ec-galaxy__halo,
+  .ec-galaxy__core,
   .ec-galaxy__corona,
   .ec-galaxy__ring,
   .ec-galaxy__streams span,

@@ -155,13 +155,49 @@ security-art)).
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.5.8:**
+**Изменения v1.1.25 → v1.5.9:**
 
 > Roadmap entries для v1.4.0 → v1.5.2 ещё не дописаны (большой
 > design pass: v1.4.0 wow-pass milestone tag, v1.4.5 audit fixes,
 > v1.5.0 section deep polish milestone tag, v1.5.1 Home dashboard,
 > v1.5.2 AppShell combo). v1.5.3 идёт ниже — следующий chat surface
 > slice. Catch-up по v1.4-v1.5.2 — отдельной сессией.
+
+- **v1.5.9** — **EclipseGalaxy decoration enhancement** (25.05.2026).
+  Pavel «делаем дальше по списку» — top открытых направлений был
+  right-rail EclipseGalaxy (заявленный в handoff'е как «уже animated,
+  но можно усилить halo breath + crescent rotation speed»). Полный
+  pass по eclipse-визуалу — он же ставит mood'у каждой страницы.
+  - **`--shell` variant**: opacity 0.25 → 0.32. Больше presence
+    в right rail без отвлечения от content'а.
+  - **Halo** (`.ec-galaxy__halo`): deeper layered colors — теперь
+    4 radial layers (violet core 28% / mid-violet 20% / **gold accent
+    16%** / distant cyan 8%). Это «hybrid identity» — violet+gold
+    (см. memory `eclipse_color_violet_gold`). Blur 22→24px. Breath
+    keyframe обновлён: opacity range 0.62/0.92 → 0.56/1.0, scale
+    1/1.035 → 1/1.06 (≈на 70% больше amplitude). Duration 9s → 7s
+    (faster breathing — eclipse «alive»).
+  - **Corona / crescent** (`.ec-galaxy__corona`): rotation 24s → 16s
+    (явный «active eclipse» feeling). Conic gradient переработан —
+    добавлены gold flare (45° hsl 100% 70% / 0.92) + extra violet
+    accent + cyan bridge. Crescent теперь действительно читается как
+    solar disc за лунным затмением, не плоское halo.
+  - **Core** (`.ec-galaxy__core`): новый subtle 5.6s pulse breath
+    (`ec-galaxy-core-pulse` keyframe) — scale 1/1.025 + box-shadow
+    accent ramps 28%→48% + добавлен secondary 32px gold halo
+    `hsl(45 100% 70% / 0.18)` на peak'е. Подтягивает взгляд к центру
+    затмения без агрессии.
+  - **Stars** (`.ec-galaxy__stars span`): 2px → 3px size (заметнее) +
+    halo обогащён — primary violet 14px + secondary gold 4px. Каждая
+    звезда теперь — живая точка света, не плоский dot.
+  - **prefers-reduced-motion**: `.ec-galaxy__core` добавлен в
+    existing RM-блок (наряду с halo/corona/ring/streams/stars).
+  - **Files**: `apps/web/src/styles/effects.css` (1 variant opacity
+    + 4 visual element rewrites + 1 keyframe + RM extend).
+    EclipseGalaxy.tsx НЕ тронут — pure CSS pass.
+  - **Bundle**: CSS 301.41 → 301.89 KB (+0.48 / +0.09 gzip);
+    JS unchanged. Visual impact >> bundle cost.
+  - **Tests**: tsc clean, vite build 4.31s OK.
 
 - **v1.5.8** — **composer premium polish** (25.05.2026). Pavel
   «продолжаем» — next slice из daily-touched surfaces. Composer
