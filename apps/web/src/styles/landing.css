@@ -185,24 +185,48 @@
     height: 50px;
   }
 }
+/* v1.5.0 — Nav links pack: magnetic wrappers (.ec-magnetic) + active
+ * sliding indicator (positioned absolute, translated по active link). */
 .ec-landing__nav-links {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 54px;
+  gap: 28px;
   color: #b3c4d3;
   font-size: var(--L-type-sm);
 }
 .ec-landing__nav-link {
+  position: relative;
   background: transparent;
   border: 0;
-  padding: 0;
+  padding: 10px 12px;
   color: inherit;
   font: inherit;
   cursor: pointer;
   transition: color var(--L-dur-fast) var(--L-ease-out);
+  z-index: 2;
 }
 .ec-landing__nav-link:hover {
   color: var(--L-text);
+}
+.ec-landing__nav-link.is-active {
+  color: var(--L-signal);
+  font-weight: 600;
+}
+.ec-landing__nav-indicator {
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--L-signal), transparent);
+  border-radius: 2px;
+  pointer-events: none;
+  transition:
+    transform 480ms cubic-bezier(0.34, 1.4, 0.64, 1),
+    width 480ms cubic-bezier(0.34, 1.4, 0.64, 1),
+    opacity 280ms var(--L-ease-out);
+  filter: drop-shadow(0 0 6px rgba(93, 181, 217, 0.7));
+  z-index: 1;
 }
 .ec-landing__nav-actions {
   display: inline-flex;
@@ -1289,28 +1313,62 @@
   gap: 90px;
   align-items: center;
 }
-/* v1.4.5 audit fix P2 — overflow:hidden чтобы orbit--two (470px) не
- * вылезал за viewport (390px mobile). */
+/* v1.5.0 — Memory map animated: SVG link grid + data pulses +
+ * orbit rotation + node hover lift + core breath pulse. */
 .ec-memory-map {
-  height: 380px;
+  height: 420px;
   position: relative;
   overflow: hidden;
+  isolation: isolate;
+}
+.ec-memory-map__links {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+.ec-memory-map__link {
+  stroke-dasharray: 0.6 1.8;
+  stroke-dashoffset: 0;
+  animation: ec-memory-link-flow 12s linear infinite;
+}
+@keyframes ec-memory-link-flow {
+  from { stroke-dashoffset: 0; }
+  to { stroke-dashoffset: -24; }
 }
 .ec-memory-map__core {
   position: absolute;
   left: 50%;
   top: 50%;
   translate: -50% -50%;
-  width: 108px;
-  height: 108px;
+  width: 132px;
+  height: 132px;
   border: 1px solid var(--L-line-rim);
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background: rgba(7, 17, 26, 0.8);
+  background: radial-gradient(circle at 50% 36%, rgba(93, 181, 217, 0.12), rgba(7, 17, 26, 0.92) 70%);
   z-index: 3;
   text-align: center;
   gap: 2px;
+  box-shadow:
+    inset 0 0 24px rgba(93, 181, 217, 0.12),
+    0 0 40px rgba(93, 181, 217, 0.15);
+}
+.ec-memory-map__core-pulse {
+  position: absolute;
+  inset: -10px;
+  border-radius: 50%;
+  border: 1px solid var(--L-signal);
+  opacity: 0;
+  animation: ec-memory-core-pulse 3.2s ease-out infinite;
+  pointer-events: none;
+}
+@keyframes ec-memory-core-pulse {
+  0% { transform: scale(0.92); opacity: 0.6; }
+  100% { transform: scale(1.35); opacity: 0; }
 }
 .ec-memory-map__core-shell {
   display: block;
@@ -1342,32 +1400,81 @@
   left: 50%;
   top: 50%;
   translate: -50% -50%;
-  border: 1px solid rgba(150, 210, 245, 0.1);
+  border: 1px solid rgba(150, 210, 245, 0.12);
   border-radius: 50%;
   z-index: 1;
+  pointer-events: none;
 }
-.ec-memory-map__orbit--one { width: 270px; height: 160px; }
-.ec-memory-map__orbit--two { width: 470px; height: 240px; }
+.ec-memory-map__orbit--one {
+  width: 280px;
+  height: 280px;
+  border-style: dashed;
+  animation: ec-memory-orbit-spin 38s linear infinite;
+}
+.ec-memory-map__orbit--two {
+  width: 460px;
+  height: 460px;
+  animation: ec-memory-orbit-spin 64s linear infinite reverse;
+}
+@keyframes ec-memory-orbit-spin {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
 .ec-memory-map__node {
   position: absolute;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   padding: 12px 18px;
   border: 1px solid var(--L-line);
-  border-radius: 7px;
-  color: #97abba;
-  background: rgba(7, 17, 26, 0.6);
+  border-radius: 9px;
+  color: var(--L-text);
+  background:
+    linear-gradient(180deg, rgba(11, 22, 32, 0.85), rgba(7, 17, 26, 0.92));
   font-size: var(--L-type-sm);
   font-family: var(--ec-font-sans, "Inter", system-ui, sans-serif);
   z-index: 2;
+  transition:
+    transform 280ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 280ms var(--L-ease-out),
+    box-shadow 280ms var(--L-ease-out);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
-.ec-memory-map__node--one { left: 14%; top: 18%; }
-.ec-memory-map__node--two { right: 13%; top: 16%; }
-.ec-memory-map__node--three { left: 5%; top: 52%; }
-.ec-memory-map__node--four { right: 4%; top: 53%; }
-.ec-memory-map__node--five { left: 36%; bottom: 10%; }
-.ec-memory-map__node--six { right: 24%; bottom: 5%; }
+.ec-memory-map__node-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--L-signal);
+  box-shadow: 0 0 8px rgba(93, 181, 217, 0.6);
+  flex-shrink: 0;
+}
+.ec-memory-map__node:hover {
+  transform: translateY(-3px) scale(1.04);
+  border-color: var(--L-signal);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 8px 24px rgba(93, 181, 217, 0.25),
+    0 0 0 1px rgba(154, 216, 239, 0.3);
+}
+.ec-memory-map__node--one { left: 12%; top: 18%; }
+.ec-memory-map__node--two { right: 12%; top: 14%; }
+.ec-memory-map__node--three { left: 4%; top: 52%; }
+.ec-memory-map__node--four { right: 4%; top: 56%; }
+.ec-memory-map__node--five { left: 24%; bottom: 8%; }
+.ec-memory-map__node--six { right: 22%; bottom: 6%; }
+@media (max-width: 900px) {
+  .ec-memory-map {
+    height: 360px;
+  }
+  .ec-memory-map__orbit--one { width: 220px; height: 220px; }
+  .ec-memory-map__orbit--two { width: 360px; height: 360px; }
+  .ec-memory-map__node {
+    font-size: 13px;
+    padding: 10px 14px;
+  }
+}
 
 /* === Security section === */
 .ec-landing__security-grid {
@@ -1395,34 +1502,144 @@
   flex-direction: column;
   gap: 24px;
 }
+/* v1.5.0 — Security stack animated: cyber grid backdrop + cube continuous
+ * rotation + nested face pulse + radiating shield rings.
+ */
 .ec-security-stack {
-  height: 360px;
+  height: 380px;
   position: relative;
   display: grid;
   place-items: center;
+  isolation: isolate;
+  overflow: hidden;
+  perspective: 1000px;
+}
+.ec-security-stack__grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(93, 181, 217, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(93, 181, 217, 0.06) 1px, transparent 1px);
+  background-size: 28px 28px;
+  mask-image: radial-gradient(ellipse at 50% 50%, rgba(0, 0, 0, 0.95), transparent 65%);
+  -webkit-mask-image: radial-gradient(ellipse at 50% 50%, rgba(0, 0, 0, 0.95), transparent 65%);
+  opacity: 0.5;
+  z-index: 0;
+  animation: ec-security-grid-drift 18s linear infinite;
+}
+@keyframes ec-security-grid-drift {
+  from { background-position: 0 0, 0 0; }
+  to { background-position: 28px 28px, -28px 28px; }
 }
 .ec-security-stack__cube {
-  width: 210px;
-  height: 170px;
-  border: 1px solid rgba(93, 181, 217, 0.24);
-  border-radius: 20px;
-  transform: rotateX(55deg) rotateZ(45deg);
-  box-shadow:
-    0 0 0 34px rgba(93, 181, 217, 0.03),
-    0 0 80px rgba(93, 181, 217, 0.12);
   position: relative;
+  width: 200px;
+  height: 200px;
+  transform-style: preserve-3d;
+  transform: rotateX(55deg) rotateZ(0deg);
+  animation: ec-security-cube-spin 24s linear infinite;
+  z-index: 2;
 }
-.ec-security-stack__cube::before,
-.ec-security-stack__cube::after {
-  content: "";
+@keyframes ec-security-cube-spin {
+  from { transform: rotateX(55deg) rotateZ(0deg); }
+  to { transform: rotateX(55deg) rotateZ(360deg); }
+}
+.ec-security-stack__cube-face {
   position: absolute;
-  inset: 24px;
-  border: 1px solid rgba(93, 181, 217, 0.22);
-  border-radius: 16px;
+  inset: 0;
+  border: 1px solid rgba(93, 181, 217, 0.32);
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, rgba(93, 181, 217, 0.08), rgba(45, 134, 177, 0.04));
+  box-shadow: 0 0 32px rgba(93, 181, 217, 0.18);
 }
-.ec-security-stack__cube::after {
-  inset: 52px;
-  background: rgba(93, 181, 217, 0.08);
+.ec-security-stack__cube-face--1 {
+  transform: translateZ(20px);
+  border-color: rgba(154, 216, 239, 0.45);
+}
+.ec-security-stack__cube-face--2 {
+  inset: 28px;
+  border-radius: 14px;
+  transform: translateZ(40px);
+  border-color: rgba(108, 195, 229, 0.38);
+  background:
+    linear-gradient(135deg, rgba(108, 195, 229, 0.12), rgba(45, 134, 177, 0.06));
+}
+.ec-security-stack__cube-face--3 {
+  inset: 56px;
+  border-radius: 10px;
+  transform: translateZ(60px);
+  border-color: rgba(154, 216, 239, 0.55);
+  background:
+    radial-gradient(circle at 50% 30%, rgba(154, 216, 239, 0.25), rgba(93, 181, 217, 0.08) 65%);
+  animation: ec-security-cube-fill-pulse 3.6s ease-in-out infinite;
+}
+@keyframes ec-security-cube-fill-pulse {
+  0%, 100% { box-shadow: 0 0 18px rgba(93, 181, 217, 0.25); }
+  50% { box-shadow: 0 0 36px rgba(93, 181, 217, 0.55); }
+}
+/* Shield icon centered on top face — counter-rotated so it stays upright
+ * relative to camera (cube spins, shield stays facing user). */
+.ec-security-stack__cube-shield {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 36px;
+  height: 36px;
+  transform: translate(-50%, -50%) translateZ(80px) rotateX(-55deg);
+  display: grid;
+  place-items: center;
+  color: var(--L-signal-soft);
+  filter: drop-shadow(0 0 8px rgba(154, 216, 239, 0.7));
+  animation: ec-security-shield-counter-spin 24s linear infinite;
+}
+@keyframes ec-security-shield-counter-spin {
+  from { transform: translate(-50%, -50%) translateZ(80px) rotateX(-55deg) rotateZ(0deg); }
+  to { transform: translate(-50%, -50%) translateZ(80px) rotateX(-55deg) rotateZ(-360deg); }
+}
+.ec-security-stack__rings {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  z-index: 1;
+}
+.ec-security-stack__rings span {
+  position: absolute;
+  width: 200px;
+  height: 200px;
+  border: 1px solid var(--L-signal);
+  border-radius: 50%;
+  opacity: 0;
+  animation: ec-security-shield-ring 4s ease-out infinite;
+}
+.ec-security-stack__rings span:nth-child(2) {
+  animation-delay: 1.3s;
+}
+.ec-security-stack__rings span:nth-child(3) {
+  animation-delay: 2.6s;
+}
+@keyframes ec-security-shield-ring {
+  0% { transform: scale(0.4); opacity: 0.7; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+.ec-landing__sec-card {
+  position: relative;
+  transition:
+    transform 280ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 280ms var(--L-ease-out),
+    background 280ms var(--L-ease-out),
+    box-shadow 280ms var(--L-ease-out);
+}
+.ec-landing__sec-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(154, 216, 239, 0.34);
+  background: rgba(11, 22, 32, 0.85);
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(93, 181, 217, 0.18),
+    0 0 24px rgba(93, 181, 217, 0.12);
 }
 .ec-landing__security-cards {
   display: grid;

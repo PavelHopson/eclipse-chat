@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 const ECLIPSE_LOGO_URL = `${import.meta.env.BASE_URL}eclipse-chat-logo.png`;
 import {
   CacheGlyph,
@@ -117,6 +117,14 @@ export function LandingPage({
   renderSecurityArt,
 }: Props) {
   const heroStageRef = useRef<HTMLDivElement | null>(null);
+  const [activeSection, setActiveSection] = useState<string>("product");
+  const navRef = useRef<HTMLDivElement | null>(null);
+  const linkRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
+  const [indicatorStyle, setIndicatorStyle] = useState<{
+    left: number;
+    width: number;
+    opacity: number;
+  }>({ left: 0, width: 0, opacity: 0 });
 
   useEffect(() => {
     if (!authMode || !heroStageRef.current) return;
@@ -130,6 +138,60 @@ export function LandingPage({
       });
     });
   }, [authMode]);
+
+  /* v1.5.0 — scroll-driven active nav indicator. IntersectionObserver
+   * watches section anchors → updates activeSection → indicator slides
+   * под active link через CSS transition. */
+  useEffect(() => {
+    if (typeof IntersectionObserver === "undefined") return;
+    const sectionIds = NAV_LINKS.map((link) => link.target);
+    const elements = sectionIds
+      .map((id) => document.getElementById(id))
+      .filter((el): el is HTMLElement => el != null);
+    if (elements.length === 0) return;
+
+    const visible = new Map<string, number>();
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            visible.set(entry.target.id, entry.intersectionRatio);
+          } else {
+            visible.delete(entry.target.id);
+          }
+        });
+        let topId = "";
+        let topRatio = 0;
+        visible.forEach((ratio, id) => {
+          if (ratio > topRatio) {
+            topRatio = ratio;
+            topId = id;
+          }
+        });
+        if (topId) setActiveSection(topId);
+      },
+      { rootMargin: "-30% 0px -50% 0px", threshold: [0, 0.25, 0.5, 0.75, 1] },
+    );
+    elements.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, []);
+
+  /* Move indicator under active link */
+  useEffect(() => {
+    const linkNode = linkRefs.current.get(activeSection);
+    const navNode = navRef.current;
+    if (!linkNode || !navNode) {
+      setIndicatorStyle((prev) => ({ ...prev, opacity: 0 }));
+      return;
+    }
+    const linkRect = linkNode.getBoundingClientRect();
+    const navRect = navNode.getBoundingClientRect();
+    setIndicatorStyle({
+      left: linkRect.left - navRect.left,
+      width: linkRect.width,
+      opacity: 1,
+    });
+  }, [activeSection]);
 
   return (
     <main className="ec-landing" aria-label="Eclipse Chat">
@@ -147,17 +209,31 @@ export function LandingPage({
             />
           </a>
 
-          <div className="ec-landing__nav-links">
+          <div className="ec-landing__nav-links" ref={navRef}>
             {NAV_LINKS.map((link) => (
-              <button
-                key={link.label}
-                type="button"
-                className="ec-landing__nav-link"
-                onClick={() => scrollToSection(link.target)}
-              >
-                {link.label}
-              </button>
+              <MagneticButton key={link.label} intensity={0.18}>
+                <button
+                  ref={(node) => {
+                    if (node) linkRefs.current.set(link.target, node);
+                    else linkRefs.current.delete(link.target);
+                  }}
+                  type="button"
+                  className={`ec-landing__nav-link${activeSection === link.target ? " is-active" : ""}`}
+                  onClick={() => scrollToSection(link.target)}
+                >
+                  {link.label}
+                </button>
+              </MagneticButton>
             ))}
+            <span
+              className="ec-landing__nav-indicator"
+              style={{
+                transform: `translateX(${indicatorStyle.left}px)`,
+                width: indicatorStyle.width,
+                opacity: indicatorStyle.opacity,
+              }}
+              aria-hidden
+            />
           </div>
 
           <div className="ec-landing__nav-actions">

@@ -421,35 +421,95 @@ export function HeroOperationalStage({
 }
 
 /**
- * MemoryConstellation — AI Memory visual diagram per reference brief.
+ * v1.5.0 — MemoryConstellation animated.
+ * - SVG connection lines от центра к каждой node (6 paths)
+ * - Animated data pulses вдоль lines (small cyan dots travel)
+ * - Continuous orbit rotation
+ * - Pulsing core с inner signal dot
+ * - Node hover lift (CSS)
  */
+const MEMORY_NODE_POSITIONS = [
+  { label: "Решения", x: 18, y: 22, className: "ec-memory-map__node--one" },
+  { label: "Документы", x: 82, y: 18, className: "ec-memory-map__node--two" },
+  { label: "Задачи", x: 12, y: 58, className: "ec-memory-map__node--three" },
+  { label: "Обсуждения", x: 86, y: 62, className: "ec-memory-map__node--four" },
+  { label: "Файлы", x: 32, y: 86, className: "ec-memory-map__node--five" },
+  { label: "Участники", x: 64, y: 88, className: "ec-memory-map__node--six" },
+] as const;
+
 export function MemoryConstellation() {
-  const MEMORY_NODES = [
-    { label: "Решения", className: "ec-memory-map__node--one" },
-    { label: "Документы", className: "ec-memory-map__node--two" },
-    { label: "Задачи", className: "ec-memory-map__node--three" },
-    { label: "Обсуждения", className: "ec-memory-map__node--four" },
-    { label: "Файлы", className: "ec-memory-map__node--five" },
-    { label: "Участники", className: "ec-memory-map__node--six" },
-  ] as const;
   return (
     <div className="ec-memory-map" aria-label="AI Memory — карта контекста">
+      {/* Connection lines SVG (% based coordinates) */}
+      <svg
+        className="ec-memory-map__links"
+        viewBox="0 0 100 100"
+        preserveAspectRatio="none"
+        aria-hidden
+      >
+        <defs>
+          <linearGradient id="ec-memory-link-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="rgba(154, 216, 239, 0.05)" />
+            <stop offset="50%" stopColor="rgba(154, 216, 239, 0.45)" />
+            <stop offset="100%" stopColor="rgba(154, 216, 239, 0.05)" />
+          </linearGradient>
+          <filter id="ec-memory-pulse-glow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="0.6" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+        {MEMORY_NODE_POSITIONS.map((node, index) => (
+          <g key={`link-${node.label}`}>
+            <line
+              x1="50"
+              y1="50"
+              x2={node.x}
+              y2={node.y}
+              stroke="url(#ec-memory-link-grad)"
+              strokeWidth="0.18"
+              className="ec-memory-map__link"
+            />
+            <circle
+              r="0.7"
+              fill="rgba(154, 216, 239, 0.95)"
+              filter="url(#ec-memory-pulse-glow)"
+              className="ec-memory-map__pulse"
+            >
+              <animateMotion
+                dur={`${3 + index * 0.5}s`}
+                repeatCount="indefinite"
+                begin={`${index * 0.4}s`}
+                keyTimes="0;1"
+                keySplines="0.4 0 0.6 1"
+                calcMode="spline"
+                path={`M ${node.x} ${node.y} L 50 50`}
+              />
+            </circle>
+          </g>
+        ))}
+      </svg>
+
       <div className="ec-memory-map__orbit ec-memory-map__orbit--two" aria-hidden />
       <div className="ec-memory-map__orbit ec-memory-map__orbit--one" aria-hidden />
 
       <Reveal className="ec-memory-map__core" variant="panel">
+        <span className="ec-memory-map__core-pulse" aria-hidden />
         <span className="ec-memory-map__core-shell" aria-hidden>AI</span>
         <strong>Memory</strong>
         <span className="ec-memory-map__core-meta">persistent context</span>
       </Reveal>
 
-      {MEMORY_NODES.map((node, index) => (
+      {MEMORY_NODE_POSITIONS.map((node, index) => (
         <Reveal
           key={node.label}
           className={`ec-memory-map__node ${node.className}`}
           variant="panel"
           delay={index * 80}
         >
+          <span className="ec-memory-map__node-dot" aria-hidden />
           {node.label}
         </Reveal>
       ))}
@@ -458,12 +518,50 @@ export function MemoryConstellation() {
 }
 
 /**
- * SecurityStackArt — security visual anchor per reference brief.
+ * v1.5.0 — SecurityStackArt enriched.
+ * - Cube continuous slow rotation (40s loop, subtle)
+ * - Inner cube layers pulse opacity
+ * - Cyber grid backdrop pattern
+ * - Lock badge с shield rings (radiating)
  */
+function ShieldIcon() {
+  return (
+    <svg width="20" height="22" viewBox="0 0 20 22" fill="none" aria-hidden>
+      <path
+        d="M10 1.5L17 4.5V10.5C17 15.5 13.5 19 10 20.5C6.5 19 3 15.5 3 10.5V4.5L10 1.5Z"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        fill="rgba(93, 181, 217, 0.12)"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M7 11l2 2 4-4"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export function SecurityStackArt() {
   return (
     <div className="ec-security-stack" aria-label="Архитектура безопасности">
-      <div className="ec-security-stack__cube" aria-hidden />
+      <div className="ec-security-stack__grid" aria-hidden />
+      <div className="ec-security-stack__cube" aria-hidden>
+        <span className="ec-security-stack__cube-face ec-security-stack__cube-face--1" />
+        <span className="ec-security-stack__cube-face ec-security-stack__cube-face--2" />
+        <span className="ec-security-stack__cube-face ec-security-stack__cube-face--3" />
+        <span className="ec-security-stack__cube-shield">
+          <ShieldIcon />
+        </span>
+      </div>
+      <div className="ec-security-stack__rings" aria-hidden>
+        <span />
+        <span />
+        <span />
+      </div>
     </div>
   );
 }
