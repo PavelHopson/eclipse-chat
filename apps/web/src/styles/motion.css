@@ -114,6 +114,53 @@
   }
 }
 
+/* v1.5.7 — общий popover entry (для AutocompletePopover, ContextMenu,
+ * DropdownPanel). Subtle scale + translateY + opacity. */
+@keyframes ec-popover-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* v1.5.7 — banner / toast entry: slide down + fade in. Подходит
+ * для ephemeral banner, since-last-visit, ai-typing strip. */
+@keyframes ec-banner-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+    filter: drop-shadow(0 0 0 transparent);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: drop-shadow(0 6px 18px hsl(258 86% 40% / 0.25));
+  }
+}
+
+/* v1.5.7 — EmptyState icon continuous breath (subtle scale + accent halo). */
+@keyframes ec-empty-icon-breath {
+  0%, 100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 8px hsl(258 86% 62% / 0.15));
+  }
+  50% {
+    transform: scale(1.04);
+    filter: drop-shadow(0 0 16px hsl(258 86% 62% / 0.35));
+  }
+}
+
+/* v1.5.7 — EmptyState outer orbital ring slow rotation (18s) — minimal
+ * mvmt, добавляет ощущение «жизни» в пустом пространстве. */
+@keyframes ec-empty-orbit {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
 @keyframes ec-presence-pulse {
   0%, 100% { box-shadow: 0 0 6px hsl(150 50% 50% / 0.55); }
   50%      { box-shadow: 0 0 10px hsl(150 50% 50% / 0.85); }
@@ -893,9 +940,21 @@
     transform: none;
   }
   .ec-modal-header.ec-holo-edge::before,
+  .ec-search-panel::before,
   .ec-audio-attachment__icon,
-  .ec-video-attachment__play svg {
+  .ec-video-attachment__play svg,
+  .ec-popover-surface,
+  .ec-srv-panel,
+  .ec-ephemeral-banner,
+  .ec-empty-state,
+  .ec-empty-state__icon,
+  .ec-empty-state__icon::after {
     animation: none !important;
+  }
+  .ec-search-hit::before,
+  .ec-popover-item::before,
+  .ec-srv-menu-row::before {
+    transition: none !important;
   }
   .ec-dot--online           { animation: none !important; }
   .ec-typing-dot            { animation: none !important; }

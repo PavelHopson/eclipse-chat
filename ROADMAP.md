@@ -155,13 +155,93 @@ security-art)).
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.5.6:**
+**Изменения v1.1.25 → v1.5.7:**
 
 > Roadmap entries для v1.4.0 → v1.5.2 ещё не дописаны (большой
 > design pass: v1.4.0 wow-pass milestone tag, v1.4.5 audit fixes,
 > v1.5.0 section deep polish milestone tag, v1.5.1 Home dashboard,
 > v1.5.2 AppShell combo). v1.5.3 идёт ниже — следующий chat surface
 > slice. Catch-up по v1.4-v1.5.2 — отдельной сессией.
+
+- **v1.5.7** — **design polish combo: 6 surfaces за один pass**
+  (25.05.2026). Pavel «продолжаем разработку и доработку дизайна»
+  + список из 6 направлений (SearchOverlay / Server switcher /
+  ContextMenu+Dropdown / Form inputs / Toast banners / Empty states).
+  Batched в один deploy чтобы избежать 30 минут CI-waiting на 5
+  отдельных циклов.
+
+  **SearchOverlay** (Ctrl+K): backdrop с radial violet aura at center
+  + blur 10→12px; panel — accent-tinted border + multi-shadow
+  (`0 30px 70px / 0.45`) + top holo sweep `::before` (cyan→violet
+  bridge 1.6s ease-out, как у modal-header v1.5.5); search-bar
+  получил `:focus-within` glow ring (inset -2px accent + 24px aura);
+  input bigger 1.04rem + accent caret-color; tabs row — subtle accent
+  tint background; active tab `::after` — blurred 8px halo disc;
+  hits row — accent left-rail `::before` (scaleY anim) + bg accent-soft
+  + translateX(3px) + `0 4px 14px -8px / 0.45` shadow + focus-visible
+  с inset accent border.
+
+  **Popover/ContextMenu base** (`.ec-popover-surface` + `.ec-popover-item`):
+  единый cinematic frame для AutocompletePopover + ParticipantContextMenu
+  + любых будущих floating menus. Radial violet aura + accent border
+  (24% mix) + multi-shadow + top holo rail static (не sweep — frequent
+  popover'ы не должны отвлекать). Items получают accent left rail на
+  hover/active + translateX(2px) + background accent 10% mix. Entry
+  через `ec-popover-in` (220ms scale 0.97→1 + translateY -4→0).
+  AutocompletePopover полностью перенесён с inline на classNames
+  (исчез wrap/itemStyle/itemActive/headerLabel — все стали
+  `.ec-popover-*`). ParticipantContextMenu получил className на root
+  div.
+
+  **Form inputs**: `.ec-field:focus` обогащён — `0 0 22px / 0.18` glow
+  ring + inset highlight `0 1px 0 hsl(0 0% 100% / 0.04)`. `select.ec-field`
+  получил custom SVG chevron (violet baseline, gold on focus) через
+  `data:image/svg+xml` background. Global `input[type="checkbox"]` +
+  `input[type="radio"]` — `accent-color: var(--ec-accent)` + 16px
+  size + hover `scale(1.1)` + accent drop-shadow + focus-visible ring.
+
+  **Toast / banners**: `.ec-ephemeral-banner` — добавлен radial accent
+  aura backdrop + accent left rail `::before` + entry анимация
+  `ec-banner-slide-in` (translateY -8→0 + opacity 0→1 + drop-shadow
+  appear). Visual consistency с popover/search/modal через тот же
+  paradigm — multi-layer бекграунд + accent rail.
+
+  **Empty states**: EmptyState получил `.ec-empty-state` className.
+  Icon-wrap наращен orbital rings — `::before` (-10% inset, 1px violet
+  18%) + `::after` (-22% inset, 1px cyan 12%, 18s slow rotate).
+  Continuous 5.6s breath на icon (scale 1.04 + accent drop-shadow
+  ramp). Title получил linear-gradient text fill (text-strong → 65%
+  accent mix) + letter-spacing 0.005em. Entry — `ec-fade-in` 360ms.
+
+  **Server switcher**: `.ec-srv-panel` (workspace dropdown в topbar) —
+  заменён базовый `var(--ec-surface-2)` на cinematic stack (radial
+  violet aura + overlay-bg + accent border 24% mix + multi-shadow +
+  backdrop-blur 16px). Top holo rail `::before` (same gradient pattern).
+  Entry `ec-popover-in` 220ms с `transform-origin: top left`.
+  `.ec-srv-menu-row` — accent left rail на hover/aria-current (same
+  pattern как popover-item/search-hit) + bg accent 10% mix + shadow
+  `0 4px 12px -8px / 0.4`.
+
+  **prefers-reduced-motion**: все 4 новых continuous/transition анимации
+  (`ec-popover-in`, `ec-banner-slide-in`, `ec-empty-icon-breath`,
+  `ec-empty-orbit`) + targeted selectors добавлены в общий RM-блок.
+
+  **Files**: `apps/web/src/styles/components.css` (SearchOverlay block
+  rewrite + new `.ec-popover-surface/.ec-popover-item/.ec-popover-header`
+  + `.ec-empty-state*` + `.ec-srv-panel` rewrite + `.ec-srv-menu-row::before`
+  rail + form input enhancements + `select.ec-field` chevron),
+  `apps/web/src/styles/motion.css` (4 keyframes + RM extend extensions),
+  `apps/web/src/styles/cockpit.css` (`.ec-ephemeral-banner` rewrite),
+  `apps/web/src/components/AutocompletePopover.tsx` (inline → className),
+  `apps/web/src/components/ParticipantContextMenu.tsx` (className на
+  root), `apps/web/src/components/EmptyState.tsx` (2 classNames added).
+
+  **Bundle**: CSS 290.66 → 299.32 KB (+8.66 / +1.44 gzip);
+  JS 1047.07 → 1046.52 KB (-0.55 — inline styles вынесены в CSS,
+  TSX shrunk). Net: 6 surface polish за ~10 KB CSS.
+
+  **Tests**: tsc clean, vite build 4.88s OK. Vitest skip (registry
+  ECONNRESET); CI Validate отработает.
 
 - **v1.5.6** — **media players premium redesign** (25.05.2026). Pavel
   показал скриншот текущих audio плееров (2 stacked cards с

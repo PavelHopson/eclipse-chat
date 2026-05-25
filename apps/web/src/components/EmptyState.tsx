@@ -69,15 +69,18 @@ const hintStyle: CSSProperties = {
 export function EmptyState({ icon, title, hint, action, compact = false }: Props) {
   return (
     <div
+      className="ec-empty-state"
       style={{
         ...wrap,
         padding: compact ? "var(--ec-space-4)" : "var(--ec-space-6) var(--ec-space-4)",
       }}
     >
-      <div style={iconWrap(compact)} aria-hidden>
+      <div className="ec-empty-state__icon" style={iconWrap(compact)} aria-hidden>
+        {/* v1.5.7 — orbital rings + breath halo задаются через ::before/::after
+         * в components.css. SVG-glyph остаётся центральным якорем. */}
         {icon}
       </div>
-      <h3 style={titleStyle}>{title}</h3>
+      <h3 className="ec-empty-state__title" style={titleStyle}>{title}</h3>
       {hint && <p style={hintStyle}>{hint}</p>}
       {action && <div style={{ marginTop: "var(--ec-space-2)" }}>{action}</div>}
     </div>

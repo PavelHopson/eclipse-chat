@@ -64,48 +64,18 @@ type Props = {
   onDismiss: () => void;
 };
 
-const wrap: CSSProperties = {
+// v1.5.7 — visual layer вынесен в .ec-popover-* классы (components.css).
+// Inline остаются только positioning + dynamic state. Базовая cinematic
+// frame + entry-anim + hover left-rail приходят из CSS.
+
+const wrapPositionStyle: CSSProperties = {
   position: "fixed",
   zIndex: 200,
-  minWidth: 220,
+  minWidth: 240,
   maxWidth: 320,
-  maxHeight: 240,
+  maxHeight: 260,
   overflowY: "auto",
-  background: "var(--ec-surface-2)",
-  border: "1px solid var(--ec-border-default)",
-  borderRadius: "var(--ec-radius-md)",
-  boxShadow: "var(--ec-shadow-lg)",
   padding: 4,
-};
-
-const itemStyle: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 8,
-  padding: "0.32rem 0.55rem",
-  borderRadius: "var(--ec-radius-sm)",
-  cursor: "pointer",
-  background: "transparent",
-  border: 0,
-  width: "100%",
-  textAlign: "left",
-  color: "var(--ec-text)",
-  fontSize: "var(--ec-text-sm)",
-};
-
-const itemActive: CSSProperties = {
-  ...itemStyle,
-  background: "var(--ec-accent-soft)",
-  color: "var(--ec-accent)",
-};
-
-const headerLabel: CSSProperties = {
-  padding: "0.25rem 0.55rem",
-  fontSize: "var(--ec-text-2xs)",
-  letterSpacing: "var(--ec-tracking-caps)",
-  textTransform: "uppercase",
-  color: "var(--ec-text-dim)",
-  fontWeight: 700,
 };
 
 function buildItems(
@@ -256,8 +226,9 @@ export function AutocompletePopover({
 
   return (
     <div
+      className="ec-popover-surface"
       style={{
-        ...wrap,
+        ...wrapPositionStyle,
         top,
         left,
         transform,
@@ -265,7 +236,7 @@ export function AutocompletePopover({
       role="listbox"
       aria-label={trigger.kind === "@" ? "Упоминание участника" : "Эмоджи"}
     >
-      <div style={headerLabel}>
+      <div className="ec-popover-header">
         {trigger.kind === "@" ? "Упомянуть участника" : "Эмоджи"}
         <span style={{ marginLeft: 6, fontWeight: 400, letterSpacing: 0, textTransform: "none" }}>
           ↑↓ навигация · Enter — вставить · Esc — закрыть
@@ -277,7 +248,7 @@ export function AutocompletePopover({
           type="button"
           role="option"
           aria-selected={i === activeIdx}
-          style={i === activeIdx ? itemActive : itemStyle}
+          className={"ec-popover-item" + (i === activeIdx ? " is-active" : "")}
           onMouseEnter={() => setActiveIdx(i)}
           onMouseDown={(e) => {
             // mousedown НЕ blur textarea — important

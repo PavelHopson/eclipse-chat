@@ -18,13 +18,11 @@ type Props = {
   onClose: () => void;
 };
 
+// v1.5.7 — cinematic frame теперь приходит из .ec-popover-surface
+// (accent border, holo rail, multi-shadow, entry-anim). Inline остаётся
+// только positioning + layout-specific.
 const menu: CSSProperties = {
   position: "fixed",
-  background: "var(--ec-overlay-bg)",
-  backdropFilter: "saturate(180%) blur(14px)",
-  WebkitBackdropFilter: "saturate(180%) blur(14px)",
-  borderRadius: "var(--ec-radius-md)",
-  boxShadow: "var(--ec-shadow-modal)",
   padding: "var(--ec-space-3)",
   minWidth: 240,
   zIndex: 200,
@@ -93,7 +91,7 @@ export function ParticipantContextMenu({
   }, [onClose]);
 
   return (
-    <div ref={ref} style={{ ...menu, left, top }} role="menu" aria-label={`Действия с ${name}`}>
+    <div ref={ref} className="ec-popover-surface" style={{ ...menu, left, top }} role="menu" aria-label={`Действия с ${name}`}>
       <div style={headerRow}>
         <Avatar url={avatar} name={name} size={32} />
         <div style={{ minWidth: 0, flex: 1 }}>

@@ -1568,12 +1568,36 @@
   align-items: start;
   gap: var(--ec-space-2);
   margin: var(--ec-space-2) 0 var(--ec-space-3);
-  padding: var(--ec-space-2) var(--ec-space-3);
+  padding: var(--ec-space-3) var(--ec-space-3);
   border-radius: var(--ec-radius-md);
-  background: color-mix(in srgb, var(--ec-accent) 8%, var(--ec-surface-sunken));
-  box-shadow: inset 0 0 0 1px
-    color-mix(in srgb, var(--ec-accent) 26%, transparent);
+  background:
+    radial-gradient(120% 80% at 0% 0%, hsl(258 86% 55% / 0.10), transparent 55%),
+    color-mix(in srgb, var(--ec-accent) 8%, var(--ec-surface-sunken));
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--ec-accent) 30%, transparent),
+    0 6px 22px -10px hsl(258 86% 40% / 0.45);
   max-width: 100%;
+  overflow: hidden;
+  animation: ec-banner-slide-in 320ms var(--ec-ease-out) both;
+}
+/* v1.5.7 — accent левый rail (как у popover-item, но statич — banner
+ * это persistent surface, не hover-state). */
+.ec-ephemeral-banner::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 12%;
+  bottom: 12%;
+  width: 3px;
+  border-radius: 2px;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    var(--ec-accent) 25%,
+    var(--ec-accent) 75%,
+    transparent 100%
+  );
+  pointer-events: none;
 }
 .ec-ephemeral-banner__label {
   grid-column: 1 / -1;
