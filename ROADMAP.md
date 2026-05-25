@@ -5,7 +5,12 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.19** (Voice occupants sticky list polish:
+**Текущая версия:** **v1.5.20** (AdminPanel polish: tabs c accent halo
++ glow disc, cards с radial bg + accent border + top holo rail +
+clickable lift hover + accent halo shadow, inputs focus state из
+.ec-field v1.5.7 unified ring; deployed 25.05.2026).
+
+**Предыдущая:** v1.5.19 (Voice occupants sticky list polish:
 inline-styles → .ec-voice-occupant-* classes. Premium design language:
 accent left rail 24% + hover translateX bg accent 8% + speaking variant
 (color → accent + font 600 + avatar accent ring + ec-presence-pulse
@@ -164,7 +169,32 @@ security-art)).
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.5.19:**
+**Изменения v1.1.25 → v1.5.20:**
+
+- **v1.5.20** — **AdminPanel polish** (25.05.2026). Pavel «продолжаем
+  по списку» — next item. AdminPanel surfaces (`.ec-admin-tabs`,
+  `.ec-admin-card`, `.ec-admin-input`) выровнены под общий design
+  language.
+  - **Admin tabs** (`.ec-admin-tabs/.ec-admin-tab`): container получил
+    subtle radial accent + inset highlight. Tab hover — translateY(-1px)
+    (вместо просто color shift). Active tab — accent halo
+    `0 4px 14px -6px / 0.50` + `::after` blurred 8px halo disc (= pattern
+    SearchOverlay tabs v1.5.7).
+  - **Admin cards** (`.ec-admin-card`): accent-tinted border 14% mix
+    + radial bg + multi-shadow с violet undertone + top accent rail
+    `::before` (cyan→violet bridge static). overflow: hidden — rail
+    aligned border-radius. `--clickable` variant hover теперь
+    translateY(-2px) + bigger radial bg 10% + accent halo
+    `0 10px 28px -10px / 0.45` + inset accent 1px (cinematic feel).
+  - **Admin inputs** (`.ec-admin-input`): focus state выровнен под
+    `.ec-field` (v1.5.7) — accent border + `0 0 0 3px accent-soft` ring
+    + `0 0 22px / 0.18` violet halo + inset highlight + bg →
+    input-bg-focus.
+  - **Files**: `apps/web/src/styles/cockpit.css` (.ec-admin-tabs/-tab
+    + .ec-admin-card + .ec-admin-input rewrites).
+  - **Bundle**: CSS 318.70 → 320.27 KB (+1.57 / +0.15 gzip); frontend
+    chunks unchanged.
+  - **Tests**: tsc clean, vite build OK.
 
 - **v1.5.19** — **Voice occupants sticky list — premium polish + verify
   server-wide visibility** (25.05.2026). Pavel прислал screenshot

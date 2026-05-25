@@ -1405,18 +1405,24 @@
   color: var(--ec-text-strong);
 }
 
-/* Tabs — единый pill-контейнер + tone-driven кнопки. Active = aria-selected. */
+/* Tabs — единый pill-контейнер + tone-driven кнопки. Active = aria-selected.
+ * v1.5.20: subtle radial accent на container + active glow halo + hover
+ * translateY (единый design language). */
 .ec-admin-tabs {
   display: flex;
   gap: var(--ec-space-1);
   padding: 4px;
-  background: var(--ec-surface-sunken);
+  background:
+    radial-gradient(140% 90% at 0% 0%, hsl(258 86% 55% / 0.06), transparent 55%),
+    var(--ec-surface-sunken);
   border: 1px solid var(--ec-border-subtle);
   border-radius: var(--ec-radius-lg);
   align-self: flex-start;
   flex-wrap: wrap;
+  box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.03);
 }
 .ec-admin-tab {
+  position: relative;
   padding: 0.45rem 0.95rem;
   border-radius: var(--ec-radius-md);
   background: transparent;
@@ -1428,40 +1434,94 @@
   transition:
     background var(--ec-dur-fast) var(--ec-ease),
     color var(--ec-dur-fast) var(--ec-ease),
-    border-color var(--ec-dur-fast) var(--ec-ease);
+    border-color var(--ec-dur-fast) var(--ec-ease),
+    transform var(--ec-dur-fast) var(--ec-ease-out);
 }
 .ec-admin-tab:hover {
   color: var(--ec-text);
+  transform: translateY(-1px);
 }
 .ec-admin-tab[aria-selected="true"] {
   background: var(--ec-accent-soft);
   border-color: var(--ec-border-accent);
   color: var(--ec-accent);
+  box-shadow:
+    0 4px 14px -6px hsl(258 86% 50% / 0.50),
+    inset 0 1px 0 hsl(0 0% 100% / 0.04);
+}
+/* v1.5.20 — glow halo под активным табом (blurred disc). */
+.ec-admin-tab[aria-selected="true"]::after {
+  content: "";
+  position: absolute;
+  left: 18%;
+  right: 18%;
+  bottom: -2px;
+  height: 8px;
+  border-radius: 50%;
+  background: hsl(258 86% 62% / 0.45);
+  filter: blur(6px);
+  pointer-events: none;
 }
 .ec-admin-tab:focus-visible {
   outline: 2px solid var(--ec-border-accent);
   outline-offset: 2px;
 }
 
-/* Cards — info-блоки на overview-табе (счётчики, owner, settings). */
+/* Cards — info-блоки на overview-табе (счётчики, owner, settings).
+ * v1.5.20 — accent-tinted border + multi-shadow + top accent rail
+ * (единый язык с modal/popover/composer). */
 .ec-admin-card {
+  position: relative;
   padding: var(--ec-space-4);
   border-radius: var(--ec-radius-lg);
-  background: var(--ec-surface-sunken);
-  border: 1px solid var(--ec-border-subtle);
+  background:
+    radial-gradient(120% 80% at 0% 0%, hsl(258 86% 55% / 0.05), transparent 55%),
+    var(--ec-surface-sunken);
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 14%, var(--ec-border-subtle));
   display: flex;
   flex-direction: column;
   gap: 4px;
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.03),
+    0 4px 14px -10px hsl(258 86% 35% / 0.20);
+  overflow: hidden;
 }
-/* Кликабельная карточка (Settings / Client Portal) — pointer + лёгкая подсветка. */
+.ec-admin-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    hsl(180 70% 65% / 0.30) 30%,
+    hsl(258 86% 72% / 0.50) 55%,
+    hsl(258 70% 60% / 0.25) 75%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+/* Кликабельная карточка (Settings / Client Portal) — accent halo на hover. */
 .ec-admin-card--clickable {
   cursor: pointer;
   align-items: flex-start;
   text-align: left;
-  transition: background var(--ec-dur-fast) var(--ec-ease);
+  transition:
+    background var(--ec-dur-fast) var(--ec-ease),
+    border-color var(--ec-dur-fast) var(--ec-ease),
+    transform var(--ec-dur-fast) var(--ec-ease-out),
+    box-shadow var(--ec-dur-fast) var(--ec-ease);
 }
 .ec-admin-card--clickable:hover {
-  background: var(--ec-surface-3);
+  background:
+    radial-gradient(120% 80% at 0% 0%, hsl(258 86% 55% / 0.10), transparent 55%),
+    var(--ec-surface-3);
+  border-color: color-mix(in srgb, var(--ec-accent) 32%, var(--ec-border-subtle));
+  transform: translateY(-2px);
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.05),
+    0 10px 28px -10px hsl(258 86% 40% / 0.45),
+    0 0 0 1px hsl(258 86% 62% / 0.10) inset;
 }
 
 /* Inputs / textareas / selects в automation editor + invoice / integration
@@ -1473,10 +1533,20 @@
   border: 1px solid var(--ec-border-default);
   color: var(--ec-text);
   font-size: var(--ec-text-sm);
+  transition:
+    background var(--ec-dur-fast) var(--ec-ease),
+    border-color var(--ec-dur-fast) var(--ec-ease),
+    box-shadow var(--ec-dur-fast) var(--ec-ease);
 }
+/* v1.5.20 — focus state совпадает с .ec-field (form inputs polish v1.5.7). */
 .ec-admin-input:focus {
   outline: none;
-  border-color: var(--ec-border-accent);
+  border-color: var(--ec-accent);
+  background: var(--ec-input-bg-focus);
+  box-shadow:
+    0 0 0 3px var(--ec-accent-soft),
+    0 0 22px hsl(258 90% 66% / 0.18),
+    inset 0 1px 0 hsl(0 0% 100% / 0.04);
 }
 
 /* ===== BotsTab (per-server bots) — slice 6b, v1.2.12 ================
