@@ -92,6 +92,20 @@ function formatTime(iso: string): string {
   return iso.slice(11, 16);
 }
 
+// v1.5.3 — full datetime for timestamp tooltip (title= attribute).
+// Example: "25 мая 2026, 21:34".
+function formatFullDateTime(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString("ru-RU", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 function formatDay(iso: string): string {
   const d = new Date(iso);
   const today = new Date();
@@ -439,13 +453,18 @@ export function MessageList({
             >
               <div style={{ display: "flex", justifyContent: "center" }}>
                 {grouped && !newDay && !isPinned ? (
-                  <span className="ec-msg-sticky-time">
+                  <span
+                    className="ec-msg-sticky-time"
+                    title={formatFullDateTime(m.createdAt)}
+                  >
                     {formatTime(m.createdAt)}
                   </span>
                 ) : (
                   <span
-                    className={m.user.isBot ? "ec-avatar-halo ec-avatar-halo--ai" : undefined}
-                    style={{ display: "inline-block", borderRadius: "50%" }}
+                    className={
+                      "ec-msg-avatar-wrap" +
+                      (m.user.isBot ? " ec-avatar-halo ec-avatar-halo--ai" : "")
+                    }
                   >
                     <Avatar url={m.user.avatar} name={m.user.displayName} size={36} />
                   </span>
@@ -454,9 +473,13 @@ export function MessageList({
               <div style={{ minWidth: 0 }}>
                 {(!grouped || newDay || isPinned) && (
                   <header style={{ display: "flex", alignItems: "baseline", gap: "var(--ec-space-2)", marginBottom: 2 }}>
-                    <strong style={{ color: "var(--ec-text-strong)", fontSize: "var(--ec-text-base)", fontWeight: 600 }}>
+                    <button
+                      type="button"
+                      className="ec-msg-author"
+                      title={m.user.displayName}
+                    >
                       {m.user.displayName}
-                    </strong>
+                    </button>
                     {m.user.isBot && (() => {
                       // Если бот имеет taxonomy-роль (Bot row с role) — рисуем
                       // role-aware badge с цветом + RU-лейблом. Для system @ai
@@ -505,11 +528,8 @@ export function MessageList({
                     })()}
                     <time
                       dateTime={m.createdAt}
-                      style={{
-                        fontFamily: "var(--ec-font-mono)",
-                        fontSize: "var(--ec-text-2xs)",
-                        color: "var(--ec-text-dim)",
-                      }}
+                      title={formatFullDateTime(m.createdAt)}
+                      className="ec-msg-time"
                     >
                       {formatTime(m.createdAt)}
                     </time>
@@ -651,27 +671,14 @@ export function MessageList({
                       <button
                         key={r.emoji}
                         type="button"
-                        className="ec-anim-reaction-pop ec-msg-pill"
+                        className={
+                          "ec-anim-reaction-pop ec-msg-reaction" +
+                          (r.mine ? " ec-msg-reaction--mine ec-anim-reaction-mine" : "")
+                        }
                         onClick={() => void onToggleReaction?.(m.id, r.emoji)}
                         title={r.mine ? "Снять реакцию" : "Поддержать"}
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: 4,
-                          padding: "1px 7px 1px 5px",
-                          background: r.mine ? "var(--ec-accent-soft)" : "var(--ec-surface-2)",
-                          border: r.mine ? "1px solid var(--ec-border-accent)" : "1px solid var(--ec-border-subtle)",
-                          borderRadius: "var(--ec-radius-full)",
-                          color: r.mine ? "var(--ec-accent)" : "var(--ec-text-muted)",
-                          cursor: "pointer",
-                          fontSize: "0.8rem",
-                          lineHeight: 1.4,
-                          transition: "background var(--ec-dur-fast) var(--ec-ease), border-color var(--ec-dur-fast) var(--ec-ease), transform var(--ec-dur-fast) var(--ec-ease)",
-                        }}
                       >
                         {(() => {
-                          // v1.2.24: custom emoji `:shortcode:` рендерится как
-                          // <img>, если есть в customEmojis. Unicode — текстом.
                           const sc = /^:([a-z0-9_-]{2,30}):$/.exec(r.emoji);
                           const url = sc && customEmojis ? customEmojis[sc[1]] : null;
                           if (url) {
@@ -693,7 +700,14 @@ export function MessageList({
                             </span>
                           );
                         })()}
-                        <span style={{ fontWeight: 600, fontFeatureSettings: '"tnum"' }}>{r.count}</span>
+                        {/* v1.5.3 — key={r.count} перезапускает count-bump
+                            анимацию при каждом изменении счётчика. */}
+                        <span
+                          key={r.count}
+                          className="ec-msg-reaction-count ec-anim-count-bump"
+                        >
+                          {r.count}
+                        </span>
                       </button>
                     ))}
                   </div>

@@ -2659,6 +2659,115 @@
 .ec-msg-pill:hover { transform: translateY(-1px); }
 .ec-msg-pill:active { transform: translateY(0) scale(0.98); }
 
+/* v1.5.3 — sender chip premium. Author name becomes interactive accent
+ * token; on row hover avatar gets gentle scale + soft accent halo. */
+.ec-msg-author {
+  display: inline;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  color: var(--ec-text-strong);
+  font-size: var(--ec-text-base);
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  letter-spacing: inherit;
+  transition: color var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-msg-author:hover,
+.ec-msg-author:focus-visible {
+  color: var(--ec-accent);
+  outline: none;
+}
+.ec-msg-author:active { color: color-mix(in srgb, var(--ec-accent) 80%, black); }
+
+.ec-msg-avatar-wrap {
+  display: inline-block;
+  border-radius: 50%;
+  transition:
+    transform var(--ec-dur-fast) var(--ec-ease-out),
+    box-shadow var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-message-row:hover .ec-msg-avatar-wrap,
+.ec-message-row:focus-within .ec-msg-avatar-wrap {
+  transform: scale(1.04);
+  box-shadow: 0 0 18px -4px var(--ec-accent-soft);
+}
+
+/* v1.5.3 — timestamp polish: mono token gets accent on row hover; full
+ * datetime carried via title= for native tooltip. */
+.ec-msg-time {
+  font-family: var(--ec-font-mono);
+  font-size: var(--ec-text-2xs);
+  color: var(--ec-text-dim);
+  transition: color var(--ec-dur-fast) var(--ec-ease);
+  cursor: default;
+}
+.ec-message-row:hover .ec-msg-time,
+.ec-message-row:focus-within .ec-msg-time {
+  color: var(--ec-accent);
+}
+.ec-msg-time:hover { color: var(--ec-accent); }
+
+.ec-msg-sticky-time {
+  cursor: default;
+  transition:
+    opacity var(--ec-dur-fast) var(--ec-ease),
+    color var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-msg-sticky-time:hover { color: var(--ec-accent); }
+
+/* v1.5.3 — reactions: hover scale + own-reaction continuous breath
+ * (ec-anim-reaction-mine in motion.css). Counter has its own bump on change. */
+.ec-msg-reaction {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 7px 1px 5px;
+  background: var(--ec-surface-2);
+  border: 1px solid var(--ec-border-subtle);
+  border-radius: var(--ec-radius-full);
+  color: var(--ec-text-muted);
+  cursor: pointer;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  transition:
+    background var(--ec-dur-fast) var(--ec-ease),
+    border-color var(--ec-dur-fast) var(--ec-ease),
+    transform var(--ec-dur-fast) var(--ec-ease-out),
+    box-shadow var(--ec-dur-fast) var(--ec-ease),
+    color var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-msg-reaction:hover {
+  transform: translateY(-1px) scale(1.06);
+  border-color: var(--ec-border-accent);
+  color: var(--ec-accent);
+  box-shadow: 0 4px 14px -4px var(--ec-accent-soft);
+}
+.ec-msg-reaction:active { transform: translateY(0) scale(0.98); }
+.ec-msg-reaction--mine {
+  background: var(--ec-accent-soft);
+  border-color: var(--ec-border-accent);
+  color: var(--ec-accent);
+}
+.ec-msg-reaction--mine:hover {
+  border-color: color-mix(in srgb, var(--ec-accent) 70%, transparent);
+  color: var(--ec-accent);
+}
+.ec-msg-reaction-count {
+  font-weight: 600;
+  font-feature-settings: "tnum";
+  display: inline-block;
+}
+
+/* v1.5.3 — waveform live container + bar/playhead motion utility. */
+.ec-waveform {
+  display: block;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+}
+
 /* --- MessageInput: РєРѕРјРїРѕР·РµСЂ ---------------------------------- */
 .ec-composer {
   padding: var(--ec-space-3) var(--ec-space-5) var(--ec-space-4);

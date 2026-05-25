@@ -155,7 +155,77 @@ security-art)).
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.3.4:**
+**Изменения v1.1.25 → v1.5.3:**
+
+> Roadmap entries для v1.4.0 → v1.5.2 ещё не дописаны (большой
+> design pass: v1.4.0 wow-pass milestone tag, v1.4.5 audit fixes,
+> v1.5.0 section deep polish milestone tag, v1.5.1 Home dashboard,
+> v1.5.2 AppShell combo). v1.5.3 идёт ниже — следующий chat surface
+> slice. Catch-up по v1.4-v1.5.2 — отдельной сессией.
+
+- **v1.5.3** — **chat surface polish combo** (25.05.2026). Pavel verdict
+  «v1.5.2 закрыли AppShell-combo, дальше Chat surface». Делаем premium
+  pass на message stream — четыре концентрированных полировки внутри
+  `MessageList` + `Attachments`.
+  - **Sender chip premium**: `<strong>` имени автора заменён на
+    `<button className="ec-msg-author">` — hover/focus-visible меняет
+    color на `--ec-accent` без подчёркивания, active даёт `color-mix`
+    на 20% darker. Avatar wrapper получил отдельный класс
+    `.ec-msg-avatar-wrap` с transition `transform + box-shadow`; на
+    hover строки avatar делает `scale(1.04)` + мягкий accent halo
+    (`0 0 18px -4px var(--ec-accent-soft)`). AI-роль badge не тронут
+    (уже работает).
+  - **Timestamp hover reveal**: оба `<time>` элемента (header и
+    sticky-time в grouped) получают `title=` с полной датой через
+    новый `formatFullDateTime()` (`ru-RU` locale, «25 мая 2026, 21:34»).
+    На hover строки время меняет color с `--ec-text-dim` на
+    `--ec-accent`. Sticky-time дополнительно теперь подсвечивается
+    при direct hover'е на сам tag.
+  - **Reactions glow**: inline-стили реакций вынесены в класс
+    `.ec-msg-reaction` (+`.ec-msg-reaction--mine` для своих). Hover
+    даёт `translateY(-1px) scale(1.06)` + accent border + soft
+    `box-shadow 0 4px 14px -4px var(--ec-accent-soft)`. Свои реакции
+    получают `.ec-anim-reaction-mine` — continuous 4.2s breath по
+    `box-shadow` + `border-color` (keyframe `ec-reaction-mine-breath`).
+    Counter получил отдельный `<span key={r.count} className="ec-msg-
+    reaction-count ec-anim-count-bump">` — при изменении значения
+    React перемонтирует элемент и проигрывает 320ms `ec-count-bump`
+    (translateY -2px + scale 1.18 → back).
+  - **Voice waveform live**: `Waveform` принимает новый prop
+    `isPlaying`. Когда `true`, 4 последних played bars перед playhead
+    получают класс `.ec-wave-bar--live` — 720ms `scaleY(1 → 1.45 → 1)`
+    с staggered `animation-delay: ${distFromHead * 90ms}` (trailing
+    ripple от playhead'а назад). Дополнительно рендерится вертикальная
+    `<line className="ec-wave-playhead">` на позиции `fillIdx * slot` —
+    1.4px stroke `--ec-accent`, opacity-pulse 1.1s
+    (`ec-wave-playhead` keyframe). SVG получил общий класс
+    `.ec-waveform` (вынесен из inline-style).
+  - **prefers-reduced-motion**: все 4 новых анимации
+    (`reaction-mine`, `count-bump`, `wave-bar--live`, `wave-playhead`)
+    добавлены в `@media (prefers-reduced-motion: reduce)` блок — fallback
+    `animation: none` + reset `opacity/transform`, как и старые
+    motion-tokens.
+  - **Дизайн lock**: identity v1.4.0 milestone сохранён — только
+    polish существующих surface'ов, никаких структурных изменений.
+    Hybrid color scope соблюдён: chat surface = product UI = violet/gold
+    accent identity (через `--ec-accent` token, который в AppShell
+    маппится на violet `#8B5CF6`).
+  - **Файлы**: `apps/web/src/styles/motion.css` (4 keyframes + 5
+    utility-классов + prefers-reduced-motion extend), `apps/web/src/
+    styles/components.css` (5 новых компонент-классов после
+    `.ec-msg-pill` секции), `apps/web/src/components/MessageList.tsx`
+    (формат-helper `formatFullDateTime` + avatar wrap class + author
+    button + time class + reaction класс-перенос + count bump key
+    re-mount), `apps/web/src/components/Attachments.tsx` (Waveform
+    `isPlaying` prop + live-zone классификация + playhead line).
+  - **Bundle**: CSS 281.40 KB → 48.97 KB gzip (+~трос от polish);
+    JS 1046 KB → 276.69 KB gzip (без изменений — только TSX patches
+    внутри уже подключённых компонент).
+  - **Tests**: `tsc -b --noEmit` clean, `npm run build` (vite v6.4.2)
+    OK 3.08s. Local vitest skip — `npx --yes vitest@2.1.8` упёрся в
+    `ECONNRESET` к registry.npmjs.org с локальной машины Pavel'я;
+    CI Validate job делает тот же `npm test` с прод-сетью и
+    отрабатывает чисто (так шли все v1.5.x релизы).
 
 - **v1.3.4** — **premium SaaS pivot** per Pavel verdict (24.05.2026):
   «v1.3 ушло слишком abstract / archival / minimal. DO NOT make it

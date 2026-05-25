@@ -194,17 +194,22 @@ function VideoItem({ a, onOpen }: { a: Attachment; onOpen: (a: Attachment) => vo
 function Waveform({
   peaks,
   progress,
+  isPlaying,
   onSeek,
   ariaLabel,
 }: {
   peaks: number[];
   progress: number; // 0..1
+  isPlaying: boolean;
   onSeek: (fraction: number) => void;
   ariaLabel: string;
 }) {
   const ref = useRef<SVGSVGElement | null>(null);
   const draggingRef = useRef(false);
   const fillIdx = Math.round(progress * peaks.length);
+  // v1.5.3 — bars в окрестности playhead'а получают live-pulse класс
+  // (`ec-wave-bar--live`), создавая ощущение пульсирующего звука.
+  const LIVE_ZONE = 4;
 
   const seekFromEvent = (clientX: number) => {
     const el = ref.current;
@@ -234,12 +239,7 @@ function Waveform({
       height={h}
       viewBox={`0 0 ${w} ${h}`}
       preserveAspectRatio="none"
-      style={{
-        display: "block",
-        cursor: "pointer",
-        touchAction: "none",
-        userSelect: "none",
-      }}
+      className="ec-waveform"
       onPointerDown={(e) => {
         draggingRef.current = true;
         (e.target as Element).setPointerCapture?.(e.pointerId);
@@ -267,6 +267,10 @@ function Waveform({
         const y = (h - barH) / 2;
         const x = i * slot;
         const played = i < fillIdx;
+        // v1.5.3 — last LIVE_ZONE played bars under playhead pulse vertically
+        // when audio is playing. Staggered delay creates a trailing ripple.
+        const distFromHead = fillIdx - 1 - i;
+        const isLive = isPlaying && played && distFromHead >= 0 && distFromHead < LIVE_ZONE;
         return (
           <rect
             key={i}
@@ -278,9 +282,28 @@ function Waveform({
             ry={1}
             fill={played ? "var(--ec-accent)" : "var(--ec-text-dim)"}
             opacity={played ? 0.95 : 0.45}
+            className={isLive ? "ec-wave-bar--live" : undefined}
+            style={
+              isLive
+                ? { animationDelay: `${distFromHead * 90}ms` }
+                : undefined
+            }
           />
         );
       })}
+      {isPlaying && fillIdx > 0 && fillIdx < peaks.length && (
+        <line
+          className="ec-wave-playhead"
+          x1={fillIdx * slot - gap / 2}
+          x2={fillIdx * slot - gap / 2}
+          y1={2}
+          y2={h - 2}
+          stroke="var(--ec-accent)"
+          strokeWidth={1.4}
+          strokeLinecap="round"
+          opacity={0.7}
+        />
+      )}
     </svg>
   );
 }
@@ -396,6 +419,7 @@ function AudioItem({
         <Waveform
           peaks={fallbackPeaks}
           progress={progress}
+          isPlaying={isPlaying}
           onSeek={seekTo}
           ariaLabel={`Дорожка ${isVoice ? "голосового сообщения" : a.filename}`}
         />
