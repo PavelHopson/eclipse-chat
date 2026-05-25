@@ -1094,32 +1094,55 @@
   max-width: 540px;
 }
 
+/* v1.5.6 — video attachment premium redesign:
+ * frame с accent-tinted border + cinematic drop-shadow, bigger play
+ * overlay 84px с pulsing halo when idle, top+bottom gradient mask
+ * (controls legibility), video opacity 0.84 → 1 on hover. */
 .ec-video-attachment {
   position: relative;
   display: block;
   width: min(480px, 100%);
   overflow: hidden;
   padding: 0;
-  border: 1px solid hsl(225 14% 72% / 0.12);
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 18%, hsl(225 14% 72% / 0.10));
   border-radius: var(--ec-radius-lg);
   background:
-    radial-gradient(circle at 18% 0%, hsl(225 14% 60% / 0.12), transparent 44%),
+    radial-gradient(120% 80% at 0% 0%, hsl(258 86% 55% / 0.10), transparent 50%),
+    radial-gradient(110% 70% at 100% 100%, hsl(180 70% 55% / 0.06), transparent 50%),
     var(--ec-surface-2);
   color: var(--ec-text);
   cursor: zoom-in;
-  box-shadow: 0 14px 34px hsl(210 70% 2% / 0.20);
+  box-shadow:
+    0 16px 42px -14px hsl(258 86% 35% / 0.40),
+    0 6px 18px -8px hsl(210 70% 2% / 0.45);
   transition:
     transform var(--ec-dur-fast) var(--ec-ease-out),
     border-color var(--ec-dur-fast) var(--ec-ease),
     box-shadow var(--ec-dur-fast) var(--ec-ease);
 }
+.ec-video-attachment::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    hsl(180 70% 65% / 0.5) 30%,
+    hsl(258 86% 72% / 0.8) 55%,
+    hsl(258 86% 62% / 0.30) 75%,
+    transparent 100%
+  );
+  pointer-events: none;
+  z-index: 3;
+}
 
 .ec-video-attachment:hover {
-  transform: translateY(-1px);
-  border-color: hsl(258 86% 62% / 0.30);
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--ec-accent) 38%, hsl(225 14% 72% / 0.12));
   box-shadow:
-    0 18px 42px hsl(210 70% 2% / 0.28),
-    0 0 26px hsl(258 86% 62% / 0.12);
+    0 22px 56px -14px hsl(258 86% 38% / 0.55),
+    0 10px 26px -8px hsl(210 70% 2% / 0.55);
 }
 
 .ec-video-attachment video {
@@ -1127,7 +1150,27 @@
   width: 100%;
   max-height: 320px;
   object-fit: cover;
-  opacity: 0.84;
+  opacity: 0.86;
+  transition:
+    opacity var(--ec-dur-base) var(--ec-ease),
+    transform 700ms var(--ec-ease-out);
+}
+.ec-video-attachment:hover video {
+  opacity: 1;
+  transform: scale(1.018);
+}
+
+/* Bottom gradient overlay for meta legibility. */
+.ec-video-attachment::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 50%;
+  pointer-events: none;
+  background: linear-gradient(180deg, transparent 0%, hsl(214 28% 4% / 0.85) 100%);
+  z-index: 1;
 }
 
 .ec-video-attachment__play {
@@ -1136,37 +1179,59 @@
   display: grid;
   place-items: center;
   color: white;
-  filter: drop-shadow(0 0 18px hsl(258 86% 62% / 0.40));
   pointer-events: none;
+  z-index: 2;
 }
 
 .ec-video-attachment__play svg {
-  width: 52px;
-  height: 52px;
-  padding: 14px;
-  border: 1px solid hsl(0 0% 100% / 0.18);
+  width: 84px;
+  height: 84px;
+  padding: 24px;
+  border: 1px solid hsl(0 0% 100% / 0.24);
   border-radius: 999px;
-  background: hsl(214 28% 5% / 0.54);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background:
+    radial-gradient(
+      circle at 30% 30%,
+      hsl(258 86% 70% / 0.85),
+      hsl(258 86% 40% / 0.85)
+    );
+  backdrop-filter: blur(14px) saturate(150%);
+  -webkit-backdrop-filter: blur(14px) saturate(150%);
+  box-shadow:
+    0 8px 32px hsl(258 86% 30% / 0.6),
+    inset 0 1px 0 hsl(0 0% 100% / 0.25);
+  filter: drop-shadow(0 0 22px hsl(258 86% 62% / 0.55));
+  animation: ec-video-play-halo 2.8s ease-in-out infinite;
+  transition:
+    transform var(--ec-dur-base) var(--ec-ease-out),
+    filter var(--ec-dur-base) var(--ec-ease);
+}
+.ec-video-attachment:hover .ec-video-attachment__play svg {
+  transform: scale(1.08);
+  filter: drop-shadow(0 0 28px hsl(258 86% 62% / 0.85));
 }
 
 .ec-video-attachment__meta {
   position: absolute;
-  left: 10px;
-  right: 10px;
-  bottom: 10px;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
   display: flex;
   justify-content: space-between;
   gap: 10px;
-  padding: 0.45rem 0.62rem;
-  border: 1px solid hsl(225 14% 72% / 0.12);
+  padding: 0.55rem 0.75rem;
+  border: 1px solid hsl(258 86% 62% / 0.20);
   border-radius: var(--ec-radius-md);
-  background: hsl(214 28% 5% / 0.62);
+  background:
+    linear-gradient(180deg, hsl(214 28% 8% / 0.72), hsl(214 28% 4% / 0.82));
   color: var(--ec-text);
   font-size: var(--ec-text-xs);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  box-shadow:
+    0 4px 14px -6px hsl(210 70% 2% / 0.5),
+    inset 0 1px 0 hsl(0 0% 100% / 0.04);
+  z-index: 3;
 }
 
 .ec-video-attachment__meta span:first-child {
@@ -1174,58 +1239,145 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-weight: 600;
+  letter-spacing: 0.005em;
 }
 
 .ec-video-attachment__meta span:last-child {
-  color: var(--ec-text-dim);
+  color: hsl(258 86% 78%);
+  font-family: var(--ec-font-mono);
+  font-size: var(--ec-text-2xs);
+  letter-spacing: var(--ec-tracking-wide);
   flex-shrink: 0;
 }
 
+/* v1.5.6 — audio attachment premium redesign:
+ * cinematic frame (gradient stack + accent border + top holo rail),
+ * larger play button (52px) с breath when paused и intensified hover halo,
+ * waveform underglow, custom volume slider, meta chips. */
 .ec-audio-attachment {
+  position: relative;
   display: grid;
-  grid-template-columns: 42px minmax(0, 1fr) auto;
+  grid-template-columns: 56px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 10px;
-  width: min(500px, 100%);
-  padding: 0.65rem;
-  border: 1px solid hsl(225 14% 72% / 0.12);
+  gap: 14px;
+  width: min(520px, 100%);
+  padding: 1rem 1.05rem 0.95rem;
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 18%, hsl(225 14% 72% / 0.10));
   border-radius: var(--ec-radius-lg);
   background:
-    radial-gradient(circle at 0% 0%, hsl(225 14% 60% / 0.10), transparent 42%),
-    linear-gradient(180deg, hsl(214 28% 12% / 0.88), hsl(214 28% 8% / 0.88));
-  box-shadow: 0 12px 30px hsl(210 70% 2% / 0.18);
+    radial-gradient(140% 90% at 0% 0%, hsl(258 86% 55% / 0.10), transparent 55%),
+    radial-gradient(120% 80% at 100% 100%, hsl(180 70% 55% / 0.06), transparent 55%),
+    linear-gradient(180deg, hsl(214 28% 13% / 0.92), hsl(214 28% 8% / 0.94));
+  box-shadow:
+    0 14px 38px -16px hsl(258 86% 35% / 0.40),
+    0 6px 18px -10px hsl(210 70% 2% / 0.45),
+    inset 0 0 0 1px hsl(258 86% 62% / 0.06);
+  overflow: hidden;
+  transition:
+    border-color var(--ec-dur-fast) var(--ec-ease),
+    transform var(--ec-dur-fast) var(--ec-ease-out),
+    box-shadow var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-audio-attachment::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    hsl(180 70% 65% / 0.55) 30%,
+    hsl(258 86% 72% / 0.85) 55%,
+    hsl(258 86% 62% / 0.30) 75%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+.ec-audio-attachment:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--ec-accent) 32%, hsl(225 14% 72% / 0.12));
+  box-shadow:
+    0 18px 46px -16px hsl(258 86% 40% / 0.55),
+    0 8px 22px -10px hsl(210 70% 2% / 0.55),
+    inset 0 0 0 1px hsl(258 86% 62% / 0.12);
 }
 
 .ec-audio-attachment--voice {
-  border-color: hsl(258 86% 62% / 0.22);
+  border-color: color-mix(in srgb, var(--ec-accent) 34%, hsl(225 14% 72% / 0.10));
+  background:
+    radial-gradient(140% 90% at 0% 0%, hsl(258 86% 55% / 0.16), transparent 55%),
+    radial-gradient(120% 80% at 100% 100%, hsl(258 86% 65% / 0.08), transparent 55%),
+    linear-gradient(180deg, hsl(214 28% 13% / 0.92), hsl(214 28% 8% / 0.94));
 }
 
+/* Larger circular play button — solid accent fill, white icon, continuous
+ * breath animation. На .--paused gets stronger pulse привлекающий внимание. */
 .ec-audio-attachment__icon {
-  width: 42px;
-  height: 42px;
+  width: 52px;
+  height: 52px;
   display: grid;
   place-items: center;
-  border: 1px solid hsl(258 86% 62% / 0.18);
+  border: 0;
   border-radius: 999px;
-  background: hsl(225 14% 60% / 0.10);
-  color: hsl(258 86% 72%);
-  box-shadow: inset 0 0 18px hsl(258 86% 62% / 0.08);
+  background: radial-gradient(
+    circle at 30% 30%,
+    hsl(258 86% 72%),
+    hsl(258 86% 52%)
+  );
+  color: hsl(0 0% 100%);
+  box-shadow:
+    0 6px 18px -4px hsl(258 86% 45% / 0.55),
+    inset 0 1px 0 hsl(0 0% 100% / 0.18),
+    inset 0 -1px 0 hsl(258 86% 30% / 0.45);
+  cursor: pointer;
+  transition:
+    transform var(--ec-dur-fast) var(--ec-ease-out),
+    box-shadow var(--ec-dur-fast) var(--ec-ease);
+  animation: ec-audio-play-breath 3.6s ease-in-out infinite;
+}
+.ec-audio-attachment__icon:hover {
+  transform: scale(1.06);
+  box-shadow:
+    0 8px 26px -2px hsl(258 86% 50% / 0.75),
+    inset 0 1px 0 hsl(0 0% 100% / 0.22),
+    inset 0 -1px 0 hsl(258 86% 30% / 0.45);
+}
+.ec-audio-attachment__icon:active {
+  transform: scale(0.94);
+  transition-duration: 60ms;
+}
+.ec-audio-attachment__icon:focus-visible {
+  outline: 2px solid hsl(258 86% 62% / 0.7);
+  outline-offset: 3px;
+}
+/* SVG inside — slightly larger для visual weight */
+.ec-audio-attachment__icon svg {
+  width: 18px;
+  height: 18px;
+  filter: drop-shadow(0 1px 1px hsl(258 86% 30% / 0.6));
 }
 
 .ec-audio-attachment__body {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 7px;
 }
 
 .ec-audio-attachment__title {
+  position: relative;
   overflow: hidden;
   color: var(--ec-text-strong);
-  font-size: var(--ec-text-sm);
+  font-size: 0.92rem;
   font-weight: 700;
+  letter-spacing: 0.005em;
   text-overflow: ellipsis;
   white-space: nowrap;
+  /* v1.5.6 — soft fade-mask на правом краю если overflow (text-shadow
+   * fallback'у недоступно). */
+  mask-image: linear-gradient(to right, black 88%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, black 88%, transparent 100%);
 }
 
 .ec-audio-attachment audio {
@@ -1233,32 +1385,134 @@
   height: 32px;
 }
 
+/* Meta row — mono chips: timestamp + size + status. */
 .ec-audio-attachment__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   color: var(--ec-text-dim);
   font-family: var(--ec-font-mono);
   font-size: var(--ec-text-2xs);
   letter-spacing: var(--ec-tracking-wide);
 }
+.ec-audio-attachment__meta > span:first-child {
+  padding: 1px 7px;
+  background: hsl(258 86% 62% / 0.12);
+  border: 1px solid hsl(258 86% 62% / 0.18);
+  border-radius: var(--ec-radius-sm);
+  color: hsl(258 86% 78%);
+}
+
+/* Custom volume slider — JS sets `--volume-progress` так что fill виден
+ * через linear-gradient. Thumb has continuous halo + hover scale. */
+.ec-audio-volume-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  height: 16px;
+  cursor: pointer;
+  --volume-progress: 70%;
+}
+.ec-audio-volume-slider::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    var(--ec-accent) 0%,
+    var(--ec-accent) var(--volume-progress),
+    hsl(225 14% 60% / 0.22) var(--volume-progress),
+    hsl(225 14% 60% / 0.22) 100%
+  );
+}
+.ec-audio-volume-slider::-moz-range-track {
+  height: 4px;
+  border-radius: 999px;
+  background: hsl(225 14% 60% / 0.22);
+}
+.ec-audio-volume-slider::-moz-range-progress {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--ec-accent);
+}
+.ec-audio-volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 13px;
+  height: 13px;
+  margin-top: -4.5px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 30% 30%,
+    hsl(0 0% 100%),
+    hsl(258 86% 78%)
+  );
+  border: 1px solid hsl(258 86% 50%);
+  box-shadow:
+    0 0 0 3px hsl(258 86% 62% / 0.18),
+    0 2px 6px hsl(258 86% 35% / 0.4);
+  transition:
+    transform var(--ec-dur-fast) var(--ec-ease-out),
+    box-shadow var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-audio-volume-slider::-moz-range-thumb {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 30% 30%,
+    hsl(0 0% 100%),
+    hsl(258 86% 78%)
+  );
+  border: 1px solid hsl(258 86% 50%);
+  box-shadow:
+    0 0 0 3px hsl(258 86% 62% / 0.18),
+    0 2px 6px hsl(258 86% 35% / 0.4);
+}
+.ec-audio-volume-slider:hover::-webkit-slider-thumb {
+  transform: scale(1.18);
+  box-shadow:
+    0 0 0 4px hsl(258 86% 62% / 0.28),
+    0 3px 10px hsl(258 86% 45% / 0.55);
+}
+.ec-audio-volume-slider:hover::-moz-range-thumb {
+  transform: scale(1.18);
+}
+.ec-audio-volume-slider:focus-visible {
+  outline: none;
+}
+.ec-audio-volume-slider:focus-visible::-webkit-slider-thumb {
+  box-shadow:
+    0 0 0 4px hsl(258 86% 62% / 0.45),
+    0 3px 10px hsl(258 86% 45% / 0.55);
+}
 
 .ec-audio-attachment__download {
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   display: grid;
   place-items: center;
-  border: 1px solid hsl(225 14% 72% / 0.12);
+  border: 1px solid hsl(225 14% 72% / 0.14);
   border-radius: var(--ec-radius-md);
   color: var(--ec-text-muted);
   text-decoration: none;
+  background: hsl(225 14% 60% / 0.04);
   transition:
     color var(--ec-dur-fast) var(--ec-ease),
     border-color var(--ec-dur-fast) var(--ec-ease),
-    background var(--ec-dur-fast) var(--ec-ease);
+    background var(--ec-dur-fast) var(--ec-ease),
+    transform var(--ec-dur-fast) var(--ec-ease-out),
+    box-shadow var(--ec-dur-fast) var(--ec-ease);
 }
 
 .ec-audio-attachment__download:hover {
   color: var(--ec-accent);
   border-color: var(--ec-border-accent);
   background: var(--ec-accent-soft);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px -6px hsl(258 86% 50% / 0.55);
+}
+.ec-audio-attachment__download:active {
+  transform: translateY(0) scale(0.94);
 }
 
 .ec-composer {

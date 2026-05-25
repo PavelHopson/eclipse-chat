@@ -155,13 +155,99 @@ security-art)).
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.5.5:**
+**Изменения v1.1.25 → v1.5.6:**
 
 > Roadmap entries для v1.4.0 → v1.5.2 ещё не дописаны (большой
 > design pass: v1.4.0 wow-pass milestone tag, v1.4.5 audit fixes,
 > v1.5.0 section deep polish milestone tag, v1.5.1 Home dashboard,
 > v1.5.2 AppShell combo). v1.5.3 идёт ниже — следующий chat surface
 > slice. Catch-up по v1.4-v1.5.2 — отдельной сессией.
+
+- **v1.5.6** — **media players premium redesign** (25.05.2026). Pavel
+  показал скриншот текущих audio плееров (2 stacked cards с
+  Hollywood_Undead + LeanJe filenames) — слишком обычные. Также
+  скриншот video player с DEVIL MAY CRY (Netflix). Verdict: «надо
+  чтобы были анимированные красивые профессиональные плееры,
+  максимально крутой и не обычный».
+  - **Audio container** (`.ec-audio-attachment`): padding 0.65rem →
+    1rem 1.05rem, grid-col 42→56px (для bigger play btn), gap 10→14px,
+    width 500→520px. Background — triple-layer: radial violet 0%/0%
+    (10% intensity) + radial cyan 100%/100% (6%) + linear depth.
+    Border accent-tinted `color-mix(in srgb, var(--ec-accent) 18%, ...)`.
+    Box-shadow многослойный: violet drop-shadow `0 14px 38px -16px
+    hsl(258 86% 35% / 0.40)` + base depth + inset holo. На :hover
+    `translateY(-1px)` + border intensify + violet shadow ramp до 55%.
+    Voice variant — стronger accent border (34% mix) + violet aura
+    шире (16% radial). Top accent rail `::before` — 1px cyan→violet
+    bridge gradient (как в modal-header sweep, но static).
+  - **Audio play button** (`.ec-audio-attachment__icon`): 42 → 52px,
+    переведён с outline-style (transparent bg + violet text) на solid
+    accent fill — `radial-gradient(circle at 30% 30%, hsl(258 86% 72%),
+    hsl(258 86% 52%))` + white SVG icon с drop-shadow. Triple
+    box-shadow: outer violet `0 6px 18px -4px / 0.55` + inset highlight
+    + inset bottom shade (3D depth). **Continuous 3.6s breath**
+    (`ec-audio-play-breath` keyframe) — outer shadow осциллирует между
+    /0.55 и /0.70. Hover scale(1.06) + intensified halo. Active
+    scale(0.94). SVG glyph 14→18px + drop-shadow для veneer.
+  - **Audio title** (`.ec-audio-attachment__title`): 0.875rem → 0.92rem,
+    letter-spacing 0.005em. Mask-image `linear-gradient(to right, black
+    88%, transparent 100%)` — soft fade на overflow вместо hard ellipsis.
+  - **Audio meta row** — chips вместо plain text. Timestamp (first span)
+    получил violet pill: `hsl(258 86% 62% / 0.12)` bg + border + accent
+    color hsl 78%, padding 1px 7px, `--ec-radius-sm`. Остальные spans
+    остаются inline-text для контраста с chip.
+  - **Custom volume slider** (`.ec-audio-volume-slider`): native input
+    range полностью кастомизирован через
+    `::-webkit-slider-runnable-track` + `::-webkit-slider-thumb` (+
+    Firefox equivalents `::-moz-range-track`/`::-moz-range-thumb`).
+    Track 4px tall, fill — `linear-gradient(to right, accent 0% var(--volume-progress),
+    grey 100%)`. CSS-variable `--volume-progress` устанавливается inline
+    `style` в TSX из `${volume*100}%` — live update без re-render
+    через CSS. Thumb 13px circle с radial gradient white→violet, accent
+    border, triple box-shadow (3px halo + 6px deep drop). На :hover
+    thumb scale(1.18) + halo ramp до 4px/0.28. Focus-visible — halo
+    bump до 0.45. Fallback `accentColor: var(--ec-accent)` оставлен
+    inline для Safari/Firefox legacy.
+  - **Audio download btn**: 32→36px, добавлен subtle bg
+    `hsl(225 14% 60% / 0.04)`, hover ramp — accent + border-accent +
+    accent-soft bg + `translateY(-1px)` + `0 4px 14px -6px / 0.55`
+    drop. Active scale(0.94).
+  - **Video container** (`.ec-video-attachment`): border accent-tint
+    (18% mix), triple-radial background (violet + cyan + surface).
+    Box-shadow violet undertone `0 16px 42px -14px / 0.40`. Hover
+    `translateY(-2px)` + border 38% mix + shadow ramp до 55%.
+    Top accent rail `::before` (1px cyan→violet) + bottom darkness
+    overlay `::after` (50% height linear-gradient к hsl 4% / 0.85).
+  - **Video element**: opacity 0.84 → 0.86 idle, на hover ramp до 1.0 +
+    `scale(1.018)` (subtle zoom-in over 700ms).
+  - **Video play overlay** (`.ec-video-attachment__play svg`): 52 → 84px
+    с padding 14 → 24px. Background — radial violet
+    `hsl(258 86% 70% → 40% / 0.85)` (cinematic glow disc, не plain
+    backdrop). Box-shadow: outer `0 8px 32px / 0.6` + inset highlight.
+    **Continuous 2.8s halo pulse** (`ec-video-play-halo` keyframe) —
+    drop-shadow осциллирует 18→28px. Hover scale(1.08) + halo до 0.85.
+  - **Video meta bar**: padding 0.45→0.55rem, border accent-tinted
+    (20% accent), background dual-layer linear-gradient к hsl 4%/0.82
+    + saturated backdrop-filter 16px / 160%. Box-shadow + inset
+    highlight для glass effect. Filename now `font-weight: 600 +
+    letter-spacing 0.005em`. Size получил mono font + accent color
+    hsl 78% + tracking-wide — выглядит как HUD-измерение.
+  - **prefers-reduced-motion**: 2 новых анимации (`ec-audio-play-breath`,
+    `ec-video-play-halo`) добавлены в общий RM-блок через
+    `.ec-audio-attachment__icon` + `.ec-video-attachment__play svg`
+    селекторы → `animation: none !important`. Структурные improvements
+    (border, shadow, glass) — сохраняются.
+  - **Files**: `apps/web/src/styles/components.css` (full
+    `.ec-audio-attachment*` block rewrite + full `.ec-video-attachment*`
+    block rewrite + `.ec-audio-volume-slider` block), `apps/web/src/
+    styles/motion.css` (2 keyframes + RM extend), `apps/web/src/
+    components/Attachments.tsx` (1 input — добавлен className + style
+    с CSS-variable + типизация `as React.CSSProperties`).
+  - **Bundle**: CSS 284.74 → 290.66 KB (+5.92 KB / +1.00 gzip);
+    JS 1047.07 → 1047.13 KB (+0.06 — единственная `as React.CSSProperties`
+    типизация в TSX). Pure design-layer pass.
+  - **Tests**: tsc clean, vite build 3.53s OK. Vitest skip (registry
+    ECONNRESET); CI Validate отработает.
 
 - **v1.5.5** — **modal motion choreography pass** (25.05.2026). Pavel
   «продолжаем разработку и доработку дизайна» — pick из открытых

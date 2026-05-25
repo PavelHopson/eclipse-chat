@@ -85,6 +85,35 @@
   100% { transform: scale(10); opacity: 0; }
 }
 
+/* v1.5.6 — audio play button continuous breath (when paused или active).
+ * Subtle box-shadow oscillation create «alive» feeling без агрессивного
+ * mvmt. */
+@keyframes ec-audio-play-breath {
+  0%, 100% {
+    box-shadow:
+      0 6px 18px -4px hsl(258 86% 45% / 0.55),
+      inset 0 1px 0 hsl(0 0% 100% / 0.18),
+      inset 0 -1px 0 hsl(258 86% 30% / 0.45);
+  }
+  50% {
+    box-shadow:
+      0 8px 26px -2px hsl(258 86% 55% / 0.70),
+      inset 0 1px 0 hsl(0 0% 100% / 0.24),
+      inset 0 -1px 0 hsl(258 86% 30% / 0.45);
+  }
+}
+
+/* v1.5.6 — video play overlay halo: continuous pulse привлекает внимание
+ * к видео в feed'е. */
+@keyframes ec-video-play-halo {
+  0%, 100% {
+    filter: drop-shadow(0 0 18px hsl(258 86% 62% / 0.40));
+  }
+  50% {
+    filter: drop-shadow(0 0 28px hsl(258 86% 62% / 0.75));
+  }
+}
+
 @keyframes ec-presence-pulse {
   0%, 100% { box-shadow: 0 0 6px hsl(150 50% 50% / 0.55); }
   50%      { box-shadow: 0 0 10px hsl(150 50% 50% / 0.85); }
@@ -863,7 +892,9 @@
     opacity: 1;
     transform: none;
   }
-  .ec-modal-header.ec-holo-edge::before {
+  .ec-modal-header.ec-holo-edge::before,
+  .ec-audio-attachment__icon,
+  .ec-video-attachment__play svg {
     animation: none !important;
   }
   .ec-dot--online           { animation: none !important; }

@@ -479,7 +479,17 @@ function AudioItem({
             onChange={(e) => setVolume(Number(e.target.value))}
             aria-label="Громкость"
             title={`Громкость: ${Math.round(volume * 100)}%`}
-            style={{ width: 84, accentColor: "var(--ec-accent)", cursor: "pointer" }}
+            className="ec-audio-volume-slider"
+            // v1.5.6 — `--volume-progress` управляет gradient fill в
+            // ::-webkit-slider-runnable-track. Fallback `accentColor`
+            // оставлен для Firefox/Safari без custom-track support.
+            style={
+              {
+                width: 92,
+                accentColor: "var(--ec-accent)",
+                ["--volume-progress" as string]: `${Math.round(volume * 100)}%`,
+              } as React.CSSProperties
+            }
           />
         </div>
         <TranscriptBlock
