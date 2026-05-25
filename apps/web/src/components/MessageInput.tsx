@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { fileToBase64 } from "../lib/fileToBase64";
 import { computeWaveformPeaks } from "../lib/audioPeaks";
 import type { AttachmentUpload } from "../hooks/useMessages";
@@ -703,7 +704,7 @@ export function MessageInput({
       : [];
   const hasSlashMatches = operatorMatches.length + backendMatches.length > 0;
 
-  // Drag-drop поддержка
+  // Drag-drop поддержка — composer-level (узкий drop на сам composer).
   const [dragOver, setDragOver] = useState(false);
   const onDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -721,6 +722,62 @@ export function MessageInput({
     }
   };
 
+  // v1.5.15 — window-level drag detection: full-screen overlay portal,
+  // когда файл тащится над любой частью окна (не только composer'а).
+  // Drop в overlay → addFiles в pending attachments composer'а.
+  const [windowDragOver, setWindowDragOver] = useState(false);
+  useEffect(() => {
+    if (disabled || hideAttachments) return;
+    // dataTransfer.types contains 'Files' для real file drag — это
+    // отличие от text/html drag (внутри-страничный drag), который
+    // overlay показывать не нужно.
+    const isFileDrag = (e: DragEvent) => {
+      const types = e.dataTransfer?.types;
+      if (!types) return false;
+      for (let i = 0; i < types.length; i++) {
+        if (types[i] === "Files") return true;
+      }
+      return false;
+    };
+    // Counter-based detection — dragenter/leave fires per inner element
+    // (известный browser bug); считаем nesting depth.
+    let dragCounter = 0;
+    const onWinDragEnter = (e: DragEvent) => {
+      if (!isFileDrag(e)) return;
+      dragCounter++;
+      if (dragCounter === 1) setWindowDragOver(true);
+    };
+    const onWinDragLeave = (e: DragEvent) => {
+      if (!isFileDrag(e)) return;
+      dragCounter = Math.max(0, dragCounter - 1);
+      if (dragCounter === 0) setWindowDragOver(false);
+    };
+    const onWinDragOver = (e: DragEvent) => {
+      // preventDefault на dragover — иначе drop event не сработает
+      // (default browser action — open file).
+      if (isFileDrag(e)) e.preventDefault();
+    };
+    const onWinDrop = (e: DragEvent) => {
+      if (!isFileDrag(e)) return;
+      e.preventDefault();
+      dragCounter = 0;
+      setWindowDragOver(false);
+      const files = e.dataTransfer?.files;
+      if (files && files.length > 0) addFiles(files);
+    };
+    window.addEventListener("dragenter", onWinDragEnter);
+    window.addEventListener("dragleave", onWinDragLeave);
+    window.addEventListener("dragover", onWinDragOver);
+    window.addEventListener("drop", onWinDrop);
+    return () => {
+      window.removeEventListener("dragenter", onWinDragEnter);
+      window.removeEventListener("dragleave", onWinDragLeave);
+      window.removeEventListener("dragover", onWinDragOver);
+      window.removeEventListener("drop", onWinDrop);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [disabled, hideAttachments]);
+
   return (
     <form
       onSubmit={(e) => {
@@ -732,6 +789,28 @@ export function MessageInput({
       onDrop={onDrop}
       className={"ec-composer ec-composer-safe" + (dragOver ? " is-drag" : "")}
     >
+      {/* v1.5.15 — full-screen dropzone overlay (portal). Виден когда
+          файл тащится над окном; drop → addFiles в pending. Composer
+          drag handlers тоже работают (узкий drop на самом composer'е). */}
+      {windowDragOver &&
+        createPortal(
+          <div className="ec-drag-overlay" aria-hidden>
+            <div className="ec-drag-overlay__card">
+              <div className="ec-drag-overlay__icon">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="17 8 12 3 7 8" />
+                  <line x1="12" y1="3" x2="12" y2="15" />
+                </svg>
+              </div>
+              <h3 className="ec-drag-overlay__title">Бросьте файлы</h3>
+              <p className="ec-drag-overlay__hint">
+                Любое количество — будут вложены к следующему сообщению
+              </p>
+            </div>
+          </div>,
+          document.body,
+        )}
       {pending.length > 0 && (
         <div className="ec-composer-previews">
           {pending.map((p) => (

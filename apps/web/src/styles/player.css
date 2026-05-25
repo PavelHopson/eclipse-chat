@@ -827,6 +827,234 @@
   border-radius: var(--ec-radius-md);
 }
 
+/* v1.5.15 — Attachment lightbox. Cinematic preview overlay для image/
+ * video. Радиальная violet aura backdrop, accent-framed image, premium
+ * controls bar (top-right) + caption bar (bottom). Единый design
+ * language с modal-backdrop (v1.5.5). */
+.ec-lightbox-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--ec-space-6);
+  background:
+    radial-gradient(
+      ellipse at center,
+      hsl(258 86% 55% / 0.12) 0%,
+      hsl(258 86% 30% / 0.05) 30%,
+      transparent 65%
+    ),
+    rgba(0, 0, 0, 0.90);
+  backdrop-filter: saturate(140%) blur(14px);
+  -webkit-backdrop-filter: saturate(140%) blur(14px);
+  animation: ec-modal-backdrop-in 240ms var(--ec-ease) both;
+}
+
+.ec-lightbox-img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: var(--ec-radius-md);
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 22%, hsl(225 14% 72% / 0.10));
+  box-shadow:
+    0 30px 70px -22px hsl(258 86% 35% / 0.55),
+    0 12px 30px -10px hsl(210 70% 2% / 0.55),
+    0 0 0 1px hsl(258 86% 62% / 0.10) inset;
+  animation: ec-modal-zoom-in var(--ec-dur-base) var(--ec-ease-out) both;
+  transform-origin: center;
+}
+
+.ec-lightbox-controls {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  gap: 8px;
+  z-index: 1001;
+}
+
+.ec-lightbox-btn {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--ec-radius-md);
+  background:
+    radial-gradient(120% 80% at 0% 0%, hsl(258 86% 55% / 0.08), transparent 55%),
+    hsl(200 8% 12% / 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 18%, var(--ec-border-default));
+  color: var(--ec-text);
+  cursor: pointer;
+  text-decoration: none;
+  transition:
+    background var(--ec-dur-fast) var(--ec-ease),
+    border-color var(--ec-dur-fast) var(--ec-ease),
+    transform var(--ec-dur-fast) var(--ec-ease-out),
+    box-shadow var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-lightbox-btn:hover {
+  background:
+    radial-gradient(120% 80% at 0% 0%, hsl(258 86% 55% / 0.16), transparent 55%),
+    hsl(200 8% 14% / 0.92);
+  border-color: color-mix(in srgb, var(--ec-accent) 38%, var(--ec-border-default));
+  color: var(--ec-accent);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px -6px hsl(258 86% 50% / 0.55);
+}
+.ec-lightbox-btn:active { transform: translateY(0) scale(0.94); }
+
+.ec-lightbox-caption {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 0.5rem 0.85rem;
+  background:
+    radial-gradient(120% 80% at 0% 0%, hsl(258 86% 55% / 0.08), transparent 55%),
+    hsl(200 8% 12% / 0.85);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 18%, var(--ec-border-default));
+  border-radius: var(--ec-radius-full);
+  color: var(--ec-text);
+  font-size: var(--ec-text-sm);
+  z-index: 1001;
+  max-width: min(640px, calc(100vw - 32px));
+  box-shadow:
+    0 8px 24px -8px hsl(210 70% 2% / 0.6),
+    0 0 24px -8px hsl(258 86% 35% / 0.30);
+}
+.ec-lightbox-caption__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  font-weight: 600;
+  letter-spacing: 0.005em;
+}
+.ec-lightbox-caption__meta {
+  color: hsl(258 86% 78%);
+  font-family: var(--ec-font-mono);
+  font-size: var(--ec-text-xs);
+  font-feature-settings: "tnum";
+  letter-spacing: var(--ec-tracking-wide);
+  flex-shrink: 0;
+}
+.ec-lightbox-nav {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--ec-radius-sm);
+  background: transparent;
+  border: 1px solid var(--ec-border-default);
+  color: var(--ec-text);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition:
+    background var(--ec-dur-fast) var(--ec-ease),
+    border-color var(--ec-dur-fast) var(--ec-ease),
+    transform var(--ec-dur-fast) var(--ec-ease-out);
+}
+.ec-lightbox-nav:hover {
+  background: var(--ec-accent-soft);
+  border-color: var(--ec-border-accent);
+  color: var(--ec-accent);
+  transform: scale(1.06);
+}
+
+/* v1.5.15 — full-screen drag-drop overlay. Triggered when файл тащится
+ * над window (а не только composer). Cinematic violet aura + central
+ * card с инструкцией. Pulsing accent border привлекает внимание. */
+.ec-drag-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--ec-space-6);
+  background:
+    radial-gradient(
+      ellipse at center,
+      hsl(258 86% 55% / 0.20) 0%,
+      hsl(258 86% 30% / 0.10) 35%,
+      transparent 70%
+    ),
+    rgba(0, 0, 0, 0.55);
+  backdrop-filter: saturate(140%) blur(8px);
+  -webkit-backdrop-filter: saturate(140%) blur(8px);
+  animation: ec-fade-in 180ms var(--ec-ease) both;
+}
+
+.ec-drag-overlay__card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ec-space-3);
+  padding: var(--ec-space-6) var(--ec-space-8);
+  background:
+    radial-gradient(140% 90% at 0% 0%, hsl(258 86% 55% / 0.18), transparent 55%),
+    hsl(216 24% 9% / 0.85);
+  border: 2px dashed color-mix(in srgb, var(--ec-accent) 55%, transparent);
+  border-radius: var(--ec-radius-lg);
+  backdrop-filter: saturate(180%) blur(18px);
+  -webkit-backdrop-filter: saturate(180%) blur(18px);
+  box-shadow:
+    0 30px 70px -22px hsl(258 86% 35% / 0.65),
+    0 0 0 1px hsl(258 86% 62% / 0.20) inset,
+    0 0 80px -20px hsl(258 86% 62% / 0.55);
+  animation:
+    ec-modal-zoom-in 280ms var(--ec-ease-out) both,
+    ec-drag-card-pulse 2.4s ease-in-out infinite 280ms;
+  max-width: min(440px, calc(100vw - 64px));
+}
+
+.ec-drag-overlay__icon {
+  width: 64px;
+  height: 64px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 30% 30%,
+    hsl(258 86% 72%),
+    hsl(258 86% 52%)
+  );
+  color: hsl(0 0% 100%);
+  box-shadow:
+    0 8px 26px -4px hsl(258 86% 45% / 0.65),
+    inset 0 1px 0 hsl(0 0% 100% / 0.22),
+    inset 0 -1px 0 hsl(258 86% 30% / 0.45);
+  animation: ec-audio-play-breath 3.2s ease-in-out infinite;
+}
+
+.ec-drag-overlay__title {
+  margin: 0;
+  font-family: var(--ec-font-display);
+  font-size: var(--ec-text-lg);
+  font-weight: 600;
+  color: var(--ec-text-strong);
+  letter-spacing: -0.005em;
+}
+
+.ec-drag-overlay__hint {
+  margin: 0;
+  max-width: 32ch;
+  text-align: center;
+  font-size: var(--ec-text-sm);
+  line-height: 1.5;
+  color: var(--ec-text-dim);
+}
+
 /* ===== Video player ========================================= */
 .ec-video-player {
   position: relative;

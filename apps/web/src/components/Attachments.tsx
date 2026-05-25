@@ -846,86 +846,9 @@ function ImageItem({ a, onOpen }: { a: Attachment; onOpen: (a: Attachment) => vo
   );
 }
 
-const lightboxBackdrop: CSSProperties = {
-  position: "fixed",
-  inset: 0,
-  background: "rgba(0, 0, 0, 0.88)",
-  backdropFilter: "blur(8px)",
-  WebkitBackdropFilter: "blur(8px)",
-  zIndex: 1000,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  padding: "var(--ec-space-6)",
-  animation: "ec-fade-in var(--ec-dur-base) var(--ec-ease) both",
-};
-
-const lightboxImg: CSSProperties = {
-  maxWidth: "100%",
-  maxHeight: "100%",
-  objectFit: "contain",
-  borderRadius: "var(--ec-radius-md)",
-  boxShadow: "var(--ec-shadow-lg)",
-  animation: "ec-modal-zoom-in var(--ec-dur-base) var(--ec-ease-out) both",
-};
-
-const lightboxControls: CSSProperties = {
-  position: "fixed",
-  top: 16,
-  right: 16,
-  display: "flex",
-  gap: 8,
-  zIndex: 1001,
-};
-
-const lightboxBtn: CSSProperties = {
-  width: 38,
-  height: 38,
-  display: "grid",
-  placeItems: "center",
-  borderRadius: "var(--ec-radius-md)",
-  background: "hsl(200 8% 12% / 0.85)",
-  backdropFilter: "blur(10px)",
-  WebkitBackdropFilter: "blur(10px)",
-  border: "1px solid var(--ec-border-default)",
-  color: "var(--ec-text)",
-  cursor: "pointer",
-};
-
-const lightboxCaption: CSSProperties = {
-  position: "fixed",
-  bottom: 16,
-  left: 16,
-  right: 16,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  gap: 12,
-  padding: "var(--ec-space-2) var(--ec-space-3)",
-  background: "hsl(200 8% 12% / 0.85)",
-  backdropFilter: "blur(10px)",
-  WebkitBackdropFilter: "blur(10px)",
-  border: "1px solid var(--ec-border-default)",
-  borderRadius: "var(--ec-radius-md)",
-  color: "var(--ec-text)",
-  fontSize: "var(--ec-text-sm)",
-  zIndex: 1001,
-  maxWidth: 600,
-  margin: "0 auto",
-};
-
-const lightboxNavBtn: CSSProperties = {
-  width: 30,
-  height: 30,
-  display: "grid",
-  placeItems: "center",
-  borderRadius: "var(--ec-radius-sm)",
-  background: "transparent",
-  border: "1px solid var(--ec-border-default)",
-  color: "var(--ec-text)",
-  cursor: "pointer",
-  flexShrink: 0,
-};
+// v1.5.15 — lightbox styling переведён на .ec-lightbox-* classNames
+// в player.css (radial backdrop + accent image frame + premium controls).
+// Inline styles удалены — единый design language с modal + dropzone.
 
 /**
  * Lightbox-галерея (v1.1.86 — слайс 3): листает соседние вложения
@@ -977,7 +900,12 @@ function Lightbox({
   // containing-block'ом для position:fixed — без портала оверлей
   // позиционировался бы относительно строки сообщения, а не вьюпорта.
   return createPortal(
-    <div style={lightboxBackdrop} onClick={(e) => e.target === e.currentTarget && onClose()} role="dialog" aria-modal="true">
+    <div
+      className="ec-lightbox-backdrop"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+      role="dialog"
+      aria-modal="true"
+    >
       {video ? (
         <VideoPlayer
           key={a.id}
@@ -986,9 +914,9 @@ function Lightbox({
           onPrev={multi ? () => go(-1) : undefined}
         />
       ) : (
-        <img src={fullUrl} alt={a.filename} style={lightboxImg} />
+        <img src={fullUrl} alt={a.filename} className="ec-lightbox-img" />
       )}
-      <div style={lightboxControls}>
+      <div className="ec-lightbox-controls">
         {video && onPlayShared && (
           <button
             type="button"
@@ -996,7 +924,7 @@ function Lightbox({
               void onPlayShared(a.id);
               onClose();
             }}
-            style={lightboxBtn}
+            className="ec-lightbox-btn"
             title="Смотреть вместе с комнатой"
             aria-label="Смотреть вместе"
           >
@@ -1010,7 +938,7 @@ function Lightbox({
         <a
           href={fullUrl}
           download={a.filename}
-          style={lightboxBtn}
+          className="ec-lightbox-btn"
           title="Скачать"
           aria-label="Скачать"
         >
@@ -1020,33 +948,33 @@ function Lightbox({
             <line x1="12" y1="15" x2="12" y2="3" />
           </svg>
         </a>
-        <button type="button" onClick={onClose} style={lightboxBtn} title="Закрыть" aria-label="Закрыть">
+        <button type="button" onClick={onClose} className="ec-lightbox-btn" title="Закрыть" aria-label="Закрыть">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
             <line x1="18" y1="6" x2="6" y2="18" />
             <line x1="6" y1="6" x2="18" y2="18" />
           </svg>
         </button>
       </div>
-      <div style={lightboxCaption}>
+      <div className="ec-lightbox-caption">
         {/* Для картинок навигация — стрелками в подписи; у видео next/prev
             живут в самом плеере, поэтому здесь не дублируем. */}
         {multi && !video && (
-          <button type="button" onClick={() => go(-1)} style={lightboxNavBtn} title="Предыдущее" aria-label="Предыдущее">
+          <button type="button" onClick={() => go(-1)} className="ec-lightbox-nav" title="Предыдущее" aria-label="Предыдущее">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
               <polyline points="15 18 9 12 15 6" />
             </svg>
           </button>
         )}
-        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }} title={a.filename}>
+        <span className="ec-lightbox-caption__name" title={a.filename}>
           {a.filename}
         </span>
-        <span style={{ color: "var(--ec-text-dim)", fontSize: "var(--ec-text-xs)", fontFeatureSettings: '"tnum"' }}>
+        <span className="ec-lightbox-caption__meta">
           {humanSize(a.size)}
           {a.width && a.height ? ` · ${a.width}×${a.height}` : ""}
           {multi ? ` · ${idx + 1}/${items.length}` : ""}
         </span>
         {multi && !video && (
-          <button type="button" onClick={() => go(1)} style={lightboxNavBtn} title="Следующее" aria-label="Следующее">
+          <button type="button" onClick={() => go(1)} className="ec-lightbox-nav" title="Следующее" aria-label="Следующее">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
               <polyline points="9 18 15 12 9 6" />
             </svg>

@@ -5,11 +5,12 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.14** (shared music room: auto-advance fix
-+ server-wide audio library + playlist UI с «Проиграть все»; критичный
-bug onEnded не вызывал skip — следующий трек не запускался; backend
-GET /servers/:id/audio-library + POST /channels/:id/music/playlist;
-deployed 25.05.2026). **Tagged milestone:** v1.6.0 (`69a08bb`, design
+**Текущая версия:** **v1.5.15** (lightbox premium polish + window-level
+drag-drop overlay; lightbox inline → .ec-lightbox-* classes с radial
+backdrop + accent image frame + premium controls + caption pill;
+MessageInput window-level drag detection через counter pattern +
+portal full-screen cinematic dropzone card с violet glow; deployed
+25.05.2026). **Tagged milestone:** v1.6.0 (`69a08bb`, design
 polish milestone после chain v1.5.3 → v1.5.12 — 10 версий, 25+ surfaces).
 
 **v1.3.4** (historical, pre-pivot — premium SaaS pivot per Pavel verdict
@@ -162,7 +163,51 @@ security-art)).
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.5.14:**
+**Изменения v1.1.25 → v1.5.15:**
+
+- **v1.5.15** — **lightbox premium polish + window-level drag-drop overlay**
+  (25.05.2026). Pavel «давай это сделаем» — combo из топ-3 рекомендаций.
+  VoiceRoom выделен в v1.5.16 из-за scope (1098 строк TSX).
+  - **Attachment lightbox** (`Attachments.tsx Lightbox`): inline-styles
+    переведены на `.ec-lightbox-*` classes (player.css).
+    Backdrop — radial violet aura at center + 90% darkness + blur
+    14px (тот же паттерн что у `.ec-modal-backdrop` v1.5.5). Image
+    получил accent-tinted border + violet drop-shadow `0 30px 70px
+    -22px hsl(258 86% 35% / 0.55)` + inset holo. Controls (top-right):
+    .ec-lightbox-btn 38→40px с accent radial bg + accent border на
+    hover + violet halo shadow. Caption (bottom): centered pill с
+    accent border + radial bg + glass blur; filename + meta (size +
+    dims + counter). Nav buttons (если multi) получают accent scale
+    1.06 hover.
+  - **Full-screen drag-drop overlay** (new feature):
+    `MessageInput.tsx` теперь регистрирует window-level
+    `dragenter/leave/over/drop` listeners (counter-based для browser
+    nesting bug). `dataTransfer.types` filter ловит только real file
+    drag (не intra-page drag). Когда `windowDragOver=true` → portal
+    renders `.ec-drag-overlay` поверх viewport. Cinematic card:
+    radial violet aura backdrop + 2px dashed accent border 55% mix +
+    triple shadow (drop + inset accent + 80px violet glow) +
+    `ec-modal-zoom-in` entry + `ec-drag-card-pulse` 2.4s continuous
+    glow ramp (boxshadow 0.65→0.80 + 80→120px halo). 64px violet
+    play-btn-style icon (radial fill, тот же что audio play btn в
+    v1.5.6) с continuous breath. Title «Бросьте файлы» + hint
+    «Любое количество — будут вложены к следующему сообщению».
+  - **Existing composer drag** (узкий drop на сам composer)
+    сохранён — два уровня detection coexist'ят.
+  - **prefers-reduced-motion**: `.ec-drag-overlay__card` + `__icon`
+    + `.ec-lightbox-backdrop` + `.ec-lightbox-img` добавлены в
+    общий RM-блок (fallback animation: none).
+  - **Files**: `apps/web/src/styles/player.css` (`.ec-lightbox-*`
+    block ~85 строк + `.ec-drag-overlay*` block ~50 строк),
+    `apps/web/src/styles/motion.css` (1 keyframe + RM extend),
+    `apps/web/src/components/Attachments.tsx` (inline styles
+    Lightbox удалены, classNames wired), `apps/web/src/components/
+    MessageInput.tsx` (createPortal import, windowDragOver useEffect
+    с window listeners, portal overlay JSX перед form content).
+  - **Bundle**: CSS 308.87 → 314.13 KB (+5.26 / +0.86 gzip);
+    JS 1049.84 → 1050.10 KB (+0.26 — небольшой createPortal +
+    useEffect wire).
+  - **Tests**: tsc clean, vite build OK.
 
 - **v1.5.14** — **shared music room: auto-advance + server-wide playlist**
   (25.05.2026). Pavel «следующий трек не включается, надо чтобы в

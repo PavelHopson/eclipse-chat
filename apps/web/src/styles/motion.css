@@ -69,6 +69,23 @@
   50%      { transform: scaleY(1.15); }
 }
 
+/* v1.5.15 — drag-drop overlay card pulse: дополнительный accent glow
+ * ramp (поверх entry zoom). Привлекает внимание к dropzone. */
+@keyframes ec-drag-card-pulse {
+  0%, 100% {
+    box-shadow:
+      0 30px 70px -22px hsl(258 86% 35% / 0.65),
+      0 0 0 1px hsl(258 86% 62% / 0.20) inset,
+      0 0 80px -20px hsl(258 86% 62% / 0.55);
+  }
+  50% {
+    box-shadow:
+      0 36px 88px -22px hsl(258 86% 40% / 0.80),
+      0 0 0 1px hsl(258 86% 62% / 0.36) inset,
+      0 0 120px -16px hsl(258 86% 62% / 0.75);
+  }
+}
+
 /* v1.5.3 — playhead glow line: вертикальная линия в waveform с soft pulse. */
 @keyframes ec-wave-playhead {
   0%, 100% { opacity: 0.45; }
@@ -1030,7 +1047,11 @@
   .ec-composer-send:not(:disabled),
   .ec-channel-item--active::before,
   .ec-theme-toggle__knob,
-  .ec-member-row:not(.ec-member-row--offline) .ec-member-row__presence {
+  .ec-member-row:not(.ec-member-row--offline) .ec-member-row__presence,
+  .ec-drag-overlay__card,
+  .ec-drag-overlay__icon,
+  .ec-lightbox-backdrop,
+  .ec-lightbox-img {
     animation: none !important;
   }
   .ec-search-hit::before,
