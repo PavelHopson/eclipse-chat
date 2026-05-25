@@ -5,11 +5,12 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.18** (AI Партия 3: model-level fallback +
-429 exponential backoff retry. ProviderConfig.model:string →
-models:string[], OPENROUTER_MODELS CSV env с default chain DeepSeek →
-Llama 3.3 → Qwen 2.5 (free), retry 500/1500/4000ms на 429, single
-retry на 5xx, fail immediately на 4xx/network/timeout; deployed
+**Текущая версия:** **v1.5.19** (Voice occupants sticky list polish:
+inline-styles → .ec-voice-occupant-* classes. Premium design language:
+accent left rail 24% + hover translateX bg accent 8% + speaking variant
+(color → accent + font 600 + avatar accent ring + ec-presence-pulse
+3.6s breath) + muted opacity. Server-wide visibility подтверждена per
+voicePresence.ts broadcasting в server:${serverId} room; deployed
 25.05.2026). **Tagged milestone:** v1.6.0 (`69a08bb`, design
 polish milestone после chain v1.5.3 → v1.5.12 — 10 версий, 25+ surfaces).
 
@@ -163,7 +164,52 @@ security-art)).
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.5.18:**
+**Изменения v1.1.25 → v1.5.19:**
+
+- **v1.5.19** — **Voice occupants sticky list — premium polish + verify
+  server-wide visibility** (25.05.2026). Pavel прислал screenshot
+  (Eclipse Forge sidebar) и попросил «в голосовых комнатах надо видеть
+  всех кто там находится на панели слева под комнатами, должны видеть
+  все пользователи сервера, которые даже не находятся в этих комнатах».
+  Это значит: voice occupants list под voice channel — visible ВСЕМ
+  server members (не только тем кто в комнате). Серверная сторона уже
+  это broadcast'ит (per voicePresence.ts emit `voice:participant:joined/
+  left/meta/speaking` в `server:${serverId}` room — ВСЕ members получают
+  events независимо от того в voice ли они сами). На client'е также
+  snapshot seeded при connect через `voice:state`/`voice:meta`. Поведение
+  работает корректно. Текущая реализация в ChannelList.tsx — inline
+  styles (≈80 строк). Pavel'я ссылка на скриншот — желание чтобы это
+  выглядело premium.
+  - **TSX refactor** (`ChannelList.tsx renderVoiceOccupants`): inline
+    styles переведены на `.ec-voice-occupant-list`/`-row`/`-row__avatar`/
+    `-row__name`/`-row__state` classes. Modifier variants: `--speaking`,
+    `--muted`. data-state атрибут для glyph differentiation
+    (deafened/muted).
+  - **CSS** (`components.css` after .ec-channel-item rules): premium
+    list-row treatment в едином design language:
+    - Container: accent left rail 24% mix + inset 1px violet glow.
+    - Row hover: bg `color-mix accent 8%` + color → text + translateX(2px)
+      (same pattern что DM rows / channel-list active / member rows /
+      search hits / popover items / srv menu rows / message stream).
+    - **Speaking variant**: color → accent + font-weight 600 + avatar
+      shadow `0 0 0 1.5px accent, 0 0 12px / 0.65` + `ec-presence-pulse`
+      3.6s breath (тот же что у MemberList online dot).
+    - **Muted variant**: avatar opacity 0.6, name opacity 0.7.
+  - **prefers-reduced-motion**: `.ec-voice-occupant-row--speaking
+    .ec-voice-occupant-row__avatar` добавлен в общий RM-блок.
+  - **Visibility confirmed**: server-wide broadcast уже работает —
+    backend `voicePresence.ts` emit'ит в `server:${serverId}` (ВСЕ members
+    получают), backend `index.ts buildVoicePresenceSnapshot` seeded
+    initial snapshot для всех VOICE channels на user'овских серверах
+    при connect. Frontend `useVoicePresence` хранит `byChannel` snapshot
+    и обновляется по delta events.
+  - **Files**: `apps/web/src/components/ChannelList.tsx` (renderVoiceOccupants
+    refactor inline → classNames), `apps/web/src/styles/components.css`
+    (.ec-voice-occupant-* блок ~70 строк), `apps/web/src/styles/motion.css`
+    (RM extend).
+  - **Bundle**: CSS 317.11 → 318.70 KB (+1.59 / +0.25 gzip); AppShell
+    chunk 786.89 → 786.33 KB (−0.56 — inline styles вынесены в CSS).
+  - **Tests**: tsc clean, vite build OK.
 
 - **v1.5.18** — **AI Партия 3: model-level fallback + 429 backoff retry**
   (25.05.2026). Pavel «продолжаем». Из открытого backend-list'а —

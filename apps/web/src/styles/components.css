@@ -571,6 +571,80 @@ input[type="radio"]:focus-visible {
   font-size: 0.95rem;
 }
 
+/* v1.5.19 — voice occupants sticky list (Discord-style под voice channel).
+ * Visible для ВСЕХ server members через server-wide voice presence broadcast.
+ * Accent left rail с gradient, hover halo на row, speaking ring breath
+ * (тот же presence-pulse pattern что у MemberList online dot). */
+.ec-voice-occupant-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-left: var(--ec-space-5);
+  padding: 3px 0 4px var(--ec-space-2);
+  position: relative;
+  /* Accent rail слева — vertical gradient violet с soft mask на концах. */
+  border-left: 1px solid color-mix(in srgb, var(--ec-accent) 24%, transparent);
+  box-shadow: inset 1px 0 0 hsl(258 86% 62% / 0.10);
+}
+
+.ec-voice-occupant-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 6px;
+  padding: 0.18rem 0.36rem;
+  border-radius: var(--ec-radius-xs);
+  font-size: var(--ec-text-2xs);
+  color: var(--ec-text-muted);
+  font-weight: 400;
+  transition:
+    background var(--ec-dur-fast) var(--ec-ease),
+    color var(--ec-dur-fast) var(--ec-ease),
+    transform var(--ec-dur-fast) var(--ec-ease-out);
+}
+.ec-voice-occupant-row:hover {
+  background: color-mix(in srgb, var(--ec-accent) 8%, transparent);
+  color: var(--ec-text);
+  transform: translateX(2px);
+}
+.ec-voice-occupant-row--speaking {
+  color: var(--ec-accent);
+  font-weight: 600;
+}
+
+.ec-voice-occupant-row__avatar {
+  position: relative;
+  display: inline-block;
+  border-radius: var(--ec-radius-full);
+  transition: box-shadow 80ms linear, opacity 80ms linear;
+}
+.ec-voice-occupant-row--speaking .ec-voice-occupant-row__avatar {
+  box-shadow:
+    0 0 0 1.5px var(--ec-accent),
+    0 0 12px hsl(258 90% 66% / 0.65);
+  animation: ec-presence-pulse 3.6s ease-in-out infinite;
+}
+.ec-voice-occupant-row--muted .ec-voice-occupant-row__avatar {
+  opacity: 0.6;
+}
+
+.ec-voice-occupant-row__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ec-voice-occupant-row--muted .ec-voice-occupant-row__name {
+  opacity: 0.7;
+}
+
+.ec-voice-occupant-row__state {
+  display: inline-grid;
+  place-items: center;
+  color: var(--ec-danger);
+  flex-shrink: 0;
+}
+
 .ec-channel-item:hover .ec-channel-glyph--plain,
 .ec-channel-item:hover .ec-channel-glyph--emoji {
   color: var(--ec-text);

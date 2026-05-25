@@ -238,24 +238,16 @@ export function ChannelList({
     }
   };
 
-  // Sticky-список голосовых участников под voice-каналом (Discord-style):
-  // аватар + имя + индикатор mic-off / deafened, speaking-glow для своей room.
+  // v1.5.19 — Sticky-список голосовых участников под voice-каналом
+  // (Discord-style). Visible для ВСЕХ server members через server-wide
+  // `voice:state` snapshot + `voice:participant:joined/left` delta events.
+  // Inline-styles переведены на `.ec-voice-occupant-*` classes (player.css)
+  // с premium polish: accent border-left + hover halo + speaking ring breath.
   const renderVoiceOccupants = (channelId: string) => {
     const userIds = voiceByChannel?.[channelId];
     if (!userIds || userIds.length === 0) return null;
     return (
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: 1,
-          marginLeft: "var(--ec-space-5)",
-          paddingLeft: "var(--ec-space-2)",
-          borderLeft: "1px dashed var(--ec-border-subtle)",
-          paddingTop: 2,
-          paddingBottom: 2,
-        }}
-      >
+      <div className="ec-voice-occupant-list">
         {userIds.map((userId) => {
           const m = members?.find((mm) => mm.userId === userId);
           const name = m?.user.displayName ?? userId;
@@ -272,56 +264,21 @@ export function ChannelList({
             : speaking
             ? "говорит"
             : "в эфире";
+          const rowClass =
+            "ec-voice-occupant-row" +
+            (speaking ? " ec-voice-occupant-row--speaking" : "") +
+            (deafened || micMuted ? " ec-voice-occupant-row--muted" : "");
           return (
-            <span
-              key={userId}
-              title={`${name} — ${stateLabel}`}
-              style={{
-                display: "grid",
-                gridTemplateColumns: "auto 1fr auto",
-                alignItems: "center",
-                gap: 6,
-                padding: "0.15rem 0.3rem",
-                borderRadius: "var(--ec-radius-xs)",
-                fontSize: "var(--ec-text-2xs)",
-                color: speaking ? "var(--ec-accent)" : "var(--ec-text-muted)",
-                fontWeight: speaking ? 600 : 400,
-                transition: "color 80ms linear",
-              }}
-            >
-              <span
-                style={{
-                  position: "relative",
-                  display: "inline-block",
-                  borderRadius: "var(--ec-radius-full)",
-                  boxShadow: speaking
-                    ? "0 0 0 1.5px var(--ec-accent), 0 0 10px hsl(258 90% 66% / 0.55)"
-                    : "none",
-                  transition: "box-shadow 80ms linear",
-                  opacity: deafened || micMuted ? 0.6 : 1,
-                }}
-              >
+            <span key={userId} title={`${name} — ${stateLabel}`} className={rowClass}>
+              <span className="ec-voice-occupant-row__avatar">
                 <Avatar url={avatar} name={name} size={16} />
               </span>
-              <span
-                style={{
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                  opacity: deafened || micMuted ? 0.7 : 1,
-                }}
-              >
-                {name}
-              </span>
+              <span className="ec-voice-occupant-row__name">{name}</span>
               {(deafened || micMuted) && (
                 <span
                   aria-hidden
-                  style={{
-                    display: "inline-grid",
-                    placeItems: "center",
-                    color: "var(--ec-danger)",
-                    flexShrink: 0,
-                  }}
+                  className="ec-voice-occupant-row__state"
+                  data-state={deafened ? "deafened" : "muted"}
                 >
                   {deafened ? <DeafenedGlyph /> : <MicOffGlyph />}
                 </span>

@@ -1080,6 +1080,7 @@
   .ec-channel-item--active::before,
   .ec-theme-toggle__knob,
   .ec-member-row:not(.ec-member-row--offline) .ec-member-row__presence,
+  .ec-voice-occupant-row--speaking .ec-voice-occupant-row__avatar,
   .ec-drag-overlay__card,
   .ec-drag-overlay__icon,
   .ec-lightbox-backdrop,
