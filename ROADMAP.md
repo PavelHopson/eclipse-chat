@@ -5,12 +5,18 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.20** (AdminPanel polish: tabs c accent halo
-+ glow disc, cards с radial bg + accent border + top holo rail +
-clickable lift hover + accent halo shadow, inputs focus state из
-.ec-field v1.5.7 unified ring; deployed 25.05.2026).
+**Текущая версия:** **v1.5.21** (IncidentPanel polish: panel root top
+accent rail, card .ec-incident-card с variant modifiers (--open/
+--resolved). Open variant — danger continuous breath ec-incident-open-
+pulse 3.4s + hover лифт. Resolved variant — subtle calm baseline +
+accent halo на hover; deployed 25.05.2026).
 
-**Предыдущая:** v1.5.19 (Voice occupants sticky list polish:
+**Предыдущая:** v1.5.20 (AdminPanel polish: tabs c accent halo + glow
+disc, cards с radial bg + accent border + top holo rail + clickable
+lift hover + accent halo shadow, inputs focus state из .ec-field v1.5.7
+unified ring).
+
+**v1.5.19** (Voice occupants sticky list polish:
 inline-styles → .ec-voice-occupant-* classes. Premium design language:
 accent left rail 24% + hover translateX bg accent 8% + speaking variant
 (color → accent + font 600 + avatar accent ring + ec-presence-pulse
@@ -169,7 +175,35 @@ security-art)).
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.5.20:**
+**Изменения v1.1.25 → v1.5.21:**
+
+- **v1.5.21** — **IncidentPanel polish** (25.05.2026). Pavel «продолжай».
+  Single panel surface ещё не получивший unified design language.
+  - **Panel root** (`.ec-incident-panel::before`): top accent rail
+    cyan→violet bridge (единый язык с modal-header / popover / chat-
+    header / composer).
+  - **Incident card** (`.ec-incident-card`): new className + variant
+    modifiers `--open`/`--resolved`. Inline JS hover handlers (mouseEnter/
+    Leave с boxShadow) **удалены** — CSS hover берёт верх. Hover —
+    `translateY(-2px)`.
+  - **`--resolved` variant**: subtle border-subtle baseline, на hover
+    border → accent 24% mix + violet halo `0 10px 28px -10px / 0.40`
+    + inset accent (calm, не отвлекает).
+  - **`--open` variant**: danger border + radial danger bg + новый
+    `ec-incident-open-pulse` 3.4s breath. Continuous danger
+    box-shadow ramp (16→26px / 0.40→0.60) — привлекает внимание к
+    unresolved incidents без агрессии. Hover лифт + сильнее halo
+    `0 12px 32px -10px hsl(0 70% 50% / 0.55)`.
+  - **prefers-reduced-motion**: `.ec-incident-card--open` в общий
+    RM-блок.
+  - **Files**: `apps/web/src/components/IncidentPanel.tsx` (renderCard
+    className wire, inline hover handlers removed), `apps/web/src/
+    styles/components.css` (.ec-incident-panel + .ec-incident-card*
+    блок ~55 строк), `apps/web/src/styles/motion.css` (1 keyframe + RM
+    extend).
+  - **Bundle**: CSS 320.27 → 321.73 KB (+1.46 / +0.22 gzip); frontend
+    chunks unchanged.
+  - **Tests**: tsc clean, vite build OK.
 
 - **v1.5.20** — **AdminPanel polish** (25.05.2026). Pavel «продолжаем
   по списку» — next item. AdminPanel surfaces (`.ec-admin-tabs`,

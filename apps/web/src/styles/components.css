@@ -571,6 +571,72 @@ input[type="radio"]:focus-visible {
   font-size: 0.95rem;
 }
 
+/* v1.5.21 — IncidentPanel premium polish.
+ * Panel root получает top accent rail (cyan→violet) — единый язык с
+ * другими major panels. Incident cards с premium hover + open-state
+ * danger glow breath. */
+.ec-incident-panel {
+  position: relative;
+}
+.ec-incident-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    hsl(180 70% 65% / 0.30) 30%,
+    hsl(258 86% 72% / 0.55) 55%,
+    hsl(258 70% 60% / 0.25) 75%,
+    transparent 100%
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Incident card — base. Inline style остаётся для базовой geometry
+ * (padding/radius/boxShadow), CSS добавляет premium hover + variant
+ * states. */
+.ec-incident-card {
+  position: relative;
+  transition:
+    transform var(--ec-dur-fast) var(--ec-ease-out),
+    box-shadow var(--ec-dur-fast) var(--ec-ease),
+    border-color var(--ec-dur-fast) var(--ec-ease),
+    background var(--ec-dur-fast) var(--ec-ease) !important;
+}
+.ec-incident-card:hover {
+  transform: translateY(-2px);
+}
+
+/* Resolved variant — нейтральный elevation. */
+.ec-incident-card--resolved {
+  border: 1px solid var(--ec-border-subtle);
+}
+.ec-incident-card--resolved:hover {
+  border-color: color-mix(in srgb, var(--ec-accent) 24%, var(--ec-border-subtle));
+  box-shadow:
+    0 10px 28px -10px hsl(258 86% 35% / 0.40),
+    0 0 0 1px hsl(258 86% 62% / 0.10) inset !important;
+}
+
+/* Open variant — danger glow + continuous breath (привлекает внимание). */
+.ec-incident-card--open {
+  border: 1px solid var(--ec-danger) !important;
+  background:
+    radial-gradient(120% 80% at 0% 0%, hsl(0 70% 55% / 0.10), transparent 55%),
+    var(--ec-danger-soft) !important;
+  animation: ec-incident-open-pulse 3.4s ease-in-out infinite;
+}
+.ec-incident-card--open:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    var(--ec-elev-1),
+    0 12px 32px -10px hsl(0 70% 50% / 0.55),
+    0 0 0 1px hsl(0 70% 55% / 0.20) inset !important;
+}
+
 /* v1.5.19 — voice occupants sticky list (Discord-style под voice channel).
  * Visible для ВСЕХ server members через server-wide voice presence broadcast.
  * Accent left rail с gradient, hover halo на row, speaking ring breath

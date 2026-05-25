@@ -85,6 +85,24 @@
   }
 }
 
+/* v1.5.21 — incident card OPEN-state pulse: subtle danger box-shadow
+ * + border breath. Привлекает внимание к unresolved incidents без
+ * агрессии (3.4s slow ease). */
+@keyframes ec-incident-open-pulse {
+  0%, 100% {
+    box-shadow:
+      var(--ec-elev-1),
+      0 0 0 1px hsl(0 70% 55% / 0.10) inset,
+      0 0 16px -6px hsl(0 70% 55% / 0.40);
+  }
+  50% {
+    box-shadow:
+      var(--ec-elev-1),
+      0 0 0 1px hsl(0 70% 55% / 0.22) inset,
+      0 0 26px -4px hsl(0 70% 55% / 0.60);
+  }
+}
+
 /* v1.5.16 — VoiceRoom speaking video tile glow ramp. */
 @keyframes ec-vr-tile-glow {
   0%, 100% {
@@ -1081,6 +1099,7 @@
   .ec-theme-toggle__knob,
   .ec-member-row:not(.ec-member-row--offline) .ec-member-row__presence,
   .ec-voice-occupant-row--speaking .ec-voice-occupant-row__avatar,
+  .ec-incident-card--open,
   .ec-drag-overlay__card,
   .ec-drag-overlay__icon,
   .ec-lightbox-backdrop,

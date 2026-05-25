@@ -417,19 +417,12 @@ export function IncidentPanel({
   const renderCard = (inc: IncidentRow) => (
     <div
       key={inc.id}
-      style={{
-        ...incidentCard,
-        ...(inc.status === "OPEN"
-          ? { border: "1px solid var(--ec-danger)", background: "var(--ec-danger-soft)" }
-          : {}),
-      }}
+      className={
+        "ec-incident-card" +
+        (inc.status === "OPEN" ? " ec-incident-card--open" : " ec-incident-card--resolved")
+      }
+      style={incidentCard}
       onClick={() => setDetailId(inc.id)}
-      onMouseEnter={(e) => {
-        if (inc.status !== "OPEN") e.currentTarget.style.boxShadow = "var(--ec-elev-2)";
-      }}
-      onMouseLeave={(e) => {
-        if (inc.status !== "OPEN") e.currentTarget.style.boxShadow = "var(--ec-elev-1)";
-      }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: "var(--ec-space-2)", flexWrap: "wrap" }}>
         <span style={statusBadge(inc.status)}>
