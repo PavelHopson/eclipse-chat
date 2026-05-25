@@ -5,7 +5,21 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.26** (Landing P1 responsive audit fix:
+**Текущая версия:** **v1.5.27** (Bundle split Партия 2: 20 modals/panels
+внутри AppShell.tsx переведены на React.lazy + 3 Suspense boundaries
+(panel ternary / right rail trio / modals section). AppShell.js 790 KB
+→ 397 KB raw (-50%) / gzip 200 KB → 106 KB (-47%). Новые lazy chunks:
+AdminPanel 73, ServerHubModal 54, VoiceRoom 54, PlatformAdminPanel 37,
+ActionItemDrawer 28, ProfileModal 27, OperationalTablePanel 21,
+HelpPanel 18, SearchOverlay 14, TeamHealth 13, IncidentPanel 13,
+MusicExpandModal 10, ThreadPanel 8, StatusBoard 7, ChannelSettingsModal 7,
+CreateGroupDmModal 5, CreateTableModal/VoiceMusicPicker/JoinServerModal/
+CreateServerModal ~1-3 KB. Первый paint грузит только AppShell shell
++ MessageList + ChannelList + IntelligencePanel + composer essentials;
+admin/voice/search/modals подгружаются по open click'у — null fallback;
+deployed 25.05.2026).
+
+**Предыдущая:** v1.5.26 (Landing P1 responsive audit fix:
 reverse v1.4.5 auth-first decision — на ≤900 (tablet/mobile)
 .ec-landing__hero-copy теперь order:1 (headline сразу виден как
 premium product pitch), .ec-landing__hero-stage order:2 (форма ниже

@@ -1,41 +1,55 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Avatar } from "../components/Avatar";
 import { ChannelList } from "../components/ChannelList";
-import { ChannelSettingsModal } from "../components/ChannelSettingsModal";
 import { RichContent } from "../components/RichContent";
-import { CreateServerModal } from "../components/CreateServerModal";
 import { DirectConversationList } from "../components/DirectConversationList";
-import { CreateGroupDmModal, type AvailableUser } from "../components/CreateGroupDmModal";
+import { type AvailableUser } from "../components/CreateGroupDmModal";
 import { GroupAvatar } from "../components/GroupAvatar";
 import { HomeToday } from "../components/HomeToday";
 import { IntelligencePanel } from "../components/IntelligencePanel";
 import { ChannelInfoPanel } from "../components/ChannelInfoPanel";
 import { ChatHeaderHoverButton } from "../components/ChatHeaderHoverButton";
 import { LogoutButton } from "../components/LogoutButton";
-import { ActionItemDrawer } from "../components/ActionItemDrawer";
-import { OperationalTablePanel } from "../components/OperationalTablePanel";
 import { ChannelGlyph } from "../components/icons/ChannelCustomIcons";
 import { useOperationalTables } from "../hooks/useOperationalTables";
 import { MusicMiniPlayer } from "../components/MusicMiniPlayer";
-import { MusicExpandModal } from "../components/MusicExpandModal";
 import { useChannelMusic } from "../hooks/useChannelMusic";
 import { useServerAudioLibrary } from "../hooks/useServerAudioLibrary";
-import { HelpPanel } from "../components/HelpPanel";
-import { AdminPanel } from "../components/AdminPanel";
-import { JoinServerModal } from "../components/JoinServerModal";
 import { MessageInput } from "../components/MessageInput";
 import { MessageList } from "../components/MessageList";
-import { ProfileModal } from "../components/ProfileModal";
-import { PlatformAdminPanel } from "../components/PlatformAdminPanel";
-import { SearchOverlay } from "../components/SearchOverlay";
-import { ServerHubModal } from "../components/ServerHubModal";
-import { CreateTableModal } from "../components/CreateTableModal";
-import { VoiceMusicPicker } from "../components/VoiceMusicPicker";
+
+// v1.5.27 — Bundle split: heavy panels + modals → lazy chunks.
+// Каждое из перечисленных рендерится conditionally (флаги open / выбор канала /
+// selectedId). До v1.5.27 они все жили в AppShell.js (790 KB) — увеличивали
+// первый paint даже когда юзер их никогда не открывал. Теперь Vite splits
+// каждый в свой chunk + загружает только при mount'е. Inner Suspense
+// fallback={null} — не показывает loading state (модалки/панели mount по
+// клику, brief ms-задержка приемлема). Outer Suspense у App.tsx стоял до
+// v1.5.27, но без inner boundaries он триггерил "Загрузка…" для всего
+// AppShell при первом открытии модалки.
+const HelpPanel = lazy(() => import("../components/HelpPanel").then((m) => ({ default: m.HelpPanel })));
+const AdminPanel = lazy(() => import("../components/AdminPanel").then((m) => ({ default: m.AdminPanel })));
+const OperationalTablePanel = lazy(() => import("../components/OperationalTablePanel").then((m) => ({ default: m.OperationalTablePanel })));
+const StatusBoard = lazy(() => import("../components/StatusBoard").then((m) => ({ default: m.StatusBoard })));
+const TeamHealth = lazy(() => import("../components/TeamHealth").then((m) => ({ default: m.TeamHealth })));
+const VoiceRoom = lazy(() => import("../components/VoiceRoom").then((m) => ({ default: m.VoiceRoom })));
+const ThreadPanel = lazy(() => import("../components/ThreadPanel").then((m) => ({ default: m.ThreadPanel })));
+const IncidentPanel = lazy(() => import("../components/IncidentPanel").then((m) => ({ default: m.IncidentPanel })));
+const ActionItemDrawer = lazy(() => import("../components/ActionItemDrawer").then((m) => ({ default: m.ActionItemDrawer })));
+const SearchOverlay = lazy(() => import("../components/SearchOverlay").then((m) => ({ default: m.SearchOverlay })));
+const PlatformAdminPanel = lazy(() => import("../components/PlatformAdminPanel").then((m) => ({ default: m.PlatformAdminPanel })));
+const ServerHubModal = lazy(() => import("../components/ServerHubModal").then((m) => ({ default: m.ServerHubModal })));
+const ChannelSettingsModal = lazy(() => import("../components/ChannelSettingsModal").then((m) => ({ default: m.ChannelSettingsModal })));
+const ProfileModal = lazy(() => import("../components/ProfileModal").then((m) => ({ default: m.ProfileModal })));
+const CreateServerModal = lazy(() => import("../components/CreateServerModal").then((m) => ({ default: m.CreateServerModal })));
+const JoinServerModal = lazy(() => import("../components/JoinServerModal").then((m) => ({ default: m.JoinServerModal })));
+const CreateGroupDmModal = lazy(() => import("../components/CreateGroupDmModal").then((m) => ({ default: m.CreateGroupDmModal })));
+const CreateTableModal = lazy(() => import("../components/CreateTableModal").then((m) => ({ default: m.CreateTableModal })));
+const MusicExpandModal = lazy(() => import("../components/MusicExpandModal").then((m) => ({ default: m.MusicExpandModal })));
+const VoiceMusicPicker = lazy(() => import("../components/VoiceMusicPicker").then((m) => ({ default: m.VoiceMusicPicker })));
 import { SpiderClock } from "../components/SpiderClock";
 import { ServerSwitcher } from "../components/ServerSwitcher";
 import { SinceLastVisitBanner } from "../components/SinceLastVisitBanner";
-import { StatusBoard } from "../components/StatusBoard";
-import { TeamHealth } from "../components/TeamHealth";
 import { ThemeToggle } from "../components/ThemeToggle";
 import { EmptyState } from "../components/EmptyState";
 import { ExpiryBadge } from "../components/ExpiryBadge";
@@ -46,12 +60,9 @@ import {
 } from "../components/EmptyIcons";
 import { StatusMenu } from "../components/StatusMenu";
 import { NetworkWave, Sparkline } from "../components/TelemetryViz";
-import { IncidentPanel } from "../components/IncidentPanel";
-import { ThreadPanel } from "../components/ThreadPanel";
 import { TypingIndicator } from "../components/TypingIndicator";
 import { VoiceMiniBar } from "../components/VoiceMiniBar";
 import { VoicePlaceholder } from "../components/VoicePlaceholder";
-import { VoiceRoom } from "../components/VoiceRoom";
 import { useChannelDigest } from "../hooks/useChannelDigest";
 import { useChannels } from "../hooks/useChannels";
 import { dmIsSaved, dmTitle, useDirectConversations } from "../hooks/useDirectConversations";
@@ -1575,6 +1586,11 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           />
         )}
 
+        {/* v1.5.27 — lazy panel chain wrapped в Suspense. Все ветви ternary
+         * (HelpPanel / AdminPanel / OperationalTablePanel / StatusBoard /
+         *  TeamHealth / VoiceRoom) lazy-loaded — fallback={null} избегает
+         * "Загрузка…" flash из App.tsx outer Suspense. */}
+        <Suspense fallback={null}>
         {helpOpen ? (
           <HelpPanel onClose={() => setHelpOpen(false)} />
         ) : adminOpen && activeServer ? (
@@ -1967,6 +1983,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             )}
           </>
         )}
+        </Suspense>
       </section>
 
       {showRightRail && rightRailCollapsed && !isTabletOrSmaller && (
@@ -1985,6 +2002,10 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
 
       {rightRailVisible && (
         <div className="ec-shell__members">
+          {/* v1.5.27 — right rail trio (Thread/Incident/IntelligencePanel)
+           * под Suspense; ThreadPanel + IncidentPanel lazy, IntelligencePanel
+           * eager (всегда default). */}
+          <Suspense fallback={null}>
           {selectedThreadId ? (
             <ThreadPanel
               rootId={selectedThreadId}
@@ -2032,9 +2053,16 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               }}
             />
           )}
+          </Suspense>
         </div>
       )}
 
+      {/* v1.5.27 — modals section under one outer Suspense.
+       * Все 12 lazy-modal'ов условно рендерятся (по флагам). Они typically
+       * не co-render'ятся одновременно (один open at a time), потому единая
+       * Suspense с fallback={null} даёт чистый UX без визуальных blip'ов.
+       * StatusMenu (line ~2230) — единственный non-lazy, инсайд скоупа OK. */}
+      <Suspense fallback={null}>
       {openActionItemId && (
         <ActionItemDrawer
           actionItemId={openActionItemId}
@@ -2259,6 +2287,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           semanticServerId={activeServerId}
         />
       )}
+      </Suspense>
     </div>
   );
 }
