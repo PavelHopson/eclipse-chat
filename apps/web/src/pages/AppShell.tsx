@@ -1723,6 +1723,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                 onPin={async () => false}
                 onUnpin={async () => false}
                 onToggleReaction={dmToggleReaction}
+                isDm
               />
               <MessageInput
                 channelName={dmTitle(selectedDm, user.id)}

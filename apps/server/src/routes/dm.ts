@@ -868,11 +868,27 @@ export async function registerDmRoutes(app: FastifyInstance) {
       if (m.deletedAt) {
         return reply.status(410).send({ error: "Cannot edit deleted message" });
       }
-      const editedAt = new Date();
-      const updated = await db.message.update({
+      // v1.5.25 — DM edit history. Same pattern как PATCH /api/messages/:id:
+      // snapshot previous content в MessageEdit перед перезаписью, всё в
+      // одной транзакции чтобы UPDATE-fail не оставил orphan snapshot.
+      const current = await db.message.findUnique({
         where: { id: messageId },
-        data: { content: parsed.data.content, editedAt },
+        select: { content: true, editedAt: true, createdAt: true },
       });
+      const editedAt = new Date();
+      const [, updated] = await db.$transaction([
+        db.messageEdit.create({
+          data: {
+            messageId,
+            previousContent: current?.content ?? "",
+            editedAt: current?.editedAt ?? current?.createdAt ?? editedAt,
+          },
+        }),
+        db.message.update({
+          where: { id: messageId },
+          data: { content: parsed.data.content, editedAt },
+        }),
+      ]);
       emitDmMessageUpdated(m.conversationId, {
         messageId,
         conversationId: m.conversationId,
@@ -885,6 +901,49 @@ export async function registerDmRoutes(app: FastifyInstance) {
           content: updated.content,
           editedAt: editedAt.toISOString(),
         },
+      };
+    },
+  );
+
+  /**
+   * v1.5.25 — GET /api/dm/messages/:id/edits — previous content snapshots
+   * для DM сообщения. Participant-only (loadConversationMembers + isMember).
+   * Newest-first. Зеркалит /api/messages/:id/edits но для DM-сообщений.
+   */
+  app.get(
+    "/api/dm/messages/:id/edits",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const me = getUserId(req);
+      const { id: messageId } = req.params as { id: string };
+      if (!me) {
+        return reply.status(401).send({ error: "Unauthorized" });
+      }
+      const m = await db.message.findUnique({
+        where: { id: messageId },
+        select: { id: true, conversationId: true },
+      });
+      if (!m || !m.conversationId) {
+        return reply.status(404).send({ error: "DM message not found" });
+      }
+      const members = await loadConversationMembers(m.conversationId);
+      if (!members) {
+        return reply.status(404).send({ error: "Conversation not found" });
+      }
+      if (!isMember(members, me)) {
+        return reply.status(403).send({ error: "Not a participant" });
+      }
+      const edits = await db.messageEdit.findMany({
+        where: { messageId },
+        orderBy: { editedAt: "desc" },
+        select: { id: true, previousContent: true, editedAt: true },
+      });
+      return {
+        edits: edits.map((e) => ({
+          id: e.id,
+          previousContent: e.previousContent,
+          editedAt: e.editedAt.toISOString(),
+        })),
       };
     },
   );

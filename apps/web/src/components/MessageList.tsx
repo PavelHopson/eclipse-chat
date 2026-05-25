@@ -48,6 +48,9 @@ type Props = {
   onOpenThread?: (messageId: string) => void;
   /** v0.61: запустить shared listening для audio attachment'а. */
   onPlayShared?: (attachmentId: string) => void | Promise<void>;
+  /** v1.5.25 — DM context. Переключает useMessageEditHistory на
+   *  /api/dm/messages/:id/edits endpoint (participant-only check). */
+  isDm?: boolean;
 };
 
 // v1.1.92 slice 3: inline-style консоли MessageList вынесены в классы
@@ -160,13 +163,14 @@ export function MessageList({
   onToggleActionStatus,
   onOpenThread,
   onPlayShared,
+  isDm = false,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   // v1.5.24 — какое сообщение сейчас раскрыло «История правок» accordion.
   const [editHistoryId, setEditHistoryId] = useState<string | null>(null);
-  const editHistory = useMessageEditHistory(editHistoryId, editHistoryId !== null);
+  const editHistory = useMessageEditHistory(editHistoryId, editHistoryId !== null, isDm);
   const [editDraft, setEditDraft] = useState("");
   const [pickerFor, setPickerFor] = useState<{ messageId: string; rect: DOMRect } | null>(null);
   const [isAtBottom, setIsAtBottom] = useState(true);

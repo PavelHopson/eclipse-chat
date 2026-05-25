@@ -5,7 +5,16 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.24** (Message edit history: new MessageEdit
+**Текущая версия:** **v1.5.25** (DM edit history extend: PATCH
+/api/dm/messages/:id обёрнут в $transaction со snapshot'ом в
+MessageEdit (та же таблица, schema-less changes); new GET
+/api/dm/messages/:id/edits с participant-only check через
+loadConversationMembers + isMember; useMessageEditHistory принимает
+isDm флаг → переключает endpoint; MessageList prop isDm forward'ит;
+AppShell DM mount передаёт isDm. Accordion UI идентичен; deployed
+25.05.2026).
+
+**Предыдущая:** v1.5.24 (Message edit history: new MessageEdit
 model + migration, PATCH сохраняет snapshot в транзакции, new
 GET /api/messages/:id/edits endpoint, useMessageEditHistory hook,
 MessageList «(изменено)» button → inline accordion с timeline
