@@ -688,6 +688,145 @@
   text-align: center;
 }
 
+/* v1.5.14 — Аудиотека сервера (server audio library) в expand modal.
+ * Cinematic frame с accent border + scrollable list. Каждая строка —
+ * trackmeta + actions / badges (играет / в очереди). */
+.ec-player-library {
+  margin-top: 10px;
+  padding: 10px 12px 12px;
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 20%, var(--ec-border-default));
+  border-radius: var(--ec-radius-md);
+  background:
+    radial-gradient(140% 90% at 0% 0%, hsl(258 86% 55% / 0.06), transparent 55%),
+    hsl(216 24% 9% / 0.55);
+}
+.ec-player-library__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.ec-player-library__label {
+  font-family: var(--ec-font-mono, ui-monospace, monospace);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ec-accent);
+}
+.ec-player-library__list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 280px;
+  overflow-y: auto;
+  list-style: none;
+  margin: 0;
+  padding: 0 4px 0 0;
+  scrollbar-color: hsl(225 14% 72% / 0.20) transparent;
+}
+.ec-player-library-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: var(--ec-radius-sm);
+  transition:
+    background var(--ec-dur-fast) var(--ec-ease),
+    transform var(--ec-dur-fast) var(--ec-ease-out);
+}
+.ec-player-library-row:hover {
+  background: color-mix(in srgb, var(--ec-accent) 8%, transparent);
+  transform: translateX(2px);
+}
+.ec-player-library-row--current {
+  background: var(--ec-accent-soft);
+}
+.ec-player-library-row--current::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 24%;
+  bottom: 24%;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--ec-accent);
+  box-shadow: 0 0 8px var(--ec-accent);
+}
+.ec-player-library-row__meta {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.ec-player-library-row__name {
+  font-size: var(--ec-text-sm);
+  font-weight: 600;
+  color: var(--ec-text-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ec-player-library-row--current .ec-player-library-row__name {
+  color: var(--ec-accent);
+}
+.ec-player-library-row__sub {
+  font-family: var(--ec-font-mono, ui-monospace, monospace);
+  font-size: 0.62rem;
+  letter-spacing: 0.04em;
+  color: var(--ec-text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ec-player-library-row__badge {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: var(--ec-radius-full);
+  background: var(--ec-surface-2);
+  border: 1px solid var(--ec-border-subtle);
+  color: var(--ec-text-dim);
+  font-family: var(--ec-font-mono, ui-monospace, monospace);
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.ec-player-library-row__badge--current {
+  background: var(--ec-accent-soft);
+  border-color: var(--ec-border-accent);
+  color: var(--ec-accent);
+}
+.ec-player-library-row__actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-player-library-row:hover .ec-player-library-row__actions,
+.ec-player-library-row:focus-within .ec-player-library-row__actions {
+  opacity: 1;
+}
+.ec-icon-btn--sm {
+  width: 22px;
+  height: 22px;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.ec-player-library__empty {
+  margin: 12px 0 0;
+  padding: 14px 12px;
+  text-align: center;
+  color: var(--ec-text-dim);
+  font-size: var(--ec-text-sm);
+  border: 1px dashed var(--ec-border-default);
+  border-radius: var(--ec-radius-md);
+}
+
 /* ===== Video player ========================================= */
 .ec-video-player {
   position: relative;

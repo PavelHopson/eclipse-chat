@@ -25,15 +25,34 @@ const LIVE_BARS = 64;
  * Для видео-трека (watch-party) — синхро-<video> + MediaScrubber.
  */
 
+/** v1.5.14 — server audio library entry (subset of useServerAudioLibrary). */
+export type LibraryTrack = {
+  id: string;
+  filename: string;
+  channel: { id: string; name: string };
+  uploader: { id: string; displayName: string };
+};
+
 type Props = {
   session: MusicSession;
   derivedPositionMs: number;
   currentUserId: string;
+  /** v1.5.14 — все audio attachments сервера (для playlist section).
+   *  Empty array если ещё не loaded или сервер не имеет треков. */
+  library?: LibraryTrack[];
+  libraryLoading?: boolean;
   onClose: () => void;
   onTogglePlayPause: () => void | Promise<void>;
   onSkip: () => void | Promise<void>;
   onSeek: (positionMs: number) => void | Promise<void>;
   onStop: () => void | Promise<void>;
+  /** v1.5.14 — click трека из library: replace current + clear queue. */
+  onStartTrack?: (attachmentId: string) => void | Promise<void>;
+  /** v1.5.14 — добавить трек в очередь без замены current. */
+  onAddToQueue?: (attachmentId: string) => void | Promise<void>;
+  /** v1.5.14 — проиграть весь library / выборку: first = current,
+   *  rest replace queue. */
+  onStartPlaylist?: (attachmentIds: string[]) => void | Promise<void>;
 };
 
 function formatClock(ms: number): string {
@@ -47,12 +66,21 @@ export function MusicExpandModal({
   session,
   derivedPositionMs,
   currentUserId,
+  library,
+  libraryLoading,
   onClose,
   onTogglePlayPause,
   onSkip,
   onSeek,
   onStop,
+  onStartTrack,
+  onAddToQueue,
+  onStartPlaylist,
 }: Props) {
+  // v1.5.14 — отслеживаем какие треки сейчас в queue для UI badge'ев.
+  const queuedIds = new Set(session.queue);
+  const currentId = session.currentTrack?.id;
+  const tracksTotal = library?.length ?? 0;
   const track = session.currentTrack;
   // v1.1.87 — watch-party: видео-трек в той же синхро-сессии.
   const isVideoTrack = !!track && track.mimeType.startsWith("video/");
@@ -431,6 +459,95 @@ export function MusicExpandModal({
             </svg>
           </button>
         </div>
+
+        {/* v1.5.14 — Аудиотека сервера: всё audio из чатов в одном
+            плейлисте. Click — play. Plus — добавить в очередь. «Все» —
+            проигрывать подряд (replace queue). */}
+        {library && library.length > 0 && (
+          <div className="ec-player-library">
+            <div className="ec-player-library__header">
+              <span className="ec-player-library__label">
+                Аудиотека · {tracksTotal} {tracksTotal === 1 ? "трек" : tracksTotal < 5 ? "трека" : "треков"}
+              </span>
+              {onStartPlaylist && (
+                <button
+                  type="button"
+                  className="ec-btn ec-btn--primary ec-btn--sm"
+                  onClick={() => {
+                    const ids = library.map((t) => t.id);
+                    void onStartPlaylist(ids);
+                  }}
+                  title="Запустить все треки подряд (заменит очередь)"
+                >
+                  ▶ Проиграть все
+                </button>
+              )}
+            </div>
+            <ul className="ec-player-library__list">
+              {library.map((t) => {
+                const isCurrent = currentId === t.id;
+                const isQueued = queuedIds.has(t.id);
+                return (
+                  <li
+                    key={t.id}
+                    className={
+                      "ec-player-library-row" +
+                      (isCurrent ? " ec-player-library-row--current" : "")
+                    }
+                  >
+                    <div className="ec-player-library-row__meta">
+                      <span className="ec-player-library-row__name" title={t.filename}>
+                        {t.filename}
+                      </span>
+                      <span className="ec-player-library-row__sub">
+                        #{t.channel.name} · {t.uploader.displayName}
+                      </span>
+                    </div>
+                    {isCurrent ? (
+                      <span className="ec-player-library-row__badge ec-player-library-row__badge--current">
+                        играет
+                      </span>
+                    ) : isQueued ? (
+                      <span className="ec-player-library-row__badge">
+                        в очереди
+                      </span>
+                    ) : (
+                      <div className="ec-player-library-row__actions">
+                        {onAddToQueue && (
+                          <button
+                            type="button"
+                            className="ec-icon-btn ec-icon-btn--sm"
+                            onClick={() => void onAddToQueue(t.id)}
+                            title="В очередь"
+                            aria-label="Добавить в очередь"
+                          >
+                            +
+                          </button>
+                        )}
+                        {onStartTrack && (
+                          <button
+                            type="button"
+                            className="ec-icon-btn ec-icon-btn--sm"
+                            onClick={() => void onStartTrack(t.id)}
+                            title="Воспроизвести"
+                            aria-label="Воспроизвести"
+                          >
+                            ▶
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
+        {library && library.length === 0 && !libraryLoading && (
+          <p className="ec-player-library__empty">
+            В этом пространстве пока нет аудиофайлов в чатах.
+          </p>
+        )}
 
         {/* Очередь — список ближайших треков, «следующий» подсвечен. */}
         {queueTracks.length > 0 && (

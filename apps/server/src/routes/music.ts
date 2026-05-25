@@ -35,6 +35,13 @@ const queueBody = z.object({
   attachmentId: z.string().min(1),
 });
 
+// v1.5.14 — bulk playlist start: первый трек становится current, остальные
+// идут в queue (replace existing). Используется для «проиграть все» из
+// server audio library — один запрос вместо N+1.
+const playlistBody = z.object({
+  attachmentIds: z.array(z.string().min(1)).min(1).max(200),
+});
+
 const seekBody = z.object({
   positionMs: z.number().int().min(0),
 });
@@ -357,6 +364,80 @@ export async function registerMusicRoutes(app: FastifyInstance) {
           positionMs: 0,
           isPlaying: true,
           queue: "[]",
+          hostUserId: userId,
+        },
+        include: sessionInclude,
+      });
+      const payload = serializeSession(session);
+      emitMusicSessionUpdated(channelId, payload);
+      return { session: payload };
+    },
+  );
+
+  /**
+   * v1.5.14 — POST playlist — массовая постановка плейлиста: первый
+   * attachment стартует немедленно, остальные replace'ят queue. Атомарно
+   * в одном запросе. Source: server audio library в music room.
+   * Только caller становится host (как и /start). Битые attachmentIds
+   * (404, не из этого server'а) фильтруются tихо — берём что валидно.
+   */
+  app.post(
+    "/api/channels/:id/music/playlist",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const userId = getUserId(req);
+      if (!userId) return reply.status(401).send({ error: "Unauthorized" });
+      const { id: channelId } = req.params as { id: string };
+      const parsed = playlistBody.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.status(400).send({ error: "Invalid body" });
+      }
+      const ctx = await loadChannelMembership(userId, channelId);
+      if ("error" in ctx) {
+        return reply.status(ctx.error === "Channel not found" ? 404 : 403).send({
+          error: ctx.error,
+        });
+      }
+      // Validate каждый id (одна группа findMany, дешевле чем по одному):
+      // attachment должен принадлежать сообщению канала того же сервера.
+      const candidates = await db.attachment.findMany({
+        where: {
+          id: { in: parsed.data.attachmentIds },
+          mimeType: { startsWith: "audio/" },
+          message: { channel: { serverId: ctx.channel.serverId } },
+        },
+        select: { id: true },
+      });
+      const validSet = new Set(candidates.map((c) => c.id));
+      // Сохраняем порядок из request'а (validSet может содержать subset).
+      const orderedValid = parsed.data.attachmentIds.filter((id) =>
+        validSet.has(id),
+      );
+      if (orderedValid.length === 0) {
+        return reply.status(400).send({
+          error: "Ни один из переданных треков недоступен в этом пространстве",
+        });
+      }
+      const firstId = orderedValid[0];
+      const restIds = orderedValid.slice(1);
+      const now = new Date();
+      const session = await db.musicSession.upsert({
+        where: { channelId },
+        update: {
+          currentTrackAttachmentId: firstId,
+          startedAt: now,
+          positionMs: 0,
+          isPlaying: true,
+          hostUserId: userId,
+          queue: JSON.stringify(restIds),
+        },
+        create: {
+          channelId,
+          currentTrackAttachmentId: firstId,
+          startedAt: now,
+          positionMs: 0,
+          isPlaying: true,
+          queue: JSON.stringify(restIds),
           hostUserId: userId,
         },
         include: sessionInclude,

@@ -25,6 +25,9 @@ import {
 type Props = {
   session: MusicSession;
   derivedPositionMs: number;
+  /** v1.5.14 — host advances queue automatically on track end (avoid
+   *  permission 403 storm если не-host listeners тоже вызывают). */
+  isHost: boolean;
   onTogglePlayPause: () => void | Promise<void>;
   onSkip: () => void | Promise<void>;
   onSeek: (positionMs: number) => void | Promise<void>;
@@ -49,6 +52,7 @@ function formatTime(ms: number, durationMs?: number): string {
 export function MusicMiniPlayer({
   session,
   derivedPositionMs,
+  isHost,
   onTogglePlayPause,
   onSkip,
   onSeek,
@@ -307,6 +311,16 @@ export function MusicMiniPlayer({
           let end = 0;
           for (let i = 0; i < b.length; i++) end = Math.max(end, b.end(i));
           setBufferedMs(end * 1000);
+        }}
+        onEnded={() => {
+          // v1.5.14 — auto-advance к следующему треку. Только host
+          // вызывает backend skip (избегаем 403-storm от non-host
+          // listeners — все они тоже видят ended почти одновременно).
+          // Если queue пуст — backend дропает session и эмитит null,
+          // socket update приведёт всех в idle.
+          if (isHost) {
+            void onSkip();
+          }
         }}
         preload="metadata"
         style={{ display: "none" }}

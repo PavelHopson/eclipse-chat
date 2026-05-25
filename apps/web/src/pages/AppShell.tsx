@@ -19,6 +19,7 @@ import { useOperationalTables } from "../hooks/useOperationalTables";
 import { MusicMiniPlayer } from "../components/MusicMiniPlayer";
 import { MusicExpandModal } from "../components/MusicExpandModal";
 import { useChannelMusic } from "../hooks/useChannelMusic";
+import { useServerAudioLibrary } from "../hooks/useServerAudioLibrary";
 import { HelpPanel } from "../components/HelpPanel";
 import { AdminPanel } from "../components/AdminPanel";
 import { JoinServerModal } from "../components/JoinServerModal";
@@ -239,6 +240,12 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   // v0.61 shared listening room. Scoped per selected TEXT/BROADCAST channel —
   // в VOICE сессии не активны (backend отвергнёт).
   const music = useChannelMusic(selectedChannelId, socket);
+  // v1.5.14 — server-wide audio library для music room playlist (все audio
+  // attachments в каналах сервера, member-only). Fetch только когда modal
+  // open'нется и есть active session — иначе бесполезный network call.
+  const musicLibrary = useServerAudioLibrary(
+    showMusicExpand && music.session ? activeServerId : null,
+  );
   const inDmMode = activeServerId === null;
   const selectedDm = dmConversations.find((c) => c.id === selectedDmId) ?? null;
   const {
@@ -1335,6 +1342,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                 <MusicMiniPlayer
                   session={music.session}
                   derivedPositionMs={music.derivedPositionMs}
+                  isHost={music.session.host.id === user.id}
                   onTogglePlayPause={() => void music.togglePlayPause()}
                   onSkip={() => void music.skip()}
                   onSeek={(ms) => void music.seek(ms)}
@@ -2063,11 +2071,16 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           session={music.session}
           derivedPositionMs={music.derivedPositionMs}
           currentUserId={user.id}
+          library={musicLibrary.tracks}
+          libraryLoading={musicLibrary.loading}
           onClose={() => setShowMusicExpand(false)}
           onTogglePlayPause={() => void music.togglePlayPause()}
           onSkip={() => void music.skip()}
           onSeek={(ms) => void music.seek(ms)}
           onStop={() => void music.stop()}
+          onStartTrack={(id) => void music.start(id)}
+          onAddToQueue={(id) => void music.addToQueue(id)}
+          onStartPlaylist={(ids) => void music.startPlaylist(ids)}
         />
       )}
 

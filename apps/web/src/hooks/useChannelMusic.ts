@@ -223,6 +223,32 @@ export function useChannelMusic(channelId: string | null, socket: Socket | null)
     [channelId],
   );
 
+  /** v1.5.14 — bulk playlist start. Первый attachmentId сразу играет
+   *  (becomes current track), остальные REPLACE'ят queue. Caller —
+   *  host. Используется в music room для «играть все» из server audio
+   *  library. */
+  const startPlaylist = useCallback(
+    async (attachmentIds: string[]): Promise<boolean> => {
+      if (!channelId || attachmentIds.length === 0) return false;
+      try {
+        const data = await apiJson<{ session: MusicSession }>(
+          `/api/channels/${encodeURIComponent(channelId)}/music/playlist`,
+          {
+            method: "POST",
+            body: JSON.stringify({ attachmentIds }),
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+        setSession(data.session);
+        return true;
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Не удалось запустить плейлист");
+        return false;
+      }
+    },
+    [channelId],
+  );
+
   return {
     session,
     loading,
@@ -235,5 +261,6 @@ export function useChannelMusic(channelId: string | null, socket: Socket | null)
     seek,
     stop,
     addToQueue,
+    startPlaylist,
   };
 }

@@ -5,12 +5,12 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.13** (waveform wave-flow animation —
-музыкальный плеер: каждый bar получает continuous idle wave breath с
-staggered per-bar delay = propagating wave illusion; live ripple zone
-сохраняется для playback'а; deeper fallback sine peaks; deployed
-25.05.2026). **Tagged milestone:** v1.6.0 (`69a08bb`, design polish
-milestone после chain v1.5.3 → v1.5.12 — 10 версий, 25+ surfaces).
+**Текущая версия:** **v1.5.14** (shared music room: auto-advance fix
++ server-wide audio library + playlist UI с «Проиграть все»; критичный
+bug onEnded не вызывал skip — следующий трек не запускался; backend
+GET /servers/:id/audio-library + POST /channels/:id/music/playlist;
+deployed 25.05.2026). **Tagged milestone:** v1.6.0 (`69a08bb`, design
+polish milestone после chain v1.5.3 → v1.5.12 — 10 версий, 25+ surfaces).
 
 **v1.3.4** (historical, pre-pivot — premium SaaS pivot per Pavel verdict
 24.05.2026: v1.3.x ушло слишком abstract/archival/minimal — возврат
@@ -162,7 +162,81 @@ security-art)).
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.5.13:**
+**Изменения v1.1.25 → v1.5.14:**
+
+- **v1.5.14** — **shared music room: auto-advance + server-wide playlist**
+  (25.05.2026). Pavel «следующий трек не включается, надо чтобы в
+  комнате создавался плейлист из всех треков, которые в чатах сервера
+  и в комнате можно было все включать в плейлисте и переключать».
+  Серьёзная feature (не CSS pass) — расширение voice-room shared
+  listening.
+  - **Auto-advance fix (critical bug)**: `<audio>` в MusicMiniPlayer
+    не слушал `onEnded` event — поэтому когда трек заканчивался,
+    backend не получал skip, следующий из queue не запускался.
+    Новый `isHost: boolean` prop через AppShell (`music.session.host.id
+    === user.id`); только host вызывает `onSkip()` на ended (избегаем
+    403 storm от non-host listeners — каждый клиент тоже видит ended
+    почти одновременно). Если queue пуст — backend дропает session +
+    эмитит null, socket update приводит всех в idle.
+  - **Backend new endpoint** `GET /api/servers/:id/audio-library`
+    (`apps/server/src/routes/servers.ts`): member-only, limit 200,
+    sort by createdAt desc. Возвращает все audio attachments в каналах
+    сервера (с фильтром `internal: false` для CLIENT-mode + role MEMBER),
+    с привязкой к channel + uploader. `waveformPeaks` (Prisma Json
+    column) сериализуется как `number[] | null` через `Array.isArray`
+    guard.
+  - **Backend new endpoint** `POST /api/channels/:id/music/playlist`
+    (`apps/server/src/routes/music.ts`): bulk-set плейлиста. Body
+    `{ attachmentIds: string[] }` (zod, max 200). Первый attachment
+    → current track (host берёт control), остальные → REPLACE queue
+    (атомарный upsert в одной DB транзакции). Battery filter — `findMany`
+    одной группой проверяет что каждый id audio + принадлежит серверу;
+    битые id фильтруются молча, сохраняется порядок из request'а.
+    Эффективнее N+1 запросов через старый /queue endpoint.
+  - **Frontend new hook** `useServerAudioLibrary(serverId)` (`apps/web/
+    src/hooks/useServerAudioLibrary.ts`): загружает library, caches
+    в state. Refetch при serverId change. В AppShell hook
+    активируется ТОЛЬКО когда modal open + music.session есть —
+    избегаем бесполезный fetch на idle.
+  - **Frontend hook extension** `useChannelMusic`: новый
+    `startPlaylist(ids: string[])` callback → POST /music/playlist.
+  - **MusicExpandModal playlist section** (`apps/web/src/components/
+    MusicExpandModal.tsx`): новые props `library: LibraryTrack[]`,
+    `libraryLoading`, `onStartTrack(id)`, `onAddToQueue(id)`,
+    `onStartPlaylist(ids[])`. UI: header «Аудиотека · N треков» +
+    «▶ Проиграть все» CTA в правом углу (вызывает onStartPlaylist
+    со всеми ids). Per-row layout: filename + `#channel · uploader`
+    sub-text + actions (▶ play / + queue) скрыты до hover + badge
+    states (`играет` для current track, `в очереди` для tracks уже
+    в queue). Current track row подсвечен accent-soft + accent left
+    rail. Empty state «В этом пространстве пока нет аудиофайлов».
+  - **CSS** (`apps/web/src/styles/player.css`): новый блок
+    `.ec-player-library*` — accent-tinted container, scrollable list
+    max-h 280px, row hover bg + translateX(2px), current row с accent
+    left rail `::before`, badge styles (current accent vs queued grey),
+    actions opacity 0 → 1 on hover, новый `.ec-icon-btn--sm` modifier
+    22×22px для compact playlist buttons.
+  - **AppShell wire**: `useServerAudioLibrary(showMusicExpand &&
+    music.session ? activeServerId : null)` (conditional fetch), все
+    handlers wired в `<MusicExpandModal>` invocation.
+  - **prefers-reduced-motion**: existing scroll transition уже
+    respect'ит RM (используется var(--ec-dur-fast) который sets to
+    1ms в RM-блоке).
+  - **Files**: `apps/web/src/components/MusicMiniPlayer.tsx`
+    (`isHost` prop + onEnded handler), `apps/web/src/components/
+    MusicExpandModal.tsx` (props + library section + helpers),
+    `apps/web/src/hooks/useChannelMusic.ts` (startPlaylist),
+    `apps/web/src/hooks/useServerAudioLibrary.ts` (новый),
+    `apps/web/src/pages/AppShell.tsx` (import + hook + props wire),
+    `apps/web/src/styles/player.css` (.ec-player-library*),
+    `apps/server/src/routes/servers.ts` (audio-library endpoint),
+    `apps/server/src/routes/music.ts` (playlist endpoint + zod schema),
+    + 3 version bump files + ROADMAP.md.
+  - **Bundle**: CSS 305.93 → 308.87 KB (+2.94 / +0.37 gzip);
+    JS 1046.65 → 1049.84 KB (+3.19 / +0.77 gzip — new playlist UI +
+    hook + handlers + types).
+  - **Tests**: tsc clean (после 2 type narrow fixes — `msg.channel`
+    null guard через flatMap), vite build OK.
 
 - **v1.5.13** — **waveform wave-flow animation** (25.05.2026). Pavel
   прислал screenshot текущего audio плеера: «давай в музыкальном плеере

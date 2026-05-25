@@ -716,6 +716,87 @@ export async function registerServerRoutes(app: FastifyInstance) {
     return { channels };
   });
 
+  /**
+   * v1.5.14 — GET /api/servers/:id/audio-library — список всех audio
+   * attachments в каналах сервера (member-only). Возвращается с
+   * привязкой к channel и автору сообщения; sorted by createdAt desc.
+   * Limit hard-capped 200 (UI scroll, не миллион records). Для
+   * формирования shared-playlist'а в music room.
+   */
+  app.get(
+    "/api/servers/:id/audio-library",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const { id: serverId } = req.params as { id: string };
+      const me = await loadMember(req, reply, serverId);
+      if (!me) return reply;
+      const server = await db.server.findUnique({
+        where: { id: serverId },
+        select: { mode: true },
+      });
+      const hideInternal = server?.mode === "CLIENT" && me.role === "MEMBER";
+      const tracks = await db.attachment.findMany({
+        where: {
+          mimeType: { startsWith: "audio/" },
+          message: {
+            channel: {
+              serverId,
+              ...(hideInternal ? { internal: false } : {}),
+            },
+            deletedAt: null,
+          },
+        },
+        select: {
+          id: true,
+          filename: true,
+          mimeType: true,
+          url: true,
+          thumbnailUrl: true,
+          size: true,
+          waveformPeaks: true,
+          createdAt: true,
+          message: {
+            select: {
+              id: true,
+              channelId: true,
+              channel: { select: { id: true, name: true } },
+              user: {
+                select: { id: true, displayName: true, avatar: true },
+              },
+            },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 200,
+      });
+      return {
+        tracks: tracks.flatMap((t) => {
+          const msg = t.message;
+          if (msg == null || msg.channel == null) return [];
+          return [
+            {
+              id: t.id,
+              filename: t.filename,
+              mimeType: t.mimeType,
+              url: t.url,
+              thumbnailUrl: t.thumbnailUrl,
+              size: t.size,
+              waveformPeaks: Array.isArray(t.waveformPeaks)
+                ? (t.waveformPeaks as number[])
+                : null,
+              createdAt: t.createdAt.toISOString(),
+              channel: {
+                id: msg.channel.id,
+                name: msg.channel.name,
+              },
+              uploader: msg.user,
+            },
+          ];
+        }),
+      };
+    },
+  );
+
   /** POST /api/servers/:id/channels — создать канал в сервере (любой member). */
   app.post("/api/servers/:id/channels", { onRequest: [requireJwt] }, async (req, reply) => {
     const { id: serverId } = req.params as { id: string };
