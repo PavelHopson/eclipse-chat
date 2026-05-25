@@ -437,24 +437,32 @@ input[type="radio"]:focus-visible {
   transform: translateX(2px) scale(0.99);
 }
 .ec-channel-item--active {
+  /* v1.5.11 — stronger active state: violet → cyan gradient (90deg)
+   * + accent border 24% + inner highlight + outer violet halo. */
   background:
-    linear-gradient(90deg, hsl(258 90% 66% / 0.15), hsl(214 28% 14% / 0.76) 42%, hsl(214 28% 12% / 0.72));
+    linear-gradient(90deg, hsl(258 90% 66% / 0.20), hsl(180 70% 55% / 0.06) 30%, hsl(214 28% 12% / 0.74) 70%);
   color: var(--ec-text-strong);
-  border-color: hsl(258 90% 66% / 0.18);
+  border-color: hsl(258 90% 66% / 0.24);
   box-shadow:
-    inset 0 1px 0 hsl(0 0% 100% / 0.04),
-    0 0 22px hsl(258 90% 66% / 0.06);
+    inset 0 1px 0 hsl(0 0% 100% / 0.06),
+    0 0 28px -4px hsl(258 90% 66% / 0.12),
+    0 4px 14px -8px hsl(258 86% 35% / 0.45);
 }
 .ec-channel-item--active::before {
   content: "";
   width: 3px;
-  height: 16px;
+  /* v1.5.11 — taller accent rail (16 → 22px), brighter halo (0.55 → 0.75),
+   * + accent-mine breath из motion.css (4.2s subtle box-shadow oscillation). */
+  height: 22px;
   background: var(--ec-accent);
   border-radius: var(--ec-radius-full);
-  box-shadow: 0 0 14px hsl(258 90% 66% / 0.55);
+  box-shadow:
+    0 0 16px hsl(258 90% 66% / 0.75),
+    0 0 6px hsl(45 100% 70% / 0.35);
   margin-left: -8px;
-  margin-right: 5px;
+  margin-right: 6px;
   flex-shrink: 0;
+  animation: ec-channel-rail-breath 4.4s ease-in-out infinite;
 }
 
 .ec-channel-glyph {
@@ -985,12 +993,35 @@ input[type="radio"]:focus-visible {
 .ec-chat-header {
   position: relative;
   overflow: hidden;
+  /* v1.5.11 — triple-layer background: radial violet aura at left
+   * + radial cyan at right + base depth. Top holo rail (cyan→violet)
+   * через ::before — единый design language с modal-header/popover. */
   background:
-    linear-gradient(180deg, hsl(216 24% 7% / 0.82), hsl(216 24% 5% / 0.72));
+    radial-gradient(120% 80% at 0% 0%, hsl(258 86% 55% / 0.08), transparent 50%),
+    radial-gradient(110% 70% at 100% 100%, hsl(180 70% 55% / 0.05), transparent 45%),
+    linear-gradient(180deg, hsl(216 24% 7% / 0.84), hsl(216 24% 5% / 0.74));
   backdrop-filter: blur(18px) saturate(130%);
   -webkit-backdrop-filter: blur(18px) saturate(130%);
-  border-bottom-color: hsl(225 14% 72% / 0.08);
-  box-shadow: 0 16px 38px hsl(210 70% 2% / 0.18);
+  border-bottom-color: color-mix(in srgb, var(--ec-accent) 12%, hsl(225 14% 72% / 0.08));
+  box-shadow:
+    0 16px 38px hsl(210 70% 2% / 0.22),
+    inset 0 -1px 0 hsl(258 86% 62% / 0.06);
+}
+/* v1.5.11 — top accent rail (cyan→violet bridge gradient, static). */
+.ec-chat-header::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    hsl(180 70% 65% / 0.35) 30%,
+    hsl(258 86% 72% / 0.55) 55%,
+    hsl(258 70% 60% / 0.25) 75%,
+    transparent 100%
+  );
+  pointer-events: none;
 }
 
 .ec-shell__chat {
@@ -2432,6 +2463,9 @@ input[type="radio"]:focus-visible {
 .ec-chat-title__glyph {
   color: var(--ec-accent);
   margin-top: 1px;
+  /* v1.5.11 — subtle accent drop-shadow для visual weight glyph'а
+   * (#hash или voice-icon рядом с названием канала). */
+  filter: drop-shadow(0 0 6px hsl(258 86% 62% / 0.40));
 }
 
 /* ============================================================

@@ -431,6 +431,9 @@ html[data-ec-theme="solar"] .ec-voice-room {
     transform 260ms var(--ec-ease-out),
     background var(--ec-dur-base) var(--ec-ease),
     box-shadow var(--ec-dur-base) var(--ec-ease);
+  /* v1.5.11 — continuous knob breath (4s, subtle). Подтверждает что
+   * eclipse-knob — живой UI-element, не статичный декор. */
+  animation: ec-theme-knob-breath 4s ease-in-out infinite;
 }
 
 .ec-theme-toggle__eclipse {
@@ -455,6 +458,8 @@ html[data-ec-theme="solar"] .ec-voice-room {
   box-shadow:
     0 0 0 1px hsl(42 96% 82% / 0.8),
     0 0 16px hsl(42 96% 62% / 0.58);
+  /* v1.5.11 — SOLAR override: warmer gold breath */
+  animation: ec-theme-knob-breath-solar 4s ease-in-out infinite;
 }
 
 /* v1.5.10 — deadline signal premium polish. Базовая pill cинхронизирована

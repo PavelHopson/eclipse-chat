@@ -155,13 +155,49 @@ security-art)).
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.5.10:**
+**Изменения v1.1.25 → v1.5.11:**
 
 > Roadmap entries для v1.4.0 → v1.5.2 ещё не дописаны (большой
 > design pass: v1.4.0 wow-pass milestone tag, v1.4.5 audit fixes,
 > v1.5.0 section deep polish milestone tag, v1.5.1 Home dashboard,
 > v1.5.2 AppShell combo). v1.5.3 идёт ниже — следующий chat surface
 > slice. Catch-up по v1.4-v1.5.2 — отдельной сессией.
+
+- **v1.5.11** — **trio polish: ChatHeader + ChannelList active + ThemeToggle knob**
+  (25.05.2026). После прохождения «по списку» effects (#5/#7/#11/#15
+  все уже applied в существующей кодовой базе — handoff был outdated),
+  Pavel «продолжай». Batch trio из daily-visible micro-surfaces.
+  - **ChatHeader** (`.ec-chat-header`): triple-layer bg — radial violet
+    0%/0% (8%) + radial cyan 100%/100% (5%) + base depth linear-gradient
+    (was: single linear-gradient). Border-bottom accent-tinted (12% mix).
+    Box-shadow ramped + inset accent baseline. Top accent rail `::before`
+    (cyan→violet bridge, static — единый design language с modal-header
+    / popover-surface / composer-box). `.ec-chat-title__glyph` получил
+    accent drop-shadow `0 0 6px / 0.40` (#hash / voice-icon weight).
+  - **ChannelList active item** (`.ec-channel-item--active`):
+    - Background: 90deg violet 15% → 20% mix + cyan bridge 6% middle
+      stop (deeper, more visible active state).
+    - Border 18% → 24% accent mix.
+    - Box-shadow: `0 0 28px -4px / 12%` outer halo + `0 4px 14px -8px
+      hsl(258 86% 35% / 0.45)` violet depth shadow.
+    - **Rail** (`::before`): 16 → 22px tall, halo `0 0 14 → 16px /
+      55% → 75%` + secondary gold `0 0 6px / 35%`. Новый
+      `ec-channel-rail-breath` 4.4s — box-shadow oscillates violet
+      16→24px / 75→95% и gold 6→10px / 35→55%.
+  - **ThemeToggle** (`.ec-theme-toggle__knob`): continuous 4s breath
+    (`ec-theme-knob-breath` для VOID violet eclipse, `-solar` variant
+    для SOLAR gold sun). Knob теперь чувствуется как живой eclipse-shape,
+    не плоский switch.
+  - **prefers-reduced-motion**: `ec-channel-item--active::before` +
+    `ec-theme-toggle__knob` добавлены в RM-блок.
+  - **Files**: `apps/web/src/styles/components.css` (ChatHeader rewrite
+    + top rail ::before + glyph drop-shadow + ChannelList active rewrite
+    + rail breath wire), `apps/web/src/styles/effects.css` (ThemeToggle
+    knob 2 animation hooks), `apps/web/src/styles/motion.css` (3 new
+    keyframes + RM extend).
+  - **Bundle**: CSS 303.17 → 304.41 KB (+1.24 / +0.22 gzip);
+    JS unchanged (1046.52 / 277.02). Pure CSS pass.
+  - **Tests**: tsc clean, vite build 4.69s OK.
 
 - **v1.5.10** — **DeadlineSignal premium polish** (effect #5 applied,
   25.05.2026). Pavel «делаем дальше по списку» — следующий пункт

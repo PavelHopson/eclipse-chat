@@ -161,6 +161,48 @@
   to   { transform: rotate(360deg); }
 }
 
+/* v1.5.11 — active channel rail breath. Subtle box-shadow ramps —
+ * подтверждает «вы здесь» без отвлечения. */
+@keyframes ec-channel-rail-breath {
+  0%, 100% {
+    box-shadow:
+      0 0 16px hsl(258 90% 66% / 0.75),
+      0 0 6px hsl(45 100% 70% / 0.35);
+  }
+  50% {
+    box-shadow:
+      0 0 24px hsl(258 90% 66% / 0.95),
+      0 0 10px hsl(45 100% 70% / 0.55);
+  }
+}
+
+/* v1.5.11 — theme toggle knob continuous inner light. VOID — violet,
+ * SOLAR — gold. Подтверждает «alive» eclipse-knob, не плоский декор. */
+@keyframes ec-theme-knob-breath {
+  0%, 100% {
+    box-shadow:
+      0 0 0 1px hsl(258 84% 78% / 0.42),
+      0 0 12px hsl(258 80% 62% / 0.30);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px hsl(258 84% 78% / 0.56),
+      0 0 18px hsl(258 80% 62% / 0.50);
+  }
+}
+@keyframes ec-theme-knob-breath-solar {
+  0%, 100% {
+    box-shadow:
+      0 0 0 1px hsl(42 96% 82% / 0.80),
+      0 0 16px hsl(42 96% 62% / 0.58);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px hsl(42 96% 82% / 0.95),
+      0 0 22px hsl(42 96% 62% / 0.78);
+  }
+}
+
 /* v1.5.8 — composer send button continuous breath (когда canSend=true).
  * Subtle box-shadow + brightness осцилляция; не отвлекает но «оживляет»
  * primary action. */
@@ -968,7 +1010,9 @@
   .ec-empty-state,
   .ec-empty-state__icon,
   .ec-empty-state__icon::after,
-  .ec-composer-send:not(:disabled) {
+  .ec-composer-send:not(:disabled),
+  .ec-channel-item--active::before,
+  .ec-theme-toggle__knob {
     animation: none !important;
   }
   .ec-search-hit::before,
