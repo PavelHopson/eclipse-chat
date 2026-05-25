@@ -3700,6 +3700,9 @@ input[type="radio"]:focus-visible {
 }
 /* РЎС‚СЂРѕРєР° СѓС‡Р°СЃС‚РЅРёРєР° вЂ” СЃРїРѕРєРѕР№РЅС‹Р№ hover-tint (Р±РµР· РїРѕРґСЉС‘РјР°, СЂРѕРІРЅРѕРµ
    СЃРєР°РЅРёСЂРѕРІР°РЅРёРµ СЃРїРёСЃРєР°); DM-РєРЅРѕРїРєР° РїСЂРѕСЏРІР»СЏРµС‚СЃСЏ РЅР° hover/focus. */
+/* v1.5.12 — MemberList row premium polish. Единый язык с DM row /
+ * search-hit / popover-item / srv-menu-row: accent left rail на hover,
+ * translateX, avatar halo + scale, online presence breath. */
 .ec-member-row {
   display: grid;
   grid-template-columns: auto 1fr auto auto;
@@ -3710,13 +3713,51 @@ input[type="radio"]:focus-visible {
   font-size: var(--ec-text-sm);
   color: var(--ec-text);
   position: relative;
-  transition: background var(--ec-dur-fast) var(--ec-ease);
+  transition:
+    background var(--ec-dur-fast) var(--ec-ease),
+    transform var(--ec-dur-fast) var(--ec-ease-out),
+    box-shadow var(--ec-dur-fast) var(--ec-ease);
 }
-.ec-member-row:hover { background: var(--ec-surface-2); }
+/* Accent left rail: появляется на hover (scaleY 0→1 + opacity 0→1). */
+.ec-member-row::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 22%;
+  bottom: 22%;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--ec-accent);
+  transform: scaleY(0);
+  opacity: 0;
+  transition:
+    transform var(--ec-dur-base) var(--ec-ease-out),
+    opacity var(--ec-dur-fast) var(--ec-ease);
+  pointer-events: none;
+}
+.ec-member-row:hover {
+  background: color-mix(in srgb, var(--ec-accent) 8%, transparent);
+  transform: translateX(2px);
+  box-shadow: 0 4px 14px -8px hsl(258 86% 50% / 0.40);
+}
+.ec-member-row:hover::before,
+.ec-member-row:focus-within::before {
+  transform: scaleY(1);
+  opacity: 1;
+}
 .ec-member-row__avatar {
   position: relative;
   display: inline-block;
   flex-shrink: 0;
+  border-radius: 50%;
+  transition:
+    transform var(--ec-dur-fast) var(--ec-ease-out),
+    box-shadow var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-member-row:hover .ec-member-row__avatar,
+.ec-member-row:focus-within .ec-member-row__avatar {
+  transform: scale(1.04);
+  box-shadow: 0 0 18px -4px var(--ec-accent-soft);
 }
 .ec-member-row__presence {
   position: absolute;
@@ -3726,6 +3767,13 @@ input[type="radio"]:focus-visible {
   height: 10px;
   border-radius: var(--ec-radius-full);
   border: 2px solid var(--ec-surface-1);
+  /* v1.5.12 — online presence dot subtle breath. Offline (--ec-text-dim
+   * background или нет background'а) — нет breath, так как не animated
+   * targets отдельно. Online users чувствуются «alive». */
+  transition: box-shadow var(--ec-dur-base) var(--ec-ease);
+}
+.ec-member-row:not(.ec-member-row--offline) .ec-member-row__presence {
+  animation: ec-presence-pulse 3.6s ease-in-out infinite;
 }
 .ec-member-row__name {
   overflow: hidden;
@@ -3748,18 +3796,25 @@ input[type="radio"]:focus-visible {
   color: var(--ec-accent);
   cursor: pointer;
   opacity: 0;
+  transform: translateX(4px);
   transition:
     opacity var(--ec-dur-fast) var(--ec-ease),
     background var(--ec-dur-fast) var(--ec-ease),
-    transform var(--ec-dur-fast) var(--ec-ease);
+    border-color var(--ec-dur-fast) var(--ec-ease),
+    transform var(--ec-dur-fast) var(--ec-ease-out),
+    box-shadow var(--ec-dur-fast) var(--ec-ease);
 }
 .ec-member-row:hover .ec-member-row__dm,
 .ec-member-row:focus-within .ec-member-row__dm {
   opacity: 1;
+  /* v1.5.12 — DM button въезжает справа на hover вместо instant opacity. */
+  transform: translateX(0);
 }
 .ec-member-row__dm:hover {
   background: var(--ec-accent-soft);
-  transform: translateY(-1px);
+  border-color: var(--ec-border-accent);
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 14px -6px hsl(258 86% 50% / 0.55);
 }
 .ec-member-row__dm:active {
   transform: translateY(0) scale(0.9);

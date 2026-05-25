@@ -155,13 +155,47 @@ security-art)).
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.5.11:**
+**Изменения v1.1.25 → v1.5.12:**
 
 > Roadmap entries для v1.4.0 → v1.5.2 ещё не дописаны (большой
 > design pass: v1.4.0 wow-pass milestone tag, v1.4.5 audit fixes,
 > v1.5.0 section deep polish milestone tag, v1.5.1 Home dashboard,
 > v1.5.2 AppShell combo). v1.5.3 идёт ниже — следующий chat surface
 > slice. Catch-up по v1.4-v1.5.2 — отдельной сессией.
+
+- **v1.5.12** — **MemberList row premium polish** (25.05.2026). Pavel
+  «продолжаем». Right-rail member roster был единственным sidebar
+  list'ом ещё не полированным (DM list v1.5.2, channel list v1.5.11,
+  search hits v1.5.7, popover items v1.5.7, srv menu rows v1.5.7
+  — все имели accent left rail + translateX + bg accent-mix).
+  Member row выровнен под этот язык.
+  - **Row** (`.ec-member-row`): новый `::before` accent rail (2px,
+    scaleY 0→1 + opacity 0→1 transition). На hover/focus-within
+    background → `color-mix(in srgb, var(--ec-accent) 8%, transparent)`,
+    `translateX(2px)`, halo `0 4px 14px -8px hsl(258 86% 50% / 0.40)`.
+  - **Avatar** (`.ec-member-row__avatar`): `border-radius: 50%` для
+    halo, на hover row scale(1.04) + soft accent halo
+    `0 0 18px -4px var(--ec-accent-soft)`. Тот же паттерн что
+    `.ec-msg-avatar-wrap` (message stream v1.5.3) — единый avatar
+    behavior.
+  - **Presence dot** (`.ec-member-row__presence`): online users
+    (`:not(.ec-member-row--offline) .ec-member-row__presence`)
+    получают continuous `ec-presence-pulse` 3.6s — green halo
+    box-shadow ramp 6→10px / 55→85%. Подтверждает «alive» статус;
+    offline остаётся плоской.
+  - **DM button** (`.ec-member-row__dm`): теперь въезжает справа
+    (`translateX(4px)` idle → `translateX(0)` на hover row, вместо
+    мгновенного opacity 0→1). Hover button — `translateY(-1px)`
+    с !important (overriding row's translateX scope) + accent border
+    + `0 4px 14px -6px / 0.55` halo.
+  - **prefers-reduced-motion**: presence-pulse + member-row::before
+    transition добавлены в RM-блок.
+  - **Files**: `apps/web/src/styles/components.css` (member-row +
+    avatar + presence + dm-btn rewrites), `apps/web/src/styles/
+    motion.css` (RM extend).
+  - **Bundle**: CSS 304.41 → 305.76 KB (+1.35 / +0.07 gzip);
+    JS unchanged. Pure CSS pass.
+  - **Tests**: tsc clean, vite build OK.
 
 - **v1.5.11** — **trio polish: ChatHeader + ChannelList active + ThemeToggle knob**
   (25.05.2026). После прохождения «по списку» effects (#5/#7/#11/#15

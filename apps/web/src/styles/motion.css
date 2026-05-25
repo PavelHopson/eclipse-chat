@@ -1012,12 +1012,14 @@
   .ec-empty-state__icon::after,
   .ec-composer-send:not(:disabled),
   .ec-channel-item--active::before,
-  .ec-theme-toggle__knob {
+  .ec-theme-toggle__knob,
+  .ec-member-row:not(.ec-member-row--offline) .ec-member-row__presence {
     animation: none !important;
   }
   .ec-search-hit::before,
   .ec-popover-item::before,
-  .ec-srv-menu-row::before {
+  .ec-srv-menu-row::before,
+  .ec-member-row::before {
     transition: none !important;
   }
   .ec-dot--online           { animation: none !important; }
