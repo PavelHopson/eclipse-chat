@@ -57,17 +57,22 @@ const TRUST_ITEMS = [
 
 const HERO_CHIPS = ["Self-hosted", "Encrypted", "AI Memory", "Real-time"] as const;
 
+/* v1.4.5 audit fix P2 — security copy more precise. Раньше «end-to-end
+ * шифрование» / «шифрование на всех уровнях» overstated — messages в
+ * Prisma plain `String content`, e2e не реализовано. Реально есть:
+ * TLS-транспорт (HTTPS/WSS), AES-256-GCM для секретов/интеграций,
+ * RBAC + 2FA для доступа, self-hosted control. */
 const SECURITY_BULLETS = [
   "Self-hosted и on-premise сценарии без чужого облака.",
-  "Контроль доступа и роли живут в вашем внутреннем регламенте.",
-  "Резервное копирование и восстановление остаются внутри вашей среды.",
-  "Логи и наблюдаемость встраиваются в вашу инфраструктуру.",
+  "TLS-транспорт для HTTP, WebSocket и медиа-каналов.",
+  "AES-256-GCM для секретов, токенов и интеграций.",
+  "RBAC + 2FA + ваши backup-регламенты для доступа и восстановления.",
 ] as const;
 
 const SECURITY_ATTESTATIONS = [
-  { title: "Данные защищены", value: "шифрование слоев" },
-  { title: "Доступ контролируется", value: "роли и 2FA" },
-  { title: "Инфраструктура принадлежит вам" },
+  { title: "Транспорт", value: "TLS · WSS" },
+  { title: "Секреты", value: "AES-256-GCM" },
+  { title: "Доступ", value: "RBAC + 2FA" },
 ] as const;
 
 const FOOTER_COLS: Array<{

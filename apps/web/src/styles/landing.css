@@ -119,12 +119,15 @@
 }
 
 /* === Nav === */
+/* v1.4.5 audit fix P1 — desktop nav was 160px, hero 860px, frame max
+ * 480px → auth-frame обрезался на 1440x1000 (frame ends y=1053).
+ * Squeezed nav 160→104px, hero 860→640px, padding 60→32px. */
 .ec-landing__nav {
-  min-height: 160px;
+  min-height: 104px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 24px 0;
+  padding: 16px 0;
   border-bottom: 1px solid var(--L-line-2);
 }
 /* v1.3.7 — brand logo PNG (Pavel'я logo 24.05.2026). Image содержит crescent
@@ -137,52 +140,49 @@
   color: inherit;
 }
 .ec-landing__brand-logo {
-  height: 140px;
+  height: 80px;
   width: auto;
   display: block;
   user-select: none;
   filter: brightness(1.2) contrast(1.15)
-    drop-shadow(0 0 22px rgba(93, 181, 217, 0.5));
+    drop-shadow(0 0 18px rgba(93, 181, 217, 0.5));
   transition:
     filter var(--L-dur-fast) var(--L-ease-out),
     transform var(--L-dur-fast) var(--L-ease-out);
 }
 .ec-landing__brand:hover .ec-landing__brand-logo {
   filter: brightness(1.3) contrast(1.2)
-    drop-shadow(0 0 36px rgba(93, 181, 217, 0.75));
+    drop-shadow(0 0 28px rgba(93, 181, 217, 0.75));
   transform: scale(1.02);
 }
 .ec-landing__footer-brand .ec-landing__brand-logo {
-  height: 96px;
+  height: 64px;
 }
 @media (max-width: 1200px) {
-  .ec-landing__nav {
-    min-height: 140px;
-  }
   .ec-landing__brand-logo {
-    height: 120px;
+    height: 72px;
   }
 }
 @media (max-width: 980px) {
   .ec-landing__nav {
-    min-height: 120px;
+    min-height: 88px;
   }
   .ec-landing__brand-logo {
-    height: 100px;
+    height: 64px;
   }
   .ec-landing__footer-brand .ec-landing__brand-logo {
-    height: 80px;
+    height: 56px;
   }
 }
 @media (max-width: 700px) {
   .ec-landing__nav {
-    min-height: 92px;
+    min-height: 76px;
   }
   .ec-landing__brand-logo {
-    height: 72px;
+    height: 56px;
   }
   .ec-landing__footer-brand .ec-landing__brand-logo {
-    height: 64px;
+    height: 50px;
   }
 }
 .ec-landing__nav-links {
@@ -288,13 +288,13 @@
 
 /* === Hero === */
 .ec-landing__hero {
-  min-height: 860px;
+  min-height: 640px;
   display: grid;
   grid-template-columns: 0.95fr 1.15fr;
-  gap: 46px;
+  gap: 40px;
   align-items: center;
   position: relative;
-  padding: 60px 0 80px;
+  padding: 32px 0 60px;
 }
 /* v1.4.0 — hero cursor trail canvas overlay (pointer-events: none) */
 .ec-landing__hero-trail {
@@ -451,11 +451,11 @@
 .ec-hero-access__frame {
   position: relative;
   width: 100%;
-  max-width: 480px;
+  max-width: 440px;
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  padding: 36px 36px 22px;
+  gap: 18px;
+  padding: 28px 28px 18px;
   border-radius: 16px;
   background:
     linear-gradient(180deg, rgba(11, 22, 32, 0.94), rgba(3, 8, 13, 0.96));
@@ -1289,9 +1289,12 @@
   gap: 90px;
   align-items: center;
 }
+/* v1.4.5 audit fix P2 — overflow:hidden чтобы orbit--two (470px) не
+ * вылезал за viewport (390px mobile). */
 .ec-memory-map {
   height: 380px;
   position: relative;
+  overflow: hidden;
 }
 .ec-memory-map__core {
   position: absolute;
@@ -1599,23 +1602,26 @@
   .ec-landing__hero {
     grid-template-columns: 1fr;
     min-height: auto;
-    padding: 70px 0;
-    gap: 40px;
+    padding: 24px 0 56px;
+    gap: 28px;
   }
   .ec-landing__hero::before {
-    width: 430px;
-    height: 430px;
-    right: -180px;
-    top: 120px;
+    width: 360px;
+    height: 360px;
+    right: -120px;
+    top: -40px;
   }
-  .ec-landing__hero-stage { order: 2; }
+  /* v1.4.5 audit fix P1 — mobile auth FIRST (interactive объект сразу
+   * виден). copy идёт под формой как secondary content. */
+  .ec-landing__hero-copy { order: 2; }
+  .ec-landing__hero-stage { order: 1; }
   .ec-hero-access {
     min-height: auto;
   }
   .ec-hero-access__frame {
     max-width: 100%;
-    padding: 28px 22px 20px;
-    gap: 22px;
+    padding: 24px 20px 16px;
+    gap: 16px;
   }
   .ec-landing__section-grid,
   .ec-landing__memory-grid,

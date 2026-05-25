@@ -167,8 +167,8 @@ export function SecurityStorySection({
             <span className="ec-landing__h2-accent">ваш контроль.</span>
           </h2>
           <p className="ec-landing__body">
-            Self-hosted архитектура. Шифрование на всех уровнях. Никаких облаков
-            без вашего разрешения.
+            Self-hosted архитектура. TLS-транспорт, AES-256-GCM для секретов
+            и 2FA для доступа. Без чужих облаков.
           </p>
           <ul className="ec-landing__security-bullets">
             {bullets.map((bullet) => (
