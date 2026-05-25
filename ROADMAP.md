@@ -5,7 +5,17 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.25** (DM edit history extend: PATCH
+**Текущая версия:** **v1.5.26** (Landing P1 responsive audit fix:
+reverse v1.4.5 auth-first decision — на ≤900 (tablet/mobile)
+.ec-landing__hero-copy теперь order:1 (headline сразу виден как
+premium product pitch), .ec-landing__hero-stage order:2 (форма ниже
+как secondary CTA); halo сдвинут вниз так чтобы верх arc лежал ниже
+навбара — top:120/right:-160 на ≤900 + top:80/right:-180/280×280
+на ≤560. Top nav CTA «Запустить контур» больше не пересекается с
+eclipse arc на 390px. Scope: scoped в apps/web/src/styles/landing.css
+(cyan zone), product UI не тронут; deployed 25.05.2026).
+
+**Предыдущая:** v1.5.25 (DM edit history extend: PATCH
 /api/dm/messages/:id обёрнут в $transaction со snapshot'ом в
 MessageEdit (та же таблица, schema-less changes); new GET
 /api/dm/messages/:id/edits с participant-only check через

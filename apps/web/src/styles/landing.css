@@ -1825,13 +1825,18 @@
   .ec-landing__hero::before {
     width: 360px;
     height: 360px;
-    right: -120px;
-    top: -40px;
+    right: -160px;
+    /* v1.5.26 — halo arc was passing across the top nav CTA на 768/390.
+     * Сдвинут вниз так, чтобы верх кольца лежал НИЖЕ навбара (≥88 на
+     * ≤980 / 76 на ≤700) — arc больше не пересекает «Запустить контур». */
+    top: 120px;
   }
-  /* v1.4.5 audit fix P1 — mobile auth FIRST (interactive объект сразу
-   * виден). copy идёт под формой как secondary content. */
-  .ec-landing__hero-copy { order: 2; }
-  .ec-landing__hero-stage { order: 1; }
+  /* v1.5.26 — premium landing audit (Pavel verdict): headline FIRST
+   * (главный pitch продукта сразу виден), форма ниже как secondary CTA.
+   * Это reverses v1.4.5 решение auth-first — на narrow первый экран
+   * выглядел как login-page, не product landing. */
+  .ec-landing__hero-copy { order: 1; }
+  .ec-landing__hero-stage { order: 2; }
   .ec-hero-access {
     min-height: auto;
   }
@@ -1866,6 +1871,13 @@
   .ec-landing__hero { padding: 40px 0; }
   .ec-landing__hero-title { font-size: 38px; line-height: 0.92; letter-spacing: -0.05em; }
   .ec-landing__final h2 { font-size: 36px; }
+  /* v1.5.26 — на 390px halo меньше + дальше off-screen, top ниже nav (64). */
+  .ec-landing__hero::before {
+    width: 280px;
+    height: 280px;
+    right: -180px;
+    top: 80px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
