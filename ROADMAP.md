@@ -155,13 +155,63 @@ security-art)).
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.5.4:**
+**Изменения v1.1.25 → v1.5.5:**
 
 > Roadmap entries для v1.4.0 → v1.5.2 ещё не дописаны (большой
 > design pass: v1.4.0 wow-pass milestone tag, v1.4.5 audit fixes,
 > v1.5.0 section deep polish milestone tag, v1.5.1 Home dashboard,
 > v1.5.2 AppShell combo). v1.5.3 идёт ниже — следующий chat surface
 > slice. Catch-up по v1.4-v1.5.2 — отдельной сессией.
+
+- **v1.5.5** — **modal motion choreography pass** (25.05.2026). Pavel
+  «продолжаем разработку и доработку дизайна» — pick из открытых
+  направлений: централизованный visual polish base `Modal.tsx` +
+  `.ec-modal-*` CSS. Все 14+ модалок (ChannelSettings, CreateChannel,
+  CreateServer, JoinServer, Profile, TwoFactorSetup, MusicExpand,
+  VoiceSettings, ServerHub, PlatformUserDetails, etc.) наследуют от
+  базы — single-edit-wide-impact.
+  - **Backdrop**: вместо плоского `rgba(0,0,0,0.55)` теперь double-layer:
+    `radial-gradient` violet aura at center (10% → 4% → transparent) +
+    base darkness 58%. Blur 8→10px. Анимация — новый `ec-modal-backdrop-in`
+    keyframe (opacity 0→1 + blur 0→10px, fade-in feel «свет собирается»).
+  - **Modal-box zoom**: keyframe `ec-modal-zoom-in` обогащён 3D
+    perspective(1200px) + `rotateX(2.4deg → 0)` для лёгкого Y-tilt'а
+    («окно поднимается»). Дополнительно ramp по `drop-shadow`: на 60%
+    keyframe — max accent halo `0 18px 38px hsl(258 86% 55% / 0.22)`,
+    оседает в финальный `0 14px 28px / 0.14`.
+  - **Modal-box surface**: добавлена 1px accent-tinted border
+    (`color-mix(in srgb, var(--ec-accent) 22%, default)`) + inset 1px
+    holo line `hsl(258 86% 62% / 0.10)` + большой fall-shadow
+    `0 30px 70px -22px hsl(258 86% 35% / 0.45)`. Дают «парящее» окно
+    с накопленным violet glow вокруг.
+  - **Header holo-edge sweep**: override `.ec-modal-header.ec-holo-edge::before`
+    — 1px cyan baseline сохраняется, поверх него layered linear-gradient
+    с peak `hsl(180 70% 75%) → hsl(258 86% 75%)` (cyan→violet bridge),
+    background-size 220% + animation `ec-modal-holo-sweep` 1.6s ease-out
+    delay 120ms (single pass после backdrop'а). Линия «оживает» один
+    раз при открытии модалки.
+  - **Close button** (`.ec-modal-close`): hover → accent color +
+    accent-soft background + `0 0 14px -4px hsl(258 86% 62% / 0.55)`
+    glow + `rotate(90deg)` (X становится + при hover'е). Active —
+    `rotate(90deg) scale(0.92)`. focus-visible — accent outline.
+  - **Footer mirror**: добавлен симметричный 1px hairline `::before`
+    (transparent → cyan 0.22 → violet 0.18 → transparent), без анимации.
+    Сохраняет visual rhythm — header sweep + footer baseline = paired
+    accent rails.
+  - **prefers-reduced-motion**: `ec-anim-modal-zoom`, `ec-anim-modal-backdrop`,
+    `.ec-modal-header.ec-holo-edge::before` все в RM-блоке — все анимации
+    через `animation: none !important`. Статичная картинка остаётся
+    читабельной.
+  - **Files**: `apps/web/src/styles/motion.css` (2 keyframes +
+    `.ec-anim-modal-backdrop` utility + RM extend), `apps/web/src/styles/
+    components.css` (`.ec-modal-backdrop` rewrite, `.ec-modal-box` border
+    + shadow + transform-origin, `.ec-modal-header.ec-holo-edge::before`
+    override, `.ec-modal-close` polish, `.ec-modal-footer::before` mirror).
+    `Modal.tsx` НЕ тронут — все улучшения через CSS селекторы.
+  - **Bundle**: CSS 282.55 → 284.74 KB (+2.19 KB / +0.45 gzip);
+    JS unchanged (1047 KB / 276.97 gzip) — pure CSS pass.
+  - **Tests**: tsc clean, vite build 7.21s OK. Vitest skip (registry
+    ECONNRESET); CI Validate отработает.
 
 - **v1.5.4** — **topbar AI agent button** (25.05.2026). Pavel verdict
   «продолжаем» — next small fast win из открытых направлений: violet

@@ -3410,21 +3410,39 @@
   align-items: center;
   justify-content: center;
   padding: var(--ec-space-4);
-  background: rgba(0, 0, 0, 0.55);
-  backdrop-filter: saturate(140%) blur(8px);
-  -webkit-backdrop-filter: saturate(140%) blur(8px);
-  animation: ec-fade-in var(--ec-dur-base) var(--ec-ease) both;
+  /* v1.5.5 — двойной слой: violet aura at center + base darkness.
+   * Aura не съедает читаемость модалки (низкая opacity), но добавляет
+   * cinematic depth — модалка «висит в свете», а не в чёрной пустоте. */
+  background:
+    radial-gradient(
+      ellipse at center,
+      hsl(258 86% 55% / 0.10) 0%,
+      hsl(258 86% 30% / 0.04) 30%,
+      transparent 65%
+    ),
+    rgba(0, 0, 0, 0.58);
+  backdrop-filter: saturate(140%) blur(10px);
+  -webkit-backdrop-filter: saturate(140%) blur(10px);
+  animation: ec-modal-backdrop-in var(--ec-dur-base) var(--ec-ease) both;
 }
 .ec-modal-box {
+  /* v1.5.5 — premium choreography. Perspective контейнер задаётся через
+   * keyframe; transform-origin наверх для естественного «raise»-feel. */
+  position: relative;
   display: flex;
   flex-direction: column;
   max-height: min(calc(100dvh - 64px), 92vh);
   overflow: hidden;
   background: var(--ec-overlay-bg);
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 22%, var(--ec-border-default));
   border-radius: var(--ec-radius-lg);
-  box-shadow: var(--ec-shadow-modal);
+  box-shadow:
+    var(--ec-shadow-modal),
+    0 0 0 1px hsl(258 86% 62% / 0.10) inset,
+    0 30px 70px -22px hsl(258 86% 35% / 0.45);
   backdrop-filter: saturate(180%) blur(20px);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
+  transform-origin: center top;
   animation: ec-modal-zoom-in var(--ec-dur-base) var(--ec-ease-out) both;
 }
 .ec-modal-header {
@@ -3433,6 +3451,49 @@
   justify-content: space-between;
   padding: var(--ec-space-4) var(--ec-space-5);
   border-bottom: 1px solid var(--ec-border-subtle);
+}
+
+/* v1.5.5 — modal-header holo-edge: override 1px cyan baseline на
+ * cyan→violet gradient + однопроходной sweep при открытии модалки. */
+.ec-modal-header.ec-holo-edge::before {
+  height: 1px;
+  background:
+    linear-gradient(
+      90deg,
+      transparent 0%,
+      hsl(180 70% 65% / 0.0) 30%,
+      hsl(180 70% 75% / 0.95) 48%,
+      hsl(258 86% 75% / 0.95) 52%,
+      hsl(258 70% 60% / 0.0) 70%,
+      transparent 100%
+    ),
+    var(--ec-holo-cyan);
+  background-size: 220% 100%, 100% 100%;
+  background-repeat: no-repeat;
+  background-position: -120% 0, 0 0;
+  animation: ec-modal-holo-sweep 1.6s ease-out 120ms both;
+}
+
+/* v1.5.5 — close button polish: hover halo + X rotate */
+.ec-modal-close {
+  transition:
+    color var(--ec-dur-fast) var(--ec-ease),
+    background var(--ec-dur-fast) var(--ec-ease),
+    transform var(--ec-dur-fast) var(--ec-ease-out),
+    box-shadow var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-modal-close:hover {
+  color: var(--ec-accent);
+  background: var(--ec-accent-soft);
+  box-shadow: 0 0 14px -4px hsl(258 86% 62% / 0.55);
+  transform: rotate(90deg);
+}
+.ec-modal-close:active {
+  transform: rotate(90deg) scale(0.92);
+}
+.ec-modal-close:focus-visible {
+  outline: 2px solid hsl(258 86% 62% / 0.6);
+  outline-offset: 2px;
 }
 .ec-modal-title {
   margin: 0;
@@ -3555,12 +3616,33 @@
   }
 }
 .ec-modal-footer {
+  position: relative;
   display: flex;
   gap: var(--ec-space-2);
   justify-content: flex-end;
   padding: var(--ec-space-3) var(--ec-space-5);
   border-top: 1px solid var(--ec-border-subtle);
   background: var(--ec-surface-1);
+}
+
+/* v1.5.5 — mirror тонкой accent линии у footer (без анимации, в
+ * pair с holo-edge у header). Сохраняет visual rhythm overlay'я. */
+.ec-modal-footer::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    hsl(258 86% 62% / 0.18) 30%,
+    hsl(180 70% 65% / 0.22) 50%,
+    hsl(258 86% 62% / 0.18) 70%,
+    transparent 100%
+  );
 }
 
 /* --- ChannelInfoPanel (РІС‹РµР·Р¶Р°РµС‚ РёР· chat-header) -------------- */
