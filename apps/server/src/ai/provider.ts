@@ -117,36 +117,80 @@ type ProviderConfig = {
   name: string;
   baseUrl: string;
   apiKey: string;
-  model: string;
+  /** v1.5.18 — поддержка нескольких моделей одного провайдера.
+   * First model trie'д первым; на 429/5xx — fallback к следующей model
+   * в array'е перед тем как уйти на следующий provider. */
+  models: string[];
   /** Дополнительный header для OpenRouter rankings. */
   extraHeaders?: Record<string, string>;
 };
+
+/** v1.5.18 — utility для парсинга CSV список моделей из env. Trim'ит
+ *  пустоты, dedupes, пропускает пустые строки. Если CSV пуст/не задан
+ *  → возвращает [fallback]. */
+function parseModels(envValue: string | undefined, fallback: string): string[] {
+  if (!envValue) return [fallback];
+  const list = envValue
+    .split(",")
+    .map((m) => m.trim())
+    .filter((m) => m.length > 0);
+  // Dedupe сохраняя порядок.
+  const seen = new Set<string>();
+  const dedup: string[] = [];
+  for (const m of list) {
+    if (!seen.has(m)) {
+      seen.add(m);
+      dedup.push(m);
+    }
+  }
+  return dedup.length > 0 ? dedup : [fallback];
+}
 
 function getProviders(): ProviderConfig[] {
   const out: ProviderConfig[] = [];
 
   // 1. Ollama (локальный) — приоритет. Без API key.
-  //    Включается если задан OLLAMA_BASE_URL ИЛИ OLLAMA_MODEL (значит admin
-  //    осознанно настроил локальный runtime).
+  //    Включается если задан OLLAMA_BASE_URL ИЛИ OLLAMA_MODEL.
+  //    OLLAMA_MODELS (CSV) — несколько моделей с auto-fallback.
   const ollamaUrl = process.env.OLLAMA_BASE_URL?.trim();
-  const ollamaModel = process.env.OLLAMA_MODEL?.trim();
-  if (ollamaUrl || ollamaModel) {
+  const ollamaModelEnv = process.env.OLLAMA_MODEL?.trim();
+  const ollamaModelsEnv = process.env.OLLAMA_MODELS?.trim();
+  if (ollamaUrl || ollamaModelEnv || ollamaModelsEnv) {
     out.push({
       name: "ollama",
       baseUrl: ollamaUrl ?? "http://localhost:11434/v1",
       apiKey: "ollama", // dummy, Ollama игнорирует
-      model: ollamaModel ?? "qwen2.5:7b",
+      models: parseModels(ollamaModelsEnv ?? ollamaModelEnv, "qwen2.5:7b"),
     });
   }
 
   // 2. OpenRouter — free tier DeepSeek/Qwen/Llama.
+  //    v1.5.18 — OPENROUTER_MODELS (CSV) расширяет single OPENROUTER_MODEL —
+  //    при 429 на одной модели идём дальше по списку до paid fallback.
+  //    Default chain: DeepSeek → Llama 3.3 → Qwen 2.5 (все :free).
   const orKey = process.env.OPENROUTER_API_KEY?.trim();
   if (orKey) {
+    const defaultChain = [
+      "deepseek/deepseek-chat-v3.1:free",
+      "meta-llama/llama-3.3-70b-instruct:free",
+      "qwen/qwen-2.5-72b-instruct:free",
+    ].join(",");
     out.push({
       name: "openrouter",
       baseUrl: "https://openrouter.ai/api/v1",
       apiKey: orKey,
-      model: process.env.OPENROUTER_MODEL ?? "deepseek/deepseek-chat-v3.1:free",
+      models: parseModels(
+        process.env.OPENROUTER_MODELS ?? process.env.OPENROUTER_MODEL,
+        // Fallback при пустом env — первая модель из default chain;
+        // дальше chain не разворачивается (single fallback). При CSV/
+        // OPENROUTER_MODELS — берём весь список.
+        defaultChain.split(",")[0],
+      ).concat(
+        // Если env не задан вообще — extend chain'ом по дефолту.
+        process.env.OPENROUTER_MODELS || process.env.OPENROUTER_MODEL
+          ? []
+          : defaultChain.split(",").slice(1),
+      ),
       extraHeaders: {
         "HTTP-Referer": "https://app.star-crm.ru/eclipse-chat/",
         "X-Title": "Eclipse Chat",
@@ -154,15 +198,17 @@ function getProviders(): ProviderConfig[] {
     });
   }
 
-  // 3. NVIDIA Build — 95 free моделей (Qwen, GLM, DeepSeek, Kimi, Gemma, Mistral).
-  //    OpenAI-compatible на https://integrate.api.nvidia.com/v1.
+  // 3. NVIDIA Build — 95 free моделей.
   const nvKey = process.env.NVIDIA_API_KEY?.trim();
   if (nvKey) {
     out.push({
       name: "nvidia",
       baseUrl: "https://integrate.api.nvidia.com/v1",
       apiKey: nvKey,
-      model: process.env.NVIDIA_MODEL ?? "qwen/qwen2.5-coder-32b-instruct",
+      models: parseModels(
+        process.env.NVIDIA_MODELS ?? process.env.NVIDIA_MODEL,
+        "qwen/qwen2.5-coder-32b-instruct",
+      ),
     });
   }
 
@@ -173,7 +219,10 @@ function getProviders(): ProviderConfig[] {
       name: "openai",
       baseUrl: "https://api.openai.com/v1",
       apiKey: oaiKey,
-      model: process.env.OPENAI_MODEL ?? "gpt-4o-mini",
+      models: parseModels(
+        process.env.OPENAI_MODELS ?? process.env.OPENAI_MODEL,
+        "gpt-4o-mini",
+      ),
     });
   }
   return out;
@@ -187,22 +236,31 @@ export function isAiConfigured(): boolean {
 // для override (например, 120000 если запускаешь 32B model на слабом железе).
 const DEFAULT_TIMEOUT_MS = Number(process.env.AI_TIMEOUT_MS) || 60_000;
 
-async function callProvider(
+type ChatOpts = {
+  temperature?: number;
+  maxTokens?: number;
+  tools?: ChatToolSpec[];
+  toolChoice?: "auto" | "none" | "required";
+};
+
+/**
+ * v1.5.18 — единичный вызов конкретной (provider × model) пары.
+ * Бросает AIProviderError на не-2xx с status кодом. Caller'ы наверху
+ * решают: retry с backoff (429/5xx), пропустить (4xx other), fallback
+ * на следующую модель/провайдера.
+ */
+async function callProviderModel(
   cfg: ProviderConfig,
+  model: string,
   messages: ChatMessage[],
-  opts: {
-    temperature?: number;
-    maxTokens?: number;
-    tools?: ChatToolSpec[];
-    toolChoice?: "auto" | "none" | "required";
-  },
+  opts: ChatOpts,
 ): Promise<ChatResult> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
   const started = Date.now();
   try {
     const body: Record<string, unknown> = {
-      model: cfg.model,
+      model,
       messages,
       temperature: opts.temperature ?? 0.4,
       max_tokens: opts.maxTokens ?? 600,
@@ -232,7 +290,7 @@ async function callProvider(
       throw new AIProviderError(
         cfg.name,
         res.status,
-        `${cfg.name} ${res.status}: ${errText.slice(0, 200) || "no body"}`,
+        `${cfg.name}/${model} ${res.status}: ${errText.slice(0, 200) || "no body"}`,
       );
     }
     const json = (await res.json()) as {
@@ -264,7 +322,7 @@ async function callProvider(
     return {
       text,
       toolCalls,
-      model: json.model ?? cfg.model,
+      model: json.model ?? model,
       provider: cfg.name,
       latencyMs: Date.now() - started,
       promptTokens: json.usage?.prompt_tokens,
@@ -273,6 +331,86 @@ async function callProvider(
   } finally {
     clearTimeout(timer);
   }
+}
+
+/** Sleep helper (Promise wrapper над setTimeout). */
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * v1.5.18 — retry-aware wrapper над callProviderModel:
+ * - 429 (rate limit) → exponential backoff 500/1500/4000ms, 3 attempts max.
+ * - 5xx (server) → single retry after 1000ms.
+ * - Прочие ошибки (4xx auth/bad request, network, timeout) → fail immediately.
+ *
+ * Если все retry'и упали — throws AIProviderError. Caller (outer chat())
+ * пробует следующую model в array'е или следующий provider.
+ */
+const BACKOFF_DELAYS_MS = [500, 1500, 4000];
+
+async function callWithRetry(
+  cfg: ProviderConfig,
+  model: string,
+  messages: ChatMessage[],
+  opts: ChatOpts,
+): Promise<ChatResult> {
+  let lastErr: unknown = null;
+  // attempts: initial + 3 retries (для 429) = 4 total.
+  for (let attempt = 0; attempt <= BACKOFF_DELAYS_MS.length; attempt++) {
+    try {
+      return await callProviderModel(cfg, model, messages, opts);
+    } catch (err) {
+      lastErr = err;
+      if (!(err instanceof AIProviderError)) throw err;
+      const status = err.status ?? 0;
+      const isRateLimit = status === 429;
+      const isServerErr = status >= 500 && status < 600;
+      if (!isRateLimit && !isServerErr) {
+        // 4xx auth/bad request / network → no retry, surfaces caller.
+        throw err;
+      }
+      // Last attempt — no more delays, propagate.
+      if (attempt >= BACKOFF_DELAYS_MS.length) break;
+      // 5xx — single retry с фиксированным 1s; rate-limit — exponential.
+      const delayMs = isServerErr && attempt > 0 ? 0 : BACKOFF_DELAYS_MS[attempt];
+      if (delayMs === 0) break; // 5xx single retry — exit после первого retry'я
+      console.warn(
+        `[ai] retry ${cfg.name}/${model} after ${delayMs}ms (status ${status}, attempt ${attempt + 1})`,
+      );
+      await sleep(delayMs);
+    }
+  }
+  if (lastErr instanceof Error) throw lastErr;
+  throw new AIProviderError(cfg.name, null, "All retries failed");
+}
+
+/**
+ * v1.5.18 — provider-level call: iterate через ВСЕ models у этого
+ * провайдера. На каждой — callWithRetry (backoff на 429/5xx). Если
+ * все упали — propagate'ит последнюю ошибку наверх.
+ */
+async function callProvider(
+  cfg: ProviderConfig,
+  messages: ChatMessage[],
+  opts: ChatOpts,
+): Promise<ChatResult> {
+  let lastErr: unknown = null;
+  for (const model of cfg.models) {
+    try {
+      return await callWithRetry(cfg, model, messages, opts);
+    } catch (err) {
+      lastErr = err;
+      if (err instanceof AIProviderError) {
+        console.warn(
+          `[ai] model failed ${cfg.name}/${model}: ${err.message}, trying next model`,
+        );
+      }
+      // continue к next model
+    }
+  }
+  if (lastErr instanceof Error) throw lastErr;
+  throw new AIProviderError(cfg.name, null, "All models failed");
 }
 
 /**
@@ -302,7 +440,12 @@ export async function chat(
       return await callProvider(cfg, messages, opts);
     } catch (err) {
       lastErr = err;
-      // logger в caller; here просто continue
+      if (err instanceof AIProviderError) {
+        console.warn(
+          `[ai] provider failed ${cfg.name} (models tried: ${cfg.models.join(", ")}): ${err.message}, trying next provider`,
+        );
+      }
+      // continue к next provider
     }
   }
   if (lastErr instanceof Error) throw lastErr;

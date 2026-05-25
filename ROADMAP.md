@@ -5,11 +5,12 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.17** (Bundle split: React.lazy для AppShell
-+ ClientPortalContainer, Suspense fallback. Landing visitor main bundle
-1050 → 239 KB (gzip 278 → 74 KB, −73%); AppShell 786 KB chunk lazy;
-ClientPortalContainer 19 KB chunk lazy. Vite config не тронут — default
-Rollup auto-split срабатывает для dynamic imports; deployed 25.05.2026). **Tagged milestone:** v1.6.0 (`69a08bb`, design
+**Текущая версия:** **v1.5.18** (AI Партия 3: model-level fallback +
+429 exponential backoff retry. ProviderConfig.model:string →
+models:string[], OPENROUTER_MODELS CSV env с default chain DeepSeek →
+Llama 3.3 → Qwen 2.5 (free), retry 500/1500/4000ms на 429, single
+retry на 5xx, fail immediately на 4xx/network/timeout; deployed
+25.05.2026). **Tagged milestone:** v1.6.0 (`69a08bb`, design
 polish milestone после chain v1.5.3 → v1.5.12 — 10 версий, 25+ surfaces).
 
 **v1.3.4** (historical, pre-pivot — premium SaaS pivot per Pavel verdict
@@ -162,7 +163,49 @@ security-art)).
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.5.17:**
+**Изменения v1.1.25 → v1.5.18:**
+
+- **v1.5.18** — **AI Партия 3: model-level fallback + 429 backoff retry**
+  (25.05.2026). Pavel «продолжаем». Из открытого backend-list'а —
+  «Партия 3: Free model fallback chain (DeepSeek → Llama 3.1 → Qwen +
+  robust retry on rate-limit с backoff)». Provider-level chain
+  (Ollama → OpenRouter → NVIDIA → OpenAI) уже был; добавлен
+  **model-level fallback внутри провайдера** + **exponential backoff
+  retry** на 429/5xx.
+  - **ProviderConfig refactor**: `model: string` → `models: string[]`.
+    Iterate'ит через каждую model при rate-limit / 5xx — fallback'ит
+    на следующую модель того же провайдера прежде чем уйти на
+    следующий provider.
+  - **New env vars** (CSV, plural form): `OPENROUTER_MODELS`,
+    `OLLAMA_MODELS`, `NVIDIA_MODELS`, `OPENAI_MODELS`. Legacy single-
+    model env vars (`OPENROUTER_MODEL` etc.) сохранены — parseModels
+    helper handles обе формы. Default OpenRouter chain если env
+    пустой: **`deepseek/deepseek-chat-v3.1:free`,
+    `meta-llama/llama-3.3-70b-instruct:free`,
+    `qwen/qwen-2.5-72b-instruct:free`** — три бесплатные модели по
+    rotation'у при rate-limit.
+  - **Retry logic** (`callWithRetry`):
+    - **429 rate-limit**: exponential backoff 500ms → 1500ms → 4000ms
+      (3 retries max, 4 total attempts).
+    - **5xx server error**: single retry after 1000ms (transient outage).
+    - **4xx auth / bad request / network / timeout**: NO retry, fail
+      immediately и surface к outer model/provider fallback.
+  - **Logger output**: при retry → `[ai] retry <provider>/<model>
+    after Nms (status X, attempt N)`. При model failure →
+    `[ai] model failed <provider>/<model>: <reason>, trying next
+    model`. При provider failure → `[ai] provider failed <provider>
+    (models tried: ...): <reason>, trying next provider`. Server
+    debug visibility ясная: видно где chain'ом ушли.
+  - **API signature совместим**: outer `chat()` функция unchanged
+    (тот же ChatMessage[] + opts → ChatResult). Caller'ы
+    (`assistant.ts`, `agentLoop.ts`, `taskFromChat.ts`) не требуют
+    изменений.
+  - **Files**: `apps/server/src/ai/provider.ts` (ProviderConfig types
+    update, parseModels helper, callProviderModel + callWithRetry +
+    callProvider refactor, sleep helper, BACKOFF_DELAYS_MS const).
+  - **Bundle**: server-only refactor, frontend chunks unchanged
+    (main 239.67 / AppShell 786.89 / CPC 19.16 / livekit 513.91).
+  - **Tests**: tsc clean, vite build OK.
 
 - **v1.5.17** — **Bundle split: React.lazy + Suspense для AppShell/Portal**
   (25.05.2026). Pavel «продолжаем по списку» — top открытых направлений
