@@ -3192,6 +3192,102 @@ input[type="radio"]:focus-visible {
   color: var(--ec-danger);
 }
 
+/* v1.5.24 — «(изменено)» tag теперь интерактивная кнопка. Click →
+ * toggle history accordion. */
+.ec-msg-edited {
+  margin-left: 6px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  color: var(--ec-text-dim);
+  font-size: var(--ec-text-2xs);
+  font-family: inherit;
+  cursor: pointer;
+  transition: color var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-msg-edited:hover,
+.ec-msg-edited[aria-expanded="true"] {
+  color: var(--ec-accent);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+/* v1.5.24 — accordion с previous versions. Cinematic frame с accent
+ * border + inset highlight, появляется под сообщением. */
+.ec-msg-edit-history {
+  margin-top: 6px;
+  padding: 8px 10px;
+  background:
+    radial-gradient(120% 80% at 0% 0%, hsl(258 86% 55% / 0.06), transparent 55%),
+    var(--ec-surface-sunken);
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 18%, var(--ec-border-subtle));
+  border-radius: var(--ec-radius-md);
+  box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.03);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  animation: ec-fade-in 180ms var(--ec-ease) both;
+}
+.ec-msg-edit-history__label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--ec-font-mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ec-accent);
+}
+.ec-msg-edit-history__loading {
+  color: var(--ec-text-dim);
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  text-transform: lowercase;
+}
+.ec-msg-edit-history__error {
+  font-size: var(--ec-text-xs);
+  color: var(--ec-danger);
+}
+.ec-msg-edit-history__empty {
+  font-size: var(--ec-text-xs);
+  color: var(--ec-text-dim);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ec-msg-edit-history__hint {
+  font-size: var(--ec-text-2xs);
+  color: var(--ec-text-dim);
+  opacity: 0.7;
+}
+.ec-msg-edit-history__entry {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-left: 6px;
+  border-left: 2px solid color-mix(in srgb, var(--ec-accent) 30%, transparent);
+}
+.ec-msg-edit-history__time {
+  font-family: var(--ec-font-mono);
+  font-size: var(--ec-text-2xs);
+  color: var(--ec-text-dim);
+  letter-spacing: var(--ec-tracking-wide);
+}
+.ec-msg-edit-history__content {
+  margin: 0;
+  padding: 4px 8px;
+  background: hsl(216 24% 8% / 0.40);
+  border-radius: var(--ec-radius-sm);
+  color: var(--ec-text-muted);
+  font-family: var(--ec-font-sans);
+  font-size: var(--ec-text-xs);
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.45;
+}
+
 /* v1.5.22 — quick reaction buttons в actions toolbar. 6 popular emoji
  * prepended перед main actions, click — toggleReaction immediately
  * (Slack/Linear pattern). Mine variant — accent halo. */

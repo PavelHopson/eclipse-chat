@@ -903,10 +903,30 @@ model Message {
   actionItems ActionItem[]
   /// v0.77 #21: AI memory + semantic search. Inverse relation для cascade.
   embedding   MessageEmbedding?
+  /// v1.5.24 — edit history. Snapshot previous content на каждый edit.
+  edits     MessageEdit[]
 
   @@index([channelId, pinnedAt])
   @@index([conversationId, createdAt])
   @@index([parentMessageId])
+}
+
+/// v1.5.24 — История редактирования сообщений. На каждый PATCH /api/messages/:id
+/// (или DM-equivalent) backend сохраняет previous content + previous editedAt
+/// перед перезаписью. Frontend показывает history по клику на «(изменено)» tag.
+/// Cascade-delete при удалении message — history исчезает вместе с ним.
+model MessageEdit {
+  id            String   @id @default(cuid())
+  messageId     String
+  message       Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  /// Content на момент edit'а (то что user видел до этого правки).
+  /// Текущий content всегда в Message.content; здесь — снапшоты прошлого.
+  previousContent String
+  /// Когда был сделан edit, который ПОРОДИЛ этот snapshot.
+  /// (Т.е. when current Message.content стал новым.)
+  editedAt      DateTime @default(now())
+
+  @@index([messageId, editedAt])
 }
 
 /// v0.77 #21 phase 1: embedding для семантического поиска.

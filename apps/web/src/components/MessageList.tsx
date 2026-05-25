@@ -8,6 +8,7 @@ import { EmptyState } from "./EmptyState";
 import { EmptyChannelIcon } from "./EmptyIcons";
 import { extractFirstUrl } from "../lib/linkExtract";
 import { gameIcon } from "../lib/gameIcons";
+import { useMessageEditHistory } from "../hooks/useMessageEditHistory";
 import type { ActionItemStatus, ActionItemType, MessageRow } from "../hooks/useMessages";
 import type { MemberRole } from "../hooks/useMembers";
 import {
@@ -163,6 +164,9 @@ export function MessageList({
   const containerRef = useRef<HTMLDivElement>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  // v1.5.24 — какое сообщение сейчас раскрыло «История правок» accordion.
+  const [editHistoryId, setEditHistoryId] = useState<string | null>(null);
+  const editHistory = useMessageEditHistory(editHistoryId, editHistoryId !== null);
   const [editDraft, setEditDraft] = useState("");
   const [pickerFor, setPickerFor] = useState<{ messageId: string; rect: DOMRect } | null>(null);
   const [isAtBottom, setIsAtBottom] = useState(true);
@@ -627,18 +631,70 @@ export function MessageList({
                           customEmojis={customEmojis}
                         />
                         {m.editedAt && (
-                          <span
-                            title={`Изменено ${new Date(m.editedAt).toLocaleString("ru-RU")}`}
-                            style={{
-                              marginLeft: 6,
-                              fontSize: "var(--ec-text-2xs)",
-                              color: "var(--ec-text-dim)",
-                            }}
+                          <button
+                            type="button"
+                            className="ec-msg-edited"
+                            title={`Изменено ${new Date(m.editedAt).toLocaleString("ru-RU")} · клик — история правок`}
+                            onClick={() =>
+                              setEditHistoryId((cur) => (cur === m.id ? null : m.id))
+                            }
+                            aria-expanded={editHistoryId === m.id}
                           >
                             (изменено)
-                          </span>
+                          </button>
                         )}
                       </p>
+                    )}
+                    {/* v1.5.24 — История правок: lazy-loaded accordion под
+                        сообщением. Click «(изменено)» toggles open. */}
+                    {editHistoryId === m.id && (
+                      <div className="ec-msg-edit-history">
+                        <div className="ec-msg-edit-history__label">
+                          История правок
+                          {editHistory.loading && (
+                            <span className="ec-msg-edit-history__loading">
+                              загрузка…
+                            </span>
+                          )}
+                        </div>
+                        {editHistory.error && (
+                          <div className="ec-msg-edit-history__error">
+                            {editHistory.error}
+                          </div>
+                        )}
+                        {!editHistory.loading &&
+                          !editHistory.error &&
+                          editHistory.edits.length === 0 && (
+                            <div className="ec-msg-edit-history__empty">
+                              Снимков прошлых версий нет
+                              <span className="ec-msg-edit-history__hint">
+                                (это первое редактирование после развёртывания
+                                history-фичи; следующие правки сохранятся)
+                              </span>
+                            </div>
+                          )}
+                        {editHistory.edits.map((edit) => (
+                          <div
+                            key={edit.id}
+                            className="ec-msg-edit-history__entry"
+                          >
+                            <time
+                              className="ec-msg-edit-history__time"
+                              dateTime={edit.editedAt}
+                            >
+                              {new Date(edit.editedAt).toLocaleString("ru-RU", {
+                                day: "numeric",
+                                month: "short",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </time>
+                            <pre className="ec-msg-edit-history__content">
+                              {edit.previousContent}
+                            </pre>
+                          </div>
+                        ))}
+                      </div>
                     )}
                     {m.attachments.length > 0 && (
                       <Attachments

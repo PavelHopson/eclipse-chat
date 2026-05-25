@@ -5,7 +5,14 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.23** (Search filters: backend
+**Текущая версия:** **v1.5.24** (Message edit history: new MessageEdit
+model + migration, PATCH сохраняет snapshot в транзакции, new
+GET /api/messages/:id/edits endpoint, useMessageEditHistory hook,
+MessageList «(изменено)» button → inline accordion с timeline
+previous versions. Migration applied на prod через prisma migrate
+deploy; deployed 25.05.2026).
+
+**Предыдущая:** v1.5.23 (Search filters: backend
 operational-search query params since/until/channelId; useSearch hook
 state extension; SearchOverlay filter row UI с date range + channel
 select + reset btn; deployed 25.05.2026). **Tagged milestone:** v1.7.0
@@ -187,7 +194,63 @@ security-art)).
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.5.23:**
+**Изменения v1.1.25 → v1.5.24:**
+
+- **v1.5.24** — **Message edit history** (25.05.2026). Pavel «продолжаем».
+  Functional feature из открытого списка: snapshot previous content на
+  каждый edit, click «(изменено)» → inline accordion с timeline.
+  - **Schema** (`apps/server/prisma/schema.prisma`): новый model
+    `MessageEdit { id, messageId, previousContent, editedAt }`,
+    relation на Message с onDelete CASCADE (history исчезает с
+    message). Index `[messageId, editedAt]` для быстрого fetch newest-
+    first.
+  - **Migration** (`20260525170000_add_message_edits`): CREATE TABLE
+    + index + foreign key constraint. Cascade-safe.
+  - **Backend PATCH `/api/messages/:id`** (existing edit endpoint):
+    обёрнут в `db.$transaction` — перед перезаписью Message.content
+    сохраняется snapshot в MessageEdit (previousContent = current
+    content, editedAt = previous editedAt OR createdAt для первого
+    edit'а). Failure on UPDATE откатит snapshot — нет orphan rows.
+  - **New endpoint** `GET /api/messages/:id/edits`: list snapshots
+    newest-first. Member-only через channel → server → Member lookup
+    (защищает history от non-member'ов). Возвращает `{ edits: [{ id,
+    previousContent, editedAt }] }`.
+  - **Frontend hook** `useMessageEditHistory(messageId, enabled)`
+    (`apps/web/src/hooks/useMessageEditHistory.ts`): lazy fetch на
+    enabled=true, cache в state (loadedFor — skip refetch на toggle).
+    Exposes `edits, loading, error, reload`.
+  - **MessageList UI**: «(изменено)» span → button `.ec-msg-edited`
+    с `aria-expanded`. Click toggles `editHistoryId` (один accordion
+    в кодовой list — экономия памяти). Под message rendered
+    `.ec-msg-edit-history` accordion: header "История правок" + loading/
+    error/empty states + timeline of edits с timestamps + pre-formatted
+    previous content. Empty hint объясняет что first edit после
+    deployment не имеет snapshot'а (это первое редактирование с
+    history-фичей).
+  - **CSS** (`components.css`): `.ec-msg-edited` interactive button
+    (hover/expanded → accent + underline). `.ec-msg-edit-history`
+    cinematic frame (radial accent + accent border + inset highlight).
+    Per-entry — accent left border 2px + mono timestamp + content
+    pre-block.
+  - **DM messages не охвачены** — отдельный PATCH route
+    `dm/messages/:id` (другой endpoint, не тронут — out of scope для
+    этого slice).
+  - **Files**: `apps/server/prisma/schema.prisma` (MessageEdit model
+    + Message.edits relation), `apps/server/prisma/migrations/
+    20260525170000_add_message_edits/migration.sql`, `apps/server/src/
+    routes/messages.ts` (PATCH transaction + new GET edits endpoint),
+    `apps/web/src/hooks/useMessageEditHistory.ts` (new hook), `apps/
+    web/src/components/MessageList.tsx` (import, state, button +
+    accordion JSX), `apps/web/src/styles/components.css` (`.ec-msg-
+    edited` + `.ec-msg-edit-history*` ~85 строк).
+  - **Bundle**: CSS 323.84 → 325.80 KB (+1.96 / +0.33 gzip); AppShell
+    chunk +~3 KB (new hook + accordion JSX); frontend bundle structure
+    unchanged.
+  - **Migration impact**: новая таблица, существующие messages не
+    тронуты. Прод `prisma migrate deploy` apply'ит при deploy.
+    Reversible: drop table — history исчезает, edit flow продолжает
+    работать.
+  - **Tests**: tsc clean, vite build OK, Prisma generate OK.
 
 - **v1.5.23** — **Search filters: date range + channel select**
   (25.05.2026). Pavel «продолжаем». Functional feature из открытого

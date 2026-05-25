@@ -176,11 +176,31 @@ export async function registerMessageRoutes(app: FastifyInstance) {
       if (m.deletedAt) {
         return reply.status(410).send({ error: "Cannot edit deleted message" });
       }
-      const editedAt = new Date();
-      const updated = await db.message.update({
+      // v1.5.24 — fetch full current content + previous editedAt чтобы
+      // сохранить snapshot в MessageEdit перед перезаписью.
+      const current = await db.message.findUnique({
         where: { id: messageId },
-        data: { content: parsed.data.content, editedAt },
+        select: { content: true, editedAt: true, createdAt: true },
       });
+      const editedAt = new Date();
+      // Двойной write — snapshot + update — в одной транзакции:
+      // failure on UPDATE не оставит orphan snapshot.
+      const [, updated] = await db.$transaction([
+        db.messageEdit.create({
+          data: {
+            messageId,
+            previousContent: current?.content ?? "",
+            // editedAt snapshot'а — момент когда current content СТАЛ
+            // current (т.е. previous editedAt или createdAt для первого
+            // edit'а). Это позволяет реконструировать timeline в UI.
+            editedAt: current?.editedAt ?? current?.createdAt ?? editedAt,
+          },
+        }),
+        db.message.update({
+          where: { id: messageId },
+          data: { content: parsed.data.content, editedAt },
+        }),
+      ]);
       emitMessageUpdated(m.channelId, {
         messageId,
         channelId: m.channelId,
@@ -193,6 +213,56 @@ export async function registerMessageRoutes(app: FastifyInstance) {
           content: updated.content,
           editedAt: editedAt.toISOString(),
         },
+      };
+    },
+  );
+
+  /**
+   * v1.5.24 — GET /api/messages/:id/edits — список previous content
+   * snapshots. Member-only (проверка channel.serverId → Member lookup).
+   * Возвращается newest-first (последнее редактирование в начале).
+   */
+  app.get(
+    "/api/messages/:id/edits",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const { id: messageId } = req.params as { id: string };
+      const userId = getUserId(req);
+      if (!userId) {
+        return reply.status(401).send({ error: "Unauthorized" });
+      }
+      const m = await db.message.findUnique({
+        where: { id: messageId },
+        select: {
+          id: true,
+          channelId: true,
+          channel: { select: { serverId: true } },
+        },
+      });
+      if (!m || !m.channel) {
+        return reply.status(404).send({ error: "Message not found" });
+      }
+      // Member-only — protect history of messages from non-members.
+      const member = await db.member.findUnique({
+        where: {
+          userId_serverId: { userId, serverId: m.channel.serverId },
+        },
+        select: { id: true },
+      });
+      if (!member) {
+        return reply.status(403).send({ error: "Not a member" });
+      }
+      const edits = await db.messageEdit.findMany({
+        where: { messageId },
+        orderBy: { editedAt: "desc" },
+        select: { id: true, previousContent: true, editedAt: true },
+      });
+      return {
+        edits: edits.map((e) => ({
+          id: e.id,
+          previousContent: e.previousContent,
+          editedAt: e.editedAt.toISOString(),
+        })),
       };
     },
   );
