@@ -2768,6 +2768,48 @@
   user-select: none;
 }
 
+/* v1.5.4 — AI agent button. Положение в topbar между Notifications
+ * и SpiderClock. Violet glow breath через .ec-anim-ai-pulse;
+ * material-style ripple через перемонтированный <span> + .ec-anim-ai-ripple. */
+.ec-ai-btn {
+  position: relative;
+  overflow: hidden;
+  color: hsl(258 86% 72%);
+  transition:
+    color var(--ec-dur-fast) var(--ec-ease),
+    transform var(--ec-dur-fast) var(--ec-ease-out),
+    filter var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-ai-btn:hover {
+  color: hsl(258 86% 82%);
+  transform: translateY(-1px);
+  filter: drop-shadow(0 0 12px hsl(258 86% 62% / 0.65));
+}
+.ec-ai-btn:active {
+  transform: translateY(0) scale(0.94);
+  transition-duration: 60ms;
+}
+.ec-ai-btn:focus-visible {
+  outline: 2px solid hsl(258 86% 62% / 0.65);
+  outline-offset: 2px;
+}
+.ec-ai-btn svg {
+  position: relative;
+  z-index: 1;
+}
+.ec-ai-btn-ripple {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  border-radius: 50%;
+  background: hsl(258 86% 72% / 0.55);
+  pointer-events: none;
+  z-index: 0;
+}
+
 /* --- MessageInput: РєРѕРјРїРѕР·РµСЂ ---------------------------------- */
 .ec-composer {
   padding: var(--ec-space-3) var(--ec-space-5) var(--ec-space-4);

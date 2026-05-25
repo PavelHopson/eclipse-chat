@@ -371,6 +371,27 @@ export function MessageInput({
     return () => saveDraft(draftKeyRef.current, draftRef.current);
   }, []);
 
+  // v1.5.4 — слушаем глобальный «ec-ai-trigger» (topbar AI agent button).
+  // Фокусим textarea + если пусто — префиксим «@ai » для quick start.
+  useEffect(() => {
+    const handler = () => {
+      const el = textareaRef.current;
+      if (!el || el.disabled) return;
+      const empty = el.value.trim().length === 0;
+      if (empty) {
+        setDraftValue("@ai ");
+        queueMicrotask(() => {
+          el.focus();
+          el.setSelectionRange(el.value.length, el.value.length);
+        });
+      } else {
+        el.focus();
+      }
+    };
+    window.addEventListener("ec-ai-trigger", handler);
+    return () => window.removeEventListener("ec-ai-trigger", handler);
+  }, []);
+
   const scheduleStop = () => {
     if (stopTimerRef.current) clearTimeout(stopTimerRef.current);
     stopTimerRef.current = setTimeout(() => {

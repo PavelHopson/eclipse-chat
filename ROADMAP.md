@@ -155,13 +155,52 @@ security-art)).
 > cyan/teal демотированы в **status-only**. Не «фиксить» violet
 > обратно на cyan.
 
-**Изменения v1.1.25 → v1.5.3:**
+**Изменения v1.1.25 → v1.5.4:**
 
 > Roadmap entries для v1.4.0 → v1.5.2 ещё не дописаны (большой
 > design pass: v1.4.0 wow-pass milestone tag, v1.4.5 audit fixes,
 > v1.5.0 section deep polish milestone tag, v1.5.1 Home dashboard,
 > v1.5.2 AppShell combo). v1.5.3 идёт ниже — следующий chat surface
 > slice. Catch-up по v1.4-v1.5.2 — отдельной сессией.
+
+- **v1.5.4** — **topbar AI agent button** (25.05.2026). Pavel verdict
+  «продолжаем» — next small fast win из открытых направлений: violet
+  glow icon между Notifications и SpiderClock'ом + click ripple.
+  - **Button**: новая `.ec-ai-btn` (поверх `.ec-icon-btn`) в
+    `apps/web/src/pages/AppShell.tsx` сразу перед `<SpiderClock />`.
+    SVG — 4-point sparkle с малым акцент-блеском (opacity 0.7).
+    Continuous violet glow breath через `.ec-anim-ai-pulse` —
+    3.8s `drop-shadow(0 0 3-11px hsl(258 86% 62% / 0.30-0.70))`
+    + цвет дрейфит между `hsl(258 86% 72%)` и `hsl(258 86% 80%)`.
+  - **Hover**: `translateY(-1px)` + brighter color + усиленный
+    glow `0 0 12px / 0.65`.
+  - **Click ripple**: `<span>` с `key={aiRippleKey}` — каждый клик
+    инкрементит ключ → React перемонтирует элемент → запускается
+    540ms `ec-ai-ripple` keyframe (`scale(1) → scale(10)`,
+    `opacity 0.65 → 0`). Material-style диффузия из центра кнопки,
+    overflow:hidden на самой кнопке.
+  - **Functional wiring**: click → `window.dispatchEvent(new
+    CustomEvent("ec-ai-trigger"))`. `MessageInput` слушает этот event
+    в новом `useEffect` — если textarea пуста, prefill «@ai » + focus
+    + caret в конец; если что-то введено — просто focus (не затирает
+    draft).
+  - **Why @ai prefix**: существующая server-side AI mention infrastructure
+    (`apps/server/src/ai/assistant.ts` + frontend mirror в
+    `apps/web/src/lib/aiMention.ts`) уже понимает `@ai` keyword и
+    запускает GENERIC bot reply. Кнопка — visual shortcut в уже
+    работающий flow.
+  - **prefers-reduced-motion**: `ec-anim-ai-pulse`, `ec-anim-ai-ripple`,
+    `.ec-ai-btn`, `.ec-ai-btn-ripple` добавлены в общий RM-блок —
+    fallback `animation: none` + reset.
+  - **Files**: `apps/web/src/pages/AppShell.tsx` (+state aiRippleKey,
+    +button JSX), `apps/web/src/components/MessageInput.tsx`
+    (+useEffect window listener), `apps/web/src/styles/motion.css`
+    (2 keyframes + 2 utility-классов + RM extend), `apps/web/src/styles/
+    components.css` (45 строк `.ec-ai-btn` + `.ec-ai-btn-ripple`).
+  - **Bundle**: CSS 281.40 → 282.55 KB (+1.15), JS 1046.04 → 1047.07 KB
+    (+1.03). Gzip соразмерный (+0.22 / +0.28).
+  - **Tests**: tsc clean, vite build 3.17s OK. Vitest skip (та же
+    локальная ECONNRESET к npmjs.org); CI Validate отработает.
 
 - **v1.5.3** — **chat surface polish combo** (25.05.2026). Pavel verdict
   «v1.5.2 закрыли AppShell-combo, дальше Chat surface». Делаем premium

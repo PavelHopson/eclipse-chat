@@ -303,6 +303,9 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   // v1.2.6 Platform Admin (trek P1) — глобальная super-admin панель.
   // Иконка в топбаре появляется ТОЛЬКО при user.isPlatformOwner = true.
   const [platformAdminOpen, setPlatformAdminOpen] = useState(false);
+  // v1.5.4 — AI agent button ripple. Перемонтаж <span key={rippleKey}>
+  // перезапускает CSS keyframe при каждом клике.
+  const [aiRippleKey, setAiRippleKey] = useState(0);
   // Incident panel — toggle в right rail (приоритет ниже thread panel).
   const [showIncidents, setShowIncidents] = useState(false);
   // Thread panel — открыт когда selectedThreadId != null. Replaces MemberList
@@ -984,6 +987,32 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               )}
             </button>
           )}
+          {/* v1.5.4 — AI agent button: premium violet glow между notifications
+              и SpiderClock'ом. Click → dispatch global `ec-ai-trigger`; composer
+              (MessageInput) ловит и фокусит textarea + prefill «@ai ». */}
+          <button
+            type="button"
+            onClick={() => {
+              setAiRippleKey((k) => k + 1);
+              window.dispatchEvent(new CustomEvent("ec-ai-trigger"));
+            }}
+            title="AI агент — спросить @ai в чате"
+            aria-label="AI агент"
+            className="ec-icon-btn ec-ai-btn ec-anim-ai-pulse"
+          >
+            {aiRippleKey > 0 && (
+              <span
+                key={aiRippleKey}
+                className="ec-ai-btn-ripple ec-anim-ai-ripple"
+                aria-hidden
+              />
+            )}
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              {/* sparkle / star: central 4-point + 2 small accents */}
+              <path d="M12 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2z" />
+              <path d="M19 14l1 2.5 2.5 1-2.5 1L19 21l-1-2.5L15.5 17.5l2.5-1z" opacity="0.7" />
+            </svg>
+          </button>
           <SpiderClock />
           <ThemeToggle />
           {showRightRail && (
