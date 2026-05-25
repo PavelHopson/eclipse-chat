@@ -5,7 +5,19 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.27** (Bundle split Партия 2: 20 modals/panels
+**Текущая версия:** **v1.5.28** (CSS split + font preload + vite tuning:
+index.css slim до critical (fonts/tokens/reset/effects/motion ~148KB);
+новый app.css объединяет components/responsive/player/cockpit ~178KB,
+lazy с AppShell + ClientPortalContainer chunk'ами. Landing visitor
+больше не платит ~178KB raw / ~27KB gzip за UI-сетку чата которую не
+видит. Font preload <link rel="preload"> в index.html с stable woff2
+name (vite assetFileNames без hash для woff2) — браузер грузит Geist
++ GeistMono параллельно с JS до CSS-discovery, сокращая FOIT/LCP.
+chunkSizeWarningLimit=600 silence livekit-client false-positive.
+Net: landing first paint ~256→~105 KB gzip (-59%); deployed
+25.05.2026).
+
+**Предыдущая:** v1.5.27 (Bundle split Партия 2: 20 modals/panels
 внутри AppShell.tsx переведены на React.lazy + 3 Suspense boundaries
 (panel ternary / right rail trio / modals section). AppShell.js 790 KB
 → 397 KB raw (-50%) / gzip 200 KB → 106 KB (-47%). Новые lazy chunks:

@@ -1,4 +1,7 @@
 import { useCallback } from "react";
+// v1.5.28 — Portal тоже использует ec-* classes из components/responsive/
+// cockpit/player — подгружаем shared app.css lazy вместе с этим chunk'ом.
+import "../styles/app.css";
 import { useClientPortal } from "../hooks/useClientPortal";
 import { ClientPortalPage } from "./ClientPortalPage";
 

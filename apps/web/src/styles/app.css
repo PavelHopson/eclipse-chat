@@ -1,0 +1,15 @@
+/*
+ * App stylesheet — product UI surfaces (AppShell + ClientPortalContainer).
+ * Loaded lazy через `import "./styles/app.css"` в AppShell.tsx (v1.5.28
+ * bundle split phase 3). Visitor на landing'е не платит за эти ~287KB.
+ *
+ * Содержит:
+ *   - components.css  (~165KB) — chat surfaces, modals, buttons, cards
+ *   - responsive.css  (~38KB)  — drawer breakpoints, mobile touch targets
+ *   - player.css      (~37KB)  — audio/video player UI
+ *   - cockpit.css     (~47KB)  — shell topbar + brand + telemetry
+ */
+@import "./components.css";
+@import "./responsive.css";
+@import "./player.css";
+@import "./cockpit.css";

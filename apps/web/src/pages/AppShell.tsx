@@ -1,4 +1,9 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
+// v1.5.28 — Bundle split phase 3: heavy product CSS (components/responsive/
+// player/cockpit, ~287KB) подгружается вместе с AppShell chunk'ом, а не в
+// critical index.css. Visitor на landing'е загружает только ~180KB shared
+// (fonts + tokens + reset + effects + motion).
+import "../styles/app.css";
 import { Avatar } from "../components/Avatar";
 import { ChannelList } from "../components/ChannelList";
 import { RichContent } from "../components/RichContent";

@@ -1,13 +1,22 @@
-/* Global stylesheet. Импортирует fonts → tokens → reset → components → effects → responsive → motion → player → cockpit. */
+/*
+ * Global critical stylesheet. Loaded eagerly через main.tsx (landing + app
+ * + portal). Содержит только то, что нужно ВЕЗДЕ:
+ *   - fonts.css      (@font-face declarations)
+ *   - tokens.css     (--ec-* CSS variables, shared landing + product)
+ *   - reset.css      (baseline)
+ *   - effects.css    (reusable visual effects, prefers-reduced-motion)
+ *   - motion.css     (timing tokens + RM-fallback)
+ *
+ * Heavy product-only stylesheets (components / responsive / player /
+ * cockpit) вынесены в app.css → загружается lazy с AppShell chunk'ом.
+ * Landing визитёр получает только critical (~180KB), не платит за UI
+ * сетку чата которую никогда не увидит до auth.
+ */
 @import "./styles/fonts.css";
 @import "./styles/tokens.css";
 @import "./styles/reset.css";
-@import "./styles/components.css";
 @import "./styles/effects.css";
-@import "./styles/responsive.css";
 @import "./styles/motion.css";
-@import "./styles/player.css";
-@import "./styles/cockpit.css";
 
 /* inline `<code>` tag — для backward compat (JoinServerModal). */
 code {

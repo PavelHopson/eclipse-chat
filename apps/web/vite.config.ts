@@ -73,5 +73,26 @@ export default defineConfig(({ mode }) => {
       port: 5173,
       proxy,
     },
+    build: {
+      // v1.5.28 — livekit-client.esm.js (514KB) — третий-party voice SDK,
+      // грузится lazy только при VoiceRoom mount. False-positive warning
+      // на каждом build'е. 600 покрывает livekit headroom; AppShell после
+      // v1.5.27 splits сам в ~397KB, остальные chunks < 100KB.
+      chunkSizeWarningLimit: 600,
+      rollupOptions: {
+        output: {
+          assetFileNames: (assetInfo) => {
+            // v1.5.28 — woff2 без hash для stable preload pointer'ов в
+            // index.html. Fonts менимся очень редко; long-cache OK,
+            // cache-bust через ?v=NN при необходимости (никогда не нужно
+            // было). Все остальные ассеты сохраняют [hash] для cache-bust.
+            if (assetInfo.name?.endsWith(".woff2")) {
+              return "assets/[name][extname]";
+            }
+            return "assets/[name]-[hash][extname]";
+          },
+        },
+      },
+    },
   };
 });
