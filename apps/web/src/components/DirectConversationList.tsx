@@ -123,15 +123,10 @@ function GroupRow({
     <button
       type="button"
       onClick={() => onSelect(c.id)}
+      className={`ec-dm-row${active ? " is-active" : ""}${isUnread ? " is-unread" : ""}`}
       style={{
         ...rowStyle(active),
         ...(isUnread ? { color: "var(--ec-text-strong)", fontWeight: 600 } : {}),
-      }}
-      onMouseEnter={(e) => {
-        if (!active) e.currentTarget.style.background = "var(--ec-surface-2)";
-      }}
-      onMouseLeave={(e) => {
-        if (!active) e.currentTarget.style.background = "transparent";
       }}
       title={c.participants.map((p) => p.displayName).join(", ")}
     >
@@ -267,17 +262,10 @@ export function DirectConversationList({
             <button
               type="button"
               onClick={() => onSelect(savedConvo.id)}
+              className={`ec-dm-row ec-dm-row--saved${savedConvo.id === selectedDmId ? " is-active" : ""}`}
               style={{
                 ...rowStyle(savedConvo.id === selectedDmId),
                 marginBottom: 2,
-              }}
-              onMouseEnter={(e) => {
-                if (savedConvo.id !== selectedDmId)
-                  e.currentTarget.style.background = "var(--ec-surface-2)";
-              }}
-              onMouseLeave={(e) => {
-                if (savedConvo.id !== selectedDmId)
-                  e.currentTarget.style.background = "transparent";
               }}
             >
               <span
@@ -358,15 +346,10 @@ export function DirectConversationList({
               key={c.id}
               type="button"
               onClick={() => onSelect(c.id)}
+              className={`ec-dm-row${isActive ? " is-active" : ""}${isUnread ? " is-unread" : ""}${showOnline ? " is-online" : ""}`}
               style={{
                 ...rowStyle(isActive),
                 ...(isUnread ? { color: "var(--ec-text-strong)", fontWeight: 600 } : {}),
-              }}
-              onMouseEnter={(e) => {
-                if (!isActive) e.currentTarget.style.background = "var(--ec-surface-2)";
-              }}
-              onMouseLeave={(e) => {
-                if (!isActive) e.currentTarget.style.background = "transparent";
               }}
             >
               <span style={{ position: "relative", display: "inline-block" }}>
@@ -411,6 +394,7 @@ export function DirectConversationList({
                 {isUnread && (
                   <span
                     aria-label={`${c.unread} непрочитанных`}
+                    className="ec-dm-row__badge"
                     style={{
                       display: "inline-flex",
                       alignItems: "center",

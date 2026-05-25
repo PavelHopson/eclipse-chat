@@ -22,9 +22,13 @@ export type TelemetrySnapshot = {
   fetchedAt: number;
   /** Был ли последний fetch успешным. */
   online: boolean;
+  /** v1.5.2 — history (last 20 samples = 200s) для sparkline. */
+  memHistory: number[];
+  cpuHistory: number[];
 };
 
 const POLL_INTERVAL_MS = 10_000;
+const HISTORY_MAX = 20;
 
 /** 0–69 → ok, 70–89 → warn, 90+ → risk. */
 function statusFor(percent: number | null): TelemetryStatus {
@@ -41,6 +45,8 @@ export function useTelemetry() {
     pgActive: null,
     fetchedAt: 0,
     online: false,
+    memHistory: [],
+    cpuHistory: [],
   });
   const mountedRef = useRef(true);
 
@@ -54,13 +60,23 @@ export function useTelemetry() {
         if (!res.ok) throw new Error(`status ${res.status}`);
         const data = await res.json();
         if (cancelled || !mountedRef.current) return;
-        setSnap({
-          memPercent: typeof data?.mem?.percent === "number" ? data.mem.percent : null,
-          cpuPercent: typeof data?.cpu?.percent === "number" ? data.cpu.percent : null,
+        const memP = typeof data?.mem?.percent === "number" ? data.mem.percent : null;
+        const cpuP = typeof data?.cpu?.percent === "number" ? data.cpu.percent : null;
+        setSnap((prev) => ({
+          memPercent: memP,
+          cpuPercent: cpuP,
           pgActive: typeof data?.pg?.active === "number" ? data.pg.active : null,
           fetchedAt: Date.now(),
           online: true,
-        });
+          memHistory:
+            memP != null
+              ? [...prev.memHistory, memP].slice(-HISTORY_MAX)
+              : prev.memHistory,
+          cpuHistory:
+            cpuP != null
+              ? [...prev.cpuHistory, cpuP].slice(-HISTORY_MAX)
+              : prev.cpuHistory,
+        }));
       } catch {
         if (cancelled || !mountedRef.current) return;
         setSnap((prev) => ({ ...prev, online: false, fetchedAt: Date.now() }));

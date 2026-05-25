@@ -44,6 +44,7 @@ import {
   EmptyHomeIcon,
 } from "../components/EmptyIcons";
 import { StatusMenu } from "../components/StatusMenu";
+import { NetworkWave, Sparkline } from "../components/TelemetryViz";
 import { IncidentPanel } from "../components/IncidentPanel";
 import { ThreadPanel } from "../components/ThreadPanel";
 import { TypingIndicator } from "../components/TypingIndicator";
@@ -779,6 +780,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               : !isReady
               ? "ОБРЫВ"
               : "ДЕГРАД"}
+            <NetworkWave active={isReady && telemetry.online} />
           </span>
           <span
             className={
@@ -799,6 +801,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             {telemetry.memPercent != null
               ? `${telemetry.memPercent.toFixed(0).padStart(2, "0")}%`
               : "—"}
+            <Sparkline values={telemetry.memHistory} />
           </span>
           <span
             className={
@@ -819,6 +822,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             {telemetry.cpuPercent != null
               ? `${telemetry.cpuPercent.toFixed(0).padStart(2, "0")}%`
               : "—"}
+            <Sparkline values={telemetry.cpuHistory} />
           </span>
           </div>
           {/* v1.1.81 — кластер-разделитель: статус | инструменты */}
