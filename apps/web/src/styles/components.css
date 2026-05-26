@@ -2827,6 +2827,62 @@ input[type="radio"]:focus-visible {
   cursor: not-allowed;
   transform: none;
 }
+
+/* v1.5.36 — banner variant для server-row в ServerSwitcher dropdown.
+ * Tall row (~64px) с cover-фоном из server.banner + gradient overlay
+ * (left-to-right) для читабельности icon+label. Identity preview в
+ * момент выбора рабочего пространства.
+ */
+.ec-srv-menu-row--banner {
+  min-height: 64px;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  isolation: isolate;
+  color: hsl(0 0% 100%);
+  padding: var(--ec-space-3) var(--ec-space-3);
+}
+.ec-srv-menu-row--banner::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    hsl(220 22% 4% / 0.88) 0%,
+    hsl(220 22% 4% / 0.62) 50%,
+    hsl(220 22% 4% / 0.30) 100%
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+.ec-srv-menu-row--banner .ec-srv-menu-row__icon,
+.ec-srv-menu-row--banner .ec-srv-menu-row__label {
+  position: relative;
+  z-index: 1;
+}
+.ec-srv-menu-row--banner .ec-srv-menu-row__label {
+  text-shadow: 0 1px 3px hsl(220 22% 4% / 0.7);
+  font-weight: 600;
+}
+.ec-srv-menu-row--banner:hover {
+  background: var(--ec-surface-2); /* fallback — override'нется backgroundImage inline */
+}
+.ec-srv-menu-row--banner:hover::after {
+  background: linear-gradient(
+    90deg,
+    hsl(220 22% 4% / 0.78) 0%,
+    hsl(220 22% 4% / 0.50) 55%,
+    hsl(220 22% 4% / 0.18) 100%
+  );
+}
+.ec-srv-menu-row--banner.is-active::before {
+  /* Active accent rail остаётся видим над gradient overlay. */
+  z-index: 2;
+}
+.ec-srv-menu-row--banner.is-active {
+  /* Active state — slightly brighter overlay чтобы было видно selected. */
+  box-shadow: inset 3px 0 0 var(--ec-accent), 0 4px 12px -8px hsl(258 86% 50% / 0.6);
+}
 .ec-srv-menu-row__icon {
   display: flex;
   align-items: center;

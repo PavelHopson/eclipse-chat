@@ -284,6 +284,29 @@ export function ServerSwitcher({
       )}
       {servers.map((s) => {
         const isActive = s.id === activeServerId && !dmsActive;
+        // v1.5.36 — server row с banner backdrop когда у сервера есть
+        // banner asset. Расширенный layout (height ~64px) с cover image
+        // + gradient overlay. Без banner — стандартный compact MenuRow.
+        const bannerUrl = s.banner ? resolveAssetUrl(s.banner) : null;
+        if (bannerUrl) {
+          return (
+            <button
+              key={s.id}
+              type="button"
+              role="menuitem"
+              className={`ec-srv-menu-row ec-srv-menu-row--banner${isActive ? " is-active" : ""}`}
+              title={s.name}
+              aria-current={isActive || undefined}
+              onClick={pick(() => onSelect(s.id))}
+              style={{ backgroundImage: `url("${bannerUrl}")` }}
+            >
+              <span className="ec-srv-menu-row__icon" aria-hidden>
+                <ServerIcon server={s} size={22} />
+              </span>
+              <span className="ec-srv-menu-row__label">{s.name}</span>
+            </button>
+          );
+        }
         return (
           <MenuRow
             key={s.id}

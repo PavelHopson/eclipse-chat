@@ -5,7 +5,17 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.35** (Server banners trek #3 — scroll-to-top
+**Текущая версия:** **v1.5.36** (Server banners trek #4 (final) —
+ServerSwitcher dropdown banner preview. Каждый server row в
+top-left dropdown с банером: новый class .ec-srv-menu-row--banner с
+inline backgroundImage url + 64px min-height + left-to-right gradient
+overlay (hsl 0.88→0.30) для читабельности иконки+labelя поверх
+изображения. text-shadow на label, active accent rail остаётся
+видимым. Без banner'а — стандартный compact MenuRow (no regression).
+Identity preview в момент выбора рабочего пространства; замыкает
+4-trek chain v1.5.33-36; deployed 26.05.2026).
+
+**Предыдущая:** v1.5.35 (Server banners trek #3 — scroll-to-top
 banner в chat. MessageList получил props channelTopBanner +
 channelTopSubtitle, рендерит .ec-msg-channel-top header первым child
 в scroll-контейнере (перед всеми messages). Когда user scroll'ит к
