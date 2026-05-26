@@ -87,6 +87,17 @@ type Props = {
    * shortcut'ы). DM-композер тоже использует true (DM не имеет actions).
    */
   hideSlashCommands?: boolean;
+  /**
+   * v1.5.32 — pre-fill content из Web Share Target API. Когда non-null И
+   * текущий draft пустой → заменяем draft на prefillContent + вызываем
+   * `onPrefillConsumed` чтобы caller мог сбросить share state. Если draft
+   * не пустой — НЕ переписываем (защита user's work).
+   */
+  prefillContent?: string | null;
+  /**
+   * Колбэк после успешного prefill — caller вызывает useShareTarget.consume().
+   */
+  onPrefillConsumed?: () => void;
 };
 
 // v1.1.92 slice 3: inline-style консоли композера вынесены в классы
@@ -240,6 +251,8 @@ export function MessageInput({
   placeholder,
   draftKey = null,
   hideSlashCommands = false,
+  prefillContent = null,
+  onPrefillConsumed,
 }: Props) {
   const [draft, setDraft] = useState(() => loadDraft(draftKey));
   const [sending, setSending] = useState(false);
@@ -367,6 +380,29 @@ export function MessageInput({
     const timer = window.setTimeout(() => saveDraft(draftKey, draft), 250);
     return () => window.clearTimeout(timer);
   }, [draftKey, draft]);
+
+  // v1.5.32 — Web Share Target prefill. Когда от useShareTarget пришло
+  // content (user share'нул из system menu) И composer пустой — заполняем
+  // draft + consume. Не переписываем существующий draft (защита user's work).
+  useEffect(() => {
+    if (!prefillContent) return;
+    if (draftRef.current.trim().length > 0) {
+      // Уже есть текст — пропускаем prefill, но всё равно consume чтобы
+      // повторно не триггерить на каждом re-render.
+      onPrefillConsumed?.();
+      return;
+    }
+    setDraftValue(prefillContent);
+    onPrefillConsumed?.();
+    // Фокус композера для немедленного редактирования.
+    queueMicrotask(() => {
+      textareaRef.current?.focus();
+      const el = textareaRef.current;
+      if (el) el.setSelectionRange(el.value.length, el.value.length);
+    });
+  // setDraftValue/textareaRef стабильны — depending только от prefillContent.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefillContent]);
 
   useEffect(() => {
     return () => saveDraft(draftKeyRef.current, draftRef.current);

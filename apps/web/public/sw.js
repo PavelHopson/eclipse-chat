@@ -21,7 +21,7 @@
 // v1.0: bumped per release для гарантированного refresh новых JS chunks.
 // v1.5.30: PWA harden — bumped до текущей версии. Cache invalidation работает
 // через name-prefix change → activate cleanup удаляет стары caches.
-const SW_VERSION = "eclipse-v1.5.31";
+const SW_VERSION = "eclipse-v1.5.32";
 const APP_SHELL_CACHE = `${SW_VERSION}-shell`;
 const ASSETS_CACHE = `${SW_VERSION}-assets`;
 const UPLOADS_CACHE = `${SW_VERSION}-uploads`;

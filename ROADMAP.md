@@ -5,7 +5,22 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.31** (VoiceRoom screen-share polish trio:
+**Текущая версия:** **v1.5.32** (Phase A — PWA harden #2: Web Share
+Target API. manifest.webmanifest получил share_target (GET-based,
+params: share_title/share_text/share_url) + launch_handler focus-
+existing. Eclipse Chat теперь появляется в системном «Поделиться» меню
+(Android Chrome, Windows Chrome, Edge): user share'ит link/text из
+любого app → Eclipse Chat installed PWA открывается с pre-filled
+composer текущего канала (или DM если в DM-режиме). Новый
+useShareTarget hook парсит URL params на mount, чистит их через
+history.replaceState, экспортит composed content (title\n\ntext\n\nurl).
+MessageInput получил prefillContent + onPrefillConsumed props: при
+non-null prefill + пустой draft заменяет draft на prefill, фокусит
+textarea, дёргает consume(). Если draft не пустой — пропускаем prefill
+(защита user's work). Files share (image/video) defer'нут до v1.5.33
+(POST + SW interception + IDB); deployed 26.05.2026).
+
+**Предыдущая:** v1.5.31 (VoiceRoom screen-share polish trio:
 1) overlay-chip top-left с backdrop-blur заменил gradient bottom-bar —
 имя+source-icon читается на любом видео-контенте, включая чёрные frames
 recursive screenshare (Pavel screenshot 26.05); 2) justifySelf:stretch +

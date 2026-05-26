@@ -77,6 +77,7 @@ import { useMediaQuery } from "../hooks/useMediaQuery";
 import { useMembers, type MemberRole, type MemberRow } from "../hooks/useMembers";
 import { useMessages } from "../hooks/useMessages";
 import { useNotifications } from "../hooks/useNotifications";
+import { useShareTarget } from "../hooks/useShareTarget";
 import { useFocusMode } from "../hooks/useFocusMode";
 import { useHomeToday } from "../hooks/useHomeToday";
 import { useMutedChannels } from "../hooks/usePushPreferences";
@@ -283,6 +284,10 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   const notif = useNotifications(socket, user.id, selectedChannelIdRef, unreadTotal);
   // v0.74 #29 phase 1: Focus mode — filter feed to mentions/pinned/own.
   const focus = useFocusMode();
+  // v1.5.32 — Web Share Target receiver. URL params (?share_title/text/url)
+  // парсятся on mount, content передаётся в первый смонтированный composer
+  // (channel или DM, whichever is active).
+  const share = useShareTarget();
 
   const {
     messages,
@@ -1755,6 +1760,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                 onSend={(content, attachments) => dmSend(content, senderForMessages, attachments)}
                 onTypingStart={() => undefined}
                 onTypingStop={() => undefined}
+                prefillContent={share.pendingContent}
+                onPrefillConsumed={share.consume}
               />
             </>
           )
@@ -1984,6 +1991,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                 }
                 onTypingStart={emitTypingStart}
                 onTypingStop={emitTypingStop}
+                prefillContent={share.pendingContent}
+                onPrefillConsumed={share.consume}
               />
             )}
           </>

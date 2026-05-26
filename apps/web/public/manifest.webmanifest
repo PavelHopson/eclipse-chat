@@ -54,5 +54,17 @@
       "icons": [{ "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }]
     }
   ],
+  "share_target": {
+    "action": "./",
+    "method": "GET",
+    "params": {
+      "title": "share_title",
+      "text": "share_text",
+      "url": "share_url"
+    }
+  },
+  "launch_handler": {
+    "client_mode": "focus-existing"
+  },
   "prefer_related_applications": false
 }
