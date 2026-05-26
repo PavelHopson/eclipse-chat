@@ -57,10 +57,10 @@ import { ServerSwitcher } from "../components/ServerSwitcher";
 import { SinceLastVisitBanner } from "../components/SinceLastVisitBanner";
 import { ThemeToggle } from "../components/ThemeToggle";
 import { EmptyState } from "../components/EmptyState";
+import { ServerWelcomeHero } from "../components/ServerWelcomeHero";
 import { ExpiryBadge } from "../components/ExpiryBadge";
 import {
   EmptyDmIcon,
-  EmptyChannelIcon,
   EmptyHomeIcon,
 } from "../components/EmptyIcons";
 import { StatusMenu } from "../components/StatusMenu";
@@ -1791,10 +1791,17 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             }
           />
         ) : !selectedChannelId || !selectedChannel ? (
-          <EmptyState
-            icon={<EmptyChannelIcon />}
-            title="Выберите комнату"
-            hint="Список комнат — слева. Или создайте новую внизу панели."
+          // v1.5.34 — Server banners trek #2. Replace plain EmptyState на
+          // cinematic ServerWelcomeHero: banner background + name + description
+          // + welcome message + featured channels grid. Без banner — solid
+          // fallback с radial gradient + те же data.
+          <ServerWelcomeHero
+            server={activeServer}
+            channels={channels}
+            onSelectChannel={(id) => {
+              setSelectedChannelId(id);
+              if (isMobile) setNavOpen(false);
+            }}
           />
         ) : selectedChannel.type === "VOICE" ? (
           voiceHealth.enabled ? (

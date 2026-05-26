@@ -5,7 +5,19 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.33** (Server banners trek #1 — ChannelList
+**Текущая версия:** **v1.5.34** (Server banners trek #2 — Welcome hero
+для активного сервера когда канал не выбран. Раньше plain EmptyState
+«Выберите комнату»; теперь cinematic full-area hero: cover background-
+image из server.banner (1500×500 webp), gradient overlay (от прозрачного
+к тёмному), centered content stack — eyebrow «Пространство» + huge
+name (clamp 38-68px) + description + welcomeMessage chip + «Быстрые
+входы» featured channels grid (до 6 TEXT/BROADCAST/EXECUTION). Без
+banner'а — solid surface с теми же данными (no regression). Новый
+ServerWelcomeHero компонент в apps/web/src/components/, ~80 LOC +
+CSS rules .ec-server-welcome*. AppShell ветка !selectedChannelId
+переключена с EmptyState на новый hero; deployed 26.05.2026).
+
+**Предыдущая:** v1.5.33 (Server banners trek #1 — ChannelList
 rail header banner. Server.banner был в schema с v0.10.1 (1500×500
 webp) + upload/change в ServerHubModal, но в основном UI нигде не
 рендерился. ChannelList получил prop serverBanner + class modifier
