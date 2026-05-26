@@ -5,7 +5,17 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.30** (Phase A — PWA harden #1: новый
+**Текущая версия:** **v1.5.31** (VoiceRoom screen-share polish trio:
+1) overlay-chip top-left с backdrop-blur заменил gradient bottom-bar —
+имя+source-icon читается на любом видео-контенте, включая чёрные frames
+recursive screenshare (Pavel screenshot 26.05); 2) justifySelf:stretch +
+width:100% explicit override родительского justify-items:center, screen
+tile теперь force-stretches на всю ширину grid (раньше aspect-ratio +
+max-height давали intrinsic-sized centered tile ~580px); 3) placeholder
+с big avatar+name+«подключается…» в центре пока loadedmetadata не fired,
+user видит КТО шарит до первого frame'а; deployed 26.05.2026).
+
+**Предыдущая:** v1.5.30 (Phase A — PWA harden #1: новый
 useInstallPrompt hook captures beforeinstallprompt event (Chrome/Edge/
 Android) + detects iOS Safari standalone fallback. Install секция в
 ProfileModal с кнопкой «Установить» (canInstall) или «Поделиться →

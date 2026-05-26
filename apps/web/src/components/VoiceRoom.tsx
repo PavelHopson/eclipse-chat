@@ -236,15 +236,45 @@ const videoTileWrap: CSSProperties = {
 
 const videoCanvas: CSSProperties = { position: "absolute", inset: 0 };
 
-const videoOverlay: CSSProperties = {
+// v1.5.31 — overlay chip: солидный pill в top-left с backdrop-blur. Читается
+// против любого видео-контента (включая чёрные кадры recursive screen-share).
+// Прежний gradient-overlay сливался с тёмными источниками.
+const videoChip: CSSProperties = {
   position: "absolute",
-  inset: "auto 0 0",
-  padding: "var(--ec-space-3)",
-  display: "flex",
+  top: 12,
+  left: 12,
+  display: "inline-flex",
   alignItems: "center",
-  gap: "var(--ec-space-2)",
-  background:
-    "linear-gradient(180deg, transparent, hsl(210 12% 6% / 0.94) 60%)",
+  gap: 8,
+  padding: "6px 12px",
+  borderRadius: "var(--ec-radius-full)",
+  background: "hsla(220, 22%, 6%, 0.78)",
+  backdropFilter: "blur(10px)",
+  WebkitBackdropFilter: "blur(10px)",
+  color: "hsl(0 0% 100%)",
+  fontSize: "var(--ec-text-2xs)",
+  fontWeight: 600,
+  border: "1px solid hsl(0 0% 100% / 0.14)",
+  boxShadow: "0 4px 14px -4px hsl(210 70% 2% / 0.45)",
+  maxWidth: "calc(100% - 24px)",
+  minWidth: 0,
+};
+
+// v1.5.31 — centered placeholder показывается пока aspect-ratio ещё не пришло
+// (loadedmetadata не fired). Большой avatar + name + статусная подпись чтобы
+// user видел КТО шарит до того как первый frame пришёл.
+const videoPlaceholder: CSSProperties = {
+  position: "absolute",
+  inset: 0,
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 14,
+  padding: "var(--ec-space-4)",
+  color: "hsl(0 0% 100% / 0.84)",
+  textAlign: "center",
+  pointerEvents: "none",
 };
 
 /* presence strip — компактные участники без видео под видео-сценой */
@@ -396,34 +426,39 @@ function VideoTrackTile({
         // v1.1.68 — пропорции тайла = пропорции источника (fallback 16:9 пока
         // не пришла metadata). Источник больше не «обрезается» под 16:9.
         aspectRatio: aspect ?? videoTileWrap.aspectRatio,
-        // v1.5.29 fix — screen-share tile:
+        // v1.5.29/31 — screen-share tile:
         //  - gridColumn 1/-1 → tile занимает ВСЮ строку grid (раньше пытались
-        //    flexBasis на grid item, тихо ignored, tile оставался clamped
-        //    к 760px maxWidth).
+        //    flexBasis на grid item, тихо ignored, tile оставался clamped).
+        //  - justifySelf: stretch → перебивает родительский justify-items:
+        //    center (без этого grid item с width:100% всё равно мог shrink
+        //    до intrinsic, derived из aspect-ratio × max-height).
         //  - maxWidth: none → не упирается в videoTileWrap.maxWidth=760.
-        //  - maxHeight: 64vh → если источник 16:9 + грид широкий, height
-        //    не превышает viewport (иначе нижние controls vanish).
+        //  - width: 100% → forced full row width.
+        //  - maxHeight: 64vh → если источник 16:9 + грид широкий, height не
+        //    превышает viewport (иначе нижние controls vanish).
         ...(isScreen
-          ? { gridColumn: "1 / -1", maxWidth: "none", maxHeight: "64vh" }
+          ? {
+              gridColumn: "1 / -1",
+              justifySelf: "stretch",
+              width: "100%",
+              maxWidth: "none",
+              maxHeight: "64vh",
+            }
           : null),
       }}
     >
       <div ref={mountRef} style={videoCanvas} />
-      <div style={videoOverlay}>
-        <Avatar url={avatar} name={visual.name} size={28} />
-        <span style={{ minWidth: 0 }}>
+      {/* v1.5.31 — placeholder пока aspect не пришло (loadedmetadata
+       *  not fired). Большой avatar + имя + статус — user видит КТО шарит
+       *  до того как первый frame отрендерился. Hide когда aspect loaded. */}
+      {aspect == null && (
+        <div style={videoPlaceholder} aria-hidden>
+          <Avatar url={avatar} name={visual.name} size={64} />
           <span
             style={{
-              display: "block",
-              // v1.1.73 — метка над видео-scrim'ом: фиксированно-светлый
-              // текст (white-on-scrim читается в обеих темах; --ec-text-*
-              // в SOLAR тёмный → на тёмном scrim'е был бы нечитаем).
               color: "hsl(0 0% 100%)",
               fontWeight: 600,
-              fontSize: "var(--ec-text-sm)",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
+              fontSize: "var(--ec-text-base)",
             }}
           >
             {visual.name}
@@ -433,14 +468,43 @@ function VideoTrackTile({
             style={{
               display: "inline-flex",
               alignItems: "center",
-              gap: 5,
-              color: "hsl(218 14% 82%)",
+              gap: 6,
+              color: "hsl(0 0% 100% / 0.72)",
               fontSize: "var(--ec-text-2xs)",
             }}
           >
-            {isScreen ? <ScreenShareIcon size={11} /> : <CameraLensIcon size={11} />}
-            {isScreen ? "Демонстрация экрана" : "Камера"}
+            {isScreen ? <ScreenShareIcon size={12} /> : <CameraLensIcon size={12} />}
+            {isScreen ? "Демонстрация экрана · подключается…" : "Камера · подключается…"}
           </span>
+        </div>
+      )}
+      {/* v1.5.31 — overlay chip: top-left solid pill с blur. Читается
+       *  на любом видео (включая black frames recursive screenshare). */}
+      <div style={videoChip}>
+        <Avatar url={avatar} name={visual.name} size={22} />
+        <span
+          style={{
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            minWidth: 0,
+          }}
+        >
+          {visual.name}
+          {visual.isLocal ? " · ты" : ""}
+        </span>
+        <span
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 4,
+            color: "hsl(0 0% 100% / 0.82)",
+            paddingLeft: 6,
+            borderLeft: "1px solid hsl(0 0% 100% / 0.18)",
+          }}
+          aria-label={isScreen ? "Демонстрация экрана" : "Камера"}
+        >
+          {isScreen ? <ScreenShareIcon size={11} /> : <CameraLensIcon size={11} />}
         </span>
       </div>
     </article>
