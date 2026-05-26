@@ -1938,6 +1938,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               onDismissEphemeralBanner={dismissEphemeralBanner}
               emptyHint={messagesLoading ? "Загрузка…" : undefined}
               channelName={selectedChannel.name}
+              channelTopBanner={activeServer?.banner ?? null}
+              channelTopSubtitle={activeServer?.name ?? null}
               listKey={`channel:${selectedChannel.id}`}
               currentUserId={user.id}
               currentUserName={headerName}

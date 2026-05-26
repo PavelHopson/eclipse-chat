@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import { resolveAssetUrl } from "../lib/assets";
 import { Attachments } from "./Attachments";
 import { Avatar } from "./Avatar";
 import { EmojiPicker } from "./EmojiPicker";
@@ -51,6 +52,15 @@ type Props = {
   /** v1.5.25 — DM context. Переключает useMessageEditHistory на
    *  /api/dm/messages/:id/edits endpoint (participant-only check). */
   isDm?: boolean;
+  /**
+   * v1.5.35 — server banner image для scroll-to-top hero над первым
+   * сообщением. Когда set + channelName present — рендерим cinematic
+   * cover-фоновую полосу с «Начало канала #X в [serverName]» overlay.
+   * Без banner'а — subtle text-only label с тем же текстом.
+   */
+  channelTopBanner?: string | null;
+  /** v1.5.35 — server name для подписи «#channel в {server}». */
+  channelTopSubtitle?: string | null;
 };
 
 // v1.1.92 slice 3: inline-style консоли MessageList вынесены в классы
@@ -164,6 +174,8 @@ export function MessageList({
   onOpenThread,
   onPlayShared,
   isDm = false,
+  channelTopBanner = null,
+  channelTopSubtitle = null,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -385,9 +397,40 @@ export function MessageList({
 
   const canMod = canModerate(currentRole);
 
+  // v1.5.35 — channel-top hero. Render если channelName present:
+  // - С banner: cinematic cover-фон + overlay (читается на любом изображении).
+  // - Без banner: subtle text-only label.
+  // Hero сидит первым в scroll-контейнере, появляется при scroll-to-top.
+  const channelTopBannerUrl =
+    channelTopBanner ? resolveAssetUrl(channelTopBanner) : null;
+  const channelTopHero = channelName ? (
+    <header
+      className={`ec-msg-channel-top${
+        channelTopBannerUrl ? " ec-msg-channel-top--with-banner" : ""
+      }`}
+      style={
+        channelTopBannerUrl
+          ? { backgroundImage: `url("${channelTopBannerUrl}")` }
+          : undefined
+      }
+    >
+      <div className="ec-msg-channel-top__content">
+        <h2 className="ec-msg-channel-top__title">
+          Начало канала #{channelName}
+        </h2>
+        {channelTopSubtitle && (
+          <p className="ec-msg-channel-top__sub">
+            в {channelTopSubtitle}
+          </p>
+        )}
+      </div>
+    </header>
+  ) : null;
+
   return (
     <div className="ec-message-list-shell">
       <div ref={containerRef} className="ec-message-list" onScroll={handleScroll}>
+      {channelTopHero}
       {pickerFor && onToggleReaction && (
         <EmojiPicker
           anchorRect={pickerFor.rect}

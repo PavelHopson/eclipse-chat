@@ -2938,6 +2938,73 @@ input[type="radio"]:focus-visible {
   text-overflow: ellipsis;
   color: var(--ec-text-strong);
 }
+/* v1.5.35 — Channel top hero (scroll-to-top banner). Render первым в
+ * scroll-контейнере MessageList: когда user долистал канал до начала
+ * conversation, видит «Начало канала #X в [server]» с banner cover'ом
+ * (если есть). Discord pattern.
+ */
+.ec-msg-channel-top {
+  position: relative;
+  min-height: 84px;
+  margin: 0 0 var(--ec-space-3) 0;
+  padding: var(--ec-space-4) var(--ec-space-4);
+  display: flex;
+  align-items: flex-end;
+  border-bottom: 1px solid var(--ec-border-subtle);
+  isolation: isolate;
+}
+.ec-msg-channel-top--with-banner {
+  min-height: 200px;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  border-bottom: 0;
+  padding: var(--ec-space-5) var(--ec-space-5) var(--ec-space-4);
+}
+.ec-msg-channel-top--with-banner::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    hsl(220 22% 4% / 0.15) 0%,
+    hsl(220 22% 4% / 0.55) 55%,
+    hsl(220 22% 4% / 0.95) 100%
+  );
+  pointer-events: none;
+}
+.ec-msg-channel-top__content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ec-msg-channel-top__title {
+  margin: 0;
+  font-size: var(--ec-text-lg);
+  font-weight: 700;
+  letter-spacing: -0.005em;
+  color: var(--ec-text-strong);
+}
+.ec-msg-channel-top--with-banner .ec-msg-channel-top__title {
+  color: hsl(0 0% 100%);
+  font-size: var(--ec-text-xl);
+  text-shadow: 0 2px 6px hsl(220 22% 4% / 0.6);
+}
+.ec-msg-channel-top__sub {
+  margin: 0;
+  font-size: var(--ec-text-2xs);
+  color: var(--ec-text-muted);
+  font-family: var(--ec-font-mono, "JetBrains Mono", monospace);
+  letter-spacing: var(--ec-tracking-caps);
+  text-transform: uppercase;
+}
+.ec-msg-channel-top--with-banner .ec-msg-channel-top__sub {
+  color: hsl(0 0% 100% / 0.85);
+  text-shadow: 0 1px 3px hsl(220 22% 4% / 0.55);
+}
+
 /* v1.5.34 — ServerWelcomeHero. Cinematic hero для активного сервера
  * когда канал не выбран. Replace plain EmptyState. */
 .ec-server-welcome {

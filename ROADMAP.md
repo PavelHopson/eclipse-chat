@@ -5,7 +5,17 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.34** (Server banners trek #2 — Welcome hero
+**Текущая версия:** **v1.5.35** (Server banners trek #3 — scroll-to-top
+banner в chat. MessageList получил props channelTopBanner +
+channelTopSubtitle, рендерит .ec-msg-channel-top header первым child
+в scroll-контейнере (перед всеми messages). Когда user scroll'ит к
+началу канала — видит «Начало канала #X в [Server]» хедер. С banner:
+min-height 200px, cover background, gradient overlay 180deg, text-
+shadow, larger title; без banner: subtle 84px text-only label с
+border-bottom. AppShell передаёт activeServer.banner +
+activeServer.name. Discord pattern; deployed 26.05.2026).
+
+**Предыдущая:** v1.5.34 (Server banners trek #2 — Welcome hero
 для активного сервера когда канал не выбран. Раньше plain EmptyState
 «Выберите комнату»; теперь cinematic full-area hero: cover background-
 image из server.banner (1500×500 webp), gradient overlay (от прозрачного
