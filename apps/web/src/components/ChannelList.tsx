@@ -6,6 +6,7 @@ import { ChannelGlyph } from "./icons/ChannelCustomIcons";
 import type { ChannelRow } from "../hooks/useChannels";
 import type { MemberRow } from "../hooks/useMembers";
 import type { ChannelType, VoiceMeta } from "../lib/socket";
+import { resolveAssetUrl } from "../lib/assets";
 
 /** v0.96 UX refactor: sidebar разделён на 3 таба. Persist active tab
  *  per-server в localStorage. */
@@ -17,6 +18,13 @@ type Props = {
   serverName: string | null;
   serverRole: string | null;
   inviteCode: string | null;
+  /**
+   * v1.5.33 — server banner image path. null = нет банера, рендерим
+   * compact header без background-image (backward compat). When set —
+   * header принимает cinematic-style cover-фон 1500×500 webp, text
+   * получает shadow для read на любом изображении.
+   */
+  serverBanner?: string | null;
   channels: ChannelRow[];
   /** Channels async loading state (после server-switch до GET ответа). */
   channelsLoading?: boolean;
@@ -117,6 +125,7 @@ function DeafenedGlyph() {
 export function ChannelList({
   serverId,
   serverName,
+  serverBanner = null,
   serverRole,
   inviteCode: _inviteCode,
   channels,
@@ -479,9 +488,19 @@ export function ChannelList({
     );
   };
 
+  // v1.5.33 — banner cover for rail header. resolveAssetUrl wraps в
+  // BASE_URL чтобы prod path-based deploy (/eclipse-chat/) работал.
+  const bannerUrl = serverBanner ? resolveAssetUrl(serverBanner) : null;
+  const headerClass = bannerUrl
+    ? "ec-server-header-edge ec-channel-list__header ec-channel-list__header--banner"
+    : "ec-server-header-edge ec-channel-list__header";
+  const headerStyle: CSSProperties | undefined = bannerUrl
+    ? { backgroundImage: `url("${bannerUrl}")` }
+    : undefined;
+
   return (
     <aside className="ec-channel-list">
-      <header className="ec-server-header-edge ec-channel-list__header">
+      <header className={headerClass} style={headerStyle}>
         <button
           type="button"
           onClick={onShowServerInfo}

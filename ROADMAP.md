@@ -5,7 +5,19 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.32** (Phase A — PWA harden #2: Web Share
+**Текущая версия:** **v1.5.33** (Server banners trek #1 — ChannelList
+rail header banner. Server.banner был в schema с v0.10.1 (1500×500
+webp) + upload/change в ServerHubModal, но в основном UI нигде не
+рендерился. ChannelList получил prop serverBanner + class modifier
+.ec-channel-list__header--banner: cover background-image, min-height
+96px, gradient overlay sup-down (от прозрачного к hsl(220 22% 4% /
+0.92)) для text-contrast на любом изображении, text-shadow на server
+name + role-badge + info-icon, hover preserves backdrop transparency.
+Identity reinforcement — banner виден ВСЕГДА когда сервер активен.
+Без banner'а — compact header preserved (no regression). AppShell
+передаёт activeServer.banner ?? null; deployed 26.05.2026).
+
+**Предыдущая:** v1.5.32 (Phase A — PWA harden #2: Web Share
 Target API. manifest.webmanifest получил share_target (GET-based,
 params: share_title/share_text/share_url) + launch_handler focus-
 existing. Eclipse Chat теперь появляется в системном «Поделиться» меню

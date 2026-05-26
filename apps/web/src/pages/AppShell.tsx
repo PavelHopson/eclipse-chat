@@ -1133,6 +1133,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             serverName={activeServer?.name ?? null}
             serverRole={activeServer?.role ?? null}
             inviteCode={activeServer?.inviteCode ?? null}
+            serverBanner={activeServer?.banner ?? null}
             channels={channels}
             channelsLoading={channelsLoading}
             unread={unread}
