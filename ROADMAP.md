@@ -5,7 +5,19 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.28** (CSS split + font preload + vite tuning:
+**Текущая версия:** **v1.5.29** (VoiceRoom screenshare tile fix:
+v1.1.68 переключил object-fit=contain + per-tile aspectRatio из source
+metadata, но `flexBasis: 100%, maxWidth: 100%` на screen-share inline
+style тихо игнорировался (flex-свойства на grid item — no-op). Tile
+оставался clamped к maxWidth=760, центрировался в 1500px grid → screen
+share выглядел маленьким куском с пустым полем по бокам.
+Fix: gridColumn '1/-1' (правильный grid способ span'а), maxWidth:none
+(снимает 760-cap для screen-share), maxHeight:64vh (защита от 16:9
+tile выше viewport если parent очень широкий). Webcam tile попадает
+в row 2 → нормальный размер. Применён только к isScreen, обычные
+camera tiles не задеты; deployed 25.05.2026).
+
+**Предыдущая:** v1.5.28 (CSS split + font preload + vite tuning:
 index.css slim до critical (fonts/tokens/reset/effects/motion ~148KB);
 новый app.css объединяет components/responsive/player/cockpit ~178KB,
 lazy с AppShell + ClientPortalContainer chunk'ами. Landing visitor

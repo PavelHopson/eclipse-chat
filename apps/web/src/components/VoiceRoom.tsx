@@ -390,14 +390,22 @@ function VideoTrackTile({
 
   return (
     <article
-      className="ec-vr-video-tile"
+      className={`ec-vr-video-tile${isScreen ? " ec-vr-video-tile--screen" : ""}`}
       style={{
         ...videoTileWrap,
         // v1.1.68 — пропорции тайла = пропорции источника (fallback 16:9 пока
         // не пришла metadata). Источник больше не «обрезается» под 16:9.
         aspectRatio: aspect ?? videoTileWrap.aspectRatio,
-        // Демонстрация экрана — широкий cinematic-тайл на всю строку.
-        ...(isScreen ? { flexBasis: "100%", maxWidth: "100%" } : null),
+        // v1.5.29 fix — screen-share tile:
+        //  - gridColumn 1/-1 → tile занимает ВСЮ строку grid (раньше пытались
+        //    flexBasis на grid item, тихо ignored, tile оставался clamped
+        //    к 760px maxWidth).
+        //  - maxWidth: none → не упирается в videoTileWrap.maxWidth=760.
+        //  - maxHeight: 64vh → если источник 16:9 + грид широкий, height
+        //    не превышает viewport (иначе нижние controls vanish).
+        ...(isScreen
+          ? { gridColumn: "1 / -1", maxWidth: "none", maxHeight: "64vh" }
+          : null),
       }}
     >
       <div ref={mountRef} style={videoCanvas} />
