@@ -12,6 +12,7 @@ import {
 import { useChangePassword } from "../hooks/useChangePassword";
 import { useDensity, type Density } from "../hooks/useDensity";
 import { useFocusDim } from "../hooks/useFocusDim";
+import { useInstallPrompt } from "../hooks/useInstallPrompt";
 
 /** v1.1.64 §12 — варианты плотности для сегмент-контрола. */
 const DENSITY_OPTIONS: Array<{ id: Density; label: string }> = [
@@ -64,6 +65,8 @@ export function ProfileModal({
   // v0.85 #27 phase 4: per-event-type toggles. Fetch только когда push enabled.
   const pushPrefs = usePushPreferences(push.enabled);
   const [showPrefs, setShowPrefs] = useState(false);
+  // v1.5.30 — PWA install prompt (beforeinstallprompt capture).
+  const install = useInstallPrompt();
 
   // v1.1.64 §12 — плотность интерфейса.
   const { density, setDensity } = useDensity();
@@ -566,6 +569,77 @@ export function ProfileModal({
           </div>
         )}
       </section>
+
+      {/* v1.5.30 — Install PWA section. Видим только если есть готовый
+       *  prompt (Chrome/Edge/Android) ИЛИ это iOS Safari (manual hint),
+       *  и приложение ещё не installed. После accept/dismiss скрывается. */}
+      {(install.canInstall || install.isIOS) && (
+        <section
+          style={{
+            ...avatarSection,
+            background: "var(--ec-accent-soft)",
+            boxShadow: "var(--ec-elev-2)",
+          }}
+        >
+          <div
+            aria-hidden
+            style={{
+              width: 48,
+              height: 48,
+              borderRadius: "var(--ec-radius-md)",
+              display: "grid",
+              placeItems: "center",
+              background: "var(--ec-accent)",
+              color: "var(--ec-accent-text)",
+            }}
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 3v12" />
+              <path d="m7 10 5 5 5-5" />
+              <path d="M5 21h14" />
+            </svg>
+          </div>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
+            <strong style={{ color: "var(--ec-text-strong)", fontSize: "var(--ec-text-sm)" }}>
+              Установить приложение
+            </strong>
+            <span style={{ fontSize: "var(--ec-text-2xs)", color: "var(--ec-text-muted)", lineHeight: 1.4 }}>
+              {install.isIOS
+                ? "Safari → нажми «Поделиться» (□↑) → «На экран Домой». Eclipse Chat будет работать как обычное приложение, с push-уведомлениями."
+                : "Eclipse Chat запустится в отдельном окне с быстрым стартом и системными уведомлениями вместо вкладки в браузере."}
+            </span>
+          </div>
+          {install.canInstall && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <button
+                type="button"
+                className="ec-btn ec-btn--primary ec-btn--sm"
+                onClick={() => void install.prompt()}
+              >
+                Установить
+              </button>
+              <button
+                type="button"
+                className="ec-btn ec-btn--ghost ec-btn--sm"
+                onClick={() => install.dismiss()}
+                title="Не показывать неделю"
+              >
+                Позже
+              </button>
+            </div>
+          )}
+          {install.isIOS && (
+            <button
+              type="button"
+              className="ec-btn ec-btn--ghost ec-btn--sm"
+              onClick={() => install.dismiss()}
+              title="Не показывать неделю"
+            >
+              Понятно
+            </button>
+          )}
+        </section>
+      )}
 
       {/* v0.85 #27 phase 4: per-event-type toggles. Disclosure под push section. */}
       {push.enabled && showPrefs && (

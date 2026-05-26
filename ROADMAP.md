@@ -5,7 +5,19 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.29** (VoiceRoom screenshare tile fix:
+**Текущая версия:** **v1.5.30** (Phase A — PWA harden #1: новый
+useInstallPrompt hook captures beforeinstallprompt event (Chrome/Edge/
+Android) + detects iOS Safari standalone fallback. Install секция в
+ProfileModal с кнопкой «Установить» (canInstall) или «Поделиться →
+На экран Домой» hint для iOS. localStorage dismiss cooldown 7 дней
+чтобы не спамить. App Badging API в useNotifications: setAppBadge/
+clearAppBadge на icon в taskbar/launcher когда unread > 0 (Chrome
+desktop, Edge, Android — iOS Safari/Firefox graceful skip через
+feature-detect). SW_VERSION bumped v1.3.1 → v1.5.30 для активации
+cleanup стары caches + добавлено в version-bump чеклист как 4-я
+spot; deployed 26.05.2026).
+
+**Предыдущая:** v1.5.29 (VoiceRoom screenshare tile fix:
 v1.1.68 переключил object-fit=contain + per-tile aspectRatio из source
 metadata, но `flexBasis: 100%, maxWidth: 100%` на screen-share inline
 style тихо игнорировался (flex-свойства на grid item — no-op). Tile

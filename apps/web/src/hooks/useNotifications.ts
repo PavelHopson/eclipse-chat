@@ -93,6 +93,10 @@ export function useNotifications(
   }, []);
 
   // Tab title — badge с unread count
+  // v1.5.30 — App Badging API: для installed PWA (Chrome desktop, Edge,
+  // Android Chrome) ставим numeric badge на icon в taskbar / launcher.
+  // navigator.setAppBadge / clearAppBadge поддерживаются через feature-
+  // detect (iOS Safari, Firefox — нет, безопасно ignored).
   useEffect(() => {
     if (typeof document === "undefined") return;
     if (unreadTotal > 0) {
@@ -100,9 +104,25 @@ export function useNotifications(
     } else {
       document.title = ORIGINAL_TITLE;
     }
+    const nav = typeof navigator !== "undefined"
+      ? (navigator as Navigator & {
+          setAppBadge?: (n?: number) => Promise<void>;
+          clearAppBadge?: () => Promise<void>;
+        })
+      : null;
+    if (nav) {
+      if (unreadTotal > 0 && typeof nav.setAppBadge === "function") {
+        void nav.setAppBadge(unreadTotal).catch(() => undefined);
+      } else if (typeof nav.clearAppBadge === "function") {
+        void nav.clearAppBadge().catch(() => undefined);
+      }
+    }
     return () => {
       // restore when unmount
       if (typeof document !== "undefined") document.title = ORIGINAL_TITLE;
+      if (nav && typeof nav.clearAppBadge === "function") {
+        void nav.clearAppBadge().catch(() => undefined);
+      }
     };
   }, [unreadTotal]);
 
