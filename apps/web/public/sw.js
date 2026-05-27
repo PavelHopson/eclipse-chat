@@ -22,7 +22,7 @@
 // v1.5.30: PWA harden — bumped до текущей версии. Cache invalidation работает
 // через name-prefix change → activate cleanup удаляет стары caches.
 // v1.5.32: GitHub Actions trigger flake — пришлось ретригернуть push.
-const SW_VERSION = "eclipse-v1.5.36";
+const SW_VERSION = "eclipse-v1.5.37";
 const APP_SHELL_CACHE = `${SW_VERSION}-shell`;
 const ASSETS_CACHE = `${SW_VERSION}-assets`;
 const UPLOADS_CACHE = `${SW_VERSION}-uploads`;
@@ -74,8 +74,18 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   const req = event.request;
-  if (req.method !== "GET") return;
   const url = new URL(req.url);
+
+  // v1.5.37 — POST /share-target: Web Share Target Level 2 (files).
+  // Browser POST'ит multipart/form-data сюда когда user share'ит фото/видео
+  // в installed PWA. SW intercept'ит, сохраняет файлы в IDB, redirect'ит
+  // на /?share-id=<uuid> где frontend пикапит из IDB.
+  if (req.method === "POST" && url.pathname.endsWith("/share-target")) {
+    event.respondWith(handleShareTargetPost(event.request));
+    return;
+  }
+
+  if (req.method !== "GET") return;
 
   // Никогда не cache live API/socket — пропускаем в сеть.
   if (url.pathname.includes("/api/") || url.pathname.includes("/socket.io")) {
@@ -184,6 +194,102 @@ self.addEventListener("push", (event) => {
     }),
   );
 });
+
+/* ===== v1.5.37: POST share_target — Web Share Target Level 2 (files) ===== */
+
+/**
+ * IDB helpers — простая key-value store "shares" для transport между SW
+ * (intercepts POST) и main thread (читает на mount через useShareTarget).
+ * Hand-rolled чтобы не тащить idb npm pkg в SW.
+ */
+const IDB_NAME = "eclipse-chat-shares";
+const IDB_STORE = "shares";
+const IDB_VERSION = 1;
+const SHARE_TTL_MS = 10 * 60 * 1000; // 10 минут — share entry self-cleanup
+
+function openShareIDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(IDB_NAME, IDB_VERSION);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(IDB_STORE)) {
+        db.createObjectStore(IDB_STORE);
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function idbPutShare(id, payload) {
+  const db = await openShareIDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(IDB_STORE, "readwrite");
+    tx.objectStore(IDB_STORE).put(payload, id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+/**
+ * Cleanup стары share entries (older than TTL). Вызывается при каждом
+ * новом share — keeps IDB lean. Best-effort, errors swallowed.
+ */
+async function idbCleanupStaleShares() {
+  try {
+    const db = await openShareIDB();
+    const tx = db.transaction(IDB_STORE, "readwrite");
+    const store = tx.objectStore(IDB_STORE);
+    const now = Date.now();
+    const cursorReq = store.openCursor();
+    cursorReq.onsuccess = (e) => {
+      const cursor = e.target.result;
+      if (!cursor) return;
+      const v = cursor.value;
+      if (v && v.timestamp && now - v.timestamp > SHARE_TTL_MS) {
+        cursor.delete();
+      }
+      cursor.continue();
+    };
+  } catch {
+    /* IDB unavailable / quota / etc — non-fatal */
+  }
+}
+
+async function handleShareTargetPost(request) {
+  try {
+    const formData = await request.formData();
+    const files = formData.getAll("files").filter((f) => f instanceof File && f.size > 0);
+    const title = formData.get("title") || null;
+    const text = formData.get("text") || null;
+    const url = formData.get("url") || null;
+
+    const shareId = (self.crypto && self.crypto.randomUUID)
+      ? self.crypto.randomUUID()
+      : `s-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
+    // Store payload в IDB — files как File objects (поддерживается IDB).
+    await idbPutShare(shareId, {
+      files,
+      title: typeof title === "string" ? title : null,
+      text: typeof text === "string" ? text : null,
+      url: typeof url === "string" ? url : null,
+      timestamp: Date.now(),
+    });
+
+    // Async cleanup стары shares — не ждём.
+    idbCleanupStaleShares();
+
+    // 303 See Other → browser GET на main URL с share-id parameter.
+    // scope = /eclipse-chat/ в prod, / в dev — берём из registration.
+    const base = self.registration.scope;
+    return Response.redirect(`${base}?share-id=${encodeURIComponent(shareId)}`, 303);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error("[sw] share-target handler failed", err);
+    return new Response("Share failed", { status: 500 });
+  }
+}
 
 /**
  * notificationclick: focus existing tab или открываем новый.

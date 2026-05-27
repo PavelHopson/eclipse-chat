@@ -98,6 +98,14 @@ type Props = {
    * Колбэк после успешного prefill — caller вызывает useShareTarget.consume().
    */
   onPrefillConsumed?: () => void;
+  /**
+   * v1.5.37 — pre-attach files из Web Share Target Level 2 (POST/files).
+   * Когда non-null + non-empty → автоматически добавляются как pending
+   * attachments через тот же addFiles путь что и file picker / drop. После
+   * успешного attach вызывается `onPrefillFilesConsumed`.
+   */
+  prefillFiles?: File[] | null;
+  onPrefillFilesConsumed?: () => void;
 };
 
 // v1.1.92 slice 3: inline-style консоли композера вынесены в классы
@@ -253,6 +261,8 @@ export function MessageInput({
   hideSlashCommands = false,
   prefillContent = null,
   onPrefillConsumed,
+  prefillFiles = null,
+  onPrefillFilesConsumed,
 }: Props) {
   const [draft, setDraft] = useState(() => loadDraft(draftKey));
   const [sending, setSending] = useState(false);
@@ -380,6 +390,25 @@ export function MessageInput({
     const timer = window.setTimeout(() => saveDraft(draftKey, draft), 250);
     return () => window.clearTimeout(timer);
   }, [draftKey, draft]);
+
+  // v1.5.37 — Web Share Target prefill files (Level 2 POST). Когда от
+  // useShareTarget пришли files (image/video/audio/pdf/txt из share intent),
+  // добавляем их через тот же addFiles путь что file picker/drop — это
+  // даёт unified валидацию (MIME / size limit) + previews. Reuse не означает
+  // overwrite: addFiles прибавляется к pending.
+  useEffect(() => {
+    if (!prefillFiles || prefillFiles.length === 0) return;
+    if (hideAttachments) {
+      // Composer без attachments — share files игнорируем, но consume чтобы
+      // не зависнуть на каждом re-render.
+      onPrefillFilesConsumed?.();
+      return;
+    }
+    addFiles(prefillFiles);
+    onPrefillFilesConsumed?.();
+    // addFiles стабилен (defined в component), hideAttachments-prop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefillFiles]);
 
   // v1.5.32 — Web Share Target prefill. Когда от useShareTarget пришло
   // content (user share'нул из system menu) И composer пустой — заполняем

@@ -55,12 +55,19 @@
     }
   ],
   "share_target": {
-    "action": "./",
-    "method": "GET",
+    "action": "./share-target",
+    "method": "POST",
+    "enctype": "multipart/form-data",
     "params": {
-      "title": "share_title",
-      "text": "share_text",
-      "url": "share_url"
+      "title": "title",
+      "text": "text",
+      "url": "url",
+      "files": [
+        {
+          "name": "files",
+          "accept": ["image/*", "video/*", "audio/*", ".pdf", ".txt"]
+        }
+      ]
     }
   },
   "launch_handler": {

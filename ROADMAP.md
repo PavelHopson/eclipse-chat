@@ -5,7 +5,24 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.36** (Server banners trek #4 (final) —
+**Текущая версия:** **v1.5.37** (Phase A — PWA harden #3: POST
+share_target Level 2 — files share для installed PWA. v1.5.32 был
+GET text/url only; теперь полноценно "Share photo from Gallery →
+Eclipse Chat" работает на Android Chrome.
+Architecture: manifest share_target.action = ./share-target POST
+multipart с files[] (image/*, video/*, audio/*, pdf, txt). SW
+intercept'ит POST на /share-target → парсит FormData → сохраняет
+File objects в IDB store "shares" с UUID key + timestamp → 303
+redirect на /?share-id=<uuid>. Frontend useShareTarget extension on
+mount читает share-id из URL → IDB lookup → expose pendingFiles[]
++ pendingContent (если text+title+url шли вместе с files). Async
+cleanup стары entries (TTL 10 min). MessageInput получил prefillFiles
+prop + onPrefillFilesConsumed — addFiles() через тот же путь что
+file picker / drop (unified validation + previews). Both DM и
+channel composer mounts получают share.pendingFiles. SW_VERSION
+bumped; deployed 27.05.2026).
+
+**Предыдущая:** v1.5.36 (Server banners trek #4 (final) —
 ServerSwitcher dropdown banner preview. Каждый server row в
 top-left dropdown с банером: новый class .ec-srv-menu-row--banner с
 inline backgroundImage url + 64px min-height + left-to-right gradient

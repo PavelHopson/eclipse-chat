@@ -1763,6 +1763,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                 onTypingStop={() => undefined}
                 prefillContent={share.pendingContent}
                 onPrefillConsumed={share.consume}
+                prefillFiles={share.pendingFiles}
+                onPrefillFilesConsumed={share.consumeFiles}
               />
             </>
           )
@@ -2003,6 +2005,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                 onTypingStop={emitTypingStop}
                 prefillContent={share.pendingContent}
                 onPrefillConsumed={share.consume}
+                prefillFiles={share.pendingFiles}
+                onPrefillFilesConsumed={share.consumeFiles}
               />
             )}
           </>

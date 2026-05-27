@@ -1,24 +1,82 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 /**
- * v1.5.32 — Web Share Target API receiver hook.
+ * Web Share Target API receiver — v1.5.32 + v1.5.37.
  *
- * Когда Eclipse Chat installed как PWA и user share'ит контент из любого app
- * (Android Chrome / Windows Chrome share menu) — browser открывает наш URL с
- * GET params `share_title` / `share_text` / `share_url` (см. manifest.webmanifest
- * `share_target`). Этот hook парсит их один раз на mount, экспортит композированную
- * строку для prefill composer, и чистит URL через history.replaceState чтобы
- * params не оставались в адресной строке после первой обработки.
+ * Два режима, не конфликтуют:
  *
- * Composed string format:
- *   `${title}\n${text}\n${url}` — пустые куски опускаются, разделитель — \n\n
- *   для читабельности (markdown-paragraph).
+ * 1) **GET text/url share** (v1.5.32) — `?share_title/text/url` URL params.
+ *    Browser GET'ит с заполненными query, мы парсим on mount + чистим URL.
+ *    Подходит для share текста / ссылки из любого app.
  *
- * Phase A v1.5.33 расширит до POST-method для files (image/video share),
- * требует SW interception + IndexedDB temp storage. Пока v1 — text/url only.
+ * 2) **POST files share** (v1.5.37) — `?share-id=<uuid>` URL param.
+ *    Browser POST'ит multipart на /share-target, SW intercept'ит, кладёт
+ *    files+meta в IndexedDB, redirect'ит на `?share-id=<uuid>`. Frontend
+ *    on mount читает IDB по этому id → expose'ит pendingFiles[] + meta.
+ *    Поддерживает image/video/audio/pdf/txt.
+ *
+ * Pavel-Phase A v1.5.37 — закрывает gap: GET был text-only, теперь полноценно
+ * "Share photo from Gallery → Eclipse Chat" работает на Android Chrome
+ * installed PWA.
  */
 
-function parseShareFromUrl(): { content: string; raw: { title: string | null; text: string | null; url: string | null } } | null {
+const IDB_NAME = "eclipse-chat-shares";
+const IDB_STORE = "shares";
+
+type IdbSharePayload = {
+  files: File[];
+  title: string | null;
+  text: string | null;
+  url: string | null;
+  timestamp: number;
+};
+
+function openShareIDB(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(IDB_NAME, 1);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(IDB_STORE)) {
+        db.createObjectStore(IDB_STORE);
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function idbReadShare(id: string): Promise<IdbSharePayload | null> {
+  try {
+    const db = await openShareIDB();
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction(IDB_STORE, "readonly");
+      const req = tx.objectStore(IDB_STORE).get(id);
+      req.onsuccess = () => resolve((req.result as IdbSharePayload | undefined) ?? null);
+      req.onerror = () => reject(req.error);
+    });
+  } catch {
+    return null;
+  }
+}
+
+async function idbDeleteShare(id: string): Promise<void> {
+  try {
+    const db = await openShareIDB();
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(IDB_STORE, "readwrite");
+      tx.objectStore(IDB_STORE).delete(id);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  } catch {
+    /* non-fatal */
+  }
+}
+
+function parseGetShareFromUrl(): {
+  content: string;
+  raw: { title: string | null; text: string | null; url: string | null };
+} | null {
   if (typeof window === "undefined") return null;
   const params = new URLSearchParams(window.location.search);
   const title = params.get("share_title");
@@ -33,12 +91,18 @@ function parseShareFromUrl(): { content: string; raw: { title: string | null; te
   };
 }
 
+function readShareIdFromUrl(): string | null {
+  if (typeof window === "undefined") return null;
+  const params = new URLSearchParams(window.location.search);
+  return params.get("share-id");
+}
+
 function clearShareFromUrl() {
   if (typeof window === "undefined") return;
   const params = new URLSearchParams(window.location.search);
-  params.delete("share_title");
-  params.delete("share_text");
-  params.delete("share_url");
+  for (const key of ["share_title", "share_text", "share_url", "share-id"]) {
+    params.delete(key);
+  }
   const search = params.toString();
   const newUrl =
     window.location.pathname +
@@ -47,35 +111,80 @@ function clearShareFromUrl() {
   try {
     window.history.replaceState({}, "", newUrl);
   } catch {
-    /* SecurityError on some embedded contexts — non-fatal */
+    /* SecurityError на некоторых embed — non-fatal */
   }
 }
 
 export function useShareTarget() {
-  // Lazy init from URL — read ровно один раз. Если params уберут через clear()
-  // или другой код — state остаётся пока compose() не вызовется.
-  const [pending, setPending] = useState(() => {
-    const parsed = parseShareFromUrl();
-    if (parsed) {
-      // Чистим URL сразу же — share params не должны висеть для bookmark/copy URL.
+  const [pendingContent, setPendingContent] = useState<string | null>(null);
+  const [pendingFiles, setPendingFiles] = useState<File[] | null>(null);
+  const [pendingRaw, setPendingRaw] = useState<{
+    title: string | null;
+    text: string | null;
+    url: string | null;
+  } | null>(null);
+
+  // Init: parse URL once on mount, dispatch GET vs POST flow.
+  useEffect(() => {
+    let cancelled = false;
+    const shareId = readShareIdFromUrl();
+
+    if (shareId) {
+      // POST flow (v1.5.37) — files share.
+      void (async () => {
+        const payload = await idbReadShare(shareId);
+        if (cancelled) return;
+        if (payload) {
+          if (payload.files && payload.files.length > 0) {
+            setPendingFiles(payload.files);
+          }
+          const parts = [payload.title, payload.text, payload.url].filter(
+            (p): p is string => !!p && p.length > 0,
+          );
+          if (parts.length > 0) {
+            setPendingContent(parts.join("\n\n"));
+            setPendingRaw({
+              title: payload.title,
+              text: payload.text,
+              url: payload.url,
+            });
+          }
+          // Consume IDB entry — share doesn't persist across reloads.
+          void idbDeleteShare(shareId);
+        }
+        clearShareFromUrl();
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    // GET flow (v1.5.32) — text/url share.
+    const getParsed = parseGetShareFromUrl();
+    if (getParsed) {
+      setPendingContent(getParsed.content);
+      setPendingRaw(getParsed.raw);
       clearShareFromUrl();
     }
-    return parsed;
-  });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-  /**
-   * Consume the pending share — clears state. Caller вызывает после того как
-   * содержимое успешно записано в draft composer'а (или отправлено).
-   */
   const consume = useCallback(() => {
-    setPending(null);
+    setPendingContent(null);
+    setPendingRaw(null);
+  }, []);
+
+  const consumeFiles = useCallback(() => {
+    setPendingFiles(null);
   }, []);
 
   return {
-    /** Composed string ready for composer prefill, или null если share нет. */
-    pendingContent: pending?.content ?? null,
-    /** Raw fields для preview или modal channel-picker UX (v1.5.33+). */
-    pendingRaw: pending?.raw ?? null,
+    pendingContent,
+    pendingRaw,
+    pendingFiles,
     consume,
+    consumeFiles,
   };
 }
