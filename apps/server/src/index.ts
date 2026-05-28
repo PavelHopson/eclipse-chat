@@ -17,6 +17,7 @@ import { registerAuthRoutes } from "./routes/auth.js";
 import { registerBotRoutes } from "./routes/bots.js";
 import { registerTwoFactorRoutes } from "./routes/twoFactor.js";
 import { registerChannelRoutes } from "./routes/channels.js";
+import { registerChannelCategoryRoutes } from "./routes/channelCategories.js";
 import { registerClientPortalRoutes } from "./routes/clientPortal.js";
 import { registerDigestRoutes } from "./routes/digest.js";
 import { registerDmRoutes } from "./routes/dm.js";
@@ -264,6 +265,7 @@ await registerBotRoutes(app);
 }
 
 await registerChannelRoutes(app);
+await registerChannelCategoryRoutes(app);
 await registerActionRoutes(app);
 await registerAttachmentRoutes(app);
 await registerAutomationRoutes(app);

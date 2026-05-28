@@ -63,6 +63,10 @@ const createServerChannelBody = z.object({
   /** v0.74 #29 phase 1: optional auto-expiry. ISO timestamp в будущем
    *  (max 30 дней вперёд, validate в route). NULL = постоянный канал. */
   expiresAt: z.string().datetime().nullable().optional(),
+  /** v1.5.46 C1 — создать канал внутри категории. NULL/undefined =
+   *  uncategorized (default). Backend верифит что категория принадлежит
+   *  этому серверу. */
+  categoryId: z.string().min(1).nullable().optional(),
 });
 
 const updateChannelBody = z.object({
@@ -752,10 +756,38 @@ export async function registerServerRoutes(app: FastifyInstance) {
         internal: true,
         expiresAt: true,
         createdAt: true,
+        // v1.5.46 C1 — категория канала. null = uncategorized.
+        categoryId: true,
         _count: { select: { messages: true } },
       },
     });
-    return { channels };
+    // v1.5.46 C1 — bundle категории в тот же response чтобы избежать
+    // отдельного fetch'а. Frontend ChannelList использует обе коллекции:
+    // uncategorized channels (categoryId=null) сверху, потом categories
+    // отсортированные по position, в каждой — её channels.
+    const categories = await db.channelCategory.findMany({
+      where: { serverId: id },
+      orderBy: { position: "asc" },
+      select: {
+        id: true,
+        serverId: true,
+        name: true,
+        position: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+    return {
+      channels,
+      categories: categories.map((c) => ({
+        id: c.id,
+        serverId: c.serverId,
+        name: c.name,
+        position: c.position,
+        createdAt: c.createdAt.toISOString(),
+        updatedAt: c.updatedAt.toISOString(),
+      })),
+    };
   });
 
   /**
@@ -870,6 +902,17 @@ export async function registerServerRoutes(app: FastifyInstance) {
       }
       expiresAtDate = d;
     }
+    // v1.5.46 C1 — если задан categoryId, проверить что категория из same server.
+    if (parsed.data.categoryId) {
+      const cat = await db.channelCategory.findUnique({
+        where: { id: parsed.data.categoryId },
+        select: { serverId: true },
+      });
+      if (!cat || cat.serverId !== serverId) {
+        return reply.status(400).send({ error: "Category not in this server" });
+      }
+    }
+
     const base = slugifyBase(parsed.data.name);
     const slug = await uniqueSlug(base);
     const ch = await db.channel.create({
@@ -880,6 +923,7 @@ export async function registerServerRoutes(app: FastifyInstance) {
         type: parsed.data.type ?? "TEXT",
         description: parsed.data.description?.trim() || null,
         expiresAt: expiresAtDate,
+        categoryId: parsed.data.categoryId ?? null,
       },
     });
     emitChannelCreated(serverId, {
@@ -890,6 +934,7 @@ export async function registerServerRoutes(app: FastifyInstance) {
       type: ch.type,
       position: ch.position,
       createdAt: ch.createdAt.toISOString(),
+      categoryId: ch.categoryId,
     });
     return {
       channel: {
@@ -901,6 +946,7 @@ export async function registerServerRoutes(app: FastifyInstance) {
         description: ch.description,
         expiresAt: ch.expiresAt?.toISOString() ?? null,
         createdAt: ch.createdAt.toISOString(),
+        categoryId: ch.categoryId,
       },
     };
   });

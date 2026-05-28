@@ -612,6 +612,10 @@ model Server {
   suspendedBy       User?    @relation("ServerSuspendedBy", fields: [suspendedByUserId], references: [id], onDelete: SetNull)
 
   channels    Channel[]
+  /// v1.5.46 Discord-parity C1 — channel categories на этом сервере.
+  /// Сортировка по ChannelCategory.position. Канал без categoryId =
+  /// uncategorized (UI рисует над списком категорий, по Discord паттерну).
+  channelCategories ChannelCategory[]
   members     Member[]
   actionItems ActionItem[]
   bots        Bot[]
@@ -719,8 +723,15 @@ model Channel {
   server    Server      @relation(fields: [serverId], references: [id], onDelete: Cascade)
   /// Тип канала. По умолчанию TEXT — обратная совместимость с v0.4.
   type      ChannelType @default(TEXT)
-  /// Позиция в списке каналов сервера (для будущей сортировки UI).
+  /// Позиция в списке каналов **внутри своей категории** (или среди
+  /// uncategorized если categoryId NULL). Per-(serverId, categoryId)
+  /// упорядоченность — не глобально по серверу.
   position  Int         @default(0)
+  /// v1.5.46 Discord-parity C1 — категория канала. NULL = uncategorized
+  /// (рисуется наверху в UI, до первой категории). SetNull при удалении
+  /// категории — каналы не теряются, переходят в uncategorized.
+  categoryId String?
+  category   ChannelCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   /// Описание канала (до 1024 символов). Показывается в chat header
   /// под #channel-name + в ChannelSettingsModal. Nullable = нет описания.
   description String?
@@ -752,6 +763,44 @@ model Channel {
   voiceNote VoiceNote?
 
   @@index([expiresAt])
+  /// v1.5.46 C1 — быстрая выборка channels per-category в UI tree.
+  @@index([categoryId, position])
+}
+
+/// v1.5.46 Discord-parity C1 — Channel category.
+///
+/// Группировка каналов под server'ом: «Underground», «Clubhouse» в Discord-стиле.
+/// Категория сама — не channel (без messages / permissions модели). UI рисует
+/// collapsible header с hover-+ для create-channel-in-this-category.
+///
+/// Position invariants:
+///   - Категории внутри сервера упорядочены по `position` (0, 1, 2…)
+///   - Каналы внутри категории упорядочены по Channel.position
+///   - Uncategorized каналы (Channel.categoryId NULL) — отдельная виртуальная
+///     "no-category" группа, position-indexing своя, рендерится наверху списка
+///
+/// Permissions: OWNER/ADMIN create/rename/delete/reorder. View — все members
+/// (категории видны если виден хоть один канал в ней).
+///
+/// Cascade: при удалении server'а каскадно удаляются все категории
+/// (channels уже cascade). При удалении категории Channel.categoryId
+/// ставится в NULL — каналы переходят в uncategorized, не теряются.
+model ChannelCategory {
+  id        String   @id @default(cuid())
+  serverId  String
+  server    Server   @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  /// User-set имя категории, до 80 символов. UI uppercases при render
+  /// (Discord pattern «UNDERGROUND», «CLUBHOUSE»). На уровне БД храним
+  /// как ввёл user — uppercasing чисто display concern.
+  name      String
+  /// Позиция категории в списке категорий сервера. Per-server упорядоченность.
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  channels  Channel[]
+
+  @@index([serverId, position])
 }
 
 /// v0.89 #26 phase 2: тип внешней интеграции.

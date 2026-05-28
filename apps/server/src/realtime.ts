@@ -117,6 +117,8 @@ export function emitChannelCreated(
     position: number;
     createdAt: string;
     expiresAt?: string | null;
+    /** v1.5.46 C1 — категория канала. null = uncategorized. */
+    categoryId?: string | null;
   },
 ) {
   io?.to(`server:${serverId}`).emit("channel:created", payload);
@@ -150,9 +152,57 @@ export function emitChannelUpdated(
     description: string | null;
     emoji: string | null;
     expiresAt?: string | null;
+    /** v1.5.46 C1 — категория канала. null = uncategorized.
+     *  При смене categoryId frontend перемещает канал между группами. */
+    categoryId?: string | null;
   },
 ) {
   io?.to(`server:${serverId}`).emit("channel:updated", payload);
+}
+
+// ============================
+// v1.5.46 C1 — Channel category events
+// ============================
+
+/** Минимальный shape category в socket payload'е (full DTO для UI). */
+type ChannelCategoryEventPayload = {
+  id: string;
+  serverId: string;
+  name: string;
+  position: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/** Новая категория создана. Frontend добавляет в server's ChannelList. */
+export function emitCategoryCreated(
+  serverId: string,
+  payload: ChannelCategoryEventPayload,
+) {
+  io?.to(`server:${serverId}`).emit("category:created", payload);
+}
+
+/**
+ * Категория переименована или position изменилась. Frontend обновляет
+ * row, пересортирует если position сменился. Один event покрывает обе
+ * мутации — frontend оптимистично mer'жит новые поля.
+ */
+export function emitCategoryUpdated(
+  serverId: string,
+  payload: ChannelCategoryEventPayload,
+) {
+  io?.to(`server:${serverId}`).emit("category:updated", payload);
+}
+
+/**
+ * Категория удалена. Frontend убирает row + ожидает потока channel:updated
+ * для каждого затронутого канала (categoryId перейдёт в null).
+ */
+export function emitCategoryDeleted(
+  serverId: string,
+  payload: { categoryId: string; serverId: string },
+) {
+  io?.to(`server:${serverId}`).emit("category:deleted", payload);
 }
 
 /**
