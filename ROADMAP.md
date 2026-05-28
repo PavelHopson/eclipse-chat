@@ -5,7 +5,23 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.39** (Phase B Tauri 2 #2 — plugins layer:
+**Текущая версия:** **v1.5.40** (Discord-inspired UX trek #1 — Members
+list role-group headers. Заменён flat СВЯЗАННЫЕ_УЗЛЫ section в MemberList
+на role-grouped collapsible subsections с counts (Discord pattern «President
+| 1, Sergeant at Arms | 4»). Сохранена Eclipse cyberpunk identity через
+ROLE_GROUP_LABEL map: КОМАНДОРЫ (OWNER), ОПЕРАТОРЫ (ADMIN), МОДЕРАТОРЫ
+(MODERATOR), АРХИТЕКТУРА (ARCHITECT), ИНЖЕНЕРЫ (DEVELOPER), ДИСПЕТЧЕРЫ
+(OPERATOR), ЛИЧНЫЙ_СОСТАВ (MEMBER), КЛИЕНТЫ (CLIENT), НАБЛЮДАТЕЛИ
+(VIEWER), ГОСТИ (GUEST). Order по существующему ROLE_RANK. Each section
+collapsible через chevron ▾ кнопку, state persist'ится per-server в
+localStorage (key COLLAPSE_KEY_PREFIX + serverId). Section labels стали
+clickable buttons (.ec-section-label--toggle CSS: hover bg accent 8%,
+focus-visible outline). СПЯЩИЙ_РЕЖИМ offline section — тоже collapsible
+(persist key + ":offline" suffix). serverId prop wired через AppShell
+→ IntelligencePanel → MemberList. Frontend-only, no schema changes;
+deployed 28.05.2026).
+
+**Предыдущая:** v1.5.39 (Phase B Tauri 2 #2 — plugins layer:
 notification + updater + window-state. Desktop app version bumped 1.0.0
 → 1.0.1.
 - `tauri-plugin-notification` (Cargo.toml + lib.rs Builder + capability

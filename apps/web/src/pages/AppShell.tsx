@@ -2067,6 +2067,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               voiceChannelByUser={voiceChannelByUser}
               channelNameById={channelNameById}
               currentUserId={user.id}
+              serverId={activeServerId}
               onClose={isTabletOrSmaller ? () => setMembersOpen(false) : undefined}
               onCollapse={isTabletOrSmaller ? undefined : () => setRightRailCollapsed(true)}
               onOpenDm={(otherId) => {

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Avatar } from "./Avatar";
 import { gameIcon, type GameIconName } from "../lib/gameIcons";
 import type { MemberRole, MemberRow } from "../hooks/useMembers";
@@ -20,6 +20,9 @@ type Props = {
   currentUserId?: string;
   /** «Написать в личку» — открывает или создаёт DM. */
   onOpenDm?: (userId: string) => void;
+  /** v1.5.40 — activeServerId для per-server persisted collapse state
+   *  role-group sections. Null = standalone view (collapse не persist'ится). */
+  serverId?: string | null;
 };
 
 // v1.1.93 slice 4: inline-style консоли MemberList вынесены в классы
@@ -60,6 +63,77 @@ const ROLE_TAG: Record<MemberRole, string> = {
   VIEWER: "VWR",
   GUEST: "GST",
 };
+
+/** v1.5.40 — Discord-style role-group section labels. Сохраняют Eclipse
+ *  identity (cyberpunk tactical), но дают clear role hierarchy через
+ *  grouping vs flat list. Inspired by Discord (President | 1, Vice | 1,
+ *  Sergeant at Arms | 4, etc) — order по ROLE_RANK. */
+const ROLE_GROUP_LABEL: Record<MemberRole, string> = {
+  OWNER: "КОМАНДОРЫ",
+  ADMIN: "ОПЕРАТОРЫ",
+  MODERATOR: "МОДЕРАТОРЫ",
+  ARCHITECT: "АРХИТЕКТУРА",
+  DEVELOPER: "ИНЖЕНЕРЫ",
+  OPERATOR: "ДИСПЕТЧЕРЫ",
+  MEMBER: "ЛИЧНЫЙ_СОСТАВ",
+  CLIENT: "КЛИЕНТЫ",
+  VIEWER: "НАБЛЮДАТЕЛИ",
+  GUEST: "ГОСТИ",
+};
+
+const ROLE_ORDER: MemberRole[] = [
+  "OWNER",
+  "ADMIN",
+  "MODERATOR",
+  "ARCHITECT",
+  "DEVELOPER",
+  "OPERATOR",
+  "MEMBER",
+  "CLIENT",
+  "VIEWER",
+  "GUEST",
+];
+
+function groupOnlineByRole(members: MemberRow[]): Array<[MemberRole, MemberRow[]]> {
+  const buckets = new Map<MemberRole, MemberRow[]>();
+  for (const m of members) {
+    const arr = buckets.get(m.role) ?? [];
+    arr.push(m);
+    buckets.set(m.role, arr);
+  }
+  return ROLE_ORDER.flatMap((role) => {
+    const arr = buckets.get(role);
+    if (!arr || arr.length === 0) return [];
+    // Sort by displayName within role group (RU locale).
+    arr.sort((a, b) => a.user.displayName.localeCompare(b.user.displayName, "ru"));
+    return [[role, arr] as [MemberRole, MemberRow[]]];
+  });
+}
+
+/** localStorage key prefix для collapse state. Per-server scope чтобы
+ *  preferences не пересекались между серверами. */
+const COLLAPSE_KEY_PREFIX = "eclipse_chat:member_groups_collapsed:";
+
+function loadCollapsed(serverId: string | null | undefined): Set<MemberRole> {
+  if (!serverId || typeof localStorage === "undefined") return new Set();
+  try {
+    const raw = localStorage.getItem(COLLAPSE_KEY_PREFIX + serverId);
+    if (!raw) return new Set();
+    const arr = JSON.parse(raw) as MemberRole[];
+    return new Set(Array.isArray(arr) ? arr : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function saveCollapsed(serverId: string | null | undefined, set: Set<MemberRole>) {
+  if (!serverId || typeof localStorage === "undefined") return;
+  try {
+    localStorage.setItem(COLLAPSE_KEY_PREFIX + serverId, JSON.stringify([...set]));
+  } catch {
+    /* private mode / quota — non-fatal */
+  }
+}
 
 /** v1.1.63 §10 — русская плюрализация «узел» для network-signal-строки. */
 function pluralNodes(n: number): string {
@@ -189,18 +263,57 @@ export function MemberList({
   currentUserId,
   onOpenDm,
   hideHeader,
+  serverId,
 }: Props) {
-  const { online, offline, inVoiceCount } = useMemo(() => {
+  const { onlineGroups, offline, inVoiceCount, onlineCount } = useMemo(() => {
     const sorted = sortMembers(members);
+    const onlineMembers = sorted.filter((m) => m.online);
+    const offlineMembers = sorted.filter((m) => !m.online);
     const inVoice = voiceChannelByUser
       ? members.reduce((n, m) => (voiceChannelByUser[m.userId] ? n + 1 : n), 0)
       : 0;
     return {
-      online: sorted.filter((m) => m.online),
-      offline: sorted.filter((m) => !m.online),
+      onlineGroups: groupOnlineByRole(onlineMembers),
+      offline: offlineMembers,
       inVoiceCount: inVoice,
+      onlineCount: onlineMembers.length,
     };
   }, [members, voiceChannelByUser]);
+
+  // v1.5.40 — per-server persistent collapse state для role-group sections.
+  // Re-init when serverId changes (другое пространство → свой набор preferences).
+  const [collapsed, setCollapsed] = useState<Set<MemberRole>>(() => loadCollapsed(serverId));
+  useEffect(() => {
+    setCollapsed(loadCollapsed(serverId));
+  }, [serverId]);
+  const toggleCollapsed = (role: MemberRole) => {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(role)) next.delete(role);
+      else next.add(role);
+      saveCollapsed(serverId, next);
+      return next;
+    });
+  };
+  const [offlineCollapsed, setOfflineCollapsed] = useState<boolean>(() => {
+    if (!serverId || typeof localStorage === "undefined") return false;
+    try {
+      return localStorage.getItem(COLLAPSE_KEY_PREFIX + serverId + ":offline") === "1";
+    } catch {
+      return false;
+    }
+  });
+  useEffect(() => {
+    if (!serverId || typeof localStorage === "undefined") return;
+    try {
+      localStorage.setItem(
+        COLLAPSE_KEY_PREFIX + serverId + ":offline",
+        offlineCollapsed ? "1" : "0",
+      );
+    } catch {
+      /* non-fatal */
+    }
+  }, [offlineCollapsed, serverId]);
 
   return (
     <aside className="ec-member-list" aria-label="Участники пространства">
@@ -226,7 +339,7 @@ export function MemberList({
             ТАКТИЧЕСКИЙ ВИД
           </span>
           <span className="ec-tactical-header__count" title="онлайн / всего">
-            {online.length}/{members.length}
+            {onlineCount}/{members.length}
           </span>
           {onClose && (
             <button
@@ -252,12 +365,12 @@ export function MemberList({
           <span className="ec-net-signal__glyph" aria-hidden>
             ◇
           </span>
-          {online.length === 0 ? (
+          {onlineCount === 0 ? (
             <span>сеть в покое</span>
           ) : (
             <span>
-              <span className="ec-net-signal__num">{online.length}</span>{" "}
-              {pluralNodes(online.length)} в сети
+              <span className="ec-net-signal__num">{onlineCount}</span>{" "}
+              {pluralNodes(onlineCount)} в сети
               {inVoiceCount > 0 && (
                 <span className="ec-net-signal__air">
                   {" · "}
@@ -287,50 +400,96 @@ export function MemberList({
           <p className="ec-member-list__error">{error}</p>
         ) : (
           <>
-            {online.length > 0 && (
-              <>
-                <div className="ec-section-label">
-                  <span className="ec-section-label__group">
-                    <span className="ec-dot ec-dot--online" />СВЯЗАННЫЕ_УЗЛЫ
-                  </span>
-                  <span className="ec-channel-section__count">{online.length}</span>
+            {/* v1.5.40 — Discord-style role-grouped online members.
+             *  Каждая роль (КОМАНДОРЫ / ОПЕРАТОРЫ / МОДЕРАТОРЫ / ...) =
+             *  collapsible section с count. Persist collapse state per-server
+             *  через localStorage (see toggleCollapsed + COLLAPSE_KEY_PREFIX).
+             *  Замена прежнего flat СВЯЗАННЫЕ_УЗЛЫ list — даёт role hierarchy
+             *  visible сразу. Inspired by Discord (President | 1, ...). */}
+            {onlineGroups.map(([role, roleMembers], groupIdx) => {
+              const isCollapsed = collapsed.has(role);
+              return (
+                <div key={role} style={groupIdx > 0 ? { marginTop: "var(--ec-space-3)" } : undefined}>
+                  <button
+                    type="button"
+                    className="ec-section-label ec-section-label--toggle"
+                    onClick={() => toggleCollapsed(role)}
+                    aria-expanded={!isCollapsed}
+                    aria-label={`${ROLE_GROUP_LABEL[role]} — ${roleMembers.length}`}
+                  >
+                    <span className="ec-section-label__group">
+                      <span className="ec-dot ec-dot--online" />
+                      <span
+                        className="ec-section-label__chevron"
+                        style={{
+                          display: "inline-block",
+                          transform: isCollapsed ? "rotate(-90deg)" : "rotate(0deg)",
+                          transition: "transform var(--ec-dur-fast) var(--ec-ease)",
+                          marginRight: 4,
+                        }}
+                        aria-hidden
+                      >
+                        ▾
+                      </span>
+                      {ROLE_GROUP_LABEL[role]}
+                    </span>
+                    <span className="ec-channel-section__count">{roleMembers.length}</span>
+                  </button>
+                  {!isCollapsed &&
+                    roleMembers.map((m) => {
+                      const vc = voiceChannelByUser?.[m.userId];
+                      return (
+                        <MemberRowView
+                          key={m.id}
+                          m={m}
+                          inVoiceChannel={Boolean(vc)}
+                          voiceChannelName={vc ? channelNameById?.(vc) : undefined}
+                          showDmButton={Boolean(currentUserId && m.userId !== currentUserId)}
+                          onOpenDm={onOpenDm}
+                        />
+                      );
+                    })}
                 </div>
-                {online.map((m) => {
-                  const vc = voiceChannelByUser?.[m.userId];
-                  return (
-                    <MemberRowView
-                      key={m.id}
-                      m={m}
-                      inVoiceChannel={Boolean(vc)}
-                      voiceChannelName={vc ? channelNameById?.(vc) : undefined}
-                      showDmButton={Boolean(currentUserId && m.userId !== currentUserId)}
-                      onOpenDm={onOpenDm}
-                    />
-                  );
-                })}
-              </>
-            )}
+              );
+            })}
 
             {offline.length > 0 && (
               <>
-                <div
-                  className="ec-section-label"
-                  style={{ marginTop: online.length > 0 ? "var(--ec-space-4)" : 0 }}
+                <button
+                  type="button"
+                  className="ec-section-label ec-section-label--toggle"
+                  onClick={() => setOfflineCollapsed((v) => !v)}
+                  aria-expanded={!offlineCollapsed}
+                  style={{ marginTop: onlineCount > 0 ? "var(--ec-space-4)" : 0 }}
                 >
                   <span className="ec-section-label__group">
-                    <span className="ec-dot ec-dot--offline" />СПЯЩИЙ_РЕЖИМ
+                    <span className="ec-dot ec-dot--offline" />
+                    <span
+                      className="ec-section-label__chevron"
+                      style={{
+                        display: "inline-block",
+                        transform: offlineCollapsed ? "rotate(-90deg)" : "rotate(0deg)",
+                        transition: "transform var(--ec-dur-fast) var(--ec-ease)",
+                        marginRight: 4,
+                      }}
+                      aria-hidden
+                    >
+                      ▾
+                    </span>
+                    СПЯЩИЙ_РЕЖИМ
                   </span>
                   <span className="ec-channel-section__count">{offline.length}</span>
-                </div>
-                {offline.map((m) => (
-                  <MemberRowView
-                    key={m.id}
-                    m={m}
-                    inVoiceChannel={false}
-                    showDmButton={Boolean(currentUserId && m.userId !== currentUserId)}
-                    onOpenDm={onOpenDm}
-                  />
-                ))}
+                </button>
+                {!offlineCollapsed &&
+                  offline.map((m) => (
+                    <MemberRowView
+                      key={m.id}
+                      m={m}
+                      inVoiceChannel={false}
+                      showDmButton={Boolean(currentUserId && m.userId !== currentUserId)}
+                      onOpenDm={onOpenDm}
+                    />
+                  ))}
               </>
             )}
 

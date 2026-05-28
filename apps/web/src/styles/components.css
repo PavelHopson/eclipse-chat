@@ -260,6 +260,32 @@ input[type="radio"]:focus-visible {
   color: var(--ec-text-dim);
 }
 
+/* v1.5.40 — section label как clickable button (collapse role-group sections
+ * в MemberList). Reset native button styles, добавить hover affordance. */
+.ec-section-label--toggle {
+  width: 100%;
+  background: transparent;
+  border: 0;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  border-radius: var(--ec-radius-sm);
+  transition: background var(--ec-dur-fast) var(--ec-ease),
+              color var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-section-label--toggle:hover {
+  background: color-mix(in srgb, var(--ec-accent) 8%, transparent);
+  color: var(--ec-text);
+}
+.ec-section-label--toggle:focus-visible {
+  outline: 2px solid var(--ec-border-accent);
+  outline-offset: -2px;
+}
+.ec-section-label__chevron {
+  font-size: 10px;
+  opacity: 0.62;
+}
+
 .ec-badge {
   display: inline-flex;
   align-items: center;

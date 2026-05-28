@@ -52,6 +52,9 @@ type Props = {
   onClose?: () => void;
   /** Collapse rail (desktop) — сворачивает панель чтобы не съедать ширину центра. */
   onCollapse?: () => void;
+  /** v1.5.40 — activeServerId для per-server persisted member-role-group
+   *  collapse state. Forward'ится в MemberList. */
+  serverId?: string | null;
 };
 
 // v1.1.93 slice 4: inline-style консоли IntelligencePanel вынесены в
@@ -77,6 +80,7 @@ export function IntelligencePanel({
   onOpenDm,
   onClose,
   onCollapse,
+  serverId,
 }: Props) {
   const onlineCount = members.filter((m) => m.online).length;
 
@@ -133,6 +137,7 @@ export function IntelligencePanel({
           currentUserId={currentUserId}
           onOpenDm={onOpenDm}
           hideHeader
+          serverId={serverId}
         />
       </div>
     </aside>
