@@ -5,7 +5,19 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.43** (Discord-parity A1 slice 2 — Friends model
+**Текущая версия:** **v1.5.44** (Discord-parity A2 — tabbed Friends view.
+`FriendsView` заменён с flat 4-section layout на Discord-style tabs:
+«Друзья» (default, accepted sorted по displayName), «В сети» (accepted с
+manualStatus ONLINE/IDLE/DND, INVISIBLE скрыт), «Все» (accepted + секция
+«Заблокированные» под separator), «Ожидание» (Входящие/Исходящие с separator),
+«Добавить» (action-tab: открывает `AddFriendDialog`, не меняет active tab).
+Badge на «Ожидание» pulse'ит при `pendingIn.length > 0`. Фильтрация полностью
+frontend-side поверх existing `GET /api/friends` response; backend/schema не
+менялись. Tab nav получил violet accent underline, action-tab с dashed
+underline feel, mobile horizontal scroll на 390px и prefers-reduced-motion
+fallback для underline/pulse. Frontend-only; deployed 28.05.2026).
+
+**Предыдущая:** v1.5.43 (Discord-parity A1 slice 2 — Friends model
 frontend foundation. Добавлен frontend contract layer для backend v1.5.42:
 `apps/web/src/types/api.ts` с `FriendshipDto`/friends response types,
 `useFriends(socket)` hook с initial `GET /api/friends`, 30s polling fallback,
