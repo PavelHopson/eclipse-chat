@@ -428,6 +428,39 @@ export type DmConversationBumpedPayload = {
   lastSenderUserId: string;
 };
 
+// ============================
+// Friends payloads
+// ============================
+
+type FriendSocketUser = {
+  id: string;
+  displayName: string;
+  avatar: string | null;
+};
+
+export type FriendRequestReceivedPayload = {
+  friendshipId: string;
+  from: FriendSocketUser;
+  createdAt: string;
+};
+
+export type FriendRequestAcceptedPayload = {
+  friendshipId: string;
+  by: FriendSocketUser;
+  acceptedAt: string;
+};
+
+export type FriendRemovedPayload = {
+  friendshipId: string;
+  otherUserId?: string;
+  byUserId: string;
+};
+
+export type FriendBlockedPayload = {
+  friendshipId: string;
+  byUserId: string;
+};
+
 export const SocketEvents = {
   ServerHello: "server:hello",
   MessageNew: "message:new",
@@ -494,4 +527,8 @@ export const SocketEvents = {
   DmReactionAdded: "dm:reaction:added",
   DmReactionRemoved: "dm:reaction:removed",
   DmConversationBumped: "dm:conversation:bumped",
+  FriendRequestReceived: "friend:request:received",
+  FriendRequestAccepted: "friend:request:accepted",
+  FriendRemoved: "friend:removed",
+  FriendBlocked: "friend:blocked",
 } as const;

@@ -5,7 +5,26 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.42** (Discord-parity A1 slice 1 — Friends model
+**Текущая версия:** **v1.5.43** (Discord-parity A1 slice 2 — Friends model
+frontend foundation. Добавлен frontend contract layer для backend v1.5.42:
+`apps/web/src/types/api.ts` с `FriendshipDto`/friends response types,
+`useFriends(socket)` hook с initial `GET /api/friends`, 30s polling fallback,
+socket-driven refresh на `friend:request:received` /
+`friend:request:accepted` / `friend:removed` / `friend:blocked`, mutations
+send/accept/remove/block/unblock через реальные endpoint'ы.
+
+DM sidebar получил `FriendsPanel` между «Избранное» и DM list: pending-in badge
+с violet pulse, отдельное состояние main area `FriendsView`. `FriendsView`
+показывает секции «Входящие запросы» / «Друзья» / «Исходящие» /
+«Заблокированные» без tabs (A2 отдельным slice), с empty/loading/error states,
+desktop actions и mobile dropdown actions. Click по ACCEPTED friend открывает
+существующий DM через `openDmWith(userId)`. `AddFriendDialog` отправляет запрос
+по email/displayName и маппит 404/403/409/429 в честные RU errors. CSS следует
+established Eclipse surface grammar: accent border/aura/holo rail, row left rail,
+hover translate, SOLAR overrides и prefers-reduced-motion guard. A1 остаётся
+🟡 до polish/final slice 3; deployed 28.05.2026).
+
+**Предыдущая:** v1.5.42 (Discord-parity A1 slice 1 — Friends model
 backend foundation. Новая `Friendship` модель: один row на нормализованную
 пару (userAId < userBId), статусы PENDING/ACCEPTED/BLOCKED, requestedByUserId
 + blockedByUserId для аудита. Migration `20260528120000_add_friendships`:

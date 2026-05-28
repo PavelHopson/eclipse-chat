@@ -8,6 +8,8 @@ import { Avatar } from "../components/Avatar";
 import { ChannelList } from "../components/ChannelList";
 import { RichContent } from "../components/RichContent";
 import { DirectConversationList } from "../components/DirectConversationList";
+import { FriendsPanel } from "../components/friends/FriendsPanel";
+import { FriendsView } from "../components/friends/FriendsView";
 import { type AvailableUser } from "../components/CreateGroupDmModal";
 import { GroupAvatar } from "../components/GroupAvatar";
 import { HomeToday } from "../components/HomeToday";
@@ -72,6 +74,7 @@ import { useChannelDigest } from "../hooks/useChannelDigest";
 import { useChannels } from "../hooks/useChannels";
 import { dmIsSaved, dmTitle, useDirectConversations } from "../hooks/useDirectConversations";
 import { useDirectMessages } from "../hooks/useDirectMessages";
+import { useFriends } from "../hooks/useFriends";
 import { useIncidents } from "../hooks/useIncidents";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import { useMembers, type MemberRole, type MemberRow } from "../hooks/useMembers";
@@ -225,6 +228,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     openDmWith,
     createGroupDm,
   } = useDirectConversations(socket, user.id);
+  const friends = useFriends(socket);
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
   /** v0.54: открытый ActionItemDrawer. null = drawer закрыт. */
   const [openActionItemId, setOpenActionItemId] = useState<string | null>(null);
@@ -323,6 +327,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   const [showProfile, setShowProfile] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [homeOpen, setHomeOpen] = useState(false);
+  const [friendsOpen, setFriendsOpen] = useState(false);
   /** v0.73 #14: In-app help / onboarding. Полноэкранный view как Home /
    *  StatusBoard / TeamHealth — правый rail скрыт. Открывается «?» в topbar. */
   const [helpOpen, setHelpOpen] = useState(false);
@@ -365,6 +370,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     setStatusBoardOpen(false);
     setTeamHealthOpen(false);
     setStatusBoardFilter(null);
+    if (activeServerId !== null) setFriendsOpen(false);
   }, [activeServerId]);
 
   const {
@@ -581,6 +587,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   // На mobile: select channel → закрыть nav drawer (UX как в Discord/Telegram)
   const handleSelectChannel = (channelId: string) => {
     setHomeOpen(false);
+    setFriendsOpen(false);
     setHelpOpen(false);
     setAdminOpen(false);
     setStatusBoardOpen(false);
@@ -599,6 +606,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     !inDmMode &&
     !helpOpen &&
     !adminOpen &&
+    !friendsOpen &&
     !homeOpen &&
     !statusBoardOpen &&
     !teamHealthOpen &&
@@ -636,6 +644,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
 
   const openHome = () => {
     setHomeOpen(true);
+    setFriendsOpen(false);
     setHelpOpen(false);
     setAdminOpen(false);
     setStatusBoardOpen(false);
@@ -649,6 +658,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
 
   const openHelp = () => {
     setHelpOpen(true);
+    setFriendsOpen(false);
     setAdminOpen(false);
     setHomeOpen(false);
     setStatusBoardOpen(false);
@@ -660,6 +670,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
 
   const openAdmin = () => {
     setAdminOpen(true);
+    setFriendsOpen(false);
     setHelpOpen(false);
     setHomeOpen(false);
     setStatusBoardOpen(false);
@@ -671,6 +682,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
 
   const openActiveServer = () => {
     setHomeOpen(false);
+    setFriendsOpen(false);
     setHelpOpen(false);
     setAdminOpen(false);
     setStatusBoardOpen(false);
@@ -1120,12 +1132,30 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             selectedDmId={selectedDmId}
             onSelect={(id) => {
               setHomeOpen(false);
+              setFriendsOpen(false);
               selectDm(id);
               if (isMobile) setNavOpen(false);
             }}
             onlineUserIds={new Set(members.filter((m) => m.online).map((m) => m.userId))}
             currentUserId={user.id}
             onCreateGroup={() => setCreateGroupOpen(true)}
+            friendsPanel={
+              <FriendsPanel
+                pendingCount={friends.pendingIn.length}
+                active={friendsOpen}
+                onOpen={() => {
+                  setHomeOpen(false);
+                  setHelpOpen(false);
+                  setAdminOpen(false);
+                  setStatusBoardOpen(false);
+                  setTeamHealthOpen(false);
+                  setSelectedTableId(null);
+                  setFriendsOpen(true);
+                  selectDm(null);
+                  if (isMobile) setNavOpen(false);
+                }}
+              />
+            }
           />
         ) : (
           <ChannelList
@@ -1266,6 +1296,16 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                 <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
               </svg>
               Здоровье команды
+            </span>
+          ) : inDmMode && friendsOpen ? (
+            <span className="ec-chat-title">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--ec-accent)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M16 11a4 4 0 1 0-8 0" />
+                <path d="M4 21a8 8 0 0 1 16 0" />
+                <path d="M20 8v5" />
+                <path d="M22.5 10.5h-5" />
+              </svg>
+              Друзья
             </span>
           ) : inDmMode && selectedDm ? (
             <span className="ec-chat-title">
@@ -1713,7 +1753,29 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             }}
           />
         ) : inDmMode ? (
-          !selectedDm ? (
+          friendsOpen ? (
+            <FriendsView
+              accepted={friends.accepted}
+              pendingIn={friends.pendingIn}
+              pendingOut={friends.pendingOut}
+              blocked={friends.blocked}
+              isLoading={friends.isLoading}
+              error={friends.error}
+              onRetry={() => void friends.mutate()}
+              onSendRequest={friends.sendRequest}
+              onAccept={friends.acceptRequest}
+              onRemove={friends.removeFriendship}
+              onUnblock={friends.unblockUser}
+              onOpenDm={(otherId) => {
+                void openDmWith(otherId).then((convoId) => {
+                  if (convoId) {
+                    setFriendsOpen(false);
+                    if (isMobile) setNavOpen(false);
+                  }
+                });
+              }}
+            />
+          ) : !selectedDm ? (
             <EmptyState
               icon={<EmptyDmIcon />}
               title="Личные сообщения"
@@ -2075,6 +2137,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                   if (convoId) {
                     // Переключаемся в DM mode
                     setActiveServerId(null);
+                    setFriendsOpen(false);
                     // selectDm уже вызван внутри openDmWith
                     if (isTabletOrSmaller) setMembersOpen(false);
                   }

@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { Avatar } from "./Avatar";
 import { GroupAvatar, deriveGroupTitle } from "./GroupAvatar";
 import { EmptyState } from "./EmptyState";
@@ -22,6 +22,7 @@ type Props = {
   currentUserId: string;
   /** Открывает CreateGroupDmModal. Если undefined — кнопка скрыта. */
   onCreateGroup?: () => void;
+  friendsPanel?: ReactNode;
 };
 
 const wrap: CSSProperties = {
@@ -194,6 +195,7 @@ export function DirectConversationList({
   onlineUserIds,
   currentUserId,
   onCreateGroup,
+  friendsPanel,
 }: Props) {
   const savedConvo =
     conversations.find((c): c is DmConversation & { saved: true } => !c.isGroup && c.saved === true) ??
@@ -309,6 +311,20 @@ export function DirectConversationList({
                 height: 1,
                 background: "var(--ec-border-subtle)",
                 margin: "var(--ec-space-1) var(--ec-space-2) var(--ec-space-2)",
+              }}
+              aria-hidden
+            />
+          </>
+        )}
+
+        {friendsPanel && (
+          <>
+            {friendsPanel}
+            <div
+              style={{
+                height: 1,
+                background: "var(--ec-border-subtle)",
+                margin: "var(--ec-space-2) var(--ec-space-2)",
               }}
               aria-hidden
             />

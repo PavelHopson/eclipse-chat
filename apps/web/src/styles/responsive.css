@@ -1188,6 +1188,41 @@
   }
 }
 
+@media (max-width: 640px) {
+  .ec-friends-view {
+    padding: var(--ec-space-3);
+  }
+
+  .ec-friends-view__hero {
+    align-items: stretch;
+    flex-direction: column;
+    padding: var(--ec-space-4);
+  }
+
+  .ec-friends-view__hero .ec-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .ec-friend-row {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: var(--ec-space-2);
+  }
+
+  .ec-friend-row__actions {
+    display: none;
+  }
+
+  .ec-friend-row__menu {
+    display: block;
+  }
+
+  .ec-friend-load-error {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+
 /* Chat-header touch targets на mobile: inline-styled buttons по 26×26px
  * не дотягивают до Apple HIG 44×44 / Material 48×48. Bump до 38×38 на
  * ≤640px — компромисс между HIG и chat-header heightом (44px). Применяем
@@ -1250,4 +1285,3 @@
     transition: none !important;
   }
 }
-

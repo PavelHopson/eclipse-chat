@@ -651,6 +651,24 @@ html[data-ec-theme="solar"] .ec-voice-room {
   }
 }
 
+html[data-ec-theme="solar"] .ec-friends-view {
+  background:
+    radial-gradient(circle at 14% 0%, hsl(258 86% 58% / 0.06), transparent 34%),
+    var(--ec-surface-0);
+}
+
+html[data-ec-theme="solar"] .ec-friends-view__hero,
+html[data-ec-theme="solar"] .ec-friend-row {
+  box-shadow:
+    0 1px 0 hsl(220 20% 100% / 0.9) inset,
+    0 14px 32px -30px hsl(220 20% 20% / 0.35);
+}
+
+html[data-ec-theme="solar"] .ec-friend-row:hover,
+html[data-ec-theme="solar"] .ec-friend-row:focus-visible {
+  background: color-mix(in srgb, var(--ec-accent) 7%, var(--ec-surface-2));
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ec-galaxy__halo,
   .ec-galaxy__core,
