@@ -1,11 +1,12 @@
 {
   "name": "@eclipse-chat/web",
-  "version": "1.5.37",
+  "version": "1.5.38",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:desktop": "tsc -b && vite build --mode desktop",
     "preview": "vite preview",
     "typecheck": "tsc -b --noEmit"
   },

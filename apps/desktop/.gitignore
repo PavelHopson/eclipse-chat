@@ -1,0 +1,16 @@
+# Rust build artifacts
+/src-tauri/target/
+/src-tauri/Cargo.lock
+
+# Tauri auto-generated
+/src-tauri/gen/
+
+# Icons regenerated from apps/web/public/icon-512.png — не вкомитываем
+# (могут быть пере-generированы любым dev через `npm run icons:gen`).
+/src-tauri/icons/
+
+# Build output
+/dist/
+
+# Lock files
+package-lock.json

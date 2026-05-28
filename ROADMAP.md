@@ -5,7 +5,37 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.37** (Phase A — PWA harden #3: POST
+**Текущая версия:** **v1.5.38** (Phase B Tauri 2 #1 — apps/desktop/
+workspace scaffold. Phase A PWA harden закрыта (v1.5.30/32/37);
+открывается Phase B — native desktop app.
+Структура:
+- apps/desktop/package.json — @eclipse-chat/desktop v1.0.0, Tauri CLI как
+  optionalDependencies (CI safety: install не блокируется если binary не для
+  linux-x64). Scripts tauri:dev / tauri:build:{msi,nsis,dmg,deb,appimage} +
+  icons:gen helper.
+- apps/desktop/src-tauri/Cargo.toml — Rust workspace, tauri v2 + tauri-plugin-shell
+  v2 deps. Release profile lto + opt=s + strip → minimal binary size.
+- apps/desktop/src-tauri/{build.rs, src/main.rs, src/lib.rs} — main.rs с
+  windows_subsystem=windows для отсутствия console window; lib.rs Tauri entry
+  point готов для mobile_entry_point (Phase C iOS/Android когда дойдём).
+- apps/desktop/src-tauri/tauri.conf.json — identifier ru.star-crm.eclipse-chat,
+  productName Eclipse Chat, beforeDev/Build commands пробрасывают на
+  apps/web workspace, frontendDist=../../web/dist, bundle targets все 5.
+- apps/desktop/src-tauri/capabilities/default.json — core + shell:open
+  permissions (Tauri 2 capabilities model).
+- apps/web/package.json — новый script build:desktop = vite build --mode desktop.
+  Reads новый apps/web/.env.desktop с VITE_BASE_PATH=/ (override path-based
+  /eclipse-chat/ prod prefix, в Tauri shell base path не нужен).
+- apps/desktop/README.md — full setup guide: prereqs (Rust 1.94+, WebView2),
+  first-time setup (npm install + icons:gen), dev/build commands, roadmap до
+  v1.0.5 (auto-update, tray, MS Store, GitHub Releases CI).
+Important: desktop scripts NOT named `build` (avoid colision с root
+`npm run build --workspaces --if-present` который CI/prod использует —
+desktop opt-in build). Tauri CLI как optionalDependencies → npm ci в CI
+не fail'ится если linux binary недоступен. /api/version и web prod build
+не задеты этой версией; deployed 27.05.2026).
+
+**Предыдущая:** v1.5.37 (Phase A — PWA harden #3: POST
 share_target Level 2 — files share для installed PWA. v1.5.32 был
 GET text/url only; теперь полноценно "Share photo from Gallery →
 Eclipse Chat" работает на Android Chrome.
