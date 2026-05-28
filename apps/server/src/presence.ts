@@ -43,6 +43,27 @@ function emit(userId: string, status: Status): void {
 }
 
 /**
+ * v1.5.45 Discord-parity A3: broadcast обновлённого custom status
+ * (activityText/activityEmoji) во все server-rooms где user — member.
+ * Frontend listener'ы обновляют MemberList rows + DM list rows + own
+ * profile cache. Используется в PATCH /api/users/me/activity.
+ *
+ * Если user offline — serverIdsByUser его не содержит, emit no-op'ит.
+ * Это OK: при следующем connect он сам fetch'нет fresh /api/users/me.
+ */
+export function broadcastActivityChange(
+  userId: string,
+  payload: { activityText: string | null; activityEmoji: string | null },
+): void {
+  const rooms = serverIdsByUser.get(userId);
+  if (!ioRef || !rooms || rooms.size === 0) return;
+  const wire = { userId, ...payload };
+  for (const serverId of rooms) {
+    ioRef.to(`server:${serverId}`).emit("user:activity:updated", wire);
+  }
+}
+
+/**
  * Broadcast manual status change. Используется когда user меняет
  * status через PATCH /api/users/me/status. Берёт server-ids из
  * presence-tracker (если он online); если offline — пытаемся отдельно

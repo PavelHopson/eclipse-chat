@@ -70,6 +70,9 @@ type FriendOtherDto = {
   displayName: string;
   avatar: string | null;
   manualStatus: "ONLINE" | "IDLE" | "DND" | "INVISIBLE";
+  /** v1.5.45 A3 — custom status под displayName в FriendsView row. */
+  activityText: string | null;
+  activityEmoji: string | null;
 };
 
 type FriendshipDto = {
@@ -93,8 +96,22 @@ function toDto(
     blockedByUserId: string | null;
     createdAt: Date;
     acceptedAt: Date | null;
-    userA: { id: string; displayName: string; avatar: string | null; status: "ONLINE" | "IDLE" | "DND" | "INVISIBLE" };
-    userB: { id: string; displayName: string; avatar: string | null; status: "ONLINE" | "IDLE" | "DND" | "INVISIBLE" };
+    userA: {
+      id: string;
+      displayName: string;
+      avatar: string | null;
+      status: "ONLINE" | "IDLE" | "DND" | "INVISIBLE";
+      activityText: string | null;
+      activityEmoji: string | null;
+    };
+    userB: {
+      id: string;
+      displayName: string;
+      avatar: string | null;
+      status: "ONLINE" | "IDLE" | "DND" | "INVISIBLE";
+      activityText: string | null;
+      activityEmoji: string | null;
+    };
   },
   me: string,
 ): FriendshipDto {
@@ -111,13 +128,33 @@ function toDto(
       displayName: other.displayName,
       avatar: other.avatar,
       manualStatus: other.status,
+      activityText: other.activityText,
+      activityEmoji: other.activityEmoji,
     },
   };
 }
 
 const friendshipInclude = {
-  userA: { select: { id: true, displayName: true, avatar: true, status: true } },
-  userB: { select: { id: true, displayName: true, avatar: true, status: true } },
+  userA: {
+    select: {
+      id: true,
+      displayName: true,
+      avatar: true,
+      status: true,
+      activityText: true,
+      activityEmoji: true,
+    },
+  },
+  userB: {
+    select: {
+      id: true,
+      displayName: true,
+      avatar: true,
+      status: true,
+      activityText: true,
+      activityEmoji: true,
+    },
+  },
 } as const;
 
 export async function registerFriendRoutes(app: FastifyInstance) {
