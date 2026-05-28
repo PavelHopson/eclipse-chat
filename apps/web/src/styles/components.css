@@ -2680,6 +2680,33 @@ input[type="radio"]:focus-visible {
   color: var(--ec-text-dim);
   font-size: var(--ec-text-2xs);
 }
+.ec-activity-line {
+  min-width: 0;
+  max-width: 100%;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: color-mix(in srgb, var(--ec-text-muted) 72%, transparent);
+  font-size: 0.76rem;
+  font-weight: 500;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ec-activity-line__emoji {
+  flex: 0 0 auto;
+  color: var(--ec-accent);
+  filter: drop-shadow(0 0 5px hsl(258 90% 66% / 0.25));
+}
+.ec-activity-line__text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ec-activity-line--friend {
+  max-width: min(38ch, 100%);
+}
 .ec-friend-row__actions {
   display: inline-flex;
   align-items: center;
@@ -4917,6 +4944,15 @@ input[type="radio"]:focus-visible {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+}
+.ec-member-row__identity {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.ec-member-row__identity .ec-activity-line {
+  max-width: min(40ch, 100%);
 }
 .ec-member-row--offline .ec-member-row__name { color: var(--ec-text-muted); }
 .ec-member-row__dm {

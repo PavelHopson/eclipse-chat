@@ -1225,6 +1225,12 @@
     margin-left: 0;
   }
 
+  .ec-activity-line,
+  .ec-activity-line--friend,
+  .ec-member-row__identity .ec-activity-line {
+    max-width: 24ch;
+  }
+
   .ec-friend-row {
     grid-template-columns: auto minmax(0, 1fr) auto;
     gap: var(--ec-space-2);

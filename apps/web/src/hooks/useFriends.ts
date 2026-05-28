@@ -7,6 +7,7 @@ import {
   type FriendRemovedPayload,
   type FriendRequestAcceptedPayload,
   type FriendRequestReceivedPayload,
+  type UserActivityUpdatedPayload,
 } from "../lib/socket";
 import type {
   FriendRequestInput,
@@ -33,6 +34,21 @@ function replaceAccepted(list: FriendshipDto[], friendship: FriendshipDto): Frie
   const without = removeById(list, friendship.id);
   return [friendship, ...without].sort((a, b) =>
     a.other.displayName.localeCompare(b.other.displayName, "ru"),
+  );
+}
+
+function applyActivity(list: FriendshipDto[], payload: UserActivityUpdatedPayload): FriendshipDto[] {
+  return list.map((friendship) =>
+    friendship.other.id === payload.userId
+      ? {
+          ...friendship,
+          other: {
+            ...friendship.other,
+            activityText: payload.activityText,
+            activityEmoji: payload.activityEmoji,
+          },
+        }
+      : friendship,
   );
 }
 
@@ -96,17 +112,28 @@ export function useFriends(socket: Socket | null) {
       void mutate();
     };
     const onBlocked = (_payload: FriendBlockedPayload) => reload();
+    const onActivity = (payload: UserActivityUpdatedPayload) => {
+      setState((prev) => ({
+        accepted: applyActivity(prev.accepted, payload),
+        pendingIn: applyActivity(prev.pendingIn, payload),
+        pendingOut: applyActivity(prev.pendingOut, payload),
+        blocked: applyActivity(prev.blocked, payload),
+        blockedBy: applyActivity(prev.blockedBy, payload),
+      }));
+    };
 
     socket.on(SocketEvents.FriendRequestReceived, onReceived);
     socket.on(SocketEvents.FriendRequestAccepted, onAccepted);
     socket.on(SocketEvents.FriendRemoved, onRemoved);
     socket.on(SocketEvents.FriendBlocked, onBlocked);
+    socket.on(SocketEvents.UserActivityUpdated, onActivity);
 
     return () => {
       socket.off(SocketEvents.FriendRequestReceived, onReceived);
       socket.off(SocketEvents.FriendRequestAccepted, onAccepted);
       socket.off(SocketEvents.FriendRemoved, onRemoved);
       socket.off(SocketEvents.FriendBlocked, onBlocked);
+      socket.off(SocketEvents.UserActivityUpdated, onActivity);
     };
   }, [socket, mutate]);
 

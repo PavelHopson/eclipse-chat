@@ -5,6 +5,7 @@ import { deriveGroupTitle } from "../components/GroupAvatar";
 import {
   SocketEvents,
   type DmConversationBumpedPayload,
+  type UserActivityUpdatedPayload,
 } from "../lib/socket";
 
 /**
@@ -26,6 +27,8 @@ export type DmOther = {
   id: string;
   displayName: string;
   avatar: string | null;
+  activityText: string | null;
+  activityEmoji: string | null;
   manualStatus?: "ONLINE" | "IDLE" | "DND" | "INVISIBLE";
 };
 
@@ -33,6 +36,8 @@ export type DmParticipant = {
   id: string;
   displayName: string;
   avatar: string | null;
+  activityText: string | null;
+  activityEmoji: string | null;
   manualStatus?: "ONLINE" | "IDLE" | "DND" | "INVISIBLE";
 };
 
@@ -171,6 +176,43 @@ export function useDirectConversations(socket: Socket | null, currentUserId: str
       socket.off(SocketEvents.DmConversationBumped, onBumped);
     };
   }, [socket, currentUserId, selectedDmId, reload]);
+
+  // Live custom status updates for DM list rows.
+  useEffect(() => {
+    if (!socket) return;
+    const onActivity = (p: UserActivityUpdatedPayload) => {
+      setConversations((prev) =>
+        prev.map((c) => {
+          if (c.isGroup) {
+            let changed = false;
+            const participants = c.participants.map((participant) => {
+              if (participant.id !== p.userId) return participant;
+              changed = true;
+              return {
+                ...participant,
+                activityText: p.activityText,
+                activityEmoji: p.activityEmoji,
+              };
+            });
+            return changed ? { ...c, participants } : c;
+          }
+          if (c.other.id !== p.userId) return c;
+          return {
+            ...c,
+            other: {
+              ...c.other,
+              activityText: p.activityText,
+              activityEmoji: p.activityEmoji,
+            },
+          };
+        }),
+      );
+    };
+    socket.on(SocketEvents.UserActivityUpdated, onActivity);
+    return () => {
+      socket.off(SocketEvents.UserActivityUpdated, onActivity);
+    };
+  }, [socket]);
 
   /** Сброс unread при выборе. */
   const selectDm = useCallback((id: string | null) => {

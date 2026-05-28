@@ -142,6 +142,12 @@ export type PresenceUpdatePayload = {
   status: PresenceStatus;
 };
 
+export type UserActivityUpdatedPayload = {
+  userId: string;
+  activityText: string | null;
+  activityEmoji: string | null;
+};
+
 export type MessageUpdatedPayload = {
   messageId: string;
   channelId: string;
@@ -502,6 +508,7 @@ export const SocketEvents = {
   ChannelJoin: "channel:join",
   ChannelLeave: "channel:leave",
   PresenceUpdate: "presence:update",
+  UserActivityUpdated: "user:activity:updated",
   TypingStart: "typing:start",
   TypingStop: "typing:stop",
   BotTyping: "bot:typing",

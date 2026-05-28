@@ -59,6 +59,20 @@ function EmptyLine({ children }: { children: string }) {
   return <p className="ec-friend-empty-line">{children}</p>;
 }
 
+function ActivityLine({ friendship }: { friendship: FriendshipDto }) {
+  const { activityEmoji, activityText } = friendship.other;
+  if (!activityEmoji && !activityText) return null;
+  return (
+    <span
+      className="ec-activity-line ec-activity-line--friend"
+      title={[activityEmoji, activityText].filter(Boolean).join(" ")}
+    >
+      {activityEmoji && <span className="ec-activity-line__emoji">{activityEmoji}</span>}
+      {activityText && <span className="ec-activity-line__text">{activityText}</span>}
+    </span>
+  );
+}
+
 export function FriendsView({
   accepted,
   pendingIn,
@@ -143,6 +157,7 @@ export function FriendsView({
         </span>
         <span className="ec-friend-row__main">
           <strong>{friendship.other.displayName}</strong>
+          <ActivityLine friendship={friendship} />
           <span>
             {variant === "accepted"
               ? "Друг"

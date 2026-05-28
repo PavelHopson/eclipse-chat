@@ -9,6 +9,8 @@ export type Profile = {
   displayName: string;
   avatar: string | null;
   bio: string | null;
+  activityText: string | null;
+  activityEmoji: string | null;
   status?: UserStatus;
   twoFactorEnabled?: boolean;
   createdAt: string;
@@ -142,6 +144,38 @@ export function useProfile(enabled: boolean) {
     }
   }, []);
 
+  const updateActivity = useCallback(
+    async (data: {
+      activityText?: string | null;
+      activityEmoji?: string | null;
+    }): Promise<boolean> => {
+      setError(null);
+      const previous = profile;
+      if (previous) {
+        setProfile({
+          ...previous,
+          activityText:
+            data.activityText === undefined ? previous.activityText : data.activityText,
+          activityEmoji:
+            data.activityEmoji === undefined ? previous.activityEmoji : data.activityEmoji,
+        });
+      }
+      try {
+        const res = await apiJson<ProfileResponse>("/api/users/me/activity", {
+          method: "PATCH",
+          body: JSON.stringify(data),
+        });
+        setProfile(res.user);
+        return true;
+      } catch (e) {
+        if (previous) setProfile(previous);
+        setError(e instanceof ApiError ? e.message : "Не удалось сохранить статус");
+        return false;
+      }
+    },
+    [profile],
+  );
+
   return {
     profile,
     loading,
@@ -152,6 +186,7 @@ export function useProfile(enabled: boolean) {
     uploadAvatar,
     deleteAvatar,
     updateStatus,
+    updateActivity,
   };
 }
 

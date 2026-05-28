@@ -33,8 +33,8 @@
 |---|---|---|---|---|---|---|
 | A1 | **Friends model** (запрос → принять → друг) | DM можно открыть с любым server-member | `Friendship` schema (userA, userB, status: PENDING/ACCEPTED/BLOCKED) + 4 API routes + UI | L | 🔥 MUST | 🟡 slice 1 backend ✅ v1.5.42; slice 2 frontend foundation ✅ v1.5.43; slice 3 polish → v1.5.44 |
 | A2 | **Tabs: Друзья / В сети / Все / Ожидание / Добавить** | DM list плоский | Tabbed view над DM list, фильтрация по A1 status | S (после A1) | 🔥 MUST | ✅ v1.5.44 |
-| A3 | **Custom user status** «Играет в Rocket League +1», «The Sims 4 как смысл жизни» | Только presence dot (ONLINE/IDLE/DND/INVISIBLE) | `User.activityText` (до 128) + `activityEmoji` (1) + UI в StatusMenu | M | 🔥 MUST | 📋 |
-| A4 | **Activity hint в DM list row** под именем | Только displayName | Render A3 поле под именем | S (после A3) | 🔥 MUST | 📋 |
+| A3 | **Custom user status** «Играет в Rocket League +1», «The Sims 4 как смысл жизни» | Только presence dot (ONLINE/IDLE/DND/INVISIBLE) | `User.activityText` (до 128) + `activityEmoji` (1) + UI в StatusMenu | M | 🔥 MUST | ✅ v1.5.45 |
+| A4 | **Activity hint в DM list row** под именем | Только displayName | Render A3 поле под именем | S (после A3) | 🔥 MUST | ✅ v1.5.45 (de-facto closed by A3 frontend) |
 | A5 | **Top-level «Найти или начать беседу»** search bar | Search в server scope only | Global cross-server message + user + DM search overlay | M | 🟡 LATER | 📋 |
 | A6 | **Right rail «Активные контакты»** — voice room peeks + screen share thumbs + group DM activity | `VoiceMiniBar` (1 строка) + IntelligencePanel members | New `ActivityRail`: voice rooms summary с avatar stacks + DM-group preview + (опц.) game activity. **БЕЗ** screen-share thumbnails = **M**; **С** thumbnails = **L** | M / L | ⭐ HIGH partial / 🟡 LATER full | 📋 |
 

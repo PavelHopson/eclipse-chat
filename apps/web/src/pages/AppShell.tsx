@@ -406,6 +406,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     uploadAvatar,
     deleteAvatar,
     updateStatus,
+    updateActivity,
     reload: reloadProfile,
   } = useProfile(true);
   const [statusAnchor, setStatusAnchor] = useState<DOMRect | null>(null);
@@ -2296,6 +2297,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           error={profileError}
           onClose={() => setShowProfile(false)}
           onSave={updateProfile}
+          onUpdateActivity={updateActivity}
           onUploadAvatar={uploadAvatar}
           onDeleteAvatar={deleteAvatar}
           onTwoFactorChanged={() => {

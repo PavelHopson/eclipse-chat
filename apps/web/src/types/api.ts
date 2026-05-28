@@ -2,6 +2,22 @@ export type ManualStatus = "ONLINE" | "IDLE" | "DND" | "INVISIBLE";
 
 export type FriendshipStatus = "PENDING" | "ACCEPTED" | "BLOCKED";
 
+export type UserActivityFields = {
+  activityText: string | null;
+  activityEmoji: string | null;
+};
+
+export type PublicProfile = UserActivityFields & {
+  id: string;
+  email: string;
+  displayName: string;
+  avatar: string | null;
+  bio: string | null;
+  status?: ManualStatus;
+  twoFactorEnabled?: boolean;
+  createdAt: string;
+};
+
 export type FriendshipDto = {
   id: string;
   status: FriendshipStatus;
@@ -14,6 +30,8 @@ export type FriendshipDto = {
     displayName: string;
     avatar: string | null;
     manualStatus: ManualStatus;
+    activityText: string | null;
+    activityEmoji: string | null;
   };
 };
 

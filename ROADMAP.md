@@ -5,7 +5,18 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.44** (Discord-parity A2 — tabbed Friends view.
+**Текущая версия:** **v1.5.45** (Discord-parity A3 — Custom user status
+frontend wire. Backend `User.activityText` / `User.activityEmoji` латентно
+попал в v1.5.44 master HEAD; этот slice включает UI: ProfileModal получил
+секцию «Кастомный статус» с text ≤128 и emoji preset picker (≤64 unicode),
+clear через null semantics и optimistic update с revert on error. Activity
+рендерится под displayName в MemberList rows, DM list rows и FriendsView rows:
+secondary 12-13px tone, accent на emoji, truncate на desktop/mobile. Socket
+`user:activity:updated` обновляет локальные caches в members / DM conversations /
+friends без F5. Version label синхронизирован в 4 местах; schema/backend не
+менялись в этом slice).
+
+**Предыдущая:** v1.5.44 (Discord-parity A2 — tabbed Friends view.
 `FriendsView` заменён с flat 4-section layout на Discord-style tabs:
 «Друзья» (default, accepted sorted по displayName), «В сети» (accepted с
 manualStatus ONLINE/IDLE/DND, INVISIBLE скрыт), «Все» (accepted + секция
