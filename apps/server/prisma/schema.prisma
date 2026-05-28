@@ -32,6 +32,20 @@ model User {
   /// если manual=INVISIBLE → frontend показывает offline; иначе manual
   /// overrides auto.
   status        UserStatus     @default(ONLINE)
+  /// v1.5.45 Discord-parity A3: free-form custom status текст. Max 128 chars
+  /// (Discord parity). NULL — без custom-сообщения, frontend рендерит
+  /// только presence dot. Валидируется в zod PATCH /api/users/me/activity.
+  /// Plain text only — RichContent sanitize не применяется (no markdown
+  /// / links / @-mentions parsing на этой строке, чтобы не превратить status
+  /// в attack-surface).
+  activityText  String?
+  /// v1.5.45 Discord-parity A3: эмодзи рядом с activityText. До 64 chars
+  /// (cover ZWJ-sequences семейных эмодзи + skin tone modifiers; типичный
+  /// длинный case ~22 chars). Только unicode эмодзи — custom server emoji
+  /// шорткоды НЕ поддерживаются в v1 (потребовало бы resolve через Emoji
+  /// model для разных серверов и оставило бы dangling-ссылки при удалении
+  /// emoji). Frontend в StatusMenu picker'е ограничивает выбор unicode.
+  activityEmoji String?
   createdAt     DateTime       @default(now())
   /// 2FA TOTP secret (base32). Зашифрован при-rest через AES-256-GCM
   /// в app-layer (apps/server/src/auth/twoFactor.ts).

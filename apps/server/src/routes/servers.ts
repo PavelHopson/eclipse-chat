@@ -437,6 +437,11 @@ export async function registerServerRoutes(app: FastifyInstance) {
             displayName: true,
             avatar: true,
             status: true,
+            // v1.5.45 Discord-parity A3 — отдаём custom status для render'а
+            // в MemberList (под displayName). NULL'и сериализуются в JSON
+            // как null, frontend ничего не рисует.
+            activityText: true,
+            activityEmoji: true,
             createdAt: true,
           },
         },
@@ -457,6 +462,9 @@ export async function registerServerRoutes(app: FastifyInstance) {
           online: socketOnline && !manualInvisible,
           /** Manual status (если ONLINE/IDLE/DND — overrides; INVISIBLE → online:false выше). */
           manualStatus: m.user.status,
+          /** v1.5.45 A3 — custom status поверх presence dot. NULL = не задан. */
+          activityText: m.user.activityText,
+          activityEmoji: m.user.activityEmoji,
           user: {
             id: m.user.id,
             displayName: m.user.displayName,

@@ -5,7 +5,7 @@ import { z } from "zod";
 import sharp from "sharp";
 import { db } from "../db.js";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
-import { broadcastStatusChange } from "../presence.js";
+import { broadcastActivityChange, broadcastStatusChange } from "../presence.js";
 
 const updateProfileBody = z.object({
   displayName: z.string().min(1).max(64).optional(),
@@ -14,6 +14,22 @@ const updateProfileBody = z.object({
 
 const updateStatusBody = z.object({
   status: z.enum(["ONLINE", "IDLE", "DND", "INVISIBLE"]),
+});
+
+/**
+ * v1.5.45 Discord-parity A3: PATCH /api/users/me/activity body.
+ *
+ * Все поля optional + nullable; не-присланные не трогаются, null'ом
+ * сбрасываются в БД. Frontend Discord-style submit'ит обе строки
+ * вместе (даже если меняется только одна), но строгая независимость
+ * каждого поля даёт гибкость (clear только emoji через `{ activityEmoji: null }`).
+ *
+ * Длины: activityText 128 (Discord parity), activityEmoji 64 (cover
+ * длинных ZWJ-sequences типа семейных эмодзи с skin-tone modifiers).
+ */
+const updateActivityBody = z.object({
+  activityText: z.string().max(128).nullable().optional(),
+  activityEmoji: z.string().max(64).nullable().optional(),
 });
 
 /**
@@ -90,6 +106,11 @@ function publicProfile(u: {
   avatar: string | null;
   bio: string | null;
   status?: "ONLINE" | "IDLE" | "DND" | "INVISIBLE";
+  /// v1.5.45 Discord-parity A3 — fields optional на типе чтобы старые
+  /// callsite'ы (которые не select'ят их) не падали; БД всегда вернёт
+  /// nullable string'и через db.user.findUnique без явного select.
+  activityText?: string | null;
+  activityEmoji?: string | null;
   createdAt: Date;
 }) {
   return {
@@ -99,6 +120,8 @@ function publicProfile(u: {
     avatar: u.avatar,
     bio: u.bio,
     status: u.status ?? "ONLINE",
+    activityText: u.activityText ?? null,
+    activityEmoji: u.activityEmoji ?? null,
     createdAt: u.createdAt.toISOString(),
   };
 }
@@ -269,6 +292,81 @@ export async function registerUserRoutes(app: FastifyInstance) {
       // Broadcast change в socket — клиенты в member-list'ах обновят dot
       broadcastStatusChange(userId, parsed.data.status);
       return { user: publicProfile(updated), status: updated.status };
+    },
+  );
+
+  /**
+   * v1.5.45 Discord-parity A3: PATCH /api/users/me/activity — set/clear
+   * custom user status (text + emoji).
+   *
+   * Body { activityText?, activityEmoji? } — каждое optional + nullable:
+   *   undefined → не меняем
+   *   null → стираем (сохраняем NULL в БД)
+   *   string → новое значение (trim'ится; empty-string-after-trim
+   *            трактуется как null чтобы не оставлять "" в БД)
+   *
+   * Broadcast в server-rooms где user member — клиенты live обновляют
+   * MemberList rows + DM list rows + own profile cache.
+   *
+   * Rate limit: 30 / 5 min — Discord activity Discord обновляется до
+   * нескольких раз в час типично; жёсткий limit ловит спам-ботов
+   * с минимальным impact'ом на нормальный UX.
+   */
+  app.patch(
+    "/api/users/me/activity",
+    {
+      onRequest: [requireJwt],
+      config: {
+        rateLimit: { max: 30, timeWindow: 5 * 60 * 1000 },
+      },
+    },
+    async (req, reply) => {
+      const userId = getUserId(req);
+      if (!userId) {
+        return reply.status(401).send({ error: "Unauthorized" });
+      }
+      const parsed = updateActivityBody.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.status(400).send({
+          error: "Invalid body",
+          details: parsed.error.flatten(),
+        });
+      }
+      const data: { activityText?: string | null; activityEmoji?: string | null } = {};
+      if (parsed.data.activityText !== undefined) {
+        if (parsed.data.activityText === null) {
+          data.activityText = null;
+        } else {
+          const trimmed = parsed.data.activityText.trim();
+          data.activityText = trimmed.length === 0 ? null : trimmed;
+        }
+      }
+      if (parsed.data.activityEmoji !== undefined) {
+        if (parsed.data.activityEmoji === null) {
+          data.activityEmoji = null;
+        } else {
+          const trimmed = parsed.data.activityEmoji.trim();
+          data.activityEmoji = trimmed.length === 0 ? null : trimmed;
+        }
+      }
+      if (Object.keys(data).length === 0) {
+        // Идемпотентный no-op — клиент прислал пустой body или только
+        // undefined fields. Возвращаем current state без UPDATE.
+        const user = await db.user.findUnique({ where: { id: userId } });
+        if (!user) {
+          return reply.status(404).send({ error: "User not found" });
+        }
+        return { user: publicProfile(user) };
+      }
+      const updated = await db.user.update({
+        where: { id: userId },
+        data,
+      });
+      broadcastActivityChange(userId, {
+        activityText: updated.activityText,
+        activityEmoji: updated.activityEmoji,
+      });
+      return { user: publicProfile(updated) };
     },
   );
 

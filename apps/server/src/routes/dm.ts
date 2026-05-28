@@ -158,6 +158,9 @@ type ParticipantDto = {
   displayName: string;
   avatar: string | null;
   manualStatus: "ONLINE" | "IDLE" | "DND" | "INVISIBLE";
+  /** v1.5.45 A3 — custom status (text + emoji) для render под displayName в DM list. */
+  activityText: string | null;
+  activityEmoji: string | null;
 };
 
 export async function registerDmRoutes(app: FastifyInstance) {
@@ -181,11 +184,11 @@ export async function registerDmRoutes(app: FastifyInstance) {
       },
       orderBy: { lastMessageAt: "desc" },
       include: {
-        userA: { select: { id: true, displayName: true, avatar: true, status: true } },
-        userB: { select: { id: true, displayName: true, avatar: true, status: true } },
+        userA: { select: { id: true, displayName: true, avatar: true, status: true, activityText: true, activityEmoji: true } },
+        userB: { select: { id: true, displayName: true, avatar: true, status: true, activityText: true, activityEmoji: true } },
         participants: {
           select: {
-            user: { select: { id: true, displayName: true, avatar: true, status: true } },
+            user: { select: { id: true, displayName: true, avatar: true, status: true, activityText: true, activityEmoji: true } },
           },
         },
         messages: {
@@ -236,6 +239,8 @@ export async function registerDmRoutes(app: FastifyInstance) {
                   displayName: p.user.displayName,
                   avatar: p.user.avatar,
                   manualStatus: p.user.status,
+                  activityText: p.user.activityText,
+                  activityEmoji: p.user.activityEmoji,
                 }),
               ),
               createdAt: c.createdAt.toISOString(),
@@ -258,6 +263,8 @@ export async function registerDmRoutes(app: FastifyInstance) {
               displayName: other.displayName,
               avatar: other.avatar,
               manualStatus: other.status,
+              activityText: other.activityText,
+              activityEmoji: other.activityEmoji,
             },
             createdAt: c.createdAt.toISOString(),
             lastMessageAt: c.lastMessageAt.toISOString(),
@@ -282,7 +289,7 @@ export async function registerDmRoutes(app: FastifyInstance) {
     }
     const user = await db.user.findUnique({
       where: { id: me },
-      select: { id: true, displayName: true, avatar: true, status: true },
+      select: { id: true, displayName: true, avatar: true, status: true, activityText: true, activityEmoji: true },
     });
     if (!user) {
       return reply.status(401).send({ error: "User not found" });
@@ -359,7 +366,7 @@ export async function registerDmRoutes(app: FastifyInstance) {
       }
       const other = await db.user.findUnique({
         where: { id: otherId },
-        select: { id: true, displayName: true, avatar: true, status: true },
+        select: { id: true, displayName: true, avatar: true, status: true, activityText: true, activityEmoji: true },
       });
       if (!other) {
         return reply.status(404).send({ error: "User not found" });
@@ -382,6 +389,8 @@ export async function registerDmRoutes(app: FastifyInstance) {
             displayName: other.displayName,
             avatar: other.avatar,
             manualStatus: other.status,
+            activityText: other.activityText,
+            activityEmoji: other.activityEmoji,
           },
         },
       };
@@ -442,7 +451,7 @@ export async function registerDmRoutes(app: FastifyInstance) {
       include: {
         participants: {
           select: {
-            user: { select: { id: true, displayName: true, avatar: true, status: true } },
+            user: { select: { id: true, displayName: true, avatar: true, status: true, activityText: true, activityEmoji: true } },
           },
         },
       },
@@ -459,6 +468,8 @@ export async function registerDmRoutes(app: FastifyInstance) {
             displayName: p.user.displayName,
             avatar: p.user.avatar,
             manualStatus: p.user.status,
+            activityText: p.user.activityText,
+            activityEmoji: p.user.activityEmoji,
           }),
         ),
         createdAt: convo.createdAt.toISOString(),
@@ -528,7 +539,7 @@ export async function registerDmRoutes(app: FastifyInstance) {
       }
       const user = await db.user.findUnique({
         where: { id: parsed.data.userId },
-        select: { id: true, displayName: true, avatar: true, status: true },
+        select: { id: true, displayName: true, avatar: true, status: true, activityText: true, activityEmoji: true },
       });
       if (!user) {
         return reply.status(404).send({ error: "User not found" });
