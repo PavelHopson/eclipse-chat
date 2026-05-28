@@ -5,7 +5,15 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.40** (Discord-inspired UX trek #1 — Members
+**Текущая версия:** **v1.5.41** (Discord-inspired UX trek #2 — channel
+emoji prefix prominent. `.ec-channel-glyph--emoji` bumped с 0.98rem до
+1.18rem font-size + accent halo drop-shadow (color-mix accent 32% →
+56% на hover/active). В chat-header — 1.32rem с accent halo 42%
+(заметнее в title typography). Channel emoji теперь читается как
+brand-element канала, не plain icon (Discord pattern «((📺))-обсуждение»
+visual emphasis). CSS-only, no logic changes; deployed 28.05.2026).
+
+**Предыдущая:** v1.5.40 (Discord-inspired UX trek #1 — Members
 list role-group headers. Заменён flat СВЯЗАННЫЕ_УЗЛЫ section в MemberList
 на role-grouped collapsible subsections с counts (Discord pattern «President
 | 1, Sergeant at Arms | 4»). Сохранена Eclipse cyberpunk identity через

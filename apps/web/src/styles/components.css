@@ -519,7 +519,22 @@ input[type="radio"]:focus-visible {
 }
 
 .ec-channel-glyph--emoji {
-  font-size: 0.98rem;
+  /* v1.5.41 — Discord-inspired prominence: bigger emoji + subtle accent halo.
+   * Channel emoji теперь читается как brand-element канала, не plain icon. */
+  font-size: 1.18rem;
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--ec-accent) 32%, transparent));
+  transition: filter var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-channel-glyph--emoji:hover,
+.ec-channel-item:hover .ec-channel-glyph--emoji,
+.ec-channel-item--active .ec-channel-glyph--emoji {
+  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--ec-accent) 56%, transparent));
+}
+/* В chat-header — крупнее (рядом с channel name typography). */
+.ec-chat-title .ec-channel-glyph--emoji,
+.ec-chat-title__glyph.ec-channel-glyph--emoji {
+  font-size: 1.32rem;
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--ec-accent) 42%, transparent));
 }
 
 .ec-channel-glyph--custom {
