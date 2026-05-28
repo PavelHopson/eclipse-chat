@@ -31,7 +31,7 @@
 
 | # | Feature | EC сейчас | Gap | Effort | Priority | Статус |
 |---|---|---|---|---|---|---|
-| A1 | **Friends model** (запрос → принять → друг) | DM можно открыть с любым server-member | `Friendship` schema (userA, userB, status: PENDING/ACCEPTED/BLOCKED) + 4 API routes + UI | L | 🔥 MUST | 📋 |
+| A1 | **Friends model** (запрос → принять → друг) | DM можно открыть с любым server-member | `Friendship` schema (userA, userB, status: PENDING/ACCEPTED/BLOCKED) + 4 API routes + UI | L | 🔥 MUST | 🟡 slice 1 backend ✅ v1.5.42; slice 2 frontend (Codex) → v1.5.43; slice 3 polish → v1.5.44 |
 | A2 | **Tabs: Друзья / В сети / Все / Ожидание / Добавить** | DM list плоский | Tabbed view над DM list, фильтрация по A1 status | S (после A1) | 🔥 MUST | 📋 |
 | A3 | **Custom user status** «Играет в Rocket League +1», «The Sims 4 как смысл жизни» | Только presence dot (ONLINE/IDLE/DND/INVISIBLE) | `User.activityText` (до 128) + `activityEmoji` (1) + UI в StatusMenu | M | 🔥 MUST | 📋 |
 | A4 | **Activity hint в DM list row** под именем | Только displayName | Render A3 поле под именем | S (после A3) | 🔥 MUST | 📋 |

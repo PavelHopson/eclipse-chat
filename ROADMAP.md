@@ -5,7 +5,37 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.41** (Discord-inspired UX trek #2 — channel
+**Текущая версия:** **v1.5.42** (Discord-parity A1 slice 1 — Friends model
+backend foundation. Новая `Friendship` модель: один row на нормализованную
+пару (userAId < userBId), статусы PENDING/ACCEPTED/BLOCKED, requestedByUserId
++ blockedByUserId для аудита. Migration `20260528120000_add_friendships`:
+unique pair index + два compound index'а (userAId,status) / (userBId,status)
+для быстрого «мои PENDING incoming / ACCEPTED / BLOCKED» query. Cascade
+на user'е (обе стороны), SetNull на requestedBy/blockedBy для audit
+integrity при soft-delete user'а.
+
+REST routes `apps/server/src/routes/friends.ts`:
+- POST /api/friends/request (rate 20/15min) — поиск target по
+  userId|email|displayName, auto-accept если mirror PENDING, 403 если BLOCKED,
+  idempotent на ACCEPTED
+- POST /api/friends/:id/accept — только addressee
+- DELETE /api/friends/:id — cancel/decline/unfriend (любая сторона)
+- POST /api/friends/block (rate 30/15min) — create или transition в BLOCKED
+- DELETE /api/friends/block/:userId — только blocker (silent unblock, без emit)
+- GET /api/friends?status=ALL|ACCEPTED|PENDING_IN|PENDING_OUT|BLOCKED —
+  grouped response (5 категорий)
+
+Socket events на `user:${userId}` room:
+- friend:request:received → addressee
+- friend:request:accepted → requester
+- friend:removed → other участник (cancel/decline/unfriend)
+- friend:blocked → blocked user (gates DM write на frontend'е)
+
+Race-safe (P2002 retry на unique pair), threat-modeled (privacy не leak'ит
+кто кого blocked — generic 403 «Blocked»). Frontend slice 2 (Codex) =
+v1.5.43, slice 3 = v1.5.44. deployed 28.05.2026).
+
+**Предыдущая:** v1.5.41 (Discord-inspired UX trek #2 — channel
 emoji prefix prominent. `.ec-channel-glyph--emoji` bumped с 0.98rem до
 1.18rem font-size + accent halo drop-shadow (color-mix accent 32% →
 56% на hover/active). В chat-header — 1.32rem с accent halo 42%

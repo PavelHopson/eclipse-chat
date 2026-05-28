@@ -638,3 +638,78 @@ export function emitDmConversationBumped(
 ) {
   io?.to(`user:${userId}`).emit("dm:conversation:bumped", payload);
 }
+
+// ============================
+// Friendship events (v1.5.42 Discord-parity A1)
+// ============================
+
+/**
+ * Минимальный shape user'а для friendship payload'ов. Frontend хватает для
+ * рендера row'а (avatar + name) без отдельного fetch'а.
+ */
+type FriendActor = {
+  id: string;
+  displayName: string;
+  avatar: string | null;
+};
+
+/**
+ * Новый incoming PENDING request. Отправляется addressee — он должен увидеть
+ * входящий запрос live (badge + toast).
+ */
+export function emitFriendRequestReceived(
+  addresseeUserId: string,
+  payload: {
+    friendshipId: string;
+    from: FriendActor;
+    createdAt: string;
+  },
+) {
+  io?.to(`user:${addresseeUserId}`).emit("friend:request:received", payload);
+}
+
+/**
+ * Мой outgoing request был accepted. Отправляется requester'у — он видит, что
+ * друг подтвердил.
+ */
+export function emitFriendRequestAccepted(
+  requesterUserId: string,
+  payload: {
+    friendshipId: string;
+    by: FriendActor;
+    acceptedAt: string;
+  },
+) {
+  io?.to(`user:${requesterUserId}`).emit("friend:request:accepted", payload);
+}
+
+/**
+ * Friendship удалена (cancel PENDING / decline PENDING / unfriend ACCEPTED).
+ * Шлём другой стороне — чтобы UI live-убрала row'у.
+ */
+export function emitFriendRemoved(
+  otherUserId: string,
+  payload: {
+    friendshipId: string;
+    /** Кто инициировал удаление. Frontend использует для UX message
+     *  («X удалил вас из друзей» vs «вы удалили X»). */
+    byUserId: string;
+  },
+) {
+  io?.to(`user:${otherUserId}`).emit("friend:removed", payload);
+}
+
+/**
+ * Меня заблокировали. Шлём blocked user'у — frontend гасит DM-write возможность,
+ * убирает из «Друзья» live. Сам blocker свою UI обновляет через response API
+ * call (не нужен self-emit).
+ */
+export function emitFriendBlocked(
+  blockedUserId: string,
+  payload: {
+    friendshipId: string;
+    byUserId: string;
+  },
+) {
+  io?.to(`user:${blockedUserId}`).emit("friend:blocked", payload);
+}

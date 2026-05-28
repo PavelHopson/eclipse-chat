@@ -143,6 +143,20 @@ model User {
   /// удалении user'а — emoji остаётся на сервере, владельцем становится
   /// «—».
   uploadedEmojis      Emoji[]
+  /// v1.5.42 Discord-parity A1: friendships где user — userA (нормализованная
+  /// позиция, см. Friendship.userAId < userBId). Покрывает и PENDING/ACCEPTED/
+  /// BLOCKED — фильтрация по status в роутах.
+  friendshipsAsUserA  Friendship[] @relation("FriendshipUserA")
+  /// v1.5.42 Discord-parity A1: friendships где user — userB.
+  friendshipsAsUserB  Friendship[] @relation("FriendshipUserB")
+  /// v1.5.42 Discord-parity A1: friend requests, инициированные этим user'ом.
+  /// SetNull при удалении user'а — friendship остаётся между остальными
+  /// сторонами (BLOCKED не теряем). На практике обе стороны cascade-delete'нутся
+  /// через userA/userB FK раньше — это relation для completeness Prisma client'а.
+  friendRequestsSent  Friendship[] @relation("FriendshipRequestedBy")
+  /// v1.5.42 Discord-parity A1: friendships которые этот user заблокировал.
+  /// Опять SetNull для completeness; cascade-delete срабатывает раньше.
+  friendshipsBlockedBy Friendship[] @relation("FriendshipBlockedBy")
 }
 
 /// v0.85 #27 phase 4: per-event-type notification toggles.
@@ -1484,3 +1498,70 @@ model Emoji {
   @@unique([serverId, shortcode])
   @@index([serverId])
 }
+
+/// v1.5.42 Discord-parity A1 — Friendship model.
+///
+/// Один row на пару пользователей. Пара нормализована (userAId < userBId по
+/// строковой компарации cuid'ов) — тот же трюк что у DirectConversation, чтобы
+/// `@@unique([userAId, userBId])` ловил обе направления «A→B» и «B→A» одной
+/// записью.
+///
+/// Жизненный цикл:
+///   PENDING — requester отправил, addressee не ответил
+///     ├─ accept → ACCEPTED (acceptedAt = now)
+///     ├─ decline (addressee) / cancel (requester) → row удаляется
+///   ACCEPTED — обе стороны друзья
+///     └─ unfriend (любая сторона) → row удаляется
+///   BLOCKED — одна сторона заблокировала (blockedByUserId филует, какая)
+///     └─ unblock (только blocker) → row удаляется (НЕ возврат в ACCEPTED —
+///        блок прерывает relationship explicitly)
+///
+/// Идентификация инициатора:
+///   - `requestedByUserId` — кто отправил исходный PENDING (== userAId или userBId)
+///   - `blockedByUserId` — кто наложил BLOCKED (NULL для PENDING/ACCEPTED)
+///
+/// Permission rules (применяются в routes/friends.ts):
+///   - POST /api/friends/request: rate-limited (20/15min); auto-accept если
+///     mirror PENDING существует; 403 если BLOCKED любой стороной
+///   - POST /api/friends/:id/accept: только addressee (тот, кто НЕ requestedByUserId)
+///   - DELETE /api/friends/:id: любая сторона friendship может удалить
+///   - POST /api/friends/block: создаёт новый BLOCKED row либо transition'ит
+///     существующий PENDING/ACCEPTED → BLOCKED; blockedByUserId = me
+///   - DELETE /api/friends/block/:userId: только blocker (blockedByUserId == me)
+///
+/// Cascade: при удалении user'а (любого) cascade-delete его friendships обоих
+/// направлений (через userA/userB FK). requestedByUserId / blockedByUserId —
+/// SetNull через self-FK (relations "FriendshipRequestedBy"/"FriendshipBlockedBy"),
+/// чтобы не блокировать удаление user'а если в payload'е остался pointer.
+model Friendship {
+  id                String           @id @default(cuid())
+  /// Нормализованная пара: userAId < userBId.
+  userAId           String
+  userA             User             @relation("FriendshipUserA", fields: [userAId], references: [id], onDelete: Cascade)
+  userBId           String
+  userB             User             @relation("FriendshipUserB", fields: [userBId], references: [id], onDelete: Cascade)
+  status            FriendshipStatus @default(PENDING)
+  /// Кто отправил PENDING (всегда либо userAId либо userBId). Сохраняется
+  /// после ACCEPTED как «кто кого добавил» — для аудита и для accept
+  /// permission-check (addressee = тот другой).
+  requestedByUserId String
+  requestedBy       User             @relation("FriendshipRequestedBy", fields: [requestedByUserId], references: [id], onDelete: SetNull)
+  /// Заполняется только для BLOCKED status. NULL для PENDING/ACCEPTED.
+  blockedByUserId   String?
+  blockedBy         User?            @relation("FriendshipBlockedBy", fields: [blockedByUserId], references: [id], onDelete: SetNull)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  /// Заполняется при transition PENDING → ACCEPTED. NULL для PENDING/BLOCKED.
+  acceptedAt        DateTime?
+
+  @@unique([userAId, userBId])
+  @@index([userAId, status])
+  @@index([userBId, status])
+}
+
+enum FriendshipStatus {
+  PENDING
+  ACCEPTED
+  BLOCKED
+}
+
