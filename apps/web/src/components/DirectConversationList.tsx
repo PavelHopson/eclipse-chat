@@ -106,6 +106,22 @@ function relativeTime(iso: string): string {
   return new Date(iso).toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
 }
 
+function ActivityLine({
+  emoji,
+  text,
+}: {
+  emoji: string | null | undefined;
+  text: string | null | undefined;
+}) {
+  if (!emoji && !text) return null;
+  return (
+    <span className="ec-activity-line ec-activity-line--dm" title={[emoji, text].filter(Boolean).join(" ")}>
+      {emoji && <span className="ec-activity-line__emoji">{emoji}</span>}
+      {text && <span className="ec-activity-line__text">{text}</span>}
+    </span>
+  );
+}
+
 function GroupRow({
   c,
   active,
@@ -393,6 +409,7 @@ export function DirectConversationList({
                 }}>
                   {c.other.displayName}
                 </span>
+                <ActivityLine emoji={c.other.activityEmoji} text={c.other.activityText} />
                 <span style={{
                   fontSize: "var(--ec-text-2xs)",
                   color: isUnread ? "var(--ec-text-muted)" : "var(--ec-text-dim)",

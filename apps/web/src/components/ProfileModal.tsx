@@ -21,12 +21,51 @@ const DENSITY_OPTIONS: Array<{ id: Density; label: string }> = [
   { id: "tactical", label: "Тактика" },
 ];
 
+const ACTIVITY_EMOJI_PRESETS = [
+  "💻",
+  "🎧",
+  "📞",
+  "🧠",
+  "⚡",
+  "🛠️",
+  "🚀",
+  "☕",
+  "📚",
+  "🎯",
+  "🧪",
+  "📝",
+  "🔒",
+  "📊",
+  "🎨",
+  "🕹️",
+  "🌙",
+  "🔥",
+  "✅",
+  "⏳",
+  "🧭",
+  "💬",
+  "🎥",
+  "🎙️",
+  "🧩",
+  "🪄",
+  "🧱",
+  "🌌",
+  "🏗️",
+  "🕵️",
+  "🧘",
+  "🍵",
+];
+
 type Props = {
   profile: Profile;
   busy: boolean;
   error: string | null;
   onClose: () => void;
   onSave: (data: { displayName?: string; bio?: string | null }) => Promise<boolean>;
+  onUpdateActivity: (data: {
+    activityText?: string | null;
+    activityEmoji?: string | null;
+  }) => Promise<boolean>;
   onUploadAvatar: (file: File) => Promise<boolean>;
   onDeleteAvatar: () => Promise<boolean>;
   /** Уведомить parent: 2FA flipped — он refresh'нет /me. */
@@ -51,12 +90,17 @@ export function ProfileModal({
   error,
   onClose,
   onSave,
+  onUpdateActivity,
   onUploadAvatar,
   onDeleteAvatar,
   onTwoFactorChanged,
 }: Props) {
   const [displayName, setDisplayName] = useState(profile.displayName);
   const [bio, setBio] = useState(profile.bio ?? "");
+  const [activityText, setActivityText] = useState(profile.activityText ?? "");
+  const [activityEmoji, setActivityEmoji] = useState(profile.activityEmoji ?? "");
+  const [activityBusy, setActivityBusy] = useState(false);
+  const [activityError, setActivityError] = useState<string | null>(null);
   const [show2FA, setShow2FA] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const twoFaOn = (profile as Profile & { twoFactorEnabled?: boolean }).twoFactorEnabled === true;
@@ -92,6 +136,16 @@ export function ProfileModal({
     trimmedName.length <= 64 &&
     trimmedBio.length <= 280 &&
     (nameChanged || bioChanged);
+  const trimmedActivity = activityText.trim();
+  const trimmedEmoji = activityEmoji.trim();
+  const activityChanged =
+    trimmedActivity !== (profile.activityText ?? "").trim() ||
+    trimmedEmoji !== (profile.activityEmoji ?? "").trim();
+  const canSaveActivity =
+    !activityBusy &&
+    trimmedActivity.length <= 128 &&
+    trimmedEmoji.length <= 64 &&
+    activityChanged;
 
   const handleSave = async () => {
     const data: { displayName?: string; bio?: string | null } = {};
@@ -100,6 +154,37 @@ export function ProfileModal({
     if (Object.keys(data).length === 0) return;
     const ok = await onSave(data);
     if (ok) onClose();
+  };
+
+  const handleActivitySave = async () => {
+    if (!canSaveActivity) return;
+    setActivityBusy(true);
+    setActivityError(null);
+    const ok = await onUpdateActivity({
+      activityText: trimmedActivity === "" ? null : trimmedActivity,
+      activityEmoji: trimmedEmoji === "" ? null : trimmedEmoji,
+    });
+    if (!ok) {
+      setActivityError("Не удалось сохранить кастомный статус");
+    }
+    setActivityBusy(false);
+  };
+
+  const handleActivityClear = async () => {
+    if (activityBusy) return;
+    const previousText = activityText;
+    const previousEmoji = activityEmoji;
+    setActivityText("");
+    setActivityEmoji("");
+    setActivityBusy(true);
+    setActivityError(null);
+    const ok = await onUpdateActivity({ activityText: null, activityEmoji: null });
+    if (!ok) {
+      setActivityText(previousText);
+      setActivityEmoji(previousEmoji);
+      setActivityError("Не удалось очистить кастомный статус");
+    }
+    setActivityBusy(false);
   };
 
   // Правила совпадают с backend (registerBody.password): 8+, буквы + цифры.
@@ -185,6 +270,99 @@ export function ProfileModal({
             JPEG / PNG / WebP / HEIC · до 20 МБ · обрежется до 512×512
           </span>
         </div>
+      </section>
+
+      <section
+        style={{
+          ...avatarSection,
+          flexDirection: "column",
+          alignItems: "stretch",
+          gap: "var(--ec-space-3)",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "flex-start", gap: "var(--ec-space-3)" }}>
+          <div
+            aria-hidden
+            style={{
+              width: 48,
+              height: 48,
+              flexShrink: 0,
+              borderRadius: "var(--ec-radius-md)",
+              display: "grid",
+              placeItems: "center",
+              background: "var(--ec-accent-soft)",
+              color: "var(--ec-accent)",
+              fontSize: "1.35rem",
+            }}
+          >
+            {trimmedEmoji || "💬"}
+          </div>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
+            <strong style={{ color: "var(--ec-text-strong)", fontSize: "var(--ec-text-sm)" }}>
+              Кастомный статус
+            </strong>
+            <span style={{ fontSize: "var(--ec-text-2xs)", color: "var(--ec-text-muted)", lineHeight: 1.4 }}>
+              Виден в членах сервера и DM.
+            </span>
+          </div>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "96px 1fr", gap: "var(--ec-space-2)" }}>
+          <label>
+            <span className="ec-field-label">Эмодзи</span>
+            <select
+              className="ec-field"
+              value={activityEmoji}
+              onChange={(e) => setActivityEmoji(e.target.value)}
+              disabled={activityBusy}
+              aria-label="Эмодзи кастомного статуса"
+            >
+              <option value="">—</option>
+              {ACTIVITY_EMOJI_PRESETS.map((emoji) => (
+                <option key={emoji} value={emoji}>
+                  {emoji}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span className="ec-field-label">Что вы делаете?</span>
+            <input
+              className="ec-field"
+              type="text"
+              value={activityText}
+              onChange={(e) => setActivityText(e.target.value)}
+              maxLength={128}
+              disabled={activityBusy}
+              placeholder="Работаю над релизом"
+            />
+          </label>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: "var(--ec-space-2)" }}>
+          <button
+            type="button"
+            className="ec-btn ec-btn--primary ec-btn--sm"
+            onClick={() => void handleActivitySave()}
+            disabled={!canSaveActivity}
+          >
+            {activityBusy ? "Сохраняем…" : "Сохранить статус"}
+          </button>
+          <button
+            type="button"
+            className="ec-btn ec-btn--ghost ec-btn--sm"
+            onClick={() => void handleActivityClear()}
+            disabled={activityBusy || (!profile.activityText && !profile.activityEmoji)}
+          >
+            Очистить
+          </button>
+          <span className="ec-field-counter" style={{ marginLeft: "auto" }}>
+            {trimmedActivity.length}/128
+          </span>
+        </div>
+        {activityError && (
+          <span style={{ fontSize: "var(--ec-text-2xs)", color: "var(--ec-danger)" }}>
+            {activityError}
+          </span>
+        )}
       </section>
 
       {/* 2FA section */}

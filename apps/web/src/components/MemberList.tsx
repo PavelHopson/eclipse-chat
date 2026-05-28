@@ -159,6 +159,22 @@ function roleGameIcon(role: MemberRole): GameIconName | null {
   return null;
 }
 
+function ActivityLine({
+  emoji,
+  text,
+}: {
+  emoji: string | null | undefined;
+  text: string | null | undefined;
+}) {
+  if (!emoji && !text) return null;
+  return (
+    <span className="ec-activity-line" title={[emoji, text].filter(Boolean).join(" ")}>
+      {emoji && <span className="ec-activity-line__emoji">{emoji}</span>}
+      {text && <span className="ec-activity-line__text">{text}</span>}
+    </span>
+  );
+}
+
 function MemberRowView({
   m,
   inVoiceChannel,
@@ -213,11 +229,14 @@ function MemberRowView({
           }}
         />
       </span>
-      <span className="ec-member-row__name">
-        {m.user.displayName}
-        {/* voice-индикатор намеренно убран: кто в голосовом — видно списком
-            под voice-каналом в sidebar (ChannelList), дублировать не нужно.
-            inVoiceChannel остаётся в tooltip (см. выше). */}
+      <span className="ec-member-row__identity">
+        <span className="ec-member-row__name">
+          {m.user.displayName}
+          {/* voice-индикатор намеренно убран: кто в голосовом — видно списком
+              под voice-каналом в sidebar (ChannelList), дублировать не нужно.
+              inVoiceChannel остаётся в tooltip (см. выше). */}
+        </span>
+        <ActivityLine emoji={m.user.activityEmoji} text={m.user.activityText} />
       </span>
       <span className={pillClass} title={m.role}>
         {roleIcon && (

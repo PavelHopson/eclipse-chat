@@ -7,6 +7,7 @@ import {
   type MemberLeftPayload,
   type MemberUpdatedPayload,
   type PresenceUpdatePayload,
+  type UserActivityUpdatedPayload,
 } from "../lib/socket";
 
 export type MemberRole =
@@ -35,6 +36,8 @@ export type MemberRow = {
     displayName: string;
     email: string;
     avatar: string | null;
+    activityText: string | null;
+    activityEmoji: string | null;
     createdAt: string;
   };
 };
@@ -98,6 +101,8 @@ export function useMembers(serverId: string | null, socket: Socket | null) {
               displayName: p.displayName,
               email: "",
               avatar: p.avatar,
+              activityText: null,
+              activityEmoji: null,
               createdAt: p.joinedAt,
             },
           },
@@ -190,6 +195,31 @@ export function useMembers(serverId: string | null, socket: Socket | null) {
     socket.on(SocketEvents.PresenceUpdate, onPresence);
     return () => {
       socket.off(SocketEvents.PresenceUpdate, onPresence);
+    };
+  }, [socket, serverId]);
+
+  // socket: user:activity:updated
+  useEffect(() => {
+    if (!socket || !serverId) return;
+    const onActivity = (p: UserActivityUpdatedPayload) => {
+      setMembers((prev) =>
+        prev.map((m) =>
+          m.userId === p.userId
+            ? {
+                ...m,
+                user: {
+                  ...m.user,
+                  activityText: p.activityText,
+                  activityEmoji: p.activityEmoji,
+                },
+              }
+            : m,
+        ),
+      );
+    };
+    socket.on(SocketEvents.UserActivityUpdated, onActivity);
+    return () => {
+      socket.off(SocketEvents.UserActivityUpdated, onActivity);
     };
   }, [socket, serverId]);
 
