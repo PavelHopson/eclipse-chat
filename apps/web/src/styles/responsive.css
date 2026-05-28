@@ -1204,6 +1204,27 @@
     justify-content: center;
   }
 
+  .ec-friends-tabs {
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 1px;
+  }
+
+  .ec-friends-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .ec-friends-tab {
+    flex: 0 0 auto;
+  }
+
+  .ec-friends-tab--action {
+    margin-left: 0;
+  }
+
   .ec-friend-row {
     grid-template-columns: auto minmax(0, 1fr) auto;
     gap: var(--ec-space-2);

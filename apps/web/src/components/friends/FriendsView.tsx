@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { KeyboardEvent } from "react";
 import { Avatar } from "../Avatar";
 import type { FriendRequestInput, FriendshipDto } from "../../types/api";
@@ -25,14 +25,18 @@ type ActionState = {
   kind: "accept" | "remove" | "unblock";
 } | null;
 
+type TabId = "friends" | "online" | "all" | "pending";
+
 function statusClass(friendship: FriendshipDto): string {
   const status = friendship.other.manualStatus;
   if (status === "INVISIBLE") return "is-offline";
   return `is-${status.toLowerCase()}`;
 }
 
-function sectionTitle(count: number, label: string): string {
-  return count > 0 ? `${label} · ${count}` : label;
+function sortByName(items: FriendshipDto[]): FriendshipDto[] {
+  return [...items].sort((a, b) =>
+    a.other.displayName.localeCompare(b.other.displayName, "ru"),
+  );
 }
 
 function SkeletonRows() {
@@ -69,10 +73,29 @@ export function FriendsView({
   onUnblock,
   onOpenDm,
 }: Props) {
+  const [activeTab, setActiveTab] = useState<TabId>("friends");
   const [addOpen, setAddOpen] = useState(false);
   const [action, setAction] = useState<ActionState>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  const total = accepted.length + pendingIn.length + pendingOut.length + blocked.length;
+  const acceptedSorted = useMemo(() => sortByName(accepted), [accepted]);
+  const onlineFriends = useMemo(
+    () =>
+      acceptedSorted.filter((friendship) =>
+        ["ONLINE", "IDLE", "DND"].includes(friendship.other.manualStatus),
+      ),
+    [acceptedSorted],
+  );
+  const blockedSorted = useMemo(() => sortByName(blocked), [blocked]);
+  const pendingInSorted = useMemo(() => sortByName(pendingIn), [pendingIn]);
+  const pendingOutSorted = useMemo(() => sortByName(pendingOut), [pendingOut]);
+  const tabHasRows =
+    activeTab === "friends"
+      ? acceptedSorted.length > 0
+      : activeTab === "online"
+      ? onlineFriends.length > 0
+      : activeTab === "all"
+      ? acceptedSorted.length + blockedSorted.length > 0
+      : pendingInSorted.length + pendingOutSorted.length > 0;
 
   const runAction = async (next: NonNullable<ActionState>, fn: () => Promise<unknown>) => {
     setAction(next);
@@ -241,6 +264,90 @@ export function FriendsView({
     );
   };
 
+  const tabs: Array<{ id: TabId | "add"; label: string; count?: number }> = [
+    { id: "friends", label: "Друзья", count: acceptedSorted.length },
+    { id: "online", label: "В сети", count: onlineFriends.length },
+    { id: "all", label: "Все", count: acceptedSorted.length + blockedSorted.length },
+    { id: "pending", label: "Ожидание", count: pendingInSorted.length + pendingOutSorted.length },
+    { id: "add", label: "Добавить" },
+  ];
+
+  const renderActiveTab = () => {
+    if (isLoading && !tabHasRows) return <SkeletonRows />;
+
+    if (activeTab === "friends") {
+      return (
+        <section className="ec-friend-section" role="tabpanel" id="friends-tabpanel-friends" aria-labelledby="friends-tab-friends">
+          {acceptedSorted.length ? (
+            acceptedSorted.map((f) => row(f, "accepted"))
+          ) : (
+            <EmptyLine>У вас пока нет друзей. Перейдите на «Добавить».</EmptyLine>
+          )}
+        </section>
+      );
+    }
+
+    if (activeTab === "online") {
+      return (
+        <section className="ec-friend-section" role="tabpanel" id="friends-tabpanel-online" aria-labelledby="friends-tab-online">
+          {onlineFriends.length ? (
+            onlineFriends.map((f) => row(f, "accepted"))
+          ) : (
+            <EmptyLine>Сейчас никого из друзей нет в сети.</EmptyLine>
+          )}
+        </section>
+      );
+    }
+
+    if (activeTab === "all") {
+      if (acceptedSorted.length + blockedSorted.length === 0) {
+        return (
+          <section className="ec-friend-section" role="tabpanel" id="friends-tabpanel-all" aria-labelledby="friends-tab-all">
+            <EmptyLine>У вас пока нет контактов.</EmptyLine>
+          </section>
+        );
+      }
+      return (
+        <section className="ec-friend-section" role="tabpanel" id="friends-tabpanel-all" aria-labelledby="friends-tab-all">
+          {acceptedSorted.map((f) => row(f, "accepted"))}
+          {blockedSorted.length > 0 && (
+            <>
+              <div className="ec-friend-separator" role="separator">
+                Заблокированные
+              </div>
+              {blockedSorted.map((f) => row(f, "blocked"))}
+            </>
+          )}
+        </section>
+      );
+    }
+
+    if (pendingInSorted.length + pendingOutSorted.length === 0) {
+      return (
+        <section className="ec-friend-section" role="tabpanel" id="friends-tabpanel-pending" aria-labelledby="friends-tab-pending">
+          <EmptyLine>Нет ожидающих запросов.</EmptyLine>
+        </section>
+      );
+    }
+
+    return (
+      <section className="ec-friend-section" role="tabpanel" id="friends-tabpanel-pending" aria-labelledby="friends-tab-pending">
+        {pendingInSorted.length > 0 && (
+          <>
+            <div className="ec-friend-separator">Входящие</div>
+            {pendingInSorted.map((f) => row(f, "pendingIn"))}
+          </>
+        )}
+        {pendingOutSorted.length > 0 && (
+          <>
+            <div className="ec-friend-separator">Исходящие</div>
+            {pendingOutSorted.map((f) => row(f, "pendingOut"))}
+          </>
+        )}
+      </section>
+    );
+  };
+
   return (
     <div className="ec-friends-view">
       <header className="ec-friends-view__hero ec-holo-edge">
@@ -254,6 +361,45 @@ export function FriendsView({
         </button>
       </header>
 
+      <nav className="ec-friends-tabs" role="tablist" aria-label="Фильтр друзей">
+        {tabs.map((tab) => {
+          const isAction = tab.id === "add";
+          const active = tab.id === activeTab;
+          const pendingPulse = tab.id === "pending" && pendingInSorted.length > 0;
+          return (
+            <button
+              key={tab.id}
+              id={isAction ? "friends-tab-add" : `friends-tab-${tab.id}`}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              aria-controls={isAction ? undefined : `friends-tabpanel-${tab.id}`}
+              className={
+                "ec-friends-tab" +
+                (active ? " ec-friends-tab--active" : "") +
+                (isAction ? " ec-friends-tab--action" : "") +
+                (pendingPulse ? " ec-friends-tab--pending" : "")
+              }
+              onClick={() => {
+                if (tab.id === "add") {
+                  setAddOpen(true);
+                  return;
+                }
+                setActiveTab(tab.id);
+              }}
+            >
+              {isAction && <span aria-hidden>+</span>}
+              {tab.label}
+              {pendingPulse ? (
+                <span className="ec-friends-tab__dot" aria-label={`Входящих запросов: ${pendingInSorted.length}`} />
+              ) : typeof tab.count === "number" && tab.count > 0 ? (
+                <span className="ec-friends-tab__count">{tab.count}</span>
+              ) : null}
+            </button>
+          );
+        })}
+      </nav>
+
       {error && (
         <div className="ec-friend-load-error">
           <span>Не удалось загрузить друзей.</span>
@@ -263,28 +409,7 @@ export function FriendsView({
         </div>
       )}
       {actionError && <p className="ec-friend-form-error">{actionError}</p>}
-      {isLoading && total === 0 ? (
-        <SkeletonRows />
-      ) : (
-        <div className="ec-friends-view__sections">
-          <section className="ec-friend-section">
-            <h3>{sectionTitle(pendingIn.length, "Входящие запросы")}</h3>
-            {pendingIn.length ? pendingIn.map((f) => row(f, "pendingIn")) : <EmptyLine>Новых запросов нет.</EmptyLine>}
-          </section>
-          <section className="ec-friend-section">
-            <h3>{sectionTitle(accepted.length, "Друзья")}</h3>
-            {accepted.length ? accepted.map((f) => row(f, "accepted")) : <EmptyLine>У вас пока нет друзей. Добавьте первого.</EmptyLine>}
-          </section>
-          <section className="ec-friend-section">
-            <h3>{sectionTitle(pendingOut.length, "Исходящие")}</h3>
-            {pendingOut.length ? pendingOut.map((f) => row(f, "pendingOut")) : <EmptyLine>Нет отправленных запросов.</EmptyLine>}
-          </section>
-          <section className="ec-friend-section">
-            <h3>{sectionTitle(blocked.length, "Заблокированные")}</h3>
-            {blocked.length ? blocked.map((f) => row(f, "blocked")) : <EmptyLine>Список блокировок пуст.</EmptyLine>}
-          </section>
-        </div>
-      )}
+      <div className="ec-friends-view__sections">{renderActiveTab()}</div>
 
       {addOpen && (
         <AddFriendDialog
