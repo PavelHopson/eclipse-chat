@@ -19,12 +19,29 @@
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        // v1.5.39 plugins:
+        // - notification: позволяет frontend позвать window.__TAURI__ или
+        //   `@tauri-apps/plugin-notification` чтобы показать native toast.
+        //   Используется существующим useNotifications hook'ом из web-side
+        //   когда `window.__TAURI_INTERNALS__` detected — fallback на Web
+        //   Notification API для browser context.
+        // - updater: проверяет GitHub Releases на новую версию при startup
+        //   + по запросу. Открывает confirm dialog (см. tauri.conf.json
+        //   plugins.updater.dialog = true), скачивает delta-patch, applies
+        //   на restart. Требует signed manifest (см. pubkey в tauri.conf.json
+        //   и Tauri signing key setup в README.md).
+        // - window_state: drop-in plugin, сам сохраняет позицию/размер
+        //   окна в OS-config dir перед close, восстанавливает на launch.
+        //   Никаких frontend hook'ов не требует.
+        .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_window_state::Builder::default().build())
         .setup(|_app| {
-            // v1.5.38 первый slice — empty setup. v1.6.1+ добавит:
-            //   - register tray
-            //   - register global shortcuts
-            //   - initialize push notification handler
-            //   - check for updates on startup
+            // v1.5.39 setup hook остаётся пустым. v1.5.40 добавит:
+            //   - register tray icon
+            //   - register global shortcuts (Ctrl+Shift+E focus window)
+            // v1.5.41 добавит:
+            //   - check for updates on startup (через updater plugin)
             Ok(())
         })
         .run(tauri::generate_context!())

@@ -4,14 +4,18 @@ Tauri 2 desktop shell для Eclipse Chat. Wraps `apps/web` build → native bin
 
 ## Стадия
 
-**v1.0.0 (Eclipse Chat v1.5.38)** — first slice. Scaffold готов, build verified локально. Roadmap:
+**v1.0.1 (Eclipse Chat v1.5.39)** — plugins layer landed. Scaffold + 3 plugins
+(notification, updater, window-state) ready; signing key generation = Pavel's
+next manual step (см. ниже).
+
+Roadmap:
 
 - ✅ **v1.0.0 / EC v1.5.38** — scaffold: Cargo workspace, tauri.conf.json, capabilities, .env.desktop для web build
-- ⏳ **v1.0.1 / EC v1.5.39** — `tauri-plugin-notification` (native OS notifications) + `tauri-plugin-updater` (auto-update from GitHub Releases)
-- ⏳ **v1.0.2 / EC v1.5.40** — `tauri-plugin-window-state` (remember pos/size), system tray icon, global shortcuts (Ctrl+Shift+E для focus)
-- ⏳ **v1.0.3 / EC v1.5.41** — macOS .dmg + Linux .deb/.AppImage cross-builds
-- ⏳ **v1.0.4 / EC v1.5.42** — Microsoft Store .msix packaging + submission
-- ⏳ **v1.0.5 / EC v1.5.43** — GitHub Releases workflow auto-publish (cross-platform CI matrix)
+- ✅ **v1.0.1 / EC v1.5.39** — `tauri-plugin-notification` + `tauri-plugin-updater` (config + plugin layer; signing key Pavel'у сгенерировать) + `tauri-plugin-window-state` (drop-in)
+- ⏳ **v1.0.2 / EC v1.5.40** — system tray icon, global shortcuts (Ctrl+Shift+E для focus), startup check-for-updates hook
+- ⏳ **v1.0.3 / EC v1.5.41** — cross-platform CI matrix: GitHub Actions builds для Win/Mac/Linux на каждый tag, signed updater manifests
+- ⏳ **v1.0.4 / EC v1.5.42** — macOS notarization + Apple Developer Program (опционально, если решим mac distribute)
+- ⏳ **v1.0.5 / EC v1.5.43** — Microsoft Store .msix packaging + submission
 
 ## Prerequisites
 
@@ -33,7 +37,7 @@ cargo --version
 ## First-time setup
 
 ```bash
-# Install Tauri CLI (один раз, добавляется в devDependencies workspace)
+# Install Tauri CLI (один раз, добавляется в optionalDependencies workspace)
 cd apps/desktop
 npm install
 
@@ -41,6 +45,44 @@ npm install
 # Создаст src-tauri/icons/{32x32.png, 128x128.png, 128x128@2x.png, icon.ico, icon.icns}
 npm run icons:gen
 ```
+
+### Signing key для auto-updater (v1.5.39+ Tauri #2)
+
+Auto-update (`tauri-plugin-updater`) использует **signed manifest** — releases
+проверяются по public key, который встроен в установленный desktop binary.
+Private key хранится локально + в GitHub Actions secret для CI build pipeline.
+
+**Один раз** (Pavel local machine):
+
+```bash
+cd apps/desktop
+# Генерирует keypair → ~/.tauri/eclipse-chat.key (private)
+#                   → ~/.tauri/eclipse-chat.key.pub (public)
+npm run tauri signer generate -- -w ~/.tauri/eclipse-chat.key
+
+# Скопировать содержимое eclipse-chat.key.pub
+# (одна base64 string, начинается с "untrusted comment: minisign public key...")
+cat ~/.tauri/eclipse-chat.key.pub
+```
+
+**Затем заменить placeholder в [src-tauri/tauri.conf.json](src-tauri/tauri.conf.json):**
+
+```jsonc
+"plugins": {
+  "updater": {
+    "pubkey": "ВСТАВИТЬ_СОДЕРЖИМОЕ_eclipse-chat.key.pub_СЮДА"
+  }
+}
+```
+
+**Для CI** (когда Phase B #3 / v1.5.41 cross-platform matrix готов): добавить
+GitHub secrets:
+- `TAURI_SIGNING_PRIVATE_KEY` — содержимое `eclipse-chat.key` (private)
+- `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` — пароль keypair (если был указан)
+
+**Backup private key** — потеря = невозможность publish updates для existing
+installs (новые версии не пройдут signature check). Хранить как минимум в 2
+местах: локально + password manager (1Password / Bitwarden).
 
 ## Dev mode
 

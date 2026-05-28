@@ -5,7 +5,32 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.38** (Phase B Tauri 2 #1 — apps/desktop/
+**Текущая версия:** **v1.5.39** (Phase B Tauri 2 #2 — plugins layer:
+notification + updater + window-state. Desktop app version bumped 1.0.0
+→ 1.0.1.
+- `tauri-plugin-notification` (Cargo.toml + lib.rs Builder + capability
+  `notification:default`) — native OS notifications. Existing
+  `useNotifications` hook на web-side может детектить
+  `window.__TAURI_INTERNALS__` и переключаться с Web Notifications API на
+  Tauri plugin для лучшей desktop integration (Action Center / Notification
+  Center / libnotify). Wire'инг web-side hook — отдельный slice, не в
+  v1.5.39.
+- `tauri-plugin-updater` (Cargo + lib.rs Builder + capability
+  `updater:default` + plugins.updater config в tauri.conf.json). Endpoints
+  pointing на `github.com/PavelHopson/eclipse-chat/releases/latest/download/
+  latest.json` (signed manifest). Pubkey placeholder — Pavel должен
+  сгенерировать keypair `npm run tauri signer generate -- -w ~/.tauri/
+  eclipse-chat.key` + заменить placeholder в tauri.conf.json + сохранить
+  private key в password manager + добавить TAURI_SIGNING_PRIVATE_KEY
+  GitHub secret для CI publish pipeline (v1.5.41).
+- `tauri-plugin-window-state` (Cargo + lib.rs Builder, capabilities не
+  требует — background plugin). Drop-in: сам сохраняет window position/size
+  в OS config dir перед close, восстанавливает на launch.
+- README обновлён: full signing key generation guide + plugin docs +
+  roadmap до v1.0.5.
+deployed 27.05.2026).
+
+**Предыдущая:** v1.5.38 (Phase B Tauri 2 #1 — apps/desktop/
 workspace scaffold. Phase A PWA harden закрыта (v1.5.30/32/37);
 открывается Phase B — native desktop app.
 Структура:
