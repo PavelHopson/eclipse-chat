@@ -5,7 +5,23 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.49** (Discord-parity C3 — Server navigation links.
+**Текущая версия:** **v1.5.50** (Discord-parity B5 backend — Quiet hours.
+Три nullable String на User: `quietFrom` / `quietTo` (HH:MM, 24-hour) +
+`timezone` (IANA name). Migration `20260529100000_add_quiet_hours`
+additive ALTER TABLE. New helper `apps/server/src/lib/quietHours.ts`:
+pure `isInQuietHours()` парсит HH:MM в minutes-from-midnight, computes
+current time в user-timezone через `Intl.DateTimeFormat` formatToParts
+(h23 hourCycle), сравнивает window (same-day если from<to, midnight-spanning
+если from>to). Defensive fallbacks: invalid IANA → server TZ, Intl
+unavailable → UTC, invalid HH:MM → disabled. Push pipeline integration:
+`notifyUser()` после existing per-event preference check добавлена quiet-hours
+проверка — skip push с `{ skipped: "quiet-hours" }` если в window.
+Independent от per-event toggle (mentions/dms могут быть enabled, но quiet
+silences всё). Route: `PATCH /api/users/me/quiet-hours` (Zod HH:MM regex,
+Intl runtime-validate для IANA, rate 30/15min). `publicProfile` DTO
+расширен 3 полями. Frontend slice ждёт Codex'а в каком-то B-slice'е.
+
+**Предыдущая:** v1.5.49 (Discord-parity C3 — Server navigation links.
 Добавлен server-scoped nav в main area: «Путеводитель» как standalone
 `ServerWelcomeHero`, disabled placeholder «Мероприятия» с честным «Скоро в
 v1.5.50+», «Каналы и роли» как read-only обзор каналов + матрица ролей из
