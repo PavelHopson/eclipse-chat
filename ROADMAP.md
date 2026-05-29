@@ -5,7 +5,24 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.57** (Discord-parity MED batch 1 — C4/C6/E4/E6.
+**Текущая версия:** **v1.5.58** (Discord-parity E3 + E5 backend.
+**E3** (Server feature chips): `Server.features` nullable `String?` (JSON-encoded
+`String[]` до 5 элементов, каждый ≤40 chars). Migration `20260529140000_add_server_features`
+additive ALTER TABLE. PATCH `/api/servers/:id/identity` body extended:
+`features?: string[] | null` (trim → filter empty → slice 5 → JSON.stringify в БД;
+null/[] clears). GET `/api/servers` DTO теперь возвращает `features: string | null`
+(JSON string) per-server. Frontend будет парсить → render chips в WelcomeHero
+(Codex slice).
+**E5** (Server-scoped audit log endpoint): новый `GET /api/servers/:id/audit-log`
+endpoint, OWNER/ADMIN only (403 otherwise). Query params: `type` (AuditEventType
+filter), `userId` (actor filter), `since`/`until` (ISO datetime range), `take`
+(1..100 default 25), `skip` (default 0). Server-scope filter через
+`metadata: { contains: '"serverId":"<id>"' }` — Prisma LIKE на String JSON metadata.
+Не indexed но OK для admin-only rare queries. Response: `{ entries, total, take,
+skip }` sorted by createdAt DESC. ⚠ Legacy rows (до этого slice'а) без serverId
+в metadata не появятся — acceptable (новые `recordAudit` calls с serverId покажутся).
+
+**Предыдущая:** v1.5.57 (Discord-parity MED batch 1 — C4/C6/E4/E6.
 C4: channel row desktop hover actions now include invite-to-channel copy,
 generating `?invite=<code>&channel=<channelId>` and `useChannels` consumes
 `channel` query after join/reload to open the target channel. C6: server actions
