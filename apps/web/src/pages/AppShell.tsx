@@ -63,6 +63,7 @@ import { ServerWelcomeHero } from "../components/ServerWelcomeHero";
 import { ChannelsAndRolesView } from "../components/server/ChannelsAndRolesView";
 import { MembersView } from "../components/server/MembersView";
 import { ServerNavBar, type ServerView } from "../components/server/ServerNavBar";
+import { IsolationConfirmDialog } from "../components/server/IsolationConfirmDialog";
 import { ExpiryBadge } from "../components/ExpiryBadge";
 import {
   EmptyDmIcon,
@@ -127,6 +128,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     createServer,
     joinByInvite,
     leaveServer,
+    updateServerLock,
     deleteServer,
     uploadServerIcon,
     deleteServerIcon,
@@ -351,6 +353,14 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   const [aiRippleKey, setAiRippleKey] = useState(0);
   // Incident panel — toggle в right rail (приоритет ниже thread panel).
   const [showIncidents, setShowIncidents] = useState(false);
+  /**
+   * v1.5.55 D3 frontend — IsolationConfirmDialog state. Открывается через
+   * ServerActionsMenu «Изоляция»/«Снять изоляцию» action. Mode выбирается
+   * по текущему activeServer.lockedAt в момент trigger'а.
+   */
+  const [isolationDialog, setIsolationDialog] = useState<
+    { mode: "lock" | "unlock"; serverId: string; serverName: string } | null
+  >(null);
   // Thread panel — открыт когда selectedThreadId != null. Replaces MemberList
   // в right rail. Close → возвращается MemberList.
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
@@ -1235,16 +1245,14 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               setServerHubOpen(true);
             }}
             onOpenServerNotifications={() => setShowProfile(true)}
-            onOpenServerIncident={() => {
-              setHomeOpen(false);
-              setHelpOpen(false);
-              setAdminOpen(false);
-              setStatusBoardOpen(false);
-              setTeamHealthOpen(false);
-              setSelectedThreadId(null);
-              setRightRailCollapsed(false);
-              setShowIncidents(true);
-              if (isTabletOrSmaller) setMembersOpen(true);
+            serverLockedAt={activeServer?.lockedAt ?? null}
+            onToggleServerIsolation={() => {
+              if (!activeServer) return;
+              setIsolationDialog({
+                mode: activeServer.lockedAt ? "unlock" : "lock",
+                serverId: activeServer.id,
+                serverName: activeServer.name,
+              });
             }}
             onLeaveServer={async () => {
               if (!activeServer) return false;
@@ -2452,6 +2460,22 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           onSelect={(s) => void updateStatus(s)}
           onOpenProfile={() => setShowProfile(true)}
           onClose={() => setStatusAnchor(null)}
+        />
+      )}
+
+      {isolationDialog && (
+        <IsolationConfirmDialog
+          mode={isolationDialog.mode}
+          serverName={isolationDialog.serverName}
+          onClose={() => setIsolationDialog(null)}
+          onSubmit={async (reason) => {
+            const locked = isolationDialog.mode === "lock";
+            return await updateServerLock(
+              isolationDialog.serverId,
+              locked,
+              locked ? reason : null,
+            );
+          }}
         />
       )}
 

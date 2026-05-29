@@ -3780,6 +3780,30 @@ input[type="radio"]:focus-visible {
   padding: var(--ec-space-3) var(--ec-space-4);
 }
 
+/* v1.5.55 D3 frontend — Server lock badge в channel-list header.
+ * Subtle chip с lock-icon + текстом «Закрыт» когда server.lockedAt !== null.
+ * Tone — warning amber (не destructive red, потому что это user-initiated
+ * temporary state, не error).
+ */
+.ec-channel-list__lock-badge {
+  position: absolute;
+  top: var(--ec-space-3);
+  right: var(--ec-space-4);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: hsl(38 90% 70%);
+  background: color-mix(in srgb, hsl(38 90% 60%) 16%, transparent);
+  border: 1px solid color-mix(in srgb, hsl(38 90% 60%) 32%, transparent);
+  pointer-events: auto;
+}
+
 /* v1.5.33 — Banner variant. Когда у сервера есть banner asset (1500×500
  * webp) — рендерим header'у cover background + gradient overlay для
  * читабельности text-content поверх любого изображения. Без banner'а —

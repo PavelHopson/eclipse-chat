@@ -4,14 +4,26 @@ import type { ServerRow } from "../../hooks/useServers";
 type Props = {
   open: boolean;
   triggerRef: RefObject<HTMLElement | null>;
-  server: Pick<ServerRow, "id" | "name" | "role">;
+  /**
+   * v1.5.55 D3 frontend — `lockedAt` теперь требуется на server типе чтобы
+   * action «Изоляция» рендерил правильный label («Изоляция» когда open vs
+   * «Снять изоляцию» когда уже locked).
+   */
+  server: Pick<ServerRow, "id" | "name" | "role" | "lockedAt">;
   onClose: () => void;
   onOpenSettings: () => void;
   onOpenInvite: () => void;
   onOpenNotifications: () => void;
   onCreateChannel: () => void;
   onCreateCategory: () => void;
-  onOpenIncident: () => void;
+  /**
+   * v1.5.55 D3 frontend — переименовано из onOpenIncident.
+   * Открывает IsolationConfirmDialog в caller'е (AppShell). Mode выбирается
+   * по lockedAt: NULL = lock dialog, не-NULL = unlock dialog.
+   * Старый onOpenIncident wire-up (открывал IncidentPanel) больше не
+   * соответствует D3 spec'у; «Жалоба на рейд» = отдельный action в slice 4+.
+   */
+  onToggleIsolation: () => void;
   onLeaveServer: () => Promise<boolean>;
 };
 
@@ -50,7 +62,7 @@ export function ServerActionsMenu({
   onOpenNotifications,
   onCreateChannel,
   onCreateCategory,
-  onOpenIncident,
+  onToggleIsolation,
   onLeaveServer,
 }: Props) {
   const [position, setPosition] = useState<MenuPosition>(() => computePosition(null));
@@ -125,7 +137,12 @@ export function ServerActionsMenu({
             { key: "create-channel", label: "Создать канал", onClick: onCreateChannel },
             { key: "create-category", label: "Создать категорию", onClick: onCreateCategory },
             { key: "create-event", label: "Создать событие", disabled: true, helper: "Скоро v1.5.48+" },
-            { key: "incident", label: "Изоляция", onClick: onOpenIncident },
+            {
+              key: "incident",
+              // v1.5.55 D3 — label переключается по lockedAt.
+              label: server.lockedAt ? "Снять изоляцию" : "Изоляция",
+              onClick: onToggleIsolation,
+            },
           ]
         : []),
       { key: "copy-id", label: "Копировать ID", onClick: copyServerId },
@@ -136,10 +153,11 @@ export function ServerActionsMenu({
       isManager,
       onCreateCategory,
       onCreateChannel,
-      onOpenIncident,
+      onToggleIsolation,
       onOpenInvite,
       onOpenNotifications,
       onOpenSettings,
+      server.lockedAt,
       server.id,
       server.name,
     ],

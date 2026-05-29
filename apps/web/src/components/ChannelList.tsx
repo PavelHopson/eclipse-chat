@@ -49,7 +49,13 @@ type Props = {
   onOpenServerSettings?: () => void;
   onOpenServerInvite?: () => void;
   onOpenServerNotifications?: () => void;
-  onOpenServerIncident?: () => void;
+  /**
+   * v1.5.55 D3 frontend — заменяет onOpenServerIncident. Открывает
+   * IsolationConfirmDialog в AppShell для lock/unlock toggle.
+   */
+  onToggleServerIsolation?: () => void;
+  /** v1.5.55 D3 — текущее lock state для header badge + menu label. */
+  serverLockedAt?: string | null;
   onLeaveServer?: () => Promise<boolean>;
   /** Открыть Execution Status Board (доска задач сервера). */
   onOpenStatusBoard?: () => void;
@@ -159,7 +165,8 @@ export function ChannelList({
   onOpenServerSettings,
   onOpenServerInvite,
   onOpenServerNotifications,
-  onOpenServerIncident,
+  onToggleServerIsolation,
+  serverLockedAt = null,
   onLeaveServer,
   onOpenStatusBoard,
   statusBoardActive,
@@ -804,16 +811,47 @@ export function ChannelList({
           <ServerActionsMenu
             open={serverMenuOpen}
             triggerRef={serverTriggerRef}
-            server={{ id: serverId, name: serverName, role: serverRole ?? "MEMBER" }}
+            server={{
+              id: serverId,
+              name: serverName,
+              role: serverRole ?? "MEMBER",
+              lockedAt: serverLockedAt,
+            }}
             onClose={() => setServerMenuOpen(false)}
             onOpenSettings={onOpenServerSettings ?? onShowServerInfo}
             onOpenInvite={onOpenServerInvite ?? onShowServerInfo}
             onOpenNotifications={onOpenServerNotifications ?? onShowServerInfo}
             onCreateChannel={() => openCreateModal("TEXT", null)}
             onCreateCategory={() => setCategoryModal({ mode: "create" })}
-            onOpenIncident={onOpenServerIncident ?? onShowServerInfo}
+            onToggleIsolation={onToggleServerIsolation ?? onShowServerInfo}
             onLeaveServer={onLeaveServer ?? (async () => false)}
           />
+        )}
+        {/* v1.5.55 D3 — header badge «Закрыт» когда server locked. Subtle
+            inline lock-icon рядом с server name, accent-warning tone. */}
+        {serverLockedAt && (
+          <span
+            className="ec-channel-list__lock-badge"
+            title="Сервер закрыт для новых пользователей"
+            aria-label="Сервер закрыт"
+            role="status"
+          >
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden
+            >
+              <rect x="3" y="11" width="18" height="11" rx="2" />
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+            <span>Закрыт</span>
+          </span>
         )}
       </header>
 

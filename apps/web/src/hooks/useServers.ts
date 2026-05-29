@@ -23,6 +23,12 @@ export type ServerRow = {
   mode: "ENGINEERING" | "CLIENT";
   inviteCode: string;
   ownerId: string;
+  /**
+   * v1.5.55 Discord-parity D3 — server isolation lock state. Когда
+   * `lockedAt` truthy, новые joins получают 403; existing members + writes
+   * продолжают работать. UI рендерит «Закрыт» badge в header и переключает
+   * D1 «Изоляция» action на «Снять изоляцию». NULL/undefined = open.
+   */
   lockedAt?: string | null;
   lockedReason?: string | null;
   lockedByUserId?: string | null;
