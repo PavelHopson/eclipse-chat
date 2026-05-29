@@ -75,7 +75,7 @@
 |---|---|---|---|---|---|---|
 | D1 | **Inline dropdown popover** с 14 actions | `ServerHubModal` modal trigger | Build popover (используя existing `.ec-popover` pattern) с pruned action list: Settings / Invite / Notifications / Create channel/category/event / Copy ID / Изоляция (incident) / Leave server | M | 🔥 MUST (after C2) | ✅ v1.5.47 |
 | D2 | **Копировать ID сервера** | Нет ID exposure | One-line utility | S (part of D1) | 🟢 MED | ✅ v1.5.47 (de-facto closed by D1 action) |
-| D3 | **Изоляция / Жалоба на рейд** — emergency moderation | Incidents есть | Map «Изоляция» → close-all-DM-invites + freeze new joins для сервера; «Жалоба на рейд» → создать Incident + alert OWNER | M | 🟢 MED | 🟡 backend ✅ v1.5.54; settings entry-point ✅ v1.5.55; popover frontend ожидает Claude slice |
+| D3 | **Изоляция / Жалоба на рейд** — emergency moderation | Incidents есть | Map «Изоляция» → close-all-DM-invites + freeze new joins для сервера; «Жалоба на рейд» → создать Incident + alert OWNER | M | 🟢 MED | ✅ v1.5.56 (lock backend v1.5.54 + E1 settings entry v1.5.55 + D1 popover toggle + header badge v1.5.56); «Жалоба на рейд» отдельный slice 4+ |
 
 ---
 

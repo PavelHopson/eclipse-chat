@@ -135,7 +135,6 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     uploadServerBanner,
     deleteServerBanner,
     updateServerIdentity,
-    updateServerLock,
     error: serversError,
     limits: serverLimits,
     ownedCount: ownedServersCount,

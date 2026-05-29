@@ -5,7 +5,19 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.55** (Discord-parity E1 — Server settings tree nav.
+**Текущая версия:** **v1.5.56** (Discord-parity D3 frontend — Server isolation
+toggle UI в D1 popover. `ServerActionsMenu` action «Изоляция»/«Снять изоляцию»
+динамический label по `server.lockedAt`. New `IsolationConfirmDialog` — reason
+input ≤500 chars для lock mode, simple confirm для unlock, error display inline.
+AppShell wire через `useServers.updateServerLock(serverId, locked, reason?)`
+(E1 v1.5.55 уже представил mutation, мой slice добавляет popover entry-point +
+header badge). `ChannelList` header теперь рендерит inline pill badge «Закрыт»
+(warning amber tone hsl 38 90%) рядом с server name когда `lockedAt !== null`,
+с tooltip и aria-label. `ServerRow` type расширен `lockedReason?` для tooltip-display.
+Closes D3 полностью: backend v1.5.54 + settings entry-point v1.5.55 +
+popover frontend v1.5.56).
+
+**Предыдущая:** v1.5.55 (Discord-parity E1 — Server settings tree nav.
 `ServerHubModal` переведён с flat 4 tabs на grouped tree-nav: «Сервер»
 (Обзор/Оформление/Настройки), «Реакции» (Эмодзи через existing
 `AdminEmojisTab`), «Люди» (Роли/Участники с existing owner role select),
