@@ -14,8 +14,10 @@ import {
   emitMemberJoined,
   emitMemberLeft,
   emitMemberUpdated,
+  emitMessageOnChannel,
 } from "../realtime.js";
 import { addServerRoom, onlineUserIds, removeServerRoom } from "../presence.js";
+import { getSystemBotUserId } from "../lib/systemBot.js";
 
 /**
  * Server-icon лимиты: 20 MB binary / 27 MB body (для iPhone HEIC + base64
@@ -394,6 +396,58 @@ export async function registerServerRoutes(app: FastifyInstance) {
       avatar: member.user?.avatar ?? null,
       joinedAt: member.joinedAt.toISOString(),
     });
+
+    // v1.5.48 Discord-parity C7 — auto-post welcome message в первый TEXT
+    // channel сервера если `server.welcomeMessage` сконфигурирован.
+    // Fire-and-forget: ошибка постинга НЕ должна блокировать join'а user'а.
+    // Шаблон: `{{user}}` → @<displayName> нового member'а.
+    //
+    // Edge cases:
+    //   - welcomeMessage null/empty → silent skip
+    //   - нет TEXT channel'а → silent skip
+    //   - все TEXT channels = internal (CLIENT mode) → используем первый
+    //     по position (всё равно постим — внутренние члены увидят)
+    //   - system bot user create fails → log и skip
+    void (async () => {
+      try {
+        const wm = server.welcomeMessage?.trim();
+        if (!wm) return;
+        const firstTextChannel = await db.channel.findFirst({
+          where: { serverId: server.id, type: "TEXT" },
+          orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+          select: { id: true, name: true },
+        });
+        if (!firstTextChannel) return;
+        const systemUserId = await getSystemBotUserId();
+        const newcomerName = userDisplayName(member.user);
+        const rendered = wm
+          .replace(/\{\{\s*user\s*\}\}/g, `@${newcomerName}`)
+          .slice(0, 4000);
+        const posted = await db.message.create({
+          data: {
+            content: rendered,
+            channelId: firstTextChannel.id,
+            userId: systemUserId,
+          },
+          include: {
+            user: { select: { id: true, displayName: true, avatar: true } },
+          },
+        });
+        emitMessageOnChannel(firstTextChannel.id, {
+          messageId: posted.id,
+          content: posted.content,
+          channelId: firstTextChannel.id,
+          userId: posted.userId ?? "",
+          displayName: posted.user?.displayName ?? "System",
+          avatar: posted.user?.avatar ?? null,
+          isBot: true,
+          createdAt: posted.createdAt.toISOString(),
+        });
+      } catch (err) {
+        req.log.warn({ err, serverId: server.id, memberId: member.id }, "welcome auto-post failed");
+      }
+    })();
+
     return {
       server: {
         id: server.id,
