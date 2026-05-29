@@ -5,7 +5,22 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.51** (Discord-parity B1 slice 1 — Settings tree nav.
+**Текущая версия:** **v1.5.52** (Discord-parity B2 backend — Active sessions endpoint.
+`RefreshToken` расширен 3 nullable полями: `userAgent` (truncated 512 chars),
+`ipAddress` (X-Forwarded-For или req.ip fallback), `lastSeenAt` (bumped на каждый
+findValid hit). Migration `20260529120000_add_session_metadata` + compound index
+`(userId, lastSeenAt)` для GET sorted-by-activity query. Refresh layer:
+`storeRefreshToken(userId, hash, meta?)` теперь принимает session meta,
+`findValidRefreshTokenRow` best-effort bump'ает lastSeenAt с catch-and-ignore
+race. Auth routes (register/login/refresh-rotate/password-change) обновлены —
+передают `sessionMetaFromReq(req)` helper. Новые REST: `GET /api/auth/sessions`
+(sorted by lastSeenAt DESC, tokenHash never exposed) + `DELETE /api/auth/sessions/:id`
+с owner check (404 если другого user'а — privacy, не leak'аем existence).
+"Logout from everywhere" остаётся через existing POST /api/auth/logout
+(deleteAllUserRefresh). Frontend UI ждёт в B1 «Сессии и устройства» category.
+Pre-version-bump backend slice; bump склеен с этим release'ом).
+
+**Предыдущая:** v1.5.51 (Discord-parity B1 slice 1 — Settings tree nav.
 `ProfileModal` удалён: настройки перенесены в `SettingsPanel` с tree-nav слева
 и main panel справа. Existing profile/security/activity/push/theme/density/focus
 dim/PWA install/logout flows сохранены в новых категориях: «Учётная запись»,
