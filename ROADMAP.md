@@ -5,7 +5,19 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.56** (Discord-parity D3 frontend — Server isolation
+**Текущая версия:** **v1.5.57** (Discord-parity MED batch 1 — C4/C6/E4/E6.
+C4: channel row desktop hover actions now include invite-to-channel copy,
+generating `?invite=<code>&channel=<channelId>` and `useChannels` consumes
+`channel` query after join/reload to open the target channel. C6: server actions
+menu adds localStorage-backed «Скрыть заглушённые» / «Показать заглушённые»,
+filtering ChannelList over existing muted channel ids while keeping active
+channel visible. E4: ServerHub settings gets a right-side mini Welcome preview
+reusing `ServerWelcomeHero` with unsaved name/description/welcome/mode/color
+form state. E6 remains verified: custom emoji tab is exposed under E1
+«Реакции → Эмодзи». No schema/backend routes changed; E3/E5 backend remains
+Claude PR #15 latent).
+
+**Предыдущая:** v1.5.56 (Discord-parity D3 frontend — Server isolation
 toggle UI в D1 popover. `ServerActionsMenu` action «Изоляция»/«Снять изоляцию»
 динамический label по `server.lockedAt`. New `IsolationConfirmDialog` — reason
 input ≤500 chars для lock mode, simple confirm для unlock, error display inline.

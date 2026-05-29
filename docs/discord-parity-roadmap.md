@@ -61,9 +61,9 @@
 | C1 | **Channel categories** «Underground», «Clubhouse» collapsable groups с hover-+ | Channels flat list под сервером | New `ChannelCategory` schema (id, name, serverId, position) + `Channel.categoryId` FK + ChannelList grouping UI | M | 🔥 MUST | ✅ v1.5.46 |
 | C2 | **Server name = dropdown trigger** с ⌄ → context menu | Click открывает `ServerHubModal` | Convert header в popover trigger; ServerHubModal остаётся для full settings | M | ⭐ HIGH | ✅ v1.5.47 |
 | C3 | **Server nav links**: Путеводитель / Мероприятия / Каналы и роли / Участники / Бусты | Только Members в IntelligencePanel | Add nav: «Путеводитель» = welcome screen (есть v1.5.34); «Мероприятия» = C8 events; «Каналы и роли» = combined permissions view (partial AdminPanel); «Участники» = MemberList. **Бусты** ⛔ irrelevant | M integration | ⭐ HIGH | ✅ v1.5.49 |
-| C4 | **Hover invite + gear** на channel row (desktop) | `data-channel-action` hidden на mobile, есть desktop | Verify desktop visibility + add invite-to-channel button | S | 🟢 MED | 📋 |
+| C4 | **Hover invite + gear** на channel row (desktop) | `data-channel-action` hidden на mobile, есть desktop | Verify desktop visibility + add invite-to-channel button | S | 🟢 MED | ✅ v1.5.57 |
 | C5 | **Composer GIF picker** (Tenor / GIPHY) | Emoji picker есть, GIF нет | Add Tenor proxy (или self-hosted GIF library) + picker tab | L | 🟡 LATER | 📋 |
-| C6 | **«Показать все каналы» / «Скрыть заглушённые»** checkboxes | `MutedChannel` table, no auto-hide UI option | Server-level toggle в context menu (D1) + filter в ChannelList | S | 🟢 MED | 📋 |
+| C6 | **«Показать все каналы» / «Скрыть заглушённые»** checkboxes | `MutedChannel` table, no auto-hide UI option | Server-level toggle в context menu (D1) + filter в ChannelList | S | 🟢 MED | ✅ v1.5.57 |
 | C7 | **Welcome bot messages** «Добро пожаловать @user!» при join | Возможно через AutomationRule manual, no template | New `WelcomeMessage` schema per-server + auto-post on `member:joined` | S | ⭐ HIGH | ✅ v1.5.48 (использует existing `server.welcomeMessage`, без new schema; auto-post в first TEXT channel) |
 | C8 | **Server Events** (Мероприятия) | Нет | New `Event` schema (title, startsAt, channelId?, RSVP) + UI list + reminder cron | L | 🟡 LATER | 📋 |
 
@@ -86,7 +86,7 @@
 | E1 | **Settings tree nav** (12+ categories) | `ServerHubModal` 4 tabs (Обзор/Оформление/Настройки/Боты) | Expand до tree nav с grouped sections: РЕАКЦИИ / ЛЮДИ / ПРИЛОЖЕНИЯ / МОДЕРАЦИЯ / СООБЩЕСТВО. **Стикеры/Звук** ⛔. **Бонусы буста** ⛔ | M | ⭐ HIGH | ✅ v1.5.55 |
 | E2 | **Banner gradient presets** (10 swatches) рядом с custom upload | Только custom upload (`server.banner`) | UI: 10 preset gradient swatches как fallback для серверов без image | S | 🟢 MED | 📋 |
 | E3 | **Server features chips** «Никаких предателей» / «Жесткие правила» / «Решай задачи» / «Только члены» / «Анализ сезона» | Нет | New `server.features` JSON array (max 5) + UI chip editor + display в WelcomeHero | S | 🟢 MED | 📋 |
-| E4 | **Preview card** справа от settings | WelcomeHero (v1.5.34) только в no-channel state | Mount mini preview в right column ServerHub settings tab — reuse component | S | 🟢 MED | 📋 |
+| E4 | **Preview card** справа от settings | WelcomeHero (v1.5.34) только в no-channel state | Mount mini preview в right column ServerHub settings tab — reuse component | S | 🟢 MED | ✅ v1.5.57 |
 | E5 | **Audit log tab** | `AuditLog` schema + audit-events tracking есть | UI table с filter (type / user / date range) | M | 🟡 LATER | 📋 |
 | E6 | **Custom emoji tab** | `Emoji` schema + `AdminEmojisTab` уже есть | Verify exposed в правильной E1 категории | S (moved) | 🟢 MED | ✅ v1.5.55 |
 

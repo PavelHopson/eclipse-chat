@@ -2410,6 +2410,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
       {serverHubOpen && activeServer && (
         <ServerHubModal
           server={activeServer}
+          channels={channels}
           members={members}
           currentUserId={user.id}
           initialTab={serverHubTab}

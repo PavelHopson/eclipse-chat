@@ -16,6 +16,8 @@ type Props = {
   onOpenNotifications: () => void;
   onCreateChannel: () => void;
   onCreateCategory: () => void;
+  hideMutedChannels?: boolean;
+  onToggleHideMutedChannels?: () => void;
   /**
    * v1.5.55 D3 frontend — переименовано из onOpenIncident.
    * Открывает IsolationConfirmDialog в caller'е (AppShell). Mode выбирается
@@ -62,6 +64,8 @@ export function ServerActionsMenu({
   onOpenNotifications,
   onCreateChannel,
   onCreateCategory,
+  hideMutedChannels = false,
+  onToggleHideMutedChannels,
   onToggleIsolation,
   onLeaveServer,
 }: Props) {
@@ -132,6 +136,15 @@ export function ServerActionsMenu({
         : []),
       { key: "invite", label: "Пригласить", onClick: onOpenInvite },
       { key: "notifications", label: "Уведомления", onClick: onOpenNotifications },
+      ...(onToggleHideMutedChannels
+        ? [
+            {
+              key: "hide-muted",
+              label: hideMutedChannels ? "Показать заглушённые" : "Скрыть заглушённые",
+              onClick: onToggleHideMutedChannels,
+            },
+          ]
+        : []),
       ...(isManager
         ? [
             { key: "create-channel", label: "Создать канал", onClick: onCreateChannel },
@@ -154,9 +167,11 @@ export function ServerActionsMenu({
       onCreateCategory,
       onCreateChannel,
       onToggleIsolation,
+      onToggleHideMutedChannels,
       onOpenInvite,
       onOpenNotifications,
       onOpenSettings,
+      hideMutedChannels,
       server.lockedAt,
       server.id,
       server.name,

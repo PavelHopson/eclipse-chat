@@ -118,6 +118,14 @@ function canEditChannel(role: string | null): boolean {
   return role === "OWNER" || role === "ADMIN" || role === "MODERATOR";
 }
 
+function buildChannelInviteUrl(inviteCode: string, channelId: string): string {
+  if (typeof window === "undefined") {
+    return `?invite=${encodeURIComponent(inviteCode)}&channel=${encodeURIComponent(channelId)}`;
+  }
+  const params = new URLSearchParams({ invite: inviteCode, channel: channelId });
+  return `${window.location.origin}${import.meta.env.BASE_URL}?${params.toString()}`;
+}
+
 /** Перечёркнутый микрофон — участник эфира с выключенным микрофоном. */
 function MicOffGlyph() {
   return (
@@ -202,6 +210,9 @@ export function ChannelList({
     y: number;
   } | null>(null);
   const [serverMenuOpen, setServerMenuOpen] = useState(false);
+  const hideMutedKey = serverId ? `ec.channelList.hideMuted.${serverId}` : null;
+  const [hideMutedChannels, setHideMutedChannels] = useState(false);
+  const [copiedInviteChannelId, setCopiedInviteChannelId] = useState<string | null>(null);
   const serverTriggerRef = useRef<HTMLButtonElement | null>(null);
   // v0.97: CreateChannelModal state. Открывается через primary button
   // сверху Channels tab + через «+» icon в каждом section-header'е
@@ -241,6 +252,19 @@ export function ChannelList({
     if (typeof window === "undefined" || !sidebarKey) return;
     window.localStorage.setItem(sidebarKey, sidebarTab);
   }, [sidebarKey, sidebarTab]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !hideMutedKey) {
+      setHideMutedChannels(false);
+      return;
+    }
+    setHideMutedChannels(window.localStorage.getItem(hideMutedKey) === "1");
+  }, [hideMutedKey]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !hideMutedKey) return;
+    window.localStorage.setItem(hideMutedKey, hideMutedChannels ? "1" : "0");
+  }, [hideMutedKey, hideMutedChannels]);
 
   const manageable = canManage(serverRole);
   const editable = canEditChannel(serverRole);
@@ -298,9 +322,16 @@ export function ChannelList({
     () => [...categories].sort((a, b) => a.position - b.position || a.name.localeCompare(b.name, "ru")),
     [categories],
   );
+  const visibleChannels = useMemo(
+    () =>
+      hideMutedChannels && mutedChannels
+        ? channels.filter((channel) => !mutedChannels.has(channel.id) || channel.id === selectedChannelId)
+        : channels,
+    [channels, hideMutedChannels, mutedChannels, selectedChannelId],
+  );
   const sortedChannels = useMemo(
-    () => [...channels].sort((a, b) => a.position - b.position || a.name.localeCompare(b.name, "ru")),
-    [channels],
+    () => [...visibleChannels].sort((a, b) => a.position - b.position || a.name.localeCompare(b.name, "ru")),
+    [visibleChannels],
   );
   const uncategorizedChannels = useMemo(
     () => sortedChannels.filter((c) => !c.categoryId),
@@ -371,6 +402,17 @@ export function ChannelList({
       await onDelete(channelId);
     } finally {
       setPendingDelete(null);
+    }
+  };
+
+  const copyChannelInvite = async (channelId: string) => {
+    if (!_inviteCode) return;
+    try {
+      await navigator.clipboard.writeText(buildChannelInviteUrl(_inviteCode, channelId));
+      setCopiedInviteChannelId(channelId);
+      window.setTimeout(() => setCopiedInviteChannelId(null), 1400);
+    } catch {
+      setCopiedInviteChannelId(null);
     }
   };
 
@@ -516,6 +558,42 @@ export function ChannelList({
         )}
         {!hasUnread && !isActive && c.type === "TEXT" && c._count.messages > 0 && (
           <span className="ec-channel-count">{c._count.messages}</span>
+        )}
+        {_inviteCode && (
+          <span
+            role="button"
+            tabIndex={0}
+            className={
+              "ec-channel-action" +
+              (copiedInviteChannelId === c.id ? " ec-channel-action--shown" : "")
+            }
+            aria-label={`Скопировать приглашение в ${c.name}`}
+            title={copiedInviteChannelId === c.id ? "Ссылка скопирована" : "Пригласить в канал"}
+            onClick={(e) => {
+              e.stopPropagation();
+              void copyChannelInvite(c.id);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                e.stopPropagation();
+                void copyChannelInvite(c.id);
+              }
+            }}
+          >
+            {copiedInviteChannelId === c.id ? (
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            ) : (
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <line x1="19" y1="8" x2="19" y2="14" />
+                <line x1="22" y1="11" x2="16" y2="11" />
+              </svg>
+            )}
+          </span>
         )}
         {onToggleMute && mutedChannels && (() => {
           const isMuted = mutedChannels.has(c.id);
@@ -823,6 +901,10 @@ export function ChannelList({
             onOpenNotifications={onOpenServerNotifications ?? onShowServerInfo}
             onCreateChannel={() => openCreateModal("TEXT", null)}
             onCreateCategory={() => setCategoryModal({ mode: "create" })}
+            hideMutedChannels={hideMutedChannels}
+            onToggleHideMutedChannels={
+              mutedChannels ? () => setHideMutedChannels((value) => !value) : undefined
+            }
             onToggleIsolation={onToggleServerIsolation ?? onShowServerInfo}
             onLeaveServer={onLeaveServer ?? (async () => false)}
           />
@@ -1038,6 +1120,11 @@ export function ChannelList({
           <>
             {!channelsLoading && channels.length > 0 && (
               <div className="ec-channel-category-stack">
+                {hideMutedChannels && mutedChannels && (
+                  <div className="ec-channel-filter-note" role="status">
+                    Заглушённые скрыты · {channels.length - visibleChannels.length} скрыто
+                  </div>
+                )}
                 <section className="ec-channel-category ec-channel-category--uncategorized">
                   <div className="ec-section-label ec-channel-category__uncategorized-label">
                     <span className="ec-section-label--diamond">
@@ -1200,6 +1287,12 @@ export function ChannelList({
                     + Создать первую комнату
                   </button>
                 )}
+              </div>
+            )}
+
+            {!channelsLoading && channels.length > 0 && visibleChannels.length === 0 && (
+              <div className="ec-channel-list__hint">
+                Все каналы заглушены и скрыты. Откройте меню сервера и выберите «Показать заглушённые».
               </div>
             )}
           </>

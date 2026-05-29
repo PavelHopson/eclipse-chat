@@ -86,6 +86,20 @@ function readError(e: unknown, fallback: string): string {
   return e instanceof ApiError ? e.message : fallback;
 }
 
+function consumeChannelQuery(list: ChannelRow[]): string | null {
+  if (typeof window === "undefined") return null;
+  const params = new URLSearchParams(window.location.search);
+  const channelId = params.get("channel");
+  if (!channelId || !list.some((channel) => channel.id === channelId)) return null;
+  params.delete("channel");
+  window.history.replaceState(
+    {},
+    "",
+    `${window.location.pathname}${params.toString() ? "?" + params.toString() : ""}${window.location.hash}`,
+  );
+  return channelId;
+}
+
 export function useChannels(serverId: string | null, socket: Socket | null) {
   const [channels, setChannels] = useState<ChannelRow[]>([]);
   const [categories, setCategories] = useState<CategoryRow[]>([]);
@@ -112,7 +126,9 @@ export function useChannels(serverId: string | null, socket: Socket | null) {
       const list = data.channels.map(normalizeChannel).sort(byPositionName);
       setChannels(list);
       setCategories([...(data.categories ?? [])].sort(byPositionName));
+      const linkedChannelId = consumeChannelQuery(list);
       setSelectedChannelId((cur) => {
+        if (linkedChannelId) return linkedChannelId;
         if (cur && list.some((c) => c.id === cur)) return cur;
         return list.find((c) => c.type === "TEXT")?.id ?? list[0]?.id ?? null;
       });

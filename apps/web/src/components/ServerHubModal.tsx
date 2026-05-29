@@ -3,6 +3,7 @@ import { AdminEmojisTab } from "./AdminEmojisTab";
 import { BotsTab } from "./BotsTab";
 import { DeleteButton } from "./DeleteButton";
 import { Modal } from "./Modal";
+import { ServerWelcomeHero } from "./ServerWelcomeHero";
 import {
   AuditPlaceholderSection,
   InviteSection,
@@ -12,6 +13,7 @@ import {
 } from "./server-hub/ServerHubSections";
 import type { MemberRole, MemberRow } from "../hooks/useMembers";
 import type { ServerRow } from "../hooks/useServers";
+import type { ChannelRow } from "../hooks/useChannels";
 import { resolveAssetUrl } from "../lib/assets";
 
 /**
@@ -38,6 +40,7 @@ import { resolveAssetUrl } from "../lib/assets";
 
 type Props = {
   server: ServerRow;
+  channels?: ChannelRow[];
   members?: MemberRow[];
   currentUserId?: string;
   onClose: () => void;
@@ -140,6 +143,7 @@ export function ServerHubModal({
   onDeleteBanner,
   onUpdateIdentity,
   onUpdateLock,
+  channels = [],
   initialTab = "overview",
 }: Props) {
   const [active, setActive] = useState<HubView>(initialTab);
@@ -649,7 +653,8 @@ export function ServerHubModal({
 
       {/* === Настройки === */}
       {active === "settings" && isOwner && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "var(--ec-space-4)" }}>
+        <div className="ec-hub-settings-layout">
+          <div className="ec-hub-settings-form">
           <section>
             <h3 className="ec-hub-label">Название пространства</h3>
             <div className="ec-hub-card">
@@ -794,6 +799,22 @@ export function ServerHubModal({
               {saving ? "Сохраняем…" : "Сохранить изменения"}
             </button>
           </div>
+          </div>
+          <aside className="ec-hub-preview-card" aria-label="Предпросмотр путеводителя">
+            <span className="ec-hub-label">Предпросмотр</span>
+            <ServerWelcomeHero
+              server={{
+                ...server,
+                name: trimmedName || server.name,
+                description: description.trim() || null,
+                welcomeMessage: welcomeMessage.trim() || null,
+                brandColor: brandColor.trim() || null,
+                mode,
+              }}
+              channels={channels}
+              onSelectChannel={() => undefined}
+            />
+          </aside>
         </div>
       )}
 

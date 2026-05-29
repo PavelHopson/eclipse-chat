@@ -1326,6 +1326,14 @@
   .ec-server-hub-panel__main {
     padding: var(--ec-space-3);
   }
+
+  .ec-hub-settings-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .ec-hub-preview-card {
+    position: static;
+  }
 }
 
 @media (max-width: 640px), (pointer: coarse) {
