@@ -5,7 +5,20 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.53** (Discord-parity B1 slice 2 — Settings sessions UI
+**Текущая версия:** **v1.5.54** (Discord-parity D3 backend — Server isolation
+emergency lock. Server расширен 3 nullable полями: `lockedAt` (timestamp),
+`lockedReason` (≤500 chars audit), `lockedByUserId` (FK SetNull при удалении user'а).
+Migration `20260529130000_add_server_lock` — additive ALTER TABLE + FK constraint.
+Параллельная система к existing `suspendedAt` (platform-admin disable): lockedAt =
+OWNER/ADMIN temp join-gate (members + writes продолжают работать). Routes:
+POST `/api/servers/:id/lock` (body { reason? ≤500 }, OWNER/ADMIN, idempotent) +
+DELETE `/api/servers/:id/lock` (OWNER/ADMIN). Gate в POST `/api/servers/join/:code`:
+после existing-member короткого пути, новые joins получают 403 если lockedAt !== null
+с сохранённым lockedReason в payload. GET `/api/servers` DTO теперь возвращает
+lockedAt + lockedReason per-server для UI badge «Сервер закрыт». Frontend UI для
+toggle и badge ждёт в D-frontend slice. Pre-version-bump backend slice; bump склеен).
+
+**Предыдущая:** v1.5.53 (Discord-parity B1 slice 2 — Settings sessions UI
 + Hotkeys read-only. Категория «Сессии и устройства» теперь грузит реальные
 `GET /api/auth/sessions`, показывает browser/OS hint, IP, lastSeenAt с
 «Активна сейчас» для <5 минут, optimistic `DELETE /api/auth/sessions/:id`
