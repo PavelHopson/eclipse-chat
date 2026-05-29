@@ -5,7 +5,18 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.52** (Discord-parity B2 backend — Active sessions endpoint.
+**Текущая версия:** **v1.5.53** (Discord-parity B1 slice 2 — Settings sessions UI
++ Hotkeys read-only. Категория «Сессии и устройства» теперь грузит реальные
+`GET /api/auth/sessions`, показывает browser/OS hint, IP, lastSeenAt с
+«Активна сейчас» для <5 минут, optimistic `DELETE /api/auth/sessions/:id`
+с refetch и честным helper'ом про refresh token/access JWT expiry. Категория
+«Горячие клавиши» закрыта read-only списком только подтверждённых handlers:
+Ctrl/Cmd+K search, composer Enter/Shift+Enter, @/`:emoji:` autocomplete,
+`/task`, Esc close для modal/popover и Ctrl+Shift+Backquote voice diagnostics.
+Placeholder-разделы обновлены на актуальный next target v1.5.55+; backend/schema
+не менялись).
+
+**Предыдущая:** v1.5.52 (Discord-parity B2 backend — Active sessions endpoint.
 `RefreshToken` расширен 3 nullable полями: `userAgent` (truncated 512 chars),
 `ipAddress` (X-Forwarded-For или req.ip fallback), `lastSeenAt` (bumped на каждый
 findValid hit). Migration `20260529120000_add_session_metadata` + compound index

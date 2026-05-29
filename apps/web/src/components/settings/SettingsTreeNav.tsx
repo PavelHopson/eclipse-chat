@@ -44,7 +44,7 @@ export const SETTINGS_GROUPS: NavGroup[] = [
     items: [
       { id: "account-profile", label: "Профиль" },
       { id: "account-security", label: "Безопасность" },
-      { id: "account-sessions", label: "Сессии и устройства", soon: "v1.5.53+" },
+      { id: "account-sessions", label: "Сессии и устройства" },
     ],
   },
   { label: "Активность", items: [{ id: "activity-status", label: "Кастомный статус" }] },
@@ -56,12 +56,12 @@ export const SETTINGS_GROUPS: NavGroup[] = [
     ],
   },
   { label: "Внешний вид", items: [{ id: "appearance", label: "Тема, плотность, фокус" }] },
-  { label: "Контент и общение", items: [{ id: "content", label: "Контент", soon: "v1.5.5X+" }] },
-  { label: "Данные", items: [{ id: "data-export", label: "Экспорт", soon: "v1.5.5X+" }] },
-  { label: "Интеграции", items: [{ id: "integrations", label: "Интеграции", soon: "v1.5.5X+" }] },
-  { label: "Голос и видео", items: [{ id: "voice-video", label: "Голос и видео", soon: "v1.5.5X+" }] },
-  { label: "Горячие клавиши", items: [{ id: "hotkeys", label: "Горячие клавиши", soon: "v1.5.5X+" }] },
-  { label: "Разработчик", items: [{ id: "developer", label: "Разработчик", soon: "v1.5.5X+" }] },
+  { label: "Контент и общение", items: [{ id: "content", label: "Контент", soon: "v1.5.55+" }] },
+  { label: "Данные", items: [{ id: "data-export", label: "Экспорт", soon: "v1.5.55+" }] },
+  { label: "Интеграции", items: [{ id: "integrations", label: "Интеграции", soon: "v1.5.55+" }] },
+  { label: "Голос и видео", items: [{ id: "voice-video", label: "Голос и видео", soon: "v1.5.55+" }] },
+  { label: "Горячие клавиши", items: [{ id: "hotkeys", label: "Горячие клавиши" }] },
+  { label: "Разработчик", items: [{ id: "developer", label: "Разработчик", soon: "v1.5.55+" }] },
   { label: "Установить", items: [{ id: "install", label: "Установить приложение" }] },
 ];
 

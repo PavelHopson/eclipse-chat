@@ -1453,6 +1453,25 @@
   .ec-settings-card__row {
     align-items: flex-start;
   }
+
+  .ec-session-row,
+  .ec-hotkey-row {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+    min-height: 44px;
+  }
+
+  .ec-session-row__icon {
+    display: none;
+  }
+
+  .ec-session-row__meta {
+    align-items: flex-start;
+  }
+
+  .ec-hotkey-row__keys {
+    max-width: 100%;
+  }
 }
 
 /* Global prefers-reduced-motion guard для новых v0.96-v0.98 elements.

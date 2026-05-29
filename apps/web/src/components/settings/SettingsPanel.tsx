@@ -11,10 +11,13 @@ import { AccountProfileSection } from "./categories/AccountProfileSection";
 import { AccountSecuritySection } from "./categories/AccountSecuritySection";
 import { ActivitySection } from "./categories/ActivitySection";
 import { AppearanceSection } from "./categories/AppearanceSection";
+import { HotkeysSection } from "./categories/HotkeysSection";
 import { InstallSection } from "./categories/InstallSection";
 import { NotificationsPushSection } from "./categories/NotificationsPushSection";
 import { NotificationsQuietHoursSection } from "./categories/NotificationsQuietHoursSection";
 import { PlaceholderSection } from "./categories/PlaceholderSection";
+import { SessionsSection } from "./categories/SessionsSection";
+import { useSessions } from "../../hooks/useSessions";
 import {
   isSettingsViewId,
   SETTINGS_LAST_ACTIVE_KEY,
@@ -104,15 +107,13 @@ function isInQuietWindow(fromValue: string, toValue: string, timezone: string): 
 
 function placeholderFor(view: SettingsViewId) {
   const map: Record<string, { eyebrow: string; title: string; version: string }> = {
-    "account-sessions": { eyebrow: "Учётная запись", title: "Сессии и устройства", version: "v1.5.53+" },
-    content: { eyebrow: "Контент и общение", title: "Контент и общение", version: "v1.5.5X+" },
-    "data-export": { eyebrow: "Данные", title: "Экспорт", version: "v1.5.5X+" },
-    integrations: { eyebrow: "Интеграции", title: "Интеграции", version: "v1.5.5X+" },
-    "voice-video": { eyebrow: "Голос и видео", title: "Голос и видео", version: "v1.5.5X+" },
-    hotkeys: { eyebrow: "Горячие клавиши", title: "Горячие клавиши", version: "v1.5.5X+" },
-    developer: { eyebrow: "Разработчик", title: "Разработчик", version: "v1.5.5X+" },
+    content: { eyebrow: "Контент и общение", title: "Контент и общение", version: "v1.5.55+" },
+    "data-export": { eyebrow: "Данные", title: "Экспорт", version: "v1.5.55+" },
+    integrations: { eyebrow: "Интеграции", title: "Интеграции", version: "v1.5.55+" },
+    "voice-video": { eyebrow: "Голос и видео", title: "Голос и видео", version: "v1.5.55+" },
+    developer: { eyebrow: "Разработчик", title: "Разработчик", version: "v1.5.55+" },
   };
-  return map[view] ?? { eyebrow: "Настройки", title: "Раздел", version: "v1.5.5X+" };
+  return map[view] ?? { eyebrow: "Настройки", title: "Раздел", version: "v1.5.55+" };
 }
 
 export function SettingsPanel({
@@ -139,6 +140,7 @@ export function SettingsPanel({
   const fileRef = useRef<HTMLInputElement>(null);
   const push = usePushNotifications();
   const pushPrefs = usePushPreferences(push.enabled);
+  const sessions = useSessions(active === "account-sessions");
   const [showPrefs, setShowPrefs] = useState(false);
   const install = useInstallPrompt();
   const { density, setDensity } = useDensity();
@@ -309,6 +311,17 @@ export function SettingsPanel({
         />
       );
     }
+    if (active === "account-sessions") {
+      return (
+        <SessionsSection
+          sessions={sessions.sessions}
+          loading={sessions.loading}
+          error={sessions.error}
+          onRetry={() => void sessions.reload()}
+          onRevoke={sessions.revoke}
+        />
+      );
+    }
     if (active === "activity-status") {
       return (
         <ActivitySection
@@ -366,6 +379,7 @@ export function SettingsPanel({
       );
     }
     if (active === "install") return <InstallSection install={install} />;
+    if (active === "hotkeys") return <HotkeysSection />;
     const placeholder = placeholderFor(active);
     return <PlaceholderSection {...placeholder} />;
   };
