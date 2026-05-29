@@ -5,7 +5,20 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.47** (Discord-parity C2 + D1 — Server dropdown
+**Текущая версия:** **v1.5.48** (Discord-parity C7 — Welcome bot auto-post.
+При успешном `POST /api/servers/join/:code` после `emitMemberJoined` fire-and-forget
+block: если `server.welcomeMessage` configured, находит first TEXT channel
+(lowest position) и постит system-bot message с rendered'нным шаблоном —
+`{{user}}` placeholder заменяется на `@<displayName>` нового member'а. Используется
+systemBot user из `lib/systemBot.ts` (auto-create если ещё не существует).
+Edge cases silent skip: no welcomeMessage / no TEXT channel / systemBot create
+fail / DB write fail — error логгируется через `req.log.warn`, member join всё
+равно success. Permission-modelен через existing PATCH `/api/servers/:id`
+(OWNER configures welcomeMessage; 500-char zod limit). Backend-only slice, frontend
+без изменений — system message рисуется existing isBot=true badge. ~50 LOC в
+одном файле `apps/server/src/routes/servers.ts`).
+
+**Предыдущая:** v1.5.47 (Discord-parity C2 + D1 — Server dropdown
 trigger + inline context menu. Server name в левом rail теперь открывает
 popover с chevron affordance вместо прямого ServerHubModal. Меню фильтрует
 actions по роли: OWNER/ADMIN видят settings/create channel/create category/event

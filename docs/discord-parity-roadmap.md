@@ -64,7 +64,7 @@
 | C4 | **Hover invite + gear** на channel row (desktop) | `data-channel-action` hidden на mobile, есть desktop | Verify desktop visibility + add invite-to-channel button | S | 🟢 MED | 📋 |
 | C5 | **Composer GIF picker** (Tenor / GIPHY) | Emoji picker есть, GIF нет | Add Tenor proxy (или self-hosted GIF library) + picker tab | L | 🟡 LATER | 📋 |
 | C6 | **«Показать все каналы» / «Скрыть заглушённые»** checkboxes | `MutedChannel` table, no auto-hide UI option | Server-level toggle в context menu (D1) + filter в ChannelList | S | 🟢 MED | 📋 |
-| C7 | **Welcome bot messages** «Добро пожаловать @user!» при join | Возможно через AutomationRule manual, no template | New `WelcomeMessage` schema per-server + auto-post on `member:joined` | S | ⭐ HIGH | 📋 |
+| C7 | **Welcome bot messages** «Добро пожаловать @user!» при join | Возможно через AutomationRule manual, no template | New `WelcomeMessage` schema per-server + auto-post on `member:joined` | S | ⭐ HIGH | ✅ v1.5.48 (использует existing `server.welcomeMessage`, без new schema; auto-post в first TEXT channel) |
 | C8 | **Server Events** (Мероприятия) | Нет | New `Event` schema (title, startsAt, channelId?, RSVP) + UI list + reminder cron | L | 🟡 LATER | 📋 |
 
 ---
