@@ -657,12 +657,6 @@ model Server {
   lockedByUserId    String?
   lockedBy          User?    @relation("ServerLockedBy", fields: [lockedByUserId], references: [id], onDelete: SetNull)
 
-  /// v1.5.58 Discord-parity E3 — Server feature chips («Никаких предателей»,
-  /// «Жесткие правила», «Только члены»). JSON-encoded String[] (max 5,
-  /// каждый ≤40 chars). NULL = none. Frontend rend'ит как chips в WelcomeHero.
-  /// Zod validation в PATCH /api/servers/:id.
-  features          String?
-
   channels    Channel[]
   /// v1.5.46 Discord-parity C1 — channel categories на этом сервере.
   /// Сортировка по ChannelCategory.position. Канал без categoryId =

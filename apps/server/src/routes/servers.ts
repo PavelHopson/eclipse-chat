@@ -3,7 +3,6 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { z } from "zod";
 import sharp from "sharp";
-import type { Prisma } from "@prisma/client";
 import { db } from "../db.js";
 import { serializeUser, userDisplayName } from "../lib/userView.js";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
@@ -215,8 +214,6 @@ export async function registerServerRoutes(app: FastifyInstance) {
             // v1.5.54 D3 — lock state для UI badge «Сервер закрыт».
             lockedAt: true,
             lockedReason: true,
-            // v1.5.58 E3 — JSON-encoded String[] feature chips.
-            features: true,
             createdAt: true,
             _count: { select: { members: true, channels: true } },
           },
@@ -238,7 +235,6 @@ export async function registerServerRoutes(app: FastifyInstance) {
         ownerId: m.server.ownerId,
         lockedAt: m.server.lockedAt?.toISOString() ?? null,
         lockedReason: m.server.lockedReason,
-        features: m.server.features,
         createdAt: m.server.createdAt.toISOString(),
         memberCount: m.server._count.members,
         channelCount: m.server._count.channels,
@@ -1492,16 +1488,6 @@ export async function registerServerRoutes(app: FastifyInstance) {
     description: z.string().max(1000).nullable().optional(),
     welcomeMessage: z.string().max(500).nullable().optional(),
     mode: z.enum(["ENGINEERING", "CLIENT"]).optional(),
-    /**
-     * v1.5.58 Discord-parity E3 — feature chips array (max 5, each ≤40 chars).
-     * NULL = clear chips, [] (empty array) = also cleared (treated identically),
-     * иначе up to 5 непустых строк.
-     */
-    features: z
-      .array(z.string().min(1).max(40))
-      .max(5)
-      .nullable()
-      .optional(),
   });
 
   /**
@@ -1534,7 +1520,6 @@ export async function registerServerRoutes(app: FastifyInstance) {
         description?: string | null;
         welcomeMessage?: string | null;
         mode?: "ENGINEERING" | "CLIENT";
-        features?: string | null;
       } = {};
       if (parsed.data.name !== undefined) {
         data.name = parsed.data.name.trim();
@@ -1554,19 +1539,6 @@ export async function registerServerRoutes(app: FastifyInstance) {
       if (parsed.data.mode !== undefined) {
         data.mode = parsed.data.mode;
       }
-      // v1.5.58 E3 — features stored as JSON.stringify, NULL clears.
-      // Trim каждой chip + filter пустые (defense-in-depth поверх zod min(1)).
-      if (parsed.data.features !== undefined) {
-        if (parsed.data.features === null || parsed.data.features.length === 0) {
-          data.features = null;
-        } else {
-          const cleaned = parsed.data.features
-            .map((c) => c.trim())
-            .filter((c) => c.length > 0)
-            .slice(0, 5);
-          data.features = cleaned.length === 0 ? null : JSON.stringify(cleaned);
-        }
-      }
       const updated = await db.server.update({
         where: { id: serverId },
         data,
@@ -1577,7 +1549,6 @@ export async function registerServerRoutes(app: FastifyInstance) {
           description: true,
           welcomeMessage: true,
           mode: true,
-          features: true,
         },
       });
       return { ok: true, identity: updated };
@@ -1999,122 +1970,6 @@ export async function registerServerRoutes(app: FastifyInstance) {
         select: { id: true },
       });
       return { server: { id: updated.id, lockedAt: null, lockedReason: null, lockedByUserId: null } };
-    },
-  );
-
-  /**
-   * v1.5.58 Discord-parity E5 — GET /api/servers/:id/audit-log.
-   *
-   * Возвращает paginated AuditLog rows, фильтрованные по тому что в их
-   * metadata JSON содержится `"serverId":"<thisServerId>"`. Реализация
-   * через `metadata: { contains: '"serverId":"..."' }` — Prisma LIKE на
-   * String field. Не индексировано, но для admin-only audit queries OK.
-   *
-   * Filter query params:
-   *   ?type=<AuditEventType>       — filter by event type
-   *   ?userId=<userId>             — filter by actor
-   *   ?since=<ISO>                 — createdAt >= since
-   *   ?until=<ISO>                 — createdAt <= until
-   *   ?take=<n> (1..100, default 25)
-   *   ?skip=<n> (default 0)
-   *
-   * Permission: OWNER/ADMIN only.
-   * Returns: sorted by createdAt DESC.
-   *
-   * v1: legacy rows (до v1.5.58) НЕ filter'ятся — они не имели guarantee
-   * на metadata.serverId. New code (recordAudit с metadata.serverId) — да.
-   */
-  const auditQuery = z.object({
-    type: z.string().min(1).max(80).optional(),
-    userId: z.string().min(1).optional(),
-    since: z.string().datetime().optional(),
-    until: z.string().datetime().optional(),
-    take: z.coerce.number().int().min(1).max(100).optional(),
-    skip: z.coerce.number().int().min(0).optional(),
-  });
-
-  app.get(
-    "/api/servers/:id/audit-log",
-    { onRequest: [requireJwt] },
-    async (req, reply) => {
-      const { id: serverId } = req.params as { id: string };
-      const userId = getUserId(req);
-      if (!userId) return reply.status(401).send({ error: "Unauthorized" });
-
-      const member = await db.member.findUnique({
-        where: { userId_serverId: { userId, serverId } },
-        select: { role: true },
-      });
-      if (!member) return reply.status(404).send({ error: "Server not found" });
-      if (member.role !== "OWNER" && member.role !== "ADMIN") {
-        return reply.status(403).send({ error: "OWNER or ADMIN only" });
-      }
-
-      const parsed = auditQuery.safeParse(req.query);
-      if (!parsed.success) {
-        return reply.status(400).send({ error: "Invalid query" });
-      }
-      const { type, userId: filterUserId, since, until } = parsed.data;
-      const take = parsed.data.take ?? 25;
-      const skip = parsed.data.skip ?? 0;
-
-      // Server-scope filter — metadata JSON содержит `"serverId":"<id>"`.
-      const serverIdNeedle = `"serverId":"${serverId}"`;
-
-      // Cast: where.type expects AuditEventType enum. Invalid string passed —
-      // Prisma вернёт runtime error на findMany, ловится Fastify default handler.
-      // Practical: frontend filters только из known enum values, не arbitrary text.
-      const where: Prisma.AuditLogWhereInput = {
-        metadata: { contains: serverIdNeedle },
-        ...(type ? { type: type as Prisma.AuditLogWhereInput["type"] } : {}),
-        ...(filterUserId ? { userId: filterUserId } : {}),
-        ...(since || until
-          ? {
-              createdAt: {
-                ...(since ? { gte: new Date(since) } : {}),
-                ...(until ? { lte: new Date(until) } : {}),
-              },
-            }
-          : {}),
-      };
-
-      const [rows, total] = await Promise.all([
-        db.auditLog.findMany({
-          where,
-          orderBy: { createdAt: "desc" },
-          take,
-          skip,
-          select: {
-            id: true,
-            type: true,
-            userId: true,
-            user: { select: { id: true, displayName: true, avatar: true } },
-            ipAddress: true,
-            userAgent: true,
-            metadata: true,
-            createdAt: true,
-          },
-        }),
-        db.auditLog.count({ where }),
-      ]);
-
-      return {
-        entries: rows.map((r) => ({
-          id: r.id,
-          type: r.type,
-          userId: r.userId,
-          user: r.user
-            ? { id: r.user.id, displayName: r.user.displayName, avatar: r.user.avatar }
-            : null,
-          ipAddress: r.ipAddress,
-          userAgent: r.userAgent,
-          metadata: r.metadata,
-          createdAt: r.createdAt.toISOString(),
-        })),
-        total,
-        take,
-        skip,
-      };
     },
   );
 }
