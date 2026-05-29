@@ -22,6 +22,7 @@
 import type { FastifyBaseLogger } from "fastify";
 import webPush from "web-push";
 import { db } from "../db.js";
+import { isInQuietHours } from "./quietHours.js";
 
 let vapidConfigured = false;
 let vapidPublicKey: string | null = null;
@@ -168,6 +169,16 @@ export async function notifyUser(
     if (prefs[fieldName] === false) {
       return { sent: 0, expired: 0, failed: 0, skipped: "event-disabled" };
     }
+  }
+
+  // v1.5.49 B5: check quiet hours. Independent от per-event preferences —
+  // mentions/dms/etc могут быть enabled, но если sleep window — skip.
+  const quiet = await db.user.findUnique({
+    where: { id: userId },
+    select: { quietFrom: true, quietTo: true, timezone: true },
+  });
+  if (quiet && isInQuietHours(quiet)) {
+    return { sent: 0, expired: 0, failed: 0, skipped: "quiet-hours" };
   }
 
   // v0.85: check per-channel mute (если payload содержит channelId).

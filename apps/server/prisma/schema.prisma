@@ -46,6 +46,20 @@ model User {
   /// model для разных серверов и оставило бы dangling-ссылки при удалении
   /// emoji). Frontend в StatusMenu picker'е ограничивает выбор unicode.
   activityEmoji String?
+  /// v1.5.49 Discord-parity B5: quiet hours start (HH:MM формат, 24-hour).
+  /// Когда current time в user-timezone попадает в [quietFrom, quietTo) →
+  /// notifyUser() skip'ает push send. NULL = no quiet hours configured.
+  /// Both NULL == one NULL == disabled.
+  quietFrom     String?
+  /// v1.5.49 B5: quiet hours end (HH:MM, 24-hour).
+  /// Если quietFrom > quietTo → window spans midnight (e.g. 22:00→08:00
+  /// covers 22:00-23:59 + 00:00-08:00). Если equal → effectively disabled.
+  quietTo       String?
+  /// v1.5.49 B5: user timezone (IANA name, e.g. "Europe/Moscow"). Используется
+  /// для interpretation quietFrom/quietTo HH:MM. NULL = fallback на server
+  /// timezone (`process.env.TZ` либо OS default). Frontend заполняет из
+  /// `Intl.DateTimeFormat().resolvedOptions().timeZone` при first set.
+  timezone      String?
   createdAt     DateTime       @default(now())
   /// 2FA TOTP secret (base32). Зашифрован при-rest через AES-256-GCM
   /// в app-layer (apps/server/src/auth/twoFactor.ts).

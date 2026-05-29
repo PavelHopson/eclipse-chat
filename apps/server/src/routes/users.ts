@@ -33,6 +33,26 @@ const updateActivityBody = z.object({
 });
 
 /**
+ * v1.5.49 Discord-parity B5: PATCH /api/users/me/quiet-hours body.
+ *
+ * Все три поля optional + nullable; undefined → не меняем, null → сбрасываем.
+ *
+ * `quietFrom` / `quietTo` — HH:MM формат (24-hour), validated regex.
+ * `timezone` — IANA name (e.g. "Europe/Moscow"). Validated runtime через
+ * `Intl.DateTimeFormat({ timeZone: ... })` constructor — throws TypeError
+ * на invalid. Backend ловит в route handler и возвращает 400.
+ *
+ * Поля независимые: set только timezone без quietFrom/To не запрещён
+ * (хотя без time fields quiet effectively disabled).
+ */
+const HHMM_RE = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
+const updateQuietHoursBody = z.object({
+  quietFrom: z.string().regex(HHMM_RE).nullable().optional(),
+  quietTo: z.string().regex(HHMM_RE).nullable().optional(),
+  timezone: z.string().min(1).max(80).nullable().optional(),
+});
+
+/**
  * Avatar upload через JSON + base64 (не multipart).
  *
  * Решение принято 12.05.2026 после того как локальная сеть Pavel'а не
@@ -111,6 +131,10 @@ function publicProfile(u: {
   /// nullable string'и через db.user.findUnique без явного select.
   activityText?: string | null;
   activityEmoji?: string | null;
+  /// v1.5.49 Discord-parity B5 — quiet hours. Three optional fields.
+  quietFrom?: string | null;
+  quietTo?: string | null;
+  timezone?: string | null;
   createdAt: Date;
 }) {
   return {
@@ -122,6 +146,9 @@ function publicProfile(u: {
     status: u.status ?? "ONLINE",
     activityText: u.activityText ?? null,
     activityEmoji: u.activityEmoji ?? null,
+    quietFrom: u.quietFrom ?? null,
+    quietTo: u.quietTo ?? null,
+    timezone: u.timezone ?? null,
     createdAt: u.createdAt.toISOString(),
   };
 }
@@ -365,6 +392,72 @@ export async function registerUserRoutes(app: FastifyInstance) {
       broadcastActivityChange(userId, {
         activityText: updated.activityText,
         activityEmoji: updated.activityEmoji,
+      });
+      return { user: publicProfile(updated) };
+    },
+  );
+
+  /**
+   * v1.5.49 Discord-parity B5: PATCH /api/users/me/quiet-hours.
+   *
+   * Set / clear quiet-hours window для skip'а push notifications.
+   * Body { quietFrom?, quietTo?, timezone? } — каждое optional + nullable:
+   *   - undefined → не меняем
+   *   - null → сбрасываем
+   *   - HH:MM string → новое значение (regex-validated)
+   *   - IANA timezone string → runtime-validated через Intl.DateTimeFormat
+   *
+   * Idempotent no-op если все три undefined.
+   *
+   * Rate limit: 30 / 15 min — нечастая операция; ставит мягкий cap на
+   * spam-bot scenarios.
+   */
+  app.patch(
+    "/api/users/me/quiet-hours",
+    {
+      onRequest: [requireJwt],
+      config: {
+        rateLimit: { max: 30, timeWindow: 15 * 60 * 1000 },
+      },
+    },
+    async (req, reply) => {
+      const userId = getUserId(req);
+      if (!userId) {
+        return reply.status(401).send({ error: "Unauthorized" });
+      }
+      const parsed = updateQuietHoursBody.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.status(400).send({
+          error: "Invalid body",
+          details: parsed.error.flatten(),
+        });
+      }
+
+      // Validate timezone runtime — IANA name должен быть acceptable для
+      // Intl.DateTimeFormat. Invalid name throws RangeError.
+      if (parsed.data.timezone !== undefined && parsed.data.timezone !== null) {
+        try {
+          new Intl.DateTimeFormat("en-GB", { timeZone: parsed.data.timezone });
+        } catch {
+          return reply.status(400).send({ error: "Invalid timezone (IANA name expected)" });
+        }
+      }
+
+      const data: { quietFrom?: string | null; quietTo?: string | null; timezone?: string | null } = {};
+      if (parsed.data.quietFrom !== undefined) data.quietFrom = parsed.data.quietFrom;
+      if (parsed.data.quietTo !== undefined) data.quietTo = parsed.data.quietTo;
+      if (parsed.data.timezone !== undefined) data.timezone = parsed.data.timezone;
+
+      if (Object.keys(data).length === 0) {
+        const user = await db.user.findUnique({ where: { id: userId } });
+        if (!user) {
+          return reply.status(404).send({ error: "User not found" });
+        }
+        return { user: publicProfile(user) };
+      }
+      const updated = await db.user.update({
+        where: { id: userId },
+        data,
       });
       return { user: publicProfile(updated) };
     },
