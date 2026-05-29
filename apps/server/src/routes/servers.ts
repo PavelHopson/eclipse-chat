@@ -7,6 +7,7 @@ import { db } from "../db.js";
 import { serializeUser, userDisplayName } from "../lib/userView.js";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
 import { ensureServerActive } from "../lib/serverGating.js";
+import { recordAudit } from "../security/audit.js";
 import {
   emitChannelCreated,
   emitChannelDeleted,
@@ -287,6 +288,11 @@ export async function registerServerRoutes(app: FastifyInstance) {
       });
       return server;
     });
+    recordAudit("SERVER_CREATED", {
+      userId,
+      req,
+      metadata: { serverId: created.id, name: created.name },
+    });
     return {
       server: {
         id: created.id,
@@ -358,6 +364,11 @@ export async function registerServerRoutes(app: FastifyInstance) {
       return reply.status(403).send({ error: "Only owner can delete server" });
     }
     await db.server.delete({ where: { id } });
+    recordAudit("SERVER_DELETED", {
+      userId: member.userId,
+      req,
+      metadata: { serverId: id },
+    });
     return { ok: true };
   });
 
@@ -1010,6 +1021,11 @@ export async function registerServerRoutes(app: FastifyInstance) {
       createdAt: ch.createdAt.toISOString(),
       categoryId: ch.categoryId,
     });
+    recordAudit("CHANNEL_CREATED", {
+      userId: me.userId,
+      req,
+      metadata: { serverId, channelId: ch.id, name: ch.name, type: ch.type },
+    });
     return {
       channel: {
         id: ch.id,
@@ -1303,6 +1319,11 @@ export async function registerServerRoutes(app: FastifyInstance) {
       channelId,
       serverId: channel.serverId,
     });
+    recordAudit("CHANNEL_DELETED", {
+      userId,
+      req,
+      metadata: { serverId: channel.serverId, channelId, name: channel.name },
+    });
     return { ok: true };
   });
 
@@ -1440,6 +1461,16 @@ export async function registerServerRoutes(app: FastifyInstance) {
         userId: updated.userId,
         serverId,
         role: updated.role,
+      });
+      recordAudit("MEMBER_ROLE_CHANGED", {
+        userId: me.userId,
+        req,
+        metadata: {
+          serverId,
+          targetUserId,
+          fromRole: target.role,
+          toRole: updated.role,
+        },
       });
       return { ok: true, role: updated.role };
     },
@@ -1579,6 +1610,13 @@ export async function registerServerRoutes(app: FastifyInstance) {
           features: true,
         },
       });
+      // metadata.changed — только имена изменённых полей (без значений),
+      // чтобы не складывать в audit потенциальный PII из description/welcome.
+      recordAudit("SERVER_IDENTITY_CHANGED", {
+        userId: me.userId,
+        req,
+        metadata: { serverId, changed: Object.keys(data) },
+      });
       return { ok: true, identity: updated };
     },
   );
@@ -1660,6 +1698,11 @@ export async function registerServerRoutes(app: FastifyInstance) {
       await fs.writeFile(path.join(dir, filename), resized);
       const url = `/uploads/server-banners/${filename}`;
       await db.server.update({ where: { id: serverId }, data: { banner: url } });
+      recordAudit("SERVER_BANNER_CHANGED", {
+        userId: me.userId,
+        req,
+        metadata: { serverId, action: "set" },
+      });
       return { ok: true, banner: url };
     },
   );
@@ -1687,6 +1730,11 @@ export async function registerServerRoutes(app: FastifyInstance) {
         }
       }
       await db.server.update({ where: { id: serverId }, data: { banner: null } });
+      recordAudit("SERVER_BANNER_CHANGED", {
+        userId: me.userId,
+        req,
+        metadata: { serverId, action: "clear" },
+      });
       return { ok: true };
     },
   );
@@ -1828,15 +1876,50 @@ export async function registerServerRoutes(app: FastifyInstance) {
   );
 
   /**
-   * v0.76 #25 phase 1: GET /api/servers/:id/audit-log
+   * v0.76 #25 phase 1 → Discord-parity E5: GET /api/servers/:id/audit-log
+   * (backend slice; версия присваивается при ship фронт-таба Codex'ом).
    *
-   * OWNER-only — последние N audit events с filter по server-relevant
-   * types (SERVER_*, CHANNEL_*, MEMBER_*, BOT_*, MESSAGE_DELETED_BY_MOD).
-   * Auth events (login/logout) — global, для admin panel специфичного
-   * server'а они зашумят. Это ограничение v1.
+   * OWNER/ADMIN-only. Server-relevant audit events (SERVER_*, CHANNEL_*,
+   * MEMBER_*, BOT_*, MESSAGE_DELETED_BY_MOD). Auth events (login/logout) —
+   * global, для server-scoped панели зашумят, сюда не попадают.
    *
-   * Возвращает топ-100 в обратной хронологии. Pagination — отдельный slice.
+   * E5 изменения:
+   * - **serverId scope** — раньше where фильтровал только по type, без
+   *   привязки к серверу: OWNER сервера X видел бы события сервера Y
+   *   (cross-server information disclosure). Теперь обязательный
+   *   `metadata contains "serverId":"<id>"`. Все эмиттеры пишут serverId
+   *   в metadata (servers.ts мутации + bots.ts). События без serverId в
+   *   metadata в server-scoped панель не попадают by design.
+   * - **Фильтры** (query): type (один из server-scoped), userId (инициатор),
+   *   since/until (ISO 8601 по createdAt).
+   * - **Pagination** — take (1..100, default 50) + skip (default 0) + total.
+   *   Response key `events` сохранён (backward compat).
+   *
+   * NB: MEMBER_KICKED / MESSAGE_DELETED_BY_MOD пока без продюсеров (kick-route
+   * и mod-delete не пишут audit) — типы оставлены в фильтре для forward-compat.
    */
+  const serverScopedTypes = [
+    "SERVER_CREATED",
+    "SERVER_DELETED",
+    "SERVER_BANNER_CHANGED",
+    "SERVER_IDENTITY_CHANGED",
+    "MEMBER_ROLE_CHANGED",
+    "MEMBER_KICKED",
+    "MESSAGE_DELETED_BY_MOD",
+    "CHANNEL_CREATED",
+    "CHANNEL_DELETED",
+    "BOT_CREATED",
+    "BOT_DELETED",
+    "BOT_KEY_REGENERATED",
+  ] as const;
+  const auditLogQuery = z.object({
+    type: z.enum(serverScopedTypes).optional(),
+    userId: z.string().min(1).max(64).optional(),
+    since: z.string().datetime().optional(),
+    until: z.string().datetime().optional(),
+    take: z.coerce.number().int().min(1).max(100).default(50),
+    skip: z.coerce.number().int().min(0).default(0),
+  });
   app.get(
     "/api/servers/:id/audit-log",
     { onRequest: [requireJwt] },
@@ -1856,32 +1939,44 @@ export async function registerServerRoutes(app: FastifyInstance) {
           .status(403)
           .send({ error: "Только OWNER/ADMIN могут видеть audit-log" });
       }
-      const serverScopedTypes = [
-        "SERVER_CREATED",
-        "SERVER_DELETED",
-        "SERVER_BANNER_CHANGED",
-        "SERVER_IDENTITY_CHANGED",
-        "MEMBER_ROLE_CHANGED",
-        "MEMBER_KICKED",
-        "MESSAGE_DELETED_BY_MOD",
-        "CHANNEL_CREATED",
-        "CHANNEL_DELETED",
-        "BOT_CREATED",
-        "BOT_DELETED",
-        "BOT_KEY_REGENERATED",
-      ] as const;
-      const events = await db.auditLog.findMany({
-        where: { type: { in: serverScopedTypes as unknown as string[] } as any },
-        orderBy: { createdAt: "desc" },
-        take: 100,
-        select: {
-          id: true,
-          type: true,
-          createdAt: true,
-          metadata: true,
-          user: { select: { id: true, displayName: true, avatar: true } },
-        },
-      });
+      const parsedQuery = auditLogQuery.safeParse(req.query);
+      if (!parsedQuery.success) {
+        return reply.status(400).send({
+          error: parsedQuery.error.issues[0]?.message ?? "Invalid query",
+        });
+      }
+      const { type, userId: actorId, since, until, take, skip } =
+        parsedQuery.data;
+
+      const createdAt: { gte?: Date; lte?: Date } = {};
+      if (since) createdAt.gte = new Date(since);
+      if (until) createdAt.lte = new Date(until);
+      const typeFilter = type ? [type] : serverScopedTypes;
+      const where = {
+        type: { in: typeFilter as unknown as string[] } as any,
+        // serverId scope: каждый эмиттер кладёт serverId в metadata JSON.
+        // contains по keyed-фрагменту, а не по голому id — точнее.
+        metadata: { contains: `"serverId":"${serverId}"` },
+        ...(actorId ? { userId: actorId } : {}),
+        ...(createdAt.gte || createdAt.lte ? { createdAt } : {}),
+      };
+
+      const [total, events] = await Promise.all([
+        db.auditLog.count({ where }),
+        db.auditLog.findMany({
+          where,
+          orderBy: { createdAt: "desc" },
+          take,
+          skip,
+          select: {
+            id: true,
+            type: true,
+            createdAt: true,
+            metadata: true,
+            user: { select: { id: true, displayName: true, avatar: true } },
+          },
+        }),
+      ]);
       return {
         events: events.map((e) => ({
           id: e.id,
@@ -1896,6 +1991,9 @@ export async function registerServerRoutes(app: FastifyInstance) {
               }
             : null,
         })),
+        total,
+        take,
+        skip,
       };
     },
   );

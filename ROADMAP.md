@@ -16,9 +16,21 @@ per-server. Frontend будет парсить → render chips в WelcomeHero (
 ⚠ Incident note: первая попытка v1.5.58 (commit 7a2f02e) была reverted из-за
 `FST_ERR_DUPLICATED_ROUTE` на `GET /api/servers/:id/audit-log` — uneager
 duplicate существующего v0.76 #25 phase 1 endpoint'а. Этот re-ship содержит
-**только E3** schema/PATCH/DTO. **E5** audit log будет в отдельном slice как
-extension existing endpoint'а (filter params + pagination + serverId metadata
-clause поверх hardcoded type list), не replacement.
+**только E3** schema/PATCH/DTO.
+
+**E5 audit log backend — реализован латентно** (slice `feat/claude/audit-log-real`,
+ждёт frontend-таб Codex'а → совместный version bump, по паттерну §7). При разборе
+вскрылось, что existing endpoint был **мёртвым и дырявым**: (1) server-scoped типы
+(SERVER_*/CHANNEL_*/MEMBER_*) нигде не писались — `recordAudit` звался только для
+`AUTH_*`, endpoint всегда возвращал `events: []`; (2) `where` фильтровал только по
+`type`, без serverId → cross-server information disclosure (OWNER X видел бы события
+Y). Слайс: эмит server-scoped событий на 8 mutation-сайтах servers.ts (server
+create/delete, channel create/delete, member-role, identity, banner set/clear) с
+`metadata.serverId`; bots.ts уже писал BOT_* с serverId. Read-endpoint extended:
+обязательный serverId-scope (закрыт leak) + zod-фильтры (type/userId/since/until) +
+pagination (take 1..100 default 50, skip, total), ключ `events` сохранён. Schema НЕ
+тронута (no migration). `MEMBER_KICKED`/`MESSAGE_DELETED_BY_MOD` пока без продюсеров —
+типы оставлены для forward-compat.
 
 **Предыдущая:** v1.5.57 (Discord-parity MED batch 1 — C4/C6/E4/E6.
 C4: channel row desktop hover actions now include invite-to-channel copy,
