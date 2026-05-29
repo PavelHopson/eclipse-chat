@@ -133,6 +133,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     uploadServerBanner,
     deleteServerBanner,
     updateServerIdentity,
+    updateServerLock,
     error: serversError,
     limits: serverLimits,
     ownedCount: ownedServersCount,
@@ -2414,6 +2415,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           onUploadBanner={(file) => uploadServerBanner(activeServer.id, file)}
           onDeleteBanner={() => deleteServerBanner(activeServer.id)}
           onUpdateIdentity={(patch) => updateServerIdentity(activeServer.id, patch)}
+          onUpdateLock={(locked, reason) => updateServerLock(activeServer.id, locked, reason)}
         />
       )}
 

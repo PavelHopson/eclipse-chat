@@ -23,6 +23,9 @@ export type ServerRow = {
   mode: "ENGINEERING" | "CLIENT";
   inviteCode: string;
   ownerId: string;
+  lockedAt?: string | null;
+  lockedReason?: string | null;
+  lockedByUserId?: string | null;
   createdAt: string;
   memberCount: number;
   channelCount: number;
@@ -345,6 +348,46 @@ export function useServers(isReady: boolean) {
     [],
   );
 
+  const updateServerLock = useCallback(
+    async (
+      serverId: string,
+      locked: boolean,
+      reason?: string | null,
+    ): Promise<boolean> => {
+      setError(null);
+      try {
+        const res = await apiJson<{
+          server: {
+            id: string;
+            lockedAt: string | null;
+            lockedReason: string | null;
+            lockedByUserId: string | null;
+          };
+        }>(`/api/servers/${encodeURIComponent(serverId)}/lock`, {
+          method: locked ? "POST" : "DELETE",
+          body: locked ? JSON.stringify({ reason: reason?.trim() || null }) : undefined,
+        });
+        setServers((prev) =>
+          prev.map((s) =>
+            s.id === serverId
+              ? {
+                  ...s,
+                  lockedAt: res.server.lockedAt,
+                  lockedReason: res.server.lockedReason,
+                  lockedByUserId: res.server.lockedByUserId,
+                }
+              : s,
+          ),
+        );
+        return true;
+      } catch (e) {
+        setError(e instanceof ApiError ? e.message : "Не удалось изменить изоляцию");
+        return false;
+      }
+    },
+    [],
+  );
+
   const deleteServerIcon = useCallback(async (serverId: string): Promise<boolean> => {
     setError(null);
     try {
@@ -391,6 +434,7 @@ export function useServers(isReady: boolean) {
     uploadServerBanner,
     deleteServerBanner,
     updateServerIdentity,
+    updateServerLock,
     /** v0.64: server-enforced limits (max OWNER memberships per account). */
     limits,
     ownedCount,

@@ -1283,22 +1283,48 @@
   }
 }
 
-/* ServerHubModal tabs (v0.97): 4 tabs (Обзор / Оформление / Настройки /
- * Боты) с RU labels могут overflow'ить на mobile modal (~290px width).
- * Делаем горизонтальный scroll fallback. */
+/* ServerHubModal settings tree (E1): tree-nav collapses into a horizontal rail. */
 @media (max-width: 600px) {
-  .ec-server-hub__tabs {
+  .ec-server-hub-panel {
+    grid-template-columns: 1fr;
+    min-height: min(780px, 82vh);
+    max-height: 82vh;
+  }
+
+  .ec-server-hub-tree-nav {
+    display: flex;
+    gap: var(--ec-space-2);
     overflow-x: auto;
+    overflow-y: hidden;
+    padding: var(--ec-space-3);
+    border-right: 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--ec-accent) 18%, var(--ec-border-default));
     scrollbar-width: none;
     -ms-overflow-style: none;
     -webkit-overflow-scrolling: touch;
   }
-  .ec-server-hub__tabs::-webkit-scrollbar {
+
+  .ec-server-hub-tree-nav::-webkit-scrollbar {
     display: none;
   }
-  .ec-server-hub__tabs > button {
+
+  .ec-server-hub-tree-nav__group {
+    display: contents;
+  }
+
+  .ec-server-hub-tree-nav__label {
+    display: none;
+  }
+
+  .ec-server-hub-category-item {
     flex: 0 0 auto;
-    min-width: max-content;
+    width: auto;
+    min-height: 44px;
+    white-space: nowrap;
+  }
+
+  .ec-server-hub-panel__main {
+    padding: var(--ec-space-3);
   }
 }
 

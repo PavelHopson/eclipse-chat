@@ -1,8 +1,15 @@
 import { useRef, useState, type CSSProperties } from "react";
-import { Avatar } from "./Avatar";
+import { AdminEmojisTab } from "./AdminEmojisTab";
 import { BotsTab } from "./BotsTab";
 import { DeleteButton } from "./DeleteButton";
 import { Modal } from "./Modal";
+import {
+  AuditPlaceholderSection,
+  InviteSection,
+  IsolationSection,
+  MembersSection,
+  RolesSection,
+} from "./server-hub/ServerHubSections";
 import type { MemberRole, MemberRow } from "../hooks/useMembers";
 import type { ServerRow } from "../hooks/useServers";
 import { resolveAssetUrl } from "../lib/assets";
@@ -51,11 +58,27 @@ type Props = {
     welcomeMessage?: string | null;
     mode?: "ENGINEERING" | "CLIENT";
   }) => Promise<boolean>;
+  onUpdateLock?: (locked: boolean, reason?: string | null) => Promise<boolean>;
   /** v0.97: open tab напрямую (если триггер — settings icon → Настройки). */
-  initialTab?: HubTab;
+  initialTab?: HubView;
 };
 
-type HubTab = "overview" | "branding" | "settings" | "bots";
+type HubView =
+  | "overview"
+  | "branding"
+  | "settings"
+  | "emojis"
+  | "roles"
+  | "members"
+  | "bots"
+  | "isolation"
+  | "audit"
+  | "invite";
+
+type NavGroup = {
+  label: string;
+  items: Array<{ id: HubView; label: string; hidden?: boolean; soon?: boolean }>;
+};
 
 // Пресеты ограничены identity-палитрой (design-brief-v2 §2). Каждый
 // пресет задаёт серверу --ec-accent — это PRIMARY-акцент, поэтому
@@ -116,9 +139,10 @@ export function ServerHubModal({
   onUploadBanner,
   onDeleteBanner,
   onUpdateIdentity,
+  onUpdateLock,
   initialTab = "overview",
 }: Props) {
-  const [tab, setTab] = useState<HubTab>(initialTab);
+  const [active, setActive] = useState<HubView>(initialTab);
   const isOwner = server.role === "OWNER";
   const isAdminOrOwner = isOwner || server.role === "ADMIN";
 
@@ -138,6 +162,8 @@ export function ServerHubModal({
   const [error, setError] = useState<string | null>(null);
   const [dangerOpen, setDangerOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [lockReason, setLockReason] = useState(server.lockedReason ?? "");
+  const [lockBusy, setLockBusy] = useState(false);
 
   const iconFileRef = useRef<HTMLInputElement>(null);
   const bannerFileRef = useRef<HTMLInputElement>(null);
@@ -246,38 +272,75 @@ export function ServerHubModal({
     setBusy(false);
   };
 
-  // Доступные tabs зависят от role. Non-owner видит Обзор + Боты (если ADMIN).
-  const availableTabs: { id: HubTab; label: string; hidden?: boolean }[] = [
-    { id: "overview", label: "Обзор" },
-    { id: "branding", label: "Оформление", hidden: !isOwner },
-    { id: "settings", label: "Настройки", hidden: !isOwner },
-    { id: "bots", label: "Боты", hidden: !isAdminOrOwner },
+  const handleLock = async (locked: boolean) => {
+    if (!onUpdateLock || lockBusy) return;
+    setLockBusy(true);
+    setError(null);
+    const ok = await onUpdateLock(locked, locked ? lockReason : null);
+    if (!ok) setError(locked ? "Не удалось включить изоляцию" : "Не удалось снять изоляцию");
+    setLockBusy(false);
+  };
+
+  const navGroups: NavGroup[] = [
+    {
+      label: "Сервер",
+      items: [
+        { id: "overview", label: "Обзор" },
+        { id: "branding", label: "Оформление", hidden: !isOwner },
+        { id: "settings", label: "Настройки", hidden: !isOwner },
+      ],
+    },
+    { label: "Реакции", items: [{ id: "emojis", label: "Эмодзи", hidden: !isAdminOrOwner }] },
+    {
+      label: "Люди",
+      items: [
+        { id: "roles", label: "Роли", hidden: !isAdminOrOwner },
+        { id: "members", label: "Участники" },
+      ],
+    },
+    { label: "Приложения", items: [{ id: "bots", label: "Боты", hidden: !isAdminOrOwner }] },
+    {
+      label: "Модерация",
+      items: [
+        { id: "isolation", label: "Изоляция", hidden: !isAdminOrOwner },
+        { id: "audit", label: "Audit log", hidden: !isAdminOrOwner, soon: true },
+      ],
+    },
+    { label: "Сообщество", items: [{ id: "invite", label: "Приглашение" }] },
   ];
-  const visibleTabs = availableTabs.filter((t) => !t.hidden);
+  const visibleGroups = navGroups
+    .map((group) => ({ ...group, items: group.items.filter((item) => !item.hidden) }))
+    .filter((group) => group.items.length > 0);
 
   return (
-    <Modal title={server.name} onClose={onClose} width={620}>
-      <div
-        className="ec-server-hub__tabs ec-hub-tabs"
-        role="tablist"
-        aria-label="Разделы пространства"
-      >
-        {visibleTabs.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            role="tab"
-            aria-selected={tab === t.id}
-            onClick={() => setTab(t.id)}
-            className="ec-hub-tab"
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+    <Modal title={server.name} onClose={onClose} width={980}>
+      <div className="ec-server-hub-panel">
+        <aside className="ec-server-hub-tree-nav" aria-label="Разделы настроек сервера">
+          {visibleGroups.map((group) => (
+            <section key={group.label} className="ec-server-hub-tree-nav__group">
+              <span className="ec-server-hub-tree-nav__label">{group.label}</span>
+              {group.items.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={
+                    "ec-server-hub-category-item" +
+                    (active === item.id ? " ec-server-hub-category-item--active" : "")
+                  }
+                  aria-current={active === item.id ? "page" : undefined}
+                  onClick={() => setActive(item.id)}
+                >
+                  <span>{item.label}</span>
+                  {item.soon && <span className="ec-server-hub-category-item__soon">Скоро</span>}
+                </button>
+              ))}
+            </section>
+          ))}
+        </aside>
+        <main className="ec-server-hub-panel__main">
 
       {/* === Обзор === */}
-      {tab === "overview" && (
+      {active === "overview" && (
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--ec-space-4)" }}>
           {server.banner && (
             <div
@@ -418,105 +481,11 @@ export function ServerHubModal({
             </section>
           )}
 
-          {/* Invite */}
-          <section>
-            <h3 className="ec-hub-label">Приглашение</h3>
-            <div className="ec-hub-card">
-              <div className="ec-hub-code">{server.inviteCode}</div>
-              <div style={{ display: "flex", gap: "var(--ec-space-2)", flexWrap: "wrap" }}>
-                <button
-                  type="button"
-                  onClick={() => void copy(server.inviteCode, "code")}
-                  className="ec-btn ec-btn--sm"
-                  style={{
-                    color: copyState === "code" ? "var(--ec-ok)" : undefined,
-                    borderColor: copyState === "code" ? "var(--ec-ok)" : undefined,
-                  }}
-                >
-                  {copyState === "code" ? "✓ Код скопирован" : "Копировать код"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void copy(inviteUrl, "link")}
-                  className="ec-btn ec-btn--sm ec-btn--primary"
-                  title={inviteUrl}
-                  style={{
-                    background: copyState === "link" ? "var(--ec-ok)" : undefined,
-                    borderColor: copyState === "link" ? "var(--ec-ok)" : undefined,
-                  }}
-                >
-                  {copyState === "link" ? "✓ Ссылка скопирована" : "Копировать ссылку"}
-                </button>
-              </div>
-            </div>
-          </section>
-
-          {/* Members compact */}
-          {members && members.length > 0 && (
-            <section>
-              <h3 className="ec-hub-label">Участники · {members.length}</h3>
-              <div
-                className="ec-hub-card"
-                style={{
-                  padding: "var(--ec-space-2)",
-                  maxHeight: 260,
-                  overflowY: "auto",
-                  gap: 2,
-                }}
-              >
-                {members.map((m) => {
-                  const isMe = currentUserId === m.userId;
-                  const isOwnerRow = m.role === "OWNER";
-                  return (
-                    <div key={m.id} className="ec-hub-member">
-                      <Avatar url={m.user.avatar} name={m.user.displayName} size={28} />
-                      <span
-                        style={{
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                          color: "var(--ec-text)",
-                        }}
-                      >
-                        {m.user.displayName}
-                        {isMe && (
-                          <span style={{ marginLeft: 6, color: "var(--ec-text-dim)", fontSize: "var(--ec-text-2xs)" }}>
-                            (вы)
-                          </span>
-                        )}
-                      </span>
-                      {isOwner && !isOwnerRow && !isMe && onUpdateRole ? (
-                        <select
-                          value={m.role}
-                          onChange={(e) =>
-                            void onUpdateRole(
-                              m.userId,
-                              e.target.value as "ADMIN" | "MODERATOR" | "MEMBER",
-                            )
-                          }
-                          className="ec-hub-role-select"
-                          title="Изменить роль"
-                        >
-                          <option value="ADMIN">ADMIN</option>
-                          <option value="MODERATOR">MOD</option>
-                          <option value="MEMBER">MEMBER</option>
-                        </select>
-                      ) : (
-                        <span className={roleBadgeClass(m.role)} style={{ fontSize: "0.6rem" }}>
-                          {m.role === "MODERATOR" ? "MOD" : m.role}
-                        </span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-          )}
         </div>
       )}
 
       {/* === Оформление === */}
-      {tab === "branding" && isOwner && (
+      {active === "branding" && isOwner && (
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--ec-space-4)" }}>
           {/* Banner */}
           <section>
@@ -679,7 +648,7 @@ export function ServerHubModal({
       )}
 
       {/* === Настройки === */}
-      {tab === "settings" && isOwner && (
+      {active === "settings" && isOwner && (
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--ec-space-4)" }}>
           <section>
             <h3 className="ec-hub-label">Название пространства</h3>
@@ -829,7 +798,43 @@ export function ServerHubModal({
       )}
 
       {/* === Боты === */}
-      {tab === "bots" && isAdminOrOwner && <BotsTab serverId={server.id} />}
+      {active === "emojis" && isAdminOrOwner && <AdminEmojisTab serverId={server.id} />}
+
+      {active === "roles" && isAdminOrOwner && <RolesSection members={members} />}
+
+      {active === "members" && (
+        <MembersSection
+          members={members}
+          currentUserId={currentUserId}
+          isOwner={isOwner}
+          onUpdateRole={onUpdateRole}
+        />
+      )}
+
+      {active === "isolation" && isAdminOrOwner && (
+        <IsolationSection
+          server={server}
+          lockReason={lockReason}
+          lockBusy={lockBusy}
+          canUpdate={Boolean(onUpdateLock)}
+          onReason={setLockReason}
+          onLock={() => void handleLock(true)}
+          onUnlock={() => void handleLock(false)}
+        />
+      )}
+
+      {active === "audit" && isAdminOrOwner && <AuditPlaceholderSection />}
+
+      {active === "invite" && (
+        <InviteSection
+          inviteCode={server.inviteCode}
+          inviteUrl={inviteUrl}
+          copyState={copyState}
+          onCopy={(text, which) => void copy(text, which)}
+        />
+      )}
+
+      {active === "bots" && isAdminOrOwner && <BotsTab serverId={server.id} />}
 
       {/* === Footer: Опасная зона === */}
       <div
@@ -921,6 +926,8 @@ export function ServerHubModal({
           {error}
         </p>
       )}
+        </main>
+      </div>
     </Modal>
   );
 }

@@ -6387,6 +6387,153 @@ input[type="radio"]:focus-visible {
   gap: var(--ec-space-2);
 }
 
+.ec-server-hub-panel {
+  display: grid;
+  grid-template-columns: minmax(210px, 240px) minmax(0, 1fr);
+  min-height: min(720px, 78vh);
+  max-height: min(820px, 82vh);
+  margin: calc(var(--ec-space-4) * -1);
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 0% 0%, hsl(258 86% 58% / 0.12), transparent 36%),
+    var(--ec-surface-0);
+}
+
+.ec-server-hub-tree-nav {
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--ec-space-4) var(--ec-space-3);
+  border-right: 1px solid color-mix(in srgb, var(--ec-accent) 20%, var(--ec-border-default));
+  background:
+    radial-gradient(circle at 0% 0%, hsl(258 86% 58% / 0.1), transparent 42%),
+    var(--ec-surface-1);
+}
+
+.ec-server-hub-tree-nav__group {
+  display: grid;
+  gap: 3px;
+  margin-bottom: var(--ec-space-4);
+}
+
+.ec-server-hub-tree-nav__label {
+  padding: 0 var(--ec-space-2);
+  color: var(--ec-text-dim);
+  font-size: var(--ec-text-2xs);
+  font-weight: 800;
+  letter-spacing: var(--ec-tracking-caps);
+  text-transform: uppercase;
+}
+
+.ec-server-hub-category-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--ec-space-2);
+  width: 100%;
+  min-height: 34px;
+  padding: 0.45rem var(--ec-space-2) 0.45rem var(--ec-space-3);
+  border: 0;
+  border-radius: var(--ec-radius-sm);
+  background: transparent;
+  color: var(--ec-text-muted);
+  font: inherit;
+  font-size: var(--ec-text-sm);
+  font-weight: 650;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background 180ms var(--ec-ease-out),
+    color 180ms var(--ec-ease-out),
+    transform 180ms var(--ec-ease-out);
+}
+
+.ec-server-hub-category-item::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--ec-accent);
+  opacity: 0;
+  transform: scaleY(0);
+  transition:
+    opacity 180ms var(--ec-ease-out),
+    transform 180ms var(--ec-ease-out);
+}
+
+.ec-server-hub-category-item:hover,
+.ec-server-hub-category-item--active {
+  background: color-mix(in srgb, var(--ec-accent) 10%, transparent);
+  color: var(--ec-text-strong);
+  transform: translateX(2px);
+}
+
+.ec-server-hub-category-item:hover::before,
+.ec-server-hub-category-item--active::before {
+  opacity: 1;
+  transform: scaleY(1);
+}
+
+.ec-server-hub-category-item__soon {
+  padding: 2px 5px;
+  border: 1px solid var(--ec-border-subtle);
+  border-radius: var(--ec-radius-full);
+  color: var(--ec-text-dim);
+  font-size: 0.55rem;
+  font-weight: 800;
+  letter-spacing: var(--ec-tracking-caps);
+  text-transform: uppercase;
+}
+
+.ec-server-hub-panel__main {
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--ec-space-5);
+}
+
+.ec-hub-member__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ec-text);
+}
+
+.ec-hub-member__me {
+  margin-left: 6px;
+  color: var(--ec-text-dim);
+  font-size: var(--ec-text-2xs);
+}
+
+.ec-hub-empty {
+  min-height: 160px;
+  display: grid;
+  place-items: center;
+  padding: var(--ec-space-5);
+  color: var(--ec-text-muted);
+  font-size: var(--ec-text-sm);
+  text-align: center;
+}
+
+.ec-hub-lock-state {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--ec-space-2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ec-server-hub-panel *,
+  .ec-server-hub-category-item,
+  .ec-server-hub-category-item::before {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
 /* Settings tree panel (Discord-parity B1). */
 .ec-settings-panel {
   display: grid;

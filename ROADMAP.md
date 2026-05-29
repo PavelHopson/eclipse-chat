@@ -5,7 +5,19 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.54** (Discord-parity D3 backend — Server isolation
+**Текущая версия:** **v1.5.55** (Discord-parity E1 — Server settings tree nav.
+`ServerHubModal` переведён с flat 4 tabs на grouped tree-nav: «Сервер»
+(Обзор/Оформление/Настройки), «Реакции» (Эмодзи через existing
+`AdminEmojisTab`), «Люди» (Роли/Участники с existing owner role select),
+«Приложения» (Боты), «Модерация» (Изоляция + Audit log placeholder
+«Скоро в v1.5.56+»), «Сообщество» (Приглашение). Existing identity/banner/
+brandColor/mode/description/welcome/invite/bots/leave/delete flows сохранены.
+D3 settings entry-point добавлен: lock reason input + POST/DELETE
+`/api/servers/:id/lock` через `useServers.updateServerLock`, без backend/schema
+change. Mobile tree collapses into horizontal rail; prefers-reduced-motion
+отключает nav motion).
+
+**Предыдущая:** v1.5.54 (Discord-parity D3 backend — Server isolation
 emergency lock. Server расширен 3 nullable полями: `lockedAt` (timestamp),
 `lockedReason` (≤500 chars audit), `lockedByUserId` (FK SetNull при удалении user'а).
 Migration `20260529130000_add_server_lock` — additive ALTER TABLE + FK constraint.
