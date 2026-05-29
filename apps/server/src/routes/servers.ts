@@ -214,6 +214,8 @@ export async function registerServerRoutes(app: FastifyInstance) {
             // v1.5.54 D3 — lock state для UI badge «Сервер закрыт».
             lockedAt: true,
             lockedReason: true,
+            // v1.5.58 E3 — JSON-encoded String[] feature chips.
+            features: true,
             createdAt: true,
             _count: { select: { members: true, channels: true } },
           },
@@ -235,6 +237,7 @@ export async function registerServerRoutes(app: FastifyInstance) {
         ownerId: m.server.ownerId,
         lockedAt: m.server.lockedAt?.toISOString() ?? null,
         lockedReason: m.server.lockedReason,
+        features: m.server.features,
         createdAt: m.server.createdAt.toISOString(),
         memberCount: m.server._count.members,
         channelCount: m.server._count.channels,
@@ -1488,6 +1491,16 @@ export async function registerServerRoutes(app: FastifyInstance) {
     description: z.string().max(1000).nullable().optional(),
     welcomeMessage: z.string().max(500).nullable().optional(),
     mode: z.enum(["ENGINEERING", "CLIENT"]).optional(),
+    /**
+     * v1.5.58 Discord-parity E3 — feature chips array (max 5, each ≤40 chars).
+     * NULL = clear chips, [] (empty array) = also cleared (treated identically),
+     * иначе up to 5 непустых строк.
+     */
+    features: z
+      .array(z.string().min(1).max(40))
+      .max(5)
+      .nullable()
+      .optional(),
   });
 
   /**
@@ -1520,6 +1533,7 @@ export async function registerServerRoutes(app: FastifyInstance) {
         description?: string | null;
         welcomeMessage?: string | null;
         mode?: "ENGINEERING" | "CLIENT";
+        features?: string | null;
       } = {};
       if (parsed.data.name !== undefined) {
         data.name = parsed.data.name.trim();
@@ -1539,6 +1553,19 @@ export async function registerServerRoutes(app: FastifyInstance) {
       if (parsed.data.mode !== undefined) {
         data.mode = parsed.data.mode;
       }
+      // v1.5.58 E3 — features stored as JSON.stringify, NULL clears.
+      // Trim каждой chip + filter пустые (defense-in-depth поверх zod min(1)).
+      if (parsed.data.features !== undefined) {
+        if (parsed.data.features === null || parsed.data.features.length === 0) {
+          data.features = null;
+        } else {
+          const cleaned = parsed.data.features
+            .map((c) => c.trim())
+            .filter((c) => c.length > 0)
+            .slice(0, 5);
+          data.features = cleaned.length === 0 ? null : JSON.stringify(cleaned);
+        }
+      }
       const updated = await db.server.update({
         where: { id: serverId },
         data,
@@ -1549,6 +1576,7 @@ export async function registerServerRoutes(app: FastifyInstance) {
           description: true,
           welcomeMessage: true,
           mode: true,
+          features: true,
         },
       });
       return { ok: true, identity: updated };

@@ -5,7 +5,22 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.57** (Discord-parity MED batch 1 — C4/C6/E4/E6.
+**Текущая версия:** **v1.5.58** (Discord-parity E3 backend — Server feature chips.
+`Server.features` nullable `String?` (JSON-encoded `String[]` до 5 элементов,
+каждый ≤40 chars). Migration `20260529140000_add_server_features` additive
+ALTER TABLE. PATCH `/api/servers/:id/identity` body extended: `features?: string[] | null`
+(trim → filter empty → slice 5 → JSON.stringify в БД; null/[] clears).
+GET `/api/servers` DTO теперь возвращает `features: string | null` (JSON string)
+per-server. Frontend будет парсить → render chips в WelcomeHero (Codex slice).
+
+⚠ Incident note: первая попытка v1.5.58 (commit 7a2f02e) была reverted из-за
+`FST_ERR_DUPLICATED_ROUTE` на `GET /api/servers/:id/audit-log` — uneager
+duplicate существующего v0.76 #25 phase 1 endpoint'а. Этот re-ship содержит
+**только E3** schema/PATCH/DTO. **E5** audit log будет в отдельном slice как
+extension existing endpoint'а (filter params + pagination + serverId metadata
+clause поверх hardcoded type list), не replacement.
+
+**Предыдущая:** v1.5.57 (Discord-parity MED batch 1 — C4/C6/E4/E6.
 C4: channel row desktop hover actions now include invite-to-channel copy,
 generating `?invite=<code>&channel=<channelId>` and `useChannels` consumes
 `channel` query after join/reload to open the target channel. C6: server actions
