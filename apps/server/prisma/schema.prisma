@@ -144,6 +144,8 @@ model User {
   /// v1.2.7 Platform Admin (trek P2) — servers, которые этот platform-owner
   /// suspend'нул. Reverse-side ServerSuspendedBy self-relation.
   suspendedServers Server[]              @relation("ServerSuspendedBy")
+  /// v1.5.54 D3 — серверы, locked этим user'ом (isolation для raid response).
+  lockedServers    Server[]              @relation("ServerLockedBy")
   /// Боты которыми владеет user (как создатель).
   ownedBots        Bot[]                 @relation("BotOwner")
   /// Если user — это shadow user для bot'а (1-to-1). null = обычный User.
@@ -640,6 +642,20 @@ model Server {
   suspendedReason   String?
   suspendedByUserId String?
   suspendedBy       User?    @relation("ServerSuspendedBy", fields: [suspendedByUserId], references: [id], onDelete: SetNull)
+
+  /// v1.5.54 Discord-parity D3 — Server isolation (emergency lock на новые
+  /// joins). Когда `lockedAt !== null`, POST /api/servers/join/:code
+  /// возвращает 403. Existing members продолжают работать. Используется
+  /// OWNER/ADMIN'ом для emergency raid response (через D1 menu «Изоляция»).
+  ///
+  /// Отличается от `suspendedAt`: suspended = platform-admin disable (read-only),
+  /// locked = OWNER temp join-gate (members + writes продолжают). Параллельные системы.
+  lockedAt          DateTime?
+  /// Причина lock'а (для аудита и UI). NULL когда не locked.
+  lockedReason      String?
+  /// Какой OWNER/ADMIN наложил lock. SetNull при удалении user'а.
+  lockedByUserId    String?
+  lockedBy          User?    @relation("ServerLockedBy", fields: [lockedByUserId], references: [id], onDelete: SetNull)
 
   channels    Channel[]
   /// v1.5.46 Discord-parity C1 — channel categories на этом сервере.

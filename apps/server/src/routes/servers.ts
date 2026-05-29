@@ -211,6 +211,9 @@ export async function registerServerRoutes(app: FastifyInstance) {
             mode: true,
             inviteCode: true,
             ownerId: true,
+            // v1.5.54 D3 — lock state для UI badge «Сервер закрыт».
+            lockedAt: true,
+            lockedReason: true,
             createdAt: true,
             _count: { select: { members: true, channels: true } },
           },
@@ -230,6 +233,8 @@ export async function registerServerRoutes(app: FastifyInstance) {
         mode: m.server.mode,
         inviteCode: m.server.inviteCode,
         ownerId: m.server.ownerId,
+        lockedAt: m.server.lockedAt?.toISOString() ?? null,
+        lockedReason: m.server.lockedReason,
         createdAt: m.server.createdAt.toISOString(),
         memberCount: m.server._count.members,
         channelCount: m.server._count.channels,
@@ -380,6 +385,18 @@ export async function registerServerRoutes(app: FastifyInstance) {
         alreadyMember: true,
       };
     }
+
+    // v1.5.54 D3 — server isolation. Если OWNER/ADMIN наложил lock
+    // (emergency raid response), новые joins reject'ятся. Existing members
+    // выше уже идемпотентно вернулись. Sanity: lockedAt проверяется только
+    // для new-join путей.
+    if (server.lockedAt !== null) {
+      return reply.status(403).send({
+        error: "Сервер временно закрыт для новых пользователей",
+        reason: server.lockedReason ?? null,
+      });
+    }
+
     const member = await db.member.create({
       data: { userId, serverId: server.id, role: "MEMBER" },
       include: { user: { select: { id: true, displayName: true, email: true, avatar: true } } },
@@ -1852,6 +1869,107 @@ export async function registerServerRoutes(app: FastifyInstance) {
             : null,
         })),
       };
+    },
+  );
+
+  /**
+   * v1.5.54 Discord-parity D3 — Server isolation (emergency lock).
+   *
+   * POST /api/servers/:id/lock — наложить lock. Body { reason?: string (≤500) }.
+   * Permission: OWNER/ADMIN.
+   * Behaviour: устанавливает lockedAt = now, lockedReason, lockedByUserId.
+   * После lock'а POST /api/servers/join/:code возвращает 403 для НЕ-members.
+   * Existing members + write-операции продолжают работать.
+   *
+   * DELETE /api/servers/:id/lock — снять lock.
+   * Permission: OWNER/ADMIN.
+   * Обнуляет три поля.
+   *
+   * Idempotent: повторный POST на locked серверe обновляет reason+actor;
+   * DELETE на не-locked сервере возвращает 200 без изменений.
+   */
+  const lockBody = z.object({
+    reason: z.string().max(500).optional().nullable(),
+  });
+
+  app.post(
+    "/api/servers/:id/lock",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const { id: serverId } = req.params as { id: string };
+      const userId = getUserId(req);
+      if (!userId) return reply.status(401).send({ error: "Unauthorized" });
+
+      const member = await db.member.findUnique({
+        where: { userId_serverId: { userId, serverId } },
+        select: { role: true },
+      });
+      if (!member) {
+        return reply.status(404).send({ error: "Server not found" });
+      }
+      if (member.role !== "OWNER" && member.role !== "ADMIN") {
+        return reply.status(403).send({ error: "OWNER or ADMIN only" });
+      }
+
+      const parsed = lockBody.safeParse(req.body ?? {});
+      if (!parsed.success) {
+        return reply.status(400).send({ error: "Invalid body" });
+      }
+
+      const updated = await db.server.update({
+        where: { id: serverId },
+        data: {
+          lockedAt: new Date(),
+          lockedReason: parsed.data.reason?.trim() || null,
+          lockedByUserId: userId,
+        },
+        select: {
+          id: true,
+          lockedAt: true,
+          lockedReason: true,
+          lockedByUserId: true,
+        },
+      });
+      return {
+        server: {
+          id: updated.id,
+          lockedAt: updated.lockedAt?.toISOString() ?? null,
+          lockedReason: updated.lockedReason,
+          lockedByUserId: updated.lockedByUserId,
+        },
+      };
+    },
+  );
+
+  app.delete(
+    "/api/servers/:id/lock",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const { id: serverId } = req.params as { id: string };
+      const userId = getUserId(req);
+      if (!userId) return reply.status(401).send({ error: "Unauthorized" });
+
+      const member = await db.member.findUnique({
+        where: { userId_serverId: { userId, serverId } },
+        select: { role: true },
+      });
+      if (!member) {
+        return reply.status(404).send({ error: "Server not found" });
+      }
+      if (member.role !== "OWNER" && member.role !== "ADMIN") {
+        return reply.status(403).send({ error: "OWNER or ADMIN only" });
+      }
+
+      const updated = await db.server.update({
+        where: { id: serverId },
+        data: {
+          lockedAt: null,
+          lockedReason: null,
+          lockedByUserId: null,
+        },
+        select: { id: true },
+      });
+      return { server: { id: updated.id, lockedAt: null, lockedReason: null, lockedByUserId: null } };
     },
   );
 }
