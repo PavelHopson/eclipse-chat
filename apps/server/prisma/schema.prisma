@@ -409,6 +409,22 @@ model RefreshToken {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   expiresAt DateTime
   createdAt DateTime @default(now())
+  /// v1.5.52 Discord-parity B2: User-Agent header from login/refresh request.
+  /// Truncated до 512 chars (default browser UA ~150-250). Used для UI
+  /// «Сессия Chrome on Windows» style display в Settings/Активные сеансы.
+  /// NULL для legacy rows до v1.5.52 migration.
+  userAgent String?
+  /// v1.5.52 B2: IP при создании session (origin). Может быть IPv4/IPv6
+  /// string или null если behind proxy без X-Forwarded-For header.
+  /// Используется для security display only — на revoke логику не влияет.
+  ipAddress String?
+  /// v1.5.52 B2: timestamp последнего refresh access-token'а через эту
+  /// refresh-session. Bump'ается на каждый /api/auth/refresh hit. Frontend
+  /// показывает «Активна сейчас» если lastSeenAt < 5 min ago. NULL для
+  /// legacy rows до v1.5.52.
+  lastSeenAt DateTime?
+
+  @@index([userId, lastSeenAt])
 }
 
 /// Роли участников. PostgreSQL поддерживает enum нативно — после v0.6

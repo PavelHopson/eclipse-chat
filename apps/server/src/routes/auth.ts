@@ -120,19 +120,37 @@ async function issueSession(
     createdAt: Date;
     twoFactorEnabled?: boolean;
   },
+  meta?: { userAgent?: string | null; ipAddress?: string | null },
 ): Promise<AuthResponseBody> {
   const accessToken = await reply.jwtSign(
     { sub: user.id, email: user.email },
     { expiresIn: ACCESS_TTL },
   );
   const { raw: refreshToken, hash } = makeRefreshTokenPair();
-  await storeRefreshToken(user.id, hash);
+  await storeRefreshToken(user.id, hash, meta);
   return {
     accessToken,
     refreshToken,
     token: accessToken,
     user: publicUser(user),
   };
+}
+
+/**
+ * v1.5.52 B2: extract session metadata из request — UA + origin IP.
+ * UA trimmed app-layer'ом до 512 chars. IP extracted via X-Forwarded-For
+ * (nginx ставит) либо fallback req.ip.
+ */
+function sessionMetaFromReq(req: FastifyRequest): { userAgent: string | null; ipAddress: string | null } {
+  const ua = req.headers["user-agent"];
+  const userAgent = typeof ua === "string" && ua.length > 0 ? ua : null;
+  const fwd = req.headers["x-forwarded-for"];
+  let ipAddress: string | null = null;
+  if (typeof fwd === "string") {
+    ipAddress = fwd.split(",")[0]?.trim() || null;
+  }
+  if (!ipAddress) ipAddress = req.ip || null;
+  return { userAgent, ipAddress };
 }
 
 export async function registerAuthRoutes(app: FastifyInstance) {
@@ -175,7 +193,7 @@ export async function registerAuthRoutes(app: FastifyInstance) {
           metadata: { email },
         });
 
-        return await issueSession(reply, user);
+        return await issueSession(reply, user, sessionMetaFromReq(req));
       } catch (err) {
         if (isUniqueEmailError(err)) {
           return reply.status(409).send({ error: "Email уже зарегистрирован" });
@@ -339,7 +357,7 @@ export async function registerAuthRoutes(app: FastifyInstance) {
         await resetLockout(user.id);
         await deleteAllUserRefresh(user.id);
         recordAudit("AUTH_LOGIN", { userId: user.id, req });
-        return await issueSession(reply, user);
+        return await issueSession(reply, user, sessionMetaFromReq(req));
       } catch (err) {
         app.log.error({ err, email }, "auth login failed");
         return reply.status(503).send({
@@ -375,7 +393,7 @@ export async function registerAuthRoutes(app: FastifyInstance) {
 
       await db.refreshToken.delete({ where: { id: row.id } });
       const { raw: refreshToken, hash } = makeRefreshTokenPair();
-      await storeRefreshToken(user.id, hash);
+      await storeRefreshToken(user.id, hash, sessionMetaFromReq(req));
       const accessToken = await reply.jwtSign(
         { sub: user.id, email: user.email },
         { expiresIn: ACCESS_TTL },
@@ -469,7 +487,89 @@ export async function registerAuthRoutes(app: FastifyInstance) {
 
       recordAudit("AUTH_PASSWORD_CHANGE", { userId: user.id, req });
       await deleteAllUserRefresh(user.id);
-      return await issueSession(reply, updated);
+      return await issueSession(reply, updated, sessionMetaFromReq(req));
+    },
+  );
+
+  /**
+   * v1.5.52 Discord-parity B2: GET /api/auth/sessions — list active sessions.
+   *
+   * Возвращает все non-expired refresh-token rows этого user'а с metadata
+   * (userAgent, ipAddress, createdAt, lastSeenAt). Frontend в Settings tree
+   * «Сессии и устройства» рендерит row per session с revoke button.
+   *
+   * Expired rows опускаются — они lazy-cleanup'аются на findValid hit, но
+   * на момент GET могут ещё быть в БД. Sorted by lastSeenAt DESC чтобы
+   * recently-active вверху.
+   *
+   * tokenHash НЕ возвращается — это secret. id используется для revoke.
+   */
+  app.get(
+    "/api/auth/sessions",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const payload = req.user as { sub: string } | undefined;
+      const userId = payload?.sub;
+      if (!userId) {
+        return reply.status(401).send({ error: "Unauthorized" });
+      }
+      const now = new Date();
+      const rows = await db.refreshToken.findMany({
+        where: { userId, expiresAt: { gt: now } },
+        select: {
+          id: true,
+          userAgent: true,
+          ipAddress: true,
+          createdAt: true,
+          lastSeenAt: true,
+          expiresAt: true,
+        },
+        orderBy: [{ lastSeenAt: "desc" }, { createdAt: "desc" }],
+      });
+      return {
+        sessions: rows.map((r) => ({
+          id: r.id,
+          userAgent: r.userAgent,
+          ipAddress: r.ipAddress,
+          createdAt: r.createdAt.toISOString(),
+          lastSeenAt: r.lastSeenAt?.toISOString() ?? null,
+          expiresAt: r.expiresAt.toISOString(),
+        })),
+      };
+    },
+  );
+
+  /**
+   * v1.5.52 B2: DELETE /api/auth/sessions/:id — revoke single session.
+   *
+   * Permission: только владелец session'а (RefreshToken.userId == caller).
+   * 404 если не существует ИЛИ принадлежит другому user'у (не leak'аем
+   * существование).
+   *
+   * После revoke'а: целевая session становится invalid (next refresh
+   * вернёт 401). Если revoke'нули current session — current access token
+   * остаётся валидным до его JWT expiry (15 min типично), потом clients
+   * без refresh-возможности теряют auth. Это OK — user явно revoked.
+   */
+  app.delete(
+    "/api/auth/sessions/:id",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const payload = req.user as { sub: string } | undefined;
+      const userId = payload?.sub;
+      if (!userId) {
+        return reply.status(401).send({ error: "Unauthorized" });
+      }
+      const { id } = req.params as { id: string };
+      const row = await db.refreshToken.findUnique({
+        where: { id },
+        select: { id: true, userId: true },
+      });
+      if (!row || row.userId !== userId) {
+        return reply.status(404).send({ error: "Session not found" });
+      }
+      await db.refreshToken.delete({ where: { id } });
+      return reply.status(204).send();
     },
   );
 }
