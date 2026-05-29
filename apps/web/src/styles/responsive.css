@@ -1330,6 +1330,59 @@
     padding-top: 0.62rem;
     padding-bottom: 0.62rem;
   }
+
+  .ec-server-nav {
+    padding: 0 var(--ec-space-2);
+  }
+
+  .ec-server-nav__track {
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .ec-server-nav__track::-webkit-scrollbar {
+    display: none;
+  }
+
+  .ec-server-nav__item {
+    flex: 0 0 auto;
+    min-height: 44px;
+  }
+
+  .ec-server-view {
+    padding: var(--ec-space-3);
+  }
+
+  .ec-server-view__hero,
+  .ec-server-view__panel {
+    border-radius: var(--ec-radius-md);
+  }
+
+  .ec-server-view__hero {
+    padding: var(--ec-space-4);
+  }
+
+  .ec-server-view__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ec-server-channel-card {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .ec-server-channel-card .ec-icon-btn {
+    grid-column: 1 / -1;
+    justify-self: stretch;
+    width: 100%;
+  }
+
+  .ec-server-permission-row {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
 }
 
 /* Global prefers-reduced-motion guard для новых v0.96-v0.98 elements.
@@ -1343,7 +1396,11 @@
   .ec-channel-category-create,
   .ec-server-header-chevron,
   .ec-server-actions-menu,
-  .ec-server-actions-menu * {
+  .ec-server-actions-menu *,
+  .ec-server-nav,
+  .ec-server-nav *,
+  .ec-server-view,
+  .ec-server-view * {
     animation: none !important;
     transition: none !important;
     transform: none !important;

@@ -60,6 +60,9 @@ import { SinceLastVisitBanner } from "../components/SinceLastVisitBanner";
 import { ThemeToggle } from "../components/ThemeToggle";
 import { EmptyState } from "../components/EmptyState";
 import { ServerWelcomeHero } from "../components/ServerWelcomeHero";
+import { ChannelsAndRolesView } from "../components/server/ChannelsAndRolesView";
+import { MembersView } from "../components/server/MembersView";
+import { ServerNavBar, type ServerView } from "../components/server/ServerNavBar";
 import { ExpiryBadge } from "../components/ExpiryBadge";
 import {
   EmptyDmIcon,
@@ -366,6 +369,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     | { kind: "assignee"; userId: string }
     | null
   >(null);
+  const [serverView, setServerView] = useState<ServerView>("guide");
 
   // Закрыть thread при смене канала / сервера — не показывать thread из старого канала
   useEffect(() => {
@@ -376,6 +380,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     setStatusBoardOpen(false);
     setTeamHealthOpen(false);
     setStatusBoardFilter(null);
+    setServerView("guide");
     if (activeServerId !== null) setFriendsOpen(false);
   }, [activeServerId]);
 
@@ -479,12 +484,22 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   // (и voice, и chat): табы «Intelligence» + «Участники». `isVoiceView`
   // переключает режим панели.
   const isVoiceView =
-    !inDmMode && !homeOpen && selectedChannel?.type === "VOICE";
+    !inDmMode && !homeOpen && serverView === "chat" && selectedChannel?.type === "VOICE";
   const inServerView =
     Boolean(activeServer) && !homeOpen && !helpOpen && !adminOpen;
+  const showServerNav =
+    Boolean(activeServer) &&
+    !inDmMode &&
+    !homeOpen &&
+    !helpOpen &&
+    !adminOpen &&
+    !statusBoardOpen &&
+    !teamHealthOpen &&
+    !selectedTableId;
   // Status Board / Team Health / Help / Admin открываются на всю ширину (как Home) — правый rail скрыт.
   const showRightRail =
     inServerView &&
+    serverView === "chat" &&
     !statusBoardOpen &&
     !teamHealthOpen &&
     !helpOpen &&
@@ -600,6 +615,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     setStatusBoardOpen(false);
     setTeamHealthOpen(false);
     setSelectedTableId(null);
+    setServerView("chat");
     setSelectedChannelId(channelId);
     if (isMobile) setNavOpen(false);
   };
@@ -694,14 +710,26 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     setAdminOpen(false);
     setStatusBoardOpen(false);
     setTeamHealthOpen(false);
+    setServerView("guide");
     if (activeServerId == null && servers[0]) {
       setActiveServerId(servers[0].id);
       return;
     }
-    const firstChannelId = channels.find((c) => c.type === "TEXT")?.id ?? channels[0]?.id ?? null;
-    if (firstChannelId) {
-      setSelectedChannelId(firstChannelId);
-    }
+  };
+
+  const handleSelectServerView = (view: ServerView) => {
+    if (view === "events") return;
+    setHomeOpen(false);
+    setFriendsOpen(false);
+    setHelpOpen(false);
+    setAdminOpen(false);
+    setStatusBoardOpen(false);
+    setTeamHealthOpen(false);
+    setSelectedTableId(null);
+    setSelectedThreadId(null);
+    setShowIncidents(false);
+    setServerView(view);
+    if (isMobile) setNavOpen(false);
   };
 
   const shellClass =
@@ -1384,6 +1412,17 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             <span style={{ color: "var(--ec-text-muted)", fontSize: "var(--ec-text-sm)" }}>
               Выберите диалог
             </span>
+          ) : activeServer && serverView !== "chat" ? (
+            <span className="ec-chat-title">
+              <span className="ec-chat-title__glyph" aria-hidden>
+                {serverView === "members" ? "У" : serverView === "channels-roles" ? "К" : "П"}
+              </span>
+              {serverView === "members"
+                ? "Участники"
+                : serverView === "channels-roles"
+                ? "Каналы и роли"
+                : "Путеводитель"}
+            </span>
           ) : selectedChannel ? (
             <div
               style={{
@@ -1618,7 +1657,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
         {/* v0.96: ChannelInfoPanel — открывается (i)-кнопкой в chat-header.
             4 inner tabs: Сводка/Память/Дела/Файлы. Раньше эти вкладки жили
             в right rail (IntelligencePanel) — теперь rail = только Участники. */}
-        {selectedChannel && infoPanelOpen && !inDmMode && (
+        {selectedChannel && infoPanelOpen && !inDmMode && serverView === "chat" && (
           <ChannelInfoPanel
             channelId={selectedChannel.id}
             open={infoPanelOpen}
@@ -1680,6 +1719,15 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
          * (HelpPanel / AdminPanel / OperationalTablePanel / StatusBoard /
          *  TeamHealth / VoiceRoom) lazy-loaded — fallback={null} избегает
          * "Загрузка…" flash из App.tsx outer Suspense. */}
+        {showServerNav && activeServer && (
+          <ServerNavBar
+            activeView={serverView}
+            onSelect={handleSelectServerView}
+            server={activeServer}
+            memberRole={currentRole}
+          />
+        )}
+
         <Suspense fallback={null}>
         {helpOpen ? (
           <HelpPanel onClose={() => setHelpOpen(false)} />
@@ -1744,6 +1792,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             onOpenChannel={(serverId, channelId) => {
               setHomeOpen(false);
               setActiveServerId(serverId);
+              setServerView("chat");
               setSelectedChannelId(channelId);
               if (isMobile) setNavOpen(false);
             }}
@@ -1768,6 +1817,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             onOpenChannel={(channelId) => {
               setStatusBoardOpen(false);
               setStatusBoardFilter(null);
+              setServerView("chat");
               setSelectedChannelId(channelId);
               if (isMobile) setNavOpen(false);
             }}
@@ -1893,6 +1943,39 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               </div>
             }
           />
+        ) : serverView === "guide" ? (
+          <ServerWelcomeHero
+            server={activeServer}
+            channels={channels}
+            onSelectChannel={(id) => {
+              setServerView("chat");
+              setSelectedChannelId(id);
+              if (isMobile) setNavOpen(false);
+            }}
+          />
+        ) : serverView === "channels-roles" ? (
+          <ChannelsAndRolesView
+            serverName={activeServer.name}
+            channels={channels}
+            members={members}
+            currentRole={currentRole}
+            onOpenChannelSettings={(channelId) => setSettingsChannelId(channelId)}
+          />
+        ) : serverView === "members" ? (
+          <MembersView
+            serverId={activeServer.id}
+            serverName={activeServer.name}
+            members={members}
+            loading={membersLoading}
+            error={membersError}
+            voiceChannelByUser={voiceChannelByUser}
+            channelNameById={channelNameById}
+            currentUserId={user.id}
+            onOpenDm={(otherUserId) => {
+              setActiveServerId(null);
+              void openDmWith(otherUserId);
+            }}
+          />
         ) : !selectedChannelId || !selectedChannel ? (
           // v1.5.34 — Server banners trek #2. Replace plain EmptyState на
           // cinematic ServerWelcomeHero: banner background + name + description
@@ -1902,6 +1985,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             server={activeServer}
             channels={channels}
             onSelectChannel={(id) => {
+              setServerView("chat");
               setSelectedChannelId(id);
               if (isMobile) setNavOpen(false);
             }}
@@ -1938,6 +2022,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               void serverActions.updateStatus(id, status)
             }
             onOpenChannel={(channelId) => {
+              setServerView("chat");
               setSelectedChannelId(channelId);
               if (isMobile) setNavOpen(false);
             }}
@@ -1957,6 +2042,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                   }
                   onOpenVoiceChannel={() => {
                     if (voice.activeChannelId) {
+                      setServerView("chat");
                       setSelectedChannelId(voice.activeChannelId);
                     }
                   }}
@@ -2154,6 +2240,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               currentRole={currentRole}
               onOpenChannel={(channelId) => {
                 setHomeOpen(false);
+                setServerView("chat");
                 setSelectedChannelId(channelId);
                 setShowIncidents(false);
                 if (isMobile) setNavOpen(false);
@@ -2208,6 +2295,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           onJumpToSource={(channelId, _messageId) => {
             setOpenActionItemId(null);
             setStatusBoardOpen(false);
+            setServerView("chat");
             setSelectedChannelId(channelId);
             if (isMobile) setNavOpen(false);
           }}
@@ -2394,6 +2482,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           onSelectMessage={(hit) => {
             // Переключаемся на канал hit + закрываем overlay.
             setHomeOpen(false);
+            setServerView("chat");
             setSelectedChannelId(hit.channel.id);
             setShowSearch(false);
             searchReset();
@@ -2408,6 +2497,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             // Прыгаем в канал-источник файла; lightbox откроется при клике
             // на attachment в чате (v1 — без deep-link на конкретное message).
             setHomeOpen(false);
+            setServerView("chat");
             setSelectedChannelId(hit.channel.id);
             setShowSearch(false);
             searchReset();

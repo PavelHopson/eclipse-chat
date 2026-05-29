@@ -60,7 +60,7 @@
 |---|---|---|---|---|---|---|
 | C1 | **Channel categories** «Underground», «Clubhouse» collapsable groups с hover-+ | Channels flat list под сервером | New `ChannelCategory` schema (id, name, serverId, position) + `Channel.categoryId` FK + ChannelList grouping UI | M | 🔥 MUST | ✅ v1.5.46 |
 | C2 | **Server name = dropdown trigger** с ⌄ → context menu | Click открывает `ServerHubModal` | Convert header в popover trigger; ServerHubModal остаётся для full settings | M | ⭐ HIGH | ✅ v1.5.47 |
-| C3 | **Server nav links**: Путеводитель / Мероприятия / Каналы и роли / Участники / Бусты | Только Members в IntelligencePanel | Add nav: «Путеводитель» = welcome screen (есть v1.5.34); «Мероприятия» = C8 events; «Каналы и роли» = combined permissions view (partial AdminPanel); «Участники» = MemberList. **Бусты** ⛔ irrelevant | M integration | ⭐ HIGH | 📋 |
+| C3 | **Server nav links**: Путеводитель / Мероприятия / Каналы и роли / Участники / Бусты | Только Members в IntelligencePanel | Add nav: «Путеводитель» = welcome screen (есть v1.5.34); «Мероприятия» = C8 events; «Каналы и роли» = combined permissions view (partial AdminPanel); «Участники» = MemberList. **Бусты** ⛔ irrelevant | M integration | ⭐ HIGH | ✅ v1.5.49 |
 | C4 | **Hover invite + gear** на channel row (desktop) | `data-channel-action` hidden на mobile, есть desktop | Verify desktop visibility + add invite-to-channel button | S | 🟢 MED | 📋 |
 | C5 | **Composer GIF picker** (Tenor / GIPHY) | Emoji picker есть, GIF нет | Add Tenor proxy (или self-hosted GIF library) + picker tab | L | 🟡 LATER | 📋 |
 | C6 | **«Показать все каналы» / «Скрыть заглушённые»** checkboxes | `MutedChannel` table, no auto-hide UI option | Server-level toggle в context menu (D1) + filter в ChannelList | S | 🟢 MED | 📋 |

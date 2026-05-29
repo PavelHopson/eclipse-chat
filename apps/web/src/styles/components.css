@@ -6387,3 +6387,358 @@ input[type="radio"]:focus-visible {
   gap: var(--ec-space-2);
 }
 
+/* Server navigation links (Discord-parity C3). */
+.ec-server-nav {
+  flex: 0 0 auto;
+  padding: 0 var(--ec-space-4);
+  border-bottom: 1px solid var(--ec-border-subtle);
+  background:
+    radial-gradient(circle at 4% 0%, hsl(258 86% 58% / 0.08), transparent 32%),
+    color-mix(in srgb, var(--ec-surface-0) 92%, transparent);
+}
+
+.ec-server-nav__track {
+  display: flex;
+  align-items: center;
+  gap: var(--ec-space-1);
+  min-height: 46px;
+}
+
+.ec-server-nav__item {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ec-space-2);
+  min-height: 42px;
+  padding: 0 var(--ec-space-3);
+  border: 0;
+  border-radius: var(--ec-radius-sm) var(--ec-radius-sm) 0 0;
+  background: transparent;
+  color: var(--ec-text-muted);
+  font: inherit;
+  font-size: var(--ec-text-sm);
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  opacity: 0.74;
+  transition:
+    color 220ms var(--ec-ease-out),
+    opacity 220ms var(--ec-ease-out),
+    background 220ms var(--ec-ease-out);
+}
+
+.ec-server-nav__item::after {
+  content: "";
+  position: absolute;
+  left: var(--ec-space-2);
+  right: var(--ec-space-2);
+  bottom: -1px;
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+  background: linear-gradient(90deg, var(--ec-accent), hsl(190 90% 60%));
+  opacity: 0;
+  transform: scaleX(0.35);
+  transform-origin: center;
+  transition:
+    opacity 220ms var(--ec-ease-out),
+    transform 260ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ec-server-nav__item:hover:not(:disabled) {
+  color: var(--ec-text-strong);
+  background: color-mix(in srgb, var(--ec-accent) 8%, transparent);
+  opacity: 0.94;
+}
+
+.ec-server-nav__item--active {
+  color: var(--ec-text-strong);
+  opacity: 1;
+}
+
+.ec-server-nav__item--active::after {
+  opacity: 1;
+  transform: scaleX(1);
+}
+
+.ec-server-nav__item--disabled {
+  cursor: not-allowed;
+  filter: grayscale(1);
+  opacity: 0.45;
+}
+
+.ec-server-nav__soon {
+  padding: 2px 6px;
+  border: 1px solid var(--ec-border-subtle);
+  border-radius: var(--ec-radius-full);
+  color: var(--ec-text-dim);
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: var(--ec-tracking-caps);
+  text-transform: uppercase;
+}
+
+.ec-server-view {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--ec-space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ec-space-4);
+  background:
+    radial-gradient(circle at 12% 0%, hsl(258 86% 58% / 0.12), transparent 34%),
+    var(--ec-surface-0);
+}
+
+.ec-server-view__hero,
+.ec-server-view__panel {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 22%, var(--ec-border-default));
+  border-radius: var(--ec-radius-lg);
+  background:
+    radial-gradient(circle at 0% 0%, hsl(258 86% 62% / 0.14), transparent 40%),
+    var(--ec-overlay-bg);
+  box-shadow:
+    var(--ec-elev-2),
+    0 24px 60px -34px hsl(258 86% 35% / 0.5),
+    0 0 0 1px hsl(258 86% 62% / 0.08) inset;
+}
+
+.ec-server-view__hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ec-space-4);
+  padding: var(--ec-space-5);
+}
+
+.ec-server-view__hero h2 {
+  margin: 0;
+  color: var(--ec-text-strong);
+  font-size: clamp(1.55rem, 2vw, 2.25rem);
+  line-height: 1.05;
+  letter-spacing: 0;
+}
+
+.ec-server-view__hero p,
+.ec-server-view__section-head p,
+.ec-server-role-card p {
+  margin: var(--ec-space-1) 0 0;
+  color: var(--ec-text-muted);
+  font-size: var(--ec-text-sm);
+}
+
+.ec-server-view__eyebrow {
+  display: inline-flex;
+  margin-bottom: var(--ec-space-2);
+  color: var(--ec-accent);
+  font-size: var(--ec-text-2xs);
+  font-weight: 800;
+  letter-spacing: var(--ec-tracking-caps);
+  text-transform: uppercase;
+}
+
+.ec-server-view__grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.85fr) minmax(360px, 1.15fr);
+  gap: var(--ec-space-4);
+  align-items: start;
+}
+
+.ec-server-view__panel {
+  padding: var(--ec-space-4);
+}
+
+.ec-server-view--members .ec-server-view__panel {
+  padding: 0;
+}
+
+.ec-server-view__section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ec-space-3);
+  margin-bottom: var(--ec-space-3);
+}
+
+.ec-server-view__section-head h3 {
+  margin: 0;
+  color: var(--ec-text-strong);
+  font-size: var(--ec-text-lg);
+  letter-spacing: 0;
+}
+
+.ec-server-view__empty {
+  padding: var(--ec-space-4);
+  border: 1px dashed color-mix(in srgb, var(--ec-accent) 30%, var(--ec-border-default));
+  border-radius: var(--ec-radius-md);
+  color: var(--ec-text-muted);
+  text-align: center;
+}
+
+.ec-server-channel-overview,
+.ec-server-role-grid {
+  display: grid;
+  gap: var(--ec-space-2);
+}
+
+.ec-server-channel-card,
+.ec-server-role-card {
+  position: relative;
+  display: grid;
+  gap: var(--ec-space-2);
+  padding: var(--ec-space-3);
+  border: 1px solid var(--ec-border-subtle);
+  border-radius: var(--ec-radius-md);
+  background: color-mix(in srgb, var(--ec-surface-2) 78%, transparent);
+}
+
+.ec-server-channel-card {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.ec-server-channel-card::before,
+.ec-server-role-card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--ec-accent);
+  opacity: 0;
+  transform: scaleY(0);
+  transition:
+    opacity 180ms var(--ec-ease-out),
+    transform 180ms var(--ec-ease-out);
+}
+
+.ec-server-channel-card:hover,
+.ec-server-role-card:hover {
+  background: color-mix(in srgb, var(--ec-accent) 9%, var(--ec-surface-2));
+}
+
+.ec-server-channel-card:hover::before,
+.ec-server-role-card:hover::before {
+  opacity: 1;
+  transform: scaleY(1);
+}
+
+.ec-server-channel-card__icon {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--ec-radius-sm);
+  background: var(--ec-accent-soft);
+}
+
+.ec-server-channel-card__main {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.ec-server-channel-card__main strong {
+  color: var(--ec-text-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ec-server-channel-card__main span {
+  color: var(--ec-text-muted);
+  font-size: var(--ec-text-xs);
+}
+
+.ec-server-role-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ec-space-2);
+}
+
+.ec-server-role-card__top > span:last-child {
+  color: var(--ec-text-muted);
+  font-family: var(--ec-font-mono);
+  font-size: var(--ec-text-xs);
+  font-feature-settings: "tnum";
+}
+
+.ec-server-role-chip {
+  display: inline-flex;
+  max-width: 100%;
+  padding: 0.2rem 0.55rem;
+  border: 1px solid var(--role-border);
+  border-radius: var(--ec-radius-full);
+  background: var(--role-bg);
+  color: var(--role-fg);
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: var(--ec-tracking-caps);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.ec-server-permission-matrix {
+  display: grid;
+  gap: var(--ec-space-3);
+  margin-top: var(--ec-space-4);
+}
+
+.ec-server-permission-group h4 {
+  margin: 0 0 var(--ec-space-2);
+  color: var(--ec-text-dim);
+  font-size: var(--ec-text-2xs);
+  font-weight: 800;
+  letter-spacing: var(--ec-tracking-caps);
+  text-transform: uppercase;
+}
+
+.ec-server-permission-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) auto;
+  align-items: center;
+  gap: var(--ec-space-3);
+  min-height: 28px;
+  color: var(--ec-text-muted);
+  font-size: var(--ec-text-xs);
+}
+
+.ec-server-permission-row > div {
+  display: grid;
+  grid-template-columns: repeat(10, 10px);
+  gap: 5px;
+}
+
+.ec-server-permission-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--ec-radius-full);
+  background: var(--ec-border-default);
+  opacity: 0.5;
+}
+
+.ec-server-permission-dot--on {
+  background: var(--ec-accent);
+  box-shadow: 0 0 9px hsl(258 90% 66% / 0.44);
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ec-server-nav__item,
+  .ec-server-nav__item::after,
+  .ec-server-channel-card,
+  .ec-server-channel-card::before,
+  .ec-server-role-card,
+  .ec-server-role-card::before {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+}
+

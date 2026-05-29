@@ -5,7 +5,17 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.48** (Discord-parity C7 — Welcome bot auto-post.
+**Текущая версия:** **v1.5.49** (Discord-parity C3 — Server navigation links.
+Добавлен server-scoped nav в main area: «Путеводитель» как standalone
+`ServerWelcomeHero`, disabled placeholder «Мероприятия» с честным «Скоро в
+v1.5.50+», «Каналы и роли» как read-only обзор каналов + матрица ролей из
+существующего frontend permission mirror, «Участники» как full-screen
+`MemberList`. Default при server-open теперь guide; выбор канала переводит
+main area в chat mode. CLIENT-mode фильтрует «Каналы и роли» для не-manager
+ролей. Backend/schema не менялись. Mobile nav скроллится горизонтально;
+prefers-reduced-motion отключает underline/hover motion).
+
+**Предыдущая:** v1.5.48 (Discord-parity C7 — Welcome bot auto-post.
 При успешном `POST /api/servers/join/:code` после `emitMemberJoined` fire-and-forget
 block: если `server.welcomeMessage` configured, находит first TEXT channel
 (lowest position) и постит system-bot message с rendered'нным шаблоном —
