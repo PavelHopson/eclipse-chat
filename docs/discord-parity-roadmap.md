@@ -85,9 +85,9 @@
 |---|---|---|---|---|---|---|
 | E1 | **Settings tree nav** (12+ categories) | `ServerHubModal` 4 tabs (Обзор/Оформление/Настройки/Боты) | Expand до tree nav с grouped sections: РЕАКЦИИ / ЛЮДИ / ПРИЛОЖЕНИЯ / МОДЕРАЦИЯ / СООБЩЕСТВО. **Стикеры/Звук** ⛔. **Бонусы буста** ⛔ | M | ⭐ HIGH | ✅ v1.5.55 |
 | E2 | **Banner gradient presets** (10 swatches) рядом с custom upload | Только custom upload (`server.banner`) | UI: 10 preset gradient swatches как fallback для серверов без image | S | 🟢 MED | 📋 |
-| E3 | **Server features chips** «Никаких предателей» / «Жесткие правила» / «Решай задачи» / «Только члены» / «Анализ сезона» | Нет | New `server.features` JSON array (max 5) + UI chip editor + display в WelcomeHero | S | 🟢 MED | 🟡 backend ✅ v1.5.58 (schema + PATCH identity features + DTO); chip editor + WelcomeHero render ожидает Codex slice |
+| E3 | **Server features chips** «Никаких предателей» / «Жесткие правила» / «Решай задачи» / «Только члены» / «Анализ сезона» | Нет | New `server.features` JSON array (max 5) + UI chip editor + display в WelcomeHero | S | 🟢 MED | 📋 |
 | E4 | **Preview card** справа от settings | WelcomeHero (v1.5.34) только в no-channel state | Mount mini preview в right column ServerHub settings tab — reuse component | S | 🟢 MED | ✅ v1.5.57 |
-| E5 | **Audit log tab** | `AuditLog` schema + audit-events tracking есть | UI table с filter (type / user / date range) | M | 🟡 LATER | 🟡 backend ✅ v1.5.58 (GET /api/servers/:id/audit-log + filter type/user/date + pagination, OWNER/ADMIN only); UI table ожидает frontend slice |
+| E5 | **Audit log tab** | `AuditLog` schema + audit-events tracking есть | UI table с filter (type / user / date range) | M | 🟡 LATER | 📋 |
 | E6 | **Custom emoji tab** | `Emoji` schema + `AdminEmojisTab` уже есть | Verify exposed в правильной E1 категории | S (moved) | 🟢 MED | ✅ v1.5.55 |
 
 ---
