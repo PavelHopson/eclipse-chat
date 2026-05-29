@@ -186,11 +186,17 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
 
   const {
     channels,
+    categories,
     selectedChannelId,
     setSelectedChannelId,
     createChannel,
     updateChannel,
     reorderChannels,
+    moveChannelToCategory,
+    createCategory,
+    renameCategory,
+    deleteCategory,
+    reorderCategories,
     deleteChannel,
     unread,
     loading: channelsLoading,
@@ -1166,17 +1172,23 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             inviteCode={activeServer?.inviteCode ?? null}
             serverBanner={activeServer?.banner ?? null}
             channels={channels}
+            categories={categories}
             channelsLoading={channelsLoading}
             unread={unread}
             selectedChannelId={selectedChannelId}
             onSelect={handleSelectChannel}
-            onCreate={async (name, type) => {
+            onCreate={async (name, type, categoryId) => {
               setHomeOpen(false);
-              await createChannel(name, type);
+              await createChannel(name, type, { categoryId });
             }}
             onDelete={deleteChannel}
             onOpenSettings={(channelId) => setSettingsChannelId(channelId)}
             onReorder={reorderChannels}
+            onMoveChannel={moveChannelToCategory}
+            onCreateCategory={createCategory}
+            onRenameCategory={renameCategory}
+            onDeleteCategory={deleteCategory}
+            onReorderCategories={reorderCategories}
             onShowServerInfo={() => {
               if (!activeServer) return;
               setServerHubTab("overview");

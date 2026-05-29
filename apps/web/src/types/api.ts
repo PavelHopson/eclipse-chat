@@ -53,3 +53,29 @@ export type FriendRequestResponse = {
   autoAccepted?: boolean;
   alreadyPending?: boolean;
 };
+
+export type ChannelType = "TEXT" | "VOICE" | "BROADCAST" | "EXECUTION";
+
+export type CategoryDto = {
+  id: string;
+  serverId: string;
+  name: string;
+  position: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ChannelDto = {
+  id: string;
+  name: string;
+  slug: string;
+  type?: ChannelType;
+  position: number;
+  categoryId?: string | null;
+  description?: string | null;
+  emoji?: string | null;
+  internal?: boolean;
+  expiresAt?: string | null;
+  createdAt: string;
+  _count?: { messages: number };
+};

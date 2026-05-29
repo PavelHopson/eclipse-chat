@@ -3,12 +3,18 @@ import type { Socket } from "socket.io-client";
 import { ApiError, api, apiJson } from "../lib/api";
 import {
   SocketEvents,
+  type CategoryCreatedPayload,
+  type CategoryDeletedPayload,
+  type CategoryUpdatedPayload,
   type ChannelCreatedPayload,
   type ChannelDeletedPayload,
   type ChannelType,
   type ChannelUpdatedPayload,
   type MessageNewPayload,
 } from "../lib/socket";
+import type { CategoryDto, ChannelDto } from "../types/api";
+
+export type CategoryRow = CategoryDto;
 
 export type ChannelRow = {
   id: string;
@@ -16,56 +22,76 @@ export type ChannelRow = {
   slug: string;
   type: ChannelType;
   position: number;
-  /** Description канала (до 1024 символов). Null = нет описания. */
+  categoryId: string | null;
   description: string | null;
-  /** Кастомный emoji prefix вместо # / 🔊. Null = default. */
   emoji: string | null;
-  /** v0.47 Client Mode v2: internal-канал виден только OWNER/ADMIN/MOD
-   *  когда server.mode=CLIENT. В ENGINEERING serverе flag ignored. */
   internal?: boolean;
-  /** v0.74 #29 phase 1: temporary room. ISO timestamp авто-удаления через
-   *  cron. NULL = постоянный канал. UI показывает countdown badge. */
   expiresAt: string | null;
   createdAt: string;
   _count: { messages: number };
 };
 
-type ChannelDto = {
-  id: string;
-  name: string;
-  slug: string;
-  type?: ChannelType; // legacy server без type — fallback TEXT
-  position: number;
-  description?: string | null;
-  emoji?: string | null;
-  internal?: boolean;
-  expiresAt?: string | null;
-  createdAt: string;
-  _count?: { messages: number };
-};
+function byPositionName<T extends { position: number; name: string }>(a: T, b: T) {
+  return a.position - b.position || a.name.localeCompare(b.name, "ru");
+}
 
 function normalizeChannel(dto: ChannelDto): ChannelRow {
   return {
-    ...dto,
+    id: dto.id,
+    name: dto.name,
+    slug: dto.slug,
     type: dto.type ?? "TEXT",
+    position: dto.position,
+    categoryId: dto.categoryId ?? null,
     description: dto.description ?? null,
     emoji: dto.emoji ?? null,
     internal: dto.internal ?? false,
     expiresAt: dto.expiresAt ?? null,
+    createdAt: dto.createdAt,
     _count: dto._count ?? { messages: 0 },
   };
 }
 
-/**
- * Каналы активного сервера. Загружаются при смене serverId, обновляются
- * через `channel:created` / `channel:deleted` socket events.
- */
+function normalizeCreatedChannel(p: ChannelCreatedPayload): ChannelRow {
+  return {
+    id: p.channelId,
+    name: p.name,
+    slug: p.slug,
+    type: p.type ?? "TEXT",
+    position: p.position,
+    categoryId: p.categoryId ?? null,
+    description: null,
+    emoji: null,
+    expiresAt: p.expiresAt ?? null,
+    createdAt: p.createdAt,
+    _count: { messages: 0 },
+  };
+}
+
+function updateChannelFromPayload(channel: ChannelRow, p: ChannelUpdatedPayload): ChannelRow {
+  return {
+    ...channel,
+    name: p.name,
+    slug: p.slug,
+    type: p.type,
+    position: p.position,
+    categoryId: p.categoryId ?? null,
+    description: p.description,
+    emoji: p.emoji,
+    expiresAt: p.expiresAt ?? channel.expiresAt ?? null,
+  };
+}
+
+function readError(e: unknown, fallback: string): string {
+  return e instanceof ApiError ? e.message : fallback;
+}
+
 export function useChannels(serverId: string | null, socket: Socket | null) {
   const [channels, setChannels] = useState<ChannelRow[]>([]);
+  const [categories, setCategories] = useState<CategoryRow[]>([]);
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  /** Map<channelId, unreadCount> для текущего сервера. */
   const [unread, setUnread] = useState<Record<string, number>>({});
   const selectedChannelIdRef = useRef<string | null>(null);
   selectedChannelIdRef.current = selectedChannelId;
@@ -73,24 +99,26 @@ export function useChannels(serverId: string | null, socket: Socket | null) {
   const reload = useCallback(async () => {
     if (!serverId) {
       setChannels([]);
+      setCategories([]);
       setSelectedChannelId(null);
       setUnread({});
       return;
     }
     setLoading(true);
     try {
-      const data = await apiJson<{ channels: ChannelDto[] }>(
+      const data = await apiJson<{ channels: ChannelDto[]; categories?: CategoryDto[] }>(
         `/api/servers/${encodeURIComponent(serverId)}/channels`,
       );
-      const list = data.channels.map(normalizeChannel);
+      const list = data.channels.map(normalizeChannel).sort(byPositionName);
       setChannels(list);
+      setCategories([...(data.categories ?? [])].sort(byPositionName));
       setSelectedChannelId((cur) => {
         if (cur && list.some((c) => c.id === cur)) return cur;
         return list.find((c) => c.type === "TEXT")?.id ?? list[0]?.id ?? null;
       });
       setError(null);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Не удалось загрузить каналы");
+      setError(readError(e, "Не удалось загрузить каналы"));
     } finally {
       setLoading(false);
     }
@@ -100,28 +128,13 @@ export function useChannels(serverId: string | null, socket: Socket | null) {
     void reload();
   }, [reload]);
 
-  // Socket: created
   useEffect(() => {
     if (!socket || !serverId) return;
     const handler = (p: ChannelCreatedPayload) => {
       if (p.serverId !== serverId) return;
       setChannels((prev) => {
         if (prev.some((c) => c.id === p.channelId)) return prev;
-        return [
-          ...prev,
-          {
-            id: p.channelId,
-            name: p.name,
-            slug: p.slug,
-            type: p.type ?? "TEXT",
-            position: p.position,
-            description: null,
-            emoji: null,
-            expiresAt: p.expiresAt ?? null,
-            createdAt: p.createdAt,
-            _count: { messages: 0 },
-          },
-        ];
+        return [...prev, normalizeCreatedChannel(p)].sort(byPositionName);
       });
     };
     socket.on(SocketEvents.ChannelCreated, handler);
@@ -130,26 +143,12 @@ export function useChannels(serverId: string | null, socket: Socket | null) {
     };
   }, [socket, serverId]);
 
-  // Socket: updated — rename / description change
   useEffect(() => {
     if (!socket || !serverId) return;
     const handler = (p: ChannelUpdatedPayload) => {
       if (p.serverId !== serverId) return;
       setChannels((prev) =>
-        prev.map((c) =>
-          c.id === p.channelId
-            ? {
-                ...c,
-                name: p.name,
-                slug: p.slug,
-                type: p.type,
-                position: p.position,
-                description: p.description,
-                emoji: p.emoji,
-                expiresAt: p.expiresAt ?? c.expiresAt ?? null,
-              }
-            : c,
-        ),
+        prev.map((c) => (c.id === p.channelId ? updateChannelFromPayload(c, p) : c)).sort(byPositionName),
       );
     };
     socket.on(SocketEvents.ChannelUpdated, handler);
@@ -158,7 +157,6 @@ export function useChannels(serverId: string | null, socket: Socket | null) {
     };
   }, [socket, serverId]);
 
-  // Socket: deleted
   useEffect(() => {
     if (!socket || !serverId) return;
     const handler = (p: ChannelDeletedPayload) => {
@@ -178,7 +176,39 @@ export function useChannels(serverId: string | null, socket: Socket | null) {
     };
   }, [socket, serverId]);
 
-  // Socket: message:new → инкремент unread для каналов кроме активного.
+  useEffect(() => {
+    if (!socket || !serverId) return;
+    const onCreated = (p: CategoryCreatedPayload) => {
+      if (p.serverId !== serverId) return;
+      setCategories((prev) => {
+        if (prev.some((c) => c.id === p.id)) return prev;
+        return [...prev, p].sort(byPositionName);
+      });
+    };
+    const onUpdated = (p: CategoryUpdatedPayload) => {
+      if (p.serverId !== serverId) return;
+      setCategories((prev) => {
+        const exists = prev.some((c) => c.id === p.id);
+        return (exists ? prev.map((c) => (c.id === p.id ? p : c)) : [...prev, p]).sort(byPositionName);
+      });
+    };
+    const onDeleted = (p: CategoryDeletedPayload) => {
+      if (p.serverId !== serverId) return;
+      setCategories((prev) => prev.filter((c) => c.id !== p.categoryId));
+      setChannels((prev) =>
+        prev.map((c) => (c.categoryId === p.categoryId ? { ...c, categoryId: null } : c)).sort(byPositionName),
+      );
+    };
+    socket.on(SocketEvents.CategoryCreated, onCreated);
+    socket.on(SocketEvents.CategoryUpdated, onUpdated);
+    socket.on(SocketEvents.CategoryDeleted, onDeleted);
+    return () => {
+      socket.off(SocketEvents.CategoryCreated, onCreated);
+      socket.off(SocketEvents.CategoryUpdated, onUpdated);
+      socket.off(SocketEvents.CategoryDeleted, onDeleted);
+    };
+  }, [socket, serverId]);
+
   useEffect(() => {
     if (!socket) return;
     const handler = (p: MessageNewPayload) => {
@@ -194,7 +224,6 @@ export function useChannels(serverId: string | null, socket: Socket | null) {
     };
   }, [socket]);
 
-  // Сброс unread на выбранном канале.
   useEffect(() => {
     if (!selectedChannelId) return;
     setUnread((prev) => {
@@ -209,16 +238,17 @@ export function useChannels(serverId: string | null, socket: Socket | null) {
     async (
       name: string,
       type: ChannelType = "TEXT",
-      options: { expiresAt?: string | null } = {},
+      options: { expiresAt?: string | null; categoryId?: string | null } = {},
     ): Promise<ChannelRow | null> => {
       if (!serverId) return null;
       setError(null);
       try {
-        const body: { name: string; type: ChannelType; expiresAt?: string } = {
+        const body: { name: string; type: ChannelType; expiresAt?: string; categoryId?: string | null } = {
           name,
           type,
         };
         if (options.expiresAt) body.expiresAt = options.expiresAt;
+        if (options.categoryId !== undefined) body.categoryId = options.categoryId;
         const data = await apiJson<{ channel: ChannelDto }>(
           `/api/servers/${encodeURIComponent(serverId)}/channels`,
           {
@@ -227,13 +257,11 @@ export function useChannels(serverId: string | null, socket: Socket | null) {
           },
         );
         const created = normalizeChannel({ ...data.channel, _count: { messages: 0 } });
-        // Socket эмит сделает то же, но чтобы UI отреагировал быстро —
-        // добавим оптимистично, дедупликация в socket handler выше.
-        setChannels((prev) => (prev.some((c) => c.id === created.id) ? prev : [...prev, created]));
+        setChannels((prev) => (prev.some((c) => c.id === created.id) ? prev : [...prev, created].sort(byPositionName)));
         setSelectedChannelId(created.id);
         return created;
       } catch (e) {
-        setError(e instanceof ApiError ? e.message : "Не удалось создать канал");
+        setError(readError(e, "Не удалось создать канал"));
         return null;
       }
     },
@@ -247,9 +275,7 @@ export function useChannels(serverId: string | null, socket: Socket | null) {
         name?: string;
         description?: string | null;
         emoji?: string | null;
-        /** v0.47 Client Mode v2: toggle internal flag. */
         internal?: boolean;
-        /** v0.74 #29: установить/снять авто-удаление (NULL = снять). */
         expiresAt?: string | null;
       },
     ): Promise<boolean> => {
@@ -263,106 +289,190 @@ export function useChannels(serverId: string | null, socket: Socket | null) {
           },
         );
         const updated = normalizeChannel(data.channel);
-        // Локально обновим — socket эмит придёт также, дедупликация в handler.
-        setChannels((prev) =>
-          prev.map((c) =>
-            c.id === channelId
-              ? {
-                  ...c,
-                  name: updated.name,
-                  slug: updated.slug,
-                  type: updated.type,
-                  position: updated.position,
-                  description: updated.description,
-                  emoji: updated.emoji,
-                  internal: updated.internal,
-                  expiresAt: updated.expiresAt,
-                }
-              : c,
-          ),
-        );
+        setChannels((prev) => prev.map((c) => (c.id === channelId ? updated : c)).sort(byPositionName));
         return true;
       } catch (e) {
-        setError(e instanceof ApiError ? e.message : "Не удалось обновить канал");
+        setError(readError(e, "Не удалось обновить канал"));
         return false;
       }
     },
     [],
   );
 
-  /**
-   * Batch reorder каналов. Принимает массив { id, position } —
-   * каждый channel получит новую position. Optimistic update + rollback на fail.
-   */
   const reorderChannels = useCallback(
     async (order: { id: string; position: number }[]): Promise<boolean> => {
       if (!serverId) return false;
       setError(null);
-      // Snapshot для rollback
       const snapshot = channels.map((c) => ({ id: c.id, position: c.position }));
-      // Optimistic update
       const orderMap = new Map(order.map((o) => [o.id, o.position]));
       setChannels((prev) =>
-        prev
-          .map((c) => ({ ...c, position: orderMap.get(c.id) ?? c.position }))
-          .sort((a, b) => a.position - b.position),
+        prev.map((c) => ({ ...c, position: orderMap.get(c.id) ?? c.position })).sort(byPositionName),
       );
       try {
-        await apiJson(
-          `/api/servers/${encodeURIComponent(serverId)}/channels/reorder`,
-          {
-            method: "PATCH",
-            body: JSON.stringify({ order }),
-          },
-        );
+        await apiJson(`/api/servers/${encodeURIComponent(serverId)}/channels/reorder`, {
+          method: "PATCH",
+          body: JSON.stringify({ order }),
+        });
         return true;
       } catch (e) {
-        // Rollback
         const snapMap = new Map(snapshot.map((s) => [s.id, s.position]));
         setChannels((prev) =>
-          prev
-            .map((c) => ({ ...c, position: snapMap.get(c.id) ?? c.position }))
-            .sort((a, b) => a.position - b.position),
+          prev.map((c) => ({ ...c, position: snapMap.get(c.id) ?? c.position })).sort(byPositionName),
         );
-        setError(e instanceof ApiError ? e.message : "Не удалось изменить порядок");
+        setError(readError(e, "Не удалось изменить порядок"));
         return false;
       }
     },
     [serverId, channels],
   );
 
-  const deleteChannel = useCallback(
-    async (channelId: string): Promise<boolean> => {
+  const moveChannelToCategory = useCallback(
+    async (channelId: string, categoryId: string | null, position?: number): Promise<boolean> => {
       setError(null);
+      const snapshot = channels;
+      setChannels((prev) =>
+        prev
+          .map((c) => (c.id === channelId ? { ...c, categoryId, position: position ?? c.position } : c))
+          .sort(byPositionName),
+      );
       try {
-        const res = await api(`/api/channels/${encodeURIComponent(channelId)}`, {
-          method: "DELETE",
-        });
-        if (!res.ok) {
-          let msg = `HTTP ${res.status}`;
-          try {
-            const body = (await res.json()) as { error?: string };
-            if (body?.error) msg = body.error;
-          } catch {
-            /* non-json */
-          }
-          setError(msg);
-          return false;
-        }
-        // Локально удалим — socket эмит также придёт, дедуплицируем через filter.
-        setChannels((prev) => prev.filter((c) => c.id !== channelId));
-        setSelectedChannelId((cur) => (cur === channelId ? null : cur));
+        const data = await apiJson<{ channel: ChannelDto }>(
+          `/api/channels/${encodeURIComponent(channelId)}/category`,
+          {
+            method: "PUT",
+            body: JSON.stringify({ categoryId, ...(position !== undefined ? { position } : {}) }),
+          },
+        );
+        const updated = normalizeChannel(data.channel);
+        setChannels((prev) => prev.map((c) => (c.id === channelId ? updated : c)).sort(byPositionName));
         return true;
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Не удалось удалить канал");
+        setChannels(snapshot);
+        setError(readError(e, "Не удалось переместить канал"));
         return false;
       }
     },
-    [],
+    [channels],
   );
+
+  const createCategory = useCallback(
+    async (name: string): Promise<CategoryRow | null> => {
+      if (!serverId) return null;
+      setError(null);
+      try {
+        const data = await apiJson<{ category: CategoryDto }>(
+          `/api/servers/${encodeURIComponent(serverId)}/categories`,
+          {
+            method: "POST",
+            body: JSON.stringify({ name }),
+          },
+        );
+        setCategories((prev) =>
+          prev.some((c) => c.id === data.category.id) ? prev : [...prev, data.category].sort(byPositionName),
+        );
+        return data.category;
+      } catch (e) {
+        setError(readError(e, "Не удалось создать категорию"));
+        return null;
+      }
+    },
+    [serverId],
+  );
+
+  const renameCategory = useCallback(async (categoryId: string, name: string): Promise<boolean> => {
+    setError(null);
+    try {
+      const data = await apiJson<{ category: CategoryDto }>(
+        `/api/categories/${encodeURIComponent(categoryId)}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({ name }),
+        },
+      );
+      setCategories((prev) => prev.map((c) => (c.id === categoryId ? data.category : c)).sort(byPositionName));
+      return true;
+    } catch (e) {
+      setError(readError(e, "Не удалось переименовать категорию"));
+      return false;
+    }
+  }, []);
+
+  const deleteCategory = useCallback(async (categoryId: string): Promise<boolean> => {
+    setError(null);
+    try {
+      const res = await api(`/api/categories/${encodeURIComponent(categoryId)}`, { method: "DELETE" });
+      if (!res.ok) {
+        setError(`HTTP ${res.status}`);
+        return false;
+      }
+      setCategories((prev) => prev.filter((c) => c.id !== categoryId));
+      setChannels((prev) =>
+        prev.map((c) => (c.categoryId === categoryId ? { ...c, categoryId: null } : c)).sort(byPositionName),
+      );
+      return true;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Не удалось удалить категорию");
+      return false;
+    }
+  }, []);
+
+  const reorderCategories = useCallback(
+    async (orders: { id: string; position: number }[]): Promise<boolean> => {
+      if (!serverId) return false;
+      setError(null);
+      const snapshot = categories;
+      const orderMap = new Map(orders.map((o) => [o.id, o.position]));
+      setCategories((prev) =>
+        prev.map((c) => ({ ...c, position: orderMap.get(c.id) ?? c.position })).sort(byPositionName),
+      );
+      try {
+        const data = await apiJson<{ categories: CategoryDto[] }>(
+          `/api/servers/${encodeURIComponent(serverId)}/categories/reorder`,
+          {
+            method: "POST",
+            body: JSON.stringify({ orders }),
+          },
+        );
+        setCategories([...data.categories].sort(byPositionName));
+        return true;
+      } catch (e) {
+        setCategories(snapshot);
+        setError(readError(e, "Не удалось изменить порядок категорий"));
+        return false;
+      }
+    },
+    [serverId, categories],
+  );
+
+  const deleteChannel = useCallback(async (channelId: string): Promise<boolean> => {
+    setError(null);
+    try {
+      const res = await api(`/api/channels/${encodeURIComponent(channelId)}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        let msg = `HTTP ${res.status}`;
+        try {
+          const body = (await res.json()) as { error?: string };
+          if (body?.error) msg = body.error;
+        } catch {
+          /* non-json */
+        }
+        setError(msg);
+        return false;
+      }
+      setChannels((prev) => prev.filter((c) => c.id !== channelId));
+      setSelectedChannelId((cur) => (cur === channelId ? null : cur));
+      return true;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Не удалось удалить канал");
+      return false;
+    }
+  }, []);
 
   return {
     channels,
+    categories,
     selectedChannelId,
     setSelectedChannelId,
     error,
@@ -371,6 +481,11 @@ export function useChannels(serverId: string | null, socket: Socket | null) {
     createChannel,
     updateChannel,
     reorderChannels,
+    moveChannelToCategory,
+    createCategory,
+    renameCategory,
+    deleteCategory,
+    reorderCategories,
     deleteChannel,
     unread,
   };

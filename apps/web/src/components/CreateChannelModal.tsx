@@ -20,6 +20,7 @@ import type { ChannelType } from "../lib/socket";
 type Props = {
   open: boolean;
   initialType?: ChannelType;
+  categoryName?: string | null;
   onClose: () => void;
   onCreate: (name: string, type: ChannelType) => Promise<void>;
 };
@@ -177,6 +178,7 @@ const TYPE_OPTIONS: Array<{
 export function CreateChannelModal({
   open,
   initialType = "TEXT",
+  categoryName = null,
   onClose,
   onCreate,
 }: Props) {
@@ -297,6 +299,12 @@ export function CreateChannelModal({
             })}
           </div>
         </div>
+
+        {categoryName && (
+          <p className="ec-channel-modal-context">
+            Категория: <strong>{categoryName}</strong>
+          </p>
+        )}
 
         <div style={{ marginBottom: "var(--ec-space-3)" }}>
           <label htmlFor="ec-create-channel-name" style={fieldLabel}>

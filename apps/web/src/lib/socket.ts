@@ -91,6 +91,7 @@ export type ChannelCreatedPayload = {
   slug: string;
   type: ChannelType;
   position: number;
+  categoryId?: string | null;
   createdAt: string;
   expiresAt?: string | null;
 };
@@ -107,9 +108,26 @@ export type ChannelUpdatedPayload = {
   slug: string;
   type: ChannelType;
   position: number;
+  categoryId?: string | null;
   description: string | null;
   emoji: string | null;
   expiresAt?: string | null;
+};
+
+export type CategoryDto = {
+  id: string;
+  serverId: string;
+  name: string;
+  position: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CategoryCreatedPayload = CategoryDto;
+export type CategoryUpdatedPayload = CategoryDto;
+export type CategoryDeletedPayload = {
+  categoryId: string;
+  serverId: string;
 };
 
 export type MemberJoinedPayload = {
@@ -496,6 +514,9 @@ export const SocketEvents = {
   TableRowDeleted: "table:row:deleted",
   ChannelCreated: "channel:created",
   ChannelDeleted: "channel:deleted",
+  CategoryCreated: "category:created",
+  CategoryUpdated: "category:updated",
+  CategoryDeleted: "category:deleted",
   /** v1.2.25 — Custom emoji создан / удалён в server-room. */
   EmojiCreated: "emoji:created",
   EmojiDeleted: "emoji:deleted",

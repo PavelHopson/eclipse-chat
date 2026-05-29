@@ -1,9 +1,10 @@
 import type { CSSProperties } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Avatar } from "./Avatar";
+import { CategoryCreateModal } from "./CategoryCreateModal";
 import { CreateChannelModal } from "./CreateChannelModal";
 import { ChannelGlyph } from "./icons/ChannelCustomIcons";
-import type { ChannelRow } from "../hooks/useChannels";
+import type { CategoryRow, ChannelRow } from "../hooks/useChannels";
 import type { MemberRow } from "../hooks/useMembers";
 import type { ChannelType, VoiceMeta } from "../lib/socket";
 import { resolveAssetUrl } from "../lib/assets";
@@ -26,17 +27,23 @@ type Props = {
    */
   serverBanner?: string | null;
   channels: ChannelRow[];
+  categories: CategoryRow[];
   /** Channels async loading state (после server-switch до GET ответа). */
   channelsLoading?: boolean;
   unread: Record<string, number>;
   selectedChannelId: string | null;
   onSelect: (id: string) => void;
-  onCreate: (name: string, type: ChannelType) => Promise<void>;
+  onCreate: (name: string, type: ChannelType, categoryId?: string | null) => Promise<void>;
   onDelete: (id: string) => Promise<boolean>;
   /** Открыть ChannelSettingsModal. Скрывает кнопку если не передано. */
   onOpenSettings?: (channelId: string) => void;
   /** Batch reorder каналов через drag-drop. Скрывает DnD если не передано. */
   onReorder?: (order: { id: string; position: number }[]) => Promise<boolean>;
+  onCreateCategory?: (name: string) => Promise<CategoryRow | null>;
+  onRenameCategory?: (categoryId: string, name: string) => Promise<boolean>;
+  onDeleteCategory?: (categoryId: string) => Promise<boolean>;
+  onReorderCategories?: (orders: { id: string; position: number }[]) => Promise<boolean>;
+  onMoveChannel?: (channelId: string, categoryId: string | null, position?: number) => Promise<boolean>;
   onShowServerInfo: () => void;
   /** Открыть Execution Status Board (доска задач сервера). */
   onOpenStatusBoard?: () => void;
@@ -129,6 +136,7 @@ export function ChannelList({
   serverRole,
   inviteCode: _inviteCode,
   channels,
+  categories,
   channelsLoading,
   unread,
   selectedChannelId,
@@ -136,7 +144,11 @@ export function ChannelList({
   onCreate,
   onDelete,
   onOpenSettings,
-  onReorder,
+  onCreateCategory,
+  onRenameCategory,
+  onDeleteCategory,
+  onReorderCategories,
+  onMoveChannel,
   onShowServerInfo,
   onOpenStatusBoard,
   statusBoardActive,
@@ -156,16 +168,30 @@ export function ChannelList({
   speakingUserIds,
 }: Props) {
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
-  // DnD reorder state
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
+  const [draggedCategoryId, setDraggedCategoryId] = useState<string | null>(null);
+  const [dropTargetCategoryId, setDropTargetCategoryId] = useState<string | null>(null);
+  const [dropGroupId, setDropGroupId] = useState<string | null>(null);
+  const [categoryModal, setCategoryModal] = useState<
+    | { mode: "create" }
+    | { mode: "rename"; category: CategoryRow }
+    | null
+  >(null);
+  const [categoryMenu, setCategoryMenu] = useState<{
+    category: CategoryRow;
+    x: number;
+    y: number;
+  } | null>(null);
   // v0.97: CreateChannelModal state. Открывается через primary button
   // сверху Channels tab + через «+» icon в каждом section-header'е
   // (pre-selected тип через initialType).
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [createModalType, setCreateModalType] = useState<ChannelType>("TEXT");
-  const openCreateModal = (type: ChannelType) => {
+  const [createModalCategoryId, setCreateModalCategoryId] = useState<string | null>(null);
+  const openCreateModal = (type: ChannelType, categoryId: string | null = null) => {
     setCreateModalType(type);
+    setCreateModalCategoryId(categoryId);
     setCreateModalOpen(true);
   };
   // v0.96: sidebar tab state — Каналы / Работа / Таблицы. Per-server
@@ -198,34 +224,8 @@ export function ChannelList({
 
   const manageable = canManage(serverRole);
   const editable = canEditChannel(serverRole);
-  const canDrag = editable && Boolean(onReorder);
-
-  // Apply reorder: используем splice (target-position insertion)
-  const applyReorder = async (sourceId: string, targetId: string) => {
-    if (!onReorder) return;
-    if (sourceId === targetId) return;
-    // Reorder только внутри типа (TEXT нельзя смешивать с VOICE)
-    const source = channels.find((c) => c.id === sourceId);
-    const target = channels.find((c) => c.id === targetId);
-    if (!source || !target || source.type !== target.type) return;
-    // Реально работаем только над одним type'ом
-    const sameType = channels.filter((c) => c.type === source.type);
-    const otherType = channels.filter((c) => c.type !== source.type);
-    const fromIdx = sameType.findIndex((c) => c.id === sourceId);
-    const toIdx = sameType.findIndex((c) => c.id === targetId);
-    if (fromIdx === -1 || toIdx === -1) return;
-    const moved = sameType.slice();
-    const [removed] = moved.splice(fromIdx, 1);
-    moved.splice(toIdx, 0, removed);
-    // Назначаем positions с шагом 10 (резерв под manual insertions)
-    const order = moved.map((c, i) => ({ id: c.id, position: i * 10 }));
-    // Опционально включить otherType, но их позиции не меняем
-    const fullOrder = [
-      ...order,
-      ...otherType.map((c, i) => ({ id: c.id, position: 1000 + i * 10 })),
-    ];
-    await onReorder(fullOrder);
-  };
+  const canDragChannels = editable && Boolean(onMoveChannel);
+  const canDragCategories = manageable && Boolean(onReorderCategories);
 
   // v0.74 #16: EXECUTION channels группируются с TEXT (это "operational
   // rooms"), отличаются только icon + рендер mode'ом в AppShell.
@@ -234,6 +234,113 @@ export function ChannelList({
   );
   const broadcastChannels = channels.filter((c) => c.type === "BROADCAST");
   const voiceChannels = channels.filter((c) => c.type === "VOICE");
+  const collapsedStorageKey = serverId ? `ec.channelList.collapsed.${serverId}` : null;
+  const [collapsedCategoryIds, setCollapsedCategoryIds] = useState<Set<string>>(new Set());
+  const collapsePersistTimer = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !collapsedStorageKey) {
+      setCollapsedCategoryIds(new Set());
+      return;
+    }
+    try {
+      const raw = window.localStorage.getItem(collapsedStorageKey);
+      const parsed = raw ? (JSON.parse(raw) as unknown) : [];
+      setCollapsedCategoryIds(new Set(Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : []));
+    } catch {
+      setCollapsedCategoryIds(new Set());
+    }
+  }, [collapsedStorageKey]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !collapsedStorageKey) return;
+    if (collapsePersistTimer.current) window.clearTimeout(collapsePersistTimer.current);
+    collapsePersistTimer.current = window.setTimeout(() => {
+      window.localStorage.setItem(collapsedStorageKey, JSON.stringify([...collapsedCategoryIds]));
+    }, 200);
+    return () => {
+      if (collapsePersistTimer.current) window.clearTimeout(collapsePersistTimer.current);
+    };
+  }, [collapsedCategoryIds, collapsedStorageKey]);
+
+  useEffect(() => {
+    if (!categoryMenu) return;
+    const close = () => setCategoryMenu(null);
+    window.addEventListener("click", close);
+    window.addEventListener("keydown", close);
+    return () => {
+      window.removeEventListener("click", close);
+      window.removeEventListener("keydown", close);
+    };
+  }, [categoryMenu]);
+
+  const sortedCategories = useMemo(
+    () => [...categories].sort((a, b) => a.position - b.position || a.name.localeCompare(b.name, "ru")),
+    [categories],
+  );
+  const sortedChannels = useMemo(
+    () => [...channels].sort((a, b) => a.position - b.position || a.name.localeCompare(b.name, "ru")),
+    [channels],
+  );
+  const uncategorizedChannels = useMemo(
+    () => sortedChannels.filter((c) => !c.categoryId),
+    [sortedChannels],
+  );
+  const channelsByCategory = useMemo(() => {
+    const map = new Map<string, ChannelRow[]>();
+    for (const category of sortedCategories) map.set(category.id, []);
+    for (const channel of sortedChannels) {
+      if (!channel.categoryId) continue;
+      map.set(channel.categoryId, [...(map.get(channel.categoryId) ?? []), channel]);
+    }
+    return map;
+  }, [sortedCategories, sortedChannels]);
+  const createModalCategoryName =
+    createModalCategoryId === null
+      ? null
+      : sortedCategories.find((category) => category.id === createModalCategoryId)?.name ?? null;
+
+  const toggleCategory = (categoryId: string) => {
+    setCollapsedCategoryIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(categoryId)) next.delete(categoryId);
+      else next.add(categoryId);
+      return next;
+    });
+  };
+
+  const applyCategoryReorder = async (sourceId: string, targetId: string) => {
+    if (!onReorderCategories || sourceId === targetId) return;
+    const fromIdx = sortedCategories.findIndex((category) => category.id === sourceId);
+    const toIdx = sortedCategories.findIndex((category) => category.id === targetId);
+    if (fromIdx === -1 || toIdx === -1) return;
+    const moved = sortedCategories.slice();
+    const [removed] = moved.splice(fromIdx, 1);
+    moved.splice(toIdx, 0, removed);
+    await onReorderCategories(moved.map((category, index) => ({ id: category.id, position: index * 10 })));
+  };
+
+  const applyChannelMove = async (
+    sourceId: string,
+    targetCategoryId: string | null,
+    targetId: string | null,
+  ) => {
+    if (!onMoveChannel) return;
+    const source = channels.find((channel) => channel.id === sourceId);
+    if (!source) return;
+    const group = sortedChannels.filter((channel) => (channel.categoryId ?? null) === targetCategoryId && channel.id !== sourceId);
+    const toIdx = targetId ? group.findIndex((channel) => channel.id === targetId) : group.length;
+    const moved = group.slice();
+    moved.splice(toIdx < 0 ? group.length : toIdx, 0, { ...source, categoryId: targetCategoryId });
+    for (let index = 0; index < moved.length; index += 1) {
+      const channel = moved[index];
+      const nextPosition = index * 10;
+      if (channel.id === sourceId || channel.position !== nextPosition) {
+        const ok = await onMoveChannel(channel.id, targetCategoryId, nextPosition);
+        if (!ok) break;
+      }
+    }
+  };
 
   const handleDelete = async (channelId: string, channelName: string) => {
     if (!window.confirm(`Удалить комнату «${channelName}»? Все сообщения внутри будут потеряны.`)) {
@@ -310,9 +417,9 @@ export function ChannelList({
       <button
         key={c.id}
         type="button"
-        draggable={canDrag && !isDeleting}
+        draggable={canDragChannels && !isDeleting}
         onDragStart={(e) => {
-          if (!canDrag) return;
+          if (!canDragChannels) return;
           setDraggedId(c.id);
           e.dataTransfer.effectAllowed = "move";
           // Some browsers required для actual drag start
@@ -321,8 +428,6 @@ export function ChannelList({
         onDragOver={(e) => {
           if (!draggedId || draggedId === c.id) return;
           // Reorder только внутри своего type'а
-          const src = channels.find((ch) => ch.id === draggedId);
-          if (!src || src.type !== c.type) return;
           e.preventDefault();
           e.dataTransfer.dropEffect = "move";
           if (dropTargetId !== c.id) setDropTargetId(c.id);
@@ -338,7 +443,7 @@ export function ChannelList({
           setDraggedId(null);
           setDropTargetId(null);
           if (src && src !== c.id) {
-            void applyReorder(src, c.id);
+            void applyChannelMove(src, c.categoryId ?? null, c.id);
           }
         }}
         onDragEnd={() => {
@@ -357,7 +462,7 @@ export function ChannelList({
           ...(isDropTarget
             ? { boxShadow: "inset 0 2px 0 0 var(--ec-accent), inset 0 -2px 0 0 var(--ec-accent)" }
             : undefined),
-          cursor: canDrag ? "grab" : "pointer",
+          cursor: canDragChannels ? "grab" : "pointer",
         }}
       >
         <ChannelGlyph type={c.type} icon={c.emoji} />
@@ -484,7 +589,151 @@ export function ChannelList({
             </svg>
           </span>
         )}
+        {editable && onMoveChannel && (
+          <select
+            className="ec-channel-move-select"
+            value={c.categoryId ?? ""}
+            aria-label={`Переместить ${c.name}`}
+            onClick={(e) => e.stopPropagation()}
+            onChange={(e) => {
+              e.stopPropagation();
+              const nextCategoryId = e.target.value || null;
+              void onMoveChannel(c.id, nextCategoryId);
+            }}
+          >
+            <option value="">Без категории</option>
+            {sortedCategories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+              </option>
+            ))}
+          </select>
+        )}
       </button>
+    );
+  };
+
+  const renderChannelDropZone = (categoryId: string | null, empty: boolean) => (
+    <div
+      className={
+        "ec-channel-category__drop" +
+        (dropGroupId === (categoryId ?? "__uncategorized__") ? " ec-channel-category__drop--active" : "") +
+        (empty ? " ec-channel-category__drop--empty" : "")
+      }
+      onDragOver={(e) => {
+        if (!draggedId) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        setDropGroupId(categoryId ?? "__uncategorized__");
+      }}
+      onDragLeave={(e) => {
+        if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+        setDropGroupId(null);
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        const sourceId = draggedId;
+        setDraggedId(null);
+        setDropGroupId(null);
+        if (sourceId) void applyChannelMove(sourceId, categoryId, null);
+      }}
+    >
+      {empty ? "Перетащите комнату сюда" : ""}
+    </div>
+  );
+
+  const renderCategory = (category: CategoryRow) => {
+    const group = channelsByCategory.get(category.id) ?? [];
+    const collapsed = collapsedCategoryIds.has(category.id);
+    const isDropTarget = dropTargetCategoryId === category.id && draggedCategoryId !== category.id;
+    return (
+      <section
+        key={category.id}
+        className={
+          "ec-channel-category" +
+          (collapsed ? " ec-channel-category--collapsed" : "") +
+          (isDropTarget ? " ec-channel-category--drop-target" : "")
+        }
+      >
+        <button
+          type="button"
+          className="ec-channel-category__header"
+          aria-expanded={!collapsed}
+          draggable={canDragCategories}
+          onClick={() => toggleCategory(category.id)}
+          onContextMenu={(e) => {
+            if (!manageable) return;
+            e.preventDefault();
+            setCategoryMenu({ category, x: e.clientX, y: e.clientY });
+          }}
+          onDragStart={(e) => {
+            if (!canDragCategories) return;
+            setDraggedCategoryId(category.id);
+            e.dataTransfer.effectAllowed = "move";
+            e.dataTransfer.setData("text/plain", category.id);
+          }}
+          onDragOver={(e) => {
+            if (!draggedCategoryId || draggedCategoryId === category.id) return;
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+            setDropTargetCategoryId(category.id);
+          }}
+          onDragLeave={(e) => {
+            if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+            setDropTargetCategoryId(null);
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            const sourceId = draggedCategoryId;
+            setDraggedCategoryId(null);
+            setDropTargetCategoryId(null);
+            if (sourceId) void applyCategoryReorder(sourceId, category.id);
+          }}
+          onDragEnd={() => {
+            setDraggedCategoryId(null);
+            setDropTargetCategoryId(null);
+          }}
+        >
+          <span className="ec-channel-category__chevron" aria-hidden>
+            ▶
+          </span>
+          <span className="ec-channel-category__name">{category.name}</span>
+          <span className="ec-channel-category__count">{group.length}</span>
+          {editable && (
+            <span
+              role="button"
+              tabIndex={0}
+              className="ec-channel-category__add"
+              title="Создать комнату в категории"
+              aria-label={`Создать комнату в категории ${category.name}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                openCreateModal("TEXT", category.id);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  openCreateModal("TEXT", category.id);
+                }
+              }}
+            >
+              +
+            </span>
+          )}
+        </button>
+        {!collapsed && (
+          <div className="ec-channel-category__body">
+            {group.map((channel) => (
+              <div key={channel.id}>
+                {renderChannel(channel)}
+                {channel.type === "VOICE" && renderVoiceOccupants(channel.id)}
+              </div>
+            ))}
+            {renderChannelDropZone(category.id, group.length === 0)}
+          </div>
+        )}
+      </section>
     );
   };
 
@@ -719,7 +968,50 @@ export function ChannelList({
 
         {sidebarTab === "channels" && (
           <>
-            {textChannels.length > 0 && (
+            {!channelsLoading && channels.length > 0 && (
+              <div className="ec-channel-category-stack">
+                <section className="ec-channel-category ec-channel-category--uncategorized">
+                  <div className="ec-section-label ec-channel-category__uncategorized-label">
+                    <span className="ec-section-label--diamond">
+                      <span>БЕЗ КАТЕГОРИИ</span>
+                      <span className="ec-channel-section__count">{uncategorizedChannels.length}</span>
+                    </span>
+                    {editable && (
+                      <button
+                        type="button"
+                        onClick={() => openCreateModal("TEXT", null)}
+                        title="Создать комнату без категории"
+                        aria-label="Создать комнату без категории"
+                        className="ec-section-add"
+                      >
+                        +
+                      </button>
+                    )}
+                  </div>
+                  <div className="ec-channel-category__body">
+                    {uncategorizedChannels.map((channel) => (
+                      <div key={channel.id}>
+                        {renderChannel(channel)}
+                        {channel.type === "VOICE" && renderVoiceOccupants(channel.id)}
+                      </div>
+                    ))}
+                    {renderChannelDropZone(null, uncategorizedChannels.length === 0)}
+                  </div>
+                </section>
+                {sortedCategories.map(renderCategory)}
+                {manageable && onCreateCategory && (
+                  <button
+                    type="button"
+                    className="ec-channel-category-create"
+                    onClick={() => setCategoryModal({ mode: "create" })}
+                  >
+                    + Создать категорию
+                  </button>
+                )}
+              </div>
+            )}
+
+            {false && textChannels.length > 0 && (
               <>
                 <div className="ec-section-label">
                   <span className="ec-section-label--diamond">
@@ -742,7 +1034,7 @@ export function ChannelList({
               </>
             )}
 
-            {broadcastChannels.length > 0 && (
+            {false && broadcastChannels.length > 0 && (
               <>
                 <div
                   className="ec-section-label"
@@ -770,7 +1062,7 @@ export function ChannelList({
               </>
             )}
 
-            {voiceChannels.length > 0 && (
+            {false && voiceChannels.length > 0 && (
               <>
                 <div
                   className="ec-section-label"
@@ -877,9 +1169,54 @@ export function ChannelList({
       <CreateChannelModal
         open={createModalOpen}
         initialType={createModalType}
+        categoryName={createModalCategoryName}
         onClose={() => setCreateModalOpen(false)}
-        onCreate={onCreate}
+        onCreate={(name, type) => onCreate(name, type, createModalCategoryId)}
       />
+      <CategoryCreateModal
+        open={categoryModal !== null}
+        title={categoryModal?.mode === "rename" ? "Переименовать категорию" : "Создать категорию"}
+        submitLabel={categoryModal?.mode === "rename" ? "Сохранить" : "Создать"}
+        initialName={categoryModal?.mode === "rename" ? categoryModal.category.name : ""}
+        onClose={() => setCategoryModal(null)}
+        onSubmit={(name) => {
+          if (categoryModal?.mode === "rename") {
+            return onRenameCategory?.(categoryModal.category.id, name) ?? Promise.resolve(false);
+          }
+          return onCreateCategory?.(name) ?? Promise.resolve(null);
+        }}
+      />
+      {categoryMenu && (
+        <div
+          className="ec-popover-surface ec-channel-category-menu"
+          style={{ left: categoryMenu.x, top: categoryMenu.y }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            type="button"
+            className="ec-popover-item"
+            onClick={() => {
+              setCategoryModal({ mode: "rename", category: categoryMenu.category });
+              setCategoryMenu(null);
+            }}
+          >
+            Переименовать
+          </button>
+          <button
+            type="button"
+            className="ec-popover-item ec-popover-item--danger"
+            onClick={() => {
+              const category = categoryMenu.category;
+              setCategoryMenu(null);
+              if (window.confirm(`Удалить «${category.name.toUpperCase()}»? Каналы внутри станут несгруппированными`)) {
+                void onDeleteCategory?.(category.id);
+              }
+            }}
+          >
+            Удалить
+          </button>
+        </div>
+      )}
     </aside>
   );
 }

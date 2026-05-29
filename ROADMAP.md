@@ -5,7 +5,14 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.45** (Discord-parity A3 — Custom user status
+**Текущая версия:** **v1.5.46** (Discord-parity C1 — Channel categories.
+Backend `ChannelCategory` + `Channel.categoryId` взят из C1 commit `a20caf9`;
+frontend: ChannelList grouping, uncategorized сверху, collapsible categories с
+localStorage `ec.channelList.collapsed.<serverId>`, create/rename/delete category,
+create-channel-in-category hover `+`, desktop DnD reorder/move, socket `category:*`
+live update, mobile move-to select вместо touch drag. Version label synced в 4 местах).
+
+**Предыдущая:** v1.5.45 (Discord-parity A3 — Custom user status
 frontend wire. Backend `User.activityText` / `User.activityEmoji` латентно
 попал в v1.5.44 master HEAD; этот slice включает UI: ProfileModal получил
 секцию «Кастомный статус» с text ≤128 и emoji preset picker (≤64 unicode),

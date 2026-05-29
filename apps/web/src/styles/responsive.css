@@ -1302,13 +1302,36 @@
   }
 }
 
+@media (max-width: 640px), (pointer: coarse) {
+  .ec-channel-category__header {
+    min-height: 38px;
+  }
+
+  .ec-channel-category__header,
+  .ec-channel-item {
+    -webkit-user-drag: none;
+  }
+
+  .ec-channel-move-select {
+    display: inline-flex;
+  }
+
+  .ec-channel-category__add {
+    opacity: 1;
+  }
+}
+
 /* Global prefers-reduced-motion guard для новых v0.96-v0.98 elements.
  * Tokens.css уже override'ит --ec-dur-fast/base/slow → 1ms, но defensive
  * фикс для animations не использующих var(). */
 @media (prefers-reduced-motion: reduce) {
   .ec-channel-info-panel,
-  .ec-channel-info-panel * {
+  .ec-channel-info-panel *,
+  .ec-channel-category,
+  .ec-channel-category *,
+  .ec-channel-category-create {
     animation: none !important;
     transition: none !important;
+    transform: none !important;
   }
 }
