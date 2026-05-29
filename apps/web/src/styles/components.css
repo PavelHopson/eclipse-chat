@@ -491,6 +491,103 @@ input[type="radio"]:focus-visible {
   font-size: var(--ec-text-sm);
 }
 
+.ec-server-header-trigger {
+  position: relative;
+  gap: var(--ec-space-2);
+}
+
+.ec-server-header-trigger:hover {
+  background: color-mix(in srgb, var(--ec-accent) 8%, transparent);
+}
+
+.ec-server-header-chevron {
+  color: var(--ec-text-dim);
+  flex-shrink: 0;
+  opacity: 0.55;
+  transform: rotate(0deg);
+  transition:
+    transform 180ms var(--ec-ease),
+    opacity 180ms var(--ec-ease),
+    color 180ms var(--ec-ease);
+}
+
+.ec-server-header-trigger:hover .ec-server-header-chevron,
+.ec-server-header-trigger[aria-expanded="true"] .ec-server-header-chevron {
+  color: var(--ec-accent);
+  opacity: 0.9;
+}
+
+.ec-server-header-trigger[aria-expanded="true"] .ec-server-header-chevron {
+  transform: rotate(180deg);
+}
+
+.ec-server-actions-menu {
+  position: fixed;
+  z-index: 1300;
+  max-height: min(78vh, 520px);
+  padding: 7px;
+  overflow-y: auto;
+}
+
+.ec-server-actions-menu__item {
+  min-height: 38px;
+  justify-content: space-between;
+  font-weight: 600;
+}
+
+.ec-server-actions-menu__item--danger {
+  color: var(--ec-danger);
+}
+
+.ec-server-actions-menu__item--danger:hover {
+  background: var(--ec-danger-soft);
+  color: var(--ec-danger);
+}
+
+.ec-server-actions-menu__item--disabled,
+.ec-server-actions-menu__item--disabled:hover {
+  filter: grayscale(1);
+  opacity: 0.48;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.ec-server-actions-menu__item--disabled::before {
+  display: none;
+}
+
+.ec-server-actions-menu__helper {
+  font-size: var(--ec-text-2xs);
+  font-weight: 700;
+  letter-spacing: var(--ec-tracking-caps);
+  text-transform: uppercase;
+  color: var(--ec-text-dim);
+}
+
+.ec-server-actions-menu__divider {
+  height: 1px;
+  margin: 6px 4px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--ec-accent) 22%, var(--ec-border-default)),
+    transparent
+  );
+}
+
+.ec-server-actions-menu__toast {
+  margin: 7px 3px 2px;
+  padding: 7px 9px;
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 24%, var(--ec-border-default));
+  border-radius: var(--ec-radius-sm);
+  background: color-mix(in srgb, var(--ec-accent) 10%, var(--ec-overlay-bg));
+  color: var(--ec-text);
+  font-size: var(--ec-text-xs);
+  font-weight: 700;
+  text-align: center;
+  box-shadow: 0 8px 22px -14px hsl(258 86% 44% / 0.65);
+}
+
 .ec-badge {
   display: inline-flex;
   align-items: center;

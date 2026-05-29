@@ -4,6 +4,7 @@ import { Avatar } from "./Avatar";
 import { CategoryCreateModal } from "./CategoryCreateModal";
 import { CreateChannelModal } from "./CreateChannelModal";
 import { ChannelGlyph } from "./icons/ChannelCustomIcons";
+import { ServerActionsMenu } from "./server/ServerActionsMenu";
 import type { CategoryRow, ChannelRow } from "../hooks/useChannels";
 import type { MemberRow } from "../hooks/useMembers";
 import type { ChannelType, VoiceMeta } from "../lib/socket";
@@ -45,6 +46,11 @@ type Props = {
   onReorderCategories?: (orders: { id: string; position: number }[]) => Promise<boolean>;
   onMoveChannel?: (channelId: string, categoryId: string | null, position?: number) => Promise<boolean>;
   onShowServerInfo: () => void;
+  onOpenServerSettings?: () => void;
+  onOpenServerInvite?: () => void;
+  onOpenServerNotifications?: () => void;
+  onOpenServerIncident?: () => void;
+  onLeaveServer?: () => Promise<boolean>;
   /** Открыть Execution Status Board (доска задач сервера). */
   onOpenStatusBoard?: () => void;
   /** Status Board сейчас открыт — для подсветки. */
@@ -150,6 +156,11 @@ export function ChannelList({
   onReorderCategories,
   onMoveChannel,
   onShowServerInfo,
+  onOpenServerSettings,
+  onOpenServerInvite,
+  onOpenServerNotifications,
+  onOpenServerIncident,
+  onLeaveServer,
   onOpenStatusBoard,
   statusBoardActive,
   onOpenTeamHealth,
@@ -183,6 +194,8 @@ export function ChannelList({
     x: number;
     y: number;
   } | null>(null);
+  const [serverMenuOpen, setServerMenuOpen] = useState(false);
+  const serverTriggerRef = useRef<HTMLButtonElement | null>(null);
   // v0.97: CreateChannelModal state. Открывается через primary button
   // сверху Channels tab + через «+» icon в каждом section-header'е
   // (pre-selected тип через initialType).
@@ -751,10 +764,13 @@ export function ChannelList({
     <aside className="ec-channel-list">
       <header className={headerClass} style={headerStyle}>
         <button
+          ref={serverTriggerRef}
           type="button"
-          onClick={onShowServerInfo}
-          className="ec-channel-list__server-btn"
-          title="Подробнее о пространстве"
+          onClick={() => setServerMenuOpen((value) => !value)}
+          className="ec-channel-list__server-btn ec-server-header-trigger"
+          title="Действия пространства"
+          aria-haspopup="menu"
+          aria-expanded={serverMenuOpen}
         >
           <span style={{ display: "flex", flexDirection: "column", gap: 3, minWidth: 0 }}>
             <span className="ec-channel-list__server-name">
@@ -770,6 +786,7 @@ export function ChannelList({
             )}
           </span>
           <svg
+            className="ec-server-header-chevron"
             width="14"
             height="14"
             viewBox="0 0 24 24"
@@ -779,12 +796,25 @@ export function ChannelList({
             strokeLinecap="round"
             strokeLinejoin="round"
             aria-hidden
-            style={{ color: "var(--ec-text-dim)", flexShrink: 0 }}
           >
-            <circle cx="12" cy="12" r="9" />
-            <path d="M12 16v-4M12 8h.01" />
+            <path d="M6 9l6 6 6-6" />
           </svg>
         </button>
+        {serverId && serverName && (
+          <ServerActionsMenu
+            open={serverMenuOpen}
+            triggerRef={serverTriggerRef}
+            server={{ id: serverId, name: serverName, role: serverRole ?? "MEMBER" }}
+            onClose={() => setServerMenuOpen(false)}
+            onOpenSettings={onOpenServerSettings ?? onShowServerInfo}
+            onOpenInvite={onOpenServerInvite ?? onShowServerInfo}
+            onOpenNotifications={onOpenServerNotifications ?? onShowServerInfo}
+            onCreateChannel={() => openCreateModal("TEXT", null)}
+            onCreateCategory={() => setCategoryModal({ mode: "create" })}
+            onOpenIncident={onOpenServerIncident ?? onShowServerInfo}
+            onLeaveServer={onLeaveServer ?? (async () => false)}
+          />
+        )}
       </header>
 
       {/* v0.96 sidebar tabs: Каналы / Работа / Таблицы. Расщепляет старый

@@ -59,7 +59,7 @@
 | # | Feature | EC сейчас | Gap | Effort | Priority | Статус |
 |---|---|---|---|---|---|---|
 | C1 | **Channel categories** «Underground», «Clubhouse» collapsable groups с hover-+ | Channels flat list под сервером | New `ChannelCategory` schema (id, name, serverId, position) + `Channel.categoryId` FK + ChannelList grouping UI | M | 🔥 MUST | ✅ v1.5.46 |
-| C2 | **Server name = dropdown trigger** с ⌄ → context menu | Click открывает `ServerHubModal` | Convert header в popover trigger; ServerHubModal остаётся для full settings | M | ⭐ HIGH | 📋 |
+| C2 | **Server name = dropdown trigger** с ⌄ → context menu | Click открывает `ServerHubModal` | Convert header в popover trigger; ServerHubModal остаётся для full settings | M | ⭐ HIGH | ✅ v1.5.47 |
 | C3 | **Server nav links**: Путеводитель / Мероприятия / Каналы и роли / Участники / Бусты | Только Members в IntelligencePanel | Add nav: «Путеводитель» = welcome screen (есть v1.5.34); «Мероприятия» = C8 events; «Каналы и роли» = combined permissions view (partial AdminPanel); «Участники» = MemberList. **Бусты** ⛔ irrelevant | M integration | ⭐ HIGH | 📋 |
 | C4 | **Hover invite + gear** на channel row (desktop) | `data-channel-action` hidden на mobile, есть desktop | Verify desktop visibility + add invite-to-channel button | S | 🟢 MED | 📋 |
 | C5 | **Composer GIF picker** (Tenor / GIPHY) | Emoji picker есть, GIF нет | Add Tenor proxy (или self-hosted GIF library) + picker tab | L | 🟡 LATER | 📋 |
@@ -73,8 +73,8 @@
 
 | # | Feature | EC сейчас | Gap | Effort | Priority | Статус |
 |---|---|---|---|---|---|---|
-| D1 | **Inline dropdown popover** с 14 actions | `ServerHubModal` modal trigger | Build popover (используя existing `.ec-popover` pattern) с pruned action list: Settings / Invite / Notifications / Create channel/category/event / Copy ID / Изоляция (incident) / Leave server | M | 🔥 MUST (after C2) | 📋 |
-| D2 | **Копировать ID сервера** | Нет ID exposure | One-line utility | S (part of D1) | 🟢 MED | 📋 |
+| D1 | **Inline dropdown popover** с 14 actions | `ServerHubModal` modal trigger | Build popover (используя existing `.ec-popover` pattern) с pruned action list: Settings / Invite / Notifications / Create channel/category/event / Copy ID / Изоляция (incident) / Leave server | M | 🔥 MUST (after C2) | ✅ v1.5.47 |
+| D2 | **Копировать ID сервера** | Нет ID exposure | One-line utility | S (part of D1) | 🟢 MED | ✅ v1.5.47 (de-facto closed by D1 action) |
 | D3 | **Изоляция / Жалоба на рейд** — emergency moderation | Incidents есть | Map «Изоляция» → close-all-DM-invites + freeze new joins для сервера; «Жалоба на рейд» → создать Incident + alert OWNER | M | 🟢 MED | 📋 |
 
 ---

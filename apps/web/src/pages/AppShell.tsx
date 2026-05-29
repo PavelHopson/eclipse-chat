@@ -1194,6 +1194,32 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               setServerHubTab("overview");
               setServerHubOpen(true);
             }}
+            onOpenServerSettings={() => {
+              if (!activeServer) return;
+              setServerHubTab("settings");
+              setServerHubOpen(true);
+            }}
+            onOpenServerInvite={() => {
+              if (!activeServer) return;
+              setServerHubTab("overview");
+              setServerHubOpen(true);
+            }}
+            onOpenServerNotifications={() => setShowProfile(true)}
+            onOpenServerIncident={() => {
+              setHomeOpen(false);
+              setHelpOpen(false);
+              setAdminOpen(false);
+              setStatusBoardOpen(false);
+              setTeamHealthOpen(false);
+              setSelectedThreadId(null);
+              setRightRailCollapsed(false);
+              setShowIncidents(true);
+              if (isTabletOrSmaller) setMembersOpen(true);
+            }}
+            onLeaveServer={async () => {
+              if (!activeServer) return false;
+              return leaveServer(activeServer.id);
+            }}
             onOpenStatusBoard={
               isClientMode
                 ? undefined

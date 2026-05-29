@@ -5,7 +5,17 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.46** (Discord-parity C1 — Channel categories.
+**Текущая версия:** **v1.5.47** (Discord-parity C2 + D1 — Server dropdown
+trigger + inline context menu. Server name в левом rail теперь открывает
+popover с chevron affordance вместо прямого ServerHubModal. Меню фильтрует
+actions по роли: OWNER/ADMIN видят settings/create channel/create category/event
+placeholder/incident, все участники видят invite/notifications/copy ID, OWNER не
+видит leave. ServerHubModal остаётся full settings через action; invite ведёт в
+overview с invite-кодом, notifications — в ProfileModal push section, isolation —
+в IncidentPanel quick-open. Copy ID использует `navigator.clipboard.writeText`
+и inline toast. Mobile получает 80vw popover и 44px touch rows).
+
+**Предыдущая:** v1.5.46 (Discord-parity C1 — Channel categories.
 Backend `ChannelCategory` + `Channel.categoryId` взят из C1 commit `a20caf9`;
 frontend: ChannelList grouping, uncategorized сверху, collapsible categories с
 localStorage `ec.channelList.collapsed.<serverId>`, create/rename/delete category,
