@@ -14,7 +14,7 @@ import { useCallback, useEffect, useState } from "react";
  *
  * Первичное применение (до первой отрисовки, анти-FOUC) делает inline-
  * скрипт в index.html. Этот хук — источник правды для контрола в
- * ProfileModal: читает stored-значение и пишет при смене.
+ * SettingsPanel: читает stored-значение и пишет при смене.
  */
 
 export type Density = "balanced" | "compact" | "tactical";

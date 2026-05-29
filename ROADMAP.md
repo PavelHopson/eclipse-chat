@@ -5,7 +5,18 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.50** (Discord-parity B5 backend — Quiet hours.
+**Текущая версия:** **v1.5.51** (Discord-parity B1 slice 1 — Settings tree nav.
+`ProfileModal` удалён: настройки перенесены в `SettingsPanel` с tree-nav слева
+и main panel справа. Existing profile/security/activity/push/theme/density/focus
+dim/PWA install/logout flows сохранены в новых категориях: «Учётная запись»,
+«Активность», «Уведомления», «Внешний вид», плюс placeholder-разделы «Скоро
+в v1.5.5X+». B5 frontend закрыт в категории «Уведомления → Тихие часы»:
+toggle, `input type="time"` для `quietFrom/quietTo`, timezone autodetect/read-only,
+PATCH `/api/users/me/quiet-hours`, optimistic update + revert через `useProfile`,
+индикатор «Сейчас тишина». Mobile tree-nav collapses в horizontal scroll;
+prefers-reduced-motion отключает nav/card motion).
+
+**Предыдущая:** v1.5.50 (Discord-parity B5 backend — Quiet hours.
 Три nullable String на User: `quietFrom` / `quietTo` (HH:MM, 24-hour) +
 `timezone` (IANA name). Migration `20260529100000_add_quiet_hours`
 additive ALTER TABLE. New helper `apps/server/src/lib/quietHours.ts`:
@@ -19,7 +30,7 @@ unavailable → UTC, invalid HH:MM → disabled. Push pipeline integration:
 Independent от per-event toggle (mentions/dms могут быть enabled, но quiet
 silences всё). Route: `PATCH /api/users/me/quiet-hours` (Zod HH:MM regex,
 Intl runtime-validate для IANA, rate 30/15min). `publicProfile` DTO
-расширен 3 полями. Frontend slice ждёт Codex'а в каком-то B-slice'е.
+расширен 3 полями).
 
 **Предыдущая:** v1.5.49 (Discord-parity C3 — Server navigation links.
 Добавлен server-scoped nav в main area: «Путеводитель» как standalone

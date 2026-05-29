@@ -1383,6 +1383,76 @@
     grid-template-columns: 1fr;
     align-items: start;
   }
+
+  .ec-settings-panel {
+    grid-template-columns: 1fr;
+    min-height: min(780px, 82vh);
+    max-height: 82vh;
+  }
+
+  .ec-settings-tree-nav {
+    display: flex;
+    gap: var(--ec-space-2);
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: var(--ec-space-3);
+    border-right: 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--ec-accent) 18%, var(--ec-border-default));
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .ec-settings-tree-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .ec-settings-tree-nav__group {
+    display: contents;
+  }
+
+  .ec-settings-tree-nav__group--collapsed .ec-settings-category-item {
+    display: grid;
+  }
+
+  .ec-settings-tree-nav__group-trigger {
+    display: none;
+  }
+
+  .ec-settings-category-item {
+    flex: 0 0 auto;
+    width: auto;
+    min-height: 44px;
+    white-space: nowrap;
+  }
+
+  .ec-settings-panel__main {
+    min-height: 0;
+  }
+
+  .ec-settings-section {
+    padding: var(--ec-space-3);
+  }
+
+  .ec-settings-section__hero,
+  .ec-settings-card,
+  .ec-settings-empty {
+    border-radius: var(--ec-radius-md);
+  }
+
+  .ec-settings-card,
+  .ec-settings-card--avatar {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .ec-settings-two-col {
+    grid-template-columns: 1fr;
+  }
+
+  .ec-settings-card__row {
+    align-items: flex-start;
+  }
 }
 
 /* Global prefers-reduced-motion guard для новых v0.96-v0.98 elements.
@@ -1400,7 +1470,9 @@
   .ec-server-nav,
   .ec-server-nav *,
   .ec-server-view,
-  .ec-server-view * {
+  .ec-server-view *,
+  .ec-settings-panel,
+  .ec-settings-panel * {
     animation: none !important;
     transition: none !important;
     transform: none !important;

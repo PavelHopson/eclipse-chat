@@ -7,7 +7,13 @@ export type UserActivityFields = {
   activityEmoji: string | null;
 };
 
-export type PublicProfile = UserActivityFields & {
+export type UserQuietHoursFields = {
+  quietFrom: string | null;
+  quietTo: string | null;
+  timezone: string | null;
+};
+
+export type PublicProfile = UserActivityFields & UserQuietHoursFields & {
   id: string;
   email: string;
   displayName: string;

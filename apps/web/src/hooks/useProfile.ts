@@ -11,6 +11,9 @@ export type Profile = {
   bio: string | null;
   activityText: string | null;
   activityEmoji: string | null;
+  quietFrom: string | null;
+  quietTo: string | null;
+  timezone: string | null;
   status?: UserStatus;
   twoFactorEnabled?: boolean;
   createdAt: string;
@@ -176,6 +179,38 @@ export function useProfile(enabled: boolean) {
     [profile],
   );
 
+  const updateQuietHours = useCallback(
+    async (data: {
+      quietFrom?: string | null;
+      quietTo?: string | null;
+      timezone?: string | null;
+    }): Promise<boolean> => {
+      setError(null);
+      const previous = profile;
+      if (previous) {
+        setProfile({
+          ...previous,
+          quietFrom: data.quietFrom === undefined ? previous.quietFrom : data.quietFrom,
+          quietTo: data.quietTo === undefined ? previous.quietTo : data.quietTo,
+          timezone: data.timezone === undefined ? previous.timezone : data.timezone,
+        });
+      }
+      try {
+        const res = await apiJson<ProfileResponse>("/api/users/me/quiet-hours", {
+          method: "PATCH",
+          body: JSON.stringify(data),
+        });
+        setProfile(res.user);
+        return true;
+      } catch (e) {
+        if (previous) setProfile(previous);
+        setError(e instanceof ApiError ? e.message : "Не удалось сохранить тихие часы");
+        return false;
+      }
+    },
+    [profile],
+  );
+
   return {
     profile,
     loading,
@@ -187,6 +222,7 @@ export function useProfile(enabled: boolean) {
     deleteAvatar,
     updateStatus,
     updateActivity,
+    updateQuietHours,
   };
 }
 

@@ -47,7 +47,7 @@ const SearchOverlay = lazy(() => import("../components/SearchOverlay").then((m) 
 const PlatformAdminPanel = lazy(() => import("../components/PlatformAdminPanel").then((m) => ({ default: m.PlatformAdminPanel })));
 const ServerHubModal = lazy(() => import("../components/ServerHubModal").then((m) => ({ default: m.ServerHubModal })));
 const ChannelSettingsModal = lazy(() => import("../components/ChannelSettingsModal").then((m) => ({ default: m.ChannelSettingsModal })));
-const ProfileModal = lazy(() => import("../components/ProfileModal").then((m) => ({ default: m.ProfileModal })));
+const SettingsPanel = lazy(() => import("../components/settings/SettingsPanel").then((m) => ({ default: m.SettingsPanel })));
 const CreateServerModal = lazy(() => import("../components/CreateServerModal").then((m) => ({ default: m.CreateServerModal })));
 const JoinServerModal = lazy(() => import("../components/JoinServerModal").then((m) => ({ default: m.JoinServerModal })));
 const CreateGroupDmModal = lazy(() => import("../components/CreateGroupDmModal").then((m) => ({ default: m.CreateGroupDmModal })));
@@ -418,6 +418,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     deleteAvatar,
     updateStatus,
     updateActivity,
+    updateQuietHours,
     reload: reloadProfile,
   } = useProfile(true);
   const [statusAnchor, setStatusAnchor] = useState<DOMRect | null>(null);
@@ -2417,15 +2418,17 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
       )}
 
       {showProfile && profile && (
-        <ProfileModal
+        <SettingsPanel
           profile={profile}
           busy={profileBusy}
           error={profileError}
           onClose={() => setShowProfile(false)}
           onSave={updateProfile}
           onUpdateActivity={updateActivity}
+          onUpdateQuietHours={updateQuietHours}
           onUploadAvatar={uploadAvatar}
           onDeleteAvatar={deleteAvatar}
+          onLogout={onLogout}
           onTwoFactorChanged={() => {
             // Refresh profile чтобы twoFactorEnabled flag обновился.
             void reloadProfile?.();

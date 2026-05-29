@@ -627,7 +627,7 @@ input[type="radio"]:focus-visible {
 .ec-dot--offline { background: var(--ec-presence-offline); }
 
 /* ===== Density segmented control (v1.1.64 В§12) =============
-   3-way РїРµСЂРµРєР»СЋС‡Р°С‚РµР»СЊ РїР»РѕС‚РЅРѕСЃС‚Рё РІ ProfileModal. Р’РЅСѓС‚СЂРµРЅРЅРёРµ РѕС‚СЃС‚СѓРїС‹
+   3-way РїРµСЂРµРєР»СЋС‡Р°С‚РµР»СЊ РїР»РѕС‚РЅРѕСЃС‚Рё РІ SettingsPanel. Р’РЅСѓС‚СЂРµРЅРЅРёРµ РѕС‚СЃС‚СѓРїС‹
    С…Р°СЂРґРєРѕРґ (px) вЂ” РєРѕРЅС‚СЂРѕР» РЅРµ РґРѕР»Р¶РµРЅ СЃР¶РёРјР°С‚СЊСЃСЏ РІ compact/tactical. */
 .ec-density-seg {
   display: grid;
@@ -6385,6 +6385,349 @@ input[type="radio"]:focus-visible {
   align-items: center;
   justify-content: space-between;
   gap: var(--ec-space-2);
+}
+
+/* Settings tree panel (Discord-parity B1). */
+.ec-settings-panel {
+  display: grid;
+  grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
+  min-height: min(720px, 78vh);
+  max-height: min(820px, 82vh);
+  margin: calc(var(--ec-space-4) * -1);
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 0% 0%, hsl(258 86% 58% / 0.12), transparent 36%),
+    var(--ec-surface-0);
+}
+
+.ec-settings-tree-nav {
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--ec-space-4) var(--ec-space-3);
+  border-right: 1px solid color-mix(in srgb, var(--ec-accent) 18%, var(--ec-border-default));
+  background:
+    radial-gradient(circle at 0% 0%, hsl(258 86% 58% / 0.1), transparent 42%),
+    var(--ec-surface-1);
+}
+
+.ec-settings-tree-nav__group {
+  display: grid;
+  gap: 3px;
+  margin-bottom: var(--ec-space-4);
+}
+
+.ec-settings-tree-nav__group--collapsed .ec-settings-category-item {
+  display: none;
+}
+
+.ec-settings-tree-nav__group-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin: 0 0 var(--ec-space-1);
+  padding: 0 var(--ec-space-2);
+  border: 0;
+  background: transparent;
+  color: var(--ec-text-dim);
+  font-size: var(--ec-text-2xs);
+  font-weight: 800;
+  letter-spacing: var(--ec-tracking-caps);
+  text-align: left;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.ec-settings-tree-nav__group-trigger:hover {
+  color: var(--ec-text-muted);
+}
+
+.ec-settings-category-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--ec-space-2);
+  width: 100%;
+  min-height: 34px;
+  padding: 0.45rem var(--ec-space-2) 0.45rem var(--ec-space-3);
+  border: 0;
+  border-radius: var(--ec-radius-sm);
+  background: transparent;
+  color: var(--ec-text-muted);
+  font: inherit;
+  font-size: var(--ec-text-sm);
+  font-weight: 650;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background 180ms var(--ec-ease-out),
+    color 180ms var(--ec-ease-out),
+    transform 180ms var(--ec-ease-out);
+}
+
+.ec-settings-category-item::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--ec-accent);
+  opacity: 0;
+  transform: scaleY(0);
+  transition:
+    opacity 180ms var(--ec-ease-out),
+    transform 180ms var(--ec-ease-out);
+}
+
+.ec-settings-category-item:hover,
+.ec-settings-category-item--active {
+  background: color-mix(in srgb, var(--ec-accent) 10%, transparent);
+  color: var(--ec-text-strong);
+  transform: translateX(2px);
+}
+
+.ec-settings-category-item--active::before,
+.ec-settings-category-item:hover::before {
+  opacity: 1;
+  transform: scaleY(1);
+}
+
+.ec-settings-category-item--danger {
+  color: var(--ec-danger);
+}
+
+.ec-settings-category-item--danger:hover {
+  background: var(--ec-danger-soft);
+}
+
+.ec-settings-category-item__soon {
+  padding: 2px 5px;
+  border: 1px solid var(--ec-border-subtle);
+  border-radius: var(--ec-radius-full);
+  color: var(--ec-text-dim);
+  font-size: 0.55rem;
+  font-weight: 800;
+  letter-spacing: var(--ec-tracking-caps);
+  text-transform: uppercase;
+}
+
+.ec-settings-panel__main {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.ec-settings-section {
+  min-height: 100%;
+  padding: var(--ec-space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ec-space-4);
+}
+
+.ec-settings-section__hero,
+.ec-settings-card,
+.ec-settings-empty {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 22%, var(--ec-border-default));
+  border-radius: var(--ec-radius-lg);
+  background:
+    radial-gradient(circle at 0% 0%, hsl(258 86% 62% / 0.13), transparent 42%),
+    var(--ec-overlay-bg);
+  box-shadow:
+    var(--ec-elev-2),
+    0 24px 60px -34px hsl(258 86% 35% / 0.5),
+    0 0 0 1px hsl(258 86% 62% / 0.08) inset;
+}
+
+.ec-settings-section__hero {
+  padding: var(--ec-space-5);
+}
+
+.ec-settings-section__hero h2 {
+  margin: 0;
+  color: var(--ec-text-strong);
+  font-size: clamp(1.45rem, 2vw, 2.15rem);
+  line-height: 1.05;
+  letter-spacing: 0;
+}
+
+.ec-settings-section__hero p {
+  margin: var(--ec-space-1) 0 0;
+  color: var(--ec-text-muted);
+  font-size: var(--ec-text-sm);
+}
+
+.ec-settings-section__eyebrow,
+.ec-settings-kicker {
+  display: inline-flex;
+  margin-bottom: var(--ec-space-2);
+  color: var(--ec-accent);
+  font-size: var(--ec-text-2xs);
+  font-weight: 800;
+  letter-spacing: var(--ec-tracking-caps);
+  text-transform: uppercase;
+}
+
+.ec-settings-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--ec-space-3);
+  padding: var(--ec-space-4);
+}
+
+.ec-settings-card--stack {
+  grid-template-columns: 1fr;
+  align-items: stretch;
+}
+
+.ec-settings-card--sunken {
+  background: var(--ec-surface-sunken);
+  border-color: var(--ec-border-subtle);
+  box-shadow: var(--ec-elev-1);
+}
+
+.ec-settings-card--active {
+  background:
+    radial-gradient(circle at 0% 0%, hsl(258 86% 62% / 0.2), transparent 45%),
+    var(--ec-accent-soft);
+}
+
+.ec-settings-card--avatar {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.ec-settings-card__row,
+.ec-settings-actions,
+.ec-settings-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: var(--ec-space-3);
+}
+
+.ec-settings-card__body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ec-settings-card__body strong,
+.ec-settings-toggle-row strong {
+  color: var(--ec-text-strong);
+  font-size: var(--ec-text-sm);
+}
+
+.ec-settings-muted {
+  color: var(--ec-text-muted);
+  font-size: var(--ec-text-2xs);
+  line-height: 1.45;
+}
+
+.ec-settings-mono {
+  font-family: var(--ec-font-mono);
+}
+
+.ec-settings-error {
+  margin: 0;
+  color: var(--ec-danger);
+  font-size: var(--ec-text-2xs);
+}
+
+.ec-settings-ok {
+  color: var(--ec-ok);
+  font-size: var(--ec-text-2xs);
+  font-weight: 700;
+}
+
+.ec-settings-icon {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  border-radius: var(--ec-radius-md);
+  display: grid;
+  place-items: center;
+  background: var(--ec-surface-3);
+  color: var(--ec-text-muted);
+  font-size: 1.35rem;
+}
+
+.ec-settings-card--active .ec-settings-icon {
+  background: var(--ec-accent);
+  color: var(--ec-accent-text);
+}
+
+.ec-settings-two-col {
+  display: grid;
+  grid-template-columns: minmax(96px, 0.35fr) minmax(0, 1fr);
+  gap: var(--ec-space-2);
+}
+
+.ec-settings-actions {
+  flex-wrap: wrap;
+}
+
+.ec-settings-actions--column {
+  align-items: stretch;
+  flex-direction: column;
+}
+
+.ec-settings-toggle-row {
+  justify-content: space-between;
+  cursor: pointer;
+}
+
+.ec-settings-toggle-row > span {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ec-settings-toggle-row input,
+.ec-settings-switch input {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  accent-color: var(--ec-accent);
+  cursor: pointer;
+}
+
+.ec-settings-readonly {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--ec-space-3);
+  border: 1px solid var(--ec-border-subtle);
+  border-radius: var(--ec-radius-md);
+  background: var(--ec-surface-2);
+  color: var(--ec-text-muted);
+  font-family: var(--ec-font-mono);
+  font-size: var(--ec-text-xs);
+}
+
+.ec-settings-empty {
+  min-height: 220px;
+  display: grid;
+  place-items: center;
+  padding: var(--ec-space-5);
+  color: var(--ec-text-muted);
+  font-size: var(--ec-text-sm);
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ec-settings-panel *,
+  .ec-settings-category-item,
+  .ec-settings-category-item::before {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
 }
 
 /* Server navigation links (Discord-parity C3). */

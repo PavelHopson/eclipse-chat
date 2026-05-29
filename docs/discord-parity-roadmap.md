@@ -46,11 +46,11 @@
 
 | # | Feature | EC сейчас | Gap | Effort | Priority | Статус |
 |---|---|---|---|---|---|---|
-| B1 | **Settings панель с tree nav слева + main panel** | `ProfileModal` flat scrollable | Restructure → `SettingsPanel` с категориями: Учётная запись / Контент и общение / Данные / Интеграции / Уведомления / Голос и видео / Внешний вид / Горячие клавиши / Активность / Разработчик / Выйти | M | ⭐ HIGH | 📋 |
+| B1 | **Settings панель с tree nav слева + main panel** | `ProfileModal` flat scrollable | Restructure → `SettingsPanel` с категориями: Учётная запись / Контент и общение / Данные / Интеграции / Уведомления / Голос и видео / Внешний вид / Горячие клавиши / Активность / Разработчик / Выйти | M | ⭐ HIGH | 🟡 slice 1 ✅ v1.5.51 (structural refactor) |
 | B2 | **Активные сеансы** (5 устройств, по device) | `RefreshToken` table есть, UI нет | Expose `/api/auth/sessions` GET + revoke per session | S | 🟢 MED | 📋 |
-| B3 | **Внешний вид tab** — theme / density / scale settings | Density / Focus dim есть в ProfileModal | Move в B1 категорию «Внешний вид» + theme switcher (есть `ThemeToggle`) | S (в B1) | 🟢 MED | 📋 |
+| B3 | **Внешний вид tab** — theme / density / scale settings | Density / Focus dim есть в ProfileModal | Move в B1 категорию «Внешний вид» + theme switcher (есть `ThemeToggle`) | S (в B1) | 🟢 MED | ✅ v1.5.51 |
 | B4 | **Горячие клавиши** dedicated tab с list+rebind | Нет UI hotkeys overview | New tab с rendering shortcuts overview (read-only OK для v1; rebind = **L**) | S read-only / L rebind | 🟢 MED read-only / 🟡 LATER rebind | 📋 |
-| B5 | **Уведомления** category — push toggle + per-type + quiet hours | `usePushPreferences` есть, в ProfileModal | Move в B1 category + добавить quiet hours (схема `User.quietFrom`/`quietTo`) | S move / M quiet hours | 🟢 MED | 🟡 backend ✅ v1.5.50 (schema + PATCH + push skip); frontend UI ожидает в B-slice |
+| B5 | **Уведомления** category — push toggle + per-type + quiet hours | `usePushPreferences` есть, в ProfileModal | Move в B1 category + добавить quiet hours (схема `User.quietFrom`/`quietTo`) | S move / M quiet hours | 🟢 MED | ✅ v1.5.51 |
 
 ---
 
