@@ -1334,6 +1334,34 @@
   .ec-hub-preview-card {
     position: static;
   }
+
+  .ec-server-audit__header {
+    flex-direction: column;
+  }
+
+  .ec-server-audit__filters {
+    grid-template-columns: 1fr;
+  }
+
+  .ec-server-audit__error {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .ec-server-audit-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--ec-space-2);
+    min-height: 0;
+  }
+
+  .ec-server-audit-row__time {
+    order: -1;
+  }
+
+  .ec-server-audit-row__type {
+    max-width: 100%;
+    justify-self: start;
+  }
 }
 
 @media (max-width: 640px), (pointer: coarse) {

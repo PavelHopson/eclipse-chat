@@ -162,15 +162,6 @@ export function IsolationSection({
   );
 }
 
-export function AuditPlaceholderSection() {
-  return (
-    <section>
-      <h3 className="ec-hub-label">Audit log</h3>
-      <div className="ec-hub-card ec-hub-empty">Скоро в v1.5.56+</div>
-    </section>
-  );
-}
-
 type InviteSectionProps = {
   inviteCode: string;
   inviteUrl: string;

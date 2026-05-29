@@ -5,12 +5,12 @@ import { DeleteButton } from "./DeleteButton";
 import { Modal } from "./Modal";
 import { ServerWelcomeHero } from "./ServerWelcomeHero";
 import {
-  AuditPlaceholderSection,
   InviteSection,
   IsolationSection,
   MembersSection,
   RolesSection,
 } from "./server-hub/ServerHubSections";
+import { ServerAuditLogSection } from "./server-hub/ServerAuditLogSection";
 import type { MemberRole, MemberRow } from "../hooks/useMembers";
 import type { ServerRow } from "../hooks/useServers";
 import type { ChannelRow } from "../hooks/useChannels";
@@ -307,7 +307,7 @@ export function ServerHubModal({
       label: "Модерация",
       items: [
         { id: "isolation", label: "Изоляция", hidden: !isAdminOrOwner },
-        { id: "audit", label: "Audit log", hidden: !isAdminOrOwner, soon: true },
+        { id: "audit", label: "Audit log", hidden: !isAdminOrOwner },
       ],
     },
     { label: "Сообщество", items: [{ id: "invite", label: "Приглашение" }] },
@@ -844,7 +844,9 @@ export function ServerHubModal({
         />
       )}
 
-      {active === "audit" && isAdminOrOwner && <AuditPlaceholderSection />}
+      {active === "audit" && isAdminOrOwner && (
+        <ServerAuditLogSection serverId={server.id} members={members} />
+      )}
 
       {active === "invite" && (
         <InviteSection

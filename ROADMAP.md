@@ -5,32 +5,27 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.58** (Discord-parity E3 backend — Server feature chips.
+**Текущая версия:** **v1.5.59** (Discord-parity E5 — real ServerHub audit-log tab.
+Латентный backend `feat/claude/audit-log-real` включён в ship: server-scoped
+audit events теперь пишутся для server/channel/member/identity/banner/bot
+мутаций с `metadata.serverId`; read endpoint `GET /api/servers/:id/audit-log`
+закрыт OWNER/ADMIN и фильтрует по serverId, type, userId, since/until, take/skip.
+Frontend заменил placeholder в `ServerHubModal → Модерация → Audit log` на
+реальный view: RU labels для server-scoped типов, actor avatar/name, relative
+time с absolute tooltip, target из metadata, фильтры type/actor/date-range,
+pagination «Загрузить ещё», loading skeleton, empty/error states. No fake rows:
+`MEMBER_KICKED`/`MESSAGE_DELETED_BY_MOD` остаются пустыми пока нет продюсеров).
+
+**Предыдущая:** v1.5.58 (Discord-parity E3 backend — Server feature chips.
 `Server.features` nullable `String?` (JSON-encoded `String[]` до 5 элементов,
 каждый ≤40 chars). Migration `20260529140000_add_server_features` additive
 ALTER TABLE. PATCH `/api/servers/:id/identity` body extended: `features?: string[] | null`
 (trim → filter empty → slice 5 → JSON.stringify в БД; null/[] clears).
 GET `/api/servers` DTO теперь возвращает `features: string | null` (JSON string)
 per-server. Frontend будет парсить → render chips в WelcomeHero (Codex slice).
-
-⚠ Incident note: первая попытка v1.5.58 (commit 7a2f02e) была reverted из-за
-`FST_ERR_DUPLICATED_ROUTE` на `GET /api/servers/:id/audit-log` — uneager
-duplicate существующего v0.76 #25 phase 1 endpoint'а. Этот re-ship содержит
-**только E3** schema/PATCH/DTO.
-
-**E5 audit log backend — реализован латентно** (slice `feat/claude/audit-log-real`,
-ждёт frontend-таб Codex'а → совместный version bump, по паттерну §7). При разборе
-вскрылось, что existing endpoint был **мёртвым и дырявым**: (1) server-scoped типы
-(SERVER_*/CHANNEL_*/MEMBER_*) нигде не писались — `recordAudit` звался только для
-`AUTH_*`, endpoint всегда возвращал `events: []`; (2) `where` фильтровал только по
-`type`, без serverId → cross-server information disclosure (OWNER X видел бы события
-Y). Слайс: эмит server-scoped событий на 8 mutation-сайтах servers.ts (server
-create/delete, channel create/delete, member-role, identity, banner set/clear) с
-`metadata.serverId`; bots.ts уже писал BOT_* с serverId. Read-endpoint extended:
-обязательный serverId-scope (закрыт leak) + zod-фильтры (type/userId/since/until) +
-pagination (take 1..100 default 50, skip, total), ключ `events` сохранён. Schema НЕ
-тронута (no migration). `MEMBER_KICKED`/`MESSAGE_DELETED_BY_MOD` пока без продюсеров —
-типы оставлены для forward-compat.
+Incident note: первая попытка v1.5.58 (commit 7a2f02e) была reverted из-за
+`FST_ERR_DUPLICATED_ROUTE` на `GET /api/servers/:id/audit-log`; re-ship содержит
+только E3 schema/PATCH/DTO).
 
 **Предыдущая:** v1.5.57 (Discord-parity MED batch 1 — C4/C6/E4/E6.
 C4: channel row desktop hover actions now include invite-to-channel copy,
