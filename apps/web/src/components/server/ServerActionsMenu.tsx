@@ -27,6 +27,14 @@ type Props = {
    */
   onToggleIsolation: () => void;
   onLeaveServer: () => Promise<boolean>;
+  /**
+   * UXR5 — навигация по server-views прямо из popover. Завершает UXR4:
+   * после того как server nav rail убран из chat mode, это основной вход в
+   * Путеводитель / Каналы и роли / Участники (плюс «клик по server-иконке»).
+   * «Каналы и роли» показывается только менеджерам (OWNER/ADMIN) — остальные
+   * дойдут через guide → rail в non-chat view, доступ не теряется.
+   */
+  onSelectView?: (view: "guide" | "channels-roles" | "members") => void;
 };
 
 type MenuPosition = {
@@ -68,6 +76,7 @@ export function ServerActionsMenu({
   onToggleHideMutedChannels,
   onToggleIsolation,
   onLeaveServer,
+  onSelectView,
 }: Props) {
   const [position, setPosition] = useState<MenuPosition>(() => computePosition(null));
   const [toast, setToast] = useState<string | null>(null);
@@ -187,6 +196,45 @@ export function ServerActionsMenu({
       aria-label={`Действия пространства ${server.name}`}
       style={{ top: position.top, left: position.left, width: position.width }}
     >
+      {onSelectView && (
+        <>
+          <div
+            role="presentation"
+            style={{
+              padding: "6px 12px 2px",
+              fontSize: "0.68rem",
+              letterSpacing: "0.04em",
+              textTransform: "uppercase",
+              color: "var(--ec-text-dim)",
+            }}
+          >
+            Навигация
+          </div>
+          {(
+            [
+              { view: "guide" as const, label: "Путеводитель" },
+              ...(isManager
+                ? [{ view: "channels-roles" as const, label: "Каналы и роли" }]
+                : []),
+              { view: "members" as const, label: "Участники" },
+            ]
+          ).map((nav) => (
+            <button
+              key={`nav-${nav.view}`}
+              type="button"
+              role="menuitem"
+              className="ec-popover-item ec-server-actions-menu__item"
+              onClick={() => {
+                onSelectView?.(nav.view);
+                onClose();
+              }}
+            >
+              <span>{nav.label}</span>
+            </button>
+          ))}
+          <div className="ec-server-actions-menu__divider" aria-hidden />
+        </>
+      )}
       {actions.map((action) => (
         <div key={action.key}>
           {(action.key === "create-channel" || action.key === "copy-id" || action.key === "leave") && (
