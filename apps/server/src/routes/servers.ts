@@ -1476,6 +1476,72 @@ export async function registerServerRoutes(app: FastifyInstance) {
     },
   );
 
+  /**
+   * DELETE /api/servers/:id/members/:userId — исключить участника (kick).
+   *
+   * Permission: OWNER/ADMIN. Гейты: нельзя исключить себя (→ «покинуть
+   * сервер»), нельзя исключить OWNER, ADMIN не может исключить другого
+   * ADMIN (только OWNER). Side-effects зеркалят self-leave (member.delete +
+   * removeServerRoom + emitMemberLeft), чтобы клиенты убрали участника.
+   * Сообщения kicked-юзера НЕ удаляются (userId сохраняется в Message) —
+   * operational history. Пишет MEMBER_KICKED в audit (E5 producer).
+   */
+  app.delete(
+    "/api/servers/:id/members/:userId",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const { id: serverId, userId: targetUserId } = req.params as {
+        id: string;
+        userId: string;
+      };
+      const me = await loadMember(req, reply, serverId);
+      if (!me) return reply;
+      // suspend-gate: на замороженном сервере модерация недоступна.
+      const active = await ensureServerActive(serverId, reply);
+      if (!active) return;
+      if (me.role !== "OWNER" && me.role !== "ADMIN") {
+        return reply
+          .status(403)
+          .send({ error: "Только OWNER/ADMIN могут исключать участников" });
+      }
+      if (me.userId === targetUserId) {
+        return reply.status(400).send({
+          error: "Нельзя исключить себя — используйте «покинуть сервер»",
+        });
+      }
+      const target = await db.member.findUnique({
+        where: { userId_serverId: { userId: targetUserId, serverId } },
+        select: { id: true, role: true, userId: true },
+      });
+      if (!target) {
+        return reply.status(404).send({ error: "Участник не найден" });
+      }
+      if (target.role === "OWNER") {
+        return reply
+          .status(403)
+          .send({ error: "Нельзя исключить владельца сервера" });
+      }
+      if (me.role === "ADMIN" && target.role === "ADMIN") {
+        return reply.status(403).send({
+          error: "ADMIN не может исключить другого ADMIN — только OWNER",
+        });
+      }
+      await db.member.delete({ where: { id: target.id } });
+      removeServerRoom(target.userId, serverId);
+      emitMemberLeft(serverId, {
+        memberId: target.id,
+        userId: target.userId,
+        serverId,
+      });
+      recordAudit("MEMBER_KICKED", {
+        userId: me.userId,
+        req,
+        metadata: { serverId, targetUserId, targetRole: target.role },
+      });
+      return { ok: true };
+    },
+  );
+
   /** DELETE /api/servers/:id/icon — снять иконку. Только OWNER. */
   app.delete("/api/servers/:id/icon", { onRequest: [requireJwt] }, async (req, reply) => {
     const { id: serverId } = req.params as { id: string };
@@ -1895,8 +1961,9 @@ export async function registerServerRoutes(app: FastifyInstance) {
    * - **Pagination** — take (1..100, default 50) + skip (default 0) + total.
    *   Response key `events` сохранён (backward compat).
    *
-   * NB: MEMBER_KICKED / MESSAGE_DELETED_BY_MOD пока без продюсеров (kick-route
-   * и mod-delete не пишут audit) — типы оставлены в фильтре для forward-compat.
+   * NB: MESSAGE_DELETED_BY_MOD пока без продюсера (mod-delete не пишет audit) —
+   * тип оставлен в фильтре для forward-compat. MEMBER_KICKED продюсер добавлен
+   * вместе с kick-route (DELETE /api/servers/:id/members/:userId).
    */
   const serverScopedTypes = [
     "SERVER_CREATED",
