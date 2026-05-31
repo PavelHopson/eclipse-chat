@@ -498,6 +498,11 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     !inDmMode && !homeOpen && serverView === "chat" && selectedChannel?.type === "VOICE";
   const inServerView =
     Boolean(activeServer) && !homeOpen && !helpOpen && !adminOpen;
+  // UXR4 — server-home tab rail больше не висит над каждым каналом в chat
+  // mode. Rail остаётся навигацией внутри server-views (guide/каналы-роли/
+  // участники). Вход в server-home из chat — клик по server-иконке в
+  // ServerSwitcher (onSelect → setServerView("guide")), плюс channel header
+  // с actions/search остаётся.
   const showServerNav =
     Boolean(activeServer) &&
     !inDmMode &&
@@ -506,7 +511,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     !adminOpen &&
     !statusBoardOpen &&
     !teamHealthOpen &&
-    !selectedTableId;
+    !selectedTableId &&
+    serverView !== "chat";
   // Status Board / Team Health / Help / Admin открываются на всю ширину (как Home) — правый rail скрыт.
   const showRightRail =
     inServerView &&
@@ -794,6 +800,11 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               setHelpOpen(false);
               setAdminOpen(false);
               setActiveServerId(id);
+              // UXR4 — клик по server-иконке открывает server-home (guide).
+              // Это вход в guide/каналы-роли/участники из chat mode, где rail
+              // больше не показывается. Для смены сервера эффект на activeServerId
+              // тоже ставит guide — здесь покрываем клик по уже-активному серверу.
+              setServerView("guide");
               if (isMobile) setNavOpen(false);
             }}
             onCreateRequest={() => {

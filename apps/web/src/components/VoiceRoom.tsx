@@ -8,6 +8,7 @@ import { VoiceStatsOverlay } from "./VoiceStatsOverlay";
 import type { useVoice as useVoiceHook, VoiceParticipant, VoiceVisualTrack } from "../hooks/useVoice";
 import { keyCodeToLabel } from "../hooks/useAudioDevices";
 import type { MemberRow } from "../hooks/useMembers";
+import { useTelemetry } from "../hooks/useTelemetry";
 import {
   CameraLensIcon,
   HeadsetIcon,
@@ -533,6 +534,10 @@ export function VoiceRoom({
   const [showStats, setShowStats] = useState(false);
   const [showDiagnostics, setShowDiagnostics] = useState(false);
   const [ctxMenu, setCtxMenu] = useState<ContextMenuState | null>(null);
+  // UXR2 — серверная телеметрия (ПАМ/ЦП/связь) переехала из глобального
+  // topbar в voice diagnostics, где объясняет качество связи/нагрузку.
+  // Реальные значения из /api/health; null/offline → честный «нет данных».
+  const tele = useTelemetry();
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -1060,6 +1065,48 @@ export function VoiceRoom({
           <div>participants: <span style={{ color: "var(--ec-text)" }}>{v.participants.length}</span> · visual: <span style={{ color: "var(--ec-text)" }}>{v.visualTracks.length}</span> (screens: <span style={{ color: "var(--ec-status-exec)" }}>{screenTracks.length}</span> · cameras: <span style={{ color: "var(--ec-accent)" }}>{cameraTracks.length}</span>)</div>
           <div>tile budget: <span style={{ color: "var(--ec-text)" }}>{screenTracks.length + visibleCameraTracks.length}/{TILE_LIMIT}</span>{overflowCameraParticipants.length > 0 && (<span style={{ color: "var(--ec-status-warn)" }}> · {overflowCameraParticipants.length} камер свернуто</span>)}</div>
           <div>speaking: <span style={{ color: "var(--ec-status-exec)" }}>{speakingIdentities.size}</span></div>
+          <div style={{ marginTop: 6, color: "var(--ec-text-dim)" }}>— нагрузка сервера / связь —</div>
+          <div>
+            ПАМ (сервер):{" "}
+            <span
+              style={{
+                color:
+                  tele.memPercent == null
+                    ? "var(--ec-text-dim)"
+                    : tele.memStatus === "risk"
+                    ? "var(--ec-danger)"
+                    : tele.memStatus === "warn"
+                    ? "var(--ec-status-warn)"
+                    : "var(--ec-text)",
+              }}
+            >
+              {tele.memPercent != null ? `${tele.memPercent.toFixed(0)}%` : "нет данных"}
+            </span>
+          </div>
+          <div>
+            ЦП (сервер):{" "}
+            <span
+              style={{
+                color:
+                  tele.cpuPercent == null
+                    ? "var(--ec-text-dim)"
+                    : tele.cpuStatus === "risk"
+                    ? "var(--ec-danger)"
+                    : tele.cpuStatus === "warn"
+                    ? "var(--ec-status-warn)"
+                    : "var(--ec-text)",
+              }}
+            >
+              {tele.cpuPercent != null ? `${tele.cpuPercent.toFixed(0)}%` : "нет данных"}
+            </span>
+          </div>
+          <div>
+            связь:{" "}
+            <span style={{ color: tele.online ? "var(--ec-status-exec)" : "var(--ec-warn)" }}>
+              {tele.online ? "онлайн" : "оффлайн"}
+            </span>
+            {tele.pgActive != null ? <> · pg.active={tele.pgActive}</> : null}
+          </div>
           {v.error && (
             <div style={{ marginTop: 6, color: "var(--ec-danger)" }}>error: {v.error}</div>
           )}
