@@ -57,6 +57,8 @@ type Props = {
   /** v1.5.55 D3 — текущее lock state для header badge + menu label. */
   serverLockedAt?: string | null;
   onLeaveServer?: () => Promise<boolean>;
+  /** UXR5 — навигация по server-views из server popover (см. ServerActionsMenu). */
+  onSelectServerView?: (view: "guide" | "channels-roles" | "members") => void;
   /** Открыть Execution Status Board (доска задач сервера). */
   onOpenStatusBoard?: () => void;
   /** Status Board сейчас открыт — для подсветки. */
@@ -171,6 +173,7 @@ export function ChannelList({
   onMoveChannel,
   onShowServerInfo,
   onOpenServerSettings,
+  onSelectServerView,
   onOpenServerInvite,
   onOpenServerNotifications,
   onToggleServerIsolation,
@@ -907,6 +910,7 @@ export function ChannelList({
             }
             onToggleIsolation={onToggleServerIsolation ?? onShowServerInfo}
             onLeaveServer={onLeaveServer ?? (async () => false)}
+            onSelectView={onSelectServerView}
           />
         )}
         {/* v1.5.55 D3 — header badge «Закрыт» когда server locked. Subtle
