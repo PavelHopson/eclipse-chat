@@ -135,6 +135,38 @@
 
 ## Next steps
 
+### 31.05.2026 — IA reset вместо дальнейшего наращивания chrome
+
+Pavel verdict по screenshots: текущий UI перегружен, глаза разбегаются,
+пользователь не понимает главный сценарий. Discord-parity дальше идёт не через
+добавление новых пунктов, а через **пересборку информационной архитектуры**.
+
+Keep в постоянном UI: часы, профиль, выход, выбор темы, медиаплеер. Метрики и
+графики остаются как operational layer, но не как постоянные topbar widgets.
+
+RAM/CPU/NET: убрать из глобального topbar. Перенести в voice context
+(`VoiceRoom` / diagnostics / expanded voice view), где они объясняют качество
+связи и нагрузку, а не конкурируют с навигацией.
+
+Parallel slices:
+
+| Slice | Owner | Scope | File overlap guard |
+|---|---|---|---|
+| UXR1 Global chrome cleanup | Codex | topbar declutter; keep clock/profile/theme/logout/player; remove global RAM/CPU/NET | `AppShell.tsx`, chrome CSS |
+| UXR2 Voice telemetry relocation | Claude | RAM/CPU/NET into voice room/diagnostics; honest unavailable states | `VoiceRoom*`, voice hooks/CSS |
+| UXR3 DM home as messenger | Codex | first screen = friends/DM/search/active contacts, dashboard separate | DM/Friends/Home components |
+| UXR4 Server chat cleanup | Claude | remove persistent server nav rail from channel chat mode; guide/settings stay separate | server view state/header |
+| UXR5 Server popover density | Codex | compact grouped Discord-like `ServerActionsMenu` | `ServerActionsMenu.tsx`, popover CSS |
+| UXR6 Settings shell normalization | split later | denser Profile/Server settings windows, less decorative chrome | after UXR1-5 |
+
+**Статус (31.05.2026):** Codex на паузе → Claude ведёт трек соло. **UXR1 + UXR2 +
+UXR4 → ✅ v1.5.60** (атомарный ship: телеметрия убрана из topbar и перенесена в
+voice diagnostics + server nav rail убран из chat mode). UXR3 (DM home), UXR5
+(popover density), UXR6 (settings normalization) — 📋 pending, следующие слайсы.
+Глубокая «плотная форма» topbar (сверх удаления RAM/CPU/NET) отложена до
+визуального ревью — локальный browser-smoke невозможен (нет node_modules).
+
+Original sequence:
 1. **Pavel sortирует** этот список — apply кастомный priority order или подтверждает мой (MUST → HIGH → MED → LATER)
 2. **Я начинаю chain** с топ-1 пункта, делаю slice-by-slice в формате EC v1.5.X (как chain v1.5.33-41)
 3. **Этот документ обновляется** — статусы 📋 → 🟡 → ✅ с EC version номером после каждого ship'а
@@ -142,4 +174,4 @@
 
 **Источник скриншотов:** Telegram-чат Pavel ↔ assistant, 28.05.2026, 6 screenshots
 **Created:** v1.5.41 era (after Discord audit pause)
-**Last updated:** 28.05.2026
+**Last updated:** 31.05.2026

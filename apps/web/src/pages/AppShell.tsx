@@ -70,7 +70,6 @@ import {
   EmptyHomeIcon,
 } from "../components/EmptyIcons";
 import { StatusMenu } from "../components/StatusMenu";
-import { NetworkWave, Sparkline } from "../components/TelemetryViz";
 import { TypingIndicator } from "../components/TypingIndicator";
 import { VoiceMiniBar } from "../components/VoiceMiniBar";
 import { VoicePlaceholder } from "../components/VoicePlaceholder";
@@ -97,7 +96,6 @@ import { useTeamHealth } from "../hooks/useTeamHealth";
 import { useServers } from "../hooks/useServers";
 import { useSinceLastVisit } from "../hooks/useSinceLastVisit";
 import { useSocket } from "../hooks/useSocket";
-import { useTelemetry } from "../hooks/useTelemetry";
 import { useVoice } from "../hooks/useVoice";
 import { useVoiceHealth } from "../hooks/useVoiceHealth";
 import { useVoicePresence, reverseVoiceMap } from "../hooks/useVoicePresence";
@@ -116,8 +114,6 @@ type Props = {
 export function AppShell({ user, socketRev, onLogout }: Props) {
   const socket = useSocket(socketRev);
   const brandMarkUrl = `${import.meta.env.BASE_URL}eclipse-chat-logo.png`;
-  // v1.1.7: live mem/cpu/pg pills (poll /api/health каждые 10s).
-  const telemetry = useTelemetry();
 
   const isReady = socket != null;
   const {
@@ -855,80 +851,9 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           </div>
         ) : null}
         <div className="ec-shell__top-actions">
-          {/* v1.1.1+v1.1.7 telemetry. v1.1.38 (WS-1 «Облегчение»):
-              ПАМ/ЦП свёрнуты — видны по hover группы ИЛИ авто-разворот
-              при warn/risk. Progressive disclosure: постоянный
-              визуальный вес ↓, но проблемы всплывают сами. */}
-          <div className="ec-telemetry">
-          <span
-            className={
-              "ec-telemetry-pill " +
-              (isReady && telemetry.online
-                ? "ec-telemetry-pill--ok"
-                : "ec-telemetry-pill--warn")
-            }
-            title={
-              !isReady
-                ? "Socket: соединение потеряно"
-                : !telemetry.online
-                ? "Health endpoint недоступен"
-                : `Socket OK · pg.active=${telemetry.pgActive ?? "—"} · ПАМ ${telemetry.memPercent ?? "—"}% · ЦП ${telemetry.cpuPercent ?? "—"}%`
-            }
-          >
-            <span className="ec-telemetry-pill__dot" />
-            СЕТЬ:{" "}
-            {isReady && telemetry.online
-              ? "СТАБИЛЬНА"
-              : !isReady
-              ? "ОБРЫВ"
-              : "ДЕГРАД"}
-            <NetworkWave active={isReady && telemetry.online} />
-          </span>
-          <span
-            className={
-              "ec-telemetry-pill ec-telemetry-pill--detail" +
-              (telemetry.memStatus === "warn"
-                ? " ec-telemetry-pill--warn"
-                : telemetry.memStatus === "risk"
-                ? " ec-telemetry-pill--risk"
-                : "")
-            }
-            title={
-              telemetry.memPercent != null
-                ? `Память (system used / total): ${telemetry.memPercent}%`
-                : "Память: ожидание данных"
-            }
-          >
-            ПАМ:{" "}
-            {telemetry.memPercent != null
-              ? `${telemetry.memPercent.toFixed(0).padStart(2, "0")}%`
-              : "—"}
-            <Sparkline values={telemetry.memHistory} />
-          </span>
-          <span
-            className={
-              "ec-telemetry-pill ec-telemetry-pill--detail" +
-              (telemetry.cpuStatus === "warn"
-                ? " ec-telemetry-pill--warn"
-                : telemetry.cpuStatus === "risk"
-                ? " ec-telemetry-pill--risk"
-                : "")
-            }
-            title={
-              telemetry.cpuPercent != null
-                ? `CPU (delta between samples): ${telemetry.cpuPercent}%`
-                : "CPU: ожидание данных"
-            }
-          >
-            ЦП:{" "}
-            {telemetry.cpuPercent != null
-              ? `${telemetry.cpuPercent.toFixed(0).padStart(2, "0")}%`
-              : "—"}
-            <Sparkline values={telemetry.cpuHistory} />
-          </span>
-          </div>
-          {/* v1.1.81 — кластер-разделитель: статус | инструменты */}
-          <span className="ec-topbar-sep" aria-hidden />
+          {/* UXR1 — RAM/CPU/NET убраны из глобального topbar; серверная
+              телеметрия теперь живёт в voice diagnostics (UXR2, VoiceRoom),
+              где объясняет качество связи/нагрузку, а не шумит на каждом экране. */}
           {inServerView && (
             <button
               type="button"
