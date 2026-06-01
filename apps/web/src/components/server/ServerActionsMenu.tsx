@@ -43,6 +43,23 @@ type MenuPosition = {
   width: number;
 };
 
+type MenuAction = {
+  key: string;
+  label: string;
+  icon: string;
+  helper?: string;
+  checked?: boolean;
+  disabled?: boolean;
+  danger?: boolean;
+  onClick?: () => void | Promise<void>;
+};
+
+type MenuSection = {
+  key: string;
+  label?: string;
+  items: MenuAction[];
+};
+
 const MANAGE_ROLES = new Set(["OWNER", "ADMIN"]);
 
 function canManage(role: string | null | undefined): boolean {
@@ -50,11 +67,13 @@ function canManage(role: string | null | undefined): boolean {
 }
 
 function computePosition(trigger: HTMLElement | null): MenuPosition {
-  if (!trigger || typeof window === "undefined") return { top: 64, left: 12, width: 280 };
+  if (!trigger || typeof window === "undefined") return { top: 64, left: 12, width: 254 };
   const rect = trigger.getBoundingClientRect();
   const mobile = window.matchMedia("(max-width: 640px)").matches;
-  const width = mobile ? Math.min(window.innerWidth * 0.8, 360) : 286;
-  const left = Math.min(Math.max(10, rect.left), Math.max(10, window.innerWidth - width - 10));
+  const width = mobile ? Math.min(window.innerWidth - 24, 336) : 254;
+  const left = mobile
+    ? 12
+    : Math.min(Math.max(10, rect.left), Math.max(10, window.innerWidth - width - 10));
   return {
     top: Math.min(rect.bottom + 8, window.innerHeight - 16),
     left,
@@ -136,39 +155,84 @@ export function ServerActionsMenu({
     await onLeaveServer();
   };
 
-  const actions = useMemo(
+  const sections = useMemo<MenuSection[]>(
     () => [
-      ...(isManager
-        ? [
-            { key: "settings", label: "Настройки сервера", onClick: onOpenSettings },
-          ]
-        : []),
-      { key: "invite", label: "Пригласить", onClick: onOpenInvite },
-      { key: "notifications", label: "Уведомления", onClick: onOpenNotifications },
-      ...(onToggleHideMutedChannels
+      ...(onSelectView
         ? [
             {
-              key: "hide-muted",
-              label: hideMutedChannels ? "Показать заглушённые" : "Скрыть заглушённые",
-              onClick: onToggleHideMutedChannels,
+              key: "navigation",
+              label: "Навигация",
+              items: [
+                { key: "view-guide", icon: "⌂", label: "Путеводитель", onClick: () => onSelectView("guide") },
+                ...(isManager
+                  ? [
+                      {
+                        key: "view-channels",
+                        icon: "#",
+                        label: "Каналы и роли",
+                        onClick: () => onSelectView("channels-roles"),
+                      },
+                    ]
+                  : []),
+                { key: "view-members", icon: "◉", label: "Участники", onClick: () => onSelectView("members") },
+              ],
             },
           ]
         : []),
+      {
+        key: "primary",
+        label: "Сервер",
+        items: [
+          ...(isManager
+            ? [{ key: "settings", icon: "⚙", label: "Настройки сервера", onClick: onOpenSettings }]
+            : []),
+          { key: "invite", icon: "+", label: "Пригласить", onClick: onOpenInvite },
+          { key: "notifications", icon: "◌", label: "Уведомления", onClick: onOpenNotifications },
+          ...(onToggleHideMutedChannels
+            ? [
+                {
+                  key: "hide-muted",
+                  icon: hideMutedChannels ? "✓" : "–",
+                  label: hideMutedChannels ? "Показать заглушённые" : "Скрыть заглушённые",
+                  checked: hideMutedChannels,
+                  onClick: onToggleHideMutedChannels,
+                },
+              ]
+            : []),
+        ],
+      },
       ...(isManager
         ? [
-            { key: "create-channel", label: "Создать канал", onClick: onCreateChannel },
-            { key: "create-category", label: "Создать категорию", onClick: onCreateCategory },
-            { key: "create-event", label: "Создать событие", disabled: true, helper: "Скоро v1.5.48+" },
             {
-              key: "incident",
-              // v1.5.55 D3 — label переключается по lockedAt.
-              label: server.lockedAt ? "Снять изоляцию" : "Изоляция",
-              onClick: onToggleIsolation,
+              key: "create",
+              label: "Создать",
+              items: [
+                { key: "create-channel", icon: "#", label: "Канал", onClick: onCreateChannel },
+                { key: "create-category", icon: "▣", label: "Категорию", onClick: onCreateCategory },
+                { key: "create-event", icon: "◇", label: "Событие", disabled: true, helper: "Скоро" },
+              ],
+            },
+            {
+              key: "moderation",
+              label: "Модерация",
+              items: [
+                {
+                  key: "incident",
+                  icon: server.lockedAt ? "🔓" : "🔒",
+                  label: server.lockedAt ? "Снять изоляцию" : "Изоляция",
+                  onClick: onToggleIsolation,
+                },
+              ],
             },
           ]
         : []),
-      { key: "copy-id", label: "Копировать ID", onClick: copyServerId },
-      ...(canLeave ? [{ key: "leave", label: "Покинуть сервер", danger: true, onClick: leave }] : []),
+      {
+        key: "utility",
+        items: [
+          { key: "copy-id", icon: "ID", label: "Копировать ID", onClick: copyServerId },
+          ...(canLeave ? [{ key: "leave", icon: "↩", label: "Покинуть сервер", danger: true, onClick: leave }] : []),
+        ],
+      },
     ],
     [
       canLeave,
@@ -180,6 +244,7 @@ export function ServerActionsMenu({
       onOpenInvite,
       onOpenNotifications,
       onOpenSettings,
+      onSelectView,
       hideMutedChannels,
       server.lockedAt,
       server.id,
@@ -196,69 +261,37 @@ export function ServerActionsMenu({
       aria-label={`Действия пространства ${server.name}`}
       style={{ top: position.top, left: position.left, width: position.width }}
     >
-      {onSelectView && (
-        <>
-          <div
-            role="presentation"
-            style={{
-              padding: "6px 12px 2px",
-              fontSize: "0.68rem",
-              letterSpacing: "0.04em",
-              textTransform: "uppercase",
-              color: "var(--ec-text-dim)",
-            }}
-          >
-            Навигация
-          </div>
-          {(
-            [
-              { view: "guide" as const, label: "Путеводитель" },
-              ...(isManager
-                ? [{ view: "channels-roles" as const, label: "Каналы и роли" }]
-                : []),
-              { view: "members" as const, label: "Участники" },
-            ]
-          ).map((nav) => (
+      {sections.map((section, index) => (
+        <section key={section.key} className="ec-server-actions-menu__section">
+          {index > 0 && <div className="ec-server-actions-menu__divider" aria-hidden />}
+          {section.label && <div className="ec-server-actions-menu__label">{section.label}</div>}
+          {section.items.map((action) => (
             <button
-              key={`nav-${nav.view}`}
+              key={action.key}
               type="button"
               role="menuitem"
-              className="ec-popover-item ec-server-actions-menu__item"
+              className={
+                "ec-popover-item ec-server-actions-menu__item" +
+                (action.disabled ? " ec-server-actions-menu__item--disabled" : "") +
+                (action.danger ? " ec-server-actions-menu__item--danger" : "") +
+                (action.checked ? " ec-server-actions-menu__item--checked" : "")
+              }
+              disabled={action.disabled}
               onClick={() => {
-                onSelectView?.(nav.view);
-                onClose();
+                if (action.disabled || !action.onClick) return;
+                void action.onClick();
+                if (action.key !== "copy-id") onClose();
               }}
             >
-              <span>{nav.label}</span>
+              <span className="ec-server-actions-menu__icon" aria-hidden>
+                {action.icon}
+              </span>
+              <span className="ec-server-actions-menu__text">{action.label}</span>
+              {action.helper && <span className="ec-server-actions-menu__helper">{action.helper}</span>}
+              {action.checked && <span className="ec-server-actions-menu__check" aria-hidden>✓</span>}
             </button>
           ))}
-          <div className="ec-server-actions-menu__divider" aria-hidden />
-        </>
-      )}
-      {actions.map((action) => (
-        <div key={action.key}>
-          {(action.key === "create-channel" || action.key === "copy-id" || action.key === "leave") && (
-            <div className="ec-server-actions-menu__divider" aria-hidden />
-          )}
-          <button
-            type="button"
-            role="menuitem"
-            className={
-              "ec-popover-item ec-server-actions-menu__item" +
-              (action.disabled ? " ec-server-actions-menu__item--disabled" : "") +
-              (action.danger ? " ec-server-actions-menu__item--danger" : "")
-            }
-            disabled={action.disabled}
-            onClick={() => {
-              if (action.disabled || !action.onClick) return;
-              action.onClick();
-              if (action.key !== "copy-id") onClose();
-            }}
-          >
-            <span>{action.label}</span>
-            {action.helper && <span className="ec-server-actions-menu__helper">{action.helper}</span>}
-          </button>
-        </div>
+        </section>
       ))}
       {toast && (
         <div className="ec-server-actions-menu__toast" role="status">

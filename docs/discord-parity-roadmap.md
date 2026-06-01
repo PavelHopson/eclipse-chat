@@ -156,15 +156,14 @@ Parallel slices:
 | UXR2 Voice telemetry relocation | Claude | RAM/CPU/NET into voice room/diagnostics; honest unavailable states | `VoiceRoom*`, voice hooks/CSS |
 | UXR3 DM home as messenger | Codex | first screen = friends/DM/search/active contacts, dashboard separate | DM/Friends/Home components |
 | UXR4 Server chat cleanup | Claude | remove persistent server nav rail from channel chat mode; guide/settings stay separate | server view state/header |
-| UXR5 Server popover density | Codex | compact grouped Discord-like `ServerActionsMenu` | `ServerActionsMenu.tsx`, popover CSS |
+| UXR5 Server popover density | Codex | compact grouped Discord-like `ServerActionsMenu` | ✅ v1.5.63 |
 | UXR6 Settings shell normalization | Codex | denser Profile/Server settings windows, less decorative chrome | ✅ v1.5.62 slice 1 |
 
 **Статус (01.06.2026):** **UXR1 + UXR2 + UXR4 → ✅ v1.5.60** (атомарный
 ship: телеметрия убрана из topbar и перенесена в voice diagnostics + server nav
-rail убран из chat mode). UXR3 (DM home) и UXR5 (popover density) идут
-отдельными ветками. UXR6 settings normalization → ✅ v1.5.62 slice 1: шире
-settings windows, меньше decorative cards, плотнее tree-nav, без новых
-features/backend.
+rail убран из chat mode). UXR3 (DM home) → ✅ v1.5.61. UXR5 popover density →
+✅ v1.5.63: compact grouped menu вместо плоского action list. UXR6 settings
+normalization → ✅ v1.5.62 slice 1.
 Глубокая «плотная форма» topbar (сверх удаления RAM/CPU/NET) отложена до
 визуального ревью — локальный browser-smoke невозможен (нет node_modules).
 
