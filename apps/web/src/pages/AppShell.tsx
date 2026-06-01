@@ -70,7 +70,6 @@ import {
   EmptyHomeIcon,
 } from "../components/EmptyIcons";
 import { StatusMenu } from "../components/StatusMenu";
-import { NetworkWave, Sparkline } from "../components/TelemetryViz";
 import { TypingIndicator } from "../components/TypingIndicator";
 import { VoiceMiniBar } from "../components/VoiceMiniBar";
 import { VoicePlaceholder } from "../components/VoicePlaceholder";
@@ -79,7 +78,6 @@ import { useChannels } from "../hooks/useChannels";
 import { dmIsSaved, dmTitle, useDirectConversations } from "../hooks/useDirectConversations";
 import { useDirectMessages } from "../hooks/useDirectMessages";
 import { useFriends } from "../hooks/useFriends";
-import { useIncidents } from "../hooks/useIncidents";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import { useMembers, type MemberRole, type MemberRow } from "../hooks/useMembers";
 import { useMessages } from "../hooks/useMessages";
@@ -97,7 +95,6 @@ import { useTeamHealth } from "../hooks/useTeamHealth";
 import { useServers } from "../hooks/useServers";
 import { useSinceLastVisit } from "../hooks/useSinceLastVisit";
 import { useSocket } from "../hooks/useSocket";
-import { useTelemetry } from "../hooks/useTelemetry";
 import { useVoice } from "../hooks/useVoice";
 import { useVoiceHealth } from "../hooks/useVoiceHealth";
 import { useVoicePresence, reverseVoiceMap } from "../hooks/useVoicePresence";
@@ -116,8 +113,6 @@ type Props = {
 export function AppShell({ user, socketRev, onLogout }: Props) {
   const socket = useSocket(socketRev);
   const brandMarkUrl = `${import.meta.env.BASE_URL}eclipse-chat-logo.png`;
-  // v1.1.7: live mem/cpu/pg pills (poll /api/health каждые 10s).
-  const telemetry = useTelemetry();
 
   const isReady = socket != null;
   const {
@@ -291,12 +286,12 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     toggleReaction: dmToggleReaction,
   } = useDirectMessages(inDmMode ? selectedDmId : null, socket, user.id);
 
-  // Total unread по всем каналам — для tab title badge
+  // Notification side-effects stay active, but the global topbar toggle is gone in UXR1.
   const unreadTotal = Object.values(unread).reduce((sum, n) => sum + n, 0);
-  // Ref для selected channel — useNotifications читает на каждый message:new
   const selectedChannelIdRef = useRef<string | null>(selectedChannelId);
   selectedChannelIdRef.current = selectedChannelId;
-  const notif = useNotifications(socket, user.id, selectedChannelIdRef, unreadTotal);
+  useNotifications(socket, user.id, selectedChannelIdRef, unreadTotal);
+
   // v0.74 #29 phase 1: Focus mode — filter feed to mentions/pinned/own.
   const focus = useFocusMode();
   // v1.5.32 — Web Share Target receiver. URL params (?share_title/text/url)
@@ -345,11 +340,9 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   /** v0.76 #25 phase 1: Admin Panel — полноэкранный view для OWNER/ADMIN. */
   const [adminOpen, setAdminOpen] = useState(false);
   // v1.2.6 Platform Admin (trek P1) — глобальная super-admin панель.
-  // Иконка в топбаре появляется ТОЛЬКО при user.isPlatformOwner = true.
+  // UXR1: постоянную иконку из topbar убрали; сам view оставлен для прямых
+  // entry-point'ов будущего admin navigation slice.
   const [platformAdminOpen, setPlatformAdminOpen] = useState(false);
-  // v1.5.4 — AI agent button ripple. Перемонтаж <span key={rippleKey}>
-  // перезапускает CSS keyframe при каждом клике.
-  const [aiRippleKey, setAiRippleKey] = useState(0);
   // Incident panel — toggle в right rail (приоритет ниже thread panel).
   const [showIncidents, setShowIncidents] = useState(false);
   /**
@@ -439,10 +432,6 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     error: membersError,
     updateMemberRole,
   } = useMembers(activeServerId, socket);
-
-  // ===== Incidents =====
-  // Список инцидентов сервера + open/resolve. IncidentPanel в right rail.
-  const { openCount: incidentOpenCount } = useIncidents(activeServerId, socket);
 
   // ===== Home «TODAY» =====
   // Операционная сводка поверх всех workspace'ов — fetch при открытии Home.
@@ -690,30 +679,6 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     setMembersOpen(false);
   };
 
-  const openHelp = () => {
-    setHelpOpen(true);
-    setFriendsOpen(false);
-    setAdminOpen(false);
-    setHomeOpen(false);
-    setStatusBoardOpen(false);
-    setTeamHealthOpen(false);
-    setSelectedTableId(null);
-    setNavOpen(false);
-    setMembersOpen(false);
-  };
-
-  const openAdmin = () => {
-    setAdminOpen(true);
-    setFriendsOpen(false);
-    setHelpOpen(false);
-    setHomeOpen(false);
-    setStatusBoardOpen(false);
-    setTeamHealthOpen(false);
-    setSelectedTableId(null);
-    setNavOpen(false);
-    setMembersOpen(false);
-  };
-
   const openActiveServer = () => {
     setHomeOpen(false);
     setFriendsOpen(false);
@@ -844,282 +809,11 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           </div>
         ) : null}
         <div className="ec-shell__top-actions">
-          {/* v1.1.1+v1.1.7 telemetry. v1.1.38 (WS-1 «Облегчение»):
-              ПАМ/ЦП свёрнуты — видны по hover группы ИЛИ авто-разворот
-              при warn/risk. Progressive disclosure: постоянный
-              визуальный вес ↓, но проблемы всплывают сами. */}
-          <div className="ec-telemetry">
-          <span
-            className={
-              "ec-telemetry-pill " +
-              (isReady && telemetry.online
-                ? "ec-telemetry-pill--ok"
-                : "ec-telemetry-pill--warn")
-            }
-            title={
-              !isReady
-                ? "Socket: соединение потеряно"
-                : !telemetry.online
-                ? "Health endpoint недоступен"
-                : `Socket OK · pg.active=${telemetry.pgActive ?? "—"} · ПАМ ${telemetry.memPercent ?? "—"}% · ЦП ${telemetry.cpuPercent ?? "—"}%`
-            }
-          >
-            <span className="ec-telemetry-pill__dot" />
-            СЕТЬ:{" "}
-            {isReady && telemetry.online
-              ? "СТАБИЛЬНА"
-              : !isReady
-              ? "ОБРЫВ"
-              : "ДЕГРАД"}
-            <NetworkWave active={isReady && telemetry.online} />
-          </span>
-          <span
-            className={
-              "ec-telemetry-pill ec-telemetry-pill--detail" +
-              (telemetry.memStatus === "warn"
-                ? " ec-telemetry-pill--warn"
-                : telemetry.memStatus === "risk"
-                ? " ec-telemetry-pill--risk"
-                : "")
-            }
-            title={
-              telemetry.memPercent != null
-                ? `Память (system used / total): ${telemetry.memPercent}%`
-                : "Память: ожидание данных"
-            }
-          >
-            ПАМ:{" "}
-            {telemetry.memPercent != null
-              ? `${telemetry.memPercent.toFixed(0).padStart(2, "0")}%`
-              : "—"}
-            <Sparkline values={telemetry.memHistory} />
-          </span>
-          <span
-            className={
-              "ec-telemetry-pill ec-telemetry-pill--detail" +
-              (telemetry.cpuStatus === "warn"
-                ? " ec-telemetry-pill--warn"
-                : telemetry.cpuStatus === "risk"
-                ? " ec-telemetry-pill--risk"
-                : "")
-            }
-            title={
-              telemetry.cpuPercent != null
-                ? `CPU (delta between samples): ${telemetry.cpuPercent}%`
-                : "CPU: ожидание данных"
-            }
-          >
-            ЦП:{" "}
-            {telemetry.cpuPercent != null
-              ? `${telemetry.cpuPercent.toFixed(0).padStart(2, "0")}%`
-              : "—"}
-            <Sparkline values={telemetry.cpuHistory} />
-          </span>
-          </div>
-          {/* v1.1.81 — кластер-разделитель: статус | инструменты */}
-          <span className="ec-topbar-sep" aria-hidden />
-          {inServerView && (
-            <button
-              type="button"
-              onClick={() => setShowSearch(true)}
-              title="Поиск (Ctrl+K)"
-              aria-label="Поиск"
-              className="ec-icon-btn"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <circle cx="11" cy="11" r="8" />
-                <line x1="21" y1="21" x2="16.65" y2="16.65" />
-              </svg>
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => (helpOpen ? setHelpOpen(false) : openHelp())}
-            title="Справка и онбординг"
-            aria-label="Справка"
-            aria-pressed={helpOpen}
-            className="ec-icon-btn"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <circle cx="12" cy="12" r="10" />
-              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-              <line x1="12" y1="17" x2="12.01" y2="17" />
-            </svg>
-          </button>
-          {(currentRole === "OWNER" || currentRole === "ADMIN") &&
-            activeServer &&
-            !inDmMode && (
-              <button
-                type="button"
-                onClick={() =>
-                  adminOpen ? setAdminOpen(false) : openAdmin()
-                }
-                title="Админ-панель"
-                aria-label="Админ-панель"
-                aria-pressed={adminOpen}
-                className="ec-icon-btn"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                  <path d="M12 2l9 4v6c0 5-3.5 9.5-9 10-5.5-.5-9-5-9-10V6l9-4z" />
-                  <path d="M9 12l2 2 4-4" />
-                </svg>
-              </button>
-            )}
-          {/* v1.2.6 Platform Admin (trek P1) — кнопка только для владельца
-              платформы. Per-server AdminPanel и Platform Admin — две
-              разные иерархии: первая управляет конкретным workspace'ом,
-              вторая — глобальная (баны, сброс пароля). */}
-          {user.isPlatformOwner === true && (
-            <button
-              type="button"
-              onClick={() => setPlatformAdminOpen((v) => !v)}
-              title="Platform Admin — все пользователи платформы"
-              aria-label="Platform Admin"
-              aria-pressed={platformAdminOpen}
-              className="ec-icon-btn"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <circle cx="12" cy="12" r="3" />
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-              </svg>
-            </button>
-          )}
-          {/* v0.74 #29 phase 1: Focus mode toggle — фильтр feed'а на
-              direct-mentions + pinned + own messages. Глобальный, не
-              привязан к каналу. */}
-          <button
-            type="button"
-            onClick={focus.toggle}
-            title={
-              focus.enabled
-                ? "Фокус-режим включён — показаны только меншены, закреплённые и свои"
-                : "Включить фокус-режим (скрыть шум)"
-            }
-            aria-label="Фокус-режим"
-            aria-pressed={focus.enabled}
-            className="ec-icon-btn"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <circle cx="12" cy="12" r="10" />
-              <circle cx="12" cy="12" r="6" />
-              <circle cx="12" cy="12" r="2" fill="currentColor" />
-            </svg>
-          </button>
-          {showRightRail && (
-            <button
-              type="button"
-              onClick={() => {
-                setShowIncidents((v) => !v);
-                setSelectedThreadId(null);
-                if (isTabletOrSmaller) setMembersOpen(true);
-              }}
-              title={
-                incidentOpenCount > 0
-                  ? `Инциденты — ${incidentOpenCount} активных`
-                  : "Инциденты"
-              }
-              aria-label="Инциденты"
-              className={
-                "ec-icon-btn" +
-                (incidentOpenCount > 0 ? " ec-icon-btn--alert" : "")
-              }
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-                <line x1="12" y1="9" x2="12" y2="13" />
-                <line x1="12" y1="17" x2="12.01" y2="17" />
-              </svg>
-              {incidentOpenCount > 0 && (
-                <span aria-hidden className="ec-count-badge">
-                  {incidentOpenCount > 9 ? "9+" : incidentOpenCount}
-                </span>
-              )}
-            </button>
-          )}
-          {notif.supported && (
-            <button
-              type="button"
-              onClick={() => {
-                if (notif.permission === "default") void notif.request();
-                else notif.toggle();
-              }}
-              title={
-                notif.permission === "denied"
-                  ? "Уведомления заблокированы в браузере"
-                  : notif.permission === "default"
-                  ? "Включить уведомления"
-                  : notif.enabled
-                  ? "Уведомления включены — выключить"
-                  : "Уведомления выключены — включить"
-              }
-              aria-label="Уведомления"
-              aria-pressed={notif.permission === "granted" && notif.enabled}
-              className="ec-icon-btn"
-              style={
-                notif.permission === "denied" ? { opacity: 0.45 } : undefined
-              }
-            >
-              {notif.permission === "granted" && notif.enabled ? (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                  <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                  <path d="M13.73 21a2 2 0 01-3.46 0" />
-                </svg>
-              ) : (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                  <path d="M13.73 21a2 2 0 01-3.46 0" />
-                  <path d="M18.63 13A17.89 17.89 0 0118 8" />
-                  <path d="M6.26 6.26A5.86 5.86 0 006 8c0 7-3 9-3 9h14" />
-                  <path d="M18 8a6 6 0 00-9.33-5" />
-                  <line x1="1" y1="1" x2="23" y2="23" />
-                </svg>
-              )}
-            </button>
-          )}
-          {/* v1.5.4 — AI agent button: premium violet glow между notifications
-              и SpiderClock'ом. Click → dispatch global `ec-ai-trigger`; composer
-              (MessageInput) ловит и фокусит textarea + prefill «@ai ». */}
-          <button
-            type="button"
-            onClick={() => {
-              setAiRippleKey((k) => k + 1);
-              window.dispatchEvent(new CustomEvent("ec-ai-trigger"));
-            }}
-            title="AI агент — спросить @ai в чате"
-            aria-label="AI агент"
-            className="ec-icon-btn ec-ai-btn ec-anim-ai-pulse"
-          >
-            {aiRippleKey > 0 && (
-              <span
-                key={aiRippleKey}
-                className="ec-ai-btn-ripple ec-anim-ai-ripple"
-                aria-hidden
-              />
-            )}
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              {/* sparkle / star: central 4-point + 2 small accents */}
-              <path d="M12 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2z" />
-              <path d="M19 14l1 2.5 2.5 1-2.5 1L19 21l-1-2.5L15.5 17.5l2.5-1z" opacity="0.7" />
-            </svg>
-          </button>
+          {/* UXR1: global chrome держит только stable identity controls.
+              Search остаётся через Ctrl/Cmd+K и ServerSwitcher, tools — в
+              контекстных headers/menus. RAM/CPU/NET переезжают в voice slice. */}
           <SpiderClock />
           <ThemeToggle />
-          {showRightRail && (
-            <button
-              type="button"
-              className="ec-shell__drawer-btn ec-shell__drawer-btn--members"
-              onClick={() => setMembersOpen((v) => !v)}
-              aria-label={membersOpen ? "Скрыть участников" : "Показать участников"}
-              title="Участники"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
-                <circle cx="9" cy="7" r="4" />
-                <path d="M23 21v-2a4 4 0 00-3-3.87" />
-                <path d="M16 3.13a4 4 0 010 7.75" />
-              </svg>
-            </button>
-          )}
-          {/* v1.1.81 — кластер-разделитель: инструменты | идентичность */}
           <span className="ec-topbar-sep" aria-hidden />
           <button
             type="button"
