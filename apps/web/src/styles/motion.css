@@ -54,6 +54,28 @@
   100% { transform: translateY(0) scale(1); }
 }
 
+/* v1.5.79 — pinned-message micro-confirmation. Inspired by tactile
+ * favorite-button motion, but kept functional: the pin jumps into a small
+ * socket, flips state visually, then settles without adding permanent chrome. */
+@keyframes ec-pin-burst-button {
+  0%, 100% { transform: translateY(0) scale(1); }
+  82%      { transform: translateY(2px) scale(0.96); }
+}
+
+@keyframes ec-pin-burst-icon {
+  0%   { transform: translateY(0) rotate(0deg) scale(1); }
+  24%  { transform: translateY(-8px) rotate(-10deg) scale(1.06); }
+  46%  { transform: translateY(8px) rotate(185deg) scale(0.64); }
+  72%  { transform: translateY(-10px) rotate(320deg) scale(1.08); }
+  100% { transform: translateY(0) rotate(360deg) scale(1); }
+}
+
+@keyframes ec-pin-burst-hole {
+  0%, 100% { opacity: 0; transform: translateX(-50%) scaleX(0.2) scaleY(0.2); }
+  28%      { opacity: 0.75; transform: translateX(-50%) scaleX(0.92) scaleY(0.55); }
+  58%      { opacity: 0.55; transform: translateX(-50%) scaleX(0.72) scaleY(0.42); }
+}
+
 /* v1.5.3 — pulse near playhead в waveform. Bars в окрестности позиции
  * чтения масштабируются вертикально, давая ощущение «живого» звука. */
 @keyframes ec-wave-pulse {
@@ -1105,7 +1127,10 @@
   .ec-lightbox-backdrop,
   .ec-lightbox-img,
   .ec-vr-presence-card--speaking,
-  .ec-vr-video-tile--speaking {
+  .ec-vr-video-tile--speaking,
+  .ec-msg-action--pin.is-bursting,
+  .ec-msg-action--pin.is-bursting::before,
+  .ec-msg-action--pin.is-bursting svg {
     animation: none !important;
   }
   .ec-search-hit::before,

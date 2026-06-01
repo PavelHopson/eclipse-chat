@@ -4690,6 +4690,7 @@ input[type="radio"]:focus-visible {
   height: 26px;
   display: grid;
   place-items: center;
+  position: relative;
   background: transparent;
   border: 0;
   border-radius: var(--ec-radius-sm);
@@ -4721,6 +4722,35 @@ input[type="radio"]:focus-visible {
 .ec-msg-action--warn:hover {
   background: color-mix(in srgb, var(--ec-warn) 14%, transparent);
   color: var(--ec-warn);
+}
+.ec-msg-action--pin::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 4px;
+  width: 16px;
+  height: 5px;
+  border-radius: 999px / 60%;
+  background: color-mix(in srgb, var(--ec-warn) 22%, var(--ec-surface-sunken));
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--ec-text-strong) 10%, transparent),
+    0 0 12px -5px var(--ec-warn);
+  opacity: 0;
+  transform: translateX(-50%) scale(0.2);
+  pointer-events: none;
+}
+.ec-msg-action--pin.is-bursting {
+  color: var(--ec-warn);
+  background: color-mix(in srgb, var(--ec-warn) 12%, transparent);
+  animation: ec-pin-burst-button 820ms var(--ec-ease-out) both;
+}
+.ec-msg-action--pin.is-bursting::before {
+  animation: ec-pin-burst-hole 520ms var(--ec-ease-out) both;
+}
+.ec-msg-action--pin.is-bursting svg {
+  transform-origin: 50% 55%;
+  animation: ec-pin-burst-icon 820ms var(--ec-ease-out) both;
+  filter: drop-shadow(0 0 7px color-mix(in srgb, var(--ec-warn) 45%, transparent));
 }
 .ec-msg-action--danger { color: var(--ec-danger); }
 .ec-msg-action--danger:hover {

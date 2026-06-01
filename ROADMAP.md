@@ -5,13 +5,20 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.78** (Channel rail compact pass — левый rail приведён
+**Текущая версия:** **v1.5.79** (Pinned-message micro-interaction — CodePen
+favorite-button motion pattern адаптирован в production-safe Eclipse UI:
+кнопка «Закрепить» в message toolbar получила tactile confirm animation
+без GSAP/CDN: icon jump/flip, small socket-hole, button press. Motion ограничен
+stateful action'ом, respects `prefers-reduced-motion`, не добавляет false UI claims
+и не меняет API/schema.)
+
+**Предыдущая:** v1.5.78 (Channel rail compact pass — левый rail приведён
 к роли навигации, а не второго hero. Compact override для server header с
 баннером перенесён в always-loaded `components.css`: banner больше не создаёт
 высокую пустую область в сайдбаре, независимо от lazy chunks. Tabs
 `Каналы / Задачи / Данные`, category headers, channel rows и bottom create CTA
 поджаты по высоте и визуально приглушены; active channel оставлен violet-only
-без cyan как декоративного акцента. No backend/schema.
+без cyan как декоративного акцента. No backend/schema.)
 
 **Предыдущая:** v1.5.77 (Server menu portal fix — исправление регресса
 v1.5.76: server actions menu больше не рендерится внутри левого rail stacking

@@ -177,6 +177,7 @@ export function MessageList({
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [pinBurstId, setPinBurstId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   // v1.5.24 — какое сообщение сейчас раскрыло «История правок» accordion.
   const [editHistoryId, setEditHistoryId] = useState<string | null>(null);
@@ -190,6 +191,7 @@ export function MessageList({
   const listKeyRef = useRef<string | null>(listKey ?? null);
   const tailIdRef = useRef<string | null>(null);
   const messageCountRef = useRef(0);
+  const pinBurstTimerRef = useRef<number | null>(null);
 
   const clearNewMessageMarker = useCallback(() => {
     setUnreadAnchorId(null);
@@ -283,6 +285,14 @@ export function MessageList({
     }
   }, [messages, unreadAnchorId, clearNewMessageMarker]);
 
+  useEffect(() => {
+    return () => {
+      if (pinBurstTimerRef.current !== null) {
+        window.clearTimeout(pinBurstTimerRef.current);
+      }
+    };
+  }, []);
+
   const handleCopy = async (m: MessageRow) => {
     try {
       await navigator.clipboard.writeText(m.content);
@@ -318,6 +328,19 @@ export function MessageList({
     if (!onDelete) return;
     if (!window.confirm("Удалить сообщение?")) return;
     await onDelete(m.id);
+  };
+
+  const handlePin = async (m: MessageRow) => {
+    if (!onPin) return;
+    if (pinBurstTimerRef.current !== null) {
+      window.clearTimeout(pinBurstTimerRef.current);
+    }
+    setPinBurstId(m.id);
+    pinBurstTimerRef.current = window.setTimeout(() => {
+      setPinBurstId((current) => (current === m.id ? null : current));
+      pinBurstTimerRef.current = null;
+    }, 820);
+    await onPin(m.id);
   };
 
   // Loading state — skeleton screens вместо пустого блока с текстом «Загрузка…».
@@ -1050,10 +1073,10 @@ export function MessageList({
                   {showPin && (
                     <button
                       type="button"
-                      className="ec-msg-action ec-msg-action--warn"
+                      className={`ec-msg-action ec-msg-action--warn ec-msg-action--pin${pinBurstId === m.id ? " is-bursting" : ""}`}
                       aria-label="Закрепить"
                       title="Закрепить"
-                      onClick={() => void onPin?.(m.id)}
+                      onClick={() => void handlePin(m)}
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                         <line x1="12" y1="17" x2="12" y2="22" />
