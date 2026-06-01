@@ -5,7 +5,15 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.71** (Clean redesign slice 8 ч.2 — компактный channel-header
+**Текущая версия:** **v1.5.72** (Version label в UI — диагностика кэша. По запросу
+Pavel'я: всегда-видимая надпись `v{CLIENT_VERSION}` (build-time via Vite define) в
+fixed bottom-right (mono, dim, pointer-events:none). Показывает реально запущенную
+версию → сразу видно, на свежем bundle браузер или на устаревшем кэше. Прод-диагноз
+подтвердил: deployed CSS-чанки (AppShell/EmptyIcons) содержат solid-popover
+(`background:--ec-surface-2`) — сервер отдаёт правильно; если у клиента прозрачный,
+это HTTP-кэш старого чанка. No backend/schema.
+
+**Предыдущая:** v1.5.71 (Clean redesign slice 8 ч.2 — компактный channel-header
 (спек Pavel'я #2). Когда у сервера есть баннер, header'у давался класс `--banner`
 → `min-height 96px` + cover-баннер за именем = большой пустой hero над tabs
 (баннер дублировал «Путеводитель»). Override в clean-ui.css: `--banner` header

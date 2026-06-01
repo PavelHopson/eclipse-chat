@@ -301,6 +301,27 @@ export function App() {
           </button>
         </div>
       )}
+      {/* Version label — всегда показывает реально запущенную build-версию
+          (CLIENT_VERSION via Vite define). Диагностика кэша + просто инфо.
+          Если тут не последняя версия — браузер на устаревшем bundle. */}
+      <div
+        style={{
+          position: "fixed",
+          bottom: 5,
+          right: 9,
+          zIndex: 9998,
+          fontFamily: "var(--ec-font-mono, ui-monospace, monospace)",
+          fontSize: "0.62rem",
+          letterSpacing: "0.04em",
+          color: "var(--ec-text-dim)",
+          opacity: 0.55,
+          pointerEvents: "none",
+          userSelect: "none",
+        }}
+        aria-hidden
+      >
+        v{CLIENT_VERSION}
+      </div>
       {view === "loading" ? (
         <main style={loadingStyle}>Загрузка…</main>
       ) : !isAuthenticated ? (
