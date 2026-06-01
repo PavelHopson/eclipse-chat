@@ -9,6 +9,8 @@ type Props = {
   error: string | null;
   /** Drawer-mode close button. Передаётся на mobile/tablet — на desktop omitted. */
   onClose?: () => void;
+  /** Desktop — свернуть панель участников (chevron). */
+  onCollapse?: () => void;
   /** Скрыть собственный header — когда MemberList вложен в IntelligencePanel. */
   hideHeader?: boolean;
   /** Кто сейчас в каком VOICE-канале (userId → channelId или undefined). */
@@ -215,6 +217,7 @@ export function MemberList({
   loading,
   error,
   onClose,
+  onCollapse,
   voiceChannelByUser,
   channelNameById,
   currentUserId,
@@ -271,6 +274,13 @@ export function MemberList({
           <span className="ec-mem__hd-count">
             {onlineCount}/{members.length}
           </span>
+          {onCollapse && (
+            <button type="button" onClick={onCollapse} className="ec-mem__close" aria-label="Свернуть панель" title="Свернуть">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M9 6l6 6-6 6" />
+              </svg>
+            </button>
+          )}
           {onClose && (
             <button type="button" onClick={onClose} className="ec-mem__close" aria-label="Закрыть">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>

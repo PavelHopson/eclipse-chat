@@ -5,7 +5,15 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.64** (Clean redesign slice 3 — composer declutter.
+**Текущая версия:** **v1.5.65** (Clean redesign slice 4 — правый рейл (обёртка).
+Догон slice 1: «ТАКТИЧЕСКИЙ ВИД» жил не только в MemberList, но и в `IntelligencePanel`
+(desktop right-rail обёртка с собственным `ec-rail` header + holo-edge + tactical-
+иконкой, рендерил MemberList с hideHeader). Теперь IntelligencePanel — тонкая
+обёртка над MemberList с его чистым header («Участники N/M» + collapse + close).
+В MemberList добавлен `onCollapse` (desktop chevron). Убраны IconMembers +
+ec-rail театр. MembersView (hideHeader) не затронут. No backend/schema.
+
+**Предыдущая:** v1.5.64 (Clean redesign slice 3 — composer declutter.
 Убран декоративный `ec-composer-strip` над полем ввода («>_ Защищённый канал» +
 фейковое «в эфире»/«печатает…» по own-focus + scan-dots) — sci-fi-театр на
 каждом канале + **ложный security-claim** (канал не E2E-шифрован). Удалён

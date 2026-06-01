@@ -57,18 +57,6 @@ type Props = {
   serverId?: string | null;
 };
 
-// v1.1.93 slice 4: inline-style консоли IntelligencePanel вынесены в
-// классы .ec-rail* (components.css).
-
-function IconMembers() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
-      <circle cx="9" cy="7" r="4" />
-      <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
-    </svg>
-  );
-}
 
 export function IntelligencePanel({
   members,
@@ -82,65 +70,22 @@ export function IntelligencePanel({
   onCollapse,
   serverId,
 }: Props) {
-  const onlineCount = members.filter((m) => m.online).length;
-
+  // Clean redesign: театральный ec-rail header («ТАКТИЧЕСКИЙ ВИД» + holo-edge +
+  // tactical-иконка) убран. Панель = MemberList с его чистым header
+  // («Участники N/M» + collapse + close).
   return (
-    <aside className="ec-rail" aria-label="Участники">
-      <header className="ec-server-header-edge ec-rail__header">
-        <span className="ec-rail__title">
-          <span className="ec-rail__title-icon" aria-hidden>
-            <IconMembers />
-          </span>
-          <span>ТАКТИЧЕСКИЙ ВИД</span>
-        </span>
-        <span className="ec-rail__count">
-          {onlineCount}/{members.length}
-        </span>
-        <div className="ec-rail__header-actions">
-          {onCollapse && (
-            <button
-              type="button"
-              onClick={onCollapse}
-              aria-label="Свернуть панель"
-              title="Свернуть панель"
-              className="ec-icon-btn"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <path d="M9 6l6 6-6 6" />
-              </svg>
-            </button>
-          )}
-          {onClose && (
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Закрыть"
-              title="Закрыть"
-              className="ec-shell__members-close ec-icon-btn"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            </button>
-          )}
-        </div>
-      </header>
-
-      <div className="ec-rail__scroll">
-        <MemberList
-          members={members}
-          loading={membersLoading}
-          error={membersError}
-          voiceChannelByUser={voiceChannelByUser}
-          channelNameById={channelNameById}
-          currentUserId={currentUserId}
-          onOpenDm={onOpenDm}
-          hideHeader
-          serverId={serverId}
-        />
-      </div>
-    </aside>
+    <MemberList
+      members={members}
+      loading={membersLoading}
+      error={membersError}
+      voiceChannelByUser={voiceChannelByUser}
+      channelNameById={channelNameById}
+      currentUserId={currentUserId}
+      onOpenDm={onOpenDm}
+      onClose={onClose}
+      onCollapse={onCollapse}
+      serverId={serverId}
+    />
   );
 }
 
