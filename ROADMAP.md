@@ -5,7 +5,19 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.60** (IA reset slice 1 — UXR1+UXR2+UXR4 атомарно.
+**Текущая версия:** **v1.5.61** (IA reset slice 2 — UXR3 «Мессенджер как Главная».
+**Лендинг**: «Главная» (brand-mark + home-кнопка, `openHome`) теперь открывает
+мессенджер (DM-режим + экран «Друзья»), а не операционный дашборд. Дашборд
+«Сегодня» (`HomeToday`) больше не лендинг — `homeOpen` нигде не выставляется в
+true; компонент сохранён в коде для возможного возврата как отдельная «Сводка».
+**DM-сайдбар** (`DirectConversationList`) переписан под утверждённый прототип
+(`docs/design/ia-reset/dm-home.html`): новый `dm-home.css` (namespace ec-dmx-,
+existing токены) — header «Сообщения» + поиск (client-side фильтр) + accent-rail
+на active/hover + presence-точки + activity-хинты + unread-бейдж + «Избранное».
+Данные/логика без изменений, inline-стили → классы. Верифицировано статикой на
+реальных tokens.css. No backend/schema.
+
+**Предыдущая:** v1.5.60 (IA reset slice 1 — UXR1+UXR2+UXR4 атомарно.
 **UXR1**: RAM/CPU/NET pills удалены из глобального topbar AppShell (часы/профиль/
 тема/выход/плеер остаются); сняты now-unused `useTelemetry`/`TelemetryViz` импорты
 в AppShell. **UXR2**: серверная телеметрия переехала в voice context — в панель

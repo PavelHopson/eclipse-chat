@@ -678,9 +678,15 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     setSelectedTableId(null);
   }, [activeServerId]);
 
+  // UXR3 — «Главная» теперь = мессенджер, а не операционный дашборд.
+  // Вход в DM-режим (activeServerId=null) с экраном «Друзья» по умолчанию;
+  // диалоги — в левом сайдбаре. Дашборд «Сегодня» (HomeToday) больше не
+  // лендинг (homeOpen нигде не выставляется в true); код сохранён для
+  // возможного возврата отдельным «Сводка»-входом.
   const openHome = () => {
-    setHomeOpen(true);
-    setFriendsOpen(false);
+    setHomeOpen(false);
+    setActiveServerId(null);
+    setFriendsOpen(true);
     setHelpOpen(false);
     setAdminOpen(false);
     setStatusBoardOpen(false);
