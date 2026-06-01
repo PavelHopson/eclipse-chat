@@ -5,7 +5,15 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.72** (Version label в UI — диагностика кэша. По запросу
+**Текущая версия:** **v1.5.73** (Popover solid inline — обход CSS-чанк-кэша.
+Pavel видит version-label (свежий main bundle), но popover прозрачный → ленивый
+AppShell-чанк (JS+CSS) застрял в кэше, отдельно от main bundle. Фикс: solid-фон
+поповера (`background:--ec-surface-2`, `backdrop-filter:none`, `background-image:none`)
+задан **inline-стилем** в `ServerActionsMenu` — едет в JS-чанке, бьёт любой CSS
+(в т.ч. устаревший). Применится как только AppShell-чанк у клиента обновится.
+Решающий тест для Pavel'я — incognito (нулевой кэш). No backend/schema.
+
+**Предыдущая:** v1.5.72 (Version label в UI — диагностика кэша. По запросу
 Pavel'я: всегда-видимая надпись `v{CLIENT_VERSION}` (build-time via Vite define) в
 fixed bottom-right (mono, dim, pointer-events:none). Показывает реально запущенную
 версию → сразу видно, на свежем bundle браузер или на устаревшем кэше. Прод-диагноз

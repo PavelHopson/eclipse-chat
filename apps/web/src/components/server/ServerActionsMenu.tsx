@@ -189,7 +189,17 @@ export function ServerActionsMenu({
       className="ec-popover-surface ec-server-actions-menu"
       role="menu"
       aria-label={`Действия пространства ${server.name}`}
-      style={{ top: position.top, left: position.left, width: position.width }}
+      style={{
+        top: position.top,
+        left: position.left,
+        width: position.width,
+        // Solid-фон inline — бьёт любой (в т.ч. устаревший из кэша) CSS-чанк,
+        // чтобы поповер никогда не просвечивал список каналов под собой.
+        background: "var(--ec-surface-2)",
+        backdropFilter: "none",
+        WebkitBackdropFilter: "none",
+        backgroundImage: "none",
+      }}
     >
       {actions.map((action) => (
         <div key={action.key}>
