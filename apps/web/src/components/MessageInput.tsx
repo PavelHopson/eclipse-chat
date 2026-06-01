@@ -266,7 +266,6 @@ export function MessageInput({
 }: Props) {
   const [draft, setDraft] = useState(() => loadDraft(draftKey));
   const [sending, setSending] = useState(false);
-  const [focused, setFocused] = useState(false);
   const [pending, setPending] = useState<Pending[]>([]);
   const [attachError, setAttachError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -974,18 +973,9 @@ export function MessageInput({
           ))}
         </div>
       )}
-      {/* Operator-strip над композером (см. v1.1.90 — оставлен как identity). */}
-      <div className="ec-composer-strip">
-        <span className="ec-composer-strip__pill">
-          {">_"} Защищённый канал
-        </span>
-        <span className="ec-composer-strip__signal">
-          {focused ? "печатает…" : "в эфире"}
-          <span className="ec-composer-scan-dots" aria-hidden>
-            <span /><span /><span />
-          </span>
-        </span>
-      </div>
+      {/* Clean redesign: декоративный operator-strip («>_ Защищённый канал» +
+          фейковое «в эфире» + scan-dots) убран — sci-fi-театр + ложный
+          security-claim. Композер ниже самодостаточен. */}
       <div className="ec-composer-box" style={{ gridTemplateColumns: boxGridColumns }}>
         {!hideAttachments && (
           <>

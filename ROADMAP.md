@@ -5,7 +5,14 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.63** (Clean redesign slice 2 — экран «Путеводитель».
+**Текущая версия:** **v1.5.64** (Clean redesign slice 3 — composer declutter.
+Убран декоративный `ec-composer-strip` над полем ввода («>_ Защищённый канал» +
+фейковое «в эфире»/«печатает…» по own-focus + scan-dots) — sci-fi-театр на
+каждом канале + **ложный security-claim** (канал не E2E-шифрован). Удалён
+vestigial `focused` state. Chat-header канала проверен — уже чистый (глиф + имя +
+divider + описание), не трогался. No backend/schema.
+
+**Предыдущая:** v1.5.63 (Clean redesign slice 2 — экран «Путеводитель».
 `ServerWelcomeHero` переписан на `clean-ui.css` (.ec-guide*). Было: баннер
 full-bleed за текстом, гигантский заголовок и описание-стена с эмодзи
 наслаивались, «ПРОСТРАНСТВО»-eyebrow. Стало: баннер — контейнерная шапка
