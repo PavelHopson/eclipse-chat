@@ -1306,7 +1306,12 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
         )}
       </div>
 
-      <section className="ec-shell__chat">
+      <section
+        className={
+          "ec-shell__chat" +
+          (activeServer && !inDmMode && serverView === "guide" ? " ec-shell__chat--guide" : "")
+        }
+      >
         <div className="ec-chat-header">
           {homeOpen ? (
             <span className="ec-chat-title">

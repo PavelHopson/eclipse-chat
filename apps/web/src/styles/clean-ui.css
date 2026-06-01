@@ -198,16 +198,15 @@
 }
 .ec-guide__inner {
   width: 100%;
-  max-width: 1040px;
+  max-width: 1320px;
   /* UXR8: left-aligned, не центрированный; левый отступ clamp'ится. */
   margin: 0;
-  padding: 0 var(--ec-space-6) var(--ec-space-12);
-  padding-left: clamp(24px, 5vw, 72px);
+  padding: 0 clamp(24px, 4vw, 56px) var(--ec-space-12);
 }
 .ec-guide__banner {
   width: 100%;
-  height: 210px;
-  margin-top: var(--ec-space-5);
+  height: clamp(168px, 19vw, 238px);
+  margin-top: var(--ec-space-4);
   border-radius: var(--ec-radius-xl);
   background-size: cover;
   background-position: center;
@@ -256,12 +255,17 @@
   gap: 7px;
 }
 .ec-guide__meta .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ec-presence-online); }
-.ec-guide__body { margin-top: var(--ec-space-6); }
+.ec-guide__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
+  gap: var(--ec-space-5);
+  margin-top: var(--ec-space-6);
+  align-items: start;
+}
 .ec-guide__stats {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--ec-space-2);
-  max-width: 760px;
   margin-bottom: var(--ec-space-6);
 }
 .ec-guide__stats span {
@@ -307,9 +311,8 @@
 }
 .ec-guide__sections {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--ec-space-3);
-  max-width: 920px;
   margin-top: var(--ec-space-5);
 }
 .ec-guide__section {
@@ -363,7 +366,20 @@
   overflow-wrap: break-word;
   word-break: break-word;
 }
-.ec-guide__quick { margin-top: var(--ec-space-8); }
+.ec-guide__quick {
+  grid-column: 2;
+  grid-row: 1 / span 4;
+  margin-top: 0;
+  padding: var(--ec-space-4);
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 18%, var(--ec-border-default));
+  border-radius: var(--ec-radius-lg);
+  background:
+    radial-gradient(circle at top left, color-mix(in srgb, var(--ec-accent) 14%, transparent), transparent 44%),
+    var(--ec-surface-2);
+  box-shadow: var(--ec-edge);
+  position: sticky;
+  top: var(--ec-space-4);
+}
 .ec-guide__quick-label {
   font-size: var(--ec-text-2xs);
   font-weight: 700;
@@ -374,7 +390,7 @@
 .ec-guide__quick-grid {
   margin-top: var(--ec-space-3);
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  grid-template-columns: 1fr;
   gap: var(--ec-space-2);
 }
 .ec-guide__card {
@@ -436,6 +452,7 @@
 /* Новые clean-классы используют transition/transform — гасим для
    reduced-motion (Persona-требование). */
 @media (prefers-reduced-motion: reduce) {
+  .ec-shell__chat--guide .ec-chat-header,
   .ec-mem__chev,
   .ec-mem__close,
   .ec-mem-row,
@@ -447,6 +464,10 @@
   }
 }
 
+.ec-shell__chat--guide .ec-chat-header {
+  display: none;
+}
+
 /* ============ mobile (≤640px) ============ */
 /* Guide-экран на узком вьюпорте: clamp паддингов/баннера/иконки,
    карточки в один столбец — чтобы не был слишком широким на 390px. */
@@ -456,7 +477,27 @@
   .ec-guide__head { margin-top: calc(var(--ec-space-7) * -1); gap: var(--ec-space-3); }
   .ec-guide__icon { width: 56px; height: 56px; border-radius: var(--ec-radius-lg); }
   .ec-guide__name { font-size: var(--ec-text-xl); }
+  .ec-guide__body { grid-template-columns: 1fr; gap: var(--ec-space-4); }
   .ec-guide__stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ec-guide__sections { grid-template-columns: 1fr; }
+  .ec-guide__quick {
+    grid-column: auto;
+    grid-row: auto;
+    position: static;
+  }
   .ec-guide__quick-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 1180px) and (min-width: 641px) {
+  .ec-guide__body { grid-template-columns: 1fr; }
+  .ec-guide__quick {
+    grid-column: auto;
+    grid-row: auto;
+    position: static;
+  }
+  .ec-guide__quick-grid { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+}
+
+@media (max-width: 900px) {
+  .ec-guide__sections { grid-template-columns: 1fr; }
 }
