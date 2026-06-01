@@ -5,7 +5,16 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.61** (IA reset slice 2 — UXR3 «Мессенджер как Главная».
+**Текущая версия:** **v1.5.62** (IA reset UXR6 slice 1 — settings shell
+normalization. `SettingsPanel` и `ServerHubModal` стали шире (1180px), body
+settings-модалок больше не тратит место на двойной padding, left tree-nav плотнее и
+спокойнее, hero в профильных настройках перестал быть декоративной карточкой,
+settings cards приведены к рабочим rows с меньшим visual noise. ServerHub cards и
+preview тоже убраны из heavy premium-card стилистики в более плотный admin-shell.
+Функциональных изменений, backend/schema и новых claims нет; цель — начать
+разгружать настройки после IA reset, не меняя handlers/API.)
+
+**Предыдущая:** v1.5.61 (IA reset slice 2 — UXR3 «Мессенджер как Главная».
 **Лендинг**: «Главная» (brand-mark + home-кнопка, `openHome`) теперь открывает
 мессенджер (DM-режим + экран «Друзья»), а не операционный дашборд. Дашборд
 «Сегодня» (`HomeToday`) больше не лендинг — `homeOpen` нигде не выставляется в

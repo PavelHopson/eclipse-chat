@@ -317,7 +317,7 @@ export function ServerHubModal({
     .filter((group) => group.items.length > 0);
 
   return (
-    <Modal title={server.name} onClose={onClose} width={980}>
+    <Modal title={server.name} onClose={onClose} width={1180}>
       <div className="ec-server-hub-panel">
         <aside className="ec-server-hub-tree-nav" aria-label="Разделы настроек сервера">
           {visibleGroups.map((group) => (
