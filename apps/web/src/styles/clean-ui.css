@@ -329,6 +329,27 @@
   -webkit-backdrop-filter: none;
 }
 
+/* ============ CHANNEL RAIL — компактный header (UXR8 #2) ============ */
+/* Было: при наличии server-баннера header'у давался класс --banner →
+   min-height 96px + cover-баннер за именем = большой пустой hero над
+   tabs. Баннер уже показан в «Путеводителе»; в сайдбаре он дублировался.
+   Делаем header компактным (имя + chevron), как в эталоне server-view. */
+.ec-channel-list__header--banner {
+  min-height: 0;
+  padding: var(--ec-space-3) var(--ec-space-4);
+  background-image: none !important;
+}
+.ec-channel-list__header--banner::before { display: none; }
+.ec-channel-list__header--banner .ec-channel-list__server-name {
+  color: var(--ec-text-strong);
+  text-shadow: none;
+}
+.ec-channel-list__header--banner .ec-channel-list__server-btn,
+.ec-channel-list__header--banner svg {
+  color: inherit;
+  filter: none;
+}
+
 /* ============ a11y: prefers-reduced-motion ============ */
 /* Новые clean-классы используют transition/transform — гасим для
    reduced-motion (Persona-требование). */

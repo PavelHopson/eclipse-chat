@@ -5,7 +5,16 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.70** (Clean redesign slice 8 — guide-композиция + popover
+**Текущая версия:** **v1.5.71** (Clean redesign slice 8 ч.2 — компактный channel-header
+(спек Pavel'я #2). Когда у сервера есть баннер, header'у давался класс `--banner`
+→ `min-height 96px` + cover-баннер за именем = большой пустой hero над tabs
+(баннер дублировал «Путеводитель»). Override в clean-ui.css: `--banner` header
+становится компактным (min-height 0, `background-image: none !important`, scrim
+убран) — имя + OWNER-чип + chevron в одну строку, как в эталоне server-view.
+Пустое место над tabs убрано. Верифицировано рендером (сайдбар+header+popover на
+реальных CSS: header компактный, popover solid). No backend/schema.
+
+**Предыдущая:** v1.5.70 (Clean redesign slice 8 — guide-композиция + popover
 close-on-scroll (спек Pavel'я, часть 1/2). **Guide**: `.ec-guide__inner` left-aligned
 (не центрирован), max-width 1040, margin-left clamp(24px,5vw,72px); баннер 210px
 растянут под ширину; описание читаемой мерой 68ch (не «стена»); быстрые входы
