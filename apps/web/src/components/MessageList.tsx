@@ -1,5 +1,4 @@
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
-import { resolveAssetUrl } from "../lib/assets";
 import { Attachments } from "./Attachments";
 import { Avatar } from "./Avatar";
 import { EmojiPicker } from "./EmojiPicker";
@@ -174,7 +173,6 @@ export function MessageList({
   onOpenThread,
   onPlayShared,
   isDm = false,
-  channelTopBanner = null,
   channelTopSubtitle = null,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -401,27 +399,17 @@ export function MessageList({
   // - С banner: cinematic cover-фон + overlay (читается на любом изображении).
   // - Без banner: subtle text-only label.
   // Hero сидит первым в scroll-контейнере, появляется при scroll-to-top.
-  const channelTopBannerUrl =
-    channelTopBanner ? resolveAssetUrl(channelTopBanner) : null;
+  // Clean redesign: full-bleed cinematic banner (с overlaid текстом и
+  // выцветшим server-баннером за заголовком) убран — channel-top теперь
+  // чистый компактный text-only header (base .ec-msg-channel-top, 84px).
   const channelTopHero = channelName ? (
-    <header
-      className={`ec-msg-channel-top${
-        channelTopBannerUrl ? " ec-msg-channel-top--with-banner" : ""
-      }`}
-      style={
-        channelTopBannerUrl
-          ? { backgroundImage: `url("${channelTopBannerUrl}")` }
-          : undefined
-      }
-    >
+    <header className="ec-msg-channel-top">
       <div className="ec-msg-channel-top__content">
         <h2 className="ec-msg-channel-top__title">
           Начало канала #{channelName}
         </h2>
         {channelTopSubtitle && (
-          <p className="ec-msg-channel-top__sub">
-            в {channelTopSubtitle}
-          </p>
+          <p className="ec-msg-channel-top__sub">в {channelTopSubtitle}</p>
         )}
       </div>
     </header>

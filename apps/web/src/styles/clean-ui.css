@@ -305,3 +305,15 @@
   transform: translateY(-1px);
 }
 .ec-guide__card-glyph { color: var(--ec-text-muted); flex-shrink: 0; display: grid; place-items: center; }
+
+/* ============ SERVER ACTIONS POPOVER — solid, без bleed-through ============ */
+/* Было: --ec-overlay-bg (0.93 alpha) + blur → список каналов просвечивал
+   сквозь поповер, текст наезжал. Двойной класс (специфичность 0,2,0)
+   перебивает .ec-popover-surface. Чистая непрозрачная поверхность. */
+.ec-server-actions-menu.ec-popover-surface {
+  background: var(--ec-surface-2);
+  border: 1px solid var(--ec-border-emphasis);
+  box-shadow: var(--ec-shadow-modal);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}

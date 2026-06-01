@@ -5,7 +5,17 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.65** (Clean redesign slice 4 — правый рейл (обёртка).
+**Текущая версия:** **v1.5.66** (Clean redesign slice 5 — popover + channel-top
+(по скрину Pavel'я). (1) Server-actions popover: `.ec-popover-surface` имел
+`--ec-overlay-bg` (0.93 alpha) + blur → список каналов просвечивал сквозь поповер,
+текст наезжал. Override `.ec-server-actions-menu.ec-popover-surface` (специфичность
+0,2,0) → solid `--ec-surface-2`, без blur, чистый border/shadow. (2) Channel-top
+hero (`MessageList.ec-msg-channel-top`): убран full-bleed cinematic банер с
+overlaid текстом и выцветшим server-баннером за «Начало канала #X» — теперь чистый
+компактный text-only header (base class, 84px). Убраны channelTopBanner usage +
+resolveAssetUrl import. No backend/schema.
+
+**Предыдущая:** v1.5.65 (Clean redesign slice 4 — правый рейл (обёртка).
 Догон slice 1: «ТАКТИЧЕСКИЙ ВИД» жил не только в MemberList, но и в `IntelligencePanel`
 (desktop right-rail обёртка с собственным `ec-rail` header + holo-edge + tactical-
 иконкой, рендерил MemberList с hideHeader). Теперь IntelligencePanel — тонкая
