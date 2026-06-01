@@ -394,26 +394,74 @@
   gap: var(--ec-space-2);
 }
 .ec-guide__card {
+  --ec-depth-glow-x: 50%;
+  --ec-depth-glow-y: 50%;
+  --ec-depth-active: 0;
   display: flex;
   align-items: center;
   gap: var(--ec-space-2);
   padding: var(--ec-space-3) var(--ec-space-4);
   border: 0;
   border-radius: var(--ec-radius-md);
-  background: var(--ec-surface-2);
-  box-shadow: var(--ec-edge);
+  background:
+    radial-gradient(
+      circle at var(--ec-depth-glow-x) var(--ec-depth-glow-y),
+      color-mix(in srgb, var(--ec-accent) 14%, transparent),
+      transparent 48%
+    ),
+    var(--ec-surface-2);
+  box-shadow:
+    var(--ec-edge),
+    0 14px 32px -26px color-mix(in srgb, var(--ec-accent) calc(30% * var(--ec-depth-active)), transparent);
   color: var(--ec-text);
   font-size: var(--ec-text-sm);
   font-weight: 500;
   cursor: pointer;
   text-align: left;
-  transition: background var(--ec-dur-fast) var(--ec-ease), transform var(--ec-dur-fast) var(--ec-ease);
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  transform-style: preserve-3d;
+  will-change: transform;
+  transition:
+    background var(--ec-dur-fast) var(--ec-ease),
+    box-shadow var(--ec-dur-fast) var(--ec-ease),
+    transform 160ms var(--ec-ease);
+}
+.ec-guide__card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  border: 1px solid color-mix(in srgb, var(--ec-accent) calc(22% * var(--ec-depth-active)), var(--ec-border-subtle));
+  background:
+    linear-gradient(135deg, hsl(0 0% 100% / 0.055), transparent 42%),
+    linear-gradient(315deg, color-mix(in srgb, var(--ec-accent) 10%, transparent), transparent 48%);
+  opacity: calc(0.42 + 0.42 * var(--ec-depth-active));
+  pointer-events: none;
 }
 .ec-guide__card:hover {
   background: var(--ec-surface-3);
-  transform: translateY(-1px);
 }
-.ec-guide__card-glyph { color: var(--ec-text-muted); flex-shrink: 0; display: grid; place-items: center; }
+.ec-guide__card-glyph {
+  color: var(--ec-text-muted);
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  transform: translateZ(22px);
+  transition: color var(--ec-dur-fast) var(--ec-ease), transform var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-guide__card-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transform: translateZ(14px);
+}
+.ec-guide__card:hover .ec-guide__card-glyph {
+  color: var(--ec-accent);
+}
 
 /* ============ SERVER ACTIONS POPOVER — solid, без bleed-through ============ */
 /* Было: --ec-overlay-bg (0.93 alpha) + blur → список каналов просвечивал
@@ -457,7 +505,9 @@
   .ec-mem__close,
   .ec-mem-row,
   .ec-mem-row__dm,
-  .ec-guide__card {
+  .ec-guide__card,
+  .ec-guide__card-glyph,
+  .ec-guide__card-name {
     animation: none !important;
     transition: none !important;
     transform: none !important;

@@ -5,7 +5,15 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.79** (Pinned-message micro-interaction — CodePen
+**Текущая версия:** **v1.5.80** (Server guide depth cards — Animated Parallax
+Card pattern адаптирован без `vanilla-tilt`/CDN: `apps/web/src/lib/tilt.ts`
+получил `depthTiltProps` с cursor-following glow vars + лёгким 3D tilt, а
+quick entries в `ServerWelcomeHero` стали `ec-depth-card`. Эффект ограничен
+практичным выбором канала в путеводителе, размеры layout не меняет, mobile
+gracefully no-op, `prefers-reduced-motion` сбрасывает transform/transition. No
+backend/schema.)
+
+**Предыдущая:** v1.5.79 (Pinned-message micro-interaction — CodePen
 favorite-button motion pattern адаптирован в production-safe Eclipse UI:
 кнопка «Закрепить» в message toolbar получила tactile confirm animation
 без GSAP/CDN: icon jump/flip, small socket-hole, button press. Motion ограничен

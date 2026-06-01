@@ -1,5 +1,6 @@
 import "../styles/clean-ui.css";
 import { resolveAssetUrl } from "../lib/assets";
+import { depthTiltProps } from "../lib/tilt";
 import type { ServerRow } from "../hooks/useServers";
 import type { ChannelRow } from "../hooks/useChannels";
 import { ChannelGlyph } from "./icons/ChannelCustomIcons";
@@ -172,13 +173,14 @@ export function ServerWelcomeHero({ server, channels, onSelectChannel }: Props) 
                   <button
                     key={ch.id}
                     type="button"
-                    className="ec-guide__card"
+                    className="ec-guide__card ec-depth-card"
                     onClick={() => onSelectChannel(ch.id)}
+                    {...depthTiltProps}
                   >
                     <span className="ec-guide__card-glyph">
                       <ChannelGlyph type={ch.type} icon={ch.emoji} size={15} />
                     </span>
-                    <span>{ch.name}</span>
+                    <span className="ec-guide__card-name">{ch.name}</span>
                   </button>
                 ))}
               </div>
