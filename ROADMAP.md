@@ -5,7 +5,15 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.67** (Clean redesign slice 6 — review-фиксы Pavel'я к
+**Текущая версия:** **v1.5.68** (Clean redesign slice 7 — popover bulletproof.
+v1.5.66 фикс поповера жил в clean-ui.css, но тот грузится как CSS-чанк компонента
+(MemberList/guide) и в некоторых view не подгружался → base `.ec-popover-surface`
+(прозрачный `--ec-overlay-bg` 0.93 + blur) просвечивал список каналов под server-
+меню. Теперь solid-фон вшит в сам `.ec-popover-surface` в **always-loaded
+components.css** (background `--ec-surface-2`, blur убран). Верифицировано рендером
+БЕЗ clean-ui.css — solid. Фиксит все поповеры разом. No backend/schema.
+
+**Предыдущая:** v1.5.67 (Clean redesign slice 6 — review-фиксы Pavel'я к
 clean-ui.css: (1) `.ec-mem__close + .ec-mem__close { margin-left:0 }` — спейсинг
 collapse+close кнопок в header участников. (2) `prefers-reduced-motion` guard для
 новых `.ec-mem*`/`.ec-guide*` (transition/transform/animation → none). (3) mobile

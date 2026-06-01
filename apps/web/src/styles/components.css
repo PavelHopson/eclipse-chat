@@ -6064,17 +6064,14 @@ input[type="radio"]:focus-visible {
  * inline через style. */
 .ec-popover-surface {
   position: relative;
-  background:
-    radial-gradient(140% 90% at 0% 0%, hsl(258 86% 55% / 0.08), transparent 55%),
-    var(--ec-overlay-bg);
-  border: 1px solid color-mix(in srgb, var(--ec-accent) 24%, var(--ec-border-default));
+  /* Clean redesign: solid opaque фон — раньше --ec-overlay-bg (0.93) + blur
+     просвечивал контент под поповером (список каналов), текст наезжал. */
+  background: var(--ec-surface-2);
+  border: 1px solid var(--ec-border-emphasis);
   border-radius: var(--ec-radius-md);
-  box-shadow:
-    var(--ec-shadow-modal),
-    0 0 0 1px hsl(258 86% 62% / 0.08) inset,
-    0 18px 44px -16px hsl(258 86% 35% / 0.45);
-  backdrop-filter: saturate(180%) blur(16px);
-  -webkit-backdrop-filter: saturate(180%) blur(16px);
+  box-shadow: var(--ec-shadow-modal);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   overflow: hidden;
   transform-origin: top center;
   animation: ec-popover-in 200ms var(--ec-ease-out) both;
