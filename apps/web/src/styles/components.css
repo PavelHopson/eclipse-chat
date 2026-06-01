@@ -734,6 +734,138 @@ input[type="radio"]:focus-visible {
   border-bottom: 1px solid var(--ec-border-subtle);
 }
 
+/* v1.5.78 rail polish: the sidebar is navigation, not another hero.
+   Banner identity stays in the guide; the rail header must remain compact
+   across every lazy-loaded route/chunk. */
+.ec-channel-list__header--banner {
+  min-height: 0;
+  padding: 10px 12px;
+  background-image: none !important;
+}
+
+.ec-channel-list__header--banner::before {
+  display: none;
+}
+
+.ec-channel-list__header--banner .ec-channel-list__server-btn,
+.ec-channel-list__header--banner svg {
+  color: inherit;
+  filter: none;
+}
+
+.ec-channel-list__header--banner .ec-channel-list__server-name {
+  color: var(--ec-text-strong);
+  text-shadow: none;
+}
+
+.ec-channel-list__header--banner .ec-badge {
+  background: var(--ec-surface-3);
+  color: var(--ec-text);
+  border-color: var(--ec-border-subtle);
+  text-shadow: none;
+}
+
+.ec-channel-list__server-btn {
+  min-height: 40px;
+  padding: 6px 8px;
+  margin: 0;
+  border-radius: var(--ec-radius-md);
+}
+
+.ec-channel-list__server-name {
+  font-size: var(--ec-text-base);
+  letter-spacing: 0;
+}
+
+.ec-sidebar-tabs {
+  margin: 0 8px;
+  padding: 6px 0 0;
+  border-bottom: 1px solid var(--ec-border-subtle);
+}
+
+.ec-sidebar-tab {
+  min-height: 34px;
+  padding: 0 7px 8px;
+  letter-spacing: 0.06em;
+  opacity: 0.72;
+}
+
+.ec-sidebar-tab[aria-selected="true"] {
+  opacity: 1;
+}
+
+.ec-channel-list__list {
+  padding: 8px 8px 10px;
+  gap: 3px;
+}
+
+.ec-channel-category-stack {
+  gap: 2px;
+}
+
+.ec-channel-category__header {
+  min-height: 30px;
+  padding: 5px 7px;
+}
+
+.ec-channel-category__name {
+  font-size: 0.68rem;
+  letter-spacing: 0.055em;
+}
+
+.ec-channel-category__body {
+  padding-left: 2px;
+}
+
+.ec-channel-item {
+  min-height: 34px;
+  padding: 6px 8px;
+  border-radius: var(--ec-radius-md);
+}
+
+.ec-channel-item:hover {
+  background: color-mix(in srgb, var(--ec-accent) 7%, var(--ec-surface-2));
+  border-color: transparent;
+  transform: translateX(1px);
+}
+
+.ec-channel-item--active {
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--ec-accent) 20%, transparent), transparent 72%),
+    var(--ec-surface-2);
+  border-color: color-mix(in srgb, var(--ec-accent) 34%, var(--ec-border-default));
+  box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.05);
+}
+
+.ec-channel-item--active::before {
+  height: 18px;
+  margin-left: -6px;
+  margin-right: 4px;
+  box-shadow: 0 0 12px hsl(258 90% 66% / 0.55);
+}
+
+.ec-channel-category-create {
+  min-height: 34px;
+  margin: 8px 4px 0;
+  width: calc(100% - 8px);
+  background: transparent;
+  color: var(--ec-text-muted);
+}
+
+.ec-channel-list__composer {
+  padding: 8px;
+  background: color-mix(in srgb, var(--ec-surface-2) 58%, transparent);
+}
+
+.ec-channel-list__composer .ec-btn {
+  min-height: 34px;
+  width: 100%;
+  border-radius: var(--ec-radius-md);
+  font-size: var(--ec-text-xs);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
 .ec-badge {
   display: inline-flex;
   align-items: center;
