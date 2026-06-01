@@ -78,13 +78,17 @@ export function ServerActionsMenu({
     if (!open) return;
     const update = () => setPosition(computePosition(triggerRef.current));
     update();
+    // UXR8: закрывать поповер при любом scroll (включая список каналов под
+    // ним) — capture-фаза ловит scroll вложенных контейнеров. Channel-select
+    // и outside-click закрываются через onPointerDown ниже, Escape — отдельно.
+    const onScroll = () => onClose();
     window.addEventListener("resize", update);
-    window.addEventListener("scroll", update, true);
+    window.addEventListener("scroll", onScroll, true);
     return () => {
       window.removeEventListener("resize", update);
-      window.removeEventListener("scroll", update, true);
+      window.removeEventListener("scroll", onScroll, true);
     };
-  }, [open, triggerRef]);
+  }, [open, triggerRef, onClose]);
 
   useEffect(() => {
     if (!open) return;
