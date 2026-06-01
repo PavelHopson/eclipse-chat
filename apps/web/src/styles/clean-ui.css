@@ -49,6 +49,9 @@
   transition: background var(--ec-dur-fast) var(--ec-ease), color var(--ec-dur-fast) var(--ec-ease);
 }
 .ec-mem__close:hover { background: var(--ec-surface-3); color: var(--ec-text-strong); }
+/* collapse + close рядом: только первая кнопка двигает группу вправо
+   (margin-left:auto), вторая сидит вплотную — без кривого зазора. */
+.ec-mem__close + .ec-mem__close { margin-left: 0; }
 
 .ec-mem__scroll {
   flex: 1;
@@ -257,6 +260,8 @@
   line-height: var(--ec-leading-relaxed);
   color: var(--ec-text);
   white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 .ec-guide__welcome {
   margin-top: var(--ec-space-5);
@@ -269,6 +274,8 @@
   line-height: var(--ec-leading-normal);
   color: var(--ec-text);
   white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 .ec-guide__quick { margin-top: var(--ec-space-8); }
 .ec-guide__quick-label {
@@ -316,4 +323,31 @@
   box-shadow: var(--ec-shadow-modal);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
+}
+
+/* ============ a11y: prefers-reduced-motion ============ */
+/* Новые clean-классы используют transition/transform — гасим для
+   reduced-motion (Persona-требование). */
+@media (prefers-reduced-motion: reduce) {
+  .ec-mem__chev,
+  .ec-mem__close,
+  .ec-mem-row,
+  .ec-mem-row__dm,
+  .ec-guide__card {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
+/* ============ mobile (≤640px) ============ */
+/* Guide-экран на узком вьюпорте: clamp паддингов/баннера/иконки,
+   карточки в один столбец — чтобы не был слишком широким на 390px. */
+@media (max-width: 640px) {
+  .ec-guide__inner { padding: 0 var(--ec-space-3) var(--ec-space-8); }
+  .ec-guide__banner { height: 148px; border-radius: var(--ec-radius-lg); }
+  .ec-guide__head { margin-top: calc(var(--ec-space-7) * -1); gap: var(--ec-space-3); }
+  .ec-guide__icon { width: 56px; height: 56px; border-radius: var(--ec-radius-lg); }
+  .ec-guide__name { font-size: var(--ec-text-xl); }
+  .ec-guide__quick-grid { grid-template-columns: 1fr; }
 }

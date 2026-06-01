@@ -5,7 +5,16 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.66** (Clean redesign slice 5 — popover + channel-top
+**Текущая версия:** **v1.5.67** (Clean redesign slice 6 — review-фиксы Pavel'я к
+clean-ui.css: (1) `.ec-mem__close + .ec-mem__close { margin-left:0 }` — спейсинг
+collapse+close кнопок в header участников. (2) `prefers-reduced-motion` guard для
+новых `.ec-mem*`/`.ec-guide*` (transition/transform/animation → none). (3) mobile
+clamp (≤640px) для guide: паддинги/баннер 148px/иконка 56px/карточки в один
+столбец — чтобы не был широким на 390px. (4) `overflow-wrap/word-break` на
+guide desc+welcome (длинные токены/URL в user-описании не переполняют мобайл).
+Верифицировано рендером guide@390. No backend/schema.
+
+**Предыдущая:** v1.5.66 (Clean redesign slice 5 — popover + channel-top
 (по скрину Pavel'я). (1) Server-actions popover: `.ec-popover-surface` имел
 `--ec-overlay-bg` (0.93 alpha) + blur → список каналов просвечивал сквозь поповер,
 текст наезжал. Override `.ec-server-actions-menu.ec-popover-surface` (специфичность
