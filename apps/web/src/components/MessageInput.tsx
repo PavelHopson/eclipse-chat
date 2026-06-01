@@ -1061,9 +1061,7 @@ export function MessageInput({
               refreshTrigger();
             }
           }}
-          onFocus={() => setFocused(true)}
           onBlur={() => {
-            setFocused(false);
             // Dismiss popover с задержкой — чтобы успел сработать onClick по item
             setTimeout(() => setTrigger(null), 120);
           }}
