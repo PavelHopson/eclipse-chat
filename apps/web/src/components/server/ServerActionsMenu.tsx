@@ -41,6 +41,104 @@ function canManage(role: string | null | undefined): boolean {
   return MANAGE_ROLES.has(role ?? "");
 }
 
+function ActionIcon({ actionKey }: { actionKey: string }) {
+  const common = {
+    width: 16,
+    height: 16,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.9,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    "aria-hidden": true,
+  };
+
+  switch (actionKey) {
+    case "settings":
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="12" r="3" />
+          <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 0 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V22h-4v-.2a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 0 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H2v-4h.2a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1A2 2 0 0 1 6.1 3.3l.1.1a1.7 1.7 0 0 0 1.8.3 1.7 1.7 0 0 0 1-1.5V2h4v.2a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 0 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8 1.7 1.7 0 0 0 1.5 1h.2v4h-.2a1.7 1.7 0 0 0-1.5 1Z" />
+        </svg>
+      );
+    case "invite":
+      return (
+        <svg {...common}>
+          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <path d="M19 8v6" />
+          <path d="M22 11h-6" />
+        </svg>
+      );
+    case "notifications":
+      return (
+        <svg {...common}>
+          <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+          <path d="M13.7 21a2 2 0 0 1-3.4 0" />
+        </svg>
+      );
+    case "hide-muted":
+      return (
+        <svg {...common}>
+          <path d="M3 3l18 18" />
+          <path d="M10 5 6 9H2v6h4l4 4V5Z" />
+          <path d="M16 9.5c.5.7.8 1.6.8 2.5" />
+        </svg>
+      );
+    case "create-channel":
+      return (
+        <svg {...common}>
+          <path d="M5 9h14" />
+          <path d="M4 15h14" />
+          <path d="M10 3 8 21" />
+          <path d="M16 3l-2 18" />
+        </svg>
+      );
+    case "create-category":
+      return (
+        <svg {...common}>
+          <path d="M3 7h7l2 2h9v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z" />
+          <path d="M12 13h6" />
+          <path d="M15 10v6" />
+        </svg>
+      );
+    case "create-event":
+      return (
+        <svg {...common}>
+          <rect x="3" y="5" width="18" height="16" rx="2" />
+          <path d="M16 3v4" />
+          <path d="M8 3v4" />
+          <path d="M3 11h18" />
+        </svg>
+      );
+    case "incident":
+      return (
+        <svg {...common}>
+          <rect x="3" y="11" width="18" height="10" rx="2" />
+          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+        </svg>
+      );
+    case "copy-id":
+      return (
+        <svg {...common}>
+          <rect x="9" y="9" width="12" height="12" rx="2" />
+          <rect x="3" y="3" width="12" height="12" rx="2" />
+        </svg>
+      );
+    case "leave":
+      return (
+        <svg {...common}>
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+          <path d="M16 17l5-5-5-5" />
+          <path d="M21 12H9" />
+        </svg>
+      );
+    default:
+      return null;
+  }
+}
+
 function computePosition(trigger: HTMLElement | null): MenuPosition {
   if (!trigger || typeof window === "undefined") return { top: 64, left: 12, width: 280 };
   const rect = trigger.getBoundingClientRect();
@@ -221,7 +319,10 @@ export function ServerActionsMenu({
               if (action.key !== "copy-id") onClose();
             }}
           >
-            <span>{action.label}</span>
+            <span className="ec-server-actions-menu__icon">
+              <ActionIcon actionKey={action.key} />
+            </span>
+            <span className="ec-server-actions-menu__label">{action.label}</span>
             {action.helper && <span className="ec-server-actions-menu__helper">{action.helper}</span>}
           </button>
         </div>

@@ -588,6 +588,152 @@ input[type="radio"]:focus-visible {
   box-shadow: 0 8px 22px -14px hsl(258 86% 44% / 0.65);
 }
 
+/* v1.5.76 shell IA cleanup — duplicated in always-loaded CSS so the topbar,
+   workspace switcher and server menu never depend on lazy clean-ui chunks. */
+.ec-shell__cmdbar {
+  min-height: 46px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--ec-surface-2) 72%, transparent), var(--ec-surface-1));
+  border-bottom: 1px solid color-mix(in srgb, var(--ec-accent) 16%, var(--ec-border-subtle));
+}
+
+.ec-shell__top-actions {
+  gap: 8px;
+}
+
+.ec-shell__utility-meters {
+  gap: 6px;
+  padding: 2px;
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 12%, var(--ec-border-subtle));
+  border-radius: var(--ec-radius-full);
+  background: color-mix(in srgb, var(--ec-surface-2) 86%, transparent);
+}
+
+.ec-shell__utility-meters .ec-telemetry-pill {
+  min-height: 26px;
+  padding: 0 10px;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+.ec-shell__utility-meters .ec-telemetry-pill + .ec-telemetry-pill {
+  border-left: 1px solid var(--ec-border-subtle);
+  border-radius: 0;
+}
+
+.ec-shell__top-actions .ec-spider-clock,
+.ec-shell__top-actions .ec-theme-toggle,
+.ec-shell__user-chip,
+.ec-logout-btn {
+  min-height: 32px;
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 10%, var(--ec-border-subtle));
+  background: color-mix(in srgb, var(--ec-surface-2) 86%, transparent);
+  box-shadow: none;
+}
+
+.ec-shell__user-chip {
+  padding: 2px 10px 2px 3px;
+  font-weight: 650;
+}
+
+.ec-topbar-sep {
+  width: 1px;
+  height: 24px;
+  margin: 0 2px;
+  background: var(--ec-border-subtle);
+}
+
+.ec-srv-trigger {
+  height: 34px;
+  max-width: 220px;
+  border-color: color-mix(in srgb, var(--ec-accent) 18%, var(--ec-border-subtle));
+  background: color-mix(in srgb, var(--ec-surface-2) 90%, transparent);
+}
+
+.ec-srv-panel {
+  width: 252px;
+  padding: 6px;
+  gap: 1px;
+  background: var(--ec-surface-2);
+  border-color: color-mix(in srgb, var(--ec-accent) 18%, var(--ec-border-default));
+  border-radius: var(--ec-radius-lg);
+  box-shadow: var(--ec-shadow-modal);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.ec-srv-menu-row {
+  min-height: 36px;
+  padding: 7px 9px;
+  border-radius: var(--ec-radius-md);
+  font-weight: 650;
+}
+
+.ec-srv-menu-row:hover {
+  transform: translateX(1px);
+}
+
+.ec-server-actions-menu.ec-popover-surface {
+  width: min(260px, calc(100vw - 20px)) !important;
+  max-height: min(62vh, 430px);
+  padding: 6px;
+  border-radius: var(--ec-radius-lg);
+}
+
+.ec-server-actions-menu__item {
+  min-height: 36px;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 7px 9px;
+  border-radius: var(--ec-radius-md);
+  justify-content: initial;
+  text-align: left;
+}
+
+.ec-server-actions-menu__icon {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--ec-radius-sm);
+  color: var(--ec-text-muted);
+  background: color-mix(in srgb, var(--ec-accent) 7%, var(--ec-surface-1));
+}
+
+.ec-server-actions-menu__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ec-server-actions-menu__item:hover .ec-server-actions-menu__icon,
+.ec-server-actions-menu__item:focus-visible .ec-server-actions-menu__icon {
+  color: var(--ec-accent);
+  background: var(--ec-accent-soft);
+}
+
+.ec-server-actions-menu__item--danger .ec-server-actions-menu__icon {
+  color: var(--ec-danger);
+  background: var(--ec-danger-soft);
+}
+
+.ec-server-actions-menu__divider {
+  margin: 5px 3px;
+  background: var(--ec-border-subtle);
+}
+
+.ec-channel-list__server-btn {
+  min-height: 44px;
+}
+
+.ec-channel-list__header {
+  border-bottom: 1px solid var(--ec-border-subtle);
+}
+
 .ec-badge {
   display: inline-flex;
   align-items: center;
