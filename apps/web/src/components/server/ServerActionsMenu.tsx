@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type RefObject } from "react";
+import { createPortal } from "react-dom";
 import type { ServerRow } from "../../hooks/useServers";
 
 type Props = {
@@ -251,7 +252,7 @@ export function ServerActionsMenu({
         ? [
             { key: "create-channel", label: "Создать канал", onClick: onCreateChannel },
             { key: "create-category", label: "Создать категорию", onClick: onCreateCategory },
-            { key: "create-event", label: "Создать событие", disabled: true, helper: "Скоро v1.5.48+" },
+            { key: "create-event", label: "Создать событие", disabled: true, helper: "Скоро" },
             {
               key: "incident",
               // v1.5.55 D3 — label переключается по lockedAt.
@@ -282,7 +283,7 @@ export function ServerActionsMenu({
 
   if (!open) return null;
 
-  return (
+  const menu = (
     <div
       className="ec-popover-surface ec-server-actions-menu"
       role="menu"
@@ -334,4 +335,6 @@ export function ServerActionsMenu({
       )}
     </div>
   );
+
+  return createPortal(menu, document.body);
 }
