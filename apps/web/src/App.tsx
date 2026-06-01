@@ -138,10 +138,20 @@ export function App() {
       }
     };
     void check();
-    const id = window.setInterval(check, 60_000);
+    // v1.5.69: poll 60s→20s + немедленная проверка при возврате на вкладку
+    // (visibilitychange). Раньше после deploy баннер мог появиться только
+    // через минуту — ревьюер видел устаревший bundle и думал «не пофикшено».
+    const id = window.setInterval(check, 20_000);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void check();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
     return () => {
       cancelled = true;
       window.clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
     };
   }, []);
 

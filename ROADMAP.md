@@ -5,7 +5,16 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.68** (Clean redesign slice 7 — popover bulletproof.
+**Текущая версия:** **v1.5.69** (Update-banner быстрее — конец «ревью устаревшего».
+Механизм version-mismatch banner («ДОСТУПНО ОБНОВЛЕНИЕ · vX» → bulletproof reload
+с unregister SW + clear caches) уже существовал (App.tsx, v1.1.2), но poll был
+60s → ревьюер скриншотил в первую минуту после deploy, видел старый bundle и
+думал «не пофикшено». Теперь: poll 60s→20s + **немедленная проверка /api/version
+при возврате на вкладку** (visibilitychange + focus). Переключился на вкладку
+ревьюить — баннер сразу, если задеплоено новее. Никакого нового тоста не нужно
+было — улучшен существующий. No backend/schema.
+
+**Предыдущая:** v1.5.68 (Clean redesign slice 7 — popover bulletproof.
 v1.5.66 фикс поповера жил в clean-ui.css, но тот грузится как CSS-чанк компонента
 (MemberList/guide) и в некоторых view не подгружался → base `.ec-popover-surface`
 (прозрачный `--ec-overlay-bg` 0.93 + blur) просвечивал список каналов под server-
