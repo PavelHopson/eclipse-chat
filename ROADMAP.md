@@ -5,7 +5,19 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.61** (IA reset slice 2 — UXR3 «Мессенджер как Главная».
+**Текущая версия:** **v1.5.62** (Clean redesign slice 1 — рейл участников без театра.
+По утверждённому эталону `docs/design/ia-reset/server-view.html`: `MemberList`
+переписан на чистый `clean-ui.css` (namespace ec-mem-, existing токены). Убрано:
+«ТАКТИЧЕСКИЙ ВИД»-header (polygon-щит), «◇ N узлов в сети» net-signal, sci-fi-
+лейблы групп (КОМАНДОРЫ/ОПЕРАТОРЫ/ЛИЧНЫЙ_СОСТАВ/СПЯЩИЙ_РЕЖИМ), game-иконки ролей
+(crown/rune/shield). Стало: спокойный header «Участники N/M», группы по ролям
+русскими лейблами (Владелец / Администраторы / … / Не в сети) с count+collapse,
+role-чипы (OWNER=gold, ADMIN/MOD=violet), presence-точки, оффлайн приглушены, DM
+по hover. Вся логика (сорт/группы/collapse-persist/voice/presence) сохранена.
+Верифицировано статикой на реальных tokens.css+clean-ui.css. Первый кирпич
+единого чистого языка; дальше — sidebar/header/guide. No backend/schema.
+
+**Предыдущая:** v1.5.61 (IA reset slice 2 — UXR3 «Мессенджер как Главная».
 **Лендинг**: «Главная» (brand-mark + home-кнопка, `openHome`) теперь открывает
 мессенджер (DM-режим + экран «Друзья»), а не операционный дашборд. Дашборд
 «Сегодня» (`HomeToday`) больше не лендинг — `homeOpen` нигде не выставляется в

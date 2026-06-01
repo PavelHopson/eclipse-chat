@@ -1,0 +1,186 @@
+/**
+ * clean-ui.css — IA reset: единый чистый visual language.
+ *
+ * Эталон — docs/design/ia-reset/server-view.html (утверждён Pavel'ем).
+ * Спокойный, структурный, без sci-fi-театра (ТАКТИЧЕСКИЙ ВИД / КОМАНДОРЫ /
+ * net-signal / game-иконки убраны). Один акцент (violet), gold у владельца,
+ * presence-точки, чёткая иерархия. Только existing --ec-* токены.
+ * Растёт по мере порта компонентов (members → channels → header → guide).
+ */
+
+/* ============ MEMBERS RAIL ============ */
+.ec-mem {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--ec-surface-1);
+  height: 100%;
+}
+.ec-mem__hd {
+  display: flex;
+  align-items: center;
+  gap: var(--ec-space-2);
+  padding: var(--ec-space-4) var(--ec-space-4) var(--ec-space-2);
+  flex-shrink: 0;
+}
+.ec-mem__hd-title {
+  font-size: var(--ec-text-sm);
+  font-weight: 700;
+  color: var(--ec-text-strong);
+  letter-spacing: -0.01em;
+}
+.ec-mem__hd-count {
+  font-family: var(--ec-font-mono);
+  font-size: var(--ec-text-2xs);
+  color: var(--ec-text-dim);
+  font-feature-settings: "tnum";
+}
+.ec-mem__close {
+  margin-left: auto;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: var(--ec-radius-sm);
+  background: transparent;
+  color: var(--ec-text-muted);
+  cursor: pointer;
+  transition: background var(--ec-dur-fast) var(--ec-ease), color var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-mem__close:hover { background: var(--ec-surface-3); color: var(--ec-text-strong); }
+
+.ec-mem__scroll {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  padding-bottom: var(--ec-space-3);
+}
+
+/* group section label (роль / «Не в сети») — спокойный, collapsible */
+.ec-mem__group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: var(--ec-space-3) var(--ec-space-4) var(--ec-space-1);
+  border: 0;
+  background: transparent;
+  color: var(--ec-text-dim);
+  font-size: var(--ec-text-2xs);
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  cursor: pointer;
+  text-align: left;
+}
+.ec-mem__group:hover { color: var(--ec-text-muted); }
+.ec-mem__chev {
+  display: inline-block;
+  font-size: 9px;
+  transition: transform var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-mem__chev.is-collapsed { transform: rotate(-90deg); }
+.ec-mem__group-count {
+  margin-left: auto;
+  font-family: var(--ec-font-mono);
+  color: var(--ec-text-dim);
+  letter-spacing: 0;
+  font-weight: 600;
+}
+
+/* member row */
+.ec-mem-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 var(--ec-space-2);
+  padding: 6px var(--ec-space-2);
+  border-radius: var(--ec-radius-md);
+  cursor: pointer;
+  transition: background var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-mem-row:hover { background: var(--ec-surface-2); }
+.ec-mem-row--offline { opacity: 0.45; }
+.ec-mem-row__av {
+  position: relative;
+  flex-shrink: 0;
+  display: inline-grid;
+  place-items: center;
+}
+.ec-mem-row__pres {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 2.5px solid var(--ec-surface-1);
+}
+.ec-mem-row__id {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.ec-mem-row__name {
+  font-size: var(--ec-text-sm);
+  font-weight: 500;
+  color: var(--ec-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ec-mem-row__act {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--ec-text-xs);
+  color: var(--ec-text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ec-mem-row__role {
+  flex-shrink: 0;
+  font-family: var(--ec-font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 1px 5px;
+  border-radius: 5px;
+  color: var(--ec-text-dim);
+  background: var(--ec-surface-3);
+}
+.ec-mem-row__role--owner {
+  color: var(--ec-accent-gold-hover);
+  background: var(--ec-accent-gold-soft);
+}
+.ec-mem-row__role--admin {
+  color: var(--ec-accent-hover);
+  background: var(--ec-accent-soft);
+}
+.ec-mem-row__dm {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: var(--ec-radius-sm);
+  background: transparent;
+  color: var(--ec-text-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--ec-dur-fast) var(--ec-ease), background var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-mem-row:hover .ec-mem-row__dm { opacity: 1; }
+.ec-mem-row__dm:hover { background: var(--ec-accent-soft); color: var(--ec-accent); }
+
+.ec-mem__hint, .ec-mem__error {
+  padding: var(--ec-space-4);
+  font-size: var(--ec-text-sm);
+  color: var(--ec-text-dim);
+}
+.ec-mem__error { color: var(--ec-danger); }
