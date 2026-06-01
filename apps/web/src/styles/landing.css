@@ -1865,6 +1865,7 @@
 @media (max-width: 560px) {
   .ec-landing__footer { grid-template-columns: 1fr; }
   .ec-landing__nav { height: 64px; }
+  .ec-landing__nav-actions { display: none; }
   .ec-landing__nav .ec-landing-btn--link { display: none; }
   .ec-landing-btn { padding: 0 16px; height: 38px; }
   .ec-landing__features { grid-template-columns: 1fr; }

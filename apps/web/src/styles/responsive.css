@@ -1559,3 +1559,32 @@
     transform: none !important;
   }
 }
+
+@media (max-width: 1024px) {
+  .ec-shell__utility-meters .ec-telemetry-pill {
+    display: inline-flex !important;
+  }
+
+  .ec-shell__utility-meters .ec-telemetry-pill:nth-child(n+2) {
+    display: none !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .ec-shell__utility-meters {
+    display: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ec-shell__utility-meters,
+  .ec-shell__utility-meters *,
+  .ec-guide__stats,
+  .ec-guide__stats *,
+  .ec-guide__section,
+  .ec-guide__section * {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+}

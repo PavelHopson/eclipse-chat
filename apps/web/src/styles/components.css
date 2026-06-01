@@ -3349,6 +3349,31 @@ input[type="radio"]:focus-visible {
   flex-shrink: 0;
 }
 
+.ec-shell__top-actions > .ec-icon-btn {
+  display: none;
+}
+
+.ec-shell__utility-meters {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ec-space-1);
+  min-width: 0;
+}
+
+.ec-shell__utility-meters .ec-telemetry-pill {
+  min-height: 28px;
+  padding: 0 9px;
+  border-radius: var(--ec-radius-full);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.ec-shell__utility-meters .ec-telemetry-pill strong {
+  color: var(--ec-text-strong);
+  font: inherit;
+  font-weight: 800;
+}
+
 /* Р›РѕРєР°С†РёСЏ вЂ” СЃРїРѕРєРѕР№РЅС‹Р№ Р»РµР№Р±Р» В«РіРґРµ СЏВ» РІ cmdbar (Р·Р°РјРµРЅРёР» sci-fi
    breadcrumb В«РЈР—Р•Р› //В»). РџСЂРѕСЃС‚СЂР°РЅСЃС‚РІРѕ РїСЂРёРіР»СѓС€РµРЅРѕ, РєР°РЅР°Р» вЂ” Р°РєС†РµРЅС‚. */
 .ec-shell__loc {

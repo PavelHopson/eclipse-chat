@@ -20,6 +20,7 @@ import { LogoutButton } from "../components/LogoutButton";
 import { ChannelGlyph } from "../components/icons/ChannelCustomIcons";
 import { useOperationalTables } from "../hooks/useOperationalTables";
 import { MusicMiniPlayer } from "../components/MusicMiniPlayer";
+import { NetworkWave, Sparkline } from "../components/TelemetryViz";
 import { useChannelMusic } from "../hooks/useChannelMusic";
 import { useServerAudioLibrary } from "../hooks/useServerAudioLibrary";
 import { MessageInput } from "../components/MessageInput";
@@ -93,6 +94,7 @@ import { useSearch } from "../hooks/useSearch";
 import { useServerActions } from "../hooks/useServerActions";
 import { useServerEmojis } from "../hooks/useServerEmojis";
 import { useTeamHealth } from "../hooks/useTeamHealth";
+import { useTelemetry } from "../hooks/useTelemetry";
 import { useServers } from "../hooks/useServers";
 import { useSinceLastVisit } from "../hooks/useSinceLastVisit";
 import { useSocket } from "../hooks/useSocket";
@@ -116,6 +118,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   const brandMarkUrl = `${import.meta.env.BASE_URL}eclipse-chat-logo.png`;
 
   const isReady = socket != null;
+  const tele = useTelemetry();
   const {
     servers,
     activeServer,
@@ -857,9 +860,9 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           </div>
         ) : null}
         <div className="ec-shell__top-actions">
-          {/* UXR1 — RAM/CPU/NET убраны из глобального topbar; серверная
-              телеметрия теперь живёт в voice diagnostics (UXR2, VoiceRoom),
-              где объясняет качество связи/нагрузку, а не шумит на каждом экране. */}
+          {/* UXR9 — topbar показывает только постоянные утилиты: метрики,
+              часы, тему, профиль и выход. Вторичные actions остаются в
+              контекстных местах, чтобы первый слой не шумел. */}
           {inServerView && (
             <button
               type="button"
@@ -1043,6 +1046,35 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               <path d="M19 14l1 2.5 2.5 1-2.5 1L19 21l-1-2.5L15.5 17.5l2.5-1z" opacity="0.7" />
             </svg>
           </button>
+          <div className="ec-shell__utility-meters" aria-label="Метрики сервера">
+            <span
+              className={
+                "ec-telemetry-pill " +
+                (tele.online ? "ec-telemetry-pill--ok" : "ec-telemetry-pill--warn")
+              }
+              title={tele.online ? "Связь с сервером стабильна" : "Нет свежего ответа /api/health"}
+            >
+              <span className="ec-telemetry-pill__dot" aria-hidden />
+              <span>сеть</span>
+              <NetworkWave active={tele.online} />
+            </span>
+            <span
+              className={`ec-telemetry-pill ec-telemetry-pill--${tele.memStatus}`}
+              title="Память сервера по /api/health"
+            >
+              <span>пам</span>
+              <strong>{tele.memPercent != null ? `${tele.memPercent.toFixed(0)}%` : "—"}</strong>
+              <Sparkline values={tele.memHistory} />
+            </span>
+            <span
+              className={`ec-telemetry-pill ec-telemetry-pill--${tele.cpuStatus}`}
+              title="CPU сервера по /api/health"
+            >
+              <span>цп</span>
+              <strong>{tele.cpuPercent != null ? `${tele.cpuPercent.toFixed(0)}%` : "—"}</strong>
+              <Sparkline values={tele.cpuHistory} />
+            </span>
+          </div>
           <SpiderClock />
           <ThemeToggle />
           {showRightRail && (

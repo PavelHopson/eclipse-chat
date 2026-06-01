@@ -5,7 +5,17 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.73** (Popover solid inline — обход CSS-чанк-кэша.
+**Текущая версия:** **v1.5.74** (Clean shell quality pass — практичный первый слой
+интерфейса по ревью Pavel'я. Верхняя панель оставляет только постоянные полезные
+контролы: реальные метрики `/api/health` (сеть/память/CPU), часы, тему, профиль
+и выход; вторичные icon-only actions убраны из первого визуального слоя. Guide
+перестроен из текстовой стены в сканируемую сводку: реальные счётчики сервера,
+intro, секции и chips из описания без ложных claims. Mobile: метрики схлопываются
+до сети на tablet и скрываются на узком viewport; guide stats/chips остаются
+читаемыми на 390px. Дополнительно убран обрезанный top CTA на landing mobile:
+на 390px остаётся hero CTA без горизонтального overflow. No backend/schema.
+
+**Предыдущая:** v1.5.73 (Popover solid inline — обход CSS-чанк-кэша.
 Pavel видит version-label (свежий main bundle), но popover прозрачный → ленивый
 AppShell-чанк (JS+CSS) застрял в кэше, отдельно от main bundle. Фикс: solid-фон
 поповера (`background:--ec-surface-2`, `backdrop-filter:none`, `background-image:none`)
