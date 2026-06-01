@@ -184,3 +184,124 @@
   color: var(--ec-text-dim);
 }
 .ec-mem__error { color: var(--ec-danger); }
+
+/* ============ SERVER GUIDE («Путеводитель») ============ */
+/* Чистый: баннер — контейнерная шапка (не full-bleed за текстом),
+   имя+иконка, описание читаемой колонкой, без наслоений и театра. */
+.ec-guide {
+  height: 100%;
+  overflow-y: auto;
+  background: var(--ec-void);
+}
+.ec-guide__inner {
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 0 var(--ec-space-6) var(--ec-space-12);
+}
+.ec-guide__banner {
+  width: 100%;
+  height: 200px;
+  margin-top: var(--ec-space-5);
+  border-radius: var(--ec-radius-xl);
+  background-size: cover;
+  background-position: center;
+  box-shadow: var(--ec-edge);
+}
+.ec-guide__banner--fallback {
+  background:
+    radial-gradient(ellipse 80% 120% at 20% 0%, hsl(258 60% 40% / 0.45), transparent 60%),
+    linear-gradient(160deg, var(--ec-surface-3), var(--ec-surface-1));
+}
+.ec-guide__head {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--ec-space-4);
+  margin: calc(var(--ec-space-8) * -1) 0 0 var(--ec-space-2);
+  position: relative;
+}
+.ec-guide__icon {
+  width: 72px;
+  height: 72px;
+  border-radius: var(--ec-radius-xl);
+  display: grid;
+  place-items: center;
+  font-size: var(--ec-text-2xl);
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(150deg, var(--ec-accent), hsl(258 80% 46%));
+  box-shadow: 0 8px 24px -8px hsl(258 80% 40% / 0.6), 0 0 0 4px var(--ec-void);
+  object-fit: cover;
+  overflow: hidden;
+}
+.ec-guide__title-wrap { padding-bottom: var(--ec-space-2); min-width: 0; }
+.ec-guide__name {
+  font-size: var(--ec-text-2xl);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--ec-text-strong);
+  line-height: 1.1;
+}
+.ec-guide__meta {
+  margin-top: 3px;
+  font-size: var(--ec-text-sm);
+  color: var(--ec-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.ec-guide__meta .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ec-presence-online); }
+.ec-guide__body { margin-top: var(--ec-space-6); }
+.ec-guide__desc {
+  font-size: var(--ec-text-base);
+  line-height: var(--ec-leading-relaxed);
+  color: var(--ec-text);
+  white-space: pre-wrap;
+}
+.ec-guide__welcome {
+  margin-top: var(--ec-space-5);
+  padding: var(--ec-space-4) var(--ec-space-5);
+  border-radius: var(--ec-radius-lg);
+  background: var(--ec-surface-2);
+  box-shadow: var(--ec-edge);
+  border-left: 3px solid var(--ec-accent);
+  font-size: var(--ec-text-sm);
+  line-height: var(--ec-leading-normal);
+  color: var(--ec-text);
+  white-space: pre-wrap;
+}
+.ec-guide__quick { margin-top: var(--ec-space-8); }
+.ec-guide__quick-label {
+  font-size: var(--ec-text-2xs);
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ec-text-dim);
+}
+.ec-guide__quick-grid {
+  margin-top: var(--ec-space-3);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--ec-space-2);
+}
+.ec-guide__card {
+  display: flex;
+  align-items: center;
+  gap: var(--ec-space-2);
+  padding: var(--ec-space-3) var(--ec-space-4);
+  border: 0;
+  border-radius: var(--ec-radius-md);
+  background: var(--ec-surface-2);
+  box-shadow: var(--ec-edge);
+  color: var(--ec-text);
+  font-size: var(--ec-text-sm);
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--ec-dur-fast) var(--ec-ease), transform var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-guide__card:hover {
+  background: var(--ec-surface-3);
+  transform: translateY(-1px);
+}
+.ec-guide__card-glyph { color: var(--ec-text-muted); flex-shrink: 0; display: grid; place-items: center; }

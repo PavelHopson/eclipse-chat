@@ -5,7 +5,17 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.62** (Clean redesign slice 1 — рейл участников без театра.
+**Текущая версия:** **v1.5.63** (Clean redesign slice 2 — экран «Путеводитель».
+`ServerWelcomeHero` переписан на `clean-ui.css` (.ec-guide*). Было: баннер
+full-bleed за текстом, гигантский заголовок и описание-стена с эмодзи
+наслаивались, «ПРОСТРАНСТВО»-eyebrow. Стало: баннер — контейнерная шапка
+(rounded, не за текстом), иконка сервера + имя + meta (реальный memberCount),
+описание читаемой колонкой (max-width 760, leading-relaxed), welcome-callout
+с accent-border, «Быстрые входы» каналами-карточками (auto-fill grid). Данные
+без изменений (server.banner/icon/description/welcomeMessage + featured channels).
+Верифицировано статикой с реальным длинным описанием. No backend/schema.
+
+**Предыдущая:** v1.5.62 (Clean redesign slice 1 — рейл участников без театра.
 По утверждённому эталону `docs/design/ia-reset/server-view.html`: `MemberList`
 переписан на чистый `clean-ui.css` (namespace ec-mem-, existing токены). Убрано:
 «ТАКТИЧЕСКИЙ ВИД»-header (polygon-щит), «◇ N узлов в сети» net-signal, sci-fi-
