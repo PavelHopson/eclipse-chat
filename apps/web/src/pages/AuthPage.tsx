@@ -1,5 +1,5 @@
+import type { CSSProperties } from "react";
 import { useEffect, useRef, useState } from "react";
-import { EclipseGalaxy } from "../components/EclipseGalaxy";
 
 type Props = {
   error: string | null;
@@ -75,6 +75,7 @@ export function AuthPage({
   presentation = "fullscreen",
 }: Props) {
   const brandMarkUrl = `${import.meta.env.BASE_URL}eclipse-chat-logo.png`;
+  const authBackgroundUrl = `${import.meta.env.BASE_URL}auth/eclipse-login-orbit.webp`;
   const isEmbedded = presentation === "embedded";
   const [step, setStep] = useState<Step>("credentials");
   const [mode, setMode] = useState<Mode>(initialMode);
@@ -364,6 +365,11 @@ export function AuthPage({
       className={`ec-auth-shell${isEmbedded ? " ec-auth-shell--embedded" : ""}`}
       aria-label="Eclipse Chat — вход"
       data-overlay={!isEmbedded && onExit ? "true" : undefined}
+      style={
+        isEmbedded
+          ? undefined
+          : ({ "--ec-auth-bg-image": `url("${authBackgroundUrl}")` } as CSSProperties)
+      }
     >
       {!isEmbedded && onExit && (
         <button type="button" className="ec-auth-return" onClick={onExit}>
@@ -378,7 +384,6 @@ export function AuthPage({
         <div className="ec-auth-radar__crosshair-h" />
         <div className="ec-auth-radar__crosshair-v" />
       </div>
-      <EclipseGalaxy variant="auth" />
 
       <span className="ec-auth-corner ec-auth-corner--tl" aria-hidden />
       <span className="ec-auth-corner ec-auth-corner--tr" aria-hidden />

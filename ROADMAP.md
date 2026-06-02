@@ -5,7 +5,15 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.82** (Deadline 404 scene — берём full deadline
+**Текущая версия:** **v1.5.83** (Auth cosmic refresh — анимированная страница
+входа получает production-safe visual layer на основе Pavel'ового wide
+black-hole reference: один локальный оптимизированный WebP 2560px/178KB вместо
+набора тяжёлых JPG, фон + gold/cyan/violet glass treatment в landing auth hero и
+fullscreen AuthPage, existing login/register/2FA handlers сохранены, no external
+fonts/scripts/CDN, `prefers-reduced-motion` выключает drift/shimmer. No
+backend/schema.)
+
+**Предыдущая:** v1.5.82 (Deadline 404 scene — берём full deadline
 animation concept в production-safe виде: inline SVG + React countdown вместо
 jQuery/CDN, no external fonts/scripts, RU recovery copy, CTA «На главную» /
 «Назад», unknown client routes render standalone 404, `prefers-reduced-motion`

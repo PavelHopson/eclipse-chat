@@ -1,6 +1,5 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
-const ECLIPSE_LOGO_URL = `${import.meta.env.BASE_URL}eclipse-chat-logo.png`;
 import {
   CacheGlyph,
   DatabaseGlyph,
@@ -25,6 +24,9 @@ import {
   SplitTextReveal,
 } from "../components/landing/LandingEffects";
 import "../styles/landing.css";
+
+const ECLIPSE_LOGO_URL = `${import.meta.env.BASE_URL}eclipse-chat-logo.png`;
+const AUTH_BACKGROUND_URL = `${import.meta.env.BASE_URL}auth/eclipse-login-orbit.webp`;
 
 type Props = {
   authMode: "login" | "register" | null;
@@ -194,7 +196,11 @@ export function LandingPage({
   }, [activeSection]);
 
   return (
-    <main className="ec-landing" aria-label="Eclipse Chat">
+    <main
+      className="ec-landing"
+      aria-label="Eclipse Chat"
+      style={{ "--ec-auth-bg-image": `url("${AUTH_BACKGROUND_URL}")` } as CSSProperties}
+    >
       <div className="ec-landing__atmosphere" aria-hidden />
 
       <div className="ec-landing__shell">
