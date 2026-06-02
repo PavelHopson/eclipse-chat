@@ -315,6 +315,15 @@ function resolveConnectionBadge(isConnected: boolean, isReconnecting: boolean, i
   return "Готов";
 }
 
+function formatRoomAudience(count: number): string {
+  const abs = Math.abs(count);
+  const mod10 = abs % 10;
+  const mod100 = abs % 100;
+  if (mod10 === 1 && mod100 !== 11) return `${count} участник`;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return `${count} участника`;
+  return `${count} участников`;
+}
+
 /* ===== Speaking avatar (presence layer) ==================== */
 
 function PresenceAvatar({
@@ -638,6 +647,7 @@ export function VoiceRoom({
     : "var(--ec-status-idle)";
 
   const headcount = isJoinedHere ? v.participants.length : occupants.length;
+  const musicAudienceCount = Math.max(headcount, musicSession?.currentTrack ? 1 : 0);
 
   const openCtxMenu = (p: VoiceParticipant, e: React.MouseEvent) => {
     e.preventDefault();
@@ -768,6 +778,15 @@ export function VoiceRoom({
                 : "Выберите аудиофайл из пространства — он синхронно запустится у участников. Локальный звук устройства не транслируется."}
             </span>
           </span>
+        </div>
+        <div className="ec-voice-room__music-meta" aria-label={`В комнате ${formatRoomAudience(musicAudienceCount)}`}>
+          <span className="ec-voice-room__music-dot" aria-hidden />
+          <span>{formatRoomAudience(musicAudienceCount)} в комнате</span>
+          {musicSession?.currentTrack && (
+            <span className="ec-voice-room__music-state">
+              {musicSession.isPlaying ? "синхронизация активна" : "трек на паузе"}
+            </span>
+          )}
         </div>
         <div className="ec-voice-room__music-actions">
           {musicSession && onOpenMusicExpand && (

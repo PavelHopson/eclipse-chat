@@ -692,6 +692,12 @@
     width: 100%;
   }
 
+  .ec-voice-room__music-meta {
+    justify-content: center;
+    width: 100%;
+    white-space: normal;
+  }
+
   .ec-voice-room__music-actions .ec-btn {
     flex: 1;
     min-height: 40px;

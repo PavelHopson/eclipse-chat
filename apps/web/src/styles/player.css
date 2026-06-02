@@ -1263,6 +1263,37 @@
   flex: 1;
 }
 
+.ec-voice-room__music-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex-shrink: 0;
+  padding: 0.38rem 0.56rem;
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 13%, var(--ec-border-subtle));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ec-surface-3) 58%, transparent);
+  color: var(--ec-text-muted);
+  font-size: var(--ec-text-2xs);
+  font-weight: 700;
+  letter-spacing: var(--ec-tracking-caps);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.ec-voice-room__music-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--ec-status-exec);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--ec-status-exec) 62%, transparent);
+}
+
+.ec-voice-room__music-state {
+  padding-left: 7px;
+  border-left: 1px solid color-mix(in srgb, var(--ec-accent) 14%, var(--ec-border-subtle));
+  color: color-mix(in srgb, var(--ec-accent) 72%, var(--ec-text-muted));
+}
+
 .ec-voice-room__music-icon {
   width: 34px;
   height: 34px;
