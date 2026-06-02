@@ -5,7 +5,13 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.88** (Server rail/menu polish — server actions menu in
+**Текущая версия:** **v1.5.89** (Rail quick room search — left rail получает быстрый
+поиск по комнатам во вкладке «Каналы»: фильтр работает по названию комнаты и названию
+категории, matching categories раскрываются автоматически, режим поиска скрывает
+create/dropzone controls и показывает понятный empty state. UX goal: меньше скролла,
+меньше угадывания, быстрее перейти в нужную комнату. No schema/backend.)
+
+**Предыдущая:** v1.5.88 (Server rail/menu polish — server actions menu in
 ChannelList теперь ведёт себя как раскрывающийся rail-block, а не floating overlay:
 меню остаётся под server header в потоке layout, двигает channel tabs/list вниз,
 получает активный trigger state, более читаемые hover/focus rows и solid premium

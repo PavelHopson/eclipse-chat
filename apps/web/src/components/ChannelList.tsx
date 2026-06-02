@@ -210,6 +210,7 @@ export function ChannelList({
     y: number;
   } | null>(null);
   const [serverMenuOpen, setServerMenuOpen] = useState(false);
+  const [channelSearch, setChannelSearch] = useState("");
   const hideMutedKey = serverId ? `ec.channelList.hideMuted.${serverId}` : null;
   const [hideMutedChannels, setHideMutedChannels] = useState(false);
   const [copiedInviteChannelId, setCopiedInviteChannelId] = useState<string | null>(null);
@@ -252,6 +253,10 @@ export function ChannelList({
     if (typeof window === "undefined" || !sidebarKey) return;
     window.localStorage.setItem(sidebarKey, sidebarTab);
   }, [sidebarKey, sidebarTab]);
+
+  useEffect(() => {
+    setChannelSearch("");
+  }, [serverId]);
 
   useEffect(() => {
     if (typeof window === "undefined" || !hideMutedKey) {
@@ -322,6 +327,13 @@ export function ChannelList({
     () => [...categories].sort((a, b) => a.position - b.position || a.name.localeCompare(b.name, "ru")),
     [categories],
   );
+  const categoryNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const category of sortedCategories) map.set(category.id, category.name.toLocaleLowerCase("ru"));
+    return map;
+  }, [sortedCategories]);
+  const channelSearchQuery = channelSearch.trim().toLocaleLowerCase("ru");
+  const channelSearchActive = channelSearchQuery.length > 0;
   const visibleChannels = useMemo(
     () =>
       hideMutedChannels && mutedChannels
@@ -329,9 +341,17 @@ export function ChannelList({
         : channels,
     [channels, hideMutedChannels, mutedChannels, selectedChannelId],
   );
+  const searchedChannels = useMemo(() => {
+    if (!channelSearchQuery) return visibleChannels;
+    return visibleChannels.filter((channel) => {
+      const channelName = channel.name.toLocaleLowerCase("ru");
+      const categoryName = channel.categoryId ? categoryNameById.get(channel.categoryId) ?? "" : "";
+      return channelName.includes(channelSearchQuery) || categoryName.includes(channelSearchQuery);
+    });
+  }, [categoryNameById, channelSearchQuery, visibleChannels]);
   const sortedChannels = useMemo(
-    () => [...visibleChannels].sort((a, b) => a.position - b.position || a.name.localeCompare(b.name, "ru")),
-    [visibleChannels],
+    () => [...searchedChannels].sort((a, b) => a.position - b.position || a.name.localeCompare(b.name, "ru")),
+    [searchedChannels],
   );
   const uncategorizedChannels = useMemo(
     () => sortedChannels.filter((c) => !c.categoryId),
@@ -742,7 +762,8 @@ export function ChannelList({
 
   const renderCategory = (category: CategoryRow) => {
     const group = channelsByCategory.get(category.id) ?? [];
-    const collapsed = collapsedCategoryIds.has(category.id);
+    if (channelSearchActive && group.length === 0) return null;
+    const collapsed = !channelSearchActive && collapsedCategoryIds.has(category.id);
     const isDropTarget = dropTargetCategoryId === category.id && draggedCategoryId !== category.id;
     return (
       <section
@@ -1124,20 +1145,53 @@ export function ChannelList({
 
         {sidebarTab === "channels" && (
           <>
+            <div className="ec-channel-search" role="search">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <circle cx="11" cy="11" r="8" />
+                <path d="M21 21l-4.35-4.35" />
+              </svg>
+              <input
+                type="search"
+                value={channelSearch}
+                onChange={(event) => setChannelSearch(event.target.value)}
+                placeholder="Найти комнату"
+                aria-label="Найти комнату"
+              />
+              {channelSearchActive && (
+                <button
+                  type="button"
+                  className="ec-channel-search__clear"
+                  onClick={() => setChannelSearch("")}
+                  aria-label="Очистить поиск"
+                >
+                  ×
+                </button>
+              )}
+            </div>
             {!channelsLoading && channels.length > 0 && (
               <div className="ec-channel-category-stack">
+                {sortedChannels.length === 0 && channelSearchActive && (
+                  <p className="ec-channel-list__hint ec-channel-list__hint--search">
+                    По запросу «{channelSearch.trim()}» комнат не найдено.
+                  </p>
+                )}
                 {hideMutedChannels && mutedChannels && (
                   <div className="ec-channel-filter-note" role="status">
                     Заглушённые скрыты · {channels.length - visibleChannels.length} скрыто
                   </div>
                 )}
-                <section className="ec-channel-category ec-channel-category--uncategorized">
+                <section
+                  className={
+                    "ec-channel-category ec-channel-category--uncategorized" +
+                    (channelSearchActive && uncategorizedChannels.length === 0 ? " ec-channel-category--search-empty" : "")
+                  }
+                >
                   <div className="ec-section-label ec-channel-category__uncategorized-label">
                     <span className="ec-section-label--diamond">
                       <span>БЕЗ КАТЕГОРИИ</span>
                       <span className="ec-channel-section__count">{uncategorizedChannels.length}</span>
                     </span>
-                    {editable && (
+                    {editable && !channelSearchActive && (
                       <button
                         type="button"
                         onClick={() => openCreateModal("TEXT", null)}
@@ -1156,11 +1210,11 @@ export function ChannelList({
                         {channel.type === "VOICE" && renderVoiceOccupants(channel.id)}
                       </div>
                     ))}
-                    {renderChannelDropZone(null, uncategorizedChannels.length === 0)}
+                    {!channelSearchActive && renderChannelDropZone(null, uncategorizedChannels.length === 0)}
                   </div>
                 </section>
                 {sortedCategories.map(renderCategory)}
-                {manageable && onCreateCategory && (
+                {manageable && onCreateCategory && !channelSearchActive && (
                   <button
                     type="button"
                     className="ec-channel-category-create"
