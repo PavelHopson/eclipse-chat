@@ -49,6 +49,7 @@ type Props = {
 };
 
 type Tab = "messages" | "actions" | "files" | "semantic";
+type QuickKind = QuickNavItem["kind"];
 
 export type QuickNavItem = {
   id: string;
@@ -58,6 +59,24 @@ export type QuickNavItem = {
   kind: "channel" | "dm" | "table" | "view" | "settings";
   onSelect: () => void;
 };
+
+const QUICK_KIND_META: Record<
+  QuickKind,
+  { group: string; glyph: string; label: string }
+> = {
+  view: { group: "Навигация", glyph: "→", label: "Экран" },
+  channel: { group: "Каналы", glyph: "#", label: "Канал" },
+  dm: { group: "Личные", glyph: "@", label: "Диалог" },
+  table: { group: "Данные", glyph: "▦", label: "Таблица" },
+  settings: { group: "Настройки", glyph: "⚙", label: "Раздел" },
+};
+const QUICK_KIND_ORDER: QuickKind[] = [
+  "view",
+  "dm",
+  "channel",
+  "table",
+  "settings",
+];
 
 // v1.1.95 slice 6: inline-style консоли SearchOverlay вынесены в
 // классы .ec-search-* (components.css). JS-hover hit-row убран.
@@ -189,6 +208,15 @@ export function SearchOverlay({
       : quickItems;
     return source.slice(0, q ? 10 : 8);
   }, [query, quickItems]);
+  const quickGroups = useMemo(() => {
+    return QUICK_KIND_ORDER.map((kind) => ({
+      kind,
+      title: QUICK_KIND_META[kind].group,
+      items: quickMatches
+        .map((item, index) => ({ item, index }))
+        .filter(({ item }) => item.kind === kind),
+    })).filter((group) => group.items.length > 0);
+  }, [quickMatches]);
 
   useEffect(() => {
     setActiveQuickIndex(0);
@@ -393,37 +421,59 @@ export function SearchOverlay({
           <div className="ec-command-palette" aria-label="Быстрые переходы">
             <div className="ec-command-palette__head">
               <span>Быстрые переходы</span>
-              <span>{query.trim() ? "по запросу" : "частые места"}</span>
+              <span>{query.trim() ? "по запросу" : "основные места"}</span>
             </div>
-            <div id="ec-command-palette-list" className="ec-command-palette__grid" role="listbox">
-              {quickMatches.map((item, index) => (
-                <button
-                  id={`ec-command-palette-${item.id}`}
-                  key={item.id}
-                  ref={(node) => {
-                    quickButtonRefs.current[index] = node;
-                  }}
-                  type="button"
-                  role="option"
-                  aria-selected={index === activeQuickIndex}
-                  className={`ec-command-palette__item ec-command-palette__item--${item.kind}${
-                    index === activeQuickIndex ? " is-active" : ""
-                  }`}
-                  onClick={() => {
-                    item.onSelect();
-                    onClose();
-                  }}
-                  onMouseEnter={() => setActiveQuickIndex(index)}
-                >
-                  <span className="ec-command-palette__glyph" aria-hidden>
-                    {item.glyph}
-                  </span>
-                  <span className="ec-command-palette__body">
-                    <span className="ec-command-palette__label">{item.label}</span>
-                    <span className="ec-command-palette__detail">{item.detail}</span>
-                  </span>
-                </button>
+            <div
+              id="ec-command-palette-list"
+              className="ec-command-palette__groups"
+              role="listbox"
+              aria-label="Команды"
+            >
+              {quickGroups.map((group) => (
+                <section className="ec-command-palette__group" key={group.kind}>
+                  <div className="ec-command-palette__group-title">
+                    {group.title}
+                  </div>
+                  <div className="ec-command-palette__grid">
+                    {group.items.map(({ item, index }) => {
+                      const meta = QUICK_KIND_META[item.kind];
+                      return (
+                        <button
+                          id={`ec-command-palette-${item.id}`}
+                          key={item.id}
+                          ref={(node) => {
+                            quickButtonRefs.current[index] = node;
+                          }}
+                          type="button"
+                          role="option"
+                          aria-selected={index === activeQuickIndex}
+                          className={`ec-command-palette__item ec-command-palette__item--${item.kind}${
+                            index === activeQuickIndex ? " is-active" : ""
+                          }`}
+                          onClick={() => {
+                            item.onSelect();
+                            onClose();
+                          }}
+                          onMouseEnter={() => setActiveQuickIndex(index)}
+                        >
+                          <span className="ec-command-palette__glyph" aria-hidden>
+                            {meta.glyph}
+                          </span>
+                          <span className="ec-command-palette__body">
+                            <span className="ec-command-palette__label">{item.label}</span>
+                            <span className="ec-command-palette__detail">
+                              {meta.label} · {item.detail}
+                            </span>
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </section>
               ))}
+            </div>
+            <div className="ec-command-palette__footer" aria-hidden>
+              ↑↓ выбрать · Enter открыть · Esc закрыть
             </div>
           </div>
         )}
@@ -443,11 +493,11 @@ export function SearchOverlay({
           {truncated && !loading && error && (
             <p className="ec-search-hint ec-search-hint--error">{error}</p>
           )}
-          {truncated && !loading && !error && totalHits === 0 && (
+          {truncated && !loading && !error && totalHits === 0 && quickMatches.length === 0 && (
             <EmptyState
               icon={<EmptySearchIcon />}
               title="Ничего не найдено"
-              hint="Попробуйте другие слова, имя автора или часть имени файла."
+              hint="Попробуйте название канала, имя диалога, таблицу или раздел настроек."
               compact
             />
           )}

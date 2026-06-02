@@ -6389,6 +6389,36 @@ input[type="radio"]:focus-visible {
   color: var(--ec-text-muted);
   font-weight: 600;
 }
+.ec-command-palette__groups {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ec-space-3);
+}
+.ec-command-palette__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ec-space-2);
+}
+.ec-command-palette__group-title,
+.ec-command-palette__footer {
+  color: var(--ec-text-muted);
+  font-family: var(--ec-font-mono);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.ec-command-palette__group-title {
+  padding-left: 2px;
+}
+.ec-command-palette__footer {
+  margin-top: var(--ec-space-3);
+  padding-top: var(--ec-space-2);
+  border-top: 1px solid var(--ec-border-subtle);
+  color: var(--ec-text-dim);
+  text-align: center;
+  text-transform: none;
+}
 .ec-command-palette__grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
