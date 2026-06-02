@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type RefObject } from "react";
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import type { ServerRow } from "../../hooks/useServers";
 
@@ -170,6 +170,7 @@ export function ServerActionsMenu({
 }: Props) {
   const [position, setPosition] = useState<MenuPosition>(() => computePosition(null));
   const [toast, setToast] = useState<string | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
   const isManager = canManage(server.role);
   const canLeave = server.role !== "OWNER";
 
@@ -195,7 +196,7 @@ export function ServerActionsMenu({
       const target = event.target as Node | null;
       const trigger = triggerRef.current;
       if (trigger && target && trigger.contains(target)) return;
-      if (target instanceof Element && target.closest(".ec-server-actions-menu")) return;
+      if (target && menuRef.current?.contains(target)) return;
       onClose();
     };
     const onKeyDown = (event: KeyboardEvent) => {
@@ -285,6 +286,8 @@ export function ServerActionsMenu({
 
   const menu = (
     <div
+      ref={menuRef}
+      data-ec-server-menu="true"
       className="ec-popover-surface ec-server-actions-menu"
       role="menu"
       aria-label={`Действия пространства ${server.name}`}
@@ -292,6 +295,7 @@ export function ServerActionsMenu({
         top: position.top,
         left: position.left,
         width: position.width,
+        zIndex: 10000,
         // Solid-фон inline — бьёт любой (в т.ч. устаревший из кэша) CSS-чанк,
         // чтобы поповер никогда не просвечивал список каналов под собой.
         background: "var(--ec-surface-2)",
@@ -336,5 +340,6 @@ export function ServerActionsMenu({
     </div>
   );
 
+  if (typeof document === "undefined") return null;
   return createPortal(menu, document.body);
 }

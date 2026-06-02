@@ -851,7 +851,11 @@ export function ChannelList({
         <button
           ref={serverTriggerRef}
           type="button"
-          onClick={() => setServerMenuOpen((value) => !value)}
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={(event) => {
+            event.stopPropagation();
+            setServerMenuOpen((value) => !value);
+          }}
           className="ec-channel-list__server-btn ec-server-header-trigger"
           title="Действия пространства"
           aria-haspopup="menu"

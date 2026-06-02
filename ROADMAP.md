@@ -5,7 +5,13 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.85** (Discord-parity E3 frontend — server feature
+**Текущая версия:** **v1.5.86** (Server menu trigger hardening — server actions
+popover теперь защищён от внешних pointer/click handlers: trigger останавливает
+всплытие, outside-click проверяет реальный menu ref вместо CSS closest, portal
+получает высокий inline z-index. Fixes case: header показывает chevron/hover, но
+меню сервера не появляется в rail. No schema/backend.)
+
+**Предыдущая:** v1.5.85 (Discord-parity E3 frontend — server feature
 chips получили production UI: владелец редактирует до 5 коротких тезисов в
 ServerHub settings, PATCH `/api/servers/:id/identity` отправляет реальное
 `features` поле, предпросмотр и `ServerWelcomeHero` рендерят чипы только из
