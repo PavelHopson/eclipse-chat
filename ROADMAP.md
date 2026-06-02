@@ -5,7 +5,14 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.87** (Server menu inline rail fallback — ChannelList server actions
+**Текущая версия:** **v1.5.88** (Server rail/menu polish — server actions menu in
+ChannelList теперь ведёт себя как раскрывающийся rail-block, а не floating overlay:
+меню остаётся под server header в потоке layout, двигает channel tabs/list вниз,
+получает активный trigger state, более читаемые hover/focus rows и solid premium
+surface. Fixes UX debt after v1.5.87: menu works, but should not visually collide
+with channel navigation. No schema/backend.)
+
+**Предыдущая:** v1.5.87 (Server menu inline rail fallback — ChannelList server actions
 popover теперь рендерится локальным absolute-слоем под server header вместо body portal.
 Это убирает зависимость от viewport positioning, portal stacking и старых CSS-чанков.
 Trigger propagation/ref outside-click handling остаются; sidebar header получает явный

@@ -841,13 +841,14 @@ export function ChannelList({
   const headerClass = bannerUrl
     ? "ec-server-header-edge ec-channel-list__header ec-channel-list__header--banner"
     : "ec-server-header-edge ec-channel-list__header";
+  const headerStateClass = serverMenuOpen ? `${headerClass} ec-channel-list__header--menu-open` : headerClass;
   const headerStyle: CSSProperties | undefined = bannerUrl
     ? { backgroundImage: `url("${bannerUrl}")` }
     : undefined;
 
   return (
     <aside className="ec-channel-list">
-      <header className={headerClass} style={headerStyle}>
+      <header className={headerStateClass} style={headerStyle}>
         <button
           ref={serverTriggerRef}
           type="button"
