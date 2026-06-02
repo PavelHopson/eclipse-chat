@@ -8695,3 +8695,313 @@ input[type="radio"]:focus-visible {
   border-color: color-mix(in srgb, var(--ec-accent) 18%, transparent);
 }
 
+/* v1.6.1 — visible chat surface reset: content-first cards, not full-width haze. */
+.ec-message-list-shell {
+  background:
+    radial-gradient(circle at 42% 0%, color-mix(in srgb, var(--ec-accent) 9%, transparent), transparent 28rem),
+    linear-gradient(180deg, color-mix(in srgb, var(--ec-bg) 94%, transparent), color-mix(in srgb, #03060b 92%, transparent));
+}
+
+.ec-message-list {
+  padding: 28px clamp(14px, 2.2vw, 34px) 18px;
+  gap: 8px;
+}
+
+.ec-message-row {
+  grid-template-columns: 42px minmax(0, 1fr);
+  align-items: start;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 18px;
+  background: transparent;
+  box-shadow: none;
+  transform: none;
+}
+
+.ec-message-row::before {
+  content: "";
+  position: absolute;
+  inset: 6px auto 6px 0;
+  width: 2px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--ec-accent) 62%, transparent), transparent);
+  opacity: 0;
+  transition: opacity var(--ec-dur-fast) var(--ec-ease);
+}
+
+.ec-message-row:hover,
+.ec-message-row:focus-within {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  transform: none;
+}
+
+.ec-message-row:hover::before,
+.ec-message-row:focus-within::before {
+  opacity: 1;
+}
+
+.ec-message-row--grouped {
+  padding-top: 3px;
+  padding-bottom: 3px;
+}
+
+.ec-message-row--grouped .ec-message-content {
+  margin-left: 0;
+}
+
+.ec-message-content {
+  position: relative;
+  z-index: 1;
+  width: fit-content;
+  max-width: min(760px, 100%);
+  min-width: min(260px, 100%);
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 14%, var(--ec-border-subtle));
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--ec-surface-2) 92%, transparent), color-mix(in srgb, var(--ec-surface-1) 94%, transparent)),
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--ec-accent) 10%, transparent), transparent 42%);
+  box-shadow:
+    0 18px 42px -34px hsl(210 35% 2% / 0.92),
+    inset 0 1px 0 hsl(0 0% 100% / 0.045);
+}
+
+.ec-message-row--grouped .ec-message-content {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  border-color: color-mix(in srgb, var(--ec-accent) 8%, var(--ec-border-subtle));
+  background: color-mix(in srgb, var(--ec-surface-1) 82%, transparent);
+}
+
+.ec-message-row--ai .ec-message-content {
+  border-color: color-mix(in srgb, var(--ec-accent) 24%, var(--ec-border-subtle));
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--ec-accent) 12%, var(--ec-surface-2)), color-mix(in srgb, var(--ec-surface-1) 92%, transparent));
+}
+
+.ec-message-row--pinned .ec-message-content {
+  border-color: color-mix(in srgb, var(--ec-warn) 35%, var(--ec-border-subtle));
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--ec-warn) 9%, var(--ec-surface-2)), color-mix(in srgb, var(--ec-surface-1) 92%, transparent));
+}
+
+.ec-msg-author {
+  color: var(--ec-text-strong);
+  font-size: var(--ec-text-sm);
+  letter-spacing: 0;
+}
+
+.ec-msg-time {
+  color: color-mix(in srgb, var(--ec-text-muted) 80%, transparent);
+}
+
+.ec-message-content p {
+  color: color-mix(in srgb, var(--ec-text) 94%, white 6%) !important;
+}
+
+.ec-message-content .ec-attachment,
+.ec-message-content .ec-link-embed,
+.ec-message-content img,
+.ec-message-content video,
+.ec-message-content audio {
+  max-width: min(100%, 520px);
+}
+
+.ec-message-actions {
+  top: -14px;
+  right: auto;
+  left: 64px;
+  gap: 3px;
+  padding: 5px;
+  border-radius: 14px;
+  border-color: color-mix(in srgb, var(--ec-accent) 20%, var(--ec-border-subtle));
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--ec-surface-3) 92%, transparent), color-mix(in srgb, var(--ec-surface-1) 92%, transparent));
+  box-shadow:
+    0 16px 36px -24px hsl(210 40% 2% / 0.95),
+    0 0 0 1px hsl(0 0% 100% / 0.035),
+    inset 0 1px 0 hsl(0 0% 100% / 0.06);
+}
+
+.ec-msg-action {
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+}
+
+.ec-msg-quick-react {
+  background: color-mix(in srgb, var(--ec-surface-2) 80%, transparent);
+}
+
+.ec-msg-action:hover,
+.ec-msg-quick-react:hover {
+  background: color-mix(in srgb, var(--ec-accent) 16%, var(--ec-surface-3));
+  color: var(--ec-text-strong);
+  transform: translateY(-1px);
+}
+
+.ec-msg-avatar-wrap {
+  margin-top: 4px;
+}
+
+.ec-message-row:hover .ec-msg-avatar-wrap,
+.ec-message-row:focus-within .ec-msg-avatar-wrap {
+  transform: scale(1.04);
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--ec-bg) 94%, transparent),
+    0 0 0 3px color-mix(in srgb, var(--ec-accent) 34%, transparent),
+    0 12px 28px -18px var(--ec-accent);
+}
+
+.ec-msg-day {
+  margin: 18px 0 14px;
+}
+
+.ec-msg-day__line {
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--ec-accent) 18%, var(--ec-border-subtle)), transparent);
+}
+
+.ec-msg-day__label {
+  padding: 4px 10px;
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 16%, var(--ec-border-subtle));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ec-surface-1) 78%, transparent);
+  color: color-mix(in srgb, var(--ec-accent) 72%, var(--ec-text-muted));
+}
+
+.ec-composer {
+  padding: 14px clamp(12px, 2vw, 30px) 10px;
+  border-top: 1px solid color-mix(in srgb, var(--ec-accent) 13%, var(--ec-border-subtle));
+  background:
+    radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--ec-accent) 12%, transparent), transparent 32rem),
+    linear-gradient(180deg, color-mix(in srgb, var(--ec-bg) 12%, transparent), color-mix(in srgb, #03060b 88%, transparent));
+}
+
+.ec-composer-box {
+  min-height: 58px;
+  padding: 8px;
+  border-width: 1px;
+  border-radius: 22px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--ec-surface-3) 82%, transparent), color-mix(in srgb, var(--ec-surface-1) 96%, transparent));
+  border-color: color-mix(in srgb, var(--ec-accent) 24%, var(--ec-border-subtle));
+  box-shadow:
+    0 24px 70px -44px hsl(258 86% 45% / 0.82),
+    0 0 0 1px hsl(0 0% 100% / 0.035),
+    inset 0 1px 0 hsl(0 0% 100% / 0.055);
+}
+
+.ec-composer-box:focus-within {
+  border-color: color-mix(in srgb, var(--ec-accent) 55%, var(--ec-border-subtle));
+  box-shadow:
+    0 28px 80px -46px hsl(258 86% 48% / 0.9),
+    0 0 0 1px color-mix(in srgb, var(--ec-accent) 18%, transparent),
+    inset 0 1px 0 hsl(0 0% 100% / 0.07);
+}
+
+.ec-composer-icon-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--ec-surface-2) 68%, transparent);
+  color: var(--ec-text-muted);
+}
+
+.ec-composer-icon-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--ec-accent) 15%, var(--ec-surface-2));
+  border-color: color-mix(in srgb, var(--ec-accent) 28%, transparent);
+  color: var(--ec-text-strong);
+}
+
+.ec-composer-textarea {
+  min-height: 38px;
+  padding: 8px 10px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--ec-bg) 42%, transparent);
+  color: var(--ec-text-strong);
+}
+
+.ec-composer-textarea::placeholder {
+  color: color-mix(in srgb, var(--ec-text-muted) 78%, transparent);
+}
+
+.ec-composer-send {
+  min-width: 128px;
+  min-height: 42px;
+  border-radius: 16px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--ec-accent) 86%, #ffffff 5%), color-mix(in srgb, var(--ec-accent) 58%, #2dd4bf 14%));
+  color: white;
+  box-shadow: 0 16px 38px -24px var(--ec-accent);
+}
+
+.ec-composer-send:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 20px 48px -24px var(--ec-accent),
+    0 0 0 1px color-mix(in srgb, white 18%, transparent) inset;
+}
+
+.ec-composer-hints {
+  padding-inline: 8px;
+  color: color-mix(in srgb, var(--ec-text-muted) 74%, transparent);
+}
+
+@media (max-width: 720px) {
+  .ec-message-list {
+    padding-inline: 10px;
+  }
+
+  .ec-message-row {
+    grid-template-columns: 34px minmax(0, 1fr);
+    column-gap: 8px;
+    padding-inline: 4px;
+  }
+
+  .ec-message-content {
+    min-width: 0;
+    max-width: 100%;
+    padding: 10px 11px;
+    border-radius: 15px;
+  }
+
+  .ec-message-actions {
+    left: 46px;
+    max-width: calc(100vw - 66px);
+    overflow-x: auto;
+  }
+
+  .ec-composer {
+    padding-inline: 8px;
+  }
+
+  .ec-composer-box {
+    min-height: 54px;
+    border-radius: 18px;
+  }
+
+  .ec-composer-send {
+    min-width: 46px;
+    padding-inline: 12px;
+  }
+
+  .ec-composer-send-label {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ec-message-row,
+  .ec-message-row::before,
+  .ec-message-actions,
+  .ec-msg-action,
+  .ec-composer-box,
+  .ec-composer-send,
+  .ec-composer-icon-btn {
+    transition: none !important;
+    transform: none !important;
+  }
+}
+

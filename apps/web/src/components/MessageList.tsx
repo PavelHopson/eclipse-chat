@@ -503,7 +503,8 @@ export function MessageList({
               className={
                 "ec-message-row ec-anim-message-enter" +
                 rowClass +
-                (m.user.isBot ? " ec-message-row--ai" : "")
+                (m.user.isBot ? " ec-message-row--ai" : "") +
+                (isMine ? " ec-message-row--mine" : "")
               }
               style={{
                 opacity: m.pending ? 0.6 : 1,
@@ -532,7 +533,7 @@ export function MessageList({
                   </span>
                 )}
               </div>
-              <div style={{ minWidth: 0 }}>
+              <div className="ec-message-content">
                 {(!grouped || newDay || isPinned) && (
                   <header style={{ display: "flex", alignItems: "baseline", gap: "var(--ec-space-2)", marginBottom: 2 }}>
                     <button

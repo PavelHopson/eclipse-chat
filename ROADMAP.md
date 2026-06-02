@@ -5,14 +5,21 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.6.0** (Design clarity pass — everyday chat and voice
+**Текущая версия:** **v1.6.1** (Visible chat surface reset — v1.6.0 оказался
+слишком осторожным, поэтому чат получил уже заметную базовую композицию:
+сообщения стали content-first карточками по ширине содержимого вместо
+растянутой full-width пелены, action toolbar визуально привязан к сообщению,
+лента получила более явный depth/background, composer dock стал плотнее,
+контрастнее и практичнее на desktop/mobile. No schema/backend.)
+
+**Предыдущая:** v1.6.0 (Design clarity pass — everyday chat and voice
 surfaces стали спокойнее и практичнее: лента сообщений получила тихий hover,
 чётче отделённый action-toolbar, аккуратнее avatar/time emphasis и менее шумный
 composer dock. Voice room shared note переехала с inline-style плиты на
 профессиональную surface: compact header, readable textarea, честные save/conflict
 states, mobile stacking и reduced-motion fallback. No schema/backend.)
 
-**Предыдущая:** v1.5.99 (Voice shared music audience clarity — shared
+**Ещё раньше:** v1.5.99 (Voice shared music audience clarity — shared
 music bridge в голосовой комнате получил честный room-aware статус:
 «N участников в комнате» + состояние синхронизации/паузы рядом с текущим
 треком. Формулировка не обещает, что у каждого участника реально звучит аудио
