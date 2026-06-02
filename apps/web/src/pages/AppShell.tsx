@@ -56,6 +56,16 @@ const CreateGroupDmModal = lazy(() => import("../components/CreateGroupDmModal")
 const CreateTableModal = lazy(() => import("../components/CreateTableModal").then((m) => ({ default: m.CreateTableModal })));
 const MusicExpandModal = lazy(() => import("../components/MusicExpandModal").then((m) => ({ default: m.MusicExpandModal })));
 const VoiceMusicPicker = lazy(() => import("../components/VoiceMusicPicker").then((m) => ({ default: m.VoiceMusicPicker })));
+
+function isTextEntryTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return Boolean(
+    target.closest(
+      "input, textarea, select, [contenteditable='true'], [role='textbox']",
+    ),
+  );
+}
+
 import { SpiderClock } from "../components/SpiderClock";
 import { ServerSwitcher } from "../components/ServerSwitcher";
 import { SinceLastVisitBanner } from "../components/SinceLastVisitBanner";
@@ -401,6 +411,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     const onKey = (e: KeyboardEvent) => {
       const isK = e.key === "k" || e.key === "K" || e.key === "л" || e.key === "Л";
       if ((e.ctrlKey || e.metaKey) && isK) {
+        if (isTextEntryTarget(e.target)) return;
         e.preventDefault();
         setShowSearch(true);
       }
