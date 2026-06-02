@@ -1097,9 +1097,24 @@
   z-index: 0;
 }
 
-/* Controls dock — accent border + violet halo (поверх inline boxShadow). */
+/* Controls dock — compact operator-grade surface over legacy inline styles. */
 .ec-voice-room__controls {
-  border: 1px solid color-mix(in srgb, var(--ec-accent) 22%, transparent) !important;
+  gap: 6px !important;
+  padding: 8px !important;
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 16%, var(--ec-border-subtle)) !important;
+  border-radius: 22px !important;
+  background:
+    radial-gradient(circle at 14% 0%, color-mix(in srgb, var(--ec-accent) 12%, transparent), transparent 42%),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--ec-surface-2) 92%, transparent),
+      color-mix(in srgb, var(--ec-surface-1) 96%, transparent)
+    ) !important;
+  box-shadow:
+    0 18px 54px -28px hsl(210 35% 2% / 0.82),
+    0 0 34px -26px var(--ec-accent),
+    inset 0 1px 0 hsl(0 0% 100% / 0.05),
+    inset 0 0 0 1px hsl(0 0% 100% / 0.025) !important;
 }
 .ec-voice-room__controls::before {
   content: "";
@@ -1115,7 +1130,7 @@
     transparent 100%
   );
   pointer-events: none;
-  border-radius: var(--ec-radius-full) var(--ec-radius-full) 0 0;
+  border-radius: 22px 22px 0 0;
 }
 
 /* v1.5.16 — control buttons. Класс добавлен в TSX, базовая структура
@@ -1123,36 +1138,116 @@
 .ec-vr-ctrl {
   position: relative;
   overflow: hidden;
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: 14px !important;
+  background: color-mix(in srgb, var(--ec-surface-3) 78%, transparent) !important;
+  border-color: color-mix(in srgb, var(--ec-border-subtle) 86%, transparent) !important;
+  color: var(--ec-text-muted) !important;
+  box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.05) !important;
 }
 .ec-vr-ctrl:hover:not(:disabled) {
   transform: translateY(-1px) !important;
-  border-color: var(--ec-border-accent) !important;
-  background: color-mix(in srgb, var(--ec-accent) 10%, var(--ec-surface-3)) !important;
+  border-color: color-mix(in srgb, var(--ec-accent) 34%, var(--ec-border-subtle)) !important;
+  background: color-mix(in srgb, var(--ec-accent) 9%, var(--ec-surface-3)) !important;
   color: var(--ec-accent) !important;
-  box-shadow: 0 6px 18px -6px hsl(258 86% 50% / 0.55) !important;
+  box-shadow:
+    0 8px 20px -12px hsl(258 86% 50% / 0.62),
+    inset 0 1px 0 hsl(0 0% 100% / 0.07) !important;
 }
 .ec-vr-ctrl:active:not(:disabled) {
   transform: translateY(0) scale(0.94) !important;
   transition-duration: 60ms !important;
 }
 .ec-vr-ctrl--danger {
-  /* Override hover для danger варианта — красный halo. */
+  background: color-mix(in srgb, var(--ec-danger) 13%, var(--ec-surface-3)) !important;
+  border-color: color-mix(in srgb, var(--ec-danger) 32%, transparent) !important;
+  color: color-mix(in srgb, var(--ec-danger) 82%, white) !important;
 }
 .ec-vr-ctrl--danger:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--ec-danger) 18%, var(--ec-danger)) !important;
-  border-color: var(--ec-danger) !important;
+  background: color-mix(in srgb, var(--ec-danger) 24%, var(--ec-surface-3)) !important;
+  border-color: color-mix(in srgb, var(--ec-danger) 58%, transparent) !important;
   color: var(--ec-accent-text) !important;
-  box-shadow: 0 6px 18px -6px hsl(0 70% 55% / 0.65) !important;
+  box-shadow: 0 8px 22px -12px hsl(0 70% 55% / 0.72) !important;
 }
 .ec-vr-ctrl--accent {
-  /* Active variant — уже accent. Hover просто усиливает halo. */
+  background: color-mix(in srgb, var(--ec-accent) 17%, var(--ec-surface-3)) !important;
+  border-color: color-mix(in srgb, var(--ec-accent) 45%, transparent) !important;
+  color: color-mix(in srgb, var(--ec-accent) 72%, white) !important;
+  box-shadow:
+    0 0 18px -12px var(--ec-accent),
+    inset 0 1px 0 hsl(0 0% 100% / 0.08) !important;
 }
 .ec-vr-ctrl--accent:hover:not(:disabled) {
-  background: var(--ec-accent-soft) !important;
-  border-color: var(--ec-accent) !important;
+  background: color-mix(in srgb, var(--ec-accent) 24%, var(--ec-surface-3)) !important;
+  border-color: color-mix(in srgb, var(--ec-accent) 62%, transparent) !important;
   box-shadow:
-    0 0 0 1px var(--ec-border-accent),
-    0 8px 26px -4px hsl(258 90% 66% / 0.62) !important;
+    0 0 0 1px color-mix(in srgb, var(--ec-accent) 16%, transparent),
+    0 10px 26px -12px hsl(258 90% 66% / 0.68) !important;
+}
+
+.ec-vr-volume {
+  min-width: 150px;
+  height: 40px !important;
+  padding: 0 12px !important;
+  border-radius: 14px !important;
+  background: color-mix(in srgb, var(--ec-surface-3) 72%, transparent) !important;
+  border-color: color-mix(in srgb, var(--ec-border-subtle) 84%, transparent) !important;
+  color: var(--ec-text-muted);
+  box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.04);
+}
+.ec-vr-volume input[type="range"] {
+  width: 90px !important;
+  height: 4px;
+  accent-color: var(--ec-accent);
+}
+
+.ec-voice-room__join {
+  min-height: 44px;
+  border-radius: 14px !important;
+  border-color: color-mix(in srgb, var(--ec-accent) 42%, transparent) !important;
+  background:
+    radial-gradient(circle at 30% 20%, hsl(0 0% 100% / 0.18), transparent 34%),
+    linear-gradient(135deg, color-mix(in srgb, var(--ec-accent) 60%, #7f9bb9), #8192ad) !important;
+  box-shadow:
+    0 16px 34px -18px hsl(258 90% 50% / 0.72),
+    inset 0 1px 0 hsl(0 0% 100% / 0.22),
+    inset 0 -1px 0 hsl(258 55% 24% / 0.38) !important;
+  transition:
+    transform var(--ec-dur-fast) var(--ec-ease-out),
+    box-shadow var(--ec-dur-fast) var(--ec-ease),
+    filter var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-voice-room__join:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.07);
+  box-shadow:
+    0 20px 42px -18px hsl(258 90% 50% / 0.88),
+    0 0 28px -18px var(--ec-accent),
+    inset 0 1px 0 hsl(0 0% 100% / 0.26) !important;
+}
+.ec-voice-room__join:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
+}
+.ec-voice-room__join--hero {
+  min-width: min(296px, 100%);
+}
+.ec-voice-room__join--dock {
+  min-width: 108px;
+  padding-inline: 20px !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ec-vr-ctrl,
+  .ec-vr-volume,
+  .ec-voice-room__join {
+    transition: none !important;
+  }
+  .ec-vr-ctrl:hover:not(:disabled),
+  .ec-voice-room__join:hover:not(:disabled),
+  .ec-voice-room__join:active:not(:disabled) {
+    transform: none !important;
+  }
 }
 
 /* Presence card (avatar tile) — speaking state получает breath

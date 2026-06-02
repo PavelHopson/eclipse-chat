@@ -663,6 +663,26 @@
   }
 }
 
+@media (max-width: 720px) {
+  .ec-voice-room__controls {
+    max-width: calc(100vw - 24px) !important;
+    border-radius: 18px !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .ec-voice-room__controls::-webkit-scrollbar {
+    display: none;
+  }
+  .ec-vr-volume {
+    min-width: 126px;
+  }
+  .ec-vr-volume input[type="range"] {
+    width: 66px !important;
+  }
+}
+
 /* v0.43: Modal на mobile — меньше backdrop padding, smaller body padding.
    v0.65: + safe-area-inset для iOS keyboard / notch; touch close-btn 44×44. */
 @media (max-width: 1024px) {

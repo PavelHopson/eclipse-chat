@@ -1953,7 +1953,7 @@ input[type="radio"]:focus-visible {
    СЃРїРѕРєРѕР№РЅС‹Рј surface-tint'РѕРј; С…Р°СЂР°РєС‚РµСЂ Р¶РёРІС‘С‚ РІ action-toolbar Рё РєРЅРѕРїРєР°С….
    Theme-aware С‚РѕРєРµРЅ вЂ” РєРѕСЂСЂРµРєС‚РЅРѕ РІ VOID Рё SOLAR. */
 .ec-message-row:hover {
-  background: var(--ec-surface-1);
+  background: color-mix(in srgb, var(--ec-surface-1) 48%, transparent);
 }
 
 .ec-message-actions {

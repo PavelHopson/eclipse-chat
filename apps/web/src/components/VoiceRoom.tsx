@@ -960,7 +960,7 @@ export function VoiceRoom({
               type="button"
               onClick={() => void v.join(channelId)}
               disabled={v.busy}
-              className="ec-btn ec-btn--primary"
+              className="ec-btn ec-btn--primary ec-voice-room__join ec-voice-room__join--hero"
               style={{ padding: "0.85rem 1.6rem", fontSize: "var(--ec-text-md)" }}
             >
               {v.busy
@@ -1123,7 +1123,7 @@ export function VoiceRoom({
             type="button"
             onClick={() => void v.join(channelId)}
             disabled={v.busy}
-            className="ec-btn ec-btn--primary"
+            className="ec-btn ec-btn--primary ec-voice-room__join ec-voice-room__join--dock"
             style={{ padding: "0.7rem 1.4rem" }}
           >
             {v.busy
@@ -1194,6 +1194,7 @@ export function VoiceRoom({
             </button>
 
             <div
+              className="ec-vr-volume"
               style={{
                 display: "flex",
                 alignItems: "center",

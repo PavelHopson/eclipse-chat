@@ -5,7 +5,14 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.95** (Command palette shortcut guard — глобальный
+**Текущая версия:** **v1.5.96** (Voice/chat visual polish — голосовая комната
+получила компактный профессиональный control dock: стабильные join CTA,
+квадратные action-buttons, отдельный volume capsule и mobile horizontal scroll.
+AI/bot-сообщения больше не растягивают фиолетовый фон на всю ширину ленты:
+подсветка ограничена карточкой контента, а общий hover сообщений стал тише.
+No schema/backend.)
+
+**Предыдущая:** v1.5.95 (Command palette shortcut guard — глобальный
 `Ctrl/⌘+K` больше не перехватывается, когда фокус стоит в `input`, `textarea`,
 `select`, `contenteditable` или `role="textbox"`. Это сохраняет быстрый вход в
 палитру из навигационных поверхностей, но не срывает набор сообщений, форм и
