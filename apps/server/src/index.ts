@@ -47,6 +47,7 @@ import {
   setVoicePresenceIO,
   snapshotForServer,
   metaSnapshotForUsers,
+  stateForSocket,
   trackVoiceJoin,
   trackVoiceLeave,
   updateVoiceMeta,
@@ -231,7 +232,7 @@ app.get("/api/health", async () => {
     },
   };
 });
-app.get("/api/version", async () => ({ name: "@eclipse-chat/server", version: "1.5.83" }));
+app.get("/api/version", async () => ({ name: "@eclipse-chat/server", version: "1.5.84" }));
 
 await registerAuthRoutes(app);
 await registerTwoFactorRoutes(app);
@@ -505,12 +506,21 @@ io.on("connection", (socket) => {
         cb?.("Not a member");
         return;
       }
+      const previousVoiceState = stateForSocket(socket.id);
+      if (previousVoiceState && previousVoiceState.voiceChannelId !== channel.id) {
+        void socket.leave(`channel:${previousVoiceState.voiceChannelId}`);
+      }
       trackVoiceJoin(socket.id, uid, channel.id, channel.serverId);
+      await socket.join(`channel:${channel.id}`);
       cb?.(null);
     },
   );
 
   socket.on("voice:leave", () => {
+    const voiceState = stateForSocket(socket.id);
+    if (voiceState) {
+      void socket.leave(`channel:${voiceState.voiceChannelId}`);
+    }
     trackVoiceLeave(socket.id);
   });
 
@@ -539,6 +549,10 @@ io.on("connection", (socket) => {
       trackDisconnect(userId, socket.id);
     }
     // Auto-cleanup voice presence (если socket crashed/closed без явного leave).
+    const voiceState = stateForSocket(socket.id);
+    if (voiceState) {
+      void socket.leave(`channel:${voiceState.voiceChannelId}`);
+    }
     trackVoiceLeave(socket.id);
   });
 });

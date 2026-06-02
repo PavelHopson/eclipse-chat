@@ -83,6 +83,12 @@ export function metaSnapshotForUsers(userIds: string[]): Record<string, VoiceMet
   return out;
 }
 
+/** Текущая voice-привязка socket'а — нужна для cleanup Socket.IO rooms. */
+export function stateForSocket(socketId: string): VoiceState | null {
+  const state = socketStates.get(socketId);
+  return state ? { ...state } : null;
+}
+
 /**
  * Клиент сообщил, что переключил микрофон / звук (Socket.io 'voice:meta:update').
  * Обновляем стейт и рассылаем дельту всем участникам сервера — sidebar у всех

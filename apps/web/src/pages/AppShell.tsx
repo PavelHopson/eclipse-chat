@@ -268,15 +268,6 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   useEffect(() => {
     setInfoPanelOpen(false);
   }, [selectedChannelId]);
-  // v0.61 shared listening room. Scoped per selected TEXT/BROADCAST channel —
-  // в VOICE сессии не активны (backend отвергнёт).
-  const music = useChannelMusic(selectedChannelId, socket);
-  // v1.5.14 — server-wide audio library для music room playlist (все audio
-  // attachments в каналах сервера, member-only). Fetch только когда modal
-  // open'нется и есть active session — иначе бесполезный network call.
-  const musicLibrary = useServerAudioLibrary(
-    showMusicExpand && music.session ? activeServerId : null,
-  );
   const inDmMode = activeServerId === null;
   const selectedDm = dmConversations.find((c) => c.id === selectedDmId) ?? null;
   const {
@@ -600,6 +591,17 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     voice.activeChannelId != null
       ? channels.find((c) => c.id === voice.activeChannelId)?.name ?? null
       : null;
+  // Общая музыка сначала следует за активной голосовой комнатой. Если пользователь
+  // ушёл в другой экран, session всё равно остаётся привязана к voice channel;
+  // иначе используем выбранный канал для старого сценария «слушать вместе» в чате.
+  const musicChannelId = voice.activeChannelId ?? selectedChannelId;
+  const music = useChannelMusic(musicChannelId, socket);
+  // v1.5.14 — server-wide audio library для music room playlist (все audio
+  // attachments в каналах сервера, member-only). Fetch только когда modal
+  // open'нется и есть active session — иначе бесполезный network call.
+  const musicLibrary = useServerAudioLibrary(
+    showMusicExpand && music.session ? activeServerId : null,
+  );
   const selectedVoiceOccupants =
     selectedChannel?.type === "VOICE"
       ? (voiceByChannel[selectedChannel.id] ?? [])

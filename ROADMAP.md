@@ -5,7 +5,14 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.83** (Auth cosmic refresh — анимированная страница
+**Текущая версия:** **v1.5.84** (Voice music sync fix — общий плеер в
+голосовой комнате теперь scoped к `voice.activeChannelId`, а socket при
+`voice:join` входит в `channel:{voiceChannelId}` room и выходит при
+voice-leave/disconnect. Fixes case: host запускает музыку в voice room, у него
+играет, а у другого участника в той же комнате не приходит session update из-за
+открытого другого chat/DM. No schema.)
+
+**Предыдущая:** v1.5.83 (Auth cosmic refresh — анимированная страница
 входа получает production-safe visual layer на основе Pavel'ового wide
 black-hole reference: один локальный оптимизированный WebP 2560px/178KB вместо
 набора тяжёлых JPG, фон + gold/cyan/violet glass treatment в landing auth hero и
