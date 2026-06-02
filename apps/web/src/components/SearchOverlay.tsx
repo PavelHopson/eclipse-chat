@@ -77,6 +77,21 @@ const QUICK_KIND_ORDER: QuickKind[] = [
   "table",
   "settings",
 ];
+const QUICK_RECENTS_KEY = "ec.commandPalette.recent";
+const QUICK_RECENTS_LIMIT = 6;
+
+function readQuickRecentIds(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(QUICK_RECENTS_KEY);
+    if (!raw) return [];
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((id): id is string => typeof id === "string");
+  } catch {
+    return [];
+  }
+}
 
 // v1.1.95 slice 6: inline-style консоли SearchOverlay вынесены в
 // классы .ec-search-* (components.css). JS-hover hit-row убран.
@@ -152,6 +167,7 @@ export function SearchOverlay({
   const quickButtonRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const [tab, setTab] = useState<Tab>("messages");
   const [activeQuickIndex, setActiveQuickIndex] = useState(0);
+  const [recentQuickIds, setRecentQuickIds] = useState<string[]>(readQuickRecentIds);
   const semantic = useSemanticSearch(
     semanticServerId ?? null,
     query,
@@ -201,22 +217,53 @@ export function SearchOverlay({
     Boolean(semanticServerId) && !semantic.notConfigured;
   const quickMatches = useMemo(() => {
     const q = query.trim().toLocaleLowerCase("ru-RU");
-    const source = q
-      ? quickItems.filter((item) =>
+    if (q) {
+      return quickItems.filter((item) =>
           `${item.label} ${item.detail}`.toLocaleLowerCase("ru-RU").includes(q),
-        )
-      : quickItems;
-    return source.slice(0, q ? 10 : 8);
-  }, [query, quickItems]);
+        ).slice(0, 10);
+    }
+    const recentItems = recentQuickIds
+      .map((id) => quickItems.find((item) => item.id === id))
+      .filter((item): item is QuickNavItem => Boolean(item))
+      .slice(0, 4);
+    const recentSet = new Set(recentItems.map((item) => item.id));
+    const regularItems = quickItems
+      .filter((item) => !recentSet.has(item.id))
+      .slice(0, Math.max(6, 10 - recentItems.length));
+    return [...recentItems, ...regularItems];
+  }, [query, quickItems, recentQuickIds]);
   const quickGroups = useMemo(() => {
-    return QUICK_KIND_ORDER.map((kind) => ({
+    const q = query.trim();
+    const recentCount = q
+      ? 0
+      : recentQuickIds
+          .map((id) => quickItems.find((item) => item.id === id))
+          .filter((item): item is QuickNavItem => Boolean(item))
+          .slice(0, 4).length;
+    const groups: Array<{
+      key: string;
+      title: string;
+      items: Array<{ item: QuickNavItem; index: number }>;
+    }> = [];
+    if (recentCount > 0) {
+      groups.push({
+        key: "recent",
+        title: "Недавние",
+        items: quickMatches
+          .map((item, index) => ({ item, index }))
+          .filter(({ index }) => index < recentCount),
+      });
+    }
+    groups.push(...QUICK_KIND_ORDER.map((kind) => ({
       kind,
+      key: kind,
       title: QUICK_KIND_META[kind].group,
       items: quickMatches
         .map((item, index) => ({ item, index }))
-        .filter(({ item }) => item.kind === kind),
-    })).filter((group) => group.items.length > 0);
-  }, [quickMatches]);
+        .filter(({ item, index }) => item.kind === kind && index >= recentCount),
+    })));
+    return groups.filter((group) => group.items.length > 0);
+  }, [query, quickItems, quickMatches, recentQuickIds]);
 
   useEffect(() => {
     setActiveQuickIndex(0);
@@ -234,6 +281,23 @@ export function SearchOverlay({
       inline: "nearest",
     });
   }, [activeQuickIndex]);
+
+  const activateQuickItem = (item: QuickNavItem) => {
+    setRecentQuickIds((current) => {
+      const next = [item.id, ...current.filter((id) => id !== item.id)].slice(
+        0,
+        QUICK_RECENTS_LIMIT,
+      );
+      try {
+        window.localStorage.setItem(QUICK_RECENTS_KEY, JSON.stringify(next));
+      } catch {
+        // localStorage can be unavailable in hardened browser modes; navigation still works.
+      }
+      return next;
+    });
+    item.onSelect();
+    onClose();
+  };
 
   return (
     <div
@@ -272,8 +336,7 @@ export function SearchOverlay({
                 const item = quickMatches[activeQuickIndex];
                 if (!item) return;
                 e.preventDefault();
-                item.onSelect();
-                onClose();
+                activateQuickItem(item);
               }
             }}
             placeholder="ЗАПРОС_ПОИСКА // сообщения · задачи · файлы…"
@@ -430,7 +493,12 @@ export function SearchOverlay({
               aria-label="Команды"
             >
               {quickGroups.map((group) => (
-                <section className="ec-command-palette__group" key={group.kind}>
+                <section
+                  className={`ec-command-palette__group${
+                    group.key === "recent" ? " ec-command-palette__group--recent" : ""
+                  }`}
+                  key={group.key}
+                >
                   <div className="ec-command-palette__group-title">
                     {group.title}
                   </div>
@@ -450,10 +518,7 @@ export function SearchOverlay({
                           className={`ec-command-palette__item ec-command-palette__item--${item.kind}${
                             index === activeQuickIndex ? " is-active" : ""
                           }`}
-                          onClick={() => {
-                            item.onSelect();
-                            onClose();
-                          }}
+                          onClick={() => activateQuickItem(item)}
                           onMouseEnter={() => setActiveQuickIndex(index)}
                         >
                           <span className="ec-command-palette__glyph" aria-hidden>

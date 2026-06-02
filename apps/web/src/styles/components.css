@@ -6411,6 +6411,9 @@ input[type="radio"]:focus-visible {
 .ec-command-palette__group-title {
   padding-left: 2px;
 }
+.ec-command-palette__group--recent .ec-command-palette__group-title {
+  color: color-mix(in srgb, var(--ec-accent) 65%, var(--ec-text-muted));
+}
 .ec-command-palette__footer {
   margin-top: var(--ec-space-3);
   padding-top: var(--ec-space-2);
