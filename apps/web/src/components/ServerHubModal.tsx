@@ -15,6 +15,13 @@ import type { MemberRole, MemberRow } from "../hooks/useMembers";
 import type { ServerRow } from "../hooks/useServers";
 import type { ChannelRow } from "../hooks/useChannels";
 import { resolveAssetUrl } from "../lib/assets";
+import {
+  cleanServerFeatures,
+  encodeServerFeatures,
+  MAX_SERVER_FEATURES,
+  MAX_SERVER_FEATURE_LENGTH,
+  parseServerFeatures,
+} from "../lib/serverFeatures";
 
 /**
  * ServerHubModal — v0.97 UX refactor.
@@ -59,6 +66,7 @@ type Props = {
     brandColor?: string | null;
     description?: string | null;
     welcomeMessage?: string | null;
+    features?: string[] | null;
     mode?: "ENGINEERING" | "CLIENT";
   }) => Promise<boolean>;
   onUpdateLock?: (locked: boolean, reason?: string | null) => Promise<boolean>;
@@ -156,6 +164,10 @@ export function ServerHubModal({
   const [brandColor, setBrandColor] = useState(server.brandColor ?? "");
   const [description, setDescription] = useState(server.description ?? "");
   const [welcomeMessage, setWelcomeMessage] = useState(server.welcomeMessage ?? "");
+  const [features, setFeatures] = useState<string[]>(() => {
+    const parsed = parseServerFeatures(server.features);
+    return parsed.length > 0 ? parsed : [""];
+  });
   const [saving, setSaving] = useState(false);
   const [savedFlash, setSavedFlash] = useState(false);
 
@@ -176,6 +188,7 @@ export function ServerHubModal({
   const nameValid = trimmedName.length >= 1 && trimmedName.length <= 80;
   const parsed = parseHsl(brandColor);
   const inviteUrl = buildInviteUrl(server.inviteCode);
+  const cleanedFeatures = cleanServerFeatures(features);
 
   const applyBrandPreview = (hsl: string) => {
     if (/^\d{1,3}\s+\d{1,3}%\s+\d{1,3}%$/.test(hsl)) {
@@ -193,6 +206,7 @@ export function ServerHubModal({
         brandColor: brandColor.trim() || null,
         description: description.trim() || null,
         welcomeMessage: welcomeMessage.trim() || null,
+        features: cleanedFeatures.length > 0 ? cleanedFeatures : null,
         mode,
       });
       if (ok) {
@@ -283,6 +297,25 @@ export function ServerHubModal({
     const ok = await onUpdateLock(locked, locked ? lockReason : null);
     if (!ok) setError(locked ? "Не удалось включить изоляцию" : "Не удалось снять изоляцию");
     setLockBusy(false);
+  };
+
+  const updateFeature = (index: number, value: string) => {
+    setFeatures((prev) =>
+      prev.map((feature, i) =>
+        i === index ? value.slice(0, MAX_SERVER_FEATURE_LENGTH) : feature,
+      ),
+    );
+  };
+
+  const addFeature = () => {
+    setFeatures((prev) => (prev.length >= MAX_SERVER_FEATURES ? prev : [...prev, ""]));
+  };
+
+  const removeFeature = (index: number) => {
+    setFeatures((prev) => {
+      const next = prev.filter((_, i) => i !== index);
+      return next.length > 0 ? next : [""];
+    });
   };
 
   const navGroups: NavGroup[] = [
@@ -756,6 +789,50 @@ export function ServerHubModal({
           </section>
 
           <section>
+            <h3 className="ec-hub-label">Ключевые особенности</h3>
+            <div className="ec-hub-card">
+              <div className="ec-hub-feature-editor">
+                {features.map((feature, index) => (
+                  <div key={index} className="ec-hub-feature-row">
+                    <input
+                      type="text"
+                      value={feature}
+                      onChange={(e) => updateFeature(index, e.target.value)}
+                      maxLength={MAX_SERVER_FEATURE_LENGTH}
+                      placeholder={index === 0 ? "Например: строгие правила" : "Ещё тезис"}
+                      className="ec-hub-input ec-hub-feature-input"
+                    />
+                    <span className="ec-hub-feature-count">
+                      {feature.trim().length}/{MAX_SERVER_FEATURE_LENGTH}
+                    </span>
+                    <button
+                      type="button"
+                      className="ec-hub-feature-remove"
+                      onClick={() => removeFeature(index)}
+                      aria-label="Удалить особенность"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div className="ec-hub-actions">
+                <p className="ec-hub-hint">
+                  До {MAX_SERVER_FEATURES} коротких тезисов. Показываются чипами в путеводителе.
+                </p>
+                <button
+                  type="button"
+                  onClick={addFeature}
+                  disabled={features.length >= MAX_SERVER_FEATURES}
+                  className="ec-btn ec-btn--ghost ec-btn--sm"
+                >
+                  + Добавить
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <section>
             <h3 className="ec-hub-label">Приветствие новым участникам</h3>
             <div className="ec-hub-card">
               <textarea
@@ -808,6 +885,7 @@ export function ServerHubModal({
                 name: trimmedName || server.name,
                 description: description.trim() || null,
                 welcomeMessage: welcomeMessage.trim() || null,
+                features: encodeServerFeatures(features),
                 brandColor: brandColor.trim() || null,
                 mode,
               }}

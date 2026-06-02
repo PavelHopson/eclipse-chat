@@ -1,6 +1,7 @@
 import "../styles/clean-ui.css";
 import { resolveAssetUrl } from "../lib/assets";
 import { depthTiltProps } from "../lib/tilt";
+import { parseServerFeatures } from "../lib/serverFeatures";
 import type { ServerRow } from "../hooks/useServers";
 import type { ChannelRow } from "../hooks/useChannels";
 import { ChannelGlyph } from "./icons/ChannelCustomIcons";
@@ -85,6 +86,7 @@ export function ServerWelcomeHero({ server, channels, onSelectChannel }: Props) 
   const bannerUrl = server.banner ? resolveAssetUrl(server.banner) : null;
   const iconUrl = server.icon ? resolveAssetUrl(server.icon) : null;
   const guide = parseGuideDescription(server.description);
+  const featureChips = parseServerFeatures(server.features);
   const featured = channels
     .filter((c) => c.type === "TEXT" || c.type === "BROADCAST" || c.type === "EXECUTION")
     .slice(0, MAX_FEATURED);
@@ -139,6 +141,15 @@ export function ServerWelcomeHero({ server, channels, onSelectChannel }: Props) 
               голосовых
             </span>
           </div>
+          {featureChips.length > 0 && (
+            <div className="ec-guide__features" aria-label="Ключевые особенности">
+              {featureChips.map((feature) => (
+                <span key={feature} className="ec-guide__feature">
+                  {feature}
+                </span>
+              ))}
+            </div>
+          )}
           {guide.intro.length > 0 && (
             <div className="ec-guide__desc">
               {guide.intro.map((line) => (

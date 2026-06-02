@@ -5,7 +5,14 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.84** (Voice music sync fix — общий плеер в
+**Текущая версия:** **v1.5.85** (Discord-parity E3 frontend — server feature
+chips получили production UI: владелец редактирует до 5 коротких тезисов в
+ServerHub settings, PATCH `/api/servers/:id/identity` отправляет реальное
+`features` поле, предпросмотр и `ServerWelcomeHero` рендерят чипы только из
+сохранённого backend DTO. Описание остаётся текстом, features больше не
+приходится имитировать списками в description. No schema/backend.)
+
+**Предыдущая:** v1.5.84 (Voice music sync fix — общий плеер в
 голосовой комнате теперь scoped к `voice.activeChannelId`, а socket при
 `voice:join` входит в `channel:{voiceChannelId}` room и выходит при
 voice-leave/disconnect. Fixes case: host запускает музыку в voice room, у него
