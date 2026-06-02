@@ -177,17 +177,17 @@ export function ServerActionsMenu({
     if (!open) return;
     const update = () => setPosition(computePosition(triggerRef.current));
     update();
-    // UXR8: закрывать поповер при любом scroll (включая список каналов под
-    // ним) — capture-фаза ловит scroll вложенных контейнеров. Channel-select
-    // и outside-click закрываются через onPointerDown ниже, Escape — отдельно.
-    const onScroll = () => onClose();
+    // Keep the portal anchored while the rail/page scrolls. Closing on every
+    // captured scroll made the menu disappear immediately when layout changes
+    // emitted a scroll after opening.
+    const onScroll = () => update();
     window.addEventListener("resize", update);
     window.addEventListener("scroll", onScroll, true);
     return () => {
       window.removeEventListener("resize", update);
       window.removeEventListener("scroll", onScroll, true);
     };
-  }, [open, triggerRef, onClose]);
+  }, [open, triggerRef]);
 
   useEffect(() => {
     if (!open) return;

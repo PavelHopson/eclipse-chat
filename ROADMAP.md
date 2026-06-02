@@ -5,7 +5,13 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.80** (Server guide depth cards — Animated Parallax
+**Текущая версия:** **v1.5.81** (Server menu instant-close fix — server actions
+popover больше не закрывается на каждый captured scroll после клика по header.
+Scroll теперь только пересчитывает позицию portal-меню; outside click, Escape и
+action-click продолжают закрывать меню. Fixes regression where server menu
+disappeared immediately after opening. No backend/schema.)
+
+**Предыдущая:** v1.5.80 (Server guide depth cards — Animated Parallax
 Card pattern адаптирован без `vanilla-tilt`/CDN: `apps/web/src/lib/tilt.ts`
 получил `depthTiltProps` с cursor-following glow vars + лёгким 3D tilt, а
 quick entries в `ServerWelcomeHero` стали `ec-depth-card`. Эффект ограничен
