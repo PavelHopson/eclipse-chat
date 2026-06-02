@@ -6365,6 +6365,135 @@ input[type="radio"]:focus-visible {
   background: var(--ec-accent-soft);
   color: var(--ec-accent);
 }
+.ec-command-palette {
+  padding: var(--ec-space-3) var(--ec-space-3) var(--ec-space-2);
+  border-bottom: 1px solid var(--ec-border-subtle);
+  background:
+    radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--ec-accent) 12%, transparent), transparent 38%),
+    color-mix(in srgb, var(--ec-surface-1) 88%, transparent);
+}
+.ec-command-palette__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ec-space-3);
+  margin-bottom: var(--ec-space-2);
+  color: var(--ec-text-dim);
+  font-family: var(--ec-font-mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.ec-command-palette__head span:last-child {
+  color: var(--ec-text-muted);
+  font-weight: 600;
+}
+.ec-command-palette__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ec-space-2);
+}
+.ec-command-palette__item {
+  position: relative;
+  min-height: 46px;
+  display: grid;
+  grid-template-columns: 30px 1fr;
+  align-items: center;
+  gap: var(--ec-space-2);
+  padding: var(--ec-space-2) var(--ec-space-3);
+  overflow: hidden;
+  background: color-mix(in srgb, var(--ec-surface-2) 78%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ec-border-default) 78%, transparent);
+  border-radius: var(--ec-radius-md);
+  color: var(--ec-text);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background var(--ec-dur-fast) var(--ec-ease),
+    border-color var(--ec-dur-fast) var(--ec-ease),
+    transform var(--ec-dur-fast) var(--ec-ease-out),
+    box-shadow var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-command-palette__item::before {
+  content: "";
+  position: absolute;
+  inset: 8px auto 8px 0;
+  width: 3px;
+  border-radius: 0 999px 999px 0;
+  background: var(--ec-accent);
+  transform: scaleY(0);
+  transform-origin: top;
+  transition: transform var(--ec-dur-base) var(--ec-ease-out);
+}
+.ec-command-palette__item:hover,
+.ec-command-palette__item:focus-visible {
+  background: color-mix(in srgb, var(--ec-accent) 10%, var(--ec-surface-2));
+  border-color: color-mix(in srgb, var(--ec-accent) 28%, var(--ec-border-default));
+  box-shadow: 0 10px 26px -18px color-mix(in srgb, var(--ec-accent) 70%, transparent);
+  transform: translateX(2px);
+}
+.ec-command-palette__item:hover::before,
+.ec-command-palette__item:focus-visible::before {
+  transform: scaleY(1);
+}
+.ec-command-palette__item:focus-visible {
+  outline: 2px solid var(--ec-border-accent);
+  outline-offset: 2px;
+}
+.ec-command-palette__glyph {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--ec-radius-sm);
+  background: color-mix(in srgb, var(--ec-accent) 14%, var(--ec-surface-3));
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 22%, transparent);
+  color: var(--ec-text-strong);
+  font-family: var(--ec-font-mono);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+.ec-command-palette__body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ec-command-palette__label,
+.ec-command-palette__detail {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ec-command-palette__label {
+  color: var(--ec-text-strong);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+.ec-command-palette__detail {
+  color: var(--ec-text-muted);
+  font-size: 0.72rem;
+}
+.ec-command-palette__item--channel .ec-command-palette__glyph {
+  color: var(--ec-status-exec);
+}
+.ec-command-palette__item--dm .ec-command-palette__glyph {
+  color: var(--ec-accent);
+}
+.ec-command-palette__item--table .ec-command-palette__glyph {
+  color: var(--ec-status-warn);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ec-command-palette__item,
+  .ec-command-palette__item::before {
+    transition: none !important;
+  }
+  .ec-command-palette__item:hover,
+  .ec-command-palette__item:focus-visible {
+    transform: none !important;
+  }
+}
 .ec-search-list {
   flex: 1;
   overflow: auto;

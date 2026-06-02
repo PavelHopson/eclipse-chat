@@ -45,9 +45,19 @@ type Props = {
   }) => void;
   /** Список channels для select'а. */
   channels?: Array<{ id: string; name: string }>;
+  quickItems?: QuickNavItem[];
 };
 
 type Tab = "messages" | "actions" | "files" | "semantic";
+
+export type QuickNavItem = {
+  id: string;
+  label: string;
+  detail: string;
+  glyph: string;
+  kind: "channel" | "dm" | "table" | "view" | "settings";
+  onSelect: () => void;
+};
 
 // v1.1.95 slice 6: inline-style консоли SearchOverlay вынесены в
 // классы .ec-search-* (components.css). JS-hover hit-row убран.
@@ -117,6 +127,7 @@ export function SearchOverlay({
   filters,
   onChangeFilters,
   channels,
+  quickItems = [],
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [tab, setTab] = useState<Tab>("messages");
@@ -167,6 +178,15 @@ export function SearchOverlay({
   // Если backend вернул 503 — скрываем chip, чтобы не дразнить юзера.
   const semanticAvailable =
     Boolean(semanticServerId) && !semantic.notConfigured;
+  const quickMatches = useMemo(() => {
+    const q = query.trim().toLocaleLowerCase("ru-RU");
+    const source = q
+      ? quickItems.filter((item) =>
+          `${item.label} ${item.detail}`.toLocaleLowerCase("ru-RU").includes(q),
+        )
+      : quickItems;
+    return source.slice(0, q ? 10 : 8);
+  }, [query, quickItems]);
 
   return (
     <div
@@ -322,8 +342,38 @@ export function SearchOverlay({
           </div>
         )}
 
+        {quickMatches.length > 0 && (
+          <div className="ec-command-palette" aria-label="Быстрые переходы">
+            <div className="ec-command-palette__head">
+              <span>Быстрые переходы</span>
+              <span>{query.trim() ? "по запросу" : "частые места"}</span>
+            </div>
+            <div className="ec-command-palette__grid">
+              {quickMatches.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={`ec-command-palette__item ec-command-palette__item--${item.kind}`}
+                  onClick={() => {
+                    item.onSelect();
+                    onClose();
+                  }}
+                >
+                  <span className="ec-command-palette__glyph" aria-hidden>
+                    {item.glyph}
+                  </span>
+                  <span className="ec-command-palette__body">
+                    <span className="ec-command-palette__label">{item.label}</span>
+                    <span className="ec-command-palette__detail">{item.detail}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="ec-search-list">
-          {!truncated && (
+          {!truncated && quickMatches.length === 0 && (
             <EmptyState
               icon={<EmptySearchIcon />}
               title="Начните печатать"

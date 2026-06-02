@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 // v1.5.28 — Bundle split phase 3: heavy product CSS (components/responsive/
 // player/cockpit, ~287KB) подгружается вместе с AppShell chunk'ом, а не в
 // critical index.css. Visitor на landing'е загружает только ~180KB shared
@@ -21,6 +21,7 @@ import { ChannelGlyph } from "../components/icons/ChannelCustomIcons";
 import { useOperationalTables } from "../hooks/useOperationalTables";
 import { MusicMiniPlayer } from "../components/MusicMiniPlayer";
 import { NetworkWave, Sparkline } from "../components/TelemetryViz";
+import type { QuickNavItem } from "../components/SearchOverlay";
 import { useChannelMusic } from "../hooks/useChannelMusic";
 import { useServerAudioLibrary } from "../hooks/useServerAudioLibrary";
 import { MessageInput } from "../components/MessageInput";
@@ -400,14 +401,13 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     const onKey = (e: KeyboardEvent) => {
       const isK = e.key === "k" || e.key === "K" || e.key === "л" || e.key === "Л";
       if ((e.ctrlKey || e.metaKey) && isK) {
-        if (!activeServer) return;
         e.preventDefault();
         setShowSearch(true);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [activeServer]);
+  }, []);
 
   const {
     profile,
@@ -755,6 +755,144 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     setServerView(view);
     if (isMobile) setNavOpen(false);
   };
+
+  const quickNavItems = useMemo<QuickNavItem[]>(() => {
+    const channelTypeLabel = (type: string) => {
+      if (type === "VOICE") return "голосовая комната";
+      if (type === "EXECUTION") return "комната задач";
+      if (type === "ANNOUNCEMENT") return "объявления";
+      return "текстовый канал";
+    };
+
+    const items: QuickNavItem[] = [
+      {
+        id: "view-guide",
+        label: "Путеводитель",
+        detail: activeServer ? activeServer.name : "пространство",
+        glyph: "П",
+        kind: "view",
+        onSelect: () => handleSelectServerView("guide"),
+      },
+      {
+        id: "view-members",
+        label: "Участники",
+        detail: "полный список пространства",
+        glyph: "У",
+        kind: "view",
+        onSelect: () => handleSelectServerView("members"),
+      },
+      {
+        id: "view-channels-roles",
+        label: "Каналы и роли",
+        detail: "структура пространства",
+        glyph: "К",
+        kind: "view",
+        onSelect: () => handleSelectServerView("channels-roles"),
+      },
+      {
+        id: "dm-friends",
+        label: "Друзья",
+        detail: "запросы и контакты",
+        glyph: "Д",
+        kind: "dm",
+        onSelect: () => {
+          setActiveServerId(null);
+          setFriendsOpen(true);
+          selectDm(null);
+          setNavOpen(false);
+          setMembersOpen(false);
+        },
+      },
+      {
+        id: "settings-profile",
+        label: "Настройки профиля",
+        detail: "учётная запись и внешний вид",
+        glyph: "Н",
+        kind: "settings",
+        onSelect: () => setShowProfile(true),
+      },
+    ];
+
+    if (activeServer) {
+      items.push({
+        id: "settings-server",
+        label: "Настройки сервера",
+        detail: activeServer.name,
+        glyph: "С",
+        kind: "settings",
+        onSelect: () => {
+          setServerHubTab("overview");
+          setServerHubOpen(true);
+        },
+      });
+    }
+
+    for (const channel of channels) {
+      items.push({
+        id: `channel-${channel.id}`,
+        label: `# ${channel.name}`,
+        detail: channelTypeLabel(channel.type),
+        glyph: channel.type === "VOICE" ? "Г" : "#",
+        kind: "channel",
+        onSelect: () => handleSelectChannel(channel.id),
+      });
+    }
+
+    for (const table of opTables) {
+      items.push({
+        id: `table-${table.id}`,
+        label: table.name,
+        detail: `${table.rowCount} строк · данные`,
+        glyph: "Т",
+        kind: "table",
+        onSelect: () => {
+          setHomeOpen(false);
+          setFriendsOpen(false);
+          setHelpOpen(false);
+          setAdminOpen(false);
+          setStatusBoardOpen(false);
+          setTeamHealthOpen(false);
+          setServerView("chat");
+          setSelectedTableId(table.id);
+          if (isMobile) setNavOpen(false);
+        },
+      });
+    }
+
+    for (const conversation of dmConversations) {
+      items.push({
+        id: `dm-${conversation.id}`,
+        label: dmTitle(conversation, user.id),
+        detail: dmIsSaved(conversation)
+          ? "заметки и файлы для себя"
+          : conversation.isGroup
+            ? "групповой диалог"
+            : "личные сообщения",
+        glyph: conversation.isGroup ? "Г" : "Л",
+        kind: "dm",
+        onSelect: () => {
+          setActiveServerId(null);
+          setHomeOpen(false);
+          setFriendsOpen(false);
+          selectDm(conversation.id);
+          setNavOpen(false);
+          setMembersOpen(false);
+        },
+      });
+    }
+
+    return items;
+  }, [
+    activeServer,
+    channels,
+    dmConversations,
+    handleSelectServerView,
+    handleSelectChannel,
+    isMobile,
+    opTables,
+    selectDm,
+    user.id,
+  ]);
 
   const shellClass =
     "ec-shell" +
@@ -2479,13 +2617,14 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
         );
       })()}
 
-      {showSearch && activeServerId && (
+      {showSearch && (
         <SearchOverlay
           query={searchQuery}
           setQuery={setSearchQuery}
           filters={searchFilters}
           onChangeFilters={setSearchFilters}
           channels={channels.map((c) => ({ id: c.id, name: c.name }))}
+          quickItems={quickNavItems}
           results={searchResults}
           loading={searchLoading}
           error={searchError}

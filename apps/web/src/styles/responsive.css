@@ -746,6 +746,12 @@
   .ec-search-overlay {
     padding: 4vh var(--ec-space-2) !important;
   }
+  .ec-command-palette__grid {
+    grid-template-columns: 1fr;
+  }
+  .ec-command-palette__item {
+    min-height: 48px;
+  }
 }
 
 /* (o) TeamHealth stat-cards: minmax(220px) на 420-440px даёт странный
