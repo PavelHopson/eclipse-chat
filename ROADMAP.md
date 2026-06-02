@@ -5,7 +5,13 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.81** (Server menu instant-close fix — server actions
+**Текущая версия:** **v1.5.82** (Deadline 404 scene — берём full deadline
+animation concept в production-safe виде: inline SVG + React countdown вместо
+jQuery/CDN, no external fonts/scripts, RU recovery copy, CTA «На главную» /
+«Назад», unknown client routes render standalone 404, `prefers-reduced-motion`
+freezes motion without losing scene meaning. No backend/schema.)
+
+**Предыдущая:** v1.5.81 (Server menu instant-close fix — server actions
 popover больше не закрывается на каждый captured scroll после клика по header.
 Scroll теперь только пересчитывает позицию portal-меню; outside click, Escape и
 action-click продолжают закрывать меню. Fixes regression where server menu

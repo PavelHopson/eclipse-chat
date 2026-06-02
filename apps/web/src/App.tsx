@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { useAuth } from "./hooks/useAuth";
+import { DeadlineNotFoundPage } from "./pages/DeadlineNotFoundPage";
 import { LandingPage } from "./pages/LandingPage";
 
 /**
@@ -47,6 +48,24 @@ const CLIENT_VERSION =
 const PORTAL_HASH_RE = /^#\/portal\/([\w-]+)\/?$/;
 const AUTH_PANEL_HASH = "#auth-panel";
 const AUTH_PANEL_HASH_RE = /^#auth-panel\/?$/i;
+const KNOWN_HASH_RE = /^(|#|#auth-panel\/?|#\/portal\/[\w-]+\/?)$/i;
+
+function normalizeBasePath() {
+  const base = import.meta.env.BASE_URL || "/";
+  const path = new URL(base, window.location.origin).pathname;
+  return path.endsWith("/") ? path : `${path}/`;
+}
+
+function isUnknownClientRoute() {
+  if (typeof window === "undefined") return false;
+  const basePath = normalizeBasePath();
+  const { pathname, hash } = window.location;
+
+  if (!KNOWN_HASH_RE.test(hash || "")) return true;
+  if (pathname === basePath || pathname === basePath.slice(0, -1)) return false;
+
+  return pathname.startsWith(basePath);
+}
 
 function parseLandingHash(hash?: string): {
   portalServerId: string | null;
@@ -98,12 +117,14 @@ export function App() {
   const [authSurface, setAuthSurface] = useState<null | "login" | "register">(() =>
     parseLandingHash().wantsAuthPanel ? "login" : null,
   );
+  const [unknownRoute, setUnknownRoute] = useState(isUnknownClientRoute);
   const [updateAvailable, setUpdateAvailable] = useState<{
     serverVersion: string;
   } | null>(null);
 
   useEffect(() => {
     const onHashChange = () => {
+      setUnknownRoute(isUnknownClientRoute());
       const nextHashState = parseLandingHash();
       setPortalServerId(nextHashState.portalServerId);
       setAuthSurface((current) =>
@@ -112,7 +133,11 @@ export function App() {
     };
 
     window.addEventListener("hashchange", onHashChange);
-    return () => window.removeEventListener("hashchange", onHashChange);
+    window.addEventListener("popstate", onHashChange);
+    return () => {
+      window.removeEventListener("hashchange", onHashChange);
+      window.removeEventListener("popstate", onHashChange);
+    };
   }, []);
 
   // v1.1.2: poll server version + compare с client build version.
@@ -209,11 +234,12 @@ export function App() {
   const isAuthenticated = view !== "loading" && view !== "auth" && user;
 
   const openAuthSurface = (mode: "login" | "register") => {
-    clearError();
-    setPortalServerId(null);
-    setAuthSurface(mode);
-    replaceLandingHash(AUTH_PANEL_HASH);
-  };
+      clearError();
+      setPortalServerId(null);
+      setUnknownRoute(false);
+      setAuthSurface(mode);
+      replaceLandingHash(AUTH_PANEL_HASH);
+    };
 
   const closeAuthSurface = () => {
     clearError();
@@ -322,7 +348,9 @@ export function App() {
       >
         v{CLIENT_VERSION}
       </div>
-      {view === "loading" ? (
+      {unknownRoute ? (
+        <DeadlineNotFoundPage />
+      ) : view === "loading" ? (
         <main style={loadingStyle}>Загрузка…</main>
       ) : !isAuthenticated ? (
         <LandingPage
