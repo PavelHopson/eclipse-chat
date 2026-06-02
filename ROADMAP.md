@@ -5,7 +5,15 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.97** (Practical visual system pass — единый polish
+**Текущая версия:** **v1.5.98** (Voice shared music UX — голосовая комната
+теперь явно показывает “Музыку для всей комнаты”: статус общего плеера,
+текущий трек и инициатора запуска, CTA «Выбрать трек» / «Открыть плеер» и
+честное пояснение, что локальный звук устройства не транслируется. VoiceMusicPicker получил
+понятный intro, empty state и профессиональные строки выбора. Backend/schema не
+менялись: используется существующий `/api/channels/:id/music` +
+`music:session:updated`.)
+
+**Предыдущая:** v1.5.97 (Practical visual system pass — единый polish
 для ежедневных поверхностей: button hierarchy, composer dock, channel/member
 rows, empty states, topbar utility chips, settings/server surfaces и voice
 participant cards. Цель — меньше визуального шума, понятнее active/hover/focus

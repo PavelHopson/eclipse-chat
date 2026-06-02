@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import type { CSSProperties } from "react";
 import { Modal } from "./Modal";
 import { apiJson, ApiError } from "../lib/api";
 
@@ -35,21 +34,6 @@ function humanSize(bytes: number): string {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
-const rowStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "32px 1fr auto",
-  alignItems: "center",
-  gap: "var(--ec-space-3)",
-  padding: "0.6rem 0.7rem",
-  borderRadius: "var(--ec-radius-md)",
-  background: "var(--ec-surface-2)",
-  border: "1px solid var(--ec-border-subtle)",
-  cursor: "pointer",
-  textAlign: "left",
-  width: "100%",
-  transition: "background var(--ec-dur-fast) var(--ec-ease)",
-};
-
 export function VoiceMusicPicker({ serverId, onClose, onPick }: Props) {
   const [tracks, setTracks] = useState<AudioTrack[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -70,10 +54,13 @@ export function VoiceMusicPicker({ serverId, onClose, onPick }: Props) {
 
   return (
     <Modal title="Запустить музыку в комнате" onClose={onClose} width={520}>
-      <p style={{ margin: 0, color: "var(--ec-text-muted)", fontSize: "var(--ec-text-sm)" }}>
-        Выберите трек из любого текст-канала пространства — всех в этой
-        голосовой комнате включит синхронно.
-      </p>
+      <div className="ec-voice-music-picker__intro">
+        <strong>Общий плеер, не трансляция устройства</strong>
+        <span>
+          Выберите аудиофайл из пространства. Участники комнаты получат тот же
+          трек и одну позицию воспроизведения через общий плеер.
+        </span>
+      </div>
       {error && (
         <p style={{ margin: 0, color: "var(--ec-danger)", fontSize: "var(--ec-text-sm)" }}>
           {error}
@@ -85,7 +72,7 @@ export function VoiceMusicPicker({ serverId, onClose, onPick }: Props) {
         </p>
       )}
       {tracks && tracks.length === 0 && (
-        <p style={{ color: "var(--ec-text-dim)", fontSize: "var(--ec-text-sm)" }}>
+        <p className="ec-voice-music-picker__empty">
           В этом пространстве пока нет аудио. Прикрепите файл в любой
           текст-канал — и он появится здесь.
         </p>
@@ -104,14 +91,8 @@ export function VoiceMusicPicker({ serverId, onClose, onPick }: Props) {
             <button
               key={t.id}
               type="button"
-              style={rowStyle}
+              className="ec-voice-music-picker__row"
               disabled={busy}
-              onMouseEnter={(e) =>
-                (e.currentTarget.style.background = "var(--ec-surface-3)")
-              }
-              onMouseLeave={(e) =>
-                (e.currentTarget.style.background = "var(--ec-surface-2)")
-              }
               onClick={async () => {
                 setBusy(true);
                 const ok = await onPick(t.id);
@@ -119,18 +100,7 @@ export function VoiceMusicPicker({ serverId, onClose, onPick }: Props) {
                 if (ok) onClose();
               }}
             >
-              <span
-                aria-hidden
-                style={{
-                  width: 32,
-                  height: 32,
-                  display: "grid",
-                  placeItems: "center",
-                  borderRadius: "var(--ec-radius-full)",
-                  background: "var(--ec-accent-soft)",
-                  color: "var(--ec-accent)",
-                }}
-              >
+              <span className="ec-voice-music-picker__play" aria-hidden>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
                   <path d="M8 5v14l11-7z" />
                 </svg>

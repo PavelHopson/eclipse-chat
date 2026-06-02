@@ -681,6 +681,25 @@
   .ec-vr-volume input[type="range"] {
     width: 66px !important;
   }
+
+  .ec-voice-room__music-bridge {
+    align-items: stretch;
+    flex-direction: column;
+    margin: 0 12px 8px;
+  }
+
+  .ec-voice-room__music-actions {
+    width: 100%;
+  }
+
+  .ec-voice-room__music-actions .ec-btn {
+    flex: 1;
+    min-height: 40px;
+  }
+
+  .ec-voice-room__music-copy span {
+    white-space: normal;
+  }
 }
 
 /* v0.43: Modal на mobile — меньше backdrop padding, smaller body padding.

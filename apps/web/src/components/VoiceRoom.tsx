@@ -7,6 +7,7 @@ import { VoiceSettingsModal } from "./VoiceSettingsModal";
 import { VoiceStatsOverlay } from "./VoiceStatsOverlay";
 import type { useVoice as useVoiceHook, VoiceParticipant, VoiceVisualTrack } from "../hooks/useVoice";
 import { keyCodeToLabel } from "../hooks/useAudioDevices";
+import type { MusicSession } from "../hooks/useChannelMusic";
 import type { MemberRow } from "../hooks/useMembers";
 import { useTelemetry } from "../hooks/useTelemetry";
 import {
@@ -46,6 +47,9 @@ type Props = {
   /** v0.88 #23 phase 1a: socket для shared voice-note realtime updates.
    *  Если undefined — VoiceNotePanel скрыт. */
   socket?: import("socket.io-client").Socket | null;
+  musicSession?: MusicSession | null;
+  onOpenMusicPicker?: () => void;
+  onOpenMusicExpand?: () => void;
 };
 
 /* ===== Layout ============================================== */
@@ -528,6 +532,9 @@ export function VoiceRoom({
   activeVoiceChannelName,
   voice,
   socket,
+  musicSession,
+  onOpenMusicPicker,
+  onOpenMusicExpand,
 }: Props) {
   const v = voice;
   const [showSettings, setShowSettings] = useState(false);
@@ -736,6 +743,44 @@ export function VoiceRoom({
           </svg>
           {headcount}
         </span>
+      </div>
+
+      <div className="ec-voice-room__music-bridge" aria-live="polite">
+        <div className="ec-voice-room__music-main">
+          <span className="ec-voice-room__music-icon" aria-hidden>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M9 18V5l12-2v13" />
+              <circle cx="6" cy="18" r="3" />
+              <circle cx="18" cy="16" r="3" />
+            </svg>
+          </span>
+          <span className="ec-voice-room__music-copy">
+            <strong>
+              {musicSession?.currentTrack
+                ? musicSession.isPlaying
+                  ? "Общий плеер включён"
+                  : "Общий плеер на паузе"
+                : "Музыка для всей комнаты"}
+            </strong>
+            <span>
+              {musicSession?.currentTrack
+                ? `${musicSession.currentTrack.filename} · запустил ${musicSession.host.displayName}`
+                : "Выберите аудиофайл из пространства — он синхронно запустится у участников. Локальный звук устройства не транслируется."}
+            </span>
+          </span>
+        </div>
+        <div className="ec-voice-room__music-actions">
+          {musicSession && onOpenMusicExpand && (
+            <button type="button" className="ec-btn" onClick={onOpenMusicExpand}>
+              Открыть плеер
+            </button>
+          )}
+          {onOpenMusicPicker && (
+            <button type="button" className="ec-btn ec-btn--primary" onClick={onOpenMusicPicker}>
+              {musicSession ? "Сменить трек" : "Выбрать трек"}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ── ROOM CANVAS — immersive ──────────────────────────── */}

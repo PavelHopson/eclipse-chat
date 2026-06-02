@@ -2139,6 +2139,9 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               activeVoiceChannelName={activeVoiceChannelName}
               voice={voice}
               socket={socket}
+              musicSession={music.session}
+              onOpenMusicPicker={() => setShowVoiceMusicPicker(true)}
+              onOpenMusicExpand={music.session ? () => setShowMusicExpand(true) : undefined}
             />
           ) : (
             <VoicePlaceholder channelName={selectedChannel.name} />
