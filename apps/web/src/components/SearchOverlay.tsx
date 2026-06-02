@@ -298,6 +298,14 @@ export function SearchOverlay({
     item.onSelect();
     onClose();
   };
+  const clearRecentQuickItems = () => {
+    setRecentQuickIds([]);
+    try {
+      window.localStorage.removeItem(QUICK_RECENTS_KEY);
+    } catch {
+      // localStorage can be unavailable in hardened browser modes; UI state is still cleared.
+    }
+  };
 
   return (
     <div
@@ -500,7 +508,17 @@ export function SearchOverlay({
                   key={group.key}
                 >
                   <div className="ec-command-palette__group-title">
-                    {group.title}
+                    <span>{group.title}</span>
+                    {group.key === "recent" && (
+                      <button
+                        type="button"
+                        className="ec-command-palette__clear"
+                        onClick={clearRecentQuickItems}
+                        aria-label="Очистить недавние команды"
+                      >
+                        Очистить
+                      </button>
+                    )}
                   </div>
                   <div className="ec-command-palette__grid">
                     {group.items.map(({ item, index }) => {
