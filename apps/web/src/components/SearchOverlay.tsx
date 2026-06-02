@@ -130,7 +130,9 @@ export function SearchOverlay({
   quickItems = [],
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const quickButtonRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const [tab, setTab] = useState<Tab>("messages");
+  const [activeQuickIndex, setActiveQuickIndex] = useState(0);
   const semantic = useSemanticSearch(
     semanticServerId ?? null,
     query,
@@ -188,6 +190,23 @@ export function SearchOverlay({
     return source.slice(0, q ? 10 : 8);
   }, [query, quickItems]);
 
+  useEffect(() => {
+    setActiveQuickIndex(0);
+  }, [query, quickMatches.length]);
+
+  useEffect(() => {
+    if (quickMatches.length === 0) return;
+    const lastIndex = quickMatches.length - 1;
+    setActiveQuickIndex((current) => Math.min(current, lastIndex));
+  }, [quickMatches.length]);
+
+  useEffect(() => {
+    quickButtonRefs.current[activeQuickIndex]?.scrollIntoView({
+      block: "nearest",
+      inline: "nearest",
+    });
+  }, [activeQuickIndex]);
+
   return (
     <div
       className="ec-search-overlay"
@@ -207,10 +226,38 @@ export function SearchOverlay({
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (quickMatches.length === 0) return;
+              if (e.key === "ArrowDown") {
+                e.preventDefault();
+                setActiveQuickIndex((current) => (current + 1) % quickMatches.length);
+                return;
+              }
+              if (e.key === "ArrowUp") {
+                e.preventDefault();
+                setActiveQuickIndex((current) =>
+                  (current - 1 + quickMatches.length) % quickMatches.length,
+                );
+                return;
+              }
+              if (e.key === "Enter") {
+                const item = quickMatches[activeQuickIndex];
+                if (!item) return;
+                e.preventDefault();
+                item.onSelect();
+                onClose();
+              }
+            }}
             placeholder="ЗАПРОС_ПОИСКА // сообщения · задачи · файлы…"
             className="ec-search-input"
+            aria-controls={quickMatches.length > 0 ? "ec-command-palette-list" : undefined}
+            aria-activedescendant={
+              quickMatches[activeQuickIndex]
+                ? `ec-command-palette-${quickMatches[activeQuickIndex].id}`
+                : undefined
+            }
           />
-          <span className="ec-kbd">Esc</span>
+          <span className="ec-kbd">↑↓ Enter · Esc</span>
         </div>
 
         {/* v1.5.23 — filter row: date range + channel select. Виден всегда
@@ -348,16 +395,25 @@ export function SearchOverlay({
               <span>Быстрые переходы</span>
               <span>{query.trim() ? "по запросу" : "частые места"}</span>
             </div>
-            <div className="ec-command-palette__grid">
-              {quickMatches.map((item) => (
+            <div id="ec-command-palette-list" className="ec-command-palette__grid" role="listbox">
+              {quickMatches.map((item, index) => (
                 <button
+                  id={`ec-command-palette-${item.id}`}
                   key={item.id}
+                  ref={(node) => {
+                    quickButtonRefs.current[index] = node;
+                  }}
                   type="button"
-                  className={`ec-command-palette__item ec-command-palette__item--${item.kind}`}
+                  role="option"
+                  aria-selected={index === activeQuickIndex}
+                  className={`ec-command-palette__item ec-command-palette__item--${item.kind}${
+                    index === activeQuickIndex ? " is-active" : ""
+                  }`}
                   onClick={() => {
                     item.onSelect();
                     onClose();
                   }}
+                  onMouseEnter={() => setActiveQuickIndex(index)}
                 >
                   <span className="ec-command-palette__glyph" aria-hidden>
                     {item.glyph}

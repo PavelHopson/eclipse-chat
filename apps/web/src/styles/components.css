@@ -6427,14 +6427,16 @@ input[type="radio"]:focus-visible {
   transition: transform var(--ec-dur-base) var(--ec-ease-out);
 }
 .ec-command-palette__item:hover,
-.ec-command-palette__item:focus-visible {
+.ec-command-palette__item:focus-visible,
+.ec-command-palette__item.is-active {
   background: color-mix(in srgb, var(--ec-accent) 10%, var(--ec-surface-2));
   border-color: color-mix(in srgb, var(--ec-accent) 28%, var(--ec-border-default));
   box-shadow: 0 10px 26px -18px color-mix(in srgb, var(--ec-accent) 70%, transparent);
   transform: translateX(2px);
 }
 .ec-command-palette__item:hover::before,
-.ec-command-palette__item:focus-visible::before {
+.ec-command-palette__item:focus-visible::before,
+.ec-command-palette__item.is-active::before {
   transform: scaleY(1);
 }
 .ec-command-palette__item:focus-visible {
@@ -6490,7 +6492,8 @@ input[type="radio"]:focus-visible {
     transition: none !important;
   }
   .ec-command-palette__item:hover,
-  .ec-command-palette__item:focus-visible {
+  .ec-command-palette__item:focus-visible,
+  .ec-command-palette__item.is-active {
     transform: none !important;
   }
 }
