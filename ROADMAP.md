@@ -5,7 +5,14 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.96** (Voice/chat visual polish — голосовая комната
+**Текущая версия:** **v1.5.97** (Practical visual system pass — единый polish
+для ежедневных поверхностей: button hierarchy, composer dock, channel/member
+rows, empty states, topbar utility chips, settings/server surfaces и voice
+participant cards. Цель — меньше визуального шума, понятнее active/hover/focus
+states, стабильные touch targets на mobile и `prefers-reduced-motion` fallback.
+No schema/backend.)
+
+**Предыдущая:** v1.5.96 (Voice/chat visual polish — голосовая комната
 получила компактный профессиональный control dock: стабильные join CTA,
 квадратные action-buttons, отдельный volume capsule и mobile horizontal scroll.
 AI/bot-сообщения больше не растягивают фиолетовый фон на всю ширину ленты:

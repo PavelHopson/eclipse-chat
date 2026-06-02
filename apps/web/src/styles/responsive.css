@@ -1614,3 +1614,54 @@
     transform: none !important;
   }
 }
+
+/* v1.5.97 — practical polish mobile pass. */
+@media (max-width: 768px) {
+  .ec-composer {
+    padding: 8px 10px max(10px, env(safe-area-inset-bottom, 0));
+  }
+
+  .ec-composer-box {
+    border-radius: 16px;
+    padding: 7px 8px;
+  }
+
+  .ec-composer-icon-btn,
+  .ec-composer-send {
+    min-width: 40px;
+    min-height: 40px;
+  }
+
+  .ec-composer-hints {
+    display: none !important;
+  }
+
+  .ec-channel-item,
+  .ec-member-row {
+    min-height: 42px;
+  }
+
+  .ec-empty-state {
+    margin: 12px;
+    padding: 24px 18px;
+    border-radius: 18px;
+  }
+}
+
+@media (max-width: 480px) {
+  .ec-shell__top-actions {
+    gap: 5px;
+  }
+
+  .ec-shell__top-actions .ec-music-mini-player {
+    max-width: 132px !important;
+  }
+
+  .ec-shell__top-actions .ec-spider-clock {
+    max-width: 112px;
+  }
+
+  .ec-composer-send-label {
+    display: none;
+  }
+}
