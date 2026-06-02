@@ -1690,3 +1690,28 @@
     display: none;
   }
 }
+
+/* v1.6.0 — mobile density for the redesigned voice note. */
+@media (max-width: 720px) {
+  .ec-voice-note {
+    margin: 0 12px 12px;
+    padding: 10px;
+    border-radius: 16px;
+  }
+
+  .ec-voice-note__header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .ec-voice-note__meta {
+    max-width: 100%;
+    text-align: left;
+  }
+
+  .ec-voice-note__textarea {
+    min-height: 120px;
+    font-size: var(--ec-text-xs);
+  }
+}

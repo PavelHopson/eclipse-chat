@@ -8593,3 +8593,105 @@ input[type="radio"]:focus-visible {
   }
 }
 
+/* v1.6.0 — clarity pass for the daily chat surface. */
+.ec-message-list-shell {
+  background:
+    radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--ec-accent) 5%, transparent), transparent 34%),
+    linear-gradient(180deg, color-mix(in srgb, var(--ec-bg) 96%, transparent), var(--ec-bg));
+}
+
+.ec-message-list {
+  padding-top: var(--ec-space-5);
+  gap: 1px;
+}
+
+.ec-message-row {
+  border: 1px solid transparent;
+  transition:
+    background var(--ec-dur-fast) var(--ec-ease),
+    border-color var(--ec-dur-fast) var(--ec-ease),
+    box-shadow var(--ec-dur-fast) var(--ec-ease),
+    transform var(--ec-dur-fast) var(--ec-ease-out);
+}
+
+.ec-message-row:hover,
+.ec-message-row:focus-within {
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--ec-accent) 5%, transparent), transparent 62%),
+    color-mix(in srgb, var(--ec-surface-1) 58%, transparent);
+  border-color: color-mix(in srgb, var(--ec-accent) 9%, var(--ec-border-subtle));
+  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--ec-accent) 22%, transparent);
+  transform: translateX(1px);
+}
+
+.ec-message-row--grouped:hover,
+.ec-message-row--grouped:focus-within {
+  background: color-mix(in srgb, var(--ec-surface-1) 42%, transparent);
+  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--ec-accent) 14%, transparent);
+}
+
+.ec-message-actions {
+  border-color: color-mix(in srgb, var(--ec-accent) 12%, var(--ec-border-subtle));
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--ec-accent) 10%, transparent), transparent 42%),
+    color-mix(in srgb, var(--ec-overlay-bg) 88%, transparent);
+  box-shadow:
+    0 14px 34px -22px hsl(210 35% 2% / 0.86),
+    inset 0 1px 0 hsl(0 0% 100% / 0.05);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+}
+
+.ec-msg-action {
+  width: 28px;
+  height: 28px;
+}
+
+.ec-msg-author {
+  font-weight: 650;
+}
+
+.ec-message-row:hover .ec-msg-time,
+.ec-message-row:focus-within .ec-msg-time,
+.ec-msg-time:hover {
+  color: color-mix(in srgb, var(--ec-accent) 52%, var(--ec-text-muted));
+}
+
+.ec-message-row:hover .ec-msg-avatar-wrap,
+.ec-message-row:focus-within .ec-msg-avatar-wrap {
+  transform: scale(1.025);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--ec-accent) 14%, transparent),
+    0 0 18px -10px var(--ec-accent);
+}
+
+.ec-composer-box {
+  background:
+    radial-gradient(circle at 4% 0%, color-mix(in srgb, var(--ec-accent) 7%, transparent), transparent 42%),
+    linear-gradient(180deg, color-mix(in srgb, var(--ec-surface-2) 78%, transparent), color-mix(in srgb, var(--ec-surface-1) 96%, transparent));
+  border-color: color-mix(in srgb, var(--ec-accent) 10%, var(--ec-border-subtle));
+  box-shadow:
+    0 18px 46px -34px hsl(210 35% 2% / 0.82),
+    inset 0 1px 0 hsl(0 0% 100% / 0.045);
+}
+
+.ec-composer-box:focus-within {
+  border-color: color-mix(in srgb, var(--ec-accent) 34%, var(--ec-border-subtle));
+  box-shadow:
+    0 18px 50px -34px hsl(258 86% 40% / 0.68),
+    0 0 0 1px color-mix(in srgb, var(--ec-accent) 10%, transparent),
+    inset 0 1px 0 hsl(0 0% 100% / 0.055);
+}
+
+.ec-composer-textarea {
+  color: var(--ec-text-strong);
+}
+
+.ec-composer-icon-btn {
+  border: 1px solid transparent;
+}
+
+.ec-composer-icon-btn:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--ec-accent) 18%, transparent);
+}
+
