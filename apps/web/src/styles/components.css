@@ -529,6 +529,11 @@ input[type="radio"]:focus-visible {
   overflow-y: auto;
 }
 
+.ec-server-actions-menu--inline {
+  position: absolute;
+  max-height: min(70vh, 560px);
+}
+
 .ec-server-actions-menu__item {
   min-height: 38px;
   justify-content: space-between;
@@ -719,6 +724,13 @@ input[type="radio"]:focus-visible {
 .ec-server-actions-menu__item--danger .ec-server-actions-menu__icon {
   color: var(--ec-danger);
   background: var(--ec-danger-soft);
+}
+
+.ec-server-actions-menu.ec-server-actions-menu--inline {
+  position: absolute;
+  width: auto !important;
+  min-width: 0;
+  max-height: min(68vh, 540px);
 }
 
 .ec-server-actions-menu__divider {
@@ -4080,6 +4092,8 @@ input[type="radio"]:focus-visible {
 }
 .ec-channel-list__header {
   position: relative;
+  z-index: 20;
+  overflow: visible;
   padding: var(--ec-space-3) var(--ec-space-4);
 }
 

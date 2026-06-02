@@ -893,6 +893,7 @@ export function ChannelList({
           <ServerActionsMenu
             open={serverMenuOpen}
             triggerRef={serverTriggerRef}
+            renderMode="inline"
             server={{
               id: serverId,
               name: serverName,

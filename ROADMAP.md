@@ -5,7 +5,14 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.86** (Server menu trigger hardening — server actions
+**Текущая версия:** **v1.5.87** (Server menu inline rail fallback — ChannelList server actions
+popover теперь рендерится локальным absolute-слоем под server header вместо body portal.
+Это убирает зависимость от viewport positioning, portal stacking и старых CSS-чанков.
+Trigger propagation/ref outside-click handling остаются; sidebar header получает явный
+local z-layer. Fixes case: chevron виден, но клик по server header не показывает меню
+в rail. No schema/backend.)
+
+**Предыдущая:** v1.5.86 (Server menu trigger hardening — server actions
 popover теперь защищён от внешних pointer/click handlers: trigger останавливает
 всплытие, outside-click проверяет реальный menu ref вместо CSS closest, portal
 получает высокий inline z-index. Fixes case: header показывает chevron/hover, но

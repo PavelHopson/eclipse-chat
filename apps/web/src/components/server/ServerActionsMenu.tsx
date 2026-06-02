@@ -5,6 +5,7 @@ import type { ServerRow } from "../../hooks/useServers";
 type Props = {
   open: boolean;
   triggerRef: RefObject<HTMLElement | null>;
+  renderMode?: "portal" | "inline";
   /**
    * v1.5.55 D3 frontend — `lockedAt` теперь требуется на server типе чтобы
    * action «Изоляция» рендерил правильный label («Изоляция» когда open vs
@@ -167,6 +168,7 @@ export function ServerActionsMenu({
   onToggleHideMutedChannels,
   onToggleIsolation,
   onLeaveServer,
+  renderMode = "portal",
 }: Props) {
   const [position, setPosition] = useState<MenuPosition>(() => computePosition(null));
   const [toast, setToast] = useState<string | null>(null);
@@ -284,17 +286,20 @@ export function ServerActionsMenu({
 
   if (!open) return null;
 
+  const inline = renderMode === "inline";
+
   const menu = (
     <div
       ref={menuRef}
       data-ec-server-menu="true"
-      className="ec-popover-surface ec-server-actions-menu"
+      className={"ec-popover-surface ec-server-actions-menu" + (inline ? " ec-server-actions-menu--inline" : "")}
       role="menu"
       aria-label={`Действия пространства ${server.name}`}
       style={{
-        top: position.top,
-        left: position.left,
-        width: position.width,
+        top: inline ? "calc(100% + 8px)" : position.top,
+        left: inline ? "12px" : position.left,
+        right: inline ? "12px" : undefined,
+        width: inline ? "auto" : position.width,
         zIndex: 10000,
         // Solid-фон inline — бьёт любой (в т.ч. устаревший из кэша) CSS-чанк,
         // чтобы поповер никогда не просвечивал список каналов под собой.
@@ -340,6 +345,7 @@ export function ServerActionsMenu({
     </div>
   );
 
+  if (inline) return menu;
   if (typeof document === "undefined") return null;
   return createPortal(menu, document.body);
 }
