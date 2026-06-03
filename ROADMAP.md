@@ -5,7 +5,15 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.6.3** (Closer-to-concept shell correction — v1.6.2
+**Текущая версия:** **v1.6.4** (Daily usability finish pass — закреплён более
+стабильный рабочий layout: chat header стал sticky, message cards больше не
+зависят от ширины rail'ов через `100vw - ...`, текст/attachments получили
+безопасный overflow и max-height, composer стал стабильным bottom command dock,
+channel search/rows и member rows получили практичные focus/hover/touch states,
+DM button у участников появляется по hover/focus без визуального шума. No
+schema/backend.)
+
+**Предыдущая:** v1.6.3 (Closer-to-concept shell correction — v1.6.2
 оказался слишком CSS-only и не попадал в фактический DOM по ключевым зонам:
 правый rail уже использует `.ec-mem*`, а composer держал inline-grid. Исправлено:
 composer получил явные layout-modifier classes, участники оформлены по реальным

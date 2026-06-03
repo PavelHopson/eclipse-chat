@@ -10066,3 +10066,201 @@ body {
   }
 }
 
+/* v1.6.4 — usability finish pass.
+ * Locks daily chat into a stable, practical layout instead of viewport-dependent polish. */
+.ec-shell__top-actions {
+  align-items: center;
+}
+
+.ec-shell__top-actions .ec-icon-btn {
+  border-radius: 12px;
+}
+
+.ec-shell__top-actions .ec-icon-btn:hover,
+.ec-shell__top-actions .ec-icon-btn:focus-visible {
+  background: color-mix(in srgb, var(--ec-accent) 11%, #111827);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ec-accent) 24%, transparent);
+}
+
+.ec-shell__top-actions .ec-music-mini-player {
+  height: 36px;
+  align-self: center;
+}
+
+.ec-channel-search {
+  margin: 8px 10px 10px;
+  box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.04);
+}
+
+.ec-channel-search:focus-within {
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.06),
+    0 0 0 2px color-mix(in srgb, var(--ec-accent) 18%, transparent);
+}
+
+.ec-channel-item {
+  gap: 9px;
+}
+
+.ec-channel-item__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ec-channel-item--active .ec-channel-glyph--emoji,
+.ec-channel-item--active .ec-channel-glyph--custom,
+.ec-channel-item--active .ec-channel-glyph--plain {
+  transform: none;
+}
+
+.ec-chat-header {
+  position: sticky;
+  top: 0;
+  z-index: 11;
+}
+
+.ec-message-list {
+  max-width: 1180px;
+}
+
+.ec-message-content {
+  max-width: min(760px, 72ch);
+}
+
+.ec-message-content p,
+.ec-message-content li {
+  overflow-wrap: anywhere;
+}
+
+.ec-message-row--mine .ec-message-content {
+  max-width: min(680px, 68ch);
+}
+
+.ec-message-content img {
+  max-height: min(62vh, 520px);
+  object-fit: contain;
+}
+
+.ec-message-actions {
+  max-width: min(520px, calc(100vw - 120px));
+}
+
+.ec-msg-quick-react {
+  font-size: 0;
+}
+
+.ec-composer {
+  backdrop-filter: blur(18px) saturate(145%);
+  -webkit-backdrop-filter: blur(18px) saturate(145%);
+}
+
+.ec-composer-box {
+  width: min(1120px, 100%);
+}
+
+.ec-composer-box--full,
+.ec-composer-box--minimal {
+  align-items: end;
+}
+
+.ec-composer-icon-btn {
+  color: color-mix(in srgb, var(--ec-text-muted) 90%, transparent);
+}
+
+.ec-composer-icon-btn:hover:not(:disabled),
+.ec-composer-icon-btn:focus-visible {
+  color: var(--ec-text-strong);
+  background: color-mix(in srgb, var(--ec-accent) 12%, #111827);
+}
+
+.ec-composer-textarea {
+  max-height: 180px;
+  resize: none;
+}
+
+.ec-composer-tls {
+  margin-left: auto;
+}
+
+.ec-mem__scroll {
+  scrollbar-gutter: stable;
+}
+
+.ec-mem-row {
+  grid-template-columns: 34px minmax(0, 1fr) auto auto;
+  column-gap: 8px;
+}
+
+.ec-mem-row__id {
+  min-width: 0;
+}
+
+.ec-mem-row__name,
+.ec-mem-row__act {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ec-mem-row__dm {
+  opacity: 0;
+}
+
+.ec-mem-row:hover .ec-mem-row__dm,
+.ec-mem-row:focus-within .ec-mem-row__dm {
+  opacity: 1;
+}
+
+.ec-mem-row--offline {
+  opacity: 0.72;
+}
+
+.ec-mem-row--offline:hover,
+.ec-mem-row--offline:focus-within {
+  opacity: 1;
+}
+
+@media (max-width: 1280px) {
+  .ec-message-content,
+  .ec-message-row--mine .ec-message-content {
+    max-width: min(680px, 68ch);
+  }
+}
+
+@media (max-width: 900px) {
+  .ec-message-content,
+  .ec-message-row--mine .ec-message-content {
+    max-width: min(100%, 66ch);
+  }
+
+  .ec-composer-hints {
+    display: none !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .ec-chat-header {
+    min-height: 48px;
+    padding-inline: 10px;
+  }
+
+  .ec-message-list {
+    padding-bottom: 92px;
+  }
+
+  .ec-message-actions {
+    opacity: 1;
+    transform: none;
+  }
+
+  .ec-composer-box {
+    padding: 6px;
+  }
+
+  .ec-composer-textarea {
+    max-height: 132px;
+  }
+}
+
