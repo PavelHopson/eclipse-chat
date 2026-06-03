@@ -5,7 +5,16 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.6.1** (Visible chat surface reset — v1.6.0 оказался
+**Текущая версия:** **v1.6.2** (Premium operations shell redesign — основной
+интерфейс получил более смелую и практичную визуальную систему: topbar собран
+в спокойные utility-кластеры, левый rail и список участников стали читаемыми
+операционными панелями, сообщения оформлены как content-first карточки с
+привязанным action-toolbar, composer стал command dock с понятными touch
+target'ами, серверное меню получило устойчивый popover-surface, voice controls
+получили профессиональную dock-геометрию. Есть mobile breakpoints и
+prefers-reduced-motion fallback. No schema/backend.)
+
+**Предыдущая:** v1.6.1 (Visible chat surface reset — v1.6.0 оказался
 слишком осторожным, поэтому чат получил уже заметную базовую композицию:
 сообщения стали content-first карточками по ширине содержимого вместо
 растянутой full-width пелены, action toolbar визуально привязан к сообщению,

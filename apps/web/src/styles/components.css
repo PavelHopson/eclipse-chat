@@ -9005,3 +9005,787 @@ input[type="radio"]:focus-visible {
   }
 }
 
+/* v1.6.2 — premium operations skin. A visible shell-level redesign layer. */
+:root {
+  --ec-ops-bg: #05070d;
+  --ec-ops-rail: #080c13;
+  --ec-ops-rail-strong: #0b111b;
+  --ec-ops-panel: #0d141f;
+  --ec-ops-panel-2: #111925;
+  --ec-ops-line: color-mix(in srgb, var(--ec-accent) 18%, #263246);
+  --ec-ops-line-soft: color-mix(in srgb, var(--ec-accent) 10%, #1f2a3b);
+  --ec-ops-glow: 0 22px 70px -48px hsl(258 90% 62% / 0.82);
+}
+
+body {
+  background:
+    radial-gradient(circle at 44% -8%, color-mix(in srgb, var(--ec-accent) 16%, transparent), transparent 34rem),
+    radial-gradient(circle at 90% 100%, hsl(188 76% 48% / 0.06), transparent 30rem),
+    var(--ec-ops-bg);
+}
+
+.ec-shell__brandbar,
+.ec-shell__cmdbar,
+.ec-shell__channels,
+.ec-shell__members,
+.ec-chat-header {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--ec-ops-rail-strong) 92%, transparent), color-mix(in srgb, var(--ec-ops-rail) 96%, transparent)) !important;
+  border-color: var(--ec-ops-line-soft) !important;
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.035),
+    0 18px 56px -46px hsl(210 80% 2% / 0.9);
+}
+
+.ec-shell__cmdbar {
+  min-height: 50px;
+  padding-inline: 12px;
+  backdrop-filter: blur(20px) saturate(145%);
+  -webkit-backdrop-filter: blur(20px) saturate(145%);
+}
+
+.ec-shell__breadcrumb,
+.ec-shell__loc {
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  color: color-mix(in srgb, var(--ec-text-muted) 88%, transparent);
+}
+
+.ec-shell__loc-name {
+  color: var(--ec-text-strong);
+  font-weight: 760;
+}
+
+.ec-shell__loc-hash,
+.ec-shell__loc-sep {
+  color: color-mix(in srgb, var(--ec-accent) 68%, var(--ec-text-muted));
+}
+
+.ec-shell__top-actions {
+  gap: 8px;
+}
+
+.ec-shell__utility-meters,
+.ec-shell__top-actions .ec-spider-clock,
+.ec-shell__top-actions .ec-theme-toggle,
+.ec-shell__user-chip,
+.ec-logout-btn {
+  border-color: var(--ec-ops-line) !important;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--ec-ops-panel-2) 86%, transparent), color-mix(in srgb, var(--ec-ops-panel) 94%, transparent)) !important;
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.055),
+    0 14px 34px -30px hsl(258 90% 62% / 0.75) !important;
+}
+
+.ec-shell__utility-meters {
+  min-height: 32px;
+  padding: 3px;
+}
+
+.ec-shell__utility-meters .ec-telemetry-pill {
+  min-height: 25px;
+  color: color-mix(in srgb, var(--ec-text) 92%, white 4%);
+}
+
+.ec-shell__user-chip {
+  border-radius: 15px;
+  padding-right: 11px;
+}
+
+.ec-logout-btn {
+  min-width: 84px;
+  justify-content: center;
+  color: color-mix(in srgb, var(--ec-text-muted) 88%, transparent);
+}
+
+.ec-logout-btn:hover {
+  color: var(--ec-text-strong);
+  border-color: color-mix(in srgb, var(--ec-danger) 30%, var(--ec-ops-line)) !important;
+}
+
+.ec-channel-list {
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--ec-accent) 8%, transparent), transparent 14rem),
+    linear-gradient(180deg, var(--ec-ops-rail-strong), var(--ec-ops-rail)) !important;
+}
+
+.ec-channel-list__header {
+  padding: 10px 10px 8px !important;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--ec-ops-panel-2) 58%, transparent), transparent) !important;
+}
+
+.ec-channel-list__server-btn {
+  min-height: 48px;
+  padding: 7px 9px;
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 18%, transparent);
+  border-radius: 14px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--ec-accent) 8%, var(--ec-ops-panel)), color-mix(in srgb, var(--ec-ops-panel) 84%, transparent));
+}
+
+.ec-channel-list__server-name {
+  color: var(--ec-text-strong);
+  font-size: 0.98rem;
+  font-weight: 820;
+}
+
+.ec-sidebar-tabs {
+  margin: 0 10px;
+  padding-top: 8px;
+  gap: 2px;
+}
+
+.ec-sidebar-tab {
+  position: relative;
+  min-height: 36px;
+  padding-inline: 9px;
+  border-radius: 10px 10px 0 0;
+  color: color-mix(in srgb, var(--ec-text-muted) 88%, transparent);
+}
+
+.ec-sidebar-tab[aria-selected="true"] {
+  background: color-mix(in srgb, var(--ec-accent) 10%, transparent);
+  color: var(--ec-text-strong);
+}
+
+.ec-sidebar-tab[aria-selected="true"]::after {
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #2dd4bf, var(--ec-accent));
+}
+
+.ec-channel-list__list {
+  padding: 10px 10px 12px;
+  gap: 5px;
+}
+
+.ec-channel-category__header {
+  min-height: 32px;
+  color: color-mix(in srgb, var(--ec-text-muted) 92%, transparent);
+}
+
+.ec-channel-category__name,
+.ec-channel-category__uncategorized-label {
+  letter-spacing: 0.075em;
+  font-weight: 820;
+}
+
+.ec-channel-item {
+  min-height: 39px;
+  padding: 7px 9px;
+  border: 1px solid transparent;
+  border-radius: 13px;
+  color: color-mix(in srgb, var(--ec-text-muted) 90%, transparent);
+}
+
+.ec-channel-item:hover {
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--ec-accent) 10%, transparent), transparent 84%),
+    color-mix(in srgb, var(--ec-ops-panel) 82%, transparent);
+  border-color: color-mix(in srgb, var(--ec-accent) 13%, transparent);
+}
+
+.ec-channel-item--active {
+  background:
+    radial-gradient(circle at 0% 50%, color-mix(in srgb, var(--ec-accent) 22%, transparent), transparent 58%),
+    linear-gradient(90deg, color-mix(in srgb, var(--ec-accent) 17%, var(--ec-ops-panel)), color-mix(in srgb, var(--ec-ops-panel) 90%, transparent)) !important;
+  border-color: color-mix(in srgb, var(--ec-accent) 42%, var(--ec-ops-line)) !important;
+  color: var(--ec-text-strong);
+  box-shadow:
+    inset 3px 0 0 color-mix(in srgb, var(--ec-accent) 78%, #2dd4bf 18%),
+    0 14px 34px -28px hsl(258 90% 62% / 0.72);
+}
+
+.ec-channel-glyph--custom {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--ec-accent) 12%, transparent),
+    0 12px 24px -18px var(--ec-channel-icon-glow);
+}
+
+.ec-channel-count {
+  margin-left: auto;
+  color: color-mix(in srgb, var(--ec-text-muted) 76%, transparent);
+}
+
+.ec-channel-list__composer {
+  padding: 10px;
+  background:
+    linear-gradient(180deg, transparent, color-mix(in srgb, var(--ec-ops-bg) 88%, transparent));
+}
+
+.ec-channel-list__composer .ec-btn {
+  min-height: 38px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, color-mix(in srgb, #93a4bf 82%, white 8%), color-mix(in srgb, #64748b 86%, var(--ec-accent) 10%));
+  color: white;
+}
+
+.ec-chat-header {
+  min-height: 50px;
+  padding-inline: 14px;
+}
+
+.ec-chat-header::before {
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #2dd4bf 20%, var(--ec-accent) 52%, transparent);
+  opacity: 0.72;
+}
+
+.ec-chat-title {
+  gap: 9px;
+  color: var(--ec-text-strong);
+  font-size: 1.04rem;
+  font-weight: 840;
+}
+
+.ec-chat-title__glyph,
+.ec-chat-title .ec-channel-glyph--emoji,
+.ec-chat-title__glyph.ec-channel-glyph--emoji {
+  width: 28px;
+  height: 28px;
+  border-radius: 10px;
+  background:
+    radial-gradient(circle at 30% 20%, color-mix(in srgb, var(--ec-accent) 40%, transparent), transparent 60%),
+    var(--ec-ops-panel);
+  box-shadow: 0 14px 30px -20px var(--ec-accent);
+}
+
+.ec-shell__chat {
+  background:
+    radial-gradient(circle at 50% -6%, color-mix(in srgb, var(--ec-accent) 10%, transparent), transparent 34rem),
+    radial-gradient(circle at 100% 82%, hsl(188 76% 48% / 0.045), transparent 30rem),
+    linear-gradient(180deg, #05080e, #03050a 72%) !important;
+}
+
+.ec-shell__members {
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--ec-accent) 8%, transparent), transparent 14rem),
+    linear-gradient(180deg, var(--ec-ops-rail-strong), var(--ec-ops-rail)) !important;
+}
+
+.ec-member-row {
+  min-height: 42px;
+  margin-inline: 8px;
+  padding: 7px 8px;
+  border: 1px solid transparent;
+  border-radius: 13px;
+}
+
+.ec-member-row:hover {
+  background: color-mix(in srgb, var(--ec-accent) 8%, var(--ec-ops-panel));
+  border-color: color-mix(in srgb, var(--ec-accent) 12%, transparent);
+  transform: translateX(-1px);
+}
+
+.ec-member-role,
+.ec-member-section,
+.ec-member-group-title {
+  color: color-mix(in srgb, var(--ec-text-muted) 86%, transparent);
+  letter-spacing: 0.075em;
+}
+
+.ec-message-list-shell {
+  background:
+    radial-gradient(circle at 46% 0%, color-mix(in srgb, var(--ec-accent) 13%, transparent), transparent 28rem),
+    linear-gradient(180deg, color-mix(in srgb, var(--ec-ops-bg) 92%, transparent), #03050a 70%) !important;
+}
+
+.ec-message-list {
+  max-width: 1120px;
+  width: 100%;
+  margin-inline: auto;
+  padding-top: 30px;
+  padding-inline: clamp(14px, 2.8vw, 42px);
+}
+
+.ec-msg-channel-top {
+  max-width: 760px;
+  margin: 10px 0 22px 52px;
+  padding: 18px 20px;
+  border: 1px solid var(--ec-ops-line-soft);
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--ec-ops-panel-2) 82%, transparent), color-mix(in srgb, var(--ec-ops-panel) 90%, transparent));
+  box-shadow: var(--ec-ops-glow);
+}
+
+.ec-message-content {
+  max-width: min(720px, 100%);
+  min-width: min(280px, 100%);
+  border-radius: 17px;
+  border-color: color-mix(in srgb, var(--ec-accent) 18%, #263246);
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--ec-accent) 12%, transparent), transparent 44%),
+    linear-gradient(135deg, color-mix(in srgb, var(--ec-ops-panel-2) 92%, transparent), color-mix(in srgb, var(--ec-ops-panel) 96%, transparent));
+  box-shadow:
+    0 20px 54px -42px hsl(210 80% 2% / 0.96),
+    0 0 0 1px hsl(0 0% 100% / 0.025),
+    inset 0 1px 0 hsl(0 0% 100% / 0.05);
+}
+
+.ec-message-row--mine .ec-message-content {
+  border-color: color-mix(in srgb, var(--ec-accent) 30%, #263246);
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--ec-accent) 16%, transparent), transparent 46%),
+    linear-gradient(135deg, color-mix(in srgb, #151b2b 86%, var(--ec-accent) 6%), color-mix(in srgb, var(--ec-ops-panel) 94%, transparent));
+}
+
+.ec-message-row--grouped .ec-message-content {
+  border-radius: 14px;
+}
+
+.ec-message-content p {
+  font-size: 0.96rem !important;
+  line-height: 1.58 !important;
+}
+
+.ec-message-content img {
+  border-radius: 12px;
+  box-shadow:
+    0 14px 36px -24px hsl(210 80% 2% / 0.95),
+    0 0 0 1px color-mix(in srgb, var(--ec-accent) 14%, transparent);
+}
+
+.ec-message-actions {
+  left: 58px;
+  top: -15px;
+  border-radius: 13px;
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--ec-accent) 15%, transparent), transparent 52%),
+    color-mix(in srgb, var(--ec-ops-panel-2) 92%, transparent);
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+}
+
+.ec-composer {
+  padding: 16px clamp(14px, 2.6vw, 36px) 12px;
+  background:
+    linear-gradient(180deg, transparent, color-mix(in srgb, #05070d 92%, transparent) 24%),
+    radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--ec-accent) 12%, transparent), transparent 34rem) !important;
+}
+
+.ec-composer-box {
+  max-width: 1120px;
+  margin-inline: auto;
+  min-height: 60px;
+  border-radius: 20px;
+  border-color: color-mix(in srgb, var(--ec-accent) 32%, #263246) !important;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--ec-ops-panel-2) 94%, transparent), color-mix(in srgb, var(--ec-ops-panel) 98%, transparent)) !important;
+  box-shadow:
+    0 26px 78px -48px hsl(258 90% 62% / 0.9),
+    0 0 0 1px hsl(0 0% 100% / 0.035),
+    inset 0 1px 0 hsl(0 0% 100% / 0.06) !important;
+}
+
+.ec-composer-textarea {
+  background: color-mix(in srgb, #05070d 54%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 12%, transparent);
+}
+
+.ec-composer-box:focus-within .ec-composer-textarea {
+  border-color: color-mix(in srgb, var(--ec-accent) 36%, transparent);
+}
+
+.ec-composer-send {
+  background:
+    linear-gradient(135deg, #8b5cf6, color-mix(in srgb, #8b5cf6 76%, #2dd4bf 24%)) !important;
+}
+
+@media (max-width: 980px) {
+  .ec-shell__cmdbar {
+    min-height: 46px;
+  }
+
+  .ec-shell__top-actions {
+    gap: 5px;
+  }
+
+  .ec-message-list {
+    padding-inline: 12px;
+  }
+}
+
+@media (max-width: 720px) {
+  .ec-message-list {
+    max-width: none;
+    padding-top: 16px;
+  }
+
+  .ec-msg-channel-top {
+    margin: 6px 0 14px;
+    padding: 14px;
+  }
+
+  .ec-message-row {
+    grid-template-columns: 34px minmax(0, 1fr);
+    padding-inline: 2px;
+  }
+
+  .ec-message-content {
+    min-width: 0;
+    padding: 10px 11px;
+    border-radius: 14px;
+  }
+
+  .ec-message-actions {
+    left: 42px;
+  }
+
+  .ec-composer {
+    padding: 10px 8px max(10px, env(safe-area-inset-bottom, 0));
+  }
+
+  .ec-composer-box {
+    min-height: 54px;
+    border-radius: 17px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ec-channel-item,
+  .ec-member-row,
+  .ec-message-content,
+  .ec-composer-box,
+  .ec-shell__top-actions *,
+  .ec-sidebar-tab {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
+/* v1.6.2 — command-center reset. Stronger than the earlier polish layer:
+ * clearer information hierarchy, calmer rails, practical touch targets. */
+.ec-shell {
+  background:
+    linear-gradient(90deg, hsl(222 38% 4%) 0, hsl(222 34% 5%) 16rem, hsl(225 36% 3%) 16rem),
+    #04060b;
+}
+
+.ec-shell__brandbar {
+  border-right: 1px solid color-mix(in srgb, var(--ec-accent) 16%, #1f2937) !important;
+}
+
+.ec-shell__cmdbar {
+  border-bottom: 1px solid color-mix(in srgb, var(--ec-accent) 22%, #1f2937) !important;
+}
+
+.ec-shell__top-actions {
+  min-height: 40px;
+  padding: 3px 4px;
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 10%, transparent);
+  border-radius: 18px;
+  background: color-mix(in srgb, #05070d 72%, transparent);
+}
+
+.ec-shell__top-actions > button,
+.ec-shell__top-actions > a {
+  min-width: 34px;
+  min-height: 34px;
+}
+
+.ec-shell__utility-meters {
+  gap: 4px;
+  border-radius: 999px;
+}
+
+.ec-shell__utility-meters .ec-telemetry-pill {
+  border-radius: 999px;
+  box-shadow: none !important;
+}
+
+.ec-shell__top-actions .ec-music-mini-player {
+  min-width: 250px;
+  max-width: 390px !important;
+  border-radius: 18px;
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 20%, #243244);
+  background: linear-gradient(180deg, #111827, #080c14) !important;
+}
+
+.ec-channel-list__header {
+  border-bottom: 1px solid color-mix(in srgb, var(--ec-accent) 13%, transparent);
+}
+
+.ec-channel-list__server-btn {
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.05),
+    0 18px 38px -34px hsl(258 90% 62% / 0.82);
+}
+
+.ec-channel-list__server-btn:hover,
+.ec-channel-list__server-btn[aria-expanded="true"] {
+  border-color: color-mix(in srgb, var(--ec-accent) 42%, #2dd4bf 10%);
+  background:
+    radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--ec-accent) 18%, transparent), transparent 58%),
+    linear-gradient(135deg, #121a28, #080c14);
+}
+
+.ec-channel-search,
+.ec-channel-list input[type="search"] {
+  min-height: 38px;
+  border-radius: 13px;
+  background: #070b12 !important;
+  border-color: color-mix(in srgb, var(--ec-accent) 15%, #273244) !important;
+}
+
+.ec-channel-item {
+  font-size: 0.91rem;
+}
+
+.ec-channel-item--active {
+  font-weight: 760;
+  text-shadow: none;
+}
+
+.ec-channel-item--active .ec-channel-item__name {
+  color: var(--ec-text-strong);
+}
+
+.ec-server-actions-menu.ec-popover-surface {
+  z-index: 1200;
+  width: min(316px, calc(100vw - 24px));
+  padding: 10px;
+  border-radius: 16px;
+  border-color: color-mix(in srgb, var(--ec-accent) 30%, #2dd4bf 8%) !important;
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--ec-accent) 18%, transparent), transparent 56%),
+    linear-gradient(180deg, #111827, #090d15) !important;
+  box-shadow:
+    0 26px 80px -40px hsl(210 80% 2% / 0.96),
+    0 0 0 1px hsl(0 0% 100% / 0.035),
+    0 0 44px -30px var(--ec-accent) !important;
+}
+
+.ec-server-actions-menu__item {
+  min-height: 42px;
+  border-radius: 11px;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+}
+
+.ec-server-actions-menu__item:hover:not(.ec-server-actions-menu__item--disabled),
+.ec-server-actions-menu__item:focus-visible:not(.ec-server-actions-menu__item--disabled) {
+  background: color-mix(in srgb, var(--ec-accent) 11%, #111827);
+}
+
+.ec-chat-header {
+  box-shadow:
+    0 1px 0 color-mix(in srgb, var(--ec-accent) 24%, transparent),
+    0 18px 48px -44px hsl(258 90% 62% / 0.74);
+}
+
+.ec-message-row {
+  max-width: 100%;
+}
+
+.ec-message-row:hover {
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--ec-accent) 5%, transparent), transparent 72%);
+}
+
+.ec-msg-avatar-wrap {
+  filter: drop-shadow(0 12px 18px hsl(210 90% 2% / 0.55));
+}
+
+.ec-message-content {
+  padding: 12px 14px;
+}
+
+.ec-message-content::before {
+  opacity: 0.48;
+}
+
+.ec-message-row--ai .ec-message-content {
+  border-color: color-mix(in srgb, var(--ec-accent) 24%, #2dd4bf 8%);
+}
+
+.ec-message-row--pinned .ec-message-content {
+  border-color: color-mix(in srgb, #d4af37 42%, #263246) !important;
+  box-shadow:
+    0 20px 54px -42px hsl(210 80% 2% / 0.96),
+    inset 3px 0 0 color-mix(in srgb, #d4af37 74%, transparent) !important;
+}
+
+.ec-message-actions {
+  min-height: 34px;
+  padding: 3px;
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 18%, #2a3548);
+  box-shadow:
+    0 18px 38px -28px hsl(210 80% 2% / 0.95),
+    inset 0 1px 0 hsl(0 0% 100% / 0.06);
+}
+
+.ec-msg-action {
+  min-width: 29px;
+  min-height: 28px;
+  border-radius: 9px;
+}
+
+.ec-msg-action:hover {
+  background: color-mix(in srgb, var(--ec-accent) 16%, transparent);
+}
+
+.ec-composer {
+  border-top: 1px solid color-mix(in srgb, var(--ec-accent) 14%, transparent);
+}
+
+.ec-composer-box {
+  grid-template-columns: auto auto auto minmax(0, 1fr) auto !important;
+  padding: 8px;
+}
+
+.ec-composer-icon-btn,
+.ec-composer-send {
+  min-width: 42px;
+  min-height: 42px;
+  border-radius: 14px;
+}
+
+.ec-composer-textarea {
+  min-height: 42px;
+  border-radius: 14px;
+  padding: 11px 13px;
+}
+
+.ec-composer-hints {
+  max-width: 1120px;
+  margin-inline: auto;
+  opacity: 0.72;
+}
+
+.ec-shell__members {
+  border-left: 1px solid color-mix(in srgb, var(--ec-accent) 14%, #1f2937) !important;
+}
+
+.ec-member-list {
+  padding-top: 8px;
+}
+
+.ec-member-list__scroll {
+  padding-bottom: 14px;
+}
+
+.ec-member-row {
+  background: transparent;
+}
+
+.ec-member-row:not(.ec-member-row--offline) {
+  color: var(--ec-text);
+}
+
+.ec-member-row__avatar {
+  box-shadow: 0 10px 20px -16px hsl(210 80% 2% / 0.94);
+}
+
+.ec-member-row__presence {
+  box-shadow:
+    0 0 0 2px var(--ec-ops-rail),
+    0 0 12px -5px currentColor;
+}
+
+.ec-member-row__name {
+  font-weight: 720;
+}
+
+.ec-member-row__identity .ec-activity-line {
+  max-width: 128px;
+  color: color-mix(in srgb, var(--ec-text-muted) 84%, transparent);
+}
+
+.ec-member-row__dm {
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--ec-accent) 8%, transparent);
+}
+
+.ec-voice-stage,
+.ec-voice-room,
+.ec-voice-panel {
+  background:
+    radial-gradient(circle at 50% 20%, color-mix(in srgb, var(--ec-accent) 12%, transparent), transparent 28rem),
+    #04060b;
+}
+
+.ec-voice-controls,
+.ec-voice-control-dock {
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 22%, #263246);
+  border-radius: 22px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, #111827 92%, transparent), color-mix(in srgb, #070b12 96%, transparent));
+  box-shadow:
+    0 26px 74px -46px hsl(258 90% 62% / 0.72),
+    inset 0 1px 0 hsl(0 0% 100% / 0.055);
+}
+
+.ec-voice-controls button,
+.ec-voice-control-dock button {
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 15px;
+}
+
+@media (max-width: 1180px) {
+  .ec-shell__top-actions .ec-music-mini-player {
+    min-width: 190px;
+    max-width: 260px !important;
+  }
+}
+
+@media (max-width: 860px) {
+  .ec-shell__top-actions {
+    border-color: transparent;
+    background: transparent;
+  }
+
+  .ec-shell__top-actions .ec-music-mini-player {
+    max-width: 180px !important;
+  }
+
+  .ec-composer-box {
+    grid-template-columns: auto auto minmax(0, 1fr) auto !important;
+  }
+
+  .ec-composer-icon-btn:nth-of-type(3) {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .ec-shell__cmdbar {
+    padding-inline: 8px;
+  }
+
+  .ec-shell__breadcrumb {
+    padding-inline: 6px;
+  }
+
+  .ec-shell__top-actions .ec-music-mini-player,
+  .ec-shell__top-actions .ec-theme-toggle {
+    display: none !important;
+  }
+
+  .ec-channel-list__server-btn,
+  .ec-channel-item,
+  .ec-server-actions-menu__item,
+  .ec-member-row {
+    min-height: 44px;
+  }
+
+  .ec-message-list {
+    padding-inline: 10px;
+  }
+
+  .ec-message-content {
+    max-width: 100%;
+  }
+
+  .ec-composer-icon-btn,
+  .ec-composer-send {
+    min-width: 40px;
+    min-height: 40px;
+  }
+}
+
