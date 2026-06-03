@@ -5846,7 +5846,7 @@ input[type="radio"]:focus-visible {
   position: relative;
   display: flex;
   flex-direction: column;
-  max-height: min(calc(100dvh - 64px), 92vh);
+  max-height: min(920px, calc(100dvh - 32px));
   overflow: hidden;
   background: var(--ec-overlay-bg);
   border: 1px solid color-mix(in srgb, var(--ec-accent) 22%, var(--ec-border-default));
@@ -5922,8 +5922,10 @@ input[type="radio"]:focus-visible {
   display: flex;
   flex-direction: column;
   gap: var(--ec-space-4);
+  min-height: 0;
   padding: var(--ec-space-5);
   overflow: auto;
+  overscroll-behavior: contain;
 }
 
 .ec-channel-icon-picker {
@@ -7053,6 +7055,7 @@ input[type="radio"]:focus-visible {
   grid-template-columns: minmax(0, 1fr) minmax(260px, 0.42fr);
   gap: var(--ec-space-4);
   align-items: start;
+  min-height: 0;
 }
 
 .ec-hub-settings-form {
@@ -7064,15 +7067,21 @@ input[type="radio"]:focus-visible {
 
 .ec-hub-preview-card {
   position: sticky;
-  top: var(--ec-space-4);
+  top: 0;
   display: flex;
   flex-direction: column;
   gap: var(--ec-space-2);
   min-width: 0;
+  max-height: calc(100dvh - 136px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 2px;
+  scrollbar-gutter: stable;
 }
 
 .ec-hub-preview-card .ec-server-welcome {
-  min-height: 360px;
+  min-height: 0;
+  max-height: none;
   border: 1px solid color-mix(in srgb, var(--ec-accent) 22%, var(--ec-border-default));
   border-radius: var(--ec-radius-lg);
   overflow: hidden;
@@ -7093,8 +7102,9 @@ input[type="radio"]:focus-visible {
 .ec-server-hub-panel {
   display: grid;
   grid-template-columns: minmax(210px, 240px) minmax(0, 1fr);
-  min-height: min(720px, 78vh);
-  max-height: min(820px, 82vh);
+  height: min(760px, calc(100dvh - 124px));
+  min-height: 0;
+  max-height: calc(100dvh - 124px);
   margin: calc(var(--ec-space-4) * -1);
   overflow: hidden;
   background:
@@ -7105,6 +7115,8 @@ input[type="radio"]:focus-visible {
 .ec-server-hub-tree-nav {
   min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
   padding: var(--ec-space-4) var(--ec-space-3);
   border-right: 1px solid color-mix(in srgb, var(--ec-accent) 20%, var(--ec-border-default));
   background:
@@ -7194,7 +7206,9 @@ input[type="radio"]:focus-visible {
 .ec-server-hub-panel__main {
   min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: var(--ec-space-5);
+  scrollbar-gutter: stable;
 }
 
 .ec-hub-member__name {
@@ -7454,8 +7468,9 @@ input[type="radio"]:focus-visible {
 .ec-settings-panel {
   display: grid;
   grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
-  min-height: min(720px, 78vh);
-  max-height: min(820px, 82vh);
+  height: min(760px, calc(100dvh - 124px));
+  min-height: 0;
+  max-height: calc(100dvh - 124px);
   margin: calc(var(--ec-space-4) * -1);
   overflow: hidden;
   background:
@@ -7466,6 +7481,8 @@ input[type="radio"]:focus-visible {
 .ec-settings-tree-nav {
   min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
   padding: var(--ec-space-4) var(--ec-space-3);
   border-right: 1px solid color-mix(in srgb, var(--ec-accent) 18%, var(--ec-border-default));
   background:
@@ -7580,6 +7597,8 @@ input[type="radio"]:focus-visible {
 .ec-settings-panel__main {
   min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 
 .ec-settings-section {

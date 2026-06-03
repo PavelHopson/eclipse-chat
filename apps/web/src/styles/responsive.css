@@ -1336,15 +1336,31 @@
 
 /* ServerHubModal settings tree (E1): tree-nav collapses into a horizontal rail. */
 @media (max-width: 600px) {
+  .ec-modal-backdrop {
+    align-items: stretch;
+    padding: 8px;
+  }
+
+  .ec-modal-box {
+    width: calc(100vw - 16px) !important;
+    max-height: calc(100dvh - 16px);
+  }
+
+  .ec-modal-body {
+    padding: var(--ec-space-3);
+  }
+
   .ec-server-hub-panel {
     grid-template-columns: 1fr;
-    min-height: min(780px, 82vh);
-    max-height: 82vh;
+    height: calc(100dvh - 92px);
+    min-height: 0;
+    max-height: calc(100dvh - 92px);
   }
 
   .ec-server-hub-tree-nav {
     display: flex;
     gap: var(--ec-space-2);
+    max-height: 74px;
     overflow-x: auto;
     overflow-y: hidden;
     padding: var(--ec-space-3);
@@ -1375,6 +1391,8 @@
   }
 
   .ec-server-hub-panel__main {
+    min-height: 0;
+    overflow-y: auto;
     padding: var(--ec-space-3);
   }
 
@@ -1499,13 +1517,15 @@
 
   .ec-settings-panel {
     grid-template-columns: 1fr;
-    min-height: min(780px, 82vh);
-    max-height: 82vh;
+    height: calc(100dvh - 92px);
+    min-height: 0;
+    max-height: calc(100dvh - 92px);
   }
 
   .ec-settings-tree-nav {
     display: flex;
     gap: var(--ec-space-2);
+    max-height: 74px;
     overflow-x: auto;
     overflow-y: hidden;
     padding: var(--ec-space-3);
@@ -1541,6 +1561,7 @@
 
   .ec-settings-panel__main {
     min-height: 0;
+    overflow-y: auto;
   }
 
   .ec-settings-section {
@@ -1603,6 +1624,8 @@
   .ec-server-nav *,
   .ec-server-view,
   .ec-server-view *,
+  .ec-server-hub-panel,
+  .ec-server-hub-panel *,
   .ec-settings-panel,
   .ec-settings-panel * {
     animation: none !important;

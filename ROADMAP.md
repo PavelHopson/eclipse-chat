@@ -5,7 +5,14 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.6.4** (Daily usability finish pass — закреплён более
+**Текущая версия:** **v1.6.5** (Modal viewport containment — настройки сервера,
+профиля и длинные рабочие панели теперь открываются как ограниченные viewport
+окна: modal body получил корректный `min-height:0`, server/settings tree panels
+живут в вычисленной доступной высоте, left-nav/main/preview scroll'ятся внутри
+своих колонок, preview в ServerHub больше не вываливается за нижний край, mobile
+получил full-height safe layout. No schema/backend.)
+
+**Предыдущая:** v1.6.4 (Daily usability finish pass — закреплён более
 стабильный рабочий layout: chat header стал sticky, message cards больше не
 зависят от ширины rail'ов через `100vw - ...`, текст/attachments получили
 безопасный overflow и max-height, composer стал стабильным bottom command dock,
