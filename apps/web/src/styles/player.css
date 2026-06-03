@@ -1099,20 +1099,20 @@
 
 /* Controls dock — compact operator-grade surface over legacy inline styles. */
 .ec-voice-room__controls {
-  gap: 6px !important;
-  padding: 8px !important;
-  border: 1px solid color-mix(in srgb, var(--ec-accent) 16%, var(--ec-border-subtle)) !important;
-  border-radius: 22px !important;
+  gap: 8px !important;
+  padding: 9px !important;
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 20%, var(--ec-border-subtle)) !important;
+  border-radius: 24px !important;
   background:
-    radial-gradient(circle at 14% 0%, color-mix(in srgb, var(--ec-accent) 12%, transparent), transparent 42%),
+    radial-gradient(circle at 14% 0%, color-mix(in srgb, var(--ec-accent) 14%, transparent), transparent 42%),
     linear-gradient(
       180deg,
-      color-mix(in srgb, var(--ec-surface-2) 92%, transparent),
-      color-mix(in srgb, var(--ec-surface-1) 96%, transparent)
+      color-mix(in srgb, var(--ec-surface-2) 94%, transparent),
+      color-mix(in srgb, var(--ec-surface-1) 98%, transparent)
     ) !important;
   box-shadow:
-    0 18px 54px -28px hsl(210 35% 2% / 0.82),
-    0 0 34px -26px var(--ec-accent),
+    0 22px 64px -30px hsl(210 35% 2% / 0.9),
+    0 0 42px -26px var(--ec-accent),
     inset 0 1px 0 hsl(0 0% 100% / 0.05),
     inset 0 0 0 1px hsl(0 0% 100% / 0.025) !important;
 }
@@ -1130,7 +1130,7 @@
     transparent 100%
   );
   pointer-events: none;
-  border-radius: 22px 22px 0 0;
+  border-radius: 24px 24px 0 0;
 }
 
 /* v1.5.16 — control buttons. Класс добавлен в TSX, базовая структура
@@ -1138,13 +1138,28 @@
 .ec-vr-ctrl {
   position: relative;
   overflow: hidden;
-  width: 40px !important;
-  height: 40px !important;
-  border-radius: 14px !important;
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 16px !important;
   background: color-mix(in srgb, var(--ec-surface-3) 78%, transparent) !important;
   border-color: color-mix(in srgb, var(--ec-border-subtle) 86%, transparent) !important;
   color: var(--ec-text-muted) !important;
-  box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.05) !important;
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.055),
+    0 10px 24px -18px hsl(210 35% 2% / 0.9) !important;
+}
+.ec-vr-ctrl::after {
+  content: "";
+  position: absolute;
+  inset: auto 12px 7px;
+  height: 2px;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: 0;
+  transform: scaleX(0.4);
+  transition:
+    opacity var(--ec-dur-fast) var(--ec-ease),
+    transform var(--ec-dur-fast) var(--ec-ease-out);
 }
 .ec-vr-ctrl:hover:not(:disabled) {
   transform: translateY(-1px) !important;
@@ -1155,9 +1170,20 @@
     0 8px 20px -12px hsl(258 86% 50% / 0.62),
     inset 0 1px 0 hsl(0 0% 100% / 0.07) !important;
 }
+.ec-vr-ctrl:hover:not(:disabled)::after,
+.ec-vr-ctrl--accent::after,
+.ec-vr-ctrl--danger::after {
+  opacity: 0.72;
+  transform: scaleX(1);
+}
 .ec-vr-ctrl:active:not(:disabled) {
   transform: translateY(0) scale(0.94) !important;
   transition-duration: 60ms !important;
+}
+.ec-vr-ctrl:disabled {
+  cursor: not-allowed !important;
+  opacity: 0.48;
+  filter: saturate(0.65);
 }
 .ec-vr-ctrl--danger {
   background: color-mix(in srgb, var(--ec-danger) 13%, var(--ec-surface-3)) !important;
@@ -1187,17 +1213,17 @@
 }
 
 .ec-vr-volume {
-  min-width: 150px;
-  height: 40px !important;
-  padding: 0 12px !important;
-  border-radius: 14px !important;
+  min-width: 164px;
+  height: 44px !important;
+  padding: 0 14px !important;
+  border-radius: 16px !important;
   background: color-mix(in srgb, var(--ec-surface-3) 72%, transparent) !important;
   border-color: color-mix(in srgb, var(--ec-border-subtle) 84%, transparent) !important;
   color: var(--ec-text-muted);
   box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.04);
 }
 .ec-vr-volume input[type="range"] {
-  width: 90px !important;
+  width: 96px !important;
   height: 4px;
   accent-color: var(--ec-accent);
 }
@@ -1476,6 +1502,36 @@
     0 0 24px -12px var(--ec-accent);
 }
 
+.ec-voice-room__body--visual {
+  overflow: auto !important;
+  padding-top: var(--ec-space-4) !important;
+}
+
+.ec-voice-room__body--visual .ec-voice-room__video-grid {
+  min-height: min(66vh, 720px);
+  align-items: stretch !important;
+}
+
+.ec-voice-room__note-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 240px;
+  margin-top: var(--ec-space-4);
+}
+
+.ec-voice-room__note-shell--compact {
+  min-height: 152px;
+  max-height: 28vh;
+}
+
+.ec-voice-room__note-shell--compact .ec-voice-note {
+  min-height: 0;
+}
+
+.ec-voice-room__note-shell--compact .ec-voice-note__textarea {
+  min-height: 112px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ec-vr-presence-card,
   .ec-vr-presence-card--speaking {
@@ -1488,9 +1544,37 @@
 /* Video tile — accent border on hover, lift effect. */
 .ec-vr-video-tile {
   position: relative;
+  isolation: isolate;
+  min-height: 220px;
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 16%, var(--ec-border-subtle)) !important;
+  background: #000 !important;
   transition:
     transform var(--ec-dur-base) var(--ec-ease-out),
+    border-color var(--ec-dur-base) var(--ec-ease),
     box-shadow var(--ec-dur-base) var(--ec-ease) !important;
+}
+.ec-vr-video-tile--screen {
+  min-height: min(52vh, 560px);
+  border-color: color-mix(in srgb, var(--ec-status-exec) 22%, var(--ec-border-subtle)) !important;
+}
+.ec-vr-video-tile--camera {
+  max-width: min(100%, 980px) !important;
+}
+.ec-vr-video-tile video {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+  background: #000 !important;
+  image-rendering: auto;
+}
+.ec-vr-video-tile--screen video {
+  object-fit: contain !important;
+}
+.ec-vr-video-tile--loading {
+  background:
+    radial-gradient(circle at 50% 38%, color-mix(in srgb, var(--ec-accent) 14%, transparent), transparent 42%),
+    #000 !important;
 }
 .ec-vr-video-tile:hover {
   transform: translateY(-2px);

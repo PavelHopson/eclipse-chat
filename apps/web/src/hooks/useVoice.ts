@@ -51,6 +51,37 @@ export type VoiceVisualTrack = {
   track: LocalVideoTrack | RemoteVideoTrack;
 };
 
+const CAMERA_CAPTURE_OPTIONS = {
+  resolution: {
+    width: 1280,
+    height: 720,
+    frameRate: 30,
+  },
+};
+
+const CAMERA_PUBLISH_OPTIONS = {
+  videoEncoding: {
+    maxBitrate: 1_800_000,
+    maxFramerate: 30,
+  },
+};
+
+const SCREEN_SHARE_CAPTURE_OPTIONS = {
+  audio: false,
+  resolution: {
+    width: 1920,
+    height: 1080,
+    frameRate: 30,
+  },
+};
+
+const SCREEN_SHARE_PUBLISH_OPTIONS = {
+  videoEncoding: {
+    maxBitrate: 4_500_000,
+    maxFramerate: 30,
+  },
+};
+
 type JoinResponse = {
   wsUrl: string;
   token: string;
@@ -592,7 +623,11 @@ export function useVoice(socket: Socket | null = null) {
     if (!r) return;
     try {
       const next = !r.localParticipant.isCameraEnabled;
-      await r.localParticipant.setCameraEnabled(next);
+      await r.localParticipant.setCameraEnabled(
+        next,
+        CAMERA_CAPTURE_OPTIONS,
+        CAMERA_PUBLISH_OPTIONS,
+      );
       refreshVisualTracks();
     } catch (e) {
       setError(
@@ -610,7 +645,11 @@ export function useVoice(socket: Socket | null = null) {
     if (!r) return;
     try {
       const next = !r.localParticipant.isScreenShareEnabled;
-      await r.localParticipant.setScreenShareEnabled(next);
+      await r.localParticipant.setScreenShareEnabled(
+        next,
+        SCREEN_SHARE_CAPTURE_OPTIONS,
+        SCREEN_SHARE_PUBLISH_OPTIONS,
+      );
       refreshVisualTracks();
     } catch (e) {
       setError(

@@ -5,7 +5,16 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.6.5** (Modal viewport containment — настройки сервера,
+**Текущая версия:** **v1.6.6** (Voice media quality pass — voice controls dock
+стал плотнее и профессиональнее: 44px touch targets, активные/опасные состояния
+с нижним индикатором, ровная volume-pill. Webcam/screen-share больше не
+зажимаются дефолтами: LiveKit получает явные capture/publish options
+(камера 720p/30fps, screen-share до 1080p/30fps с повышенным bitrate), video
+stage получает приоритетную высоту, screen tile занимает всю строку без
+760px clamp, `video` принудительно `object-fit: contain`, voice-note
+компактнее только при активном визуальном потоке. No schema/backend.)
+
+**Предыдущая:** v1.6.5 (Modal viewport containment — настройки сервера,
 профиля и длинные рабочие панели теперь открываются как ограниченные viewport
 окна: modal body получил корректный `min-height:0`, server/settings tree panels
 живут в вычисленной доступной высоте, left-nav/main/preview scroll'ятся внутри

@@ -215,21 +215,22 @@ const muteBadge: CSSProperties = {
  * На mobile (≤640) — single column через responsive.css (existing rule).
  */
 const videoStage: CSSProperties = {
-  flex: 1,
+  flex: "1 1 auto",
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-  gap: "var(--ec-space-3)",
-  alignContent: "center",
-  justifyItems: "center",
+  gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 320px), 1fr))",
+  gap: "var(--ec-space-4)",
+  alignContent: "stretch",
+  justifyItems: "stretch",
   alignItems: "center",
   minHeight: 0,
-  padding: "var(--ec-space-2) 0",
+  width: "100%",
+  padding: "var(--ec-space-2) 0 var(--ec-space-3)",
 };
 
 const videoTileWrap: CSSProperties = {
   position: "relative",
   width: "100%",
-  maxWidth: 760,
+  maxWidth: 980,
   aspectRatio: "16 / 9",
   borderRadius: "var(--ec-radius-xl)",
   overflow: "hidden",
@@ -239,7 +240,13 @@ const videoTileWrap: CSSProperties = {
   transition: "box-shadow var(--ec-dur-base) var(--ec-ease-out)",
 };
 
-const videoCanvas: CSSProperties = { position: "absolute", inset: 0 };
+const videoCanvas: CSSProperties = {
+  position: "absolute",
+  inset: 0,
+  display: "grid",
+  placeItems: "center",
+  background: "#000",
+};
 
 // v1.5.31 — overlay chip: солидный pill в top-left с backdrop-blur. Читается
 // против любого видео-контента (включая чёрные кадры recursive screen-share).
@@ -434,7 +441,10 @@ function VideoTrackTile({
 
   return (
     <article
-      className={`ec-vr-video-tile${isScreen ? " ec-vr-video-tile--screen" : ""}`}
+      className={
+        `ec-vr-video-tile${isScreen ? " ec-vr-video-tile--screen" : " ec-vr-video-tile--camera"}` +
+        (aspect == null ? " ec-vr-video-tile--loading" : "")
+      }
       style={{
         ...videoTileWrap,
         // v1.1.68 — пропорции тайла = пропорции источника (fallback 16:9 пока
@@ -454,9 +464,10 @@ function VideoTrackTile({
           ? {
               gridColumn: "1 / -1",
               justifySelf: "stretch",
+              alignSelf: "stretch",
               width: "100%",
               maxWidth: "none",
-              maxHeight: "64vh",
+              maxHeight: "min(72vh, 760px)",
             }
           : null),
       }}
@@ -803,7 +814,10 @@ export function VoiceRoom({
       </div>
 
       {/* ── ROOM CANVAS — immersive ──────────────────────────── */}
-      <div style={canvas} className="ec-voice-room__body">
+      <div
+        style={canvas}
+        className={"ec-voice-room__body" + (hasVisual ? " ec-voice-room__body--visual" : "")}
+      >
         {hasVisual ? (
           /* Cinematic video stage + компактная presence-полоса аудио-участников */
           <>
@@ -1044,12 +1058,10 @@ export function VoiceRoom({
             до join'а) — operators могут готовить agenda до встречи. */}
         {socket !== undefined && (
           <div
-            style={{
-              marginTop: "var(--ec-space-4)",
-              display: "flex",
-              flexDirection: "column",
-              minHeight: 240,
-            }}
+            className={
+              "ec-voice-room__note-shell" +
+              (hasVisual ? " ec-voice-room__note-shell--compact" : "")
+            }
           >
             <VoiceNotePanel channelId={channelId} socket={socket ?? null} />
           </div>
@@ -1181,7 +1193,12 @@ export function VoiceRoom({
       )}
 
       {/* ── CONTROLS DOCK — floating ─────────────────────────── */}
-      <div style={controlsDock} className="ec-voice-room__controls">
+      <div
+        style={controlsDock}
+        className="ec-voice-room__controls"
+        role="toolbar"
+        aria-label="Управление голосовой комнатой"
+      >
         {!isJoinedHere ? (
           <button
             type="button"

@@ -631,7 +631,7 @@
   }
 
   .ec-voice-room__video-grid {
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)) !important;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)) !important;
   }
 }
 
@@ -653,9 +653,19 @@
     gap: var(--ec-space-3) !important;
   }
 
+  .ec-voice-room__body--visual .ec-voice-room__video-grid {
+    min-height: min(58vh, 620px);
+  }
+
   .ec-voice-room__video-grid,
   .ec-voice-room__audio-grid {
     grid-template-columns: 1fr !important;
+  }
+
+  .ec-vr-video-tile,
+  .ec-vr-video-tile--screen {
+    min-height: min(52vh, 420px);
+    max-height: none !important;
   }
 
   .ec-voice-room__controls {
@@ -676,10 +686,15 @@
     display: none;
   }
   .ec-vr-volume {
-    min-width: 126px;
+    min-width: 138px;
   }
   .ec-vr-volume input[type="range"] {
-    width: 66px !important;
+    width: 72px !important;
+  }
+
+  .ec-voice-room__note-shell--compact {
+    min-height: 132px;
+    max-height: none;
   }
 
   .ec-voice-room__music-bridge {
