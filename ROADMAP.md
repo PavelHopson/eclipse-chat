@@ -5,7 +5,13 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.6.6** (Voice media quality pass — voice controls dock
+**Текущая версия:** **v1.6.7** (QA infrastructure cleanup — server test runner теперь
+использует локальный `vitest` из devDependencies вместо сетевого `npx`, поэтому
+`npm test` детерминированно работает в workspace/CI. Prisma Friendship FK cleanup:
+`requestedByUserId` остаётся required, но referential action исправлен с невозможного
+`SET NULL` на `CASCADE`; добавлена additive migration, API/DTO/UI не менялись.)
+
+**Предыдущая:** v1.6.6 (Voice media quality pass — voice controls dock
 стал плотнее и профессиональнее: 44px touch targets, активные/опасные состояния
 с нижним индикатором, ровная volume-pill. Webcam/screen-share больше не
 зажимаются дефолтами: LiveKit получает явные capture/publish options

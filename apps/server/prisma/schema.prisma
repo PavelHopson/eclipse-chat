@@ -1660,7 +1660,7 @@ model Friendship {
   /// после ACCEPTED как «кто кого добавил» — для аудита и для accept
   /// permission-check (addressee = тот другой).
   requestedByUserId String
-  requestedBy       User             @relation("FriendshipRequestedBy", fields: [requestedByUserId], references: [id], onDelete: SetNull)
+  requestedBy       User             @relation("FriendshipRequestedBy", fields: [requestedByUserId], references: [id], onDelete: Cascade)
   /// Заполняется только для BLOCKED status. NULL для PENDING/ACCEPTED.
   blockedByUserId   String?
   blockedBy         User?            @relation("FriendshipBlockedBy", fields: [blockedByUserId], references: [id], onDelete: SetNull)
