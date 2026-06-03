@@ -4,9 +4,11 @@ import { Avatar } from "./Avatar";
 import { EmojiPicker } from "./EmojiPicker";
 import { RichContent } from "./RichContent";
 import { LinkEmbedCard } from "./LinkEmbedCard";
+import { YouTubeEmbedCard } from "./YouTubeEmbedCard";
 import { EmptyState } from "./EmptyState";
 import { EmptyChannelIcon } from "./EmptyIcons";
 import { extractFirstUrl } from "../lib/linkExtract";
+import { parseYouTubeUrl } from "../lib/youtubeEmbed";
 import { gameIcon } from "../lib/gameIcons";
 import { useMessageEditHistory } from "../hooks/useMessageEditHistory";
 import type { ActionItemStatus, ActionItemType, MessageRow } from "../hooks/useMessages";
@@ -766,7 +768,12 @@ export function MessageList({
                         URL extracted из content. */}
                     {m.attachments.length === 0 && m.content && (() => {
                       const url = extractFirstUrl(m.content);
-                      return url ? <LinkEmbedCard url={url} /> : null;
+                      if (!url) return null;
+                      return parseYouTubeUrl(url) ? (
+                        <YouTubeEmbedCard url={url} />
+                      ) : (
+                        <LinkEmbedCard url={url} />
+                      );
                     })()}
                   </>
                 )}

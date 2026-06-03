@@ -5,7 +5,13 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.6.7** (QA infrastructure cleanup — server test runner теперь
+**Текущая версия:** **v1.6.8** (Chat YouTube embed — ссылки на YouTube/youtu.be
+в сообщениях теперь открываются прямо в безопасном inline-плеере под текстом
+сообщения. Парсер принимает только валидные youtube hosts и videoId формата
+YouTube, iframe строится через `youtube-nocookie.com`, обычные ссылки по-прежнему
+идут в OG preview. No backend/schema.)
+
+**Предыдущая:** v1.6.7 (QA infrastructure cleanup — server test runner теперь
 использует локальный `vitest` из devDependencies вместо сетевого `npx`, поэтому
 `npm test` детерминированно работает в workspace/CI. Prisma Friendship FK cleanup:
 `requestedByUserId` остаётся required, но referential action исправлен с невозможного
