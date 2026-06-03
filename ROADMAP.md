@@ -5,7 +5,13 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.6.8** (Chat YouTube embed — ссылки на YouTube/youtu.be
+**Текущая версия:** **v1.6.9** (Channel categories usability — категории в левом
+rail теперь можно переименовывать и удалять через видимые action-кнопки прямо в
+заголовке категории. Right-click меню осталось fallback'ом, но основной путь стал
+discoverable; удаление подтверждается, каналы внутри переходят в «Без категории»
+через существующий backend SetNull/socket flow. No backend/schema.)
+
+**Предыдущая:** v1.6.8 (Chat YouTube embed — ссылки на YouTube/youtu.be
 в сообщениях теперь открываются прямо в безопасном inline-плеере под текстом
 сообщения. Парсер принимает только валидные youtube hosts и videoId формата
 YouTube, iframe строится через `youtube-nocookie.com`, обычные ссылки по-прежнему

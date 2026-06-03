@@ -765,6 +765,12 @@ export function ChannelList({
     if (channelSearchActive && group.length === 0) return null;
     const collapsed = !channelSearchActive && collapsedCategoryIds.has(category.id);
     const isDropTarget = dropTargetCategoryId === category.id && draggedCategoryId !== category.id;
+    const confirmDeleteCategory = () => {
+      if (!onDeleteCategory) return;
+      if (window.confirm(`Удалить «${category.name.toUpperCase()}»? Каналы внутри станут несгруппированными`)) {
+        void onDeleteCategory(category.id);
+      }
+    };
     return (
       <section
         key={category.id}
@@ -774,12 +780,9 @@ export function ChannelList({
           (isDropTarget ? " ec-channel-category--drop-target" : "")
         }
       >
-        <button
-          type="button"
+        <div
           className="ec-channel-category__header"
-          aria-expanded={!collapsed}
           draggable={canDragCategories}
-          onClick={() => toggleCategory(category.id)}
           onContextMenu={(e) => {
             if (!manageable) return;
             e.preventDefault();
@@ -813,34 +816,65 @@ export function ChannelList({
             setDropTargetCategoryId(null);
           }}
         >
-          <span className="ec-channel-category__chevron" aria-hidden>
-            ▶
-          </span>
-          <span className="ec-channel-category__name">{category.name}</span>
-          <span className="ec-channel-category__count">{group.length}</span>
-          {editable && (
-            <span
-              role="button"
-              tabIndex={0}
-              className="ec-channel-category__add"
-              title="Создать комнату в категории"
-              aria-label={`Создать комнату в категории ${category.name}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                openCreateModal("TEXT", category.id);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  openCreateModal("TEXT", category.id);
-                }
-              }}
-            >
-              +
+          <button
+            type="button"
+            className="ec-channel-category__toggle"
+            aria-expanded={!collapsed}
+            onClick={() => toggleCategory(category.id)}
+          >
+            <span className="ec-channel-category__chevron" aria-hidden>
+              ▶
+            </span>
+            <span className="ec-channel-category__name">{category.name}</span>
+            <span className="ec-channel-category__count">{group.length}</span>
+          </button>
+          {(editable || manageable) && (
+            <span className="ec-channel-category__actions">
+              {editable && (
+                <button
+                  type="button"
+                  className="ec-channel-category__action"
+                  title="Создать комнату в категории"
+                  aria-label={`Создать комнату в категории ${category.name}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openCreateModal("TEXT", category.id);
+                  }}
+                >
+                  +
+                </button>
+              )}
+              {manageable && onRenameCategory && (
+                <button
+                  type="button"
+                  className="ec-channel-category__action"
+                  title="Переименовать категорию"
+                  aria-label={`Переименовать категорию ${category.name}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setCategoryModal({ mode: "rename", category });
+                  }}
+                >
+                  ✎
+                </button>
+              )}
+              {manageable && onDeleteCategory && (
+                <button
+                  type="button"
+                  className="ec-channel-category__action ec-channel-category__action--danger"
+                  title="Удалить категорию"
+                  aria-label={`Удалить категорию ${category.name}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    confirmDeleteCategory();
+                  }}
+                >
+                  ×
+                </button>
+              )}
             </span>
           )}
-        </button>
+        </div>
         {!collapsed && (
           <div className="ec-channel-category__body">
             {group.map((channel) => (
