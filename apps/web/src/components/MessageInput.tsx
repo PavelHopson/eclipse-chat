@@ -748,10 +748,6 @@ export function MessageInput({
   const canSend = (draft.trim().length > 0 || pending.length > 0) && !disabled && !sending && !isRecording;
   // Grid-колонки композера зависят от hideAttachments — единственное
   // динамическое значение; фокус-состояние коробки — CSS :focus-within.
-  const boxGridColumns = hideAttachments
-    ? "auto minmax(0, 1fr) auto"
-    : "auto auto auto minmax(0, 1fr) auto";
-
   // Slash-command hint: показываем когда юзер набрал «/» + (опц.) часть
   // команды, но ещё не дошёл до пробела. @/:-popover имеет приоритет.
   // В Client Mode operator-команды скрыты (hideSlashCommands), но
@@ -976,7 +972,12 @@ export function MessageInput({
       {/* Clean redesign: декоративный operator-strip («>_ Защищённый канал» +
           фейковое «в эфире» + scan-dots) убран — sci-fi-театр + ложный
           security-claim. Композер ниже самодостаточен. */}
-      <div className="ec-composer-box" style={{ gridTemplateColumns: boxGridColumns }}>
+      <div
+        className={
+          "ec-composer-box" +
+          (hideAttachments ? " ec-composer-box--minimal" : " ec-composer-box--full")
+        }
+      >
         {!hideAttachments && (
           <>
         <input

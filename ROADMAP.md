@@ -5,7 +5,15 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.6.2** (Premium operations shell redesign — основной
+**Текущая версия:** **v1.6.3** (Closer-to-concept shell correction — v1.6.2
+оказался слишком CSS-only и не попадал в фактический DOM по ключевым зонам:
+правый rail уже использует `.ec-mem*`, а composer держал inline-grid. Исправлено:
+composer получил явные layout-modifier classes, участники оформлены по реальным
+`.ec-mem*` hooks, сообщения стали компактнее и ближе к content-card композиции
+из референса, action-toolbar закреплён справа у карточки, attachments/audio/video
+получили единый card treatment, mobile widths пересчитаны. No schema/backend.)
+
+**Предыдущая:** v1.6.2 (Premium operations shell redesign — основной
 интерфейс получил более смелую и практичную визуальную систему: topbar собран
 в спокойные utility-кластеры, левый rail и список участников стали читаемыми
 операционными панелями, сообщения оформлены как content-first карточки с
