@@ -679,6 +679,7 @@ html[data-ec-theme="solar"] .ec-team-training {
 }
 
 html[data-ec-theme="solar"] .ec-team-training__section,
+html[data-ec-theme="solar"] .ec-team-training__form,
 html[data-ec-theme="solar"] .ec-team-training__active-summary,
 html[data-ec-theme="solar"] .ec-team-training__empty,
 html[data-ec-theme="solar"] .ec-team-training-video {

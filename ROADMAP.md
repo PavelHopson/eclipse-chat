@@ -5,7 +5,13 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.6.11** (Team Health training design QA — блок
+**Текущая версия:** **v1.6.12** (Team Health training layout fix — одиночные
+YouTube-тренировки больше не растягиваются в широкий hero-баннер: библиотека
+переведена на bounded card grid, форма добавления стала компактным control
+surface, видео ограничены рабочей шириной/высотой и остаются читаемыми на
+mobile. No backend/schema.)
+
+**Предыдущая:** v1.6.11 (Team Health training design QA — блок
 «Тренировки» выровнен с системными field/button primitives, получил сводку
 активного раздела, более читаемые видео-карточки с fallback-ссылкой на YouTube,
 mobile/reduced-motion polish и отдельные SOLAR overrides. Данные по-прежнему
