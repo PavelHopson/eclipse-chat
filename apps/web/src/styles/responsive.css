@@ -1759,13 +1759,13 @@
   .ec-composer-box,
   .ec-composer-box--full,
   .ec-composer-box--minimal {
-    grid-template-columns: auto minmax(0, 1fr) auto auto !important;
+    grid-template-columns: 40px minmax(0, 1fr) 38px 42px !important;
     align-items: center !important;
     gap: 6px !important;
   }
 
   .ec-composer-box--minimal {
-    grid-template-columns: minmax(0, 1fr) auto auto !important;
+    grid-template-columns: minmax(0, 1fr) 38px 42px !important;
   }
 
   .ec-composer-plus,
