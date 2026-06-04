@@ -10767,6 +10767,214 @@ body {
   margin-left: auto;
 }
 
+.ec-composer-box,
+.ec-composer-box--full,
+.ec-composer-box--minimal {
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  min-height: 52px;
+  padding: 7px 8px;
+  border-radius: 16px;
+}
+
+.ec-composer-box--minimal {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+
+.ec-composer-action-root {
+  position: relative;
+  align-self: center;
+  display: inline-flex;
+}
+
+.ec-composer-box--full .ec-composer-action-root {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.ec-composer-box--full .ec-composer-textarea {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.ec-composer-box--full > .ec-composer-icon-btn {
+  grid-column: 3;
+  grid-row: 1;
+}
+
+.ec-composer-box--full .ec-composer-send {
+  grid-column: 4;
+  grid-row: 1;
+}
+
+.ec-composer-box--minimal .ec-composer-textarea {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.ec-composer-box--minimal > .ec-composer-icon-btn {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.ec-composer-box--minimal .ec-composer-send {
+  grid-column: 3;
+  grid-row: 1;
+}
+
+.ec-composer-plus {
+  position: relative;
+  display: inline-grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  color: color-mix(in srgb, var(--ec-text-muted) 92%, transparent);
+  background: transparent;
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    background 160ms ease,
+    color 160ms ease;
+}
+
+.ec-composer-plus:hover:not(:disabled),
+.ec-composer-plus:focus-visible,
+.ec-composer-plus[aria-expanded="true"] {
+  color: var(--ec-text-strong);
+  border-color: color-mix(in srgb, var(--ec-accent) 30%, transparent);
+  background:
+    radial-gradient(circle at 35% 25%, color-mix(in srgb, var(--ec-accent) 20%, transparent), transparent 60%),
+    color-mix(in srgb, var(--ec-accent) 10%, #111827);
+}
+
+.ec-composer-plus[aria-expanded="true"] svg {
+  transform: rotate(45deg);
+}
+
+.ec-composer-plus:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.ec-composer-action-menu {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 10px);
+  z-index: 90;
+  width: min(278px, calc(100vw - 32px));
+  padding: 8px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 22%, #2f3a4c);
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 0 0, color-mix(in srgb, var(--ec-accent) 16%, transparent), transparent 9rem),
+    linear-gradient(180deg, color-mix(in srgb, #1c2230 92%, transparent), #111621 96%);
+  box-shadow:
+    0 26px 60px -32px color-mix(in srgb, var(--ec-accent) 74%, #000),
+    0 18px 44px -34px #000,
+    inset 0 1px 0 hsl(0 0% 100% / 0.08);
+}
+
+.ec-composer-action-menu::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #22d3ee, var(--ec-accent), transparent);
+  opacity: 0.76;
+}
+
+.ec-composer-action-menu__item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  align-items: center;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 10px;
+  gap: 8px;
+  border: 0;
+  border-radius: 10px;
+  color: var(--ec-text);
+  background: transparent;
+  font: inherit;
+  font-weight: 760;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    background 160ms ease,
+    color 160ms ease;
+}
+
+.ec-composer-action-menu__item::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 9px;
+  bottom: 9px;
+  width: 3px;
+  border-radius: 999px;
+  background: var(--ec-accent);
+  transform: scaleY(0);
+  transform-origin: center;
+  transition: transform 160ms ease;
+}
+
+.ec-composer-action-menu__item:hover:not(:disabled),
+.ec-composer-action-menu__item:focus-visible {
+  color: var(--ec-text-strong);
+  background: color-mix(in srgb, var(--ec-accent) 11%, transparent);
+  transform: translateX(2px);
+}
+
+.ec-composer-action-menu__item:hover:not(:disabled)::before,
+.ec-composer-action-menu__item:focus-visible::before {
+  transform: scaleY(1);
+}
+
+.ec-composer-action-menu__item:disabled {
+  color: color-mix(in srgb, var(--ec-text-muted) 58%, transparent);
+  cursor: not-allowed;
+}
+
+.ec-composer-action-menu__icon {
+  display: inline-grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 9px;
+  color: color-mix(in srgb, var(--ec-text-muted) 92%, transparent);
+  background: color-mix(in srgb, var(--ec-accent) 8%, transparent);
+}
+
+.ec-composer-action-menu__soon {
+  justify-self: end;
+  color: color-mix(in srgb, var(--ec-text-muted) 68%, transparent);
+  font-size: 0.68rem;
+  font-weight: 850;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.ec-composer-icon-btn,
+.ec-composer-send {
+  align-self: center;
+}
+
+.ec-composer-textarea {
+  align-self: center;
+  min-height: 36px;
+  padding-block: 8px;
+}
+
+.ec-composer-hints {
+  display: none !important;
+}
+
 .ec-mem__scroll {
   scrollbar-gutter: stable;
 }
@@ -10842,6 +11050,31 @@ body {
     padding: 6px;
   }
 
+  .ec-composer-box,
+  .ec-composer-box--full,
+  .ec-composer-box--minimal {
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+  }
+
+  .ec-composer-box--minimal {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+  }
+
+  .ec-composer-action-menu {
+    width: min(286px, calc(100vw - 24px));
+    max-height: min(70vh, 360px);
+    overflow-y: auto;
+  }
+
+  .ec-composer-send {
+    min-width: 44px;
+    padding-inline: 12px;
+  }
+
+  .ec-composer-send-label {
+    display: none;
+  }
+
   .ec-composer-textarea {
     max-height: 132px;
   }
@@ -10850,6 +11083,21 @@ body {
     align-items: flex-start;
     flex-direction: column;
     gap: 4px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ec-composer-plus,
+  .ec-composer-plus svg,
+  .ec-composer-action-menu__item,
+  .ec-composer-action-menu__item::before {
+    transition: none !important;
+  }
+
+  .ec-composer-plus[aria-expanded="true"] svg,
+  .ec-composer-action-menu__item:hover:not(:disabled),
+  .ec-composer-action-menu__item:focus-visible {
+    transform: none !important;
   }
 }
 

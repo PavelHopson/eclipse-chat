@@ -1753,3 +1753,41 @@
     font-size: var(--ec-text-xs);
   }
 }
+
+/* v1.6.16: Discord-style composer keeps one primary "+" action on mobile. */
+@media (max-width: 768px) {
+  .ec-composer-box,
+  .ec-composer-box--full,
+  .ec-composer-box--minimal {
+    grid-template-columns: auto minmax(0, 1fr) auto auto !important;
+    align-items: center !important;
+    gap: 6px !important;
+  }
+
+  .ec-composer-box--minimal {
+    grid-template-columns: minmax(0, 1fr) auto auto !important;
+  }
+
+  .ec-composer-plus,
+  .ec-composer-icon-btn,
+  .ec-composer-send {
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+    min-height: 38px !important;
+  }
+
+  .ec-composer-action-menu {
+    width: min(286px, calc(100vw - 24px));
+    max-height: min(70vh, 360px);
+    overflow-y: auto;
+  }
+
+  .ec-composer-send {
+    padding-inline: 0 !important;
+  }
+
+  .ec-composer-hints {
+    display: none !important;
+  }
+}

@@ -286,6 +286,9 @@ export function MessageInput({
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [emojiAnchor, setEmojiAnchor] = useState<DOMRect | null>(null);
   const emojiButtonRef = useRef<HTMLButtonElement>(null);
+  const [actionMenuOpen, setActionMenuOpen] = useState(false);
+  const actionMenuRef = useRef<HTMLDivElement>(null);
+  const actionButtonRef = useRef<HTMLButtonElement>(null);
 
   const insertEmoji = (emoji: string) => {
     const el = textareaRef.current;
@@ -318,6 +321,26 @@ export function MessageInput({
   const setDraftValue = (value: string) => {
     draftRef.current = value;
     setDraft(value);
+  };
+
+  const focusTextarea = () => {
+    queueMicrotask(() => textareaRef.current?.focus());
+  };
+
+  const openFilePicker = () => {
+    setActionMenuOpen(false);
+    fileInputRef.current?.click();
+  };
+
+  const startMenuVoiceRecording = () => {
+    setActionMenuOpen(false);
+    void startVoiceRecording();
+  };
+
+  const insertSlashCommand = (value: string) => {
+    setActionMenuOpen(false);
+    setDraftValue(value);
+    focusTextarea();
   };
 
   const refreshTrigger = () => {
@@ -435,6 +458,31 @@ export function MessageInput({
   useEffect(() => {
     return () => saveDraft(draftKeyRef.current, draftRef.current);
   }, []);
+
+  useEffect(() => {
+    if (!actionMenuOpen) return;
+
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (actionMenuRef.current?.contains(target)) return;
+      if (actionButtonRef.current?.contains(target)) return;
+      setActionMenuOpen(false);
+    };
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      setActionMenuOpen(false);
+      actionButtonRef.current?.focus();
+    };
+
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [actionMenuOpen]);
 
   // v1.5.4 — слушаем глобальный «ec-ai-trigger» (topbar AI agent button).
   // Фокусим textarea + если пусто — префиксим «@ai » для quick start.
@@ -979,7 +1027,7 @@ export function MessageInput({
         }
       >
         {!hideAttachments && (
-          <>
+          <div className="ec-composer-action-root">
         <input
           ref={fileInputRef}
           type="file"
@@ -992,33 +1040,105 @@ export function MessageInput({
           style={{ display: "none" }}
         />
         <button
+          ref={actionButtonRef}
           type="button"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={disabled || pending.length >= MAX_PER_MESSAGE || isRecording}
-          className="ec-composer-icon-btn ec-rotate-hover"
-          title="Прикрепить файлы"
-          aria-label="Прикрепить файлы"
+          onClick={() => setActionMenuOpen((open) => !open)}
+          disabled={disabled || isRecording}
+          className="ec-composer-plus"
+          title="Добавить"
+          aria-label="Открыть действия сообщения"
+          aria-expanded={actionMenuOpen}
+          aria-haspopup="menu"
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.49" />
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" aria-hidden>
+            <path d="M12 5v14M5 12h14" />
           </svg>
         </button>
-            <button
-              type="button"
-              onClick={() => (isRecording ? stopVoiceRecording(true) : void startVoiceRecording())}
-              disabled={disabled || sending || pending.length >= MAX_PER_MESSAGE}
-              className={isRecording ? "ec-composer-icon-btn ec-composer-icon-btn--recording" : "ec-composer-icon-btn"}
-              title={isRecording ? "Завершить запись" : "Записать голосовое"}
-              aria-label={isRecording ? "Завершить запись голосового" : "Записать голосовое сообщение"}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
-                <path d="M19 10v2a7 7 0 01-14 0v-2" />
-                <line x1="12" y1="19" x2="12" y2="23" />
-                <line x1="8" y1="23" x2="16" y2="23" />
-              </svg>
-            </button>
-          </>
+            {actionMenuOpen && (
+              <div ref={actionMenuRef} className="ec-composer-action-menu" role="menu" aria-label="Действия сообщения">
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="ec-composer-action-menu__item"
+                  onClick={openFilePicker}
+                  disabled={disabled || pending.length >= MAX_PER_MESSAGE}
+                >
+                  <span className="ec-composer-action-menu__icon" aria-hidden>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21.44 11.05 12.25 20.24a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 1 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.49" />
+                    </svg>
+                  </span>
+                  <span>Отправить файл</span>
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="ec-composer-action-menu__item"
+                  onClick={startMenuVoiceRecording}
+                  disabled={disabled || sending || pending.length >= MAX_PER_MESSAGE}
+                >
+                  <span className="ec-composer-action-menu__icon" aria-hidden>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3Z" />
+                      <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                      <path d="M12 19v4M8 23h8" />
+                    </svg>
+                  </span>
+                  <span>Голосовое сообщение</span>
+                </button>
+                {!hideSlashCommands && (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="ec-composer-action-menu__item"
+                    onClick={() => insertSlashCommand("/task ")}
+                  >
+                    <span className="ec-composer-action-menu__icon" aria-hidden>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M9 11l2 2 4-5" />
+                        <path d="M20 6 9 17l-5-5" />
+                      </svg>
+                    </span>
+                    <span>Создать задачу</span>
+                  </button>
+                )}
+                <button type="button" role="menuitem" className="ec-composer-action-menu__item" disabled>
+                  <span className="ec-composer-action-menu__icon" aria-hidden>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15a4 4 0 0 1-4 4H7l-4 4V7a4 4 0 0 1 4-4h6" />
+                      <path d="M16 3h5v5M21 3l-7 7" />
+                    </svg>
+                  </span>
+                  <span>Создать ветку</span>
+                  <span className="ec-composer-action-menu__soon">скоро</span>
+                </button>
+                <button type="button" role="menuitem" className="ec-composer-action-menu__item" disabled>
+                  <span className="ec-composer-action-menu__icon" aria-hidden>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M4 7h16M4 12h10M4 17h7" />
+                    </svg>
+                  </span>
+                  <span>Создать опрос</span>
+                  <span className="ec-composer-action-menu__soon">скоро</span>
+                </button>
+                {!hideSlashCommands && (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="ec-composer-action-menu__item"
+                    onClick={() => insertSlashCommand("/")}
+                  >
+                    <span className="ec-composer-action-menu__icon" aria-hidden>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 3l1.9 5.8L20 10l-4.6 3.8L16.8 20 12 16.7 7.2 20l1.4-6.2L4 10l6.1-1.2L12 3Z" />
+                      </svg>
+                    </span>
+                    <span>Использовать команды</span>
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         )}
         <button
           ref={emojiButtonRef}
