@@ -195,7 +195,7 @@ export function TeamTrainingLibrary({ serverId }: Props) {
         </div>
         <div className="ec-team-training__new-section">
           <input
-            className="ec-team-training__input"
+            className="ec-field ec-team-training__input"
             value={newSectionName}
             onChange={(event) => setNewSectionName(event.target.value)}
             onKeyDown={(event) => {
@@ -220,7 +220,7 @@ export function TeamTrainingLibrary({ serverId }: Props) {
               {isRenaming ? (
                 <div className="ec-team-training__rename">
                   <input
-                    className="ec-team-training__input"
+                    className="ec-field ec-team-training__input"
                     value={renameDraft}
                     onChange={(event) => setRenameDraft(event.target.value)}
                     onKeyDown={(event) => {
@@ -283,9 +283,17 @@ export function TeamTrainingLibrary({ serverId }: Props) {
         })}
       </div>
 
+      <div className="ec-team-training__active-summary">
+        <div>
+          <span className="ec-team-training__active-kicker">Активный раздел</span>
+          <strong>{activeSection.name}</strong>
+        </div>
+        <span>{activeSection.videos.length === 0 ? "нет видео" : `${activeSection.videos.length} видео`}</span>
+      </div>
+
       <div className="ec-team-training__form">
         <input
-          className="ec-team-training__input"
+          className="ec-field ec-team-training__input"
           value={title}
           onChange={(event) => setTitle(event.target.value)}
           maxLength={80}
@@ -293,7 +301,7 @@ export function TeamTrainingLibrary({ serverId }: Props) {
           aria-label="Название видео"
         />
         <input
-          className="ec-team-training__input ec-team-training__input--url"
+          className="ec-field ec-team-training__input ec-team-training__input--url"
           value={url}
           onChange={(event) => setUrl(event.target.value)}
           onKeyDown={(event) => {
@@ -352,9 +360,14 @@ function TrainingVideoCard({ video, onRemove }: { video: TrainingVideo; onRemove
       </div>
       <div className="ec-team-training-video__meta">
         <div className="ec-team-training-video__title">{video.title}</div>
-        <button type="button" className="ec-team-training-video__remove" onClick={onRemove}>
-          Удалить
-        </button>
+        <div className="ec-team-training-video__actions">
+          <a className="ec-team-training-video__link" href={video.url} target="_blank" rel="noopener noreferrer">
+            YouTube
+          </a>
+          <button type="button" className="ec-team-training-video__remove" onClick={onRemove}>
+            Удалить
+          </button>
+        </div>
       </div>
     </article>
   );
