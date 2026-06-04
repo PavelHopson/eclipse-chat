@@ -5,11 +5,19 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.6.13** (Team Health training two-column layout —
-«Тренировки» перестали быть широким пустым контейнером: desktop получил
-раздельные зоны управления и видео-stage, shell ограничен рабочей шириной,
-форма больше не тянется через весь экран, tablet/mobile складываются в одну
-колонку. No backend/schema.)
+**Текущая версия:** **v1.6.14** (Team Health training file uploads — в «Тренировках»
+добавлена загрузка видеофайлов MP4/WebM/MOV/MKV/AVI до 200 MB. Upload endpoint
+`POST /api/servers/:id/training-videos/upload` требует JWT + membership и разрешён
+только OWNER/ADMIN; backend валидирует video MIME, размер и magic bytes через общий
+attachment pipeline, файлы кладутся в `/uploads/training-videos/`. UI показывает
+кнопку загрузки только администраторам, рендерит локальные файлы через `<video controls>`,
+старые YouTube-записи сохраняет. Каталог разделов/видео по-прежнему localStorage на
+устройстве, без ложной командной синхронизации. No schema.)
+
+**Предыдущая:** v1.6.13 (Team Health training two-column layout — «Тренировки»
+перестали быть широким пустым контейнером: desktop получил раздельные зоны управления
+и видео-stage, shell ограничен рабочей шириной, форма больше не тянется через весь
+экран, tablet/mobile складываются в одну колонку. No backend/schema.)
 
 **Предыдущая:** v1.6.12 (Team Health training layout fix — одиночные
 YouTube-тренировки больше не растягиваются в широкий hero-баннер: библиотека

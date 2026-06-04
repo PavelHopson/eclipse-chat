@@ -6,6 +6,7 @@ import sharp from "sharp";
 import { db } from "../db.js";
 import { serializeUser, userDisplayName } from "../lib/userView.js";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
+import { processTrainingVideoFile } from "../attachments.js";
 import { ensureServerActive } from "../lib/serverGating.js";
 import { recordAudit } from "../security/audit.js";
 import {
@@ -41,6 +42,16 @@ const ICON_MIME = new Set([
 const uploadIconBody = z.object({
   contentType: z.string().min(3).max(40),
   dataBase64: z.string().min(1),
+});
+
+const TRAINING_VIDEO_BODY_LIMIT = 300 * 1024 * 1024;
+
+const uploadTrainingVideoBody = z.object({
+  file: z.object({
+    filename: z.string().min(1).max(180),
+    mimeType: z.string().min(3).max(120),
+    dataBase64: z.string().min(1),
+  }),
 });
 
 function serverIconsDir(): string {
@@ -953,6 +964,47 @@ export async function registerServerRoutes(app: FastifyInstance) {
           ];
         }),
       };
+    },
+  );
+
+  /**
+   * POST /api/servers/:id/training-videos/upload
+   *
+   * Team Health training library: загружает один видеофайл на серверный disk и
+   * возвращает URL для локального каталога тренировок. Каталог пока client-side,
+   * но файл хранится централизованно. Upload разрешён только OWNER/ADMIN:
+   * это предотвращает превращение training-раздела в общий файлообменник.
+   */
+  app.post(
+    "/api/servers/:id/training-videos/upload",
+    { onRequest: [requireJwt], bodyLimit: TRAINING_VIDEO_BODY_LIMIT },
+    async (req, reply) => {
+      const { id: serverId } = req.params as { id: string };
+      const me = await loadMember(req, reply, serverId);
+      if (!me) return reply;
+      if (me.role !== "OWNER" && me.role !== "ADMIN") {
+        return reply.status(403).send({ error: "Только OWNER/ADMIN могут загружать видео тренировок" });
+      }
+
+      const parsed = uploadTrainingVideoBody.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.status(400).send({ error: "Invalid upload body" });
+      }
+      if (!parsed.data.file.mimeType.startsWith("video/")) {
+        return reply.status(400).send({ error: "Only video files are allowed" });
+      }
+
+      try {
+        const file = await processTrainingVideoFile(
+          parsed.data.file,
+          `${serverId}-${me.userId}`,
+        );
+        return reply.status(201).send({ file });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Upload failed";
+        req.log.warn({ err, serverId, userId: me.userId }, "training video upload failed");
+        return reply.status(400).send({ error: message });
+      }
     },
   );
 

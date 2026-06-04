@@ -1,5 +1,8 @@
+import { promises as fs } from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { isMimeConsistent, sniffMime } from "../src/attachments.js";
+import { isMimeConsistent, processTrainingVideoFile, sniffMime } from "../src/attachments.js";
 
 /**
  * Magic-bytes sniff гарантирует что клиент-объявленный mime реально
@@ -239,5 +242,53 @@ describe("isMimeConsistent", () => {
   it("rejects unknown sniff (defensive)", () => {
     expect(isMimeConsistent("image/jpeg", "unknown")).toBe(false);
     expect(isMimeConsistent("application/pdf", "unknown")).toBe(false);
+  });
+});
+
+describe("processTrainingVideoFile", () => {
+  it("stores validated videos under the training-videos uploads namespace", async () => {
+    const previousUploadsDir = process.env.UPLOADS_DIR;
+    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "ec-training-video-"));
+    process.env.UPLOADS_DIR = tmp;
+    try {
+      const mp4 = Buffer.concat([
+        Buffer.from([0x00, 0x00, 0x00, 0x18]),
+        Buffer.from("ftyp"),
+        Buffer.from("mp42"),
+        Buffer.alloc(20),
+      ]);
+      const file = await processTrainingVideoFile(
+        {
+          filename: "training.mp4",
+          mimeType: "video/mp4",
+          dataBase64: mp4.toString("base64"),
+        },
+        "server-user",
+      );
+
+      expect(file.url).toMatch(/^\/uploads\/training-videos\//);
+      expect(file.mimeType).toBe("video/mp4");
+      await expect(fs.stat(path.join(tmp, file.url.replace("/uploads/", "")))).resolves.toBeTruthy();
+    } finally {
+      if (previousUploadsDir === undefined) {
+        delete process.env.UPLOADS_DIR;
+      } else {
+        process.env.UPLOADS_DIR = previousUploadsDir;
+      }
+      await fs.rm(tmp, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects non-video uploads before writing to disk", async () => {
+    await expect(
+      processTrainingVideoFile(
+        {
+          filename: "note.txt",
+          mimeType: "text/plain",
+          dataBase64: Buffer.from("hello").toString("base64"),
+        },
+        "server-user",
+      ),
+    ).rejects.toThrow("Only video files are allowed");
   });
 });

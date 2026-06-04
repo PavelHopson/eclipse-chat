@@ -24,6 +24,7 @@ import type { TeamHealthData } from "../hooks/useTeamHealth";
 type Props = {
   serverId: string | null;
   serverName: string | null;
+  memberRole: string | null;
   data: TeamHealthData | null;
   loading: boolean;
   error: string | null;
@@ -220,6 +221,7 @@ function HeartIcon() {
 export function TeamHealth({
   serverId,
   serverName,
+  memberRole,
   data,
   loading,
   error,
@@ -231,6 +233,7 @@ export function TeamHealth({
   const unassigned = data?.counts.unassignedTotal ?? 0;
   const open = data?.counts.openTotal ?? 0;
   const blockedSet = new Set(data?.blockedMembers.map((m) => m.userId) ?? []);
+  const canUploadTrainingFiles = memberRole === "OWNER" || memberRole === "ADMIN";
 
   const isEmpty =
     !loading &&
@@ -307,7 +310,7 @@ export function TeamHealth({
               title="Пока нечего считать"
               hint="В пространстве ещё нет задач или решений. Создавайте их через /task в композере или hover-меню сообщения — здесь появится операционная сводка."
             />
-            <TeamTrainingLibrary serverId={serverId} />
+            <TeamTrainingLibrary serverId={serverId} canUploadFiles={canUploadTrainingFiles} />
           </>
         )}
 
@@ -387,7 +390,7 @@ export function TeamHealth({
             {/* v0.60: Trends week-over-week */}
             <TrendsRibbon trends={data.trends} />
 
-            <TeamTrainingLibrary serverId={serverId} />
+            <TeamTrainingLibrary serverId={serverId} canUploadFiles={canUploadTrainingFiles} />
 
             {/* v0.60: Per-channel breakdown */}
             <PerChannelSection rows={data.perChannel} />

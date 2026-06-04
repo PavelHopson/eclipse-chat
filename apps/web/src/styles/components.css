@@ -10430,6 +10430,17 @@ body {
   background: color-mix(in srgb, var(--ec-bg) 36%, transparent);
 }
 
+.ec-team-training__file-input {
+  display: none;
+}
+
+.ec-team-training__upload-hint {
+  margin: 0;
+  color: var(--ec-text-dim);
+  font-size: var(--ec-text-xs);
+  line-height: 1.45;
+}
+
 .ec-team-training__input {
   min-height: 38px;
   min-width: 0;
@@ -10523,11 +10534,17 @@ body {
   background: #02040a;
 }
 
-.ec-team-training-video__frame iframe {
+.ec-team-training-video__frame iframe,
+.ec-team-training-video__frame video {
   display: block;
   width: 100%;
   height: 100%;
   border: 0;
+}
+
+.ec-team-training-video__frame video {
+  object-fit: contain;
+  background: #02040a;
 }
 
 .ec-team-training-video__meta {
@@ -10556,6 +10573,15 @@ body {
 .ec-team-training-video__link:focus-visible {
   color: var(--ec-text-strong);
   text-decoration: underline;
+}
+
+.ec-team-training-video__source {
+  margin-top: 2px;
+  color: var(--ec-text-dim);
+  font-size: var(--ec-text-2xs);
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
 .ec-team-training-video__title {
