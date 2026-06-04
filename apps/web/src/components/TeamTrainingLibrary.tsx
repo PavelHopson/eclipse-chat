@@ -513,7 +513,7 @@ function TrainingVideoCard({ video, onRemove }: { video: TrainingVideo; onRemove
   if (video.source === "file") {
     const src = resolveAssetUrl(video.url);
     return (
-      <article className="ec-team-training-video">
+      <article className="ec-team-training-video ec-team-training-video--file">
         <div className="ec-team-training-video__frame">
           {src ? (
             <video controls preload="metadata" src={src} />
@@ -556,7 +556,7 @@ function TrainingVideoCard({ video, onRemove }: { video: TrainingVideo; onRemove
   }
 
   return (
-    <article className="ec-team-training-video">
+    <article className="ec-team-training-video ec-team-training-video--youtube">
       <div className="ec-team-training-video__frame">
         <iframe
           title={video.title}

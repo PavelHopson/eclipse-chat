@@ -5,7 +5,13 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.6.14** (Team Health training file uploads — в «Тренировках»
+**Текущая версия:** **v1.6.15** (Team Health training media grid — «Тренировки»
+переведены в полноценную медиатеку: stage занимает доступную ширину, карточки видео стали
+компактными и предсказуемыми, загруженные file-video получают отдельный portrait-friendly
+режим без огромной 16:9 пустоты, список видео скроллится внутри блока и больше не наезжает
+на секцию «По комнатам». No backend/schema.)
+
+**Предыдущая:** v1.6.14 (Team Health training file uploads — в «Тренировках»
 добавлена загрузка видеофайлов MP4/WebM/MOV/MKV/AVI до 200 MB. Upload endpoint
 `POST /api/servers/:id/training-videos/upload` требует JWT + membership и разрешён
 только OWNER/ADMIN; backend валидирует video MIME, размер и magic bytes через общий

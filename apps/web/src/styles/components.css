@@ -10272,9 +10272,10 @@ body {
 .ec-team-training {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(280px, 360px) minmax(420px, 720px);
+  grid-template-columns: minmax(260px, 344px) minmax(0, 1fr);
   align-items: start;
-  width: min(100%, 1160px);
+  width: 100%;
+  max-width: none;
   overflow: hidden;
   padding: 18px;
   border: 1px solid color-mix(in srgb, var(--ec-accent) 22%, var(--ec-border-subtle));
@@ -10499,16 +10500,21 @@ body {
 
 .ec-team-training__videos {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(clamp(220px, 24vw, 300px), 1fr));
   align-items: start;
   justify-content: start;
   gap: 14px;
+  max-height: clamp(360px, 46vh, 620px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 2px 6px 6px 2px;
+  scrollbar-width: thin;
 }
 
 .ec-team-training-video {
   overflow: hidden;
   width: 100%;
-  max-width: 640px;
+  min-width: 0;
   border: 1px solid color-mix(in srgb, var(--ec-accent) 20%, var(--ec-border-subtle));
   border-radius: 14px;
   background: color-mix(in srgb, var(--ec-surface-2) 86%, transparent);
@@ -10530,8 +10536,18 @@ body {
 
 .ec-team-training-video__frame {
   aspect-ratio: 16 / 9;
-  max-height: 360px;
+  max-height: 320px;
   background: #02040a;
+}
+
+.ec-team-training-video--file .ec-team-training-video__frame {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 4 / 3;
+  max-height: 260px;
+  background:
+    radial-gradient(circle at 50% 25%, color-mix(in srgb, var(--ec-accent) 16%, transparent), transparent 42%),
+    #02040a;
 }
 
 .ec-team-training-video__frame iframe,
@@ -10547,12 +10563,20 @@ body {
   background: #02040a;
 }
 
+.ec-team-training-video--file .ec-team-training-video__frame video {
+  width: auto;
+  max-width: 100%;
+  max-height: 260px;
+  object-fit: contain;
+}
+
 .ec-team-training-video__meta {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
   padding: 10px 12px;
+  min-width: 0;
 }
 
 .ec-team-training-video__actions {
@@ -10592,6 +10616,10 @@ body {
   font-weight: 750;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.ec-team-training-video__meta > div:first-child {
+  min-width: 0;
 }
 
 .ec-team-training-video__remove {
