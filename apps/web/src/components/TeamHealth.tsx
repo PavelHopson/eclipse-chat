@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import { Avatar } from "./Avatar";
 import { EmptyState } from "./EmptyState";
 import { EmptyHealthIcon } from "./EmptyIcons";
+import { TeamTrainingLibrary } from "./TeamTrainingLibrary";
 import { tiltProps } from "../lib/tilt";
 import type { TeamHealthData } from "../hooks/useTeamHealth";
 
@@ -21,6 +22,7 @@ import type { TeamHealthData } from "../hooks/useTeamHealth";
  */
 
 type Props = {
+  serverId: string | null;
   serverName: string | null;
   data: TeamHealthData | null;
   loading: boolean;
@@ -216,6 +218,7 @@ function HeartIcon() {
 }
 
 export function TeamHealth({
+  serverId,
   serverName,
   data,
   loading,
@@ -298,11 +301,14 @@ export function TeamHealth({
         )}
 
         {!error && isEmpty && (
-          <EmptyState
-            icon={<EmptyHealthIcon />}
-            title="Пока нечего считать"
-            hint="В пространстве ещё нет задач или решений. Создавайте их через /task в композере или hover-меню сообщения — здесь появится операционная сводка."
-          />
+          <>
+            <EmptyState
+              icon={<EmptyHealthIcon />}
+              title="Пока нечего считать"
+              hint="В пространстве ещё нет задач или решений. Создавайте их через /task в композере или hover-меню сообщения — здесь появится операционная сводка."
+            />
+            <TeamTrainingLibrary serverId={serverId} />
+          </>
         )}
 
         {!error && !isEmpty && data && (
@@ -380,6 +386,8 @@ export function TeamHealth({
 
             {/* v0.60: Trends week-over-week */}
             <TrendsRibbon trends={data.trends} />
+
+            <TeamTrainingLibrary serverId={serverId} />
 
             {/* v0.60: Per-channel breakdown */}
             <PerChannelSection rows={data.perChannel} />

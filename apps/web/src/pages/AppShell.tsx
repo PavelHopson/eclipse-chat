@@ -1965,6 +1965,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           />
         ) : teamHealthOpen && activeServer ? (
           <TeamHealth
+            serverId={activeServer.id}
             serverName={activeServer.name}
             data={teamHealth.data}
             loading={teamHealth.loading}
