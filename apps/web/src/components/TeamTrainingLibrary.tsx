@@ -211,123 +211,127 @@ export function TeamTrainingLibrary({ serverId }: Props) {
         </div>
       </div>
 
-      <div className="ec-team-training__sections" role="tablist" aria-label="Разделы тренировок">
-        {sections.map((section) => {
-          const isActive = section.id === activeSectionId;
-          const isRenaming = section.id === renameSectionId;
-          return (
-            <div key={section.id} className="ec-team-training__section-wrap">
-              {isRenaming ? (
-                <div className="ec-team-training__rename">
-                  <input
-                    className="ec-field ec-team-training__input"
-                    value={renameDraft}
-                    onChange={(event) => setRenameDraft(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") saveSectionName(section.id);
-                      if (event.key === "Escape") {
+      <div className="ec-team-training__controls">
+        <div className="ec-team-training__sections" role="tablist" aria-label="Разделы тренировок">
+          {sections.map((section) => {
+            const isActive = section.id === activeSectionId;
+            const isRenaming = section.id === renameSectionId;
+            return (
+              <div key={section.id} className="ec-team-training__section-wrap">
+                {isRenaming ? (
+                  <div className="ec-team-training__rename">
+                    <input
+                      className="ec-field ec-team-training__input"
+                      value={renameDraft}
+                      onChange={(event) => setRenameDraft(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") saveSectionName(section.id);
+                        if (event.key === "Escape") {
+                          setRenameSectionId(null);
+                          setRenameDraft("");
+                        }
+                      }}
+                      maxLength={48}
+                      autoFocus
+                      aria-label="Новое название раздела"
+                    />
+                    <button type="button" className="ec-btn ec-btn--ghost ec-btn--sm" onClick={() => saveSectionName(section.id)}>
+                      OK
+                    </button>
+                    <button
+                      type="button"
+                      className="ec-btn ec-btn--ghost ec-btn--sm"
+                      onClick={() => {
                         setRenameSectionId(null);
                         setRenameDraft("");
-                      }
-                    }}
-                    maxLength={48}
-                    autoFocus
-                    aria-label="Новое название раздела"
-                  />
-                  <button type="button" className="ec-btn ec-btn--ghost ec-btn--sm" onClick={() => saveSectionName(section.id)}>
-                    OK
-                  </button>
-                  <button
-                    type="button"
-                    className="ec-btn ec-btn--ghost ec-btn--sm"
-                    onClick={() => {
-                      setRenameSectionId(null);
-                      setRenameDraft("");
-                    }}
-                  >
-                    Отмена
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={isActive}
-                    className={`ec-team-training__section ${isActive ? "ec-team-training__section--active" : ""}`}
-                    onClick={() => {
-                      setActiveSectionId(section.id);
-                      setError(null);
-                    }}
-                  >
-                    <span>{section.name}</span>
-                    <span className="ec-team-training__count">{section.videos.length}</span>
-                  </button>
-                  <button
-                    type="button"
-                    className="ec-team-training__section-action"
-                    onClick={() => {
-                      setRenameSectionId(section.id);
-                      setRenameDraft(section.name);
-                      setError(null);
-                    }}
-                    title="Переименовать раздел"
-                    aria-label={`Переименовать раздел ${section.name}`}
-                  >
-                    ✎
-                  </button>
-                </>
-              )}
-            </div>
-          );
-        })}
+                      }}
+                    >
+                      Отмена
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={isActive}
+                      className={`ec-team-training__section ${isActive ? "ec-team-training__section--active" : ""}`}
+                      onClick={() => {
+                        setActiveSectionId(section.id);
+                        setError(null);
+                      }}
+                    >
+                      <span>{section.name}</span>
+                      <span className="ec-team-training__count">{section.videos.length}</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="ec-team-training__section-action"
+                      onClick={() => {
+                        setRenameSectionId(section.id);
+                        setRenameDraft(section.name);
+                        setError(null);
+                      }}
+                      title="Переименовать раздел"
+                      aria-label={`Переименовать раздел ${section.name}`}
+                    >
+                      ✎
+                    </button>
+                  </>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="ec-team-training__active-summary">
+          <div>
+            <span className="ec-team-training__active-kicker">Активный раздел</span>
+            <strong>{activeSection.name}</strong>
+          </div>
+          <span>{activeSection.videos.length === 0 ? "нет видео" : `${activeSection.videos.length} видео`}</span>
+        </div>
+
+        <div className="ec-team-training__form">
+          <input
+            className="ec-field ec-team-training__input"
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+            maxLength={80}
+            placeholder="Название видео"
+            aria-label="Название видео"
+          />
+          <input
+            className="ec-field ec-team-training__input ec-team-training__input--url"
+            value={url}
+            onChange={(event) => setUrl(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") addVideo();
+            }}
+            placeholder="Ссылка YouTube"
+            aria-label="Ссылка YouTube"
+          />
+          <button type="button" className="ec-btn ec-btn--primary ec-btn--sm" onClick={addVideo}>
+            Добавить видео
+          </button>
+        </div>
+
+        {error && <div className="ec-team-training__error">{error}</div>}
       </div>
 
-      <div className="ec-team-training__active-summary">
-        <div>
-          <span className="ec-team-training__active-kicker">Активный раздел</span>
-          <strong>{activeSection.name}</strong>
-        </div>
-        <span>{activeSection.videos.length === 0 ? "нет видео" : `${activeSection.videos.length} видео`}</span>
+      <div className="ec-team-training__stage">
+        {activeSection.videos.length === 0 ? (
+          <div className="ec-team-training__empty">
+            В разделе «{activeSection.name}» пока нет видео. Добавьте первую тренировку ссылкой YouTube.
+          </div>
+        ) : (
+          <div className="ec-team-training__videos" role="tabpanel" aria-label={`Видео раздела ${activeSection.name}`}>
+            {activeSection.videos.map((video) => (
+              <TrainingVideoCard key={video.id} video={video} onRemove={() => removeVideo(video.id)} />
+            ))}
+          </div>
+        )}
       </div>
-
-      <div className="ec-team-training__form">
-        <input
-          className="ec-field ec-team-training__input"
-          value={title}
-          onChange={(event) => setTitle(event.target.value)}
-          maxLength={80}
-          placeholder="Название видео"
-          aria-label="Название видео"
-        />
-        <input
-          className="ec-field ec-team-training__input ec-team-training__input--url"
-          value={url}
-          onChange={(event) => setUrl(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") addVideo();
-          }}
-          placeholder="Ссылка YouTube"
-          aria-label="Ссылка YouTube"
-        />
-        <button type="button" className="ec-btn ec-btn--primary ec-btn--sm" onClick={addVideo}>
-          Добавить видео
-        </button>
-      </div>
-
-      {error && <div className="ec-team-training__error">{error}</div>}
-
-      {activeSection.videos.length === 0 ? (
-        <div className="ec-team-training__empty">
-          В разделе «{activeSection.name}» пока нет видео. Добавьте первую тренировку ссылкой YouTube.
-        </div>
-      ) : (
-        <div className="ec-team-training__videos" role="tabpanel" aria-label={`Видео раздела ${activeSection.name}`}>
-          {activeSection.videos.map((video) => (
-            <TrainingVideoCard key={video.id} video={video} onRemove={() => removeVideo(video.id)} />
-          ))}
-        </div>
-      )}
     </section>
   );
 }

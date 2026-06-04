@@ -10271,6 +10271,10 @@ body {
 
 .ec-team-training {
   position: relative;
+  display: grid;
+  grid-template-columns: minmax(280px, 360px) minmax(420px, 720px);
+  align-items: start;
+  width: min(100%, 1160px);
   overflow: hidden;
   padding: 18px;
   border: 1px solid color-mix(in srgb, var(--ec-accent) 22%, var(--ec-border-subtle));
@@ -10295,6 +10299,7 @@ body {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(260px, 360px);
   align-items: start;
+  grid-column: 1 / -1;
   gap: 16px;
   margin-bottom: 14px;
 }
@@ -10322,8 +10327,20 @@ body {
   gap: 8px;
 }
 
+.ec-team-training__controls {
+  min-width: 0;
+  padding-right: 16px;
+  border-right: 1px solid color-mix(in srgb, var(--ec-accent) 14%, var(--ec-border-subtle));
+}
+
+.ec-team-training__stage {
+  min-width: 0;
+  padding-left: 16px;
+}
+
 .ec-team-training__sections {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   overflow-x: auto;
   padding: 2px 0 12px;
@@ -10404,7 +10421,7 @@ body {
 
 .ec-team-training__form {
   display: grid;
-  grid-template-columns: minmax(180px, 0.4fr) minmax(260px, 0.8fr) auto;
+  grid-template-columns: 1fr;
   align-items: center;
   padding: 10px;
   margin: 10px 0 14px;
@@ -10471,7 +10488,7 @@ body {
 
 .ec-team-training__videos {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 420px));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
   align-items: start;
   justify-content: start;
   gap: 14px;
@@ -10480,7 +10497,7 @@ body {
 .ec-team-training-video {
   overflow: hidden;
   width: 100%;
-  max-width: 420px;
+  max-width: 640px;
   border: 1px solid color-mix(in srgb, var(--ec-accent) 20%, var(--ec-border-subtle));
   border-radius: 14px;
   background: color-mix(in srgb, var(--ec-surface-2) 86%, transparent);
@@ -10502,7 +10519,7 @@ body {
 
 .ec-team-training-video__frame {
   aspect-ratio: 16 / 9;
-  max-height: 236px;
+  max-height: 360px;
   background: #02040a;
 }
 
@@ -10573,8 +10590,10 @@ body {
   text-align: center;
 }
 
-@media (max-width: 720px) {
+@media (max-width: 1040px) {
   .ec-team-training {
+    grid-template-columns: 1fr;
+    width: 100%;
     padding: 14px;
   }
 
@@ -10586,6 +10605,16 @@ body {
   .ec-team-training__new-section,
   .ec-team-training__form {
     width: 100%;
+  }
+
+  .ec-team-training__controls,
+  .ec-team-training__stage {
+    padding: 0;
+    border-right: 0;
+  }
+
+  .ec-team-training__stage {
+    margin-top: 10px;
   }
 
   .ec-team-training__form {
