@@ -1,8 +1,7 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { Avatar } from "./Avatar";
 import { ParticipantContextMenu } from "./ParticipantContextMenu";
-import { VoiceNotePanel } from "./VoiceNotePanel";
 import { VoiceSettingsModal } from "./VoiceSettingsModal";
 import { VoiceStatsOverlay } from "./VoiceStatsOverlay";
 import type { useVoice as useVoiceHook, VoiceParticipant, VoiceVisualTrack } from "../hooks/useVoice";
@@ -44,12 +43,10 @@ type Props = {
   occupants?: MemberRow[];
   activeVoiceChannelName?: string | null;
   voice: ReturnType<typeof useVoiceHook>;
-  /** v0.88 #23 phase 1a: socket для shared voice-note realtime updates.
-   *  Если undefined — VoiceNotePanel скрыт. */
-  socket?: import("socket.io-client").Socket | null;
   musicSession?: MusicSession | null;
   onOpenMusicPicker?: () => void;
   onOpenMusicExpand?: () => void;
+  composer?: ReactNode;
 };
 
 /* ===== Layout ============================================== */
@@ -96,19 +93,21 @@ const controlsDock: CSSProperties = {
   flexShrink: 0,
   display: "flex",
   alignItems: "center",
-  justifyContent: "center",
-  gap: "var(--ec-space-2)",
-  margin: "0 auto var(--ec-space-4)",
-  padding: "var(--ec-space-2) var(--ec-space-3)",
-  borderRadius: "var(--ec-radius-full)",
-  background: "var(--ec-overlay-bg)",
+  justifyContent: "space-between",
+  gap: "var(--ec-space-3)",
+  width: "min(860px, calc(100% - var(--ec-space-8)))",
+  margin: "0 auto var(--ec-space-3)",
+  padding: "10px 12px",
+  borderRadius: 28,
+  background:
+    "linear-gradient(180deg, color-mix(in srgb, var(--ec-surface-3) 94%, transparent), color-mix(in srgb, var(--ec-bg) 88%, transparent))",
   backdropFilter: "blur(20px)",
   WebkitBackdropFilter: "blur(20px)",
   boxShadow:
-    "0 18px 48px hsl(210 40% 2% / 0.6), 0 0 0 1px hsl(258 30% 40% / 0.12), inset 0 1px 0 hsl(258 90% 66% / 0.06)",
+    "0 20px 52px hsl(210 40% 2% / 0.58), 0 0 0 1px hsl(205 55% 70% / 0.2), 0 0 42px -20px hsl(258 90% 66% / 0.65), inset 0 1px 0 hsl(205 100% 78% / 0.08)",
   position: "relative",
   zIndex: 2,
-  flexWrap: "wrap",
+  flexWrap: "nowrap",
   maxWidth: "calc(100% - var(--ec-space-8))",
 };
 
@@ -551,10 +550,10 @@ export function VoiceRoom({
   occupants = [],
   activeVoiceChannelName,
   voice,
-  socket,
   musicSession,
   onOpenMusicPicker,
   onOpenMusicExpand,
+  composer,
 }: Props) {
   const v = voice;
   const [showSettings, setShowSettings] = useState(false);
@@ -1054,18 +1053,6 @@ export function VoiceRoom({
             )}
           </div>
         )}
-        {/* v0.88 #23 phase 1a: shared voice-room notepad. Видна всегда (даже
-            до join'а) — operators могут готовить agenda до встречи. */}
-        {socket !== undefined && (
-          <div
-            className={
-              "ec-voice-room__note-shell" +
-              (hasVisual ? " ec-voice-room__note-shell--compact" : "")
-            }
-          >
-            <VoiceNotePanel channelId={channelId} socket={socket ?? null} />
-          </div>
-        )}
       </div>
 
       {v.error && (
@@ -1353,6 +1340,8 @@ export function VoiceRoom({
           </>
         )}
       </div>
+
+      {composer && <div className="ec-voice-room__composer">{composer}</div>}
 
       {showSettings && <VoiceSettingsModal onClose={() => setShowSettings(false)} />}
 

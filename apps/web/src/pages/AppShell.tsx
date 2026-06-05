@@ -2140,10 +2140,28 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               occupants={selectedVoiceOccupants}
               activeVoiceChannelName={activeVoiceChannelName}
               voice={voice}
-              socket={socket}
               musicSession={music.session}
               onOpenMusicPicker={() => setShowVoiceMusicPicker(true)}
               onOpenMusicExpand={music.session ? () => setShowMusicExpand(true) : undefined}
+              composer={
+                <MessageInput
+                  channelName={selectedChannel.name}
+                  draftKey={`channel:${selectedChannel.id}`}
+                  disabled={!isReady}
+                  hideSlashCommands={isClientMode}
+                  mentionNames={members.map((m) => m.user.displayName)}
+                  customEmojis={customEmojis}
+                  onSend={(content, attachments, actionItem) =>
+                    sendMessage(content, senderForMessages, attachments, actionItem)
+                  }
+                  onTypingStart={emitTypingStart}
+                  onTypingStop={emitTypingStop}
+                  prefillContent={share.pendingContent}
+                  onPrefillConsumed={share.consume}
+                  prefillFiles={share.pendingFiles}
+                  onPrefillFilesConsumed={share.consumeFiles}
+                />
+              }
             />
           ) : (
             <VoicePlaceholder channelName={selectedChannel.name} />
