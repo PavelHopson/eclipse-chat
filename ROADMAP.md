@@ -5,7 +5,12 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.6.17** (Composer hotfix — исправлена визуальная иерархия
+**Текущая версия:** **v1.6.18** (Composer grid/popover hotfix — исправлен реальный root cause
+после v1.6.17: старый `grid-template-columns: ... !important` больше не сжимает textarea
+в мини-колонку, а `overflow: hidden` на composer-box больше не клипает `+`-меню.
+Textarea занимает всю рабочую ширину строки, `+` popover снова видим. No backend/schema.)
+
+**Предыдущая:** v1.6.17 (Composer hotfix — исправлена визуальная иерархия
 после v1.6.16: `+` больше не превращается в крестик, send стал компактной icon-only
 кнопкой фиксированной ширины, textarea снова занимает основное пространство composer'а,
 mobile grid явно держит `+ / input / emoji / send` без растянутой фиолетовой кнопки.

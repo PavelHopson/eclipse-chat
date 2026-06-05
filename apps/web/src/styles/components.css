@@ -11119,3 +11119,54 @@ body {
   }
 }
 
+/* v1.6.18 hotfix: beat older composer !important grid and allow the + popover out of the input shell. */
+.ec-composer-box.ec-composer-box--full {
+  grid-template-columns: 40px minmax(0, 1fr) 40px 44px !important;
+  overflow: visible !important;
+}
+
+.ec-composer-box.ec-composer-box--minimal {
+  grid-template-columns: minmax(0, 1fr) 40px 44px !important;
+  overflow: visible !important;
+}
+
+.ec-composer-box--full .ec-composer-action-root {
+  grid-column: 1 !important;
+  z-index: 3;
+}
+
+.ec-composer-box--full .ec-composer-textarea,
+.ec-composer-box--minimal .ec-composer-textarea {
+  grid-column: 2 !important;
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+.ec-composer-box--minimal .ec-composer-textarea {
+  grid-column: 1 !important;
+}
+
+.ec-composer-box--full > .ec-composer-icon-btn {
+  grid-column: 3 !important;
+}
+
+.ec-composer-box--minimal > .ec-composer-icon-btn {
+  grid-column: 2 !important;
+}
+
+.ec-composer-box--full .ec-composer-send {
+  grid-column: 4 !important;
+  width: 44px !important;
+  min-width: 44px !important;
+}
+
+.ec-composer-box--minimal .ec-composer-send {
+  grid-column: 3 !important;
+  width: 44px !important;
+  min-width: 44px !important;
+}
+
+.ec-composer-action-menu {
+  overflow: visible !important;
+}
+
