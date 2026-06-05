@@ -62,9 +62,24 @@ export function CursorTrail({
   const rafRef = useRef<number | null>(null);
   const reduced = usePrefersReducedMotion();
   const lastMouseRef = useRef<{ x: number; y: number } | null>(null);
+  const [enabled, setEnabled] = useState(false);
 
   useEffect(() => {
-    if (reduced) return;
+    if (reduced || typeof window === "undefined") {
+      setEnabled(false);
+      return;
+    }
+    const canRunTrail = () =>
+      window.innerWidth >= 900 &&
+      !window.matchMedia("(pointer: coarse)").matches;
+    setEnabled(canRunTrail());
+    const handleCapabilityResize = () => setEnabled(canRunTrail());
+    window.addEventListener("resize", handleCapabilityResize);
+    return () => window.removeEventListener("resize", handleCapabilityResize);
+  }, [reduced]);
+
+  useEffect(() => {
+    if (reduced || !enabled) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
@@ -72,25 +87,58 @@ export function CursorTrail({
 
     let width = 0;
     let height = 0;
+    let rect = canvas.getBoundingClientRect();
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
     const resize = () => {
-      const rect = canvas.getBoundingClientRect();
+      rect = canvas.getBoundingClientRect();
       width = rect.width;
       height = rect.height;
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
-      ctx.scale(dpr, dpr);
+      canvas.width = Math.max(1, Math.floor(width * dpr));
+      canvas.height = Math.max(1, Math.floor(height * dpr));
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
     resize();
 
-    const handleMove = (event: MouseEvent) => {
-      const rect = canvas.getBoundingClientRect();
+    const draw = () => {
+      ctx.clearRect(0, 0, width, height);
+      const particles = particlesRef.current;
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life -= 0.018;
+        if (p.life <= 0) {
+          particles.splice(i, 1);
+          continue;
+        }
+        const alpha = p.life * 0.55;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(154, 216, 239, ${alpha})`;
+        ctx.shadowColor = `rgba(93, 181, 217, ${alpha * 0.75})`;
+        ctx.shadowBlur = 6;
+        ctx.fill();
+      }
+      ctx.shadowBlur = 0;
+      rafRef.current =
+        particles.length > 0 ? window.requestAnimationFrame(draw) : null;
+    };
+
+    const scheduleDraw = () => {
+      if (rafRef.current === null) {
+        rafRef.current = window.requestAnimationFrame(draw);
+      }
+    };
+
+    const handleMove = (event: PointerEvent) => {
+      if (event.pointerType === "touch") return;
       const x = event.clientX - rect.left;
       const y = event.clientY - rect.top;
       if (x < 0 || y < 0 || x > width || y > height) return;
       lastMouseRef.current = { x, y };
-      for (let i = 0; i < density * 2; i++) {
+      const spawnCount = Math.max(1, Math.round(density));
+      for (let i = 0; i < spawnCount; i++) {
         particlesRef.current.push({
           x,
           y,
@@ -100,48 +148,25 @@ export function CursorTrail({
           size: Math.random() * 2 + 0.6,
         });
       }
-      if (particlesRef.current.length > 220) {
-        particlesRef.current.splice(0, particlesRef.current.length - 220);
+      if (particlesRef.current.length > 96) {
+        particlesRef.current.splice(0, particlesRef.current.length - 96);
       }
+      scheduleDraw();
     };
 
-    const draw = () => {
-      ctx.clearRect(0, 0, width, height);
-      const particles = particlesRef.current;
-      for (let i = particles.length - 1; i >= 0; i--) {
-        const p = particles[i];
-        p.x += p.vx;
-        p.y += p.vy;
-        p.life -= 0.012;
-        if (p.life <= 0) {
-          particles.splice(i, 1);
-          continue;
-        }
-        const alpha = p.life * 0.7;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(154, 216, 239, ${alpha})`;
-        ctx.shadowColor = `rgba(93, 181, 217, ${alpha * 0.9})`;
-        ctx.shadowBlur = 12;
-        ctx.fill();
-      }
-      ctx.shadowBlur = 0;
-      rafRef.current = window.requestAnimationFrame(draw);
-    };
-
-    rafRef.current = window.requestAnimationFrame(draw);
-    window.addEventListener("mousemove", handleMove, { passive: true });
+    window.addEventListener("pointermove", handleMove, { passive: true });
     window.addEventListener("resize", resize);
 
     return () => {
       if (rafRef.current !== null) window.cancelAnimationFrame(rafRef.current);
-      window.removeEventListener("mousemove", handleMove);
+      rafRef.current = null;
+      window.removeEventListener("pointermove", handleMove);
       window.removeEventListener("resize", resize);
       particlesRef.current = [];
     };
-  }, [density, reduced]);
+  }, [density, enabled, reduced]);
 
-  if (reduced) return null;
+  if (reduced || !enabled) return null;
   return (
     <canvas
       ref={canvasRef}
@@ -176,11 +201,15 @@ export function SplitTextReveal({
       return;
     }
     const node = ref.current;
-    if (!node || typeof IntersectionObserver === "undefined") return;
+    const fallback = window.setTimeout(() => setVisible(true), 180);
+    if (!node || typeof IntersectionObserver === "undefined") {
+      return () => window.clearTimeout(fallback);
+    }
     const io = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
+            window.clearTimeout(fallback);
             setVisible(true);
             io.disconnect();
           }
@@ -189,7 +218,10 @@ export function SplitTextReveal({
       { threshold: 0.2 },
     );
     io.observe(node);
-    return () => io.disconnect();
+    return () => {
+      window.clearTimeout(fallback);
+      io.disconnect();
+    };
   }, [reduced]);
 
   const chars = useMemo(() => {

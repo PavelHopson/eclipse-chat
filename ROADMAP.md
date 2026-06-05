@@ -5,7 +5,13 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.6.19** (Channel message layout polish — собственные сообщения в каналах
+**Текущая версия:** **v1.6.20** (Landing performance pass — убран реальный root cause
+подлагиваний на лендинге: `CursorTrail` больше не держит бесконечный RAF в пустоту,
+отключается на touch/mobile и сбрасывает canvas transform при resize. Hero auth-frame
+больше не тащит SVG turbulence + blur stack, а offscreen memory/security-анимации
+переведены в статичные состояния с `content-visibility: auto`. No backend/schema.)
+
+**Предыдущая:** v1.6.19 (Channel message layout polish — собственные сообщения в каналах
 больше не уезжают вправо отдельной карточкой: avatar и content снова живут в одном левом
 read rail, поток читается как командный канал, а не как личный чат. `+`-меню composer'а
 уплотнено по высоте/ширине и меньше перекрывает историю. No backend/schema.)

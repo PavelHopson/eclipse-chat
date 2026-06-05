@@ -367,8 +367,13 @@
   text-transform: uppercase;
   color: var(--L-text);
 }
+.ec-landing__hero-title-line {
+  display: block;
+  max-width: 9ch;
+  opacity: 1;
+  transform: none;
+}
 .ec-landing__hero-title-accent {
-  display: inline;
   color: var(--L-signal);
 }
 .ec-landing__hero-subhead {
@@ -2024,6 +2029,9 @@
     transform: none;
     transition: none;
   }
+  .ec-landing__hero-title-line {
+    animation: none !important;
+  }
   .ec-tilt-card__inner,
   .ec-magnetic {
     transform: none !important;
@@ -2031,5 +2039,81 @@
   }
   .ec-hero-access__frame::before {
     animation: none;
+  }
+}
+
+/* v1.6.20 — landing performance pass.
+ * The landing keeps the cinematic identity, but avoids continuous GPU-heavy
+ * work outside direct interaction. The expensive electric SVG filter + blur
+ * stack was the main visual suspect for torn frames on mid GPUs. */
+.ec-landing__trust,
+.ec-landing__section,
+.ec-landing__final,
+.ec-landing__footer {
+  content-visibility: auto;
+  contain-intrinsic-size: 720px;
+}
+
+.ec-hero-access__electric-border {
+  filter: none;
+  opacity: 0.46;
+  border-width: 1px;
+}
+
+.ec-hero-access__electric-glow--1,
+.ec-hero-access__electric-glow--2,
+.ec-hero-access__electric-overlay,
+.ec-hero-access__electric-bg {
+  display: none;
+}
+
+.ec-hero-access__frame::before {
+  animation: none !important;
+  opacity: 0.42;
+  background-size: 100% 100%;
+}
+
+.ec-hero-access__corner {
+  animation: none !important;
+  opacity: 0.86;
+}
+
+.ec-hero-access__status-dot,
+.ec-hero-access__footer-dot {
+  animation: none !important;
+}
+
+.ec-memory-map__link,
+.ec-memory-map__core-pulse,
+.ec-memory-map__orbit--one,
+.ec-memory-map__orbit--two,
+.ec-security-stack__grid,
+.ec-security-stack__cube,
+.ec-security-stack__cube-face--3,
+.ec-security-stack__cube-shield,
+.ec-security-stack__rings span {
+  animation: none !important;
+}
+
+.ec-security-stack__cube {
+  transform: rotateX(55deg) rotateZ(-16deg);
+}
+
+.ec-security-stack__cube-shield {
+  transform: translate(-50%, -50%) translateZ(80px) rotateX(-55deg);
+}
+
+.ec-landing__brand-logo {
+  filter: brightness(1.12) contrast(1.08);
+}
+
+.ec-landing__brand:hover .ec-landing__brand-logo {
+  filter: brightness(1.18) contrast(1.12)
+    drop-shadow(0 0 16px rgba(93, 181, 217, 0.45));
+}
+
+@media (max-width: 900px), (pointer: coarse) {
+  .ec-cursor-trail {
+    display: none;
   }
 }
