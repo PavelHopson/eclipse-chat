@@ -473,7 +473,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   const selectedChannel = channels.find((c) => c.id === selectedChannelId) ?? null;
 
   // AI Memory «Since your last visit» — фиксирует visit + дельта с prior.
-  // Только для text/broadcast (voice = без feed'а).
+  // Voice теперь имеет лёгкий room-chat, но visit summary остаётся только для
+  // feed-каналов, чтобы не смешивать созвоны с операционной лентой.
   const visitChannelId =
     selectedChannel && selectedChannel.type !== "VOICE" ? selectedChannel.id : null;
   const sinceLastVisit = useSinceLastVisit(visitChannelId);
@@ -2143,6 +2144,43 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               musicSession={music.session}
               onOpenMusicPicker={() => setShowVoiceMusicPicker(true)}
               onOpenMusicExpand={music.session ? () => setShowMusicExpand(true) : undefined}
+              messages={
+                <div className="ec-voice-room__messages-card">
+                  <div className="ec-voice-room__messages-head">
+                    <span>Чат комнаты</span>
+                    <span>{messages.length > 0 ? `${messages.length}` : "пусто"}</span>
+                  </div>
+                  <MessageList
+                    messages={messages}
+                    pendingBotTyping={pendingBotTyping}
+                    ephemeralBanner={ephemeralBanner}
+                    onDismissEphemeralBanner={dismissEphemeralBanner}
+                    emptyHint={messagesLoading ? "Загрузка…" : "Напишите первое сообщение в голосовой комнате."}
+                    channelName={selectedChannel.name}
+                    listKey={`voice:${selectedChannel.id}`}
+                    currentUserId={user.id}
+                    currentUserName={headerName}
+                    currentRole={currentRole}
+                    mentionNames={members.map((m) => m.user.displayName)}
+                    customEmojis={customEmojis}
+                    onRetry={(mid) => retryMessage(mid, senderForMessages)}
+                    onEdit={editMessage}
+                    onDelete={deleteMessage}
+                    onPin={pinMessage}
+                    onUnpin={unpinMessage}
+                    onToggleReaction={toggleReaction}
+                    onCreateAction={createActionItem}
+                    onToggleActionStatus={updateActionItemStatus}
+                    onOpenThread={(messageId) => {
+                      setSelectedThreadId(messageId);
+                      setRightRailCollapsed(false);
+                      if (isTabletOrSmaller) setMembersOpen(true);
+                    }}
+                    onPlayShared={(attachmentId) => void music.start(attachmentId)}
+                  />
+                  <TypingIndicator users={typingUsers} />
+                </div>
+              }
               composer={
                 <MessageInput
                   channelName={selectedChannel.name}

@@ -11223,30 +11223,18 @@ body {
 }
 
 .ec-voice-room__controls {
-  min-height: 66px;
+  min-height: 62px;
   border-color: color-mix(in srgb, var(--ec-accent) 20%, var(--ec-border-default)) !important;
 }
 
 .ec-voice-room__controls::before {
-  content: "Связь";
-  display: inline-flex;
-  align-items: center;
-  min-height: 40px;
-  padding: 0 12px;
-  border-right: 1px solid color-mix(in srgb, var(--ec-border-default) 70%, transparent);
-  color: color-mix(in srgb, var(--ec-text-muted) 88%, transparent);
-  font-family: var(--ec-font-mono);
-  font-size: 0.64rem;
-  font-weight: 850;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  white-space: nowrap;
+  display: none;
 }
 
 .ec-voice-room__controls .ec-vr-ctrl {
-  width: 46px !important;
-  height: 46px !important;
-  border-radius: 16px !important;
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 15px !important;
   background:
     radial-gradient(circle at 35% 18%, color-mix(in srgb, var(--ec-accent) 10%, transparent), transparent 58%),
     color-mix(in srgb, var(--ec-surface-3) 88%, #050810) !important;
@@ -11286,22 +11274,79 @@ body {
   display: flex !important;
   align-items: center !important;
   gap: 10px !important;
-  height: 46px !important;
-  min-width: 176px;
+  height: 44px !important;
+  min-width: 166px;
   padding: 0 14px !important;
-  border-radius: 16px !important;
+  border-radius: 15px !important;
   background: color-mix(in srgb, var(--ec-surface-3) 82%, #050810) !important;
   border: 1px solid color-mix(in srgb, var(--ec-border-default) 78%, transparent) !important;
   color: color-mix(in srgb, var(--ec-text-muted) 92%, transparent);
 }
 
 .ec-voice-room__controls .ec-vr-volume input[type="range"] {
-  width: 108px !important;
+  width: 96px !important;
 }
 
 .ec-voice-room__composer {
   flex-shrink: 0;
   padding: 0 min(28px, 2vw) 14px;
+}
+
+.ec-voice-room__messages {
+  flex-shrink: 0;
+  padding: 0 min(28px, 2vw) 12px;
+}
+
+.ec-voice-room__messages-card {
+  max-width: min(980px, 100%);
+  max-height: clamp(170px, 24vh, 280px);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 18%, var(--ec-border-default));
+  border-radius: 20px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--ec-surface-2) 84%, transparent), color-mix(in srgb, var(--ec-bg) 90%, transparent)),
+    radial-gradient(circle at 4% 0%, color-mix(in srgb, var(--ec-accent) 9%, transparent), transparent 42%);
+  box-shadow:
+    0 18px 44px -32px color-mix(in srgb, var(--ec-accent) 65%, transparent),
+    inset 0 1px 0 hsl(0 0% 100% / 0.045);
+}
+
+.ec-voice-room__messages-head {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid color-mix(in srgb, var(--ec-border-default) 72%, transparent);
+  color: var(--ec-text-muted);
+  font-family: var(--ec-font-mono);
+  font-size: 0.66rem;
+  font-weight: 850;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.ec-voice-room__messages-card .ec-message-list {
+  min-height: 0;
+  padding: 8px 10px;
+  overflow-y: auto;
+}
+
+.ec-voice-room__messages-card .ec-message-list-shell {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.ec-voice-room__messages-card .ec-channel-start {
+  display: none;
+}
+
+.ec-voice-room__messages-card .ec-message-row {
+  padding-block: 7px;
 }
 
 .ec-voice-room__composer .ec-composer {
@@ -11339,18 +11384,21 @@ body {
     display: none;
   }
 
-  .ec-voice-room__controls::before {
-    position: sticky;
-    left: 0;
-    background: color-mix(in srgb, var(--ec-surface-3) 95%, #050810);
-    z-index: 1;
-  }
 }
 
 @media (max-width: 560px) {
   .ec-voice-room__composer {
     padding-inline: 10px;
     padding-bottom: 10px;
+  }
+
+  .ec-voice-room__messages {
+    padding-inline: 10px;
+  }
+
+  .ec-voice-room__messages-card {
+    max-height: 210px;
+    border-radius: 18px;
   }
 
   .ec-voice-room__controls {

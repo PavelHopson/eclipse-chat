@@ -319,9 +319,6 @@ export async function registerChannelRoutes(app: FastifyInstance) {
       if (!ch) {
         return reply.status(404).send({ error: "Channel not found" });
       }
-      if (ch.type === "VOICE") {
-        return reply.status(400).send({ error: "Voice channels don't support text messages" });
-      }
       if (ch.serverId) {
         // v1.2.7 Platform Admin (trek P2) — suspended server-у блокируем
         // write. Read остаётся, history не пропадает.

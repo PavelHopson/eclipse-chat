@@ -46,6 +46,7 @@ type Props = {
   musicSession?: MusicSession | null;
   onOpenMusicPicker?: () => void;
   onOpenMusicExpand?: () => void;
+  messages?: ReactNode;
   composer?: ReactNode;
 };
 
@@ -93,12 +94,12 @@ const controlsDock: CSSProperties = {
   flexShrink: 0,
   display: "flex",
   alignItems: "center",
-  justifyContent: "space-between",
-  gap: "var(--ec-space-3)",
-  width: "min(860px, calc(100% - var(--ec-space-8)))",
+  justifyContent: "center",
+  gap: "8px",
+  width: "fit-content",
   margin: "0 auto var(--ec-space-3)",
-  padding: "10px 12px",
-  borderRadius: 28,
+  padding: "8px",
+  borderRadius: 24,
   background:
     "linear-gradient(180deg, color-mix(in srgb, var(--ec-surface-3) 94%, transparent), color-mix(in srgb, var(--ec-bg) 88%, transparent))",
   backdropFilter: "blur(20px)",
@@ -108,7 +109,7 @@ const controlsDock: CSSProperties = {
   position: "relative",
   zIndex: 2,
   flexWrap: "nowrap",
-  maxWidth: "calc(100% - var(--ec-space-8))",
+  maxWidth: "calc(100% - 24px)",
 };
 
 const controlBtn: CSSProperties = {
@@ -553,6 +554,7 @@ export function VoiceRoom({
   musicSession,
   onOpenMusicPicker,
   onOpenMusicExpand,
+  messages,
   composer,
 }: Props) {
   const v = voice;
@@ -1054,6 +1056,8 @@ export function VoiceRoom({
           </div>
         )}
       </div>
+
+      {messages && <div className="ec-voice-room__messages">{messages}</div>}
 
       {v.error && (
         <p
