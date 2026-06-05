@@ -814,11 +814,13 @@ export function VoiceRoom({
         </div>
       </div>
 
-      {/* ── ROOM CANVAS — immersive ──────────────────────────── */}
-      <div
-        style={canvas}
-        className={"ec-voice-room__body" + (hasVisual ? " ec-voice-room__body--visual" : "")}
-      >
+      <div className="ec-voice-room__split">
+        <section className="ec-voice-room__stage-column" aria-label="Эфир голосовой комнаты">
+          {/* ── ROOM CANVAS — immersive ──────────────────────────── */}
+          <div
+            style={canvas}
+            className={"ec-voice-room__body" + (hasVisual ? " ec-voice-room__body--visual" : "")}
+          >
         {hasVisual ? (
           /* Cinematic video stage + компактная presence-полоса аудио-участников */
           <>
@@ -1055,47 +1057,45 @@ export function VoiceRoom({
             )}
           </div>
         )}
-      </div>
+          </div>
 
-      {messages && <div className="ec-voice-room__messages">{messages}</div>}
-
-      {v.error && (
-        <p
-          style={{
-            margin: "0 var(--ec-space-5) var(--ec-space-2)",
-            padding: "var(--ec-space-2) var(--ec-space-3)",
-            color: "var(--ec-danger)",
-            background: "var(--ec-danger-soft)",
-            borderRadius: "var(--ec-radius-md)",
-            fontSize: "var(--ec-text-sm)",
-            position: "relative",
-            zIndex: 2,
-          }}
-        >
-          {v.error}
-        </p>
-      )}
+          {v.error && (
+            <p
+              style={{
+                margin: "0 var(--ec-space-5) var(--ec-space-2)",
+                padding: "var(--ec-space-2) var(--ec-space-3)",
+                color: "var(--ec-danger)",
+                background: "var(--ec-danger-soft)",
+                borderRadius: "var(--ec-radius-md)",
+                fontSize: "var(--ec-text-sm)",
+                position: "relative",
+                zIndex: 2,
+              }}
+            >
+              {v.error}
+            </p>
+          )}
 
       {/* ── DIAGNOSTICS PANEL (v0.41 troubleshooting helper) ─── */}
-      {showDiagnostics && (
-        <div
-          style={{
-            position: "absolute",
-            bottom: 80,
-            left: 16,
-            maxWidth: 340,
-            padding: "var(--ec-space-3) var(--ec-space-4)",
-            background: "var(--ec-surface-2)",
-            borderRadius: "var(--ec-radius-md)",
-            boxShadow: "var(--ec-elev-1)",
-            fontSize: "var(--ec-text-2xs)",
-            color: "var(--ec-text-muted)",
-            zIndex: 4,
-            fontFamily: "var(--ec-font-mono)",
-            lineHeight: 1.6,
-          }}
-          role="status"
-        >
+          {showDiagnostics && (
+            <div
+              style={{
+                position: "absolute",
+                bottom: 80,
+                left: 16,
+                maxWidth: 340,
+                padding: "var(--ec-space-3) var(--ec-space-4)",
+                background: "var(--ec-surface-2)",
+                borderRadius: "var(--ec-radius-md)",
+                boxShadow: "var(--ec-elev-1)",
+                fontSize: "var(--ec-text-2xs)",
+                color: "var(--ec-text-muted)",
+                zIndex: 4,
+                fontFamily: "var(--ec-font-mono)",
+                lineHeight: 1.6,
+              }}
+              role="status"
+            >
           <div
             style={{
               display: "flex",
@@ -1180,16 +1180,16 @@ export function VoiceRoom({
           <div style={{ marginTop: 8, fontFamily: "inherit", color: "var(--ec-text-dim)", fontSize: "0.65rem" }}>
             Если voice сломан: открой Настройки голоса → «Сбросить голосовые настройки» в самом низу. Это вернёт все umolchaniya и обычно лечит застрявшие state'ы.
           </div>
-        </div>
-      )}
+            </div>
+          )}
 
       {/* ── CONTROLS DOCK — floating ─────────────────────────── */}
-      <div
-        style={controlsDock}
-        className="ec-voice-room__controls"
-        role="toolbar"
-        aria-label="Управление голосовой комнатой"
-      >
+          <div
+            style={controlsDock}
+            className="ec-voice-room__controls"
+            role="toolbar"
+            aria-label="Управление голосовой комнатой"
+          >
         {!isJoinedHere ? (
           <button
             type="button"
@@ -1343,9 +1343,16 @@ export function VoiceRoom({
             </button>
           </>
         )}
-      </div>
+          </div>
+        </section>
 
-      {composer && <div className="ec-voice-room__composer">{composer}</div>}
+        {(messages || composer) && (
+          <aside className="ec-voice-room__chat-column" aria-label="Чат голосовой комнаты">
+            {messages && <div className="ec-voice-room__messages">{messages}</div>}
+            {composer && <div className="ec-voice-room__composer">{composer}</div>}
+          </aside>
+        )}
+      </div>
 
       {showSettings && <VoiceSettingsModal onClose={() => setShowSettings(false)} />}
 
