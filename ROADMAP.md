@@ -5,7 +5,13 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.6.20** (Landing performance pass — убран реальный root cause
+**Текущая версия:** **v1.6.21** (Landing auth access redesign — окно авторизации на лендинге
+пересобрано как premium access-module: добавлены статусная шапка, статичный контурный сигил,
+trust-строка Self-hosted/TLS/2FA ready, более спокойные поля, сегментированный режим вход/создание
+и усиленный CTA. Pure frontend design slice: логика авторизации, API и schema не менялись; тяжёлые
+continuous effects не возвращались после performance pass.)
+
+**Предыдущая:** v1.6.20 (Landing performance pass — убран реальный root cause
 подлагиваний на лендинге: `CursorTrail` больше не держит бесконечный RAF в пустоту,
 отключается на touch/mobile и сбрасывает canvas transform при resize. Hero auth-frame
 больше не тащит SVG turbulence + blur stack, а offscreen memory/security-анимации

@@ -2117,3 +2117,398 @@
     display: none;
   }
 }
+
+/* v1.6.21 — auth access module redesign.
+ * Static composition only: stronger hierarchy and calmer controls without
+ * returning the heavy continuous effects removed in v1.6.20. */
+.ec-hero-access__frame {
+  max-width: 430px;
+  box-sizing: border-box;
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid rgba(154, 216, 239, 0.2);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 16% 0%, rgba(93, 181, 217, 0.18), transparent 32%),
+    radial-gradient(circle at 86% 12%, rgba(139, 92, 246, 0.2), transparent 36%),
+    linear-gradient(180deg, rgba(15, 23, 34, 0.94), rgba(4, 8, 14, 0.97));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -1px 0 rgba(139, 92, 246, 0.1),
+    0 28px 90px rgba(0, 0, 0, 0.58),
+    0 0 0 1px rgba(139, 92, 246, 0.1),
+    0 0 58px rgba(93, 181, 217, 0.12);
+}
+
+.ec-hero-access__frame::after {
+  left: 22px;
+  right: 22px;
+  background: linear-gradient(90deg, transparent, rgba(93, 181, 217, 0.9), rgba(139, 92, 246, 0.7), transparent);
+  opacity: 0.86;
+}
+
+.ec-hero-access__frame::before {
+  opacity: 0.24;
+  background:
+    linear-gradient(135deg, rgba(154, 216, 239, 0.08), transparent 42%),
+    linear-gradient(315deg, rgba(139, 92, 246, 0.1), transparent 48%);
+}
+
+.ec-hero-access__corner {
+  display: none;
+}
+
+.ec-hero-access__topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 26px;
+  font-family: var(--ec-font-mono, "JetBrains Mono", ui-monospace, monospace);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(190, 218, 235, 0.72);
+}
+
+.ec-hero-access__topline-status,
+.ec-hero-access__topline-code {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ec-hero-access__topline-status span {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: var(--L-status-active);
+  box-shadow: 0 0 14px rgba(65, 215, 154, 0.55);
+}
+
+.ec-hero-access__topline-code {
+  color: rgba(139, 160, 175, 0.62);
+}
+
+.ec-hero-access__sigil {
+  position: relative;
+  width: 92px;
+  height: 92px;
+  margin: 0 auto 2px;
+  display: grid;
+  place-items: center;
+  border-radius: 28px;
+  background:
+    radial-gradient(circle, rgba(139, 92, 246, 0.2), transparent 58%),
+    linear-gradient(145deg, rgba(9, 13, 22, 0.95), rgba(3, 7, 13, 0.86));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 18px 42px rgba(0, 0, 0, 0.42),
+    0 0 34px rgba(139, 92, 246, 0.24);
+  overflow: hidden;
+}
+
+.ec-hero-access__sigil::before {
+  content: "";
+  position: absolute;
+  inset: 12px;
+  border: 1px solid rgba(93, 181, 217, 0.22);
+  border-radius: 999px;
+}
+
+.ec-hero-access__sigil-core {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #f2d28d, #8b5cf6 58%, #5db5d9);
+  box-shadow:
+    0 0 18px rgba(139, 92, 246, 0.72),
+    0 0 28px rgba(93, 181, 217, 0.38);
+}
+
+.ec-hero-access__sigil-ring {
+  position: absolute;
+  border: 1px solid rgba(154, 216, 239, 0.44);
+  border-radius: 999px;
+}
+
+.ec-hero-access__sigil-ring--one {
+  width: 58px;
+  height: 58px;
+}
+
+.ec-hero-access__sigil-ring--two {
+  width: 78px;
+  height: 26px;
+  transform: rotate(-10deg);
+  border-color: rgba(139, 92, 246, 0.56);
+}
+
+.ec-hero-access__head {
+  gap: 8px;
+  text-align: left;
+}
+
+.ec-hero-access__eyebrow {
+  letter-spacing: 0.14em;
+  color: rgba(93, 181, 217, 0.92);
+}
+
+.ec-hero-access__title {
+  max-width: 10ch;
+  font-size: clamp(28px, 3vw, 38px);
+  line-height: 0.98;
+  letter-spacing: 0;
+}
+
+.ec-hero-access__sub {
+  color: rgba(201, 216, 228, 0.72);
+}
+
+.ec-hero-access__assurance {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.ec-hero-access__assurance span {
+  min-width: 0;
+  padding: 8px 9px;
+  border: 1px solid rgba(154, 216, 239, 0.16);
+  border-radius: 10px;
+  background: rgba(8, 15, 24, 0.66);
+  color: rgba(178, 199, 214, 0.72);
+  font-family: var(--ec-font-mono, "JetBrains Mono", ui-monospace, monospace);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-align: center;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.ec-hero-access__tabs {
+  padding: 5px;
+  border-color: rgba(154, 216, 239, 0.15);
+  border-radius: 14px;
+  background: rgba(2, 5, 10, 0.68);
+}
+
+.ec-hero-access__tab-indicator {
+  top: 5px;
+  bottom: 5px;
+  left: 5px;
+  width: calc(50% - 5px);
+  border-radius: 10px;
+  background: linear-gradient(110deg, #f4d18b 0%, #b48def 48%, #62c7f1 100%);
+  box-shadow:
+    0 8px 22px rgba(93, 181, 217, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.ec-hero-access__tab {
+  min-height: 40px;
+  color: rgba(158, 179, 194, 0.78);
+  letter-spacing: 0.16em;
+}
+
+.ec-hero-access__input-wrap input {
+  height: 60px;
+  border-color: rgba(154, 216, 239, 0.14);
+  border-radius: 13px;
+  background:
+    linear-gradient(180deg, rgba(8, 14, 22, 0.86), rgba(3, 7, 12, 0.92));
+}
+
+.ec-hero-access__input-wrap input:focus {
+  border-color: rgba(93, 181, 217, 0.78);
+  box-shadow:
+    0 0 0 3px rgba(93, 181, 217, 0.14),
+    0 0 28px rgba(139, 92, 246, 0.12);
+}
+
+.ec-hero-access__field-icon {
+  color: rgba(93, 181, 217, 0.72);
+}
+
+.ec-hero-access__floating-label {
+  color: rgba(151, 171, 186, 0.74);
+}
+
+.ec-hero-access__input-wrap:focus-within .ec-hero-access__floating-label,
+.ec-hero-access__input-wrap.is-filled .ec-hero-access__floating-label {
+  color: rgba(93, 181, 217, 0.95);
+  letter-spacing: 0.12em;
+}
+
+.ec-hero-access__toggle {
+  right: 6px;
+  top: 6px;
+  bottom: 6px;
+  width: 42px;
+  border: 1px solid rgba(154, 216, 239, 0.1);
+  border-radius: 10px;
+  background: rgba(12, 25, 36, 0.74);
+}
+
+.ec-hero-access__submit {
+  height: 56px;
+  margin-top: 2px;
+  border-radius: 14px;
+  background: linear-gradient(110deg, #f4d18b 0%, #b48def 48%, #62c7f1 100%);
+  color: #030711;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.36),
+    0 14px 34px rgba(93, 181, 217, 0.24),
+    0 0 52px rgba(139, 92, 246, 0.14);
+}
+
+.ec-hero-access__submit:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.42),
+    0 18px 42px rgba(93, 181, 217, 0.3),
+    0 0 58px rgba(139, 92, 246, 0.2);
+}
+
+.ec-hero-access__hint {
+  color: rgba(160, 182, 198, 0.78);
+}
+
+.ec-hero-access__footer {
+  padding-top: 14px;
+  color: rgba(113, 135, 151, 0.74);
+  letter-spacing: 0.12em;
+}
+
+.ec-hero-access__footer-meta {
+  color: rgba(113, 135, 151, 0.56);
+}
+
+@media (max-width: 980px) {
+  .ec-landing,
+  .ec-landing__shell,
+  .ec-landing__hero,
+  .ec-landing__hero-copy,
+  .ec-landing__hero-stage,
+  .ec-hero-access {
+    min-width: 0;
+  }
+
+  .ec-landing {
+    overflow-x: clip;
+  }
+
+  .ec-landing__hero-stage,
+  .ec-hero-access {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .ec-hero-access__frame {
+    width: min(100%, 430px);
+    padding: 18px;
+  }
+
+  .ec-hero-access__sigil {
+    width: 76px;
+    height: 76px;
+    border-radius: 22px;
+  }
+
+  .ec-hero-access__sigil-ring--one {
+    width: 48px;
+    height: 48px;
+  }
+
+  .ec-hero-access__sigil-ring--two {
+    width: 64px;
+    height: 22px;
+  }
+}
+
+@media (max-width: 560px) {
+  .ec-landing__shell {
+    width: calc(100% - 32px);
+  }
+
+  .ec-landing__hero {
+    padding: 30px 0 44px;
+  }
+
+  .ec-landing__hero-copy,
+  .ec-landing__hero-stage {
+    width: min(326px, calc(100vw - 80px)) !important;
+    max-width: min(326px, calc(100vw - 80px)) !important;
+    justify-self: start;
+    box-sizing: border-box;
+  }
+
+  .ec-landing__hero-title,
+  .ec-landing__hero-subhead {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .ec-landing__hero-title-line {
+    max-width: none;
+  }
+
+  .ec-landing__hero-cta,
+  .ec-landing__hero-chips {
+    max-width: 100%;
+  }
+
+  .ec-landing__hero-cta {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .ec-landing__hero-cta .ec-landing-btn {
+    width: 100%;
+  }
+
+  .ec-landing__hero-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 14px;
+  }
+
+  .ec-hero-access__frame {
+    width: min(326px, calc(100vw - 80px)) !important;
+    max-width: min(326px, calc(100vw - 80px)) !important;
+    border-radius: 18px;
+    padding: 16px;
+  }
+
+  .ec-hero-access__topline {
+    font-size: 9px;
+    letter-spacing: 0.1em;
+  }
+
+  .ec-hero-access__topline-code {
+    display: none;
+  }
+
+  .ec-hero-access__title {
+    max-width: 12ch;
+    font-size: 28px;
+  }
+
+  .ec-hero-access__assurance {
+    grid-template-columns: 1fr;
+  }
+
+  .ec-hero-access__assurance span {
+    text-align: left;
+  }
+
+  .ec-hero-access__footer {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+}

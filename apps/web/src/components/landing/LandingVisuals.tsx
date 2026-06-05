@@ -222,6 +222,20 @@ export function HeroOperationalStage({
 
         <div className="ec-hero-access__glow" aria-hidden />
 
+        <div className="ec-hero-access__topline" aria-hidden>
+          <span className="ec-hero-access__topline-status">
+            <span />
+            защищённый вход
+          </span>
+          <span className="ec-hero-access__topline-code">контур 01</span>
+        </div>
+
+        <div className="ec-hero-access__sigil" aria-hidden>
+          <span className="ec-hero-access__sigil-core" />
+          <span className="ec-hero-access__sigil-ring ec-hero-access__sigil-ring--one" />
+          <span className="ec-hero-access__sigil-ring ec-hero-access__sigil-ring--two" />
+        </div>
+
         <header className="ec-hero-access__head">
           <span className="ec-hero-access__eyebrow">
             <span className="ec-hero-access__eyebrow-dot" aria-hidden />
@@ -230,6 +244,12 @@ export function HeroOperationalStage({
           <h2 className="ec-hero-access__title">{heading}</h2>
           <p className="ec-hero-access__sub">{sub}</p>
         </header>
+
+        <div className="ec-hero-access__assurance" aria-label="Свойства доступа">
+          <span>Self-hosted</span>
+          <span>TLS</span>
+          <span>2FA ready</span>
+        </div>
 
         <div className="ec-hero-access__tabs" role="tablist" aria-label="Режим доступа">
           <span
