@@ -11170,3 +11170,42 @@ body {
   overflow: visible !important;
 }
 
+/* v1.6.19: channel messages stay in one readable left rail. Own messages should not jump right in public channels. */
+.ec-message-row--mine {
+  justify-content: stretch !important;
+}
+
+.ec-message-row--mine .ec-message-content {
+  margin-left: 0 !important;
+}
+
+.ec-message-row--mine .ec-message-actions {
+  right: 18px !important;
+  left: auto !important;
+}
+
+.ec-message-content {
+  max-width: min(760px, calc(100vw - 96px)) !important;
+}
+
+.ec-message-content img,
+.ec-message-content video {
+  max-width: min(100%, 520px) !important;
+}
+
+.ec-composer-action-menu {
+  bottom: calc(100% + 8px) !important;
+  width: min(260px, calc(100vw - 32px)) !important;
+  padding: 6px !important;
+}
+
+.ec-composer-action-menu__item {
+  min-height: 40px !important;
+  padding: 7px 9px !important;
+}
+
+.ec-composer-action-menu__icon {
+  width: 26px !important;
+  height: 26px !important;
+}
+

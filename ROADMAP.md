@@ -5,7 +5,12 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.6.18** (Composer grid/popover hotfix — исправлен реальный root cause
+**Текущая версия:** **v1.6.19** (Channel message layout polish — собственные сообщения в каналах
+больше не уезжают вправо отдельной карточкой: avatar и content снова живут в одном левом
+read rail, поток читается как командный канал, а не как личный чат. `+`-меню composer'а
+уплотнено по высоте/ширине и меньше перекрывает историю. No backend/schema.)
+
+**Предыдущая:** v1.6.18 (Composer grid/popover hotfix — исправлен реальный root cause
 после v1.6.17: старый `grid-template-columns: ... !important` больше не сжимает textarea
 в мини-колонку, а `overflow: hidden` на composer-box больше не клипает `+`-меню.
 Textarea занимает всю рабочую ширину строки, `+` popover снова видим. No backend/schema.)
