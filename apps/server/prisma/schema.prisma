@@ -685,6 +685,45 @@ model Server {
   composioConnections ComposioConnection[]
   /// v1.2.20: custom-emoji per-server. Cascade при удалении server'а.
   emojis              Emoji[]
+  /// v1.6.25: server-wide Team Health training catalog. Sections/videos are
+  /// visible to every server member; write access is OWNER/ADMIN only.
+  trainingSections    TrainingSection[]
+  trainingVideos      TrainingVideo[]
+}
+
+model TrainingSection {
+  id        String   @id @default(cuid())
+  serverId  String
+  server    Server   @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  name      String
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  videos    TrainingVideo[]
+
+  @@index([serverId, position])
+}
+
+model TrainingVideo {
+  id              String          @id @default(cuid())
+  serverId        String
+  server          Server          @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  sectionId       String
+  section         TrainingSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  title           String
+  url             String
+  source          String
+  filename        String?
+  mimeType        String?
+  size            Int?
+  position        Int             @default(0)
+  createdByUserId String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([serverId, createdAt])
+  @@index([sectionId, position])
 }
 
 /// v0.80 #26 phase 1: Automation system — declarative trigger/action правила

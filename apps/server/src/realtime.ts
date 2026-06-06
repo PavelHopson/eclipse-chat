@@ -663,6 +663,10 @@ export function emitTableEvent(
   io?.to(`server:${serverId}`).emit(kind, payload);
 }
 
+export function emitTrainingCatalogUpdated(serverId: string) {
+  io?.to(`server:${serverId}`).emit("training:catalog:updated", { serverId });
+}
+
 /**
  * v0.61 shared listening room: emit при любом изменении MusicSession
  * (start / pause / resume / skip / stop / queue add). Payload null

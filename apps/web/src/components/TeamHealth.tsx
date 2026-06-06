@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import type { Socket } from "socket.io-client";
 import { Avatar } from "./Avatar";
 import { EmptyState } from "./EmptyState";
 import { EmptyHealthIcon } from "./EmptyIcons";
@@ -25,6 +26,7 @@ type Props = {
   serverId: string | null;
   serverName: string | null;
   memberRole: string | null;
+  socket?: Socket | null;
   data: TeamHealthData | null;
   loading: boolean;
   error: string | null;
@@ -222,6 +224,7 @@ export function TeamHealth({
   serverId,
   serverName,
   memberRole,
+  socket,
   data,
   loading,
   error,
@@ -310,7 +313,7 @@ export function TeamHealth({
               title="Пока нечего считать"
               hint="В пространстве ещё нет задач или решений. Создавайте их через /task в композере или hover-меню сообщения — здесь появится операционная сводка."
             />
-            <TeamTrainingLibrary serverId={serverId} canUploadFiles={canUploadTrainingFiles} />
+            <TeamTrainingLibrary serverId={serverId} canUploadFiles={canUploadTrainingFiles} socket={socket} />
           </>
         )}
 
@@ -390,7 +393,7 @@ export function TeamHealth({
             {/* v0.60: Trends week-over-week */}
             <TrendsRibbon trends={data.trends} />
 
-            <TeamTrainingLibrary serverId={serverId} canUploadFiles={canUploadTrainingFiles} />
+            <TeamTrainingLibrary serverId={serverId} canUploadFiles={canUploadTrainingFiles} socket={socket} />
 
             {/* v0.60: Per-channel breakdown */}
             <PerChannelSection rows={data.perChannel} />

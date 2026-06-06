@@ -512,6 +512,7 @@ export const SocketEvents = {
   TableRowAdded: "table:row:added",
   TableRowUpdated: "table:row:updated",
   TableRowDeleted: "table:row:deleted",
+  TrainingCatalogUpdated: "training:catalog:updated",
   ChannelCreated: "channel:created",
   ChannelDeleted: "channel:deleted",
   CategoryCreated: "category:created",

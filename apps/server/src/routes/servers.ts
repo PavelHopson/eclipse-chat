@@ -13,6 +13,7 @@ import {
   emitChannelCreated,
   emitChannelDeleted,
   emitChannelUpdated,
+  emitTrainingCatalogUpdated,
   emitMemberJoined,
   emitMemberLeft,
   emitMemberUpdated,
@@ -52,6 +53,20 @@ const uploadTrainingVideoBody = z.object({
     mimeType: z.string().min(3).max(120),
     dataBase64: z.string().min(1),
   }),
+});
+
+const createTrainingSectionBody = z.object({
+  name: z.string().trim().min(1).max(48),
+});
+
+const createTrainingVideoBody = z.object({
+  sectionId: z.string().min(1),
+  title: z.string().trim().min(1).max(80),
+  url: z.string().trim().min(1).max(1200),
+  source: z.enum(["youtube", "file"]),
+  filename: z.string().trim().min(1).max(180).optional(),
+  mimeType: z.string().trim().min(3).max(120).optional(),
+  size: z.number().int().min(0).max(300 * 1024 * 1024).optional(),
 });
 
 function serverIconsDir(): string {
@@ -183,6 +198,93 @@ async function loadMember(
     return null;
   }
   return member;
+}
+
+function canManageTraining(role: string): boolean {
+  return role === "OWNER" || role === "ADMIN";
+}
+
+function trainingVideoDto(row: {
+  id: string;
+  title: string;
+  url: string;
+  source: string;
+  filename: string | null;
+  mimeType: string | null;
+  size: number | null;
+  createdAt: Date;
+}) {
+  return {
+    id: row.id,
+    title: row.title,
+    url: row.url,
+    source: row.source === "file" ? "file" : "youtube",
+    filename: row.filename,
+    mimeType: row.mimeType,
+    size: row.size,
+    createdAt: row.createdAt.toISOString(),
+  };
+}
+
+function trainingSectionDto(row: {
+  id: string;
+  name: string;
+  createdAt: Date;
+  updatedAt: Date;
+  videos: Array<{
+    id: string;
+    title: string;
+    url: string;
+    source: string;
+    filename: string | null;
+    mimeType: string | null;
+    size: number | null;
+    createdAt: Date;
+  }>;
+}) {
+  return {
+    id: row.id,
+    name: row.name,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+    videos: row.videos.map(trainingVideoDto),
+  };
+}
+
+async function loadTrainingCatalog(serverId: string) {
+  const sections = await db.trainingSection.findMany({
+    where: { serverId },
+    orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+    include: {
+      videos: {
+        orderBy: [{ position: "asc" }, { createdAt: "desc" }],
+        select: {
+          id: true,
+          title: true,
+          url: true,
+          source: true,
+          filename: true,
+          mimeType: true,
+          size: true,
+          createdAt: true,
+        },
+      },
+    },
+  });
+  return { sections: sections.map(trainingSectionDto) };
+}
+
+function isValidTrainingVideo(input: z.infer<typeof createTrainingVideoBody>): boolean {
+  if (input.source === "youtube") {
+    try {
+      const parsed = new URL(input.url);
+      const host = parsed.hostname.toLowerCase().replace(/^www\./, "");
+      return host === "youtube.com" || host === "youtu.be" || host === "m.youtube.com";
+    } catch {
+      return false;
+    }
+  }
+  return input.url.startsWith("/uploads/training-videos/") && (input.mimeType?.startsWith("video/") ?? false);
 }
 
 /**
@@ -967,12 +1069,193 @@ export async function registerServerRoutes(app: FastifyInstance) {
     },
   );
 
+  app.get(
+    "/api/servers/:id/training-library",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const { id: serverId } = req.params as { id: string };
+      const me = await loadMember(req, reply, serverId);
+      if (!me) return reply;
+      return loadTrainingCatalog(serverId);
+    },
+  );
+
+  app.post(
+    "/api/servers/:id/training-sections",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const { id: serverId } = req.params as { id: string };
+      const me = await loadMember(req, reply, serverId);
+      if (!me) return reply;
+      if (!canManageTraining(me.role)) {
+        return reply.status(403).send({ error: "Только OWNER/ADMIN могут менять разделы тренировок" });
+      }
+      const active = await ensureServerActive(serverId, reply);
+      if (!active) return;
+      const parsed = createTrainingSectionBody.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.status(400).send({ error: "Invalid body" });
+      }
+      const maxRow = await db.trainingSection.findFirst({
+        where: { serverId },
+        orderBy: { position: "desc" },
+        select: { position: true },
+      });
+      await db.trainingSection.create({
+        data: {
+          serverId,
+          name: parsed.data.name,
+          position: (maxRow?.position ?? -1) + 1,
+        },
+      });
+      emitTrainingCatalogUpdated(serverId);
+      return reply.status(201).send(await loadTrainingCatalog(serverId));
+    },
+  );
+
+  app.patch(
+    "/api/training-sections/:id",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const { id } = req.params as { id: string };
+      const userId = getUserId(req);
+      if (!userId) return reply.status(401).send({ error: "Unauthorized" });
+      const section = await db.trainingSection.findUnique({
+        where: { id },
+        select: { id: true, serverId: true },
+      });
+      if (!section) return reply.status(404).send({ error: "Section not found" });
+      const member = await db.member.findUnique({
+        where: { userId_serverId: { userId, serverId: section.serverId } },
+        select: { role: true },
+      });
+      if (!member) return reply.status(403).send({ error: "Not a member" });
+      if (!canManageTraining(member.role)) {
+        return reply.status(403).send({ error: "Только OWNER/ADMIN могут менять разделы тренировок" });
+      }
+      const active = await ensureServerActive(section.serverId, reply);
+      if (!active) return;
+      const parsed = createTrainingSectionBody.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.status(400).send({ error: "Invalid body" });
+      }
+      await db.trainingSection.update({ where: { id }, data: { name: parsed.data.name } });
+      emitTrainingCatalogUpdated(section.serverId);
+      return loadTrainingCatalog(section.serverId);
+    },
+  );
+
+  app.delete(
+    "/api/training-sections/:id",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const { id } = req.params as { id: string };
+      const userId = getUserId(req);
+      if (!userId) return reply.status(401).send({ error: "Unauthorized" });
+      const section = await db.trainingSection.findUnique({
+        where: { id },
+        select: { id: true, serverId: true },
+      });
+      if (!section) return reply.status(404).send({ error: "Section not found" });
+      const member = await db.member.findUnique({
+        where: { userId_serverId: { userId, serverId: section.serverId } },
+        select: { role: true },
+      });
+      if (!member) return reply.status(403).send({ error: "Not a member" });
+      if (!canManageTraining(member.role)) {
+        return reply.status(403).send({ error: "Только OWNER/ADMIN могут менять разделы тренировок" });
+      }
+      const active = await ensureServerActive(section.serverId, reply);
+      if (!active) return;
+      await db.trainingSection.delete({ where: { id } });
+      emitTrainingCatalogUpdated(section.serverId);
+      return reply.status(204).send();
+    },
+  );
+
+  app.post(
+    "/api/servers/:id/training-videos",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const { id: serverId } = req.params as { id: string };
+      const me = await loadMember(req, reply, serverId);
+      if (!me) return reply;
+      if (!canManageTraining(me.role)) {
+        return reply.status(403).send({ error: "Только OWNER/ADMIN могут менять видео тренировок" });
+      }
+      const active = await ensureServerActive(serverId, reply);
+      if (!active) return;
+      const parsed = createTrainingVideoBody.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.status(400).send({ error: "Invalid body" });
+      }
+      if (!isValidTrainingVideo(parsed.data)) {
+        return reply.status(400).send({ error: "Invalid training video" });
+      }
+      const section = await db.trainingSection.findUnique({
+        where: { id: parsed.data.sectionId },
+        select: { id: true, serverId: true },
+      });
+      if (!section || section.serverId !== serverId) {
+        return reply.status(400).send({ error: "Section not in this server" });
+      }
+      const maxRow = await db.trainingVideo.findFirst({
+        where: { sectionId: section.id },
+        orderBy: { position: "desc" },
+        select: { position: true },
+      });
+      await db.trainingVideo.create({
+        data: {
+          serverId,
+          sectionId: section.id,
+          title: parsed.data.title,
+          url: parsed.data.url,
+          source: parsed.data.source,
+          filename: parsed.data.filename ?? null,
+          mimeType: parsed.data.mimeType ?? null,
+          size: parsed.data.size ?? null,
+          position: (maxRow?.position ?? -1) + 1,
+          createdByUserId: me.userId,
+        },
+      });
+      emitTrainingCatalogUpdated(serverId);
+      return reply.status(201).send(await loadTrainingCatalog(serverId));
+    },
+  );
+
+  app.delete(
+    "/api/training-videos/:id",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const { id } = req.params as { id: string };
+      const userId = getUserId(req);
+      if (!userId) return reply.status(401).send({ error: "Unauthorized" });
+      const video = await db.trainingVideo.findUnique({
+        where: { id },
+        select: { id: true, serverId: true },
+      });
+      if (!video) return reply.status(404).send({ error: "Video not found" });
+      const member = await db.member.findUnique({
+        where: { userId_serverId: { userId, serverId: video.serverId } },
+        select: { role: true },
+      });
+      if (!member) return reply.status(403).send({ error: "Not a member" });
+      if (!canManageTraining(member.role)) {
+        return reply.status(403).send({ error: "Только OWNER/ADMIN могут менять видео тренировок" });
+      }
+      const active = await ensureServerActive(video.serverId, reply);
+      if (!active) return;
+      await db.trainingVideo.delete({ where: { id } });
+      emitTrainingCatalogUpdated(video.serverId);
+      return reply.status(204).send();
+    },
+  );
+
   /**
    * POST /api/servers/:id/training-videos/upload
    *
    * Team Health training library: загружает один видеофайл на серверный disk и
-   * возвращает URL для локального каталога тренировок. Каталог пока client-side,
-   * но файл хранится централизованно. Upload разрешён только OWNER/ADMIN:
+   * возвращает URL для серверного каталога тренировок. Upload разрешён только OWNER/ADMIN:
    * это предотвращает превращение training-раздела в общий файлообменник.
    */
   app.post(

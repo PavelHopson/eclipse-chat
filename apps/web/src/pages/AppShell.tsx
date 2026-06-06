@@ -1969,6 +1969,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             serverId={activeServer.id}
             serverName={activeServer.name}
             memberRole={currentRole}
+            socket={socket}
             data={teamHealth.data}
             loading={teamHealth.loading}
             error={teamHealth.error}
