@@ -29,25 +29,40 @@ const SLASH_COMMANDS: {
   { cmd: "followup", aliases: ["followup", "fu", "f"], type: "FOLLOW_UP", label: "/followup", desc: "поставить follow-up" },
 ];
 
+const TEXT_MACRO_COMMANDS = {
+  shrug: "¯\\_(ツ)_/¯",
+  tableflip: "(╯°□°)╯︵ ┻━┻",
+  unflip: "┬─┬ノ( º _ ºノ)",
+} as const;
+
 /**
  * Backend slash-commands из v1.2.14 (`apps/server/src/lib/slashCommands.ts`).
- * Frontend их не парсит — отправляет как обычный текст, backend transform'ит
- * (для `/me /shrug /tableflip /unflip`) или возвращает ephemeral (для `/help`).
- * Здесь только для autocomplete listing в slash-hint strip. `noArg=true` →
- * на выбор не добавляем trailing space (можно сразу Enter'ом отправить).
+ * `/me` и `/help` остаются backend-командами. ASCII-команды ниже перехватываем
+ * на клиенте как text macro, чтобы в чат не улетала служебная строка `/command`.
  */
 const BACKEND_COMMANDS: {
   cmd: string;
   label: string;
   desc: string;
   noArg?: boolean;
+  insertText?: string;
 }[] = [
   { cmd: "me", label: "/me", desc: "IRC-стиль: «имя <действие>»" },
-  { cmd: "shrug", label: "/shrug", desc: "добавить ¯\\_(ツ)_/¯", noArg: true },
-  { cmd: "tableflip", label: "/tableflip", desc: "(╯°□°)╯︵ ┻━┻", noArg: true },
-  { cmd: "unflip", label: "/unflip", desc: "┬─┬ノ( º_ºノ)", noArg: true },
+  { cmd: "shrug", label: "/shrug", desc: "вставить ¯\\_(ツ)_/¯", noArg: true, insertText: TEXT_MACRO_COMMANDS.shrug },
+  { cmd: "tableflip", label: "/tableflip", desc: "вставить (╯°□°)╯︵ ┻━┻", noArg: true, insertText: TEXT_MACRO_COMMANDS.tableflip },
+  { cmd: "unflip", label: "/unflip", desc: "вставить ┬─┬ノ( º _ ºノ)", noArg: true, insertText: TEXT_MACRO_COMMANDS.unflip },
   { cmd: "help", label: "/help", desc: "список команд (видно только тебе)", noArg: true },
 ];
+
+function parseTextMacroCommand(text: string): string | null {
+  const m = text.match(/^\/(\w+)(?:\s+([\s\S]*))?$/);
+  if (!m) return null;
+  const cmd = m[1].toLowerCase();
+  if (!(cmd in TEXT_MACRO_COMMANDS)) return null;
+  const macro = TEXT_MACRO_COMMANDS[cmd as keyof typeof TEXT_MACRO_COMMANDS];
+  const prefix = (m[2] ?? "").trim();
+  return prefix ? `${prefix} ${macro}` : macro;
+}
 
 function parseSlashCommand(
   text: string,
@@ -767,9 +782,11 @@ export function MessageInput({
       // Operator slash-command: `/task ...` → отправляем title + actionItem.
       // В Client Mode парсинг отключён — клиенту не нужны task-shortcut'ы.
       const slash = hideSlashCommands ? null : parseSlashCommand(trimmed);
+      const textMacro = hideSlashCommands || slash ? null : parseTextMacroCommand(trimmed);
+      const outgoingText = textMacro ?? trimmed;
       const ok = slash
         ? await onSend(slash.title, uploads, { type: slash.type })
-        : await onSend(trimmed, uploads);
+        : await onSend(outgoingText, uploads);
       if (ok) {
         setDraftValue("");
         saveDraft(draftKeyRef.current, "");
@@ -1006,8 +1023,8 @@ export function MessageInput({
               className="ec-slash-hint__item"
               onMouseDown={(e) => {
                 e.preventDefault();
-                // noArg → без trailing space, можно сразу Enter.
-                setDraftValue(c.noArg ? `/${c.cmd}` : `/${c.cmd} `);
+                // ASCII-команды вставляем как текст, чтобы в ленте не было служебной строки `/command`.
+                setDraftValue(c.insertText ?? (c.noArg ? `/${c.cmd}` : `/${c.cmd} `));
                 queueMicrotask(() => textareaRef.current?.focus());
               }}
             >
