@@ -729,7 +729,10 @@ export function VoiceRoom({
   };
 
   return (
-    <div style={roomWrap} className="ec-voice-room">
+    <div
+      style={roomWrap}
+      className={"ec-voice-room" + (hasVisual ? " ec-voice-room--visual" : " ec-voice-room--audio")}
+    >
       {/* ── TOP BAR — минимально ─────────────────────────────── */}
       <div style={topBar}>
         <span
@@ -869,7 +872,7 @@ export function VoiceRoom({
         </div>
       </div>
 
-      <div className="ec-voice-room__split">
+      <div className={"ec-voice-room__split" + (hasVisual ? " ec-voice-room__split--visual" : " ec-voice-room__split--audio")}>
         <section className="ec-voice-room__stage-column" aria-label="Эфир голосовой комнаты">
           {/* ── ROOM CANVAS — immersive ──────────────────────────── */}
           <div

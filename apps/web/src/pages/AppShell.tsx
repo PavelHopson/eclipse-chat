@@ -2187,7 +2187,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                   channelName={selectedChannel.name}
                   draftKey={`channel:${selectedChannel.id}`}
                   disabled={!isReady}
-                  hideSlashCommands={isClientMode}
+                  hideSlashCommands
                   mentionNames={members.map((m) => m.user.displayName)}
                   customEmojis={customEmojis}
                   onSend={(content, attachments, actionItem) =>
