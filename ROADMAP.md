@@ -5,7 +5,9 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.6.26** (Composer slash macro cleanup — ASCII utility-команды `/shrug`, `/tableflip`, `/unflip` больше не засоряют чат служебной строкой `/command`: composer перехватывает их как text macro и отправляет только итоговый текст. `/task` остаётся operator-командой, `/me` и `/help` остаются backend slash-командами. Backend/schema без изменений.)
+**Текущая версия:** **v1.6.27** (Voice visual fullscreen — LiveKit camera/screen-share tiles in voice rooms получили явную кнопку «На весь экран». Fullscreen использует browser Fullscreen API, сохраняет `object-fit: contain`, не меняет shared music player и не трогает LiveKit publish options. Кнопка появляется на hover/focus, в fullscreen остаётся доступной для выхода; есть reduced-motion fallback. Backend/schema без изменений.)
+
+**Предыдущая:** v1.6.26 (Composer slash macro cleanup — ASCII utility-команды `/shrug`, `/tableflip`, `/unflip` больше не засоряют чат служебной строкой `/command`: composer перехватывает их как text macro и отправляет только итоговый текст. `/task` остаётся operator-командой, `/me` и `/help` остаются backend slash-командами. Backend/schema без изменений.)
 
 **Предыдущая:** v1.6.25 (Team Health shared training catalog — разделы и видео «Тренировок» больше не живут в browser-localStorage одного устройства: добавлены серверные `TrainingSection` / `TrainingVideo` с миграцией, REST CRUD для каталога, OWNER/ADMIN-only управление и member-read для всех участников сервера. YouTube-ссылки и загруженные файлы сохраняются как общий каталог, клиенты обновляются через `training:catalog:updated`; старый локальный каталог владельца импортируется в сервер при первом открытии раздела после деплоя.)
 

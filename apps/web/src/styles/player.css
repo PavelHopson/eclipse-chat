@@ -1534,7 +1534,9 @@
 
 @media (prefers-reduced-motion: reduce) {
   .ec-vr-presence-card,
-  .ec-vr-presence-card--speaking {
+  .ec-vr-presence-card--speaking,
+  .ec-vr-video-tile,
+  .ec-vr-video-tile__fullscreen {
     animation: none !important;
     transition: none !important;
     transform: none !important;
@@ -1568,6 +1570,20 @@
   background: #000 !important;
   image-rendering: auto;
 }
+.ec-vr-video-tile:fullscreen {
+  width: 100vw !important;
+  max-width: none !important;
+  height: 100vh !important;
+  max-height: none !important;
+  border-radius: 0 !important;
+  border: 0 !important;
+  background: #000 !important;
+}
+.ec-vr-video-tile:fullscreen video {
+  width: 100vw !important;
+  height: 100vh !important;
+  object-fit: contain !important;
+}
 .ec-vr-video-tile--screen video {
   object-fit: contain !important;
 }
@@ -1581,6 +1597,59 @@
   box-shadow:
     0 16px 38px -14px hsl(258 86% 35% / 0.50),
     0 0 0 1px hsl(258 86% 62% / 0.30) inset !important;
+}
+.ec-vr-video-tile:fullscreen:hover {
+  transform: none;
+}
+.ec-vr-video-tile__fullscreen {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid hsl(0 0% 100% / 0.18);
+  border-radius: var(--ec-radius-full);
+  background: hsl(220 28% 6% / 0.78);
+  color: hsl(0 0% 100% / 0.88);
+  font-size: var(--ec-text-2xs);
+  font-weight: 760;
+  backdrop-filter: blur(12px) saturate(130%);
+  -webkit-backdrop-filter: blur(12px) saturate(130%);
+  box-shadow: 0 12px 28px -14px hsl(210 45% 2% / 0.72);
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(4px);
+  transition:
+    opacity var(--ec-dur-base) var(--ec-ease),
+    transform var(--ec-dur-base) var(--ec-ease),
+    background var(--ec-dur-fast) var(--ec-ease),
+    border-color var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-vr-video-tile:hover .ec-vr-video-tile__fullscreen,
+.ec-vr-video-tile:focus-within .ec-vr-video-tile__fullscreen,
+.ec-vr-video-tile__fullscreen[aria-pressed="true"] {
+  opacity: 1;
+  transform: translateY(0);
+}
+.ec-vr-video-tile__fullscreen:hover,
+.ec-vr-video-tile__fullscreen:focus-visible {
+  background: color-mix(in srgb, var(--ec-accent) 22%, hsl(220 28% 6% / 0.86));
+  border-color: color-mix(in srgb, var(--ec-accent) 42%, hsl(0 0% 100% / 0.16));
+  outline: none;
+}
+.ec-vr-video-tile__fullscreen:active {
+  transform: translateY(1px) scale(0.98);
+}
+.ec-vr-video-tile:fullscreen .ec-vr-video-tile__fullscreen {
+  opacity: 1;
+  right: 22px;
+  bottom: 22px;
+  min-height: 42px;
+  padding-inline: 16px;
 }
 .ec-vr-video-tile--speaking {
   box-shadow:

@@ -331,6 +331,28 @@ function formatRoomAudience(count: number): string {
   return `${count} участников`;
 }
 
+function FullscreenGlyph({ active }: { active: boolean }) {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden>
+      {active ? (
+        <>
+          <path d="M9 4v5H4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M15 4v5h5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M9 20v-5H4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M15 20v-5h5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </>
+      ) : (
+        <>
+          <path d="M8 4H4v4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M16 4h4v4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M8 20H4v-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M16 20h4v-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </>
+      )}
+    </svg>
+  );
+}
+
 /* ===== Speaking avatar (presence layer) ==================== */
 
 function PresenceAvatar({
@@ -392,8 +414,18 @@ function VideoTrackTile({
   lookupAvatar: (identity: string) => string | null;
 }) {
   const mountRef = useRef<HTMLDivElement | null>(null);
+  const tileRef = useRef<HTMLElement | null>(null);
   // v1.1.68 — натуральные пропорции источника (см. ниже).
   const [aspect, setAspect] = useState<number | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const onFullscreenChange = () => {
+      setIsFullscreen(document.fullscreenElement === tileRef.current);
+    };
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", onFullscreenChange);
+  }, []);
 
   useEffect(() => {
     const host = mountRef.current;
@@ -438,9 +470,21 @@ function VideoTrackTile({
 
   const avatar = lookupAvatar(visual.identity);
   const isScreen = visual.source === "screen";
+  const fullscreenLabel = isFullscreen ? "Выйти из полного экрана" : "Открыть на весь экран";
+
+  const toggleFullscreen = () => {
+    const tile = tileRef.current;
+    if (!tile) return;
+    if (document.fullscreenElement === tile) {
+      void document.exitFullscreen().catch(() => undefined);
+      return;
+    }
+    void tile.requestFullscreen().catch(() => undefined);
+  };
 
   return (
     <article
+      ref={tileRef}
       className={
         `ec-vr-video-tile${isScreen ? " ec-vr-video-tile--screen" : " ec-vr-video-tile--camera"}` +
         (aspect == null ? " ec-vr-video-tile--loading" : "")
@@ -532,6 +576,17 @@ function VideoTrackTile({
           {isScreen ? <ScreenShareIcon size={11} /> : <CameraLensIcon size={11} />}
         </span>
       </div>
+      <button
+        type="button"
+        className="ec-vr-video-tile__fullscreen"
+        onClick={toggleFullscreen}
+        title={fullscreenLabel}
+        aria-label={fullscreenLabel}
+        aria-pressed={isFullscreen}
+      >
+        <FullscreenGlyph active={isFullscreen} />
+        <span>{isFullscreen ? "Свернуть" : "На весь экран"}</span>
+      </button>
     </article>
   );
 }
