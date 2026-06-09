@@ -9,12 +9,8 @@ import { ChannelList } from "../components/ChannelList";
 import { RichContent } from "../components/RichContent";
 import { DirectConversationList } from "../components/DirectConversationList";
 import { FriendsPanel } from "../components/friends/FriendsPanel";
-import { FriendsView } from "../components/friends/FriendsView";
 import { type AvailableUser } from "../components/CreateGroupDmModal";
 import { GroupAvatar } from "../components/GroupAvatar";
-import { HomeToday } from "../components/HomeToday";
-import { IntelligencePanel } from "../components/IntelligencePanel";
-import { ChannelInfoPanel } from "../components/ChannelInfoPanel";
 import { ChatHeaderHoverButton } from "../components/ChatHeaderHoverButton";
 import { LogoutButton } from "../components/LogoutButton";
 import { ChannelGlyph } from "../components/icons/ChannelCustomIcons";
@@ -56,6 +52,14 @@ const CreateGroupDmModal = lazy(() => import("../components/CreateGroupDmModal")
 const CreateTableModal = lazy(() => import("../components/CreateTableModal").then((m) => ({ default: m.CreateTableModal })));
 const MusicExpandModal = lazy(() => import("../components/MusicExpandModal").then((m) => ({ default: m.MusicExpandModal })));
 const VoiceMusicPicker = lazy(() => import("../components/VoiceMusicPicker").then((m) => ({ default: m.VoiceMusicPicker })));
+const ChannelInfoPanel = lazy(() => import("../components/ChannelInfoPanel").then((m) => ({ default: m.ChannelInfoPanel })));
+const FriendsView = lazy(() => import("../components/friends/FriendsView").then((m) => ({ default: m.FriendsView })));
+const HomeToday = lazy(() => import("../components/HomeToday").then((m) => ({ default: m.HomeToday })));
+const IntelligencePanel = lazy(() => import("../components/IntelligencePanel").then((m) => ({ default: m.IntelligencePanel })));
+const ServerWelcomeHero = lazy(() => import("../components/ServerWelcomeHero").then((m) => ({ default: m.ServerWelcomeHero })));
+const ChannelsAndRolesView = lazy(() => import("../components/server/ChannelsAndRolesView").then((m) => ({ default: m.ChannelsAndRolesView })));
+const MembersView = lazy(() => import("../components/server/MembersView").then((m) => ({ default: m.MembersView })));
+const StatusMenu = lazy(() => import("../components/StatusMenu").then((m) => ({ default: m.StatusMenu })));
 
 function isTextEntryTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -71,9 +75,6 @@ import { ServerSwitcher } from "../components/ServerSwitcher";
 import { SinceLastVisitBanner } from "../components/SinceLastVisitBanner";
 import { ThemeToggle } from "../components/ThemeToggle";
 import { EmptyState } from "../components/EmptyState";
-import { ServerWelcomeHero } from "../components/ServerWelcomeHero";
-import { ChannelsAndRolesView } from "../components/server/ChannelsAndRolesView";
-import { MembersView } from "../components/server/MembersView";
 import { ServerNavBar, type ServerView } from "../components/server/ServerNavBar";
 import { IsolationConfirmDialog } from "../components/server/IsolationConfirmDialog";
 import { ExpiryBadge } from "../components/ExpiryBadge";
@@ -81,7 +82,6 @@ import {
   EmptyDmIcon,
   EmptyHomeIcon,
 } from "../components/EmptyIcons";
-import { StatusMenu } from "../components/StatusMenu";
 import { TypingIndicator } from "../components/TypingIndicator";
 import { VoiceMiniBar } from "../components/VoiceMiniBar";
 import { VoicePlaceholder } from "../components/VoicePlaceholder";
@@ -1798,6 +1798,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             4 inner tabs: Сводка/Память/Дела/Файлы. Раньше эти вкладки жили
             в right rail (IntelligencePanel) — теперь rail = только Участники. */}
         {selectedChannel && infoPanelOpen && !inDmMode && serverView === "chat" && (
+          <Suspense fallback={null}>
           <ChannelInfoPanel
             channelId={selectedChannel.id}
             open={infoPanelOpen}
@@ -1853,6 +1854,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             onOpenAction={(id) => setOpenActionItemId(id)}
             clientMode={isClientMode}
           />
+          </Suspense>
         )}
 
         {/* v1.5.27 — lazy panel chain wrapped в Suspense. Все ветви ternary
@@ -2418,9 +2420,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
 
       {rightRailVisible && (
         <div className="ec-shell__members">
-          {/* v1.5.27 — right rail trio (Thread/Incident/IntelligencePanel)
-           * под Suspense; ThreadPanel + IncidentPanel lazy, IntelligencePanel
-           * eager (всегда default). */}
+          {/* v1.6.32 — right rail trio fully lazy under Suspense:
+           * Thread/Incident/IntelligencePanel грузятся только при mount. */}
           <Suspense fallback={null}>
           {selectedThreadId ? (
             <ThreadPanel
@@ -2480,7 +2481,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
        * Все 12 lazy-modal'ов условно рендерятся (по флагам). Они typically
        * не co-render'ятся одновременно (один open at a time), потому единая
        * Suspense с fallback={null} даёт чистый UX без визуальных blip'ов.
-       * StatusMenu (line ~2230) — единственный non-lazy, инсайд скоупа OK. */}
+       * v1.6.32: StatusMenu тоже lazy, чтобы меню профиля не жило в initial AppShell. */}
       <Suspense fallback={null}>
       {openActionItemId && (
         <ActionItemDrawer

@@ -1099,20 +1099,21 @@
 
 /* Controls dock — compact operator-grade surface over legacy inline styles. */
 .ec-voice-room__controls {
-  gap: 8px !important;
-  padding: 9px !important;
-  border: 1px solid color-mix(in srgb, var(--ec-accent) 20%, var(--ec-border-subtle)) !important;
-  border-radius: 24px !important;
+  gap: 7px !important;
+  padding: 10px !important;
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 18%, var(--ec-border-subtle)) !important;
+  border-radius: 28px !important;
   background:
-    radial-gradient(circle at 14% 0%, color-mix(in srgb, var(--ec-accent) 14%, transparent), transparent 42%),
+    radial-gradient(circle at 14% 0%, color-mix(in srgb, var(--ec-accent) 13%, transparent), transparent 42%),
+    linear-gradient(90deg, color-mix(in srgb, var(--ec-status-exec) 10%, transparent), transparent 30%, color-mix(in srgb, var(--ec-accent) 14%, transparent) 68%, transparent),
     linear-gradient(
       180deg,
-      color-mix(in srgb, var(--ec-surface-2) 94%, transparent),
-      color-mix(in srgb, var(--ec-surface-1) 98%, transparent)
+      color-mix(in srgb, #17202b 92%, transparent),
+      color-mix(in srgb, #080d14 98%, transparent)
     ) !important;
   box-shadow:
-    0 22px 64px -30px hsl(210 35% 2% / 0.9),
-    0 0 42px -26px var(--ec-accent),
+    0 24px 74px -38px hsl(210 35% 2% / 0.95),
+    0 0 46px -30px var(--ec-accent),
     inset 0 1px 0 hsl(0 0% 100% / 0.05),
     inset 0 0 0 1px hsl(0 0% 100% / 0.025) !important;
 }
@@ -1130,7 +1131,28 @@
     transparent 100%
   );
   pointer-events: none;
-  border-radius: 24px 24px 0 0;
+  border-radius: 28px 28px 0 0;
+}
+.ec-vr-control-separator {
+  width: 1px;
+  align-self: stretch;
+  min-height: 28px;
+  margin: 5px 2px;
+  border-radius: 999px;
+  background: linear-gradient(
+    180deg,
+    transparent,
+    color-mix(in srgb, var(--ec-accent) 20%, var(--ec-border-subtle)),
+    transparent
+  );
+}
+.ec-vr-control-separator--danger {
+  background: linear-gradient(
+    180deg,
+    transparent,
+    color-mix(in srgb, var(--ec-danger) 28%, var(--ec-border-subtle)),
+    transparent
+  );
 }
 
 /* v1.5.16 — control buttons. Класс добавлен в TSX, базовая структура
@@ -1138,15 +1160,18 @@
 .ec-vr-ctrl {
   position: relative;
   overflow: hidden;
-  width: 44px !important;
-  height: 44px !important;
-  border-radius: 16px !important;
-  background: color-mix(in srgb, var(--ec-surface-3) 78%, transparent) !important;
-  border-color: color-mix(in srgb, var(--ec-border-subtle) 86%, transparent) !important;
+  width: 42px !important;
+  height: 42px !important;
+  border-radius: 15px !important;
+  background:
+    radial-gradient(circle at 30% 16%, hsl(0 0% 100% / 0.055), transparent 42%),
+    color-mix(in srgb, var(--ec-surface-3) 74%, transparent) !important;
+  border-color: color-mix(in srgb, var(--ec-border-subtle) 78%, transparent) !important;
   color: var(--ec-text-muted) !important;
   box-shadow:
     inset 0 1px 0 hsl(0 0% 100% / 0.055),
-    0 10px 24px -18px hsl(210 35% 2% / 0.9) !important;
+    0 10px 24px -18px hsl(210 35% 2% / 0.9),
+    0 0 0 1px hsl(0 0% 100% / 0.018) !important;
 }
 .ec-vr-ctrl::after {
   content: "";
@@ -1162,12 +1187,14 @@
     transform var(--ec-dur-fast) var(--ec-ease-out);
 }
 .ec-vr-ctrl:hover:not(:disabled) {
-  transform: translateY(-1px) !important;
+  transform: translateY(-2px) !important;
   border-color: color-mix(in srgb, var(--ec-accent) 34%, var(--ec-border-subtle)) !important;
-  background: color-mix(in srgb, var(--ec-accent) 9%, var(--ec-surface-3)) !important;
+  background:
+    radial-gradient(circle at 30% 16%, hsl(0 0% 100% / 0.09), transparent 42%),
+    color-mix(in srgb, var(--ec-accent) 10%, var(--ec-surface-3)) !important;
   color: var(--ec-accent) !important;
   box-shadow:
-    0 8px 20px -12px hsl(258 86% 50% / 0.62),
+    0 12px 24px -14px hsl(258 86% 50% / 0.68),
     inset 0 1px 0 hsl(0 0% 100% / 0.07) !important;
 }
 .ec-vr-ctrl:hover:not(:disabled)::after,
@@ -1186,7 +1213,9 @@
   filter: saturate(0.65);
 }
 .ec-vr-ctrl--danger {
-  background: color-mix(in srgb, var(--ec-danger) 13%, var(--ec-surface-3)) !important;
+  background:
+    radial-gradient(circle at 30% 12%, hsl(0 0% 100% / 0.12), transparent 42%),
+    color-mix(in srgb, var(--ec-danger) 20%, var(--ec-surface-3)) !important;
   border-color: color-mix(in srgb, var(--ec-danger) 32%, transparent) !important;
   color: color-mix(in srgb, var(--ec-danger) 82%, white) !important;
 }
@@ -1197,7 +1226,9 @@
   box-shadow: 0 8px 22px -12px hsl(0 70% 55% / 0.72) !important;
 }
 .ec-vr-ctrl--accent {
-  background: color-mix(in srgb, var(--ec-accent) 17%, var(--ec-surface-3)) !important;
+  background:
+    radial-gradient(circle at 30% 12%, hsl(0 0% 100% / 0.11), transparent 42%),
+    color-mix(in srgb, var(--ec-accent) 18%, var(--ec-surface-3)) !important;
   border-color: color-mix(in srgb, var(--ec-accent) 45%, transparent) !important;
   color: color-mix(in srgb, var(--ec-accent) 72%, white) !important;
   box-shadow:
@@ -1213,11 +1244,13 @@
 }
 
 .ec-vr-volume {
-  min-width: 164px;
-  height: 44px !important;
-  padding: 0 14px !important;
-  border-radius: 16px !important;
-  background: color-mix(in srgb, var(--ec-surface-3) 72%, transparent) !important;
+  min-width: 156px;
+  height: 42px !important;
+  padding: 0 13px !important;
+  border-radius: 15px !important;
+  background:
+    radial-gradient(circle at 20% 0%, color-mix(in srgb, var(--ec-accent) 10%, transparent), transparent 44%),
+    color-mix(in srgb, var(--ec-surface-3) 68%, transparent) !important;
   border-color: color-mix(in srgb, var(--ec-border-subtle) 84%, transparent) !important;
   color: var(--ec-text-muted);
   box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.04);
@@ -1332,6 +1365,15 @@
   color: var(--ec-accent);
   box-shadow: 0 0 22px -14px var(--ec-accent);
 }
+.ec-voice-room__music-icon--active {
+  background:
+    radial-gradient(circle at 35% 22%, hsl(0 0% 100% / 0.18), transparent 34%),
+    linear-gradient(135deg, color-mix(in srgb, var(--ec-accent) 35%, #101827), #111827);
+  color: color-mix(in srgb, var(--ec-accent) 70%, white);
+  box-shadow:
+    0 0 28px -12px var(--ec-accent),
+    inset 0 1px 0 hsl(0 0% 100% / 0.12);
+}
 
 .ec-voice-room__music-copy {
   min-width: 0;
@@ -1366,6 +1408,109 @@
   min-height: 34px;
   padding: 0.45rem 0.72rem;
   font-size: var(--ec-text-xs);
+}
+
+.ec-vr-music-bot-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-width: min(320px, 100%);
+  max-width: 380px;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 28%, var(--ec-border-subtle));
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 10% 8%, color-mix(in srgb, var(--ec-accent) 22%, transparent), transparent 42%),
+    linear-gradient(180deg, color-mix(in srgb, var(--ec-surface-2) 88%, transparent), color-mix(in srgb, var(--ec-surface-1) 98%, transparent));
+  box-shadow:
+    0 24px 70px -44px hsl(258 86% 50% / 0.8),
+    inset 0 1px 0 hsl(0 0% 100% / 0.06);
+}
+.ec-vr-music-bot-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, hsl(180 70% 65% / 0.36), hsl(258 90% 72% / 0.55), transparent);
+}
+.ec-vr-music-bot-card__orb {
+  width: 58px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 42%, transparent);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--ec-accent) 34%, transparent), transparent 56%),
+    color-mix(in srgb, var(--ec-surface-3) 82%, transparent);
+  color: color-mix(in srgb, var(--ec-accent) 72%, white);
+  box-shadow: 0 0 36px -14px var(--ec-accent);
+}
+.ec-vr-music-bot-card__body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.ec-vr-music-bot-card__eyebrow {
+  color: color-mix(in srgb, var(--ec-accent) 72%, var(--ec-text-muted));
+  font-size: var(--ec-text-2xs);
+  font-weight: 800;
+  letter-spacing: var(--ec-tracking-caps);
+  text-transform: uppercase;
+}
+.ec-vr-music-bot-card__body strong {
+  color: var(--ec-text-strong);
+  font-size: var(--ec-text-base);
+}
+.ec-vr-music-bot-card__body span:last-child {
+  overflow: hidden;
+  color: var(--ec-text-muted);
+  font-size: var(--ec-text-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ec-vr-music-bot-card__actions {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 8px;
+}
+.ec-vr-music-bot-card__actions button,
+.ec-vr-music-bot-strip {
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 22%, var(--ec-border-subtle));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ec-accent) 9%, var(--ec-surface-3));
+  color: var(--ec-text);
+}
+.ec-vr-music-bot-card__actions button {
+  flex: 1;
+  min-height: 34px;
+  cursor: pointer;
+  font-size: var(--ec-text-xs);
+  font-weight: 800;
+}
+.ec-vr-music-bot-strip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0.34rem 0.58rem;
+  color: var(--ec-text-muted);
+  font-size: var(--ec-text-2xs);
+  font-weight: 800;
+  letter-spacing: var(--ec-tracking-caps);
+  text-transform: uppercase;
+}
+.ec-vr-music-bot-strip__orb {
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ec-accent) 18%, var(--ec-surface-3));
+  color: var(--ec-accent);
+  box-shadow: 0 0 16px -8px var(--ec-accent);
 }
 
 .ec-voice-music-picker__intro {

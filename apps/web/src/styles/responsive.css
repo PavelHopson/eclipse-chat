@@ -691,6 +691,16 @@
   .ec-vr-volume input[type="range"] {
     width: 72px !important;
   }
+  .ec-vr-control-separator {
+    min-width: 1px;
+    margin-inline: 0;
+  }
+  .ec-vr-music-bot-card {
+    min-width: 100%;
+  }
+  .ec-vr-music-bot-card__actions {
+    flex-direction: column;
+  }
 
   .ec-voice-room__note-shell--compact {
     min-height: 132px;

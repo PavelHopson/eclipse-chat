@@ -772,6 +772,9 @@ export function VoiceRoom({
 
   const headcount = isJoinedHere ? v.participants.length : occupants.length;
   const musicAudienceCount = Math.max(headcount, musicSession?.currentTrack ? 1 : 0);
+  const musicBotActive = Boolean(musicSession?.currentTrack);
+  const musicBotTrackName = musicSession?.currentTrack?.filename ?? "Очередь пуста";
+  const musicBotState = musicSession?.isPlaying ? "играет" : "на паузе";
   const hasRoomChat = Boolean(messages || composer);
   const effectiveLayoutMode: VoiceLayoutMode = hasRoomChat ? layoutMode : "stage";
 
@@ -908,7 +911,7 @@ export function VoiceRoom({
 
       <div className="ec-voice-room__music-bridge" aria-live="polite">
         <div className="ec-voice-room__music-main">
-          <span className="ec-voice-room__music-icon" aria-hidden>
+          <span className={"ec-voice-room__music-icon" + (musicBotActive ? " ec-voice-room__music-icon--active" : "")} aria-hidden>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
               <path d="M9 18V5l12-2v13" />
               <circle cx="6" cy="18" r="3" />
@@ -979,6 +982,16 @@ export function VoiceRoom({
             </div>
             {(audioOnlyParticipants.length > 0 || overflowCameraParticipants.length > 0) && (
               <div style={presenceStrip}>
+                {musicBotActive && (
+                  <span
+                    className="ec-vr-music-bot-strip"
+                    title={`Eclipse Music — ${musicBotState}: ${musicBotTrackName}`}
+                  >
+                    <span className="ec-vr-music-bot-strip__orb" aria-hidden>♪</span>
+                    <span>Eclipse Music</span>
+                    <span>{musicBotState}</span>
+                  </span>
+                )}
                 {/* Overflow cameras: участники с published cameras, не вошедшие
                     в TILE_LIMIT — отдельный визуальный маркер (small camera glyph). */}
                 {overflowCameraParticipants.map((p) => {
@@ -1060,6 +1073,34 @@ export function VoiceRoom({
         ) : isJoinedHere ? (
           /* Atmospheric presence room — floating avatars, speaking glow */
           <div style={presenceLayer}>
+            {musicBotActive && (
+              <article className="ec-vr-music-bot-card" aria-label={`Eclipse Music ${musicBotState}`}>
+                <div className="ec-vr-music-bot-card__orb" aria-hidden>
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M9 18V5l12-2v13" />
+                    <circle cx="6" cy="18" r="3" />
+                    <circle cx="18" cy="16" r="3" />
+                  </svg>
+                </div>
+                <div className="ec-vr-music-bot-card__body">
+                  <span className="ec-vr-music-bot-card__eyebrow">музыкальный бот</span>
+                  <strong>Eclipse Music</strong>
+                  <span>{musicBotState} · {musicBotTrackName}</span>
+                </div>
+                <div className="ec-vr-music-bot-card__actions">
+                  {onOpenMusicExpand && (
+                    <button type="button" onClick={onOpenMusicExpand}>
+                      Плеер
+                    </button>
+                  )}
+                  {onOpenMusicPicker && (
+                    <button type="button" onClick={onOpenMusicPicker}>
+                      Трек
+                    </button>
+                  )}
+                </div>
+              </article>
+            )}
             {v.participants.map((p) => {
               const muted = v.settings.mutedParticipants.includes(p.identity);
               const volume = v.settings.participantVolumes[p.identity] ?? 1;
@@ -1414,6 +1455,8 @@ export function VoiceRoom({
               <HeadsetIcon off={v.isDeafened} />
             </button>
 
+            <span className="ec-vr-control-separator" aria-hidden />
+
             <button
               type="button"
               onClick={() => void v.toggleCamera()}
@@ -1437,6 +1480,8 @@ export function VoiceRoom({
             >
               <ScreenShareIcon off={!v.isScreenShareEnabled} />
             </button>
+
+            <span className="ec-vr-control-separator" aria-hidden />
 
             <div
               className="ec-vr-volume"
@@ -1464,6 +1509,8 @@ export function VoiceRoom({
                 aria-label="Громкость воспроизведения"
               />
             </div>
+
+            <span className="ec-vr-control-separator" aria-hidden />
 
             <button
               type="button"
@@ -1503,6 +1550,8 @@ export function VoiceRoom({
             >
               <TuningIcon />
             </button>
+
+            <span className="ec-vr-control-separator ec-vr-control-separator--danger" aria-hidden />
 
             <button
               type="button"
