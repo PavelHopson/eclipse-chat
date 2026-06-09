@@ -1584,6 +1584,46 @@
   height: 100vh !important;
   object-fit: contain !important;
 }
+.ec-vr-video-tile__fullscreen-head {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  z-index: 5;
+  display: none;
+  max-width: min(520px, calc(100vw - 140px));
+  padding: 12px 14px;
+  border: 1px solid hsl(0 0% 100% / 0.16);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--ec-accent) 24%, transparent), transparent 56%),
+    hsl(220 28% 6% / 0.78);
+  color: hsl(0 0% 100% / 0.92);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  box-shadow: 0 18px 42px -24px hsl(210 45% 2% / 0.9);
+}
+.ec-vr-video-tile__fullscreen-title,
+.ec-vr-video-tile__fullscreen-source {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ec-vr-video-tile__fullscreen-title {
+  font-size: var(--ec-text-base);
+  font-weight: 850;
+}
+.ec-vr-video-tile__fullscreen-source {
+  margin-top: 3px;
+  color: hsl(0 0% 100% / 0.68);
+  font-size: var(--ec-text-2xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.ec-vr-video-tile:fullscreen .ec-vr-video-tile__fullscreen-head {
+  display: block;
+}
 .ec-vr-video-tile--screen video {
   object-fit: contain !important;
 }
@@ -1650,6 +1690,21 @@
   bottom: 22px;
   min-height: 42px;
   padding-inline: 16px;
+}
+@media (max-width: 560px) {
+  .ec-vr-video-tile__fullscreen-head {
+    top: 12px;
+    left: 12px;
+    max-width: calc(100vw - 92px);
+    padding: 10px 12px;
+    border-radius: 14px;
+  }
+
+  .ec-vr-video-tile:fullscreen .ec-vr-video-tile__fullscreen {
+    right: 12px;
+    bottom: 12px;
+    min-height: 40px;
+  }
 }
 .ec-vr-video-tile--speaking {
   box-shadow:

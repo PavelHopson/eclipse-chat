@@ -50,6 +50,8 @@ type Props = {
   composer?: ReactNode;
 };
 
+type VoiceLayoutMode = "split" | "stage" | "chat";
+
 /* ===== Layout ============================================== */
 
 const roomWrap: CSSProperties = {
@@ -487,7 +489,8 @@ function VideoTrackTile({
       ref={tileRef}
       className={
         `ec-vr-video-tile${isScreen ? " ec-vr-video-tile--screen" : " ec-vr-video-tile--camera"}` +
-        (aspect == null ? " ec-vr-video-tile--loading" : "")
+        (aspect == null ? " ec-vr-video-tile--loading" : "") +
+        (isFullscreen ? " ec-vr-video-tile--fullscreen-active" : "")
       }
       style={{
         ...videoTileWrap,
@@ -576,6 +579,15 @@ function VideoTrackTile({
           {isScreen ? <ScreenShareIcon size={11} /> : <CameraLensIcon size={11} />}
         </span>
       </div>
+      <div className="ec-vr-video-tile__fullscreen-head" aria-hidden={!isFullscreen}>
+        <span className="ec-vr-video-tile__fullscreen-title">
+          {visual.name}
+          {visual.isLocal ? " · ты" : ""}
+        </span>
+        <span className="ec-vr-video-tile__fullscreen-source">
+          {isScreen ? "Демонстрация экрана" : "Камера"} · Esc для выхода
+        </span>
+      </div>
       <button
         type="button"
         className="ec-vr-video-tile__fullscreen"
@@ -617,6 +629,14 @@ export function VoiceRoom({
   const [showStats, setShowStats] = useState(false);
   const [showDiagnostics, setShowDiagnostics] = useState(false);
   const [ctxMenu, setCtxMenu] = useState<ContextMenuState | null>(null);
+  const [layoutMode, setLayoutMode] = useState<VoiceLayoutMode>(() => {
+    try {
+      const saved = window.localStorage.getItem(`ec.voiceRoom.layout.${channelId}`);
+      return saved === "stage" || saved === "chat" || saved === "split" ? saved : "split";
+    } catch {
+      return "split";
+    }
+  });
   // UXR2 — серверная телеметрия (ПАМ/ЦП/связь) переехала из глобального
   // topbar в voice diagnostics, где объясняет качество связи/нагрузку.
   // Реальные значения из /api/health; null/offline → честный «нет данных».
@@ -632,6 +652,27 @@ export function VoiceRoom({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(`ec.voiceRoom.layout.${channelId}`);
+      if (saved === "stage" || saved === "chat" || saved === "split") {
+        setLayoutMode(saved);
+      } else {
+        setLayoutMode("split");
+      }
+    } catch {
+      setLayoutMode("split");
+    }
+  }, [channelId]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(`ec.voiceRoom.layout.${channelId}`, layoutMode);
+    } catch {
+      /* localStorage can be blocked in hardened browsers. Layout stays in memory. */
+    }
+  }, [channelId, layoutMode]);
 
   const lookupAvatar = (identity: string): string | null =>
     members.find((row) => row.userId === identity)?.user.avatar ?? null;
@@ -715,6 +756,8 @@ export function VoiceRoom({
 
   const headcount = isJoinedHere ? v.participants.length : occupants.length;
   const musicAudienceCount = Math.max(headcount, musicSession?.currentTrack ? 1 : 0);
+  const hasRoomChat = Boolean(messages || composer);
+  const effectiveLayoutMode: VoiceLayoutMode = hasRoomChat ? layoutMode : "stage";
 
   const openCtxMenu = (p: VoiceParticipant, e: React.MouseEvent) => {
     e.preventDefault();
@@ -823,6 +866,28 @@ export function VoiceRoom({
           </svg>
           {headcount}
         </span>
+        {hasRoomChat && (
+          <div className="ec-voice-room__layout-switch" role="group" aria-label="Режим голосовой комнаты">
+            {[
+              ["split", "Вместе"],
+              ["stage", "Эфир"],
+              ["chat", "Чат"],
+            ].map(([mode, label]) => (
+              <button
+                key={mode}
+                type="button"
+                className={
+                  "ec-voice-room__layout-option" +
+                  (effectiveLayoutMode === mode ? " ec-voice-room__layout-option--active" : "")
+                }
+                onClick={() => setLayoutMode(mode as VoiceLayoutMode)}
+                aria-pressed={effectiveLayoutMode === mode}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="ec-voice-room__music-bridge" aria-live="polite">
@@ -872,7 +937,13 @@ export function VoiceRoom({
         </div>
       </div>
 
-      <div className={"ec-voice-room__split" + (hasVisual ? " ec-voice-room__split--visual" : " ec-voice-room__split--audio")}>
+      <div
+        className={
+          "ec-voice-room__split" +
+          (hasVisual ? " ec-voice-room__split--visual" : " ec-voice-room__split--audio") +
+          ` ec-voice-room__split--layout-${effectiveLayoutMode}`
+        }
+      >
         <section className="ec-voice-room__stage-column" aria-label="Эфир голосовой комнаты">
           {/* ── ROOM CANVAS — immersive ──────────────────────────── */}
           <div
