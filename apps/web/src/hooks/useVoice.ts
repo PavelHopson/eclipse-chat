@@ -39,6 +39,7 @@ export type VoiceParticipant = {
   isMicMuted: boolean;
   isDeafened: boolean;
   isLocal: boolean;
+  connectionQuality: "excellent" | "good" | "poor" | "lost" | "unknown";
 };
 
 export type VoiceVisualTrack = {
@@ -97,6 +98,14 @@ type RemoteTrackEntry = {
   publication: RemoteTrackPublication;
   participantIdentity: string;
 };
+
+function normalizeConnectionQuality(value: unknown): VoiceParticipant["connectionQuality"] {
+  if (value === 2 || value === "excellent" || value === "EXCELLENT") return "excellent";
+  if (value === 1 || value === "good" || value === "GOOD") return "good";
+  if (value === 0 || value === "poor" || value === "POOR") return "poor";
+  if (value === 3 || value === "lost" || value === "LOST") return "lost";
+  return "unknown";
+}
 
 export function useVoice(socket: Socket | null = null) {
   const {
@@ -245,6 +254,9 @@ export function useVoice(socket: Socket | null = null) {
         isMicMuted: !lp.isMicrophoneEnabled,
         isDeafened,
         isLocal: true,
+        connectionQuality: normalizeConnectionQuality(
+          (lp as { connectionQuality?: unknown }).connectionQuality,
+        ),
       });
       for (const p of r.remoteParticipants.values()) {
         const micPub = p.getTrackPublication(lk.Track.Source.Microphone);
@@ -255,6 +267,9 @@ export function useVoice(socket: Socket | null = null) {
           isMicMuted: micPub?.isMuted ?? !micPub,
           isDeafened: false,
           isLocal: false,
+          connectionQuality: normalizeConnectionQuality(
+            (p as { connectionQuality?: unknown }).connectionQuality,
+          ),
         });
       }
       setParticipants(list);
@@ -416,6 +431,7 @@ export function useVoice(socket: Socket | null = null) {
         r.on(RoomEvent.TrackUnmuted, refreshParticipants);
         r.on(RoomEvent.LocalTrackPublished, refreshParticipants);
         r.on(RoomEvent.LocalTrackUnpublished, refreshParticipants);
+        r.on(RoomEvent.ConnectionQualityChanged, refreshParticipants);
         r.on(RoomEvent.ParticipantConnected, refreshVisualTracks);
         r.on(RoomEvent.ParticipantDisconnected, refreshVisualTracks);
         r.on(RoomEvent.TrackMuted, refreshVisualTracks);

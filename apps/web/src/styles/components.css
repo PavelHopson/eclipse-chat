@@ -11396,6 +11396,26 @@ body {
   z-index: 0;
 }
 
+.ec-voice-room--visual .ec-voice-room__stage-column {
+  background:
+    radial-gradient(ellipse 60rem 34rem at 50% 8%, color-mix(in srgb, var(--ec-status-info) 8%, transparent), transparent 62%),
+    radial-gradient(ellipse 50rem 26rem at 50% 96%, color-mix(in srgb, var(--ec-accent) 14%, transparent), transparent 64%),
+    linear-gradient(180deg, color-mix(in srgb, var(--ec-bg) 88%, #050810), color-mix(in srgb, var(--ec-bg) 98%, #050810));
+}
+
+.ec-voice-room__video-grid {
+  align-content: center;
+}
+
+.ec-voice-room__split--layout-stage .ec-voice-room__video-grid {
+  max-width: min(1480px, 100%);
+  margin-inline: auto;
+}
+
+.ec-voice-room__split--layout-stage .ec-vr-video-tile--screen {
+  max-height: min(78vh, 820px) !important;
+}
+
 .ec-vr-presence-card {
   position: relative;
   isolation: isolate;
@@ -11459,6 +11479,72 @@ body {
 
 .ec-vr-presence-card--muted:not(.ec-vr-presence-card--speaking) {
   opacity: 0.78;
+}
+
+.ec-vr-connection {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 20px;
+  padding: 0 7px;
+  border: 1px solid color-mix(in srgb, var(--ec-border-default) 62%, transparent);
+  border-radius: 999px;
+  color: color-mix(in srgb, var(--ec-text-muted) 90%, transparent);
+  background: color-mix(in srgb, var(--ec-surface-2) 68%, transparent);
+  font-family: var(--ec-font-mono);
+  font-size: 0.62rem;
+  font-weight: 850;
+  letter-spacing: 0.045em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.ec-vr-connection > span {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--ec-text-dim);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ec-text-dim) 12%, transparent);
+}
+
+.ec-vr-connection--excellent {
+  border-color: color-mix(in srgb, var(--ec-status-success) 42%, transparent);
+  color: color-mix(in srgb, var(--ec-status-success) 86%, var(--ec-text-strong));
+}
+
+.ec-vr-connection--excellent > span {
+  background: var(--ec-status-success);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ec-status-success) 16%, transparent);
+}
+
+.ec-vr-connection--good {
+  border-color: color-mix(in srgb, var(--ec-status-info) 38%, transparent);
+  color: color-mix(in srgb, var(--ec-status-info) 82%, var(--ec-text-strong));
+}
+
+.ec-vr-connection--good > span {
+  background: var(--ec-status-info);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ec-status-info) 14%, transparent);
+}
+
+.ec-vr-connection--poor {
+  border-color: color-mix(in srgb, var(--ec-status-warn) 46%, transparent);
+  color: color-mix(in srgb, var(--ec-status-warn) 86%, var(--ec-text-strong));
+}
+
+.ec-vr-connection--poor > span {
+  background: var(--ec-status-warn);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ec-status-warn) 16%, transparent);
+}
+
+.ec-vr-connection--lost {
+  border-color: color-mix(in srgb, var(--ec-danger) 52%, transparent);
+  color: color-mix(in srgb, var(--ec-danger) 88%, var(--ec-text-strong));
+}
+
+.ec-vr-connection--lost > span {
+  background: var(--ec-danger);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ec-danger) 18%, transparent);
 }
 
 .ec-voice-room__controls {

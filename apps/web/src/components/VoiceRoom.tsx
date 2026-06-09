@@ -333,6 +333,22 @@ function formatRoomAudience(count: number): string {
   return `${count} участников`;
 }
 
+function connectionQualityLabel(quality: VoiceParticipant["connectionQuality"]): string {
+  if (quality === "excellent") return "сеть отличная";
+  if (quality === "good") return "сеть хорошая";
+  if (quality === "poor") return "сеть слабая";
+  if (quality === "lost") return "связь потеряна";
+  return "сеть";
+}
+
+function connectionQualityShortLabel(quality: VoiceParticipant["connectionQuality"]): string {
+  if (quality === "excellent") return "отл";
+  if (quality === "good") return "ок";
+  if (quality === "poor") return "слабо";
+  if (quality === "lost") return "нет";
+  return "сеть";
+}
+
 function FullscreenGlyph({ active }: { active: boolean }) {
   return (
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -968,6 +984,7 @@ export function VoiceRoom({
                 {overflowCameraParticipants.map((p) => {
                   const muted = v.settings.mutedParticipants.includes(p.identity);
                   const speaking = p.isSpeaking && !p.isMicMuted && !muted;
+                  const qualityLabel = connectionQualityLabel(p.connectionQuality);
                   return (
                     <span
                       key={`cam-${p.identity}`}
@@ -991,12 +1008,21 @@ export function VoiceRoom({
                           {" "}· ты
                         </span>
                       )}
+                      <span
+                        className={`ec-vr-connection ec-vr-connection--${p.connectionQuality}`}
+                        title={qualityLabel}
+                        aria-label={qualityLabel}
+                      >
+                        <span aria-hidden />
+                        {connectionQualityShortLabel(p.connectionQuality)}
+                      </span>
                     </span>
                   );
                 })}
                 {audioOnlyParticipants.map((p) => {
                   const muted = v.settings.mutedParticipants.includes(p.identity);
                   const speaking = p.isSpeaking && !p.isMicMuted && !muted;
+                  const qualityLabel = connectionQualityLabel(p.connectionQuality);
                   return (
                     <span
                       key={p.identity}
@@ -1017,6 +1043,14 @@ export function VoiceRoom({
                           {" "}· ты
                         </span>
                       )}
+                      <span
+                        className={`ec-vr-connection ec-vr-connection--${p.connectionQuality}`}
+                        title={qualityLabel}
+                        aria-label={qualityLabel}
+                      >
+                        <span aria-hidden />
+                        {connectionQualityShortLabel(p.connectionQuality)}
+                      </span>
                     </span>
                   );
                 })}
@@ -1030,6 +1064,7 @@ export function VoiceRoom({
               const muted = v.settings.mutedParticipants.includes(p.identity);
               const volume = v.settings.participantVolumes[p.identity] ?? 1;
               const speaking = p.isSpeaking && !p.isMicMuted && !muted;
+              const qualityLabel = connectionQualityLabel(p.connectionQuality);
               return (
                 <div
                   key={p.identity}
@@ -1074,6 +1109,14 @@ export function VoiceRoom({
                       : p.isMicMuted
                       ? "микрофон выключен"
                       : "в эфире"}
+                  </span>
+                  <span
+                    className={`ec-vr-connection ec-vr-connection--${p.connectionQuality}`}
+                    title={qualityLabel}
+                    aria-label={qualityLabel}
+                  >
+                    <span aria-hidden />
+                    {qualityLabel}
                   </span>
                 </div>
               );
