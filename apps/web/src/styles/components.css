@@ -11223,6 +11223,8 @@ body {
   min-height: 0;
   overflow: auto !important;
   padding: clamp(14px, 2vw, 24px) !important;
+  position: relative;
+  z-index: 1;
 }
 
 .ec-voice-room__body:not(.ec-voice-room__body--visual) {
@@ -11268,6 +11270,7 @@ body {
   box-shadow:
     0 22px 56px -46px color-mix(in srgb, var(--ec-accent) 70%, transparent),
     inset 0 1px 0 hsl(0 0% 100% / 0.035);
+  isolation: isolate;
 }
 
 .ec-voice-room__chat-column {
@@ -11286,6 +11289,104 @@ body {
   box-shadow:
     0 24px 58px -44px color-mix(in srgb, var(--ec-accent) 72%, transparent),
     inset 0 1px 0 hsl(0 0% 100% / 0.045);
+  isolation: isolate;
+  position: relative;
+}
+
+.ec-voice-room__stage-column::before,
+.ec-voice-room__chat-column::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 18px;
+  right: 18px;
+  height: 1px;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--ec-status-info) 46%, transparent),
+    color-mix(in srgb, var(--ec-accent) 54%, transparent),
+    transparent
+  );
+  opacity: 0.72;
+  z-index: 1;
+}
+
+.ec-voice-room__stage-column::after {
+  content: "";
+  position: absolute;
+  inset: auto 8% -26% 8%;
+  height: 34%;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 100%, color-mix(in srgb, var(--ec-accent) 16%, transparent), transparent 68%);
+  opacity: 0.62;
+  z-index: 0;
+}
+
+.ec-vr-presence-card {
+  position: relative;
+  isolation: isolate;
+  width: clamp(136px, 12vw, 158px);
+  min-height: 150px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--ec-border-default) 72%, transparent) !important;
+  background:
+    radial-gradient(circle at 50% 10%, color-mix(in srgb, var(--ec-accent) 12%, transparent), transparent 46%),
+    linear-gradient(180deg, color-mix(in srgb, var(--ec-surface-3) 78%, #050810), color-mix(in srgb, var(--ec-bg) 94%, #050810)) !important;
+  box-shadow:
+    0 18px 42px -32px color-mix(in srgb, var(--ec-accent) 68%, transparent),
+    inset 0 1px 0 hsl(0 0% 100% / 0.05) !important;
+  transition:
+    transform 180ms var(--ec-ease-out),
+    border-color 180ms var(--ec-ease-out),
+    box-shadow 180ms var(--ec-ease-out),
+    filter 180ms var(--ec-ease-out);
+}
+
+.ec-vr-presence-card::before {
+  content: "";
+  position: absolute;
+  inset: 10px auto 10px 0;
+  width: 3px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--ec-status-info), var(--ec-accent));
+  opacity: 0;
+  transform: scaleY(0.35);
+  transition:
+    opacity 180ms var(--ec-ease-out),
+    transform 180ms var(--ec-ease-out);
+}
+
+.ec-vr-presence-card:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--ec-accent) 42%, var(--ec-border-default)) !important;
+  box-shadow:
+    0 22px 48px -30px color-mix(in srgb, var(--ec-accent) 78%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--ec-accent) 18%, transparent),
+    inset 0 1px 0 hsl(0 0% 100% / 0.07) !important;
+}
+
+.ec-vr-presence-card:hover::before,
+.ec-vr-presence-card--speaking::before {
+  opacity: 1;
+  transform: scaleY(1);
+}
+
+.ec-vr-presence-card--speaking {
+  border-color: color-mix(in srgb, var(--ec-status-success) 48%, var(--ec-accent)) !important;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--ec-status-success) 46%, transparent),
+    0 18px 46px -24px color-mix(in srgb, var(--ec-status-success) 46%, transparent),
+    0 0 34px -12px color-mix(in srgb, var(--ec-accent) 72%, transparent) !important;
+}
+
+.ec-vr-presence-card--muted {
+  filter: saturate(0.82);
+}
+
+.ec-vr-presence-card--muted:not(.ec-vr-presence-card--speaking) {
+  opacity: 0.78;
 }
 
 .ec-voice-room__controls {
@@ -11295,6 +11396,15 @@ body {
   bottom: 12px;
   z-index: 5 !important;
   border-color: color-mix(in srgb, var(--ec-accent) 20%, var(--ec-border-default)) !important;
+  gap: 7px !important;
+  padding: 8px !important;
+  background:
+    radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--ec-status-info) 12%, transparent), transparent 56%),
+    linear-gradient(90deg, color-mix(in srgb, var(--ec-surface-2) 82%, #050810), color-mix(in srgb, var(--ec-accent) 18%, #050810), color-mix(in srgb, var(--ec-surface-2) 82%, #050810)) !important;
+  box-shadow:
+    0 20px 54px -34px color-mix(in srgb, var(--ec-accent) 78%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--ec-status-info) 10%, transparent),
+    inset 0 1px 0 hsl(0 0% 100% / 0.06) !important;
 }
 
 .ec-voice-room__controls::before {
@@ -11312,6 +11422,12 @@ body {
   box-shadow:
     inset 0 1px 0 hsl(0 0% 100% / 0.045),
     0 10px 24px -18px hsl(210 40% 2% / 0.85) !important;
+  transition:
+    transform 160ms var(--ec-ease-out),
+    border-color 160ms var(--ec-ease-out),
+    box-shadow 160ms var(--ec-ease-out),
+    background 160ms var(--ec-ease-out),
+    color 160ms var(--ec-ease-out) !important;
 }
 
 .ec-voice-room__controls .ec-vr-ctrl:hover:not(:disabled),
@@ -11322,6 +11438,23 @@ body {
   box-shadow:
     0 0 0 1px color-mix(in srgb, var(--ec-accent) 22%, transparent),
     0 14px 30px -16px color-mix(in srgb, var(--ec-accent) 55%, transparent) !important;
+}
+
+.ec-voice-room__controls .ec-vr-ctrl:active:not(:disabled) {
+  transform: translateY(0) scale(0.96);
+}
+
+.ec-voice-room__controls .ec-vr-ctrl:disabled {
+  cursor: not-allowed;
+  filter: saturate(0.72);
+  opacity: 0.58;
+}
+
+.ec-voice-room__controls .ec-vr-ctrl[aria-pressed="true"] {
+  border-color: color-mix(in srgb, var(--ec-accent) 58%, transparent) !important;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--ec-accent) 32%, transparent),
+    0 16px 34px -18px color-mix(in srgb, var(--ec-accent) 64%, transparent) !important;
 }
 
 .ec-voice-room__controls .ec-vr-ctrl--accent {
@@ -11357,12 +11490,18 @@ body {
   width: 96px !important;
 }
 
+.ec-voice-room__controls .ec-vr-volume input[type="range"]::-webkit-slider-thumb {
+  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--ec-accent) 70%, transparent));
+}
+
 .ec-voice-room__composer {
   flex-shrink: 0;
   padding: 12px 12px 12px;
   border-top: 1px solid color-mix(in srgb, var(--ec-border-default) 64%, transparent);
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--ec-surface-2) 24%, transparent), color-mix(in srgb, var(--ec-bg) 74%, transparent));
+  position: relative;
+  z-index: 1;
 }
 
 .ec-voice-room__messages {
@@ -11370,6 +11509,8 @@ body {
   min-height: 0;
   display: flex;
   padding: 0;
+  position: relative;
+  z-index: 1;
 }
 
 .ec-voice-room__messages-card {
@@ -11549,15 +11690,23 @@ body {
   .ec-voice-room__controls .ec-vr-volume input[type="range"] {
     width: 72px !important;
   }
+
+  .ec-vr-presence-card {
+    width: min(100%, 148px);
+    min-height: 140px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ec-voice-room__controls .ec-vr-ctrl {
+  .ec-voice-room__controls .ec-vr-ctrl,
+  .ec-vr-presence-card,
+  .ec-vr-presence-card::before {
     transition: none !important;
   }
 
   .ec-voice-room__controls .ec-vr-ctrl:hover:not(:disabled),
-  .ec-voice-room__controls .ec-vr-ctrl:focus-visible {
+  .ec-voice-room__controls .ec-vr-ctrl:focus-visible,
+  .ec-vr-presence-card:hover {
     transform: none !important;
   }
 }

@@ -964,7 +964,8 @@ export function VoiceRoom({
                   key={p.identity}
                   className={
                     "ec-vr-presence-card" +
-                    (speaking ? " ec-vr-presence-card--speaking" : "")
+                    (speaking ? " ec-vr-presence-card--speaking" : "") +
+                    (muted || volume < 1 ? " ec-vr-presence-card--muted" : "")
                   }
                   style={{
                     ...presenceCardStyle(speaking, muted || volume < 1),
