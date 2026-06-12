@@ -198,6 +198,36 @@ function humanSize(bytes: number): string {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
+function dataTransferHasType(dataTransfer: DataTransfer, type: string): boolean {
+  for (let i = 0; i < dataTransfer.types.length; i++) {
+    if (dataTransfer.types[i] === type) return true;
+  }
+  return false;
+}
+
+function isHtmlDragArtifact(dataTransfer: DataTransfer, file: File): boolean {
+  if (file.type !== "text/html") return false;
+  return dataTransferHasType(dataTransfer, "text/html") || dataTransferHasType(dataTransfer, "text/uri-list");
+}
+
+function attachmentFilesFromDrop(dataTransfer: DataTransfer): File[] {
+  return Array.from(dataTransfer.files).filter((file) => !isHtmlDragArtifact(dataTransfer, file));
+}
+
+function textFromDrop(dataTransfer: DataTransfer): string | null {
+  const uriList = dataTransfer.getData("text/uri-list");
+  if (uriList.trim()) {
+    const urls = uriList
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line && !line.startsWith("#"));
+    if (urls.length > 0) return urls.join("\n");
+  }
+
+  const plain = dataTransfer.getData("text/plain").trim();
+  return plain.length > 0 ? plain : null;
+}
+
 function formatDuration(ms: number): string {
   const total = Math.max(0, Math.floor(ms / 1000));
   const minutes = Math.floor(total / 60);
@@ -340,6 +370,28 @@ export function MessageInput({
 
   const focusTextarea = () => {
     queueMicrotask(() => textareaRef.current?.focus());
+  };
+
+  const appendDroppedText = (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    const current = draftRef.current;
+    const next = current.trim().length > 0 ? `${current}\n${trimmed}` : trimmed;
+    setDraftValue(next);
+    focusTextarea();
+  };
+
+  const handleDataTransferDrop = (dataTransfer: DataTransfer) => {
+    const files = attachmentFilesFromDrop(dataTransfer);
+    if (files.length > 0) {
+      addFiles(files);
+      return;
+    }
+    const text = textFromDrop(dataTransfer);
+    if (text) {
+      setAttachError(null);
+      appendDroppedText(text);
+    }
   };
 
   const openFilePicker = () => {
@@ -842,9 +894,7 @@ export function MessageInput({
   const onDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
-    if (e.dataTransfer.files.length > 0) {
-      addFiles(e.dataTransfer.files);
-    }
+    handleDataTransferDrop(e.dataTransfer);
   };
 
   // v1.5.15 — window-level drag detection: full-screen overlay portal,
@@ -887,8 +937,7 @@ export function MessageInput({
       e.preventDefault();
       dragCounter = 0;
       setWindowDragOver(false);
-      const files = e.dataTransfer?.files;
-      if (files && files.length > 0) addFiles(files);
+      if (e.dataTransfer) handleDataTransferDrop(e.dataTransfer);
     };
     window.addEventListener("dragenter", onWinDragEnter);
     window.addEventListener("dragleave", onWinDragLeave);

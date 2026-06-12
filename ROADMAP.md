@@ -5,7 +5,9 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.6.33** (File share composer fix — Web Share Target для файлов больше не подставляет имя файла/список имён в текст draft-а перед отправкой: вложения остаются pending attachments, а настоящий текст/URL share сохраняется. Обычный file picker/drop не менялся: `addFiles` по-прежнему только добавляет previews. Backend/schema без изменений.)
+**Текущая версия:** **v1.6.34** (Composer drop guard — исправлен путь drag/drop, где browser-generated `text/html` попадал в file pipeline и показывал «Не поддерживается: text/html». Composer теперь отделяет реальные файлы от HTML/URL drag-артефактов: настоящие файлы идут в attachments, ссылки/текст вставляются в draft, HTML-разметка не загружается как файл. Локальные `.html` по-прежнему не разрешены как вложения по security-причине. Backend/schema без изменений.)
+
+**Предыдущая:** v1.6.33 (File share composer fix — Web Share Target для файлов больше не подставляет имя файла/список имён в текст draft-а перед отправкой: вложения остаются pending attachments, а настоящий текст/URL share сохраняется. Обычный file picker/drop не менялся: `addFiles` по-прежнему только добавляет previews. Backend/schema без изменений.)
 
 **Предыдущая:** v1.6.32 (Voice Room command dock + music bot presentation + shell lazy split — панель связи в голосовых комнатах переработана в более аккуратный grouped dock: кнопки получили компактные hit-targets, разделители групп, спокойные active/danger состояния и reduced-motion fallback. Общий плеер теперь представлен в комнате как честный `Eclipse Music` bot-card/chip поверх существующей `MusicSession`: показывает трек, состояние, host и быстрые действия «Плеер/Трек», но не делает ложный claim о трансляции системного звука или отдельном серверном LiveKit-боте. Для ускорения старта `AppShell` вынес редкие панели (`FriendsView`, `HomeToday`, `ServerWelcomeHero`, `ChannelsAndRolesView`, `MembersView`, `ChannelInfoPanel`, `IntelligencePanel`, `StatusMenu`) в lazy chunks. Backend/schema без изменений.)
 
