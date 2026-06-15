@@ -150,6 +150,15 @@ export function useVoice(socket: Socket | null = null) {
    * DSP-цепочка дополнительно в режиме noiseSuppression="aggressive".
    */
   const enhancerRef = useRef<AudioEnhancerHandle | null>(null);
+  const publishedMicConfigRef = useRef<{
+    inputDeviceId: string | null;
+    noiseSuppression: string;
+    enhancerMode: "none" | "gain" | "full";
+  }>({
+    inputDeviceId: null,
+    noiseSuppression: "standard",
+    enhancerMode: "none",
+  });
 
   /** Snapshot последних settings — для use в callbacks без зависимостей. */
   const settingsRef = useRef(settings);
@@ -346,6 +355,101 @@ export function useVoice(socket: Socket | null = null) {
     setIsScreenShareEnabled(r.localParticipant.isScreenShareEnabled);
   }, []);
 
+  const applyLocalMicrophoneSettings = useCallback(
+    async (r: RoomType, preserveMuted: boolean) => {
+      const constraints = noiseModeToConstraints(settingsRef.current.noiseSuppression);
+      const inputId = settingsRef.current.inputDeviceId;
+
+      if (enhancerRef.current) {
+        enhancerRef.current.destroy();
+        enhancerRef.current = null;
+      }
+
+      await r.localParticipant.setMicrophoneEnabled(true, {
+        ...constraints,
+        ...(inputId ? { deviceId: { exact: inputId } } : {}),
+      });
+
+      const lk = await import("livekit-client");
+      const micPub = r.localParticipant.getTrackPublication(lk.Track.Source.Microphone);
+      const localAudioTrack = micPub?.audioTrack;
+      const rawTrack = localAudioTrack?.mediaStreamTrack;
+      const needsEnhancer =
+        settingsRef.current.noiseSuppression === "aggressive" ||
+        settingsRef.current.micGain !== 1;
+      let enhancerMode: "none" | "gain" | "full" = "none";
+
+      if (needsEnhancer && localAudioTrack && rawTrack) {
+        try {
+          const enhancer = createAudioEnhancer(rawTrack, {
+            micGain: settingsRef.current.micGain,
+            gainOnly: settingsRef.current.noiseSuppression !== "aggressive",
+          });
+          await localAudioTrack.replaceTrack(enhancer.outputTrack);
+          enhancerRef.current = enhancer;
+          enhancerMode =
+            settingsRef.current.noiseSuppression === "aggressive" ? "full" : "gain";
+        } catch (enhErr) {
+          console.warn("Audio enhancer failed, using raw mic:", enhErr);
+        }
+      }
+
+      const currentTrack =
+        r.localParticipant.getTrackPublication(lk.Track.Source.Microphone)?.audioTrack
+          ?.mediaStreamTrack ?? null;
+      if (currentTrack) {
+        currentTrack.enabled = !preserveMuted;
+      }
+
+      publishedMicConfigRef.current = {
+        inputDeviceId: inputId ?? null,
+        noiseSuppression: settingsRef.current.noiseSuppression,
+        enhancerMode,
+      };
+      setIsMicMuted(preserveMuted);
+      refreshParticipants();
+    },
+    [refreshParticipants],
+  );
+
+  useEffect(() => {
+    const r = roomRef.current;
+    if (!r || state !== "connected") return;
+
+    const published = publishedMicConfigRef.current;
+    const nextEnhancerMode =
+      settings.noiseSuppression === "aggressive"
+        ? "full"
+        : settings.micGain !== 1
+        ? "gain"
+        : "none";
+    const needsRefresh =
+      published.inputDeviceId !== (settings.inputDeviceId ?? null) ||
+      published.noiseSuppression !== settings.noiseSuppression ||
+      published.enhancerMode !== nextEnhancerMode;
+
+    if (!needsRefresh) return;
+
+    const preserveMuted =
+      isDeafened ||
+      settings.micActivationMode === "push_to_talk" ||
+      (settings.micActivationMode === "voice_activity" && isMicMuted);
+
+    void applyLocalMicrophoneSettings(r, preserveMuted).catch((e) => {
+      console.warn("applyLocalMicrophoneSettings failed", e);
+      setError(e instanceof Error ? e.message : "Не удалось применить настройки микрофона");
+    });
+  }, [
+    settings.inputDeviceId,
+    settings.noiseSuppression,
+    settings.micGain,
+    settings.micActivationMode,
+    state,
+    isMicMuted,
+    isDeafened,
+    applyLocalMicrophoneSettings,
+  ]);
+
   useEffect(() => {
     refreshParticipants();
   }, [room, refreshParticipants]);
@@ -501,55 +605,8 @@ export function useVoice(socket: Socket | null = null) {
         // пере-publish'ат (publication остаётся live — это важно для
         // LiveKit; muted-состояние сразу выставляется ниже).
         try {
-          const constraints = noiseModeToConstraints(
-            settingsRef.current.noiseSuppression,
-          );
-          const inputId = settingsRef.current.inputDeviceId;
           const isPtt = settingsRef.current.micActivationMode === "push_to_talk";
-
-          await r.localParticipant.setMicrophoneEnabled(
-            true,
-            {
-              ...constraints,
-              ...(inputId ? { deviceId: { exact: inputId } } : {}),
-            },
-          );
-          setIsMicMuted(isPtt);
-
-          // Web Audio mic-цепочка перед publish. v1.1.69: подключается
-          // ТОЛЬКО когда реально обрабатывает звук — режим "aggressive"
-          // (полная DSP-цепочка highpass+lowpass+compressor+gain) ИЛИ
-          // mic gain ≠ 1.0. При "standard"/"off" с gain 1.0 цепочка была
-          // бы no-op'ом (src→gain(1)→dest): лишний Web Audio round-trip
-          // через MediaStreamDestination деградировал звук («замученный
-          // микрофон»). Default-кейс снова публикует raw mic-трек
-          // напрямую — как до v1.1.59. replaceTrack — чистый LiveKit API;
-          // при ошибке fallback на raw track (mic всё равно работает).
-          try {
-            const needsEnhancer =
-              settingsRef.current.noiseSuppression === "aggressive" ||
-              settingsRef.current.micGain !== 1;
-            if (needsEnhancer) {
-              const lk = await import("livekit-client");
-              const micPub = r.localParticipant.getTrackPublication(
-                lk.Track.Source.Microphone,
-              );
-              const localAudioTrack = micPub?.audioTrack;
-              const rawMs = localAudioTrack?.mediaStreamTrack;
-              if (localAudioTrack && rawMs) {
-                const enhancer = createAudioEnhancer(rawMs, {
-                  micGain: settingsRef.current.micGain,
-                  gainOnly:
-                    settingsRef.current.noiseSuppression !== "aggressive",
-                });
-                await localAudioTrack.replaceTrack(enhancer.outputTrack);
-                enhancerRef.current = enhancer;
-              }
-            }
-          } catch (enhErr) {
-            // Web Audio-цепочка не критична — mic работает на raw track.
-            console.warn("Audio enhancer failed, using raw mic:", enhErr);
-          }
+          await applyLocalMicrophoneSettings(r, isPtt);
 
           // v1.1.75 — PTT: трек опубликован (+ enhancer уже прикреплён),
           // глушим его до первого нажатия клавиши через
@@ -605,7 +662,17 @@ export function useVoice(socket: Socket | null = null) {
         setBusy(false);
       }
     },
-    [activeChannelId, busy, leave, refreshParticipants, refreshVisualTracks, state, applyRemoteAudioState, isDeafened],
+    [
+      activeChannelId,
+      busy,
+      leave,
+      refreshParticipants,
+      refreshVisualTracks,
+      state,
+      applyRemoteAudioState,
+      applyLocalMicrophoneSettings,
+      isDeafened,
+    ],
   );
 
   const toggleMic = useCallback(async () => {
@@ -779,18 +846,35 @@ export function useVoice(socket: Socket | null = null) {
     const r = roomRef.current;
     if (!r) return;
     if (state !== "connected") return;
+    const setPublishedTrackEnabled = async (enabled: boolean) => {
+      const lk = await import("livekit-client");
+      const ms = r.localParticipant.getTrackPublication(lk.Track.Source.Microphone)
+        ?.audioTrack?.mediaStreamTrack;
+      if (ms) {
+        ms.enabled = enabled;
+        setIsMicMuted(!enabled);
+        refreshParticipants();
+        return true;
+      }
+      return false;
+    };
     if (settings.micActivationMode === "push_to_talk") {
       if (!isMicMuted) {
-        void r.localParticipant.setMicrophoneEnabled(false).then(() => {
-          setIsMicMuted(true);
-          refreshParticipants();
+        void setPublishedTrackEnabled(false).then((ok) => {
+          if (!ok) {
+            void r.localParticipant.setMicrophoneEnabled(false).then(() => {
+              setIsMicMuted(true);
+              refreshParticipants();
+            });
+          }
         });
       }
     } else {
       if (isMicMuted && !isDeafened) {
-        void r.localParticipant.setMicrophoneEnabled(true).then(() => {
-          setIsMicMuted(false);
-          refreshParticipants();
+        void setPublishedTrackEnabled(true).then((ok) => {
+          if (!ok) {
+            void applyLocalMicrophoneSettings(r, false);
+          }
         });
       }
     }

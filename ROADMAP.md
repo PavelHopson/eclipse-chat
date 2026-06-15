@@ -5,7 +5,11 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.6.34** (Composer drop guard — исправлен путь drag/drop, где browser-generated `text/html` попадал в file pipeline и показывал «Не поддерживается: text/html». Composer теперь отделяет реальные файлы от HTML/URL drag-артефактов: настоящие файлы идут в attachments, ссылки/текст вставляются в draft, HTML-разметка не загружается как файл. Локальные `.html` по-прежнему не разрешены как вложения по security-причине. Backend/schema без изменений.)
+**Текущая версия:** **v1.6.35** (Voice audio setup — настройки голоса получили пресеты «Офис / Шумно / USB-студия», проверку вывода звука, явную оценку уровня микрофона и сохранение валидированных audio-параметров. Noise suppression и mic gain теперь применяются live в активной комнате через republish/replaceTrack без обязательного reconnect; PTT сохраняет публикацию микрофона и глушит track, а не ломает enhancer chain. Backend/schema без изменений.)
+
+**Предыдущая:** v1.6.34 (Composer drop guard — исправлен путь drag/drop, где browser-generated `text/html` попадал в file pipeline и показывал «Не поддерживается: text/html». Composer теперь отделяет реальные файлы от HTML/URL drag-артефактов: настоящие файлы идут в attachments, ссылки/текст вставляются в draft, HTML-разметка не загружается как файл. Локальные `.html` по-прежнему не разрешены как вложения по security-причине. Backend/schema без изменений.)
+
+**Инфраструктурный слайс без app-version bump:** Network Gateway v0.1 — добавлен deploy/runbook для собственного закрытого VPN+proxy: WireGuard full-tunnel для доверенных устройств, Squid HTTP/HTTPS CONNECT proxy с basic-auth внутри WireGuard namespace и host-only bind `127.0.0.1:3128`, `.gitignore` защищает `deploy/network-gateway/secrets/` и `state/`. Это не меняет runtime Eclipse Chat, API, schema, web bundle или `/api/version`; следующий продуктовый слайс — platform-admin metadata UI без хранения приватных ключей.
 
 **Предыдущая:** v1.6.33 (File share composer fix — Web Share Target для файлов больше не подставляет имя файла/список имён в текст draft-а перед отправкой: вложения остаются pending attachments, а настоящий текст/URL share сохраняется. Обычный file picker/drop не менялся: `addFiles` по-прежнему только добавляет previews. Backend/schema без изменений.)
 
