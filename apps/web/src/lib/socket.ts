@@ -536,6 +536,7 @@ export const SocketEvents = {
   BotTyping: "bot:typing",
   VoiceJoin: "voice:join",
   VoiceLeave: "voice:leave",
+  VoicePresenceRequest: "voice:presence:request",
   VoiceState: "voice:state",
   VoiceMeta: "voice:meta",
   VoiceMetaUpdate: "voice:meta:update",

@@ -5,7 +5,9 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.6.35** (Voice audio setup — настройки голоса получили пресеты «Офис / Шумно / USB-студия», проверку вывода звука, явную оценку уровня микрофона и сохранение валидированных audio-параметров. Noise suppression и mic gain теперь применяются live в активной комнате через republish/replaceTrack без обязательного reconnect; PTT сохраняет публикацию микрофона и глушит track, а не ломает enhancer chain. Backend/schema без изменений.)
+**Текущая версия:** **v1.6.36** (Voice presence snapshot hotfix — список пользователей в голосовых комнатах больше не зависит только от стартового socket connect и дельта-событий. Клиент явно запрашивает `voice:presence:request` при mount/reconnect и держит 30s fallback-refresh; backend отдаёт актуальный `voice:state` + `voice:meta` snapshot только по серверам, где пользователь состоит. Исправляет пустые/неполные участники под voice-каналами после пропущенного snapshot-а или reconnect-а.)
+
+**Предыдущая:** v1.6.35 (Voice audio setup — настройки голоса получили пресеты «Офис / Шумно / USB-студия», проверку вывода звука, явную оценку уровня микрофона и сохранение валидированных audio-параметров. Noise suppression и mic gain теперь применяются live в активной комнате через republish/replaceTrack без обязательного reconnect; PTT сохраняет публикацию микрофона и глушит track, а не ломает enhancer chain. Backend/schema без изменений.)
 
 **Предыдущая:** v1.6.34 (Composer drop guard — исправлен путь drag/drop, где browser-generated `text/html` попадал в file pipeline и показывал «Не поддерживается: text/html». Composer теперь отделяет реальные файлы от HTML/URL drag-артефактов: настоящие файлы идут в attachments, ссылки/текст вставляются в draft, HTML-разметка не загружается как файл. Локальные `.html` по-прежнему не разрешены как вложения по security-причине. Backend/schema без изменений.)
 

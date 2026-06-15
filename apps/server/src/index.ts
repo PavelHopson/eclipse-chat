@@ -232,7 +232,7 @@ app.get("/api/health", async () => {
     },
   };
 });
-app.get("/api/version", async () => ({ name: "@eclipse-chat/server", version: "1.6.35" }));
+app.get("/api/version", async () => ({ name: "@eclipse-chat/server", version: "1.6.36" }));
 
 await registerAuthRoutes(app);
 await registerTwoFactorRoutes(app);
@@ -522,6 +522,18 @@ io.on("connection", (socket) => {
       void socket.leave(`channel:${voiceState.voiceChannelId}`);
     }
     trackVoiceLeave(socket.id);
+  });
+
+  socket.on("voice:presence:request", async () => {
+    const uid = (socket.data as { userId: string | null | undefined }).userId;
+    if (!uid) return;
+    try {
+      const snap = await buildVoicePresenceSnapshot(uid);
+      socket.emit("voice:state", snap.byChannel);
+      socket.emit("voice:meta", snap.meta);
+    } catch (err) {
+      app.log.error({ err, userId: uid }, "Failed to refresh voice presence snapshot");
+    }
   });
 
   // Клиент переключил микрофон / звук — обновляем meta и рассылаем дельту
