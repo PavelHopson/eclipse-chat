@@ -9662,6 +9662,31 @@ body {
   background: color-mix(in srgb, var(--ec-accent) 11%, #111827);
 }
 
+/* v1.6.44 de-noise (слайс 4): list rows. Убраны hover-slide (translateX) и
+   violet drop-shadow на hover у friend/member/search/popover/srv-menu/dm-row;
+   bg-tint и функциональные active/unread рейлы сохранены. Бесконечные
+   pulse/breath на dm online-avatar и unread-badge заглушены (статичные индикаторы). */
+.ec-friend-row:hover,
+.ec-friend-row:focus-visible,
+.ec-member-row:hover,
+.ec-search-hit:hover,
+.ec-popover-item:hover,
+.ec-srv-menu-row:hover,
+.ec-dm-row:hover {
+  transform: none;
+}
+.ec-friend-row:hover,
+.ec-friend-row:focus-visible,
+.ec-member-row:hover,
+.ec-search-hit:hover {
+  box-shadow: var(--ec-elev-1);
+}
+.ec-dm-row.is-online .ec-avatar,
+.ec-dm-row__badge,
+.ec-dm-row__badge::after {
+  animation: none;
+}
+
 .ec-chat-header {
   box-shadow:
     0 1px 0 color-mix(in srgb, var(--ec-accent) 24%, transparent),
