@@ -71,12 +71,6 @@ const body: CSSProperties = {
   gap: "var(--ec-space-5)",
 };
 
-const grid: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-  gap: "var(--ec-space-3)",
-};
-
 function statCardStyle(tone: "exec" | "warn" | "idle" | "risk"): CSSProperties {
   const toneColors: Record<typeof tone, { fg: string; bg: string; border: string }> = {
     exec: {
@@ -299,8 +293,8 @@ export function TeamHealth({
         )}
 
         {!error && loading && !data && (
-          <div className="ec-team-health-stats" style={grid} aria-label="Считаем здоровье команды">
-            {Array.from({ length: 4 }).map((_, i) => (
+          <div className="ec-team-health-stats" aria-label="Считаем здоровье команды">
+            {Array.from({ length: 5 }).map((_, i) => (
               <div key={i} className="ec-skeleton-card" />
             ))}
           </div>
@@ -319,7 +313,7 @@ export function TeamHealth({
 
         {!error && !isEmpty && data && (
           <>
-            <div className="ec-team-health-stats" style={grid}>
+            <div className="ec-team-health-stats">
               <button
                 type="button"
                 {...tiltProps}

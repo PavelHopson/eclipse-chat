@@ -824,6 +824,22 @@
   }
 }
 
+/* v1.6.40 — TeamHealth stat-grid base (перенесён из inline style={grid}).
+   Раньше inline `repeat(auto-fit, minmax(220px,1fr))` на 5 карточках ронял
+   5-ю карту в одинокий orphan-ряд на промежуточной ширине (~1100px: 4+1).
+   Теперь сбалансированно: 5 в ряд на широком → 3+2 на среднем → (ниже
+   mobile-оверрайды 2col/1col). */
+.ec-team-health-stats {
+  display: grid;
+  gap: var(--ec-space-3);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+@media (max-width: 1180px) {
+  .ec-team-health-stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 /* (o) TeamHealth stat-cards: minmax(220px) на 420-440px даёт странный
        1.5-column hybrid. Явный 2-column на mobile. */
 @media (max-width: 480px) {
