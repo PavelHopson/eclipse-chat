@@ -125,7 +125,8 @@ html[data-ec-theme="solar"] .ec-voice-room {
   right: -18vw;
   top: 50%;
   transform: translateY(-50%);
-  opacity: 0.62;
+  /* v1.6.45 de-noise: приглушённый signature-фон (0.62 -> 0.30). */
+  opacity: 0.30;
   z-index: 0;
 }
 
@@ -134,7 +135,8 @@ html[data-ec-theme="solar"] .ec-voice-room {
   aspect-ratio: 1;
   right: -24%;
   top: -180px;
-  opacity: 0.42;
+  /* v1.6.45 de-noise: 0.42 -> 0.20. */
+  opacity: 0.20;
   z-index: -1;
 }
 
@@ -143,9 +145,9 @@ html[data-ec-theme="solar"] .ec-voice-room {
   aspect-ratio: 1;
   right: 6%;
   top: 8%;
-  /* v1.5.9 — opacity 0.25 → 0.32 для большей presence в right rail;
-   * крупная decoration, но не отвлекает от content'а. */
-  opacity: 0.32;
+  /* v1.6.45 de-noise: in-app shell-фон сильно приглушён (0.32 -> 0.12) —
+   * остаётся едва уловимой атмосферой, не конкурирует с контентом. */
+  opacity: 0.12;
   z-index: -1;
 }
 

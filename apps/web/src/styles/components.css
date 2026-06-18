@@ -1872,40 +1872,23 @@ input[type="radio"]:focus-visible {
   /* v1.5.11 — triple-layer background: radial violet aura at left
    * + radial cyan at right + base depth. Top holo rail (cyan→violet)
    * через ::before — единый design language с modal-header/popover. */
-  background:
-    radial-gradient(120% 80% at 0% 0%, hsl(258 86% 55% / 0.08), transparent 50%),
-    radial-gradient(110% 70% at 100% 100%, hsl(180 70% 55% / 0.05), transparent 45%),
-    linear-gradient(180deg, hsl(216 24% 7% / 0.84), hsl(216 24% 5% / 0.74));
+  /* v1.6.45 de-noise: убраны violet+cyan radial-ауры — плоская подложка. */
+  background: linear-gradient(180deg, hsl(216 24% 7% / 0.84), hsl(216 24% 5% / 0.74));
   backdrop-filter: blur(18px) saturate(130%);
   -webkit-backdrop-filter: blur(18px) saturate(130%);
   border-bottom-color: color-mix(in srgb, var(--ec-accent) 12%, hsl(225 14% 72% / 0.08));
-  box-shadow:
-    0 16px 38px hsl(210 70% 2% / 0.22),
-    inset 0 -1px 0 hsl(258 86% 62% / 0.06);
+  /* v1.6.45 de-noise: убран violet inset-glow. */
+  box-shadow: 0 16px 38px hsl(210 70% 2% / 0.22);
 }
-/* v1.5.11 — top accent rail (cyan→violet bridge gradient, static). */
+/* v1.6.45 de-noise: holo-рейл на chat-header убран. */
 .ec-chat-header::before {
-  content: "";
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    hsl(180 70% 65% / 0.35) 30%,
-    hsl(258 86% 72% / 0.55) 55%,
-    hsl(258 70% 60% / 0.25) 75%,
-    transparent 100%
-  );
-  pointer-events: none;
+  display: none;
 }
 
 .ec-shell__chat {
   position: relative;
-  background:
-    radial-gradient(ellipse 40rem 26rem at 62% 4%, hsl(225 14% 60% / 0.045), transparent 62%),
-    radial-gradient(ellipse 36rem 30rem at 96% 86%, hsl(252 70% 60% / 0.045), transparent 64%),
-    linear-gradient(180deg, hsl(216 24% 5% / 0.72), hsl(216 24% 4% / 0.94));
+  /* v1.6.45 de-noise: убраны radial-ауры фона чата — плоская подложка. */
+  background: linear-gradient(180deg, hsl(216 24% 5% / 0.72), hsl(216 24% 4% / 0.94));
 }
 
 .ec-message-list {
@@ -9688,9 +9671,8 @@ body {
 }
 
 .ec-chat-header {
-  box-shadow:
-    0 1px 0 color-mix(in srgb, var(--ec-accent) 24%, transparent),
-    0 18px 48px -44px hsl(258 90% 62% / 0.74);
+  /* v1.6.45 de-noise: убран violet drop-glow — тонкая нижняя кромка. */
+  box-shadow: 0 1px 0 var(--ec-border-subtle);
 }
 
 .ec-message-row {
