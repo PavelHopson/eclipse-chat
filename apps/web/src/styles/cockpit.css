@@ -183,6 +183,15 @@
   padding: var(--ec-space-4) var(--ec-space-5);
   overflow: auto;
 }
+/* v1.6.39 — StatusBoard держит ВСЕ 4 статус-колонки в одном ряду.
+   Раньше auto-fit ломал доску на 2 ряда (3+1) на промежуточной ширине
+   (~1100px) — «Сделано» уезжала вниз отдельно, ломая модель «4 статуса
+   сразу». Теперь 4 колонки всегда side-by-side; на узком desktop/tablet
+   доска скроллится по горизонтали (overflow:auto), ≤500px → 1fr stacked
+   (см. responsive.css). board-specific, не трогает общий .ec-cck-board. */
+.ec-status-board {
+  grid-template-columns: repeat(4, minmax(260px, 1fr));
+}
 
 .ec-cck-col {
   display: flex;
