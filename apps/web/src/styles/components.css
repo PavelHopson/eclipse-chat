@@ -5929,12 +5929,10 @@ input[type="radio"]:focus-visible {
   max-height: min(920px, calc(100dvh - 32px));
   overflow: hidden;
   background: var(--ec-overlay-bg);
-  border: 1px solid color-mix(in srgb, var(--ec-accent) 22%, var(--ec-border-default));
+  border: 1px solid var(--ec-border-default);
   border-radius: var(--ec-radius-lg);
-  box-shadow:
-    var(--ec-shadow-modal),
-    0 0 0 1px hsl(258 86% 62% / 0.10) inset,
-    0 30px 70px -22px hsl(258 86% 35% / 0.45);
+  /* v1.6.42 de-noise: одна чистая modal-тень, без violet inset/drop glow. */
+  box-shadow: var(--ec-shadow-modal);
   backdrop-filter: saturate(180%) blur(20px);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
   transform-origin: center top;
@@ -6231,12 +6229,10 @@ input[type="radio"]:focus-visible {
   flex-direction: column;
   overflow: hidden;
   background: var(--ec-overlay-bg);
-  border: 1px solid color-mix(in srgb, var(--ec-accent) 22%, var(--ec-border-default));
+  border: 1px solid var(--ec-border-default);
   border-radius: var(--ec-radius-lg);
-  box-shadow:
-    var(--ec-shadow-modal),
-    0 0 0 1px hsl(258 86% 62% / 0.10) inset,
-    0 30px 70px -22px hsl(258 86% 35% / 0.45);
+  /* v1.6.42 de-noise: одна чистая modal-тень, без violet inset/drop glow. */
+  box-shadow: var(--ec-shadow-modal);
   backdrop-filter: saturate(180%) blur(20px);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
   transform-origin: center top;
@@ -6721,20 +6717,9 @@ input[type="radio"]:focus-visible {
   transform-origin: top center;
   animation: ec-popover-in 200ms var(--ec-ease-out) both;
 }
+/* v1.6.42 de-noise: holo-рейл на верхней кромке поповера убран. */
 .ec-popover-surface::before {
-  content: "";
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    hsl(180 70% 65% / 0.55) 35%,
-    hsl(258 86% 75% / 0.85) 55%,
-    hsl(258 70% 60% / 0.40) 75%,
-    transparent 100%
-  );
-  pointer-events: none;
+  display: none;
 }
 
 /* v1.5.7 — popover items (для меню/autocomplete). Hover left rail
@@ -8658,10 +8643,9 @@ input[type="radio"]:focus-visible {
 .ec-server-hub-panel,
 .ec-admin-row,
 .ec-bot-card {
-  border-color: color-mix(in srgb, var(--ec-accent) 10%, var(--ec-border-subtle));
-  background:
-    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--ec-accent) 5%, transparent), transparent 40%),
-    color-mix(in srgb, var(--ec-surface-2) 82%, transparent);
+  border-color: var(--ec-border-subtle);
+  /* v1.6.42 de-noise: плоская поверхность, без violet-ауры. */
+  background: color-mix(in srgb, var(--ec-surface-2) 82%, transparent);
 }
 
 @media (prefers-reduced-motion: reduce) {
