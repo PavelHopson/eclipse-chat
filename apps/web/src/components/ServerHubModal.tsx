@@ -15,6 +15,7 @@ import type { MemberRole, MemberRow } from "../hooks/useMembers";
 import type { ServerRow } from "../hooks/useServers";
 import type { ChannelRow } from "../hooks/useChannels";
 import { resolveAssetUrl } from "../lib/assets";
+import { serverBannerGradient } from "../lib/serverBanner";
 import {
   cleanServerFeatures,
   encodeServerFeatures,
@@ -548,18 +549,32 @@ export function ServerHubModal({
               ) : (
                 <div
                   style={{
+                    position: "relative",
                     aspectRatio: "3 / 1",
                     borderRadius: "var(--ec-radius-lg)",
-                    border: "1px dashed var(--ec-border-default)",
-                    background:
-                      "linear-gradient(135deg, var(--ec-surface-2), var(--ec-surface-3))",
+                    border: "1px solid var(--ec-border-default)",
+                    overflow: "hidden",
+                    backgroundImage: serverBannerGradient({
+                      id: server.id,
+                      brandColor: brandColor.trim() || null,
+                    }),
+                    backgroundSize: "cover",
                     display: "grid",
                     placeItems: "center",
-                    color: "var(--ec-text-muted)",
-                    fontSize: "var(--ec-text-sm)",
                   }}
                 >
-                  Баннер не задан
+                  <span
+                    style={{
+                      padding: "var(--ec-space-1) var(--ec-space-3)",
+                      borderRadius: "999px",
+                      background: "hsl(210 22% 4% / 0.55)",
+                      color: "#fff",
+                      fontSize: "var(--ec-text-sm)",
+                      textShadow: "0 1px 3px hsl(210 22% 4% / 0.8)",
+                    }}
+                  >
+                    Авто-градиент — нет изображения
+                  </span>
                 </div>
               )}
               <div style={{ display: "flex", gap: "var(--ec-space-2)", flexWrap: "wrap" }}>
@@ -590,7 +605,8 @@ export function ServerHubModal({
               </div>
               <p className="ec-hub-hint">
                 1500×500, до 25 MB. Конвертируется в webp. Показывается в шапке
-                чата при пустой комнате и в Обзоре пространства.
+                чата при пустой комнате и в Обзоре пространства. Без изображения
+                сервер показывает авто-градиент по цвету акцента.
               </p>
             </div>
           </section>

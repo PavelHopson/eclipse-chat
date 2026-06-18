@@ -1,5 +1,6 @@
 import "../styles/clean-ui.css";
 import { resolveAssetUrl } from "../lib/assets";
+import { serverBannerGradient } from "../lib/serverBanner";
 import { depthTiltProps } from "../lib/tilt";
 import { parseServerFeatures } from "../lib/serverFeatures";
 import type { ServerRow } from "../hooks/useServers";
@@ -98,7 +99,11 @@ export function ServerWelcomeHero({ server, channels, onSelectChannel }: Props) 
       <div className="ec-guide__inner">
         <div
           className={"ec-guide__banner" + (bannerUrl ? "" : " ec-guide__banner--fallback")}
-          style={bannerUrl ? { backgroundImage: `url("${bannerUrl}")` } : undefined}
+          style={{
+            backgroundImage: bannerUrl
+              ? `url("${bannerUrl}")`
+              : serverBannerGradient(server),
+          }}
           aria-hidden
         />
         <div className="ec-guide__head">

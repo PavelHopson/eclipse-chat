@@ -84,7 +84,7 @@
 | # | Feature | EC сейчас | Gap | Effort | Priority | Статус |
 |---|---|---|---|---|---|---|
 | E1 | **Settings tree nav** (12+ categories) | `ServerHubModal` 4 tabs (Обзор/Оформление/Настройки/Боты) | Expand до tree nav с grouped sections: РЕАКЦИИ / ЛЮДИ / ПРИЛОЖЕНИЯ / МОДЕРАЦИЯ / СООБЩЕСТВО. **Стикеры/Звук** ⛔. **Бонусы буста** ⛔ | M | ⭐ HIGH | ✅ v1.5.55 |
-| E2 | **Banner gradient presets** (10 swatches) рядом с custom upload | Только custom upload (`server.banner`) | UI: 10 preset gradient swatches как fallback для серверов без image | S | 🟢 MED | 📋 |
+| E2 | **Banner gradient presets** (10 swatches) рядом с custom upload | Только custom upload (`server.banner`) | UI: 10 preset gradient swatches как fallback для серверов без image | S | 🟢 MED | 🟡 v1.6.37 fallback-часть (детерминированный on-brand градиент в WelcomeHero + превью настроек); owner-picker + persist (`server.bannerGradient`) + rail-header cover = slice 2 |
 | E3 | **Server features chips** «Никаких предателей» / «Жесткие правила» / «Решай задачи» / «Только члены» / «Анализ сезона» | Нет | New `server.features` JSON array (max 5) + UI chip editor + display в WelcomeHero | S | 🟢 MED | ✅ v1.5.85 (backend ✅ v1.5.58; frontend chip editor + WelcomeHero render) |
 | E4 | **Preview card** справа от settings | WelcomeHero (v1.5.34) только в no-channel state | Mount mini preview в right column ServerHub settings tab — reuse component | S | 🟢 MED | ✅ v1.5.57 |
 | E5 | **Audit log tab** | `AuditLog` schema + audit-events tracking есть | UI table с filter (type / user / date range) | M | 🟡 LATER | ✅ v1.5.59 |
