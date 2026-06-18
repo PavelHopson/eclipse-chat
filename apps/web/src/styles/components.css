@@ -1165,6 +1165,27 @@ input[type="radio"]:focus-visible {
   animation: ec-channel-rail-breath 4.4s ease-in-out infinite;
 }
 
+/* v1.6.43 de-noise: спокойный channel-item. Active без violet->cyan градиента
+   и мульти-halo; убраны hover-slide, hover-halo (::after), glow+infinite-pulse
+   на active-рейле. Функциональный active-индикатор сохранён: accent-tint bg +
+   бордер + сплошной рейл. */
+.ec-channel-item:hover,
+.ec-channel-item:active {
+  transform: none;
+}
+.ec-channel-item::after {
+  display: none;
+}
+.ec-channel-item--active {
+  background: hsl(258 70% 60% / 0.12);
+  border-color: hsl(258 70% 66% / 0.22);
+  box-shadow: none;
+}
+.ec-channel-item--active::before {
+  box-shadow: none;
+  animation: none;
+}
+
 .ec-channel-glyph {
   --ec-channel-icon-bg: transparent;
   --ec-channel-icon-bg-bottom: transparent;
@@ -4213,9 +4234,8 @@ input[type="radio"]:focus-visible {
 .ec-channel-list__header--menu-open {
   z-index: 30;
   border-bottom-color: color-mix(in srgb, var(--ec-accent) 18%, var(--ec-border-subtle));
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--ec-surface-2) 92%, transparent), var(--ec-surface-1)),
-    radial-gradient(circle at 16% 0%, color-mix(in srgb, var(--ec-accent) 10%, transparent), transparent 48%);
+  /* v1.6.43 de-noise: убрана violet radial-аура в open-состоянии хедера. */
+  background: linear-gradient(180deg, color-mix(in srgb, var(--ec-surface-2) 92%, transparent), var(--ec-surface-1));
 }
 
 /* v1.5.55 D3 frontend — Server lock badge в channel-list header.
