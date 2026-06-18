@@ -3074,6 +3074,7 @@ input[type="radio"]:focus-visible {
 .ec-friends-view {
   flex: 1;
   min-height: 0;
+  min-width: 0;
   overflow: auto;
   padding: var(--ec-space-5);
   display: flex;
@@ -3082,6 +3083,21 @@ input[type="radio"]:focus-visible {
   background:
     radial-gradient(circle at 14% 0%, hsl(258 86% 58% / 0.12), transparent 34%),
     var(--ec-surface-0);
+}
+/* v1.6.38 — bounded readable column: на широких экранах список друзей не
+   растягивается во всю ширину, иначе actions уезжают к дальнему краю с
+   огромным пустым промежутком. На mobile max-width > viewport → просто 100%. */
+.ec-friends-view__hero,
+.ec-friends-tabs,
+.ec-friends-view__sections,
+.ec-friend-load-error,
+.ec-friend-form-error {
+  width: 100%;
+  max-width: 60rem;
+  margin-inline: auto;
+}
+.ec-friends-view__hero > div {
+  min-width: 0;
 }
 .ec-friends-view__hero {
   position: relative;
@@ -3112,6 +3128,7 @@ input[type="radio"]:focus-visible {
   margin: var(--ec-space-1) 0 0;
   color: var(--ec-text-muted);
   font-size: var(--ec-text-sm);
+  overflow-wrap: anywhere;
 }
 .ec-friends-view__eyebrow {
   display: inline-flex;
@@ -3262,6 +3279,25 @@ input[type="radio"]:focus-visible {
   height: 1px;
   flex: 1;
   background: var(--ec-border-subtle);
+}
+/* v1.6.38 — reduced-motion: EC полагается на zeroing --ec-dur-* токенов, но
+   эти анимации/переходы используют hardcoded длительности (220-280ms) +
+   бесконечный pulse на __dot → токен-zeroing их НЕ глушит. Глушим явно. */
+@media (prefers-reduced-motion: reduce) {
+  .ec-friends-tab__dot,
+  .ec-friends-tab__dot::after {
+    animation: none;
+  }
+  .ec-friends-tab,
+  .ec-friends-tab::after,
+  .ec-friend-row,
+  .ec-friend-row::before {
+    transition-duration: 1ms;
+  }
+  .ec-friend-row:hover,
+  .ec-friend-row:focus-visible {
+    transform: none;
+  }
 }
 .ec-friend-row {
   position: relative;
