@@ -335,15 +335,11 @@
 .ec-holo-edge {
   position: relative;
 }
+/* v1.6.41 de-noise (умеренно): holo-рейл (декоративная cyan-кромка) убран
+   по всему app. Поверхности держат идентичность своим border/bg, без sci-fi
+   акцент-линии. Класс остаётся как no-op hook (обратная совместимость). */
 .ec-holo-edge::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: var(--ec-holo-cyan);
-  pointer-events: none;
+  display: none;
 }
 
 /* Active channel left-border holographic indicator. Заменяет solid
@@ -363,20 +359,9 @@
   position: relative;
   overflow: hidden;
 }
+/* v1.6.41 de-noise: бесконечный scan-sweep убран (декоративная анимация-шум). */
 .ec-scan-line::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 128px;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    hsl(258 70% 60% / 0.45) 50%,
-    transparent 100%
-  );
-  animation: ec-scan-sweep 4s linear infinite;
-  pointer-events: none;
+  display: none;
 }
 @keyframes ec-scan-sweep {
   0%   { left: -128px; }
@@ -565,20 +550,9 @@
   overflow: hidden;
   isolation: isolate;
 }
+/* v1.6.41 de-noise: hover shimmer-sweep убран (декоративный блик на CTA). */
 .ec-shimmer-sweep::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    100deg,
-    transparent 0%,
-    hsl(258 70% 60% / 0.22) 50%,
-    transparent 100%
-  );
-  transform: translateX(-110%);
-  transition: transform 700ms ease-out;
-  pointer-events: none;
-  z-index: 0;
+  display: none;
 }
 .ec-shimmer-sweep:hover::before {
   transform: translateX(110%);
@@ -590,15 +564,10 @@
 
 /* Corner brackets — tactical accent для hover-state. Top-right + bottom-left. */
 .ec-corner-brackets { position: relative; }
+/* v1.6.41 de-noise: tactical corner-brackets убраны (декор на hover). */
 .ec-corner-brackets::before,
 .ec-corner-brackets::after {
-  content: "";
-  position: absolute;
-  width: 6px;
-  height: 6px;
-  opacity: 0;
-  transition: opacity var(--ec-dur-fast) var(--ec-ease);
-  pointer-events: none;
+  display: none;
 }
 .ec-corner-brackets::before {
   top: 3px;
