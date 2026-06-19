@@ -14,7 +14,6 @@ import { GroupAvatar } from "../components/GroupAvatar";
 import { ChatHeaderHoverButton } from "../components/ChatHeaderHoverButton";
 import { LogoutButton } from "../components/LogoutButton";
 import { ChannelGlyph } from "../components/icons/ChannelCustomIcons";
-import { useOperationalTables } from "../hooks/useOperationalTables";
 import { MusicMiniPlayer } from "../components/MusicMiniPlayer";
 import type { QuickNavItem } from "../components/SearchOverlay";
 import { useChannelMusic } from "../hooks/useChannelMusic";
@@ -33,12 +32,10 @@ import { MessageList } from "../components/MessageList";
 // AppShell при первом открытии модалки.
 const HelpPanel = lazy(() => import("../components/HelpPanel").then((m) => ({ default: m.HelpPanel })));
 const AdminPanel = lazy(() => import("../components/AdminPanel").then((m) => ({ default: m.AdminPanel })));
-const OperationalTablePanel = lazy(() => import("../components/OperationalTablePanel").then((m) => ({ default: m.OperationalTablePanel })));
 const StatusBoard = lazy(() => import("../components/StatusBoard").then((m) => ({ default: m.StatusBoard })));
 const TeamHealth = lazy(() => import("../components/TeamHealth").then((m) => ({ default: m.TeamHealth })));
 const VoiceRoom = lazy(() => import("../components/VoiceRoom").then((m) => ({ default: m.VoiceRoom })));
 const ThreadPanel = lazy(() => import("../components/ThreadPanel").then((m) => ({ default: m.ThreadPanel })));
-const IncidentPanel = lazy(() => import("../components/IncidentPanel").then((m) => ({ default: m.IncidentPanel })));
 const ActionItemDrawer = lazy(() => import("../components/ActionItemDrawer").then((m) => ({ default: m.ActionItemDrawer })));
 const SearchOverlay = lazy(() => import("../components/SearchOverlay").then((m) => ({ default: m.SearchOverlay })));
 const PlatformAdminPanel = lazy(() => import("../components/PlatformAdminPanel").then((m) => ({ default: m.PlatformAdminPanel })));
@@ -48,12 +45,10 @@ const SettingsPanel = lazy(() => import("../components/settings/SettingsPanel").
 const CreateServerModal = lazy(() => import("../components/CreateServerModal").then((m) => ({ default: m.CreateServerModal })));
 const JoinServerModal = lazy(() => import("../components/JoinServerModal").then((m) => ({ default: m.JoinServerModal })));
 const CreateGroupDmModal = lazy(() => import("../components/CreateGroupDmModal").then((m) => ({ default: m.CreateGroupDmModal })));
-const CreateTableModal = lazy(() => import("../components/CreateTableModal").then((m) => ({ default: m.CreateTableModal })));
 const MusicExpandModal = lazy(() => import("../components/MusicExpandModal").then((m) => ({ default: m.MusicExpandModal })));
 const VoiceMusicPicker = lazy(() => import("../components/VoiceMusicPicker").then((m) => ({ default: m.VoiceMusicPicker })));
 const ChannelInfoPanel = lazy(() => import("../components/ChannelInfoPanel").then((m) => ({ default: m.ChannelInfoPanel })));
 const FriendsView = lazy(() => import("../components/friends/FriendsView").then((m) => ({ default: m.FriendsView })));
-const HomeToday = lazy(() => import("../components/HomeToday").then((m) => ({ default: m.HomeToday })));
 const IntelligencePanel = lazy(() => import("../components/IntelligencePanel").then((m) => ({ default: m.IntelligencePanel })));
 const ServerWelcomeHero = lazy(() => import("../components/ServerWelcomeHero").then((m) => ({ default: m.ServerWelcomeHero })));
 const ChannelsAndRolesView = lazy(() => import("../components/server/ChannelsAndRolesView").then((m) => ({ default: m.ChannelsAndRolesView })));
@@ -88,14 +83,12 @@ import { useChannels } from "../hooks/useChannels";
 import { dmIsSaved, dmTitle, useDirectConversations } from "../hooks/useDirectConversations";
 import { useDirectMessages } from "../hooks/useDirectMessages";
 import { useFriends } from "../hooks/useFriends";
-import { useIncidents } from "../hooks/useIncidents";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import { useMembers, type MemberRole, type MemberRow } from "../hooks/useMembers";
 import { useMessages } from "../hooks/useMessages";
 import { useNotifications } from "../hooks/useNotifications";
 import { useShareTarget } from "../hooks/useShareTarget";
 import { useFocusMode } from "../hooks/useFocusMode";
-import { useHomeToday } from "../hooks/useHomeToday";
 import { useMutedChannels } from "../hooks/usePushPreferences";
 import { useSwipeNavigate } from "../hooks/useSwipeNavigate";
 import { useProfile } from "../hooks/useProfile";
@@ -251,15 +244,9 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   const [openActionItemId, setOpenActionItemId] = useState<string | null>(null);
   /** v0.59 phase 1: выбранная таблица (заменяет chat main area). */
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
-  const {
-    tables: opTables,
-    reload: reloadTables,
-    createTable: createOpTable,
-    createFromTemplate: createOpTableFromTemplate,
-    deleteTable: deleteOpTable,
-  } = useOperationalTables(activeServerId, socket);
-  /** v0.70: открыта ли модалка создания таблицы (с template picker). */
-  const [showCreateTable, setShowCreateTable] = useState(false);
+  // v1.6.47 — Операционные таблицы вырезаны (slice 2): хук useOperationalTables
+  // + панель + модалка удалены. selectedTableId оставлен как always-null флаг
+  // (legacy view-switch resets); полный выпил state — отдельным cleanup-слайсом.
   /** v0.72: открыт ли picker для запуска music в VOICE-канале. */
   const [showVoiceMusicPicker, setShowVoiceMusicPicker] = useState(false);
   /** v0.74 #32 phase 3: открыт ли expand modal плеера. */
@@ -347,8 +334,6 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   // v1.5.4 — AI agent button ripple. Перемонтаж <span key={rippleKey}>
   // перезапускает CSS keyframe при каждом клике.
   const [aiRippleKey, setAiRippleKey] = useState(0);
-  // Incident panel — toggle в right rail (приоритет ниже thread panel).
-  const [showIncidents, setShowIncidents] = useState(false);
   /**
    * v1.5.55 D3 frontend — IsolationConfirmDialog state. Открывается через
    * ServerActionsMenu «Изоляция»/«Снять изоляцию» action. Mode выбирается
@@ -437,15 +422,9 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     updateMemberRole,
   } = useMembers(activeServerId, socket);
 
-  // ===== Incidents =====
-  // Список инцидентов сервера + open/resolve. IncidentPanel в right rail.
-  // v1.6.46 — Инциденты убраны из навигации (slice 1 упрощения). Хук
-  // оставлен как подписка на socket-события до полного выпила в slice 2.
-  useIncidents(activeServerId, socket);
-
-  // ===== Home «TODAY» =====
-  // Операционная сводка поверх всех workspace'ов — fetch при открытии Home.
-  const homeToday = useHomeToday(homeOpen);
+  // v1.6.47 — Инциденты (useIncidents/IncidentPanel) и Home «TODAY»
+  // (useHomeToday/HomeToday) вырезаны (slice 2). homeOpen оставлен как
+  // always-false флаг до cleanup-слайса.
 
   // ===== Execution Status Board =====
   // Все ActionItem'ы активного сервера — live через action:item:* в server-room.
@@ -737,20 +716,6 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     setMembersOpen(false);
   };
 
-  const openActiveServer = () => {
-    setHomeOpen(false);
-    setFriendsOpen(false);
-    setHelpOpen(false);
-    setAdminOpen(false);
-    setStatusBoardOpen(false);
-    setTeamHealthOpen(false);
-    setServerView("guide");
-    if (activeServerId == null && servers[0]) {
-      setActiveServerId(servers[0].id);
-      return;
-    }
-  };
-
   const handleSelectServerView = (view: ServerView) => {
     if (view === "events") return;
     setHomeOpen(false);
@@ -761,7 +726,6 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     setTeamHealthOpen(false);
     setSelectedTableId(null);
     setSelectedThreadId(null);
-    setShowIncidents(false);
     setServerView(view);
     if (isMobile) setNavOpen(false);
   };
@@ -1764,55 +1728,6 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             }}
             onClose={() => setAdminOpen(false)}
           />
-        ) : selectedTableId ? (
-          <OperationalTablePanel
-            tableId={selectedTableId}
-            onClose={() => setSelectedTableId(null)}
-            onDelete={async () => {
-              if (!window.confirm("Удалить таблицу со всеми данными?")) return;
-              const ok = await deleteOpTable(selectedTableId);
-              if (ok) {
-                setSelectedTableId(null);
-                await reloadTables();
-              }
-            }}
-            members={members.map((m) => ({
-              userId: m.userId,
-              user: {
-                displayName: m.user.displayName,
-                avatar: m.user.avatar,
-              },
-            }))}
-            socket={socket}
-            availableTables={opTables
-              .filter((t) => t.id !== selectedTableId)
-              .map((t) => ({ id: t.id, name: t.name }))}
-            onOpenLinkedAction={(actionItemId) => setOpenActionItemId(actionItemId)}
-          />
-        ) : homeOpen ? (
-          <HomeToday
-            userName={headerName}
-            data={homeToday.data}
-            loading={homeToday.loading}
-            error={homeToday.error}
-            onReload={() => void homeToday.reload()}
-            serversCount={servers.length}
-            dmCount={dmConversations.length}
-            onOpenChannel={(serverId, channelId) => {
-              setHomeOpen(false);
-              setActiveServerId(serverId);
-              setServerView("chat");
-              setSelectedChannelId(channelId);
-              if (isMobile) setNavOpen(false);
-            }}
-            onOpenServer={openActiveServer}
-            onOpenDms={() => {
-              setHomeOpen(false);
-              setActiveServerId(null);
-              selectDm(null);
-            }}
-            onCreateServer={() => setShowCreateServer(true)}
-          />
         ) : statusBoardOpen && activeServer ? (
           <StatusBoard
             serverName={activeServer.name}
@@ -2301,21 +2216,6 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               customEmojis={customEmojis}
               onClose={() => setSelectedThreadId(null)}
             />
-          ) : showIncidents && activeServerId ? (
-            <IncidentPanel
-              serverId={activeServerId}
-              socket={socket}
-              currentUserId={user.id}
-              currentRole={currentRole}
-              onOpenChannel={(channelId) => {
-                setHomeOpen(false);
-                setServerView("chat");
-                setSelectedChannelId(channelId);
-                setShowIncidents(false);
-                if (isMobile) setNavOpen(false);
-              }}
-              onClose={() => setShowIncidents(false)}
-            />
           ) : (
             <IntelligencePanel
               members={members}
@@ -2400,28 +2300,6 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           onStartTrack={(id) => void music.start(id)}
           onAddToQueue={(id) => void music.addToQueue(id)}
           onStartPlaylist={(ids) => void music.startPlaylist(ids)}
-        />
-      )}
-
-      {showCreateTable && (
-        <CreateTableModal
-          onClose={() => setShowCreateTable(false)}
-          onCreate={async (templateId, name) => {
-            // v0.70: blank template = legacy create (single «Название» field),
-            // другие — серверный from-template endpoint с pre-seeded полями.
-            const id =
-              templateId === "blank"
-                ? await createOpTable(name)
-                : await createOpTableFromTemplate(templateId, name);
-            if (id) {
-              setHomeOpen(false);
-              setStatusBoardOpen(false);
-              setTeamHealthOpen(false);
-              setSelectedTableId(id);
-              return true;
-            }
-            return false;
-          }}
         />
       )}
 
