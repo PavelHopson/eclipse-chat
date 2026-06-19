@@ -6,9 +6,17 @@
  *
  * Chain priority (auto-fallback по списку, первый успешный = result):
  *   1. Ollama (локальный, без API key) — приоритет для self-host
- *   2. OpenRouter (free DeepSeek/Qwen tier)
- *   3. NVIDIA Build (95 free models, требует API key)
- *   4. OpenAI (paid fallback)
+ *   2. Groq (free, LPU — очень быстрый)
+ *   3. Cerebras (free, экстремально быстрый inference)
+ *   4. OpenRouter (free DeepSeek/Qwen/Llama tier)
+ *   5. NVIDIA Build (95 free models, требует API key)
+ *   6. Mistral (free tier La Plateforme)
+ *   7. OpenAI (paid fallback)
+ *
+ * Все провайдеры OpenAI-compatible + опциональны (включаются заданием своего
+ * API key в env). Добавить ещё один free-провайдер = ещё один блок в
+ * getProviders() по тому же шаблону. Чем больше бесплатных в цепочке — тем
+ * надёжнее @ai для пользователя (на 429 одного идём к следующему).
  *
  * Если ни один не сконфигурирован — `chat()` бросает `AINotConfiguredError`,
  * route возвращает 503 с пояснением. Это позволяет деплоить Eclipse Chat
@@ -21,11 +29,18 @@
  *                                          Альтернативы: llama3.1:8b, deepseek-r1:7b,
  *                                          gemma2:9b, mistral:7b
  *
- *   ## Облачные free / paid
+ *   ## Облачные free (рекомендуется — быстрые, бесплатный tier)
+ *   GROQ_API_KEY=gsk_...                 — console.groq.com (free, очень быстрый)
+ *   GROQ_MODEL=llama-3.3-70b-versatile   — GROQ_MODELS (CSV) для chain
+ *   CEREBRAS_API_KEY=csk-...             — cloud.cerebras.ai (free, fastest)
+ *   CEREBRAS_MODEL=llama-3.3-70b
  *   OPENROUTER_API_KEY=<key>             — free tier DeepSeek/Qwen/Llama
  *   OPENROUTER_MODEL=...                 — override default
  *   NVIDIA_API_KEY=nvapi-...             — 95 free моделей на build.nvidia.com
  *   NVIDIA_MODEL=qwen/qwen2.5-coder-32b-instruct
+ *   MISTRAL_API_KEY=<key>                — console.mistral.ai (free tier)
+ *   MISTRAL_MODEL=mistral-small-latest
+ *   ## Paid fallback
  *   OPENAI_API_KEY=<key>                 — paid fallback
  *   OPENAI_MODEL=gpt-4o-mini
  *
@@ -164,7 +179,36 @@ function getProviders(): ProviderConfig[] {
     });
   }
 
-  // 2. OpenRouter — free tier DeepSeek/Qwen/Llama.
+  // 2. Groq — бесплатный, очень быстрый (LPU). Free tier (дневной лимит → на
+  //    429 цепочка идёт к следующему провайдеру). GROQ_MODELS (CSV) для chain.
+  const groqKey = process.env.GROQ_API_KEY?.trim();
+  if (groqKey) {
+    out.push({
+      name: "groq",
+      baseUrl: "https://api.groq.com/openai/v1",
+      apiKey: groqKey,
+      models: parseModels(
+        process.env.GROQ_MODELS ?? process.env.GROQ_MODEL,
+        "llama-3.3-70b-versatile",
+      ),
+    });
+  }
+
+  // 3. Cerebras — бесплатный, экстремально быстрый inference. Free tier.
+  const cerebrasKey = process.env.CEREBRAS_API_KEY?.trim();
+  if (cerebrasKey) {
+    out.push({
+      name: "cerebras",
+      baseUrl: "https://api.cerebras.ai/v1",
+      apiKey: cerebrasKey,
+      models: parseModels(
+        process.env.CEREBRAS_MODELS ?? process.env.CEREBRAS_MODEL,
+        "llama-3.3-70b",
+      ),
+    });
+  }
+
+  // 4. OpenRouter — free tier DeepSeek/Qwen/Llama.
   //    v1.5.18 — OPENROUTER_MODELS (CSV) расширяет single OPENROUTER_MODEL —
   //    при 429 на одной модели идём дальше по списку до paid fallback.
   //    Default chain: DeepSeek → Llama 3.3 → Qwen 2.5 (все :free).
@@ -198,7 +242,7 @@ function getProviders(): ProviderConfig[] {
     });
   }
 
-  // 3. NVIDIA Build — 95 free моделей.
+  // 5. NVIDIA Build — 95 free моделей.
   const nvKey = process.env.NVIDIA_API_KEY?.trim();
   if (nvKey) {
     out.push({
@@ -212,7 +256,21 @@ function getProviders(): ProviderConfig[] {
     });
   }
 
-  // 4. OpenAI — paid fallback.
+  // 6. Mistral — бесплатный tier (La Plateforme). OpenAI-compatible.
+  const mistralKey = process.env.MISTRAL_API_KEY?.trim();
+  if (mistralKey) {
+    out.push({
+      name: "mistral",
+      baseUrl: "https://api.mistral.ai/v1",
+      apiKey: mistralKey,
+      models: parseModels(
+        process.env.MISTRAL_MODELS ?? process.env.MISTRAL_MODEL,
+        "mistral-small-latest",
+      ),
+    });
+  }
+
+  // 7. OpenAI — paid fallback.
   const oaiKey = process.env.OPENAI_API_KEY?.trim();
   if (oaiKey) {
     out.push({
