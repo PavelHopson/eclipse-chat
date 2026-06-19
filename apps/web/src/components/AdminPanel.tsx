@@ -69,8 +69,7 @@ type Tab =
   | "roles"
   | "automation"
   | "invoices"
-  | "audit"
-  | "analytics";
+  | "audit";
 
 /** v0.86 #24 phase 2: invoice shape от backend. */
 type AdminInvoiceItem = {
@@ -482,15 +481,6 @@ export function AdminPanel({
           className="ec-admin-tab"
         >
           Аудит
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === "analytics"}
-          onClick={() => setTab("analytics")}
-          className="ec-admin-tab"
-        >
-          Аналитика
         </button>
       </div>
 
@@ -1066,90 +1056,6 @@ export function AdminPanel({
         </div>
       )}
 
-      {tab === "analytics" && (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-            gap: "var(--ec-space-3)",
-          }}
-        >
-          {!teamHealth ? (
-            <p style={{ color: "var(--ec-text-dim)" }}>
-              Открой «Здоровье команды» в ChannelList, чтобы прогрузить
-              аналитику.
-            </p>
-          ) : (
-            <>
-              <StatCard label="Открыто" value={teamHealth.counts.openTotal} />
-              <StatCard
-                label="Просрочено"
-                value={teamHealth.counts.overdueTotal}
-                tone="warn"
-              />
-              <StatCard
-                label="Без ответственного"
-                value={teamHealth.counts.unassignedTotal}
-                tone="idle"
-              />
-              <StatCard
-                label="Среднее закрытие"
-                value={
-                  teamHealth.avgResolutionDays
-                    ? `${teamHealth.avgResolutionDays.toFixed(1)} д`
-                    : "—"
-                }
-                tone="exec"
-              />
-              {teamHealth.responseTime?.medianMs != null && (
-                <StatCard
-                  label="Время первого ответа"
-                  value={formatDurationShort(teamHealth.responseTime.medianMs)}
-                  tone="exec"
-                />
-              )}
-            </>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function formatDurationShort(ms: number): string {
-  const s = Math.max(0, Math.floor(ms / 1000));
-  if (s < 60) return `${s} с`;
-  const m = Math.floor(s / 60);
-  if (m < 60) return `${m} мин`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h} ч`;
-  return `${Math.floor(h / 24)} д`;
-}
-
-function StatCard({
-  label,
-  value,
-  tone = "default",
-}: {
-  label: string;
-  value: number | string;
-  tone?: "default" | "warn" | "idle" | "exec";
-}) {
-  const stripe =
-    tone === "warn"
-      ? "var(--ec-status-warn)"
-      : tone === "idle"
-        ? "var(--ec-status-idle)"
-        : tone === "exec"
-          ? "var(--ec-status-exec)"
-          : "var(--ec-accent)";
-  return (
-    <div
-      className="ec-admin-card"
-      style={{ boxShadow: `inset 3px 0 0 0 ${stripe}` }}
-    >
-      <span className="ec-admin-card-label">{label}</span>
-      <span className="ec-admin-card-value">{value}</span>
     </div>
   );
 }
