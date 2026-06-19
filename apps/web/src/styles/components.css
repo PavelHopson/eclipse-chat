@@ -6802,10 +6802,11 @@ input[type="radio"]:focus-visible {
 }
 .ec-empty-state__icon {
   position: relative;
-  animation: ec-empty-icon-breath 5.6s ease-in-out infinite;
 }
-.ec-empty-state__icon::before,
-.ec-empty-state__icon::after {
+/* v1.6.49 — де-нойз пустых состояний: убраны бесконечный breath + cyan
+   orbit-кольцо (off-brand палитра + infinite spin). Оставлен один статичный
+   violet-халоу — спокойная плоская поверхность в духе Telegram x Discord. */
+.ec-empty-state__icon::before {
   content: "";
   position: absolute;
   inset: -10%;
@@ -6813,20 +6814,8 @@ input[type="radio"]:focus-visible {
   border: 1px solid hsl(258 86% 62% / 0.18);
   pointer-events: none;
 }
-.ec-empty-state__icon::after {
-  inset: -22%;
-  border-color: hsl(180 70% 55% / 0.12);
-  animation: ec-empty-orbit 18s linear infinite;
-}
 .ec-empty-state__title {
-  background: linear-gradient(
-    135deg,
-    var(--ec-text-strong) 0%,
-    color-mix(in srgb, var(--ec-accent) 65%, var(--ec-text-strong)) 100%
-  );
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--ec-text-strong);
   letter-spacing: 0.005em;
 }
 

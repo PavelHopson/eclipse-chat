@@ -170,7 +170,8 @@
   border-radius: 50%;
   border: 3px solid var(--ec-surface-1);
 }
-.ec-dmx-row.is-active .ec-dmx-row__pres { border-color: #10151c; }
+/* v1.6.49 — presence-точка наследует --ec-surface-1 из базового правила
+   (был хардкод #10151c — ломал светлую тему на активной строке). */
 .ec-dmx-row__main { flex: 1; min-width: 0; }
 .ec-dmx-row__top { display: flex; align-items: baseline; gap: 8px; }
 .ec-dmx-row__name {
