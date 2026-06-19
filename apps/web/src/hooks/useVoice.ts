@@ -505,13 +505,32 @@ export function useVoice(socket: Socket | null = null) {
         await leave();
       }
       setBusy(true);
+      let voiceJoinEmitted = false;
       try {
-        const data = await apiJson<JoinResponse>(
-          `/api/channels/${encodeURIComponent(channelId)}/voice/join`,
-          { method: "POST" },
-        );
+        // v1.6.55 — token-fetch и lazy-import livekit-client (~140KB gzip)
+        // независимы: раньше шли последовательно (sum латентностей), теперь
+        // параллельно (max) — заметно быстрее первое подключение.
+        const [data, lk] = await Promise.all([
+          apiJson<JoinResponse>(
+            `/api/channels/${encodeURIComponent(channelId)}/voice/join`,
+            { method: "POST" },
+          ),
+          import("livekit-client"),
+        ]);
 
-        const lk = await import("livekit-client");
+        // v1.6.55 — presence-broadcast СРАЗУ (до LiveKit connect): остальные
+        // участники сервера видят тебя в голосовой комнате мгновенно, не
+        // дожидаясь 1-3s LiveKit-подключения. На провал connect'а откатываем
+        // через voice:leave в catch (флаг voiceJoinEmitted).
+        socketRef.current?.emit(
+          SocketEvents.VoiceJoin,
+          { channelId },
+          (err: string | null) => {
+            if (err) console.warn("voice:join backend rejected:", err);
+          },
+        );
+        voiceJoinEmitted = true;
+
         const { Room, RoomEvent, Track } = lk;
 
         const r = new Room({
@@ -636,22 +655,13 @@ export function useVoice(socket: Socket | null = null) {
         refreshParticipants();
         refreshVisualTracks();
 
-        // Уведомляем backend о join'е — другие участники сервера увидят
-        // тебя в эфире через voice:participant:joined event.
-        socketRef.current?.emit(
-          SocketEvents.VoiceJoin,
-          { channelId },
-          (err: string | null) => {
-            if (err) {
-              // Не critical — backend отказался регистрировать (но LiveKit
-              // подключение уже идёт). Логируем для диагностики.
-              console.warn("voice:join backend rejected:", err);
-            }
-          },
-        );
-
         return true;
       } catch (e) {
+        // v1.6.55 — откат раннего presence-broadcast'а если LiveKit не поднялся:
+        // иначе остальные видели бы нас «в комнате», хотя мы не подключились.
+        if (voiceJoinEmitted) {
+          socketRef.current?.emit(SocketEvents.VoiceLeave);
+        }
         if (e instanceof ApiError && e.status === 503) {
           setError("Голосовая связь не настроена на сервере");
         } else {
