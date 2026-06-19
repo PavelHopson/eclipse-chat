@@ -16,7 +16,6 @@ import { LogoutButton } from "../components/LogoutButton";
 import { ChannelGlyph } from "../components/icons/ChannelCustomIcons";
 import { useOperationalTables } from "../hooks/useOperationalTables";
 import { MusicMiniPlayer } from "../components/MusicMiniPlayer";
-import { NetworkWave, Sparkline } from "../components/TelemetryViz";
 import type { QuickNavItem } from "../components/SearchOverlay";
 import { useChannelMusic } from "../hooks/useChannelMusic";
 import { useServerAudioLibrary } from "../hooks/useServerAudioLibrary";
@@ -70,7 +69,6 @@ function isTextEntryTarget(target: EventTarget | null): boolean {
   );
 }
 
-import { SpiderClock } from "../components/SpiderClock";
 import { ServerSwitcher } from "../components/ServerSwitcher";
 import { SinceLastVisitBanner } from "../components/SinceLastVisitBanner";
 import { ThemeToggle } from "../components/ThemeToggle";
@@ -105,7 +103,6 @@ import { useSearch } from "../hooks/useSearch";
 import { useServerActions } from "../hooks/useServerActions";
 import { useServerEmojis } from "../hooks/useServerEmojis";
 import { useTeamHealth } from "../hooks/useTeamHealth";
-import { useTelemetry } from "../hooks/useTelemetry";
 import { useServers } from "../hooks/useServers";
 import { useSinceLastVisit } from "../hooks/useSinceLastVisit";
 import { useSocket } from "../hooks/useSocket";
@@ -129,7 +126,6 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   const brandMarkUrl = `${import.meta.env.BASE_URL}eclipse-chat-logo.png`;
 
   const isReady = socket != null;
-  const tele = useTelemetry();
   const {
     servers,
     activeServer,
@@ -443,7 +439,9 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
 
   // ===== Incidents =====
   // Список инцидентов сервера + open/resolve. IncidentPanel в right rail.
-  const { openCount: incidentOpenCount } = useIncidents(activeServerId, socket);
+  // v1.6.46 — Инциденты убраны из навигации (slice 1 упрощения). Хук
+  // оставлен как подписка на socket-события до полного выпила в slice 2.
+  useIncidents(activeServerId, socket);
 
   // ===== Home «TODAY» =====
   // Операционная сводка поверх всех workspace'ов — fetch при открытии Home.
@@ -850,27 +848,6 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
       });
     }
 
-    for (const table of opTables) {
-      items.push({
-        id: `table-${table.id}`,
-        label: table.name,
-        detail: `${table.rowCount} строк · данные`,
-        glyph: "Т",
-        kind: "table",
-        onSelect: () => {
-          setHomeOpen(false);
-          setFriendsOpen(false);
-          setHelpOpen(false);
-          setAdminOpen(false);
-          setStatusBoardOpen(false);
-          setTeamHealthOpen(false);
-          setServerView("chat");
-          setSelectedTableId(table.id);
-          if (isMobile) setNavOpen(false);
-        },
-      });
-    }
-
     for (const conversation of dmConversations) {
       items.push({
         id: `dm-${conversation.id}`,
@@ -901,7 +878,6 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     handleSelectServerView,
     handleSelectChannel,
     isMobile,
-    opTables,
     selectDm,
     user.id,
   ]);
@@ -1081,58 +1057,6 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               </svg>
             </button>
           )}
-          {/* v0.74 #29 phase 1: Focus mode toggle — фильтр feed'а на
-              direct-mentions + pinned + own messages. Глобальный, не
-              привязан к каналу. */}
-          <button
-            type="button"
-            onClick={focus.toggle}
-            title={
-              focus.enabled
-                ? "Фокус-режим включён — показаны только меншены, закреплённые и свои"
-                : "Включить фокус-режим (скрыть шум)"
-            }
-            aria-label="Фокус-режим"
-            aria-pressed={focus.enabled}
-            className="ec-icon-btn"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <circle cx="12" cy="12" r="10" />
-              <circle cx="12" cy="12" r="6" />
-              <circle cx="12" cy="12" r="2" fill="currentColor" />
-            </svg>
-          </button>
-          {showRightRail && (
-            <button
-              type="button"
-              onClick={() => {
-                setShowIncidents((v) => !v);
-                setSelectedThreadId(null);
-                if (isTabletOrSmaller) setMembersOpen(true);
-              }}
-              title={
-                incidentOpenCount > 0
-                  ? `Инциденты — ${incidentOpenCount} активных`
-                  : "Инциденты"
-              }
-              aria-label="Инциденты"
-              className={
-                "ec-icon-btn" +
-                (incidentOpenCount > 0 ? " ec-icon-btn--alert" : "")
-              }
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-                <line x1="12" y1="9" x2="12" y2="13" />
-                <line x1="12" y1="17" x2="12.01" y2="17" />
-              </svg>
-              {incidentOpenCount > 0 && (
-                <span aria-hidden className="ec-count-badge">
-                  {incidentOpenCount > 9 ? "9+" : incidentOpenCount}
-                </span>
-              )}
-            </button>
-          )}
           {notif.supported && (
             <button
               type="button"
@@ -1172,9 +1096,9 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               )}
             </button>
           )}
-          {/* v1.5.4 — AI agent button: premium violet glow между notifications
-              и SpiderClock'ом. Click → dispatch global `ec-ai-trigger`; composer
-              (MessageInput) ловит и фокусит textarea + prefill «@ai ». */}
+          {/* v1.5.4 — AI agent button: premium violet glow рядом с уведомлениями.
+              Click → dispatch global `ec-ai-trigger`; composer (MessageInput)
+              ловит и фокусит textarea + prefill «@ai ». */}
           <button
             type="button"
             onClick={() => {
@@ -1198,36 +1122,6 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               <path d="M19 14l1 2.5 2.5 1-2.5 1L19 21l-1-2.5L15.5 17.5l2.5-1z" opacity="0.7" />
             </svg>
           </button>
-          <div className="ec-shell__utility-meters" aria-label="Метрики сервера">
-            <span
-              className={
-                "ec-telemetry-pill " +
-                (tele.online ? "ec-telemetry-pill--ok" : "ec-telemetry-pill--warn")
-              }
-              title={tele.online ? "Связь с сервером стабильна" : "Нет свежего ответа /api/health"}
-            >
-              <span className="ec-telemetry-pill__dot" aria-hidden />
-              <span>сеть</span>
-              <NetworkWave active={tele.online} />
-            </span>
-            <span
-              className={`ec-telemetry-pill ec-telemetry-pill--${tele.memStatus}`}
-              title="Память сервера по /api/health"
-            >
-              <span>пам</span>
-              <strong>{tele.memPercent != null ? `${tele.memPercent.toFixed(0)}%` : "—"}</strong>
-              <Sparkline values={tele.memHistory} />
-            </span>
-            <span
-              className={`ec-telemetry-pill ec-telemetry-pill--${tele.cpuStatus}`}
-              title="CPU сервера по /api/health"
-            >
-              <span>цп</span>
-              <strong>{tele.cpuPercent != null ? `${tele.cpuPercent.toFixed(0)}%` : "—"}</strong>
-              <Sparkline values={tele.cpuHistory} />
-            </span>
-          </div>
-          <SpiderClock />
           <ThemeToggle />
           {showRightRail && (
             <button
@@ -1383,19 +1277,10 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               if (!activeServer) return false;
               return leaveServer(activeServer.id);
             }}
-            onOpenStatusBoard={
-              isClientMode
-                ? undefined
-                : () => {
-                    setHomeOpen(false);
-                    setTeamHealthOpen(false);
-                    // Direct entry из ChannelList — сбрасываем pre-filter
-                    // (он имеет смысл только при переходе из Team Health).
-                    setStatusBoardFilter(null);
-                    setStatusBoardOpen(true);
-                    if (isMobile) setNavOpen(false);
-                  }
-            }
+            /* v1.6.46 — standalone «Доска задач» убрана из сайдбара
+               (slice 1). Доска остаётся drill-down целью из Здоровья
+               команды; тяжёлый Kanban сжимается до thin-backbone в slice 4. */
+            onOpenStatusBoard={undefined}
             statusBoardActive={statusBoardOpen}
             onOpenTeamHealth={
               isClientMode
@@ -1426,29 +1311,11 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                   }
                 : undefined
             }
-            tables={
-              isClientMode
-                ? undefined
-                : opTables.map((t) => ({
-                    id: t.id,
-                    name: t.name,
-                    rowCount: t.rowCount,
-                  }))
-            }
-            onOpenTable={
-              isClientMode
-                ? undefined
-                : (tableId) => {
-                    setHomeOpen(false);
-                    setStatusBoardOpen(false);
-                    setTeamHealthOpen(false);
-                    setSelectedTableId(tableId);
-                    if (isMobile) setNavOpen(false);
-                  }
-            }
-            onCreateTable={
-              isClientMode ? undefined : () => setShowCreateTable(true)
-            }
+            /* v1.6.46 — Операционные таблицы убраны из навигации (slice 1).
+               Код модели/панели снимается в slice 2. */
+            tables={undefined}
+            onOpenTable={undefined}
+            onCreateTable={undefined}
             activeTableId={selectedTableId}
             voiceByChannel={voiceByChannel}
             voiceMetaByUser={voiceMetaByUser}
