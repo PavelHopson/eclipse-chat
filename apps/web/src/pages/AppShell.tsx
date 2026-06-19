@@ -1266,15 +1266,6 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                 void muted.unmute(channelId);
               }
             }}
-            onOpenClientPortal={
-              isClientMode && activeServer
-                ? () => {
-                    // v0.83 #24 phase 1: navigate to portal через hash route.
-                    // App.tsx detect'нет hash и переключит на ClientPortalContainer.
-                    window.location.hash = `#/portal/${activeServer.id}`;
-                  }
-                : undefined
-            }
             /* v1.6.46 — Операционные таблицы убраны из навигации (slice 1).
                Код модели/панели снимается в slice 2. */
             tables={undefined}
@@ -1722,9 +1713,6 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             onOpenServerSettings={() => {
               setServerHubTab("settings");
               setServerHubOpen(true);
-            }}
-            onOpenClientPortal={() => {
-              window.location.hash = `#/portal/${activeServer.id}`;
             }}
             onClose={() => setAdminOpen(false)}
           />

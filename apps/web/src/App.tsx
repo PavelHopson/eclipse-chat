@@ -19,11 +19,6 @@ import { LandingPage } from "./pages/LandingPage";
 const AppShell = lazy(() =>
   import("./pages/AppShell").then((m) => ({ default: m.AppShell })),
 );
-const ClientPortalContainer = lazy(() =>
-  import("./pages/ClientPortalContainer").then((m) => ({
-    default: m.ClientPortalContainer,
-  })),
-);
 
 /**
  * v1.1.2: client-side version embedded at build-time через Vite define.
@@ -45,10 +40,9 @@ const CLIENT_VERSION =
  * трогать nginx SPA fallback config. Тот же подход что в EclipseForgeLanding.
  * Phase 2 можно мигрировать на path route + nginx try_files.
  */
-const PORTAL_HASH_RE = /^#\/portal\/([\w-]+)\/?$/;
 const AUTH_PANEL_HASH = "#auth-panel";
 const AUTH_PANEL_HASH_RE = /^#auth-panel\/?$/i;
-const KNOWN_HASH_RE = /^(|#|#auth-panel\/?|#\/portal\/[\w-]+\/?)$/i;
+const KNOWN_HASH_RE = /^(|#|#auth-panel\/?)$/i;
 
 function normalizeBasePath() {
   const base = import.meta.env.BASE_URL || "/";
@@ -67,24 +61,13 @@ function isUnknownClientRoute() {
   return pathname.startsWith(basePath);
 }
 
-function parseLandingHash(hash?: string): {
-  portalServerId: string | null;
-  wantsAuthPanel: boolean;
-} {
+function parseLandingHash(hash?: string): { wantsAuthPanel: boolean } {
   if (typeof window === "undefined" && hash == null) {
-    return { portalServerId: null, wantsAuthPanel: false };
+    return { wantsAuthPanel: false };
   }
 
   const nextHash = hash ?? window.location.hash;
-  const portalMatch = nextHash.match(PORTAL_HASH_RE);
-  if (portalMatch) {
-    return { portalServerId: portalMatch[1], wantsAuthPanel: false };
-  }
-
-  return {
-    portalServerId: null,
-    wantsAuthPanel: AUTH_PANEL_HASH_RE.test(nextHash),
-  };
+  return { wantsAuthPanel: AUTH_PANEL_HASH_RE.test(nextHash) };
 }
 
 function replaceLandingHash(nextHash: string | null) {
@@ -111,9 +94,6 @@ const loadingStyle: CSSProperties = {
 
 export function App() {
   const { view, user, error, login, register, logout, socketRev, clearError } = useAuth();
-  const [portalServerId, setPortalServerId] = useState<string | null>(() =>
-    parseLandingHash().portalServerId,
-  );
   const [authSurface, setAuthSurface] = useState<null | "login" | "register">(() =>
     parseLandingHash().wantsAuthPanel ? "login" : null,
   );
@@ -125,10 +105,8 @@ export function App() {
   useEffect(() => {
     const onHashChange = () => {
       setUnknownRoute(isUnknownClientRoute());
-      const nextHashState = parseLandingHash();
-      setPortalServerId(nextHashState.portalServerId);
       setAuthSurface((current) =>
-        nextHashState.wantsAuthPanel ? current ?? "login" : null,
+        parseLandingHash().wantsAuthPanel ? current ?? "login" : null,
       );
     };
 
@@ -235,7 +213,6 @@ export function App() {
 
   const openAuthSurface = (mode: "login" | "register") => {
       clearError();
-      setPortalServerId(null);
       setUnknownRoute(false);
       setAuthSurface(mode);
       replaceLandingHash(AUTH_PANEL_HASH);
@@ -369,15 +346,9 @@ export function App() {
           authPanel={null}
         />
       ) : (
-        /* v1.5.17 — Suspense обнимает оба lazy-сценария. Fallback
-         * совпадает с initial loading state — нет «двойного перехода»
-         * при cold-start с #/portal/X на authenticated пользователя. */
+        /* v1.6.50 — Client Portal удалён; authenticated всегда = AppShell. */
         <Suspense fallback={<main style={loadingStyle}>Загрузка…</main>}>
-          {portalServerId ? (
-            <ClientPortalContainer serverId={portalServerId} />
-          ) : (
-            <AppShell user={user} socketRev={socketRev} onLogout={logout} />
-          )}
+          <AppShell user={user} socketRev={socketRev} onLogout={logout} />
         </Suspense>
       )}
     </>
