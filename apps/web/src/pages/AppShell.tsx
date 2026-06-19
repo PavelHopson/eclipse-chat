@@ -449,6 +449,14 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
 
   const selectedChannel = channels.find((c) => c.id === selectedChannelId) ?? null;
 
+  // v1.6.55 — префетч livekit-client (~140KB gzip) когда юзер открыл VOICE-канал,
+  // но ещё не нажал «подключиться»: к моменту join() либа уже в кэше → быстрее
+  // подключение. Платят только зашедшие в голосовой (bundle-split цел).
+  useEffect(() => {
+    if (selectedChannel?.type !== "VOICE") return;
+    void import("livekit-client").catch(() => {});
+  }, [selectedChannel?.type]);
+
   // AI Memory «Since your last visit» — фиксирует visit + дельта с prior.
   // Voice теперь имеет лёгкий room-chat, но visit summary остаётся только для
   // feed-каналов, чтобы не смешивать созвоны с операционной лентой.
