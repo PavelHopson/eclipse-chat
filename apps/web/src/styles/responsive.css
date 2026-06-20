@@ -103,7 +103,7 @@
     position: fixed;
     top: var(--ec-header-height);
     right: 0;
-    bottom: 0;
+    bottom: var(--ec-bottomnav-height);
     width: 280px;
     max-width: 90vw;
     z-index: var(--ec-z-sidebar);
@@ -204,8 +204,7 @@
   .ec-shell__channels {
     position: fixed;
     top: var(--ec-header-height);
-    bottom: 0;
-    bottom: env(safe-area-inset-bottom, 0);
+    bottom: var(--ec-bottomnav-height);
     left: 0;
     z-index: var(--ec-z-sidebar);
     width: min(320px, 86vw);

@@ -66,6 +66,7 @@ function isTextEntryTarget(target: EventTarget | null): boolean {
 
 import { ServerSwitcher } from "../components/ServerSwitcher";
 import { ServerRail } from "../components/ServerRail";
+import { BottomNav, type BottomTab } from "../components/BottomNav";
 import { SinceLastVisitBanner } from "../components/SinceLastVisitBanner";
 import { ThemeToggle } from "../components/ThemeToggle";
 import { EmptyState } from "../components/EmptyState";
@@ -878,6 +879,50 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     if (isMobile) setNavOpen(false);
   };
 
+  // v1.6.58 — мобильный нижний таб-бар: активный таб из текущего состояния +
+  // хендлеры (Личные/Серверы открывают левый drawer-список каналов/ЛС).
+  const bottomTab: BottomTab = showProfile
+    ? "me"
+    : friendsOpen
+      ? "friends"
+      : inDmMode
+        ? "dms"
+        : "servers";
+  const bnavServers = () => {
+    setShowProfile(false);
+    setFriendsOpen(false);
+    setHomeOpen(false);
+    setHelpOpen(false);
+    setAdminOpen(false);
+    if (activeServerId == null && servers[0]) setActiveServerId(servers[0].id);
+    setNavOpen(true);
+  };
+  const bnavDms = () => {
+    setShowProfile(false);
+    setFriendsOpen(false);
+    setHomeOpen(false);
+    setHelpOpen(false);
+    setAdminOpen(false);
+    setActiveServerId(null);
+    selectDm(null);
+    setNavOpen(true);
+  };
+  const bnavFriends = () => {
+    setShowProfile(false);
+    setHomeOpen(false);
+    setHelpOpen(false);
+    setAdminOpen(false);
+    setActiveServerId(null);
+    selectDm(null);
+    setFriendsOpen(true);
+    setNavOpen(false);
+  };
+  const bnavProfile = () => {
+    setNavOpen(false);
+    setMembersOpen(false);
+    setShowProfile(true);
+  };
+
   return (
     <div className={shellClass}>
       {/* v1.6.57 Discord-каркас — постоянный левый server-rail (desktop). */}
@@ -1187,6 +1232,19 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
         }}
         aria-hidden
       />
+
+      {/* v1.6.58 Discord-каркас — мобильный нижний таб-бар (≤1024). */}
+      {isMobile && (
+        <BottomNav
+          active={bottomTab}
+          onServers={bnavServers}
+          onDms={bnavDms}
+          onFriends={bnavFriends}
+          onProfile={bnavProfile}
+          dmsUnread={dmConversations.reduce((sum, c) => sum + c.unread, 0)}
+          friendsPending={friends.pendingIn.length}
+        />
+      )}
 
       <div className="ec-shell__channels">
         {inDmMode ? (
