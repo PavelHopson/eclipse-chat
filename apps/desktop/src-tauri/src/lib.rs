@@ -11,46 +11,171 @@
 // notification из JS недоступен remote-контенту (Tauri sandbox) — сайт
 // использует Web Notifications в webview, что ок.
 //
-// Plugins:
-//   - tauri-plugin-shell — для open() external links из web context
-//     (например, click affiliate в StarMarket → external marketplace).
-//
-// v1.6.x roadmap planned:
-//   - v1.6.1: tauri-plugin-notification (native notifications) +
-//     tauri-plugin-updater (auto-update from GitHub Releases)
-//   - v1.6.2: tauri-plugin-window-state (remember window pos/size)
-//   - v1.6.3: tray icon + global shortcuts
-//   - v1.6.4: MS Store packaging .msix
+// v1.0.3 — desktop-полировка (всё в Rust, setup-hook):
+//   - system tray icon + меню (Открыть / Выход) + клик-toggle окна
+//   - close → hide-to-tray (chat-app живёт в фоне ради уведомлений);
+//     реальный выход только через tray «Выход»
+//   - глобальный шорткат Ctrl+Shift+E → показать+сфокусировать окно
+//   - startup check-for-updates (best-effort; до signing key + releases
+//     это no-op, только лог)
+
+#[cfg(desktop)]
+use std::sync::atomic::{AtomicBool, Ordering};
+
+// Флаг «идёт реальный выход» — чтобы close-handler НЕ перехватывал закрытие,
+// инициированное пунктом трея «Выход» (иначе приложение нельзя было бы закрыть).
+#[cfg(desktop)]
+static QUITTING: AtomicBool = AtomicBool::new(false);
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
-        // v1.5.39 plugins:
-        // - notification: позволяет frontend позвать window.__TAURI__ или
-        //   `@tauri-apps/plugin-notification` чтобы показать native toast.
-        //   Используется существующим useNotifications hook'ом из web-side
-        //   когда `window.__TAURI_INTERNALS__` detected — fallback на Web
-        //   Notification API для browser context.
-        // - updater: проверяет GitHub Releases на новую версию при startup
-        //   + по запросу. Открывает confirm dialog (см. tauri.conf.json
-        //   plugins.updater.dialog = true), скачивает delta-patch, applies
-        //   на restart. Требует signed manifest (см. pubkey в tauri.conf.json
-        //   и Tauri signing key setup в README.md).
-        // - window_state: drop-in plugin, сам сохраняет позицию/размер
-        //   окна в OS-config dir перед close, восстанавливает на launch.
-        //   Никаких frontend hook'ов не требует.
+        // v1.5.39 plugins: notification (native toast), updater (auto-update из
+        // GitHub Releases, signed manifest — pubkey в tauri.conf.json), window_state
+        // (сохраняет позицию/размер окна между запусками, drop-in).
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_window_state::Builder::default().build())
-        .setup(|_app| {
-            // v1.5.39 setup hook остаётся пустым. v1.5.40 добавит:
-            //   - register tray icon
-            //   - register global shortcuts (Ctrl+Shift+E focus window)
-            // v1.5.41 добавит:
-            //   - check for updates on startup (через updater plugin)
+        .on_window_event(|window, event| {
+            // v1.0.3 — close-to-tray: прячем окно вместо выхода, чтобы фоновые
+            // уведомления продолжали работать. Реальный выход — tray «Выход»
+            // (ставит QUITTING=true перед app.exit, тогда close проходит).
+            #[cfg(desktop)]
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                if !QUITTING.load(Ordering::SeqCst) {
+                    let _ = window.hide();
+                    api.prevent_close();
+                }
+            }
+            #[cfg(not(desktop))]
+            {
+                let _ = (window, event);
+            }
+        })
+        .setup(|app| {
+            #[cfg(desktop)]
+            {
+                setup_tray(app)?;
+                setup_global_shortcut(app)?;
+                spawn_update_check(app.handle().clone());
+            }
+            #[cfg(not(desktop))]
+            {
+                let _ = app;
+            }
             Ok(())
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+// ----- desktop helpers ----------------------------------------------------
+
+/// Показать + сфокусировать главное окно (из трея / шортката).
+#[cfg(desktop)]
+fn show_main(app: &tauri::AppHandle) {
+    use tauri::Manager;
+    if let Some(w) = app.get_webview_window("main") {
+        let _ = w.unminimize();
+        let _ = w.show();
+        let _ = w.set_focus();
+    }
+}
+
+/// Toggle видимости главного окна (левый клик по трею).
+#[cfg(desktop)]
+fn toggle_main(app: &tauri::AppHandle) {
+    use tauri::Manager;
+    if let Some(w) = app.get_webview_window("main") {
+        if w.is_visible().unwrap_or(false) {
+            let _ = w.hide();
+        } else {
+            let _ = w.unminimize();
+            let _ = w.show();
+            let _ = w.set_focus();
+        }
+    }
+}
+
+/// System tray icon + меню.
+#[cfg(desktop)]
+fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
+    use tauri::menu::{Menu, MenuItem};
+    use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
+
+    let show = MenuItem::with_id(app, "show", "Открыть Eclipse Chat", true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "quit", "Выход", true, None::<&str>)?;
+    let menu = Menu::with_items(app, &[&show, &quit])?;
+
+    TrayIconBuilder::new()
+        .icon(app.default_window_icon().expect("default window icon").clone())
+        .tooltip("Eclipse Chat")
+        .menu(&menu)
+        .show_menu_on_left_click(false)
+        .on_menu_event(|app, event| match event.id.as_ref() {
+            "show" => show_main(app),
+            "quit" => {
+                QUITTING.store(true, Ordering::SeqCst);
+                app.exit(0);
+            }
+            _ => {}
+        })
+        .on_tray_icon_event(|tray, event| {
+            if let TrayIconEvent::Click {
+                button: MouseButton::Left,
+                button_state: MouseButtonState::Up,
+                ..
+            } = event
+            {
+                toggle_main(tray.app_handle());
+            }
+        })
+        .build(app)?;
+    Ok(())
+}
+
+/// Глобальный шорткат Ctrl+Shift+E → показать+сфокусировать окно.
+#[cfg(desktop)]
+fn setup_global_shortcut(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
+    use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
+
+    let toggle = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyE);
+    app.handle().plugin(
+        tauri_plugin_global_shortcut::Builder::new()
+            .with_handler(move |app, shortcut, event| {
+                if shortcut == &toggle && event.state() == ShortcutState::Pressed {
+                    show_main(app);
+                }
+            })
+            .build(),
+    )?;
+    // Не-фатально: если Ctrl+Shift+E уже занят другим приложением, register
+    // вернёт Err — НЕ роняем запуск из-за этого, просто логируем (шорткат не
+    // заработает, но всё остальное — трей/окно/обновления — функционирует).
+    if let Err(e) = app.global_shortcut().register(toggle) {
+        eprintln!("[global-shortcut] register Ctrl+Shift+E failed (already taken?): {e}");
+    }
+    Ok(())
+}
+
+/// Best-effort startup check-for-updates. Пока нет signing key (pubkey =
+/// placeholder в tauri.conf.json) и опубликованных signed releases —
+/// updater()/check() вернут Err, что мы глушим (no-op). Когда releases
+/// появятся, здесь будет full download+install flow.
+#[cfg(desktop)]
+fn spawn_update_check(handle: tauri::AppHandle) {
+    use tauri_plugin_updater::UpdaterExt;
+    tauri::async_runtime::spawn(async move {
+        match handle.updater() {
+            Ok(updater) => match updater.check().await {
+                Ok(Some(update)) => {
+                    eprintln!("[updater] update available: {}", update.version);
+                }
+                Ok(None) => {}
+                Err(e) => eprintln!("[updater] check failed: {e}"),
+            },
+            Err(e) => eprintln!("[updater] not configured: {e}"),
+        }
+    });
 }
