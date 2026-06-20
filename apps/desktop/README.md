@@ -22,7 +22,7 @@ Roadmap:
 - ✅ **v1.0.1** — `tauri-plugin-notification` + `tauri-plugin-updater` + `tauri-plugin-window-state`
 - ✅ **v1.0.2** — remote-wrapper: окно грузит прод-URL напрямую (auth/API/socket работают). Раньше бандлило `apps/web/dist` с относительными `/api` → не достукивалось до сервера из `tauri://localhost`.
 - ✅ **v1.0.3** — desktop-полировка (всё в Rust, `lib.rs` setup-hook): system tray icon + меню (Открыть / Выход) + клик-toggle окна; **close-to-tray** (закрытие прячет окно, app живёт в фоне ради уведомлений — реальный выход только через tray «Выход»); глобальный шорткат **Ctrl+Shift+E** (показать+сфокусировать); startup check-for-updates (best-effort, no-op до signing key + releases).
-- ⏳ **v1.0.4** — cross-platform CI matrix: GitHub Actions builds для Win/Mac/Linux на каждый tag, signed updater manifests
+- ✅ **v1.0.4** — cross-platform CI matrix (`.github/workflows/desktop-release.yml`): на push тега `desktop-v*` GitHub Actions собирает установщики Win (nsis+msi) / macOS (universal dmg) / Linux (deb+appimage) через `tauri-apps/tauri-action` → **draft** GitHub Release + updater `latest.json` (подписан, если заданы signing-секреты). Web НЕ собирается (remote-wrapper). См. «Releases» ниже.
 - ⏳ **v1.0.5** — macOS notarization + Apple Developer Program (если решим mac distribute)
 - ⏳ **v1.0.6** — Microsoft Store .msix packaging + submission
 
@@ -130,6 +130,27 @@ npm run tauri:build:appimage
 # Все доступные на текущей платформе разом
 npm run tauri:build
 ```
+
+## Releases (CI, v1.0.4+)
+
+Установщики для всех платформ собираются **в облаке** по тегу — локальная сборка
+больше не обязательна. Workflow [`.github/workflows/desktop-release.yml`](../../.github/workflows/desktop-release.yml):
+
+```bash
+# Версия в tauri.conf.json / Cargo.toml / package.json уже = X.Y.Z, затем:
+git tag desktop-vX.Y.Z
+git push origin desktop-vX.Y.Z
+```
+
+GitHub Actions (Win + macOS universal + Linux) → собирает nsis/msi/dmg/deb/appimage
+→ создаёт **draft** Release с установщиками + `latest.json` (updater-манифест).
+Проверить артефакты в draft → **Publish release** вручную (updater читает «latest»
+только у published-релиза).
+
+Для подписанного auto-updater добавить repo-secrets `TAURI_SIGNING_PRIVATE_KEY`
++ `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` и заменить `plugins.updater.pubkey` в
+tauri.conf.json (см. «Signing key» выше). Без них установщики собираются, но
+`latest.json` без подписи (updater не сможет верифицировать).
 
 ## Архитектура
 
