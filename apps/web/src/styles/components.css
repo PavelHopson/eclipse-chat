@@ -663,28 +663,6 @@ input[type="radio"]:focus-visible {
   gap: 8px;
 }
 
-.ec-shell__utility-meters {
-  gap: 6px;
-  padding: 2px;
-  border: 1px solid color-mix(in srgb, var(--ec-accent) 12%, var(--ec-border-subtle));
-  border-radius: var(--ec-radius-full);
-  background: color-mix(in srgb, var(--ec-surface-2) 86%, transparent);
-}
-
-.ec-shell__utility-meters .ec-telemetry-pill {
-  min-height: 26px;
-  padding: 0 10px;
-  border-color: transparent;
-  background: transparent;
-  box-shadow: none;
-}
-
-.ec-shell__utility-meters .ec-telemetry-pill + .ec-telemetry-pill {
-  border-left: 1px solid var(--ec-border-subtle);
-  border-radius: 0;
-}
-
-.ec-shell__top-actions .ec-spider-clock,
 .ec-shell__top-actions .ec-theme-toggle,
 .ec-shell__user-chip,
 .ec-logout-btn {
@@ -2854,58 +2832,6 @@ input[type="radio"]:focus-visible {
  * E: Quick actions ripple + magnetic
  */
 
-/* --- A: Sparkline в pill ---------------------------------------- */
-.ec-sparkline {
-  display: inline-block;
-  vertical-align: middle;
-  margin-left: 8px;
-  opacity: 0.85;
-  transition: opacity var(--ec-dur-fast) var(--ec-ease);
-}
-.ec-telemetry-pill:hover .ec-sparkline {
-  opacity: 1;
-}
-.ec-sparkline--empty {
-  background:
-    repeating-linear-gradient(
-      90deg,
-      currentColor 0,
-      currentColor 1px,
-      transparent 1px,
-      transparent 4px
-    );
-  opacity: 0.2;
-  border-radius: 1px;
-}
-
-/* --- A: Network wave (3 cyan bars) ------------------------------ */
-.ec-net-wave {
-  display: inline-flex;
-  align-items: flex-end;
-  gap: 2px;
-  height: 10px;
-  margin-left: 8px;
-  vertical-align: middle;
-}
-.ec-net-wave__bar {
-  width: 2px;
-  background: currentColor;
-  border-radius: 1px;
-  opacity: 0.5;
-  height: 3px;
-}
-.ec-net-wave.is-active .ec-net-wave__bar {
-  animation: ec-net-wave-bar 1.2s ease-in-out infinite;
-}
-.ec-net-wave.is-active .ec-net-wave__bar:nth-child(1) { animation-delay: 0ms; }
-.ec-net-wave.is-active .ec-net-wave__bar:nth-child(2) { animation-delay: 120ms; }
-.ec-net-wave.is-active .ec-net-wave__bar:nth-child(3) { animation-delay: 240ms; }
-.ec-net-wave.is-active .ec-net-wave__bar:nth-child(4) { animation-delay: 360ms; }
-@keyframes ec-net-wave-bar {
-  0%, 100% { height: 3px; opacity: 0.5; }
-  50%      { height: 10px; opacity: 1; }
-}
-
 /* --- C: DM row premium hover ------------------------------------ */
 .ec-dm-row {
   position: relative;
@@ -3567,7 +3493,6 @@ input[type="radio"]:focus-visible {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ec-net-wave__bar,
   .ec-dm-row,
   .ec-dm-row__badge,
   .ec-dm-row__badge::after,
@@ -3581,8 +3506,7 @@ input[type="radio"]:focus-visible {
   .ec-friends-tab__dot::after,
   .ec-friend-row,
   .ec-home-quick-actions .ec-btn,
-  .ec-home-quick-actions .ec-btn::after,
-  .ec-sparkline circle animate {
+  .ec-home-quick-actions .ec-btn::after {
     animation: none !important;
     transition: none !important;
   }
@@ -3758,27 +3682,6 @@ input[type="radio"]:focus-visible {
 
 .ec-shell__top-actions > .ec-icon-btn {
   display: none;
-}
-
-.ec-shell__utility-meters {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--ec-space-1);
-  min-width: 0;
-}
-
-.ec-shell__utility-meters .ec-telemetry-pill {
-  min-height: 28px;
-  padding: 0 9px;
-  border-radius: var(--ec-radius-full);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.ec-shell__utility-meters .ec-telemetry-pill strong {
-  color: var(--ec-text-strong);
-  font: inherit;
-  font-weight: 800;
 }
 
 /* Р›РѕРєР°С†РёСЏ вЂ” СЃРїРѕРєРѕР№РЅС‹Р№ Р»РµР№Р±Р» В«РіРґРµ СЏВ» РІ cmdbar (Р·Р°РјРµРЅРёР» sci-fi
@@ -8482,8 +8385,6 @@ input[type="radio"]:focus-visible {
   gap: 8px;
 }
 
-.ec-shell__top-actions .ec-telemetry-pill,
-.ec-shell__top-actions .ec-spider-clock,
 .ec-shell__top-actions .ec-theme-toggle,
 .ec-shell__top-actions .ec-music-mini-player,
 .ec-shell__top-actions .ec-shell__user-chip,
@@ -9129,8 +9030,6 @@ body {
   gap: 8px;
 }
 
-.ec-shell__utility-meters,
-.ec-shell__top-actions .ec-spider-clock,
 .ec-shell__top-actions .ec-theme-toggle,
 .ec-shell__user-chip,
 .ec-logout-btn {
@@ -9140,16 +9039,6 @@ body {
   box-shadow:
     inset 0 1px 0 hsl(0 0% 100% / 0.055),
     0 14px 34px -30px hsl(258 90% 62% / 0.75) !important;
-}
-
-.ec-shell__utility-meters {
-  min-height: 32px;
-  padding: 3px;
-}
-
-.ec-shell__utility-meters .ec-telemetry-pill {
-  min-height: 25px;
-  color: color-mix(in srgb, var(--ec-text) 92%, white 4%);
 }
 
 .ec-shell__user-chip {
@@ -9549,16 +9438,6 @@ body {
 .ec-shell__top-actions > a {
   min-width: 34px;
   min-height: 34px;
-}
-
-.ec-shell__utility-meters {
-  gap: 4px;
-  border-radius: 999px;
-}
-
-.ec-shell__utility-meters .ec-telemetry-pill {
-  border-radius: 999px;
-  box-shadow: none !important;
 }
 
 .ec-shell__top-actions .ec-music-mini-player {
