@@ -28,26 +28,28 @@
      незачем — это был источник !important-войны. */
   color: var(--ec-text);
   grid-template-rows: var(--ec-header-height) 1fr;
-  /* v1.1.51: far-left server-rail свёрнут в topbar-control (ServerSwitcher)
-     — rail-колонка убрана из grid. */
-  grid-template-columns: var(--ec-spine-width) 1fr var(--ec-members-width);
+  /* v1.6.57 Discord-каркас: вернули постоянный far-left server-rail
+     (отдельная колонка) — смена сервера в 1 клик. ServerSwitcher в топбаре
+     теперь только на mobile. */
+  grid-template-columns: var(--ec-rail-width) var(--ec-spine-width) 1fr var(--ec-members-width);
   grid-template-areas:
-    "brand    cmd   cmd"
-    "channels chat  members";
+    "rail brand    cmd   cmd"
+    "rail channels chat  members";
 }
 
 /* Без активного сервера — members колонка не нужна */
 .ec-shell:not(.ec-shell--has-server) {
-  grid-template-columns: var(--ec-spine-width) 1fr;
+  grid-template-columns: var(--ec-rail-width) var(--ec-spine-width) 1fr;
   grid-template-areas:
-    "brand    cmd"
-    "channels chat";
+    "rail brand    cmd"
+    "rail channels chat";
 }
 
 /* v0.68: min-height:0 на каждой grid-area обязательно — без него grid-row
    auto-expand'ится под content (большой channel list / long member list),
    header app уходит за viewport, никаких scroll'ов не появляется.
    Pavel-ask 17.05 «не у всех экран показывает все каналы». */
+.ec-shell__rail     { grid-area: rail; min-width: 0; min-height: 0; }
 .ec-shell__brandbar { grid-area: brand; min-width: 0; }
 .ec-shell__cmdbar   { grid-area: cmd; min-width: 0; }
 .ec-shell__channels { grid-area: channels; min-width: 0; min-height: 0; overflow: hidden; }
@@ -59,7 +61,7 @@
    operational surface оставался читаемым. */
 @media (min-width: 1025px) and (max-width: 1366px) {
   .ec-shell.ec-shell--has-server {
-    grid-template-columns: 244px 1fr 224px;
+    grid-template-columns: var(--ec-rail-width) 244px 1fr 224px;
   }
 }
 

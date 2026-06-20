@@ -44,7 +44,7 @@ function initials(name: string): string {
 }
 
 /** Квадратная иконка пространства — img с fallback на инициалы. */
-function ServerIcon({ server, size }: { server: ServerRow; size: number }) {
+export function ServerIcon({ server, size }: { server: ServerRow; size: number }) {
   const [errored, setErrored] = useState(false);
   const iconUrl = resolveAssetUrl(server.icon);
 
