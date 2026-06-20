@@ -11,6 +11,8 @@
  *   4. OpenRouter (free DeepSeek/Qwen/Llama tier)
  *   5. NVIDIA Build (95 free models, требует API key)
  *   6. Mistral (free tier La Plateforme)
+ *   6b. YandexGPT (РФ free-tier, OpenAI-compatible, приватный) — нужны
+ *       YANDEX_API_KEY + YANDEX_FOLDER_ID; доступен из РФ, стандартный TLS
  *   7. OpenAI (paid fallback)
  *   8. Pollinations (keyless, БЕЗ API key) — бесключевой free fallback,
  *      включён по умолчанию; стоит последним, любой реальный ключ важнее.
@@ -43,6 +45,11 @@
  *   NVIDIA_MODEL=qwen/qwen2.5-coder-32b-instruct
  *   MISTRAL_API_KEY=<key>                — console.mistral.ai (free tier)
  *   MISTRAL_MODEL=mistral-small-latest
+ *   ## РФ free-tier (приватный, доступен из РФ — Yandex Cloud)
+ *   YANDEX_API_KEY=<service-account-key> — ключ сервисного аккаунта Yandex Cloud
+ *   YANDEX_FOLDER_ID=<folder-id>         — каталог Cloud (оба обязательны)
+ *   YANDEX_MODEL=yandexgpt-lite/latest   — короткое имя авто-оборачивается в
+ *                                          gpt://<folder>/...; или YANDEX_MODELS CSV
  *   ## Paid fallback
  *   OPENAI_API_KEY=<key>                 — paid fallback
  *   OPENAI_MODEL=gpt-4o-mini
@@ -280,6 +287,34 @@ function getProviders(): ProviderConfig[] {
         process.env.MISTRAL_MODELS ?? process.env.MISTRAL_MODEL,
         "mistral-small-latest",
       ),
+    });
+  }
+
+  // 6b. YandexGPT — РФ free-tier через OpenAI-compatible эндпоинт Yandex Cloud.
+  //     v1.6.62 — приватный (промпты не публикуются) и доступный из РФ
+  //     альтернатив-ключ, когда регистрация западных сервисов недоступна.
+  //     Требует ДВЕ env: YANDEX_API_KEY (ключ сервисного аккаунта) +
+  //     YANDEX_FOLDER_ID (каталог Cloud). Auth = `Api-Key <key>` (НЕ Bearer) →
+  //     переопределяем дефолтный Bearer через extraHeaders. Модель = URI
+  //     `gpt://<folder>/<model>` — короткие имена в YANDEX_MODELS авто-
+  //     оборачиваются (полные gpt:// URI оставляются как есть). Стандартный
+  //     TLS (без российского CA — в отличие от GigaChat, потому выбран он).
+  const yandexKey = process.env.YANDEX_API_KEY?.trim();
+  const yandexFolder = process.env.YANDEX_FOLDER_ID?.trim();
+  if (yandexKey && yandexFolder) {
+    const yandexModels = parseModels(
+      process.env.YANDEX_MODELS ?? process.env.YANDEX_MODEL,
+      "yandexgpt-lite/latest",
+    ).map((m) => (m.startsWith("gpt://") ? m : `gpt://${yandexFolder}/${m}`));
+    out.push({
+      name: "yandexgpt",
+      baseUrl: "https://llm.api.cloud.yandex.net/v1",
+      apiKey: yandexKey, // в Bearer не идёт — auth переопределён extraHeaders
+      models: yandexModels,
+      extraHeaders: {
+        // Yandex Cloud API key передаётся как `Api-Key <key>`, не `Bearer`.
+        Authorization: `Api-Key ${yandexKey}`,
+      },
     });
   }
 
