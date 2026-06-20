@@ -675,6 +675,64 @@
   .ec-shell__rail { display: none; }
 }
 
+/* ============================================================
+ * v1.6.58 — Mobile bottom tab-bar (Discord-каркас, слайс 2).
+ * Рендерится только на mobile (grid-area «nav» в responsive.css).
+ * ============================================================ */
+.ec-bnav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: var(--ec-z-sidebar);
+  display: flex;
+  align-items: stretch;
+  background: var(--ec-surface-1);
+  border-top: 1px solid var(--ec-border-subtle);
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+/* Чат-область освобождает место под фиксированным таб-баром (mobile). */
+@media (max-width: 1024px) {
+  .ec-shell__chat {
+    padding-bottom: calc(var(--ec-bottomnav-height) + env(safe-area-inset-bottom, 0));
+  }
+}
+.ec-bnav__tab {
+  flex: 1;
+  min-width: 0;
+  height: var(--ec-bottomnav-height);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  border: 0;
+  background: transparent;
+  color: var(--ec-text-dim);
+  cursor: pointer;
+  transition: color var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-bnav__tab:hover { color: var(--ec-text); }
+.ec-bnav__tab.is-active { color: var(--ec-accent); }
+.ec-bnav__icon { position: relative; display: grid; place-items: center; }
+.ec-bnav__label { font-size: 0.62rem; font-weight: 600; letter-spacing: 0.01em; }
+.ec-bnav__badge {
+  position: absolute;
+  top: -4px;
+  right: -8px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 4px;
+  display: grid;
+  place-items: center;
+  font-size: 0.56rem;
+  font-weight: 700;
+  color: #fff;
+  background: var(--ec-danger, #ef4444);
+  border: 2px solid var(--ec-surface-1);
+  border-radius: var(--ec-radius-full);
+}
+
 @media (max-width: 1180px) and (min-width: 641px) {
   .ec-guide__body { grid-template-columns: 1fr; }
   .ec-guide__quick {
