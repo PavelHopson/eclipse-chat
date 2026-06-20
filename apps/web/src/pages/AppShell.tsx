@@ -1032,9 +1032,11 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           </div>
         ) : null}
         <div className="ec-shell__top-actions">
-          {/* UXR9 — topbar показывает только постоянные утилиты: метрики,
-              часы, тему, профиль и выход. Вторичные actions остаются в
-              контекстных местах, чтобы первый слой не шумел. */}
+          {/* UXR9 / v1.6.59 slice 3 — topbar держит только постоянные
+              действия: поиск, AI, участники, профиль, выход. Вторичные
+              утилиты (тема, уведомления, справка) уехали в профиль-меню
+              за аватаром (StatusMenu), чтобы первый слой не шумел.
+              Админ-иконки остаются — они и так role-gated. */}
           {inServerView && (
             <button
               type="button"
@@ -1049,20 +1051,6 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               </svg>
             </button>
           )}
-          <button
-            type="button"
-            onClick={() => (helpOpen ? setHelpOpen(false) : openHelp())}
-            title="Справка и онбординг"
-            aria-label="Справка"
-            aria-pressed={helpOpen}
-            className="ec-icon-btn"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <circle cx="12" cy="12" r="10" />
-              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-              <line x1="12" y1="17" x2="12.01" y2="17" />
-            </svg>
-          </button>
           {(currentRole === "OWNER" || currentRole === "ADMIN") &&
             activeServer &&
             !inDmMode && (
@@ -1101,46 +1089,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               </svg>
             </button>
           )}
-          {notif.supported && (
-            <button
-              type="button"
-              onClick={() => {
-                if (notif.permission === "default") void notif.request();
-                else notif.toggle();
-              }}
-              title={
-                notif.permission === "denied"
-                  ? "Уведомления заблокированы в браузере"
-                  : notif.permission === "default"
-                  ? "Включить уведомления"
-                  : notif.enabled
-                  ? "Уведомления включены — выключить"
-                  : "Уведомления выключены — включить"
-              }
-              aria-label="Уведомления"
-              aria-pressed={notif.permission === "granted" && notif.enabled}
-              className="ec-icon-btn"
-              style={
-                notif.permission === "denied" ? { opacity: 0.45 } : undefined
-              }
-            >
-              {notif.permission === "granted" && notif.enabled ? (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                  <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                  <path d="M13.73 21a2 2 0 01-3.46 0" />
-                </svg>
-              ) : (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                  <path d="M13.73 21a2 2 0 01-3.46 0" />
-                  <path d="M18.63 13A17.89 17.89 0 0118 8" />
-                  <path d="M6.26 6.26A5.86 5.86 0 006 8c0 7-3 9-3 9h14" />
-                  <path d="M18 8a6 6 0 00-9.33-5" />
-                  <line x1="1" y1="1" x2="23" y2="23" />
-                </svg>
-              )}
-            </button>
-          )}
-          {/* v1.5.4 — AI agent button: premium violet glow рядом с уведомлениями.
+          {/* v1.5.4 — AI agent button: premium violet glow.
               Click → dispatch global `ec-ai-trigger`; composer (MessageInput)
               ловит и фокусит textarea + prefill «@ai ». */}
           <button
@@ -1166,7 +1115,6 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               <path d="M19 14l1 2.5 2.5 1-2.5 1L19 21l-1-2.5L15.5 17.5l2.5-1z" opacity="0.7" />
             </svg>
           </button>
-          <ThemeToggle />
           {showRightRail && (
             <button
               type="button"
@@ -2479,6 +2427,59 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           onSelect={(s) => void updateStatus(s)}
           onOpenProfile={() => setShowProfile(true)}
           onClose={() => setStatusAnchor(null)}
+          themeSlot={<ThemeToggle />}
+          tools={[
+            ...(notif.supported
+              ? [
+                  {
+                    key: "notif",
+                    label: "Уведомления",
+                    hint:
+                      notif.permission === "denied"
+                        ? "Заблокированы в браузере"
+                        : notif.permission === "default"
+                        ? "Нажмите, чтобы включить"
+                        : notif.enabled
+                        ? "Включены"
+                        : "Выключены",
+                    active: notif.permission === "granted" && notif.enabled,
+                    dim: notif.permission === "denied",
+                    closeOnClick: false,
+                    onClick: () => {
+                      if (notif.permission === "default") void notif.request();
+                      else notif.toggle();
+                    },
+                    icon:
+                      notif.permission === "granted" && notif.enabled ? (
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                          <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                          <path d="M13.73 21a2 2 0 01-3.46 0" />
+                        </svg>
+                      ) : (
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                          <path d="M13.73 21a2 2 0 01-3.46 0" />
+                          <path d="M18.63 13A17.89 17.89 0 0118 8" />
+                          <path d="M6.26 6.26A5.86 5.86 0 006 8c0 7-3 9-3 9h14" />
+                          <path d="M18 8a6 6 0 00-9.33-5" />
+                          <line x1="1" y1="1" x2="23" y2="23" />
+                        </svg>
+                      ),
+                  },
+                ]
+              : []),
+            {
+              key: "help",
+              label: "Справка и онбординг",
+              onClick: openHelp,
+              icon: (
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                  <line x1="12" y1="17" x2="12.01" y2="17" />
+                </svg>
+              ),
+            },
+          ]}
         />
       )}
 
