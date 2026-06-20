@@ -347,7 +347,7 @@ export function SearchOverlay({
                 activateQuickItem(item);
               }
             }}
-            placeholder="ЗАПРОС_ПОИСКА // сообщения · задачи · файлы…"
+            placeholder="Поиск по сообщениям, каналам, файлам…"
             className="ec-search-input"
             aria-controls={quickMatches.length > 0 ? "ec-command-palette-list" : undefined}
             aria-activedescendant={
@@ -580,7 +580,7 @@ export function SearchOverlay({
             <EmptyState
               icon={<EmptySearchIcon />}
               title="Ничего не найдено"
-              hint="Попробуйте название канала, имя диалога, таблицу или раздел настроек."
+              hint="Попробуйте название канала, имя диалога или раздел настроек."
               compact
             />
           )}
