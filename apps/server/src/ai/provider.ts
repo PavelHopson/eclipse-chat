@@ -12,15 +12,18 @@
  *   5. NVIDIA Build (95 free models, требует API key)
  *   6. Mistral (free tier La Plateforme)
  *   7. OpenAI (paid fallback)
+ *   8. Pollinations (keyless, БЕЗ API key) — бесключевой free fallback,
+ *      включён по умолчанию; стоит последним, любой реальный ключ важнее.
  *
- * Все провайдеры OpenAI-compatible + опциональны (включаются заданием своего
+ * Провайдеры 1-7 OpenAI-compatible + опциональны (включаются заданием своего
  * API key в env). Добавить ещё один free-провайдер = ещё один блок в
  * getProviders() по тому же шаблону. Чем больше бесплатных в цепочке — тем
  * надёжнее @ai для пользователя (на 429 одного идём к следующему).
  *
- * Если ни один не сконфигурирован — `chat()` бросает `AINotConfiguredError`,
- * route возвращает 503 с пояснением. Это позволяет деплоить Eclipse Chat
- * без AI и включать фичу позже только env-переменной.
+ * v1.6.61 — благодаря keyless-Pollinations (default-on) @ai сконфигурирован
+ * ВСЕГДА (если не задан POLLINATIONS_DISABLED=1). `AINotConfiguredError` /
+ * 503 теперь возможны только при явном отключении Pollinations И отсутствии
+ * остальных ключей.
  *
  * Конфигурация:
  *   ## Self-host (рекомендуется — free, privacy)
@@ -43,6 +46,12 @@
  *   ## Paid fallback
  *   OPENAI_API_KEY=<key>                 — paid fallback
  *   OPENAI_MODEL=gpt-4o-mini
+ *
+ *   ## Keyless free fallback (default-on, без регистрации)
+ *   POLLINATIONS_DISABLED=1              — выключить keyless Pollinations
+ *   POLLINATIONS_MODEL=openai            — POLLINATIONS_MODELS (CSV) для chain
+ *                                          (напр. openai,openai-fast,mistral)
+ *   POLLINATIONS_REFERRER=eclipse-chat   — идентификатор приложения
  *
  *   AI_TIMEOUT_MS=20000                  — per-request timeout
  *
@@ -138,6 +147,10 @@ type ProviderConfig = {
   models: string[];
   /** Дополнительный header для OpenRouter rankings. */
   extraHeaders?: Record<string, string>;
+  /** v1.6.61 — provider-specific поля в JSON body запроса (мерджатся поверх
+   *  base body). Для Pollinations: `private:true` (генерация НЕ в публичную
+   *  ленту) + `referrer`. Не должен содержать model/messages (их задаёт base). */
+  extraBody?: Record<string, unknown>;
 };
 
 /** v1.5.18 — utility для парсинга CSV список моделей из env. Trim'ит
@@ -283,6 +296,34 @@ function getProviders(): ProviderConfig[] {
       ),
     });
   }
+
+  // 8. Pollinations — публичный OpenAI-compatible эндпоинт БЕЗ ключа (keyless).
+  //    v1.6.61 — добавлен как бесключевой fallback для регионов/команд, где
+  //    регистрация западных AI-сервисов недоступна (нельзя получить ключ).
+  //    Включён ПО УМОЛЧАНИЮ и стоит ПОСЛЕДНИМ: любой реальный ключ выше по
+  //    списку имеет приоритет; когда ключей нет вообще — @ai всё равно живой.
+  //    Отключить полностью: POLLINATIONS_DISABLED=1.
+  //    Приватность: шлём `private:true` (генерация НЕ попадает в публичную
+  //    ленту Pollinations) + `referrer`. Как и любой cloud-LLM, контент @ai
+  //    уходит на внешний сервис — для полной приватности используйте Ollama.
+  //    Надёжность: анонимный tier rate-limited (429) и иногда медленный —
+  //    retry/backoff + model-fallback это сглаживают; это best-effort free.
+  if (process.env.POLLINATIONS_DISABLED !== "1") {
+    out.push({
+      name: "pollinations",
+      // baseUrl + "/chat/completions" = реальный эндпоинт (проверено).
+      baseUrl: "https://text.pollinations.ai/openai",
+      apiKey: "pollinations", // dummy — эндпоинт игнорирует Authorization
+      models: parseModels(
+        process.env.POLLINATIONS_MODELS ?? process.env.POLLINATIONS_MODEL,
+        "openai",
+      ),
+      extraBody: {
+        private: true,
+        referrer: process.env.POLLINATIONS_REFERRER?.trim() || "eclipse-chat",
+      },
+    });
+  }
   return out;
 }
 
@@ -323,6 +364,9 @@ async function callProviderModel(
       temperature: opts.temperature ?? 0.4,
       max_tokens: opts.maxTokens ?? 600,
       stream: false,
+      // v1.6.61 — provider-specific body поля (напр. Pollinations private/referrer).
+      // Идут ПОСЛЕ base, но model/messages в extraBody мы не кладём (см. тип).
+      ...(cfg.extraBody ?? {}),
     };
     if (opts.tools && opts.tools.length > 0) {
       body.tools = opts.tools;
