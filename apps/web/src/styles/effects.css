@@ -277,97 +277,6 @@ html[data-ec-theme="solar"] .ec-voice-room {
   animation-delay: var(--star-delay);
 }
 
-.ec-spider-clock {
-  display: inline-grid;
-  grid-template-columns: 28px auto auto;
-  align-items: center;
-  gap: 7px;
-  min-height: 30px;
-  padding: 0.24rem 0.62rem 0.24rem 0.36rem;
-  border-radius: var(--ec-radius-full);
-  background:
-    radial-gradient(circle at 18% 50%, var(--ec-accent-soft), transparent 46%),
-    hsl(216 24% 8% / 0.58);
-  box-shadow: var(--ec-edge), inset 0 1px 0 hsl(0 0% 100% / 0.03);
-  color: var(--ec-text-muted);
-  font-family: var(--ec-font-mono, ui-monospace, monospace);
-  font-size: 0.62rem;
-  letter-spacing: 0.12em;
-  white-space: nowrap;
-}
-
-.ec-spider-clock__dial {
-  position: relative;
-  display: block;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 50% 50%, var(--ec-accent) 0 1px, transparent 1.5px),
-    repeating-conic-gradient(from 0deg, hsl(258 70% 64% / 0.38) 0 1deg, transparent 1deg 30deg);
-  box-shadow: inset 0 0 0 1px hsl(258 70% 64% / 0.24);
-}
-
-.ec-spider-clock__web,
-.ec-spider-clock__hand,
-.ec-spider-clock__node {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-}
-
-.ec-spider-clock__web {
-  width: 100%;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, hsl(258 70% 70% / 0.32), transparent);
-  transform-origin: 0 0;
-}
-
-.ec-spider-clock__web--a { transform: rotate(35deg) translateX(-50%); }
-.ec-spider-clock__web--b { transform: rotate(145deg) translateX(-50%); }
-
-.ec-spider-clock__hand {
-  width: 10px;
-  height: 1px;
-  transform-origin: 0 50%;
-  background: var(--ec-text-muted);
-}
-
-.ec-spider-clock__hand--hour {
-  width: 7px;
-  background: var(--ec-text-strong);
-}
-
-.ec-spider-clock__hand--minute {
-  width: 9px;
-  background: var(--ec-accent);
-}
-
-.ec-spider-clock__hand--second {
-  width: 11px;
-  background: var(--ec-status-warn);
-  box-shadow: 0 0 8px hsl(42 90% 62% / 0.44);
-}
-
-.ec-spider-clock__node {
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: var(--ec-bg);
-  box-shadow: 0 0 0 1px var(--ec-accent), 0 0 8px hsl(258 80% 62% / 0.34);
-  transform: translate(-50%, -50%);
-}
-
-.ec-spider-clock__time {
-  color: var(--ec-text);
-  font-variant-numeric: tabular-nums;
-}
-
-.ec-spider-clock__sec {
-  color: var(--ec-text-dim);
-  font-variant-numeric: tabular-nums;
-}
-
 .ec-theme-toggle {
   display: inline-flex;
   align-items: center;
@@ -621,10 +530,6 @@ html[data-ec-theme="solar"] .ec-voice-room {
 }
 
 @media (max-width: 900px) {
-  .ec-spider-clock {
-    display: none;
-  }
-
   .ec-galaxy--auth {
     width: 92vw;
     right: -46vw;

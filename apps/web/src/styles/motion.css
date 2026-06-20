@@ -547,15 +547,6 @@
 }
 
 /*
- * Telemetry sweep — горизонтальная «развёртка» как на радаре/осциллографе.
- * Для top-border активных operational-карточек. Очень тонкая, 4s.
- */
-@keyframes ec-telemetry-sweep {
-  0%   { background-position: -130% 0; }
-  100% { background-position: 230% 0; }
-}
-
-/*
  * v1.1.89 — мини-эквалайзер «now playing» в плеере. Запускается
  * только пока трек играет (isPlaying); на паузе бары статичны.
  *   ec-eq-bar — столбик мини-эквалайзера (растёт снизу)
@@ -641,31 +632,6 @@
   background: currentColor;
   animation: ec-signal-pulse 2s var(--ec-ease) infinite;
   flex-shrink: 0;
-}
-
-/* Telemetry-sweep top accent — для активных operational-карточек.
- * Применяется к элементу с position:relative; рисует тонкую развёртку
- * по верхней кромке. */
-.ec-telemetry-edge {
-  position: relative;
-}
-.ec-telemetry-edge::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    var(--ec-status-ai, hsl(258 70% 60%)) 50%,
-    transparent 100%
-  );
-  background-size: 40% 100%;
-  background-repeat: no-repeat;
-  animation: ec-telemetry-sweep 4s linear infinite;
-  pointer-events: none;
 }
 
 /* Aurora-bg utility — для empty-states, hero blocks, server settings */
@@ -1148,10 +1114,6 @@
   .ec-anim-orbit-sweep,
   .ec-signal-dot {
     animation: none !important;
-  }
-  .ec-telemetry-edge::before {
-    animation: none !important;
-    opacity: 0;
   }
   .ec-aurora-bg {
     animation: none !important;

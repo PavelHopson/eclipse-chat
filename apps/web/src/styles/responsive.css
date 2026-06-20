@@ -138,24 +138,10 @@
   .ec-chat-header {
     padding: 0 var(--ec-space-4) !important;
   }
-
-  /* v1.1.13 mobile fix: telemetry pills ПАМ/ЦП съедали topbar на mobile —
-   * скрываем percent pills, оставляем только сетевой статус. */
-  .ec-shell__top-actions .ec-telemetry-pill:not(.ec-telemetry-pill--ok):not(.ec-telemetry-pill--warn):not(.ec-telemetry-pill--risk),
-  .ec-shell__top-actions .ec-telemetry-pill:nth-of-type(2),
-  .ec-shell__top-actions .ec-telemetry-pill:nth-of-type(3) {
-    display: none;
-  }
 }
 
-/* v1.1.13 mobile telemetry / breadcrumb collapse */
+/* v1.1.13 mobile breadcrumb collapse */
 @media (max-width: 1024px) {
-  /* Hide ВСЕ telemetry pills на узких экранах — освобождаем место под brand
-   * + breadcrumb + кнопки действий. Status показан через ec-shell__brand-title
-   * + connection icon в profile chip. */
-  .ec-shell__top-actions .ec-telemetry-pill {
-    display: none !important;
-  }
   /* Breadcrumb «УЗЕЛ // … / #…» уходит — слишком длинный для mobile topbar.
    * Channel name дублируется в chat-header sticky-bar и в sidebar tabs. */
   .ec-shell__breadcrumb {
@@ -1037,9 +1023,7 @@
     grid-template-columns: 1fr !important;
   }
 
-  .ec-shell__top-actions .ec-icon-btn[title="Поиск (Ctrl+K)"],
-  .ec-shell__top-actions .ec-icon-btn[aria-label="Инциденты"],
-  .ec-shell__top-actions .ec-icon-btn[aria-label="Уведомления"] {
+  .ec-shell__top-actions .ec-icon-btn[title="Поиск (Ctrl+K)"] {
     display: none;
   }
 
@@ -1676,25 +1660,7 @@
   }
 }
 
-@media (max-width: 1024px) {
-  .ec-shell__utility-meters .ec-telemetry-pill {
-    display: inline-flex !important;
-  }
-
-  .ec-shell__utility-meters .ec-telemetry-pill:nth-child(n+2) {
-    display: none !important;
-  }
-}
-
-@media (max-width: 640px) {
-  .ec-shell__utility-meters {
-    display: none !important;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .ec-shell__utility-meters,
-  .ec-shell__utility-meters *,
   .ec-guide__stats,
   .ec-guide__stats *,
   .ec-guide__section,
@@ -1745,10 +1711,6 @@
 
   .ec-shell__top-actions .ec-music-mini-player {
     max-width: 132px !important;
-  }
-
-  .ec-shell__top-actions .ec-spider-clock {
-    max-width: 112px;
   }
 
   .ec-composer-send-label {
