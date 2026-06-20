@@ -1,21 +1,30 @@
 # @eclipse-chat/desktop
 
-Tauri 2 desktop shell для Eclipse Chat. Wraps `apps/web` build → native binaries для Windows / macOS / Linux.
+Tauri 2 desktop shell для Eclipse Chat → native binaries для Windows / macOS / Linux.
+
+**Модель подключения (v1.0.2): тонкая обёртка над прод-URL.** Окно грузит
+`https://app.star-crm.ru/eclipse-chat/` напрямую (`frontendDist` = URL → Tauri
+не бандлит локальные ассеты). Origin = сайт, поэтому auth / API / socket / CORS
+работают идентично браузеру, без правок web или сервера. Минус: нужен интернет
+(нет offline-оболочки) — это осознанный выбор для простоты и моментальной
+работоспособности (выбран Pavel из 3 моделей). Сборка обновляется автоматически
+вместе с сайтом (webview грузит свежий деплой); обновляется лишь сам Tauri-shell.
 
 ## Стадия
 
-**v1.0.1 (Eclipse Chat v1.5.39)** — plugins layer landed. Scaffold + 3 plugins
-(notification, updater, window-state) ready; signing key generation = Pavel's
-next manual step (см. ниже).
+**v1.0.2** — переход на remote-wrapper модель (рабочее подключение к серверу).
+Scaffold + 3 plugins (notification/updater/window-state) с v1.0.1 на месте.
+Signing key для updater = manual-шаг Pavel (см. ниже), не блокирует запуск.
 
 Roadmap:
 
-- ✅ **v1.0.0 / EC v1.5.38** — scaffold: Cargo workspace, tauri.conf.json, capabilities, .env.desktop для web build
-- ✅ **v1.0.1 / EC v1.5.39** — `tauri-plugin-notification` + `tauri-plugin-updater` (config + plugin layer; signing key Pavel'у сгенерировать) + `tauri-plugin-window-state` (drop-in)
-- ⏳ **v1.0.2 / EC v1.5.40** — system tray icon, global shortcuts (Ctrl+Shift+E для focus), startup check-for-updates hook
-- ⏳ **v1.0.3 / EC v1.5.41** — cross-platform CI matrix: GitHub Actions builds для Win/Mac/Linux на каждый tag, signed updater manifests
-- ⏳ **v1.0.4 / EC v1.5.42** — macOS notarization + Apple Developer Program (опционально, если решим mac distribute)
-- ⏳ **v1.0.5 / EC v1.5.43** — Microsoft Store .msix packaging + submission
+- ✅ **v1.0.0** — scaffold: Cargo workspace, tauri.conf.json, capabilities
+- ✅ **v1.0.1** — `tauri-plugin-notification` + `tauri-plugin-updater` + `tauri-plugin-window-state`
+- ✅ **v1.0.2** — remote-wrapper: окно грузит прод-URL напрямую (auth/API/socket работают). Раньше бандлило `apps/web/dist` с относительными `/api` → не достукивалось до сервера из `tauri://localhost`.
+- ⏳ **v1.0.3** — system tray icon, global shortcuts (Ctrl+Shift+E focus), startup check-for-updates hook
+- ⏳ **v1.0.4** — cross-platform CI matrix: GitHub Actions builds для Win/Mac/Linux на каждый tag, signed updater manifests
+- ⏳ **v1.0.5** — macOS notarization + Apple Developer Program (если решим mac distribute)
+- ⏳ **v1.0.6** — Microsoft Store .msix packaging + submission
 
 ## Prerequisites
 
@@ -86,12 +95,17 @@ installs (новые версии не пройдут signature check). Хран
 
 ## Dev mode
 
-Запускает Vite dev server (`apps/web` на localhost:5173) + открывает Tauri window который грузит этот URL. Live-reload работает — изменения в `apps/web/src/` сразу обновляются в desktop window.
+`devUrl` указывает на прод-URL — `tauri:dev` открывает окно, грузящее живой сайт
+(тот же remote-wrapper, что и production-сборка). Фронтенд-разработка ведётся
+отдельно в `apps/web` (vite dev), не через Tauri-окно.
 
 ```bash
 cd apps/desktop
 npm run tauri:dev
 ```
+
+> Если нужно тестировать обёртку против локального/staging сервера — временно
+> поменяйте `devUrl`/`frontendDist` в `src-tauri/tauri.conf.json` на нужный URL.
 
 ## Production build
 
@@ -136,9 +150,12 @@ apps/desktop/
 └── README.md              # this file
 ```
 
-**Frontend integration**: Tauri runs `npm run build:desktop -w @eclipse-chat/web` (Vite mode=desktop reads `.env.desktop` → `VITE_BASE_PATH=/`). Output `apps/web/dist/` bundled через relative path `../../web/dist` (см. tauri.conf.json frontendDist).
-
-В dev — Tauri запускает `npm run dev -w @eclipse-chat/web` параллельно + грузит `http://localhost:5173`.
+**Frontend integration (v1.0.2)**: `frontendDist` в tauri.conf.json = URL
+`https://app.star-crm.ru/eclipse-chat/`, поэтому Tauri **не** бандлит локальные
+ассеты — окно грузит сайт напрямую. `beforeBuildCommand`/`beforeDevCommand`
+пустые (web-build не требуется). Никакого `.env.desktop` / `VITE_BASE_PATH`
+больше не нужно — origin webview = сам сайт, все относительные `/api`,
+`/socket.io` резолвятся на app.star-crm.ru как в обычном браузере.
 
 ## Identifier
 

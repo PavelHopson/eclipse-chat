@@ -1,8 +1,15 @@
 // Eclipse Chat desktop — Tauri 2 entry point.
 //
 // Shared между main.rs (desktop binary) и mobile_entry_point (Tauri 2 mobile,
-// будет relevant в Phase C iOS/Android). Сейчас — pure desktop shell который
-// загружает фронтенд из bundled dist (apps/web/dist).
+// будет relevant в Phase C iOS/Android).
+//
+// v1.0.2 — модель «тонкая обёртка над прод-URL»: окно грузит
+// https://app.star-crm.ru/eclipse-chat/ напрямую (frontendDist=URL в
+// tauri.conf.json), БЕЗ бандла локальных ассетов. Origin = сайт, поэтому
+// auth/API/socket/CORS работают как в браузере, без правок web/сервера.
+// Rust-плагины (updater, window-state) работают со стороны Rust; native
+// notification из JS недоступен remote-контенту (Tauri sandbox) — сайт
+// использует Web Notifications в webview, что ок.
 //
 // Plugins:
 //   - tauri-plugin-shell — для open() external links из web context
