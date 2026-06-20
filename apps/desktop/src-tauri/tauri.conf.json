@@ -1,13 +1,13 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Eclipse Chat",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "identifier": "ru.star-crm.eclipse-chat",
   "build": {
-    "beforeDevCommand": "npm run dev -w @eclipse-chat/web -- --port 5173",
-    "beforeBuildCommand": "npm run build:desktop -w @eclipse-chat/web",
-    "devUrl": "http://localhost:5173",
-    "frontendDist": "../../web/dist"
+    "beforeDevCommand": "",
+    "beforeBuildCommand": "",
+    "devUrl": "https://app.star-crm.ru/eclipse-chat/",
+    "frontendDist": "https://app.star-crm.ru/eclipse-chat/"
   },
   "app": {
     "windows": [
