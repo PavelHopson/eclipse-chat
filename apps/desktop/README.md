@@ -21,7 +21,7 @@ Roadmap:
 - ✅ **v1.0.0** — scaffold: Cargo workspace, tauri.conf.json, capabilities
 - ✅ **v1.0.1** — `tauri-plugin-notification` + `tauri-plugin-updater` + `tauri-plugin-window-state`
 - ✅ **v1.0.2** — remote-wrapper: окно грузит прод-URL напрямую (auth/API/socket работают). Раньше бандлило `apps/web/dist` с относительными `/api` → не достукивалось до сервера из `tauri://localhost`.
-- ⏳ **v1.0.3** — system tray icon, global shortcuts (Ctrl+Shift+E focus), startup check-for-updates hook
+- ✅ **v1.0.3** — desktop-полировка (всё в Rust, `lib.rs` setup-hook): system tray icon + меню (Открыть / Выход) + клик-toggle окна; **close-to-tray** (закрытие прячет окно, app живёт в фоне ради уведомлений — реальный выход только через tray «Выход»); глобальный шорткат **Ctrl+Shift+E** (показать+сфокусировать); startup check-for-updates (best-effort, no-op до signing key + releases).
 - ⏳ **v1.0.4** — cross-platform CI matrix: GitHub Actions builds для Win/Mac/Linux на каждый tag, signed updater manifests
 - ⏳ **v1.0.5** — macOS notarization + Apple Developer Program (если решим mac distribute)
 - ⏳ **v1.0.6** — Microsoft Store .msix packaging + submission

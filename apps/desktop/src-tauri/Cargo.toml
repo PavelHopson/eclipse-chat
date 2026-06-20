@@ -1,6 +1,6 @@
 [package]
 name = "eclipse-chat-desktop"
-version = "1.0.2"
+version = "1.0.3"
 description = "Eclipse Chat desktop shell (Tauri 2)"
 authors = ["Pavel Hopson <hopsintoxin@mail.ru>"]
 edition = "2021"
@@ -16,7 +16,8 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+# v1.0.3 — feature "tray-icon" нужен для system tray (TrayIconBuilder).
+tauri = { version = "2", features = ["tray-icon"] }
 tauri-plugin-shell = "2"
 # v1.5.39 — Phase B Tauri #2 plugins:
 #   notification — native OS notifications (Action Center / Notification Center / libnotify)
@@ -25,6 +26,8 @@ tauri-plugin-shell = "2"
 tauri-plugin-notification = "2"
 tauri-plugin-updater = "2"
 tauri-plugin-window-state = "2"
+# v1.0.3 — глобальный шорткат Ctrl+Shift+E (показать/сфокусировать окно).
+tauri-plugin-global-shortcut = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
