@@ -563,6 +563,118 @@
   .ec-guide__quick-grid { grid-template-columns: 1fr; }
 }
 
+/* ============================================================
+ * v1.6.57 — Server Rail (Discord-каркас): постоянный левый
+ * вертикальный рейл-иконок. Grid-area «rail» определён в responsive.css.
+ * ============================================================ */
+.ec-shell__rail { grid-area: rail; min-height: 0; }
+.ec-rail {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ec-space-2);
+  padding: var(--ec-space-2) 0;
+  background: var(--ec-surface-0);
+  border-right: 1px solid var(--ec-border-subtle);
+  overflow: hidden;
+}
+.ec-rail__group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ec-space-2);
+  flex-shrink: 0;
+}
+.ec-rail__servers {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ec-space-2);
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+}
+.ec-rail__servers::-webkit-scrollbar { width: 0; }
+.ec-rail__divider {
+  width: 28px;
+  height: 1px;
+  background: var(--ec-border-subtle);
+  flex-shrink: 0;
+}
+.ec-rail__btn {
+  position: relative;
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  padding: 0;
+  border-radius: var(--ec-radius-lg);
+  background: var(--ec-surface-2);
+  color: var(--ec-text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition:
+    border-radius var(--ec-dur-base) var(--ec-ease),
+    background var(--ec-dur-base) var(--ec-ease),
+    color var(--ec-dur-base) var(--ec-ease);
+}
+.ec-rail__btn:hover {
+  border-radius: var(--ec-radius-md);
+  background: var(--ec-accent-soft);
+  color: var(--ec-text);
+}
+.ec-rail__btn.is-active {
+  border-radius: var(--ec-radius-md);
+  background: var(--ec-accent-soft);
+  color: var(--ec-accent);
+}
+.ec-rail__btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.ec-rail__glyph { display: grid; place-items: center; }
+.ec-rail__btn--server .ec-rail__glyph .ec-srv-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: inherit;
+}
+/* Левый pill-индикатор (Discord): растёт на hover, полный на active */
+.ec-rail__pill {
+  position: absolute;
+  left: -10px;
+  top: 50%;
+  transform: translateY(-50%) scaleY(0);
+  width: 4px;
+  height: 60%;
+  border-radius: 0 4px 4px 0;
+  background: var(--ec-accent);
+  transition: transform var(--ec-dur-base) var(--ec-ease);
+}
+.ec-rail__btn:hover .ec-rail__pill { transform: translateY(-50%) scaleY(0.5); }
+.ec-rail__btn.is-active .ec-rail__pill { transform: translateY(-50%) scaleY(1); }
+.ec-rail__badge {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  display: grid;
+  place-items: center;
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: #fff;
+  background: var(--ec-danger, #ef4444);
+  border: 2px solid var(--ec-surface-0);
+  border-radius: var(--ec-radius-full);
+}
+/* Рейл — только desktop; на ≤1024 нижний таб-бар (slice 2) */
+@media (max-width: 1024px) {
+  .ec-shell__rail { display: none; }
+}
+
 @media (max-width: 1180px) and (min-width: 641px) {
   .ec-guide__body { grid-template-columns: 1fr; }
   .ec-guide__quick {

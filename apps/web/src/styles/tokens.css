@@ -297,6 +297,7 @@
 
   /* ---- Component-level slots ----------------------------------- */
   --ec-header-height:       54px;
+  --ec-rail-width:          68px;     /* v1.6.57 Discord-каркас: левый server-rail (иконки) */
   --ec-spine-width:         272px;    /* левый командный хребет (R2) */
   --ec-sidebar-width:       248px;    /* mobile-drawer ширина каналов */
   --ec-members-width:       248px;

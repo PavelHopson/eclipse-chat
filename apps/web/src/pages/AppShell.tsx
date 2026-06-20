@@ -65,6 +65,7 @@ function isTextEntryTarget(target: EventTarget | null): boolean {
 }
 
 import { ServerSwitcher } from "../components/ServerSwitcher";
+import { ServerRail } from "../components/ServerRail";
 import { SinceLastVisitBanner } from "../components/SinceLastVisitBanner";
 import { ThemeToggle } from "../components/ThemeToggle";
 import { EmptyState } from "../components/EmptyState";
@@ -860,8 +861,47 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     (navOpen ? " ec-shell--nav-open" : "") +
     (membersOpen ? " ec-shell--members-open" : "");
 
+  // v1.6.57 — общие nav-хендлеры для server-rail (desktop) и ServerSwitcher (mobile).
+  const navSelectServer = (id: string) => {
+    setHomeOpen(false);
+    setHelpOpen(false);
+    setAdminOpen(false);
+    setActiveServerId(id);
+    setServerView("guide");
+    if (isMobile) setNavOpen(false);
+  };
+  const navOpenDms = () => {
+    setHomeOpen(false);
+    setHelpOpen(false);
+    setAdminOpen(false);
+    setActiveServerId(null);
+    if (isMobile) setNavOpen(false);
+  };
+
   return (
     <div className={shellClass}>
+      {/* v1.6.57 Discord-каркас — постоянный левый server-rail (desktop). */}
+      {!isMobile && (
+        <div className="ec-shell__rail">
+          <ServerRail
+            servers={servers}
+            activeServerId={activeServerId}
+            onSelect={navSelectServer}
+            onCreateRequest={() => {
+              if (canCreateServer) setShowCreateServer(true);
+            }}
+            onJoinRequest={() => setShowJoinServer(true)}
+            onHomeRequest={openHome}
+            homeActive={homeOpen}
+            dmsActive={inDmMode}
+            dmsUnread={dmConversations.reduce((sum, c) => sum + c.unread, 0)}
+            onDmsRequest={navOpenDms}
+            canCreateServer={canCreateServer}
+            ownedCount={ownedServersCount}
+            maxOwnedServers={serverLimits.maxOwnedServers}
+          />
+        </div>
+      )}
       {/* Командный хребет — шапка: бренд + переключатель пространств.
           Визуально сливается с колонкой каналов ниже в одну вертикаль. */}
       <div className="ec-shell__brandbar">
@@ -896,47 +936,34 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           >
             <img className="ec-brand-mark" src={brandMarkUrl} alt="" aria-hidden />
           </button>
-          {/* v1.1.51: бывший far-left server-rail свёрнут в topbar-control. */}
-          <ServerSwitcher
-            servers={servers}
-            activeServerId={activeServerId}
-            onSelect={(id) => {
-              setHomeOpen(false);
-              setHelpOpen(false);
-              setAdminOpen(false);
-              setActiveServerId(id);
-              // UXR4 — клик по server-иконке открывает server-home (guide).
-              // Это вход в guide/каналы-роли/участники из chat mode, где rail
-              // больше не показывается. Для смены сервера эффект на activeServerId
-              // тоже ставит guide — здесь покрываем клик по уже-активному серверу.
-              setServerView("guide");
-              if (isMobile) setNavOpen(false);
-            }}
-            onCreateRequest={() => {
-              if (!canCreateServer) return;
-              setShowCreateServer(true);
-            }}
-            onJoinRequest={() => setShowJoinServer(true)}
-            onHomeRequest={openHome}
-            homeActive={homeOpen}
-            onSearchRequest={() => {
-              if (activeServerId) setShowSearch(true);
-            }}
-            searchEnabled={Boolean(activeServerId)}
-            dmsActive={inDmMode}
-            dmsUnread={dmConversations.reduce((sum, c) => sum + c.unread, 0)}
-            onDmsRequest={() => {
-              setHomeOpen(false);
-              setHelpOpen(false);
-              setAdminOpen(false);
-              setActiveServerId(null);
-              if (isMobile) setNavOpen(false);
-            }}
-            canCreateServer={canCreateServer}
-            ownedCount={ownedServersCount}
-            maxOwnedServers={serverLimits.maxOwnedServers}
-            compact={isMobile}
-          />
+          {/* v1.6.57 — на desktop переключение серверов в левом ServerRail;
+              дропдаун ServerSwitcher остаётся только на mobile (до нижнего
+              таб-бара в slice 2). */}
+          {isMobile && (
+            <ServerSwitcher
+              servers={servers}
+              activeServerId={activeServerId}
+              onSelect={navSelectServer}
+              onCreateRequest={() => {
+                if (!canCreateServer) return;
+                setShowCreateServer(true);
+              }}
+              onJoinRequest={() => setShowJoinServer(true)}
+              onHomeRequest={openHome}
+              homeActive={homeOpen}
+              onSearchRequest={() => {
+                if (activeServerId) setShowSearch(true);
+              }}
+              searchEnabled={Boolean(activeServerId)}
+              dmsActive={inDmMode}
+              dmsUnread={dmConversations.reduce((sum, c) => sum + c.unread, 0)}
+              onDmsRequest={navOpenDms}
+              canCreateServer={canCreateServer}
+              ownedCount={ownedServersCount}
+              maxOwnedServers={serverLimits.maxOwnedServers}
+              compact={isMobile}
+            />
+          )}
       </div>
 
       {/* Командный бар над чатом: локация (слева) · действия (справа). */}
