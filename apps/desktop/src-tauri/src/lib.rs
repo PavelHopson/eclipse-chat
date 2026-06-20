@@ -150,7 +150,12 @@ fn setup_global_shortcut(app: &tauri::App) -> Result<(), Box<dyn std::error::Err
             })
             .build(),
     )?;
-    app.global_shortcut().register(toggle)?;
+    // Не-фатально: если Ctrl+Shift+E уже занят другим приложением, register
+    // вернёт Err — НЕ роняем запуск из-за этого, просто логируем (шорткат не
+    // заработает, но всё остальное — трей/окно/обновления — функционирует).
+    if let Err(e) = app.global_shortcut().register(toggle) {
+        eprintln!("[global-shortcut] register Ctrl+Shift+E failed (already taken?): {e}");
+    }
     Ok(())
 }
 
