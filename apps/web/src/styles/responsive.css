@@ -877,9 +877,18 @@
 
 /* ===== v0.49 responsive polish: operator UI on every device ===== */
 
+/* v1.6.70 FIX: large-desktop (≥1367) override был ТРЁХколоночным (288 1fr
+   256) — реликт дорейловой раскладки (v0.49). С v1.6.57 базовый грид стал
+   ЧЕТЫРЁХколоночным (rail spine chat members), а этот override не обновили
+   → на широких экранах grid-template-columns (3) не совпадал с
+   grid-template-areas (4 кол.: "rail brand cmd cmd" / "rail channels chat
+   members"), implicit 4-я колонка съезжала: rail=288, channels=1fr(раздут),
+   chat=256, members=auto. Добавлена rail-колонка (зеркало laptop-оверрайда
+   line 64); spine 288 / members 256 — designed wider sidebars для больших
+   мониторов сохранены. */
 @media (min-width: 1367px) {
   .ec-shell.ec-shell--has-server {
-    grid-template-columns: 288px minmax(0, 1fr) 256px;
+    grid-template-columns: var(--ec-rail-width) 288px minmax(0, 1fr) 256px;
   }
 }
 
