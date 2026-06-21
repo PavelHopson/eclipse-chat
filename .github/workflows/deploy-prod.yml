@@ -19,6 +19,10 @@ on:
       - "docs/**"
       - ".gitignore"
       - "LICENSE"
+      # Десктоп (Tauri) деплоится отдельно — релизы через тег desktop-v*
+      # (.github/workflows/desktop-release.yml), НЕ через прод-пайплайн EC.
+      # Поэтому desktop-only коммиты не должны дёргать редеплой web/server.
+      - "apps/desktop/**"
   workflow_dispatch:
     inputs:
       run_initial_setup:
