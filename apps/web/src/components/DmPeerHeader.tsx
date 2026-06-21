@@ -16,7 +16,7 @@ import { dmStatusMeta } from "../lib/dmPresence";
  * `manualStatus` задан; кастом-активность — когда задана. Ничего не
  * выдумываем при отсутствии данных (просто имя без подзаголовка).
  */
-export function DmPeerHeader({ other }: { other: DmOther }) {
+export function DmPeerHeader({ other, typing = false }: { other: DmOther; typing?: boolean }) {
   const meta = dmStatusMeta(other.manualStatus);
 
   // Кастом-статус (эмодзи + текст) приоритетнее статус-лейбла, как в Telegram.
@@ -24,7 +24,8 @@ export function DmPeerHeader({ other }: { other: DmOther }) {
     other.activityEmoji || other.activityText
       ? `${other.activityEmoji ? `${other.activityEmoji} ` : ""}${other.activityText ?? ""}`.trim()
       : null;
-  const subtitle = activity ?? meta?.label ?? null;
+  // v1.6.66 — «печатает…» замещает статус, пока собеседник набирает (Telegram).
+  const subtitle = typing ? "печатает…" : activity ?? meta?.label ?? null;
 
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 9, minWidth: 0 }}>
@@ -55,7 +56,7 @@ export function DmPeerHeader({ other }: { other: DmOther }) {
             style={{
               fontSize: "var(--ec-text-2xs)",
               fontWeight: 400,
-              color: "var(--ec-text-dim)",
+              color: typing ? "var(--ec-accent)" : "var(--ec-text-dim)",
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",

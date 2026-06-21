@@ -276,6 +276,9 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     editMessage: dmEdit,
     deleteMessage: dmDelete,
     toggleReaction: dmToggleReaction,
+    typingUsers: dmTypingUsers,
+    emitTypingStart: dmEmitTypingStart,
+    emitTypingStop: dmEmitTypingStop,
   } = useDirectMessages(inDmMode ? selectedDmId : null, socket, user.id);
 
   // Total unread по всем каналам — для tab title badge
@@ -1404,9 +1407,10 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                 <DmGroupHeader
                   title={dmTitle(selectedDm, user.id)}
                   participants={selectedDm.participants}
+                  typingNames={dmTypingUsers.map((u) => u.displayName)}
                 />
               ) : (
-                <DmPeerHeader other={selectedDm.other} />
+                <DmPeerHeader other={selectedDm.other} typing={dmTypingUsers.length > 0} />
               )}
             </span>
           ) : inDmMode ? (
@@ -1857,6 +1861,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                 onToggleReaction={dmToggleReaction}
                 isDm
               />
+              <TypingIndicator users={dmTypingUsers} />
               <MessageInput
                 channelName={dmTitle(selectedDm, user.id)}
                 placeholder={dmIsSaved(selectedDm) ? "Заметка в Избранное" : undefined}
@@ -1864,8 +1869,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                 disabled={!isReady}
                 hideSlashCommands
                 onSend={(content, attachments) => dmSend(content, senderForMessages, attachments)}
-                onTypingStart={() => undefined}
-                onTypingStop={() => undefined}
+                onTypingStart={dmEmitTypingStart}
+                onTypingStop={dmEmitTypingStop}
                 prefillContent={share.pendingContent}
                 onPrefillConsumed={share.consume}
                 prefillFiles={share.pendingFiles}

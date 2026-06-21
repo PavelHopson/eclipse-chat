@@ -19,7 +19,7 @@ import { registerTwoFactorRoutes } from "./routes/twoFactor.js";
 import { registerChannelRoutes } from "./routes/channels.js";
 import { registerChannelCategoryRoutes } from "./routes/channelCategories.js";
 import { registerDigestRoutes } from "./routes/digest.js";
-import { registerDmRoutes } from "./routes/dm.js";
+import { registerDmRoutes, isDmMember, loadConversationMembers } from "./routes/dm.js";
 import { registerEmbedRoutes } from "./routes/embeds.js";
 import { registerFriendRoutes } from "./routes/friends.js";
 import { registerMessageRoutes } from "./routes/messages.js";
@@ -228,7 +228,7 @@ app.get("/api/health", async () => {
     },
   };
 });
-app.get("/api/version", async () => ({ name: "@eclipse-chat/server", version: "1.6.65" }));
+app.get("/api/version", async () => ({ name: "@eclipse-chat/server", version: "1.6.66" }));
 
 await registerAuthRoutes(app);
 await registerTwoFactorRoutes(app);
@@ -462,6 +462,34 @@ io.on("connection", (socket) => {
     if (!uid || typeof channelId !== "string" || !channelId) return;
     socket.to(`channel:${channelId}`).emit("typing:stop", {
       channelId,
+      userId: uid,
+    });
+  });
+
+  // dm:typing:start / dm:typing:stop — то же что channel-typing, но для DM-room
+  // (1:1 + группы). Ephemeral, без DB-записи. Membership verify через
+  // loadConversationMembers/isDmMember (защита от spoof'а typing в чужой диалог).
+  socket.on("dm:typing:start", async (conversationId: string) => {
+    const uid = (socket.data as { userId: string | null | undefined }).userId;
+    if (!uid || typeof conversationId !== "string" || !conversationId) return;
+    const members = await loadConversationMembers(conversationId);
+    if (!members || !isDmMember(members, uid)) return;
+    const user = await db.user.findUnique({
+      where: { id: uid },
+      select: { displayName: true },
+    });
+    if (!user) return;
+    socket.to(`dm:${conversationId}`).emit("dm:typing:start", {
+      conversationId,
+      userId: uid,
+      displayName: user.displayName,
+    });
+  });
+  socket.on("dm:typing:stop", (conversationId: string) => {
+    const uid = (socket.data as { userId: string | null | undefined }).userId;
+    if (!uid || typeof conversationId !== "string" || !conversationId) return;
+    socket.to(`dm:${conversationId}`).emit("dm:typing:stop", {
+      conversationId,
       userId: uid,
     });
   });

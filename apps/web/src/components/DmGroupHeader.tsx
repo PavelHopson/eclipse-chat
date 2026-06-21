@@ -25,14 +25,24 @@ function participantsWord(n: number): string {
 export function DmGroupHeader({
   title,
   participants,
+  typingNames = [],
 }: {
   title: string;
   participants: DmParticipant[];
+  /** Кто сейчас печатает (displayName'ы) — замещает счётчик участников. */
+  typingNames?: string[];
 }) {
   const total = participants.length;
   const online = participants.filter((p) => dmStatusMeta(p.manualStatus)?.active).length;
+  // v1.6.66 — «X печатает…» / «X, Y печатают…» замещает счётчик при наборе.
+  const typing = typingNames.length > 0;
+  const typingLabel = !typing
+    ? null
+    : typingNames.length === 1
+      ? `${typingNames[0]} печатает…`
+      : `${typingNames.slice(0, 2).join(", ")} печатают…`;
   const subtitle =
-    `${total} ${participantsWord(total)}` + (online > 0 ? ` · ${online} в сети` : "");
+    typingLabel ?? `${total} ${participantsWord(total)}` + (online > 0 ? ` · ${online} в сети` : "");
 
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 9, minWidth: 0 }}>
@@ -47,7 +57,7 @@ export function DmGroupHeader({
           style={{
             fontSize: "var(--ec-text-2xs)",
             fontWeight: 400,
-            color: "var(--ec-text-dim)",
+            color: typing ? "var(--ec-accent)" : "var(--ec-text-dim)",
             overflow: "hidden",
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
