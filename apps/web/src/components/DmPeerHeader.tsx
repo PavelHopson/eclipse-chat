@@ -1,5 +1,6 @@
 import { Avatar } from "./Avatar";
 import type { DmOther } from "../hooks/useDirectConversations";
+import { dmStatusMeta } from "../lib/dmPresence";
 
 /**
  * DmPeerHeader (v1.6.63) — presence в шапке 1:1 ЛС (Telegram-паритет).
@@ -8,23 +9,15 @@ import type { DmOther } from "../hooks/useDirectConversations";
  * useDirectConversations через socket): `manualStatus` + кастом-статус
  * (`activityEmoji` / `activityText`). НЕ опираемся на server-members
  * (`onlineUserIds` пуст в режиме ЛС — `useMembers(null)` возвращает []).
+ * Маппинг статуса → цвет/лейбл — общий `dmStatusMeta` (v1.6.64), тот же
+ * что в списке ЛС (DirectConversationList).
  *
  * Безопасно: presence-точка и статус-лейбл показываются ТОЛЬКО когда
  * `manualStatus` задан; кастом-активность — когда задана. Ничего не
  * выдумываем при отсутствии данных (просто имя без подзаголовка).
  */
-
-type StatusMeta = { color: string; label: string };
-
-const STATUS_META: Record<NonNullable<DmOther["manualStatus"]>, StatusMeta> = {
-  ONLINE: { color: "var(--ec-presence-online)", label: "В сети" },
-  IDLE: { color: "var(--ec-presence-idle)", label: "Неактивен" },
-  DND: { color: "var(--ec-presence-dnd)", label: "Не беспокоить" },
-  INVISIBLE: { color: "var(--ec-presence-offline)", label: "Не в сети" },
-};
-
 export function DmPeerHeader({ other }: { other: DmOther }) {
-  const meta = other.manualStatus ? STATUS_META[other.manualStatus] : null;
+  const meta = dmStatusMeta(other.manualStatus);
 
   // Кастом-статус (эмодзи + текст) приоритетнее статус-лейбла, как в Telegram.
   const activity =
