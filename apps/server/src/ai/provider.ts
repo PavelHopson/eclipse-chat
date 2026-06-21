@@ -13,6 +13,13 @@
  *   6. Mistral (free tier La Plateforme)
  *   6b. YandexGPT (РФ free-tier, OpenAI-compatible, приватный) — нужны
  *       YANDEX_API_KEY + YANDEX_FOLDER_ID; доступен из РФ, стандартный TLS
+ *   6c. DeepSeek (cheap, OpenAI-compatible api.deepseek.com) — DEEPSEEK_API_KEY
+ *   6d. GLM / Zhipu (cheap, z.ai standard API) — GLM_API_KEY
+ *   6e. MiMo / Xiaomi (cheap, api.xiaomimimo.com) — MIMO_API_KEY
+ *   6f. Custom OpenAI-compatible (generic slot, напр. OpenModel-шлюз) —
+ *       CUSTOM_LLM_BASE_URL + CUSTOM_LLM_API_KEY
+ *       ⚠️ 6c-6f — сторонние/КНР-провайдеры: env-gated, @ai-контент уходит
+ *       к ним, НЕ для чувствительных данных. Стоят после free, перед paid.
  *   7. OpenAI (paid fallback)
  *   8. Pollinations (keyless, БЕЗ API key) — бесключевой free fallback,
  *      включён по умолчанию; стоит последним, любой реальный ключ важнее.
@@ -50,6 +57,17 @@
  *   YANDEX_FOLDER_ID=<folder-id>         — каталог Cloud (оба обязательны)
  *   YANDEX_MODEL=yandexgpt-lite/latest   — короткое имя авто-оборачивается в
  *                                          gpt://<folder>/...; или YANDEX_MODELS CSV
+ *   ## Дешёвые облачные (cheap paid, OpenAI-compatible) — ⚠️ сторонние/КНР
+ *   DEEPSEEK_API_KEY=<key>               — platform.deepseek.com (deepseek-chat)
+ *   DEEPSEEK_MODEL=deepseek-chat         — DEEPSEEK_MODELS CSV (+deepseek-reasoner)
+ *   GLM_API_KEY=<key>                    — z.ai / BigModel standard API (НЕ Coding Plan)
+ *   GLM_MODEL=glm-4.6                    — GLM_MODELS CSV (glm-4.7, glm-5.2...)
+ *   MIMO_API_KEY=<key>                   — platform.xiaomimimo.com
+ *   MIMO_MODEL=mimo-v2.5-pro             — MIMO_MODELS CSV
+ *   ## Custom OpenAI-compatible (generic, напр. OpenModel-промо)
+ *   CUSTOM_LLM_BASE_URL=<url>            — base без /chat/completions
+ *   CUSTOM_LLM_API_KEY=<key>             — оба обязательны для включения
+ *   CUSTOM_LLM_MODEL=<model>             — CUSTOM_LLM_MODELS CSV
  *   ## Paid fallback
  *   OPENAI_API_KEY=<key>                 — paid fallback
  *   OPENAI_MODEL=gpt-4o-mini
@@ -315,6 +333,79 @@ function getProviders(): ProviderConfig[] {
         // Yandex Cloud API key передаётся как `Api-Key <key>`, не `Bearer`.
         Authorization: `Api-Key ${yandexKey}`,
       },
+    });
+  }
+
+  // 6c. DeepSeek — официальный OpenAI-compatible API (api.deepseek.com).
+  //     v1.6.71 — сильная дешёвая модель (deepseek-chat / deepseek-reasoner).
+  //     ⚠️ Провайдер из КНР — @ai-контент уходит к нему; env-gated, не для
+  //     чувствительных данных. DEEPSEEK_MODELS (CSV).
+  const deepseekKey = process.env.DEEPSEEK_API_KEY?.trim();
+  if (deepseekKey) {
+    out.push({
+      name: "deepseek",
+      baseUrl: "https://api.deepseek.com/v1",
+      apiKey: deepseekKey,
+      models: parseModels(
+        process.env.DEEPSEEK_MODELS ?? process.env.DEEPSEEK_MODEL,
+        "deepseek-chat",
+      ),
+    });
+  }
+
+  // 6d. GLM / Zhipu (z.ai) — OpenAI-compatible standard API (api.z.ai/api/paas/v4).
+  //     v1.6.71 — GLM-4.6/4.7/5.2, дёшево. ⚠️ Это standard pay-per-token API,
+  //     НЕ Coding-Plan-подписка (та живёт на /api/coding/paas/v4 и нужна для
+  //     Claude Code, не для @ai). ⚠️ Провайдер из КНР (Zhipu) — env-gated,
+  //     не для чувствительных данных. GLM_MODELS (CSV).
+  const glmKey = process.env.GLM_API_KEY?.trim();
+  if (glmKey) {
+    out.push({
+      name: "glm",
+      baseUrl: "https://api.z.ai/api/paas/v4",
+      apiKey: glmKey,
+      models: parseModels(
+        process.env.GLM_MODELS ?? process.env.GLM_MODEL,
+        "glm-4.6",
+      ),
+    });
+  }
+
+  // 6e. MiMo (Xiaomi) — официальный OpenAI-compatible API (api.xiaomimimo.com/v1).
+  //     v1.6.71 — mimo-v2.5-pro (агентские/мультимодальные задачи). ⚠️
+  //     Маркетинговые цифры канала («Opus в 28× дешевле») НЕ проверены —
+  //     берём как обычный дешёвый провайдер. ⚠️ Провайдер из КНР (Xiaomi) —
+  //     env-gated. MIMO_MODELS (CSV).
+  const mimoKey = process.env.MIMO_API_KEY?.trim();
+  if (mimoKey) {
+    out.push({
+      name: "mimo",
+      baseUrl: "https://api.xiaomimimo.com/v1",
+      apiKey: mimoKey,
+      models: parseModels(
+        process.env.MIMO_MODELS ?? process.env.MIMO_MODEL,
+        "mimo-v2.5-pro",
+      ),
+    });
+  }
+
+  // 6f. Custom OpenAI-compatible эндпоинт — generic slot для любого совместимого
+  //     провайдера/шлюза. v1.6.71 — добавлен под OpenModel (DeepSeek-V4-Flash
+  //     free-промо до 28.06.2026), но URL НЕ хардкодим: провенанс шлюза не
+  //     подтверждён → задаётся целиком через env. Включается только если заданы
+  //     И CUSTOM_LLM_BASE_URL, И CUSTOM_LLM_API_KEY. ⚠️ Проверяй TOS/политику
+  //     данных эндпоинта перед чувствительными данными. CUSTOM_LLM_MODELS (CSV).
+  const customUrl = process.env.CUSTOM_LLM_BASE_URL?.trim();
+  const customKey = process.env.CUSTOM_LLM_API_KEY?.trim();
+  if (customUrl && customKey) {
+    out.push({
+      name: "custom",
+      baseUrl: customUrl.replace(/\/+$/, ""),
+      apiKey: customKey,
+      models: parseModels(
+        process.env.CUSTOM_LLM_MODELS ?? process.env.CUSTOM_LLM_MODEL,
+        "deepseek-v4-flash",
+      ),
     });
   }
 
