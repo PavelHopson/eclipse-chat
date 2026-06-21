@@ -8,6 +8,7 @@ import type {
   DmConversation,
   DmConversationGroup,
 } from "../hooks/useDirectConversations";
+import { dmStatusMeta } from "../lib/dmPresence";
 
 type Props = {
   conversations: DmConversation[];
@@ -38,13 +39,6 @@ function relativeTime(iso: string): string {
   return new Date(iso).toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
 }
 
-/** Цвет presence-точки по online-статусу + manual override. */
-function presenceColor(online: boolean, manual?: string | null): string {
-  if (!online) return "var(--ec-presence-offline)";
-  if (manual === "IDLE") return "var(--ec-presence-idle)";
-  if (manual === "DND") return "var(--ec-presence-dnd)";
-  return "var(--ec-presence-online)";
-}
 
 function GroupRow({
   c,
@@ -244,7 +238,15 @@ export function DirectConversationList({
             );
           }
           const isOnline = onlineUserIds?.has(c.other.id) ?? false;
-          const showOnline = isOnline && c.other.manualStatus !== "INVISIBLE";
+          // v1.6.64 — manualStatus авторитетен для ЛС-собеседника (live по socket);
+          // members-online (onlineUserIds) пуст в режиме ЛС → лишь fallback при
+          // отсутствии manualStatus. Так список presence не серый-всегда, и цвета
+          // совпадают с шапкой 1:1 (общий dmStatusMeta).
+          const statusMeta = dmStatusMeta(c.other.manualStatus);
+          const dotColor =
+            statusMeta?.color ??
+            (isOnline ? "var(--ec-presence-online)" : "var(--ec-presence-offline)");
+          const showOnline = statusMeta ? statusMeta.active : isOnline;
           const hasActivity = Boolean(c.other.activityEmoji || c.other.activityText);
           const isUnread = c.unread > 0;
           return (
@@ -260,7 +262,7 @@ export function DirectConversationList({
                   className="ec-dmx-row__pres"
                   aria-hidden
                   style={{
-                    background: presenceColor(showOnline, c.other.manualStatus),
+                    background: dotColor,
                     boxShadow: showOnline ? "0 0 6px hsl(150 50% 50% / 0.5)" : "none",
                   }}
                 />
