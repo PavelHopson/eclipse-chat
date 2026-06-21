@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import { useEffect, useRef, useState } from "react";
+import { apiPath } from "../lib/api";
 
 type Props = {
   error: string | null;
@@ -19,7 +20,7 @@ type Props = {
   presentation?: "fullscreen" | "embedded";
 };
 
-type Step = "credentials" | "twofa" | "success";
+type Step = "credentials" | "twofa" | "success" | "recovery";
 type Mode = "login" | "register";
 type EntryState = "gate" | "opening" | "panel";
 
@@ -87,6 +88,12 @@ export function AuthPage({
   const [pin, setPin] = useState("");
   const [useRecovery, setUseRecovery] = useState(false);
   const [recoveryCode, setRecoveryCode] = useState("");
+  // v1.6.68 — self-serve сброс пароля по коду восстановления (step="recovery").
+  const [pwdRecoveryCode, setPwdRecoveryCode] = useState("");
+  const [pwdRecoveryNew, setPwdRecoveryNew] = useState("");
+  const [pwdRecoveryBusy, setPwdRecoveryBusy] = useState(false);
+  const [pwdRecoveryError, setPwdRecoveryError] = useState<string | null>(null);
+  const [pwdRecoveryDone, setPwdRecoveryDone] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
   const [telemetry, setTelemetry] = useState("SYS.INIT");
   const sceneRef = useRef<HTMLDivElement | null>(null);
@@ -290,6 +297,47 @@ export function AuthPage({
       setLocalError(err instanceof Error ? err.message : "Сбой подключения");
     } finally {
       setBusy(false);
+    }
+  };
+
+  const submitPwdRecovery = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (pwdRecoveryBusy) return;
+    const cleanEmail = normalizeEmail(email);
+    const pwd = pwdRecoveryNew;
+    if (!cleanEmail || !pwdRecoveryCode.trim()) {
+      setPwdRecoveryError("Введите email и код восстановления.");
+      return;
+    }
+    if (pwd.length < 8 || !(/[A-Za-z]/.test(pwd) && /\d/.test(pwd))) {
+      setPwdRecoveryError("Новый пароль: минимум 8 символов, буквы и цифры.");
+      return;
+    }
+    setPwdRecoveryBusy(true);
+    setPwdRecoveryError(null);
+    try {
+      const res = await fetch(apiPath("api/auth/password-recovery/reset"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: cleanEmail,
+          code: pwdRecoveryCode.trim(),
+          newPassword: pwd,
+        }),
+      });
+      if (res.ok) {
+        setPwdRecoveryDone(true);
+        setPwdRecoveryCode("");
+        setPwdRecoveryNew("");
+        setPassword("");
+      } else {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        setPwdRecoveryError(data.error ?? "Не удалось сбросить пароль.");
+      }
+    } catch {
+      setPwdRecoveryError("Сбой подключения.");
+    } finally {
+      setPwdRecoveryBusy(false);
     }
   };
 
@@ -644,10 +692,145 @@ export function AuthPage({
                         </button>
                       </form>
 
+                      {mode === "login" && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setStep("recovery");
+                            setLocalError(null);
+                            setPwdRecoveryError(null);
+                            setPwdRecoveryDone(false);
+                            setPassword("");
+                          }}
+                          style={{
+                            background: "none",
+                            border: 0,
+                            color: "var(--ec-accent)",
+                            cursor: "pointer",
+                            fontSize: "var(--ec-text-sm)",
+                            padding: "8px 0 0",
+                            textAlign: "left",
+                          }}
+                        >
+                          Забыли пароль?
+                        </button>
+                      )}
+
                       {localError && (
                         <p className="ec-auth-err" role="alert">
                           {localError}
                         </p>
+                      )}
+                    </>
+                  )}
+
+                  {step === "recovery" && (
+                    <>
+                      <header className="ec-auth-step-head">
+                        <span
+                          className="ec-auth-step-head__icon ec-auth-step-head__icon--violet"
+                          aria-hidden
+                        >
+                          <ShieldIcon />
+                        </span>
+                        <span className="ec-auth-step-head__label">Сброс пароля по коду</span>
+                      </header>
+
+                      {pwdRecoveryDone ? (
+                        <>
+                          <p className="ec-auth-step-copy">
+                            ✓ Пароль обновлён. Войдите с новым паролем.
+                          </p>
+                          <button
+                            type="button"
+                            className="ec-auth-submit-btn"
+                            onClick={() => {
+                              setStep("credentials");
+                              setPwdRecoveryDone(false);
+                            }}
+                          >
+                            К входу
+                            <ArrowIcon />
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <p className="ec-auth-step-copy">
+                            Введите email, один из кодов восстановления (созданы в
+                            Настройки → Безопасность) и новый пароль.
+                          </p>
+                          <form className="ec-auth-form" onSubmit={submitPwdRecovery}>
+                            <div className="ec-auth-field">
+                              <label className="ec-auth-field__label">Email</label>
+                              <input
+                                className="ec-auth-field__input"
+                                type="email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                autoComplete="email"
+                                inputMode="email"
+                                autoCapitalize="none"
+                                placeholder="you@example.com"
+                              />
+                            </div>
+                            <div className="ec-auth-field">
+                              <label className="ec-auth-field__label">Код восстановления</label>
+                              <input
+                                className="ec-auth-field__input"
+                                type="text"
+                                value={pwdRecoveryCode}
+                                onChange={(e) => setPwdRecoveryCode(e.target.value)}
+                                autoCapitalize="characters"
+                                autoComplete="off"
+                                placeholder="XXXXX-XXXXX"
+                              />
+                            </div>
+                            <div className="ec-auth-field ec-auth-field--violet">
+                              <label className="ec-auth-field__label">Новый пароль</label>
+                              <PasswordReveal
+                                value={pwdRecoveryNew}
+                                onChange={setPwdRecoveryNew}
+                                minLength={8}
+                                autoComplete="new-password"
+                                placeholder="Минимум 8 символов"
+                              />
+                              <p className="ec-auth-field__hint">
+                                Минимум 8 символов, обязательно буквы и цифры.
+                              </p>
+                            </div>
+                            <button
+                              type="submit"
+                              className="ec-auth-submit-btn"
+                              disabled={pwdRecoveryBusy}
+                            >
+                              {pwdRecoveryBusy ? "Сбрасываем…" : "Сбросить пароль"}
+                              <ArrowIcon />
+                            </button>
+                          </form>
+                          {pwdRecoveryError && (
+                            <p className="ec-auth-err" role="alert">
+                              {pwdRecoveryError}
+                            </p>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setStep("credentials");
+                              setPwdRecoveryError(null);
+                            }}
+                            style={{
+                              background: "none",
+                              border: 0,
+                              color: "var(--ec-text-dim)",
+                              cursor: "pointer",
+                              fontSize: "var(--ec-text-sm)",
+                              padding: "8px 0 0",
+                              textAlign: "left",
+                            }}
+                          >
+                            ← Назад к входу
+                          </button>
+                        </>
                       )}
                     </>
                   )}
