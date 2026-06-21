@@ -69,6 +69,10 @@ model User {
   /// Recovery codes — JSON массив bcrypt-хэшей. При verify сравниваем bcrypt
   /// и помечаем code как использованный (remove from list).
   twoFactorRecoveryCodes String?
+  /// v1.6.68 — одноразовые коды восстановления ПАРОЛЯ (self-serve «забыли
+  /// пароль» без email/SMTP). JSON-array bcrypt-хэшей; генерится в настройках
+  /// (показ 1 раз), consume'ится при сбросе. Те же хелперы что у 2FA, отдельный набор.
+  passwordRecoveryCodes  String?
   /// Счётчик неудачных попыток входа. Reset при успехе или после lockoutUntil.
   failedLoginAttempts  Int       @default(0)
   /// Времянка lockout после 5 неудачных попыток. Null = не залочен.
