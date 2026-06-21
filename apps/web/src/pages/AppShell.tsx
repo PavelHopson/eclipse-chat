@@ -11,6 +11,7 @@ import { DirectConversationList } from "../components/DirectConversationList";
 import { FriendsPanel } from "../components/friends/FriendsPanel";
 import { type AvailableUser } from "../components/CreateGroupDmModal";
 import { GroupAvatar } from "../components/GroupAvatar";
+import { DmPeerHeader } from "../components/DmPeerHeader";
 import { ChatHeaderHoverButton } from "../components/ChatHeaderHoverButton";
 import { LogoutButton } from "../components/LogoutButton";
 import { ChannelGlyph } from "../components/icons/ChannelCustomIcons";
@@ -1405,10 +1406,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                   {dmTitle(selectedDm, user.id)}
                 </>
               ) : (
-                <>
-                  <Avatar url={selectedDm.other.avatar} name={selectedDm.other.displayName} size={22} />
-                  {selectedDm.other.displayName}
-                </>
+                <DmPeerHeader other={selectedDm.other} />
               )}
             </span>
           ) : inDmMode ? (
