@@ -10,8 +10,8 @@ import { RichContent } from "../components/RichContent";
 import { DirectConversationList } from "../components/DirectConversationList";
 import { FriendsPanel } from "../components/friends/FriendsPanel";
 import { type AvailableUser } from "../components/CreateGroupDmModal";
-import { GroupAvatar } from "../components/GroupAvatar";
 import { DmPeerHeader } from "../components/DmPeerHeader";
+import { DmGroupHeader } from "../components/DmGroupHeader";
 import { ChatHeaderHoverButton } from "../components/ChatHeaderHoverButton";
 import { LogoutButton } from "../components/LogoutButton";
 import { ChannelGlyph } from "../components/icons/ChannelCustomIcons";
@@ -1401,10 +1401,10 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                   Избранное
                 </>
               ) : selectedDm.isGroup ? (
-                <>
-                  <GroupAvatar participants={selectedDm.participants} size={22} />
-                  {dmTitle(selectedDm, user.id)}
-                </>
+                <DmGroupHeader
+                  title={dmTitle(selectedDm, user.id)}
+                  participants={selectedDm.participants}
+                />
               ) : (
                 <DmPeerHeader other={selectedDm.other} />
               )}
