@@ -228,7 +228,7 @@ app.get("/api/health", async () => {
     },
   };
 });
-app.get("/api/version", async () => ({ name: "@eclipse-chat/server", version: "1.6.66" }));
+app.get("/api/version", async () => ({ name: "@eclipse-chat/server", version: "1.6.67" }));
 
 await registerAuthRoutes(app);
 await registerTwoFactorRoutes(app);
@@ -285,6 +285,28 @@ registerVoiceNoteRoutes(app);
 registerIntegrationRoutes(app);
 await registerComposioRoutes(app);
 await registerPlatformRoutes(app);
+
+// v1.6.67 HOTFIX (ВРЕМЕННО — удалить в v1.6.68 после восстановления доступа):
+// platform-owner оказался заблокирован brute-force login-локом на мобиле и не
+// мог восстановиться (self-serve reset нет, платформенный — под админ-логином,
+// а owner заблокирован). Снимаем lock у owner'ов при старте сервера. Пароль НЕ
+// трогаем — только сбрасываем счётчик/lockoutUntil, чтобы owner мог ввести
+// свой (верный) пароль. Без env-гейта: одноразовый деплой, затем откат.
+try {
+  const cleared = await db.user.updateMany({
+    where: {
+      isPlatformOwner: true,
+      OR: [{ lockoutUntil: { not: null } }, { failedLoginAttempts: { gt: 0 } }],
+    },
+    data: { failedLoginAttempts: 0, lockoutUntil: null },
+  });
+  if (cleared.count > 0) {
+    app.log.warn({ count: cleared.count }, "[boot] cleared login lockout for platform owner(s)");
+  }
+} catch (err) {
+  app.log.error({ err }, "[boot] owner lockout clear failed");
+}
+
 await app.ready();
 
 /* Socket.io: тот же HTTP-сервер, что и у Fastify */
