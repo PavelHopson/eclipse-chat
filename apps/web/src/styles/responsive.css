@@ -193,7 +193,7 @@
     bottom: var(--ec-bottomnav-height);
     left: 0;
     z-index: var(--ec-z-sidebar);
-    width: min(320px, 86vw);
+    width: min(360px, 92vw);
     transform: translateX(-100%);
     transition: transform var(--ec-dur-base) var(--ec-ease);
     box-shadow: 20px 0 40px rgba(0, 0, 0, 0.4);
@@ -1479,7 +1479,11 @@
   }
 
   .ec-channel-move-select {
-    display: inline-flex;
+    /* v1.6.73: на мобилке скрываем move-select — он жрал ширину строки и
+       обрезал имена каналов до 1 символа (см. desktop, где он display:none и
+       имена полные). Каналы и так сгруппированы под заголовками категорий.
+       Перемещение в категорию — с десктопа (drag) или через настройки канала. */
+    display: none;
   }
 
   .ec-channel-category__add {
