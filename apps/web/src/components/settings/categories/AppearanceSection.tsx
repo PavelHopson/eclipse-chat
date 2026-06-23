@@ -26,7 +26,7 @@ export function AppearanceSection({ density, onDensity, focusEnabled, onFocusEna
       <section className="ec-settings-card">
         <div className="ec-settings-card__body">
           <strong>Тема</strong>
-          <span className="ec-settings-muted">VOID и SOLAR переключаются сразу.</span>
+          <span className="ec-settings-muted">VOID, SOLAR и OBSIDIAN (OLED-чёрная) — переключаются сразу.</span>
         </div>
         <ThemeToggle />
       </section>

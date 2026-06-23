@@ -46,6 +46,46 @@ html[data-ec-theme="solar"] {
   color-scheme: light;
 }
 
+/* ===== OBSIDIAN theme — OLED true-black (v1.6.74) =================
+   Третья тема (к VOID/SOLAR). Чистый чёрный для AMOLED — экономит
+   батарею, акценты violet+gold максимально контрастны. Тёмная как
+   VOID → переопределяем core- и ops-токены в чёрный + 2 чисто-хардкод
+   shell-surface (которые не идут через токены). Бренд violet+gold
+   сохранён. Спецификация html[data-ec-theme] (0,1,1) бьёт :root
+   (0,1,0) и базовые .x (0,1,0). */
+html[data-ec-theme="obsidian"] {
+  --ec-void: #000000;
+  --ec-bg: #000000;
+  --ec-surface-1: #060608;
+  --ec-surface-2: #0c0c11;
+  --ec-surface-3: #14141a;
+  --ec-surface-4: #1c1c24;
+  --ec-border-subtle: rgba(205, 208, 230, 0.06);
+  --ec-border-default: rgba(205, 208, 230, 0.12);
+  --ec-border-emphasis: rgba(205, 208, 230, 0.20);
+  --ec-surface-sunken: hsl(228 14% 4% / 0.6);
+  --ec-surface-glass: rgba(6, 6, 9, 0.55);
+  /* operational rail surfaces (body / chat-header / members / channels —
+     многие через !important, но значение из этих токенов → чёрное) */
+  --ec-ops-bg: #000000;
+  --ec-ops-rail: #060608;
+  --ec-ops-rail-strong: #0c0c12;
+  --ec-ops-panel: #0c0c11;
+  --ec-ops-panel-2: #131319;
+  --ec-ops-line: color-mix(in srgb, var(--ec-accent) 20%, #1a1a20);
+  --ec-ops-line-soft: color-mix(in srgb, var(--ec-accent) 11%, #141418);
+  color-scheme: dark;
+}
+
+/* Чисто-хардкод shell-surface'ы (без !important, не через токены) →
+   плоский near-black. members/chat-header идут через ops-токены выше. */
+html[data-ec-theme="obsidian"] .ec-shell {
+  background: #000000;
+}
+html[data-ec-theme="obsidian"] .ec-shell__cmdbar {
+  background: linear-gradient(180deg, #0a0a0e, #050507);
+}
+
 html[data-ec-theme="solar"] .ec-ambient {
   opacity: 0.32;
   filter: saturate(0.72) brightness(1.18);
