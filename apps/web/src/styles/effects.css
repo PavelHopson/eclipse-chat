@@ -15,6 +15,12 @@
    night-blue VOID-теме. */
 html[data-ec-theme="solar"] {
   --ec-bg: #ffffff;
+  /* v1.6.77 — --ec-void (глубочайший фон страницы) и --ec-surface-glass БЫЛИ
+     пропущены SOLAR (отдельные от --ec-bg токены) → `.ec-guide` (фон всего
+     гайд-вью/Путеводителя) и glass-панели оставались ТЁМНЫМИ в светлой теме.
+     Светлые значения в тон палитры. */
+  --ec-void: hsl(225 20% 97.5%);
+  --ec-surface-glass: rgba(255, 255, 255, 0.62);
   --ec-surface-1: hsl(225 20% 97.5%);
   --ec-surface-2: hsl(228 24% 99%);
   --ec-surface-3: hsl(225 17% 94.5%);
