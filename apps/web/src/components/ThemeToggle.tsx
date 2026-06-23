@@ -1,28 +1,23 @@
 import { useEffect, useState } from "react";
 
 const STORAGE_KEY = "eclipse-chat-theme";
-type ThemeMode = "void" | "solar" | "obsidian";
+// v1.6.75 — VOID убрана; две темы: OBSIDIAN (OLED-чёрная, дефолт) + SOLAR (светлая).
+type ThemeMode = "obsidian" | "solar";
 
 const THEMES: Array<{ id: ThemeMode; label: string }> = [
-  { id: "void", label: "VOID" },
-  { id: "solar", label: "SOLAR" },
   { id: "obsidian", label: "OBSIDIAN" },
+  { id: "solar", label: "SOLAR" },
 ];
 
 function applyTheme(mode: ThemeMode) {
-  const root = document.documentElement;
-  // VOID = дефолт (:root, без атрибута); solar/obsidian — через data-ec-theme.
-  if (mode === "void") {
-    delete root.dataset.ecTheme;
-  } else {
-    root.dataset.ecTheme = mode;
-  }
+  // Обе темы выставляют data-ec-theme (no-attr VOID-дефолта больше нет).
+  document.documentElement.dataset.ecTheme = mode;
 }
 
 function readTheme(): ThemeMode {
-  if (typeof window === "undefined") return "void";
-  const v = window.localStorage.getItem(STORAGE_KEY);
-  return v === "solar" || v === "obsidian" ? v : "void";
+  if (typeof window === "undefined") return "obsidian";
+  // solar → solar; всё прочее (null, legacy "void", "obsidian") → obsidian (дефолт + миграция).
+  return window.localStorage.getItem(STORAGE_KEY) === "solar" ? "solar" : "obsidian";
 }
 
 export function ThemeToggle() {
