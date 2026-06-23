@@ -1,0 +1,61 @@
+name: Android APK (Capacitor)
+
+# Зеркало desktop-release.yml, но для Android: Capacitor remote-load wrapper
+# (apps/android) над прод-PWA. Этот воркфлоу собирает DEBUG-APK (unsigned) для
+# теста сайдлоадом. Подписанный release-APK + публикация в Play — следующая
+# фаза (нужны keystore + Play-аккаунт; см. apps/android/README.md).
+#
+# ubuntu-latest GitHub-раннер уже содержит Android SDK + лицензии — отдельно
+# ставить не нужно.
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "apps/android/**"
+      - ".github/workflows/android-release.yml"
+  push:
+    tags:
+      - "android-v*"
+
+jobs:
+  build-debug:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/android
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Setup Java (JDK 17)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install Capacitor deps
+        run: npm install
+
+      - name: Generate Android platform (cap add)
+        run: npx cap add android
+
+      - name: Sync web + plugins → android
+        run: npx cap sync android
+
+      - name: Build debug APK
+        run: |
+          cd android
+          chmod +x ./gradlew
+          ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: eclipse-chat-android-debug
+          path: apps/android/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
