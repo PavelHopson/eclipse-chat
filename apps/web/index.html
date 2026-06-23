@@ -70,8 +70,9 @@
           if (localStorage.getItem("eclipse_chat_focus_dim") === "0") {
             root.setAttribute("data-focus-dim", "off");
           }
-          if (localStorage.getItem("eclipse-chat-theme") === "solar") {
-            root.setAttribute("data-ec-theme", "solar");
+          var ecTheme = localStorage.getItem("eclipse-chat-theme");
+          if (ecTheme === "solar" || ecTheme === "obsidian") {
+            root.setAttribute("data-ec-theme", ecTheme);
           }
         } catch (e) {
           /* ignore */
