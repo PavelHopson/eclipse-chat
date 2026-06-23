@@ -43,6 +43,19 @@ html[data-ec-theme="solar"] {
   --ec-overlay-bg: hsl(228 24% 99.5% / 0.98);
   --ec-overlay-header-bg: hsl(225 18% 96.5%);
   --ec-surface-sunken: hsl(225 18% 96%);
+  /* v1.6.76 — ops-токены (operational shell skin, components.css :root)
+     под SOLAR. БЕЗ них body-фон + chat-header + members рендерились
+     ТЁМНЫМИ ops-значениями (#05070d…, часть через !important) в светлой
+     теме → светлые панели на тёмном каркасе = «сыро». Светлые значения
+     в тон surface-палитре SOLAR (зеркало obsidian-блока ниже). */
+  --ec-ops-bg: #ffffff;
+  --ec-ops-rail: hsl(225 20% 97.5%);
+  --ec-ops-rail-strong: hsl(225 17% 94.5%);
+  --ec-ops-panel: hsl(228 24% 99%);
+  --ec-ops-panel-2: hsl(225 17% 94.5%);
+  --ec-ops-line: hsl(225 15% 84%);
+  --ec-ops-line-soft: hsl(225 16% 90%);
+  --ec-ops-glow: 0 18px 50px -40px hsl(225 30% 40% / 0.22);
   color-scheme: light;
 }
 
