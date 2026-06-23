@@ -3,7 +3,9 @@
   "private": true,
   "description": "Self-hosted чат: монорепо (сервер, web, shared). Код — поэтапно; см. README.",
   "workspaces": [
-    "apps/*",
+    "apps/web",
+    "apps/server",
+    "apps/desktop",
     "packages/*"
   ],
   "scripts": {

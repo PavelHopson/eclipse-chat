@@ -1,0 +1,12 @@
+{
+  "appId": "ru.starcrm.eclipsechat",
+  "appName": "Eclipse Chat",
+  "webDir": "www",
+  "server": {
+    "url": "https://app.star-crm.ru/eclipse-chat/",
+    "androidScheme": "https"
+  },
+  "android": {
+    "backgroundColor": "#000000"
+  }
+}
