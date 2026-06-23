@@ -1,9 +1,14 @@
 name: Android APK (Capacitor)
 
 # Зеркало desktop-release.yml, но для Android: Capacitor remote-load wrapper
-# (apps/android) над прод-PWA. Этот воркфлоу собирает DEBUG-APK (unsigned) для
-# теста сайдлоадом. Подписанный release-APK + публикация в Play — следующая
-# фаза (нужны keystore + Play-аккаунт; см. apps/android/README.md).
+# (apps/android) над прод-PWA. Этот воркфлоу собирает DEBUG-APK (debug-подписан,
+# сайдлоадится) и:
+#   - на PR / workflow_dispatch  → кладёт APK в artifact (тест-сборка);
+#   - на push тега `android-v*`  → дополнительно публикует APK в GitHub Release
+#     (prerelease, чтобы не перетереть `releases/latest` десктопа) — прямая
+#     ссылка на .apk для сайдлоада с телефона.
+# Прод-подпись (release-APK / AAB) + публикация в Google Play — следующая фаза
+# (нужны keystore + Play-аккаунт от Pavel; см. apps/android/README.md).
 #
 # ubuntu-latest GitHub-раннер уже содержит Android SDK + лицензии — отдельно
 # ставить не нужно.
@@ -17,6 +22,10 @@ on:
   push:
     tags:
       - "android-v*"
+
+# Публикация APK в Release требует write на contents (gh release create).
+permissions:
+  contents: write
 
 jobs:
   build-debug:
@@ -59,3 +68,28 @@ jobs:
           name: eclipse-chat-android-debug
           path: apps/android/android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+
+      # Только на push тега android-v*: публикуем APK как prerelease с прямой
+      # ссылкой на .apk (artifact'ы требуют логина+zip — неудобно с телефона).
+      # prerelease => не становится releases/latest (там десктоп-установщики).
+      - name: Publish APK to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/android-v')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          out="eclipse-chat-${GITHUB_REF_NAME}-debug.apk"
+          cp android/app/build/outputs/apk/debug/app-debug.apk "$out"
+          notes="Eclipse Chat — Android (Capacitor remote-load обёртка над прод-PWA app.star-crm.ru/eclipse-chat).
+
+          Debug / тест-сборка (debug-подписана, НЕ для Google Play) — сайдлоад на устройство:
+          скачать .apk на телефон → разрешить установку из источника → открыть.
+
+          Прод-подпись (release-APK / AAB) + Google Play — следующая фаза (нужен keystore)."
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" "$out" --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" "$out" \
+              --prerelease \
+              --title "Eclipse Chat Android ${GITHUB_REF_NAME}" \
+              --notes "$notes"
+          fi

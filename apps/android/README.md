@@ -20,7 +20,8 @@
 - собирает **debug-APK** (`app-debug.apk`) → artifact `eclipse-chat-android-debug`.
 - ubuntu-раннер уже содержит Android SDK + лицензии.
 
-### Локально (нужны Node + JDK 17 + Android Studio/SDK)
+### Локально (нужны Node + JDK 21 + Android Studio/SDK)
+> Capacitor 7 требует **JDK 21** (на 17 падает `invalid source release: 21`).
 ```bash
 cd apps/android
 npm install
@@ -30,10 +31,19 @@ cd android && ./gradlew assembleDebug      # → app/build/outputs/apk/debug/app
 # или: npx cap open android  (открыть в Android Studio)
 ```
 
+## Решения Pavel (23.06.2026)
+- **Подпись:** пока **без прод-подписи** — остаёмся на debug-APK (сайдлоад-тест).
+  Фаза 2 (release/AAB) не строим, пока Pavel не даст keystore.
+- **Дистрибуция (цель):** **оба канала** — GitHub Releases APK (прямая ссылка)
+  + Google Play (позже). GitHub-Releases-канал уже подключён в CI (см. фазу 1).
+
 ## Фазы (роадмап)
 
-1. **✅ Скаффолд + debug-APK через CI** (эта итерация) — unsigned APK для
-   сайдлоада/теста на устройстве.
+1. **✅ Скаффолд + debug-APK через CI + публикация в GitHub Release** —
+   debug-подписанный APK для сайдлоада/теста. На push тега `android-v*` CI
+   публикует APK в **prerelease** (прямая .apk-ссылка для телефона; prerelease
+   ⇒ не перетирает `releases/latest` десктопа). PR/`workflow_dispatch` — только
+   artifact.
 2. **⏳ Подписанный release-APK/AAB** — нужен **keystore** (Pavel):
    ```bash
    keytool -genkey -v -keystore eclipse-chat.keystore -alias eclipse -keyalg RSA -keysize 2048 -validity 10000
