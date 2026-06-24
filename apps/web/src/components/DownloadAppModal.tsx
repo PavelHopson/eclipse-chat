@@ -14,9 +14,11 @@ import { Modal } from "./Modal";
 const REPO = "https://github.com/PavelHopson/eclipse-chat";
 // Десктоп — страница последнего (non-prerelease) релиза: Win/Mac/Linux установщики.
 const DESKTOP_URL = `${REPO}/releases/latest`;
-// Android — прямой APK последнего android-пререлиза.
-// ⚠️ Обновлять при каждом новом теге android-v* (пререлизы НЕ попадают в /latest).
-const ANDROID_APK = `${REPO}/releases/download/android-v1.0.2/eclipse-chat-android-v1.0.2.apk`;
+// Android — APK хостится НА САЙТЕ (same-origin), не на GitHub-CDN: в РФ
+// release-assets.githubusercontent.com нестабилен/блокируется → «ошибка
+// скачивания». Файл лежит в `apps/web/public/download/` → отдаётся nginx'ом.
+// Стабильное имя (без версии) → линк не протухает; обновляем сам файл при релизе.
+const ANDROID_APK = `${import.meta.env.BASE_URL}download/eclipse-chat.apk`;
 
 type Platform = "windows" | "mac" | "linux" | "android" | "ios" | "other";
 
@@ -168,13 +170,15 @@ export function DownloadAppModal({ onClose }: { onClose: () => void }) {
             </svg>
           }
           action={
-            <button
-              type="button"
+            // Реальная download-ссылка (same-origin → атрибут download форсит
+            // сохранение файла без открытия пустой вкладки / ошибки CDN).
+            <a
               className="ec-btn ec-btn--primary ec-btn--sm"
-              onClick={() => openExternal(ANDROID_APK)}
+              href={ANDROID_APK}
+              download="eclipse-chat.apk"
             >
               Скачать APK
-            </button>
+            </a>
           }
         />
 
