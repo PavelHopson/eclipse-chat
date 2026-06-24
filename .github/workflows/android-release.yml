@@ -1,17 +1,20 @@
 name: Android APK (Capacitor)
 
 # Зеркало desktop-release.yml, но для Android: Capacitor remote-load wrapper
-# (apps/android) над прод-PWA. Этот воркфлоу собирает DEBUG-APK (debug-подписан,
-# сайдлоадится) и:
-#   - на PR / workflow_dispatch  → кладёт APK в artifact (тест-сборка);
-#   - на push тега `android-v*`  → дополнительно публикует APK в GitHub Release
-#     (prerelease, чтобы не перетереть `releases/latest` десктопа) — прямая
-#     ссылка на .apk для сайдлоада с телефона.
-# Прод-подпись (release-APK / AAB) + публикация в Google Play — следующая фаза
-# (нужны keystore + Play-аккаунт от Pavel; см. apps/android/README.md).
+# (apps/android) над прод-PWA. Два режима:
+#   - PR / workflow_dispatch → job build-debug: debug-APK в artifact (валидация);
+#   - push тега `android-v*`  → job build-release: ПОДПИСАННЫЙ release-APK + AAB
+#     (zipalign+apksigner для APK, jarsigner для AAB; ключ из секретов) →
+#     публикуются в GitHub Release (prerelease, чтобы не перетереть
+#     `releases/latest` десктопа). APK = прямой сайдлоад, AAB = для Google Play.
 #
-# ubuntu-latest GitHub-раннер уже содержит Android SDK + лицензии — отдельно
-# ставить не нужно.
+# Секреты подписи (Settings → Secrets → Actions):
+#   ANDROID_KEYSTORE_BASE64    — base64 файла eclipse-chat.keystore
+#   ANDROID_KEYSTORE_PASSWORD  — пароль keystore
+#   ANDROID_KEY_PASSWORD       — пароль ключа (= store-пароль)
+#   ANDROID_KEY_ALIAS          — alias ключа (eclipse)
+#
+# ubuntu-latest GitHub-раннер уже содержит Android SDK (+ build-tools, лицензии).
 
 on:
   workflow_dispatch:
@@ -23,12 +26,15 @@ on:
     tags:
       - "android-v*"
 
-# Публикация APK в Release требует write на contents (gh release create).
+# Публикация APK/AAB в Release требует write на contents (gh release create).
 permissions:
   contents: write
 
 jobs:
+  # PR / ручной запуск: только собираем debug-APK (валидация, что Capacitor +
+  # gradle не сломаны). На тег НЕ бежит — там build-release ниже.
   build-debug:
+    if: github.event_name != 'push'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -69,26 +75,98 @@ jobs:
           path: apps/android/android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
 
-      # Только на push тега android-v*: публикуем APK как prerelease с прямой
-      # ссылкой на .apk (artifact'ы требуют логина+zip — неудобно с телефона).
-      # prerelease => не становится releases/latest (там десктоп-установщики).
-      - name: Publish APK to GitHub Release
-        if: startsWith(github.ref, 'refs/tags/android-v')
+  # push тега android-v*: подписанный release-APK + AAB, публикация в Release.
+  build-release:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/android
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Setup Java (JDK 21)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Install Capacitor deps
+        run: npm install
+
+      - name: Generate Android platform (cap add)
+        run: npx cap add android
+
+      - name: Sync web + plugins → android
+        run: npx cap sync android
+
+      - name: Decode keystore from secret
+        env:
+          KS_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KS_B64" ]; then
+            echo "::error::ANDROID_KEYSTORE_BASE64 секрет пуст — нечем подписывать."
+            exit 1
+          fi
+          echo "$KS_B64" | base64 -d > android/app/eclipse.keystore
+          echo "keystore decoded: $(wc -c < android/app/eclipse.keystore) bytes"
+
+      - name: Build release APK + AAB (unsigned)
+        run: |
+          cd android
+          chmod +x ./gradlew
+          ./gradlew assembleRelease bundleRelease --no-daemon --stacktrace
+
+      - name: Sign APK (zipalign + apksigner) and AAB (jarsigner)
+        env:
+          KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          set -euo pipefail
+          BT="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)"
+          echo "build-tools: $BT"
+          KS=android/app/eclipse.keystore
+
+          # --- APK: zipalign -> apksigner (v2/v3) -> verify ---
+          UNSIGNED=android/app/build/outputs/apk/release/app-release-unsigned.apk
+          APK="eclipse-chat-${GITHUB_REF_NAME}.apk"
+          "$BT/zipalign" -v -p 4 "$UNSIGNED" "$APK"
+          "$BT/apksigner" sign \
+            --ks "$KS" --ks-pass "pass:$KS_PASS" \
+            --ks-key-alias "$KEY_ALIAS" --key-pass "pass:$KEY_PASS" \
+            "$APK"
+          "$BT/apksigner" verify --verbose "$APK"
+
+          # --- AAB: jarsigner (upload-ключ для Google Play) ---
+          AAB="eclipse-chat-${GITHUB_REF_NAME}.aab"
+          cp android/app/build/outputs/bundle/release/app-release.aab "$AAB"
+          jarsigner -keystore "$KS" -storepass "$KS_PASS" -keypass "$KEY_PASS" \
+            -sigalg SHA256withRSA -digestalg SHA-256 "$AAB" "$KEY_ALIAS"
+          echo "signed: $APK + $AAB"
+
+      - name: Publish signed APK + AAB to GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          out="eclipse-chat-${GITHUB_REF_NAME}-debug.apk"
-          cp android/app/build/outputs/apk/debug/app-debug.apk "$out"
+          APK="eclipse-chat-${GITHUB_REF_NAME}.apk"
+          AAB="eclipse-chat-${GITHUB_REF_NAME}.aab"
           notes="Eclipse Chat — Android (Capacitor remote-load обёртка над прод-PWA app.star-crm.ru/eclipse-chat).
 
-          Debug / тест-сборка (debug-подписана, НЕ для Google Play) — сайдлоад на устройство:
-          скачать .apk на телефон → разрешить установку из источника → открыть.
+          ПОДПИСАННЫЙ release-билд:
+          - .apk — прямой сайдлоад на устройство (скачать → разрешить установку из источника → открыть);
+          - .aab — для загрузки в Google Play (когда заведён Play-аккаунт).
 
-          Прод-подпись (release-APK / AAB) + Google Play — следующая фаза (нужен keystore)."
+          prerelease: не становится releases/latest (там десктоп-установщики)."
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
-            gh release upload "$GITHUB_REF_NAME" "$out" --clobber
+            gh release upload "$GITHUB_REF_NAME" "$APK" "$AAB" --clobber
           else
-            gh release create "$GITHUB_REF_NAME" "$out" \
+            gh release create "$GITHUB_REF_NAME" "$APK" "$AAB" \
               --prerelease \
               --title "Eclipse Chat Android ${GITHUB_REF_NAME}" \
               --notes "$notes"
