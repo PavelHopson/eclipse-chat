@@ -89,6 +89,7 @@ import { useDirectMessages } from "../hooks/useDirectMessages";
 import { useFriends } from "../hooks/useFriends";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import { useDrawerSwipe } from "../hooks/useDrawerSwipe";
+import { useNativeBackButton } from "../hooks/useNativeBackButton";
 import { useMembers, type MemberRole, type MemberRow } from "../hooks/useMembers";
 import { useMessages } from "../hooks/useMessages";
 import { useNotifications } from "../hooks/useNotifications";
@@ -559,6 +560,32 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     closeNav: () => setNavOpen(false),
     openMembers: () => setMembersOpen(true),
     closeMembers: () => setMembersOpen(false),
+  });
+  // v1.6.85 — аппаратная «Назад» в Android-оболочке закрывает открытый оверлей
+  // (поиск / модалка скачивания / справка / drawer'ы); если закрывать нечего —
+  // сворачиваем приложение (не убиваем). В браузере — no-op.
+  useNativeBackButton(() => {
+    if (showSearch) {
+      setShowSearch(false);
+      return true;
+    }
+    if (downloadOpen) {
+      setDownloadOpen(false);
+      return true;
+    }
+    if (helpOpen) {
+      setHelpOpen(false);
+      return true;
+    }
+    if (membersOpen) {
+      setMembersOpen(false);
+      return true;
+    }
+    if (navOpen) {
+      setNavOpen(false);
+      return true;
+    }
+    return false;
   });
   const voiceHealth = useVoiceHealth();
   const {
