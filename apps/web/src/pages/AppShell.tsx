@@ -88,6 +88,7 @@ import { dmIsSaved, dmTitle, useDirectConversations } from "../hooks/useDirectCo
 import { useDirectMessages } from "../hooks/useDirectMessages";
 import { useFriends } from "../hooks/useFriends";
 import { useMediaQuery } from "../hooks/useMediaQuery";
+import { useDrawerSwipe } from "../hooks/useDrawerSwipe";
 import { useMembers, type MemberRole, type MemberRow } from "../hooks/useMembers";
 import { useMessages } from "../hooks/useMessages";
 import { useNotifications } from "../hooks/useNotifications";
@@ -547,6 +548,18 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   // 3-колоночный режим убран (cramped на large phones / low-DPI).
   const isMobile = useMediaQuery("(max-width: 1024px)");
   const isTabletOrSmaller = useMediaQuery("(max-width: 1024px)");
+  // v1.6.84 — края-свайпы для drawer'ов: свайп от левого края открывает каналы,
+  // от правого — участников; обратный свайп закрывает. Только на мобиле.
+  useDrawerSwipe({
+    enabled: isMobile,
+    navOpen,
+    membersOpen,
+    membersAvailable: showRightRail,
+    openNav: () => setNavOpen(true),
+    closeNav: () => setNavOpen(false),
+    openMembers: () => setMembersOpen(true),
+    closeMembers: () => setMembersOpen(false),
+  });
   const voiceHealth = useVoiceHealth();
   const {
     byChannel: rawVoiceByChannel,
