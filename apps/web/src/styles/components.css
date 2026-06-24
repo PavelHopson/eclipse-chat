@@ -7726,6 +7726,53 @@ input[type="radio"]:focus-visible {
   cursor: pointer;
 }
 
+/* v1.6.80 — тумблер темы (OBSIDIAN ↔ SOLAR): слайдер-свитч с луной/солнцем.
+   Заменил сегмент-контрол (две текст-кнопки) на привычный переключатель.
+   Цвета на токенах → корректно в обеих темах. */
+.ec-theme-switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 52px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--ec-border-default);
+  border-radius: var(--ec-radius-full);
+  background: var(--ec-surface-3);
+  cursor: pointer;
+  transition: background var(--ec-dur-base) var(--ec-ease),
+    border-color var(--ec-dur-base) var(--ec-ease);
+}
+.ec-theme-switch:hover {
+  border-color: var(--ec-border-emphasis);
+}
+.ec-theme-switch:focus-visible {
+  outline: 2px solid var(--ec-accent);
+  outline-offset: 2px;
+}
+.ec-theme-switch__knob {
+  position: absolute;
+  top: 50%;
+  left: 2px;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--ec-radius-full);
+  background: var(--ec-accent);
+  color: var(--ec-accent-text);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  transform: translateY(-50%) translateX(0);
+  transition: transform var(--ec-dur-base) var(--ec-ease-spring);
+}
+.ec-theme-switch[aria-checked="true"] .ec-theme-switch__knob {
+  transform: translateY(-50%) translateX(24px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ec-theme-switch__knob {
+    transition: none;
+  }
+}
+
 .ec-settings-readonly {
   display: flex;
   flex-direction: column;
