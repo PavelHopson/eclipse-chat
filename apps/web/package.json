@@ -1,6 +1,6 @@
 {
   "name": "@eclipse-chat/web",
-  "version": "1.6.87",
+  "version": "1.6.88",
   "private": true,
   "type": "module",
   "scripts": {

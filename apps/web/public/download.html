@@ -77,6 +77,10 @@
   .mut { color: var(--mut); }
   .rowbtns { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
   .rowbtns .btn { flex: 1; min-width: 130px; }
+  .altdl { margin-top: 12px; font-size: 13px; color: var(--mut); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .altdl a { color: var(--violet); text-decoration: none; }
+  .altdl a:hover { text-decoration: underline; }
+  .altdl .sep { color: var(--dim); }
   details.howto { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 12px; }
   details.howto summary { cursor: pointer; color: var(--violet); font-weight: 600; font-size: 14px; }
   details.howto ol { margin: 10px 0 0; padding-left: 20px; color: var(--mut); }
@@ -130,7 +134,15 @@
         <div><h2>Компьютер</h2><div class="meta">Windows · macOS · Linux</div></div>
       </div>
       <div class="rowbtns">
-        <a class="btn" href="https://github.com/PavelHopson/eclipse-chat/releases/latest" target="_blank" rel="noopener">Скачать установщик</a>
+        <a class="btn" href="download/desktop/eclipse-chat-setup.exe" download="eclipse-chat-setup.exe">Windows</a>
+        <a class="btn" href="download/desktop/eclipse-chat.dmg" download="eclipse-chat.dmg">macOS</a>
+        <a class="btn" href="download/desktop/eclipse-chat.deb" download="eclipse-chat.deb">Linux (.deb)</a>
+      </div>
+      <div class="altdl">
+        <span class="mut small">Другие форматы:</span>
+        <a href="download/desktop/eclipse-chat.msi" download="eclipse-chat.msi">Windows .msi</a>
+        <span class="sep">·</span>
+        <a href="https://github.com/PavelHopson/eclipse-chat/releases/latest" target="_blank" rel="noopener">Linux AppImage</a>
       </div>
     </section>
 
