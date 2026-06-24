@@ -62,6 +62,11 @@ jobs:
       - name: Sync web + plugins → android
         run: npx cap sync android
 
+      # Брендовая иконка из assets/icon-only.png → все mipmap-плотности +
+      # adaptive (фон #05070a в тон). Заменяет дефолтную иконку Capacitor.
+      - name: Brand app icon (@capacitor/assets)
+        run: npx capacitor-assets generate --android --assetPath assets --iconBackgroundColor '#05070a' --iconBackgroundColorDark '#05070a'
+
       - name: Build debug APK
         run: |
           cd android
@@ -104,6 +109,10 @@ jobs:
 
       - name: Sync web + plugins → android
         run: npx cap sync android
+
+      # Брендовая иконка (как в build-debug) — до сборки release.
+      - name: Brand app icon (@capacitor/assets)
+        run: npx capacitor-assets generate --android --assetPath assets --iconBackgroundColor '#05070a' --iconBackgroundColorDark '#05070a'
 
       # versionName из тега (android-v1.0.2 → "1.0.2"), versionCode из номера
       # запуска (монотонно растёт — требование Google Play). Так App.getInfo()
