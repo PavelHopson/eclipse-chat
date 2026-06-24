@@ -9047,6 +9047,42 @@ body {
     0 18px 56px -46px hsl(210 80% 2% / 0.9);
 }
 
+/* v1.6.81 — мобильная производительность (touch: телефоны/планшеты, вкл.
+   Android-приложение). Главный источник рывков прокрутки в WebView —
+   `backdrop-filter: blur()` на постоянных панелях шелла: каждый кадр прокрутки
+   WebView пересчитывает размытие того, что под панелью. На touch выключаем blur
+   полностью, шелл-панели делаем плотными (opaque), глушим оверскролл-«отскок»
+   («плывёт») и пару непрерывных ambient-анимаций. ПК (мышь/hover) НЕ затронут —
+   стеклянный вид там остаётся. Источник правды по плотности — ops-токены. */
+@media (hover: none) and (pointer: coarse) {
+  *,
+  *::before,
+  *::after {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  .ec-shell__brandbar,
+  .ec-shell__cmdbar,
+  .ec-shell__channels,
+  .ec-shell__members,
+  .ec-chat-header {
+    background: linear-gradient(
+      180deg,
+      var(--ec-ops-rail-strong),
+      var(--ec-ops-rail)
+    ) !important;
+  }
+  .ec-anim-ai-pulse,
+  .ec-anim-reaction-mine {
+    animation: none !important;
+  }
+  html,
+  body,
+  .ec-shell {
+    overscroll-behavior: none;
+  }
+}
+
 .ec-shell__cmdbar {
   min-height: 50px;
   padding-inline: 12px;
