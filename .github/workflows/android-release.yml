@@ -105,6 +105,20 @@ jobs:
       - name: Sync web + plugins → android
         run: npx cap sync android
 
+      # versionName из тега (android-v1.0.2 → "1.0.2"), versionCode из номера
+      # запуска (монотонно растёт — требование Google Play). Так App.getInfo()
+      # в WebView отдаёт реальную версию → веб может сверять с последним релизом.
+      - name: Set app version (from tag)
+        run: |
+          set -euo pipefail
+          VNAME="${GITHUB_REF_NAME#android-v}"
+          VCODE="${{ github.run_number }}"
+          GRADLE=android/app/build.gradle
+          sed -i -E "s/versionCode[[:space:]]+[0-9]+/versionCode ${VCODE}/" "$GRADLE"
+          sed -i -E "s/versionName[[:space:]]+\"[^\"]*\"/versionName \"${VNAME}\"/" "$GRADLE"
+          echo "set versionName=${VNAME} versionCode=${VCODE}"
+          grep -E "versionCode|versionName" "$GRADLE" || true
+
       - name: Decode keystore from secret
         env:
           KS_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
