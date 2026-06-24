@@ -209,6 +209,22 @@ export function App() {
     window.location.reload();
   };
 
+  // v1.6.83 — авто-обновление без прерывания: когда доступна новая версия,
+  // тихо перезагружаемся в момент, когда пользователь уходит из приложения
+  // (вкладка/окно скрыты) — активную работу не прерываем. Кнопка в баннере
+  // остаётся для немедленного апдейта. Так Android-приложение само подтягивает
+  // свежую версию без переустановки/очистки кэша.
+  useEffect(() => {
+    if (!updateAvailable) return;
+    const onHidden = () => {
+      if (document.visibilityState === "hidden") void hardReload();
+    };
+    document.addEventListener("visibilitychange", onHidden);
+    return () => document.removeEventListener("visibilitychange", onHidden);
+    // hardReload зависит только от наличия апдейта (внутри свой guard reloading).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [updateAvailable]);
+
   const isAuthenticated = view !== "loading" && view !== "auth" && user;
 
   const openAuthSurface = (mode: "login" | "register") => {
