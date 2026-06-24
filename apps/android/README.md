@@ -15,10 +15,11 @@
 
 ### CI (рекомендуется — локально npm/Android SDK может не быть)
 Воркфлоу [`.github/workflows/android-release.yml`](../../.github/workflows/android-release.yml):
-- триггеры: `pull_request` (валидация при правках `apps/android/**`),
-  `workflow_dispatch` (ручной), push тега `android-v*`.
-- собирает **debug-APK** (`app-debug.apk`) → artifact `eclipse-chat-android-debug`.
-- ubuntu-раннер уже содержит Android SDK + лицензии.
+- `pull_request` / `workflow_dispatch` → **debug-APK** (`app-debug.apk`) в
+  artifact `eclipse-chat-android-debug` (валидация сборки).
+- push тега `android-v*` → **подписанный release-APK + AAB** в GitHub Release
+  (prerelease). См. «Фазы» п.2.
+- ubuntu-раннер уже содержит Android SDK + build-tools + лицензии.
 
 ### Локально (нужны Node + JDK 21 + Android Studio/SDK)
 > Capacitor 7 требует **JDK 21** (на 17 падает `invalid source release: 21`).
@@ -31,30 +32,35 @@ cd android && ./gradlew assembleDebug      # → app/build/outputs/apk/debug/app
 # или: npx cap open android  (открыть в Android Studio)
 ```
 
-## Решения Pavel (23.06.2026)
-- **Подпись:** пока **без прод-подписи** — остаёмся на debug-APK (сайдлоад-тест).
-  Фаза 2 (release/AAB) не строим, пока Pavel не даст keystore.
-- **Дистрибуция (цель):** **оба канала** — GitHub Releases APK (прямая ссылка)
-  + Google Play (позже). GitHub-Releases-канал уже подключён в CI (см. фазу 1).
+## Решения Pavel
+- **Подпись:** keystore сгенерирован Pavel'ом (24.06.2026, `eclipse-chat.keystore`,
+  alias `eclipse`); секреты заведены в GitHub Actions → CI подписывает release
+  (фаза 2 ✅). Ключ хранится у Pavel — потеря = нельзя обновлять приложение в Play.
+- **Дистрибуция (цель):** **оба канала** — GitHub Releases (.apk прямая ссылка)
+  + Google Play (.aab, когда заведён Play-аккаунт).
 
 ## Фазы (роадмап)
 
 1. **✅ Скаффолд + debug-APK через CI + публикация в GitHub Release** —
-   debug-подписанный APK для сайдлоада/теста. На push тега `android-v*` CI
-   публикует APK в **prerelease** (прямая .apk-ссылка для телефона; prerelease
-   ⇒ не перетирает `releases/latest` десктопа). PR/`workflow_dispatch` — только
-   artifact.
-2. **⏳ Подписанный release-APK/AAB** — нужен **keystore** (Pavel):
-   ```bash
-   keytool -genkey -v -keystore eclipse-chat.keystore -alias eclipse -keyalg RSA -keysize 2048 -validity 10000
-   ```
-   → положить в GitHub Secrets (base64 keystore + пароли), добавить signingConfig
-   в `android/app/build.gradle`, собирать `assembleRelease`/`bundleRelease`.
+   debug-APK для сайдлоада/теста. PR/`workflow_dispatch` → artifact.
+2. **✅ Подписанный release-APK/AAB** — на push тега `android-v*` job
+   `build-release` собирает `assembleRelease`+`bundleRelease` (unsigned), затем
+   **подписывает**: APK через `zipalign` + `apksigner` (v2/v3), AAB через
+   `jarsigner` (upload-ключ Play); оба → **prerelease** (prerelease ⇒ не
+   перетирает `releases/latest` десктопа). Ключ берётся из секретов
+   `ANDROID_KEYSTORE_BASE64` / `_PASSWORD` / `_KEY_PASSWORD` / `_KEY_ALIAS`.
+   Подпись делается **после** сборки (не через `signingConfig` в build.gradle),
+   т.к. `android/` gitignored и регенерится `cap add` каждый прогон.
 3. **⏳ Google Play** — нужен **Play Developer аккаунт** (Pavel, $25 разово);
-   загрузка AAB + листинг. Альтернатива/параллельно: прямой APK с лендинга +
-   кнопки «Скачать приложение» в EC (уже линкует releases).
+   `.aab` уже собирается и подписывается — останется загрузить + листинг.
+
+## Релиз
+```bash
+git tag android-v1.0.1 && git push origin android-v1.0.1
+# → CI: signed APK + AAB в prerelease github.com/PavelHopson/eclipse-chat/releases
+```
+Версия в `package.json` (`apps/android`) — держать в синхроне с тегом.
 
 ## Зависит от Pavel
-- keystore для подписи (фаза 2);
 - Google Play Developer аккаунт (фаза 3);
 - решение: чистый remote-load (текущее, нужна сеть) vs частично-bundled (offline).
