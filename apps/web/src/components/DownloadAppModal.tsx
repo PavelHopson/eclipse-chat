@@ -16,7 +16,7 @@ const REPO = "https://github.com/PavelHopson/eclipse-chat";
 const DESKTOP_URL = `${REPO}/releases/latest`;
 // Android — прямой APK последнего android-пререлиза.
 // ⚠️ Обновлять при каждом новом теге android-v* (пререлизы НЕ попадают в /latest).
-const ANDROID_APK = `${REPO}/releases/download/android-v1.0.1/eclipse-chat-android-v1.0.1.apk`;
+const ANDROID_APK = `${REPO}/releases/download/android-v1.0.2/eclipse-chat-android-v1.0.2.apk`;
 
 type Platform = "windows" | "mac" | "linux" | "android" | "ios" | "other";
 
