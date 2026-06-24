@@ -1793,3 +1793,29 @@
     display: none !important;
   }
 }
+
+/* v1.6.82 — тач-таргеты (touch): кнопки крупнее под палец (отзыв «мелкие
+   элементы под палец»). Композер (основной ввод) → 44px; топбар плотный → 36px
+   (иначе переполнение узкого экрана); прочие иконные кнопки и действия над
+   сообщением → 36–38px. ПК (мышь/hover) НЕ тронут. Блок в конце responsive.css
+   → побеждает прежние мобильные правила (32–34px) по порядку каскада. */
+@media (hover: none) and (pointer: coarse) {
+  .ec-icon-btn {
+    width: 36px;
+    height: 36px;
+  }
+  .ec-shell__top-actions .ec-icon-btn {
+    width: 36px !important;
+    height: 36px !important;
+  }
+  .ec-composer-icon-btn,
+  .ec-composer-send {
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+  }
+  .ec-msg-action {
+    width: 38px;
+    height: 38px;
+  }
+}
