@@ -11,9 +11,10 @@ import { Modal } from "./Modal";
  * и в SOLAR. Кнопки — общий класс `.ec-btn`.
  */
 
-const REPO = "https://github.com/PavelHopson/eclipse-chat";
-// Десктоп — страница последнего (non-prerelease) релиза: Win/Mac/Linux установщики.
-const DESKTOP_URL = `${REPO}/releases/latest`;
+// Десктоп — открываем страницу загрузки НА САЙТЕ (там установщики Win/Mac/Linux
+// хостятся same-origin, без GitHub-CDN, который в РФ нестабилен). AppImage
+// (77 МБ) остаётся на GitHub, остальные — с сайта.
+const DESKTOP_URL = `${import.meta.env.BASE_URL}download.html`;
 // Android — APK хостится НА САЙТЕ (same-origin), не на GitHub-CDN: в РФ
 // release-assets.githubusercontent.com нестабилен/блокируется → «ошибка
 // скачивания». Файл лежит в `apps/web/public/download/` → отдаётся nginx'ом.
