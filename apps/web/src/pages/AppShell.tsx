@@ -55,6 +55,7 @@ const ServerWelcomeHero = lazy(() => import("../components/ServerWelcomeHero").t
 const ChannelsAndRolesView = lazy(() => import("../components/server/ChannelsAndRolesView").then((m) => ({ default: m.ChannelsAndRolesView })));
 const MembersView = lazy(() => import("../components/server/MembersView").then((m) => ({ default: m.MembersView })));
 const StatusMenu = lazy(() => import("../components/StatusMenu").then((m) => ({ default: m.StatusMenu })));
+const DownloadAppModal = lazy(() => import("../components/DownloadAppModal").then((m) => ({ default: m.DownloadAppModal })));
 
 function isTextEntryTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -332,6 +333,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   /** v0.73 #14: In-app help / onboarding. Полноэкранный view как Home /
    *  StatusBoard / TeamHealth — правый rail скрыт. Открывается «?» в topbar. */
   const [helpOpen, setHelpOpen] = useState(false);
+  const [downloadOpen, setDownloadOpen] = useState(false);
   /** v0.76 #25 phase 1: Admin Panel — полноэкранный view для OWNER/ADMIN. */
   const [adminOpen, setAdminOpen] = useState(false);
   // v1.2.6 Platform Admin (trek P1) — глобальная super-admin панель.
@@ -1135,6 +1137,20 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               </svg>
             </button>
           )}
+          {/* v1.6.79 — «Скачать приложение»: десктоп/Android/iOS → модалка. */}
+          <button
+            type="button"
+            onClick={() => setDownloadOpen(true)}
+            title="Скачать приложение"
+            aria-label="Скачать приложение"
+            className="ec-icon-btn"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+          </button>
           {/* v1.1.81 — кластер-разделитель: инструменты | идентичность */}
           <span className="ec-topbar-sep" aria-hidden />
           <button
@@ -2423,6 +2439,12 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
         />
       )}
 
+      {downloadOpen && (
+        <Suspense fallback={null}>
+          <DownloadAppModal onClose={() => setDownloadOpen(false)} />
+        </Suspense>
+      )}
+
       {statusAnchor && profile && (
         <StatusMenu
           anchorRect={statusAnchor}
@@ -2473,13 +2495,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             {
               key: "download",
               label: "Скачать приложение",
-              hint: "Windows · Mac · Linux",
-              onClick: () =>
-                window.open(
-                  "https://github.com/PavelHopson/eclipse-chat/releases/latest",
-                  "_blank",
-                  "noopener,noreferrer",
-                ),
+              hint: "Windows · Mac · Linux · Android · iOS",
+              onClick: () => setDownloadOpen(true),
               icon: (
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
