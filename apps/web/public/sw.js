@@ -22,7 +22,7 @@
 // v1.5.30: PWA harden — bumped до текущей версии. Cache invalidation работает
 // через name-prefix change → activate cleanup удаляет стары caches.
 // v1.5.32: GitHub Actions trigger flake — пришлось ретригернуть push.
-const SW_VERSION = "eclipse-v1.6.85";
+const SW_VERSION = "eclipse-v1.6.86";
 const APP_SHELL_CACHE = `${SW_VERSION}-shell`;
 const ASSETS_CACHE = `${SW_VERSION}-assets`;
 const UPLOADS_CACHE = `${SW_VERSION}-uploads`;
@@ -88,7 +88,13 @@ self.addEventListener("fetch", (event) => {
   if (req.method !== "GET") return;
 
   // Никогда не cache live API/socket — пропускаем в сеть.
-  if (url.pathname.includes("/api/") || url.pathname.includes("/socket.io")) {
+  // /download/ — бинарники приложения (APK): тоже мимо SW (не кэшируем 3 МБ,
+  // отдаёт nginx как есть → чистое скачивание).
+  if (
+    url.pathname.includes("/api/") ||
+    url.pathname.includes("/socket.io") ||
+    url.pathname.includes("/download/")
+  ) {
     return;
   }
 
