@@ -5984,22 +5984,10 @@ input[type="radio"]:focus-visible {
 
 /* v1.5.5 — mirror тонкой accent линии у footer (без анимации, в
  * pair с holo-edge у header). Сохраняет visual rhythm overlay'я. */
+/* v1.6.95 де-нойз: декоративный cyan→violet градиент футера убран
+   (border-top футера уже разделяет). */
 .ec-modal-footer::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  pointer-events: none;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    hsl(258 86% 62% / 0.18) 30%,
-    hsl(180 70% 65% / 0.22) 50%,
-    hsl(258 86% 62% / 0.18) 70%,
-    transparent 100%
-  );
+  display: none;
 }
 
 /* --- ChannelInfoPanel (РІС‹РµР·Р¶Р°РµС‚ РёР· chat-header) -------------- */
@@ -7023,9 +7011,8 @@ input[type="radio"]:focus-visible {
   max-height: calc(100dvh - 124px);
   margin: calc(var(--ec-space-4) * -1);
   overflow: hidden;
-  background:
-    radial-gradient(circle at 0% 0%, hsl(258 86% 58% / 0.12), transparent 36%),
-    var(--ec-surface-0);
+  /* v1.6.95 де-нойз: убран radial-glow — ровный фон. */
+  background: var(--ec-surface-0);
 }
 
 .ec-server-hub-tree-nav {
@@ -7389,9 +7376,8 @@ input[type="radio"]:focus-visible {
   max-height: calc(100dvh - 124px);
   margin: calc(var(--ec-space-4) * -1);
   overflow: hidden;
-  background:
-    radial-gradient(circle at 0% 0%, hsl(258 86% 58% / 0.12), transparent 36%),
-    var(--ec-surface-0);
+  /* v1.6.95 де-нойз: убран radial-glow — ровный фон. */
+  background: var(--ec-surface-0);
 }
 
 .ec-settings-tree-nav {
