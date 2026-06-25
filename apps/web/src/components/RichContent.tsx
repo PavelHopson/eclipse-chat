@@ -1,3 +1,4 @@
+import { memo, useMemo } from "react";
 import type { CSSProperties, ReactNode } from "react";
 
 type Props = {
@@ -246,12 +247,17 @@ function detectMentions(
   return found;
 }
 
-export function RichContent({
+// memo + useMemo — RichContent рендерится для каждого видимого сообщения;
+// без этого detectMentions+tokenize (regex-скан) гоняется на каждый ре-рендер
+// КАЖДОГО сообщения, даже когда менялось соседнее. Самый дешёвый крупный
+// перф-выигрыш в ленте (см. аудит P2).
+export const RichContent = memo(function RichContent({
   content,
   mentionNames = [],
   currentUserName,
   customEmojis,
 }: Props) {
+  return useMemo(() => {
   const mentions = detectMentions(content, mentionNames);
   const result: ReactNode[] = [];
   let lastIdx = 0;
@@ -277,7 +283,8 @@ export function RichContent({
   }
   if (result.length === 0) return <>{content}</>;
   return <>{result}</>;
-}
+  }, [content, mentionNames, currentUserName, customEmojis]);
+});
 
 /** Check если content упоминает currentUserName — используется для notification escalation. */
 export function contentMentionsMe(
