@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import "../styles/clean-ui.css";
 import { Avatar } from "./Avatar";
 import type { MemberRole, MemberRow } from "../hooks/useMembers";
@@ -138,7 +138,9 @@ function presenceColor(m: MemberRow): string {
   return "var(--ec-presence-online)";
 }
 
-function MemberRowView({
+// memo — изменение одного участника (online-toggle и т.п.) не должно
+// ре-рендерить все строки списка.
+const MemberRowView = memo(function MemberRowView({
   m,
   inVoiceChannel,
   voiceChannelName,
@@ -210,7 +212,7 @@ function MemberRowView({
       )}
     </div>
   );
-}
+});
 
 export function MemberList({
   members,
