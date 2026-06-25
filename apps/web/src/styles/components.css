@@ -1101,9 +1101,9 @@ input[type="radio"]:focus-visible {
 }
 
 .ec-channel-item:hover {
-  background: hsl(214 28% 13% / 0.64);
+  background: var(--ec-surface-3);
   color: var(--ec-text);
-  border-color: hsl(225 14% 72% / 0.08);
+  border-color: var(--ec-border-subtle);
   /* v0.38: subtle slide-right hint вЂ” channel item В«СЂРµР°РіРёСЂСѓРµС‚В» РЅР° РєСѓСЂСЃРѕСЂ */
   transform: translateX(2px);
 }
@@ -1549,7 +1549,7 @@ input[type="radio"]:focus-visible {
   padding: var(--ec-space-4);
   border: 1px solid var(--ec-border-subtle);
   border-radius: var(--ec-radius-md);
-  background: hsl(222 18% 8% / 0.7);
+  background: var(--ec-surface-2);
 }
 
 .ec-home__stats strong {
@@ -1587,7 +1587,7 @@ input[type="radio"]:focus-visible {
   padding: var(--ec-space-4);
   border: 1px solid var(--ec-border-subtle);
   border-radius: var(--ec-radius-md);
-  background: hsl(222 18% 8% / 0.72);
+  background: var(--ec-surface-2);
   color: var(--ec-text);
   text-align: left;
   transition:
@@ -1988,14 +1988,12 @@ input[type="radio"]:focus-visible {
 }
 
 .ec-message-actions {
-  background:
-    linear-gradient(180deg, hsl(214 28% 13% / 0.94), hsl(214 28% 9% / 0.94)) !important;
-  border-color: hsl(225 14% 72% / 0.12) !important;
-  box-shadow:
-    var(--ec-shadow-md),
-    0 0 18px hsl(225 14% 60% / 0.08) !important;
-  backdrop-filter: blur(14px) saturate(140%);
-  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  /* v1.6.91 — токен-фон (корректно в SOLAR) + убраны лишний glow и
+     backdrop-filter (фон непрозрачный → блюр почти не виден, но стоил
+     compositing-слоя на каждой строке). */
+  background: var(--ec-surface-2) !important;
+  border-color: var(--ec-border-default) !important;
+  box-shadow: var(--ec-shadow-md) !important;
 }
 
 .ec-video-attachment-grid,
