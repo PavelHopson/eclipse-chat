@@ -1197,6 +1197,12 @@ model ActionItem {
   @@index([serverId, status, createdAt])
   @@index([assigneeUserId, status])
   @@index([approverUserId, approvalStatus])
+  // v1.6.98: partial index "ActionItem_escalation_scan_idx" ON ("dueAt")
+  // WHERE status IN (OPEN,IN_PROGRESS,REVIEW) AND dueAt IS NOT NULL живёт в
+  // raw-миграции 20260625120000_add_escalation_partial_index (Prisma не
+  // выражает WHERE-индексы). Покрывает глобальный escalation-scan
+  // (escalation.ts), который не ложится на channelId/serverId-индексы выше.
+  // НЕ удалять и не «чинить» как drift — индекс намеренно вне schema.
 }
 
 /// Граф зависимостей между ActionItem'ами (v0.73 #20 phase 2).
