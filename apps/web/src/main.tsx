@@ -12,6 +12,23 @@ if (root) {
   );
 }
 
+// v1.6.97 — прячем нативный сплеш (Android-оболочка, @capacitor/splash-screen)
+// как только веб смонтирован → сплеш не висит лишнее. В браузере — no-op
+// (мост window.Capacitor не инжектится). Конфиг launchAutoHide=true страхует.
+(() => {
+  const cap = (
+    window as unknown as {
+      Capacitor?: {
+        isNativePlatform?: () => boolean;
+        Plugins?: { SplashScreen?: { hide?: () => void } };
+      };
+    }
+  ).Capacitor;
+  if (cap?.isNativePlatform?.() && cap.Plugins?.SplashScreen?.hide) {
+    requestAnimationFrame(() => cap.Plugins?.SplashScreen?.hide?.());
+  }
+})();
+
 // v0.81 #27 phase 2 PWA: register service worker (offline app shell +
 // uploads cache). Регистрируем после window load, чтобы не блокировать
 // initial render. Scope ограничен BASE_URL (path-based deploy в проде —
