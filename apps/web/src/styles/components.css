@@ -2448,44 +2448,22 @@ input[type="radio"]:focus-visible {
   overflow: hidden;
   /* v1.1.61 redesign §9 — полупрозрачный glass-composer.
    * v1.5.8 — добавлено: top accent rail, multi-shadow violet undertone. */
-  background:
-    radial-gradient(circle at 0% 0%, hsl(258 90% 66% / 0.09), transparent 50%),
-    radial-gradient(circle at 100% 100%, hsl(180 70% 55% / 0.05), transparent 45%),
-    hsl(216 24% 10% / 0.62) !important;
-  backdrop-filter: blur(20px) saturate(140%);
-  -webkit-backdrop-filter: blur(20px) saturate(140%);
-  border-color: hsl(225 14% 72% / 0.10) !important;
-  box-shadow:
-    inset 0 1px 0 hsl(0 0% 100% / 0.04),
-    0 14px 36px -10px hsl(210 70% 2% / 0.50),
-    0 4px 14px -10px hsl(258 86% 40% / 0.30);
+  /* v1.6.93 де-нойз: убраны violet+cyan радиалы, holo-rail и blur — фон стал
+     непрозрачным токеном (корректно в SOLAR, проще, дешевле для WebView). */
+  background: var(--ec-surface-2) !important;
+  border-color: var(--ec-border-default) !important;
+  box-shadow: var(--ec-shadow-md);
 }
-/* v1.5.8 — top holo rail (statically present); intensifies на focus-within. */
+/* v1.6.93 де-нойз: holo-rail (cyan→violet) убран. */
 .ec-composer-box::before {
-  content: "";
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    hsl(180 70% 65% / 0.30) 30%,
-    hsl(258 86% 72% / 0.55) 55%,
-    hsl(258 70% 60% / 0.25) 75%,
-    transparent 100%
-  );
-  pointer-events: none;
-  opacity: 0.6;
-  transition: opacity var(--ec-dur-base) var(--ec-ease);
+  display: none;
 }
 
 /* Focus — мягкое свечение + усиление holo rail. */
 .ec-composer-box:focus-within {
-  border-color: hsl(258 90% 66% / 0.38) !important;
-  box-shadow:
-    0 0 26px -2px hsl(258 90% 66% / 0.35),
-    inset 0 1px 0 hsl(0 0% 100% / 0.06),
-    0 8px 28px -12px hsl(258 86% 40% / 0.50) !important;
+  /* v1.6.93 — чистое акцентное кольцо вместо тройного glow. */
+  border-color: var(--ec-border-accent) !important;
+  box-shadow: 0 0 0 2px var(--ec-accent-soft) !important;
 }
 .ec-composer-box:focus-within::before {
   opacity: 1;
@@ -2564,10 +2542,10 @@ input[type="radio"]:focus-visible {
 
 .ec-composer-send {
   position: relative;
-  background:
-    radial-gradient(circle at 30% 30%, hsl(258 86% 72%), hsl(258 86% 52%)) !important;
-  border-color: hsl(258 74% 62% / 0.7) !important;
-  color: hsl(0 0% 100%) !important;
+  /* v1.6.93 — токен-акцент (следует brandColor сервера) + off-white текст. */
+  background: var(--ec-accent) !important;
+  border-color: var(--ec-accent) !important;
+  color: var(--ec-accent-text) !important;
   box-shadow:
     0 10px 24px -6px hsl(258 80% 38% / 0.45),
     inset 0 1px 0 hsl(0 0% 100% / 0.22),
@@ -8927,7 +8905,9 @@ input[type="radio"]:focus-visible {
   min-height: 38px;
   padding: 8px 10px;
   border-radius: 14px;
-  background: color-mix(in srgb, var(--ec-bg) 42%, transparent);
+  /* v1.6.93 — был var(--ec-bg) (тёмный в SOLAR → тёмная «пилюля» инпута в
+     светлой теме). Тема-aware surface-токен. */
+  background: color-mix(in srgb, var(--ec-surface-1) 60%, transparent);
   color: var(--ec-text-strong);
 }
 
@@ -9415,7 +9395,9 @@ body {
 }
 
 .ec-composer-textarea {
-  background: color-mix(in srgb, #05070d 54%, transparent);
+  /* v1.6.93 — был хардкод #05070d (чёрная «пилюля» инпута в SOLAR; это
+     ops-theme override, перебивал фикс выше). Тема-aware surface-токен. */
+  background: color-mix(in srgb, var(--ec-surface-1) 60%, transparent);
   border: 1px solid color-mix(in srgb, var(--ec-accent) 12%, transparent);
 }
 
