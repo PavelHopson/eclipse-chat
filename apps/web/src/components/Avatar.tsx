@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { resolveAssetUrl } from "../lib/assets";
 
 type Props = {
@@ -37,7 +37,9 @@ function colorFor(name: string): string {
   return `hsl(${hue}, 45%, 34%)`;
 }
 
-export function Avatar({ url, name, size = 32, glow = false }: Props) {
+// memo — Avatar рендерится в каждой строке сообщений/участников/каналов;
+// пропсы примитивные → shallow-compare режет лишние ре-рендеры в длинных списках.
+export const Avatar = memo(function Avatar({ url, name, size = 32, glow = false }: Props) {
   const fontSize = Math.round(size * 0.42);
   const [errored, setErrored] = useState(false);
 
@@ -95,4 +97,4 @@ export function Avatar({ url, name, size = 32, glow = false }: Props) {
       />
     </span>
   );
-}
+});
