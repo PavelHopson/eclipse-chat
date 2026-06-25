@@ -67,6 +67,10 @@ jobs:
       - name: Brand app icon (@capacitor/assets)
         run: npx capacitor-assets generate --android --assetPath assets --iconBackgroundColor '#05070a' --iconBackgroundColorDark '#05070a'
 
+      # Кастомный MainActivity (status-bar + DownloadListener) поверх стаба.
+      - name: Install custom MainActivity
+        run: cp native/MainActivity.java android/app/src/main/java/ru/starcrm/eclipsechat/MainActivity.java
+
       - name: Build debug APK
         run: |
           cd android
@@ -113,6 +117,10 @@ jobs:
       # Брендовая иконка (как в build-debug) — до сборки release.
       - name: Brand app icon (@capacitor/assets)
         run: npx capacitor-assets generate --android --assetPath assets --iconBackgroundColor '#05070a' --iconBackgroundColorDark '#05070a'
+
+      # Кастомный MainActivity (status-bar + DownloadListener) поверх стаба.
+      - name: Install custom MainActivity
+        run: cp native/MainActivity.java android/app/src/main/java/ru/starcrm/eclipsechat/MainActivity.java
 
       # versionName из тега (android-v1.0.2 → "1.0.2"), versionCode из номера
       # запуска (монотонно растёт — требование Google Play). Так App.getInfo()
