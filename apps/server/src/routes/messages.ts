@@ -15,6 +15,12 @@ import {
 } from "../realtime.js";
 import { unlinkAttachmentFiles } from "../attachments.js";
 
+/** OWNER / ADMIN / MODERATOR могут модерировать (закреплять/удалять чужое).
+ * v1.6.96 — вынесено из 3 одинаковых inline-проверок (delete/pin/unpin). */
+function isServerModerator(role: string): boolean {
+  return role === "OWNER" || role === "ADMIN" || role === "MODERATOR";
+}
+
 const editBody = z.object({
   content: z.string().min(1).max(8000),
 });
@@ -306,7 +312,7 @@ export async function registerMessageRoutes(app: FastifyInstance) {
           where: { userId_serverId: { userId, serverId: ch.serverId } },
           select: { role: true },
         });
-        if (!member || (member.role !== "OWNER" && member.role !== "ADMIN" && member.role !== "MODERATOR")) {
+        if (!member || !isServerModerator(member.role)) {
           return reply.status(403).send({ error: "Only author or OWNER/ADMIN/MODERATOR can delete" });
         }
       }
@@ -374,7 +380,7 @@ export async function registerMessageRoutes(app: FastifyInstance) {
         where: { userId_serverId: { userId, serverId: ch.serverId } },
         select: { role: true },
       });
-      if (!member || (member.role !== "OWNER" && member.role !== "ADMIN" && member.role !== "MODERATOR")) {
+      if (!member || !isServerModerator(member.role)) {
         return reply.status(403).send({ error: "Only OWNER/ADMIN/MODERATOR can pin" });
       }
       const pinnedAt = new Date();
@@ -419,7 +425,7 @@ export async function registerMessageRoutes(app: FastifyInstance) {
         where: { userId_serverId: { userId, serverId: ch.serverId } },
         select: { role: true },
       });
-      if (!member || (member.role !== "OWNER" && member.role !== "ADMIN" && member.role !== "MODERATOR")) {
+      if (!member || !isServerModerator(member.role)) {
         return reply.status(403).send({ error: "Only OWNER/ADMIN/MODERATOR can unpin" });
       }
       await db.message.update({ where: { id: messageId }, data: { pinnedAt: null } });
