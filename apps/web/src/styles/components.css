@@ -1855,8 +1855,9 @@ input[type="radio"]:focus-visible {
   backdrop-filter: blur(18px) saturate(130%);
   -webkit-backdrop-filter: blur(18px) saturate(130%);
   border-bottom-color: color-mix(in srgb, var(--ec-accent) 12%, hsl(225 14% 72% / 0.08));
-  /* v1.6.45 de-noise: убран violet inset-glow. */
-  box-shadow: 0 16px 38px hsl(210 70% 2% / 0.22);
+  /* v1.6.45 de-noise: убран violet inset-glow. v1.6.92: тень мягче (была
+     38px-«ореол» на топбаре, который должен быть рецессивен к контенту). */
+  box-shadow: 0 8px 20px hsl(210 70% 2% / 0.12);
 }
 /* v1.6.45 de-noise: holo-рейл на chat-header убран. */
 .ec-chat-header::before {
@@ -1890,7 +1891,6 @@ input[type="radio"]:focus-visible {
   font-weight: 800;
   letter-spacing: var(--ec-tracking-caps);
   text-transform: uppercase;
-  text-shadow: 0 0 16px hsl(258 86% 62% / 0.32);
 }
 
 .ec-unread-divider::before,
@@ -9885,9 +9885,11 @@ body {
 }
 
 .ec-message-row--ai .ec-message-content {
+  /* v1.6.92 — был хардкод тёмный градиент (#111827/#090f1a → чёрный в SOLAR)
+     + радиальный акцент. Упрощено до спокойного токен-тинта: акцентный border
+     (выше) уже идентифицирует бот-сообщение. Корректно в обеих темах. */
   background:
-    radial-gradient(circle at 0 0, color-mix(in srgb, var(--ec-accent) 19%, transparent), transparent 50%),
-    linear-gradient(135deg, #111827, #090f1a) !important;
+    linear-gradient(135deg, color-mix(in srgb, var(--ec-accent) 10%, var(--ec-surface-2)), var(--ec-surface-1)) !important;
 }
 
 .ec-message-row--mine {
@@ -11867,5 +11869,22 @@ body {
   .ec-vr-presence-card:hover {
     transform: none !important;
   }
+}
+
+/* v1.6.92 — ДЕ-НОЙЗ: глушим постоянные ambient-«дыхания»/пульсации внутри
+   приложения. Они крутятся вечно и не несут информации (online / active /
+   unread уже переданы цветом/иконкой/числом) → лишний перф и батарея, особенно
+   в мобильном WebView (N online-точек = N вечных таймлайнов). Статика
+   (цвет точки, бейдж, активный рейл, аватар) остаётся — уходит только движение.
+   Лендинг-хедер/галактику НЕ трогаем. По аудиту (P5/P8). */
+.ec-dot--online,
+.ec-member-row:not(.ec-member-row--offline) .ec-member-row__presence,
+.ec-dm-row.is-online .ec-avatar,
+.ec-composer-send:not(:disabled),
+.ec-anim-reaction-mine,
+.ec-dm-row__badge,
+.ec-dm-row__badge::after,
+.ec-channel-item--active::before {
+  animation: none !important;
 }
 
