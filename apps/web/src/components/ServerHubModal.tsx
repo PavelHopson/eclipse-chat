@@ -567,10 +567,9 @@ export function ServerHubModal({
                     style={{
                       padding: "var(--ec-space-1) var(--ec-space-3)",
                       borderRadius: "999px",
-                      background: "hsl(210 22% 4% / 0.55)",
-                      color: "#fff",
+                      background: "var(--ec-overlay-bg)",
+                      color: "var(--ec-text-strong)",
                       fontSize: "var(--ec-text-sm)",
-                      textShadow: "0 1px 3px hsl(210 22% 4% / 0.8)",
                     }}
                   >
                     Авто-градиент — нет изображения
@@ -761,9 +760,7 @@ export function ServerHubModal({
                         flexDirection: "column",
                         gap: 4,
                         transition: "all var(--ec-dur-fast) var(--ec-ease)",
-                        boxShadow: active
-                          ? "0 0 0 1px var(--ec-accent), 0 0 14px -2px hsl(258 90% 66% / 0.3)"
-                          : "none",
+                        boxShadow: active ? "0 0 0 1px var(--ec-accent)" : "none",
                       }}
                     >
                       <span style={{ fontSize: "var(--ec-text-sm)", fontWeight: 700 }}>
