@@ -875,6 +875,11 @@ model Channel {
   /// cron'ом после `expiresAt`. UI показывает countdown badge в chat-header.
   /// NULL = постоянный канал. Hard delete (cascade messages/actions).
   expiresAt   DateTime?
+  /// v1.7.0 — исчезающие сообщения (privacy slice A). Если задано (секунды) —
+  /// новые сообщения канала получают `Message.expiresAt = createdAt +
+  /// messageTtlSeconds` и hard-удаляются cron'ом. NULL = сообщения не исчезают.
+  /// Пер-сообщение можно переопределить при отправке (см. Message.expiresAt).
+  messageTtlSeconds Int?
   /// Если канал — incident-канал, ссылка на Incident. Unique (1-to-1).
   /// Null для обычных каналов. UI рисует incident badge если set.
   incidentId  String?    @unique
@@ -1087,6 +1092,10 @@ model Message {
   /// sort by pinnedAt desc. Pin/unpin доступен OWNER/ADMIN/MODERATOR.
   /// Для DM messages pin не разрешён (нет ролей в DM).
   pinnedAt  DateTime?
+  /// v1.7.0 — исчезающее сообщение (privacy slice A). Если задано — сообщение
+  /// hard-удаляется cron'ом после expiresAt. Вычисляется при отправке из
+  /// Channel.messageTtlSeconds (или пер-сообщение override). NULL = постоянное.
+  expiresAt DateTime?
   /// v0.63 cascade policy B: nullable + SetNull. При удалении User
   /// message остаётся, автор=null, UI рендерит «Удалённый пользователь».
   /// Bot deletions / GDPR-style erasure теперь не уничтожают историю.
@@ -1115,6 +1124,8 @@ model Message {
   @@index([channelId, pinnedAt])
   @@index([conversationId, createdAt])
   @@index([parentMessageId])
+  /// v1.7.0 — cron исчезающих сообщений сканит по expiresAt < now.
+  @@index([expiresAt])
 }
 
 /// v1.5.24 — История редактирования сообщений. На каждый PATCH /api/messages/:id

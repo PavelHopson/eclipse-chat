@@ -62,6 +62,8 @@ export function emitMessageOnChannel(
     botRole?: BotRoleValue | null;
     createdAt: string;
     attachments?: AttachmentPayload[];
+    /** v1.7.0 — исчезающее сообщение: ISO момента авто-удаления, null = постоянное. */
+    expiresAt?: string | null;
   },
 ) {
   io?.to(`channel:${channelId}`).emit("message:new", payload);
@@ -152,6 +154,8 @@ export function emitChannelUpdated(
     description: string | null;
     emoji: string | null;
     expiresAt?: string | null;
+    /** v1.7.0 — дефолтный TTL исчезающих сообщений канала (секунды; null = выкл). */
+    messageTtlSeconds?: number | null;
     /** v1.5.46 C1 — категория канала. null = uncategorized.
      *  При смене categoryId frontend перемещает канал между группами. */
     categoryId?: string | null;
@@ -279,6 +283,15 @@ export function emitMessageDeleted(
   payload: { messageId: string; channelId: string; deletedAt: string },
 ) {
   io?.to(`channel:${channelId}`).emit("message:deleted", payload);
+}
+
+/** v1.7.0 — исчезающее сообщение истекло: hard-удалено, frontend УБИРАЕТ из
+ *  списка (в отличие от message:deleted, который рисует placeholder). */
+export function emitMessageExpired(
+  channelId: string,
+  payload: { messageId: string; channelId: string },
+) {
+  io?.to(`channel:${channelId}`).emit("message:expired", payload);
 }
 
 /** Pin: frontend добавляет в pinned-bar (если открыт) + помечает сообщение. */

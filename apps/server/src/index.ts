@@ -53,6 +53,7 @@ import {
 import { recoverStuckTranscripts } from "./ai/transcribe.js";
 import { startEscalationCron } from "./escalation.js";
 import { startTempChannelCron } from "./tempChannels.js";
+import { startExpiredMessageCron } from "./expiredMessages.js";
 import { db } from "./db.js";
 
 const port = Number(process.env.PORT) || 3001;
@@ -229,7 +230,7 @@ app.get("/api/health", async () => {
     },
   };
 });
-app.get("/api/version", async () => ({ name: "@eclipse-chat/server", version: "1.6.99" }));
+app.get("/api/version", async () => ({ name: "@eclipse-chat/server", version: "1.7.0" }));
 
 await registerAuthRoutes(app);
 await registerTwoFactorRoutes(app);
@@ -607,6 +608,9 @@ try {
   // v0.74 #29 phase 1: cron auto-delete для temporary rooms (Channel.expiresAt).
   // Scan каждую минуту, PROCESS_LIMIT=100 за проход.
   startTempChannelCron(app.log);
+
+  // v1.7.0 — cron исчезающих сообщений (Message.expiresAt). Scan каждые 30s.
+  startExpiredMessageCron(app.log);
 
   // Keep-alive ping для Neon free tier (Scales to zero после ~5 минут idle).
   // Без этого Neon рвёт connection и каждый запрос имеет 20-сек cold start.
