@@ -112,6 +112,8 @@ export type ChannelUpdatedPayload = {
   description: string | null;
   emoji: string | null;
   expiresAt?: string | null;
+  /** v1.7.0 — дефолтный TTL исчезающих сообщений канала (секунды; null = выкл). */
+  messageTtlSeconds?: number | null;
 };
 
 export type CategoryDto = {

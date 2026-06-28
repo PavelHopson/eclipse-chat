@@ -16,6 +16,7 @@ type Props = {
     description?: string | null;
     emoji?: string | null;
     internal?: boolean;
+    messageTtlSeconds?: number | null;
   }) => Promise<boolean>;
   /** v0.47: показывать toggle «Internal channel». OWNER/ADMIN/MOD + Client mode. */
   showInternalToggle?: boolean;
@@ -68,6 +69,7 @@ export function ChannelSettingsModal({
   const [description, setDescription] = useState(channel.description ?? "");
   const [emoji, setEmoji] = useState<string | null>(channel.emoji);
   const [internal, setInternal] = useState<boolean>(channel.internal ?? false);
+  const [messageTtl, setMessageTtl] = useState<number | null>(channel.messageTtlSeconds ?? null);
   const [saving, setSaving] = useState(false);
   const [savedFlash, setSavedFlash] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -78,14 +80,16 @@ export function ChannelSettingsModal({
     setDescription(channel.description ?? "");
     setEmoji(channel.emoji);
     setInternal(channel.internal ?? false);
-  }, [channel.id, channel.name, channel.description, channel.emoji, channel.internal]);
+    setMessageTtl(channel.messageTtlSeconds ?? null);
+  }, [channel.id, channel.name, channel.description, channel.emoji, channel.internal, channel.messageTtlSeconds]);
 
   const nameChanged = name.trim() !== channel.name;
   const descChanged = (description.trim() || null) !== (channel.description || null);
   const emojiChanged = (emoji || null) !== (channel.emoji || null);
   const internalChanged = internal !== (channel.internal ?? false);
+  const ttlChanged = messageTtl !== (channel.messageTtlSeconds ?? null);
   const canSave =
-    (nameChanged || descChanged || emojiChanged || internalChanged) &&
+    (nameChanged || descChanged || emojiChanged || internalChanged || ttlChanged) &&
     name.trim().length > 0 &&
     !saving;
 
@@ -97,11 +101,13 @@ export function ChannelSettingsModal({
       description?: string | null;
       emoji?: string | null;
       internal?: boolean;
+      messageTtlSeconds?: number | null;
     } = {};
     if (nameChanged) patch.name = name.trim();
     if (descChanged) patch.description = description.trim() || null;
     if (emojiChanged) patch.emoji = emoji;
     if (internalChanged) patch.internal = internal;
+    if (ttlChanged) patch.messageTtlSeconds = messageTtl;
     try {
       const ok = await onUpdate(patch);
       if (ok) {
@@ -238,6 +244,28 @@ export function ChannelSettingsModal({
             <span style={{ marginLeft: 6, color: "var(--ec-text-muted)" }}>
               {description.length}/1024
             </span>
+          </p>
+        </div>
+      </section>
+
+      {/* v1.7.0 — исчезающие сообщения (privacy slice A): дефолтный TTL канала. */}
+      <section style={{ marginTop: "var(--ec-space-4)" }}>
+        <h3 style={sectionLabel}>Исчезающие сообщения</h3>
+        <div style={groupCard}>
+          <select
+            value={messageTtl === null ? "off" : String(messageTtl)}
+            onChange={(e) => setMessageTtl(e.target.value === "off" ? null : Number(e.target.value))}
+            style={inputStyle}
+          >
+            <option value="off">Выключено — сообщения не исчезают</option>
+            <option value="3600">Через 1 час</option>
+            <option value="86400">Через 24 часа</option>
+            <option value="604800">Через 7 дней</option>
+          </select>
+          <p style={fieldHint}>
+            Новые сообщения в этой комнате автоматически удаляются по таймеру —
+            для приватных/временных обсуждений. Уже отправленные сообщения не
+            затрагиваются. Удаление необратимо (без архива).
           </p>
         </div>
       </section>

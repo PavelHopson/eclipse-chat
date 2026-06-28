@@ -22,6 +22,7 @@ import {
 import { addServerRoom, onlineUserIds, removeServerRoom } from "../presence.js";
 import { getSystemBotUserId } from "../lib/systemBot.js";
 import { inviteRejectReason, type InviteRejectReason } from "../lib/serverInvites.js";
+import { normalizeMessageTtl } from "../lib/disappearingMessages.js";
 
 // v1.6.99 — сообщение об отклонённом ServerInvite (slice B).
 const INVITE_REJECT_MESSAGE: Record<InviteRejectReason, string> = {
@@ -116,6 +117,9 @@ const updateChannelBody = z.object({
   /** v0.74 #29 phase 1: переключить expiry. NULL = снять (постоянный),
    *  ISO timestamp в будущем = установить/обновить. */
   expiresAt: z.string().datetime().nullable().optional(),
+  /** v1.7.0 — исчезающие сообщения (slice A): дефолтный TTL канала в секундах.
+   *  NULL = выкл, >0 = включить/обновить (кламп [1м..30д] в normalizeMessageTtl). */
+  messageTtlSeconds: z.number().int().positive().max(60 * 60 * 24 * 365).nullable().optional(),
 });
 
 const reorderChannelsBody = z.object({
@@ -979,6 +983,7 @@ export async function registerServerRoutes(app: FastifyInstance) {
         emoji: true,
         internal: true,
         expiresAt: true,
+        messageTtlSeconds: true,
         createdAt: true,
         // v1.5.46 C1 — категория канала. null = uncategorized.
         categoryId: true,
@@ -1441,7 +1446,8 @@ export async function registerServerRoutes(app: FastifyInstance) {
         parsed.data.description === undefined &&
         parsed.data.emoji === undefined &&
         parsed.data.internal === undefined &&
-        parsed.data.expiresAt === undefined
+        parsed.data.expiresAt === undefined &&
+        parsed.data.messageTtlSeconds === undefined
       ) {
         return reply.status(400).send({ error: "Nothing to update" });
       }
@@ -1495,6 +1501,7 @@ export async function registerServerRoutes(app: FastifyInstance) {
         emoji?: string | null;
         internal?: boolean;
         expiresAt?: Date | null;
+        messageTtlSeconds?: number | null;
       } = {};
       if (parsed.data.name !== undefined) {
         data.name = parsed.data.name.trim();
@@ -1513,6 +1520,10 @@ export async function registerServerRoutes(app: FastifyInstance) {
       if (expiresAtValue !== undefined) {
         data.expiresAt = expiresAtValue;
       }
+      if (parsed.data.messageTtlSeconds !== undefined) {
+        // null → выкл; иначе кламп [1м..30д].
+        data.messageTtlSeconds = normalizeMessageTtl(parsed.data.messageTtlSeconds);
+      }
       const updated = await db.channel.update({
         where: { id: channelId },
         data,
@@ -1526,6 +1537,7 @@ export async function registerServerRoutes(app: FastifyInstance) {
           emoji: true,
           internal: true,
           expiresAt: true,
+          messageTtlSeconds: true,
           serverId: true,
         },
       });
@@ -1539,6 +1551,7 @@ export async function registerServerRoutes(app: FastifyInstance) {
         description: updated.description,
         emoji: updated.emoji,
         expiresAt: updated.expiresAt?.toISOString() ?? null,
+        messageTtlSeconds: updated.messageTtlSeconds,
       });
       return {
         channel: {
@@ -1551,6 +1564,7 @@ export async function registerServerRoutes(app: FastifyInstance) {
           emoji: updated.emoji,
           internal: updated.internal,
           expiresAt: updated.expiresAt?.toISOString() ?? null,
+          messageTtlSeconds: updated.messageTtlSeconds,
         },
       };
     },

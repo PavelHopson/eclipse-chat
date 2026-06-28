@@ -62,6 +62,8 @@ export function emitMessageOnChannel(
     botRole?: BotRoleValue | null;
     createdAt: string;
     attachments?: AttachmentPayload[];
+    /** v1.7.0 — исчезающее сообщение: ISO момента авто-удаления, null = постоянное. */
+    expiresAt?: string | null;
   },
 ) {
   io?.to(`channel:${channelId}`).emit("message:new", payload);
@@ -152,6 +154,8 @@ export function emitChannelUpdated(
     description: string | null;
     emoji: string | null;
     expiresAt?: string | null;
+    /** v1.7.0 — дефолтный TTL исчезающих сообщений канала (секунды; null = выкл). */
+    messageTtlSeconds?: number | null;
     /** v1.5.46 C1 — категория канала. null = uncategorized.
      *  При смене categoryId frontend перемещает канал между группами. */
     categoryId?: string | null;
