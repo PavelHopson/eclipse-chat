@@ -362,6 +362,9 @@ enum AuditEventType {
   SERVER_DELETED
   SERVER_BANNER_CHANGED
   SERVER_IDENTITY_CHANGED
+  /// v1.6.99 — privacy slice B: одноразовые/истекающие invite-коды.
+  SERVER_INVITE_CREATED
+  SERVER_INVITE_REVOKED
   MEMBER_ROLE_CHANGED
   MEMBER_KICKED
   MESSAGE_DELETED_BY_MOD
@@ -693,6 +696,37 @@ model Server {
   /// visible to every server member; write access is OWNER/ADMIN only.
   trainingSections    TrainingSection[]
   trainingVideos      TrainingVideo[]
+  /// v1.6.99 — одноразовые / истекающие invite-коды (privacy slice B).
+  invites             ServerInvite[]
+}
+
+/// v1.6.99 — одноразовые / истекающие invite-коды (privacy slice B).
+/// Параллельно legacy `Server.inviteCode` (вечный, многоразовый): отдельные
+/// коды с лимитом использований и/или сроком, отзываемые. Принимаются тем же
+/// POST /api/servers/join/:code. Cron-очистки нет — валидность проверяется на
+/// join (revokedAt/expiresAt/maxUses); истёкшие просто перестают работать.
+model ServerInvite {
+  id        String    @id @default(cuid())
+  /// URL-safe код (base64url). Уникален глобально среди инвайтов.
+  code      String    @unique
+  serverId  String
+  server    Server    @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  /// Кто создал. Scalar без Prisma-relation (FK + ON DELETE SET NULL заданы в
+  /// миграции вручную) — чтобы не расширять большую модель User. NULL после
+  /// удаления автора.
+  createdByUserId String?
+  /// Лимит использований. NULL = без лимита.
+  maxUses   Int?
+  /// Сколько раз принят (инкремент на каждый НОВЫЙ join, не на idempotent-повтор).
+  uses      Int       @default(0)
+  /// Срок действия. NULL = бессрочный.
+  expiresAt DateTime?
+  /// Отозван вручную (OWNER/ADMIN). NULL = активен.
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([serverId])
+  @@index([expiresAt])
 }
 
 model TrainingSection {

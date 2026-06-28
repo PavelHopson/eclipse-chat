@@ -11,6 +11,7 @@ import {
   RolesSection,
 } from "./server-hub/ServerHubSections";
 import { ServerAuditLogSection } from "./server-hub/ServerAuditLogSection";
+import { ServerInvitesManager } from "./server-hub/ServerInvitesManager";
 import type { MemberRole, MemberRow } from "../hooks/useMembers";
 import type { ServerRow } from "../hooks/useServers";
 import type { ChannelRow } from "../hooks/useChannels";
@@ -940,12 +941,17 @@ export function ServerHubModal({
       )}
 
       {active === "invite" && (
-        <InviteSection
-          inviteCode={server.inviteCode}
-          inviteUrl={inviteUrl}
-          copyState={copyState}
-          onCopy={(text, which) => void copy(text, which)}
-        />
+        <>
+          <InviteSection
+            inviteCode={server.inviteCode}
+            inviteUrl={inviteUrl}
+            copyState={copyState}
+            onCopy={(text, which) => void copy(text, which)}
+          />
+          {isAdminOrOwner && (
+            <ServerInvitesManager serverId={server.id} buildInviteUrl={buildInviteUrl} />
+          )}
+        </>
       )}
 
       {active === "bots" && isAdminOrOwner && <BotsTab serverId={server.id} />}
