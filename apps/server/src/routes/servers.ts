@@ -21,6 +21,14 @@ import {
 } from "../realtime.js";
 import { addServerRoom, onlineUserIds, removeServerRoom } from "../presence.js";
 import { getSystemBotUserId } from "../lib/systemBot.js";
+import { inviteRejectReason, type InviteRejectReason } from "../lib/serverInvites.js";
+
+// v1.6.99 — сообщение об отклонённом ServerInvite (slice B).
+const INVITE_REJECT_MESSAGE: Record<InviteRejectReason, string> = {
+  revoked: "Приглашение отозвано",
+  expired: "Срок действия приглашения истёк",
+  exhausted: "Лимит использований приглашения исчерпан",
+};
 
 /**
  * Server-icon лимиты: 20 MB binary / 27 MB body (для iPhone HEIC + base64
@@ -492,7 +500,18 @@ export async function registerServerRoutes(app: FastifyInstance) {
       return reply.status(401).send({ error: "Unauthorized" });
     }
     const { code } = req.params as { code: string };
-    const server = await db.server.findUnique({ where: { inviteCode: code } });
+    // v1.6.99 — сначала ServerInvite (одноразовые/истекающие), затем legacy
+    // Server.inviteCode (вечный). На успешный НОВЫЙ join uses инкрементится ниже.
+    const inviteRecord = await db.serverInvite.findUnique({ where: { code } });
+    if (inviteRecord) {
+      const reason = inviteRejectReason(inviteRecord, new Date());
+      if (reason) {
+        return reply.status(410).send({ error: INVITE_REJECT_MESSAGE[reason], reason });
+      }
+    }
+    const server = inviteRecord
+      ? await db.server.findUnique({ where: { id: inviteRecord.serverId } })
+      : await db.server.findUnique({ where: { inviteCode: code } });
     if (!server) {
       return reply.status(404).send({ error: "Invite not found" });
     }
@@ -529,6 +548,13 @@ export async function registerServerRoutes(app: FastifyInstance) {
       include: { user: { select: { id: true, displayName: true, email: true, avatar: true } } },
     });
     addServerRoom(userId, server.id);
+    // v1.6.99 — инкремент uses у ServerInvite только на НОВЫЙ join (idempotent
+    // already-member path вышел выше). Best-effort: ошибка не валит join.
+    if (inviteRecord) {
+      void db.serverInvite
+        .update({ where: { id: inviteRecord.id }, data: { uses: { increment: 1 } } })
+        .catch((err) => req.log.warn({ err, inviteId: inviteRecord.id }, "invite uses increment failed"));
+    }
     // member.user всегда non-null т.к. Member.userId не nullable — defensive
     // userDisplayName() для consistency со styles серверного кода.
     emitMemberJoined(server.id, {
