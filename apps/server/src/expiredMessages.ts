@@ -1,15 +1,15 @@
 import type { FastifyBaseLogger } from "fastify";
 import { db } from "./db.js";
-import { emitMessageExpired } from "./realtime.js";
+import { emitMessageDeleted } from "./realtime.js";
 
 /**
  * v1.7.0 — исчезающие сообщения (privacy slice A), cron очистки.
  *
  * Scan каждые SCAN_INTERVAL_MS на сообщения где `expiresAt < now`. Hard-delete
  * (cascade удалит reactions/attachments/embeddings; thread-replies станут orphan
- * через SetNull — history-safe). После delete — emit `message:expired` в
- * channel-room, чтобы клиенты УБРАЛИ сообщение из ленты (в отличие от soft-delete
- * placeholder'а).
+ * через SetNull — history-safe). После delete — emit `message:deleted` в
+ * channel-room: фронт-обработчик убирает сообщение из ленты полностью (без
+ * tombstone — см. useMessages onDeleted), что и есть нужное «исчезновение».
  *
  * Защита: PROCESS_LIMIT за проход. Интервал 30s — баланс между «исчезло вовремя»
  * (≤30s после deadline) и DB-нагрузкой. Индекс Message_expiresAt_idx покрывает scan.
@@ -57,7 +57,11 @@ export async function runExpiredMessageScan(log: FastifyBaseLogger): Promise<{
     try {
       await db.message.delete({ where: { id: msg.id } });
       if (msg.channelId) {
-        emitMessageExpired(msg.channelId, { messageId: msg.id, channelId: msg.channelId });
+        emitMessageDeleted(msg.channelId, {
+          messageId: msg.id,
+          channelId: msg.channelId,
+          deletedAt: now.toISOString(),
+        });
       }
       deleted += 1;
     } catch (err) {

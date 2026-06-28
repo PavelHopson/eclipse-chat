@@ -285,15 +285,6 @@ export function emitMessageDeleted(
   io?.to(`channel:${channelId}`).emit("message:deleted", payload);
 }
 
-/** v1.7.0 — исчезающее сообщение истекло: hard-удалено, frontend УБИРАЕТ из
- *  списка (в отличие от message:deleted, который рисует placeholder). */
-export function emitMessageExpired(
-  channelId: string,
-  payload: { messageId: string; channelId: string },
-) {
-  io?.to(`channel:${channelId}`).emit("message:expired", payload);
-}
-
 /** Pin: frontend добавляет в pinned-bar (если открыт) + помечает сообщение. */
 export function emitMessagePinned(
   channelId: string,
