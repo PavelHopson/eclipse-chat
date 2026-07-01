@@ -5,6 +5,26 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
+## Research intake — 2026-07-01
+
+Источник: [Eclipse Library · July 2026 project integration](https://library.eclipse-forge.ru/#guide/july-2026-project-integration).
+Это стратегические references, **не реализованный функционал**.
+
+### AI memory / operator layer
+
+- [ ] **OpenHuman reference** — спроектировать `AI Memory` слой: room memory, project memory, "since you were away", semantic search по решениям/файлам/задачам, audit trail и удаление памяти.
+- [ ] **SimpleX Chat reference** — privacy-модель для ephemeral/private rooms: одноразовые invite links/QR, минимизация метаданных, режимы client/private channel.
+- [ ] **OpenClaw Mobile reference** — mobile operator control: агент предлагает действие, пользователь подтверждает с телефона; camera/location/voice только через явные permissions.
+
+### AI routing / agent readiness
+
+- [ ] **OmniRoute reference** — provider-router для AI agents: fallback, cost-aware routing, context compression, метрики latency/cost/error; только легальные ключи и ToS-safe провайдеры.
+- [ ] **Cloudflare Agent Ready** — прогонять public landing/download/docs на AI Search, Web Bot Auth, MCP, bot-readable docs и рекомендации для agent discoverability.
+
+### Operational workspace UX
+
+- [ ] **TREK reference** — client/project rooms как workspace вокруг процесса: планы, опросы, shared checklist, budget/table layer, route-like progress и lightweight журнала проекта.
+
 **Текущая версия:** **v1.6.98** (🗄️⚡ PARTIAL-ИНДЕКС под escalation-scan (бэклог-хвост, заход через CI). Фоновой `escalation.ts` раз в час обходит `ActionItem` где `status ∈ (OPEN,IN_PROGRESS,REVIEW)`, `dueAt < now-48h`, `(escalatedAt IS NULL OR < now-7d)`, `ORDER BY dueAt ASC LIMIT 50`. Запрос **глобальный** (без serverId/channelId) → все 4 существующих индекса `ActionItem` ведут с channelId/serverId и его НЕ покрывают → был seq-scan всей таблицы каждый час. **Новый partial composite index** `ActionItem_escalation_scan_idx ON ("dueAt") WHERE status IN (OPEN,IN_PROGRESS,REVIEW) AND dueAt IS NOT NULL` (raw-миграция `20260625120000_add_escalation_partial_index`): индексирует только кандидатов эскалации (крошечная доля таблицы — закрытые DONE и задачи без дедлайна исключены); ведущая `dueAt` → один forward index-scan покрывает и `dueAt < X`, и `ORDER BY dueAt ASC LIMIT 50` без сортировки, рано останавливается. **Prisma не выражает WHERE-индексы** → raw SQL; `migrate deploy` (deploy.sh [4/10]) применяет как есть, `prisma generate` индексы не читает, drift-проверок (`migrate dev`) в проекте нет (прод=migrate deploy, локальной БД нет). schema.prisma — doc-comment у `ActionItem` фиксирует существование индекса («не чинить как drift»). **temp-channel scan (`tempChannels.ts`) НЕ трогал** — `Channel` уже имеет `@@index([expiresAt])`, а `WHERE expiresAt < now` = чистый range-scan по нему (NULL'ы сортируются последними, не читаются); partial там лишь дублировал бы индекс = write-amplification на крошечной таблице ради ~нуля. Version 1.6.97→1.6.98 (4 точки). Verify: server `tsc --noEmit` PASS, web build PASS; миграция применится на проде при деплое (`migrate deploy`). **Бэклог-остаток:** виртуализация ленты сообщений (npm-dep + риск-рефактор скролла) — единственный крупный хвост.)
 
 **Предыдущая:** **v1.6.97** (📲✅ ANDROID v1.0.4 НА САЙТЕ (хвост закрыт) + splash-hide. CDN отпустил → перезалит on-site `public/download/eclipse-chat.apk` на подписанный **`android-v1.0.4`** (4.8 МБ): in-app downloads (DownloadListener в `MainActivity`) + тёмный status-bar + сплеш (`@capacitor/splash-screen`). Юзеры v1.0.3 → баннер «новая версия». **Веб-часть слайса 3 дозакрыта:** `main.tsx` прячет нативный сплеш (`window.Capacitor.Plugins.SplashScreen.hide()`) по монтированию веба (rAF; graceful no-op в браузере; `launchAutoHide` страхует). Version 1.6.96→1.6.97 (4 точки). Verify: typecheck+build green, APK 4.8МБ в `dist/download/`. **Осталось (всё внешне-заблокировано локально):** partial-индексы — Prisma-миграцию НЕ сгенерить локально (нет БД); виртуализация ленты — npm-dep не добавить локально. Оба — отдельным заходом через CI/с БД. Полировка-де-нойз/перф/SOLAR/серверный-рефактор — закрыты (слайсы v1.6.90-96).
