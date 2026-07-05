@@ -104,6 +104,24 @@ export type ListAuditParams = {
   offset?: number;
 };
 
+// ===== AI provider diagnostics ============================================
+
+export type AiProviderDiagnostic = {
+  priority: number;
+  name: string;
+  kind: "local" | "gateway" | "cloud" | "keyless";
+  baseHost: string;
+  hasAuth: boolean;
+  modelCount: number;
+  models: string[];
+};
+
+export type AiProviderDiagnosticsResponse = {
+  providers: AiProviderDiagnostic[];
+  total: number;
+  configured: boolean;
+};
+
 // ===== Helpers =============================================================
 
 function buildQuery(params: Record<string, string | number | undefined>): string {
@@ -228,6 +246,10 @@ export async function listPlatformAuditLog(
       offset: params.offset,
     })}`,
   );
+}
+
+export async function listAiProviderDiagnostics(): Promise<AiProviderDiagnosticsResponse> {
+  return apiJson<AiProviderDiagnosticsResponse>("api/platform/ai/providers");
 }
 
 // ===== Details views (v1.2.8 P3) ===========================================

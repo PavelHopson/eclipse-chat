@@ -183,6 +183,16 @@ type ProviderConfig = {
   extraBody?: Record<string, unknown>;
 };
 
+export type AiProviderDiagnostic = {
+  priority: number;
+  name: string;
+  kind: "local" | "gateway" | "cloud" | "keyless";
+  baseHost: string;
+  hasAuth: boolean;
+  modelCount: number;
+  models: string[];
+};
+
 /** v1.5.18 — utility для парсинга CSV список моделей из env. Trim'ит
  *  пустоты, dedupes, пропускает пустые строки. Если CSV пуст/не задан
  *  → возвращает [fallback]. */
@@ -477,6 +487,39 @@ function getProviders(): ProviderConfig[] {
     });
   }
   return out;
+}
+
+function providerKind(name: string): AiProviderDiagnostic["kind"] {
+  if (name === "ollama") return "local";
+  if (name === "omniroute" || name === "custom") return "gateway";
+  if (name === "pollinations") return "keyless";
+  return "cloud";
+}
+
+function baseHost(baseUrl: string): string {
+  try {
+    return new URL(baseUrl).host;
+  } catch {
+    return "custom-endpoint";
+  }
+}
+
+function sanitizeModel(model: string): string {
+  // YandexGPT model URI contains folder id; it is not a key, but we do not need
+  // to expose tenant-like identifiers in admin diagnostics.
+  return model.replace(/^gpt:\/\/[^/]+\//, "gpt://<folder>/");
+}
+
+export function listAiProviderDiagnostics(): AiProviderDiagnostic[] {
+  return getProviders().map((cfg, index) => ({
+    priority: index + 1,
+    name: cfg.name,
+    kind: providerKind(cfg.name),
+    baseHost: baseHost(cfg.baseUrl),
+    hasAuth: Boolean(cfg.apiKey || cfg.extraHeaders?.Authorization),
+    modelCount: cfg.models.length,
+    models: cfg.models.map(sanitizeModel),
+  }));
 }
 
 export function isAiConfigured(): boolean {

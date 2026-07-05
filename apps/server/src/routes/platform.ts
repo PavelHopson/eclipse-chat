@@ -9,6 +9,7 @@ import { requirePlatformOwner } from "../auth/requirePlatformOwner.js";
 import { recordAudit } from "../security/audit.js";
 import { deleteAllUserRefresh } from "../auth/refresh.js";
 import { disconnectUser } from "../realtime.js";
+import { listAiProviderDiagnostics } from "../ai/provider.js";
 
 /**
  * v1.2.6 Platform Admin (trek P1) — глобальная super-admin панель для
@@ -282,6 +283,17 @@ export async function registerPlatformRoutes(app: FastifyInstance) {
       limit,
       offset,
     });
+  });
+
+  // GET /api/platform/ai/providers — sanitized AI provider diagnostics.
+  // No keys, prompts, request bodies or user content. Platform-owner only.
+  app.get("/api/platform/ai/providers", guard, async () => {
+    const providers = listAiProviderDiagnostics();
+    return {
+      providers,
+      total: providers.length,
+      configured: providers.length > 0,
+    };
   });
 
   // POST /api/platform/users/:id/ban — забанить пользователя.
