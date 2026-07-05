@@ -23,6 +23,7 @@ import { registerDmRoutes, isDmMember, loadConversationMembers } from "./routes/
 import { registerEmbedRoutes } from "./routes/embeds.js";
 import { registerFriendRoutes } from "./routes/friends.js";
 import { registerMessageRoutes } from "./routes/messages.js";
+import { registerMemoryRoutes } from "./routes/memory.js";
 import { registerIntegrationRoutes } from "./routes/integrations.js";
 import { registerComposioRoutes } from "./routes/composio.js";
 import { registerPlatformRoutes } from "./routes/platform.js";
@@ -230,7 +231,7 @@ app.get("/api/health", async () => {
     },
   };
 });
-app.get("/api/version", async () => ({ name: "@eclipse-chat/server", version: "1.7.2" }));
+app.get("/api/version", async () => ({ name: "@eclipse-chat/server", version: "1.7.3" }));
 
 await registerAuthRoutes(app);
 await registerTwoFactorRoutes(app);
@@ -269,6 +270,7 @@ await registerActionRoutes(app);
 await registerAttachmentRoutes(app);
 await registerAutomationRoutes(app);
 await registerDigestRoutes(app);
+await registerMemoryRoutes(app);
 await registerServerRoutes(app);
 await registerInviteRoutes(app);
 await registerUserRoutes(app);

@@ -83,6 +83,7 @@ import { TypingIndicator } from "../components/TypingIndicator";
 import { VoiceMiniBar } from "../components/VoiceMiniBar";
 import { VoicePlaceholder } from "../components/VoicePlaceholder";
 import { useChannelDigest } from "../hooks/useChannelDigest";
+import { useChannelMemory } from "../hooks/useChannelMemory";
 import { useChannels } from "../hooks/useChannels";
 import { dmIsSaved, dmTitle, useDirectConversations } from "../hooks/useDirectConversations";
 import { useDirectMessages } from "../hooks/useDirectMessages";
@@ -231,6 +232,15 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     aiError: digestAiError,
     requestAiSummary: requestDigestAiSummary,
   } = useChannelDigest(selectedChannelId, socket);
+
+  const {
+    entries: channelMemoryEntries,
+    loading: channelMemoryLoading,
+    saving: channelMemorySaving,
+    error: channelMemoryError,
+    createEntry: createChannelMemoryEntry,
+    archiveEntry: archiveChannelMemoryEntry,
+  } = useChannelMemory(selectedChannelId);
 
   // ===== DMs =====
   // DM-mode активируется когда activeServerId === null (после клика «Личные
@@ -1746,6 +1756,12 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                   avatar: m.user.avatar,
                 },
               }))}
+            memoryEntries={channelMemoryEntries}
+            memoryLoading={channelMemoryLoading}
+            memorySaving={channelMemorySaving}
+            memoryError={channelMemoryError}
+            onCreateMemoryEntry={createChannelMemoryEntry}
+            onArchiveMemoryEntry={archiveChannelMemoryEntry}
             attachments={messages.flatMap((m) =>
               m.attachments.map((a) => ({
                 id: a.id,

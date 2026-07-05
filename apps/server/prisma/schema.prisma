@@ -113,6 +113,7 @@ model User {
   reactions        Reaction[]
   createdActionItems ActionItem[]        @relation("ActionItemCreator")
   assignedActionItems ActionItem[]       @relation("ActionItemAssignee")
+  createdMemoryEntries MemoryEntry[]     @relation("MemoryEntryCreator")
   /// Items на которых я approver (v0.55). Pending → approver_userId = me.
   approvalQueue      ActionItem[]        @relation("ActionItemApprover")
   /// Operational Tables, созданные этим user'ом (v0.59 phase 1).
@@ -494,6 +495,15 @@ enum ActionItemType {
   FOLLOW_UP
 }
 
+enum MemoryEntryKind {
+  NOTE
+  DECISION
+  RISK
+  FACT
+  LINK
+  ACTION
+}
+
 /// Режим сервера — Client Portal vs Engineering / Internal Ops.
 /// CLIENT: мягче UI, скрыты operator-инструменты (Status Board / Execution tab
 /// / slash-command hints / BOT badges) — клиент видит calm room, не developer
@@ -698,6 +708,8 @@ model Server {
   trainingVideos      TrainingVideo[]
   /// v1.6.99 — одноразовые / истекающие invite-коды (privacy slice B).
   invites             ServerInvite[]
+  /// v1.7.3 — curated room/project memory. Entries are soft-deleted via archivedAt.
+  memoryEntries       MemoryEntry[]
 }
 
 /// v1.6.99 — одноразовые / истекающие invite-коды (privacy slice B).
@@ -888,6 +900,7 @@ model Channel {
 
   messages  Message[]
   actionItems ActionItem[]
+  memoryEntries MemoryEntry[]
   visits    ChannelLastVisit[]
   tables    Table[]
   musicSession MusicSession?
@@ -1116,6 +1129,7 @@ model Message {
   reactions Reaction[]
   attachments Attachment[]
   actionItems ActionItem[]
+  memoryEntries MemoryEntry[] @relation("MemoryEntrySourceMessage")
   /// v0.77 #21: AI memory + semantic search. Inverse relation для cascade.
   embedding   MessageEmbedding?
   /// v1.5.24 — edit history. Snapshot previous content на каждый edit.
@@ -1236,6 +1250,7 @@ model ActionItem {
   /// v0.90 #10 phase 4: rows которые linked к этой задаче (1-to-many).
   /// Cascade при удалении task — rows остаются с actionItemId=null.
   tableRows       TableRow[]
+  memoryEntries   MemoryEntry[] @relation("MemoryEntryActionItem")
 
   @@unique([sourceMessageId, type])
   @@index([channelId, status, createdAt])
@@ -1248,6 +1263,37 @@ model ActionItem {
   // выражает WHERE-индексы). Покрывает глобальный escalation-scan
   // (escalation.ts), который не ложится на channelId/serverId-индексы выше.
   // НЕ удалять и не «чинить» как drift — индекс намеренно вне schema.
+}
+
+/// v1.7.3 — curated room/project memory.
+/// This is not automatic long-term surveillance: users explicitly save compact
+/// notes, decisions, risks, facts, links, and actions that should survive chat
+/// scrollback noise. Delete is soft via archivedAt for audit/recovery.
+model MemoryEntry {
+  id              String          @id @default(cuid())
+  serverId        String
+  server          Server          @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  channelId       String?
+  channel         Channel?        @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  kind            MemoryEntryKind @default(NOTE)
+  title           String
+  content         String?
+  /// JSON-encoded string[] for small display/search tags.
+  tags            String?
+  sourceMessageId String?
+  sourceMessage   Message?        @relation("MemoryEntrySourceMessage", fields: [sourceMessageId], references: [id], onDelete: SetNull)
+  actionItemId    String?
+  actionItem      ActionItem?     @relation("MemoryEntryActionItem", fields: [actionItemId], references: [id], onDelete: SetNull)
+  createdByUserId String?
+  createdBy       User?           @relation("MemoryEntryCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  archivedAt      DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([serverId, createdAt])
+  @@index([channelId, createdAt])
+  @@index([kind, createdAt])
+  @@index([archivedAt])
 }
 
 /// Граф зависимостей между ActionItem'ами (v0.73 #20 phase 2).
