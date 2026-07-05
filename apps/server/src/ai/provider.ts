@@ -6,11 +6,12 @@
  *
  * Chain priority (auto-fallback по списку, первый успешный = result):
  *   1. Ollama (локальный, без API key) — приоритет для self-host
- *   2. Groq (free, LPU — очень быстрый)
- *   3. Cerebras (free, экстремально быстрый inference)
- *   4. OpenRouter (free DeepSeek/Qwen/Llama tier)
- *   5. NVIDIA Build (95 free models, требует API key)
- *   6. Mistral (free tier La Plateforme)
+ *   2. OmniRoute (self-hosted AI gateway, provider-router + auto/fallback)
+ *   3. Groq (free, LPU — очень быстрый)
+ *   4. Cerebras (free, экстремально быстрый inference)
+ *   5. OpenRouter (free DeepSeek/Qwen/Llama tier)
+ *   6. NVIDIA Build (95 free models, требует API key)
+ *   7. Mistral (free tier La Plateforme)
  *   6b. YandexGPT (РФ free-tier, OpenAI-compatible, приватный) — нужны
  *       YANDEX_API_KEY + YANDEX_FOLDER_ID; доступен из РФ, стандартный TLS
  *   6c. DeepSeek (cheap, OpenAI-compatible api.deepseek.com) — DEEPSEEK_API_KEY
@@ -42,6 +43,9 @@
  *                                          gemma2:9b, mistral:7b
  *
  *   ## Облачные free (рекомендуется — быстрые, бесплатный tier)
+ *   OMNIROUTE_BASE_URL=http://localhost:20128/v1
+ *   OMNIROUTE_MODEL=auto                 — OMNIROUTE_MODELS CSV
+ *   OMNIROUTE_API_KEY=<token>            — опционально, если gateway требует auth
  *   GROQ_API_KEY=gsk_...                 — console.groq.com (free, очень быстрый)
  *   GROQ_MODEL=llama-3.3-70b-versatile   — GROQ_MODELS (CSV) для chain
  *   CEREBRAS_API_KEY=csk-...             — cloud.cerebras.ai (free, fastest)
@@ -165,7 +169,8 @@ export type ChatResult = {
 type ProviderConfig = {
   name: string;
   baseUrl: string;
-  apiKey: string;
+  /** Если undefined — Authorization header не отправляется. */
+  apiKey?: string;
   /** v1.5.18 — поддержка нескольких моделей одного провайдера.
    * First model trie'д первым; на 429/5xx — fallback к следующей model
    * в array'е перед тем как уйти на следующий provider. */
@@ -217,7 +222,28 @@ function getProviders(): ProviderConfig[] {
     });
   }
 
-  // 2. Groq — бесплатный, очень быстрый (LPU). Free tier (дневной лимит → на
+  // 2. OmniRoute — self-hosted OpenAI-compatible AI gateway.
+  //    Reference: https://github.com/diegosouzapw/OmniRoute
+  //    По README gateway слушает http://localhost:20128/v1 и поддерживает
+  //    model=auto / auto/* routing. Включаем только явным env, чтобы прод
+  //    случайно не начал слать @ai traffic в локальный/внешний router.
+  const omniRouteUrl = process.env.OMNIROUTE_BASE_URL?.trim();
+  const omniRouteKey = process.env.OMNIROUTE_API_KEY?.trim();
+  const omniRouteModelEnv = process.env.OMNIROUTE_MODEL?.trim();
+  const omniRouteModelsEnv = process.env.OMNIROUTE_MODELS?.trim();
+  if (omniRouteUrl || omniRouteKey || omniRouteModelEnv || omniRouteModelsEnv) {
+    out.push({
+      name: "omniroute",
+      baseUrl: (omniRouteUrl ?? "http://localhost:20128/v1").replace(/\/+$/, ""),
+      apiKey: omniRouteKey || undefined,
+      models: parseModels(omniRouteModelsEnv ?? omniRouteModelEnv, "auto"),
+      extraHeaders: {
+        "X-Title": "Eclipse Chat",
+      },
+    });
+  }
+
+  // 3. Groq — бесплатный, очень быстрый (LPU). Free tier (дневной лимит → на
   //    429 цепочка идёт к следующему провайдеру). GROQ_MODELS (CSV) для chain.
   const groqKey = process.env.GROQ_API_KEY?.trim();
   if (groqKey) {
@@ -232,7 +258,7 @@ function getProviders(): ProviderConfig[] {
     });
   }
 
-  // 3. Cerebras — бесплатный, экстремально быстрый inference. Free tier.
+  // 4. Cerebras — бесплатный, экстремально быстрый inference. Free tier.
   const cerebrasKey = process.env.CEREBRAS_API_KEY?.trim();
   if (cerebrasKey) {
     out.push({
@@ -246,7 +272,7 @@ function getProviders(): ProviderConfig[] {
     });
   }
 
-  // 4. OpenRouter — free tier DeepSeek/Qwen/Llama.
+  // 5. OpenRouter — free tier DeepSeek/Qwen/Llama.
   //    v1.5.18 — OPENROUTER_MODELS (CSV) расширяет single OPENROUTER_MODEL —
   //    при 429 на одной модели идём дальше по списку до paid fallback.
   //    Default chain: DeepSeek → Llama 3.3 → Qwen 2.5 (все :free).
@@ -280,7 +306,7 @@ function getProviders(): ProviderConfig[] {
     });
   }
 
-  // 5. NVIDIA Build — 95 free моделей.
+  // 6. NVIDIA Build — 95 free моделей.
   const nvKey = process.env.NVIDIA_API_KEY?.trim();
   if (nvKey) {
     out.push({
@@ -294,7 +320,7 @@ function getProviders(): ProviderConfig[] {
     });
   }
 
-  // 6. Mistral — бесплатный tier (La Plateforme). OpenAI-compatible.
+  // 7. Mistral — бесплатный tier (La Plateforme). OpenAI-compatible.
   const mistralKey = process.env.MISTRAL_API_KEY?.trim();
   if (mistralKey) {
     out.push({
@@ -498,13 +524,14 @@ async function callProviderModel(
       body.tools = opts.tools;
       body.tool_choice = opts.toolChoice ?? "auto";
     }
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      ...(cfg.apiKey ? { Authorization: `Bearer ${cfg.apiKey}` } : {}),
+      ...cfg.extraHeaders,
+    };
     const res = await fetch(`${cfg.baseUrl}/chat/completions`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${cfg.apiKey}`,
-        ...cfg.extraHeaders,
-      },
+      headers,
       body: JSON.stringify(body),
       signal: controller.signal,
     });
