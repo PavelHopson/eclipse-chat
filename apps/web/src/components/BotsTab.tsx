@@ -22,43 +22,18 @@ type Props = {
   serverId: string;
 };
 
-// v1.2.12 slice 6b — module-level CSSProperties консоли (sectionLabel /
-// groupCard / fieldHint / inputStyle / botCard / monoChip) переехали в
-// cockpit.css как .ec-bots-* классы. JS-hover на bot-card (мутирующий
-// .style) убран — :hover теперь в CSS. roleAvatarStyle / roleChipStyle
-// остаются inline-helper'ами (legitimately dynamic per BOT_ROLE_COLORS).
+// v1.7.9 slice 6 (продолжение) — остаточные статические inline-стили
+// BotsTab выведены в классы .ec-bots-* / .ec-bot-* (cockpit.css, рядом с
+// slice-6b семейством). Inline остаётся ТОЛЬКО для per-role цветов
+// (roleColorStyle / RolePicker active — из BOT_ROLE_COLORS), это
+// legitimately dynamic. JS-hover в компоненте нет (bot-card :hover — CSS).
 
-function roleAvatarStyle(role: BotRole): CSSProperties {
+/** Per-role цвета (bg/fg/border) — единственный legitimately-dynamic
+ *  inline. Layout аватара/чипа держат классы .ec-bot-avatar /
+ *  .ec-bot-role-chip. */
+function roleColorStyle(role: BotRole): CSSProperties {
   const c = BOT_ROLE_COLORS[role];
-  return {
-    width: 36,
-    height: 36,
-    borderRadius: "var(--ec-radius-md)",
-    background: c.bg,
-    color: c.fg,
-    display: "grid",
-    placeItems: "center",
-    fontSize: "0.95rem",
-    border: `1px solid ${c.border}`,
-  };
-}
-
-function roleChipStyle(role: BotRole): CSSProperties {
-  const c = BOT_ROLE_COLORS[role];
-  return {
-    display: "inline-flex",
-    alignItems: "center",
-    padding: "0.05rem 0.45rem",
-    background: c.bg,
-    color: c.fg,
-    border: `1px solid ${c.border}`,
-    borderRadius: "var(--ec-radius-full)",
-    fontSize: "0.62rem",
-    fontWeight: 700,
-    letterSpacing: "var(--ec-tracking-caps)",
-    textTransform: "uppercase",
-    lineHeight: 1.3,
-  };
+  return { background: c.bg, color: c.fg, border: `1px solid ${c.border}` };
 }
 
 /** Основной EN-keyword для роли (для UI hint про @-mention в BotsTab). */
@@ -117,8 +92,7 @@ function CopyButton({ value }: { value: string }) {
     <button
       type="button"
       onClick={copy}
-      className={`ec-btn ec-btn--sm ${copied ? "ec-btn--ghost" : "ec-btn--primary"}`}
-      style={{ minWidth: 110 }}
+      className={`ec-btn ec-btn--sm ec-bots-copy-btn ${copied ? "ec-btn--ghost" : "ec-btn--primary"}`}
     >
       {copied ? "✓ Скопировано" : "Копировать ключ"}
     </button>
@@ -135,79 +109,34 @@ function RevealedKeyPanel({
   onDismiss: () => void;
 }) {
   return (
-    <div
-      className="ec-bots-group-card"
-      style={{
-        border: "1px solid color-mix(in srgb, var(--ec-warn) 55%, transparent)",
-        background: "color-mix(in srgb, var(--ec-warn) 6%, transparent)",
-        marginTop: "var(--ec-space-3)",
-      }}
-      role="alert"
-    >
-      <div style={{ display: "flex", alignItems: "center", gap: "var(--ec-space-2)" }}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--ec-warn)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <div className="ec-bots-group-card ec-bots-group-card--warn" role="alert">
+      <div className="ec-bots-warn-head">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
           <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
           <line x1="12" y1="9" x2="12" y2="13" />
           <line x1="12" y1="17" x2="12.01" y2="17" />
         </svg>
-        <strong style={{ color: "var(--ec-warn)", letterSpacing: "var(--ec-tracking-wide)" }}>
-          API-ключ показывается один раз
-        </strong>
+        <strong className="ec-bots-warn-title">API-ключ показывается один раз</strong>
       </div>
       <p className="ec-bots-field-hint">
         Сохрани его в безопасном месте — secrets manager, password manager или env-переменная
         в коде бота. Восстановить нельзя, только сгенерировать новый.
       </p>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "var(--ec-space-2)",
-          padding: "var(--ec-space-2) var(--ec-space-3)",
-          background: "var(--ec-surface-1)",
-          border: "1px solid var(--ec-border-default)",
-          borderRadius: "var(--ec-radius-md)",
-          fontFamily: "var(--ec-font-mono)",
-          fontSize: "var(--ec-text-sm)",
-          color: "var(--ec-text-strong)",
-          wordBreak: "break-all",
-          overflowWrap: "anywhere",
-        }}
-      >
-        <span style={{ flex: 1, minWidth: 0 }}>{reveal.apiKey}</span>
+      <div className="ec-bots-key-box">
+        <span className="ec-bots-key-box__value">{reveal.apiKey}</span>
       </div>
-      <div style={{ display: "flex", gap: "var(--ec-space-2)", justifyContent: "flex-end" }}>
+      <div className="ec-bots-actions">
         <CopyButton value={reveal.apiKey} />
         <button type="button" onClick={onDismiss} className="ec-btn ec-btn--ghost ec-btn--sm">
           Я сохранил, скрыть
         </button>
       </div>
       {bot && (
-        <details style={{ marginTop: "var(--ec-space-2)" }}>
-          <summary
-            style={{
-              cursor: "pointer",
-              fontSize: "var(--ec-text-2xs)",
-              color: "var(--ec-text-muted)",
-              letterSpacing: "var(--ec-tracking-wide)",
-            }}
-          >
+        <details className="ec-bots-curl">
+          <summary className="ec-bots-curl__summary">
             Пример curl-запроса от имени «{bot.name}»
           </summary>
-          <pre
-            style={{
-              marginTop: "var(--ec-space-2)",
-              padding: "var(--ec-space-3)",
-              background: "var(--ec-surface-3)",
-              border: "1px solid var(--ec-border-subtle)",
-              borderRadius: "var(--ec-radius-md)",
-              fontSize: "0.7rem",
-              fontFamily: "var(--ec-font-mono)",
-              color: "var(--ec-text)",
-              overflow: "auto",
-              whiteSpace: "pre",
-            }}
-          >
+          <pre className="ec-bots-code">
 {`curl -X POST https://app.star-crm.ru/eclipse-chat/api/bot/messages \\
   -H "Authorization: Bot ${reveal.apiKey}" \\
   -H "Content-Type: application/json" \\
@@ -235,11 +164,7 @@ function RolePicker({
     <div
       role="radiogroup"
       aria-label="Роль бота"
-      style={{
-        display: "flex",
-        flexWrap: "wrap",
-        gap: isSm ? 4 : 6,
-      }}
+      className={`ec-bot-role-group${isSm ? " ec-bot-role-group--sm" : ""}`}
     >
       {BOT_ROLES.map((role) => {
         const c = BOT_ROLE_COLORS[role];
@@ -252,20 +177,8 @@ function RolePicker({
             aria-checked={active}
             disabled={busy}
             onClick={() => onChange(role)}
-            style={{
-              padding: isSm ? "0.2rem 0.55rem" : "0.35rem 0.7rem",
-              fontSize: isSm ? "var(--ec-text-2xs)" : "var(--ec-text-xs)",
-              fontWeight: 600,
-              letterSpacing: "var(--ec-tracking-wide)",
-              borderRadius: "var(--ec-radius-full)",
-              background: active ? c.bg : "var(--ec-surface-1)",
-              color: active ? c.fg : "var(--ec-text-muted)",
-              border: `1px solid ${active ? c.border : "var(--ec-border-subtle)"}`,
-              cursor: busy ? "wait" : "pointer",
-              transition:
-                "background var(--ec-dur-fast) var(--ec-ease), color var(--ec-dur-fast) var(--ec-ease), border-color var(--ec-dur-fast) var(--ec-ease)",
-              fontFamily: "inherit",
-            }}
+            className={`ec-bot-role-option${isSm ? " ec-bot-role-option--sm" : ""}`}
+            style={active ? { background: c.bg, color: c.fg, borderColor: c.border } : undefined}
           >
             {BOT_ROLE_LABELS[role]}
           </button>
@@ -302,7 +215,7 @@ function CreateBotForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="ec-bots-group-card" style={{ gap: "var(--ec-space-2)" }}>
+    <form onSubmit={handleSubmit} className="ec-bots-group-card ec-bots-group-card--tight">
       <h3 className="ec-bots-section-label">Новый бот</h3>
       <input
         type="text"
@@ -320,22 +233,14 @@ function CreateBotForm({
         maxLength={280}
         rows={2}
         placeholder="Что этот бот делает (необязательно, до 280 символов)"
-        className="ec-bots-input" style={{ resize: "vertical", minHeight: 60 }}
+        className="ec-bots-input ec-bots-input--area"
       />
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        <span
-          style={{
-            fontSize: "var(--ec-text-2xs)",
-            color: "var(--ec-text-muted)",
-            letterSpacing: "var(--ec-tracking-wide)",
-          }}
-        >
-          Роль
-        </span>
+      <div className="ec-bots-field-group">
+        <span className="ec-bots-label">Роль</span>
         <RolePicker value={role} onChange={setRole} busy={busy} />
-        <p className="ec-bots-field-hint" style={{ marginTop: 2 }}>{BOT_ROLE_DESCRIPTIONS[role]}</p>
+        <p className="ec-bots-field-hint">{BOT_ROLE_DESCRIPTIONS[role]}</p>
       </div>
-      <div style={{ display: "flex", gap: "var(--ec-space-2)", justifyContent: "flex-end" }}>
+      <div className="ec-bots-actions">
         <button type="button" onClick={onCancel} disabled={busy} className="ec-btn ec-btn--ghost ec-btn--sm">
           Отмена
         </button>
@@ -631,15 +536,8 @@ export function BotsTab({ serverId }: Props) {
 
   return (
     <section>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginBottom: "var(--ec-space-3)",
-        }}
-      >
-        <h3 className="ec-bots-section-label" style={{ margin: 0 }}>Боты пространства ({bots.length}/20)</h3>
+      <div className="ec-bots-header">
+        <h3 className="ec-bots-section-label">Боты пространства ({bots.length}/20)</h3>
         {!showCreate && bots.length < 20 && (
           <button
             type="button"
@@ -651,21 +549,7 @@ export function BotsTab({ serverId }: Props) {
         )}
       </div>
 
-      {error && (
-        <div
-          style={{
-            padding: "var(--ec-space-2) var(--ec-space-3)",
-            marginBottom: "var(--ec-space-3)",
-            background: "var(--ec-danger-soft)",
-            color: "var(--ec-danger)",
-            border: "1px solid var(--ec-danger)",
-            borderRadius: "var(--ec-radius-md)",
-            fontSize: "var(--ec-text-sm)",
-          }}
-        >
-          {error}
-        </div>
-      )}
+      {error && <div className="ec-bots-error">{error}</div>}
 
       {showCreate && (
         <CreateBotForm
@@ -679,9 +563,9 @@ export function BotsTab({ serverId }: Props) {
         <RevealedKeyPanel reveal={revealed} bot={revealedBot} onDismiss={dismissRevealedKey} />
       )}
 
-      <div style={{ marginTop: "var(--ec-space-3)", display: "flex", flexDirection: "column", gap: "var(--ec-space-2)" }}>
+      <div className="ec-bots-list">
         {loading && bots.length === 0 && (
-          <div className="ec-bots-field-hint" style={{ padding: "var(--ec-space-4)", textAlign: "center" }}>
+          <div className="ec-bots-field-hint ec-bots-loading">
             Загружаем ботов…
           </div>
         )}
@@ -696,14 +580,12 @@ export function BotsTab({ serverId }: Props) {
 
         {bots.map((bot) => (
           <div key={bot.id} className="ec-hover-lift ec-bot-card">
-            <div style={roleAvatarStyle(bot.role)} aria-hidden>
+            <div className="ec-bot-avatar" style={roleColorStyle(bot.role)} aria-hidden>
               <BotIcon />
             </div>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "var(--ec-space-2)", flexWrap: "wrap" }}>
-                <strong style={{ color: "var(--ec-text-strong)", fontSize: "var(--ec-text-base)" }}>
-                  {bot.name}
-                </strong>
+            <div className="ec-bot-card__body">
+              <div className="ec-bot-card__namerow">
+                <strong className="ec-bot-name">{bot.name}</strong>
                 <button
                   type="button"
                   onClick={() =>
@@ -711,68 +593,34 @@ export function BotsTab({ serverId }: Props) {
                   }
                   disabled={busy}
                   title="Изменить роль"
-                  style={{
-                    ...roleChipStyle(bot.role),
-                    cursor: busy ? "wait" : "pointer",
-                    fontFamily: "inherit",
-                  }}
+                  className="ec-bot-role-chip"
+                  style={roleColorStyle(bot.role)}
                 >
                   {BOT_ROLE_LABELS[bot.role]}
                 </button>
                 <span className="ec-bots-mono-chip">{bot.apiKeyPrefix}…</span>
               </div>
               {bot.description && (
-                <p
-                  style={{
-                    margin: "4px 0 0",
-                    fontSize: "var(--ec-text-xs)",
-                    color: "var(--ec-text-muted)",
-                    lineHeight: 1.4,
-                  }}
-                >
-                  {bot.description}
-                </p>
+                <p className="ec-bot-desc">{bot.description}</p>
               )}
               {bot.role !== "GENERIC" && (
                 <p
-                  style={{
-                    margin: "6px 0 0",
-                    fontSize: "var(--ec-text-2xs)",
-                    color: BOT_ROLE_COLORS[bot.role].fg,
-                    lineHeight: 1.4,
-                  }}
+                  className="ec-bot-note"
+                  style={{ color: BOT_ROLE_COLORS[bot.role].fg }}
                   title="Eclipse Chat генерирует ответ от этого бота когда участник упоминает соответствующий @keyword"
                 >
                   Отвечает на{" "}
-                  <code style={{ fontFamily: "var(--ec-font-mono)", fontSize: "0.7rem" }}>
-                    @{primaryRoleKeyword(bot.role)}
-                  </code>
+                  <code className="ec-bot-kw">@{primaryRoleKeyword(bot.role)}</code>
                   -mentions в комнатах
                 </p>
               )}
               {bot.autoRespond && (
-                <p
-                  style={{
-                    margin: "6px 0 0",
-                    fontSize: "var(--ec-text-2xs)",
-                    color: "var(--ec-status-ai)",
-                    lineHeight: 1.4,
-                  }}
-                >
+                <p className="ec-bot-note ec-bot-note--ai">
                   Автоответ в текстовых комнатах пространства на каждое сообщение
                   {bot.systemPromptOverride ? " · свой промпт" : ""}
                 </p>
               )}
-              <div
-                style={{
-                  marginTop: 4,
-                  display: "flex",
-                  gap: "var(--ec-space-3)",
-                  fontSize: "var(--ec-text-2xs)",
-                  color: "var(--ec-text-dim)",
-                  flexWrap: "wrap",
-                }}
-              >
+              <div className="ec-bot-meta">
                 <span>создан {bot.owner.displayName}</span>
                 <span>•</span>
                 <span>использован: {formatRelative(bot.lastUsedAt)}</span>
@@ -780,27 +628,8 @@ export function BotsTab({ serverId }: Props) {
                 <span>{bot.capabilities.join(", ") || "нет capabilities"}</span>
               </div>
               {roleEditOpen === bot.id && (
-                <div
-                  style={{
-                    marginTop: "var(--ec-space-2)",
-                    padding: "var(--ec-space-2) var(--ec-space-3)",
-                    background: "var(--ec-surface-2)",
-                    border: "1px solid var(--ec-border-accent)",
-                    borderRadius: "var(--ec-radius-md)",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 6,
-                  }}
-                >
-                  <div
-                    style={{
-                      fontSize: "var(--ec-text-2xs)",
-                      color: "var(--ec-text-muted)",
-                      letterSpacing: "var(--ec-tracking-wide)",
-                    }}
-                  >
-                    Сменить роль
-                  </div>
+                <div className="ec-bots-panel">
+                  <div className="ec-bots-label">Сменить роль</div>
                   <RolePicker
                     size="sm"
                     value={bot.role}
@@ -811,24 +640,16 @@ export function BotsTab({ serverId }: Props) {
                 </div>
               )}
             </div>
-            <div style={{ display: "flex", gap: 6, flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
+            <div className="ec-bot-card__actions">
               <button
                 type="button"
                 onClick={() => void handleToggleAutoRespond(bot)}
                 disabled={busy}
-                className="ec-btn ec-btn--ghost ec-btn--sm"
+                className={`ec-btn ec-btn--ghost ec-btn--sm${bot.autoRespond ? " ec-bot-btn--ai" : ""}`}
                 title={
                   bot.autoRespond
                     ? "Выключить автоответ"
                     : "Автоответ в текстовых комнатах пространства"
-                }
-                style={
-                  bot.autoRespond
-                    ? {
-                        color: "var(--ec-status-ai)",
-                        borderColor: "hsl(252 70% 60% / 0.35)",
-                      }
-                    : undefined
                 }
               >
                 {bot.autoRespond ? "Авто ✓" : "Авто"}
@@ -837,19 +658,11 @@ export function BotsTab({ serverId }: Props) {
                 type="button"
                 onClick={() => void updateBot(bot.id, { agentMode: !bot.agentMode })}
                 disabled={busy}
-                className="ec-btn ec-btn--ghost ec-btn--sm"
+                className={`ec-btn ec-btn--ghost ec-btn--sm${bot.agentMode ? " ec-bot-btn--ai" : ""}`}
                 title={
                   bot.agentMode
                     ? "Agent mode: бот может вызывать tools (отправлять сообщения / создавать задачи / править таблицы)"
                     : "Включить agent mode — бот сможет действовать в сервере, не только отвечать"
-                }
-                style={
-                  bot.agentMode
-                    ? {
-                        color: "var(--ec-status-ai)",
-                        borderColor: "hsl(252 70% 60% / 0.35)",
-                      }
-                    : undefined
                 }
               >
                 {bot.agentMode ? "Agent ✓" : "Agent"}
@@ -861,16 +674,8 @@ export function BotsTab({ serverId }: Props) {
                   setPersonalityEditOpen((cur) => (cur === bot.id ? null : bot.id));
                 }}
                 disabled={busy}
-                className="ec-btn ec-btn--ghost ec-btn--sm"
+                className={`ec-btn ec-btn--ghost ec-btn--sm${bot.personality ? " ec-bot-btn--accent" : ""}`}
                 title="Характер бота: имя, манера, юмор"
-                style={
-                  bot.personality
-                    ? {
-                        color: "var(--ec-accent)",
-                        borderColor: "var(--ec-border-accent)",
-                      }
-                    : undefined
-                }
               >
                 Личность
               </button>
@@ -881,16 +686,8 @@ export function BotsTab({ serverId }: Props) {
                   setPromptEditOpen((cur) => (cur === bot.id ? null : bot.id));
                 }}
                 disabled={busy}
-                className="ec-btn ec-btn--ghost ec-btn--sm"
+                className={`ec-btn ec-btn--ghost ec-btn--sm${bot.systemPromptOverride ? " ec-bot-btn--accent" : ""}`}
                 title="Кастомный system prompt (advanced)"
-                style={
-                  bot.systemPromptOverride
-                    ? {
-                        color: "var(--ec-accent)",
-                        borderColor: "var(--ec-border-accent)",
-                      }
-                    : undefined
-                }
               >
                 Промпт
               </button>
@@ -898,13 +695,8 @@ export function BotsTab({ serverId }: Props) {
                 type="button"
                 onClick={() => handleOpenTest(bot)}
                 disabled={busy}
-                className="ec-btn ec-btn--ghost ec-btn--sm"
+                className={`ec-btn ec-btn--ghost ec-btn--sm${testOpen === bot.id ? " ec-bot-btn--accent" : ""}`}
                 title="Тест AI-промпта без отправки в канал"
-                style={
-                  testOpen === bot.id
-                    ? { color: "var(--ec-accent)", borderColor: "var(--ec-border-accent)" }
-                    : undefined
-                }
               >
                 Тест
               </button>
@@ -912,13 +704,8 @@ export function BotsTab({ serverId }: Props) {
                 type="button"
                 onClick={() => void handleOpenUsage(bot)}
                 disabled={busy}
-                className="ec-btn ec-btn--ghost ec-btn--sm"
+                className={`ec-btn ec-btn--ghost ec-btn--sm${usageOpen === bot.id ? " ec-bot-btn--accent" : ""}`}
                 title="Статистика использования"
-                style={
-                  usageOpen === bot.id
-                    ? { color: "var(--ec-accent)", borderColor: "var(--ec-border-accent)" }
-                    : undefined
-                }
               >
                 Стата
               </button>
@@ -929,16 +716,8 @@ export function BotsTab({ serverId }: Props) {
                   setWebhookOpen((cur) => (cur === bot.id ? null : bot.id));
                 }}
                 disabled={busy}
-                className="ec-btn ec-btn--ghost ec-btn--sm"
+                className={`ec-btn ec-btn--ghost ec-btn--sm${bot.webhookUrl ? " ec-bot-btn--ok" : ""}`}
                 title={bot.webhookUrl ? "Webhook настроен — редактировать" : "Подключить webhook"}
-                style={
-                  bot.webhookUrl
-                    ? {
-                        color: "var(--ec-ok)",
-                        borderColor: "var(--ec-border-accent)",
-                      }
-                    : undefined
-                }
               >
                 {bot.webhookUrl ? "🔗 Webhook" : "+ Webhook"}
               </button>
@@ -969,49 +748,19 @@ export function BotsTab({ serverId }: Props) {
           if (!bot) return null;
           const draft = webhookDrafts[bot.id] ?? { url: "", secret: "" };
           return (
-            <div
-              key={`webhook-${bot.id}`}
-              style={{
-                marginTop: "var(--ec-space-2)",
-                padding: "var(--ec-space-3)",
-                background: "var(--ec-surface-2)",
-                border: "1px solid var(--ec-border-accent)",
-                borderRadius: "var(--ec-radius-md)",
-                display: "flex",
-                flexDirection: "column",
-                gap: "var(--ec-space-2)",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
-              >
-                <strong style={{ fontSize: "var(--ec-text-sm)" }}>
-                  Webhook для «{bot.name}»
-                </strong>
+            <div key={`webhook-${bot.id}`} className="ec-bots-panel">
+              <div className="ec-bots-panel__head">
+                <strong className="ec-bots-panel__title">Webhook для «{bot.name}»</strong>
                 <button
                   type="button"
                   onClick={() => setWebhookOpen(null)}
-                  className="ec-btn ec-btn--ghost ec-btn--sm"
-                  style={{ padding: "0.2rem 0.5rem" }}
+                  className="ec-btn ec-btn--ghost ec-btn--sm ec-bots-panel__close"
                   title="Закрыть"
                 >
                   ✕
                 </button>
               </div>
-              <label
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 4,
-                  fontSize: "var(--ec-text-2xs)",
-                  color: "var(--ec-text-muted)",
-                  letterSpacing: "var(--ec-tracking-wide)",
-                }}
-              >
+              <label className="ec-bots-labeled-field">
                 URL (https://…)
                 <input
                   type="url"
@@ -1026,19 +775,10 @@ export function BotsTab({ serverId }: Props) {
                   className="ec-bots-input"
                 />
               </label>
-              <label
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 4,
-                  fontSize: "var(--ec-text-2xs)",
-                  color: "var(--ec-text-muted)",
-                  letterSpacing: "var(--ec-tracking-wide)",
-                }}
-              >
+              <label className="ec-bots-labeled-field">
                 Secret (HMAC-SHA256 signing){" "}
                 {bot.webhookSecretSet && (
-                  <span style={{ color: "var(--ec-ok)" }}>· уже задан</span>
+                  <span className="ec-bots-ok-note">· уже задан</span>
                 )}
                 <input
                   type="password"
@@ -1065,7 +805,7 @@ export function BotsTab({ serverId }: Props) {
                 <br />
                 Timeout 5s, бот не получает свои собственные messages (anti-loop).
               </p>
-              <div style={{ display: "flex", gap: "var(--ec-space-2)", justifyContent: "flex-end" }}>
+              <div className="ec-bots-actions">
                 {bot.webhookUrl && (
                   <button
                     type="button"
@@ -1094,28 +834,13 @@ export function BotsTab({ serverId }: Props) {
           if (!bot) return null;
           const draft = personalityDrafts[bot.id] ?? bot.personality ?? "";
           return (
-            <div
-              key={`personality-${bot.id}`}
-              style={{
-                marginTop: "var(--ec-space-2)",
-                padding: "var(--ec-space-3)",
-                background: "var(--ec-surface-2)",
-                border: "1px solid var(--ec-border-accent)",
-                borderRadius: "var(--ec-radius-md)",
-                display: "flex",
-                flexDirection: "column",
-                gap: "var(--ec-space-2)",
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <strong style={{ fontSize: "var(--ec-text-sm)" }}>
-                  Личность — «{bot.name}»
-                </strong>
+            <div key={`personality-${bot.id}`} className="ec-bots-panel">
+              <div className="ec-bots-panel__head">
+                <strong className="ec-bots-panel__title">Личность — «{bot.name}»</strong>
                 <button
                   type="button"
                   onClick={() => setPersonalityEditOpen(null)}
-                  className="ec-btn ec-btn--ghost ec-btn--sm"
-                  style={{ padding: "0.2rem 0.5rem" }}
+                  className="ec-btn ec-btn--ghost ec-btn--sm ec-bots-panel__close"
                   title="Закрыть"
                 >
                   ✕
@@ -1124,7 +849,7 @@ export function BotsTab({ serverId }: Props) {
               <p className="ec-bots-field-hint">
                 Опиши характер и манеру общения бота — имя, юмор, любимые
                 фразы, на что реагирует. Это «оверлей» поверх роли{" "}
-                <span style={roleChipStyle(bot.role)}>{BOT_ROLE_LABELS[bot.role]}</span>;
+                <span className="ec-bot-role-chip" style={roleColorStyle(bot.role)}>{BOT_ROLE_LABELS[bot.role]}</span>;
                 бот будет отвечать в этом стиле, оставаясь в своей зоне
                 ответственности. Имя бота для отображения меняй полем
                 «Название» выше. До 1000 символов.
@@ -1140,14 +865,11 @@ export function BotsTab({ serverId }: Props) {
                 rows={6}
                 maxLength={1000}
                 className="ec-bots-input"
-                style={{ fontFamily: "var(--ec-font-sans)" }}
                 placeholder={`Пример:\n\nТебя зовут Алёша. Ты дружелюбный senior dev, любишь шутить про code smells и legacy. Говоришь по-русски, иногда вставляешь «короче», «по-братски», «жесть». Не любишь когда деплоят в пятницу. Эмодзи используй сдержанно: 🔥 / 👀 / 😅.`}
               />
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "var(--ec-space-2)" }}>
-                <span style={{ fontSize: "var(--ec-text-2xs)", color: "var(--ec-text-dim)", fontFamily: "var(--ec-font-mono)" }}>
-                  {draft.length} / 1000
-                </span>
-                <div style={{ display: "flex", gap: "var(--ec-space-2)" }}>
+              <div className="ec-bots-panel__head">
+                <span className="ec-bots-counter">{draft.length} / 1000</span>
+                <div className="ec-bots-actions">
                   <button
                     type="button"
                     onClick={() => void handleClearPersonality(bot)}
@@ -1176,34 +898,13 @@ export function BotsTab({ serverId }: Props) {
           if (!bot) return null;
           const draft = promptDrafts[bot.id] ?? bot.systemPromptOverride ?? "";
           return (
-            <div
-              key={`prompt-${bot.id}`}
-              style={{
-                marginTop: "var(--ec-space-2)",
-                padding: "var(--ec-space-3)",
-                background: "var(--ec-surface-2)",
-                border: "1px solid var(--ec-border-accent)",
-                borderRadius: "var(--ec-radius-md)",
-                display: "flex",
-                flexDirection: "column",
-                gap: "var(--ec-space-2)",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
-              >
-                <strong style={{ fontSize: "var(--ec-text-sm)" }}>
-                  System prompt — «{bot.name}»
-                </strong>
+            <div key={`prompt-${bot.id}`} className="ec-bots-panel">
+              <div className="ec-bots-panel__head">
+                <strong className="ec-bots-panel__title">System prompt — «{bot.name}»</strong>
                 <button
                   type="button"
                   onClick={() => setPromptEditOpen(null)}
-                  className="ec-btn ec-btn--ghost ec-btn--sm"
-                  style={{ padding: "0.2rem 0.5rem" }}
+                  className="ec-btn ec-btn--ghost ec-btn--sm ec-bots-panel__close"
                   title="Закрыть"
                 >
                   ✕
@@ -1211,7 +912,7 @@ export function BotsTab({ serverId }: Props) {
               </div>
               <p className="ec-bots-field-hint">
                 Пустое поле = шаблон роли{" "}
-                <span style={roleChipStyle(bot.role)}>{BOT_ROLE_LABELS[bot.role]}</span>.
+                <span className="ec-bot-role-chip" style={roleColorStyle(bot.role)}>{BOT_ROLE_LABELS[bot.role]}</span>.
                 Если включён автоответ и несколько ботов с авто — отвечает самый старый.
               </p>
               <textarea
@@ -1222,16 +923,9 @@ export function BotsTab({ serverId }: Props) {
                 rows={8}
                 maxLength={8000}
                 placeholder={BOT_ROLE_DESCRIPTIONS[bot.role]}
-                className="ec-bots-input"
-                style={{
-                  resize: "vertical",
-                  minHeight: 120,
-                  fontFamily: "var(--ec-font-mono)",
-                  fontSize: "var(--ec-text-xs)",
-                  lineHeight: 1.45,
-                }}
+                className="ec-bots-input ec-bots-input--code"
               />
-              <div style={{ display: "flex", gap: "var(--ec-space-2)", justifyContent: "flex-end" }}>
+              <div className="ec-bots-actions">
                 <button
                   type="button"
                   onClick={() => void handleResetPrompt(bot)}
@@ -1261,28 +955,13 @@ export function BotsTab({ serverId }: Props) {
           const result = testResults[bot.id] ?? null;
           const running = perBotBusy[bot.id] === true;
           return (
-            <div
-              key={`test-${bot.id}`}
-              style={{
-                marginTop: "var(--ec-space-2)",
-                padding: "var(--ec-space-3)",
-                background: "var(--ec-surface-2)",
-                border: "1px solid var(--ec-border-accent)",
-                borderRadius: "var(--ec-radius-md)",
-                display: "flex",
-                flexDirection: "column",
-                gap: "var(--ec-space-2)",
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <strong style={{ fontSize: "var(--ec-text-sm)" }}>
-                  Тест AI · «{bot.name}»
-                </strong>
+            <div key={`test-${bot.id}`} className="ec-bots-panel">
+              <div className="ec-bots-panel__head">
+                <strong className="ec-bots-panel__title">Тест AI · «{bot.name}»</strong>
                 <button
                   type="button"
                   onClick={() => setTestOpen(null)}
-                  className="ec-btn ec-btn--ghost ec-btn--sm"
-                  style={{ padding: "0.2rem 0.5rem" }}
+                  className="ec-btn ec-btn--ghost ec-btn--sm ec-bots-panel__close"
                   title="Закрыть"
                 >
                   ✕
@@ -1300,10 +979,10 @@ export function BotsTab({ serverId }: Props) {
                 rows={3}
                 maxLength={2000}
                 placeholder="Что спросить у бота — будет передано как user message"
-                className="ec-bots-input" style={{ resize: "vertical", minHeight: 70 }}
+                className="ec-bots-input ec-bots-input--area"
                 disabled={running}
               />
-              <div style={{ display: "flex", gap: "var(--ec-space-2)", justifyContent: "flex-end" }}>
+              <div className="ec-bots-actions">
                 <button
                   type="button"
                   onClick={() => void handleRunTest(bot)}
@@ -1314,29 +993,10 @@ export function BotsTab({ serverId }: Props) {
                 </button>
               </div>
               {result && (
-                <div
-                  style={{
-                    marginTop: "var(--ec-space-1)",
-                    padding: "var(--ec-space-3)",
-                    background: "var(--ec-surface-1)",
-                    border: "1px solid var(--ec-border-subtle)",
-                    borderRadius: "var(--ec-radius-md)",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "var(--ec-space-2)",
-                  }}
-                >
+                <div className="ec-bots-result">
                   {result.ok ? (
                     <>
-                      <div
-                        style={{
-                          display: "flex",
-                          gap: "var(--ec-space-2)",
-                          flexWrap: "wrap",
-                          fontSize: "var(--ec-text-2xs)",
-                          color: "var(--ec-text-muted)",
-                        }}
-                      >
+                      <div className="ec-bots-result__meta">
                         <span className="ec-bots-mono-chip">provider: {result.provider}</span>
                         {result.model && <span className="ec-bots-mono-chip">model: {result.model}</span>}
                         <span className="ec-bots-mono-chip">{result.latencyMs} ms</span>
@@ -1345,28 +1005,10 @@ export function BotsTab({ serverId }: Props) {
                           {result.isOverride ? " (override)" : " (template)"}
                         </span>
                       </div>
-                      <div
-                        style={{
-                          color: "var(--ec-text)",
-                          fontSize: "var(--ec-text-sm)",
-                          lineHeight: 1.5,
-                          whiteSpace: "pre-wrap",
-                          wordBreak: "break-word",
-                        }}
-                      >
-                        {result.response}
-                      </div>
+                      <div className="ec-bots-result__body">{result.response}</div>
                     </>
                   ) : (
-                    <div
-                      style={{
-                        color: "var(--ec-danger)",
-                        fontSize: "var(--ec-text-sm)",
-                        lineHeight: 1.4,
-                      }}
-                    >
-                      ⚠ {result.error}
-                    </div>
+                    <div className="ec-bots-result__error">⚠ {result.error}</div>
                   )}
                 </div>
               )}
@@ -1381,28 +1023,13 @@ export function BotsTab({ serverId }: Props) {
           const usage = usageCache[bot.id];
           const loading = perBotBusy[bot.id] === true && !usage;
           return (
-            <div
-              key={`usage-${bot.id}`}
-              style={{
-                marginTop: "var(--ec-space-2)",
-                padding: "var(--ec-space-3)",
-                background: "var(--ec-surface-2)",
-                border: "1px solid var(--ec-border-accent)",
-                borderRadius: "var(--ec-radius-md)",
-                display: "flex",
-                flexDirection: "column",
-                gap: "var(--ec-space-2)",
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <strong style={{ fontSize: "var(--ec-text-sm)" }}>
-                  Статистика · «{bot.name}»
-                </strong>
+            <div key={`usage-${bot.id}`} className="ec-bots-panel">
+              <div className="ec-bots-panel__head">
+                <strong className="ec-bots-panel__title">Статистика · «{bot.name}»</strong>
                 <button
                   type="button"
                   onClick={() => setUsageOpen(null)}
-                  className="ec-btn ec-btn--ghost ec-btn--sm"
-                  style={{ padding: "0.2rem 0.5rem" }}
+                  className="ec-btn ec-btn--ghost ec-btn--sm ec-bots-panel__close"
                   title="Закрыть"
                 >
                   ✕
@@ -1413,88 +1040,27 @@ export function BotsTab({ serverId }: Props) {
               )}
               {!loading && usage && (
                 <>
-                  <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))",
-                      gap: "var(--ec-space-2)",
-                    }}
-                  >
-                    <div
-                      style={{
-                        padding: "var(--ec-space-2) var(--ec-space-3)",
-                        background: "var(--ec-surface-1)",
-                        border: "1px solid var(--ec-border-subtle)",
-                        borderRadius: "var(--ec-radius-md)",
-                      }}
-                    >
-                      <div style={{ fontSize: "0.6rem", color: "var(--ec-text-dim)", textTransform: "uppercase", letterSpacing: "var(--ec-tracking-caps)" }}>
-                        24 часа
-                      </div>
-                      <div style={{ fontSize: "var(--ec-text-lg)", fontWeight: 700, color: "var(--ec-text-strong)", fontFeatureSettings: '"tnum"' }}>
-                        {usage.messages24h}
-                      </div>
+                  <div className="ec-bots-stat-grid">
+                    <div className="ec-bots-stat">
+                      <div className="ec-bots-caps-label">24 часа</div>
+                      <div className="ec-bots-stat__value">{usage.messages24h}</div>
                     </div>
-                    <div
-                      style={{
-                        padding: "var(--ec-space-2) var(--ec-space-3)",
-                        background: "var(--ec-surface-1)",
-                        border: "1px solid var(--ec-border-subtle)",
-                        borderRadius: "var(--ec-radius-md)",
-                      }}
-                    >
-                      <div style={{ fontSize: "0.6rem", color: "var(--ec-text-dim)", textTransform: "uppercase", letterSpacing: "var(--ec-tracking-caps)" }}>
-                        7 дней
-                      </div>
-                      <div style={{ fontSize: "var(--ec-text-lg)", fontWeight: 700, color: "var(--ec-text-strong)", fontFeatureSettings: '"tnum"' }}>
-                        {usage.messages7d}
-                      </div>
+                    <div className="ec-bots-stat">
+                      <div className="ec-bots-caps-label">7 дней</div>
+                      <div className="ec-bots-stat__value">{usage.messages7d}</div>
                     </div>
-                    <div
-                      style={{
-                        padding: "var(--ec-space-2) var(--ec-space-3)",
-                        background: "var(--ec-surface-1)",
-                        border: "1px solid var(--ec-border-subtle)",
-                        borderRadius: "var(--ec-radius-md)",
-                      }}
-                    >
-                      <div style={{ fontSize: "0.6rem", color: "var(--ec-text-dim)", textTransform: "uppercase", letterSpacing: "var(--ec-tracking-caps)" }}>
-                        Всего
-                      </div>
-                      <div style={{ fontSize: "var(--ec-text-lg)", fontWeight: 700, color: "var(--ec-text-strong)", fontFeatureSettings: '"tnum"' }}>
-                        {usage.totalMessages}
-                      </div>
+                    <div className="ec-bots-stat">
+                      <div className="ec-bots-caps-label">Всего</div>
+                      <div className="ec-bots-stat__value">{usage.totalMessages}</div>
                     </div>
                   </div>
                   {usage.topChannels.length > 0 ? (
                     <div>
-                      <div
-                        style={{
-                          fontSize: "0.6rem",
-                          color: "var(--ec-text-dim)",
-                          textTransform: "uppercase",
-                          letterSpacing: "var(--ec-tracking-caps)",
-                          marginBottom: 6,
-                        }}
-                      >
-                        Топ комнат
-                      </div>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                      <div className="ec-bots-chan-head">Топ комнат</div>
+                      <div className="ec-bots-chan-list">
                         {usage.topChannels.map((ch) => (
-                          <div
-                            key={ch.id}
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "space-between",
-                              padding: "0.3rem 0.6rem",
-                              background: "var(--ec-surface-1)",
-                              border: "1px solid var(--ec-border-subtle)",
-                              borderRadius: "var(--ec-radius-sm)",
-                              fontSize: "var(--ec-text-sm)",
-                            }}
-                          >
-                            <span style={{ color: "var(--ec-text)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          <div key={ch.id} className="ec-bots-chan-row">
+                            <span className="ec-bots-chan-name">
                               {ch.type === "VOICE" ? "🔊 " : ch.type === "BROADCAST" ? "📣 " : ch.type === "EXECUTION" ? "▢ " : "# "}
                               {ch.name}
                             </span>
@@ -1506,9 +1072,9 @@ export function BotsTab({ serverId }: Props) {
                   ) : (
                     <p className="ec-bots-field-hint">Бот ещё ничего не написал.</p>
                   )}
-                  <p className="ec-bots-field-hint" style={{ marginTop: 0 }}>
+                  <p className="ec-bots-field-hint">
                     Последнее использование API:{" "}
-                    <strong style={{ color: "var(--ec-text)" }}>
+                    <strong className="ec-bots-value">
                       {formatRelative(usage.lastUsedAt)}
                     </strong>
                   </p>
@@ -1522,7 +1088,7 @@ export function BotsTab({ serverId }: Props) {
         })()}
 
         {bots.length >= 20 && (
-          <p className="ec-bots-field-hint" style={{ textAlign: "center" }}>
+          <p className="ec-bots-field-hint ec-bots-field-hint--center">
             Достигнут лимит 20 ботов на пространство. Удали неиспользуемого, чтобы создать нового.
           </p>
         )}

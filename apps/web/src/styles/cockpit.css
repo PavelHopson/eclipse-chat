@@ -1636,6 +1636,374 @@
   letter-spacing: 0;
 }
 
+/* ===== BotsTab — slice 6 continuation (inline → classes) ===========
+   v1.7.9: остаточные module-static inline-стили BotsTab выведены в
+   классы. Только per-role цвета (roleAvatarStyle / roleChipStyle /
+   RolePicker active — из BOT_ROLE_COLORS) остаются inline — legitimately
+   dynamic. Все классы на семантических токенах ⇒ SOLAR-safe без
+   отдельного override (как и остальные .ec-bots-*). */
+
+/* Заголовок таба + центрированные подписи */
+.ec-bots-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--ec-space-3);
+}
+/* h3 в шапке — без нижнего margin от .ec-bots-section-label (flex-центр) */
+.ec-bots-header .ec-bots-section-label { margin: 0; }
+.ec-bots-field-hint--center { text-align: center; }
+.ec-bots-loading {
+  padding: var(--ec-space-4);
+  text-align: center;
+}
+
+/* Error-карточка (bordered, отличается от полноширинного .ec-error-banner) */
+.ec-bots-error {
+  padding: var(--ec-space-2) var(--ec-space-3);
+  margin-bottom: var(--ec-space-3);
+  background: var(--ec-danger-soft);
+  color: var(--ec-danger);
+  border: 1px solid var(--ec-danger);
+  border-radius: var(--ec-radius-md);
+  font-size: var(--ec-text-sm);
+}
+
+/* Список ботов */
+.ec-bots-list {
+  margin-top: var(--ec-space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ec-space-2);
+}
+
+/* group-card модификаторы */
+.ec-bots-group-card--tight { gap: var(--ec-space-2); }
+.ec-bots-group-card--warn {
+  margin-top: var(--ec-space-3);
+  border-color: color-mix(in srgb, var(--ec-warn) 55%, transparent);
+  background: color-mix(in srgb, var(--ec-warn) 6%, transparent);
+}
+
+/* Общая строка кнопок (справа) */
+.ec-bots-actions {
+  display: flex;
+  gap: var(--ec-space-2);
+  justify-content: flex-end;
+}
+
+/* Малый секционный лейбл + поле-с-подписью */
+.ec-bots-label {
+  font-size: var(--ec-text-2xs);
+  color: var(--ec-text-muted);
+  letter-spacing: var(--ec-tracking-wide);
+}
+.ec-bots-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ec-bots-labeled-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: var(--ec-text-2xs);
+  color: var(--ec-text-muted);
+  letter-spacing: var(--ec-tracking-wide);
+}
+.ec-bots-ok-note { color: var(--ec-ok); }
+
+/* Textarea-варианты .ec-bots-input */
+.ec-bots-input--area {
+  resize: vertical;
+  min-height: 72px;
+}
+.ec-bots-input--code {
+  resize: vertical;
+  min-height: 120px;
+  font-family: var(--ec-font-mono);
+  font-size: var(--ec-text-xs);
+  line-height: 1.45;
+}
+
+/* Раскрываемая панель (webhook / личность / промпт / тест / стата / роль).
+   surface-2 + accent-hairline, единый паттерн вместо 6× inline. */
+.ec-bots-panel {
+  margin-top: var(--ec-space-2);
+  padding: var(--ec-space-3);
+  background: var(--ec-surface-2);
+  border: 1px solid var(--ec-border-accent);
+  border-radius: var(--ec-radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ec-space-2);
+}
+.ec-bots-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+/* Применяется к <strong> — вес/цвет от элемента (bold, inherit), как было. */
+.ec-bots-panel__title { font-size: var(--ec-text-sm); }
+.ec-bots-panel__close { padding: 0.2rem 0.5rem; }
+/* Счётчик символов (plain dim mono, без chip-фона) */
+.ec-bots-counter {
+  font-family: var(--ec-font-mono);
+  font-size: var(--ec-text-2xs);
+  color: var(--ec-text-dim);
+}
+/* Инлайновое значение внутри hint-строк */
+.ec-bots-value { color: var(--ec-text); }
+
+/* API-ключ (reveal) — mono-строка + curl-пример */
+.ec-bots-warn-head {
+  display: flex;
+  align-items: center;
+  gap: var(--ec-space-2);
+  color: var(--ec-warn);
+}
+.ec-bots-warn-title { letter-spacing: var(--ec-tracking-wide); }
+.ec-bots-key-box {
+  display: flex;
+  align-items: center;
+  gap: var(--ec-space-2);
+  padding: var(--ec-space-2) var(--ec-space-3);
+  background: var(--ec-surface-1);
+  border: 1px solid var(--ec-border-default);
+  border-radius: var(--ec-radius-md);
+  font-family: var(--ec-font-mono);
+  font-size: var(--ec-text-sm);
+  color: var(--ec-text-strong);
+  word-break: break-all;
+  overflow-wrap: anywhere;
+}
+.ec-bots-key-box__value {
+  flex: 1;
+  min-width: 0;
+}
+.ec-bots-curl { margin-top: var(--ec-space-2); }
+.ec-bots-curl__summary {
+  cursor: pointer;
+  font-size: var(--ec-text-2xs);
+  color: var(--ec-text-muted);
+  letter-spacing: var(--ec-tracking-wide);
+}
+.ec-bots-code {
+  margin-top: var(--ec-space-2);
+  padding: var(--ec-space-3);
+  background: var(--ec-surface-3);
+  border: 1px solid var(--ec-border-subtle);
+  border-radius: var(--ec-radius-md);
+  font-size: 0.7rem;
+  font-family: var(--ec-font-mono);
+  color: var(--ec-text);
+  overflow: auto;
+  white-space: pre;
+}
+
+/* Bot-card внутренности */
+.ec-bot-card__body { min-width: 0; }
+.ec-bot-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--ec-radius-md);
+  display: grid;
+  place-items: center;
+  font-size: 0.95rem;
+  /* background / color / border-color — inline (per BOT_ROLE_COLORS) */
+}
+.ec-bot-card__namerow {
+  display: flex;
+  align-items: center;
+  gap: var(--ec-space-2);
+  flex-wrap: wrap;
+}
+.ec-bot-name {
+  color: var(--ec-text-strong);
+  font-size: var(--ec-text-base);
+}
+/* Роль-чип (кнопка). Layout — класс; цвета — inline per role. */
+.ec-bot-role-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.05rem 0.45rem;
+  border-radius: var(--ec-radius-full);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: var(--ec-tracking-caps);
+  text-transform: uppercase;
+  line-height: 1.3;
+  font-family: inherit;
+  cursor: pointer;
+}
+.ec-bot-role-chip:disabled { cursor: wait; }
+
+/* RolePicker — сегменты выбора роли. Layout/rest — класс; active-цвета
+   (per BOT_ROLE_COLORS) — inline. */
+.ec-bot-role-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ec-bot-role-group--sm { gap: 4px; }
+.ec-bot-role-option {
+  padding: 0.35rem 0.7rem;
+  font-size: var(--ec-text-xs);
+  font-weight: 600;
+  letter-spacing: var(--ec-tracking-wide);
+  border-radius: var(--ec-radius-full);
+  background: var(--ec-surface-1);
+  color: var(--ec-text-muted);
+  border: 1px solid var(--ec-border-subtle);
+  font-family: inherit;
+  cursor: pointer;
+  transition:
+    background var(--ec-dur-fast) var(--ec-ease),
+    color var(--ec-dur-fast) var(--ec-ease),
+    border-color var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-bot-role-option--sm {
+  padding: 0.2rem 0.55rem;
+  font-size: var(--ec-text-2xs);
+}
+.ec-bot-role-option:disabled { cursor: wait; }
+
+.ec-bots-copy-btn { min-width: 110px; }
+.ec-bot-desc {
+  margin: 4px 0 0;
+  font-size: var(--ec-text-xs);
+  color: var(--ec-text-muted);
+  line-height: 1.4;
+}
+.ec-bot-note {
+  margin: 6px 0 0;
+  font-size: var(--ec-text-2xs);
+  line-height: 1.4;
+}
+.ec-bot-note--ai { color: var(--ec-status-ai); }
+.ec-bot-kw {
+  font-family: var(--ec-font-mono);
+  font-size: 0.7rem;
+}
+.ec-bot-meta {
+  margin-top: 4px;
+  display: flex;
+  gap: var(--ec-space-3);
+  font-size: var(--ec-text-2xs);
+  color: var(--ec-text-dim);
+  flex-wrap: wrap;
+}
+.ec-bot-card__actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+/* Toggle-состояние ghost-кнопок действий (было inline color+border).
+   Держим цвет и на :hover — ghost:hover иначе сбросил бы его. */
+.ec-bot-btn--ai,
+.ec-bot-btn--ai:hover {
+  color: var(--ec-status-ai);
+  border-color: color-mix(in srgb, var(--ec-status-ai) 35%, transparent);
+}
+.ec-bot-btn--accent,
+.ec-bot-btn--accent:hover {
+  color: var(--ec-accent);
+  border-color: var(--ec-border-accent);
+}
+.ec-bot-btn--ok,
+.ec-bot-btn--ok:hover {
+  color: var(--ec-ok);
+  border-color: var(--ec-border-accent);
+}
+
+/* Тест-результат */
+.ec-bots-result {
+  margin-top: var(--ec-space-1);
+  padding: var(--ec-space-3);
+  background: var(--ec-surface-1);
+  border: 1px solid var(--ec-border-subtle);
+  border-radius: var(--ec-radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ec-space-2);
+}
+.ec-bots-result__meta {
+  display: flex;
+  gap: var(--ec-space-2);
+  flex-wrap: wrap;
+  font-size: var(--ec-text-2xs);
+  color: var(--ec-text-muted);
+}
+.ec-bots-result__body {
+  color: var(--ec-text);
+  font-size: var(--ec-text-sm);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.ec-bots-result__error {
+  color: var(--ec-danger);
+  font-size: var(--ec-text-sm);
+  line-height: 1.4;
+}
+
+/* Стата: карточки-метрики + топ комнат */
+.ec-bots-caps-label {
+  font-size: 0.6rem;
+  color: var(--ec-text-dim);
+  text-transform: uppercase;
+  letter-spacing: var(--ec-tracking-caps);
+}
+.ec-bots-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: var(--ec-space-2);
+}
+.ec-bots-stat {
+  padding: var(--ec-space-2) var(--ec-space-3);
+  background: var(--ec-surface-1);
+  border: 1px solid var(--ec-border-subtle);
+  border-radius: var(--ec-radius-md);
+}
+.ec-bots-stat__value {
+  font-size: var(--ec-text-lg);
+  font-weight: 700;
+  color: var(--ec-text-strong);
+  font-feature-settings: "tnum";
+}
+.ec-bots-chan-head {
+  font-size: 0.6rem;
+  color: var(--ec-text-dim);
+  text-transform: uppercase;
+  letter-spacing: var(--ec-tracking-caps);
+  margin-bottom: 6px;
+}
+.ec-bots-chan-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ec-bots-chan-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.3rem 0.6rem;
+  background: var(--ec-surface-1);
+  border: 1px solid var(--ec-border-subtle);
+  border-radius: var(--ec-radius-sm);
+  font-size: var(--ec-text-sm);
+}
+.ec-bots-chan-name {
+  color: var(--ec-text);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* ===== Ephemeral banner (v1.2.14 slash-команды) ====================
    Ответ /help и подобных команд видит только тот, кто их вызвал.
    Баннер «только вы видите» в конце message-list — приглушённый
