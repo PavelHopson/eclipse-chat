@@ -254,7 +254,7 @@ export function LandingPage({
               className="ec-landing-btn ec-landing-btn--primary"
               onClick={() => onOpenAuth("register")}
             >
-              Запустить контур
+              Создать пространство
               <span className="ec-landing-btn__arrow" aria-hidden>→</span>
             </button>
           </div>
@@ -268,7 +268,7 @@ export function LandingPage({
               <span className="ec-landing__hero-title-line">Работа</span>
               <span className="ec-landing__hero-title-line">в одном</span>
               <span className="ec-landing__hero-title-line ec-landing__hero-title-accent">
-                контуре.
+                месте.
               </span>
             </h1>
             <p className="ec-landing__hero-subhead">
@@ -282,7 +282,7 @@ export function LandingPage({
                   className="ec-landing-btn ec-landing-btn--primary"
                   onClick={() => onOpenAuth("register")}
                 >
-                  Запустить рабочий контур
+                  Создать рабочее пространство
                   <span className="ec-landing-btn__arrow" aria-hidden>→</span>
                 </button>
               </MagneticButton>

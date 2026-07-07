@@ -46,7 +46,7 @@ export function DeadlineNotFoundPage() {
       <section className="ec-deadline-404__panel ec-holo-edge">
         <div className="ec-deadline-404__eyebrow">
           <span aria-hidden>404</span>
-          <span>Маршрут вне контура</span>
+          <span>Страница не найдена</span>
         </div>
 
         <div className="ec-deadline-404__scene" aria-hidden>
@@ -65,7 +65,7 @@ export function DeadlineNotFoundPage() {
         <div className="ec-deadline-404__copy">
           <h1 id="deadline-404-title">Сигнал потерян</h1>
           <p>
-            Такой страницы в Eclipse Chat нет. Можно вернуться в рабочий контур
+            Такой страницы в Eclipse Chat нет. Можно вернуться в рабочее пространство
             или открыть предыдущий экран.
           </p>
         </div>
