@@ -1311,6 +1311,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             unread={unread}
             selectedChannelId={selectedChannelId}
             onSelect={handleSelectChannel}
+            onSelectServerView={handleSelectServerView}
             onCreate={async (name, type, categoryId) => {
               setHomeOpen(false);
               await createChannel(name, type, { categoryId });
