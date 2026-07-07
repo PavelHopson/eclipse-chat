@@ -1,21 +1,31 @@
 # Eclipse Chat — AI setup
 
-Eclipse Chat включает AI-фичи (channel digest summary + `@ai` assistant в чате).
-По умолчанию AI отключён — endpoints возвращают 503. Чтобы включить, нужно
-сконфигурировать хотя бы один провайдер через env-переменные в
-`apps/server/.env`.
+Eclipse Chat включает AI-фичи: channel digest summary, `@ai` assistant,
+role-based agents, action extraction, semantic search и "since you were away".
+
+По умолчанию есть keyless fallback через Pollinations, если он не отключён
+`POLLINATIONS_DISABLED=1`. Для production лучше явно настроить хотя бы один
+контролируемый провайдер через env-переменные в `apps/server/.env`.
 
 **Provider chain** (auto-fallback по списку, первый успешный = result):
 
 | Приоритет | Провайдер | Стоимость | API key |
 |---:|---|---|---|
 | 1 | **Ollama** (локальный) | бесплатно (CPU/GPU server) | — |
-| 2 | **OpenRouter** | бесплатные модели (DeepSeek/Qwen/Llama) | да, free tier |
-| 3 | **NVIDIA Build** | 95 бесплатных моделей | да |
-| 4 | **OpenAI** | paid | да |
+| 2 | **OmniRoute** | self-hosted gateway, auto-routing | опционально |
+| 3 | **Groq** | free tier, быстрый inference | да |
+| 4 | **Cerebras** | free tier, быстрый inference | да |
+| 5 | **OpenRouter** | бесплатные модели (DeepSeek/Qwen/Llama) | да, free tier |
+| 6 | **NVIDIA Build** | 95 бесплатных моделей | да |
+| 7 | **Mistral** | free tier | да |
+| 8 | **YandexGPT** | РФ cloud, private API | да |
+| 9 | **DeepSeek / GLM / MiMo / Custom** | cheap OpenAI-compatible | да |
+| 10 | **OpenAI** | paid fallback | да |
+| 11 | **Pollinations** | keyless fallback | нет |
 
-Рекомендация для production self-host: **Ollama + OpenRouter** как fallback
-(если локальный runtime упал — облако подхватит).
+Рекомендация для production self-host: **Ollama + OmniRoute/OpenRouter** как
+fallback. Ollama держит приватные сценарии локально, а gateway/облако
+подхватывает, если локальный runtime упал или не тянет задачу.
 
 ---
 
@@ -112,7 +122,40 @@ curl https://app.star-crm.ru/eclipse-chat/api/version  # должен ответ
 
 ---
 
-## Вариант 3 — NVIDIA Build (95 free моделей)
+## Вариант 3 — OmniRoute (self-hosted provider-router)
+
+OmniRoute — OpenAI-compatible gateway. Он может агрегировать провайдеры,
+делать auto-fallback, cost-aware routing и compression. Для Eclipse Chat это
+полезно как единый routing слой для `@ai`, agents и summaries, но не как
+замена privacy-политике: всё, что gateway отправляет наружу, остаётся внешним
+LLM-трафиком.
+
+Источник: https://github.com/diegosouzapw/OmniRoute
+
+### Подключение локального gateway
+
+По README OmniRoute локальный endpoint выглядит как `http://localhost:20128/v1`.
+
+```bash
+OMNIROUTE_BASE_URL=http://localhost:20128/v1
+OMNIROUTE_MODEL=auto
+# или несколько fallback-моделей/режимов:
+OMNIROUTE_MODELS=auto,auto/coding,auto/fast
+```
+
+Если gateway защищён токеном:
+
+```bash
+OMNIROUTE_API_KEY=<token>
+```
+
+Порядок в chain: `Ollama → OmniRoute → direct cloud providers → OpenAI → Pollinations`.
+Так локальная приватность остаётся первой, а OmniRoute становится умным
+резервным шлюзом.
+
+---
+
+## Вариант 4 — NVIDIA Build (95 free моделей)
 
 1. Регистрация на https://build.nvidia.com → Get API Key
 2. В `apps/server/.env`:

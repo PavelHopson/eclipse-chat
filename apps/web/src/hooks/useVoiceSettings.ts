@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from "react";
  */
 
 export type NoiseSuppressionMode = "off" | "standard" | "aggressive";
+export type VoicePresetId = "office" | "noisy" | "studio";
 
 /**
  * Режим активации микрофона:
@@ -66,27 +67,85 @@ const DEFAULT_SETTINGS: VoiceSettings = {
 
 const STORAGE_KEY = "eclipse_chat_voice_settings_v1";
 
+const NOISE_MODES = new Set<NoiseSuppressionMode>([
+  "off",
+  "standard",
+  "aggressive",
+]);
+const MIC_MODES = new Set<MicActivationMode>([
+  "open",
+  "voice_activity",
+  "push_to_talk",
+]);
+
+function clampNumber(value: unknown, min: number, max: number, fallback: number) {
+  return typeof value === "number" && Number.isFinite(value)
+    ? Math.max(min, Math.min(max, value))
+    : fallback;
+}
+
+function sanitizeParticipantVolumes(value: unknown): Record<string, number> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const out: Record<string, number> = {};
+  for (const [identity, volume] of Object.entries(value)) {
+    if (typeof identity !== "string" || identity.length === 0) continue;
+    out[identity] = clampNumber(volume, 0, 2, 1);
+  }
+  return out;
+}
+
+function sanitizeSettings(parsed: Partial<VoiceSettings>): VoiceSettings {
+  let mode: MicActivationMode | undefined = parsed.micActivationMode;
+  if (!mode) {
+    mode = parsed.pushToTalk ? "push_to_talk" : DEFAULT_SETTINGS.micActivationMode;
+  }
+  const noise = parsed.noiseSuppression;
+
+  return {
+    ...DEFAULT_SETTINGS,
+    inputDeviceId:
+      typeof parsed.inputDeviceId === "string" && parsed.inputDeviceId.length > 0
+        ? parsed.inputDeviceId
+        : null,
+    outputDeviceId:
+      typeof parsed.outputDeviceId === "string" && parsed.outputDeviceId.length > 0
+        ? parsed.outputDeviceId
+        : null,
+    noiseSuppression:
+      noise && NOISE_MODES.has(noise) ? noise : DEFAULT_SETTINGS.noiseSuppression,
+    micActivationMode: MIC_MODES.has(mode)
+      ? mode
+      : DEFAULT_SETTINGS.micActivationMode,
+    pttKey:
+      typeof parsed.pttKey === "string" && parsed.pttKey.length > 0
+        ? parsed.pttKey
+        : DEFAULT_SETTINGS.pttKey,
+    vadThreshold: clampNumber(parsed.vadThreshold, 0, 0.5, DEFAULT_SETTINGS.vadThreshold),
+    afkTimeoutMinutes: Math.round(
+      clampNumber(parsed.afkTimeoutMinutes, 0, 120, DEFAULT_SETTINGS.afkTimeoutMinutes),
+    ),
+    participantVolumes: sanitizeParticipantVolumes(parsed.participantVolumes),
+    mutedParticipants: Array.isArray(parsed.mutedParticipants)
+      ? parsed.mutedParticipants.filter((id): id is string => typeof id === "string")
+      : [],
+    masterOutputVolume: clampNumber(
+      parsed.masterOutputVolume,
+      0,
+      1.5,
+      DEFAULT_SETTINGS.masterOutputVolume,
+    ),
+    micGain: clampNumber(parsed.micGain, 0, 2, DEFAULT_SETTINGS.micGain),
+    pushToTalk: undefined,
+  };
+}
+
 function loadSettings(): VoiceSettings {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return DEFAULT_SETTINGS;
     const parsed = JSON.parse(raw) as Partial<VoiceSettings>;
 
-    // Backward-compat: v0.6.1 хранил pushToTalk:boolean. Migrate в новый
-    // micActivationMode при первом load. После save — старое поле выйдет.
-    let mode: MicActivationMode | undefined = parsed.micActivationMode;
-    if (!mode) {
-      mode = parsed.pushToTalk ? "push_to_talk" : "open";
-    }
-
-    return {
-      ...DEFAULT_SETTINGS,
-      ...parsed,
-      micActivationMode: mode,
-      participantVolumes: parsed.participantVolumes ?? {},
-      mutedParticipants: parsed.mutedParticipants ?? [],
-      pushToTalk: undefined, // вычистим legacy
-    };
+    return sanitizeSettings(parsed);
   } catch {
     return DEFAULT_SETTINGS;
   }
@@ -152,9 +211,10 @@ export function useVoiceSettings() {
   }, []);
 
   const setParticipantVolume = useCallback((identity: string, volume: number) => {
+    const clamped = Math.max(0, Math.min(2, volume));
     setMemoryState((p) => ({
       ...p,
-      participantVolumes: { ...p.participantVolumes, [identity]: volume },
+      participantVolumes: { ...p.participantVolumes, [identity]: clamped },
     }));
   }, []);
 
@@ -203,6 +263,39 @@ export function useVoiceSettings() {
     setMemoryState(() => DEFAULT_SETTINGS);
   }, []);
 
+  const applyVoicePreset = useCallback((preset: VoicePresetId) => {
+    setMemoryState((p) => {
+      if (preset === "noisy") {
+        return {
+          ...p,
+          noiseSuppression: "aggressive",
+          micActivationMode: "voice_activity",
+          vadThreshold: 0.08,
+          micGain: 1.05,
+          masterOutputVolume: Math.max(p.masterOutputVolume, 1),
+        };
+      }
+      if (preset === "studio") {
+        return {
+          ...p,
+          noiseSuppression: "off",
+          micActivationMode: "open",
+          vadThreshold: 0.05,
+          micGain: 1,
+          masterOutputVolume: Math.max(p.masterOutputVolume, 1),
+        };
+      }
+      return {
+        ...p,
+        noiseSuppression: "standard",
+        micActivationMode: "open",
+        vadThreshold: 0.05,
+        micGain: 1,
+        masterOutputVolume: Math.max(p.masterOutputVolume, 1),
+      };
+    });
+  }, []);
+
   return {
     settings,
     setInputDevice,
@@ -217,6 +310,7 @@ export function useVoiceSettings() {
     toggleParticipantMute,
     setMasterOutputVolume,
     setMicGain,
+    applyVoicePreset,
     resetSettings,
   };
 }

@@ -54,7 +54,9 @@ const iconWrap = (compact: boolean): CSSProperties => ({
 const titleStyle: CSSProperties = {
   fontSize: "var(--ec-text-lg)",
   fontWeight: 600,
-  color: "var(--ec-text)",
+  // v1.6.49 — solid strong-text (был gradient text-fill в .ec-empty-state__title,
+  // снят в де-нойзе). Inline перебивает класс — держим оба на --ec-text-strong.
+  color: "var(--ec-text-strong)",
   margin: 0,
 };
 

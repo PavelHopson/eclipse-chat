@@ -209,9 +209,9 @@ export function FinalCtaSection({ onLaunch, onDemo }: FinalCtaSectionProps) {
     <div className="ec-landing__final" id="pricing">
       <div>
         <h2>
-          Готовы запустить
+          Готовы создать
           <br />
-          <span className="ec-landing__h2-accent">рабочий контур?</span>
+          <span className="ec-landing__h2-accent">рабочее пространство?</span>
         </h2>
         <p className="ec-landing__body">
           Разверните Eclipse Chat на своём сервере и начните работать уже сегодня.
@@ -223,7 +223,7 @@ export function FinalCtaSection({ onLaunch, onDemo }: FinalCtaSectionProps) {
           className="ec-landing-btn ec-landing-btn--primary"
           onClick={onLaunch}
         >
-          Запустить рабочий контур
+          Создать рабочее пространство
           <span className="ec-landing-btn__arrow" aria-hidden>→</span>
         </button>
         <span className="ec-landing__final-or">ИЛИ</span>

@@ -367,8 +367,13 @@
   text-transform: uppercase;
   color: var(--L-text);
 }
+.ec-landing__hero-title-line {
+  display: block;
+  max-width: 9ch;
+  opacity: 1;
+  transform: none;
+}
 .ec-landing__hero-title-accent {
-  display: inline;
   color: var(--L-signal);
 }
 .ec-landing__hero-subhead {
@@ -489,119 +494,6 @@
     0 0 60px rgba(93, 181, 217, 0.1);
   isolation: isolate;
   animation: ec-hero-access-mount 720ms var(--L-ease-out) both;
-}
-/* v1.3.12 — hidden SVG defs (filter not visible itself) */
-.ec-hero-access__svg-defs {
-  position: absolute;
-  width: 0;
-  height: 0;
-  overflow: hidden;
-  pointer-events: none;
-}
-
-/* v1.4.1 — Corner bracket markers (4 cyan SVG corners на frame edges).
- * Pulse animation breathes glow. Soft cyan signal-soft. */
-.ec-hero-access__corner {
-  position: absolute;
-  z-index: 3;
-  color: var(--L-signal-soft);
-  filter: drop-shadow(0 0 6px rgba(154, 216, 239, 0.55));
-  pointer-events: none;
-  animation: ec-hero-access-corner-pulse 4s ease-in-out infinite;
-}
-.ec-hero-access__corner--tl {
-  top: 10px;
-  left: 10px;
-}
-.ec-hero-access__corner--tr {
-  top: 10px;
-  right: 10px;
-  transform: scaleX(-1);
-}
-.ec-hero-access__corner--bl {
-  bottom: 10px;
-  left: 10px;
-  transform: scaleY(-1);
-}
-.ec-hero-access__corner--br {
-  bottom: 10px;
-  right: 10px;
-  transform: scale(-1, -1);
-}
-@keyframes ec-hero-access-corner-pulse {
-  0%, 100% {
-    opacity: 0.7;
-    filter: drop-shadow(0 0 6px rgba(154, 216, 239, 0.45));
-  }
-  50% {
-    opacity: 1;
-    filter: drop-shadow(0 0 12px rgba(154, 216, 239, 0.85));
-  }
-}
-/* v1.3.12 — Electric Border Effect layered around frame.
- * Adapted from docs/design/effects/Electric Border Effect/.
- * Cyan #00fffb → наш --L-signal #5db5d9. Multi-layer blur stack + SVG
- * turbulence/displacement filter creates wavy electric line.
- */
-.ec-hero-access__electric {
-  position: absolute;
-  inset: -2px;
-  border-radius: 17px;
-  pointer-events: none;
-  z-index: 0;
-}
-.ec-hero-access__electric-border {
-  position: absolute;
-  inset: 0;
-  border: 2px solid var(--L-signal);
-  border-radius: inherit;
-  filter: url(#ec-electric-border);
-  opacity: 0.85;
-}
-.ec-hero-access__electric-glow {
-  position: absolute;
-  inset: 0;
-  border: 2px solid var(--L-signal);
-  border-radius: inherit;
-  pointer-events: none;
-}
-.ec-hero-access__electric-glow--1 {
-  filter: url(#ec-electric-border) blur(2px);
-  opacity: 0.55;
-}
-.ec-hero-access__electric-glow--2 {
-  border-color: var(--L-signal-soft);
-  filter: url(#ec-electric-border) blur(6px);
-  opacity: 0.5;
-}
-.ec-hero-access__electric-overlay {
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: linear-gradient(
-    -30deg,
-    rgba(154, 216, 239, 0.5),
-    transparent 30%,
-    transparent 70%,
-    rgba(154, 216, 239, 0.5)
-  );
-  filter: blur(18px);
-  mix-blend-mode: overlay;
-  opacity: 0.45;
-}
-.ec-hero-access__electric-bg {
-  position: absolute;
-  inset: -8px;
-  border-radius: 24px;
-  background: linear-gradient(
-    -30deg,
-    var(--L-signal-soft),
-    transparent,
-    var(--L-signal)
-  );
-  filter: blur(34px);
-  opacity: 0.22;
-  z-index: -1;
 }
 /* Top cyan signal line (moved to ::after to avoid conflict с
  * holographic shimmer ::before added in v1.4.0) */
@@ -890,52 +782,6 @@
   cursor: not-allowed;
 }
 
-/* v1.3.12 — Password scanner beam.
- * Adapted from docs/design/effects/Сканнер пароля/. При scanning state
- * — вертикальная cyan beam slides слева направо поверх input + scan
- * background sweep на input. */
-.ec-hero-access__scan {
-  position: absolute;
-  inset: 0;
-  border-radius: 10px;
-  overflow: hidden;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 120ms var(--L-ease-out);
-  z-index: 2;
-}
-.ec-hero-access__input-wrap--password.is-scanning .ec-hero-access__scan {
-  opacity: 1;
-}
-.ec-hero-access__input-wrap--password.is-scanning input {
-  background: linear-gradient(90deg, rgba(93, 181, 217, 0.32) 50%, rgba(4, 8, 13, 0.72) 100%);
-  background-size: 200% 100%;
-  animation: ec-hero-access-scan-bg 600ms ease-out both;
-}
-.ec-hero-access__scan-beam {
-  position: absolute;
-  top: 4px;
-  bottom: 4px;
-  left: 0;
-  width: 2px;
-  background: var(--L-signal-soft);
-  box-shadow:
-    0 0 8px 2px rgba(93, 181, 217, 0.85),
-    0 0 16px 6px rgba(93, 181, 217, 0.45);
-  border-radius: 1px;
-}
-.ec-hero-access__input-wrap--password.is-scanning .ec-hero-access__scan-beam {
-  animation: ec-hero-access-scan-beam 600ms ease-out both;
-}
-@keyframes ec-hero-access-scan-bg {
-  0% { background-position: 0 0; }
-  100% { background-position: -200% 0; }
-}
-@keyframes ec-hero-access-scan-beam {
-  0% { left: 0; opacity: 1; }
-  90% { opacity: 1; }
-  100% { left: calc(100% - 2px); opacity: 0; }
-}
 
 /* Error */
 .ec-hero-access__error {
@@ -1865,6 +1711,7 @@
 @media (max-width: 560px) {
   .ec-landing__footer { grid-template-columns: 1fr; }
   .ec-landing__nav { height: 64px; }
+  .ec-landing__nav-actions { display: none; }
   .ec-landing__nav .ec-landing-btn--link { display: none; }
   .ec-landing-btn { padding: 0 16px; height: 38px; }
   .ec-landing__features { grid-template-columns: 1fr; }
@@ -2023,6 +1870,9 @@
     transform: none;
     transition: none;
   }
+  .ec-landing__hero-title-line {
+    animation: none !important;
+  }
   .ec-tilt-card__inner,
   .ec-magnetic {
     transform: none !important;
@@ -2030,5 +1880,340 @@
   }
   .ec-hero-access__frame::before {
     animation: none;
+  }
+}
+
+/* v1.6.20 — landing performance pass.
+ * The landing keeps the cinematic identity, but avoids continuous GPU-heavy
+ * work outside direct interaction. The expensive electric SVG filter + blur
+ * stack was the main visual suspect for torn frames on mid GPUs. */
+.ec-landing__trust,
+.ec-landing__section,
+.ec-landing__final,
+.ec-landing__footer {
+  content-visibility: auto;
+  contain-intrinsic-size: 720px;
+}
+
+.ec-hero-access__frame::before {
+  animation: none !important;
+  opacity: 0.42;
+  background-size: 100% 100%;
+}
+
+.ec-hero-access__status-dot,
+.ec-hero-access__footer-dot {
+  animation: none !important;
+}
+
+.ec-memory-map__link,
+.ec-memory-map__core-pulse,
+.ec-memory-map__orbit--one,
+.ec-memory-map__orbit--two,
+.ec-security-stack__grid,
+.ec-security-stack__cube,
+.ec-security-stack__cube-face--3,
+.ec-security-stack__cube-shield,
+.ec-security-stack__rings span {
+  animation: none !important;
+}
+
+.ec-security-stack__cube {
+  transform: rotateX(55deg) rotateZ(-16deg);
+}
+
+.ec-security-stack__cube-shield {
+  transform: translate(-50%, -50%) translateZ(80px) rotateX(-55deg);
+}
+
+.ec-landing__brand-logo {
+  filter: brightness(1.12) contrast(1.08);
+}
+
+.ec-landing__brand:hover .ec-landing__brand-logo {
+  filter: brightness(1.18) contrast(1.12)
+    drop-shadow(0 0 16px rgba(93, 181, 217, 0.45));
+}
+
+@media (max-width: 900px), (pointer: coarse) {
+  .ec-cursor-trail {
+    display: none;
+  }
+}
+
+/* v1.6.21 — auth access module redesign.
+ * Static composition only: stronger hierarchy and calmer controls without
+ * returning the heavy continuous effects removed in v1.6.20. */
+.ec-hero-access__frame {
+  max-width: 430px;
+  box-sizing: border-box;
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid rgba(154, 216, 239, 0.2);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 16% 0%, rgba(93, 181, 217, 0.18), transparent 32%),
+    radial-gradient(circle at 86% 12%, rgba(139, 92, 246, 0.2), transparent 36%),
+    linear-gradient(180deg, rgba(15, 23, 34, 0.94), rgba(4, 8, 14, 0.97));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -1px 0 rgba(139, 92, 246, 0.1),
+    0 28px 90px rgba(0, 0, 0, 0.58),
+    0 0 0 1px rgba(139, 92, 246, 0.1),
+    0 0 58px rgba(93, 181, 217, 0.12);
+}
+
+.ec-hero-access__frame::after {
+  left: 22px;
+  right: 22px;
+  background: linear-gradient(90deg, transparent, rgba(93, 181, 217, 0.9), rgba(139, 92, 246, 0.7), transparent);
+  opacity: 0.86;
+}
+
+.ec-hero-access__frame::before {
+  opacity: 0.24;
+  background:
+    linear-gradient(135deg, rgba(154, 216, 239, 0.08), transparent 42%),
+    linear-gradient(315deg, rgba(139, 92, 246, 0.1), transparent 48%);
+}
+
+.ec-hero-access__head {
+  gap: 8px;
+  text-align: left;
+}
+
+.ec-hero-access__eyebrow {
+  letter-spacing: 0.14em;
+  color: rgba(93, 181, 217, 0.92);
+}
+
+.ec-hero-access__title {
+  max-width: 10ch;
+  font-size: clamp(28px, 3vw, 38px);
+  line-height: 0.98;
+  letter-spacing: 0;
+}
+
+.ec-hero-access__sub {
+  color: rgba(201, 216, 228, 0.72);
+}
+
+.ec-hero-access__assurance {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.ec-hero-access__assurance span {
+  min-width: 0;
+  padding: 8px 9px;
+  border: 1px solid rgba(154, 216, 239, 0.16);
+  border-radius: 10px;
+  background: rgba(8, 15, 24, 0.66);
+  color: rgba(178, 199, 214, 0.72);
+  font-family: var(--ec-font-mono, "JetBrains Mono", ui-monospace, monospace);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-align: center;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.ec-hero-access__tabs {
+  padding: 5px;
+  border-color: rgba(154, 216, 239, 0.15);
+  border-radius: 14px;
+  background: rgba(2, 5, 10, 0.68);
+}
+
+.ec-hero-access__tab-indicator {
+  top: 5px;
+  bottom: 5px;
+  left: 5px;
+  width: calc(50% - 5px);
+  border-radius: 10px;
+  background: linear-gradient(110deg, #f4d18b 0%, #b48def 48%, #62c7f1 100%);
+  box-shadow:
+    0 8px 22px rgba(93, 181, 217, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.ec-hero-access__tab {
+  min-height: 40px;
+  color: rgba(158, 179, 194, 0.78);
+  letter-spacing: 0.16em;
+}
+
+.ec-hero-access__input-wrap input {
+  height: 60px;
+  border-color: rgba(154, 216, 239, 0.14);
+  border-radius: 13px;
+  background:
+    linear-gradient(180deg, rgba(8, 14, 22, 0.86), rgba(3, 7, 12, 0.92));
+}
+
+.ec-hero-access__input-wrap input:focus {
+  border-color: rgba(93, 181, 217, 0.78);
+  box-shadow:
+    0 0 0 3px rgba(93, 181, 217, 0.14),
+    0 0 28px rgba(139, 92, 246, 0.12);
+}
+
+.ec-hero-access__field-icon {
+  color: rgba(93, 181, 217, 0.72);
+}
+
+.ec-hero-access__floating-label {
+  color: rgba(151, 171, 186, 0.74);
+}
+
+.ec-hero-access__input-wrap:focus-within .ec-hero-access__floating-label,
+.ec-hero-access__input-wrap.is-filled .ec-hero-access__floating-label {
+  color: rgba(93, 181, 217, 0.95);
+  letter-spacing: 0.12em;
+}
+
+.ec-hero-access__toggle {
+  right: 6px;
+  top: 6px;
+  bottom: 6px;
+  width: 42px;
+  border: 1px solid rgba(154, 216, 239, 0.1);
+  border-radius: 10px;
+  background: rgba(12, 25, 36, 0.74);
+}
+
+.ec-hero-access__submit {
+  height: 56px;
+  margin-top: 2px;
+  border-radius: 14px;
+  background: linear-gradient(110deg, #f4d18b 0%, #b48def 48%, #62c7f1 100%);
+  color: #030711;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.36),
+    0 14px 34px rgba(93, 181, 217, 0.24),
+    0 0 52px rgba(139, 92, 246, 0.14);
+}
+
+.ec-hero-access__submit:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.42),
+    0 18px 42px rgba(93, 181, 217, 0.3),
+    0 0 58px rgba(139, 92, 246, 0.2);
+}
+
+.ec-hero-access__hint {
+  color: rgba(160, 182, 198, 0.78);
+}
+
+.ec-hero-access__footer {
+  padding-top: 14px;
+  color: rgba(113, 135, 151, 0.74);
+  letter-spacing: 0.12em;
+}
+
+.ec-hero-access__footer-meta {
+  color: rgba(113, 135, 151, 0.56);
+}
+
+@media (max-width: 980px) {
+  .ec-landing,
+  .ec-landing__shell,
+  .ec-landing__hero,
+  .ec-landing__hero-copy,
+  .ec-landing__hero-stage,
+  .ec-hero-access {
+    min-width: 0;
+  }
+
+  .ec-landing {
+    overflow-x: clip;
+  }
+
+  .ec-landing__hero-stage,
+  .ec-hero-access {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .ec-hero-access__frame {
+    width: min(100%, 430px);
+    padding: 18px;
+  }
+}
+
+@media (max-width: 560px) {
+  .ec-landing__shell {
+    width: calc(100% - 32px);
+  }
+
+  .ec-landing__hero {
+    padding: 30px 0 44px;
+  }
+
+  .ec-landing__hero-copy,
+  .ec-landing__hero-stage {
+    width: min(326px, calc(100vw - 80px)) !important;
+    max-width: min(326px, calc(100vw - 80px)) !important;
+    justify-self: start;
+    box-sizing: border-box;
+  }
+
+  .ec-landing__hero-title,
+  .ec-landing__hero-subhead {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .ec-landing__hero-title-line {
+    max-width: none;
+  }
+
+  .ec-landing__hero-cta,
+  .ec-landing__hero-chips {
+    max-width: 100%;
+  }
+
+  .ec-landing__hero-cta {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .ec-landing__hero-cta .ec-landing-btn {
+    width: 100%;
+  }
+
+  .ec-landing__hero-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 14px;
+  }
+
+  .ec-hero-access__frame {
+    width: min(326px, calc(100vw - 80px)) !important;
+    max-width: min(326px, calc(100vw - 80px)) !important;
+    border-radius: 18px;
+    padding: 16px;
+  }
+
+  .ec-hero-access__title {
+    max-width: 12ch;
+    font-size: 28px;
+  }
+
+  .ec-hero-access__assurance {
+    grid-template-columns: 1fr;
+  }
+
+  .ec-hero-access__assurance span {
+    text-align: left;
+  }
+
+  .ec-hero-access__footer {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
   }
 }

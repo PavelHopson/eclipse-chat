@@ -1,13 +1,15 @@
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
-import { resolveAssetUrl } from "../lib/assets";
 import { Attachments } from "./Attachments";
 import { Avatar } from "./Avatar";
 import { EmojiPicker } from "./EmojiPicker";
 import { RichContent } from "./RichContent";
 import { LinkEmbedCard } from "./LinkEmbedCard";
+import { YouTubeEmbedCard } from "./YouTubeEmbedCard";
 import { EmptyState } from "./EmptyState";
 import { EmptyChannelIcon } from "./EmptyIcons";
+import { useConfirm } from "./ConfirmDialog";
 import { extractFirstUrl } from "../lib/linkExtract";
+import { parseYouTubeUrl } from "../lib/youtubeEmbed";
 import { gameIcon } from "../lib/gameIcons";
 import { useMessageEditHistory } from "../hooks/useMessageEditHistory";
 import type { ActionItemStatus, ActionItemType, MessageRow } from "../hooks/useMessages";
@@ -174,11 +176,12 @@ export function MessageList({
   onOpenThread,
   onPlayShared,
   isDm = false,
-  channelTopBanner = null,
   channelTopSubtitle = null,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const confirm = useConfirm();
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [pinBurstId, setPinBurstId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   // v1.5.24 — какое сообщение сейчас раскрыло «История правок» accordion.
   const [editHistoryId, setEditHistoryId] = useState<string | null>(null);
@@ -192,6 +195,7 @@ export function MessageList({
   const listKeyRef = useRef<string | null>(listKey ?? null);
   const tailIdRef = useRef<string | null>(null);
   const messageCountRef = useRef(0);
+  const pinBurstTimerRef = useRef<number | null>(null);
 
   const clearNewMessageMarker = useCallback(() => {
     setUnreadAnchorId(null);
@@ -285,6 +289,14 @@ export function MessageList({
     }
   }, [messages, unreadAnchorId, clearNewMessageMarker]);
 
+  useEffect(() => {
+    return () => {
+      if (pinBurstTimerRef.current !== null) {
+        window.clearTimeout(pinBurstTimerRef.current);
+      }
+    };
+  }, []);
+
   const handleCopy = async (m: MessageRow) => {
     try {
       await navigator.clipboard.writeText(m.content);
@@ -318,8 +330,27 @@ export function MessageList({
 
   const handleDelete = async (m: MessageRow) => {
     if (!onDelete) return;
-    if (!window.confirm("Удалить сообщение?")) return;
+    const ok = await confirm({
+      title: "Удалить сообщение?",
+      message: "Сообщение будет удалено у всех в этом чате.",
+      confirmLabel: "Удалить",
+      danger: true,
+    });
+    if (!ok) return;
     await onDelete(m.id);
+  };
+
+  const handlePin = async (m: MessageRow) => {
+    if (!onPin) return;
+    if (pinBurstTimerRef.current !== null) {
+      window.clearTimeout(pinBurstTimerRef.current);
+    }
+    setPinBurstId(m.id);
+    pinBurstTimerRef.current = window.setTimeout(() => {
+      setPinBurstId((current) => (current === m.id ? null : current));
+      pinBurstTimerRef.current = null;
+    }, 820);
+    await onPin(m.id);
   };
 
   // Loading state — skeleton screens вместо пустого блока с текстом «Загрузка…».
@@ -401,27 +432,17 @@ export function MessageList({
   // - С banner: cinematic cover-фон + overlay (читается на любом изображении).
   // - Без banner: subtle text-only label.
   // Hero сидит первым в scroll-контейнере, появляется при scroll-to-top.
-  const channelTopBannerUrl =
-    channelTopBanner ? resolveAssetUrl(channelTopBanner) : null;
+  // Clean redesign: full-bleed cinematic banner (с overlaid текстом и
+  // выцветшим server-баннером за заголовком) убран — channel-top теперь
+  // чистый компактный text-only header (base .ec-msg-channel-top, 84px).
   const channelTopHero = channelName ? (
-    <header
-      className={`ec-msg-channel-top${
-        channelTopBannerUrl ? " ec-msg-channel-top--with-banner" : ""
-      }`}
-      style={
-        channelTopBannerUrl
-          ? { backgroundImage: `url("${channelTopBannerUrl}")` }
-          : undefined
-      }
-    >
+    <header className="ec-msg-channel-top">
       <div className="ec-msg-channel-top__content">
         <h2 className="ec-msg-channel-top__title">
           Начало канала #{channelName}
         </h2>
         {channelTopSubtitle && (
-          <p className="ec-msg-channel-top__sub">
-            в {channelTopSubtitle}
-          </p>
+          <p className="ec-msg-channel-top__sub">в {channelTopSubtitle}</p>
         )}
       </div>
     </header>
@@ -492,7 +513,8 @@ export function MessageList({
               className={
                 "ec-message-row ec-anim-message-enter" +
                 rowClass +
-                (m.user.isBot ? " ec-message-row--ai" : "")
+                (m.user.isBot ? " ec-message-row--ai" : "") +
+                (isMine ? " ec-message-row--mine" : "")
               }
               style={{
                 opacity: m.pending ? 0.6 : 1,
@@ -521,7 +543,7 @@ export function MessageList({
                   </span>
                 )}
               </div>
-              <div style={{ minWidth: 0 }}>
+              <div className="ec-message-content">
                 {(!grouped || newDay || isPinned) && (
                   <header style={{ display: "flex", alignItems: "baseline", gap: "var(--ec-space-2)", marginBottom: 2 }}>
                     <button
@@ -754,7 +776,12 @@ export function MessageList({
                         URL extracted из content. */}
                     {m.attachments.length === 0 && m.content && (() => {
                       const url = extractFirstUrl(m.content);
-                      return url ? <LinkEmbedCard url={url} /> : null;
+                      if (!url) return null;
+                      return parseYouTubeUrl(url) ? (
+                        <YouTubeEmbedCard url={url} />
+                      ) : (
+                        <LinkEmbedCard url={url} />
+                      );
                     })()}
                   </>
                 )}
@@ -1062,10 +1089,10 @@ export function MessageList({
                   {showPin && (
                     <button
                       type="button"
-                      className="ec-msg-action ec-msg-action--warn"
+                      className={`ec-msg-action ec-msg-action--warn ec-msg-action--pin${pinBurstId === m.id ? " is-bursting" : ""}`}
                       aria-label="Закрепить"
                       title="Закрепить"
-                      onClick={() => void onPin?.(m.id)}
+                      onClick={() => void handlePin(m)}
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                         <line x1="12" y1="17" x2="12" y2="22" />

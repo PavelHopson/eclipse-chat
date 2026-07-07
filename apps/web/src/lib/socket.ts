@@ -112,6 +112,8 @@ export type ChannelUpdatedPayload = {
   description: string | null;
   emoji: string | null;
   expiresAt?: string | null;
+  /** v1.7.0 — дефолтный TTL исчезающих сообщений канала (секунды; null = выкл). */
+  messageTtlSeconds?: number | null;
 };
 
 export type CategoryDto = {
@@ -353,6 +355,18 @@ export type TypingStopPayload = {
   userId: string;
 };
 
+/** v1.6.66 — typing в ЛС (1:1 + группы). conversationId вместо channelId. */
+export type DmTypingStartPayload = {
+  conversationId: string;
+  userId: string;
+  displayName: string;
+};
+
+export type DmTypingStopPayload = {
+  conversationId: string;
+  userId: string;
+};
+
 /** Server-side bot генерирует AI-ответ (v0.48). */
 export type BotTypingPayload = {
   channelId: string;
@@ -512,6 +526,7 @@ export const SocketEvents = {
   TableRowAdded: "table:row:added",
   TableRowUpdated: "table:row:updated",
   TableRowDeleted: "table:row:deleted",
+  TrainingCatalogUpdated: "training:catalog:updated",
   ChannelCreated: "channel:created",
   ChannelDeleted: "channel:deleted",
   CategoryCreated: "category:created",
@@ -535,6 +550,7 @@ export const SocketEvents = {
   BotTyping: "bot:typing",
   VoiceJoin: "voice:join",
   VoiceLeave: "voice:leave",
+  VoicePresenceRequest: "voice:presence:request",
   VoiceState: "voice:state",
   VoiceMeta: "voice:meta",
   VoiceMetaUpdate: "voice:meta:update",
@@ -555,6 +571,8 @@ export const SocketEvents = {
   DmReactionAdded: "dm:reaction:added",
   DmReactionRemoved: "dm:reaction:removed",
   DmConversationBumped: "dm:conversation:bumped",
+  DmTypingStart: "dm:typing:start",
+  DmTypingStop: "dm:typing:stop",
   FriendRequestReceived: "friend:request:received",
   FriendRequestAccepted: "friend:request:accepted",
   FriendRemoved: "friend:removed",

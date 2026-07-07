@@ -19,6 +19,7 @@ import {
   decryptSecret,
   verifyCode,
   verifyRecoveryCode,
+  generateRecoveryCodes,
 } from "../security/twoFactor.js";
 
 const registerBody = z.object({
@@ -46,6 +47,17 @@ const refreshBody = z.object({
 
 const changePasswordBody = z.object({
   currentPassword: z.string().min(1, "Введите текущий пароль"),
+  newPassword: registerBody.shape.password,
+});
+
+// v1.6.68 — self-serve password recovery codes (forgot-password без email).
+const genRecoveryBody = z.object({
+  password: z.string().min(1, "Введите пароль"),
+});
+
+const recoveryResetBody = z.object({
+  email: z.string().trim().email(),
+  code: z.string().trim().min(1, "Введите код восстановления").max(40),
   newPassword: registerBody.shape.password,
 });
 
@@ -488,6 +500,100 @@ export async function registerAuthRoutes(app: FastifyInstance) {
       recordAudit("AUTH_PASSWORD_CHANGE", { userId: user.id, req });
       await deleteAllUserRefresh(user.id);
       return await issueSession(reply, updated, sessionMetaFromReq(req));
+    },
+  );
+
+  /**
+   * v1.6.68 — self-serve восстановление пароля через одноразовые коды (без
+   * email/SMTP). Два эндпоинта:
+   *
+   * 1) POST /api/auth/password-recovery/generate — authed + re-confirm пароля
+   *    (коды обходят пароль → sensitive). Возвращает 10 plaintext-кодов ОДИН
+   *    РАЗ, хранит bcrypt-хэши в User.passwordRecoveryCodes. Старые коды
+   *    инвалидируются (перезапись).
+   */
+  app.post(
+    "/api/auth/password-recovery/generate",
+    {
+      onRequest: [requireJwt],
+      config: { rateLimit: { max: 10, timeWindow: 15 * 60 * 1000 } },
+    },
+    async (req, reply) => {
+      const parsed = genRecoveryBody.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.status(400).send({ error: "Требуется пароль" });
+      }
+      const sub = (req.user as { sub: string } | undefined)?.sub;
+      if (!sub) return reply.status(401).send({ error: "Unauthorized" });
+      const user = await db.user.findUnique({
+        where: { id: sub },
+        select: { id: true, passwordHash: true },
+      });
+      if (!user) return reply.status(401).send({ error: "Unauthorized" });
+      const ok = await bcrypt.compare(parsed.data.password, user.passwordHash);
+      if (!ok) return reply.status(401).send({ error: "Неверный пароль" });
+      const recovery = await generateRecoveryCodes();
+      await db.user.update({
+        where: { id: user.id },
+        data: { passwordRecoveryCodes: recovery.hashedJson },
+      });
+      return { ok: true, recoveryCodes: recovery.plain }; // показываем 1 раз!
+    },
+  );
+
+  /**
+   * 2) POST /api/auth/password-recovery/reset — UNAUTHED. email + recovery code
+   *    + новый пароль. Verify code (one-time consume), ставит новый пароль,
+   *    снимает lockout, инвалидирует все сессии. Anti-enumeration: одинаковый
+   *    generic-ответ и constant-ish time для несуществующего user'а.
+   */
+  app.post(
+    "/api/auth/password-recovery/reset",
+    { config: { rateLimit: { max: 10, timeWindow: 15 * 60 * 1000 } } },
+    async (req, reply) => {
+      const parsed = recoveryResetBody.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.status(400).send({
+          error: parsed.error.issues[0]?.message ?? "Invalid body",
+        });
+      }
+      const email = normalizeEmail(parsed.data.email);
+      const { code, newPassword } = parsed.data;
+      const genericError = "Неверный email или код восстановления";
+
+      const user = await db.user.findFirst({
+        where: { email: { equals: email, mode: "insensitive" } },
+      });
+      if (!user) {
+        // anti-enumeration: тратим сопоставимое время
+        await bcrypt.compare(code, FAKE_PASSWORD_HASH);
+        return reply.status(400).send({ error: genericError });
+      }
+      if (user.deletedAt !== null || user.bannedAt !== null) {
+        return reply.status(403).send({ error: "Аккаунт недоступен." });
+      }
+      const verified = await verifyRecoveryCode(code, user.passwordRecoveryCodes);
+      if (!verified) {
+        recordAudit("AUTH_LOGIN_FAILED", {
+          userId: user.id,
+          req,
+          metadata: { reason: "recovery_code_invalid" },
+        });
+        return reply.status(400).send({ error: genericError });
+      }
+      const passwordHash = await bcrypt.hash(newPassword, 12);
+      await db.user.update({
+        where: { id: user.id },
+        data: { passwordHash, passwordRecoveryCodes: verified.remainingJson },
+      });
+      await resetLockout(user.id);
+      await deleteAllUserRefresh(user.id); // безопасность: гасим старые сессии
+      recordAudit("AUTH_PASSWORD_CHANGE", {
+        userId: user.id,
+        req,
+        metadata: { via: "recovery_code" },
+      });
+      return { ok: true };
     },
   );
 

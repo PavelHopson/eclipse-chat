@@ -1,0 +1,8 @@
+# Capacitor-генерируемый нативный проект (создаётся `cap add android` в CI/локально)
+/android/
+
+# deps
+/node_modules/
+
+# Capacitor
+.capacitor/

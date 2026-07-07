@@ -28,26 +28,28 @@
      незачем — это был источник !important-войны. */
   color: var(--ec-text);
   grid-template-rows: var(--ec-header-height) 1fr;
-  /* v1.1.51: far-left server-rail свёрнут в topbar-control (ServerSwitcher)
-     — rail-колонка убрана из grid. */
-  grid-template-columns: var(--ec-spine-width) 1fr var(--ec-members-width);
+  /* v1.6.57 Discord-каркас: вернули постоянный far-left server-rail
+     (отдельная колонка) — смена сервера в 1 клик. ServerSwitcher в топбаре
+     теперь только на mobile. */
+  grid-template-columns: var(--ec-rail-width) var(--ec-spine-width) 1fr var(--ec-members-width);
   grid-template-areas:
-    "brand    cmd   cmd"
-    "channels chat  members";
+    "rail brand    cmd   cmd"
+    "rail channels chat  members";
 }
 
 /* Без активного сервера — members колонка не нужна */
 .ec-shell:not(.ec-shell--has-server) {
-  grid-template-columns: var(--ec-spine-width) 1fr;
+  grid-template-columns: var(--ec-rail-width) var(--ec-spine-width) 1fr;
   grid-template-areas:
-    "brand    cmd"
-    "channels chat";
+    "rail brand    cmd"
+    "rail channels chat";
 }
 
 /* v0.68: min-height:0 на каждой grid-area обязательно — без него grid-row
    auto-expand'ится под content (большой channel list / long member list),
    header app уходит за viewport, никаких scroll'ов не появляется.
    Pavel-ask 17.05 «не у всех экран показывает все каналы». */
+.ec-shell__rail     { grid-area: rail; min-width: 0; min-height: 0; }
 .ec-shell__brandbar { grid-area: brand; min-width: 0; }
 .ec-shell__cmdbar   { grid-area: cmd; min-width: 0; }
 .ec-shell__channels { grid-area: channels; min-width: 0; min-height: 0; overflow: hidden; }
@@ -59,7 +61,7 @@
    operational surface оставался читаемым. */
 @media (min-width: 1025px) and (max-width: 1366px) {
   .ec-shell.ec-shell--has-server {
-    grid-template-columns: 244px 1fr 224px;
+    grid-template-columns: var(--ec-rail-width) 244px 1fr 224px;
   }
 }
 
@@ -101,7 +103,7 @@
     position: fixed;
     top: var(--ec-header-height);
     right: 0;
-    bottom: 0;
+    bottom: var(--ec-bottomnav-height);
     width: 280px;
     max-width: 90vw;
     z-index: var(--ec-z-sidebar);
@@ -136,24 +138,10 @@
   .ec-chat-header {
     padding: 0 var(--ec-space-4) !important;
   }
-
-  /* v1.1.13 mobile fix: telemetry pills ПАМ/ЦП съедали topbar на mobile —
-   * скрываем percent pills, оставляем только сетевой статус. */
-  .ec-shell__top-actions .ec-telemetry-pill:not(.ec-telemetry-pill--ok):not(.ec-telemetry-pill--warn):not(.ec-telemetry-pill--risk),
-  .ec-shell__top-actions .ec-telemetry-pill:nth-of-type(2),
-  .ec-shell__top-actions .ec-telemetry-pill:nth-of-type(3) {
-    display: none;
-  }
 }
 
-/* v1.1.13 mobile telemetry / breadcrumb collapse */
+/* v1.1.13 mobile breadcrumb collapse */
 @media (max-width: 1024px) {
-  /* Hide ВСЕ telemetry pills на узких экранах — освобождаем место под brand
-   * + breadcrumb + кнопки действий. Status показан через ec-shell__brand-title
-   * + connection icon в profile chip. */
-  .ec-shell__top-actions .ec-telemetry-pill {
-    display: none !important;
-  }
   /* Breadcrumb «УЗЕЛ // … / #…» уходит — слишком длинный для mobile topbar.
    * Channel name дублируется в chat-header sticky-bar и в sidebar tabs. */
   .ec-shell__breadcrumb {
@@ -202,11 +190,10 @@
   .ec-shell__channels {
     position: fixed;
     top: var(--ec-header-height);
-    bottom: 0;
-    bottom: env(safe-area-inset-bottom, 0);
+    bottom: var(--ec-bottomnav-height);
     left: 0;
     z-index: var(--ec-z-sidebar);
-    width: min(320px, 86vw);
+    width: min(360px, 92vw);
     transform: translateX(-100%);
     transition: transform var(--ec-dur-base) var(--ec-ease);
     box-shadow: 20px 0 40px rgba(0, 0, 0, 0.4);
@@ -631,7 +618,7 @@
   }
 
   .ec-voice-room__video-grid {
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)) !important;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)) !important;
   }
 }
 
@@ -653,13 +640,83 @@
     gap: var(--ec-space-3) !important;
   }
 
+  .ec-voice-room__body--visual .ec-voice-room__video-grid {
+    min-height: min(58vh, 620px);
+  }
+
   .ec-voice-room__video-grid,
   .ec-voice-room__audio-grid {
     grid-template-columns: 1fr !important;
   }
 
+  .ec-vr-video-tile,
+  .ec-vr-video-tile--screen {
+    min-height: min(52vh, 420px);
+    max-height: none !important;
+  }
+
   .ec-voice-room__controls {
     padding: var(--ec-space-3) !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .ec-voice-room__controls {
+    max-width: calc(100vw - 24px) !important;
+    border-radius: 18px !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .ec-voice-room__controls::-webkit-scrollbar {
+    display: none;
+  }
+  .ec-vr-volume {
+    min-width: 138px;
+  }
+  .ec-vr-volume input[type="range"] {
+    width: 72px !important;
+  }
+  .ec-vr-control-separator {
+    min-width: 1px;
+    margin-inline: 0;
+  }
+  .ec-vr-music-bot-card {
+    min-width: 100%;
+  }
+  .ec-vr-music-bot-card__actions {
+    flex-direction: column;
+  }
+
+  .ec-voice-room__note-shell--compact {
+    min-height: 132px;
+    max-height: none;
+  }
+
+  .ec-voice-room__music-bridge {
+    align-items: stretch;
+    flex-direction: column;
+    margin: 0 12px 8px;
+  }
+
+  .ec-voice-room__music-actions {
+    width: 100%;
+  }
+
+  .ec-voice-room__music-meta {
+    justify-content: center;
+    width: 100%;
+    white-space: normal;
+  }
+
+  .ec-voice-room__music-actions .ec-btn {
+    flex: 1;
+    min-height: 40px;
+  }
+
+  .ec-voice-room__music-copy span {
+    white-space: normal;
   }
 }
 
@@ -746,6 +803,28 @@
   .ec-search-overlay {
     padding: 4vh var(--ec-space-2) !important;
   }
+  .ec-command-palette__grid {
+    grid-template-columns: 1fr;
+  }
+  .ec-command-palette__item {
+    min-height: 48px;
+  }
+}
+
+/* v1.6.40 — TeamHealth stat-grid base (перенесён из inline style={grid}).
+   Раньше inline `repeat(auto-fit, minmax(220px,1fr))` на 5 карточках ронял
+   5-ю карту в одинокий orphan-ряд на промежуточной ширине (~1100px: 4+1).
+   Теперь сбалансированно: 5 в ряд на широком → 3+2 на среднем → (ниже
+   mobile-оверрайды 2col/1col). */
+.ec-team-health-stats {
+  display: grid;
+  gap: var(--ec-space-3);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+@media (max-width: 1180px) {
+  .ec-team-health-stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 /* (o) TeamHealth stat-cards: minmax(220px) на 420-440px даёт странный
@@ -798,9 +877,18 @@
 
 /* ===== v0.49 responsive polish: operator UI on every device ===== */
 
+/* v1.6.70 FIX: large-desktop (≥1367) override был ТРЁХколоночным (288 1fr
+   256) — реликт дорейловой раскладки (v0.49). С v1.6.57 базовый грид стал
+   ЧЕТЫРЁХколоночным (rail spine chat members), а этот override не обновили
+   → на широких экранах grid-template-columns (3) не совпадал с
+   grid-template-areas (4 кол.: "rail brand cmd cmd" / "rail channels chat
+   members"), implicit 4-я колонка съезжала: rail=288, channels=1fr(раздут),
+   chat=256, members=auto. Добавлена rail-колонка (зеркало laptop-оверрайда
+   line 64); spine 288 / members 256 — designed wider sidebars для больших
+   мониторов сохранены. */
 @media (min-width: 1367px) {
   .ec-shell.ec-shell--has-server {
-    grid-template-columns: 288px minmax(0, 1fr) 256px;
+    grid-template-columns: var(--ec-rail-width) 288px minmax(0, 1fr) 256px;
   }
 }
 
@@ -944,9 +1032,7 @@
     grid-template-columns: 1fr !important;
   }
 
-  .ec-shell__top-actions .ec-icon-btn[title="Поиск (Ctrl+K)"],
-  .ec-shell__top-actions .ec-icon-btn[aria-label="Инциденты"],
-  .ec-shell__top-actions .ec-icon-btn[aria-label="Уведомления"] {
+  .ec-shell__top-actions .ec-icon-btn[title="Поиск (Ctrl+K)"] {
     display: none;
   }
 
@@ -1285,15 +1371,31 @@
 
 /* ServerHubModal settings tree (E1): tree-nav collapses into a horizontal rail. */
 @media (max-width: 600px) {
+  .ec-modal-backdrop {
+    align-items: stretch;
+    padding: 8px;
+  }
+
+  .ec-modal-box {
+    width: calc(100vw - 16px) !important;
+    max-height: calc(100dvh - 16px);
+  }
+
+  .ec-modal-body {
+    padding: var(--ec-space-3);
+  }
+
   .ec-server-hub-panel {
     grid-template-columns: 1fr;
-    min-height: min(780px, 82vh);
-    max-height: 82vh;
+    height: calc(100dvh - 92px);
+    min-height: 0;
+    max-height: calc(100dvh - 92px);
   }
 
   .ec-server-hub-tree-nav {
     display: flex;
     gap: var(--ec-space-2);
+    max-height: 74px;
     overflow-x: auto;
     overflow-y: hidden;
     padding: var(--ec-space-3);
@@ -1324,6 +1426,8 @@
   }
 
   .ec-server-hub-panel__main {
+    min-height: 0;
+    overflow-y: auto;
     padding: var(--ec-space-3);
   }
 
@@ -1375,7 +1479,11 @@
   }
 
   .ec-channel-move-select {
-    display: inline-flex;
+    /* v1.6.73: на мобилке скрываем move-select — он жрал ширину строки и
+       обрезал имена каналов до 1 символа (см. desktop, где он display:none и
+       имена полные). Каналы и так сгруппированы под заголовками категорий.
+       Перемещение в категорию — с десктопа (drag) или через настройки канала. */
+    display: none;
   }
 
   .ec-channel-category__add {
@@ -1448,13 +1556,15 @@
 
   .ec-settings-panel {
     grid-template-columns: 1fr;
-    min-height: min(780px, 82vh);
-    max-height: 82vh;
+    height: calc(100dvh - 92px);
+    min-height: 0;
+    max-height: calc(100dvh - 92px);
   }
 
   .ec-settings-tree-nav {
     display: flex;
     gap: var(--ec-space-2);
+    max-height: 74px;
     overflow-x: auto;
     overflow-y: hidden;
     padding: var(--ec-space-3);
@@ -1490,6 +1600,7 @@
 
   .ec-settings-panel__main {
     min-height: 0;
+    overflow-y: auto;
   }
 
   .ec-settings-section {
@@ -1552,10 +1663,159 @@
   .ec-server-nav *,
   .ec-server-view,
   .ec-server-view *,
+  .ec-server-hub-panel,
+  .ec-server-hub-panel *,
   .ec-settings-panel,
   .ec-settings-panel * {
     animation: none !important;
     transition: none !important;
     transform: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ec-guide__stats,
+  .ec-guide__stats *,
+  .ec-guide__section,
+  .ec-guide__section * {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
+/* v1.5.97 — practical polish mobile pass. */
+@media (max-width: 768px) {
+  .ec-composer {
+    padding: 8px 10px max(10px, env(safe-area-inset-bottom, 0));
+  }
+
+  .ec-composer-box {
+    border-radius: 16px;
+    padding: 7px 8px;
+  }
+
+  .ec-composer-icon-btn,
+  .ec-composer-send {
+    min-width: 40px;
+    min-height: 40px;
+  }
+
+  .ec-composer-hints {
+    display: none !important;
+  }
+
+  .ec-channel-item,
+  .ec-member-row {
+    min-height: 42px;
+  }
+
+  .ec-empty-state {
+    margin: 12px;
+    padding: 24px 18px;
+    border-radius: 18px;
+  }
+}
+
+@media (max-width: 480px) {
+  .ec-shell__top-actions {
+    gap: 5px;
+  }
+
+  .ec-shell__top-actions .ec-music-mini-player {
+    max-width: 132px !important;
+  }
+
+  .ec-composer-send-label {
+    display: none;
+  }
+}
+
+/* v1.6.0 — mobile density for the redesigned voice note. */
+@media (max-width: 720px) {
+  .ec-voice-note {
+    margin: 0 12px 12px;
+    padding: 10px;
+    border-radius: 16px;
+  }
+
+  .ec-voice-note__header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .ec-voice-note__meta {
+    max-width: 100%;
+    text-align: left;
+  }
+
+  .ec-voice-note__textarea {
+    min-height: 120px;
+    font-size: var(--ec-text-xs);
+  }
+}
+
+/* v1.6.16: Discord-style composer keeps one primary "+" action on mobile. */
+@media (max-width: 768px) {
+  .ec-composer-box,
+  .ec-composer-box--full,
+  .ec-composer-box--minimal {
+    grid-template-columns: 40px minmax(0, 1fr) 38px 42px !important;
+    align-items: center !important;
+    gap: 6px !important;
+  }
+
+  .ec-composer-box--minimal {
+    grid-template-columns: minmax(0, 1fr) 38px 42px !important;
+  }
+
+  .ec-composer-plus,
+  .ec-composer-icon-btn,
+  .ec-composer-send {
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+    min-height: 38px !important;
+  }
+
+  .ec-composer-action-menu {
+    width: min(286px, calc(100vw - 24px));
+    max-height: min(70vh, 360px);
+    overflow-y: auto;
+  }
+
+  .ec-composer-send {
+    padding-inline: 0 !important;
+  }
+
+  .ec-composer-hints {
+    display: none !important;
+  }
+}
+
+/* v1.6.82 — тач-таргеты (touch): кнопки крупнее под палец (отзыв «мелкие
+   элементы под палец»). Композер (основной ввод) → 44px; топбар плотный → 36px
+   (иначе переполнение узкого экрана); прочие иконные кнопки и действия над
+   сообщением → 36–38px. ПК (мышь/hover) НЕ тронут. Блок в конце responsive.css
+   → побеждает прежние мобильные правила (32–34px) по порядку каскада. */
+@media (hover: none) and (pointer: coarse) {
+  .ec-icon-btn {
+    width: 36px;
+    height: 36px;
+  }
+  .ec-shell__top-actions .ec-icon-btn {
+    width: 36px !important;
+    height: 36px !important;
+  }
+  .ec-composer-icon-btn,
+  .ec-composer-send {
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+  }
+  .ec-msg-action {
+    width: 38px;
+    height: 38px;
   }
 }

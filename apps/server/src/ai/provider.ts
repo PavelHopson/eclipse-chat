@@ -6,13 +6,34 @@
  *
  * Chain priority (auto-fallback по списку, первый успешный = result):
  *   1. Ollama (локальный, без API key) — приоритет для self-host
- *   2. OpenRouter (free DeepSeek/Qwen tier)
- *   3. NVIDIA Build (95 free models, требует API key)
- *   4. OpenAI (paid fallback)
+ *   2. OmniRoute (self-hosted AI gateway, provider-router + auto/fallback)
+ *   3. Groq (free, LPU — очень быстрый)
+ *   4. Cerebras (free, экстремально быстрый inference)
+ *   5. OpenRouter (free DeepSeek/Qwen/Llama tier)
+ *   6. NVIDIA Build (95 free models, требует API key)
+ *   7. Mistral (free tier La Plateforme)
+ *   6b. YandexGPT (РФ free-tier, OpenAI-compatible, приватный) — нужны
+ *       YANDEX_API_KEY + YANDEX_FOLDER_ID; доступен из РФ, стандартный TLS
+ *   6c. DeepSeek (cheap, OpenAI-compatible api.deepseek.com) — DEEPSEEK_API_KEY
+ *   6d. GLM / Zhipu (cheap, z.ai standard API) — GLM_API_KEY
+ *   6e. MiMo / Xiaomi (cheap, api.xiaomimimo.com) — MIMO_API_KEY
+ *   6f. Custom OpenAI-compatible (generic slot, напр. OpenModel-шлюз) —
+ *       CUSTOM_LLM_BASE_URL + CUSTOM_LLM_API_KEY
+ *       ⚠️ 6c-6f — сторонние/КНР-провайдеры: env-gated, @ai-контент уходит
+ *       к ним, НЕ для чувствительных данных. Стоят после free, перед paid.
+ *   7. OpenAI (paid fallback)
+ *   8. Pollinations (keyless, БЕЗ API key) — бесключевой free fallback,
+ *      включён по умолчанию; стоит последним, любой реальный ключ важнее.
  *
- * Если ни один не сконфигурирован — `chat()` бросает `AINotConfiguredError`,
- * route возвращает 503 с пояснением. Это позволяет деплоить Eclipse Chat
- * без AI и включать фичу позже только env-переменной.
+ * Провайдеры 1-7 OpenAI-compatible + опциональны (включаются заданием своего
+ * API key в env). Добавить ещё один free-провайдер = ещё один блок в
+ * getProviders() по тому же шаблону. Чем больше бесплатных в цепочке — тем
+ * надёжнее @ai для пользователя (на 429 одного идём к следующему).
+ *
+ * v1.6.61 — благодаря keyless-Pollinations (default-on) @ai сконфигурирован
+ * ВСЕГДА (если не задан POLLINATIONS_DISABLED=1). `AINotConfiguredError` /
+ * 503 теперь возможны только при явном отключении Pollinations И отсутствии
+ * остальных ключей.
  *
  * Конфигурация:
  *   ## Self-host (рекомендуется — free, privacy)
@@ -21,13 +42,45 @@
  *                                          Альтернативы: llama3.1:8b, deepseek-r1:7b,
  *                                          gemma2:9b, mistral:7b
  *
- *   ## Облачные free / paid
+ *   ## Облачные free (рекомендуется — быстрые, бесплатный tier)
+ *   OMNIROUTE_BASE_URL=http://localhost:20128/v1
+ *   OMNIROUTE_MODEL=auto                 — OMNIROUTE_MODELS CSV
+ *   OMNIROUTE_API_KEY=<token>            — опционально, если gateway требует auth
+ *   GROQ_API_KEY=gsk_...                 — console.groq.com (free, очень быстрый)
+ *   GROQ_MODEL=llama-3.3-70b-versatile   — GROQ_MODELS (CSV) для chain
+ *   CEREBRAS_API_KEY=csk-...             — cloud.cerebras.ai (free, fastest)
+ *   CEREBRAS_MODEL=llama-3.3-70b
  *   OPENROUTER_API_KEY=<key>             — free tier DeepSeek/Qwen/Llama
  *   OPENROUTER_MODEL=...                 — override default
  *   NVIDIA_API_KEY=nvapi-...             — 95 free моделей на build.nvidia.com
  *   NVIDIA_MODEL=qwen/qwen2.5-coder-32b-instruct
+ *   MISTRAL_API_KEY=<key>                — console.mistral.ai (free tier)
+ *   MISTRAL_MODEL=mistral-small-latest
+ *   ## РФ free-tier (приватный, доступен из РФ — Yandex Cloud)
+ *   YANDEX_API_KEY=<service-account-key> — ключ сервисного аккаунта Yandex Cloud
+ *   YANDEX_FOLDER_ID=<folder-id>         — каталог Cloud (оба обязательны)
+ *   YANDEX_MODEL=yandexgpt-lite/latest   — короткое имя авто-оборачивается в
+ *                                          gpt://<folder>/...; или YANDEX_MODELS CSV
+ *   ## Дешёвые облачные (cheap paid, OpenAI-compatible) — ⚠️ сторонние/КНР
+ *   DEEPSEEK_API_KEY=<key>               — platform.deepseek.com (deepseek-chat)
+ *   DEEPSEEK_MODEL=deepseek-chat         — DEEPSEEK_MODELS CSV (+deepseek-reasoner)
+ *   GLM_API_KEY=<key>                    — z.ai / BigModel standard API (НЕ Coding Plan)
+ *   GLM_MODEL=glm-4.6                    — GLM_MODELS CSV (glm-4.7, glm-5.2...)
+ *   MIMO_API_KEY=<key>                   — platform.xiaomimimo.com
+ *   MIMO_MODEL=mimo-v2.5-pro             — MIMO_MODELS CSV
+ *   ## Custom OpenAI-compatible (generic, напр. OpenModel-промо)
+ *   CUSTOM_LLM_BASE_URL=<url>            — base без /chat/completions
+ *   CUSTOM_LLM_API_KEY=<key>             — оба обязательны для включения
+ *   CUSTOM_LLM_MODEL=<model>             — CUSTOM_LLM_MODELS CSV
+ *   ## Paid fallback
  *   OPENAI_API_KEY=<key>                 — paid fallback
  *   OPENAI_MODEL=gpt-4o-mini
+ *
+ *   ## Keyless free fallback (default-on, без регистрации)
+ *   POLLINATIONS_DISABLED=1              — выключить keyless Pollinations
+ *   POLLINATIONS_MODEL=openai            — POLLINATIONS_MODELS (CSV) для chain
+ *                                          (напр. openai,openai-fast,mistral)
+ *   POLLINATIONS_REFERRER=eclipse-chat   — идентификатор приложения
  *
  *   AI_TIMEOUT_MS=20000                  — per-request timeout
  *
@@ -116,13 +169,28 @@ export type ChatResult = {
 type ProviderConfig = {
   name: string;
   baseUrl: string;
-  apiKey: string;
+  /** Если undefined — Authorization header не отправляется. */
+  apiKey?: string;
   /** v1.5.18 — поддержка нескольких моделей одного провайдера.
    * First model trie'д первым; на 429/5xx — fallback к следующей model
    * в array'е перед тем как уйти на следующий provider. */
   models: string[];
   /** Дополнительный header для OpenRouter rankings. */
   extraHeaders?: Record<string, string>;
+  /** v1.6.61 — provider-specific поля в JSON body запроса (мерджатся поверх
+   *  base body). Для Pollinations: `private:true` (генерация НЕ в публичную
+   *  ленту) + `referrer`. Не должен содержать model/messages (их задаёт base). */
+  extraBody?: Record<string, unknown>;
+};
+
+export type AiProviderDiagnostic = {
+  priority: number;
+  name: string;
+  kind: "local" | "gateway" | "cloud" | "keyless";
+  baseHost: string;
+  hasAuth: boolean;
+  modelCount: number;
+  models: string[];
 };
 
 /** v1.5.18 — utility для парсинга CSV список моделей из env. Trim'ит
@@ -164,7 +232,57 @@ function getProviders(): ProviderConfig[] {
     });
   }
 
-  // 2. OpenRouter — free tier DeepSeek/Qwen/Llama.
+  // 2. OmniRoute — self-hosted OpenAI-compatible AI gateway.
+  //    Reference: https://github.com/diegosouzapw/OmniRoute
+  //    По README gateway слушает http://localhost:20128/v1 и поддерживает
+  //    model=auto / auto/* routing. Включаем только явным env, чтобы прод
+  //    случайно не начал слать @ai traffic в локальный/внешний router.
+  const omniRouteUrl = process.env.OMNIROUTE_BASE_URL?.trim();
+  const omniRouteKey = process.env.OMNIROUTE_API_KEY?.trim();
+  const omniRouteModelEnv = process.env.OMNIROUTE_MODEL?.trim();
+  const omniRouteModelsEnv = process.env.OMNIROUTE_MODELS?.trim();
+  if (omniRouteUrl || omniRouteKey || omniRouteModelEnv || omniRouteModelsEnv) {
+    out.push({
+      name: "omniroute",
+      baseUrl: (omniRouteUrl ?? "http://localhost:20128/v1").replace(/\/+$/, ""),
+      apiKey: omniRouteKey || undefined,
+      models: parseModels(omniRouteModelsEnv ?? omniRouteModelEnv, "auto"),
+      extraHeaders: {
+        "X-Title": "Eclipse Chat",
+      },
+    });
+  }
+
+  // 3. Groq — бесплатный, очень быстрый (LPU). Free tier (дневной лимит → на
+  //    429 цепочка идёт к следующему провайдеру). GROQ_MODELS (CSV) для chain.
+  const groqKey = process.env.GROQ_API_KEY?.trim();
+  if (groqKey) {
+    out.push({
+      name: "groq",
+      baseUrl: "https://api.groq.com/openai/v1",
+      apiKey: groqKey,
+      models: parseModels(
+        process.env.GROQ_MODELS ?? process.env.GROQ_MODEL,
+        "llama-3.3-70b-versatile",
+      ),
+    });
+  }
+
+  // 4. Cerebras — бесплатный, экстремально быстрый inference. Free tier.
+  const cerebrasKey = process.env.CEREBRAS_API_KEY?.trim();
+  if (cerebrasKey) {
+    out.push({
+      name: "cerebras",
+      baseUrl: "https://api.cerebras.ai/v1",
+      apiKey: cerebrasKey,
+      models: parseModels(
+        process.env.CEREBRAS_MODELS ?? process.env.CEREBRAS_MODEL,
+        "llama-3.3-70b",
+      ),
+    });
+  }
+
+  // 5. OpenRouter — free tier DeepSeek/Qwen/Llama.
   //    v1.5.18 — OPENROUTER_MODELS (CSV) расширяет single OPENROUTER_MODEL —
   //    при 429 на одной модели идём дальше по списку до paid fallback.
   //    Default chain: DeepSeek → Llama 3.3 → Qwen 2.5 (все :free).
@@ -198,7 +316,7 @@ function getProviders(): ProviderConfig[] {
     });
   }
 
-  // 3. NVIDIA Build — 95 free моделей.
+  // 6. NVIDIA Build — 95 free моделей.
   const nvKey = process.env.NVIDIA_API_KEY?.trim();
   if (nvKey) {
     out.push({
@@ -212,7 +330,122 @@ function getProviders(): ProviderConfig[] {
     });
   }
 
-  // 4. OpenAI — paid fallback.
+  // 7. Mistral — бесплатный tier (La Plateforme). OpenAI-compatible.
+  const mistralKey = process.env.MISTRAL_API_KEY?.trim();
+  if (mistralKey) {
+    out.push({
+      name: "mistral",
+      baseUrl: "https://api.mistral.ai/v1",
+      apiKey: mistralKey,
+      models: parseModels(
+        process.env.MISTRAL_MODELS ?? process.env.MISTRAL_MODEL,
+        "mistral-small-latest",
+      ),
+    });
+  }
+
+  // 6b. YandexGPT — РФ free-tier через OpenAI-compatible эндпоинт Yandex Cloud.
+  //     v1.6.62 — приватный (промпты не публикуются) и доступный из РФ
+  //     альтернатив-ключ, когда регистрация западных сервисов недоступна.
+  //     Требует ДВЕ env: YANDEX_API_KEY (ключ сервисного аккаунта) +
+  //     YANDEX_FOLDER_ID (каталог Cloud). Auth = `Api-Key <key>` (НЕ Bearer) →
+  //     переопределяем дефолтный Bearer через extraHeaders. Модель = URI
+  //     `gpt://<folder>/<model>` — короткие имена в YANDEX_MODELS авто-
+  //     оборачиваются (полные gpt:// URI оставляются как есть). Стандартный
+  //     TLS (без российского CA — в отличие от GigaChat, потому выбран он).
+  const yandexKey = process.env.YANDEX_API_KEY?.trim();
+  const yandexFolder = process.env.YANDEX_FOLDER_ID?.trim();
+  if (yandexKey && yandexFolder) {
+    const yandexModels = parseModels(
+      process.env.YANDEX_MODELS ?? process.env.YANDEX_MODEL,
+      "yandexgpt-lite/latest",
+    ).map((m) => (m.startsWith("gpt://") ? m : `gpt://${yandexFolder}/${m}`));
+    out.push({
+      name: "yandexgpt",
+      baseUrl: "https://llm.api.cloud.yandex.net/v1",
+      apiKey: yandexKey, // в Bearer не идёт — auth переопределён extraHeaders
+      models: yandexModels,
+      extraHeaders: {
+        // Yandex Cloud API key передаётся как `Api-Key <key>`, не `Bearer`.
+        Authorization: `Api-Key ${yandexKey}`,
+      },
+    });
+  }
+
+  // 6c. DeepSeek — официальный OpenAI-compatible API (api.deepseek.com).
+  //     v1.6.71 — сильная дешёвая модель (deepseek-chat / deepseek-reasoner).
+  //     ⚠️ Провайдер из КНР — @ai-контент уходит к нему; env-gated, не для
+  //     чувствительных данных. DEEPSEEK_MODELS (CSV).
+  const deepseekKey = process.env.DEEPSEEK_API_KEY?.trim();
+  if (deepseekKey) {
+    out.push({
+      name: "deepseek",
+      baseUrl: "https://api.deepseek.com/v1",
+      apiKey: deepseekKey,
+      models: parseModels(
+        process.env.DEEPSEEK_MODELS ?? process.env.DEEPSEEK_MODEL,
+        "deepseek-chat",
+      ),
+    });
+  }
+
+  // 6d. GLM / Zhipu (z.ai) — OpenAI-compatible standard API (api.z.ai/api/paas/v4).
+  //     v1.6.71 — GLM-4.6/4.7/5.2, дёшево. ⚠️ Это standard pay-per-token API,
+  //     НЕ Coding-Plan-подписка (та живёт на /api/coding/paas/v4 и нужна для
+  //     Claude Code, не для @ai). ⚠️ Провайдер из КНР (Zhipu) — env-gated,
+  //     не для чувствительных данных. GLM_MODELS (CSV).
+  const glmKey = process.env.GLM_API_KEY?.trim();
+  if (glmKey) {
+    out.push({
+      name: "glm",
+      baseUrl: "https://api.z.ai/api/paas/v4",
+      apiKey: glmKey,
+      models: parseModels(
+        process.env.GLM_MODELS ?? process.env.GLM_MODEL,
+        "glm-4.6",
+      ),
+    });
+  }
+
+  // 6e. MiMo (Xiaomi) — официальный OpenAI-compatible API (api.xiaomimimo.com/v1).
+  //     v1.6.71 — mimo-v2.5-pro (агентские/мультимодальные задачи). ⚠️
+  //     Маркетинговые цифры канала («Opus в 28× дешевле») НЕ проверены —
+  //     берём как обычный дешёвый провайдер. ⚠️ Провайдер из КНР (Xiaomi) —
+  //     env-gated. MIMO_MODELS (CSV).
+  const mimoKey = process.env.MIMO_API_KEY?.trim();
+  if (mimoKey) {
+    out.push({
+      name: "mimo",
+      baseUrl: "https://api.xiaomimimo.com/v1",
+      apiKey: mimoKey,
+      models: parseModels(
+        process.env.MIMO_MODELS ?? process.env.MIMO_MODEL,
+        "mimo-v2.5-pro",
+      ),
+    });
+  }
+
+  // 6f. Custom OpenAI-compatible эндпоинт — generic slot для любого совместимого
+  //     провайдера/шлюза. v1.6.71 — добавлен под OpenModel (DeepSeek-V4-Flash
+  //     free-промо до 28.06.2026), но URL НЕ хардкодим: провенанс шлюза не
+  //     подтверждён → задаётся целиком через env. Включается только если заданы
+  //     И CUSTOM_LLM_BASE_URL, И CUSTOM_LLM_API_KEY. ⚠️ Проверяй TOS/политику
+  //     данных эндпоинта перед чувствительными данными. CUSTOM_LLM_MODELS (CSV).
+  const customUrl = process.env.CUSTOM_LLM_BASE_URL?.trim();
+  const customKey = process.env.CUSTOM_LLM_API_KEY?.trim();
+  if (customUrl && customKey) {
+    out.push({
+      name: "custom",
+      baseUrl: customUrl.replace(/\/+$/, ""),
+      apiKey: customKey,
+      models: parseModels(
+        process.env.CUSTOM_LLM_MODELS ?? process.env.CUSTOM_LLM_MODEL,
+        "deepseek-v4-flash",
+      ),
+    });
+  }
+
+  // 7. OpenAI — paid fallback.
   const oaiKey = process.env.OPENAI_API_KEY?.trim();
   if (oaiKey) {
     out.push({
@@ -225,7 +458,68 @@ function getProviders(): ProviderConfig[] {
       ),
     });
   }
+
+  // 8. Pollinations — публичный OpenAI-compatible эндпоинт БЕЗ ключа (keyless).
+  //    v1.6.61 — добавлен как бесключевой fallback для регионов/команд, где
+  //    регистрация западных AI-сервисов недоступна (нельзя получить ключ).
+  //    Включён ПО УМОЛЧАНИЮ и стоит ПОСЛЕДНИМ: любой реальный ключ выше по
+  //    списку имеет приоритет; когда ключей нет вообще — @ai всё равно живой.
+  //    Отключить полностью: POLLINATIONS_DISABLED=1.
+  //    Приватность: шлём `private:true` (генерация НЕ попадает в публичную
+  //    ленту Pollinations) + `referrer`. Как и любой cloud-LLM, контент @ai
+  //    уходит на внешний сервис — для полной приватности используйте Ollama.
+  //    Надёжность: анонимный tier rate-limited (429) и иногда медленный —
+  //    retry/backoff + model-fallback это сглаживают; это best-effort free.
+  if (process.env.POLLINATIONS_DISABLED !== "1") {
+    out.push({
+      name: "pollinations",
+      // baseUrl + "/chat/completions" = реальный эндпоинт (проверено).
+      baseUrl: "https://text.pollinations.ai/openai",
+      apiKey: "pollinations", // dummy — эндпоинт игнорирует Authorization
+      models: parseModels(
+        process.env.POLLINATIONS_MODELS ?? process.env.POLLINATIONS_MODEL,
+        "openai",
+      ),
+      extraBody: {
+        private: true,
+        referrer: process.env.POLLINATIONS_REFERRER?.trim() || "eclipse-chat",
+      },
+    });
+  }
   return out;
+}
+
+function providerKind(name: string): AiProviderDiagnostic["kind"] {
+  if (name === "ollama") return "local";
+  if (name === "omniroute" || name === "custom") return "gateway";
+  if (name === "pollinations") return "keyless";
+  return "cloud";
+}
+
+function baseHost(baseUrl: string): string {
+  try {
+    return new URL(baseUrl).host;
+  } catch {
+    return "custom-endpoint";
+  }
+}
+
+function sanitizeModel(model: string): string {
+  // YandexGPT model URI contains folder id; it is not a key, but we do not need
+  // to expose tenant-like identifiers in admin diagnostics.
+  return model.replace(/^gpt:\/\/[^/]+\//, "gpt://<folder>/");
+}
+
+export function listAiProviderDiagnostics(): AiProviderDiagnostic[] {
+  return getProviders().map((cfg, index) => ({
+    priority: index + 1,
+    name: cfg.name,
+    kind: providerKind(cfg.name),
+    baseHost: baseHost(cfg.baseUrl),
+    hasAuth: Boolean(cfg.apiKey || cfg.extraHeaders?.Authorization),
+    modelCount: cfg.models.length,
+    models: cfg.models.map(sanitizeModel),
+  }));
 }
 
 export function isAiConfigured(): boolean {
@@ -265,18 +559,22 @@ async function callProviderModel(
       temperature: opts.temperature ?? 0.4,
       max_tokens: opts.maxTokens ?? 600,
       stream: false,
+      // v1.6.61 — provider-specific body поля (напр. Pollinations private/referrer).
+      // Идут ПОСЛЕ base, но model/messages в extraBody мы не кладём (см. тип).
+      ...(cfg.extraBody ?? {}),
     };
     if (opts.tools && opts.tools.length > 0) {
       body.tools = opts.tools;
       body.tool_choice = opts.toolChoice ?? "auto";
     }
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      ...(cfg.apiKey ? { Authorization: `Bearer ${cfg.apiKey}` } : {}),
+      ...cfg.extraHeaders,
+    };
     const res = await fetch(`${cfg.baseUrl}/chat/completions`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${cfg.apiKey}`,
-        ...cfg.extraHeaders,
-      },
+      headers,
       body: JSON.stringify(body),
       signal: controller.signal,
     });

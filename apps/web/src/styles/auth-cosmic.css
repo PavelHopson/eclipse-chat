@@ -1,0 +1,234 @@
+/*
+ * v1.5.83 - Auth cosmic refresh.
+ * Production-safe adaptation of Pavel's animated login reference: one optimized
+ * local WebP, no external fonts/scripts, existing auth handlers preserved.
+ */
+
+.ec-landing {
+  --ec-auth-cosmic-ring: rgba(212, 175, 55, 0.42);
+  --ec-auth-cosmic-cyan: rgba(93, 181, 217, 0.34);
+  --ec-auth-cosmic-violet: rgba(139, 92, 246, 0.28);
+}
+
+.ec-landing__hero {
+  overflow: hidden;
+  border-radius: 0 0 18px 18px;
+}
+
+.ec-landing__hero::after {
+  content: "";
+  position: absolute;
+  inset: -7% -12% -10% -8%;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(3, 7, 11, 0.94) 0%, rgba(3, 7, 11, 0.78) 38%, rgba(3, 7, 11, 0.36) 70%, rgba(3, 7, 11, 0.88) 100%),
+    radial-gradient(circle at 76% 46%, rgba(212, 175, 55, 0.18), transparent 28%),
+    var(--ec-auth-bg-image);
+  background-size: cover;
+  background-position: center;
+  opacity: 0.92;
+  filter: saturate(1.1) contrast(1.06);
+  transform: scale(1.03);
+  animation: ec-auth-cosmic-drift 28s ease-in-out infinite alternate;
+}
+
+.ec-landing__hero-copy,
+.ec-landing__hero-stage {
+  position: relative;
+  z-index: 2;
+}
+
+.ec-landing__hero-stage::before {
+  content: "";
+  position: absolute;
+  inset: -76px -90px -68px -94px;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 58% 38%, rgba(212, 175, 55, 0.2), transparent 24%),
+    radial-gradient(circle at 44% 48%, rgba(93, 181, 217, 0.22), transparent 34%),
+    radial-gradient(circle at 60% 54%, rgba(139, 92, 246, 0.18), transparent 42%);
+  filter: blur(20px);
+  opacity: 0.84;
+}
+
+.ec-hero-access__frame {
+  background:
+    linear-gradient(180deg, rgba(9, 14, 22, 0.82), rgba(4, 7, 12, 0.9)),
+    radial-gradient(circle at 18% 0%, rgba(139, 92, 246, 0.14), transparent 34%);
+  border: 1px solid rgba(212, 175, 55, 0.18);
+  backdrop-filter: blur(18px) saturate(1.18);
+  -webkit-backdrop-filter: blur(18px) saturate(1.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -40px 70px rgba(0, 0, 0, 0.24),
+    0 34px 100px rgba(0, 0, 0, 0.62),
+    0 0 0 1px rgba(93, 181, 217, 0.08),
+    0 0 70px rgba(212, 175, 55, 0.08);
+}
+
+.ec-hero-access__frame::before {
+  background:
+    linear-gradient(115deg, transparent 28%, rgba(212, 175, 55, 0.09) 44%, rgba(93, 181, 217, 0.18) 50%, rgba(139, 92, 246, 0.08) 57%, transparent 72%);
+}
+
+.ec-hero-access__frame::after {
+  background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.55), rgba(93, 181, 217, 0.44), transparent);
+}
+
+.ec-hero-access__tabs,
+.ec-hero-access__input-wrap {
+  background: rgba(4, 8, 14, 0.66);
+}
+
+.ec-hero-access__input-wrap:focus-within {
+  border-color: rgba(212, 175, 55, 0.36);
+  box-shadow:
+    0 0 0 1px rgba(212, 175, 55, 0.12),
+    0 0 26px rgba(212, 175, 55, 0.08);
+}
+
+.ec-hero-access__tab-indicator,
+.ec-hero-access__submit {
+  background: linear-gradient(135deg, #f1d582 0%, #a16eff 46%, #5db5d9 100%);
+}
+
+.ec-hero-access__submit {
+  color: #061018;
+}
+
+.ec-auth-shell:not(.ec-auth-shell--embedded) {
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.94), rgba(3, 7, 11, 0.7) 46%, rgba(0, 0, 0, 0.9)),
+    var(--ec-auth-bg-image),
+    #020407;
+  background-size: cover;
+  background-position: center;
+}
+
+.ec-auth-shell:not(.ec-auth-shell--embedded)::before {
+  inset: -6%;
+  background:
+    radial-gradient(circle at 74% 38%, rgba(212, 175, 55, 0.2), transparent 24%),
+    radial-gradient(circle at 56% 50%, rgba(93, 181, 217, 0.16), transparent 36%),
+    radial-gradient(circle at 36% 52%, rgba(139, 92, 246, 0.16), transparent 34%);
+  filter: blur(24px);
+  opacity: 0.94;
+  animation: ec-auth-cosmic-drift 30s ease-in-out infinite alternate;
+}
+
+.ec-auth-shell:not(.ec-auth-shell--embedded)::after {
+  background:
+    linear-gradient(125deg, transparent 12%, rgba(255, 255, 255, 0.03) 46%, transparent 70%),
+    radial-gradient(ellipse at 50% 100%, rgba(0, 0, 0, 0.58), transparent 58%);
+  opacity: 0.86;
+}
+
+.ec-auth-shell:not(.ec-auth-shell--embedded) .ec-auth-radar {
+  background: transparent;
+  opacity: 0.36;
+  mix-blend-mode: screen;
+}
+
+.ec-auth-shell:not(.ec-auth-shell--embedded) .ec-auth-radar::before,
+.ec-auth-shell:not(.ec-auth-shell--embedded) .ec-auth-radar::after {
+  border-color: rgba(212, 175, 55, 0.1);
+}
+
+.ec-auth-shell:not(.ec-auth-shell--embedded) .ec-auth-radar__grid {
+  background-image:
+    linear-gradient(rgba(212, 175, 55, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(93, 181, 217, 0.035) 1px, transparent 1px);
+}
+
+@keyframes ec-auth-cosmic-drift {
+  from {
+    transform: scale(1.03) translate3d(-0.6%, -0.4%, 0);
+  }
+  to {
+    transform: scale(1.07) translate3d(0.8%, 0.5%, 0);
+  }
+}
+
+@media (max-width: 900px) {
+  .ec-landing__hero::after {
+    inset: -4% -35% -8% -25%;
+    background:
+      linear-gradient(180deg, rgba(3, 7, 11, 0.88), rgba(3, 7, 11, 0.7) 48%, rgba(3, 7, 11, 0.92)),
+      var(--ec-auth-bg-image);
+    background-size: cover;
+    background-position: 54% center;
+  }
+
+  .ec-landing__hero-stage::before {
+    inset: -42px -34px -46px;
+  }
+}
+
+@media (max-width: 560px) {
+  .ec-landing__hero {
+    border-radius: 0;
+    gap: 20px;
+    padding: 22px 0 34px;
+  }
+
+  .ec-landing__hero::after {
+    inset: -10% -82% -8% -72%;
+    opacity: 0.72;
+    background-position: 58% center;
+  }
+
+  .ec-hero-access__frame {
+    backdrop-filter: blur(14px) saturate(1.08);
+    -webkit-backdrop-filter: blur(14px) saturate(1.08);
+  }
+
+  .ec-landing__eyebrow {
+    margin-bottom: 16px;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+  }
+
+  .ec-landing__hero-title {
+    margin-bottom: 22px;
+    font-size: clamp(32px, 10.2vw, 38px);
+    line-height: 0.96;
+    letter-spacing: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .ec-landing__hero-subhead {
+    margin-bottom: 22px;
+    max-width: 100%;
+    font-size: 16px;
+    line-height: 1.48;
+  }
+
+  .ec-landing__hero-cta {
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .ec-landing__hero-chips {
+    gap: 12px 16px;
+    padding-top: 18px;
+  }
+
+  .ec-landing__chip {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ec-landing__hero::after,
+  .ec-auth-shell:not(.ec-auth-shell--embedded)::before {
+    animation: none;
+    transform: none;
+  }
+
+  .ec-hero-access__frame::before {
+    animation: none;
+  }
+}

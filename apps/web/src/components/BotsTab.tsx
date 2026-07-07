@@ -9,6 +9,7 @@ import {
 } from "../hooks/useBots";
 import { EmptyState } from "./EmptyState";
 import { EmptyBotsIcon } from "./EmptyIcons";
+import { useConfirm } from "./ConfirmDialog";
 import {
   BOT_ROLES,
   BOT_ROLE_COLORS,
@@ -354,6 +355,7 @@ function CreateBotForm({
 }
 
 export function BotsTab({ serverId }: Props) {
+  const confirm = useConfirm();
   const {
     bots,
     loading,
@@ -426,9 +428,13 @@ export function BotsTab({ serverId }: Props) {
   };
 
   const handleClearWebhook = async (bot: BotRow) => {
-    if (!window.confirm(`Удалить webhook у «${bot.name}»? Бот перестанет получать события.`)) {
-      return;
-    }
+    const ok = await confirm({
+      title: "Удалить webhook?",
+      message: `Бот «${bot.name}» перестанет получать события на этот адрес.`,
+      confirmLabel: "Удалить webhook",
+      danger: true,
+    });
+    if (!ok) return;
     setBusy(true);
     try {
       await updateBot(bot.id, { webhookUrl: null, webhookSecret: null });
@@ -550,13 +556,13 @@ export function BotsTab({ serverId }: Props) {
   };
 
   const handleRegenerate = async (botId: string, botName: string) => {
-    if (
-      !window.confirm(
-        `Новый ключ для «${botName}». Текущий перестанет работать сразу. Продолжить?`,
-      )
-    ) {
-      return;
-    }
+    const ok = await confirm({
+      title: "Сгенерировать новый ключ?",
+      message: `Текущий ключ бота «${botName}» перестанет работать сразу — не забудьте обновить его там, где он используется.`,
+      confirmLabel: "Новый ключ",
+      danger: true,
+    });
+    if (!ok) return;
     setBusy(true);
     try {
       await regenerateKey(botId);
@@ -606,13 +612,13 @@ export function BotsTab({ serverId }: Props) {
   };
 
   const handleDelete = async (botId: string, botName: string) => {
-    if (
-      !window.confirm(
-        `Удалить бота «${botName}»? Все его сообщения и реакции тоже исчезнут. Это необратимо.`,
-      )
-    ) {
-      return;
-    }
+    const ok = await confirm({
+      title: "Удалить бота?",
+      message: `«${botName}» и все его сообщения и реакции будут удалены безвозвратно.`,
+      confirmLabel: "Удалить бота",
+      danger: true,
+    });
+    if (!ok) return;
     setBusy(true);
     try {
       await deleteBot(botId);

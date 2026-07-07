@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import { useState } from "react";
 import { apiJson } from "../lib/api";
+import { useConfirm } from "./ConfirmDialog";
 
 /**
  * v0.86 #24 phase 2 — Invoices tab внутри AdminPanel.
@@ -143,6 +144,7 @@ export function InvoicesTabContent({
   onChange,
   onError,
 }: Props) {
+  const confirm = useConfirm();
   const transition = async (
     invoiceId: string,
     next: AdminInvoice["status"],
@@ -165,7 +167,13 @@ export function InvoicesTabContent({
   };
 
   const remove = async (invoiceId: string) => {
-    if (!window.confirm("Удалить счёт навсегда?")) return;
+    const ok = await confirm({
+      title: "Удалить счёт?",
+      message: "Счёт будет удалён безвозвратно — восстановить его не получится.",
+      confirmLabel: "Удалить счёт",
+      danger: true,
+    });
+    if (!ok) return;
     onError(null);
     try {
       await apiJson(`/api/invoices/${encodeURIComponent(invoiceId)}`, {

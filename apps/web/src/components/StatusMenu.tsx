@@ -1,6 +1,23 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { useEffect, useRef } from "react";
 import type { UserStatus } from "../hooks/useProfile";
+
+/**
+ * Вторичное действие в профиль-меню (slice 3 «разгрузка топбара»):
+ * иконки Уведомлений / Справки уехали сюда из cmdbar, чтобы первый
+ * слой не шумел. closeOnClick=false оставляет меню открытым (для
+ * toggle-действий типа уведомлений — можно щёлкнуть и сразу увидеть).
+ */
+type ToolItem = {
+  key: string;
+  label: string;
+  hint?: string;
+  icon: ReactNode;
+  onClick: () => void;
+  active?: boolean;
+  dim?: boolean;
+  closeOnClick?: boolean;
+};
 
 type Props = {
   anchorRect: DOMRect;
@@ -8,6 +25,10 @@ type Props = {
   onSelect: (status: UserStatus) => void;
   onOpenProfile?: () => void;
   onClose: () => void;
+  /** Слот темы (ThemeToggle) — рендерится строкой «Оформление». */
+  themeSlot?: ReactNode;
+  /** Вторичные утилиты (уведомления, справка). */
+  tools?: ToolItem[];
 };
 
 const popover: CSSProperties = {
@@ -84,7 +105,7 @@ const OPTIONS: StatusOption[] = [
   },
 ];
 
-export function StatusMenu({ anchorRect, current, onSelect, onOpenProfile, onClose }: Props) {
+export function StatusMenu({ anchorRect, current, onSelect, onOpenProfile, onClose, themeSlot, tools }: Props) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -106,7 +127,7 @@ export function StatusMenu({ anchorRect, current, onSelect, onOpenProfile, onClo
 
   // Positioning: ниже-слева от anchor (user-chip), clamp в viewport
   const POP_W = 220;
-  const POP_H = 220;
+  const POP_H = 380;
   const margin = 8;
   let left = anchorRect.left;
   let top = anchorRect.bottom + 6;
@@ -160,29 +181,67 @@ export function StatusMenu({ anchorRect, current, onSelect, onOpenProfile, onClo
           </button>
         );
       })}
-      {onOpenProfile && (
-        <>
-          <div style={{ height: 1, background: "var(--ec-border-subtle)", margin: "4px 0" }} aria-hidden />
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => {
-              onOpenProfile();
-              onClose();
-            }}
-            style={item}
-            onMouseEnter={(e) => (e.currentTarget.style.background = "var(--ec-surface-2)")}
-            onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-          >
+      {(themeSlot || (tools && tools.length > 0) || onOpenProfile) && (
+        <div style={{ height: 1, background: "var(--ec-border-subtle)", margin: "4px 0" }} aria-hidden />
+      )}
+      {themeSlot && (
+        <div style={{ ...item, cursor: "default", justifyContent: "space-between" }}>
+          <span style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
             <span aria-hidden style={{ width: 10, display: "grid", placeItems: "center", color: "var(--ec-text-muted)" }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
-                <circle cx="12" cy="7" r="4" />
+                <circle cx="12" cy="12" r="9" />
+                <path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor" stroke="none" />
               </svg>
             </span>
-            <span style={{ color: "var(--ec-text)" }}>Профиль…</span>
-          </button>
-        </>
+            <span style={{ color: "var(--ec-text)" }}>Оформление</span>
+          </span>
+          {themeSlot}
+        </div>
+      )}
+      {tools?.map((t) => (
+        <button
+          key={t.key}
+          type="button"
+          role="menuitem"
+          onClick={() => {
+            t.onClick();
+            if (t.closeOnClick !== false) onClose();
+          }}
+          style={{ ...item, opacity: t.dim ? 0.55 : 1 }}
+          onMouseEnter={(e) => (e.currentTarget.style.background = "var(--ec-surface-2)")}
+          onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+        >
+          <span aria-hidden style={{ width: 10, display: "grid", placeItems: "center", color: t.active ? "var(--ec-accent)" : "var(--ec-text-muted)" }}>
+            {t.icon}
+          </span>
+          <span style={{ display: "flex", flexDirection: "column", minWidth: 0, flex: 1 }}>
+            <span style={{ color: t.active ? "var(--ec-text-strong)" : "var(--ec-text)" }}>{t.label}</span>
+            {t.hint && (
+              <span style={{ fontSize: "var(--ec-text-2xs)", color: "var(--ec-text-dim)" }}>{t.hint}</span>
+            )}
+          </span>
+        </button>
+      ))}
+      {onOpenProfile && (
+        <button
+          type="button"
+          role="menuitem"
+          onClick={() => {
+            onOpenProfile();
+            onClose();
+          }}
+          style={item}
+          onMouseEnter={(e) => (e.currentTarget.style.background = "var(--ec-surface-2)")}
+          onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+        >
+          <span aria-hidden style={{ width: 10, display: "grid", placeItems: "center", color: "var(--ec-text-muted)" }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+              <circle cx="12" cy="7" r="4" />
+            </svg>
+          </span>
+          <span style={{ color: "var(--ec-text)" }}>Профиль…</span>
+        </button>
       )}
     </div>
   );

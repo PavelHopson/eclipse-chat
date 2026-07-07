@@ -1,7 +1,9 @@
 import type { CSSProperties } from "react";
+import type { Socket } from "socket.io-client";
 import { Avatar } from "./Avatar";
 import { EmptyState } from "./EmptyState";
 import { EmptyHealthIcon } from "./EmptyIcons";
+import { TeamTrainingLibrary } from "./TeamTrainingLibrary";
 import { tiltProps } from "../lib/tilt";
 import type { TeamHealthData } from "../hooks/useTeamHealth";
 
@@ -21,7 +23,10 @@ import type { TeamHealthData } from "../hooks/useTeamHealth";
  */
 
 type Props = {
+  serverId: string | null;
   serverName: string | null;
+  memberRole: string | null;
+  socket?: Socket | null;
   data: TeamHealthData | null;
   loading: boolean;
   error: string | null;
@@ -64,12 +69,6 @@ const body: CSSProperties = {
   display: "flex",
   flexDirection: "column",
   gap: "var(--ec-space-5)",
-};
-
-const grid: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-  gap: "var(--ec-space-3)",
 };
 
 function statCardStyle(tone: "exec" | "warn" | "idle" | "risk"): CSSProperties {
@@ -216,7 +215,10 @@ function HeartIcon() {
 }
 
 export function TeamHealth({
+  serverId,
   serverName,
+  memberRole,
+  socket,
   data,
   loading,
   error,
@@ -228,6 +230,7 @@ export function TeamHealth({
   const unassigned = data?.counts.unassignedTotal ?? 0;
   const open = data?.counts.openTotal ?? 0;
   const blockedSet = new Set(data?.blockedMembers.map((m) => m.userId) ?? []);
+  const canUploadTrainingFiles = memberRole === "OWNER" || memberRole === "ADMIN";
 
   const isEmpty =
     !loading &&
@@ -290,24 +293,27 @@ export function TeamHealth({
         )}
 
         {!error && loading && !data && (
-          <div className="ec-team-health-stats" style={grid} aria-label="Считаем здоровье команды">
-            {Array.from({ length: 4 }).map((_, i) => (
+          <div className="ec-team-health-stats" aria-label="Считаем здоровье команды">
+            {Array.from({ length: 5 }).map((_, i) => (
               <div key={i} className="ec-skeleton-card" />
             ))}
           </div>
         )}
 
         {!error && isEmpty && (
-          <EmptyState
-            icon={<EmptyHealthIcon />}
-            title="Пока нечего считать"
-            hint="В пространстве ещё нет задач или решений. Создавайте их через /task в композере или hover-меню сообщения — здесь появится операционная сводка."
-          />
+          <>
+            <EmptyState
+              icon={<EmptyHealthIcon />}
+              title="Пока нечего считать"
+              hint="В пространстве ещё нет задач или решений. Создавайте их через /task в композере или hover-меню сообщения — здесь появится операционная сводка."
+            />
+            <TeamTrainingLibrary serverId={serverId} canUploadFiles={canUploadTrainingFiles} socket={socket} />
+          </>
         )}
 
         {!error && !isEmpty && data && (
           <>
-            <div className="ec-team-health-stats" style={grid}>
+            <div className="ec-team-health-stats">
               <button
                 type="button"
                 {...tiltProps}
@@ -380,6 +386,8 @@ export function TeamHealth({
 
             {/* v0.60: Trends week-over-week */}
             <TrendsRibbon trends={data.trends} />
+
+            <TeamTrainingLibrary serverId={serverId} canUploadFiles={canUploadTrainingFiles} socket={socket} />
 
             {/* v0.60: Per-channel breakdown */}
             <PerChannelSection rows={data.perChannel} />

@@ -18,14 +18,12 @@ import { registerBotRoutes } from "./routes/bots.js";
 import { registerTwoFactorRoutes } from "./routes/twoFactor.js";
 import { registerChannelRoutes } from "./routes/channels.js";
 import { registerChannelCategoryRoutes } from "./routes/channelCategories.js";
-import { registerClientPortalRoutes } from "./routes/clientPortal.js";
 import { registerDigestRoutes } from "./routes/digest.js";
-import { registerDmRoutes } from "./routes/dm.js";
+import { registerDmRoutes, isDmMember, loadConversationMembers } from "./routes/dm.js";
 import { registerEmbedRoutes } from "./routes/embeds.js";
 import { registerFriendRoutes } from "./routes/friends.js";
-import { registerHomeRoutes } from "./routes/home.js";
 import { registerMessageRoutes } from "./routes/messages.js";
-import { registerIncidentRoutes } from "./routes/incidents.js";
+import { registerMemoryRoutes } from "./routes/memory.js";
 import { registerIntegrationRoutes } from "./routes/integrations.js";
 import { registerComposioRoutes } from "./routes/composio.js";
 import { registerPlatformRoutes } from "./routes/platform.js";
@@ -34,7 +32,7 @@ import { registerMusicRoutes } from "./routes/music.js";
 import { registerPushRoutes } from "./routes/push.js";
 import { registerEmojiRoutes } from "./routes/emojis.js";
 import { registerServerRoutes } from "./routes/servers.js";
-import { registerTableRoutes } from "./routes/tables.js";
+import { registerInviteRoutes } from "./routes/invites.js";
 import { registerThreadRoutes } from "./routes/threads.js";
 import { registerUserRoutes } from "./routes/users.js";
 import { registerVisitRoutes } from "./routes/visits.js";
@@ -47,6 +45,7 @@ import {
   setVoicePresenceIO,
   snapshotForServer,
   metaSnapshotForUsers,
+  stateForSocket,
   trackVoiceJoin,
   trackVoiceLeave,
   updateVoiceMeta,
@@ -55,6 +54,7 @@ import {
 import { recoverStuckTranscripts } from "./ai/transcribe.js";
 import { startEscalationCron } from "./escalation.js";
 import { startTempChannelCron } from "./tempChannels.js";
+import { startExpiredMessageCron } from "./expiredMessages.js";
 import { db } from "./db.js";
 
 const port = Number(process.env.PORT) || 3001;
@@ -231,7 +231,7 @@ app.get("/api/health", async () => {
     },
   };
 });
-app.get("/api/version", async () => ({ name: "@eclipse-chat/server", version: "1.5.60" }));
+app.get("/api/version", async () => ({ name: "@eclipse-chat/server", version: "1.7.8" }));
 
 await registerAuthRoutes(app);
 await registerTwoFactorRoutes(app);
@@ -269,22 +269,20 @@ await registerChannelCategoryRoutes(app);
 await registerActionRoutes(app);
 await registerAttachmentRoutes(app);
 await registerAutomationRoutes(app);
-registerClientPortalRoutes(app);
 await registerDigestRoutes(app);
+await registerMemoryRoutes(app);
 await registerServerRoutes(app);
+await registerInviteRoutes(app);
 await registerUserRoutes(app);
 await registerMessageRoutes(app);
 await registerThreadRoutes(app);
 await registerEmojiRoutes(app);
-await registerIncidentRoutes(app);
 await registerVoiceRoutes(app);
 await registerDmRoutes(app);
 await registerFriendRoutes(app);
 await registerEmbedRoutes(app);
-await registerHomeRoutes(app);
 registerAnalyticsRoutes(app);
 await registerVisitRoutes(app);
-await registerTableRoutes(app);
 await registerMusicRoutes(app);
 registerInvoiceRoutes(app);
 registerPushRoutes(app);
@@ -292,6 +290,7 @@ registerVoiceNoteRoutes(app);
 registerIntegrationRoutes(app);
 await registerComposioRoutes(app);
 await registerPlatformRoutes(app);
+
 await app.ready();
 
 /* Socket.io: тот же HTTP-сервер, что и у Fastify */
@@ -473,6 +472,34 @@ io.on("connection", (socket) => {
     });
   });
 
+  // dm:typing:start / dm:typing:stop — то же что channel-typing, но для DM-room
+  // (1:1 + группы). Ephemeral, без DB-записи. Membership verify через
+  // loadConversationMembers/isDmMember (защита от spoof'а typing в чужой диалог).
+  socket.on("dm:typing:start", async (conversationId: string) => {
+    const uid = (socket.data as { userId: string | null | undefined }).userId;
+    if (!uid || typeof conversationId !== "string" || !conversationId) return;
+    const members = await loadConversationMembers(conversationId);
+    if (!members || !isDmMember(members, uid)) return;
+    const user = await db.user.findUnique({
+      where: { id: uid },
+      select: { displayName: true },
+    });
+    if (!user) return;
+    socket.to(`dm:${conversationId}`).emit("dm:typing:start", {
+      conversationId,
+      userId: uid,
+      displayName: user.displayName,
+    });
+  });
+  socket.on("dm:typing:stop", (conversationId: string) => {
+    const uid = (socket.data as { userId: string | null | undefined }).userId;
+    if (!uid || typeof conversationId !== "string" || !conversationId) return;
+    socket.to(`dm:${conversationId}`).emit("dm:typing:stop", {
+      conversationId,
+      userId: uid,
+    });
+  });
+
   // ===== Voice presence =====
   // Frontend emits 'voice:join' после успешного LiveKit Room.connect().
   // Verify membership и channel.type === VOICE — иначе spoof'ить можно с лёгкостью.
@@ -505,13 +532,34 @@ io.on("connection", (socket) => {
         cb?.("Not a member");
         return;
       }
+      const previousVoiceState = stateForSocket(socket.id);
+      if (previousVoiceState && previousVoiceState.voiceChannelId !== channel.id) {
+        void socket.leave(`channel:${previousVoiceState.voiceChannelId}`);
+      }
       trackVoiceJoin(socket.id, uid, channel.id, channel.serverId);
+      await socket.join(`channel:${channel.id}`);
       cb?.(null);
     },
   );
 
   socket.on("voice:leave", () => {
+    const voiceState = stateForSocket(socket.id);
+    if (voiceState) {
+      void socket.leave(`channel:${voiceState.voiceChannelId}`);
+    }
     trackVoiceLeave(socket.id);
+  });
+
+  socket.on("voice:presence:request", async () => {
+    const uid = (socket.data as { userId: string | null | undefined }).userId;
+    if (!uid) return;
+    try {
+      const snap = await buildVoicePresenceSnapshot(uid);
+      socket.emit("voice:state", snap.byChannel);
+      socket.emit("voice:meta", snap.meta);
+    } catch (err) {
+      app.log.error({ err, userId: uid }, "Failed to refresh voice presence snapshot");
+    }
   });
 
   // Клиент переключил микрофон / звук — обновляем meta и рассылаем дельту
@@ -539,6 +587,10 @@ io.on("connection", (socket) => {
       trackDisconnect(userId, socket.id);
     }
     // Auto-cleanup voice presence (если socket crashed/closed без явного leave).
+    const voiceState = stateForSocket(socket.id);
+    if (voiceState) {
+      void socket.leave(`channel:${voiceState.voiceChannelId}`);
+    }
     trackVoiceLeave(socket.id);
   });
 });
@@ -558,6 +610,9 @@ try {
   // v0.74 #29 phase 1: cron auto-delete для temporary rooms (Channel.expiresAt).
   // Scan каждую минуту, PROCESS_LIMIT=100 за проход.
   startTempChannelCron(app.log);
+
+  // v1.7.0 — cron исчезающих сообщений (Message.expiresAt). Scan каждые 30s.
+  startExpiredMessageCron(app.log);
 
   // Keep-alive ping для Neon free tier (Scales to zero после ~5 минут idle).
   // Без этого Neon рвёт connection и каждый запрос имеет 20-сек cold start.

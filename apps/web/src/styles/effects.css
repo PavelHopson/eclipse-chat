@@ -15,6 +15,12 @@
    night-blue VOID-теме. */
 html[data-ec-theme="solar"] {
   --ec-bg: #ffffff;
+  /* v1.6.77 — --ec-void (глубочайший фон страницы) и --ec-surface-glass БЫЛИ
+     пропущены SOLAR (отдельные от --ec-bg токены) → `.ec-guide` (фон всего
+     гайд-вью/Путеводителя) и glass-панели оставались ТЁМНЫМИ в светлой теме.
+     Светлые значения в тон палитры. */
+  --ec-void: hsl(225 20% 97.5%);
+  --ec-surface-glass: rgba(255, 255, 255, 0.62);
   --ec-surface-1: hsl(225 20% 97.5%);
   --ec-surface-2: hsl(228 24% 99%);
   --ec-surface-3: hsl(225 17% 94.5%);
@@ -43,7 +49,60 @@ html[data-ec-theme="solar"] {
   --ec-overlay-bg: hsl(228 24% 99.5% / 0.98);
   --ec-overlay-header-bg: hsl(225 18% 96.5%);
   --ec-surface-sunken: hsl(225 18% 96%);
+  /* v1.6.76 — ops-токены (operational shell skin, components.css :root)
+     под SOLAR. БЕЗ них body-фон + chat-header + members рендерились
+     ТЁМНЫМИ ops-значениями (#05070d…, часть через !important) в светлой
+     теме → светлые панели на тёмном каркасе = «сыро». Светлые значения
+     в тон surface-палитре SOLAR (зеркало obsidian-блока ниже). */
+  --ec-ops-bg: #ffffff;
+  --ec-ops-rail: hsl(225 20% 97.5%);
+  --ec-ops-rail-strong: hsl(225 17% 94.5%);
+  --ec-ops-panel: hsl(228 24% 99%);
+  --ec-ops-panel-2: hsl(225 17% 94.5%);
+  --ec-ops-line: hsl(225 15% 84%);
+  --ec-ops-line-soft: hsl(225 16% 90%);
+  --ec-ops-glow: 0 18px 50px -40px hsl(225 30% 40% / 0.22);
   color-scheme: light;
+}
+
+/* ===== OBSIDIAN theme — OLED true-black (v1.6.74) =================
+   Третья тема (к VOID/SOLAR). Чистый чёрный для AMOLED — экономит
+   батарею, акценты violet+gold максимально контрастны. Тёмная как
+   VOID → переопределяем core- и ops-токены в чёрный + 2 чисто-хардкод
+   shell-surface (которые не идут через токены). Бренд violet+gold
+   сохранён. Спецификация html[data-ec-theme] (0,1,1) бьёт :root
+   (0,1,0) и базовые .x (0,1,0). */
+html[data-ec-theme="obsidian"] {
+  --ec-void: #000000;
+  --ec-bg: #000000;
+  --ec-surface-1: #060608;
+  --ec-surface-2: #0c0c11;
+  --ec-surface-3: #14141a;
+  --ec-surface-4: #1c1c24;
+  --ec-border-subtle: rgba(205, 208, 230, 0.06);
+  --ec-border-default: rgba(205, 208, 230, 0.12);
+  --ec-border-emphasis: rgba(205, 208, 230, 0.20);
+  --ec-surface-sunken: hsl(228 14% 4% / 0.6);
+  --ec-surface-glass: rgba(6, 6, 9, 0.55);
+  /* operational rail surfaces (body / chat-header / members / channels —
+     многие через !important, но значение из этих токенов → чёрное) */
+  --ec-ops-bg: #000000;
+  --ec-ops-rail: #060608;
+  --ec-ops-rail-strong: #0c0c12;
+  --ec-ops-panel: #0c0c11;
+  --ec-ops-panel-2: #131319;
+  --ec-ops-line: color-mix(in srgb, var(--ec-accent) 20%, #1a1a20);
+  --ec-ops-line-soft: color-mix(in srgb, var(--ec-accent) 11%, #141418);
+  color-scheme: dark;
+}
+
+/* Чисто-хардкод shell-surface'ы (без !important, не через токены) →
+   плоский near-black. members/chat-header идут через ops-токены выше. */
+html[data-ec-theme="obsidian"] .ec-shell {
+  background: #000000;
+}
+html[data-ec-theme="obsidian"] .ec-shell__cmdbar {
+  background: linear-gradient(180deg, #0a0a0e, #050507);
 }
 
 html[data-ec-theme="solar"] .ec-ambient {
@@ -125,7 +184,8 @@ html[data-ec-theme="solar"] .ec-voice-room {
   right: -18vw;
   top: 50%;
   transform: translateY(-50%);
-  opacity: 0.62;
+  /* v1.6.45 de-noise: приглушённый signature-фон (0.62 -> 0.30). */
+  opacity: 0.30;
   z-index: 0;
 }
 
@@ -134,7 +194,8 @@ html[data-ec-theme="solar"] .ec-voice-room {
   aspect-ratio: 1;
   right: -24%;
   top: -180px;
-  opacity: 0.42;
+  /* v1.6.45 de-noise: 0.42 -> 0.20. */
+  opacity: 0.20;
   z-index: -1;
 }
 
@@ -143,9 +204,9 @@ html[data-ec-theme="solar"] .ec-voice-room {
   aspect-ratio: 1;
   right: 6%;
   top: 8%;
-  /* v1.5.9 — opacity 0.25 → 0.32 для большей presence в right rail;
-   * крупная decoration, но не отвлекает от content'а. */
-  opacity: 0.32;
+  /* v1.6.45 de-noise: in-app shell-фон сильно приглушён (0.32 -> 0.12) —
+   * остаётся едва уловимой атмосферой, не конкурирует с контентом. */
+  opacity: 0.12;
   z-index: -1;
 }
 
@@ -273,97 +334,6 @@ html[data-ec-theme="solar"] .ec-voice-room {
   opacity: var(--star-opacity);
   animation: ec-galaxy-star 3.6s ease-in-out infinite;
   animation-delay: var(--star-delay);
-}
-
-.ec-spider-clock {
-  display: inline-grid;
-  grid-template-columns: 28px auto auto;
-  align-items: center;
-  gap: 7px;
-  min-height: 30px;
-  padding: 0.24rem 0.62rem 0.24rem 0.36rem;
-  border-radius: var(--ec-radius-full);
-  background:
-    radial-gradient(circle at 18% 50%, var(--ec-accent-soft), transparent 46%),
-    hsl(216 24% 8% / 0.58);
-  box-shadow: var(--ec-edge), inset 0 1px 0 hsl(0 0% 100% / 0.03);
-  color: var(--ec-text-muted);
-  font-family: var(--ec-font-mono, ui-monospace, monospace);
-  font-size: 0.62rem;
-  letter-spacing: 0.12em;
-  white-space: nowrap;
-}
-
-.ec-spider-clock__dial {
-  position: relative;
-  display: block;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 50% 50%, var(--ec-accent) 0 1px, transparent 1.5px),
-    repeating-conic-gradient(from 0deg, hsl(258 70% 64% / 0.38) 0 1deg, transparent 1deg 30deg);
-  box-shadow: inset 0 0 0 1px hsl(258 70% 64% / 0.24);
-}
-
-.ec-spider-clock__web,
-.ec-spider-clock__hand,
-.ec-spider-clock__node {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-}
-
-.ec-spider-clock__web {
-  width: 100%;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, hsl(258 70% 70% / 0.32), transparent);
-  transform-origin: 0 0;
-}
-
-.ec-spider-clock__web--a { transform: rotate(35deg) translateX(-50%); }
-.ec-spider-clock__web--b { transform: rotate(145deg) translateX(-50%); }
-
-.ec-spider-clock__hand {
-  width: 10px;
-  height: 1px;
-  transform-origin: 0 50%;
-  background: var(--ec-text-muted);
-}
-
-.ec-spider-clock__hand--hour {
-  width: 7px;
-  background: var(--ec-text-strong);
-}
-
-.ec-spider-clock__hand--minute {
-  width: 9px;
-  background: var(--ec-accent);
-}
-
-.ec-spider-clock__hand--second {
-  width: 11px;
-  background: var(--ec-status-warn);
-  box-shadow: 0 0 8px hsl(42 90% 62% / 0.44);
-}
-
-.ec-spider-clock__node {
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: var(--ec-bg);
-  box-shadow: 0 0 0 1px var(--ec-accent), 0 0 8px hsl(258 80% 62% / 0.34);
-  transform: translate(-50%, -50%);
-}
-
-.ec-spider-clock__time {
-  color: var(--ec-text);
-  font-variant-numeric: tabular-nums;
-}
-
-.ec-spider-clock__sec {
-  color: var(--ec-text-dim);
-  font-variant-numeric: tabular-nums;
 }
 
 .ec-theme-toggle {
@@ -619,10 +589,6 @@ html[data-ec-theme="solar"] .ec-voice-room {
 }
 
 @media (max-width: 900px) {
-  .ec-spider-clock {
-    display: none;
-  }
-
   .ec-galaxy--auth {
     width: 92vw;
     right: -46vw;
@@ -667,6 +633,39 @@ html[data-ec-theme="solar"] .ec-friend-row {
 html[data-ec-theme="solar"] .ec-friend-row:hover,
 html[data-ec-theme="solar"] .ec-friend-row:focus-visible {
   background: color-mix(in srgb, var(--ec-accent) 7%, var(--ec-surface-2));
+}
+
+html[data-ec-theme="solar"] .ec-team-training {
+  background:
+    radial-gradient(circle at 12% 0%, hsl(258 86% 58% / 0.06), transparent 34%),
+    linear-gradient(145deg, var(--ec-surface-0), var(--ec-surface-1));
+  box-shadow:
+    0 1px 0 hsl(220 20% 100% / 0.9) inset,
+    0 18px 42px -34px hsl(220 20% 20% / 0.38);
+}
+
+html[data-ec-theme="solar"] .ec-team-training__section,
+html[data-ec-theme="solar"] .ec-team-training__form,
+html[data-ec-theme="solar"] .ec-team-training__active-summary,
+html[data-ec-theme="solar"] .ec-team-training__empty,
+html[data-ec-theme="solar"] .ec-team-training-video {
+  background: color-mix(in srgb, var(--ec-surface-2) 88%, hsl(0 0% 100%));
+  box-shadow:
+    0 1px 0 hsl(220 20% 100% / 0.92) inset,
+    0 14px 30px -28px hsl(220 18% 18% / 0.34);
+}
+
+html[data-ec-theme="solar"] .ec-team-training__section:hover,
+html[data-ec-theme="solar"] .ec-team-training__section:focus-visible,
+html[data-ec-theme="solar"] .ec-team-training__section--active {
+  background: color-mix(in srgb, var(--ec-accent) 7%, var(--ec-surface-2));
+}
+
+html[data-ec-theme="solar"] .ec-team-training-video:hover,
+html[data-ec-theme="solar"] .ec-team-training-video:focus-within {
+  box-shadow:
+    0 1px 0 hsl(220 20% 100% / 0.94) inset,
+    0 18px 40px -30px hsl(258 45% 34% / 0.28);
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -39,6 +39,7 @@ export type VoiceParticipant = {
   isMicMuted: boolean;
   isDeafened: boolean;
   isLocal: boolean;
+  connectionQuality: "excellent" | "good" | "poor" | "lost" | "unknown";
 };
 
 export type VoiceVisualTrack = {
@@ -49,6 +50,37 @@ export type VoiceVisualTrack = {
   isLocal: boolean;
   isMuted: boolean;
   track: LocalVideoTrack | RemoteVideoTrack;
+};
+
+const CAMERA_CAPTURE_OPTIONS = {
+  resolution: {
+    width: 1280,
+    height: 720,
+    frameRate: 30,
+  },
+};
+
+const CAMERA_PUBLISH_OPTIONS = {
+  videoEncoding: {
+    maxBitrate: 1_800_000,
+    maxFramerate: 30,
+  },
+};
+
+const SCREEN_SHARE_CAPTURE_OPTIONS = {
+  audio: false,
+  resolution: {
+    width: 1920,
+    height: 1080,
+    frameRate: 30,
+  },
+};
+
+const SCREEN_SHARE_PUBLISH_OPTIONS = {
+  videoEncoding: {
+    maxBitrate: 4_500_000,
+    maxFramerate: 30,
+  },
 };
 
 type JoinResponse = {
@@ -66,6 +98,14 @@ type RemoteTrackEntry = {
   publication: RemoteTrackPublication;
   participantIdentity: string;
 };
+
+function normalizeConnectionQuality(value: unknown): VoiceParticipant["connectionQuality"] {
+  if (value === 2 || value === "excellent" || value === "EXCELLENT") return "excellent";
+  if (value === 1 || value === "good" || value === "GOOD") return "good";
+  if (value === 0 || value === "poor" || value === "POOR") return "poor";
+  if (value === 3 || value === "lost" || value === "LOST") return "lost";
+  return "unknown";
+}
 
 export function useVoice(socket: Socket | null = null) {
   const {
@@ -110,6 +150,15 @@ export function useVoice(socket: Socket | null = null) {
    * DSP-цепочка дополнительно в режиме noiseSuppression="aggressive".
    */
   const enhancerRef = useRef<AudioEnhancerHandle | null>(null);
+  const publishedMicConfigRef = useRef<{
+    inputDeviceId: string | null;
+    noiseSuppression: string;
+    enhancerMode: "none" | "gain" | "full";
+  }>({
+    inputDeviceId: null,
+    noiseSuppression: "standard",
+    enhancerMode: "none",
+  });
 
   /** Snapshot последних settings — для use в callbacks без зависимостей. */
   const settingsRef = useRef(settings);
@@ -214,6 +263,9 @@ export function useVoice(socket: Socket | null = null) {
         isMicMuted: !lp.isMicrophoneEnabled,
         isDeafened,
         isLocal: true,
+        connectionQuality: normalizeConnectionQuality(
+          (lp as { connectionQuality?: unknown }).connectionQuality,
+        ),
       });
       for (const p of r.remoteParticipants.values()) {
         const micPub = p.getTrackPublication(lk.Track.Source.Microphone);
@@ -224,6 +276,9 @@ export function useVoice(socket: Socket | null = null) {
           isMicMuted: micPub?.isMuted ?? !micPub,
           isDeafened: false,
           isLocal: false,
+          connectionQuality: normalizeConnectionQuality(
+            (p as { connectionQuality?: unknown }).connectionQuality,
+          ),
         });
       }
       setParticipants(list);
@@ -300,6 +355,101 @@ export function useVoice(socket: Socket | null = null) {
     setIsScreenShareEnabled(r.localParticipant.isScreenShareEnabled);
   }, []);
 
+  const applyLocalMicrophoneSettings = useCallback(
+    async (r: RoomType, preserveMuted: boolean) => {
+      const constraints = noiseModeToConstraints(settingsRef.current.noiseSuppression);
+      const inputId = settingsRef.current.inputDeviceId;
+
+      if (enhancerRef.current) {
+        enhancerRef.current.destroy();
+        enhancerRef.current = null;
+      }
+
+      await r.localParticipant.setMicrophoneEnabled(true, {
+        ...constraints,
+        ...(inputId ? { deviceId: { exact: inputId } } : {}),
+      });
+
+      const lk = await import("livekit-client");
+      const micPub = r.localParticipant.getTrackPublication(lk.Track.Source.Microphone);
+      const localAudioTrack = micPub?.audioTrack;
+      const rawTrack = localAudioTrack?.mediaStreamTrack;
+      const needsEnhancer =
+        settingsRef.current.noiseSuppression === "aggressive" ||
+        settingsRef.current.micGain !== 1;
+      let enhancerMode: "none" | "gain" | "full" = "none";
+
+      if (needsEnhancer && localAudioTrack && rawTrack) {
+        try {
+          const enhancer = createAudioEnhancer(rawTrack, {
+            micGain: settingsRef.current.micGain,
+            gainOnly: settingsRef.current.noiseSuppression !== "aggressive",
+          });
+          await localAudioTrack.replaceTrack(enhancer.outputTrack);
+          enhancerRef.current = enhancer;
+          enhancerMode =
+            settingsRef.current.noiseSuppression === "aggressive" ? "full" : "gain";
+        } catch (enhErr) {
+          console.warn("Audio enhancer failed, using raw mic:", enhErr);
+        }
+      }
+
+      const currentTrack =
+        r.localParticipant.getTrackPublication(lk.Track.Source.Microphone)?.audioTrack
+          ?.mediaStreamTrack ?? null;
+      if (currentTrack) {
+        currentTrack.enabled = !preserveMuted;
+      }
+
+      publishedMicConfigRef.current = {
+        inputDeviceId: inputId ?? null,
+        noiseSuppression: settingsRef.current.noiseSuppression,
+        enhancerMode,
+      };
+      setIsMicMuted(preserveMuted);
+      refreshParticipants();
+    },
+    [refreshParticipants],
+  );
+
+  useEffect(() => {
+    const r = roomRef.current;
+    if (!r || state !== "connected") return;
+
+    const published = publishedMicConfigRef.current;
+    const nextEnhancerMode =
+      settings.noiseSuppression === "aggressive"
+        ? "full"
+        : settings.micGain !== 1
+        ? "gain"
+        : "none";
+    const needsRefresh =
+      published.inputDeviceId !== (settings.inputDeviceId ?? null) ||
+      published.noiseSuppression !== settings.noiseSuppression ||
+      published.enhancerMode !== nextEnhancerMode;
+
+    if (!needsRefresh) return;
+
+    const preserveMuted =
+      isDeafened ||
+      settings.micActivationMode === "push_to_talk" ||
+      (settings.micActivationMode === "voice_activity" && isMicMuted);
+
+    void applyLocalMicrophoneSettings(r, preserveMuted).catch((e) => {
+      console.warn("applyLocalMicrophoneSettings failed", e);
+      setError(e instanceof Error ? e.message : "Не удалось применить настройки микрофона");
+    });
+  }, [
+    settings.inputDeviceId,
+    settings.noiseSuppression,
+    settings.micGain,
+    settings.micActivationMode,
+    state,
+    isMicMuted,
+    isDeafened,
+    applyLocalMicrophoneSettings,
+  ]);
+
   useEffect(() => {
     refreshParticipants();
   }, [room, refreshParticipants]);
@@ -355,13 +505,32 @@ export function useVoice(socket: Socket | null = null) {
         await leave();
       }
       setBusy(true);
+      let voiceJoinEmitted = false;
       try {
-        const data = await apiJson<JoinResponse>(
-          `/api/channels/${encodeURIComponent(channelId)}/voice/join`,
-          { method: "POST" },
-        );
+        // v1.6.55 — token-fetch и lazy-import livekit-client (~140KB gzip)
+        // независимы: раньше шли последовательно (sum латентностей), теперь
+        // параллельно (max) — заметно быстрее первое подключение.
+        const [data, lk] = await Promise.all([
+          apiJson<JoinResponse>(
+            `/api/channels/${encodeURIComponent(channelId)}/voice/join`,
+            { method: "POST" },
+          ),
+          import("livekit-client"),
+        ]);
 
-        const lk = await import("livekit-client");
+        // v1.6.55 — presence-broadcast СРАЗУ (до LiveKit connect): остальные
+        // участники сервера видят тебя в голосовой комнате мгновенно, не
+        // дожидаясь 1-3s LiveKit-подключения. На провал connect'а откатываем
+        // через voice:leave в catch (флаг voiceJoinEmitted).
+        socketRef.current?.emit(
+          SocketEvents.VoiceJoin,
+          { channelId },
+          (err: string | null) => {
+            if (err) console.warn("voice:join backend rejected:", err);
+          },
+        );
+        voiceJoinEmitted = true;
+
         const { Room, RoomEvent, Track } = lk;
 
         const r = new Room({
@@ -385,6 +554,7 @@ export function useVoice(socket: Socket | null = null) {
         r.on(RoomEvent.TrackUnmuted, refreshParticipants);
         r.on(RoomEvent.LocalTrackPublished, refreshParticipants);
         r.on(RoomEvent.LocalTrackUnpublished, refreshParticipants);
+        r.on(RoomEvent.ConnectionQualityChanged, refreshParticipants);
         r.on(RoomEvent.ParticipantConnected, refreshVisualTracks);
         r.on(RoomEvent.ParticipantDisconnected, refreshVisualTracks);
         r.on(RoomEvent.TrackMuted, refreshVisualTracks);
@@ -454,55 +624,8 @@ export function useVoice(socket: Socket | null = null) {
         // пере-publish'ат (publication остаётся live — это важно для
         // LiveKit; muted-состояние сразу выставляется ниже).
         try {
-          const constraints = noiseModeToConstraints(
-            settingsRef.current.noiseSuppression,
-          );
-          const inputId = settingsRef.current.inputDeviceId;
           const isPtt = settingsRef.current.micActivationMode === "push_to_talk";
-
-          await r.localParticipant.setMicrophoneEnabled(
-            true,
-            {
-              ...constraints,
-              ...(inputId ? { deviceId: { exact: inputId } } : {}),
-            },
-          );
-          setIsMicMuted(isPtt);
-
-          // Web Audio mic-цепочка перед publish. v1.1.69: подключается
-          // ТОЛЬКО когда реально обрабатывает звук — режим "aggressive"
-          // (полная DSP-цепочка highpass+lowpass+compressor+gain) ИЛИ
-          // mic gain ≠ 1.0. При "standard"/"off" с gain 1.0 цепочка была
-          // бы no-op'ом (src→gain(1)→dest): лишний Web Audio round-trip
-          // через MediaStreamDestination деградировал звук («замученный
-          // микрофон»). Default-кейс снова публикует raw mic-трек
-          // напрямую — как до v1.1.59. replaceTrack — чистый LiveKit API;
-          // при ошибке fallback на raw track (mic всё равно работает).
-          try {
-            const needsEnhancer =
-              settingsRef.current.noiseSuppression === "aggressive" ||
-              settingsRef.current.micGain !== 1;
-            if (needsEnhancer) {
-              const lk = await import("livekit-client");
-              const micPub = r.localParticipant.getTrackPublication(
-                lk.Track.Source.Microphone,
-              );
-              const localAudioTrack = micPub?.audioTrack;
-              const rawMs = localAudioTrack?.mediaStreamTrack;
-              if (localAudioTrack && rawMs) {
-                const enhancer = createAudioEnhancer(rawMs, {
-                  micGain: settingsRef.current.micGain,
-                  gainOnly:
-                    settingsRef.current.noiseSuppression !== "aggressive",
-                });
-                await localAudioTrack.replaceTrack(enhancer.outputTrack);
-                enhancerRef.current = enhancer;
-              }
-            }
-          } catch (enhErr) {
-            // Web Audio-цепочка не критична — mic работает на raw track.
-            console.warn("Audio enhancer failed, using raw mic:", enhErr);
-          }
+          await applyLocalMicrophoneSettings(r, isPtt);
 
           // v1.1.75 — PTT: трек опубликован (+ enhancer уже прикреплён),
           // глушим его до первого нажатия клавиши через
@@ -532,22 +655,13 @@ export function useVoice(socket: Socket | null = null) {
         refreshParticipants();
         refreshVisualTracks();
 
-        // Уведомляем backend о join'е — другие участники сервера увидят
-        // тебя в эфире через voice:participant:joined event.
-        socketRef.current?.emit(
-          SocketEvents.VoiceJoin,
-          { channelId },
-          (err: string | null) => {
-            if (err) {
-              // Не critical — backend отказался регистрировать (но LiveKit
-              // подключение уже идёт). Логируем для диагностики.
-              console.warn("voice:join backend rejected:", err);
-            }
-          },
-        );
-
         return true;
       } catch (e) {
+        // v1.6.55 — откат раннего presence-broadcast'а если LiveKit не поднялся:
+        // иначе остальные видели бы нас «в комнате», хотя мы не подключились.
+        if (voiceJoinEmitted) {
+          socketRef.current?.emit(SocketEvents.VoiceLeave);
+        }
         if (e instanceof ApiError && e.status === 503) {
           setError("Голосовая связь не настроена на сервере");
         } else {
@@ -558,7 +672,17 @@ export function useVoice(socket: Socket | null = null) {
         setBusy(false);
       }
     },
-    [activeChannelId, busy, leave, refreshParticipants, refreshVisualTracks, state, applyRemoteAudioState, isDeafened],
+    [
+      activeChannelId,
+      busy,
+      leave,
+      refreshParticipants,
+      refreshVisualTracks,
+      state,
+      applyRemoteAudioState,
+      applyLocalMicrophoneSettings,
+      isDeafened,
+    ],
   );
 
   const toggleMic = useCallback(async () => {
@@ -592,7 +716,11 @@ export function useVoice(socket: Socket | null = null) {
     if (!r) return;
     try {
       const next = !r.localParticipant.isCameraEnabled;
-      await r.localParticipant.setCameraEnabled(next);
+      await r.localParticipant.setCameraEnabled(
+        next,
+        CAMERA_CAPTURE_OPTIONS,
+        CAMERA_PUBLISH_OPTIONS,
+      );
       refreshVisualTracks();
     } catch (e) {
       setError(
@@ -610,7 +738,11 @@ export function useVoice(socket: Socket | null = null) {
     if (!r) return;
     try {
       const next = !r.localParticipant.isScreenShareEnabled;
-      await r.localParticipant.setScreenShareEnabled(next);
+      await r.localParticipant.setScreenShareEnabled(
+        next,
+        SCREEN_SHARE_CAPTURE_OPTIONS,
+        SCREEN_SHARE_PUBLISH_OPTIONS,
+      );
       refreshVisualTracks();
     } catch (e) {
       setError(
@@ -724,18 +856,35 @@ export function useVoice(socket: Socket | null = null) {
     const r = roomRef.current;
     if (!r) return;
     if (state !== "connected") return;
+    const setPublishedTrackEnabled = async (enabled: boolean) => {
+      const lk = await import("livekit-client");
+      const ms = r.localParticipant.getTrackPublication(lk.Track.Source.Microphone)
+        ?.audioTrack?.mediaStreamTrack;
+      if (ms) {
+        ms.enabled = enabled;
+        setIsMicMuted(!enabled);
+        refreshParticipants();
+        return true;
+      }
+      return false;
+    };
     if (settings.micActivationMode === "push_to_talk") {
       if (!isMicMuted) {
-        void r.localParticipant.setMicrophoneEnabled(false).then(() => {
-          setIsMicMuted(true);
-          refreshParticipants();
+        void setPublishedTrackEnabled(false).then((ok) => {
+          if (!ok) {
+            void r.localParticipant.setMicrophoneEnabled(false).then(() => {
+              setIsMicMuted(true);
+              refreshParticipants();
+            });
+          }
         });
       }
     } else {
       if (isMicMuted && !isDeafened) {
-        void r.localParticipant.setMicrophoneEnabled(true).then(() => {
-          setIsMicMuted(false);
-          refreshParticipants();
+        void setPublishedTrackEnabled(true).then((ok) => {
+          if (!ok) {
+            void applyLocalMicrophoneSettings(r, false);
+          }
         });
       }
     }

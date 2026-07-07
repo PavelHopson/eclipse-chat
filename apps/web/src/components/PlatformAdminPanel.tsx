@@ -7,6 +7,7 @@ import { ApiError } from "../lib/api";
 import {
   banPlatformUser,
   deletePlatformUser,
+  listAiProviderDiagnostics,
   listPlatformAuditLog,
   listPlatformServers,
   listPlatformUsers,
@@ -14,6 +15,7 @@ import {
   suspendPlatformServer,
   unbanPlatformUser,
   unsuspendPlatformServer,
+  type AiProviderDiagnostic,
   type AuditLogEntry,
   type ListServersParams,
   type ListUsersParams,
@@ -153,7 +155,7 @@ type Props = {
   currentUserId: string;
 };
 
-type Tab = "users" | "servers" | "audit";
+type Tab = "users" | "servers" | "audit" | "ai";
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("ru-RU", {
@@ -206,11 +208,21 @@ export function PlatformAdminPanel({ onClose, currentUserId }: Props) {
           >
             Аудит
           </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === "ai"}
+            className="ec-platform-admin__tab"
+            onClick={() => setTab("ai")}
+          >
+            AI
+          </button>
         </div>
 
         {tab === "users" && <UsersTab currentUserId={currentUserId} />}
         {tab === "servers" && <ServersTab />}
         {tab === "audit" && <AuditTab />}
+        {tab === "ai" && <AiProvidersTab />}
       </div>
     </Modal>
   );
@@ -1428,6 +1440,125 @@ function AuditTab() {
         onNext={() => setOffset(offset + AUDIT_PAGE_SIZE)}
         loading={loading}
       />
+    </>
+  );
+}
+
+// =============================================================================
+// AI providers tab
+// =============================================================================
+
+function providerKindLabel(kind: AiProviderDiagnostic["kind"]): string {
+  switch (kind) {
+    case "local":
+      return "Local";
+    case "gateway":
+      return "Gateway";
+    case "keyless":
+      return "Keyless";
+    case "cloud":
+    default:
+      return "Cloud";
+  }
+}
+
+function AiProvidersTab() {
+  const [providers, setProviders] = useState<AiProviderDiagnostic[]>([]);
+  const [configured, setConfigured] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await listAiProviderDiagnostics();
+      setProviders(res.providers);
+      setConfigured(res.configured);
+    } catch (e) {
+      setError(
+        e instanceof ApiError
+          ? e.message
+          : "Не удалось загрузить AI diagnostics.",
+      );
+      setProviders([]);
+      setConfigured(false);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  return (
+    <>
+      <div className="ec-platform-admin__toolbar">
+        <div>
+          <div className="ec-platform-admin__label">AI provider diagnostics</div>
+          <p className="ec-platform-admin__sub">
+            Санитизированный список активных провайдеров. API keys, промпты и
+            пользовательский контент не показываются.
+          </p>
+        </div>
+        <button
+          type="button"
+          className="ec-btn ec-btn--sm"
+          onClick={() => void load()}
+          disabled={loading}
+        >
+          Обновить
+        </button>
+      </div>
+
+      {error && <div className="ec-cck-banner ec-cck-banner--error">{error}</div>}
+
+      {!loading && !configured && !error && (
+        <div className="ec-cck-empty">
+          AI-провайдеры не настроены или отключены.
+        </div>
+      )}
+
+      {providers.length > 0 && (
+        <div className="ec-platform-admin__tablewrap">
+          <table className="ec-cck-table ec-platform-admin__table">
+            <thead>
+              <tr>
+                <th className="ec-cck-th">#</th>
+                <th className="ec-cck-th">Provider</th>
+                <th className="ec-cck-th">Type</th>
+                <th className="ec-cck-th">Host</th>
+                <th className="ec-cck-th">Auth</th>
+                <th className="ec-cck-th">Models</th>
+              </tr>
+            </thead>
+            <tbody>
+              {providers.map((p) => (
+                <tr key={`${p.priority}:${p.name}`} className="ec-cck-row">
+                  <td className="ec-cck-cell">{p.priority}</td>
+                  <td className="ec-cck-cell ec-platform-admin__email">
+                    {p.name}
+                  </td>
+                  <td className="ec-cck-cell">{providerKindLabel(p.kind)}</td>
+                  <td className="ec-cck-cell ec-platform-admin__email">
+                    {p.baseHost}
+                  </td>
+                  <td className="ec-cck-cell">
+                    {p.hasAuth ? "configured" : "keyless/local"}
+                  </td>
+                  <td className="ec-cck-cell ec-platform-admin__audit-meta">
+                    {p.models.join(", ")}{" "}
+                    <span className="ec-platform-admin__sub">
+                      ({p.modelCount})
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </>
   );
 }

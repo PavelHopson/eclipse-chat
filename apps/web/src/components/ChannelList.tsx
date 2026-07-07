@@ -5,6 +5,7 @@ import { CategoryCreateModal } from "./CategoryCreateModal";
 import { CreateChannelModal } from "./CreateChannelModal";
 import { ChannelGlyph } from "./icons/ChannelCustomIcons";
 import { ServerActionsMenu } from "./server/ServerActionsMenu";
+import { useConfirm } from "./ConfirmDialog";
 import type { CategoryRow, ChannelRow } from "../hooks/useChannels";
 import type { MemberRow } from "../hooks/useMembers";
 import type { ChannelType, VoiceMeta } from "../lib/socket";
@@ -213,6 +214,7 @@ export function ChannelList({
     y: number;
   } | null>(null);
   const [serverMenuOpen, setServerMenuOpen] = useState(false);
+  const [channelSearch, setChannelSearch] = useState("");
   const hideMutedKey = serverId ? `ec.channelList.hideMuted.${serverId}` : null;
   const [hideMutedChannels, setHideMutedChannels] = useState(false);
   const [copiedInviteChannelId, setCopiedInviteChannelId] = useState<string | null>(null);
@@ -255,6 +257,10 @@ export function ChannelList({
     if (typeof window === "undefined" || !sidebarKey) return;
     window.localStorage.setItem(sidebarKey, sidebarTab);
   }, [sidebarKey, sidebarTab]);
+
+  useEffect(() => {
+    setChannelSearch("");
+  }, [serverId]);
 
   useEffect(() => {
     if (typeof window === "undefined" || !hideMutedKey) {
@@ -325,6 +331,13 @@ export function ChannelList({
     () => [...categories].sort((a, b) => a.position - b.position || a.name.localeCompare(b.name, "ru")),
     [categories],
   );
+  const categoryNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const category of sortedCategories) map.set(category.id, category.name.toLocaleLowerCase("ru"));
+    return map;
+  }, [sortedCategories]);
+  const channelSearchQuery = channelSearch.trim().toLocaleLowerCase("ru");
+  const channelSearchActive = channelSearchQuery.length > 0;
   const visibleChannels = useMemo(
     () =>
       hideMutedChannels && mutedChannels
@@ -332,9 +345,17 @@ export function ChannelList({
         : channels,
     [channels, hideMutedChannels, mutedChannels, selectedChannelId],
   );
+  const searchedChannels = useMemo(() => {
+    if (!channelSearchQuery) return visibleChannels;
+    return visibleChannels.filter((channel) => {
+      const channelName = channel.name.toLocaleLowerCase("ru");
+      const categoryName = channel.categoryId ? categoryNameById.get(channel.categoryId) ?? "" : "";
+      return channelName.includes(channelSearchQuery) || categoryName.includes(channelSearchQuery);
+    });
+  }, [categoryNameById, channelSearchQuery, visibleChannels]);
   const sortedChannels = useMemo(
-    () => [...visibleChannels].sort((a, b) => a.position - b.position || a.name.localeCompare(b.name, "ru")),
-    [visibleChannels],
+    () => [...searchedChannels].sort((a, b) => a.position - b.position || a.name.localeCompare(b.name, "ru")),
+    [searchedChannels],
   );
   const uncategorizedChannels = useMemo(
     () => sortedChannels.filter((c) => !c.categoryId),
@@ -396,10 +417,16 @@ export function ChannelList({
     }
   };
 
+  const confirm = useConfirm();
+
   const handleDelete = async (channelId: string, channelName: string) => {
-    if (!window.confirm(`Удалить комнату «${channelName}»? Все сообщения внутри будут потеряны.`)) {
-      return;
-    }
+    const ok = await confirm({
+      title: "Удалить комнату?",
+      message: `«${channelName}» и все сообщения внутри будут удалены безвозвратно.`,
+      confirmLabel: "Удалить комнату",
+      danger: true,
+    });
+    if (!ok) return;
     setPendingDelete(channelId);
     try {
       await onDelete(channelId);
@@ -745,8 +772,20 @@ export function ChannelList({
 
   const renderCategory = (category: CategoryRow) => {
     const group = channelsByCategory.get(category.id) ?? [];
-    const collapsed = collapsedCategoryIds.has(category.id);
+    if (channelSearchActive && group.length === 0) return null;
+    const collapsed = !channelSearchActive && collapsedCategoryIds.has(category.id);
     const isDropTarget = dropTargetCategoryId === category.id && draggedCategoryId !== category.id;
+    const confirmDeleteCategory = async () => {
+      if (!onDeleteCategory) return;
+      const ok = await confirm({
+        title: "Удалить категорию?",
+        message: `«${category.name}» будет удалена, а каналы внутри останутся — просто станут без категории.`,
+        confirmLabel: "Удалить категорию",
+        danger: true,
+      });
+      if (!ok) return;
+      void onDeleteCategory(category.id);
+    };
     return (
       <section
         key={category.id}
@@ -756,12 +795,9 @@ export function ChannelList({
           (isDropTarget ? " ec-channel-category--drop-target" : "")
         }
       >
-        <button
-          type="button"
+        <div
           className="ec-channel-category__header"
-          aria-expanded={!collapsed}
           draggable={canDragCategories}
-          onClick={() => toggleCategory(category.id)}
           onContextMenu={(e) => {
             if (!manageable) return;
             e.preventDefault();
@@ -795,34 +831,65 @@ export function ChannelList({
             setDropTargetCategoryId(null);
           }}
         >
-          <span className="ec-channel-category__chevron" aria-hidden>
-            ▶
-          </span>
-          <span className="ec-channel-category__name">{category.name}</span>
-          <span className="ec-channel-category__count">{group.length}</span>
-          {editable && (
-            <span
-              role="button"
-              tabIndex={0}
-              className="ec-channel-category__add"
-              title="Создать комнату в категории"
-              aria-label={`Создать комнату в категории ${category.name}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                openCreateModal("TEXT", category.id);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  openCreateModal("TEXT", category.id);
-                }
-              }}
-            >
-              +
+          <button
+            type="button"
+            className="ec-channel-category__toggle"
+            aria-expanded={!collapsed}
+            onClick={() => toggleCategory(category.id)}
+          >
+            <span className="ec-channel-category__chevron" aria-hidden>
+              ▶
+            </span>
+            <span className="ec-channel-category__name">{category.name}</span>
+            <span className="ec-channel-category__count">{group.length}</span>
+          </button>
+          {(editable || manageable) && (
+            <span className="ec-channel-category__actions">
+              {editable && (
+                <button
+                  type="button"
+                  className="ec-channel-category__action"
+                  title="Создать комнату в категории"
+                  aria-label={`Создать комнату в категории ${category.name}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openCreateModal("TEXT", category.id);
+                  }}
+                >
+                  +
+                </button>
+              )}
+              {manageable && onRenameCategory && (
+                <button
+                  type="button"
+                  className="ec-channel-category__action"
+                  title="Переименовать категорию"
+                  aria-label={`Переименовать категорию ${category.name}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setCategoryModal({ mode: "rename", category });
+                  }}
+                >
+                  ✎
+                </button>
+              )}
+              {manageable && onDeleteCategory && (
+                <button
+                  type="button"
+                  className="ec-channel-category__action ec-channel-category__action--danger"
+                  title="Удалить категорию"
+                  aria-label={`Удалить категорию ${category.name}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void confirmDeleteCategory();
+                  }}
+                >
+                  ×
+                </button>
+              )}
             </span>
           )}
-        </button>
+        </div>
         {!collapsed && (
           <div className="ec-channel-category__body">
             {group.map((channel) => (
@@ -844,17 +911,22 @@ export function ChannelList({
   const headerClass = bannerUrl
     ? "ec-server-header-edge ec-channel-list__header ec-channel-list__header--banner"
     : "ec-server-header-edge ec-channel-list__header";
+  const headerStateClass = serverMenuOpen ? `${headerClass} ec-channel-list__header--menu-open` : headerClass;
   const headerStyle: CSSProperties | undefined = bannerUrl
     ? { backgroundImage: `url("${bannerUrl}")` }
     : undefined;
 
   return (
     <aside className="ec-channel-list">
-      <header className={headerClass} style={headerStyle}>
+      <header className={headerStateClass} style={headerStyle}>
         <button
           ref={serverTriggerRef}
           type="button"
-          onClick={() => setServerMenuOpen((value) => !value)}
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={(event) => {
+            event.stopPropagation();
+            setServerMenuOpen((value) => !value);
+          }}
           className="ec-channel-list__server-btn ec-server-header-trigger"
           title="Действия пространства"
           aria-haspopup="menu"
@@ -892,6 +964,7 @@ export function ChannelList({
           <ServerActionsMenu
             open={serverMenuOpen}
             triggerRef={serverTriggerRef}
+            renderMode="inline"
             server={{
               id: serverId,
               name: serverName,
@@ -1122,20 +1195,53 @@ export function ChannelList({
 
         {sidebarTab === "channels" && (
           <>
+            <div className="ec-channel-search" role="search">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <circle cx="11" cy="11" r="8" />
+                <path d="M21 21l-4.35-4.35" />
+              </svg>
+              <input
+                type="search"
+                value={channelSearch}
+                onChange={(event) => setChannelSearch(event.target.value)}
+                placeholder="Найти комнату"
+                aria-label="Найти комнату"
+              />
+              {channelSearchActive && (
+                <button
+                  type="button"
+                  className="ec-channel-search__clear"
+                  onClick={() => setChannelSearch("")}
+                  aria-label="Очистить поиск"
+                >
+                  ×
+                </button>
+              )}
+            </div>
             {!channelsLoading && channels.length > 0 && (
               <div className="ec-channel-category-stack">
+                {sortedChannels.length === 0 && channelSearchActive && (
+                  <p className="ec-channel-list__hint ec-channel-list__hint--search">
+                    По запросу «{channelSearch.trim()}» комнат не найдено.
+                  </p>
+                )}
                 {hideMutedChannels && mutedChannels && (
                   <div className="ec-channel-filter-note" role="status">
                     Заглушённые скрыты · {channels.length - visibleChannels.length} скрыто
                   </div>
                 )}
-                <section className="ec-channel-category ec-channel-category--uncategorized">
+                <section
+                  className={
+                    "ec-channel-category ec-channel-category--uncategorized" +
+                    (channelSearchActive && uncategorizedChannels.length === 0 ? " ec-channel-category--search-empty" : "")
+                  }
+                >
                   <div className="ec-section-label ec-channel-category__uncategorized-label">
                     <span className="ec-section-label--diamond">
                       <span>БЕЗ КАТЕГОРИИ</span>
                       <span className="ec-channel-section__count">{uncategorizedChannels.length}</span>
                     </span>
-                    {editable && (
+                    {editable && !channelSearchActive && (
                       <button
                         type="button"
                         onClick={() => openCreateModal("TEXT", null)}
@@ -1154,11 +1260,11 @@ export function ChannelList({
                         {channel.type === "VOICE" && renderVoiceOccupants(channel.id)}
                       </div>
                     ))}
-                    {renderChannelDropZone(null, uncategorizedChannels.length === 0)}
+                    {!channelSearchActive && renderChannelDropZone(null, uncategorizedChannels.length === 0)}
                   </div>
                 </section>
                 {sortedCategories.map(renderCategory)}
-                {manageable && onCreateCategory && (
+                {manageable && onCreateCategory && !channelSearchActive && (
                   <button
                     type="button"
                     className="ec-channel-category-create"
@@ -1370,12 +1476,17 @@ export function ChannelList({
           <button
             type="button"
             className="ec-popover-item ec-popover-item--danger"
-            onClick={() => {
+            onClick={async () => {
               const category = categoryMenu.category;
               setCategoryMenu(null);
-              if (window.confirm(`Удалить «${category.name.toUpperCase()}»? Каналы внутри станут несгруппированными`)) {
-                void onDeleteCategory?.(category.id);
-              }
+              const ok = await confirm({
+                title: "Удалить категорию?",
+                message: `«${category.name}» будет удалена, а каналы внутри останутся — просто станут без категории.`,
+                confirmLabel: "Удалить категорию",
+                danger: true,
+              });
+              if (!ok) return;
+              void onDeleteCategory?.(category.id);
             }}
           >
             Удалить

@@ -1,4 +1,5 @@
 import { TwoFactorSetupModal } from "../../TwoFactorSetupModal";
+import { PasswordRecoveryCard } from "./PasswordRecoveryCard";
 
 type Props = {
   twoFaOn: boolean;
@@ -127,6 +128,8 @@ export function AccountSecuritySection({
           </button>
         </section>
       )}
+
+      <PasswordRecoveryCard />
 
       {show2FA && (
         <TwoFactorSetupModal

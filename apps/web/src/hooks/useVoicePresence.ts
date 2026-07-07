@@ -48,6 +48,10 @@ export function useVoicePresence(socket: Socket | null): VoicePresence {
       return;
     }
 
+    const requestSnapshot = () => {
+      socket.emit(SocketEvents.VoicePresenceRequest);
+    };
+
     const onState = (snap: VoiceStatePayload) => {
       // Полная замена — это snapshot, не дельта.
       setVoiceByChannel(snap);
@@ -118,8 +122,14 @@ export function useVoicePresence(socket: Socket | null): VoicePresence {
     socket.on(SocketEvents.VoiceParticipantLeft, onLeft);
     socket.on(SocketEvents.VoiceParticipantMeta, onMeta);
     socket.on(SocketEvents.VoiceParticipantSpeaking, onSpeaking);
+    socket.on("connect", requestSnapshot);
+
+    requestSnapshot();
+    const snapshotInterval = window.setInterval(requestSnapshot, 30_000);
 
     return () => {
+      window.clearInterval(snapshotInterval);
+      socket.off("connect", requestSnapshot);
       socket.off(SocketEvents.VoiceState, onState);
       socket.off(SocketEvents.VoiceMeta, onMetaSnapshot);
       socket.off(SocketEvents.VoiceParticipantJoined, onJoined);

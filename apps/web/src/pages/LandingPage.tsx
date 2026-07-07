@@ -1,6 +1,5 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
-const ECLIPSE_LOGO_URL = `${import.meta.env.BASE_URL}eclipse-chat-logo.png`;
 import {
   CacheGlyph,
   DatabaseGlyph,
@@ -22,9 +21,11 @@ import {
 import {
   CursorTrail,
   MagneticButton,
-  SplitTextReveal,
 } from "../components/landing/LandingEffects";
 import "../styles/landing.css";
+
+const ECLIPSE_LOGO_URL = `${import.meta.env.BASE_URL}eclipse-chat-logo.png`;
+const AUTH_BACKGROUND_URL = `${import.meta.env.BASE_URL}auth/eclipse-login-orbit.webp`;
 
 type Props = {
   authMode: "login" | "register" | null;
@@ -194,7 +195,11 @@ export function LandingPage({
   }, [activeSection]);
 
   return (
-    <main className="ec-landing" aria-label="Eclipse Chat">
+    <main
+      className="ec-landing"
+      aria-label="Eclipse Chat"
+      style={{ "--ec-auth-bg-image": `url("${AUTH_BACKGROUND_URL}")` } as CSSProperties}
+    >
       <div className="ec-landing__atmosphere" aria-hidden />
 
       <div className="ec-landing__shell">
@@ -249,7 +254,7 @@ export function LandingPage({
               className="ec-landing-btn ec-landing-btn--primary"
               onClick={() => onOpenAuth("register")}
             >
-              Запустить контур
+              Создать пространство
               <span className="ec-landing-btn__arrow" aria-hidden>→</span>
             </button>
           </div>
@@ -260,12 +265,10 @@ export function LandingPage({
           <div className="ec-landing__hero-copy">
             <span className="ec-landing__eyebrow">Операционная платформа для команд</span>
             <h1 className="ec-landing__hero-title">
-              <SplitTextReveal stagger={32}>Работа</SplitTextReveal>
-              <br />
-              <SplitTextReveal delay={220} stagger={32}>в одном</SplitTextReveal>
-              <br />
-              <span className="ec-landing__hero-title-accent">
-                <SplitTextReveal delay={460} stagger={36}>контуре.</SplitTextReveal>
+              <span className="ec-landing__hero-title-line">Работа</span>
+              <span className="ec-landing__hero-title-line">в одном</span>
+              <span className="ec-landing__hero-title-line ec-landing__hero-title-accent">
+                месте.
               </span>
             </h1>
             <p className="ec-landing__hero-subhead">
@@ -279,7 +282,7 @@ export function LandingPage({
                   className="ec-landing-btn ec-landing-btn--primary"
                   onClick={() => onOpenAuth("register")}
                 >
-                  Запустить рабочий контур
+                  Создать рабочее пространство
                   <span className="ec-landing-btn__arrow" aria-hidden>→</span>
                 </button>
               </MagneticButton>

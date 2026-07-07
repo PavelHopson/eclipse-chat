@@ -71,12 +71,6 @@ const counter = (label: string, value: number, color: string) =>
       )
     : null;
 
-function typeGlyph(type: "TASK" | "DECISION" | "FOLLOW_UP"): string {
-  if (type === "DECISION") return "◆";
-  if (type === "FOLLOW_UP") return "↻";
-  return "□";
-}
-
 function relativeShort(iso: string): string {
   const dh = Math.round((Date.now() - new Date(iso).getTime()) / 3_600_000);
   if (dh < 1) return "меньше часа назад";
@@ -159,9 +153,9 @@ export function SinceLastVisitBanner({
               cursor: aiLoading ? "wait" : "pointer",
               transition: "background var(--ec-dur-fast) var(--ec-ease)",
             }}
-            title="Собрать краткое резюме произошедшего"
+            title="Кратко: что я пропустил в этом канале"
           >
-            {aiLoading ? "Собираем…" : "✦ Что произошло"}
+            {aiLoading ? "Читаю историю…" : "✦ Что я пропустил"}
           </button>
         )}
       </div>
@@ -264,56 +258,6 @@ export function SinceLastVisitBanner({
         </div>
       )}
 
-      {s.recentActions.length > 0 && (
-        <ul
-          style={{
-            margin: 0,
-            padding: 0,
-            listStyle: "none",
-            display: "flex",
-            flexDirection: "column",
-            gap: 2,
-          }}
-        >
-          {s.recentActions.slice(0, 3).map((a) => (
-            <li
-              key={a.id}
-              style={{
-                display: "grid",
-                gridTemplateColumns: "auto 1fr auto",
-                alignItems: "center",
-                gap: 8,
-                fontSize: "var(--ec-text-sm)",
-                color: "var(--ec-text)",
-              }}
-            >
-              <span
-                aria-hidden
-                style={{
-                  color:
-                    a.type === "DECISION"
-                      ? "var(--ec-status-ai)"
-                      : a.type === "FOLLOW_UP"
-                      ? "var(--ec-status-warn)"
-                      : "var(--ec-status-exec)",
-                  fontFamily: "var(--ec-font-mono)",
-                  fontSize: "var(--ec-text-base)",
-                }}
-              >
-                {typeGlyph(a.type)}
-              </span>
-              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {a.title}
-              </span>
-              {a.assignee && (
-                <span style={{ color: "var(--ec-text-dim)", fontSize: "var(--ec-text-2xs)" }}>
-                  · {a.assignee.displayName}
-                </span>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
     </section>
   );
 }

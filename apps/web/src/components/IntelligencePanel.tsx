@@ -1,5 +1,11 @@
+import { useState, type FormEvent } from "react";
 import { MemberList } from "./MemberList";
 import type { MemberRow } from "../hooks/useMembers";
+import type {
+  ChannelMemoryEntry,
+  CreateMemoryEntryInput,
+  MemoryKind,
+} from "../hooks/useChannelMemory";
 import { resolveAssetUrl } from "../lib/assets";
 
 /**
@@ -57,18 +63,6 @@ type Props = {
   serverId?: string | null;
 };
 
-// v1.1.93 slice 4: inline-style консоли IntelligencePanel вынесены в
-// классы .ec-rail* (components.css).
-
-function IconMembers() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
-      <circle cx="9" cy="7" r="4" />
-      <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
-    </svg>
-  );
-}
 
 export function IntelligencePanel({
   members,
@@ -82,71 +76,363 @@ export function IntelligencePanel({
   onCollapse,
   serverId,
 }: Props) {
-  const onlineCount = members.filter((m) => m.online).length;
-
+  // Clean redesign: театральный ec-rail header («ТАКТИЧЕСКИЙ ВИД» + holo-edge +
+  // tactical-иконка) убран. Панель = MemberList с его чистым header
+  // («Участники N/M» + collapse + close).
   return (
-    <aside className="ec-rail" aria-label="Участники">
-      <header className="ec-server-header-edge ec-rail__header">
-        <span className="ec-rail__title">
-          <span className="ec-rail__title-icon" aria-hidden>
-            <IconMembers />
-          </span>
-          <span>ТАКТИЧЕСКИЙ ВИД</span>
-        </span>
-        <span className="ec-rail__count">
-          {onlineCount}/{members.length}
-        </span>
-        <div className="ec-rail__header-actions">
-          {onCollapse && (
-            <button
-              type="button"
-              onClick={onCollapse}
-              aria-label="Свернуть панель"
-              title="Свернуть панель"
-              className="ec-icon-btn"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <path d="M9 6l6 6-6 6" />
-              </svg>
-            </button>
-          )}
-          {onClose && (
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Закрыть"
-              title="Закрыть"
-              className="ec-shell__members-close ec-icon-btn"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            </button>
-          )}
-        </div>
-      </header>
-
-      <div className="ec-rail__scroll">
-        <MemberList
-          members={members}
-          loading={membersLoading}
-          error={membersError}
-          voiceChannelByUser={voiceChannelByUser}
-          channelNameById={channelNameById}
-          currentUserId={currentUserId}
-          onOpenDm={onOpenDm}
-          hideHeader
-          serverId={serverId}
-        />
-      </div>
-    </aside>
+    <MemberList
+      members={members}
+      loading={membersLoading}
+      error={membersError}
+      voiceChannelByUser={voiceChannelByUser}
+      channelNameById={channelNameById}
+      currentUserId={currentUserId}
+      onOpenDm={onOpenDm}
+      onClose={onClose}
+      onCollapse={onCollapse}
+      serverId={serverId}
+    />
   );
 }
 
 /* ===== Inner views exported for ChannelInfoPanel ============= */
 
-export function MemoryView({ items }: { items: PinnedMessageBrief[] }) {
+const MEMORY_KIND_META: Record<MemoryKind, { label: string; color: string }> = {
+  NOTE: { label: "Заметка", color: "var(--ec-accent)" },
+  DECISION: { label: "Решение", color: "var(--ec-status-ai)" },
+  RISK: { label: "Риск", color: "var(--ec-status-danger)" },
+  FACT: { label: "Факт", color: "var(--ec-status-exec)" },
+  LINK: { label: "Ссылка", color: "var(--ec-status-warn)" },
+  ACTION: { label: "Действие", color: "var(--ec-status-exec)" },
+};
+
+function formatMemoryDate(value: string): string {
+  return new Date(value).toLocaleDateString("ru-RU", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+export function MemoryView({
+  items,
+  entries = [],
+  loading = false,
+  saving = false,
+  error = null,
+  onCreate,
+  onArchive,
+}: {
+  items: PinnedMessageBrief[];
+  entries?: ChannelMemoryEntry[];
+  loading?: boolean;
+  saving?: boolean;
+  error?: string | null;
+  onCreate?: (input: CreateMemoryEntryInput) => Promise<unknown>;
+  onArchive?: (id: string) => Promise<unknown> | void;
+}) {
+  const [kind, setKind] = useState<MemoryKind>("NOTE");
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [tagText, setTagText] = useState("");
+
+  const canCreate = Boolean(onCreate) && title.trim().length > 0 && !saving;
+  const handleSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!canCreate || !onCreate) return;
+    const tags = tagText
+      .split(",")
+      .map((tag) => tag.trim())
+      .filter(Boolean);
+    const created = await onCreate({
+      kind,
+      title: title.trim(),
+      content: content.trim() || null,
+      tags,
+    });
+    if (created) {
+      setKind("NOTE");
+      setTitle("");
+      setContent("");
+      setTagText("");
+    }
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--ec-space-3)" }}>
+      <form
+        onSubmit={handleSubmit}
+        style={{
+          display: "grid",
+          gap: "var(--ec-space-2)",
+          padding: "var(--ec-space-3)",
+          borderRadius: "var(--ec-radius-lg)",
+          background:
+            "linear-gradient(135deg, color-mix(in srgb, var(--ec-surface-2) 92%, transparent), color-mix(in srgb, var(--ec-accent) 8%, var(--ec-surface-1)))",
+          border: "1px solid var(--ec-border-subtle)",
+          boxShadow: "var(--ec-elev-1)",
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
+          <div>
+            <strong style={{ display: "block", fontSize: "var(--ec-text-sm)", color: "var(--ec-text)" }}>
+              Запомнить для комнаты
+            </strong>
+            <span style={{ fontSize: "var(--ec-text-2xs)", color: "var(--ec-text-dim)" }}>
+              Факт, решение или риск, который не должен потеряться в ленте.
+            </span>
+          </div>
+          <select
+            value={kind}
+            onChange={(e) => setKind(e.target.value as MemoryKind)}
+            style={{
+              borderRadius: "var(--ec-radius-md)",
+              border: "1px solid var(--ec-border-subtle)",
+              background: "var(--ec-surface-1)",
+              color: "var(--ec-text)",
+              padding: "0.45rem 0.55rem",
+              fontSize: "var(--ec-text-sm)",
+              minWidth: 112,
+            }}
+          >
+            {Object.entries(MEMORY_KIND_META).map(([value, meta]) => (
+              <option key={value} value={value}>
+                {meta.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Коротко: что нужно помнить?"
+          maxLength={180}
+          style={{
+            width: "100%",
+            borderRadius: "var(--ec-radius-md)",
+            border: "1px solid var(--ec-border-subtle)",
+            background: "var(--ec-surface-1)",
+            color: "var(--ec-text)",
+            padding: "0.65rem 0.75rem",
+            fontSize: "var(--ec-text-sm)",
+            outline: "none",
+          }}
+        />
+        <textarea
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          placeholder="Контекст, ограничения, почему это важно..."
+          rows={3}
+          maxLength={4000}
+          style={{
+            width: "100%",
+            resize: "vertical",
+            minHeight: 72,
+            borderRadius: "var(--ec-radius-md)",
+            border: "1px solid var(--ec-border-subtle)",
+            background: "var(--ec-surface-1)",
+            color: "var(--ec-text)",
+            padding: "0.65rem 0.75rem",
+            fontSize: "var(--ec-text-sm)",
+            outline: "none",
+          }}
+        />
+        <div style={{ display: "flex", gap: "var(--ec-space-2)", alignItems: "center" }}>
+          <input
+            value={tagText}
+            onChange={(e) => setTagText(e.target.value)}
+            placeholder="Теги через запятую: auth, client, risk"
+            style={{
+              flex: 1,
+              minWidth: 0,
+              borderRadius: "var(--ec-radius-md)",
+              border: "1px solid var(--ec-border-subtle)",
+              background: "var(--ec-surface-1)",
+              color: "var(--ec-text)",
+              padding: "0.55rem 0.7rem",
+              fontSize: "var(--ec-text-xs)",
+              outline: "none",
+            }}
+          />
+          <button
+            type="submit"
+            disabled={!canCreate}
+            style={{
+              borderRadius: "var(--ec-radius-md)",
+              border: "1px solid var(--ec-border-accent)",
+              background: canCreate ? "var(--ec-accent)" : "var(--ec-surface-2)",
+              color: canCreate ? "var(--ec-accent-text)" : "var(--ec-text-dim)",
+              padding: "0.55rem 0.85rem",
+              fontSize: "var(--ec-text-xs)",
+              fontWeight: 700,
+              cursor: canCreate ? "pointer" : "not-allowed",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {saving ? "Сохраняю..." : "Сохранить"}
+          </button>
+        </div>
+        {error && (
+          <span style={{ color: "var(--ec-status-danger)", fontSize: "var(--ec-text-xs)" }}>
+            {error}
+          </span>
+        )}
+      </form>
+
+      {loading ? (
+        <p style={{ margin: 0, color: "var(--ec-text-dim)", fontSize: "var(--ec-text-sm)" }}>
+          Загружаю память комнаты...
+        </p>
+      ) : entries.length === 0 && items.length === 0 ? (
+        <p style={{ margin: 0, color: "var(--ec-text-dim)", fontSize: "var(--ec-text-sm)" }}>
+          Здесь пока пусто. Сохрани решение, риск или факт — и комната начнёт помнить не шум, а смысл.
+        </p>
+      ) : null}
+
+      {entries.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "var(--ec-space-2)" }}>
+          {entries.map((entry) => {
+            const meta = MEMORY_KIND_META[entry.kind];
+            return (
+              <article
+                key={entry.id}
+                style={{
+                  padding: "var(--ec-space-3)",
+                  borderRadius: "var(--ec-radius-md)",
+                  background: "var(--ec-surface-2)",
+                  border: "1px solid var(--ec-border-subtle)",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 8,
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
+                    <span
+                      style={{
+                        display: "inline-flex",
+                        width: "fit-content",
+                        borderRadius: "var(--ec-radius-full)",
+                        border: `1px solid ${meta.color}`,
+                        color: meta.color,
+                        padding: "0.1rem 0.45rem",
+                        fontSize: "var(--ec-text-2xs)",
+                        letterSpacing: "0.08em",
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      {meta.label}
+                    </span>
+                    <strong style={{ color: "var(--ec-text)", fontSize: "var(--ec-text-sm)" }}>
+                      {entry.title}
+                    </strong>
+                  </div>
+                  {onArchive && (
+                    <button
+                      type="button"
+                      onClick={() => void onArchive(entry.id)}
+                      title="Убрать из памяти"
+                      style={{
+                        border: "1px solid var(--ec-border-subtle)",
+                        background: "transparent",
+                        color: "var(--ec-text-dim)",
+                        borderRadius: "var(--ec-radius-sm)",
+                        padding: "0.25rem 0.45rem",
+                        cursor: "pointer",
+                        fontSize: "var(--ec-text-2xs)",
+                      }}
+                    >
+                      Архив
+                    </button>
+                  )}
+                </div>
+                {entry.content && (
+                  <p style={{ margin: 0, color: "var(--ec-text-muted)", fontSize: "var(--ec-text-sm)", whiteSpace: "pre-wrap" }}>
+                    {entry.content}
+                  </p>
+                )}
+                {entry.tags.length > 0 && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                    {entry.tags.map((tag) => (
+                      <span
+                        key={tag}
+                        style={{
+                          borderRadius: "var(--ec-radius-full)",
+                          background: "var(--ec-surface-1)",
+                          color: "var(--ec-text-dim)",
+                          padding: "0.12rem 0.45rem",
+                          fontSize: "var(--ec-text-2xs)",
+                        }}
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <span style={{ color: "var(--ec-text-dim)", fontSize: "var(--ec-text-2xs)" }}>
+                  {entry.createdBy.displayName} · {formatMemoryDate(entry.createdAt)}
+                </span>
+              </article>
+            );
+          })}
+        </div>
+      )}
+
+      {items.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "var(--ec-space-2)" }}>
+          <strong style={{ color: "var(--ec-text-muted)", fontSize: "var(--ec-text-xs)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+            Закреплённые якоря
+          </strong>
+          {items.map((m) => (
+            <div
+              key={m.id}
+              style={{
+                padding: "var(--ec-space-2) var(--ec-space-3)",
+                borderRadius: "var(--ec-radius-md)",
+                background: "var(--ec-surface-2)",
+                border: "1px solid var(--ec-border-subtle)",
+                display: "flex",
+                flexDirection: "column",
+                gap: 4,
+              }}
+            >
+              <span
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  fontSize: "var(--ec-text-2xs)",
+                  color: "var(--ec-text-dim)",
+                }}
+              >
+                <span aria-hidden style={{ color: "var(--ec-accent)" }}>pin</span>
+                {m.user.displayName}
+              </span>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: "var(--ec-text-sm)",
+                  color: "var(--ec-text)",
+                  whiteSpace: "pre-wrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  display: "-webkit-box",
+                  WebkitLineClamp: 3,
+                  WebkitBoxOrient: "vertical",
+                }}
+              >
+                {m.content || "[без текста — вложение]"}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function LegacyMemoryView({ items }: { items: PinnedMessageBrief[] }) {
   if (items.length === 0) {
     return (
       <p style={{ margin: 0, color: "var(--ec-text-dim)", fontSize: "var(--ec-text-sm)" }}>

@@ -19,6 +19,13 @@ on:
       - "docs/**"
       - ".gitignore"
       - "LICENSE"
+      # Десктоп (Tauri) деплоится отдельно — релизы через тег desktop-v*
+      # (.github/workflows/desktop-release.yml), НЕ через прод-пайплайн EC.
+      # Поэтому desktop-only коммиты не должны дёргать редеплой web/server.
+      - "apps/desktop/**"
+      # Android (Capacitor) — то же самое: релизы через тег android-v*
+      # (.github/workflows/android-release.yml). Android-only коммиты не деплоят EC.
+      - "apps/android/**"
   workflow_dispatch:
     inputs:
       run_initial_setup:

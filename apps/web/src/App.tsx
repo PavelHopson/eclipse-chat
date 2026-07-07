@@ -1,7 +1,10 @@
 import type { CSSProperties } from "react";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { useAuth } from "./hooks/useAuth";
+import { DeadlineNotFoundPage } from "./pages/DeadlineNotFoundPage";
 import { LandingPage } from "./pages/LandingPage";
+import { NativeApkBanner } from "./components/NativeApkBanner";
+import { ConfirmProvider } from "./components/ConfirmDialog";
 
 /**
  * v1.5.17 — Bundle split: AppShell и ClientPortalContainer теперь lazy.
@@ -17,11 +20,6 @@ import { LandingPage } from "./pages/LandingPage";
  */
 const AppShell = lazy(() =>
   import("./pages/AppShell").then((m) => ({ default: m.AppShell })),
-);
-const ClientPortalContainer = lazy(() =>
-  import("./pages/ClientPortalContainer").then((m) => ({
-    default: m.ClientPortalContainer,
-  })),
 );
 
 /**
@@ -44,28 +42,34 @@ const CLIENT_VERSION =
  * трогать nginx SPA fallback config. Тот же подход что в EclipseForgeLanding.
  * Phase 2 можно мигрировать на path route + nginx try_files.
  */
-const PORTAL_HASH_RE = /^#\/portal\/([\w-]+)\/?$/;
 const AUTH_PANEL_HASH = "#auth-panel";
 const AUTH_PANEL_HASH_RE = /^#auth-panel\/?$/i;
+const KNOWN_HASH_RE = /^(|#|#auth-panel\/?)$/i;
 
-function parseLandingHash(hash?: string): {
-  portalServerId: string | null;
-  wantsAuthPanel: boolean;
-} {
+function normalizeBasePath() {
+  const base = import.meta.env.BASE_URL || "/";
+  const path = new URL(base, window.location.origin).pathname;
+  return path.endsWith("/") ? path : `${path}/`;
+}
+
+function isUnknownClientRoute() {
+  if (typeof window === "undefined") return false;
+  const basePath = normalizeBasePath();
+  const { pathname, hash } = window.location;
+
+  if (!KNOWN_HASH_RE.test(hash || "")) return true;
+  if (pathname === basePath || pathname === basePath.slice(0, -1)) return false;
+
+  return pathname.startsWith(basePath);
+}
+
+function parseLandingHash(hash?: string): { wantsAuthPanel: boolean } {
   if (typeof window === "undefined" && hash == null) {
-    return { portalServerId: null, wantsAuthPanel: false };
+    return { wantsAuthPanel: false };
   }
 
   const nextHash = hash ?? window.location.hash;
-  const portalMatch = nextHash.match(PORTAL_HASH_RE);
-  if (portalMatch) {
-    return { portalServerId: portalMatch[1], wantsAuthPanel: false };
-  }
-
-  return {
-    portalServerId: null,
-    wantsAuthPanel: AUTH_PANEL_HASH_RE.test(nextHash),
-  };
+  return { wantsAuthPanel: AUTH_PANEL_HASH_RE.test(nextHash) };
 }
 
 function replaceLandingHash(nextHash: string | null) {
@@ -92,27 +96,28 @@ const loadingStyle: CSSProperties = {
 
 export function App() {
   const { view, user, error, login, register, logout, socketRev, clearError } = useAuth();
-  const [portalServerId, setPortalServerId] = useState<string | null>(() =>
-    parseLandingHash().portalServerId,
-  );
   const [authSurface, setAuthSurface] = useState<null | "login" | "register">(() =>
     parseLandingHash().wantsAuthPanel ? "login" : null,
   );
+  const [unknownRoute, setUnknownRoute] = useState(isUnknownClientRoute);
   const [updateAvailable, setUpdateAvailable] = useState<{
     serverVersion: string;
   } | null>(null);
 
   useEffect(() => {
     const onHashChange = () => {
-      const nextHashState = parseLandingHash();
-      setPortalServerId(nextHashState.portalServerId);
+      setUnknownRoute(isUnknownClientRoute());
       setAuthSurface((current) =>
-        nextHashState.wantsAuthPanel ? current ?? "login" : null,
+        parseLandingHash().wantsAuthPanel ? current ?? "login" : null,
       );
     };
 
     window.addEventListener("hashchange", onHashChange);
-    return () => window.removeEventListener("hashchange", onHashChange);
+    window.addEventListener("popstate", onHashChange);
+    return () => {
+      window.removeEventListener("hashchange", onHashChange);
+      window.removeEventListener("popstate", onHashChange);
+    };
   }, []);
 
   // v1.1.2: poll server version + compare с client build version.
@@ -138,10 +143,20 @@ export function App() {
       }
     };
     void check();
-    const id = window.setInterval(check, 60_000);
+    // v1.5.69: poll 60s→20s + немедленная проверка при возврате на вкладку
+    // (visibilitychange). Раньше после deploy баннер мог появиться только
+    // через минуту — ревьюер видел устаревший bundle и думал «не пофикшено».
+    const id = window.setInterval(check, 20_000);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void check();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
     return () => {
       cancelled = true;
       window.clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
     };
   }, []);
 
@@ -196,14 +211,30 @@ export function App() {
     window.location.reload();
   };
 
+  // v1.6.83 — авто-обновление без прерывания: когда доступна новая версия,
+  // тихо перезагружаемся в момент, когда пользователь уходит из приложения
+  // (вкладка/окно скрыты) — активную работу не прерываем. Кнопка в баннере
+  // остаётся для немедленного апдейта. Так Android-приложение само подтягивает
+  // свежую версию без переустановки/очистки кэша.
+  useEffect(() => {
+    if (!updateAvailable) return;
+    const onHidden = () => {
+      if (document.visibilityState === "hidden") void hardReload();
+    };
+    document.addEventListener("visibilitychange", onHidden);
+    return () => document.removeEventListener("visibilitychange", onHidden);
+    // hardReload зависит только от наличия апдейта (внутри свой guard reloading).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [updateAvailable]);
+
   const isAuthenticated = view !== "loading" && view !== "auth" && user;
 
   const openAuthSurface = (mode: "login" | "register") => {
-    clearError();
-    setPortalServerId(null);
-    setAuthSurface(mode);
-    replaceLandingHash(AUTH_PANEL_HASH);
-  };
+      clearError();
+      setUnknownRoute(false);
+      setAuthSurface(mode);
+      replaceLandingHash(AUTH_PANEL_HASH);
+    };
 
   const closeAuthSurface = () => {
     clearError();
@@ -212,9 +243,11 @@ export function App() {
   };
 
   return (
-    <>
+    <ConfirmProvider>
       {/* Ambient background layer — visible на всех view'ах через z-index -1 */}
       <div className="ec-ambient" aria-hidden />
+      {/* v1.6.85 — баннер «новая версия APK» (только в Android-оболочке). */}
+      <NativeApkBanner />
       {updateAvailable && (
         <div
           style={{
@@ -291,7 +324,30 @@ export function App() {
           </button>
         </div>
       )}
-      {view === "loading" ? (
+      {/* Version label — всегда показывает реально запущенную build-версию
+          (CLIENT_VERSION via Vite define). Диагностика кэша + просто инфо.
+          Если тут не последняя версия — браузер на устаревшем bundle. */}
+      <div
+        style={{
+          position: "fixed",
+          bottom: 5,
+          right: 9,
+          zIndex: 9998,
+          fontFamily: "var(--ec-font-mono, ui-monospace, monospace)",
+          fontSize: "0.62rem",
+          letterSpacing: "0.04em",
+          color: "var(--ec-text-dim)",
+          opacity: 0.55,
+          pointerEvents: "none",
+          userSelect: "none",
+        }}
+        aria-hidden
+      >
+        v{CLIENT_VERSION}
+      </div>
+      {unknownRoute ? (
+        <DeadlineNotFoundPage />
+      ) : view === "loading" ? (
         <main style={loadingStyle}>Загрузка…</main>
       ) : !isAuthenticated ? (
         <LandingPage
@@ -310,17 +366,11 @@ export function App() {
           authPanel={null}
         />
       ) : (
-        /* v1.5.17 — Suspense обнимает оба lazy-сценария. Fallback
-         * совпадает с initial loading state — нет «двойного перехода»
-         * при cold-start с #/portal/X на authenticated пользователя. */
+        /* v1.6.50 — Client Portal удалён; authenticated всегда = AppShell. */
         <Suspense fallback={<main style={loadingStyle}>Загрузка…</main>}>
-          {portalServerId ? (
-            <ClientPortalContainer serverId={portalServerId} />
-          ) : (
-            <AppShell user={user} socketRev={socketRev} onLogout={logout} />
-          )}
+          <AppShell user={user} socketRev={socketRev} onLogout={logout} />
         </Suspense>
       )}
-    </>
+    </ConfirmProvider>
   );
 }

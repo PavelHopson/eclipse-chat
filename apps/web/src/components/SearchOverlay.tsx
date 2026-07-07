@@ -45,9 +45,53 @@ type Props = {
   }) => void;
   /** Список channels для select'а. */
   channels?: Array<{ id: string; name: string }>;
+  quickItems?: QuickNavItem[];
 };
 
 type Tab = "messages" | "actions" | "files" | "semantic";
+type QuickKind = QuickNavItem["kind"];
+
+export type QuickNavItem = {
+  id: string;
+  label: string;
+  detail: string;
+  glyph: string;
+  kind: "channel" | "dm" | "table" | "view" | "settings";
+  onSelect: () => void;
+};
+
+const QUICK_KIND_META: Record<
+  QuickKind,
+  { group: string; glyph: string; label: string }
+> = {
+  view: { group: "Навигация", glyph: "→", label: "Экран" },
+  channel: { group: "Каналы", glyph: "#", label: "Канал" },
+  dm: { group: "Личные", glyph: "@", label: "Диалог" },
+  table: { group: "Данные", glyph: "▦", label: "Таблица" },
+  settings: { group: "Настройки", glyph: "⚙", label: "Раздел" },
+};
+const QUICK_KIND_ORDER: QuickKind[] = [
+  "view",
+  "dm",
+  "channel",
+  "table",
+  "settings",
+];
+const QUICK_RECENTS_KEY = "ec.commandPalette.recent";
+const QUICK_RECENTS_LIMIT = 6;
+
+function readQuickRecentIds(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(QUICK_RECENTS_KEY);
+    if (!raw) return [];
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((id): id is string => typeof id === "string");
+  } catch {
+    return [];
+  }
+}
 
 // v1.1.95 slice 6: inline-style консоли SearchOverlay вынесены в
 // классы .ec-search-* (components.css). JS-hover hit-row убран.
@@ -117,9 +161,13 @@ export function SearchOverlay({
   filters,
   onChangeFilters,
   channels,
+  quickItems = [],
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const quickButtonRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const [tab, setTab] = useState<Tab>("messages");
+  const [activeQuickIndex, setActiveQuickIndex] = useState(0);
+  const [recentQuickIds, setRecentQuickIds] = useState<string[]>(readQuickRecentIds);
   const semantic = useSemanticSearch(
     semanticServerId ?? null,
     query,
@@ -167,6 +215,97 @@ export function SearchOverlay({
   // Если backend вернул 503 — скрываем chip, чтобы не дразнить юзера.
   const semanticAvailable =
     Boolean(semanticServerId) && !semantic.notConfigured;
+  const quickMatches = useMemo(() => {
+    const q = query.trim().toLocaleLowerCase("ru-RU");
+    if (q) {
+      return quickItems.filter((item) =>
+          `${item.label} ${item.detail}`.toLocaleLowerCase("ru-RU").includes(q),
+        ).slice(0, 10);
+    }
+    const recentItems = recentQuickIds
+      .map((id) => quickItems.find((item) => item.id === id))
+      .filter((item): item is QuickNavItem => Boolean(item))
+      .slice(0, 4);
+    const recentSet = new Set(recentItems.map((item) => item.id));
+    const regularItems = quickItems
+      .filter((item) => !recentSet.has(item.id))
+      .slice(0, Math.max(6, 10 - recentItems.length));
+    return [...recentItems, ...regularItems];
+  }, [query, quickItems, recentQuickIds]);
+  const quickGroups = useMemo(() => {
+    const q = query.trim();
+    const recentCount = q
+      ? 0
+      : recentQuickIds
+          .map((id) => quickItems.find((item) => item.id === id))
+          .filter((item): item is QuickNavItem => Boolean(item))
+          .slice(0, 4).length;
+    const groups: Array<{
+      key: string;
+      title: string;
+      items: Array<{ item: QuickNavItem; index: number }>;
+    }> = [];
+    if (recentCount > 0) {
+      groups.push({
+        key: "recent",
+        title: "Недавние",
+        items: quickMatches
+          .map((item, index) => ({ item, index }))
+          .filter(({ index }) => index < recentCount),
+      });
+    }
+    groups.push(...QUICK_KIND_ORDER.map((kind) => ({
+      kind,
+      key: kind,
+      title: QUICK_KIND_META[kind].group,
+      items: quickMatches
+        .map((item, index) => ({ item, index }))
+        .filter(({ item, index }) => item.kind === kind && index >= recentCount),
+    })));
+    return groups.filter((group) => group.items.length > 0);
+  }, [query, quickItems, quickMatches, recentQuickIds]);
+
+  useEffect(() => {
+    setActiveQuickIndex(0);
+  }, [query, quickMatches.length]);
+
+  useEffect(() => {
+    if (quickMatches.length === 0) return;
+    const lastIndex = quickMatches.length - 1;
+    setActiveQuickIndex((current) => Math.min(current, lastIndex));
+  }, [quickMatches.length]);
+
+  useEffect(() => {
+    quickButtonRefs.current[activeQuickIndex]?.scrollIntoView({
+      block: "nearest",
+      inline: "nearest",
+    });
+  }, [activeQuickIndex]);
+
+  const activateQuickItem = (item: QuickNavItem) => {
+    setRecentQuickIds((current) => {
+      const next = [item.id, ...current.filter((id) => id !== item.id)].slice(
+        0,
+        QUICK_RECENTS_LIMIT,
+      );
+      try {
+        window.localStorage.setItem(QUICK_RECENTS_KEY, JSON.stringify(next));
+      } catch {
+        // localStorage can be unavailable in hardened browser modes; navigation still works.
+      }
+      return next;
+    });
+    item.onSelect();
+    onClose();
+  };
+  const clearRecentQuickItems = () => {
+    setRecentQuickIds([]);
+    try {
+      window.localStorage.removeItem(QUICK_RECENTS_KEY);
+    } catch {
+      // localStorage can be unavailable in hardened browser modes; UI state is still cleared.
+    }
+  };
 
   return (
     <div
@@ -187,10 +326,37 @@ export function SearchOverlay({
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="ЗАПРОС_ПОИСКА // сообщения · задачи · файлы…"
+            onKeyDown={(e) => {
+              if (quickMatches.length === 0) return;
+              if (e.key === "ArrowDown") {
+                e.preventDefault();
+                setActiveQuickIndex((current) => (current + 1) % quickMatches.length);
+                return;
+              }
+              if (e.key === "ArrowUp") {
+                e.preventDefault();
+                setActiveQuickIndex((current) =>
+                  (current - 1 + quickMatches.length) % quickMatches.length,
+                );
+                return;
+              }
+              if (e.key === "Enter") {
+                const item = quickMatches[activeQuickIndex];
+                if (!item) return;
+                e.preventDefault();
+                activateQuickItem(item);
+              }
+            }}
+            placeholder="Поиск по сообщениям, каналам, файлам…"
             className="ec-search-input"
+            aria-controls={quickMatches.length > 0 ? "ec-command-palette-list" : undefined}
+            aria-activedescendant={
+              quickMatches[activeQuickIndex]
+                ? `ec-command-palette-${quickMatches[activeQuickIndex].id}`
+                : undefined
+            }
           />
-          <span className="ec-kbd">Esc</span>
+          <span className="ec-kbd">↑↓ Enter · Esc</span>
         </div>
 
         {/* v1.5.23 — filter row: date range + channel select. Виден всегда
@@ -322,8 +488,81 @@ export function SearchOverlay({
           </div>
         )}
 
+        {quickMatches.length > 0 && (
+          <div className="ec-command-palette" aria-label="Быстрые переходы">
+            <div className="ec-command-palette__head">
+              <span>Быстрые переходы</span>
+              <span>{query.trim() ? "по запросу" : "основные места"}</span>
+            </div>
+            <div
+              id="ec-command-palette-list"
+              className="ec-command-palette__groups"
+              role="listbox"
+              aria-label="Команды"
+            >
+              {quickGroups.map((group) => (
+                <section
+                  className={`ec-command-palette__group${
+                    group.key === "recent" ? " ec-command-palette__group--recent" : ""
+                  }`}
+                  key={group.key}
+                >
+                  <div className="ec-command-palette__group-title">
+                    <span>{group.title}</span>
+                    {group.key === "recent" && (
+                      <button
+                        type="button"
+                        className="ec-command-palette__clear"
+                        onClick={clearRecentQuickItems}
+                        aria-label="Очистить недавние команды"
+                      >
+                        Очистить
+                      </button>
+                    )}
+                  </div>
+                  <div className="ec-command-palette__grid">
+                    {group.items.map(({ item, index }) => {
+                      const meta = QUICK_KIND_META[item.kind];
+                      return (
+                        <button
+                          id={`ec-command-palette-${item.id}`}
+                          key={item.id}
+                          ref={(node) => {
+                            quickButtonRefs.current[index] = node;
+                          }}
+                          type="button"
+                          role="option"
+                          aria-selected={index === activeQuickIndex}
+                          className={`ec-command-palette__item ec-command-palette__item--${item.kind}${
+                            index === activeQuickIndex ? " is-active" : ""
+                          }`}
+                          onClick={() => activateQuickItem(item)}
+                          onMouseEnter={() => setActiveQuickIndex(index)}
+                        >
+                          <span className="ec-command-palette__glyph" aria-hidden>
+                            {meta.glyph}
+                          </span>
+                          <span className="ec-command-palette__body">
+                            <span className="ec-command-palette__label">{item.label}</span>
+                            <span className="ec-command-palette__detail">
+                              {meta.label} · {item.detail}
+                            </span>
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </section>
+              ))}
+            </div>
+            <div className="ec-command-palette__footer" aria-hidden>
+              ↑↓ выбрать · Enter открыть · Esc закрыть
+            </div>
+          </div>
+        )}
+
         <div className="ec-search-list">
-          {!truncated && (
+          {!truncated && quickMatches.length === 0 && (
             <EmptyState
               icon={<EmptySearchIcon />}
               title="Начните печатать"
@@ -337,11 +576,11 @@ export function SearchOverlay({
           {truncated && !loading && error && (
             <p className="ec-search-hint ec-search-hint--error">{error}</p>
           )}
-          {truncated && !loading && !error && totalHits === 0 && (
+          {truncated && !loading && !error && totalHits === 0 && quickMatches.length === 0 && (
             <EmptyState
               icon={<EmptySearchIcon />}
               title="Ничего не найдено"
-              hint="Попробуйте другие слова, имя автора или часть имени файла."
+              hint="Попробуйте название канала, имя диалога или раздел настроек."
               compact
             />
           )}

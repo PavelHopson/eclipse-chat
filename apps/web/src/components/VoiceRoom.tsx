@@ -1,12 +1,12 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { Avatar } from "./Avatar";
 import { ParticipantContextMenu } from "./ParticipantContextMenu";
-import { VoiceNotePanel } from "./VoiceNotePanel";
 import { VoiceSettingsModal } from "./VoiceSettingsModal";
 import { VoiceStatsOverlay } from "./VoiceStatsOverlay";
 import type { useVoice as useVoiceHook, VoiceParticipant, VoiceVisualTrack } from "../hooks/useVoice";
 import { keyCodeToLabel } from "../hooks/useAudioDevices";
+import type { MusicSession } from "../hooks/useChannelMusic";
 import type { MemberRow } from "../hooks/useMembers";
 import { useTelemetry } from "../hooks/useTelemetry";
 import {
@@ -43,10 +43,14 @@ type Props = {
   occupants?: MemberRow[];
   activeVoiceChannelName?: string | null;
   voice: ReturnType<typeof useVoiceHook>;
-  /** v0.88 #23 phase 1a: socket для shared voice-note realtime updates.
-   *  Если undefined — VoiceNotePanel скрыт. */
-  socket?: import("socket.io-client").Socket | null;
+  musicSession?: MusicSession | null;
+  onOpenMusicPicker?: () => void;
+  onOpenMusicExpand?: () => void;
+  messages?: ReactNode;
+  composer?: ReactNode;
 };
+
+type VoiceLayoutMode = "split" | "stage" | "chat";
 
 /* ===== Layout ============================================== */
 
@@ -93,19 +97,21 @@ const controlsDock: CSSProperties = {
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  gap: "var(--ec-space-2)",
-  margin: "0 auto var(--ec-space-4)",
-  padding: "var(--ec-space-2) var(--ec-space-3)",
-  borderRadius: "var(--ec-radius-full)",
-  background: "var(--ec-overlay-bg)",
+  gap: "8px",
+  width: "fit-content",
+  margin: "0 auto var(--ec-space-3)",
+  padding: "8px",
+  borderRadius: 24,
+  background:
+    "linear-gradient(180deg, color-mix(in srgb, var(--ec-surface-3) 94%, transparent), color-mix(in srgb, var(--ec-bg) 88%, transparent))",
   backdropFilter: "blur(20px)",
   WebkitBackdropFilter: "blur(20px)",
   boxShadow:
-    "0 18px 48px hsl(210 40% 2% / 0.6), 0 0 0 1px hsl(258 30% 40% / 0.12), inset 0 1px 0 hsl(258 90% 66% / 0.06)",
+    "0 20px 52px hsl(210 40% 2% / 0.58), 0 0 0 1px hsl(205 55% 70% / 0.2), 0 0 42px -20px hsl(258 90% 66% / 0.65), inset 0 1px 0 hsl(205 100% 78% / 0.08)",
   position: "relative",
   zIndex: 2,
-  flexWrap: "wrap",
-  maxWidth: "calc(100% - var(--ec-space-8))",
+  flexWrap: "nowrap",
+  maxWidth: "calc(100% - 24px)",
 };
 
 const controlBtn: CSSProperties = {
@@ -211,21 +217,22 @@ const muteBadge: CSSProperties = {
  * На mobile (≤640) — single column через responsive.css (existing rule).
  */
 const videoStage: CSSProperties = {
-  flex: 1,
+  flex: "1 1 auto",
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-  gap: "var(--ec-space-3)",
-  alignContent: "center",
-  justifyItems: "center",
+  gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 320px), 1fr))",
+  gap: "var(--ec-space-4)",
+  alignContent: "stretch",
+  justifyItems: "stretch",
   alignItems: "center",
   minHeight: 0,
-  padding: "var(--ec-space-2) 0",
+  width: "100%",
+  padding: "var(--ec-space-2) 0 var(--ec-space-3)",
 };
 
 const videoTileWrap: CSSProperties = {
   position: "relative",
   width: "100%",
-  maxWidth: 760,
+  maxWidth: 980,
   aspectRatio: "16 / 9",
   borderRadius: "var(--ec-radius-xl)",
   overflow: "hidden",
@@ -235,7 +242,13 @@ const videoTileWrap: CSSProperties = {
   transition: "box-shadow var(--ec-dur-base) var(--ec-ease-out)",
 };
 
-const videoCanvas: CSSProperties = { position: "absolute", inset: 0 };
+const videoCanvas: CSSProperties = {
+  position: "absolute",
+  inset: 0,
+  display: "grid",
+  placeItems: "center",
+  background: "#000",
+};
 
 // v1.5.31 — overlay chip: солидный pill в top-left с backdrop-blur. Читается
 // против любого видео-контента (включая чёрные кадры recursive screen-share).
@@ -311,6 +324,53 @@ function resolveConnectionBadge(isConnected: boolean, isReconnecting: boolean, i
   return "Готов";
 }
 
+function formatRoomAudience(count: number): string {
+  const abs = Math.abs(count);
+  const mod10 = abs % 10;
+  const mod100 = abs % 100;
+  if (mod10 === 1 && mod100 !== 11) return `${count} участник`;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return `${count} участника`;
+  return `${count} участников`;
+}
+
+function connectionQualityLabel(quality: VoiceParticipant["connectionQuality"]): string {
+  if (quality === "excellent") return "сеть отличная";
+  if (quality === "good") return "сеть хорошая";
+  if (quality === "poor") return "сеть слабая";
+  if (quality === "lost") return "связь потеряна";
+  return "сеть";
+}
+
+function connectionQualityShortLabel(quality: VoiceParticipant["connectionQuality"]): string {
+  if (quality === "excellent") return "отл";
+  if (quality === "good") return "ок";
+  if (quality === "poor") return "слабо";
+  if (quality === "lost") return "нет";
+  return "сеть";
+}
+
+function FullscreenGlyph({ active }: { active: boolean }) {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden>
+      {active ? (
+        <>
+          <path d="M9 4v5H4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M15 4v5h5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M9 20v-5H4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M15 20v-5h5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </>
+      ) : (
+        <>
+          <path d="M8 4H4v4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M16 4h4v4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M8 20H4v-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M16 20h4v-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </>
+      )}
+    </svg>
+  );
+}
+
 /* ===== Speaking avatar (presence layer) ==================== */
 
 function PresenceAvatar({
@@ -372,8 +432,18 @@ function VideoTrackTile({
   lookupAvatar: (identity: string) => string | null;
 }) {
   const mountRef = useRef<HTMLDivElement | null>(null);
+  const tileRef = useRef<HTMLElement | null>(null);
   // v1.1.68 — натуральные пропорции источника (см. ниже).
   const [aspect, setAspect] = useState<number | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const onFullscreenChange = () => {
+      setIsFullscreen(document.fullscreenElement === tileRef.current);
+    };
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", onFullscreenChange);
+  }, []);
 
   useEffect(() => {
     const host = mountRef.current;
@@ -418,10 +488,26 @@ function VideoTrackTile({
 
   const avatar = lookupAvatar(visual.identity);
   const isScreen = visual.source === "screen";
+  const fullscreenLabel = isFullscreen ? "Выйти из полного экрана" : "Открыть на весь экран";
+
+  const toggleFullscreen = () => {
+    const tile = tileRef.current;
+    if (!tile) return;
+    if (document.fullscreenElement === tile) {
+      void document.exitFullscreen().catch(() => undefined);
+      return;
+    }
+    void tile.requestFullscreen().catch(() => undefined);
+  };
 
   return (
     <article
-      className={`ec-vr-video-tile${isScreen ? " ec-vr-video-tile--screen" : ""}`}
+      ref={tileRef}
+      className={
+        `ec-vr-video-tile${isScreen ? " ec-vr-video-tile--screen" : " ec-vr-video-tile--camera"}` +
+        (aspect == null ? " ec-vr-video-tile--loading" : "") +
+        (isFullscreen ? " ec-vr-video-tile--fullscreen-active" : "")
+      }
       style={{
         ...videoTileWrap,
         // v1.1.68 — пропорции тайла = пропорции источника (fallback 16:9 пока
@@ -441,9 +527,10 @@ function VideoTrackTile({
           ? {
               gridColumn: "1 / -1",
               justifySelf: "stretch",
+              alignSelf: "stretch",
               width: "100%",
               maxWidth: "none",
-              maxHeight: "64vh",
+              maxHeight: "min(72vh, 760px)",
             }
           : null),
       }}
@@ -508,6 +595,26 @@ function VideoTrackTile({
           {isScreen ? <ScreenShareIcon size={11} /> : <CameraLensIcon size={11} />}
         </span>
       </div>
+      <div className="ec-vr-video-tile__fullscreen-head" aria-hidden={!isFullscreen}>
+        <span className="ec-vr-video-tile__fullscreen-title">
+          {visual.name}
+          {visual.isLocal ? " · ты" : ""}
+        </span>
+        <span className="ec-vr-video-tile__fullscreen-source">
+          {isScreen ? "Демонстрация экрана" : "Камера"} · Esc для выхода
+        </span>
+      </div>
+      <button
+        type="button"
+        className="ec-vr-video-tile__fullscreen"
+        onClick={toggleFullscreen}
+        title={fullscreenLabel}
+        aria-label={fullscreenLabel}
+        aria-pressed={isFullscreen}
+      >
+        <FullscreenGlyph active={isFullscreen} />
+        <span>{isFullscreen ? "Свернуть" : "На весь экран"}</span>
+      </button>
     </article>
   );
 }
@@ -527,13 +634,25 @@ export function VoiceRoom({
   occupants = [],
   activeVoiceChannelName,
   voice,
-  socket,
+  musicSession,
+  onOpenMusicPicker,
+  onOpenMusicExpand,
+  messages,
+  composer,
 }: Props) {
   const v = voice;
   const [showSettings, setShowSettings] = useState(false);
   const [showStats, setShowStats] = useState(false);
   const [showDiagnostics, setShowDiagnostics] = useState(false);
   const [ctxMenu, setCtxMenu] = useState<ContextMenuState | null>(null);
+  const [layoutMode, setLayoutMode] = useState<VoiceLayoutMode>(() => {
+    try {
+      const saved = window.localStorage.getItem(`ec.voiceRoom.layout.${channelId}`);
+      return saved === "stage" || saved === "chat" || saved === "split" ? saved : "split";
+    } catch {
+      return "split";
+    }
+  });
   // UXR2 — серверная телеметрия (ПАМ/ЦП/связь) переехала из глобального
   // topbar в voice diagnostics, где объясняет качество связи/нагрузку.
   // Реальные значения из /api/health; null/offline → честный «нет данных».
@@ -549,6 +668,27 @@ export function VoiceRoom({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(`ec.voiceRoom.layout.${channelId}`);
+      if (saved === "stage" || saved === "chat" || saved === "split") {
+        setLayoutMode(saved);
+      } else {
+        setLayoutMode("split");
+      }
+    } catch {
+      setLayoutMode("split");
+    }
+  }, [channelId]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(`ec.voiceRoom.layout.${channelId}`, layoutMode);
+    } catch {
+      /* localStorage can be blocked in hardened browsers. Layout stays in memory. */
+    }
+  }, [channelId, layoutMode]);
 
   const lookupAvatar = (identity: string): string | null =>
     members.find((row) => row.userId === identity)?.user.avatar ?? null;
@@ -631,6 +771,12 @@ export function VoiceRoom({
     : "var(--ec-status-idle)";
 
   const headcount = isJoinedHere ? v.participants.length : occupants.length;
+  const musicAudienceCount = Math.max(headcount, musicSession?.currentTrack ? 1 : 0);
+  const musicBotActive = Boolean(musicSession?.currentTrack);
+  const musicBotTrackName = musicSession?.currentTrack?.filename ?? "Очередь пуста";
+  const musicBotState = musicSession?.isPlaying ? "играет" : "на паузе";
+  const hasRoomChat = Boolean(messages || composer);
+  const effectiveLayoutMode: VoiceLayoutMode = hasRoomChat ? layoutMode : "stage";
 
   const openCtxMenu = (p: VoiceParticipant, e: React.MouseEvent) => {
     e.preventDefault();
@@ -645,7 +791,10 @@ export function VoiceRoom({
   };
 
   return (
-    <div style={roomWrap} className="ec-voice-room">
+    <div
+      style={roomWrap}
+      className={"ec-voice-room" + (hasVisual ? " ec-voice-room--visual" : " ec-voice-room--audio")}
+    >
       {/* ── TOP BAR — минимально ─────────────────────────────── */}
       <div style={topBar}>
         <span
@@ -736,10 +885,90 @@ export function VoiceRoom({
           </svg>
           {headcount}
         </span>
+        {hasRoomChat && (
+          <div className="ec-voice-room__layout-switch" role="group" aria-label="Режим голосовой комнаты">
+            {[
+              ["split", "Вместе"],
+              ["stage", "Эфир"],
+              ["chat", "Чат"],
+            ].map(([mode, label]) => (
+              <button
+                key={mode}
+                type="button"
+                className={
+                  "ec-voice-room__layout-option" +
+                  (effectiveLayoutMode === mode ? " ec-voice-room__layout-option--active" : "")
+                }
+                onClick={() => setLayoutMode(mode as VoiceLayoutMode)}
+                aria-pressed={effectiveLayoutMode === mode}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* ── ROOM CANVAS — immersive ──────────────────────────── */}
-      <div style={canvas} className="ec-voice-room__body">
+      <div className="ec-voice-room__music-bridge" aria-live="polite">
+        <div className="ec-voice-room__music-main">
+          <span className={"ec-voice-room__music-icon" + (musicBotActive ? " ec-voice-room__music-icon--active" : "")} aria-hidden>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M9 18V5l12-2v13" />
+              <circle cx="6" cy="18" r="3" />
+              <circle cx="18" cy="16" r="3" />
+            </svg>
+          </span>
+          <span className="ec-voice-room__music-copy">
+            <strong>
+              {musicSession?.currentTrack
+                ? musicSession.isPlaying
+                  ? "Общий плеер включён"
+                  : "Общий плеер на паузе"
+                : "Музыка для всей комнаты"}
+            </strong>
+            <span>
+              {musicSession?.currentTrack
+                ? `${musicSession.currentTrack.filename} · запустил ${musicSession.host.displayName}`
+                : "Выберите аудиофайл из пространства — он синхронно запустится у участников. Локальный звук устройства не транслируется."}
+            </span>
+          </span>
+        </div>
+        <div className="ec-voice-room__music-meta" aria-label={`В комнате ${formatRoomAudience(musicAudienceCount)}`}>
+          <span className="ec-voice-room__music-dot" aria-hidden />
+          <span>{formatRoomAudience(musicAudienceCount)} в комнате</span>
+          {musicSession?.currentTrack && (
+            <span className="ec-voice-room__music-state">
+              {musicSession.isPlaying ? "синхронизация активна" : "трек на паузе"}
+            </span>
+          )}
+        </div>
+        <div className="ec-voice-room__music-actions">
+          {musicSession && onOpenMusicExpand && (
+            <button type="button" className="ec-btn" onClick={onOpenMusicExpand}>
+              Открыть плеер
+            </button>
+          )}
+          {onOpenMusicPicker && (
+            <button type="button" className="ec-btn ec-btn--primary" onClick={onOpenMusicPicker}>
+              {musicSession ? "Сменить трек" : "Выбрать трек"}
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div
+        className={
+          "ec-voice-room__split" +
+          (hasVisual ? " ec-voice-room__split--visual" : " ec-voice-room__split--audio") +
+          ` ec-voice-room__split--layout-${effectiveLayoutMode}`
+        }
+      >
+        <section className="ec-voice-room__stage-column" aria-label="Эфир голосовой комнаты">
+          {/* ── ROOM CANVAS — immersive ──────────────────────────── */}
+          <div
+            style={canvas}
+            className={"ec-voice-room__body" + (hasVisual ? " ec-voice-room__body--visual" : "")}
+          >
         {hasVisual ? (
           /* Cinematic video stage + компактная presence-полоса аудио-участников */
           <>
@@ -753,11 +982,22 @@ export function VoiceRoom({
             </div>
             {(audioOnlyParticipants.length > 0 || overflowCameraParticipants.length > 0) && (
               <div style={presenceStrip}>
+                {musicBotActive && (
+                  <span
+                    className="ec-vr-music-bot-strip"
+                    title={`Eclipse Music — ${musicBotState}: ${musicBotTrackName}`}
+                  >
+                    <span className="ec-vr-music-bot-strip__orb" aria-hidden>♪</span>
+                    <span>Eclipse Music</span>
+                    <span>{musicBotState}</span>
+                  </span>
+                )}
                 {/* Overflow cameras: участники с published cameras, не вошедшие
                     в TILE_LIMIT — отдельный визуальный маркер (small camera glyph). */}
                 {overflowCameraParticipants.map((p) => {
                   const muted = v.settings.mutedParticipants.includes(p.identity);
                   const speaking = p.isSpeaking && !p.isMicMuted && !muted;
+                  const qualityLabel = connectionQualityLabel(p.connectionQuality);
                   return (
                     <span
                       key={`cam-${p.identity}`}
@@ -781,12 +1021,21 @@ export function VoiceRoom({
                           {" "}· ты
                         </span>
                       )}
+                      <span
+                        className={`ec-vr-connection ec-vr-connection--${p.connectionQuality}`}
+                        title={qualityLabel}
+                        aria-label={qualityLabel}
+                      >
+                        <span aria-hidden />
+                        {connectionQualityShortLabel(p.connectionQuality)}
+                      </span>
                     </span>
                   );
                 })}
                 {audioOnlyParticipants.map((p) => {
                   const muted = v.settings.mutedParticipants.includes(p.identity);
                   const speaking = p.isSpeaking && !p.isMicMuted && !muted;
+                  const qualityLabel = connectionQualityLabel(p.connectionQuality);
                   return (
                     <span
                       key={p.identity}
@@ -807,6 +1056,14 @@ export function VoiceRoom({
                           {" "}· ты
                         </span>
                       )}
+                      <span
+                        className={`ec-vr-connection ec-vr-connection--${p.connectionQuality}`}
+                        title={qualityLabel}
+                        aria-label={qualityLabel}
+                      >
+                        <span aria-hidden />
+                        {connectionQualityShortLabel(p.connectionQuality)}
+                      </span>
                     </span>
                   );
                 })}
@@ -816,16 +1073,46 @@ export function VoiceRoom({
         ) : isJoinedHere ? (
           /* Atmospheric presence room — floating avatars, speaking glow */
           <div style={presenceLayer}>
+            {musicBotActive && (
+              <article className="ec-vr-music-bot-card" aria-label={`Eclipse Music ${musicBotState}`}>
+                <div className="ec-vr-music-bot-card__orb" aria-hidden>
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M9 18V5l12-2v13" />
+                    <circle cx="6" cy="18" r="3" />
+                    <circle cx="18" cy="16" r="3" />
+                  </svg>
+                </div>
+                <div className="ec-vr-music-bot-card__body">
+                  <span className="ec-vr-music-bot-card__eyebrow">музыкальный бот</span>
+                  <strong>Eclipse Music</strong>
+                  <span>{musicBotState} · {musicBotTrackName}</span>
+                </div>
+                <div className="ec-vr-music-bot-card__actions">
+                  {onOpenMusicExpand && (
+                    <button type="button" onClick={onOpenMusicExpand}>
+                      Плеер
+                    </button>
+                  )}
+                  {onOpenMusicPicker && (
+                    <button type="button" onClick={onOpenMusicPicker}>
+                      Трек
+                    </button>
+                  )}
+                </div>
+              </article>
+            )}
             {v.participants.map((p) => {
               const muted = v.settings.mutedParticipants.includes(p.identity);
               const volume = v.settings.participantVolumes[p.identity] ?? 1;
               const speaking = p.isSpeaking && !p.isMicMuted && !muted;
+              const qualityLabel = connectionQualityLabel(p.connectionQuality);
               return (
                 <div
                   key={p.identity}
                   className={
                     "ec-vr-presence-card" +
-                    (speaking ? " ec-vr-presence-card--speaking" : "")
+                    (speaking ? " ec-vr-presence-card--speaking" : "") +
+                    (muted || volume < 1 ? " ec-vr-presence-card--muted" : "")
                   }
                   style={{
                     ...presenceCardStyle(speaking, muted || volume < 1),
@@ -863,6 +1150,14 @@ export function VoiceRoom({
                       : p.isMicMuted
                       ? "микрофон выключен"
                       : "в эфире"}
+                  </span>
+                  <span
+                    className={`ec-vr-connection ec-vr-connection--${p.connectionQuality}`}
+                    title={qualityLabel}
+                    aria-label={qualityLabel}
+                  >
+                    <span aria-hidden />
+                    {qualityLabel}
                   </span>
                 </div>
               );
@@ -960,7 +1255,7 @@ export function VoiceRoom({
               type="button"
               onClick={() => void v.join(channelId)}
               disabled={v.busy}
-              className="ec-btn ec-btn--primary"
+              className="ec-btn ec-btn--primary ec-voice-room__join ec-voice-room__join--hero"
               style={{ padding: "0.85rem 1.6rem", fontSize: "var(--ec-text-md)" }}
             >
               {v.busy
@@ -976,59 +1271,45 @@ export function VoiceRoom({
             )}
           </div>
         )}
-        {/* v0.88 #23 phase 1a: shared voice-room notepad. Видна всегда (даже
-            до join'а) — operators могут готовить agenda до встречи. */}
-        {socket !== undefined && (
-          <div
-            style={{
-              marginTop: "var(--ec-space-4)",
-              display: "flex",
-              flexDirection: "column",
-              minHeight: 240,
-            }}
-          >
-            <VoiceNotePanel channelId={channelId} socket={socket ?? null} />
           </div>
-        )}
-      </div>
 
-      {v.error && (
-        <p
-          style={{
-            margin: "0 var(--ec-space-5) var(--ec-space-2)",
-            padding: "var(--ec-space-2) var(--ec-space-3)",
-            color: "var(--ec-danger)",
-            background: "var(--ec-danger-soft)",
-            borderRadius: "var(--ec-radius-md)",
-            fontSize: "var(--ec-text-sm)",
-            position: "relative",
-            zIndex: 2,
-          }}
-        >
-          {v.error}
-        </p>
-      )}
+          {v.error && (
+            <p
+              style={{
+                margin: "0 var(--ec-space-5) var(--ec-space-2)",
+                padding: "var(--ec-space-2) var(--ec-space-3)",
+                color: "var(--ec-danger)",
+                background: "var(--ec-danger-soft)",
+                borderRadius: "var(--ec-radius-md)",
+                fontSize: "var(--ec-text-sm)",
+                position: "relative",
+                zIndex: 2,
+              }}
+            >
+              {v.error}
+            </p>
+          )}
 
       {/* ── DIAGNOSTICS PANEL (v0.41 troubleshooting helper) ─── */}
-      {showDiagnostics && (
-        <div
-          style={{
-            position: "absolute",
-            bottom: 80,
-            left: 16,
-            maxWidth: 340,
-            padding: "var(--ec-space-3) var(--ec-space-4)",
-            background: "var(--ec-surface-2)",
-            borderRadius: "var(--ec-radius-md)",
-            boxShadow: "var(--ec-elev-1)",
-            fontSize: "var(--ec-text-2xs)",
-            color: "var(--ec-text-muted)",
-            zIndex: 4,
-            fontFamily: "var(--ec-font-mono)",
-            lineHeight: 1.6,
-          }}
-          role="status"
-        >
+          {showDiagnostics && (
+            <div
+              style={{
+                position: "absolute",
+                bottom: 80,
+                left: 16,
+                maxWidth: 340,
+                padding: "var(--ec-space-3) var(--ec-space-4)",
+                background: "var(--ec-surface-2)",
+                borderRadius: "var(--ec-radius-md)",
+                boxShadow: "var(--ec-elev-1)",
+                fontSize: "var(--ec-text-2xs)",
+                color: "var(--ec-text-muted)",
+                zIndex: 4,
+                fontFamily: "var(--ec-font-mono)",
+                lineHeight: 1.6,
+              }}
+              role="status"
+            >
           <div
             style={{
               display: "flex",
@@ -1113,17 +1394,22 @@ export function VoiceRoom({
           <div style={{ marginTop: 8, fontFamily: "inherit", color: "var(--ec-text-dim)", fontSize: "0.65rem" }}>
             Если voice сломан: открой Настройки голоса → «Сбросить голосовые настройки» в самом низу. Это вернёт все umolchaniya и обычно лечит застрявшие state'ы.
           </div>
-        </div>
-      )}
+            </div>
+          )}
 
       {/* ── CONTROLS DOCK — floating ─────────────────────────── */}
-      <div style={controlsDock} className="ec-voice-room__controls">
+          <div
+            style={controlsDock}
+            className="ec-voice-room__controls"
+            role="toolbar"
+            aria-label="Управление голосовой комнатой"
+          >
         {!isJoinedHere ? (
           <button
             type="button"
             onClick={() => void v.join(channelId)}
             disabled={v.busy}
-            className="ec-btn ec-btn--primary"
+            className="ec-btn ec-btn--primary ec-voice-room__join ec-voice-room__join--dock"
             style={{ padding: "0.7rem 1.4rem" }}
           >
             {v.busy
@@ -1169,6 +1455,8 @@ export function VoiceRoom({
               <HeadsetIcon off={v.isDeafened} />
             </button>
 
+            <span className="ec-vr-control-separator" aria-hidden />
+
             <button
               type="button"
               onClick={() => void v.toggleCamera()}
@@ -1193,7 +1481,10 @@ export function VoiceRoom({
               <ScreenShareIcon off={!v.isScreenShareEnabled} />
             </button>
 
+            <span className="ec-vr-control-separator" aria-hidden />
+
             <div
+              className="ec-vr-volume"
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -1218,6 +1509,8 @@ export function VoiceRoom({
                 aria-label="Громкость воспроизведения"
               />
             </div>
+
+            <span className="ec-vr-control-separator" aria-hidden />
 
             <button
               type="button"
@@ -1258,6 +1551,8 @@ export function VoiceRoom({
               <TuningIcon />
             </button>
 
+            <span className="ec-vr-control-separator ec-vr-control-separator--danger" aria-hidden />
+
             <button
               type="button"
               onClick={() => void v.leave()}
@@ -1269,6 +1564,15 @@ export function VoiceRoom({
               <HangupIcon />
             </button>
           </>
+        )}
+          </div>
+        </section>
+
+        {(messages || composer) && (
+          <aside className="ec-voice-room__chat-column" aria-label="Чат голосовой комнаты">
+            {messages && <div className="ec-voice-room__messages">{messages}</div>}
+            {composer && <div className="ec-voice-room__composer">{composer}</div>}
+          </aside>
         )}
       </div>
 

@@ -1,0 +1,748 @@
+/**
+ * clean-ui.css — IA reset: единый чистый visual language.
+ *
+ * Эталон — docs/design/ia-reset/server-view.html (утверждён Pavel'ем).
+ * Спокойный, структурный, без sci-fi-театра (ТАКТИЧЕСКИЙ ВИД / КОМАНДОРЫ /
+ * net-signal / game-иконки убраны). Один акцент (violet), gold у владельца,
+ * presence-точки, чёткая иерархия. Только existing --ec-* токены.
+ * Растёт по мере порта компонентов (members → channels → header → guide).
+ */
+
+/* ============ MEMBERS RAIL ============ */
+.ec-mem {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--ec-surface-1);
+  height: 100%;
+}
+.ec-mem__hd {
+  display: flex;
+  align-items: center;
+  gap: var(--ec-space-2);
+  padding: var(--ec-space-4) var(--ec-space-4) var(--ec-space-2);
+  flex-shrink: 0;
+}
+.ec-mem__hd-title {
+  font-size: var(--ec-text-sm);
+  font-weight: 700;
+  color: var(--ec-text-strong);
+  letter-spacing: -0.01em;
+}
+.ec-mem__hd-count {
+  font-family: var(--ec-font-mono);
+  font-size: var(--ec-text-2xs);
+  color: var(--ec-text-dim);
+  font-feature-settings: "tnum";
+}
+.ec-mem__close {
+  margin-left: auto;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: var(--ec-radius-sm);
+  background: transparent;
+  color: var(--ec-text-muted);
+  cursor: pointer;
+  transition: background var(--ec-dur-fast) var(--ec-ease), color var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-mem__close:hover { background: var(--ec-surface-3); color: var(--ec-text-strong); }
+/* collapse + close рядом: только первая кнопка двигает группу вправо
+   (margin-left:auto), вторая сидит вплотную — без кривого зазора. */
+.ec-mem__close + .ec-mem__close { margin-left: 0; }
+
+.ec-mem__scroll {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  padding-bottom: var(--ec-space-3);
+}
+
+/* group section label (роль / «Не в сети») — спокойный, collapsible */
+.ec-mem__group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: var(--ec-space-3) var(--ec-space-4) var(--ec-space-1);
+  border: 0;
+  background: transparent;
+  color: var(--ec-text-dim);
+  font-size: var(--ec-text-2xs);
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  cursor: pointer;
+  text-align: left;
+}
+.ec-mem__group:hover { color: var(--ec-text-muted); }
+.ec-mem__chev {
+  display: inline-block;
+  font-size: 9px;
+  transition: transform var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-mem__chev.is-collapsed { transform: rotate(-90deg); }
+.ec-mem__group-count {
+  margin-left: auto;
+  font-family: var(--ec-font-mono);
+  color: var(--ec-text-dim);
+  letter-spacing: 0;
+  font-weight: 600;
+}
+
+/* member row */
+.ec-mem-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 var(--ec-space-2);
+  padding: 6px var(--ec-space-2);
+  border-radius: var(--ec-radius-md);
+  cursor: pointer;
+  transition: background var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-mem-row:hover { background: var(--ec-surface-2); }
+.ec-mem-row--offline { opacity: 0.45; }
+.ec-mem-row__av {
+  position: relative;
+  flex-shrink: 0;
+  display: inline-grid;
+  place-items: center;
+}
+.ec-mem-row__pres {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 2.5px solid var(--ec-surface-1);
+}
+.ec-mem-row__id {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.ec-mem-row__name {
+  font-size: var(--ec-text-sm);
+  font-weight: 500;
+  color: var(--ec-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ec-mem-row__act {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--ec-text-xs);
+  color: var(--ec-text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ec-mem-row__role {
+  flex-shrink: 0;
+  font-family: var(--ec-font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 1px 5px;
+  border-radius: 5px;
+  color: var(--ec-text-dim);
+  background: var(--ec-surface-3);
+}
+.ec-mem-row__role--owner {
+  color: var(--ec-accent-gold-hover);
+  background: var(--ec-accent-gold-soft);
+}
+.ec-mem-row__role--admin {
+  color: var(--ec-accent-hover);
+  background: var(--ec-accent-soft);
+}
+.ec-mem-row__dm {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: var(--ec-radius-sm);
+  background: transparent;
+  color: var(--ec-text-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--ec-dur-fast) var(--ec-ease), background var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-mem-row:hover .ec-mem-row__dm { opacity: 1; }
+.ec-mem-row__dm:hover { background: var(--ec-accent-soft); color: var(--ec-accent); }
+
+.ec-mem__hint, .ec-mem__error {
+  padding: var(--ec-space-4);
+  font-size: var(--ec-text-sm);
+  color: var(--ec-text-dim);
+}
+.ec-mem__error { color: var(--ec-danger); }
+
+/* ============ SERVER GUIDE («Путеводитель») ============ */
+/* Чистый: баннер — контейнерная шапка (не full-bleed за текстом),
+   имя+иконка, описание читаемой колонкой, без наслоений и театра. */
+.ec-guide {
+  height: 100%;
+  overflow-y: auto;
+  background: var(--ec-void);
+}
+.ec-guide__inner {
+  width: 100%;
+  max-width: 1320px;
+  /* UXR8: left-aligned, не центрированный; левый отступ clamp'ится. */
+  margin: 0;
+  padding: 0 clamp(24px, 4vw, 56px) var(--ec-space-12);
+}
+.ec-guide__banner {
+  width: 100%;
+  height: clamp(168px, 19vw, 238px);
+  margin-top: var(--ec-space-4);
+  border-radius: var(--ec-radius-xl);
+  background-size: cover;
+  background-position: center;
+  box-shadow: var(--ec-edge);
+}
+.ec-guide__banner--fallback {
+  background:
+    radial-gradient(ellipse 80% 120% at 20% 0%, hsl(258 60% 40% / 0.45), transparent 60%),
+    linear-gradient(160deg, var(--ec-surface-3), var(--ec-surface-1));
+}
+.ec-guide__head {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--ec-space-4);
+  margin: calc(var(--ec-space-8) * -1) 0 0 var(--ec-space-2);
+  position: relative;
+}
+.ec-guide__icon {
+  width: 72px;
+  height: 72px;
+  border-radius: var(--ec-radius-xl);
+  display: grid;
+  place-items: center;
+  font-size: var(--ec-text-2xl);
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(150deg, var(--ec-accent), hsl(258 80% 46%));
+  box-shadow: 0 8px 24px -8px hsl(258 80% 40% / 0.6), 0 0 0 4px var(--ec-void);
+  object-fit: cover;
+  overflow: hidden;
+}
+.ec-guide__title-wrap { padding-bottom: var(--ec-space-2); min-width: 0; }
+.ec-guide__name {
+  font-size: var(--ec-text-2xl);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--ec-text-strong);
+  line-height: 1.1;
+}
+.ec-guide__meta {
+  margin-top: 3px;
+  font-size: var(--ec-text-sm);
+  color: var(--ec-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.ec-guide__meta .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ec-presence-online); }
+.ec-guide__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
+  gap: var(--ec-space-5);
+  margin-top: var(--ec-space-6);
+  align-items: start;
+}
+.ec-guide__stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--ec-space-2);
+  margin-bottom: var(--ec-space-6);
+}
+.ec-guide__stats span {
+  min-width: 0;
+  padding: var(--ec-space-3);
+  border: 1px solid var(--ec-border-default);
+  border-radius: var(--ec-radius-md);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--ec-accent) 8%, transparent), transparent 62%),
+    var(--ec-surface-2);
+  box-shadow: var(--ec-edge);
+  color: var(--ec-text-muted);
+  font-size: var(--ec-text-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+.ec-guide__stats strong {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--ec-text-strong);
+  font-size: var(--ec-text-xl);
+  font-weight: 850;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  text-transform: none;
+}
+.ec-guide__features {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: calc(var(--ec-space-3) * -1) 0 var(--ec-space-5);
+  max-width: 76ch;
+}
+.ec-guide__feature {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  max-width: 100%;
+  padding: 6px 11px;
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 22%, var(--ec-border-default));
+  border-radius: var(--ec-radius-md);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--ec-accent) 10%, transparent), transparent 62%),
+    var(--ec-surface-2);
+  color: var(--ec-text);
+  font-size: var(--ec-text-sm);
+  font-weight: 650;
+  line-height: 1.25;
+  box-shadow: var(--ec-edge);
+  overflow-wrap: anywhere;
+}
+.ec-guide__desc {
+  font-size: var(--ec-text-base);
+  line-height: var(--ec-leading-relaxed);
+  color: var(--ec-text);
+  overflow-wrap: break-word;
+  word-break: break-word;
+  /* читаемая мера — не «стена» на широком экране */
+  max-width: 68ch;
+}
+.ec-guide__desc p {
+  margin: 0 0 var(--ec-space-3);
+}
+.ec-guide__desc p:last-child {
+  margin-bottom: 0;
+}
+.ec-guide__sections {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ec-space-3);
+  margin-top: var(--ec-space-5);
+}
+.ec-guide__section {
+  min-width: 0;
+  padding: var(--ec-space-4);
+  border: 1px solid var(--ec-border-default);
+  border-radius: var(--ec-radius-lg);
+  background:
+    radial-gradient(circle at top left, color-mix(in srgb, var(--ec-accent) 12%, transparent), transparent 46%),
+    var(--ec-surface-2);
+  box-shadow: var(--ec-edge);
+}
+.ec-guide__section h2 {
+  margin: 0 0 var(--ec-space-3);
+  color: var(--ec-text-strong);
+  font-size: var(--ec-text-sm);
+  font-weight: 800;
+  letter-spacing: 0;
+  line-height: 1.25;
+}
+.ec-guide__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.ec-guide__chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  max-width: 100%;
+  padding: 6px 10px;
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 16%, var(--ec-border-default));
+  border-radius: var(--ec-radius-sm);
+  background: color-mix(in srgb, var(--ec-accent) 7%, var(--ec-surface-1));
+  color: var(--ec-text);
+  font-size: var(--ec-text-sm);
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.ec-guide__welcome {
+  margin-top: var(--ec-space-5);
+  padding: var(--ec-space-4) var(--ec-space-5);
+  border-radius: var(--ec-radius-lg);
+  background: var(--ec-surface-2);
+  box-shadow: var(--ec-edge);
+  border-left: 3px solid var(--ec-accent);
+  font-size: var(--ec-text-sm);
+  line-height: var(--ec-leading-normal);
+  color: var(--ec-text);
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+.ec-guide__quick {
+  grid-column: 2;
+  grid-row: 1 / span 4;
+  margin-top: 0;
+  padding: var(--ec-space-4);
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 18%, var(--ec-border-default));
+  border-radius: var(--ec-radius-lg);
+  background:
+    radial-gradient(circle at top left, color-mix(in srgb, var(--ec-accent) 14%, transparent), transparent 44%),
+    var(--ec-surface-2);
+  box-shadow: var(--ec-edge);
+  position: sticky;
+  top: var(--ec-space-4);
+}
+.ec-guide__quick-label {
+  font-size: var(--ec-text-2xs);
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ec-text-dim);
+}
+.ec-guide__quick-grid {
+  margin-top: var(--ec-space-3);
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--ec-space-2);
+}
+.ec-guide__card {
+  --ec-depth-glow-x: 50%;
+  --ec-depth-glow-y: 50%;
+  --ec-depth-active: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--ec-space-2);
+  padding: var(--ec-space-3) var(--ec-space-4);
+  border: 0;
+  border-radius: var(--ec-radius-md);
+  background:
+    radial-gradient(
+      circle at var(--ec-depth-glow-x) var(--ec-depth-glow-y),
+      color-mix(in srgb, var(--ec-accent) 14%, transparent),
+      transparent 48%
+    ),
+    var(--ec-surface-2);
+  box-shadow:
+    var(--ec-edge),
+    0 14px 32px -26px color-mix(in srgb, var(--ec-accent) calc(30% * var(--ec-depth-active)), transparent);
+  color: var(--ec-text);
+  font-size: var(--ec-text-sm);
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  transform-style: preserve-3d;
+  will-change: transform;
+  transition:
+    background var(--ec-dur-fast) var(--ec-ease),
+    box-shadow var(--ec-dur-fast) var(--ec-ease),
+    transform 160ms var(--ec-ease);
+}
+.ec-guide__card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  border: 1px solid color-mix(in srgb, var(--ec-accent) calc(22% * var(--ec-depth-active)), var(--ec-border-subtle));
+  background:
+    linear-gradient(135deg, hsl(0 0% 100% / 0.055), transparent 42%),
+    linear-gradient(315deg, color-mix(in srgb, var(--ec-accent) 10%, transparent), transparent 48%);
+  opacity: calc(0.42 + 0.42 * var(--ec-depth-active));
+  pointer-events: none;
+}
+.ec-guide__card:hover {
+  background: var(--ec-surface-3);
+}
+.ec-guide__card-glyph {
+  color: var(--ec-text-muted);
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  transform: translateZ(22px);
+  transition: color var(--ec-dur-fast) var(--ec-ease), transform var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-guide__card-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transform: translateZ(14px);
+}
+.ec-guide__card:hover .ec-guide__card-glyph {
+  color: var(--ec-accent);
+}
+
+/* ============ SERVER ACTIONS POPOVER — solid, без bleed-through ============ */
+/* Было: --ec-overlay-bg (0.93 alpha) + blur → список каналов просвечивал
+   сквозь поповер, текст наезжал. Двойной класс (специфичность 0,2,0)
+   перебивает .ec-popover-surface. Чистая непрозрачная поверхность. */
+.ec-server-actions-menu.ec-popover-surface {
+  background: var(--ec-surface-2);
+  border: 1px solid var(--ec-border-emphasis);
+  box-shadow: var(--ec-shadow-modal);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* ============ CHANNEL RAIL — компактный header (UXR8 #2) ============ */
+/* Было: при наличии server-баннера header'у давался класс --banner →
+   min-height 96px + cover-баннер за именем = большой пустой hero над
+   tabs. Баннер уже показан в «Путеводителе»; в сайдбаре он дублировался.
+   Делаем header компактным (имя + chevron), как в эталоне server-view. */
+.ec-channel-list__header--banner {
+  min-height: 0;
+  padding: var(--ec-space-3) var(--ec-space-4);
+  background-image: none !important;
+}
+.ec-channel-list__header--banner::before { display: none; }
+.ec-channel-list__header--banner .ec-channel-list__server-name {
+  color: var(--ec-text-strong);
+  text-shadow: none;
+}
+.ec-channel-list__header--banner .ec-channel-list__server-btn,
+.ec-channel-list__header--banner svg {
+  color: inherit;
+  filter: none;
+}
+
+/* ============ a11y: prefers-reduced-motion ============ */
+/* Новые clean-классы используют transition/transform — гасим для
+   reduced-motion (Persona-требование). */
+@media (prefers-reduced-motion: reduce) {
+  .ec-shell__chat--guide .ec-chat-header,
+  .ec-mem__chev,
+  .ec-mem__close,
+  .ec-mem-row,
+  .ec-mem-row__dm,
+  .ec-guide__card,
+  .ec-guide__card-glyph,
+  .ec-guide__card-name {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
+.ec-shell__chat--guide .ec-chat-header {
+  display: none;
+}
+
+/* ============ mobile (≤640px) ============ */
+/* Guide-экран на узком вьюпорте: clamp паддингов/баннера/иконки,
+   карточки в один столбец — чтобы не был слишком широким на 390px. */
+@media (max-width: 640px) {
+  .ec-guide__inner { padding: 0 var(--ec-space-3) var(--ec-space-8); }
+  .ec-guide__banner { height: 148px; border-radius: var(--ec-radius-lg); }
+  .ec-guide__head { margin-top: calc(var(--ec-space-7) * -1); gap: var(--ec-space-3); }
+  .ec-guide__icon { width: 56px; height: 56px; border-radius: var(--ec-radius-lg); }
+  .ec-guide__name { font-size: var(--ec-text-xl); }
+  .ec-guide__body { grid-template-columns: 1fr; gap: var(--ec-space-4); }
+  .ec-guide__stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ec-guide__sections { grid-template-columns: 1fr; }
+  .ec-guide__quick {
+    grid-column: auto;
+    grid-row: auto;
+    position: static;
+  }
+  .ec-guide__quick-grid { grid-template-columns: 1fr; }
+}
+
+/* ============================================================
+ * v1.6.57 — Server Rail (Discord-каркас): постоянный левый
+ * вертикальный рейл-иконок. Grid-area «rail» определён в responsive.css.
+ * ============================================================ */
+.ec-shell__rail { grid-area: rail; min-height: 0; }
+.ec-rail {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ec-space-2);
+  padding: var(--ec-space-2) 0;
+  background: var(--ec-surface-0);
+  border-right: 1px solid var(--ec-border-subtle);
+  overflow: hidden;
+}
+.ec-rail__group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ec-space-2);
+  flex-shrink: 0;
+}
+.ec-rail__servers {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ec-space-2);
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+}
+.ec-rail__servers::-webkit-scrollbar { width: 0; }
+.ec-rail__divider {
+  width: 28px;
+  height: 1px;
+  background: var(--ec-border-subtle);
+  flex-shrink: 0;
+}
+.ec-rail__btn {
+  position: relative;
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  padding: 0;
+  border-radius: var(--ec-radius-lg);
+  background: var(--ec-surface-2);
+  color: var(--ec-text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition:
+    border-radius var(--ec-dur-base) var(--ec-ease),
+    background var(--ec-dur-base) var(--ec-ease),
+    color var(--ec-dur-base) var(--ec-ease);
+}
+.ec-rail__btn:hover {
+  border-radius: var(--ec-radius-md);
+  background: var(--ec-accent-soft);
+  color: var(--ec-text);
+}
+.ec-rail__btn.is-active {
+  border-radius: var(--ec-radius-md);
+  background: var(--ec-accent-soft);
+  color: var(--ec-accent);
+}
+.ec-rail__btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.ec-rail__glyph { display: grid; place-items: center; }
+.ec-rail__btn--server .ec-rail__glyph .ec-srv-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: inherit;
+}
+/* Левый pill-индикатор (Discord): растёт на hover, полный на active */
+.ec-rail__pill {
+  position: absolute;
+  left: -10px;
+  top: 50%;
+  transform: translateY(-50%) scaleY(0);
+  width: 4px;
+  height: 60%;
+  border-radius: 0 4px 4px 0;
+  background: var(--ec-accent);
+  transition: transform var(--ec-dur-base) var(--ec-ease);
+}
+.ec-rail__btn:hover .ec-rail__pill { transform: translateY(-50%) scaleY(0.5); }
+.ec-rail__btn.is-active .ec-rail__pill { transform: translateY(-50%) scaleY(1); }
+.ec-rail__badge {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  display: grid;
+  place-items: center;
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: #fff;
+  background: var(--ec-danger, #ef4444);
+  border: 2px solid var(--ec-surface-0);
+  border-radius: var(--ec-radius-full);
+}
+/* Рейл — только desktop; на ≤1024 нижний таб-бар (slice 2) */
+@media (max-width: 1024px) {
+  .ec-shell__rail { display: none; }
+}
+
+/* ============================================================
+ * v1.6.58 — Mobile bottom tab-bar (Discord-каркас, слайс 2).
+ * Рендерится только на mobile (grid-area «nav» в responsive.css).
+ * ============================================================ */
+.ec-bnav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: var(--ec-z-sidebar);
+  display: flex;
+  align-items: stretch;
+  background: var(--ec-surface-1);
+  border-top: 1px solid var(--ec-border-subtle);
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+/* Чат-область освобождает место под фиксированным таб-баром (mobile). */
+@media (max-width: 1024px) {
+  .ec-shell__chat {
+    padding-bottom: calc(var(--ec-bottomnav-height) + env(safe-area-inset-bottom, 0));
+  }
+}
+.ec-bnav__tab {
+  flex: 1;
+  min-width: 0;
+  height: var(--ec-bottomnav-height);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  border: 0;
+  background: transparent;
+  color: var(--ec-text-dim);
+  cursor: pointer;
+  transition: color var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-bnav__tab:hover { color: var(--ec-text); }
+.ec-bnav__tab.is-active { color: var(--ec-accent); }
+.ec-bnav__icon { position: relative; display: grid; place-items: center; }
+.ec-bnav__label { font-size: 0.62rem; font-weight: 600; letter-spacing: 0.01em; }
+.ec-bnav__badge {
+  position: absolute;
+  top: -4px;
+  right: -8px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 4px;
+  display: grid;
+  place-items: center;
+  font-size: 0.56rem;
+  font-weight: 700;
+  color: #fff;
+  background: var(--ec-danger, #ef4444);
+  border: 2px solid var(--ec-surface-1);
+  border-radius: var(--ec-radius-full);
+}
+
+@media (max-width: 1180px) and (min-width: 641px) {
+  .ec-guide__body { grid-template-columns: 1fr; }
+  .ec-guide__quick {
+    grid-column: auto;
+    grid-row: auto;
+    position: static;
+  }
+  .ec-guide__quick-grid { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+}
+
+@media (max-width: 900px) {
+  .ec-guide__sections { grid-template-columns: 1fr; }
+}

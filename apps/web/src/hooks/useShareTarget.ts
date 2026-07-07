@@ -31,6 +31,44 @@ type IdbSharePayload = {
   timestamp: number;
 };
 
+function normalizeShareText(value: string): string {
+  return value.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function filenameAliases(file: File): string[] {
+  const name = normalizeShareText(file.name);
+  const dotIndex = name.lastIndexOf(".");
+  const base = dotIndex > 0 ? name.slice(0, dotIndex) : name;
+  return base === name ? [name] : [name, base];
+}
+
+function isFileMetadataOnly(value: string, files: File[]): boolean {
+  const normalized = normalizeShareText(value);
+  if (!normalized) return true;
+
+  const aliases = files.flatMap(filenameAliases);
+  if (aliases.includes(normalized)) return true;
+
+  const lines = value
+    .split(/\r?\n/)
+    .map(normalizeShareText)
+    .filter(Boolean);
+  return lines.length > 0 && lines.every((line) => aliases.includes(line));
+}
+
+function buildShareContent(payload: IdbSharePayload): string | null {
+  const files = payload.files ?? [];
+  const parts = [payload.title, payload.text, payload.url]
+    .filter((p): p is string => !!p && p.trim().length > 0)
+    .map((p) => p.trim());
+
+  if (parts.length === 0) return null;
+  if (files.length === 0) return parts.join("\n\n");
+
+  const meaningfulParts = parts.filter((part) => !isFileMetadataOnly(part, files));
+  return meaningfulParts.length > 0 ? meaningfulParts.join("\n\n") : null;
+}
+
 function openShareIDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(IDB_NAME, 1);
@@ -138,11 +176,9 @@ export function useShareTarget() {
           if (payload.files && payload.files.length > 0) {
             setPendingFiles(payload.files);
           }
-          const parts = [payload.title, payload.text, payload.url].filter(
-            (p): p is string => !!p && p.length > 0,
-          );
-          if (parts.length > 0) {
-            setPendingContent(parts.join("\n\n"));
+          const content = buildShareContent(payload);
+          if (content) {
+            setPendingContent(content);
             setPendingRaw({
               title: payload.title,
               text: payload.text,

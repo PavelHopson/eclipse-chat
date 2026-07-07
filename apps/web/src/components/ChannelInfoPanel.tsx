@@ -11,6 +11,10 @@ import type {
   PinnedMessageBrief,
 } from "./IntelligencePanel";
 import type { ChannelDigest, DigestAiSummary } from "../hooks/useChannelDigest";
+import type {
+  ChannelMemoryEntry,
+  CreateMemoryEntryInput,
+} from "../hooks/useChannelMemory";
 
 /**
  * ChannelInfoPanel — v0.96 UX refactor.
@@ -49,8 +53,14 @@ type Props = {
   onRequestAiSummary: () => void;
   // ── Память / Дела / Файлы (channel-scoped) ─────────────────
   pinnedMessages: PinnedMessageBrief[];
+  memoryEntries: ChannelMemoryEntry[];
+  memoryLoading: boolean;
+  memorySaving: boolean;
+  memoryError: string | null;
   attachments: AttachmentBrief[];
   executionItems: ExecutionItemBrief[];
+  onCreateMemoryEntry?: (input: CreateMemoryEntryInput) => Promise<unknown>;
+  onArchiveMemoryEntry?: (id: string) => Promise<unknown> | void;
   onToggleExecutionStatus?: (
     id: string,
     status: import("../lib/socket").ActionItemStatus,
@@ -110,8 +120,14 @@ export function ChannelInfoPanel({
   aiError,
   onRequestAiSummary,
   pinnedMessages,
+  memoryEntries,
+  memoryLoading,
+  memorySaving,
+  memoryError,
   attachments,
   executionItems,
+  onCreateMemoryEntry,
+  onArchiveMemoryEntry,
   onToggleExecutionStatus,
   onOpenAction,
   clientMode = false,
@@ -163,8 +179,8 @@ export function ChannelInfoPanel({
           >
             <IconMemory />
             <span>Память</span>
-            {pinnedMessages.length > 0 && (
-              <span className="ec-info-tab__count">{pinnedMessages.length}</span>
+            {memoryEntries.length + pinnedMessages.length > 0 && (
+              <span className="ec-info-tab__count">{memoryEntries.length + pinnedMessages.length}</span>
             )}
           </button>
           {!clientMode && (
@@ -227,7 +243,15 @@ export function ChannelInfoPanel({
               onRequestAiSummary={onRequestAiSummary}
             />
           ) : activeTab === "memory" ? (
-            <MemoryView items={pinnedMessages} />
+            <MemoryView
+              items={pinnedMessages}
+              entries={memoryEntries}
+              loading={memoryLoading}
+              saving={memorySaving}
+              error={memoryError}
+              onCreate={onCreateMemoryEntry}
+              onArchive={onArchiveMemoryEntry}
+            />
           ) : activeTab === "execution" ? (
             <ExecutionView
               items={executionItems}

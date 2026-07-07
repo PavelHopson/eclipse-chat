@@ -69,6 +69,10 @@ model User {
   /// Recovery codes — JSON массив bcrypt-хэшей. При verify сравниваем bcrypt
   /// и помечаем code как использованный (remove from list).
   twoFactorRecoveryCodes String?
+  /// v1.6.68 — одноразовые коды восстановления ПАРОЛЯ (self-serve «забыли
+  /// пароль» без email/SMTP). JSON-array bcrypt-хэшей; генерится в настройках
+  /// (показ 1 раз), consume'ится при сбросе. Те же хелперы что у 2FA, отдельный набор.
+  passwordRecoveryCodes  String?
   /// Счётчик неудачных попыток входа. Reset при успехе или после lockoutUntil.
   failedLoginAttempts  Int       @default(0)
   /// Времянка lockout после 5 неудачных попыток. Null = не залочен.
@@ -109,6 +113,7 @@ model User {
   reactions        Reaction[]
   createdActionItems ActionItem[]        @relation("ActionItemCreator")
   assignedActionItems ActionItem[]       @relation("ActionItemAssignee")
+  createdMemoryEntries MemoryEntry[]     @relation("MemoryEntryCreator")
   /// Items на которых я approver (v0.55). Pending → approver_userId = me.
   approvalQueue      ActionItem[]        @relation("ActionItemApprover")
   /// Operational Tables, созданные этим user'ом (v0.59 phase 1).
@@ -358,6 +363,9 @@ enum AuditEventType {
   SERVER_DELETED
   SERVER_BANNER_CHANGED
   SERVER_IDENTITY_CHANGED
+  /// v1.6.99 — privacy slice B: одноразовые/истекающие invite-коды.
+  SERVER_INVITE_CREATED
+  SERVER_INVITE_REVOKED
   MEMBER_ROLE_CHANGED
   MEMBER_KICKED
   MESSAGE_DELETED_BY_MOD
@@ -485,6 +493,15 @@ enum ActionItemType {
   TASK
   DECISION
   FOLLOW_UP
+}
+
+enum MemoryEntryKind {
+  NOTE
+  DECISION
+  RISK
+  FACT
+  LINK
+  ACTION
 }
 
 /// Режим сервера — Client Portal vs Engineering / Internal Ops.
@@ -685,6 +702,78 @@ model Server {
   composioConnections ComposioConnection[]
   /// v1.2.20: custom-emoji per-server. Cascade при удалении server'а.
   emojis              Emoji[]
+  /// v1.6.25: server-wide Team Health training catalog. Sections/videos are
+  /// visible to every server member; write access is OWNER/ADMIN only.
+  trainingSections    TrainingSection[]
+  trainingVideos      TrainingVideo[]
+  /// v1.6.99 — одноразовые / истекающие invite-коды (privacy slice B).
+  invites             ServerInvite[]
+  /// v1.7.3 — curated room/project memory. Entries are soft-deleted via archivedAt.
+  memoryEntries       MemoryEntry[]
+}
+
+/// v1.6.99 — одноразовые / истекающие invite-коды (privacy slice B).
+/// Параллельно legacy `Server.inviteCode` (вечный, многоразовый): отдельные
+/// коды с лимитом использований и/или сроком, отзываемые. Принимаются тем же
+/// POST /api/servers/join/:code. Cron-очистки нет — валидность проверяется на
+/// join (revokedAt/expiresAt/maxUses); истёкшие просто перестают работать.
+model ServerInvite {
+  id        String    @id @default(cuid())
+  /// URL-safe код (base64url). Уникален глобально среди инвайтов.
+  code      String    @unique
+  serverId  String
+  server    Server    @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  /// Кто создал. Scalar без Prisma-relation (FK + ON DELETE SET NULL заданы в
+  /// миграции вручную) — чтобы не расширять большую модель User. NULL после
+  /// удаления автора.
+  createdByUserId String?
+  /// Лимит использований. NULL = без лимита.
+  maxUses   Int?
+  /// Сколько раз принят (инкремент на каждый НОВЫЙ join, не на idempotent-повтор).
+  uses      Int       @default(0)
+  /// Срок действия. NULL = бессрочный.
+  expiresAt DateTime?
+  /// Отозван вручную (OWNER/ADMIN). NULL = активен.
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([serverId])
+  @@index([expiresAt])
+}
+
+model TrainingSection {
+  id        String   @id @default(cuid())
+  serverId  String
+  server    Server   @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  name      String
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  videos    TrainingVideo[]
+
+  @@index([serverId, position])
+}
+
+model TrainingVideo {
+  id              String          @id @default(cuid())
+  serverId        String
+  server          Server          @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  sectionId       String
+  section         TrainingSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  title           String
+  url             String
+  source          String
+  filename        String?
+  mimeType        String?
+  size            Int?
+  position        Int             @default(0)
+  createdByUserId String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([serverId, createdAt])
+  @@index([sectionId, position])
 }
 
 /// v0.80 #26 phase 1: Automation system — declarative trigger/action правила
@@ -798,6 +887,11 @@ model Channel {
   /// cron'ом после `expiresAt`. UI показывает countdown badge в chat-header.
   /// NULL = постоянный канал. Hard delete (cascade messages/actions).
   expiresAt   DateTime?
+  /// v1.7.0 — исчезающие сообщения (privacy slice A). Если задано (секунды) —
+  /// новые сообщения канала получают `Message.expiresAt = createdAt +
+  /// messageTtlSeconds` и hard-удаляются cron'ом. NULL = сообщения не исчезают.
+  /// Пер-сообщение можно переопределить при отправке (см. Message.expiresAt).
+  messageTtlSeconds Int?
   /// Если канал — incident-канал, ссылка на Incident. Unique (1-to-1).
   /// Null для обычных каналов. UI рисует incident badge если set.
   incidentId  String?    @unique
@@ -806,6 +900,7 @@ model Channel {
 
   messages  Message[]
   actionItems ActionItem[]
+  memoryEntries MemoryEntry[]
   visits    ChannelLastVisit[]
   tables    Table[]
   musicSession MusicSession?
@@ -1010,6 +1105,10 @@ model Message {
   /// sort by pinnedAt desc. Pin/unpin доступен OWNER/ADMIN/MODERATOR.
   /// Для DM messages pin не разрешён (нет ролей в DM).
   pinnedAt  DateTime?
+  /// v1.7.0 — исчезающее сообщение (privacy slice A). Если задано — сообщение
+  /// hard-удаляется cron'ом после expiresAt. Вычисляется при отправке из
+  /// Channel.messageTtlSeconds (или пер-сообщение override). NULL = постоянное.
+  expiresAt DateTime?
   /// v0.63 cascade policy B: nullable + SetNull. При удалении User
   /// message остаётся, автор=null, UI рендерит «Удалённый пользователь».
   /// Bot deletions / GDPR-style erasure теперь не уничтожают историю.
@@ -1030,6 +1129,7 @@ model Message {
   reactions Reaction[]
   attachments Attachment[]
   actionItems ActionItem[]
+  memoryEntries MemoryEntry[] @relation("MemoryEntrySourceMessage")
   /// v0.77 #21: AI memory + semantic search. Inverse relation для cascade.
   embedding   MessageEmbedding?
   /// v1.5.24 — edit history. Snapshot previous content на каждый edit.
@@ -1038,6 +1138,8 @@ model Message {
   @@index([channelId, pinnedAt])
   @@index([conversationId, createdAt])
   @@index([parentMessageId])
+  /// v1.7.0 — cron исчезающих сообщений сканит по expiresAt < now.
+  @@index([expiresAt])
 }
 
 /// v1.5.24 — История редактирования сообщений. На каждый PATCH /api/messages/:id
@@ -1148,12 +1250,50 @@ model ActionItem {
   /// v0.90 #10 phase 4: rows которые linked к этой задаче (1-to-many).
   /// Cascade при удалении task — rows остаются с actionItemId=null.
   tableRows       TableRow[]
+  memoryEntries   MemoryEntry[] @relation("MemoryEntryActionItem")
 
   @@unique([sourceMessageId, type])
   @@index([channelId, status, createdAt])
   @@index([serverId, status, createdAt])
   @@index([assigneeUserId, status])
   @@index([approverUserId, approvalStatus])
+  // v1.6.98: partial index "ActionItem_escalation_scan_idx" ON ("dueAt")
+  // WHERE status IN (OPEN,IN_PROGRESS,REVIEW) AND dueAt IS NOT NULL живёт в
+  // raw-миграции 20260625120000_add_escalation_partial_index (Prisma не
+  // выражает WHERE-индексы). Покрывает глобальный escalation-scan
+  // (escalation.ts), который не ложится на channelId/serverId-индексы выше.
+  // НЕ удалять и не «чинить» как drift — индекс намеренно вне schema.
+}
+
+/// v1.7.3 — curated room/project memory.
+/// This is not automatic long-term surveillance: users explicitly save compact
+/// notes, decisions, risks, facts, links, and actions that should survive chat
+/// scrollback noise. Delete is soft via archivedAt for audit/recovery.
+model MemoryEntry {
+  id              String          @id @default(cuid())
+  serverId        String
+  server          Server          @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  channelId       String?
+  channel         Channel?        @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  kind            MemoryEntryKind @default(NOTE)
+  title           String
+  content         String?
+  /// JSON-encoded string[] for small display/search tags.
+  tags            String?
+  sourceMessageId String?
+  sourceMessage   Message?        @relation("MemoryEntrySourceMessage", fields: [sourceMessageId], references: [id], onDelete: SetNull)
+  actionItemId    String?
+  actionItem      ActionItem?     @relation("MemoryEntryActionItem", fields: [actionItemId], references: [id], onDelete: SetNull)
+  createdByUserId String?
+  createdBy       User?           @relation("MemoryEntryCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  archivedAt      DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([serverId, createdAt])
+  @@index([channelId, createdAt])
+  @@index([kind, createdAt])
+  @@index([archivedAt])
 }
 
 /// Граф зависимостей между ActionItem'ами (v0.73 #20 phase 2).
@@ -1660,7 +1800,7 @@ model Friendship {
   /// после ACCEPTED как «кто кого добавил» — для аудита и для accept
   /// permission-check (addressee = тот другой).
   requestedByUserId String
-  requestedBy       User             @relation("FriendshipRequestedBy", fields: [requestedByUserId], references: [id], onDelete: SetNull)
+  requestedBy       User             @relation("FriendshipRequestedBy", fields: [requestedByUserId], references: [id], onDelete: Cascade)
   /// Заполняется только для BLOCKED status. NULL для PENDING/ACCEPTED.
   blockedByUserId   String?
   blockedBy         User?            @relation("FriendshipBlockedBy", fields: [blockedByUserId], references: [id], onDelete: SetNull)

@@ -3,12 +3,11 @@ import { apiJson } from "../lib/api";
 import { Avatar } from "./Avatar";
 import { AdminEmojisTab } from "./AdminEmojisTab";
 import { InvoicesTabContent } from "./AdminInvoicesTab";
-import { IntegrationsTabContent, type AdminIntegration } from "./AdminIntegrationsTab";
-import { ComposioConnections } from "./ComposioConnections";
 import type { MemberRole, MemberRow } from "../hooks/useMembers";
 import type { ChannelRow } from "../hooks/useChannels";
 import type { TeamHealthData } from "../hooks/useTeamHealth";
 import { useComposio } from "../hooks/useComposio";
+import { useConfirm } from "./ConfirmDialog";
 import {
   PERMISSION_GROUPS,
   PERMISSION_LABELS_RU,
@@ -71,9 +70,7 @@ type Tab =
   | "roles"
   | "automation"
   | "invoices"
-  | "integrations"
-  | "audit"
-  | "analytics";
+  | "audit";
 
 /** v0.86 #24 phase 2: invoice shape от backend. */
 type AdminInvoiceItem = {
@@ -209,6 +206,7 @@ export function AdminPanel({
   onOpenClientPortal,
   onClose,
 }: Props) {
+  const confirm = useConfirm();
   const [tab, setTab] = useState<Tab>("overview");
   const [audit, setAudit] = useState<AuditEvent[] | null>(null);
   const [auditLoading, setAuditLoading] = useState(false);
@@ -223,11 +221,6 @@ export function AdminPanel({
   const [invoicesLoading, setInvoicesLoading] = useState(false);
   const [invoicesError, setInvoicesError] = useState<string | null>(null);
   const [showCreateInvoice, setShowCreateInvoice] = useState(false);
-  // v0.89 #26 phase 2: integrations tab state.
-  const [integrations, setIntegrations] = useState<AdminIntegration[] | null>(null);
-  const [integrationsLoading, setIntegrationsLoading] = useState(false);
-  const [integrationsError, setIntegrationsError] = useState<string | null>(null);
-  const [showCreateIntegration, setShowCreateIntegration] = useState(false);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -253,22 +246,6 @@ export function AdminPanel({
       .finally(() => setAuditLoading(false));
   }, [tab, audit, serverId]);
 
-  // v0.89 #26: lazy load integrations при первом open tab'а.
-  useEffect(() => {
-    if (tab !== "integrations" || integrations !== null) return;
-    setIntegrationsLoading(true);
-    setIntegrationsError(null);
-    apiJson<{ integrations: AdminIntegration[] }>(
-      `/api/servers/${encodeURIComponent(serverId)}/integrations`,
-    )
-      .then((d) => setIntegrations(d.integrations))
-      .catch((e) =>
-        setIntegrationsError(
-          e instanceof Error ? e.message : "Не удалось загрузить интеграции",
-        ),
-      )
-      .finally(() => setIntegrationsLoading(false));
-  }, [tab, integrations, serverId]);
 
   // v0.86 #24: lazy load invoices при первом open tab'а.
   useEffect(() => {
@@ -325,7 +302,13 @@ export function AdminPanel({
   };
 
   const deleteRule = async (rule: AutomationRule) => {
-    if (!window.confirm(`Удалить правило «${rule.name}»?`)) return;
+    const ok = await confirm({
+      title: "Удалить правило?",
+      message: `Автоматизация «${rule.name}» перестанет работать и будет удалена.`,
+      confirmLabel: "Удалить правило",
+      danger: true,
+    });
+    if (!ok) return;
     try {
       await apiJson(`/api/automations/${encodeURIComponent(rule.id)}`, {
         method: "DELETE",
@@ -501,29 +484,11 @@ export function AdminPanel({
         <button
           type="button"
           role="tab"
-          aria-selected={tab === "integrations"}
-          onClick={() => setTab("integrations")}
-          className="ec-admin-tab"
-        >
-          Интеграции{integrations ? ` · ${integrations.length}` : ""}
-        </button>
-        <button
-          type="button"
-          role="tab"
           aria-selected={tab === "audit"}
           onClick={() => setTab("audit")}
           className="ec-admin-tab"
         >
           Аудит
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === "analytics"}
-          onClick={() => setTab("analytics")}
-          className="ec-admin-tab"
-        >
-          Аналитика
         </button>
       </div>
 
@@ -995,25 +960,6 @@ export function AdminPanel({
         </div>
       )}
 
-      {tab === "integrations" && (
-        <>
-          <IntegrationsTabContent
-            serverId={serverId}
-            channels={channels}
-            integrations={integrations}
-            loading={integrationsLoading}
-            error={integrationsError}
-            showCreate={showCreateIntegration}
-            onShowCreate={() => setShowCreateIntegration(true)}
-            onHideCreate={() => setShowCreateIntegration(false)}
-            onChange={(next) => setIntegrations(next)}
-            onError={(msg) => setIntegrationsError(msg)}
-          />
-          {/* v1.0.1 #11.5 Composio Automation Expansion. */}
-          <ComposioConnections serverId={serverId} />
-        </>
-      )}
-
       {tab === "invoices" && (
         <InvoicesTabContent
           serverId={serverId}
@@ -1118,90 +1064,6 @@ export function AdminPanel({
         </div>
       )}
 
-      {tab === "analytics" && (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-            gap: "var(--ec-space-3)",
-          }}
-        >
-          {!teamHealth ? (
-            <p style={{ color: "var(--ec-text-dim)" }}>
-              Открой «Здоровье команды» в ChannelList, чтобы прогрузить
-              аналитику.
-            </p>
-          ) : (
-            <>
-              <StatCard label="Открыто" value={teamHealth.counts.openTotal} />
-              <StatCard
-                label="Просрочено"
-                value={teamHealth.counts.overdueTotal}
-                tone="warn"
-              />
-              <StatCard
-                label="Без ответственного"
-                value={teamHealth.counts.unassignedTotal}
-                tone="idle"
-              />
-              <StatCard
-                label="Среднее закрытие"
-                value={
-                  teamHealth.avgResolutionDays
-                    ? `${teamHealth.avgResolutionDays.toFixed(1)} д`
-                    : "—"
-                }
-                tone="exec"
-              />
-              {teamHealth.responseTime?.medianMs != null && (
-                <StatCard
-                  label="Время первого ответа"
-                  value={formatDurationShort(teamHealth.responseTime.medianMs)}
-                  tone="exec"
-                />
-              )}
-            </>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function formatDurationShort(ms: number): string {
-  const s = Math.max(0, Math.floor(ms / 1000));
-  if (s < 60) return `${s} с`;
-  const m = Math.floor(s / 60);
-  if (m < 60) return `${m} мин`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h} ч`;
-  return `${Math.floor(h / 24)} д`;
-}
-
-function StatCard({
-  label,
-  value,
-  tone = "default",
-}: {
-  label: string;
-  value: number | string;
-  tone?: "default" | "warn" | "idle" | "exec";
-}) {
-  const stripe =
-    tone === "warn"
-      ? "var(--ec-status-warn)"
-      : tone === "idle"
-        ? "var(--ec-status-idle)"
-        : tone === "exec"
-          ? "var(--ec-status-exec)"
-          : "var(--ec-accent)";
-  return (
-    <div
-      className="ec-admin-card"
-      style={{ boxShadow: `inset 3px 0 0 0 ${stripe}` }}
-    >
-      <span className="ec-admin-card-label">{label}</span>
-      <span className="ec-admin-card-value">{value}</span>
     </div>
   );
 }

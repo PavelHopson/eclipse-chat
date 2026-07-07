@@ -1,0 +1,239 @@
+/**
+ * dm-home.css — IA reset (UXR3) слайс 1: DM-сайдбар.
+ *
+ * Рестайл DirectConversationList под утверждённый прототип
+ * (docs/design/ia-reset/dm-home.html): чистая структура, accent-rail на
+ * active/hover, presence-точки, activity-хинты, ровный muted-список.
+ * Никаких новых токенов — всё на существующих --ec-*. Namespace ec-dmx-,
+ * чтобы не пересекаться с legacy .ec-dm-row.
+ */
+
+.ec-dmx {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--ec-surface-1);
+  box-shadow: inset -1px 0 0 var(--ec-border-subtle);
+}
+
+/* ---- header ---- */
+.ec-dmx__head {
+  padding: var(--ec-space-4) var(--ec-space-4) var(--ec-space-2);
+  display: flex;
+  align-items: center;
+  gap: var(--ec-space-2);
+}
+.ec-dmx__title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: var(--ec-text-md);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--ec-text-strong);
+}
+.ec-dmx__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ec-accent);
+  box-shadow: 0 0 8px var(--ec-accent);
+}
+.ec-dmx__head-btn {
+  margin-left: auto;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--ec-radius-sm);
+  background: transparent;
+  border: 0;
+  color: var(--ec-text-muted);
+  cursor: pointer;
+  transition: background var(--ec-dur-fast) var(--ec-ease),
+    color var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-dmx__head-btn:hover {
+  background: var(--ec-accent-soft);
+  color: var(--ec-accent);
+}
+
+/* ---- search ---- */
+.ec-dmx__search {
+  position: relative;
+  margin: var(--ec-space-2) var(--ec-space-4) var(--ec-space-3);
+}
+.ec-dmx__search svg {
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--ec-text-dim);
+  pointer-events: none;
+}
+.ec-dmx__search input {
+  width: 100%;
+  height: 38px;
+  border: 0;
+  border-radius: var(--ec-radius-md);
+  background: var(--ec-input-bg);
+  color: var(--ec-text);
+  font-family: var(--ec-font-sans);
+  font-size: var(--ec-text-sm);
+  padding: 0 12px 0 36px;
+  box-shadow: inset 0 0 0 1px var(--ec-border-subtle);
+  transition: box-shadow var(--ec-dur-base) var(--ec-ease);
+}
+.ec-dmx__search input::placeholder { color: var(--ec-text-dim); }
+.ec-dmx__search input:focus {
+  outline: none;
+  box-shadow: inset 0 0 0 1px var(--ec-border-accent),
+    0 0 0 3px hsl(258 80% 60% / 0.12);
+}
+
+/* ---- section label ---- */
+.ec-dmx__label {
+  font-size: var(--ec-text-2xs);
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ec-text-dim);
+  padding: var(--ec-space-2) var(--ec-space-5) var(--ec-space-1);
+}
+
+/* ---- list ---- */
+.ec-dmx__list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 var(--ec-space-2) var(--ec-space-3);
+  min-height: 0;
+}
+.ec-dmx__divider {
+  height: 1px;
+  background: var(--ec-border-subtle);
+  margin: var(--ec-space-1) var(--ec-space-2) var(--ec-space-2);
+}
+.ec-dmx__empty {
+  padding: var(--ec-space-4);
+  color: var(--ec-text-dim);
+  font-size: var(--ec-text-sm);
+}
+
+/* ---- row ---- */
+.ec-dmx-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  padding: 9px 10px;
+  margin-bottom: 1px;
+  border: 0;
+  border-radius: var(--ec-radius-md);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-dmx-row::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 3px;
+  height: 62%;
+  border-radius: 0 3px 3px 0;
+  background: var(--ec-accent);
+  transform: translateY(-50%) scaleY(0);
+  transform-origin: center;
+  transition: transform var(--ec-dur-base) var(--ec-ease-out);
+}
+.ec-dmx-row:hover { background: var(--ec-surface-3); }
+.ec-dmx-row:hover::before { transform: translateY(-50%) scaleY(1); }
+.ec-dmx-row.is-active {
+  background: linear-gradient(90deg, hsl(258 70% 60% / 0.12), hsl(258 70% 60% / 0.03));
+}
+.ec-dmx-row.is-active::before { transform: translateY(-50%) scaleY(1); }
+
+.ec-dmx-row__av {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.ec-dmx-row__pres {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 3px solid var(--ec-surface-1);
+}
+/* v1.6.49 — presence-точка наследует --ec-surface-1 из базового правила
+   (был хардкод #10151c — ломал светлую тему на активной строке). */
+.ec-dmx-row__main { flex: 1; min-width: 0; }
+.ec-dmx-row__top { display: flex; align-items: baseline; gap: 8px; }
+.ec-dmx-row__name {
+  font-weight: 600;
+  font-size: var(--ec-text-sm);
+  color: var(--ec-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ec-dmx-row.is-active .ec-dmx-row__name,
+.ec-dmx-row.is-unread .ec-dmx-row__name { color: var(--ec-text-strong); }
+.ec-dmx-row__time {
+  margin-left: auto;
+  font-family: var(--ec-font-mono);
+  font-size: var(--ec-text-2xs);
+  color: var(--ec-text-dim);
+  flex-shrink: 0;
+  font-feature-settings: "tnum";
+}
+.ec-dmx-row__sub {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--ec-text-xs);
+  color: var(--ec-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ec-dmx-row__sub .ec-dmx-row__emoji { font-size: var(--ec-text-sm); flex-shrink: 0; }
+.ec-dmx-row__sub-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ec-dmx-row__unread {
+  flex-shrink: 0;
+  align-self: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: var(--ec-radius-full);
+  background: var(--ec-accent);
+  color: var(--ec-accent-text);
+  font-size: var(--ec-text-2xs);
+  font-weight: 700;
+  font-family: var(--ec-font-mono);
+  font-feature-settings: "tnum";
+  display: grid;
+  place-items: center;
+  box-shadow: 0 2px 8px -2px hsl(258 80% 55% / 0.7);
+}
+
+/* saved / Избранное leading tile */
+.ec-dmx-row__saved-tile {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--ec-radius-md);
+  display: grid;
+  place-items: center;
+  background: var(--ec-accent-soft);
+  color: var(--ec-accent);
+  flex-shrink: 0;
+}

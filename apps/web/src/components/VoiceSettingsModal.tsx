@@ -1,11 +1,13 @@
 import type { CSSProperties } from "react";
 import { useEffect, useRef, useState } from "react";
 import { Modal } from "./Modal";
+import { useConfirm } from "./ConfirmDialog";
 import { useAudioDevices, keyCodeToLabel } from "../hooks/useAudioDevices";
 import {
   useVoiceSettings,
   type MicActivationMode,
   type NoiseSuppressionMode,
+  type VoicePresetId,
 } from "../hooks/useVoiceSettings";
 
 type Props = {
@@ -60,6 +62,17 @@ const fieldHint: CSSProperties = {
   color: "var(--ec-text-dim)",
   lineHeight: 1.4,
   margin: 0,
+};
+
+const chipStyle: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  minHeight: 24,
+  padding: "0.18rem 0.55rem",
+  borderRadius: "var(--ec-radius-full)",
+  border: "1px solid var(--ec-border-subtle)",
+  background: "color-mix(in srgb, var(--ec-surface-1) 86%, transparent)",
+  color: "var(--ec-text-muted)",
 };
 
 const selectStyle: CSSProperties = {
@@ -122,6 +135,7 @@ function VuMeter({ value }: { value: number }) {
 }
 
 export function VoiceSettingsModal({ onClose }: Props) {
+  const confirm = useConfirm();
   const devices = useAudioDevices();
   const {
     settings,
@@ -134,13 +148,16 @@ export function VoiceSettingsModal({ onClose }: Props) {
     setAfkTimeout,
     setMasterOutputVolume,
     setMicGain,
+    applyVoicePreset,
     resetSettings,
   } = useVoiceSettings();
 
   const [testLevel, setTestLevel] = useState(0);
   const [testing, setTesting] = useState(false);
+  const [outputTesting, setOutputTesting] = useState(false);
   const [recordingPtt, setRecordingPtt] = useState(false);
   const [permError, setPermError] = useState<string | null>(null);
+  const [outputError, setOutputError] = useState<string | null>(null);
 
   const streamRef = useRef<MediaStream | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -237,6 +254,53 @@ export function VoiceSettingsModal({ onClose }: Props) {
     }
   };
 
+  const playOutputTest = async () => {
+    setOutputError(null);
+    if (outputTesting) return;
+    try {
+      setOutputTesting(true);
+      const AudioCtx: typeof AudioContext =
+        window.AudioContext ??
+        (window as unknown as { webkitAudioContext: typeof AudioContext })
+          .webkitAudioContext;
+      const ctx = new AudioCtx();
+      const oscillator = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const dest = ctx.createMediaStreamDestination();
+      const audio = new Audio();
+      audio.srcObject = dest.stream;
+      audio.volume = Math.max(0, Math.min(1, settings.masterOutputVolume));
+
+      const audioWithSink = audio as HTMLAudioElement & {
+        setSinkId?: (id: string) => Promise<void>;
+      };
+      if (settings.outputDeviceId && typeof audioWithSink.setSinkId === "function") {
+        await audioWithSink.setSinkId(settings.outputDeviceId);
+      }
+
+      oscillator.type = "sine";
+      oscillator.frequency.value = 880;
+      gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.08, ctx.currentTime + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.45);
+      oscillator.connect(gain).connect(dest);
+
+      await audio.play();
+      oscillator.start();
+      oscillator.stop(ctx.currentTime + 0.5);
+
+      window.setTimeout(() => {
+        audio.pause();
+        audio.srcObject = null;
+        void ctx.close().catch(() => undefined);
+        setOutputTesting(false);
+      }, 650);
+    } catch (e) {
+      setOutputTesting(false);
+      setOutputError(e instanceof Error ? e.message : "Не удалось проверить звук");
+    }
+  };
+
   // Capture PTT hotkey
   useEffect(() => {
     if (!recordingPtt) return;
@@ -269,8 +333,122 @@ export function VoiceSettingsModal({ onClose }: Props) {
     { value: "aggressive", label: "Студийный", sub: "WebRTC + Web Audio" },
   ];
 
+  const presets: {
+    id: VoicePresetId;
+    title: string;
+    copy: string;
+  }[] = [
+    {
+      id: "office",
+      title: "Офис",
+      copy: "Стандартный шумодав, открытый микрофон, без усиления.",
+    },
+    {
+      id: "noisy",
+      title: "Шумно",
+      copy: "Студийная цепочка + автогейт по голосу.",
+    },
+    {
+      id: "studio",
+      title: "USB / студия",
+      copy: "Raw-сигнал без браузерной обработки.",
+    },
+  ];
+
+  const levelLabel =
+    !testing
+      ? "тест не запущен"
+      : testLevel < 0.015
+      ? "слишком тихо"
+      : testLevel > 0.55
+      ? "перегруз"
+      : testLevel > 0.06
+      ? "уровень хороший"
+      : "говори чуть громче";
+
   return (
     <Modal title="Настройки голоса" onClose={onClose} width={520}>
+      <section>
+        <h3 style={sectionLabel}>Быстрая настройка</h3>
+        <div style={{ ...groupCard, gap: "var(--ec-space-3)" }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))",
+              gap: 8,
+            }}
+          >
+            {presets.map((preset) => {
+              const active =
+                (preset.id === "office" &&
+                  settings.noiseSuppression === "standard" &&
+                  settings.micActivationMode === "open" &&
+                  settings.micGain === 1) ||
+                (preset.id === "noisy" &&
+                  settings.noiseSuppression === "aggressive" &&
+                  settings.micActivationMode === "voice_activity") ||
+                (preset.id === "studio" &&
+                  settings.noiseSuppression === "off" &&
+                  settings.micActivationMode === "open");
+              return (
+                <button
+                  key={preset.id}
+                  type="button"
+                  onClick={() => applyVoicePreset(preset.id)}
+                  className="ec-press"
+                  style={{
+                    textAlign: "left",
+                    minHeight: 78,
+                    padding: "0.7rem",
+                    borderRadius: "var(--ec-radius-md)",
+                    border: active
+                      ? "1px solid var(--ec-border-accent)"
+                      : "1px solid var(--ec-border-default)",
+                    background: active
+                      ? "color-mix(in srgb, var(--ec-accent) 14%, var(--ec-surface-1))"
+                      : "var(--ec-surface-1)",
+                    color: "var(--ec-text)",
+                    cursor: "pointer",
+                    boxShadow: active
+                      ? "0 14px 34px -28px var(--ec-accent)"
+                      : "none",
+                  }}
+                >
+                  <strong style={{ display: "block", marginBottom: 4 }}>
+                    {preset.title}
+                  </strong>
+                  <span style={{ ...fieldHint, display: "block" }}>
+                    {preset.copy}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 6,
+              fontSize: "var(--ec-text-2xs)",
+              color: "var(--ec-text-muted)",
+            }}
+          >
+            <span style={chipStyle}>
+              WebRTC DSP: {settings.noiseSuppression === "off" ? "выкл" : "вкл"}
+            </span>
+            <span style={chipStyle}>
+              Web Audio:{" "}
+              {settings.noiseSuppression === "aggressive" || settings.micGain !== 1
+                ? "активен"
+                : "standby"}
+            </span>
+            <span style={chipStyle}>
+              Вывод: {devices.supportsOutputSelection ? "можно выбрать" : "системный"}
+            </span>
+          </div>
+        </div>
+      </section>
+
       {/* ===== Шумодав ===== */}
       <section>
         <h3 style={sectionLabel}>Шумоподавление</h3>
@@ -448,12 +626,38 @@ export function VoiceSettingsModal({ onClose }: Props) {
             >
               {testing ? "Остановить тест" : "Проверить микрофон"}
             </button>
+            <button
+              type="button"
+              onClick={() => void playOutputTest()}
+              className="ec-btn ec-btn--sm"
+              disabled={outputTesting}
+            >
+              {outputTesting ? "Играет..." : "Проверить звук"}
+            </button>
             <div style={{ flex: 1, opacity: testing ? 1 : 0.35 }}>
               <VuMeter value={testLevel} />
             </div>
+            <span
+              style={{
+                color:
+                  testLevel > 0.55
+                    ? "var(--ec-danger)"
+                    : testLevel > 0.06
+                    ? "var(--ec-status-exec)"
+                    : "var(--ec-text-dim)",
+                fontSize: "var(--ec-text-2xs)",
+                minWidth: 96,
+                textAlign: "right",
+              }}
+            >
+              {levelLabel}
+            </span>
           </div>
           {permError && (
             <p style={{ ...fieldHint, color: "var(--ec-danger)" }}>{permError}</p>
+          )}
+          {outputError && (
+            <p style={{ ...fieldHint, color: "var(--ec-danger)" }}>{outputError}</p>
           )}
         </div>
       </section>
@@ -608,15 +812,15 @@ export function VoiceSettingsModal({ onClose }: Props) {
           </p>
           <button
             type="button"
-            onClick={() => {
-              if (
-                window.confirm(
-                  "Сбросить все голосовые настройки? Это удалит выбранные устройства, " +
-                    "режим активации (PTT/VAD), индивидуальные громкости участников.",
-                )
-              ) {
-                resetSettings();
-              }
+            onClick={async () => {
+              const ok = await confirm({
+                title: "Сбросить голосовые настройки?",
+                message:
+                  "Выбранные устройства, режим активации (PTT/VAD) и индивидуальные громкости участников вернутся к умолчаниям.",
+                confirmLabel: "Сбросить",
+                danger: true,
+              });
+              if (ok) resetSettings();
             }}
             className="ec-btn ec-btn--ghost ec-btn--sm ec-press"
             style={{

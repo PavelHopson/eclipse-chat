@@ -299,7 +299,7 @@ input[type="radio"]:focus-visible {
 .ec-channel-category__header {
   position: relative;
   display: grid;
-  grid-template-columns: 14px minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 6px;
   width: 100%;
@@ -327,6 +327,26 @@ input[type="radio"]:focus-visible {
   outline-offset: -2px;
 }
 
+.ec-channel-category__toggle {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.ec-channel-category__toggle:focus-visible {
+  outline: 2px solid var(--ec-border-accent);
+  outline-offset: 3px;
+  border-radius: var(--ec-radius-xs);
+}
+
 .ec-channel-category__chevron {
   display: inline-grid;
   place-items: center;
@@ -338,7 +358,7 @@ input[type="radio"]:focus-visible {
   transition: transform 180ms var(--ec-ease);
 }
 
-.ec-channel-category__header[aria-expanded="false"] .ec-channel-category__chevron {
+.ec-channel-category__toggle[aria-expanded="false"] .ec-channel-category__chevron {
   transform: rotate(0deg);
 }
 
@@ -364,28 +384,57 @@ input[type="radio"]:focus-visible {
   text-align: center;
 }
 
+.ec-channel-category__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  opacity: 0.58;
+  transition:
+    opacity 160ms var(--ec-ease),
+    transform 160ms var(--ec-ease);
+  transform: none;
+}
+
+.ec-channel-category__header:hover .ec-channel-category__actions,
+.ec-channel-category__header:focus-within .ec-channel-category__actions {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.ec-channel-category__action,
 .ec-channel-category__add {
   display: inline-grid;
   place-items: center;
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
+  border: 1px solid transparent;
   border-radius: var(--ec-radius-sm);
+  background: transparent;
   color: var(--ec-text-dim);
-  opacity: 0;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
   transition:
-    opacity 160ms var(--ec-ease),
     background 160ms var(--ec-ease),
-    color 160ms var(--ec-ease);
+    border-color 160ms var(--ec-ease),
+    color 160ms var(--ec-ease),
+    transform 160ms var(--ec-ease);
 }
 
-.ec-channel-category__header:hover .ec-channel-category__add,
-.ec-channel-category__add:focus-visible {
-  opacity: 1;
-}
-
+.ec-channel-category__action:hover,
+.ec-channel-category__action:focus-visible,
 .ec-channel-category__add:hover {
-  background: var(--ec-accent-soft);
+  background: color-mix(in srgb, var(--ec-accent) 14%, transparent);
+  border-color: color-mix(in srgb, var(--ec-accent) 30%, transparent);
   color: var(--ec-accent);
+  transform: translateY(-1px);
+}
+
+.ec-channel-category__action--danger:hover,
+.ec-channel-category__action--danger:focus-visible {
+  background: color-mix(in srgb, var(--ec-danger) 13%, transparent);
+  border-color: color-mix(in srgb, var(--ec-danger) 32%, transparent);
+  color: var(--ec-danger);
 }
 
 .ec-channel-category__body {
@@ -500,6 +549,14 @@ input[type="radio"]:focus-visible {
   background: color-mix(in srgb, var(--ec-accent) 8%, transparent);
 }
 
+.ec-server-header-trigger[aria-expanded="true"] {
+  border-color: color-mix(in srgb, var(--ec-accent) 28%, var(--ec-border-default));
+  background: color-mix(in srgb, var(--ec-accent) 10%, var(--ec-surface-3));
+  box-shadow:
+    inset 3px 0 0 color-mix(in srgb, var(--ec-accent) 72%, transparent),
+    0 10px 28px -22px hsl(258 86% 62% / 0.62);
+}
+
 .ec-server-header-chevron {
   color: var(--ec-text-dim);
   flex-shrink: 0;
@@ -523,10 +580,15 @@ input[type="radio"]:focus-visible {
 
 .ec-server-actions-menu {
   position: fixed;
-  z-index: 1300;
+  z-index: 1400;
   max-height: min(78vh, 520px);
   padding: 7px;
   overflow-y: auto;
+}
+
+.ec-server-actions-menu--inline {
+  position: absolute;
+  max-height: min(70vh, 560px);
 }
 
 .ec-server-actions-menu__item {
@@ -586,6 +648,294 @@ input[type="radio"]:focus-visible {
   font-weight: 700;
   text-align: center;
   box-shadow: 0 8px 22px -14px hsl(258 86% 44% / 0.65);
+}
+
+/* v1.5.76 shell IA cleanup — duplicated in always-loaded CSS so the topbar,
+   workspace switcher and server menu never depend on lazy clean-ui chunks. */
+.ec-shell__cmdbar {
+  min-height: 46px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--ec-surface-2) 72%, transparent), var(--ec-surface-1));
+  border-bottom: 1px solid color-mix(in srgb, var(--ec-accent) 16%, var(--ec-border-subtle));
+}
+
+.ec-shell__top-actions {
+  gap: 8px;
+}
+
+.ec-shell__top-actions .ec-theme-toggle,
+.ec-shell__user-chip,
+.ec-logout-btn {
+  min-height: 32px;
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 10%, var(--ec-border-subtle));
+  background: color-mix(in srgb, var(--ec-surface-2) 86%, transparent);
+  box-shadow: none;
+}
+
+.ec-shell__user-chip {
+  padding: 2px 10px 2px 3px;
+  font-weight: 650;
+}
+
+.ec-topbar-sep {
+  width: 1px;
+  height: 24px;
+  margin: 0 2px;
+  background: var(--ec-border-subtle);
+}
+
+.ec-srv-trigger {
+  height: 34px;
+  max-width: 220px;
+  border-color: color-mix(in srgb, var(--ec-accent) 18%, var(--ec-border-subtle));
+  background: color-mix(in srgb, var(--ec-surface-2) 90%, transparent);
+}
+
+.ec-srv-panel {
+  width: 252px;
+  padding: 6px;
+  gap: 1px;
+  background: var(--ec-surface-2);
+  border-color: color-mix(in srgb, var(--ec-accent) 18%, var(--ec-border-default));
+  border-radius: var(--ec-radius-lg);
+  box-shadow: var(--ec-shadow-modal);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.ec-srv-menu-row {
+  min-height: 36px;
+  padding: 7px 9px;
+  border-radius: var(--ec-radius-md);
+  font-weight: 650;
+}
+
+.ec-srv-menu-row:hover {
+  transform: translateX(1px);
+}
+
+.ec-server-actions-menu.ec-popover-surface {
+  width: min(260px, calc(100vw - 20px)) !important;
+  max-height: min(62vh, 430px);
+  padding: 6px;
+  border-radius: var(--ec-radius-lg);
+}
+
+.ec-server-actions-menu__item {
+  min-height: 36px;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 7px 9px;
+  border-radius: var(--ec-radius-md);
+  justify-content: initial;
+  text-align: left;
+}
+
+.ec-server-actions-menu--inline .ec-server-actions-menu__item {
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+}
+
+.ec-server-actions-menu--inline .ec-server-actions-menu__item:hover,
+.ec-server-actions-menu--inline .ec-server-actions-menu__item:focus-visible {
+  border-color: color-mix(in srgb, var(--ec-accent) 16%, transparent);
+  background: color-mix(in srgb, var(--ec-accent) 9%, var(--ec-surface-3));
+}
+
+.ec-server-actions-menu__icon {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--ec-radius-sm);
+  color: var(--ec-text-muted);
+  background: color-mix(in srgb, var(--ec-accent) 7%, var(--ec-surface-1));
+}
+
+.ec-server-actions-menu__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ec-server-actions-menu__item:hover .ec-server-actions-menu__icon,
+.ec-server-actions-menu__item:focus-visible .ec-server-actions-menu__icon {
+  color: var(--ec-accent);
+  background: var(--ec-accent-soft);
+}
+
+.ec-server-actions-menu__item--danger .ec-server-actions-menu__icon {
+  color: var(--ec-danger);
+  background: var(--ec-danger-soft);
+}
+
+.ec-server-actions-menu.ec-server-actions-menu--inline {
+  position: static;
+  width: auto !important;
+  min-width: 0;
+  max-height: min(58vh, 520px);
+  margin-top: 10px;
+  border-color: color-mix(in srgb, var(--ec-accent) 18%, var(--ec-border-default));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--ec-surface-3) 82%, transparent), var(--ec-surface-2)),
+    radial-gradient(circle at 18% 0%, color-mix(in srgb, var(--ec-accent) 12%, transparent), transparent 46%);
+  box-shadow:
+    0 18px 42px -28px hsl(258 86% 62% / 0.5),
+    inset 0 1px 0 hsl(0 0% 100% / 0.04);
+}
+
+.ec-server-actions-menu__divider {
+  margin: 7px 4px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--ec-accent) 16%, var(--ec-border-subtle)),
+    transparent
+  );
+}
+
+.ec-channel-list__server-btn {
+  min-height: 44px;
+}
+
+.ec-channel-list__header {
+  border-bottom: 1px solid var(--ec-border-subtle);
+}
+
+/* v1.5.78 rail polish: the sidebar is navigation, not another hero.
+   Banner identity stays in the guide; the rail header must remain compact
+   across every lazy-loaded route/chunk. */
+.ec-channel-list__header--banner {
+  min-height: 0;
+  padding: 10px 12px;
+  background-image: none !important;
+}
+
+.ec-channel-list__header--banner::before {
+  display: none;
+}
+
+.ec-channel-list__header--banner .ec-channel-list__server-btn,
+.ec-channel-list__header--banner svg {
+  color: inherit;
+  filter: none;
+}
+
+.ec-channel-list__header--banner .ec-channel-list__server-name {
+  color: var(--ec-text-strong);
+  text-shadow: none;
+}
+
+.ec-channel-list__header--banner .ec-badge {
+  background: var(--ec-surface-3);
+  color: var(--ec-text);
+  border-color: var(--ec-border-subtle);
+  text-shadow: none;
+}
+
+.ec-channel-list__server-btn {
+  min-height: 40px;
+  padding: 6px 8px;
+  margin: 0;
+  border-radius: var(--ec-radius-md);
+}
+
+.ec-channel-list__server-name {
+  font-size: var(--ec-text-base);
+  letter-spacing: 0;
+}
+
+.ec-sidebar-tabs {
+  margin: 0 8px;
+  padding: 6px 0 0;
+  border-bottom: 1px solid var(--ec-border-subtle);
+}
+
+.ec-sidebar-tab {
+  min-height: 34px;
+  padding: 0 7px 8px;
+  letter-spacing: 0.06em;
+  opacity: 0.72;
+}
+
+.ec-sidebar-tab[aria-selected="true"] {
+  opacity: 1;
+}
+
+.ec-channel-list__list {
+  padding: 8px 8px 10px;
+  gap: 3px;
+}
+
+.ec-channel-category-stack {
+  gap: 2px;
+}
+
+.ec-channel-category__header {
+  min-height: 30px;
+  padding: 5px 7px;
+}
+
+.ec-channel-category__name {
+  font-size: 0.68rem;
+  letter-spacing: 0.055em;
+}
+
+.ec-channel-category__body {
+  padding-left: 2px;
+}
+
+.ec-channel-item {
+  min-height: 34px;
+  padding: 6px 8px;
+  border-radius: var(--ec-radius-md);
+}
+
+.ec-channel-item:hover {
+  background: color-mix(in srgb, var(--ec-accent) 7%, var(--ec-surface-2));
+  border-color: transparent;
+  transform: translateX(1px);
+}
+
+.ec-channel-item--active {
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--ec-accent) 20%, transparent), transparent 72%),
+    var(--ec-surface-2);
+  border-color: color-mix(in srgb, var(--ec-accent) 34%, var(--ec-border-default));
+  box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.05);
+}
+
+.ec-channel-item--active::before {
+  height: 18px;
+  margin-left: -6px;
+  margin-right: 4px;
+  box-shadow: 0 0 12px hsl(258 90% 66% / 0.55);
+}
+
+.ec-channel-category-create {
+  min-height: 34px;
+  margin: 8px 4px 0;
+  width: calc(100% - 8px);
+  background: transparent;
+  color: var(--ec-text-muted);
+}
+
+.ec-channel-list__composer {
+  padding: 8px;
+  background: color-mix(in srgb, var(--ec-surface-2) 58%, transparent);
+}
+
+.ec-channel-list__composer .ec-btn {
+  min-height: 34px;
+  width: 100%;
+  border-radius: var(--ec-radius-md);
+  font-size: var(--ec-text-xs);
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .ec-badge {
@@ -751,9 +1101,9 @@ input[type="radio"]:focus-visible {
 }
 
 .ec-channel-item:hover {
-  background: hsl(214 28% 13% / 0.64);
+  background: var(--ec-surface-3);
   color: var(--ec-text);
-  border-color: hsl(225 14% 72% / 0.08);
+  border-color: var(--ec-border-subtle);
   /* v0.38: subtle slide-right hint вЂ” channel item В«СЂРµР°РіРёСЂСѓРµС‚В» РЅР° РєСѓСЂСЃРѕСЂ */
   transform: translateX(2px);
 }
@@ -791,6 +1141,27 @@ input[type="radio"]:focus-visible {
   margin-right: 6px;
   flex-shrink: 0;
   animation: ec-channel-rail-breath 4.4s ease-in-out infinite;
+}
+
+/* v1.6.43 de-noise: спокойный channel-item. Active без violet->cyan градиента
+   и мульти-halo; убраны hover-slide, hover-halo (::after), glow+infinite-pulse
+   на active-рейле. Функциональный active-индикатор сохранён: accent-tint bg +
+   бордер + сплошной рейл. */
+.ec-channel-item:hover,
+.ec-channel-item:active {
+  transform: none;
+}
+.ec-channel-item::after {
+  display: none;
+}
+.ec-channel-item--active {
+  background: hsl(258 70% 60% / 0.12);
+  border-color: hsl(258 70% 66% / 0.22);
+  box-shadow: none;
+}
+.ec-channel-item--active::before {
+  box-shadow: none;
+  animation: none;
 }
 
 .ec-channel-glyph {
@@ -1178,7 +1549,7 @@ input[type="radio"]:focus-visible {
   padding: var(--ec-space-4);
   border: 1px solid var(--ec-border-subtle);
   border-radius: var(--ec-radius-md);
-  background: hsl(222 18% 8% / 0.7);
+  background: var(--ec-surface-2);
 }
 
 .ec-home__stats strong {
@@ -1216,7 +1587,7 @@ input[type="radio"]:focus-visible {
   padding: var(--ec-space-4);
   border: 1px solid var(--ec-border-subtle);
   border-radius: var(--ec-radius-md);
-  background: hsl(222 18% 8% / 0.72);
+  background: var(--ec-surface-2);
   color: var(--ec-text);
   text-align: left;
   transition:
@@ -1479,40 +1850,24 @@ input[type="radio"]:focus-visible {
   /* v1.5.11 — triple-layer background: radial violet aura at left
    * + radial cyan at right + base depth. Top holo rail (cyan→violet)
    * через ::before — единый design language с modal-header/popover. */
-  background:
-    radial-gradient(120% 80% at 0% 0%, hsl(258 86% 55% / 0.08), transparent 50%),
-    radial-gradient(110% 70% at 100% 100%, hsl(180 70% 55% / 0.05), transparent 45%),
-    linear-gradient(180deg, hsl(216 24% 7% / 0.84), hsl(216 24% 5% / 0.74));
+  /* v1.6.45 de-noise: убраны violet+cyan radial-ауры — плоская подложка. */
+  background: linear-gradient(180deg, hsl(216 24% 7% / 0.84), hsl(216 24% 5% / 0.74));
   backdrop-filter: blur(18px) saturate(130%);
   -webkit-backdrop-filter: blur(18px) saturate(130%);
   border-bottom-color: color-mix(in srgb, var(--ec-accent) 12%, hsl(225 14% 72% / 0.08));
-  box-shadow:
-    0 16px 38px hsl(210 70% 2% / 0.22),
-    inset 0 -1px 0 hsl(258 86% 62% / 0.06);
+  /* v1.6.45 de-noise: убран violet inset-glow. v1.6.92: тень мягче (была
+     38px-«ореол» на топбаре, который должен быть рецессивен к контенту). */
+  box-shadow: 0 8px 20px hsl(210 70% 2% / 0.12);
 }
-/* v1.5.11 — top accent rail (cyan→violet bridge gradient, static). */
+/* v1.6.45 de-noise: holo-рейл на chat-header убран. */
 .ec-chat-header::before {
-  content: "";
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    hsl(180 70% 65% / 0.35) 30%,
-    hsl(258 86% 72% / 0.55) 55%,
-    hsl(258 70% 60% / 0.25) 75%,
-    transparent 100%
-  );
-  pointer-events: none;
+  display: none;
 }
 
 .ec-shell__chat {
   position: relative;
-  background:
-    radial-gradient(ellipse 40rem 26rem at 62% 4%, hsl(225 14% 60% / 0.045), transparent 62%),
-    radial-gradient(ellipse 36rem 30rem at 96% 86%, hsl(252 70% 60% / 0.045), transparent 64%),
-    linear-gradient(180deg, hsl(216 24% 5% / 0.72), hsl(216 24% 4% / 0.94));
+  /* v1.6.45 de-noise: убраны radial-ауры фона чата — плоская подложка. */
+  background: linear-gradient(180deg, hsl(216 24% 5% / 0.72), hsl(216 24% 4% / 0.94));
 }
 
 .ec-message-list {
@@ -1536,7 +1891,6 @@ input[type="radio"]:focus-visible {
   font-weight: 800;
   letter-spacing: var(--ec-tracking-caps);
   text-transform: uppercase;
-  text-shadow: 0 0 16px hsl(258 86% 62% / 0.32);
 }
 
 .ec-unread-divider::before,
@@ -1630,18 +1984,16 @@ input[type="radio"]:focus-visible {
    СЃРїРѕРєРѕР№РЅС‹Рј surface-tint'РѕРј; С…Р°СЂР°РєС‚РµСЂ Р¶РёРІС‘С‚ РІ action-toolbar Рё РєРЅРѕРїРєР°С….
    Theme-aware С‚РѕРєРµРЅ вЂ” РєРѕСЂСЂРµРєС‚РЅРѕ РІ VOID Рё SOLAR. */
 .ec-message-row:hover {
-  background: var(--ec-surface-1);
+  background: color-mix(in srgb, var(--ec-surface-1) 48%, transparent);
 }
 
 .ec-message-actions {
-  background:
-    linear-gradient(180deg, hsl(214 28% 13% / 0.94), hsl(214 28% 9% / 0.94)) !important;
-  border-color: hsl(225 14% 72% / 0.12) !important;
-  box-shadow:
-    var(--ec-shadow-md),
-    0 0 18px hsl(225 14% 60% / 0.08) !important;
-  backdrop-filter: blur(14px) saturate(140%);
-  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  /* v1.6.91 — токен-фон (корректно в SOLAR) + убраны лишний glow и
+     backdrop-filter (фон непрозрачный → блюр почти не виден, но стоил
+     compositing-слоя на каждой строке). */
+  background: var(--ec-surface-2) !important;
+  border-color: var(--ec-border-default) !important;
+  box-shadow: var(--ec-shadow-md) !important;
 }
 
 .ec-video-attachment-grid,
@@ -2096,44 +2448,22 @@ input[type="radio"]:focus-visible {
   overflow: hidden;
   /* v1.1.61 redesign §9 — полупрозрачный glass-composer.
    * v1.5.8 — добавлено: top accent rail, multi-shadow violet undertone. */
-  background:
-    radial-gradient(circle at 0% 0%, hsl(258 90% 66% / 0.09), transparent 50%),
-    radial-gradient(circle at 100% 100%, hsl(180 70% 55% / 0.05), transparent 45%),
-    hsl(216 24% 10% / 0.62) !important;
-  backdrop-filter: blur(20px) saturate(140%);
-  -webkit-backdrop-filter: blur(20px) saturate(140%);
-  border-color: hsl(225 14% 72% / 0.10) !important;
-  box-shadow:
-    inset 0 1px 0 hsl(0 0% 100% / 0.04),
-    0 14px 36px -10px hsl(210 70% 2% / 0.50),
-    0 4px 14px -10px hsl(258 86% 40% / 0.30);
+  /* v1.6.93 де-нойз: убраны violet+cyan радиалы, holo-rail и blur — фон стал
+     непрозрачным токеном (корректно в SOLAR, проще, дешевле для WebView). */
+  background: var(--ec-surface-2) !important;
+  border-color: var(--ec-border-default) !important;
+  box-shadow: var(--ec-shadow-md);
 }
-/* v1.5.8 — top holo rail (statically present); intensifies на focus-within. */
+/* v1.6.93 де-нойз: holo-rail (cyan→violet) убран. */
 .ec-composer-box::before {
-  content: "";
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    hsl(180 70% 65% / 0.30) 30%,
-    hsl(258 86% 72% / 0.55) 55%,
-    hsl(258 70% 60% / 0.25) 75%,
-    transparent 100%
-  );
-  pointer-events: none;
-  opacity: 0.6;
-  transition: opacity var(--ec-dur-base) var(--ec-ease);
+  display: none;
 }
 
 /* Focus — мягкое свечение + усиление holo rail. */
 .ec-composer-box:focus-within {
-  border-color: hsl(258 90% 66% / 0.38) !important;
-  box-shadow:
-    0 0 26px -2px hsl(258 90% 66% / 0.35),
-    inset 0 1px 0 hsl(0 0% 100% / 0.06),
-    0 8px 28px -12px hsl(258 86% 40% / 0.50) !important;
+  /* v1.6.93 — чистое акцентное кольцо вместо тройного glow. */
+  border-color: var(--ec-border-accent) !important;
+  box-shadow: 0 0 0 2px var(--ec-accent-soft) !important;
 }
 .ec-composer-box:focus-within::before {
   opacity: 1;
@@ -2212,10 +2542,10 @@ input[type="radio"]:focus-visible {
 
 .ec-composer-send {
   position: relative;
-  background:
-    radial-gradient(circle at 30% 30%, hsl(258 86% 72%), hsl(258 86% 52%)) !important;
-  border-color: hsl(258 74% 62% / 0.7) !important;
-  color: hsl(0 0% 100%) !important;
+  /* v1.6.93 — токен-акцент (следует brandColor сервера) + off-white текст. */
+  background: var(--ec-accent) !important;
+  border-color: var(--ec-accent) !important;
+  color: var(--ec-accent-text) !important;
   box-shadow:
     0 10px 24px -6px hsl(258 80% 38% / 0.45),
     inset 0 1px 0 hsl(0 0% 100% / 0.22),
@@ -2478,58 +2808,6 @@ input[type="radio"]:focus-visible {
  * E: Quick actions ripple + magnetic
  */
 
-/* --- A: Sparkline в pill ---------------------------------------- */
-.ec-sparkline {
-  display: inline-block;
-  vertical-align: middle;
-  margin-left: 8px;
-  opacity: 0.85;
-  transition: opacity var(--ec-dur-fast) var(--ec-ease);
-}
-.ec-telemetry-pill:hover .ec-sparkline {
-  opacity: 1;
-}
-.ec-sparkline--empty {
-  background:
-    repeating-linear-gradient(
-      90deg,
-      currentColor 0,
-      currentColor 1px,
-      transparent 1px,
-      transparent 4px
-    );
-  opacity: 0.2;
-  border-radius: 1px;
-}
-
-/* --- A: Network wave (3 cyan bars) ------------------------------ */
-.ec-net-wave {
-  display: inline-flex;
-  align-items: flex-end;
-  gap: 2px;
-  height: 10px;
-  margin-left: 8px;
-  vertical-align: middle;
-}
-.ec-net-wave__bar {
-  width: 2px;
-  background: currentColor;
-  border-radius: 1px;
-  opacity: 0.5;
-  height: 3px;
-}
-.ec-net-wave.is-active .ec-net-wave__bar {
-  animation: ec-net-wave-bar 1.2s ease-in-out infinite;
-}
-.ec-net-wave.is-active .ec-net-wave__bar:nth-child(1) { animation-delay: 0ms; }
-.ec-net-wave.is-active .ec-net-wave__bar:nth-child(2) { animation-delay: 120ms; }
-.ec-net-wave.is-active .ec-net-wave__bar:nth-child(3) { animation-delay: 240ms; }
-.ec-net-wave.is-active .ec-net-wave__bar:nth-child(4) { animation-delay: 360ms; }
-@keyframes ec-net-wave-bar {
-  0%, 100% { height: 3px; opacity: 0.5; }
-  50%      { height: 10px; opacity: 1; }
-}
-
 /* --- C: DM row premium hover ------------------------------------ */
 .ec-dm-row {
   position: relative;
@@ -2702,14 +2980,29 @@ input[type="radio"]:focus-visible {
 .ec-friends-view {
   flex: 1;
   min-height: 0;
+  min-width: 0;
   overflow: auto;
   padding: var(--ec-space-5);
   display: flex;
   flex-direction: column;
   gap: var(--ec-space-4);
-  background:
-    radial-gradient(circle at 14% 0%, hsl(258 86% 58% / 0.12), transparent 34%),
-    var(--ec-surface-0);
+  /* v1.6.41 de-noise: убрана violet-аура фона view. */
+  background: var(--ec-surface-0);
+}
+/* v1.6.38 — bounded readable column: на широких экранах список друзей не
+   растягивается во всю ширину, иначе actions уезжают к дальнему краю с
+   огромным пустым промежутком. На mobile max-width > viewport → просто 100%. */
+.ec-friends-view__hero,
+.ec-friends-tabs,
+.ec-friends-view__sections,
+.ec-friend-load-error,
+.ec-friend-form-error {
+  width: 100%;
+  max-width: 60rem;
+  margin-inline: auto;
+}
+.ec-friends-view__hero > div {
+  min-width: 0;
 }
 .ec-friends-view__hero {
   position: relative;
@@ -2719,15 +3012,11 @@ input[type="radio"]:focus-visible {
   justify-content: space-between;
   gap: var(--ec-space-4);
   padding: var(--ec-space-5);
-  border: 1px solid color-mix(in srgb, var(--ec-accent) 22%, var(--ec-border-default));
+  border: 1px solid var(--ec-border-default);
   border-radius: var(--ec-radius-lg);
-  background:
-    radial-gradient(circle at 0% 0%, hsl(258 86% 62% / 0.16), transparent 42%),
-    var(--ec-overlay-bg);
-  box-shadow:
-    var(--ec-elev-2),
-    0 24px 60px -34px hsl(258 86% 35% / 0.55),
-    0 0 0 1px hsl(258 86% 62% / 0.08) inset;
+  /* v1.6.41 de-noise: плоская поверхность вместо violet-ауры; одна чистая тень. */
+  background: var(--ec-overlay-bg);
+  box-shadow: var(--ec-elev-1);
 }
 .ec-friends-view__hero h2 {
   margin: 0;
@@ -2740,6 +3029,7 @@ input[type="radio"]:focus-visible {
   margin: var(--ec-space-1) 0 0;
   color: var(--ec-text-muted);
   font-size: var(--ec-text-sm);
+  overflow-wrap: anywhere;
 }
 .ec-friends-view__eyebrow {
   display: inline-flex;
@@ -2890,6 +3180,25 @@ input[type="radio"]:focus-visible {
   height: 1px;
   flex: 1;
   background: var(--ec-border-subtle);
+}
+/* v1.6.38 — reduced-motion: EC полагается на zeroing --ec-dur-* токенов, но
+   эти анимации/переходы используют hardcoded длительности (220-280ms) +
+   бесконечный pulse на __dot → токен-zeroing их НЕ глушит. Глушим явно. */
+@media (prefers-reduced-motion: reduce) {
+  .ec-friends-tab__dot,
+  .ec-friends-tab__dot::after {
+    animation: none;
+  }
+  .ec-friends-tab,
+  .ec-friends-tab::after,
+  .ec-friend-row,
+  .ec-friend-row::before {
+    transition-duration: 1ms;
+  }
+  .ec-friend-row:hover,
+  .ec-friend-row:focus-visible {
+    transform: none;
+  }
 }
 .ec-friend-row {
   position: relative;
@@ -3160,7 +3469,6 @@ input[type="radio"]:focus-visible {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ec-net-wave__bar,
   .ec-dm-row,
   .ec-dm-row__badge,
   .ec-dm-row__badge::after,
@@ -3174,8 +3482,7 @@ input[type="radio"]:focus-visible {
   .ec-friends-tab__dot::after,
   .ec-friend-row,
   .ec-home-quick-actions .ec-btn,
-  .ec-home-quick-actions .ec-btn::after,
-  .ec-sparkline circle animate {
+  .ec-home-quick-actions .ec-btn::after {
     animation: none !important;
     transition: none !important;
   }
@@ -3347,6 +3654,10 @@ input[type="radio"]:focus-visible {
   gap: var(--ec-space-1);
   margin-left: auto;
   flex-shrink: 0;
+}
+
+.ec-shell__top-actions > .ec-icon-btn {
+  display: none;
 }
 
 /* Р›РѕРєР°С†РёСЏ вЂ” СЃРїРѕРєРѕР№РЅС‹Р№ Р»РµР№Р±Р» В«РіРґРµ СЏВ» РІ cmdbar (Р·Р°РјРµРЅРёР» sci-fi
@@ -3777,7 +4088,16 @@ input[type="radio"]:focus-visible {
 }
 .ec-channel-list__header {
   position: relative;
+  z-index: 20;
+  overflow: visible;
   padding: var(--ec-space-3) var(--ec-space-4);
+}
+
+.ec-channel-list__header--menu-open {
+  z-index: 30;
+  border-bottom-color: color-mix(in srgb, var(--ec-accent) 18%, var(--ec-border-subtle));
+  /* v1.6.43 de-noise: убрана violet radial-аура в open-состоянии хедера. */
+  background: linear-gradient(180deg, color-mix(in srgb, var(--ec-surface-2) 92%, transparent), var(--ec-surface-1));
 }
 
 /* v1.5.55 D3 frontend — Server lock badge в channel-list header.
@@ -4387,6 +4707,7 @@ input[type="radio"]:focus-visible {
   height: 26px;
   display: grid;
   place-items: center;
+  position: relative;
   background: transparent;
   border: 0;
   border-radius: var(--ec-radius-sm);
@@ -4418,6 +4739,35 @@ input[type="radio"]:focus-visible {
 .ec-msg-action--warn:hover {
   background: color-mix(in srgb, var(--ec-warn) 14%, transparent);
   color: var(--ec-warn);
+}
+.ec-msg-action--pin::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 4px;
+  width: 16px;
+  height: 5px;
+  border-radius: 999px / 60%;
+  background: color-mix(in srgb, var(--ec-warn) 22%, var(--ec-surface-sunken));
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--ec-text-strong) 10%, transparent),
+    0 0 12px -5px var(--ec-warn);
+  opacity: 0;
+  transform: translateX(-50%) scale(0.2);
+  pointer-events: none;
+}
+.ec-msg-action--pin.is-bursting {
+  color: var(--ec-warn);
+  background: color-mix(in srgb, var(--ec-warn) 12%, transparent);
+  animation: ec-pin-burst-button 820ms var(--ec-ease-out) both;
+}
+.ec-msg-action--pin.is-bursting::before {
+  animation: ec-pin-burst-hole 520ms var(--ec-ease-out) both;
+}
+.ec-msg-action--pin.is-bursting svg {
+  transform-origin: 50% 55%;
+  animation: ec-pin-burst-icon 820ms var(--ec-ease-out) both;
+  filter: drop-shadow(0 0 7px color-mix(in srgb, var(--ec-warn) 45%, transparent));
 }
 .ec-msg-action--danger { color: var(--ec-danger); }
 .ec-msg-action--danger:hover {
@@ -5440,14 +5790,8 @@ input[type="radio"]:focus-visible {
   /* v1.5.5 — двойной слой: violet aura at center + base darkness.
    * Aura не съедает читаемость модалки (низкая opacity), но добавляет
    * cinematic depth — модалка «висит в свете», а не в чёрной пустоте. */
-  background:
-    radial-gradient(
-      ellipse at center,
-      hsl(258 86% 55% / 0.10) 0%,
-      hsl(258 86% 30% / 0.04) 30%,
-      transparent 65%
-    ),
-    rgba(0, 0, 0, 0.58);
+  /* v1.6.94 де-нойз: убрана violet-аура — просто затемнение фона. */
+  background: rgba(0, 0, 0, 0.58);
   backdrop-filter: saturate(140%) blur(10px);
   -webkit-backdrop-filter: saturate(140%) blur(10px);
   animation: ec-modal-backdrop-in var(--ec-dur-base) var(--ec-ease) both;
@@ -5458,15 +5802,13 @@ input[type="radio"]:focus-visible {
   position: relative;
   display: flex;
   flex-direction: column;
-  max-height: min(calc(100dvh - 64px), 92vh);
+  max-height: min(920px, calc(100dvh - 32px));
   overflow: hidden;
   background: var(--ec-overlay-bg);
-  border: 1px solid color-mix(in srgb, var(--ec-accent) 22%, var(--ec-border-default));
+  border: 1px solid var(--ec-border-default);
   border-radius: var(--ec-radius-lg);
-  box-shadow:
-    var(--ec-shadow-modal),
-    0 0 0 1px hsl(258 86% 62% / 0.10) inset,
-    0 30px 70px -22px hsl(258 86% 35% / 0.45);
+  /* v1.6.42 de-noise: одна чистая modal-тень, без violet inset/drop glow. */
+  box-shadow: var(--ec-shadow-modal);
   backdrop-filter: saturate(180%) blur(20px);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
   transform-origin: center top;
@@ -5482,23 +5824,10 @@ input[type="radio"]:focus-visible {
 
 /* v1.5.5 — modal-header holo-edge: override 1px cyan baseline на
  * cyan→violet gradient + однопроходной sweep при открытии модалки. */
+/* v1.6.41 de-noise: modal-open holo-sweep убран (декоративный cyan->violet
+   проход по верхней кромке модалки). */
 .ec-modal-header.ec-holo-edge::before {
-  height: 1px;
-  background:
-    linear-gradient(
-      90deg,
-      transparent 0%,
-      hsl(180 70% 65% / 0.0) 30%,
-      hsl(180 70% 75% / 0.95) 48%,
-      hsl(258 86% 75% / 0.95) 52%,
-      hsl(258 70% 60% / 0.0) 70%,
-      transparent 100%
-    ),
-    var(--ec-holo-cyan);
-  background-size: 220% 100%, 100% 100%;
-  background-repeat: no-repeat;
-  background-position: -120% 0, 0 0;
-  animation: ec-modal-holo-sweep 1.6s ease-out 120ms both;
+  display: none;
 }
 
 /* v1.5.5 — close button polish: hover halo + X rotate */
@@ -5512,7 +5841,6 @@ input[type="radio"]:focus-visible {
 .ec-modal-close:hover {
   color: var(--ec-accent);
   background: var(--ec-accent-soft);
-  box-shadow: 0 0 14px -4px hsl(258 86% 62% / 0.55);
   transform: rotate(90deg);
 }
 .ec-modal-close:active {
@@ -5534,8 +5862,10 @@ input[type="radio"]:focus-visible {
   display: flex;
   flex-direction: column;
   gap: var(--ec-space-4);
+  min-height: 0;
   padding: var(--ec-space-5);
   overflow: auto;
+  overscroll-behavior: contain;
 }
 
 .ec-channel-icon-picker {
@@ -5654,22 +5984,10 @@ input[type="radio"]:focus-visible {
 
 /* v1.5.5 — mirror тонкой accent линии у footer (без анимации, в
  * pair с holo-edge у header). Сохраняет visual rhythm overlay'я. */
+/* v1.6.95 де-нойз: декоративный cyan→violet градиент футера убран
+   (border-top футера уже разделяет). */
 .ec-modal-footer::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  pointer-events: none;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    hsl(258 86% 62% / 0.18) 30%,
-    hsl(180 70% 65% / 0.22) 50%,
-    hsl(258 86% 62% / 0.18) 70%,
-    transparent 100%
-  );
+  display: none;
 }
 
 /* --- ChannelInfoPanel (РІС‹РµР·Р¶Р°РµС‚ РёР· chat-header) -------------- */
@@ -5774,12 +6092,10 @@ input[type="radio"]:focus-visible {
   flex-direction: column;
   overflow: hidden;
   background: var(--ec-overlay-bg);
-  border: 1px solid color-mix(in srgb, var(--ec-accent) 22%, var(--ec-border-default));
+  border: 1px solid var(--ec-border-default);
   border-radius: var(--ec-radius-lg);
-  box-shadow:
-    var(--ec-shadow-modal),
-    0 0 0 1px hsl(258 86% 62% / 0.10) inset,
-    0 30px 70px -22px hsl(258 86% 35% / 0.45);
+  /* v1.6.42 de-noise: одна чистая modal-тень, без violet inset/drop glow. */
+  box-shadow: var(--ec-shadow-modal);
   backdrop-filter: saturate(180%) blur(20px);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
   transform-origin: center top;
@@ -5977,6 +6293,194 @@ input[type="radio"]:focus-visible {
   background: var(--ec-accent-soft);
   color: var(--ec-accent);
 }
+.ec-command-palette {
+  padding: var(--ec-space-3) var(--ec-space-3) var(--ec-space-2);
+  border-bottom: 1px solid var(--ec-border-subtle);
+  background:
+    radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--ec-accent) 12%, transparent), transparent 38%),
+    color-mix(in srgb, var(--ec-surface-1) 88%, transparent);
+}
+.ec-command-palette__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ec-space-3);
+  margin-bottom: var(--ec-space-2);
+  color: var(--ec-text-dim);
+  font-family: var(--ec-font-mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.ec-command-palette__head span:last-child {
+  color: var(--ec-text-muted);
+  font-weight: 600;
+}
+.ec-command-palette__groups {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ec-space-3);
+}
+.ec-command-palette__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ec-space-2);
+}
+.ec-command-palette__group-title,
+.ec-command-palette__footer {
+  color: var(--ec-text-muted);
+  font-family: var(--ec-font-mono);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.ec-command-palette__group-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ec-space-2);
+  padding-left: 2px;
+}
+.ec-command-palette__group--recent .ec-command-palette__group-title {
+  color: color-mix(in srgb, var(--ec-accent) 65%, var(--ec-text-muted));
+}
+.ec-command-palette__clear {
+  min-height: 24px;
+  padding: 0 var(--ec-space-2);
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 22%, transparent);
+  border-radius: var(--ec-radius-sm);
+  background: color-mix(in srgb, var(--ec-accent) 8%, transparent);
+  color: var(--ec-text-muted);
+  font: inherit;
+  font-size: 0.56rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.ec-command-palette__clear:hover,
+.ec-command-palette__clear:focus-visible {
+  border-color: color-mix(in srgb, var(--ec-accent) 38%, transparent);
+  background: color-mix(in srgb, var(--ec-accent) 14%, transparent);
+  color: var(--ec-text);
+}
+.ec-command-palette__footer {
+  margin-top: var(--ec-space-3);
+  padding-top: var(--ec-space-2);
+  border-top: 1px solid var(--ec-border-subtle);
+  color: var(--ec-text-dim);
+  text-align: center;
+  text-transform: none;
+}
+.ec-command-palette__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ec-space-2);
+}
+.ec-command-palette__item {
+  position: relative;
+  min-height: 46px;
+  display: grid;
+  grid-template-columns: 30px 1fr;
+  align-items: center;
+  gap: var(--ec-space-2);
+  padding: var(--ec-space-2) var(--ec-space-3);
+  overflow: hidden;
+  background: color-mix(in srgb, var(--ec-surface-2) 78%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ec-border-default) 78%, transparent);
+  border-radius: var(--ec-radius-md);
+  color: var(--ec-text);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background var(--ec-dur-fast) var(--ec-ease),
+    border-color var(--ec-dur-fast) var(--ec-ease),
+    transform var(--ec-dur-fast) var(--ec-ease-out),
+    box-shadow var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-command-palette__item::before {
+  content: "";
+  position: absolute;
+  inset: 8px auto 8px 0;
+  width: 3px;
+  border-radius: 0 999px 999px 0;
+  background: var(--ec-accent);
+  transform: scaleY(0);
+  transform-origin: top;
+  transition: transform var(--ec-dur-base) var(--ec-ease-out);
+}
+.ec-command-palette__item:hover,
+.ec-command-palette__item:focus-visible,
+.ec-command-palette__item.is-active {
+  background: color-mix(in srgb, var(--ec-accent) 10%, var(--ec-surface-2));
+  border-color: color-mix(in srgb, var(--ec-accent) 28%, var(--ec-border-default));
+  box-shadow: 0 10px 26px -18px color-mix(in srgb, var(--ec-accent) 70%, transparent);
+  transform: translateX(2px);
+}
+.ec-command-palette__item:hover::before,
+.ec-command-palette__item:focus-visible::before,
+.ec-command-palette__item.is-active::before {
+  transform: scaleY(1);
+}
+.ec-command-palette__item:focus-visible {
+  outline: 2px solid var(--ec-border-accent);
+  outline-offset: 2px;
+}
+.ec-command-palette__glyph {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--ec-radius-sm);
+  background: color-mix(in srgb, var(--ec-accent) 14%, var(--ec-surface-3));
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 22%, transparent);
+  color: var(--ec-text-strong);
+  font-family: var(--ec-font-mono);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+.ec-command-palette__body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ec-command-palette__label,
+.ec-command-palette__detail {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ec-command-palette__label {
+  color: var(--ec-text-strong);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+.ec-command-palette__detail {
+  color: var(--ec-text-muted);
+  font-size: 0.72rem;
+}
+.ec-command-palette__item--channel .ec-command-palette__glyph {
+  color: var(--ec-status-exec);
+}
+.ec-command-palette__item--dm .ec-command-palette__glyph {
+  color: var(--ec-accent);
+}
+.ec-command-palette__item--table .ec-command-palette__glyph {
+  color: var(--ec-status-warn);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ec-command-palette__item,
+  .ec-command-palette__item::before {
+    transition: none !important;
+  }
+  .ec-command-palette__item:hover,
+  .ec-command-palette__item:focus-visible,
+  .ec-command-palette__item.is-active {
+    transform: none !important;
+  }
+}
 .ec-search-list {
   flex: 1;
   overflow: auto;
@@ -6064,35 +6568,21 @@ input[type="radio"]:focus-visible {
  * inline через style. */
 .ec-popover-surface {
   position: relative;
-  background:
-    radial-gradient(140% 90% at 0% 0%, hsl(258 86% 55% / 0.08), transparent 55%),
-    var(--ec-overlay-bg);
-  border: 1px solid color-mix(in srgb, var(--ec-accent) 24%, var(--ec-border-default));
+  /* Clean redesign: solid opaque фон — раньше --ec-overlay-bg (0.93) + blur
+     просвечивал контент под поповером (список каналов), текст наезжал. */
+  background: var(--ec-surface-2);
+  border: 1px solid var(--ec-border-emphasis);
   border-radius: var(--ec-radius-md);
-  box-shadow:
-    var(--ec-shadow-modal),
-    0 0 0 1px hsl(258 86% 62% / 0.08) inset,
-    0 18px 44px -16px hsl(258 86% 35% / 0.45);
-  backdrop-filter: saturate(180%) blur(16px);
-  -webkit-backdrop-filter: saturate(180%) blur(16px);
+  box-shadow: var(--ec-shadow-modal);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   overflow: hidden;
   transform-origin: top center;
   animation: ec-popover-in 200ms var(--ec-ease-out) both;
 }
+/* v1.6.42 de-noise: holo-рейл на верхней кромке поповера убран. */
 .ec-popover-surface::before {
-  content: "";
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    hsl(180 70% 65% / 0.55) 35%,
-    hsl(258 86% 75% / 0.85) 55%,
-    hsl(258 70% 60% / 0.40) 75%,
-    transparent 100%
-  );
-  pointer-events: none;
+  display: none;
 }
 
 /* v1.5.7 — popover items (для меню/autocomplete). Hover left rail
@@ -6172,10 +6662,11 @@ input[type="radio"]:focus-visible {
 }
 .ec-empty-state__icon {
   position: relative;
-  animation: ec-empty-icon-breath 5.6s ease-in-out infinite;
 }
-.ec-empty-state__icon::before,
-.ec-empty-state__icon::after {
+/* v1.6.49 — де-нойз пустых состояний: убраны бесконечный breath + cyan
+   orbit-кольцо (off-brand палитра + infinite spin). Оставлен один статичный
+   violet-халоу — спокойная плоская поверхность в духе Telegram x Discord. */
+.ec-empty-state__icon::before {
   content: "";
   position: absolute;
   inset: -10%;
@@ -6183,20 +6674,8 @@ input[type="radio"]:focus-visible {
   border: 1px solid hsl(258 86% 62% / 0.18);
   pointer-events: none;
 }
-.ec-empty-state__icon::after {
-  inset: -22%;
-  border-color: hsl(180 70% 55% / 0.12);
-  animation: ec-empty-orbit 18s linear infinite;
-}
 .ec-empty-state__title {
-  background: linear-gradient(
-    135deg,
-    var(--ec-text-strong) 0%,
-    color-mix(in srgb, var(--ec-accent) 65%, var(--ec-text-strong)) 100%
-  );
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--ec-text-strong);
   letter-spacing: 0.005em;
 }
 
@@ -6277,6 +6756,57 @@ input[type="radio"]:focus-visible {
 .ec-hub-input:focus {
   border-color: var(--ec-accent);
   outline: none;
+}
+.ec-hub-feature-editor {
+  display: grid;
+  gap: var(--ec-space-2);
+}
+.ec-hub-feature-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 32px;
+  align-items: center;
+  gap: var(--ec-space-2);
+}
+.ec-hub-feature-input {
+  min-width: 0;
+}
+.ec-hub-feature-count {
+  min-width: 42px;
+  color: var(--ec-text-dim);
+  font-family: var(--ec-font-mono);
+  font-size: var(--ec-text-2xs);
+  text-align: right;
+  font-feature-settings: "tnum";
+}
+.ec-hub-feature-remove {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--ec-border-default);
+  border-radius: var(--ec-radius-sm);
+  background: var(--ec-surface-1);
+  color: var(--ec-text-muted);
+  cursor: pointer;
+  transition:
+    background var(--ec-dur-fast) var(--ec-ease),
+    border-color var(--ec-dur-fast) var(--ec-ease),
+    color var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-hub-feature-remove:hover {
+  background: var(--ec-danger-soft);
+  border-color: color-mix(in srgb, var(--ec-danger) 45%, var(--ec-border-default));
+  color: var(--ec-danger);
+}
+@media (max-width: 640px) {
+  .ec-hub-feature-row {
+    grid-template-columns: minmax(0, 1fr) 32px;
+  }
+  .ec-hub-feature-count {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    text-align: left;
+  }
 }
 .ec-hub-stat {
   display: flex;
@@ -6429,6 +6959,7 @@ input[type="radio"]:focus-visible {
   grid-template-columns: minmax(0, 1fr) minmax(260px, 0.42fr);
   gap: var(--ec-space-4);
   align-items: start;
+  min-height: 0;
 }
 
 .ec-hub-settings-form {
@@ -6440,15 +6971,21 @@ input[type="radio"]:focus-visible {
 
 .ec-hub-preview-card {
   position: sticky;
-  top: var(--ec-space-4);
+  top: 0;
   display: flex;
   flex-direction: column;
   gap: var(--ec-space-2);
   min-width: 0;
+  max-height: calc(100dvh - 136px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 2px;
+  scrollbar-gutter: stable;
 }
 
 .ec-hub-preview-card .ec-server-welcome {
-  min-height: 360px;
+  min-height: 0;
+  max-height: none;
   border: 1px solid color-mix(in srgb, var(--ec-accent) 22%, var(--ec-border-default));
   border-radius: var(--ec-radius-lg);
   overflow: hidden;
@@ -6469,18 +7006,20 @@ input[type="radio"]:focus-visible {
 .ec-server-hub-panel {
   display: grid;
   grid-template-columns: minmax(210px, 240px) minmax(0, 1fr);
-  min-height: min(720px, 78vh);
-  max-height: min(820px, 82vh);
+  height: min(760px, calc(100dvh - 124px));
+  min-height: 0;
+  max-height: calc(100dvh - 124px);
   margin: calc(var(--ec-space-4) * -1);
   overflow: hidden;
-  background:
-    radial-gradient(circle at 0% 0%, hsl(258 86% 58% / 0.12), transparent 36%),
-    var(--ec-surface-0);
+  /* v1.6.95 де-нойз: убран radial-glow — ровный фон. */
+  background: var(--ec-surface-0);
 }
 
 .ec-server-hub-tree-nav {
   min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
   padding: var(--ec-space-4) var(--ec-space-3);
   border-right: 1px solid color-mix(in srgb, var(--ec-accent) 20%, var(--ec-border-default));
   background:
@@ -6570,7 +7109,9 @@ input[type="radio"]:focus-visible {
 .ec-server-hub-panel__main {
   min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: var(--ec-space-5);
+  scrollbar-gutter: stable;
 }
 
 .ec-hub-member__name {
@@ -6830,18 +7371,20 @@ input[type="radio"]:focus-visible {
 .ec-settings-panel {
   display: grid;
   grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
-  min-height: min(720px, 78vh);
-  max-height: min(820px, 82vh);
+  height: min(760px, calc(100dvh - 124px));
+  min-height: 0;
+  max-height: calc(100dvh - 124px);
   margin: calc(var(--ec-space-4) * -1);
   overflow: hidden;
-  background:
-    radial-gradient(circle at 0% 0%, hsl(258 86% 58% / 0.12), transparent 36%),
-    var(--ec-surface-0);
+  /* v1.6.95 де-нойз: убран radial-glow — ровный фон. */
+  background: var(--ec-surface-0);
 }
 
 .ec-settings-tree-nav {
   min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
   padding: var(--ec-space-4) var(--ec-space-3);
   border-right: 1px solid color-mix(in srgb, var(--ec-accent) 18%, var(--ec-border-default));
   background:
@@ -6956,6 +7499,8 @@ input[type="radio"]:focus-visible {
 .ec-settings-panel__main {
   min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 
 .ec-settings-section {
@@ -6971,15 +7516,11 @@ input[type="radio"]:focus-visible {
 .ec-settings-empty {
   position: relative;
   overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--ec-accent) 22%, var(--ec-border-default));
+  /* v1.6.94 де-нойз: убраны radial-glow, violet-тень и inset-кольцо. */
+  border: 1px solid var(--ec-border-default);
   border-radius: var(--ec-radius-lg);
-  background:
-    radial-gradient(circle at 0% 0%, hsl(258 86% 62% / 0.13), transparent 42%),
-    var(--ec-overlay-bg);
-  box-shadow:
-    var(--ec-elev-2),
-    0 24px 60px -34px hsl(258 86% 35% / 0.5),
-    0 0 0 1px hsl(258 86% 62% / 0.08) inset;
+  background: var(--ec-surface-2);
+  box-shadow: var(--ec-elev-1);
 }
 
 .ec-settings-section__hero {
@@ -7134,6 +7675,53 @@ input[type="radio"]:focus-visible {
   flex-shrink: 0;
   accent-color: var(--ec-accent);
   cursor: pointer;
+}
+
+/* v1.6.80 — тумблер темы (OBSIDIAN ↔ SOLAR): слайдер-свитч с луной/солнцем.
+   Заменил сегмент-контрол (две текст-кнопки) на привычный переключатель.
+   Цвета на токенах → корректно в обеих темах. */
+.ec-theme-switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 52px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--ec-border-default);
+  border-radius: var(--ec-radius-full);
+  background: var(--ec-surface-3);
+  cursor: pointer;
+  transition: background var(--ec-dur-base) var(--ec-ease),
+    border-color var(--ec-dur-base) var(--ec-ease);
+}
+.ec-theme-switch:hover {
+  border-color: var(--ec-border-emphasis);
+}
+.ec-theme-switch:focus-visible {
+  outline: 2px solid var(--ec-accent);
+  outline-offset: 2px;
+}
+.ec-theme-switch__knob {
+  position: absolute;
+  top: 50%;
+  left: 2px;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--ec-radius-full);
+  background: var(--ec-accent);
+  color: var(--ec-accent-text);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  transform: translateY(-50%) translateX(0);
+  transition: transform var(--ec-dur-base) var(--ec-ease-spring);
+}
+.ec-theme-switch[aria-checked="true"] .ec-theme-switch__knob {
+  transform: translateY(-50%) translateX(24px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ec-theme-switch__knob {
+    transition: none;
+  }
 }
 
 .ec-settings-readonly {
@@ -7655,6 +8243,73 @@ input[type="radio"]:focus-visible {
   opacity: 1;
 }
 
+/* v1.5.89 — rail usability: quick room search. */
+.ec-channel-search {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  margin: 0 4px 10px;
+  padding: 0 10px;
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 12%, var(--ec-border-subtle));
+  border-radius: var(--ec-radius-md);
+  background: color-mix(in srgb, var(--ec-surface-2) 84%, transparent);
+  color: var(--ec-text-muted);
+  box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.025);
+}
+
+.ec-channel-search:focus-within {
+  border-color: color-mix(in srgb, var(--ec-accent) 34%, var(--ec-border-default));
+  background: color-mix(in srgb, var(--ec-surface-3) 82%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ec-accent) 12%, transparent);
+}
+
+.ec-channel-search input {
+  min-width: 0;
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ec-text);
+  font: inherit;
+  font-size: var(--ec-text-sm);
+}
+
+.ec-channel-search input::placeholder {
+  color: var(--ec-text-dim);
+}
+
+.ec-channel-search__clear {
+  width: 24px;
+  height: 24px;
+  display: inline-grid;
+  place-items: center;
+  border: 0;
+  border-radius: var(--ec-radius-sm);
+  background: transparent;
+  color: var(--ec-text-muted);
+  cursor: pointer;
+}
+
+.ec-channel-search__clear:hover,
+.ec-channel-search__clear:focus-visible {
+  background: color-mix(in srgb, var(--ec-accent) 12%, transparent);
+  color: var(--ec-text-strong);
+}
+
+.ec-channel-category--search-empty {
+  display: none;
+}
+
+.ec-channel-list__hint--search {
+  margin: 8px 4px 12px;
+  padding: 10px 12px;
+  border: 1px dashed color-mix(in srgb, var(--ec-accent) 18%, var(--ec-border-subtle));
+  border-radius: var(--ec-radius-md);
+  background: color-mix(in srgb, var(--ec-surface-2) 76%, transparent);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ec-server-nav__item,
   .ec-server-nav__item::after,
@@ -7666,5 +8321,3527 @@ input[type="radio"]:focus-visible {
     transition: none !important;
     transform: none !important;
   }
+}
+
+/* ============================================================
+ * v1.5.97 — Practical visual polish system pass.
+ * Цель: меньше визуального шума, стабильнее controls, яснее hierarchy.
+ * ============================================================ */
+
+.ec-btn {
+  min-height: 36px;
+  border-radius: 12px;
+  font-weight: 750;
+  letter-spacing: 0.005em;
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.055),
+    0 10px 24px -20px hsl(210 35% 2% / 0.82);
+  transition:
+    transform var(--ec-dur-fast) var(--ec-ease-out),
+    border-color var(--ec-dur-fast) var(--ec-ease),
+    background var(--ec-dur-fast) var(--ec-ease),
+    box-shadow var(--ec-dur-fast) var(--ec-ease),
+    color var(--ec-dur-fast) var(--ec-ease);
+}
+
+.ec-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.08),
+    0 14px 30px -20px hsl(258 86% 44% / 0.54);
+}
+
+.ec-btn:active:not(:disabled) {
+  transform: translateY(0) scale(0.99);
+  transition-duration: 80ms;
+}
+
+.ec-btn--primary {
+  background:
+    radial-gradient(circle at 28% 20%, hsl(0 0% 100% / 0.18), transparent 34%),
+    linear-gradient(135deg, color-mix(in srgb, var(--ec-accent) 72%, #6f88a7), #7c8faa) !important;
+  border-color: color-mix(in srgb, var(--ec-accent) 42%, transparent) !important;
+  color: hsl(0 0% 100%) !important;
+  text-shadow: 0 1px 1px hsl(220 22% 4% / 0.34);
+}
+
+.ec-btn--primary:hover:not(:disabled) {
+  filter: brightness(1.06);
+  box-shadow:
+    0 18px 42px -20px hsl(258 86% 50% / 0.78),
+    inset 0 1px 0 hsl(0 0% 100% / 0.24) !important;
+}
+
+.ec-icon-btn,
+.ec-composer-icon-btn,
+.ec-channel-action,
+.ec-member-row__dm {
+  border-radius: 10px;
+}
+
+.ec-shell__top-actions {
+  gap: 8px;
+}
+
+.ec-shell__top-actions .ec-theme-toggle,
+.ec-shell__top-actions .ec-music-mini-player,
+.ec-shell__top-actions .ec-shell__user-chip,
+.ec-shell__top-actions .ec-logout-btn {
+  border-color: color-mix(in srgb, var(--ec-accent) 12%, var(--ec-border-subtle)) !important;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--ec-surface-2) 84%, transparent), color-mix(in srgb, var(--ec-surface-1) 94%, transparent)) !important;
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.035),
+    0 10px 28px -24px hsl(258 86% 42% / 0.5);
+}
+
+.ec-composer {
+  padding: 10px var(--ec-space-5) 12px;
+}
+
+.ec-composer-box {
+  min-height: 48px;
+  padding: 8px 10px;
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--ec-accent) 10%, transparent), transparent 40%),
+    linear-gradient(180deg, color-mix(in srgb, var(--ec-surface-2) 76%, transparent), color-mix(in srgb, var(--ec-surface-1) 92%, transparent)) !important;
+  border-color: color-mix(in srgb, var(--ec-accent) 16%, var(--ec-border-subtle)) !important;
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.045),
+    0 18px 42px -28px hsl(210 35% 2% / 0.86),
+    0 0 34px -28px var(--ec-accent) !important;
+}
+
+.ec-composer-box:focus-within {
+  border-color: color-mix(in srgb, var(--ec-accent) 42%, var(--ec-border-subtle)) !important;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--ec-accent) 18%, transparent),
+    0 18px 48px -26px hsl(258 86% 44% / 0.55),
+    inset 0 1px 0 hsl(0 0% 100% / 0.065) !important;
+}
+
+.ec-composer-icon-btn {
+  width: 34px;
+  height: 34px;
+  border: 1px solid transparent;
+  background: color-mix(in srgb, var(--ec-surface-3) 34%, transparent);
+}
+
+.ec-composer-icon-btn:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--ec-accent) 22%, transparent);
+  background: color-mix(in srgb, var(--ec-accent) 11%, var(--ec-surface-3));
+}
+
+.ec-composer-send {
+  min-height: 36px;
+  border-radius: 13px;
+  padding: 0.5rem 0.85rem;
+  white-space: nowrap;
+}
+
+.ec-composer-hints {
+  margin-top: 5px;
+  opacity: 0.68;
+}
+
+.ec-composer:focus-within .ec-composer-hints {
+  opacity: 0.9;
+}
+
+.ec-channel-item {
+  min-height: 36px;
+  border-radius: 11px;
+  box-shadow: none;
+}
+
+.ec-channel-item:hover {
+  background: color-mix(in srgb, var(--ec-accent) 6%, var(--ec-surface-2));
+  border-color: color-mix(in srgb, var(--ec-accent) 10%, transparent);
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--ec-accent) 26%, transparent);
+}
+
+.ec-channel-item--active {
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--ec-accent) 18%, transparent), transparent 68%),
+    color-mix(in srgb, var(--ec-surface-2) 88%, transparent) !important;
+  border-color: color-mix(in srgb, var(--ec-accent) 30%, var(--ec-border-subtle)) !important;
+  box-shadow:
+    inset 3px 0 0 var(--ec-accent),
+    inset 0 1px 0 hsl(0 0% 100% / 0.045),
+    0 12px 28px -24px hsl(258 86% 44% / 0.58) !important;
+}
+
+.ec-member-list__scroll {
+  gap: 4px;
+  padding: 10px 8px;
+}
+
+.ec-member-row {
+  min-height: 38px;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+}
+
+.ec-member-row:hover {
+  background: color-mix(in srgb, var(--ec-accent) 6%, var(--ec-surface-2));
+  border-color: color-mix(in srgb, var(--ec-accent) 10%, transparent);
+  box-shadow:
+    inset 3px 0 0 color-mix(in srgb, var(--ec-accent) 32%, transparent),
+    0 12px 28px -24px hsl(258 86% 44% / 0.52);
+}
+
+.ec-member-row__avatar {
+  box-shadow: 0 0 0 1px hsl(0 0% 100% / 0.045);
+}
+
+.ec-member-row__presence {
+  border-color: color-mix(in srgb, var(--ec-surface-1) 84%, black);
+}
+
+.ec-member-row__dm {
+  width: 26px;
+  height: 26px;
+  border-color: color-mix(in srgb, var(--ec-accent) 12%, var(--ec-border-subtle));
+  background: color-mix(in srgb, var(--ec-surface-3) 56%, transparent);
+}
+
+.ec-empty-state {
+  max-width: 520px;
+  margin-inline: auto;
+  padding: clamp(28px, 5vw, 56px);
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 10%, transparent);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--ec-accent) 10%, transparent), transparent 42%),
+    linear-gradient(180deg, color-mix(in srgb, var(--ec-surface-2) 42%, transparent), transparent);
+}
+
+.ec-empty-state__title {
+  letter-spacing: -0.01em;
+}
+
+.ec-settings-panel,
+.ec-server-hub-modal,
+.ec-server-hub-panel,
+.ec-modal {
+  --ec-modal-polish-border: color-mix(in srgb, var(--ec-accent) 14%, var(--ec-border-subtle));
+}
+
+.ec-settings-card,
+.ec-settings-empty,
+.ec-server-hub-panel,
+.ec-admin-row,
+.ec-bot-card {
+  border-color: var(--ec-border-subtle);
+  /* v1.6.42 de-noise: плоская поверхность, без violet-ауры. */
+  background: color-mix(in srgb, var(--ec-surface-2) 82%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ec-btn,
+  .ec-icon-btn,
+  .ec-composer-box,
+  .ec-composer-icon-btn,
+  .ec-composer-send,
+  .ec-channel-item,
+  .ec-member-row,
+  .ec-empty-state {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
+/* v1.6.0 — clarity pass for the daily chat surface. */
+.ec-message-list-shell {
+  background:
+    radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--ec-accent) 5%, transparent), transparent 34%),
+    linear-gradient(180deg, color-mix(in srgb, var(--ec-bg) 96%, transparent), var(--ec-bg));
+}
+
+.ec-message-list {
+  padding-top: var(--ec-space-5);
+  gap: 1px;
+}
+
+.ec-message-row {
+  border: 1px solid transparent;
+  transition:
+    background var(--ec-dur-fast) var(--ec-ease),
+    border-color var(--ec-dur-fast) var(--ec-ease),
+    box-shadow var(--ec-dur-fast) var(--ec-ease),
+    transform var(--ec-dur-fast) var(--ec-ease-out);
+}
+
+.ec-message-row:hover,
+.ec-message-row:focus-within {
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--ec-accent) 5%, transparent), transparent 62%),
+    color-mix(in srgb, var(--ec-surface-1) 58%, transparent);
+  border-color: color-mix(in srgb, var(--ec-accent) 9%, var(--ec-border-subtle));
+  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--ec-accent) 22%, transparent);
+  transform: translateX(1px);
+}
+
+.ec-message-row--grouped:hover,
+.ec-message-row--grouped:focus-within {
+  background: color-mix(in srgb, var(--ec-surface-1) 42%, transparent);
+  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--ec-accent) 14%, transparent);
+}
+
+.ec-message-actions {
+  border-color: color-mix(in srgb, var(--ec-accent) 12%, var(--ec-border-subtle));
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--ec-accent) 10%, transparent), transparent 42%),
+    color-mix(in srgb, var(--ec-overlay-bg) 88%, transparent);
+  box-shadow:
+    0 14px 34px -22px hsl(210 35% 2% / 0.86),
+    inset 0 1px 0 hsl(0 0% 100% / 0.05);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+}
+
+.ec-msg-action {
+  width: 28px;
+  height: 28px;
+}
+
+.ec-msg-author {
+  font-weight: 650;
+}
+
+.ec-message-row:hover .ec-msg-time,
+.ec-message-row:focus-within .ec-msg-time,
+.ec-msg-time:hover {
+  color: color-mix(in srgb, var(--ec-accent) 52%, var(--ec-text-muted));
+}
+
+.ec-message-row:hover .ec-msg-avatar-wrap,
+.ec-message-row:focus-within .ec-msg-avatar-wrap {
+  transform: scale(1.025);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--ec-accent) 14%, transparent),
+    0 0 18px -10px var(--ec-accent);
+}
+
+.ec-composer-box {
+  background:
+    radial-gradient(circle at 4% 0%, color-mix(in srgb, var(--ec-accent) 7%, transparent), transparent 42%),
+    linear-gradient(180deg, color-mix(in srgb, var(--ec-surface-2) 78%, transparent), color-mix(in srgb, var(--ec-surface-1) 96%, transparent));
+  border-color: color-mix(in srgb, var(--ec-accent) 10%, var(--ec-border-subtle));
+  box-shadow:
+    0 18px 46px -34px hsl(210 35% 2% / 0.82),
+    inset 0 1px 0 hsl(0 0% 100% / 0.045);
+}
+
+.ec-composer-box:focus-within {
+  border-color: color-mix(in srgb, var(--ec-accent) 34%, var(--ec-border-subtle));
+  box-shadow:
+    0 18px 50px -34px hsl(258 86% 40% / 0.68),
+    0 0 0 1px color-mix(in srgb, var(--ec-accent) 10%, transparent),
+    inset 0 1px 0 hsl(0 0% 100% / 0.055);
+}
+
+.ec-composer-textarea {
+  color: var(--ec-text-strong);
+}
+
+.ec-composer-icon-btn {
+  border: 1px solid transparent;
+}
+
+.ec-composer-icon-btn:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--ec-accent) 18%, transparent);
+}
+
+/* v1.6.1 — visible chat surface reset: content-first cards, not full-width haze. */
+.ec-message-list-shell {
+  background:
+    radial-gradient(circle at 42% 0%, color-mix(in srgb, var(--ec-accent) 9%, transparent), transparent 28rem),
+    linear-gradient(180deg, color-mix(in srgb, var(--ec-bg) 94%, transparent), color-mix(in srgb, #03060b 92%, transparent));
+}
+
+.ec-message-list {
+  padding: 28px clamp(14px, 2.2vw, 34px) 18px;
+  gap: 8px;
+}
+
+.ec-message-row {
+  grid-template-columns: 42px minmax(0, 1fr);
+  align-items: start;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 18px;
+  background: transparent;
+  box-shadow: none;
+  transform: none;
+}
+
+.ec-message-row::before {
+  content: "";
+  position: absolute;
+  inset: 6px auto 6px 0;
+  width: 2px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--ec-accent) 62%, transparent), transparent);
+  opacity: 0;
+  transition: opacity var(--ec-dur-fast) var(--ec-ease);
+}
+
+.ec-message-row:hover,
+.ec-message-row:focus-within {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  transform: none;
+}
+
+.ec-message-row:hover::before,
+.ec-message-row:focus-within::before {
+  opacity: 1;
+}
+
+.ec-message-row--grouped {
+  padding-top: 3px;
+  padding-bottom: 3px;
+}
+
+.ec-message-row--grouped .ec-message-content {
+  margin-left: 0;
+}
+
+.ec-message-content {
+  position: relative;
+  z-index: 1;
+  width: fit-content;
+  max-width: min(760px, 100%);
+  min-width: min(260px, 100%);
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 14%, var(--ec-border-subtle));
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--ec-surface-2) 92%, transparent), color-mix(in srgb, var(--ec-surface-1) 94%, transparent)),
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--ec-accent) 10%, transparent), transparent 42%);
+  box-shadow:
+    0 18px 42px -34px hsl(210 35% 2% / 0.92),
+    inset 0 1px 0 hsl(0 0% 100% / 0.045);
+}
+
+.ec-message-row--grouped .ec-message-content {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  border-color: color-mix(in srgb, var(--ec-accent) 8%, var(--ec-border-subtle));
+  background: color-mix(in srgb, var(--ec-surface-1) 82%, transparent);
+}
+
+.ec-message-row--ai .ec-message-content {
+  border-color: color-mix(in srgb, var(--ec-accent) 24%, var(--ec-border-subtle));
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--ec-accent) 12%, var(--ec-surface-2)), color-mix(in srgb, var(--ec-surface-1) 92%, transparent));
+}
+
+.ec-message-row--pinned .ec-message-content {
+  border-color: color-mix(in srgb, var(--ec-warn) 35%, var(--ec-border-subtle));
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--ec-warn) 9%, var(--ec-surface-2)), color-mix(in srgb, var(--ec-surface-1) 92%, transparent));
+}
+
+.ec-msg-author {
+  color: var(--ec-text-strong);
+  font-size: var(--ec-text-sm);
+  letter-spacing: 0;
+}
+
+.ec-msg-time {
+  color: color-mix(in srgb, var(--ec-text-muted) 80%, transparent);
+}
+
+.ec-message-content p {
+  color: color-mix(in srgb, var(--ec-text) 94%, white 6%) !important;
+}
+
+.ec-message-content .ec-attachment,
+.ec-message-content .ec-link-embed,
+.ec-message-content img,
+.ec-message-content video,
+.ec-message-content audio {
+  max-width: min(100%, 520px);
+}
+
+.ec-message-actions {
+  top: -14px;
+  right: auto;
+  left: 64px;
+  gap: 3px;
+  padding: 5px;
+  border-radius: 14px;
+  border-color: color-mix(in srgb, var(--ec-accent) 20%, var(--ec-border-subtle));
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--ec-surface-3) 92%, transparent), color-mix(in srgb, var(--ec-surface-1) 92%, transparent));
+  box-shadow:
+    0 16px 36px -24px hsl(210 40% 2% / 0.95),
+    0 0 0 1px hsl(0 0% 100% / 0.035),
+    inset 0 1px 0 hsl(0 0% 100% / 0.06);
+}
+
+.ec-msg-action {
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+}
+
+.ec-msg-quick-react {
+  background: color-mix(in srgb, var(--ec-surface-2) 80%, transparent);
+}
+
+.ec-msg-action:hover,
+.ec-msg-quick-react:hover {
+  background: color-mix(in srgb, var(--ec-accent) 16%, var(--ec-surface-3));
+  color: var(--ec-text-strong);
+  transform: translateY(-1px);
+}
+
+.ec-msg-avatar-wrap {
+  margin-top: 4px;
+}
+
+.ec-message-row:hover .ec-msg-avatar-wrap,
+.ec-message-row:focus-within .ec-msg-avatar-wrap {
+  transform: scale(1.04);
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--ec-bg) 94%, transparent),
+    0 0 0 3px color-mix(in srgb, var(--ec-accent) 34%, transparent),
+    0 12px 28px -18px var(--ec-accent);
+}
+
+.ec-msg-day {
+  margin: 18px 0 14px;
+}
+
+.ec-msg-day__line {
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--ec-accent) 18%, var(--ec-border-subtle)), transparent);
+}
+
+.ec-msg-day__label {
+  padding: 4px 10px;
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 16%, var(--ec-border-subtle));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ec-surface-1) 78%, transparent);
+  color: color-mix(in srgb, var(--ec-accent) 72%, var(--ec-text-muted));
+}
+
+.ec-composer {
+  padding: 14px clamp(12px, 2vw, 30px) 10px;
+  border-top: 1px solid color-mix(in srgb, var(--ec-accent) 13%, var(--ec-border-subtle));
+  background:
+    radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--ec-accent) 12%, transparent), transparent 32rem),
+    linear-gradient(180deg, color-mix(in srgb, var(--ec-bg) 12%, transparent), color-mix(in srgb, #03060b 88%, transparent));
+}
+
+.ec-composer-box {
+  min-height: 58px;
+  padding: 8px;
+  border-width: 1px;
+  border-radius: 22px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--ec-surface-3) 82%, transparent), color-mix(in srgb, var(--ec-surface-1) 96%, transparent));
+  border-color: color-mix(in srgb, var(--ec-accent) 24%, var(--ec-border-subtle));
+  box-shadow:
+    0 24px 70px -44px hsl(258 86% 45% / 0.82),
+    0 0 0 1px hsl(0 0% 100% / 0.035),
+    inset 0 1px 0 hsl(0 0% 100% / 0.055);
+}
+
+.ec-composer-box:focus-within {
+  border-color: color-mix(in srgb, var(--ec-accent) 55%, var(--ec-border-subtle));
+  box-shadow:
+    0 28px 80px -46px hsl(258 86% 48% / 0.9),
+    0 0 0 1px color-mix(in srgb, var(--ec-accent) 18%, transparent),
+    inset 0 1px 0 hsl(0 0% 100% / 0.07);
+}
+
+.ec-composer-icon-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--ec-surface-2) 68%, transparent);
+  color: var(--ec-text-muted);
+}
+
+.ec-composer-icon-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--ec-accent) 15%, var(--ec-surface-2));
+  border-color: color-mix(in srgb, var(--ec-accent) 28%, transparent);
+  color: var(--ec-text-strong);
+}
+
+.ec-composer-textarea {
+  min-height: 38px;
+  padding: 8px 10px;
+  border-radius: 14px;
+  /* v1.6.93 — был var(--ec-bg) (тёмный в SOLAR → тёмная «пилюля» инпута в
+     светлой теме). Тема-aware surface-токен. */
+  background: color-mix(in srgb, var(--ec-surface-1) 60%, transparent);
+  color: var(--ec-text-strong);
+}
+
+.ec-composer-textarea::placeholder {
+  color: color-mix(in srgb, var(--ec-text-muted) 78%, transparent);
+}
+
+.ec-composer-send {
+  min-width: 128px;
+  min-height: 42px;
+  border-radius: 16px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--ec-accent) 86%, #ffffff 5%), color-mix(in srgb, var(--ec-accent) 58%, #2dd4bf 14%));
+  color: white;
+  box-shadow: 0 16px 38px -24px var(--ec-accent);
+}
+
+.ec-composer-send:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 20px 48px -24px var(--ec-accent),
+    0 0 0 1px color-mix(in srgb, white 18%, transparent) inset;
+}
+
+.ec-composer-hints {
+  padding-inline: 8px;
+  color: color-mix(in srgb, var(--ec-text-muted) 74%, transparent);
+}
+
+@media (max-width: 720px) {
+  .ec-message-list {
+    padding-inline: 10px;
+  }
+
+  .ec-message-row {
+    grid-template-columns: 34px minmax(0, 1fr);
+    column-gap: 8px;
+    padding-inline: 4px;
+  }
+
+  .ec-message-content {
+    min-width: 0;
+    max-width: 100%;
+    padding: 10px 11px;
+    border-radius: 15px;
+  }
+
+  .ec-message-actions {
+    left: 46px;
+    max-width: calc(100vw - 66px);
+    overflow-x: auto;
+  }
+
+  .ec-composer {
+    padding-inline: 8px;
+  }
+
+  .ec-composer-box {
+    min-height: 54px;
+    border-radius: 18px;
+  }
+
+  .ec-composer-send {
+    min-width: 46px;
+    padding-inline: 12px;
+  }
+
+  .ec-composer-send-label {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ec-message-row,
+  .ec-message-row::before,
+  .ec-message-actions,
+  .ec-msg-action,
+  .ec-composer-box,
+  .ec-composer-send,
+  .ec-composer-icon-btn {
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
+/* v1.6.2 — premium operations skin. A visible shell-level redesign layer. */
+:root {
+  --ec-ops-bg: #05070d;
+  --ec-ops-rail: #080c13;
+  --ec-ops-rail-strong: #0b111b;
+  --ec-ops-panel: #0d141f;
+  --ec-ops-panel-2: #111925;
+  --ec-ops-line: color-mix(in srgb, var(--ec-accent) 18%, #263246);
+  --ec-ops-line-soft: color-mix(in srgb, var(--ec-accent) 10%, #1f2a3b);
+  --ec-ops-glow: 0 22px 70px -48px hsl(258 90% 62% / 0.82);
+}
+
+body {
+  background:
+    radial-gradient(circle at 44% -8%, color-mix(in srgb, var(--ec-accent) 16%, transparent), transparent 34rem),
+    radial-gradient(circle at 90% 100%, hsl(188 76% 48% / 0.06), transparent 30rem),
+    var(--ec-ops-bg);
+}
+
+.ec-shell__brandbar,
+.ec-shell__cmdbar,
+.ec-shell__channels,
+.ec-shell__members,
+.ec-chat-header {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--ec-ops-rail-strong) 92%, transparent), color-mix(in srgb, var(--ec-ops-rail) 96%, transparent)) !important;
+  border-color: var(--ec-ops-line-soft) !important;
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.035),
+    0 18px 56px -46px hsl(210 80% 2% / 0.9);
+}
+
+/* v1.6.81 — мобильная производительность (touch: телефоны/планшеты, вкл.
+   Android-приложение). Главный источник рывков прокрутки в WebView —
+   `backdrop-filter: blur()` на постоянных панелях шелла: каждый кадр прокрутки
+   WebView пересчитывает размытие того, что под панелью. На touch выключаем blur
+   полностью, шелл-панели делаем плотными (opaque), глушим оверскролл-«отскок»
+   («плывёт») и пару непрерывных ambient-анимаций. ПК (мышь/hover) НЕ затронут —
+   стеклянный вид там остаётся. Источник правды по плотности — ops-токены. */
+@media (hover: none) and (pointer: coarse) {
+  *,
+  *::before,
+  *::after {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  .ec-shell__brandbar,
+  .ec-shell__cmdbar,
+  .ec-shell__channels,
+  .ec-shell__members,
+  .ec-chat-header {
+    background: linear-gradient(
+      180deg,
+      var(--ec-ops-rail-strong),
+      var(--ec-ops-rail)
+    ) !important;
+  }
+  .ec-anim-ai-pulse,
+  .ec-anim-reaction-mine {
+    animation: none !important;
+  }
+  html,
+  body,
+  .ec-shell {
+    overscroll-behavior: none;
+  }
+}
+
+.ec-shell__cmdbar {
+  min-height: 50px;
+  padding-inline: 12px;
+  backdrop-filter: blur(20px) saturate(145%);
+  -webkit-backdrop-filter: blur(20px) saturate(145%);
+}
+
+.ec-shell__breadcrumb,
+.ec-shell__loc {
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  color: color-mix(in srgb, var(--ec-text-muted) 88%, transparent);
+}
+
+.ec-shell__loc-name {
+  color: var(--ec-text-strong);
+  font-weight: 760;
+}
+
+.ec-shell__loc-hash,
+.ec-shell__loc-sep {
+  color: color-mix(in srgb, var(--ec-accent) 68%, var(--ec-text-muted));
+}
+
+.ec-shell__top-actions {
+  gap: 8px;
+}
+
+.ec-shell__top-actions .ec-theme-toggle,
+.ec-shell__user-chip,
+.ec-logout-btn {
+  border-color: var(--ec-ops-line) !important;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--ec-ops-panel-2) 86%, transparent), color-mix(in srgb, var(--ec-ops-panel) 94%, transparent)) !important;
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.055),
+    0 14px 34px -30px hsl(258 90% 62% / 0.75) !important;
+}
+
+.ec-shell__user-chip {
+  border-radius: 15px;
+  padding-right: 11px;
+}
+
+.ec-logout-btn {
+  min-width: 84px;
+  justify-content: center;
+  color: color-mix(in srgb, var(--ec-text-muted) 88%, transparent);
+}
+
+.ec-logout-btn:hover {
+  color: var(--ec-text-strong);
+  border-color: color-mix(in srgb, var(--ec-danger) 30%, var(--ec-ops-line)) !important;
+}
+
+.ec-channel-list {
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--ec-accent) 8%, transparent), transparent 14rem),
+    linear-gradient(180deg, var(--ec-ops-rail-strong), var(--ec-ops-rail)) !important;
+}
+
+.ec-channel-list__header {
+  padding: 10px 10px 8px !important;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--ec-ops-panel-2) 58%, transparent), transparent) !important;
+}
+
+.ec-channel-list__server-btn {
+  min-height: 48px;
+  padding: 7px 9px;
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 18%, transparent);
+  border-radius: 14px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--ec-accent) 8%, var(--ec-ops-panel)), color-mix(in srgb, var(--ec-ops-panel) 84%, transparent));
+}
+
+.ec-channel-list__server-name {
+  color: var(--ec-text-strong);
+  font-size: 0.98rem;
+  font-weight: 820;
+}
+
+.ec-sidebar-tabs {
+  margin: 0 10px;
+  padding-top: 8px;
+  gap: 2px;
+}
+
+.ec-sidebar-tab {
+  position: relative;
+  min-height: 36px;
+  padding-inline: 9px;
+  border-radius: 10px 10px 0 0;
+  color: color-mix(in srgb, var(--ec-text-muted) 88%, transparent);
+}
+
+.ec-sidebar-tab[aria-selected="true"] {
+  background: color-mix(in srgb, var(--ec-accent) 10%, transparent);
+  color: var(--ec-text-strong);
+}
+
+.ec-sidebar-tab[aria-selected="true"]::after {
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #2dd4bf, var(--ec-accent));
+}
+
+.ec-channel-list__list {
+  padding: 10px 10px 12px;
+  gap: 5px;
+}
+
+.ec-channel-category__header {
+  min-height: 32px;
+  color: color-mix(in srgb, var(--ec-text-muted) 92%, transparent);
+}
+
+.ec-channel-category__name,
+.ec-channel-category__uncategorized-label {
+  letter-spacing: 0.075em;
+  font-weight: 820;
+}
+
+.ec-channel-item {
+  min-height: 39px;
+  padding: 7px 9px;
+  border: 1px solid transparent;
+  border-radius: 13px;
+  color: color-mix(in srgb, var(--ec-text-muted) 90%, transparent);
+}
+
+.ec-channel-item:hover {
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--ec-accent) 10%, transparent), transparent 84%),
+    color-mix(in srgb, var(--ec-ops-panel) 82%, transparent);
+  border-color: color-mix(in srgb, var(--ec-accent) 13%, transparent);
+}
+
+.ec-channel-item--active {
+  background:
+    radial-gradient(circle at 0% 50%, color-mix(in srgb, var(--ec-accent) 22%, transparent), transparent 58%),
+    linear-gradient(90deg, color-mix(in srgb, var(--ec-accent) 17%, var(--ec-ops-panel)), color-mix(in srgb, var(--ec-ops-panel) 90%, transparent)) !important;
+  border-color: color-mix(in srgb, var(--ec-accent) 42%, var(--ec-ops-line)) !important;
+  color: var(--ec-text-strong);
+  box-shadow:
+    inset 3px 0 0 color-mix(in srgb, var(--ec-accent) 78%, #2dd4bf 18%),
+    0 14px 34px -28px hsl(258 90% 62% / 0.72);
+}
+
+.ec-channel-glyph--custom {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--ec-accent) 12%, transparent),
+    0 12px 24px -18px var(--ec-channel-icon-glow);
+}
+
+.ec-channel-count {
+  margin-left: auto;
+  color: color-mix(in srgb, var(--ec-text-muted) 76%, transparent);
+}
+
+.ec-channel-list__composer {
+  padding: 10px;
+  background:
+    linear-gradient(180deg, transparent, color-mix(in srgb, var(--ec-ops-bg) 88%, transparent));
+}
+
+.ec-channel-list__composer .ec-btn {
+  min-height: 38px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, color-mix(in srgb, #93a4bf 82%, white 8%), color-mix(in srgb, #64748b 86%, var(--ec-accent) 10%));
+  color: white;
+}
+
+.ec-chat-header {
+  min-height: 50px;
+  padding-inline: 14px;
+}
+
+.ec-chat-header::before {
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #2dd4bf 20%, var(--ec-accent) 52%, transparent);
+  opacity: 0.72;
+}
+
+.ec-chat-title {
+  gap: 9px;
+  color: var(--ec-text-strong);
+  font-size: 1.04rem;
+  font-weight: 840;
+}
+
+.ec-chat-title__glyph,
+.ec-chat-title .ec-channel-glyph--emoji,
+.ec-chat-title__glyph.ec-channel-glyph--emoji {
+  width: 28px;
+  height: 28px;
+  border-radius: 10px;
+  background:
+    radial-gradient(circle at 30% 20%, color-mix(in srgb, var(--ec-accent) 40%, transparent), transparent 60%),
+    var(--ec-ops-panel);
+  box-shadow: 0 14px 30px -20px var(--ec-accent);
+}
+
+.ec-shell__chat {
+  background:
+    radial-gradient(circle at 50% -6%, color-mix(in srgb, var(--ec-accent) 10%, transparent), transparent 34rem),
+    radial-gradient(circle at 100% 82%, hsl(188 76% 48% / 0.045), transparent 30rem),
+    linear-gradient(180deg, #05080e, #03050a 72%) !important;
+}
+
+.ec-shell__members {
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--ec-accent) 8%, transparent), transparent 14rem),
+    linear-gradient(180deg, var(--ec-ops-rail-strong), var(--ec-ops-rail)) !important;
+}
+
+.ec-member-row {
+  min-height: 42px;
+  margin-inline: 8px;
+  padding: 7px 8px;
+  border: 1px solid transparent;
+  border-radius: 13px;
+}
+
+.ec-member-row:hover {
+  background: color-mix(in srgb, var(--ec-accent) 8%, var(--ec-ops-panel));
+  border-color: color-mix(in srgb, var(--ec-accent) 12%, transparent);
+  transform: translateX(-1px);
+}
+
+.ec-member-role,
+.ec-member-section,
+.ec-member-group-title {
+  color: color-mix(in srgb, var(--ec-text-muted) 86%, transparent);
+  letter-spacing: 0.075em;
+}
+
+.ec-message-list-shell {
+  background:
+    radial-gradient(circle at 46% 0%, color-mix(in srgb, var(--ec-accent) 13%, transparent), transparent 28rem),
+    linear-gradient(180deg, color-mix(in srgb, var(--ec-ops-bg) 92%, transparent), #03050a 70%) !important;
+}
+
+.ec-message-list {
+  max-width: 1120px;
+  width: 100%;
+  margin-inline: auto;
+  padding-top: 30px;
+  padding-inline: clamp(14px, 2.8vw, 42px);
+}
+
+.ec-msg-channel-top {
+  max-width: 760px;
+  margin: 10px 0 22px 52px;
+  padding: 18px 20px;
+  border: 1px solid var(--ec-ops-line-soft);
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--ec-ops-panel-2) 82%, transparent), color-mix(in srgb, var(--ec-ops-panel) 90%, transparent));
+  box-shadow: var(--ec-ops-glow);
+}
+
+.ec-message-content {
+  max-width: min(720px, 100%);
+  min-width: min(280px, 100%);
+  border-radius: 17px;
+  border-color: color-mix(in srgb, var(--ec-accent) 18%, #263246);
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--ec-accent) 12%, transparent), transparent 44%),
+    linear-gradient(135deg, color-mix(in srgb, var(--ec-ops-panel-2) 92%, transparent), color-mix(in srgb, var(--ec-ops-panel) 96%, transparent));
+  box-shadow:
+    0 20px 54px -42px hsl(210 80% 2% / 0.96),
+    0 0 0 1px hsl(0 0% 100% / 0.025),
+    inset 0 1px 0 hsl(0 0% 100% / 0.05);
+}
+
+.ec-message-row--mine .ec-message-content {
+  border-color: color-mix(in srgb, var(--ec-accent) 30%, #263246);
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--ec-accent) 16%, transparent), transparent 46%),
+    linear-gradient(135deg, color-mix(in srgb, #151b2b 86%, var(--ec-accent) 6%), color-mix(in srgb, var(--ec-ops-panel) 94%, transparent));
+}
+
+.ec-message-row--grouped .ec-message-content {
+  border-radius: 14px;
+}
+
+.ec-message-content p {
+  font-size: 0.96rem !important;
+  line-height: 1.58 !important;
+}
+
+.ec-message-content img {
+  border-radius: 12px;
+  box-shadow:
+    0 14px 36px -24px hsl(210 80% 2% / 0.95),
+    0 0 0 1px color-mix(in srgb, var(--ec-accent) 14%, transparent);
+}
+
+.ec-message-actions {
+  left: 58px;
+  top: -15px;
+  border-radius: 13px;
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--ec-accent) 15%, transparent), transparent 52%),
+    color-mix(in srgb, var(--ec-ops-panel-2) 92%, transparent);
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+}
+
+.ec-composer {
+  padding: 16px clamp(14px, 2.6vw, 36px) 12px;
+  background:
+    linear-gradient(180deg, transparent, color-mix(in srgb, #05070d 92%, transparent) 24%),
+    radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--ec-accent) 12%, transparent), transparent 34rem) !important;
+}
+
+.ec-composer-box {
+  max-width: 1120px;
+  margin-inline: auto;
+  min-height: 60px;
+  border-radius: 20px;
+  border-color: color-mix(in srgb, var(--ec-accent) 32%, #263246) !important;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--ec-ops-panel-2) 94%, transparent), color-mix(in srgb, var(--ec-ops-panel) 98%, transparent)) !important;
+  box-shadow:
+    0 26px 78px -48px hsl(258 90% 62% / 0.9),
+    0 0 0 1px hsl(0 0% 100% / 0.035),
+    inset 0 1px 0 hsl(0 0% 100% / 0.06) !important;
+}
+
+.ec-composer-textarea {
+  /* v1.6.93 — был хардкод #05070d (чёрная «пилюля» инпута в SOLAR; это
+     ops-theme override, перебивал фикс выше). Тема-aware surface-токен. */
+  background: color-mix(in srgb, var(--ec-surface-1) 60%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 12%, transparent);
+}
+
+.ec-composer-box:focus-within .ec-composer-textarea {
+  border-color: color-mix(in srgb, var(--ec-accent) 36%, transparent);
+}
+
+.ec-composer-send {
+  background:
+    linear-gradient(135deg, #8b5cf6, color-mix(in srgb, #8b5cf6 76%, #2dd4bf 24%)) !important;
+}
+
+@media (max-width: 980px) {
+  .ec-shell__cmdbar {
+    min-height: 46px;
+  }
+
+  .ec-shell__top-actions {
+    gap: 5px;
+  }
+
+  .ec-message-list {
+    padding-inline: 12px;
+  }
+}
+
+@media (max-width: 720px) {
+  .ec-message-list {
+    max-width: none;
+    padding-top: 16px;
+  }
+
+  .ec-msg-channel-top {
+    margin: 6px 0 14px;
+    padding: 14px;
+  }
+
+  .ec-message-row {
+    grid-template-columns: 34px minmax(0, 1fr);
+    padding-inline: 2px;
+  }
+
+  .ec-message-content {
+    min-width: 0;
+    padding: 10px 11px;
+    border-radius: 14px;
+  }
+
+  .ec-message-actions {
+    left: 42px;
+  }
+
+  .ec-composer {
+    padding: 10px 8px max(10px, env(safe-area-inset-bottom, 0));
+  }
+
+  .ec-composer-box {
+    min-height: 54px;
+    border-radius: 17px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ec-channel-item,
+  .ec-member-row,
+  .ec-message-content,
+  .ec-composer-box,
+  .ec-shell__top-actions *,
+  .ec-sidebar-tab {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
+/* v1.6.2 — command-center reset. Stronger than the earlier polish layer:
+ * clearer information hierarchy, calmer rails, practical touch targets. */
+.ec-shell {
+  background:
+    linear-gradient(90deg, hsl(222 38% 4%) 0, hsl(222 34% 5%) 16rem, hsl(225 36% 3%) 16rem),
+    #04060b;
+}
+
+.ec-shell__brandbar {
+  border-right: 1px solid color-mix(in srgb, var(--ec-accent) 16%, #1f2937) !important;
+}
+
+.ec-shell__cmdbar {
+  border-bottom: 1px solid color-mix(in srgb, var(--ec-accent) 22%, #1f2937) !important;
+}
+
+.ec-shell__top-actions {
+  min-height: 40px;
+  padding: 3px 4px;
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 10%, transparent);
+  border-radius: 18px;
+  background: color-mix(in srgb, #05070d 72%, transparent);
+}
+
+.ec-shell__top-actions > button,
+.ec-shell__top-actions > a {
+  min-width: 34px;
+  min-height: 34px;
+}
+
+.ec-shell__top-actions .ec-music-mini-player {
+  min-width: 250px;
+  max-width: 390px !important;
+  border-radius: 18px;
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 20%, #243244);
+  background: linear-gradient(180deg, #111827, #080c14) !important;
+}
+
+.ec-channel-list__header {
+  border-bottom: 1px solid color-mix(in srgb, var(--ec-accent) 13%, transparent);
+}
+
+.ec-channel-list__server-btn {
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.05),
+    0 18px 38px -34px hsl(258 90% 62% / 0.82);
+}
+
+.ec-channel-list__server-btn:hover,
+.ec-channel-list__server-btn[aria-expanded="true"] {
+  border-color: color-mix(in srgb, var(--ec-accent) 42%, #2dd4bf 10%);
+  background:
+    radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--ec-accent) 18%, transparent), transparent 58%),
+    linear-gradient(135deg, #121a28, #080c14);
+}
+
+.ec-channel-search,
+.ec-channel-list input[type="search"] {
+  min-height: 38px;
+  border-radius: 13px;
+  background: #070b12 !important;
+  border-color: color-mix(in srgb, var(--ec-accent) 15%, #273244) !important;
+}
+
+.ec-channel-item {
+  font-size: 0.91rem;
+}
+
+.ec-channel-item--active {
+  font-weight: 760;
+  text-shadow: none;
+}
+
+.ec-channel-item--active .ec-channel-item__name {
+  color: var(--ec-text-strong);
+}
+
+.ec-server-actions-menu.ec-popover-surface {
+  z-index: 1200;
+  width: min(316px, calc(100vw - 24px));
+  padding: 10px;
+  border-radius: 16px;
+  border-color: color-mix(in srgb, var(--ec-accent) 30%, #2dd4bf 8%) !important;
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--ec-accent) 18%, transparent), transparent 56%),
+    linear-gradient(180deg, #111827, #090d15) !important;
+  box-shadow:
+    0 26px 80px -40px hsl(210 80% 2% / 0.96),
+    0 0 0 1px hsl(0 0% 100% / 0.035),
+    0 0 44px -30px var(--ec-accent) !important;
+}
+
+.ec-server-actions-menu__item {
+  min-height: 42px;
+  border-radius: 11px;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+}
+
+.ec-server-actions-menu__item:hover:not(.ec-server-actions-menu__item--disabled),
+.ec-server-actions-menu__item:focus-visible:not(.ec-server-actions-menu__item--disabled) {
+  background: color-mix(in srgb, var(--ec-accent) 11%, #111827);
+}
+
+/* v1.6.44 de-noise (слайс 4): list rows. Убраны hover-slide (translateX) и
+   violet drop-shadow на hover у friend/member/search/popover/srv-menu/dm-row;
+   bg-tint и функциональные active/unread рейлы сохранены. Бесконечные
+   pulse/breath на dm online-avatar и unread-badge заглушены (статичные индикаторы). */
+.ec-friend-row:hover,
+.ec-friend-row:focus-visible,
+.ec-member-row:hover,
+.ec-search-hit:hover,
+.ec-popover-item:hover,
+.ec-srv-menu-row:hover,
+.ec-dm-row:hover {
+  transform: none;
+}
+.ec-friend-row:hover,
+.ec-friend-row:focus-visible,
+.ec-member-row:hover,
+.ec-search-hit:hover {
+  box-shadow: var(--ec-elev-1);
+}
+.ec-dm-row.is-online .ec-avatar,
+.ec-dm-row__badge,
+.ec-dm-row__badge::after {
+  animation: none;
+}
+
+.ec-chat-header {
+  /* v1.6.45 de-noise: убран violet drop-glow — тонкая нижняя кромка. */
+  box-shadow: 0 1px 0 var(--ec-border-subtle);
+}
+
+.ec-message-row {
+  max-width: 100%;
+}
+
+.ec-message-row:hover {
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--ec-accent) 5%, transparent), transparent 72%);
+}
+
+.ec-msg-avatar-wrap {
+  filter: drop-shadow(0 12px 18px hsl(210 90% 2% / 0.55));
+}
+
+.ec-message-content {
+  padding: 12px 14px;
+}
+
+.ec-message-content::before {
+  opacity: 0.48;
+}
+
+.ec-message-row--ai .ec-message-content {
+  border-color: color-mix(in srgb, var(--ec-accent) 24%, #2dd4bf 8%);
+}
+
+.ec-message-row--pinned .ec-message-content {
+  border-color: color-mix(in srgb, #d4af37 42%, #263246) !important;
+  box-shadow:
+    0 20px 54px -42px hsl(210 80% 2% / 0.96),
+    inset 3px 0 0 color-mix(in srgb, #d4af37 74%, transparent) !important;
+}
+
+.ec-message-actions {
+  min-height: 34px;
+  padding: 3px;
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 18%, #2a3548);
+  box-shadow:
+    0 18px 38px -28px hsl(210 80% 2% / 0.95),
+    inset 0 1px 0 hsl(0 0% 100% / 0.06);
+}
+
+.ec-msg-action {
+  min-width: 29px;
+  min-height: 28px;
+  border-radius: 9px;
+}
+
+.ec-msg-action:hover {
+  background: color-mix(in srgb, var(--ec-accent) 16%, transparent);
+}
+
+.ec-composer {
+  border-top: 1px solid color-mix(in srgb, var(--ec-accent) 14%, transparent);
+}
+
+.ec-composer-box {
+  grid-template-columns: auto auto auto minmax(0, 1fr) auto !important;
+  padding: 8px;
+}
+
+.ec-composer-icon-btn,
+.ec-composer-send {
+  min-width: 42px;
+  min-height: 42px;
+  border-radius: 14px;
+}
+
+.ec-composer-textarea {
+  min-height: 42px;
+  border-radius: 14px;
+  padding: 11px 13px;
+}
+
+.ec-composer-hints {
+  max-width: 1120px;
+  margin-inline: auto;
+  opacity: 0.72;
+}
+
+.ec-shell__members {
+  border-left: 1px solid color-mix(in srgb, var(--ec-accent) 14%, #1f2937) !important;
+}
+
+.ec-member-list {
+  padding-top: 8px;
+}
+
+.ec-member-list__scroll {
+  padding-bottom: 14px;
+}
+
+.ec-member-row {
+  background: transparent;
+}
+
+.ec-member-row:not(.ec-member-row--offline) {
+  color: var(--ec-text);
+}
+
+.ec-member-row__avatar {
+  box-shadow: 0 10px 20px -16px hsl(210 80% 2% / 0.94);
+}
+
+.ec-member-row__presence {
+  box-shadow:
+    0 0 0 2px var(--ec-ops-rail),
+    0 0 12px -5px currentColor;
+}
+
+.ec-member-row__name {
+  font-weight: 720;
+}
+
+.ec-member-row__identity .ec-activity-line {
+  max-width: 128px;
+  color: color-mix(in srgb, var(--ec-text-muted) 84%, transparent);
+}
+
+.ec-member-row__dm {
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--ec-accent) 8%, transparent);
+}
+
+.ec-voice-stage,
+.ec-voice-room,
+.ec-voice-panel {
+  background:
+    radial-gradient(circle at 50% 20%, color-mix(in srgb, var(--ec-accent) 12%, transparent), transparent 28rem),
+    #04060b;
+}
+
+.ec-voice-controls,
+.ec-voice-control-dock {
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 22%, #263246);
+  border-radius: 22px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, #111827 92%, transparent), color-mix(in srgb, #070b12 96%, transparent));
+  box-shadow:
+    0 26px 74px -46px hsl(258 90% 62% / 0.72),
+    inset 0 1px 0 hsl(0 0% 100% / 0.055);
+}
+
+.ec-voice-controls button,
+.ec-voice-control-dock button {
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 15px;
+}
+
+@media (max-width: 1180px) {
+  .ec-shell__top-actions .ec-music-mini-player {
+    min-width: 190px;
+    max-width: 260px !important;
+  }
+}
+
+@media (max-width: 860px) {
+  .ec-shell__top-actions {
+    border-color: transparent;
+    background: transparent;
+  }
+
+  .ec-shell__top-actions .ec-music-mini-player {
+    max-width: 180px !important;
+  }
+
+  .ec-composer-box {
+    grid-template-columns: auto auto minmax(0, 1fr) auto !important;
+  }
+
+  .ec-composer-icon-btn:nth-of-type(3) {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .ec-shell__cmdbar {
+    padding-inline: 8px;
+  }
+
+  .ec-shell__breadcrumb {
+    padding-inline: 6px;
+  }
+
+  .ec-shell__top-actions .ec-music-mini-player,
+  .ec-shell__top-actions .ec-theme-toggle {
+    display: none !important;
+  }
+
+  .ec-channel-list__server-btn,
+  .ec-channel-item,
+  .ec-server-actions-menu__item,
+  .ec-member-row {
+    min-height: 44px;
+  }
+
+  .ec-message-list {
+    padding-inline: 10px;
+  }
+
+  .ec-message-content {
+    max-width: 100%;
+  }
+
+  .ec-composer-icon-btn,
+  .ec-composer-send {
+    min-width: 40px;
+    min-height: 40px;
+  }
+}
+
+/* v1.6.3 — closer-to-concept structural correction.
+ * Targets actual current DOM hooks (.ec-mem*, composer modifiers) instead of legacy names. */
+.ec-shell__channels {
+  box-shadow:
+    inset -1px 0 0 color-mix(in srgb, var(--ec-accent) 18%, transparent),
+    18px 0 54px -44px hsl(258 90% 62% / 0.72);
+}
+
+.ec-shell__chat {
+  isolation: isolate;
+}
+
+.ec-chat-header {
+  min-height: 52px;
+  padding: 0 16px;
+}
+
+.ec-chat-title {
+  min-width: 0;
+}
+
+.ec-chat-title > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ec-message-list {
+  padding-bottom: 112px;
+}
+
+.ec-message-row {
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 10px;
+  margin-block: 5px;
+  padding: 6px 10px;
+  border-radius: 18px;
+}
+
+.ec-message-row--grouped {
+  margin-top: 0;
+  padding-top: 1px;
+}
+
+.ec-message-content {
+  width: fit-content;
+  max-width: min(740px, calc(100vw - 620px));
+}
+
+.ec-message-row--ai .ec-message-content {
+  /* v1.6.92 — был хардкод тёмный градиент (#111827/#090f1a → чёрный в SOLAR)
+     + радиальный акцент. Упрощено до спокойного токен-тинта: акцентный border
+     (выше) уже идентифицирует бот-сообщение. Корректно в обеих темах. */
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--ec-accent) 10%, var(--ec-surface-2)), var(--ec-surface-1)) !important;
+}
+
+.ec-message-row--mine {
+  justify-content: end;
+}
+
+.ec-message-row--mine .ec-message-content {
+  margin-left: auto;
+}
+
+.ec-message-content .ec-attachment,
+.ec-message-content .ec-link-embed,
+.ec-message-content audio,
+.ec-message-content video {
+  border-radius: 14px !important;
+  background: linear-gradient(180deg, #111827, #080c14) !important;
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 22%, #2b3547) !important;
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.055),
+    0 18px 44px -34px hsl(210 80% 2% / 0.92);
+}
+
+.ec-message-actions {
+  right: 18px;
+  left: auto;
+  top: -18px;
+  opacity: 0;
+  transform: translateY(4px);
+}
+
+.ec-message-row:hover .ec-message-actions,
+.ec-message-row:focus-within .ec-message-actions {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.ec-composer {
+  position: sticky;
+  bottom: 0;
+  z-index: 12;
+}
+
+.ec-composer-box--full {
+  grid-template-columns: 42px 42px 42px minmax(0, 1fr) auto;
+}
+
+.ec-composer-box--minimal {
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+}
+
+.ec-composer-send {
+  min-width: 126px;
+  padding-inline: 18px;
+  box-shadow:
+    0 14px 34px -22px hsl(258 90% 62% / 0.9),
+    inset 0 1px 0 hsl(0 0% 100% / 0.16);
+}
+
+.ec-shell__members .ec-mem {
+  height: 100%;
+  background:
+    radial-gradient(circle at 100% 0, color-mix(in srgb, var(--ec-accent) 12%, transparent), transparent 13rem),
+    linear-gradient(180deg, #0b111b, #070b12);
+}
+
+.ec-mem__hd {
+  min-height: 52px;
+  padding: 0 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--ec-accent) 16%, #1f2937);
+  background: linear-gradient(180deg, color-mix(in srgb, #111827 80%, transparent), transparent);
+}
+
+.ec-mem__hd-title {
+  color: var(--ec-text-strong);
+  font-size: 0.88rem;
+  font-weight: 840;
+}
+
+.ec-mem__hd-count {
+  margin-left: 4px;
+  color: color-mix(in srgb, var(--ec-text-muted) 88%, transparent);
+}
+
+.ec-mem__scroll {
+  padding: 10px 8px 16px;
+}
+
+.ec-mem__group {
+  min-height: 30px;
+  padding: 0 8px;
+  border-radius: 10px;
+  color: color-mix(in srgb, var(--ec-text-muted) 86%, transparent);
+  font-size: 0.68rem;
+  font-weight: 820;
+  letter-spacing: 0.075em;
+  text-transform: uppercase;
+}
+
+.ec-mem__group:hover {
+  background: color-mix(in srgb, var(--ec-accent) 7%, transparent);
+  color: var(--ec-text);
+}
+
+.ec-mem-row {
+  min-height: 46px;
+  margin: 2px 0;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  background: transparent;
+}
+
+.ec-mem-row:hover,
+.ec-mem-row:focus-within {
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--ec-accent) 12%, #111827), color-mix(in srgb, #111827 72%, transparent));
+  border-color: color-mix(in srgb, var(--ec-accent) 18%, transparent);
+  transform: translateX(-2px);
+}
+
+.ec-mem-row__av {
+  width: 34px;
+  height: 34px;
+}
+
+.ec-mem-row__pres {
+  box-shadow:
+    0 0 0 2px #070b12,
+    0 0 12px -5px currentColor;
+}
+
+.ec-mem-row__name {
+  color: var(--ec-text);
+  font-weight: 720;
+}
+
+.ec-mem-row--offline .ec-mem-row__name {
+  color: color-mix(in srgb, var(--ec-text-muted) 76%, transparent);
+}
+
+.ec-mem-row__act {
+  max-width: 132px;
+  color: color-mix(in srgb, var(--ec-text-muted) 78%, transparent);
+}
+
+.ec-mem-row__role {
+  min-width: 34px;
+  justify-content: center;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--ec-accent) 8%, #111827);
+  border-color: color-mix(in srgb, var(--ec-accent) 14%, transparent);
+}
+
+.ec-mem-row__role--owner {
+  color: #d4af37;
+  background: color-mix(in srgb, #d4af37 12%, #111827);
+  border-color: color-mix(in srgb, #d4af37 28%, transparent);
+}
+
+.ec-mem-row__dm {
+  min-width: 30px;
+  min-height: 30px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--ec-accent) 10%, transparent);
+}
+
+@media (max-width: 1180px) {
+  .ec-message-content {
+    max-width: min(680px, calc(100vw - 360px));
+  }
+}
+
+@media (max-width: 1024px) {
+  .ec-message-content {
+    max-width: min(680px, calc(100vw - 96px));
+  }
+
+  .ec-composer-send {
+    min-width: 104px;
+  }
+}
+
+@media (max-width: 640px) {
+  .ec-message-row {
+    grid-template-columns: 36px minmax(0, 1fr);
+    gap: 7px;
+    margin-block: 3px;
+    padding: 4px 2px;
+  }
+
+  .ec-message-content {
+    width: auto;
+    max-width: 100%;
+  }
+
+  .ec-message-actions {
+    right: 8px;
+    max-width: calc(100vw - 70px);
+    overflow-x: auto;
+  }
+
+  .ec-composer-box--full {
+    grid-template-columns: 40px 40px minmax(0, 1fr) 44px;
+  }
+
+  .ec-composer-box--full .ec-composer-icon-btn:nth-of-type(3) {
+    display: none;
+  }
+
+  .ec-composer-send {
+    min-width: 44px;
+    padding-inline: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ec-mem-row,
+  .ec-message-actions {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
+/* v1.6.4 — usability finish pass.
+ * Locks daily chat into a stable, practical layout instead of viewport-dependent polish. */
+.ec-shell__top-actions {
+  align-items: center;
+}
+
+.ec-shell__top-actions .ec-icon-btn {
+  border-radius: 12px;
+}
+
+.ec-shell__top-actions .ec-icon-btn:hover,
+.ec-shell__top-actions .ec-icon-btn:focus-visible {
+  background: color-mix(in srgb, var(--ec-accent) 11%, #111827);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ec-accent) 24%, transparent);
+}
+
+.ec-shell__top-actions .ec-music-mini-player {
+  height: 36px;
+  align-self: center;
+}
+
+.ec-channel-search {
+  margin: 8px 10px 10px;
+  box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.04);
+}
+
+.ec-channel-search:focus-within {
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.06),
+    0 0 0 2px color-mix(in srgb, var(--ec-accent) 18%, transparent);
+}
+
+.ec-channel-item {
+  gap: 9px;
+}
+
+.ec-channel-item__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ec-channel-item--active .ec-channel-glyph--emoji,
+.ec-channel-item--active .ec-channel-glyph--custom,
+.ec-channel-item--active .ec-channel-glyph--plain {
+  transform: none;
+}
+
+.ec-chat-header {
+  position: sticky;
+  top: 0;
+  z-index: 11;
+}
+
+.ec-message-list {
+  max-width: 1180px;
+}
+
+.ec-message-content {
+  max-width: min(760px, 72ch);
+}
+
+.ec-message-content p,
+.ec-message-content li {
+  overflow-wrap: anywhere;
+}
+
+.ec-message-row--mine .ec-message-content {
+  max-width: min(680px, 68ch);
+}
+
+.ec-message-content img {
+  max-height: min(62vh, 520px);
+  object-fit: contain;
+}
+
+.ec-youtube-embed {
+  width: min(640px, 100%);
+  margin-top: 10px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 22%, var(--ec-border-subtle));
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 16% 0%, color-mix(in srgb, var(--ec-accent) 16%, transparent), transparent 36%),
+    color-mix(in srgb, var(--ec-surface-2) 94%, black);
+  box-shadow:
+    0 14px 34px -26px color-mix(in srgb, var(--ec-accent) 80%, transparent),
+    inset 0 1px 0 hsl(0 0% 100% / 0.05);
+}
+
+.ec-youtube-embed__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 38px;
+  padding: 8px 11px;
+  border-bottom: 1px solid color-mix(in srgb, var(--ec-border-subtle) 78%, transparent);
+}
+
+.ec-youtube-embed__label {
+  color: var(--ec-text-strong);
+  font-size: var(--ec-text-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ec-youtube-embed__link {
+  color: color-mix(in srgb, var(--ec-accent) 70%, var(--ec-text-strong));
+  font-size: var(--ec-text-xs);
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.ec-youtube-embed__link:hover,
+.ec-youtube-embed__link:focus-visible {
+  color: var(--ec-text-strong);
+  text-decoration: underline;
+}
+
+.ec-youtube-embed__frame {
+  aspect-ratio: 16 / 9;
+  background: #02040a;
+}
+
+.ec-youtube-embed__frame iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.ec-team-training {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(260px, 344px) minmax(0, 1fr);
+  align-items: start;
+  width: 100%;
+  max-width: none;
+  overflow: hidden;
+  padding: 18px;
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 22%, var(--ec-border-subtle));
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--ec-accent) 15%, transparent), transparent 34%),
+    linear-gradient(145deg, color-mix(in srgb, var(--ec-surface-2) 92%, transparent), var(--ec-surface-1));
+  box-shadow: 0 22px 70px color-mix(in srgb, var(--ec-accent) 10%, transparent), var(--ec-elev-1);
+}
+
+.ec-team-training::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--ec-accent-2), var(--ec-accent), transparent);
+  opacity: 0.72;
+  pointer-events: none;
+}
+
+.ec-team-training__head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 360px);
+  align-items: start;
+  grid-column: 1 / -1;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.ec-team-training__title {
+  margin: 0;
+  color: var(--ec-text-strong);
+  font-size: var(--ec-text-lg);
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.ec-team-training__hint {
+  margin: 4px 0 0;
+  max-width: 620px;
+  color: var(--ec-text-dim);
+  font-size: var(--ec-text-sm);
+}
+
+.ec-team-training__new-section,
+.ec-team-training__rename,
+.ec-team-training__form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ec-team-training__controls {
+  min-width: 0;
+  padding-right: 16px;
+  border-right: 1px solid color-mix(in srgb, var(--ec-accent) 14%, var(--ec-border-subtle));
+}
+
+.ec-team-training__stage {
+  min-width: 0;
+  padding-left: 16px;
+}
+
+.ec-team-training__sections {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 2px 0 12px;
+  scrollbar-width: thin;
+}
+
+.ec-team-training__section-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+
+.ec-team-training__section {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--ec-border-subtle);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ec-surface-2) 86%, transparent);
+  color: var(--ec-text-muted);
+  font: inherit;
+  font-size: var(--ec-text-sm);
+  font-weight: 750;
+  cursor: pointer;
+  transition:
+    border-color var(--ec-dur-fast) var(--ec-ease),
+    color var(--ec-dur-fast) var(--ec-ease),
+    transform var(--ec-dur-fast) var(--ec-ease),
+    background var(--ec-dur-fast) var(--ec-ease);
+}
+
+.ec-team-training__section:hover,
+.ec-team-training__section:focus-visible,
+.ec-team-training__section--active {
+  border-color: color-mix(in srgb, var(--ec-accent) 54%, transparent);
+  background: color-mix(in srgb, var(--ec-accent) 13%, var(--ec-surface-2));
+  color: var(--ec-text-strong);
+  transform: translateY(-1px);
+}
+
+.ec-team-training__count {
+  min-width: 20px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ec-accent) 18%, transparent);
+  color: color-mix(in srgb, var(--ec-accent) 70%, var(--ec-text-strong));
+  font-size: var(--ec-text-2xs);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.ec-team-training__section-action {
+  width: 28px;
+  height: 28px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ec-text-dim);
+  cursor: pointer;
+  transition:
+    background var(--ec-dur-fast) var(--ec-ease),
+    color var(--ec-dur-fast) var(--ec-ease),
+    border-color var(--ec-dur-fast) var(--ec-ease);
+}
+
+.ec-team-training__section-action:hover,
+.ec-team-training__section-action:focus-visible {
+  border-color: color-mix(in srgb, var(--ec-accent) 34%, transparent);
+  background: color-mix(in srgb, var(--ec-accent) 10%, transparent);
+  color: var(--ec-text-strong);
+}
+
+.ec-team-training__form {
+  display: grid;
+  grid-template-columns: 1fr;
+  align-items: center;
+  padding: 10px;
+  margin: 10px 0 14px;
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 14%, var(--ec-border-subtle));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--ec-bg) 36%, transparent);
+}
+
+.ec-team-training__file-input {
+  display: none;
+}
+
+.ec-team-training__upload-hint {
+  margin: 0;
+  color: var(--ec-text-dim);
+  font-size: var(--ec-text-xs);
+  line-height: 1.45;
+}
+
+.ec-team-training__input {
+  min-height: 38px;
+  min-width: 0;
+  font-size: var(--ec-text-sm);
+}
+
+.ec-team-training__active-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 18%, var(--ec-border-subtle));
+  border-radius: 12px;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--ec-accent) 10%, transparent), transparent 52%),
+    color-mix(in srgb, var(--ec-surface-2) 74%, transparent);
+  color: var(--ec-text-muted);
+  font-size: var(--ec-text-xs);
+}
+
+.ec-team-training__active-summary strong {
+  display: block;
+  margin-top: 2px;
+  color: var(--ec-text-strong);
+  font-size: var(--ec-text-sm);
+}
+
+.ec-team-training__active-kicker {
+  color: color-mix(in srgb, var(--ec-accent) 72%, var(--ec-text-muted));
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ec-team-training__error {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--ec-danger) 44%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--ec-danger) 10%, transparent);
+  color: var(--ec-danger);
+  font-size: var(--ec-text-sm);
+}
+
+.ec-team-training__empty {
+  padding: 18px;
+  border: 1px dashed color-mix(in srgb, var(--ec-accent) 24%, var(--ec-border-subtle));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--ec-surface-2) 62%, transparent);
+  color: var(--ec-text-muted);
+  font-size: var(--ec-text-sm);
+  text-align: center;
+}
+
+.ec-team-training__videos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(clamp(220px, 24vw, 300px), 1fr));
+  align-items: start;
+  justify-content: start;
+  gap: 14px;
+  max-height: clamp(360px, 46vh, 620px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 2px 6px 6px 2px;
+  scrollbar-width: thin;
+}
+
+.ec-team-training-video {
+  overflow: hidden;
+  width: 100%;
+  min-width: 0;
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 20%, var(--ec-border-subtle));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--ec-surface-2) 86%, transparent);
+  box-shadow: var(--ec-elev-1);
+  transition:
+    border-color var(--ec-dur-fast) var(--ec-ease),
+    box-shadow var(--ec-dur-fast) var(--ec-ease),
+    transform var(--ec-dur-fast) var(--ec-ease);
+}
+
+.ec-team-training-video:hover,
+.ec-team-training-video:focus-within {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--ec-accent) 42%, var(--ec-border-subtle));
+  box-shadow:
+    0 18px 42px -30px color-mix(in srgb, var(--ec-accent) 52%, transparent),
+    var(--ec-elev-1);
+}
+
+.ec-team-training-video__frame {
+  aspect-ratio: 16 / 9;
+  max-height: 320px;
+  background: #02040a;
+}
+
+.ec-team-training-video--file .ec-team-training-video__frame {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 4 / 3;
+  max-height: 260px;
+  background:
+    radial-gradient(circle at 50% 25%, color-mix(in srgb, var(--ec-accent) 16%, transparent), transparent 42%),
+    #02040a;
+}
+
+.ec-team-training-video__frame iframe,
+.ec-team-training-video__frame video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.ec-team-training-video__frame video {
+  object-fit: contain;
+  background: #02040a;
+}
+
+.ec-team-training-video--file .ec-team-training-video__frame video {
+  width: auto;
+  max-width: 100%;
+  max-height: 260px;
+  object-fit: contain;
+}
+
+.ec-team-training-video__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  min-width: 0;
+}
+
+.ec-team-training-video__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
+}
+
+.ec-team-training-video__link {
+  color: color-mix(in srgb, var(--ec-accent) 74%, var(--ec-text-strong));
+  font-size: var(--ec-text-xs);
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.ec-team-training-video__link:hover,
+.ec-team-training-video__link:focus-visible {
+  color: var(--ec-text-strong);
+  text-decoration: underline;
+}
+
+.ec-team-training-video__source {
+  margin-top: 2px;
+  color: var(--ec-text-dim);
+  font-size: var(--ec-text-2xs);
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.ec-team-training-video__title {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ec-text-strong);
+  font-size: var(--ec-text-sm);
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ec-team-training-video__meta > div:first-child {
+  min-width: 0;
+}
+
+.ec-team-training-video__remove {
+  border: 0;
+  background: transparent;
+  color: var(--ec-text-dim);
+  font: inherit;
+  font-size: var(--ec-text-xs);
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.ec-team-training-video__remove:hover,
+.ec-team-training-video__remove:focus-visible {
+  color: var(--ec-danger);
+}
+
+.ec-team-training-video__bad-link {
+  padding: 28px 12px;
+  color: var(--ec-danger);
+  font-size: var(--ec-text-sm);
+  text-align: center;
+}
+
+@media (max-width: 1040px) {
+  .ec-team-training {
+    grid-template-columns: 1fr;
+    width: 100%;
+    padding: 14px;
+  }
+
+  .ec-team-training__head {
+    grid-template-columns: 1fr;
+    flex-direction: column;
+  }
+
+  .ec-team-training__new-section,
+  .ec-team-training__form {
+    width: 100%;
+  }
+
+  .ec-team-training__controls,
+  .ec-team-training__stage {
+    padding: 0;
+    border-right: 0;
+  }
+
+  .ec-team-training__stage {
+    margin-top: 10px;
+  }
+
+  .ec-team-training__form {
+    grid-template-columns: 1fr;
+    padding: 8px;
+  }
+
+  .ec-team-training__new-section .ec-team-training__input {
+    flex: 1 1 auto;
+  }
+
+  .ec-team-training__videos {
+    grid-template-columns: 1fr;
+  }
+
+  .ec-team-training-video {
+    max-width: none;
+  }
+
+  .ec-team-training__active-summary,
+  .ec-team-training-video__meta {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 430px) {
+  .ec-team-training__new-section,
+  .ec-team-training__rename {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .ec-team-training__section {
+    min-height: 40px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ec-team-training__section,
+  .ec-team-training__section-action,
+  .ec-team-training-video {
+    transition: none !important;
+  }
+
+  .ec-team-training__section:hover,
+  .ec-team-training__section:focus-visible,
+  .ec-team-training__section--active {
+    transform: none !important;
+  }
+
+  .ec-team-training-video:hover,
+  .ec-team-training-video:focus-within {
+    transform: none !important;
+  }
+}
+
+.ec-message-actions {
+  max-width: min(520px, calc(100vw - 120px));
+}
+
+.ec-msg-quick-react {
+  font-size: 0;
+}
+
+.ec-composer {
+  backdrop-filter: blur(18px) saturate(145%);
+  -webkit-backdrop-filter: blur(18px) saturate(145%);
+}
+
+.ec-composer-box {
+  width: min(1120px, 100%);
+}
+
+.ec-composer-box--full,
+.ec-composer-box--minimal {
+  align-items: end;
+}
+
+.ec-composer-icon-btn {
+  color: color-mix(in srgb, var(--ec-text-muted) 90%, transparent);
+}
+
+.ec-composer-icon-btn:hover:not(:disabled),
+.ec-composer-icon-btn:focus-visible {
+  color: var(--ec-text-strong);
+  background: color-mix(in srgb, var(--ec-accent) 12%, #111827);
+}
+
+.ec-composer-textarea {
+  max-height: 180px;
+  resize: none;
+}
+
+.ec-composer-tls {
+  margin-left: auto;
+}
+
+.ec-composer-box,
+.ec-composer-box--full,
+.ec-composer-box--minimal {
+  grid-template-columns: 40px minmax(0, 1fr) 40px 44px;
+  align-items: center;
+  min-height: 52px;
+  padding: 7px 8px;
+  border-radius: 16px;
+}
+
+.ec-composer-box--minimal {
+  grid-template-columns: minmax(0, 1fr) 40px 44px;
+}
+
+.ec-composer-action-root {
+  position: relative;
+  align-self: center;
+  display: inline-flex;
+}
+
+.ec-composer-box--full .ec-composer-action-root {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.ec-composer-box--full .ec-composer-textarea {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.ec-composer-box--full > .ec-composer-icon-btn {
+  grid-column: 3;
+  grid-row: 1;
+}
+
+.ec-composer-box--full .ec-composer-send {
+  grid-column: 4;
+  grid-row: 1;
+}
+
+.ec-composer-box--minimal .ec-composer-textarea {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.ec-composer-box--minimal > .ec-composer-icon-btn {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.ec-composer-box--minimal .ec-composer-send {
+  grid-column: 3;
+  grid-row: 1;
+}
+
+.ec-composer-plus {
+  position: relative;
+  display: inline-grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  color: color-mix(in srgb, var(--ec-text-muted) 92%, transparent);
+  background: transparent;
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    background 160ms ease,
+    color 160ms ease;
+}
+
+.ec-composer-plus:hover:not(:disabled),
+.ec-composer-plus:focus-visible,
+.ec-composer-plus[aria-expanded="true"] {
+  color: var(--ec-text-strong);
+  border-color: color-mix(in srgb, var(--ec-accent) 30%, transparent);
+  background:
+    radial-gradient(circle at 35% 25%, color-mix(in srgb, var(--ec-accent) 20%, transparent), transparent 60%),
+    color-mix(in srgb, var(--ec-accent) 10%, #111827);
+}
+
+.ec-composer-plus:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.ec-composer-action-menu {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 10px);
+  z-index: 90;
+  width: min(278px, calc(100vw - 32px));
+  padding: 8px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 22%, #2f3a4c);
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 0 0, color-mix(in srgb, var(--ec-accent) 16%, transparent), transparent 9rem),
+    linear-gradient(180deg, color-mix(in srgb, #1c2230 92%, transparent), #111621 96%);
+  box-shadow:
+    0 26px 60px -32px color-mix(in srgb, var(--ec-accent) 74%, #000),
+    0 18px 44px -34px #000,
+    inset 0 1px 0 hsl(0 0% 100% / 0.08);
+}
+
+.ec-composer-action-menu::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #22d3ee, var(--ec-accent), transparent);
+  opacity: 0.76;
+}
+
+.ec-composer-action-menu__item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  align-items: center;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 10px;
+  gap: 8px;
+  border: 0;
+  border-radius: 10px;
+  color: var(--ec-text);
+  background: transparent;
+  font: inherit;
+  font-weight: 760;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    background 160ms ease,
+    color 160ms ease;
+}
+
+.ec-composer-action-menu__item::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 9px;
+  bottom: 9px;
+  width: 3px;
+  border-radius: 999px;
+  background: var(--ec-accent);
+  transform: scaleY(0);
+  transform-origin: center;
+  transition: transform 160ms ease;
+}
+
+.ec-composer-action-menu__item:hover:not(:disabled),
+.ec-composer-action-menu__item:focus-visible {
+  color: var(--ec-text-strong);
+  background: color-mix(in srgb, var(--ec-accent) 11%, transparent);
+  transform: translateX(2px);
+}
+
+.ec-composer-action-menu__item:hover:not(:disabled)::before,
+.ec-composer-action-menu__item:focus-visible::before {
+  transform: scaleY(1);
+}
+
+.ec-composer-action-menu__item:disabled {
+  color: color-mix(in srgb, var(--ec-text-muted) 58%, transparent);
+  cursor: not-allowed;
+}
+
+.ec-composer-action-menu__icon {
+  display: inline-grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 9px;
+  color: color-mix(in srgb, var(--ec-text-muted) 92%, transparent);
+  background: color-mix(in srgb, var(--ec-accent) 8%, transparent);
+}
+
+.ec-composer-action-menu__soon {
+  justify-self: end;
+  color: color-mix(in srgb, var(--ec-text-muted) 68%, transparent);
+  font-size: 0.68rem;
+  font-weight: 850;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.ec-composer-icon-btn,
+.ec-composer-send {
+  align-self: center;
+}
+
+.ec-composer-icon-btn {
+  width: 38px;
+  min-width: 38px;
+  height: 38px;
+  padding: 0;
+}
+
+.ec-composer-send {
+  justify-self: end;
+  width: 42px;
+  min-width: 42px;
+  height: 38px;
+  padding: 0;
+  border-radius: 12px;
+}
+
+.ec-composer-send-label {
+  display: none !important;
+}
+
+.ec-composer-textarea {
+  align-self: center;
+  width: 100%;
+  min-width: 0;
+  min-height: 36px;
+  padding-block: 8px;
+}
+
+.ec-composer-hints {
+  display: none !important;
+}
+
+.ec-mem__scroll {
+  scrollbar-gutter: stable;
+}
+
+.ec-mem-row {
+  grid-template-columns: 34px minmax(0, 1fr) auto auto;
+  column-gap: 8px;
+}
+
+.ec-mem-row__id {
+  min-width: 0;
+}
+
+.ec-mem-row__name,
+.ec-mem-row__act {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ec-mem-row__dm {
+  opacity: 0;
+}
+
+.ec-mem-row:hover .ec-mem-row__dm,
+.ec-mem-row:focus-within .ec-mem-row__dm {
+  opacity: 1;
+}
+
+.ec-mem-row--offline {
+  opacity: 0.72;
+}
+
+.ec-mem-row--offline:hover,
+.ec-mem-row--offline:focus-within {
+  opacity: 1;
+}
+
+@media (max-width: 1280px) {
+  .ec-message-content,
+  .ec-message-row--mine .ec-message-content {
+    max-width: min(680px, 68ch);
+  }
+}
+
+@media (max-width: 900px) {
+  .ec-message-content,
+  .ec-message-row--mine .ec-message-content {
+    max-width: min(100%, 66ch);
+  }
+
+  .ec-composer-hints {
+    display: none !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .ec-chat-header {
+    min-height: 48px;
+    padding-inline: 10px;
+  }
+
+  .ec-message-list {
+    padding-bottom: 92px;
+  }
+
+  .ec-message-actions {
+    opacity: 1;
+    transform: none;
+  }
+
+  .ec-composer-box {
+    padding: 6px;
+  }
+
+  .ec-composer-box,
+  .ec-composer-box--full,
+  .ec-composer-box--minimal {
+    grid-template-columns: 40px minmax(0, 1fr) 38px 42px;
+  }
+
+  .ec-composer-box--minimal {
+    grid-template-columns: minmax(0, 1fr) 38px 42px;
+  }
+
+  .ec-composer-action-menu {
+    width: min(286px, calc(100vw - 24px));
+    max-height: min(70vh, 360px);
+    overflow-y: auto;
+  }
+
+  .ec-composer-send {
+    min-width: 44px;
+    padding-inline: 12px;
+  }
+
+  .ec-composer-send-label {
+    display: none;
+  }
+
+  .ec-composer-textarea {
+    max-height: 132px;
+  }
+
+  .ec-youtube-embed__header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ec-composer-plus,
+  .ec-composer-plus svg,
+  .ec-composer-action-menu__item,
+  .ec-composer-action-menu__item::before {
+    transition: none !important;
+  }
+
+  .ec-composer-plus[aria-expanded="true"] svg,
+  .ec-composer-action-menu__item:hover:not(:disabled),
+  .ec-composer-action-menu__item:focus-visible {
+    transform: none !important;
+  }
+}
+
+/* v1.6.18 hotfix: beat older composer !important grid and allow the + popover out of the input shell. */
+.ec-composer-box.ec-composer-box--full {
+  grid-template-columns: 40px minmax(0, 1fr) 40px 44px !important;
+  overflow: visible !important;
+}
+
+.ec-composer-box.ec-composer-box--minimal {
+  grid-template-columns: minmax(0, 1fr) 40px 44px !important;
+  overflow: visible !important;
+}
+
+.ec-composer-box--full .ec-composer-action-root {
+  grid-column: 1 !important;
+  z-index: 3;
+}
+
+.ec-composer-box--full .ec-composer-textarea,
+.ec-composer-box--minimal .ec-composer-textarea {
+  grid-column: 2 !important;
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+.ec-composer-box--minimal .ec-composer-textarea {
+  grid-column: 1 !important;
+}
+
+.ec-composer-box--full > .ec-composer-icon-btn {
+  grid-column: 3 !important;
+}
+
+.ec-composer-box--minimal > .ec-composer-icon-btn {
+  grid-column: 2 !important;
+}
+
+.ec-composer-box--full .ec-composer-send {
+  grid-column: 4 !important;
+  width: 44px !important;
+  min-width: 44px !important;
+}
+
+.ec-composer-box--minimal .ec-composer-send {
+  grid-column: 3 !important;
+  width: 44px !important;
+  min-width: 44px !important;
+}
+
+.ec-composer-action-menu {
+  overflow: visible !important;
+}
+
+/* v1.6.19: channel messages stay in one readable left rail. Own messages should not jump right in public channels. */
+.ec-message-row--mine {
+  justify-content: stretch !important;
+}
+
+.ec-message-row--mine .ec-message-content {
+  margin-left: 0 !important;
+}
+
+.ec-message-row--mine .ec-message-actions {
+  right: 18px !important;
+  left: auto !important;
+}
+
+.ec-message-content {
+  max-width: min(760px, calc(100vw - 96px)) !important;
+}
+
+.ec-message-content img,
+.ec-message-content video {
+  max-width: min(100%, 520px) !important;
+}
+
+.ec-composer-action-menu {
+  bottom: calc(100% + 8px) !important;
+  width: min(260px, calc(100vw - 32px)) !important;
+  padding: 6px !important;
+}
+
+.ec-composer-action-menu__item {
+  min-height: 40px !important;
+  padding: 7px 9px !important;
+}
+
+.ec-composer-action-menu__icon {
+  width: 26px !important;
+  height: 26px !important;
+}
+
+/* v1.6.22: voice room simplification.
+   Voice screen now uses the normal message composer and a calmer call-control dock. */
+.ec-voice-room {
+  background:
+    radial-gradient(ellipse 46rem 30rem at 50% 104%, color-mix(in srgb, var(--ec-accent) 18%, transparent), transparent 64%),
+    radial-gradient(ellipse 38rem 24rem at 22% 0%, hsl(205 85% 54% / 0.08), transparent 70%),
+    var(--ec-bg) !important;
+}
+
+.ec-voice-room__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto !important;
+  padding: clamp(14px, 2vw, 24px) !important;
+  position: relative;
+  z-index: 1;
+}
+
+.ec-voice-room__body:not(.ec-voice-room__body--visual) {
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.ec-voice-room__body--visual {
+  padding: 14px !important;
+}
+
+.ec-voice-room__layout-switch {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 3px;
+  min-height: 34px;
+  padding: 3px;
+  border: 1px solid color-mix(in srgb, var(--ec-border-default) 70%, transparent);
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--ec-accent) 10%, transparent), transparent 56%),
+    color-mix(in srgb, var(--ec-surface-2) 82%, #050810);
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.045),
+    0 12px 28px -24px color-mix(in srgb, var(--ec-accent) 64%, transparent);
+}
+
+.ec-voice-room__layout-option {
+  min-height: 26px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: color-mix(in srgb, var(--ec-text-muted) 90%, transparent);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.035em;
+  cursor: pointer;
+  transition:
+    background 160ms var(--ec-ease-out),
+    color 160ms var(--ec-ease-out),
+    transform 160ms var(--ec-ease-out),
+    box-shadow 160ms var(--ec-ease-out);
+}
+
+.ec-voice-room__layout-option:hover,
+.ec-voice-room__layout-option:focus-visible {
+  color: var(--ec-text-strong);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.ec-voice-room__layout-option--active {
+  color: var(--ec-text-strong);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--ec-accent) 34%, transparent), color-mix(in srgb, var(--ec-status-info) 22%, transparent));
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--ec-accent) 24%, transparent),
+    0 10px 20px -16px color-mix(in srgb, var(--ec-accent) 70%, transparent);
+}
+
+.ec-voice-room__split {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(520px, 1fr) clamp(390px, 36vw, 580px);
+  grid-template-rows: minmax(0, 1fr);
+  align-items: stretch;
+  gap: 16px;
+  overflow: hidden;
+  padding: 14px clamp(12px, 1.7vw, 24px) 16px;
+  position: relative;
+  z-index: 1;
+}
+
+.ec-voice-room__split--visual {
+  grid-template-columns: minmax(560px, 1.16fr) clamp(380px, 32vw, 540px);
+}
+
+.ec-voice-room__split--layout-stage {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.ec-voice-room__split--layout-stage .ec-voice-room__chat-column {
+  display: none;
+}
+
+.ec-voice-room__split--layout-chat {
+  grid-template-columns: clamp(300px, 32vw, 430px) minmax(520px, 1fr);
+}
+
+.ec-voice-room__split--layout-chat .ec-voice-room__body {
+  padding: clamp(10px, 1.3vw, 16px) !important;
+}
+
+.ec-voice-room__split--layout-chat .ec-vr-presence-card {
+  width: clamp(118px, 10vw, 136px);
+  min-height: 132px;
+}
+
+.ec-voice-room__stage-column {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--ec-border-default) 62%, transparent);
+  border-radius: 24px;
+  background:
+    radial-gradient(ellipse 50rem 28rem at 50% 95%, color-mix(in srgb, var(--ec-accent) 12%, transparent), transparent 62%),
+    linear-gradient(180deg, color-mix(in srgb, var(--ec-bg) 82%, transparent), color-mix(in srgb, var(--ec-bg) 96%, transparent));
+  box-shadow:
+    0 22px 56px -46px color-mix(in srgb, var(--ec-accent) 70%, transparent),
+    inset 0 1px 0 hsl(0 0% 100% / 0.035);
+  isolation: isolate;
+}
+
+.ec-voice-room__chat-column {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 18%, var(--ec-border-default));
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--ec-accent) 10%, transparent), transparent 42%),
+    linear-gradient(180deg, color-mix(in srgb, var(--ec-surface-2) 82%, transparent), color-mix(in srgb, var(--ec-bg) 92%, transparent));
+  box-shadow:
+    0 24px 58px -44px color-mix(in srgb, var(--ec-accent) 72%, transparent),
+    inset 0 1px 0 hsl(0 0% 100% / 0.045);
+  isolation: isolate;
+  position: relative;
+}
+
+.ec-voice-room__stage-column::before,
+.ec-voice-room__chat-column::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 18px;
+  right: 18px;
+  height: 1px;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--ec-status-info) 46%, transparent),
+    color-mix(in srgb, var(--ec-accent) 54%, transparent),
+    transparent
+  );
+  opacity: 0.72;
+  z-index: 1;
+}
+
+.ec-voice-room__stage-column::after {
+  content: "";
+  position: absolute;
+  inset: auto 8% -26% 8%;
+  height: 34%;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 100%, color-mix(in srgb, var(--ec-accent) 16%, transparent), transparent 68%);
+  opacity: 0.62;
+  z-index: 0;
+}
+
+.ec-voice-room--visual .ec-voice-room__stage-column {
+  background:
+    radial-gradient(ellipse 60rem 34rem at 50% 8%, color-mix(in srgb, var(--ec-status-info) 8%, transparent), transparent 62%),
+    radial-gradient(ellipse 50rem 26rem at 50% 96%, color-mix(in srgb, var(--ec-accent) 14%, transparent), transparent 64%),
+    linear-gradient(180deg, color-mix(in srgb, var(--ec-bg) 88%, #050810), color-mix(in srgb, var(--ec-bg) 98%, #050810));
+}
+
+.ec-voice-room__video-grid {
+  align-content: center;
+}
+
+.ec-voice-room__split--layout-stage .ec-voice-room__video-grid {
+  max-width: min(1480px, 100%);
+  margin-inline: auto;
+}
+
+.ec-voice-room__split--layout-stage .ec-vr-video-tile--screen {
+  max-height: min(78vh, 820px) !important;
+}
+
+.ec-vr-presence-card {
+  position: relative;
+  isolation: isolate;
+  width: clamp(136px, 12vw, 158px);
+  min-height: 150px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--ec-border-default) 72%, transparent) !important;
+  background:
+    radial-gradient(circle at 50% 10%, color-mix(in srgb, var(--ec-accent) 12%, transparent), transparent 46%),
+    linear-gradient(180deg, color-mix(in srgb, var(--ec-surface-3) 78%, #050810), color-mix(in srgb, var(--ec-bg) 94%, #050810)) !important;
+  box-shadow:
+    0 18px 42px -32px color-mix(in srgb, var(--ec-accent) 68%, transparent),
+    inset 0 1px 0 hsl(0 0% 100% / 0.05) !important;
+  transition:
+    transform 180ms var(--ec-ease-out),
+    border-color 180ms var(--ec-ease-out),
+    box-shadow 180ms var(--ec-ease-out),
+    filter 180ms var(--ec-ease-out);
+}
+
+.ec-vr-presence-card::before {
+  content: "";
+  position: absolute;
+  inset: 10px auto 10px 0;
+  width: 3px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--ec-status-info), var(--ec-accent));
+  opacity: 0;
+  transform: scaleY(0.35);
+  transition:
+    opacity 180ms var(--ec-ease-out),
+    transform 180ms var(--ec-ease-out);
+}
+
+.ec-vr-presence-card:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--ec-accent) 42%, var(--ec-border-default)) !important;
+  box-shadow:
+    0 22px 48px -30px color-mix(in srgb, var(--ec-accent) 78%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--ec-accent) 18%, transparent),
+    inset 0 1px 0 hsl(0 0% 100% / 0.07) !important;
+}
+
+.ec-vr-presence-card:hover::before,
+.ec-vr-presence-card--speaking::before {
+  opacity: 1;
+  transform: scaleY(1);
+}
+
+.ec-vr-presence-card--speaking {
+  border-color: color-mix(in srgb, var(--ec-status-success) 48%, var(--ec-accent)) !important;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--ec-status-success) 46%, transparent),
+    0 18px 46px -24px color-mix(in srgb, var(--ec-status-success) 46%, transparent),
+    0 0 34px -12px color-mix(in srgb, var(--ec-accent) 72%, transparent) !important;
+}
+
+.ec-vr-presence-card--muted {
+  filter: saturate(0.82);
+}
+
+.ec-vr-presence-card--muted:not(.ec-vr-presence-card--speaking) {
+  opacity: 0.78;
+}
+
+.ec-vr-connection {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 20px;
+  padding: 0 7px;
+  border: 1px solid color-mix(in srgb, var(--ec-border-default) 62%, transparent);
+  border-radius: 999px;
+  color: color-mix(in srgb, var(--ec-text-muted) 90%, transparent);
+  background: color-mix(in srgb, var(--ec-surface-2) 68%, transparent);
+  font-family: var(--ec-font-mono);
+  font-size: 0.62rem;
+  font-weight: 850;
+  letter-spacing: 0.045em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.ec-vr-connection > span {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--ec-text-dim);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ec-text-dim) 12%, transparent);
+}
+
+.ec-vr-connection--excellent {
+  border-color: color-mix(in srgb, var(--ec-status-success) 42%, transparent);
+  color: color-mix(in srgb, var(--ec-status-success) 86%, var(--ec-text-strong));
+}
+
+.ec-vr-connection--excellent > span {
+  background: var(--ec-status-success);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ec-status-success) 16%, transparent);
+}
+
+.ec-vr-connection--good {
+  border-color: color-mix(in srgb, var(--ec-status-info) 38%, transparent);
+  color: color-mix(in srgb, var(--ec-status-info) 82%, var(--ec-text-strong));
+}
+
+.ec-vr-connection--good > span {
+  background: var(--ec-status-info);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ec-status-info) 14%, transparent);
+}
+
+.ec-vr-connection--poor {
+  border-color: color-mix(in srgb, var(--ec-status-warn) 46%, transparent);
+  color: color-mix(in srgb, var(--ec-status-warn) 86%, var(--ec-text-strong));
+}
+
+.ec-vr-connection--poor > span {
+  background: var(--ec-status-warn);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ec-status-warn) 16%, transparent);
+}
+
+.ec-vr-connection--lost {
+  border-color: color-mix(in srgb, var(--ec-danger) 52%, transparent);
+  color: color-mix(in srgb, var(--ec-danger) 88%, var(--ec-text-strong));
+}
+
+.ec-vr-connection--lost > span {
+  background: var(--ec-danger);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ec-danger) 18%, transparent);
+}
+
+.ec-voice-room__controls {
+  min-height: 62px;
+  margin: 0 auto 14px !important;
+  position: sticky !important;
+  bottom: 12px;
+  z-index: 5 !important;
+  border-color: color-mix(in srgb, var(--ec-accent) 20%, var(--ec-border-default)) !important;
+  gap: 7px !important;
+  padding: 8px !important;
+  background:
+    radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--ec-status-info) 12%, transparent), transparent 56%),
+    linear-gradient(90deg, color-mix(in srgb, var(--ec-surface-2) 82%, #050810), color-mix(in srgb, var(--ec-accent) 18%, #050810), color-mix(in srgb, var(--ec-surface-2) 82%, #050810)) !important;
+  box-shadow:
+    0 20px 54px -34px color-mix(in srgb, var(--ec-accent) 78%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--ec-status-info) 10%, transparent),
+    inset 0 1px 0 hsl(0 0% 100% / 0.06) !important;
+}
+
+.ec-voice-room__controls::before {
+  display: none;
+}
+
+.ec-voice-room__controls .ec-vr-ctrl {
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 15px !important;
+  background:
+    radial-gradient(circle at 35% 18%, color-mix(in srgb, var(--ec-accent) 10%, transparent), transparent 58%),
+    color-mix(in srgb, var(--ec-surface-3) 88%, #050810) !important;
+  border-color: color-mix(in srgb, var(--ec-border-default) 78%, transparent) !important;
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.045),
+    0 10px 24px -18px hsl(210 40% 2% / 0.85) !important;
+  transition:
+    transform 160ms var(--ec-ease-out),
+    border-color 160ms var(--ec-ease-out),
+    box-shadow 160ms var(--ec-ease-out),
+    background 160ms var(--ec-ease-out),
+    color 160ms var(--ec-ease-out) !important;
+}
+
+.ec-voice-room__controls .ec-vr-ctrl:hover:not(:disabled),
+.ec-voice-room__controls .ec-vr-ctrl:focus-visible {
+  color: var(--ec-text-strong) !important;
+  border-color: color-mix(in srgb, var(--ec-accent) 42%, transparent) !important;
+  transform: translateY(-1px);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--ec-accent) 22%, transparent),
+    0 14px 30px -16px color-mix(in srgb, var(--ec-accent) 55%, transparent) !important;
+}
+
+.ec-voice-room__controls .ec-vr-ctrl:active:not(:disabled) {
+  transform: translateY(0) scale(0.96);
+}
+
+.ec-voice-room__controls .ec-vr-ctrl:disabled {
+  cursor: not-allowed;
+  filter: saturate(0.72);
+  opacity: 0.58;
+}
+
+.ec-voice-room__controls .ec-vr-ctrl[aria-pressed="true"] {
+  border-color: color-mix(in srgb, var(--ec-accent) 58%, transparent) !important;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--ec-accent) 32%, transparent),
+    0 16px 34px -18px color-mix(in srgb, var(--ec-accent) 64%, transparent) !important;
+}
+
+.ec-voice-room__controls .ec-vr-ctrl--accent {
+  color: var(--ec-accent) !important;
+  background:
+    radial-gradient(circle at 35% 20%, color-mix(in srgb, var(--ec-accent) 28%, transparent), transparent 62%),
+    color-mix(in srgb, var(--ec-accent) 14%, #071018) !important;
+  border-color: color-mix(in srgb, var(--ec-accent) 58%, transparent) !important;
+}
+
+.ec-voice-room__controls .ec-vr-ctrl--danger {
+  color: hsl(0 0% 100%) !important;
+  background:
+    radial-gradient(circle at 35% 20%, hsl(352 85% 68% / 0.45), transparent 62%),
+    hsl(350 58% 38% / 0.92) !important;
+  border-color: hsl(350 76% 62% / 0.68) !important;
+}
+
+.ec-voice-room__controls .ec-vr-volume {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  height: 44px !important;
+  min-width: 166px;
+  padding: 0 14px !important;
+  border-radius: 15px !important;
+  background: color-mix(in srgb, var(--ec-surface-3) 82%, #050810) !important;
+  border: 1px solid color-mix(in srgb, var(--ec-border-default) 78%, transparent) !important;
+  color: color-mix(in srgb, var(--ec-text-muted) 92%, transparent);
+}
+
+.ec-voice-room__controls .ec-vr-volume input[type="range"] {
+  width: 96px !important;
+}
+
+.ec-voice-room__controls .ec-vr-volume input[type="range"]::-webkit-slider-thumb {
+  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--ec-accent) 70%, transparent));
+}
+
+.ec-voice-room__composer {
+  flex-shrink: 0;
+  padding: 12px 12px 12px;
+  border-top: 1px solid color-mix(in srgb, var(--ec-border-default) 64%, transparent);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--ec-surface-2) 24%, transparent), color-mix(in srgb, var(--ec-bg) 74%, transparent));
+  position: relative;
+  z-index: 1;
+}
+
+.ec-voice-room__messages {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  padding: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.ec-voice-room__messages-card {
+  width: 100%;
+  min-height: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.ec-voice-room__messages-head {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid color-mix(in srgb, var(--ec-border-default) 72%, transparent);
+  color: var(--ec-text-muted);
+  font-family: var(--ec-font-mono);
+  font-size: 0.66rem;
+  font-weight: 850;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.ec-voice-room__messages-card .ec-message-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 14px 14px 12px;
+  overflow-y: auto;
+}
+
+.ec-voice-room__messages-card .ec-message-list-shell {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.ec-voice-room__messages-card .ec-channel-start {
+  display: none;
+}
+
+.ec-voice-room__messages-card .ec-message-row {
+  padding-block: 7px;
+}
+
+.ec-voice-room__messages-card .ec-message-row--own,
+.ec-voice-room__messages-card .ec-message-row--other {
+  max-width: 100%;
+}
+
+.ec-voice-room__composer .ec-composer {
+  padding: 0 !important;
+  border-top: 0 !important;
+  background: transparent !important;
+}
+
+.ec-voice-room__composer .ec-composer::before {
+  display: none;
+}
+
+.ec-voice-room__composer .ec-composer-box {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  border-radius: 22px !important;
+  border-color: color-mix(in srgb, var(--ec-accent) 22%, var(--ec-border-default)) !important;
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--ec-accent) 14%, transparent), transparent 42%),
+    color-mix(in srgb, var(--ec-surface-2) 78%, #050810) !important;
+  box-shadow:
+    0 18px 46px -28px color-mix(in srgb, var(--ec-accent) 72%, transparent),
+    inset 0 1px 0 hsl(0 0% 100% / 0.055) !important;
+}
+
+@media (max-width: 1180px) {
+  .ec-voice-room__split,
+  .ec-voice-room__split--visual {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 12px;
+    overflow-y: auto;
+  }
+
+  .ec-voice-room__stage-column {
+    min-height: min(58vh, 560px);
+    height: auto;
+    overflow: visible;
+  }
+
+  .ec-voice-room__chat-column {
+    min-height: min(46vh, 460px);
+    height: auto;
+  }
+
+  .ec-voice-room__split--layout-chat .ec-voice-room__stage-column {
+    min-height: 280px;
+  }
+
+  .ec-voice-room__controls {
+    width: calc(100% - 24px) !important;
+    justify-content: flex-start !important;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .ec-voice-room__controls::-webkit-scrollbar {
+    display: none;
+  }
+
+}
+
+@media (max-width: 560px) {
+  .ec-voice-room__split {
+    padding: 8px;
+  }
+
+  .ec-voice-room__layout-switch {
+    width: auto;
+    max-width: 176px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .ec-voice-room__layout-switch::-webkit-scrollbar {
+    display: none;
+  }
+
+  .ec-voice-room__layout-option {
+    flex: 1 0 auto;
+  }
+
+  .ec-voice-room__stage-column,
+  .ec-voice-room__chat-column {
+    border-radius: 18px;
+  }
+
+  .ec-voice-room__stage-column {
+    min-height: 380px;
+  }
+
+  .ec-voice-room__chat-column {
+    min-height: 420px;
+  }
+
+  .ec-voice-room__composer {
+    padding: 10px;
+  }
+
+  .ec-voice-room__messages {
+    padding: 0;
+  }
+
+  .ec-voice-room__messages-card {
+    border-radius: 0;
+  }
+
+  .ec-voice-room__messages-card .ec-message-list {
+    padding: 10px;
+  }
+
+  .ec-voice-room__composer .ec-composer-box {
+    border-radius: 18px !important;
+  }
+
+  .ec-voice-room__controls {
+    min-height: 60px;
+    padding: 8px !important;
+    border-radius: 22px !important;
+  }
+
+  .ec-voice-room__controls::before {
+    min-height: 38px;
+    padding-inline: 10px;
+  }
+
+  .ec-voice-room__controls .ec-vr-ctrl {
+    width: 42px !important;
+    height: 42px !important;
+    border-radius: 14px !important;
+  }
+
+  .ec-voice-room__controls .ec-vr-volume {
+    min-width: 140px;
+    height: 42px !important;
+  }
+
+  .ec-voice-room__controls .ec-vr-volume input[type="range"] {
+    width: 72px !important;
+  }
+
+  .ec-vr-presence-card {
+    width: min(100%, 148px);
+    min-height: 140px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ec-voice-room__controls .ec-vr-ctrl,
+  .ec-voice-room__layout-option,
+  .ec-vr-presence-card,
+  .ec-vr-presence-card::before {
+    transition: none !important;
+  }
+
+  .ec-voice-room__controls .ec-vr-ctrl:hover:not(:disabled),
+  .ec-voice-room__controls .ec-vr-ctrl:focus-visible,
+  .ec-voice-room__layout-option:hover,
+  .ec-voice-room__layout-option:focus-visible,
+  .ec-vr-presence-card:hover {
+    transform: none !important;
+  }
+}
+
+/* v1.6.92 — ДЕ-НОЙЗ: глушим постоянные ambient-«дыхания»/пульсации внутри
+   приложения. Они крутятся вечно и не несут информации (online / active /
+   unread уже переданы цветом/иконкой/числом) → лишний перф и батарея, особенно
+   в мобильном WebView (N online-точек = N вечных таймлайнов). Статика
+   (цвет точки, бейдж, активный рейл, аватар) остаётся — уходит только движение.
+   Лендинг-хедер/галактику НЕ трогаем. По аудиту (P5/P8). */
+.ec-dot--online,
+.ec-member-row:not(.ec-member-row--offline) .ec-member-row__presence,
+.ec-dm-row.is-online .ec-avatar,
+.ec-composer-send:not(:disabled),
+.ec-anim-reaction-mine,
+.ec-dm-row__badge,
+.ec-dm-row__badge::after,
+.ec-channel-item--active::before {
+  animation: none !important;
 }
 

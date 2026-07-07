@@ -5,7 +5,653 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая версия:** **v1.5.60** (IA reset slice 1 — UXR1+UXR2+UXR4 атомарно.
+## Research intake — 2026-07-01
+
+Источник: [Eclipse Library · July 2026 project integration](https://library.eclipse-forge.ru/#guide/july-2026-project-integration).
+Это стратегические references, **не реализованный функционал**.
+
+### AI memory / operator layer
+
+- [ ] **OpenHuman reference** — спроектировать `AI Memory` слой: room memory, project memory, "since you were away", semantic search по решениям/файлам/задачам, audit trail и удаление памяти.
+- [ ] **SimpleX Chat reference** — privacy-модель для ephemeral/private rooms: одноразовые invite links/QR, минимизация метаданных, режимы client/private channel.
+- [ ] **OpenClaw Mobile reference** — mobile operator control: агент предлагает действие, пользователь подтверждает с телефона; camera/location/voice только через явные permissions.
+
+### AI routing / agent readiness
+
+- [x] **OmniRoute reference** — phase 1 shipped in `v1.7.1`: env-gated OpenAI-compatible provider in `apps/server/src/ai/provider.ts` with `OMNIROUTE_BASE_URL`, `OMNIROUTE_API_KEY`, `OMNIROUTE_MODEL(S)`. Next: expose provider health/cost/latency in admin diagnostics.
+- [ ] **Cloudflare Agent Ready** — прогонять public landing/download/docs на AI Search, Web Bot Auth, MCP, bot-readable docs и рекомендации для agent discoverability.
+
+### Operational workspace UX
+
+- [ ] **TREK reference** — client/project rooms как workspace вокруг процесса: планы, опросы, shared checklist, budget/table layer, route-like progress и lightweight журнала проекта.
+
+### Reports / reproducible artifacts
+
+- [ ] **PPT Master reference** — project/client recap → editable PPTX: решения, задачи, deliverables, графики и speaker notes без image-only слайдов.
+- [ ] **Claude Science reference** — execution rooms должны хранить результат вместе с кодом, окружением, источниками и conversation history, чтобы артефакт можно было проверить спустя месяцы.
+
+## Implementation bridge — 2026-07-05
+
+- [x] **v1.7.1 OmniRoute provider slice** — добавлен отдельный provider-router слой поверх существующего AI chain: `Ollama → OmniRoute → direct cloud providers → OpenAI → Pollinations`. Включается только через env, поэтому прод-поведение без `.env` не меняется.
+- [x] **AI setup docs refreshed** — `docs/AI-SETUP.md` теперь отражает текущую цепочку провайдеров, Pollinations fallback и безопасный способ подключать OmniRoute.
+- [x] **v1.7.2 AI provider diagnostics** — Platform Admin → AI tab показывает санитизированный список активных провайдеров: priority, type, host, auth-state, models. API keys, prompts и user content не раскрываются.
+- [x] **v1.7.3 OpenHuman-inspired memory foundation** — добавлены `MemoryEntry` + migration, REST API `/api/channels/:id/memory`, мягкое архивирование записей, UI во вкладке "Память": заметки, решения, риски, факты, ссылки, действия, теги и pinned anchors.
+- [ ] **Next P0: AI memory extraction + digest integration** — действие "save to memory" из сообщения/action item, AI-предложения памяти, memory delta в "since you were away", поиск по памяти.
+
+**Актуальная версия (короткий индекс):** **v1.7.3** — AI Memory foundation: curated room memory, soft archive, UI in ChannelInfoPanel, Prisma migration `20260705203000_add_memory_entries`.
+
+**Текущая версия:** **v1.6.98** (🗄️⚡ PARTIAL-ИНДЕКС под escalation-scan (бэклог-хвост, заход через CI). Фоновой `escalation.ts` раз в час обходит `ActionItem` где `status ∈ (OPEN,IN_PROGRESS,REVIEW)`, `dueAt < now-48h`, `(escalatedAt IS NULL OR < now-7d)`, `ORDER BY dueAt ASC LIMIT 50`. Запрос **глобальный** (без serverId/channelId) → все 4 существующих индекса `ActionItem` ведут с channelId/serverId и его НЕ покрывают → был seq-scan всей таблицы каждый час. **Новый partial composite index** `ActionItem_escalation_scan_idx ON ("dueAt") WHERE status IN (OPEN,IN_PROGRESS,REVIEW) AND dueAt IS NOT NULL` (raw-миграция `20260625120000_add_escalation_partial_index`): индексирует только кандидатов эскалации (крошечная доля таблицы — закрытые DONE и задачи без дедлайна исключены); ведущая `dueAt` → один forward index-scan покрывает и `dueAt < X`, и `ORDER BY dueAt ASC LIMIT 50` без сортировки, рано останавливается. **Prisma не выражает WHERE-индексы** → raw SQL; `migrate deploy` (deploy.sh [4/10]) применяет как есть, `prisma generate` индексы не читает, drift-проверок (`migrate dev`) в проекте нет (прод=migrate deploy, локальной БД нет). schema.prisma — doc-comment у `ActionItem` фиксирует существование индекса («не чинить как drift»). **temp-channel scan (`tempChannels.ts`) НЕ трогал** — `Channel` уже имеет `@@index([expiresAt])`, а `WHERE expiresAt < now` = чистый range-scan по нему (NULL'ы сортируются последними, не читаются); partial там лишь дублировал бы индекс = write-amplification на крошечной таблице ради ~нуля. Version 1.6.97→1.6.98 (4 точки). Verify: server `tsc --noEmit` PASS, web build PASS; миграция применится на проде при деплое (`migrate deploy`). **Бэклог-остаток:** виртуализация ленты сообщений (npm-dep + риск-рефактор скролла) — единственный крупный хвост.)
+
+**Предыдущая:** **v1.6.97** (📲✅ ANDROID v1.0.4 НА САЙТЕ (хвост закрыт) + splash-hide. CDN отпустил → перезалит on-site `public/download/eclipse-chat.apk` на подписанный **`android-v1.0.4`** (4.8 МБ): in-app downloads (DownloadListener в `MainActivity`) + тёмный status-bar + сплеш (`@capacitor/splash-screen`). Юзеры v1.0.3 → баннер «новая версия». **Веб-часть слайса 3 дозакрыта:** `main.tsx` прячет нативный сплеш (`window.Capacitor.Plugins.SplashScreen.hide()`) по монтированию веба (rAF; graceful no-op в браузере; `launchAutoHide` страхует). Version 1.6.96→1.6.97 (4 точки). Verify: typecheck+build green, APK 4.8МБ в `dist/download/`. **Осталось (всё внешне-заблокировано локально):** partial-индексы — Prisma-миграцию НЕ сгенерить локально (нет БД); виртуализация ленты — npm-dep не добавить локально. Оба — отдельным заходом через CI/с БД. Полировка-де-нойз/перф/SOLAR/серверный-рефактор — закрыты (слайсы v1.6.90-96).
+
+**Предыдущая:** **v1.6.96** (🧩 ПОЛИРОВКА ч.7 — серверный рефактор (по аудиту C2). 3 одинаковые inline-проверки модератора (`role !== OWNER && !== ADMIN && !== MODERATOR`) в delete/pin/unpin (`routes/messages.ts`) → вынесены в хелпер `isServerModerator(role)` (один источник правды; при смене набора ролей не разъедется). Чистый рефактор, поведение не менялось. Version 1.6.95→1.6.96 (4 точки). Verify: server `tsc --noEmit` PASS. **Осталось серверное:** partial-индексы под cron-сканы (temp-channels/escalation) — это prod-DB-миграция Prisma, делать отдельным аккуратным заходом (не в общем потоке полировки). **Крупное:** виртуализация ленты (npm-dep). **Хвост:** `android-v1.0.4` re-host (CDN из РФ).
+
+**Предыдущая:** **v1.6.95** (🧹 ПОЛИРОВКА ч.6 — финиш де-нойза. `.ec-settings-panel` — убран radial-glow фона (оба правила, base+ops); `.ec-modal-footer::before` — убран декоративный cyan→violet градиент (border-top уже разделяет); `ServerHubModal` — хардкод `#fff`+textShadow на «авто-градиент»-лейбле → токены (`--ec-text-strong`/`--ec-overlay-bg`), активный mode-select glow упрощён до чистого 1px-кольца `var(--ec-accent)` (убран хардкод-hsl + 14px-glow). Чисто CSS + 1 TSX. Version 1.6.94→1.6.95 (4 точки). Verify: typecheck+build green. **Осталось:** серверное (moderator-helper рефактор + partial-индексы под cron — индексы = prod-DB-миграция, делать осторожно отдельно); крупное — виртуализация ленты (npm-dep+риск). + хвост: `android-v1.0.4` (CDN).
+
+**Предыдущая:** **v1.6.94** (🧹 ПОЛИРОВКА ч.5 — memo списков + де-нойз модалок/настроек. (1) `MemberRowView` → `memo` (изменение одного участника не ре-рендерит все строки; добивка к `RichContent`/`Avatar`). (2) Де-нойз: `.ec-modal-backdrop` — убрана violet-аура (просто затемнение); `.ec-modal-close:hover` — убран glow (rotate+bg уже сигналят); `.ec-settings-section__hero/.ec-settings-card/.ec-settings-empty` — убраны radial-glow + violet-тень + inset-кольцо → `var(--ec-surface-2)` + `var(--ec-elev-1)` + токен-border (проще + корректно в SOLAR). Version 1.6.93→1.6.94 (4 точки). Verify: typecheck+build green + headless. **Осталось:** settings-panel radial + modal-footer cyan-градиент, `ServerHubModal` (P15), memo остальных списков/AppShell-пропсов, серверное (helper/индексы); виртуализация ленты — npm-dep. + хвост: `android-v1.0.4` (CDN).
+
+**Предыдущая:** **v1.6.93** (🧹 ПОЛИРОВКА ч.4 — КОМПОЗЕР (самый «шумный» компонент по аудиту). Де-нойз `.ec-composer-box`: убраны violet+**cyan**-радиалы (cyan off-brand), `::before` holo-rail (cyan→violet линия), blur, тройной focus-glow + хардкод-тёмный фон → `var(--ec-surface-2)` + чистое акцент-кольцо на focus (корректно в SOLAR). Send-кнопка: хардкод violet-градиент + **pure-white** текст → `var(--ec-accent)` (следует brandColor сервера) + `var(--ec-accent-text)`. **Headless поймал баг, который аудит пропустил:** `.ec-composer-textarea` фон = хардкод `#05070d` (ops-theme override @9398) → в SOLAR чёрная «пилюля» инпута; → `color-mix(var(--ec-surface-1) ...)`. Чисто CSS. Version 1.6.92→1.6.93 (4 точки). Verify: build green + **headless OBSIDIAN+SOLAR композера** — чисто, инпут читаем в обеих темах. **Осталось:** де-нойз модалок/настроек (P12-14), `ServerHubModal` (P15), memo списков AppShell, серверное (helper/индексы); виртуализация ленты — упирается в npm-dep. + хвост: перезалив `android-v1.0.4` (CDN).
+
+**Предыдущая:** **v1.6.92** (🧹 ПОЛИРОВКА ч.3 — де-нойз + ещё SOLAR-баги (Pavel «сделаем всё что осталось»). (1) **Глушим постоянные ambient-лупы** в приложении (крутились вечно, не несут инфы → перф/батарея, N online-точек = N таймлайнов): presence-пульс (`.ec-dot--online`, member/dm presence), `ec-channel-rail-breath` (активный канал), `ec-dm-avatar-breath`, `ec-dm-badge-pulse/halo`, `ec-composer-send-breath`, `ec-anim-reaction-mine` → централизованный блок `animation: none !important` в конце `components.css` (статика — цвет/бейдж/рейл — остаётся, уходит движение; лендинг-галактику не трогаем). (2) Убран glow `text-shadow` с `.ec-unread-divider`; смягчена 38px-тень `.ec-chat-header` → 8px/0.12. (3) AI-сообщение (`.ec-message-row--ai .ec-message-content` rule@~9887): был хардкод тёмный градиент (`#111827/#090f1a` → чёрный в SOLAR) + радиал-акцент → токен-тинт (акцентный border уже идентифицирует бота). Чисто CSS. Version 1.6.91→1.6.92 (4 точки). Verify: build green. **Осталось:** де-нойз ч.4 (off-brand cyan композера P1, send-кнопка P3, glow модалок/настроек P12-14, `ServerHubModal` P15), структурный перф (memo списков AppShell, виртуализация ленты — блокирована: нельзя добавить npm-dep локально, рассмотреть later/CI), серверное (moderator-helper, partial-индексы под cron). + хвост: перезалив `android-v1.0.4` (CDN).
+
+**Предыдущая:** **v1.6.91** (🌗 ПОЛИРОВКА ч.2 — SOLAR-баги (по аудиту): хардкод-тёмные `hsl(...)` surface БЕЗ light-override рендерились чёрными блоками в светлой теме. Фикс на токены (в OBSIDIAN ~то же, в SOLAR флипается): `.ec-home__stats div` + `.ec-home-card` → `var(--ec-surface-2)`; `.ec-channel-item:hover` → `var(--ec-surface-3)`+`var(--ec-border-subtle)`; `.ec-message-actions` → `var(--ec-surface-2)` + убран лишний glow И `backdrop-filter` (фон непрозрачный → блюр не виден, но стоил compositing-слоя на КАЖДОЙ строке ленты — перф-бонус). Чисто CSS (`components.css`). Version 1.6.90→1.6.91 (4 точки). Verify: build green + headless-рендер карточек в SOLAR — светлые/читаемые. **Осталось по аудиту:** де-нойз (ambient-лупы в `motion.css`/`effects.css`, off-brand cyan в композере P1, лишние glow модалок/настроек P12-14, `ServerHubModal` хардкод-цвета P15), крупные (виртуализация ленты, memo AppShell-списков, серверные индексы).
+
+**Предыдущая:** **v1.6.90** (⚡ ПОЛИРОВКА ч.1 — перф-оптимизация ленты (по аудиту, Pavel «отполировать до идеала без потерь оптимизации»). Без визуальных изменений: (1) `RichContent` → `memo`+`useMemo` (detectMentions/tokenize больше НЕ гоняются на каждый ре-рендер каждого сообщения — самый дешёвый крупный выигрыш в ленте); (2) `Avatar` → `memo` (рендерится в каждой строке списков, пропсы примитивные); (3) `vite.config` `manualChunks` → стабильный `vendor`-чанк (react/react-dom/scheduler) отдельно от кода приложения → WebView кэширует его между деплоями (socket.io/livekit оставлены lazy — лендинг не тяжелеет). Version 1.6.89→1.6.90 (4 точки). Verify: typecheck+build green, vendor-чанк в bundle. **NB:** worst-case mobile-перф (backdrop-filter на шелле/строках) уже убран touch-пассом v1.6.81. **Аудит дал ещё пунктов (делаю слайсами):** SOLAR-баги (хардкод-тёмные surface без light-override → чёрные блоки в светлой теме), де-нойз (ambient-лупы, off-brand cyan в композере/модалках, лишние glow/тени), крупные (виртуализация ленты, memo AppShell-списков, серверные индексы). **Хвост:** перезалив `android-v1.0.4` на сайт (in-app downloads+status-bar+splash готовы, тег есть) — БЛОКИРОВАН: GitHub-CDN таймаутит с моей машины (та же РФ-блокировка); on-site валидный v1.0.3, перезалью когда CDN отзовётся.
+
+**Предыдущая:** **v1.6.89** (🎨📱 БРЕНДОВАЯ ИКОНКА ПРИЛОЖЕНИЯ (слайс 3/4, ч.1). Дефолтная иконка Capacitor → наш eclipse-лого. **Нативное (PR #94 + тег `android-v1.0.3`):** `apps/android` +`@capacitor/assets` (dev), `assets/icon-only.png` (1024, апскейл `icon-512`), CI-шаг `capacitor-assets generate --android` в build-debug+build-release (после `cap sync`) → все mipmap-плотности + adaptive (фон `#05070a`). Опубликован подписанный **`android-v1.0.3`** (3.2 МБ). **Веб (этот деплой):** перезалит on-site APK `public/download/eclipse-chat.apk` → теперь v1.0.3 (брендовая иконка); юзеры v1.0.2 увидят баннер «новая версия» (`NativeApkBanner`) → апдейт. Version 1.6.88→1.6.89 (4 точки). Verify: build-debug PASS (генерация иконки + сборка), `android-v1.0.3` build+sign PASS, on-site APK обновлён. ⚠️ Композицию adaptive-иконки (full-bleed лого) Pavel чекает на устройстве — если инсет/кроп, доведу источник (прозрачный foreground + отдельный фон). **Хвост слайса 3 (ч.2, если нужно):** сплеш, status-bar/safe-area, скачивание файлов внутри app (нативный DownloadListener). **Дальше:** слайс 4 — нативный голос (LiveKit, сначала оценка реализуемости).
+
+**Предыдущая:** **v1.6.88** (🖥️⬇️ ДЕСКТОП С САЙТА (слайс 2/4). Установщики Win/Mac/Linux раньше вели на GitHub releases (в РФ нестабильно). Теперь хостятся **same-origin** в `apps/web/public/download/desktop/` (стабильные имена: `eclipse-chat-setup.exe` 2.2МБ, `eclipse-chat.msi` 3МБ, `eclipse-chat.dmg` 6.8МБ, `eclipse-chat.deb` 3.4МБ; ~15.4МБ суммарно). ⚠️ **AppImage 77МБ НЕ хостим** (слишком жирно для git) — остаётся ссылкой на GitHub (Linux-юзеры в основном на .deb). `download.html` десктоп-секция → 3 OS-кнопки (`<a download>` same-origin) + «другие форматы»: .msi (сайт) · AppImage (GitHub). `DownloadAppModal` десктоп-кнопка → открывает `download.html` (а не GitHub). `/download/` уже мимо SW (покрывает и `/desktop/`). Version 1.6.87→1.6.88 (4 точки). Verify: typecheck+build green (установщики в `dist/download/desktop/`), headless-рендер страницы ок. **При новом десктоп-релизе: перезалить эти 4 файла.** **Дальше:** слайс 3 — полировка приложения (иконка/сплеш/safe-area/скачивание файлов в app); 4 — нативный голос (LiveKit). Слайс 1/4 (страница+QR) — предыдущая версия.
+
+**Предыдущая:** **v1.6.87** (📥📱 СТРАНИЦА ЗАГРУЗКИ + QR. Слайс 1/4. Публичная **статическая** страница `apps/web/public/download.html` (без логина, грузится мгновенно, само-содержащая — inline-стили в бренде violet/gold, без внешних шрифтов/линков) → `app.star-crm.ru/eclipse-chat/download.html`. Карточки: **Android** (QR + кнопка «Скачать APK» same-origin `<a download>` + «Как установить» = разрешение из неизвестных источников), **Компьютер** (Win/Mac/Linux → пока GitHub releases/latest), **iPhone/iPad** (Safari→PWA). **QR** сгенерён локально либой `qrcode` (она ЕСТЬ в node_modules) → статический `public/download/qr.svg` (чёрный на белом, кодирует URL страницы; НЕ рантайм-зависимость от внешнего QR-сервиса — это убило бы надёжность «с сайта»). Скан с телефона → открывает страницу на телефоне → «Скачать APK». Version 1.6.86→1.6.87 (4 точки). Verify: статика в `dist/`, headless-рендер страницы — QR валидный, вёрстка/бренд ок. **Дальше (Pavel выбрал все 4):** слайс 2 — десктоп-установщики с сайта; 3 — полировка приложения (иконка/сплеш/safe-area/скачивание файлов в app); 4 — нативный голос (LiveKit).)
+
+**Предыдущая:** **v1.6.86** (⬇️ СКАЧИВАНИЕ APK С САЙТА (фикс «ошибка скачивания»). Pavel: кнопка в `DownloadAppModal` вела на GitHub-ассет `release-assets.githubusercontent.com`, а он в РФ нестабилен/блокируется → ошибка скачивания. **Фикс:** APK хостится **на самом сайте** (same-origin): файл `apps/web/public/download/eclipse-chat.apk` (подписанный v1.0.2, ~3 МБ) → отдаётся nginx'ом как `app.star-crm.ru/eclipse-chat/download/eclipse-chat.apk`. Кнопка «Скачать APK» теперь реальная `<a href download>` (same-origin → атрибут `download` форсит сохранение, без пустой вкладки и без GitHub-CDN). Стабильное имя файла (без версии) → линк не протухает (обновляем сам файл при релизе). `sw.js`: `/download/` мимо service-worker (не кэшируем 3 МБ, чистая отдача nginx). Version 1.6.85→1.6.86 (4 точки). Verify: web typecheck+build green (APK попал в `dist/download/`). ⚠️ Десктоп-кнопка пока на `releases/latest` (GitHub) — если тоже будут жалобы из РФ, захостим установщики на сайте отдельно. In-app баннер обновления (`NativeApkBanner`) оставлен на GitHub (открывает внешний браузер; same-origin для него = in-app-навигация без download-менеджера).)
+
+**Предыдущая:** **v1.6.85** (📲 НАТИВНАЯ ОБОЛОЧКА слайс 5b — `@capacitor/app` + интеграция веба. **Нативное (отдельный PR #89 + тег `android-v1.0.2`):** в `apps/android` добавлен `@capacitor/app` (даёт WebView-у `App.getInfo()` + событие `backButton`); CI `build-release` стампит `versionName` из тега (→1.0.2) + `versionCode` из run_number (→10); опубликован **подписанный `android-v1.0.2`** (.apk 3.0 МБ + .aab). **Веб (этот EC-деплой):** (1) **аппаратная «Назад»** (`hooks/useNativeBackButton.ts`) — закрывает открытый оверлей (поиск/модалка/drawer'ы), если нечего — `minimizeApp` (сворачивает, не убивает → сокет/push живут); подключена в `AppShell`. (2) **Баннер «новая версия приложения»** (`components/NativeApkBanner.tsx`) — сверяет `App.getInfo().version` с последним android-релизом на GitHub, если новее → баннер со ссылкой на свежий `.apk`; смонтирован в `App.tsx`. (3) `DownloadAppModal` APK-линк → `android-v1.0.2`. Доступ к Capacitor — через инжектируемый `window.Capacitor` (веб НЕ бандлит `@capacitor/*`, remote-load), в браузере/без плагина — graceful no-op. Version 1.6.84→1.6.85 (4 точки). Verify: web typecheck+build green; android-v1.0.2 build+sign green (versionName/Code подтверждены в логе); поведение в оболочке — на устройстве за Pavel (нужно поставить APK v1.0.2). **Итог по отзывам Android:** слайсы 1 (перф) + 2 (тач-таргеты) + 3/4 (свайпы) + 5a (авто-фреш веб) + 5b (нативная оболочка) — все на проде. Хвост: Google Play (заморожен, нет аккаунта); нативный voice (LiveKit) — позже.)
+
+**Предыдущая:** **v1.6.84** (👆📂 ЖЕСТЫ-СВАЙПЫ ДЛЯ DRAWER'ОВ (слайсы 3+4: навигация + жесты). Канальный список на мобиле живёт за левым drawer'ом, участники — за правым; раньше открывались только тапом по кнопке. Теперь **края-свайпы**: свайп вправо от левого края экрана → открыть каналы, свайп влево от правого края → участники (если рейл доступен); когда drawer открыт — обратный свайп закрывает. Новый хук `hooks/useDrawerSwipe.ts` (window-слушатели passive, ставятся 1 раз, состояние через ref → без переподписки; срабатывает только при доминирующем ГОРИЗОНТАЛЬНОМ жесте — вертикальный скролл сообщений не задет; открытие только от края, чтобы не конфликтовать с горизонт-скроллом код-блоков). Подключён в `AppShell` (`enabled: isMobile`). Version 1.6.83→1.6.84 (4 точки). Verify: web typecheck+build green; жест на устройстве за Pavel. **Хвост:** аппаратная кнопка «Назад» (закрывать drawer/модалку) + баннер «новая версия APK» — оба требуют нативного `@capacitor/app` (версия оболочки + backButton) → слайс 5b (нативная оболочка + новый подписанный APK).)
+
+**Предыдущая:** **v1.6.83** (🔄 АВТО-ОБНОВЛЕНИЕ веб-части (слайс 5a из «автообновлений», решение Pavel «оба»). Было: поллинг `/api/version` каждые 20s → баннер «доступно обновление» + ручная кнопка `hardReload` (unregister SW + clear caches + reload). Стало: когда апдейт доступен — **тихий авто-reload в момент сворачивания приложения** (`visibilitychange` → `hidden`), активную работу не прерываем; баннер-кнопка остаётся для немедленного апдейта. Так Android-приложение (remote-load обёртка) само подтягивает свежую версию без переустановки/очистки кэша — закрывает «не вижу изменения / надо переустанавливать». Чисто клиент (`App.tsx`, 1 useEffect на `[updateAvailable]`). Version 1.6.82→1.6.83 (4 точки). Verify: web typecheck+build green. **Хвост автообновлений (5b):** баннер «новая версия APK» в Capacitor-оболочке (проверка GitHub-релизов) — отдельным слайсом. **Дальше по отзывам:** слайс 3 — упрощение мобильной навигации; 4 — жесты (свайп-дровер/назад).)
+
+**Предыдущая:** **v1.6.82** (📱👆 ТАЧ-ТАРГЕТЫ слайс 2 — отзыв «мелкие элементы под палец». Кнопки на мобиле были 26–34px (база `.ec-icon-btn` 28, топбар 32, композер 34, действия над сообщением 26) — ниже комфортных ~44px. **Фикс (touch-only `@media (hover:none) and (pointer:coarse)`):** композер (основной ввод) `.ec-composer-icon-btn`/`.ec-composer-send` → **44px**; топбар `.ec-shell__top-actions .ec-icon-btn` → 36px (плотный ряд, иначе переполнение узкого экрана); прочие `.ec-icon-btn` → 36px; `.ec-msg-action` → 38px. Чисто CSS, в конце `responsive.css` (грузится после components.css → побеждает прежние мобильные 32–34px по порядку каскада). ПК не тронут. Version 1.6.81→1.6.82 (4 точки). Verify: web build green; устройство за Pavel. **Дальше:** слайс 3 — упрощение мобильной навигации; 4 — жесты (свайп-дровер/назад); 5 — автообновления (SW-фреш веб + баннер «новая версия APK»).)
+
+**Предыдущая:** **v1.6.81** (📱⚡ МОБ-ПРОИЗВОДИТЕЛЬНОСТЬ слайс 1 — отзывы по Android-приложению: «очень плохая оптимизация, всё дёргается и плывёт». **Корень:** `backdrop-filter: blur(14–20px)` на постоянных панелях шелла (`.ec-shell__cmdbar`/`__channels`/`__members`/`.ec-chat-header` + ops-блок) — в Android WebView каждый кадр прокрутки пересчитывает размытие под панелью → рывки; оверскролл-«отскок» WebView → «плывёт». **Фикс (touch-only, `@media (hover:none) and (pointer:coarse)` — ПК не тронут):** `backdrop-filter: none !important` на всё (`*`), шелл-панели → плотный opaque-градиент из ops-токенов (`--ec-ops-rail-strong/-rail`, theme-aware → ок и в OBSIDIAN, и в SOLAR), `overscroll-behavior: none` (html/body/.ec-shell), глушим 2 непрерывные ambient-анимации (`.ec-anim-ai-pulse`, `.ec-anim-reaction-mine`). Чисто CSS (`components.css`, после ops-правила → побеждает по порядку каскада). Version 1.6.80→1.6.81 (4 точки). Verify: web build green; мобилку headless не воспроизводит (media touch) → Pavel чекает на устройстве «стало плавно?». **Дальше по отзывам (согласовано):** слайс 2 — тач-таргеты ≥44px/воздух; слайс 3 — упрощение мобильной навигации; слайс 4 — жесты (свайп-дровер/назад); слайс 5 — автообновления (SW-фреш веб + баннер «новая версия APK», оба по решению Pavel). Google Play заморожен (нет аккаунта).)
+
+**Предыдущая:** **v1.6.80** (🎚️ ТУМБЛЕР ТЕМЫ — переключатель OBSIDIAN↔SOLAR из сегмент-контрола (две текст-кнопки «OBSIDIAN»/«SOLAR») переделан в привычный **слайдер-свитч** (Pavel: «сделать переключатель тем кнопку как раньше тумблиров»). Слайдящийся knob с иконкой текущей темы: **луна** = OBSIDIAN (тёмная), **солнце** = SOLAR (светлая); `role="switch"` + `aria-checked`. Новый класс `.ec-theme-switch` (52×28, knob 22, slide через `transform translateX(24px)`, `--ec-ease-spring`, reduced-motion-safe), цвета на токенах. `ThemeToggle.tsx` упрощён (убран `THEMES`-массив, бинарный toggle). Работает в обоих местах рендера: профиль-меню (StatusMenu строка «Оформление») + Настройки→Внешний вид. Логика тем не тронута (`applyTheme`/`readTheme`/localStorage те же). Version 1.6.79→1.6.80 (4 точки). Verify: web typecheck+build green, headless OBSIDIAN+SOLAR на собранном CSS — свитч корректен в обеих темах.)
+
+**Предыдущая:** **v1.6.79** (📥 ОКНО «СКАЧАТЬ ПРИЛОЖЕНИЕ» + Android в проде. **(1)** Android доведён до **подписанного** релиза: Pavel сгенерил keystore, 4 GitHub-секрета подписи заведены, CI-job `build-release` на тег `android-v*` собирает `assembleRelease`+`bundleRelease` → подписывает **после сборки** (APK `zipalign`+`apksigner` → verify v1+v2+v3=true, AAB `jarsigner` для Play) → prerelease (PR #82). Опубликован **`android-v1.0.1`** (подписанные `.apk` 3.0 МБ + `.aab` 2.9 МБ, прямой сайдлоад). Также: GitHub-Releases-канал android (PR #81, тег→prerelease, НЕ перетирает `releases/latest`=desktop), `apps/android` в `deploy-prod` paths-ignore. **(2)** Кнопка-иконка «Скачать приложение» (download-glyph) в **топбаре** (`ec-shell__top-actions`, кластер инструментов перед сепаратором) → открывает **модалку** `DownloadAppModal` (новый lazy-компонент на базе `Modal`): три карточки — Компьютер (Win/Mac/Linux → `releases/latest`), Android (→ прямой `.apk` пререлиза), iPhone·iPad (инструкция Safari→PWA); авто-детект устройства подсвечивает «ваше устройство». Пункт «Скачать» в профиль-меню (StatusMenu) теперь тоже открывает эту модалку, а не прямой линк. Стиль на токенах (`var(--ec-*)` → OBSIDIAN+SOLAR-safe), кнопки `.ec-btn`. Version 1.6.78→1.6.79 (4 точки). ⚠️ `.apk`-линк в модалке версионно-пинован (`android-v1.0.1`) — обновлять при новом android-теге. **Хвост:** Google Play — ждёт Play-аккаунт Pavel ($25), `.aab` уже готов.)
+
+**Предыдущая:** **v1.6.78** (📥 КНОПКА «СКАЧАТЬ ПРИЛОЖЕНИЕ» + публикация desktop-релиза (Pavel: «сделать кнопку скачать приложение»). **(1)** Опубликован draft-релиз **desktop-v1.0.4** (5 установщиков: Win .exe/.msi, Mac .dmg, Linux .AppImage/.deb — тонкие Tauri-врапперы, грузят прод-URL) → `releases/latest` теперь 302→тег (был 404). Репо PUBLIC → качается публично. ⚠️ Установщики **unsigned** (signing key для auto-update — хвост). **(2)** Пункт **«Скачать приложение»** (иконка-download, hint «Windows · Mac · Linux») добавлен в профиль-меню (`StatusMenu` `tools[]`, перед «Справка»), открывает `github.com/PavelHopson/eclipse-chat/releases/latest` в новой вкладке (`noopener`). Чисто клиент (`AppShell.tsx`), web typecheck+build green. Version 1.6.77→1.6.78 (4 точки). **Дальше (стартую следом):** Android-версия — Capacitor-скаффолд + CI (apps/ пока desktop/server/web, Capacitor НЕТ). Хвосты Android: keystore-подпись + Play-аккаунт + Android SDK в CI.)
+
+**Предыдущая:** **v1.6.77** (🎨 ПОЛИРОВКА SOLAR ч.2 — гайд-вью (Путеводитель). Pavel «всё равно плохо» + скрин (v1.6.76): весь гайд-вью тёмный канвас под светлыми карточками. **Корень (тот же класс, что v1.6.76 ops):** `.ec-guide { background: var(--ec-void) }` (clean-ui.css), а **SOLAR переопределял `--ec-bg`, но НЕ `--ec-void`** — это ОТДЕЛЬНЫЙ токен (tokens.css:51-52: `--ec-void:#05070A; --ec-bg:#05070A;` — два разных var с одним значением), в SOLAR оставался тёмным `#05070A` → фон всего гайда тёмный. Стат-карточки сами `surface-2` (светлые) сидели на тёмном void-канвасе = сыро. **Фикс:** добавил `--ec-void` (+ `--ec-surface-glass` за компанию) в SOLAR-блок (`effects.css`), светлые значения (`hsl(225 20% 97.5%)`). **Headless-verify** (с подключённым clean-ui-чанком): `.ec-guide bg = rgb(247,248,250)` (был тёмный), стат-карточки `rgb(252,252,253)`. `--ec-surface-0` оказался нигде НЕ определён (rail → прозрачный → показывает светлый shell, ок). Чисто CSS, web typecheck+build green. Version 1.6.76→1.6.77 (4 точки). **Паттерн на будущее:** SOLAR — ретрофит поверх dark-first; протечки = base-токены вне solar-override-набора (`--ec-void`, ops были пропущены). Остаточные component-level хардкод-тёмные (если всплывут) — добивать по скринам.)
+
+**Предыдущая:** **v1.6.76** (🎨 ПОЛИРОВКА SOLAR — вылечена «сырость» светлой темы (Pavel: «доработай светлую тему, выглядит сыро»). **Корень:** SOLAR-блок переопределял core-токены, но НЕ **ops-токены** (`--ec-ops-bg/-rail/-rail-strong/-panel*/-line*`, заданы в `:root` components.css:8972 как тёмные `#05070d…`). Эти ops-токены драйвят `body`-фон + `.ec-chat-header` + `.ec-shell__members` (часть через `!important`, потому solar-компонент-оверрайды без `!important` их не перебивали) → в светлой теме каркас/шапка/рейл оставались ТЁМНЫМИ под светлыми панелями = сыро. **Фикс:** добавил ops-токены в SOLAR-блок (`effects.css`) со светлыми значениями в тон surface-палитре (ops-bg #fff, rail hsl(225 20% 97.5%), line hsl(225 15% 84%) и т.д.) — `!important`-правила теперь берут СВЕТЛОЕ значение из токена. **Headless-verify** на собранном CSS: `body=rgb(255,255,255)`, chat-header/members светлые, ops-tokens светлые. Чисто CSS (1 блок `effects.css`), web typecheck+build green. Version 1.6.75→1.6.76 (4 точки). ⚠️ Остаточные мелочи (если есть) Pavel укажет вживую — доберу точечно.)
+
+**Предыдущая:** **v1.6.75** (🎨 УПРОЩЕНИЕ ТЕМ — убрана VOID, остались две: **OBSIDIAN (OLED-чёрная, дефолт) + SOLAR (светлая)** (Pavel: «можем тему войд убрать и оставить только две»; OBSIDIAN зашёл на устройстве). Меньше выбора = курс на упрощение (Hick). **Реализация (минимально-рисковая, без переписи `:root`):** `ThemeToggle` → 2 варианта (obsidian/solar); `readTheme` мигрирует `null`/legacy `"void"`/`"obsidian"` → **obsidian**, только `"solar"` → solar; `applyTheme` всегда ставит `data-ec-theme` (no-attr VOID-дефолта больше нет). Boot-скрипт `index.html` (анти-FOUC) применяет `obsidian` по умолчанию (solar если явно) → существующие VOID-юзеры мигрируют на OBSIDIAN без FOUC. VOID-токены `:root` остаются как **legacy-база** под OBSIDIAN-оверрайдом (graceful fallback, визуально не показывается; `--ec-void` токен-цвет жив — используется в clean-ui/ServerSwitcher). AppearanceSection-текст обновлён. Чисто клиент (`ThemeToggle.tsx`, `index.html`, `AppearanceSection.tsx`), web typecheck+build green. Version 1.6.74→1.6.75 (4 точки).)
+
+**Предыдущая:** **v1.6.74** (🎨 НОВАЯ ТЕМА OBSIDIAN (OLED true-black) — третья выбираемая тема к VOID/SOLAR (Pavel выбрал из 3 концептов). Чистый чёрный фон для AMOLED (экономит батарею на телефоне), акценты violet+gold максимально контрастны, бренд сохранён. **Архитектура:** EC тема = `html[data-ec-theme]` (VOID=дефолт `:root`, SOLAR/OBSIDIAN — атрибут). OBSIDIAN тёмная как VOID → новый блок в `effects.css` переопределяет **core-токены** (`--ec-bg/--ec-void/--ec-surface-1..4/--ec-border-*` → near-black) + **ops-токены** (`--ec-ops-bg/-rail/-rail-strong/-panel/-line*`, которые драйвят shell-surface'ы chat-header/members/channels через `!important` — но значение из токенов → чёрное) + 2 чисто-хардкод surface (`.ec-shell`, `.ec-shell__cmdbar`, без `!important` → перебиты спецификацией `html[data-ec-theme]` 0,1,1 > базовые 0,1,0). **Переключатель:** `ThemeToggle` из бинарного (void↔solar) → 3-вариантный сегмент `radiogroup` (переиспользует `.ec-density-seg` классы — ноль нового CSS); в профиль-меню (StatusMenu) + Настройки→Внешний вид. Boot-скрипт `index.html` (анти-FOUC) применяет obsidian из localStorage. Чисто клиент (`effects.css`, `ThemeToggle.tsx`, `AppearanceSection.tsx`, `index.html`), web typecheck+build green; **headless-verify obsidian на реальном собранном CSS** (desktop layout — надёжно). Version bump 1.6.73→1.6.74 (4 точки). ⚠️ Полноту черноты по всем микро-поверхностям Pavel дочекает на устройстве — итерирую при остаточном tint.)
+
+**Предыдущая:** **v1.6.73** (📱 ФИКС МОБИЛКИ — каналы. Жалоба Pavel со скрина (Android Chrome, ~393px): в дровере каналов имена обрезаны до 1 символа. **Причина:** per-channel move-select (`.ec-channel-move-select`, «Без категории ▾») на десктопе `display:none` (там drag&drop), а в `@media ≤1024` его ВКЛЮЧАЛИ (`display:inline-flex`) как мобильный аффорданс перемещения — он жрал ширину строки (max-width 118px), имя сплющивалось. Каналы и так сгруппированы под заголовками категорий → дубль. **Фикс:** на ≤1024 `.ec-channel-move-select { display:none }` (как десктоп → имена полные); перемещение в категорию на мобилке — через настройки канала/десктоп (drag). Заодно дровер каналов чуть шире: `min(320px,86vw)` → `min(360px,92vw)` (меньше тёмная полоса справа). Чисто CSS (`responsive.css`), web typecheck+build green. ⚠️ Headless мобилку не воспроизводит — Pavel проверяет на устройстве. (Параллельно пофикшен мобильный оверфлоу в eclipse-library: PR #10, `.layout minmax(0,1fr)` + `.sidebar min-width:0`, cache-bust v4.))
+
+**Предыдущая:** **v1.6.72** (Безопасность/гигиена — удалён временный owner-lockout boot-хук + вычищен мёртвый recovery-код. **(1) 🔴 Снят временный хук** из `apps/server/src/index.ts` (после `registerPlatformRoutes`), добавленный в v1.6.67: он сбрасывал `failedLoginAttempts/lockoutUntil` у всех platform-owner'ов на КАЖДОМ рестарте сервера → постоянно ослаблял brute-force-защиту owner-аккаунта. Теперь lockout работает штатно; восстановление owner'а — через self-serve сброс пароля по recovery-кодам (v1.6.68) или 2FA-recovery. **(2) 🧹 Вычищен мёртвый recovery-код** в `pages/AuthPage.tsx` (файл tree-shaken, НЕ импортируется — прод-логин в `HeroOperationalStage`): удалены шаг `step="recovery"`, состояние `pwdRecovery*`, `submitPwdRecovery`, кнопка «Забыли пароль?» и блок recovery-вью (мои v1.6.68-правки, легшие не в тот файл); неиспользуемый импорт `apiPath` снят; 2FA-recovery (`useRecovery`/`recoveryCode`) оставлен (легит). web+server typecheck green. **Pavel подтвердил: зашёл обычным паролем + создал recovery-коды → гейт снят, выкачено v1.6.72** (через merge master в ветку, перебивка версии 1.6.70→1.6.72). Закрывает оба хвоста v1.6.67-69.)
+**Предыдущая:** **v1.6.71** (AI — +4 провайдера в @ai-цепочку (директива Pavel «внедрять все модели из батчей»). Все OpenAI-compatible, добавлены в `apps/server/src/ai/provider.ts` по существующему шаблону (env-gated, опциональны, per-provider `*_MODELS` CSV), позиция — ПОСЛЕ free (Groq/Cerebras/Yandex…), ПЕРЕД paid OpenAI: **(6c) DeepSeek** (офиц. `api.deepseek.com/v1`, `deepseek-chat`/`deepseek-reasoner`) · **(6d) GLM/Zhipu** (z.ai standard API `api.z.ai/api/paas/v4`, `glm-4.6/4.7/5.2` — НЕ Coding-Plan-подписка, та на `/api/coding/paas/v4`) · **(6e) MiMo/Xiaomi** (офиц. `api.xiaomimimo.com/v1`, `mimo-v2.5-pro`) · **(6f) Custom OpenAI-compatible** (generic slot `CUSTOM_LLM_BASE_URL`+`CUSTOM_LLM_API_KEY` — под OpenModel-промо DeepSeek-V4-Flash; URL НЕ хардкодим, провенанс шлюза не подтверждён). **⚠️ Все 4 — сторонние/КНР-провайдеры:** @ai-контент уходит к ним → env-gated, дормант до ключей, НЕ для чувствительных данных; приоритет free/локальных (Ollama/Groq) сохранён. Эндпоинты верифицированы (web). Server typecheck green; шапка `provider.ts` + root `.env.example` обновлены. **Дебанк:** ценники канала («Opus в 28×», «482₽ за 4 млрд токенов») НЕ эндорсим — модели включены как обычные дешёвые провайдеры, качество проверять на своих задачах. **Хвосты директивы:** те же провайдеры в eclipse-ai-hub / Shotforge / Text2Image (отдельные репо, свои абстракции — следующими PR); **star-crm/starmarket — ВНЕ зоны** (Вася/другой чат), держу до координации. **Note:** #71 (temp-хук cleanup) теперь перебить на **v1.6.72** при мерже.)
+
+**Предыдущая:** **v1.6.70** (🔴 ФИКС РАСКЛАДКИ десктопа ≥1367px — широкие экраны рендерили кашу: колонка каналов раздувалась на пол-экрана, чат сжимался в полоску (заголовок «Тут о…» клипало, «Начало канала» переносилось по словам, композер схлопывался). **Причина:** override `@media (min-width:1367px) .ec-shell.ec-shell--has-server` в `responsive.css` остался ТРЁХколоночным (`288px minmax(0,1fr) 256px`) — реликт дорейловой раскладки (v0.49). С v1.6.57 базовый грид стал ЧЕТЫРЁХколоночным (`rail spine chat members`), но этот override НЕ обновили → `grid-template-columns` (3 кол.) рассинхрон с `grid-template-areas` (4 кол.: `rail brand cmd cmd` / `rail channels chat members`); CSS-grid авто-создал implicit 4-ю колонку и сдвинул треки: rail=288, channels=1fr (раздут!), chat=256, members=auto. **На ноутбуках 1025-1366 баг НЕ проявлялся** (там корректный 4-кол. override line 64) — поэтому headless-проверка рейла v1.6.57 (узкий вьюпорт) его не поймала; live-инцидент только на больших мониторах. **Фикс:** добавил `var(--ec-rail-width)` → `var(--ec-rail-width) 288px minmax(0,1fr) 256px` (4 кол., зеркало laptop-оверрайда; designed wider sidebars 288/256 для больших мониторов сохранены). Чисто CSS (1 правило `responsive.css`), web typecheck+build green. **Диагностика по задеплоенному бандлу** (fetch прод index.html→entry-JS→`AppShell-*.css` → грид-правило подтверждено сломанным в проде; не кэш Pavel'а). Деплою СРАЗУ (НЕ гейтнут). **Note:** #71 (temp-хук cleanup) был v1.6.70-гейтнут — перебить на v1.6.71 при мерже.)
+
+**Предыдущая:** **v1.6.69** (ФИКС — «Забыли пароль?» в НАСТОЯЩЕЙ логин-форме. v1.6.68 добавил recovery-шаг в `pages/AuthPage.tsx` — но это **МЁРТВЫЙ КОД**: App.tsx рендерит `LandingPage` → `HeroOperationalStage` (`components/landing/LandingVisuals.tsx`), а `AuthPage` НИГДЕ не импортируется (потому его строк и не было в бандле — tree-shaken). **Диагностика:** греп бандла на строки AuthPage → пусто; App.tsx → `<LandingPage>`; LandingPage → `<HeroOperationalStage onLogin/onRegister>`. Перенёс recovery-флоу в `HeroOperationalStage`: state recoveryMode/recCode/recNewPwd + `submitRecovery` (fetch `/api/auth/password-recovery/reset`), ссылка «Забыли пароль?» в hint логина, recovery-вью (email+код+новый пароль, переиспускает `ec-hero-access__*` классы) + done-состояние. Бэк-эндпоинты + settings-карточка (v1.6.68) были верны — только login-UI был не в том файле. Проверка: web typecheck green, build green, **ASCII-id `hero-rec-email` ПОДТВЕРЖДЁН в бандле** (`index`-чанк, LandingPage eager). **Урок:** прод-логин = `HeroOperationalStage`, НЕ `pages/AuthPage.tsx` (последний — dead code, кандидат на удаление). e2e проверить живьём. **Хвосты:** почистить dead `AuthPage.tsx` recovery-правки; удалить temp owner-lockout-хук после подтверждения доступа.)
+
+**Предыдущая:** v1.6.68 (Безопасность/recovery — self-serve сброс пароля по одноразовым кодам (Pavel просил «кнопку сброса пароля»; выбрал вариант B — recovery-codes, без email/SMTP, т.к. SMTP в EC нет). Full-stack. **Схема+миграция:** новое nullable-поле `User.passwordRecoveryCodes` (JSON bcrypt-хэшей; миграция `20260621120000_add_password_recovery_codes`, аддитивный `ALTER TABLE ADD COLUMN TEXT` — деплой гонит `prisma migrate deploy`). Переиспользованы generic-хелперы `generateRecoveryCodes`/`verifyRecoveryCode` из `security/twoFactor.ts` (тот же формат что 2FA, отдельный набор). **Бэк (`routes/auth.ts`):** `POST /api/auth/password-recovery/generate` (authed + re-confirm пароля, sensitive → коды обходят пароль; 10 кодов 1 раз, перезапись старых) + `POST /api/auth/password-recovery/reset` (UNAUTHED: email case-insensitive + код + новый пароль → verify+consume код, set пароль, `resetLockout`, гасит сессии; anti-enumeration generic-ответ + constant-time на несуществующем user'е; audit `AUTH_PASSWORD_CHANGE` via:recovery_code). Enum AuditEventType НЕ расширял (переиспользовал значения). **Фронт:** самодостаточный `PasswordRecoveryCard` в Настройки→Безопасность (свой state, `apiJson`, показ кодов 1 раз + копирование) + новый шаг `recovery` в `AuthPage` («Забыли пароль?» на логине → email+код+новый пароль; переиспользует ec-auth-классы/PasswordReveal). web+server typecheck green (после `prisma generate`), build green. **Verified-by-construction** (переиспользует проверенные классы); **e2e (генерация→сброс) проверить живьём.** **Хвост:** удалить временный owner-lockout-хук (v1.6.69) после подтверждения Pavel'ом доступа + генерации им кодов.)
+
+**Предыдущая:** v1.6.67 (HOTFIX — owner login-lockout clear на старте. Pavel заблокирован brute-force login-локом на мобиле (мис-ввод пароля → 5 неудач → 15-мин лок в БД `User.failedLoginAttempts/lockoutUntil`), восстановиться не мог: self-serve reset в EC НЕТ, платформенный reset под админ-логином (а owner заблокирован), прямого доступа к БД у меня нет. Email-lookup case-insensitive (`mode:insensitive`) — почта/мобильная автокапитализация ни при чём; чистый мис-пароль. Фикс: одноразовый boot-хук в `index.ts` (после registerPlatformRoutes) — `db.user.updateMany({where:{isPlatformOwner:true, locked/attempts>0}, data:{failedLoginAttempts:0, lockoutUntil:null}})`. **Пароль НЕ трогаем** — только снимаем лок, owner вводит свой верный пароль; success сам обнуляет счётчик. Без env-гейта (одноразовый деплой). **⚠️ ВРЕМЕННО — удалить в v1.6.68** после восстановления доступа (иначе owner-лок постоянно сбрасывается на рестарте). server typecheck green. **Фоллоу-ап (Pavel просил):** self-serve «забыли пароль» — настоящий must-fix (нужен канал доставки токена: email/SMTP — проверить инфру).)
+
+**Предыдущая:** v1.6.66 (EC продукт — **typing-индикатор в ЛС (full-stack, первый бэк-слайс сессии)**. Pavel уточнил: EC он делает ОДИН, `apps/server` — моя зона (Вася = StarMarket, не EC), поэтому бэк-фоллоу-апы НЕ заблокированы. Зеркало канал-typing для ЛС-room. **Бэк** (`index.ts`): `dm:typing:start/stop` хендлеры → broadcast в `dm:${conversationId}` (исключая sender); membership-verify через `loadConversationMembers`/`isDmMember` из `routes/dm.ts` (1:1 + группы, защита от spoof'а в чужой диалог); ephemeral, без DB-записи. **Socket** (`lib/socket.ts`): события `DmTypingStart/Stop` + payload-типы. **Клиент** (`useDirectMessages.ts`): `typingUsers` state + per-user 5s auto-expire таймеры + emit/receive (точное зеркало useMessages); сброс при смене диалога. **Вринг** (`AppShell.tsx`): DM-композер `onTypingStart/Stop` (был no-op `() => undefined`) → emit; `<TypingIndicator>` в DM-области (переиспользован канал-компонент). **Дисплей** (Telegram): «печатает…» (accent) замещает статус в шапке 1:1 (`DmPeerHeader typing`), «X печатает…»/«X, Y печатают…» в шапке групп (`DmGroupHeader typingNames`). MessageInput троттлит (один start за burst) → серверная нагрузка ок. Web+server typecheck green, build green; headless-verify состояний шапки. **⚠️ Live round-trip (2 юзера) проверить вживую** (как AI — socket-цепочку headless не прогнать); клиент+сервер зеркалят рабочий канал-typing → высокая уверенность. **Фоллоу-ап:** «печатает…» в СТРОКАХ списка ЛС (нужно глобальное typing-состояние по всем диалогам, не только активному), lastSeen.)
+
+**Предыдущая:** v1.6.65 (EC продукт — presence в шапке ГРУППОВЫХ ЛС (Telegram-паритет, завершает presence-тему ЛС). Раньше шапка групп-ЛС = только аватар-стопка + название. Теперь под названием — подзаголовок **«N участников · M в сети»**, симметрично 1:1-шапке (v1.6.63). Новый компонент `components/DmGroupHeader.tsx` (GroupAvatar 26px + 2-строчный заголовок), подключён в `AppShell.tsx` в ветке chat-header для групп (`selectedDm.isGroup`); импорт `GroupAvatar` уехал из AppShell в компонент. `participants` включает текущего юзера (deriveGroupTitle исключает его из названия) → length = размер группы. «В сети» считается по live `manualStatus` участников через общий `dmStatusMeta` (active = ONLINE/IDLE/DND), показывается только при M>0. RU-плюрализация «участник/участника/участников» (edge-кейсы 1/21→участник, 2-4→участника, 11-14→участников верны). Чисто клиент (`DmGroupHeader.tsx` нов., `AppShell.tsx`), typecheck (`noUnusedLocals`)+build green; headless-verify 4 кейса (5/1/2/21 участников) на реальном CSS. **Presence-тема ЛС закрыта** (шапка 1:1 + список + шапка групп). **Фоллоу-ап (нужен бэкенд):** typing-индикатор в ЛС (useDirectMessages не имеет typing — нет socket-событий), lastSeen у offline.)
+
+**Предыдущая:** v1.6.64 (EC продукт — presence в СПИСКЕ ЛС теперь корректный + DRY с шапкой. Продолжение v1.6.63: при разработке presence-шапки выяснилось, что presence-точки в **списке** ЛС (`DirectConversationList`) всегда серые в режиме ЛС — они брали онлайн из `onlineUserIds` (= server-members), а `useMembers(null)` возвращает [] вне сервера. Т.е. даже у ONLINE-собеседника точка была серой. Фикс: общий хелпер `lib/dmPresence.ts` (`dmStatusMeta` — manualStatus→{color,label,active}), используется И в шапке (`DmPeerHeader`, рефактор с локального map), И в списке. В списке `manualStatus` теперь приоритетен (live по socket), members-online — лишь fallback при отсутствии manualStatus. Так точки в списке отражают реальный статус (зелёная/золотая/красная/серая) и **совпадают по цвету с шапкой**. Удалён мёртвый локальный `presenceColor` + `showOnline`-ветка (теперь `statusMeta.active`). Чисто клиент (`lib/dmPresence.ts` нов., `DmPeerHeader.tsx`, `DirectConversationList.tsx`), typecheck (`noUnusedLocals`)+build green; headless-verify 5 состояний строк списка на реальном CSS (ONLINE=зелёная с glow, было серо). **Фоллоу-ап тот же:** lastSeen у offline (нужен бэкенд), presence участников групп-ЛС.)
+
+**Предыдущая:** v1.6.63 (EC продукт — presence в шапке 1:1 ЛС (Telegram-паритет). Pavel: «EC продукт/веб». Раньше шапка личного диалога = только аватар + имя; теперь под именем — статус собеседника + presence-точка на аватаре, как в Telegram. Новый компонент `components/DmPeerHeader.tsx` (аватар 26px + presence-точка bottom-right + 2-строчный заголовок имя/подзаголовок), подключён в `AppShell.tsx` в ветке chat-header для 1:1 (группы/Избранное не тронуты). **Источник присутствия — `selectedDm.other` из `useDirectConversations`** (`manualStatus` ONLINE/IDLE/DND/INVISIBLE + кастом-статус `activityEmoji`/`activityText`, live-обновляются по socket). **Важно (data-model):** НЕ опираемся на server-members — `useMembers(null)` возвращает [] в режиме ЛС (activeServerId=null), поэтому `onlineUserIds` там пуст; presence ЛС живёт ТОЛЬКО в DmOther. **Безопасно:** точка+статус-лейбл показываются ТОЛЬКО при заданном `manualStatus`; кастом-активность (приоритетнее лейбла, как Telegram) — при наличии; при отсутствии данных — просто имя (ничего не выдумываем). Цвета — общие токены `--ec-presence-*`. Чисто клиент, typecheck (`noUnusedLocals`)+build green; headless-verify 5 состояний (online/idle/dnd/custom/none) на реальном CSS — двухстрочный заголовок не клипает (header 48-52px). **Фоллоу-ап:** «последний раз в сети» (lastSeen) у offline-собеседника — нужен бэкенд-сигнал; presence для участников групп-ЛС.)
+
+**Предыдущая:** v1.6.62 (AI — РФ-провайдер YandexGPT как приватный/надёжный запасной к keyless-Pollinations. Pavel: «давай» на РФ free-tier. Добавлен 6b-й провайдер в `ai/provider.ts` — **YandexGPT** через **OpenAI-compatible** эндпоинт Yandex Cloud (`llm.api.cloud.yandex.net/v1`). Встал в цепочку чисто, БЕЗ нового call-кода: auth `Api-Key <key>` (не Bearer) переопределён через `extraHeaders.Authorization` (spread идёт после дефолтного Bearer → бьёт его); модель = URI `gpt://<folder>/<model>` — короткие имена авто-оборачиваются (`.map`), полные `gpt://` оставляются. Требует ДВЕ env: `YANDEX_API_KEY` + `YANDEX_FOLDER_ID` (env-gated → дормант пока Pavel не впишет). Позиция: после Mistral, ПЕРЕД OpenAI и Pollinations (free-RU-private важнее paid и keyless-public). **Почему Yandex, а не GigaChat:** стандартный TLS (GigaChat требует российский CA-сертификат на сервере = инфра/Вася + OAuth-токен-флоу вместо статик-ключа — тяжелее и непроверяемо). **⚠️ Не проверен живьём** (нет ключа на тест) — построен по докам Yandex Cloud OpenAI-compat; когда Pavel впишет ключ+folder и проверит, если детали (endpoint/auth/model-URI) не сойдутся — итерирую. Server typecheck green; header-доку + `.env.example` обновлены. **Получить ключ:** Yandex Cloud → создать каталог + сервисный аккаунт с ролью `ai.languageModels.user` + API-ключ; folder_id из консоли. **Фоллоу-ап:** если Pavel сможет только GigaChat (Sber ID проще регать) — доделаю его OAuth+CA (нужен Вася для cert).)
+
+**Предыдущая:** v1.6.61 (AI — keyless free-LLM для @ai (Pollinations), чтобы AI ожил БЕЗ ключей. **Контекст:** провайдеры Groq/Cerebras/Mistral (v1.6.53) требуют free-ключей, но регистрация западных AI-сервисов из РФ Pavel'у недоступна → AI был дормант. Решение: добавлен 8-й провайдер в `ai/provider.ts` — **Pollinations** (`text.pollinations.ai/openai`, OpenAI-compatible, **keyless**, протестирован: `/openai/chat/completions` совместим с call-логикой один-в-один, dummy Bearer). Включён **ПО УМОЛЧАНИЮ** и стоит **последним** в цепочке (Ollama→…→OpenAI→**Pollinations**): любой реальный ключ выше важнее, но когда ключей нет — @ai всё равно живой. Отключить: `POLLINATIONS_DISABLED=1`. **Приватность:** шлём `private:true` (генерация НЕ в публичную ленту Pollinations) + `referrer`; для этого в `ProviderConfig` добавлен `extraBody` (provider-specific JSON-поля, мерджатся поверх base body — не содержит model/messages). Как у любого cloud-LLM, контент @ai уходит на внешний сервис — для полной приватности Pavel выбрал держать опцией Ollama (self-host, не сейчас). **Надёжность:** анонимный tier rate-limited (наблюдал 429 / таймаут на сложных промптах) — сглаживается существующим retry/backoff (429/5xx) + model-fallback; это **best-effort free**, но строго лучше мёртвого @ai. Модель по умолчанию `openai` (override `POLLINATIONS_MODELS` CSV). `isAiConfigured()` теперь ВСЕГДА true (если не отключён). Server typecheck green; `.env.example` + header-доку обновлены. **Выбор Pavel** из 3 опций (Pollinations сейчас / РФ free-tier GigaChat-Yandex / self-host Ollama). **Фоллоу-апы:** если Pollinations часто 429 — добавить РФ-провайдер (GigaChat/YandexGPT, приватнее) или Ollama; качество модели на длинном контексте проверить живьём.)
+
+**Предыдущая:** v1.6.60 (Гигиена — выпил мёртвого topbar-CSS (cleanup-слайс после упрощения). Упрощение v1.6.46-47 удалило топбар-виджеты (телеметрия-пилюли NET/MEM/CPU · sparkline · network-wave · SpiderClock · utility-meters + focus-режим), но их CSS остался размазанным по 5 файлам. Греп-аудит подтвердил **ноль JSX-производителей** у всего family → ~200 строк мёртвого CSS снято: `tokens.css` (`.ec-telemetry`/`-pill*` + keyframe `ec-telemetry-risk-pulse`), `motion.css` (`.ec-telemetry-edge` + keyframe `ec-telemetry-sweep`), `effects.css` (весь блок `.ec-spider-clock*` ~86 строк + @900px override), `components.css` (`.ec-sparkline*` + `.ec-net-wave*` + keyframe `ec-net-wave-bar` + 4 группы `.ec-shell__utility-meters*`), `responsive.css` (telemetry-pill mobile-hide + utility-meters media-queries + spider-clock). **Хирургия в групповых селекторах:** где dead-классы делили правило с живыми (`.ec-music-mini-player` — РЕНДЕРИТСЯ в AppShell:1487; `.ec-theme-toggle`/`.ec-shell__user-chip`/`.ec-logout-btn`), удалял ТОЛЬКО мёртвые строки, живые сохранял; в reduced-motion и aria-label группах (`.ec-icon-btn[aria-label="Инциденты"/"Уведомления"]` — кнопки удалены) — то же. `useTelemetry`-хук жив (voice-статы в VoiceRoom через другую разметку, не `.ec-telemetry*`) — НЕ тронут. Бандл: index.css 170.3→166.7 kB, AppShell.css 349.9→346.6 kB (~7 kB сырого CSS). build green (PostCSS скомпилировал → синтаксис цел). Verify-by-construction: классов нет в DOM → удаление их правил не меняет рендер. **Codex-adjacent shell** — branch от свежего origin/master (7d4305f). ROADMAP сам помечал «полный выпил — отдельным cleanup-слайсом»: закрыто. Кандидаты на будущее: мёртвые JS-флаги `homeOpen`/`selectedTableId` (always-false, читаются в breadcrumb → не unused-local).)
+
+**Предыдущая:** v1.6.59 (Дизайн — Discord-каркас, слайс 3/3: **разгрузка топбара**. Завершает 3-слайсовую дугу «Discord-каркас» (Pavel выбрал из 3 макетов). Командный бар (`ec-shell__cmdbar`) нёс смешанный кластер инструментов+идентичности; три вторичные утилиты — **🌓 Тема (VOID/SOLAR) · 🔔 Уведомления · ❔ Справка** — переехали из всегда-видимого топбара в **профиль-меню за аватаром** (`StatusMenu`), модель Discord/Telegram «аватар = хаб аккаунта». В топбаре остаются постоянные действия: Поиск · AI (флагман) · Участники · аватар-чип · Выход (подписная анимация двери — функц. акцент, не режем); админ-иконки (Админ/Platform-Админ) оставлены — они и так role-gated, не шум для 95%. Для обычного юзера топбар ужался ~8→5 элементов. `StatusMenu` расширен опциональными `themeSlot` (рендерит `<ThemeToggle/>` строкой «Оформление») + `tools[]` (Уведомления с live-hint/active/dim, Справка); уведомления/тема — `closeOnClick:false` (щёлкнул-увидел), Справка закрывает меню. **Боковой риск устранён:** тему применял ТОЛЬКО `ThemeToggle` в mount-эффекте; в lazy-меню он на старте не монтируется → SOLAR не вставал бы до открытия меню. Применение темы (`data-ec-theme=solar`) добавлено в существующий анти-FOUC boot-скрипт `index.html` (рядом с density/focus-dim) — заодно убирает FOUC темы; `<ThemeToggle/>` и в Settings→Внешний вид не тронут. Чисто клиент (`AppShell.tsx` cmdbar-чистка + StatusMenu-проп, `StatusMenu.tsx`, `index.html`). typecheck (`noUnusedLocals`)+build green. **Codex-adjacent shell** — branch от свежего origin/master (7c47faf), rebase-чек перед merge. Десктоп headless-verify раскладки. **Дизайн-дуга Discord-каркас завершена (3/3).** Дальше — на выбор Pavel: доводка AI после ключей · мобильный фикс таб-бара по фидбеку · новая тема.)
+
+**Предыдущая:** v1.6.58 (Дизайн — Discord-каркас, слайс 2/3: **мобильный нижний таб-бар**. Новый `components/BottomNav.tsx` — 4 таба под большой палец (Серверы / Личные / Друзья / Я); активный таб из состояния (`showProfile→Я · friendsOpen→Друзья · inDmMode→Личные · else→Серверы`); хендлеры маппят на существующие состояния (Личные/Серверы открывают левый drawer-список каналов/ЛС). `position: fixed` нижний бар (token `--ec-bottomnav-height:56px`, CSS `.ec-bnav-*` в clean-ui.css, `safe-area-inset-bottom`); drawers (каналы/участники) подняты над баром (`bottom: var(--ec-bottomnav-height)` в responsive.css), чат-область получила `padding-bottom` под бар. Рендерится только на ≤1024 (`isMobile`). **АДДИТИВНО** — гамбургер-дровера оставлены как fallback (мобилка навигабельна даже если таб-бар потребует правки). Чистый клиент; typecheck+build green. ⚠️ **Mobile НЕ удалось headless-проверить** — выяснено минимальным тестом: headless-Edge не уважает `--window-size` для CSS-viewport (рендерит ~500px вместо 390 → ложный клип 4-го таба у ЛЮБОГО fixed-flex бара, даже без app-CSS). Код = стандартный fixed-flex паттерн, build green — но **нужна проверка на реальном устройстве/моб-эмуляции** (Pavel). Десктоп-рейл (слайс 1) проверялся headless ОК (там нет viewport-коллапса). **Дальше:** слайс 3 — разгрузка топбара.)
+
+**Предыдущая:** v1.6.57 (Дизайн — Discord-каркас, слайс 1/3: **постоянный левый server-rail (веб)**. Pavel выбрал из 3 ASCII-макетов «Discord-каркас». Вернул far-left вертикальный рейл-иконок (реверс v1.1.51 «rail→топбар»): Главная + ЛС (с unread-бейджем) + список серверов (active = violet left-pill + accent-bg, Discord-стиль `border-radius` square→rounded на hover/active) + создать/вступить. **Смена сервера теперь в 1 КЛИК** (было: открыть дропдаун→выбрать). Новый компонент `components/ServerRail.tsx` (переиспользует `ServerIcon`, экспортирован из ServerSwitcher), грид-колонка `rail` в `responsive.css` (token `--ec-rail-width: 68px`; обновлены desktop has-server/no-server грид + laptop-брейкпоинт + комментарий v1.1.51), CSS `.ec-rail-*` в `clean-ui.css`. На desktop топбарный `ServerSwitcher` скрыт (рейл его заменил, общие nav-хендлеры `navSelectServer`/`navOpenDms`); на mobile рейл НЕ рендерится — нижний таб-бар будет в слайсе 2. Чистый клиент. typecheck (`noUnusedLocals`)+build green; **headless-рендер на реальных CSS подтвердил раскладку** (рейл+спайн+чат+участники, active-pill, badge). **Codex-adjacent shell** — branch от свежего origin (master 207b7b2), rebase-чек перед merge. **Дальше:** слайс 2 (мобильный нижний таб-бар Чаты/Серверы/Друзья/Я), слайс 3 (разгрузка топбара).)
+
+**Предыдущая:** v1.6.56 (Микрокопия — plain-language + точность (доработка EC под «максимально просто и понятно»; разведка по моим зонам чат/ЛС/поиск, не трогая voice/settings/categories=Codex, каждый кейс верифицирован по коду). (1) SearchOverlay placeholder `ЗАПРОС_ПОИСКА // сообщения · задачи · файлы…` (leftover tactical-жаргон старого surface-language) → `Поиск по сообщениям, каналам, файлам…`. (2) SearchOverlay no-results hint ссылался на **«таблицу»** — фичу, ВЫРЕЗАННУЮ в slice 1-2 (Operational Tables) → убрал устаревшую ссылку (точность). (3) DM-пустое состояние: 2-шаговая инструкция «Открой профиль участника и нажми «Написать в личку»…» → концис «Начни переписку через «Друзья» выше или собери группу кнопкой ＋» (указывает на on-screen affordances, минимум движений) + дружелюбнее title «Пока нет диалогов». Чисто клиент (`SearchOverlay.tsx` + `DirectConversationList.tsx`), typecheck+build green. Note: Esc-закрытие create-модалок проверил — уже работает (Modal.tsx гасит Escape; наводка разведки была неверной, не трогал).)
+
+**Предыдущая:** v1.6.55 (Voice: быстрее подключение + presence мгновенно для всех (жалоба Pavel «долгое подключение в голосовую + все должны видеть кто в голосовых»). **Диагноз:** серверный voice-presence УЖЕ полный и server-wide (`buildVoicePresenceSnapshot` = снимок ВСЕХ VOICE-каналов ВСЕХ серверов юзера + дельты `voice:participant:*` в `server:${id}` room, куда все члены join'ятся на connect, + 30s re-poll + reconnect). Корень — **тайминг клиентского join** (`useVoice.ts`): (1) token-fetch и lazy-import `livekit-client` (~140KB gzip) шли ПОСЛЕДОВАТЕЛЬНО → `Promise.all` (overlap, max вместо sum); (2) `voice:join` presence-broadcast эмитился ТОЛЬКО ПОСЛЕ полного LiveKit-connect → 1-3s остальные не видели тебя в комнате → теперь эмитим РАНО (сразу после token, до connect), на провал connect — откат `voice:leave` (флаг voiceJoinEmitted); (3) `AppShell` префетчит `livekit-client` при открытии VOICE-канала (до клика «подключиться») — к join() либа уже в кэше (bundle-split цел: платят только зашедшие в голосовой). Чисто клиент (`useVoice.ts` + `AppShell.tsx`), typecheck+build green. **Codex hot-domain** (voice — его), branch от свежего origin (master 87a831c, без Codex-пуша), rebase перед merge. Остаток вне кода: сам `r.connect` (LiveKit-инфра RTT/ICE/локация сервера) — серверная латентность.)
+
+**Предыдущая:** v1.6.54 (AI-помощник «Что я пропустил» — рефайн (Pavel выбрал из Phase-2: one-tap AI-сводка непрочитанного вместо скролла). Фича УЖЕ была (since-last-visit infra: `/api/channels/:id/visit` дельта + `/api/channels/:id/since-summary` AI-проза + one-tap кнопка в `SinceLastVisitBanner`). Под директиву «минимум движений, без шума»: CTA переименована «✦ Что произошло» → **«✦ Что я пропустил»** (формулировка Pavel), loading → «Читаю историю…»; убран самый шумный блок (3-item recent-actions список + мёртвый `typeGlyph`). Остались компактные счётчики + инцидент + AI-проза-резюме (hero). Чисто клиент (`SinceLastVisitBanner.tsx`), typecheck (`noUnusedLocals`)+build green. **Channel-only** (для ЛС нужны `/api/dm` visit+summary эндпоинты — follow-up). **Live-активация:** AI-проза работает только когда заданы LLM-ключи (провайдеры v1.6.53). **Phase-2 follow-up:** AI-first prominence (CTA крупнее/primary), DM-поддержка — лучше после живого взгляда Pavel + ключей.)
+
+**Предыдущая:** v1.6.53 (AI: +3 бесплатных LLM-провайдера в @ai-цепочку — **Groq / Cerebras / Mistral** (директива Pavel «подключать бесплатные ллм модели для помощи, минимум движений»). Все OpenAI-compatible, добавлены в `ai/provider.ts` по существующему шаблону (env-gated, опциональны, per-provider `*_MODELS` CSV-фолбэк). Новая priority-цепочка авто-фолбэка: Ollama → **Groq** → **Cerebras** → OpenRouter → NVIDIA → **Mistral** → OpenAI — чем больше free в цепочке, тем надёжнее @ai для пользователя (на 429 одного → следующий, уже есть retry/backoff). Дефолт-модели (overridable env): groq=`llama-3.3-70b-versatile`, cerebras=`llama-3.3-70b`, mistral=`mistral-small-latest`. `.env.example` получил AI-секцию. Server typecheck green; чисто аддитивно. **ТРЕБУЕТ от Pavel:** добавить free API-ключи в prod-env (бесплатная регистрация console.groq.com / cloud.cerebras.ai / console.mistral.ai) — код дормант пока ключей нет. **РАЗВОРОТ НАПРАВЛЕНИЯ:** AI теперь = помощник для упрощения UX (минимум движений), поэтому ранее намеченный CUT Channel-Info AI-вкладок (Memory/Execution/Since-last-visit) ОТМЕНЯЕТСЯ — AI-помощников растим, не режем. **Phase 2 (предложить Pavel):** конкретные простые AI-помощники под «минимум движений» — proactive summary «что я пропустил» / compose-help / one-tap answers.)
+
+**Предыдущая:** v1.6.52 (Упрощение до ядра — слайс 8: удаление admin-вкладки «Аналитика» (always-visible, но **дублирует дашборд «Здоровья команды»** — те же метрики Открыто/Просрочено/Без-ответственного/среднее-закрытие; Здоровье остаётся как настоящий дом этих метрик). Из `AdminPanel.tsx` вырезаны: `analytics` из Tab-union, nav-кнопка, content-рендер (StatCard-грид) + локальные хелперы `StatCard` + `formatDurationShort` (использовались ТОЛЬКО этим табом). **`teamHealth`-проп ОСТАВЛЕН** (используется в overview-табе) → AppShell не тронут, cross-component coupling нет. AdminPanel-чанк 43→41 KB. typecheck (`noUnusedLocals`) + build green. Не трогал (отдельные слайсы/блокеры): Bots-таб (ServerHubModal, **@ai-риск** — bots могут быть точкой включения агента, нужна проверка), Automation-таб (большой: `AutomationRow` + 5 типов + create-form + 3 хендлера), Invoices-таб (gated `serverMode==="CLIENT"`, ждёт миграции CLIENT-режима). **Diminishing returns достигнуты** — ядро острижено (8 слайсов, ~9900 строк удалено); остаток требует: @ai-проверки (bots), объёма (automation), approval-миграции (CLIENT/invoices), живого взгляда Pavel (дизайн-полировка батч 2).)
+
+**Предыдущая:** v1.6.51 (Упрощение до ядра — слайс 7: удаление admin-вкладки «Интеграции» (вебхуки + Composio-коннекторы — advanced, не ядро). Из `AdminPanel.tsx` вырезаны: `integrations` из Tab-union, nav-кнопка, content-рендер, 4 state-переменные (`integrations`/`...Loading`/`...Error`/`showCreateIntegration`) + lazy-fetch effect + 2 импорта → удалены 2 файла `AdminIntegrationsTab.tsx` + `ComposioConnections.tsx` (использовались ТОЛЬКО этой вкладкой). **@ai НЕ затронут** — встроенный агент живёт в `ai/assistant.ts` (server-side, через `ai/provider`), независим от integration-UI; серверные роуты integrations/composio оставлены (per решение «@ai остаётся»; composio ещё нужен `ai/botRoles.ts`). AdminPanel-чанк 64→43 KB (~21 KB advanced-кода долой). typecheck (web `noUnusedLocals`+`noUnusedParameters`) + build green. **Осталось из admin-вкладок:** «Боты» (`BotsTab`) живёт в `ServerHubModal` (+ AppShell `serverHubTab` union содержит «bots») — отдельный слайс из-за cross-component type-coupling; вкладки «Автоматизации»/«Аналитика»/«Счета» — по запросу. **Следующее:** ServerHub bots-таб; дизайн-полировка батч 2; с «да» Pavel — миграция-снос CLIENT-режима.)
+
+**Предыдущая:** v1.6.50 (Упрощение до ядра — слайс 6: удаление Клиентского портала (CRM-вью внешнего клиента — не Telegram/Discord, был в CUT-листе). **Удалены 4 файла:** `pages/ClientPortalContainer.tsx` + `pages/ClientPortalPage.tsx` + `hooks/useClientPortal.ts` (клиент) + `routes/clientPortal.ts` (сервер; импортёр — только index.ts). `App.tsx`: вырезана вся portal-маршрутизация (`#/portal/<id>` hash-route, `PORTAL_HASH_RE`, `portalServerId` state + parseLandingHash-ветка, `ClientPortalContainer`-рендер) → authenticated всегда = AppShell; auth-panel hash + unknown-route логика целы. AppShell: убраны 2 прохода `onOpenClientPortal` (ChannelList + AdminPanel — кнопки «Открыть портал» больше не передаются). index.ts: снят clientPortal импорт + регистрация. **CLIENT-режим (`Server.mode`) НЕ тронут** — это Prisma-поле, полный снос = миграция схемы (нужен явный «да» Pavel — отдельный слайс); пока CLIENT остаётся calm-UI флагом без портала (осиротевший optional `onOpenClientPortal`-проп + gated-кнопка в ChannelList/AdminPanel оставлены — безвредны, never-render, чистка позже). Web+server typecheck (web `noUnusedLocals`) + build green; ClientPortal-чанк ушёл из бандла. Старые `#/portal/X`-ссылки теперь → 404 (фича удалена). **Следующее:** дизайн-полировка батч 2; либо удаление admin-вкладок интеграций/ботов + (с «да» Pavel) миграция-снос CLIENT-режима + роутов invoices/analytics.)
+
+**Предыдущая:** v1.6.49 (Упрощение до ядра — слайс 5 (дизайн-полировка, батч 1): де-нойз пустых состояний + токен-гигиена в духе «Telegram × Discord». `.ec-empty-state__icon` (components.css): убраны бесконечный `ec-empty-icon-breath` (5.6s) + **cyan** orbit-кольцо `::after` (`hsl(180 70% 55%)` — off-brand палитра, revoked в пользу violet+gold; + `ec-empty-orbit` 18s infinite spin) → оставлен один статичный violet-халоу `::before`. `.ec-empty-state__title`: снят gradient text-fill (violet→text + `-webkit-text-fill-color: transparent`) → solid; inline `titleStyle` в `EmptyState.tsx` поднят на `--ec-text-strong` (inline перебивает класс — оба теперь strong, без градиента). DM-список (dm-home.css): `.ec-dmx-row.is-active .ec-dmx-row__pres` хардкод `#10151c` → наследует `--ec-surface-1` из базы (ломал светлую тему на активной строке). Одна правка затрагивает ВСЕ пустые состояния (ЛС/каналы/дом/и т.п.). Чисто CSS + 1 inline-color. typecheck (`noUnusedLocals`) + build green; deterministic removal → verify by-construction (как de-noise v1.6.41-45). **Решение Pavel 19.06:** @ai-агент в чате ОСТАЁТСЯ → роуты bots/composio/integrations/automations НЕ режем. **Следующее:** ещё полировка дома/ЛС (presence в DM-header = Telegram-паритет и т.п.); отдельный слайс — удаление admin-вкладок интеграций/ботов + ClientPortal (клиент) → затем их серверные роуты.)
+
+**Предыдущая:** v1.6.48 (Упрощение до ядра — слайс 3: прунинг серверных роутов. Удалены 3 файла: `routes/tables.ts` / `routes/incidents.ts` / `routes/home.ts` + их импорты и регистрации в `index.ts`. Это **единственные** роуты, чьи клиентские потребители уже на 100% сняты (хуки `useOperationalTables`/`useIncidents`/`useHomeToday` удалены в слайсе 2). Верификация перед резом: импортёр — только `index.ts` (нет server cross-import'ов), нет vitest-тестов на эти эндпоинты, `actions.ts` НЕ тронут (Здоровье + Codex). Прочие «advanced»-роуты (invoices / analytics / integrations / composio / bots / clientPortal) **ОСТАВЛЕНЫ** — у них ещё живые клиентские вызовы (admin-вкладки / клиентский портал / `@ai`-агент в чате, который handled не в messages.ts → в bots/composio); их прунинг — только после удаления соответствующих клиентских потребителей. Prisma-схема не тронута (миграций нет — модели в БД остаются). Server typecheck (`tsc -p --noEmit`) green; unit-тесты гоняет CI. `realtime.ts` emitIncident* стали dead exports (безвредно, не unused-local). **Следующее:** слайс 4 (Здоровье команды на тонком task-бэкбоне), слайс 5 (дизайн «Telegram × Discord»); отдельный слайс — admin-вкладки интеграций/ботов + ClientPortal + решение по @ai → затем их серверные роуты.)
+
+**Предыдущая:** v1.6.47 (Упрощение до ядра — слайс 2: физическое удаление мёртвого кода вырезанных в слайсе 1 модулей. **Удалены 9 файлов**: компоненты `HomeToday` / `OperationalTablePanel` / `CreateTableModal` / `IncidentPanel` / `SpiderClock` / `TelemetryViz` + хуки `useHomeToday` / `useOperationalTables` / `useIncidents` (единственный реальный импортёр — AppShell; остальные совпадения grep'а — комментарии). Из `AppShell.tsx` убраны: 4 lazy-импорта + 3 хук-импорта + вызовы (useOperationalTables-деструктур, useIncidents, useHomeToday) + 4 рендер-ветки (таблица-панель / HomeToday / IncidentPanel / CreateTableModal) + осиротевший хендлер `openActiveServer`. Мёртвые флаги `homeOpen`/`selectedTableId` оставлены (always-false/null; читаются в breadcrumb/`activeTableId`, поэтому `noUnusedLocals` не падает) — полный выпил состояния отдельным cleanup-слайсом; `showIncidents` выпилен полностью (больше нигде не читался). **StatusBoard / ActionItemDrawer / TeamHealth НЕ тронуты** (Здоровье на тонком task-бэкбоне — слайс 4). Из бандла ушли чанки HomeToday/OperationalTablePanel/IncidentPanel/CreateTableModal/SpiderClock/TelemetryViz. typecheck (`noUnusedLocals: true`) + `vite build` green. Серверные роуты tables/incidents/home — слайс 3. **Следующее:** слайс 3 (прунинг серверных роутов: tables/incidents/integrations/automations/composio/bots/clientPortal/invoices/analytics, `actions.ts` оставить), слайс 4 (Здоровье на тонком бэкбоне), слайс 5 (дизайн-полировка «Telegram × Discord»).)
+
+**Предыдущая:** v1.6.46 (Упрощение до ядра — слайс 1: IA-реформа + прунинг навигации. Директива Pavel: «упростить EC до ядра — тренировки, здоровье команды, создание комнат, чаты, ЛС; сделать смесью Telegram × Discord». **Топбар-declutter** (командный бар нёс много шума): убраны focus-режим, инциденты-бейдж, телеметрия-пилюли (сеть/память/CPU + Sparkline/NetworkWave + хук useTelemetry), SpiderClock — остаются поиск/справка/админ/platform-admin/уведомления/AI/тема/профиль/выход. **Сайдбар**: standalone «Доска задач» и «Операционные таблицы» убраны из навигации (`onOpenStatusBoard/tables/onOpenTable/onCreateTable` → undefined) вместе с их Ctrl+K quick-nav записями; Доска остаётся drill-down целью из «Здоровья команды» (не самостоятельный вход). HomeToday уже не лендинг (главная = ЛС+Друзья, Telegram-паттерн — было ранее). **Остаются**: голос целиком, Друзья (Discord), Тренировки, Здоровье команды, каналы (текст/голос), ЛС. Чистая правка `AppShell.tsx` — только entry-points; код вырезаемых модулей живёт до slice 2 (lazy-чанки HomeToday/OperationalTablePanel/IncidentPanel ещё собираются, но недостижимы). typecheck `tsc -b` + `vite build` green. Коллизия с Codex обойдена: серверный `actions.ts` не тронут (Здоровье — на тонком task-бэкбоне, slice 4). **Следующие слайсы:** 2 — физ. удаление мёртвых клиент-модулей (HomeToday/Tables/Incidents/тяжёлый StatusBoard/ClientPortal/admin-интеграции-боты/декор); 3 — прунинг серверных роутов; 4 — Здоровье на тонком task-бэкбоне; 5 — дизайн-полировка «Telegram × Discord».)
+
+**Предыдущая:** v1.6.45 (De-noise pass — слайс 5: chat-header + chat-фон + galaxy (последний — с явного «да» Pavel на signature-элемент). `.ec-chat-header`: убраны triple-layer radial-ауры (violet+cyan) → плоская подложка, holo-рейл `::before` → none, violet inset-glow и EOF violet drop-glow (`hsl(258 90% 62% / .74)`) → тонкая нижняя кромка. `.ec-shell__chat`: убраны radial-ауры фона чата → плоская подложка. **galaxy-backdrop** приглушён (умеренно, не снесён — остаётся брендовой атмосферой): auth 0.62→0.30, home 0.42→0.20, in-app shell 0.32→0.12 (едва уловим за контентом). Чисто CSS. Verify by-construction + build green. Pinned/AI message-маркеры (gold/accent border) оставлены — функциональные, не glow. **De-noise (умеренно) по сути завершён** — флагман спокойный: чистые поверхности + функциональные акценты. Дальнейшее — точечно по запросу.)
+
+**Предыдущая:** v1.6.44 (De-noise pass — слайс 4: прочие list-row'ы. Консолидированным override-блоком (после всех row-дефов) убраны у `friend-row` / `member-row` / `search-hit` / `popover-item` / `srv-menu-row` / `dm-row`: hover-slide (`translateX`) и violet drop-shadow на hover (→ `--ec-elev-1`). Заглушены бесконечные декоративные анимации dm-row: online-avatar breath + unread-badge pulse (`ec-dm-badge-pulse`) — индикаторы остаются, но статичные. bg-tint hover + функциональные active/unread рейлы сохранены. Verify by-construction (hover/animation-состояния — удаление transform/shadow/animation однозначно; build green, override в бандле). Чисто CSS. **Осталось:** message-row/chat-header violet-glow'ы (`.ec-chat-header` shadow, `.ec-message-row--pinned/ai`) — мелкий слайс 5; **galaxy-backdrop** — signature brand, только с явного «да» Pavel.)
+
+**Предыдущая:** v1.6.43 (De-noise pass — слайс 3: core nav + sidebar. Аудит выявил: `text-glow` в EC НЕТ (был только в hub); `.ec-channel-list` sidebar уже чистый (только transient `--menu-open` нёс violet radial-ауру → убрана). Главная цель — **channel-item** (основная навигация): active-канал нёс violet→cyan градиент-фон + 3-слойный violet halo + рейл с glow и БЕСКОНЕЧНЫМ pulse (`ec-channel-rail-breath`) + hover-slide + hover-halo (`::after`). Де-нойзнут (override-блоком, чтобы не трогать mojibake-комменты в файле): active = спокойный accent-tint bg + бордер + сплошной рейл (без градиента/halo/pulse); убраны hover-slide и hover-halo. Функциональный «где я» индикатор сохранён (verified headless — active читается ясно, спокойно). Чисто CSS. **Осталось (слайс 4, опц.):** прочие list-row'ы (friend/member/dm/search/popover/srv-menu — те же hover-slide/рейлы) тем же правилом; galaxy-backdrop intensity — но это signature brand-элемент, тонировать только с явного «да» Pavel.)
+
+**Предыдущая:** v1.6.42 (De-noise pass — слайс 2: floating surfaces. Поповеры — убран holo-рейл `.ec-popover-surface::before` (cyan→violet кромка). Модалки — `.ec-modal-box` (оба theme-варианта): accent-22% бордер → нейтральный, violet мульти-тень (inset glow + drop glow) → одна чистая `--ec-shadow-modal`. Карточки внутри модалок (`.ec-settings-card`/`.ec-server-hub-panel`/`.ec-admin-row`/`.ec-bot-card`) — убрана violet radial-аура, accent-бордер → нейтральный, плоская поверхность. cockpit-head уже был чистым (surface-1, без ауры; corner-brackets сняты в слайсе 1). Verified headless — модалка+поповер спокойные плоские панели, без glow/рейлов. Чисто CSS. **Слайс 3:** sidebar (`.ec-channel-list`/`.ec-rail`), text-glow, accent left-rail на list-row'ах, интенсивность galaxy-backdrop.)
+
+**Предыдущая:** v1.6.41 (De-noise pass — слайс 1 (умеренно, по запросу Pavel «максимальный упор на простоту, убрать весь шум»). Сняты 4 общие декоративные утилиты у источника (tokens.css), → каскадом по ВСЕМУ app: `.ec-holo-edge` (1px cyan holo-рейл), `.ec-scan-line` (бесконечный sweep), `.ec-shimmer-sweep` (hover-блик на CTA), `.ec-corner-brackets` (tactical уголки) — все стали no-op (классы остаются hook'ами, обратная совместимость). Также убран modal-open holo-sweep (`.ec-modal-header.ec-holo-edge::before`). Референс-поверхность «Друзья» де-нойзнута полностью: убраны violet-аура фона view + violet-аура hero + violet мульти-тень (→ одна чистая `--ec-elev-1`), accent-бордер 22% → нейтральный; функциональные акценты (CTA, активный таб, presence, eyebrow) сохранены. Verified headless (Друзья 1440 — спокойная плоская поверхность). Чисто CSS, без схемы. **Следующие слайсы:** per-surface violet-ауры/мульти-тени (модалки, попаповеры, cockpit-head, sidebar), text-glow, интенсивность galaxy-backdrop, surface-rail на row'ах — катить тем же умеренным правилом.)
+
+**Предыдущая:** v1.6.40 (TeamHealth stat-grid orphan fix — design-QA «Здоровья команды» нашёл ту же семью бага, что и доска: stat-грид через inline `style={grid}` = `repeat(auto-fit, minmax(220px,1fr))` на **5** карточках (хедер-комментарий врал «4») ронял 5-ю карту в одинокий orphan-ряд на ~1100px (4+1). Грид перенесён из inline-стиля в класс `.ec-team-health-stats` (responsive.css) со сбалансированными брейкпоинтами: 5 в ряд (>1180) → 3+2 (≤1180) → 2col (≤480, как было) → 1col (≤320, как было). Удалён мёртвый inline-объект `grid`; skeleton-плейсхолдер выровнен на 5 карт (было 4). Verified headless на реальном responsive.css (1440=5, 1100=3+2, 390=2col). Чисто frontend, без схемы. Заметка: TeamHealth ещё на легаси module-level inline-style объектах (vs cockpit-классы StatusBoard) — кандидат на отдельный рефактор-слайс.)
+
+**Предыдущая:** v1.6.39 (StatusBoard column-wrap fix — design-QA доски задач выявил реальный баг раскладки: grid `auto-fit` ломал 4-статусную канбан-доску на 2 ряда (3 колонки + «Сделано» отдельно снизу) на промежуточной ширине (~1100px), ломая модель «4 статуса сразу». Доска переведена на фиксированные `repeat(4, minmax(260px, 1fr))` (board-specific `.ec-status-board`, общий `.ec-cck-board` не тронут — table/drawer без изменений): 4 колонки всегда в одном ряду, h-scroll на узком desktop/tablet, ≤500px → 1fr stacked. Verified headless на реальном cockpit.css (1100 → один ряд, 390 → stack). Чисто CSS. Известный фоллоу: `.ec-cck__tools` toolbar overflow'ит на mobile — общий cockpit-chrome (table/drawer тоже), отдельный слайс с проверкой всех трёх.)
+
+**Предыдущая:** v1.6.38 (Friends/DM design-QA pass — экран «Друзья» приведён к bounded readable column: на широких экранах список друзей больше НЕ растягивается во всю ширину (actions не уезжали к дальнему краю с огромным пустым промежутком) — `max-width: 60rem` + center на hero/tabs/sections. Добавлен reduced-motion guard для friends-анимаций: EC полагается на zeroing `--ec-dur-*` токенов, но бесконечный pulse на `.ec-friends-tab__dot` и hardcoded-duration (220-280ms) переходы row/tab токен-zeroing НЕ глушил → теперь глушатся явно. `.ec-friends-view` получил `min-width: 0` (scrollable flex-панель — best practice) + `overflow-wrap` на подзаголовке hero (защита от overflow длинного RU-текста). Чисто CSS, frontend-only, без схемы. Desktop (1440) render-verified headless-харнессом на реальных CSS; mobile — eyeball на проде. Системный reduced-motion gap (token-zeroing vs hardcoded durations по ВСЕМУ app) — кандидат на глобальный `*`-guard отдельным слайсом.)
+
+**Предыдущая:** v1.6.37 (Server banner gradient fallback — серверы без banner-картинки больше не показывают один и тот же плоский placeholder. Добавлен util `serverBannerGradient` (`apps/web/src/lib/serverBanner.ts`): детерминированный on-brand cover-градиент — из `brandColor` сервора (баннер совпадает с акцентом), иначе одна из 10 курированных тёмных палитр по `hash(serverId)`. Применено в Путеводителе (`ServerWelcomeHero`) и в превью вкладки «Оформление» (`ServerHubModal`), где превью обновляется live при выборе цвета акцента и честно подписано «Авто-градиент — нет изображения». Чисто frontend, без schema/backend. E2 discord-parity (banner gradient presets) частично закрыт fallback-частью; owner-selectable persisted пресеты (поле `server.bannerGradient`) + rail-header cover — следующие слайсы. cyan/teal не используется декоративно, reduced-motion N/A (статичный градиент).)
+
+**Предыдущая:** v1.6.36 (Voice presence snapshot hotfix — список пользователей в голосовых комнатах больше не зависит только от стартового socket connect и дельта-событий. Клиент явно запрашивает `voice:presence:request` при mount/reconnect и держит 30s fallback-refresh; backend отдаёт актуальный `voice:state` + `voice:meta` snapshot только по серверам, где пользователь состоит. Исправляет пустые/неполные участники под voice-каналами после пропущенного snapshot-а или reconnect-а.)
+
+**Предыдущая:** v1.6.35 (Voice audio setup — настройки голоса получили пресеты «Офис / Шумно / USB-студия», проверку вывода звука, явную оценку уровня микрофона и сохранение валидированных audio-параметров. Noise suppression и mic gain теперь применяются live в активной комнате через republish/replaceTrack без обязательного reconnect; PTT сохраняет публикацию микрофона и глушит track, а не ломает enhancer chain. Backend/schema без изменений.)
+
+**Предыдущая:** v1.6.34 (Composer drop guard — исправлен путь drag/drop, где browser-generated `text/html` попадал в file pipeline и показывал «Не поддерживается: text/html». Composer теперь отделяет реальные файлы от HTML/URL drag-артефактов: настоящие файлы идут в attachments, ссылки/текст вставляются в draft, HTML-разметка не загружается как файл. Локальные `.html` по-прежнему не разрешены как вложения по security-причине. Backend/schema без изменений.)
+
+**Инфраструктурный слайс без app-version bump:** Network Gateway v0.1 — добавлен deploy/runbook для собственного закрытого VPN+proxy: WireGuard full-tunnel для доверенных устройств, Squid HTTP/HTTPS CONNECT proxy с basic-auth внутри WireGuard namespace и host-only bind `127.0.0.1:3128`, `.gitignore` защищает `deploy/network-gateway/secrets/` и `state/`. Это не меняет runtime Eclipse Chat, API, schema, web bundle или `/api/version`; следующий продуктовый слайс — platform-admin metadata UI без хранения приватных ключей.
+
+**Предыдущая:** v1.6.33 (File share composer fix — Web Share Target для файлов больше не подставляет имя файла/список имён в текст draft-а перед отправкой: вложения остаются pending attachments, а настоящий текст/URL share сохраняется. Обычный file picker/drop не менялся: `addFiles` по-прежнему только добавляет previews. Backend/schema без изменений.)
+
+**Предыдущая:** v1.6.32 (Voice Room command dock + music bot presentation + shell lazy split — панель связи в голосовых комнатах переработана в более аккуратный grouped dock: кнопки получили компактные hit-targets, разделители групп, спокойные active/danger состояния и reduced-motion fallback. Общий плеер теперь представлен в комнате как честный `Eclipse Music` bot-card/chip поверх существующей `MusicSession`: показывает трек, состояние, host и быстрые действия «Плеер/Трек», но не делает ложный claim о трансляции системного звука или отдельном серверном LiveKit-боте. Для ускорения старта `AppShell` вынес редкие панели (`FriendsView`, `HomeToday`, `ServerWelcomeHero`, `ChannelsAndRolesView`, `MembersView`, `ChannelInfoPanel`, `IntelligencePanel`, `StatusMenu`) в lazy chunks. Backend/schema без изменений.)
+
+**Предыдущая:** v1.6.31 (Voice Room theater + real connection quality — голосовые комнаты получили более читаемый video-stage для camera/screen-share: в режиме «Эфир» visual grid раскрывается шире, stage получает спокойный theatre-backdrop, screen-share получает больший safe-height. В `useVoice` добавлен live listener `RoomEvent.ConnectionQualityChanged`; карточки и compact presence-чипы показывают реальное качество связи участника (`excellent/good/poor/lost/unknown`) без фейковых claims. LiveKit publish flow, fullscreen API и shared music player не менялись. Backend/schema без изменений.)
+
+**Предыдущая:** v1.6.30 (Voice Room layout control — в голосовых комнатах добавлен per-channel переключатель раскладки «Вместе / Эфир / Чат»: default сохраняет stage+chat, режим «Эфир» скрывает chat-панель, режим «Чат» отдаёт основную ширину чату, но сохраняет stage и dock связи доступными. Для camera/screen-share fullscreen добавлен служебный overlay с именем участника, типом источника и подсказкой Esc; Fullscreen API, LiveKit publish flow и shared music player не менялись. Layout state хранится в localStorage с безопасным in-memory fallback, mobile/tablet получили явную CSS-раскладку. Backend/schema без изменений.)
+
+**Предыдущая:** v1.6.29 (Voice Room visual polish — голосовые комнаты получили более цельную визуальную систему: stage/chat-панели сведены в общий glass-shell с holo rail, карточки участников получили явные speaking/muted/hover состояния без вытянутых теней, dock связи стал компактнее и профессиональнее за счёт усиленных focus/active/disabled states и аккуратной подсветки. Fullscreen для camera/screen-share и shared music player сохранены без изменения поведения; desktop/tablet/mobile и reduced-motion покрыты CSS-правками. Backend/schema без изменений.)
+
+**Предыдущая:** v1.6.28 (Voice Room v2 stability pass — голосовые комнаты получили устойчивый split-layout: эфир/участники слева, полноценный чат комнаты справа, composer внутри chat-панели на всю ширину, компактный sticky dock связи не наезжает на сообщения. Для VOICE-комнат скрыты task/slash-команды, чтобы не провоцировать ошибочные задачи из голосового контекста; обычные сообщения, файлы, emoji и общий музыкальный плеер сохранены. Desktop/tablet/mobile раскладка зафиксирована через явные min/max зоны, reduced-motion поведение сохранено. Backend/schema без изменений.)
+
+**Предыдущая:** v1.6.27 (Voice visual fullscreen — LiveKit camera/screen-share tiles in voice rooms получили явную кнопку «На весь экран». Fullscreen использует browser Fullscreen API, сохраняет `object-fit: contain`, не меняет shared music player и не трогает LiveKit publish options. Кнопка появляется на hover/focus, в fullscreen остаётся доступной для выхода; есть reduced-motion fallback. Backend/schema без изменений.)
+
+**Предыдущая:** v1.6.26 (Composer slash macro cleanup — ASCII utility-команды `/shrug`, `/tableflip`, `/unflip` больше не засоряют чат служебной строкой `/command`: composer перехватывает их как text macro и отправляет только итоговый текст. `/task` остаётся operator-командой, `/me` и `/help` остаются backend slash-командами. Backend/schema без изменений.)
+
+**Предыдущая:** v1.6.25 (Team Health shared training catalog — разделы и видео «Тренировок» больше не живут в browser-localStorage одного устройства: добавлены серверные `TrainingSection` / `TrainingVideo` с миграцией, REST CRUD для каталога, OWNER/ADMIN-only управление и member-read для всех участников сервера. YouTube-ссылки и загруженные файлы сохраняются как общий каталог, клиенты обновляются через `training:catalog:updated`; старый локальный каталог владельца импортируется в сервер при первом открытии раздела после деплоя.)
+
+**Предыдущая:** v1.6.24 (Voice room split layout — голосовая комната разделена на две рабочие зоны: слева эфир, участники и компактная панель связи; справа полноценный чат комнаты с историей сообщений и composer внутри той же панели. Desktop получает side-by-side layout, tablet/mobile складываются в вертикальный поток без обрезания чата. Backend/schema без изменений.)
+
+**Предыдущая:** v1.6.23 (Voice room text chat + compact call dock — голосовые комнаты теперь поддерживают обычные сообщения канала: backend больше не отклоняет POST /api/channels/:id/messages для VOICE, frontend показывает компактную ленту «Чат комнаты» прямо в voice-сцене и оставляет обычный composer снизу. Панель связи исправлена после визуального smoke: больше не растягивается в широкую декоративную балку, а работает как компактный professional dock. Schema без изменений.)
+
+**Предыдущая:** v1.6.22 (Voice room UX simplification — из основного экрана голосовой комнаты
+убрана громоздкая рабочая заметка; вместо неё подключён обычный message composer канала с теми же
+attachments, emoji, slash/action flow и draft-поведением, что в текстовых комнатах. Панель связи
+пересобрана как более профессиональный floating dock: крупнее hit targets, спокойный glass surface,
+явная подпись «Связь», более читаемые состояния, мобильная горизонтальная прокрутка. No backend/schema.)
+
+**Предыдущая:** v1.6.21 (Landing auth access redesign — окно авторизации на лендинге
+пересобрано как premium access-module: добавлены статусная шапка, статичный контурный сигил,
+trust-строка Self-hosted/TLS/2FA ready, более спокойные поля, сегментированный режим вход/создание
+и усиленный CTA. Pure frontend design slice: логика авторизации, API и schema не менялись; тяжёлые
+continuous effects не возвращались после performance pass.)
+
+**Предыдущая:** v1.6.20 (Landing performance pass — убран реальный root cause
+подлагиваний на лендинге: `CursorTrail` больше не держит бесконечный RAF в пустоту,
+отключается на touch/mobile и сбрасывает canvas transform при resize. Hero auth-frame
+больше не тащит SVG turbulence + blur stack, а offscreen memory/security-анимации
+переведены в статичные состояния с `content-visibility: auto`. No backend/schema.)
+
+**Предыдущая:** v1.6.19 (Channel message layout polish — собственные сообщения в каналах
+больше не уезжают вправо отдельной карточкой: avatar и content снова живут в одном левом
+read rail, поток читается как командный канал, а не как личный чат. `+`-меню composer'а
+уплотнено по высоте/ширине и меньше перекрывает историю. No backend/schema.)
+
+**Предыдущая:** v1.6.18 (Composer grid/popover hotfix — исправлен реальный root cause
+после v1.6.17: старый `grid-template-columns: ... !important` больше не сжимает textarea
+в мини-колонку, а `overflow: hidden` на composer-box больше не клипает `+`-меню.
+Textarea занимает всю рабочую ширину строки, `+` popover снова видим. No backend/schema.)
+
+**Предыдущая:** v1.6.17 (Composer hotfix — исправлена визуальная иерархия
+после v1.6.16: `+` больше не превращается в крестик, send стал компактной icon-only
+кнопкой фиксированной ширины, textarea снова занимает основное пространство composer'а,
+mobile grid явно держит `+ / input / emoji / send` без растянутой фиолетовой кнопки.
+No backend/schema.)
+
+**Предыдущая:** v1.6.16 (Discord-style message composer — вторичные действия
+перенесены в `+`-меню: отправка файлов, голосовое сообщение, создание задачи и честные
+disabled-пункты «ветка/опрос» со статусом «скоро». Основная строка сообщения стала чище:
+слева один action trigger, по центру textarea, справа emoji + send; постоянные shortcut-hints
+под composer скрыты как визуальный шум. No backend/schema.)
+
+**Предыдущая:** v1.6.15 (Team Health training media grid — «Тренировки»
+переведены в полноценную медиатеку: stage занимает доступную ширину, карточки видео стали
+компактными и предсказуемыми, загруженные file-video получают отдельный portrait-friendly
+режим без огромной 16:9 пустоты, список видео скроллится внутри блока и больше не наезжает
+на секцию «По комнатам». No backend/schema.)
+
+**Предыдущая:** v1.6.14 (Team Health training file uploads — в «Тренировках»
+добавлена загрузка видеофайлов MP4/WebM/MOV/MKV/AVI до 200 MB. Upload endpoint
+`POST /api/servers/:id/training-videos/upload` требует JWT + membership и разрешён
+только OWNER/ADMIN; backend валидирует video MIME, размер и magic bytes через общий
+attachment pipeline, файлы кладутся в `/uploads/training-videos/`. UI показывает
+кнопку загрузки только администраторам, рендерит локальные файлы через `<video controls>`,
+старые YouTube-записи сохраняет. Каталог разделов/видео по-прежнему localStorage на
+устройстве, без ложной командной синхронизации. No schema.)
+
+**Предыдущая:** v1.6.13 (Team Health training two-column layout — «Тренировки»
+перестали быть широким пустым контейнером: desktop получил раздельные зоны управления
+и видео-stage, shell ограничен рабочей шириной, форма больше не тянется через весь
+экран, tablet/mobile складываются в одну колонку. No backend/schema.)
+
+**Предыдущая:** v1.6.12 (Team Health training layout fix — одиночные
+YouTube-тренировки больше не растягиваются в широкий hero-баннер: библиотека
+переведена на bounded card grid, форма добавления стала компактным control
+surface, видео ограничены рабочей шириной/высотой и остаются читаемыми на
+mobile. No backend/schema.)
+
+**Предыдущая:** v1.6.11 (Team Health training design QA — блок
+«Тренировки» выровнен с системными field/button primitives, получил сводку
+активного раздела, более читаемые видео-карточки с fallback-ссылкой на YouTube,
+mobile/reduced-motion polish и отдельные SOLAR overrides. Данные по-прежнему
+локальные на устройстве; UI не заявляет командную синхронизацию. No backend/schema.)
+
+**Предыдущая:** v1.6.10 (Team Health training library — в «Здоровье
+команды» добавлен отдельный раздел «Тренировки»: можно создавать новые разделы,
+переименовывать их и добавлять YouTube-видео в безопасный встроенный плеер.
+Данные хранятся локально в браузере по `serverId`, поэтому UI не заявляет
+командную синхронизацию; shared backend-каталог можно добавить отдельным
+schema-слайсом. No backend/schema.)
+
+**Предыдущая:** v1.6.9 (Channel categories usability — категории в левом
+rail теперь можно переименовывать и удалять через видимые action-кнопки прямо в
+заголовке категории. Right-click меню осталось fallback'ом, но основной путь стал
+discoverable; удаление подтверждается, каналы внутри переходят в «Без категории»
+через существующий backend SetNull/socket flow. No backend/schema.)
+
+**Предыдущая:** v1.6.8 (Chat YouTube embed — ссылки на YouTube/youtu.be
+в сообщениях теперь открываются прямо в безопасном inline-плеере под текстом
+сообщения. Парсер принимает только валидные youtube hosts и videoId формата
+YouTube, iframe строится через `youtube-nocookie.com`, обычные ссылки по-прежнему
+идут в OG preview. No backend/schema.)
+
+**Предыдущая:** v1.6.7 (QA infrastructure cleanup — server test runner теперь
+использует локальный `vitest` из devDependencies вместо сетевого `npx`, поэтому
+`npm test` детерминированно работает в workspace/CI. Prisma Friendship FK cleanup:
+`requestedByUserId` остаётся required, но referential action исправлен с невозможного
+`SET NULL` на `CASCADE`; добавлена additive migration, API/DTO/UI не менялись.)
+
+**Предыдущая:** v1.6.6 (Voice media quality pass — voice controls dock
+стал плотнее и профессиональнее: 44px touch targets, активные/опасные состояния
+с нижним индикатором, ровная volume-pill. Webcam/screen-share больше не
+зажимаются дефолтами: LiveKit получает явные capture/publish options
+(камера 720p/30fps, screen-share до 1080p/30fps с повышенным bitrate), video
+stage получает приоритетную высоту, screen tile занимает всю строку без
+760px clamp, `video` принудительно `object-fit: contain`, voice-note
+компактнее только при активном визуальном потоке. No schema/backend.)
+
+**Предыдущая:** v1.6.5 (Modal viewport containment — настройки сервера,
+профиля и длинные рабочие панели теперь открываются как ограниченные viewport
+окна: modal body получил корректный `min-height:0`, server/settings tree panels
+живут в вычисленной доступной высоте, left-nav/main/preview scroll'ятся внутри
+своих колонок, preview в ServerHub больше не вываливается за нижний край, mobile
+получил full-height safe layout. No schema/backend.)
+
+**Предыдущая:** v1.6.4 (Daily usability finish pass — закреплён более
+стабильный рабочий layout: chat header стал sticky, message cards больше не
+зависят от ширины rail'ов через `100vw - ...`, текст/attachments получили
+безопасный overflow и max-height, composer стал стабильным bottom command dock,
+channel search/rows и member rows получили практичные focus/hover/touch states,
+DM button у участников появляется по hover/focus без визуального шума. No
+schema/backend.)
+
+**Предыдущая:** v1.6.3 (Closer-to-concept shell correction — v1.6.2
+оказался слишком CSS-only и не попадал в фактический DOM по ключевым зонам:
+правый rail уже использует `.ec-mem*`, а composer держал inline-grid. Исправлено:
+composer получил явные layout-modifier classes, участники оформлены по реальным
+`.ec-mem*` hooks, сообщения стали компактнее и ближе к content-card композиции
+из референса, action-toolbar закреплён справа у карточки, attachments/audio/video
+получили единый card treatment, mobile widths пересчитаны. No schema/backend.)
+
+**Предыдущая:** v1.6.2 (Premium operations shell redesign — основной
+интерфейс получил более смелую и практичную визуальную систему: topbar собран
+в спокойные utility-кластеры, левый rail и список участников стали читаемыми
+операционными панелями, сообщения оформлены как content-first карточки с
+привязанным action-toolbar, composer стал command dock с понятными touch
+target'ами, серверное меню получило устойчивый popover-surface, voice controls
+получили профессиональную dock-геометрию. Есть mobile breakpoints и
+prefers-reduced-motion fallback. No schema/backend.)
+
+**Предыдущая:** v1.6.1 (Visible chat surface reset — v1.6.0 оказался
+слишком осторожным, поэтому чат получил уже заметную базовую композицию:
+сообщения стали content-first карточками по ширине содержимого вместо
+растянутой full-width пелены, action toolbar визуально привязан к сообщению,
+лента получила более явный depth/background, composer dock стал плотнее,
+контрастнее и практичнее на desktop/mobile. No schema/backend.)
+
+**Предыдущая:** v1.6.0 (Design clarity pass — everyday chat and voice
+surfaces стали спокойнее и практичнее: лента сообщений получила тихий hover,
+чётче отделённый action-toolbar, аккуратнее avatar/time emphasis и менее шумный
+composer dock. Voice room shared note переехала с inline-style плиты на
+профессиональную surface: compact header, readable textarea, честные save/conflict
+states, mobile stacking и reduced-motion fallback. No schema/backend.)
+
+**Ещё раньше:** v1.5.99 (Voice shared music audience clarity — shared
+music bridge в голосовой комнате получил честный room-aware статус:
+«N участников в комнате» + состояние синхронизации/паузы рядом с текущим
+треком. Формулировка не обещает, что у каждого участника реально звучит аудио
+на устройстве; она показывает доступность общего плеера для комнаты и снимает
+путаницу «мой локальный плеер должен транслироваться другу». Backend/schema не
+менялись.)
+
+**Ещё раньше:** v1.5.98 (Voice shared music UX — голосовая комната
+теперь явно показывает “Музыку для всей комнаты”: статус общего плеера,
+текущий трек и инициатора запуска, CTA «Выбрать трек» / «Открыть плеер» и
+честное пояснение, что локальный звук устройства не транслируется. VoiceMusicPicker получил
+понятный intro, empty state и профессиональные строки выбора. Backend/schema не
+менялись: используется существующий `/api/channels/:id/music` +
+`music:session:updated`.)
+
+**Ещё раньше:** v1.5.97 (Practical visual system pass — единый polish
+для ежедневных поверхностей: button hierarchy, composer dock, channel/member
+rows, empty states, topbar utility chips, settings/server surfaces и voice
+participant cards. Цель — меньше визуального шума, понятнее active/hover/focus
+states, стабильные touch targets на mobile и `prefers-reduced-motion` fallback.
+No schema/backend.)
+
+**Предыдущая:** v1.5.96 (Voice/chat visual polish — голосовая комната
+получила компактный профессиональный control dock: стабильные join CTA,
+квадратные action-buttons, отдельный volume capsule и mobile horizontal scroll.
+AI/bot-сообщения больше не растягивают фиолетовый фон на всю ширину ленты:
+подсветка ограничена карточкой контента, а общий hover сообщений стал тише.
+No schema/backend.)
+
+**Предыдущая:** v1.5.95 (Command palette shortcut guard — глобальный
+`Ctrl/⌘+K` больше не перехватывается, когда фокус стоит в `input`, `textarea`,
+`select`, `contenteditable` или `role="textbox"`. Это сохраняет быстрый вход в
+палитру из навигационных поверхностей, но не срывает набор сообщений, форм и
+настроек. No schema/backend.)
+
+**Предыдущая:** v1.5.94 (Recent command palette cleanup — группа
+«Недавние» в `Ctrl/⌘+K` получила явную кнопку «Очистить». Она удаляет только
+локальный список command id из `localStorage`, не трогает backend и не влияет на
+доступность самих команд. Если storage недоступен, видимое состояние всё равно
+очищается. No schema/backend.)
+
+**Предыдущая:** v1.5.93 (Recent command palette — `Ctrl/⌘+K` теперь
+поднимает последние открытые команды наверх в группу «Недавние». Хранится только
+локальный список command id в `localStorage`, без текста/PII и без backend; если
+команда исчезла из текущего контекста, она не показывается. Переход работает даже
+если storage недоступен. No schema/backend.)
+
+**Предыдущая:** v1.5.92 (Command palette groups — быстрые переходы в
+`Ctrl/⌘+K` сгруппированы по смыслу: Навигация / Личные / Каналы / Данные /
+Настройки. Буквенные маркеры заменены на понятные типовые glyph: экран, диалог,
+канал, таблица, раздел. Empty state теперь подсказывает искать канал, диалог,
+таблицу или настройки; нижняя строка управления показывает `↑↓ выбрать · Enter
+открыть · Esc закрыть`. No schema/backend.)
+
+**Предыдущая:** v1.5.91 (Keyboard-first command palette — быстрые
+переходы в `Ctrl/⌘+K` получили управление без мыши: `ArrowUp/ArrowDown`
+перемещают active row, `Enter` открывает выбранный канал/DM/таблицу/экран,
+hover синхронизирует selection, `aria-activedescendant` связывает input с текущей
+командой. Search filters не перехватываются, чтобы date/channel controls оставались
+нативными. No schema/backend.)
+
+**Предыдущая:** v1.5.90 (Command palette quick navigation — `Ctrl/⌘+K`
+теперь не только ищет по сообщениям, но и сразу даёт быстрые переходы к каналам,
+личным диалогам, таблицам, друзьям, путеводителю, участникам и настройкам. Пустой
+стартовый экран поиска заменён практичной сеткой команд; результаты по сообщениям,
+делам, файлам и семантике сохранены. Mobile 390px получает одно-колоночный список
+с крупными touch targets; `prefers-reduced-motion` отключает hover-сдвиги. No schema/backend.)
+
+**Предыдущая:** v1.5.89 (Rail quick room search — left rail получает быстрый
+поиск по комнатам во вкладке «Каналы»: фильтр работает по названию комнаты и названию
+категории, matching categories раскрываются автоматически, режим поиска скрывает
+create/dropzone controls и показывает понятный empty state. UX goal: меньше скролла,
+меньше угадывания, быстрее перейти в нужную комнату. No schema/backend.)
+
+**Предыдущая:** v1.5.88 (Server rail/menu polish — server actions menu in
+ChannelList теперь ведёт себя как раскрывающийся rail-block, а не floating overlay:
+меню остаётся под server header в потоке layout, двигает channel tabs/list вниз,
+получает активный trigger state, более читаемые hover/focus rows и solid premium
+surface. Fixes UX debt after v1.5.87: menu works, but should not visually collide
+with channel navigation. No schema/backend.)
+
+**Предыдущая:** v1.5.87 (Server menu inline rail fallback — ChannelList server actions
+popover теперь рендерится локальным absolute-слоем под server header вместо body portal.
+Это убирает зависимость от viewport positioning, portal stacking и старых CSS-чанков.
+Trigger propagation/ref outside-click handling остаются; sidebar header получает явный
+local z-layer. Fixes case: chevron виден, но клик по server header не показывает меню
+в rail. No schema/backend.)
+
+**Предыдущая:** v1.5.86 (Server menu trigger hardening — server actions
+popover теперь защищён от внешних pointer/click handlers: trigger останавливает
+всплытие, outside-click проверяет реальный menu ref вместо CSS closest, portal
+получает высокий inline z-index. Fixes case: header показывает chevron/hover, но
+меню сервера не появляется в rail. No schema/backend.)
+
+**Предыдущая:** v1.5.85 (Discord-parity E3 frontend — server feature
+chips получили production UI: владелец редактирует до 5 коротких тезисов в
+ServerHub settings, PATCH `/api/servers/:id/identity` отправляет реальное
+`features` поле, предпросмотр и `ServerWelcomeHero` рендерят чипы только из
+сохранённого backend DTO. Описание остаётся текстом, features больше не
+приходится имитировать списками в description. No schema/backend.)
+
+**Предыдущая:** v1.5.84 (Voice music sync fix — общий плеер в
+голосовой комнате теперь scoped к `voice.activeChannelId`, а socket при
+`voice:join` входит в `channel:{voiceChannelId}` room и выходит при
+voice-leave/disconnect. Fixes case: host запускает музыку в voice room, у него
+играет, а у другого участника в той же комнате не приходит session update из-за
+открытого другого chat/DM. No schema.)
+
+**Предыдущая:** v1.5.83 (Auth cosmic refresh — анимированная страница
+входа получает production-safe visual layer на основе Pavel'ового wide
+black-hole reference: один локальный оптимизированный WebP 2560px/178KB вместо
+набора тяжёлых JPG, фон + gold/cyan/violet glass treatment в landing auth hero и
+fullscreen AuthPage, existing login/register/2FA handlers сохранены, no external
+fonts/scripts/CDN, `prefers-reduced-motion` выключает drift/shimmer. No
+backend/schema.)
+
+**Предыдущая:** v1.5.82 (Deadline 404 scene — берём full deadline
+animation concept в production-safe виде: inline SVG + React countdown вместо
+jQuery/CDN, no external fonts/scripts, RU recovery copy, CTA «На главную» /
+«Назад», unknown client routes render standalone 404, `prefers-reduced-motion`
+freezes motion without losing scene meaning. No backend/schema.)
+
+**Предыдущая:** v1.5.81 (Server menu instant-close fix — server actions
+popover больше не закрывается на каждый captured scroll после клика по header.
+Scroll теперь только пересчитывает позицию portal-меню; outside click, Escape и
+action-click продолжают закрывать меню. Fixes regression where server menu
+disappeared immediately after opening. No backend/schema.)
+
+**Предыдущая:** v1.5.80 (Server guide depth cards — Animated Parallax
+Card pattern адаптирован без `vanilla-tilt`/CDN: `apps/web/src/lib/tilt.ts`
+получил `depthTiltProps` с cursor-following glow vars + лёгким 3D tilt, а
+quick entries в `ServerWelcomeHero` стали `ec-depth-card`. Эффект ограничен
+практичным выбором канала в путеводителе, размеры layout не меняет, mobile
+gracefully no-op, `prefers-reduced-motion` сбрасывает transform/transition. No
+backend/schema.)
+
+**Предыдущая:** v1.5.79 (Pinned-message micro-interaction — CodePen
+favorite-button motion pattern адаптирован в production-safe Eclipse UI:
+кнопка «Закрепить» в message toolbar получила tactile confirm animation
+без GSAP/CDN: icon jump/flip, small socket-hole, button press. Motion ограничен
+stateful action'ом, respects `prefers-reduced-motion`, не добавляет false UI claims
+и не меняет API/schema.)
+
+**Предыдущая:** v1.5.78 (Channel rail compact pass — левый rail приведён
+к роли навигации, а не второго hero. Compact override для server header с
+баннером перенесён в always-loaded `components.css`: banner больше не создаёт
+высокую пустую область в сайдбаре, независимо от lazy chunks. Tabs
+`Каналы / Задачи / Данные`, category headers, channel rows и bottom create CTA
+поджаты по высоте и визуально приглушены; active channel оставлен violet-only
+без cyan как декоративного акцента. No backend/schema.)
+
+**Предыдущая:** v1.5.77 (Server menu portal fix — исправление регресса
+v1.5.76: server actions menu больше не рендерится внутри левого rail stacking
+context. Меню вынесено через React portal в `document.body`, поэтому tabs
+`Каналы / Задачи / Данные` и список каналов не могут прорисоваться поверх него.
+Дополнительно убран устаревший helper «Скоро v1.5.48+» у disabled action
+«Создать событие» — теперь без ложной версии. No backend/schema.
+
+**Предыдущая:** v1.5.76 (Shell IA cleanup — следующий практичный проход
+по верхнему и левому краю после v1.5.75. Workspace switcher стал компактным
+списком без баннерных строк внутри dropdown, чтобы переключение пространств не
+выглядело как отдельный промо-экран поверх каналов. Server actions menu получило
+иконки, более плотные строки, явные группы и меньшую высоту, чтобы действия
+сканировались быстрее и не перекрывали половину rail. Topbar выровнен как набор
+однородных утилитарных капсул: метрики, часы, тема, профиль, выход. No
+backend/schema.
+
+**Предыдущая:** v1.5.75 (Guide layout pass — заметная доработка после
+ревью Pavel'я на v1.5.74. В server guide убран дублирующий chat-header
+«Путеводитель»: активная вкладка server-nav остаётся единственным уровнем
+навигации. Guide расширен до 1320px, баннер стал адаптивнее, body получил
+рабочую 2-колоночную структуру: слева описание/секции, справа sticky «Быстрые
+входы». Секции фиксированы в 2 колонки на desktop и 1 колонку на tablet/mobile,
+чтобы chips и длинные ссылки не дробились в узких карточках. Mobile/tablet
+fallback сохраняет один поток без sticky. No backend/schema.
+
+**Предыдущая:** v1.5.74 (Clean shell quality pass — практичный первый слой
+интерфейса по ревью Pavel'я. Верхняя панель оставляет только постоянные полезные
+контролы: реальные метрики `/api/health` (сеть/память/CPU), часы, тему, профиль
+и выход; вторичные icon-only actions убраны из первого визуального слоя. Guide
+перестроен из текстовой стены в сканируемую сводку: реальные счётчики сервера,
+intro, секции и chips из описания без ложных claims. Mobile: метрики схлопываются
+до сети на tablet и скрываются на узком viewport; guide stats/chips остаются
+читаемыми на 390px. Дополнительно убран обрезанный top CTA на landing mobile:
+на 390px остаётся hero CTA без горизонтального overflow. No backend/schema.
+
+**Предыдущая:** v1.5.73 (Popover solid inline — обход CSS-чанк-кэша.
+Pavel видит version-label (свежий main bundle), но popover прозрачный → ленивый
+AppShell-чанк (JS+CSS) застрял в кэше, отдельно от main bundle. Фикс: solid-фон
+поповера (`background:--ec-surface-2`, `backdrop-filter:none`, `background-image:none`)
+задан **inline-стилем** в `ServerActionsMenu` — едет в JS-чанке, бьёт любой CSS
+(в т.ч. устаревший). Применится как только AppShell-чанк у клиента обновится.
+Решающий тест для Pavel'я — incognito (нулевой кэш). No backend/schema.
+
+**Предыдущая:** v1.5.72 (Version label в UI — диагностика кэша. По запросу
+Pavel'я: всегда-видимая надпись `v{CLIENT_VERSION}` (build-time via Vite define) в
+fixed bottom-right (mono, dim, pointer-events:none). Показывает реально запущенную
+версию → сразу видно, на свежем bundle браузер или на устаревшем кэше. Прод-диагноз
+подтвердил: deployed CSS-чанки (AppShell/EmptyIcons) содержат solid-popover
+(`background:--ec-surface-2`) — сервер отдаёт правильно; если у клиента прозрачный,
+это HTTP-кэш старого чанка. No backend/schema.
+
+**Предыдущая:** v1.5.71 (Clean redesign slice 8 ч.2 — компактный channel-header
+(спек Pavel'я #2). Когда у сервера есть баннер, header'у давался класс `--banner`
+→ `min-height 96px` + cover-баннер за именем = большой пустой hero над tabs
+(баннер дублировал «Путеводитель»). Override в clean-ui.css: `--banner` header
+становится компактным (min-height 0, `background-image: none !important`, scrim
+убран) — имя + OWNER-чип + chevron в одну строку, как в эталоне server-view.
+Пустое место над tabs убрано. Верифицировано рендером (сайдбар+header+popover на
+реальных CSS: header компактный, popover solid). No backend/schema.
+
+**Предыдущая:** v1.5.70 (Clean redesign slice 8 — guide-композиция + popover
+close-on-scroll (спек Pavel'я, часть 1/2). **Guide**: `.ec-guide__inner` left-aligned
+(не центрирован), max-width 1040, margin-left clamp(24px,5vw,72px); баннер 210px
+растянут под ширину; описание читаемой мерой 68ch (не «стена»); быстрые входы
+компактной сеткой. **Popover** (`ServerActionsMenu`): закрывается при любом scroll
+(capture-фаза ловит scroll списка каналов) — channel-select/outside/Escape уже
+закрывали. Часть 2 (rail layout: fixed header/tabs/scroll, убрать пустой hero над
+tabs — переборка ChannelList) следующим слайсом. No backend/schema.
+
+**Предыдущая:** v1.5.69 (Update-banner быстрее — конец «ревью устаревшего».
+Механизм version-mismatch banner («ДОСТУПНО ОБНОВЛЕНИЕ · vX» → bulletproof reload
+с unregister SW + clear caches) уже существовал (App.tsx, v1.1.2), но poll был
+60s → ревьюер скриншотил в первую минуту после deploy, видел старый bundle и
+думал «не пофикшено». Теперь: poll 60s→20s + **немедленная проверка /api/version
+при возврате на вкладку** (visibilitychange + focus). Переключился на вкладку
+ревьюить — баннер сразу, если задеплоено новее. Никакого нового тоста не нужно
+было — улучшен существующий. No backend/schema.
+
+**Предыдущая:** v1.5.68 (Clean redesign slice 7 — popover bulletproof.
+v1.5.66 фикс поповера жил в clean-ui.css, но тот грузится как CSS-чанк компонента
+(MemberList/guide) и в некоторых view не подгружался → base `.ec-popover-surface`
+(прозрачный `--ec-overlay-bg` 0.93 + blur) просвечивал список каналов под server-
+меню. Теперь solid-фон вшит в сам `.ec-popover-surface` в **always-loaded
+components.css** (background `--ec-surface-2`, blur убран). Верифицировано рендером
+БЕЗ clean-ui.css — solid. Фиксит все поповеры разом. No backend/schema.
+
+**Предыдущая:** v1.5.67 (Clean redesign slice 6 — review-фиксы Pavel'я к
+clean-ui.css: (1) `.ec-mem__close + .ec-mem__close { margin-left:0 }` — спейсинг
+collapse+close кнопок в header участников. (2) `prefers-reduced-motion` guard для
+новых `.ec-mem*`/`.ec-guide*` (transition/transform/animation → none). (3) mobile
+clamp (≤640px) для guide: паддинги/баннер 148px/иконка 56px/карточки в один
+столбец — чтобы не был широким на 390px. (4) `overflow-wrap/word-break` на
+guide desc+welcome (длинные токены/URL в user-описании не переполняют мобайл).
+Верифицировано рендером guide@390. No backend/schema.
+
+**Предыдущая:** v1.5.66 (Clean redesign slice 5 — popover + channel-top
+(по скрину Pavel'я). (1) Server-actions popover: `.ec-popover-surface` имел
+`--ec-overlay-bg` (0.93 alpha) + blur → список каналов просвечивал сквозь поповер,
+текст наезжал. Override `.ec-server-actions-menu.ec-popover-surface` (специфичность
+0,2,0) → solid `--ec-surface-2`, без blur, чистый border/shadow. (2) Channel-top
+hero (`MessageList.ec-msg-channel-top`): убран full-bleed cinematic банер с
+overlaid текстом и выцветшим server-баннером за «Начало канала #X» — теперь чистый
+компактный text-only header (base class, 84px). Убраны channelTopBanner usage +
+resolveAssetUrl import. No backend/schema.
+
+**Предыдущая:** v1.5.65 (Clean redesign slice 4 — правый рейл (обёртка).
+Догон slice 1: «ТАКТИЧЕСКИЙ ВИД» жил не только в MemberList, но и в `IntelligencePanel`
+(desktop right-rail обёртка с собственным `ec-rail` header + holo-edge + tactical-
+иконкой, рендерил MemberList с hideHeader). Теперь IntelligencePanel — тонкая
+обёртка над MemberList с его чистым header («Участники N/M» + collapse + close).
+В MemberList добавлен `onCollapse` (desktop chevron). Убраны IconMembers +
+ec-rail театр. MembersView (hideHeader) не затронут. No backend/schema.
+
+**Предыдущая:** v1.5.64 (Clean redesign slice 3 — composer declutter.
+Убран декоративный `ec-composer-strip` над полем ввода («>_ Защищённый канал» +
+фейковое «в эфире»/«печатает…» по own-focus + scan-dots) — sci-fi-театр на
+каждом канале + **ложный security-claim** (канал не E2E-шифрован). Удалён
+vestigial `focused` state. Chat-header канала проверен — уже чистый (глиф + имя +
+divider + описание), не трогался. No backend/schema.
+
+**Предыдущая:** v1.5.63 (Clean redesign slice 2 — экран «Путеводитель».
+`ServerWelcomeHero` переписан на `clean-ui.css` (.ec-guide*). Было: баннер
+full-bleed за текстом, гигантский заголовок и описание-стена с эмодзи
+наслаивались, «ПРОСТРАНСТВО»-eyebrow. Стало: баннер — контейнерная шапка
+(rounded, не за текстом), иконка сервера + имя + meta (реальный memberCount),
+описание читаемой колонкой (max-width 760, leading-relaxed), welcome-callout
+с accent-border, «Быстрые входы» каналами-карточками (auto-fill grid). Данные
+без изменений (server.banner/icon/description/welcomeMessage + featured channels).
+Верифицировано статикой с реальным длинным описанием. No backend/schema.
+
+**Предыдущая:** v1.5.62 (Clean redesign slice 1 — рейл участников без театра.
+По утверждённому эталону `docs/design/ia-reset/server-view.html`: `MemberList`
+переписан на чистый `clean-ui.css` (namespace ec-mem-, existing токены). Убрано:
+«ТАКТИЧЕСКИЙ ВИД»-header (polygon-щит), «◇ N узлов в сети» net-signal, sci-fi-
+лейблы групп (КОМАНДОРЫ/ОПЕРАТОРЫ/ЛИЧНЫЙ_СОСТАВ/СПЯЩИЙ_РЕЖИМ), game-иконки ролей
+(crown/rune/shield). Стало: спокойный header «Участники N/M», группы по ролям
+русскими лейблами (Владелец / Администраторы / … / Не в сети) с count+collapse,
+role-чипы (OWNER=gold, ADMIN/MOD=violet), presence-точки, оффлайн приглушены, DM
+по hover. Вся логика (сорт/группы/collapse-persist/voice/presence) сохранена.
+Верифицировано статикой на реальных tokens.css+clean-ui.css. Первый кирпич
+единого чистого языка; дальше — sidebar/header/guide. No backend/schema.
+
+**Предыдущая:** v1.5.61 (IA reset slice 2 — UXR3 «Мессенджер как Главная».
+**Лендинг**: «Главная» (brand-mark + home-кнопка, `openHome`) теперь открывает
+мессенджер (DM-режим + экран «Друзья»), а не операционный дашборд. Дашборд
+«Сегодня» (`HomeToday`) больше не лендинг — `homeOpen` нигде не выставляется в
+true; компонент сохранён в коде для возможного возврата как отдельная «Сводка».
+**DM-сайдбар** (`DirectConversationList`) переписан под утверждённый прототип
+(`docs/design/ia-reset/dm-home.html`): новый `dm-home.css` (namespace ec-dmx-,
+existing токены) — header «Сообщения» + поиск (client-side фильтр) + accent-rail
+на active/hover + presence-точки + activity-хинты + unread-бейдж + «Избранное».
+Данные/логика без изменений, inline-стили → классы. Верифицировано статикой на
+реальных tokens.css. No backend/schema.
+
+**Предыдущая:** v1.5.60 (IA reset slice 1 — UXR1+UXR2+UXR4 атомарно.
 **UXR1**: RAM/CPU/NET pills удалены из глобального topbar AppShell (часы/профиль/
 тема/выход/плеер остаются); сняты now-unused `useTelemetry`/`TelemetryViz` импорты
 в AppShell. **UXR2**: серверная телеметрия переехала в voice context — в панель

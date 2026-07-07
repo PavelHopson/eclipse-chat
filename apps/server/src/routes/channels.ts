@@ -23,6 +23,7 @@ import { fireMessageCreatedWebhooks } from "../bots/webhooks.js";
 import { extractMentionTokens, resolveMentions } from "../lib/mentions.js";
 import { notifyUsers } from "../lib/webPush.js";
 import { fireTelegramOutgoing } from "./integrations.js";
+import { computeMessageExpiry } from "../lib/disappearingMessages.js";
 
 const channelTypeSchema = z.enum(["TEXT", "VOICE", "BROADCAST", "EXECUTION"]);
 
@@ -56,6 +57,13 @@ const createMessageBody = z.object({
   actionItem: z
     .object({ type: z.enum(["TASK", "DECISION", "FOLLOW_UP"]) })
     .optional(),
+  /**
+   * v1.7.0 — исчезающие сообщения (slice A), пер-сообщение override:
+   *   undefined → дефолт канала (messageTtlSeconds);
+   *   null      → сообщение НЕ исчезает (opt-out);
+   *   >0        → TTL в секундах для этого сообщения.
+   */
+  ttlSeconds: z.number().int().positive().max(60 * 60 * 24 * 365).nullable().optional(),
 });
 
 function slugifyBase(name: string) {
@@ -186,6 +194,9 @@ export async function registerChannelRoutes(app: FastifyInstance) {
         // v1.2.9 — удалённые сообщения не показываем в истории чата.
         // Soft-delete в БД остаётся (audit/recovery), но в UI их нет.
         deletedAt: null,
+        // v1.7.0 — исчезающие: прячем истёкшие (cron hard-удалит ≤60с спустя;
+        // это lazy-страховка на окно между expiresAt и проходом крона).
+        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
       },
       take,
       orderBy: { createdAt: "desc" },
@@ -274,6 +285,8 @@ export async function registerChannelRoutes(app: FastifyInstance) {
             editedAt: m.editedAt?.toISOString() ?? null,
             deletedAt: m.deletedAt?.toISOString() ?? null,
             pinnedAt: m.pinnedAt?.toISOString() ?? null,
+            // v1.7.0 — исчезающее сообщение: момент авто-удаления (null = постоянное).
+            expiresAt: m.expiresAt?.toISOString() ?? null,
             user: serializeUser(m.user),
             reactions,
             attachments: m.deletedAt ? [] : m.attachments,
@@ -314,13 +327,10 @@ export async function registerChannelRoutes(app: FastifyInstance) {
       }
       const ch = await db.channel.findUnique({
         where: { id: channelId },
-        select: { id: true, serverId: true, type: true },
+        select: { id: true, serverId: true, type: true, messageTtlSeconds: true },
       });
       if (!ch) {
         return reply.status(404).send({ error: "Channel not found" });
-      }
-      if (ch.type === "VOICE") {
-        return reply.status(400).send({ error: "Voice channels don't support text messages" });
       }
       if (ch.serverId) {
         // v1.2.7 Platform Admin (trek P2) — suspended server-у блокируем
@@ -380,9 +390,13 @@ export async function registerChannelRoutes(app: FastifyInstance) {
         effectiveContent = slashResult.content;
       }
 
+      // v1.7.0 — исчезающие сообщения: expiresAt из пер-сообщение override или
+      // дефолтного TTL канала (null = постоянное).
+      const expiresAt = computeMessageExpiry(ch.messageTtlSeconds, parsed.data.ttlSeconds, new Date());
+
       // Создаём message сначала чтобы получить id для имени файлов
       const m = await db.message.create({
-        data: { content: effectiveContent, userId, channelId },
+        data: { content: effectiveContent, userId, channelId, expiresAt },
         include: { user: { select: { id: true, displayName: true, avatar: true } } },
       });
       // Обрабатываем attachments
@@ -433,6 +447,8 @@ export async function registerChannelRoutes(app: FastifyInstance) {
         // POST /api/bot/messages с собственным payload.
         isBot: false,
         createdAt: m.createdAt.toISOString(),
+        // v1.7.0 — исчезающее сообщение: момент авто-удаления (null = постоянное).
+        expiresAt: m.expiresAt?.toISOString() ?? null,
         attachments: processedAttachments.map((a) => ({
           id: a.id,
           filename: a.filename,

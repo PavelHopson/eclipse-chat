@@ -81,6 +81,15 @@ export default defineConfig(({ mode }) => {
       chunkSizeWarningLimit: 600,
       rollupOptions: {
         output: {
+          // Стабильный vendor-чанк (react/react-dom/scheduler) отдельно от кода
+          // приложения → WebView переиспользует его из кэша между деплоями
+          // (меняется только при апгрейде React, не на каждый релиз). socket.io
+          // и livekit НЕ сюда — они должны оставаться lazy (не грузиться на лендинге).
+          manualChunks(id) {
+            if (/[\\/]node_modules[\\/](react|react-dom|scheduler)[\\/]/.test(id)) {
+              return "vendor";
+            }
+          },
           assetFileNames: (assetInfo) => {
             // v1.5.28 — woff2 без hash для stable preload pointer'ов в
             // index.html. Fonts менимся очень редко; long-cache OK,

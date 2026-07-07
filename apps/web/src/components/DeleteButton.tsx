@@ -7,15 +7,16 @@
  * compact icon-кнопок — эффект крупный (урна + текстовый label).
  *
  * Flow: click → confirm() → анимация (~3.2s) ∥ onDelete() параллельно.
- * Анимация — «вес» необратимого действия; confirm() остаётся реальным
- * защитным гейтом. Респектит prefers-reduced-motion (там сразу onDelete,
- * без анимации).
+ * Анимация — «вес» необратимого действия; in-app confirm-диалог остаётся
+ * реальным защитным гейтом. Респектит prefers-reduced-motion (там сразу
+ * onDelete, без анимации).
  *
  * Адаптировано под Eclipse-палитру: danger-red урна, accent-cyan
  * «документ», ok-green финальная галочка.
  */
 
 import { useEffect, useRef, useState } from "react";
+import { useConfirm } from "./ConfirmDialog";
 
 /** Длительность анимации удаления — синхронизирована с CSS keyframes. */
 const ANIM_MS = 3200;
@@ -23,25 +24,41 @@ const ANIM_MS = 3200;
 type Props = {
   /** Текст на кнопке. Короткий — эффект калиброван под компактную ширину. */
   label: string;
-  /** Сообщение window.confirm() перед удалением. Опусти — без подтверждения. */
+  /** Текст-объяснение в диалоге подтверждения. Опусти — без подтверждения. */
   confirmMessage?: string;
+  /** Заголовок диалога подтверждения. По умолчанию — «Подтвердите действие». */
+  confirmTitle?: string;
   /** Действие удаления. Запускается параллельно с анимацией. */
   onDelete: () => void | Promise<void>;
   /** Parent busy — блокирует повторный клик / DOM-disable вне анимации. */
   disabled?: boolean;
 };
 
-export function DeleteButton({ label, confirmMessage, onDelete, disabled }: Props) {
+export function DeleteButton({ label, confirmMessage, confirmTitle, onDelete, disabled }: Props) {
+  const confirm = useConfirm();
   const [deleting, setDeleting] = useState(false);
   const busyRef = useRef(false);
   const timerRef = useRef<number | undefined>(undefined);
 
   useEffect(() => () => window.clearTimeout(timerRef.current), []);
 
-  const handleClick = () => {
+  const handleClick = async () => {
     if (disabled || busyRef.current) return;
-    if (confirmMessage && !window.confirm(confirmMessage)) return;
+    // Занимаем busy ДО await — in-app диалог не блокирует поток как
+    // window.confirm, иначе повторный клик открыл бы второй диалог.
     busyRef.current = true;
+    if (confirmMessage) {
+      const ok = await confirm({
+        title: confirmTitle,
+        message: confirmMessage,
+        confirmLabel: label,
+        danger: true,
+      });
+      if (!ok) {
+        busyRef.current = false;
+        return;
+      }
+    }
 
     const reduced =
       typeof window !== "undefined" &&

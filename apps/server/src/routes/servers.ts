@@ -6,12 +6,14 @@ import sharp from "sharp";
 import { db } from "../db.js";
 import { serializeUser, userDisplayName } from "../lib/userView.js";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
+import { processTrainingVideoFile } from "../attachments.js";
 import { ensureServerActive } from "../lib/serverGating.js";
 import { recordAudit } from "../security/audit.js";
 import {
   emitChannelCreated,
   emitChannelDeleted,
   emitChannelUpdated,
+  emitTrainingCatalogUpdated,
   emitMemberJoined,
   emitMemberLeft,
   emitMemberUpdated,
@@ -19,6 +21,15 @@ import {
 } from "../realtime.js";
 import { addServerRoom, onlineUserIds, removeServerRoom } from "../presence.js";
 import { getSystemBotUserId } from "../lib/systemBot.js";
+import { inviteRejectReason, type InviteRejectReason } from "../lib/serverInvites.js";
+import { normalizeMessageTtl } from "../lib/disappearingMessages.js";
+
+// v1.6.99 — сообщение об отклонённом ServerInvite (slice B).
+const INVITE_REJECT_MESSAGE: Record<InviteRejectReason, string> = {
+  revoked: "Приглашение отозвано",
+  expired: "Срок действия приглашения истёк",
+  exhausted: "Лимит использований приглашения исчерпан",
+};
 
 /**
  * Server-icon лимиты: 20 MB binary / 27 MB body (для iPhone HEIC + base64
@@ -41,6 +52,30 @@ const ICON_MIME = new Set([
 const uploadIconBody = z.object({
   contentType: z.string().min(3).max(40),
   dataBase64: z.string().min(1),
+});
+
+const TRAINING_VIDEO_BODY_LIMIT = 300 * 1024 * 1024;
+
+const uploadTrainingVideoBody = z.object({
+  file: z.object({
+    filename: z.string().min(1).max(180),
+    mimeType: z.string().min(3).max(120),
+    dataBase64: z.string().min(1),
+  }),
+});
+
+const createTrainingSectionBody = z.object({
+  name: z.string().trim().min(1).max(48),
+});
+
+const createTrainingVideoBody = z.object({
+  sectionId: z.string().min(1),
+  title: z.string().trim().min(1).max(80),
+  url: z.string().trim().min(1).max(1200),
+  source: z.enum(["youtube", "file"]),
+  filename: z.string().trim().min(1).max(180).optional(),
+  mimeType: z.string().trim().min(3).max(120).optional(),
+  size: z.number().int().min(0).max(300 * 1024 * 1024).optional(),
 });
 
 function serverIconsDir(): string {
@@ -82,6 +117,9 @@ const updateChannelBody = z.object({
   /** v0.74 #29 phase 1: переключить expiry. NULL = снять (постоянный),
    *  ISO timestamp в будущем = установить/обновить. */
   expiresAt: z.string().datetime().nullable().optional(),
+  /** v1.7.0 — исчезающие сообщения (slice A): дефолтный TTL канала в секундах.
+   *  NULL = выкл, >0 = включить/обновить (кламп [1м..30д] в normalizeMessageTtl). */
+  messageTtlSeconds: z.number().int().positive().max(60 * 60 * 24 * 365).nullable().optional(),
 });
 
 const reorderChannelsBody = z.object({
@@ -172,6 +210,93 @@ async function loadMember(
     return null;
   }
   return member;
+}
+
+function canManageTraining(role: string): boolean {
+  return role === "OWNER" || role === "ADMIN";
+}
+
+function trainingVideoDto(row: {
+  id: string;
+  title: string;
+  url: string;
+  source: string;
+  filename: string | null;
+  mimeType: string | null;
+  size: number | null;
+  createdAt: Date;
+}) {
+  return {
+    id: row.id,
+    title: row.title,
+    url: row.url,
+    source: row.source === "file" ? "file" : "youtube",
+    filename: row.filename,
+    mimeType: row.mimeType,
+    size: row.size,
+    createdAt: row.createdAt.toISOString(),
+  };
+}
+
+function trainingSectionDto(row: {
+  id: string;
+  name: string;
+  createdAt: Date;
+  updatedAt: Date;
+  videos: Array<{
+    id: string;
+    title: string;
+    url: string;
+    source: string;
+    filename: string | null;
+    mimeType: string | null;
+    size: number | null;
+    createdAt: Date;
+  }>;
+}) {
+  return {
+    id: row.id,
+    name: row.name,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+    videos: row.videos.map(trainingVideoDto),
+  };
+}
+
+async function loadTrainingCatalog(serverId: string) {
+  const sections = await db.trainingSection.findMany({
+    where: { serverId },
+    orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+    include: {
+      videos: {
+        orderBy: [{ position: "asc" }, { createdAt: "desc" }],
+        select: {
+          id: true,
+          title: true,
+          url: true,
+          source: true,
+          filename: true,
+          mimeType: true,
+          size: true,
+          createdAt: true,
+        },
+      },
+    },
+  });
+  return { sections: sections.map(trainingSectionDto) };
+}
+
+function isValidTrainingVideo(input: z.infer<typeof createTrainingVideoBody>): boolean {
+  if (input.source === "youtube") {
+    try {
+      const parsed = new URL(input.url);
+      const host = parsed.hostname.toLowerCase().replace(/^www\./, "");
+      return host === "youtube.com" || host === "youtu.be" || host === "m.youtube.com";
+    } catch {
+      return false;
+    }
+  }
+  return input.url.startsWith("/uploads/training-videos/") && (input.mimeType?.startsWith("video/") ?? false);
 }
 
 /**
@@ -379,7 +504,18 @@ export async function registerServerRoutes(app: FastifyInstance) {
       return reply.status(401).send({ error: "Unauthorized" });
     }
     const { code } = req.params as { code: string };
-    const server = await db.server.findUnique({ where: { inviteCode: code } });
+    // v1.6.99 — сначала ServerInvite (одноразовые/истекающие), затем legacy
+    // Server.inviteCode (вечный). На успешный НОВЫЙ join uses инкрементится ниже.
+    const inviteRecord = await db.serverInvite.findUnique({ where: { code } });
+    if (inviteRecord) {
+      const reason = inviteRejectReason(inviteRecord, new Date());
+      if (reason) {
+        return reply.status(410).send({ error: INVITE_REJECT_MESSAGE[reason], reason });
+      }
+    }
+    const server = inviteRecord
+      ? await db.server.findUnique({ where: { id: inviteRecord.serverId } })
+      : await db.server.findUnique({ where: { inviteCode: code } });
     if (!server) {
       return reply.status(404).send({ error: "Invite not found" });
     }
@@ -416,6 +552,13 @@ export async function registerServerRoutes(app: FastifyInstance) {
       include: { user: { select: { id: true, displayName: true, email: true, avatar: true } } },
     });
     addServerRoom(userId, server.id);
+    // v1.6.99 — инкремент uses у ServerInvite только на НОВЫЙ join (idempotent
+    // already-member path вышел выше). Best-effort: ошибка не валит join.
+    if (inviteRecord) {
+      void db.serverInvite
+        .update({ where: { id: inviteRecord.id }, data: { uses: { increment: 1 } } })
+        .catch((err) => req.log.warn({ err, inviteId: inviteRecord.id }, "invite uses increment failed"));
+    }
     // member.user всегда non-null т.к. Member.userId не nullable — defensive
     // userDisplayName() для consistency со styles серверного кода.
     emitMemberJoined(server.id, {
@@ -840,6 +983,7 @@ export async function registerServerRoutes(app: FastifyInstance) {
         emoji: true,
         internal: true,
         expiresAt: true,
+        messageTtlSeconds: true,
         createdAt: true,
         // v1.5.46 C1 — категория канала. null = uncategorized.
         categoryId: true,
@@ -953,6 +1097,228 @@ export async function registerServerRoutes(app: FastifyInstance) {
           ];
         }),
       };
+    },
+  );
+
+  app.get(
+    "/api/servers/:id/training-library",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const { id: serverId } = req.params as { id: string };
+      const me = await loadMember(req, reply, serverId);
+      if (!me) return reply;
+      return loadTrainingCatalog(serverId);
+    },
+  );
+
+  app.post(
+    "/api/servers/:id/training-sections",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const { id: serverId } = req.params as { id: string };
+      const me = await loadMember(req, reply, serverId);
+      if (!me) return reply;
+      if (!canManageTraining(me.role)) {
+        return reply.status(403).send({ error: "Только OWNER/ADMIN могут менять разделы тренировок" });
+      }
+      const active = await ensureServerActive(serverId, reply);
+      if (!active) return;
+      const parsed = createTrainingSectionBody.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.status(400).send({ error: "Invalid body" });
+      }
+      const maxRow = await db.trainingSection.findFirst({
+        where: { serverId },
+        orderBy: { position: "desc" },
+        select: { position: true },
+      });
+      await db.trainingSection.create({
+        data: {
+          serverId,
+          name: parsed.data.name,
+          position: (maxRow?.position ?? -1) + 1,
+        },
+      });
+      emitTrainingCatalogUpdated(serverId);
+      return reply.status(201).send(await loadTrainingCatalog(serverId));
+    },
+  );
+
+  app.patch(
+    "/api/training-sections/:id",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const { id } = req.params as { id: string };
+      const userId = getUserId(req);
+      if (!userId) return reply.status(401).send({ error: "Unauthorized" });
+      const section = await db.trainingSection.findUnique({
+        where: { id },
+        select: { id: true, serverId: true },
+      });
+      if (!section) return reply.status(404).send({ error: "Section not found" });
+      const member = await db.member.findUnique({
+        where: { userId_serverId: { userId, serverId: section.serverId } },
+        select: { role: true },
+      });
+      if (!member) return reply.status(403).send({ error: "Not a member" });
+      if (!canManageTraining(member.role)) {
+        return reply.status(403).send({ error: "Только OWNER/ADMIN могут менять разделы тренировок" });
+      }
+      const active = await ensureServerActive(section.serverId, reply);
+      if (!active) return;
+      const parsed = createTrainingSectionBody.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.status(400).send({ error: "Invalid body" });
+      }
+      await db.trainingSection.update({ where: { id }, data: { name: parsed.data.name } });
+      emitTrainingCatalogUpdated(section.serverId);
+      return loadTrainingCatalog(section.serverId);
+    },
+  );
+
+  app.delete(
+    "/api/training-sections/:id",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const { id } = req.params as { id: string };
+      const userId = getUserId(req);
+      if (!userId) return reply.status(401).send({ error: "Unauthorized" });
+      const section = await db.trainingSection.findUnique({
+        where: { id },
+        select: { id: true, serverId: true },
+      });
+      if (!section) return reply.status(404).send({ error: "Section not found" });
+      const member = await db.member.findUnique({
+        where: { userId_serverId: { userId, serverId: section.serverId } },
+        select: { role: true },
+      });
+      if (!member) return reply.status(403).send({ error: "Not a member" });
+      if (!canManageTraining(member.role)) {
+        return reply.status(403).send({ error: "Только OWNER/ADMIN могут менять разделы тренировок" });
+      }
+      const active = await ensureServerActive(section.serverId, reply);
+      if (!active) return;
+      await db.trainingSection.delete({ where: { id } });
+      emitTrainingCatalogUpdated(section.serverId);
+      return reply.status(204).send();
+    },
+  );
+
+  app.post(
+    "/api/servers/:id/training-videos",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const { id: serverId } = req.params as { id: string };
+      const me = await loadMember(req, reply, serverId);
+      if (!me) return reply;
+      if (!canManageTraining(me.role)) {
+        return reply.status(403).send({ error: "Только OWNER/ADMIN могут менять видео тренировок" });
+      }
+      const active = await ensureServerActive(serverId, reply);
+      if (!active) return;
+      const parsed = createTrainingVideoBody.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.status(400).send({ error: "Invalid body" });
+      }
+      if (!isValidTrainingVideo(parsed.data)) {
+        return reply.status(400).send({ error: "Invalid training video" });
+      }
+      const section = await db.trainingSection.findUnique({
+        where: { id: parsed.data.sectionId },
+        select: { id: true, serverId: true },
+      });
+      if (!section || section.serverId !== serverId) {
+        return reply.status(400).send({ error: "Section not in this server" });
+      }
+      const maxRow = await db.trainingVideo.findFirst({
+        where: { sectionId: section.id },
+        orderBy: { position: "desc" },
+        select: { position: true },
+      });
+      await db.trainingVideo.create({
+        data: {
+          serverId,
+          sectionId: section.id,
+          title: parsed.data.title,
+          url: parsed.data.url,
+          source: parsed.data.source,
+          filename: parsed.data.filename ?? null,
+          mimeType: parsed.data.mimeType ?? null,
+          size: parsed.data.size ?? null,
+          position: (maxRow?.position ?? -1) + 1,
+          createdByUserId: me.userId,
+        },
+      });
+      emitTrainingCatalogUpdated(serverId);
+      return reply.status(201).send(await loadTrainingCatalog(serverId));
+    },
+  );
+
+  app.delete(
+    "/api/training-videos/:id",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const { id } = req.params as { id: string };
+      const userId = getUserId(req);
+      if (!userId) return reply.status(401).send({ error: "Unauthorized" });
+      const video = await db.trainingVideo.findUnique({
+        where: { id },
+        select: { id: true, serverId: true },
+      });
+      if (!video) return reply.status(404).send({ error: "Video not found" });
+      const member = await db.member.findUnique({
+        where: { userId_serverId: { userId, serverId: video.serverId } },
+        select: { role: true },
+      });
+      if (!member) return reply.status(403).send({ error: "Not a member" });
+      if (!canManageTraining(member.role)) {
+        return reply.status(403).send({ error: "Только OWNER/ADMIN могут менять видео тренировок" });
+      }
+      const active = await ensureServerActive(video.serverId, reply);
+      if (!active) return;
+      await db.trainingVideo.delete({ where: { id } });
+      emitTrainingCatalogUpdated(video.serverId);
+      return reply.status(204).send();
+    },
+  );
+
+  /**
+   * POST /api/servers/:id/training-videos/upload
+   *
+   * Team Health training library: загружает один видеофайл на серверный disk и
+   * возвращает URL для серверного каталога тренировок. Upload разрешён только OWNER/ADMIN:
+   * это предотвращает превращение training-раздела в общий файлообменник.
+   */
+  app.post(
+    "/api/servers/:id/training-videos/upload",
+    { onRequest: [requireJwt], bodyLimit: TRAINING_VIDEO_BODY_LIMIT },
+    async (req, reply) => {
+      const { id: serverId } = req.params as { id: string };
+      const me = await loadMember(req, reply, serverId);
+      if (!me) return reply;
+      if (me.role !== "OWNER" && me.role !== "ADMIN") {
+        return reply.status(403).send({ error: "Только OWNER/ADMIN могут загружать видео тренировок" });
+      }
+
+      const parsed = uploadTrainingVideoBody.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.status(400).send({ error: "Invalid upload body" });
+      }
+      if (!parsed.data.file.mimeType.startsWith("video/")) {
+        return reply.status(400).send({ error: "Only video files are allowed" });
+      }
+
+      try {
+        const file = await processTrainingVideoFile(
+          parsed.data.file,
+          `${serverId}-${me.userId}`,
+        );
+        return reply.status(201).send({ file });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Upload failed";
+        req.log.warn({ err, serverId, userId: me.userId }, "training video upload failed");
+        return reply.status(400).send({ error: message });
+      }
     },
   );
 
@@ -1080,7 +1446,8 @@ export async function registerServerRoutes(app: FastifyInstance) {
         parsed.data.description === undefined &&
         parsed.data.emoji === undefined &&
         parsed.data.internal === undefined &&
-        parsed.data.expiresAt === undefined
+        parsed.data.expiresAt === undefined &&
+        parsed.data.messageTtlSeconds === undefined
       ) {
         return reply.status(400).send({ error: "Nothing to update" });
       }
@@ -1134,6 +1501,7 @@ export async function registerServerRoutes(app: FastifyInstance) {
         emoji?: string | null;
         internal?: boolean;
         expiresAt?: Date | null;
+        messageTtlSeconds?: number | null;
       } = {};
       if (parsed.data.name !== undefined) {
         data.name = parsed.data.name.trim();
@@ -1152,6 +1520,10 @@ export async function registerServerRoutes(app: FastifyInstance) {
       if (expiresAtValue !== undefined) {
         data.expiresAt = expiresAtValue;
       }
+      if (parsed.data.messageTtlSeconds !== undefined) {
+        // null → выкл; иначе кламп [1м..30д].
+        data.messageTtlSeconds = normalizeMessageTtl(parsed.data.messageTtlSeconds);
+      }
       const updated = await db.channel.update({
         where: { id: channelId },
         data,
@@ -1165,6 +1537,7 @@ export async function registerServerRoutes(app: FastifyInstance) {
           emoji: true,
           internal: true,
           expiresAt: true,
+          messageTtlSeconds: true,
           serverId: true,
         },
       });
@@ -1178,6 +1551,7 @@ export async function registerServerRoutes(app: FastifyInstance) {
         description: updated.description,
         emoji: updated.emoji,
         expiresAt: updated.expiresAt?.toISOString() ?? null,
+        messageTtlSeconds: updated.messageTtlSeconds,
       });
       return {
         channel: {
@@ -1190,6 +1564,7 @@ export async function registerServerRoutes(app: FastifyInstance) {
           emoji: updated.emoji,
           internal: updated.internal,
           expiresAt: updated.expiresAt?.toISOString() ?? null,
+          messageTtlSeconds: updated.messageTtlSeconds,
         },
       };
     },

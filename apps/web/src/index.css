@@ -17,6 +17,8 @@
 @import "./styles/reset.css";
 @import "./styles/effects.css";
 @import "./styles/motion.css";
+@import "./styles/deadline-404.css";
+@import "./styles/auth-cosmic.css";
 
 /* inline `<code>` tag — для backward compat (JoinServerModal). */
 code {

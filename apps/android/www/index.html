@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Eclipse Chat</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #000; color: #e8e8ee; font-family: system-ui, -apple-system, sans-serif; }
+    .wrap { height: 100%; display: grid; place-items: center; text-align: center; padding: 24px; }
+    h1 { font-weight: 700; letter-spacing: -0.02em; margin: 0 0 10px; }
+    p { color: #8b93a3; margin: 0; }
+    .dot { color: #8B5CF6; }
+  </style>
+</head>
+<body>
+  <!-- Offline-фолбэк: при наличии сети Capacitor грузит прод-PWA (server.url). -->
+  <div class="wrap">
+    <div>
+      <h1>Eclipse Chat <span class="dot">●</span></h1>
+      <p>Подключаемся… нужно соединение с интернетом.</p>
+    </div>
+  </div>
+</body>
+</html>

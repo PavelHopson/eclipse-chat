@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Reveal } from "./CinematicMotion";
+import { apiPath } from "../../lib/api";
 
 type AuthMode = "login" | "register" | null;
 
@@ -12,19 +13,16 @@ type HeroOperationalStageProps = {
 };
 
 /**
- * v1.4.1 — premium auth form polish (Pavel: «давай ещё с формой
- * авторизации что-то придумаем»):
+ * Экран входа. Функциональная форма без декоративного «киберпанк»-слоя:
  *   - Floating labels (label shrinks + slides up при focus/filled)
- *   - Field icons (UserIcon / MailIcon / LockIcon) внутри inputs left
- *     side, cyan glow pulse при focus
- *   - Tab switch slide transition — form content translateX horizontal
- *     при login↔register switch
- *   - Corner bracket markers (4 cyan SVG corners на frame edges)
- *
- * Сохраняет v1.4.0 effects:
- *   - Electric border + holographic shimmer
- *   - Password scanner beam
+ *   - Field icons (UserIcon / MailIcon / LockIcon) внутри inputs
+ *   - Tab switch slide transition при login↔register
  *   - Submit success state с checkmark
+ *
+ * v1.7.7 — снят декор входа (правило «не заставляй думать»,
+ * [[project_eclipse_chat_denoise_direction]]): убраны electric-border,
+ * sigil-бейдж, corner-brackets, topline-статус и password scanner-beam
+ * (последний ещё и задерживал показ пароля на 600ms — теперь мгновенно).
  */
 
 function EyeIcon() {
@@ -91,65 +89,6 @@ function LockIcon() {
   );
 }
 
-/** Corner bracket SVG для frame edges. */
-function CornerBracket({ position }: { position: "tl" | "tr" | "bl" | "br" }) {
-  return (
-    <span className={`ec-hero-access__corner ec-hero-access__corner--${position}`} aria-hidden>
-      <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-        <path d="M2 8V2h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-        <circle cx="2" cy="2" r="1.5" fill="currentColor" />
-      </svg>
-    </span>
-  );
-}
-
-/**
- * Electric Border SVG filter — turbulence + displacement map.
- */
-function ElectricBorderFilter() {
-  return (
-    <svg className="ec-hero-access__svg-defs" aria-hidden>
-      <defs>
-        <filter
-          id="ec-electric-border"
-          colorInterpolationFilters="sRGB"
-          x="-20%"
-          y="-20%"
-          width="140%"
-          height="140%"
-        >
-          <feTurbulence type="turbulence" baseFrequency="0.02" numOctaves="10" result="noise1" seed="1" />
-          <feOffset in="noise1" dx="0" dy="0" result="offsetNoise1">
-            <animate attributeName="dy" values="700; 0" dur="6s" repeatCount="indefinite" calcMode="linear" />
-          </feOffset>
-          <feTurbulence type="turbulence" baseFrequency="0.02" numOctaves="10" result="noise2" seed="1" />
-          <feOffset in="noise2" dx="0" dy="0" result="offsetNoise2">
-            <animate attributeName="dy" values="0; -700" dur="6s" repeatCount="indefinite" calcMode="linear" />
-          </feOffset>
-          <feTurbulence type="turbulence" baseFrequency="0.02" numOctaves="10" result="noise3" seed="2" />
-          <feOffset in="noise3" dx="0" dy="0" result="offsetNoise3">
-            <animate attributeName="dx" values="490; 0" dur="6s" repeatCount="indefinite" calcMode="linear" />
-          </feOffset>
-          <feTurbulence type="turbulence" baseFrequency="0.02" numOctaves="10" result="noise4" seed="2" />
-          <feOffset in="noise4" dx="0" dy="0" result="offsetNoise4">
-            <animate attributeName="dx" values="0; -490" dur="6s" repeatCount="indefinite" calcMode="linear" />
-          </feOffset>
-          <feComposite in="offsetNoise1" in2="offsetNoise2" result="part1" />
-          <feComposite in="offsetNoise3" in2="offsetNoise4" result="part2" />
-          <feBlend in="part1" in2="part2" mode="color-dodge" result="combinedNoise" />
-          <feDisplacementMap
-            in="SourceGraphic"
-            in2="combinedNoise"
-            scale="22"
-            xChannelSelector="R"
-            yChannelSelector="B"
-          />
-        </filter>
-      </defs>
-    </svg>
-  );
-}
-
 export function HeroOperationalStage({
   authMode,
   onOpenAuth,
@@ -163,16 +102,66 @@ export function HeroOperationalStage({
   const [displayName, setDisplayName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [scanning, setScanning] = useState(false);
   const [success, setSuccess] = useState(false);
+  // v1.6.68 — self-serve сброс пароля по коду восстановления.
+  const [recoveryMode, setRecoveryMode] = useState(false);
+  const [recCode, setRecCode] = useState("");
+  const [recNewPwd, setRecNewPwd] = useState("");
+  const [recBusy, setRecBusy] = useState(false);
+  const [recError, setRecError] = useState<string | null>(null);
+  const [recDone, setRecDone] = useState(false);
+
+  const submitRecovery = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (recBusy) return;
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || !recCode.trim()) {
+      setRecError("Введите email и код восстановления.");
+      return;
+    }
+    if (recNewPwd.length < 8 || !(/[A-Za-z]/.test(recNewPwd) && /\d/.test(recNewPwd))) {
+      setRecError("Новый пароль: минимум 8 символов, буквы и цифры.");
+      return;
+    }
+    setRecBusy(true);
+    setRecError(null);
+    try {
+      const res = await fetch(apiPath("api/auth/password-recovery/reset"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: cleanEmail,
+          code: recCode.trim(),
+          newPassword: recNewPwd,
+        }),
+      });
+      if (res.ok) {
+        setRecDone(true);
+        setRecCode("");
+        setRecNewPwd("");
+        setPassword("");
+      } else {
+        const d = (await res.json().catch(() => ({}))) as { error?: string };
+        setRecError(d.error ?? "Не удалось сбросить пароль.");
+      }
+    } catch {
+      setRecError("Сбой подключения.");
+    } finally {
+      setRecBusy(false);
+    }
+  };
+
+  const exitRecovery = () => {
+    setRecoveryMode(false);
+    setRecError(null);
+    setRecDone(false);
+    setRecCode("");
+    setRecNewPwd("");
+  };
 
   const handleRevealToggle = () => {
     if (!password) return;
-    setScanning(true);
-    setTimeout(() => {
-      setShowPassword((v) => !v);
-      setScanning(false);
-    }, 600);
+    setShowPassword((v) => !v);
   };
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -194,70 +183,173 @@ export function HeroOperationalStage({
     }
   };
 
-  const heading = mode === "register" ? "Активация контура" : "Доступ к контуру";
-  const sub =
-    mode === "register"
-      ? "Создайте рабочую среду для команды."
-      : "Войдите в свой рабочий контур.";
+  const heading = recoveryMode
+    ? "Восстановление пароля"
+    : mode === "register"
+      ? "Создание аккаунта"
+      : "Вход в Eclipse Chat";
+  const sub = recoveryMode
+    ? "Введите email, код восстановления и новый пароль."
+    : mode === "register"
+      ? "Создайте аккаунт — займёт минуту."
+      : "С возвращением. Войдите в свой аккаунт.";
 
   return (
     <div className="ec-hero-access" aria-label="Доступ к Eclipse Chat">
-      <ElectricBorderFilter />
-
       <Reveal className="ec-hero-access__frame" variant="panel">
-        {/* Electric border layers */}
-        <div className="ec-hero-access__electric" aria-hidden>
-          <div className="ec-hero-access__electric-border" />
-          <div className="ec-hero-access__electric-glow ec-hero-access__electric-glow--1" />
-          <div className="ec-hero-access__electric-glow ec-hero-access__electric-glow--2" />
-          <div className="ec-hero-access__electric-overlay" />
-          <div className="ec-hero-access__electric-bg" />
-        </div>
-
-        {/* Corner bracket markers */}
-        <CornerBracket position="tl" />
-        <CornerBracket position="tr" />
-        <CornerBracket position="bl" />
-        <CornerBracket position="br" />
-
         <div className="ec-hero-access__glow" aria-hidden />
 
         <header className="ec-hero-access__head">
           <span className="ec-hero-access__eyebrow">
             <span className="ec-hero-access__eyebrow-dot" aria-hidden />
-            контур / {mode === "register" ? "запуск" : "доступ"}
+            {mode === "register" ? "Регистрация" : "Вход"}
           </span>
           <h2 className="ec-hero-access__title">{heading}</h2>
           <p className="ec-hero-access__sub">{sub}</p>
         </header>
 
-        <div className="ec-hero-access__tabs" role="tablist" aria-label="Режим доступа">
-          <span
-            className="ec-hero-access__tab-indicator"
-            data-mode={mode}
-            aria-hidden
-          />
-          <button
-            type="button"
-            role="tab"
-            aria-selected={mode === "login"}
-            className={`ec-hero-access__tab${mode === "login" ? " is-active" : ""}`}
-            onClick={() => onOpenAuth("login")}
-          >
-            Вход
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={mode === "register"}
-            className={`ec-hero-access__tab${mode === "register" ? " is-active" : ""}`}
-            onClick={() => onOpenAuth("register")}
-          >
-            Создать
-          </button>
-        </div>
+        {!recoveryMode && (
+          <div className="ec-hero-access__tabs" role="tablist" aria-label="Режим доступа">
+            <span
+              className="ec-hero-access__tab-indicator"
+              data-mode={mode}
+              aria-hidden
+            />
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mode === "login"}
+              className={`ec-hero-access__tab${mode === "login" ? " is-active" : ""}`}
+              onClick={() => onOpenAuth("login")}
+            >
+              Вход
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mode === "register"}
+              className={`ec-hero-access__tab${mode === "register" ? " is-active" : ""}`}
+              onClick={() => onOpenAuth("register")}
+            >
+              Создать
+            </button>
+          </div>
+        )}
 
         {/* Form (re-keyed на mode change → animation fires) */}
+        {recoveryMode ? (
+          recDone ? (
+            <div className="ec-hero-access__form" data-mode="login">
+              <div
+                className="ec-hero-access__error"
+                role="status"
+                style={{ color: "var(--ec-presence-online)" }}
+              >
+                ✓ Пароль обновлён. Войдите с новым паролем.
+              </div>
+              <button type="button" className="ec-hero-access__submit" onClick={exitRecovery}>
+                <span className="ec-hero-access__submit-label">К входу</span>
+                <span className="ec-hero-access__submit-arrow" aria-hidden>
+                  <ArrowIcon />
+                </span>
+              </button>
+            </div>
+          ) : (
+            <form
+              className="ec-hero-access__form"
+              data-mode="login"
+              onSubmit={submitRecovery}
+              noValidate
+            >
+              <div className="ec-hero-access__field">
+                <div className={`ec-hero-access__input-wrap ec-hero-access__input-wrap--icon${email ? " is-filled" : ""}`}>
+                  <span className="ec-hero-access__field-icon" aria-hidden>
+                    <MailIcon />
+                  </span>
+                  <input
+                    id="hero-rec-email"
+                    type="email"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    autoComplete="email"
+                    inputMode="email"
+                    autoCapitalize="none"
+                    required
+                    disabled={recBusy}
+                  />
+                  <label htmlFor="hero-rec-email" className="ec-hero-access__floating-label">
+                    Email
+                  </label>
+                </div>
+              </div>
+              <div className="ec-hero-access__field">
+                <div className={`ec-hero-access__input-wrap ec-hero-access__input-wrap--icon${recCode ? " is-filled" : ""}`}>
+                  <span className="ec-hero-access__field-icon" aria-hidden>
+                    <LockIcon />
+                  </span>
+                  <input
+                    id="hero-rec-code"
+                    type="text"
+                    value={recCode}
+                    onChange={(event) => setRecCode(event.target.value)}
+                    autoComplete="off"
+                    autoCapitalize="characters"
+                    placeholder="XXXXX-XXXXX"
+                    required
+                    disabled={recBusy}
+                  />
+                  <label htmlFor="hero-rec-code" className="ec-hero-access__floating-label">
+                    Код восстановления
+                  </label>
+                </div>
+              </div>
+              <div className="ec-hero-access__field">
+                <div className={`ec-hero-access__input-wrap ec-hero-access__input-wrap--icon${recNewPwd ? " is-filled" : ""}`}>
+                  <span className="ec-hero-access__field-icon" aria-hidden>
+                    <LockIcon />
+                  </span>
+                  <input
+                    id="hero-rec-pwd"
+                    type="password"
+                    value={recNewPwd}
+                    onChange={(event) => setRecNewPwd(event.target.value)}
+                    autoComplete="new-password"
+                    required
+                    disabled={recBusy}
+                  />
+                  <label htmlFor="hero-rec-pwd" className="ec-hero-access__floating-label">
+                    Новый пароль
+                  </label>
+                </div>
+              </div>
+              {recError && (
+                <div className="ec-hero-access__error" role="alert">
+                  {recError}
+                </div>
+              )}
+              <button
+                type="submit"
+                className={`ec-hero-access__submit${recBusy ? " is-loading" : ""}`}
+                disabled={recBusy}
+              >
+                <span className="ec-hero-access__submit-shimmer" aria-hidden />
+                <span className="ec-hero-access__submit-label">
+                  {recBusy ? "Сбрасываем…" : "Сбросить пароль"}
+                </span>
+                {!recBusy && (
+                  <span className="ec-hero-access__submit-arrow" aria-hidden>
+                    <ArrowIcon />
+                  </span>
+                )}
+              </button>
+              <p className="ec-hero-access__hint">
+                <button type="button" className="ec-hero-access__hint-link" onClick={exitRecovery}>
+                  ← Назад к входу
+                </button>
+              </p>
+            </form>
+          )
+        ) : (
         <form
           key={mode}
           className="ec-hero-access__form"
@@ -309,7 +401,7 @@ export function HeroOperationalStage({
 
             <div className="ec-hero-access__field">
               <div
-                className={`ec-hero-access__input-wrap ec-hero-access__input-wrap--icon ec-hero-access__input-wrap--password${scanning ? " is-scanning" : ""}${password ? " is-filled" : ""}`}
+                className={`ec-hero-access__input-wrap ec-hero-access__input-wrap--icon ec-hero-access__input-wrap--password${password ? " is-filled" : ""}`}
               >
                 <span className="ec-hero-access__field-icon" aria-hidden>
                   <LockIcon />
@@ -326,9 +418,6 @@ export function HeroOperationalStage({
                 <label htmlFor="hero-access-password" className="ec-hero-access__floating-label">
                   Пароль
                 </label>
-                <span className="ec-hero-access__scan" aria-hidden>
-                  <span className="ec-hero-access__scan-beam" />
-                </span>
                 <button
                   type="button"
                   className={`ec-hero-access__toggle${showPassword ? " is-open" : ""}`}
@@ -345,6 +434,22 @@ export function HeroOperationalStage({
             {authError && (
               <div className="ec-hero-access__error" role="alert">
                 {authError}
+                {mode === "login" && (
+                  <>
+                    {" "}
+                    <button
+                      type="button"
+                      className="ec-hero-access__hint-link"
+                      onClick={() => {
+                        setRecoveryMode(true);
+                        setRecError(null);
+                        setRecDone(false);
+                      }}
+                    >
+                      Восстановить пароль
+                    </button>
+                  </>
+                )}
               </div>
             )}
 
@@ -359,17 +464,17 @@ export function HeroOperationalStage({
                   <span className="ec-hero-access__submit-check">
                     <CheckIcon />
                   </span>
-                  {mode === "register" ? "Контур активирован" : "Вход разрешён"}
+                  {mode === "register" ? "Аккаунт создан" : "Вы вошли"}
                 </span>
               ) : (
                 <>
                   <span className="ec-hero-access__submit-label">
                     {loading
                       ? mode === "register"
-                        ? "Создаём контур…"
-                        : "Открываем…"
+                        ? "Создаём аккаунт…"
+                        : "Входим…"
                       : mode === "register"
-                        ? "Создать контур"
+                        ? "Создать аккаунт"
                         : "Войти"}
                   </span>
                   {!loading && (
@@ -384,7 +489,7 @@ export function HeroOperationalStage({
             <p className="ec-hero-access__hint">
               {mode === "register" ? (
                 <>
-                  Уже есть контур?{" "}
+                  Уже есть аккаунт?{" "}
                   <button
                     type="button"
                     className="ec-hero-access__hint-link"
@@ -395,7 +500,7 @@ export function HeroOperationalStage({
                 </>
               ) : (
                 <>
-                  Нет контура?{" "}
+                  Нет аккаунта?{" "}
                   <button
                     type="button"
                     className="ec-hero-access__hint-link"
@@ -403,17 +508,29 @@ export function HeroOperationalStage({
                   >
                     Создать
                   </button>
+                  {" · "}
+                  <button
+                    type="button"
+                    className="ec-hero-access__hint-link"
+                    onClick={() => {
+                      setRecoveryMode(true);
+                      setRecError(null);
+                      setRecDone(false);
+                    }}
+                  >
+                    Забыли пароль?
+                  </button>
                 </>
               )}
             </p>
         </form>
+        )}
 
         <footer className="ec-hero-access__footer">
           <span className="ec-hero-access__footer-mark">
             <span className="ec-hero-access__footer-dot" aria-hidden />
-            шифрованный канал
+            Защищённое соединение
           </span>
-          <span className="ec-hero-access__footer-meta">self-hosted · TLS · 2FA</span>
         </footer>
       </Reveal>
     </div>

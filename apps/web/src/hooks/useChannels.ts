@@ -27,6 +27,8 @@ export type ChannelRow = {
   emoji: string | null;
   internal?: boolean;
   expiresAt: string | null;
+  /** v1.7.0 — дефолтный TTL исчезающих сообщений (секунды; null = выкл). */
+  messageTtlSeconds: number | null;
   createdAt: string;
   _count: { messages: number };
 };
@@ -47,6 +49,7 @@ function normalizeChannel(dto: ChannelDto): ChannelRow {
     emoji: dto.emoji ?? null,
     internal: dto.internal ?? false,
     expiresAt: dto.expiresAt ?? null,
+    messageTtlSeconds: dto.messageTtlSeconds ?? null,
     createdAt: dto.createdAt,
     _count: dto._count ?? { messages: 0 },
   };
@@ -63,6 +66,7 @@ function normalizeCreatedChannel(p: ChannelCreatedPayload): ChannelRow {
     description: null,
     emoji: null,
     expiresAt: p.expiresAt ?? null,
+    messageTtlSeconds: null,
     createdAt: p.createdAt,
     _count: { messages: 0 },
   };
@@ -79,6 +83,7 @@ function updateChannelFromPayload(channel: ChannelRow, p: ChannelUpdatedPayload)
     description: p.description,
     emoji: p.emoji,
     expiresAt: p.expiresAt ?? channel.expiresAt ?? null,
+    messageTtlSeconds: p.messageTtlSeconds ?? channel.messageTtlSeconds ?? null,
   };
 }
 
@@ -293,6 +298,7 @@ export function useChannels(serverId: string | null, socket: Socket | null) {
         emoji?: string | null;
         internal?: boolean;
         expiresAt?: string | null;
+        messageTtlSeconds?: number | null;
       },
     ): Promise<boolean> => {
       setError(null);

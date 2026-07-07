@@ -1,6 +1,6 @@
 {
   "name": "@eclipse-chat/desktop",
-  "version": "1.0.1",
+  "version": "1.0.4",
   "private": true,
   "description": "Eclipse Chat desktop shell — Tauri 2 (Windows / macOS / Linux). Wraps apps/web build.",
   "type": "module",

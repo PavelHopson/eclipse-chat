@@ -1,0 +1,22 @@
+{
+  "appId": "ru.starcrm.eclipsechat",
+  "appName": "Eclipse Chat",
+  "webDir": "www",
+  "server": {
+    "url": "https://app.star-crm.ru/eclipse-chat/",
+    "androidScheme": "https"
+  },
+  "android": {
+    "backgroundColor": "#05070a"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1200,
+      "launchAutoHide": true,
+      "backgroundColor": "#05070a",
+      "androidScaleType": "CENTER_CROP",
+      "showSpinner": false,
+      "splashImmersive": false
+    }
+  }
+}

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 // v1.5.28 — Bundle split phase 3: heavy product CSS (components/responsive/
 // player/cockpit, ~287KB) подгружается вместе с AppShell chunk'ом, а не в
 // critical index.css. Visitor на landing'е загружает только ~180KB shared
@@ -9,17 +9,14 @@ import { ChannelList } from "../components/ChannelList";
 import { RichContent } from "../components/RichContent";
 import { DirectConversationList } from "../components/DirectConversationList";
 import { FriendsPanel } from "../components/friends/FriendsPanel";
-import { FriendsView } from "../components/friends/FriendsView";
 import { type AvailableUser } from "../components/CreateGroupDmModal";
-import { GroupAvatar } from "../components/GroupAvatar";
-import { HomeToday } from "../components/HomeToday";
-import { IntelligencePanel } from "../components/IntelligencePanel";
-import { ChannelInfoPanel } from "../components/ChannelInfoPanel";
+import { DmPeerHeader } from "../components/DmPeerHeader";
+import { DmGroupHeader } from "../components/DmGroupHeader";
 import { ChatHeaderHoverButton } from "../components/ChatHeaderHoverButton";
 import { LogoutButton } from "../components/LogoutButton";
 import { ChannelGlyph } from "../components/icons/ChannelCustomIcons";
-import { useOperationalTables } from "../hooks/useOperationalTables";
 import { MusicMiniPlayer } from "../components/MusicMiniPlayer";
+import type { QuickNavItem } from "../components/SearchOverlay";
 import { useChannelMusic } from "../hooks/useChannelMusic";
 import { useServerAudioLibrary } from "../hooks/useServerAudioLibrary";
 import { MessageInput } from "../components/MessageInput";
@@ -36,12 +33,10 @@ import { MessageList } from "../components/MessageList";
 // AppShell при первом открытии модалки.
 const HelpPanel = lazy(() => import("../components/HelpPanel").then((m) => ({ default: m.HelpPanel })));
 const AdminPanel = lazy(() => import("../components/AdminPanel").then((m) => ({ default: m.AdminPanel })));
-const OperationalTablePanel = lazy(() => import("../components/OperationalTablePanel").then((m) => ({ default: m.OperationalTablePanel })));
 const StatusBoard = lazy(() => import("../components/StatusBoard").then((m) => ({ default: m.StatusBoard })));
 const TeamHealth = lazy(() => import("../components/TeamHealth").then((m) => ({ default: m.TeamHealth })));
 const VoiceRoom = lazy(() => import("../components/VoiceRoom").then((m) => ({ default: m.VoiceRoom })));
 const ThreadPanel = lazy(() => import("../components/ThreadPanel").then((m) => ({ default: m.ThreadPanel })));
-const IncidentPanel = lazy(() => import("../components/IncidentPanel").then((m) => ({ default: m.IncidentPanel })));
 const ActionItemDrawer = lazy(() => import("../components/ActionItemDrawer").then((m) => ({ default: m.ActionItemDrawer })));
 const SearchOverlay = lazy(() => import("../components/SearchOverlay").then((m) => ({ default: m.SearchOverlay })));
 const PlatformAdminPanel = lazy(() => import("../components/PlatformAdminPanel").then((m) => ({ default: m.PlatformAdminPanel })));
@@ -51,17 +46,32 @@ const SettingsPanel = lazy(() => import("../components/settings/SettingsPanel").
 const CreateServerModal = lazy(() => import("../components/CreateServerModal").then((m) => ({ default: m.CreateServerModal })));
 const JoinServerModal = lazy(() => import("../components/JoinServerModal").then((m) => ({ default: m.JoinServerModal })));
 const CreateGroupDmModal = lazy(() => import("../components/CreateGroupDmModal").then((m) => ({ default: m.CreateGroupDmModal })));
-const CreateTableModal = lazy(() => import("../components/CreateTableModal").then((m) => ({ default: m.CreateTableModal })));
 const MusicExpandModal = lazy(() => import("../components/MusicExpandModal").then((m) => ({ default: m.MusicExpandModal })));
 const VoiceMusicPicker = lazy(() => import("../components/VoiceMusicPicker").then((m) => ({ default: m.VoiceMusicPicker })));
-import { SpiderClock } from "../components/SpiderClock";
+const ChannelInfoPanel = lazy(() => import("../components/ChannelInfoPanel").then((m) => ({ default: m.ChannelInfoPanel })));
+const FriendsView = lazy(() => import("../components/friends/FriendsView").then((m) => ({ default: m.FriendsView })));
+const IntelligencePanel = lazy(() => import("../components/IntelligencePanel").then((m) => ({ default: m.IntelligencePanel })));
+const ServerWelcomeHero = lazy(() => import("../components/ServerWelcomeHero").then((m) => ({ default: m.ServerWelcomeHero })));
+const ChannelsAndRolesView = lazy(() => import("../components/server/ChannelsAndRolesView").then((m) => ({ default: m.ChannelsAndRolesView })));
+const MembersView = lazy(() => import("../components/server/MembersView").then((m) => ({ default: m.MembersView })));
+const StatusMenu = lazy(() => import("../components/StatusMenu").then((m) => ({ default: m.StatusMenu })));
+const DownloadAppModal = lazy(() => import("../components/DownloadAppModal").then((m) => ({ default: m.DownloadAppModal })));
+
+function isTextEntryTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return Boolean(
+    target.closest(
+      "input, textarea, select, [contenteditable='true'], [role='textbox']",
+    ),
+  );
+}
+
 import { ServerSwitcher } from "../components/ServerSwitcher";
+import { ServerRail } from "../components/ServerRail";
+import { BottomNav, type BottomTab } from "../components/BottomNav";
 import { SinceLastVisitBanner } from "../components/SinceLastVisitBanner";
 import { ThemeToggle } from "../components/ThemeToggle";
 import { EmptyState } from "../components/EmptyState";
-import { ServerWelcomeHero } from "../components/ServerWelcomeHero";
-import { ChannelsAndRolesView } from "../components/server/ChannelsAndRolesView";
-import { MembersView } from "../components/server/MembersView";
 import { ServerNavBar, type ServerView } from "../components/server/ServerNavBar";
 import { IsolationConfirmDialog } from "../components/server/IsolationConfirmDialog";
 import { ExpiryBadge } from "../components/ExpiryBadge";
@@ -69,23 +79,23 @@ import {
   EmptyDmIcon,
   EmptyHomeIcon,
 } from "../components/EmptyIcons";
-import { StatusMenu } from "../components/StatusMenu";
 import { TypingIndicator } from "../components/TypingIndicator";
 import { VoiceMiniBar } from "../components/VoiceMiniBar";
 import { VoicePlaceholder } from "../components/VoicePlaceholder";
 import { useChannelDigest } from "../hooks/useChannelDigest";
+import { useChannelMemory } from "../hooks/useChannelMemory";
 import { useChannels } from "../hooks/useChannels";
 import { dmIsSaved, dmTitle, useDirectConversations } from "../hooks/useDirectConversations";
 import { useDirectMessages } from "../hooks/useDirectMessages";
 import { useFriends } from "../hooks/useFriends";
-import { useIncidents } from "../hooks/useIncidents";
 import { useMediaQuery } from "../hooks/useMediaQuery";
+import { useDrawerSwipe } from "../hooks/useDrawerSwipe";
+import { useNativeBackButton } from "../hooks/useNativeBackButton";
 import { useMembers, type MemberRole, type MemberRow } from "../hooks/useMembers";
 import { useMessages } from "../hooks/useMessages";
 import { useNotifications } from "../hooks/useNotifications";
 import { useShareTarget } from "../hooks/useShareTarget";
 import { useFocusMode } from "../hooks/useFocusMode";
-import { useHomeToday } from "../hooks/useHomeToday";
 import { useMutedChannels } from "../hooks/usePushPreferences";
 import { useSwipeNavigate } from "../hooks/useSwipeNavigate";
 import { useProfile } from "../hooks/useProfile";
@@ -223,6 +233,15 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     requestAiSummary: requestDigestAiSummary,
   } = useChannelDigest(selectedChannelId, socket);
 
+  const {
+    entries: channelMemoryEntries,
+    loading: channelMemoryLoading,
+    saving: channelMemorySaving,
+    error: channelMemoryError,
+    createEntry: createChannelMemoryEntry,
+    archiveEntry: archiveChannelMemoryEntry,
+  } = useChannelMemory(selectedChannelId);
+
   // ===== DMs =====
   // DM-mode активируется когда activeServerId === null (после клика «Личные
   // сообщения» в ServerSwitcher). Список конверсаций + open-or-create.
@@ -241,15 +260,9 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   const [openActionItemId, setOpenActionItemId] = useState<string | null>(null);
   /** v0.59 phase 1: выбранная таблица (заменяет chat main area). */
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
-  const {
-    tables: opTables,
-    reload: reloadTables,
-    createTable: createOpTable,
-    createFromTemplate: createOpTableFromTemplate,
-    deleteTable: deleteOpTable,
-  } = useOperationalTables(activeServerId, socket);
-  /** v0.70: открыта ли модалка создания таблицы (с template picker). */
-  const [showCreateTable, setShowCreateTable] = useState(false);
+  // v1.6.47 — Операционные таблицы вырезаны (slice 2): хук useOperationalTables
+  // + панель + модалка удалены. selectedTableId оставлен как always-null флаг
+  // (legacy view-switch resets); полный выпил state — отдельным cleanup-слайсом.
   /** v0.72: открыт ли picker для запуска music в VOICE-канале. */
   const [showVoiceMusicPicker, setShowVoiceMusicPicker] = useState(false);
   /** v0.74 #32 phase 3: открыт ли expand modal плеера. */
@@ -265,15 +278,6 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   useEffect(() => {
     setInfoPanelOpen(false);
   }, [selectedChannelId]);
-  // v0.61 shared listening room. Scoped per selected TEXT/BROADCAST channel —
-  // в VOICE сессии не активны (backend отвергнёт).
-  const music = useChannelMusic(selectedChannelId, socket);
-  // v1.5.14 — server-wide audio library для music room playlist (все audio
-  // attachments в каналах сервера, member-only). Fetch только когда modal
-  // open'нется и есть active session — иначе бесполезный network call.
-  const musicLibrary = useServerAudioLibrary(
-    showMusicExpand && music.session ? activeServerId : null,
-  );
   const inDmMode = activeServerId === null;
   const selectedDm = dmConversations.find((c) => c.id === selectedDmId) ?? null;
   const {
@@ -285,6 +289,9 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     editMessage: dmEdit,
     deleteMessage: dmDelete,
     toggleReaction: dmToggleReaction,
+    typingUsers: dmTypingUsers,
+    emitTypingStart: dmEmitTypingStart,
+    emitTypingStop: dmEmitTypingStop,
   } = useDirectMessages(inDmMode ? selectedDmId : null, socket, user.id);
 
   // Total unread по всем каналам — для tab title badge
@@ -338,6 +345,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   /** v0.73 #14: In-app help / onboarding. Полноэкранный view как Home /
    *  StatusBoard / TeamHealth — правый rail скрыт. Открывается «?» в topbar. */
   const [helpOpen, setHelpOpen] = useState(false);
+  const [downloadOpen, setDownloadOpen] = useState(false);
   /** v0.76 #25 phase 1: Admin Panel — полноэкранный view для OWNER/ADMIN. */
   const [adminOpen, setAdminOpen] = useState(false);
   // v1.2.6 Platform Admin (trek P1) — глобальная super-admin панель.
@@ -346,8 +354,6 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   // v1.5.4 — AI agent button ripple. Перемонтаж <span key={rippleKey}>
   // перезапускает CSS keyframe при каждом клике.
   const [aiRippleKey, setAiRippleKey] = useState(0);
-  // Incident panel — toggle в right rail (приоритет ниже thread panel).
-  const [showIncidents, setShowIncidents] = useState(false);
   /**
    * v1.5.55 D3 frontend — IsolationConfirmDialog state. Открывается через
    * ServerActionsMenu «Изоляция»/«Снять изоляцию» action. Mode выбирается
@@ -406,14 +412,14 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     const onKey = (e: KeyboardEvent) => {
       const isK = e.key === "k" || e.key === "K" || e.key === "л" || e.key === "Л";
       if ((e.ctrlKey || e.metaKey) && isK) {
-        if (!activeServer) return;
+        if (isTextEntryTarget(e.target)) return;
         e.preventDefault();
         setShowSearch(true);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [activeServer]);
+  }, []);
 
   const {
     profile,
@@ -436,13 +442,9 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     updateMemberRole,
   } = useMembers(activeServerId, socket);
 
-  // ===== Incidents =====
-  // Список инцидентов сервера + open/resolve. IncidentPanel в right rail.
-  const { openCount: incidentOpenCount } = useIncidents(activeServerId, socket);
-
-  // ===== Home «TODAY» =====
-  // Операционная сводка поверх всех workspace'ов — fetch при открытии Home.
-  const homeToday = useHomeToday(homeOpen);
+  // v1.6.47 — Инциденты (useIncidents/IncidentPanel) и Home «TODAY»
+  // (useHomeToday/HomeToday) вырезаны (slice 2). homeOpen оставлен как
+  // always-false флаг до cleanup-слайса.
 
   // ===== Execution Status Board =====
   // Все ActionItem'ы активного сервера — live через action:item:* в server-room.
@@ -467,8 +469,17 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
 
   const selectedChannel = channels.find((c) => c.id === selectedChannelId) ?? null;
 
+  // v1.6.55 — префетч livekit-client (~140KB gzip) когда юзер открыл VOICE-канал,
+  // но ещё не нажал «подключиться»: к моменту join() либа уже в кэше → быстрее
+  // подключение. Платят только зашедшие в голосовой (bundle-split цел).
+  useEffect(() => {
+    if (selectedChannel?.type !== "VOICE") return;
+    void import("livekit-client").catch(() => {});
+  }, [selectedChannel?.type]);
+
   // AI Memory «Since your last visit» — фиксирует visit + дельта с prior.
-  // Только для text/broadcast (voice = без feed'а).
+  // Voice теперь имеет лёгкий room-chat, но visit summary остаётся только для
+  // feed-каналов, чтобы не смешивать созвоны с операционной лентой.
   const visitChannelId =
     selectedChannel && selectedChannel.type !== "VOICE" ? selectedChannel.id : null;
   const sinceLastVisit = useSinceLastVisit(visitChannelId);
@@ -548,6 +559,44 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   // 3-колоночный режим убран (cramped на large phones / low-DPI).
   const isMobile = useMediaQuery("(max-width: 1024px)");
   const isTabletOrSmaller = useMediaQuery("(max-width: 1024px)");
+  // v1.6.84 — края-свайпы для drawer'ов: свайп от левого края открывает каналы,
+  // от правого — участников; обратный свайп закрывает. Только на мобиле.
+  useDrawerSwipe({
+    enabled: isMobile,
+    navOpen,
+    membersOpen,
+    membersAvailable: showRightRail,
+    openNav: () => setNavOpen(true),
+    closeNav: () => setNavOpen(false),
+    openMembers: () => setMembersOpen(true),
+    closeMembers: () => setMembersOpen(false),
+  });
+  // v1.6.85 — аппаратная «Назад» в Android-оболочке закрывает открытый оверлей
+  // (поиск / модалка скачивания / справка / drawer'ы); если закрывать нечего —
+  // сворачиваем приложение (не убиваем). В браузере — no-op.
+  useNativeBackButton(() => {
+    if (showSearch) {
+      setShowSearch(false);
+      return true;
+    }
+    if (downloadOpen) {
+      setDownloadOpen(false);
+      return true;
+    }
+    if (helpOpen) {
+      setHelpOpen(false);
+      return true;
+    }
+    if (membersOpen) {
+      setMembersOpen(false);
+      return true;
+    }
+    if (navOpen) {
+      setNavOpen(false);
+      return true;
+    }
+    return false;
+  });
   const voiceHealth = useVoiceHealth();
   const {
     byChannel: rawVoiceByChannel,
@@ -597,6 +646,17 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     voice.activeChannelId != null
       ? channels.find((c) => c.id === voice.activeChannelId)?.name ?? null
       : null;
+  // Общая музыка сначала следует за активной голосовой комнатой. Если пользователь
+  // ушёл в другой экран, session всё равно остаётся привязана к voice channel;
+  // иначе используем выбранный канал для старого сценария «слушать вместе» в чате.
+  const musicChannelId = voice.activeChannelId ?? selectedChannelId;
+  const music = useChannelMusic(musicChannelId, socket);
+  // v1.5.14 — server-wide audio library для music room playlist (все audio
+  // attachments в каналах сервера, member-only). Fetch только когда modal
+  // open'нется и есть active session — иначе бесполезный network call.
+  const musicLibrary = useServerAudioLibrary(
+    showMusicExpand && music.session ? activeServerId : null,
+  );
   const selectedVoiceOccupants =
     selectedChannel?.type === "VOICE"
       ? (voiceByChannel[selectedChannel.id] ?? [])
@@ -678,9 +738,15 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     setSelectedTableId(null);
   }, [activeServerId]);
 
+  // UXR3 — «Главная» теперь = мессенджер, а не операционный дашборд.
+  // Вход в DM-режим (activeServerId=null) с экраном «Друзья» по умолчанию;
+  // диалоги — в левом сайдбаре. Дашборд «Сегодня» (HomeToday) больше не
+  // лендинг (homeOpen нигде не выставляется в true); код сохранён для
+  // возможного возврата отдельным «Сводка»-входом.
   const openHome = () => {
-    setHomeOpen(true);
-    setFriendsOpen(false);
+    setHomeOpen(false);
+    setActiveServerId(null);
+    setFriendsOpen(true);
     setHelpOpen(false);
     setAdminOpen(false);
     setStatusBoardOpen(false);
@@ -716,20 +782,6 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     setMembersOpen(false);
   };
 
-  const openActiveServer = () => {
-    setHomeOpen(false);
-    setFriendsOpen(false);
-    setHelpOpen(false);
-    setAdminOpen(false);
-    setStatusBoardOpen(false);
-    setTeamHealthOpen(false);
-    setServerView("guide");
-    if (activeServerId == null && servers[0]) {
-      setActiveServerId(servers[0].id);
-      return;
-    }
-  };
-
   const handleSelectServerView = (view: ServerView) => {
     if (view === "events") return;
     setHomeOpen(false);
@@ -740,10 +792,125 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     setTeamHealthOpen(false);
     setSelectedTableId(null);
     setSelectedThreadId(null);
-    setShowIncidents(false);
     setServerView(view);
     if (isMobile) setNavOpen(false);
   };
+
+  const quickNavItems = useMemo<QuickNavItem[]>(() => {
+    const channelTypeLabel = (type: string) => {
+      if (type === "VOICE") return "голосовая комната";
+      if (type === "EXECUTION") return "комната задач";
+      if (type === "ANNOUNCEMENT") return "объявления";
+      return "текстовый канал";
+    };
+
+    const items: QuickNavItem[] = [
+      {
+        id: "view-guide",
+        label: "Путеводитель",
+        detail: activeServer ? activeServer.name : "пространство",
+        glyph: "П",
+        kind: "view",
+        onSelect: () => handleSelectServerView("guide"),
+      },
+      {
+        id: "view-members",
+        label: "Участники",
+        detail: "полный список пространства",
+        glyph: "У",
+        kind: "view",
+        onSelect: () => handleSelectServerView("members"),
+      },
+      {
+        id: "view-channels-roles",
+        label: "Каналы и роли",
+        detail: "структура пространства",
+        glyph: "К",
+        kind: "view",
+        onSelect: () => handleSelectServerView("channels-roles"),
+      },
+      {
+        id: "dm-friends",
+        label: "Друзья",
+        detail: "запросы и контакты",
+        glyph: "Д",
+        kind: "dm",
+        onSelect: () => {
+          setActiveServerId(null);
+          setFriendsOpen(true);
+          selectDm(null);
+          setNavOpen(false);
+          setMembersOpen(false);
+        },
+      },
+      {
+        id: "settings-profile",
+        label: "Настройки профиля",
+        detail: "учётная запись и внешний вид",
+        glyph: "Н",
+        kind: "settings",
+        onSelect: () => setShowProfile(true),
+      },
+    ];
+
+    if (activeServer) {
+      items.push({
+        id: "settings-server",
+        label: "Настройки сервера",
+        detail: activeServer.name,
+        glyph: "С",
+        kind: "settings",
+        onSelect: () => {
+          setServerHubTab("overview");
+          setServerHubOpen(true);
+        },
+      });
+    }
+
+    for (const channel of channels) {
+      items.push({
+        id: `channel-${channel.id}`,
+        label: `# ${channel.name}`,
+        detail: channelTypeLabel(channel.type),
+        glyph: channel.type === "VOICE" ? "Г" : "#",
+        kind: "channel",
+        onSelect: () => handleSelectChannel(channel.id),
+      });
+    }
+
+    for (const conversation of dmConversations) {
+      items.push({
+        id: `dm-${conversation.id}`,
+        label: dmTitle(conversation, user.id),
+        detail: dmIsSaved(conversation)
+          ? "заметки и файлы для себя"
+          : conversation.isGroup
+            ? "групповой диалог"
+            : "личные сообщения",
+        glyph: conversation.isGroup ? "Г" : "Л",
+        kind: "dm",
+        onSelect: () => {
+          setActiveServerId(null);
+          setHomeOpen(false);
+          setFriendsOpen(false);
+          selectDm(conversation.id);
+          setNavOpen(false);
+          setMembersOpen(false);
+        },
+      });
+    }
+
+    return items;
+  }, [
+    activeServer,
+    channels,
+    dmConversations,
+    handleSelectServerView,
+    handleSelectChannel,
+    isMobile,
+    selectDm,
+    user.id,
+  ]);
 
   const shellClass =
     "ec-shell" +
@@ -751,8 +918,91 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     (navOpen ? " ec-shell--nav-open" : "") +
     (membersOpen ? " ec-shell--members-open" : "");
 
+  // v1.6.57 — общие nav-хендлеры для server-rail (desktop) и ServerSwitcher (mobile).
+  const navSelectServer = (id: string) => {
+    setHomeOpen(false);
+    setHelpOpen(false);
+    setAdminOpen(false);
+    setActiveServerId(id);
+    setServerView("guide");
+    if (isMobile) setNavOpen(false);
+  };
+  const navOpenDms = () => {
+    setHomeOpen(false);
+    setHelpOpen(false);
+    setAdminOpen(false);
+    setActiveServerId(null);
+    if (isMobile) setNavOpen(false);
+  };
+
+  // v1.6.58 — мобильный нижний таб-бар: активный таб из текущего состояния +
+  // хендлеры (Личные/Серверы открывают левый drawer-список каналов/ЛС).
+  const bottomTab: BottomTab = showProfile
+    ? "me"
+    : friendsOpen
+      ? "friends"
+      : inDmMode
+        ? "dms"
+        : "servers";
+  const bnavServers = () => {
+    setShowProfile(false);
+    setFriendsOpen(false);
+    setHomeOpen(false);
+    setHelpOpen(false);
+    setAdminOpen(false);
+    if (activeServerId == null && servers[0]) setActiveServerId(servers[0].id);
+    setNavOpen(true);
+  };
+  const bnavDms = () => {
+    setShowProfile(false);
+    setFriendsOpen(false);
+    setHomeOpen(false);
+    setHelpOpen(false);
+    setAdminOpen(false);
+    setActiveServerId(null);
+    selectDm(null);
+    setNavOpen(true);
+  };
+  const bnavFriends = () => {
+    setShowProfile(false);
+    setHomeOpen(false);
+    setHelpOpen(false);
+    setAdminOpen(false);
+    setActiveServerId(null);
+    selectDm(null);
+    setFriendsOpen(true);
+    setNavOpen(false);
+  };
+  const bnavProfile = () => {
+    setNavOpen(false);
+    setMembersOpen(false);
+    setShowProfile(true);
+  };
+
   return (
     <div className={shellClass}>
+      {/* v1.6.57 Discord-каркас — постоянный левый server-rail (desktop). */}
+      {!isMobile && (
+        <div className="ec-shell__rail">
+          <ServerRail
+            servers={servers}
+            activeServerId={activeServerId}
+            onSelect={navSelectServer}
+            onCreateRequest={() => {
+              if (canCreateServer) setShowCreateServer(true);
+            }}
+            onJoinRequest={() => setShowJoinServer(true)}
+            onHomeRequest={openHome}
+            homeActive={homeOpen}
+            dmsActive={inDmMode}
+            dmsUnread={dmConversations.reduce((sum, c) => sum + c.unread, 0)}
+            onDmsRequest={navOpenDms}
+            canCreateServer={canCreateServer}
+            ownedCount={ownedServersCount}
+            maxOwnedServers={serverLimits.maxOwnedServers}
+          />
+        </div>
+      )}
       {/* Командный хребет — шапка: бренд + переключатель пространств.
           Визуально сливается с колонкой каналов ниже в одну вертикаль. */}
       <div className="ec-shell__brandbar">
@@ -787,47 +1037,34 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           >
             <img className="ec-brand-mark" src={brandMarkUrl} alt="" aria-hidden />
           </button>
-          {/* v1.1.51: бывший far-left server-rail свёрнут в topbar-control. */}
-          <ServerSwitcher
-            servers={servers}
-            activeServerId={activeServerId}
-            onSelect={(id) => {
-              setHomeOpen(false);
-              setHelpOpen(false);
-              setAdminOpen(false);
-              setActiveServerId(id);
-              // UXR4 — клик по server-иконке открывает server-home (guide).
-              // Это вход в guide/каналы-роли/участники из chat mode, где rail
-              // больше не показывается. Для смены сервера эффект на activeServerId
-              // тоже ставит guide — здесь покрываем клик по уже-активному серверу.
-              setServerView("guide");
-              if (isMobile) setNavOpen(false);
-            }}
-            onCreateRequest={() => {
-              if (!canCreateServer) return;
-              setShowCreateServer(true);
-            }}
-            onJoinRequest={() => setShowJoinServer(true)}
-            onHomeRequest={openHome}
-            homeActive={homeOpen}
-            onSearchRequest={() => {
-              if (activeServerId) setShowSearch(true);
-            }}
-            searchEnabled={Boolean(activeServerId)}
-            dmsActive={inDmMode}
-            dmsUnread={dmConversations.reduce((sum, c) => sum + c.unread, 0)}
-            onDmsRequest={() => {
-              setHomeOpen(false);
-              setHelpOpen(false);
-              setAdminOpen(false);
-              setActiveServerId(null);
-              if (isMobile) setNavOpen(false);
-            }}
-            canCreateServer={canCreateServer}
-            ownedCount={ownedServersCount}
-            maxOwnedServers={serverLimits.maxOwnedServers}
-            compact={isMobile}
-          />
+          {/* v1.6.57 — на desktop переключение серверов в левом ServerRail;
+              дропдаун ServerSwitcher остаётся только на mobile (до нижнего
+              таб-бара в slice 2). */}
+          {isMobile && (
+            <ServerSwitcher
+              servers={servers}
+              activeServerId={activeServerId}
+              onSelect={navSelectServer}
+              onCreateRequest={() => {
+                if (!canCreateServer) return;
+                setShowCreateServer(true);
+              }}
+              onJoinRequest={() => setShowJoinServer(true)}
+              onHomeRequest={openHome}
+              homeActive={homeOpen}
+              onSearchRequest={() => {
+                if (activeServerId) setShowSearch(true);
+              }}
+              searchEnabled={Boolean(activeServerId)}
+              dmsActive={inDmMode}
+              dmsUnread={dmConversations.reduce((sum, c) => sum + c.unread, 0)}
+              onDmsRequest={navOpenDms}
+              canCreateServer={canCreateServer}
+              ownedCount={ownedServersCount}
+              maxOwnedServers={serverLimits.maxOwnedServers}
+              compact={isMobile}
+            />
+          )}
       </div>
 
       {/* Командный бар над чатом: локация (слева) · действия (справа). */}
@@ -851,9 +1088,11 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           </div>
         ) : null}
         <div className="ec-shell__top-actions">
-          {/* UXR1 — RAM/CPU/NET убраны из глобального topbar; серверная
-              телеметрия теперь живёт в voice diagnostics (UXR2, VoiceRoom),
-              где объясняет качество связи/нагрузку, а не шумит на каждом экране. */}
+          {/* UXR9 / v1.6.59 slice 3 — topbar держит только постоянные
+              действия: поиск, AI, участники, профиль, выход. Вторичные
+              утилиты (тема, уведомления, справка) уехали в профиль-меню
+              за аватаром (StatusMenu), чтобы первый слой не шумел.
+              Админ-иконки остаются — они и так role-gated. */}
           {inServerView && (
             <button
               type="button"
@@ -868,20 +1107,6 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               </svg>
             </button>
           )}
-          <button
-            type="button"
-            onClick={() => (helpOpen ? setHelpOpen(false) : openHelp())}
-            title="Справка и онбординг"
-            aria-label="Справка"
-            aria-pressed={helpOpen}
-            className="ec-icon-btn"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <circle cx="12" cy="12" r="10" />
-              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-              <line x1="12" y1="17" x2="12.01" y2="17" />
-            </svg>
-          </button>
           {(currentRole === "OWNER" || currentRole === "ADMIN") &&
             activeServer &&
             !inDmMode && (
@@ -920,100 +1145,9 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               </svg>
             </button>
           )}
-          {/* v0.74 #29 phase 1: Focus mode toggle — фильтр feed'а на
-              direct-mentions + pinned + own messages. Глобальный, не
-              привязан к каналу. */}
-          <button
-            type="button"
-            onClick={focus.toggle}
-            title={
-              focus.enabled
-                ? "Фокус-режим включён — показаны только меншены, закреплённые и свои"
-                : "Включить фокус-режим (скрыть шум)"
-            }
-            aria-label="Фокус-режим"
-            aria-pressed={focus.enabled}
-            className="ec-icon-btn"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <circle cx="12" cy="12" r="10" />
-              <circle cx="12" cy="12" r="6" />
-              <circle cx="12" cy="12" r="2" fill="currentColor" />
-            </svg>
-          </button>
-          {showRightRail && (
-            <button
-              type="button"
-              onClick={() => {
-                setShowIncidents((v) => !v);
-                setSelectedThreadId(null);
-                if (isTabletOrSmaller) setMembersOpen(true);
-              }}
-              title={
-                incidentOpenCount > 0
-                  ? `Инциденты — ${incidentOpenCount} активных`
-                  : "Инциденты"
-              }
-              aria-label="Инциденты"
-              className={
-                "ec-icon-btn" +
-                (incidentOpenCount > 0 ? " ec-icon-btn--alert" : "")
-              }
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-                <line x1="12" y1="9" x2="12" y2="13" />
-                <line x1="12" y1="17" x2="12.01" y2="17" />
-              </svg>
-              {incidentOpenCount > 0 && (
-                <span aria-hidden className="ec-count-badge">
-                  {incidentOpenCount > 9 ? "9+" : incidentOpenCount}
-                </span>
-              )}
-            </button>
-          )}
-          {notif.supported && (
-            <button
-              type="button"
-              onClick={() => {
-                if (notif.permission === "default") void notif.request();
-                else notif.toggle();
-              }}
-              title={
-                notif.permission === "denied"
-                  ? "Уведомления заблокированы в браузере"
-                  : notif.permission === "default"
-                  ? "Включить уведомления"
-                  : notif.enabled
-                  ? "Уведомления включены — выключить"
-                  : "Уведомления выключены — включить"
-              }
-              aria-label="Уведомления"
-              aria-pressed={notif.permission === "granted" && notif.enabled}
-              className="ec-icon-btn"
-              style={
-                notif.permission === "denied" ? { opacity: 0.45 } : undefined
-              }
-            >
-              {notif.permission === "granted" && notif.enabled ? (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                  <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                  <path d="M13.73 21a2 2 0 01-3.46 0" />
-                </svg>
-              ) : (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                  <path d="M13.73 21a2 2 0 01-3.46 0" />
-                  <path d="M18.63 13A17.89 17.89 0 0118 8" />
-                  <path d="M6.26 6.26A5.86 5.86 0 006 8c0 7-3 9-3 9h14" />
-                  <path d="M18 8a6 6 0 00-9.33-5" />
-                  <line x1="1" y1="1" x2="23" y2="23" />
-                </svg>
-              )}
-            </button>
-          )}
-          {/* v1.5.4 — AI agent button: premium violet glow между notifications
-              и SpiderClock'ом. Click → dispatch global `ec-ai-trigger`; composer
-              (MessageInput) ловит и фокусит textarea + prefill «@ai ». */}
+          {/* v1.5.4 — AI agent button: premium violet glow.
+              Click → dispatch global `ec-ai-trigger`; composer (MessageInput)
+              ловит и фокусит textarea + prefill «@ai ». */}
           <button
             type="button"
             onClick={() => {
@@ -1037,8 +1171,6 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               <path d="M19 14l1 2.5 2.5 1-2.5 1L19 21l-1-2.5L15.5 17.5l2.5-1z" opacity="0.7" />
             </svg>
           </button>
-          <SpiderClock />
-          <ThemeToggle />
           {showRightRail && (
             <button
               type="button"
@@ -1055,6 +1187,20 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               </svg>
             </button>
           )}
+          {/* v1.6.79 — «Скачать приложение»: десктоп/Android/iOS → модалка. */}
+          <button
+            type="button"
+            onClick={() => setDownloadOpen(true)}
+            title="Скачать приложение"
+            aria-label="Скачать приложение"
+            className="ec-icon-btn"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+          </button>
           {/* v1.1.81 — кластер-разделитель: инструменты | идентичность */}
           <span className="ec-topbar-sep" aria-hidden />
           <button
@@ -1104,6 +1250,19 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
         }}
         aria-hidden
       />
+
+      {/* v1.6.58 Discord-каркас — мобильный нижний таб-бар (≤1024). */}
+      {isMobile && (
+        <BottomNav
+          active={bottomTab}
+          onServers={bnavServers}
+          onDms={bnavDms}
+          onFriends={bnavFriends}
+          onProfile={bnavProfile}
+          dmsUnread={dmConversations.reduce((sum, c) => sum + c.unread, 0)}
+          friendsPending={friends.pendingIn.length}
+        />
+      )}
 
       <div className="ec-shell__channels">
         {inDmMode ? (
@@ -1194,19 +1353,10 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               if (!activeServer) return false;
               return leaveServer(activeServer.id);
             }}
-            onOpenStatusBoard={
-              isClientMode
-                ? undefined
-                : () => {
-                    setHomeOpen(false);
-                    setTeamHealthOpen(false);
-                    // Direct entry из ChannelList — сбрасываем pre-filter
-                    // (он имеет смысл только при переходе из Team Health).
-                    setStatusBoardFilter(null);
-                    setStatusBoardOpen(true);
-                    if (isMobile) setNavOpen(false);
-                  }
-            }
+            /* v1.6.46 — standalone «Доска задач» убрана из сайдбара
+               (slice 1). Доска остаётся drill-down целью из Здоровья
+               команды; тяжёлый Kanban сжимается до thin-backbone в slice 4. */
+            onOpenStatusBoard={undefined}
             statusBoardActive={statusBoardOpen}
             onOpenTeamHealth={
               isClientMode
@@ -1228,38 +1378,11 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                 void muted.unmute(channelId);
               }
             }}
-            onOpenClientPortal={
-              isClientMode && activeServer
-                ? () => {
-                    // v0.83 #24 phase 1: navigate to portal через hash route.
-                    // App.tsx detect'нет hash и переключит на ClientPortalContainer.
-                    window.location.hash = `#/portal/${activeServer.id}`;
-                  }
-                : undefined
-            }
-            tables={
-              isClientMode
-                ? undefined
-                : opTables.map((t) => ({
-                    id: t.id,
-                    name: t.name,
-                    rowCount: t.rowCount,
-                  }))
-            }
-            onOpenTable={
-              isClientMode
-                ? undefined
-                : (tableId) => {
-                    setHomeOpen(false);
-                    setStatusBoardOpen(false);
-                    setTeamHealthOpen(false);
-                    setSelectedTableId(tableId);
-                    if (isMobile) setNavOpen(false);
-                  }
-            }
-            onCreateTable={
-              isClientMode ? undefined : () => setShowCreateTable(true)
-            }
+            /* v1.6.46 — Операционные таблицы убраны из навигации (slice 1).
+               Код модели/панели снимается в slice 2. */
+            tables={undefined}
+            onOpenTable={undefined}
+            onCreateTable={undefined}
             activeTableId={selectedTableId}
             voiceByChannel={voiceByChannel}
             voiceMetaByUser={voiceMetaByUser}
@@ -1269,7 +1392,12 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
         )}
       </div>
 
-      <section className="ec-shell__chat">
+      <section
+        className={
+          "ec-shell__chat" +
+          (activeServer && !inDmMode && serverView === "guide" ? " ec-shell__chat--guide" : "")
+        }
+      >
         <div className="ec-chat-header">
           {homeOpen ? (
             <span className="ec-chat-title">
@@ -1343,15 +1471,13 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                   Избранное
                 </>
               ) : selectedDm.isGroup ? (
-                <>
-                  <GroupAvatar participants={selectedDm.participants} size={22} />
-                  {dmTitle(selectedDm, user.id)}
-                </>
+                <DmGroupHeader
+                  title={dmTitle(selectedDm, user.id)}
+                  participants={selectedDm.participants}
+                  typingNames={dmTypingUsers.map((u) => u.displayName)}
+                />
               ) : (
-                <>
-                  <Avatar url={selectedDm.other.avatar} name={selectedDm.other.displayName} size={22} />
-                  {selectedDm.other.displayName}
-                </>
+                <DmPeerHeader other={selectedDm.other} typing={dmTypingUsers.length > 0} />
               )}
             </span>
           ) : inDmMode ? (
@@ -1604,6 +1730,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             4 inner tabs: Сводка/Память/Дела/Файлы. Раньше эти вкладки жили
             в right rail (IntelligencePanel) — теперь rail = только Участники. */}
         {selectedChannel && infoPanelOpen && !inDmMode && serverView === "chat" && (
+          <Suspense fallback={null}>
           <ChannelInfoPanel
             channelId={selectedChannel.id}
             open={infoPanelOpen}
@@ -1630,6 +1757,12 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                   avatar: m.user.avatar,
                 },
               }))}
+            memoryEntries={channelMemoryEntries}
+            memoryLoading={channelMemoryLoading}
+            memorySaving={channelMemorySaving}
+            memoryError={channelMemoryError}
+            onCreateMemoryEntry={createChannelMemoryEntry}
+            onArchiveMemoryEntry={archiveChannelMemoryEntry}
             attachments={messages.flatMap((m) =>
               m.attachments.map((a) => ({
                 id: a.id,
@@ -1659,6 +1792,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             onOpenAction={(id) => setOpenActionItemId(id)}
             clientMode={isClientMode}
           />
+          </Suspense>
         )}
 
         {/* v1.5.27 — lazy panel chain wrapped в Suspense. Все ветви ternary
@@ -1696,59 +1830,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               setServerHubTab("settings");
               setServerHubOpen(true);
             }}
-            onOpenClientPortal={() => {
-              window.location.hash = `#/portal/${activeServer.id}`;
-            }}
             onClose={() => setAdminOpen(false)}
-          />
-        ) : selectedTableId ? (
-          <OperationalTablePanel
-            tableId={selectedTableId}
-            onClose={() => setSelectedTableId(null)}
-            onDelete={async () => {
-              if (!window.confirm("Удалить таблицу со всеми данными?")) return;
-              const ok = await deleteOpTable(selectedTableId);
-              if (ok) {
-                setSelectedTableId(null);
-                await reloadTables();
-              }
-            }}
-            members={members.map((m) => ({
-              userId: m.userId,
-              user: {
-                displayName: m.user.displayName,
-                avatar: m.user.avatar,
-              },
-            }))}
-            socket={socket}
-            availableTables={opTables
-              .filter((t) => t.id !== selectedTableId)
-              .map((t) => ({ id: t.id, name: t.name }))}
-            onOpenLinkedAction={(actionItemId) => setOpenActionItemId(actionItemId)}
-          />
-        ) : homeOpen ? (
-          <HomeToday
-            userName={headerName}
-            data={homeToday.data}
-            loading={homeToday.loading}
-            error={homeToday.error}
-            onReload={() => void homeToday.reload()}
-            serversCount={servers.length}
-            dmCount={dmConversations.length}
-            onOpenChannel={(serverId, channelId) => {
-              setHomeOpen(false);
-              setActiveServerId(serverId);
-              setServerView("chat");
-              setSelectedChannelId(channelId);
-              if (isMobile) setNavOpen(false);
-            }}
-            onOpenServer={openActiveServer}
-            onOpenDms={() => {
-              setHomeOpen(false);
-              setActiveServerId(null);
-              selectDm(null);
-            }}
-            onCreateServer={() => setShowCreateServer(true)}
           />
         ) : statusBoardOpen && activeServer ? (
           <StatusBoard
@@ -1772,7 +1854,10 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           />
         ) : teamHealthOpen && activeServer ? (
           <TeamHealth
+            serverId={activeServer.id}
             serverName={activeServer.name}
+            memberRole={currentRole}
+            socket={socket}
             data={teamHealth.data}
             loading={teamHealth.loading}
             error={teamHealth.error}
@@ -1849,6 +1934,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                 onToggleReaction={dmToggleReaction}
                 isDm
               />
+              <TypingIndicator users={dmTypingUsers} />
               <MessageInput
                 channelName={dmTitle(selectedDm, user.id)}
                 placeholder={dmIsSaved(selectedDm) ? "Заметка в Избранное" : undefined}
@@ -1856,8 +1942,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                 disabled={!isReady}
                 hideSlashCommands
                 onSend={(content, attachments) => dmSend(content, senderForMessages, attachments)}
-                onTypingStart={() => undefined}
-                onTypingStop={() => undefined}
+                onTypingStart={dmEmitTypingStart}
+                onTypingStop={dmEmitTypingStop}
                 prefillContent={share.pendingContent}
                 onPrefillConsumed={share.consume}
                 prefillFiles={share.pendingFiles}
@@ -1945,7 +2031,65 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               occupants={selectedVoiceOccupants}
               activeVoiceChannelName={activeVoiceChannelName}
               voice={voice}
-              socket={socket}
+              musicSession={music.session}
+              onOpenMusicPicker={() => setShowVoiceMusicPicker(true)}
+              onOpenMusicExpand={music.session ? () => setShowMusicExpand(true) : undefined}
+              messages={
+                <div className="ec-voice-room__messages-card">
+                  <div className="ec-voice-room__messages-head">
+                    <span>Чат комнаты</span>
+                    <span>{messages.length > 0 ? `${messages.length}` : "пусто"}</span>
+                  </div>
+                  <MessageList
+                    messages={messages}
+                    pendingBotTyping={pendingBotTyping}
+                    ephemeralBanner={ephemeralBanner}
+                    onDismissEphemeralBanner={dismissEphemeralBanner}
+                    emptyHint={messagesLoading ? "Загрузка…" : "Напишите первое сообщение в голосовой комнате."}
+                    channelName={selectedChannel.name}
+                    listKey={`voice:${selectedChannel.id}`}
+                    currentUserId={user.id}
+                    currentUserName={headerName}
+                    currentRole={currentRole}
+                    mentionNames={members.map((m) => m.user.displayName)}
+                    customEmojis={customEmojis}
+                    onRetry={(mid) => retryMessage(mid, senderForMessages)}
+                    onEdit={editMessage}
+                    onDelete={deleteMessage}
+                    onPin={pinMessage}
+                    onUnpin={unpinMessage}
+                    onToggleReaction={toggleReaction}
+                    onCreateAction={createActionItem}
+                    onToggleActionStatus={updateActionItemStatus}
+                    onOpenThread={(messageId) => {
+                      setSelectedThreadId(messageId);
+                      setRightRailCollapsed(false);
+                      if (isTabletOrSmaller) setMembersOpen(true);
+                    }}
+                    onPlayShared={(attachmentId) => void music.start(attachmentId)}
+                  />
+                  <TypingIndicator users={typingUsers} />
+                </div>
+              }
+              composer={
+                <MessageInput
+                  channelName={selectedChannel.name}
+                  draftKey={`channel:${selectedChannel.id}`}
+                  disabled={!isReady}
+                  hideSlashCommands
+                  mentionNames={members.map((m) => m.user.displayName)}
+                  customEmojis={customEmojis}
+                  onSend={(content, attachments, actionItem) =>
+                    sendMessage(content, senderForMessages, attachments, actionItem)
+                  }
+                  onTypingStart={emitTypingStart}
+                  onTypingStop={emitTypingStop}
+                  prefillContent={share.pendingContent}
+                  onPrefillConsumed={share.consume}
+                  prefillFiles={share.pendingFiles}
+                  onPrefillFilesConsumed={share.consumeFiles}
+                />
+              }
             />
           ) : (
             <VoicePlaceholder channelName={selectedChannel.name} />
@@ -2163,9 +2307,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
 
       {rightRailVisible && (
         <div className="ec-shell__members">
-          {/* v1.5.27 — right rail trio (Thread/Incident/IntelligencePanel)
-           * под Suspense; ThreadPanel + IncidentPanel lazy, IntelligencePanel
-           * eager (всегда default). */}
+          {/* v1.6.32 — right rail trio fully lazy under Suspense:
+           * Thread/Incident/IntelligencePanel грузятся только при mount. */}
           <Suspense fallback={null}>
           {selectedThreadId ? (
             <ThreadPanel
@@ -2177,21 +2320,6 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               mentionNames={members.map((m) => m.user.displayName)}
               customEmojis={customEmojis}
               onClose={() => setSelectedThreadId(null)}
-            />
-          ) : showIncidents && activeServerId ? (
-            <IncidentPanel
-              serverId={activeServerId}
-              socket={socket}
-              currentUserId={user.id}
-              currentRole={currentRole}
-              onOpenChannel={(channelId) => {
-                setHomeOpen(false);
-                setServerView("chat");
-                setSelectedChannelId(channelId);
-                setShowIncidents(false);
-                if (isMobile) setNavOpen(false);
-              }}
-              onClose={() => setShowIncidents(false)}
             />
           ) : (
             <IntelligencePanel
@@ -2225,7 +2353,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
        * Все 12 lazy-modal'ов условно рендерятся (по флагам). Они typically
        * не co-render'ятся одновременно (один open at a time), потому единая
        * Suspense с fallback={null} даёт чистый UX без визуальных blip'ов.
-       * StatusMenu (line ~2230) — единственный non-lazy, инсайд скоупа OK. */}
+       * v1.6.32: StatusMenu тоже lazy, чтобы меню профиля не жило в initial AppShell. */}
       <Suspense fallback={null}>
       {openActionItemId && (
         <ActionItemDrawer
@@ -2277,28 +2405,6 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           onStartTrack={(id) => void music.start(id)}
           onAddToQueue={(id) => void music.addToQueue(id)}
           onStartPlaylist={(ids) => void music.startPlaylist(ids)}
-        />
-      )}
-
-      {showCreateTable && (
-        <CreateTableModal
-          onClose={() => setShowCreateTable(false)}
-          onCreate={async (templateId, name) => {
-            // v0.70: blank template = legacy create (single «Название» field),
-            // другие — серверный from-template endpoint с pre-seeded полями.
-            const id =
-              templateId === "blank"
-                ? await createOpTable(name)
-                : await createOpTableFromTemplate(templateId, name);
-            if (id) {
-              setHomeOpen(false);
-              setStatusBoardOpen(false);
-              setTeamHealthOpen(false);
-              setSelectedTableId(id);
-              return true;
-            }
-            return false;
-          }}
         />
       )}
 
@@ -2390,6 +2496,12 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
         />
       )}
 
+      {downloadOpen && (
+        <Suspense fallback={null}>
+          <DownloadAppModal onClose={() => setDownloadOpen(false)} />
+        </Suspense>
+      )}
+
       {statusAnchor && profile && (
         <StatusMenu
           anchorRect={statusAnchor}
@@ -2397,6 +2509,72 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           onSelect={(s) => void updateStatus(s)}
           onOpenProfile={() => setShowProfile(true)}
           onClose={() => setStatusAnchor(null)}
+          themeSlot={<ThemeToggle />}
+          tools={[
+            ...(notif.supported
+              ? [
+                  {
+                    key: "notif",
+                    label: "Уведомления",
+                    hint:
+                      notif.permission === "denied"
+                        ? "Заблокированы в браузере"
+                        : notif.permission === "default"
+                        ? "Нажмите, чтобы включить"
+                        : notif.enabled
+                        ? "Включены"
+                        : "Выключены",
+                    active: notif.permission === "granted" && notif.enabled,
+                    dim: notif.permission === "denied",
+                    closeOnClick: false,
+                    onClick: () => {
+                      if (notif.permission === "default") void notif.request();
+                      else notif.toggle();
+                    },
+                    icon:
+                      notif.permission === "granted" && notif.enabled ? (
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                          <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                          <path d="M13.73 21a2 2 0 01-3.46 0" />
+                        </svg>
+                      ) : (
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                          <path d="M13.73 21a2 2 0 01-3.46 0" />
+                          <path d="M18.63 13A17.89 17.89 0 0118 8" />
+                          <path d="M6.26 6.26A5.86 5.86 0 006 8c0 7-3 9-3 9h14" />
+                          <path d="M18 8a6 6 0 00-9.33-5" />
+                          <line x1="1" y1="1" x2="23" y2="23" />
+                        </svg>
+                      ),
+                  },
+                ]
+              : []),
+            {
+              key: "download",
+              label: "Скачать приложение",
+              hint: "Windows · Mac · Linux · Android · iOS",
+              onClick: () => setDownloadOpen(true),
+              icon: (
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+              ),
+            },
+            {
+              key: "help",
+              label: "Справка и онбординг",
+              onClick: openHelp,
+              icon: (
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                  <line x1="12" y1="17" x2="12.01" y2="17" />
+                </svg>
+              ),
+            },
+          ]}
         />
       )}
 
@@ -2435,13 +2613,14 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
         );
       })()}
 
-      {showSearch && activeServerId && (
+      {showSearch && (
         <SearchOverlay
           query={searchQuery}
           setQuery={setSearchQuery}
           filters={searchFilters}
           onChangeFilters={setSearchFilters}
           channels={channels.map((c) => ({ id: c.id, name: c.name }))}
+          quickItems={quickNavItems}
           results={searchResults}
           loading={searchLoading}
           error={searchError}

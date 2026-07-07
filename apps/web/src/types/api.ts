@@ -82,6 +82,8 @@ export type ChannelDto = {
   emoji?: string | null;
   internal?: boolean;
   expiresAt?: string | null;
+  /** v1.7.0 — дефолтный TTL исчезающих сообщений (секунды; null = выкл). */
+  messageTtlSeconds?: number | null;
   createdAt: string;
   _count?: { messages: number };
 };

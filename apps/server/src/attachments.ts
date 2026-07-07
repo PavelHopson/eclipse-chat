@@ -698,6 +698,8 @@ export type StandaloneTableFile = {
   size: number;
 };
 
+export type StandaloneTrainingVideo = StandaloneTableFile;
+
 function tablesDir(): string {
   const base = process.env.UPLOADS_DIR ?? "./uploads";
   return path.join(base, "tables");
@@ -705,6 +707,15 @@ function tablesDir(): string {
 
 function tablesUrl(filename: string): string {
   return `/uploads/tables/${filename}`;
+}
+
+function trainingVideosDir(): string {
+  const base = process.env.UPLOADS_DIR ?? "./uploads";
+  return path.join(base, "training-videos");
+}
+
+function trainingVideosUrl(filename: string): string {
+  return `/uploads/training-videos/${filename}`;
 }
 
 export async function processStandaloneFile(
@@ -739,6 +750,46 @@ export async function processStandaloneFile(
   await fs.writeFile(path.join(dir, filename), buf);
   return {
     url: tablesUrl(filename),
+    filename: input.filename,
+    mimeType: input.mimeType,
+    size: buf.length,
+  };
+}
+
+export async function processTrainingVideoFile(
+  input: AttachmentInput,
+  ownerId: string,
+): Promise<StandaloneTrainingVideo> {
+  if (!input.mimeType.startsWith("video/")) {
+    throw new Error("Only video files are allowed");
+  }
+  if (!ALLOWED_MIME.has(input.mimeType)) {
+    throw new Error(`Unsupported mime type: ${input.mimeType}`);
+  }
+  const buf = Buffer.from(input.dataBase64, "base64");
+  if (buf.length === 0) {
+    throw new Error("Empty file");
+  }
+  const limit = sizeLimitFor(input.mimeType);
+  if (buf.length > limit) {
+    throw new Error(
+      `File too large (max ${Math.round(limit / 1024 / 1024)}MB)`,
+    );
+  }
+  const sniffed = sniffMime(buf);
+  if (!isMimeConsistent(input.mimeType, sniffed)) {
+    throw new Error(
+      `File content does not match declared type ${input.mimeType} (detected: ${sniffed})`,
+    );
+  }
+  const dir = trainingVideosDir();
+  await fs.mkdir(dir, { recursive: true });
+  const ext = extFromMime(input.mimeType);
+  const baseName = sanitizeFilename(input.filename);
+  const filename = `${ownerId}-${Date.now()}-${baseName}.${ext}`;
+  await fs.writeFile(path.join(dir, filename), buf);
+  return {
+    url: trainingVideosUrl(filename),
     filename: input.filename,
     mimeType: input.mimeType,
     size: buf.length,

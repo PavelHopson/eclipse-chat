@@ -14,6 +14,8 @@ export type ServerRow = {
   description: string | null;
   /** v0.10.1: приветственное сообщение для новых members (до 500 символов). */
   welcomeMessage: string | null;
+  /** v1.5.85: JSON-encoded feature chips, max 5 items. */
+  features: string | null;
   /**
    * v0.27: режим сервера. ENGINEERING (default) — полный operator-инструментарий
    * (Status Board / Execution-таб / slash-hints / bot badges). CLIENT — портал
@@ -314,6 +316,7 @@ export function useServers(isReady: boolean) {
         brandColor?: string | null;
         description?: string | null;
         welcomeMessage?: string | null;
+        features?: string[] | null;
         mode?: "ENGINEERING" | "CLIENT";
       },
     ): Promise<boolean> => {
@@ -325,6 +328,7 @@ export function useServers(isReady: boolean) {
             brandColor: string | null;
             description: string | null;
             welcomeMessage: string | null;
+            features: string | null;
             mode: "ENGINEERING" | "CLIENT";
           };
         }>(`/api/servers/${encodeURIComponent(serverId)}/identity`, {
@@ -340,6 +344,7 @@ export function useServers(isReady: boolean) {
                   brandColor: res.identity.brandColor,
                   description: res.identity.description,
                   welcomeMessage: res.identity.welcomeMessage,
+                  features: res.identity.features,
                   mode: res.identity.mode,
                 }
               : s,

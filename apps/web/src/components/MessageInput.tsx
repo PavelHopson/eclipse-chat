@@ -29,25 +29,40 @@ const SLASH_COMMANDS: {
   { cmd: "followup", aliases: ["followup", "fu", "f"], type: "FOLLOW_UP", label: "/followup", desc: "поставить follow-up" },
 ];
 
+const TEXT_MACRO_COMMANDS = {
+  shrug: "¯\\_(ツ)_/¯",
+  tableflip: "(╯°□°)╯︵ ┻━┻",
+  unflip: "┬─┬ノ( º _ ºノ)",
+} as const;
+
 /**
  * Backend slash-commands из v1.2.14 (`apps/server/src/lib/slashCommands.ts`).
- * Frontend их не парсит — отправляет как обычный текст, backend transform'ит
- * (для `/me /shrug /tableflip /unflip`) или возвращает ephemeral (для `/help`).
- * Здесь только для autocomplete listing в slash-hint strip. `noArg=true` →
- * на выбор не добавляем trailing space (можно сразу Enter'ом отправить).
+ * `/me` и `/help` остаются backend-командами. ASCII-команды ниже перехватываем
+ * на клиенте как text macro, чтобы в чат не улетала служебная строка `/command`.
  */
 const BACKEND_COMMANDS: {
   cmd: string;
   label: string;
   desc: string;
   noArg?: boolean;
+  insertText?: string;
 }[] = [
   { cmd: "me", label: "/me", desc: "IRC-стиль: «имя <действие>»" },
-  { cmd: "shrug", label: "/shrug", desc: "добавить ¯\\_(ツ)_/¯", noArg: true },
-  { cmd: "tableflip", label: "/tableflip", desc: "(╯°□°)╯︵ ┻━┻", noArg: true },
-  { cmd: "unflip", label: "/unflip", desc: "┬─┬ノ( º_ºノ)", noArg: true },
+  { cmd: "shrug", label: "/shrug", desc: "вставить ¯\\_(ツ)_/¯", noArg: true, insertText: TEXT_MACRO_COMMANDS.shrug },
+  { cmd: "tableflip", label: "/tableflip", desc: "вставить (╯°□°)╯︵ ┻━┻", noArg: true, insertText: TEXT_MACRO_COMMANDS.tableflip },
+  { cmd: "unflip", label: "/unflip", desc: "вставить ┬─┬ノ( º _ ºノ)", noArg: true, insertText: TEXT_MACRO_COMMANDS.unflip },
   { cmd: "help", label: "/help", desc: "список команд (видно только тебе)", noArg: true },
 ];
+
+function parseTextMacroCommand(text: string): string | null {
+  const m = text.match(/^\/(\w+)(?:\s+([\s\S]*))?$/);
+  if (!m) return null;
+  const cmd = m[1].toLowerCase();
+  if (!(cmd in TEXT_MACRO_COMMANDS)) return null;
+  const macro = TEXT_MACRO_COMMANDS[cmd as keyof typeof TEXT_MACRO_COMMANDS];
+  const prefix = (m[2] ?? "").trim();
+  return prefix ? `${prefix} ${macro}` : macro;
+}
 
 function parseSlashCommand(
   text: string,
@@ -183,6 +198,36 @@ function humanSize(bytes: number): string {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
+function dataTransferHasType(dataTransfer: DataTransfer, type: string): boolean {
+  for (let i = 0; i < dataTransfer.types.length; i++) {
+    if (dataTransfer.types[i] === type) return true;
+  }
+  return false;
+}
+
+function isHtmlDragArtifact(dataTransfer: DataTransfer, file: File): boolean {
+  if (file.type !== "text/html") return false;
+  return dataTransferHasType(dataTransfer, "text/html") || dataTransferHasType(dataTransfer, "text/uri-list");
+}
+
+function attachmentFilesFromDrop(dataTransfer: DataTransfer): File[] {
+  return Array.from(dataTransfer.files).filter((file) => !isHtmlDragArtifact(dataTransfer, file));
+}
+
+function textFromDrop(dataTransfer: DataTransfer): string | null {
+  const uriList = dataTransfer.getData("text/uri-list");
+  if (uriList.trim()) {
+    const urls = uriList
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line && !line.startsWith("#"));
+    if (urls.length > 0) return urls.join("\n");
+  }
+
+  const plain = dataTransfer.getData("text/plain").trim();
+  return plain.length > 0 ? plain : null;
+}
+
 function formatDuration(ms: number): string {
   const total = Math.max(0, Math.floor(ms / 1000));
   const minutes = Math.floor(total / 60);
@@ -266,7 +311,6 @@ export function MessageInput({
 }: Props) {
   const [draft, setDraft] = useState(() => loadDraft(draftKey));
   const [sending, setSending] = useState(false);
-  const [focused, setFocused] = useState(false);
   const [pending, setPending] = useState<Pending[]>([]);
   const [attachError, setAttachError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -287,6 +331,9 @@ export function MessageInput({
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [emojiAnchor, setEmojiAnchor] = useState<DOMRect | null>(null);
   const emojiButtonRef = useRef<HTMLButtonElement>(null);
+  const [actionMenuOpen, setActionMenuOpen] = useState(false);
+  const actionMenuRef = useRef<HTMLDivElement>(null);
+  const actionButtonRef = useRef<HTMLButtonElement>(null);
 
   const insertEmoji = (emoji: string) => {
     const el = textareaRef.current;
@@ -319,6 +366,48 @@ export function MessageInput({
   const setDraftValue = (value: string) => {
     draftRef.current = value;
     setDraft(value);
+  };
+
+  const focusTextarea = () => {
+    queueMicrotask(() => textareaRef.current?.focus());
+  };
+
+  const appendDroppedText = (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    const current = draftRef.current;
+    const next = current.trim().length > 0 ? `${current}\n${trimmed}` : trimmed;
+    setDraftValue(next);
+    focusTextarea();
+  };
+
+  const handleDataTransferDrop = (dataTransfer: DataTransfer) => {
+    const files = attachmentFilesFromDrop(dataTransfer);
+    if (files.length > 0) {
+      addFiles(files);
+      return;
+    }
+    const text = textFromDrop(dataTransfer);
+    if (text) {
+      setAttachError(null);
+      appendDroppedText(text);
+    }
+  };
+
+  const openFilePicker = () => {
+    setActionMenuOpen(false);
+    fileInputRef.current?.click();
+  };
+
+  const startMenuVoiceRecording = () => {
+    setActionMenuOpen(false);
+    void startVoiceRecording();
+  };
+
+  const insertSlashCommand = (value: string) => {
+    setActionMenuOpen(false);
+    setDraftValue(value);
+    focusTextarea();
   };
 
   const refreshTrigger = () => {
@@ -436,6 +525,31 @@ export function MessageInput({
   useEffect(() => {
     return () => saveDraft(draftKeyRef.current, draftRef.current);
   }, []);
+
+  useEffect(() => {
+    if (!actionMenuOpen) return;
+
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (actionMenuRef.current?.contains(target)) return;
+      if (actionButtonRef.current?.contains(target)) return;
+      setActionMenuOpen(false);
+    };
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      setActionMenuOpen(false);
+      actionButtonRef.current?.focus();
+    };
+
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [actionMenuOpen]);
 
   // v1.5.4 — слушаем глобальный «ec-ai-trigger» (topbar AI agent button).
   // Фокусим textarea + если пусто — префиксим «@ai » для quick start.
@@ -720,9 +834,11 @@ export function MessageInput({
       // Operator slash-command: `/task ...` → отправляем title + actionItem.
       // В Client Mode парсинг отключён — клиенту не нужны task-shortcut'ы.
       const slash = hideSlashCommands ? null : parseSlashCommand(trimmed);
+      const textMacro = hideSlashCommands || slash ? null : parseTextMacroCommand(trimmed);
+      const outgoingText = textMacro ?? trimmed;
       const ok = slash
         ? await onSend(slash.title, uploads, { type: slash.type })
-        : await onSend(trimmed, uploads);
+        : await onSend(outgoingText, uploads);
       if (ok) {
         setDraftValue("");
         saveDraft(draftKeyRef.current, "");
@@ -749,10 +865,6 @@ export function MessageInput({
   const canSend = (draft.trim().length > 0 || pending.length > 0) && !disabled && !sending && !isRecording;
   // Grid-колонки композера зависят от hideAttachments — единственное
   // динамическое значение; фокус-состояние коробки — CSS :focus-within.
-  const boxGridColumns = hideAttachments
-    ? "auto minmax(0, 1fr) auto"
-    : "auto auto auto minmax(0, 1fr) auto";
-
   // Slash-command hint: показываем когда юзер набрал «/» + (опц.) часть
   // команды, но ещё не дошёл до пробела. @/:-popover имеет приоритет.
   // В Client Mode operator-команды скрыты (hideSlashCommands), но
@@ -782,9 +894,7 @@ export function MessageInput({
   const onDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
-    if (e.dataTransfer.files.length > 0) {
-      addFiles(e.dataTransfer.files);
-    }
+    handleDataTransferDrop(e.dataTransfer);
   };
 
   // v1.5.15 — window-level drag detection: full-screen overlay portal,
@@ -827,8 +937,7 @@ export function MessageInput({
       e.preventDefault();
       dragCounter = 0;
       setWindowDragOver(false);
-      const files = e.dataTransfer?.files;
-      if (files && files.length > 0) addFiles(files);
+      if (e.dataTransfer) handleDataTransferDrop(e.dataTransfer);
     };
     window.addEventListener("dragenter", onWinDragEnter);
     window.addEventListener("dragleave", onWinDragLeave);
@@ -963,8 +1072,8 @@ export function MessageInput({
               className="ec-slash-hint__item"
               onMouseDown={(e) => {
                 e.preventDefault();
-                // noArg → без trailing space, можно сразу Enter.
-                setDraftValue(c.noArg ? `/${c.cmd}` : `/${c.cmd} `);
+                // ASCII-команды вставляем как текст, чтобы в ленте не было служебной строки `/command`.
+                setDraftValue(c.insertText ?? (c.noArg ? `/${c.cmd}` : `/${c.cmd} `));
                 queueMicrotask(() => textareaRef.current?.focus());
               }}
             >
@@ -974,21 +1083,17 @@ export function MessageInput({
           ))}
         </div>
       )}
-      {/* Operator-strip над композером (см. v1.1.90 — оставлен как identity). */}
-      <div className="ec-composer-strip">
-        <span className="ec-composer-strip__pill">
-          {">_"} Защищённый канал
-        </span>
-        <span className="ec-composer-strip__signal">
-          {focused ? "печатает…" : "в эфире"}
-          <span className="ec-composer-scan-dots" aria-hidden>
-            <span /><span /><span />
-          </span>
-        </span>
-      </div>
-      <div className="ec-composer-box" style={{ gridTemplateColumns: boxGridColumns }}>
+      {/* Clean redesign: декоративный operator-strip («>_ Защищённый канал» +
+          фейковое «в эфире» + scan-dots) убран — sci-fi-театр + ложный
+          security-claim. Композер ниже самодостаточен. */}
+      <div
+        className={
+          "ec-composer-box" +
+          (hideAttachments ? " ec-composer-box--minimal" : " ec-composer-box--full")
+        }
+      >
         {!hideAttachments && (
-          <>
+          <div className="ec-composer-action-root">
         <input
           ref={fileInputRef}
           type="file"
@@ -1001,33 +1106,105 @@ export function MessageInput({
           style={{ display: "none" }}
         />
         <button
+          ref={actionButtonRef}
           type="button"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={disabled || pending.length >= MAX_PER_MESSAGE || isRecording}
-          className="ec-composer-icon-btn ec-rotate-hover"
-          title="Прикрепить файлы"
-          aria-label="Прикрепить файлы"
+          onClick={() => setActionMenuOpen((open) => !open)}
+          disabled={disabled || isRecording}
+          className="ec-composer-plus"
+          title="Добавить"
+          aria-label="Открыть действия сообщения"
+          aria-expanded={actionMenuOpen}
+          aria-haspopup="menu"
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.49" />
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" aria-hidden>
+            <path d="M12 5v14M5 12h14" />
           </svg>
         </button>
-            <button
-              type="button"
-              onClick={() => (isRecording ? stopVoiceRecording(true) : void startVoiceRecording())}
-              disabled={disabled || sending || pending.length >= MAX_PER_MESSAGE}
-              className={isRecording ? "ec-composer-icon-btn ec-composer-icon-btn--recording" : "ec-composer-icon-btn"}
-              title={isRecording ? "Завершить запись" : "Записать голосовое"}
-              aria-label={isRecording ? "Завершить запись голосового" : "Записать голосовое сообщение"}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
-                <path d="M19 10v2a7 7 0 01-14 0v-2" />
-                <line x1="12" y1="19" x2="12" y2="23" />
-                <line x1="8" y1="23" x2="16" y2="23" />
-              </svg>
-            </button>
-          </>
+            {actionMenuOpen && (
+              <div ref={actionMenuRef} className="ec-composer-action-menu" role="menu" aria-label="Действия сообщения">
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="ec-composer-action-menu__item"
+                  onClick={openFilePicker}
+                  disabled={disabled || pending.length >= MAX_PER_MESSAGE}
+                >
+                  <span className="ec-composer-action-menu__icon" aria-hidden>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21.44 11.05 12.25 20.24a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 1 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.49" />
+                    </svg>
+                  </span>
+                  <span>Отправить файл</span>
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="ec-composer-action-menu__item"
+                  onClick={startMenuVoiceRecording}
+                  disabled={disabled || sending || pending.length >= MAX_PER_MESSAGE}
+                >
+                  <span className="ec-composer-action-menu__icon" aria-hidden>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3Z" />
+                      <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                      <path d="M12 19v4M8 23h8" />
+                    </svg>
+                  </span>
+                  <span>Голосовое сообщение</span>
+                </button>
+                {!hideSlashCommands && (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="ec-composer-action-menu__item"
+                    onClick={() => insertSlashCommand("/task ")}
+                  >
+                    <span className="ec-composer-action-menu__icon" aria-hidden>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M9 11l2 2 4-5" />
+                        <path d="M20 6 9 17l-5-5" />
+                      </svg>
+                    </span>
+                    <span>Создать задачу</span>
+                  </button>
+                )}
+                <button type="button" role="menuitem" className="ec-composer-action-menu__item" disabled>
+                  <span className="ec-composer-action-menu__icon" aria-hidden>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15a4 4 0 0 1-4 4H7l-4 4V7a4 4 0 0 1 4-4h6" />
+                      <path d="M16 3h5v5M21 3l-7 7" />
+                    </svg>
+                  </span>
+                  <span>Создать ветку</span>
+                  <span className="ec-composer-action-menu__soon">скоро</span>
+                </button>
+                <button type="button" role="menuitem" className="ec-composer-action-menu__item" disabled>
+                  <span className="ec-composer-action-menu__icon" aria-hidden>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M4 7h16M4 12h10M4 17h7" />
+                    </svg>
+                  </span>
+                  <span>Создать опрос</span>
+                  <span className="ec-composer-action-menu__soon">скоро</span>
+                </button>
+                {!hideSlashCommands && (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="ec-composer-action-menu__item"
+                    onClick={() => insertSlashCommand("/")}
+                  >
+                    <span className="ec-composer-action-menu__icon" aria-hidden>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 3l1.9 5.8L20 10l-4.6 3.8L16.8 20 12 16.7 7.2 20l1.4-6.2L4 10l6.1-1.2L12 3Z" />
+                      </svg>
+                    </span>
+                    <span>Использовать команды</span>
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         )}
         <button
           ref={emojiButtonRef}
@@ -1071,9 +1248,7 @@ export function MessageInput({
               refreshTrigger();
             }
           }}
-          onFocus={() => setFocused(true)}
           onBlur={() => {
-            setFocused(false);
             // Dismiss popover с задержкой — чтобы успел сработать onClick по item
             setTimeout(() => setTrigger(null), 120);
           }}

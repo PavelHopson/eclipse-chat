@@ -11,10 +11,19 @@ import {
   RolesSection,
 } from "./server-hub/ServerHubSections";
 import { ServerAuditLogSection } from "./server-hub/ServerAuditLogSection";
+import { ServerInvitesManager } from "./server-hub/ServerInvitesManager";
 import type { MemberRole, MemberRow } from "../hooks/useMembers";
 import type { ServerRow } from "../hooks/useServers";
 import type { ChannelRow } from "../hooks/useChannels";
 import { resolveAssetUrl } from "../lib/assets";
+import { serverBannerGradient } from "../lib/serverBanner";
+import {
+  cleanServerFeatures,
+  encodeServerFeatures,
+  MAX_SERVER_FEATURES,
+  MAX_SERVER_FEATURE_LENGTH,
+  parseServerFeatures,
+} from "../lib/serverFeatures";
 
 /**
  * ServerHubModal — v0.97 UX refactor.
@@ -59,6 +68,7 @@ type Props = {
     brandColor?: string | null;
     description?: string | null;
     welcomeMessage?: string | null;
+    features?: string[] | null;
     mode?: "ENGINEERING" | "CLIENT";
   }) => Promise<boolean>;
   onUpdateLock?: (locked: boolean, reason?: string | null) => Promise<boolean>;
@@ -156,6 +166,10 @@ export function ServerHubModal({
   const [brandColor, setBrandColor] = useState(server.brandColor ?? "");
   const [description, setDescription] = useState(server.description ?? "");
   const [welcomeMessage, setWelcomeMessage] = useState(server.welcomeMessage ?? "");
+  const [features, setFeatures] = useState<string[]>(() => {
+    const parsed = parseServerFeatures(server.features);
+    return parsed.length > 0 ? parsed : [""];
+  });
   const [saving, setSaving] = useState(false);
   const [savedFlash, setSavedFlash] = useState(false);
 
@@ -176,6 +190,7 @@ export function ServerHubModal({
   const nameValid = trimmedName.length >= 1 && trimmedName.length <= 80;
   const parsed = parseHsl(brandColor);
   const inviteUrl = buildInviteUrl(server.inviteCode);
+  const cleanedFeatures = cleanServerFeatures(features);
 
   const applyBrandPreview = (hsl: string) => {
     if (/^\d{1,3}\s+\d{1,3}%\s+\d{1,3}%$/.test(hsl)) {
@@ -193,6 +208,7 @@ export function ServerHubModal({
         brandColor: brandColor.trim() || null,
         description: description.trim() || null,
         welcomeMessage: welcomeMessage.trim() || null,
+        features: cleanedFeatures.length > 0 ? cleanedFeatures : null,
         mode,
       });
       if (ok) {
@@ -283,6 +299,25 @@ export function ServerHubModal({
     const ok = await onUpdateLock(locked, locked ? lockReason : null);
     if (!ok) setError(locked ? "Не удалось включить изоляцию" : "Не удалось снять изоляцию");
     setLockBusy(false);
+  };
+
+  const updateFeature = (index: number, value: string) => {
+    setFeatures((prev) =>
+      prev.map((feature, i) =>
+        i === index ? value.slice(0, MAX_SERVER_FEATURE_LENGTH) : feature,
+      ),
+    );
+  };
+
+  const addFeature = () => {
+    setFeatures((prev) => (prev.length >= MAX_SERVER_FEATURES ? prev : [...prev, ""]));
+  };
+
+  const removeFeature = (index: number) => {
+    setFeatures((prev) => {
+      const next = prev.filter((_, i) => i !== index);
+      return next.length > 0 ? next : [""];
+    });
   };
 
   const navGroups: NavGroup[] = [
@@ -515,18 +550,31 @@ export function ServerHubModal({
               ) : (
                 <div
                   style={{
+                    position: "relative",
                     aspectRatio: "3 / 1",
                     borderRadius: "var(--ec-radius-lg)",
-                    border: "1px dashed var(--ec-border-default)",
-                    background:
-                      "linear-gradient(135deg, var(--ec-surface-2), var(--ec-surface-3))",
+                    border: "1px solid var(--ec-border-default)",
+                    overflow: "hidden",
+                    backgroundImage: serverBannerGradient({
+                      id: server.id,
+                      brandColor: brandColor.trim() || null,
+                    }),
+                    backgroundSize: "cover",
                     display: "grid",
                     placeItems: "center",
-                    color: "var(--ec-text-muted)",
-                    fontSize: "var(--ec-text-sm)",
                   }}
                 >
-                  Баннер не задан
+                  <span
+                    style={{
+                      padding: "var(--ec-space-1) var(--ec-space-3)",
+                      borderRadius: "999px",
+                      background: "var(--ec-overlay-bg)",
+                      color: "var(--ec-text-strong)",
+                      fontSize: "var(--ec-text-sm)",
+                    }}
+                  >
+                    Авто-градиент — нет изображения
+                  </span>
                 </div>
               )}
               <div style={{ display: "flex", gap: "var(--ec-space-2)", flexWrap: "wrap" }}>
@@ -557,7 +605,8 @@ export function ServerHubModal({
               </div>
               <p className="ec-hub-hint">
                 1500×500, до 25 MB. Конвертируется в webp. Показывается в шапке
-                чата при пустой комнате и в Обзоре пространства.
+                чата при пустой комнате и в Обзоре пространства. Без изображения
+                сервер показывает авто-градиент по цвету акцента.
               </p>
             </div>
           </section>
@@ -712,9 +761,7 @@ export function ServerHubModal({
                         flexDirection: "column",
                         gap: 4,
                         transition: "all var(--ec-dur-fast) var(--ec-ease)",
-                        boxShadow: active
-                          ? "0 0 0 1px var(--ec-accent), 0 0 14px -2px hsl(258 90% 66% / 0.3)"
-                          : "none",
+                        boxShadow: active ? "0 0 0 1px var(--ec-accent)" : "none",
                       }}
                     >
                       <span style={{ fontSize: "var(--ec-text-sm)", fontWeight: 700 }}>
@@ -752,6 +799,50 @@ export function ServerHubModal({
                   {description.length}/1000
                 </span>
               </p>
+            </div>
+          </section>
+
+          <section>
+            <h3 className="ec-hub-label">Ключевые особенности</h3>
+            <div className="ec-hub-card">
+              <div className="ec-hub-feature-editor">
+                {features.map((feature, index) => (
+                  <div key={index} className="ec-hub-feature-row">
+                    <input
+                      type="text"
+                      value={feature}
+                      onChange={(e) => updateFeature(index, e.target.value)}
+                      maxLength={MAX_SERVER_FEATURE_LENGTH}
+                      placeholder={index === 0 ? "Например: строгие правила" : "Ещё тезис"}
+                      className="ec-hub-input ec-hub-feature-input"
+                    />
+                    <span className="ec-hub-feature-count">
+                      {feature.trim().length}/{MAX_SERVER_FEATURE_LENGTH}
+                    </span>
+                    <button
+                      type="button"
+                      className="ec-hub-feature-remove"
+                      onClick={() => removeFeature(index)}
+                      aria-label="Удалить особенность"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div className="ec-hub-actions">
+                <p className="ec-hub-hint">
+                  До {MAX_SERVER_FEATURES} коротких тезисов. Показываются чипами в путеводителе.
+                </p>
+                <button
+                  type="button"
+                  onClick={addFeature}
+                  disabled={features.length >= MAX_SERVER_FEATURES}
+                  className="ec-btn ec-btn--ghost ec-btn--sm"
+                >
+                  + Добавить
+                </button>
+              </div>
             </div>
           </section>
 
@@ -808,6 +899,7 @@ export function ServerHubModal({
                 name: trimmedName || server.name,
                 description: description.trim() || null,
                 welcomeMessage: welcomeMessage.trim() || null,
+                features: encodeServerFeatures(features),
                 brandColor: brandColor.trim() || null,
                 mode,
               }}
@@ -849,12 +941,17 @@ export function ServerHubModal({
       )}
 
       {active === "invite" && (
-        <InviteSection
-          inviteCode={server.inviteCode}
-          inviteUrl={inviteUrl}
-          copyState={copyState}
-          onCopy={(text, which) => void copy(text, which)}
-        />
+        <>
+          <InviteSection
+            inviteCode={server.inviteCode}
+            inviteUrl={inviteUrl}
+            copyState={copyState}
+            onCopy={(text, which) => void copy(text, which)}
+          />
+          {isAdminOrOwner && (
+            <ServerInvitesManager serverId={server.id} buildInviteUrl={buildInviteUrl} />
+          )}
+        </>
       )}
 
       {active === "bots" && isAdminOrOwner && <BotsTab serverId={server.id} />}
@@ -916,7 +1013,8 @@ export function ServerHubModal({
               {isOwner ? (
                 <DeleteButton
                   label="Удалить"
-                  confirmMessage={`Удалить пространство «${server.name}»? Это удалит все комнаты и сообщения. Действие необратимо.`}
+                  confirmTitle="Удалить пространство?"
+                  confirmMessage={`«${server.name}» и все комнаты и сообщения внутри будут удалены безвозвратно.`}
                   onDelete={handleDelete}
                   disabled={busy}
                 />
