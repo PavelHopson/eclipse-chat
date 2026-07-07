@@ -495,119 +495,6 @@
   isolation: isolate;
   animation: ec-hero-access-mount 720ms var(--L-ease-out) both;
 }
-/* v1.3.12 — hidden SVG defs (filter not visible itself) */
-.ec-hero-access__svg-defs {
-  position: absolute;
-  width: 0;
-  height: 0;
-  overflow: hidden;
-  pointer-events: none;
-}
-
-/* v1.4.1 — Corner bracket markers (4 cyan SVG corners на frame edges).
- * Pulse animation breathes glow. Soft cyan signal-soft. */
-.ec-hero-access__corner {
-  position: absolute;
-  z-index: 3;
-  color: var(--L-signal-soft);
-  filter: drop-shadow(0 0 6px rgba(154, 216, 239, 0.55));
-  pointer-events: none;
-  animation: ec-hero-access-corner-pulse 4s ease-in-out infinite;
-}
-.ec-hero-access__corner--tl {
-  top: 10px;
-  left: 10px;
-}
-.ec-hero-access__corner--tr {
-  top: 10px;
-  right: 10px;
-  transform: scaleX(-1);
-}
-.ec-hero-access__corner--bl {
-  bottom: 10px;
-  left: 10px;
-  transform: scaleY(-1);
-}
-.ec-hero-access__corner--br {
-  bottom: 10px;
-  right: 10px;
-  transform: scale(-1, -1);
-}
-@keyframes ec-hero-access-corner-pulse {
-  0%, 100% {
-    opacity: 0.7;
-    filter: drop-shadow(0 0 6px rgba(154, 216, 239, 0.45));
-  }
-  50% {
-    opacity: 1;
-    filter: drop-shadow(0 0 12px rgba(154, 216, 239, 0.85));
-  }
-}
-/* v1.3.12 — Electric Border Effect layered around frame.
- * Adapted from docs/design/effects/Electric Border Effect/.
- * Cyan #00fffb → наш --L-signal #5db5d9. Multi-layer blur stack + SVG
- * turbulence/displacement filter creates wavy electric line.
- */
-.ec-hero-access__electric {
-  position: absolute;
-  inset: -2px;
-  border-radius: 17px;
-  pointer-events: none;
-  z-index: 0;
-}
-.ec-hero-access__electric-border {
-  position: absolute;
-  inset: 0;
-  border: 2px solid var(--L-signal);
-  border-radius: inherit;
-  filter: url(#ec-electric-border);
-  opacity: 0.85;
-}
-.ec-hero-access__electric-glow {
-  position: absolute;
-  inset: 0;
-  border: 2px solid var(--L-signal);
-  border-radius: inherit;
-  pointer-events: none;
-}
-.ec-hero-access__electric-glow--1 {
-  filter: url(#ec-electric-border) blur(2px);
-  opacity: 0.55;
-}
-.ec-hero-access__electric-glow--2 {
-  border-color: var(--L-signal-soft);
-  filter: url(#ec-electric-border) blur(6px);
-  opacity: 0.5;
-}
-.ec-hero-access__electric-overlay {
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: linear-gradient(
-    -30deg,
-    rgba(154, 216, 239, 0.5),
-    transparent 30%,
-    transparent 70%,
-    rgba(154, 216, 239, 0.5)
-  );
-  filter: blur(18px);
-  mix-blend-mode: overlay;
-  opacity: 0.45;
-}
-.ec-hero-access__electric-bg {
-  position: absolute;
-  inset: -8px;
-  border-radius: 24px;
-  background: linear-gradient(
-    -30deg,
-    var(--L-signal-soft),
-    transparent,
-    var(--L-signal)
-  );
-  filter: blur(34px);
-  opacity: 0.22;
-  z-index: -1;
-}
 /* Top cyan signal line (moved to ::after to avoid conflict с
  * holographic shimmer ::before added in v1.4.0) */
 .ec-hero-access__frame::after {
@@ -895,52 +782,6 @@
   cursor: not-allowed;
 }
 
-/* v1.3.12 — Password scanner beam.
- * Adapted from docs/design/effects/Сканнер пароля/. При scanning state
- * — вертикальная cyan beam slides слева направо поверх input + scan
- * background sweep на input. */
-.ec-hero-access__scan {
-  position: absolute;
-  inset: 0;
-  border-radius: 10px;
-  overflow: hidden;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 120ms var(--L-ease-out);
-  z-index: 2;
-}
-.ec-hero-access__input-wrap--password.is-scanning .ec-hero-access__scan {
-  opacity: 1;
-}
-.ec-hero-access__input-wrap--password.is-scanning input {
-  background: linear-gradient(90deg, rgba(93, 181, 217, 0.32) 50%, rgba(4, 8, 13, 0.72) 100%);
-  background-size: 200% 100%;
-  animation: ec-hero-access-scan-bg 600ms ease-out both;
-}
-.ec-hero-access__scan-beam {
-  position: absolute;
-  top: 4px;
-  bottom: 4px;
-  left: 0;
-  width: 2px;
-  background: var(--L-signal-soft);
-  box-shadow:
-    0 0 8px 2px rgba(93, 181, 217, 0.85),
-    0 0 16px 6px rgba(93, 181, 217, 0.45);
-  border-radius: 1px;
-}
-.ec-hero-access__input-wrap--password.is-scanning .ec-hero-access__scan-beam {
-  animation: ec-hero-access-scan-beam 600ms ease-out both;
-}
-@keyframes ec-hero-access-scan-bg {
-  0% { background-position: 0 0; }
-  100% { background-position: -200% 0; }
-}
-@keyframes ec-hero-access-scan-beam {
-  0% { left: 0; opacity: 1; }
-  90% { opacity: 1; }
-  100% { left: calc(100% - 2px); opacity: 0; }
-}
 
 /* Error */
 .ec-hero-access__error {
@@ -2054,28 +1895,10 @@
   contain-intrinsic-size: 720px;
 }
 
-.ec-hero-access__electric-border {
-  filter: none;
-  opacity: 0.46;
-  border-width: 1px;
-}
-
-.ec-hero-access__electric-glow--1,
-.ec-hero-access__electric-glow--2,
-.ec-hero-access__electric-overlay,
-.ec-hero-access__electric-bg {
-  display: none;
-}
-
 .ec-hero-access__frame::before {
   animation: none !important;
   opacity: 0.42;
   background-size: 100% 100%;
-}
-
-.ec-hero-access__corner {
-  animation: none !important;
-  opacity: 0.86;
 }
 
 .ec-hero-access__status-dot,
@@ -2152,99 +1975,6 @@
   background:
     linear-gradient(135deg, rgba(154, 216, 239, 0.08), transparent 42%),
     linear-gradient(315deg, rgba(139, 92, 246, 0.1), transparent 48%);
-}
-
-.ec-hero-access__corner {
-  display: none;
-}
-
-.ec-hero-access__topline {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  min-height: 26px;
-  font-family: var(--ec-font-mono, "JetBrains Mono", ui-monospace, monospace);
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: rgba(190, 218, 235, 0.72);
-}
-
-.ec-hero-access__topline-status,
-.ec-hero-access__topline-code {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-
-.ec-hero-access__topline-status span {
-  width: 7px;
-  height: 7px;
-  flex: 0 0 auto;
-  border-radius: 999px;
-  background: var(--L-status-active);
-  box-shadow: 0 0 14px rgba(65, 215, 154, 0.55);
-}
-
-.ec-hero-access__topline-code {
-  color: rgba(139, 160, 175, 0.62);
-}
-
-.ec-hero-access__sigil {
-  position: relative;
-  width: 92px;
-  height: 92px;
-  margin: 0 auto 2px;
-  display: grid;
-  place-items: center;
-  border-radius: 28px;
-  background:
-    radial-gradient(circle, rgba(139, 92, 246, 0.2), transparent 58%),
-    linear-gradient(145deg, rgba(9, 13, 22, 0.95), rgba(3, 7, 13, 0.86));
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    0 18px 42px rgba(0, 0, 0, 0.42),
-    0 0 34px rgba(139, 92, 246, 0.24);
-  overflow: hidden;
-}
-
-.ec-hero-access__sigil::before {
-  content: "";
-  position: absolute;
-  inset: 12px;
-  border: 1px solid rgba(93, 181, 217, 0.22);
-  border-radius: 999px;
-}
-
-.ec-hero-access__sigil-core {
-  width: 18px;
-  height: 18px;
-  border-radius: 999px;
-  background: linear-gradient(135deg, #f2d28d, #8b5cf6 58%, #5db5d9);
-  box-shadow:
-    0 0 18px rgba(139, 92, 246, 0.72),
-    0 0 28px rgba(93, 181, 217, 0.38);
-}
-
-.ec-hero-access__sigil-ring {
-  position: absolute;
-  border: 1px solid rgba(154, 216, 239, 0.44);
-  border-radius: 999px;
-}
-
-.ec-hero-access__sigil-ring--one {
-  width: 58px;
-  height: 58px;
-}
-
-.ec-hero-access__sigil-ring--two {
-  width: 78px;
-  height: 26px;
-  transform: rotate(-10deg);
-  border-color: rgba(139, 92, 246, 0.56);
 }
 
 .ec-hero-access__head {
@@ -2412,22 +2142,6 @@
     width: min(100%, 430px);
     padding: 18px;
   }
-
-  .ec-hero-access__sigil {
-    width: 76px;
-    height: 76px;
-    border-radius: 22px;
-  }
-
-  .ec-hero-access__sigil-ring--one {
-    width: 48px;
-    height: 48px;
-  }
-
-  .ec-hero-access__sigil-ring--two {
-    width: 64px;
-    height: 22px;
-  }
 }
 
 @media (max-width: 560px) {
@@ -2482,15 +2196,6 @@
     max-width: min(326px, calc(100vw - 80px)) !important;
     border-radius: 18px;
     padding: 16px;
-  }
-
-  .ec-hero-access__topline {
-    font-size: 9px;
-    letter-spacing: 0.1em;
-  }
-
-  .ec-hero-access__topline-code {
-    display: none;
   }
 
   .ec-hero-access__title {

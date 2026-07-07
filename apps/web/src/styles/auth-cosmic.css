@@ -77,11 +77,6 @@
   background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.55), rgba(93, 181, 217, 0.44), transparent);
 }
 
-.ec-hero-access__electric-bg,
-.ec-hero-access__electric-overlay {
-  opacity: 0.18;
-}
-
 .ec-hero-access__tabs,
 .ec-hero-access__input-wrap {
   background: rgba(4, 8, 14, 0.66);

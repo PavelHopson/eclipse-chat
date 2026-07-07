@@ -13,19 +13,16 @@ type HeroOperationalStageProps = {
 };
 
 /**
- * v1.4.1 — premium auth form polish (Pavel: «давай ещё с формой
- * авторизации что-то придумаем»):
+ * Экран входа. Функциональная форма без декоративного «киберпанк»-слоя:
  *   - Floating labels (label shrinks + slides up при focus/filled)
- *   - Field icons (UserIcon / MailIcon / LockIcon) внутри inputs left
- *     side, cyan glow pulse при focus
- *   - Tab switch slide transition — form content translateX horizontal
- *     при login↔register switch
- *   - Corner bracket markers (4 cyan SVG corners на frame edges)
- *
- * Сохраняет v1.4.0 effects:
- *   - Electric border + holographic shimmer
- *   - Password scanner beam
+ *   - Field icons (UserIcon / MailIcon / LockIcon) внутри inputs
+ *   - Tab switch slide transition при login↔register
  *   - Submit success state с checkmark
+ *
+ * v1.7.7 — снят декор входа (правило «не заставляй думать»,
+ * [[project_eclipse_chat_denoise_direction]]): убраны electric-border,
+ * sigil-бейдж, corner-brackets, topline-статус и password scanner-beam
+ * (последний ещё и задерживал показ пароля на 600ms — теперь мгновенно).
  */
 
 function EyeIcon() {
@@ -92,65 +89,6 @@ function LockIcon() {
   );
 }
 
-/** Corner bracket SVG для frame edges. */
-function CornerBracket({ position }: { position: "tl" | "tr" | "bl" | "br" }) {
-  return (
-    <span className={`ec-hero-access__corner ec-hero-access__corner--${position}`} aria-hidden>
-      <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-        <path d="M2 8V2h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-        <circle cx="2" cy="2" r="1.5" fill="currentColor" />
-      </svg>
-    </span>
-  );
-}
-
-/**
- * Electric Border SVG filter — turbulence + displacement map.
- */
-function ElectricBorderFilter() {
-  return (
-    <svg className="ec-hero-access__svg-defs" aria-hidden>
-      <defs>
-        <filter
-          id="ec-electric-border"
-          colorInterpolationFilters="sRGB"
-          x="-20%"
-          y="-20%"
-          width="140%"
-          height="140%"
-        >
-          <feTurbulence type="turbulence" baseFrequency="0.02" numOctaves="10" result="noise1" seed="1" />
-          <feOffset in="noise1" dx="0" dy="0" result="offsetNoise1">
-            <animate attributeName="dy" values="700; 0" dur="6s" repeatCount="indefinite" calcMode="linear" />
-          </feOffset>
-          <feTurbulence type="turbulence" baseFrequency="0.02" numOctaves="10" result="noise2" seed="1" />
-          <feOffset in="noise2" dx="0" dy="0" result="offsetNoise2">
-            <animate attributeName="dy" values="0; -700" dur="6s" repeatCount="indefinite" calcMode="linear" />
-          </feOffset>
-          <feTurbulence type="turbulence" baseFrequency="0.02" numOctaves="10" result="noise3" seed="2" />
-          <feOffset in="noise3" dx="0" dy="0" result="offsetNoise3">
-            <animate attributeName="dx" values="490; 0" dur="6s" repeatCount="indefinite" calcMode="linear" />
-          </feOffset>
-          <feTurbulence type="turbulence" baseFrequency="0.02" numOctaves="10" result="noise4" seed="2" />
-          <feOffset in="noise4" dx="0" dy="0" result="offsetNoise4">
-            <animate attributeName="dx" values="0; -490" dur="6s" repeatCount="indefinite" calcMode="linear" />
-          </feOffset>
-          <feComposite in="offsetNoise1" in2="offsetNoise2" result="part1" />
-          <feComposite in="offsetNoise3" in2="offsetNoise4" result="part2" />
-          <feBlend in="part1" in2="part2" mode="color-dodge" result="combinedNoise" />
-          <feDisplacementMap
-            in="SourceGraphic"
-            in2="combinedNoise"
-            scale="22"
-            xChannelSelector="R"
-            yChannelSelector="B"
-          />
-        </filter>
-      </defs>
-    </svg>
-  );
-}
-
 export function HeroOperationalStage({
   authMode,
   onOpenAuth,
@@ -164,7 +102,6 @@ export function HeroOperationalStage({
   const [displayName, setDisplayName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [scanning, setScanning] = useState(false);
   const [success, setSuccess] = useState(false);
   // v1.6.68 — self-serve сброс пароля по коду восстановления.
   const [recoveryMode, setRecoveryMode] = useState(false);
@@ -224,11 +161,7 @@ export function HeroOperationalStage({
 
   const handleRevealToggle = () => {
     if (!password) return;
-    setScanning(true);
-    setTimeout(() => {
-      setShowPassword((v) => !v);
-      setScanning(false);
-    }, 600);
+    setShowPassword((v) => !v);
   };
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -263,39 +196,8 @@ export function HeroOperationalStage({
 
   return (
     <div className="ec-hero-access" aria-label="Доступ к Eclipse Chat">
-      <ElectricBorderFilter />
-
       <Reveal className="ec-hero-access__frame" variant="panel">
-        {/* Electric border layers */}
-        <div className="ec-hero-access__electric" aria-hidden>
-          <div className="ec-hero-access__electric-border" />
-          <div className="ec-hero-access__electric-glow ec-hero-access__electric-glow--1" />
-          <div className="ec-hero-access__electric-glow ec-hero-access__electric-glow--2" />
-          <div className="ec-hero-access__electric-overlay" />
-          <div className="ec-hero-access__electric-bg" />
-        </div>
-
-        {/* Corner bracket markers */}
-        <CornerBracket position="tl" />
-        <CornerBracket position="tr" />
-        <CornerBracket position="bl" />
-        <CornerBracket position="br" />
-
         <div className="ec-hero-access__glow" aria-hidden />
-
-        <div className="ec-hero-access__topline" aria-hidden>
-          <span className="ec-hero-access__topline-status">
-            <span />
-            защищённый вход
-          </span>
-          <span className="ec-hero-access__topline-code">Eclipse Chat</span>
-        </div>
-
-        <div className="ec-hero-access__sigil" aria-hidden>
-          <span className="ec-hero-access__sigil-core" />
-          <span className="ec-hero-access__sigil-ring ec-hero-access__sigil-ring--one" />
-          <span className="ec-hero-access__sigil-ring ec-hero-access__sigil-ring--two" />
-        </div>
 
         <header className="ec-hero-access__head">
           <span className="ec-hero-access__eyebrow">
@@ -499,7 +401,7 @@ export function HeroOperationalStage({
 
             <div className="ec-hero-access__field">
               <div
-                className={`ec-hero-access__input-wrap ec-hero-access__input-wrap--icon ec-hero-access__input-wrap--password${scanning ? " is-scanning" : ""}${password ? " is-filled" : ""}`}
+                className={`ec-hero-access__input-wrap ec-hero-access__input-wrap--icon ec-hero-access__input-wrap--password${password ? " is-filled" : ""}`}
               >
                 <span className="ec-hero-access__field-icon" aria-hidden>
                   <LockIcon />
@@ -516,9 +418,6 @@ export function HeroOperationalStage({
                 <label htmlFor="hero-access-password" className="ec-hero-access__floating-label">
                   Пароль
                 </label>
-                <span className="ec-hero-access__scan" aria-hidden>
-                  <span className="ec-hero-access__scan-beam" />
-                </span>
                 <button
                   type="button"
                   className={`ec-hero-access__toggle${showPassword ? " is-open" : ""}`}
