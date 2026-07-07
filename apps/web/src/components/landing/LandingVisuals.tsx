@@ -253,13 +253,13 @@ export function HeroOperationalStage({
   const heading = recoveryMode
     ? "Восстановление пароля"
     : mode === "register"
-      ? "Активация контура"
-      : "Доступ к контуру";
+      ? "Создание аккаунта"
+      : "Вход в Eclipse Chat";
   const sub = recoveryMode
-    ? "Email, код восстановления и новый пароль."
+    ? "Введите email, код восстановления и новый пароль."
     : mode === "register"
-      ? "Создайте рабочую среду для команды."
-      : "Войдите в свой рабочий контур.";
+      ? "Создайте аккаунт — займёт минуту."
+      : "С возвращением. Войдите в свой аккаунт.";
 
   return (
     <div className="ec-hero-access" aria-label="Доступ к Eclipse Chat">
@@ -288,7 +288,7 @@ export function HeroOperationalStage({
             <span />
             защищённый вход
           </span>
-          <span className="ec-hero-access__topline-code">контур 01</span>
+          <span className="ec-hero-access__topline-code">Eclipse Chat</span>
         </div>
 
         <div className="ec-hero-access__sigil" aria-hidden>
@@ -300,17 +300,11 @@ export function HeroOperationalStage({
         <header className="ec-hero-access__head">
           <span className="ec-hero-access__eyebrow">
             <span className="ec-hero-access__eyebrow-dot" aria-hidden />
-            контур / {mode === "register" ? "запуск" : "доступ"}
+            {mode === "register" ? "Регистрация" : "Вход"}
           </span>
           <h2 className="ec-hero-access__title">{heading}</h2>
           <p className="ec-hero-access__sub">{sub}</p>
         </header>
-
-        <div className="ec-hero-access__assurance" aria-label="Свойства доступа">
-          <span>Self-hosted</span>
-          <span>TLS</span>
-          <span>2FA ready</span>
-        </div>
 
         {!recoveryMode && (
           <div className="ec-hero-access__tabs" role="tablist" aria-label="Режим доступа">
@@ -541,6 +535,22 @@ export function HeroOperationalStage({
             {authError && (
               <div className="ec-hero-access__error" role="alert">
                 {authError}
+                {mode === "login" && (
+                  <>
+                    {" "}
+                    <button
+                      type="button"
+                      className="ec-hero-access__hint-link"
+                      onClick={() => {
+                        setRecoveryMode(true);
+                        setRecError(null);
+                        setRecDone(false);
+                      }}
+                    >
+                      Восстановить пароль
+                    </button>
+                  </>
+                )}
               </div>
             )}
 
@@ -555,17 +565,17 @@ export function HeroOperationalStage({
                   <span className="ec-hero-access__submit-check">
                     <CheckIcon />
                   </span>
-                  {mode === "register" ? "Контур активирован" : "Вход разрешён"}
+                  {mode === "register" ? "Аккаунт создан" : "Вы вошли"}
                 </span>
               ) : (
                 <>
                   <span className="ec-hero-access__submit-label">
                     {loading
                       ? mode === "register"
-                        ? "Создаём контур…"
-                        : "Открываем…"
+                        ? "Создаём аккаунт…"
+                        : "Входим…"
                       : mode === "register"
-                        ? "Создать контур"
+                        ? "Создать аккаунт"
                         : "Войти"}
                   </span>
                   {!loading && (
@@ -580,7 +590,7 @@ export function HeroOperationalStage({
             <p className="ec-hero-access__hint">
               {mode === "register" ? (
                 <>
-                  Уже есть контур?{" "}
+                  Уже есть аккаунт?{" "}
                   <button
                     type="button"
                     className="ec-hero-access__hint-link"
@@ -591,7 +601,7 @@ export function HeroOperationalStage({
                 </>
               ) : (
                 <>
-                  Нет контура?{" "}
+                  Нет аккаунта?{" "}
                   <button
                     type="button"
                     className="ec-hero-access__hint-link"
@@ -620,9 +630,8 @@ export function HeroOperationalStage({
         <footer className="ec-hero-access__footer">
           <span className="ec-hero-access__footer-mark">
             <span className="ec-hero-access__footer-dot" aria-hidden />
-            шифрованный канал
+            Защищённое соединение
           </span>
-          <span className="ec-hero-access__footer-meta">self-hosted · TLS · 2FA</span>
         </footer>
       </Reveal>
     </div>
