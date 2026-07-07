@@ -1013,7 +1013,8 @@ export function ServerHubModal({
               {isOwner ? (
                 <DeleteButton
                   label="Удалить"
-                  confirmMessage={`Удалить пространство «${server.name}»? Это удалит все комнаты и сообщения. Действие необратимо.`}
+                  confirmTitle="Удалить пространство?"
+                  confirmMessage={`«${server.name}» и все комнаты и сообщения внутри будут удалены безвозвратно.`}
                   onDelete={handleDelete}
                   disabled={busy}
                 />
