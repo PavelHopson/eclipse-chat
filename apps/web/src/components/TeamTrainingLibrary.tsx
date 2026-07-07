@@ -5,6 +5,7 @@ import { resolveAssetUrl } from "../lib/assets";
 import { fileToBase64 } from "../lib/fileToBase64";
 import { SocketEvents } from "../lib/socket";
 import { parseYouTubeUrl, toYouTubeEmbedUrl } from "../lib/youtubeEmbed";
+import { useConfirm } from "./ConfirmDialog";
 
 type TrainingVideoSource = "youtube" | "file";
 
@@ -131,6 +132,7 @@ function normalizeLegacyCatalog(raw: unknown): Array<{ name: string; videos: Arr
 }
 
 export function TeamTrainingLibrary({ serverId, canUploadFiles, socket }: Props) {
+  const confirm = useConfirm();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const legacyImportRef = useRef<string | null>(null);
   const [sections, setSections] = useState<TrainingSection[]>([]);
@@ -296,7 +298,13 @@ export function TeamTrainingLibrary({ serverId, canUploadFiles, socket }: Props)
   }
 
   async function deleteSection(sectionId: string) {
-    if (!window.confirm("Удалить раздел тренировок? Видео внутри раздела тоже будут удалены.")) return;
+    const ok = await confirm({
+      title: "Удалить раздел тренировок?",
+      message: "Раздел и все видео внутри него будут удалены безвозвратно.",
+      confirmLabel: "Удалить раздел",
+      danger: true,
+    });
+    if (!ok) return;
     setBusy(true);
     try {
       const res = await api(`api/training-sections/${encodeURIComponent(sectionId)}`, { method: "DELETE" });

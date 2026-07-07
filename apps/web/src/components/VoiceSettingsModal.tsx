@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import { useEffect, useRef, useState } from "react";
 import { Modal } from "./Modal";
+import { useConfirm } from "./ConfirmDialog";
 import { useAudioDevices, keyCodeToLabel } from "../hooks/useAudioDevices";
 import {
   useVoiceSettings,
@@ -134,6 +135,7 @@ function VuMeter({ value }: { value: number }) {
 }
 
 export function VoiceSettingsModal({ onClose }: Props) {
+  const confirm = useConfirm();
   const devices = useAudioDevices();
   const {
     settings,
@@ -810,15 +812,15 @@ export function VoiceSettingsModal({ onClose }: Props) {
           </p>
           <button
             type="button"
-            onClick={() => {
-              if (
-                window.confirm(
-                  "Сбросить все голосовые настройки? Это удалит выбранные устройства, " +
-                    "режим активации (PTT/VAD), индивидуальные громкости участников.",
-                )
-              ) {
-                resetSettings();
-              }
+            onClick={async () => {
+              const ok = await confirm({
+                title: "Сбросить голосовые настройки?",
+                message:
+                  "Выбранные устройства, режим активации (PTT/VAD) и индивидуальные громкости участников вернутся к умолчаниям.",
+                confirmLabel: "Сбросить",
+                danger: true,
+              });
+              if (ok) resetSettings();
             }}
             className="ec-btn ec-btn--ghost ec-btn--sm ec-press"
             style={{

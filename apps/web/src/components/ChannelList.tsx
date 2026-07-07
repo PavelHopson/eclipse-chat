@@ -772,11 +772,16 @@ export function ChannelList({
     if (channelSearchActive && group.length === 0) return null;
     const collapsed = !channelSearchActive && collapsedCategoryIds.has(category.id);
     const isDropTarget = dropTargetCategoryId === category.id && draggedCategoryId !== category.id;
-    const confirmDeleteCategory = () => {
+    const confirmDeleteCategory = async () => {
       if (!onDeleteCategory) return;
-      if (window.confirm(`Удалить «${category.name.toUpperCase()}»? Каналы внутри станут несгруппированными`)) {
-        void onDeleteCategory(category.id);
-      }
+      const ok = await confirm({
+        title: "Удалить категорию?",
+        message: `«${category.name}» будет удалена, а каналы внутри останутся — просто станут без категории.`,
+        confirmLabel: "Удалить категорию",
+        danger: true,
+      });
+      if (!ok) return;
+      void onDeleteCategory(category.id);
     };
     return (
       <section
@@ -873,7 +878,7 @@ export function ChannelList({
                   aria-label={`Удалить категорию ${category.name}`}
                   onClick={(e) => {
                     e.stopPropagation();
-                    confirmDeleteCategory();
+                    void confirmDeleteCategory();
                   }}
                 >
                   ×
@@ -1467,12 +1472,17 @@ export function ChannelList({
           <button
             type="button"
             className="ec-popover-item ec-popover-item--danger"
-            onClick={() => {
+            onClick={async () => {
               const category = categoryMenu.category;
               setCategoryMenu(null);
-              if (window.confirm(`Удалить «${category.name.toUpperCase()}»? Каналы внутри станут несгруппированными`)) {
-                void onDeleteCategory?.(category.id);
-              }
+              const ok = await confirm({
+                title: "Удалить категорию?",
+                message: `«${category.name}» будет удалена, а каналы внутри останутся — просто станут без категории.`,
+                confirmLabel: "Удалить категорию",
+                danger: true,
+              });
+              if (!ok) return;
+              void onDeleteCategory?.(category.id);
             }}
           >
             Удалить

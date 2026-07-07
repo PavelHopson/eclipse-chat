@@ -7,6 +7,7 @@ import type { MemberRole, MemberRow } from "../hooks/useMembers";
 import type { ChannelRow } from "../hooks/useChannels";
 import type { TeamHealthData } from "../hooks/useTeamHealth";
 import { useComposio } from "../hooks/useComposio";
+import { useConfirm } from "./ConfirmDialog";
 import {
   PERMISSION_GROUPS,
   PERMISSION_LABELS_RU,
@@ -205,6 +206,7 @@ export function AdminPanel({
   onOpenClientPortal,
   onClose,
 }: Props) {
+  const confirm = useConfirm();
   const [tab, setTab] = useState<Tab>("overview");
   const [audit, setAudit] = useState<AuditEvent[] | null>(null);
   const [auditLoading, setAuditLoading] = useState(false);
@@ -300,7 +302,13 @@ export function AdminPanel({
   };
 
   const deleteRule = async (rule: AutomationRule) => {
-    if (!window.confirm(`Удалить правило «${rule.name}»?`)) return;
+    const ok = await confirm({
+      title: "Удалить правило?",
+      message: `Автоматизация «${rule.name}» перестанет работать и будет удалена.`,
+      confirmLabel: "Удалить правило",
+      danger: true,
+    });
+    if (!ok) return;
     try {
       await apiJson(`/api/automations/${encodeURIComponent(rule.id)}`, {
         method: "DELETE",

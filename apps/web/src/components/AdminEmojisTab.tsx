@@ -8,6 +8,7 @@ import {
 import { ApiError } from "../lib/api";
 import { fileToBase64 } from "../lib/fileToBase64";
 import { notifyEmojisChanged } from "../hooks/useServerEmojis";
+import { useConfirm } from "./ConfirmDialog";
 
 /**
  * v1.2.21 — Admin Emojis tab: upload + delete custom-emoji сервера.
@@ -38,6 +39,7 @@ function suggestShortcodeFromFilename(name: string): string {
 }
 
 export function AdminEmojisTab({ serverId }: Props) {
+  const confirm = useConfirm();
   const [emojis, setEmojis] = useState<ServerEmoji[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -127,7 +129,13 @@ export function AdminEmojisTab({ serverId }: Props) {
   };
 
   const removeEmoji = async (id: string, sc: string) => {
-    if (!window.confirm(`Удалить :${sc}:?`)) return;
+    const ok = await confirm({
+      title: "Удалить эмодзи?",
+      message: `Эмодзи :${sc}: пропадёт из этого пространства.`,
+      confirmLabel: "Удалить",
+      danger: true,
+    });
+    if (!ok) return;
     try {
       await deleteServerEmoji(id);
       setEmojis((prev) => prev?.filter((e) => e.id !== id) ?? null);
