@@ -27,6 +27,14 @@ type Props = {
 // slice-6b семейством). Inline остаётся ТОЛЬКО для per-role цветов
 // (roleColorStyle / RolePicker active — из BOT_ROLE_COLORS), это
 // legitimately dynamic. JS-hover в компоненте нет (bot-card :hover — CSS).
+//
+// Активные состояния кнопок действий — канон грамматики (как .ec-icon-btn):
+// акцент привязан к ARIA-состоянию, а не только к классу.
+//   · Авто / Agent          — переключатели → aria-pressed;
+//   · Тест / Стата / роль    — раскрывашки  → aria-expanded (акцент = открыто);
+//   · Личность / Промпт / Webhook — aria-expanded для раскрытия + флаг-класс
+//     .ec-bot-btn-set(-ok) для индикатора «настроено» (data-state, не «открыто»).
+// focus-visible ring — из .ec-btn:focus-visible (outline классы не трогают).
 
 /** Per-role цвета (bg/fg/border) — единственный legitimately-dynamic
  *  inline. Layout аватара/чипа держат классы .ec-bot-avatar /
@@ -592,6 +600,7 @@ export function BotsTab({ serverId }: Props) {
                     setRoleEditOpen((cur) => (cur === bot.id ? null : bot.id))
                   }
                   disabled={busy}
+                  aria-expanded={roleEditOpen === bot.id}
                   title="Изменить роль"
                   className="ec-bot-role-chip"
                   style={roleColorStyle(bot.role)}
@@ -645,7 +654,8 @@ export function BotsTab({ serverId }: Props) {
                 type="button"
                 onClick={() => void handleToggleAutoRespond(bot)}
                 disabled={busy}
-                className={`ec-btn ec-btn--ghost ec-btn--sm${bot.autoRespond ? " ec-bot-btn--ai" : ""}`}
+                aria-pressed={bot.autoRespond}
+                className="ec-btn ec-btn--ghost ec-btn--sm ec-bot-btn-ai"
                 title={
                   bot.autoRespond
                     ? "Выключить автоответ"
@@ -658,7 +668,8 @@ export function BotsTab({ serverId }: Props) {
                 type="button"
                 onClick={() => void updateBot(bot.id, { agentMode: !bot.agentMode })}
                 disabled={busy}
-                className={`ec-btn ec-btn--ghost ec-btn--sm${bot.agentMode ? " ec-bot-btn--ai" : ""}`}
+                aria-pressed={bot.agentMode}
+                className="ec-btn ec-btn--ghost ec-btn--sm ec-bot-btn-ai"
                 title={
                   bot.agentMode
                     ? "Agent mode: бот может вызывать tools (отправлять сообщения / создавать задачи / править таблицы)"
@@ -674,7 +685,8 @@ export function BotsTab({ serverId }: Props) {
                   setPersonalityEditOpen((cur) => (cur === bot.id ? null : bot.id));
                 }}
                 disabled={busy}
-                className={`ec-btn ec-btn--ghost ec-btn--sm${bot.personality ? " ec-bot-btn--accent" : ""}`}
+                aria-expanded={personalityEditOpen === bot.id}
+                className={`ec-btn ec-btn--ghost ec-btn--sm${bot.personality ? " ec-bot-btn-set" : ""}`}
                 title="Характер бота: имя, манера, юмор"
               >
                 Личность
@@ -686,7 +698,8 @@ export function BotsTab({ serverId }: Props) {
                   setPromptEditOpen((cur) => (cur === bot.id ? null : bot.id));
                 }}
                 disabled={busy}
-                className={`ec-btn ec-btn--ghost ec-btn--sm${bot.systemPromptOverride ? " ec-bot-btn--accent" : ""}`}
+                aria-expanded={promptEditOpen === bot.id}
+                className={`ec-btn ec-btn--ghost ec-btn--sm${bot.systemPromptOverride ? " ec-bot-btn-set" : ""}`}
                 title="Кастомный system prompt (advanced)"
               >
                 Промпт
@@ -695,7 +708,8 @@ export function BotsTab({ serverId }: Props) {
                 type="button"
                 onClick={() => handleOpenTest(bot)}
                 disabled={busy}
-                className={`ec-btn ec-btn--ghost ec-btn--sm${testOpen === bot.id ? " ec-bot-btn--accent" : ""}`}
+                aria-expanded={testOpen === bot.id}
+                className="ec-btn ec-btn--ghost ec-btn--sm ec-bot-btn-disc"
                 title="Тест AI-промпта без отправки в канал"
               >
                 Тест
@@ -704,7 +718,8 @@ export function BotsTab({ serverId }: Props) {
                 type="button"
                 onClick={() => void handleOpenUsage(bot)}
                 disabled={busy}
-                className={`ec-btn ec-btn--ghost ec-btn--sm${usageOpen === bot.id ? " ec-bot-btn--accent" : ""}`}
+                aria-expanded={usageOpen === bot.id}
+                className="ec-btn ec-btn--ghost ec-btn--sm ec-bot-btn-disc"
                 title="Статистика использования"
               >
                 Стата
@@ -716,7 +731,8 @@ export function BotsTab({ serverId }: Props) {
                   setWebhookOpen((cur) => (cur === bot.id ? null : bot.id));
                 }}
                 disabled={busy}
-                className={`ec-btn ec-btn--ghost ec-btn--sm${bot.webhookUrl ? " ec-bot-btn--ok" : ""}`}
+                aria-expanded={webhookOpen === bot.id}
+                className={`ec-btn ec-btn--ghost ec-btn--sm${bot.webhookUrl ? " ec-bot-btn-set--ok" : ""}`}
                 title={bot.webhookUrl ? "Webhook настроен — редактировать" : "Подключить webhook"}
               >
                 {bot.webhookUrl ? "🔗 Webhook" : "+ Webhook"}
