@@ -7,6 +7,7 @@ import { LinkEmbedCard } from "./LinkEmbedCard";
 import { YouTubeEmbedCard } from "./YouTubeEmbedCard";
 import { EmptyState } from "./EmptyState";
 import { EmptyChannelIcon } from "./EmptyIcons";
+import { useConfirm } from "./ConfirmDialog";
 import { extractFirstUrl } from "../lib/linkExtract";
 import { parseYouTubeUrl } from "../lib/youtubeEmbed";
 import { gameIcon } from "../lib/gameIcons";
@@ -178,6 +179,7 @@ export function MessageList({
   channelTopSubtitle = null,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const confirm = useConfirm();
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [pinBurstId, setPinBurstId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -328,7 +330,13 @@ export function MessageList({
 
   const handleDelete = async (m: MessageRow) => {
     if (!onDelete) return;
-    if (!window.confirm("Удалить сообщение?")) return;
+    const ok = await confirm({
+      title: "Удалить сообщение?",
+      message: "Сообщение будет удалено у всех в этом чате.",
+      confirmLabel: "Удалить",
+      danger: true,
+    });
+    if (!ok) return;
     await onDelete(m.id);
   };
 
