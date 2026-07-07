@@ -5,6 +5,7 @@ import { CategoryCreateModal } from "./CategoryCreateModal";
 import { CreateChannelModal } from "./CreateChannelModal";
 import { ChannelGlyph } from "./icons/ChannelCustomIcons";
 import { ServerActionsMenu } from "./server/ServerActionsMenu";
+import { useConfirm } from "./ConfirmDialog";
 import type { CategoryRow, ChannelRow } from "../hooks/useChannels";
 import type { MemberRow } from "../hooks/useMembers";
 import type { ChannelType, VoiceMeta } from "../lib/socket";
@@ -413,10 +414,16 @@ export function ChannelList({
     }
   };
 
+  const confirm = useConfirm();
+
   const handleDelete = async (channelId: string, channelName: string) => {
-    if (!window.confirm(`Удалить комнату «${channelName}»? Все сообщения внутри будут потеряны.`)) {
-      return;
-    }
+    const ok = await confirm({
+      title: "Удалить комнату?",
+      message: `«${channelName}» и все сообщения внутри будут удалены безвозвратно.`,
+      confirmLabel: "Удалить комнату",
+      danger: true,
+    });
+    if (!ok) return;
     setPendingDelete(channelId);
     try {
       await onDelete(channelId);

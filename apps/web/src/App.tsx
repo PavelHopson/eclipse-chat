@@ -4,6 +4,7 @@ import { useAuth } from "./hooks/useAuth";
 import { DeadlineNotFoundPage } from "./pages/DeadlineNotFoundPage";
 import { LandingPage } from "./pages/LandingPage";
 import { NativeApkBanner } from "./components/NativeApkBanner";
+import { ConfirmProvider } from "./components/ConfirmDialog";
 
 /**
  * v1.5.17 — Bundle split: AppShell и ClientPortalContainer теперь lazy.
@@ -242,7 +243,7 @@ export function App() {
   };
 
   return (
-    <>
+    <ConfirmProvider>
       {/* Ambient background layer — visible на всех view'ах через z-index -1 */}
       <div className="ec-ambient" aria-hidden />
       {/* v1.6.85 — баннер «новая версия APK» (только в Android-оболочке). */}
@@ -370,6 +371,6 @@ export function App() {
           <AppShell user={user} socketRev={socketRev} onLogout={logout} />
         </Suspense>
       )}
-    </>
+    </ConfirmProvider>
   );
 }

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import type { ServerRow } from "../../hooks/useServers";
+import { useConfirm } from "../ConfirmDialog";
 
 type Props = {
   open: boolean;
@@ -172,6 +173,7 @@ export function ServerActionsMenu({
 }: Props) {
   const [position, setPosition] = useState<MenuPosition>(() => computePosition(null));
   const [toast, setToast] = useState<string | null>(null);
+  const confirm = useConfirm();
   const menuRef = useRef<HTMLDivElement | null>(null);
   const isManager = canManage(server.role);
   const canLeave = server.role !== "OWNER";
@@ -228,7 +230,12 @@ export function ServerActionsMenu({
   };
 
   const leave = async () => {
-    const ok = window.confirm(`Покинуть «${server.name}»?`);
+    const ok = await confirm({
+      title: "Покинуть пространство?",
+      message: `Вы выйдете из «${server.name}». Вернуться можно будет по приглашению.`,
+      confirmLabel: "Покинуть",
+      danger: true,
+    });
     if (!ok) return;
     await onLeaveServer();
   };
