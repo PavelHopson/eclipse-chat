@@ -177,6 +177,7 @@ export function ServerActionsMenu({
   onToggleHideMutedChannels,
   onToggleIsolation,
   onLeaveServer,
+  onSelectView,
   renderMode = "portal",
 }: Props) {
   const [position, setPosition] = useState<MenuPosition>(() => computePosition(null));
