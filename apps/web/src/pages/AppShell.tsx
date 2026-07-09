@@ -1420,12 +1420,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
         }
       >
         <div className="ec-chat-header">
-          {homeOpen ? (
-            <span className="ec-chat-title">
-              <img className="ec-brand-mark ec-brand-mark--sm" src={brandMarkUrl} alt="" aria-hidden />
-              Главная
-            </span>
-          ) : helpOpen ? (
+          {/* «Главная» ретайрнута (homeOpen мёртв, единая nav-таксономия). */}
+          {helpOpen ? (
             <span className="ec-chat-title">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--ec-accent)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <circle cx="12" cy="12" r="10" />
