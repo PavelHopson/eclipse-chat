@@ -1090,11 +1090,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
 
       {/* Командный бар над чатом: локация (слева) · действия (справа). */}
       <header className="ec-shell__cmdbar">
-        {homeOpen ? (
-          <div className="ec-shell__breadcrumb ec-shell__loc">
-            <span className="ec-shell__loc-name">Главная</span>
-          </div>
-        ) : activeServer ? (
+        {activeServer ? (
           <div className="ec-shell__breadcrumb ec-shell__loc">
             <span className="ec-shell__loc-space">{activeServer.name}</span>
             {selectedChannel && (
@@ -1106,6 +1102,19 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                 </span>
               </>
             )}
+          </div>
+        ) : inDmMode ? (
+          // DM-сторона: локация «где я» (раньше здесь был null — верхний бар
+          // молчал в Личных/Друзьях). Консистентно с rail (Личные/Друзья/Я).
+          // «Главная» ретайрнута — homeOpen мёртв.
+          <div className="ec-shell__breadcrumb ec-shell__loc">
+            <span className="ec-shell__loc-name">
+              {friendsOpen
+                ? "Друзья"
+                : selectedDm
+                  ? dmTitle(selectedDm, user.id)
+                  : "Личные"}
+            </span>
           </div>
         ) : null}
         <div className="ec-shell__top-actions">
