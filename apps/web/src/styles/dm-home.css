@@ -58,6 +58,17 @@
   color: var(--ec-accent);
 }
 
+/* ---- new message (compose) ----
+   Первоклассное «начать переписку». Вид — от канонического .ec-btn--primary;
+   здесь только раскладка: во всю ширину колонки минус горизонтальные отступы. */
+.ec-dmx__compose {
+  display: flex;
+  width: calc(100% - var(--ec-space-4) * 2);
+  margin: 0 var(--ec-space-4) var(--ec-space-1);
+  justify-content: center;
+  gap: var(--ec-space-2);
+}
+
 /* ---- search ---- */
 .ec-dmx__search {
   position: relative;

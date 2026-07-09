@@ -22,6 +22,9 @@ type Props = {
   currentUserId: string;
   /** Открывает CreateGroupDmModal. Если undefined — кнопка скрыта. */
   onCreateGroup?: () => void;
+  /** Начать новую переписку — открывает «Друзья» (выбор собеседника).
+   *  Если undefined — кнопка «Новое сообщение» скрыта. */
+  onNewMessage?: () => void;
   /** Вход «Друзья» (FriendsPanel) — рендерится над списком ЛС. */
   friendsPanel?: ReactNode;
 };
@@ -95,6 +98,7 @@ export function DirectConversationList({
   onlineUserIds,
   currentUserId,
   onCreateGroup,
+  onNewMessage,
   friendsPanel,
 }: Props) {
   const [query, setQuery] = useState("");
@@ -143,6 +147,20 @@ export function DirectConversationList({
           </button>
         )}
       </div>
+
+      {onNewMessage && (
+        <button
+          type="button"
+          className="ec-btn ec-btn--primary ec-btn--sm ec-dmx__compose"
+          onClick={onNewMessage}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M12 20h9" />
+            <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+          </svg>
+          Новое сообщение
+        </button>
+      )}
 
       <div className="ec-dmx__search">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
