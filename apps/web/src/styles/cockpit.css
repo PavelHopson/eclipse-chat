@@ -1901,20 +1901,34 @@
   justify-content: flex-end;
 }
 
-/* Toggle-состояние ghost-кнопок действий (было inline color+border).
-   Держим цвет и на :hover — ghost:hover иначе сбросил бы его. */
-.ec-bot-btn--ai,
-.ec-bot-btn--ai:hover {
+/* Активные состояния ghost-кнопок действий. Канон грамматики (как
+   .ec-icon-btn[aria-pressed]): акцент привязан к ARIA-состоянию, а не к
+   присутствию класса —
+   · переключатели (Авто/Agent)      → aria-pressed;
+   · раскрывашки (Тест/Стата)        → aria-expanded (акцент = панель открыта);
+   · индикатор «настроено» (Личность/Промпт/Webhook) — data-state, НЕ
+     pressed/expanded, поэтому флаг-класс .ec-bot-btn-set(-ok); aria-expanded
+     на этих кнопках тоже есть — для доступности раскрытия, но акцент от него
+     не зависит (он значит «настроено», а не «открыто»).
+   Цвет держим и на :hover — иначе ghost:hover его сбросит. Ring фокуса —
+   из .ec-btn:focus-visible (outline не трогаем). */
+.ec-bot-btn-ai[aria-pressed="true"],
+.ec-bot-btn-ai[aria-pressed="true"]:hover {
   color: var(--ec-status-ai);
   border-color: color-mix(in srgb, var(--ec-status-ai) 35%, transparent);
 }
-.ec-bot-btn--accent,
-.ec-bot-btn--accent:hover {
+.ec-bot-btn-disc[aria-expanded="true"],
+.ec-bot-btn-disc[aria-expanded="true"]:hover {
   color: var(--ec-accent);
   border-color: var(--ec-border-accent);
 }
-.ec-bot-btn--ok,
-.ec-bot-btn--ok:hover {
+.ec-bot-btn-set,
+.ec-bot-btn-set:hover {
+  color: var(--ec-accent);
+  border-color: var(--ec-border-accent);
+}
+.ec-bot-btn-set--ok,
+.ec-bot-btn-set--ok:hover {
   color: var(--ec-ok);
   border-color: var(--ec-border-accent);
 }
