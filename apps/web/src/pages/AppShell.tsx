@@ -758,6 +758,20 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     setMembersOpen(false);
   };
 
+  // Вход «Друзья» — общая точка для FriendsPanel и кнопки «Новое сообщение»
+  // в списке ЛС. Вызывается только в DM-режиме (activeServerId уже null).
+  const openFriends = () => {
+    setHomeOpen(false);
+    setHelpOpen(false);
+    setAdminOpen(false);
+    setStatusBoardOpen(false);
+    setTeamHealthOpen(false);
+    setSelectedTableId(null);
+    setFriendsOpen(true);
+    selectDm(null);
+    if (isMobile) setNavOpen(false);
+  };
+
   const openHelp = () => {
     setHelpOpen(true);
     setFriendsOpen(false);
@@ -1280,21 +1294,12 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             onlineUserIds={new Set(members.filter((m) => m.online).map((m) => m.userId))}
             currentUserId={user.id}
             onCreateGroup={() => setCreateGroupOpen(true)}
+            onNewMessage={openFriends}
             friendsPanel={
               <FriendsPanel
                 pendingCount={friends.pendingIn.length}
                 active={friendsOpen}
-                onOpen={() => {
-                  setHomeOpen(false);
-                  setHelpOpen(false);
-                  setAdminOpen(false);
-                  setStatusBoardOpen(false);
-                  setTeamHealthOpen(false);
-                  setSelectedTableId(null);
-                  setFriendsOpen(true);
-                  selectDm(null);
-                  if (isMobile) setNavOpen(false);
-                }}
+                onOpen={openFriends}
               />
             }
           />
