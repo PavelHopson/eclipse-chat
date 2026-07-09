@@ -758,8 +758,10 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     setMembersOpen(false);
   };
 
-  // Вход «Друзья» — общая точка для FriendsPanel и кнопки «Новое сообщение»
-  // в списке ЛС. Вызывается только в DM-режиме (activeServerId уже null).
+  // Вход «Друзья» — общая точка: FriendsPanel, кнопка «Новое сообщение» в ЛС
+  // и rail-кнопка «Друзья». Может вызываться из ЛЮБОГО контекста (в т.ч. с
+  // открытого сервера или профиля), поэтому явно входим в DM-режим и снимаем
+  // профиль — иначе render-гейт `inDmMode ? friendsOpen ?…` не покажет FriendsView.
   const openFriends = () => {
     setHomeOpen(false);
     setHelpOpen(false);
@@ -767,6 +769,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     setStatusBoardOpen(false);
     setTeamHealthOpen(false);
     setSelectedTableId(null);
+    setShowProfile(false);
+    setActiveServerId(null);
     setFriendsOpen(true);
     selectDm(null);
     if (isMobile) setNavOpen(false);
@@ -945,6 +949,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     setHomeOpen(false);
     setHelpOpen(false);
     setAdminOpen(false);
+    setFriendsOpen(false);
+    setShowProfile(false);
     setActiveServerId(null);
     if (isMobile) setNavOpen(false);
   };
@@ -1006,11 +1012,14 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               if (canCreateServer) setShowCreateServer(true);
             }}
             onJoinRequest={() => setShowJoinServer(true)}
-            onHomeRequest={openHome}
-            homeActive={homeOpen}
-            dmsActive={inDmMode}
+            dmsActive={inDmMode && !friendsOpen && !showProfile}
             dmsUnread={dmConversations.reduce((sum, c) => sum + c.unread, 0)}
             onDmsRequest={navOpenDms}
+            onFriendsRequest={openFriends}
+            friendsActive={friendsOpen && !showProfile}
+            friendsPending={friends.pendingIn.length}
+            onProfileRequest={() => setShowProfile(true)}
+            profileActive={showProfile}
             canCreateServer={canCreateServer}
             ownedCount={ownedServersCount}
             maxOwnedServers={serverLimits.maxOwnedServers}
