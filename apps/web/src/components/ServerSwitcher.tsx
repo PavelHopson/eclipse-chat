@@ -26,8 +26,6 @@ type Props = {
   dmsActive?: boolean;
   dmsUnread?: number;
   onDmsRequest?: () => void;
-  onHomeRequest: () => void;
-  homeActive: boolean;
   onSearchRequest: () => void;
   searchEnabled: boolean;
   canCreateServer?: boolean;
@@ -132,8 +130,6 @@ export function ServerSwitcher({
   dmsActive = false,
   dmsUnread = 0,
   onDmsRequest,
-  onHomeRequest,
-  homeActive,
   onSearchRequest,
   searchEnabled,
   canCreateServer = true,
@@ -237,18 +233,8 @@ export function ServerSwitcher({
       }}
     >
       {/* ── NAV ─────────────────────────────────────────────── */}
-      <MenuRow
-        label="Главная"
-        active={homeActive}
-        onClick={pick(onHomeRequest)}
-        icon={
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <path d="M3 10.5L12 3l9 7.5" />
-            <path d="M5 9.5V21h14V9.5" />
-            <path d="M9 21v-6h6v6" />
-          </svg>
-        }
-      />
+      {/* «Главная» ретайрнута (единая таксономия): ЛС/Друзья/Я — в мобильном
+          BottomNav, серверы — ниже. Бренд-лого в шапке всё ещё ведёт на home. */}
       <MenuRow
         label="Поиск"
         disabled={!searchEnabled}

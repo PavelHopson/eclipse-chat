@@ -66,7 +66,7 @@ export function BottomNav({
 }: Props) {
   return (
     <nav className="ec-bnav" aria-label="Основная навигация">
-      <TabButton label="Серверы" active={active === "servers"} onClick={onServers}>
+      <TabButton label="Пространства" active={active === "servers"} onClick={onServers}>
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
           <rect x="3" y="3" width="7" height="7" rx="1.5" />
           <rect x="14" y="3" width="7" height="7" rx="1.5" />
