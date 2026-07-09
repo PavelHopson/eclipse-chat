@@ -1073,8 +1073,6 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                 setShowCreateServer(true);
               }}
               onJoinRequest={() => setShowJoinServer(true)}
-              onHomeRequest={openHome}
-              homeActive={homeOpen}
               onSearchRequest={() => {
                 if (activeServerId) setShowSearch(true);
               }}
