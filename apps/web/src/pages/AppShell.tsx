@@ -1090,11 +1090,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
 
       {/* Командный бар над чатом: локация (слева) · действия (справа). */}
       <header className="ec-shell__cmdbar">
-        {homeOpen ? (
-          <div className="ec-shell__breadcrumb ec-shell__loc">
-            <span className="ec-shell__loc-name">Главная</span>
-          </div>
-        ) : activeServer ? (
+        {activeServer ? (
           <div className="ec-shell__breadcrumb ec-shell__loc">
             <span className="ec-shell__loc-space">{activeServer.name}</span>
             {selectedChannel && (
@@ -1106,6 +1102,19 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                 </span>
               </>
             )}
+          </div>
+        ) : inDmMode ? (
+          // DM-сторона: локация «где я» (раньше здесь был null — верхний бар
+          // молчал в Личных/Друзьях). Консистентно с rail (Личные/Друзья/Я).
+          // «Главная» ретайрнута — homeOpen мёртв.
+          <div className="ec-shell__breadcrumb ec-shell__loc">
+            <span className="ec-shell__loc-name">
+              {friendsOpen
+                ? "Друзья"
+                : selectedDm
+                  ? dmTitle(selectedDm, user.id)
+                  : "Личные"}
+            </span>
           </div>
         ) : null}
         <div className="ec-shell__top-actions">
@@ -1411,12 +1420,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
         }
       >
         <div className="ec-chat-header">
-          {homeOpen ? (
-            <span className="ec-chat-title">
-              <img className="ec-brand-mark ec-brand-mark--sm" src={brandMarkUrl} alt="" aria-hidden />
-              Главная
-            </span>
-          ) : helpOpen ? (
+          {/* «Главная» ретайрнута (homeOpen мёртв, единая nav-таксономия). */}
+          {helpOpen ? (
             <span className="ec-chat-title">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--ec-accent)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <circle cx="12" cy="12" r="10" />
