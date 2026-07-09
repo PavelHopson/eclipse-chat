@@ -1901,11 +1901,39 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               }}
             />
           ) : !selectedDm ? (
-            <EmptyState
-              icon={<EmptyDmIcon />}
-              title="Личные сообщения"
-              hint="Выбери диалог слева или открой профиль участника любого пространства и нажми «Написать в личку»."
-            />
+            servers.length === 0 ? (
+              // Новичок без пространств — не бросаем в пустые ЛС, а сразу
+              // показываем главное действие: создать своё пространство.
+              <EmptyState
+                icon={<EmptyHomeIcon />}
+                title="Создайте своё пространство"
+                hint="Пространство — ваш чат: каналы, участники, задачи. Создайте своё или вступите по инвайту."
+                action={
+                  <div style={{ display: "flex", gap: "var(--ec-space-2)" }}>
+                    <button
+                      type="button"
+                      className="ec-btn ec-btn--primary ec-btn--sm"
+                      onClick={() => setShowCreateServer(true)}
+                    >
+                      Создать пространство
+                    </button>
+                    <button
+                      type="button"
+                      className="ec-btn ec-btn--sm"
+                      onClick={() => setShowJoinServer(true)}
+                    >
+                      Вступить по инвайту
+                    </button>
+                  </div>
+                }
+              />
+            ) : (
+              <EmptyState
+                icon={<EmptyDmIcon />}
+                title="Личные сообщения"
+                hint="Выбери диалог слева или нажми «Новое сообщение», чтобы начать переписку."
+              />
+            )
           ) : (
             <>
               <MessageList
