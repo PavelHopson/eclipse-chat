@@ -1,0 +1,41 @@
+services:
+  wireguard:
+    image: lscr.io/linuxserver/wireguard:latest
+    container_name: eclipse-wireguard
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TZ:-Europe/Kaliningrad}
+      - SERVERURL=${WG_SERVER_URL}
+      - SERVERPORT=${WG_SERVER_PORT:-51820}
+      - PEERS=${WG_PEERS:-pavel}
+      - PEERDNS=${WG_PEER_DNS:-1.1.1.1,9.9.9.9}
+      - INTERNAL_SUBNET=${WG_INTERNAL_SUBNET:-10.66.0.0}
+      - ALLOWEDIPS=0.0.0.0/0,::/0
+      - LOG_CONFS=false
+    volumes:
+      - ./state/wireguard:/config
+      - /lib/modules:/lib/modules:ro
+    ports:
+      - "${WG_SERVER_PORT:-51820}:51820/udp"
+      - "127.0.0.1:${SQUID_HTTP_PORT:-3128}:3128/tcp"
+    sysctls:
+      - net.ipv4.conf.all.src_valid_mark=1
+      - net.ipv4.ip_forward=1
+    restart: unless-stopped
+
+  squid:
+    image: ubuntu/squid:latest
+    container_name: eclipse-squid
+    depends_on:
+      - wireguard
+    network_mode: "service:wireguard"
+    volumes:
+      - ./squid.conf:/etc/squid/squid.conf:ro
+      - ./secrets/squid.htpasswd:/etc/squid/passwords:ro
+      - ./state/squid/cache:/var/spool/squid
+      - ./state/squid/logs:/var/log/squid
+    restart: unless-stopped

@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Geist+Mono:wght@500;600&display=swap" rel="stylesheet" />
+<title>Eclipse Chat — Server view (clean redesign)</title>
+<style>
+:root{
+  --void:#05070A; --s1:#0B0F14; --s2:#11161D; --s3:#141A22; --s4:hsl(214 22% 14%);
+  --acc:hsl(258 90% 66%); --acc-h:hsl(258 95% 73%); --acc-soft:hsl(258 90% 66% / .12);
+  --gold:hsl(46 65% 55%); --gold-soft:hsl(46 65% 52% / .14);
+  --teal:hsl(168 60% 58%);
+  --text:hsl(220 24% 92%); --strong:hsl(216 30% 97%); --muted:hsl(220 13% 59%); --dim:hsl(220 11% 44%);
+  --on:hsl(160 55% 52%); --idle:hsl(42 88% 58%); --dnd:hsl(355 70% 62%); --off:hsl(210 10% 40%);
+  --border:rgba(190,195,220,.08); --border-soft:rgba(190,195,220,.05);
+  --sans:"Geist",-apple-system,"Segoe UI",system-ui,sans-serif;
+  --mono:"Geist Mono",ui-monospace,Consolas,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--sans);color:var(--text);background:var(--void);font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased;overflow:hidden}
+::-webkit-scrollbar{width:7px}::-webkit-scrollbar-thumb{background:hsl(210 18% 20%);border-radius:6px}
+.app{display:grid;grid-template-columns:68px 264px 1fr 244px;height:100vh}
+
+/* ===== server rail ===== */
+.rail{display:flex;flex-direction:column;align-items:center;gap:9px;padding:12px 0;background:hsl(210 28% 5%);box-shadow:inset -1px 0 0 var(--border-soft)}
+.rail__brand{width:44px;height:44px;border-radius:13px;display:grid;place-items:center;background:radial-gradient(circle at 35% 30%,hsl(258 90% 70%),hsl(258 80% 46%));color:#fff;font-weight:800;font-size:20px;box-shadow:0 4px 14px -4px hsl(258 80% 50% / .5)}
+.rail__sep{width:26px;height:1px;background:var(--border);margin:1px 0}
+.rail__i{position:relative;width:46px;height:46px;border-radius:14px;display:grid;place-items:center;background:var(--s3);color:var(--muted);font-weight:700;font-size:14px;cursor:pointer;transition:.16s}
+.rail__i:hover{border-radius:12px;color:var(--strong);background:var(--acc-soft)}
+.rail__i--on{background:var(--acc-soft);color:var(--acc-h);border-radius:12px;box-shadow:0 0 0 1px hsl(258 90% 66% / .4)}
+.rail__i--on::before{content:"";position:absolute;left:-12px;top:50%;transform:translateY(-50%);width:4px;height:28px;border-radius:0 4px 4px 0;background:var(--acc)}
+.rail__i--own{box-shadow:0 0 0 1px hsl(46 65% 52% / .45)}
+.rail__sp{flex:1}
+.rail__add{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;box-shadow:inset 0 0 0 1px var(--border);color:var(--on);font-size:22px;cursor:pointer}
+
+/* ===== context sidebar ===== */
+.side{display:flex;flex-direction:column;background:var(--s1);box-shadow:inset -1px 0 0 var(--border-soft);min-height:0}
+.side__hd{display:flex;align-items:center;gap:10px;padding:14px 16px;cursor:pointer;transition:background .15s}
+.side__hd:hover{background:var(--s2)}
+.side__nm{min-width:0}
+.side__name{font-size:15px;font-weight:700;color:var(--strong);letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:7px}
+.side__sub{font-size:11px;color:var(--dim);margin-top:1px}
+.chip-own{font-size:9.5px;font-weight:700;font-family:var(--mono);letter-spacing:.08em;color:var(--gold);background:var(--gold-soft);border:1px solid hsl(46 65% 52% / .3);padding:1px 5px;border-radius:5px}
+.side__chev{margin-left:auto;color:var(--muted);flex-shrink:0}
+.side__tabs{display:flex;gap:2px;padding:0 12px 8px}
+.side__tab{flex:1;text-align:center;font-size:12px;font-weight:600;color:var(--muted);padding:6px;border-radius:7px;cursor:pointer;transition:.15s}
+.side__tab:hover{background:var(--s2);color:var(--text)}
+.side__tab--on{background:var(--s3);color:var(--strong)}
+.chans{flex:1;overflow-y:auto;padding:4px 8px 12px;min-height:0}
+.cat{display:flex;align-items:center;gap:6px;padding:10px 8px 4px;font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--dim);cursor:pointer}
+.cat__cnt{font-family:var(--mono);font-size:10px;color:var(--dim)}
+.cat__add{margin-left:auto;color:var(--dim);font-size:15px;opacity:0;transition:.15s}
+.cat:hover .cat__add{opacity:1}
+.ch{display:flex;align-items:center;gap:9px;padding:7px 9px;border-radius:7px;cursor:pointer;color:var(--muted);position:relative;transition:.14s;margin-bottom:1px}
+.ch:hover{background:var(--s2);color:var(--text)}
+.ch--on{background:var(--acc-soft);color:var(--strong)}
+.ch--on::before{content:"";position:absolute;left:0;top:50%;transform:translateY(-50%);width:3px;height:60%;border-radius:0 3px 3px 0;background:var(--acc)}
+.ch__g{width:18px;color:currentColor;flex-shrink:0;display:grid;place-items:center;font-size:15px;opacity:.85}
+.ch__n{flex:1;font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ch--on .ch__n{font-weight:600}
+.ch__b{min-width:18px;height:18px;border-radius:9px;background:var(--acc);color:#fff;font-size:11px;font-weight:700;font-family:var(--mono);display:grid;place-items:center;padding:0 5px}
+.side__me{display:flex;align-items:center;gap:9px;padding:10px 14px;box-shadow:inset 0 1px 0 var(--border-soft);background:hsl(210 28% 5%)}
+.side__me .av{width:30px;height:30px;border-radius:50%;background:linear-gradient(150deg,hsl(258 70% 58%),hsl(258 70% 40%));display:grid;place-items:center;font-weight:700;font-size:12px;color:#fff;position:relative}
+.side__me .av .dot{position:absolute;right:-1px;bottom:-1px;width:10px;height:10px;border-radius:50%;background:var(--on);border:2.5px solid #07090c}
+.side__me .nm{font-size:13px;font-weight:600;color:var(--text)}
+.side__me .st{font-size:11px;color:var(--dim)}
+.side__me .ic{margin-left:auto;display:flex;gap:2px}
+.side__me .ic span{width:28px;height:28px;border-radius:7px;display:grid;place-items:center;color:var(--muted);cursor:pointer}
+.side__me .ic span:hover{background:var(--s3);color:var(--text)}
+
+/* ===== main / channel ===== */
+.main{display:flex;flex-direction:column;background:var(--void);min-height:0}
+.ch-hd{display:flex;align-items:center;gap:11px;height:54px;padding:0 18px;flex-shrink:0;box-shadow:inset 0 -1px 0 var(--border)}
+.ch-hd__hash{color:var(--dim);font-size:19px;font-weight:500}
+.ch-hd__nm{font-size:16px;font-weight:700;color:var(--strong);letter-spacing:-.01em}
+.ch-hd__topic{font-size:13px;color:var(--muted);padding-left:12px;margin-left:12px;box-shadow:inset 1px 0 0 var(--border);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:420px}
+.ch-hd__act{margin-left:auto;display:flex;gap:3px}
+.ic{width:34px;height:34px;border-radius:8px;display:grid;place-items:center;color:var(--muted);background:transparent;border:0;cursor:pointer;transition:.15s}
+.ic:hover{background:var(--s3);color:var(--strong)}
+.msgs{flex:1;overflow-y:auto;padding:16px 8px 4px;min-height:0;display:flex;flex-direction:column}
+.day{display:flex;align-items:center;gap:14px;margin:12px 18px 12px;color:var(--dim);font-size:11px;font-weight:600}
+.day::before,.day::after{content:"";flex:1;height:1px;background:var(--border-soft)}
+.m{display:flex;gap:13px;padding:5px 18px;position:relative}
+.m:hover{background:hsl(214 24% 11% / .35)}
+.m__av{width:40px;height:40px;border-radius:50%;flex-shrink:0;display:grid;place-items:center;font-weight:700;color:#fff;margin-top:2px}
+.m__b{min-width:0}
+.m__h{display:flex;align-items:baseline;gap:9px;margin-bottom:1px}
+.m__nm{font-weight:600;font-size:14.5px;color:var(--strong)}
+.m__role{font-size:9.5px;font-weight:700;font-family:var(--mono);letter-spacing:.06em;padding:1px 5px;border-radius:5px}
+.role-own{color:var(--gold);background:var(--gold-soft)}
+.role-adm{color:var(--acc-h);background:var(--acc-soft)}
+.m__t{font-family:var(--mono);font-size:10.5px;color:var(--dim)}
+.m__x{font-size:14.5px;color:var(--text);line-height:1.5}
+.m--cont .m__av{visibility:hidden;height:0;margin:0}
+.comp{margin:6px 18px 18px}
+.comp__b{display:flex;align-items:center;gap:10px;background:var(--s2);border-radius:12px;padding:0 8px 0 14px;height:48px;box-shadow:inset 0 0 0 1px var(--border-soft)}
+.comp__b:focus-within{box-shadow:inset 0 0 0 1px hsl(258 90% 66% / .5)}
+.comp__p{color:var(--muted);font-size:21px;cursor:pointer}
+.comp__i{flex:1;color:var(--muted);font-size:14.5px}
+.comp__s{width:36px;height:36px;border-radius:9px;display:grid;place-items:center;border:0;color:#fff;cursor:pointer;background:linear-gradient(160deg,var(--acc-h),hsl(258 80% 52%))}
+
+/* ===== members rail ===== */
+.mem{background:var(--s1);box-shadow:inset 1px 0 0 var(--border-soft);overflow-y:auto;min-height:0}
+.mem__h{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--dim);padding:16px 16px 8px}
+.mem__h .c{color:var(--muted);font-family:var(--mono)}
+.mr{display:flex;align-items:center;gap:10px;padding:6px 12px;border-radius:8px;margin:0 8px;cursor:pointer;transition:.14s}
+.mr:hover{background:var(--s2)}
+.mr__av{position:relative;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:12px;color:#fff;flex-shrink:0}
+.mr__av .dot{position:absolute;right:-1px;bottom:-1px;width:11px;height:11px;border-radius:50%;border:2.5px solid var(--s1)}
+.mr__nm{flex:1;font-size:14px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px}
+.mr--off{opacity:.45}
+.mr__role{font-size:9px;font-weight:700;font-family:var(--mono);letter-spacing:.05em;padding:1px 4px;border-radius:4px;flex-shrink:0}
+
+.a-v{background:linear-gradient(150deg,hsl(258 70% 58%),hsl(258 70% 40%))}
+.a-t{background:linear-gradient(150deg,hsl(168 55% 48%),hsl(180 50% 34%))}
+.a-b{background:linear-gradient(150deg,hsl(212 60% 56%),hsl(220 55% 40%))}
+.a-r{background:linear-gradient(150deg,hsl(355 65% 60%),hsl(340 55% 44%))}
+.a-g{background:linear-gradient(150deg,hsl(46 65% 55%),hsl(38 70% 42%))}
+.a-p{background:linear-gradient(150deg,hsl(288 55% 58%),hsl(300 50% 40%))}
+.a-o{background:linear-gradient(150deg,hsl(28 80% 58%),hsl(20 70% 44%))}
+.p-on{background:var(--on)} .p-idle{background:var(--idle)} .p-dnd{background:var(--dnd)} .p-off{background:var(--off)}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <nav class="rail">
+    <div class="rail__brand">E</div>
+    <div class="rail__i" title="Сообщения"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></div>
+    <div class="rail__sep"></div>
+    <div class="rail__i rail__i--own rail__i--on" style="background:linear-gradient(150deg,hsl(46 65% 50%),hsl(38 70% 38%));color:#fff">EF</div>
+    <div class="rail__i">SC</div>
+    <div class="rail__i">DV</div>
+    <div class="rail__sp"></div>
+    <div class="rail__add">+</div>
+  </nav>
+
+  <aside class="side">
+    <div class="side__hd">
+      <div class="side__nm">
+        <div class="side__name">Eclipse Forge <span class="chip-own">OWNER</span></div>
+        <div class="side__sub">12 участников · 1 в сети</div>
+      </div>
+      <svg class="side__chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+    </div>
+    <div class="side__tabs">
+      <div class="side__tab side__tab--on">Каналы</div>
+      <div class="side__tab">Задачи</div>
+      <div class="side__tab">Данные</div>
+    </div>
+    <div class="chans">
+      <div class="cat">Без категории <span class="cat__cnt">9</span><span class="cat__add">＋</span></div>
+      <div class="ch"><span class="ch__g">▦</span><span class="ch__n">Доска</span></div>
+      <div class="ch ch--on"><span class="ch__g">◎</span><span class="ch__n">Задачи</span><span class="ch__b">5</span></div>
+      <div class="ch"><span class="ch__g">✎</span><span class="ch__n">Предложения</span><span class="ch__b">2</span></div>
+      <div class="ch"><span class="ch__g">⚗</span><span class="ch__n">Эксперимент</span><span class="ch__b">8</span></div>
+      <div class="ch"><span class="ch__g">#</span><span class="ch__n">ЧАТИК</span><span class="ch__b">1</span></div>
+      <div class="ch"><span class="ch__g">♪</span><span class="ch__n">Музыка</span><span class="ch__b">2</span></div>
+      <div class="ch"><span class="ch__g">🔊</span><span class="ch__n">Обсуждение</span></div>
+      <div class="ch"><span class="ch__g">🌐</span><span class="ch__n">Новости</span></div>
+      <div class="ch"><span class="ch__g">🎮</span><span class="ch__n">Играем</span></div>
+    </div>
+    <div class="side__me">
+      <div class="av">П<span class="dot"></span></div>
+      <div><div class="nm">Павел</div><div class="st">В сети</div></div>
+      <div class="ic"><span title="Микрофон"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg></span><span title="Настройки"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span></div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="ch-hd">
+      <span class="ch-hd__hash">#</span>
+      <span class="ch-hd__nm">Задачи</span>
+      <span class="ch-hd__topic">Планирование и исполнение — что в работе, что готово</span>
+      <div class="ch-hd__act">
+        <button class="ic" title="Закреплённые"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 17v5M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></svg></button>
+        <button class="ic" title="Поиск"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></button>
+        <button class="ic" title="Участники"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></button>
+      </div>
+    </header>
+    <div class="msgs">
+      <div class="day">Сегодня</div>
+      <div class="m">
+        <div class="m__av a-o">П</div>
+        <div class="m__b">
+          <div class="m__h"><span class="m__nm">Павел</span><span class="m__role role-own">OWNER</span><span class="m__t">09:02</span></div>
+          <div class="m__x">Собрал задачи на спринт. Приоритет — чистый редизайн интерфейса, единый язык по всем экранам.</div>
+        </div>
+      </div>
+      <div class="m">
+        <div class="m__av a-b">В</div>
+        <div class="m__b">
+          <div class="m__h"><span class="m__nm">Василий</span><span class="m__role role-adm">ADMIN</span><span class="m__t">09:04</span></div>
+          <div class="m__x">Поддерживаю. Главное — убрать визуальный шум и сделать структуру читаемой с первого взгляда.</div>
+        </div>
+      </div>
+      <div class="m m--cont">
+        <div class="m__av a-b">В</div>
+        <div class="m__b"><div class="m__x">Спокойные поверхности, один акцент, чёткая иерархия. Без декора ради декора.</div></div>
+      </div>
+      <div class="m">
+        <div class="m__av a-t">S</div>
+        <div class="m__b">
+          <div class="m__h"><span class="m__nm">Smoke</span><span class="m__role role-adm">MOD</span><span class="m__t">09:05</span></div>
+          <div class="m__x">Тестирую на 3 разрешениях по мере готовности.</div>
+        </div>
+      </div>
+    </div>
+    <div class="comp">
+      <div class="comp__b">
+        <span class="comp__p">＋</span>
+        <span class="comp__i">Сообщение в #Задачи…</span>
+        <button class="comp__s"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m22 2-7 20-4-9-9-4 20-7z"/></svg></button>
+      </div>
+    </div>
+  </main>
+
+  <aside class="mem">
+    <div class="mem__h">Владелец</div>
+    <div class="mr"><div class="mr__av a-o">П<span class="dot p-on"></span></div><span class="mr__nm">Павел</span><span class="mr__role role-own">OWN</span></div>
+    <div class="mem__h" style="padding-top:14px">Администраторы — <span class="c">6</span></div>
+    <div class="mr"><div class="mr__av a-b">В<span class="dot p-on"></span></div><span class="mr__nm">Василий</span><span class="mr__role role-adm">ADM</span></div>
+    <div class="mr mr--off"><div class="mr__av a-p">П<span class="dot p-off"></span></div><span class="mr__nm">Повелитель</span><span class="mr__role role-adm">ADM</span></div>
+    <div class="mr mr--off"><div class="mr__av a-g">B<span class="dot p-off"></span></div><span class="mr__nm">BigYtka</span><span class="mr__role role-adm">ADM</span></div>
+    <div class="mr mr--off"><div class="mr__av a-t">R<span class="dot p-off"></span></div><span class="mr__nm">Reptail</span><span class="mr__role role-adm">ADM</span></div>
+    <div class="mr mr--off"><div class="mr__av a-r">V<span class="dot p-off"></span></div><span class="mr__nm">Victor</span><span class="mr__role role-adm">ADM</span></div>
+    <div class="mem__h" style="padding-top:14px">Участники — <span class="c">5</span></div>
+    <div class="mr mr--off"><div class="mr__av a-v">д<span class="dot p-off"></span></div><span class="mr__nm">данила</span></div>
+    <div class="mr mr--off"><div class="mr__av a-p">Ц<span class="dot p-off"></span></div><span class="mr__nm">Царь додеп</span></div>
+    <div class="mr mr--off"><div class="mr__av a-g">c<span class="dot p-off"></span></div><span class="mr__nm">chepokayfu_baby</span></div>
+    <div class="mr mr--off"><div class="mr__av a-b">Z<span class="dot p-off"></span></div><span class="mr__nm">Zefir</span></div>
+  </aside>
+
+</div>
+</body>
+</html>

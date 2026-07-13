@@ -5,22 +5,35 @@ dist/
 __pycache__/
 .DS_Store
 
-# Локальные temp-файлы для multi-line git commit messages
-# (Pavel anti-pattern: PowerShell heredoc + `git commit -m` ломается)
+# Local temp files for multi-line git commit messages.
 .commit-message.tmp
 .commit-message*.txt
 
-# Runtime data
+# Runtime data.
 deploy/runtime/
 backend/uploads/
 apps/server/prisma/prisma/dev.db
 apps/server/prisma/prisma/dev.db-journal
 
-# IDE
+# IDE.
 .vscode/
 .idea/
 
-# Codex / preview runner артефакты (Pavel'ёва среда)
+# Codex / preview runner artifacts.
 .codex-artifacts/
+.codex-qa/
+.codex-worktrees/
+.codex-*.err
+.codex-*.log
+.codex-*.pid
 apps/web/.preview.log
 apps/web/.preview.err.log
+
+# Network gateway runtime/secrets.
+deploy/network-gateway/.env
+deploy/network-gateway/state/
+deploy/network-gateway/secrets/
+
+# Local high-resolution design exports.
+docs/design/logo.png
+docs/design/logo standart.png

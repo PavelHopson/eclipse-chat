@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="ru" data-ec-theme="void">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Eclipse Chat — DM Home (IA reset prototype)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Geist+Mono:wght@500;600&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --ec-void:#05070A; --ec-s1:#0B0F14; --ec-s2:#11161D; --ec-s3:#141A22; --ec-s4:hsl(214 22% 14%);
+  --ec-accent:hsl(258 90% 66%); --ec-accent-hover:hsl(258 95% 73%); --ec-accent-soft:hsl(258 90% 66% / .14);
+  --ec-gold:hsl(46 65% 52%); --ec-gold-hover:hsl(46 72% 61%); --ec-gold-soft:hsl(46 65% 52% / .14);
+  --ec-teal:hsl(168 60% 58%);
+  --ec-text:hsl(220 24% 92%); --ec-strong:hsl(216 30% 97%); --ec-muted:hsl(220 13% 59%); --ec-dim:hsl(220 11% 44%);
+  --ec-on:hsl(160 55% 52%); --ec-idle:hsl(42 88% 58%); --ec-dnd:hsl(355 70% 62%); --ec-off:hsl(210 10% 40%);
+  --ec-edge:0 0 0 1px hsl(220 14% 82% / .05);
+  --ec-elev-1:0 0 0 1px hsl(220 14% 82% / .05), 0 10px 28px -14px hsl(210 60% 2% / .6);
+  --ec-elev-2:0 0 0 1px hsl(220 14% 62% / .14), 0 18px 44px -16px hsl(210 60% 2% / .72);
+  --ec-border:rgba(190,195,220,.10); --ec-border-soft:rgba(190,195,220,.05); --ec-border-acc:hsl(258 90% 66% / .55);
+  --r-sm:6px; --r-md:8px; --r-lg:12px; --r-xl:16px; --r-full:999px;
+  --sans:"Geist",-apple-system,"Segoe UI",system-ui,sans-serif;
+  --mono:"Geist Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:var(--sans); color:var(--ec-text); background:var(--ec-void);
+  -webkit-font-smoothing:antialiased; font-size:15px; line-height:1.45; overflow:hidden;
+}
+::-webkit-scrollbar{width:7px;height:7px}
+::-webkit-scrollbar-thumb{background:hsl(210 18% 22%);border-radius:6px}
+::-webkit-scrollbar-thumb:hover{background:hsl(258 70% 60% / .65)}
+.app{
+  display:grid; grid-template-columns:68px 312px 1fr 268px; height:100vh;
+  background:
+    radial-gradient(ellipse 120% 50% at 50% -12%, hsl(258 60% 50% / .05), transparent 60%),
+    var(--ec-void);
+}
+
+/* ============ SERVER RAIL ============ */
+.rail{
+  display:flex; flex-direction:column; align-items:center; gap:10px; padding:12px 0;
+  background:linear-gradient(180deg, hsl(210 25% 6% / .6), hsl(210 30% 4% / .85));
+  box-shadow:inset -1px 0 0 var(--ec-border-soft);
+}
+.rail__brand{
+  width:44px;height:44px;border-radius:13px;display:grid;place-items:center;
+  background:radial-gradient(circle at 35% 30%, hsl(258 90% 70%), hsl(258 80% 46%));
+  box-shadow:0 6px 18px -6px hsl(258 80% 50% / .6), inset 0 1px 0 hsl(0 0% 100% / .25);
+  font-weight:800;color:#fff;font-size:20px;letter-spacing:-.02em;
+}
+.rail__sep{width:28px;height:1px;background:var(--ec-border);margin:2px 0}
+.rail__item{
+  position:relative;width:46px;height:46px;border-radius:14px;display:grid;place-items:center;
+  background:var(--ec-s3);color:var(--ec-muted);font-weight:700;font-size:15px;cursor:pointer;
+  transition:border-radius .18s, background .18s, color .18s, transform .18s; box-shadow:var(--ec-edge);
+}
+.rail__item span{font-size:13px;font-weight:700;letter-spacing:.02em}
+.rail__item:hover{border-radius:12px;background:var(--ec-accent-soft);color:var(--ec-strong);transform:translateY(-1px)}
+.rail__item--active{background:var(--ec-accent-soft);color:var(--ec-accent-hover);border-radius:12px;box-shadow:0 0 0 1px var(--ec-border-acc), 0 0 18px -4px hsl(258 80% 60% / .5)}
+.rail__item--active::before, .rail__item--home.rail__item--active::before{
+  content:"";position:absolute;left:-12px;top:50%;transform:translateY(-50%);
+  width:4px;height:26px;border-radius:0 4px 4px 0;background:var(--ec-accent);box-shadow:0 0 10px hsl(258 80% 60% / .7)
+}
+.rail__item--home{background:linear-gradient(160deg,hsl(258 60% 30% / .5),var(--ec-s3));color:var(--ec-accent-hover)}
+.rail__item--owner{box-shadow:0 0 0 1px hsl(46 65% 52% / .5), 0 0 16px -6px hsl(46 70% 55% / .5)}
+.rail__badge{position:absolute;right:-3px;bottom:-3px;min-width:18px;height:18px;border-radius:9px;background:var(--ec-dnd);
+  color:#fff;font-size:10px;font-weight:700;display:grid;place-items:center;padding:0 5px;border:2.5px solid var(--ec-void);font-family:var(--mono)}
+.rail__add{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;background:transparent;
+  box-shadow:inset 0 0 0 1px var(--ec-border);color:var(--ec-on);font-size:22px;cursor:pointer;transition:.18s}
+.rail__add:hover{background:hsl(160 55% 52% / .12);box-shadow:inset 0 0 0 1px hsl(160 55% 52% / .4)}
+.rail__spacer{flex:1}
+
+/* ============ SIDEBAR (DM/Friends) ============ */
+.side{display:flex;flex-direction:column;background:var(--ec-s1);box-shadow:inset -1px 0 0 var(--ec-border-soft);min-height:0}
+.side__head{padding:16px 16px 10px}
+.side__title{font-size:19px;font-weight:800;letter-spacing:-.02em;color:var(--ec-strong);display:flex;align-items:center;gap:9px}
+.side__title .dot{width:7px;height:7px;border-radius:50%;background:var(--ec-accent);box-shadow:0 0 8px var(--ec-accent)}
+.search{margin:10px 16px 12px;position:relative}
+.search input{
+  width:100%;height:38px;border:0;border-radius:var(--r-md);background:hsl(210 18% 8%);
+  color:var(--ec-text);font-family:var(--sans);font-size:14px;padding:0 12px 0 36px;
+  box-shadow:inset 0 0 0 1px var(--ec-border-soft);transition:.18s;
+}
+.search input::placeholder{color:var(--ec-dim)}
+.search input:focus{outline:none;box-shadow:inset 0 0 0 1px var(--ec-border-acc), 0 0 0 3px hsl(258 80% 60% / .12)}
+.search svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--ec-dim)}
+.tabs{display:flex;gap:5px;padding:0 14px 10px;flex-wrap:wrap}
+.tab{
+  font-size:12.5px;font-weight:600;color:var(--ec-muted);padding:6px 11px;border-radius:var(--r-full);
+  background:transparent;cursor:pointer;transition:.16s;display:inline-flex;align-items:center;gap:6px;border:1px solid transparent;
+}
+.tab:hover{background:var(--ec-s3);color:var(--ec-text)}
+.tab--on{background:var(--ec-accent-soft);color:var(--ec-accent-hover);border-color:var(--ec-border-acc)}
+.tab .cnt{font-family:var(--mono);font-size:10.5px;background:hsl(258 80% 60% / .22);color:var(--ec-accent-hover);padding:1px 5px;border-radius:8px}
+.tab--pending .cnt{background:hsl(42 88% 58% / .2);color:var(--ec-idle)}
+.side__label{font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--ec-dim);padding:6px 18px 6px}
+.dms{flex:1;overflow-y:auto;padding:0 8px 12px;min-height:0}
+
+/* DM row */
+.dm{
+  position:relative;display:flex;align-items:center;gap:11px;padding:9px 10px;border-radius:var(--r-md);cursor:pointer;
+  transition:background .15s, transform .15s; margin-bottom:1px;
+}
+.dm::before{content:"";position:absolute;left:0;top:50%;transform:translateY(-50%) scaleY(0);width:3px;height:62%;
+  border-radius:0 3px 3px 0;background:var(--ec-accent);transition:transform .18s;transform-origin:center}
+.dm:hover{background:var(--ec-s3)}
+.dm:hover::before{transform:translateY(-50%) scaleY(1)}
+.dm--on{background:linear-gradient(90deg, hsl(258 70% 60% / .12), hsl(258 70% 60% / .03));}
+.dm--on::before{transform:translateY(-50%) scaleY(1)}
+.dm__av{position:relative;width:40px;height:40px;border-radius:50%;flex-shrink:0;display:grid;place-items:center;
+  font-weight:700;font-size:15px;color:#fff}
+.dm__pres{position:absolute;right:-1px;bottom:-1px;width:13px;height:13px;border-radius:50%;border:3px solid var(--ec-s1)}
+.dm--on .dm__pres{border-color:#10151c}
+.p-on{background:var(--ec-on);box-shadow:0 0 7px hsl(160 55% 52% / .7)}
+.p-idle{background:var(--ec-idle)} .p-dnd{background:var(--ec-dnd)} .p-off{background:var(--ec-off)}
+.dm__main{flex:1;min-width:0}
+.dm__top{display:flex;align-items:baseline;gap:8px}
+.dm__name{font-weight:600;font-size:14.5px;color:var(--ec-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dm--on .dm__name{color:var(--ec-strong)}
+.dm__time{margin-left:auto;font-family:var(--mono);font-size:10.5px;color:var(--ec-dim);flex-shrink:0}
+.dm__sub{font-size:12.5px;color:var(--ec-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:5px}
+.dm__sub .act{color:var(--ec-muted)}
+.dm__sub .emoji{font-size:13px}
+.dm__unread{flex-shrink:0;min-width:20px;height:20px;border-radius:10px;background:var(--ec-accent);color:#fff;
+  font-size:11px;font-weight:700;font-family:var(--mono);display:grid;place-items:center;padding:0 6px;
+  box-shadow:0 2px 8px -2px hsl(258 80% 55% / .7);align-self:center}
+
+/* ============ MAIN — conversation ============ */
+.main{display:flex;flex-direction:column;background:linear-gradient(180deg,hsl(214 24% 8% / .35),transparent 30%),var(--ec-void);min-height:0}
+.conv__head{
+  display:flex;align-items:center;gap:12px;padding:0 18px;height:60px;flex-shrink:0;position:relative;
+  box-shadow:inset 0 -1px 0 var(--ec-border-soft);background:hsl(210 25% 6% / .35);backdrop-filter:blur(8px);
+}
+.conv__head::after{content:"";position:absolute;left:0;right:0;bottom:0;height:1px;
+  background:linear-gradient(90deg,transparent, hsl(258 70% 60% / .5),transparent)}
+.conv__av{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-weight:700;color:#fff;position:relative;flex-shrink:0}
+.conv__id{min-width:0}
+.conv__name{font-size:16px;font-weight:700;color:var(--ec-strong);letter-spacing:-.01em;display:flex;align-items:center;gap:7px}
+.conv__status{font-size:12px;color:var(--ec-muted);display:flex;align-items:center;gap:6px}
+.conv__status .em{font-size:13px}
+.conv__actions{margin-left:auto;display:flex;align-items:center;gap:4px}
+.iconbtn{width:36px;height:36px;border-radius:var(--r-md);display:grid;place-items:center;color:var(--ec-muted);
+  background:transparent;border:0;cursor:pointer;transition:.15s}
+.iconbtn:hover{background:var(--ec-s3);color:var(--ec-strong)}
+.iconbtn--call:hover{color:var(--ec-on);background:hsl(160 55% 52% / .12)}
+.msgs{flex:1;overflow-y:auto;padding:18px 8px 6px;min-height:0;display:flex;flex-direction:column;gap:2px}
+.daydiv{display:flex;align-items:center;gap:14px;margin:14px 18px 10px;color:var(--ec-dim);font-size:11px;font-weight:600;letter-spacing:.04em}
+.daydiv::before,.daydiv::after{content:"";flex:1;height:1px;background:var(--ec-border-soft)}
+.msg{display:flex;gap:13px;padding:6px 18px;border-radius:8px;position:relative;transition:background .12s}
+.msg:hover{background:hsl(214 24% 12% / .4)}
+.msg__av{width:40px;height:40px;border-radius:50%;flex-shrink:0;display:grid;place-items:center;font-weight:700;color:#fff;margin-top:2px}
+.msg__b{min-width:0}
+.msg__head{display:flex;align-items:baseline;gap:9px;margin-bottom:2px}
+.msg__name{font-weight:600;font-size:14.5px;color:var(--ec-strong)}
+.msg__name.me{color:var(--ec-accent-hover)}
+.msg__t{font-family:var(--mono);font-size:10.5px;color:var(--ec-dim)}
+.msg__txt{font-size:14.5px;color:var(--ec-text);line-height:1.5}
+.msg--cont{padding-top:1px;padding-bottom:1px}
+.msg--cont .msg__av{visibility:hidden;height:0;margin:0}
+.msg--ai{background:linear-gradient(90deg, hsl(252 70% 70% / .05), transparent 70%);border-left:2px solid hsl(252 70% 70% / .45);padding-left:16px}
+.pill-ai{font-size:10px;font-weight:700;font-family:var(--mono);color:hsl(252 70% 78%);background:hsl(252 70% 70% / .14);
+  border:1px solid hsl(252 70% 70% / .35);padding:1px 6px;border-radius:5px;letter-spacing:.04em}
+.composer{margin:8px 18px 18px;position:relative}
+.composer__box{display:flex;align-items:center;gap:10px;background:hsl(210 18% 9%);border-radius:var(--r-lg);
+  padding:0 8px 0 14px;height:50px;box-shadow:inset 0 0 0 1px var(--ec-border-soft);transition:.2s}
+.composer__box:focus-within{box-shadow:inset 0 0 0 1px var(--ec-border-acc), 0 0 32px -8px hsl(258 70% 60% / .45)}
+.composer__plus{color:var(--ec-muted);font-size:22px;cursor:pointer;width:28px;height:28px;display:grid;place-items:center;border-radius:8px;transition:.2s}
+.composer__plus:hover{color:var(--ec-accent-hover);background:var(--ec-accent-soft);transform:rotate(90deg)}
+.composer__in{flex:1;color:var(--ec-muted);font-size:14.5px}
+.composer__send{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;border:0;cursor:pointer;color:#fff;
+  background:linear-gradient(160deg,var(--ec-accent-hover),hsl(258 80% 52%));box-shadow:0 6px 16px -6px hsl(258 80% 50% / .7)}
+
+/* ============ RIGHT RAIL — active contacts ============ */
+.act{display:flex;flex-direction:column;background:var(--ec-s1);box-shadow:inset 1px 0 0 var(--ec-border-soft);min-height:0;overflow-y:auto}
+.act__sec{padding:16px 16px 6px}
+.act__h{font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--ec-dim);display:flex;align-items:center;gap:7px}
+.act__h .live{color:var(--ec-teal)}
+.voice{margin:8px 12px;padding:12px;border-radius:var(--r-lg);background:var(--ec-s2);
+  box-shadow:inset 0 0 0 1px hsl(168 60% 58% / .18)}
+.voice__top{display:flex;align-items:center;gap:8px;margin-bottom:9px}
+.voice__ch{font-size:13px;font-weight:700;color:var(--ec-strong);display:flex;align-items:center;gap:6px}
+.voice__air{margin-left:auto;font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.1em;color:var(--ec-teal);
+  display:flex;align-items:center;gap:5px;text-transform:uppercase}
+.voice__air .b{width:6px;height:6px;border-radius:50%;background:var(--ec-teal);box-shadow:0 0 7px var(--ec-teal)}
+.voice__stack{display:flex;align-items:center}
+.voice__stack .av{width:32px;height:32px;border-radius:50%;border:2.5px solid #0e1319;margin-left:-9px;display:grid;place-items:center;
+  font-size:12px;font-weight:700;color:#fff}
+.voice__stack .av:first-child{margin-left:0}
+.voice__stack .more{width:32px;height:32px;border-radius:50%;border:2.5px solid #0e1319;margin-left:-9px;background:var(--ec-s4);
+  color:var(--ec-muted);font-size:11px;font-weight:700;display:grid;place-items:center;font-family:var(--mono)}
+.voice__join{margin-top:10px;width:100%;height:34px;border-radius:8px;border:0;cursor:pointer;font-weight:600;font-size:13px;
+  color:var(--ec-teal);background:hsl(168 60% 58% / .12);box-shadow:inset 0 0 0 1px hsl(168 60% 58% / .3);transition:.16s}
+.voice__join:hover{background:hsl(168 60% 58% / .2)}
+.frow{display:flex;align-items:center;gap:10px;padding:7px 14px;border-radius:8px;cursor:pointer;transition:.15s;margin:0 8px}
+.frow:hover{background:var(--ec-s3)}
+.frow__av{position:relative;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0}
+.frow__av .dot{position:absolute;right:-1px;bottom:-1px;width:10px;height:10px;border-radius:50%;border:2.5px solid var(--ec-s1)}
+.frow__n{font-size:13.5px;color:var(--ec-text);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.frow__s{font-size:11.5px;color:var(--ec-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.frow__txt{min-width:0;flex:1}
+
+/* avatar color helpers */
+.a-v{background:linear-gradient(150deg,hsl(258 70% 58%),hsl(258 70% 40%))}
+.a-g{background:linear-gradient(150deg,hsl(46 65% 55%),hsl(38 70% 42%))}
+.a-t{background:linear-gradient(150deg,hsl(168 55% 48%),hsl(180 50% 34%))}
+.a-b{background:linear-gradient(150deg,hsl(212 60% 56%),hsl(220 55% 40%))}
+.a-r{background:linear-gradient(150deg,hsl(355 65% 60%),hsl(340 55% 44%))}
+.a-p{background:linear-gradient(150deg,hsl(288 55% 60%),hsl(300 50% 42%))}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- SERVER RAIL -->
+  <nav class="rail">
+    <div class="rail__brand">E</div>
+    <div class="rail__item rail__item--home rail__item--active" title="Сообщения">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+    </div>
+    <div class="rail__sep"></div>
+    <div class="rail__item rail__item--owner a-g" style="background:linear-gradient(150deg,hsl(46 65% 50%),hsl(38 70% 38%));color:#fff" title="Eclipse Forge (владелец)">EF</div>
+    <div class="rail__item">SC<span class="rail__badge">3</span></div>
+    <div class="rail__item">DV</div>
+    <div class="rail__item">QA</div>
+    <div class="rail__spacer"></div>
+    <div class="rail__add" title="Добавить пространство">+</div>
+  </nav>
+
+  <!-- SIDEBAR -->
+  <aside class="side">
+    <div class="side__head">
+      <div class="side__title"><span class="dot"></span>Сообщения</div>
+    </div>
+    <div class="search">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      <input placeholder="Найти или начать беседу" />
+    </div>
+    <div class="tabs">
+      <div class="tab tab--on">Все</div>
+      <div class="tab">В сети <span class="cnt">6</span></div>
+      <div class="tab">Друзья</div>
+      <div class="tab tab--pending">Ожидание <span class="cnt">2</span></div>
+    </div>
+    <div class="side__label">Личные сообщения</div>
+    <div class="dms">
+
+      <div class="dm dm--on">
+        <div class="dm__av a-v">АК<span class="dm__pres p-on"></span></div>
+        <div class="dm__main">
+          <div class="dm__top"><span class="dm__name">Алёша Карпов</span><span class="dm__time">14:21</span></div>
+          <div class="dm__sub"><span class="emoji">🎧</span><span class="act">Слушает Tame Impala</span></div>
+        </div>
+      </div>
+
+      <div class="dm">
+        <div class="dm__av a-t">МР<span class="dm__pres p-on"></span></div>
+        <div class="dm__main">
+          <div class="dm__top"><span class="dm__name">Марина Резник</span><span class="dm__time">13:58</span></div>
+          <div class="dm__sub">Ок, гляну дизайн вечером 👀</div>
+        </div>
+        <div class="dm__unread">2</div>
+      </div>
+
+      <div class="dm">
+        <div class="dm__av a-b">ДВ<span class="dm__pres p-dnd"></span></div>
+        <div class="dm__main">
+          <div class="dm__top"><span class="dm__name">Дмитрий Власов</span><span class="dm__time">12:30</span></div>
+          <div class="dm__sub"><span class="emoji">⛔</span><span class="act">Не беспокоить · деплой</span></div>
+        </div>
+      </div>
+
+      <div class="dm">
+        <div class="dm__av a-r">КС<span class="dm__pres p-idle"></span></div>
+        <div class="dm__main">
+          <div class="dm__top"><span class="dm__name">Катя Соколова</span><span class="dm__time">вчера</span></div>
+          <div class="dm__sub">Отправила счёт на оплату хостинга</div>
+        </div>
+      </div>
+
+      <div class="dm">
+        <div class="dm__av a-p">ИП<span class="dm__pres p-off"></span></div>
+        <div class="dm__main">
+          <div class="dm__top"><span class="dm__name">Игорь Петров</span><span class="dm__time">вчера</span></div>
+          <div class="dm__sub">Ты: спасибо, до завтра!</div>
+        </div>
+      </div>
+
+      <div class="dm">
+        <div class="dm__av a-g" style="color:#fff">ОЛ<span class="dm__pres p-on"></span></div>
+        <div class="dm__main">
+          <div class="dm__top"><span class="dm__name">Оля Лисицына</span><span class="dm__time">пн</span></div>
+          <div class="dm__sub"><span class="emoji">✨</span><span class="act">The Sims 4 как смысл жизни</span></div>
+        </div>
+      </div>
+
+      <div class="dm">
+        <div class="dm__av a-v" style="background:linear-gradient(150deg,hsl(288 55% 58%),hsl(300 50% 40%))">ГД<span class="dm__pres p-off"></span></div>
+        <div class="dm__main">
+          <div class="dm__top"><span class="dm__name">Группа · Дизайн-ревью</span><span class="dm__time">пн</span></div>
+          <div class="dm__sub">Марина: финалим IA к среде</div>
+        </div>
+      </div>
+
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+    <header class="conv__head">
+      <div class="conv__av a-v">АК<span class="dm__pres p-on" style="border-color:#0a0d12"></span></div>
+      <div class="conv__id">
+        <div class="conv__name">Алёша Карпов</div>
+        <div class="conv__status"><span class="em">🎧</span> Слушает Tame Impala · в сети</div>
+      </div>
+      <div class="conv__actions">
+        <button class="iconbtn iconbtn--call" title="Звонок"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg></button>
+        <button class="iconbtn iconbtn--call" title="Видео"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m23 7-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></button>
+        <button class="iconbtn" title="Поиск"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></button>
+        <button class="iconbtn" title="Профиль"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></button>
+      </div>
+    </header>
+
+    <div class="msgs">
+      <div class="daydiv">Сегодня</div>
+
+      <div class="msg">
+        <div class="msg__av a-t">МР</div>
+        <div class="msg__b">
+          <div class="msg__head"><span class="msg__name">Марина Резник</span><span class="msg__t">14:02</span></div>
+          <div class="msg__txt">Глянь новый IA-прототип — DM-домашний экран наконец читается как мессенджер, а не как дашборд 👏</div>
+        </div>
+      </div>
+
+      <div class="msg">
+        <div class="msg__av a-v">АК</div>
+        <div class="msg__b">
+          <div class="msg__head"><span class="msg__name">Алёша Карпов</span><span class="msg__t">14:05</span></div>
+          <div class="msg__txt">Согласен. Левый рейл — пространства, контекст — диалоги, центр — разговор, справа — кто сейчас в эфире. Чисто.</div>
+        </div>
+      </div>
+
+      <div class="msg msg--cont">
+        <div class="msg__av a-v">АК</div>
+        <div class="msg__b">
+          <div class="msg__txt">RAM/CPU убрали из шапки — красота, глаза больше не разбегаются.</div>
+        </div>
+      </div>
+
+      <div class="msg msg--ai">
+        <div class="msg__av" style="background:linear-gradient(150deg,hsl(252 70% 68%),hsl(258 70% 46%))">AI</div>
+        <div class="msg__b">
+          <div class="msg__head"><span class="msg__name">Алёша · ассистент</span><span class="pill-ai">AI</span><span class="msg__t">14:06</span></div>
+          <div class="msg__txt">Сводка треда: IA-reset, слайсы UXR1–UXR4 на проде в v1.5.60. Дальше — плотность поповера и экран друзей. Напомнить про оплату хостинга в 18:00?</div>
+        </div>
+      </div>
+
+      <div class="msg">
+        <div class="msg__av a-v" style="background:linear-gradient(150deg,hsl(258 80% 64%),hsl(258 75% 44%))">Я</div>
+        <div class="msg__b">
+          <div class="msg__head"><span class="msg__name me">Ты</span><span class="msg__t">14:21</span></div>
+          <div class="msg__txt">Огонь. Финалю поповер-навигацию и собираю экран «Друзья».</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="composer">
+      <div class="composer__box">
+        <div class="composer__plus">+</div>
+        <div class="composer__in">Сообщение для @Алёша Карпов</div>
+        <button class="composer__send"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m22 2-7 20-4-9-9-4 20-7z"/></svg></button>
+      </div>
+    </div>
+  </main>
+
+  <!-- RIGHT RAIL -->
+  <aside class="act">
+    <div class="act__sec"><div class="act__h"><span class="live">●</span> Активные контакты</div></div>
+
+    <div class="voice">
+      <div class="voice__top">
+        <div class="voice__ch">🔊 Дизайн-войс</div>
+        <div class="voice__air"><span class="b"></span> в эфире</div>
+      </div>
+      <div class="voice__stack">
+        <div class="av a-t">МР</div><div class="av a-b">ДВ</div><div class="av a-v">АК</div><div class="more">+2</div>
+      </div>
+      <button class="voice__join">Присоединиться</button>
+    </div>
+
+    <div class="act__sec" style="padding-top:14px"><div class="act__h">В сети — 6</div></div>
+    <div class="frow"><div class="frow__av a-t">МР<span class="dot p-on"></span></div><div class="frow__txt"><div class="frow__n">Марина Резник</div><div class="frow__s">Figma · IA-reset</div></div></div>
+    <div class="frow"><div class="frow__av a-g" style="color:#fff">ОЛ<span class="dot p-on"></span></div><div class="frow__txt"><div class="frow__n">Оля Лисицына</div><div class="frow__s">✨ The Sims 4</div></div></div>
+    <div class="frow"><div class="frow__av a-b">ДВ<span class="dot p-dnd"></span></div><div class="frow__txt"><div class="frow__n">Дмитрий Власов</div><div class="frow__s">⛔ деплой</div></div></div>
+    <div class="frow"><div class="frow__av a-p">НК<span class="dot p-idle"></span></div><div class="frow__txt"><div class="frow__n">Никита Кравцов</div><div class="frow__s">отошёл</div></div></div>
+    <div class="frow"><div class="frow__av a-r">ВЗ<span class="dot p-on"></span></div><div class="frow__txt"><div class="frow__n">Вера Зайцева</div><div class="frow__s">в сети</div></div></div>
+  </aside>
+
+</div>
+</body>
+</html>

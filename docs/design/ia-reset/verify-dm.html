@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="../../../apps/web/src/styles/tokens.css" />
+<link rel="stylesheet" href="../../../apps/web/src/styles/dm-home.css" />
+<style>
+  body{margin:0;background:var(--ec-void);height:912px;display:flex;font-family:var(--ec-font-sans)}
+  .pane{width:312px;height:100%}
+  /* test-only avatar stand-ins (в React — <Avatar/>) */
+  .av{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:15px;color:#fff}
+  .a-v{background:linear-gradient(150deg,hsl(258 70% 58%),hsl(258 70% 40%))}
+  .a-t{background:linear-gradient(150deg,hsl(168 55% 48%),hsl(180 50% 34%))}
+  .a-b{background:linear-gradient(150deg,hsl(212 60% 56%),hsl(220 55% 40%))}
+  .a-r{background:linear-gradient(150deg,hsl(355 65% 60%),hsl(340 55% 44%))}
+  .a-g{background:linear-gradient(150deg,hsl(46 65% 55%),hsl(38 70% 42%))}
+  .p-on{background:var(--ec-presence-online);box-shadow:0 0 7px hsl(160 55% 52% / .6)}
+  .p-idle{background:var(--ec-presence-idle)} .p-dnd{background:var(--ec-presence-dnd)} .p-off{background:var(--ec-presence-offline)}
+</style>
+</head>
+<body>
+<aside class="ec-dmx pane" aria-label="Личные сообщения">
+  <div class="ec-dmx__head">
+    <div class="ec-dmx__title"><span class="ec-dmx__dot"></span>Сообщения</div>
+    <button class="ec-dmx__head-btn" title="Создать группу">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6"/><path d="M22 11h-6"/></svg>
+    </button>
+  </div>
+  <div class="ec-dmx__search">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+    <input placeholder="Найти или начать беседу" />
+  </div>
+  <div class="ec-dmx__label">Личные сообщения</div>
+  <div class="ec-dmx__list">
+
+    <button class="ec-dmx-row is-active">
+      <span class="ec-dmx-row__av"><span class="av a-v">АК</span><span class="ec-dmx-row__pres p-on"></span></span>
+      <span class="ec-dmx-row__main">
+        <span class="ec-dmx-row__top"><span class="ec-dmx-row__name">Алёша Карпов</span><span class="ec-dmx-row__time">14:21</span></span>
+        <span class="ec-dmx-row__sub"><span class="ec-dmx-row__emoji">🎧</span><span class="ec-dmx-row__sub-text">Слушает Tame Impala</span></span>
+      </span>
+    </button>
+
+    <button class="ec-dmx-row is-unread">
+      <span class="ec-dmx-row__av"><span class="av a-t">МР</span><span class="ec-dmx-row__pres p-on"></span></span>
+      <span class="ec-dmx-row__main">
+        <span class="ec-dmx-row__top"><span class="ec-dmx-row__name">Марина Резник</span><span class="ec-dmx-row__time">13:58</span></span>
+        <span class="ec-dmx-row__sub"><span class="ec-dmx-row__sub-text">Ок, гляну дизайн вечером 👀</span></span>
+      </span>
+      <span class="ec-dmx-row__unread">2</span>
+    </button>
+
+    <button class="ec-dmx-row">
+      <span class="ec-dmx-row__av"><span class="av a-b">ДВ</span><span class="ec-dmx-row__pres p-dnd"></span></span>
+      <span class="ec-dmx-row__main">
+        <span class="ec-dmx-row__top"><span class="ec-dmx-row__name">Дмитрий Власов</span><span class="ec-dmx-row__time">12:30</span></span>
+        <span class="ec-dmx-row__sub"><span class="ec-dmx-row__emoji">⛔</span><span class="ec-dmx-row__sub-text">Не беспокоить · деплой</span></span>
+      </span>
+    </button>
+
+    <button class="ec-dmx-row">
+      <span class="ec-dmx-row__av"><span class="av a-r">КС</span><span class="ec-dmx-row__pres p-idle"></span></span>
+      <span class="ec-dmx-row__main">
+        <span class="ec-dmx-row__top"><span class="ec-dmx-row__name">Катя Соколова</span><span class="ec-dmx-row__time">вчера</span></span>
+        <span class="ec-dmx-row__sub"><span class="ec-dmx-row__sub-text">Отправила счёт на оплату хостинга</span></span>
+      </span>
+    </button>
+
+    <button class="ec-dmx-row">
+      <span class="ec-dmx-row__av"><span class="av a-g">ОЛ</span><span class="ec-dmx-row__pres p-on"></span></span>
+      <span class="ec-dmx-row__main">
+        <span class="ec-dmx-row__top"><span class="ec-dmx-row__name">Оля Лисицына</span><span class="ec-dmx-row__time">пн</span></span>
+        <span class="ec-dmx-row__sub"><span class="ec-dmx-row__emoji">✨</span><span class="ec-dmx-row__sub-text">The Sims 4 как смысл жизни</span></span>
+      </span>
+    </button>
+
+    <button class="ec-dmx-row">
+      <span class="ec-dmx-row__av"><span class="av a-v" style="background:linear-gradient(150deg,hsl(288 55% 58%),hsl(300 50% 40%))">ГД</span><span class="ec-dmx-row__pres p-off"></span></span>
+      <span class="ec-dmx-row__main">
+        <span class="ec-dmx-row__top"><span class="ec-dmx-row__name">Группа · Дизайн-ревью</span><span class="ec-dmx-row__time">пн</span></span>
+        <span class="ec-dmx-row__sub"><span class="ec-dmx-row__sub-text">Марина: финалим IA к среде</span></span>
+      </span>
+    </button>
+
+  </div>
+</aside>
+</body>
+</html>

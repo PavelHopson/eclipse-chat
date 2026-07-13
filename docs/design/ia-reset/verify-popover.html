@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8" />
+<link rel="stylesheet" href="../../../apps/web/src/styles/tokens.css" />
+<link rel="stylesheet" href="../../../apps/web/src/styles/components.css" />
+<link rel="stylesheet" href="../../../apps/web/src/styles/clean-ui.css" />
+<style>
+  /* bright striped background — если поповер прозрачный, полосы просвечивают */
+  body{margin:0;height:700px;font-family:var(--ec-font-sans);
+    background:repeating-linear-gradient(45deg,#3aff7a 0 24px,#ff3a8a 24px 48px)}
+  .ec-server-actions-menu{position:absolute;top:40px;left:40px;width:286px}
+</style></head>
+<body>
+<div class="ec-popover-surface ec-server-actions-menu" role="menu">
+  <div><button class="ec-popover-item ec-server-actions-menu__item"><span>Настройки сервера</span></button></div>
+  <div><button class="ec-popover-item ec-server-actions-menu__item"><span>Пригласить</span></button></div>
+  <div><button class="ec-popover-item ec-server-actions-menu__item"><span>Уведомления</span></button></div>
+  <div><button class="ec-popover-item ec-server-actions-menu__item"><span>Скрыть заглушённые</span></button></div>
+  <div><div class="ec-server-actions-menu__divider"></div><button class="ec-popover-item ec-server-actions-menu__item"><span>Создать канал</span></button></div>
+  <div><button class="ec-popover-item ec-server-actions-menu__item"><span>Создать категорию</span></button></div>
+  <div><button class="ec-popover-item ec-server-actions-menu__item"><span>Изоляция</span></button></div>
+  <div><div class="ec-server-actions-menu__divider"></div><button class="ec-popover-item ec-server-actions-menu__item"><span>Копировать ID</span></button></div>
+  <div><div class="ec-server-actions-menu__divider"></div><button class="ec-popover-item ec-server-actions-menu__item ec-server-actions-menu__item--danger"><span>Покинуть сервер</span></button></div>
+</div>
+</body></html>

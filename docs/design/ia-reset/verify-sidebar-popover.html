@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8" />
+<link rel="stylesheet" href="../../../apps/web/src/styles/tokens.css" />
+<link rel="stylesheet" href="../../../apps/web/src/styles/components.css" />
+<link rel="stylesheet" href="../../../apps/web/src/styles/clean-ui.css" />
+<style>
+  body{margin:0;height:880px;font-family:var(--ec-font-sans);background:var(--ec-void);display:flex}
+  .col{width:272px;height:100%;position:relative}
+  /* popover как в реальном app: fixed-подобно поверх сайдбара */
+  .ec-server-actions-menu{position:absolute;top:58px;left:8px;width:248px}
+</style></head>
+<body>
+<div class="col">
+  <aside class="ec-channel-list" style="height:100%">
+    <header class="ec-server-header-edge ec-channel-list__header ec-channel-list__header--banner" style="background-image:linear-gradient(160deg,#2a3550,#0b0f14)">
+    <button class="ec-channel-list__server-btn ec-server-header-trigger">
+      <span class="ec-channel-list__server-name">Eclipse Forge</span>
+      <span class="ec-badge ec-badge--owner" style="align-self:flex-start">OWNER</span>
+    </button>
+    </header>
+    <div class="ec-sidebar-tabs">
+      <button class="ec-sidebar-tab ec-hud-tab" aria-selected="true">Каналы</button>
+      <button class="ec-sidebar-tab ec-hud-tab">Задачи</button>
+      <button class="ec-sidebar-tab ec-hud-tab">Данные</button>
+    </div>
+    <div class="ec-channel-list__list">
+      <div class="ec-channel-section"><span>Без категории</span><span class="ec-channel-section__count">9</span></div>
+      <div class="ec-channel-item"><span class="ec-channel-item__name">Доска</span></div>
+      <div class="ec-channel-item ec-channel-item--active"><span class="ec-channel-item__name">Задачи</span></div>
+      <div class="ec-channel-item"><span class="ec-channel-item__name">Предложения</span></div>
+      <div class="ec-channel-item"><span class="ec-channel-item__name">Эксперимент</span></div>
+      <div class="ec-channel-item"><span class="ec-channel-item__name">ЧАТИК</span></div>
+      <div class="ec-channel-item"><span class="ec-channel-item__name">Музыка</span></div>
+    </div>
+  </aside>
+
+  <!-- POPOVER открыт поверх сайдбара (как при клике по server header) -->
+  <div class="ec-popover-surface ec-server-actions-menu" role="menu">
+    <div><button class="ec-popover-item ec-server-actions-menu__item"><span>Настройки сервера</span></button></div>
+    <div><button class="ec-popover-item ec-server-actions-menu__item"><span>Пригласить</span></button></div>
+    <div><button class="ec-popover-item ec-server-actions-menu__item"><span>Уведомления</span></button></div>
+    <div><button class="ec-popover-item ec-server-actions-menu__item"><span>Скрыть заглушённые</span></button></div>
+    <div><div class="ec-server-actions-menu__divider"></div><button class="ec-popover-item ec-server-actions-menu__item"><span>Создать канал</span></button></div>
+    <div><button class="ec-popover-item ec-server-actions-menu__item"><span>Создать категорию</span></button></div>
+    <div><button class="ec-popover-item ec-server-actions-menu__item"><span>Изоляция</span></button></div>
+    <div><div class="ec-server-actions-menu__divider"></div><button class="ec-popover-item ec-server-actions-menu__item"><span>Копировать ID</span></button></div>
+  </div>
+</div>
+</body></html>

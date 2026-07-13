@@ -1,0 +1,197 @@
+<svg width="1600" height="900" viewBox="0 0 1600 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1600" y2="900">
+      <stop stop-color="#08101A"/>
+      <stop offset="0.55" stop-color="#070B12"/>
+      <stop offset="1" stop-color="#0B0B16"/>
+    </linearGradient>
+    <linearGradient id="surface" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#141B26"/>
+      <stop offset="1" stop-color="#0F141D"/>
+    </linearGradient>
+    <linearGradient id="active" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#263244"/>
+      <stop offset="1" stop-color="#1A2230"/>
+    </linearGradient>
+    <linearGradient id="violet" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#8B5CF6"/>
+      <stop offset="1" stop-color="#5B7CFA"/>
+    </linearGradient>
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="18" stdDeviation="24" flood-color="#000000" flood-opacity="0.34"/>
+    </filter>
+    <filter id="violetGlow" x="-35%" y="-35%" width="170%" height="170%">
+      <feDropShadow dx="0" dy="0" stdDeviation="18" flood-color="#8B5CF6" flood-opacity="0.26"/>
+    </filter>
+    <style>
+      text { font-family: Inter, Geist, Arial, sans-serif; letter-spacing: 0; }
+      .muted { fill: #8A95A8; }
+      .dim { fill: #5F6A7D; }
+      .strong { fill: #F4F7FB; font-weight: 760; }
+      .small { font-size: 13px; }
+      .xs { font-size: 11px; font-weight: 700; letter-spacing: .08em; }
+      .label { fill: #8A95A8; font-size: 11px; font-weight: 800; letter-spacing: .1em; }
+      .line { stroke: #273244; stroke-width: 1; }
+      .hair { stroke: #2B3547; stroke-width: 1; opacity: .78; }
+      .chipText { fill: #C8D2E3; font-size: 12px; font-weight: 720; }
+    </style>
+  </defs>
+
+  <rect width="1600" height="900" fill="url(#bg)"/>
+  <circle cx="1040" cy="112" r="360" fill="#8B5CF6" opacity="0.04"/>
+  <circle cx="1380" cy="760" r="300" fill="#D4AF37" opacity="0.035"/>
+
+  <!-- Top bar -->
+  <rect x="0" y="0" width="1600" height="64" fill="#090E16" opacity="0.92"/>
+  <line x1="0" y1="63.5" x2="1600" y2="63.5" stroke="#273244"/>
+  <rect x="18" y="14" width="40" height="36" rx="18" fill="#101722" stroke="#1E2A3B"/>
+  <circle cx="38" cy="32" r="8" stroke="#8B5CF6" stroke-width="2"/>
+  <rect x="74" y="10" width="206" height="44" rx="16" fill="#111923" stroke="#2A3546"/>
+  <text x="96" y="38" class="strong" font-size="16">Eclipse Forge</text>
+  <path d="M252 29L260 37L268 29" stroke="#8A95A8" stroke-width="1.8" stroke-linecap="round"/>
+
+  <text x="312" y="38" fill="#9AA7BA" font-size="14">Eclipse Forge  /</text>
+  <text x="432" y="38" class="strong" font-size="15"># ЧАТИК</text>
+
+  <rect x="946" y="12" width="112" height="40" rx="18" fill="#0F1621" stroke="#344258"/>
+  <circle cx="969" cy="32" r="5" fill="#49E6A8"/>
+  <text x="982" y="36" class="chipText">СЕТЬ</text>
+  <path d="M1028 39V31M1036 39V27M1044 39V23" stroke="#9FF5D1" stroke-width="2" stroke-linecap="round"/>
+
+  <rect x="1068" y="12" width="128" height="40" rx="18" fill="#0F1621" stroke="#344258"/>
+  <text x="1090" y="36" class="chipText">ПАМ 15%</text>
+  <path d="M1152 38 C1162 20, 1172 45, 1188 26" stroke="#8CA0B8" stroke-width="1.5" fill="none"/>
+
+  <rect x="1206" y="12" width="116" height="40" rx="18" fill="#0F1621" stroke="#344258"/>
+  <text x="1228" y="36" class="chipText">ЦП 1%</text>
+  <path d="M1272 36 C1285 34, 1290 20, 1306 28" stroke="#8CA0B8" stroke-width="1.5" fill="none"/>
+
+  <rect x="1336" y="12" width="88" height="40" rx="18" fill="#0F1621" stroke="#2A3546"/>
+  <circle cx="1358" cy="32" r="12" fill="#131B29" stroke="#5C6B85"/>
+  <path d="M1352 32H1366M1358 26V38" stroke="#D4AF37" stroke-width="1.5" stroke-linecap="round"/>
+  <text x="1380" y="36" class="strong" font-size="13">21:38</text>
+
+  <rect x="1436" y="12" width="76" height="40" rx="18" fill="#0F1621" stroke="#2A3546"/>
+  <circle cx="1458" cy="32" r="11" fill="#15101F" stroke="#8B5CF6"/>
+  <text x="1478" y="36" fill="#AAB4C6" font-size="12" font-weight="800">VOID</text>
+
+  <rect x="1524" y="12" width="54" height="40" rx="18" fill="#111923" stroke="#2A3546"/>
+  <circle cx="1544" cy="32" r="13" fill="#68462F"/>
+  <circle cx="1554" cy="42" r="4" fill="#49E6A8"/>
+  <text x="1568" y="36" class="strong" font-size="13">Павел</text>
+
+  <!-- Left rail -->
+  <rect x="0" y="64" width="292" height="836" fill="#0B1119"/>
+  <line x1="291.5" y1="64" x2="291.5" y2="900" stroke="#273244"/>
+  <rect x="16" y="84" width="260" height="72" rx="20" fill="#111923" stroke="#2B3547"/>
+  <text x="28" y="114" class="strong" font-size="20">Eclipse Forge</text>
+  <rect x="28" y="126" width="64" height="22" rx="11" fill="#1D2531"/>
+  <text x="40" y="142" fill="#FFFFFF" font-size="11" font-weight="800">OWNER</text>
+
+  <rect x="16" y="174" width="260" height="42" rx="16" fill="#0F1621" stroke="#2B3547"/>
+  <text x="36" y="201" class="muted" font-size="14">⌕  Найти комнату</text>
+
+  <g>
+    <rect x="18" y="236" width="94" height="38" rx="14" fill="#1A2230"/>
+    <text x="38" y="260" class="strong" font-size="13">Каналы</text>
+    <text x="132" y="260" class="dim" font-size="13" font-weight="740">Задачи</text>
+    <text x="210" y="260" class="dim" font-size="13" font-weight="740">Данные</text>
+  </g>
+
+  <text x="24" y="306" class="label">ОБЩЕНИЕ</text>
+  <rect x="14" y="322" width="264" height="48" rx="16" fill="url(#active)" stroke="#5D6F91"/>
+  <rect x="18" y="334" width="4" height="24" rx="2" fill="url(#violet)"/>
+  <rect x="34" y="334" width="24" height="24" rx="8" fill="#2C2050"/>
+  <text x="42" y="351" fill="#CDBDFF" font-size="14">☵</text>
+  <text x="70" y="352" class="strong" font-size="15">ЧАТИК</text>
+  <text x="244" y="352" class="muted" font-size="13">1</text>
+
+  <rect x="14" y="378" width="264" height="44" rx="15" fill="#0D141E"/>
+  <text x="36" y="406" fill="#B5C0D2" font-size="15">🌐 Новости</text>
+  <rect x="14" y="430" width="264" height="44" rx="15" fill="#0D141E"/>
+  <text x="36" y="458" fill="#B5C0D2" font-size="15">♪ Музыка</text>
+  <text x="244" y="458" class="muted" font-size="13">2</text>
+
+  <text x="24" y="512" class="label">РАБОТА</text>
+  <rect x="14" y="528" width="264" height="44" rx="15" fill="#0D141E"/>
+  <text x="36" y="556" fill="#B5C0D2" font-size="15">📣 Эксперимент</text>
+  <text x="244" y="556" class="muted" font-size="13">8</text>
+  <rect x="14" y="580" width="264" height="44" rx="15" fill="#0D141E"/>
+  <text x="36" y="608" fill="#B5C0D2" font-size="15">▦ Доска</text>
+
+  <rect x="14" y="804" width="264" height="54" rx="18" fill="#121B28" stroke="#344258"/>
+  <circle cx="42" cy="831" r="17" fill="#6B4A38"/>
+  <text x="66" y="828" class="strong" font-size="14">Павел</text>
+  <text x="66" y="846" class="muted small">в работе</text>
+  <text x="204" y="838" fill="#AAB4C6" font-size="20">◔  ⚙</text>
+
+  <!-- Main content -->
+  <rect x="292" y="64" width="1080" height="836" fill="#080D14"/>
+  <line x1="292" y1="139.5" x2="1372" y2="139.5" stroke="#273244"/>
+  <text x="322" y="111" class="strong" font-size="24">ЧАТИК</text>
+  <text x="402" y="111" class="muted" font-size="14">Тут общаемся на разные темы</text>
+  <rect x="1244" y="88" width="96" height="36" rx="16" fill="#111923" stroke="#344258"/>
+  <text x="1262" y="111" class="chipText">Музыка</text>
+
+  <rect x="324" y="170" width="1018" height="604" rx="24" fill="#0A1018" stroke="#1F2A3A"/>
+  <text x="802" y="206" class="label">СЕГОДНЯ</text>
+
+  <!-- Message left -->
+  <circle cx="384" cy="278" r="20" fill="#6B4A38"/>
+  <rect x="418" y="246" width="430" height="142" rx="22" fill="url(#surface)" stroke="#2C3A50" filter="url(#softShadow)"/>
+  <text x="442" y="276" class="strong" font-size="16">Павел</text>
+  <text x="498" y="276" class="muted" font-size="12">19:01</text>
+  <text x="442" y="306" fill="#E9EEF7" font-size="17">Сосать палец</text>
+  <rect x="442" y="328" width="156" height="30" rx="15" fill="#1C2636" stroke="#3A4A63"/>
+  <text x="458" y="348" class="chipText">TASK</text>
+  <text x="502" y="348" fill="#E9EEF7" font-size="12" font-weight="760">Сосать палец</text>
+
+  <!-- Macro message cleaned -->
+  <circle cx="384" cy="456" r="20" fill="#6B4A38"/>
+  <rect x="418" y="428" width="322" height="64" rx="20" fill="#101722" stroke="#2C3A50"/>
+  <text x="442" y="454" class="strong" font-size="15">Павел</text>
+  <text x="498" y="454" class="muted" font-size="12">19:08</text>
+  <text x="442" y="478" fill="#E9EEF7" font-size="16">(╯°□°)╯︵ ┻━┻</text>
+
+  <!-- Image message -->
+  <rect x="886" y="238" width="300" height="360" rx="24" fill="#121B28" stroke="#40516D" filter="url(#softShadow)"/>
+  <text x="910" y="268" class="strong" font-size="15">Павел</text>
+  <text x="966" y="268" class="muted" font-size="12">07:55</text>
+  <rect x="910" y="288" width="252" height="260" rx="16" fill="#202A38"/>
+  <rect x="926" y="306" width="220" height="224" rx="12" fill="#2B1D18"/>
+  <circle cx="1020" cy="412" r="58" fill="#8B5CF6" opacity=".18"/>
+  <rect x="934" y="318" width="202" height="16" rx="8" fill="#C9B19A" opacity=".6"/>
+  <rect x="934" y="352" width="134" height="16" rx="8" fill="#C9B19A" opacity=".45"/>
+  <rect x="934" y="486" width="202" height="16" rx="8" fill="#C9B19A" opacity=".5"/>
+  <rect x="914" y="560" width="50" height="26" rx="13" fill="#1B2534" stroke="#3A4A63"/>
+  <text x="928" y="578" fill="#DAD6FF" font-size="13">👀 1</text>
+
+  <!-- Composer -->
+  <rect x="324" y="798" width="1018" height="58" rx="22" fill="#121B28" stroke="#43546F" filter="url(#softShadow)"/>
+  <rect x="342" y="812" width="34" height="34" rx="14" fill="#1A2433" stroke="#35465E"/>
+  <text x="354" y="835" fill="#D7E0F0" font-size="22">+</text>
+  <rect x="392" y="812" width="832" height="34" rx="14" fill="#0B1119" stroke="#202B3B"/>
+  <text x="414" y="834" class="muted" font-size="15">Сообщение в #ЧАТИК...</text>
+  <circle cx="1250" cy="829" r="17" fill="#111923" stroke="#2B3547"/>
+  <text x="1242" y="835" fill="#B6C3D6" font-size="15">☺</text>
+  <rect x="1278" y="812" width="42" height="34" rx="14" fill="url(#violet)" filter="url(#violetGlow)"/>
+  <text x="1292" y="835" fill="#FFFFFF" font-size="17">➤</text>
+
+  <!-- Right members rail -->
+  <rect x="1372" y="64" width="228" height="836" fill="#0B1119"/>
+  <line x1="1372.5" y1="64" x2="1372.5" y2="900" stroke="#273244"/>
+  <text x="1400" y="112" class="strong" font-size="17">Участники</text>
+  <text x="1496" y="112" class="muted" font-size="13">1/13</text>
+  <text x="1400" y="160" class="label">ВЛАДЕЛЕЦ</text>
+  <circle cx="1420" cy="204" r="18" fill="#6B4A38"/>
+  <circle cx="1434" cy="218" r="5" fill="#49E6A8"/>
+  <text x="1450" y="209" class="strong" font-size="14">Павел</text>
+  <rect x="1538" y="194" width="38" height="18" rx="9" fill="#403716"/>
+  <text x="1548" y="207" fill="#D4AF37" font-size="10" font-weight="900">OWN</text>
+  <text x="1400" y="268" class="label">НЕ В СЕТИ</text>
+  <g opacity=".62">
+    <circle cx="1420" cy="310" r="18" fill="#7A3D3D"/><text x="1414" y="316" fill="#F2DADA" font-size="15" font-weight="800">B</text><text x="1450" y="315" fill="#AAB4C6" font-size="14">Василий</text>
+    <circle cx="1420" cy="366" r="18" fill="#36418B"/><text x="1413" y="372" fill="#E8EAFD" font-size="15" font-weight="800">Д</text><text x="1450" y="371" fill="#AAB4C6" font-size="14">данила</text>
+    <circle cx="1420" cy="422" r="18" fill="#5A7836"/><text x="1413" y="428" fill="#EEF7DE" font-size="15" font-weight="800">C</text><text x="1450" y="427" fill="#AAB4C6" font-size="14">chepokayfu</text>
+  </g>
+</svg>
