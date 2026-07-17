@@ -51,7 +51,7 @@ export const SETTINGS_GROUPS: NavGroup[] = [
   {
     label: "Уведомления",
     items: [
-      { id: "notifications-push", label: "Push-уведомления" },
+      { id: "notifications-push", label: "Уведомления и звук" },
       { id: "notifications-quiet", label: "Тихие часы" },
     ],
   },

@@ -4,14 +4,24 @@ import { resolveAssetUrl } from "../lib/assets";
 import {
   SocketEvents,
   type ActionItemEscalatedPayload,
+  type DmMessageNewPayload,
   type MessageNewPayload,
 } from "../lib/socket";
+import {
+  installNotificationSoundUnlock,
+  playNotificationSound,
+} from "../lib/notificationSounds";
 
 type Permission = "default" | "granted" | "denied" | "unsupported";
 
 const LS_KEY = "eclipse_chat_notifications_enabled";
 const ORIGINAL_TITLE = "Eclipse Chat";
 const NOTIFICATION_ICON = `${import.meta.env.BASE_URL}icon-192.png`;
+
+type NotificationOptions = {
+  selectedDmIdRef?: { current: string | null };
+  currentUserName?: string | null;
+};
 
 function getStoredEnabled(): boolean {
   if (typeof window === "undefined") return false;
@@ -32,6 +42,12 @@ function setStoredEnabled(enabled: boolean): void {
 
 function isSupported(): boolean {
   return typeof window !== "undefined" && "Notification" in window;
+}
+
+function mentionsCurrentUser(content: string, currentUserName?: string | null): boolean {
+  const name = currentUserName?.trim();
+  if (!name) return false;
+  return content.toLowerCase().includes(`@${name.toLowerCase()}`);
 }
 
 /**
@@ -55,7 +71,9 @@ export function useNotifications(
   currentUserId: string | null,
   selectedChannelIdRef: { current: string | null },
   unreadTotal: number,
+  options: NotificationOptions = {},
 ) {
+  const { selectedDmIdRef, currentUserName } = options;
   const [permission, setPermission] = useState<Permission>("default");
   const [enabled, setEnabled] = useState<boolean>(false);
 
@@ -83,6 +101,8 @@ export function useNotifications(
       return "denied";
     }
   }, []);
+
+  useEffect(() => installNotificationSoundUnlock(), []);
 
   const toggle = useCallback(() => {
     setEnabled((prev) => {
@@ -132,11 +152,8 @@ export function useNotifications(
   // socket: message:new → может показать Notification
   useEffect(() => {
     if (!socket) return;
-    if (!isSupported()) return;
 
     const handler = (p: MessageNewPayload) => {
-      if (!enabled) return;
-      if (permission !== "granted") return;
       if (currentUserId && p.userId === currentUserId) return;
 
       const isActiveChannel = p.channelId === selectedChannelIdRef.current;
@@ -150,13 +167,25 @@ export function useNotifications(
       if (now - last < 2_000) return;
       lastByUser.current.set(p.userId, now);
 
+      const isMention = mentionsCurrentUser(p.content, currentUserName);
+      playNotificationSound(isMention ? "mention" : "message", {
+        key: p.channelId,
+      });
+
+      if (!enabled) return;
+      if (permission !== "granted") return;
+      if (!isSupported()) return;
+
       try {
-        const notif = new Notification(p.displayName, {
-          body: p.content.slice(0, 120),
-          icon: resolveAssetUrl(p.avatar) ?? NOTIFICATION_ICON,
-          tag: `eclipse-chat-${p.channelId}`,
-          silent: false,
-        });
+        const notif = new Notification(
+          isMention ? `@${p.displayName}` : p.displayName,
+          {
+            body: p.content.slice(0, 120),
+            icon: resolveAssetUrl(p.avatar) ?? NOTIFICATION_ICON,
+            tag: `eclipse-chat-${p.channelId}`,
+            silent: true,
+          },
+        );
         notif.onclick = () => {
           window.focus();
           notif.close();
@@ -170,7 +199,51 @@ export function useNotifications(
     return () => {
       socket.off(SocketEvents.MessageNew, handler);
     };
-  }, [socket, enabled, permission, currentUserId, selectedChannelIdRef]);
+  }, [socket, enabled, permission, currentUserId, selectedChannelIdRef, currentUserName]);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handler = (p: DmMessageNewPayload) => {
+      if (currentUserId && p.userId === currentUserId) return;
+
+      const isActiveDm = p.conversationId === selectedDmIdRef?.current;
+      const tabHidden = typeof document !== "undefined" && document.hidden;
+      if (isActiveDm && !tabHidden) return;
+
+      const now = Date.now();
+      const rateKey = `dm:${p.conversationId}:${p.userId}`;
+      const last = lastByUser.current.get(rateKey) ?? 0;
+      if (now - last < 1_500) return;
+      lastByUser.current.set(rateKey, now);
+
+      playNotificationSound("dm", { key: p.conversationId });
+
+      if (!enabled) return;
+      if (permission !== "granted") return;
+      if (!isSupported()) return;
+
+      try {
+        const notif = new Notification(`DM: ${p.displayName}`, {
+          body: p.content.slice(0, 120),
+          icon: resolveAssetUrl(p.avatar) ?? NOTIFICATION_ICON,
+          tag: `eclipse-chat-dm-${p.conversationId}`,
+          silent: true,
+        });
+        notif.onclick = () => {
+          window.focus();
+          notif.close();
+        };
+      } catch {
+        /* ignore */
+      }
+    };
+
+    socket.on(SocketEvents.DmMessageNew, handler);
+    return () => {
+      socket.off(SocketEvents.DmMessageNew, handler);
+    };
+  }, [socket, enabled, permission, currentUserId, selectedDmIdRef]);
 
   // v0.73 #20 phase 3: escalation events. Когда фон ставит task'е
   // escalatedAt=now (overdue 48h+), backend эмитит payload — мы шлём
@@ -179,15 +252,16 @@ export function useNotifications(
   // на задачу раз в 7 дней.
   useEffect(() => {
     if (!socket) return;
-    if (!isSupported()) return;
     const handler = (p: ActionItemEscalatedPayload) => {
-      if (!enabled) return;
-      if (permission !== "granted") return;
       if (!currentUserId) return;
       const isMine =
         p.assigneeUserId === currentUserId ||
         p.createdByUserId === currentUserId;
       if (!isMine) return;
+      playNotificationSound("task", { key: p.actionItemId });
+      if (!enabled) return;
+      if (permission !== "granted") return;
+      if (!isSupported()) return;
       const overdueHours = p.dueAt
         ? Math.max(
             0,
@@ -205,7 +279,7 @@ export function useNotifications(
           body,
           icon: NOTIFICATION_ICON,
           tag: `eclipse-chat-escalate-${p.actionItemId}`,
-          silent: false,
+          silent: true,
         });
         notif.onclick = () => {
           window.focus();

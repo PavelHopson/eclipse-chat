@@ -295,11 +295,17 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   } = useDirectMessages(inDmMode ? selectedDmId : null, socket, user.id);
 
   // Total unread по всем каналам — для tab title badge
-  const unreadTotal = Object.values(unread).reduce((sum, n) => sum + n, 0);
+  const dmUnreadTotal = dmConversations.reduce((sum, c) => sum + c.unread, 0);
+  const unreadTotal = Object.values(unread).reduce((sum, n) => sum + n, 0) + dmUnreadTotal;
   // Ref для selected channel — useNotifications читает на каждый message:new
   const selectedChannelIdRef = useRef<string | null>(selectedChannelId);
   selectedChannelIdRef.current = selectedChannelId;
-  const notif = useNotifications(socket, user.id, selectedChannelIdRef, unreadTotal);
+  const selectedDmIdRef = useRef<string | null>(selectedDmId);
+  selectedDmIdRef.current = selectedDmId;
+  const notif = useNotifications(socket, user.id, selectedChannelIdRef, unreadTotal, {
+    selectedDmIdRef,
+    currentUserName: user.displayName,
+  });
   // v0.74 #29 phase 1: Focus mode — filter feed to mentions/pinned/own.
   const focus = useFocusMode();
   // v1.5.32 — Web Share Target receiver. URL params (?share_title/text/url)
@@ -602,7 +608,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     byChannel: rawVoiceByChannel,
     metaByUser: rawVoiceMeta,
     speakingByUser,
-  } = useVoicePresence(socket);
+  } = useVoicePresence(socket, user.id);
   // Voice state lifted в AppShell — persistent across channel switches, доступен sidebar'у.
   const voice = useVoice(socket);
   // Для voice-канала, где ты сейчас подключён, источник истины — сам LiveKit
@@ -798,6 +804,24 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     setSelectedTableId(null);
     setNavOpen(false);
     setMembersOpen(false);
+  };
+
+  const openStatusBoardFromGuide = () => {
+    setHomeOpen(false);
+    setFriendsOpen(false);
+    setHelpOpen(false);
+    setAdminOpen(false);
+    setTeamHealthOpen(false);
+    setSelectedTableId(null);
+    setSelectedThreadId(null);
+    setStatusBoardFilter(null);
+    setStatusBoardOpen(true);
+    if (isMobile) setNavOpen(false);
+  };
+
+  const openSearchFromGuide = () => {
+    setSearchQuery("");
+    setShowSearch(true);
   };
 
   const handleSelectServerView = (view: ServerView) => {
@@ -2024,6 +2048,15 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           <ServerWelcomeHero
             server={activeServer}
             channels={channels}
+            unread={unread}
+            voiceByChannel={voiceByChannel}
+            members={members}
+            actions={serverActions.actions}
+            actionsLoading={serverActions.loading}
+            currentUserId={user.id}
+            onOpenStatusBoard={openStatusBoardFromGuide}
+            onOpenMembers={() => handleSelectServerView("members")}
+            onOpenSearch={openSearchFromGuide}
             onSelectChannel={(id) => {
               setServerView("chat");
               setSelectedChannelId(id);
@@ -2061,6 +2094,15 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           <ServerWelcomeHero
             server={activeServer}
             channels={channels}
+            unread={unread}
+            voiceByChannel={voiceByChannel}
+            members={members}
+            actions={serverActions.actions}
+            actionsLoading={serverActions.loading}
+            currentUserId={user.id}
+            onOpenStatusBoard={openStatusBoardFromGuide}
+            onOpenMembers={() => handleSelectServerView("members")}
+            onOpenSearch={openSearchFromGuide}
             onSelectChannel={(id) => {
               setServerView("chat");
               setSelectedChannelId(id);

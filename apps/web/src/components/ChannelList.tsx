@@ -370,6 +370,18 @@ export function ChannelList({
     }
     return map;
   }, [sortedCategories, sortedChannels]);
+  const memberByUserId = useMemo(
+    () => new Map((members ?? []).map((member) => [member.userId, member])),
+    [members],
+  );
+  const activeVoiceRooms = voiceChannels
+    .map((channel) => ({
+      channel,
+      userIds: voiceByChannel?.[channel.id] ?? [],
+    }))
+    .filter((room) => room.userIds.length > 0)
+    .sort((a, b) => a.channel.position - b.channel.position || a.channel.name.localeCompare(b.channel.name, "ru"));
+  const activeVoiceUserCount = activeVoiceRooms.reduce((sum, room) => sum + room.userIds.length, 0);
   const createModalCategoryName =
     createModalCategoryId === null
       ? null
@@ -457,7 +469,7 @@ export function ChannelList({
     return (
       <div className="ec-voice-occupant-list">
         {userIds.map((userId) => {
-          const m = members?.find((mm) => mm.userId === userId);
+          const m = memberByUserId.get(userId);
           const name = m?.user.displayName ?? userId;
           const avatar = m?.user.avatar ?? null;
           const speaking = speakingUserIds?.has(userId) ?? false;
@@ -495,6 +507,65 @@ export function ChannelList({
           );
         })}
       </div>
+    );
+  };
+
+  const renderActiveVoiceMap = () => {
+    if (activeVoiceRooms.length === 0) return null;
+
+    return (
+      <section className="ec-voice-map" aria-label="Кто сейчас в голосовых комнатах">
+        <div className="ec-voice-map__header">
+          <span>Сейчас в голосе</span>
+          <span>{activeVoiceUserCount}</span>
+        </div>
+        <div className="ec-voice-map__rooms">
+          {activeVoiceRooms.map(({ channel, userIds }) => {
+            const roomSpeaking = userIds.some((userId) => speakingUserIds?.has(userId));
+            return (
+              <button
+                key={channel.id}
+                type="button"
+                className={
+                  "ec-voice-map-room" +
+                  (channel.id === selectedChannelId ? " ec-voice-map-room--active" : "") +
+                  (roomSpeaking ? " ec-voice-map-room--speaking" : "")
+                }
+                onClick={() => onSelect(channel.id)}
+                title={`Открыть ${channel.name}: ${userIds.length} в голосе`}
+              >
+                <span className="ec-voice-map-room__main">
+                  <ChannelGlyph type={channel.type} icon={channel.emoji} size={14} />
+                  <span className="ec-voice-map-room__name">{channel.name}</span>
+                  <span className="ec-voice-map-room__count">{userIds.length}</span>
+                </span>
+                <span className="ec-voice-map-room__avatars" aria-hidden>
+                  {userIds.slice(0, 5).map((userId) => {
+                    const member = memberByUserId.get(userId);
+                    const name = member?.user.displayName ?? userId;
+                    const avatar = member?.user.avatar ?? null;
+                    return (
+                      <span
+                        key={userId}
+                        className={
+                          "ec-voice-map-room__avatar" +
+                          (speakingUserIds?.has(userId) ? " ec-voice-map-room__avatar--speaking" : "")
+                        }
+                        title={name}
+                      >
+                        <Avatar url={avatar} name={name} size={20} />
+                      </span>
+                    );
+                  })}
+                  {userIds.length > 5 && (
+                    <span className="ec-voice-map-room__more">+{userIds.length - 5}</span>
+                  )}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
     );
   };
 
@@ -1218,6 +1289,7 @@ export function ChannelList({
                 </button>
               )}
             </div>
+            {renderActiveVoiceMap()}
             {!channelsLoading && channels.length > 0 && (
               <div className="ec-channel-category-stack">
                 {sortedChannels.length === 0 && channelSearchActive && (

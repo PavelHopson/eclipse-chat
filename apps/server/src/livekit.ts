@@ -22,6 +22,7 @@ import jwt from "jsonwebtoken";
 export type LivekitGrant = {
   identity: string;
   name?: string;
+  metadata?: string;
   room: string;
   /** TTL в секундах. Default — 6 часов (LiveKit рекомендация). */
   ttlSeconds?: number;
@@ -54,6 +55,7 @@ export function generateLivekitToken(grant: LivekitGrant, cfg: LivekitConfig): s
     nbf: now,
     exp: now + ttl,
     name: grant.name,
+    metadata: grant.metadata,
     video: {
       room: grant.room,
       roomJoin: true,

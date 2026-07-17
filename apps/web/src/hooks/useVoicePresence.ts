@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Socket } from "socket.io-client";
 import {
   SocketEvents,
@@ -10,6 +10,7 @@ import {
   type VoiceParticipantSpeakingPayload,
   type VoiceStatePayload,
 } from "../lib/socket";
+import { playNotificationSound } from "../lib/notificationSounds";
 
 export type VoicePresence = {
   /** Кто сейчас в каком voice-канале. `Record<channelId, userId[]>`. */
@@ -35,13 +36,15 @@ export type VoicePresence = {
  * connect и далее инкрементально обновляется через `voice:participant:joined`
  * / `left` / `meta`.
  */
-export function useVoicePresence(socket: Socket | null): VoicePresence {
+export function useVoicePresence(socket: Socket | null, currentUserId?: string | null): VoicePresence {
   const [voiceByChannel, setVoiceByChannel] = useState<Record<string, string[]>>({});
   const [metaByUser, setMetaByUser] = useState<Record<string, VoiceMeta>>({});
   const [speakingByUser, setSpeakingByUser] = useState<Record<string, boolean>>({});
+  const voiceByChannelRef = useRef<Record<string, string[]>>({});
 
   useEffect(() => {
     if (!socket) {
+      voiceByChannelRef.current = {};
       setVoiceByChannel({});
       setMetaByUser({});
       setSpeakingByUser({});
@@ -54,6 +57,7 @@ export function useVoicePresence(socket: Socket | null): VoicePresence {
 
     const onState = (snap: VoiceStatePayload) => {
       // Полная замена — это snapshot, не дельта.
+      voiceByChannelRef.current = snap;
       setVoiceByChannel(snap);
     };
 
@@ -62,14 +66,26 @@ export function useVoicePresence(socket: Socket | null): VoicePresence {
     };
 
     const onJoined = (p: VoiceParticipantJoinedPayload) => {
+      const existing = voiceByChannelRef.current[p.voiceChannelId] ?? [];
+      const alreadyVisible = existing.includes(p.userId);
+      if (!alreadyVisible && p.userId !== currentUserId) {
+        playNotificationSound("voiceJoin", { key: p.voiceChannelId });
+      }
       setVoiceByChannel((prev) => {
         const list = prev[p.voiceChannelId] ?? [];
         if (list.includes(p.userId)) return prev;
-        return { ...prev, [p.voiceChannelId]: [...list, p.userId] };
+        const next = { ...prev, [p.voiceChannelId]: [...list, p.userId] };
+        voiceByChannelRef.current = next;
+        return next;
       });
     };
 
     const onLeft = (p: VoiceParticipantLeftPayload) => {
+      const existing = voiceByChannelRef.current[p.voiceChannelId] ?? [];
+      const wasVisible = existing.includes(p.userId);
+      if (wasVisible && p.userId !== currentUserId) {
+        playNotificationSound("voiceLeave", { key: p.voiceChannelId });
+      }
       setVoiceByChannel((prev) => {
         const list = prev[p.voiceChannelId];
         if (!list) return prev;
@@ -77,9 +93,12 @@ export function useVoicePresence(socket: Socket | null): VoicePresence {
         if (next.length === 0) {
           const copy = { ...prev };
           delete copy[p.voiceChannelId];
+          voiceByChannelRef.current = copy;
           return copy;
         }
-        return { ...prev, [p.voiceChannelId]: next };
+        const copy = { ...prev, [p.voiceChannelId]: next };
+        voiceByChannelRef.current = copy;
+        return copy;
       });
       // Участник вышел из эфира — его meta + speaking больше не нужны.
       setMetaByUser((prev) => {
@@ -137,7 +156,7 @@ export function useVoicePresence(socket: Socket | null): VoicePresence {
       socket.off(SocketEvents.VoiceParticipantMeta, onMeta);
       socket.off(SocketEvents.VoiceParticipantSpeaking, onSpeaking);
     };
-  }, [socket]);
+  }, [currentUserId, socket]);
 
   return { byChannel: voiceByChannel, metaByUser, speakingByUser };
 }
