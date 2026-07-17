@@ -7,6 +7,7 @@ import { useFocusDim } from "../../hooks/useFocusDim";
 import { useInstallPrompt } from "../../hooks/useInstallPrompt";
 import { usePushNotifications } from "../../hooks/usePushNotifications";
 import { usePushPreferences } from "../../hooks/usePushPreferences";
+import { useNotificationSoundSettings } from "../../hooks/useNotificationSoundSettings";
 import { AccountProfileSection } from "./categories/AccountProfileSection";
 import { AccountSecuritySection } from "./categories/AccountSecuritySection";
 import { ActivitySection } from "./categories/ActivitySection";
@@ -140,6 +141,7 @@ export function SettingsPanel({
   const fileRef = useRef<HTMLInputElement>(null);
   const push = usePushNotifications();
   const pushPrefs = usePushPreferences(push.enabled);
+  const notificationSounds = useNotificationSoundSettings();
   const sessions = useSessions(active === "account-sessions");
   const [showPrefs, setShowPrefs] = useState(false);
   const install = useInstallPrompt();
@@ -346,6 +348,7 @@ export function SettingsPanel({
         <NotificationsPushSection
           push={push}
           pushPrefs={pushPrefs}
+          sounds={notificationSounds}
           showPrefs={showPrefs}
           onTogglePrefs={() => setShowPrefs((value) => !value)}
         />

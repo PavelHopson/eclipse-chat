@@ -87,6 +87,7 @@ type JoinResponse = {
   wsUrl: string;
   token: string;
   roomName: string;
+  livekitIdentity?: string;
   identity: string;
   metadata: { displayName: string; avatar: string | null };
 };
@@ -105,6 +106,49 @@ function normalizeConnectionQuality(value: unknown): VoiceParticipant["connectio
   if (value === 0 || value === "poor" || value === "POOR") return "poor";
   if (value === 3 || value === "lost" || value === "LOST") return "lost";
   return "unknown";
+}
+
+type LivekitParticipantLike = {
+  identity: string;
+  name?: string;
+  metadata?: string;
+};
+
+type VoiceParticipantProfile = {
+  userId: string;
+  displayName: string;
+  avatar: string | null;
+};
+
+function parseVoiceParticipantProfile(participant: LivekitParticipantLike): VoiceParticipantProfile {
+  if (participant.metadata) {
+    try {
+      const parsed = JSON.parse(participant.metadata) as {
+        userId?: unknown;
+        displayName?: unknown;
+        avatar?: unknown;
+      };
+      if (typeof parsed.userId === "string" && parsed.userId.length > 0) {
+        const displayName =
+          typeof parsed.displayName === "string" && parsed.displayName.length > 0
+            ? parsed.displayName
+            : participant.name || parsed.userId;
+        return {
+          userId: parsed.userId,
+          displayName,
+          avatar: typeof parsed.avatar === "string" ? parsed.avatar : null,
+        };
+      }
+    } catch {
+      /* Legacy tokens may not have JSON metadata. Fall back to identity. */
+    }
+  }
+
+  return {
+    userId: participant.identity,
+    displayName: participant.name || participant.identity,
+    avatar: null,
+  };
 }
 
 export function useVoice(socket: Socket | null = null) {
@@ -256,9 +300,10 @@ export function useVoice(socket: Socket | null = null) {
     void import("livekit-client").then((lk) => {
       const list: VoiceParticipant[] = [];
       const lp = r.localParticipant;
+      const localProfile = parseVoiceParticipantProfile(lp);
       list.push({
-        identity: lp.identity,
-        name: lp.name || lp.identity,
+        identity: localProfile.userId,
+        name: localProfile.displayName,
         isSpeaking: lp.isSpeaking,
         isMicMuted: !lp.isMicrophoneEnabled,
         isDeafened,
@@ -269,9 +314,10 @@ export function useVoice(socket: Socket | null = null) {
       });
       for (const p of r.remoteParticipants.values()) {
         const micPub = p.getTrackPublication(lk.Track.Source.Microphone);
+        const profile = parseVoiceParticipantProfile(p);
         list.push({
-          identity: p.identity,
-          name: p.name || p.identity,
+          identity: profile.userId,
+          name: profile.displayName,
           isSpeaking: p.isSpeaking,
           isMicMuted: micPub?.isMuted ?? !micPub,
           isDeafened: false,
@@ -325,20 +371,22 @@ export function useVoice(socket: Socket | null = null) {
     };
 
     for (const pub of r.localParticipant.videoTrackPublications.values()) {
+      const profile = parseVoiceParticipantProfile(r.localParticipant);
       pushTrack(
         pub as unknown as VideoPublicationLike,
-        r.localParticipant.identity,
-        r.localParticipant.name || r.localParticipant.identity,
+        profile.userId,
+        profile.displayName,
         true,
       );
     }
 
     for (const participant of r.remoteParticipants.values()) {
+      const profile = parseVoiceParticipantProfile(participant);
       for (const pub of participant.videoTrackPublications.values()) {
         pushTrack(
           pub as unknown as VideoPublicationLike,
-          participant.identity,
-          participant.name || participant.identity,
+          profile.userId,
+          profile.displayName,
           false,
         );
       }
@@ -461,6 +509,30 @@ export function useVoice(socket: Socket | null = null) {
   const socketRef = useRef<Socket | null>(socket);
   socketRef.current = socket;
 
+  const resetLocalVoiceState = useCallback(() => {
+    for (const entry of remoteTracksRef.current.values()) {
+      try {
+        entry.audioEl.pause();
+        entry.audioEl.srcObject = null;
+        entry.audioEl.remove();
+      } catch {
+        /* ignore */
+      }
+    }
+    remoteTracksRef.current.clear();
+    if (enhancerRef.current) {
+      enhancerRef.current.destroy();
+      enhancerRef.current = null;
+    }
+    setRoom(null);
+    setActiveChannelId(null);
+    setState("disconnected");
+    setParticipants([]);
+    setVisualTracks([]);
+    setIsCameraEnabled(false);
+    setIsScreenShareEnabled(false);
+  }, []);
+
   const leave = useCallback(async () => {
     const r = roomRef.current;
     if (!r) return;
@@ -518,19 +590,8 @@ export function useVoice(socket: Socket | null = null) {
           import("livekit-client"),
         ]);
 
-        // v1.6.55 — presence-broadcast СРАЗУ (до LiveKit connect): остальные
-        // участники сервера видят тебя в голосовой комнате мгновенно, не
-        // дожидаясь 1-3s LiveKit-подключения. На провал connect'а откатываем
-        // через voice:leave в catch (флаг voiceJoinEmitted).
-        socketRef.current?.emit(
-          SocketEvents.VoiceJoin,
-          { channelId },
-          (err: string | null) => {
-            if (err) console.warn("voice:join backend rejected:", err);
-          },
-        );
-        voiceJoinEmitted = true;
-
+        // Announce backend presence only after LiveKit is connected. Otherwise
+        // clients can see ghost participants and stale voice state.
         const { Room, RoomEvent, Track } = lk;
 
         const r = new Room({
@@ -547,6 +608,11 @@ export function useVoice(socket: Socket | null = null) {
           else if (s === lk.ConnectionState.Reconnecting) setState("reconnecting");
           else setState("disconnected");
         });
+        r.on(RoomEvent.Disconnected, () => {
+          if (roomRef.current !== r) return;
+          socketRef.current?.emit(SocketEvents.VoiceLeave);
+          resetLocalVoiceState();
+        });
         r.on(RoomEvent.ParticipantConnected, refreshParticipants);
         r.on(RoomEvent.ParticipantDisconnected, refreshParticipants);
         r.on(RoomEvent.ActiveSpeakersChanged, refreshParticipants);
@@ -561,6 +627,10 @@ export function useVoice(socket: Socket | null = null) {
         r.on(RoomEvent.TrackUnmuted, refreshVisualTracks);
         r.on(RoomEvent.LocalTrackPublished, refreshVisualTracks);
         r.on(RoomEvent.LocalTrackUnpublished, refreshVisualTracks);
+        r.on(RoomEvent.ParticipantMetadataChanged, () => {
+          refreshParticipants();
+          refreshVisualTracks();
+        });
 
         r.on(RoomEvent.TrackSubscribed, (track: RemoteTrack, pub: RemoteTrackPublication, participant: RemoteParticipant) => {
           if (track.kind === Track.Kind.Audio) {
@@ -580,12 +650,13 @@ export function useVoice(socket: Socket | null = null) {
               );
             }
 
-            const key = `${participant.identity}-${pub.trackSid}`;
+            const profile = parseVoiceParticipantProfile(participant);
+            const key = `${profile.userId}-${pub.trackSid}`;
             const entry: RemoteTrackEntry = {
               audioEl: el,
               track,
               publication: pub,
-              participantIdentity: participant.identity,
+              participantIdentity: profile.userId,
             };
             remoteTracksRef.current.set(key, entry);
             applyRemoteAudioState(entry, isDeafened);
@@ -595,7 +666,8 @@ export function useVoice(socket: Socket | null = null) {
         r.on(RoomEvent.TrackUnsubscribed, (track: RemoteTrack, pub: RemoteTrackPublication, participant: RemoteParticipant) => {
           if (track.kind === Track.Kind.Audio) {
             track.detach();
-            const key = `${participant.identity}-${pub.trackSid}`;
+            const profile = parseVoiceParticipantProfile(participant);
+            const key = `${profile.userId}-${pub.trackSid}`;
             const entry = remoteTracksRef.current.get(key);
             if (entry) {
               entry.audioEl.remove();
@@ -606,6 +678,18 @@ export function useVoice(socket: Socket | null = null) {
         });
 
         await r.connect(data.wsUrl, data.token);
+        roomRef.current = r;
+        setRoom(r);
+        setActiveChannelId(channelId);
+
+        socketRef.current?.emit(
+          SocketEvents.VoiceJoin,
+          { channelId },
+          (err: string | null) => {
+            if (err) console.warn("voice:join backend rejected:", err);
+          },
+        );
+        voiceJoinEmitted = true;
 
         // Output device — switchActiveDevice для future tracks subscription order
         const outDevice = settingsRef.current.outputDeviceId;
@@ -678,6 +762,7 @@ export function useVoice(socket: Socket | null = null) {
       leave,
       refreshParticipants,
       refreshVisualTracks,
+      resetLocalVoiceState,
       state,
       applyRemoteAudioState,
       applyLocalMicrophoneSettings,

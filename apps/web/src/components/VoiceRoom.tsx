@@ -627,6 +627,18 @@ type ContextMenuState = {
   y: number;
 };
 
+type StagePresenceParticipant = {
+  identity: string;
+  name: string;
+  avatar: string | null;
+  isLocal: boolean;
+  isLive: boolean;
+  isSpeaking: boolean;
+  isMicMuted: boolean;
+  connectionQuality: VoiceParticipant["connectionQuality"];
+  live?: VoiceParticipant;
+};
+
 export function VoiceRoom({
   channelId,
   channelName,
@@ -693,6 +705,34 @@ export function VoiceRoom({
   const lookupAvatar = (identity: string): string | null =>
     members.find((row) => row.userId === identity)?.user.avatar ?? null;
 
+  const liveIdentitySet = new Set(v.participants.map((p) => p.identity));
+  const fallbackOccupants: StagePresenceParticipant[] = occupants
+    .filter((member) => !liveIdentitySet.has(member.userId))
+    .map((member) => ({
+      identity: member.userId,
+      name: member.user.displayName,
+      avatar: member.user.avatar ?? null,
+      isLocal: false,
+      isLive: false,
+      isSpeaking: false,
+      isMicMuted: false,
+      connectionQuality: "unknown",
+    }));
+  const stageParticipants: StagePresenceParticipant[] = [
+    ...v.participants.map((p) => ({
+      identity: p.identity,
+      name: p.name,
+      avatar: lookupAvatar(p.identity),
+      isLocal: p.isLocal,
+      isLive: true,
+      isSpeaking: p.isSpeaking,
+      isMicMuted: p.isMicMuted,
+      connectionQuality: p.connectionQuality,
+      live: p,
+    })),
+    ...fallbackOccupants,
+  ];
+
   const isConnected = v.state === "connected" && v.activeChannelId === channelId;
   const isConnecting = v.state === "connecting" && v.activeChannelId === channelId;
   const isReconnecting = v.state === "reconnecting" && v.activeChannelId === channelId;
@@ -751,6 +791,11 @@ export function VoiceRoom({
       !visibleVisualIdentities.has(p.identity) &&
       !overflowCameraIdentities.has(p.identity),
   );
+  const fallbackAudioParticipants = fallbackOccupants.filter(
+    (p) =>
+      !visibleVisualIdentities.has(p.identity) &&
+      !overflowCameraIdentities.has(p.identity),
+  );
   // Overflow camera participants — те у кого есть камера, но не попали в
   // budget. Рендерим как presence-чипы с camera-mark (отличаются от
   // audio-only визуально).
@@ -770,7 +815,7 @@ export function VoiceRoom({
     ? "var(--ec-status-warn)"
     : "var(--ec-status-idle)";
 
-  const headcount = isJoinedHere ? v.participants.length : occupants.length;
+  const headcount = Math.max(stageParticipants.length, occupants.length);
   const musicAudienceCount = Math.max(headcount, musicSession?.currentTrack ? 1 : 0);
   const musicBotActive = Boolean(musicSession?.currentTrack);
   const musicBotTrackName = musicSession?.currentTrack?.filename ?? "Очередь пуста";
@@ -980,7 +1025,9 @@ export function VoiceRoom({
                 <VideoTrackTile key={t.id} visual={t} lookupAvatar={lookupAvatar} />
               ))}
             </div>
-            {(audioOnlyParticipants.length > 0 || overflowCameraParticipants.length > 0) && (
+            {(audioOnlyParticipants.length > 0 ||
+              overflowCameraParticipants.length > 0 ||
+              fallbackAudioParticipants.length > 0) && (
               <div style={presenceStrip}>
                 {musicBotActive && (
                   <span
@@ -1067,6 +1114,24 @@ export function VoiceRoom({
                     </span>
                   );
                 })}
+                {fallbackAudioParticipants.map((p) => (
+                  <span
+                    key={`room-${p.identity}`}
+                    className="ec-vr-strip-chip--pending"
+                    style={stripChipStyle(false)}
+                    title={`${p.name} — в комнате`}
+                  >
+                    <PresenceAvatar
+                      name={p.name}
+                      avatar={p.avatar}
+                      size={28}
+                      speaking={false}
+                      muted={false}
+                    />
+                    {p.name}
+                    <span className="ec-vr-room-sync">в комнате</span>
+                  </span>
+                ))}
               </div>
             )}
           </>
@@ -1101,28 +1166,31 @@ export function VoiceRoom({
                 </div>
               </article>
             )}
-            {v.participants.map((p) => {
-              const muted = v.settings.mutedParticipants.includes(p.identity);
-              const volume = v.settings.participantVolumes[p.identity] ?? 1;
-              const speaking = p.isSpeaking && !p.isMicMuted && !muted;
-              const qualityLabel = connectionQualityLabel(p.connectionQuality);
+            {stageParticipants.map((p) => {
+              const muted = p.isLive && v.settings.mutedParticipants.includes(p.identity);
+              const volume = p.isLive ? v.settings.participantVolumes[p.identity] ?? 1 : 1;
+              const speaking = p.isLive && p.isSpeaking && !p.isMicMuted && !muted;
+              const qualityLabel = p.isLive
+                ? connectionQualityLabel(p.connectionQuality)
+                : "Участник есть в комнате, live-сигнал синхронизируется";
               return (
                 <div
                   key={p.identity}
                   className={
                     "ec-vr-presence-card" +
                     (speaking ? " ec-vr-presence-card--speaking" : "") +
-                    (muted || volume < 1 ? " ec-vr-presence-card--muted" : "")
+                    (muted || volume < 1 ? " ec-vr-presence-card--muted" : "") +
+                    (!p.isLive ? " ec-vr-presence-card--pending" : "")
                   }
                   style={{
                     ...presenceCardStyle(speaking, muted || volume < 1),
-                    cursor: p.isLocal ? "default" : "context-menu",
+                    cursor: p.live && !p.isLocal ? "context-menu" : "default",
                   }}
-                  onContextMenu={p.isLocal ? undefined : (e) => openCtxMenu(p, e)}
+                  onContextMenu={p.live && !p.isLocal ? (e) => openCtxMenu(p.live!, e) : undefined}
                 >
                   <PresenceAvatar
                     name={p.name}
-                    avatar={lookupAvatar(p.identity)}
+                    avatar={p.avatar}
                     size={72}
                     speaking={speaking}
                     muted={p.isMicMuted}
@@ -1145,7 +1213,9 @@ export function VoiceRoom({
                     )}
                   </span>
                   <span style={{ fontSize: "var(--ec-text-2xs)", color: "var(--ec-text-dim)" }}>
-                    {speaking
+                    {!p.isLive
+                      ? "в комнате"
+                      : speaking
                       ? "говорит"
                       : p.isMicMuted
                       ? "микрофон выключен"

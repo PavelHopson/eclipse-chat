@@ -38,6 +38,25 @@
 - [x] **v1.7.3 OpenHuman-inspired memory foundation** — добавлены `MemoryEntry` + migration, REST API `/api/channels/:id/memory`, мягкое архивирование записей, UI во вкладке "Память": заметки, решения, риски, факты, ссылки, действия, теги и pinned anchors.
 - [ ] **Next P0: AI memory extraction + digest integration** — действие "save to memory" из сообщения/action item, AI-предложения памяти, memory delta в "since you were away", поиск по памяти.
 
+### Voice stability hotfix — 2026-07-17
+
+- [x] LiveKit participant identity is now per-connection (`userId:uuid`) while app `userId` lives in participant metadata. This prevents duplicate-account/device joins from kicking the previous LiveKit participant.
+- [x] Client maps LiveKit metadata back to app users for avatars, volume/mute settings, video tiles and sidebar presence.
+- [x] Socket `voice:join` is emitted only after successful `Room.connect()`, and `RoomEvent.Disconnected` clears local state + emits `voice:leave` to avoid ghost occupants.
+
+### Command Center UX slice — 2026-07-17
+
+- [x] Server guide now acts as a compact Command Center: one obvious next action, live voice rooms, unread rooms, work counters, members entry and search entry.
+- [x] The guide uses existing server signals (`unread`, `voiceByChannel`, members and ActionItems) without adding new backend surfaces.
+- [x] Responsive/premium styling stays inside the existing clean UI system and supports reduced-motion users.
+
+### Notification sound layer — 2026-07-17
+
+- [x] Added a shared Web Audio notification engine with distinct soft signals for channel messages, mentions, DMs, task escalations, voice join and voice leave events.
+- [x] Local sounds are independent from browser push permission, rate-limited per source, and avoid snapshot noise on initial voice presence sync.
+- [x] Settings → Notifications now includes "Уведомления и звук": master toggle, per-category toggles, volume slider and test buttons.
+- [x] Browser desktop notifications are now visual-only (`silent: true`) so the app has one consistent sound layer instead of double audio.
+
 ## Applied research — 2026-07-13
 
 Источник: [Eclipse Library · Applied project plan](https://library.eclipse-forge.ru/#guide/applied-project-plan-2026-07-13).

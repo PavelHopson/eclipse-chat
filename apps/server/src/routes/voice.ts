@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import { randomUUID } from "node:crypto";
 import { db } from "../db.js";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
 import {
@@ -59,10 +60,17 @@ export async function registerVoiceRoutes(app: FastifyInstance) {
         return reply.status(404).send({ error: "User not found" });
       }
       const roomName = roomNameForChannel(channelId);
+      const livekitIdentity = `${user.id}:${randomUUID()}`;
+      const participantMetadata = JSON.stringify({
+        userId: user.id,
+        displayName: user.displayName,
+        avatar: user.avatar,
+      });
       const token = generateLivekitToken(
         {
-          identity: user.id,
+          identity: livekitIdentity,
           name: user.displayName,
+          metadata: participantMetadata,
           room: roomName,
         },
         cfg,
@@ -72,6 +80,7 @@ export async function registerVoiceRoutes(app: FastifyInstance) {
         token,
         roomName,
         identity: user.id,
+        livekitIdentity,
         metadata: {
           displayName: user.displayName,
           avatar: user.avatar,

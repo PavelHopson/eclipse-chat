@@ -1,4 +1,8 @@
 import type { PushPreferences } from "../../../hooks/usePushPreferences";
+import type {
+  NotificationSoundKind,
+  NotificationSoundSettings,
+} from "../../../lib/notificationSounds";
 
 type PushState = {
   enabled: boolean;
@@ -17,12 +21,22 @@ type PushPrefsState = {
   toggle: (key: keyof PushPreferences, value: boolean) => Promise<void>;
 };
 
+type SoundState = {
+  settings: NotificationSoundSettings;
+  supported: boolean;
+  update: (patch: Partial<NotificationSoundSettings>) => void;
+  test: (kind?: NotificationSoundKind) => void;
+};
+
 type Props = {
   push: PushState;
   pushPrefs: PushPrefsState;
+  sounds: SoundState;
   showPrefs: boolean;
   onTogglePrefs: () => void;
 };
+
+type SoundToggleKey = keyof Pick<NotificationSoundSettings, "message" | "dm" | "voice" | "tasks">;
 
 const PREF_ITEMS: Array<{ key: keyof PushPreferences; label: string; hint: string }> = [
   { key: "mentions", label: "Упоминания @меня", hint: "В каналах сервера" },
@@ -32,13 +46,55 @@ const PREF_ITEMS: Array<{ key: keyof PushPreferences; label: string; hint: strin
   { key: "escalations", label: "Эскалации", hint: "Мои задачи overdue 48h+" },
 ];
 
-export function NotificationsPushSection({ push, pushPrefs, showPrefs, onTogglePrefs }: Props) {
+const SOUND_ITEMS: Array<{
+  key: SoundToggleKey;
+  label: string;
+  hint: string;
+  test: NotificationSoundKind;
+}> = [
+  {
+    key: "message",
+    label: "Сообщения и упоминания",
+    hint: "Каналы вне фокуса и @упоминания",
+    test: "mention",
+  },
+  {
+    key: "dm",
+    label: "Личные сообщения",
+    hint: "DM и групповые лички",
+    test: "dm",
+  },
+  {
+    key: "voice",
+    label: "Голосовые комнаты",
+    hint: "Вход и выход участников",
+    test: "voiceJoin",
+  },
+  {
+    key: "tasks",
+    label: "Задачи и эскалации",
+    hint: "Просрочки и важные операционные события",
+    test: "task",
+  },
+];
+
+export function NotificationsPushSection({
+  push,
+  pushPrefs,
+  sounds,
+  showPrefs,
+  onTogglePrefs,
+}: Props) {
+  const updateSoundToggle = (key: SoundToggleKey, value: boolean) => {
+    sounds.update({ [key]: value } as Partial<Pick<NotificationSoundSettings, SoundToggleKey>>);
+  };
+
   return (
     <div className="ec-settings-section">
       <header className="ec-settings-section__hero ec-holo-edge">
         <span className="ec-settings-section__eyebrow">Уведомления</span>
-        <h2>Push-уведомления</h2>
-        <p>Устройство, тестовый push и типы событий.</p>
+        <h2>Уведомления и звук</h2>
+        <p>Push, локальные сигналы, voice-входы и важные операционные события.</p>
       </header>
 
       <section className={"ec-settings-card" + (push.enabled ? " ec-settings-card--active" : "")}>
@@ -86,6 +142,93 @@ export function NotificationsPushSection({ push, pushPrefs, showPrefs, onToggleP
           </div>
         )}
       </section>
+
+      <section className={"ec-settings-card" + (sounds.settings.enabled ? " ec-settings-card--active" : "")}>
+        <div className="ec-settings-icon" aria-hidden>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M2 10v4" />
+            <path d="M6 7v10" />
+            <path d="M10 4v16" />
+            <path d="M14 8v8" />
+            <path d="M18 6v12" />
+            <path d="M22 11v2" />
+          </svg>
+        </div>
+        <div className="ec-settings-card__body">
+          <strong>Звуки в приложении</strong>
+          <span className="ec-settings-muted">
+            {sounds.supported
+              ? sounds.settings.enabled
+                ? "Включены — мягкие сигналы для сообщений, DM, задач и входа/выхода из voice."
+                : "Отключены — приложение не будет проигрывать локальные сигналы."
+              : "Этот браузер не поддерживает Web Audio, поэтому локальные звуки недоступны."}
+          </span>
+        </div>
+        <div className="ec-settings-actions ec-settings-actions--column">
+          <button
+            type="button"
+            className={sounds.settings.enabled ? "ec-btn ec-btn--ghost ec-btn--sm" : "ec-btn ec-btn--primary ec-btn--sm"}
+            onClick={() => sounds.update({ enabled: !sounds.settings.enabled })}
+            disabled={!sounds.supported}
+          >
+            {sounds.settings.enabled ? "Отключить" : "Включить"}
+          </button>
+          <button
+            type="button"
+            className="ec-btn ec-btn--ghost ec-btn--sm"
+            onClick={() => sounds.test("dm")}
+            disabled={!sounds.supported}
+          >
+            Проверить звук
+          </button>
+        </div>
+      </section>
+
+      {sounds.settings.enabled && sounds.supported && (
+        <section className="ec-settings-card ec-settings-card--stack ec-settings-card--sunken">
+          <span className="ec-settings-kicker">Какие звуки проигрывать</span>
+          {SOUND_ITEMS.map(({ key, label, hint, test }) => (
+            <label key={key} className="ec-settings-toggle-row">
+              <span>
+                <strong>{label}</strong>
+                <span className="ec-settings-muted">{hint}</span>
+              </span>
+              <span className="ec-settings-sound-actions">
+                <button
+                  type="button"
+                  className="ec-btn ec-btn--ghost ec-btn--xs"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    sounds.test(test);
+                  }}
+                >
+                  Тест
+                </button>
+                <input
+                  type="checkbox"
+                  checked={sounds.settings[key]}
+                  onChange={(e) => updateSoundToggle(key, e.target.checked)}
+                />
+              </span>
+            </label>
+          ))}
+          <label className="ec-settings-sound-volume">
+            <span>
+              <strong>Громкость</strong>
+              <span className="ec-settings-muted">По умолчанию тихо, чтобы не мешать разговору</span>
+            </span>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.05"
+              value={sounds.settings.volume}
+              onChange={(e) => sounds.update({ volume: Number(e.target.value) })}
+            />
+            <strong>{Math.round(sounds.settings.volume * 100)}%</strong>
+          </label>
+        </section>
+      )}
 
       {push.enabled && showPrefs && (
         <section className="ec-settings-card ec-settings-card--stack ec-settings-card--sunken">
