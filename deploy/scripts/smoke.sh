@@ -20,6 +20,10 @@ set -uo pipefail
 BASE_URL="${SMOKE_BASE_URL:-https://app.star-crm.ru/eclipse-chat}"
 UPLOADS_DIR="${SMOKE_UPLOADS_DIR:-/var/www/eclipse-chat/uploads}"
 EXPECTED_VERSION="${SMOKE_EXPECTED_VERSION:-}"
+if [[ -z "$EXPECTED_VERSION" && -f "apps/server/package.json" ]]; then
+    EXPECTED_VERSION=$(grep -oE '"version"[[:space:]]*:[[:space:]]*"[0-9]+\.[0-9]+\.[0-9]+"' \
+        apps/server/package.json | head -n 1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || true)
+fi
 EXIT=0
 FAILED=()
 
@@ -35,6 +39,9 @@ fail() {
 
 echo "→ Eclipse Chat smoke test"
 echo "  Base URL: $BASE_URL"
+if [[ -n "$EXPECTED_VERSION" ]]; then
+    echo "  Expected version: $EXPECTED_VERSION"
+fi
 
 # === 1. /api/version ===
 echo "→ Check /api/version"
