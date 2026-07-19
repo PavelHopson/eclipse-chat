@@ -7836,6 +7836,80 @@ input[type="radio"]:focus-visible {
   gap: var(--ec-space-2);
 }
 
+.ec-settings-sound-themes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ec-space-2);
+}
+
+.ec-settings-sound-theme {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--ec-space-3);
+  padding: var(--ec-space-3);
+  border: 1px solid var(--ec-border-default);
+  border-radius: var(--ec-radius-lg);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--ec-surface-3) 82%, transparent), var(--ec-surface-2)),
+    var(--ec-surface-2);
+  color: var(--ec-text-primary);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--ec-dur-base) var(--ec-ease),
+    background var(--ec-dur-base) var(--ec-ease),
+    transform var(--ec-dur-base) var(--ec-ease);
+}
+
+.ec-settings-sound-theme:hover {
+  border-color: color-mix(in srgb, var(--ec-accent) 34%, var(--ec-border-default));
+  transform: translateY(-1px);
+}
+
+.ec-settings-sound-theme:focus-visible {
+  outline: 2px solid var(--ec-accent);
+  outline-offset: 2px;
+}
+
+.ec-settings-sound-theme.is-active {
+  border-color: color-mix(in srgb, var(--ec-accent) 58%, var(--ec-border-default));
+  background:
+    radial-gradient(circle at 12% 18%, color-mix(in srgb, var(--ec-accent) 18%, transparent), transparent 40%),
+    linear-gradient(135deg, color-mix(in srgb, var(--ec-accent) 9%, var(--ec-surface-3)), var(--ec-surface-2));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ec-accent) 16%, transparent);
+}
+
+.ec-settings-sound-theme__signal {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--ec-radius-full);
+  background:
+    radial-gradient(circle, var(--ec-accent) 0 14%, transparent 16%),
+    conic-gradient(from 210deg, transparent 0 63%, var(--ec-accent) 64% 76%, transparent 77% 100%);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--ec-accent) 22%, transparent);
+  opacity: 0.8;
+}
+
+.ec-settings-sound-theme span:last-child {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.ec-settings-sound-theme strong {
+  color: var(--ec-text-strong);
+  font-size: var(--ec-text-sm);
+}
+
+.ec-settings-sound-theme small {
+  color: var(--ec-text-muted);
+  font-size: var(--ec-text-xs);
+  line-height: 1.4;
+}
+
 .ec-settings-sound-volume {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(120px, 220px) auto;
@@ -7863,6 +7937,10 @@ input[type="radio"]:focus-visible {
 }
 
 @media (max-width: 680px) {
+  .ec-settings-sound-themes {
+    grid-template-columns: 1fr;
+  }
+
   .ec-settings-sound-volume {
     grid-template-columns: 1fr;
   }
