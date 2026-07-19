@@ -1,7 +1,9 @@
 import type { PushPreferences } from "../../../hooks/usePushPreferences";
+import { NOTIFICATION_SOUND_THEMES } from "../../../lib/notificationSounds";
 import type {
   NotificationSoundKind,
   NotificationSoundSettings,
+  NotificationSoundTheme,
 } from "../../../lib/notificationSounds";
 
 type PushState = {
@@ -77,6 +79,10 @@ const SOUND_ITEMS: Array<{
     test: "task",
   },
 ];
+
+const SOUND_THEME_ITEMS = Object.entries(NOTIFICATION_SOUND_THEMES) as Array<
+  [NotificationSoundTheme, (typeof NOTIFICATION_SOUND_THEMES)[NotificationSoundTheme]]
+>;
 
 export function NotificationsPushSection({
   push,
@@ -186,6 +192,32 @@ export function NotificationsPushSection({
 
       {sounds.settings.enabled && sounds.supported && (
         <section className="ec-settings-card ec-settings-card--stack ec-settings-card--sunken">
+          <span className="ec-settings-kicker">Пакет звуков</span>
+          <div className="ec-settings-sound-themes" role="radiogroup" aria-label="Пакет звуков уведомлений">
+            {SOUND_THEME_ITEMS.map(([theme, meta]) => (
+              <button
+                key={theme}
+                type="button"
+                role="radio"
+                aria-checked={sounds.settings.theme === theme}
+                className={
+                  "ec-settings-sound-theme" +
+                  (sounds.settings.theme === theme ? " is-active" : "")
+                }
+                onClick={() => {
+                  sounds.update({ theme });
+                  sounds.test("voiceJoin");
+                }}
+              >
+                <span className="ec-settings-sound-theme__signal" aria-hidden />
+                <span>
+                  <strong>{meta.label}</strong>
+                  <small>{meta.description}</small>
+                </span>
+              </button>
+            ))}
+          </div>
+
           <span className="ec-settings-kicker">Какие звуки проигрывать</span>
           {SOUND_ITEMS.map(({ key, label, hint, test }) => (
             <label key={key} className="ec-settings-toggle-row">
