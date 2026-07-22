@@ -58,6 +58,11 @@
 - [x] Browser desktop notifications are now visual-only (`silent: true`) so the app has one consistent sound layer instead of double audio.
 - [x] **v1.7.12 MOSS-ready sound packs** — Settings now has selectable `Eclipse Signal` and `Soft Signal` packs, with Web Audio fallback semantics documented in `docs/sound-packs.md` for future generated assets.
 
+### Account access recovery — 2026-07-22
+
+- [x] Added a production-safe `access:restore` maintenance command with dry-run by default. It diagnoses admin bans and brute-force login lockouts by exact email, refuses soft-deleted accounts, and requires explicit `--apply` before changing data.
+- [x] Recovery atomically clears the ban/lockout fields, revokes existing refresh sessions and writes a sanitized `PLATFORM_USER_UNBANNED` audit event. Runbook: `docs/USER-ACCESS-RECOVERY.md`.
+
 ## Applied research — 2026-07-19
 
 Источник: [Eclipse Library · July 2026 Kimi / research / media radar](https://library.eclipse-forge.ru/#guide/july-2026-kimi-research-media-radar).
