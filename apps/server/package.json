@@ -17,6 +17,7 @@
     "db:studio": "prisma studio",
     "db:seed": "prisma db seed",
     "access:restore": "tsx src/scripts/restoreUserAccess.ts",
+    "password:reset": "tsx src/scripts/resetUserPassword.ts",
     "postinstall": "prisma generate"
   },
   "prisma": {

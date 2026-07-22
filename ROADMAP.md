@@ -62,6 +62,7 @@
 
 - [x] Added a production-safe `access:restore` maintenance command with dry-run by default. It diagnoses admin bans and brute-force login lockouts by exact email, refuses soft-deleted accounts, and requires explicit `--apply` before changing data.
 - [x] Recovery atomically clears the ban/lockout fields, revokes existing refresh sessions and writes a sanitized `PLATFORM_USER_UNBANNED` audit event. Runbook: `docs/USER-ACCESS-RECOVERY.md`.
+- [x] Added a dry-run-first `password:reset` maintenance command. It generates a one-time 16-character password, stores only a bcrypt cost-12 hash, revokes existing sessions, clears login lockout counters and records a sanitized password-reset audit event.
 
 ## Applied research — 2026-07-19
 

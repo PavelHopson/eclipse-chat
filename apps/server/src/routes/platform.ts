@@ -1,6 +1,5 @@
 import type { FastifyInstance } from "fastify";
 import type { Prisma } from "@prisma/client";
-import { randomBytes } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { db } from "../db.js";
@@ -10,6 +9,10 @@ import { recordAudit } from "../security/audit.js";
 import { deleteAllUserRefresh } from "../auth/refresh.js";
 import { disconnectUser } from "../realtime.js";
 import { listAiProviderDiagnostics } from "../ai/provider.js";
+import {
+  generateTemporaryPassword,
+  PASSWORD_HASH_COST,
+} from "../security/temporaryPassword.js";
 
 /**
  * v1.2.6 Platform Admin (trek P1) — глобальная super-admin панель для
@@ -34,20 +37,6 @@ import { listAiProviderDiagnostics } from "../ai/provider.js";
  *     Plaintext возвращается ОДИН РАЗ в response; никогда не пишется в
  *     audit metadata.
  */
-
-// URL-safe alphabet без визуально-неоднозначных символов (0/O, 1/l/I).
-const TEMP_PW_ALPHABET =
-  "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-const TEMP_PW_LENGTH = 16;
-
-function generateTempPassword(): string {
-  const bytes = randomBytes(TEMP_PW_LENGTH);
-  let out = "";
-  for (let i = 0; i < TEMP_PW_LENGTH; i += 1) {
-    out += TEMP_PW_ALPHABET[bytes[i] % TEMP_PW_ALPHABET.length];
-  }
-  return out;
-}
 
 const PLATFORM_USER_SELECT = {
   id: true,
@@ -442,8 +431,8 @@ export async function registerPlatformRoutes(app: FastifyInstance) {
           .send({ error: "Пользователь удалён — сбросить пароль нельзя." });
       }
 
-      const tempPassword = generateTempPassword();
-      const hash = await bcrypt.hash(tempPassword, 10);
+      const tempPassword = generateTemporaryPassword();
+      const hash = await bcrypt.hash(tempPassword, PASSWORD_HASH_COST);
 
       const updated = await db.user.update({
         where: { id: targetId },
