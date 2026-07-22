@@ -1820,8 +1820,78 @@
   }
 }
 
-/* v1.7.13 — one profile surface for browser, Tauri and Android WebView. */
+/* Settings keeps a full content canvas on compact desktop and landscape tablet.
+ * A 232px sidebar inside a near-fullscreen modal left the profile with less than
+ * 700px and broke equal-width media controls. */
+@media (min-width: 641px) and (max-width: 1120px) {
+  .ec-settings-panel {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .ec-settings-tree-nav {
+    display: flex;
+    gap: var(--ec-space-2);
+    max-height: 70px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: var(--ec-space-3);
+    border-right: 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--ec-accent) 18%, var(--ec-border-default));
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .ec-settings-tree-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .ec-settings-tree-nav__group {
+    display: contents;
+  }
+
+  .ec-settings-tree-nav__group--collapsed .ec-settings-category-item {
+    display: grid;
+  }
+
+  .ec-settings-tree-nav__group-trigger {
+    display: none;
+  }
+
+  .ec-settings-category-item {
+    flex: 0 0 auto;
+    width: auto;
+    min-height: 44px;
+    white-space: nowrap;
+  }
+}
+
+/* v1.7.14 — profile editor parity for browser, Tauri and Android WebView. */
 @media (max-width: 640px) {
+  .ec-settings-panel {
+    width: auto;
+    min-width: 0;
+    margin: calc(var(--ec-space-3) * -1);
+    overflow-x: clip;
+  }
+
+  .ec-settings-tree-nav,
+  .ec-settings-panel__main,
+  .ec-settings-section--profile,
+  .ec-settings-section--profile > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .ec-settings-tree-nav {
+    width: 100%;
+  }
+
+  .ec-settings-panel__main {
+    width: 100%;
+    overflow-x: hidden;
+  }
+
   .ec-user-profile {
     border-radius: 14px;
   }
@@ -1899,41 +1969,98 @@
   .ec-profile-lightbox__nav--previous { left: 8px; }
   .ec-profile-lightbox__nav--next { right: 8px; }
 
+  .ec-settings-section--profile {
+    gap: 12px;
+    padding: 10px;
+  }
+
+  .ec-settings-profile-hero {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+  }
+
+  .ec-settings-profile-hero p {
+    overflow-wrap: anywhere;
+  }
+
+  .ec-settings-profile-visibility {
+    min-height: 28px;
+  }
+
   .ec-settings-profile-preview__cover {
-    height: 128px;
+    height: 138px;
+  }
+
+  .ec-settings-profile-preview__cover-actions {
+    top: 10px;
+    right: 10px;
+    gap: 6px;
+    max-width: calc(100% - 20px);
+  }
+
+  .ec-settings-profile-media-button {
+    min-height: 38px;
+    padding-inline: 10px;
   }
 
   .ec-settings-profile-preview__identity {
     grid-template-columns: auto minmax(0, 1fr);
     align-items: center;
+    gap: 12px;
+    min-height: 86px;
     padding: 0 14px 14px;
   }
 
-  .ec-settings-profile-preview__identity > :first-child {
-    margin-top: -28px;
+  .ec-settings-profile-preview__avatar {
+    width: 76px;
+    height: 76px;
+    margin-top: -30px;
   }
 
-  .ec-settings-profile-preview__identity small {
+  .ec-settings-profile-preview__avatar > span {
+    width: 76px !important;
+    height: 76px !important;
+  }
+
+  .ec-settings-profile-preview__avatar-actions {
     grid-column: 1 / -1;
+    width: 100%;
+    min-width: 0;
   }
 
-  .ec-settings-media-control,
+  .ec-settings-profile-preview__avatar-actions .ec-btn {
+    min-height: 42px;
+  }
+
+  .ec-settings-profile-preview__avatar-actions .ec-btn:first-child {
+    flex: 1;
+  }
+
+  .ec-settings-profile-card-heading,
+  .ec-settings-profile-footer,
   .ec-settings-gallery-heading {
     align-items: stretch;
     flex-direction: column;
   }
 
-  .ec-settings-media-control .ec-settings-actions,
+  .ec-settings-profile-fields {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .ec-settings-profile-card-heading__hint {
+    display: none;
+  }
+
+  .ec-settings-profile-account strong {
+    max-width: 100%;
+  }
+
+  .ec-settings-profile-footer .ec-btn,
   .ec-settings-gallery-heading .ec-btn {
     width: 100%;
-  }
-
-  .ec-settings-media-control .ec-settings-actions .ec-btn {
-    flex: 1 1 0;
-    justify-content: center;
-  }
-
-  .ec-settings-gallery-heading .ec-btn {
     min-height: 44px;
     justify-content: center;
   }

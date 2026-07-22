@@ -445,7 +445,7 @@ export function SettingsPanel({
   };
 
   return (
-    <Modal title="Настройки" width={980} onClose={onClose}>
+    <Modal title="Настройки" width={1120} onClose={onClose}>
       <div className="ec-settings-panel">
         <SettingsTreeNav
           active={active}

@@ -49,53 +49,39 @@ export function AccountProfileSection({
   onDeleteProfileImage,
 }: Props) {
   return (
-    <div className="ec-settings-section">
-      <header className="ec-settings-section__hero ec-holo-edge">
-        <span className="ec-settings-section__eyebrow">Учётная запись</span>
-        <h2>Профиль</h2>
-        <p>Так тебя видит команда: обложка, аватар, статус и фотографии.</p>
+    <div className="ec-settings-section ec-settings-section--profile">
+      <header className="ec-settings-section__hero ec-settings-profile-hero ec-holo-edge">
+        <div>
+          <span className="ec-settings-section__eyebrow">Учётная запись</span>
+          <h2>Профиль</h2>
+          <p>Твоя карточка в сообщениях, комнатах и списке участников.</p>
+        </div>
+        <span className="ec-settings-profile-visibility">
+          <i aria-hidden /> Видно команде
+        </span>
       </header>
 
-      <section className="ec-settings-profile-preview" aria-label="Предпросмотр профиля">
+      <section className="ec-settings-profile-preview" aria-label="Предпросмотр профиля" aria-busy={busy}>
         <div className="ec-settings-profile-preview__cover">
           {profile.profileBanner ? (
             <img src={resolveAssetUrl(profile.profileBanner) ?? ""} alt="" />
           ) : (
             <span aria-hidden />
           )}
-        </div>
-        <div className="ec-settings-profile-preview__identity">
-          <Avatar url={profile.avatar} name={displayName || profile.displayName} size={84} />
-          <div>
-            <strong>{displayName.trim() || profile.displayName}</strong>
-            <span>{bio.trim() || "Короткое описание появится здесь"}</span>
-          </div>
-          <small>Так профиль видит команда</small>
-        </div>
-      </section>
-
-      <section className="ec-settings-card ec-settings-card--profile-media">
-        <div className="ec-settings-media-control">
-          <div>
-            <strong>Аватар</strong>
-            <span className="ec-settings-muted">Квадратное фото · до 20 МБ</span>
-          </div>
-          <input
-            ref={avatarFileRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp,image/avif,.heic,.heif"
-            hidden
-            onChange={onAvatarFile}
-          />
-          <div className="ec-settings-actions">
-            <button type="button" onClick={() => avatarFileRef.current?.click()} className="ec-btn ec-btn--sm" disabled={busy}>
-              {profile.avatar ? "Заменить" : "Загрузить"}
+          <div className="ec-settings-profile-preview__cover-actions">
+            <button
+              type="button"
+              onClick={() => bannerFileRef.current?.click()}
+              className="ec-btn ec-btn--sm ec-settings-profile-media-button"
+              disabled={busy}
+            >
+              {profile.profileBanner ? "Изменить обложку" : "Добавить обложку"}
             </button>
-            {profile.avatar && (
+            {profile.profileBanner && (
               <button
                 type="button"
-                onClick={onDeleteAvatar}
-                className="ec-btn ec-btn--sm ec-btn--danger"
+                onClick={onDeleteBanner}
+                className="ec-btn ec-btn--sm ec-btn--danger ec-settings-profile-media-button"
                 disabled={busy}
               >
                 Удалить
@@ -103,69 +89,107 @@ export function AccountProfileSection({
             )}
           </div>
         </div>
-
-        <div className="ec-settings-media-control">
-          <div>
-            <strong>Обложка</strong>
-            <span className="ec-settings-muted">Широкое изображение · обрежется до 1600×600</span>
-          </div>
-          <input
-            ref={bannerFileRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp,image/avif,.heic,.heif"
-            hidden
-            onChange={onBannerFile}
-          />
-          <div className="ec-settings-actions">
-            <button type="button" onClick={() => bannerFileRef.current?.click()} className="ec-btn ec-btn--sm" disabled={busy}>
-              {profile.profileBanner ? "Заменить" : "Добавить"}
+        <div className="ec-settings-profile-preview__identity">
+          <div className="ec-settings-profile-preview__avatar">
+            <Avatar url={profile.avatar} name={displayName || profile.displayName} size={88} />
+            <button
+              type="button"
+              onClick={() => avatarFileRef.current?.click()}
+              className="ec-settings-profile-preview__avatar-edit"
+              aria-label={profile.avatar ? "Изменить аватар" : "Добавить аватар"}
+              disabled={busy}
+            >
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M12 20h9" />
+                <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z" />
+              </svg>
             </button>
-            {profile.profileBanner && (
-              <button type="button" onClick={onDeleteBanner} className="ec-btn ec-btn--sm ec-btn--danger" disabled={busy}>
+          </div>
+          <div className="ec-settings-profile-preview__copy">
+            <strong>{displayName.trim() || profile.displayName}</strong>
+            <span>{bio.trim() || "Короткое описание появится здесь"}</span>
+          </div>
+          <div className="ec-settings-profile-preview__avatar-actions">
+            <button
+              type="button"
+              onClick={() => avatarFileRef.current?.click()}
+              className="ec-btn ec-btn--sm"
+              disabled={busy}
+            >
+              {profile.avatar ? "Заменить фото" : "Добавить фото"}
+            </button>
+            {profile.avatar && (
+              <button type="button" onClick={onDeleteAvatar} className="ec-btn ec-btn--sm ec-btn--danger" disabled={busy}>
                 Удалить
               </button>
             )}
           </div>
         </div>
+        <input
+          ref={avatarFileRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/avif,.heic,.heif"
+          hidden
+          onChange={onAvatarFile}
+        />
+        <input
+          ref={bannerFileRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/avif,.heic,.heif"
+          hidden
+          onChange={onBannerFile}
+        />
       </section>
 
-      <section className="ec-settings-card ec-settings-card--stack">
-        <label>
-          <span className="ec-field-label">Имя</span>
-          <input
-            className="ec-field"
-            type="text"
-            value={displayName}
-            onChange={(e) => onChangeDisplayName(e.target.value)}
-            maxLength={64}
-            required
-          />
-          <span className="ec-field-counter">{trimmedName.length}/64</span>
-        </label>
-        <label>
-          <span className="ec-field-label">О себе</span>
-          <textarea
-            className="ec-field ec-field--textarea"
-            value={bio}
-            onChange={(e) => onChangeBio(e.target.value)}
-            maxLength={280}
-            rows={3}
-            placeholder="Коротко о себе…"
-          />
-          <span className="ec-field-counter">{trimmedBio.length}/280</span>
-        </label>
-        <div className="ec-settings-muted">
-          Email: <span className="ec-settings-mono">{profile.email}</span>
+      <section className="ec-settings-card ec-settings-card--stack ec-settings-profile-details">
+        <div className="ec-settings-profile-card-heading">
+          <div>
+            <strong>Основная информация</strong>
+            <span className="ec-settings-muted">Имя и описание видны участникам общих пространств.</span>
+          </div>
+          <span className="ec-settings-profile-card-heading__hint">До 280 символов</span>
+        </div>
+        <div className="ec-settings-profile-fields">
+          <label>
+            <span className="ec-field-label">Имя</span>
+            <input
+              className="ec-field"
+              type="text"
+              value={displayName}
+              onChange={(e) => onChangeDisplayName(e.target.value)}
+              maxLength={64}
+              required
+            />
+            <span className="ec-field-counter">{trimmedName.length}/64</span>
+          </label>
+          <label>
+            <span className="ec-field-label">О себе</span>
+            <textarea
+              className="ec-field ec-field--textarea"
+              value={bio}
+              onChange={(e) => onChangeBio(e.target.value)}
+              maxLength={280}
+              rows={3}
+              placeholder="Например: продуктовый дизайнер · строю понятные системы"
+            />
+            <span className="ec-field-counter">{trimmedBio.length}/280</span>
+          </label>
         </div>
         {error && <p className="ec-settings-error">{error}</p>}
-        <button
-          type="button"
-          onClick={onSave}
-          className="ec-btn ec-btn--primary"
-          disabled={!canSave}
-        >
-          {busy ? "Сохраняем…" : "Сохранить"}
-        </button>
+        <div className="ec-settings-profile-footer">
+          <div className="ec-settings-profile-account">
+            <span>Аккаунт</span>
+            <strong className="ec-settings-mono">{profile.email}</strong>
+          </div>
+          <button
+            type="button"
+            onClick={onSave}
+            className="ec-btn ec-btn--primary"
+            disabled={!canSave}
+          >
+            {busy ? "Сохраняем…" : "Сохранить профиль"}
+          </button>
+        </div>
       </section>
 
       <section className="ec-settings-card ec-settings-card--stack">

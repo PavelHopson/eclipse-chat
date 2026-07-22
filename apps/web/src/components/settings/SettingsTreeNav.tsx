@@ -47,22 +47,35 @@ export const SETTINGS_GROUPS: NavGroup[] = [
       { id: "account-sessions", label: "Сессии и устройства" },
     ],
   },
-  { label: "Активность", items: [{ id: "activity-status", label: "Кастомный статус" }] },
   {
-    label: "Уведомления",
+    label: "Персонализация",
     items: [
+      { id: "activity-status", label: "Кастомный статус" },
       { id: "notifications-push", label: "Уведомления и звук" },
       { id: "notifications-quiet", label: "Тихие часы" },
+      { id: "appearance", label: "Тема и интерфейс" },
     ],
   },
-  { label: "Внешний вид", items: [{ id: "appearance", label: "Тема, плотность, фокус" }] },
-  { label: "Контент и общение", items: [{ id: "content", label: "Контент", soon: "v1.5.55+" }] },
-  { label: "Данные", items: [{ id: "data-export", label: "Экспорт", soon: "v1.5.55+" }] },
-  { label: "Интеграции", items: [{ id: "integrations", label: "Интеграции", soon: "v1.5.55+" }] },
-  { label: "Голос и видео", items: [{ id: "voice-video", label: "Голос и видео", soon: "v1.5.55+" }] },
-  { label: "Горячие клавиши", items: [{ id: "hotkeys", label: "Горячие клавиши" }] },
-  { label: "Разработчик", items: [{ id: "developer", label: "Разработчик", soon: "v1.5.55+" }] },
-  { label: "Установить", items: [{ id: "install", label: "Установить приложение" }] },
+  {
+    label: "Приложение",
+    items: [
+      { id: "voice-video", label: "Голос и видео", soon: "v1.5.55+" },
+      { id: "content", label: "Контент", soon: "v1.5.55+" },
+      { id: "hotkeys", label: "Горячие клавиши" },
+      { id: "install", label: "Установить приложение" },
+    ],
+  },
+  {
+    label: "Данные и связи",
+    items: [
+      { id: "data-export", label: "Экспорт данных", soon: "v1.5.55+" },
+      { id: "integrations", label: "Интеграции", soon: "v1.5.55+" },
+    ],
+  },
+  {
+    label: "Дополнительно",
+    items: [{ id: "developer", label: "Для разработчика", soon: "v1.5.55+" }],
+  },
 ];
 
 function visibleGroups(installAvailable: boolean): NavGroup[] {
@@ -78,12 +91,13 @@ export function isSettingsViewId(value: string | null): value is SettingsViewId 
 
 export function SettingsTreeNav({ active, installAvailable, onSelect, onLogout }: Props) {
   const [collapsed, setCollapsed] = useState<Set<string>>(() => {
-    if (typeof localStorage === "undefined") return new Set();
+    const defaults = new Set(["Данные и связи", "Дополнительно"]);
+    if (typeof localStorage === "undefined") return defaults;
     try {
       const raw = localStorage.getItem(SETTINGS_COLLAPSED_KEY);
-      return new Set(raw ? JSON.parse(raw) as string[] : []);
+      return new Set(raw ? JSON.parse(raw) as string[] : defaults);
     } catch {
-      return new Set();
+      return defaults;
     }
   });
 
@@ -93,6 +107,19 @@ export function SettingsTreeNav({ active, installAvailable, onSelect, onLogout }
     } catch {
       /* localStorage может быть отключён */
     }
+  }, [active]);
+
+  useEffect(() => {
+    const activeGroup = SETTINGS_GROUPS.find((group) =>
+      group.items.some((item) => item.id === active),
+    );
+    if (!activeGroup) return;
+    setCollapsed((prev) => {
+      if (!prev.has(activeGroup.label)) return prev;
+      const next = new Set(prev);
+      next.delete(activeGroup.label);
+      return next;
+    });
   }, [active]);
 
   const toggleGroup = (label: string) => {

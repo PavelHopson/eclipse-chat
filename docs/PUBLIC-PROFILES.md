@@ -1,6 +1,6 @@
 # Public profiles
 
-Eclipse Chat `v1.7.13` adds one profile surface for browser, Tauri desktop and the Android Capacitor wrapper. Both native shells load the production web client, so they receive this UI without a native release.
+Eclipse Chat `v1.7.14` provides one profile surface for browser, Tauri desktop and the Android Capacitor wrapper. Both native shells load the production web client, so they receive this UI without a native release.
 
 ## Product behavior
 
