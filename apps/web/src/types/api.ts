@@ -18,6 +18,13 @@ export type PublicProfile = UserActivityFields & UserQuietHoursFields & {
   email: string;
   displayName: string;
   avatar: string | null;
+  profileBanner?: string | null;
+  profileImages?: Array<{
+    id: string;
+    url: string;
+    position: number;
+    createdAt: string;
+  }>;
   bio: string | null;
   status?: ManualStatus;
   twoFactorEnabled?: boolean;

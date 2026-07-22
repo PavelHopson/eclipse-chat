@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import type { KeyboardEvent } from "react";
 import { Avatar } from "../Avatar";
 import type { FriendRequestInput, FriendshipDto } from "../../types/api";
 import { AddFriendDialog } from "./AddFriendDialog";
@@ -18,6 +17,7 @@ type Props = {
   onRemove: (friendshipId: string) => Promise<unknown>;
   onUnblock: (userId: string) => Promise<unknown>;
   onOpenDm: (userId: string) => void;
+  onOpenProfile: (userId: string) => void;
 };
 
 type ActionState = {
@@ -86,6 +86,7 @@ export function FriendsView({
   onRemove,
   onUnblock,
   onOpenDm,
+  onOpenProfile,
 }: Props) {
   const [activeTab, setActiveTab] = useState<TabId>("friends");
   const [addOpen, setAddOpen] = useState(false);
@@ -130,44 +131,54 @@ export function FriendsView({
     const busy =
       action?.id === friendship.id ||
       (variant === "blocked" && action?.id === friendship.other.id);
-    const rowButtonProps =
-      variant === "accepted"
-        ? {
-            role: "button",
-            tabIndex: 0,
-            onClick: () => onOpenDm(friendship.other.id),
-            onKeyDown: (e: KeyboardEvent<HTMLDivElement>) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                onOpenDm(friendship.other.id);
-              }
-            },
-          }
-        : {};
-
     return (
       <div
         key={friendship.id}
         className={`ec-friend-row ${statusClass(friendship)}${variant === "accepted" ? " ec-friend-row--clickable" : ""}`}
-        {...rowButtonProps}
       >
-        <span className="ec-friend-row__avatar">
-          <Avatar url={friendship.other.avatar} name={friendship.other.displayName} size={36} />
-          <span className="ec-friend-presence" aria-hidden />
-        </span>
-        <span className="ec-friend-row__main">
-          <strong>{friendship.other.displayName}</strong>
-          <ActivityLine friendship={friendship} />
-          <span>
-            {variant === "accepted"
-              ? "Друг"
-              : variant === "pendingIn"
-              ? "Хочет добавить вас"
-              : variant === "pendingOut"
-              ? "Ожидает ответа"
-              : "Заблокирован вами"}
+        {variant === "accepted" ? (
+          <button
+            type="button"
+            className="ec-friend-row__avatar ec-friend-row__avatar-button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onOpenProfile(friendship.other.id);
+            }}
+            aria-label={`Открыть профиль: ${friendship.other.displayName}`}
+          >
+            <Avatar url={friendship.other.avatar} name={friendship.other.displayName} size={36} />
+            <span className="ec-friend-presence" aria-hidden />
+          </button>
+        ) : (
+          <span className="ec-friend-row__avatar">
+            <Avatar url={friendship.other.avatar} name={friendship.other.displayName} size={36} />
+            <span className="ec-friend-presence" aria-hidden />
           </span>
-        </span>
+        )}
+        {variant === "accepted" ? (
+          <button
+            type="button"
+            className="ec-friend-row__main ec-friend-row__main-button"
+            onClick={() => onOpenDm(friendship.other.id)}
+            aria-label={`Открыть диалог: ${friendship.other.displayName}`}
+          >
+            <strong>{friendship.other.displayName}</strong>
+            <ActivityLine friendship={friendship} />
+            <span>Друг</span>
+          </button>
+        ) : (
+          <span className="ec-friend-row__main">
+            <strong>{friendship.other.displayName}</strong>
+            <ActivityLine friendship={friendship} />
+            <span>
+              {variant === "pendingIn"
+                ? "Хочет добавить вас"
+                : variant === "pendingOut"
+                ? "Ожидает ответа"
+                : "Заблокирован вами"}
+            </span>
+          </span>
+        )}
         <span className="ec-friend-row__actions" onClick={(e) => e.stopPropagation()}>
           {variant === "pendingIn" && (
             <>
@@ -260,6 +271,9 @@ export function FriendsView({
             )}
             {variant === "accepted" && (
               <>
+                <button type="button" onClick={() => onOpenProfile(friendship.other.id)}>
+                  Профиль
+                </button>
                 <button type="button" onClick={() => onOpenDm(friendship.other.id)}>
                   Написать
                 </button>

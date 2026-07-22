@@ -13,12 +13,20 @@ type Props = {
   children: ReactNode;
   footer?: ReactNode;
   width?: number;
+  closeOnEscape?: boolean;
 };
 
-export function Modal({ title, onClose, children, footer, width = 440 }: Props) {
+export function Modal({
+  title,
+  onClose,
+  children,
+  footer,
+  width = 440,
+  closeOnEscape = true,
+}: Props) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape" && closeOnEscape) onClose();
     };
     document.addEventListener("keydown", onKey);
     // v0.65: body scroll-lock пока modal открыт — иначе на mobile фон
@@ -29,7 +37,7 @@ export function Modal({ title, onClose, children, footer, width = 440 }: Props) 
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = prevOverflow;
     };
-  }, [onClose]);
+  }, [closeOnEscape, onClose]);
 
   return (
     <div

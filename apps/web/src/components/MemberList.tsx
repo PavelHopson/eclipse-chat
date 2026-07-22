@@ -21,6 +21,8 @@ type Props = {
   currentUserId?: string;
   /** «Написать в личку» — открывает или создаёт DM. */
   onOpenDm?: (userId: string) => void;
+  /** Открыть публичный профиль участника. */
+  onOpenProfile?: (userId: string) => void;
   /** activeServerId для per-server persisted collapse state role-group sections. */
   serverId?: string | null;
 };
@@ -146,12 +148,14 @@ const MemberRowView = memo(function MemberRowView({
   voiceChannelName,
   showDmButton,
   onOpenDm,
+  onOpenProfile,
 }: {
   m: MemberRow;
   inVoiceChannel: boolean;
   voiceChannelName?: string;
   showDmButton: boolean;
   onOpenDm?: (userId: string) => void;
+  onOpenProfile?: (userId: string) => void;
 }) {
   const tag = ROLE_TAG[m.role];
   const hasActivity = Boolean(m.user.activityEmoji || m.user.activityText);
@@ -164,7 +168,23 @@ const MemberRowView = memo(function MemberRowView({
         : " · в голосовом"
       : "");
   return (
-    <div className={"ec-mem-row" + (m.online ? "" : " ec-mem-row--offline")} title={tooltip}>
+    <div
+      className={
+        "ec-mem-row" +
+        (m.online ? "" : " ec-mem-row--offline") +
+        (onOpenProfile ? " ec-mem-row--clickable" : "")
+      }
+      title={tooltip}
+      role={onOpenProfile ? "button" : undefined}
+      tabIndex={onOpenProfile ? 0 : undefined}
+      aria-label={onOpenProfile ? `Открыть профиль ${m.user.displayName}` : undefined}
+      onClick={() => onOpenProfile?.(m.userId)}
+      onKeyDown={(event) => {
+        if (!onOpenProfile || (event.key !== "Enter" && event.key !== " ")) return;
+        event.preventDefault();
+        onOpenProfile(m.userId);
+      }}
+    >
       <span className="ec-mem-row__av">
         <Avatar
           url={m.user.avatar}
@@ -224,6 +244,7 @@ export function MemberList({
   channelNameById,
   currentUserId,
   onOpenDm,
+  onOpenProfile,
   hideHeader,
   serverId,
 }: Props) {
@@ -338,6 +359,7 @@ export function MemberList({
                           voiceChannelName={vc ? channelNameById?.(vc) : undefined}
                           showDmButton={Boolean(currentUserId && m.userId !== currentUserId)}
                           onOpenDm={onOpenDm}
+                          onOpenProfile={onOpenProfile}
                         />
                       );
                     })}
@@ -367,6 +389,7 @@ export function MemberList({
                       inVoiceChannel={false}
                       showDmButton={Boolean(currentUserId && m.userId !== currentUserId)}
                       onOpenDm={onOpenDm}
+                      onOpenProfile={onOpenProfile}
                     />
                   ))}
               </>

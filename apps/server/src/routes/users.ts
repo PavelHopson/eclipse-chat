@@ -1,11 +1,12 @@
 import type { FastifyInstance } from "fastify";
+import { randomUUID } from "node:crypto";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { z } from "zod";
 import sharp from "sharp";
 import { db } from "../db.js";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
-import { broadcastActivityChange, broadcastStatusChange } from "../presence.js";
+import { broadcastActivityChange, broadcastStatusChange, isOnline } from "../presence.js";
 
 const updateProfileBody = z.object({
   displayName: z.string().min(1).max(64).optional(),
@@ -71,6 +72,8 @@ const updateQuietHoursBody = z.object({
  */
 const AVATAR_BODY_LIMIT = 27 * 1024 * 1024;
 const AVATAR_MAX_BINARY = 20 * 1024 * 1024;
+const PROFILE_GALLERY_LIMIT = 8;
+const PROFILE_IMAGE_MAX_PIXELS = 60_000_000;
 /**
  * Sharp на входе принимает большинство raster-форматов. HEIC/HEIF/AVIF
  * требуют libheif/libaom на сервере — если они не установлены, sharp
@@ -108,6 +111,97 @@ function avatarsDir(): string {
   return path.join(base, "avatars");
 }
 
+type ProfileMediaKind = "banner" | "gallery";
+
+function profileMediaDir(kind: ProfileMediaKind): string {
+  const base = process.env.UPLOADS_DIR ?? "./uploads";
+  return path.join(base, kind === "banner" ? "profile-banners" : "profile-gallery");
+}
+
+function profileMediaUrl(kind: ProfileMediaKind, filename: string): string {
+  const directory = kind === "banner" ? "profile-banners" : "profile-gallery";
+  return `/uploads/${directory}/${filename}`;
+}
+
+async function deleteProfileMediaFile(
+  kind: ProfileMediaKind,
+  url: string | null | undefined,
+): Promise<void> {
+  if (!url) return;
+  const filename = path.basename(url);
+  if (!filename) return;
+  await fs.unlink(path.join(profileMediaDir(kind), filename)).catch(() => undefined);
+}
+
+async function processProfileMedia(
+  app: FastifyInstance,
+  input: z.infer<typeof uploadAvatarBody>,
+  kind: ProfileMediaKind,
+): Promise<{ buffer: Buffer } | { error: string; status: number }> {
+  if (!AVATAR_MIME.has(input.contentType)) {
+    return {
+      error: `Формат ${input.contentType} не поддерживается. Используй JPEG, PNG, WebP, GIF, AVIF, HEIC, BMP или TIFF.`,
+      status: 415,
+    };
+  }
+  const source = Buffer.from(input.dataBase64, "base64");
+  if (source.length === 0) return { error: "Пустой файл", status: 400 };
+  if (source.length > AVATAR_MAX_BINARY) {
+    return {
+      error: `Файл слишком большой (${(source.length / 1024 / 1024).toFixed(1)} MB). Максимум 20 MB.`,
+      status: 413,
+    };
+  }
+
+  try {
+    const image = sharp(source, {
+      failOn: "none",
+      limitInputPixels: PROFILE_IMAGE_MAX_PIXELS,
+    });
+    const metadata = await image.metadata();
+    if (!metadata.width || !metadata.height) {
+      throw new Error(`Image metadata пустая (формат ${metadata.format ?? "unknown"} нечитаем)`);
+    }
+
+    const pipeline = sharp(source, {
+      failOn: "none",
+      limitInputPixels: PROFILE_IMAGE_MAX_PIXELS,
+    }).rotate();
+    const resized = kind === "banner"
+      ? pipeline.resize(1600, 600, { fit: "cover", position: "center" })
+      : pipeline.resize(1600, 1600, { fit: "inside", withoutEnlargement: true });
+    const buffer = await resized.webp({ quality: 88 }).toBuffer();
+    if (buffer.length < 800) throw new Error("Обработанное изображение повреждено");
+    return { buffer };
+  } catch (error) {
+    const details = error instanceof Error ? error.message : String(error);
+    app.log.warn(
+      { err: error, mime: input.contentType, size: source.length, kind },
+      "Profile media processing failed",
+    );
+    const heicHint = /heif|heic|libheif|unsupported image format/i.test(details) ||
+      /heic|heif/i.test(input.contentType)
+      ? " Сервер не смог прочитать HEIC/HEIF — выбери JPEG, PNG или WebP."
+      : "";
+    return {
+      error: `Не удалось обработать изображение.${heicHint}`,
+      status: 400,
+    };
+  }
+}
+
+async function persistProfileMedia(
+  userId: string,
+  kind: ProfileMediaKind,
+  buffer: Buffer,
+): Promise<string> {
+  const dir = profileMediaDir(kind);
+  await fs.mkdir(dir, { recursive: true });
+  const filename = `${userId}-${randomUUID()}.webp`;
+  await fs.writeFile(path.join(dir, filename), buffer);
+  return profileMediaUrl(kind, filename);
+}
+
 /** Относительный URL под который положены файлы. Frontend prefixит BASE_URL. */
 function avatarUrl(filename: string): string {
   return `/uploads/avatars/${filename}`;
@@ -124,6 +218,8 @@ function publicProfile(u: {
   email: string;
   displayName: string;
   avatar: string | null;
+  profileBanner?: string | null;
+  profileImages?: Array<{ id: string; url: string; position: number; createdAt: Date }>;
   bio: string | null;
   status?: "ONLINE" | "IDLE" | "DND" | "INVISIBLE";
   /// v1.5.45 Discord-parity A3 — fields optional на типе чтобы старые
@@ -142,6 +238,13 @@ function publicProfile(u: {
     email: u.email,
     displayName: u.displayName,
     avatar: u.avatar,
+    profileBanner: u.profileBanner ?? null,
+    profileImages: (u.profileImages ?? []).map((image) => ({
+      id: image.id,
+      url: image.url,
+      position: image.position,
+      createdAt: image.createdAt.toISOString(),
+    })),
     bio: u.bio,
     status: u.status ?? "ONLINE",
     activityText: u.activityText ?? null,
@@ -150,6 +253,132 @@ function publicProfile(u: {
     quietTo: u.quietTo ?? null,
     timezone: u.timezone ?? null,
     createdAt: u.createdAt.toISOString(),
+  };
+}
+
+const profileMediaInclude = {
+  profileImages: { orderBy: [{ position: "asc" as const }, { createdAt: "asc" as const }] },
+};
+
+function loadProfileUser(userId: string) {
+  return db.user.findUnique({
+    where: { id: userId },
+    include: profileMediaInclude,
+  });
+}
+
+const publicProfileQuery = z.object({
+  serverId: z.string().min(1).max(128).optional(),
+});
+
+export type ProfileAccess = {
+  role: string | null;
+  joinedAt: Date | null;
+  canMessage: boolean;
+};
+
+/**
+ * Object-level authorization for GET /api/users/:userId/profile.
+ * An authenticated account may view itself, a member of the same workspace,
+ * an accepted friend, or a participant from an existing DM. Merely knowing a
+ * user id is not enough.
+ */
+async function resolveProfileAccess(
+  viewerId: string,
+  targetId: string,
+  serverId?: string,
+): Promise<ProfileAccess | null> {
+  if (viewerId === targetId) {
+    const ownMembership = serverId
+      ? await db.member.findUnique({
+          where: { userId_serverId: { userId: targetId, serverId } },
+          select: { role: true, joinedAt: true },
+        })
+      : null;
+    return {
+      role: ownMembership?.role ?? null,
+      joinedAt: ownMembership?.joinedAt ?? null,
+      canMessage: false,
+    };
+  }
+
+  const [userAId, userBId] = viewerId < targetId
+    ? [viewerId, targetId]
+    : [targetId, viewerId];
+  const friendship = await db.friendship.findUnique({
+    where: { userAId_userBId: { userAId, userBId } },
+    select: { status: true },
+  });
+
+  if (serverId) {
+    const memberships = await db.member.findMany({
+      where: { serverId, userId: { in: [viewerId, targetId] } },
+      select: { userId: true, role: true, joinedAt: true },
+    });
+    if (memberships.length === 2) {
+      const targetMembership = memberships.find((member) => member.userId === targetId);
+      return {
+        role: targetMembership?.role ?? null,
+        joinedAt: targetMembership?.joinedAt ?? null,
+        canMessage: friendship?.status !== "BLOCKED",
+      };
+    }
+  }
+
+  if (friendship?.status === "ACCEPTED") {
+    return { role: null, joinedAt: null, canMessage: true };
+  }
+  if (friendship?.status === "BLOCKED") return null;
+
+  const conversation = await db.directConversation.findFirst({
+    where: {
+      OR: [
+        { isGroup: false, userAId: viewerId, userBId: targetId },
+        { isGroup: false, userAId: targetId, userBId: viewerId },
+        {
+          isGroup: true,
+          AND: [
+            { participants: { some: { userId: viewerId } } },
+            { participants: { some: { userId: targetId } } },
+          ],
+        },
+      ],
+    },
+    select: { id: true },
+  });
+  return conversation ? { role: null, joinedAt: null, canMessage: true } : null;
+}
+
+type LoadedProfileUser = NonNullable<Awaited<ReturnType<typeof loadProfileUser>>>;
+
+export function publicViewedProfile(
+  user: LoadedProfileUser,
+  viewerId: string,
+  access: ProfileAccess,
+) {
+  const visibleOnline = user.status !== "INVISIBLE" && isOnline(user.id);
+  return {
+    id: user.id,
+    displayName: user.displayName,
+    avatar: user.avatar,
+    profileBanner: user.profileBanner,
+    bio: user.bio,
+    status: user.id === viewerId ? user.status : user.status === "INVISIBLE" ? "INVISIBLE" : user.status,
+    activityText: user.activityText,
+    activityEmoji: user.activityEmoji,
+    createdAt: user.createdAt.toISOString(),
+    online: visibleOnline,
+    isSelf: user.id === viewerId,
+    canMessage: access.canMessage,
+    serverContext: access.role && access.joinedAt
+      ? { role: access.role, joinedAt: access.joinedAt.toISOString() }
+      : null,
+    profileImages: user.profileImages.map((image) => ({
+      id: image.id,
+      url: image.url,
+      position: image.position,
+      createdAt: image.createdAt.toISOString(),
+    })),
   };
 }
 
@@ -162,11 +391,46 @@ export async function registerUserRoutes(app: FastifyInstance) {
       if (!userId) {
         return reply.status(401).send({ error: "Unauthorized" });
       }
-      const user = await db.user.findUnique({ where: { id: userId } });
+      const user = await loadProfileUser(userId);
       if (!user) {
         return reply.status(404).send({ error: "User not found" });
       }
       return { user: publicProfile(user) };
+    },
+  );
+
+  app.get(
+    "/api/users/:userId/profile",
+    {
+      onRequest: [requireJwt],
+      config: { rateLimit: { max: 120, timeWindow: 60 * 1000 } },
+    },
+    async (req, reply) => {
+      const viewerId = getUserId(req);
+      if (!viewerId) return reply.status(401).send({ error: "Unauthorized" });
+      const targetId = (req.params as { userId?: string }).userId;
+      if (!targetId || targetId.length > 128) {
+        return reply.status(400).send({ error: "Invalid user id" });
+      }
+      const parsedQuery = publicProfileQuery.safeParse(req.query);
+      if (!parsedQuery.success) {
+        return reply.status(400).send({ error: "Invalid profile context" });
+      }
+
+      const access = await resolveProfileAccess(
+        viewerId,
+        targetId,
+        parsedQuery.data.serverId,
+      );
+      // Return the same status for a missing and inaccessible account so the
+      // endpoint cannot be used to enumerate platform users.
+      if (!access) return reply.status(404).send({ error: "Profile not found" });
+
+      const target = await loadProfileUser(targetId);
+      if (!target || target.deletedAt || target.bannedAt) {
+        return reply.status(404).send({ error: "Profile not found" });
+      }
+      return { user: publicViewedProfile(target, viewerId, access) };
     },
   );
 
@@ -190,13 +454,15 @@ export async function registerUserRoutes(app: FastifyInstance) {
         data.bio = parsed.data.bio === null ? null : parsed.data.bio.trim();
       }
       if (Object.keys(data).length === 0) {
-        const user = await db.user.findUnique({ where: { id: userId } });
+        const user = await loadProfileUser(userId);
         if (!user) {
           return reply.status(404).send({ error: "User not found" });
         }
         return { user: publicProfile(user) };
       }
-      const user = await db.user.update({ where: { id: userId }, data });
+      await db.user.update({ where: { id: userId }, data });
+      const user = await loadProfileUser(userId);
+      if (!user) return reply.status(404).send({ error: "User not found" });
       return { user: publicProfile(user) };
     },
   );
@@ -288,11 +554,161 @@ export async function registerUserRoutes(app: FastifyInstance) {
       const filename = `${userId}-${Date.now()}.${extFromMime("image/webp")}`;
       await fs.writeFile(path.join(dir, filename), resized);
       const url = avatarUrl(filename);
-      const updated = await db.user.update({
+      await db.user.update({
         where: { id: userId },
         data: { avatar: url },
       });
+      const updated = await loadProfileUser(userId);
+      if (!updated) return reply.status(404).send({ error: "User not found" });
       return { user: publicProfile(updated), url };
+    },
+  );
+
+  app.post(
+    "/api/users/me/profile/banner",
+    {
+      onRequest: [requireJwt],
+      bodyLimit: AVATAR_BODY_LIMIT,
+      config: { rateLimit: { max: 10, timeWindow: 15 * 60 * 1000 } },
+    },
+    async (req, reply) => {
+      const userId = getUserId(req);
+      if (!userId) return reply.status(401).send({ error: "Unauthorized" });
+      const parsed = uploadAvatarBody.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.status(400).send({ error: "Invalid body", details: parsed.error.flatten() });
+      }
+      const processed = await processProfileMedia(app, parsed.data, "banner");
+      if ("error" in processed) {
+        return reply.status(processed.status).send({
+          error: processed.error,
+        });
+      }
+
+      const existing = await db.user.findUnique({
+        where: { id: userId },
+        select: { profileBanner: true },
+      });
+      if (!existing) return reply.status(404).send({ error: "User not found" });
+      const url = await persistProfileMedia(userId, "banner", processed.buffer);
+      try {
+        await db.user.update({ where: { id: userId }, data: { profileBanner: url } });
+      } catch (error) {
+        await deleteProfileMediaFile("banner", url);
+        throw error;
+      }
+      await deleteProfileMediaFile("banner", existing.profileBanner);
+      const updated = await loadProfileUser(userId);
+      if (!updated) return reply.status(404).send({ error: "User not found" });
+      return { user: publicProfile(updated), url };
+    },
+  );
+
+  app.delete(
+    "/api/users/me/profile/banner",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const userId = getUserId(req);
+      if (!userId) return reply.status(401).send({ error: "Unauthorized" });
+      const existing = await db.user.findUnique({
+        where: { id: userId },
+        select: { profileBanner: true },
+      });
+      if (!existing) return reply.status(404).send({ error: "User not found" });
+      await db.user.update({ where: { id: userId }, data: { profileBanner: null } });
+      await deleteProfileMediaFile("banner", existing.profileBanner);
+      const updated = await loadProfileUser(userId);
+      if (!updated) return reply.status(404).send({ error: "User not found" });
+      return { user: publicProfile(updated) };
+    },
+  );
+
+  app.post(
+    "/api/users/me/profile/images",
+    {
+      onRequest: [requireJwt],
+      bodyLimit: AVATAR_BODY_LIMIT,
+      config: { rateLimit: { max: 16, timeWindow: 15 * 60 * 1000 } },
+    },
+    async (req, reply) => {
+      const userId = getUserId(req);
+      if (!userId) return reply.status(401).send({ error: "Unauthorized" });
+      const parsed = uploadAvatarBody.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.status(400).send({ error: "Invalid body", details: parsed.error.flatten() });
+      }
+      const existing = await db.userProfileImage.findMany({
+        where: { userId },
+        select: { position: true },
+        orderBy: { position: "desc" },
+      });
+      if (existing.length >= PROFILE_GALLERY_LIMIT) {
+        return reply.status(409).send({
+          error: `В профиле уже ${PROFILE_GALLERY_LIMIT} изображений. Удали одно, чтобы добавить новое.`,
+        });
+      }
+      const processed = await processProfileMedia(app, parsed.data, "gallery");
+      if ("error" in processed) {
+        return reply.status(processed.status).send({
+          error: processed.error,
+        });
+      }
+      const url = await persistProfileMedia(userId, "gallery", processed.buffer);
+      let galleryFull = false;
+      try {
+        await db.$transaction(async (tx) => {
+          const current = await tx.userProfileImage.findMany({
+            where: { userId },
+            select: { position: true },
+            orderBy: { position: "desc" },
+          });
+          if (current.length >= PROFILE_GALLERY_LIMIT) {
+            galleryFull = true;
+            return;
+          }
+          await tx.userProfileImage.create({
+            data: {
+              userId,
+              url,
+              position: (current[0]?.position ?? -1) + 1,
+            },
+          });
+        }, { isolationLevel: "Serializable" });
+      } catch (error) {
+        await deleteProfileMediaFile("gallery", url);
+        throw error;
+      }
+      if (galleryFull) {
+        await deleteProfileMediaFile("gallery", url);
+        return reply.status(409).send({
+          error: `В профиле уже ${PROFILE_GALLERY_LIMIT} изображений. Удали одно, чтобы добавить новое.`,
+        });
+      }
+      const updated = await loadProfileUser(userId);
+      if (!updated) return reply.status(404).send({ error: "User not found" });
+      return { user: publicProfile(updated), url };
+    },
+  );
+
+  app.delete(
+    "/api/users/me/profile/images/:imageId",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const userId = getUserId(req);
+      if (!userId) return reply.status(401).send({ error: "Unauthorized" });
+      const imageId = (req.params as { imageId?: string }).imageId;
+      if (!imageId || imageId.length > 128) {
+        return reply.status(400).send({ error: "Invalid image id" });
+      }
+      const image = await db.userProfileImage.findFirst({
+        where: { id: imageId, userId },
+      });
+      if (!image) return reply.status(404).send({ error: "Image not found" });
+      await db.userProfileImage.delete({ where: { id: image.id } });
+      await deleteProfileMediaFile("gallery", image.url);
+      const updated = await loadProfileUser(userId);
+      if (!updated) return reply.status(404).send({ error: "User not found" });
+      return { user: publicProfile(updated) };
     },
   );
 
@@ -312,13 +728,15 @@ export async function registerUserRoutes(app: FastifyInstance) {
       if (!parsed.success) {
         return reply.status(400).send({ error: "Invalid status" });
       }
-      const updated = await db.user.update({
+      const statusUpdate = await db.user.update({
         where: { id: userId },
         data: { status: parsed.data.status },
       });
       // Broadcast change в socket — клиенты в member-list'ах обновят dot
       broadcastStatusChange(userId, parsed.data.status);
-      return { user: publicProfile(updated), status: updated.status };
+      const updated = await loadProfileUser(userId);
+      if (!updated) return reply.status(404).send({ error: "User not found" });
+      return { user: publicProfile(updated), status: statusUpdate.status };
     },
   );
 
@@ -379,20 +797,22 @@ export async function registerUserRoutes(app: FastifyInstance) {
       if (Object.keys(data).length === 0) {
         // Идемпотентный no-op — клиент прислал пустой body или только
         // undefined fields. Возвращаем current state без UPDATE.
-        const user = await db.user.findUnique({ where: { id: userId } });
+        const user = await loadProfileUser(userId);
         if (!user) {
           return reply.status(404).send({ error: "User not found" });
         }
         return { user: publicProfile(user) };
       }
-      const updated = await db.user.update({
+      const activityUpdate = await db.user.update({
         where: { id: userId },
         data,
       });
       broadcastActivityChange(userId, {
-        activityText: updated.activityText,
-        activityEmoji: updated.activityEmoji,
+        activityText: activityUpdate.activityText,
+        activityEmoji: activityUpdate.activityEmoji,
       });
+      const updated = await loadProfileUser(userId);
+      if (!updated) return reply.status(404).send({ error: "User not found" });
       return { user: publicProfile(updated) };
     },
   );
@@ -449,16 +869,18 @@ export async function registerUserRoutes(app: FastifyInstance) {
       if (parsed.data.timezone !== undefined) data.timezone = parsed.data.timezone;
 
       if (Object.keys(data).length === 0) {
-        const user = await db.user.findUnique({ where: { id: userId } });
+        const user = await loadProfileUser(userId);
         if (!user) {
           return reply.status(404).send({ error: "User not found" });
         }
         return { user: publicProfile(user) };
       }
-      const updated = await db.user.update({
+      await db.user.update({
         where: { id: userId },
         data,
       });
+      const updated = await loadProfileUser(userId);
+      if (!updated) return reply.status(404).send({ error: "User not found" });
       return { user: publicProfile(updated) };
     },
   );
@@ -481,10 +903,12 @@ export async function registerUserRoutes(app: FastifyInstance) {
           await fs.unlink(path.join(avatarsDir(), filename)).catch(() => undefined);
         }
       }
-      const updated = await db.user.update({
+      await db.user.update({
         where: { id: userId },
         data: { avatar: null },
       });
+      const updated = await loadProfileUser(userId);
+      if (!updated) return reply.status(404).send({ error: "User not found" });
       return { user: publicProfile(updated) };
     },
   );

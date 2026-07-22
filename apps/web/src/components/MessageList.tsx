@@ -27,6 +27,8 @@ type Props = {
   channelName?: string | null;
   listKey?: string | null;
   currentUserId?: string;
+  /** Открыть профиль автора по клику на avatar/name. */
+  onOpenUserProfile?: (userId: string) => void;
   currentUserName?: string;
   currentRole?: MemberRole | null;
   /** Bot typing: shimmer «{label} собирает ответ» (v0.40 local + v0.48 socket). */
@@ -158,6 +160,7 @@ export function MessageList({
   channelName,
   listKey,
   currentUserId,
+  onOpenUserProfile,
   currentUserName,
   currentRole,
   pendingBotTyping,
@@ -533,14 +536,22 @@ export function MessageList({
                     {formatTime(m.createdAt)}
                   </span>
                 ) : (
-                  <span
-                    className={
-                      "ec-msg-avatar-wrap" +
-                      (m.user.isBot ? " ec-avatar-halo ec-avatar-halo--ai" : "")
-                    }
+                  <button
+                    type="button"
+                    className="ec-msg-avatar-button"
+                    onClick={() => onOpenUserProfile?.(m.user.id)}
+                    disabled={!onOpenUserProfile}
+                    aria-label={`Открыть профиль ${m.user.displayName}`}
                   >
-                    <Avatar url={m.user.avatar} name={m.user.displayName} size={36} />
-                  </span>
+                    <span
+                      className={
+                        "ec-msg-avatar-wrap" +
+                        (m.user.isBot ? " ec-avatar-halo ec-avatar-halo--ai" : "")
+                      }
+                    >
+                      <Avatar url={m.user.avatar} name={m.user.displayName} size={36} />
+                    </span>
+                  </button>
                 )}
               </div>
               <div className="ec-message-content">
@@ -550,6 +561,8 @@ export function MessageList({
                       type="button"
                       className="ec-msg-author"
                       title={m.user.displayName}
+                      onClick={() => onOpenUserProfile?.(m.user.id)}
+                      disabled={!onOpenUserProfile}
                     >
                       {m.user.displayName}
                     </button>

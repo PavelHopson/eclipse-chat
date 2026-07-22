@@ -54,6 +54,7 @@ type Props = {
   channelNameById: (channelId: string) => string | undefined;
   currentUserId: string;
   onOpenDm: (userId: string) => void;
+  onOpenProfile: (userId: string) => void;
   /** Drawer-close (mobile/tablet). На desktop omitted. */
   onClose?: () => void;
   /** Collapse rail (desktop) — сворачивает панель чтобы не съедать ширину центра. */
@@ -72,6 +73,7 @@ export function IntelligencePanel({
   channelNameById,
   currentUserId,
   onOpenDm,
+  onOpenProfile,
   onClose,
   onCollapse,
   serverId,
@@ -88,6 +90,7 @@ export function IntelligencePanel({
       channelNameById={channelNameById}
       currentUserId={currentUserId}
       onOpenDm={onOpenDm}
+      onOpenProfile={onOpenProfile}
       onClose={onClose}
       onCollapse={onCollapse}
       serverId={serverId}

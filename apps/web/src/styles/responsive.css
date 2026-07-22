@@ -1819,3 +1819,155 @@
     height: 38px;
   }
 }
+
+/* v1.7.13 — one profile surface for browser, Tauri and Android WebView. */
+@media (max-width: 640px) {
+  .ec-user-profile {
+    border-radius: 14px;
+  }
+
+  .ec-user-profile__cover {
+    min-height: 168px;
+  }
+
+  .ec-user-profile__avatar {
+    left: 16px;
+    bottom: -44px;
+    width: 94px;
+    height: 94px;
+  }
+
+  .ec-user-profile__avatar > span {
+    width: 86px !important;
+    height: 86px !important;
+  }
+
+  .ec-user-profile__content {
+    gap: 17px;
+    padding: 54px 16px max(18px, env(safe-area-inset-bottom, 0px));
+  }
+
+  .ec-user-profile__identity {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .ec-user-profile__actions,
+  .ec-user-profile__actions .ec-btn {
+    width: 100%;
+  }
+
+  .ec-user-profile__actions .ec-btn {
+    min-height: 44px;
+    justify-content: center;
+  }
+
+  .ec-user-profile__facts {
+    grid-template-columns: 1fr;
+  }
+
+  .ec-user-profile__media-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ec-user-profile__media-grid button:nth-child(2) {
+    grid-column: auto;
+  }
+
+  .ec-profile-lightbox {
+    align-items: center;
+    padding: max(8px, env(safe-area-inset-top, 0px)) 8px max(8px, env(safe-area-inset-bottom, 0px));
+  }
+
+  .ec-profile-lightbox__stage {
+    width: 100%;
+    max-width: 100%;
+    max-height: 96dvh;
+    border-radius: 12px;
+  }
+
+  .ec-profile-lightbox__bar button {
+    min-height: 44px;
+  }
+
+  .ec-profile-lightbox__nav {
+    width: 42px;
+    height: 52px;
+  }
+
+  .ec-profile-lightbox__nav--previous { left: 8px; }
+  .ec-profile-lightbox__nav--next { right: 8px; }
+
+  .ec-settings-profile-preview__cover {
+    height: 128px;
+  }
+
+  .ec-settings-profile-preview__identity {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    padding: 0 14px 14px;
+  }
+
+  .ec-settings-profile-preview__identity > :first-child {
+    margin-top: -28px;
+  }
+
+  .ec-settings-profile-preview__identity small {
+    grid-column: 1 / -1;
+  }
+
+  .ec-settings-media-control,
+  .ec-settings-gallery-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .ec-settings-media-control .ec-settings-actions,
+  .ec-settings-gallery-heading .ec-btn {
+    width: 100%;
+  }
+
+  .ec-settings-media-control .ec-settings-actions .ec-btn {
+    flex: 1 1 0;
+    justify-content: center;
+  }
+
+  .ec-settings-gallery-heading .ec-btn {
+    min-height: 44px;
+    justify-content: center;
+  }
+
+  .ec-settings-gallery-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ec-settings-gallery-grid button {
+    min-height: 36px;
+  }
+}
+
+@media (max-width: 380px) {
+  .ec-user-profile__media-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ec-user-profile__media-grid button {
+    aspect-ratio: 16 / 10;
+  }
+
+  .ec-settings-gallery-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .ec-mem-row--clickable {
+    min-height: 48px;
+  }
+
+  .ec-msg-avatar-button {
+    min-width: 40px;
+    min-height: 40px;
+  }
+}

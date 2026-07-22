@@ -3,11 +3,20 @@ import { ApiError, apiJson } from "../lib/api";
 
 export type UserStatus = "ONLINE" | "IDLE" | "DND" | "INVISIBLE";
 
+export type ProfileImage = {
+  id: string;
+  url: string;
+  position: number;
+  createdAt: string;
+};
+
 export type Profile = {
   id: string;
   email: string;
   displayName: string;
   avatar: string | null;
+  profileBanner: string | null;
+  profileImages: ProfileImage[];
   bio: string | null;
   activityText: string | null;
   activityEmoji: string | null;
@@ -77,7 +86,11 @@ export function useProfile(enabled: boolean) {
     [],
   );
 
-  const uploadAvatar = useCallback(async (file: File): Promise<boolean> => {
+  const uploadImage = useCallback(async (
+    file: File,
+    endpoint: string,
+    fallbackError: string,
+  ): Promise<boolean> => {
     setBusy(true);
     setError(null);
     try {
@@ -101,19 +114,42 @@ export function useProfile(enabled: boolean) {
       const dataBase64 = await fileToBase64(file);
       // Если MIME пустой — даём backend hint что это HEIC (iPhone частый кейс)
       const contentType = file.type || "image/heic";
-      const res = await apiJson<ProfileResponse>("/api/users/me/avatar", {
+      const res = await apiJson<ProfileResponse>(endpoint, {
         method: "POST",
         body: JSON.stringify({ contentType, dataBase64 }),
       });
       setProfile(res.user);
       return true;
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Не удалось загрузить аватар");
+      setError(e instanceof ApiError ? e.message : fallbackError);
       return false;
     } finally {
       setBusy(false);
     }
   }, []);
+
+  const uploadAvatar = useCallback(
+    (file: File) => uploadImage(file, "/api/users/me/avatar", "Не удалось загрузить аватар"),
+    [uploadImage],
+  );
+
+  const uploadProfileBanner = useCallback(
+    (file: File) => uploadImage(
+      file,
+      "/api/users/me/profile/banner",
+      "Не удалось загрузить обложку",
+    ),
+    [uploadImage],
+  );
+
+  const uploadProfileImage = useCallback(
+    (file: File) => uploadImage(
+      file,
+      "/api/users/me/profile/images",
+      "Не удалось добавить изображение",
+    ),
+    [uploadImage],
+  );
 
   const deleteAvatar = useCallback(async (): Promise<boolean> => {
     setBusy(true);
@@ -126,6 +162,41 @@ export function useProfile(enabled: boolean) {
       return true;
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Не удалось удалить аватар");
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  }, []);
+
+  const deleteProfileBanner = useCallback(async (): Promise<boolean> => {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await apiJson<ProfileResponse>("/api/users/me/profile/banner", {
+        method: "DELETE",
+      });
+      setProfile(res.user);
+      return true;
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Не удалось удалить обложку");
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  }, []);
+
+  const deleteProfileImage = useCallback(async (imageId: string): Promise<boolean> => {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await apiJson<ProfileResponse>(
+        `/api/users/me/profile/images/${encodeURIComponent(imageId)}`,
+        { method: "DELETE" },
+      );
+      setProfile(res.user);
+      return true;
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Не удалось удалить изображение");
       return false;
     } finally {
       setBusy(false);
@@ -220,6 +291,10 @@ export function useProfile(enabled: boolean) {
     updateProfile,
     uploadAvatar,
     deleteAvatar,
+    uploadProfileBanner,
+    deleteProfileBanner,
+    uploadProfileImage,
+    deleteProfileImage,
     updateStatus,
     updateActivity,
     updateQuietHours,

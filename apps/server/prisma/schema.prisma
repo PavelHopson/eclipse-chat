@@ -24,6 +24,9 @@ model User {
   /// URL аватара (path-based, обычно `/eclipse-chat/uploads/avatars/<file>`).
   /// nullable — при отсутствии UI рисует placeholder с инициалами.
   avatar        String?
+  /// Широкая обложка публичного профиля. Храним path-based WebP URL;
+  /// изображение загружает и удаляет только сам пользователь.
+  profileBanner String?
   /// Краткое био пользователя — Twitter-like, max 280 символов
   /// (проверяется на уровне zod-валидации в роуте PATCH /api/users/me/profile).
   bio           String?
@@ -178,6 +181,9 @@ model User {
   /// удалении user'а — emoji остаётся на сервере, владельцем становится
   /// «—».
   uploadedEmojis      Emoji[]
+  /// Управляемая владельцем публичная галерея профиля. Не собираем
+  /// автоматически вложения из комнат/DM, чтобы не раскрывать закрытый контент.
+  profileImages       UserProfileImage[]
   /// v1.5.42 Discord-parity A1: friendships где user — userA (нормализованная
   /// позиция, см. Friendship.userAId < userBId). Покрывает и PENDING/ACCEPTED/
   /// BLOCKED — фильтрация по status в роутах.
@@ -192,6 +198,20 @@ model User {
   /// v1.5.42 Discord-parity A1: friendships которые этот user заблокировал.
   /// Опять SetNull для completeness; cascade-delete срабатывает раньше.
   friendshipsBlockedBy Friendship[] @relation("FriendshipBlockedBy")
+}
+
+/// Публичное изображение, которое пользователь явно добавил в профиль.
+/// Максимальное количество (8) контролируется API; position сохраняет
+/// стабильный порядок без привязки к имени файла.
+model UserProfileImage {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  url       String
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([userId, position])
 }
 
 /// v0.85 #27 phase 4: per-event-type notification toggles.

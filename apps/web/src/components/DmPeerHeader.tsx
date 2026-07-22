@@ -16,7 +16,15 @@ import { dmStatusMeta } from "../lib/dmPresence";
  * `manualStatus` задан; кастом-активность — когда задана. Ничего не
  * выдумываем при отсутствии данных (просто имя без подзаголовка).
  */
-export function DmPeerHeader({ other, typing = false }: { other: DmOther; typing?: boolean }) {
+export function DmPeerHeader({
+  other,
+  typing = false,
+  onOpenProfile,
+}: {
+  other: DmOther;
+  typing?: boolean;
+  onOpenProfile?: (userId: string) => void;
+}) {
   const meta = dmStatusMeta(other.manualStatus);
 
   // Кастом-статус (эмодзи + текст) приоритетнее статус-лейбла, как в Telegram.
@@ -28,7 +36,13 @@ export function DmPeerHeader({ other, typing = false }: { other: DmOther; typing
   const subtitle = typing ? "печатает…" : activity ?? meta?.label ?? null;
 
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 9, minWidth: 0 }}>
+    <button
+      type="button"
+      className="ec-dm-peer-header"
+      onClick={() => onOpenProfile?.(other.id)}
+      disabled={!onOpenProfile}
+      aria-label={`Открыть профиль: ${other.displayName}`}
+    >
       <span style={{ position: "relative", display: "inline-block", flexShrink: 0 }}>
         <Avatar url={other.avatar} name={other.displayName} size={26} />
         {meta && (
@@ -66,6 +80,6 @@ export function DmPeerHeader({ other, typing = false }: { other: DmOther; typing
           </span>
         )}
       </span>
-    </span>
+    </button>
   );
 }

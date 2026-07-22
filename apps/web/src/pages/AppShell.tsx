@@ -56,6 +56,7 @@ const ChannelsAndRolesView = lazy(() => import("../components/server/ChannelsAnd
 const MembersView = lazy(() => import("../components/server/MembersView").then((m) => ({ default: m.MembersView })));
 const StatusMenu = lazy(() => import("../components/StatusMenu").then((m) => ({ default: m.StatusMenu })));
 const DownloadAppModal = lazy(() => import("../components/DownloadAppModal").then((m) => ({ default: m.DownloadAppModal })));
+const UserProfileModal = lazy(() => import("../components/UserProfileModal").then((m) => ({ default: m.UserProfileModal })));
 
 function isTextEntryTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -345,6 +346,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     "overview" | "branding" | "settings" | "bots"
   >("overview");
   const [showProfile, setShowProfile] = useState(false);
+  const [viewedProfileUserId, setViewedProfileUserId] = useState<string | null>(null);
   const [showSearch, setShowSearch] = useState(false);
   const [homeOpen, setHomeOpen] = useState(false);
   const [friendsOpen, setFriendsOpen] = useState(false);
@@ -434,6 +436,10 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     updateProfile,
     uploadAvatar,
     deleteAvatar,
+    uploadProfileBanner,
+    deleteProfileBanner,
+    uploadProfileImage,
+    deleteProfileImage,
     updateStatus,
     updateActivity,
     updateQuietHours,
@@ -1518,7 +1524,11 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                   typingNames={dmTypingUsers.map((u) => u.displayName)}
                 />
               ) : (
-                <DmPeerHeader other={selectedDm.other} typing={dmTypingUsers.length > 0} />
+                <DmPeerHeader
+                  other={selectedDm.other}
+                  typing={dmTypingUsers.length > 0}
+                  onOpenProfile={setViewedProfileUserId}
+                />
               )}
             </span>
           ) : inDmMode ? (
@@ -1935,6 +1945,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                   }
                 });
               }}
+              onOpenProfile={setViewedProfileUserId}
             />
           ) : !selectedDm ? (
             servers.length === 0 ? (
@@ -1986,6 +1997,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                 channelName={dmTitle(selectedDm, user.id)}
                 listKey={`dm:${selectedDm.id}`}
                 currentUserId={user.id}
+                onOpenUserProfile={setViewedProfileUserId}
                 currentUserName={headerName}
                 currentRole={null}
                 mentionNames={
@@ -2121,6 +2133,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               musicSession={music.session}
               onOpenMusicPicker={() => setShowVoiceMusicPicker(true)}
               onOpenMusicExpand={music.session ? () => setShowMusicExpand(true) : undefined}
+              onOpenProfile={setViewedProfileUserId}
               messages={
                 <div className="ec-voice-room__messages-card">
                   <div className="ec-voice-room__messages-head">
@@ -2136,6 +2149,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                     channelName={selectedChannel.name}
                     listKey={`voice:${selectedChannel.id}`}
                     currentUserId={user.id}
+                    onOpenUserProfile={setViewedProfileUserId}
                     currentUserName={headerName}
                     currentRole={currentRole}
                     mentionNames={members.map((m) => m.user.displayName)}
@@ -2308,6 +2322,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               channelTopSubtitle={activeServer?.name ?? null}
               listKey={`channel:${selectedChannel.id}`}
               currentUserId={user.id}
+              onOpenUserProfile={setViewedProfileUserId}
               currentUserName={headerName}
               currentRole={currentRole}
               mentionNames={members.map((m) => m.user.displayName)}
@@ -2430,6 +2445,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                   }
                 });
               }}
+              onOpenProfile={setViewedProfileUserId}
             />
           )}
           </Suspense>
@@ -2568,10 +2584,35 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           onUpdateQuietHours={updateQuietHours}
           onUploadAvatar={uploadAvatar}
           onDeleteAvatar={deleteAvatar}
+          onUploadProfileBanner={uploadProfileBanner}
+          onDeleteProfileBanner={deleteProfileBanner}
+          onUploadProfileImage={uploadProfileImage}
+          onDeleteProfileImage={deleteProfileImage}
           onLogout={onLogout}
           onTwoFactorChanged={() => {
             // Refresh profile чтобы twoFactorEnabled flag обновился.
             void reloadProfile?.();
+          }}
+        />
+      )}
+
+      {viewedProfileUserId && (
+        <UserProfileModal
+          userId={viewedProfileUserId}
+          serverId={activeServerId}
+          onClose={() => setViewedProfileUserId(null)}
+          onEditSelf={() => {
+            setViewedProfileUserId(null);
+            setShowProfile(true);
+          }}
+          onMessage={(otherId) => {
+            setViewedProfileUserId(null);
+            void openDmWith(otherId).then((conversationId) => {
+              if (!conversationId) return;
+              setActiveServerId(null);
+              setFriendsOpen(false);
+              if (isTabletOrSmaller) setMembersOpen(false);
+            });
           }}
         />
       )}

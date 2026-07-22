@@ -64,6 +64,15 @@
 - [x] Recovery atomically clears the ban/lockout fields, revokes existing refresh sessions and writes a sanitized `PLATFORM_USER_UNBANNED` audit event. Runbook: `docs/USER-ACCESS-RECOVERY.md`.
 - [x] Added a dry-run-first `password:reset` maintenance command. It generates a one-time 16-character password, stores only a bcrypt cost-12 hash, revokes existing sessions, clears login lockout counters and records a sanitized password-reset audit event.
 
+### Public profiles and client parity — v1.7.13
+
+- [x] Added a relationship-protected public profile API: self, shared workspace, accepted friend or existing conversation. Responses exclude email, security settings, quiet hours and other private account data.
+- [x] Added profile covers and an owner-curated gallery (up to 8 images) with decoded-image validation, pixel and upload limits, WebP normalization, random filenames and owner-only deletion.
+- [x] Added one responsive Telegram/Discord-inspired profile surface with status, activity, workspace role, membership dates, bio, media grid and keyboard/touch lightbox.
+- [x] Profiles open consistently from messages, workspace members, friends, DM headers and voice-room participants; the primary CTA is either `Настроить профиль` or `Написать сообщение`.
+- [x] Rebuilt the account profile editor around a live preview, clear avatar/cover/gallery actions, protected deletion and mobile-safe 44px controls.
+- [x] Browser, Tauri desktop and Android Capacitor share the same production web surface, so the responsive profile release reaches all clients without unnecessary native-wrapper version bumps.
+
 ## Applied research — 2026-07-19
 
 Источник: [Eclipse Library · July 2026 Kimi / research / media radar](https://library.eclipse-forge.ru/#guide/july-2026-kimi-research-media-radar).
@@ -93,7 +102,7 @@
 - Provider routing — только owned/legal keys, no grey-zone token bypass.
 - Token-saving tools (`sqz`, caveman-like compression) сначала benchmark в sandbox; не сжимать секреты, миграции, юридический текст и точные логи.
 
-**Актуальная версия (короткий индекс):** **v1.7.12** — MOSS-ready notification sound packs: selectable `Eclipse Signal` / `Soft Signal`, Web Audio fallback, documented asset contract for future generated packs.
+**Актуальная версия (короткий индекс):** **v1.7.13** — relationship-protected public profiles, covers and galleries, consistent profile entry points, responsive profile/settings UI for web, Tauri and Android WebView.
 
 **Текущая версия:** **v1.6.98** (🗄️⚡ PARTIAL-ИНДЕКС под escalation-scan (бэклог-хвост, заход через CI). Фоновой `escalation.ts` раз в час обходит `ActionItem` где `status ∈ (OPEN,IN_PROGRESS,REVIEW)`, `dueAt < now-48h`, `(escalatedAt IS NULL OR < now-7d)`, `ORDER BY dueAt ASC LIMIT 50`. Запрос **глобальный** (без serverId/channelId) → все 4 существующих индекса `ActionItem` ведут с channelId/serverId и его НЕ покрывают → был seq-scan всей таблицы каждый час. **Новый partial composite index** `ActionItem_escalation_scan_idx ON ("dueAt") WHERE status IN (OPEN,IN_PROGRESS,REVIEW) AND dueAt IS NOT NULL` (raw-миграция `20260625120000_add_escalation_partial_index`): индексирует только кандидатов эскалации (крошечная доля таблицы — закрытые DONE и задачи без дедлайна исключены); ведущая `dueAt` → один forward index-scan покрывает и `dueAt < X`, и `ORDER BY dueAt ASC LIMIT 50` без сортировки, рано останавливается. **Prisma не выражает WHERE-индексы** → raw SQL; `migrate deploy` (deploy.sh [4/10]) применяет как есть, `prisma generate` индексы не читает, drift-проверок (`migrate dev`) в проекте нет (прод=migrate deploy, локальной БД нет). schema.prisma — doc-comment у `ActionItem` фиксирует существование индекса («не чинить как drift»). **temp-channel scan (`tempChannels.ts`) НЕ трогал** — `Channel` уже имеет `@@index([expiresAt])`, а `WHERE expiresAt < now` = чистый range-scan по нему (NULL'ы сортируются последними, не читаются); partial там лишь дублировал бы индекс = write-amplification на крошечной таблице ради ~нуля. Version 1.6.97→1.6.98 (4 точки). Verify: server `tsc --noEmit` PASS, web build PASS; миграция применится на проде при деплое (`migrate deploy`). **Бэклог-остаток:** виртуализация ленты сообщений (npm-dep + риск-рефактор скролла) — единственный крупный хвост.)
 

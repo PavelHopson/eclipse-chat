@@ -46,6 +46,7 @@ type Props = {
   musicSession?: MusicSession | null;
   onOpenMusicPicker?: () => void;
   onOpenMusicExpand?: () => void;
+  onOpenProfile?: (userId: string) => void;
   messages?: ReactNode;
   composer?: ReactNode;
 };
@@ -649,6 +650,7 @@ export function VoiceRoom({
   musicSession,
   onOpenMusicPicker,
   onOpenMusicExpand,
+  onOpenProfile,
   messages,
   composer,
 }: Props) {
@@ -1174,7 +1176,8 @@ export function VoiceRoom({
                 ? connectionQualityLabel(p.connectionQuality)
                 : "Участник есть в комнате, live-сигнал синхронизируется";
               return (
-                <div
+                <button
+                  type="button"
                   key={p.identity}
                   className={
                     "ec-vr-presence-card" +
@@ -1184,9 +1187,14 @@ export function VoiceRoom({
                   }
                   style={{
                     ...presenceCardStyle(speaking, muted || volume < 1),
-                    cursor: p.live && !p.isLocal ? "context-menu" : "default",
+                    border: 0,
+                    color: "inherit",
+                    font: "inherit",
+                    cursor: "pointer",
                   }}
+                  onClick={() => onOpenProfile?.(p.identity)}
                   onContextMenu={p.live && !p.isLocal ? (e) => openCtxMenu(p.live!, e) : undefined}
+                  aria-label={`Открыть профиль: ${p.name}`}
                 >
                   <PresenceAvatar
                     name={p.name}
@@ -1229,7 +1237,7 @@ export function VoiceRoom({
                     <span aria-hidden />
                     {qualityLabel}
                   </span>
-                </div>
+                </button>
               );
             })}
           </div>
@@ -1292,10 +1300,14 @@ export function VoiceRoom({
                 }}
               >
                 {occupants.map((o) => (
-                  <div
+                  <button
+                    type="button"
                     key={o.id}
+                    className="ec-vr-occupant-profile"
                     style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}
                     title={o.user.displayName}
+                    onClick={() => onOpenProfile?.(o.userId)}
+                    aria-label={`Открыть профиль: ${o.user.displayName}`}
                   >
                     <PresenceAvatar
                       name={o.user.displayName}
@@ -1316,7 +1328,7 @@ export function VoiceRoom({
                     >
                       {o.user.displayName}
                     </span>
-                  </div>
+                  </button>
                 ))}
               </div>
             )}

@@ -1,5 +1,6 @@
 import { useRef, useState, type ChangeEvent } from "react";
 import { Modal } from "../Modal";
+import { useConfirm } from "../ConfirmDialog";
 import type { Profile } from "../../hooks/useProfile";
 import { useChangePassword } from "../../hooks/useChangePassword";
 import { useDensity } from "../../hooks/useDensity";
@@ -50,6 +51,10 @@ type Props = {
   }) => Promise<boolean>;
   onUploadAvatar: (file: File) => Promise<boolean>;
   onDeleteAvatar: () => Promise<boolean>;
+  onUploadProfileBanner: (file: File) => Promise<boolean>;
+  onDeleteProfileBanner: () => Promise<boolean>;
+  onUploadProfileImage: (file: File) => Promise<boolean>;
+  onDeleteProfileImage: (imageId: string) => Promise<boolean>;
   onTwoFactorChanged?: () => void;
   onLogout: () => Promise<void>;
 };
@@ -127,6 +132,10 @@ export function SettingsPanel({
   onUpdateQuietHours,
   onUploadAvatar,
   onDeleteAvatar,
+  onUploadProfileBanner,
+  onDeleteProfileBanner,
+  onUploadProfileImage,
+  onDeleteProfileImage,
   onTwoFactorChanged,
   onLogout,
 }: Props) {
@@ -138,7 +147,9 @@ export function SettingsPanel({
   const [activityBusy, setActivityBusy] = useState(false);
   const [activityError, setActivityError] = useState<string | null>(null);
   const [show2FA, setShow2FA] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const avatarFileRef = useRef<HTMLInputElement>(null);
+  const bannerFileRef = useRef<HTMLInputElement>(null);
+  const galleryFileRef = useRef<HTMLInputElement>(null);
   const push = usePushNotifications();
   const pushPrefs = usePushPreferences(push.enabled);
   const notificationSounds = useNotificationSoundSettings();
@@ -161,6 +172,7 @@ export function SettingsPanel({
   const [quietTimezone] = useState(detectedTimezone);
   const [quietBusy, setQuietBusy] = useState(false);
   const [quietError, setQuietError] = useState<string | null>(null);
+  const confirm = useConfirm();
 
   const twoFaOn = profile.twoFactorEnabled === true;
   const trimmedName = displayName.trim();
@@ -245,10 +257,40 @@ export function SettingsPanel({
     }
   };
 
-  const handleFile = (e: ChangeEvent<HTMLInputElement>) => {
+  const takeFile = (e: ChangeEvent<HTMLInputElement>): File | null => {
     const file = e.target.files?.[0];
     e.target.value = "";
-    if (file) void onUploadAvatar(file);
+    return file ?? null;
+  };
+
+  const confirmDeleteAvatar = async () => {
+    if (!(await confirm({
+      title: "Удалить аватар?",
+      message: "Вместо фотографии участники будут видеть инициалы. Новый аватар можно загрузить в любое время.",
+      confirmLabel: "Удалить аватар",
+      danger: true,
+    }))) return;
+    await onDeleteAvatar();
+  };
+
+  const confirmDeleteBanner = async () => {
+    if (!(await confirm({
+      title: "Удалить обложку?",
+      message: "Профиль вернётся к стандартному оформлению Eclipse. Новую обложку можно добавить позже.",
+      confirmLabel: "Удалить обложку",
+      danger: true,
+    }))) return;
+    await onDeleteProfileBanner();
+  };
+
+  const confirmDeleteProfileImage = async (imageId: string) => {
+    if (!(await confirm({
+      title: "Удалить фотографию?",
+      message: "Она исчезнет из публичной галереи профиля. Действие нельзя отменить.",
+      confirmLabel: "Удалить фотографию",
+      danger: true,
+    }))) return;
+    await onDeleteProfileImage(imageId);
   };
 
   const handleQuietSave = async () => {
@@ -274,12 +316,27 @@ export function SettingsPanel({
           trimmedName={trimmedName}
           trimmedBio={trimmedBio}
           canSave={canSave}
-          fileRef={fileRef}
+          avatarFileRef={avatarFileRef}
+          bannerFileRef={bannerFileRef}
+          galleryFileRef={galleryFileRef}
           onChangeDisplayName={setDisplayName}
           onChangeBio={setBio}
           onSave={() => void handleSave()}
-          onFile={handleFile}
-          onDeleteAvatar={() => void onDeleteAvatar()}
+          onAvatarFile={(event) => {
+            const file = takeFile(event);
+            if (file) void onUploadAvatar(file);
+          }}
+          onBannerFile={(event) => {
+            const file = takeFile(event);
+            if (file) void onUploadProfileBanner(file);
+          }}
+          onGalleryFile={(event) => {
+            const file = takeFile(event);
+            if (file) void onUploadProfileImage(file);
+          }}
+          onDeleteAvatar={() => void confirmDeleteAvatar()}
+          onDeleteBanner={() => void confirmDeleteBanner()}
+          onDeleteProfileImage={(imageId) => void confirmDeleteProfileImage(imageId)}
         />
       );
     }
