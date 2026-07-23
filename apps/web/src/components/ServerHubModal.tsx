@@ -892,20 +892,28 @@ export function ServerHubModal({
           </div>
           </div>
           <aside className="ec-hub-preview-card" aria-label="Предпросмотр путеводителя">
-            <span className="ec-hub-label">Предпросмотр</span>
-            <ServerWelcomeHero
-              server={{
-                ...server,
-                name: trimmedName || server.name,
-                description: description.trim() || null,
-                welcomeMessage: welcomeMessage.trim() || null,
-                features: encodeServerFeatures(features),
-                brandColor: brandColor.trim() || null,
-                mode,
-              }}
-              channels={channels}
-              onSelectChannel={() => undefined}
-            />
+            <div className="ec-hub-preview-card__head">
+              <span className="ec-hub-label">Живой предпросмотр</span>
+              <span className="ec-hub-preview-card__live">
+                <i aria-hidden />
+                Обновляется сразу
+              </span>
+            </div>
+            <div className="ec-hub-preview-card__viewport">
+              <ServerWelcomeHero
+                server={{
+                  ...server,
+                  name: trimmedName || server.name,
+                  description: description.trim() || null,
+                  welcomeMessage: welcomeMessage.trim() || null,
+                  features: encodeServerFeatures(features),
+                  brandColor: brandColor.trim() || null,
+                  mode,
+                }}
+                channels={channels}
+                onSelectChannel={() => undefined}
+              />
+            </div>
           </aside>
         </div>
       )}

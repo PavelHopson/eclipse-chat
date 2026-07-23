@@ -1369,6 +1369,22 @@
   }
 }
 
+/* The settings tree consumes enough horizontal space that a side-by-side
+ * guide preview becomes misleading before the general mobile breakpoint. */
+@media (max-width: 1100px) {
+  .ec-hub-settings-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ec-hub-preview-card {
+    position: static;
+  }
+
+  .ec-hub-preview-card__viewport {
+    max-height: min(620px, calc(100dvh - 190px));
+  }
+}
+
 /* ServerHubModal settings tree (E1): tree-nav collapses into a horizontal rail. */
 @media (max-width: 600px) {
   .ec-modal-backdrop {
