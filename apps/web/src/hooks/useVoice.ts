@@ -18,6 +18,7 @@ import {
   noiseModeToConstraints,
   useVoiceSettings,
 } from "./useVoiceSettings";
+import { playNotificationSound } from "../lib/notificationSounds";
 
 /**
  * `livekit-client` весит ~500 KB raw / 140 KB gzip — слишком много для
@@ -601,6 +602,37 @@ export function useVoice(socket: Socket | null = null) {
             audioPreset: { maxBitrate: 64_000 },
           },
         });
+        // Existing participants can be replayed while the initial connection is
+        // forming. Do not announce that roster as a burst of "joined" sounds.
+        let voiceSoundReady = false;
+        const onParticipantConnected = (participant: RemoteParticipant) => {
+          refreshParticipants();
+          refreshVisualTracks();
+          if (
+            !voiceSoundReady ||
+            r.state !== lk.ConnectionState.Connected
+          ) {
+            return;
+          }
+          const profile = parseVoiceParticipantProfile(participant);
+          playNotificationSound("voiceJoin", {
+            key: `${channelId}:${profile.userId}`,
+          });
+        };
+        const onParticipantDisconnected = (participant: RemoteParticipant) => {
+          refreshParticipants();
+          refreshVisualTracks();
+          if (
+            !voiceSoundReady ||
+            r.state !== lk.ConnectionState.Connected
+          ) {
+            return;
+          }
+          const profile = parseVoiceParticipantProfile(participant);
+          playNotificationSound("voiceLeave", {
+            key: `${channelId}:${profile.userId}`,
+          });
+        };
 
         r.on(RoomEvent.ConnectionStateChanged, (s) => {
           if (s === lk.ConnectionState.Connected) setState("connected");
@@ -613,16 +645,14 @@ export function useVoice(socket: Socket | null = null) {
           socketRef.current?.emit(SocketEvents.VoiceLeave);
           resetLocalVoiceState();
         });
-        r.on(RoomEvent.ParticipantConnected, refreshParticipants);
-        r.on(RoomEvent.ParticipantDisconnected, refreshParticipants);
+        r.on(RoomEvent.ParticipantConnected, onParticipantConnected);
+        r.on(RoomEvent.ParticipantDisconnected, onParticipantDisconnected);
         r.on(RoomEvent.ActiveSpeakersChanged, refreshParticipants);
         r.on(RoomEvent.TrackMuted, refreshParticipants);
         r.on(RoomEvent.TrackUnmuted, refreshParticipants);
         r.on(RoomEvent.LocalTrackPublished, refreshParticipants);
         r.on(RoomEvent.LocalTrackUnpublished, refreshParticipants);
         r.on(RoomEvent.ConnectionQualityChanged, refreshParticipants);
-        r.on(RoomEvent.ParticipantConnected, refreshVisualTracks);
-        r.on(RoomEvent.ParticipantDisconnected, refreshVisualTracks);
         r.on(RoomEvent.TrackMuted, refreshVisualTracks);
         r.on(RoomEvent.TrackUnmuted, refreshVisualTracks);
         r.on(RoomEvent.LocalTrackPublished, refreshVisualTracks);
@@ -678,6 +708,7 @@ export function useVoice(socket: Socket | null = null) {
         });
 
         await r.connect(data.wsUrl, data.token);
+        voiceSoundReady = true;
         roomRef.current = r;
         setRoom(r);
         setActiveChannelId(channelId);

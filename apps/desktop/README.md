@@ -24,8 +24,9 @@ Roadmap:
 - ✅ **v1.0.3** — desktop-полировка (всё в Rust, `lib.rs` setup-hook): system tray icon + меню (Открыть / Выход) + клик-toggle окна; **close-to-tray** (закрытие прячет окно, app живёт в фоне ради уведомлений — реальный выход только через tray «Выход»); глобальный шорткат **Ctrl+Shift+E** (показать+сфокусировать); startup check-for-updates (best-effort, no-op до signing key + releases).
 - ✅ **v1.0.4** — cross-platform CI matrix (`.github/workflows/desktop-release.yml`): на push тега `desktop-v*` GitHub Actions собирает установщики Win (nsis+msi) / macOS (universal dmg) / Linux (deb+appimage) через `tauri-apps/tauri-action` → **draft** GitHub Release + updater `latest.json` (подписан, если заданы signing-секреты). Web НЕ собирается (remote-wrapper). См. «Releases» ниже.
 - ✅ **v1.0.5** — брендированный Windows installer: Eclipse Chat artwork для NSIS/WiX, Russian-first NSIS с выбором English, current-user install без UAC. Подписанный updater теперь не только проверяет, но и автоматически скачивает, устанавливает и перезапускает приложение при запуске. Release публикуется автоматически только после зелёной сборки всех платформ; download page всегда ведёт на stable aliases последнего GitHub Release.
-- ⏳ **v1.0.5** — macOS notarization + Apple Developer Program (если решим mac distribute)
-- ⏳ **v1.0.6** — Microsoft Store .msix packaging + submission
+- ✅ **v1.0.6** — явный автозапуск из Настройки → Установка. Используется официальный `tauri-plugin-autostart`; production webview получает отдельный capability только на `enable`, `disable` и `is-enabled`, а обычный браузер этот пункт не показывает. Новый violet/gold app icon генерирует platform icons из единого Web/PWA master.
+- ⏳ **post-v1.0.6** — macOS notarization + Apple Developer Program (если решим mac distribute)
+- ⏳ **post-v1.0.6** — Microsoft Store .msix packaging + submission
 
 ## Prerequisites
 

@@ -56,7 +56,7 @@ cd android && ./gradlew assembleDebug      # → app/build/outputs/apk/debug/app
 
 ## Релиз
 ```bash
-git tag android-v1.0.1 && git push origin android-v1.0.1
+git tag android-v1.0.5 && git push origin android-v1.0.5
 # → CI: signed APK + AAB в prerelease github.com/PavelHopson/eclipse-chat/releases
 ```
 Версия в `package.json` (`apps/android`) — держать в синхроне с тегом.

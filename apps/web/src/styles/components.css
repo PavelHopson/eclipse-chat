@@ -12982,3 +12982,105 @@ body {
   }
 }
 
+/* v1.7.15 — notification center and direct Android delivery in the command bar. */
+.ec-notification-topbar {
+  position: relative;
+  overflow: visible;
+}
+
+.ec-shell__top-actions > .ec-notification-topbar {
+  display: inline-grid;
+  place-items: center;
+}
+
+.ec-notification-topbar.is-enabled {
+  color: color-mix(in srgb, var(--ec-status-success) 82%, white);
+}
+
+.ec-notification-topbar.needs-action {
+  border-color: color-mix(in srgb, #ff9a3d 42%, var(--ec-border-default));
+  color: #ffc17a;
+  box-shadow: 0 0 20px -12px hsl(28 100% 62% / 0.9);
+}
+
+.ec-notification-topbar__badge {
+  position: absolute;
+  top: -5px;
+  right: -6px;
+  display: grid;
+  min-width: 17px;
+  height: 17px;
+  place-items: center;
+  padding: 0 4px;
+  border: 2px solid var(--ec-bg);
+  border-radius: 999px;
+  background: linear-gradient(135deg, #ff9a3d, #ff5d4f);
+  color: #08090d;
+  font-family: var(--ec-font-mono);
+  font-size: 9px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.ec-notification-topbar__state {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 6px;
+  height: 6px;
+  border: 1px solid var(--ec-bg);
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.ec-mobile-apk-cta {
+  display: inline-flex;
+  min-width: 108px;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 11px;
+  border: 1px solid color-mix(in srgb, #ff9a3d 58%, var(--ec-border-default));
+  border-radius: 12px;
+  background:
+    linear-gradient(110deg, hsl(267 76% 52% / 0.22), hsl(28 100% 57% / 0.2)),
+    var(--ec-surface-2);
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.08),
+    0 10px 28px -18px hsl(28 100% 58% / 0.9);
+  color: #fff4e8;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.ec-mobile-apk-cta:focus-visible {
+  outline: 2px solid #ffb05c;
+  outline-offset: 2px;
+}
+
+.ec-mobile-apk-cta__short {
+  display: none;
+}
+
+.ec-settings-status-pill {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  padding: 0 10px;
+  border: 1px solid var(--ec-border-default);
+  border-radius: 999px;
+  font-size: var(--ec-text-2xs);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.ec-settings-status-pill--ok {
+  border-color: color-mix(in srgb, var(--ec-status-success) 38%, var(--ec-border-default));
+  background: color-mix(in srgb, var(--ec-status-success) 10%, transparent);
+  color: var(--ec-status-success);
+}
+

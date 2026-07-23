@@ -9,6 +9,7 @@ import { useInstallPrompt } from "../../hooks/useInstallPrompt";
 import { usePushNotifications } from "../../hooks/usePushNotifications";
 import { usePushPreferences } from "../../hooks/usePushPreferences";
 import { useNotificationSoundSettings } from "../../hooks/useNotificationSoundSettings";
+import { useDesktopAutostart } from "../../hooks/useDesktopAutostart";
 import { AccountProfileSection } from "./categories/AccountProfileSection";
 import { AccountSecuritySection } from "./categories/AccountSecuritySection";
 import { ActivitySection } from "./categories/ActivitySection";
@@ -35,6 +36,7 @@ const ACTIVITY_EMOJI_PRESETS = [
 ];
 
 type Props = {
+  initialViewId?: SettingsViewId;
   profile: Profile;
   busy: boolean;
   error: string | null;
@@ -123,6 +125,7 @@ function placeholderFor(view: SettingsViewId) {
 }
 
 export function SettingsPanel({
+  initialViewId,
   profile,
   busy,
   error,
@@ -139,7 +142,9 @@ export function SettingsPanel({
   onTwoFactorChanged,
   onLogout,
 }: Props) {
-  const [active, setActive] = useState<SettingsViewId>(initialView);
+  const [active, setActive] = useState<SettingsViewId>(
+    () => initialViewId ?? initialView(),
+  );
   const [displayName, setDisplayName] = useState(profile.displayName);
   const [bio, setBio] = useState(profile.bio ?? "");
   const [activityText, setActivityText] = useState(profile.activityText ?? "");
@@ -156,6 +161,7 @@ export function SettingsPanel({
   const sessions = useSessions(active === "account-sessions");
   const [showPrefs, setShowPrefs] = useState(false);
   const install = useInstallPrompt();
+  const autostart = useDesktopAutostart();
   const { density, setDensity } = useDensity();
   const focusDim = useFocusDim();
   const { changePassword, busy: pwdBusy } = useChangePassword();
@@ -438,7 +444,9 @@ export function SettingsPanel({
         />
       );
     }
-    if (active === "install") return <InstallSection install={install} />;
+    if (active === "install") {
+      return <InstallSection install={install} autostart={autostart} />;
+    }
     if (active === "hotkeys") return <HotkeysSection />;
     const placeholder = placeholderFor(active);
     return <PlaceholderSection {...placeholder} />;
@@ -449,7 +457,7 @@ export function SettingsPanel({
       <div className="ec-settings-panel">
         <SettingsTreeNav
           active={active}
-          installAvailable={install.canInstall || install.isIOS}
+          installAvailable={install.canInstall || install.isIOS || autostart.supported}
           onSelect={setActive}
           onLogout={onLogout}
         />

@@ -1,0 +1,15 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "remote-autostart",
+  "description": "Allow the production Eclipse Chat webview to manage only its own OS autostart state.",
+  "remote": {
+    "urls": ["https://app.star-crm.ru/eclipse-chat/*"]
+  },
+  "local": false,
+  "windows": ["main"],
+  "permissions": [
+    "autostart:allow-enable",
+    "autostart:allow-disable",
+    "autostart:allow-is-enabled"
+  ]
+}

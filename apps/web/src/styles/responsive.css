@@ -1820,6 +1820,37 @@
   }
 }
 
+/* v1.7.15 — keep the APK action visible without crushing the mobile header. */
+@media (max-width: 520px) {
+  .ec-shell__top-actions .ec-ai-btn,
+  .ec-shell__top-actions .ec-logout-btn,
+  .ec-shell__top-actions .ec-shell__user-chip,
+  .ec-shell__top-actions .ec-topbar-sep {
+    display: none !important;
+  }
+
+  .ec-mobile-apk-cta {
+    min-width: 52px;
+    padding-inline: 9px;
+  }
+
+  .ec-mobile-apk-cta__wide {
+    display: none;
+  }
+
+  .ec-mobile-apk-cta__short {
+    display: inline;
+  }
+}
+
+@media (max-width: 380px) {
+  .ec-mobile-apk-cta {
+    min-width: 48px;
+    min-height: 32px;
+    padding-inline: 7px;
+  }
+}
+
 /* Settings keeps a full content canvas on compact desktop and landscape tablet.
  * A 232px sidebar inside a near-fullscreen modal left the profile with less than
  * 700px and broke equal-width media controls. */

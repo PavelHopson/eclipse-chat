@@ -111,6 +111,26 @@ import { useVoice } from "../hooks/useVoice";
 import { useVoiceHealth } from "../hooks/useVoiceHealth";
 import { useVoicePresence, reverseVoiceMap } from "../hooks/useVoicePresence";
 import type { PublicUser } from "../hooks/useAuth";
+import type { SettingsViewId } from "../components/settings/SettingsTreeNav";
+
+const ANDROID_APK_URL = `${import.meta.env.BASE_URL}download/eclipse-chat.apk?v=1.0.5`;
+
+function isAndroidWebBrowser(): boolean {
+  if (typeof window === "undefined" || typeof navigator === "undefined") {
+    return false;
+  }
+  if (!/Android/i.test(navigator.userAgent)) return false;
+  try {
+    const capacitor = (
+      window as Window & {
+        Capacitor?: { isNativePlatform?: () => boolean };
+      }
+    ).Capacitor;
+    return capacitor?.isNativePlatform?.() !== true;
+  } catch {
+    return true;
+  }
+}
 
 type Props = {
   user: PublicUser;
@@ -346,6 +366,12 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     "overview" | "branding" | "settings" | "bots"
   >("overview");
   const [showProfile, setShowProfile] = useState(false);
+  const [settingsInitialView, setSettingsInitialView] = useState<
+    SettingsViewId | undefined
+  >(undefined);
+  useEffect(() => {
+    if (!showProfile) setSettingsInitialView(undefined);
+  }, [showProfile]);
   const [viewedProfileUserId, setViewedProfileUserId] = useState<string | null>(null);
   const [showSearch, setShowSearch] = useState(false);
   const [homeOpen, setHomeOpen] = useState(false);
@@ -571,6 +597,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   // 3-колоночный режим убран (cramped на large phones / low-DPI).
   const isMobile = useMediaQuery("(max-width: 1024px)");
   const isTabletOrSmaller = useMediaQuery("(max-width: 1024px)");
+  const showAndroidApkShortcut = isMobile && isAndroidWebBrowser();
   // v1.6.84 — края-свайпы для drawer'ов: свайп от левого края открывает каналы,
   // от правого — участников; обратный свайп закрывает. Только на мобиле.
   useDrawerSwipe({
@@ -1247,20 +1274,76 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               </svg>
             </button>
           )}
-          {/* v1.6.79 — «Скачать приложение»: десктоп/Android/iOS → модалка. */}
           <button
             type="button"
-            onClick={() => setDownloadOpen(true)}
-            title="Скачать приложение"
-            aria-label="Скачать приложение"
-            className="ec-icon-btn"
+            onClick={() => {
+              setSettingsInitialView("notifications-push");
+              setShowProfile(true);
+            }}
+            title={
+              notif.permission === "denied"
+                ? "Уведомления заблокированы — открыть настройки"
+                : notif.permission === "granted" && notif.enabled
+                ? "Уведомления включены — открыть настройки"
+                : "Включить уведомления и звук"
+            }
+            aria-label="Уведомления и звук"
+            className={
+              "ec-icon-btn ec-notification-topbar" +
+              (notif.permission === "granted" && notif.enabled
+                ? " is-enabled"
+                : " needs-action")
+            }
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="7 10 12 15 17 10" />
-              <line x1="12" y1="15" x2="12" y2="3" />
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
             </svg>
+            {unreadTotal > 0 ? (
+              <span className="ec-notification-topbar__badge" aria-hidden>
+                {unreadTotal > 99 ? "99+" : unreadTotal}
+              </span>
+            ) : (
+              <span className="ec-notification-topbar__state" aria-hidden />
+            )}
           </button>
+          {/* v1.6.79 — «Скачать приложение»: десктоп/Android/iOS → модалка. */}
+          {showAndroidApkShortcut ? (
+            <a
+              href={ANDROID_APK_URL}
+              download="eclipse-chat.apk"
+              className="ec-mobile-apk-cta"
+              title="Скачать Eclipse Chat для Android"
+              aria-label="Скачать APK Eclipse Chat для Android"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M8 6h8" />
+                <path d="m9 3 1 3" />
+                <path d="m15 3-1 3" />
+                <rect x="5" y="6" width="14" height="11" rx="2" />
+                <path d="M8 17v3" />
+                <path d="M16 17v3" />
+                <path d="M3 9v5" />
+                <path d="M21 9v5" />
+              </svg>
+              <span className="ec-mobile-apk-cta__wide">Скачать APK</span>
+              <span className="ec-mobile-apk-cta__short">APK</span>
+            </a>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setDownloadOpen(true)}
+              title="Скачать приложение"
+              aria-label="Скачать приложение"
+              className="ec-icon-btn"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+            </button>
+          )}
           {/* v1.1.81 — кластер-разделитель: инструменты | идентичность */}
           <span className="ec-topbar-sep" aria-hidden />
           <button
@@ -2575,10 +2658,15 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
 
       {showProfile && profile && (
         <SettingsPanel
+          key={settingsInitialView ?? "remembered"}
+          initialViewId={settingsInitialView}
           profile={profile}
           busy={profileBusy}
           error={profileError}
-          onClose={() => setShowProfile(false)}
+          onClose={() => {
+            setShowProfile(false);
+            setSettingsInitialView(undefined);
+          }}
           onSave={updateProfile}
           onUpdateActivity={updateActivity}
           onUpdateQuietHours={updateQuietHours}

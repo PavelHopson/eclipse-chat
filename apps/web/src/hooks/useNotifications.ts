@@ -4,6 +4,7 @@ import { resolveAssetUrl } from "../lib/assets";
 import {
   SocketEvents,
   type ActionItemEscalatedPayload,
+  type ActionItemPayload,
   type DmMessageNewPayload,
   type MessageNewPayload,
 } from "../lib/socket";
@@ -244,6 +245,49 @@ export function useNotifications(
       socket.off(SocketEvents.DmMessageNew, handler);
     };
   }, [socket, enabled, permission, currentUserId, selectedDmIdRef]);
+
+  // A task creation is operationally important even when the chat itself is
+  // open: notify only the assigned user or approver, and never echo the task
+  // back to its creator.
+  useEffect(() => {
+    if (!socket) return;
+    const handler = (p: ActionItemPayload) => {
+      if (!currentUserId || p.createdBy.id === currentUserId) return;
+      const isAssignee = p.assignee?.id === currentUserId;
+      const isApprover =
+        p.requiresApproval &&
+        p.approvalStatus === "PENDING" &&
+        p.approver?.id === currentUserId;
+      if (!isAssignee && !isApprover) return;
+
+      playNotificationSound("task", { key: p.id });
+      if (!enabled || permission !== "granted" || !isSupported()) return;
+
+      const title = isApprover ? "Нужно ваше одобрение" : "Вам назначена задача";
+      const due = p.dueAt
+        ? ` · до ${new Date(p.dueAt).toLocaleDateString("ru-RU")}`
+        : "";
+      try {
+        const notif = new Notification(title, {
+          body: `${p.title}${due}`,
+          icon: resolveAssetUrl(p.createdBy.avatar) ?? NOTIFICATION_ICON,
+          tag: `eclipse-chat-task-${p.id}`,
+          silent: true,
+        });
+        notif.onclick = () => {
+          window.focus();
+          notif.close();
+        };
+      } catch {
+        /* Browser may reject notifications in hardened contexts. */
+      }
+    };
+
+    socket.on(SocketEvents.ActionItemCreated, handler);
+    return () => {
+      socket.off(SocketEvents.ActionItemCreated, handler);
+    };
+  }, [socket, enabled, permission, currentUserId]);
 
   // v0.73 #20 phase 3: escalation events. Когда фон ставит task'е
   // escalatedAt=now (overdue 48h+), backend эмитит payload — мы шлём

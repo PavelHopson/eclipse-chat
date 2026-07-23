@@ -90,6 +90,15 @@
 - [x] Download page now targets stable aliases from the latest GitHub Release, so users no longer receive the old committed installer after a desktop version bump.
 - [ ] Configure Windows Authenticode and macOS notarization. Updater signatures protect update integrity but do not remove first-install SmartScreen/Gatekeeper warnings.
 
+### Mobile delivery, notification center and autostart — v1.7.15 / desktop v1.0.6 / Android v1.0.5
+
+- [x] Android web users now get a direct, cache-busted `Скачать APK` action in the mobile command bar instead of having to discover the generic download modal.
+- [x] Added a persistent notification-center button with unread count and a direct path to notification settings when permissions or sounds need attention.
+- [x] Wired the existing Eclipse sound engine to real LiveKit participant join/leave events without replaying the initial room roster; task assignments and approval requests now use the task signal and optional system notification.
+- [x] Desktop settings now expose explicit OS-login autostart control through the official Tauri plugin. The remote production webview receives only `enable`, `disable` and `is-enabled` permissions.
+- [x] Replaced Web/PWA/Android/Desktop-generated branding inputs with the new square-safe Eclipse violet/gold icon master.
+- [x] Android APK, PWA cache and native wrapper versions are coordinated so the same public download URL cannot silently return a stale package.
+
 ## Applied research — 2026-07-19
 
 Источник: [Eclipse Library · July 2026 Kimi / research / media radar](https://library.eclipse-forge.ru/#guide/july-2026-kimi-research-media-radar).
@@ -119,7 +128,7 @@
 - Provider routing — только owned/legal keys, no grey-zone token bypass.
 - Token-saving tools (`sqz`, caveman-like compression) сначала benchmark в sandbox; не сжимать секреты, миграции, юридический текст и точные логи.
 
-**Актуальная версия (короткий индекс):** **v1.7.14** — profile settings layout hotfix: direct media editing, simplified navigation, full-width compact-desktop mode and corrected mobile composition.
+**Актуальная версия (короткий индекс):** **v1.7.15** — direct Android delivery in the mobile header, notification-center visibility, LiveKit join/leave sounds, task notifications, desktop autostart and refreshed Eclipse app branding.
 
 **Текущая версия:** **v1.6.98** (🗄️⚡ PARTIAL-ИНДЕКС под escalation-scan (бэклог-хвост, заход через CI). Фоновой `escalation.ts` раз в час обходит `ActionItem` где `status ∈ (OPEN,IN_PROGRESS,REVIEW)`, `dueAt < now-48h`, `(escalatedAt IS NULL OR < now-7d)`, `ORDER BY dueAt ASC LIMIT 50`. Запрос **глобальный** (без serverId/channelId) → все 4 существующих индекса `ActionItem` ведут с channelId/serverId и его НЕ покрывают → был seq-scan всей таблицы каждый час. **Новый partial composite index** `ActionItem_escalation_scan_idx ON ("dueAt") WHERE status IN (OPEN,IN_PROGRESS,REVIEW) AND dueAt IS NOT NULL` (raw-миграция `20260625120000_add_escalation_partial_index`): индексирует только кандидатов эскалации (крошечная доля таблицы — закрытые DONE и задачи без дедлайна исключены); ведущая `dueAt` → один forward index-scan покрывает и `dueAt < X`, и `ORDER BY dueAt ASC LIMIT 50` без сортировки, рано останавливается. **Prisma не выражает WHERE-индексы** → raw SQL; `migrate deploy` (deploy.sh [4/10]) применяет как есть, `prisma generate` индексы не читает, drift-проверок (`migrate dev`) в проекте нет (прод=migrate deploy, локальной БД нет). schema.prisma — doc-comment у `ActionItem` фиксирует существование индекса («не чинить как drift»). **temp-channel scan (`tempChannels.ts`) НЕ трогал** — `Channel` уже имеет `@@index([expiresAt])`, а `WHERE expiresAt < now` = чистый range-scan по нему (NULL'ы сортируются последними, не читаются); partial там лишь дублировал бы индекс = write-amplification на крошечной таблице ради ~нуля. Version 1.6.97→1.6.98 (4 точки). Verify: server `tsc --noEmit` PASS, web build PASS; миграция применится на проде при деплое (`migrate deploy`). **Бэклог-остаток:** виртуализация ленты сообщений (npm-dep + риск-рефактор скролла) — единственный крупный хвост.)
 

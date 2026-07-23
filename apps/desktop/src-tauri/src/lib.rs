@@ -29,14 +29,22 @@ static QUITTING: AtomicBool = AtomicBool::new(false);
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         // v1.5.39 plugins: notification (native toast), updater (auto-update из
         // GitHub Releases, signed manifest — pubkey в tauri.conf.json), window_state
         // (сохраняет позицию/размер окна между запусками, drop-in).
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
-        .plugin(tauri_plugin_window_state::Builder::default().build())
+        .plugin(tauri_plugin_window_state::Builder::default().build());
+
+    #[cfg(desktop)]
+    let builder = builder.plugin(tauri_plugin_autostart::init(
+        tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+        None,
+    ));
+
+    builder
         .on_window_event(|window, event| {
             // v1.0.3 — close-to-tray: прячем окно вместо выхода, чтобы фоновые
             // уведомления продолжали работать. Реальный выход — tray «Выход»

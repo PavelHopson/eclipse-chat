@@ -1,6 +1,6 @@
 {
   "name": "eclipse-chat-android",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "private": true,
   "description": "Eclipse Chat — Android (Capacitor remote-load wrapper над прод-PWA)",
   "scripts": {

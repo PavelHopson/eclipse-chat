@@ -19,7 +19,7 @@ const DESKTOP_URL = `${import.meta.env.BASE_URL}download.html`;
 // release-assets.githubusercontent.com нестабилен/блокируется → «ошибка
 // скачивания». Файл лежит в `apps/web/public/download/` → отдаётся nginx'ом.
 // Стабильное имя (без версии) → линк не протухает; обновляем сам файл при релизе.
-const ANDROID_APK = `${import.meta.env.BASE_URL}download/eclipse-chat.apk`;
+const ANDROID_APK = `${import.meta.env.BASE_URL}download/eclipse-chat.apk?v=1.0.5`;
 
 type Platform = "windows" | "mac" | "linux" | "android" | "ios" | "other";
 
