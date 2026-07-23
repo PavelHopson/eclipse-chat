@@ -100,6 +100,14 @@
 - [x] Android APK, PWA cache and native wrapper versions are coordinated so the same public download URL cannot silently return a stale package.
 - [x] Removed the manual `/api/version` constant. The backend now loads its manifest once at startup, while the independent smoke check detects a stale process or wrong nginx upstream.
 
+### Premium Windows installer and icon refresh — desktop v1.0.7
+
+- [x] Rebuilt NSIS and WiX artwork from the real violet/gold Eclipse master instead of approximating the mark with generated arcs.
+- [x] Applied a dark Eclipse surface to NSIS welcome, finish and header areas, plus a branded install log and solar-orange progress accent while retaining native Windows controls and accessibility.
+- [x] Platform icon generation now uses the full-resolution master directly for Windows, macOS and Linux outputs.
+- [x] Added a post-install Shell refresh: existing desktop shortcuts are recreated with the current executable icon and Explorer receives an association-change notification, preventing the previous cached `G` icon from surviving an upgrade.
+- [x] Russian and English installer flows, per-user installation and signed automatic updates remain unchanged.
+
 ## Applied research — 2026-07-19
 
 Источник: [Eclipse Library · July 2026 Kimi / research / media radar](https://library.eclipse-forge.ru/#guide/july-2026-kimi-research-media-radar).

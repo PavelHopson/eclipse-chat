@@ -67,7 +67,7 @@ jobs:
         run: npm install -g @tauri-apps/cli@^2
 
       - name: Generate icons
-        run: tauri icon apps/web/public/icon-512.png -o apps/desktop/src-tauri/icons
+        run: tauri icon apps/web/public/eclipse-chat-icon-master.png -o apps/desktop/src-tauri/icons
 
       - name: Regenerate Windows installer branding
         if: matrix.platform == 'windows-latest'

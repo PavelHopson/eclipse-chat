@@ -25,8 +25,9 @@ Roadmap:
 - ✅ **v1.0.4** — cross-platform CI matrix (`.github/workflows/desktop-release.yml`): на push тега `desktop-v*` GitHub Actions собирает установщики Win (nsis+msi) / macOS (universal dmg) / Linux (deb+appimage) через `tauri-apps/tauri-action` → **draft** GitHub Release + updater `latest.json` (подписан, если заданы signing-секреты). Web НЕ собирается (remote-wrapper). См. «Releases» ниже.
 - ✅ **v1.0.5** — брендированный Windows installer: Eclipse Chat artwork для NSIS/WiX, Russian-first NSIS с выбором English, current-user install без UAC. Подписанный updater теперь не только проверяет, но и автоматически скачивает, устанавливает и перезапускает приложение при запуске. Release публикуется автоматически только после зелёной сборки всех платформ; download page всегда ведёт на stable aliases последнего GitHub Release.
 - ✅ **v1.0.6** — явный автозапуск из Настройки → Установка. Используется официальный `tauri-plugin-autostart`; production webview получает отдельный capability только на `enable`, `disable` и `is-enabled`, а обычный браузер этот пункт не показывает. Новый violet/gold app icon генерирует platform icons из единого Web/PWA master.
-- ⏳ **post-v1.0.6** — macOS notarization + Apple Developer Program (если решим mac distribute)
-- ⏳ **post-v1.0.6** — Microsoft Store .msix packaging + submission
+- ✅ **v1.0.7** — premium installer refresh: NSIS/WiX artwork строится из реального violet/gold master, NSIS welcome/finish/header переведены на тёмную Eclipse palette, progress использует solar accent. Post-install hook обновляет существующие ярлыки и Windows Shell cache, чтобы старая иконка не переживала upgrade.
+- ⏳ **post-v1.0.7** — macOS notarization + Apple Developer Program (если решим mac distribute)
+- ⏳ **post-v1.0.7** — Microsoft Store .msix packaging + submission
 
 ## Prerequisites
 
@@ -52,7 +53,7 @@ cargo --version
 cd apps/desktop
 npm install
 
-# Сгенерировать icons из источника apps/web/public/icon-512.png
+# Сгенерировать icons из master-источника apps/web/public/eclipse-chat-icon-master.png
 # Создаст src-tauri/icons/{32x32.png, 128x128.png, 128x128@2x.png, icon.ico, icon.icns}
 npm run icons:gen
 ```

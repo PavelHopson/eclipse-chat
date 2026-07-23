@@ -1,6 +1,6 @@
 {
   "name": "@eclipse-chat/desktop",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "private": true,
   "description": "Eclipse Chat desktop shell — Tauri 2 (Windows / macOS / Linux). Wraps apps/web build.",
   "type": "module",
@@ -14,7 +14,7 @@
     "tauri:build:deb": "tauri build --bundles deb --target x86_64-unknown-linux-gnu",
     "tauri:build:appimage": "tauri build --bundles appimage --target x86_64-unknown-linux-gnu",
     "installer:assets": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/generate-installer-assets.ps1",
-    "icons:gen": "tauri icon ../../apps/web/public/icon-512.png -o src-tauri/icons"
+    "icons:gen": "tauri icon ../../apps/web/public/eclipse-chat-icon-master.png -o src-tauri/icons"
   },
   "optionalDependencies": {
     "@tauri-apps/cli": "^2.1.0"
