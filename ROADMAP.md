@@ -98,6 +98,7 @@
 - [x] Desktop settings now expose explicit OS-login autostart control through the official Tauri plugin. The remote production webview receives only `enable`, `disable` and `is-enabled` permissions.
 - [x] Replaced Web/PWA/Android/Desktop-generated branding inputs with the new square-safe Eclipse violet/gold icon master.
 - [x] Android APK, PWA cache and native wrapper versions are coordinated so the same public download URL cannot silently return a stale package.
+- [x] Removed the manual `/api/version` constant. The backend now loads its manifest once at startup, while the independent smoke check detects a stale process or wrong nginx upstream.
 
 ## Applied research — 2026-07-19
 

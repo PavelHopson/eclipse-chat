@@ -56,6 +56,7 @@ import { startEscalationCron } from "./escalation.js";
 import { startTempChannelCron } from "./tempChannels.js";
 import { startExpiredMessageCron } from "./expiredMessages.js";
 import { db } from "./db.js";
+import { serverManifest } from "./version.js";
 
 const port = Number(process.env.PORT) || 3001;
 const jwtSecret = process.env.JWT_SECRET;
@@ -231,7 +232,7 @@ app.get("/api/health", async () => {
     },
   };
 });
-app.get("/api/version", async () => ({ name: "@eclipse-chat/server", version: "1.7.14" }));
+app.get("/api/version", async () => serverManifest);
 
 await registerAuthRoutes(app);
 await registerTwoFactorRoutes(app);

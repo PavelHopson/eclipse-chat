@@ -104,11 +104,9 @@ echo
 echo "==> [10/10] smoke test (wait 4s for server start)"
 sleep 4
 # Версия — каноничный источник: apps/server/package.json.
-# WHY НЕ index.ts: /api/version отдаёт хардкод из index.ts. Читать
-# EXPECTED_VERSION оттуда же — тавтология: smoke сверял бы строку саму
-# с собой и не ловил дрейф (так 8 релизов v1.1.90…v1.1.97 прошли с
-# застрявшим в index.ts 1.1.89). package.json — независимый источник
-# → smoke реально сверяет package.json ↔ /api/version.
+# Backend загружает manifest один раз при старте. Smoke читает текущий файл
+# отдельно, поэтому обнаружит старый Node-процесс или неверный nginx upstream,
+# даже если новая сборка уже лежит на диске.
 EXPECTED_VERSION=$(grep -oE '"version"[[:space:]]*:[[:space:]]*"[0-9]+\.[0-9]+\.[0-9]+"' \
     "$DEPLOY_PATH/apps/server/package.json" | \
     head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
