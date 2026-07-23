@@ -1,6 +1,6 @@
 [package]
 name = "eclipse-chat-desktop"
-version = "1.0.4"
+version = "1.0.5"
 description = "Eclipse Chat desktop shell (Tauri 2)"
 authors = ["Pavel Hopson <hopsintoxin@mail.ru>"]
 edition = "2021"

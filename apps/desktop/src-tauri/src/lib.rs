@@ -109,7 +109,11 @@ fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     let menu = Menu::with_items(app, &[&show, &quit])?;
 
     TrayIconBuilder::new()
-        .icon(app.default_window_icon().expect("default window icon").clone())
+        .icon(
+            app.default_window_icon()
+                .expect("default window icon")
+                .clone(),
+        )
         .tooltip("Eclipse Chat")
         .menu(&menu)
         .show_menu_on_left_click(false)
@@ -138,7 +142,9 @@ fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
 /// Глобальный шорткат Ctrl+Shift+E → показать+сфокусировать окно.
 #[cfg(desktop)]
 fn setup_global_shortcut(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
-    use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
+    use tauri_plugin_global_shortcut::{
+        Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState,
+    };
 
     let toggle = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyE);
     app.handle().plugin(
@@ -159,18 +165,49 @@ fn setup_global_shortcut(app: &tauri::App) -> Result<(), Box<dyn std::error::Err
     Ok(())
 }
 
-/// Best-effort startup check-for-updates. Пока нет signing key (pubkey =
-/// placeholder в tauri.conf.json) и опубликованных signed releases —
-/// updater()/check() вернут Err, что мы глушим (no-op). Когда releases
-/// появятся, здесь будет full download+install flow.
+/// Checks the signed stable channel on every launch and applies a newer build.
+///
+/// We intentionally do not run a periodic forced update while the app is open:
+/// restarting in the middle of a voice call or an unsent draft is worse than
+/// waiting until the next launch. Artifact signatures are verified by the
+/// updater plugin before installation.
 #[cfg(desktop)]
 fn spawn_update_check(handle: tauri::AppHandle) {
     use tauri_plugin_updater::UpdaterExt;
+
     tauri::async_runtime::spawn(async move {
         match handle.updater() {
             Ok(updater) => match updater.check().await {
                 Ok(Some(update)) => {
                     eprintln!("[updater] update available: {}", update.version);
+                    let mut downloaded = 0;
+
+                    // On Windows the updater closes the app before replacing
+                    // binaries. Let that close request pass through our
+                    // close-to-tray handler.
+                    QUITTING.store(true, Ordering::SeqCst);
+
+                    match update
+                        .download_and_install(
+                            |chunk_length, content_length| {
+                                downloaded += chunk_length;
+                                eprintln!(
+                                    "[updater] downloaded {downloaded} of {content_length:?} bytes"
+                                );
+                            },
+                            || eprintln!("[updater] download finished; installing"),
+                        )
+                        .await
+                    {
+                        Ok(()) => {
+                            eprintln!("[updater] update installed; restarting");
+                            handle.restart();
+                        }
+                        Err(e) => {
+                            QUITTING.store(false, Ordering::SeqCst);
+                            eprintln!("[updater] download or install failed: {e}");
+                        }
+                    }
                 }
                 Ok(None) => {}
                 Err(e) => eprintln!("[updater] check failed: {e}"),

@@ -80,6 +80,16 @@
 - [x] Consolidated eleven repetitive navigation groups into five user-oriented groups, with secondary and unfinished areas collapsed by default.
 - [x] Rebuilt profile identity, form footer and gallery controls for clear hierarchy, equal spacing, 44px mobile actions and safe text truncation down to 320px.
 
+### Desktop installer and trusted updates — desktop v1.0.5
+
+- [x] Replaced the generic NSIS artwork with reproducible Eclipse Chat sidebar/header branding; WiX receives matching dialog/banner assets.
+- [x] NSIS now opens a Russian/English language selector, defaults to the matching OS language with Russian as fallback, and installs per-user without unnecessary UAC.
+- [x] Generated a dedicated updater signing key, stored the private key in GitHub Actions secrets and embedded only the public verification key in the desktop binary.
+- [x] Startup updater now downloads, verifies, installs and restarts into a newer release instead of logging availability only. Checks stay launch-bound to avoid interrupting calls and unsent drafts mid-session.
+- [x] Desktop release workflow keeps the release private until Windows, macOS and Linux builds pass, then publishes automatically with `latest.json`, signatures and stable download aliases.
+- [x] Download page now targets stable aliases from the latest GitHub Release, so users no longer receive the old committed installer after a desktop version bump.
+- [ ] Configure Windows Authenticode and macOS notarization. Updater signatures protect update integrity but do not remove first-install SmartScreen/Gatekeeper warnings.
+
 ## Applied research — 2026-07-19
 
 Источник: [Eclipse Library · July 2026 Kimi / research / media radar](https://library.eclipse-forge.ru/#guide/july-2026-kimi-research-media-radar).

@@ -23,6 +23,7 @@ Roadmap:
 - ✅ **v1.0.2** — remote-wrapper: окно грузит прод-URL напрямую (auth/API/socket работают). Раньше бандлило `apps/web/dist` с относительными `/api` → не достукивалось до сервера из `tauri://localhost`.
 - ✅ **v1.0.3** — desktop-полировка (всё в Rust, `lib.rs` setup-hook): system tray icon + меню (Открыть / Выход) + клик-toggle окна; **close-to-tray** (закрытие прячет окно, app живёт в фоне ради уведомлений — реальный выход только через tray «Выход»); глобальный шорткат **Ctrl+Shift+E** (показать+сфокусировать); startup check-for-updates (best-effort, no-op до signing key + releases).
 - ✅ **v1.0.4** — cross-platform CI matrix (`.github/workflows/desktop-release.yml`): на push тега `desktop-v*` GitHub Actions собирает установщики Win (nsis+msi) / macOS (universal dmg) / Linux (deb+appimage) через `tauri-apps/tauri-action` → **draft** GitHub Release + updater `latest.json` (подписан, если заданы signing-секреты). Web НЕ собирается (remote-wrapper). См. «Releases» ниже.
+- ✅ **v1.0.5** — брендированный Windows installer: Eclipse Chat artwork для NSIS/WiX, Russian-first NSIS с выбором English, current-user install без UAC. Подписанный updater теперь не только проверяет, но и автоматически скачивает, устанавливает и перезапускает приложение при запуске. Release публикуется автоматически только после зелёной сборки всех платформ; download page всегда ведёт на stable aliases последнего GitHub Release.
 - ⏳ **v1.0.5** — macOS notarization + Apple Developer Program (если решим mac distribute)
 - ⏳ **v1.0.6** — Microsoft Store .msix packaging + submission
 
@@ -55,43 +56,28 @@ npm install
 npm run icons:gen
 ```
 
-### Signing key для auto-updater (v1.5.39+ Tauri #2)
+### Signing key для auto-updater
 
 Auto-update (`tauri-plugin-updater`) использует **signed manifest** — releases
 проверяются по public key, который встроен в установленный desktop binary.
 Private key хранится локально + в GitHub Actions secret для CI build pipeline.
 
-**Один раз** (Pavel local machine):
+Активный keypair создан для desktop v1.0.5:
 
-```bash
-cd apps/desktop
-# Генерирует keypair → ~/.tauri/eclipse-chat.key (private)
-#                   → ~/.tauri/eclipse-chat.key.pub (public)
-npm run tauri signer generate -- -w ~/.tauri/eclipse-chat.key
-
-# Скопировать содержимое eclipse-chat.key.pub
-# (одна base64 string, начинается с "untrusted comment: minisign public key...")
-cat ~/.tauri/eclipse-chat.key.pub
-```
-
-**Затем заменить placeholder в [src-tauri/tauri.conf.json](src-tauri/tauri.conf.json):**
-
-```jsonc
-"plugins": {
-  "updater": {
-    "pubkey": "ВСТАВИТЬ_СОДЕРЖИМОЕ_eclipse-chat.key.pub_СЮДА"
-  }
-}
-```
-
-**Для CI** (когда Phase B #3 / v1.5.41 cross-platform matrix готов): добавить
-GitHub secrets:
-- `TAURI_SIGNING_PRIVATE_KEY` — содержимое `eclipse-chat.key` (private)
-- `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` — пароль keypair (если был указан)
+- private backup: `%USERPROFILE%\.tauri\eclipse-chat-updater.key`;
+- local password backup: `%USERPROFILE%\.tauri\eclipse-chat-updater.key.password`;
+- public key: встроен в `src-tauri/tauri.conf.json`;
+- CI secrets: `TAURI_SIGNING_PRIVATE_KEY` и
+  `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`.
 
 **Backup private key** — потеря = невозможность publish updates для existing
 installs (новые версии не пройдут signature check). Хранить как минимум в 2
 местах: локально + password manager (1Password / Bitwarden).
+
+Updater signature подтверждает целостность наших update packages. Это не
+Windows Authenticode: предупреждение SmartScreen при первой установке исчезнет
+только после подписи `.exe` доверенным code-signing certificate или публикации
+через Microsoft Store.
 
 ## Dev mode
 
@@ -131,7 +117,7 @@ npm run tauri:build:appimage
 npm run tauri:build
 ```
 
-## Releases (CI, v1.0.4+)
+## Releases (CI, v1.0.5+)
 
 Установщики для всех платформ собираются **в облаке** по тегу — локальная сборка
 больше не обязательна. Workflow [`.github/workflows/desktop-release.yml`](../../.github/workflows/desktop-release.yml):
@@ -142,21 +128,21 @@ git tag desktop-vX.Y.Z
 git push origin desktop-vX.Y.Z
 ```
 
-GitHub Actions (Win + macOS universal + Linux) → собирает nsis/msi/dmg/deb/appimage
-→ создаёт **draft** Release с установщиками + `latest.json` (updater-манифест).
-Проверить артефакты в draft → **Publish release** вручную (updater читает «latest»
-только у published-релиза).
-
-Для подписанного auto-updater добавить repo-secrets `TAURI_SIGNING_PRIVATE_KEY`
-+ `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` и заменить `plugins.updater.pubkey` в
-tauri.conf.json (см. «Signing key» выше). Без них установщики собираются, но
-`latest.json` без подписи (updater не сможет верифицировать).
+GitHub Actions (Win + macOS universal + Linux) собирает
+nsis/msi/dmg/deb/appimage, updater signatures и `latest.json` в draft Release.
+Отдельный `publish` job выполняется только после успеха всей matrix и делает
+релиз публичным. Те же jobs добавляют stable aliases
+`eclipse-chat-setup.exe`, `eclipse-chat.msi`, `eclipse-chat.dmg`,
+`eclipse-chat.deb`, `eclipse-chat.AppImage`, поэтому download page не устаревает
+при повышении версии.
 
 ## Архитектура
 
 ```
 apps/desktop/
 ├── package.json           # @eclipse-chat/desktop, Tauri CLI scripts
+├── scripts/
+│   └── generate-installer-assets.ps1 # reproducible NSIS/WiX brand artwork
 ├── src-tauri/
 │   ├── Cargo.toml         # Rust workspace, tauri v2 deps
 │   ├── build.rs           # tauri-build run
@@ -166,6 +152,7 @@ apps/desktop/
 │   │   └── lib.rs         # mobile-shared entry (Tauri 2 mobile-ready)
 │   ├── capabilities/
 │   │   └── default.json   # core + shell:open permissions
+│   ├── windows/branding/  # generated installer BMP assets
 │   └── icons/             # generated by `npm run icons:gen` (gitignored)
 ├── .env.desktop           # (in apps/web) — VITE_BASE_PATH=/ override
 └── README.md              # this file
@@ -187,7 +174,7 @@ apps/desktop/
 - **WebRTC / LiveKit voice** — работает через WebView2 на Windows (WKWebView на macOS, WebKitGTK на Linux). Качество voice = same as browser. Native LiveKit SDK plug-in — на mobile (Phase C Capacitor), для desktop оверкилл (WebView WebRTC mature).
 - **Push notifications** — v1.5.38 use Web Push API из browser (через SW). v1.0.1 добавит `tauri-plugin-notification` для native OS notifications (Windows Action Center / macOS Notification Center / Linux libnotify).
 - **Auto-update** — НЕТ в v1.0.0. User manually скачивает new installer. v1.0.1 добавит updater plugin (signature verification + delta updates from GitHub Releases).
-- **Code signing** — installer unsigned (SmartScreen warning на Windows; Gatekeeper warning на macOS). Подпись будет после Microsoft Store submission (v1.0.4) + Apple Developer Program (если решим iOS).
+- **OS code signing** — updater packages подписаны, но Windows installer пока без Authenticode, а macOS build без notarization. SmartScreen/Gatekeeper могут показать предупреждение при первой установке; это отдельный следующий этап распространения.
 
 ## Ссылки
 

@@ -1,18 +1,15 @@
 name: Desktop Release
 
 # Собирает desktop-установщики (Windows / macOS / Linux) при push тега
-# `desktop-v*` и публикует их в DRAFT GitHub Release вместе с updater-манифестом
-# `latest.json` (подписанным, если заданы signing-секреты — см. ниже).
+# `desktop-v*`, собирает подписанные updater-артефакты и автоматически публикует
+# GitHub Release только после успешной сборки всех платформ.
 # Не триггерится на обычные коммиты в master — только на desktop-теги.
 #
-# Релиз: `git tag desktop-v1.0.4 && git push origin desktop-v1.0.4`.
+# Релиз: `git tag desktop-v1.0.5 && git push origin desktop-v1.0.5`.
 #
-# Secrets (Settings → Secrets → Actions), нужны для подписанного auto-updater
-# (без них установщики всё равно собираются, но `latest.json` без подписи):
-#   TAURI_SIGNING_PRIVATE_KEY           — содержимое ~/.tauri/eclipse-chat.key
+# Secrets (Settings → Secrets → Actions), нужны для подписанного auto-updater:
+#   TAURI_SIGNING_PRIVATE_KEY           — содержимое ~/.tauri/eclipse-chat-updater.key
 #   TAURI_SIGNING_PRIVATE_KEY_PASSWORD  — пароль keypair (если задавался)
-# + в tauri.conf.json plugins.updater.pubkey заменить placeholder на публичный
-#   ключ (см. apps/desktop/README.md).
 #
 # Frontend НЕ собирается: desktop = тонкая обёртка над прод-URL (frontendDist =
 # URL в tauri.conf.json, beforeBuildCommand пуст), поэтому шаги web-сборки не
@@ -22,7 +19,6 @@ on:
   push:
     tags:
       - "desktop-v*"
-  workflow_dispatch:
 
 permissions:
   contents: write
@@ -73,6 +69,11 @@ jobs:
       - name: Generate icons
         run: tauri icon apps/web/public/icon-512.png -o apps/desktop/src-tauri/icons
 
+      - name: Regenerate Windows installer branding
+        if: matrix.platform == 'windows-latest'
+        shell: pwsh
+        run: ./apps/desktop/scripts/generate-installer-assets.ps1
+
       - name: Build installers + draft release
         uses: tauri-apps/tauri-action@v0
         env:
@@ -83,7 +84,64 @@ jobs:
           projectPath: apps/desktop
           tagName: ${{ github.ref_name }}
           releaseName: "Eclipse Chat Desktop ${{ github.ref_name }}"
-          releaseBody: "Eclipse Chat — десктоп-установщики Windows / macOS / Linux. Unsigned (SmartScreen / Gatekeeper warning) до code-signing (v1.0.5+)."
+          releaseBody: "Eclipse Chat — десктоп-установщики Windows / macOS / Linux. Update packages подписаны ключом Eclipse Forge и проверяются приложением перед установкой. Windows Authenticode и macOS notarization пока не настроены, поэтому при первой установке ОС может показать предупреждение."
           releaseDraft: true
           prerelease: false
+          updaterJsonPreferNsis: true
           args: ${{ matrix.args }}
+
+      - name: Upload stable Windows download aliases
+        if: matrix.platform == 'windows-latest'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $setup = Get-ChildItem "apps/desktop/src-tauri/target/release/bundle/nsis" -Filter "*-setup.exe" | Select-Object -First 1
+          if (-not $setup) { throw "NSIS installer was not produced" }
+          $setupAlias = Join-Path $env:RUNNER_TEMP "eclipse-chat-setup.exe"
+          Copy-Item $setup.FullName $setupAlias
+
+          $msi = Get-ChildItem "apps/desktop/src-tauri/target/release/bundle/msi" -Filter "*_ru-RU.msi" | Select-Object -First 1
+          if (-not $msi) {
+            $msi = Get-ChildItem "apps/desktop/src-tauri/target/release/bundle/msi" -Filter "*.msi" | Select-Object -First 1
+          }
+          if (-not $msi) { throw "MSI installer was not produced" }
+          $msiAlias = Join-Path $env:RUNNER_TEMP "eclipse-chat.msi"
+          Copy-Item $msi.FullName $msiAlias
+
+          gh release upload "${{ github.ref_name }}" $setupAlias $msiAlias --repo "${{ github.repository }}" --clobber
+
+      - name: Upload stable macOS download alias
+        if: matrix.platform == 'macos-latest'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          dmg="$(find apps/desktop/src-tauri/target/universal-apple-darwin/release/bundle/dmg -maxdepth 1 -name '*.dmg' -print -quit)"
+          test -n "$dmg"
+          cp "$dmg" "$RUNNER_TEMP/eclipse-chat.dmg"
+          gh release upload "${{ github.ref_name }}" "$RUNNER_TEMP/eclipse-chat.dmg" --repo "${{ github.repository }}" --clobber
+
+      - name: Upload stable Linux download aliases
+        if: matrix.platform == 'ubuntu-22.04'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          deb="$(find apps/desktop/src-tauri/target/release/bundle/deb -maxdepth 1 -name '*.deb' -print -quit)"
+          appimage="$(find apps/desktop/src-tauri/target/release/bundle/appimage -maxdepth 1 -name '*.AppImage' -print -quit)"
+          test -n "$deb"
+          test -n "$appimage"
+          cp "$deb" "$RUNNER_TEMP/eclipse-chat.deb"
+          cp "$appimage" "$RUNNER_TEMP/eclipse-chat.AppImage"
+          gh release upload "${{ github.ref_name }}" "$RUNNER_TEMP/eclipse-chat.deb" "$RUNNER_TEMP/eclipse-chat.AppImage" --repo "${{ github.repository }}" --clobber
+
+  publish:
+    name: Publish signed desktop release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish release after all platform builds pass
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release edit "${{ github.ref_name }}" --repo "${{ github.repository }}" --draft=false --latest
