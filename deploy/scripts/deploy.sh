@@ -117,6 +117,8 @@ echo "==> [3/11] npm ci (workspaces — из корня репо)"
 # (@rollup/rollup-linux-x64-gnu и др.) через optional dependencies. Если их
 # не установить — vite build падает с MODULE_NOT_FOUND. См. npm bug #4828.
 npm ci
+echo "    Auditing production dependencies (High/Critical block deploy)..."
+npm audit --omit=dev --audit-level=high
 
 echo
 echo "==> [4/11] prisma generate + migrate deploy"
