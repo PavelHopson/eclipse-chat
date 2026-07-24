@@ -11,21 +11,72 @@
 #   bash deploy/scripts/deploy.sh
 #
 # Шаги:
-#   [1/10] git fetch + reset --hard origin/master
-#   [2/10] write release.json (commit/branch/timestamp metadata)
-#   [3/10] npm ci (из корня — workspaces)
-#   [4/10] prisma generate + migrate deploy
-#   [5/10] npm run build (server tsc + web vite)
-#   [6/10] sync nginx snippets (с auto-rollback при nginx -t fail)
-#   [7/10] sync supervisor program (если изменилось)
-#   [8/10] set ownership (www-data)
-#   [9/10] supervisorctl restart eclipse-chat-server
-#  [10/10] smoke test (version + health + supervisor + uploads MIME)
+#   [1/11] git fetch + reset --hard origin/master
+#   [2/11] write release.json (commit/branch/timestamp metadata)
+#   [3/11] npm ci (из корня — workspaces)
+#   [4/11] prisma generate + migrate deploy
+#   [5/11] build server + web into staging directories and preflight routes
+#   [6/11] sync nginx snippets (с auto-rollback при nginx -t fail)
+#   [7/11] sync supervisor program (если изменилось)
+#   [8/11] atomically activate staged build
+#   [9/11] set ownership (www-data)
+#  [10/11] supervisorctl restart eclipse-chat-server
+#  [11/11] smoke test (version + health + supervisor + uploads MIME)
 
 set -euo pipefail
 
 DEPLOY_PATH="${ECLIPSE_CHAT_PATH:-/var/www/eclipse-chat}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SERVER_DIST="$DEPLOY_PATH/apps/server/dist"
+SERVER_STAGE="$DEPLOY_PATH/apps/server/dist.next"
+SERVER_PREVIOUS="$DEPLOY_PATH/apps/server/dist.previous"
+WEB_DIST="$DEPLOY_PATH/apps/web/dist"
+WEB_STAGE="$DEPLOY_PATH/apps/web/dist.next"
+WEB_PREVIOUS="$DEPLOY_PATH/apps/web/dist.previous"
+BUILD_ACTIVATED=0
+
+assert_managed_build_path() {
+    case "$1" in
+        "$SERVER_DIST"|"$SERVER_STAGE"|"$SERVER_PREVIOUS"|\
+        "$WEB_DIST"|"$WEB_STAGE"|"$WEB_PREVIOUS")
+            ;;
+        *)
+            echo "❌ Refusing to manage unexpected build path: $1"
+            exit 1
+            ;;
+    esac
+}
+
+remove_managed_build_path() {
+    assert_managed_build_path "$1"
+    rm -rf -- "$1"
+}
+
+rollback_activated_build() {
+    local exit_code=$?
+
+    if [[ $exit_code -eq 0 || $BUILD_ACTIVATED -ne 1 ]]; then
+        return
+    fi
+
+    set +e
+    echo "❌ Deploy failed after build activation. Restoring previous build..."
+    sudo supervisorctl stop eclipse-chat-server >/dev/null 2>&1 || true
+
+    if [[ -d "$SERVER_PREVIOUS" ]]; then
+        remove_managed_build_path "$SERVER_DIST"
+        mv "$SERVER_PREVIOUS" "$SERVER_DIST"
+    fi
+    if [[ -d "$WEB_PREVIOUS" ]]; then
+        remove_managed_build_path "$WEB_DIST"
+        mv "$WEB_PREVIOUS" "$WEB_DIST"
+    fi
+
+    sudo supervisorctl start eclipse-chat-server >/dev/null 2>&1 || true
+    echo "✓ Previous build restored"
+}
+
+trap rollback_activated_build EXIT
 
 if [[ ! -d "$DEPLOY_PATH" ]]; then
     echo "❌ $DEPLOY_PATH не существует."
@@ -42,13 +93,13 @@ echo " Time:   $(date -Iseconds)"
 echo "═══════════════════════════════════════════════════"
 
 echo
-echo "==> [1/10] git fetch + reset --hard origin/master"
+echo "==> [1/11] git fetch + reset --hard origin/master"
 git fetch origin master
 git reset --hard origin/master
 echo "    HEAD: $(git log -1 --oneline)"
 
 echo
-echo "==> [2/10] write release.json"
+echo "==> [2/11] write release.json"
 cat > release.json <<JSON
 {
   "branch": "$(git branch --show-current)",
@@ -61,33 +112,65 @@ JSON
 cat release.json
 
 echo
-echo "==> [3/10] npm ci (workspaces — из корня репо)"
+echo "==> [3/11] npm ci (workspaces — из корня репо)"
 # WHY no --omit=optional: rollup использует platform-specific native modules
 # (@rollup/rollup-linux-x64-gnu и др.) через optional dependencies. Если их
 # не установить — vite build падает с MODULE_NOT_FOUND. См. npm bug #4828.
 npm ci
 
 echo
-echo "==> [4/10] prisma generate + migrate deploy"
+echo "==> [4/11] prisma generate + migrate deploy"
 cd apps/server
 npx prisma generate
 npx prisma migrate deploy
 cd "$DEPLOY_PATH"
 
 echo
-echo "==> [5/10] npm run build (server tsc + web vite)"
-npm run build
+echo "==> [5/11] build staged server + web and preflight routes"
+remove_managed_build_path "$SERVER_STAGE"
+remove_managed_build_path "$WEB_STAGE"
+
+(
+    cd "$DEPLOY_PATH/apps/server"
+    npx tsc -p tsconfig.json --outDir dist.next
+)
+(
+    cd "$DEPLOY_PATH/apps/web"
+    npx tsc -b
+    VITE_BASE_PATH="${VITE_BASE_PATH:-/eclipse-chat/}" \
+        npx vite build --outDir dist.next
+)
+
+node --check "$SERVER_STAGE/index.js"
+npm test --workspace=@eclipse-chat/server -- \
+    tests/route-registration.test.ts
 
 echo
-echo "==> [6/10] sync nginx snippets (с auto-rollback)"
+echo "==> [6/11] sync nginx snippets (с auto-rollback)"
 bash "$SCRIPT_DIR/sync-nginx.sh"
 
 echo
-echo "==> [7/10] sync supervisor program"
+echo "==> [7/11] sync supervisor program"
 bash "$SCRIPT_DIR/sync-supervisor.sh"
 
 echo
-echo "==> [8/10] set ownership www-data"
+echo "==> [8/11] atomically activate staged build"
+remove_managed_build_path "$SERVER_PREVIOUS"
+remove_managed_build_path "$WEB_PREVIOUS"
+
+if [[ -d "$SERVER_DIST" ]]; then
+    mv "$SERVER_DIST" "$SERVER_PREVIOUS"
+fi
+if [[ -d "$WEB_DIST" ]]; then
+    mv "$WEB_DIST" "$WEB_PREVIOUS"
+fi
+
+BUILD_ACTIVATED=1
+mv "$SERVER_STAGE" "$SERVER_DIST"
+mv "$WEB_STAGE" "$WEB_DIST"
+
+echo
+echo "==> [9/11] set ownership www-data"
 chown -R www-data:www-data "$DEPLOY_PATH/apps/web/dist" || true
 chown -R www-data:www-data "$DEPLOY_PATH/apps/server/dist" || true
 chown -R www-data:www-data "$DEPLOY_PATH/apps/server/prisma" || true
@@ -97,11 +180,11 @@ if [[ -d "$DEPLOY_PATH/uploads" ]]; then
 fi
 
 echo
-echo "==> [9/10] restart eclipse-chat-server"
+echo "==> [10/11] restart eclipse-chat-server"
 sudo supervisorctl restart eclipse-chat-server
 
 echo
-echo "==> [10/10] smoke test (wait 4s for server start)"
+echo "==> [11/11] smoke test (wait 4s for server start)"
 sleep 4
 # Версия — каноничный источник: apps/server/package.json.
 # Backend загружает manifest один раз при старте. Smoke читает текущий файл
@@ -113,6 +196,7 @@ EXPECTED_VERSION=$(grep -oE '"version"[[:space:]]*:[[:space:]]*"[0-9]+\.[0-9]+\.
 echo "    Expected version (from package.json): $EXPECTED_VERSION"
 
 if SMOKE_EXPECTED_VERSION="$EXPECTED_VERSION" bash "$SCRIPT_DIR/smoke.sh"; then
+    BUILD_ACTIVATED=0
     echo
     echo "═══════════════════════════════════════════════════"
     echo " ✓ DEPLOY COMPLETE"
