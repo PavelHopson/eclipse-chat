@@ -1,0 +1,72 @@
+name: Cleanup non-owner servers
+
+on:
+  workflow_dispatch:
+    inputs:
+      owner_email:
+        description: "Account whose owned servers must be retained"
+        required: true
+        default: "garaa11@mail.ru"
+        type: string
+      confirmation:
+        description: "Type DELETE_NON_OWNER_SERVERS"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: eclipse-chat-prod-maintenance
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Validate confirmation
+        env:
+          OWNER_EMAIL: ${{ inputs.owner_email }}
+          CLEANUP_CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          set -euo pipefail
+          test "$CLEANUP_CONFIRMATION" = "DELETE_NON_OWNER_SERVERS"
+          case "$OWNER_EMAIL" in
+            *[!A-Za-z0-9._+@-]*|'') echo "Invalid owner email" >&2; exit 1 ;;
+          esac
+
+      - name: Backup and remove non-owner servers
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          OWNER_EMAIL: ${{ inputs.owner_email }}
+          CLEANUP_CONFIRMATION: ${{ inputs.confirmation }}
+        with:
+          host: ${{ secrets.DEPLOY_HOST_PROD }}
+          username: ${{ secrets.DEPLOY_USER_PROD }}
+          key: ${{ secrets.SSH_PRIVATE_KEY_PROD }}
+          envs: OWNER_EMAIL,CLEANUP_CONFIRMATION
+          command_timeout: 15m
+          script: |
+            set -euo pipefail
+            cd /var/www/eclipse-chat
+            test -f apps/server/src/scripts/retainOwnerServers.ts
+
+            echo "==> Disk before cleanup"
+            df -h /var/www/eclipse-chat
+
+            echo "==> Verified database backup"
+            bash deploy/scripts/backup-db.sh
+
+            echo "==> Dry run"
+            npm run servers:retain-owner --workspace=@eclipse-chat/server -- \
+              --owner-email="$OWNER_EMAIL"
+
+            echo "==> Apply cleanup"
+            npm run servers:retain-owner --workspace=@eclipse-chat/server -- \
+              --owner-email="$OWNER_EMAIL" \
+              --apply \
+              --confirm="$CLEANUP_CONFIRMATION"
+
+            echo "==> Disk after cleanup"
+            df -h /var/www/eclipse-chat

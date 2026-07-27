@@ -6,6 +6,7 @@ import sharp from "sharp";
 import { db } from "../db.js";
 import { serializeUser, userDisplayName } from "../lib/userView.js";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
+import { requirePlatformOwner } from "../auth/requirePlatformOwner.js";
 import { processTrainingVideoFile } from "../attachments.js";
 import { ensureServerActive } from "../lib/serverGating.js";
 import { recordAudit } from "../security/audit.js";
@@ -322,33 +323,44 @@ export async function registerServerRoutes(app: FastifyInstance) {
     if (!userId) {
       return reply.status(401).send({ error: "Unauthorized" });
     }
-    const memberships = await db.member.findMany({
-      where: { userId },
-      include: {
-        server: {
-          select: {
-            id: true,
-            name: true,
-            icon: true,
-            banner: true,
-            brandColor: true,
-            description: true,
-            welcomeMessage: true,
-            mode: true,
-            inviteCode: true,
-            ownerId: true,
-            // v1.5.54 D3 — lock state для UI badge «Сервер закрыт».
-            lockedAt: true,
-            lockedReason: true,
-            // v1.5.58 E3 — JSON-encoded String[] feature chips.
-            features: true,
-            createdAt: true,
-            _count: { select: { members: true, channels: true } },
+    const [memberships, currentUser] = await Promise.all([
+      db.member.findMany({
+        where: { userId },
+        include: {
+          server: {
+            select: {
+              id: true,
+              name: true,
+              icon: true,
+              banner: true,
+              brandColor: true,
+              description: true,
+              welcomeMessage: true,
+              mode: true,
+              inviteCode: true,
+              ownerId: true,
+              // v1.5.54 D3 — lock state для UI badge «Сервер закрыт».
+              lockedAt: true,
+              lockedReason: true,
+              // v1.5.58 E3 — JSON-encoded String[] feature chips.
+              features: true,
+              createdAt: true,
+              _count: { select: { members: true, channels: true } },
+            },
           },
         },
-      },
-      orderBy: { joinedAt: "asc" },
-    });
+        orderBy: { joinedAt: "asc" },
+      }),
+      db.user.findUnique({
+        where: { id: userId },
+        select: { isPlatformOwner: true, bannedAt: true, deletedAt: true },
+      }),
+    ]);
+    const creationAllowed = Boolean(
+      currentUser?.isPlatformOwner &&
+        currentUser.bannedAt === null &&
+        currentUser.deletedAt === null,
+    );
     return {
       servers: memberships.map((m) => ({
         id: m.server.id,
@@ -375,61 +387,66 @@ export async function registerServerRoutes(app: FastifyInstance) {
       // хардкодил константу.
       limits: {
         maxOwnedServers: MAX_SERVERS_PER_USER,
+        creationAllowed,
       },
     };
   });
 
   /** POST /api/servers — создать сервер, текущий user становится OWNER. */
-  app.post("/api/servers", { onRequest: [requireJwt] }, async (req, reply) => {
-    const userId = getUserId(req);
-    if (!userId) {
-      return reply.status(401).send({ error: "Unauthorized" });
-    }
-    const parsed = createServerBody.safeParse(req.body);
-    if (!parsed.success) {
-      return reply.status(400).send({ error: "Invalid body" });
-    }
-    // v0.64: лимит owned серверов на аккаунт. Проверка до transaction —
-    // быстрый bail без открытия write-транзакции.
-    const ownedCount = await countOwnedServers(userId);
-    if (ownedCount >= MAX_SERVERS_PER_USER) {
-      return reply.status(403).send({
-        error: `Достигнут лимит ${MAX_SERVERS_PER_USER} пространств на аккаунт`,
-        code: "OWNED_SERVERS_LIMIT",
-        limit: MAX_SERVERS_PER_USER,
-        current: ownedCount,
+  app.post(
+    "/api/servers",
+    { onRequest: [requireJwt, requirePlatformOwner] },
+    async (req, reply) => {
+      const userId = getUserId(req);
+      if (!userId) {
+        return reply.status(401).send({ error: "Unauthorized" });
+      }
+      const parsed = createServerBody.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.status(400).send({ error: "Invalid body" });
+      }
+      // v0.64: лимит owned серверов на аккаунт. Проверка до transaction —
+      // быстрый bail без открытия write-транзакции.
+      const ownedCount = await countOwnedServers(userId);
+      if (ownedCount >= MAX_SERVERS_PER_USER) {
+        return reply.status(403).send({
+          error: `Достигнут лимит ${MAX_SERVERS_PER_USER} пространств на аккаунт`,
+          code: "OWNED_SERVERS_LIMIT",
+          limit: MAX_SERVERS_PER_USER,
+          current: ownedCount,
+        });
+      }
+      const created = await db.$transaction(async (tx) => {
+        const server = await tx.server.create({
+          data: {
+            name: parsed.data.name,
+            icon: parsed.data.icon ?? null,
+            ownerId: userId,
+          },
+        });
+        await tx.member.create({
+          data: { userId, serverId: server.id, role: "OWNER" },
+        });
+        return server;
       });
-    }
-    const created = await db.$transaction(async (tx) => {
-      const server = await tx.server.create({
-        data: {
-          name: parsed.data.name,
-          icon: parsed.data.icon ?? null,
-          ownerId: userId,
+      recordAudit("SERVER_CREATED", {
+        userId,
+        req,
+        metadata: { serverId: created.id, name: created.name },
+      });
+      return {
+        server: {
+          id: created.id,
+          name: created.name,
+          icon: created.icon,
+          inviteCode: created.inviteCode,
+          ownerId: created.ownerId,
+          createdAt: created.createdAt.toISOString(),
+          role: "OWNER" as MemberRole,
         },
-      });
-      await tx.member.create({
-        data: { userId, serverId: server.id, role: "OWNER" },
-      });
-      return server;
-    });
-    recordAudit("SERVER_CREATED", {
-      userId,
-      req,
-      metadata: { serverId: created.id, name: created.name },
-    });
-    return {
-      server: {
-        id: created.id,
-        name: created.name,
-        icon: created.icon,
-        inviteCode: created.inviteCode,
-        ownerId: created.ownerId,
-        createdAt: created.createdAt.toISOString(),
-        role: "OWNER" as MemberRole,
-      },
-    };
-  });
+      };
+    },
+  );
 
   /** GET /api/servers/:id — инфо о сервере (только для members). */
   app.get("/api/servers/:id", { onRequest: [requireJwt] }, async (req, reply) => {

@@ -1078,6 +1078,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             onProfileRequest={() => setShowProfile(true)}
             profileActive={showProfile}
             canCreateServer={canCreateServer}
+            creationAllowed={serverLimits.creationAllowed}
             ownedCount={ownedServersCount}
             maxOwnedServers={serverLimits.maxOwnedServers}
           />
@@ -1138,6 +1139,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               dmsUnread={dmConversations.reduce((sum, c) => sum + c.unread, 0)}
               onDmsRequest={navOpenDms}
               canCreateServer={canCreateServer}
+              creationAllowed={serverLimits.creationAllowed}
               ownedCount={ownedServersCount}
               maxOwnedServers={serverLimits.maxOwnedServers}
               compact={isMobile}

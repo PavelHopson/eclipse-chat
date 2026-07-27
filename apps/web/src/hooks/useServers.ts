@@ -55,9 +55,11 @@ type JoinResult = {
  */
 export type ServerLimits = {
   maxOwnedServers: number;
+  /** Fresh backend capability: only an active platform owner may create workspaces. */
+  creationAllowed: boolean;
 };
 
-const DEFAULT_LIMITS: ServerLimits = { maxOwnedServers: 2 };
+const DEFAULT_LIMITS: ServerLimits = { maxOwnedServers: 2, creationAllowed: false };
 
 /**
  * Список серверов текущего user'а + активный сервер.
@@ -426,7 +428,7 @@ export function useServers(isReady: boolean) {
 
   const activeServer = servers.find((s) => s.id === activeServerId) ?? null;
   const ownedCount = servers.filter((s) => s.role === "OWNER").length;
-  const canCreateServer = ownedCount < limits.maxOwnedServers;
+  const canCreateServer = limits.creationAllowed && ownedCount < limits.maxOwnedServers;
 
   return {
     servers,

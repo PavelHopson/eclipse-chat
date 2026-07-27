@@ -27,6 +27,7 @@ type Props = {
   onProfileRequest: () => void;
   profileActive: boolean;
   canCreateServer?: boolean;
+  creationAllowed?: boolean;
   ownedCount?: number;
   maxOwnedServers?: number;
 };
@@ -89,10 +90,13 @@ export function ServerRail({
   onProfileRequest,
   profileActive,
   canCreateServer = true,
+  creationAllowed = true,
   ownedCount = 0,
   maxOwnedServers = 2,
 }: Props) {
-  const addTooltip = canCreateServer
+  const addTooltip = !creationAllowed
+    ? "Создавать пространства может только владелец платформы"
+    : canCreateServer
     ? "Создать пространство"
     : `Лимит ${maxOwnedServers} пространств (создано ${ownedCount})`;
 

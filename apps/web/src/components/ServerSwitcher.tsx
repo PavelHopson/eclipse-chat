@@ -29,6 +29,7 @@ type Props = {
   onSearchRequest: () => void;
   searchEnabled: boolean;
   canCreateServer?: boolean;
+  creationAllowed?: boolean;
   ownedCount?: number;
   maxOwnedServers?: number;
   compact?: boolean;
@@ -133,6 +134,7 @@ export function ServerSwitcher({
   onSearchRequest,
   searchEnabled,
   canCreateServer = true,
+  creationAllowed = true,
   ownedCount = 0,
   maxOwnedServers = 2,
   compact = false,
@@ -191,7 +193,9 @@ export function ServerSwitcher({
     setOpen(false);
   };
 
-  const addTooltip = canCreateServer
+  const addTooltip = !creationAllowed
+    ? "Создавать пространства может только владелец платформы"
+    : canCreateServer
     ? "Создать пространство"
     : `Достигнут лимит ${maxOwnedServers} пространств (создано ${ownedCount}).`;
 
