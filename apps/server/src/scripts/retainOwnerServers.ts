@@ -68,11 +68,11 @@ async function main(): Promise<void> {
     },
   });
   if (!retainedOwner) throw new Error(`User not found: ${args.ownerEmail}`);
-  if (!retainedOwner.isPlatformOwner || retainedOwner.bannedAt || retainedOwner.deletedAt) {
-    throw new Error("Retained account must be an active platform owner");
+  if (retainedOwner.bannedAt || retainedOwner.deletedAt) {
+    throw new Error("Retained account must be active");
   }
 
-  const [retainedServers, removedServers] = await Promise.all([
+  const [retainedServers, removedServers, currentPlatformOwners] = await Promise.all([
     dbBase.server.findMany({
       where: { ownerId: retainedOwner.id },
       select: { id: true, name: true, ownerId: true },
@@ -90,12 +90,24 @@ async function main(): Promise<void> {
       },
       orderBy: { createdAt: "asc" },
     }),
+    dbBase.user.findMany({
+      where: { isPlatformOwner: true },
+      select: { id: true, email: true },
+      orderBy: { email: "asc" },
+    }),
   ]);
   if (retainedServers.length === 0) {
     throw new Error("Refusing cleanup: retained owner has no server");
   }
 
   console.log(`Retained owner: ${retainedOwner.email} (${retainedOwner.displayName})`);
+  console.log(`Current platform owners (${currentPlatformOwners.length}):`);
+  for (const owner of currentPlatformOwners) {
+    console.log(`  ${owner.id === retainedOwner.id ? "KEEP" : "DEMOTE"} ${owner.email}`);
+  }
+  if (!retainedOwner.isPlatformOwner) {
+    console.log(`  PROMOTE ${retainedOwner.email}`);
+  }
   console.log(`Retained servers (${retainedServers.length}):`);
   for (const server of retainedServers) console.log(`  KEEP ${server.id}  ${server.name}`);
   console.log(`Servers selected for deletion (${removedServers.length}):`);
@@ -104,8 +116,12 @@ async function main(): Promise<void> {
       `  DELETE ${server.id}  ${server.name}  owner=${server.owner.email}  members=${server._count.members} channels=${server._count.channels}`,
     );
   }
-  if (removedServers.length === 0) {
-    console.log("Nothing to delete.");
+  const platformOwnershipAlreadyExclusive =
+    retainedOwner.isPlatformOwner &&
+    currentPlatformOwners.length === 1 &&
+    currentPlatformOwners[0]?.id === retainedOwner.id;
+  if (removedServers.length === 0 && platformOwnershipAlreadyExclusive) {
+    console.log("Nothing to change.");
     return;
   }
 
@@ -156,6 +172,14 @@ async function main(): Promise<void> {
   }
 
   const result = await dbBase.$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id: retainedOwner.id },
+      data: { isPlatformOwner: true },
+    });
+    const demoted = await tx.user.updateMany({
+      where: { id: { not: retainedOwner.id }, isPlatformOwner: true },
+      data: { isPlatformOwner: false },
+    });
     const deleted = await tx.server.deleteMany({
       where: { id: { in: removedIds }, ownerId: { not: retainedOwner.id } },
     });
@@ -164,7 +188,7 @@ async function main(): Promise<void> {
         `Concurrent change detected: expected ${removedIds.length} deletes, got ${deleted.count}`,
       );
     }
-    return deleted;
+    return { deleted, demoted };
   });
 
   let removedFiles = 0;
@@ -184,7 +208,7 @@ async function main(): Promise<void> {
     }
   }
   console.log(
-    `Cleanup complete: servers=${result.count}, uploadFiles=${removedFiles}, alreadyMissing=${missingFiles}, failedFiles=${failedFiles}`,
+    `Cleanup complete: servers=${result.deleted.count}, demotedPlatformOwners=${result.demoted.count}, uploadFiles=${removedFiles}, alreadyMissing=${missingFiles}, failedFiles=${failedFiles}`,
   );
   if (failedFiles > 0) {
     throw new Error(
