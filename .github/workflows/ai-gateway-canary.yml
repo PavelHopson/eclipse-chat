@@ -1,0 +1,52 @@
+name: AI Gateway Canary
+
+on:
+  workflow_dispatch:
+    inputs:
+      canary_percent:
+        description: "Traffic sent through Eclipse AI Hub"
+        required: true
+        default: "10"
+        type: choice
+        options:
+          - "0"
+          - "10"
+          - "25"
+          - "50"
+          - "100"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: eclipse-chat-prod-deploy
+  cancel-in-progress: false
+
+jobs:
+  set-canary:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Apply canary and verify provider path
+        uses: appleboy/ssh-action@7eaf76671a0d7eec5d98ee897acda4f968735a17 # v1.2.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST_PROD }}
+          username: ${{ secrets.DEPLOY_USER_PROD }}
+          key: ${{ secrets.SSH_PRIVATE_KEY_PROD }}
+          envs: AI_GATEWAY_CANARY_PERCENT
+          command_timeout: 5m
+          script: |
+            set -e
+            cd /var/www/eclipse-chat
+            git fetch origin master
+            git reset --hard origin/master
+            bash deploy/scripts/set-ai-canary.sh
+        env:
+          AI_GATEWAY_CANARY_PERCENT: ${{ inputs.canary_percent }}
+
+      - name: External health check
+        run: |
+          set -e
+          BASE="https://app.star-crm.ru/eclipse-chat"
+          curl -sf --max-time 10 "$BASE/api/version" | grep -q '"version"'
+          curl -sf --max-time 10 "$BASE/api/health" | grep -q '"ok":true'

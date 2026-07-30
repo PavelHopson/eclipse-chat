@@ -72,3 +72,8 @@ ECLIPSE_AI_HUB_CANARY_PERCENT=100 \
 Rollback is immediate: set `ECLIPSE_AI_HUB_CANARY_PERCENT=0` and restart Chat.
 Removing all `ECLIPSE_AI_HUB_*` variables is also supported. The existing provider
 chain remains available throughout the canary.
+
+For routine operations, run the GitHub Actions workflow `AI Gateway Canary` and
+choose `0`, `10`, `25`, `50` or `100`. The workflow uses the protected production
+environment, restores the previous `.env` on failure, and verifies direct OmniRoute
+at `0%` or the complete Chat-to-gateway path at any non-zero value.
