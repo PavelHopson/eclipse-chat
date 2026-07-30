@@ -11,17 +11,18 @@
 #   bash deploy/scripts/deploy.sh
 #
 # Шаги:
-#   [1/11] git fetch + reset --hard origin/master
-#   [2/11] write release.json (commit/branch/timestamp metadata)
-#   [3/11] npm ci (из корня — workspaces)
-#   [4/11] prisma generate + migrate deploy
-#   [5/11] build server + web into staging directories and preflight routes
-#   [6/11] sync nginx snippets (с auto-rollback при nginx -t fail)
-#   [7/11] sync supervisor program (если изменилось)
-#   [8/11] atomically activate staged build
-#   [9/11] set ownership (www-data)
-#  [10/11] supervisorctl restart eclipse-chat-server
-#  [11/11] smoke test (version + health + supervisor + uploads MIME)
+#   [1/12] git fetch + reset --hard origin/master
+#   [2/12] write release.json (commit/branch/timestamp metadata)
+#   [3/12] npm ci (из корня — workspaces)
+#   [4/12] prisma generate + migrate deploy
+#   [5/12] build server + web into staging directories and preflight routes
+#   [6/12] sync nginx snippets (с auto-rollback при nginx -t fail)
+#   [7/12] sync supervisor program (если изменилось)
+#   [8/12] atomically activate staged build
+#   [9/12] set ownership (www-data)
+#  [10/12] deploy and smoke the private Eclipse AI Hub gateway canary
+#  [11/12] supervisorctl restart eclipse-chat-server
+#  [12/12] smoke test (version + health + supervisor + uploads MIME)
 
 set -euo pipefail
 
@@ -33,7 +34,10 @@ SERVER_PREVIOUS="$DEPLOY_PATH/apps/server/dist.previous"
 WEB_DIST="$DEPLOY_PATH/apps/web/dist"
 WEB_STAGE="$DEPLOY_PATH/apps/web/dist.next"
 WEB_PREVIOUS="$DEPLOY_PATH/apps/web/dist.previous"
+CHAT_ENV="$DEPLOY_PATH/apps/server/.env"
+CHAT_ENV_PREVIOUS="$DEPLOY_PATH/apps/server/.env.deploy-previous"
 BUILD_ACTIVATED=0
+CHAT_ENV_BACKED_UP=0
 
 assert_managed_build_path() {
     case "$1" in
@@ -62,6 +66,12 @@ rollback_activated_build() {
     set +e
     echo "❌ Deploy failed after build activation. Restoring previous build..."
     sudo supervisorctl stop eclipse-chat-server >/dev/null 2>&1 || true
+
+    if [[ $CHAT_ENV_BACKED_UP -eq 1 && -f "$CHAT_ENV_PREVIOUS" ]]; then
+        cp -p -- "$CHAT_ENV_PREVIOUS" "$CHAT_ENV"
+        rm -f -- "$CHAT_ENV_PREVIOUS"
+        echo "Previous Chat environment restored"
+    fi
 
     if [[ -d "$SERVER_PREVIOUS" ]]; then
         remove_managed_build_path "$SERVER_DIST"
@@ -93,13 +103,13 @@ echo " Time:   $(date -Iseconds)"
 echo "═══════════════════════════════════════════════════"
 
 echo
-echo "==> [1/11] git fetch + reset --hard origin/master"
+echo "==> [1/12] git fetch + reset --hard origin/master"
 git fetch origin master
 git reset --hard origin/master
 echo "    HEAD: $(git log -1 --oneline)"
 
 echo
-echo "==> [2/11] write release.json"
+echo "==> [2/12] write release.json"
 cat > release.json <<JSON
 {
   "branch": "$(git branch --show-current)",
@@ -112,7 +122,7 @@ JSON
 cat release.json
 
 echo
-echo "==> [3/11] npm ci (workspaces — из корня репо)"
+echo "==> [3/12] npm ci (workspaces — из корня репо)"
 # WHY no --omit=optional: rollup использует platform-specific native modules
 # (@rollup/rollup-linux-x64-gnu и др.) через optional dependencies. Если их
 # не установить — vite build падает с MODULE_NOT_FOUND. См. npm bug #4828.
@@ -121,14 +131,14 @@ echo "    Auditing production dependencies (High/Critical block deploy)..."
 npm audit --omit=dev --audit-level=high
 
 echo
-echo "==> [4/11] prisma generate + migrate deploy"
+echo "==> [4/12] prisma generate + migrate deploy"
 cd apps/server
 npx prisma generate
 npx prisma migrate deploy
 cd "$DEPLOY_PATH"
 
 echo
-echo "==> [5/11] build staged server + web and preflight routes"
+echo "==> [5/12] build staged server + web and preflight routes"
 remove_managed_build_path "$SERVER_STAGE"
 remove_managed_build_path "$WEB_STAGE"
 
@@ -148,15 +158,15 @@ npm test --workspace=@eclipse-chat/server -- \
     tests/route-registration.test.ts
 
 echo
-echo "==> [6/11] sync nginx snippets (с auto-rollback)"
+echo "==> [6/12] sync nginx snippets (с auto-rollback)"
 bash "$SCRIPT_DIR/sync-nginx.sh"
 
 echo
-echo "==> [7/11] sync supervisor program"
+echo "==> [7/12] sync supervisor program"
 bash "$SCRIPT_DIR/sync-supervisor.sh"
 
 echo
-echo "==> [8/11] atomically activate staged build"
+echo "==> [8/12] atomically activate staged build"
 remove_managed_build_path "$SERVER_PREVIOUS"
 remove_managed_build_path "$WEB_PREVIOUS"
 
@@ -172,7 +182,7 @@ mv "$SERVER_STAGE" "$SERVER_DIST"
 mv "$WEB_STAGE" "$WEB_DIST"
 
 echo
-echo "==> [9/11] set ownership www-data"
+echo "==> [9/12] set ownership www-data"
 chown -R www-data:www-data "$DEPLOY_PATH/apps/web/dist" || true
 chown -R www-data:www-data "$DEPLOY_PATH/apps/server/dist" || true
 chown -R www-data:www-data "$DEPLOY_PATH/apps/server/prisma" || true
@@ -182,11 +192,21 @@ if [[ -d "$DEPLOY_PATH/uploads" ]]; then
 fi
 
 echo
-echo "==> [10/11] restart eclipse-chat-server"
+echo "==> [10/12] deploy Eclipse AI Hub gateway and configure 10% canary"
+if [[ ! -f "$CHAT_ENV" ]]; then
+    echo "Chat environment is missing: $CHAT_ENV"
+    exit 1
+fi
+cp -p -- "$CHAT_ENV" "$CHAT_ENV_PREVIOUS"
+CHAT_ENV_BACKED_UP=1
+bash "$SCRIPT_DIR/sync-ai-gateway.sh"
+
+echo
+echo "==> [11/12] restart eclipse-chat-server"
 sudo supervisorctl restart eclipse-chat-server
 
 echo
-echo "==> [11/11] smoke test (wait 4s for server start)"
+echo "==> [12/12] smoke test (wait 4s for server start)"
 sleep 4
 # Версия — каноничный источник: apps/server/package.json.
 # Backend загружает manifest один раз при старте. Smoke читает текущий файл
@@ -198,6 +218,8 @@ EXPECTED_VERSION=$(grep -oE '"version"[[:space:]]*:[[:space:]]*"[0-9]+\.[0-9]+\.
 echo "    Expected version (from package.json): $EXPECTED_VERSION"
 
 if SMOKE_EXPECTED_VERSION="$EXPECTED_VERSION" bash "$SCRIPT_DIR/smoke.sh"; then
+    rm -f -- "$CHAT_ENV_PREVIOUS"
+    CHAT_ENV_BACKED_UP=0
     BUILD_ACTIVATED=0
     echo
     echo "═══════════════════════════════════════════════════"

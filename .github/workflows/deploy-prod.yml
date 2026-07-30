@@ -51,10 +51,10 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Setup Node 20
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: "20"
           cache: "npm"
@@ -86,14 +86,14 @@ jobs:
     runs-on: ubuntu-latest
     environment: production # требует manual approval в GitHub UI
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       # --- Optional: первый деплой на свежий сервер ---
       # Запускается только при workflow_dispatch с run_initial_setup=true.
       # Создаёт PG БД, .env, supervisor program, nginx snippets с нуля.
       - name: Run initial setup (first deploy only)
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.run_initial_setup == 'true'
-        uses: appleboy/ssh-action@v1.2.0
+        uses: appleboy/ssh-action@7eaf76671a0d7eec5d98ee897acda4f968735a17 # v1.2.0
         with:
           host: ${{ secrets.DEPLOY_HOST_PROD }}
           username: ${{ secrets.DEPLOY_USER_PROD }}
@@ -119,10 +119,10 @@ jobs:
       # --- Регулярный деплой: orchestrator deploy.sh делает всё ---
       # Workflow сам делает git pull перед bash deploy.sh — иначе chicken-egg:
       # если на проде старый commit без deploy/scripts/, файл просто не существует.
-      # После initial pull deploy.sh сам делает второй reset --hard как [1/10] step
+      # После initial pull deploy.sh сам делает второй reset --hard как [1/12] step
       # (идемпотентно, harmless).
       - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.2.0
+        uses: appleboy/ssh-action@7eaf76671a0d7eec5d98ee897acda4f968735a17 # v1.2.0
         with:
           host: ${{ secrets.DEPLOY_HOST_PROD }}
           username: ${{ secrets.DEPLOY_USER_PROD }}

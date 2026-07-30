@@ -175,6 +175,8 @@ type ProviderConfig = {
    *  base body). Для Pollinations: `private:true` (генерация НЕ в публичную
    *  ленту) + `referrer`. Не должен содержать model/messages (их задаёт base). */
   extraBody?: Record<string, unknown>;
+  /** Percentage of requests eligible for this provider (gateway canary). */
+  trafficPercent?: number;
 };
 
 export type AiProviderDiagnostic = {
@@ -185,6 +187,7 @@ export type AiProviderDiagnostic = {
   hasAuth: boolean;
   modelCount: number;
   models: string[];
+  trafficPercent: number;
 };
 
 /** v1.5.18 — utility для парсинга CSV список моделей из env. Trim'ит
@@ -220,7 +223,21 @@ function normalizeGatewayUrl(value: string): string | null {
   }
 }
 
-function getProviders(): ProviderConfig[] {
+function parseAiHubCanaryPercent(value: string | undefined): number {
+  if (!value?.trim()) return 0;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 && parsed <= 100 ? parsed : 0;
+}
+
+export function isAiHubCanaryRequest(
+  value: string | undefined,
+  sample = Math.random(),
+): boolean {
+  const percent = parseAiHubCanaryPercent(value);
+  return percent > 0 && sample >= 0 && sample < 1 && sample * 100 < percent;
+}
+
+function getProviders(options: { includeConfiguredAiHub?: boolean } = {}): ProviderConfig[] {
   const out: ProviderConfig[] = [];
 
   // 1. Ollama (локальный) — приоритет. Без API key.
@@ -244,7 +261,12 @@ function getProviders(): ProviderConfig[] {
   const aiHubUrl = process.env.ECLIPSE_AI_HUB_BASE_URL?.trim();
   const aiHubToken = process.env.ECLIPSE_AI_HUB_SERVICE_TOKEN?.trim();
   const normalizedAiHubUrl = aiHubUrl ? normalizeGatewayUrl(aiHubUrl) : null;
-  if (normalizedAiHubUrl && aiHubToken) {
+  const aiHubCanaryPercent = parseAiHubCanaryPercent(
+    process.env.ECLIPSE_AI_HUB_CANARY_PERCENT,
+  );
+  const includeAiHub = options.includeConfiguredAiHub
+    || isAiHubCanaryRequest(process.env.ECLIPSE_AI_HUB_CANARY_PERCENT);
+  if (normalizedAiHubUrl && aiHubToken && includeAiHub) {
     out.push({
       name: "eclipse-ai-hub",
       baseUrl: normalizedAiHubUrl,
@@ -259,6 +281,7 @@ function getProviders(): ProviderConfig[] {
       requestHeaders: () => ({
         "X-Request-Id": randomUUID(),
       }),
+      trafficPercent: aiHubCanaryPercent,
     });
   }
 
@@ -541,7 +564,7 @@ function sanitizeModel(model: string): string {
 }
 
 export function listAiProviderDiagnostics(): AiProviderDiagnostic[] {
-  return getProviders().map((cfg, index) => ({
+  return getProviders({ includeConfiguredAiHub: true }).map((cfg, index) => ({
     priority: index + 1,
     name: cfg.name,
     kind: providerKind(cfg.name),
@@ -549,11 +572,14 @@ export function listAiProviderDiagnostics(): AiProviderDiagnostic[] {
     hasAuth: Boolean(cfg.apiKey || cfg.extraHeaders?.Authorization),
     modelCount: cfg.models.length,
     models: cfg.models.map(sanitizeModel),
+    trafficPercent: cfg.trafficPercent ?? 100,
   }));
 }
 
 export function isAiConfigured(): boolean {
-  return getProviders().length > 0;
+  return getProviders({ includeConfiguredAiHub: true }).some(
+    (provider) => provider.name !== "eclipse-ai-hub" || (provider.trafficPercent ?? 0) > 0,
+  );
 }
 
 // Ollama на CPU может отвечать 30-60s — увеличили default. AI_TIMEOUT_MS env
