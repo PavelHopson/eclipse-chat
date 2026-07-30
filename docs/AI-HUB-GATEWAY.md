@@ -24,6 +24,10 @@ AI_GATEWAY_SERVICE_TOKEN=<random-service-token>
 AI_GATEWAY_UPSTREAM_BASE_URL=http://127.0.0.1:20128/api/v1
 AI_GATEWAY_UPSTREAM_API_KEY=<omniroute-client-key-if-required>
 AI_GATEWAY_MODELS=auto/best-chat
+AI_GATEWAY_TELEMETRY_FILE=/var/lib/eclipse-ai-gateway/telemetry.json
+AI_GATEWAY_TELEMETRY_RETENTION_HOURS=168
+AI_GATEWAY_SLO_AVAILABILITY_PERCENT=99
+AI_GATEWAY_SLO_P95_LATENCY_MS=15000
 ```
 
 Keep the process on loopback when it runs on the same host. For cross-host traffic, use private networking or a TLS reverse proxy; remote plaintext HTTP is rejected.
@@ -47,6 +51,27 @@ ECLIPSE_AI_HUB_CANARY_PERCENT=10
 ```
 
 Restart the Chat server and verify Platform Admin → AI. `eclipse-ai-hub` must appear as a gateway before `omniroute`; token values are never returned by diagnostics.
+
+## Observe the 24-hour SLO
+
+Platform Admin -> AI shows the authenticated gateway summary for the rolling 24-hour window:
+
+- availability target `>= 99%`;
+- p95 latency target `<= 15,000 ms`;
+- request and sanitized error counters;
+- aggregate token usage and upstream-reported cost.
+
+The gateway stores hourly aggregates only. Prompts, responses, tool arguments, user/IP/request identifiers and credentials are excluded from the telemetry file. Chat validates this privacy contract before returning diagnostics to the platform-owner UI. Do not promote the canary until the 24-hour window is healthy.
+
+## Rotate the service token
+
+Run the protected GitHub Actions workflow `AI Gateway Token Rotation`. It performs a zero-downtime three-stage rotation:
+
+1. the gateway temporarily accepts the new and previous token;
+2. Chat switches to the new token and proves the complete provider path;
+3. the gateway revokes the previous token, verifies that it returns `401`, then repeats completion smoke.
+
+Both environment files are restored automatically if any stage fails. Tokens are generated on the production host and are never printed or copied through GitHub Actions.
 
 ## Smoke and rollback
 

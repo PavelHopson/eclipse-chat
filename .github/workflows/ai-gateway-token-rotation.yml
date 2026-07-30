@@ -1,0 +1,38 @@
+name: AI Gateway Token Rotation
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: eclipse-chat-prod-deploy
+  cancel-in-progress: false
+
+jobs:
+  rotate-token:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    steps:
+      - name: Rotate token and verify both services
+        uses: appleboy/ssh-action@7eaf76671a0d7eec5d98ee897acda4f968735a17 # v1.2.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST_PROD }}
+          username: ${{ secrets.DEPLOY_USER_PROD }}
+          key: ${{ secrets.SSH_PRIVATE_KEY_PROD }}
+          command_timeout: 8m
+          script: |
+            set -e
+            cd /var/www/eclipse-chat
+            git fetch origin master
+            git reset --hard origin/master
+            bash deploy/scripts/rotate-ai-gateway-token.sh
+
+      - name: External health check
+        run: |
+          set -e
+          BASE="https://app.star-crm.ru/eclipse-chat"
+          curl -sf --max-time 10 "$BASE/api/version" | grep -q '"version"'
+          curl -sf --max-time 10 "$BASE/api/health" | grep -q '"ok":true'

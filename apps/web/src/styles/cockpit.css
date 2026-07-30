@@ -1152,6 +1152,91 @@
   text-transform: uppercase;
 }
 
+.ec-ai-telemetry {
+  margin-bottom: 16px;
+  padding: 16px;
+  border: 1px solid var(--ec-border-subtle);
+  border-radius: var(--ec-radius-lg);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--ec-status-ai) 8%, transparent), transparent 48%),
+    var(--ec-bg-elevated);
+}
+
+.ec-ai-telemetry--unavailable {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-color: color-mix(in srgb, var(--ec-status-warn) 42%, var(--ec-border-subtle));
+}
+
+.ec-ai-telemetry--unavailable strong { color: var(--ec-text-strong); }
+.ec-ai-telemetry--unavailable p { margin: 4px 0 0; color: var(--ec-text-muted); }
+
+.ec-ai-telemetry__head,
+.ec-ai-telemetry__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.ec-ai-telemetry__status {
+  flex: 0 0 auto;
+  padding: 5px 9px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ec-ai-telemetry__status--healthy { color: var(--ec-status-exec); }
+.ec-ai-telemetry__status--breached { color: var(--ec-status-risk); }
+.ec-ai-telemetry__status--no_data { color: var(--ec-status-idle); }
+
+.ec-ai-telemetry__grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.ec-ai-telemetry__metric {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--ec-border-subtle);
+  border-radius: var(--ec-radius-md);
+  background: color-mix(in srgb, var(--ec-bg-surface) 82%, transparent);
+}
+
+.ec-ai-telemetry__metric span,
+.ec-ai-telemetry__metric small {
+  display: block;
+  color: var(--ec-text-muted);
+}
+
+.ec-ai-telemetry__metric span { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
+.ec-ai-telemetry__metric strong { display: block; margin: 6px 0 4px; color: var(--ec-text-strong); font-size: 20px; }
+.ec-ai-telemetry__metric small { font-size: 11px; }
+
+.ec-ai-telemetry__foot {
+  margin-top: 12px;
+  color: var(--ec-text-muted);
+  font-size: 11px;
+}
+
+@media (max-width: 900px) {
+  .ec-ai-telemetry__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 520px) {
+  .ec-ai-telemetry--unavailable,
+  .ec-ai-telemetry__head { align-items: flex-start; flex-direction: column; }
+  .ec-ai-telemetry__grid { grid-template-columns: 1fr; }
+}
+
 /* Temp-pw display — show-once code-block + copy. */
 .ec-platform-admin__temppw {
   display: flex;

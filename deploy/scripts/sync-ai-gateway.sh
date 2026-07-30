@@ -2,7 +2,7 @@
 set -euo pipefail
 
 AI_HUB_REPOSITORY="https://github.com/PavelHopson/eclipse-ai-hub.git"
-AI_HUB_COMMIT="3a8dfc6c53e08293a8238a47ca4b5617989866ce"
+AI_HUB_COMMIT="2f34715f843004373ff779e21ad81c96b5196408"
 AI_HUB_PATH="${ECLIPSE_AI_HUB_GATEWAY_PATH:-/var/www/eclipse-ai-hub-gateway}"
 GATEWAY_ENV_FILE="${AI_GATEWAY_ENV_FILE:-/etc/eclipse-ai-gateway.env}"
 CHAT_ENV_FILE="${ECLIPSE_CHAT_ENV_FILE:-/var/www/eclipse-chat/apps/server/.env}"
@@ -105,6 +105,10 @@ trap 'rm -f "$GATEWAY_ENV_TEMP"' EXIT
   write_env_line "AI_GATEWAY_UPSTREAM_API_KEY" "$OMNIROUTE_API_KEY"
   write_env_line "AI_GATEWAY_MODELS" "auto/best-chat"
   write_env_line "AI_GATEWAY_REQUESTS_PER_MINUTE" "120"
+  write_env_line "AI_GATEWAY_TELEMETRY_FILE" "/var/lib/eclipse-ai-gateway/telemetry.json"
+  write_env_line "AI_GATEWAY_TELEMETRY_RETENTION_HOURS" "168"
+  write_env_line "AI_GATEWAY_SLO_AVAILABILITY_PERCENT" "99"
+  write_env_line "AI_GATEWAY_SLO_P95_LATENCY_MS" "15000"
 } > "$GATEWAY_ENV_TEMP"
 install -o root -g www-data -m 0640 "$GATEWAY_ENV_TEMP" "$GATEWAY_ENV_FILE"
 

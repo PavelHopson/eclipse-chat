@@ -114,12 +114,46 @@ export type AiProviderDiagnostic = {
   hasAuth: boolean;
   modelCount: number;
   models: string[];
+  trafficPercent: number;
 };
+
+export type AiGatewayTelemetryWindow = {
+  requests: number;
+  successes: number;
+  clientErrors: number;
+  serviceErrors: number;
+  availabilityPercent: number | null;
+  averageLatencyMs: number | null;
+  p95LatencyMs: number | null;
+  maxLatencyMs: number | null;
+  costUsd: number;
+  promptTokens: number;
+  completionTokens: number;
+  topErrors: Array<{ code: string; count: number }>;
+  slo: {
+    status: "healthy" | "breached" | "no_data";
+    availabilityMet: boolean | null;
+    latencyMet: boolean | null;
+  };
+};
+
+export type AiGatewayTelemetryDiagnostic =
+  | { state: "not_configured" }
+  | { state: "unavailable" }
+  | {
+      state: "ready";
+      generatedAt: string;
+      retentionHours: number;
+      persistence: "memory" | "file";
+      targets: { availabilityPercent: number; p95LatencyMs: number };
+      windows: Record<"1h" | "24h" | "7d", AiGatewayTelemetryWindow>;
+    };
 
 export type AiProviderDiagnosticsResponse = {
   providers: AiProviderDiagnostic[];
   total: number;
   configured: boolean;
+  gatewayTelemetry: AiGatewayTelemetryDiagnostic;
 };
 
 // ===== Helpers =============================================================

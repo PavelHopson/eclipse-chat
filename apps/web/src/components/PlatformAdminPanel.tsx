@@ -16,6 +16,7 @@ import {
   unbanPlatformUser,
   unsuspendPlatformServer,
   type AiProviderDiagnostic,
+  type AiGatewayTelemetryDiagnostic,
   type AuditLogEntry,
   type ListServersParams,
   type ListUsersParams,
@@ -1462,8 +1463,72 @@ function providerKindLabel(kind: AiProviderDiagnostic["kind"]): string {
   }
 }
 
+function formatTelemetryNumber(value: number | null, suffix = ""): string {
+  return value === null ? "—" : `${value.toLocaleString("ru-RU", { maximumFractionDigits: 3 })}${suffix}`;
+}
+
+function AiGatewayTelemetrySummary({ telemetry }: { telemetry: AiGatewayTelemetryDiagnostic }) {
+  if (telemetry.state === "not_configured") return null;
+  if (telemetry.state === "unavailable") {
+    return (
+      <div className="ec-ai-telemetry ec-ai-telemetry--unavailable" role="status">
+        <div>
+          <strong>Метрики AI Gateway недоступны</strong>
+          <p>AI fallback остаётся активным. Проверьте процесс Eclipse AI Gateway перед повышением canary.</p>
+        </div>
+        <span className="ec-ai-telemetry__status ec-ai-telemetry__status--breached">требуется проверка</span>
+      </div>
+    );
+  }
+
+  const window = telemetry.windows["24h"];
+  const status = window.slo.status;
+  const statusLabel = status === "healthy"
+    ? "SLO соблюдается"
+    : status === "breached" ? "SLO нарушен" : "сбор данных";
+  return (
+    <section className={`ec-ai-telemetry ec-ai-telemetry--${status}`} aria-label="AI Gateway telemetry за 24 часа">
+      <div className="ec-ai-telemetry__head">
+        <div>
+          <div className="ec-platform-admin__label">Eclipse AI Gateway · 24 часа</div>
+          <p className="ec-platform-admin__sub">
+            Почасовые агрегаты без промптов, ответов и идентификаторов.
+          </p>
+        </div>
+        <span className={`ec-ai-telemetry__status ec-ai-telemetry__status--${status}`}>{statusLabel}</span>
+      </div>
+      <div className="ec-ai-telemetry__grid">
+        <div className="ec-ai-telemetry__metric">
+          <span>Доступность</span>
+          <strong>{formatTelemetryNumber(window.availabilityPercent, "%")}</strong>
+          <small>цель ≥ {telemetry.targets.availabilityPercent}%</small>
+        </div>
+        <div className="ec-ai-telemetry__metric">
+          <span>Задержка p95</span>
+          <strong>{formatTelemetryNumber(window.p95LatencyMs, " ms")}</strong>
+          <small>цель ≤ {telemetry.targets.p95LatencyMs.toLocaleString("ru-RU")} ms</small>
+        </div>
+        <div className="ec-ai-telemetry__metric">
+          <span>Запросы</span>
+          <strong>{window.requests.toLocaleString("ru-RU")}</strong>
+          <small>{window.serviceErrors} service · {window.clientErrors} client errors</small>
+        </div>
+        <div className="ec-ai-telemetry__metric">
+          <span>Стоимость upstream</span>
+          <strong>${window.costUsd.toLocaleString("en-US", { minimumFractionDigits: 4, maximumFractionDigits: 8 })}</strong>
+          <small>{(window.promptTokens + window.completionTokens).toLocaleString("ru-RU")} tokens</small>
+        </div>
+      </div>
+      <div className="ec-ai-telemetry__foot">
+        Обновлено {formatDateTime(telemetry.generatedAt)} · хранение {telemetry.retentionHours} ч · {telemetry.persistence === "file" ? "на диске" : "в памяти"}
+      </div>
+    </section>
+  );
+}
+
 function AiProvidersTab() {
   const [providers, setProviders] = useState<AiProviderDiagnostic[]>([]);
+  const [gatewayTelemetry, setGatewayTelemetry] = useState<AiGatewayTelemetryDiagnostic>({ state: "not_configured" });
   const [configured, setConfigured] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -1475,6 +1540,7 @@ function AiProvidersTab() {
       const res = await listAiProviderDiagnostics();
       setProviders(res.providers);
       setConfigured(res.configured);
+      setGatewayTelemetry(res.gatewayTelemetry);
     } catch (e) {
       setError(
         e instanceof ApiError
@@ -1483,6 +1549,7 @@ function AiProvidersTab() {
       );
       setProviders([]);
       setConfigured(false);
+      setGatewayTelemetry({ state: "unavailable" });
     } finally {
       setLoading(false);
     }
@@ -1514,6 +1581,8 @@ function AiProvidersTab() {
 
       {error && <div className="ec-cck-banner ec-cck-banner--error">{error}</div>}
 
+      {!loading && !error && <AiGatewayTelemetrySummary telemetry={gatewayTelemetry} />}
+
       {!loading && !configured && !error && (
         <div className="ec-cck-empty">
           AI-провайдеры не настроены или отключены.
@@ -1531,6 +1600,7 @@ function AiProvidersTab() {
                 <th className="ec-cck-th">Host</th>
                 <th className="ec-cck-th">Auth</th>
                 <th className="ec-cck-th">Models</th>
+                <th className="ec-cck-th">Трафик</th>
               </tr>
             </thead>
             <tbody>
@@ -1553,6 +1623,7 @@ function AiProvidersTab() {
                       ({p.modelCount})
                     </span>
                   </td>
+                  <td className="ec-cck-cell">{p.trafficPercent}%</td>
                 </tr>
               ))}
             </tbody>

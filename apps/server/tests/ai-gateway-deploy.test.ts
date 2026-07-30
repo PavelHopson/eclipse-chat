@@ -14,6 +14,10 @@ const canaryScript = readFileSync(
   fileURLToPath(new URL("../../../deploy/scripts/set-ai-canary.sh", import.meta.url)),
   "utf8",
 );
+const rotationScript = readFileSync(
+  fileURLToPath(new URL("../../../deploy/scripts/rotate-ai-gateway-token.sh", import.meta.url)),
+  "utf8",
+);
 
 describe("AI gateway production deployment", () => {
   it("pins the upstream repository and protects generated credentials", () => {
@@ -36,5 +40,18 @@ describe("AI gateway production deployment", () => {
     expect(canaryScript).toContain('AI_SMOKE_EXPECT_PROVIDER=eclipse-ai-hub');
     expect(canaryScript).toContain('cp -p -- "$CHAT_ENV_PREVIOUS" "$CHAT_ENV"');
     expect(canaryScript).not.toContain("set -x");
+  });
+
+  it("rotates service credentials through a dual-token grace window with rollback", () => {
+    expect(rotationScript).toContain('AI_GATEWAY_SERVICE_TOKENS');
+    expect(rotationScript).toContain('NEW_TOKEN,$OLD_GATEWAY_TOKEN');
+    expect(rotationScript).toContain('delete_env_value "AI_GATEWAY_SERVICE_TOKENS"');
+    expect(rotationScript).toContain('OLD_TOKEN_STATUS=');
+    expect(rotationScript).toContain('OLD_TOKEN_STATUS" != "401"');
+    expect(rotationScript).toContain('cp -p -- "$GATEWAY_BACKUP" "$GATEWAY_ENV"');
+    expect(rotationScript).toContain('cp -p -- "$CHAT_BACKUP" "$CHAT_ENV"');
+    expect(rotationScript).toContain('AI_SMOKE_EXPECT_PROVIDER=eclipse-ai-hub');
+    expect(rotationScript).not.toContain("set -x");
+    expect(rotationScript).not.toMatch(/echo.*NEW_TOKEN/);
   });
 });

@@ -9,6 +9,7 @@ import { recordAudit } from "../security/audit.js";
 import { deleteAllUserRefresh } from "../auth/refresh.js";
 import { disconnectUser } from "../realtime.js";
 import { listAiProviderDiagnostics } from "../ai/provider.js";
+import { getAiGatewayTelemetryDiagnostic } from "../ai/gatewayTelemetry.js";
 import {
   generateTemporaryPassword,
   PASSWORD_HASH_COST,
@@ -278,10 +279,12 @@ export async function registerPlatformRoutes(app: FastifyInstance) {
   // No keys, prompts, request bodies or user content. Platform-owner only.
   app.get("/api/platform/ai/providers", guard, async () => {
     const providers = listAiProviderDiagnostics();
+    const gatewayTelemetry = await getAiGatewayTelemetryDiagnostic();
     return {
       providers,
       total: providers.length,
       configured: providers.length > 0,
+      gatewayTelemetry,
     };
   });
 
