@@ -2,7 +2,7 @@
 set -euo pipefail
 
 AI_HUB_REPOSITORY="https://github.com/PavelHopson/eclipse-ai-hub.git"
-AI_HUB_COMMIT="2f34715f843004373ff779e21ad81c96b5196408"
+AI_HUB_COMMIT="d959515ad5e915ce6bb544843615a7cbfd9dcb2a"
 AI_HUB_PATH="${ECLIPSE_AI_HUB_GATEWAY_PATH:-/var/www/eclipse-ai-hub-gateway}"
 GATEWAY_ENV_FILE="${AI_GATEWAY_ENV_FILE:-/etc/eclipse-ai-gateway.env}"
 CHAT_ENV_FILE="${ECLIPSE_CHAT_ENV_FILE:-/var/www/eclipse-chat/apps/server/.env}"

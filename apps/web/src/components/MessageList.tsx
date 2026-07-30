@@ -51,6 +51,8 @@ type Props = {
   onToggleActionStatus?: (actionId: string, nextStatus: ActionItemStatus) => Promise<boolean>;
   /** Открыть Thread panel для этого root message. Скрывает кнопку если не задано. */
   onOpenThread?: (messageId: string) => void;
+  /** Open an explicit preview before saving this message to channel memory. */
+  onSaveToMemory?: (message: MessageRow) => void;
   /** v0.61: запустить shared listening для audio attachment'а. */
   onPlayShared?: (attachmentId: string) => void | Promise<void>;
   /** v1.5.25 — DM context. Переключает useMessageEditHistory на
@@ -177,6 +179,7 @@ export function MessageList({
   onCreateAction,
   onToggleActionStatus,
   onOpenThread,
+  onSaveToMemory,
   onPlayShared,
   isDm = false,
   channelTopSubtitle = null,
@@ -1029,6 +1032,20 @@ export function MessageList({
                       </svg>
                     )}
                   </button>
+                  {onSaveToMemory && m.content.trim() && (
+                    <button
+                      type="button"
+                      className="ec-msg-action ec-msg-action--accent"
+                      aria-label="Сохранить в память комнаты"
+                      title="Сохранить в память"
+                      onClick={() => onSaveToMemory(m)}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                        <path d="M6 4a2 2 0 012-2h8a2 2 0 012 2v17l-6-4-6 4V4z" />
+                        <path d="M9 7h6M9 11h4" />
+                      </svg>
+                    </button>
+                  )}
                   {showEdit && (
                     <button
                       type="button"

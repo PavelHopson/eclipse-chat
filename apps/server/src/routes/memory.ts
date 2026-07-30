@@ -1,9 +1,15 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
+import { chat } from "../ai/provider.js";
+import {
+  memorySuggestionPrompt,
+  parseMemorySuggestion,
+} from "../ai/memorySuggestion.js";
 import { db } from "../db.js";
 import { ensureServerActive } from "../lib/serverGating.js";
 import { serializeUser, type RawUserView } from "../lib/userView.js";
+import { emitMemoryUpdated } from "../realtime.js";
 
 const memoryKindSchema = z.enum(["NOTE", "DECISION", "RISK", "FACT", "LINK", "ACTION"]);
 
@@ -23,6 +29,10 @@ const createMemoryBody = z.object({
   tags: tagsSchema,
   sourceMessageId: z.string().trim().min(1).optional(),
   actionItemId: z.string().trim().min(1).optional(),
+});
+
+const suggestMemoryBody = z.object({
+  messageId: z.string().trim().min(1),
 });
 
 const updateMemoryBody = z
@@ -185,6 +195,82 @@ export async function registerMemoryRoutes(app: FastifyInstance) {
   );
 
   app.post(
+    "/api/channels/:id/memory/suggest",
+    {
+      onRequest: [requireJwt],
+      config: { rateLimit: { max: 20, timeWindow: 15 * 60 * 1000 } },
+    },
+    async (req, reply) => {
+      const userId = getUserId(req);
+      if (!userId) {
+        return reply.status(401).send({ error: "Unauthorized" });
+      }
+
+      const { id: channelId } = req.params as { id: string };
+      const parsed = suggestMemoryBody.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.status(400).send({ error: "Invalid body" });
+      }
+
+      const membership = await requireChannelMember(userId, channelId);
+      if ("error" in membership) {
+        return reply.status(membership.error === "Channel not found" ? 404 : 403).send({
+          error: membership.error,
+        });
+      }
+      const active = await ensureServerActive(membership.channel.serverId, reply);
+      if (!active) return;
+
+      const sourceMessage = await db.message.findFirst({
+        where: {
+          id: parsed.data.messageId,
+          channelId,
+          deletedAt: null,
+        },
+        select: {
+          content: true,
+          createdAt: true,
+          user: { select: { displayName: true } },
+        },
+      });
+      if (!sourceMessage) {
+        return reply.status(404).send({ error: "Source message not found in this channel" });
+      }
+      if (!sourceMessage.content.trim()) {
+        return reply.status(400).send({ error: "Source message has no text to analyze" });
+      }
+
+      const prompt = memorySuggestionPrompt({
+        author: sourceMessage.user?.displayName ?? "Неизвестный автор",
+        createdAt: sourceMessage.createdAt.toISOString(),
+        content: sourceMessage.content,
+      });
+
+      try {
+        const result = await chat(
+          [
+            { role: "system", content: prompt.system },
+            { role: "user", content: prompt.user },
+          ],
+          { temperature: 0.1, maxTokens: 700 },
+        );
+        return { suggestion: parseMemorySuggestion(result.text) };
+      } catch (error) {
+        req.log.warn(
+          {
+            event: "memory_suggestion_failed",
+            errorName: error instanceof Error ? error.name : "UnknownError",
+          },
+          "AI memory suggestion failed",
+        );
+        return reply.status(503).send({
+          error: "AI could not prepare a memory draft. You can still edit and save the local draft.",
+        });
+      }
+    },
+  );
+
+  app.post(
     "/api/channels/:id/memory",
     { onRequest: [requireJwt] },
     async (req, reply) => {
@@ -247,6 +333,8 @@ export async function registerMemoryRoutes(app: FastifyInstance) {
         include: memoryEntryInclude,
       });
 
+      emitMemoryUpdated(channelId);
+
       return reply.status(201).send({ entry: serializeMemoryEntry(entry) });
     },
   );
@@ -288,6 +376,8 @@ export async function registerMemoryRoutes(app: FastifyInstance) {
         include: memoryEntryInclude,
       });
 
+      if (entry.channelId) emitMemoryUpdated(entry.channelId);
+
       return { entry: serializeMemoryEntry(entry) };
     },
   );
@@ -316,6 +406,8 @@ export async function registerMemoryRoutes(app: FastifyInstance) {
         data: { archivedAt: new Date() },
         include: memoryEntryInclude,
       });
+
+      if (entry.channelId) emitMemoryUpdated(entry.channelId);
 
       return { entry: serializeMemoryEntry(entry) };
     },

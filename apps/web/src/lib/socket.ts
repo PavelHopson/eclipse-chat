@@ -510,6 +510,7 @@ export const SocketEvents = {
   ReactionRemoved: "reaction:removed",
   ActionItemCreated: "action:item:created",
   ActionItemUpdated: "action:item:updated",
+  MemoryUpdated: "memory:updated",
   ActionItemCommentAdded: "action:item:comment:added",
   ActionItemCommentDeleted: "action:item:comment:deleted",
   ActionItemDependencyChanged: "action:item:dependency:changed",

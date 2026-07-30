@@ -429,6 +429,10 @@ export function emitActionItemUpdated(
   io?.to(`channel:${channelId}`).to(`server:${payload.serverId}`).emit("action:item:updated", payload);
 }
 
+export function emitMemoryUpdated(channelId: string) {
+  io?.to(`channel:${channelId}`).emit("memory:updated", { channelId });
+}
+
 /**
  * v0.54 drawer events: comment добавлен / удалён. Broadcast в channel+server
  * rooms — клиенты с открытым ActionItemDrawer обновят thread; чипы и

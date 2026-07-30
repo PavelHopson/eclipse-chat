@@ -32,6 +32,18 @@ AI_GATEWAY_SLO_P95_LATENCY_MS=15000
 
 Keep the process on loopback when it runs on the same host. For cross-host traffic, use private networking or a TLS reverse proxy; remote plaintext HTTP is rejected.
 
+For several Eclipse products, use independent service clients instead of sharing one
+credential. Eclipse Chat needs `models:read`, `telemetry:read` and `chat:write`:
+
+```dotenv
+AI_GATEWAY_SERVICE_CLIENTS='[{"id":"eclipse-chat","tokens":["<random-chat-token>"],"scopes":["models:read","telemetry:read","chat:write"],"requestsPerMinute":90}]'
+```
+
+Each client receives its own request budget. Tokens must be unique, and a client may
+temporarily hold up to four tokens during a controlled rotation. The current production
+rotation workflow still uses the bounded legacy-token path; do not combine legacy token
+variables with `AI_GATEWAY_SERVICE_CLIENTS` in one gateway environment.
+
 ## Enable the Chat canary
 
 The regular production deploy performs this step automatically through

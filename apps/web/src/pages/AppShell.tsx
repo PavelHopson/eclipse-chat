@@ -57,6 +57,7 @@ const MembersView = lazy(() => import("../components/server/MembersView").then((
 const StatusMenu = lazy(() => import("../components/StatusMenu").then((m) => ({ default: m.StatusMenu })));
 const DownloadAppModal = lazy(() => import("../components/DownloadAppModal").then((m) => ({ default: m.DownloadAppModal })));
 const UserProfileModal = lazy(() => import("../components/UserProfileModal").then((m) => ({ default: m.UserProfileModal })));
+const MessageMemoryModal = lazy(() => import("../components/MessageMemoryModal").then((m) => ({ default: m.MessageMemoryModal })));
 
 function isTextEntryTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -93,7 +94,7 @@ import { useMediaQuery } from "../hooks/useMediaQuery";
 import { useDrawerSwipe } from "../hooks/useDrawerSwipe";
 import { useNativeBackButton } from "../hooks/useNativeBackButton";
 import { useMembers, type MemberRole, type MemberRow } from "../hooks/useMembers";
-import { useMessages } from "../hooks/useMessages";
+import { useMessages, type MessageRow } from "../hooks/useMessages";
 import { useNotifications } from "../hooks/useNotifications";
 import { useShareTarget } from "../hooks/useShareTarget";
 import { useFocusMode } from "../hooks/useFocusMode";
@@ -258,10 +259,12 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     entries: channelMemoryEntries,
     loading: channelMemoryLoading,
     saving: channelMemorySaving,
+    suggesting: channelMemorySuggesting,
     error: channelMemoryError,
     createEntry: createChannelMemoryEntry,
+    suggestEntry: suggestChannelMemoryEntry,
     archiveEntry: archiveChannelMemoryEntry,
-  } = useChannelMemory(selectedChannelId);
+  } = useChannelMemory(selectedChannelId, socket);
 
   // ===== DMs =====
   // DM-mode активируется когда activeServerId === null (после клика «Личные
@@ -373,6 +376,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     if (!showProfile) setSettingsInitialView(undefined);
   }, [showProfile]);
   const [viewedProfileUserId, setViewedProfileUserId] = useState<string | null>(null);
+  const [memoryDraftMessage, setMemoryDraftMessage] = useState<MessageRow | null>(null);
   const [showSearch, setShowSearch] = useState(false);
   const [homeOpen, setHomeOpen] = useState(false);
   const [friendsOpen, setFriendsOpen] = useState(false);
@@ -420,6 +424,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   // Закрыть thread при смене канала / сервера — не показывать thread из старого канала
   useEffect(() => {
     setSelectedThreadId(null);
+    setMemoryDraftMessage(null);
   }, [selectedChannelId, activeServerId]);
   // Закрыть Status Board + Team Health при смене сервера (они привязаны к серверу).
   useEffect(() => {
@@ -2420,6 +2425,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               onToggleReaction={toggleReaction}
               onCreateAction={createActionItem}
               onToggleActionStatus={updateActionItemStatus}
+              onSaveToMemory={setMemoryDraftMessage}
               onOpenThread={(messageId) => {
                 setSelectedThreadId(messageId);
                 // v0.46 fix: auto-expand right rail if collapsed —
@@ -2703,6 +2709,23 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               setFriendsOpen(false);
               if (isTabletOrSmaller) setMembersOpen(false);
             });
+          }}
+        />
+      )}
+
+      {memoryDraftMessage && (
+        <MessageMemoryModal
+          key={memoryDraftMessage.id}
+          message={memoryDraftMessage}
+          saving={channelMemorySaving}
+          suggesting={channelMemorySuggesting}
+          onClose={() => setMemoryDraftMessage(null)}
+          onSave={createChannelMemoryEntry}
+          onSuggest={suggestChannelMemoryEntry}
+          onSaved={() => {
+            setMemoryDraftMessage(null);
+            setInfoPanelTab("memory");
+            setInfoPanelOpen(true);
           }}
         />
       )}

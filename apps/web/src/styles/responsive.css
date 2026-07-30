@@ -2145,3 +2145,17 @@
     min-height: 40px;
   }
 }
+@media (max-width: 640px) {
+  .ec-memory-compose__grid,
+  .ec-memory-compose__ai-row {
+    grid-template-columns: 1fr;
+  }
+
+  .ec-memory-compose__ai-row .ec-btn {
+    width: 100%;
+  }
+
+  .ec-memory-compose__source {
+    max-height: 112px;
+  }
+}

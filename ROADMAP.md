@@ -32,6 +32,8 @@
 
 ## Implementation bridge — 2026-07-05
 
+- [x] **v1.7.22 explicit message-to-memory flow + scoped gateway runtime** — у текстового сообщения появилась понятная команда «Сохранить в память»: локальный черновик открывается сразу, тип, заголовок, описание и теги редактируются до записи, после сохранения открывается вкладка памяти. «Улучшить с AI» запускается только вручную, явно сообщает о передаче текста провайдеру и никогда не сохраняет результат без подтверждения. Backend проверяет членство и принадлежность сообщения комнате, ограничивает частоту, считает source message недоверенными данными и принимает от модели только strict bounded JSON. Production deploy закреплён на AI Hub SHA `d959515ad5e915ce6bb544843615a7cbfd9dcb2a`, где появились per-client identities, endpoint scopes и независимые бюджеты; legacy credential path сохранён для текущего rotation workflow.
+
 - [x] **Production verification 2026-07-30** — Chat v1.7.21 deploy run `30541646462` установил pinned AI Hub runtime, подтвердил file-backed telemetry, completion и внешний version/health smoke. Protected rotation run `30541948329` прошёл все три stage, подтвердил provider `eclipse-ai-hub`, отозвал прежний credential и сохранил canary 10%. Текущий 24h status — `healthy`, но promotion ожидает полный накопленный 24h window.
 - [x] **v1.7.21 AI Gateway observability and credential rotation** — Platform Admin -> AI получил privacy-safe 24h SLO summary: availability, p95 latency, request/error counters, aggregate token usage and upstream cost. Chat принимает только строгий hourly aggregate contract без prompt/response/user/IP/request identifiers. Production gateway закреплён на полном AI Hub SHA `2f34715f843004373ff779e21ad81c96b5196408`; deploy создаёт root-managed telemetry storage. Workflow `AI Gateway Token Rotation` меняет service token без простоя через bounded dual-token window, автоматически восстанавливает оба env при сбое и отдельно доказывает `401` для отозванного токена. Promotion выше 10% остаётся закрыт до здорового 24h SLO window.
 
@@ -40,7 +42,7 @@
 - [x] **AI setup docs refreshed** — `docs/AI-SETUP.md` теперь отражает текущую цепочку провайдеров, Pollinations fallback и безопасный способ подключать OmniRoute.
 - [x] **v1.7.2 AI provider diagnostics** — Platform Admin → AI tab показывает санитизированный список активных провайдеров: priority, type, host, auth-state, models. API keys, prompts и user content не раскрываются.
 - [x] **v1.7.3 OpenHuman-inspired memory foundation** — добавлены `MemoryEntry` + migration, REST API `/api/channels/:id/memory`, мягкое архивирование записей, UI во вкладке "Память": заметки, решения, риски, факты, ссылки, действия, теги и pinned anchors.
-- [ ] **Next P0: AI memory extraction + digest integration** — действие "save to memory" из сообщения/action item, AI-предложения памяти, memory delta в "since you were away", поиск по памяти.
+- [ ] **Next P0: memory digest + retrieval** — добавить memory delta в «Пока тебя не было», сохранение из action item и semantic/full-text поиск по памяти. Message-to-memory extraction закрыт в v1.7.22.
 
 ### Voice stability hotfix — 2026-07-17
 

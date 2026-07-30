@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
+import type { Socket } from "socket.io-client";
 import { apiJson } from "../lib/api";
+import { SocketEvents } from "../lib/socket";
 
 export type MemoryKind = "NOTE" | "DECISION" | "RISK" | "FACT" | "LINK" | "ACTION";
 
@@ -34,6 +36,13 @@ export type CreateMemoryEntryInput = {
   actionItemId?: string;
 };
 
+export type MemorySuggestion = {
+  kind: MemoryKind;
+  title: string;
+  content: string | null;
+  tags: string[];
+};
+
 type MemoryResponse = {
   entries: ChannelMemoryEntry[];
 };
@@ -42,10 +51,15 @@ type SingleMemoryResponse = {
   entry: ChannelMemoryEntry;
 };
 
-export function useChannelMemory(channelId: string | null) {
+type MemorySuggestionResponse = {
+  suggestion: MemorySuggestion;
+};
+
+export function useChannelMemory(channelId: string | null, socket?: Socket | null) {
   const [entries, setEntries] = useState<ChannelMemoryEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [suggesting, setSuggesting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
@@ -70,6 +84,21 @@ export function useChannelMemory(channelId: string | null) {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    if (!socket || !channelId) return;
+    let timer: number | null = null;
+    const onMemoryUpdated = (payload: { channelId?: string }) => {
+      if (payload.channelId !== channelId) return;
+      if (timer !== null) window.clearTimeout(timer);
+      timer = window.setTimeout(() => void refresh(), 250);
+    };
+    socket.on(SocketEvents.MemoryUpdated, onMemoryUpdated);
+    return () => {
+      if (timer !== null) window.clearTimeout(timer);
+      socket.off(SocketEvents.MemoryUpdated, onMemoryUpdated);
+    };
+  }, [socket, channelId, refresh]);
 
   const createEntry = useCallback(
     async (input: CreateMemoryEntryInput): Promise<ChannelMemoryEntry | null> => {
@@ -110,13 +139,35 @@ export function useChannelMemory(channelId: string | null) {
     }
   }, []);
 
+  const suggestEntry = useCallback(
+    async (messageId: string): Promise<MemorySuggestion> => {
+      if (!channelId) throw new Error("Сначала выберите комнату");
+      setSuggesting(true);
+      try {
+        const data = await apiJson<MemorySuggestionResponse>(
+          `/api/channels/${encodeURIComponent(channelId)}/memory/suggest`,
+          {
+            method: "POST",
+            body: JSON.stringify({ messageId }),
+          },
+        );
+        return data.suggestion;
+      } finally {
+        setSuggesting(false);
+      }
+    },
+    [channelId],
+  );
+
   return {
     entries,
     loading,
     saving,
+    suggesting,
     error,
     refresh,
     createEntry,
+    suggestEntry,
     archiveEntry,
   };
 }

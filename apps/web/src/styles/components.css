@@ -13241,3 +13241,94 @@ body {
   color: var(--ec-status-success);
 }
 
+/* ===== Message to memory =================================== */
+
+.ec-memory-compose {
+  display: grid;
+  gap: var(--ec-space-4);
+}
+
+.ec-memory-compose__source {
+  position: relative;
+  max-height: 150px;
+  overflow: auto;
+  padding: var(--ec-space-4);
+  border: 1px solid var(--ec-border-subtle);
+  border-radius: var(--ec-radius-lg);
+  background:
+    radial-gradient(circle at 100% 0, var(--ec-accent-soft), transparent 48%),
+    var(--ec-surface-1);
+}
+
+.ec-memory-compose__source-label {
+  display: block;
+  margin-bottom: var(--ec-space-1);
+  color: var(--ec-accent);
+  font-size: var(--ec-text-2xs);
+  font-weight: 700;
+  letter-spacing: var(--ec-tracking-caps);
+  text-transform: uppercase;
+}
+
+.ec-memory-compose__source p {
+  margin: var(--ec-space-2) 0 0;
+  color: var(--ec-text-muted);
+  font-size: var(--ec-text-sm);
+  line-height: var(--ec-leading-relaxed);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.ec-memory-compose__ai-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--ec-space-3);
+  padding: var(--ec-space-3) var(--ec-space-4);
+  border: 1px solid var(--ec-border-accent);
+  border-radius: var(--ec-radius-lg);
+  background: color-mix(in srgb, var(--ec-accent-soft) 58%, var(--ec-surface-1));
+}
+
+.ec-memory-compose__ai-row strong,
+.ec-memory-compose__ai-row span {
+  display: block;
+}
+
+.ec-memory-compose__ai-row strong {
+  color: var(--ec-text);
+  font-size: var(--ec-text-sm);
+}
+
+.ec-memory-compose__ai-row span {
+  margin-top: 2px;
+  color: var(--ec-text-muted);
+  font-size: var(--ec-text-xs);
+  line-height: var(--ec-leading-normal);
+}
+
+.ec-memory-compose__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  gap: var(--ec-space-3);
+}
+
+.ec-memory-compose__content {
+  min-height: 126px;
+}
+
+.ec-memory-compose__error {
+  padding: var(--ec-space-3);
+  border: 1px solid color-mix(in srgb, var(--ec-danger) 45%, transparent);
+  border-radius: var(--ec-radius-md);
+  background: color-mix(in srgb, var(--ec-danger) 10%, transparent);
+  color: var(--ec-danger);
+  font-size: var(--ec-text-sm);
+}
+
+.ec-memory-compose__privacy {
+  margin: calc(var(--ec-space-2) * -1) 0 0;
+  color: var(--ec-text-dim);
+  font-size: var(--ec-text-2xs);
+  line-height: var(--ec-leading-normal);
+}
