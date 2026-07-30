@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 /**
  * AI provider layer для Eclipse Chat.
  *
@@ -5,25 +7,15 @@
  * каждый провайдер шлёт OpenAI-compatible /chat/completions и парсит choice[0].
  *
  * Chain priority (auto-fallback по списку, первый успешный = result):
- *   1. Ollama (локальный, без API key) — приоритет для self-host
- *   2. OmniRoute (self-hosted AI gateway, provider-router + auto/fallback)
- *   3. Groq (free, LPU — очень быстрый)
- *   4. Cerebras (free, экстремально быстрый inference)
- *   5. OpenRouter (free DeepSeek/Qwen/Llama tier)
- *   6. NVIDIA Build (95 free models, требует API key)
- *   7. Mistral (free tier La Plateforme)
- *   6b. YandexGPT (РФ free-tier, OpenAI-compatible, приватный) — нужны
- *       YANDEX_API_KEY + YANDEX_FOLDER_ID; доступен из РФ, стандартный TLS
- *   6c. DeepSeek (cheap, OpenAI-compatible api.deepseek.com) — DEEPSEEK_API_KEY
- *   6d. GLM / Zhipu (cheap, z.ai standard API) — GLM_API_KEY
- *   6e. MiMo / Xiaomi (cheap, api.xiaomimimo.com) — MIMO_API_KEY
- *   6f. Custom OpenAI-compatible (generic slot, напр. OpenModel-шлюз) —
+ *   Ollama → Eclipse AI Hub → OmniRoute → Groq → Cerebras → OpenRouter →
+ *   NVIDIA → Mistral → YandexGPT → DeepSeek → GLM → MiMo → Custom →
+ *   OpenAI → Pollinations.
+ *
+ * Custom OpenAI-compatible (generic slot, напр. OpenModel-шлюз):
  *       CUSTOM_LLM_BASE_URL + CUSTOM_LLM_API_KEY
- *       ⚠️ 6c-6f — сторонние/КНР-провайдеры: env-gated, @ai-контент уходит
+ *       ⚠️ Сторонние/КНР-провайдеры env-gated: @ai-контент уходит
  *       к ним, НЕ для чувствительных данных. Стоят после free, перед paid.
- *   7. OpenAI (paid fallback)
- *   8. Pollinations (keyless, БЕЗ API key) — бесключевой free fallback,
- *      включён по умолчанию; стоит последним, любой реальный ключ важнее.
+ * Pollinations — keyless free fallback; включён по умолчанию и стоит последним.
  *
  * Провайдеры 1-7 OpenAI-compatible + опциональны (включаются заданием своего
  * API key в env). Добавить ещё один free-провайдер = ещё один блок в
@@ -177,6 +169,8 @@ type ProviderConfig = {
   models: string[];
   /** Дополнительный header для OpenRouter rankings. */
   extraHeaders?: Record<string, string>;
+  /** Per-request headers, например cross-service request id. */
+  requestHeaders?: () => Record<string, string>;
   /** v1.6.61 — provider-specific поля в JSON body запроса (мерджатся поверх
    *  base body). Для Pollinations: `private:true` (генерация НЕ в публичную
    *  ленту) + `referrer`. Не должен содержать model/messages (их задаёт base). */
@@ -214,6 +208,18 @@ function parseModels(envValue: string | undefined, fallback: string): string[] {
   return dedup.length > 0 ? dedup : [fallback];
 }
 
+function normalizeGatewayUrl(value: string): string | null {
+  try {
+    const url = new URL(value);
+    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) return null;
+    const loopback = new Set(['localhost', '127.0.0.1', '[::1]']);
+    if (url.protocol === 'http:' && !loopback.has(url.hostname)) return null;
+    return url.toString().replace(/\/+$/, '');
+  } catch {
+    return null;
+  }
+}
+
 function getProviders(): ProviderConfig[] {
   const out: ProviderConfig[] = [];
 
@@ -232,7 +238,31 @@ function getProviders(): ProviderConfig[] {
     });
   }
 
-  // 2. OmniRoute — self-hosted OpenAI-compatible AI gateway.
+  // 2. Eclipse AI Hub Gateway — единый server-side control plane экосистемы.
+  //    Canary включается только при наличии URL И отдельного service token.
+  //    Remote HTTP запрещён, чтобы bearer token не уходил открытым текстом.
+  const aiHubUrl = process.env.ECLIPSE_AI_HUB_BASE_URL?.trim();
+  const aiHubToken = process.env.ECLIPSE_AI_HUB_SERVICE_TOKEN?.trim();
+  const normalizedAiHubUrl = aiHubUrl ? normalizeGatewayUrl(aiHubUrl) : null;
+  if (normalizedAiHubUrl && aiHubToken) {
+    out.push({
+      name: "eclipse-ai-hub",
+      baseUrl: normalizedAiHubUrl,
+      apiKey: aiHubToken,
+      models: parseModels(
+        process.env.ECLIPSE_AI_HUB_MODELS ?? process.env.ECLIPSE_AI_HUB_MODEL,
+        "auto/best-chat",
+      ),
+      extraHeaders: {
+        "X-Eclipse-Client": "eclipse-chat",
+      },
+      requestHeaders: () => ({
+        "X-Request-Id": randomUUID(),
+      }),
+    });
+  }
+
+  // 3. OmniRoute — self-hosted OpenAI-compatible AI gateway.
   //    Reference: https://github.com/diegosouzapw/OmniRoute
   //    По README gateway слушает http://localhost:20128/v1 и поддерживает
   //    model=auto / auto/* routing. Включаем только явным env, чтобы прод
@@ -491,7 +521,7 @@ function getProviders(): ProviderConfig[] {
 
 function providerKind(name: string): AiProviderDiagnostic["kind"] {
   if (name === "ollama") return "local";
-  if (name === "omniroute" || name === "custom") return "gateway";
+  if (name === "eclipse-ai-hub" || name === "omniroute" || name === "custom") return "gateway";
   if (name === "pollinations") return "keyless";
   return "cloud";
 }
@@ -571,6 +601,7 @@ async function callProviderModel(
       "Content-Type": "application/json",
       ...(cfg.apiKey ? { Authorization: `Bearer ${cfg.apiKey}` } : {}),
       ...cfg.extraHeaders,
+      ...cfg.requestHeaders?.(),
     };
     const res = await fetch(`${cfg.baseUrl}/chat/completions`, {
       method: "POST",
