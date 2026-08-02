@@ -3,11 +3,13 @@ import { z } from "zod";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
 import { chat } from "../ai/provider.js";
 import {
+  actionItemMemorySuggestionPrompt,
   memorySuggestionPrompt,
   parseMemorySuggestion,
 } from "../ai/memorySuggestion.js";
 import { db } from "../db.js";
 import { ensureServerActive } from "../lib/serverGating.js";
+import { hasPermission } from "../lib/permissions.js";
 import { serializeUser, type RawUserView } from "../lib/userView.js";
 import { emitMemoryUpdated } from "../realtime.js";
 
@@ -20,20 +22,23 @@ const tagsSchema = z
 
 const listMemoryQuery = z.object({
   includeServer: z.enum(["true", "false"]).optional(),
-});
+}).strict();
 
-const createMemoryBody = z.object({
-  kind: memoryKindSchema.default("NOTE"),
-  title: z.string().trim().min(1).max(180),
-  content: z.string().trim().max(4000).nullable().optional(),
-  tags: tagsSchema,
-  sourceMessageId: z.string().trim().min(1).optional(),
-  actionItemId: z.string().trim().min(1).optional(),
-});
+const createMemoryBody = z
+  .object({
+    kind: memoryKindSchema.default("NOTE"),
+    title: z.string().trim().min(1).max(180),
+    content: z.string().trim().max(4000).nullable().optional(),
+    tags: tagsSchema,
+    sourceMessageId: z.string().trim().min(1).optional(),
+    actionItemId: z.string().trim().min(1).optional(),
+  })
+  .strict();
 
-const suggestMemoryBody = z.object({
-  messageId: z.string().trim().min(1),
-});
+const suggestMemoryBody = z.union([
+  z.object({ messageId: z.string().trim().min(1) }).strict(),
+  z.object({ actionItemId: z.string().trim().min(1) }).strict(),
+]);
 
 const updateMemoryBody = z
   .object({
@@ -42,6 +47,7 @@ const updateMemoryBody = z
     content: z.string().trim().max(4000).nullable().optional(),
     tags: tagsSchema,
   })
+  .strict()
   .refine((body) => Object.keys(body).length > 0, {
     message: "At least one field is required",
   });
@@ -54,6 +60,12 @@ const memoryEntryInclude = {
       avatar: true,
       email: true,
       botProfile: { select: { id: true, role: true } },
+    },
+  },
+  channel: {
+    select: {
+      internal: true,
+      server: { select: { mode: true } },
     },
   },
 };
@@ -116,21 +128,33 @@ function serializeMemoryEntry(entry: MemoryEntryRow) {
 async function requireChannelMember(userId: string, channelId: string) {
   const channel = await db.channel.findUnique({
     where: { id: channelId },
-    select: { id: true, serverId: true },
+    select: {
+      id: true,
+      serverId: true,
+      internal: true,
+      server: { select: { mode: true } },
+    },
   });
   if (!channel) {
-    return { error: "Channel not found" as const };
+    return { ok: false as const, error: "Channel not found" as const, status: 404 as const };
   }
 
   const member = await db.member.findUnique({
     where: { userId_serverId: { userId, serverId: channel.serverId } },
-    select: { id: true },
+    select: { id: true, role: true },
   });
   if (!member) {
-    return { error: "Not a member of this server" as const };
+    return { ok: false as const, error: "Not a member of this server" as const, status: 403 as const };
+  }
+  if (
+    channel.server.mode === "CLIENT" &&
+    channel.internal &&
+    !hasPermission(member.role, "ROOM_VIEW_INTERNAL")
+  ) {
+    return { ok: false as const, error: "Channel not found" as const, status: 404 as const };
   }
 
-  return { channel };
+  return { ok: true as const, channel, member };
 }
 
 async function requireMemoryMember(userId: string, memoryId: string) {
@@ -139,18 +163,25 @@ async function requireMemoryMember(userId: string, memoryId: string) {
     include: memoryEntryInclude,
   });
   if (!entry) {
-    return { error: "Memory entry not found" as const };
+    return { ok: false as const, error: "Memory entry not found" as const, status: 404 as const };
   }
 
   const member = await db.member.findUnique({
     where: { userId_serverId: { userId, serverId: entry.serverId } },
-    select: { id: true },
+    select: { id: true, role: true },
   });
   if (!member) {
-    return { error: "Not a member of this server" as const };
+    return { ok: false as const, error: "Not a member of this server" as const, status: 403 as const };
+  }
+  if (
+    entry.channel?.server.mode === "CLIENT" &&
+    entry.channel.internal &&
+    !hasPermission(member.role, "ROOM_VIEW_INTERNAL")
+  ) {
+    return { ok: false as const, error: "Memory entry not found" as const, status: 404 as const };
   }
 
-  return { entry };
+  return { ok: true as const, entry };
 }
 
 export async function registerMemoryRoutes(app: FastifyInstance) {
@@ -170,8 +201,8 @@ export async function registerMemoryRoutes(app: FastifyInstance) {
       }
 
       const membership = await requireChannelMember(userId, channelId);
-      if ("error" in membership) {
-        return reply.status(membership.error === "Channel not found" ? 404 : 403).send({
+      if (!membership.ok) {
+        return reply.status(membership.status).send({
           error: membership.error,
         });
       }
@@ -213,38 +244,66 @@ export async function registerMemoryRoutes(app: FastifyInstance) {
       }
 
       const membership = await requireChannelMember(userId, channelId);
-      if ("error" in membership) {
-        return reply.status(membership.error === "Channel not found" ? 404 : 403).send({
+      if (!membership.ok) {
+        return reply.status(membership.status).send({
           error: membership.error,
         });
       }
       const active = await ensureServerActive(membership.channel.serverId, reply);
       if (!active) return;
 
-      const sourceMessage = await db.message.findFirst({
-        where: {
-          id: parsed.data.messageId,
-          channelId,
-          deletedAt: null,
-        },
-        select: {
-          content: true,
-          createdAt: true,
-          user: { select: { displayName: true } },
-        },
-      });
-      if (!sourceMessage) {
-        return reply.status(404).send({ error: "Source message not found in this channel" });
-      }
-      if (!sourceMessage.content.trim()) {
-        return reply.status(400).send({ error: "Source message has no text to analyze" });
-      }
+      let prompt: ReturnType<typeof memorySuggestionPrompt>;
+      if ("messageId" in parsed.data) {
+        const sourceMessage = await db.message.findFirst({
+          where: {
+            id: parsed.data.messageId,
+            channelId,
+            deletedAt: null,
+          },
+          select: {
+            content: true,
+            createdAt: true,
+            user: { select: { displayName: true } },
+          },
+        });
+        if (!sourceMessage) {
+          return reply.status(404).send({ error: "Source message not found in this channel" });
+        }
+        if (!sourceMessage.content.trim()) {
+          return reply.status(400).send({ error: "Source message has no text to analyze" });
+        }
 
-      const prompt = memorySuggestionPrompt({
-        author: sourceMessage.user?.displayName ?? "Неизвестный автор",
-        createdAt: sourceMessage.createdAt.toISOString(),
-        content: sourceMessage.content,
-      });
+        prompt = memorySuggestionPrompt({
+          author: sourceMessage.user?.displayName ?? "Неизвестный автор",
+          createdAt: sourceMessage.createdAt.toISOString(),
+          content: sourceMessage.content,
+        });
+      } else {
+        const actionItem = await db.actionItem.findFirst({
+          where: {
+            id: parsed.data.actionItemId,
+            channelId,
+            serverId: membership.channel.serverId,
+          },
+          select: {
+            type: true,
+            status: true,
+            priority: true,
+            title: true,
+            description: true,
+            approvalStatus: true,
+            approvalNote: true,
+            dueAt: true,
+          },
+        });
+        if (!actionItem) {
+          return reply.status(404).send({ error: "Action item not found in this channel" });
+        }
+        prompt = actionItemMemorySuggestionPrompt({
+          ...actionItem,
+          dueAt: actionItem.dueAt?.toISOString() ?? null,
+        });
+      }
 
       try {
         const result = await chat(
@@ -272,7 +331,10 @@ export async function registerMemoryRoutes(app: FastifyInstance) {
 
   app.post(
     "/api/channels/:id/memory",
-    { onRequest: [requireJwt] },
+    {
+      onRequest: [requireJwt],
+      config: { rateLimit: { max: 60, timeWindow: 5 * 60 * 1000 } },
+    },
     async (req, reply) => {
       const userId = getUserId(req);
       if (!userId) {
@@ -286,18 +348,42 @@ export async function registerMemoryRoutes(app: FastifyInstance) {
       }
 
       const membership = await requireChannelMember(userId, channelId);
-      if ("error" in membership) {
-        return reply.status(membership.error === "Channel not found" ? 404 : 403).send({
+      if (!membership.ok) {
+        return reply.status(membership.status).send({
           error: membership.error,
         });
       }
       const active = await ensureServerActive(membership.channel.serverId, reply);
       if (!active) return;
 
-      if (parsed.data.sourceMessageId) {
+      let resolvedSourceMessageId = parsed.data.sourceMessageId ?? null;
+      if (parsed.data.actionItemId) {
+        const actionItem = await db.actionItem.findFirst({
+          where: {
+            id: parsed.data.actionItemId,
+            channelId,
+            serverId: membership.channel.serverId,
+          },
+          select: { id: true, sourceMessageId: true },
+        });
+        if (!actionItem) {
+          return reply.status(400).send({ error: "Action item not found in this channel" });
+        }
+        if (
+          resolvedSourceMessageId &&
+          resolvedSourceMessageId !== actionItem.sourceMessageId
+        ) {
+          return reply.status(400).send({
+            error: "Source message does not belong to this action item",
+          });
+        }
+        resolvedSourceMessageId = actionItem.sourceMessageId;
+      }
+
+      if (resolvedSourceMessageId) {
         const sourceMessage = await db.message.findFirst({
           where: {
-            id: parsed.data.sourceMessageId,
+            id: resolvedSourceMessageId,
             channelId,
             deletedAt: null,
           },
@@ -305,16 +391,6 @@ export async function registerMemoryRoutes(app: FastifyInstance) {
         });
         if (!sourceMessage) {
           return reply.status(400).send({ error: "Source message not found in this channel" });
-        }
-      }
-
-      if (parsed.data.actionItemId) {
-        const actionItem = await db.actionItem.findFirst({
-          where: { id: parsed.data.actionItemId, channelId },
-          select: { id: true },
-        });
-        if (!actionItem) {
-          return reply.status(400).send({ error: "Action item not found in this channel" });
         }
       }
 
@@ -326,7 +402,7 @@ export async function registerMemoryRoutes(app: FastifyInstance) {
           title: parsed.data.title,
           content: parsed.data.content || null,
           tags: normalizeTags(parsed.data.tags),
-          sourceMessageId: parsed.data.sourceMessageId ?? null,
+          sourceMessageId: resolvedSourceMessageId,
           actionItemId: parsed.data.actionItemId ?? null,
           createdByUserId: userId,
         },
@@ -355,8 +431,8 @@ export async function registerMemoryRoutes(app: FastifyInstance) {
       }
 
       const membership = await requireMemoryMember(userId, id);
-      if ("error" in membership) {
-        return reply.status(membership.error === "Memory entry not found" ? 404 : 403).send({
+      if (!membership.ok) {
+        return reply.status(membership.status).send({
           error: membership.error,
         });
       }
@@ -393,8 +469,8 @@ export async function registerMemoryRoutes(app: FastifyInstance) {
 
       const { id } = req.params as { id: string };
       const membership = await requireMemoryMember(userId, id);
-      if ("error" in membership) {
-        return reply.status(membership.error === "Memory entry not found" ? 404 : 403).send({
+      if (!membership.ok) {
+        return reply.status(membership.status).send({
           error: membership.error,
         });
       }

@@ -9,6 +9,7 @@ import {
 import { AINotConfiguredError, chat } from "../ai/provider.js";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
 import { ensureServerActive } from "../lib/serverGating.js";
+import { hasPermission } from "../lib/permissions.js";
 import { db } from "../db.js";
 import { serializeUser } from "../lib/userView.js";
 import { notifyUser } from "../lib/webPush.js";
@@ -80,21 +81,45 @@ function deriveActionTitle(type: z.infer<typeof actionTypeSchema>, content: stri
 async function requireChannelMember(userId: string, channelId: string) {
   const channel = await db.channel.findUnique({
     where: { id: channelId },
-    select: { id: true, serverId: true },
+    select: {
+      id: true,
+      serverId: true,
+      internal: true,
+      server: { select: { mode: true } },
+    },
   });
   if (!channel) {
-    return { error: "Channel not found" as const };
+    return { ok: false as const, error: "Channel not found" as const, status: 404 as const };
   }
 
   const member = await db.member.findUnique({
     where: { userId_serverId: { userId, serverId: channel.serverId } },
-    select: { id: true },
+    select: { id: true, role: true },
   });
   if (!member) {
-    return { error: "Not a member of this server" as const };
+    return { ok: false as const, error: "Not a member of this server" as const, status: 403 as const };
+  }
+  if (
+    channel.server.mode === "CLIENT" &&
+    channel.internal &&
+    !hasPermission(member.role, "ROOM_VIEW_INTERNAL")
+  ) {
+    return { ok: false as const, error: "Channel not found" as const, status: 404 as const };
   }
 
-  return { channel };
+  return { ok: true as const, channel, member };
+}
+
+async function requireActionMember(
+  userId: string,
+  action: { serverId: string; channelId: string },
+) {
+  const access = await requireChannelMember(userId, action.channelId);
+  if (!access.ok) return access;
+  if (access.channel.serverId !== action.serverId) {
+    return { ok: false as const, error: "Action not found" as const, status: 404 as const };
+  }
+  return access;
 }
 
 /**
@@ -122,8 +147,8 @@ export async function registerActionRoutes(app: FastifyInstance) {
       }
 
       const membership = await requireChannelMember(userId, channelId);
-      if ("error" in membership) {
-        return reply.status(membership.error === "Channel not found" ? 404 : 403).send({
+      if (!membership.ok) {
+        return reply.status(membership.status).send({
           error: membership.error,
         });
       }
@@ -163,7 +188,11 @@ export async function registerActionRoutes(app: FastifyInstance) {
       }
       const member = await db.member.findUnique({
         where: { userId_serverId: { userId, serverId } },
-        select: { id: true },
+        select: {
+          id: true,
+          role: true,
+          server: { select: { mode: true } },
+        },
       });
       if (!member) {
         return reply.status(403).send({ error: "Not a member of this server" });
@@ -171,6 +200,10 @@ export async function registerActionRoutes(app: FastifyInstance) {
       const actions = await db.actionItem.findMany({
         where: {
           serverId,
+          ...(member.server.mode === "CLIENT" &&
+          !hasPermission(member.role, "ROOM_VIEW_INTERNAL")
+            ? { channel: { internal: false } }
+            : {}),
           ...(parsed.data.status ? { status: parsed.data.status } : {}),
         },
         include: actionItemInclude,
@@ -202,12 +235,9 @@ export async function registerActionRoutes(app: FastifyInstance) {
       if (!item) {
         return reply.status(404).send({ error: "Action not found" });
       }
-      const member = await db.member.findUnique({
-        where: { userId_serverId: { userId, serverId: item.serverId } },
-        select: { id: true },
-      });
-      if (!member) {
-        return reply.status(403).send({ error: "Not a member of this server" });
+      const access = await requireActionMember(userId, item);
+      if (!access.ok) {
+        return reply.status(access.status).send({ error: access.error });
       }
       return { action: serializeActionItemDetail(item) };
     },
@@ -258,17 +288,9 @@ export async function registerActionRoutes(app: FastifyInstance) {
         return reply.status(410).send({ error: "Cannot create action from deleted message" });
       }
 
-      const member = await db.member.findUnique({
-        where: {
-          userId_serverId: {
-            userId,
-            serverId: message.channel.serverId,
-          },
-        },
-        select: { id: true },
-      });
-      if (!member) {
-        return reply.status(403).send({ error: "Not a member of this server" });
+      const access = await requireChannelMember(userId, message.channelId);
+      if (!access.ok) {
+        return reply.status(access.status).send({ error: access.error });
       }
 
       const title = parsed.data.title?.trim() || deriveActionTitle(parsed.data.type, message.content);
@@ -342,17 +364,9 @@ export async function registerActionRoutes(app: FastifyInstance) {
         return reply.status(404).send({ error: "Action not found" });
       }
 
-      const member = await db.member.findUnique({
-        where: {
-          userId_serverId: {
-            userId,
-            serverId: existing.serverId,
-          },
-        },
-        select: { id: true },
-      });
-      if (!member) {
-        return reply.status(403).send({ error: "Not a member of this server" });
+      const access = await requireActionMember(userId, existing);
+      if (!access.ok) {
+        return reply.status(access.status).send({ error: access.error });
       }
 
       if (parsed.data.assigneeUserId) {
@@ -552,12 +566,9 @@ export async function registerActionRoutes(app: FastifyInstance) {
       if (!item) {
         return reply.status(404).send({ error: "Action not found" });
       }
-      const member = await db.member.findUnique({
-        where: { userId_serverId: { userId, serverId: item.serverId } },
-        select: { id: true },
-      });
-      if (!member) {
-        return reply.status(403).send({ error: "Not a member of this server" });
+      const access = await requireActionMember(userId, item);
+      if (!access.ok) {
+        return reply.status(access.status).send({ error: access.error });
       }
       const { comment } = await db.$transaction(async (tx) => {
         const created = await tx.actionItemComment.create({
@@ -624,11 +635,10 @@ export async function registerActionRoutes(app: FastifyInstance) {
         select: { id: true, serverId: true, channelId: true, approvalStatus: true },
       });
       if (!item) return reply.status(404).send({ error: "Action not found" });
-      const member = await db.member.findUnique({
-        where: { userId_serverId: { userId, serverId: item.serverId } },
-        select: { id: true },
-      });
-      if (!member) return reply.status(403).send({ error: "Not a member of this server" });
+      const access = await requireActionMember(userId, item);
+      if (!access.ok) {
+        return reply.status(access.status).send({ error: access.error });
+      }
       const approverMember = await db.member.findUnique({
         where: {
           userId_serverId: { userId: parsed.data.approverUserId, serverId: item.serverId },
@@ -714,6 +724,10 @@ export async function registerActionRoutes(app: FastifyInstance) {
         },
       });
       if (!item) return reply.status(404).send({ error: "Action not found" });
+      const access = await requireActionMember(userId, item);
+      if (!access.ok) {
+        return reply.status(access.status).send({ error: access.error });
+      }
       if (item.approverUserId !== userId) {
         return reply
           .status(403)
@@ -799,12 +813,20 @@ export async function registerActionRoutes(app: FastifyInstance) {
           .status(400)
           .send({ error: "Dependency must be within the same workspace" });
       }
-      const member = await db.member.findUnique({
-        where: { userId_serverId: { userId, serverId: item.serverId } },
-        select: { id: true },
-      });
-      if (!member) {
-        return reply.status(403).send({ error: "Not a member of this server" });
+      const [itemAccess, blockerAccess] = await Promise.all([
+        requireActionMember(userId, item),
+        requireActionMember(userId, blocker),
+      ]);
+      if (!itemAccess.ok) {
+        return reply.status(itemAccess.status).send({ error: itemAccess.error });
+      }
+      if (!blockerAccess.ok) {
+        return reply.status(blockerAccess.status).send({ error: blockerAccess.error });
+      }
+      if (itemAccess.channel.internal !== blockerAccess.channel.internal) {
+        return reply.status(400).send({
+          error: "Dependency must stay within the same visibility scope",
+        });
       }
 
       // BFS из blockerId по зависимостям: если достигнем actionId — цикл.
@@ -912,12 +934,9 @@ export async function registerActionRoutes(app: FastifyInstance) {
       if (!item) {
         return reply.status(404).send({ error: "Action not found" });
       }
-      const member = await db.member.findUnique({
-        where: { userId_serverId: { userId, serverId: item.serverId } },
-        select: { id: true },
-      });
-      if (!member) {
-        return reply.status(403).send({ error: "Not a member of this server" });
+      const access = await requireActionMember(userId, item);
+      if (!access.ok) {
+        return reply.status(access.status).send({ error: access.error });
       }
       try {
         await db.$transaction(async (tx) => {
@@ -1005,12 +1024,9 @@ export async function registerActionRoutes(app: FastifyInstance) {
         },
       });
       if (!item) return reply.status(404).send({ error: "Action not found" });
-      const member = await db.member.findUnique({
-        where: { userId_serverId: { userId, serverId: item.serverId } },
-        select: { id: true },
-      });
-      if (!member) {
-        return reply.status(403).send({ error: "Not a member of this server" });
+      const access = await requireActionMember(userId, item);
+      if (!access.ok) {
+        return reply.status(access.status).send({ error: access.error });
       }
       const comments = await db.actionItemComment.findMany({
         where: { actionItemId: actionId },
@@ -1148,6 +1164,10 @@ export async function registerActionRoutes(app: FastifyInstance) {
       });
       if (!comment || comment.actionItemId !== actionId) {
         return reply.status(404).send({ error: "Comment not found" });
+      }
+      const access = await requireActionMember(userId, comment.actionItem);
+      if (!access.ok) {
+        return reply.status(access.status).send({ error: access.error });
       }
       if (comment.userId !== userId) {
         return reply.status(403).send({ error: "Only comment author can delete" });

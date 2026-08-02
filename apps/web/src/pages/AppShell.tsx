@@ -262,7 +262,9 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     suggesting: channelMemorySuggesting,
     error: channelMemoryError,
     createEntry: createChannelMemoryEntry,
+    createEntryForChannel: createMemoryEntryForChannel,
     suggestEntry: suggestChannelMemoryEntry,
+    suggestActionItem: suggestActionMemoryEntry,
     archiveEntry: archiveChannelMemoryEntry,
   } = useChannelMemory(selectedChannelId, socket);
 
@@ -297,9 +299,16 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   const [infoPanelTab, setInfoPanelTab] = useState<
     "summary" | "memory" | "execution" | "files"
   >("summary");
+  const pendingMemoryChannelRef = useRef<string | null>(null);
   // Закрываем info panel при смене канала — context меняется, panel может
-  // не иметь смысла. User снова откроет если нужно.
+  // не иметь смысла. Исключение — явный handoff ActionItem -> Memory.
   useEffect(() => {
+    if (pendingMemoryChannelRef.current === selectedChannelId) {
+      pendingMemoryChannelRef.current = null;
+      setInfoPanelTab("memory");
+      setInfoPanelOpen(true);
+      return;
+    }
     setInfoPanelOpen(false);
   }, [selectedChannelId]);
   const inDmMode = activeServerId === null;
@@ -2623,6 +2632,23 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           serverActions={
             activeServerId ? serverActions.actions : undefined
           }
+          memorySaving={channelMemorySaving}
+          memorySuggesting={channelMemorySuggesting}
+          onSaveMemory={createMemoryEntryForChannel}
+          onSuggestMemory={suggestActionMemoryEntry}
+          onMemorySaved={(channelId) => {
+            setOpenActionItemId(null);
+            setStatusBoardOpen(false);
+            setServerView("chat");
+            if (channelId === selectedChannelId) {
+              setInfoPanelTab("memory");
+              setInfoPanelOpen(true);
+            } else {
+              pendingMemoryChannelRef.current = channelId;
+              setSelectedChannelId(channelId);
+            }
+            if (isMobile) setNavOpen(false);
+          }}
         />
       )}
 

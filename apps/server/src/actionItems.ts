@@ -22,6 +22,7 @@ const depRowSelect = {
       title: true,
       status: true,
       type: true,
+      channel: { select: { internal: true } },
     },
   },
 } satisfies Prisma.ActionItemDependencySelect;
@@ -33,11 +34,13 @@ const blockRowSelect = {
       title: true,
       status: true,
       type: true,
+      channel: { select: { internal: true } },
     },
   },
 } satisfies Prisma.ActionItemDependencySelect;
 
 export const actionItemInclude = {
+  channel: { select: { internal: true } },
   createdBy: { select: userSelectForView },
   assignee: { select: userSelectForView },
   approver: { select: userSelectForView },
@@ -83,20 +86,24 @@ export type ActionItemDependencyRef = {
 };
 
 export function serializeActionItem(item: ActionItemWithRelations) {
-  const dependencies: ActionItemDependencyRef[] = item.dependencies.map(
-    (d) => ({
+  // A dependency must never reveal an internal task through a client-visible task.
+  // Older cross-visibility edges are hidden defensively; new ones are rejected by the API.
+  const dependencies: ActionItemDependencyRef[] = item.dependencies
+    .filter((d) => d.dependsOnActionItem.channel.internal === item.channel.internal)
+    .map((d) => ({
       id: d.dependsOnActionItem.id,
       title: d.dependsOnActionItem.title,
       status: d.dependsOnActionItem.status,
       type: d.dependsOnActionItem.type,
-    }),
-  );
-  const blocks: ActionItemDependencyRef[] = item.blocks.map((d) => ({
-    id: d.actionItem.id,
-    title: d.actionItem.title,
-    status: d.actionItem.status,
-    type: d.actionItem.type,
-  }));
+    }));
+  const blocks: ActionItemDependencyRef[] = item.blocks
+    .filter((d) => d.actionItem.channel.internal === item.channel.internal)
+    .map((d) => ({
+      id: d.actionItem.id,
+      title: d.actionItem.title,
+      status: d.actionItem.status,
+      type: d.actionItem.type,
+    }));
   // Сколько blockers'ов ещё не закрыты — UI badge "🚧 Blocked by N".
   const blockedByOpen = dependencies.filter((d) => d.status !== "DONE").length;
   return {

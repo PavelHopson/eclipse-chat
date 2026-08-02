@@ -4,6 +4,7 @@ import { actionItemInclude, serializeActionItem } from "../actionItems.js";
 import { db } from "../db.js";
 import { serializeUser, userDisplayName } from "../lib/userView.js";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
+import { hasPermission } from "../lib/permissions.js";
 import {
   AINotConfiguredError,
   AIProviderError,
@@ -65,7 +66,11 @@ export async function registerVisitRoutes(app: FastifyInstance) {
       if (!member) {
         return reply.status(403).send({ error: "Not a member of this server" });
       }
-      if (channel.server.mode === "CLIENT" && member.role === "MEMBER" && channel.internal) {
+      if (
+        channel.server.mode === "CLIENT" &&
+        channel.internal &&
+        !hasPermission(member.role, "ROOM_VIEW_INTERNAL")
+      ) {
         return reply.status(404).send({ error: "Channel not found" });
       }
 
@@ -272,7 +277,11 @@ export async function registerVisitRoutes(app: FastifyInstance) {
       if (!member) {
         return reply.status(403).send({ error: "Not a member of this server" });
       }
-      if (channel.server.mode === "CLIENT" && member.role === "MEMBER" && channel.internal) {
+      if (
+        channel.server.mode === "CLIENT" &&
+        channel.internal &&
+        !hasPermission(member.role, "ROOM_VIEW_INTERNAL")
+      ) {
         return reply.status(404).send({ error: "Channel not found" });
       }
 

@@ -971,6 +971,53 @@
   color: var(--ec-text);
 }
 
+/* Reviewed execution -> memory handoff. */
+.ec-cck-memory__card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ec-space-3);
+  overflow: hidden;
+  padding: var(--ec-space-3);
+  border-radius: var(--ec-radius-md);
+  background:
+    linear-gradient(105deg, var(--ec-accent-soft), transparent 62%),
+    var(--ec-surface-2);
+  box-shadow: inset 0 0 0 1px var(--ec-border-default);
+}
+.ec-cck-memory__card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 2px;
+  background: var(--ec-accent);
+  box-shadow: 0 0 14px var(--ec-accent);
+}
+.ec-cck-memory__card > div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+.ec-cck-memory__card strong {
+  color: var(--ec-text-strong);
+  font-size: var(--ec-text-sm);
+}
+.ec-cck-memory__card span {
+  color: var(--ec-text-muted);
+  font-size: var(--ec-text-xs);
+  line-height: 1.45;
+}
+.ec-cck-memory__card .ec-btn { flex-shrink: 0; }
+
+@media (max-width: 560px) {
+  .ec-cck-memory__card {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .ec-cck-memory__card .ec-btn { width: 100%; }
+}
+
 /* AI-summary card. */
 .ec-cck-aicard {
   margin: 0;

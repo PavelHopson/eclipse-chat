@@ -100,20 +100,27 @@ export function useChannelMemory(channelId: string | null, socket?: Socket | nul
     };
   }, [socket, channelId, refresh]);
 
-  const createEntry = useCallback(
-    async (input: CreateMemoryEntryInput): Promise<ChannelMemoryEntry | null> => {
-      if (!channelId) return null;
+  const createEntryForChannel = useCallback(
+    async (
+      targetChannelId: string,
+      input: CreateMemoryEntryInput,
+    ): Promise<ChannelMemoryEntry | null> => {
       setSaving(true);
       setError(null);
       try {
         const data = await apiJson<SingleMemoryResponse>(
-          `/api/channels/${encodeURIComponent(channelId)}/memory`,
+          `/api/channels/${encodeURIComponent(targetChannelId)}/memory`,
           {
             method: "POST",
             body: JSON.stringify(input),
           },
         );
-        setEntries((current) => [data.entry, ...current.filter((entry) => entry.id !== data.entry.id)]);
+        if (targetChannelId === channelId) {
+          setEntries((current) => [
+            data.entry,
+            ...current.filter((entry) => entry.id !== data.entry.id),
+          ]);
+        }
         return data.entry;
       } catch (e) {
         setError(e instanceof Error ? e.message : "Failed to save memory");
@@ -159,6 +166,33 @@ export function useChannelMemory(channelId: string | null, socket?: Socket | nul
     [channelId],
   );
 
+  const suggestActionItem = useCallback(
+    async (targetChannelId: string, actionItemId: string): Promise<MemorySuggestion> => {
+      setSuggesting(true);
+      try {
+        const data = await apiJson<MemorySuggestionResponse>(
+          `/api/channels/${encodeURIComponent(targetChannelId)}/memory/suggest`,
+          {
+            method: "POST",
+            body: JSON.stringify({ actionItemId }),
+          },
+        );
+        return data.suggestion;
+      } finally {
+        setSuggesting(false);
+      }
+    },
+    [],
+  );
+
+  const createEntry = useCallback(
+    async (input: CreateMemoryEntryInput): Promise<ChannelMemoryEntry | null> => {
+      if (!channelId) return null;
+      return createEntryForChannel(channelId, input);
+    },
+    [channelId, createEntryForChannel],
+  );
+
   return {
     entries,
     loading,
@@ -167,7 +201,9 @@ export function useChannelMemory(channelId: string | null, socket?: Socket | nul
     error,
     refresh,
     createEntry,
+    createEntryForChannel,
     suggestEntry,
+    suggestActionItem,
     archiveEntry,
   };
 }

@@ -13341,6 +13341,18 @@ body {
   white-space: pre-wrap;
 }
 
+.ec-memory-compose__visibility {
+  margin: calc(var(--ec-space-2) * -1) 0 0;
+  color: var(--ec-text-muted);
+  font-size: var(--ec-text-xs);
+  line-height: var(--ec-leading-normal);
+}
+
+.ec-memory-compose__visibility strong {
+  color: var(--ec-text);
+  font-weight: 700;
+}
+
 .ec-memory-compose__ai-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

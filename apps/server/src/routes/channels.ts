@@ -6,6 +6,7 @@ import { serializeUser, userDisplayName } from "../lib/userView.js";
 import { emitMessageOnChannel, emitActionItemCreated } from "../realtime.js";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
 import { ensureServerActive } from "../lib/serverGating.js";
+import { hasPermission } from "../lib/permissions.js";
 import {
   dispatchSlashCommand,
   parseSlashCommand,
@@ -222,7 +223,11 @@ export async function registerChannelRoutes(app: FastifyInstance) {
     if (!member) {
       return reply.status(403).send({ error: "Not a member of this server" });
     }
-    if (ch.server.mode === "CLIENT" && member.role === "MEMBER" && ch.internal) {
+    if (
+      ch.server.mode === "CLIENT" &&
+      ch.internal &&
+      !hasPermission(member.role, "ROOM_VIEW_INTERNAL")
+    ) {
       return reply.status(404).send({ error: "Channel not found" });
     }
 

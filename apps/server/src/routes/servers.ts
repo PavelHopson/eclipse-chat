@@ -9,6 +9,7 @@ import { getUserId, requireJwt } from "../auth/requireJwt.js";
 import { requirePlatformOwner } from "../auth/requirePlatformOwner.js";
 import { processTrainingVideoFile } from "../attachments.js";
 import { ensureServerActive } from "../lib/serverGating.js";
+import { hasPermission } from "../lib/permissions.js";
 import { recordAudit } from "../security/audit.js";
 import {
   emitChannelCreated,
@@ -124,8 +125,7 @@ const updateChannelBody = z.object({
   name: z.string().trim().min(1).max(80).optional(),
   description: z.string().max(1024).optional().nullable(),
   emoji: z.string().max(16).optional().nullable(),
-  /** v0.47 Client Mode v2: internal flag. Toggle visibility для MEMBER role
-   *  когда server.mode = CLIENT. OWNER/ADMIN/MODERATOR всегда видят. */
+  /** Client-mode visibility follows the centralized ROOM_VIEW_INTERNAL permission. */
   internal: z.boolean().optional(),
   /** v0.74 #29 phase 1: переключить expiry. NULL = снять (постоянный),
    *  ISO timestamp в будущем = установить/обновить. */
@@ -203,7 +203,7 @@ async function loadMember(
   req: FastifyRequest,
   reply: FastifyReply,
   serverId: string,
-): Promise<{ id: string; userId: string; serverId: string; role: string } | null> {
+): Promise<{ id: string; userId: string; serverId: string; role: MemberRole } | null> {
   const userId = getUserId(req);
   if (!userId) {
     void reply.status(401).send({ error: "Unauthorized" });
@@ -222,7 +222,10 @@ async function loadMember(
     void reply.status(403).send({ error: "Not a member of this server" });
     return null;
   }
-  return member;
+  return {
+    ...member,
+    role: isMemberRole(member.role) ? member.role : "MEMBER",
+  };
 }
 
 function canManageTraining(role: string): boolean {
@@ -979,10 +982,9 @@ export async function registerServerRoutes(app: FastifyInstance) {
 
   /** GET /api/servers/:id/channels — каналы сервера.
    *
-   * v0.47 Client Mode v2: internal=true каналы filter'ятся ИЗ ответа для
-   * MEMBER role, когда server.mode = CLIENT. OWNER/ADMIN/MODERATOR видят
-   * все каналы (включая internal — у них lock-icon в UI). В ENGINEERING
-   * serverе flag ignored, все members видят все.
+   * Client Mode v2: internal=true channels are filtered before serialization
+   * for roles without ROOM_VIEW_INTERNAL. In ENGINEERING mode the flag does
+   * not restrict room visibility.
    */
   app.get("/api/servers/:id/channels", { onRequest: [requireJwt] }, async (req, reply) => {
     const { id } = req.params as { id: string };
@@ -995,7 +997,7 @@ export async function registerServerRoutes(app: FastifyInstance) {
       select: { mode: true },
     });
     const hideInternal =
-      server?.mode === "CLIENT" && me.role === "MEMBER";
+      server?.mode === "CLIENT" && !hasPermission(me.role, "ROOM_VIEW_INTERNAL");
     const channels = await db.channel.findMany({
       where: {
         serverId: id,
@@ -1066,7 +1068,8 @@ export async function registerServerRoutes(app: FastifyInstance) {
         where: { id: serverId },
         select: { mode: true },
       });
-      const hideInternal = server?.mode === "CLIENT" && me.role === "MEMBER";
+      const hideInternal =
+        server?.mode === "CLIENT" && !hasPermission(me.role, "ROOM_VIEW_INTERNAL");
       const tracks = await db.attachment.findMany({
         where: {
           mimeType: { startsWith: "audio/" },
@@ -2149,8 +2152,8 @@ export async function registerServerRoutes(app: FastifyInstance) {
    * Body: `{ query: string, limit?: number }`. Возвращает сообщения и
    * подтверждённую память, ранжированные по semantic + lexical evidence.
    *
-   * Membership-only check. Не индексирует internal-каналы для MEMBER в
-   * CLIENT mode (применяем тот же filter что и regular search).
+   * Membership-only check. Internal channels are excluded in CLIENT mode for
+   * roles without ROOM_VIEW_INTERNAL (the same policy as regular navigation).
    *
    * Implementation note: загружаем все embeddings сервера в память,
    * считаем dot-product (vectors уже unit-normalized). Для <30K сообщений
@@ -2186,7 +2189,8 @@ export async function registerServerRoutes(app: FastifyInstance) {
         select: { mode: true },
       });
       const hideInternal =
-        server?.mode === "CLIENT" && member.role === "MEMBER";
+        server?.mode === "CLIENT" &&
+        !hasPermission(member.role, "ROOM_VIEW_INTERNAL");
       const tokens = tokenizeRetrievalQuery(q);
       if (tokens.length === 0) {
         return reply.status(400).send({ error: "Query has no searchable terms" });

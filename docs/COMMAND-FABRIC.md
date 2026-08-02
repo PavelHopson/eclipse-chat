@@ -28,6 +28,20 @@ membership. Client workspaces keep internal rooms hidden from the external
 member role. Search, visit tracking and AI digest generation have explicit input
 and request limits.
 
+## v1.7.24 slice
+
+The second slice adds a reviewed `ActionItem -> MemoryEntry` flow. The action
+drawer opens a local editable draft, shows the source room and final visibility,
+and saves nothing until the user presses the explicit primary action. AI can
+improve bounded action fields only after a separate user request.
+
+The server resolves message provenance from the action item instead of trusting
+client identifiers. Room history, visits, search, actions and memory now use the
+shared `ROOM_VIEW_INTERNAL` permission instead of a legacy role-name check.
+Dependency references cannot cross internal/external visibility boundaries,
+preventing an open task from revealing a private title. Suggestion and write
+endpoints are authenticated and independently rate-limited.
+
 ## Trust boundaries
 
 1. The server validates JWT and workspace membership before reading room data.
@@ -51,6 +65,6 @@ and request limits.
 
 ## Next slice
 
-Add a reviewed `ActionItem -> MemoryEntry` flow for decisions and risks. The
-draft must show the source, editable fields and final visibility before the user
-confirms storage.
+Add memory governance metadata and review controls: explicit owner, retention,
+visibility, last-reviewed state, archive/restore and an explanation of why each
+entry was included in AI context.

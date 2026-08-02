@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { registerServerRoutes } from "../src/routes/servers.js";
 import { registerChannelRoutes } from "../src/routes/channels.js";
 import { registerVisitRoutes } from "../src/routes/visits.js";
+import { registerMemoryRoutes } from "../src/routes/memory.js";
 
 describe("server route registration", () => {
   it("registers every server route exactly once", async () => {
@@ -84,5 +85,45 @@ describe("server route registration", () => {
     await registerVisitRoutes(app);
     expect(guards).toContain("requireJwt");
     expect(rateLimit).toEqual({ max: 10, timeWindow: 5 * 60 * 1000 });
+  });
+
+  it("protects memory suggestions and writes with bounded rate limits", async () => {
+    const app = Fastify();
+    const routes = new Map<
+      string,
+      { guards: string[]; rateLimit?: { max?: number; timeWindow?: number } }
+    >();
+    app.addHook("onRoute", (route) => {
+      if (
+        route.method !== "POST" ||
+        ![
+          "/api/channels/:id/memory",
+          "/api/channels/:id/memory/suggest",
+        ].includes(route.url)
+      ) {
+        return;
+      }
+      const routeGuards = Array.isArray(route.onRequest)
+        ? route.onRequest
+        : route.onRequest
+          ? [route.onRequest]
+          : [];
+      routes.set(route.url, {
+        guards: routeGuards.map((guard) => guard.name),
+        rateLimit: route.config?.rateLimit as
+          | { max?: number; timeWindow?: number }
+          | undefined,
+      });
+    });
+
+    await registerMemoryRoutes(app);
+    expect(routes.get("/api/channels/:id/memory/suggest")).toEqual({
+      guards: ["requireJwt"],
+      rateLimit: { max: 20, timeWindow: 15 * 60 * 1000 },
+    });
+    expect(routes.get("/api/channels/:id/memory")).toEqual({
+      guards: ["requireJwt"],
+      rateLimit: { max: 60, timeWindow: 5 * 60 * 1000 },
+    });
   });
 });

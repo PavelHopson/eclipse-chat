@@ -13,6 +13,11 @@ import type {
   ActionItemPriority,
   ActionItemDependencyRef,
 } from "../lib/socket";
+import type {
+  CreateMemoryEntryInput,
+  MemorySuggestion,
+} from "../hooks/useChannelMemory";
+import { ActionItemMemoryModal } from "./ActionItemMemoryModal";
 
 /**
  * ActionItemDrawer — mission detail panel для task / decision /
@@ -41,6 +46,17 @@ type Props = {
   onClose: () => void;
   onJumpToSource?: (channelId: string, messageId: string) => void;
   serverActions?: ActionItemPayload[];
+  memorySaving: boolean;
+  memorySuggesting: boolean;
+  onSaveMemory: (
+    channelId: string,
+    input: CreateMemoryEntryInput,
+  ) => Promise<unknown>;
+  onSuggestMemory: (
+    channelId: string,
+    actionItemId: string,
+  ) => Promise<MemorySuggestion>;
+  onMemorySaved: (channelId: string) => void;
 };
 
 /** tone-токен → `--tone` (динамика — единственное, что допустимо инлайном). */
@@ -143,6 +159,11 @@ export function ActionItemDrawer({
   onClose,
   onJumpToSource,
   serverActions,
+  memorySaving,
+  memorySuggesting,
+  onSaveMemory,
+  onSuggestMemory,
+  onMemorySaved,
 }: Props) {
   const {
     detail,
@@ -174,6 +195,7 @@ export function ActionItemDrawer({
   const [submittingDep, setSubmittingDep] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [memoryOpen, setMemoryOpen] = useState(false);
 
   useEffect(() => {
     if (detail) {
@@ -185,7 +207,7 @@ export function ActionItemDrawer({
   // Escape closes drawer + body scroll-lock пока drawer открыт.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape" && !memoryOpen) onClose();
     };
     document.addEventListener("keydown", onKey);
     const prevOverflow = document.body.style.overflow;
@@ -194,7 +216,7 @@ export function ActionItemDrawer({
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = prevOverflow;
     };
-  }, [onClose]);
+  }, [memoryOpen, onClose]);
 
   const typeMeta = detail ? TYPE_META[detail.type] : null;
 
@@ -498,6 +520,33 @@ export function ActionItemDrawer({
                 />
               </section>
 
+              {/* Reviewed ActionItem -> Memory. Nothing is persisted until the modal CTA. */}
+              <section className="ec-cck-sec ec-cck-memory">
+                <h3 className="ec-cck-sec__label">Память</h3>
+                <div className="ec-cck-memory__card">
+                  <div>
+                    <strong>
+                      {detail.type === "DECISION"
+                        ? "Зафиксировать подтвержденное решение"
+                        : "Сохранить результат для команды"}
+                    </strong>
+                    <span>
+                      Сначала откроется редактируемый черновик. История задачи целиком не
+                      копируется.
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className="ec-btn ec-btn--secondary ec-btn--sm"
+                    onClick={() => setMemoryOpen(true)}
+                  >
+                    {detail.type === "DECISION"
+                      ? "Подготовить решение"
+                      : "Подготовить запись"}
+                  </button>
+                </div>
+              </section>
+
               {/* AI summary */}
               <section className="ec-cck-sec">
                 <h3 className="ec-cck-sec__label">
@@ -626,6 +675,24 @@ export function ActionItemDrawer({
           </div>
         )}
       </aside>
+      {detail && memoryOpen && (
+        <ActionItemMemoryModal
+          key={detail.id}
+          action={detail}
+          channelName={channelNameById(detail.channelId) ?? "комната"}
+          saving={memorySaving}
+          suggesting={memorySuggesting}
+          onClose={() => setMemoryOpen(false)}
+          onSave={(input) => onSaveMemory(detail.channelId, input)}
+          onSuggest={(actionItemId) =>
+            onSuggestMemory(detail.channelId, actionItemId)
+          }
+          onSaved={() => {
+            setMemoryOpen(false);
+            onMemorySaved(detail.channelId);
+          }}
+        />
+      )}
     </>
   );
 }

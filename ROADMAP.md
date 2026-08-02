@@ -43,6 +43,18 @@ scope доступа, понятное действие и подтвержде�
 Архитектура, trust boundaries и ограничения первого среза зафиксированы в
 [`docs/COMMAND-FABRIC.md`](docs/COMMAND-FABRIC.md).
 
+### Second delivery slice — v1.7.24
+
+- [x] Добавить в Action Item явную команду фиксации результата в памяти комнаты.
+- [x] Сначала показывать локальный редактируемый черновик, источник и visibility scope;
+  AI-улучшение запускать только вручную, запись выполнять только по основному CTA.
+- [x] Вычислять provenance на сервере: `actionItemId` определяет настоящие room/message
+  identifiers, а подмена source message отклоняется.
+- [x] Закрыть history, visits, search, Action Items и Memory внутренних client-room для
+  ролей без `ROOM_VIEW_INTERNAL`, включая связанные dependency titles; новые зависимости
+  ограничить одной visibility-зоной.
+- [x] Ограничить AI suggestion и memory write отдельными authenticated rate limits.
+
 ## Research intake — 2026-07-01
 
 Источник: [Eclipse Library · July 2026 project integration](https://library.eclipse-forge.ru/#guide/july-2026-project-integration).
@@ -80,7 +92,7 @@ scope доступа, понятное действие и подтвержде�
 - [x] **AI setup docs refreshed** — `docs/AI-SETUP.md` теперь отражает текущую цепочку провайдеров, Pollinations fallback и безопасный способ подключать OmniRoute.
 - [x] **v1.7.2 AI provider diagnostics** — Platform Admin → AI tab показывает санитизированный список активных провайдеров: priority, type, host, auth-state, models. API keys, prompts и user content не раскрываются.
 - [x] **v1.7.3 OpenHuman-inspired memory foundation** — добавлены `MemoryEntry` + migration, REST API `/api/channels/:id/memory`, мягкое архивирование записей, UI во вкладке "Память": заметки, решения, риски, факты, ссылки, действия, теги и pinned anchors.
-- [ ] **Next P0: action item → memory** — memory delta и hybrid retrieval закрыты в v1.7.23; следующий reviewed flow сохраняет решение/риск из ActionItem без автоматической записи.
+- [x] **v1.7.24 action item → memory** — reviewed flow сохраняет решение или действие из ActionItem только после редактирования и явного подтверждения; источник и room visibility проверяются сервером.
 
 ### Voice stability hotfix — 2026-07-17
 
