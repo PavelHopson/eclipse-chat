@@ -24,6 +24,13 @@ import { addServerRoom, onlineUserIds, removeServerRoom } from "../presence.js";
 import { getSystemBotUserId } from "../lib/systemBot.js";
 import { inviteRejectReason, type InviteRejectReason } from "../lib/serverInvites.js";
 import { normalizeMessageTtl } from "../lib/disappearingMessages.js";
+import {
+  combineRetrievalScores,
+  parseMemoryTags,
+  rankMemoryLexical,
+  scoreMemoryLexical,
+  tokenizeRetrievalQuery,
+} from "../ai/memoryRetrieval.js";
 
 // v1.6.99 — сообщение об отклонённом ServerInvite (slice B).
 const INVITE_REJECT_MESSAGE: Record<InviteRejectReason, string> = {
@@ -53,6 +60,11 @@ const ICON_MIME = new Set([
 const uploadIconBody = z.object({
   contentType: z.string().min(3).max(40),
   dataBase64: z.string().min(1),
+});
+
+const semanticSearchBody = z.object({
+  query: z.string().trim().min(3).max(240),
+  limit: z.number().int().min(1).max(50).optional().default(20),
 });
 
 const TRAINING_VIDEO_BODY_LIMIT = 300 * 1024 * 1024;
@@ -2134,8 +2146,8 @@ export async function registerServerRoutes(app: FastifyInstance) {
   /**
    * v0.77 #21 phase 1: POST /api/servers/:id/search/semantic
    *
-   * Body: `{ query: string, limit?: number }`. Возвращает top-N сообщений
-   * сервера, отсортированных по cosine similarity к embedded query.
+   * Body: `{ query: string, limit?: number }`. Возвращает сообщения и
+   * подтверждённую память, ранжированные по semantic + lexical evidence.
    *
    * Membership-only check. Не индексирует internal-каналы для MEMBER в
    * CLIENT mode (применяем тот же filter что и regular search).
@@ -2144,23 +2156,23 @@ export async function registerServerRoutes(app: FastifyInstance) {
    * считаем dot-product (vectors уже unit-normalized). Для <30K сообщений
    * — ~100ms на средней машине. Future scale → pgvector + IVFFlat.
    *
-   * 503 если embedding provider не сетап (no OLLAMA / no OPENAI key).
+   * Без embedding provider прозрачно деградирует до lexical retrieval.
    */
   app.post(
     "/api/servers/:id/search/semantic",
-    { onRequest: [requireJwt] },
+    {
+      onRequest: [requireJwt],
+      config: { rateLimit: { max: 30, timeWindow: 5 * 60 * 1000 } },
+    },
     async (req, reply) => {
       const { id: serverId } = req.params as { id: string };
       const userId = getUserId(req);
       if (!userId) return reply.status(401).send({ error: "Unauthorized" });
-      const body = req.body as { query?: string; limit?: number };
-      const q = (body?.query ?? "").trim();
-      if (!q || q.length < 3) {
-        return reply
-          .status(400)
-          .send({ error: "Query must be at least 3 characters" });
+      const parsed = semanticSearchBody.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.status(400).send({ error: "Invalid search query" });
       }
-      const limit = Math.min(50, Math.max(1, body?.limit ?? 20));
+      const { query: q, limit } = parsed.data;
 
       const member = await db.member.findUnique({
         where: { userId_serverId: { userId, serverId } },
@@ -2175,94 +2187,222 @@ export async function registerServerRoutes(app: FastifyInstance) {
       });
       const hideInternal =
         server?.mode === "CLIENT" && member.role === "MEMBER";
+      const tokens = tokenizeRetrievalQuery(q);
+      if (tokens.length === 0) {
+        return reply.status(400).send({ error: "Query has no searchable terms" });
+      }
 
       const { embedText, cosineSim, EmbeddingNotConfiguredError } =
         await import("../ai/embeddings.js");
-      let queryVec: number[];
-      let queryModel: string;
+      let queryVec: number[] | null = null;
+      let queryModel: string | null = null;
       try {
         const r = await embedText(q);
         queryVec = r.vector;
         queryModel = r.model;
       } catch (err) {
-        if (err instanceof EmbeddingNotConfiguredError) {
-          return reply
-            .status(503)
-            .send({ error: "Semantic search не сконфигурирован" });
+        if (!(err instanceof EmbeddingNotConfiguredError)) {
+          req.log.warn(
+            { errorName: err instanceof Error ? err.name : "UnknownError" },
+            "embedding unavailable; retrieval degraded to lexical mode",
+          );
         }
-        req.log.warn({ err }, "embed query failed");
-        return reply
-          .status(502)
-          .send({ error: "Не удалось встроить запрос; попробуй ещё раз" });
       }
 
-      // Load embeddings всех messages сервера (через channel JOIN).
-      // Для большого workspace это много — добавим soft cap 30K
-      // и top-up'нем последние. Future: per-channel partitioning.
-      const rows = await db.messageEmbedding.findMany({
+      const lexicalMessages = await db.message.findMany({
         where: {
-          model: queryModel, // cross-model search не имеет смысла
-          message: {
-            channel: {
-              serverId,
-              ...(hideInternal ? { internal: false } : {}),
-            },
-            deletedAt: null,
+          deletedAt: null,
+          channel: {
+            serverId,
+            ...(hideInternal ? { internal: false } : {}),
           },
+          OR: tokens.map((token) => ({
+            content: { contains: token, mode: "insensitive" as const },
+          })),
         },
         orderBy: { createdAt: "desc" },
-        take: 30_000,
+        take: 120,
         select: {
-          vector: true,
-          message: {
-            select: {
-              id: true,
-              content: true,
-              createdAt: true,
-              channelId: true,
-              userId: true,
-              channel: { select: { name: true } },
-              user: { select: { id: true, displayName: true, avatar: true } },
-            },
-          },
+          id: true,
+          content: true,
+          createdAt: true,
+          channelId: true,
+          parentMessageId: true,
+          channel: { select: { name: true } },
+          user: { select: { id: true, displayName: true, avatar: true } },
         },
       });
 
-      const scored: Array<{
+      const embeddingRows = queryVec && queryModel
+        ? await db.messageEmbedding.findMany({
+            where: {
+              model: queryModel,
+              message: {
+                channel: {
+                  serverId,
+                  ...(hideInternal ? { internal: false } : {}),
+                },
+                deletedAt: null,
+              },
+            },
+            select: {
+              vector: true,
+              message: {
+                select: {
+                  id: true,
+                  content: true,
+                  createdAt: true,
+                  channelId: true,
+                  parentMessageId: true,
+                  channel: { select: { name: true } },
+                  user: { select: { id: true, displayName: true, avatar: true } },
+                },
+              },
+            },
+            orderBy: { createdAt: "desc" },
+            take: 30_000,
+          })
+        : [];
+
+      type ScoredMessage = {
         score: number;
+        matchMode: "lexical" | "semantic" | "hybrid";
         messageId: string;
         content: string;
         createdAt: string;
         channelId: string;
         channelName: string;
+        parentMessageId: string | null;
         userId: string | null;
         displayName: string | null;
         avatar: string | null;
-      }> = [];
-      for (const r of rows) {
-        const msg = r.message;
-        if (!msg || !msg.channelId) continue;
-        const score = cosineSim(queryVec, r.vector);
-        if (score <= 0.1) continue; // отсечка низкорелевантных
-        scored.push({
-          score,
+      };
+      const messageById = new Map<string, ScoredMessage>();
+      for (const msg of lexicalMessages) {
+        if (!msg.channelId) continue;
+        const lexicalScore = scoreMemoryLexical(q, {
+          id: msg.id,
+          title: "",
+          content: msg.content,
+          tags: [],
+        });
+        if (lexicalScore <= 0) continue;
+        messageById.set(msg.id, {
+          ...combineRetrievalScores(lexicalScore, null),
           messageId: msg.id,
           content: msg.content,
           createdAt: msg.createdAt.toISOString(),
           channelId: msg.channelId,
           channelName: msg.channel?.name ?? "—",
+          parentMessageId: msg.parentMessageId,
           userId: msg.user?.id ?? null,
           displayName: msg.user?.displayName ?? null,
           avatar: msg.user?.avatar ?? null,
         });
       }
-      scored.sort((a, b) => b.score - a.score);
-      const top = scored.slice(0, limit);
+
+      for (const row of embeddingRows) {
+        const msg = row.message;
+        if (!msg?.channelId || !queryVec) continue;
+        const semanticScore = cosineSim(queryVec, row.vector);
+        if (semanticScore <= 0.1) continue;
+        const existing = messageById.get(msg.id);
+        messageById.set(msg.id, {
+          ...combineRetrievalScores(existing?.score ?? 0, semanticScore),
+          messageId: msg.id,
+          content: msg.content,
+          createdAt: msg.createdAt.toISOString(),
+          channelId: msg.channelId,
+          channelName: msg.channel?.name ?? "—",
+          parentMessageId: msg.parentMessageId,
+          userId: msg.user?.id ?? null,
+          displayName: msg.user?.displayName ?? null,
+          avatar: msg.user?.avatar ?? null,
+        });
+      }
+
+      const memoryRows = await db.memoryEntry.findMany({
+        where: {
+          serverId,
+          archivedAt: null,
+          ...(hideInternal
+            ? { OR: [{ channelId: null }, { channel: { internal: false } }] }
+            : {}),
+        },
+        orderBy: { updatedAt: "desc" },
+        take: 5_000,
+        select: {
+          id: true,
+          kind: true,
+          title: true,
+          content: true,
+          tags: true,
+          channelId: true,
+          createdAt: true,
+          updatedAt: true,
+          sourceMessageId: true,
+          actionItemId: true,
+          channel: { select: { name: true } },
+          sourceMessage: {
+            select: {
+              parentMessageId: true,
+              embedding: { select: { model: true, vector: true } },
+            },
+          },
+        },
+      });
+
+      const memoryCandidates = memoryRows.map((entry) => ({
+        ...entry,
+        tags: parseMemoryTags(entry.tags),
+      }));
+      const lexicalMemory = new Map(
+        rankMemoryLexical(q, memoryCandidates, memoryCandidates.length).map((entry) => [
+          entry.id,
+          entry.lexicalScore,
+        ]),
+      );
+      const memoryResults = memoryCandidates
+        .map((entry) => {
+          const sourceEmbedding = entry.sourceMessage?.embedding;
+          const semanticScore =
+            queryVec && queryModel && sourceEmbedding?.model === queryModel
+              ? cosineSim(queryVec, sourceEmbedding.vector)
+              : null;
+          const combined = combineRetrievalScores(
+            lexicalMemory.get(entry.id) ?? 0,
+            semanticScore,
+          );
+          return {
+            ...combined,
+            memoryId: entry.id,
+            kind: entry.kind,
+            title: entry.title,
+            content: entry.content,
+            tags: entry.tags,
+            createdAt: entry.createdAt.toISOString(),
+            updatedAt: entry.updatedAt.toISOString(),
+            channelId: entry.channelId,
+            channelName: entry.channel?.name ?? null,
+            sourceMessageId: entry.sourceMessageId,
+            sourceParentMessageId: entry.sourceMessage?.parentMessageId ?? null,
+            actionItemId: entry.actionItemId,
+          };
+        })
+        .filter((entry) => entry.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, limit);
+
+      const messageResults = Array.from(messageById.values())
+        .sort((a, b) => b.score - a.score)
+        .slice(0, limit);
       return {
         query: q,
         model: queryModel,
-        total: scored.length,
-        results: top,
+        mode: queryVec ? "hybrid" : "lexical",
+        total: messageById.size + memoryResults.length,
+        results: messageResults,
+        memoryResults,
       };
     },
   );

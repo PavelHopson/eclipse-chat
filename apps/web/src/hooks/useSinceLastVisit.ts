@@ -19,7 +19,17 @@ export type SinceLastVisitData = {
     newTasks: number;
     newDecisions: number;
     newFollowUps: number;
+    newMemory?: number;
     recentActions: ActionItemPayload[];
+    recentMemory?: Array<{
+      id: string;
+      kind: "NOTE" | "DECISION" | "RISK" | "FACT" | "LINK" | "ACTION";
+      title: string;
+      content: string | null;
+      sourceMessageId: string | null;
+      actionItemId: string | null;
+      createdAt: string;
+    }>;
     recentPinned: Array<{
       id: string;
       content: string;

@@ -53,6 +53,9 @@ type Props = {
   onOpenThread?: (messageId: string) => void;
   /** Open an explicit preview before saving this message to channel memory. */
   onSaveToMemory?: (message: MessageRow) => void;
+  /** Deep-link target loaded through `useMessages.loadAroundMessage`. */
+  focusMessageId?: string | null;
+  onFocusHandled?: () => void;
   /** v0.61: запустить shared listening для audio attachment'а. */
   onPlayShared?: (attachmentId: string) => void | Promise<void>;
   /** v1.5.25 — DM context. Переключает useMessageEditHistory на
@@ -180,6 +183,8 @@ export function MessageList({
   onToggleActionStatus,
   onOpenThread,
   onSaveToMemory,
+  focusMessageId = null,
+  onFocusHandled,
   onPlayShared,
   isDm = false,
   channelTopSubtitle = null,
@@ -202,6 +207,8 @@ export function MessageList({
   const tailIdRef = useRef<string | null>(null);
   const messageCountRef = useRef(0);
   const pinBurstTimerRef = useRef<number | null>(null);
+  const focusTimerRef = useRef<number | null>(null);
+  const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
 
   const clearNewMessageMarker = useCallback(() => {
     setUnreadAnchorId(null);
@@ -300,8 +307,28 @@ export function MessageList({
       if (pinBurstTimerRef.current !== null) {
         window.clearTimeout(pinBurstTimerRef.current);
       }
+      if (focusTimerRef.current !== null) {
+        window.clearTimeout(focusTimerRef.current);
+      }
     };
   }, []);
+
+  useEffect(() => {
+    if (!focusMessageId || !containerRef.current) return;
+    const target = Array.from(
+      containerRef.current.querySelectorAll<HTMLElement>("[data-message-id]"),
+    ).find((element) => element.dataset.messageId === focusMessageId);
+    if (!target) return;
+
+    target.scrollIntoView({ behavior: "smooth", block: "center" });
+    setHighlightedMessageId(focusMessageId);
+    onFocusHandled?.();
+    if (focusTimerRef.current !== null) window.clearTimeout(focusTimerRef.current);
+    focusTimerRef.current = window.setTimeout(() => {
+      setHighlightedMessageId(null);
+      focusTimerRef.current = null;
+    }, 2400);
+  }, [focusMessageId, messages, onFocusHandled]);
 
   const handleCopy = async (m: MessageRow) => {
     try {
@@ -516,11 +543,13 @@ export function MessageList({
               </div>
             )}
             <article
+              data-message-id={m.id}
               className={
                 "ec-message-row ec-anim-message-enter" +
                 rowClass +
                 (m.user.isBot ? " ec-message-row--ai" : "") +
-                (isMine ? " ec-message-row--mine" : "")
+                (isMine ? " ec-message-row--mine" : "") +
+                (highlightedMessageId === m.id ? " ec-message-row--source-focus" : "")
               }
               style={{
                 opacity: m.pending ? 0.6 : 1,

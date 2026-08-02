@@ -37,6 +37,9 @@ export type ReactionAggregate = {
 export type Attachment = AttachmentPayload;
 export type { ActionItemStatus, ActionItemType };
 export type MessageActionItem = ActionItemPayload;
+export type MessageJumpResult =
+  | { ok: true }
+  | { ok: false; parentMessageId?: string; error: string };
 export type ActionItemUpdatePatch = {
   status?: ActionItemStatus;
   title?: string;
@@ -181,6 +184,7 @@ export function useMessages(
   channelIdRef.current = channelId;
   const currentUserIdRef = useRef<string | undefined>(currentUserId);
   currentUserIdRef.current = currentUserId;
+  const historyRequestRef = useRef(0);
 
   /**
    * Per-user typing expiry timers. Auto-remove если typing:stop не пришёл
@@ -219,24 +223,25 @@ export function useMessages(
       return;
     }
     let cancelled = false;
+    const historyRequestId = ++historyRequestRef.current;
     setLoading(true);
     setOpenActionItems([]);
     apiJson<{ messages: MessageRow[] }>(
       `/api/channels/${encodeURIComponent(channelId)}/messages?take=80`,
     )
       .then((data) => {
-        if (!cancelled) {
+        if (!cancelled && historyRequestRef.current === historyRequestId) {
           setMessages(data.messages.map((m) => defaultLifecycle(m)));
           setError(null);
         }
       })
       .catch((e: unknown) => {
-        if (!cancelled) {
+        if (!cancelled && historyRequestRef.current === historyRequestId) {
           setError(e instanceof ApiError ? e.message : "Не удалось загрузить сообщения");
         }
       })
       .finally(() => {
-        if (!cancelled) {
+        if (!cancelled && historyRequestRef.current === historyRequestId) {
           setLoading(false);
         }
       });
@@ -265,6 +270,60 @@ export function useMessages(
       }
     };
   }, [channelId, socket]);
+
+  const loadAroundMessage = useCallback(async (messageId: string): Promise<MessageJumpResult> => {
+    const activeChannelId = channelIdRef.current;
+    if (!activeChannelId) {
+      return { ok: false, error: "Сначала выберите комнату" };
+    }
+    setLoading(true);
+    setError(null);
+    const historyRequestId = ++historyRequestRef.current;
+    try {
+      const params = new URLSearchParams({ take: "80", around: messageId });
+      const res = await api(
+        `/api/channels/${encodeURIComponent(activeChannelId)}/messages?${params.toString()}`,
+      );
+      if (!res.ok) {
+        let body: { error?: string; parentMessageId?: string } = {};
+        try {
+          body = (await res.json()) as typeof body;
+        } catch {
+          // Non-JSON proxy error. Keep the safe generic message below.
+        }
+        if (res.status === 409 && body.parentMessageId) {
+          return {
+            ok: false,
+            parentMessageId: body.parentMessageId,
+            error: "Источник находится внутри обсуждения",
+          };
+        }
+        const message = body.error ?? `HTTP ${res.status}`;
+        setError(message);
+        return { ok: false, error: message };
+      }
+      const data = (await res.json()) as { messages: MessageRow[] };
+      if (
+        channelIdRef.current !== activeChannelId ||
+        historyRequestRef.current !== historyRequestId
+      ) {
+        return { ok: false, error: "Комната уже изменилась" };
+      }
+      setMessages(data.messages.map((message) => defaultLifecycle(message)));
+      return { ok: true };
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Не удалось открыть источник";
+      setError(message);
+      return { ok: false, error: message };
+    } finally {
+      if (
+        channelIdRef.current === activeChannelId &&
+        historyRequestRef.current === historyRequestId
+      ) {
+        setLoading(false);
+      }
+    }
+  }, []);
 
   // socket: message:new
   useEffect(() => {
@@ -859,6 +918,7 @@ export function useMessages(
     createActionItem,
     updateActionItem,
     updateActionItemStatus,
+    loadAroundMessage,
     typingUsers,
     emitTypingStart,
     emitTypingStop,

@@ -14,6 +14,7 @@ import { ApiError, apiJson } from "../lib/api";
 
 export type SearchMessageHit = {
   id: string;
+  parentMessageId?: string | null;
   content: string;
   createdAt: string;
   user: { id: string; displayName: string; avatar: string | null };

@@ -9,7 +9,11 @@ import type {
   SearchMessageHit,
   SearchResults,
 } from "../hooks/useSearch";
-import { useSemanticSearch } from "../hooks/useSemanticSearch";
+import {
+  useSemanticSearch,
+  type SemanticHit,
+  type SemanticMemoryHit,
+} from "../hooks/useSemanticSearch";
 
 /**
  * SearchOverlay — operational search с tabs (v0.57).
@@ -28,6 +32,7 @@ type Props = {
   onSelectMessage: (hit: SearchMessageHit) => void;
   onSelectAction: (hit: SearchActionHit) => void;
   onSelectFile: (hit: SearchFileHit) => void;
+  onSelectMemory: (hit: SemanticMemoryHit) => void;
   onClose: () => void;
   /** v0.77 #21: serverId для semantic-search tab. Null = hide tab. */
   semanticServerId?: string | null;
@@ -156,6 +161,7 @@ export function SearchOverlay({
   onSelectMessage,
   onSelectAction,
   onSelectFile,
+  onSelectMemory,
   onClose,
   semanticServerId,
   filters,
@@ -182,9 +188,9 @@ export function SearchOverlay({
       messages: results.messages.length,
       actions: results.actions.length,
       files: results.files.length,
-      semantic: semantic.hits.length,
+      semantic: semantic.hits.length + semantic.memoryHits.length,
     }),
-    [results, semantic.hits.length],
+    [results, semantic.hits.length, semantic.memoryHits.length],
   );
 
   useEffect(() => {
@@ -609,15 +615,19 @@ export function SearchOverlay({
           {truncated && tab === "semantic" && (
             <SemanticList
               hits={semantic.hits}
+              memoryHits={semantic.memoryHits}
               loading={semantic.loading}
               error={semantic.error}
               query={query}
+              mode={semantic.mode}
+              onSelectMemory={onSelectMemory}
               onSelect={(h) =>
                 onSelectMessage({
                   // адаптируем под SearchMessageHit shape — все нужные поля есть.
                   // slug не передаётся бэкендом — fallback на channelId (для
                   // onSelectMessage важна только channel.id для навигации).
                   id: h.messageId,
+                  parentMessageId: h.parentMessageId,
                   content: h.content,
                   createdAt: h.createdAt,
                   channel: {
@@ -642,36 +652,22 @@ export function SearchOverlay({
 
 function SemanticList({
   hits,
+  memoryHits,
   loading,
   error,
   query,
+  mode,
+  onSelectMemory,
   onSelect,
 }: {
-  hits: Array<{
-    score: number;
-    messageId: string;
-    content: string;
-    createdAt: string;
-    channelId: string;
-    channelName: string;
-    userId: string | null;
-    displayName: string | null;
-    avatar: string | null;
-  }>;
+  hits: SemanticHit[];
+  memoryHits: SemanticMemoryHit[];
   loading: boolean;
   error: string | null;
   query: string;
-  onSelect: (h: {
-    score: number;
-    messageId: string;
-    content: string;
-    createdAt: string;
-    channelId: string;
-    channelName: string;
-    userId: string | null;
-    displayName: string | null;
-    avatar: string | null;
-  }) => void;
+  mode: "hybrid" | "lexical" | null;
+  onSelectMemory: (hit: SemanticMemoryHit) => void;
+  onSelect: (h: SemanticHit) => void;
 }) {
   if (loading) {
     return (
@@ -687,7 +683,7 @@ function SemanticList({
       </p>
     );
   }
-  if (hits.length === 0 && query.trim().length >= 3) {
+  if (hits.length === 0 && memoryHits.length === 0 && query.trim().length >= 3) {
     return (
       <EmptyState
         icon={<EmptySearchIcon />}
@@ -697,7 +693,7 @@ function SemanticList({
       />
     );
   }
-  if (hits.length === 0) {
+  if (hits.length === 0 && memoryHits.length === 0) {
     return (
       <p className="ec-search-hint">
         Введи хотя бы 3 символа.
@@ -706,6 +702,76 @@ function SemanticList({
   }
   return (
     <div className="ec-search-results">
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 8,
+          padding: "0 var(--ec-space-2) var(--ec-space-1)",
+          color: "var(--ec-text-dim)",
+          fontSize: "var(--ec-text-2xs)",
+        }}
+      >
+        <span>Источники ранжируются по смыслу и подтверждённой памяти</span>
+        <span style={{ color: mode === "hybrid" ? "var(--ec-status-ai)" : "var(--ec-status-warn)" }}>
+          {mode === "hybrid" ? "HYBRID" : "LEXICAL FALLBACK"}
+        </span>
+      </div>
+      {memoryHits.length > 0 && (
+        <section aria-label="Результаты из памяти">
+          <div className="ec-search-semantic-section">Память · {memoryHits.length}</div>
+          {memoryHits.map((hit) => (
+            <button
+              key={hit.memoryId}
+              type="button"
+              onClick={() => onSelectMemory(hit)}
+              className="ec-search-hit ec-search-hit--memory"
+            >
+              <span className="ec-search-memory-kind" aria-hidden>
+                {hit.kind.slice(0, 1)}
+              </span>
+              <span style={{ display: "flex", flexDirection: "column", gap: 3, minWidth: 0 }}>
+                <span style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                  <strong style={{ color: "var(--ec-text-strong)", fontSize: "var(--ec-text-sm)" }}>
+                    {hit.title}
+                  </strong>
+                  <span style={{ color: "var(--ec-text-dim)", fontSize: "var(--ec-text-2xs)" }}>
+                    {hit.channelName ? `#${hit.channelName}` : "память пространства"}
+                  </span>
+                </span>
+                {hit.content && (
+                  <span
+                    style={{
+                      color: "var(--ec-text-muted)",
+                      fontSize: "var(--ec-text-sm)",
+                      overflow: "hidden",
+                      display: "-webkit-box",
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: "vertical",
+                    }}
+                  >
+                    {hit.content}
+                  </span>
+                )}
+                <span style={{ color: "var(--ec-accent)", fontSize: "var(--ec-text-2xs)" }}>
+                  {hit.sourceMessageId
+                    ? "Открыть исходное сообщение →"
+                    : hit.actionItemId
+                      ? "Открыть связанное дело →"
+                      : "Открыть запись памяти →"}
+                </span>
+              </span>
+              <span className="ec-search-score" title={`${hit.matchMode} relevance ${hit.score.toFixed(3)}`}>
+                {(hit.score * 100).toFixed(0)}%
+              </span>
+            </button>
+          ))}
+        </section>
+      )}
+      {hits.length > 0 && (
+        <div className="ec-search-semantic-section">Сообщения · {hits.length}</div>
+      )}
       {hits.map((h) => (
         <button
           key={h.messageId}

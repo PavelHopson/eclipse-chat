@@ -348,6 +348,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     toggleReaction,
     createActionItem,
     updateActionItemStatus,
+    loadAroundMessage,
     typingUsers,
     emitTypingStart,
     emitTypingStop,
@@ -403,6 +404,13 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   // Thread panel — открыт когда selectedThreadId != null. Replaces MemberList
   // в right rail. Close → возвращается MemberList.
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
+  const [pendingSourceJump, setPendingSourceJump] = useState<{
+    channelId: string;
+    messageId: string;
+    parentMessageId?: string | null;
+  } | null>(null);
+  const [focusedMessageId, setFocusedMessageId] = useState<string | null>(null);
+  const [pendingMemoryChannelId, setPendingMemoryChannelId] = useState<string | null>(null);
   // Channel settings modal — id канала, который сейчас редактируется.
   const [settingsChannelId, setSettingsChannelId] = useState<string | null>(null);
   // Execution Status Board — server-wide доска задач в центре (вместо чата).
@@ -426,6 +434,12 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     setSelectedThreadId(null);
     setMemoryDraftMessage(null);
   }, [selectedChannelId, activeServerId]);
+  useEffect(() => {
+    if (!pendingMemoryChannelId || selectedChannelId !== pendingMemoryChannelId) return;
+    setInfoPanelTab("memory");
+    setInfoPanelOpen(true);
+    setPendingMemoryChannelId(null);
+  }, [pendingMemoryChannelId, selectedChannelId]);
   // Закрыть Status Board + Team Health при смене сервера (они привязаны к серверу).
   useEffect(() => {
     setStatusBoardOpen(false);
@@ -603,6 +617,39 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   const isMobile = useMediaQuery("(max-width: 1024px)");
   const isTabletOrSmaller = useMediaQuery("(max-width: 1024px)");
   const showAndroidApkShortcut = isMobile && isAndroidWebBrowser();
+
+  useEffect(() => {
+    if (!pendingSourceJump || selectedChannelId !== pendingSourceJump.channelId) return;
+    let cancelled = false;
+    const openSource = async () => {
+      if (pendingSourceJump.parentMessageId) {
+        setSelectedThreadId(pendingSourceJump.parentMessageId);
+        setRightRailCollapsed(false);
+        if (isTabletOrSmaller) setMembersOpen(true);
+        setPendingSourceJump(null);
+        return;
+      }
+      const result = await loadAroundMessage(pendingSourceJump.messageId);
+      if (cancelled) return;
+      if (result.ok) {
+        setFocusedMessageId(pendingSourceJump.messageId);
+      } else if (result.parentMessageId) {
+        setSelectedThreadId(result.parentMessageId);
+        setRightRailCollapsed(false);
+        if (isTabletOrSmaller) setMembersOpen(true);
+      }
+      setPendingSourceJump(null);
+    };
+    void openSource();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    isTabletOrSmaller,
+    loadAroundMessage,
+    pendingSourceJump,
+    selectedChannelId,
+  ]);
   // v1.6.84 — края-свайпы для drawer'ов: свайп от левого края открывает каналы,
   // от правого — участников; обратный свайп закрывает. Только на мобиле.
   useDrawerSwipe({
@@ -2336,6 +2383,10 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               aiLoading={sinceLastVisit.aiLoading}
               aiError={sinceLastVisit.aiError}
               onRequestAiSummary={() => void sinceLastVisit.requestAiSummary()}
+              onOpenMemory={() => {
+                setInfoPanelTab("memory");
+                setInfoPanelOpen(true);
+              }}
             />
             {/* v0.98: ActionQueueBar + PinnedBar убраны из ленты. Pavel-ask
                 «при наведении отображались поверх экрана чата». Функционал
@@ -2426,6 +2477,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               onCreateAction={createActionItem}
               onToggleActionStatus={updateActionItemStatus}
               onSaveToMemory={setMemoryDraftMessage}
+              focusMessageId={focusedMessageId}
+              onFocusHandled={() => setFocusedMessageId(null)}
               onOpenThread={(messageId) => {
                 setSelectedThreadId(messageId);
                 // v0.46 fix: auto-expand right rail if collapsed —
@@ -2866,10 +2919,15 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           loading={searchLoading}
           error={searchError}
           onSelectMessage={(hit) => {
-            // Переключаемся на канал hit + закрываем overlay.
+            setFocusedMessageId(null);
             setHomeOpen(false);
             setServerView("chat");
             setSelectedChannelId(hit.channel.id);
+            setPendingSourceJump({
+              channelId: hit.channel.id,
+              messageId: hit.id,
+              parentMessageId: hit.parentMessageId,
+            });
             setShowSearch(false);
             searchReset();
           }}
@@ -2880,13 +2938,45 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             setOpenActionItemId(hit.id);
           }}
           onSelectFile={(hit) => {
-            // Прыгаем в канал-источник файла; lightbox откроется при клике
-            // на attachment в чате (v1 — без deep-link на конкретное message).
+            setFocusedMessageId(null);
             setHomeOpen(false);
             setServerView("chat");
             setSelectedChannelId(hit.channel.id);
+            setPendingSourceJump({
+              channelId: hit.channel.id,
+              messageId: hit.messageId,
+            });
             setShowSearch(false);
             searchReset();
+          }}
+          onSelectMemory={(hit) => {
+            setShowSearch(false);
+            searchReset();
+            if (hit.sourceMessageId && hit.channelId) {
+              setFocusedMessageId(null);
+              setHomeOpen(false);
+              setServerView("chat");
+              setSelectedChannelId(hit.channelId);
+              setPendingSourceJump({
+                channelId: hit.channelId,
+                messageId: hit.sourceMessageId,
+                parentMessageId: hit.sourceParentMessageId,
+              });
+              return;
+            }
+            if (hit.actionItemId) {
+              setOpenActionItemId(hit.actionItemId);
+              return;
+            }
+            if (hit.channelId) {
+              setHomeOpen(false);
+              setServerView("chat");
+              setSelectedChannelId(hit.channelId);
+              setPendingMemoryChannelId(hit.channelId);
+              return;
+            }
+            setInfoPanelTab("memory");
+            setInfoPanelOpen(true);
           }}
           onClose={() => {
             setShowSearch(false);

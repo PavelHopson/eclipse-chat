@@ -27,6 +27,11 @@ import { computeMessageExpiry } from "../lib/disappearingMessages.js";
 
 const channelTypeSchema = z.enum(["TEXT", "VOICE", "BROADCAST", "EXECUTION"]);
 
+const messageHistoryQuery = z.object({
+  take: z.coerce.number().int().min(1).max(100).optional().default(50),
+  around: z.string().trim().min(1).max(64).optional(),
+});
+
 const createChannelBody = z.object({
   name: z.string().min(1).max(80),
   type: channelTypeSchema.optional(),
@@ -175,17 +180,77 @@ export async function registerChannelRoutes(app: FastifyInstance) {
   });
 
   /**
-   * GET /api/channels/:id/messages — историчная пагинация take=N, max 100.
-   * Открытый endpoint (без auth) — соответствует поведению Step 0.
-   * Membership check добавится после Step 2 когда фронт перейдёт на server-scoped routes.
+   * GET /api/channels/:id/messages — история комнаты, take=N (max 100).
+   * Требует membership и соблюдает CLIENT/internal visibility. `around=<messageId>`
+   * загружает bounded context с указанным сообщением в конце выборки.
    */
-  app.get("/api/channels/:id/messages", async (req, reply) => {
+  app.get(
+    "/api/channels/:id/messages",
+    {
+      onRequest: [requireJwt],
+      config: { rateLimit: { max: 180, timeWindow: 60 * 1000 } },
+    },
+    async (req, reply) => {
+    const userId = getUserId(req);
+    if (!userId) {
+      return reply.status(401).send({ error: "Unauthorized" });
+    }
     const { id } = req.params as { id: string };
-    const ch = await db.channel.findUnique({ where: { id } });
+    const parsedQuery = messageHistoryQuery.safeParse(req.query);
+    if (!parsedQuery.success) {
+      return reply.status(400).send({ error: "Invalid message history query" });
+    }
+    const { take, around } = parsedQuery.data;
+    const ch = await db.channel.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        serverId: true,
+        internal: true,
+        server: { select: { mode: true } },
+      },
+    });
     if (!ch) {
       return reply.status(404).send({ error: "Channel not found" });
     }
-    const take = Math.min(100, Math.max(1, Number((req.query as { take?: string }).take) || 50));
+    const member = await db.member.findUnique({
+      where: { userId_serverId: { userId, serverId: ch.serverId } },
+      select: { role: true },
+    });
+    if (!member) {
+      return reply.status(403).send({ error: "Not a member of this server" });
+    }
+    if (ch.server.mode === "CLIENT" && member.role === "MEMBER" && ch.internal) {
+      return reply.status(404).send({ error: "Channel not found" });
+    }
+
+    if (around) {
+      const target = await db.message.findUnique({
+        where: { id: around },
+        select: {
+          channelId: true,
+          parentMessageId: true,
+          deletedAt: true,
+          expiresAt: true,
+        },
+      });
+      if (
+        !target ||
+        target.channelId !== id ||
+        target.deletedAt ||
+        (target.expiresAt && target.expiresAt <= new Date())
+      ) {
+        return reply.status(404).send({ error: "Source message not found" });
+      }
+      if (target.parentMessageId) {
+        return reply.status(409).send({
+          error: "Source message is inside a thread",
+          parentMessageId: target.parentMessageId,
+        });
+      }
+    }
     const messages = await db.message.findMany({
       where: {
         channelId: id,
@@ -200,6 +265,7 @@ export async function registerChannelRoutes(app: FastifyInstance) {
       },
       take,
       orderBy: { createdAt: "desc" },
+      ...(around ? { cursor: { id: around } } : {}),
       include: {
         user: {
           select: {
@@ -249,17 +315,7 @@ export async function registerChannelRoutes(app: FastifyInstance) {
         },
       },
     });
-    // Опционально достаём currentUserId из jwt — без auth middleware
-    // (этот GET был открытый ради SSR-like preview). Делаем optional
-    // jwtVerify, чтобы 'mine' помечался когда возможно.
-    let currentUserId: string | null = null;
-    try {
-      await req.jwtVerify();
-      const payload = req.user as { sub?: string } | undefined;
-      currentUserId = payload?.sub ?? null;
-    } catch {
-      /* anonymous — mine остаётся false */
-    }
+    const currentUserId = userId;
     return {
       channel: { id: ch.id, name: ch.name, slug: ch.slug },
       messages: messages

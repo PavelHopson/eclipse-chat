@@ -26,6 +26,7 @@ type Props = {
   aiLoading?: boolean;
   aiError?: string | null;
   onRequestAiSummary?: () => void;
+  onOpenMemory?: () => void;
 };
 
 const wrap: CSSProperties = {
@@ -88,16 +89,19 @@ export function SinceLastVisitBanner({
   aiLoading,
   aiError,
   onRequestAiSummary,
+  onOpenMemory,
 }: Props) {
   if (!data || !data.priorVisitAt || !data.since) return null;
   const priorMs = Date.now() - new Date(data.priorVisitAt).getTime();
   if (priorMs < MIN_GAP_MS) return null;
   const s = data.since;
+  const recentMemory = s.recentMemory ?? [];
   const hasAny =
     s.newMessages > 0 ||
     s.newTasks > 0 ||
     s.newDecisions > 0 ||
     s.newFollowUps > 0 ||
+    (s.newMemory ?? 0) > 0 ||
     s.recentPinned.length > 0 ||
     s.incident != null;
   if (!hasAny) return null;
@@ -230,9 +234,55 @@ export function SinceLastVisitBanner({
         {counter("новых задач", s.newTasks, "var(--ec-status-exec)")}
         {counter("решений", s.newDecisions, "var(--ec-status-ai)")}
         {counter("follow-up", s.newFollowUps, "var(--ec-status-warn)")}
+        {counter("записей памяти", s.newMemory ?? 0, "var(--ec-accent)")}
         {s.recentPinned.length > 0 &&
           counter("закреплено", s.recentPinned.length, "var(--ec-accent)")}
       </div>
+
+      {recentMemory.length > 0 && (
+        <button
+          type="button"
+          onClick={onOpenMemory}
+          disabled={!onOpenMemory}
+          style={{
+            display: "grid",
+            gridTemplateColumns: "minmax(0, 1fr) auto",
+            alignItems: "center",
+            gap: "var(--ec-space-3)",
+            padding: "var(--ec-space-3)",
+            borderRadius: "var(--ec-radius-md)",
+            border: "1px solid var(--ec-border-accent)",
+            background: "color-mix(in srgb, var(--ec-accent) 8%, transparent)",
+            color: "var(--ec-text)",
+            textAlign: "left",
+            cursor: onOpenMemory ? "pointer" : "default",
+          }}
+        >
+          <span style={{ minWidth: 0 }}>
+            <strong style={{ display: "block", fontSize: "var(--ec-text-sm)" }}>
+              Новое в памяти
+            </strong>
+            <span
+              style={{
+                display: "block",
+                marginTop: 2,
+                color: "var(--ec-text-muted)",
+                fontSize: "var(--ec-text-2xs)",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {recentMemory.slice(0, 3).map((entry) => entry.title).join(" · ")}
+            </span>
+          </span>
+          {onOpenMemory && (
+            <span style={{ color: "var(--ec-accent)", fontSize: "var(--ec-text-2xs)", fontWeight: 700 }}>
+              Открыть память →
+            </span>
+          )}
+        </button>
+      )}
 
       {s.incident && (
         <div

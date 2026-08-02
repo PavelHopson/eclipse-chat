@@ -5,6 +5,44 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
+## Eclipse Command Fabric
+
+Цель следующего продуктового слоя: связать communication, execution, memory,
+AI и внешние проекты Eclipse Forge в один проверяемый рабочий контур. Это не
+набор разрозненных AI-кнопок: каждое предложение агента должно иметь источник,
+scope доступа, понятное действие и подтверждение пользователя перед записью.
+
+- [ ] **Персональная сводка** — «Пока тебя не было» учитывает сообщения, решения,
+  задачи, риски и подтверждённую память; показывает важность и ссылки на источники.
+- [ ] **Semantic memory retrieval** — единый hybrid search по сообщениям и
+  курируемой памяти с деградацией до lexical search без embedding-провайдера.
+- [ ] **Message → operational entity** — reviewed draft из сообщения в decision,
+  risk, requirement, task или follow-up без скрытого автоматического сохранения.
+- [ ] **Ecosystem Command Center** — состояние Eclipse Chat, AI Hub, Library,
+  Sentinel, DnD Forge и Media в одном operational dashboard.
+- [ ] **GitHub rooms** — коммиты, PR, CI, release и deploy как проверяемые события
+  комнаты с переходом к исходному репозиторию.
+- [ ] **Task-based AI routing** — выбор модели по типу задачи, цене, latency,
+  privacy и health вместо ручного выбора пользователем.
+- [ ] **Agent Workbench** — создание и тестирование агентов, scopes, approvals,
+  memory policy и журнал действий в одном интерфейсе.
+- [ ] **Memory governance** — provenance, owner, retention, visibility, review,
+  archive/restore и объяснение, почему запись попала в контекст.
+- [ ] **Mobile Command Inbox** — единая очередь коротких решений: approve,
+  assign, answer, join call, review change; одно главное действие на карточку.
+- [ ] **Project Passport** — связанная карточка проекта: репозитории, комнаты,
+  решения, задачи, deploy, документы, owners, риски и актуальный статус.
+
+### First delivery slice — v1.7.23
+
+- [x] Добавить новые записи памяти в structured/AI-сводку «Пока тебя не было».
+- [x] Расширить semantic search до hybrid retrieval по сообщениям и памяти.
+- [x] Добавить цитаты и точный переход к исходному сообщению или вкладке памяти.
+- [x] Закрыть историю комнаты membership-проверкой и ограничить дорогой поиск.
+
+Архитектура, trust boundaries и ограничения первого среза зафиксированы в
+[`docs/COMMAND-FABRIC.md`](docs/COMMAND-FABRIC.md).
+
 ## Research intake — 2026-07-01
 
 Источник: [Eclipse Library · July 2026 project integration](https://library.eclipse-forge.ru/#guide/july-2026-project-integration).
@@ -42,7 +80,7 @@
 - [x] **AI setup docs refreshed** — `docs/AI-SETUP.md` теперь отражает текущую цепочку провайдеров, Pollinations fallback и безопасный способ подключать OmniRoute.
 - [x] **v1.7.2 AI provider diagnostics** — Platform Admin → AI tab показывает санитизированный список активных провайдеров: priority, type, host, auth-state, models. API keys, prompts и user content не раскрываются.
 - [x] **v1.7.3 OpenHuman-inspired memory foundation** — добавлены `MemoryEntry` + migration, REST API `/api/channels/:id/memory`, мягкое архивирование записей, UI во вкладке "Память": заметки, решения, риски, факты, ссылки, действия, теги и pinned anchors.
-- [ ] **Next P0: memory digest + retrieval** — добавить memory delta в «Пока тебя не было», сохранение из action item и semantic/full-text поиск по памяти. Message-to-memory extraction закрыт в v1.7.22.
+- [ ] **Next P0: action item → memory** — memory delta и hybrid retrieval закрыты в v1.7.23; следующий reviewed flow сохраняет решение/риск из ActionItem без автоматической записи.
 
 ### Voice stability hotfix — 2026-07-17
 

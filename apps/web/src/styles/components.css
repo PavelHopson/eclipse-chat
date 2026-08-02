@@ -10015,6 +10015,68 @@ body {
   max-width: 100%;
 }
 
+.ec-message-row--source-focus .ec-message-content {
+  border-color: color-mix(in srgb, var(--ec-accent) 72%, var(--ec-border-subtle));
+  background:
+    linear-gradient(100deg, color-mix(in srgb, var(--ec-accent) 18%, var(--ec-surface-2)), color-mix(in srgb, var(--ec-status-warn) 8%, var(--ec-surface-1)));
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--ec-accent) 28%, transparent),
+    0 12px 36px color-mix(in srgb, var(--ec-accent) 16%, transparent);
+  animation: ec-source-focus 1.2s var(--ec-ease) both;
+}
+
+.ec-search-semantic-section {
+  padding: var(--ec-space-2);
+  color: var(--ec-text-dim);
+  font-size: var(--ec-text-2xs);
+  font-weight: 700;
+  letter-spacing: var(--ec-tracking-caps);
+  text-transform: uppercase;
+}
+
+.ec-search-hit--memory {
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  border-color: color-mix(in srgb, var(--ec-accent) 24%, var(--ec-border-subtle));
+  background: linear-gradient(110deg, color-mix(in srgb, var(--ec-accent) 8%, var(--ec-surface-2)), var(--ec-surface-1));
+}
+
+.ec-search-memory-kind {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--ec-radius-md);
+  border: 1px solid var(--ec-border-accent);
+  background: var(--ec-accent-soft);
+  color: var(--ec-accent);
+  font-family: var(--ec-font-mono);
+  font-size: var(--ec-text-xs);
+  font-weight: 800;
+}
+
+.ec-search-score {
+  align-self: start;
+  padding: 2px 6px;
+  border: 1px solid var(--ec-border-accent);
+  border-radius: var(--ec-radius-full);
+  background: var(--ec-accent-soft);
+  color: var(--ec-accent);
+  font-size: 0.62rem;
+  font-weight: 700;
+}
+
+@keyframes ec-source-focus {
+  0% { transform: translateX(-4px); filter: brightness(1.22); }
+  45% { transform: translateX(0); filter: brightness(1.08); }
+  100% { transform: translateX(0); filter: brightness(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ec-message-row--source-focus .ec-message-content {
+    animation: none;
+  }
+}
+
 .ec-message-row:hover {
   background:
     linear-gradient(90deg, color-mix(in srgb, var(--ec-accent) 5%, transparent), transparent 72%);

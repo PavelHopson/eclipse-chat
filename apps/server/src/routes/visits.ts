@@ -29,7 +29,10 @@ import { sinceLastVisitSummaryPrompt } from "../ai/prompts.js";
 export async function registerVisitRoutes(app: FastifyInstance) {
   app.post(
     "/api/channels/:id/visit",
-    { onRequest: [requireJwt] },
+    {
+      onRequest: [requireJwt],
+      config: { rateLimit: { max: 120, timeWindow: 60 * 1000 } },
+    },
     async (req, reply) => {
       const userId = getUserId(req);
       if (!userId) {
@@ -40,7 +43,13 @@ export async function registerVisitRoutes(app: FastifyInstance) {
       // Membership + channel type check.
       const channel = await db.channel.findUnique({
         where: { id: channelId },
-        select: { id: true, serverId: true, type: true },
+        select: {
+          id: true,
+          serverId: true,
+          type: true,
+          internal: true,
+          server: { select: { mode: true } },
+        },
       });
       if (!channel) {
         return reply.status(404).send({ error: "Channel not found" });
@@ -51,10 +60,13 @@ export async function registerVisitRoutes(app: FastifyInstance) {
       }
       const member = await db.member.findUnique({
         where: { userId_serverId: { userId, serverId: channel.serverId } },
-        select: { id: true },
+        select: { id: true, role: true },
       });
       if (!member) {
         return reply.status(403).send({ error: "Not a member of this server" });
+      }
+      if (channel.server.mode === "CLIENT" && member.role === "MEMBER" && channel.internal) {
+        return reply.status(404).send({ error: "Channel not found" });
       }
 
       // Получаем предыдущий visit (если был) и обновляем на now атомарно.
@@ -116,6 +128,26 @@ export async function registerVisitRoutes(app: FastifyInstance) {
       >;
       for (const a of newActions) counts[a.type]++;
 
+      const [newMemory, recentMemory] = await Promise.all([
+        db.memoryEntry.count({
+          where: { channelId, archivedAt: null, createdAt: { gt: priorAt } },
+        }),
+        db.memoryEntry.findMany({
+          where: { channelId, archivedAt: null, createdAt: { gt: priorAt } },
+          orderBy: { createdAt: "desc" },
+          take: 6,
+          select: {
+            id: true,
+            kind: true,
+            title: true,
+            content: true,
+            sourceMessageId: true,
+            actionItemId: true,
+            createdAt: true,
+          },
+        }),
+      ]);
+
       // ── Дельта по pinned (закреплённое после prior visit) ──────
       const newPinned = await db.message.findMany({
         where: {
@@ -156,7 +188,17 @@ export async function registerVisitRoutes(app: FastifyInstance) {
           newTasks: counts.TASK,
           newDecisions: counts.DECISION,
           newFollowUps: counts.FOLLOW_UP,
+          newMemory,
           recentActions: newActions.slice(0, 6).map(serializeActionItem),
+          recentMemory: recentMemory.map((entry) => ({
+            id: entry.id,
+            kind: entry.kind,
+            title: entry.title,
+            content: entry.content,
+            sourceMessageId: entry.sourceMessageId,
+            actionItemId: entry.actionItemId,
+            createdAt: entry.createdAt.toISOString(),
+          })),
           recentPinned: newPinned.map((m) => ({
             id: m.id,
             content: m.content,
@@ -190,7 +232,10 @@ export async function registerVisitRoutes(app: FastifyInstance) {
 
   app.post(
     "/api/channels/:id/since-summary",
-    { onRequest: [requireJwt] },
+    {
+      onRequest: [requireJwt],
+      config: { rateLimit: { max: 10, timeWindow: 5 * 60 * 1000 } },
+    },
     async (req, reply) => {
       const userId = getUserId(req);
       if (!userId) {
@@ -205,7 +250,14 @@ export async function registerVisitRoutes(app: FastifyInstance) {
 
       const channel = await db.channel.findUnique({
         where: { id: channelId },
-        select: { id: true, name: true, serverId: true, type: true },
+        select: {
+          id: true,
+          name: true,
+          serverId: true,
+          type: true,
+          internal: true,
+          server: { select: { mode: true } },
+        },
       });
       if (!channel) {
         return reply.status(404).send({ error: "Channel not found" });
@@ -215,10 +267,13 @@ export async function registerVisitRoutes(app: FastifyInstance) {
       }
       const member = await db.member.findUnique({
         where: { userId_serverId: { userId, serverId: channel.serverId } },
-        select: { id: true },
+        select: { id: true, role: true },
       });
       if (!member) {
         return reply.status(403).send({ error: "Not a member of this server" });
+      }
+      if (channel.server.mode === "CLIENT" && member.role === "MEMBER" && channel.internal) {
+        return reply.status(404).send({ error: "Channel not found" });
       }
 
       const messages = await db.message.findMany({
@@ -252,6 +307,17 @@ export async function registerVisitRoutes(app: FastifyInstance) {
           user: { select: { displayName: true } },
         },
       });
+      const newMemory = await db.memoryEntry.findMany({
+        where: { channelId, archivedAt: null, createdAt: { gt: since } },
+        orderBy: { createdAt: "desc" },
+        take: 20,
+        select: {
+          kind: true,
+          title: true,
+          content: true,
+          createdAt: true,
+        },
+      });
       const incident = await db.incident.findFirst({
         where: { channelId, openedAt: { gt: since } },
         select: { title: true, status: true, openedAt: true },
@@ -277,6 +343,12 @@ export async function registerVisitRoutes(app: FastifyInstance) {
         newPinned: newPinned.map((p) => ({
           content: p.content,
           user: { displayName: userDisplayName(p.user) },
+        })),
+        newMemory: newMemory.map((entry) => ({
+          kind: entry.kind,
+          title: entry.title,
+          content: entry.content,
+          createdAt: entry.createdAt.toISOString(),
         })),
         incident: incident
           ? {
