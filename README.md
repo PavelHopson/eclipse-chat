@@ -118,6 +118,8 @@ eclipse-chat/
 
 - ✅ Auth flow: вход / регистрация / logout / автоматический refresh при 401
 - ✅ Список каналов + создание канала
+- ✅ Быстрый preset `Реклама: аудит → согласование → проверка` для EXECUTION-комнаты:
+  название и безопасный workflow заполняются автоматически, а бюджет не меняется без явного approval
 - ✅ Выбор канала + загрузка истории + отправка сообщения
 - ✅ Realtime: новые сообщения через Socket.io
 - ✅ Token storage в localStorage с миграцией legacy ключа
@@ -130,7 +132,9 @@ eclipse-chat/
 
 ## Запуск (local dev)
 
-См. [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) — пошаговая инструкция.
+См. [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) — пошаговая инструкция. Для рекламного workflow
+границы evidence/diff/approval/rollback описаны в
+[docs/advertising-execution-room.md](docs/advertising-execution-room.md).
 
 Коротко:
 

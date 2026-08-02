@@ -70,6 +70,15 @@ scope доступа, понятное действие и подтвержде�
 - [x] Ограничить mutation routes отдельным authenticated rate limit и добавить
   regression-тесты lifecycle, permissions и route registration.
 
+### Operational integration slice — advertising room
+
+- [x] Добавить в создание EXECUTION-комнаты один понятный preset
+  `Реклама: аудит → согласование → проверка` с готовым названием и описанием процесса.
+- [x] Явно отделить read-only evidence report и proposed budget diff от реального изменения кабинета.
+- [x] Зафиксировать обязательные approval, rollback и post-change verification gates в отдельном runbook.
+- [ ] Подключать Ads write adapter только отдельным security-проектом: server-side credential,
+  hard budget ceiling, idempotency, two-person approval и immutable audit обязательны.
+
 ## Research intake — 2026-07-01
 
 Источник: [Eclipse Library · July 2026 project integration](https://library.eclipse-forge.ru/#guide/july-2026-project-integration).

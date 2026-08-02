@@ -184,6 +184,7 @@ export function CreateChannelModal({
 }: Props) {
   const [name, setName] = useState("");
   const [type, setType] = useState<ChannelType>(initialType);
+  const [executionPreset, setExecutionPreset] = useState<"blank" | "advertising">("blank");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -194,6 +195,7 @@ export function CreateChannelModal({
     if (open) {
       setName("");
       setType(initialType);
+      setExecutionPreset("blank");
       setError(null);
       // Wait for modal mount.
       const t = window.setTimeout(() => {
@@ -268,7 +270,10 @@ export function CreateChannelModal({
                   type="button"
                   role="radio"
                   aria-checked={active}
-                  onClick={() => setType(opt.id)}
+                  onClick={() => {
+                    setType(opt.id);
+                    if (opt.id !== "EXECUTION") setExecutionPreset("blank");
+                  }}
                   style={{ ...typeOption, ...typeOptionActive(active) }}
                 >
                   <span
@@ -299,6 +304,50 @@ export function CreateChannelModal({
             })}
           </div>
         </div>
+
+        {type === "EXECUTION" && (
+          <div style={{ marginBottom: "var(--ec-space-4)" }}>
+            <span style={fieldLabel}>Быстрый шаблон</span>
+            <button
+              type="button"
+              aria-pressed={executionPreset === "advertising"}
+              onClick={() => {
+                const active = executionPreset !== "advertising";
+                setExecutionPreset(active ? "advertising" : "blank");
+                if (active) setName("Реклама — аудит и изменения");
+              }}
+              style={{
+                ...typeOption,
+                ...typeOptionActive(executionPreset === "advertising"),
+                width: "100%",
+              }}
+            >
+              <span
+                aria-hidden
+                style={{
+                  display: "grid",
+                  placeItems: "center",
+                  width: 32,
+                  height: 32,
+                  borderRadius: "var(--ec-radius-sm)",
+                  background: "var(--ec-surface-3)",
+                  color: "var(--ec-accent)",
+                  fontWeight: 800,
+                }}
+              >
+                Δ
+              </span>
+              <span style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                <strong style={{ color: "var(--ec-text-strong)", fontSize: "var(--ec-text-sm)" }}>
+                  Реклама: аудит → согласование → проверка
+                </strong>
+                <span style={{ color: "var(--ec-text-muted)", fontSize: "var(--ec-text-2xs)", lineHeight: 1.45 }}>
+                  Комната для evidence, понятного diff «сейчас / предлагается», approval и rollback. Бюджет автоматически не меняется.
+                </span>
+              </span>
+            </button>
+          </div>
+        )}
 
         {categoryName && (
           <p className="ec-channel-modal-context">
