@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { actionItemInclude, serializeActionItem } from "../actionItems.js";
 import { db } from "../db.js";
+import { memoryContextEligibilityWhere } from "../lib/memoryGovernance.js";
 import { serializeUser, userDisplayName } from "../lib/userView.js";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
 import { hasPermission } from "../lib/permissions.js";
@@ -135,10 +136,18 @@ export async function registerVisitRoutes(app: FastifyInstance) {
 
       const [newMemory, recentMemory] = await Promise.all([
         db.memoryEntry.count({
-          where: { channelId, archivedAt: null, createdAt: { gt: priorAt } },
+          where: {
+            channelId,
+            ...memoryContextEligibilityWhere(),
+            createdAt: { gt: priorAt },
+          },
         }),
         db.memoryEntry.findMany({
-          where: { channelId, archivedAt: null, createdAt: { gt: priorAt } },
+          where: {
+            channelId,
+            ...memoryContextEligibilityWhere(),
+            createdAt: { gt: priorAt },
+          },
           orderBy: { createdAt: "desc" },
           take: 6,
           select: {
@@ -317,7 +326,11 @@ export async function registerVisitRoutes(app: FastifyInstance) {
         },
       });
       const newMemory = await db.memoryEntry.findMany({
-        where: { channelId, archivedAt: null, createdAt: { gt: since } },
+        where: {
+          channelId,
+          ...memoryContextEligibilityWhere(),
+          createdAt: { gt: since },
+        },
         orderBy: { createdAt: "desc" },
         take: 20,
         select: {

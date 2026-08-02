@@ -33,6 +33,7 @@ export type Permission =
   | "TASK_ASSIGN"
   | "TASK_APPROVE"
   | "TASK_DELETE_OTHERS"
+  | "MEMORY_MANAGE"
   | "MEMBER_INVITE"
   | "MEMBER_KICK"
   | "MEMBER_ROLE_CHANGE"
@@ -55,6 +56,7 @@ export const PERMISSIONS: readonly Permission[] = [
   "TASK_ASSIGN",
   "TASK_APPROVE",
   "TASK_DELETE_OTHERS",
+  "MEMORY_MANAGE",
   "MEMBER_INVITE",
   "MEMBER_KICK",
   "MEMBER_ROLE_CHANGE",
@@ -108,6 +110,7 @@ const MATRIX: Record<MemberRole, Set<Permission>> = {
     "TASK_CREATE",
     "TASK_ASSIGN",
     "TASK_APPROVE",
+    "MEMORY_MANAGE",
     "AI_USE",
     "ANALYTICS_VIEW",
   ]),
@@ -128,6 +131,7 @@ const MATRIX: Record<MemberRole, Set<Permission>> = {
     "TASK_ASSIGN",
     "TASK_APPROVE",
     "TASK_DELETE_OTHERS",
+    "MEMORY_MANAGE",
     "MEMBER_INVITE",
     "AI_USE",
     "ANALYTICS_VIEW",

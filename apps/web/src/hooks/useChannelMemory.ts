@@ -4,26 +4,52 @@ import { apiJson } from "../lib/api";
 import { SocketEvents } from "../lib/socket";
 
 export type MemoryKind = "NOTE" | "DECISION" | "RISK" | "FACT" | "LINK" | "ACTION";
+export type MemoryVisibility = "ROOM" | "WORKSPACE";
+export type MemoryLifecycleStatus = "ACTIVE" | "REVIEW_DUE" | "EXPIRED" | "ARCHIVED";
+export type MemoryListState = "active" | "archived";
+
+export type MemoryUser = {
+  id: string;
+  displayName: string;
+  avatar: string | null;
+  isBot: boolean;
+  botRole: string | null;
+};
 
 export type ChannelMemoryEntry = {
   id: string;
   serverId: string;
   channelId: string | null;
+  channel: { id: string; name: string; internal: boolean } | null;
   kind: MemoryKind;
+  visibility: MemoryVisibility;
   title: string;
   content: string | null;
   tags: string[];
   sourceMessageId: string | null;
   actionItemId: string | null;
+  actionItem: { id: string; title: string; type: string } | null;
+  owner: MemoryUser;
+  reviewDueAt: string | null;
+  lastReviewedAt: string | null;
+  lastReviewedBy: MemoryUser;
+  expiresAt: string | null;
   archivedAt: string | null;
+  archivedBy: MemoryUser | null;
   createdAt: string;
   updatedAt: string;
-  createdBy: {
-    id: string;
-    displayName: string;
-    avatar: string | null;
-    isBot: boolean;
-    botRole: string | null;
+  createdBy: MemoryUser;
+  lifecycle: {
+    status: MemoryLifecycleStatus;
+    contextEligible: boolean;
+    contextReason: string;
+  };
+  permissions: {
+    canEdit: boolean;
+    canArchive: boolean;
+    canRestore: boolean;
+    canReview: boolean;
+    canReassign: boolean;
   };
 };
 
@@ -32,9 +58,27 @@ export type CreateMemoryEntryInput = {
   title: string;
   content?: string | null;
   tags?: string[];
+  visibility?: MemoryVisibility;
+  ownerUserId?: string;
+  reviewDueAt?: string | null;
+  expiresAt?: string | null;
   sourceMessageId?: string;
   actionItemId?: string;
 };
+
+export type UpdateMemoryEntryInput = Partial<
+  Pick<
+    CreateMemoryEntryInput,
+    | "kind"
+    | "title"
+    | "content"
+    | "tags"
+    | "visibility"
+    | "ownerUserId"
+    | "reviewDueAt"
+    | "expiresAt"
+  >
+>;
 
 export type MemorySuggestion = {
   kind: MemoryKind;
@@ -45,6 +89,7 @@ export type MemorySuggestion = {
 
 type MemoryResponse = {
   entries: ChannelMemoryEntry[];
+  state: MemoryListState;
 };
 
 type SingleMemoryResponse = {
@@ -59,8 +104,10 @@ export function useChannelMemory(channelId: string | null, socket?: Socket | nul
   const [entries, setEntries] = useState<ChannelMemoryEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [mutatingId, setMutatingId] = useState<string | null>(null);
   const [suggesting, setSuggesting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [listState, setListState] = useState<MemoryListState>("active");
 
   const refresh = useCallback(async () => {
     if (!channelId) {
@@ -71,7 +118,7 @@ export function useChannelMemory(channelId: string | null, socket?: Socket | nul
     setError(null);
     try {
       const data = await apiJson<MemoryResponse>(
-        `/api/channels/${encodeURIComponent(channelId)}/memory`,
+        `/api/channels/${encodeURIComponent(channelId)}/memory?state=${listState}`,
       );
       setEntries(data.entries);
     } catch (e) {
@@ -79,7 +126,7 @@ export function useChannelMemory(channelId: string | null, socket?: Socket | nul
     } finally {
       setLoading(false);
     }
-  }, [channelId]);
+  }, [channelId, listState]);
 
   useEffect(() => {
     void refresh();
@@ -88,8 +135,8 @@ export function useChannelMemory(channelId: string | null, socket?: Socket | nul
   useEffect(() => {
     if (!socket || !channelId) return;
     let timer: number | null = null;
-    const onMemoryUpdated = (payload: { channelId?: string }) => {
-      if (payload.channelId !== channelId) return;
+    const onMemoryUpdated = (payload: { channelId?: string; workspace?: boolean }) => {
+      if (payload.channelId !== channelId && !payload.workspace) return;
       if (timer !== null) window.clearTimeout(timer);
       timer = window.setTimeout(() => void refresh(), 250);
     };
@@ -99,6 +146,17 @@ export function useChannelMemory(channelId: string | null, socket?: Socket | nul
       socket.off(SocketEvents.MemoryUpdated, onMemoryUpdated);
     };
   }, [socket, channelId, refresh]);
+
+  const mergeEntry = useCallback((entry: ChannelMemoryEntry) => {
+    const belongsInView =
+      (listState === "active" && !entry.archivedAt) ||
+      (listState === "archived" && Boolean(entry.archivedAt));
+    setEntries((current) =>
+      belongsInView
+        ? [entry, ...current.filter((item) => item.id !== entry.id)]
+        : current.filter((item) => item.id !== entry.id),
+    );
+  }, [listState]);
 
   const createEntryForChannel = useCallback(
     async (
@@ -115,12 +173,7 @@ export function useChannelMemory(channelId: string | null, socket?: Socket | nul
             body: JSON.stringify(input),
           },
         );
-        if (targetChannelId === channelId) {
-          setEntries((current) => [
-            data.entry,
-            ...current.filter((entry) => entry.id !== data.entry.id),
-          ]);
-        }
+        if (targetChannelId === channelId) mergeEntry(data.entry);
         return data.entry;
       } catch (e) {
         setError(e instanceof Error ? e.message : "Failed to save memory");
@@ -129,22 +182,88 @@ export function useChannelMemory(channelId: string | null, socket?: Socket | nul
         setSaving(false);
       }
     },
-    [channelId],
+    [channelId, mergeEntry],
   );
 
   const archiveEntry = useCallback(async (id: string): Promise<boolean> => {
+    setMutatingId(id);
     setError(null);
     try {
-      await apiJson<SingleMemoryResponse>(`/api/memory/${encodeURIComponent(id)}`, {
+      const data = await apiJson<SingleMemoryResponse>(`/api/memory/${encodeURIComponent(id)}`, {
         method: "DELETE",
       });
-      setEntries((current) => current.filter((entry) => entry.id !== id));
+      mergeEntry(data.entry);
       return true;
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to archive memory");
       return false;
+    } finally {
+      setMutatingId(null);
     }
-  }, []);
+  }, [mergeEntry]);
+
+  const updateEntry = useCallback(async (
+    id: string,
+    input: UpdateMemoryEntryInput,
+  ): Promise<ChannelMemoryEntry | null> => {
+    setMutatingId(id);
+    setError(null);
+    try {
+      const data = await apiJson<SingleMemoryResponse>(`/api/memory/${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        body: JSON.stringify(input),
+      });
+      mergeEntry(data.entry);
+      return data.entry;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to update memory");
+      return null;
+    } finally {
+      setMutatingId(null);
+    }
+  }, [mergeEntry]);
+
+  const reviewEntry = useCallback(async (
+    id: string,
+    reviewDueAt?: string | null,
+  ): Promise<ChannelMemoryEntry | null> => {
+    setMutatingId(id);
+    setError(null);
+    try {
+      const data = await apiJson<SingleMemoryResponse>(
+        `/api/memory/${encodeURIComponent(id)}/review`,
+        {
+          method: "POST",
+          body: JSON.stringify(reviewDueAt === undefined ? {} : { reviewDueAt }),
+        },
+      );
+      mergeEntry(data.entry);
+      return data.entry;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to review memory");
+      return null;
+    } finally {
+      setMutatingId(null);
+    }
+  }, [mergeEntry]);
+
+  const restoreEntry = useCallback(async (id: string): Promise<boolean> => {
+    setMutatingId(id);
+    setError(null);
+    try {
+      const data = await apiJson<SingleMemoryResponse>(
+        `/api/memory/${encodeURIComponent(id)}/restore`,
+        { method: "POST", body: "{}" },
+      );
+      mergeEntry(data.entry);
+      return true;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to restore memory");
+      return false;
+    } finally {
+      setMutatingId(null);
+    }
+  }, [mergeEntry]);
 
   const suggestEntry = useCallback(
     async (messageId: string): Promise<MemorySuggestion> => {
@@ -197,13 +316,19 @@ export function useChannelMemory(channelId: string | null, socket?: Socket | nul
     entries,
     loading,
     saving,
+    mutatingId,
     suggesting,
     error,
+    listState,
+    setListState,
     refresh,
     createEntry,
     createEntryForChannel,
     suggestEntry,
     suggestActionItem,
+    updateEntry,
+    reviewEntry,
     archiveEntry,
+    restoreEntry,
   };
 }

@@ -26,7 +26,7 @@ scope доступа, понятное действие и подтвержде�
   privacy и health вместо ручного выбора пользователем.
 - [ ] **Agent Workbench** — создание и тестирование агентов, scopes, approvals,
   memory policy и журнал действий в одном интерфейсе.
-- [ ] **Memory governance** — provenance, owner, retention, visibility, review,
+- [x] **Memory governance** — provenance, owner, retention, visibility, review,
   archive/restore и объяснение, почему запись попала в контекст.
 - [ ] **Mobile Command Inbox** — единая очередь коротких решений: approve,
   assign, answer, join call, review change; одно главное действие на карточку.
@@ -54,6 +54,21 @@ scope доступа, понятное действие и подтвержде�
   ролей без `ROOM_VIEW_INTERNAL`, включая связанные dependency titles; новые зависимости
   ограничить одной visibility-зоной.
 - [x] Ограничить AI suggestion и memory write отдельными authenticated rate limits.
+
+### Third delivery slice — v1.7.25
+
+- [x] Назначить каждой записи явного владельца, room/workspace visibility и безопасные
+  defaults: текущий автор, текущая комната, повторная проверка через 90 дней.
+- [x] Добавить review date, срок актуальности, reversible archive/restore и понятный
+  lifecycle status без физического удаления памяти.
+- [x] Исключать archived, expired и review-due записи из AI-контекста на уровне database
+  query и объяснять человеку причину включения или паузы прямо в интерфейсе.
+- [x] Ограничить управление владельцем записи или ролью с `MEMORY_MANAGE`; запретить
+  повышение памяти внутренней client-room до workspace visibility.
+- [x] Собрать адаптивный governance UI с простым созданием по безопасным defaults и
+  отдельным advanced editor для owner, visibility, review и retention.
+- [x] Ограничить mutation routes отдельным authenticated rate limit и добавить
+  regression-тесты lifecycle, permissions и route registration.
 
 ## Research intake — 2026-07-01
 

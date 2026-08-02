@@ -32,6 +32,7 @@ import {
   scoreMemoryLexical,
   tokenizeRetrievalQuery,
 } from "../ai/memoryRetrieval.js";
+import { memoryContextEligibilityWhere } from "../lib/memoryGovernance.js";
 
 // v1.6.99 — сообщение об отклонённом ServerInvite (slice B).
 const INVITE_REJECT_MESSAGE: Record<InviteRejectReason, string> = {
@@ -2328,7 +2329,7 @@ export async function registerServerRoutes(app: FastifyInstance) {
       const memoryRows = await db.memoryEntry.findMany({
         where: {
           serverId,
-          archivedAt: null,
+          ...memoryContextEligibilityWhere(),
           ...(hideInternal
             ? { OR: [{ channelId: null }, { channel: { internal: false } }] }
             : {}),

@@ -99,6 +99,8 @@ describe("server route registration", () => {
         ![
           "/api/channels/:id/memory",
           "/api/channels/:id/memory/suggest",
+          "/api/memory/:id/review",
+          "/api/memory/:id/restore",
         ].includes(route.url)
       ) {
         return;
@@ -125,5 +127,47 @@ describe("server route registration", () => {
       guards: ["requireJwt"],
       rateLimit: { max: 60, timeWindow: 5 * 60 * 1000 },
     });
+    expect(routes.get("/api/memory/:id/review")).toEqual({
+      guards: ["requireJwt"],
+      rateLimit: { max: 60, timeWindow: 5 * 60 * 1000 },
+    });
+    expect(routes.get("/api/memory/:id/restore")).toEqual({
+      guards: ["requireJwt"],
+      rateLimit: { max: 60, timeWindow: 5 * 60 * 1000 },
+    });
+  });
+
+  it("protects memory update and archive endpoints with the same mutation limit", async () => {
+    const app = Fastify();
+    const routes = new Map<
+      string,
+      { guards: string[]; rateLimit?: { max?: number; timeWindow?: number } }
+    >();
+    app.addHook("onRoute", (route) => {
+      if (route.url !== "/api/memory/:id") return;
+      const methods = Array.isArray(route.method) ? route.method : [route.method];
+      const routeGuards = Array.isArray(route.onRequest)
+        ? route.onRequest
+        : route.onRequest
+          ? [route.onRequest]
+          : [];
+      for (const method of methods) {
+        if (method !== "PATCH" && method !== "DELETE") continue;
+        routes.set(method, {
+          guards: routeGuards.map((guard) => guard.name),
+          rateLimit: route.config?.rateLimit as
+            | { max?: number; timeWindow?: number }
+            | undefined,
+        });
+      }
+    });
+
+    await registerMemoryRoutes(app);
+    for (const method of ["PATCH", "DELETE"]) {
+      expect(routes.get(method)).toEqual({
+        guards: ["requireJwt"],
+        rateLimit: { max: 60, timeWindow: 5 * 60 * 1000 },
+      });
+    }
   });
 });

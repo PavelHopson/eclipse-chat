@@ -429,8 +429,18 @@ export function emitActionItemUpdated(
   io?.to(`channel:${channelId}`).to(`server:${payload.serverId}`).emit("action:item:updated", payload);
 }
 
-export function emitMemoryUpdated(channelId: string) {
-  io?.to(`channel:${channelId}`).emit("memory:updated", { channelId });
+export function emitMemoryUpdated(
+  channelId: string | null,
+  serverId?: string,
+  workspace = false,
+) {
+  const payload = { channelId, serverId: serverId ?? null, workspace };
+  if (channelId) {
+    io?.to(`channel:${channelId}`).emit("memory:updated", payload);
+  }
+  if (workspace && serverId) {
+    io?.to(`server:${serverId}`).emit("memory:updated", payload);
+  }
 }
 
 /**

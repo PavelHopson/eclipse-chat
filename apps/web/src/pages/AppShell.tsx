@@ -259,13 +259,19 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     entries: channelMemoryEntries,
     loading: channelMemoryLoading,
     saving: channelMemorySaving,
+    mutatingId: channelMemoryMutatingId,
     suggesting: channelMemorySuggesting,
     error: channelMemoryError,
+    listState: channelMemoryListState,
+    setListState: setChannelMemoryListState,
     createEntry: createChannelMemoryEntry,
     createEntryForChannel: createMemoryEntryForChannel,
     suggestEntry: suggestChannelMemoryEntry,
     suggestActionItem: suggestActionMemoryEntry,
+    updateEntry: updateChannelMemoryEntry,
+    reviewEntry: reviewChannelMemoryEntry,
     archiveEntry: archiveChannelMemoryEntry,
+    restoreEntry: restoreChannelMemoryEntry,
   } = useChannelMemory(selectedChannelId, socket);
 
   // ===== DMs =====
@@ -1957,9 +1963,19 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             memoryEntries={channelMemoryEntries}
             memoryLoading={channelMemoryLoading}
             memorySaving={channelMemorySaving}
+            memoryMutatingId={channelMemoryMutatingId}
             memoryError={channelMemoryError}
+            memoryListState={channelMemoryListState}
+            memoryOwners={members.map((member) => ({
+              id: member.userId,
+              displayName: member.user.displayName,
+            }))}
             onCreateMemoryEntry={createChannelMemoryEntry}
+            onMemoryListStateChange={setChannelMemoryListState}
+            onUpdateMemoryEntry={updateChannelMemoryEntry}
+            onReviewMemoryEntry={reviewChannelMemoryEntry}
             onArchiveMemoryEntry={archiveChannelMemoryEntry}
+            onRestoreMemoryEntry={restoreChannelMemoryEntry}
             attachments={messages.flatMap((m) =>
               m.attachments.map((a) => ({
                 id: a.id,

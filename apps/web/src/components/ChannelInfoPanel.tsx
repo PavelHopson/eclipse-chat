@@ -1,10 +1,13 @@
 import { useEffect } from "react";
 import { ChannelDigestPanel } from "./ChannelDigestPanel";
 import {
-  MemoryView,
   ExecutionView,
   FilesView,
 } from "./IntelligencePanel";
+import {
+  MemoryGovernanceView,
+  type MemoryOwnerOption,
+} from "./MemoryGovernanceView";
 import type {
   AttachmentBrief,
   ExecutionItemBrief,
@@ -14,6 +17,8 @@ import type { ChannelDigest, DigestAiSummary } from "../hooks/useChannelDigest";
 import type {
   ChannelMemoryEntry,
   CreateMemoryEntryInput,
+  MemoryListState,
+  UpdateMemoryEntryInput,
 } from "../hooks/useChannelMemory";
 
 /**
@@ -56,11 +61,18 @@ type Props = {
   memoryEntries: ChannelMemoryEntry[];
   memoryLoading: boolean;
   memorySaving: boolean;
+  memoryMutatingId: string | null;
   memoryError: string | null;
+  memoryListState: MemoryListState;
+  memoryOwners: MemoryOwnerOption[];
   attachments: AttachmentBrief[];
   executionItems: ExecutionItemBrief[];
   onCreateMemoryEntry?: (input: CreateMemoryEntryInput) => Promise<unknown>;
-  onArchiveMemoryEntry?: (id: string) => Promise<unknown> | void;
+  onMemoryListStateChange: (state: MemoryListState) => void;
+  onUpdateMemoryEntry?: (id: string, input: UpdateMemoryEntryInput) => Promise<unknown>;
+  onReviewMemoryEntry?: (id: string, reviewDueAt?: string | null) => Promise<unknown>;
+  onArchiveMemoryEntry?: (id: string) => Promise<boolean>;
+  onRestoreMemoryEntry?: (id: string) => Promise<boolean>;
   onToggleExecutionStatus?: (
     id: string,
     status: import("../lib/socket").ActionItemStatus,
@@ -123,11 +135,18 @@ export function ChannelInfoPanel({
   memoryEntries,
   memoryLoading,
   memorySaving,
+  memoryMutatingId,
   memoryError,
+  memoryListState,
+  memoryOwners,
   attachments,
   executionItems,
   onCreateMemoryEntry,
+  onMemoryListStateChange,
+  onUpdateMemoryEntry,
+  onReviewMemoryEntry,
   onArchiveMemoryEntry,
+  onRestoreMemoryEntry,
   onToggleExecutionStatus,
   onOpenAction,
   clientMode = false,
@@ -243,14 +262,21 @@ export function ChannelInfoPanel({
               onRequestAiSummary={onRequestAiSummary}
             />
           ) : activeTab === "memory" ? (
-            <MemoryView
+            <MemoryGovernanceView
               items={pinnedMessages}
               entries={memoryEntries}
               loading={memoryLoading}
               saving={memorySaving}
+              mutatingId={memoryMutatingId}
               error={memoryError}
+              listState={memoryListState}
+              owners={memoryOwners}
+              onListStateChange={onMemoryListStateChange}
               onCreate={onCreateMemoryEntry}
+              onUpdate={onUpdateMemoryEntry}
+              onReview={onReviewMemoryEntry}
               onArchive={onArchiveMemoryEntry}
+              onRestore={onRestoreMemoryEntry}
             />
           ) : activeTab === "execution" ? (
             <ExecutionView

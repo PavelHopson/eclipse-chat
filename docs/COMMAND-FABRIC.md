@@ -42,6 +42,24 @@ Dependency references cannot cross internal/external visibility boundaries,
 preventing an open task from revealing a private title. Suggestion and write
 endpoints are authenticated and independently rate-limited.
 
+## v1.7.25 slice
+
+The third slice turns confirmed memory into a governed lifecycle. Every new
+entry has an explicit owner, room or workspace visibility, a 90-day review
+default and optional expiry. The basic create flow keeps these safe defaults
+automatic; advanced controls stay in a dedicated editor instead of making the
+main path harder.
+
+Archived, expired and review-due entries remain visible to authorized humans but
+are excluded from AI retrieval at the database-query boundary. Each card
+explains whether AI may use it and why. Archive is reversible, while review
+records who confirmed the entry and when.
+
+Only the owner, original creator or a role with `MEMORY_MANAGE` can change the
+lifecycle. Internal client-room memory cannot be promoted to workspace scope.
+Workspace changes invalidate memory views across the workspace, and every
+mutation endpoint is authenticated and rate-limited.
+
 ## Trust boundaries
 
 1. The server validates JWT and workspace membership before reading room data.
@@ -52,6 +70,10 @@ endpoints are authenticated and independently rate-limited.
 5. The client receives only source identifiers it is already authorized to read;
    source navigation re-checks authorization on the history endpoint.
 6. Search errors do not log queries or retrieved content.
+7. Archived, expired and review-due memory is filtered before digest or semantic
+   retrieval; UI state is not treated as an authorization boundary.
+8. Memory ownership and workspace membership are revalidated server-side before
+   reassignment, review, archive or restore.
 
 ## Current limits
 
@@ -62,9 +84,13 @@ endpoints are authenticated and independently rate-limited.
   highlight the exact reply.
 - Search ranking is deterministic but not yet personalized by user role,
   assignments or recent project activity.
+- Retention currently pauses AI usage but does not physically erase data.
+  Policy-based deletion and legal holds require a separate audited lifecycle.
+- Workspace memory has one workspace-wide scope. Per-role and per-agent memory
+  visibility is intentionally deferred until its policy model is explicit.
 
 ## Next slice
 
-Add memory governance metadata and review controls: explicit owner, retention,
-visibility, last-reviewed state, archive/restore and an explanation of why each
-entry was included in AI context.
+Build Mobile Command Inbox: one prioritized queue for approve, assign, answer,
+join-call and review actions, with one explicit primary action per card and no
+hidden automatic execution.

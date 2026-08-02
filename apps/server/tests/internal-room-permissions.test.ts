@@ -21,4 +21,13 @@ describe("internal room permissions", () => {
       expect(hasPermission(role, "ROOM_VIEW_INTERNAL"), role).toBe(true);
     }
   });
+
+  it("limits workspace-wide memory governance to accountable operational roles", () => {
+    for (const role of ["OWNER", "ADMIN", "ARCHITECT", "OPERATOR"] as const) {
+      expect(hasPermission(role, "MEMORY_MANAGE"), role).toBe(true);
+    }
+    for (const role of ["MODERATOR", "DEVELOPER", "CLIENT", "VIEWER", "GUEST", "MEMBER"] as const) {
+      expect(hasPermission(role, "MEMORY_MANAGE"), role).toBe(false);
+    }
+  });
 });

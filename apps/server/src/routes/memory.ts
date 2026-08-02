@@ -10,10 +10,18 @@ import {
 import { db } from "../db.js";
 import { ensureServerActive } from "../lib/serverGating.js";
 import { hasPermission } from "../lib/permissions.js";
+import {
+  canManageMemoryEntry,
+  getMemoryLifecycle,
+} from "../lib/memoryGovernance.js";
 import { serializeUser, type RawUserView } from "../lib/userView.js";
 import { emitMemoryUpdated } from "../realtime.js";
+import type { MemberRole } from "./servers.js";
 
 const memoryKindSchema = z.enum(["NOTE", "DECISION", "RISK", "FACT", "LINK", "ACTION"]);
+const memoryVisibilitySchema = z.enum(["ROOM", "WORKSPACE"]);
+const governanceDateSchema = z.string().datetime().nullable();
+const DEFAULT_REVIEW_DAYS = 90;
 
 const tagsSchema = z
   .array(z.string().trim().min(1).max(40))
@@ -22,6 +30,7 @@ const tagsSchema = z
 
 const listMemoryQuery = z.object({
   includeServer: z.enum(["true", "false"]).optional(),
+  state: z.enum(["active", "archived", "all"]).default("active"),
 }).strict();
 
 const createMemoryBody = z
@@ -30,6 +39,10 @@ const createMemoryBody = z
     title: z.string().trim().min(1).max(180),
     content: z.string().trim().max(4000).nullable().optional(),
     tags: tagsSchema,
+    visibility: memoryVisibilitySchema.default("ROOM"),
+    ownerUserId: z.string().trim().min(1).optional(),
+    reviewDueAt: governanceDateSchema.optional(),
+    expiresAt: governanceDateSchema.optional(),
     sourceMessageId: z.string().trim().min(1).optional(),
     actionItemId: z.string().trim().min(1).optional(),
   })
@@ -46,11 +59,19 @@ const updateMemoryBody = z
     title: z.string().trim().min(1).max(180).optional(),
     content: z.string().trim().max(4000).nullable().optional(),
     tags: tagsSchema,
+    visibility: memoryVisibilitySchema.optional(),
+    ownerUserId: z.string().trim().min(1).optional(),
+    reviewDueAt: governanceDateSchema.optional(),
+    expiresAt: governanceDateSchema.optional(),
   })
   .strict()
   .refine((body) => Object.keys(body).length > 0, {
     message: "At least one field is required",
   });
+
+const reviewMemoryBody = z
+  .object({ reviewDueAt: governanceDateSchema.optional() })
+  .strict();
 
 const memoryEntryInclude = {
   createdBy: {
@@ -62,12 +83,42 @@ const memoryEntryInclude = {
       botProfile: { select: { id: true, role: true } },
     },
   },
+  owner: {
+    select: {
+      id: true,
+      displayName: true,
+      avatar: true,
+      email: true,
+      botProfile: { select: { id: true, role: true } },
+    },
+  },
+  lastReviewedBy: {
+    select: {
+      id: true,
+      displayName: true,
+      avatar: true,
+      email: true,
+      botProfile: { select: { id: true, role: true } },
+    },
+  },
+  archivedBy: {
+    select: {
+      id: true,
+      displayName: true,
+      avatar: true,
+      email: true,
+      botProfile: { select: { id: true, role: true } },
+    },
+  },
   channel: {
     select: {
+      id: true,
+      name: true,
       internal: true,
       server: { select: { mode: true } },
     },
   },
+  actionItem: { select: { id: true, title: true, type: true } },
 };
 
 type MemoryEntryRow = {
@@ -75,15 +126,32 @@ type MemoryEntryRow = {
   serverId: string;
   channelId: string | null;
   kind: string;
+  visibility: "ROOM" | "WORKSPACE";
   title: string;
   content: string | null;
   tags: string | null;
   sourceMessageId: string | null;
   actionItemId: string | null;
+  createdByUserId: string | null;
+  ownerUserId: string | null;
+  reviewDueAt: Date | null;
+  lastReviewedAt: Date | null;
+  expiresAt: Date | null;
   archivedAt: Date | null;
+  archivedByUserId: string | null;
   createdAt: Date;
   updatedAt: Date;
   createdBy: RawUserView;
+  owner: RawUserView;
+  lastReviewedBy: RawUserView;
+  archivedBy: RawUserView;
+  channel: {
+    id: string;
+    name: string;
+    internal: boolean;
+    server: { mode: string };
+  } | null;
+  actionItem: { id: string; title: string; type: string } | null;
 };
 
 function normalizeTags(tags: string[] | undefined): string | null {
@@ -107,22 +175,63 @@ function parseTags(tags: string | null): string[] {
   }
 }
 
-function serializeMemoryEntry(entry: MemoryEntryRow) {
+function serializeMemoryEntry(entry: MemoryEntryRow, viewerId: string, viewerRole: MemberRole) {
+  const lifecycle = getMemoryLifecycle(entry);
+  const canEdit = canManageMemoryEntry(viewerId, viewerRole, entry);
   return {
     id: entry.id,
     serverId: entry.serverId,
     channelId: entry.channelId,
+    channel: entry.channel
+      ? { id: entry.channel.id, name: entry.channel.name, internal: entry.channel.internal }
+      : null,
     kind: entry.kind,
+    visibility: entry.visibility,
     title: entry.title,
     content: entry.content,
     tags: parseTags(entry.tags),
     sourceMessageId: entry.sourceMessageId,
     actionItemId: entry.actionItemId,
+    actionItem: entry.actionItem,
+    owner: serializeUser(entry.owner),
+    reviewDueAt: entry.reviewDueAt?.toISOString() ?? null,
+    lastReviewedAt: entry.lastReviewedAt?.toISOString() ?? null,
+    lastReviewedBy: serializeUser(entry.lastReviewedBy),
+    expiresAt: entry.expiresAt?.toISOString() ?? null,
     archivedAt: entry.archivedAt?.toISOString() ?? null,
+    archivedBy: entry.archivedAt ? serializeUser(entry.archivedBy) : null,
     createdAt: entry.createdAt.toISOString(),
     updatedAt: entry.updatedAt.toISOString(),
     createdBy: serializeUser(entry.createdBy),
+    lifecycle: {
+      status: lifecycle.status,
+      contextEligible: lifecycle.contextEligible,
+      contextReason: lifecycle.contextReason,
+    },
+    permissions: {
+      canEdit,
+      canArchive: canEdit && !entry.archivedAt,
+      canRestore: canEdit && Boolean(entry.archivedAt),
+      canReview: canEdit && !entry.archivedAt,
+      canReassign: hasPermission(viewerRole, "MEMORY_MANAGE"),
+    },
   };
+}
+
+function addDays(from: Date, days: number): Date {
+  return new Date(from.getTime() + days * 24 * 60 * 60 * 1000);
+}
+
+function parseGovernanceDate(value: string | null | undefined): Date | null | undefined {
+  if (value === undefined) return undefined;
+  return value === null ? null : new Date(value);
+}
+
+async function ensureMemoryOwner(serverId: string, ownerUserId: string) {
+  return db.member.findUnique({
+    where: { userId_serverId: { userId: ownerUserId, serverId } },
+    select: { userId: true },
+  });
 }
 
 async function requireChannelMember(userId: string, channelId: string) {
@@ -181,7 +290,7 @@ async function requireMemoryMember(userId: string, memoryId: string) {
     return { ok: false as const, error: "Memory entry not found" as const, status: 404 as const };
   }
 
-  return { ok: true as const, entry };
+  return { ok: true as const, entry, member };
 }
 
 export async function registerMemoryRoutes(app: FastifyInstance) {
@@ -208,20 +317,49 @@ export async function registerMemoryRoutes(app: FastifyInstance) {
       }
 
       const includeServer = parsedQuery.data.includeServer !== "false";
+      const state = parsedQuery.data.state;
+      const archiveWhere =
+        state === "active"
+          ? { archivedAt: null }
+          : state === "archived"
+            ? { archivedAt: { not: null } }
+            : {};
+      const scopeWhere = includeServer
+        ? {
+            OR: [
+              { channelId },
+              { visibility: "WORKSPACE" as const },
+              // Backward compatibility for legacy server-level rows.
+              { channelId: null },
+            ],
+          }
+        : { channelId };
+      const canViewInternal = hasPermission(
+        membership.member.role,
+        "ROOM_VIEW_INTERNAL",
+      );
       const entries = await db.memoryEntry.findMany({
         where: {
           serverId: membership.channel.serverId,
-          archivedAt: null,
-          OR: includeServer
-            ? [{ channelId }, { channelId: null }]
-            : [{ channelId }],
+          ...archiveWhere,
+          AND: [
+            scopeWhere,
+            ...(canViewInternal
+              ? []
+              : [{ OR: [{ channelId: null }, { channel: { internal: false } }] }]),
+          ],
         },
         include: memoryEntryInclude,
-        orderBy: { createdAt: "desc" },
+        orderBy: { updatedAt: "desc" },
         take: 80,
       });
 
-      return { entries: entries.map(serializeMemoryEntry) };
+      return {
+        entries: entries.map((entry) =>
+          serializeMemoryEntry(entry, userId, membership.member.role)
+        ),
+        state,
+      };
     },
   );
 
@@ -356,6 +494,29 @@ export async function registerMemoryRoutes(app: FastifyInstance) {
       const active = await ensureServerActive(membership.channel.serverId, reply);
       if (!active) return;
 
+      if (parsed.data.visibility === "WORKSPACE" && membership.channel.internal) {
+        return reply.status(400).send({
+          error: "Internal room memory cannot be shared with the whole workspace",
+        });
+      }
+      const ownerUserId = parsed.data.ownerUserId ?? userId;
+      if (
+        ownerUserId !== userId &&
+        !hasPermission(membership.member.role, "MEMORY_MANAGE")
+      ) {
+        return reply.status(403).send({ error: "Only memory managers can assign another owner" });
+      }
+      if (!(await ensureMemoryOwner(membership.channel.serverId, ownerUserId))) {
+        return reply.status(400).send({ error: "Memory owner is not a workspace member" });
+      }
+      const now = new Date();
+      const reviewDueAt =
+        parseGovernanceDate(parsed.data.reviewDueAt) ?? addDays(now, DEFAULT_REVIEW_DAYS);
+      const expiresAt = parseGovernanceDate(parsed.data.expiresAt) ?? null;
+      if (expiresAt && expiresAt <= now) {
+        return reply.status(400).send({ error: "Expiration must be in the future" });
+      }
+
       let resolvedSourceMessageId = parsed.data.sourceMessageId ?? null;
       if (parsed.data.actionItemId) {
         const actionItem = await db.actionItem.findFirst({
@@ -399,25 +560,36 @@ export async function registerMemoryRoutes(app: FastifyInstance) {
           serverId: membership.channel.serverId,
           channelId,
           kind: parsed.data.kind,
+          visibility: parsed.data.visibility,
           title: parsed.data.title,
           content: parsed.data.content || null,
           tags: normalizeTags(parsed.data.tags),
           sourceMessageId: resolvedSourceMessageId,
           actionItemId: parsed.data.actionItemId ?? null,
           createdByUserId: userId,
+          ownerUserId,
+          reviewDueAt,
+          lastReviewedAt: now,
+          lastReviewedByUserId: userId,
+          expiresAt,
         },
         include: memoryEntryInclude,
       });
 
-      emitMemoryUpdated(channelId);
+      emitMemoryUpdated(channelId, membership.channel.serverId, entry.visibility === "WORKSPACE");
 
-      return reply.status(201).send({ entry: serializeMemoryEntry(entry) });
+      return reply.status(201).send({
+        entry: serializeMemoryEntry(entry, userId, membership.member.role),
+      });
     },
   );
 
   app.patch(
     "/api/memory/:id",
-    { onRequest: [requireJwt] },
+    {
+      onRequest: [requireJwt],
+      config: { rateLimit: { max: 60, timeWindow: 5 * 60 * 1000 } },
+    },
     async (req, reply) => {
       const userId = getUserId(req);
       if (!userId) {
@@ -438,6 +610,39 @@ export async function registerMemoryRoutes(app: FastifyInstance) {
       }
       const active = await ensureServerActive(membership.entry.serverId, reply);
       if (!active) return;
+      if (
+        !canManageMemoryEntry(userId, membership.member.role, membership.entry)
+      ) {
+        return reply.status(403).send({ error: "Only the memory owner or manager can edit it" });
+      }
+      if (membership.entry.archivedAt) {
+        return reply.status(409).send({ error: "Restore the memory entry before editing it" });
+      }
+      if (
+        parsed.data.visibility === "WORKSPACE" &&
+        membership.entry.channel?.internal
+      ) {
+        return reply.status(400).send({
+          error: "Internal room memory cannot be shared with the whole workspace",
+        });
+      }
+      if (
+        parsed.data.ownerUserId &&
+        parsed.data.ownerUserId !== membership.entry.ownerUserId
+      ) {
+        if (!hasPermission(membership.member.role, "MEMORY_MANAGE")) {
+          return reply.status(403).send({ error: "Only memory managers can change the owner" });
+        }
+        if (!(await ensureMemoryOwner(membership.entry.serverId, parsed.data.ownerUserId))) {
+          return reply.status(400).send({ error: "Memory owner is not a workspace member" });
+        }
+      }
+      const now = new Date();
+      const expiresAt = parseGovernanceDate(parsed.data.expiresAt);
+      if (expiresAt && expiresAt <= now) {
+        return reply.status(400).send({ error: "Expiration must be in the future" });
+      }
+      const reviewDueAt = parseGovernanceDate(parsed.data.reviewDueAt);
 
       const entry = await db.memoryEntry.update({
         where: { id },
@@ -447,20 +652,82 @@ export async function registerMemoryRoutes(app: FastifyInstance) {
           ...(Object.prototype.hasOwnProperty.call(parsed.data, "content")
             ? { content: parsed.data.content || null }
             : {}),
-          ...(parsed.data.tags ? { tags: normalizeTags(parsed.data.tags) } : {}),
+          ...(Object.prototype.hasOwnProperty.call(parsed.data, "tags")
+            ? { tags: normalizeTags(parsed.data.tags) }
+            : {}),
+          ...(parsed.data.visibility ? { visibility: parsed.data.visibility } : {}),
+          ...(parsed.data.ownerUserId ? { ownerUserId: parsed.data.ownerUserId } : {}),
+          ...(reviewDueAt !== undefined
+            ? { reviewDueAt }
+            : { reviewDueAt: addDays(now, DEFAULT_REVIEW_DAYS) }),
+          ...(expiresAt !== undefined ? { expiresAt } : {}),
+          lastReviewedAt: now,
+          lastReviewedByUserId: userId,
         },
         include: memoryEntryInclude,
       });
 
-      if (entry.channelId) emitMemoryUpdated(entry.channelId);
+      emitMemoryUpdated(
+        entry.channelId,
+        entry.serverId,
+        membership.entry.visibility === "WORKSPACE" || entry.visibility === "WORKSPACE",
+      );
 
-      return { entry: serializeMemoryEntry(entry) };
+      return {
+        entry: serializeMemoryEntry(entry, userId, membership.member.role),
+      };
+    },
+  );
+
+  app.post(
+    "/api/memory/:id/review",
+    {
+      onRequest: [requireJwt],
+      config: { rateLimit: { max: 60, timeWindow: 5 * 60 * 1000 } },
+    },
+    async (req, reply) => {
+      const userId = getUserId(req);
+      if (!userId) return reply.status(401).send({ error: "Unauthorized" });
+      const parsed = reviewMemoryBody.safeParse(req.body ?? {});
+      if (!parsed.success) return reply.status(400).send({ error: "Invalid body" });
+      const { id } = req.params as { id: string };
+      const membership = await requireMemoryMember(userId, id);
+      if (!membership.ok) {
+        return reply.status(membership.status).send({ error: membership.error });
+      }
+      if (!canManageMemoryEntry(userId, membership.member.role, membership.entry)) {
+        return reply.status(403).send({ error: "Only the memory owner or manager can review it" });
+      }
+      if (membership.entry.archivedAt) {
+        return reply.status(409).send({ error: "Restore the memory entry before reviewing it" });
+      }
+      const active = await ensureServerActive(membership.entry.serverId, reply);
+      if (!active) return;
+      const now = new Date();
+      const requestedReviewDueAt = parseGovernanceDate(parsed.data.reviewDueAt);
+      const entry = await db.memoryEntry.update({
+        where: { id },
+        data: {
+          lastReviewedAt: now,
+          lastReviewedByUserId: userId,
+          reviewDueAt:
+            requestedReviewDueAt === undefined
+              ? addDays(now, DEFAULT_REVIEW_DAYS)
+              : requestedReviewDueAt,
+        },
+        include: memoryEntryInclude,
+      });
+      emitMemoryUpdated(entry.channelId, entry.serverId, entry.visibility === "WORKSPACE");
+      return { entry: serializeMemoryEntry(entry, userId, membership.member.role) };
     },
   );
 
   app.delete(
     "/api/memory/:id",
-    { onRequest: [requireJwt] },
+    {
+      onRequest: [requireJwt],
+      config: { rateLimit: { max: 60, timeWindow: 5 * 60 * 1000 } },
+    },
     async (req, reply) => {
       const userId = getUserId(req);
       if (!userId) {
@@ -476,16 +743,64 @@ export async function registerMemoryRoutes(app: FastifyInstance) {
       }
       const active = await ensureServerActive(membership.entry.serverId, reply);
       if (!active) return;
+      if (!canManageMemoryEntry(userId, membership.member.role, membership.entry)) {
+        return reply.status(403).send({ error: "Only the memory owner or manager can archive it" });
+      }
+      if (membership.entry.archivedAt) {
+        return reply.status(409).send({ error: "Memory entry is already archived" });
+      }
 
       const entry = await db.memoryEntry.update({
         where: { id },
-        data: { archivedAt: new Date() },
+        data: { archivedAt: new Date(), archivedByUserId: userId },
         include: memoryEntryInclude,
       });
 
-      if (entry.channelId) emitMemoryUpdated(entry.channelId);
+      emitMemoryUpdated(entry.channelId, entry.serverId, entry.visibility === "WORKSPACE");
 
-      return { entry: serializeMemoryEntry(entry) };
+      return { entry: serializeMemoryEntry(entry, userId, membership.member.role) };
+    },
+  );
+
+  app.post(
+    "/api/memory/:id/restore",
+    {
+      onRequest: [requireJwt],
+      config: { rateLimit: { max: 60, timeWindow: 5 * 60 * 1000 } },
+    },
+    async (req, reply) => {
+      const userId = getUserId(req);
+      if (!userId) return reply.status(401).send({ error: "Unauthorized" });
+      const { id } = req.params as { id: string };
+      const membership = await requireMemoryMember(userId, id);
+      if (!membership.ok) {
+        return reply.status(membership.status).send({ error: membership.error });
+      }
+      if (!canManageMemoryEntry(userId, membership.member.role, membership.entry)) {
+        return reply.status(403).send({ error: "Only the memory owner or manager can restore it" });
+      }
+      if (!membership.entry.archivedAt) {
+        return reply.status(409).send({ error: "Memory entry is already active" });
+      }
+      const active = await ensureServerActive(membership.entry.serverId, reply);
+      if (!active) return;
+      const now = new Date();
+      const entry = await db.memoryEntry.update({
+        where: { id },
+        data: {
+          archivedAt: null,
+          archivedByUserId: null,
+          lastReviewedAt: now,
+          lastReviewedByUserId: userId,
+          reviewDueAt: addDays(now, DEFAULT_REVIEW_DAYS),
+          ...(membership.entry.expiresAt && membership.entry.expiresAt <= now
+            ? { expiresAt: null }
+            : {}),
+        },
+        include: memoryEntryInclude,
+      });
+      emitMemoryUpdated(entry.channelId, entry.serverId, entry.visibility === "WORKSPACE");
+      return { entry: serializeMemoryEntry(entry, userId, membership.member.role) };
     },
   );
 }

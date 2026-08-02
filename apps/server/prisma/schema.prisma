@@ -117,6 +117,9 @@ model User {
   createdActionItems ActionItem[]        @relation("ActionItemCreator")
   assignedActionItems ActionItem[]       @relation("ActionItemAssignee")
   createdMemoryEntries MemoryEntry[]     @relation("MemoryEntryCreator")
+  ownedMemoryEntries MemoryEntry[]       @relation("MemoryEntryOwner")
+  reviewedMemoryEntries MemoryEntry[]    @relation("MemoryEntryReviewer")
+  archivedMemoryEntries MemoryEntry[]    @relation("MemoryEntryArchiver")
   /// Items на которых я approver (v0.55). Pending → approver_userId = me.
   approvalQueue      ActionItem[]        @relation("ActionItemApprover")
   /// Operational Tables, созданные этим user'ом (v0.59 phase 1).
@@ -522,6 +525,11 @@ enum MemoryEntryKind {
   FACT
   LINK
   ACTION
+}
+
+enum MemoryVisibility {
+  ROOM
+  WORKSPACE
 }
 
 /// Режим сервера — Client Portal vs Engineering / Internal Ops.
@@ -1296,6 +1304,7 @@ model MemoryEntry {
   channelId       String?
   channel         Channel?        @relation(fields: [channelId], references: [id], onDelete: Cascade)
   kind            MemoryEntryKind @default(NOTE)
+  visibility      MemoryVisibility @default(ROOM)
   title           String
   content         String?
   /// JSON-encoded string[] for small display/search tags.
@@ -1306,7 +1315,20 @@ model MemoryEntry {
   actionItem      ActionItem?     @relation("MemoryEntryActionItem", fields: [actionItemId], references: [id], onDelete: SetNull)
   createdByUserId String?
   createdBy       User?           @relation("MemoryEntryCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  /// The person accountable for keeping this entry accurate. Existing rows
+  /// are backfilled from createdByUserId; nullable only for deleted users.
+  ownerUserId     String?
+  owner           User?           @relation("MemoryEntryOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  /// Review and retention are independent: reviewDueAt pauses AI-context use,
+  /// while expiresAt marks the knowledge as no longer current.
+  reviewDueAt     DateTime?
+  lastReviewedAt DateTime?
+  lastReviewedByUserId String?
+  lastReviewedBy User?           @relation("MemoryEntryReviewer", fields: [lastReviewedByUserId], references: [id], onDelete: SetNull)
+  expiresAt       DateTime?
   archivedAt      DateTime?
+  archivedByUserId String?
+  archivedBy      User?           @relation("MemoryEntryArchiver", fields: [archivedByUserId], references: [id], onDelete: SetNull)
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 
@@ -1314,6 +1336,10 @@ model MemoryEntry {
   @@index([channelId, createdAt])
   @@index([kind, createdAt])
   @@index([archivedAt])
+  @@index([serverId, visibility, archivedAt])
+  @@index([ownerUserId, archivedAt])
+  @@index([reviewDueAt])
+  @@index([expiresAt])
 }
 
 /// Граф зависимостей между ActionItem'ами (v0.73 #20 phase 2).
