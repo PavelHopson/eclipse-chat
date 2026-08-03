@@ -2,7 +2,7 @@
 set -euo pipefail
 
 AI_HUB_REPOSITORY="https://github.com/PavelHopson/eclipse-ai-hub.git"
-AI_HUB_COMMIT="d959515ad5e915ce6bb544843615a7cbfd9dcb2a"
+AI_HUB_COMMIT="af191f7d224514f715554cb9e4efbd3bebc7856f"
 AI_HUB_PATH="${ECLIPSE_AI_HUB_GATEWAY_PATH:-/var/www/eclipse-ai-hub-gateway}"
 GATEWAY_ENV_FILE="${AI_GATEWAY_ENV_FILE:-/etc/eclipse-ai-gateway.env}"
 CHAT_ENV_FILE="${ECLIPSE_CHAT_ENV_FILE:-/var/www/eclipse-chat/apps/server/.env}"
@@ -82,17 +82,47 @@ if [[ -z "$OMNIROUTE_API_KEY" ]]; then
 fi
 
 SERVICE_TOKEN=""
+SERVICE_CLIENTS=""
 if [[ -f "$GATEWAY_ENV_FILE" ]]; then
   if [[ "$(stat -c '%U' "$GATEWAY_ENV_FILE")" != "root" || "$(stat -c '%a' "$GATEWAY_ENV_FILE")" =~ [1-7]$ ]]; then
     echo "Existing gateway environment has unsafe ownership or permissions" >&2
     exit 1
   fi
+  read_env_value "AI_GATEWAY_SERVICE_CLIENTS" "$GATEWAY_ENV_FILE"
+  SERVICE_CLIENTS="$REPLY"
   read_env_value "AI_GATEWAY_SERVICE_TOKEN" "$GATEWAY_ENV_FILE"
-  SERVICE_TOKEN="$REPLY"
+  LEGACY_SERVICE_TOKEN="$REPLY"
+  read_env_value "AI_GATEWAY_SERVICE_TOKENS" "$GATEWAY_ENV_FILE"
+  LEGACY_ROTATION_TOKENS="$REPLY"
+  if [[ -n "$SERVICE_CLIENTS" ]]; then
+    if [[ -n "$LEGACY_SERVICE_TOKEN" || -n "$LEGACY_ROTATION_TOKENS" ]]; then
+      echo "Gateway environment mixes scoped and legacy service credentials" >&2
+      exit 1
+    fi
+    SERVICE_TOKEN="$(
+      SERVICE_CLIENTS_JSON="$SERVICE_CLIENTS" \
+      CLIENT_ID="eclipse-chat" \
+      node "$AI_HUB_PATH/gateway/scripts/service-clients.mjs" primary-token-if-present
+    )"
+  else
+    if [[ -n "$LEGACY_ROTATION_TOKENS" ]]; then
+      echo "Gateway legacy credential rotation must finish before migration" >&2
+      exit 1
+    fi
+    SERVICE_TOKEN="$LEGACY_SERVICE_TOKEN"
+  fi
 fi
 if [[ ${#SERVICE_TOKEN} -lt 32 ]]; then
   SERVICE_TOKEN="$(openssl rand -hex 32)"
 fi
+SERVICE_CLIENTS="$(
+  SERVICE_CLIENTS_JSON="$SERVICE_CLIENTS" \
+  CLIENT_ID="eclipse-chat" \
+  CLIENT_TOKENS="$SERVICE_TOKEN" \
+  CLIENT_SCOPES="models:read,telemetry:read,chat:write" \
+  CLIENT_REQUESTS_PER_MINUTE="120" \
+  node "$AI_HUB_PATH/gateway/scripts/service-clients.mjs" upsert
+)"
 
 umask 077
 GATEWAY_ENV_TEMP="$(mktemp)"
@@ -100,7 +130,7 @@ trap 'rm -f "$GATEWAY_ENV_TEMP"' EXIT
 {
   write_env_line "AI_GATEWAY_HOST" "127.0.0.1"
   write_env_line "AI_GATEWAY_PORT" "8810"
-  write_env_line "AI_GATEWAY_SERVICE_TOKEN" "$SERVICE_TOKEN"
+  write_env_line "AI_GATEWAY_SERVICE_CLIENTS" "$SERVICE_CLIENTS"
   write_env_line "AI_GATEWAY_UPSTREAM_BASE_URL" "http://127.0.0.1:20128/api/v1"
   write_env_line "AI_GATEWAY_UPSTREAM_API_KEY" "$OMNIROUTE_API_KEY"
   write_env_line "AI_GATEWAY_MODELS" "auto/best-chat"
@@ -121,6 +151,7 @@ source "$GATEWAY_ENV_FILE"
 set +a
 cd "$AI_HUB_PATH"
 AI_GATEWAY_SMOKE_BASE_URL="http://127.0.0.1:8810" \
+  AI_GATEWAY_SERVICE_TOKEN="$SERVICE_TOKEN" \
   AI_GATEWAY_SMOKE_COMPLETION=1 \
   node gateway/scripts/smoke.mjs
 

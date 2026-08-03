@@ -24,6 +24,11 @@ describe("AI gateway production deployment", () => {
     expect(gatewaySync).toMatch(/AI_HUB_COMMIT="[0-9a-f]{40}"/);
     expect(gatewaySync).toContain("checkout --quiet --detach --force");
     expect(gatewaySync).toContain("install -o root -g www-data -m 0640");
+    expect(gatewaySync).toContain('AI_GATEWAY_SERVICE_CLIENTS');
+    expect(gatewaySync).toContain('CLIENT_ID="eclipse-chat"');
+    expect(gatewaySync).toContain('CLIENT_SCOPES="models:read,telemetry:read,chat:write"');
+    expect(gatewaySync).toContain("primary-token-if-present");
+    expect(gatewaySync).not.toContain('write_env_line "AI_GATEWAY_SERVICE_TOKEN"');
     expect(gatewaySync).not.toContain("set -x");
   });
 
@@ -42,10 +47,12 @@ describe("AI gateway production deployment", () => {
     expect(canaryScript).not.toContain("set -x");
   });
 
-  it("rotates service credentials through a dual-token grace window with rollback", () => {
-    expect(rotationScript).toContain('AI_GATEWAY_SERVICE_TOKENS');
-    expect(rotationScript).toContain('NEW_TOKEN,$OLD_GATEWAY_TOKEN');
-    expect(rotationScript).toContain('delete_env_value "AI_GATEWAY_SERVICE_TOKENS"');
+  it("rotates only the Chat client through a dual-token grace window with rollback", () => {
+    expect(rotationScript).toContain('AI_GATEWAY_SERVICE_CLIENTS');
+    expect(rotationScript).toContain('CLIENT_ID="eclipse-chat"');
+    expect(rotationScript).toContain('CLIENT_TOKENS="$NEW_TOKEN,$OLD_GATEWAY_TOKEN"');
+    expect(rotationScript).toContain('CLIENT_TOKENS="$NEW_TOKEN"');
+    expect(rotationScript).toContain('CLIENT_SCOPES="models:read,telemetry:read,chat:write"');
     expect(rotationScript).toContain('OLD_TOKEN_STATUS=');
     expect(rotationScript).toContain('OLD_TOKEN_STATUS" != "401"');
     expect(rotationScript).toContain('cp -p -- "$GATEWAY_BACKUP" "$GATEWAY_ENV"');
