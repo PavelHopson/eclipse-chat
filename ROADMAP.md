@@ -50,6 +50,8 @@ scope доступа, понятное действие и подтвержде�
   ограничивать только доступными пользователю комнатами.
 - [x] Проверить loading/empty/error/success/busy states, reduced motion и responsive layout
   на 360×740, 390×844 и 768×1024 без horizontal overflow; touch targets 40–46 px.
+- [x] Закрыть опубликованный перед релизом High advisory `GHSA-rgw5-rvv9-x895`:
+  `brace-expansion 5.0.8 → 5.0.9` без `--force` и ослабления CI audit gate.
 - [ ] Вынести агрегирование approval queue в один server endpoint при росте числа workspaces;
   текущий bounded fan-out подходит для первого production slice.
 
