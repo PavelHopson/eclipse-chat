@@ -94,11 +94,13 @@ export type ChannelCreatedPayload = {
   categoryId?: string | null;
   createdAt: string;
   expiresAt?: string | null;
+  internal: boolean;
 };
 
 export type ChannelDeletedPayload = {
   channelId: string;
   serverId: string;
+  internal: boolean;
 };
 
 export type ChannelUpdatedPayload = {
@@ -111,6 +113,7 @@ export type ChannelUpdatedPayload = {
   categoryId?: string | null;
   description: string | null;
   emoji: string | null;
+  internal: boolean;
   expiresAt?: string | null;
   /** v1.7.0 — дефолтный TTL исчезающих сообщений канала (секунды; null = выкл). */
   messageTtlSeconds?: number | null;
@@ -273,6 +276,7 @@ export type ActionItemPayload = {
   priority: ActionItemPriority;
   serverId: string;
   channelId: string;
+  internal: boolean;
   sourceMessageId: string;
   createdAt: string;
   updatedAt: string;
@@ -537,6 +541,7 @@ export const SocketEvents = {
   EmojiCreated: "emoji:created",
   EmojiDeleted: "emoji:deleted",
   ChannelUpdated: "channel:updated",
+  ChannelsRefresh: "channels:refresh",
   IncidentOpened: "incident:opened",
   IncidentResolved: "incident:resolved",
   MemberJoined: "member:joined",

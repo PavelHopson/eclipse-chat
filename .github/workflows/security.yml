@@ -1,0 +1,146 @@
+name: Security Gate
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+  schedule:
+    - cron: "17 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  profile:
+    name: Select security profile
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+      - name: Setup Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 22
+      - name: Test profile selector
+        run: npm run security:profile:test
+      - name: Publish required controls
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          EVENT_HEAD: ${{ github.sha }}
+        run: |
+          BASE="$EVENT_BASE"
+          if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
+            BASE="$(git rev-parse "$EVENT_HEAD^" 2>/dev/null || git rev-list --max-parents=0 "$EVENT_HEAD")"
+          fi
+          node deploy/scripts/security-profile.mjs --base "$BASE" --head "$EVENT_HEAD" | tee security-profile.md
+          cat security-profile.md >> "$GITHUB_STEP_SUMMARY"
+
+  secrets:
+    name: Gitleaks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+      - name: Install verified Gitleaks binary
+        env:
+          GITLEAKS_VERSION: 8.30.1
+          GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+        run: |
+          archive="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl --fail --silent --show-error --location \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/${archive}" \
+            --output "/tmp/${archive}"
+          echo "${GITLEAKS_SHA256}  /tmp/${archive}" | sha256sum --check --strict
+          tar -xzf "/tmp/${archive}" -C /tmp gitleaks
+          sudo install -m 0755 /tmp/gitleaks /usr/local/bin/gitleaks
+      - name: Scan repository history
+        env:
+          EVENT_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          EVENT_HEAD: ${{ github.sha }}
+        run: |
+          if [ -n "$EVENT_BASE" ] && [ "$EVENT_BASE" != "0000000000000000000000000000000000000000" ]; then
+            gitleaks git --redact --verbose --config .gitleaks.toml \
+              --report-format sarif --report-path gitleaks.sarif \
+              --log-opts="${EVENT_BASE}..${EVENT_HEAD}" .
+          else
+            gitleaks git --redact --verbose --config .gitleaks.toml \
+              --report-format sarif --report-path gitleaks.sarif \
+              --log-opts="--all" .
+          fi
+      - name: Upload Gitleaks report
+        if: always() && hashFiles('gitleaks.sarif') != ''
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: gitleaks-sarif
+          path: gitleaks.sarif
+          retention-days: 14
+
+  dependency-review:
+    name: Dependency review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Reject vulnerable dependency changes
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: high
+          comment-summary-in-pr: always
+
+  sca-sbom:
+    name: Dependency audit and SBOM
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Setup Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts
+      - name: Block High and Critical advisories
+        run: npm audit --audit-level=high
+      - name: Generate CycloneDX SBOM
+        run: npm sbom --all --sbom-format cyclonedx > eclipse-chat.cdx.json
+      - name: Upload SBOM
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: eclipse-chat-cyclonedx
+          path: eclipse-chat.cdx.json
+          retention-days: 30
+
+  codeql:
+    name: CodeQL
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      packages: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@bce182f857edf1feab116e9795a3393d21977282 # v4
+        with:
+          languages: javascript-typescript
+          queries: security-extended
+      - name: Analyze
+        uses: github/codeql-action/analyze@bce182f857edf1feab116e9795a3393d21977282 # v4
+        with:
+          category: /language:javascript-typescript

@@ -70,6 +70,18 @@ scope доступа, понятное действие и подтвержде�
 - [x] Ограничить mutation routes отдельным authenticated rate limit и добавить
   regression-тесты lifecycle, permissions и route registration.
 
+### Security gate and realtime isolation — v1.7.26
+
+- [x] Separate public and internal Socket.IO audiences so CLIENT/GUEST/MEMBER sessions cannot receive
+  hidden channel metadata, Action Items, comments, dependencies, escalations or voice presence.
+- [x] Re-check room visibility for channel, thread and voice subscriptions; reject typing events unless the
+  socket already belongs to the target channel room; immediately reconcile active rooms after membership,
+  role, workspace-mode or channel-visibility changes.
+- [x] Filter voice snapshots by role and preserve public/internal routing when participants join, leave or speak.
+- [x] Add a path-sensitive security profile selector and CI gates for Gitleaks, dependency review, npm audit,
+  CycloneDX SBOM and CodeQL `security-extended` queries.
+- [x] Document the release gate and add regression coverage for role matrices and realtime audience isolation.
+
 ### Operational integration slice — advertising room
 
 - [x] Добавить в создание EXECUTION-комнаты один понятный preset

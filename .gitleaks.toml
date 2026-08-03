@@ -1,0 +1,4 @@
+title = "Eclipse Chat secret scanning"
+
+[extend]
+useDefault = true

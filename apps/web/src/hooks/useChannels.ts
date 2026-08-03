@@ -65,6 +65,7 @@ function normalizeCreatedChannel(p: ChannelCreatedPayload): ChannelRow {
     categoryId: p.categoryId ?? null,
     description: null,
     emoji: null,
+    internal: p.internal ?? false,
     expiresAt: p.expiresAt ?? null,
     messageTtlSeconds: null,
     createdAt: p.createdAt,
@@ -82,6 +83,7 @@ function updateChannelFromPayload(channel: ChannelRow, p: ChannelUpdatedPayload)
     categoryId: p.categoryId ?? null,
     description: p.description,
     emoji: p.emoji,
+    internal: p.internal ?? channel.internal ?? false,
     expiresAt: p.expiresAt ?? channel.expiresAt ?? null,
     messageTtlSeconds: p.messageTtlSeconds ?? channel.messageTtlSeconds ?? null,
   };
@@ -163,6 +165,17 @@ export function useChannels(serverId: string | null, socket: Socket | null) {
       socket.off(SocketEvents.ChannelCreated, handler);
     };
   }, [socket, serverId]);
+
+  useEffect(() => {
+    if (!socket || !serverId) return;
+    const handler = (p: { serverId: string }) => {
+      if (p.serverId === serverId) void reload();
+    };
+    socket.on(SocketEvents.ChannelsRefresh, handler);
+    return () => {
+      socket.off(SocketEvents.ChannelsRefresh, handler);
+    };
+  }, [reload, socket, serverId]);
 
   useEffect(() => {
     if (!socket || !serverId) return;

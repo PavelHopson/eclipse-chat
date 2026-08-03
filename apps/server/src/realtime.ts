@@ -1,10 +1,113 @@
 import type { Server as SocketServer } from "socket.io";
 import type { BotRoleValue } from "./ai/botRoles.js";
+import { db } from "./db.js";
+import {
+  canAccessRealtimeChannel,
+  restrictedRealtimeRooms,
+  serverRealtimeRoom,
+} from "./lib/realtimeAccess.js";
+import { stateForSocket, trackVoiceLeave } from "./voicePresence.js";
 
 let io: SocketServer | null = null;
 
 export function setSocketIO(server: SocketServer) {
   io = server;
+}
+
+async function reconcileServerSockets(serverId: string, targetUserId?: string): Promise<void> {
+  if (!io) return;
+  const sockets = await io
+    .in(targetUserId ? `user:${targetUserId}` : serverRealtimeRoom(serverId, false))
+    .fetchSockets();
+  if (sockets.length === 0) return;
+
+  const [server, channels] = await Promise.all([
+    db.server.findUnique({ where: { id: serverId }, select: { mode: true } }),
+    db.channel.findMany({
+      where: { serverId },
+      select: { id: true, internal: true },
+    }),
+  ]);
+  if (!server) return;
+
+  const userIds = Array.from(
+    new Set(
+      sockets
+        .map((socket) => (socket.data as { userId?: string | null }).userId)
+        .filter((userId): userId is string => Boolean(userId)),
+    ),
+  );
+  const memberships = await db.member.findMany({
+    where: { serverId, userId: { in: userIds } },
+    select: { userId: true, role: true },
+  });
+  const membershipByUserId = new Map(
+    memberships.map((membership) => [membership.userId, membership] as const),
+  );
+
+  const requestedThreadIds = Array.from(
+    new Set(
+      sockets.flatMap((socket) =>
+        Array.from(socket.rooms)
+          .filter((room) => room.startsWith("thread:"))
+          .map((room) => room.slice("thread:".length)),
+      ),
+    ),
+  );
+  const threadRoots = requestedThreadIds.length > 0
+    ? await db.message.findMany({
+        where: { id: { in: requestedThreadIds }, channel: { serverId } },
+        select: { id: true, channel: { select: { internal: true } } },
+      })
+    : [];
+  const allChannelIds = new Set(channels.map((channel) => channel.id));
+  const internalChannelIds = new Set(
+    channels.filter((channel) => channel.internal).map((channel) => channel.id),
+  );
+  const allThreadIds = new Set(threadRoots.map((root) => root.id));
+  const internalThreadIds = new Set(
+    threadRoots.filter((root) => root.channel?.internal).map((root) => root.id),
+  );
+
+  for (const socket of sockets) {
+    const userId = (socket.data as { userId?: string | null }).userId;
+    const membership = userId ? membershipByUserId.get(userId) : undefined;
+    const canAccessInternal = Boolean(
+      membership && canAccessRealtimeChannel(server.mode, true, membership.role),
+    );
+
+    if (membership) await socket.join(serverRealtimeRoom(serverId, false));
+    else await socket.leave(serverRealtimeRoom(serverId, false));
+    if (canAccessInternal) await socket.join(serverRealtimeRoom(serverId, true));
+    else await socket.leave(serverRealtimeRoom(serverId, true));
+
+    const roomsToLeave = restrictedRealtimeRooms(
+      socket.rooms,
+      membership ? internalChannelIds : allChannelIds,
+      membership ? internalThreadIds : allThreadIds,
+    );
+    await Promise.all(roomsToLeave.map((room) => socket.leave(room)));
+
+    const voiceState = stateForSocket(socket.id);
+    if (
+      voiceState?.serverId === serverId &&
+      (!membership || !canAccessRealtimeChannel(server.mode, voiceState.internal, membership.role))
+    ) {
+      trackVoiceLeave(socket.id);
+    }
+    socket.emit("channels:refresh", { serverId });
+  }
+}
+
+export async function reconcileServerRealtimeAccess(serverId: string): Promise<void> {
+  await reconcileServerSockets(serverId);
+}
+
+export async function reconcileUserServerRealtimeAccess(
+  userId: string,
+  serverId: string,
+): Promise<void> {
+  await reconcileServerSockets(serverId, userId);
 }
 
 /**
@@ -118,12 +221,13 @@ export function emitChannelCreated(
     type: "TEXT" | "VOICE" | "BROADCAST" | "EXECUTION";
     position: number;
     createdAt: string;
+    internal: boolean;
     expiresAt?: string | null;
     /** v1.5.46 C1 — категория канала. null = uncategorized. */
     categoryId?: string | null;
   },
 ) {
-  io?.to(`server:${serverId}`).emit("channel:created", payload);
+  io?.to(serverRealtimeRoom(serverId, payload.internal)).emit("channel:created", payload);
 }
 
 /**
@@ -132,9 +236,9 @@ export function emitChannelCreated(
  */
 export function emitChannelDeleted(
   serverId: string,
-  payload: { channelId: string; serverId: string },
+  payload: { channelId: string; serverId: string; internal: boolean },
 ) {
-  io?.to(`server:${serverId}`).emit("channel:deleted", payload);
+  io?.to(serverRealtimeRoom(serverId, payload.internal)).emit("channel:deleted", payload);
 }
 
 /**
@@ -153,6 +257,7 @@ export function emitChannelUpdated(
     position: number;
     description: string | null;
     emoji: string | null;
+    internal: boolean;
     expiresAt?: string | null;
     /** v1.7.0 — дефолтный TTL исчезающих сообщений канала (секунды; null = выкл). */
     messageTtlSeconds?: number | null;
@@ -160,8 +265,12 @@ export function emitChannelUpdated(
      *  При смене categoryId frontend перемещает канал между группами. */
     categoryId?: string | null;
   },
+  previousInternal = payload.internal,
 ) {
-  io?.to(`server:${serverId}`).emit("channel:updated", payload);
+  io?.to(serverRealtimeRoom(serverId, payload.internal)).emit("channel:updated", payload);
+  if (previousInternal !== payload.internal) {
+    io?.to(serverRealtimeRoom(serverId, false)).emit("channels:refresh", { serverId });
+  }
 }
 
 // ============================
@@ -353,12 +462,16 @@ export function emitActionItemCreated(
       displayName: string;
       avatar: string | null;
     } | null;
+    internal: boolean;
   },
 ) {
   // Эмитим в server-room тоже — чтобы Status Board (server-wide) получал
   // live-апдейты. Socket.io доставит once на сокет даже если он в обеих
   // комнатах. useMessages фильтрует по channelId, server board — нет.
-  io?.to(`channel:${channelId}`).to(`server:${payload.serverId}`).emit("action:item:created", payload);
+  io
+    ?.to(`channel:${channelId}`)
+    .to(serverRealtimeRoom(payload.serverId, payload.internal))
+    .emit("action:item:created", payload);
 }
 
 /**
@@ -424,9 +537,13 @@ export function emitActionItemUpdated(
       displayName: string;
       avatar: string | null;
     } | null;
+    internal: boolean;
   },
 ) {
-  io?.to(`channel:${channelId}`).to(`server:${payload.serverId}`).emit("action:item:updated", payload);
+  io
+    ?.to(`channel:${channelId}`)
+    .to(serverRealtimeRoom(payload.serverId, payload.internal))
+    .emit("action:item:updated", payload);
 }
 
 export function emitMemoryUpdated(
@@ -452,6 +569,7 @@ export function emitMemoryUpdated(
 export function emitActionItemCommentAdded(
   channelId: string,
   serverId: string,
+  internal: boolean,
   payload: {
     id: string;
     actionItemId: string;
@@ -467,15 +585,22 @@ export function emitActionItemCommentAdded(
     };
   },
 ) {
-  io?.to(`channel:${channelId}`).to(`server:${serverId}`).emit("action:item:comment:added", payload);
+  io
+    ?.to(`channel:${channelId}`)
+    .to(serverRealtimeRoom(serverId, internal))
+    .emit("action:item:comment:added", payload);
 }
 
 export function emitActionItemCommentDeleted(
   channelId: string,
   serverId: string,
+  internal: boolean,
   payload: { commentId: string; actionItemId: string },
 ) {
-  io?.to(`channel:${channelId}`).to(`server:${serverId}`).emit("action:item:comment:deleted", payload);
+  io
+    ?.to(`channel:${channelId}`)
+    .to(serverRealtimeRoom(serverId, internal))
+    .emit("action:item:comment:deleted", payload);
 }
 
 /**
@@ -488,13 +613,17 @@ export function emitActionItemCommentDeleted(
 export function emitActionItemDependencyChanged(
   channelId: string,
   serverId: string,
+  internal: boolean,
   payload: {
     actionItemId: string;
     dependsOnActionItemId: string;
     kind: "added" | "removed";
   },
 ) {
-  io?.to(`channel:${channelId}`).to(`server:${serverId}`).emit("action:item:dependency:changed", payload);
+  io
+    ?.to(`channel:${channelId}`)
+    .to(serverRealtimeRoom(serverId, internal))
+    .emit("action:item:dependency:changed", payload);
 }
 
 /**
@@ -505,6 +634,7 @@ export function emitActionItemDependencyChanged(
 export function emitActionItemEscalated(
   channelId: string,
   serverId: string,
+  internal: boolean,
   payload: {
     actionItemId: string;
     title: string;
@@ -516,7 +646,10 @@ export function emitActionItemEscalated(
     escalatedAt: string;
   },
 ) {
-  io?.to(`channel:${channelId}`).to(`server:${serverId}`).emit("action:item:escalated", payload);
+  io
+    ?.to(`channel:${channelId}`)
+    .to(serverRealtimeRoom(serverId, internal))
+    .emit("action:item:escalated", payload);
 }
 
 // ============================

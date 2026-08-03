@@ -73,6 +73,7 @@ export async function runEscalationScan(log: FastifyBaseLogger): Promise<{
       dueAt: true,
       assigneeUserId: true,
       createdByUserId: true,
+      channel: { select: { internal: true } },
     },
   });
 
@@ -113,7 +114,7 @@ export async function runEscalationScan(log: FastifyBaseLogger): Promise<{
         emitActionItemUpdated(item.channelId, serializeActionItem(after));
       }
 
-      emitActionItemEscalated(item.channelId, item.serverId, {
+      emitActionItemEscalated(item.channelId, item.serverId, item.channel.internal, {
         actionItemId: item.id,
         title: item.title,
         serverId: item.serverId,

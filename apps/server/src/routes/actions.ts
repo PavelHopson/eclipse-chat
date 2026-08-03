@@ -605,7 +605,12 @@ export async function registerActionRoutes(app: FastifyInstance) {
         // serializeUser() даёт «Удалённый пользователь» placeholder если null.
         user: serializeUser(comment.user),
       };
-      emitActionItemCommentAdded(item.channelId, item.serverId, payload);
+      emitActionItemCommentAdded(
+        item.channelId,
+        item.serverId,
+        access.channel.internal,
+        payload,
+      );
       return { comment: payload };
     },
   );
@@ -901,7 +906,7 @@ export async function registerActionRoutes(app: FastifyInstance) {
       if (itemAfter) emitActionItemUpdated(item.channelId, serializeActionItem(itemAfter));
       if (blockerAfter)
         emitActionItemUpdated(blocker.channelId, serializeActionItem(blockerAfter));
-      emitActionItemDependencyChanged(item.channelId, item.serverId, {
+      emitActionItemDependencyChanged(item.channelId, item.serverId, itemAccess.channel.internal, {
         actionItemId: actionId,
         dependsOnActionItemId: blockerId,
         kind: "added",
@@ -984,7 +989,7 @@ export async function registerActionRoutes(app: FastifyInstance) {
       if (itemAfter) emitActionItemUpdated(item.channelId, serializeActionItem(itemAfter));
       if (blockerAfter && blocker)
         emitActionItemUpdated(blocker.channelId, serializeActionItem(blockerAfter));
-      emitActionItemDependencyChanged(item.channelId, item.serverId, {
+      emitActionItemDependencyChanged(item.channelId, item.serverId, access.channel.internal, {
         actionItemId: actionId,
         dependsOnActionItemId: depId,
         kind: "removed",
@@ -1186,6 +1191,7 @@ export async function registerActionRoutes(app: FastifyInstance) {
       emitActionItemCommentDeleted(
         comment.actionItem.channelId,
         comment.actionItem.serverId,
+        access.channel.internal,
         { commentId, actionItemId: actionId },
       );
       return { ok: true };

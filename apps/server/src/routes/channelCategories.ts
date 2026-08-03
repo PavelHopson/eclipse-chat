@@ -251,6 +251,7 @@ export async function registerChannelCategoryRoutes(app: FastifyInstance) {
           description: true,
           emoji: true,
           expiresAt: true,
+          internal: true,
         },
       });
 
@@ -272,6 +273,7 @@ export async function registerChannelCategoryRoutes(app: FastifyInstance) {
           position: ch.position,
           description: ch.description,
           emoji: ch.emoji,
+          internal: ch.internal,
           expiresAt: ch.expiresAt?.toISOString() ?? null,
           categoryId: null,
         });
@@ -356,7 +358,13 @@ export async function registerChannelCategoryRoutes(app: FastifyInstance) {
 
       const channel = await db.channel.findUnique({
         where: { id: channelId },
-        select: { id: true, serverId: true, categoryId: true, position: true },
+        select: {
+          id: true,
+          serverId: true,
+          categoryId: true,
+          position: true,
+          internal: true,
+        },
       });
       if (!channel) return reply.status(404).send({ error: "Channel not found" });
 
@@ -411,6 +419,7 @@ export async function registerChannelCategoryRoutes(app: FastifyInstance) {
           emoji: true,
           expiresAt: true,
           categoryId: true,
+          internal: true,
         },
       });
 
@@ -423,6 +432,7 @@ export async function registerChannelCategoryRoutes(app: FastifyInstance) {
         position: updated.position,
         description: updated.description,
         emoji: updated.emoji,
+        internal: updated.internal,
         expiresAt: updated.expiresAt?.toISOString() ?? null,
         categoryId: updated.categoryId,
       });

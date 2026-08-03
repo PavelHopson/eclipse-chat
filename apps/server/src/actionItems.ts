@@ -115,6 +115,7 @@ export function serializeActionItem(item: ActionItemWithRelations) {
     priority: item.priority,
     serverId: item.serverId,
     channelId: item.channelId,
+    internal: item.channel.internal,
     sourceMessageId: item.sourceMessageId,
     createdAt: item.createdAt.toISOString(),
     updatedAt: item.updatedAt.toISOString(),

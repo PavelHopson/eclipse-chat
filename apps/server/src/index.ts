@@ -57,6 +57,7 @@ import { startTempChannelCron } from "./tempChannels.js";
 import { startExpiredMessageCron } from "./expiredMessages.js";
 import { db } from "./db.js";
 import { serverManifest } from "./version.js";
+import { canAccessRealtimeChannel, serverRealtimeRoom } from "./lib/realtimeAccess.js";
 
 const port = Number(process.env.PORT) || 3001;
 const jwtSecret = process.env.JWT_SECRET;
@@ -315,11 +316,18 @@ async function subscribeToUserServers(
 ): Promise<string[]> {
   const memberships = await db.member.findMany({
     where: { userId },
-    select: { serverId: true },
+    select: {
+      serverId: true,
+      role: true,
+      server: { select: { mode: true } },
+    },
   });
   const serverIds = memberships.map((m) => m.serverId);
-  for (const serverId of serverIds) {
-    await socket.join(`server:${serverId}`);
+  for (const membership of memberships) {
+    await socket.join(serverRealtimeRoom(membership.serverId, false));
+    if (canAccessRealtimeChannel(membership.server.mode, true, membership.role)) {
+      await socket.join(serverRealtimeRoom(membership.serverId, true));
+    }
   }
   return serverIds;
 }
@@ -335,14 +343,34 @@ async function buildVoicePresenceSnapshot(
 ): Promise<{ byChannel: Record<string, string[]>; meta: Record<string, { micMuted: boolean; deafened: boolean }> }> {
   const memberships = await db.member.findMany({
     where: { userId },
-    select: { serverId: true },
+    select: {
+      serverId: true,
+      role: true,
+      server: { select: { mode: true } },
+    },
   });
   if (memberships.length === 0) return { byChannel: {}, meta: {} };
   const channels = await db.channel.findMany({
     where: { serverId: { in: memberships.map((m) => m.serverId) }, type: "VOICE" },
-    select: { id: true },
+    select: { id: true, serverId: true, internal: true },
   });
-  const byChannel = snapshotForServer(channels.map((c) => c.id));
+  const accessByServer = new Map(
+    memberships.map((membership) => [membership.serverId, membership] as const),
+  );
+  const visibleChannelIds = channels
+    .filter((channel) => {
+      const membership = accessByServer.get(channel.serverId);
+      return Boolean(
+        membership &&
+          canAccessRealtimeChannel(
+            membership.server.mode,
+            channel.internal,
+            membership.role,
+          ),
+      );
+    })
+    .map((channel) => channel.id);
+  const byChannel = snapshotForServer(visibleChannelIds);
   const userIds = Array.from(new Set(Object.values(byChannel).flat()));
   return { byChannel, meta: metaSnapshotForUsers(userIds) };
 }
@@ -387,14 +415,20 @@ io.on("connection", (socket) => {
     if (!uid || typeof channelId !== "string" || !channelId) return;
     const channel = await db.channel.findUnique({
       where: { id: channelId },
-      select: { serverId: true },
+      select: {
+        serverId: true,
+        internal: true,
+        server: { select: { mode: true } },
+      },
     });
     if (!channel) return;
     const member = await db.member.findUnique({
       where: { userId_serverId: { userId: uid, serverId: channel.serverId } },
-      select: { id: true },
+      select: { role: true },
     });
-    if (!member) return;
+    if (!member || !canAccessRealtimeChannel(channel.server.mode, channel.internal, member.role)) {
+      return;
+    }
     await socket.join(`channel:${channelId}`);
   });
   socket.on("channel:leave", (channelId: string) => {
@@ -410,14 +444,28 @@ io.on("connection", (socket) => {
     if (!uid || typeof rootId !== "string" || !rootId) return;
     const root = await db.message.findUnique({
       where: { id: rootId },
-      select: { channelId: true, channel: { select: { serverId: true } } },
+      select: {
+        channelId: true,
+        channel: {
+          select: {
+            serverId: true,
+            internal: true,
+            server: { select: { mode: true } },
+          },
+        },
+      },
     });
     if (!root || !root.channelId || !root.channel) return;
     const member = await db.member.findUnique({
       where: { userId_serverId: { userId: uid, serverId: root.channel.serverId } },
-      select: { id: true },
+      select: { role: true },
     });
-    if (!member) return;
+    if (
+      !member ||
+      !canAccessRealtimeChannel(root.channel.server.mode, root.channel.internal, member.role)
+    ) {
+      return;
+    }
     await socket.join(`thread:${rootId}`);
   });
   socket.on("thread:leave", (rootId: string) => {
@@ -451,6 +499,7 @@ io.on("connection", (socket) => {
   socket.on("typing:start", async (channelId: string) => {
     const uid = (socket.data as { userId: string | null | undefined }).userId;
     if (!uid || typeof channelId !== "string" || !channelId) return;
+    if (!socket.rooms.has(`channel:${channelId}`)) return;
     // Prefetch displayName из БД один раз (на typing event'е — небольшой overhead;
     // если будет узкое место — кешировать на socket.data при connect)
     const user = await db.user.findUnique({
@@ -467,6 +516,7 @@ io.on("connection", (socket) => {
   socket.on("typing:stop", (channelId: string) => {
     const uid = (socket.data as { userId: string | null | undefined }).userId;
     if (!uid || typeof channelId !== "string" || !channelId) return;
+    if (!socket.rooms.has(`channel:${channelId}`)) return;
     socket.to(`channel:${channelId}`).emit("typing:stop", {
       channelId,
       userId: uid,
@@ -519,7 +569,13 @@ io.on("connection", (socket) => {
       }
       const channel = await db.channel.findUnique({
         where: { id: channelId },
-        select: { id: true, type: true, serverId: true },
+        select: {
+          id: true,
+          type: true,
+          serverId: true,
+          internal: true,
+          server: { select: { mode: true } },
+        },
       });
       if (!channel || channel.type !== "VOICE") {
         cb?.("Channel not found or not VOICE");
@@ -527,17 +583,20 @@ io.on("connection", (socket) => {
       }
       const member = await db.member.findUnique({
         where: { userId_serverId: { userId: uid, serverId: channel.serverId } },
-        select: { id: true },
+        select: { role: true },
       });
-      if (!member) {
-        cb?.("Not a member");
+      if (
+        !member ||
+        !canAccessRealtimeChannel(channel.server.mode, channel.internal, member.role)
+      ) {
+        cb?.("Channel not found or not VOICE");
         return;
       }
       const previousVoiceState = stateForSocket(socket.id);
       if (previousVoiceState && previousVoiceState.voiceChannelId !== channel.id) {
         void socket.leave(`channel:${previousVoiceState.voiceChannelId}`);
       }
-      trackVoiceJoin(socket.id, uid, channel.id, channel.serverId);
+      trackVoiceJoin(socket.id, uid, channel.id, channel.serverId, channel.internal);
       await socket.join(`channel:${channel.id}`);
       cb?.(null);
     },

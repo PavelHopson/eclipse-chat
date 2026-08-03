@@ -15,11 +15,13 @@
  */
 
 import type { Server as SocketServer } from "socket.io";
+import { serverRealtimeRoom } from "./lib/realtimeAccess.js";
 
 type VoiceState = {
   userId: string;
   voiceChannelId: string;
   serverId: string;
+  internal: boolean;
 };
 
 /** Mic/deafen-состояние участника эфира — для Discord-style индикаторов. */
@@ -37,7 +39,7 @@ export function setVoicePresenceIO(io: SocketServer) {
 }
 
 function emitJoined(state: VoiceState) {
-  ioRef?.to(`server:${state.serverId}`).emit("voice:participant:joined", {
+  ioRef?.to(serverRealtimeRoom(state.serverId, state.internal)).emit("voice:participant:joined", {
     userId: state.userId,
     voiceChannelId: state.voiceChannelId,
     serverId: state.serverId,
@@ -45,7 +47,7 @@ function emitJoined(state: VoiceState) {
 }
 
 function emitLeft(state: VoiceState) {
-  ioRef?.to(`server:${state.serverId}`).emit("voice:participant:left", {
+  ioRef?.to(serverRealtimeRoom(state.serverId, state.internal)).emit("voice:participant:left", {
     userId: state.userId,
     voiceChannelId: state.voiceChannelId,
     serverId: state.serverId,
@@ -106,7 +108,7 @@ export function updateVoiceMeta(
     deafened: meta.deafened ?? current.deafened,
   };
   userMeta.set(state.userId, next);
-  ioRef?.to(`server:${state.serverId}`).emit("voice:participant:meta", {
+  ioRef?.to(serverRealtimeRoom(state.serverId, state.internal)).emit("voice:participant:meta", {
     userId: state.userId,
     voiceChannelId: state.voiceChannelId,
     serverId: state.serverId,
@@ -130,7 +132,7 @@ export function updateVoiceMeta(
 export function broadcastSpeaking(socketId: string, speaking: boolean): void {
   const state = socketStates.get(socketId);
   if (!state) return;
-  ioRef?.to(`server:${state.serverId}`).emit("voice:participant:speaking", {
+  ioRef?.to(serverRealtimeRoom(state.serverId, state.internal)).emit("voice:participant:speaking", {
     userId: state.userId,
     voiceChannelId: state.voiceChannelId,
     serverId: state.serverId,
@@ -149,13 +151,14 @@ export function trackVoiceJoin(
   userId: string,
   voiceChannelId: string,
   serverId: string,
+  internal: boolean,
 ): void {
   const old = socketStates.get(socketId);
   if (old) {
     untrackInternal(socketId, old);
   }
 
-  const state: VoiceState = { userId, voiceChannelId, serverId };
+  const state: VoiceState = { userId, voiceChannelId, serverId, internal };
   socketStates.set(socketId, state);
 
   let occupants = channelOccupants.get(voiceChannelId);

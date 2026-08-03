@@ -48,7 +48,7 @@ export async function runTempChannelScan(log: FastifyBaseLogger): Promise<{
   const candidates = await db.channel.findMany({
     where: { expiresAt: { lt: now, not: null } },
     take: PROCESS_LIMIT,
-    select: { id: true, serverId: true, name: true },
+    select: { id: true, serverId: true, name: true, internal: true },
   });
   if (candidates.length === 0) {
     return { scanned: 0, deleted: 0 };
@@ -60,6 +60,7 @@ export async function runTempChannelScan(log: FastifyBaseLogger): Promise<{
       emitChannelDeleted(ch.serverId, {
         channelId: ch.id,
         serverId: ch.serverId,
+        internal: ch.internal,
       });
       deleted += 1;
     } catch (err) {

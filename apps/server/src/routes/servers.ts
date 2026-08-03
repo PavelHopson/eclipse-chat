@@ -20,6 +20,8 @@ import {
   emitMemberLeft,
   emitMemberUpdated,
   emitMessageOnChannel,
+  reconcileServerRealtimeAccess,
+  reconcileUserServerRealtimeAccess,
 } from "../realtime.js";
 import { addServerRoom, onlineUserIds, removeServerRoom } from "../presence.js";
 import { getSystemBotUserId } from "../lib/systemBot.js";
@@ -585,6 +587,7 @@ export async function registerServerRoutes(app: FastifyInstance) {
       include: { user: { select: { id: true, displayName: true, email: true, avatar: true } } },
     });
     addServerRoom(userId, server.id);
+    await reconcileUserServerRealtimeAccess(userId, server.id);
     // v1.6.99 — инкремент uses у ServerInvite только на НОВЫЙ join (idempotent
     // already-member path вышел выше). Best-effort: ошибка не валит join.
     if (inviteRecord) {
@@ -681,6 +684,7 @@ export async function registerServerRoutes(app: FastifyInstance) {
     }
     await db.member.delete({ where: { id: member.id } });
     removeServerRoom(member.userId, id);
+    await reconcileUserServerRealtimeAccess(member.userId, id);
     emitMemberLeft(id, { memberId: member.id, userId: member.userId, serverId: id });
     return { ok: true };
   });
@@ -1419,6 +1423,7 @@ export async function registerServerRoutes(app: FastifyInstance) {
       position: ch.position,
       createdAt: ch.createdAt.toISOString(),
       categoryId: ch.categoryId,
+      internal: ch.internal,
     });
     recordAudit("CHANNEL_CREATED", {
       userId: me.userId,
@@ -1507,7 +1512,7 @@ export async function registerServerRoutes(app: FastifyInstance) {
       }
       const channel = await db.channel.findUnique({
         where: { id: channelId },
-        select: { id: true, serverId: true },
+        select: { id: true, serverId: true, internal: true },
       });
       if (!channel) {
         return reply.status(404).send({ error: "Channel not found" });
@@ -1574,6 +1579,9 @@ export async function registerServerRoutes(app: FastifyInstance) {
           serverId: true,
         },
       });
+      if (channel.internal !== updated.internal) {
+        await reconcileServerRealtimeAccess(updated.serverId);
+      }
       emitChannelUpdated(updated.serverId, {
         channelId: updated.id,
         serverId: updated.serverId,
@@ -1583,9 +1591,10 @@ export async function registerServerRoutes(app: FastifyInstance) {
         position: updated.position,
         description: updated.description,
         emoji: updated.emoji,
+        internal: updated.internal,
         expiresAt: updated.expiresAt?.toISOString() ?? null,
         messageTtlSeconds: updated.messageTtlSeconds,
-      });
+      }, channel.internal);
       return {
         channel: {
           id: updated.id,
@@ -1669,6 +1678,7 @@ export async function registerServerRoutes(app: FastifyInstance) {
           description: true,
           emoji: true,
           serverId: true,
+          internal: true,
         },
       });
       for (const ch of updated) {
@@ -1681,6 +1691,7 @@ export async function registerServerRoutes(app: FastifyInstance) {
           position: ch.position,
           description: ch.description,
           emoji: ch.emoji,
+          internal: ch.internal,
         });
       }
       return { ok: true, updated: updated.length };
@@ -1702,7 +1713,7 @@ export async function registerServerRoutes(app: FastifyInstance) {
     }
     const channel = await db.channel.findUnique({
       where: { id: channelId },
-      select: { id: true, serverId: true, name: true },
+      select: { id: true, serverId: true, name: true, internal: true },
     });
     if (!channel) {
       return reply.status(404).send({ error: "Channel not found" });
@@ -1726,6 +1737,7 @@ export async function registerServerRoutes(app: FastifyInstance) {
     emitChannelDeleted(channel.serverId, {
       channelId,
       serverId: channel.serverId,
+      internal: channel.internal,
     });
     recordAudit("CHANNEL_DELETED", {
       userId,
@@ -1864,6 +1876,7 @@ export async function registerServerRoutes(app: FastifyInstance) {
         where: { id: target.id },
         data: { role: body.data.role },
       });
+      await reconcileUserServerRealtimeAccess(targetUserId, serverId);
       emitMemberUpdated(serverId, {
         memberId: updated.id,
         userId: updated.userId,
@@ -2005,6 +2018,9 @@ export async function registerServerRoutes(app: FastifyInstance) {
           data.features = cleaned.length === 0 ? null : JSON.stringify(cleaned);
         }
       }
+      const previousMode = parsed.data.mode === undefined
+        ? null
+        : await db.server.findUnique({ where: { id: serverId }, select: { mode: true } });
       const updated = await db.server.update({
         where: { id: serverId },
         data,
@@ -2020,6 +2036,9 @@ export async function registerServerRoutes(app: FastifyInstance) {
       });
       // metadata.changed — только имена изменённых полей (без значений),
       // чтобы не складывать в audit потенциальный PII из description/welcome.
+      if (previousMode && previousMode.mode !== updated.mode) {
+        await reconcileServerRealtimeAccess(serverId);
+      }
       recordAudit("SERVER_IDENTITY_CHANGED", {
         userId: me.userId,
         req,
