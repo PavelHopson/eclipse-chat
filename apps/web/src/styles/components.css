@@ -7453,6 +7453,485 @@ input[type="radio"]:focus-visible {
   gap: var(--ec-space-2);
 }
 
+/* Project Passport: linked operational read model, not a second source of truth. */
+.ec-project-passport {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ec-space-4);
+  min-width: 0;
+  color: var(--ec-text);
+}
+
+.ec-project-passport__sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.ec-project-passport__hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: 206px;
+  padding: var(--ec-space-5);
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 25%, var(--ec-border-default));
+  border-radius: var(--ec-radius-lg);
+  background:
+    linear-gradient(102deg, hsl(220 28% 5% / 0.98) 22%, hsl(220 25% 6% / 0.86) 62%, hsl(220 25% 6% / 0.6)),
+    var(--ec-passport-banner, radial-gradient(circle at 88% 18%, hsl(258 70% 42% / 0.22), transparent 42%));
+  background-position: center;
+  background-size: cover;
+  box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.04);
+}
+
+.ec-project-passport__hero::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, transparent 0 49%, hsl(0 0% 100% / 0.025) 50%, transparent 51%),
+    linear-gradient(0deg, transparent 0 49%, hsl(0 0% 100% / 0.02) 50%, transparent 51%);
+  background-size: 40px 40px;
+  mask-image: linear-gradient(90deg, transparent, black 65%);
+}
+
+.ec-project-passport__hero-signal,
+.ec-project-passport__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ec-text-muted);
+  font-size: var(--ec-text-2xs);
+  font-weight: 800;
+  letter-spacing: var(--ec-tracking-caps);
+  text-transform: uppercase;
+}
+
+.ec-project-passport__health-dot,
+.ec-project-passport__source-state,
+.ec-project-passport__deploy-status,
+.ec-project-passport__signal {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ec-status-idle);
+  box-shadow: 0 0 0 4px var(--ec-status-idle-soft);
+}
+
+.ec-project-passport__health-dot--blocked,
+.ec-project-passport__deploy-status--failure,
+.ec-project-passport__signal--urgent {
+  background: var(--ec-status-risk);
+  box-shadow: 0 0 0 4px var(--ec-status-risk-soft);
+}
+
+.ec-project-passport__health-dot--at_risk,
+.ec-project-passport__deploy-status--pending,
+.ec-project-passport__signal--high {
+  background: var(--ec-status-warn);
+  box-shadow: 0 0 0 4px var(--ec-status-warn-soft);
+}
+
+.ec-project-passport__health-dot--on_track,
+.ec-project-passport__deploy-status--success,
+.ec-project-passport__source-state.is-active {
+  background: var(--ec-status-exec);
+  box-shadow: 0 0 0 4px var(--ec-status-exec-soft);
+}
+
+.ec-project-passport__hero-main {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--ec-space-5);
+  margin-top: var(--ec-space-5);
+}
+
+.ec-project-passport__hero-main > div {
+  min-width: 0;
+  max-width: 560px;
+}
+
+.ec-project-passport__hero h2 {
+  margin: 5px 0 6px;
+  color: var(--ec-text-strong);
+  font-size: clamp(1.65rem, 4vw, 2.5rem);
+  line-height: 1;
+  letter-spacing: -0.045em;
+}
+
+.ec-project-passport__hero p {
+  max-width: 62ch;
+  margin: 0;
+  color: var(--ec-text-muted);
+  font-size: var(--ec-text-sm);
+  line-height: var(--ec-leading-relaxed);
+}
+
+.ec-project-passport__primary {
+  flex: 0 0 auto;
+  min-height: 42px;
+  text-decoration: none;
+}
+
+.ec-project-passport__metrics {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-top: var(--ec-space-5);
+  border-top: 1px solid hsl(0 0% 100% / 0.08);
+  padding-top: var(--ec-space-3);
+}
+
+.ec-project-passport__metrics > span {
+  padding: 0 var(--ec-space-3);
+  border-right: 1px solid hsl(0 0% 100% / 0.08);
+  color: var(--ec-text-dim);
+  font-size: var(--ec-text-2xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ec-project-passport__metrics > span:first-child {
+  padding-left: 0;
+}
+
+.ec-project-passport__metrics strong {
+  margin-right: 4px;
+  color: var(--ec-text-strong);
+  font-size: var(--ec-text-sm);
+}
+
+.ec-project-passport__refresh {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin-left: auto;
+  border: 1px solid hsl(0 0% 100% / 0.1);
+  border-radius: var(--ec-radius-sm);
+  background: hsl(220 20% 8% / 0.7);
+  color: var(--ec-text-muted);
+  cursor: pointer;
+}
+
+.ec-project-passport__refresh:hover:not(:disabled) {
+  border-color: var(--ec-border-accent);
+  color: var(--ec-text-strong);
+}
+
+.ec-project-passport__refresh:disabled {
+  opacity: 0.5;
+}
+
+.ec-project-passport__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(250px, 0.85fr);
+  gap: var(--ec-space-4);
+  align-items: start;
+}
+
+.ec-project-passport__main-column,
+.ec-project-passport__side-column {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--ec-space-4);
+}
+
+.ec-project-passport__section {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--ec-border-subtle);
+  border-radius: var(--ec-radius-md);
+  background: color-mix(in srgb, var(--ec-surface-1) 84%, transparent);
+}
+
+.ec-project-passport__section-head {
+  display: flex;
+  align-items: center;
+  gap: var(--ec-space-3);
+  min-height: 58px;
+  padding: 12px var(--ec-space-3);
+  border-bottom: 1px solid var(--ec-border-subtle);
+}
+
+.ec-project-passport__section-icon,
+.ec-project-passport__room-mark {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 25%, var(--ec-border-subtle));
+  border-radius: var(--ec-radius-sm);
+  background: var(--ec-accent-soft);
+  color: var(--ec-accent);
+}
+
+.ec-project-passport__section-head h3 {
+  margin: 0;
+  color: var(--ec-text-strong);
+  font-size: var(--ec-text-sm);
+  letter-spacing: -0.01em;
+}
+
+.ec-project-passport__section-head p {
+  margin: 2px 0 0;
+  color: var(--ec-text-dim);
+  font-size: var(--ec-text-2xs);
+}
+
+.ec-project-passport__list,
+.ec-project-passport__timeline,
+.ec-project-passport__rooms,
+.ec-project-passport__people,
+.ec-project-passport__sources,
+.ec-project-passport__deploys,
+.ec-project-passport__documents {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.ec-project-passport__action,
+.ec-project-passport__rooms > button,
+.ec-project-passport__timeline > button,
+.ec-project-passport__sources > a,
+.ec-project-passport__deploys > a,
+.ec-project-passport__documents > a,
+.ec-project-passport__documents > button {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  gap: var(--ec-space-3);
+  padding: 11px var(--ec-space-3);
+  border: 0;
+  border-bottom: 1px solid var(--ec-border-subtle);
+  background: transparent;
+  color: var(--ec-text);
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.ec-project-passport__action:last-child,
+.ec-project-passport__rooms > button:last-child,
+.ec-project-passport__timeline > button:last-child,
+.ec-project-passport__sources > a:last-child,
+.ec-project-passport__deploys > a:last-child,
+.ec-project-passport__documents > :last-child {
+  border-bottom: 0;
+}
+
+.ec-project-passport__action:hover,
+.ec-project-passport__rooms > button:hover,
+.ec-project-passport__timeline > button:hover,
+.ec-project-passport__sources > a:hover,
+.ec-project-passport__deploys > a:hover,
+.ec-project-passport__documents > a:hover,
+.ec-project-passport__documents > button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--ec-accent) 7%, transparent);
+}
+
+.ec-project-passport__action:focus-visible,
+.ec-project-passport__rooms > button:focus-visible,
+.ec-project-passport__timeline > button:focus-visible,
+.ec-project-passport__sources > a:focus-visible,
+.ec-project-passport__deploys > a:focus-visible,
+.ec-project-passport__documents > :focus-visible,
+.ec-project-passport__refresh:focus-visible {
+  outline: 2px solid var(--ec-border-accent);
+  outline-offset: -2px;
+}
+
+.ec-project-passport__action-copy,
+.ec-project-passport__room-copy,
+.ec-project-passport__people > div > span:last-child,
+.ec-project-passport__sources a > span:nth-child(2),
+.ec-project-passport__deploys a > span:nth-child(2),
+.ec-project-passport__documents span {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.ec-project-passport__action-copy strong,
+.ec-project-passport__room-copy strong,
+.ec-project-passport__timeline strong,
+.ec-project-passport__people strong,
+.ec-project-passport__sources strong,
+.ec-project-passport__deploys strong,
+.ec-project-passport__documents strong {
+  overflow: hidden;
+  color: var(--ec-text-strong);
+  font-size: var(--ec-text-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ec-project-passport__action-copy span,
+.ec-project-passport__room-copy small,
+.ec-project-passport__timeline small,
+.ec-project-passport__people small,
+.ec-project-passport__sources small,
+.ec-project-passport__deploys small,
+.ec-project-passport__documents small {
+  overflow: hidden;
+  color: var(--ec-text-dim);
+  font-size: var(--ec-text-2xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ec-project-passport__action > svg,
+.ec-project-passport__sources svg,
+.ec-project-passport__documents svg {
+  flex: 0 0 auto;
+  color: var(--ec-text-dim);
+}
+
+.ec-project-passport__signal {
+  width: 6px;
+  height: 6px;
+  box-shadow: none;
+}
+
+.ec-project-passport__timeline > button {
+  position: relative;
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr);
+  column-gap: var(--ec-space-2);
+}
+
+.ec-project-passport__timeline > button > span {
+  grid-row: 1 / 3;
+  align-self: stretch;
+  width: 1px;
+  margin: 2px auto;
+  background: linear-gradient(var(--ec-accent), var(--ec-border-subtle));
+}
+
+.ec-project-passport__timeline strong,
+.ec-project-passport__timeline small {
+  grid-column: 2;
+}
+
+.ec-project-passport__room-stats {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  color: var(--ec-text-dim);
+  font-size: var(--ec-text-2xs);
+}
+
+.ec-project-passport__room-stats b {
+  color: var(--ec-status-risk);
+  font-weight: 700;
+}
+
+.ec-project-passport__people {
+  padding: 5px 0;
+}
+
+.ec-project-passport__people > div {
+  display: flex;
+  align-items: center;
+  gap: var(--ec-space-2);
+  padding: 7px var(--ec-space-3);
+}
+
+.ec-project-passport__deploys > a {
+  align-items: flex-start;
+}
+
+.ec-project-passport__documents > button:disabled {
+  cursor: default;
+  opacity: 0.72;
+}
+
+.ec-project-passport__empty {
+  margin: 0;
+  padding: var(--ec-space-4);
+  color: var(--ec-text-dim);
+  font-size: var(--ec-text-xs);
+  line-height: var(--ec-leading-relaxed);
+}
+
+.ec-project-passport__stale {
+  padding: 9px 12px;
+  border: 1px solid var(--ec-status-warn-soft);
+  border-radius: var(--ec-radius-sm);
+  background: var(--ec-status-warn-soft);
+  color: var(--ec-status-warn);
+  font-size: var(--ec-text-xs);
+}
+
+.ec-project-passport__error {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--ec-space-3);
+  min-height: 160px;
+  padding: var(--ec-space-5);
+  border: 1px solid var(--ec-border-subtle);
+  border-radius: var(--ec-radius-md);
+  background: var(--ec-surface-1);
+}
+
+.ec-project-passport__error strong {
+  color: var(--ec-text-strong);
+}
+
+.ec-project-passport__error p {
+  margin: 4px 0 0;
+  color: var(--ec-text-muted);
+  font-size: var(--ec-text-xs);
+}
+
+.ec-project-passport--loading {
+  min-height: 520px;
+}
+
+.ec-project-passport__skeleton-grid {
+  display: grid;
+  grid-template-columns: 1.5fr 0.85fr;
+  gap: var(--ec-space-4);
+}
+
+.ec-project-passport__skeleton {
+  min-height: 250px;
+  border-radius: var(--ec-radius-md);
+  background: linear-gradient(100deg, var(--ec-surface-1) 30%, var(--ec-surface-3) 48%, var(--ec-surface-1) 66%);
+  background-size: 240% 100%;
+  animation: ec-project-passport-skeleton 1.5s ease-in-out infinite;
+}
+
+.ec-project-passport__skeleton--hero {
+  min-height: 206px;
+}
+
+@keyframes ec-project-passport-skeleton {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
+}
+
 .ec-server-audit {
   display: flex;
   flex-direction: column;

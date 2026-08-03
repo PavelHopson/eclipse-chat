@@ -394,8 +394,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   // в chat-header → tab="settings").
   const [serverHubOpen, setServerHubOpen] = useState(false);
   const [serverHubTab, setServerHubTab] = useState<
-    "overview" | "branding" | "settings" | "bots"
-  >("overview");
+    "passport" | "overview" | "branding" | "settings" | "bots"
+  >("passport");
   const [showProfile, setShowProfile] = useState(false);
   const [settingsInitialView, setSettingsInitialView] = useState<
     SettingsViewId | undefined
@@ -1109,7 +1109,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
         glyph: "С",
         kind: "settings",
         onSelect: () => {
-          setServerHubTab("overview");
+          setServerHubTab("passport");
           setServerHubOpen(true);
         },
       });
@@ -1663,7 +1663,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             onReorderCategories={reorderCategories}
             onShowServerInfo={() => {
               if (!activeServer) return;
-              setServerHubTab("overview");
+              setServerHubTab("passport");
               setServerHubOpen(true);
             }}
             onOpenServerSettings={() => {
@@ -2952,6 +2952,23 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           onDeleteBanner={() => deleteServerBanner(activeServer.id)}
           onUpdateIdentity={(patch) => updateServerIdentity(activeServer.id, patch)}
           onUpdateLock={(locked, reason) => updateServerLock(activeServer.id, locked, reason)}
+          onOpenChannel={(channelId) => {
+            setServerHubOpen(false);
+            setHomeOpen(false);
+            setStatusBoardOpen(false);
+            setServerView("chat");
+            setSelectedChannelId(channelId);
+            if (isMobile) setNavOpen(false);
+          }}
+          onOpenAction={(actionItemId, channelId) => {
+            setServerHubOpen(false);
+            setHomeOpen(false);
+            setStatusBoardOpen(false);
+            setServerView("chat");
+            setSelectedChannelId(channelId);
+            setOpenActionItemId(actionItemId);
+            if (isMobile) setNavOpen(false);
+          }}
         />
       )}
 
