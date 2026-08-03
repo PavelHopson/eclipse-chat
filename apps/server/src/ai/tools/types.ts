@@ -30,6 +30,8 @@ export type ToolCallContext = {
   capabilities: BotCapability[];
   /** null = every room in this workspace; [] = no rooms. */
   allowedChannelIds: string[] | null;
+  /** Server-only flag used after an Owner atomically claims a queued action. */
+  approvalBypass?: boolean;
   /** Fastify logger — для structured logs о tool calls. */
   log: FastifyBaseLogger;
 };

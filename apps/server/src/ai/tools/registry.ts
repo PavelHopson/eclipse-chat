@@ -7,6 +7,10 @@ import {
   canInvokeAgentTool,
 } from "../botAccess.js";
 import { recordAudit } from "../../security/audit.js";
+import {
+  queueBotActionApproval,
+  requiresOwnerApproval,
+} from "../actionApproval.js";
 
 /**
  * v1.2.28 — Tool registry.
@@ -68,7 +72,7 @@ export async function executeToolCall(
   rawArgs: unknown,
   ctx: ToolCallContext,
 ): Promise<ToolResult<unknown>> {
-  const audit = (outcome: "success" | "denied" | "failed") => {
+  const audit = (outcome: "success" | "pending" | "denied" | "failed") => {
     recordAudit("BOT_TOOL_CALL", {
       userId: ctx.botUserId,
       metadata: {
@@ -91,6 +95,11 @@ export async function executeToolCall(
     return { ok: false, error: `Tool "${name}" запрещён политикой доступа агента` };
   }
   try {
+    if (requiresOwnerApproval(name, ctx.approvalBypass === true)) {
+      const queued = await queueBotActionApproval(name, rawArgs, ctx);
+      audit(queued.ok ? "pending" : "failed");
+      return queued;
+    }
     const result = await tool.execute(rawArgs, ctx);
     audit(result.ok ? "success" : "failed");
     return result;

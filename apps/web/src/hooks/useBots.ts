@@ -325,7 +325,9 @@ export type BotActivityEvent = {
     | "BOT_PROMPT_RESET"
     | "BOT_TEST_INVOKE"
     | "BOT_ACCESS_POLICY_CHANGED"
-    | "BOT_TOOL_CALL";
+    | "BOT_TOOL_CALL"
+    | "BOT_ACTION_APPROVAL_REQUESTED"
+    | "BOT_ACTION_APPROVAL_DECIDED";
   createdAt: string;
   metadata: {
     tool?: string;
@@ -333,6 +335,8 @@ export type BotActivityEvent = {
     provider?: string;
     latencyMs?: number;
     channelScope?: "all" | number;
+    approvalId?: string;
+    decision?: "approved" | "rejected";
   };
 };
 

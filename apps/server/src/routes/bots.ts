@@ -20,12 +20,24 @@ import {
   BOT_CAPABILITIES,
   canViewBotWorkbench,
   canAccessBotChannel,
+  canInvokeAgentTool,
   normalizeAllowedChannelIds,
   normalizeBotCapabilities,
   parseAllowedChannelIds,
   parseBotCapabilities,
   type BotCapability,
 } from "../ai/botAccess.js";
+import {
+  claimBotActionApproval,
+  completeBotActionApproval,
+  expirePendingBotActionApprovals,
+  isValidQueuedUpdatePayload,
+  parseBotActionApprovalPayload,
+  parseBotActionApprovalPreview,
+  rejectBotActionApproval,
+} from "../ai/actionApproval.js";
+import { executeToolCall } from "../ai/tools/registry.js";
+import { ensureServerActive } from "../lib/serverGating.js";
 
 const botRoleSchema = z.enum(BOT_ROLES as readonly [BotRoleValue, ...BotRoleValue[]]);
 const botCapabilitySchema = z.enum(
@@ -111,6 +123,30 @@ async function requireServerOwner(
     return { ok: false, status: 403, error: "Только OWNER может управлять ботами" };
   }
   return { ok: true };
+}
+
+function recordBotApprovalDecision(input: {
+  userId: string;
+  approvalId: string;
+  botId: string | null;
+  serverId: string;
+  tool: string | null;
+  decision: "approved" | "rejected";
+  outcome: "success" | "failed" | "denied";
+  failureCode?: string;
+}): void {
+  recordAudit("BOT_ACTION_APPROVAL_DECIDED", {
+    userId: input.userId,
+    metadata: {
+      approvalId: input.approvalId,
+      botId: input.botId,
+      serverId: input.serverId,
+      tool: input.tool,
+      decision: input.decision,
+      outcome: input.outcome,
+      failureCode: input.failureCode,
+    },
+  });
 }
 
 async function requireServerAdminOrOwner(
@@ -983,6 +1019,237 @@ export async function registerBotRoutes(app: FastifyInstance) {
     },
   );
 
+  /** Pending sensitive actions. Payload is never returned directly. */
+  app.get(
+    "/api/servers/:id/bot-approvals",
+    {
+      onRequest: [requireJwt],
+      config: { rateLimit: { max: 60, timeWindow: 5 * 60 * 1000 } },
+    },
+    async (req, reply) => {
+      const { id: serverId } = req.params as { id: string };
+      const userId = getUserId(req);
+      const auth = await requireServerOwner(serverId, userId);
+      if (!auth.ok) return reply.status(auth.status).send({ error: auth.error });
+
+      await expirePendingBotActionApprovals(serverId);
+      const rows = await db.botActionApproval.findMany({
+        where: { serverId, status: "PENDING", expiresAt: { gt: new Date() } },
+        orderBy: { createdAt: "asc" },
+        take: 50,
+        select: {
+          id: true,
+          botId: true,
+          sourceChannelId: true,
+          tool: true,
+          preview: true,
+          status: true,
+          createdAt: true,
+          expiresAt: true,
+          bot: { select: { name: true } },
+        },
+      });
+      const channelIds = Array.from(new Set(
+        rows.map((row) => row.sourceChannelId).filter((id): id is string => Boolean(id)),
+      ));
+      const channels = channelIds.length > 0
+        ? await db.channel.findMany({
+            where: { id: { in: channelIds }, serverId },
+            select: { id: true, name: true },
+          })
+        : [];
+      const channelNames = new Map(channels.map((channel) => [channel.id, channel.name]));
+
+      return {
+        approvals: rows.flatMap((row) => {
+          const preview = parseBotActionApprovalPreview(row.preview);
+          if (!preview) return [];
+          return [{
+            id: row.id,
+            botId: row.botId,
+            botName: row.bot.name,
+            sourceChannelId: row.sourceChannelId,
+            sourceChannelName: row.sourceChannelId
+              ? channelNames.get(row.sourceChannelId) ?? null
+              : null,
+            tool: row.tool,
+            status: row.status,
+            preview,
+            createdAt: row.createdAt.toISOString(),
+            expiresAt: row.expiresAt.toISOString(),
+          }];
+        }),
+      };
+    },
+  );
+
+  app.post(
+    "/api/servers/:id/bot-approvals/:approvalId/approve",
+    {
+      onRequest: [requireJwt],
+      config: { rateLimit: { max: 30, timeWindow: 5 * 60 * 1000 } },
+    },
+    async (req, reply) => {
+      const { id: serverId, approvalId } = req.params as { id: string; approvalId: string };
+      const userId = getUserId(req);
+      const auth = await requireServerOwner(serverId, userId);
+      if (!auth.ok) return reply.status(auth.status).send({ error: auth.error });
+      if (!userId) return reply.status(401).send({ error: "Unauthorized" });
+      if (!(await ensureServerActive(serverId, reply))) return;
+
+      const approval = await claimBotActionApproval(serverId, approvalId, userId);
+      if (!approval) {
+        return reply.status(409).send({
+          error: "Действие уже обработано, выполняется или срок подтверждения истёк",
+        });
+      }
+
+      const payload = parseBotActionApprovalPayload(approval.payload);
+      if (!payload || approval.tool !== "update_table_row" || !isValidQueuedUpdatePayload(payload)) {
+        await completeBotActionApproval(approval.id, "FAILED", "invalid_payload");
+        recordBotApprovalDecision({
+          userId,
+          approvalId: approval.id,
+          botId: approval.botId,
+          serverId,
+          tool: approval.tool,
+          decision: "approved",
+          outcome: "failed",
+          failureCode: "invalid_payload",
+        });
+        return reply.status(409).send({ error: "Сохранённое действие повреждено и не выполнено" });
+      }
+
+      const bot = await db.bot.findUnique({
+        where: { id: approval.botId },
+        select: {
+          id: true,
+          serverId: true,
+          userId: true,
+          name: true,
+          capabilities: true,
+          allowedChannelIds: true,
+        },
+      });
+      if (!bot || bot.serverId !== serverId) {
+        await completeBotActionApproval(approval.id, "FAILED", "bot_unavailable");
+        recordBotApprovalDecision({
+          userId,
+          approvalId: approval.id,
+          botId: approval.botId,
+          serverId,
+          tool: approval.tool,
+          decision: "approved",
+          outcome: "failed",
+          failureCode: "bot_unavailable",
+        });
+        return reply.status(409).send({ error: "Агент больше недоступен" });
+      }
+
+      const capabilities = parseBotCapabilities(bot.capabilities);
+      if (!capabilities.includes("agent") || !canInvokeAgentTool(capabilities, approval.tool)) {
+        await completeBotActionApproval(approval.id, "FAILED", "policy_changed");
+        recordBotApprovalDecision({
+          userId,
+          approvalId: approval.id,
+          botId: bot.id,
+          serverId,
+          tool: approval.tool,
+          decision: "approved",
+          outcome: "failed",
+          failureCode: "policy_changed",
+        });
+        return reply.status(409).send({
+          error: "Разрешения агента изменились. Действие не выполнено",
+        });
+      }
+
+      try {
+        const result = await executeToolCall(approval.tool, payload, {
+          botId: bot.id,
+          botUserId: bot.userId,
+          botName: bot.name,
+          serverId,
+          channelId: approval.sourceChannelId ?? undefined,
+          capabilities,
+          allowedChannelIds: parseAllowedChannelIds(bot.allowedChannelIds),
+          approvalBypass: true,
+          log: req.log,
+        });
+        await completeBotActionApproval(
+          approval.id,
+          result.ok ? "SUCCEEDED" : "FAILED",
+          result.ok ? undefined : "execution_denied",
+        );
+        recordBotApprovalDecision({
+          userId,
+          approvalId: approval.id,
+          botId: bot.id,
+          serverId,
+          tool: approval.tool,
+          decision: "approved",
+          outcome: result.ok ? "success" : "failed",
+          failureCode: result.ok ? undefined : "execution_denied",
+        });
+        return {
+          ok: result.ok,
+          approval: { id: approval.id, status: result.ok ? "SUCCEEDED" : "FAILED" },
+          error: result.ok ? undefined : result.error,
+        };
+      } catch (error) {
+        await completeBotActionApproval(approval.id, "FAILED", "internal_error");
+        recordBotApprovalDecision({
+          userId,
+          approvalId: approval.id,
+          botId: bot.id,
+          serverId,
+          tool: approval.tool,
+          decision: "approved",
+          outcome: "failed",
+          failureCode: "internal_error",
+        });
+        req.log.error({ approvalId: approval.id, err: error }, "Approved bot action failed");
+        throw error;
+      }
+    },
+  );
+
+  app.post(
+    "/api/servers/:id/bot-approvals/:approvalId/reject",
+    {
+      onRequest: [requireJwt],
+      config: { rateLimit: { max: 30, timeWindow: 5 * 60 * 1000 } },
+    },
+    async (req, reply) => {
+      const { id: serverId, approvalId } = req.params as { id: string; approvalId: string };
+      const userId = getUserId(req);
+      const auth = await requireServerOwner(serverId, userId);
+      if (!auth.ok) return reply.status(auth.status).send({ error: auth.error });
+      if (!userId) return reply.status(401).send({ error: "Unauthorized" });
+
+      const rejected = await rejectBotActionApproval(serverId, approvalId, userId);
+      if (!rejected) {
+        return reply.status(409).send({
+          error: "Действие уже обработано, выполняется или срок подтверждения истёк",
+        });
+      }
+      const approval = await db.botActionApproval.findUnique({
+        where: { id: approvalId },
+        select: { botId: true, tool: true },
+      });
+      recordBotApprovalDecision({
+        userId,
+        approvalId,
+        botId: approval?.botId ?? null,
+        serverId,
+        tool: approval?.tool ?? null,
+        decision: "rejected",
+        outcome: "denied",
+      });
+      return { ok: true, approval: { id: approvalId, status: "REJECTED" } };
+    },
+  );
+
   const botActivityTypes = [
     "BOT_CREATED",
     "BOT_KEY_REGENERATED",
@@ -991,6 +1258,8 @@ export async function registerBotRoutes(app: FastifyInstance) {
     "BOT_TEST_INVOKE",
     "BOT_ACCESS_POLICY_CHANGED",
     "BOT_TOOL_CALL",
+    "BOT_ACTION_APPROVAL_REQUESTED",
+    "BOT_ACTION_APPROVAL_DECIDED",
   ] as const;
   const botActivityQuery = z.object({
     take: z.coerce.number().int().min(1).max(50).default(20),
@@ -1040,6 +1309,12 @@ export async function registerBotRoutes(app: FastifyInstance) {
                 channelScope:
                   typeof raw.channelScope === "string" || typeof raw.channelScope === "number"
                     ? raw.channelScope
+                    : undefined,
+                approvalId:
+                  typeof raw.approvalId === "string" ? raw.approvalId.slice(0, 64) : undefined,
+                decision:
+                  raw.decision === "approved" || raw.decision === "rejected"
+                    ? raw.decision
                     : undefined,
               };
             }

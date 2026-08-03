@@ -17,61 +17,61 @@ datasource db {
 /// получит поле `type` (HUMAN | BOT) — но пока Member привязан только
 /// к User.
 model User {
-  id            String         @id @default(cuid())
-  email         String         @unique
-  passwordHash  String
-  displayName   String
+  id                     String     @id @default(cuid())
+  email                  String     @unique
+  passwordHash           String
+  displayName            String
   /// URL аватара (path-based, обычно `/eclipse-chat/uploads/avatars/<file>`).
   /// nullable — при отсутствии UI рисует placeholder с инициалами.
-  avatar        String?
+  avatar                 String?
   /// Широкая обложка публичного профиля. Храним path-based WebP URL;
   /// изображение загружает и удаляет только сам пользователь.
-  profileBanner String?
+  profileBanner          String?
   /// Краткое био пользователя — Twitter-like, max 280 символов
   /// (проверяется на уровне zod-валидации в роуте PATCH /api/users/me/profile).
-  bio           String?
+  bio                    String?
   /// Manual presence: ONLINE = default (auto), IDLE/DND/INVISIBLE — user
   /// override. Combines с auto-presence (socket-based) на render:
   /// если manual=INVISIBLE → frontend показывает offline; иначе manual
   /// overrides auto.
-  status        UserStatus     @default(ONLINE)
+  status                 UserStatus @default(ONLINE)
   /// v1.5.45 Discord-parity A3: free-form custom status текст. Max 128 chars
   /// (Discord parity). NULL — без custom-сообщения, frontend рендерит
   /// только presence dot. Валидируется в zod PATCH /api/users/me/activity.
   /// Plain text only — RichContent sanitize не применяется (no markdown
   /// / links / @-mentions parsing на этой строке, чтобы не превратить status
   /// в attack-surface).
-  activityText  String?
+  activityText           String?
   /// v1.5.45 Discord-parity A3: эмодзи рядом с activityText. До 64 chars
   /// (cover ZWJ-sequences семейных эмодзи + skin tone modifiers; типичный
   /// длинный case ~22 chars). Только unicode эмодзи — custom server emoji
   /// шорткоды НЕ поддерживаются в v1 (потребовало бы resolve через Emoji
   /// model для разных серверов и оставило бы dangling-ссылки при удалении
   /// emoji). Frontend в StatusMenu picker'е ограничивает выбор unicode.
-  activityEmoji String?
+  activityEmoji          String?
   /// v1.5.49 Discord-parity B5: quiet hours start (HH:MM формат, 24-hour).
   /// Когда current time в user-timezone попадает в [quietFrom, quietTo) →
   /// notifyUser() skip'ает push send. NULL = no quiet hours configured.
   /// Both NULL == one NULL == disabled.
-  quietFrom     String?
+  quietFrom              String?
   /// v1.5.49 B5: quiet hours end (HH:MM, 24-hour).
   /// Если quietFrom > quietTo → window spans midnight (e.g. 22:00→08:00
   /// covers 22:00-23:59 + 00:00-08:00). Если equal → effectively disabled.
-  quietTo       String?
+  quietTo                String?
   /// v1.5.49 B5: user timezone (IANA name, e.g. "Europe/Moscow"). Используется
   /// для interpretation quietFrom/quietTo HH:MM. NULL = fallback на server
   /// timezone (`process.env.TZ` либо OS default). Frontend заполняет из
   /// `Intl.DateTimeFormat().resolvedOptions().timeZone` при first set.
-  timezone      String?
-  createdAt     DateTime       @default(now())
+  timezone               String?
+  createdAt              DateTime   @default(now())
   /// Last point explicitly acknowledged in the personal command digest.
   /// Opening the app does not move this cursor: only the reviewed CTA does.
-  digestAcknowledgedAt DateTime?
+  digestAcknowledgedAt   DateTime?
   /// 2FA TOTP secret (base32). Зашифрован при-rest через AES-256-GCM
   /// в app-layer (apps/server/src/auth/twoFactor.ts).
-  twoFactorSecret      String?
+  twoFactorSecret        String?
   /// 2FA включён (secret сохранён И первый код подтверждён).
-  twoFactorEnabled     Boolean   @default(false)
+  twoFactorEnabled       Boolean    @default(false)
   /// Recovery codes — JSON массив bcrypt-хэшей. При verify сравниваем bcrypt
   /// и помечаем code как использованный (remove from list).
   twoFactorRecoveryCodes String?
@@ -80,130 +80,131 @@ model User {
   /// (показ 1 раз), consume'ится при сбросе. Те же хелперы что у 2FA, отдельный набор.
   passwordRecoveryCodes  String?
   /// Счётчик неудачных попыток входа. Reset при успехе или после lockoutUntil.
-  failedLoginAttempts  Int       @default(0)
+  failedLoginAttempts    Int        @default(0)
   /// Времянка lockout после 5 неудачных попыток. Null = не залочен.
-  lockoutUntil         DateTime?
+  lockoutUntil           DateTime?
 
   /// v1.2.6 Platform Admin (trek P1) — глобальный флаг владельца платформы
   /// (super-admin). Даёт доступ к /api/platform/* (списки всех users,
   /// бан/сброс пароля). Per-server роли (MemberRole) — отдельная иерархия;
   /// этот флаг с ними не связан.
-  isPlatformOwner      Boolean   @default(false)
+  isPlatformOwner Boolean   @default(false)
   /// v1.2.6 Platform Admin — когда user был забанен platform-owner'ом.
   /// NULL = активен. Banned user: login отклоняется, активные WS-сессии
   /// закрываются. Отличается от lockoutUntil (auto-brute-force lockout —
   /// временный, sec-based).
-  bannedAt             DateTime?
+  bannedAt        DateTime?
   /// Причина бана (для аудита и UI). NULL когда не banned.
-  bannedReason         String?
+  bannedReason    String?
   /// FK на User, который применил бан. SetNull при удалении админа,
   /// чтобы запись о бане у юзера сохранилась даже если админ удалён.
-  bannedByUserId       String?
-  bannedBy             User?     @relation("UserBannedBy", fields: [bannedByUserId], references: [id], onDelete: SetNull)
+  bannedByUserId  String?
+  bannedBy        User?     @relation("UserBannedBy", fields: [bannedByUserId], references: [id], onDelete: SetNull)
   /// v1.2.7 Platform Admin (trek P2) — soft-delete. NULL = активен.
   /// При deletedAt !== null login/WS отклоняются, как у banned, но
   /// «навсегда». Данные пользователя (сообщения, задачи, комментарии)
   /// остаются в БД — UI рисует их как «удалённый пользователь».
   /// Обратимо вручную: UPDATE "User" SET "deletedAt"=NULL WHERE id=...
-  deletedAt            DateTime?
+  deletedAt       DateTime?
   /// Причина удаления (для аудита и UI).
-  deletedReason        String?
+  deletedReason   String?
   /// FK на User, выполнившего удаление. SetNull при удалении админа.
-  deletedByUserId      String?
-  deletedBy            User?     @relation("UserDeletedBy", fields: [deletedByUserId], references: [id], onDelete: SetNull)
+  deletedByUserId String?
+  deletedBy       User?     @relation("UserDeletedBy", fields: [deletedByUserId], references: [id], onDelete: SetNull)
 
-  messages         Message[]
-  refreshTokens    RefreshToken[]
-  memberships      Member[]
-  ownedServers     Server[]              @relation("ServerOwner")
-  reactions        Reaction[]
-  createdActionItems ActionItem[]        @relation("ActionItemCreator")
-  assignedActionItems ActionItem[]       @relation("ActionItemAssignee")
-  createdMemoryEntries MemoryEntry[]     @relation("MemoryEntryCreator")
-  ownedMemoryEntries MemoryEntry[]       @relation("MemoryEntryOwner")
-  reviewedMemoryEntries MemoryEntry[]    @relation("MemoryEntryReviewer")
-  archivedMemoryEntries MemoryEntry[]    @relation("MemoryEntryArchiver")
+  messages                   Message[]
+  refreshTokens              RefreshToken[]
+  memberships                Member[]
+  ownedServers               Server[]                  @relation("ServerOwner")
+  reactions                  Reaction[]
+  createdActionItems         ActionItem[]              @relation("ActionItemCreator")
+  assignedActionItems        ActionItem[]              @relation("ActionItemAssignee")
+  createdMemoryEntries       MemoryEntry[]             @relation("MemoryEntryCreator")
+  ownedMemoryEntries         MemoryEntry[]             @relation("MemoryEntryOwner")
+  reviewedMemoryEntries      MemoryEntry[]             @relation("MemoryEntryReviewer")
+  archivedMemoryEntries      MemoryEntry[]             @relation("MemoryEntryArchiver")
   /// Items на которых я approver (v0.55). Pending → approver_userId = me.
-  approvalQueue      ActionItem[]        @relation("ActionItemApprover")
+  approvalQueue              ActionItem[]              @relation("ActionItemApprover")
   /// Operational Tables, созданные этим user'ом (v0.59 phase 1).
-  createdTables      Table[]             @relation("TableCreator")
+  createdTables              Table[]                   @relation("TableCreator")
   /// v0.80 #26: Automation rules, созданные этим user'ом.
-  createdAutomations AutomationRule[]    @relation("AutomationRuleCreator")
+  createdAutomations         AutomationRule[]          @relation("AutomationRuleCreator")
   /// v1.0.1: Composio app connections, созданные этим user'ом. Auto-set null
   /// при удалении user'а — connection остаётся, владельцем становится server OWNER.
-  createdComposioConnections ComposioConnection[] @relation("ComposioConnectionCreator")
+  createdComposioConnections ComposioConnection[]      @relation("ComposioConnectionCreator")
   /// Music sessions где user — host (v0.61). Один user может быть host'ом
   /// в нескольких channels одновременно.
-  hostedMusicSessions MusicSession[]
+  hostedMusicSessions        MusicSession[]
   /// Comments написанные этим user'ом на ActionItem'ах (v0.54 drawer).
-  actionItemComments ActionItemComment[]
+  actionItemComments         ActionItemComment[]
   /// Audit-log записи где user был инициатором (v0.54). Null userId — system.
-  actionItemActivities ActionItemActivity[]
+  actionItemActivities       ActionItemActivity[]
   /// DM conversations где user — userA (нормализованная позиция, см. DirectConversation).
   /// Для group DMs userA/userB NULL — membership через ConversationParticipant.
-  dmsAsUserA       DirectConversation[]  @relation("DMUserA")
+  dmsAsUserA                 DirectConversation[]      @relation("DMUserA")
   /// DM conversations где user — userB.
-  dmsAsUserB       DirectConversation[]  @relation("DMUserB")
+  dmsAsUserB                 DirectConversation[]      @relation("DMUserB")
   /// Group DMs, созданные этим user'ом (host). Legacy 1-to-1 имеют createdByUserId=NULL.
-  dmGroupsCreated  DirectConversation[]  @relation("DMCreator")
+  dmGroupsCreated            DirectConversation[]      @relation("DMCreator")
   /// Участие в group DMs (новая модель v0.52). 1-to-1 DMs используют userA/userB,
   /// group DMs — этот join. Membership-check унифицирован в route helper.
-  dmParticipations ConversationParticipant[]
-  auditLogs        AuditLog[]
+  dmParticipations           ConversationParticipant[]
+  auditLogs                  AuditLog[]
   /// v1.2.6 Platform Admin — users, которых ЭТОТ user (platform-owner) забанил.
   /// Reverse-side bannedBy self-relation.
-  bannedUsers      User[]                @relation("UserBannedBy")
+  bannedUsers                User[]                    @relation("UserBannedBy")
   /// v1.2.7 Platform Admin (trek P2) — users, soft-deleted этим admin'ом.
-  deletedUsers     User[]                @relation("UserDeletedBy")
+  deletedUsers               User[]                    @relation("UserDeletedBy")
   /// v1.2.7 Platform Admin (trek P2) — servers, которые этот platform-owner
   /// suspend'нул. Reverse-side ServerSuspendedBy self-relation.
-  suspendedServers Server[]              @relation("ServerSuspendedBy")
+  suspendedServers           Server[]                  @relation("ServerSuspendedBy")
   /// v1.5.54 D3 — серверы, locked этим user'ом (isolation для raid response).
-  lockedServers    Server[]              @relation("ServerLockedBy")
+  lockedServers              Server[]                  @relation("ServerLockedBy")
   /// Боты которыми владеет user (как создатель).
-  ownedBots        Bot[]                 @relation("BotOwner")
+  ownedBots                  Bot[]                     @relation("BotOwner")
   /// Если user — это shadow user для bot'а (1-to-1). null = обычный User.
-  botProfile       Bot?                  @relation("BotShadowUser")
+  botProfile                 Bot?                      @relation("BotShadowUser")
   /// Инциденты открытые этим user'ом.
-  openedIncidents  Incident[]            @relation("IncidentOpener")
+  openedIncidents            Incident[]                @relation("IncidentOpener")
   /// Last-visit per channel (AI Memory «Since your last visit»).
-  channelVisits    ChannelLastVisit[]
+  channelVisits              ChannelLastVisit[]
   /// v0.84 #27 phase 3: web-push subscriptions (per-device). При удалении user'а
   /// все его pushSubscriptions удаляются cascade (включая ключи), чтобы не
   /// слать notifications мёртвому user'у.
-  pushSubscriptions PushSubscription[]
+  pushSubscriptions          PushSubscription[]
   /// v0.85 #27 phase 4: per-event-type push preferences. 1-to-1, lazy-created
   /// при первом explicit toggle в UI. Отсутствие row = все типы enabled (default).
-  notificationPreferences NotificationPreferences?
+  notificationPreferences    NotificationPreferences?
   /// v0.85 #27 phase 4: каналы которые user заглушил (push skip).
-  mutedChannels MutedChannel[]
+  mutedChannels              MutedChannel[]
   /// v0.86 #24 phase 2: счета, которые этот user создал (SetNull при удалении).
-  createdInvoices Invoice[]
+  createdInvoices            Invoice[]
   /// v0.88 #23 phase 1: voice notes последняя редактура которых от меня.
-  editedVoiceNotes VoiceNote[]
+  editedVoiceNotes           VoiceNote[]
   /// v0.89 #26 phase 2: интеграции, которые этот user настроил.
-  createdIntegrations Integration[]
+  createdIntegrations        Integration[]
   /// v1.2.20: custom-emoji, загруженные этим user'ом. SetNull при
   /// удалении user'а — emoji остаётся на сервере, владельцем становится
   /// «—».
-  uploadedEmojis      Emoji[]
+  uploadedEmojis             Emoji[]
   /// Управляемая владельцем публичная галерея профиля. Не собираем
   /// автоматически вложения из комнат/DM, чтобы не раскрывать закрытый контент.
-  profileImages       UserProfileImage[]
+  profileImages              UserProfileImage[]
   /// v1.5.42 Discord-parity A1: friendships где user — userA (нормализованная
   /// позиция, см. Friendship.userAId < userBId). Покрывает и PENDING/ACCEPTED/
   /// BLOCKED — фильтрация по status в роутах.
-  friendshipsAsUserA  Friendship[] @relation("FriendshipUserA")
+  friendshipsAsUserA         Friendship[]              @relation("FriendshipUserA")
   /// v1.5.42 Discord-parity A1: friendships где user — userB.
-  friendshipsAsUserB  Friendship[] @relation("FriendshipUserB")
+  friendshipsAsUserB         Friendship[]              @relation("FriendshipUserB")
   /// v1.5.42 Discord-parity A1: friend requests, инициированные этим user'ом.
   /// SetNull при удалении user'а — friendship остаётся между остальными
   /// сторонами (BLOCKED не теряем). На практике обе стороны cascade-delete'нутся
   /// через userA/userB FK раньше — это relation для completeness Prisma client'а.
-  friendRequestsSent  Friendship[] @relation("FriendshipRequestedBy")
+  friendRequestsSent         Friendship[]              @relation("FriendshipRequestedBy")
   /// v1.5.42 Discord-parity A1: friendships которые этот user заблокировал.
   /// Опять SetNull для completeness; cascade-delete срабатывает раньше.
-  friendshipsBlockedBy Friendship[] @relation("FriendshipBlockedBy")
+  friendshipsBlockedBy       Friendship[]              @relation("FriendshipBlockedBy")
+  decidedBotActionApprovals  BotActionApproval[]       @relation("BotActionApprovalDecider")
 }
 
 /// Публичное изображение, которое пользователь явно добавил в профиль.
@@ -233,14 +234,14 @@ model UserProfileImage {
 ///
 /// Phase 5 — per-channel mute (already separate model). Phase 6 — quiet hours.
 model NotificationPreferences {
-  userId       String   @id
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  mentions     Boolean  @default(true)
-  dms          Boolean  @default(true)
-  assignments  Boolean  @default(true)
-  approvals    Boolean  @default(true)
-  escalations  Boolean  @default(true)
-  updatedAt    DateTime @updatedAt
+  userId      String   @id
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mentions    Boolean  @default(true)
+  dms         Boolean  @default(true)
+  assignments Boolean  @default(true)
+  approvals   Boolean  @default(true)
+  escalations Boolean  @default(true)
+  updatedAt   DateTime @updatedAt
 }
 
 /// v0.85 #27 phase 4: каналы которые user заглушил. Push в эти каналы skip'ается
@@ -251,8 +252,8 @@ model NotificationPreferences {
 model MutedChannel {
   userId    String
   channelId String
-  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  channel   Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channel   Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
   mutedAt   DateTime @default(now())
 
   @@id([userId, channelId])
@@ -273,18 +274,18 @@ model MutedChannel {
 /// Privacy: payload через web-push API шифруется browser-public-key + auth —
 /// content виден только подписавшемуся user'у (не push-сервису).
 model PushSubscription {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   /// URL push-сервиса браузера (Mozilla / Google FCM / Apple). Unique.
-  endpoint  String   @unique
+  endpoint   String   @unique
   /// Browser public key (ECDH p256). Base64url.
-  p256dh    String
+  p256dh     String
   /// Auth secret для AES-GCM. Base64url.
-  auth      String
+  auth       String
   /// User-Agent string на момент subscribe. Для UI «удалить с этого устройства».
-  userAgent String?
-  createdAt DateTime @default(now())
+  userAgent  String?
+  createdAt  DateTime @default(now())
   /// Бампится при каждой successful push send. Используется для cleanup'а
   /// stale subs (older than 30 дней без активности — кандидаты на удаление).
   lastSeenAt DateTime @default(now())
@@ -296,49 +297,47 @@ model PushSubscription {
  * Bot — operator entity внутри сервера. main differentiator Eclipse Chat
  * от Discord: bots = first-class citizens с явным API контрактом,
  * не webhooks-only.
- *
  * Архитектурное решение — bot реиспользует существующую User модель как
  * «shadow user»:
- *   - При create Bot — создаётся User row с email `bot-<botId>@eclipse-chat.local`.
- *   - Bot.userId → User.id (1-to-1).
- *   - Messages from bot выглядят как обычные Message с user.id = bot's shadow user.
- *   - Member.userId работает для bot'а как для регулярного юзера (auto-добавляется
- *     в server при create).
+ * - При create Bot — создаётся User row с email `bot-<botId>@eclipse-chat.local`.
+ * - Bot.userId → User.id (1-to-1).
+ * - Messages from bot выглядят как обычные Message с user.id = bot's shadow user.
+ * - Member.userId работает для bot'а как для регулярного юзера (auto-добавляется
+ * в server при create).
  * Это упрощает Message.userId, Reaction, Avatar и т.д. — никакой polymorphism.
- *
  * API auth:
- *   Authorization: Bot ecb_<32-char-base64>
- *   - Сравнение через bcrypt(apiKey, apiKeyHash).
- *   - apiKeyPrefix хранится для quick row-lookup (первые 12 символов).
+ * Authorization: Bot ecb_<32-char-base64>
+ * - Сравнение через bcrypt(apiKey, apiKeyHash).
+ * - apiKeyPrefix хранится для quick row-lookup (первые 12 символов).
  */
 model Bot {
-  id           String   @id @default(cuid())
-  name         String
+  id                   String              @id @default(cuid())
+  name                 String
   /// Avatar URL — может быть кастомным или auto-generated.
-  avatar       String?
+  avatar               String?
   /// Описание роли бота (для UI), до 280 символов.
-  description  String?
+  description          String?
   /// Bcrypt hash of API key. Plaintext возвращается одноразово при create/regen.
-  apiKeyHash   String
+  apiKeyHash           String
   /// Префикс API key для quick lookup (`ecb_` + 8 chars). Unique для O(1) find.
-  apiKeyPrefix String   @unique
+  apiKeyPrefix         String              @unique
   /// Server в котором bot живёт (scoped к одному, как Discord webhooks).
-  serverId     String
-  server       Server   @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  serverId             String
+  server               Server              @relation(fields: [serverId], references: [id], onDelete: Cascade)
   /// Owner user — может regenerate key и delete bot. Cascade при удалении user'а
   /// удаляет bots — admin должен передать ownership перед уходом из server'а.
-  ownerUserId  String
-  owner        User     @relation("BotOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  ownerUserId          String
+  owner                User                @relation("BotOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
   /// Shadow user (1-to-1). Auto-created при bot creation. Bot posts messages
   /// как этот user; reactions, mentions работают штатно.
-  userId       String   @unique
-  user         User     @relation("BotShadowUser", fields: [userId], references: [id], onDelete: Cascade)
+  userId               String              @unique
+  user                 User                @relation("BotShadowUser", fields: [userId], references: [id], onDelete: Cascade)
   /// Роль бота — определяет system-prompt template, UI badge и (в будущем)
   /// поведение AI invocation. Default GENERIC = существующие боты не ломаются.
-  role         BotRole  @default(GENERIC)
+  role                 BotRole             @default(GENERIC)
   /// Отвечать на каждое сообщение в TEXT-каналах сервера (без @mention).
   /// Если несколько ботов с autoRespond — отвечает oldest createdAt.
-  autoRespond  Boolean  @default(false)
+  autoRespond          Boolean             @default(false)
   /// Кастомный system prompt (приоритет над role-template). Max 8000 в API.
   systemPromptOverride String?
   /// v1.2.27 — Personality / character overlay (до 1000 символов). В
@@ -351,22 +350,23 @@ model Bot {
   personality          String?
   /// JSON array capabilities: ["send_message", "create_action_item", "react"].
   /// Workbench применяет field как реальный ACL для Bot API и agent tools.
-  capabilities String   @default("[\"send_message\",\"react\"]")
+  capabilities         String              @default("[\"send_message\",\"react\"]")
   /// JSON array channel ids. NULL = все комнаты текущего workspace; [] = ни
   /// одной. Любой non-null malformed value трактуется runtime как deny-all.
-  allowedChannelIds String?
+  allowedChannelIds    String?
   /// HTTPS URL для outbound webhook'ов. Backend POST'ит сюда события
   /// (message.created etc) от каналов где bot — member. Null = нет webhook.
-  webhookUrl    String?
+  webhookUrl           String?
   /// Shared secret для HMAC-SHA256 signing webhook payloads. Если задан —
   /// header X-Eclipse-Bot-Signature: sha256=<hex> добавляется на каждый POST.
-  webhookSecret String?
+  webhookSecret        String?
   /// JSON массив subscribed events. Default ["message.created"]. Bot
   /// получает только events что в списке.
-  webhookEvents String   @default("[\"message.created\"]")
-  createdAt    DateTime @default(now())
+  webhookEvents        String              @default("[\"message.created\"]")
+  createdAt            DateTime            @default(now())
   /// Когда bot последний раз был использован (любой successful API call).
-  lastUsedAt   DateTime?
+  lastUsedAt           DateTime?
+  actionApprovals      BotActionApproval[]
 
   @@index([serverId])
   @@index([ownerUserId])
@@ -411,6 +411,10 @@ enum AuditEventType {
   BOT_ACCESS_POLICY_CHANGED
   /// Agent Workbench: safe metadata-only record of an attempted tool call.
   BOT_TOOL_CALL
+  /// Agent Workbench: sensitive tool call entered the Owner approval queue.
+  BOT_ACTION_APPROVAL_REQUESTED
+  /// Agent Workbench: Owner approved/rejected a queued action; no payload in audit.
+  BOT_ACTION_APPROVAL_DECIDED
   /// v1.0.1 Composio integration: OAuth-managed external apps.
   COMPOSIO_CONNECTED
   COMPOSIO_DISCONNECTED
@@ -446,21 +450,21 @@ model AuditLog {
 }
 
 model RefreshToken {
-  id        String   @id @default(cuid())
-  tokenHash String   @unique
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  expiresAt DateTime
-  createdAt DateTime @default(now())
+  id         String    @id @default(cuid())
+  tokenHash  String    @unique
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt  DateTime
+  createdAt  DateTime  @default(now())
   /// v1.5.52 Discord-parity B2: User-Agent header from login/refresh request.
   /// Truncated до 512 chars (default browser UA ~150-250). Used для UI
   /// «Сессия Chrome on Windows» style display в Settings/Активные сеансы.
   /// NULL для legacy rows до v1.5.52 migration.
-  userAgent String?
+  userAgent  String?
   /// v1.5.52 B2: IP при создании session (origin). Может быть IPv4/IPv6
   /// string или null если behind proxy без X-Forwarded-For header.
   /// Используется для security display only — на revoke логику не влияет.
-  ipAddress String?
+  ipAddress  String?
   /// v1.5.52 B2: timestamp последнего refresh access-token'а через эту
   /// refresh-session. Bump'ается на каждый /api/auth/refresh hit. Frontend
   /// показывает «Активна сейчас» если lastSeenAt < 5 min ago. NULL для
@@ -528,6 +532,42 @@ enum ActionItemType {
   FOLLOW_UP
   RISK
   REQUIREMENT
+}
+
+enum BotActionApprovalStatus {
+  PENDING
+  EXECUTING
+  SUCCEEDED
+  REJECTED
+  EXPIRED
+  FAILED
+}
+
+/// Owner approval for a sensitive agent action. Payload and preview are scrubbed
+/// immediately after a terminal decision so this table does not retain business data.
+model BotActionApproval {
+  id              String                  @id @default(cuid())
+  serverId        String
+  server          Server                  @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  botId           String
+  bot             Bot                     @relation(fields: [botId], references: [id], onDelete: Cascade)
+  sourceChannelId String?
+  tool            String
+  payload         String
+  preview         String
+  requestHash     String
+  status          BotActionApprovalStatus @default(PENDING)
+  failureCode     String?
+  expiresAt       DateTime
+  decidedAt       DateTime?
+  decidedByUserId String?
+  decidedBy       User?                   @relation("BotActionApprovalDecider", fields: [decidedByUserId], references: [id], onDelete: SetNull)
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+
+  @@index([serverId, status, createdAt])
+  @@index([botId, status, requestHash])
+  @@index([status, expiresAt])
 }
 
 enum MemoryEntryKind {
@@ -663,18 +703,18 @@ enum TableFieldType {
 /// Сервер — контейнер каналов и участников. Создатель автоматически
 /// становится Member с role = OWNER.
 model Server {
-  id          String   @id @default(cuid())
-  name        String
-  icon        String?
+  id             String     @id @default(cuid())
+  name           String
+  icon           String?
   /// Banner image, 1500×500 webp (resized sharp). Хедер чата + сервер-инфо.
-  banner      String?
+  banner         String?
   /// HSL brand color string без `hsl()` wrapper: "200 80% 60%". Frontend
   /// инжектит `:root { --ec-accent: hsl(X) }` пока активен этот сервер.
   /// Null = default cool sky. Per-server theming без full redesign.
-  brandColor  String?
+  brandColor     String?
   /// Markdown-описание сервера (до 1000 символов). Показывается в Info modal
   /// и welcome screen для новых членов.
-  description String?
+  description    String?
   /// Welcome-сообщение для новых members. Показывается один раз в первом
   /// TEXT канале как dismissible system-card. До 500 символов.
   welcomeMessage String?
@@ -682,13 +722,13 @@ model Server {
   /// CLIENT = мягче UI, скрыты Status Board / Execution / slash hints —
   /// для портала клиентов агентств / dev-студий / консалтинга. Меняется
   /// OWNER'ом в Server Settings.
-  mode        ServerMode @default(ENGINEERING)
+  mode           ServerMode @default(ENGINEERING)
   /// Уникальный код для приёма по ссылке. Регенерируется через PATCH (TODO v0.4+).
-  inviteCode  String   @unique @default(cuid())
+  inviteCode     String     @unique @default(cuid())
   /// Владелец — User. Не может быть удалён пока ownsServer (onDelete: Restrict).
-  ownerId     String
-  owner       User     @relation("ServerOwner", fields: [ownerId], references: [id], onDelete: Restrict)
-  createdAt   DateTime @default(now())
+  ownerId        String
+  owner          User       @relation("ServerOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  createdAt      DateTime   @default(now())
 
   /// v1.2.7 Platform Admin (trek P2) — server suspend (заморозка).
   /// При suspendedAt !== null write-операции (постинг, создание каналов,
@@ -698,7 +738,7 @@ model Server {
   suspendedAt       DateTime?
   suspendedReason   String?
   suspendedByUserId String?
-  suspendedBy       User?    @relation("ServerSuspendedBy", fields: [suspendedByUserId], references: [id], onDelete: SetNull)
+  suspendedBy       User?     @relation("ServerSuspendedBy", fields: [suspendedByUserId], references: [id], onDelete: SetNull)
 
   /// v1.5.54 Discord-parity D3 — Server isolation (emergency lock на новые
   /// joins). Когда `lockedAt !== null`, POST /api/servers/join/:code
@@ -707,36 +747,36 @@ model Server {
   ///
   /// Отличается от `suspendedAt`: suspended = platform-admin disable (read-only),
   /// locked = OWNER temp join-gate (members + writes продолжают). Параллельные системы.
-  lockedAt          DateTime?
+  lockedAt       DateTime?
   /// Причина lock'а (для аудита и UI). NULL когда не locked.
-  lockedReason      String?
+  lockedReason   String?
   /// Какой OWNER/ADMIN наложил lock. SetNull при удалении user'а.
-  lockedByUserId    String?
-  lockedBy          User?    @relation("ServerLockedBy", fields: [lockedByUserId], references: [id], onDelete: SetNull)
+  lockedByUserId String?
+  lockedBy       User?     @relation("ServerLockedBy", fields: [lockedByUserId], references: [id], onDelete: SetNull)
 
   /// v1.5.58 Discord-parity E3 — Server feature chips («Никаких предателей»,
   /// «Жесткие правила», «Только члены»). JSON-encoded String[] (max 5,
   /// каждый ≤40 chars). NULL = none. Frontend rend'ит как chips в WelcomeHero.
   /// Zod validation в PATCH /api/servers/:id/identity.
-  features          String?
+  features String?
 
-  channels    Channel[]
+  channels            Channel[]
   /// v1.5.46 Discord-parity C1 — channel categories на этом сервере.
   /// Сортировка по ChannelCategory.position. Канал без categoryId =
   /// uncategorized (UI рисует над списком категорий, по Discord паттерну).
-  channelCategories ChannelCategory[]
-  members     Member[]
-  actionItems ActionItem[]
-  bots        Bot[]
-  incidents   Incident[]
-  tables      Table[]
+  channelCategories   ChannelCategory[]
+  members             Member[]
+  actionItems         ActionItem[]
+  bots                Bot[]
+  incidents           Incident[]
+  tables              Table[]
   /// v0.80 #26 phase 1: automation rules (trigger + action декларативные).
-  automations AutomationRule[]
+  automations         AutomationRule[]
   /// v0.86 #24 phase 2: client invoices (server-scoped).
-  invoices    Invoice[]
+  invoices            Invoice[]
   /// v0.89 #26 phase 2: external integrations (Telegram outgoing, GitHub
   /// incoming webhook). Cascade при удалении server'а.
-  integrations Integration[]
+  integrations        Integration[]
   /// v1.0.1 #11.5 Composio integration: per-server OAuth-managed apps
   /// (500+ через единый Composio proxy). Cascade при удалении server'а.
   composioConnections ComposioConnection[]
@@ -750,6 +790,7 @@ model Server {
   invites             ServerInvite[]
   /// v1.7.3 — curated room/project memory. Entries are soft-deleted via archivedAt.
   memoryEntries       MemoryEntry[]
+  botActionApprovals  BotActionApproval[]
 }
 
 /// v1.6.99 — одноразовые / истекающие invite-коды (privacy slice B).
@@ -758,24 +799,24 @@ model Server {
 /// POST /api/servers/join/:code. Cron-очистки нет — валидность проверяется на
 /// join (revokedAt/expiresAt/maxUses); истёкшие просто перестают работать.
 model ServerInvite {
-  id        String    @id @default(cuid())
+  id              String    @id @default(cuid())
   /// URL-safe код (base64url). Уникален глобально среди инвайтов.
-  code      String    @unique
-  serverId  String
-  server    Server    @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  code            String    @unique
+  serverId        String
+  server          Server    @relation(fields: [serverId], references: [id], onDelete: Cascade)
   /// Кто создал. Scalar без Prisma-relation (FK + ON DELETE SET NULL заданы в
   /// миграции вручную) — чтобы не расширять большую модель User. NULL после
   /// удаления автора.
   createdByUserId String?
   /// Лимит использований. NULL = без лимита.
-  maxUses   Int?
+  maxUses         Int?
   /// Сколько раз принят (инкремент на каждый НОВЫЙ join, не на idempotent-повтор).
-  uses      Int       @default(0)
+  uses            Int       @default(0)
   /// Срок действия. NULL = бессрочный.
-  expiresAt DateTime?
+  expiresAt       DateTime?
   /// Отозван вручную (OWNER/ADMIN). NULL = активен.
-  revokedAt DateTime?
-  createdAt DateTime  @default(now())
+  revokedAt       DateTime?
+  createdAt       DateTime  @default(now())
 
   @@index([serverId])
   @@index([expiresAt])
@@ -790,7 +831,7 @@ model TrainingSection {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  videos    TrainingVideo[]
+  videos TrainingVideo[]
 
   @@index([serverId, position])
 }
@@ -831,22 +872,22 @@ model TrainingVideo {
 /// fires action (например, posts message от system bot в target channel).
 /// `lastFiredAt` + `fireCount` для UI «правило сработало N раз».
 model AutomationRule {
-  id              String   @id @default(cuid())
+  id              String    @id @default(cuid())
   serverId        String
-  server          Server   @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  server          Server    @relation(fields: [serverId], references: [id], onDelete: Cascade)
   name            String
-  enabled         Boolean  @default(true)
+  enabled         Boolean   @default(true)
   /// JSON: { type: "MESSAGE_NEW", keyword?: string, channelId?: string, caseInsensitive?: bool }
   trigger         String
   /// JSON: { type: "POST_MESSAGE", channelId: string, template: string }
   action          String
   createdByUserId String?
-  createdBy       User?    @relation("AutomationRuleCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
-  createdAt       DateTime @default(now())
+  createdBy       User?     @relation("AutomationRuleCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdAt       DateTime  @default(now())
   /// Timestamp последнего срабатывания (для UI «работало N часов назад»).
   lastFiredAt     DateTime?
   /// Cum. счётчик срабатываний (для UI). Increment на каждый fire.
-  fireCount       Int      @default(0)
+  fireCount       Int       @default(0)
 
   @@index([serverId, enabled])
 }
@@ -855,7 +896,6 @@ model AutomationRule {
  * Incident — операторский «контур разбора». Создаётся кнопкой «Открыть
  * инцидент»: спавнит dedicated TEXT-канал, собирает timeline (ActionItems
  * + pinned messages), при resolve генерит post-mortem через Ollama.
- *
  * Главный differentiator Eclipse Chat как operator console — связывает
  * уже построенные слои (channels + ActionItems + AI) в incident workflow.
  */
@@ -882,13 +922,13 @@ model Incident {
 
 /// Участие пользователя в сервере. Один user — один Member per server.
 model Member {
-  id        String     @id @default(cuid())
-  userId    String
-  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  serverId  String
-  server    Server     @relation(fields: [serverId], references: [id], onDelete: Cascade)
-  role      MemberRole @default(MEMBER)
-  joinedAt  DateTime   @default(now())
+  id       String     @id @default(cuid())
+  userId   String
+  user     User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  serverId String
+  server   Server     @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  role     MemberRole @default(MEMBER)
+  joinedAt DateTime   @default(now())
 
   @@unique([userId, serverId])
 }
@@ -897,36 +937,36 @@ model Member {
 /// обязательным (NOT NULL) — backfill сделан в v0.4 seed, technical
 /// debt из ROADMAP §housekeeping закрыт.
 model Channel {
-  id        String      @id @default(cuid())
-  name      String
-  slug      String      @unique
-  serverId  String
-  server    Server      @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  id                String           @id @default(cuid())
+  name              String
+  slug              String           @unique
+  serverId          String
+  server            Server           @relation(fields: [serverId], references: [id], onDelete: Cascade)
   /// Тип канала. По умолчанию TEXT — обратная совместимость с v0.4.
-  type      ChannelType @default(TEXT)
+  type              ChannelType      @default(TEXT)
   /// Позиция в списке каналов **внутри своей категории** (или среди
   /// uncategorized если categoryId NULL). Per-(serverId, categoryId)
   /// упорядоченность — не глобально по серверу.
-  position  Int         @default(0)
+  position          Int              @default(0)
   /// v1.5.46 Discord-parity C1 — категория канала. NULL = uncategorized
   /// (рисуется наверху в UI, до первой категории). SetNull при удалении
   /// категории — каналы не теряются, переходят в uncategorized.
-  categoryId String?
-  category   ChannelCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  categoryId        String?
+  category          ChannelCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   /// Описание канала (до 1024 символов). Показывается в chat header
   /// под #channel-name + в ChannelSettingsModal. Nullable = нет описания.
-  description String?
+  description       String?
   /// Кастомный emoji prefix вместо # (TEXT) / 🔊 (VOICE) в UI.
   /// Single emoji char, может быть compound (👨‍💻). Null = default glyph.
-  emoji       String?
+  emoji             String?
   /// v0.47 Client Mode v2: internal-канал виден ТОЛЬКО OWNER/ADMIN/MODERATOR
   /// когда Server.mode = CLIENT. В ENGINEERING serverе flag ignored (все
   /// каналы видны всем members). Channel rename/delete не зависят от flag.
-  internal    Boolean    @default(false)
+  internal          Boolean          @default(false)
   /// v0.74 #29 phase 1: temporary rooms. Если задано — канал авто-удаляется
   /// cron'ом после `expiresAt`. UI показывает countdown badge в chat-header.
   /// NULL = постоянный канал. Hard delete (cascade messages/actions).
-  expiresAt   DateTime?
+  expiresAt         DateTime?
   /// v1.7.0 — исчезающие сообщения (privacy slice A). Если задано (секунды) —
   /// новые сообщения канала получают `Message.expiresAt = createdAt +
   /// messageTtlSeconds` и hard-удаляются cron'ом. NULL = сообщения не исчезают.
@@ -934,20 +974,20 @@ model Channel {
   messageTtlSeconds Int?
   /// Если канал — incident-канал, ссылка на Incident. Unique (1-to-1).
   /// Null для обычных каналов. UI рисует incident badge если set.
-  incidentId  String?    @unique
-  incident    Incident?  @relation("IncidentChannel")
-  createdAt DateTime    @default(now())
+  incidentId        String?          @unique
+  incident          Incident?        @relation("IncidentChannel")
+  createdAt         DateTime         @default(now())
 
-  messages  Message[]
-  actionItems ActionItem[]
+  messages      Message[]
+  actionItems   ActionItem[]
   memoryEntries MemoryEntry[]
-  visits    ChannelLastVisit[]
-  tables    Table[]
-  musicSession MusicSession?
+  visits        ChannelLastVisit[]
+  tables        Table[]
+  musicSession  MusicSession?
   /// v0.85 #27 phase 4: inverse relation для MutedChannel.
-  mutedBy   MutedChannel[]
+  mutedBy       MutedChannel[]
   /// v0.88 #23 phase 1: shared voice-room notepad (Yjs CRDT).
-  voiceNote VoiceNote?
+  voiceNote     VoiceNote?
 
   @@index([expiresAt])
   /// v1.5.46 C1 — быстрая выборка channels per-category в UI tree.
@@ -985,7 +1025,7 @@ model ChannelCategory {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  channels  Channel[]
+  channels Channel[]
 
   @@index([serverId, position])
 }
@@ -1072,9 +1112,9 @@ model Integration {
 /// keep tokens server-side, мы храним только connectionId. Если Composio
 /// возвращает tokens — encrypt с TWOFA_ENCRYPTION_KEY как для Integration.config.
 model ComposioConnection {
-  id              String   @id @default(cuid())
+  id              String    @id @default(cuid())
   serverId        String
-  server          Server   @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  server          Server    @relation(fields: [serverId], references: [id], onDelete: Cascade)
   /// App slug в Composio ("gmail", "slack", "notion", etc).
   appName         String
   /// User-friendly display name ("Gmail для команды Marketing").
@@ -1085,14 +1125,14 @@ model ComposioConnection {
   /// Пустая string = tokens хранятся на стороне Composio.
   encryptedAuth   String
   /// ACTIVE / EXPIRED / DISCONNECTED. String для будущей extensibility.
-  status          String   @default("ACTIVE")
+  status          String    @default("ACTIVE")
   createdByUserId String?
-  createdBy       User?    @relation("ComposioConnectionCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
-  createdAt       DateTime @default(now())
+  createdBy       User?     @relation("ComposioConnectionCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdAt       DateTime  @default(now())
   lastUsedAt      DateTime?
 
-  @@index([serverId])
   @@unique([serverId, appName])
+  @@index([serverId])
 }
 
 /// v0.88 #23 phase 1a: shared notepad attached to a VOICE channel.
@@ -1113,18 +1153,18 @@ model ComposioConnection {
 /// channelId Cascade: при удалении канала doc auto-cleanup. lastEditorUserId
 /// SetNull — preserve doc после удаления автора (cascade policy B).
 model VoiceNote {
-  id                String   @id @default(cuid())
-  channelId         String   @unique
-  channel           Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  id               String   @id @default(cuid())
+  channelId        String   @unique
+  channel          Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
   /// Plain text content. Phase 1a — markdown без CRDT. Phase 1b — Yjs
   /// binary state (мигрируем тип на Bytes).
-  content           String   @default("")
+  content          String   @default("")
   /// Optimistic concurrency. Bumped на каждый successful save.
-  version           Int      @default(0)
-  lastEditorUserId  String?
-  lastEditor        User?    @relation(fields: [lastEditorUserId], references: [id], onDelete: SetNull)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  version          Int      @default(0)
+  lastEditorUserId String?
+  lastEditor       User?    @relation(fields: [lastEditorUserId], references: [id], onDelete: SetNull)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   @@index([channelId])
 }
@@ -1134,60 +1174,60 @@ model VoiceNote {
 /// проверяется на уровне route'ов (Prisma не имеет check constraints).
 /// Из двух полей всегда заполнено ровно одно.
 model Message {
-  id        String   @id @default(cuid())
-  content   String
-  createdAt DateTime @default(now())
+  id                    String              @id @default(cuid())
+  content               String
+  createdAt             DateTime            @default(now())
   /// Время последнего edit'а. Null = не редактировалось.
-  editedAt  DateTime?
+  editedAt              DateTime?
   /// Soft-delete: deletedAt set → content скрывается, replaced placeholder'ом
   /// в UI. Row остаётся для thread/reply контекста (v0.12).
-  deletedAt DateTime?
+  deletedAt             DateTime?
   /// Pin-bar в chat-header показывает все messages где pinnedAt != null,
   /// sort by pinnedAt desc. Pin/unpin доступен OWNER/ADMIN/MODERATOR.
   /// Для DM messages pin не разрешён (нет ролей в DM).
-  pinnedAt  DateTime?
+  pinnedAt              DateTime?
   /// v1.7.0 — исчезающее сообщение (privacy slice A). Если задано — сообщение
   /// hard-удаляется cron'ом после expiresAt. Вычисляется при отправке из
   /// Channel.messageTtlSeconds (или пер-сообщение override). NULL = постоянное.
-  expiresAt DateTime?
+  expiresAt             DateTime?
   /// Проверенное внешнее событие. Храним только bounded provenance-поля,
   /// а не исходный webhook payload. Null для обычных сообщений.
-  externalEvent Json?
+  externalEvent         Json?
   /// Snapshot id интеграции без FK: карточка остаётся проверяемой в истории
   /// после удаления webhook-интеграции.
   externalIntegrationId String?
   /// Provider delivery id. Вместе с integration id защищает от webhook replay.
-  externalDeliveryId String?
+  externalDeliveryId    String?
   /// v0.63 cascade policy B: nullable + SetNull. При удалении User
   /// message остаётся, автор=null, UI рендерит «Удалённый пользователь».
   /// Bot deletions / GDPR-style erasure теперь не уничтожают историю.
-  userId    String?
-  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId                String?
+  user                  User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
   /// Канал в server-context. NULL → message принадлежит DM-разговору.
-  channelId String?
-  channel   Channel? @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  channelId             String?
+  channel               Channel?            @relation(fields: [channelId], references: [id], onDelete: Cascade)
   /// DM-разговор. NULL → message принадлежит серверному каналу.
-  conversationId String?
-  conversation   DirectConversation? @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  conversationId        String?
+  conversation          DirectConversation? @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   /// Thread self-relation: root-сообщения имеют parentMessageId=NULL.
   /// Replies — id root'а. onDelete:SetNull = при удалении root replies остаются
   /// orphan (history preserved, UI рендерит placeholder).
-  parentMessageId String?
-  parent          Message?  @relation("MessageThread", fields: [parentMessageId], references: [id], onDelete: SetNull, onUpdate: Cascade)
-  threadReplies   Message[] @relation("MessageThread")
-  reactions Reaction[]
-  attachments Attachment[]
-  actionItems ActionItem[]
-  memoryEntries MemoryEntry[] @relation("MemoryEntrySourceMessage")
+  parentMessageId       String?
+  parent                Message?            @relation("MessageThread", fields: [parentMessageId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  threadReplies         Message[]           @relation("MessageThread")
+  reactions             Reaction[]
+  attachments           Attachment[]
+  actionItems           ActionItem[]
+  memoryEntries         MemoryEntry[]       @relation("MemoryEntrySourceMessage")
   /// v0.77 #21: AI memory + semantic search. Inverse relation для cascade.
-  embedding   MessageEmbedding?
+  embedding             MessageEmbedding?
   /// v1.5.24 — edit history. Snapshot previous content на каждый edit.
-  edits     MessageEdit[]
+  edits                 MessageEdit[]
 
+  @@unique([externalIntegrationId, externalDeliveryId], map: "Message_external_integration_delivery_key")
   @@index([channelId, pinnedAt])
   @@index([conversationId, createdAt])
   @@index([parentMessageId])
-  @@unique([externalIntegrationId, externalDeliveryId], map: "Message_external_integration_delivery_key")
   /// v1.7.0 — cron исчезающих сообщений сканит по expiresAt < now.
   @@index([expiresAt])
 }
@@ -1197,15 +1237,15 @@ model Message {
 /// перед перезаписью. Frontend показывает history по клику на «(изменено)» tag.
 /// Cascade-delete при удалении message — history исчезает вместе с ним.
 model MessageEdit {
-  id            String   @id @default(cuid())
-  messageId     String
-  message       Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  id              String   @id @default(cuid())
+  messageId       String
+  message         Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
   /// Content на момент edit'а (то что user видел до этого правки).
   /// Текущий content всегда в Message.content; здесь — снапшоты прошлого.
   previousContent String
   /// Когда был сделан edit, который ПОРОДИЛ этот snapshot.
   /// (Т.е. when current Message.content стал новым.)
-  editedAt      DateTime @default(now())
+  editedAt        DateTime @default(now())
 
   @@index([messageId, editedAt])
 }
@@ -1242,28 +1282,28 @@ model MessageEmbedding {
 /// (ActionItemComment) и activity log (ActionItemActivity). Поле `title`
 /// остаётся коротким (до 160 символов) — markdown body живёт в `description`.
 model ActionItem {
-  id              String           @id @default(cuid())
-  title           String
+  id          String             @id @default(cuid())
+  title       String
   /// Markdown description (v0.54). Nullable — старые items не имеют. Max 4000.
-  description     String?
-  type            ActionItemType
-  status          ActionItemStatus @default(OPEN)
+  description String?
+  type        ActionItemType
+  status      ActionItemStatus   @default(OPEN)
   /// v0.54: приоритет для сортировки + визуальной важности.
-  priority        ActionItemPriority @default(NORMAL)
-  dueAt           DateTime?
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
+  priority    ActionItemPriority @default(NORMAL)
+  dueAt       DateTime?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
 
   serverId        String
-  server          Server           @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  server          Server  @relation(fields: [serverId], references: [id], onDelete: Cascade)
   channelId       String
-  channel         Channel          @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  channel         Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
   sourceMessageId String
-  sourceMessage   Message          @relation(fields: [sourceMessageId], references: [id], onDelete: Cascade)
+  sourceMessage   Message @relation(fields: [sourceMessageId], references: [id], onDelete: Cascade)
   createdByUserId String
-  createdBy       User             @relation("ActionItemCreator", fields: [createdByUserId], references: [id], onDelete: Cascade)
+  createdBy       User    @relation("ActionItemCreator", fields: [createdByUserId], references: [id], onDelete: Cascade)
   assigneeUserId  String?
-  assignee        User?            @relation("ActionItemAssignee", fields: [assigneeUserId], references: [id], onDelete: SetNull)
+  assignee        User?   @relation("ActionItemAssignee", fields: [assigneeUserId], references: [id], onDelete: SetNull)
 
   /// v0.55 approval flow. Default state — NONE (одобрение не требуется).
   /// Когда кто-то делает request approval — переключается в PENDING с
@@ -1282,37 +1322,37 @@ model ActionItem {
   /// фоновой scan ставит escalatedAt = now() и эмитит socket-event +
   /// activity-log (ESCALATED). Повторная эскалация — раз в 7 дней (cooldown
   /// в коде, не constraint в схеме).
-  escalatedAt      DateTime?
+  escalatedAt DateTime?
 
   /// v0.73 #20 phase 4: AI-summary. Краткая 2-3 строчная сводка задачи
   /// (description + recent comments). Генерируется по запросу через
   /// существующую AI-provider chain. NULL = не сгенерирована или
   /// устарела. Frontend в drawer'е показывает блок с кнопкой regenerate.
-  aiSummary        String?
+  aiSummary          String?
   aiSummaryUpdatedAt DateTime?
 
-  comments        ActionItemComment[]
-  activities      ActionItemActivity[]
+  comments      ActionItemComment[]
+  activities    ActionItemActivity[]
   /// v0.73 #20 phase 2: блокеры — задачи, от которых зависит эта.
   /// `dependencies` = это меня блокирует; `blocks` = я блокирую кого-то.
-  dependencies    ActionItemDependency[] @relation("ActionItemBlockedBy")
-  blocks          ActionItemDependency[] @relation("ActionItemBlocks")
+  dependencies  ActionItemDependency[] @relation("ActionItemBlockedBy")
+  blocks        ActionItemDependency[] @relation("ActionItemBlocks")
   /// v0.90 #10 phase 4: rows которые linked к этой задаче (1-to-many).
   /// Cascade при удалении task — rows остаются с actionItemId=null.
-  tableRows       TableRow[]
-  memoryEntries   MemoryEntry[] @relation("MemoryEntryActionItem")
-
-  @@unique([sourceMessageId, type])
-  @@index([channelId, status, createdAt])
-  @@index([serverId, status, createdAt])
-  @@index([assigneeUserId, status])
-  @@index([approverUserId, approvalStatus])
+  tableRows     TableRow[]
+  memoryEntries MemoryEntry[]          @relation("MemoryEntryActionItem")
   // v1.6.98: partial index "ActionItem_escalation_scan_idx" ON ("dueAt")
   // WHERE status IN (OPEN,IN_PROGRESS,REVIEW) AND dueAt IS NOT NULL живёт в
   // raw-миграции 20260625120000_add_escalation_partial_index (Prisma не
   // выражает WHERE-индексы). Покрывает глобальный escalation-scan
   // (escalation.ts), который не ложится на channelId/serverId-индексы выше.
   // НЕ удалять и не «чинить» как drift — индекс намеренно вне schema.
+
+  @@unique([sourceMessageId, type])
+  @@index([channelId, status, createdAt])
+  @@index([serverId, status, createdAt])
+  @@index([assigneeUserId, status])
+  @@index([approverUserId, approvalStatus])
 }
 
 /// v1.7.3 — curated room/project memory.
@@ -1320,39 +1360,39 @@ model ActionItem {
 /// notes, decisions, risks, facts, links, and actions that should survive chat
 /// scrollback noise. Delete is soft via archivedAt for audit/recovery.
 model MemoryEntry {
-  id              String          @id @default(cuid())
-  serverId        String
-  server          Server          @relation(fields: [serverId], references: [id], onDelete: Cascade)
-  channelId       String?
-  channel         Channel?        @relation(fields: [channelId], references: [id], onDelete: Cascade)
-  kind            MemoryEntryKind @default(NOTE)
-  visibility      MemoryVisibility @default(ROOM)
-  title           String
-  content         String?
+  id                   String           @id @default(cuid())
+  serverId             String
+  server               Server           @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  channelId            String?
+  channel              Channel?         @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  kind                 MemoryEntryKind  @default(NOTE)
+  visibility           MemoryVisibility @default(ROOM)
+  title                String
+  content              String?
   /// JSON-encoded string[] for small display/search tags.
-  tags            String?
-  sourceMessageId String?
-  sourceMessage   Message?        @relation("MemoryEntrySourceMessage", fields: [sourceMessageId], references: [id], onDelete: SetNull)
-  actionItemId    String?
-  actionItem      ActionItem?     @relation("MemoryEntryActionItem", fields: [actionItemId], references: [id], onDelete: SetNull)
-  createdByUserId String?
-  createdBy       User?           @relation("MemoryEntryCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  tags                 String?
+  sourceMessageId      String?
+  sourceMessage        Message?         @relation("MemoryEntrySourceMessage", fields: [sourceMessageId], references: [id], onDelete: SetNull)
+  actionItemId         String?
+  actionItem           ActionItem?      @relation("MemoryEntryActionItem", fields: [actionItemId], references: [id], onDelete: SetNull)
+  createdByUserId      String?
+  createdBy            User?            @relation("MemoryEntryCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
   /// The person accountable for keeping this entry accurate. Existing rows
   /// are backfilled from createdByUserId; nullable only for deleted users.
-  ownerUserId     String?
-  owner           User?           @relation("MemoryEntryOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  ownerUserId          String?
+  owner                User?            @relation("MemoryEntryOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
   /// Review and retention are independent: reviewDueAt pauses AI-context use,
   /// while expiresAt marks the knowledge as no longer current.
-  reviewDueAt     DateTime?
-  lastReviewedAt DateTime?
+  reviewDueAt          DateTime?
+  lastReviewedAt       DateTime?
   lastReviewedByUserId String?
-  lastReviewedBy User?           @relation("MemoryEntryReviewer", fields: [lastReviewedByUserId], references: [id], onDelete: SetNull)
-  expiresAt       DateTime?
-  archivedAt      DateTime?
-  archivedByUserId String?
-  archivedBy      User?           @relation("MemoryEntryArchiver", fields: [archivedByUserId], references: [id], onDelete: SetNull)
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
+  lastReviewedBy       User?            @relation("MemoryEntryReviewer", fields: [lastReviewedByUserId], references: [id], onDelete: SetNull)
+  expiresAt            DateTime?
+  archivedAt           DateTime?
+  archivedByUserId     String?
+  archivedBy           User?            @relation("MemoryEntryArchiver", fields: [archivedByUserId], references: [id], onDelete: SetNull)
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
 
   @@index([serverId, createdAt])
   @@index([channelId, createdAt])
@@ -1437,21 +1477,21 @@ model ActionItemActivity {
 /// Membership-check унифицирован через helper `isDmParticipant()` в
 /// routes/dm.ts — все routes используют его независимо от типа.
 model DirectConversation {
-  id            String   @id @default(cuid())
+  id              String  @id @default(cuid())
   /// 1-to-1 path: filled. Group path: NULL.
-  userAId       String?
-  userA         User?    @relation("DMUserA", fields: [userAId], references: [id], onDelete: Cascade)
-  userBId       String?
-  userB         User?    @relation("DMUserB", fields: [userBId], references: [id], onDelete: Cascade)
+  userAId         String?
+  userA           User?   @relation("DMUserA", fields: [userAId], references: [id], onDelete: Cascade)
+  userBId         String?
+  userB           User?   @relation("DMUserB", fields: [userBId], references: [id], onDelete: Cascade)
   /// True для group DM (3+ participants). False для legacy 1-to-1.
-  isGroup       Boolean  @default(false)
+  isGroup         Boolean @default(false)
   /// User-set group title. Null = auto-derive из participant names в UI.
   /// Max 80 chars (zod-валидация в route). Не используется для 1-to-1.
-  name          String?
+  name            String?
   /// Host группы — может rename / add/remove members. Null для legacy 1-to-1
   /// (там обе стороны симметричны). SetNull при удалении user'а — group живёт.
   createdByUserId String?
-  createdBy       User?  @relation("DMCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdBy       User?   @relation("DMCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
 
   createdAt     DateTime @default(now())
   /// Timestamp последнего сообщения — для сортировки в user's DM list.
@@ -1516,63 +1556,63 @@ enum LinkEmbedStatus {
 }
 
 model LinkEmbed {
-  id           String          @id @default(cuid())
+  id          String          @id @default(cuid())
   /// Нормализованный URL (lowercased host, removed fragment).
-  url          String          @unique
-  status       LinkEmbedStatus @default(OK)
+  url         String          @unique
+  status      LinkEmbedStatus @default(OK)
   /// OG-meta поля. Все nullable — если preview минимальный, заполняем что есть.
-  title        String?
-  description  String?
+  title       String?
+  description String?
   /// Absolute URL картинки (og:image). Frontend рендерит через стандартный
   /// <img src="..."> без проксирования — это open web, та же модель что
   /// markdown ![]().
-  image        String?
-  siteName     String?
-  fetchedAt    DateTime        @default(now())
+  image       String?
+  siteName    String?
+  fetchedAt   DateTime        @default(now())
   /// Cache TTL. OK=7 дней, FAILED=24 часа. Route проверяет на read.
-  expiresAt    DateTime
+  expiresAt   DateTime
   /// Текст ошибки для FAILED status. Не отдаём фронту (internal debug).
-  error        String?
+  error       String?
 
   @@index([expiresAt])
 }
 
 model Attachment {
-  id           String   @id @default(cuid())
-  messageId    String
-  message      Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  id               String           @id @default(cuid())
+  messageId        String
+  message          Message          @relation(fields: [messageId], references: [id], onDelete: Cascade)
   /// Оригинальное имя файла (для download attribute / chip label).
-  filename     String
+  filename         String
   /// MIME type — `image/jpeg`, `image/png`, `image/webp`, `application/pdf`, etc.
-  mimeType     String
+  mimeType         String
   /// Размер в байтах (после resize для images, original для прочих).
-  size         Int
+  size             Int
   /// Path на disk-relative URL (`/uploads/attachments/<msgId>-<idx>-<filename>`).
   /// Frontend префиксит BASE_URL.
-  url          String
+  url              String
   /// Для images: размеры (для aspect-ratio в lightbox). Null для non-image.
-  width        Int?
-  height       Int?
+  width            Int?
+  height           Int?
   /// Для images > 512px: ресайз 512x512 webp для inline preview. Null если
   /// image сам меньше threshold (тогда url служит и preview, и full).
-  thumbnailUrl String?
+  thumbnailUrl     String?
   /// Порядок в message (0-indexed). UI рендерит по position asc.
-  position     Int      @default(0)
-  createdAt    DateTime @default(now())
+  position         Int              @default(0)
+  createdAt        DateTime         @default(now())
   /// v0.58 voice transcription. Заполняется async после upload audio-файла
   /// через OpenAI Whisper API (если OPENAI_API_KEY сетап). Null = не было
   /// попытки / non-audio / провайдер не сетап.
-  transcript        String?
-  transcriptStatus  TranscriptStatus @default(NONE)
+  transcript       String?
+  transcriptStatus TranscriptStatus @default(NONE)
   /// Текст ошибки если transcriptStatus = FAILED. Отображается в UI как
   /// muted-line под audio player'ом.
-  transcriptError   String?
+  transcriptError  String?
   /// v0.66 audio waveform peaks (Telegram-style visualization).
   /// JSON массив из N=64 normalized чисел 0..100. Считается на frontend
   /// через Web Audio API при upload, передаётся в attachment payload.
   /// Null для non-audio / старых attachments — frontend fallback'нется
   /// на linear progress bar.
-  waveformPeaks     Json?
+  waveformPeaks    Json?
   /// v0.61: если attachment используется как current track в MusicSession.
   /// Inverse relation для cascade лоgic — при удалении attachment Sessoin's
   /// currentTrackAttachmentId уйдёт в NULL (SetNull).
@@ -1620,8 +1660,8 @@ model Table {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  fields          TableField[]
-  rows            TableRow[]
+  fields            TableField[]
+  rows              TableRow[]
   /// v0.75 #10 phase 2.5b: поля других таблиц, ссылающиеся на эту через RELATION.
   /// Inverse relation для SetNull cascade при delete.
   incomingRelations TableField[] @relation("TableFieldRelation")
@@ -1631,35 +1671,35 @@ model Table {
 }
 
 model TableField {
-  id        String          @id @default(cuid())
-  tableId   String
-  table     Table           @relation(fields: [tableId], references: [id], onDelete: Cascade)
-  name      String
-  type      TableFieldType
+  id            String         @id @default(cuid())
+  tableId       String
+  table         Table          @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  name          String
+  type          TableFieldType
   /// Для STATUS — JSON-string array допустимых значений `["TODO","DONE"]`.
   /// Null для других типов.
-  options   String?
+  options       String?
   /// Порядок в строке (0-indexed). UI рендерит по position asc.
-  position  Int             @default(0)
+  position      Int            @default(0)
   /// v0.75 #10 phase 2.5b RELATION: target table id (same server). SetNull
   /// при удалении target — поле остаётся, UI показывает «таблица удалена».
   /// Только для type=RELATION; для других типов NULL.
   linkedTableId String?
-  linkedTable   Table?  @relation("TableFieldRelation", fields: [linkedTableId], references: [id], onDelete: SetNull)
+  linkedTable   Table?         @relation("TableFieldRelation", fields: [linkedTableId], references: [id], onDelete: SetNull)
 
-  cells     TableCell[]
+  cells TableCell[]
 
   @@index([tableId, position])
   @@index([linkedTableId])
 }
 
 model TableRow {
-  id        String      @id @default(cuid())
-  tableId   String
-  table     Table       @relation(fields: [tableId], references: [id], onDelete: Cascade)
-  position  Int         @default(0)
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
+  id           String      @id @default(cuid())
+  tableId      String
+  table        Table       @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  position     Int         @default(0)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
   /// v0.90 #10 phase 4: row → ActionItem binding. Если задано — этот row
   /// linked to first-class task. UI отображает status badge, click → drawer.
   /// Phase 4a: read-only binding (создаём task через explicit button, sync
@@ -1668,7 +1708,7 @@ model TableRow {
   actionItemId String?
   actionItem   ActionItem? @relation(fields: [actionItemId], references: [id], onDelete: SetNull)
 
-  cells     TableCell[]
+  cells TableCell[]
 
   @@index([tableId, position])
   @@index([actionItemId])
@@ -1716,32 +1756,32 @@ enum InvoiceStatus {
 /// `number` — human-readable identifier (e.g. "INV-2026-001"), unique per
 /// server. Не auto-generated — пользователь сам назначает (или UI suggests).
 model Invoice {
-  id          String        @id @default(cuid())
-  serverId    String
-  server      Server        @relation(fields: [serverId], references: [id], onDelete: Cascade)
-  number      String
-  title       String
-  status      InvoiceStatus @default(DRAFT)
+  id              String        @id @default(cuid())
+  serverId        String
+  server          Server        @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  number          String
+  title           String
+  status          InvoiceStatus @default(DRAFT)
   /// ISO 4217 currency code. UTF-safe ASCII (3 chars).
-  currency    String        @default("RUB")
+  currency        String        @default("RUB")
   /// Sum всех line items в копейках. Recomputed на каждый item insert/delete/edit
   /// в transaction. Stored для query-без-join.
-  amountTotal Int           @default(0)
+  amountTotal     Int           @default(0)
   /// Дата выставления (status SENT). Null пока DRAFT.
-  issuedAt    DateTime?
+  issuedAt        DateTime?
   /// Срок оплаты (optional).
-  dueAt       DateTime?
+  dueAt           DateTime?
   /// Дата оплаты (status PAID).
-  paidAt      DateTime?
+  paidAt          DateTime?
   /// Free-form notes (markdown). Видны CLIENT'у.
-  notes       String?
+  notes           String?
   /// Автор счёта. Null после удаления user'а (cascade policy B).
   createdByUserId String?
-  createdBy   User?         @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  createdBy       User?         @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
-  items       InvoiceItem[]
+  items InvoiceItem[]
 
   @@unique([serverId, number])
   @@index([serverId, status])
@@ -1887,4 +1927,3 @@ enum FriendshipStatus {
   ACCEPTED
   BLOCKED
 }
-

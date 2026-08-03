@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { db } from "../../db.js";
 import { emitTableEvent } from "../../realtime.js";
-import type { Tool } from "./types.js";
+import type { Tool, ToolCallContext, ToolResult } from "./types.js";
 import { canAccessBotScopedResource } from "../botAccess.js";
 
 /**
@@ -25,7 +25,7 @@ const cellUpdateSchema = z.object({
   value: z.string().max(2000),
 });
 
-const argsSchema = z.object({
+export const updateTableRowArgsSchema = z.object({
   table_id: z.string().min(1).describe("ID таблицы"),
   row_id: z.string().min(1).describe("ID строки"),
   cell_updates: z
@@ -35,10 +35,89 @@ const argsSchema = z.object({
     .describe("Массив {field_id, value} для обновления"),
 });
 
-type Args = z.infer<typeof argsSchema>;
+export type UpdateTableRowArgs = z.infer<typeof updateTableRowArgsSchema>;
 type Result = { table_id: string; row_id: string; updated_count: number };
 
-export const updateTableRowTool: Tool<Args, Result> = {
+export type UpdateTableRowPreview = {
+  kind: "update_table_row";
+  tableName: string;
+  rowId: string;
+  updates: Array<{ fieldName: string; value: string }>;
+  totalUpdates: number;
+};
+
+type ValidatedUpdateTableRow = {
+  args: UpdateTableRowArgs;
+  preview: UpdateTableRowPreview;
+};
+
+/**
+ * Validates the JSON shape and every workspace-scoped target. Approval and
+ * execution share this path, so stale targets cannot bypass current policy.
+ */
+export async function validateUpdateTableRowRequest(
+  rawArgs: unknown,
+  ctx: ToolCallContext,
+): Promise<ToolResult<ValidatedUpdateTableRow>> {
+  const parsed = updateTableRowArgsSchema.safeParse(rawArgs);
+  if (!parsed.success) {
+    return { ok: false, error: `Invalid args: ${parsed.error.issues[0]?.message ?? "schema"}` };
+  }
+  const { table_id, row_id, cell_updates } = parsed.data;
+
+  const table = await db.table.findUnique({
+    where: { id: table_id },
+    select: {
+      id: true,
+      name: true,
+      serverId: true,
+      channelId: true,
+      fields: { select: { id: true, name: true } },
+    },
+  });
+  if (!table) return { ok: false, error: `Таблица ${table_id} не найдена` };
+  if (table.serverId !== ctx.serverId) {
+    return { ok: false, error: "Таблица не из текущего сервера" };
+  }
+  if (!canAccessBotScopedResource(ctx.allowedChannelIds, table.channelId)) {
+    return { ok: false, error: "Таблица не входит в разрешённый scope агента" };
+  }
+
+  const row = await db.tableRow.findUnique({
+    where: { id: row_id },
+    select: { id: true, tableId: true },
+  });
+  if (!row) return { ok: false, error: `Строка ${row_id} не найдена` };
+  if (row.tableId !== table_id) {
+    return { ok: false, error: "Строка не принадлежит указанной таблице" };
+  }
+
+  const fieldsById = new Map(table.fields.map((field) => [field.id, field.name]));
+  for (const update of cell_updates) {
+    if (!fieldsById.has(update.field_id)) {
+      return { ok: false, error: `Поле ${update.field_id} не найдено в таблице` };
+    }
+  }
+
+  return {
+    ok: true,
+    data: {
+      args: parsed.data,
+      preview: {
+        kind: "update_table_row",
+        tableName: table.name,
+        rowId: row_id,
+        updates: cell_updates.map((update) => ({
+          fieldName: fieldsById.get(update.field_id) ?? update.field_id,
+          value: update.value.slice(0, 240),
+        })),
+        totalUpdates: cell_updates.length,
+      },
+    },
+  };
+}
+
+export const updateTableRowTool: Tool<UpdateTableRowArgs, Result> = {
   name: "update_table_row",
   description:
     "Обновить ячейки строки в operational table текущего сервера. Используй когда из обсуждения вытекает изменение статуса / поля / связи в трекинг-таблице. Для создания новой строки — отдельный tool (пока не реализован).",
@@ -64,39 +143,9 @@ export const updateTableRowTool: Tool<Args, Result> = {
     additionalProperties: false,
   },
   async execute(rawArgs, ctx) {
-    const parsed = argsSchema.safeParse(rawArgs);
-    if (!parsed.success) {
-      return { ok: false, error: `Invalid args: ${parsed.error.issues[0]?.message ?? "schema"}` };
-    }
-    const { table_id, row_id, cell_updates } = parsed.data;
-
-    const table = await db.table.findUnique({
-      where: { id: table_id },
-      select: { id: true, serverId: true, channelId: true, fields: { select: { id: true } } },
-    });
-    if (!table) return { ok: false, error: `Таблица ${table_id} не найдена` };
-    if (table.serverId !== ctx.serverId) {
-      return { ok: false, error: "Таблица не из текущего сервера" };
-    }
-    if (!canAccessBotScopedResource(ctx.allowedChannelIds, table.channelId)) {
-      return { ok: false, error: "Таблица не входит в разрешённый scope агента" };
-    }
-
-    const row = await db.tableRow.findUnique({
-      where: { id: row_id },
-      select: { id: true, tableId: true },
-    });
-    if (!row) return { ok: false, error: `Строка ${row_id} не найдена` };
-    if (row.tableId !== table_id) {
-      return { ok: false, error: "Строка не принадлежит указанной таблице" };
-    }
-
-    const validFieldIds = new Set(table.fields.map((f) => f.id));
-    for (const u of cell_updates) {
-      if (!validFieldIds.has(u.field_id)) {
-        return { ok: false, error: `Поле ${u.field_id} не найдено в таблице` };
-      }
-    }
+    const validated = await validateUpdateTableRowRequest(rawArgs, ctx);
+    if (!validated.ok) return validated;
+    const { table_id, row_id, cell_updates } = validated.data.args;
 
     // Upsert каждую ячейку. Composite PK (rowId, fieldId).
     await db.$transaction(

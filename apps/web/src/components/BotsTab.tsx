@@ -10,6 +10,8 @@ import {
   type BotUsage,
 } from "../hooks/useBots";
 import type { ChannelRow } from "../hooks/useChannels";
+import { useBotApprovals } from "../hooks/useBotApprovals";
+import { BotApprovalQueue } from "./BotApprovalQueue";
 import { EmptyState } from "./EmptyState";
 import { EmptyBotsIcon } from "./EmptyIcons";
 import { useConfirm } from "./ConfirmDialog";
@@ -68,6 +70,8 @@ const ACTIVITY_LABELS: Record<BotActivityEvent["type"], string> = {
   BOT_TEST_INVOKE: "Тестовый запуск",
   BOT_ACCESS_POLICY_CHANGED: "Доступы изменены",
   BOT_TOOL_CALL: "Действие агента",
+  BOT_ACTION_APPROVAL_REQUESTED: "Запрошено подтверждение",
+  BOT_ACTION_APPROVAL_DECIDED: "Решение по действию",
 };
 
 // v1.7.9 slice 6 (продолжение) — остаточные статические inline-стили
@@ -331,6 +335,7 @@ export function BotsTab({ serverId, channels, canManage }: Props) {
     testBot,
     fetchActivity,
   } = useBots(serverId);
+  const approvalQueue = useBotApprovals(serverId, canManage);
   const [showCreate, setShowCreate] = useState(false);
   const [busy, setBusy] = useState(false);
   /** Bot id у которого открыта webhook-форма. Null = ни один. */
@@ -655,6 +660,11 @@ export function BotsTab({ serverId, channels, canManage }: Props) {
             <span><strong>{bots.length}</strong> всего</span>
             <span><strong>{activeAgents}</strong> действуют</span>
             <span><strong>{scopedAgents}</strong> ограничены</span>
+            {canManage && (
+              <span className={approvalQueue.approvals.length > 0 ? "is-pending" : undefined}>
+                <strong>{approvalQueue.approvals.length}</strong> ждут решения
+              </span>
+            )}
           </div>
           {canManage && !showCreate && bots.length < 20 && (
             <button
@@ -673,6 +683,18 @@ export function BotsTab({ serverId, channels, canManage }: Props) {
           <strong>Режим просмотра</strong>
           <span>Настройки, ключи и разрешения агентов может менять только владелец пространства.</span>
         </div>
+      )}
+
+      {canManage && (
+        <BotApprovalQueue
+          approvals={approvalQueue.approvals}
+          loading={approvalQueue.loading}
+          error={approvalQueue.error}
+          busyId={approvalQueue.busyId}
+          onApprove={approvalQueue.approve}
+          onReject={approvalQueue.reject}
+          onReload={() => void approvalQueue.reload()}
+        />
       )}
 
       {error && <div className="ec-bots-error">{error}</div>}
