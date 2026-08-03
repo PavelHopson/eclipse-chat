@@ -18,6 +18,11 @@ on:
         required: true
         default: false
         type: boolean
+      confirm_env_hardening:
+        description: "Make the Chat production environment root-owned and read-only to www-data"
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -39,6 +44,7 @@ jobs:
           if [[ "${{ inputs.confirm_dark_launch }}" == "true" ]]; then selected=$((selected + 1)); fi
           if [[ "${{ inputs.audit_public_prereqs }}" == "true" ]]; then selected=$((selected + 1)); fi
           if [[ "${{ inputs.confirm_public_activation }}" == "true" ]]; then selected=$((selected + 1)); fi
+          if [[ "${{ inputs.confirm_env_hardening }}" == "true" ]]; then selected=$((selected + 1)); fi
           if [[ "$selected" -ne 1 ]]; then
             echo "::error::Select exactly one DnD production operation"
             exit 1
@@ -138,6 +144,32 @@ jobs:
             echo "::error::Legacy TLS 1.1 is enabled"
             exit 1
           fi
+
+  harden-chat-env:
+    needs: validate-inputs
+    if: inputs.confirm_env_hardening == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    steps:
+      - name: Make the Chat environment root-owned and service-read-only
+        uses: appleboy/ssh-action@7eaf76671a0d7eec5d98ee897acda4f968735a17 # v1.2.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST_PROD }}
+          username: ${{ secrets.DEPLOY_USER_PROD }}
+          key: ${{ secrets.SSH_PRIVATE_KEY_PROD }}
+          command_timeout: 10m
+          script: |
+            set -euo pipefail
+            test "$(id -u)" -eq 0
+            DND_COMMIT="d8048ade3ab63e89050b5624f74ed8706e977b4b"
+            DND_PATH="/var/www/eclipse-dnd-forge-bff"
+            [[ "$DND_COMMIT" =~ ^[0-9a-f]{40}$ ]]
+            test "$(git -C "$DND_PATH" remote get-url origin)" = "https://github.com/PavelHopson/eclipse-dnd-forge.git"
+            git -C "$DND_PATH" fetch --quiet --no-tags --depth=1 origin "$DND_COMMIT"
+            test "$(git -C "$DND_PATH" rev-parse FETCH_HEAD)" = "$DND_COMMIT"
+            git -C "$DND_PATH" show "$DND_COMMIT:deploy/scripts/harden-chat-env.sh" | bash -n
+            git -C "$DND_PATH" show "$DND_COMMIT:deploy/scripts/harden-chat-env.sh" | bash -s
 
   deploy-dark:
     needs: validate-inputs
