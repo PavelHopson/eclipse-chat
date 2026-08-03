@@ -10,6 +10,14 @@ import { AINotConfiguredError, chat } from "../ai/provider.js";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
 import { ensureServerActive } from "../lib/serverGating.js";
 import { hasPermission } from "../lib/permissions.js";
+import {
+  actionPrioritySchema,
+  actionTypeSchema,
+  createActionBody,
+  deriveActionTitle,
+  validateActionCreationAccess,
+  validateActionDueAt,
+} from "../lib/actionCreate.js";
 import { db } from "../db.js";
 import { serializeUser } from "../lib/userView.js";
 import { notifyUser } from "../lib/webPush.js";
@@ -23,17 +31,10 @@ import {
   emitActionItemUpdated,
 } from "../realtime.js";
 
-const actionTypeSchema = z.enum(["TASK", "DECISION", "FOLLOW_UP"]);
 const actionStatusSchema = z.enum(["OPEN", "IN_PROGRESS", "REVIEW", "DONE"]);
-const actionPrioritySchema = z.enum(["LOW", "NORMAL", "HIGH", "URGENT"]);
 
 const actionQuerySchema = z.object({
   status: actionStatusSchema.optional(),
-});
-
-const createActionBody = z.object({
-  type: actionTypeSchema,
-  title: z.string().trim().min(1).max(160).optional(),
 });
 
 const updateActionBody = z
@@ -66,17 +67,6 @@ const decideApprovalBody = z.object({
 const addDependencyBody = z.object({
   dependsOnActionItemId: z.string().min(1),
 });
-
-function deriveActionTitle(type: z.infer<typeof actionTypeSchema>, content: string): string {
-  const compact = content.replace(/\s+/g, " ").trim();
-  if (compact.length > 0) {
-    return compact.slice(0, 160);
-  }
-
-  if (type === "DECISION") return "Decision captured from message";
-  if (type === "FOLLOW_UP") return "Follow-up captured from message";
-  return "Task captured from message";
-}
 
 async function requireChannelMember(userId: string, channelId: string) {
   const channel = await db.channel.findUnique({
@@ -245,7 +235,10 @@ export async function registerActionRoutes(app: FastifyInstance) {
 
   app.post(
     "/api/messages/:id/actions",
-    { onRequest: [requireJwt] },
+    {
+      onRequest: [requireJwt],
+      config: { rateLimit: { max: 60, timeWindow: 5 * 60 * 1000 } },
+    },
     async (req, reply) => {
       const userId = getUserId(req);
       if (!userId) {
@@ -293,13 +286,45 @@ export async function registerActionRoutes(app: FastifyInstance) {
         return reply.status(access.status).send({ error: access.error });
       }
 
+      const creationAccess = validateActionCreationAccess(
+        access.member.role,
+        parsed.data.assigneeUserId,
+      );
+      if (!creationAccess.ok) {
+        return reply.status(403).send({ error: creationAccess.error });
+      }
+
+      if (parsed.data.assigneeUserId) {
+        const assignee = await db.member.findUnique({
+          where: {
+            userId_serverId: {
+              userId: parsed.data.assigneeUserId,
+              serverId: message.channel.serverId,
+            },
+          },
+          select: { id: true },
+        });
+        if (!assignee) {
+          return reply.status(400).send({ error: "Assignee is not a member of this server" });
+        }
+      }
+
+      const dueAt = validateActionDueAt(parsed.data.dueAt);
+      if (!dueAt.ok) {
+        return reply.status(400).send({ error: dueAt.error });
+      }
+
       const title = parsed.data.title?.trim() || deriveActionTitle(parsed.data.type, message.content);
 
       try {
         const created = await db.actionItem.create({
           data: {
             title,
+            description: parsed.data.description?.trim() || null,
             type: parsed.data.type,
+            priority: parsed.data.priority ?? "NORMAL",
+            assigneeUserId: parsed.data.assigneeUserId ?? null,
+            dueAt: dueAt.value,
             serverId: message.channel.serverId,
             channelId: message.channelId,
             sourceMessageId: message.id,
@@ -308,7 +333,13 @@ export async function registerActionRoutes(app: FastifyInstance) {
               create: {
                 userId,
                 type: "CREATED",
-                payload: activityPayload({ source: "message", type: parsed.data.type }),
+                payload: activityPayload({
+                  source: "message",
+                  type: parsed.data.type,
+                  priority: parsed.data.priority ?? "NORMAL",
+                  assigned: Boolean(parsed.data.assigneeUserId),
+                  hasDueAt: dueAt.value !== null,
+                }),
               },
             },
           },

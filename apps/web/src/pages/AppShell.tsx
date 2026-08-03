@@ -58,6 +58,7 @@ const StatusMenu = lazy(() => import("../components/StatusMenu").then((m) => ({ 
 const DownloadAppModal = lazy(() => import("../components/DownloadAppModal").then((m) => ({ default: m.DownloadAppModal })));
 const UserProfileModal = lazy(() => import("../components/UserProfileModal").then((m) => ({ default: m.UserProfileModal })));
 const MessageMemoryModal = lazy(() => import("../components/MessageMemoryModal").then((m) => ({ default: m.MessageMemoryModal })));
+const MessageActionModal = lazy(() => import("../components/MessageActionModal").then((m) => ({ default: m.MessageActionModal })));
 const CommandDigestView = lazy(() => import("../components/CommandDigestView").then((m) => ({ default: m.CommandDigestView })));
 
 function isTextEntryTarget(target: EventTarget | null): boolean {
@@ -114,6 +115,7 @@ import { useTeamHealth } from "../hooks/useTeamHealth";
 import { useServers } from "../hooks/useServers";
 import { useSinceLastVisit } from "../hooks/useSinceLastVisit";
 import { useSocket } from "../hooks/useSocket";
+import { hasPermission } from "../lib/memberRoles";
 import { useVoice } from "../hooks/useVoice";
 import { useVoiceHealth } from "../hooks/useVoiceHealth";
 import { useVoicePresence, reverseVoiceMap } from "../hooks/useVoicePresence";
@@ -399,6 +401,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   }, [showProfile]);
   const [viewedProfileUserId, setViewedProfileUserId] = useState<string | null>(null);
   const [memoryDraftMessage, setMemoryDraftMessage] = useState<MessageRow | null>(null);
+  const [actionDraftMessage, setActionDraftMessage] = useState<MessageRow | null>(null);
   const [showSearch, setShowSearch] = useState(false);
   const [homeOpen, setHomeOpen] = useState(false);
   const personalDigest = usePersonalDigest(homeOpen);
@@ -455,6 +458,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   useEffect(() => {
     setSelectedThreadId(null);
     setMemoryDraftMessage(null);
+    setActionDraftMessage(null);
   }, [selectedChannelId, activeServerId]);
   useEffect(() => {
     if (!pendingMemoryChannelId || selectedChannelId !== pendingMemoryChannelId) return;
@@ -2391,7 +2395,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                     onPin={pinMessage}
                     onUnpin={unpinMessage}
                     onToggleReaction={toggleReaction}
-                    onCreateAction={createActionItem}
+                    onCreateAction={setActionDraftMessage}
                     onToggleActionStatus={updateActionItemStatus}
                     onOpenThread={(messageId) => {
                       setSelectedThreadId(messageId);
@@ -2568,7 +2572,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               onPin={pinMessage}
               onUnpin={unpinMessage}
               onToggleReaction={toggleReaction}
-              onCreateAction={createActionItem}
+              onCreateAction={setActionDraftMessage}
               onToggleActionStatus={updateActionItemStatus}
               onSaveToMemory={setMemoryDraftMessage}
               focusMessageId={focusedMessageId}
@@ -2890,6 +2894,26 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             setMemoryDraftMessage(null);
             setInfoPanelTab("memory");
             setInfoPanelOpen(true);
+          }}
+        />
+      )}
+
+      {actionDraftMessage && currentRole && (
+        <MessageActionModal
+          key={actionDraftMessage.id}
+          message={actionDraftMessage}
+          currentUserId={user.id}
+          canAssign={hasPermission(currentRole, "TASK_ASSIGN")}
+          members={members.map((member) => ({
+            userId: member.userId,
+            displayName: member.user.displayName,
+            avatar: member.user.avatar,
+          }))}
+          onClose={() => setActionDraftMessage(null)}
+          onSave={(input) => createActionItem(actionDraftMessage.id, input)}
+          onSaved={(actionId) => {
+            setActionDraftMessage(null);
+            setOpenActionItemId(actionId);
           }}
         />
       )}

@@ -6,6 +6,7 @@ import { resolveAiMention } from "../lib/aiMention";
 import {
   SocketEvents,
   type ActionItemPayload,
+  type ActionItemPriority,
   type ActionItemStatus,
   type ActionItemType,
   type AttachmentPayload,
@@ -37,6 +38,14 @@ export type ReactionAggregate = {
 export type Attachment = AttachmentPayload;
 export type { ActionItemStatus, ActionItemType };
 export type MessageActionItem = ActionItemPayload;
+export type CreateActionItemInput = {
+  type: ActionItemType;
+  title: string;
+  description?: string | null;
+  priority?: ActionItemPriority;
+  assigneeUserId?: string | null;
+  dueAt?: string | null;
+};
 export type MessageJumpResult =
   | { ok: true }
   | { ok: false; parentMessageId?: string; error: string };
@@ -848,22 +857,25 @@ export function useMessages(
   );
 
   const createActionItem = useCallback(
-    async (messageId: string, type: ActionItemType): Promise<boolean> => {
+    async (
+      messageId: string,
+      input: CreateActionItemInput,
+    ): Promise<MessageActionItem | null> => {
       setError(null);
       try {
         const data = await apiJson<{ action: MessageActionItem }>(
           `/api/messages/${encodeURIComponent(messageId)}/actions`,
           {
             method: "POST",
-            body: JSON.stringify({ type }),
+            body: JSON.stringify(input),
           },
         );
         setMessages((prev) => upsertMessageAction(prev, data.action));
         setOpenActionItems((prev) => mergeOpenActions(prev, data.action));
-        return true;
+        return data.action;
       } catch (e) {
         setError(e instanceof ApiError ? e.message : "Не удалось создать action item");
-        return false;
+        return null;
       }
     },
     [],

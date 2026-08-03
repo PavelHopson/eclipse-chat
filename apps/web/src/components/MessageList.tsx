@@ -14,6 +14,7 @@ import { gameIcon } from "../lib/gameIcons";
 import { useMessageEditHistory } from "../hooks/useMessageEditHistory";
 import type { ActionItemStatus, ActionItemType, MessageRow } from "../hooks/useMessages";
 import type { MemberRole } from "../hooks/useMembers";
+import { hasPermission } from "../lib/memberRoles";
 import {
   BOT_ROLE_COLORS,
   BOT_ROLE_LABELS,
@@ -47,7 +48,7 @@ type Props = {
   onPin?: (messageId: string) => Promise<boolean>;
   onUnpin?: (messageId: string) => Promise<boolean>;
   onToggleReaction?: (messageId: string, emoji: string) => Promise<boolean>;
-  onCreateAction?: (messageId: string, type: ActionItemType) => Promise<boolean>;
+  onCreateAction?: (message: MessageRow) => void;
   onToggleActionStatus?: (actionId: string, nextStatus: ActionItemStatus) => Promise<boolean>;
   /** Открыть Thread panel для этого root message. Скрывает кнопку если не задано. */
   onOpenThread?: (messageId: string) => void;
@@ -519,9 +520,14 @@ export function MessageList({
         const showDelete = showActions && Boolean((isMine || canMod) && onDelete);
         const showPin = showActions && Boolean(canMod && onPin && !isPinned);
         const showUnpin = showActions && Boolean(canMod && onUnpin && isPinned);
-        const canCreateActions = showActions && Boolean(onCreateAction);
-        const existingTypes = new Set(m.actionItems.map((item) => item.type));
-
+        const canCreateActions =
+          showActions &&
+          Boolean(
+            onCreateAction &&
+              currentRole &&
+              hasPermission(currentRole, "TASK_CREATE") &&
+              m.actionItems.length < 3,
+          );
         const rowClass = isPinned
           ? " ec-message-row--pinned"
           : grouped && !newDay
@@ -1089,44 +1095,17 @@ export function MessageList({
                       </svg>
                     </button>
                   )}
-                  {canCreateActions && !existingTypes.has("TASK") && (
+                  {canCreateActions && (
                     <button
                       type="button"
                       className="ec-msg-action ec-msg-action--accent"
-                      aria-label="Сделать задачей"
-                      title="Сделать задачей"
-                      onClick={() => void onCreateAction?.(m.id, "TASK")}
+                      aria-label="Создать рабочий объект"
+                      title="Создать задачу, решение или контроль"
+                      onClick={() => onCreateAction?.(m)}
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                        <path d="M9 11l3 3L22 4" />
-                        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
-                      </svg>
-                    </button>
-                  )}
-                  {canCreateActions && !existingTypes.has("DECISION") && (
-                    <button
-                      type="button"
-                      className="ec-msg-action ec-msg-action--accent"
-                      aria-label="Зафиксировать решение"
-                      title="Зафиксировать решение"
-                      onClick={() => void onCreateAction?.(m.id, "DECISION")}
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                        <path d="M12 2l7 4v6c0 5-3.8 8.7-7 10-3.2-1.3-7-5-7-10V6l7-4z" />
-                      </svg>
-                    </button>
-                  )}
-                  {canCreateActions && !existingTypes.has("FOLLOW_UP") && (
-                    <button
-                      type="button"
-                      className="ec-msg-action ec-msg-action--accent"
-                      aria-label="Поставить follow-up"
-                      title="Поставить follow-up"
-                      onClick={() => void onCreateAction?.(m.id, "FOLLOW_UP")}
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                        <path d="M5 12h14" />
-                        <path d="M13 5l7 7-7 7" />
+                        <path d="M12 7v10M7 12h10" />
+                        <rect x="3" y="3" width="18" height="18" rx="4" />
                       </svg>
                     </button>
                   )}

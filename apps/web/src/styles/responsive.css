@@ -2285,4 +2285,19 @@
   .ec-memory-compose__source {
     max-height: 112px;
   }
+
+  .ec-action-compose__types,
+  .ec-action-compose__grid,
+  .ec-action-compose__due {
+    grid-template-columns: 1fr;
+  }
+
+  .ec-action-type {
+    min-height: 58px;
+  }
+
+  .ec-action-compose__presets button {
+    flex: 1 1 auto;
+    min-height: 42px;
+  }
 }

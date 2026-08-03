@@ -5,6 +5,7 @@ import { registerChannelRoutes } from "../src/routes/channels.js";
 import { registerVisitRoutes } from "../src/routes/visits.js";
 import { registerMemoryRoutes } from "../src/routes/memory.js";
 import { registerPersonalDigestRoutes } from "../src/routes/personalDigest.js";
+import { registerActionRoutes } from "../src/routes/actions.js";
 
 describe("server route registration", () => {
   it("registers every server route exactly once", async () => {
@@ -118,6 +119,26 @@ describe("server route registration", () => {
       guards: ["requireJwt"],
       rateLimit: { max: 20, timeWindow: 5 * 60 * 1000 },
     });
+  });
+
+  it("protects message action creation with auth and a bounded mutation limit", async () => {
+    const app = Fastify();
+    let guards: string[] = [];
+    let rateLimit: { max?: number; timeWindow?: number } | undefined;
+    app.addHook("onRoute", (route) => {
+      if (route.method !== "POST" || route.url !== "/api/messages/:id/actions") return;
+      const routeGuards = Array.isArray(route.onRequest)
+        ? route.onRequest
+        : route.onRequest
+          ? [route.onRequest]
+          : [];
+      guards = routeGuards.map((guard) => guard.name);
+      rateLimit = route.config?.rateLimit as typeof rateLimit;
+    });
+
+    await registerActionRoutes(app);
+    expect(guards).toEqual(["requireJwt"]);
+    expect(rateLimit).toEqual({ max: 60, timeWindow: 5 * 60 * 1000 });
   });
 
   it("protects memory suggestions and writes with bounded rate limits", async () => {

@@ -14,10 +14,11 @@ scope доступа, понятное действие и подтвержде�
 
 - [x] **Персональная сводка** — «Пока тебя не было» учитывает сообщения, решения,
   задачи, риски и подтверждённую память; показывает важность и ссылки на источники.
-- [ ] **Semantic memory retrieval** — единый hybrid search по сообщениям и
+- [x] **Semantic memory retrieval** — единый hybrid search по сообщениям и
   курируемой памяти с деградацией до lexical search без embedding-провайдера.
 - [ ] **Message → operational entity** — reviewed draft из сообщения в decision,
   risk, requirement, task или follow-up без скрытого автоматического сохранения.
+  В `v1.7.28` закрыты task/decision/follow-up; first-class risk/requirement остаются.
 - [ ] **Ecosystem Command Center** — состояние Eclipse Chat, AI Hub, Library,
   Sentinel, DnD Forge и Media в одном operational dashboard.
 - [ ] **GitHub rooms** — коммиты, PR, CI, release и deploy как проверяемые события
@@ -96,6 +97,23 @@ scope доступа, понятное действие и подтвержде�
   CLIENT/internal visibility matrix; добавить desktop/mobile/reduced-motion состояния.
 - [x] Добавить additive Prisma migration, unit/route-registration regression coverage и
   обновить service-worker cache до `v1.7.27`.
+
+### Reviewed execution draft — v1.7.28
+
+- [x] Заменить три неочевидные мгновенные hover-команды одним действием
+  «Создать рабочий объект» с выбором задачи, решения или контроля.
+- [x] До записи показывать источник и редактируемый черновик: заголовок, контекст,
+  приоритет, ответственный и срок с понятными быстрыми presets.
+- [x] Использовать безопасные defaults: назначение на себя только для ролей с
+  `TASK_ASSIGN`, follow-up со сроком на завтра, решение без случайного assignee/due date.
+- [x] Выполнять запись только по конкретному CTA и после успеха открывать созданный
+  Action Item; duplicate-типы сообщения показывать как недоступные.
+- [x] На сервере заново проверять `TASK_CREATE`, `TASK_ASSIGN`, membership ответственного,
+  строгий body и разумный диапазон срока; provenance брать только из исходного сообщения.
+- [x] Ограничить создание отдельным authenticated rate limit, добавить policy/validation/
+  route-registration regression tests и обновить service-worker cache до `v1.7.28`.
+- [ ] Расширить тот же reviewed flow first-class типами `RISK` и `REQUIREMENT`, не
+  маскируя их тегами памяти или обычными задачами.
 
 ### Operational integration slice — advertising room
 
