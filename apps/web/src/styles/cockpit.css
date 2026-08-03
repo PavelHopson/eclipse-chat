@@ -2799,6 +2799,60 @@
 .ec-workbench-scope-choice button small { color: var(--ec-text-dim); font-size: var(--ec-text-2xs); }
 .ec-workbench-scope-choice button.is-selected { border-color: var(--ec-accent); color: var(--ec-text-strong); }
 
+.ec-workbench-memory-choice {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.ec-workbench-memory-choice button {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 11px;
+  border: 1px solid var(--ec-border-subtle);
+  border-radius: var(--ec-radius-md);
+  background: var(--ec-surface-1);
+  color: var(--ec-text-muted);
+  text-align: left;
+  cursor: pointer;
+}
+
+.ec-workbench-memory-choice button strong {
+  color: var(--ec-text-strong);
+  font-size: var(--ec-text-sm);
+}
+
+.ec-workbench-memory-choice button small {
+  color: var(--ec-text-dim);
+  font-size: var(--ec-text-2xs);
+  line-height: 1.4;
+}
+
+.ec-workbench-memory-choice button.is-selected {
+  border-color: var(--ec-accent);
+  background: color-mix(in srgb, var(--ec-accent) 6%, var(--ec-surface-1));
+}
+
+.ec-workbench-memory-choice button:focus-visible,
+.ec-workbench-scope-choice button:focus-visible {
+  outline: 2px solid var(--ec-accent);
+  outline-offset: 2px;
+}
+
+.ec-workbench-policy-note {
+  margin: 0;
+  padding: 9px 11px;
+  border: 1px solid color-mix(in srgb, var(--ec-accent-gold) 32%, var(--ec-border-subtle));
+  border-radius: var(--ec-radius-md);
+  background: color-mix(in srgb, var(--ec-accent-gold) 5%, var(--ec-surface-1));
+  color: var(--ec-text-muted);
+  font-size: var(--ec-text-2xs);
+  line-height: 1.45;
+}
+
 .ec-workbench-room-list {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -3059,6 +3113,7 @@
   .ec-workbench-hero__side { align-items: stretch; width: 100%; }
   .ec-workbench-stats { justify-content: flex-start; }
   .ec-workbench-action-grid,
+  .ec-workbench-memory-choice,
   .ec-workbench-room-list,
   .ec-approval-list { grid-template-columns: 1fr; }
   .ec-workbench-savebar .ec-btn { width: 100%; }

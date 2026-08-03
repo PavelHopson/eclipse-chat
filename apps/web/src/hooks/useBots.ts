@@ -9,6 +9,8 @@ export type BotCapability =
   | "create_task"
   | "update_table_row";
 
+export type BotMemoryPolicy = "OFF" | "ROOM" | "WORKSPACE";
+
 /**
  * Bot row из GET /api/servers/:id/bots.
  * `apiKey` НЕ отдаётся бэком — только при create/regenerate (один раз).
@@ -33,6 +35,8 @@ export type BotRow = {
   capabilities: BotCapability[];
   /** null = every room in this workspace; [] = no rooms. */
   allowedChannelIds: string[] | null;
+  /** Explicit curated-memory scope. OFF is the safe default. */
+  memoryPolicy: BotMemoryPolicy;
   /** Outbound webhook URL для message.created events. Null = нет webhook. */
   webhookUrl: string | null;
   /** True если webhookSecret set (для display «secret configured» badge). */
@@ -169,6 +173,7 @@ export function useBots(serverId: string | null) {
         agentMode?: boolean;
         capabilities?: BotCapability[];
         allowedChannelIds?: string[] | null;
+        memoryPolicy?: BotMemoryPolicy;
         webhookUrl?: string | null;
         webhookSecret?: string | null;
       },

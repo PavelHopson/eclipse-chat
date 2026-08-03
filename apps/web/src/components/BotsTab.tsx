@@ -5,6 +5,7 @@ import {
   type BotActivityEvent,
   type BotCapability,
   type BotKeyReveal,
+  type BotMemoryPolicy,
   type BotRow,
   type BotTestResult,
   type BotUsage,
@@ -56,10 +57,37 @@ const WORKBENCH_ACTIONS: ReadonlyArray<{
   },
 ];
 
+const MEMORY_POLICY_OPTIONS: ReadonlyArray<{
+  value: BotMemoryPolicy;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: "OFF",
+    label: "Без памяти",
+    description: "Агент видит только текущий разговор, закрепления и открытые задачи.",
+  },
+  {
+    value: "ROOM",
+    label: "Память комнаты",
+    description: "Добавляет только проверенные записи из комнаты, где вызвали агента.",
+  },
+  {
+    value: "WORKSPACE",
+    label: "Общая память",
+    description: "Добавляет память комнаты и записи, явно открытые всему пространству.",
+  },
+];
+
+function memoryPolicyLabel(policy: BotMemoryPolicy): string {
+  return MEMORY_POLICY_OPTIONS.find((option) => option.value === policy)?.label ?? "Без памяти";
+}
+
 type AccessDraft = {
   enabled: boolean;
   capabilities: BotCapability[];
   allowedChannelIds: string[] | null;
+  memoryPolicy: BotMemoryPolicy;
 };
 
 const ACTIVITY_LABELS: Record<BotActivityEvent["type"], string> = {
@@ -384,6 +412,7 @@ export function BotsTab({ serverId, channels, canManage }: Props) {
         enabled: bot.agentMode,
         capabilities: bot.capabilities.filter((capability) => capability !== "agent"),
         allowedChannelIds: bot.allowedChannelIds,
+        memoryPolicy: bot.memoryPolicy,
       },
     }));
   };
@@ -399,6 +428,7 @@ export function BotsTab({ serverId, channels, canManage }: Props) {
       const ok = await updateBot(bot.id, {
         capabilities,
         allowedChannelIds: draft.allowedChannelIds,
+        memoryPolicy: draft.memoryPolicy,
       });
       if (ok) setAccessOpen(null);
     } finally {
@@ -787,6 +817,8 @@ export function BotsTab({ serverId, channels, canManage }: Props) {
                     ? "все комнаты"
                     : `${bot.allowedChannelIds.length} комнат`}
                 </span>
+                <span>•</span>
+                <span>{memoryPolicyLabel(bot.memoryPolicy).toLocaleLowerCase("ru-RU")}</span>
               </div>
               {canManage && roleEditOpen === bot.id && (
                 <div className="ec-bots-panel">
@@ -935,6 +967,7 @@ export function BotsTab({ serverId, channels, canManage }: Props) {
             enabled: bot.agentMode,
             capabilities: bot.capabilities.filter((capability) => capability !== "agent"),
             allowedChannelIds: bot.allowedChannelIds,
+            memoryPolicy: bot.memoryPolicy,
           };
           const roomOptions = channels.filter((channel) => channel.type !== "VOICE");
           const selectedRooms = draft.allowedChannelIds ?? [];
@@ -977,6 +1010,36 @@ export function BotsTab({ serverId, channels, canManage }: Props) {
                   }}
                 />
               </label>
+
+              <div className="ec-workbench-access__section">
+                <div className="ec-workbench-access__heading">
+                  <div>
+                    <strong>Какую память использовать</strong>
+                    <span>Только подтверждённые записи. Архив, просроченные и ожидающие review записи не передаются AI.</span>
+                  </div>
+                </div>
+                <div className="ec-workbench-memory-choice" role="radiogroup" aria-label="Память агента">
+                  {MEMORY_POLICY_OPTIONS.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      role="radio"
+                      aria-checked={draft.memoryPolicy === option.value}
+                      className={draft.memoryPolicy === option.value ? "is-selected" : ""}
+                      onClick={() => setDraft({ ...draft, memoryPolicy: option.value })}
+                      disabled={saving}
+                    >
+                      <strong>{option.label}</strong>
+                      <small>{option.description}</small>
+                    </button>
+                  ))}
+                </div>
+                {draft.memoryPolicy === "WORKSPACE" && draft.allowedChannelIds !== null && (
+                  <p className="ec-workbench-policy-note" role="note">
+                    Общая память доступна во всех выбранных комнатах и может включать записи, созданные вне них, если владелец записи открыл её всему пространству.
+                  </p>
+                )}
+              </div>
 
               <div className="ec-workbench-access__section">
                 <div className="ec-workbench-access__heading">

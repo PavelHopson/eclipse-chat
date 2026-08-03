@@ -354,6 +354,9 @@ model Bot {
   /// JSON array channel ids. NULL = все комнаты текущего workspace; [] = ни
   /// одной. Любой non-null malformed value трактуется runtime как deny-all.
   allowedChannelIds    String?
+  /// Curated memory available to the agent. OFF is fail-closed; ROOM includes
+  /// the current room; WORKSPACE additionally includes explicitly shared entries.
+  memoryPolicy         BotMemoryPolicy      @default(OFF)
   /// HTTPS URL для outbound webhook'ов. Backend POST'ит сюда события
   /// (message.created etc) от каналов где bot — member. Null = нет webhook.
   webhookUrl           String?
@@ -612,6 +615,12 @@ enum BotRole {
   SUPPORT
   /// v0.74 #18 phase 1: architecture/tech-summaries. @architect / @архитектор.
   ARCHITECT
+}
+
+enum BotMemoryPolicy {
+  OFF
+  ROOM
+  WORKSPACE
 }
 
 /// Статус инцидента. OPEN = разбор идёт, RESOLVED = закрыт + post-mortem сгенерён.

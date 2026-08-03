@@ -13,6 +13,13 @@ import {
   parseBotCapabilities,
   type BotCapability,
 } from "./botAccess.js";
+import {
+  canReadMemoryEntry,
+  normalizeBotMemoryPolicy,
+  type BotMemoryPolicy,
+} from "./botMemoryPolicy.js";
+import { parseMemoryTags } from "./memoryRetrieval.js";
+import { memoryContextEligibilityWhere } from "../lib/memoryGovernance.js";
 
 /**
  * @ai mention assistant + Bot v3 autoRespond.
@@ -120,6 +127,7 @@ export type BotResponder = {
   /** v1.2.29 — capabilities из Bot row (`agent` → tool-use loop). */
   capabilities: BotCapability[];
   allowedChannelIds: string[] | null;
+  memoryPolicy: BotMemoryPolicy;
   isRealBot: boolean;
 };
 
@@ -138,6 +146,7 @@ export async function getResponderForRole(
         role: true,
         capabilities: true,
         allowedChannelIds: true,
+        memoryPolicy: true,
         systemPromptOverride: true,
         personality: true,
         user: { select: { displayName: true } },
@@ -159,6 +168,7 @@ export async function getResponderForRole(
           personality: bot.personality,
           capabilities: caps,
           allowedChannelIds,
+          memoryPolicy: normalizeBotMemoryPolicy(bot.memoryPolicy),
           isRealBot: true,
         };
       }
@@ -181,6 +191,7 @@ export async function getResponderForRole(
     personality: null,
     capabilities: [],
     allowedChannelIds: null,
+    memoryPolicy: "OFF",
     isRealBot: false,
   };
 }
@@ -216,6 +227,7 @@ async function loadChannelContext(
   triggerMessageId: string,
   triggerUserId: string,
   triggerContent: string,
+  memoryPolicy: BotMemoryPolicy,
 ): Promise<ChannelContext | null> {
   const channel = await db.channel.findUnique({
     where: { id: channelId },
@@ -248,6 +260,27 @@ async function loadChannelContext(
     take: 20,
     include: { user: { select: { displayName: true } } },
   });
+  const memory = memoryPolicy === "OFF"
+    ? []
+    : await db.memoryEntry.findMany({
+        where: {
+          serverId: channel.serverId,
+          ...memoryContextEligibilityWhere(),
+          ...(memoryPolicy === "ROOM"
+            ? { channelId }
+            : { OR: [{ channelId }, { visibility: "WORKSPACE" as const }] }),
+        },
+        orderBy: { updatedAt: "desc" },
+        take: 12,
+        select: {
+          kind: true,
+          visibility: true,
+          channelId: true,
+          title: true,
+          content: true,
+          tags: true,
+        },
+      });
 
   const basePrompt = assistantPrompt({
     channelName: channel.name,
@@ -271,6 +304,17 @@ async function loadChannelContext(
       content: p.content,
       user: { displayName: userDisplayName(p.user) },
     })),
+    memory: memory
+      .filter((entry) => canReadMemoryEntry(memoryPolicy, channelId, entry))
+      .map((entry) => ({
+        kind: entry.kind,
+        visibility: entry.visibility,
+        title: entry.title.replace(/\s+/g, " ").trim().slice(0, 180),
+        content: entry.content
+          ? entry.content.replace(/\s+/g, " ").trim().slice(0, 420)
+          : null,
+        tags: parseMemoryTags(entry.tags).slice(0, 8),
+      })),
   });
 
   return {
@@ -305,6 +349,7 @@ async function executeChannelBotReply(params: {
     triggerMessageId,
     triggerUserId,
     params.triggerContent,
+    responder.memoryPolicy,
   );
   if (!ctx) return;
 
@@ -536,6 +581,7 @@ export async function maybeAutoRespond(
           role: true,
           capabilities: true,
           allowedChannelIds: true,
+          memoryPolicy: true,
           systemPromptOverride: true,
           personality: true,
           user: { select: { displayName: true } },
@@ -564,6 +610,7 @@ export async function maybeAutoRespond(
           personality: autoBot.personality,
           capabilities: caps,
           allowedChannelIds,
+          memoryPolicy: normalizeBotMemoryPolicy(autoBot.memoryPolicy),
           isRealBot: true,
         },
         mentionRole: autoBot.role as BotRoleValue,

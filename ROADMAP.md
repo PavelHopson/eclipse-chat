@@ -36,6 +36,15 @@ scope доступа, понятное действие и подтвержде�
 - [ ] **Project Passport** — связанная карточка проекта: репозитории, комнаты,
   решения, задачи, deploy, документы, owners, риски и актуальный статус.
 
+### Agent memory policy — v1.7.35
+
+- [x] Добавить fail-closed policy `OFF / ROOM / WORKSPACE` с default `OFF`; менять policy может только Owner, Admin видит текущее состояние read-only.
+- [x] Передавать агенту только curated `MemoryEntry`: `ROOM` ограничен текущей комнатой, `WORKSPACE` добавляет только записи с явной workspace visibility.
+- [x] Исключать archived, expired и review-due записи на уровне database query и повторно проверять scope каждой записи перед prompt assembly.
+- [x] Ограничить контекст 12 компактными записями, обрезать поля и маркировать сообщения/память как недоверенные данные, а не инструкции для модели.
+- [x] Добавить в Workbench понятный выбор из трёх режимов, предупреждение о workspace scope, read-only статус на карточке и responsive layout.
+- [ ] Расширить approval policy на будущие destructive tools; memory write остаётся отдельным reviewed flow и не включается этой read-only policy.
+
 ### Owner approval queue — v1.7.34
 
 - [x] Останавливать `update_table_row` до исполнения и показывать Owner точный preview: агент, комната,
@@ -378,7 +387,7 @@ scope доступа, понятное действие и подтвержде�
 - Provider routing — только owned/legal keys, no grey-zone token bypass.
 - Token-saving tools (`sqz`, caveman-like compression) сначала benchmark в sandbox; не сжимать секреты, миграции, юридический текст и точные логи.
 
-**Актуальная версия (короткий индекс):** **v1.7.34** — risky agent table mutations now wait in an Owner-only approval queue with atomic execution, current-policy revalidation, expiring leases, payload scrubbing and responsive decision UX.
+**Актуальная версия (короткий индекс):** **v1.7.35** — Agent Workbench now has a fail-closed curated-memory policy with lifecycle filtering, strict room/workspace visibility, bounded prompt context and responsive Owner controls.
 
 **Текущая версия:** **v1.6.98** (🗄️⚡ PARTIAL-ИНДЕКС под escalation-scan (бэклог-хвост, заход через CI). Фоновой `escalation.ts` раз в час обходит `ActionItem` где `status ∈ (OPEN,IN_PROGRESS,REVIEW)`, `dueAt < now-48h`, `(escalatedAt IS NULL OR < now-7d)`, `ORDER BY dueAt ASC LIMIT 50`. Запрос **глобальный** (без serverId/channelId) → все 4 существующих индекса `ActionItem` ведут с channelId/serverId и его НЕ покрывают → был seq-scan всей таблицы каждый час. **Новый partial composite index** `ActionItem_escalation_scan_idx ON ("dueAt") WHERE status IN (OPEN,IN_PROGRESS,REVIEW) AND dueAt IS NOT NULL` (raw-миграция `20260625120000_add_escalation_partial_index`): индексирует только кандидатов эскалации (крошечная доля таблицы — закрытые DONE и задачи без дедлайна исключены); ведущая `dueAt` → один forward index-scan покрывает и `dueAt < X`, и `ORDER BY dueAt ASC LIMIT 50` без сортировки, рано останавливается. **Prisma не выражает WHERE-индексы** → raw SQL; `migrate deploy` (deploy.sh [4/10]) применяет как есть, `prisma generate` индексы не читает, drift-проверок (`migrate dev`) в проекте нет (прод=migrate deploy, локальной БД нет). schema.prisma — doc-comment у `ActionItem` фиксирует существование индекса («не чинить как drift»). **temp-channel scan (`tempChannels.ts`) НЕ трогал** — `Channel` уже имеет `@@index([expiresAt])`, а `WHERE expiresAt < now` = чистый range-scan по нему (NULL'ы сортируются последними, не читаются); partial там лишь дублировал бы индекс = write-amplification на крошечной таблице ради ~нуля. Version 1.6.97→1.6.98 (4 точки). Verify: server `tsc --noEmit` PASS, web build PASS; миграция применится на проде при деплое (`migrate deploy`). **Бэклог-остаток:** виртуализация ленты сообщений (npm-dep + риск-рефактор скролла) — единственный крупный хвост.)
 

@@ -28,6 +28,11 @@ import {
   type BotCapability,
 } from "../ai/botAccess.js";
 import {
+  BOT_MEMORY_POLICIES,
+  normalizeBotMemoryPolicy,
+  type BotMemoryPolicy,
+} from "../ai/botMemoryPolicy.js";
+import {
   claimBotActionApproval,
   completeBotActionApproval,
   expirePendingBotActionApprovals,
@@ -43,6 +48,7 @@ const botRoleSchema = z.enum(BOT_ROLES as readonly [BotRoleValue, ...BotRoleValu
 const botCapabilitySchema = z.enum(
   BOT_CAPABILITIES as readonly [BotCapability, ...BotCapability[]],
 );
+const botMemoryPolicySchema = z.enum(BOT_MEMORY_POLICIES);
 
 const ALLOWED_BOT_EMOJI = new Set([
   "👍", "❤️", "😂", "😮", "😢", "🔥", "🎉", "👀",
@@ -84,6 +90,7 @@ const updateBotBody = z.object({
   capabilities: z.array(botCapabilitySchema).max(BOT_CAPABILITIES.length).optional(),
   /** null = every room; [] = deny all rooms. */
   allowedChannelIds: z.array(z.string().trim().min(1).max(64)).max(100).nullable().optional(),
+  memoryPolicy: botMemoryPolicySchema.optional(),
   webhookUrl: z
     .string()
     .max(512)
@@ -226,6 +233,7 @@ export async function registerBotRoutes(app: FastifyInstance) {
           apiKeyPrefix: canManage ? b.apiKeyPrefix : "",
           capabilities: parseBotCapabilities(b.capabilities),
           allowedChannelIds: parseAllowedChannelIds(b.allowedChannelIds),
+          memoryPolicy: normalizeBotMemoryPolicy(b.memoryPolicy),
           webhookUrl: canManage ? b.webhookUrl : null,
           // webhookSecret НЕ отдаём — только при create/regenerate
           // через webhookSecretSet flag показываем «есть/нет»
@@ -392,6 +400,7 @@ export async function registerBotRoutes(app: FastifyInstance) {
           systemPromptOverride: true,
           capabilities: true,
           allowedChannelIds: true,
+          memoryPolicy: true,
         },
       });
       if (!bot || bot.serverId !== serverId) {
@@ -406,6 +415,7 @@ export async function registerBotRoutes(app: FastifyInstance) {
         personality?: string | null;
         capabilities?: string;
         allowedChannelIds?: string | null;
+        memoryPolicy?: BotMemoryPolicy;
         webhookUrl?: string | null;
         webhookSecret?: string | null;
       } = {};
@@ -453,6 +463,9 @@ export async function registerBotRoutes(app: FastifyInstance) {
         data.allowedChannelIds =
           nextAllowedChannelIds === null ? null : JSON.stringify(nextAllowedChannelIds);
       }
+      if (parsed.data.memoryPolicy !== undefined) {
+        data.memoryPolicy = parsed.data.memoryPolicy;
+      }
       // v1.0: audit prompt update/reset для AI controls observability.
       let promptAuditEvent: "BOT_PROMPT_UPDATE" | "BOT_PROMPT_RESET" | null = null;
       if (parsed.data.systemPromptOverride !== undefined) {
@@ -487,6 +500,7 @@ export async function registerBotRoutes(app: FastifyInstance) {
           personality: true,
           capabilities: true,
           allowedChannelIds: true,
+          memoryPolicy: true,
           avatar: true,
           apiKeyPrefix: true,
           webhookUrl: true,
@@ -516,7 +530,8 @@ export async function registerBotRoutes(app: FastifyInstance) {
       }
       if (
         data.capabilities !== undefined ||
-        data.allowedChannelIds !== undefined
+        data.allowedChannelIds !== undefined ||
+        data.memoryPolicy !== undefined
       ) {
         recordAudit("BOT_ACCESS_POLICY_CHANGED", {
           userId,
@@ -529,6 +544,7 @@ export async function registerBotRoutes(app: FastifyInstance) {
               updated.allowedChannelIds === null
                 ? "all"
                 : parseAllowedChannelIds(updated.allowedChannelIds)?.length ?? 0,
+            memoryPolicy: normalizeBotMemoryPolicy(updated.memoryPolicy),
           },
         });
       }
@@ -543,6 +559,7 @@ export async function registerBotRoutes(app: FastifyInstance) {
           capabilities: parseBotCapabilities(updated.capabilities),
           agentMode: parseBotCapabilities(updated.capabilities).includes("agent"),
           allowedChannelIds: parseAllowedChannelIds(updated.allowedChannelIds),
+          memoryPolicy: normalizeBotMemoryPolicy(updated.memoryPolicy),
           avatar: updated.avatar,
           apiKeyPrefix: updated.apiKeyPrefix,
           webhookUrl: updated.webhookUrl,
