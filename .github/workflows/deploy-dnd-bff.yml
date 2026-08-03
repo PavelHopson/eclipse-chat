@@ -1,0 +1,52 @@
+name: Deploy DnD BFF dark launch
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_dark_launch:
+        description: "Deploy loopback-only BFF with AI and public exposure disabled"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dnd-bff-production
+  cancel-in-progress: false
+
+jobs:
+  deploy-dark:
+    if: inputs.confirm_dark_launch == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    steps:
+      - name: Bootstrap loopback-only DnD BFF
+        uses: appleboy/ssh-action@7eaf76671a0d7eec5d98ee897acda4f968735a17 # v1.2.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST_PROD }}
+          username: ${{ secrets.DEPLOY_USER_PROD }}
+          key: ${{ secrets.SSH_PRIVATE_KEY_PROD }}
+          command_timeout: 10m
+          script: |
+            set -euo pipefail
+            test "$(id -u)" -eq 0
+            DND_COMMIT="3f0685bc4cd3c21d9fb712bc9465b652f3aaac6e"
+            AI_HUB_COMMIT="aa2a1ced3e46235521e4afc2eba6fb106d2c8ddb"
+            DND_PATH="/var/www/eclipse-dnd-forge-bff"
+            [[ "$DND_COMMIT" =~ ^[0-9a-f]{40}$ ]]
+            [[ "$AI_HUB_COMMIT" =~ ^[0-9a-f]{40}$ ]]
+            install -d -o root -g root -m 0755 "$DND_PATH"
+            if ! git -C "$DND_PATH" rev-parse --git-dir >/dev/null 2>&1; then
+              git -C "$DND_PATH" init --quiet
+              git -C "$DND_PATH" remote add origin https://github.com/PavelHopson/eclipse-dnd-forge.git
+            fi
+            test "$(git -C "$DND_PATH" remote get-url origin)" = "https://github.com/PavelHopson/eclipse-dnd-forge.git"
+            git -C "$DND_PATH" fetch --quiet --no-tags --depth=1 origin "$DND_COMMIT"
+            git -C "$DND_PATH" checkout --quiet --detach --force "$DND_COMMIT"
+            test "$(git -C "$DND_PATH" rev-parse HEAD)" = "$DND_COMMIT"
+            DND_EXPECTED_COMMIT="$DND_COMMIT" \
+              AI_HUB_EXPECTED_COMMIT="$AI_HUB_COMMIT" \
+              bash "$DND_PATH/deploy/scripts/bootstrap-dark.sh"
