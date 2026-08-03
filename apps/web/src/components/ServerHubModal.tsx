@@ -12,6 +12,7 @@ import {
 } from "./server-hub/ServerHubSections";
 import { ServerAuditLogSection } from "./server-hub/ServerAuditLogSection";
 import { ServerInvitesManager } from "./server-hub/ServerInvitesManager";
+import { ProjectPassportView } from "./server-hub/ProjectPassportView";
 import type { MemberRole, MemberRow } from "../hooks/useMembers";
 import type { ServerRow } from "../hooks/useServers";
 import type { ChannelRow } from "../hooks/useChannels";
@@ -72,11 +73,14 @@ type Props = {
     mode?: "ENGINEERING" | "CLIENT";
   }) => Promise<boolean>;
   onUpdateLock?: (locked: boolean, reason?: string | null) => Promise<boolean>;
+  onOpenChannel: (channelId: string) => void;
+  onOpenAction: (actionItemId: string, channelId: string) => void;
   /** v0.97: open tab напрямую (если триггер — settings icon → Настройки). */
   initialTab?: HubView;
 };
 
 type HubView =
+  | "passport"
   | "overview"
   | "branding"
   | "settings"
@@ -153,8 +157,10 @@ export function ServerHubModal({
   onDeleteBanner,
   onUpdateIdentity,
   onUpdateLock,
+  onOpenChannel,
+  onOpenAction,
   channels = [],
-  initialTab = "overview",
+  initialTab = "passport",
 }: Props) {
   const [active, setActive] = useState<HubView>(initialTab);
   const isOwner = server.role === "OWNER";
@@ -324,6 +330,7 @@ export function ServerHubModal({
     {
       label: "Сервер",
       items: [
+        { id: "passport", label: "Паспорт" },
         { id: "overview", label: "Обзор" },
         { id: "branding", label: "Оформление", hidden: !isOwner },
         { id: "settings", label: "Настройки", hidden: !isOwner },
@@ -377,6 +384,14 @@ export function ServerHubModal({
           ))}
         </aside>
         <main className="ec-server-hub-panel__main">
+
+      {active === "passport" && (
+        <ProjectPassportView
+          serverId={server.id}
+          onOpenChannel={onOpenChannel}
+          onOpenAction={onOpenAction}
+        />
+      )}
 
       {/* === Обзор === */}
       {active === "overview" && (

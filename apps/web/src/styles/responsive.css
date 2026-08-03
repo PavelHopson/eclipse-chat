@@ -1369,6 +1369,67 @@
   }
 }
 
+@media (max-width: 768px) {
+  .ec-project-passport__hero {
+    min-height: 0;
+    padding: var(--ec-space-4);
+  }
+
+  .ec-project-passport__hero-main {
+    align-items: stretch;
+    flex-direction: column;
+    margin-top: var(--ec-space-4);
+  }
+
+  .ec-project-passport__primary {
+    width: 100%;
+  }
+
+  .ec-project-passport__metrics {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .ec-project-passport__metrics > span {
+    padding: 0;
+    border: 0;
+  }
+
+  .ec-project-passport__refresh {
+    position: absolute;
+    top: var(--ec-space-3);
+    right: var(--ec-space-3);
+  }
+
+  .ec-project-passport__layout,
+  .ec-project-passport__skeleton-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ec-project-passport__room-stats {
+    display: none;
+  }
+
+  .ec-project-passport__error {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .ec-project-passport__error .ec-btn {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ec-project-passport *,
+  .ec-project-passport__skeleton {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
 /* Personal command brief: keep the persistent workspace rail, but give the
    summary the full operational canvas instead of leaving an empty DM spine. */
 .ec-shell.ec-shell--home {

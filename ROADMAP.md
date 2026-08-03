@@ -29,12 +29,31 @@ scope доступа, понятное действие и подтвержде�
   local/controlled policy, а Platform Admin показывает основной маршрут и безопасный резерв.
 - [ ] **Agent Workbench** — создание и тестирование агентов, scopes, approvals,
   memory policy и журнал действий в одном интерфейсе.
+- [x] **Agent Office foundation** — `agents.v1` contract и fixture-backed
+  Growth Research Cell с plan review, budget guardrails, ручными lifecycle-
+  контролами и audit stream; без model calls, OAuth и внешних действий.
 - [x] **Memory governance** — provenance, owner, retention, visibility, review,
   archive/restore и объяснение, почему запись попала в контекст.
 - [x] **Mobile Command Inbox** — единая очередь коротких решений: approve,
   assign, answer, join call, review change; одно главное действие на карточку.
-- [ ] **Project Passport** — связанная карточка проекта: репозитории, комнаты,
+- [x] **Project Passport** — связанная карточка проекта: репозитории, комнаты,
   решения, задачи, deploy, документы, owners, риски и актуальный статус.
+
+### Project Passport — v1.7.38
+
+- [x] Собрать один ACL-aware read model из существующих комнат, Action Items,
+  curated memory, GitHub integrations и verified deploy events без новой таблицы
+  и без копирования состояния источников.
+- [x] Исключать internal rooms и все связанные задачи, документы, integrations и
+  events для ролей без `ROOM_VIEW_INTERNAL`; non-member получает `403`.
+- [x] Никогда не возвращать encrypted integration config, webhook secrets, email
+  или исходный webhook payload; внешние GitHub links закреплять за `github.com`.
+- [x] Показать один следующий шаг по приоритету: блокер, failed deploy, активная
+  работа или рабочая комната; каждое действие ведёт обратно к источнику.
+- [x] Добавить в Server Hub первую вкладку «Паспорт» с health signal, задачами,
+  решениями, комнатами, ответственными, репозиториями, deploy и документами.
+- [x] Закрыть loading, stale/error, empty, disabled, keyboard focus, reduced motion
+  и mobile single-column layout без отдельной инструкции для основного сценария.
 
 ### Mobile Command Inbox — v1.7.37
 

@@ -1,0 +1,181 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://eclipseforge.dev/contracts/agents.v1.schema.json",
+  "title": "Eclipse Forge Agents v1",
+  "description": "Portable contract for reviewable, budget-bounded agent runs. It contains summaries and evidence, never hidden chain-of-thought.",
+  "type": "object",
+  "required": ["contractVersion", "agents", "run"],
+  "properties": {
+    "contractVersion": { "const": "agents.v1" },
+    "agents": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/agentDefinition" }
+    },
+    "run": { "$ref": "#/$defs/agentRun" }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._:-]*$"
+    },
+    "isoDateTime": { "type": "string", "format": "date-time" },
+    "runStatus": {
+      "enum": [
+        "DRAFT",
+        "PLANNED",
+        "WAITING_START_APPROVAL",
+        "RUNNING",
+        "PAUSED",
+        "WAITING_ACTION_APPROVAL",
+        "COMPLETED",
+        "FAILED",
+        "CANCELLED"
+      ]
+    },
+    "agentDefinition": {
+      "type": "object",
+      "required": ["id", "name", "role", "capabilities"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "role": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "capabilities": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/agentCapability" },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "agentCapability": {
+      "enum": [
+        "PUBLIC_WEB_RESEARCH",
+        "CLAIM_VERIFICATION",
+        "CONTENT_STRATEGY",
+        "METRICS_ANALYSIS",
+        "ARTIFACT_DRAFTING"
+      ]
+    },
+    "budgetPolicy": {
+      "type": "object",
+      "required": ["currency", "maxCost", "maxDurationMinutes", "maxExternalActions"],
+      "properties": {
+        "currency": { "enum": ["USD"] },
+        "maxCost": { "type": "number", "minimum": 0 },
+        "maxDurationMinutes": { "type": "integer", "minimum": 1, "maximum": 1440 },
+        "maxExternalActions": { "type": "integer", "minimum": 0, "maximum": 1000 }
+      },
+      "additionalProperties": false
+    },
+    "runPlan": {
+      "type": "object",
+      "required": ["objective", "successCriteria", "sourcePolicy", "budget", "steps"],
+      "properties": {
+        "objective": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "successCriteria": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1, "maxLength": 300 }
+        },
+        "sourcePolicy": {
+          "type": "object",
+          "required": ["publicOnly", "allowPersonalData", "allowConnectedApps"],
+          "properties": {
+            "publicOnly": { "type": "boolean" },
+            "allowPersonalData": { "type": "boolean" },
+            "allowConnectedApps": { "type": "boolean" }
+          },
+          "additionalProperties": false
+        },
+        "budget": { "$ref": "#/$defs/budgetPolicy" },
+        "steps": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["id", "agentId", "title"],
+            "properties": {
+              "id": { "$ref": "#/$defs/identifier" },
+              "agentId": { "$ref": "#/$defs/identifier" },
+              "title": { "type": "string", "minLength": 1, "maxLength": 200 }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "evidenceCard": {
+      "type": "object",
+      "required": ["id", "title", "sourceUrl", "sourceType", "summary", "checkedAt"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "sourceUrl": { "type": "string", "format": "uri", "maxLength": 2048 },
+        "sourceType": { "enum": ["PRIMARY", "SECONDARY", "INTERNAL_PUBLIC"] },
+        "summary": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "checkedAt": { "$ref": "#/$defs/isoDateTime" }
+      },
+      "additionalProperties": false
+    },
+    "artifact": {
+      "type": "object",
+      "required": ["id", "kind", "title", "status", "createdAt"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "kind": { "enum": ["RESEARCH_BRIEF", "CLAIM_REPORT", "CONTENT_BRIEF", "METRICS_PLAN"] },
+        "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "status": { "enum": ["DRAFT", "READY_FOR_REVIEW", "APPROVED", "REJECTED"] },
+        "createdAt": { "$ref": "#/$defs/isoDateTime" }
+      },
+      "additionalProperties": false
+    },
+    "approvalRequest": {
+      "type": "object",
+      "required": ["id", "kind", "status", "summary", "createdAt"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "kind": { "enum": ["START_RUN", "EXTERNAL_ACTION", "BUDGET_INCREASE", "ARTIFACT_RELEASE"] },
+        "status": { "enum": ["PENDING", "APPROVED", "REJECTED", "EXPIRED"] },
+        "summary": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "createdAt": { "$ref": "#/$defs/isoDateTime" }
+      },
+      "additionalProperties": false
+    },
+    "runEvent": {
+      "type": "object",
+      "required": ["id", "at", "type", "summary"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "at": { "$ref": "#/$defs/isoDateTime" },
+        "type": { "enum": ["STATUS_CHANGED", "STEP_STARTED", "STEP_COMPLETED", "EVIDENCE_ADDED", "ARTIFACT_CREATED", "APPROVAL_REQUESTED", "OPERATOR_NOTE"] },
+        "summary": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "agentId": { "$ref": "#/$defs/identifier" }
+      },
+      "additionalProperties": false
+    },
+    "agentRun": {
+      "type": "object",
+      "required": ["id", "workspaceId", "ownerId", "status", "createdAt", "plan", "events", "evidence", "artifacts", "approvals"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "workspaceId": { "$ref": "#/$defs/identifier" },
+        "ownerId": { "$ref": "#/$defs/identifier" },
+        "status": { "$ref": "#/$defs/runStatus" },
+        "createdAt": { "$ref": "#/$defs/isoDateTime" },
+        "updatedAt": { "$ref": "#/$defs/isoDateTime" },
+        "plan": { "$ref": "#/$defs/runPlan" },
+        "events": { "type": "array", "items": { "$ref": "#/$defs/runEvent" } },
+        "evidence": { "type": "array", "items": { "$ref": "#/$defs/evidenceCard" } },
+        "artifacts": { "type": "array", "items": { "$ref": "#/$defs/artifact" } },
+        "approvals": { "type": "array", "items": { "$ref": "#/$defs/approvalRequest" } }
+      },
+      "additionalProperties": false
+    }
+  }
+}

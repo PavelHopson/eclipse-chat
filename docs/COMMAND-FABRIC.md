@@ -108,8 +108,27 @@ must move voice presence to shared state or LiveKit-backed discovery.
 - Workspace memory has one workspace-wide scope. Per-role and per-agent memory
   visibility is intentionally deferred until its policy model is explicit.
 
+## v1.7.38 slice
+
+Project Passport gives every workspace one source-linked operational view. It
+does not introduce a project table or copy mutable state: rooms, active work,
+risks, decisions, curated documents, GitHub repositories and verified deploy
+events remain owned by their existing systems and are composed at read time.
+
+The API establishes membership first, derives the visible room set once and
+uses it as the boundary for every downstream query. A client role cannot infer
+an internal room through task titles, memory, repository metadata or deploy
+events. Stored integration config and webhook secrets never enter the response;
+GitHub event links are accepted only from verified bounded snapshots and pinned
+to `github.com`.
+
+The UI starts with one health signal and one next action. A blocker opens the
+original Action Item, a failed deploy opens the verified GitHub run, and normal
+work returns to its room. This keeps the passport useful as an index and status
+surface without turning it into another system that users must maintain.
+
 ## Next slice
 
-Build Project Passport: one linked project view for repositories, rooms,
-decisions, work, deploys, documents, owners and current risks, reusing Command
-Fabric sources instead of copying their state.
+Connect Project Passport to the ecosystem Command Center through explicit
+workspace-to-project identities. Do not infer a repository mapping from names;
+the next contract must be reviewed, versioned and reversible.

@@ -61,6 +61,7 @@ const MessageMemoryModal = lazy(() => import("../components/MessageMemoryModal")
 const MessageActionModal = lazy(() => import("../components/MessageActionModal").then((m) => ({ default: m.MessageActionModal })));
 const CommandDigestView = lazy(() => import("../components/CommandDigestView").then((m) => ({ default: m.CommandDigestView })));
 const MobileCommandInbox = lazy(() => import("../components/MobileCommandInbox").then((m) => ({ default: m.MobileCommandInbox })));
+const AgentOffice = lazy(() => import("../components/agent-office/AgentOffice").then((m) => ({ default: m.AgentOffice })));
 
 function isTextEntryTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -393,8 +394,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   // в chat-header → tab="settings").
   const [serverHubOpen, setServerHubOpen] = useState(false);
   const [serverHubTab, setServerHubTab] = useState<
-    "overview" | "branding" | "settings" | "bots"
-  >("overview");
+    "passport" | "overview" | "branding" | "settings" | "bots"
+  >("passport");
   const [showProfile, setShowProfile] = useState(false);
   const [settingsInitialView, setSettingsInitialView] = useState<
     SettingsViewId | undefined
@@ -407,6 +408,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   const [actionDraftMessage, setActionDraftMessage] = useState<MessageRow | null>(null);
   const [showSearch, setShowSearch] = useState(false);
   const [homeOpen, setHomeOpen] = useState(false);
+  const [agentOfficeOpen, setAgentOfficeOpen] = useState(false);
   const personalDigest = usePersonalDigest(true);
   const commandInbox = useCommandInbox(
     servers,
@@ -595,9 +597,9 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   // (и voice, и chat): табы «Intelligence» + «Участники». `isVoiceView`
   // переключает режим панели.
   const isVoiceView =
-    !inDmMode && !homeOpen && serverView === "chat" && selectedChannel?.type === "VOICE";
+    !inDmMode && !homeOpen && !agentOfficeOpen && serverView === "chat" && selectedChannel?.type === "VOICE";
   const inServerView =
-    Boolean(activeServer) && !homeOpen && !helpOpen && !adminOpen;
+    Boolean(activeServer) && !homeOpen && !agentOfficeOpen && !helpOpen && !adminOpen;
   // UXR4 — server-home tab rail больше не висит над каждым каналом в chat
   // mode. Rail остаётся навигацией внутри server-views (guide/каналы-роли/
   // участники). Вход в server-home из chat — клик по server-иконке в
@@ -607,6 +609,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     Boolean(activeServer) &&
     !inDmMode &&
     !homeOpen &&
+    !agentOfficeOpen &&
     !helpOpen &&
     !adminOpen &&
     !statusBoardOpen &&
@@ -714,6 +717,11 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
       setHelpOpen(false);
       return true;
     }
+    if (agentOfficeOpen) {
+      setAgentOfficeOpen(false);
+      setHomeOpen(true);
+      return true;
+    }
     if (membersOpen) {
       setMembersOpen(false);
       return true;
@@ -809,6 +817,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   // На mobile: select channel → закрыть nav drawer (UX как в Discord/Telegram)
   const handleSelectChannel = (channelId: string) => {
     setHomeOpen(false);
+    setAgentOfficeOpen(false);
     setFriendsOpen(false);
     setHelpOpen(false);
     setAdminOpen(false);
@@ -869,6 +878,24 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   // ЛС/Друзей: это отдельная точка возврата к важному после отсутствия.
   const openHome = () => {
     setHomeOpen(true);
+    setAgentOfficeOpen(false);
+    setActiveServerId(null);
+    setFriendsOpen(false);
+    setHelpOpen(false);
+    setAdminOpen(false);
+    setStatusBoardOpen(false);
+    setTeamHealthOpen(false);
+    setSelectedTableId(null);
+    setShowProfile(false);
+    setSelectedChannelId(null);
+    selectDm(null);
+    setNavOpen(false);
+    setMembersOpen(false);
+  };
+
+  const openAgentOffice = () => {
+    setAgentOfficeOpen(true);
+    setHomeOpen(false);
     setActiveServerId(null);
     setFriendsOpen(false);
     setHelpOpen(false);
@@ -888,6 +915,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     messageId?: string | null,
   ) => {
     setHomeOpen(false);
+    setAgentOfficeOpen(false);
     setFriendsOpen(false);
     setHelpOpen(false);
     setAdminOpen(false);
@@ -945,6 +973,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   // профиль — иначе render-гейт `inDmMode ? friendsOpen ?…` не покажет FriendsView.
   const openFriends = () => {
     setHomeOpen(false);
+    setAgentOfficeOpen(false);
     setHelpOpen(false);
     setAdminOpen(false);
     setStatusBoardOpen(false);
@@ -959,6 +988,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
 
   const openHelp = () => {
     setHelpOpen(true);
+    setAgentOfficeOpen(false);
     setFriendsOpen(false);
     setAdminOpen(false);
     setHomeOpen(false);
@@ -971,6 +1001,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
 
   const openAdmin = () => {
     setAdminOpen(true);
+    setAgentOfficeOpen(false);
     setFriendsOpen(false);
     setHelpOpen(false);
     setHomeOpen(false);
@@ -1078,7 +1109,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
         glyph: "С",
         kind: "settings",
         onSelect: () => {
-          setServerHubTab("overview");
+          setServerHubTab("passport");
           setServerHubOpen(true);
         },
       });
@@ -1131,7 +1162,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
 
   const shellClass =
     "ec-shell" +
-    (homeOpen ? " ec-shell--home" : "") +
+    (homeOpen || agentOfficeOpen ? " ec-shell--home" : "") +
     (rightRailVisible ? " ec-shell--has-server" : "") +
     (navOpen ? " ec-shell--nav-open" : "") +
     (membersOpen ? " ec-shell--members-open" : "");
@@ -1139,6 +1170,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   // v1.6.57 — общие nav-хендлеры для server-rail (desktop) и ServerSwitcher (mobile).
   const navSelectServer = (id: string) => {
     setHomeOpen(false);
+    setAgentOfficeOpen(false);
     setHelpOpen(false);
     setAdminOpen(false);
     setActiveServerId(id);
@@ -1147,6 +1179,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   };
   const navOpenDms = () => {
     setHomeOpen(false);
+    setAgentOfficeOpen(false);
     setHelpOpen(false);
     setAdminOpen(false);
     setFriendsOpen(false);
@@ -1170,6 +1203,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     setShowProfile(false);
     setFriendsOpen(false);
     setHomeOpen(false);
+    setAgentOfficeOpen(false);
     setHelpOpen(false);
     setAdminOpen(false);
     if (activeServerId == null && servers[0]) setActiveServerId(servers[0].id);
@@ -1179,6 +1213,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     setShowProfile(false);
     setFriendsOpen(false);
     setHomeOpen(false);
+    setAgentOfficeOpen(false);
     setHelpOpen(false);
     setAdminOpen(false);
     setActiveServerId(null);
@@ -1188,6 +1223,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   const bnavFriends = () => {
     setShowProfile(false);
     setHomeOpen(false);
+    setAgentOfficeOpen(false);
     setHelpOpen(false);
     setAdminOpen(false);
     setActiveServerId(null);
@@ -1294,7 +1330,13 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
 
       {/* Командный бар над чатом: локация (слева) · действия (справа). */}
       <header className="ec-shell__cmdbar">
-        {homeOpen ? (
+        {agentOfficeOpen ? (
+          <div className="ec-shell__breadcrumb ec-shell__loc">
+            <span className="ec-shell__loc-space">Eclipse Forge OS</span>
+            <span className="ec-shell__loc-sep">/</span>
+            <span className="ec-shell__loc-name">Agent Office</span>
+          </div>
+        ) : homeOpen ? (
           <div className="ec-shell__breadcrumb ec-shell__loc">
             <span className="ec-shell__loc-name">Сводка</span>
           </div>
@@ -1330,6 +1372,21 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               утилиты (тема, уведомления, справка) уехали в профиль-меню
               за аватаром (StatusMenu), чтобы первый слой не шумел.
               Админ-иконки остаются — они и так role-gated. */}
+          <button
+            type="button"
+            onClick={() => agentOfficeOpen ? openHome() : openAgentOffice()}
+            title="Agent Office — наблюдаемая работа AI-команды"
+            aria-label="Открыть Agent Office"
+            aria-pressed={agentOfficeOpen}
+            className="ec-icon-btn"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <circle cx="12" cy="5" r="2.25" />
+              <circle cx="5" cy="17" r="2.25" />
+              <circle cx="19" cy="17" r="2.25" />
+              <path d="M12 7.25v4.25M10.25 12.5 6.6 15M13.75 12.5 17.4 15" />
+            </svg>
+          </button>
           {inServerView && (
             <button
               type="button"
@@ -1606,7 +1663,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             onReorderCategories={reorderCategories}
             onShowServerInfo={() => {
               if (!activeServer) return;
-              setServerHubTab("overview");
+              setServerHubTab("passport");
               setServerHubOpen(true);
             }}
             onOpenServerSettings={() => {
@@ -2114,7 +2171,9 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
         )}
 
         <Suspense fallback={null}>
-        {helpOpen ? (
+        {agentOfficeOpen ? (
+          <AgentOffice />
+        ) : helpOpen ? (
           <HelpPanel onClose={() => setHelpOpen(false)} />
         ) : adminOpen && activeServer ? (
           <AdminPanel
@@ -2893,6 +2952,23 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           onDeleteBanner={() => deleteServerBanner(activeServer.id)}
           onUpdateIdentity={(patch) => updateServerIdentity(activeServer.id, patch)}
           onUpdateLock={(locked, reason) => updateServerLock(activeServer.id, locked, reason)}
+          onOpenChannel={(channelId) => {
+            setServerHubOpen(false);
+            setHomeOpen(false);
+            setStatusBoardOpen(false);
+            setServerView("chat");
+            setSelectedChannelId(channelId);
+            if (isMobile) setNavOpen(false);
+          }}
+          onOpenAction={(actionItemId, channelId) => {
+            setServerHubOpen(false);
+            setHomeOpen(false);
+            setStatusBoardOpen(false);
+            setServerView("chat");
+            setSelectedChannelId(channelId);
+            setOpenActionItemId(actionItemId);
+            if (isMobile) setNavOpen(false);
+          }}
         />
       )}
 

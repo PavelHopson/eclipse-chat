@@ -10,6 +10,7 @@ import {
   repositoryFromGitHubPayload,
   verifyGitHubSignature,
 } from "../lib/integrations/github.js";
+import { parseGitHubIntegrationConfig } from "../lib/integrations/config.js";
 import {
   parseTelegramConfig,
   type TelegramConfig,
@@ -76,32 +77,6 @@ const updateBody = z.object({
   repository: githubRepository.optional(),
 });
 
-type GitHubConfig = { repository: string | null };
-
-function parseStoredJson(value: string): Record<string, unknown> | null {
-  for (const candidate of [value, (() => {
-    try {
-      return decryptSecret(value);
-    } catch {
-      return "";
-    }
-  })()]) {
-    if (!candidate) continue;
-    try {
-      const parsed = JSON.parse(candidate) as unknown;
-      if (parsed && typeof parsed === "object") return parsed as Record<string, unknown>;
-    } catch {
-      // Try the next storage format for legacy integrations.
-    }
-  }
-  return null;
-}
-
-function parseGitHubConfig(value: string): GitHubConfig {
-  const parsed = parseStoredJson(value);
-  return { repository: normalizeGitHubRepository(parsed?.repository) };
-}
-
 function decryptWebhookSecret(value: string): { secret: string; legacyPlaintext: boolean } {
   try {
     return { secret: decryptSecret(value), legacyPlaintext: false };
@@ -148,7 +123,7 @@ function serialize(int: IntegrationRow & { webhookSecret?: string | null }) {
     eventCount: int.eventCount,
     repository:
       int.type === "GITHUB_WEBHOOK" && int.config
-        ? parseGitHubConfig(int.config).repository
+        ? parseGitHubIntegrationConfig(int.config).repository
         : null,
   };
 }
@@ -425,7 +400,7 @@ export function registerIntegrationRoutes(app: FastifyInstance) {
       } catch {
         return reply.status(400).send({ error: "Invalid JSON" });
       }
-      const configuredRepository = parseGitHubConfig(integration.config).repository;
+      const configuredRepository = parseGitHubIntegrationConfig(integration.config).repository;
       const payloadRepository = repositoryFromGitHubPayload(payload);
       if (configuredRepository && payloadRepository?.toLowerCase() !== configuredRepository.toLowerCase()) {
         return reply.status(403).send({ error: "Repository does not match integration" });
