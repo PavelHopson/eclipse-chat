@@ -156,6 +156,56 @@ export type AiProviderDiagnosticsResponse = {
   gatewayTelemetry: AiGatewayTelemetryDiagnostic;
 };
 
+// ===== Ecosystem Command Center ===========================================
+
+export type EcosystemServiceId =
+  | "eclipse-chat"
+  | "eclipse-ai-hub"
+  | "eclipse-library"
+  | "hopson-sentinel"
+  | "eclipse-dnd-forge"
+  | "eclipse-media";
+
+export type EcosystemRuntimeStatus =
+  | "operational"
+  | "degraded"
+  | "offline"
+  | "unconfigured";
+
+export type EcosystemServiceHealth = {
+  id: EcosystemServiceId;
+  name: string;
+  role: string;
+  maturity: "live" | "beta" | "prototype";
+  status: EcosystemRuntimeStatus;
+  evidence: string;
+  openUrl: string | null;
+  latencyMs: number | null;
+  checkedAt: string;
+};
+
+export type EcosystemIntegrationHealth = {
+  id: string;
+  from: EcosystemServiceId;
+  to: EcosystemServiceId;
+  label: string;
+  stage: "active" | "experimental" | "planned";
+  status: EcosystemRuntimeStatus;
+};
+
+export type EcosystemHealthResponse = {
+  generatedAt: string;
+  cacheTtlSeconds: number;
+  summary: {
+    total: number;
+    operational: number;
+    attention: number;
+    local: number;
+  };
+  services: EcosystemServiceHealth[];
+  integrations: EcosystemIntegrationHealth[];
+};
+
 // ===== Helpers =============================================================
 
 function buildQuery(params: Record<string, string | number | undefined>): string {
@@ -284,6 +334,14 @@ export async function listPlatformAuditLog(
 
 export async function listAiProviderDiagnostics(): Promise<AiProviderDiagnosticsResponse> {
   return apiJson<AiProviderDiagnosticsResponse>("api/platform/ai/providers");
+}
+
+export async function getEcosystemHealth(
+  options: { refresh?: boolean } = {},
+): Promise<EcosystemHealthResponse> {
+  return apiJson<EcosystemHealthResponse>(
+    `api/platform/ecosystem/health${options.refresh ? "?refresh=true" : ""}`,
+  );
 }
 
 // ===== Details views (v1.2.8 P3) ===========================================

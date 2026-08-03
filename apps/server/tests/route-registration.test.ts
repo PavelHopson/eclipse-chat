@@ -6,8 +6,62 @@ import { registerVisitRoutes } from "../src/routes/visits.js";
 import { registerMemoryRoutes } from "../src/routes/memory.js";
 import { registerPersonalDigestRoutes } from "../src/routes/personalDigest.js";
 import { registerActionRoutes } from "../src/routes/actions.js";
+import { registerPlatformRoutes } from "../src/routes/platform.js";
+import { registerEcosystemIdentityRoutes } from "../src/routes/ecosystemIdentity.js";
 
 describe("server route registration", () => {
+  it("protects ecosystem authorization and rate-limits both PKCE steps", async () => {
+    const app = Fastify();
+    const routes = new Map<
+      string,
+      { guards: string[]; rateLimit?: { max?: number; timeWindow?: number } }
+    >();
+    app.addHook("onRoute", (route) => {
+      if (!["/api/ecosystem/authorize", "/api/ecosystem/token"].includes(route.url)) return;
+      const routeGuards = Array.isArray(route.onRequest)
+        ? route.onRequest
+        : route.onRequest
+          ? [route.onRequest]
+          : [];
+      routes.set(route.url, {
+        guards: routeGuards.map((guard) => guard.name),
+        rateLimit: route.config?.rateLimit as
+          | { max?: number; timeWindow?: number }
+          | undefined,
+      });
+    });
+
+    await registerEcosystemIdentityRoutes(app);
+    expect(routes.get("/api/ecosystem/authorize")).toEqual({
+      guards: ["requireJwt"],
+      rateLimit: { max: 20, timeWindow: 5 * 60 * 1000 },
+    });
+    expect(routes.get("/api/ecosystem/token")).toEqual({
+      guards: [],
+      rateLimit: { max: 60, timeWindow: 5 * 60 * 1000 },
+    });
+  });
+
+  it("protects ecosystem health with owner auth and a bounded probe limit", async () => {
+    const app = Fastify();
+    let guards: string[] = [];
+    let rateLimit: { max?: number; timeWindow?: number } | undefined;
+    app.addHook("onRoute", (route) => {
+      if (route.method !== "GET" || route.url !== "/api/platform/ecosystem/health") return;
+      const routeGuards = Array.isArray(route.preHandler)
+        ? route.preHandler
+        : route.preHandler
+          ? [route.preHandler]
+          : [];
+      guards = routeGuards.map((guard) => guard.name);
+      rateLimit = route.config?.rateLimit as typeof rateLimit;
+    });
+
+    await registerPlatformRoutes(app);
+    expect(guards).toEqual(["requireJwt", "requirePlatformOwner"]);
+    expect(rateLimit).toEqual({ max: 12, timeWindow: 60 * 1000 });
+  });
+
   it("registers every server route exactly once", async () => {
     const app = Fastify();
     let createServerGuards: string[] = [];

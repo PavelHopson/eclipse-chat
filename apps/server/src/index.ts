@@ -14,6 +14,7 @@ import { registerAttachmentRoutes } from "./routes/attachments.js";
 import { registerAutomationRoutes } from "./routes/automations.js";
 import { registerAnalyticsRoutes } from "./routes/analytics.js";
 import { registerAuthRoutes } from "./routes/auth.js";
+import { registerEcosystemIdentityRoutes } from "./routes/ecosystemIdentity.js";
 import { registerBotRoutes } from "./routes/bots.js";
 import { registerTwoFactorRoutes } from "./routes/twoFactor.js";
 import { registerChannelRoutes } from "./routes/channels.js";
@@ -237,6 +238,7 @@ app.get("/api/health", async () => {
 app.get("/api/version", async () => serverManifest);
 
 await registerAuthRoutes(app);
+await registerEcosystemIdentityRoutes(app);
 await registerTwoFactorRoutes(app);
 await registerBotRoutes(app);
 // Startup diagnostic: log sharp format support так admin сразу видит

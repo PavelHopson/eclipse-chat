@@ -1,0 +1,166 @@
+/* Dedicated critical styles for the standalone ecosystem authorization route.
+   Do not depend on AppShell's lazy app.css: unauthenticated users never load it. */
+.ec-identity-shell {
+  position: relative;
+  display: grid;
+  min-height: 100dvh;
+  place-items: center;
+  padding: clamp(18px, 5vw, 48px);
+  overflow: hidden;
+  color: var(--ec-text);
+  background:
+    radial-gradient(circle at 18% 18%, color-mix(in srgb, var(--ec-accent) 14%, transparent), transparent 30%),
+    radial-gradient(circle at 84% 78%, color-mix(in srgb, var(--ec-status-warn) 8%, transparent), transparent 24%),
+    var(--ec-bg);
+}
+
+.ec-identity-shell::before {
+  content: "";
+  position: absolute;
+  width: min(58vw, 640px);
+  aspect-ratio: 1;
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 24%, transparent);
+  border-radius: 50%;
+  opacity: 0.34;
+  box-shadow:
+    0 0 90px color-mix(in srgb, var(--ec-accent) 12%, transparent),
+    inset -24px 0 42px color-mix(in srgb, var(--ec-status-warn) 8%, transparent);
+  pointer-events: none;
+}
+
+.ec-identity-card {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: min(470px, 100%);
+  flex-direction: column;
+  gap: var(--ec-space-3);
+  padding: clamp(22px, 5vw, 34px);
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 20%, var(--ec-border-subtle));
+  border-radius: var(--ec-radius-xl);
+  background: color-mix(in srgb, var(--ec-surface-1) 94%, transparent);
+  box-shadow: var(--ec-shadow-lg), inset 0 1px 0 color-mix(in srgb, white 5%, transparent);
+  backdrop-filter: blur(18px);
+}
+
+.ec-identity-card .ec-kicker {
+  margin: 0;
+  color: var(--ec-accent);
+  font-family: var(--ec-font-mono);
+  font-size: var(--ec-text-2xs);
+  font-weight: 700;
+  letter-spacing: var(--ec-tracking-caps);
+}
+
+.ec-identity-card h1 {
+  margin: 0;
+  color: var(--ec-text-strong);
+  font-size: clamp(25px, 5vw, 34px);
+  line-height: 1.08;
+  letter-spacing: -0.035em;
+}
+
+.ec-identity-card__lead {
+  margin: 0 0 var(--ec-space-2);
+  color: var(--ec-text-muted);
+  font-size: var(--ec-text-sm);
+  line-height: 1.6;
+}
+
+.ec-identity-card__user { color: var(--ec-text-strong); }
+
+.ec-identity-card .ec-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  color: var(--ec-text-muted);
+  font-size: var(--ec-text-xs);
+  font-weight: 600;
+}
+
+.ec-identity-card .ec-field input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 var(--ec-space-3);
+  border: 1px solid var(--ec-border-default);
+  border-radius: var(--ec-radius-md);
+  outline: none;
+  background: var(--ec-surface-sunken);
+  color: var(--ec-text-strong);
+  font: inherit;
+  transition: border-color var(--ec-dur-fast) var(--ec-ease), box-shadow var(--ec-dur-fast) var(--ec-ease);
+}
+
+.ec-identity-card .ec-field input:focus-visible {
+  border-color: var(--ec-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ec-accent) 18%, transparent);
+}
+
+.ec-identity-card .ec-btn {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--ec-space-4);
+  border: 1px solid var(--ec-border-default);
+  border-radius: var(--ec-radius-md);
+  background: var(--ec-surface-2);
+  color: var(--ec-text-strong);
+  font-family: inherit;
+  font-size: var(--ec-text-sm);
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform var(--ec-dur-fast) var(--ec-ease), border-color var(--ec-dur-fast) var(--ec-ease), background var(--ec-dur-fast) var(--ec-ease);
+}
+
+.ec-identity-card .ec-btn:hover:not(:disabled) {
+  border-color: var(--ec-border-emphasis);
+  transform: translateY(-1px);
+}
+
+.ec-identity-card .ec-btn:focus-visible {
+  outline: 2px solid var(--ec-accent);
+  outline-offset: 2px;
+}
+
+.ec-identity-card .ec-btn:disabled { cursor: wait; opacity: 0.62; }
+
+.ec-identity-card .ec-btn--primary {
+  border-color: color-mix(in srgb, var(--ec-accent) 78%, white 12%);
+  background: var(--ec-accent);
+  color: white;
+  box-shadow: 0 10px 28px -14px color-mix(in srgb, var(--ec-accent) 72%, transparent);
+}
+
+.ec-identity-card .ec-btn--secondary { background: transparent; }
+.ec-identity-card__primary { width: 100%; margin-top: var(--ec-space-1); }
+
+.ec-identity-card .ec-form-error {
+  margin: 0;
+  padding: var(--ec-space-2) var(--ec-space-3);
+  border: 1px solid color-mix(in srgb, var(--ec-danger) 42%, transparent);
+  border-radius: var(--ec-radius-md);
+  background: color-mix(in srgb, var(--ec-danger) 10%, transparent);
+  color: var(--ec-danger);
+  font-size: var(--ec-text-xs);
+  line-height: 1.45;
+}
+
+.ec-identity-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ec-space-2);
+  margin-top: var(--ec-space-2);
+}
+
+@media (max-width: 480px) {
+  .ec-identity-shell { align-items: end; padding: var(--ec-space-3); }
+  .ec-identity-card { border-radius: var(--ec-radius-lg); }
+  .ec-identity-card__actions { flex-direction: column; }
+  .ec-identity-card__actions .ec-btn { width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ec-identity-card .ec-btn,
+  .ec-identity-card .ec-field input { transition: none; }
+}

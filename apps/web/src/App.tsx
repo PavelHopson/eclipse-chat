@@ -3,6 +3,7 @@ import { lazy, Suspense, useEffect, useState } from "react";
 import { useAuth } from "./hooks/useAuth";
 import { DeadlineNotFoundPage } from "./pages/DeadlineNotFoundPage";
 import { LandingPage } from "./pages/LandingPage";
+import { EcosystemAuthorizePage } from "./pages/EcosystemAuthorizePage";
 import { NativeApkBanner } from "./components/NativeApkBanner";
 import { ConfirmProvider } from "./components/ConfirmDialog";
 
@@ -44,7 +45,8 @@ const CLIENT_VERSION =
  */
 const AUTH_PANEL_HASH = "#auth-panel";
 const AUTH_PANEL_HASH_RE = /^#auth-panel\/?$/i;
-const KNOWN_HASH_RE = /^(|#|#auth-panel\/?)$/i;
+const ECOSYSTEM_AUTHORIZE_HASH_RE = /^#authorize\/?$/i;
+const KNOWN_HASH_RE = /^(|#|#auth-panel\/?|#authorize\/?)$/i;
 
 function normalizeBasePath() {
   const base = import.meta.env.BASE_URL || "/";
@@ -228,6 +230,7 @@ export function App() {
   }, [updateAvailable]);
 
   const isAuthenticated = view !== "loading" && view !== "auth" && user;
+  const wantsEcosystemAuthorize = ECOSYSTEM_AUTHORIZE_HASH_RE.test(window.location.hash || "");
 
   const openAuthSurface = (mode: "login" | "register") => {
       clearError();
@@ -349,6 +352,12 @@ export function App() {
         <DeadlineNotFoundPage />
       ) : view === "loading" ? (
         <main style={loadingStyle}>Загрузка…</main>
+      ) : wantsEcosystemAuthorize ? (
+        <EcosystemAuthorizePage
+          authError={error}
+          onLogin={login}
+          user={user}
+        />
       ) : !isAuthenticated ? (
         <LandingPage
           authMode={authSurface}

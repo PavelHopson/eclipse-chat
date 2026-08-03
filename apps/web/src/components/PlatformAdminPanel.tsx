@@ -3,6 +3,7 @@ import { Modal } from "./Modal";
 import { Avatar } from "./Avatar";
 import { PlatformUserDetailsModal } from "./PlatformUserDetailsModal";
 import { PlatformServerDetailsModal } from "./PlatformServerDetailsModal";
+import { EcosystemCommandCenter } from "./EcosystemCommandCenter";
 import { ApiError } from "../lib/api";
 import {
   banPlatformUser,
@@ -156,7 +157,7 @@ type Props = {
   currentUserId: string;
 };
 
-type Tab = "users" | "servers" | "audit" | "ai";
+type Tab = "ecosystem" | "users" | "servers" | "audit" | "ai";
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("ru-RU", {
@@ -176,12 +177,21 @@ function formatDateTime(iso: string): string {
 }
 
 export function PlatformAdminPanel({ onClose, currentUserId }: Props) {
-  const [tab, setTab] = useState<Tab>("users");
+  const [tab, setTab] = useState<Tab>("ecosystem");
 
   return (
     <Modal title="Platform Admin" onClose={onClose} width={1040}>
       <div className="ec-platform-admin">
         <div className="ec-platform-admin__tabs" role="tablist">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === "ecosystem"}
+            className="ec-platform-admin__tab"
+            onClick={() => setTab("ecosystem")}
+          >
+            Экосистема
+          </button>
           <button
             type="button"
             role="tab"
@@ -220,6 +230,7 @@ export function PlatformAdminPanel({ onClose, currentUserId }: Props) {
           </button>
         </div>
 
+        {tab === "ecosystem" && <EcosystemCommandCenter />}
         {tab === "users" && <UsersTab currentUserId={currentUserId} />}
         {tab === "servers" && <ServersTab />}
         {tab === "audit" && <AuditTab />}

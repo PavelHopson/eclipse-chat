@@ -19,8 +19,9 @@ scope доступа, понятное действие и подтвержде�
 - [x] **Message → operational entity** — reviewed draft из сообщения в decision,
   risk, requirement, task или follow-up без скрытого автоматического сохранения.
   `v1.7.28` добавил reviewed flow, `v1.7.29` закрыл first-class risk/requirement.
-- [ ] **Ecosystem Command Center** — состояние Eclipse Chat, AI Hub, Library,
-  Sentinel, DnD Forge и Media в одном operational dashboard.
+- [x] **Ecosystem Command Center** — состояние Eclipse Chat, AI Hub, Library,
+  Sentinel, DnD Forge и Media в одном operational dashboard; `v1.7.30` разделяет
+  runtime health, зрелость продукта и состояние межпроектных связей.
 - [ ] **GitHub rooms** — коммиты, PR, CI, release и deploy как проверяемые события
   комнаты с переходом к исходному репозиторию.
 - [ ] **Task-based AI routing** — выбор модели по типу задачи, цене, latency,
@@ -130,6 +131,23 @@ scope доступа, понятное действие и подтвержде�
   summary снабжать явными type labels и считать входной текст недоверенными данными.
 - [x] Добавить regression coverage для schema, default priority, fallback titles, board
   filters и digest importance; обновить service-worker cache до `v1.7.29`.
+
+### Ecosystem Command Center and identity foundation — v1.7.30
+
+- [x] Сделать вкладку «Экосистема» первым экраном Platform Admin: шесть продуктов,
+  понятные runtime-состояния, зрелость, latency, прямой переход и карта связей.
+- [x] Проверять только code-owned HTTPS allowlist с коротким timeout, `redirect: manual`,
+  30-секундным cache и owner-only endpoint; ручной refresh ограничить rate limit.
+- [x] Не публиковать локальный Sentinel Bridge и не путать `prototype` с аварией:
+  local-only узел получает отдельное состояние `unconfigured`.
+- [x] Добавить fail-closed identity issuer для будущего входа Chat → DnD Forge:
+  Ed25519 JWT, PKCE S256, exact redirect allowlist, одноразовый двухминутный code,
+  пятиминутный audience-bound token и public-only JWKS rotation set.
+- [x] Закрыть API regression-тестами для access control, rate limits, redirect/SSRF,
+  sanitized errors, cache, replay и duplicate key ids; обновить PWA cache до `v1.7.30`.
+- [x] Зафиксировать trust boundaries, PKCE flow, key rotation и production gate в
+  [`docs/ECOSYSTEM-IDENTITY.md`](docs/ECOSYSTEM-IDENTITY.md); не включать issuer до
+  готовности BFF runtime/DNS/TLS, scoped AI Hub client, rollback canary и 24h SLO.
 
 ### Operational integration slice — advertising room
 

@@ -10,6 +10,7 @@ import { deleteAllUserRefresh } from "../auth/refresh.js";
 import { disconnectUser } from "../realtime.js";
 import { listAiProviderDiagnostics } from "../ai/provider.js";
 import { getAiGatewayTelemetryDiagnostic } from "../ai/gatewayTelemetry.js";
+import { getEcosystemHealthSnapshot } from "../lib/ecosystemHealth.js";
 import {
   generateTemporaryPassword,
   PASSWORD_HASH_COST,
@@ -213,6 +214,10 @@ const auditQuery = z.object({
   offset: z.coerce.number().int().min(0).default(0),
 });
 
+const ecosystemHealthQuery = z.object({
+  refresh: z.enum(["true", "false"]).optional(),
+});
+
 export async function registerPlatformRoutes(app: FastifyInstance) {
   // Все routes — за двумя preHandler'ами.
   const guard = { preHandler: [requireJwt, requirePlatformOwner] };
@@ -287,6 +292,30 @@ export async function registerPlatformRoutes(app: FastifyInstance) {
       gatewayTelemetry,
     };
   });
+
+  // Fixed-target, owner-only health aggregation. The endpoint never accepts a
+  // URL and external responses are not persisted or exposed verbatim.
+  app.get(
+    "/api/platform/ecosystem/health",
+    {
+      ...guard,
+      config: { rateLimit: { max: 12, timeWindow: 60 * 1000 } },
+    },
+    async (req, reply) => {
+      const parsed = ecosystemHealthQuery.safeParse(req.query);
+      if (!parsed.success) {
+        return reply.status(400).send({ error: "Invalid query" });
+      }
+
+      return getEcosystemHealthSnapshot({
+        force: parsed.data.refresh === "true",
+        checkDatabase: async () => {
+          await db.$queryRaw`SELECT 1`;
+        },
+        getGatewayTelemetry: getAiGatewayTelemetryDiagnostic,
+      });
+    },
+  );
 
   // POST /api/platform/users/:id/ban — забанить пользователя.
   app.post("/api/platform/users/:id/ban", guard, async (req, reply) => {
