@@ -67,7 +67,7 @@ jobs:
           script: |
             set -euo pipefail
             test "$(id -u)" -eq 0
-            DND_COMMIT="37647b26fac7340f3f5c037bd794f35e9d84bdce"
+            DND_COMMIT="d8048ade3ab63e89050b5624f74ed8706e977b4b"
             DND_PATH="/var/www/eclipse-dnd-forge-bff"
             [[ "$DND_COMMIT" =~ ^[0-9a-f]{40}$ ]]
             test "$(git -C "$DND_PATH" remote get-url origin)" = "https://github.com/PavelHopson/eclipse-dnd-forge.git"
@@ -92,7 +92,7 @@ jobs:
           script: |
             set -euo pipefail
             test "$(id -u)" -eq 0
-            DND_COMMIT="47c5c1012686e6563d5d6cae05919bb716e73107"
+            DND_COMMIT="d8048ade3ab63e89050b5624f74ed8706e977b4b"
             DND_PATH="/var/www/eclipse-dnd-forge-bff"
             [[ "$DND_COMMIT" =~ ^[0-9a-f]{40}$ ]]
             test "$(git -C "$DND_PATH" remote get-url origin)" = "https://github.com/PavelHopson/eclipse-dnd-forge.git"
