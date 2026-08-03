@@ -96,11 +96,15 @@ Validation must require `alg=EdDSA`, the expected issuer, audience
 Never place a private `d` value, `jku` or `x5u` in the previous-key set. The
 server rejects duplicate key IDs and more than three previous keys.
 
-## Production gate
+## Production state
 
 The DnD consumer now implements tab-scoped PKCE/state, strict Ed25519/JWKS
-verification, opaque HttpOnly sessions, logout and regression tests. Production
-SSO still stays disabled until `api.dnd.eclipse-forge.ru` has its reviewed runtime,
-DNS/TLS, root-owned secrets, scoped AI Hub client, rollback canary and 24-hour SLO
-observation. Keep `ECOSYSTEM_IDENTITY_PRIVATE_KEY_B64` unset until those
-infrastructure gates pass.
+verification, opaque HttpOnly sessions, logout and regression tests. On 2026-08-03,
+run `30821010733` activated `api.dnd.eclipse-forge.ru`, TLS 1.2/1.3, exact-origin
+Nginx proxying and a dedicated VPS-generated Ed25519 key. The Chat environment is
+`root:www-data 0640`; JWKS returns only the public `OKP/Ed25519/EdDSA` key.
+
+The managed DnD provider is still disabled: `DND_BFF_AI_ENABLED=false` and the Pages
+build omits `VITE_DND_MANAGED_AI_ENABLED`. Enable neither until an authenticated PKCE
+canary, AI rollback drill and 24-hour SLO observation pass. Server-owned campaign ACL
+is a separate security gate and is not implied by successful identity issuance.
