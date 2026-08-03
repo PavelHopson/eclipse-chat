@@ -1,4 +1,4 @@
-name: Deploy DnD BFF dark launch
+name: Operate DnD BFF production
 
 on:
   workflow_dispatch:
@@ -13,6 +13,11 @@ on:
         required: true
         default: false
         type: boolean
+      confirm_public_activation:
+        description: "Issue TLS, expose the BFF and enable Chat Ed25519 identity while AI stays disabled"
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -22,7 +27,25 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  validate-inputs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Require exactly one production operation
+        shell: bash
+        run: |
+          set -euo pipefail
+          selected=0
+          if [[ "${{ inputs.confirm_dark_launch }}" == "true" ]]; then selected=$((selected + 1)); fi
+          if [[ "${{ inputs.audit_public_prereqs }}" == "true" ]]; then selected=$((selected + 1)); fi
+          if [[ "${{ inputs.confirm_public_activation }}" == "true" ]]; then selected=$((selected + 1)); fi
+          if [[ "$selected" -ne 1 ]]; then
+            echo "::error::Select exactly one DnD production operation"
+            exit 1
+          fi
+
   audit-public:
+    needs: validate-inputs
     if: inputs.audit_public_prereqs == true
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -46,7 +69,78 @@ jobs:
             test "$(git -C "$DND_PATH" rev-parse FETCH_HEAD)" = "$DND_COMMIT"
             git -C "$DND_PATH" show "$DND_COMMIT:deploy/scripts/audit-public-prereqs.sh" | bash -s
 
+  activate-public:
+    needs: validate-inputs
+    if: inputs.confirm_public_activation == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    steps:
+      - name: Activate TLS, Nginx and Chat Ed25519 identity with rollback on failure
+        uses: appleboy/ssh-action@7eaf76671a0d7eec5d98ee897acda4f968735a17 # v1.2.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST_PROD }}
+          username: ${{ secrets.DEPLOY_USER_PROD }}
+          key: ${{ secrets.SSH_PRIVATE_KEY_PROD }}
+          command_timeout: 15m
+          script: |
+            set -euo pipefail
+            test "$(id -u)" -eq 0
+            DND_COMMIT="47c5c1012686e6563d5d6cae05919bb716e73107"
+            DND_PATH="/var/www/eclipse-dnd-forge-bff"
+            [[ "$DND_COMMIT" =~ ^[0-9a-f]{40}$ ]]
+            test "$(git -C "$DND_PATH" remote get-url origin)" = "https://github.com/PavelHopson/eclipse-dnd-forge.git"
+            git -C "$DND_PATH" fetch --quiet --no-tags --depth=1 origin "$DND_COMMIT"
+            test "$(git -C "$DND_PATH" rev-parse FETCH_HEAD)" = "$DND_COMMIT"
+            git -C "$DND_PATH" show "$DND_COMMIT:deploy/scripts/activate-public.sh" | bash -n
+            git -C "$DND_PATH" show "$DND_COMMIT:deploy/scripts/activate-public.sh" | bash -s
+
+      - name: Verify public TLS, redirect, JWKS and exact-origin boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          HOST="api.dnd.eclipse-forge.ru"
+          HTTPS_BASE="https://$HOST"
+
+          curl -fsS --max-time 15 "$HTTPS_BASE/health" | tee /tmp/dnd-health.json
+          jq -e '.ok == true and .service == "eclipse-dnd-bff" and .aiEnabled == false' /tmp/dnd-health.json
+
+          curl -sS --max-time 15 -D /tmp/http-headers -o /dev/null "http://$HOST/health"
+          grep -Eq '^HTTP/[^ ]+ 308' /tmp/http-headers
+          grep -Eqi '^Location: https://api\.dnd\.eclipse-forge\.ru/health' /tmp/http-headers
+
+          curl -sS --max-time 15 -D /tmp/https-headers -o /tmp/session.json \
+            -H 'Origin: https://dnd.eclipse-forge.ru' \
+            "$HTTPS_BASE/api/v1/auth/session"
+          jq -e '.authenticated == false' /tmp/session.json
+          grep -Eqi '^Strict-Transport-Security: max-age=31536000' /tmp/https-headers
+          grep -Eqi '^Access-Control-Allow-Origin: https://dnd\.eclipse-forge\.ru' /tmp/https-headers
+
+          evil_status="$(curl -sS --max-time 15 -D /tmp/evil-headers -o /dev/null -w '%{http_code}' \
+            -H 'Origin: https://evil.example' \
+            "$HTTPS_BASE/api/v1/auth/session")"
+          test "$evil_status" = "403"
+          if grep -Eqi '^Access-Control-Allow-Origin:' /tmp/evil-headers; then
+            echo "::error::Untrusted origin received a CORS allow header"
+            exit 1
+          fi
+
+          curl -fsS --max-time 15 \
+            https://app.star-crm.ru/eclipse-chat/api/ecosystem/.well-known/jwks.json \
+            | jq -e '.keys | length == 1 and .[0].kty == "OKP" and .[0].crv == "Ed25519" and .[0].alg == "EdDSA" and .[0].use == "sig" and (.[0] | has("d") | not)'
+
+          tls12="$(openssl s_client -connect "$HOST:443" -servername "$HOST" -tls1_2 -brief </dev/null 2>&1 || true)"
+          tls13="$(openssl s_client -connect "$HOST:443" -servername "$HOST" -tls1_3 -brief </dev/null 2>&1 || true)"
+          grep -q 'Protocol version: TLSv1.2' <<<"$tls12"
+          grep -q 'Protocol version: TLSv1.3' <<<"$tls13"
+          tls11="$(openssl s_client -connect "$HOST:443" -servername "$HOST" -tls1_1 -brief </dev/null 2>&1 || true)"
+          if grep -q 'Protocol version: TLSv1.1' <<<"$tls11"; then
+            echo "::error::Legacy TLS 1.1 is enabled"
+            exit 1
+          fi
+
   deploy-dark:
+    needs: validate-inputs
     if: inputs.confirm_dark_launch == true
     runs-on: ubuntu-latest
     timeout-minutes: 10
