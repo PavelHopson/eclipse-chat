@@ -4,6 +4,7 @@ import { actionItemInclude, serializeActionItem } from "../../actionItems.js";
 import { emitActionItemCreated, emitMessageOnChannel } from "../../realtime.js";
 import type { Tool } from "./types.js";
 import { defaultActionPriority } from "../../lib/actionCreate.js";
+import { canAccessBotChannel } from "../botAccess.js";
 
 /**
  * v1.7.29 — create_task: бот создаёт любой first-class ActionItem.
@@ -88,6 +89,9 @@ export const createTaskTool: Tool<Args, Result> = {
     if (!channel) return { ok: false, error: `Канал ${channel_id} не найден` };
     if (channel.serverId !== ctx.serverId) {
       return { ok: false, error: "Канал не из текущего сервера" };
+    }
+    if (!canAccessBotChannel(ctx.allowedChannelIds, channel.id)) {
+      return { ok: false, error: "Канал не входит в разрешённый scope агента" };
     }
 
     let assigneeUserId: string | null = null;

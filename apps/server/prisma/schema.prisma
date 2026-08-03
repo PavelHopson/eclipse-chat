@@ -350,8 +350,11 @@ model Bot {
   /// пустой — full override остаётся advanced-режимом.
   personality          String?
   /// JSON array capabilities: ["send_message", "create_action_item", "react"].
-  /// Сейчас всё разрешено — но field готов под granular ACL в v0.12.1.
+  /// Workbench применяет field как реальный ACL для Bot API и agent tools.
   capabilities String   @default("[\"send_message\",\"react\"]")
+  /// JSON array channel ids. NULL = все комнаты текущего workspace; [] = ни
+  /// одной. Любой non-null malformed value трактуется runtime как deny-all.
+  allowedChannelIds String?
   /// HTTPS URL для outbound webhook'ов. Backend POST'ит сюда события
   /// (message.created etc) от каналов где bot — member. Null = нет webhook.
   webhookUrl    String?
@@ -404,6 +407,10 @@ enum AuditEventType {
   BOT_PROMPT_UPDATE
   BOT_PROMPT_RESET
   BOT_TEST_INVOKE
+  /// Agent Workbench: owner changed capabilities or room scope.
+  BOT_ACCESS_POLICY_CHANGED
+  /// Agent Workbench: safe metadata-only record of an attempted tool call.
+  BOT_TOOL_CALL
   /// v1.0.1 Composio integration: OAuth-managed external apps.
   COMPOSIO_CONNECTED
   COMPOSIO_DISCONNECTED

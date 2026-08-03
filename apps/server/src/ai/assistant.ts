@@ -7,6 +7,12 @@ import { resolveBotSystemPrompt, type BotRoleValue } from "./botRoles.js";
 import { attemptCreateRowFromMention } from "./taskFromChat.js";
 import { runAgentLoop } from "./agentLoop.js";
 import type { FastifyBaseLogger } from "fastify";
+import {
+  canAccessBotChannel,
+  parseAllowedChannelIds,
+  parseBotCapabilities,
+  type BotCapability,
+} from "./botAccess.js";
 
 /**
  * @ai mention assistant + Bot v3 autoRespond.
@@ -104,6 +110,7 @@ async function getSystemUserId(): Promise<string | null> {
 }
 
 export type BotResponder = {
+  botId: string | null;
   userId: string;
   role: BotRoleValue;
   displayName: string;
@@ -111,46 +118,53 @@ export type BotResponder = {
   /** v1.2.27 — character/humor overlay (см. botRoles.ts). */
   personality: string | null;
   /** v1.2.29 — capabilities из Bot row (`agent` → tool-use loop). */
-  capabilities: string[];
+  capabilities: BotCapability[];
+  allowedChannelIds: string[] | null;
   isRealBot: boolean;
 };
 
 export async function getResponderForRole(
   serverId: string,
   role: BotRoleValue,
+  channelId?: string,
 ): Promise<BotResponder | null> {
   if (role !== "GENERIC") {
-    const bot = await db.bot.findFirst({
+    const bots = await db.bot.findMany({
       where: { serverId, role },
       orderBy: { createdAt: "asc" },
       select: {
+        id: true,
         userId: true,
         role: true,
         capabilities: true,
+        allowedChannelIds: true,
         systemPromptOverride: true,
         personality: true,
         user: { select: { displayName: true } },
       },
     });
-    if (bot) {
-      let caps: string[] = [];
-      try {
-        caps = JSON.parse(bot.capabilities) as string[];
-      } catch {
-        /* */
-      }
-      if (caps.includes("send_message")) {
+    for (const bot of bots) {
+      const caps = parseBotCapabilities(bot.capabilities);
+      const allowedChannelIds = parseAllowedChannelIds(bot.allowedChannelIds);
+      if (
+        caps.includes("send_message") &&
+        (!channelId || canAccessBotChannel(allowedChannelIds, channelId))
+      ) {
         return {
+          botId: bot.id,
           userId: bot.userId,
           role: bot.role as BotRoleValue,
           displayName: bot.user.displayName,
           systemPromptOverride: bot.systemPromptOverride,
           personality: bot.personality,
           capabilities: caps,
+          allowedChannelIds,
           isRealBot: true,
         };
       }
     }
+    // A configured role must not fall through to the unscoped system user.
+    if (bots.length > 0) return null;
   }
   const sys = await getSystemUserId();
   if (!sys) return null;
@@ -159,12 +173,14 @@ export async function getResponderForRole(
     select: { displayName: true },
   });
   return {
+    botId: null,
     userId: sys,
     role: "GENERIC",
     displayName: user?.displayName ?? "AI",
     systemPromptOverride: null,
     personality: null,
     capabilities: [],
+    allowedChannelIds: null,
     isRealBot: false,
   };
 }
@@ -279,6 +295,10 @@ async function executeChannelBotReply(params: {
     params;
 
   if (responder.userId === triggerUserId) return;
+  if (
+    responder.isRealBot &&
+    !canAccessBotChannel(responder.allowedChannelIds, channelId)
+  ) return;
 
   const ctx = await loadChannelContext(
     channelId,
@@ -316,13 +336,23 @@ async function executeChannelBotReply(params: {
   let toolCallCount = 0;
 
   if (agentMode) {
+    const availableToolLines = [
+      responder.capabilities.includes("send_message")
+        ? "- `post_message(channel_id, content)` — написать в другую разрешённую комнату."
+        : null,
+      responder.capabilities.includes("create_task")
+        ? "- `create_task(channel_id, title, type?, assignee_email?, due_at?)` — создать задачу или решение."
+        : null,
+      responder.capabilities.includes("update_table_row")
+        ? "- `update_table_row(table_id, row_id, cell_updates[])` — обновить строку разрешённой operational table."
+        : null,
+    ].filter((line): line is string => line !== null);
     const augmented =
       baseSystemPrompt +
       "\n\n## Доступные инструменты\n" +
-      "У тебя есть функции для действий в сервере:\n" +
-      "- `post_message(channel_id, content)` — написать в ДРУГОЙ канал. Для ответа в текущем — просто отвечай текстом, не вызывай tool.\n" +
-      "- `create_task(channel_id, title, type?, assignee_email?, due_at?)` — создать задачу / решение / follow-up.\n" +
-      "- `update_table_row(table_id, row_id, cell_updates[])` — обновить ячейки operational table.\n\n" +
+      (availableToolLines.length > 0
+        ? `${availableToolLines.join("\n")}\n\n`
+        : "Действия не разрешены: отвечай только текстом.\n\n") +
       "## Контекст\n" +
       `- channel_id (текущий): ${ctx.channel.id}\n` +
       `- channel name: #${ctx.channel.name}\n` +
@@ -333,10 +363,13 @@ async function executeChannelBotReply(params: {
       systemPrompt: augmented,
       initialMessages: [{ role: "user", content: ctx.basePrompt.user }],
       toolContext: {
+        botId: responder.botId ?? responder.userId,
         botUserId: responder.userId,
         botName: responder.displayName,
         serverId: ctx.channel.serverId,
         channelId,
+        capabilities: responder.capabilities,
+        allowedChannelIds: responder.allowedChannelIds,
         log,
       },
       log,
@@ -432,21 +465,23 @@ export async function maybeReplyToMention(
       });
       if (!channel || channel.type !== "TEXT") return;
 
-      const responder = await getResponderForRole(channel.serverId, mention.role);
+      const responder = await getResponderForRole(channel.serverId, mention.role, channelId);
       if (!responder) return;
 
       // v0.93 #5 ph2 + #4: try task-creation first. Если AI сочтёт
       // это запросом на создание row в таблице → создаст row + reply
       // confirmation, и мы skip'аем normal reply (один bot message).
       // Иначе fall through к normal AI reply.
-      const taskCreated = await attemptCreateRowFromMention({
-        channelId,
-        serverId: channel.serverId,
-        senderUserId: triggerUserId,
-        content: triggerContent,
-        responder,
-        log,
-      });
+      const taskCreated = responder.capabilities.includes("update_table_row")
+        ? await attemptCreateRowFromMention({
+            channelId,
+            serverId: channel.serverId,
+            senderUserId: triggerUserId,
+            content: triggerContent,
+            responder,
+            log,
+          })
+        : false;
       if (taskCreated) {
         return;
       }
@@ -492,27 +527,28 @@ export async function maybeAutoRespond(
       });
       if (!channel || channel.type !== "TEXT") return;
 
-      const autoBot = await db.bot.findFirst({
+      const autoBots = await db.bot.findMany({
         where: { serverId: channel.serverId, autoRespond: true },
         orderBy: { createdAt: "asc" },
         select: {
+          id: true,
           userId: true,
           role: true,
           capabilities: true,
+          allowedChannelIds: true,
           systemPromptOverride: true,
           personality: true,
           user: { select: { displayName: true } },
         },
       });
+      const autoBot = autoBots.find((candidate) => {
+        const capabilities = parseBotCapabilities(candidate.capabilities);
+        const allowed = parseAllowedChannelIds(candidate.allowedChannelIds);
+        return capabilities.includes("send_message") && canAccessBotChannel(allowed, channelId);
+      });
       if (!autoBot) return;
-
-      let caps: string[] = [];
-      try {
-        caps = JSON.parse(autoBot.capabilities) as string[];
-      } catch {
-        /* */
-      }
-      if (!caps.includes("send_message")) return;
+      const caps = parseBotCapabilities(autoBot.capabilities);
+      const allowedChannelIds = parseAllowedChannelIds(autoBot.allowedChannelIds);
 
       await executeChannelBotReply({
         channelId,
@@ -520,12 +556,14 @@ export async function maybeAutoRespond(
         triggerUserId,
         triggerContent,
         responder: {
+          botId: autoBot.id,
           userId: autoBot.userId,
           role: autoBot.role as BotRoleValue,
           displayName: autoBot.user.displayName,
           systemPromptOverride: autoBot.systemPromptOverride,
           personality: autoBot.personality,
           capabilities: caps,
+          allowedChannelIds,
           isRealBot: true,
         },
         mentionRole: autoBot.role as BotRoleValue,

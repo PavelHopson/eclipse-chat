@@ -2467,6 +2467,11 @@ export async function registerServerRoutes(app: FastifyInstance) {
     "BOT_CREATED",
     "BOT_DELETED",
     "BOT_KEY_REGENERATED",
+    "BOT_PROMPT_UPDATE",
+    "BOT_PROMPT_RESET",
+    "BOT_TEST_INVOKE",
+    "BOT_ACCESS_POLICY_CHANGED",
+    "BOT_TOOL_CALL",
   ] as const;
   const auditLogQuery = z.object({
     type: z.enum(serverScopedTypes).optional(),

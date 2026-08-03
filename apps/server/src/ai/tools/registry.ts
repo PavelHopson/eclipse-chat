@@ -2,6 +2,11 @@ import { postMessageTool } from "./postMessage.js";
 import { createTaskTool } from "./createTask.js";
 import { updateTableRowTool } from "./updateTableRow.js";
 import type { AnyTool, ToolCallContext, ToolResult } from "./types.js";
+import {
+  capabilityForAgentTool,
+  canInvokeAgentTool,
+} from "../botAccess.js";
+import { recordAudit } from "../../security/audit.js";
 
 /**
  * v1.2.28 — Tool registry.
@@ -31,7 +36,7 @@ export function getToolByName(name: string): AnyTool | null {
  * function calling. Anthropic использует другой shape, но мы пока
  * через OpenAI-compatible API (OpenRouter, DeepSeek native).
  */
-export function getOpenAiToolSpecs(): Array<{
+export function getOpenAiToolSpecs(capabilities?: readonly string[]): Array<{
   type: "function";
   function: {
     name: string;
@@ -39,7 +44,11 @@ export function getOpenAiToolSpecs(): Array<{
     parameters: AnyTool["parameters"];
   };
 }> {
-  return ALL_TOOLS.map((t) => ({
+  return ALL_TOOLS.filter((tool) => {
+    if (capabilities === undefined) return true;
+    const required = capabilityForAgentTool(tool.name);
+    return required !== null && capabilities.includes(required);
+  }).map((t) => ({
     type: "function",
     function: {
       name: t.name,
@@ -59,15 +68,36 @@ export async function executeToolCall(
   rawArgs: unknown,
   ctx: ToolCallContext,
 ): Promise<ToolResult<unknown>> {
+  const audit = (outcome: "success" | "denied" | "failed") => {
+    recordAudit("BOT_TOOL_CALL", {
+      userId: ctx.botUserId,
+      metadata: {
+        botId: ctx.botId,
+        serverId: ctx.serverId,
+        tool: name.slice(0, 64),
+        outcome,
+        sourceChannelId: ctx.channelId ?? null,
+      },
+    });
+  };
   const tool = getToolByName(name);
   if (!tool) {
+    audit("denied");
     return { ok: false, error: `Tool "${name}" не существует. Доступные: ${ALL_TOOLS.map((t) => t.name).join(", ")}` };
   }
+  const required = capabilityForAgentTool(name);
+  if (!required || !canInvokeAgentTool(ctx.capabilities, name)) {
+    audit("denied");
+    return { ok: false, error: `Tool "${name}" запрещён политикой доступа агента` };
+  }
   try {
-    return await tool.execute(rawArgs, ctx);
+    const result = await tool.execute(rawArgs, ctx);
+    audit(result.ok ? "success" : "failed");
+    return result;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     ctx.log.warn({ tool: name, err: message }, "Tool execution threw");
+    audit("failed");
     return { ok: false, error: `Tool error: ${message}` };
   }
 }

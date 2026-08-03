@@ -962,7 +962,9 @@ export function ServerHubModal({
         </>
       )}
 
-      {active === "bots" && isAdminOrOwner && <BotsTab serverId={server.id} />}
+      {active === "bots" && isAdminOrOwner && (
+        <BotsTab serverId={server.id} channels={channels} canManage={isOwner} />
+      )}
 
       {/* === Footer: Опасная зона === */}
       <div

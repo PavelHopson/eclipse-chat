@@ -2,6 +2,13 @@ import { useCallback, useEffect, useState } from "react";
 import { ApiError, apiJson, api } from "../lib/api";
 import type { BotRole } from "../lib/botRoles";
 
+export type BotCapability =
+  | "send_message"
+  | "react"
+  | "agent"
+  | "create_task"
+  | "update_table_row";
+
 /**
  * Bot row из GET /api/servers/:id/bots.
  * `apiKey` НЕ отдаётся бэком — только при create/regenerate (один раз).
@@ -23,7 +30,9 @@ export type BotRow = {
   shadowUserId: string;
   /** Префикс API key для display ("ecb_AbCd…"). Не secret. */
   apiKeyPrefix: string;
-  capabilities: string[];
+  capabilities: BotCapability[];
+  /** null = every room in this workspace; [] = no rooms. */
+  allowedChannelIds: string[] | null;
   /** Outbound webhook URL для message.created events. Null = нет webhook. */
   webhookUrl: string | null;
   /** True если webhookSecret set (для display «secret configured» badge). */
@@ -158,6 +167,8 @@ export function useBots(serverId: string | null) {
         systemPromptOverride?: string | null;
         personality?: string | null;
         agentMode?: boolean;
+        capabilities?: BotCapability[];
+        allowedChannelIds?: string[] | null;
         webhookUrl?: string | null;
         webhookSecret?: string | null;
       },
@@ -258,6 +269,22 @@ export function useBots(serverId: string | null) {
     [serverId],
   );
 
+  const fetchActivity = useCallback(
+    async (botId: string): Promise<BotActivityEvent[] | null> => {
+      if (!serverId) return null;
+      try {
+        const data = await apiJson<{ events: BotActivityEvent[] }>(
+          `/api/servers/${encodeURIComponent(serverId)}/bots/${encodeURIComponent(botId)}/activity`,
+        );
+        return data.events;
+      } catch (e) {
+        setError(e instanceof ApiError ? e.message : "Не удалось загрузить журнал агента");
+        return null;
+      }
+    },
+    [serverId],
+  );
+
   return {
     bots,
     loading,
@@ -271,6 +298,7 @@ export function useBots(serverId: string | null) {
     dismissRevealedKey,
     fetchUsage,
     testBot,
+    fetchActivity,
   };
 }
 
@@ -286,6 +314,26 @@ export type BotUsage = {
     type: "TEXT" | "VOICE" | "BROADCAST" | "EXECUTION";
     count: number;
   }>;
+};
+
+export type BotActivityEvent = {
+  id: string;
+  type:
+    | "BOT_CREATED"
+    | "BOT_KEY_REGENERATED"
+    | "BOT_PROMPT_UPDATE"
+    | "BOT_PROMPT_RESET"
+    | "BOT_TEST_INVOKE"
+    | "BOT_ACCESS_POLICY_CHANGED"
+    | "BOT_TOOL_CALL";
+  createdAt: string;
+  metadata: {
+    tool?: string;
+    outcome?: "success" | "denied" | "failed";
+    provider?: string;
+    latencyMs?: number;
+    channelScope?: "all" | number;
+  };
 };
 
 /** v1.0 #11 AI controls: test-run response. */

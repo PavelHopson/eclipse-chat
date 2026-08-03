@@ -2,6 +2,11 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import bcrypt from "bcryptjs";
 import { db } from "../db.js";
 import type { BotRoleValue } from "../ai/botRoles.js";
+import {
+  parseAllowedChannelIds,
+  parseBotCapabilities,
+  type BotCapability,
+} from "../ai/botAccess.js";
 
 /**
  * Bot auth middleware.
@@ -31,7 +36,9 @@ export type BotContext = {
   serverId: string;
   userId: string;
   ownerUserId: string;
-  capabilities: string[];
+  capabilities: BotCapability[];
+  /** null = every channel in this bot's own workspace. */
+  allowedChannelIds: string[] | null;
   /** Taxonomy-роль бота (GENERIC | MODERATOR | PM | KNOWLEDGE | SALES). */
   role: BotRoleValue;
 };
@@ -78,14 +85,7 @@ export async function requireBotAuth(
     void reply.status(401).send({ error: "Invalid bot key" });
     return;
   }
-  // Parse capabilities (graceful fallback на пустой массив).
-  let capabilities: string[] = [];
-  try {
-    const parsed = JSON.parse(bot.capabilities);
-    if (Array.isArray(parsed)) capabilities = parsed;
-  } catch {
-    /* */
-  }
+  const capabilities = parseBotCapabilities(bot.capabilities);
   req.bot = {
     id: bot.id,
     name: bot.name,
@@ -93,6 +93,7 @@ export async function requireBotAuth(
     userId: bot.userId,
     ownerUserId: bot.ownerUserId,
     capabilities,
+    allowedChannelIds: parseAllowedChannelIds(bot.allowedChannelIds),
     role: bot.role as BotRoleValue,
   };
   // Fire-and-forget lastUsedAt update

@@ -2,6 +2,7 @@ import { z } from "zod";
 import { db } from "../../db.js";
 import { emitTableEvent } from "../../realtime.js";
 import type { Tool } from "./types.js";
+import { canAccessBotScopedResource } from "../botAccess.js";
 
 /**
  * v1.2.28 — update_table_row: бот меняет cells в Operational Table.
@@ -71,11 +72,14 @@ export const updateTableRowTool: Tool<Args, Result> = {
 
     const table = await db.table.findUnique({
       where: { id: table_id },
-      select: { id: true, serverId: true, fields: { select: { id: true } } },
+      select: { id: true, serverId: true, channelId: true, fields: { select: { id: true } } },
     });
     if (!table) return { ok: false, error: `Таблица ${table_id} не найдена` };
     if (table.serverId !== ctx.serverId) {
       return { ok: false, error: "Таблица не из текущего сервера" };
+    }
+    if (!canAccessBotScopedResource(ctx.allowedChannelIds, table.channelId)) {
+      return { ok: false, error: "Таблица не входит в разрешённый scope агента" };
     }
 
     const row = await db.tableRow.findUnique({

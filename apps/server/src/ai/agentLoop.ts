@@ -72,7 +72,7 @@ export async function runAgentLoop(opts: AgentRunOptions): Promise<AgentRunResul
   const maxTurns = opts.maxTurns ?? MAX_TURNS;
   const startedAt = Date.now();
 
-  const toolSpecs = getOpenAiToolSpecs();
+  const toolSpecs = getOpenAiToolSpecs(toolContext.capabilities);
   const messages: ChatMessage[] = [
     { role: "system", content: systemPrompt },
     ...initialMessages,

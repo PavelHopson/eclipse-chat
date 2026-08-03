@@ -2,6 +2,7 @@ import { z } from "zod";
 import { db } from "../../db.js";
 import { emitMessageOnChannel } from "../../realtime.js";
 import type { Tool } from "./types.js";
+import { canAccessBotChannel } from "../botAccess.js";
 
 /**
  * v1.2.28 — post_message: бот пишет в указанный канал того же сервера.
@@ -57,6 +58,9 @@ export const postMessageTool: Tool<Args, Result> = {
     if (!channel) return { ok: false, error: `Канал ${channel_id} не найден` };
     if (channel.serverId !== ctx.serverId) {
       return { ok: false, error: "Канал не из текущего сервера" };
+    }
+    if (!canAccessBotChannel(ctx.allowedChannelIds, channel.id)) {
+      return { ok: false, error: "Канал не входит в разрешённый scope агента" };
     }
     if (channel.type !== "TEXT") {
       return { ok: false, error: `Tool post_message работает только в TEXT-каналах (этот: ${channel.type})` };

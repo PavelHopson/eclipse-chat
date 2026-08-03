@@ -1,4 +1,5 @@
 import type { FastifyBaseLogger } from "fastify";
+import type { BotCapability } from "../botAccess.js";
 
 /**
  * v1.2.28 — AI Tools foundation (Партия 2, slice 1).
@@ -15,6 +16,8 @@ import type { FastifyBaseLogger } from "fastify";
 
 /** Контекст вызова tool'а — приходит из agent loop'а. */
 export type ToolCallContext = {
+  /** Persistent Bot.id used by policy and metadata-only audit. */
+  botId: string;
   /** Shadow user id бота (Bot.userId). Под этим userId создаются messages/actions. */
   botUserId: string;
   /** Display name бота (для логирования / audit). */
@@ -23,6 +26,10 @@ export type ToolCallContext = {
   serverId: string;
   /** Канал-источник trigger'а (бот по умолчанию пишет туда, если args не задают другой). */
   channelId?: string;
+  /** Explicit allowlist. Tool execution must never infer permissions from the prompt. */
+  capabilities: BotCapability[];
+  /** null = every room in this workspace; [] = no rooms. */
+  allowedChannelIds: string[] | null;
   /** Fastify logger — для structured logs о tool calls. */
   log: FastifyBaseLogger;
 };

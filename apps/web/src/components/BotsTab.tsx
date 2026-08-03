@@ -2,11 +2,14 @@ import type { CSSProperties } from "react";
 import { useState } from "react";
 import {
   useBots,
+  type BotActivityEvent,
+  type BotCapability,
   type BotKeyReveal,
   type BotRow,
   type BotTestResult,
   type BotUsage,
 } from "../hooks/useBots";
+import type { ChannelRow } from "../hooks/useChannels";
 import { EmptyState } from "./EmptyState";
 import { EmptyBotsIcon } from "./EmptyIcons";
 import { useConfirm } from "./ConfirmDialog";
@@ -20,6 +23,51 @@ import {
 
 type Props = {
   serverId: string;
+  channels: ChannelRow[];
+  canManage: boolean;
+};
+
+const WORKBENCH_ACTIONS: ReadonlyArray<{
+  capability: BotCapability;
+  label: string;
+  description: string;
+}> = [
+  {
+    capability: "send_message",
+    label: "Писать сообщения",
+    description: "Отвечать в комнатах и публиковать результат.",
+  },
+  {
+    capability: "create_task",
+    label: "Создавать задачи",
+    description: "Фиксировать task, decision, risk и follow-up.",
+  },
+  {
+    capability: "update_table_row",
+    label: "Обновлять таблицы",
+    description: "Менять строки только в разрешённых комнатах.",
+  },
+  {
+    capability: "react",
+    label: "Ставить реакции",
+    description: "Добавлять реакции через Bot API.",
+  },
+];
+
+type AccessDraft = {
+  enabled: boolean;
+  capabilities: BotCapability[];
+  allowedChannelIds: string[] | null;
+};
+
+const ACTIVITY_LABELS: Record<BotActivityEvent["type"], string> = {
+  BOT_CREATED: "Агент создан",
+  BOT_KEY_REGENERATED: "API-ключ заменён",
+  BOT_PROMPT_UPDATE: "System prompt обновлён",
+  BOT_PROMPT_RESET: "System prompt сброшен",
+  BOT_TEST_INVOKE: "Тестовый запуск",
+  BOT_ACCESS_POLICY_CHANGED: "Доступы изменены",
+  BOT_TOOL_CALL: "Действие агента",
 };
 
 // v1.7.9 slice 6 (продолжение) — остаточные статические inline-стили
@@ -267,7 +315,7 @@ function CreateBotForm({
   );
 }
 
-export function BotsTab({ serverId }: Props) {
+export function BotsTab({ serverId, channels, canManage }: Props) {
   const confirm = useConfirm();
   const {
     bots,
@@ -281,6 +329,7 @@ export function BotsTab({ serverId }: Props) {
     dismissRevealedKey,
     fetchUsage,
     testBot,
+    fetchActivity,
   } = useBots(serverId);
   const [showCreate, setShowCreate] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -298,6 +347,8 @@ export function BotsTab({ serverId }: Props) {
   const [testOpen, setTestOpen] = useState<string | null>(null);
   /** v1.0 #11 AI controls: bot id у которого открыта statistics panel. */
   const [usageOpen, setUsageOpen] = useState<string | null>(null);
+  const [accessOpen, setAccessOpen] = useState<string | null>(null);
+  const [activityOpen, setActivityOpen] = useState<string | null>(null);
   /** Drafts of webhook URLs + secrets, keyed by botId. */
   const [webhookDrafts, setWebhookDrafts] = useState<Record<string, { url: string; secret: string }>>({});
   const [promptDrafts, setPromptDrafts] = useState<Record<string, string>>({});
@@ -307,6 +358,8 @@ export function BotsTab({ serverId }: Props) {
   const [testResults, setTestResults] = useState<Record<string, BotTestResult | null>>({});
   /** v1.0: usage stats cache per bot. Lazy-fetched on first open. */
   const [usageCache, setUsageCache] = useState<Record<string, BotUsage>>({});
+  const [activityCache, setActivityCache] = useState<Record<string, BotActivityEvent[]>>({});
+  const [accessDrafts, setAccessDrafts] = useState<Record<string, AccessDraft>>({});
   /** v1.0: per-bot busy flag для test/usage operations (не блокирует whole tab). */
   const [perBotBusy, setPerBotBusy] = useState<Record<string, boolean>>({});
 
@@ -316,6 +369,49 @@ export function BotsTab({ serverId }: Props) {
       ...prev,
       [bot.id]: { url: bot.webhookUrl ?? "", secret: "" },
     }));
+  };
+
+  const ensureAccessDraft = (bot: BotRow) => {
+    if (accessDrafts[bot.id]) return;
+    setAccessDrafts((prev) => ({
+      ...prev,
+      [bot.id]: {
+        enabled: bot.agentMode,
+        capabilities: bot.capabilities.filter((capability) => capability !== "agent"),
+        allowedChannelIds: bot.allowedChannelIds,
+      },
+    }));
+  };
+
+  const handleSaveAccess = async (bot: BotRow) => {
+    const draft = accessDrafts[bot.id];
+    if (!draft) return;
+    setPerBotBusy((prev) => ({ ...prev, [bot.id]: true }));
+    try {
+      const capabilities = draft.enabled
+        ? ([...draft.capabilities, "agent"] as BotCapability[])
+        : draft.capabilities.filter((capability) => capability !== "agent");
+      const ok = await updateBot(bot.id, {
+        capabilities,
+        allowedChannelIds: draft.allowedChannelIds,
+      });
+      if (ok) setAccessOpen(null);
+    } finally {
+      setPerBotBusy((prev) => ({ ...prev, [bot.id]: false }));
+    }
+  };
+
+  const handleOpenActivity = async (bot: BotRow) => {
+    const opening = activityOpen !== bot.id;
+    setActivityOpen(opening ? bot.id : null);
+    if (!opening) return;
+    setPerBotBusy((prev) => ({ ...prev, [bot.id]: true }));
+    try {
+      const events = await fetchActivity(bot.id);
+      if (events) setActivityCache((prev) => ({ ...prev, [bot.id]: events }));
+    } finally {
+      setPerBotBusy((prev) => ({ ...prev, [bot.id]: false }));
+    }
   };
 
   const handleSaveWebhook = async (bot: BotRow) => {
@@ -541,25 +637,47 @@ export function BotsTab({ serverId }: Props) {
   };
 
   const revealedBot = revealed ? bots.find((b) => b.id === revealed.botId) : undefined;
+  const activeAgents = bots.filter((bot) => bot.agentMode).length;
+  const scopedAgents = bots.filter((bot) => bot.allowedChannelIds !== null).length;
 
   return (
     <section>
-      <div className="ec-bots-header">
-        <h3 className="ec-bots-section-label">Боты пространства ({bots.length}/20)</h3>
-        {!showCreate && bots.length < 20 && (
-          <button
-            type="button"
-            onClick={() => setShowCreate(true)}
-            className="ec-btn ec-btn--primary ec-btn--sm"
-          >
-            + Создать бота
-          </button>
-        )}
+      <div className="ec-workbench-hero">
+        <div>
+          <span className="ec-workbench-eyebrow">Agent Workbench</span>
+          <h3 className="ec-workbench-title">Агенты пространства</h3>
+          <p className="ec-workbench-copy">
+            Настрой роль, разрешённые действия и комнаты, затем проверь агента до запуска.
+          </p>
+        </div>
+        <div className="ec-workbench-hero__side">
+          <div className="ec-workbench-stats" aria-label="Состояние агентов">
+            <span><strong>{bots.length}</strong> всего</span>
+            <span><strong>{activeAgents}</strong> действуют</span>
+            <span><strong>{scopedAgents}</strong> ограничены</span>
+          </div>
+          {canManage && !showCreate && bots.length < 20 && (
+            <button
+              type="button"
+              onClick={() => setShowCreate(true)}
+              className="ec-btn ec-btn--primary ec-btn--sm"
+            >
+              Создать агента
+            </button>
+          )}
+        </div>
       </div>
+
+      {!canManage && (
+        <div className="ec-bots-readonly" role="status">
+          <strong>Режим просмотра</strong>
+          <span>Настройки, ключи и разрешения агентов может менять только владелец пространства.</span>
+        </div>
+      )}
 
       {error && <div className="ec-bots-error">{error}</div>}
 
-      {showCreate && (
+      {canManage && showCreate && (
         <CreateBotForm
           onSubmit={handleCreate}
           busy={busy}
@@ -567,7 +685,7 @@ export function BotsTab({ serverId }: Props) {
         />
       )}
 
-      {revealed && (
+      {canManage && revealed && (
         <RevealedKeyPanel reveal={revealed} bot={revealedBot} onDismiss={dismissRevealedKey} />
       )}
 
@@ -581,8 +699,10 @@ export function BotsTab({ serverId }: Props) {
         {!loading && bots.length === 0 && !showCreate && (
           <EmptyState
             icon={<EmptyBotsIcon />}
-            title="Пока ни одного бота"
-            hint="Боты — это сервисные участники: Telegram-мост, мониторинг, AI-агенты. Каждый получает API-ключ и пишет в комнаты через REST."
+            title={canManage ? "Создайте первого агента" : "Агенты ещё не созданы"}
+            hint={canManage
+              ? "Выберите роль, затем Eclipse Chat предложит безопасные действия и комнаты. API-ключ понадобится только для внешних интеграций."
+              : "Когда владелец добавит агента, здесь появятся его роль, состояние и статистика."}
           />
         )}
 
@@ -596,18 +716,22 @@ export function BotsTab({ serverId }: Props) {
                 <strong className="ec-bot-name">{bot.name}</strong>
                 <button
                   type="button"
-                  onClick={() =>
-                    setRoleEditOpen((cur) => (cur === bot.id ? null : bot.id))
-                  }
-                  disabled={busy}
+                  onClick={() => {
+                    if (canManage) {
+                      setRoleEditOpen((cur) => (cur === bot.id ? null : bot.id));
+                    }
+                  }}
+                  disabled={!canManage || busy}
                   aria-expanded={roleEditOpen === bot.id}
-                  title="Изменить роль"
+                  title={canManage ? "Изменить роль" : `Роль: ${BOT_ROLE_LABELS[bot.role]}`}
                   className="ec-bot-role-chip"
                   style={roleColorStyle(bot.role)}
                 >
                   {BOT_ROLE_LABELS[bot.role]}
                 </button>
-                <span className="ec-bots-mono-chip">{bot.apiKeyPrefix}…</span>
+                {canManage && (
+                  <span className="ec-bots-mono-chip">{bot.apiKeyPrefix}…</span>
+                )}
               </div>
               {bot.description && (
                 <p className="ec-bot-desc">{bot.description}</p>
@@ -634,9 +758,15 @@ export function BotsTab({ serverId }: Props) {
                 <span>•</span>
                 <span>использован: {formatRelative(bot.lastUsedAt)}</span>
                 <span>•</span>
-                <span>{bot.capabilities.join(", ") || "нет capabilities"}</span>
+                <span>{bot.agentMode ? "агент действует" : "только отвечает"}</span>
+                <span>•</span>
+                <span>
+                  {bot.allowedChannelIds === null
+                    ? "все комнаты"
+                    : `${bot.allowedChannelIds.length} комнат`}
+                </span>
               </div>
-              {roleEditOpen === bot.id && (
+              {canManage && roleEditOpen === bot.id && (
                 <div className="ec-bots-panel">
                   <div className="ec-bots-label">Сменить роль</div>
                   <RolePicker
@@ -650,6 +780,8 @@ export function BotsTab({ serverId }: Props) {
               )}
             </div>
             <div className="ec-bot-card__actions">
+              {canManage && (
+                <>
               <button
                 type="button"
                 onClick={() => void handleToggleAutoRespond(bot)}
@@ -666,17 +798,16 @@ export function BotsTab({ serverId }: Props) {
               </button>
               <button
                 type="button"
-                onClick={() => void updateBot(bot.id, { agentMode: !bot.agentMode })}
+                onClick={() => {
+                  ensureAccessDraft(bot);
+                  setAccessOpen((current) => (current === bot.id ? null : bot.id));
+                }}
                 disabled={busy}
-                aria-pressed={bot.agentMode}
-                className="ec-btn ec-btn--ghost ec-btn--sm ec-bot-btn-ai"
-                title={
-                  bot.agentMode
-                    ? "Agent mode: бот может вызывать tools (отправлять сообщения / создавать задачи / править таблицы)"
-                    : "Включить agent mode — бот сможет действовать в сервере, не только отвечать"
-                }
+                aria-expanded={accessOpen === bot.id}
+                className={`ec-btn ec-btn--ghost ec-btn--sm${bot.agentMode ? " ec-bot-btn-set--ok" : ""}`}
+                title="Настроить действия и доступ к комнатам"
               >
-                {bot.agentMode ? "Agent ✓" : "Agent"}
+                Доступ
               </button>
               <button
                 type="button"
@@ -716,6 +847,18 @@ export function BotsTab({ serverId }: Props) {
               </button>
               <button
                 type="button"
+                onClick={() => void handleOpenActivity(bot)}
+                disabled={busy}
+                aria-expanded={activityOpen === bot.id}
+                className="ec-btn ec-btn--ghost ec-btn--sm ec-bot-btn-disc"
+                title="Показать журнал настроек и действий"
+              >
+                Журнал
+              </button>
+                </>
+              )}
+              <button
+                type="button"
                 onClick={() => void handleOpenUsage(bot)}
                 disabled={busy}
                 aria-expanded={usageOpen === bot.id}
@@ -724,6 +867,8 @@ export function BotsTab({ serverId }: Props) {
               >
                 Стата
               </button>
+              {canManage && (
+                <>
               <button
                 type="button"
                 onClick={() => {
@@ -755,11 +900,248 @@ export function BotsTab({ serverId }: Props) {
               >
                 Удалить
               </button>
+                </>
+              )}
             </div>
           </div>
         ))}
+
+        {canManage && accessOpen && (() => {
+          const bot = bots.find((item) => item.id === accessOpen);
+          if (!bot) return null;
+          const draft = accessDrafts[bot.id] ?? {
+            enabled: bot.agentMode,
+            capabilities: bot.capabilities.filter((capability) => capability !== "agent"),
+            allowedChannelIds: bot.allowedChannelIds,
+          };
+          const roomOptions = channels.filter((channel) => channel.type !== "VOICE");
+          const selectedRooms = draft.allowedChannelIds ?? [];
+          const saving = perBotBusy[bot.id] === true;
+          const setDraft = (next: AccessDraft) => {
+            setAccessDrafts((previous) => ({ ...previous, [bot.id]: next }));
+          };
+          return (
+            <div key={`access-${bot.id}`} className="ec-bots-panel ec-workbench-access">
+              <div className="ec-bots-panel__head">
+                <div>
+                  <span className="ec-workbench-eyebrow">Доступ и действия</span>
+                  <strong className="ec-bots-panel__title">{bot.name}</strong>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setAccessOpen(null)}
+                  className="ec-btn ec-btn--ghost ec-btn--sm ec-bots-panel__close"
+                  title="Закрыть"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <label className="ec-workbench-master-switch">
+                <span>
+                  <strong>Разрешить агенту выполнять действия</strong>
+                  <small>Если выключено, агент только отвечает по своей роли.</small>
+                </span>
+                <input
+                  type="checkbox"
+                  checked={draft.enabled}
+                  disabled={saving}
+                  onChange={(event) => {
+                    const enabled = event.target.checked;
+                    const capabilities = enabled && !draft.capabilities.includes("send_message")
+                      ? ([...draft.capabilities, "send_message"] as BotCapability[])
+                      : draft.capabilities;
+                    setDraft({ ...draft, enabled, capabilities });
+                  }}
+                />
+              </label>
+
+              <div className="ec-workbench-access__section">
+                <div className="ec-workbench-access__heading">
+                  <div>
+                    <strong>Что можно делать</strong>
+                    <span>Неразрешённые tools не передаются модели и блокируются сервером.</span>
+                  </div>
+                  <span className="ec-workbench-count">
+                    {draft.capabilities.length} из {WORKBENCH_ACTIONS.length}
+                  </span>
+                </div>
+                <div className="ec-workbench-action-grid">
+                  {WORKBENCH_ACTIONS.map((action) => {
+                    const checked = draft.capabilities.includes(action.capability);
+                    const locked = draft.enabled && action.capability === "send_message";
+                    return (
+                      <label
+                        key={action.capability}
+                        className={`ec-workbench-action${checked ? " is-selected" : ""}`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          disabled={saving || locked}
+                          onChange={() => {
+                            const capabilities = checked
+                              ? draft.capabilities.filter((item) => item !== action.capability)
+                              : [...draft.capabilities, action.capability];
+                            setDraft({
+                              ...draft,
+                              capabilities: capabilities as BotCapability[],
+                            });
+                          }}
+                        />
+                        <span>
+                          <strong>{action.label}</strong>
+                          <small>{action.description}</small>
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="ec-workbench-access__section">
+                <div className="ec-workbench-access__heading">
+                  <div>
+                    <strong>Где можно действовать</strong>
+                    <span>Scope проверяется для trigger-комнаты и каждого результата.</span>
+                  </div>
+                </div>
+                <div className="ec-workbench-scope-choice" role="radiogroup" aria-label="Scope комнат">
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={draft.allowedChannelIds === null}
+                    className={draft.allowedChannelIds === null ? "is-selected" : ""}
+                    onClick={() => setDraft({ ...draft, allowedChannelIds: null })}
+                    disabled={saving}
+                  >
+                    Все комнаты
+                    <small>Новые комнаты тоже доступны</small>
+                  </button>
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={draft.allowedChannelIds !== null}
+                    className={draft.allowedChannelIds !== null ? "is-selected" : ""}
+                    onClick={() => setDraft({
+                      ...draft,
+                      allowedChannelIds:
+                        draft.allowedChannelIds ?? roomOptions.map((channel) => channel.id),
+                    })}
+                    disabled={saving}
+                  >
+                    Только выбранные
+                    <small>Новые комнаты закрыты</small>
+                  </button>
+                </div>
+                {draft.allowedChannelIds !== null && (
+                  <div className="ec-workbench-room-list">
+                    {roomOptions.map((channel) => {
+                      const checked = selectedRooms.includes(channel.id);
+                      return (
+                        <label key={channel.id} className={checked ? "is-selected" : ""}>
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            disabled={saving}
+                            onChange={() => {
+                              const next = checked
+                                ? selectedRooms.filter((id) => id !== channel.id)
+                                : [...selectedRooms, channel.id];
+                              setDraft({ ...draft, allowedChannelIds: next });
+                            }}
+                          />
+                          <span>{channel.type === "EXECUTION" ? "▢" : channel.type === "BROADCAST" ? "◉" : "#"}</span>
+                          <strong>{channel.name}</strong>
+                        </label>
+                      );
+                    })}
+                    {roomOptions.length === 0 && (
+                      <p className="ec-bots-field-hint">Нет комнат, доступных для действий агента.</p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="ec-workbench-savebar">
+                <div className={`ec-workbench-readiness${draft.enabled ? " is-active" : ""}`}>
+                  <span aria-hidden>{draft.enabled ? "●" : "○"}</span>
+                  {draft.enabled
+                    ? draft.allowedChannelIds?.length === 0
+                      ? "Агент включён, но все комнаты закрыты"
+                      : "Политика готова к применению"
+                    : "Режим ответа без действий"}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void handleSaveAccess(bot)}
+                  disabled={saving}
+                  className="ec-btn ec-btn--primary"
+                >
+                  {saving ? "Сохраняем…" : "Сохранить доступы"}
+                </button>
+              </div>
+            </div>
+          );
+        })()}
+
+        {canManage && activityOpen && (() => {
+          const bot = bots.find((item) => item.id === activityOpen);
+          if (!bot) return null;
+          const events = activityCache[bot.id];
+          const pending = perBotBusy[bot.id] === true && !events;
+          return (
+            <div key={`activity-${bot.id}`} className="ec-bots-panel ec-workbench-activity">
+              <div className="ec-bots-panel__head">
+                <div>
+                  <span className="ec-workbench-eyebrow">Проверяемая история</span>
+                  <strong className="ec-bots-panel__title">Журнал · {bot.name}</strong>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActivityOpen(null)}
+                  className="ec-btn ec-btn--ghost ec-btn--sm ec-bots-panel__close"
+                  title="Закрыть"
+                >
+                  ✕
+                </button>
+              </div>
+              {pending && <p className="ec-bots-field-hint">Загружаем журнал…</p>}
+              {!pending && events?.length === 0 && (
+                <p className="ec-bots-field-hint">Действий пока нет. Запустите безопасный тест агента.</p>
+              )}
+              {!pending && events && events.length > 0 && (
+                <div className="ec-workbench-timeline">
+                  {events.map((event) => (
+                    <div key={event.id} className="ec-workbench-event">
+                      <span
+                        className={`ec-workbench-event__signal${event.metadata.outcome ? ` is-${event.metadata.outcome}` : ""}`}
+                        aria-hidden
+                      />
+                      <div>
+                        <strong>
+                          {event.type === "BOT_TOOL_CALL" && event.metadata.tool
+                            ? `${ACTIVITY_LABELS[event.type]} · ${event.metadata.tool}`
+                            : ACTIVITY_LABELS[event.type]}
+                        </strong>
+                        <span>
+                          {formatRelative(event.createdAt)}
+                          {event.metadata.outcome === "success" ? " · выполнено" : ""}
+                          {event.metadata.outcome === "denied" ? " · заблокировано политикой" : ""}
+                          {event.metadata.outcome === "failed" ? " · не выполнено" : ""}
+                          {typeof event.metadata.latencyMs === "number" ? ` · ${event.metadata.latencyMs} ms` : ""}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
         {/* Webhook form — inline под bot row если открыт */}
-        {webhookOpen && (() => {
+        {canManage && webhookOpen && (() => {
           const bot = bots.find((b) => b.id === webhookOpen);
           if (!bot) return null;
           const draft = webhookDrafts[bot.id] ?? { url: "", secret: "" };
@@ -845,7 +1227,7 @@ export function BotsTab({ serverId }: Props) {
           );
         })()}
 
-        {personalityEditOpen && (() => {
+        {canManage && personalityEditOpen && (() => {
           const bot = bots.find((b) => b.id === personalityEditOpen);
           if (!bot) return null;
           const draft = personalityDrafts[bot.id] ?? bot.personality ?? "";
@@ -909,7 +1291,7 @@ export function BotsTab({ serverId }: Props) {
           );
         })()}
 
-        {promptEditOpen && (() => {
+        {canManage && promptEditOpen && (() => {
           const bot = bots.find((b) => b.id === promptEditOpen);
           if (!bot) return null;
           const draft = promptDrafts[bot.id] ?? bot.systemPromptOverride ?? "";
@@ -964,7 +1346,7 @@ export function BotsTab({ serverId }: Props) {
         })()}
 
         {/* v1.0 #11 AI controls: test-run panel — inline под bot card. */}
-        {testOpen && (() => {
+        {canManage && testOpen && (() => {
           const bot = bots.find((b) => b.id === testOpen);
           if (!bot) return null;
           const draft = testDrafts[bot.id] ?? "";

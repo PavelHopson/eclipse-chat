@@ -11,6 +11,7 @@ import { stripAiMention } from "./assistant.js";
 import type { BotResponder } from "./assistant.js";
 import { getSystemBotUserId } from "../lib/systemBot.js";
 import { actionItemInclude, serializeActionItem } from "../actionItems.js";
+import { canAccessBotScopedResource } from "./botAccess.js";
 
 /**
  * v0.93 #5 phase 2 + #4 — AI agent создаёт row в operational table по
@@ -332,6 +333,9 @@ export async function attemptCreateRowFromMention(params: {
   let ctx: { tables: TableSummary[]; members: MemberSummary[] };
   try {
     ctx = await loadContext(serverId);
+    ctx.tables = ctx.tables.filter((table) =>
+      canAccessBotScopedResource(responder.allowedChannelIds, table.channelId),
+    );
   } catch (err) {
     log.warn({ err }, "AI taskCreator: loadContext failed");
     return false;

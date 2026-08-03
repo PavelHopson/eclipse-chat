@@ -16,8 +16,21 @@ import {
   type BotRoleValue,
 } from "../ai/botRoles.js";
 import { chat, AINotConfiguredError, AIProviderError } from "../ai/provider.js";
+import {
+  BOT_CAPABILITIES,
+  canViewBotWorkbench,
+  canAccessBotChannel,
+  normalizeAllowedChannelIds,
+  normalizeBotCapabilities,
+  parseAllowedChannelIds,
+  parseBotCapabilities,
+  type BotCapability,
+} from "../ai/botAccess.js";
 
 const botRoleSchema = z.enum(BOT_ROLES as readonly [BotRoleValue, ...BotRoleValue[]]);
+const botCapabilitySchema = z.enum(
+  BOT_CAPABILITIES as readonly [BotCapability, ...BotCapability[]],
+);
 
 const ALLOWED_BOT_EMOJI = new Set([
   "👍", "❤️", "😂", "😮", "😢", "🔥", "🎉", "👀",
@@ -56,6 +69,9 @@ const updateBotBody = z.object({
   personality: z.string().max(1000).optional().nullable(),
   /** v1.2.29 — agent mode toggle. true → capabilities += "agent" (tool-use loop). */
   agentMode: z.boolean().optional(),
+  capabilities: z.array(botCapabilitySchema).max(BOT_CAPABILITIES.length).optional(),
+  /** null = every room; [] = deny all rooms. */
+  allowedChannelIds: z.array(z.string().trim().min(1).max(64)).max(100).nullable().optional(),
   webhookUrl: z
     .string()
     .max(512)
@@ -97,6 +113,24 @@ async function requireServerOwner(
   return { ok: true };
 }
 
+async function requireServerAdminOrOwner(
+  serverId: string,
+  userId: string | null,
+): Promise<
+  | { ok: true; role: "OWNER" | "ADMIN" }
+  | { ok: false; status: 401 | 403; error: string }
+> {
+  if (!userId) return { ok: false, status: 401, error: "Unauthorized" };
+  const member = await db.member.findUnique({
+    where: { userId_serverId: { userId, serverId } },
+    select: { role: true },
+  });
+  if (!member || !canViewBotWorkbench(member.role)) {
+    return { ok: false, status: 403, error: "Только OWNER/ADMIN могут видеть агентов" };
+  }
+  return { ok: true, role: member.role };
+}
+
 /**
  * Создаёт shadow user для bot'а. Email `bot-<id>@eclipse-chat.local`,
  * passwordHash недостижимый bcrypt-блоб (никогда не пройдёт `bcrypt.compare`).
@@ -118,8 +152,8 @@ async function createShadowUser(
 
 export async function registerBotRoutes(app: FastifyInstance) {
   /**
-   * GET /api/servers/:id/bots — список ботов сервера. Member-only.
-   * Не отдаёт apiKeyHash / apiKeyPrefix полностью — только public-safe meta.
+   * GET /api/servers/:id/bots — список ботов сервера. OWNER/ADMIN only.
+   * ADMIN получает read-only state без prompt, personality, webhook и key metadata.
    */
   app.get(
     "/api/servers/:id/bots",
@@ -127,12 +161,9 @@ export async function registerBotRoutes(app: FastifyInstance) {
     async (req, reply) => {
       const { id: serverId } = req.params as { id: string };
       const userId = getUserId(req);
-      if (!userId) return reply.status(401).send({ error: "Unauthorized" });
-      const member = await db.member.findUnique({
-        where: { userId_serverId: { userId, serverId } },
-        select: { role: true },
-      });
-      if (!member) return reply.status(403).send({ error: "Not a member" });
+      const auth = await requireServerAdminOrOwner(serverId, userId);
+      if (!auth.ok) return reply.status(auth.status).send({ error: auth.error });
+      const canManage = auth.role === "OWNER";
       const bots = await db.bot.findMany({
         where: { serverId },
         orderBy: { createdAt: "asc" },
@@ -149,26 +180,23 @@ export async function registerBotRoutes(app: FastifyInstance) {
           description: b.description,
           role: b.role as BotRoleValue,
           autoRespond: b.autoRespond,
-          systemPromptOverride: b.systemPromptOverride,
-          personality: b.personality,
+          systemPromptOverride: canManage ? b.systemPromptOverride : null,
+          personality: canManage ? b.personality : null,
           /** v1.2.29 — true если "agent" в capabilities. */
-          agentMode: (() => {
-            try {
-              return (JSON.parse(b.capabilities) as string[]).includes("agent");
-            } catch {
-              return false;
-            }
-          })(),
+          agentMode: parseBotCapabilities(b.capabilities).includes("agent"),
           owner: b.owner,
           shadowUserId: b.userId,
           // Только префикс — не secret, для UX «ecb_AbCd…» display
-          apiKeyPrefix: b.apiKeyPrefix,
-          capabilities: JSON.parse(b.capabilities || "[]") as string[],
-          webhookUrl: b.webhookUrl,
+          apiKeyPrefix: canManage ? b.apiKeyPrefix : "",
+          capabilities: parseBotCapabilities(b.capabilities),
+          allowedChannelIds: parseAllowedChannelIds(b.allowedChannelIds),
+          webhookUrl: canManage ? b.webhookUrl : null,
           // webhookSecret НЕ отдаём — только при create/regenerate
           // через webhookSecretSet flag показываем «есть/нет»
-          webhookSecretSet: Boolean(b.webhookSecret),
-          webhookEvents: JSON.parse(b.webhookEvents || "[]") as string[],
+          webhookSecretSet: canManage && Boolean(b.webhookSecret),
+          webhookEvents: canManage
+            ? JSON.parse(b.webhookEvents || "[]") as string[]
+            : [],
           createdAt: b.createdAt.toISOString(),
           lastUsedAt: b.lastUsedAt?.toISOString() ?? null,
         })),
@@ -327,6 +355,7 @@ export async function registerBotRoutes(app: FastifyInstance) {
           userId: true,
           systemPromptOverride: true,
           capabilities: true,
+          allowedChannelIds: true,
         },
       });
       if (!bot || bot.serverId !== serverId) {
@@ -340,6 +369,7 @@ export async function registerBotRoutes(app: FastifyInstance) {
         systemPromptOverride?: string | null;
         personality?: string | null;
         capabilities?: string;
+        allowedChannelIds?: string | null;
         webhookUrl?: string | null;
         webhookSecret?: string | null;
       } = {};
@@ -354,17 +384,38 @@ export async function registerBotRoutes(app: FastifyInstance) {
         const p = parsed.data.personality?.trim();
         data.personality = p ? p : null;
       }
-      // v1.2.29 — toggle "agent" в capabilities (tool-use loop).
+      const existingCapabilities = parseBotCapabilities(bot.capabilities);
+      let nextCapabilities = parsed.data.capabilities
+        ? normalizeBotCapabilities(parsed.data.capabilities)
+        : existingCapabilities;
+      // Backward-compatible toggle used by existing clients.
       if (parsed.data.agentMode !== undefined) {
-        let existing: string[] = [];
-        try {
-          existing = JSON.parse(bot.capabilities) as string[];
-        } catch {
-          existing = ["send_message", "react"];
+        nextCapabilities = nextCapabilities.filter((capability) => capability !== "agent");
+        if (parsed.data.agentMode) nextCapabilities.push("agent");
+        nextCapabilities = normalizeBotCapabilities(nextCapabilities);
+      }
+      if (
+        parsed.data.capabilities !== undefined ||
+        parsed.data.agentMode !== undefined
+      ) {
+        data.capabilities = JSON.stringify(nextCapabilities);
+      }
+
+      let nextAllowedChannelIds = parseAllowedChannelIds(bot.allowedChannelIds);
+      if (parsed.data.allowedChannelIds !== undefined) {
+        nextAllowedChannelIds = normalizeAllowedChannelIds(parsed.data.allowedChannelIds);
+        if (nextAllowedChannelIds !== null && nextAllowedChannelIds.length > 0) {
+          const matchingChannels = await db.channel.count({
+            where: { serverId, id: { in: nextAllowedChannelIds } },
+          });
+          if (matchingChannels !== nextAllowedChannelIds.length) {
+            return reply.status(400).send({
+              error: "Одна или несколько комнат не принадлежат этому пространству",
+            });
+          }
         }
-        const filtered = existing.filter((c) => c !== "agent");
-        const nextCaps = parsed.data.agentMode ? [...filtered, "agent"] : filtered;
-        data.capabilities = JSON.stringify(nextCaps);
+        data.allowedChannelIds =
+          nextAllowedChannelIds === null ? null : JSON.stringify(nextAllowedChannelIds);
       }
       // v1.0: audit prompt update/reset для AI controls observability.
       let promptAuditEvent: "BOT_PROMPT_UPDATE" | "BOT_PROMPT_RESET" | null = null;
@@ -398,6 +449,8 @@ export async function registerBotRoutes(app: FastifyInstance) {
           autoRespond: true,
           systemPromptOverride: true,
           personality: true,
+          capabilities: true,
+          allowedChannelIds: true,
           avatar: true,
           apiKeyPrefix: true,
           webhookUrl: true,
@@ -425,6 +478,24 @@ export async function registerBotRoutes(app: FastifyInstance) {
           },
         });
       }
+      if (
+        data.capabilities !== undefined ||
+        data.allowedChannelIds !== undefined
+      ) {
+        recordAudit("BOT_ACCESS_POLICY_CHANGED", {
+          userId,
+          req,
+          metadata: {
+            botId,
+            serverId,
+            capabilities: parseBotCapabilities(updated.capabilities),
+            channelScope:
+              updated.allowedChannelIds === null
+                ? "all"
+                : parseAllowedChannelIds(updated.allowedChannelIds)?.length ?? 0,
+          },
+        });
+      }
       return {
         bot: {
           id: updated.id,
@@ -433,6 +504,9 @@ export async function registerBotRoutes(app: FastifyInstance) {
           role: updated.role as BotRoleValue,
           autoRespond: updated.autoRespond,
           systemPromptOverride: updated.systemPromptOverride,
+          capabilities: parseBotCapabilities(updated.capabilities),
+          agentMode: parseBotCapabilities(updated.capabilities).includes("agent"),
+          allowedChannelIds: parseAllowedChannelIds(updated.allowedChannelIds),
           avatar: updated.avatar,
           apiKeyPrefix: updated.apiKeyPrefix,
           webhookUrl: updated.webhookUrl,
@@ -486,7 +560,7 @@ export async function registerBotRoutes(app: FastifyInstance) {
    *   - lastUsedAt: from Bot.lastUsedAt (auto-updated при bot.token usage)
    *   - topChannels: top 3 channels by message count
    *
-   * Member-only (любой member видит usage, не secret).
+   * OWNER/ADMIN only. ADMIN использует эти агрегаты в read-only Workbench.
    */
   app.get(
     "/api/servers/:id/bots/:botId/usage",
@@ -494,12 +568,8 @@ export async function registerBotRoutes(app: FastifyInstance) {
     async (req, reply) => {
       const { id: serverId, botId } = req.params as { id: string; botId: string };
       const userId = getUserId(req);
-      if (!userId) return reply.status(401).send({ error: "Unauthorized" });
-      const member = await db.member.findUnique({
-        where: { userId_serverId: { userId, serverId } },
-        select: { role: true },
-      });
-      if (!member) return reply.status(403).send({ error: "Not a member" });
+      const auth = await requireServerAdminOrOwner(serverId, userId);
+      if (!auth.ok) return reply.status(auth.status).send({ error: auth.error });
       const bot = await db.bot.findUnique({
         where: { id: botId },
         select: { id: true, serverId: true, userId: true, lastUsedAt: true },
@@ -718,6 +788,11 @@ export async function registerBotRoutes(app: FastifyInstance) {
           error: "Bot не имеет доступа к этому каналу",
         });
       }
+      if (!canAccessBotChannel(bot.allowedChannelIds, ch.id)) {
+        return reply.status(403).send({
+          error: "Канал не входит в разрешённый scope бота",
+        });
+      }
       if (ch.type !== "TEXT") {
         return reply.status(400).send({ error: "Bot может писать только в TEXT каналы" });
       }
@@ -826,6 +901,11 @@ export async function registerBotRoutes(app: FastifyInstance) {
           error: "Bot не имеет доступа к этому каналу",
         });
       }
+      if (!canAccessBotChannel(bot.allowedChannelIds, m.channelId)) {
+        return reply.status(403).send({
+          error: "Канал не входит в разрешённый scope бота",
+        });
+      }
       // Bump lastUsedAt fire-and-forget (см. POST /api/bot/messages)
       void db.bot
         .update({ where: { id: bot.id }, data: { lastUsedAt: new Date() } })
@@ -876,7 +956,8 @@ export async function registerBotRoutes(app: FastifyInstance) {
           role: true,
           autoRespond: true,
           systemPromptOverride: true,
-          personality: true,
+           personality: true,
+           allowedChannelIds: true,
         },
       });
       const role = (row?.role ?? ctx.role) as BotRoleValue;
@@ -888,7 +969,8 @@ export async function registerBotRoutes(app: FastifyInstance) {
           name: ctx.name,
           serverId: ctx.serverId,
           shadowUserId: ctx.userId,
-          capabilities: ctx.capabilities,
+           capabilities: ctx.capabilities,
+           allowedChannelIds: parseAllowedChannelIds(row?.allowedChannelIds ?? null),
           role,
           roleLabel: BOT_ROLE_LABELS[role] ?? BOT_ROLE_LABELS.GENERIC,
           autoRespond: row?.autoRespond ?? false,
@@ -897,6 +979,80 @@ export async function registerBotRoutes(app: FastifyInstance) {
           personality,
           roleTemplatePrompt: botRolePrompt(role),
         },
+      };
+    },
+  );
+
+  const botActivityTypes = [
+    "BOT_CREATED",
+    "BOT_KEY_REGENERATED",
+    "BOT_PROMPT_UPDATE",
+    "BOT_PROMPT_RESET",
+    "BOT_TEST_INVOKE",
+    "BOT_ACCESS_POLICY_CHANGED",
+    "BOT_TOOL_CALL",
+  ] as const;
+  const botActivityQuery = z.object({
+    take: z.coerce.number().int().min(1).max(50).default(20),
+  });
+
+  /** Metadata-only activity journal for Agent Workbench. */
+  app.get(
+    "/api/servers/:id/bots/:botId/activity",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
+      const { id: serverId, botId } = req.params as { id: string; botId: string };
+      const userId = getUserId(req);
+      const auth = await requireServerOwner(serverId, userId);
+      if (!auth.ok) return reply.status(auth.status).send({ error: auth.error });
+      const parsed = botActivityQuery.safeParse(req.query);
+      if (!parsed.success) return reply.status(400).send({ error: "Invalid query" });
+      const bot = await db.bot.findUnique({
+        where: { id: botId },
+        select: { serverId: true },
+      });
+      if (!bot || bot.serverId !== serverId) {
+        return reply.status(404).send({ error: "Bot not found" });
+      }
+      const events = await db.auditLog.findMany({
+        where: {
+          type: { in: botActivityTypes.slice() },
+          metadata: {
+            contains: `"botId":"${botId}"`,
+          },
+        },
+        orderBy: { createdAt: "desc" },
+        take: parsed.data.take,
+        select: { id: true, type: true, createdAt: true, metadata: true },
+      });
+      return {
+        events: events.map((event) => {
+          let metadata: Record<string, unknown> = {};
+          try {
+            const candidate = JSON.parse(event.metadata ?? "{}");
+            if (candidate && typeof candidate === "object" && !Array.isArray(candidate)) {
+              const raw = candidate as Record<string, unknown>;
+              metadata = {
+                tool: typeof raw.tool === "string" ? raw.tool.slice(0, 64) : undefined,
+                outcome: typeof raw.outcome === "string" ? raw.outcome.slice(0, 16) : undefined,
+                provider: typeof raw.provider === "string" ? raw.provider.slice(0, 64) : undefined,
+                latencyMs: typeof raw.latencyMs === "number" ? raw.latencyMs : undefined,
+                channelScope:
+                  typeof raw.channelScope === "string" || typeof raw.channelScope === "number"
+                    ? raw.channelScope
+                    : undefined,
+              };
+            }
+          } catch {
+            // Historical malformed metadata stays visible as an event without details.
+          }
+          return {
+            id: event.id,
+            type: event.type,
+            createdAt: event.createdAt.toISOString(),
+            metadata,
+          };
+        }),
       };
     },
   );
