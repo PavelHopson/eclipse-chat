@@ -165,6 +165,19 @@ scope доступа, понятное действие и подтвержде�
 - [x] Добавить additive migration, HMAC/formatter/link regression tests, runbook
   [`docs/GITHUB-ROOMS.md`](docs/GITHUB-ROOMS.md) и PWA cache `v1.7.31`.
 
+### Scoped AI gateway and DnD dark launch — infrastructure
+
+- [x] Мигрировать production gateway с legacy singular token на registry client
+  `eclipse-chat`, сохранив 10% canary и независимую rotation только этого клиента.
+- [x] Production run `30815244124` прошёл install, dependency audit, typecheck, tests,
+  build, server deploy и внешний health smoke на актуальном master `3e89c11`.
+- [x] Добавить manual-only, production-gated DnD workflow через существующий Chat SSH
+  trust path; pinned run `30816478509` развернул BFF только на loopback с `aiEnabled=false`.
+- [x] Подтвердить least privilege: DnD получает models `200`, telemetry `403`, а Chat
+  сохраняет telemetry `200`; чужой Origin отклоняется, rollback обоих env включён.
+- [ ] Не включать Chat identity signing key, Nginx/public endpoint и managed UI до
+  появления DNS/TLS `api.dnd.eclipse-forge.ru` и отдельного canary/24h SLO этапа.
+
 ### Operational integration slice — advertising room
 
 - [x] Добавить в создание EXECUTION-комнаты один понятный preset
