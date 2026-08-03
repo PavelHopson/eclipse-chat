@@ -29,6 +29,9 @@ scope доступа, понятное действие и подтвержде�
   local/controlled policy, а Platform Admin показывает основной маршрут и безопасный резерв.
 - [ ] **Agent Workbench** — создание и тестирование агентов, scopes, approvals,
   memory policy и журнал действий в одном интерфейсе.
+- [x] **Agent Office foundation** — `agents.v1` contract и fixture-backed
+  Growth Research Cell с plan review, budget guardrails, ручными lifecycle-
+  контролами и audit stream; без model calls, OAuth и внешних действий.
 - [x] **Memory governance** — provenance, owner, retention, visibility, review,
   archive/restore и объяснение, почему запись попала в контекст.
 - [x] **Mobile Command Inbox** — единая очередь коротких решений: approve,
