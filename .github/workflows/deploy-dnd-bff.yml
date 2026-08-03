@@ -8,6 +8,11 @@ on:
         required: true
         default: false
         type: boolean
+      audit_public_prereqs:
+        description: "Run a read-only DNS, TLS, Nginx and service prerequisite audit"
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -17,6 +22,30 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  audit-public:
+    if: inputs.audit_public_prereqs == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    steps:
+      - name: Audit DnD public prerequisites without changing the checkout
+        uses: appleboy/ssh-action@7eaf76671a0d7eec5d98ee897acda4f968735a17 # v1.2.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST_PROD }}
+          username: ${{ secrets.DEPLOY_USER_PROD }}
+          key: ${{ secrets.SSH_PRIVATE_KEY_PROD }}
+          command_timeout: 10m
+          script: |
+            set -euo pipefail
+            test "$(id -u)" -eq 0
+            DND_COMMIT="37647b26fac7340f3f5c037bd794f35e9d84bdce"
+            DND_PATH="/var/www/eclipse-dnd-forge-bff"
+            [[ "$DND_COMMIT" =~ ^[0-9a-f]{40}$ ]]
+            test "$(git -C "$DND_PATH" remote get-url origin)" = "https://github.com/PavelHopson/eclipse-dnd-forge.git"
+            git -C "$DND_PATH" fetch --quiet --no-tags --depth=1 origin "$DND_COMMIT"
+            test "$(git -C "$DND_PATH" rev-parse FETCH_HEAD)" = "$DND_COMMIT"
+            git -C "$DND_PATH" show "$DND_COMMIT:deploy/scripts/audit-public-prereqs.sh" | bash -s
+
   deploy-dark:
     if: inputs.confirm_dark_launch == true
     runs-on: ubuntu-latest
