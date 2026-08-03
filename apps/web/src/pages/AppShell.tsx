@@ -58,6 +58,7 @@ const StatusMenu = lazy(() => import("../components/StatusMenu").then((m) => ({ 
 const DownloadAppModal = lazy(() => import("../components/DownloadAppModal").then((m) => ({ default: m.DownloadAppModal })));
 const UserProfileModal = lazy(() => import("../components/UserProfileModal").then((m) => ({ default: m.UserProfileModal })));
 const MessageMemoryModal = lazy(() => import("../components/MessageMemoryModal").then((m) => ({ default: m.MessageMemoryModal })));
+const CommandDigestView = lazy(() => import("../components/CommandDigestView").then((m) => ({ default: m.CommandDigestView })));
 
 function isTextEntryTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -96,6 +97,11 @@ import { useNativeBackButton } from "../hooks/useNativeBackButton";
 import { useMembers, type MemberRole, type MemberRow } from "../hooks/useMembers";
 import { useMessages, type MessageRow } from "../hooks/useMessages";
 import { useNotifications } from "../hooks/useNotifications";
+import {
+  usePersonalDigest,
+  type PersonalDigestChannel,
+  type PersonalDigestItem,
+} from "../hooks/usePersonalDigest";
 import { useShareTarget } from "../hooks/useShareTarget";
 import { useFocusMode } from "../hooks/useFocusMode";
 import { useMutedChannels } from "../hooks/usePushPreferences";
@@ -395,6 +401,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   const [memoryDraftMessage, setMemoryDraftMessage] = useState<MessageRow | null>(null);
   const [showSearch, setShowSearch] = useState(false);
   const [homeOpen, setHomeOpen] = useState(false);
+  const personalDigest = usePersonalDigest(homeOpen);
   const [friendsOpen, setFriendsOpen] = useState(false);
   /** v0.73 #14: In-app help / onboarding. Полноэкранный view как Home /
    *  StatusBoard / TeamHealth — правый rail скрыт. Открывается «?» в topbar. */
@@ -844,24 +851,60 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     setSelectedTableId(null);
   }, [activeServerId]);
 
-  // UXR3 — «Главная» теперь = мессенджер, а не операционный дашборд.
-  // Вход в DM-режим (activeServerId=null) с экраном «Друзья» по умолчанию;
-  // диалоги — в левом сайдбаре. Дашборд «Сегодня» (HomeToday) больше не
-  // лендинг (homeOpen нигде не выставляется в true); код сохранён для
-  // возможного возврата отдельным «Сводка»-входом.
+  // Логотип открывает личный command brief across workspaces. Он не заменяет
+  // ЛС/Друзей: это отдельная точка возврата к важному после отсутствия.
   const openHome = () => {
-    setHomeOpen(false);
+    setHomeOpen(true);
     setActiveServerId(null);
-    setFriendsOpen(true);
+    setFriendsOpen(false);
     setHelpOpen(false);
     setAdminOpen(false);
     setStatusBoardOpen(false);
     setTeamHealthOpen(false);
     setSelectedTableId(null);
+    setShowProfile(false);
     setSelectedChannelId(null);
     selectDm(null);
     setNavOpen(false);
     setMembersOpen(false);
+  };
+
+  const openDigestChannel = (
+    target: Pick<PersonalDigestChannel, "serverId" | "channelId">,
+    messageId?: string | null,
+  ) => {
+    setHomeOpen(false);
+    setFriendsOpen(false);
+    setHelpOpen(false);
+    setAdminOpen(false);
+    setStatusBoardOpen(false);
+    setTeamHealthOpen(false);
+    setSelectedTableId(null);
+    setShowProfile(false);
+    setActiveServerId(target.serverId);
+    setServerView("chat");
+    setSelectedChannelId(target.channelId);
+    if (messageId) {
+      setPendingSourceJump({ channelId: target.channelId, messageId });
+    }
+    setNavOpen(false);
+    setMembersOpen(false);
+  };
+
+  const openDigestItem = (item: PersonalDigestItem) => {
+    if (item.channelId) {
+      openDigestChannel(
+        { serverId: item.serverId, channelId: item.channelId },
+        item.messageId,
+      );
+    } else {
+      setHomeOpen(false);
+      setFriendsOpen(false);
+      setShowProfile(false);
+      setActiveServerId(item.serverId);
+      setServerView("guide");
+    }
+    if (item.actionItemId) setOpenActionItemId(item.actionItemId);
   };
 
   // Вход «Друзья» — общая точка: FriendsPanel, кнопка «Новое сообщение» в ЛС
@@ -1056,6 +1099,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
 
   const shellClass =
     "ec-shell" +
+    (homeOpen ? " ec-shell--home" : "") +
     (rightRailVisible ? " ec-shell--has-server" : "") +
     (navOpen ? " ec-shell--nav-open" : "") +
     (membersOpen ? " ec-shell--members-open" : "");
@@ -1085,6 +1129,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     ? "me"
     : friendsOpen
       ? "friends"
+      : homeOpen
+        ? "servers"
       : inDmMode
         ? "dms"
         : "servers";
@@ -1136,11 +1182,11 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               if (canCreateServer) setShowCreateServer(true);
             }}
             onJoinRequest={() => setShowJoinServer(true)}
-            dmsActive={inDmMode && !friendsOpen && !showProfile}
+            dmsActive={inDmMode && !homeOpen && !friendsOpen && !showProfile}
             dmsUnread={dmConversations.reduce((sum, c) => sum + c.unread, 0)}
             onDmsRequest={navOpenDms}
             onFriendsRequest={openFriends}
-            friendsActive={friendsOpen && !showProfile}
+            friendsActive={friendsOpen && !homeOpen && !showProfile}
             friendsPending={friends.pendingIn.length}
             onProfileRequest={() => setShowProfile(true)}
             profileActive={showProfile}
@@ -1202,7 +1248,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                 if (activeServerId) setShowSearch(true);
               }}
               searchEnabled={Boolean(activeServerId)}
-              dmsActive={inDmMode}
+              dmsActive={inDmMode && !homeOpen}
               dmsUnread={dmConversations.reduce((sum, c) => sum + c.unread, 0)}
               onDmsRequest={navOpenDms}
               canCreateServer={canCreateServer}
@@ -1216,7 +1262,11 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
 
       {/* Командный бар над чатом: локация (слева) · действия (справа). */}
       <header className="ec-shell__cmdbar">
-        {activeServer ? (
+        {homeOpen ? (
+          <div className="ec-shell__breadcrumb ec-shell__loc">
+            <span className="ec-shell__loc-name">Сводка</span>
+          </div>
+        ) : activeServer ? (
           <div className="ec-shell__breadcrumb ec-shell__loc">
             <span className="ec-shell__loc-space">{activeServer.name}</span>
             {selectedChannel && (
@@ -1230,9 +1280,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             )}
           </div>
         ) : inDmMode ? (
-          // DM-сторона: локация «где я» (раньше здесь был null — верхний бар
-          // молчал в Личных/Друзьях). Консистентно с rail (Личные/Друзья/Я).
-          // «Главная» ретайрнута — homeOpen мёртв.
+          // DM-сторона: локация «где я». Консистентно с rail
+          // (Личные/Друзья/Я), но не конкурирует со Сводкой.
           <div className="ec-shell__breadcrumb ec-shell__loc">
             <span className="ec-shell__loc-name">
               {friendsOpen
@@ -1477,7 +1526,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
       )}
 
       <div className="ec-shell__channels">
-        {inDmMode ? (
+        {homeOpen ? null : inDmMode ? (
           <DirectConversationList
             conversations={dmConversations}
             loading={dmLoading}
@@ -1602,8 +1651,15 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
         }
       >
         <div className="ec-chat-header">
-          {/* «Главная» ретайрнута (homeOpen мёртв, единая nav-таксономия). */}
-          {helpOpen ? (
+          {homeOpen ? (
+            <span className="ec-chat-title">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--ec-accent)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M4 17V9M10 17V5M16 17v-7M22 17V3" />
+                <path d="M2 21h22" />
+              </svg>
+              Сводка
+            </span>
+          ) : helpOpen ? (
             <span className="ec-chat-title">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--ec-accent)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <circle cx="12" cy="12" r="10" />
@@ -2084,6 +2140,19 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               setTeamHealthOpen(false);
               setStatusBoardOpen(true);
             }}
+          />
+        ) : homeOpen ? (
+          <CommandDigestView
+            data={personalDigest.data}
+            loading={personalDigest.loading}
+            acknowledging={personalDigest.acknowledging}
+            error={personalDigest.error}
+            onReload={() => void personalDigest.reload()}
+            onAcknowledge={() => void personalDigest.acknowledge()}
+            onOpenItem={openDigestItem}
+            onOpenChannel={(channel) =>
+              openDigestChannel(channel, channel.latestMessageId)
+            }
           />
         ) : inDmMode ? (
           friendsOpen ? (

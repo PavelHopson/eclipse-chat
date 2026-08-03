@@ -4,6 +4,7 @@ import { registerServerRoutes } from "../src/routes/servers.js";
 import { registerChannelRoutes } from "../src/routes/channels.js";
 import { registerVisitRoutes } from "../src/routes/visits.js";
 import { registerMemoryRoutes } from "../src/routes/memory.js";
+import { registerPersonalDigestRoutes } from "../src/routes/personalDigest.js";
 
 describe("server route registration", () => {
   it("registers every server route exactly once", async () => {
@@ -85,6 +86,38 @@ describe("server route registration", () => {
     await registerVisitRoutes(app);
     expect(guards).toContain("requireJwt");
     expect(rateLimit).toEqual({ max: 10, timeWindow: 5 * 60 * 1000 });
+  });
+
+  it("protects personal digest reads and cursor acknowledgement", async () => {
+    const app = Fastify();
+    const routes = new Map<
+      string,
+      { guards: string[]; rateLimit?: { max?: number; timeWindow?: number } }
+    >();
+    app.addHook("onRoute", (route) => {
+      if (!["/api/me/digest", "/api/me/digest/acknowledge"].includes(route.url)) return;
+      const routeGuards = Array.isArray(route.onRequest)
+        ? route.onRequest
+        : route.onRequest
+          ? [route.onRequest]
+          : [];
+      routes.set(route.url, {
+        guards: routeGuards.map((guard) => guard.name),
+        rateLimit: route.config?.rateLimit as
+          | { max?: number; timeWindow?: number }
+          | undefined,
+      });
+    });
+
+    await registerPersonalDigestRoutes(app);
+    expect(routes.get("/api/me/digest")).toEqual({
+      guards: ["requireJwt"],
+      rateLimit: { max: 60, timeWindow: 60 * 1000 },
+    });
+    expect(routes.get("/api/me/digest/acknowledge")).toEqual({
+      guards: ["requireJwt"],
+      rateLimit: { max: 20, timeWindow: 5 * 60 * 1000 },
+    });
   });
 
   it("protects memory suggestions and writes with bounded rate limits", async () => {

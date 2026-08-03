@@ -1369,6 +1369,19 @@
   }
 }
 
+/* Personal command brief: keep the persistent workspace rail, but give the
+   summary the full operational canvas instead of leaving an empty DM spine. */
+.ec-shell.ec-shell--home {
+  grid-template-columns: var(--ec-rail-width) var(--ec-spine-width) minmax(0, 1fr);
+  grid-template-areas:
+    "rail brand cmd"
+    "rail chat  chat";
+}
+
+.ec-shell--home .ec-shell__channels {
+  display: none;
+}
+
 /* The settings tree consumes enough horizontal space that a side-by-side
  * guide preview becomes misleading before the general mobile breakpoint. */
 @media (max-width: 1100px) {
@@ -1833,6 +1846,91 @@
   .ec-msg-action {
     width: 38px;
     height: 38px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .ec-personal-digest {
+    padding: clamp(16px, 4vw, 28px);
+    padding-bottom: calc(var(--ec-bottomnav-height) + 24px);
+  }
+
+  .ec-personal-digest__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 680px) {
+  .ec-personal-digest__hero {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .ec-personal-digest__hero::after {
+    right: -78px;
+  }
+
+  .ec-personal-digest__hero-actions,
+  .ec-personal-digest__hero-actions .ec-btn {
+    width: 100%;
+  }
+
+  .ec-personal-digest__hero-actions {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+
+  .ec-personal-digest__hero-actions .ec-btn {
+    min-height: 44px;
+    justify-content: center;
+  }
+
+  .ec-personal-digest__stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ec-personal-digest__item {
+    grid-template-columns: 34px minmax(0, 1fr);
+  }
+
+  .ec-personal-digest__item-glyph {
+    width: 34px;
+    height: 34px;
+  }
+
+  .ec-personal-digest__item-end {
+    grid-column: 2;
+    grid-auto-flow: column;
+    justify-content: space-between;
+    justify-items: start;
+    width: 100%;
+  }
+
+  .ec-personal-digest__empty {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .ec-personal-digest__empty .ec-btn {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 420px) {
+  .ec-personal-digest__stats {
+    grid-template-columns: 1fr;
+  }
+
+  .ec-personal-digest__rooms > button {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .ec-personal-digest__room-counts {
+    grid-column: 2;
+    grid-auto-flow: column;
+    justify-content: start;
   }
 }
 

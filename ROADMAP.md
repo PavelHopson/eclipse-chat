@@ -12,7 +12,7 @@ AI и внешние проекты Eclipse Forge в один проверяем
 набор разрозненных AI-кнопок: каждое предложение агента должно иметь источник,
 scope доступа, понятное действие и подтверждение пользователя перед записью.
 
-- [ ] **Персональная сводка** — «Пока тебя не было» учитывает сообщения, решения,
+- [x] **Персональная сводка** — «Пока тебя не было» учитывает сообщения, решения,
   задачи, риски и подтверждённую память; показывает важность и ссылки на источники.
 - [ ] **Semantic memory retrieval** — единый hybrid search по сообщениям и
   курируемой памяти с деградацией до lexical search без embedding-провайдера.
@@ -81,6 +81,21 @@ scope доступа, понятное действие и подтвержде�
 - [x] Add a path-sensitive security profile selector and CI gates for Gitleaks, dependency review, npm audit,
   CycloneDX SBOM and CodeQL `security-extended` queries.
 - [x] Document the release gate and add regression coverage for role matrices and realtime audience isolation.
+
+### Personal command brief — v1.7.27
+
+- [x] Логотип открывает отдельную персональную сводку across workspaces вместо скрытого
+  перехода в «Друзья»: новый пользователь за 3 секунды видит, что требует внимания.
+- [x] Агрегировать только доступные пользователю комнаты, сообщения других участников,
+  изменённые задачи, решения, follow-up, риски, инциденты и подтверждённую память.
+- [x] Приоритизировать личные approvals, escalated/urgent/overdue work и incident signals;
+  каждая карточка возвращает в исходное пространство, комнату, сообщение или Action Item.
+- [x] Не продвигать cursor при открытии/refresh: только явный CTA «Отметить просмотренным»;
+  acknowledgement monotonic и atomic, поэтому concurrent requests не теряют события.
+- [x] Ограничить историю 30 днями и объём выдачи, применить JWT, rate limits и существующую
+  CLIENT/internal visibility matrix; добавить desktop/mobile/reduced-motion состояния.
+- [x] Добавить additive Prisma migration, unit/route-registration regression coverage и
+  обновить service-worker cache до `v1.7.27`.
 
 ### Operational integration slice — advertising room
 

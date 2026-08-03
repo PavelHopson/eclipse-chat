@@ -64,6 +64,9 @@ model User {
   /// `Intl.DateTimeFormat().resolvedOptions().timeZone` при first set.
   timezone      String?
   createdAt     DateTime       @default(now())
+  /// Last point explicitly acknowledged in the personal command digest.
+  /// Opening the app does not move this cursor: only the reviewed CTA does.
+  digestAcknowledgedAt DateTime?
   /// 2FA TOTP secret (base32). Зашифрован при-rest через AES-256-GCM
   /// в app-layer (apps/server/src/auth/twoFactor.ts).
   twoFactorSecret      String?

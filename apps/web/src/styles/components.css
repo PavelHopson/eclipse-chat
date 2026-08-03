@@ -13825,3 +13825,447 @@ body {
 .ec-memory-governance__archive {
   margin-right: auto;
 }
+
+/* ===== Personal command digest ========================================= */
+
+.ec-personal-digest {
+  position: relative;
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+  padding: clamp(22px, 3.5vw, 52px);
+  background:
+    radial-gradient(circle at 14% -8%, color-mix(in srgb, var(--ec-accent) 17%, transparent), transparent 34%),
+    radial-gradient(circle at 92% 12%, rgba(255, 153, 51, 0.08), transparent 29%),
+    linear-gradient(155deg, color-mix(in srgb, var(--ec-surface-1) 92%, black), var(--ec-bg) 68%);
+  scrollbar-gutter: stable;
+}
+
+.ec-personal-digest::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.2;
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--ec-border-subtle) 28%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--ec-border-subtle) 28%, transparent) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: linear-gradient(to bottom, black, transparent 78%);
+}
+
+.ec-personal-digest > * {
+  position: relative;
+  z-index: 1;
+  width: min(1240px, 100%);
+  margin-inline: auto;
+}
+
+.ec-personal-digest__hero {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: var(--ec-space-5);
+  padding: clamp(20px, 3vw, 34px);
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 22%, var(--ec-border-subtle));
+  border-radius: calc(var(--ec-radius-lg) + 4px);
+  background:
+    linear-gradient(112deg, color-mix(in srgb, var(--ec-surface-2) 94%, black), color-mix(in srgb, var(--ec-accent) 6%, var(--ec-surface-1))),
+    var(--ec-surface-1);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.3), inset 0 1px rgba(255, 255, 255, 0.035);
+  overflow: hidden;
+}
+
+.ec-personal-digest__hero::after {
+  content: "";
+  position: absolute;
+  top: -90px;
+  right: 8%;
+  width: 210px;
+  height: 210px;
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 52%, transparent);
+  border-radius: 50%;
+  box-shadow:
+    0 0 42px color-mix(in srgb, var(--ec-accent) 14%, transparent),
+    inset -12px 0 26px rgba(255, 150, 46, 0.08);
+  pointer-events: none;
+}
+
+.ec-personal-digest__eyebrow,
+.ec-personal-digest__section-head > div > span {
+  display: block;
+  margin-bottom: 7px;
+  color: var(--ec-accent);
+  font-family: var(--ec-font-mono);
+  font-size: var(--ec-text-2xs);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.ec-personal-digest__hero h1 {
+  margin: 0;
+  color: var(--ec-text-strong);
+  font-size: clamp(30px, 4vw, 52px);
+  line-height: 0.98;
+  letter-spacing: -0.045em;
+}
+
+.ec-personal-digest__hero p {
+  margin: 12px 0 0;
+  color: var(--ec-text-muted);
+  font-size: var(--ec-text-sm);
+}
+
+.ec-personal-digest__hero-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--ec-space-2);
+  flex: 0 0 auto;
+}
+
+.ec-personal-digest__error,
+.ec-personal-digest__loading,
+.ec-personal-digest__empty {
+  display: flex;
+  align-items: center;
+  gap: var(--ec-space-3);
+  margin-top: var(--ec-space-4);
+  padding: var(--ec-space-4);
+  border: 1px solid var(--ec-border-subtle);
+  border-radius: var(--ec-radius-lg);
+  background: color-mix(in srgb, var(--ec-surface-2) 92%, transparent);
+}
+
+.ec-personal-digest__error {
+  justify-content: space-between;
+  border-color: color-mix(in srgb, var(--ec-status-risk) 38%, var(--ec-border-subtle));
+  color: var(--ec-status-risk);
+}
+
+.ec-personal-digest__error button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ec-personal-digest__loading {
+  justify-content: center;
+  min-height: 190px;
+  color: var(--ec-text-muted);
+}
+
+.ec-personal-digest__loading-orbit,
+.ec-personal-digest__empty-signal {
+  width: 34px;
+  height: 34px;
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 42%, var(--ec-border-subtle));
+  border-radius: 50%;
+  box-shadow: inset -3px 0 8px rgba(255, 153, 51, 0.16), 0 0 18px var(--ec-accent-glow);
+}
+
+.ec-personal-digest__loading-orbit {
+  border-right-color: var(--ec-accent);
+  animation: ec-personal-digest-orbit 1.15s linear infinite;
+}
+
+@keyframes ec-personal-digest-orbit {
+  to { transform: rotate(360deg); }
+}
+
+.ec-personal-digest__empty {
+  min-height: 160px;
+}
+
+.ec-personal-digest__empty > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.ec-personal-digest__empty h2 {
+  margin: 0;
+  color: var(--ec-text-strong);
+}
+
+.ec-personal-digest__empty p {
+  max-width: 720px;
+  margin: 7px 0 0;
+  color: var(--ec-text-muted);
+  line-height: 1.55;
+}
+
+.ec-personal-digest__stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--ec-space-3);
+  margin-top: var(--ec-space-4);
+}
+
+.ec-personal-digest__stat {
+  position: relative;
+  min-width: 0;
+  padding: 16px 18px;
+  border: 1px solid var(--ec-border-subtle);
+  border-radius: var(--ec-radius-lg);
+  background: color-mix(in srgb, var(--ec-surface-2) 90%, transparent);
+  overflow: hidden;
+}
+
+.ec-personal-digest__stat::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 2px;
+  background: var(--digest-tone, var(--ec-accent));
+  box-shadow: 0 0 14px var(--digest-tone, var(--ec-accent));
+}
+
+.ec-personal-digest__stat strong {
+  display: block;
+  color: var(--ec-text-strong);
+  font-size: clamp(22px, 2.4vw, 32px);
+  line-height: 1;
+}
+
+.ec-personal-digest__stat span {
+  display: block;
+  margin-top: 7px;
+  color: var(--ec-text-muted);
+  font-size: var(--ec-text-xs);
+}
+
+.ec-personal-digest__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(290px, 0.72fr);
+  gap: var(--ec-space-4);
+  margin-top: var(--ec-space-4);
+  padding-bottom: clamp(24px, 5vw, 70px);
+}
+
+.ec-personal-digest__section {
+  min-width: 0;
+  padding: var(--ec-space-4);
+  border: 1px solid var(--ec-border-subtle);
+  border-radius: var(--ec-radius-lg);
+  background: color-mix(in srgb, var(--ec-surface-1) 92%, transparent);
+  box-shadow: 0 18px 54px rgba(0, 0, 0, 0.18);
+}
+
+.ec-personal-digest__section-head {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: var(--ec-space-3);
+  padding-bottom: var(--ec-space-3);
+  border-bottom: 1px solid var(--ec-border-subtle);
+}
+
+.ec-personal-digest__section-head h2 {
+  margin: 0;
+  color: var(--ec-text-strong);
+  font-size: clamp(18px, 2vw, 24px);
+  letter-spacing: -0.02em;
+}
+
+.ec-personal-digest__section-head > span {
+  display: grid;
+  min-width: 32px;
+  height: 32px;
+  place-items: center;
+  border: 1px solid var(--ec-border-subtle);
+  border-radius: 50%;
+  color: var(--ec-text-muted);
+  font-family: var(--ec-font-mono);
+  font-size: var(--ec-text-xs);
+}
+
+.ec-personal-digest__items,
+.ec-personal-digest__rooms {
+  display: grid;
+  gap: 8px;
+  margin-top: var(--ec-space-3);
+}
+
+.ec-personal-digest__item,
+.ec-personal-digest__rooms > button {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid transparent;
+  border-radius: var(--ec-radius-md);
+  background: color-mix(in srgb, var(--ec-surface-2) 82%, transparent);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--ec-dur-fast) var(--ec-ease), background var(--ec-dur-fast) var(--ec-ease), transform var(--ec-dur-fast) var(--ec-ease);
+}
+
+.ec-personal-digest__item:hover,
+.ec-personal-digest__rooms > button:hover {
+  border-color: color-mix(in srgb, var(--ec-accent) 36%, var(--ec-border-subtle));
+  background: color-mix(in srgb, var(--ec-accent) 7%, var(--ec-surface-2));
+  transform: translateY(-1px);
+}
+
+.ec-personal-digest__item:focus-visible,
+.ec-personal-digest__rooms > button:focus-visible {
+  outline: 2px solid var(--ec-accent);
+  outline-offset: 2px;
+}
+
+.ec-personal-digest__item {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--ec-space-3);
+  padding: 13px;
+}
+
+.ec-personal-digest__item.is-critical {
+  border-left-color: var(--ec-status-risk);
+}
+
+.ec-personal-digest__item.is-high {
+  border-left-color: var(--ec-status-warn);
+}
+
+.ec-personal-digest__item-glyph {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 30%, var(--ec-border-subtle));
+  border-radius: 12px;
+  color: var(--ec-accent);
+  background: color-mix(in srgb, var(--ec-accent) 8%, var(--ec-surface-1));
+}
+
+.ec-personal-digest__item-glyph svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.ec-personal-digest__item-copy {
+  display: block;
+  min-width: 0;
+}
+
+.ec-personal-digest__item-copy strong,
+.ec-personal-digest__item-copy small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ec-personal-digest__item-copy strong {
+  margin-top: 4px;
+  color: var(--ec-text-strong);
+  font-size: var(--ec-text-sm);
+}
+
+.ec-personal-digest__item-copy small {
+  margin-top: 5px;
+  color: var(--ec-text-muted);
+  font-size: var(--ec-text-xs);
+}
+
+.ec-personal-digest__item-meta {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+  color: var(--ec-text-dim);
+  font-family: var(--ec-font-mono);
+  font-size: var(--ec-text-2xs);
+}
+
+.ec-personal-digest__item-meta span:first-child {
+  color: var(--ec-accent);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.ec-personal-digest__item-meta span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ec-personal-digest__item-end {
+  display: grid;
+  justify-items: end;
+  gap: 6px;
+  color: var(--ec-text-dim);
+  font-family: var(--ec-font-mono);
+  font-size: var(--ec-text-2xs);
+}
+
+.ec-personal-digest__item-end span {
+  color: var(--ec-accent);
+  font-size: 16px;
+}
+
+.ec-personal-digest__rooms > button {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--ec-space-3);
+  padding: 12px;
+}
+
+.ec-personal-digest__room-signal {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ec-status-exec);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--ec-status-exec) 65%, transparent);
+}
+
+.ec-personal-digest__rooms strong,
+.ec-personal-digest__rooms small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ec-personal-digest__rooms strong {
+  color: var(--ec-text-strong);
+  font-size: var(--ec-text-sm);
+}
+
+.ec-personal-digest__rooms small {
+  margin-top: 3px;
+  color: var(--ec-text-dim);
+  font-size: var(--ec-text-2xs);
+}
+
+.ec-personal-digest__room-counts {
+  display: grid;
+  justify-items: end;
+  gap: 3px;
+  color: var(--ec-text-muted);
+  font-family: var(--ec-font-mono);
+  font-size: var(--ec-text-2xs);
+}
+
+.ec-personal-digest__room-counts b {
+  font-weight: 500;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ec-personal-digest__loading-orbit {
+    animation: none;
+  }
+
+  .ec-personal-digest__item,
+  .ec-personal-digest__rooms > button {
+    transition: none;
+  }
+}
