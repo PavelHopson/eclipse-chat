@@ -69,7 +69,7 @@ export const SETTINGS_GROUPS: NavGroup[] = [
     label: "Данные и связи",
     items: [
       { id: "data-export", label: "Экспорт данных", soon: "v1.5.55+" },
-      { id: "integrations", label: "Интеграции", soon: "v1.5.55+" },
+      { id: "integrations", label: "Интеграции" },
     ],
   },
   {
@@ -91,7 +91,7 @@ export function isSettingsViewId(value: string | null): value is SettingsViewId 
 
 export function SettingsTreeNav({ active, installAvailable, onSelect, onLogout }: Props) {
   const [collapsed, setCollapsed] = useState<Set<string>>(() => {
-    const defaults = new Set(["Данные и связи", "Дополнительно"]);
+    const defaults = new Set(["Дополнительно"]);
     if (typeof localStorage === "undefined") return defaults;
     try {
       const raw = localStorage.getItem(SETTINGS_COLLAPSED_KEY);

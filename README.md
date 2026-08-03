@@ -117,6 +117,8 @@ eclipse-chat/
 ### Frontend (`apps/web`)
 
 - ✅ Auth flow: вход / регистрация / logout / автоматический refresh при 401
+- ✅ Подключение Eclipse DnD Forge из меню профиля или настроек через PKCE S256;
+  новый пользователь может создать аккаунт прямо в authorize-flow
 - ✅ Список каналов + создание канала
 - ✅ Быстрый preset `Реклама: аудит → согласование → проверка` для EXECUTION-комнаты:
   название и безопасный workflow заполняются автоматически, а бюджет не меняется без явного approval
@@ -132,7 +134,9 @@ eclipse-chat/
 
 ## Запуск (local dev)
 
-См. [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) — пошаговая инструкция. Для рекламного workflow
+См. [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) — пошаговая инструкция. Контракт единого
+аккаунта с DnD Forge описан в [docs/dnd-account-connection.md](docs/dnd-account-connection.md).
+Для рекламного workflow
 границы evidence/diff/approval/rollback описаны в
 [docs/advertising-execution-room.md](docs/advertising-execution-room.md).
 

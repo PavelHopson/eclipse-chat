@@ -7965,6 +7965,22 @@ input[type="radio"]:focus-visible {
   flex-direction: column;
 }
 
+.ec-settings-section--integrations .ec-settings-card {
+  min-height: 112px;
+}
+
+.ec-settings-integrations__action {
+  min-width: 172px;
+}
+
+.ec-settings-integrations__action .ec-settings-status-pill {
+  align-self: flex-end;
+}
+
+.ec-settings-integrations__action .ec-btn {
+  text-decoration: none;
+}
+
 .ec-settings-toggle-row {
   justify-content: space-between;
   cursor: pointer;

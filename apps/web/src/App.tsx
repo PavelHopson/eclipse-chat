@@ -356,6 +356,8 @@ export function App() {
         <EcosystemAuthorizePage
           authError={error}
           onLogin={login}
+          onRegister={register}
+          onClearAuthError={clearError}
           user={user}
         />
       ) : !isAuthenticated ? (

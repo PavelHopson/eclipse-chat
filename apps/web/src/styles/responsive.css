@@ -1648,6 +1648,20 @@
     align-items: stretch;
   }
 
+  .ec-settings-integrations__action {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .ec-settings-integrations__action .ec-settings-status-pill {
+    align-self: flex-start;
+  }
+
+  .ec-settings-integrations__action .ec-btn {
+    width: 100%;
+    min-height: 44px;
+  }
+
   .ec-settings-two-col {
     grid-template-columns: 1fr;
   }

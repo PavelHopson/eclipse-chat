@@ -16,6 +16,7 @@ import { ActivitySection } from "./categories/ActivitySection";
 import { AppearanceSection } from "./categories/AppearanceSection";
 import { HotkeysSection } from "./categories/HotkeysSection";
 import { InstallSection } from "./categories/InstallSection";
+import { IntegrationsSection } from "./categories/IntegrationsSection";
 import { NotificationsPushSection } from "./categories/NotificationsPushSection";
 import { NotificationsQuietHoursSection } from "./categories/NotificationsQuietHoursSection";
 import { PlaceholderSection } from "./categories/PlaceholderSection";
@@ -117,7 +118,6 @@ function placeholderFor(view: SettingsViewId) {
   const map: Record<string, { eyebrow: string; title: string; version: string }> = {
     content: { eyebrow: "Контент и общение", title: "Контент и общение", version: "v1.5.55+" },
     "data-export": { eyebrow: "Данные", title: "Экспорт", version: "v1.5.55+" },
-    integrations: { eyebrow: "Интеграции", title: "Интеграции", version: "v1.5.55+" },
     "voice-video": { eyebrow: "Голос и видео", title: "Голос и видео", version: "v1.5.55+" },
     developer: { eyebrow: "Разработчик", title: "Разработчик", version: "v1.5.55+" },
   };
@@ -447,6 +447,7 @@ export function SettingsPanel({
     if (active === "install") {
       return <InstallSection install={install} autostart={autostart} />;
     }
+    if (active === "integrations") return <IntegrationsSection />;
     if (active === "hotkeys") return <HotkeysSection />;
     const placeholder = placeholderFor(active);
     return <PlaceholderSection {...placeholder} />;

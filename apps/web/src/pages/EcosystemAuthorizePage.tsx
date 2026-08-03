@@ -12,6 +12,12 @@ type Props = {
     password: string,
     options?: { totpCode?: string },
   ) => Promise<LoginResult>;
+  onRegister: (
+    email: string,
+    password: string,
+    displayName: string,
+  ) => Promise<{ success: boolean; error?: string }>;
+  onClearAuthError: () => void;
   user: PublicUser | null;
 };
 
@@ -52,8 +58,16 @@ function readAuthorizationRequest(): AuthorizationRequest | null {
   return request;
 }
 
-export function EcosystemAuthorizePage({ authError, onLogin, user }: Props) {
+export function EcosystemAuthorizePage({
+  authError,
+  onLogin,
+  onRegister,
+  onClearAuthError,
+  user,
+}: Props) {
   const request = useMemo(readAuthorizationRequest, []);
+  const [mode, setMode] = useState<"login" | "register">("login");
+  const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [totpCode, setTotpCode] = useState("");
@@ -63,11 +77,35 @@ export function EcosystemAuthorizePage({ authError, onLogin, user }: Props) {
 
   async function login(event: FormEvent) {
     event.preventDefault();
+    if (mode === "register") {
+      if (displayName.trim().length < 2) {
+        setError("Укажите имя — минимум 2 символа.");
+        return;
+      }
+      if (password.length < 8 || !/[A-Za-z]/.test(password) || !/\d/.test(password)) {
+        setError("Пароль должен содержать минимум 8 символов, букву и цифру.");
+        return;
+      }
+      setBusy(true);
+      setError(null);
+      const result = await onRegister(email, password, displayName.trim());
+      setBusy(false);
+      if (!result.success) setError(result.error ?? "Не удалось создать аккаунт.");
+      return;
+    }
     setBusy(true);
     setError(null);
     const result = await onLogin(email, password, totpCode ? { totpCode } : undefined);
     setBusy(false);
     if (result.needs2FA) setNeeds2FA(true);
+  }
+
+  function selectMode(nextMode: "login" | "register") {
+    setMode(nextMode);
+    setError(null);
+    setNeeds2FA(false);
+    setTotpCode("");
+    onClearAuthError();
   }
 
   async function approve() {
@@ -106,27 +144,80 @@ export function EcosystemAuthorizePage({ authError, onLogin, user }: Props) {
       <main className="ec-identity-shell">
         <form className="ec-identity-card" onSubmit={(event) => void login(event)}>
           <p className="ec-kicker">ECLIPSE DND FORGE</p>
-          <h1>Войдите через Eclipse Chat</h1>
+          <h1>{mode === "login" ? "Войдите через Eclipse Chat" : "Создайте аккаунт Eclipse"}</h1>
           <p className="ec-identity-card__lead">
-            Chat подтвердит вашу личность. Пароль и токены не передаются в DnD Forge.
+            {mode === "login"
+              ? "Chat подтвердит вашу личность. Пароль и токены не передаются в DnD Forge."
+              : "Один аккаунт для Chat и DnD Forge. После регистрации останется только подтвердить подключение."}
           </p>
+          <div className="ec-identity-mode" role="group" aria-label="Способ продолжить">
+            <button
+              type="button"
+              aria-pressed={mode === "login"}
+              className="ec-identity-mode__tab"
+              onClick={() => selectMode("login")}
+            >
+              Войти
+            </button>
+            <button
+              type="button"
+              aria-pressed={mode === "register"}
+              className="ec-identity-mode__tab"
+              onClick={() => selectMode("register")}
+            >
+              Создать аккаунт
+            </button>
+          </div>
+          {mode === "register" && (
+            <label className="ec-field">
+              <span>Как вас называть</span>
+              <input
+                value={displayName}
+                onChange={(event) => setDisplayName(event.target.value.slice(0, 64))}
+                type="text"
+                autoComplete="name"
+                minLength={2}
+                maxLength={64}
+                required
+              />
+            </label>
+          )}
           <label className="ec-field">
             <span>Email</span>
             <input value={email} onChange={(event) => setEmail(event.target.value)} type="email" autoComplete="email" required />
           </label>
           <label className="ec-field">
             <span>Пароль</span>
-            <input value={password} onChange={(event) => setPassword(event.target.value)} type="password" autoComplete="current-password" required />
+            <input
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              type="password"
+              autoComplete={mode === "register" ? "new-password" : "current-password"}
+              minLength={mode === "register" ? 8 : undefined}
+              maxLength={128}
+              required
+            />
           </label>
-          {needs2FA && (
+          {mode === "login" && needs2FA && (
             <label className="ec-field">
               <span>Код 2FA</span>
               <input value={totpCode} onChange={(event) => setTotpCode(event.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" autoComplete="one-time-code" required />
             </label>
           )}
+          {mode === "register" && (
+            <p className="ec-identity-card__helper">
+              Минимум 8 символов, одна буква и одна цифра.
+            </p>
+          )}
           {(authError || error) && <p className="ec-form-error" role="alert">{error || authError}</p>}
           <button className="ec-btn ec-btn--primary ec-identity-card__primary" type="submit" disabled={busy}>
-            {busy ? "Проверяю…" : needs2FA ? "Подтвердить код" : "Войти и продолжить"}
+            {busy
+              ? mode === "login" ? "Проверяю…" : "Создаю аккаунт…"
+              : mode === "register"
+                ? "Создать аккаунт и продолжить"
+                : needs2FA
+                  ? "Подтвердить код"
+                  : "Войти и продолжить"}
           </button>
         </form>
       </main>

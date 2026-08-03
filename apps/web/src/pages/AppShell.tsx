@@ -2948,6 +2948,22 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           onClose={() => setStatusAnchor(null)}
           themeSlot={<ThemeToggle />}
           tools={[
+            {
+              key: "dnd-forge",
+              label: "DnD Forge",
+              hint: "Подключить аккаунт",
+              onClick: () => {
+                setSettingsInitialView("integrations");
+                setShowProfile(true);
+              },
+              icon: (
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M8.8 15.2 15.2 8.8" />
+                  <path d="M6.6 17.4 4.8 19.2a3.4 3.4 0 0 1-4.8-4.8l4-4a3.4 3.4 0 0 1 4.8 0" />
+                  <path d="m17.4 6.6 1.8-1.8A3.4 3.4 0 0 1 24 9.6l-4 4a3.4 3.4 0 0 1-4.8 0" />
+                </svg>
+              ),
+            },
             ...(notif.supported
               ? [
                   {
