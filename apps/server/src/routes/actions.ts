@@ -1,4 +1,4 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyBaseLogger, FastifyInstance } from "fastify";
 import { z } from "zod";
 import {
   actionItemDetailInclude,
@@ -99,6 +99,36 @@ async function requireChannelMember(userId: string, channelId: string) {
   }
 
   return { ok: true as const, channel, member };
+}
+
+async function syncActionRowsAndEmit(
+  actionItemId: string,
+  log: FastifyBaseLogger,
+): Promise<void> {
+  await syncActionToRows(actionItemId, log);
+  const linkedRows = await db.tableRow.findMany({
+    where: { actionItemId },
+    include: {
+      cells: true,
+      table: { select: { serverId: true } },
+    },
+  });
+  for (const row of linkedRows) {
+    if (!row.table) continue;
+    emitTableEvent(row.table.serverId, "table:row:updated", {
+      tableId: row.tableId,
+      row: {
+        id: row.id,
+        position: row.position,
+        createdAt: row.createdAt.toISOString(),
+        updatedAt: row.updatedAt.toISOString(),
+        cells: row.cells.map((cell) => ({
+          fieldId: cell.fieldId,
+          value: cell.value,
+        })),
+      },
+    });
+  }
 }
 
 async function requireActionMember(
@@ -365,7 +395,10 @@ export async function registerActionRoutes(app: FastifyInstance) {
 
   app.patch(
     "/api/actions/:id",
-    { onRequest: [requireJwt] },
+    {
+      onRequest: [requireJwt],
+      config: { rateLimit: { max: 60, timeWindow: 5 * 60 * 1000 } },
+    },
     async (req, reply) => {
       const userId = getUserId(req);
       if (!userId) {
@@ -545,30 +578,91 @@ export async function registerActionRoutes(app: FastifyInstance) {
       // linked TableRow'ы, протолкнуть title/status/assignee/dueAt в
       // соответствующие cells. Fire-and-forget. После sync emit
       // table:row:updated event для UI realtime refresh.
-      void syncActionToRows(actionId, req.log).then(async () => {
-        const linkedRows = await db.tableRow.findMany({
-          where: { actionItemId: actionId },
-          include: {
-            cells: true,
-            table: { select: { serverId: true } },
+      void syncActionRowsAndEmit(actionId, req.log).catch((error) => {
+        req.log.warn({ actionId, error }, "Failed to sync action to rows");
+      });
+      return { action: payload };
+    },
+  );
+
+  /**
+   * Mobile Command Inbox: atomically claim an unassigned open action. The
+   * assignee comes from the authenticated session, never from the request.
+   */
+  app.post(
+    "/api/actions/:id/claim",
+    {
+      onRequest: [requireJwt],
+      config: { rateLimit: { max: 40, timeWindow: 5 * 60 * 1000 } },
+    },
+    async (req, reply) => {
+      const userId = getUserId(req);
+      if (!userId) return reply.status(401).send({ error: "Unauthorized" });
+
+      const { id: actionId } = req.params as { id: string };
+      const existing = await db.actionItem.findUnique({
+        where: { id: actionId },
+        select: {
+          id: true,
+          channelId: true,
+          serverId: true,
+          status: true,
+          assigneeUserId: true,
+        },
+      });
+      if (!existing) return reply.status(404).send({ error: "Action not found" });
+
+      const access = await requireActionMember(userId, existing);
+      if (!access.ok) {
+        return reply.status(access.status).send({ error: access.error });
+      }
+
+      const claimed = await db.$transaction(async (tx) => {
+        const changed = await tx.actionItem.updateMany({
+          where: {
+            id: actionId,
+            assigneeUserId: null,
+            status: "OPEN",
+          },
+          data: {
+            assigneeUserId: userId,
+            status: "IN_PROGRESS",
           },
         });
-        for (const r of linkedRows) {
-          if (!r.table) continue;
-          emitTableEvent(r.table.serverId, "table:row:updated", {
-            tableId: r.tableId,
-            row: {
-              id: r.id,
-              position: r.position,
-              createdAt: r.createdAt.toISOString(),
-              updatedAt: r.updatedAt.toISOString(),
-              cells: r.cells.map((c) => ({
-                fieldId: c.fieldId,
-                value: c.value,
-              })),
+        if (changed.count !== 1) return null;
+
+        await tx.actionItemActivity.createMany({
+          data: [
+            {
+              actionItemId: actionId,
+              userId,
+              type: "ASSIGNEE_CHANGED",
+              payload: activityPayload({ from: null, to: userId }),
             },
-          });
-        }
+            {
+              actionItemId: actionId,
+              userId,
+              type: "STATUS_CHANGED",
+              payload: activityPayload({ from: "OPEN", to: "IN_PROGRESS" }),
+            },
+          ],
+        });
+        return tx.actionItem.findUnique({
+          where: { id: actionId },
+          include: actionItemInclude,
+        });
+      });
+
+      if (!claimed) {
+        return reply.status(409).send({
+          error: "Action is already assigned or is no longer open",
+        });
+      }
+
+      const payload = serializeActionItem(claimed);
+      emitActionItemUpdated(existing.channelId, payload);
+      void syncActionRowsAndEmit(actionId, req.log).catch((error) => {
+        req.log.warn({ actionId, error }, "Failed to sync claimed action to rows");
       });
       return { action: payload };
     },

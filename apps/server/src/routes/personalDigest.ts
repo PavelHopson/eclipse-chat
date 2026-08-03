@@ -12,6 +12,7 @@ import {
   type DigestImportance,
 } from "../lib/personalDigest.js";
 import { canAccessRealtimeChannel } from "../lib/realtimeAccess.js";
+import { snapshotForServer } from "../voicePresence.js";
 
 const acknowledgeBody = z.object({
   reviewedThrough: z.string().datetime(),
@@ -39,7 +40,19 @@ type DigestItem = {
   messageId: string | null;
   actionItemId: string | null;
   memoryEntryId: string | null;
+  actionStatus: "OPEN" | "IN_PROGRESS" | "REVIEW" | "DONE" | null;
+  assigneeUserId: string | null;
   createdAt: string;
+};
+
+type LiveCall = {
+  serverId: string;
+  serverName: string;
+  channelId: string;
+  channelName: string;
+  participantCount: number;
+  participantNames: string[];
+  joined: boolean;
 };
 
 type ChannelDigest = {
@@ -82,6 +95,7 @@ function emptyDigest(
     },
     priorityItems: [] as DigestItem[],
     channels: [] as ChannelDigest[],
+    liveCalls: [] as LiveCall[],
   };
 }
 
@@ -129,8 +143,7 @@ export async function registerPersonalDigestRoutes(app: FastifyInstance) {
               name: true,
               mode: true,
               channels: {
-                where: { type: { not: "VOICE" } },
-                select: { id: true, name: true, internal: true },
+                select: { id: true, name: true, type: true, internal: true },
               },
             },
           },
@@ -138,6 +151,10 @@ export async function registerPersonalDigestRoutes(app: FastifyInstance) {
       });
 
       const channelById = new Map<
+        string,
+        { id: string; name: string; serverId: string; serverName: string }
+      >();
+      const voiceChannelById = new Map<
         string,
         { id: string; name: string; serverId: string; serverName: string }
       >();
@@ -150,18 +167,64 @@ export async function registerPersonalDigestRoutes(app: FastifyInstance) {
               membership.role,
             )
           ) {
-            channelById.set(channel.id, {
+            const visibleChannel = {
               id: channel.id,
               name: channel.name,
               serverId: membership.server.id,
               serverName: membership.server.name,
-            });
+            };
+            if (channel.type === "VOICE") {
+              voiceChannelById.set(channel.id, visibleChannel);
+            } else {
+              channelById.set(channel.id, visibleChannel);
+            }
           }
         }
       }
 
       const channelIds = [...channelById.keys()];
-      if (channelIds.length === 0) return base;
+      const voiceSnapshot = snapshotForServer([...voiceChannelById.keys()]);
+      const voiceParticipantIds = [
+        ...new Set(Object.values(voiceSnapshot).flat()),
+      ];
+      const voiceParticipants = voiceParticipantIds.length
+        ? await db.user.findMany({
+            where: { id: { in: voiceParticipantIds } },
+            select: { id: true, displayName: true },
+          })
+        : [];
+      const voiceNameById = new Map(
+        voiceParticipants.map((participant) => [
+          participant.id,
+          participant.displayName,
+        ]),
+      );
+      const liveCalls = [...voiceChannelById.values()]
+        .flatMap((channel): LiveCall[] => {
+          const participantIds = voiceSnapshot[channel.id] ?? [];
+          if (participantIds.length === 0) return [];
+          return [
+            {
+              serverId: channel.serverId,
+              serverName: channel.serverName,
+              channelId: channel.id,
+              channelName: channel.name,
+              participantCount: participantIds.length,
+              participantNames: participantIds
+                .filter((participantId) => participantId !== userId)
+                .map(
+                  (participantId) =>
+                    voiceNameById.get(participantId) ?? "Участник",
+                )
+                .slice(0, 3),
+              joined: participantIds.includes(userId),
+            },
+          ];
+        })
+        .sort((a, b) => b.participantCount - a.participantCount)
+        .slice(0, 8);
+
+      if (channelIds.length === 0) return { ...base, liveCalls };
       const serverIds = [...new Set([...channelById.values()].map((c) => c.serverId))];
 
       const [
@@ -260,6 +323,15 @@ export async function registerPersonalDigestRoutes(app: FastifyInstance) {
               {
                 dueAt: { lt: generatedAt },
                 status: { not: "DONE" },
+              },
+              {
+                assigneeUserId: null,
+                type: { in: ["TASK", "FOLLOW_UP"] },
+                status: "OPEN",
+              },
+              {
+                status: "REVIEW",
+                OR: [{ assigneeUserId: null }, { assigneeUserId: userId }],
               },
             ],
           },
@@ -453,6 +525,8 @@ export async function registerPersonalDigestRoutes(app: FastifyInstance) {
           messageId: null,
           actionItemId: null,
           memoryEntryId: null,
+          actionStatus: null,
+          assigneeUserId: null,
           createdAt: incident.openedAt.toISOString(),
         });
         const digestChannel = ensureChannel(channel.id);
@@ -487,6 +561,8 @@ export async function registerPersonalDigestRoutes(app: FastifyInstance) {
           messageId: action.sourceMessageId,
           actionItemId: action.id,
           memoryEntryId: null,
+          actionStatus: action.status,
+          assigneeUserId: action.assigneeUserId,
           createdAt: action.updatedAt.toISOString(),
         });
       }
@@ -509,6 +585,8 @@ export async function registerPersonalDigestRoutes(app: FastifyInstance) {
           messageId: memory.sourceMessageId,
           actionItemId: memory.actionItemId,
           memoryEntryId: memory.id,
+          actionStatus: null,
+          assigneeUserId: null,
           createdAt: memory.createdAt.toISOString(),
         });
       }
@@ -541,6 +619,8 @@ export async function registerPersonalDigestRoutes(app: FastifyInstance) {
           messageId: channel.latestMessageId,
           actionItemId: null,
           memoryEntryId: null,
+          actionStatus: null,
+          assigneeUserId: null,
           createdAt: channel.latestAt ?? generatedAt.toISOString(),
         });
       }
@@ -577,6 +657,7 @@ export async function registerPersonalDigestRoutes(app: FastifyInstance) {
         },
         priorityItems: items.slice(0, 20),
         channels: channelRows,
+        liveCalls,
       };
     },
   );

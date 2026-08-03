@@ -60,6 +60,7 @@ const UserProfileModal = lazy(() => import("../components/UserProfileModal").the
 const MessageMemoryModal = lazy(() => import("../components/MessageMemoryModal").then((m) => ({ default: m.MessageMemoryModal })));
 const MessageActionModal = lazy(() => import("../components/MessageActionModal").then((m) => ({ default: m.MessageActionModal })));
 const CommandDigestView = lazy(() => import("../components/CommandDigestView").then((m) => ({ default: m.CommandDigestView })));
+const MobileCommandInbox = lazy(() => import("../components/MobileCommandInbox").then((m) => ({ default: m.MobileCommandInbox })));
 
 function isTextEntryTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -102,7 +103,9 @@ import {
   usePersonalDigest,
   type PersonalDigestChannel,
   type PersonalDigestItem,
+  type PersonalDigestLiveCall,
 } from "../hooks/usePersonalDigest";
+import { useCommandInbox, type CommandInboxApproval } from "../hooks/useCommandInbox";
 import { useShareTarget } from "../hooks/useShareTarget";
 import { useFocusMode } from "../hooks/useFocusMode";
 import { useMutedChannels } from "../hooks/usePushPreferences";
@@ -404,7 +407,14 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   const [actionDraftMessage, setActionDraftMessage] = useState<MessageRow | null>(null);
   const [showSearch, setShowSearch] = useState(false);
   const [homeOpen, setHomeOpen] = useState(false);
-  const personalDigest = usePersonalDigest(homeOpen);
+  const personalDigest = usePersonalDigest(true);
+  const commandInbox = useCommandInbox(
+    servers,
+    isReady,
+    personalDigest.data,
+    user.id,
+    personalDigest.reload,
+  );
   const [friendsOpen, setFriendsOpen] = useState(false);
   /** v0.73 #14: In-app help / onboarding. Полноэкранный view как Home /
    *  StatusBoard / TeamHealth — правый rail скрыт. Открывается «?» в topbar. */
@@ -911,6 +921,24 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     if (item.actionItemId) setOpenActionItemId(item.actionItemId);
   };
 
+  const openApprovalSource = (approval: CommandInboxApproval) => {
+    if (approval.sourceChannelId) {
+      openDigestChannel({
+        serverId: approval.serverId,
+        channelId: approval.sourceChannelId,
+      });
+      return;
+    }
+    setHomeOpen(false);
+    setActiveServerId(approval.serverId);
+    setServerView("guide");
+  };
+
+  const joinDigestCall = async (call: PersonalDigestLiveCall): Promise<boolean> => {
+    openDigestChannel({ serverId: call.serverId, channelId: call.channelId });
+    return voice.join(call.channelId);
+  };
+
   // Вход «Друзья» — общая точка: FriendsPanel, кнопка «Новое сообщение» в ЛС
   // и rail-кнопка «Друзья». Может вызываться из ЛЮБОГО контекста (в т.ч. с
   // открытого сервера или профиля), поэтому явно входим в DM-режим и снимаем
@@ -1398,21 +1426,17 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           )}
           <button
             type="button"
-            onClick={() => {
-              setSettingsInitialView("notifications-push");
-              setShowProfile(true);
-            }}
+            onClick={openHome}
             title={
-              notif.permission === "denied"
-                ? "Уведомления заблокированы — открыть настройки"
-                : notif.permission === "granted" && notif.enabled
-                ? "Уведомления включены — открыть настройки"
-                : "Включить уведомления и звук"
+              commandInbox.count > 0
+                ? `Открыть ${commandInbox.count} входящих действий`
+                : "Открыть входящие решения"
             }
-            aria-label="Уведомления и звук"
+            aria-label={commandInbox.count > 0 ? `Входящие решения: ${commandInbox.count}` : "Входящие решения"}
+            aria-pressed={homeOpen}
             className={
               "ec-icon-btn ec-notification-topbar" +
-              (notif.permission === "granted" && notif.enabled
+              (commandInbox.count > 0 || (notif.permission === "granted" && notif.enabled)
                 ? " is-enabled"
                 : " needs-action")
             }
@@ -1421,9 +1445,9 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
               <path d="M13.73 21a2 2 0 0 1-3.46 0" />
             </svg>
-            {unreadTotal > 0 ? (
+            {(commandInbox.count > 0 || unreadTotal > 0) ? (
               <span className="ec-notification-topbar__badge" aria-hidden>
-                {unreadTotal > 99 ? "99+" : unreadTotal}
+                {(commandInbox.count || unreadTotal) > 99 ? "99+" : (commandInbox.count || unreadTotal)}
               </span>
             ) : (
               <span className="ec-notification-topbar__state" aria-hidden />
@@ -2154,18 +2178,50 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             }}
           />
         ) : homeOpen ? (
-          <CommandDigestView
-            data={personalDigest.data}
-            loading={personalDigest.loading}
-            acknowledging={personalDigest.acknowledging}
-            error={personalDigest.error}
-            onReload={() => void personalDigest.reload()}
-            onAcknowledge={() => void personalDigest.acknowledge()}
-            onOpenItem={openDigestItem}
-            onOpenChannel={(channel) =>
-              openDigestChannel(channel, channel.latestMessageId)
-            }
-          />
+          isMobile ? (
+            <MobileCommandInbox
+              data={personalDigest.data}
+              approvals={commandInbox.approvals}
+              currentUserId={user.id}
+              loading={personalDigest.loading || commandInbox.loading}
+              error={personalDigest.error ?? commandInbox.error}
+              notice={commandInbox.notice}
+              approvalBusyId={commandInbox.approvalBusyId}
+              actionBusyId={commandInbox.actionBusyId}
+              onReload={() => {
+                void personalDigest.reload();
+                void commandInbox.reloadApprovals();
+              }}
+              onOpenItem={openDigestItem}
+              onClaimItem={async (item) => {
+                if (!item.actionItemId) return false;
+                const claimed = await commandInbox.claimAction(item.actionItemId);
+                if (claimed) openDigestItem(item);
+                return claimed;
+              }}
+              onApprove={commandInbox.approve}
+              onReject={commandInbox.reject}
+              onOpenApprovalSource={openApprovalSource}
+              onJoinCall={joinDigestCall}
+              onOpenNotificationSettings={() => {
+                setSettingsInitialView("notifications-push");
+                setShowProfile(true);
+              }}
+            />
+          ) : (
+            <CommandDigestView
+              data={personalDigest.data}
+              loading={personalDigest.loading}
+              acknowledging={personalDigest.acknowledging}
+              error={personalDigest.error}
+              onReload={() => void personalDigest.reload()}
+              onAcknowledge={() => void personalDigest.acknowledge()}
+              onOpenItem={openDigestItem}
+              onOpenChannel={(channel) =>
+                openDigestChannel(channel, channel.latestMessageId)
+              }
+            />
+          )
         ) : inDmMode ? (
           friendsOpen ? (
             <FriendsView

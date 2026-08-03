@@ -175,6 +175,39 @@ describe("server route registration", () => {
     });
   });
 
+  it("protects action updates and atomic inbox claims with bounded mutation limits", async () => {
+    const app = Fastify();
+    const routes = new Map<
+      string,
+      { guards: string[]; rateLimit?: { max?: number; timeWindow?: number } }
+    >();
+    app.addHook("onRoute", (route) => {
+      if (!["/api/actions/:id", "/api/actions/:id/claim"].includes(route.url)) return;
+      if (route.method !== "PATCH" && route.method !== "POST") return;
+      const routeGuards = Array.isArray(route.onRequest)
+        ? route.onRequest
+        : route.onRequest
+          ? [route.onRequest]
+          : [];
+      routes.set(`${route.method}:${route.url}`, {
+        guards: routeGuards.map((guard) => guard.name),
+        rateLimit: route.config?.rateLimit as
+          | { max?: number; timeWindow?: number }
+          | undefined,
+      });
+    });
+
+    await registerActionRoutes(app);
+    expect(routes.get("PATCH:/api/actions/:id")).toEqual({
+      guards: ["requireJwt"],
+      rateLimit: { max: 60, timeWindow: 5 * 60 * 1000 },
+    });
+    expect(routes.get("POST:/api/actions/:id/claim")).toEqual({
+      guards: ["requireJwt"],
+      rateLimit: { max: 40, timeWindow: 5 * 60 * 1000 },
+    });
+  });
+
   it("protects message action creation with auth and a bounded mutation limit", async () => {
     const app = Fastify();
     let guards: string[] = [];

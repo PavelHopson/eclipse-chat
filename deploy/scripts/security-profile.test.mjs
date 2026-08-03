@@ -33,6 +33,17 @@ test("requires access review for regular API route files", () => {
   assert.ok(selection.profiles.some((profile) => profile.id === "identity-access"));
 });
 
+test("combines access and realtime review for the personal voice digest", () => {
+  const result = selectSecurityProfiles([
+    "apps/server/src/routes/personalDigest.ts",
+  ]);
+
+  assert.deepEqual(
+    result.profiles.map((profile) => profile.id),
+    ["baseline", "identity-access", "realtime-voice"],
+  );
+});
+
 test("combines access and AI controls for agent routes", () => {
   const selection = selectSecurityProfiles(["apps/server/src/routes/bots.ts"]);
   assert.ok(selection.profiles.some((profile) => profile.id === "identity-access"));

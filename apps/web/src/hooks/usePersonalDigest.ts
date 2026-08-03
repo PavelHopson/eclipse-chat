@@ -26,7 +26,19 @@ export type PersonalDigestItem = {
   messageId: string | null;
   actionItemId: string | null;
   memoryEntryId: string | null;
+  actionStatus: "OPEN" | "IN_PROGRESS" | "REVIEW" | "DONE" | null;
+  assigneeUserId: string | null;
   createdAt: string;
+};
+
+export type PersonalDigestLiveCall = {
+  serverId: string;
+  serverName: string;
+  channelId: string;
+  channelName: string;
+  participantCount: number;
+  participantNames: string[];
+  joined: boolean;
 };
 
 export type PersonalDigestChannel = {
@@ -63,6 +75,7 @@ export type PersonalDigest = {
   };
   priorityItems: PersonalDigestItem[];
   channels: PersonalDigestChannel[];
+  liveCalls: PersonalDigestLiveCall[];
 };
 
 export function usePersonalDigest(enabled: boolean) {
@@ -71,22 +84,26 @@ export function usePersonalDigest(enabled: boolean) {
   const [acknowledging, setAcknowledging] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const reload = useCallback(async () => {
+  const reload = useCallback(async (quiet = false) => {
     if (!enabled) return;
-    setLoading(true);
+    if (!quiet) setLoading(true);
     setError(null);
     try {
       setData(await apiJson<PersonalDigest>("/api/me/digest"));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Не удалось загрузить сводку");
     } finally {
-      setLoading(false);
+      if (!quiet) setLoading(false);
     }
   }, [enabled]);
 
   useEffect(() => {
     if (!enabled) return;
     void reload();
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") void reload(true);
+    }, 30_000);
+    return () => window.clearInterval(timer);
   }, [enabled, reload]);
 
   const acknowledge = useCallback(async () => {

@@ -60,6 +60,25 @@ lifecycle. Internal client-room memory cannot be promoted to workspace scope.
 Workspace changes invalidate memory views across the workspace, and every
 mutation endpoint is authenticated and rate-limited.
 
+## v1.7.37 slice
+
+Mobile Command Inbox turns the existing personal digest, owner AI approvals,
+Action Items and voice presence into one short decision queue. Each card has one
+primary action and an explicit source; the interface does not execute hidden
+writes or introduce a parallel task system. Desktop keeps the more detailed
+Command Brief.
+
+Self-claim is an authenticated atomic transition from unassigned `OPEN` work to
+the current user in `IN_PROGRESS`. Membership and internal-room visibility are
+rechecked server-side, concurrent claims return `409`, and linked operational
+tables receive the same realtime update as the Action Item. Review work assigned
+to another person never enters the personal queue.
+
+Active calls come from the existing in-memory voice presence snapshot and are
+filtered through the same room ACL before participant names are loaded. This is
+correct for the current single server process; a future clustered deployment
+must move voice presence to shared state or LiveKit-backed discovery.
+
 ## Trust boundaries
 
 1. The server validates JWT and workspace membership before reading room data.
@@ -91,6 +110,6 @@ mutation endpoint is authenticated and rate-limited.
 
 ## Next slice
 
-Build Mobile Command Inbox: one prioritized queue for approve, assign, answer,
-join-call and review actions, with one explicit primary action per card and no
-hidden automatic execution.
+Build Project Passport: one linked project view for repositories, rooms,
+decisions, work, deploys, documents, owners and current risks, reusing Command
+Fabric sources instead of copying their state.

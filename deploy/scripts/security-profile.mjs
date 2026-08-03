@@ -30,7 +30,7 @@ export const SECURITY_PROFILES = [
     title: "Realtime and voice",
     patterns: [
       /apps\/server\/src\/(index|realtime|presence|voicePresence)\.ts$/,
-      /apps\/server\/src\/routes\/(voice|threads|messages)\.ts$/,
+      /apps\/server\/src\/routes\/(voice|threads|messages|personalDigest)\.ts$/,
       /apps\/web\/src\/(hooks\/useVoice|components\/VoiceRoom|lib\/socket)\.tsx?$/,
     ],
     skills: ["testing-websocket-api-security"],
