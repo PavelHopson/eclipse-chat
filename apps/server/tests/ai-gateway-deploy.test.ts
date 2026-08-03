@@ -28,6 +28,7 @@ describe("AI gateway production deployment", () => {
     expect(gatewaySync).toContain('CLIENT_ID="eclipse-chat"');
     expect(gatewaySync).toContain('CLIENT_SCOPES="models:read,telemetry:read,chat:write"');
     expect(gatewaySync).toContain("primary-token-if-present");
+    expect(gatewaySync).toContain('read_exported_env_value "AI_GATEWAY_SERVICE_CLIENTS"');
     expect(gatewaySync).not.toContain('write_env_line "AI_GATEWAY_SERVICE_TOKEN"');
     expect(gatewaySync).not.toContain("set -x");
   });
@@ -53,6 +54,7 @@ describe("AI gateway production deployment", () => {
     expect(rotationScript).toContain('CLIENT_TOKENS="$NEW_TOKEN,$OLD_GATEWAY_TOKEN"');
     expect(rotationScript).toContain('CLIENT_TOKENS="$NEW_TOKEN"');
     expect(rotationScript).toContain('CLIENT_SCOPES="models:read,telemetry:read,chat:write"');
+    expect(rotationScript).toContain('read_exported_env_value "AI_GATEWAY_SERVICE_CLIENTS"');
     expect(rotationScript).toContain('OLD_TOKEN_STATUS=');
     expect(rotationScript).toContain('OLD_TOKEN_STATUS" != "401"');
     expect(rotationScript).toContain('cp -p -- "$GATEWAY_BACKUP" "$GATEWAY_ENV"');

@@ -23,6 +23,10 @@ if [[ ! -r "$GATEWAY_ENV" || ! -r "$CHAT_ENV" ]]; then
   echo "Gateway or Chat environment is missing" >&2
   exit 1
 fi
+if [[ "$(stat -c '%U' "$GATEWAY_ENV")" != "root" || "$(stat -c '%a' "$GATEWAY_ENV")" =~ [1-7]$ ]]; then
+  echo "Gateway environment has unsafe ownership or permissions" >&2
+  exit 1
+fi
 
 read_env_value() {
   local key="$1"
@@ -33,6 +37,20 @@ read_env_value() {
   if [[ ${#value} -ge 2 && ( ( "${value:0:1}" == '"' && "${value: -1}" == '"' ) || ( "${value:0:1}" == "'" && "${value: -1}" == "'" ) ) ]]; then
     value="${value:1:${#value}-2}"
   fi
+  REPLY="$value"
+}
+
+read_exported_env_value() {
+  local key="$1"
+  local file="$2"
+  local value
+  value="$(
+    set +u
+    set -a
+    source "$file"
+    set +a
+    printenv "$key" || true
+  )"
   REPLY="$value"
 }
 
@@ -64,7 +82,7 @@ restore_on_failure() {
 }
 trap restore_on_failure EXIT
 
-read_env_value "AI_GATEWAY_SERVICE_CLIENTS" "$GATEWAY_ENV"
+read_exported_env_value "AI_GATEWAY_SERVICE_CLIENTS" "$GATEWAY_ENV"
 SERVICE_CLIENTS="$REPLY"
 read_env_value "AI_GATEWAY_SERVICE_TOKEN" "$GATEWAY_ENV"
 LEGACY_GATEWAY_TOKEN="$REPLY"
