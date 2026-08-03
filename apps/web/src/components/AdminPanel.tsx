@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { apiJson } from "../lib/api";
 import { Avatar } from "./Avatar";
 import { AdminEmojisTab } from "./AdminEmojisTab";
+import { AdminGitHubTab } from "./AdminGitHubTab";
 import { InvoicesTabContent } from "./AdminInvoicesTab";
 import type { MemberRole, MemberRow } from "../hooks/useMembers";
 import type { ChannelRow } from "../hooks/useChannels";
@@ -70,6 +71,7 @@ type Tab =
   | "emojis"
   | "roles"
   | "automation"
+  | "github"
   | "invoices"
   | "audit";
 
@@ -470,6 +472,15 @@ export function AdminPanel({
           className="ec-admin-tab"
         >
           Автоматизация{rules ? ` · ${rules.length}` : ""}
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === "github"}
+          onClick={() => setTab("github")}
+          className="ec-admin-tab"
+        >
+          GitHub
         </button>
         {serverMode === "CLIENT" && (
           <button
@@ -960,6 +971,8 @@ export function AdminPanel({
           )}
         </div>
       )}
+
+      {tab === "github" && <AdminGitHubTab serverId={serverId} channels={channels} />}
 
       {tab === "invoices" && (
         <InvoicesTabContent

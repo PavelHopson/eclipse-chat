@@ -22,7 +22,7 @@ scope доступа, понятное действие и подтвержде�
 - [x] **Ecosystem Command Center** — состояние Eclipse Chat, AI Hub, Library,
   Sentinel, DnD Forge и Media в одном operational dashboard; `v1.7.30` разделяет
   runtime health, зрелость продукта и состояние межпроектных связей.
-- [ ] **GitHub rooms** — коммиты, PR, CI, release и deploy как проверяемые события
+- [x] **GitHub rooms** — коммиты, PR, CI, release и deploy как проверяемые события
   комнаты с переходом к исходному репозиторию.
 - [ ] **Task-based AI routing** — выбор модели по типу задачи, цене, latency,
   privacy и health вместо ручного выбора пользователем.
@@ -148,6 +148,22 @@ scope доступа, понятное действие и подтвержде�
 - [x] Зафиксировать trust boundaries, PKCE flow, key rotation и production gate в
   [`docs/ECOSYSTEM-IDENTITY.md`](docs/ECOSYSTEM-IDENTITY.md); не включать issuer до
   готовности BFF runtime/DNS/TLS, scoped AI Hub client, rollback canary и 24h SLO.
+
+### Verified GitHub rooms — v1.7.31
+
+- [x] Расширить существующий GitHub webhook событиями push, pull request, issue,
+  workflow run, release и deployment status; хранить только bounded provenance,
+  а не полный внешний payload.
+- [x] Привязать интеграцию к exact `owner/repository`, шифровать новый HMAC secret,
+  ограничить public endpoint по body/rate и отклонять repository mismatch.
+- [x] Сделать delivery идемпотентным по `integrationId + X-GitHub-Delivery`, атомарно
+  сохранять сообщение и счётчик; legacy plaintext secret мигрировать после валидной подписи.
+- [x] Показывать отдельную verified-карточку со статусом, ref, безопасной ссылкой только
+  на `https://github.com` и сохранять provenance после удаления интеграции.
+- [x] Добавить guided admin flow с выбором комнаты, одноразовой выдачей URL/Secret,
+  pause/resume/delete, desktop/mobile layout и понятными empty/error/success состояниями.
+- [x] Добавить additive migration, HMAC/formatter/link regression tests, runbook
+  [`docs/GITHUB-ROOMS.md`](docs/GITHUB-ROOMS.md) и PWA cache `v1.7.31`.
 
 ### Operational integration slice — advertising room
 

@@ -1,24 +1,134 @@
-/**
- * v0.89 #26 phase 2 — GitHub webhook incoming bridge.
- *
- * Receives GH events (push / pull_request / issues / release / ping),
- * forms human-readable text, posts в Eclipse channel through system bot.
- *
- * Security:
- *   - HMAC-SHA256 signature verify (header `X-Hub-Signature-256`).
- *   - Constant-time comparison через `crypto.timingSafeEqual`.
- *   - Reject если `webhookSecret` not configured (integration not yet
- *     activated).
- *
- * Supported events (phase 2): push, pull_request (opened/closed/merged),
- * issues (opened/closed/reopened), release (published), ping.
- *
- * Skipped events: workflow_run, deployment_status, etc — too noisy.
- */
-
 import { createHmac, timingSafeEqual } from "node:crypto";
 
-/** Verify HMAC signature. Returns true если matches. */
+export type GitHubEventStatus =
+  | "success"
+  | "failure"
+  | "pending"
+  | "neutral";
+
+export type GitHubExternalEvent = {
+  source: "github";
+  verified: true;
+  kind:
+    | "ping"
+    | "push"
+    | "pull_request"
+    | "issue"
+    | "workflow"
+    | "release"
+    | "deployment";
+  repository: string;
+  title: string;
+  summary: string;
+  actor: string | null;
+  ref: string | null;
+  status: GitHubEventStatus;
+  sourceUrl: string;
+  occurredAt: string | null;
+  details: Array<{ label: string; value: string }>;
+};
+
+export type FormattedGitHubEvent = {
+  content: string;
+  event: GitHubExternalEvent;
+};
+
+const REPOSITORY_RE = /^[A-Za-z0-9_.-]{1,100}\/[A-Za-z0-9_.-]{1,100}$/;
+
+function record(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object"
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function clean(value: unknown, max = 160): string {
+  if (typeof value !== "string") return "";
+  const normalized = value.replace(/[\u0000-\u001f\u007f]+/g, " ").replace(/\s+/g, " ").trim();
+  return normalized.length > max ? `${normalized.slice(0, max - 1)}…` : normalized;
+}
+
+function isoDate(value: unknown): string | null {
+  const source = clean(value, 64);
+  if (!source) return null;
+  const parsed = new Date(source);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+}
+
+function safeGitHubUrl(value: unknown, fallback: string): string {
+  if (typeof value !== "string") return fallback;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:" || url.hostname.toLowerCase() !== "github.com") {
+      return fallback;
+    }
+    url.username = "";
+    url.password = "";
+    url.hash = "";
+    return url.toString();
+  } catch {
+    return fallback;
+  }
+}
+
+export function normalizeGitHubRepository(value: unknown): string | null {
+  const repository = clean(value, 201);
+  return REPOSITORY_RE.test(repository) ? repository : null;
+}
+
+export function repositoryFromGitHubPayload(payload: unknown): string | null {
+  return normalizeGitHubRepository(record(record(payload)?.repository)?.full_name);
+}
+
+function actorFromPayload(payload: Record<string, unknown>): string | null {
+  const sender = clean(record(payload.sender)?.login, 80);
+  const pusher = clean(record(payload.pusher)?.name, 80);
+  return sender || pusher || null;
+}
+
+function baseEvent(
+  payload: Record<string, unknown>,
+  kind: GitHubExternalEvent["kind"],
+  title: string,
+  summary: string,
+  status: GitHubEventStatus,
+  sourceUrl: unknown,
+  options: {
+    ref?: string | null;
+    occurredAt?: string | null;
+    details?: Array<{ label: string; value: string }>;
+  } = {},
+): GitHubExternalEvent | null {
+  const repository = repositoryFromGitHubPayload(payload);
+  if (!repository) return null;
+  const fallback = `https://github.com/${repository}`;
+  return {
+    source: "github",
+    verified: true,
+    kind,
+    repository,
+    title: clean(title, 180),
+    summary: clean(summary, 320),
+    actor: actorFromPayload(payload),
+    ref: options.ref ? clean(options.ref, 160) : null,
+    status,
+    sourceUrl: safeGitHubUrl(sourceUrl, fallback),
+    occurredAt: options.occurredAt ?? null,
+    details: (options.details ?? [])
+      .slice(0, 6)
+      .map((item) => ({ label: clean(item.label, 40), value: clean(item.value, 120) }))
+      .filter((item) => item.label && item.value),
+  };
+}
+
+function formatted(event: GitHubExternalEvent): FormattedGitHubEvent {
+  const actor = event.actor ? ` · ${event.actor}` : "";
+  return {
+    content: `GitHub · ${event.repository} · ${event.title}${actor}`,
+    event,
+  };
+}
+
+/** Constant-time HMAC-SHA256 verification for X-Hub-Signature-256. */
 export function verifyGitHubSignature(
   body: string,
   signatureHeader: string | undefined,
@@ -28,119 +138,195 @@ export function verifyGitHubSignature(
   const sigHex = signatureHeader.slice("sha256=".length);
   if (!/^[0-9a-fA-F]{64}$/.test(sigHex)) return false;
   const expected = createHmac("sha256", secret).update(body, "utf8").digest();
-  let provided: Buffer;
-  try {
-    provided = Buffer.from(sigHex, "hex");
-  } catch {
-    return false;
-  }
-  if (provided.length !== expected.length) return false;
-  return timingSafeEqual(provided, expected);
+  const provided = Buffer.from(sigHex, "hex");
+  return provided.length === expected.length && timingSafeEqual(provided, expected);
 }
 
-/** Безопасно усекаем строку до n char + ellipsis. */
-function truncate(s: string, n: number): string {
-  if (typeof s !== "string") return "";
-  return s.length > n ? s.slice(0, n - 1) + "…" : s;
-}
-
-/**
- * Маршрутизируем GitHub event → markdown-friendly текст для Eclipse channel.
- *
- * Returns null если event-тип не поддерживается ИЛИ payload не парсится —
- * caller silently skip'ает (200 OK для webhook, чтобы GH не retried).
- */
+/** Convert a signed GitHub payload into a bounded provenance event. */
 export function formatGitHubEvent(
   eventType: string,
   payload: unknown,
-): string | null {
-  if (!payload || typeof payload !== "object") return null;
-  const p = payload as Record<string, unknown>;
+): FormattedGitHubEvent | null {
+  const p = record(payload);
+  if (!p) return null;
 
-  switch (eventType) {
-    case "ping": {
-      const zen = typeof p.zen === "string" ? p.zen : "pong";
-      return `🛰 GitHub webhook connected. Zen: _${truncate(zen, 200)}_`;
-    }
-    case "push": {
-      const repo = (p.repository as Record<string, unknown>)?.full_name;
-      const ref = typeof p.ref === "string" ? p.ref.replace("refs/heads/", "") : "";
-      const commits = Array.isArray(p.commits) ? p.commits : [];
-      const pusher = (p.pusher as Record<string, unknown>)?.name;
-      if (commits.length === 0) return null;
-      const lines = commits.slice(0, 5).map((c: unknown) => {
-        const commit = c as Record<string, unknown>;
-        const msg =
-          typeof commit.message === "string"
-            ? commit.message.split("\n")[0]
-            : "(empty)";
-        const author =
-          (commit.author as Record<string, unknown>)?.username ??
-          (commit.author as Record<string, unknown>)?.name ??
-          "—";
-        return `• ${truncate(msg, 120)} _(${author})_`;
-      });
-      const extra =
-        commits.length > 5 ? `\n_+${commits.length - 5} ещё_` : "";
-      return [
-        `📦 **${repo ?? "repo"}** \`${ref}\` — ${commits.length} commit'а от **${pusher ?? "—"}**`,
-        ...lines,
-        extra,
-      ]
-        .filter(Boolean)
-        .join("\n");
-    }
-    case "pull_request": {
-      const action = typeof p.action === "string" ? p.action : "";
-      if (!["opened", "closed", "reopened", "ready_for_review"].includes(action)) {
-        return null;
-      }
-      const pr = p.pull_request as Record<string, unknown> | undefined;
-      if (!pr) return null;
-      const repo = (p.repository as Record<string, unknown>)?.full_name;
-      const number = pr.number;
-      const title = typeof pr.title === "string" ? pr.title : "(no title)";
-      const author = (pr.user as Record<string, unknown>)?.login ?? "—";
-      const url = typeof pr.html_url === "string" ? pr.html_url : "";
-      const merged = pr.merged === true;
-      const verb =
-        action === "opened"
-          ? "🟢 открыл"
-          : action === "closed"
-            ? merged
-              ? "🟣 смержил"
-              : "🔴 закрыл"
-            : action === "reopened"
-              ? "♻️ переоткрыл"
-              : "👀 готов к ревью";
-      return `**${repo ?? "repo"}** PR #${number}: **${author}** ${verb} _«${truncate(title, 120)}»_\n${url}`;
-    }
-    case "issues": {
-      const action = typeof p.action === "string" ? p.action : "";
-      if (!["opened", "closed", "reopened"].includes(action)) return null;
-      const issue = p.issue as Record<string, unknown> | undefined;
-      if (!issue) return null;
-      const repo = (p.repository as Record<string, unknown>)?.full_name;
-      const number = issue.number;
-      const title = typeof issue.title === "string" ? issue.title : "(no title)";
-      const author = (issue.user as Record<string, unknown>)?.login ?? "—";
-      const url = typeof issue.html_url === "string" ? issue.html_url : "";
-      const verb =
-        action === "opened" ? "🟢 открыл" : action === "closed" ? "🔴 закрыл" : "♻️ переоткрыл";
-      return `**${repo ?? "repo"}** issue #${number}: **${author}** ${verb} _«${truncate(title, 120)}»_\n${url}`;
-    }
-    case "release": {
-      const action = typeof p.action === "string" ? p.action : "";
-      if (action !== "published") return null;
-      const release = p.release as Record<string, unknown> | undefined;
-      if (!release) return null;
-      const repo = (p.repository as Record<string, unknown>)?.full_name;
-      const tag = typeof release.tag_name === "string" ? release.tag_name : "—";
-      const name = typeof release.name === "string" ? release.name : "";
-      const url = typeof release.html_url === "string" ? release.html_url : "";
-      return `🚀 **${repo ?? "repo"}** релиз \`${tag}\` ${name ? `— ${truncate(name, 120)}` : ""}\n${url}`;
-    }
-    default:
-      return null;
+  if (eventType === "ping") {
+    const event = baseEvent(
+      p,
+      "ping",
+      "Webhook подключён",
+      clean(p.zen, 200) || "GitHub подтвердил подключение.",
+      "success",
+      record(p.repository)?.html_url,
+    );
+    return event ? formatted(event) : null;
   }
+
+  if (eventType === "push") {
+    const ref = clean(p.ref, 180).replace(/^refs\/heads\//, "");
+    const commits = Array.isArray(p.commits) ? p.commits : [];
+    const deleted = p.deleted === true;
+    if (!ref || (!deleted && commits.length === 0)) return null;
+    const firstMessages = commits
+      .slice(0, 3)
+      .map((item) => clean(record(item)?.message, 100).split("\n")[0])
+      .filter(Boolean);
+    const event = baseEvent(
+      p,
+      "push",
+      deleted ? `Удалена ветка ${ref}` : `${commits.length} commit в ${ref}`,
+      deleted
+        ? "Ветка удалена в GitHub."
+        : firstMessages.join(" · ") || "В репозиторий отправлены изменения.",
+      "success",
+      p.compare,
+      {
+        ref,
+        details: commits.length > 3
+          ? [{ label: "Ещё", value: `${commits.length - 3} commit` }]
+          : [],
+      },
+    );
+    return event ? formatted(event) : null;
+  }
+
+  if (eventType === "pull_request") {
+    const action = clean(p.action, 40);
+    if (!["opened", "closed", "reopened", "ready_for_review", "synchronize"].includes(action)) {
+      return null;
+    }
+    const pr = record(p.pull_request);
+    if (!pr) return null;
+    const number = typeof p.number === "number" ? p.number : pr.number;
+    const merged = pr.merged === true;
+    const status: GitHubEventStatus = action === "closed" && !merged ? "neutral" : "success";
+    const actionLabel = merged
+      ? "Слит"
+      : action === "opened"
+        ? "Открыт"
+        : action === "closed"
+          ? "Закрыт"
+          : action === "ready_for_review"
+            ? "Готов к review"
+            : action === "synchronize"
+              ? "Обновлён"
+              : "Переоткрыт";
+    const event = baseEvent(
+      p,
+      "pull_request",
+      `${actionLabel} PR #${String(number ?? "?")}`,
+      clean(pr.title, 220) || "Pull request без названия",
+      status,
+      pr.html_url,
+      {
+        ref: clean(record(pr.head)?.ref, 160) || null,
+        occurredAt: isoDate(pr.updated_at),
+        details: [
+          { label: "Изменения", value: `${Number(pr.additions ?? 0)}+ / ${Number(pr.deletions ?? 0)}−` },
+          { label: "Файлы", value: String(pr.changed_files ?? 0) },
+        ],
+      },
+    );
+    return event ? formatted(event) : null;
+  }
+
+  if (eventType === "issues") {
+    const action = clean(p.action, 40);
+    if (!["opened", "closed", "reopened"].includes(action)) return null;
+    const issue = record(p.issue);
+    if (!issue) return null;
+    const actionLabel = action === "opened" ? "Открыта" : action === "closed" ? "Закрыта" : "Переоткрыта";
+    const event = baseEvent(
+      p,
+      "issue",
+      `${actionLabel} issue #${String(issue.number ?? "?")}`,
+      clean(issue.title, 220) || "Issue без названия",
+      action === "closed" ? "success" : "pending",
+      issue.html_url,
+      { occurredAt: isoDate(issue.updated_at) },
+    );
+    return event ? formatted(event) : null;
+  }
+
+  if (eventType === "workflow_run") {
+    const action = clean(p.action, 40);
+    if (action !== "completed" && action !== "requested" && action !== "in_progress") return null;
+    const run = record(p.workflow_run);
+    if (!run) return null;
+    const conclusion = clean(run.conclusion, 40);
+    const status: GitHubEventStatus = conclusion === "success"
+      ? "success"
+      : conclusion && !["neutral", "skipped", "cancelled"].includes(conclusion)
+        ? "failure"
+        : action === "completed"
+          ? "neutral"
+          : "pending";
+    const event = baseEvent(
+      p,
+      "workflow",
+      `CI · ${clean(run.name, 120) || "Workflow"}`,
+      conclusion ? `Результат: ${conclusion}` : "Workflow выполняется.",
+      status,
+      run.html_url,
+      {
+        ref: clean(run.head_branch, 160) || null,
+        occurredAt: isoDate(run.updated_at),
+        details: [{ label: "Запуск", value: `#${String(run.run_number ?? "?")}` }],
+      },
+    );
+    return event ? formatted(event) : null;
+  }
+
+  if (eventType === "release") {
+    if (clean(p.action, 40) !== "published") return null;
+    const release = record(p.release);
+    if (!release) return null;
+    const tag = clean(release.tag_name, 120) || "без тега";
+    const event = baseEvent(
+      p,
+      "release",
+      `Опубликован релиз ${tag}`,
+      clean(release.name, 220) || `Новая версия ${tag} доступна в GitHub.`,
+      "success",
+      release.html_url,
+      {
+        ref: tag,
+        occurredAt: isoDate(release.published_at),
+        details: release.prerelease === true ? [{ label: "Тип", value: "Pre-release" }] : [],
+      },
+    );
+    return event ? formatted(event) : null;
+  }
+
+  if (eventType === "deployment_status") {
+    const deployment = record(p.deployment);
+    const deploymentStatus = record(p.deployment_status);
+    if (!deployment || !deploymentStatus) return null;
+    const state = clean(deploymentStatus.state, 40);
+    const status: GitHubEventStatus = state === "success"
+      ? "success"
+      : ["failure", "error"].includes(state)
+        ? "failure"
+        : ["pending", "queued", "in_progress"].includes(state)
+          ? "pending"
+          : "neutral";
+    const environment = clean(deployment.environment, 100) || "environment";
+    const repository = repositoryFromGitHubPayload(p);
+    const fallbackUrl = repository ? `https://github.com/${repository}/deployments` : "https://github.com";
+    const event = baseEvent(
+      p,
+      "deployment",
+      `Deploy · ${environment}`,
+      state ? `Статус: ${state}` : "Статус deployment обновлён.",
+      status,
+      fallbackUrl,
+      {
+        ref: clean(deployment.ref, 160) || null,
+        occurredAt: isoDate(deploymentStatus.updated_at),
+      },
+    );
+    return event ? formatted(event) : null;
+  }
+
+  return null;
 }

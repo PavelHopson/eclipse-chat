@@ -1002,7 +1002,7 @@ enum IntegrationType {
 /// `encryptSecret`/`decryptSecret` (AES-256-GCM, reuses TWOFA_ENCRYPTION_KEY).
 /// Shape зависит от `type`:
 ///   - TELEGRAM_OUTGOING: `{ "botToken": "...", "chatId": "-100..." }`
-///   - GITHUB_WEBHOOK:    `{}` (secret в `webhookSecret` plaintext, path в `webhookPath`).
+///   - GITHUB_WEBHOOK:    `{ "repository": "owner/repo" }`.
 ///
 /// `channelId` — для TELEGRAM_OUTGOING это source channel (Eclipse → TG),
 /// для GITHUB_WEBHOOK это target channel (GH → Eclipse).
@@ -1024,8 +1024,9 @@ model Integration {
   channelId       String?
   /// Random unique slug для webhook URL (только GITHUB_WEBHOOK).
   webhookPath     String?         @unique
-  /// HMAC secret (только GITHUB_WEBHOOK). Plaintext — used for signature
-  /// verify. Не leak через API (returned `null` в read responses).
+  /// HMAC secret (только GITHUB_WEBHOOK). Новые значения encrypted at rest;
+  /// legacy plaintext opportunistically re-encrypted после verified delivery.
+  /// Никогда не возвращается через read API.
   webhookSecret   String?
   enabled         Boolean         @default(true)
   createdByUserId String?
@@ -1142,6 +1143,14 @@ model Message {
   /// hard-удаляется cron'ом после expiresAt. Вычисляется при отправке из
   /// Channel.messageTtlSeconds (или пер-сообщение override). NULL = постоянное.
   expiresAt DateTime?
+  /// Проверенное внешнее событие. Храним только bounded provenance-поля,
+  /// а не исходный webhook payload. Null для обычных сообщений.
+  externalEvent Json?
+  /// Snapshot id интеграции без FK: карточка остаётся проверяемой в истории
+  /// после удаления webhook-интеграции.
+  externalIntegrationId String?
+  /// Provider delivery id. Вместе с integration id защищает от webhook replay.
+  externalDeliveryId String?
   /// v0.63 cascade policy B: nullable + SetNull. При удалении User
   /// message остаётся, автор=null, UI рендерит «Удалённый пользователь».
   /// Bot deletions / GDPR-style erasure теперь не уничтожают историю.
@@ -1171,6 +1180,7 @@ model Message {
   @@index([channelId, pinnedAt])
   @@index([conversationId, createdAt])
   @@index([parentMessageId])
+  @@unique([externalIntegrationId, externalDeliveryId], map: "Message_external_integration_delivery_key")
   /// v1.7.0 — cron исчезающих сообщений сканит по expiresAt < now.
   @@index([expiresAt])
 }

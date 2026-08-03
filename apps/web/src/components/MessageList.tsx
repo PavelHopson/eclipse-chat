@@ -3,6 +3,7 @@ import { Attachments } from "./Attachments";
 import { Avatar } from "./Avatar";
 import { EmojiPicker } from "./EmojiPicker";
 import { RichContent } from "./RichContent";
+import { GitHubEventCard } from "./GitHubEventCard";
 import { LinkEmbedCard } from "./LinkEmbedCard";
 import { YouTubeEmbedCard } from "./YouTubeEmbedCard";
 import { EmptyState } from "./EmptyState";
@@ -749,7 +750,9 @@ export function MessageList({
                   </p>
                 ) : (
                   <>
-                    {m.content && (
+                    {m.externalEvent?.source === "github" && m.externalEvent.verified ? (
+                      <GitHubEventCard event={m.externalEvent} />
+                    ) : m.content ? (
                       <p
                         style={{
                           margin: 0,
@@ -780,7 +783,7 @@ export function MessageList({
                           </button>
                         )}
                       </p>
-                    )}
+                    ) : null}
                     {/* v1.5.24 — История правок: lazy-loaded accordion под
                         сообщением. Click «(изменено)» toggles open. */}
                     {editHistoryId === m.id && (

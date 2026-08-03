@@ -6,6 +6,8 @@ import { db } from "../db.js";
 import { encryptSecret, decryptSecret } from "../security/twoFactor.js";
 import {
   formatGitHubEvent,
+  normalizeGitHubRepository,
+  repositoryFromGitHubPayload,
   verifyGitHubSignature,
 } from "../lib/integrations/github.js";
 import {
@@ -34,8 +36,19 @@ import type { MemberRole } from "./servers.js";
  *
  * Encryption: config (Telegram bot token + chat id) шифруется через
  * `encryptSecret`/`decryptSecret` (AES-256-GCM с TWOFA_ENCRYPTION_KEY).
- * GitHub webhookSecret хранится plaintext (используется только для HMAC).
+ * GitHub webhookSecret шифруется at rest. Legacy plaintext secret
+ * opportunistically migrates после первой verified delivery.
  */
+
+const ADMIN_RATE_LIMIT = { max: 60, timeWindow: 5 * 60 * 1000 };
+const MUTATION_RATE_LIMIT = { max: 20, timeWindow: 15 * 60 * 1000 };
+const GITHUB_WEBHOOK_BODY_LIMIT = 1024 * 1024;
+const githubRepository = z
+  .string()
+  .trim()
+  .min(3)
+  .max(201)
+  .refine((value) => normalizeGitHubRepository(value) !== null);
 
 const createBody = z.discriminatedUnion("type", [
   z.object({
@@ -49,6 +62,7 @@ const createBody = z.discriminatedUnion("type", [
     type: z.literal("GITHUB_WEBHOOK"),
     name: z.string().trim().min(1).max(120),
     channelId: z.string().min(1),
+    repository: githubRepository,
   }),
 ]);
 
@@ -59,7 +73,42 @@ const updateBody = z.object({
   /** Только для TELEGRAM_OUTGOING — partial config refresh. */
   botToken: z.string().trim().min(10).max(200).optional(),
   chatId: z.string().trim().min(1).max(64).optional(),
+  repository: githubRepository.optional(),
 });
+
+type GitHubConfig = { repository: string | null };
+
+function parseStoredJson(value: string): Record<string, unknown> | null {
+  for (const candidate of [value, (() => {
+    try {
+      return decryptSecret(value);
+    } catch {
+      return "";
+    }
+  })()]) {
+    if (!candidate) continue;
+    try {
+      const parsed = JSON.parse(candidate) as unknown;
+      if (parsed && typeof parsed === "object") return parsed as Record<string, unknown>;
+    } catch {
+      // Try the next storage format for legacy integrations.
+    }
+  }
+  return null;
+}
+
+function parseGitHubConfig(value: string): GitHubConfig {
+  const parsed = parseStoredJson(value);
+  return { repository: normalizeGitHubRepository(parsed?.repository) };
+}
+
+function decryptWebhookSecret(value: string): { secret: string; legacyPlaintext: boolean } {
+  try {
+    return { secret: decryptSecret(value), legacyPlaintext: false };
+  } catch {
+    return { secret: value, legacyPlaintext: true };
+  }
+}
 
 type IntegrationRow = {
   id: string;
@@ -74,6 +123,7 @@ type IntegrationRow = {
   updatedAt: Date;
   lastEventAt: Date | null;
   eventCount: number;
+  config?: string;
 };
 
 function serialize(int: IntegrationRow & { webhookSecret?: string | null }) {
@@ -96,6 +146,10 @@ function serialize(int: IntegrationRow & { webhookSecret?: string | null }) {
     updatedAt: int.updatedAt.toISOString(),
     lastEventAt: int.lastEventAt?.toISOString() ?? null,
     eventCount: int.eventCount,
+    repository:
+      int.type === "GITHUB_WEBHOOK" && int.config
+        ? parseGitHubConfig(int.config).repository
+        : null,
   };
 }
 
@@ -115,7 +169,7 @@ export function registerIntegrationRoutes(app: FastifyInstance) {
   /** List per server. */
   app.get(
     "/api/servers/:id/integrations",
-    { onRequest: [requireJwt] },
+    { onRequest: [requireJwt], config: { rateLimit: ADMIN_RATE_LIMIT } },
     async (req, reply) => {
       const userId = getUserId(req);
       if (!userId) return reply.status(401).send({ error: "Unauthorized" });
@@ -135,7 +189,7 @@ export function registerIntegrationRoutes(app: FastifyInstance) {
   /** Create. */
   app.post(
     "/api/servers/:id/integrations",
-    { onRequest: [requireJwt] },
+    { onRequest: [requireJwt], config: { rateLimit: MUTATION_RATE_LIMIT } },
     async (req, reply) => {
       const userId = getUserId(req);
       if (!userId) return reply.status(401).send({ error: "Unauthorized" });
@@ -156,6 +210,9 @@ export function registerIntegrationRoutes(app: FastifyInstance) {
         return reply
           .status(400)
           .send({ error: "Channel does not belong to this server" });
+      }
+      if (parsed.data.type === "GITHUB_WEBHOOK" && channelCheck.type === "VOICE") {
+        return reply.status(400).send({ error: "GitHub events require a text channel" });
       }
 
       if (parsed.data.type === "TELEGRAM_OUTGOING") {
@@ -186,9 +243,9 @@ export function registerIntegrationRoutes(app: FastifyInstance) {
           type: "GITHUB_WEBHOOK",
           name: parsed.data.name,
           channelId: parsed.data.channelId,
-          config: "{}", // empty for GH
+          config: encryptSecret(JSON.stringify({ repository: parsed.data.repository })),
           webhookPath,
-          webhookSecret,
+          webhookSecret: encryptSecret(webhookSecret),
           createdByUserId: userId,
         },
       });
@@ -205,7 +262,7 @@ export function registerIntegrationRoutes(app: FastifyInstance) {
             webhookPath +
             "`. Content-type: application/json. Secret: " +
             webhookSecret +
-            ". Events: push, pull_request, issues, release.",
+            ". Events: push, pull_request, issues, workflow_run, release, deployment_status.",
         },
       };
     },
@@ -214,7 +271,7 @@ export function registerIntegrationRoutes(app: FastifyInstance) {
   /** Edit. */
   app.patch(
     "/api/integrations/:id",
-    { onRequest: [requireJwt] },
+    { onRequest: [requireJwt], config: { rateLimit: MUTATION_RATE_LIMIT } },
     async (req, reply) => {
       const userId = getUserId(req);
       if (!userId) return reply.status(401).send({ error: "Unauthorized" });
@@ -243,10 +300,13 @@ export function registerIntegrationRoutes(app: FastifyInstance) {
       if (parsed.data.channelId !== undefined) {
         const ch = await db.channel.findUnique({
           where: { id: parsed.data.channelId },
-          select: { serverId: true },
+          select: { serverId: true, type: true },
         });
         if (!ch || ch.serverId !== existing.serverId) {
           return reply.status(400).send({ error: "Channel not in this server" });
+        }
+        if (existing.type === "GITHUB_WEBHOOK" && ch.type === "VOICE") {
+          return reply.status(400).send({ error: "GitHub events require a text channel" });
         }
         data.channelId = parsed.data.channelId;
       }
@@ -270,6 +330,9 @@ export function registerIntegrationRoutes(app: FastifyInstance) {
         }
         data.config = encryptSecret(JSON.stringify(next));
       }
+      if (existing.type === "GITHUB_WEBHOOK" && parsed.data.repository !== undefined) {
+        data.config = encryptSecret(JSON.stringify({ repository: parsed.data.repository }));
+      }
       const updated = await db.integration.update({
         where: { id: integrationId },
         data,
@@ -281,7 +344,7 @@ export function registerIntegrationRoutes(app: FastifyInstance) {
   /** Delete. */
   app.delete(
     "/api/integrations/:id",
-    { onRequest: [requireJwt] },
+    { onRequest: [requireJwt], config: { rateLimit: MUTATION_RATE_LIMIT } },
     async (req, reply) => {
       const userId = getUserId(req);
       if (!userId) return reply.status(401).send({ error: "Unauthorized" });
@@ -308,13 +371,27 @@ export function registerIntegrationRoutes(app: FastifyInstance) {
    */
   app.post(
     "/api/integrations/gh/:webhookPath",
+    {
+      bodyLimit: GITHUB_WEBHOOK_BODY_LIMIT,
+      config: { rateLimit: { max: 240, timeWindow: 60 * 1000 } },
+    },
     async (req: FastifyRequest, reply) => {
       const { webhookPath } = req.params as { webhookPath: string };
       const eventType = req.headers["x-github-event"];
       const signature = req.headers["x-hub-signature-256"];
+      const delivery = req.headers["x-github-delivery"];
       const rawBody = (req as FastifyRequest & { rawBody?: string }).rawBody ?? "";
 
-      if (typeof eventType !== "string" || !rawBody) {
+      if (!/^[0-9a-f]{32}$/i.test(webhookPath)) {
+        return reply.status(404).send({ error: "Webhook not found" });
+      }
+      if (
+        typeof eventType !== "string" ||
+        eventType.length > 80 ||
+        typeof delivery !== "string" ||
+        !/^[A-Za-z0-9-]{8,100}$/.test(delivery) ||
+        !rawBody
+      ) {
         return reply.status(400).send({ error: "Missing event headers" });
       }
       const integration = await db.integration.findUnique({
@@ -325,6 +402,7 @@ export function registerIntegrationRoutes(app: FastifyInstance) {
           enabled: true,
           channelId: true,
           serverId: true,
+          config: true,
           webhookSecret: true,
         },
       });
@@ -337,13 +415,8 @@ export function registerIntegrationRoutes(app: FastifyInstance) {
       if (!integration.webhookSecret) {
         return reply.status(503).send({ error: "Webhook not configured" });
       }
-      if (
-        !verifyGitHubSignature(
-          rawBody,
-          typeof signature === "string" ? signature : undefined,
-          integration.webhookSecret,
-        )
-      ) {
+      const storedSecret = decryptWebhookSecret(integration.webhookSecret);
+      if (!verifyGitHubSignature(rawBody, typeof signature === "string" ? signature : undefined, storedSecret.secret)) {
         return reply.status(401).send({ error: "Invalid signature" });
       }
       let payload: unknown;
@@ -352,8 +425,13 @@ export function registerIntegrationRoutes(app: FastifyInstance) {
       } catch {
         return reply.status(400).send({ error: "Invalid JSON" });
       }
-      const text = formatGitHubEvent(eventType, payload);
-      if (!text) {
+      const configuredRepository = parseGitHubConfig(integration.config).repository;
+      const payloadRepository = repositoryFromGitHubPayload(payload);
+      if (configuredRepository && payloadRepository?.toLowerCase() !== configuredRepository.toLowerCase()) {
+        return reply.status(403).send({ error: "Repository does not match integration" });
+      }
+      const formatted = formatGitHubEvent(eventType, payload);
+      if (!formatted) {
         // Event type не поддерживается — silently OK для GH retry.
         return reply.status(200).send({ skipped: "unsupported event" });
       }
@@ -372,14 +450,40 @@ export function registerIntegrationRoutes(app: FastifyInstance) {
       if (channel.type === "VOICE") {
         return reply.status(200).send({ skipped: "voice channel" });
       }
-      const msg = await db.message.create({
-        data: {
-          content: text,
-          userId: systemUserId,
-          channelId: integration.channelId,
-        },
-        include: { user: { select: { id: true, displayName: true, avatar: true } } },
-      });
+      let msg;
+      try {
+        [msg] = await db.$transaction([
+          db.message.create({
+            data: {
+              content: formatted.content,
+              userId: systemUserId,
+              channelId: integration.channelId,
+              externalEvent: formatted.event,
+              externalIntegrationId: integration.id,
+              externalDeliveryId: delivery,
+            },
+            include: { user: { select: { id: true, displayName: true, avatar: true } } },
+          }),
+          db.integration.update({
+            where: { id: integration.id },
+            data: { lastEventAt: new Date(), eventCount: { increment: 1 } },
+          }),
+        ]);
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          "code" in error &&
+          (error as { code?: string }).code === "P2002"
+        ) {
+          return reply.status(200).send({ posted: false, duplicate: true });
+        }
+        throw error;
+      }
+      if (storedSecret.legacyPlaintext) {
+        void db.integration
+          .update({ where: { id: integration.id }, data: { webhookSecret: encryptSecret(storedSecret.secret) } })
+          .catch((error) => req.log.warn({ error, integrationId: integration.id }, "GitHub secret migration failed"));
+      }
       emitMessageOnChannel(integration.channelId, {
         messageId: msg.id,
         content: msg.content,
@@ -390,18 +494,9 @@ export function registerIntegrationRoutes(app: FastifyInstance) {
         isBot: true,
         createdAt: msg.createdAt.toISOString(),
         attachments: [],
+        externalEvent: formatted.event,
       });
-      // Bump counter.
-      void db.integration
-        .update({
-          where: { id: integration.id },
-          data: {
-            lastEventAt: new Date(),
-            eventCount: { increment: 1 },
-          },
-        })
-        .catch(() => undefined);
-      return { posted: true };
+      return { posted: true, deliveryId: delivery };
     },
   );
 }

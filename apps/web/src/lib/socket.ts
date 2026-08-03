@@ -65,6 +65,21 @@ export type AttachmentTranscriptUpdatedPayload = {
   transcriptError: string | null;
 };
 
+export type GitHubExternalEvent = {
+  source: "github";
+  verified: true;
+  kind: "ping" | "push" | "pull_request" | "issue" | "workflow" | "release" | "deployment";
+  repository: string;
+  title: string;
+  summary: string;
+  actor: string | null;
+  ref: string | null;
+  status: "success" | "failure" | "pending" | "neutral";
+  sourceUrl: string;
+  occurredAt: string | null;
+  details: Array<{ label: string; value: string }>;
+};
+
 export type MessageNewPayload = {
   messageId: string;
   content: string;
@@ -80,6 +95,7 @@ export type MessageNewPayload = {
   botRole?: BotRole | null;
   createdAt: string;
   attachments?: AttachmentPayload[];
+  externalEvent?: GitHubExternalEvent | null;
 };
 
 export type ChannelType = "TEXT" | "VOICE" | "BROADCAST" | "EXECUTION";

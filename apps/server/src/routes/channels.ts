@@ -349,6 +349,7 @@ export async function registerChannelRoutes(app: FastifyInstance) {
             pinnedAt: m.pinnedAt?.toISOString() ?? null,
             // v1.7.0 — исчезающее сообщение: момент авто-удаления (null = постоянное).
             expiresAt: m.expiresAt?.toISOString() ?? null,
+            externalEvent: m.deletedAt ? null : m.externalEvent,
             user: serializeUser(m.user),
             reactions,
             attachments: m.deletedAt ? [] : m.attachments,

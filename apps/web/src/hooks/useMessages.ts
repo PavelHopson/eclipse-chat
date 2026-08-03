@@ -12,6 +12,7 @@ import {
   type AttachmentPayload,
   type MessageDeletedPayload,
   type MessageNewPayload,
+  type GitHubExternalEvent,
   type MessagePinnedPayload,
   type MessageUnpinnedPayload,
   type MessageUpdatedPayload,
@@ -77,6 +78,8 @@ export type MessageRow = {
   deletedAt: string | null;
   /** ISO. Set = сообщение закреплено. */
   pinnedAt: string | null;
+  /** Verified external event provenance, normalized by the backend. */
+  externalEvent?: GitHubExternalEvent | null;
   user: {
     id: string;
     displayName: string;
@@ -354,6 +357,7 @@ export function useMessages(
           editedAt: null,
           deletedAt: null,
           pinnedAt: null,
+          externalEvent: p.externalEvent ?? null,
           user: {
             id: p.userId,
             displayName: p.displayName,

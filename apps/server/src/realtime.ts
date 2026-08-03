@@ -1,6 +1,7 @@
 import type { Server as SocketServer } from "socket.io";
 import type { ActionItemType } from "@prisma/client";
 import type { BotRoleValue } from "./ai/botRoles.js";
+import type { GitHubExternalEvent } from "./lib/integrations/github.js";
 import { db } from "./db.js";
 import {
   canAccessRealtimeChannel,
@@ -168,6 +169,8 @@ export function emitMessageOnChannel(
     attachments?: AttachmentPayload[];
     /** v1.7.0 — исчезающее сообщение: ISO момента авто-удаления, null = постоянное. */
     expiresAt?: string | null;
+    /** Signed provider event normalized by the backend. */
+    externalEvent?: GitHubExternalEvent | null;
   },
 ) {
   io?.to(`channel:${channelId}`).emit("message:new", payload);
