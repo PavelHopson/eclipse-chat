@@ -395,7 +395,15 @@ export async function registerVisitRoutes(app: FastifyInstance) {
             { role: "system", content: prompt.system },
             { role: "user", content: prompt.user },
           ],
-          { temperature: 0.4, maxTokens: 320 },
+          {
+            temperature: 0.4,
+            maxTokens: 320,
+            route: {
+              task: "summarization",
+              objective: "economy",
+              sensitivity: "sensitive",
+            },
+          },
         );
         return {
           summary: result.text,

@@ -17,6 +17,7 @@ import {
   unbanPlatformUser,
   unsuspendPlatformServer,
   type AiProviderDiagnostic,
+  type AiRouteDiagnostic,
   type AiGatewayTelemetryDiagnostic,
   type AuditLogEntry,
   type ListServersParams,
@@ -460,7 +461,7 @@ function UsersTab({ currentUserId }: { currentUserId: string }) {
 
       {users.length > 0 && (
         <div className="ec-platform-admin__tablewrap">
-          <table className="ec-cck-table ec-platform-admin__table">
+          <table className="ec-cck-table ec-platform-admin__table ec-ai-provider-table">
             <thead>
               <tr>
                 <th className="ec-cck-th">Пользователь</th>
@@ -1474,6 +1475,90 @@ function providerKindLabel(kind: AiProviderDiagnostic["kind"]): string {
   }
 }
 
+function providerPolicyLabel(policy: AiProviderDiagnostic["dataPolicy"]): string {
+  switch (policy) {
+    case "local":
+      return "локально";
+    case "controlled":
+      return "управляемый контур";
+    case "public":
+      return "публичный fallback";
+    case "external":
+    default:
+      return "внешний API";
+  }
+}
+
+function providerHealthLabel(provider: AiProviderDiagnostic): string {
+  if (provider.health === "cooldown") return "пауза после ошибок";
+  if (provider.health === "degraded") return "нестабилен";
+  if (provider.health === "healthy") {
+    return provider.averageLatencyMs === null
+      ? "работает"
+      : `работает · ${provider.averageLatencyMs.toLocaleString("ru-RU")} ms`;
+  }
+  return "ещё не проверен";
+}
+
+const AI_ROUTE_LABELS: Record<AiRouteDiagnostic["task"], string> = {
+  conversation: "Ответы в комнатах",
+  summarization: "Сводки и отчёты",
+  structured_extract: "Задачи и память",
+  agent_tools: "Агенты с действиями",
+  code: "Работа с кодом",
+};
+
+const AI_ROUTE_REASONS: Record<AiRouteDiagnostic["reason"], string> = {
+  privacy_first: "Внутренние данные остаются в локальном или управляемом контуре.",
+  speed_first: "Приоритет у маршрута с минимальной ожидаемой задержкой.",
+  economy_first: "Сначала используется наиболее экономичный подходящий маршрут.",
+  quality_first: "Сначала используется маршрут с лучшим профилем качества.",
+  balanced: "Баланс качества, скорости и стоимости без ручного выбора модели.",
+};
+
+function AiRoutesSummary({ routes }: { routes: AiRouteDiagnostic[] }) {
+  return (
+    <section className="ec-ai-routes" aria-label="Автоматические AI-маршруты">
+      <div className="ec-ai-routes__head">
+        <div>
+          <div className="ec-platform-admin__label">Автоматические маршруты</div>
+          <p className="ec-platform-admin__sub">
+            Eclipse Chat сам выбирает основной провайдер и безопасный резерв под задачу.
+          </p>
+        </div>
+        <span className="ec-ai-routes__mode">без ручного выбора</span>
+      </div>
+      <div className="ec-ai-routes__grid">
+        {routes.map((route) => (
+          <article
+            key={`${route.task}:${route.objective}:${route.sensitivity}`}
+            className={`ec-ai-route ${route.status === "unavailable" ? "ec-ai-route--unavailable" : ""}`}
+          >
+            <div className="ec-ai-route__top">
+              <strong>{AI_ROUTE_LABELS[route.task]}</strong>
+              <span className={`ec-ai-route__status ec-ai-route__status--${route.status}`}>
+                {route.status === "ready" ? "готов" : "нужна настройка"}
+              </span>
+            </div>
+            <div className="ec-ai-route__primary">
+              <span>Основной маршрут</span>
+              <strong>{route.primary ?? "Нет безопасного провайдера"}</strong>
+            </div>
+            <p>{AI_ROUTE_REASONS[route.reason]}</p>
+            <small>
+              {route.fallbacks.length > 0
+                ? `Резерв: ${route.fallbacks.join(" → ")}`
+                : route.status === "ready"
+                  ? "Резерв пока не настроен"
+                  : "Подключите локальный или управляемый провайдер"}
+            </small>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function formatTelemetryNumber(value: number | null, suffix = ""): string {
   return value === null ? "—" : `${value.toLocaleString("ru-RU", { maximumFractionDigits: 3 })}${suffix}`;
 }
@@ -1539,6 +1624,7 @@ function AiGatewayTelemetrySummary({ telemetry }: { telemetry: AiGatewayTelemetr
 
 function AiProvidersTab() {
   const [providers, setProviders] = useState<AiProviderDiagnostic[]>([]);
+  const [routes, setRoutes] = useState<AiRouteDiagnostic[]>([]);
   const [gatewayTelemetry, setGatewayTelemetry] = useState<AiGatewayTelemetryDiagnostic>({ state: "not_configured" });
   const [configured, setConfigured] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -1550,6 +1636,7 @@ function AiProvidersTab() {
     try {
       const res = await listAiProviderDiagnostics();
       setProviders(res.providers);
+      setRoutes(res.routes);
       setConfigured(res.configured);
       setGatewayTelemetry(res.gatewayTelemetry);
     } catch (e) {
@@ -1559,6 +1646,7 @@ function AiProvidersTab() {
           : "Не удалось загрузить AI diagnostics.",
       );
       setProviders([]);
+      setRoutes([]);
       setConfigured(false);
       setGatewayTelemetry({ state: "unavailable" });
     } finally {
@@ -1594,6 +1682,14 @@ function AiProvidersTab() {
 
       {!loading && !error && <AiGatewayTelemetrySummary telemetry={gatewayTelemetry} />}
 
+      {loading && (
+        <div className="ec-ai-routes ec-ai-routes--loading" role="status" aria-live="polite">
+          Проверяем доступные AI-маршруты…
+        </div>
+      )}
+
+      {!loading && !error && routes.length > 0 && <AiRoutesSummary routes={routes} />}
+
       {!loading && !configured && !error && (
         <div className="ec-cck-empty">
           AI-провайдеры не настроены или отключены.
@@ -1608,33 +1704,42 @@ function AiProvidersTab() {
                 <th className="ec-cck-th">#</th>
                 <th className="ec-cck-th">Provider</th>
                 <th className="ec-cck-th">Type</th>
+                <th className="ec-cck-th">Контур</th>
                 <th className="ec-cck-th">Host</th>
                 <th className="ec-cck-th">Auth</th>
                 <th className="ec-cck-th">Models</th>
                 <th className="ec-cck-th">Трафик</th>
+                <th className="ec-cck-th">Состояние</th>
               </tr>
             </thead>
             <tbody>
               {providers.map((p) => (
                 <tr key={`${p.priority}:${p.name}`} className="ec-cck-row">
-                  <td className="ec-cck-cell">{p.priority}</td>
-                  <td className="ec-cck-cell ec-platform-admin__email">
+                  <td className="ec-cck-cell" data-label="Приоритет">{p.priority}</td>
+                  <td className="ec-cck-cell ec-platform-admin__email" data-label="Провайдер">
                     {p.name}
                   </td>
-                  <td className="ec-cck-cell">{providerKindLabel(p.kind)}</td>
-                  <td className="ec-cck-cell ec-platform-admin__email">
+                  <td className="ec-cck-cell" data-label="Тип">{providerKindLabel(p.kind)}</td>
+                  <td className="ec-cck-cell" data-label="Контур">{providerPolicyLabel(p.dataPolicy)}</td>
+                  <td className="ec-cck-cell ec-platform-admin__email" data-label="Host">
                     {p.baseHost}
                   </td>
-                  <td className="ec-cck-cell">
+                  <td className="ec-cck-cell" data-label="Авторизация">
                     {p.hasAuth ? "configured" : "keyless/local"}
                   </td>
-                  <td className="ec-cck-cell ec-platform-admin__audit-meta">
+                  <td className="ec-cck-cell ec-platform-admin__audit-meta" data-label="Модели">
                     {p.models.join(", ")}{" "}
                     <span className="ec-platform-admin__sub">
                       ({p.modelCount})
                     </span>
                   </td>
-                  <td className="ec-cck-cell">{p.trafficPercent}%</td>
+                  <td className="ec-cck-cell" data-label="Трафик">{p.trafficPercent}%</td>
+                  <td
+                    className={`ec-cck-cell ec-ai-provider-health ec-ai-provider-health--${p.health}`}
+                    data-label="Состояние"
+                  >
+                    {providerHealthLabel(p)}
+                  </td>
                 </tr>
               ))}
             </tbody>

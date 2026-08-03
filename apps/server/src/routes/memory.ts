@@ -449,7 +449,15 @@ export async function registerMemoryRoutes(app: FastifyInstance) {
             { role: "system", content: prompt.system },
             { role: "user", content: prompt.user },
           ],
-          { temperature: 0.1, maxTokens: 700 },
+          {
+            temperature: 0.1,
+            maxTokens: 700,
+            route: {
+              task: "structured_extract",
+              objective: "quality",
+              sensitivity: "sensitive",
+            },
+          },
         );
         return { suggestion: parseMemorySuggestion(result.text) };
       } catch (error) {

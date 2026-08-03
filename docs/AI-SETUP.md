@@ -3,6 +3,11 @@
 Eclipse Chat включает AI-фичи: channel digest summary, `@ai` assistant,
 role-based agents, action extraction, semantic search и "since you were away".
 
+С `v1.7.32` продуктовые AI-сценарии используют автоматический task-based routing.
+Внутренние сообщения, память, транскрипты и задачи не уходят в public/keyless fallback
+без явного разрешения оператора. Политика, health-aware fallback и диагностика описаны в
+[`AI-TASK-ROUTING.md`](AI-TASK-ROUTING.md).
+
 По умолчанию есть keyless fallback через Pollinations, если он не отключён
 `POLLINATIONS_DISABLED=1`. Для production лучше явно настроить хотя бы один
 контролируемый провайдер через env-переменные в `apps/server/.env`.

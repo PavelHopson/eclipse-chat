@@ -8,7 +8,7 @@ import { requirePlatformOwner } from "../auth/requirePlatformOwner.js";
 import { recordAudit } from "../security/audit.js";
 import { deleteAllUserRefresh } from "../auth/refresh.js";
 import { disconnectUser } from "../realtime.js";
-import { listAiProviderDiagnostics } from "../ai/provider.js";
+import { listAiProviderDiagnostics, listAiRouteDiagnostics } from "../ai/provider.js";
 import { getAiGatewayTelemetryDiagnostic } from "../ai/gatewayTelemetry.js";
 import { getEcosystemHealthSnapshot } from "../lib/ecosystemHealth.js";
 import {
@@ -284,9 +284,11 @@ export async function registerPlatformRoutes(app: FastifyInstance) {
   // No keys, prompts, request bodies or user content. Platform-owner only.
   app.get("/api/platform/ai/providers", guard, async () => {
     const providers = listAiProviderDiagnostics();
+    const routes = listAiRouteDiagnostics();
     const gatewayTelemetry = await getAiGatewayTelemetryDiagnostic();
     return {
       providers,
+      routes,
       total: providers.length,
       configured: providers.length > 0,
       gatewayTelemetry,

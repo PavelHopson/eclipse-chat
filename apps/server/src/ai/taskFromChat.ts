@@ -366,7 +366,15 @@ export async function attemptCreateRowFromMention(params: {
         { role: "system", content: prompt.system },
         { role: "user", content: prompt.user },
       ],
-      { temperature: 0.2, maxTokens: 400 },
+      {
+        temperature: 0.2,
+        maxTokens: 400,
+        route: {
+          task: "structured_extract",
+          objective: "quality",
+          sensitivity: "sensitive",
+        },
+      },
     );
     aiText = result.text;
   } catch (err) {

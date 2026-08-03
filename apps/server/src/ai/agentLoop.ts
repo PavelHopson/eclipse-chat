@@ -107,6 +107,11 @@ export async function runAgentLoop(opts: AgentRunOptions): Promise<AgentRunResul
         temperature: opts.temperature,
         // Tools-режим: chat-completions может выдать больше из-за tool-call JSON.
         maxTokens: 1000,
+        route: {
+          task: "agent_tools",
+          objective: "quality",
+          sensitivity: "sensitive",
+        },
       });
     } catch (err) {
       // Provider error: останавливаемся, возвращаем что есть.

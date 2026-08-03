@@ -1274,14 +1274,166 @@
   font-size: 11px;
 }
 
+.ec-ai-routes {
+  margin-bottom: 16px;
+  padding: 16px;
+  border: 1px solid var(--ec-border-subtle);
+  border-radius: var(--ec-radius-lg);
+  background: var(--ec-bg-elevated);
+}
+
+.ec-ai-routes--loading {
+  color: var(--ec-text-muted);
+  background:
+    linear-gradient(90deg, transparent, color-mix(in srgb, var(--ec-text) 5%, transparent), transparent),
+    var(--ec-bg-elevated);
+  background-size: 220% 100%;
+  animation: ec-ai-route-loading 1.6s ease-in-out infinite;
+}
+
+.ec-ai-routes__head,
+.ec-ai-route__top,
+.ec-ai-route__primary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ec-ai-routes__mode,
+.ec-ai-route__status {
+  flex: 0 0 auto;
+  border: 1px solid var(--ec-border-subtle);
+  border-radius: 999px;
+  color: var(--ec-text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.ec-ai-routes__mode { padding: 6px 9px; }
+
+.ec-ai-routes__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.ec-ai-route {
+  min-width: 0;
+  padding: 13px;
+  border: 1px solid var(--ec-border-subtle);
+  border-radius: var(--ec-radius-md);
+  background: color-mix(in srgb, var(--ec-bg-surface) 84%, transparent);
+}
+
+.ec-ai-route--unavailable {
+  border-color: color-mix(in srgb, var(--ec-status-risk) 42%, var(--ec-border-subtle));
+}
+
+.ec-ai-route__top strong {
+  min-width: 0;
+  color: var(--ec-text-strong);
+  font-size: var(--ec-text-sm);
+}
+
+.ec-ai-route__status { padding: 4px 7px; }
+.ec-ai-route__status--ready { color: var(--ec-status-exec); }
+.ec-ai-route__status--unavailable { color: var(--ec-status-risk); }
+
+.ec-ai-route__primary {
+  align-items: baseline;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--ec-border-subtle);
+}
+
+.ec-ai-route__primary span,
+.ec-ai-route small {
+  color: var(--ec-text-muted);
+  font-size: 11px;
+}
+
+.ec-ai-route__primary strong {
+  overflow: hidden;
+  color: var(--ec-text-strong);
+  font-family: var(--ec-font-mono);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ec-ai-route p {
+  margin: 8px 0 6px;
+  color: var(--ec-text-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.ec-ai-route small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ec-ai-provider-health { white-space: nowrap; }
+.ec-ai-provider-health--healthy { color: var(--ec-status-exec); }
+.ec-ai-provider-health--degraded,
+.ec-ai-provider-health--cooldown { color: var(--ec-status-risk); }
+.ec-ai-provider-health--unknown { color: var(--ec-text-muted); }
+
+@keyframes ec-ai-route-loading {
+  from { background-position: 100% 0; }
+  to { background-position: -120% 0; }
+}
+
 @media (max-width: 900px) {
   .ec-ai-telemetry__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ec-ai-routes__grid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 520px) {
   .ec-ai-telemetry--unavailable,
-  .ec-ai-telemetry__head { align-items: flex-start; flex-direction: column; }
+  .ec-ai-telemetry__head,
+  .ec-ai-routes__head { align-items: flex-start; flex-direction: column; }
   .ec-ai-telemetry__grid { grid-template-columns: 1fr; }
+  .ec-ai-route__primary { align-items: flex-start; flex-direction: column; gap: 4px; }
+
+  .ec-ai-provider-table { min-width: 0; }
+  .ec-ai-provider-table thead { display: none; }
+  .ec-ai-provider-table,
+  .ec-ai-provider-table tbody { display: block; width: 100%; }
+  .ec-ai-provider-table .ec-cck-row {
+    display: block;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--ec-border-subtle);
+  }
+  .ec-ai-provider-table .ec-cck-row:last-child { border-bottom: 0; }
+  .ec-ai-provider-table .ec-cck-cell {
+    display: grid;
+    grid-template-columns: minmax(92px, 0.7fr) minmax(0, 1fr);
+    gap: 12px;
+    width: 100%;
+    padding: 7px 0;
+    border: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .ec-ai-provider-table .ec-cck-cell::before {
+    content: attr(data-label);
+    color: var(--ec-text-muted);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ec-ai-routes--loading { animation: none; }
 }
 
 /* Temp-pw display — show-once code-block + copy. */

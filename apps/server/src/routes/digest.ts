@@ -385,7 +385,15 @@ export async function registerDigestRoutes(app: FastifyInstance) {
             { role: "system", content: prompt.system },
             { role: "user", content: prompt.user },
           ],
-          { temperature: 0.4, maxTokens: 350 },
+          {
+            temperature: 0.4,
+            maxTokens: 350,
+            route: {
+              task: "summarization",
+              objective: "economy",
+              sensitivity: "sensitive",
+            },
+          },
         );
         return {
           summary: result.text,

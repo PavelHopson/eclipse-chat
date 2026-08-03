@@ -630,7 +630,15 @@ export async function registerBotRoutes(app: FastifyInstance) {
             { role: "system", content: systemPrompt },
             { role: "user", content: parsed.data.userInput },
           ],
-          { temperature: 0.7, maxTokens: 600 },
+          {
+            temperature: 0.7,
+            maxTokens: 600,
+            route: {
+              task: "conversation",
+              objective: "quality",
+              sensitivity: "sensitive",
+            },
+          },
         );
         const latencyMs = Date.now() - started;
         recordAudit("BOT_TEST_INVOKE", {

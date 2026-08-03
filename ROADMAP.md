@@ -24,8 +24,9 @@ scope доступа, понятное действие и подтвержде�
   runtime health, зрелость продукта и состояние межпроектных связей.
 - [x] **GitHub rooms** — коммиты, PR, CI, release и deploy как проверяемые события
   комнаты с переходом к исходному репозиторию.
-- [ ] **Task-based AI routing** — выбор модели по типу задачи, цене, latency,
-  privacy и health вместо ручного выбора пользователем.
+- [x] **Task-based AI routing** — `v1.7.32` выбирает provider по типу задачи, стоимости,
+  latency, privacy и process-local health; sensitive workspace data использует fail-closed
+  local/controlled policy, а Platform Admin показывает основной маршрут и безопасный резерв.
 - [ ] **Agent Workbench** — создание и тестирование агентов, scopes, approvals,
   memory policy и журнал действий в одном интерфейсе.
 - [x] **Memory governance** — provenance, owner, retention, visibility, review,

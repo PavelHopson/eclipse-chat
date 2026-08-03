@@ -1,4 +1,18 @@
 import { randomUUID } from "node:crypto";
+import {
+  buildAiRouteDiagnostics,
+  getAiProviderHealth,
+  getAiProviderRoutingProfile,
+  parseSensitiveProviderAllowlist,
+  rankAiProviderCandidates,
+  recordAiProviderFailure,
+  recordAiProviderSuccess,
+  type AiCostTier,
+  type AiDataPolicy,
+  type AiHealthState,
+  type AiRouteDiagnostic,
+  type AiRouteRequest,
+} from "./routing.js";
 
 /**
  * AI provider layer для Eclipse Chat.
@@ -170,7 +184,7 @@ type ProviderConfig = {
   /** Дополнительный header для OpenRouter rankings. */
   extraHeaders?: Record<string, string>;
   /** Per-request headers, например cross-service request id. */
-  requestHeaders?: () => Record<string, string>;
+  requestHeaders?: (route?: AiRouteRequest) => Record<string, string>;
   /** v1.6.61 — provider-specific поля в JSON body запроса (мерджатся поверх
    *  base body). Для Pollinations: `private:true` (генерация НЕ в публичную
    *  ленту) + `referrer`. Не должен содержать model/messages (их задаёт base). */
@@ -188,6 +202,10 @@ export type AiProviderDiagnostic = {
   modelCount: number;
   models: string[];
   trafficPercent: number;
+  dataPolicy: AiDataPolicy;
+  costTier: AiCostTier;
+  health: AiHealthState;
+  averageLatencyMs: number | null;
 };
 
 /** v1.5.18 — utility для парсинга CSV список моделей из env. Trim'ит
@@ -278,8 +296,15 @@ function getProviders(options: { includeConfiguredAiHub?: boolean } = {}): Provi
       extraHeaders: {
         "X-Eclipse-Client": "eclipse-chat",
       },
-      requestHeaders: () => ({
+      requestHeaders: (route) => ({
         "X-Request-Id": randomUUID(),
+        ...(route
+          ? {
+              "X-Eclipse-AI-Task": route.task,
+              "X-Eclipse-AI-Objective": route.objective ?? "balanced",
+              "X-Eclipse-Data-Sensitivity": route.sensitivity ?? "standard",
+            }
+          : {}),
       }),
       trafficPercent: aiHubCanaryPercent,
     });
@@ -564,16 +589,43 @@ function sanitizeModel(model: string): string {
 }
 
 export function listAiProviderDiagnostics(): AiProviderDiagnostic[] {
-  return getProviders({ includeConfiguredAiHub: true }).map((cfg, index) => ({
-    priority: index + 1,
+  return getProviders({ includeConfiguredAiHub: true }).map((cfg, index) => {
+    const kind = providerKind(cfg.name);
+    const profile = getAiProviderRoutingProfile(cfg.name, kind);
+    const health = getAiProviderHealth(cfg.name);
+    return {
+      priority: index + 1,
+      name: cfg.name,
+      kind,
+      baseHost: baseHost(cfg.baseUrl),
+      hasAuth: Boolean(cfg.apiKey || cfg.extraHeaders?.Authorization),
+      modelCount: cfg.models.length,
+      models: cfg.models.map(sanitizeModel),
+      trafficPercent: cfg.trafficPercent ?? 100,
+      dataPolicy: profile.dataPolicy,
+      costTier: profile.costTier,
+      health: health.state,
+      averageLatencyMs: health.averageLatencyMs,
+    };
+  });
+}
+
+function sensitiveProviderAllowlist(): Set<string> {
+  return parseSensitiveProviderAllowlist(process.env.AI_SENSITIVE_PROVIDER_ALLOWLIST);
+}
+
+function providerCandidates(providers: ProviderConfig[]) {
+  return providers.map((cfg, index) => ({
     name: cfg.name,
     kind: providerKind(cfg.name),
-    baseHost: baseHost(cfg.baseUrl),
-    hasAuth: Boolean(cfg.apiKey || cfg.extraHeaders?.Authorization),
-    modelCount: cfg.models.length,
-    models: cfg.models.map(sanitizeModel),
+    legacyPriority: index + 1,
     trafficPercent: cfg.trafficPercent ?? 100,
   }));
+}
+
+export function listAiRouteDiagnostics(): AiRouteDiagnostic[] {
+  const providers = getProviders({ includeConfiguredAiHub: true });
+  return buildAiRouteDiagnostics(providerCandidates(providers), sensitiveProviderAllowlist());
 }
 
 export function isAiConfigured(): boolean {
@@ -591,6 +643,7 @@ type ChatOpts = {
   maxTokens?: number;
   tools?: ChatToolSpec[];
   toolChoice?: "auto" | "none" | "required";
+  route?: AiRouteRequest;
 };
 
 /**
@@ -627,7 +680,7 @@ async function callProviderModel(
       "Content-Type": "application/json",
       ...(cfg.apiKey ? { Authorization: `Bearer ${cfg.apiKey}` } : {}),
       ...cfg.extraHeaders,
-      ...cfg.requestHeaders?.(),
+      ...cfg.requestHeaders?.(opts.route),
     };
     const res = await fetch(`${cfg.baseUrl}/chat/completions`, {
       method: "POST",
@@ -783,18 +836,40 @@ export async function chat(
     tools?: ChatToolSpec[];
     /** v1.2.29 — "auto" (default) / "none" / "required". */
     toolChoice?: "auto" | "none" | "required";
+    route?: AiRouteRequest;
   } = {},
 ): Promise<ChatResult> {
-  const providers = getProviders();
+  const configuredProviders = getProviders();
+  if (configuredProviders.length === 0) {
+    throw new AINotConfiguredError();
+  }
+  const providers = opts.route
+    ? (() => {
+        const ranked = rankAiProviderCandidates(
+          providerCandidates(configuredProviders),
+          opts.route,
+          { sensitiveAllowlist: sensitiveProviderAllowlist() },
+        );
+        const byName = new Map(
+          configuredProviders.map((provider) => [provider.name, provider]),
+        );
+        return ranked
+          .map((candidate) => byName.get(candidate.name))
+          .filter((provider): provider is ProviderConfig => Boolean(provider));
+      })()
+    : configuredProviders;
   if (providers.length === 0) {
     throw new AINotConfiguredError();
   }
   let lastErr: unknown = null;
   for (const cfg of providers) {
     try {
-      return await callProvider(cfg, messages, opts);
+      const result = await callProvider(cfg, messages, opts);
+      recordAiProviderSuccess(cfg.name, result.latencyMs);
+      return result;
     } catch (err) {
       lastErr = err;
+      recordAiProviderFailure(cfg.name);
       if (err instanceof AIProviderError) {
         console.warn(
           `[ai] provider failed ${cfg.name} (models tried: ${cfg.models.join(", ")}): ${err.message}, trying next provider`,

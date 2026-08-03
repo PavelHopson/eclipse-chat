@@ -115,6 +115,20 @@ export type AiProviderDiagnostic = {
   modelCount: number;
   models: string[];
   trafficPercent: number;
+  dataPolicy: "local" | "controlled" | "external" | "public";
+  costTier: "free" | "low" | "standard" | "unknown";
+  health: "unknown" | "healthy" | "degraded" | "cooldown";
+  averageLatencyMs: number | null;
+};
+
+export type AiRouteDiagnostic = {
+  task: "conversation" | "summarization" | "structured_extract" | "agent_tools" | "code";
+  objective: "balanced" | "speed" | "economy" | "quality";
+  sensitivity: "standard" | "sensitive";
+  status: "ready" | "unavailable";
+  primary: string | null;
+  fallbacks: string[];
+  reason: "privacy_first" | "speed_first" | "economy_first" | "quality_first" | "balanced";
 };
 
 export type AiGatewayTelemetryWindow = {
@@ -151,6 +165,7 @@ export type AiGatewayTelemetryDiagnostic =
 
 export type AiProviderDiagnosticsResponse = {
   providers: AiProviderDiagnostic[];
+  routes: AiRouteDiagnostic[];
   total: number;
   configured: boolean;
   gatewayTelemetry: AiGatewayTelemetryDiagnostic;

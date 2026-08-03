@@ -156,7 +156,15 @@ export async function registerAttachmentRoutes(app: FastifyInstance) {
               content: `Транскрипт:\n${attachment.transcript.slice(0, 6000)}`,
             },
           ],
-          { temperature: 0.2, maxTokens: 600 },
+          {
+            temperature: 0.2,
+            maxTokens: 600,
+            route: {
+              task: "structured_extract",
+              objective: "quality",
+              sensitivity: "sensitive",
+            },
+          },
         );
         extracted = parseExtracted(result.text);
       } catch (err) {

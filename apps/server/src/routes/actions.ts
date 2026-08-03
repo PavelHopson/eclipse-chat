@@ -1126,7 +1126,15 @@ export async function registerActionRoutes(app: FastifyInstance) {
             { role: "system", content: system },
             { role: "user", content: user },
           ],
-          { temperature: 0.3, maxTokens: 220 },
+          {
+            temperature: 0.3,
+            maxTokens: 220,
+            route: {
+              task: "summarization",
+              objective: "economy",
+              sensitivity: "sensitive",
+            },
+          },
         );
         summary = result.text.trim();
       } catch (err) {

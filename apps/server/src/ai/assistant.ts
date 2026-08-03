@@ -352,7 +352,15 @@ async function executeChannelBotReply(params: {
         { role: "system", content: baseSystemPrompt },
         { role: "user", content: ctx.basePrompt.user },
       ],
-      { temperature: 0.5, maxTokens: 450 },
+      {
+        temperature: 0.5,
+        maxTokens: 450,
+        route: {
+          task: "conversation",
+          objective: "balanced",
+          sensitivity: "sensitive",
+        },
+      },
     );
     replyText = result.text;
     providerLabel = result.provider;
