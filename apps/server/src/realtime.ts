@@ -1,4 +1,5 @@
 import type { Server as SocketServer } from "socket.io";
+import type { ActionItemType } from "@prisma/client";
 import type { BotRoleValue } from "./ai/botRoles.js";
 import { db } from "./db.js";
 import {
@@ -444,7 +445,7 @@ export function emitActionItemCreated(
   payload: {
     id: string;
     title: string;
-    type: "TASK" | "DECISION" | "FOLLOW_UP";
+    type: ActionItemType;
     status: "OPEN" | "IN_PROGRESS" | "REVIEW" | "DONE";
     serverId: string;
     channelId: string;
@@ -519,7 +520,7 @@ export function emitActionItemUpdated(
   payload: {
     id: string;
     title: string;
-    type: "TASK" | "DECISION" | "FOLLOW_UP";
+    type: ActionItemType;
     status: "OPEN" | "IN_PROGRESS" | "REVIEW" | "DONE";
     serverId: string;
     channelId: string;

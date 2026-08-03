@@ -25,6 +25,7 @@ import { extractMentionTokens, resolveMentions } from "../lib/mentions.js";
 import { notifyUsers } from "../lib/webPush.js";
 import { fireTelegramOutgoing } from "./integrations.js";
 import { computeMessageExpiry } from "../lib/disappearingMessages.js";
+import { defaultActionPriority } from "../lib/actionCreate.js";
 
 const channelTypeSchema = z.enum(["TEXT", "VOICE", "BROADCAST", "EXECUTION"]);
 
@@ -61,7 +62,7 @@ const createMessageBody = z.object({
    * sourceMessage для action item — задача линкуется к видимому сообщению.
    */
   actionItem: z
-    .object({ type: z.enum(["TASK", "DECISION", "FOLLOW_UP"]) })
+    .object({ type: z.enum(["TASK", "DECISION", "FOLLOW_UP", "RISK", "REQUIREMENT"]) })
     .optional(),
   /**
    * v1.7.0 — исчезающие сообщения (slice A), пер-сообщение override:
@@ -614,6 +615,7 @@ export async function registerChannelRoutes(app: FastifyInstance) {
             data: {
               title: trimmed.replace(/\s+/g, " ").slice(0, 160),
               type: parsed.data.actionItem.type,
+              priority: defaultActionPriority(parsed.data.actionItem.type),
               serverId: ch.serverId,
               channelId: m.channelId!,
               sourceMessageId: m.id,

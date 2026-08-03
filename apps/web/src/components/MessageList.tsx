@@ -80,6 +80,8 @@ type Props = {
 function labelForAction(type: ActionItemType): string {
   if (type === "DECISION") return "Decision";
   if (type === "FOLLOW_UP") return "Follow-up";
+  if (type === "RISK") return "Risk";
+  if (type === "REQUIREMENT") return "Requirement";
   return "Task";
 }
 
@@ -103,6 +105,20 @@ function tintForAction(type: ActionItemType, status: ActionItemStatus) {
       bg: "var(--ec-accent-2-soft)",
       fg: "var(--ec-accent-2)",
       border: "color-mix(in srgb, var(--ec-accent-2) 28%, transparent)",
+    };
+  }
+  if (type === "RISK") {
+    return {
+      bg: "var(--ec-status-risk-soft)",
+      fg: "var(--ec-status-risk)",
+      border: "color-mix(in srgb, var(--ec-status-risk) 32%, transparent)",
+    };
+  }
+  if (type === "REQUIREMENT") {
+    return {
+      bg: "var(--ec-status-ai-soft)",
+      fg: "var(--ec-status-ai)",
+      border: "color-mix(in srgb, var(--ec-status-ai) 30%, transparent)",
     };
   }
   return {
@@ -526,7 +542,7 @@ export function MessageList({
             onCreateAction &&
               currentRole &&
               hasPermission(currentRole, "TASK_CREATE") &&
-              m.actionItems.length < 3,
+              m.actionItems.length < 5,
           );
         const rowClass = isPinned
           ? " ec-message-row--pinned"

@@ -7,8 +7,10 @@
  * и кэшируется провайдерами (одинаковые prefixes).
  */
 
+import type { ActionItemType } from "@prisma/client";
+
 type ActionForPrompt = {
-  type: "TASK" | "DECISION" | "FOLLOW_UP";
+  type: ActionItemType;
   title: string;
   dueAt: string | null;
   assignee: { displayName: string } | null;
@@ -32,6 +34,8 @@ type DigestSnapshot = {
   };
   decisions: ActionForPrompt[];
   followUps: ActionForPrompt[];
+  risks: ActionForPrompt[];
+  requirements: ActionForPrompt[];
   pinned: PinnedForPrompt[];
   stats: { messages: number; uniqueAuthors: number };
 };
@@ -41,7 +45,14 @@ function formatActionLine(a: ActionForPrompt, idx: number): string {
     ? new Date(a.dueAt).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })
     : "";
   const owner = a.assignee?.displayName ?? "без ответственного";
-  return `  ${idx + 1}. ${a.title} — ${owner}${due ? `, до ${due}` : ""}`;
+  const typeLabel: Record<ActionItemType, string> = {
+    TASK: "Задача",
+    DECISION: "Решение",
+    FOLLOW_UP: "Контроль",
+    RISK: "Риск",
+    REQUIREMENT: "Требование",
+  };
+  return `  ${idx + 1}. [${typeLabel[a.type]}] ${a.title} — ${owner}${due ? `, до ${due}` : ""}`;
 }
 
 export function digestSummaryPrompt(d: DigestSnapshot): {
@@ -84,6 +95,16 @@ export function digestSummaryPrompt(d: DigestSnapshot): {
     lines.push("");
     lines.push(`Follow-up (${d.followUps.length}):`);
     d.followUps.slice(0, 6).forEach((a, i) => lines.push(formatActionLine(a, i)));
+  }
+  if (d.risks.length > 0) {
+    lines.push("");
+    lines.push(`Риски (${d.risks.length}):`);
+    d.risks.slice(0, 6).forEach((a, i) => lines.push(formatActionLine(a, i)));
+  }
+  if (d.requirements.length > 0) {
+    lines.push("");
+    lines.push(`Требования (${d.requirements.length}):`);
+    d.requirements.slice(0, 6).forEach((a, i) => lines.push(formatActionLine(a, i)));
   }
   if (d.pinned.length > 0) {
     lines.push("");

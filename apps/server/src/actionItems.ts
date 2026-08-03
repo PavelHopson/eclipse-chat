@@ -82,7 +82,7 @@ export type ActionItemDependencyRef = {
   id: string;
   title: string;
   status: "OPEN" | "IN_PROGRESS" | "REVIEW" | "DONE";
-  type: "TASK" | "DECISION" | "FOLLOW_UP";
+  type: "TASK" | "DECISION" | "FOLLOW_UP" | "RISK" | "REQUIREMENT";
 };
 
 export function serializeActionItem(item: ActionItemWithRelations) {

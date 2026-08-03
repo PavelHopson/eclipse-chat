@@ -33,6 +33,8 @@ const TYPE_OPTIONS: Array<{
   { value: "TASK", label: "Задача", description: "Нужно выполнить", glyph: "▣" },
   { value: "DECISION", label: "Решение", description: "Уже согласовано", glyph: "◆" },
   { value: "FOLLOW_UP", label: "Контроль", description: "Нужно вернуться", glyph: "↻" },
+  { value: "RISK", label: "Риск", description: "Нужно снизить", glyph: "!" },
+  { value: "REQUIREMENT", label: "Требование", description: "Нужно соблюсти", glyph: "≡" },
 ];
 
 const PRIORITIES: Array<{ value: ActionItemPriority; label: string }> = [
@@ -72,7 +74,33 @@ function duePreset(days: number): string {
 function ctaLabel(type: ActionItemType): string {
   if (type === "DECISION") return "Зафиксировать решение";
   if (type === "FOLLOW_UP") return "Поставить контроль";
+  if (type === "RISK") return "Зафиксировать риск";
+  if (type === "REQUIREMENT") return "Добавить требование";
   return "Создать задачу";
+}
+
+function defaultPriority(type: ActionItemType): ActionItemPriority {
+  return type === "RISK" ? "HIGH" : "NORMAL";
+}
+
+function defaultAssignee(
+  type: ActionItemType,
+  canAssign: boolean,
+  currentUserId: string,
+): string {
+  if (!canAssign || type === "DECISION" || type === "REQUIREMENT") return "";
+  return currentUserId;
+}
+
+function defaultDueAt(type: ActionItemType): string {
+  return type === "FOLLOW_UP" || type === "RISK" ? duePreset(1) : "";
+}
+
+function descriptionPlaceholder(type: ActionItemType): string {
+  if (type === "DECISION") return "Почему приняли это решение...";
+  if (type === "RISK") return "Чем угрожает риск и как снизить вероятность...";
+  if (type === "REQUIREMENT") return "Какое условие должно быть соблюдено...";
+  return "Что должно получиться...";
 }
 
 export function MessageActionModal({
@@ -93,13 +121,13 @@ export function MessageActionModal({
   const [type, setType] = useState<ActionItemType>(initialType);
   const [title, setTitle] = useState(() => initialTitle(message.content));
   const [description, setDescription] = useState("");
-  const [priority, setPriority] = useState<ActionItemPriority>("NORMAL");
+  const [priority, setPriority] = useState<ActionItemPriority>(() =>
+    defaultPriority(initialType),
+  );
   const [assigneeUserId, setAssigneeUserId] = useState(() =>
-    canAssign && initialType !== "DECISION" ? currentUserId : "",
+    defaultAssignee(initialType, canAssign, currentUserId),
   );
-  const [dueAt, setDueAt] = useState(() =>
-    initialType === "FOLLOW_UP" ? duePreset(1) : "",
-  );
+  const [dueAt, setDueAt] = useState(() => defaultDueAt(initialType));
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -107,13 +135,9 @@ export function MessageActionModal({
     if (existingTypes.has(nextType)) return;
     setType(nextType);
     setError(null);
-    if (nextType === "DECISION") {
-      setAssigneeUserId("");
-      setDueAt("");
-      return;
-    }
-    if (canAssign && !assigneeUserId) setAssigneeUserId(currentUserId);
-    if (nextType === "FOLLOW_UP" && !dueAt) setDueAt(duePreset(1));
+    setPriority(defaultPriority(nextType));
+    setAssigneeUserId(defaultAssignee(nextType, canAssign, currentUserId));
+    setDueAt(defaultDueAt(nextType));
   };
 
   const save = async () => {
@@ -287,7 +311,7 @@ export function MessageActionModal({
             value={description}
             onChange={(event) => setDescription(event.target.value)}
             maxLength={4000}
-            placeholder={type === "DECISION" ? "Почему приняли это решение..." : "Что должно получиться..."}
+            placeholder={descriptionPlaceholder(type)}
             disabled={submitting}
           />
           <span className="ec-field-counter">{description.length}/4000</span>

@@ -63,12 +63,14 @@ type Props = {
 const tone = (t: string): CSSProperties => ({ "--tone": t } as CSSProperties);
 
 const TYPE_META: Record<
-  "TASK" | "DECISION" | "FOLLOW_UP",
+  "TASK" | "DECISION" | "FOLLOW_UP" | "RISK" | "REQUIREMENT",
   { label: string; tone: string; glyph: string }
 > = {
   TASK: { label: "Задача", tone: "var(--ec-status-exec)", glyph: "▣" },
   DECISION: { label: "Решение", tone: "var(--ec-accent)", glyph: "◆" },
   FOLLOW_UP: { label: "Follow-up", tone: "var(--ec-status-warn)", glyph: "○" },
+  RISK: { label: "Риск", tone: "var(--ec-status-risk)", glyph: "!" },
+  REQUIREMENT: { label: "Требование", tone: "var(--ec-accent-2)", glyph: "≡" },
 };
 
 const PRIORITY_META: Record<ActionItemPriority, { label: string; tone: string }> = {
@@ -528,6 +530,10 @@ export function ActionItemDrawer({
                     <strong>
                       {detail.type === "DECISION"
                         ? "Зафиксировать подтвержденное решение"
+                        : detail.type === "RISK"
+                          ? "Сохранить подтвержденный риск"
+                          : detail.type === "REQUIREMENT"
+                            ? "Сохранить требование как правило"
                         : "Сохранить результат для команды"}
                     </strong>
                     <span>
@@ -542,6 +548,10 @@ export function ActionItemDrawer({
                   >
                     {detail.type === "DECISION"
                       ? "Подготовить решение"
+                      : detail.type === "RISK"
+                        ? "Подготовить риск"
+                        : detail.type === "REQUIREMENT"
+                          ? "Подготовить требование"
                       : "Подготовить запись"}
                   </button>
                 </div>

@@ -3,9 +3,10 @@ import { db } from "../../db.js";
 import { actionItemInclude, serializeActionItem } from "../../actionItems.js";
 import { emitActionItemCreated, emitMessageOnChannel } from "../../realtime.js";
 import type { Tool } from "./types.js";
+import { defaultActionPriority } from "../../lib/actionCreate.js";
 
 /**
- * v1.2.28 — create_task: бот создаёт ActionItem (TASK / DECISION / FOLLOW_UP).
+ * v1.7.29 — create_task: бот создаёт любой first-class ActionItem.
  *
  * Architecture note: ActionItem требует `sourceMessageId` (FK). Tool сам создаёт
  * source-message от имени бота вида «📋 Задача: <title>» — это даёт users
@@ -22,7 +23,10 @@ import type { Tool } from "./types.js";
 const argsSchema = z.object({
   channel_id: z.string().min(1).describe("ID канала, к которому привязать задачу"),
   title: z.string().min(1).max(280).describe("Краткая формулировка задачи"),
-  type: z.enum(["TASK", "DECISION", "FOLLOW_UP"]).default("TASK").describe("Тип: TASK / DECISION / FOLLOW_UP"),
+  type: z
+    .enum(["TASK", "DECISION", "FOLLOW_UP", "RISK", "REQUIREMENT"])
+    .default("TASK")
+    .describe("Тип: TASK / DECISION / FOLLOW_UP / RISK / REQUIREMENT"),
   assignee_email: z
     .string()
     .email()
@@ -55,8 +59,8 @@ export const createTaskTool: Tool<Args, Result> = {
       },
       type: {
         type: "string",
-        enum: ["TASK", "DECISION", "FOLLOW_UP"],
-        description: "TASK (default) — задача. DECISION — зафиксированное решение. FOLLOW_UP — напоминание вернуться.",
+        enum: ["TASK", "DECISION", "FOLLOW_UP", "RISK", "REQUIREMENT"],
+        description: "TASK (default) — задача. DECISION — решение. FOLLOW_UP — контроль. RISK — угроза или блокер. REQUIREMENT — обязательное условие.",
       },
       assignee_email: {
         type: "string",
@@ -113,7 +117,15 @@ export const createTaskTool: Tool<Args, Result> = {
     }
 
     const cleanTitle = title.trim();
-    const typeLabel = type === "TASK" ? "Задача" : type === "DECISION" ? "Решение" : "Follow-up";
+    const typeLabel = type === "TASK"
+      ? "Задача"
+      : type === "DECISION"
+        ? "Решение"
+        : type === "FOLLOW_UP"
+          ? "Follow-up"
+          : type === "RISK"
+            ? "Риск"
+            : "Требование";
 
     // Source message — visible footprint в чате (required FK на ActionItem).
     const sourceMessage = await db.message.create({
@@ -152,6 +164,7 @@ export const createTaskTool: Tool<Args, Result> = {
       data: {
         title: cleanTitle,
         type,
+        priority: defaultActionPriority(type),
         serverId: ctx.serverId,
         channelId: channel.id,
         sourceMessageId: sourceMessage.id,

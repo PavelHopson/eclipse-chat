@@ -19,6 +19,8 @@ export type SinceLastVisitData = {
     newTasks: number;
     newDecisions: number;
     newFollowUps: number;
+    newRisks: number;
+    newRequirements: number;
     newMemory?: number;
     recentActions: ActionItemPayload[];
     recentMemory?: Array<{

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { ApiError, apiJson } from "../lib/api";
+import type { ActionItemType } from "../lib/socket";
 
 /**
  * v0.57: operational search — unified поиск по сообщениям, action items и
@@ -25,7 +26,7 @@ export type SearchActionHit = {
   id: string;
   title: string;
   description: string | null;
-  type: "TASK" | "DECISION" | "FOLLOW_UP";
+  type: ActionItemType;
   status: import("../lib/socket").ActionItemStatus;
   priority: "LOW" | "NORMAL" | "HIGH" | "URGENT";
   dueAt: string | null;

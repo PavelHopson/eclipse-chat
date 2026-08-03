@@ -31,6 +31,8 @@ const TYPE_LABEL = {
   TASK: "Задача",
   DECISION: "Решение",
   FOLLOW_UP: "Follow-up",
+  RISK: "Риск",
+  REQUIREMENT: "Требование",
 } as const;
 
 const STATUS_LABEL = {
@@ -41,7 +43,10 @@ const STATUS_LABEL = {
 } as const;
 
 function initialKind(action: ActionItemDetail): MemoryKind {
-  return action.type === "DECISION" ? "DECISION" : "ACTION";
+  if (action.type === "DECISION") return "DECISION";
+  if (action.type === "RISK") return "RISK";
+  if (action.type === "REQUIREMENT") return "FACT";
+  return "ACTION";
 }
 
 function initialContent(action: ActionItemDetail): string {
@@ -64,6 +69,10 @@ function initialTags(action: ActionItemDetail): string {
       ? "решение"
       : action.type === "FOLLOW_UP"
         ? "follow-up"
+        : action.type === "RISK"
+          ? "риск"
+          : action.type === "REQUIREMENT"
+            ? "требование"
         : "задача",
   ];
   if (action.status === "DONE") tags.push("выполнено");
@@ -129,8 +138,13 @@ export function ActionItemMemoryModal({
     onSaved();
   };
 
-  const primaryLabel =
-    action.type === "DECISION" ? "Зафиксировать решение" : "Сохранить действие";
+  const primaryLabel = action.type === "DECISION"
+    ? "Зафиксировать решение"
+    : action.type === "RISK"
+      ? "Сохранить риск"
+      : action.type === "REQUIREMENT"
+        ? "Сохранить требование"
+        : "Сохранить действие";
 
   return (
     <Modal

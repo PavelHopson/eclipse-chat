@@ -1,8 +1,21 @@
 import { z } from "zod";
 import { hasPermission } from "./permissions.js";
 
-export const actionTypeSchema = z.enum(["TASK", "DECISION", "FOLLOW_UP"]);
+export const actionTypeSchema = z.enum([
+  "TASK",
+  "DECISION",
+  "FOLLOW_UP",
+  "RISK",
+  "REQUIREMENT",
+]);
 export const actionPrioritySchema = z.enum(["LOW", "NORMAL", "HIGH", "URGENT"]);
+export type ActionItemTypeValue = z.infer<typeof actionTypeSchema>;
+
+export function defaultActionPriority(
+  type: ActionItemTypeValue,
+): z.infer<typeof actionPrioritySchema> {
+  return type === "RISK" ? "HIGH" : "NORMAL";
+}
 
 export const createActionBody = z
   .object({
@@ -51,7 +64,7 @@ export function validateActionDueAt(
 }
 
 export function deriveActionTitle(
-  type: z.infer<typeof actionTypeSchema>,
+  type: ActionItemTypeValue,
   content: string,
 ): string {
   const compact = content.replace(/\s+/g, " ").trim();
@@ -61,5 +74,7 @@ export function deriveActionTitle(
 
   if (type === "DECISION") return "Decision captured from message";
   if (type === "FOLLOW_UP") return "Follow-up captured from message";
+  if (type === "RISK") return "Risk captured from message";
+  if (type === "REQUIREMENT") return "Requirement captured from message";
   return "Task captured from message";
 }

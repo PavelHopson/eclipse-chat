@@ -14,6 +14,7 @@ import {
   actionPrioritySchema,
   actionTypeSchema,
   createActionBody,
+  defaultActionPriority,
   deriveActionTitle,
   validateActionCreationAccess,
   validateActionDueAt,
@@ -322,7 +323,7 @@ export async function registerActionRoutes(app: FastifyInstance) {
             title,
             description: parsed.data.description?.trim() || null,
             type: parsed.data.type,
-            priority: parsed.data.priority ?? "NORMAL",
+            priority: parsed.data.priority ?? defaultActionPriority(parsed.data.type),
             assigneeUserId: parsed.data.assigneeUserId ?? null,
             dueAt: dueAt.value,
             serverId: message.channel.serverId,
@@ -336,7 +337,7 @@ export async function registerActionRoutes(app: FastifyInstance) {
                 payload: activityPayload({
                   source: "message",
                   type: parsed.data.type,
-                  priority: parsed.data.priority ?? "NORMAL",
+                  priority: parsed.data.priority ?? defaultActionPriority(parsed.data.type),
                   assigned: Boolean(parsed.data.assigneeUserId),
                   hasDueAt: dueAt.value !== null,
                 }),
@@ -1096,10 +1097,14 @@ export async function registerActionRoutes(app: FastifyInstance) {
           ? "решение"
           : item.type === "FOLLOW_UP"
             ? "follow-up"
-            : "задача";
+            : item.type === "RISK"
+              ? "риск"
+              : item.type === "REQUIREMENT"
+                ? "требование"
+                : "задача";
 
       const system = [
-        "Ты — операционный ассистент команды. Резюмируй задачу или решение",
+        "Ты — операционный ассистент команды. Резюмируй рабочий объект",
         "в 2-3 коротких предложения на русском. Без markdown, без emoji,",
         "без вводных фраз («Вот резюме…»). Описывай суть + текущее состояние",
         "+ что осталось сделать. Если данных мало — скажи об этом одной фразой.",

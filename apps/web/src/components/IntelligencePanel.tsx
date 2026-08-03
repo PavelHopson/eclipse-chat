@@ -40,7 +40,7 @@ export type AttachmentBrief = {
 export type ExecutionItemBrief = {
   id: string;
   title: string;
-  type: "TASK" | "DECISION" | "FOLLOW_UP";
+  type: import("../lib/socket").ActionItemType;
   status: import("../lib/socket").ActionItemStatus;
   dueAt: string | null;
   assignee: { displayName: string; avatar: string | null } | null;
@@ -492,9 +492,11 @@ export function LegacyMemoryView({ items }: { items: PinnedMessageBrief[] }) {
   );
 }
 
-function execTypeMeta(type: "TASK" | "DECISION" | "FOLLOW_UP") {
+function execTypeMeta(type: import("../lib/socket").ActionItemType) {
   if (type === "DECISION") return { glyph: "◆", color: "var(--ec-status-ai)" };
   if (type === "FOLLOW_UP") return { glyph: "↻", color: "var(--ec-status-warn)" };
+  if (type === "RISK") return { glyph: "!", color: "var(--ec-status-risk)" };
+  if (type === "REQUIREMENT") return { glyph: "≡", color: "var(--ec-accent-2)" };
   return { glyph: "□", color: "var(--ec-status-exec)" };
 }
 

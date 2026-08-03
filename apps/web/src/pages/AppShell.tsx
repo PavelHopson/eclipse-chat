@@ -1916,7 +1916,15 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                     items={tasksPreview}
                     itemKey={(a) => a.id}
                     renderItem={(a) => {
-                      const glyph = a.type === "DECISION" ? "◆" : a.type === "FOLLOW_UP" ? "↻" : "□";
+                      const glyph = a.type === "DECISION"
+                        ? "◆"
+                        : a.type === "FOLLOW_UP"
+                          ? "↻"
+                          : a.type === "RISK"
+                            ? "!"
+                            : a.type === "REQUIREMENT"
+                              ? "≡"
+                              : "□";
                       const dueAt = a.dueAt
                         ? new Date(a.dueAt).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })
                         : null;

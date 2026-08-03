@@ -16,9 +16,9 @@ scope доступа, понятное действие и подтвержде�
   задачи, риски и подтверждённую память; показывает важность и ссылки на источники.
 - [x] **Semantic memory retrieval** — единый hybrid search по сообщениям и
   курируемой памяти с деградацией до lexical search без embedding-провайдера.
-- [ ] **Message → operational entity** — reviewed draft из сообщения в decision,
+- [x] **Message → operational entity** — reviewed draft из сообщения в decision,
   risk, requirement, task или follow-up без скрытого автоматического сохранения.
-  В `v1.7.28` закрыты task/decision/follow-up; first-class risk/requirement остаются.
+  `v1.7.28` добавил reviewed flow, `v1.7.29` закрыл first-class risk/requirement.
 - [ ] **Ecosystem Command Center** — состояние Eclipse Chat, AI Hub, Library,
   Sentinel, DnD Forge и Media в одном operational dashboard.
 - [ ] **GitHub rooms** — коммиты, PR, CI, release и deploy как проверяемые события
@@ -112,8 +112,24 @@ scope доступа, понятное действие и подтвержде�
   строгий body и разумный диапазон срока; provenance брать только из исходного сообщения.
 - [x] Ограничить создание отдельным authenticated rate limit, добавить policy/validation/
   route-registration regression tests и обновить service-worker cache до `v1.7.28`.
-- [ ] Расширить тот же reviewed flow first-class типами `RISK` и `REQUIREMENT`, не
+- [x] Расширить тот же reviewed flow first-class типами `RISK` и `REQUIREMENT`, не
   маскируя их тегами памяти или обычными задачами.
+
+### First-class risks and requirements — v1.7.29
+
+- [x] Добавить `RISK` и `REQUIREMENT` в Prisma enum через additive migration и провести
+  оба типа через REST, realtime, search, board, drawer, slash commands и dependencies.
+- [x] Расширить reviewed message draft пятью понятными вариантами; риск по умолчанию
+  получает высокий приоритет и review-срок на завтра, требование не назначает владельца
+  и срок без явного выбора пользователя.
+- [x] Показывать новые типы в сводке комнаты, персональном Command Brief и «Пока тебя не
+  было»; не считать повторно риск, связанный одновременно с Action Item и памятью.
+- [x] Поддержать риски и требования в automation rules, voice action extraction и AI tool;
+  применять высокий default priority к риску во всех server-side creation paths.
+- [x] Сохранять reviewed риск в memory как `RISK`, требование как durable `FACT`, а AI
+  summary снабжать явными type labels и считать входной текст недоверенными данными.
+- [x] Добавить regression coverage для schema, default priority, fallback titles, board
+  filters и digest importance; обновить service-worker cache до `v1.7.29`.
 
 ### Operational integration slice — advertising room
 

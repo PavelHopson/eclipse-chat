@@ -7,6 +7,7 @@ import { AINotConfiguredError, chat } from "../ai/provider.js";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
 import { db } from "../db.js";
 import { emitActionItemCreated } from "../realtime.js";
+import { defaultActionPriority } from "../lib/actionCreate.js";
 
 /**
  * v0.79 #22 phase 1: Live voice intelligence.
@@ -27,7 +28,7 @@ import { emitActionItemCreated } from "../realtime.js";
  */
 
 type ExtractedAction = {
-  type: "TASK" | "DECISION" | "FOLLOW_UP";
+  type: "TASK" | "DECISION" | "FOLLOW_UP" | "RISK" | "REQUIREMENT";
   title: string;
 };
 
@@ -39,10 +40,12 @@ function buildSystem(): string {
     "  • TASK — действие, которое кто-то должен выполнить",
     "  • DECISION — принятое решение / выбор",
     "  • FOLLOW_UP — что нужно уточнить / проверить позже",
+    "  • RISK — явная угроза, блокер или неопределенность, которую нужно снизить",
+    "  • REQUIREMENT — обязательное условие или ограничение, которое нужно соблюсти",
     "",
     "Правила:",
     " 1. Выводи ТОЛЬКО валидный JSON-массив, без markdown, без preamble.",
-    "    Формат: [{\"type\":\"TASK|DECISION|FOLLOW_UP\",\"title\":\"...\"}]",
+    "    Формат: [{\"type\":\"TASK|DECISION|FOLLOW_UP|RISK|REQUIREMENT\",\"title\":\"...\"}]",
     " 2. Каждый title — короткая повелительная формулировка (до 120 символов),",
     "    на русском. Без буллетов, без двоеточий.",
     " 3. Максимум 8 элементов — приоритезируй главные.",
@@ -70,7 +73,11 @@ function parseExtracted(text: string): ExtractedAction[] {
     if (!item || typeof item !== "object") continue;
     const obj = item as { type?: unknown; title?: unknown };
     const type =
-      obj.type === "TASK" || obj.type === "DECISION" || obj.type === "FOLLOW_UP"
+      obj.type === "TASK" ||
+      obj.type === "DECISION" ||
+      obj.type === "FOLLOW_UP" ||
+      obj.type === "RISK" ||
+      obj.type === "REQUIREMENT"
         ? obj.type
         : null;
     const title =
@@ -183,6 +190,7 @@ export async function registerAttachmentRoutes(app: FastifyInstance) {
             data: {
               title: e.title,
               type: e.type,
+              priority: defaultActionPriority(e.type),
               serverId,
               channelId,
               sourceMessageId,

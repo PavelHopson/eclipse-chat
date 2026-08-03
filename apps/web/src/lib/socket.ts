@@ -251,7 +251,12 @@ export type IncidentResolvedPayload = {
   hasPostMortem: boolean;
 };
 
-export type ActionItemType = "TASK" | "DECISION" | "FOLLOW_UP";
+export type ActionItemType =
+  | "TASK"
+  | "DECISION"
+  | "FOLLOW_UP"
+  | "RISK"
+  | "REQUIREMENT";
 /** v0.71: 4-status kanban. Promoted from binary OPEN/DONE для execution
  *  flow с intermediate states. Backend enum в Prisma — see migration
  *  20260517220000_action_item_status_phase2. */

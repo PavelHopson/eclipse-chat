@@ -51,7 +51,7 @@ const actionPostMessageSchema = z.object({
 
 const actionCreateTaskSchema = z.object({
   type: z.literal("CREATE_TASK"),
-  taskType: z.enum(["TASK", "DECISION", "FOLLOW_UP"]),
+  taskType: z.enum(["TASK", "DECISION", "FOLLOW_UP", "RISK", "REQUIREMENT"]),
   titleTemplate: z.string().min(1).max(300),
 });
 

@@ -14,14 +14,14 @@ import { describe, expect, it } from "vitest";
 
 type ActionItem = {
   id: string;
-  type: "TASK" | "DECISION" | "FOLLOW_UP";
+  type: "TASK" | "DECISION" | "FOLLOW_UP" | "RISK" | "REQUIREMENT";
   status: "OPEN" | "DONE";
   dueAt: string | null;
   assignee: { id: string; displayName: string; avatar: string | null } | null;
 };
 
 type Filters = {
-  type: "ALL" | "TASK" | "DECISION" | "FOLLOW_UP";
+  type: "ALL" | "TASK" | "DECISION" | "FOLLOW_UP" | "RISK" | "REQUIREMENT";
   mineOnly: boolean;
   overdueOnly: boolean;
   unassignedOnly: boolean;
@@ -91,10 +91,26 @@ describe("applyBoardFilters", () => {
       ai("t", { type: "TASK" }),
       ai("d", { type: "DECISION" }),
       ai("f", { type: "FOLLOW_UP" }),
+      ai("r", { type: "RISK" }),
+      ai("req", { type: "REQUIREMENT" }),
     ];
     const r = applyBoardFilters(items, { ...NO_FILTERS, type: "DECISION" }, "me", NOW);
     expect(r).toHaveLength(1);
     expect(r[0].id).toBe("d");
+  });
+
+  it("risk and requirement filters remain independent first-class types", () => {
+    const items = [
+      ai("risk", { type: "RISK" }),
+      ai("requirement", { type: "REQUIREMENT" }),
+      ai("task", { type: "TASK" }),
+    ];
+    expect(
+      applyBoardFilters(items, { ...NO_FILTERS, type: "RISK" }, "me", NOW).map((a) => a.id),
+    ).toEqual(["risk"]);
+    expect(
+      applyBoardFilters(items, { ...NO_FILTERS, type: "REQUIREMENT" }, "me", NOW).map((a) => a.id),
+    ).toEqual(["requirement"]);
   });
 
   it("mineOnly — только actions с assignee.id == currentUserId", () => {

@@ -128,8 +128,14 @@ export async function registerVisitRoutes(app: FastifyInstance) {
         orderBy: { createdAt: "desc" },
         take: 30,
       });
-      const counts = { TASK: 0, DECISION: 0, FOLLOW_UP: 0 } as Record<
-        "TASK" | "DECISION" | "FOLLOW_UP",
+      const counts = {
+        TASK: 0,
+        DECISION: 0,
+        FOLLOW_UP: 0,
+        RISK: 0,
+        REQUIREMENT: 0,
+      } as Record<
+        "TASK" | "DECISION" | "FOLLOW_UP" | "RISK" | "REQUIREMENT",
         number
       >;
       for (const a of newActions) counts[a.type]++;
@@ -202,6 +208,8 @@ export async function registerVisitRoutes(app: FastifyInstance) {
           newTasks: counts.TASK,
           newDecisions: counts.DECISION,
           newFollowUps: counts.FOLLOW_UP,
+          newRisks: counts.RISK,
+          newRequirements: counts.REQUIREMENT,
           newMemory,
           recentActions: newActions.slice(0, 6).map(serializeActionItem),
           recentMemory: recentMemory.map((entry) => ({

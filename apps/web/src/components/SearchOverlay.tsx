@@ -14,6 +14,7 @@ import {
   type SemanticHit,
   type SemanticMemoryHit,
 } from "../hooks/useSemanticSearch";
+import type { ActionItemType } from "../lib/socket";
 
 /**
  * SearchOverlay — operational search с tabs (v0.57).
@@ -102,12 +103,14 @@ function readQuickRecentIds(): string[] {
 // классы .ec-search-* (components.css). JS-hover hit-row убран.
 
 const ACTION_TYPE_META: Record<
-  "TASK" | "DECISION" | "FOLLOW_UP",
+  ActionItemType,
   { glyph: string; color: string; label: string }
 > = {
   TASK: { glyph: "▣", color: "var(--ec-status-exec)", label: "Задача" },
   DECISION: { glyph: "◆", color: "var(--ec-accent)", label: "Решение" },
   FOLLOW_UP: { glyph: "○", color: "var(--ec-status-warn)", label: "Follow-up" },
+  RISK: { glyph: "!", color: "var(--ec-status-risk)", label: "Риск" },
+  REQUIREMENT: { glyph: "≡", color: "var(--ec-accent-2)", label: "Требование" },
 };
 
 function highlight(content: string, query: string): React.ReactNode[] {

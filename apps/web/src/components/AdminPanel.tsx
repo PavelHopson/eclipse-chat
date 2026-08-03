@@ -8,6 +8,7 @@ import type { ChannelRow } from "../hooks/useChannels";
 import type { TeamHealthData } from "../hooks/useTeamHealth";
 import { useComposio } from "../hooks/useComposio";
 import { useConfirm } from "./ConfirmDialog";
+import type { ActionItemType } from "../lib/socket";
 import {
   PERMISSION_GROUPS,
   PERMISSION_LABELS_RU,
@@ -113,7 +114,7 @@ type AutomationActionPostMessage = {
 };
 type AutomationActionCreateTask = {
   type: "CREATE_TASK";
-  taskType: "TASK" | "DECISION" | "FOLLOW_UP";
+  taskType: ActionItemType;
   titleTemplate: string;
 };
 type AutomationActionSendWebhook = {
@@ -1308,9 +1309,7 @@ function CreateRuleForm({
   const [actCh, setActCh] = useState<string>(textChannels[0]?.id ?? "");
   const [tmpl, setTmpl] = useState("");
   // CREATE_TASK fields
-  const [taskType, setTaskType] = useState<"TASK" | "DECISION" | "FOLLOW_UP">(
-    "TASK",
-  );
+  const [taskType, setTaskType] = useState<ActionItemType>("TASK");
   const [titleTemplate, setTitleTemplate] = useState("");
   // SEND_WEBHOOK fields
   const [webhookUrl, setWebhookUrl] = useState("");
@@ -1583,13 +1582,15 @@ function CreateRuleForm({
           <select
             value={taskType}
             onChange={(e) =>
-              setTaskType(e.target.value as "TASK" | "DECISION" | "FOLLOW_UP")
+              setTaskType(e.target.value as ActionItemType)
             }
             className="ec-admin-input"
           >
             <option value="TASK">Задача</option>
             <option value="DECISION">Решение</option>
             <option value="FOLLOW_UP">Follow-up</option>
+            <option value="RISK">Риск</option>
+            <option value="REQUIREMENT">Требование</option>
           </select>
           <textarea
             value={titleTemplate}

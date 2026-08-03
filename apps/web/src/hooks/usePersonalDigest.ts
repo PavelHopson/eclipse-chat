@@ -9,6 +9,7 @@ export type PersonalDigestKind =
   | "DECISION"
   | "TASK"
   | "FOLLOW_UP"
+  | "REQUIREMENT"
   | "MEMORY"
   | "ROOM_ACTIVITY";
 
@@ -38,6 +39,7 @@ export type PersonalDigestChannel = {
   decisions: number;
   followUps: number;
   risks: number;
+  requirements: number;
   latestAt: string | null;
   latestMessageId: string | null;
   latestMessage: string | null;
@@ -54,6 +56,7 @@ export type PersonalDigest = {
     decisions: number;
     followUps: number;
     risks: number;
+    requirements: number;
     memory: number;
     incidents: number;
     approvals: number;

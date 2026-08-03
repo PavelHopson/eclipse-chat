@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import type { ActionItemType } from "@prisma/client";
 import { actionItemInclude, serializeActionItem } from "../actionItems.js";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
 import { db } from "../db.js";
@@ -100,8 +101,14 @@ export async function registerDigestRoutes(app: FastifyInstance) {
         take: 100, // digest cap — channel с 100+ open actions редкость, иначе digest пере-объёмен
       });
 
-      const byType = { TASK: 0, DECISION: 0, FOLLOW_UP: 0 } as Record<string, number>;
-      for (const a of openActions) byType[a.type] = (byType[a.type] ?? 0) + 1;
+      const byType: Record<ActionItemType, number> = {
+        TASK: 0,
+        DECISION: 0,
+        FOLLOW_UP: 0,
+        RISK: 0,
+        REQUIREMENT: 0,
+      };
+      for (const a of openActions) byType[a.type] += 1;
 
       const overdue: typeof openActions = [];
       const dueToday: typeof openActions = [];
@@ -207,6 +214,8 @@ export async function registerDigestRoutes(app: FastifyInstance) {
             TASK: byType.TASK ?? 0,
             DECISION: byType.DECISION ?? 0,
             FOLLOW_UP: byType.FOLLOW_UP ?? 0,
+            RISK: byType.RISK ?? 0,
+            REQUIREMENT: byType.REQUIREMENT ?? 0,
           },
           overdue: overdue.map(serializeActionItem),
           dueToday: dueToday.map(serializeActionItem),
@@ -215,6 +224,10 @@ export async function registerDigestRoutes(app: FastifyInstance) {
         },
         decisions: recentDecisions.map(serializeActionItem),
         followUps: followUps.map(serializeActionItem),
+        risks: openActions.filter((item) => item.type === "RISK").map(serializeActionItem),
+        requirements: openActions
+          .filter((item) => item.type === "REQUIREMENT")
+          .map(serializeActionItem),
         pinned: pinned.map((m) => ({
           id: m.id,
           content: m.content,
@@ -354,6 +367,8 @@ export async function registerDigestRoutes(app: FastifyInstance) {
         },
         decisions: recentDecisions.map(adapt),
         followUps: followUps.map(adapt),
+        risks: openActions.filter((item) => item.type === "RISK").map(adapt),
+        requirements: openActions.filter((item) => item.type === "REQUIREMENT").map(adapt),
         pinned: pinned.map((p) => ({
           content: p.content,
           user: { displayName: userDisplayName(p.user) },

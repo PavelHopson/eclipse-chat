@@ -11,6 +11,7 @@ import {
 } from "./realtime.js";
 import { executeAction as composioExecuteAction, isComposioEnabled } from "./lib/composio.js";
 import { recordAudit } from "./security/audit.js";
+import { defaultActionPriority } from "./lib/actionCreate.js";
 
 /**
  * v0.80 #26 phase 1: Automation engine.
@@ -79,8 +80,8 @@ type PostMessageAction = {
 /** v0.82 #19 phase 1: создать ActionItem на source-message. */
 type CreateTaskAction = {
   type: "CREATE_TASK";
-  /** TASK / DECISION / FOLLOW_UP — какой тип создать. */
-  taskType: "TASK" | "DECISION" | "FOLLOW_UP";
+  /** First-class operational entity type. */
+  taskType: "TASK" | "DECISION" | "FOLLOW_UP" | "RISK" | "REQUIREMENT";
   /** Template title. Та же {{user}}/{{message}}/{{channel}} палитра. */
   titleTemplate: string;
 };
@@ -136,7 +137,9 @@ function parseAction(raw: string): ActionDef | null {
       a.type === "CREATE_TASK" &&
       (a.taskType === "TASK" ||
         a.taskType === "DECISION" ||
-        a.taskType === "FOLLOW_UP") &&
+        a.taskType === "FOLLOW_UP" ||
+        a.taskType === "RISK" ||
+        a.taskType === "REQUIREMENT") &&
       typeof a.titleTemplate === "string"
     ) {
       return a as CreateTaskAction;
@@ -402,6 +405,7 @@ async function fireActionCreateTask(
       data: {
         title,
         type: act.taskType,
+        priority: defaultActionPriority(act.taskType),
         serverId,
         channelId,
         sourceMessageId,

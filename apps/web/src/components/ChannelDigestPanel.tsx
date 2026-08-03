@@ -127,6 +127,8 @@ const dueChip = (kind: "overdue" | "today" | "tomorrow" | "none"): CSSProperties
 function typeGlyph(type: ActionItemPayload["type"]): string {
   if (type === "DECISION") return "◆";
   if (type === "FOLLOW_UP") return "↻";
+  if (type === "RISK") return "!";
+  if (type === "REQUIREMENT") return "≡";
   return "□";
 }
 
@@ -367,6 +369,22 @@ export function ChannelDigestPanel({
                 <span style={statLabel}>Открытые задачи</span>
               </div>
             )}
+            {digest.openActions.byType.RISK > 0 && (
+              <div style={statCard}>
+                <span style={{ ...statValue, color: "var(--ec-status-risk)" }}>
+                  {digest.openActions.byType.RISK}
+                </span>
+                <span style={statLabel}>Открытые риски</span>
+              </div>
+            )}
+            {digest.openActions.byType.REQUIREMENT > 0 && (
+              <div style={statCard}>
+                <span style={{ ...statValue, color: "var(--ec-accent)" }}>
+                  {digest.openActions.byType.REQUIREMENT}
+                </span>
+                <span style={statLabel}>Требования</span>
+              </div>
+            )}
             {digest.openActions.overdue.length > 0 && (
               <div style={statCard}>
                 <span style={{ ...statValue, color: "var(--ec-status-risk)" }}>
@@ -447,6 +465,28 @@ export function ChannelDigestPanel({
             </div>
           )}
 
+          {digest.risks.length > 0 && (
+            <div>
+              <div style={sectionTitle}>Риски</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                {digest.risks.slice(0, 3).map((a) => (
+                  <ItemLine key={a.id} item={a} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {digest.requirements.length > 0 && (
+            <div>
+              <div style={sectionTitle}>Требования</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                {digest.requirements.slice(0, 3).map((a) => (
+                  <ItemLine key={a.id} item={a} />
+                ))}
+              </div>
+            </div>
+          )}
+
           {digest.pinned.length > 0 && (
             <div>
               <div style={sectionTitle}>Закреплено</div>
@@ -480,6 +520,8 @@ export function ChannelDigestPanel({
           {digest.openActions.total === 0 &&
             digest.decisions.length === 0 &&
             digest.followUps.length === 0 &&
+            digest.risks.length === 0 &&
+            digest.requirements.length === 0 &&
             digest.pinned.length === 0 && (
               <p style={{ margin: 0, color: "var(--ec-text-muted)", fontSize: "var(--ec-text-sm)" }}>
                 Комната чистая — нет открытых задач, решений или закреплённых сообщений.

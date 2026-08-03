@@ -1,10 +1,12 @@
+import type { ActionItemType } from "@prisma/client";
+
 export const PERSONAL_DIGEST_FIRST_WINDOW_MS = 24 * 60 * 60 * 1000;
 export const PERSONAL_DIGEST_MAX_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
 export type DigestImportance = "CRITICAL" | "HIGH" | "NORMAL";
 
 export type DigestActionInput = {
-  type: "TASK" | "DECISION" | "FOLLOW_UP";
+  type: ActionItemType;
   status: "OPEN" | "IN_PROGRESS" | "REVIEW" | "DONE";
   priority: "LOW" | "NORMAL" | "HIGH" | "URGENT";
   dueAt: Date | null;
@@ -57,6 +59,7 @@ export function classifyDigestAction(
   if (
     action.priority === "HIGH" ||
     action.type === "DECISION" ||
+    action.type === "RISK" ||
     (action.status !== "DONE" && action.assigneeUserId === userId)
   ) {
     return "HIGH";

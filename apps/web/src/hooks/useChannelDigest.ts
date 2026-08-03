@@ -25,7 +25,13 @@ export type ChannelDigest = {
   windowDays: number;
   openActions: {
     total: number;
-    byType: { TASK: number; DECISION: number; FOLLOW_UP: number };
+    byType: {
+      TASK: number;
+      DECISION: number;
+      FOLLOW_UP: number;
+      RISK: number;
+      REQUIREMENT: number;
+    };
     overdue: ActionItemPayload[];
     dueToday: ActionItemPayload[];
     dueTomorrow: ActionItemPayload[];
@@ -33,6 +39,8 @@ export type ChannelDigest = {
   };
   decisions: ActionItemPayload[];
   followUps: ActionItemPayload[];
+  risks: ActionItemPayload[];
+  requirements: ActionItemPayload[];
   pinned: DigestPinnedMessage[];
   stats: { messages: number; uniqueAuthors: number };
 };

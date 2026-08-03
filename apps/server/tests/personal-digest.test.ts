@@ -64,6 +64,8 @@ describe("personal command digest", () => {
     expect(
       classifyDigestAction({ ...base, assigneeUserId: "me" }, "me", now),
     ).toBe("HIGH");
+    expect(classifyDigestAction({ ...base, type: "RISK" }, "me", now)).toBe("HIGH");
+    expect(classifyDigestAction({ ...base, type: "REQUIREMENT" }, "me", now)).toBe("NORMAL");
   });
 
   it("never moves the acknowledged cursor backwards or into the future", () => {

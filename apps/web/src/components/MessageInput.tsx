@@ -27,6 +27,8 @@ const SLASH_COMMANDS: {
   { cmd: "task", aliases: ["task", "t"], type: "TASK", label: "/task", desc: "создать задачу из текста" },
   { cmd: "decision", aliases: ["decision", "dec", "d"], type: "DECISION", label: "/decision", desc: "зафиксировать решение" },
   { cmd: "followup", aliases: ["followup", "fu", "f"], type: "FOLLOW_UP", label: "/followup", desc: "поставить follow-up" },
+  { cmd: "risk", aliases: ["risk", "r"], type: "RISK", label: "/risk", desc: "зафиксировать риск" },
+  { cmd: "requirement", aliases: ["requirement", "req"], type: "REQUIREMENT", label: "/requirement", desc: "зафиксировать требование" },
 ];
 
 const TEXT_MACRO_COMMANDS = {

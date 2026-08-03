@@ -108,6 +108,8 @@ function isActionHot(action: ActionItemPayload, now: number): boolean {
 function actionTypeLabel(type: ActionItemPayload["type"]): string {
   if (type === "DECISION") return "решение";
   if (type === "FOLLOW_UP") return "follow-up";
+  if (type === "RISK") return "риск";
+  if (type === "REQUIREMENT") return "требование";
   return "задача";
 }
 

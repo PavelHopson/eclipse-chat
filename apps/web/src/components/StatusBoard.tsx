@@ -80,6 +80,8 @@ const TYPE_META: Record<ActionItemType, { glyph: string; label: string; tone: st
   TASK: { glyph: "□", label: "Задачи", tone: "var(--ec-status-exec)" },
   DECISION: { glyph: "◆", label: "Решения", tone: "var(--ec-status-ai)" },
   FOLLOW_UP: { glyph: "↻", label: "Follow-up", tone: "var(--ec-status-warn)" },
+  RISK: { glyph: "!", label: "Риски", tone: "var(--ec-status-risk)" },
+  REQUIREMENT: { glyph: "≡", label: "Требования", tone: "var(--ec-accent-2)" },
 };
 
 type TypeFilter = "ALL" | ActionItemType;
@@ -316,7 +318,7 @@ export function StatusBoard({
         </div>
 
         <div className="ec-cck__tools">
-          {(["ALL", "TASK", "DECISION", "FOLLOW_UP"] as const).map((t) => (
+          {(["ALL", "TASK", "DECISION", "FOLLOW_UP", "RISK", "REQUIREMENT"] as const).map((t) => (
             <button
               key={t}
               type="button"

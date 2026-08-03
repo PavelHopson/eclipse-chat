@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   createActionBody,
+  defaultActionPriority,
   deriveActionTitle,
   validateActionCreationAccess,
   validateActionDueAt,
@@ -34,6 +35,10 @@ describe("message action creation policy", () => {
     expect(
       createActionBody.safeParse({ type: "TASK", title: "Релиз", serverId: "other" }).success,
     ).toBe(false);
+    expect(createActionBody.safeParse({ type: "RISK", title: "Проверить лимит API" }).success).toBe(true);
+    expect(
+      createActionBody.safeParse({ type: "REQUIREMENT", title: "Хранить аудит 90 дней" }).success,
+    ).toBe(true);
   });
 
   it("bounds due dates and keeps a small clock-skew allowance", () => {
@@ -49,8 +54,16 @@ describe("message action creation policy", () => {
     });
   });
 
+  it("makes risks high priority by default without escalating other types", () => {
+    expect(defaultActionPriority("RISK")).toBe("HIGH");
+    expect(defaultActionPriority("REQUIREMENT")).toBe("NORMAL");
+    expect(defaultActionPriority("TASK")).toBe("NORMAL");
+  });
+
   it("derives a compact title without trusting markup layout", () => {
     expect(deriveActionTitle("TASK", "  Проверить\n\nсборку  ")).toBe("Проверить сборку");
     expect(deriveActionTitle("FOLLOW_UP", "")).toBe("Follow-up captured from message");
+    expect(deriveActionTitle("RISK", "")).toBe("Risk captured from message");
+    expect(deriveActionTitle("REQUIREMENT", "")).toBe("Requirement captured from message");
   });
 });

@@ -24,6 +24,7 @@ const KIND_LABEL: Record<PersonalDigestKind, string> = {
   DECISION: "Решение",
   TASK: "Задача",
   FOLLOW_UP: "Контроль",
+  REQUIREMENT: "Требование",
   MEMORY: "Память",
   ROOM_ACTIVITY: "Новые сообщения",
 };
@@ -68,7 +69,7 @@ function DigestGlyph({ kind }: { kind: PersonalDigestKind }) {
       </svg>
     );
   }
-  if (kind === "TASK" || kind === "FOLLOW_UP") {
+  if (kind === "TASK" || kind === "FOLLOW_UP" || kind === "REQUIREMENT") {
     return (
       <svg viewBox="0 0 24 24" aria-hidden>
         <rect x="4" y="4" width="16" height="16" rx="3" />
@@ -157,7 +158,7 @@ export function CommandDigestView({
           <span className="ec-personal-digest__empty-signal" aria-hidden />
           <div>
             <h2>Всё просмотрено</h2>
-            <p>Новых решений, рисков и сообщений пока нет. Сводка обновится, когда появится важное.</p>
+            <p>Новых решений, рисков, требований и сообщений пока нет. Сводка обновится, когда появится важное.</p>
           </div>
           <button type="button" className="ec-btn ec-btn--primary ec-btn--sm" onClick={onReload}>
             Проверить сейчас
@@ -169,6 +170,7 @@ export function CommandDigestView({
             <Stat value={data.totals.approvals} label="ждут решения" tone="var(--ec-status-risk)" />
             <Stat value={data.totals.risks + data.totals.incidents} label="рисков и инцидентов" tone="var(--ec-status-warn)" />
             <Stat value={data.totals.tasks} label="задач изменилось" tone="var(--ec-status-exec)" />
+            <Stat value={data.totals.requirements} label="требований изменилось" tone="var(--ec-accent)" />
             <Stat value={data.totals.messages} label="новых сообщений" />
           </section>
 
@@ -225,8 +227,8 @@ export function CommandDigestView({
                     </span>
                     <span className="ec-personal-digest__room-counts">
                       {channel.messages > 0 && <b>{channel.messages} сообщ.</b>}
-                      {channel.tasks + channel.decisions + channel.followUps > 0 && (
-                        <b>{channel.tasks + channel.decisions + channel.followUps} дел</b>
+                      {channel.tasks + channel.decisions + channel.followUps + channel.risks + channel.requirements > 0 && (
+                        <b>{channel.tasks + channel.decisions + channel.followUps + channel.risks + channel.requirements} дел</b>
                       )}
                     </span>
                   </button>

@@ -519,6 +519,8 @@ enum ActionItemType {
   TASK
   DECISION
   FOLLOW_UP
+  RISK
+  REQUIREMENT
 }
 
 enum MemoryEntryKind {

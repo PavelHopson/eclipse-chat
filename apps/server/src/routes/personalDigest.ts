@@ -26,6 +26,7 @@ type DigestItem = {
     | "DECISION"
     | "TASK"
     | "FOLLOW_UP"
+    | "REQUIREMENT"
     | "MEMORY"
     | "ROOM_ACTIVITY";
   importance: DigestImportance;
@@ -51,6 +52,7 @@ type ChannelDigest = {
   decisions: number;
   followUps: number;
   risks: number;
+  requirements: number;
   latestAt: string | null;
   latestMessageId: string | null;
   latestMessage: string | null;
@@ -73,6 +75,7 @@ function emptyDigest(
       decisions: 0,
       followUps: 0,
       risks: 0,
+      requirements: 0,
       memory: 0,
       incidents: 0,
       approvals: 0,
@@ -168,6 +171,7 @@ export async function registerPersonalDigestRoutes(app: FastifyInstance) {
         recentActionRows,
         priorityActions,
         memoryCounts,
+        standaloneRiskCounts,
         recentMemory,
         incidents,
         approvalTotal,
@@ -289,6 +293,18 @@ export async function registerPersonalDigestRoutes(app: FastifyInstance) {
           },
           _count: { _all: true },
         }),
+        db.memoryEntry.groupBy({
+          by: ["channelId"],
+          where: {
+            serverId: { in: serverIds },
+            channelId: { in: channelIds },
+            kind: "RISK",
+            actionItemId: null,
+            ...memoryContextEligibilityWhere(generatedAt),
+            createdAt: { gt: window.since, lte: generatedAt },
+          },
+          _count: { _all: true },
+        }),
         db.memoryEntry.findMany({
           where: {
             serverId: { in: serverIds },
@@ -365,6 +381,7 @@ export async function registerPersonalDigestRoutes(app: FastifyInstance) {
           decisions: 0,
           followUps: 0,
           risks: 0,
+          requirements: 0,
           latestAt: null,
           latestMessageId: null,
           latestMessage: null,
@@ -401,15 +418,17 @@ export async function registerPersonalDigestRoutes(app: FastifyInstance) {
         if (row.type === "TASK") channel.tasks = row._count._all;
         if (row.type === "DECISION") channel.decisions = row._count._all;
         if (row.type === "FOLLOW_UP") channel.followUps = row._count._all;
+        if (row.type === "RISK") channel.risks = row._count._all;
+        if (row.type === "REQUIREMENT") channel.requirements = row._count._all;
       }
       for (const action of recentActions) {
         const channel = ensureChannel(action.channelId);
         if (channel) touchChannel(channel, action.updatedAt);
       }
-      for (const row of memoryCounts) {
+      for (const row of standaloneRiskCounts) {
         if (!row.channelId) continue;
         const channel = ensureChannel(row.channelId);
-        if (channel && row.kind === "RISK") channel.risks = row._count._all;
+        if (channel) channel.risks += row._count._all;
       }
       for (const memory of recentMemory) {
         if (!memory.channelId) continue;
@@ -496,7 +515,13 @@ export async function registerPersonalDigestRoutes(app: FastifyInstance) {
 
       const channelRows = [...channels.values()]
         .filter((channel) =>
-          channel.messages + channel.tasks + channel.decisions + channel.followUps + channel.risks > 0,
+          channel.messages +
+            channel.tasks +
+            channel.decisions +
+            channel.followUps +
+            channel.risks +
+            channel.requirements >
+          0,
         )
         .sort((a, b) => (b.latestAt ?? "").localeCompare(a.latestAt ?? ""))
         .slice(0, 16);
@@ -526,14 +551,16 @@ export async function registerPersonalDigestRoutes(app: FastifyInstance) {
         return b.createdAt.localeCompare(a.createdAt);
       });
 
-      const countByType = (type: "TASK" | "DECISION" | "FOLLOW_UP") =>
+      const countByType = (
+        type: "TASK" | "DECISION" | "FOLLOW_UP" | "RISK" | "REQUIREMENT",
+      ) =>
         actionCounts
           .filter((row) => row.type === type)
           .reduce((sum, row) => sum + row._count._all, 0);
       const memoryTotal = memoryCounts.reduce((sum, row) => sum + row._count._all, 0);
-      const riskTotal = memoryCounts
-        .filter((row) => row.kind === "RISK")
-        .reduce((sum, row) => sum + row._count._all, 0);
+      const riskTotal =
+        countByType("RISK") +
+        standaloneRiskCounts.reduce((sum, row) => sum + row._count._all, 0);
       const messageTotal = messageCounts.reduce((sum, row) => sum + row._count._all, 0);
       return {
         ...base,
@@ -543,6 +570,7 @@ export async function registerPersonalDigestRoutes(app: FastifyInstance) {
           decisions: countByType("DECISION"),
           followUps: countByType("FOLLOW_UP"),
           risks: riskTotal,
+          requirements: countByType("REQUIREMENT"),
           memory: memoryTotal,
           incidents: incidentTotal,
           approvals: approvalTotal,

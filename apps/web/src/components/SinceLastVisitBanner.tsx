@@ -101,6 +101,8 @@ export function SinceLastVisitBanner({
     s.newTasks > 0 ||
     s.newDecisions > 0 ||
     s.newFollowUps > 0 ||
+    s.newRisks > 0 ||
+    s.newRequirements > 0 ||
     (s.newMemory ?? 0) > 0 ||
     s.recentPinned.length > 0 ||
     s.incident != null;
@@ -234,6 +236,8 @@ export function SinceLastVisitBanner({
         {counter("новых задач", s.newTasks, "var(--ec-status-exec)")}
         {counter("решений", s.newDecisions, "var(--ec-status-ai)")}
         {counter("follow-up", s.newFollowUps, "var(--ec-status-warn)")}
+        {counter("рисков", s.newRisks, "var(--ec-status-risk)")}
+        {counter("требований", s.newRequirements, "var(--ec-accent)")}
         {counter("записей памяти", s.newMemory ?? 0, "var(--ec-accent)")}
         {s.recentPinned.length > 0 &&
           counter("закреплено", s.recentPinned.length, "var(--ec-accent)")}
