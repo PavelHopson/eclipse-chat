@@ -207,6 +207,7 @@ model User {
   decidedBotActionApprovals  BotActionApproval[]       @relation("BotActionApprovalDecider")
   importedGrowthRuns         GrowthRun[]                @relation("GrowthRunImporter")
   reviewedGrowthRuns         GrowthRun[]                @relation("GrowthRunReviewer")
+  growthAiUsage              GrowthAiUsage[]
 }
 
 /// Публичное изображение, которое пользователь явно добавил в профиль.
@@ -423,6 +424,9 @@ enum AuditEventType {
   /// Growth Command Room: versioned import and explicit human review.
   GROWTH_RUN_IMPORTED
   GROWTH_RUN_REVIEWED
+  GROWTH_RUN_CREATED
+  GROWTH_STEP_EXECUTED
+  GROWTH_STEP_CANCELLED
   /// v1.0.1 Composio integration: OAuth-managed external apps.
   COMPOSIO_CONNECTED
   COMPOSIO_DISCONNECTED
@@ -477,6 +481,8 @@ model GrowthRun {
   payload            String
   payloadHash        String
   idempotencyKey     String
+  lastExecutionKey   String?
+  lastExecutedStep   String?
   reviewStatus       GrowthRunReviewStatus @default(PENDING)
   reviewNote         String?
   reviewedAt         DateTime?
@@ -490,6 +496,19 @@ model GrowthRun {
   @@unique([serverId, idempotencyKey])
   @@index([serverId, reviewStatus, createdAt])
   @@index([serverId, importedByUserId, reviewStatus])
+}
+
+/// UTC daily request budget for the bounded Growth executor. It stores counters
+/// only; prompts, artifacts and provider responses stay in GrowthRun.
+model GrowthAiUsage {
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  day       String
+  requests  Int      @default(0)
+  updatedAt DateTime @updatedAt
+
+  @@id([userId, day])
+  @@index([day])
 }
 
 model RefreshToken {

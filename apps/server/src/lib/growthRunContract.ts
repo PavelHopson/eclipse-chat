@@ -62,29 +62,31 @@ const sourceApprovalSchema = z
   })
   .strict();
 
+export const growthInputSchema = z
+  .object({
+    releaseName: boundedText(3, 120),
+    releaseSummary: boundedText(20, 2_000),
+    audience: boundedText(3, 240),
+    channel: z.enum(["telegram", "linkedin", "blog"]),
+    sourceUrls: z.array(httpsUrlSchema).min(1).max(8).transform((urls) => [...new Set(urls)]),
+    evidenceNotes: boundedText(20, 12_000),
+  })
+  .strict();
+
 const growthRunSchema = z
   .object({
     schemaVersion: z.literal("growth.run.v1"),
     id: identifierSchema,
-    status: z.enum(["ready_for_approval", "approved"]),
+    status: z.enum(["draft", "in_progress", "ready_for_approval", "approved"]),
     createdAt: z.string().datetime(),
     updatedAt: z.string().datetime(),
-    input: z
-      .object({
-        releaseName: boundedText(3, 120),
-        releaseSummary: boundedText(20, 2_000),
-        audience: boundedText(3, 240),
-        channel: z.enum(["telegram", "linkedin", "blog"]),
-        sourceUrls: z.array(httpsUrlSchema).min(1).max(8),
-        evidenceNotes: boundedText(20, 12_000),
-      })
-      .strict(),
+    input: growthInputSchema,
     execution: z
       .object({
         provider: boundedText(2, 80),
         model: boundedText(1, 160),
         maxRequests: z.literal(5),
-        completedRequests: z.literal(5),
+        completedRequests: z.number().int().min(0).max(5),
         cost: z.literal("provider-dependent"),
       })
       .strict(),
@@ -96,13 +98,13 @@ const growthRunSchema = z
         sourceContentTrusted: z.literal(false),
       })
       .strict(),
-    artifacts: z.array(growthArtifactSchema).length(GROWTH_STEP_DEFINITIONS.length),
+    artifacts: z.array(growthArtifactSchema).max(GROWTH_STEP_DEFINITIONS.length),
     approval: sourceApprovalSchema.nullable(),
   })
   .strict()
   .superRefine((run, context) => {
-    GROWTH_STEP_DEFINITIONS.forEach((expected, index) => {
-      const artifact = run.artifacts[index];
+    run.artifacts.forEach((artifact, index) => {
+      const expected = GROWTH_STEP_DEFINITIONS[index];
       if (artifact?.step !== expected.step || artifact.role !== expected.role) {
         context.addIssue({
           code: z.ZodIssueCode.custom,
@@ -111,6 +113,32 @@ const growthRunSchema = z
         });
       }
     });
+    if (run.execution.completedRequests !== run.artifacts.length) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["execution", "completedRequests"],
+        message: "completedRequests должен совпадать с количеством артефактов",
+      });
+    }
+    const expectedStatus = run.artifacts.length === 0
+      ? "draft"
+      : run.artifacts.length < GROWTH_STEP_DEFINITIONS.length
+        ? "in_progress"
+        : null;
+    if (expectedStatus && run.status !== expectedStatus) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["status"],
+        message: `Для ${run.artifacts.length} выполненных шагов ожидается статус ${expectedStatus}`,
+      });
+    }
+    if (!expectedStatus && !["ready_for_approval", "approved"].includes(run.status)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["status"],
+        message: "После пяти шагов материал должен ожидать approval или быть approved",
+      });
+    }
     if (run.status === "approved" && !run.approval) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
@@ -135,6 +163,7 @@ const growthRunSchema = z
   });
 
 export type GrowthRunPayload = z.infer<typeof growthRunSchema>;
+export type GrowthRunInput = z.infer<typeof growthInputSchema>;
 
 export type ParsedGrowthRunImport = {
   run: GrowthRunPayload;
@@ -155,6 +184,10 @@ export function parseGrowthRunImport(raw: unknown): ParsedGrowthRunImport {
     const path = first?.path.length ? `${first.path.join(".")}: ` : "";
     throw new Error(`${path}${first?.message ?? "Некорректный growth.run.v1"}`);
   }
+  if (parsed.data.artifacts.length !== GROWTH_STEP_DEFINITIONS.length
+    || !["ready_for_approval", "approved"].includes(parsed.data.status)) {
+    throw new Error("Импортировать можно только завершённый growth.run.v1");
+  }
 
   const sourceApprovalClaimed = parsed.data.status === "approved";
   const run: GrowthRunPayload = {
@@ -174,6 +207,69 @@ export function parseGrowthRunImport(raw: unknown): ParsedGrowthRunImport {
     payloadHash: createHash("sha256").update(payload).digest("hex"),
     sourceApprovalClaimed,
   };
+}
+
+export function createGrowthRunPayload(
+  input: GrowthRunInput,
+  id: string,
+  options: { provider: string; model: string; now?: Date },
+): GrowthRunPayload {
+  const parsedInput = growthInputSchema.parse(input);
+  const timestamp = (options.now ?? new Date()).toISOString();
+  return growthRunSchema.parse({
+    schemaVersion: "growth.run.v1",
+    id,
+    status: "draft",
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    input: parsedInput,
+    execution: {
+      provider: options.provider,
+      model: options.model,
+      maxRequests: 5,
+      completedRequests: 0,
+      cost: "provider-dependent",
+    },
+    policy: {
+      externalActions: false,
+      publishAllowed: false,
+      toolsAllowed: false,
+      sourceContentTrusted: false,
+    },
+    artifacts: [],
+    approval: null,
+  });
+}
+
+export function appendGrowthArtifact(
+  run: GrowthRunPayload,
+  result: { step: string; role: string; content: string; provider: string; model: string },
+  now = new Date(),
+): GrowthRunPayload {
+  const expected = GROWTH_STEP_DEFINITIONS[run.artifacts.length];
+  if (!expected || result.step !== expected.step || result.role !== expected.role) {
+    throw new Error("AI Hub вернул шаг вне очереди Growth OS");
+  }
+  const timestamp = now.toISOString();
+  const artifacts = [...run.artifacts, {
+    step: expected.step,
+    role: expected.role,
+    content: result.content,
+    createdAt: timestamp,
+  }];
+  return growthRunSchema.parse({
+    ...run,
+    status: artifacts.length === GROWTH_STEP_DEFINITIONS.length ? "ready_for_approval" : "in_progress",
+    updatedAt: timestamp,
+    execution: {
+      ...run.execution,
+      provider: result.provider,
+      model: result.model,
+      completedRequests: artifacts.length,
+    },
+    artifacts,
+    approval: null,
+  });
 }
 
 export function parseStoredGrowthRun(payload: string): GrowthRunPayload {

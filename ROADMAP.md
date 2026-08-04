@@ -67,8 +67,16 @@ scope доступа, понятное действие и подтвержде�
   не хранить provider credentials, prompts в audit или скрытый chain-of-thought.
 - [x] Собрать loading, empty, import error, read-only, pending, approved и rejected states;
   desktop/mobile и reduced-motion входят в один production slice.
-- [ ] Добавить scoped Chat-to-AI-Hub executor, cancellation/timeout, реальный per-user
+- [x] Добавить scoped Chat-to-AI-Hub executor, cancellation/timeout, реальный per-user
   request budget и aggregate telemetry без prompt content. Автопубликация остаётся запрещена.
+
+### Growth executor — v1.7.40
+
+- [x] Создавать draft прямо в Chat и запускать только следующую фиксированную роль одним явным кликом.
+- [x] Выдать отдельной identity `eclipse-chat-growth` только scope `growth:execute`; не расширять generic Chat client.
+- [x] Применить optimistic version, idempotency, 65-second timeout, cancel и дневной budget 25 попыток на user.
+- [x] Сохранить import fallback, human approval и запрет tools, URL fetching, OAuth, рекламы и публикации.
+- [x] Добавить понятные create/progress/running/cancel/error/disabled/review состояния на desktop и mobile.
 
 ### Mobile Command Inbox — v1.7.37
 
@@ -453,7 +461,7 @@ scope доступа, понятное действие и подтвержде�
 - Provider routing — только owned/legal keys, no grey-zone token bypass.
 - Token-saving tools (`sqz`, caveman-like compression) сначала benchmark в sandbox; не сжимать секреты, миграции, юридический текст и точные логи.
 
-**Актуальная версия (короткий индекс):** **v1.7.39** — Growth Command Room persists completed `growth.run.v1` artifacts, re-validates evidence and safety policy, and records a tenant-scoped, versioned human review without provider credentials or publication actions.
+**Актуальная версия (короткий индекс):** **v1.7.40** — Growth Command Room creates and executes a five-role `growth.run.v1` through a dedicated AI Hub scope with per-user budget, timeout, cancellation and human approval; tools and publication remain unavailable.
 
 **Текущая версия:** **v1.6.98** (🗄️⚡ PARTIAL-ИНДЕКС под escalation-scan (бэклог-хвост, заход через CI). Фоновой `escalation.ts` раз в час обходит `ActionItem` где `status ∈ (OPEN,IN_PROGRESS,REVIEW)`, `dueAt < now-48h`, `(escalatedAt IS NULL OR < now-7d)`, `ORDER BY dueAt ASC LIMIT 50`. Запрос **глобальный** (без serverId/channelId) → все 4 существующих индекса `ActionItem` ведут с channelId/serverId и его НЕ покрывают → был seq-scan всей таблицы каждый час. **Новый partial composite index** `ActionItem_escalation_scan_idx ON ("dueAt") WHERE status IN (OPEN,IN_PROGRESS,REVIEW) AND dueAt IS NOT NULL` (raw-миграция `20260625120000_add_escalation_partial_index`): индексирует только кандидатов эскалации (крошечная доля таблицы — закрытые DONE и задачи без дедлайна исключены); ведущая `dueAt` → один forward index-scan покрывает и `dueAt < X`, и `ORDER BY dueAt ASC LIMIT 50` без сортировки, рано останавливается. **Prisma не выражает WHERE-индексы** → raw SQL; `migrate deploy` (deploy.sh [4/10]) применяет как есть, `prisma generate` индексы не читает, drift-проверок (`migrate dev`) в проекте нет (прод=migrate deploy, локальной БД нет). schema.prisma — doc-comment у `ActionItem` фиксирует существование индекса («не чинить как drift»). **temp-channel scan (`tempChannels.ts`) НЕ трогал** — `Channel` уже имеет `@@index([expiresAt])`, а `WHERE expiresAt < now` = чистый range-scan по нему (NULL'ы сортируются последними, не читаются); partial там лишь дублировал бы индекс = write-amplification на крошечной таблице ради ~нуля. Version 1.6.97→1.6.98 (4 точки). Verify: server `tsc --noEmit` PASS, web build PASS; миграция применится на проде при деплое (`migrate deploy`). **Бэклог-остаток:** виртуализация ленты сообщений (npm-dep + риск-рефактор скролла) — единственный крупный хвост.)
 

@@ -112,6 +112,18 @@ describe("growth command room route security", () => {
       guards: ["requireJwt"],
       max: 60,
     });
+    expect(routes.get("POST:/api/servers/:id/growth-runs")).toEqual({
+      guards: ["requireJwt"],
+      max: 10,
+    });
+    expect(routes.get("POST:/api/servers/:id/growth-runs/:runId/steps")).toEqual({
+      guards: ["requireJwt"],
+      max: 30,
+    });
+    expect(routes.get("POST:/api/servers/:id/growth-runs/:runId/cancel")).toEqual({
+      guards: ["requireJwt"],
+      max: 30,
+    });
     expect(routes.get("POST:/api/servers/:id/growth-runs/import")).toEqual({
       guards: ["requireJwt"],
       max: 10,

@@ -9,6 +9,10 @@ Eclipse Chat server
   -> Eclipse AI Gateway :8810/v1
       -> OmniRoute :20128/api/v1 (or another configured OpenAI-compatible upstream)
   -> existing direct provider chain on gateway failure
+
+Growth Command Room
+  -> dedicated eclipse-chat-growth identity
+  -> POST /v1/growth/execute only
 ```
 
 Provider and service credentials remain server-side. The browser never receives either token.
@@ -44,6 +48,14 @@ temporarily hold up to four tokens during a controlled rotation. The current pro
 rotation workflow still uses the bounded legacy-token path; do not combine legacy token
 variables with `AI_GATEWAY_SERVICE_CLIENTS` in one gateway environment.
 
+Growth Command Room uses a second identity instead of expanding the generic Chat client:
+
+```dotenv
+{"id":"eclipse-chat-growth","tokens":["<random-growth-token>"],"scopes":["growth:execute"],"requestsPerMinute":30}
+```
+
+The production sync script upserts both identities without reconstructing or deleting other product clients.
+
 ## Enable the Chat canary
 
 The regular production deploy performs this step automatically through
@@ -60,7 +72,15 @@ ECLIPSE_AI_HUB_BASE_URL=http://127.0.0.1:8810/v1
 ECLIPSE_AI_HUB_SERVICE_TOKEN=<same-random-service-token>
 ECLIPSE_AI_HUB_MODELS=auto/best-chat
 ECLIPSE_AI_HUB_CANARY_PERCENT=10
+ECLIPSE_GROWTH_HUB_BASE_URL=http://127.0.0.1:8810/v1
+ECLIPSE_GROWTH_HUB_SERVICE_TOKEN=<separate-growth-token>
+ECLIPSE_GROWTH_HUB_MODEL=auto/best-chat
+ECLIPSE_GROWTH_HUB_TIMEOUT_MS=65000
+GROWTH_REQUESTS_PER_USER_DAY=25
 ```
+
+The Growth token is generated on the host, stored only in root-controlled server environments and smoke-tested
+against the fixed endpoint before Chat restarts. It is never exposed to the browser or GitHub Actions output.
 
 Restart the Chat server and verify Platform Admin → AI. `eclipse-ai-hub` must appear as a gateway before `omniroute`; token values are never returned by diagnostics.
 

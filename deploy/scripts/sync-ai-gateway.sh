@@ -2,7 +2,7 @@
 set -euo pipefail
 
 AI_HUB_REPOSITORY="https://github.com/PavelHopson/eclipse-ai-hub.git"
-AI_HUB_COMMIT="aa2a1ced3e46235521e4afc2eba6fb106d2c8ddb"
+AI_HUB_COMMIT="fe5703c247448c0541b4a6c4e0e36a503a860346"
 AI_HUB_PATH="${ECLIPSE_AI_HUB_GATEWAY_PATH:-/var/www/eclipse-ai-hub-gateway}"
 GATEWAY_ENV_FILE="${AI_GATEWAY_ENV_FILE:-/etc/eclipse-ai-gateway.env}"
 CHAT_ENV_FILE="${ECLIPSE_CHAT_ENV_FILE:-/var/www/eclipse-chat/apps/server/.env}"
@@ -96,6 +96,7 @@ if [[ -z "$OMNIROUTE_API_KEY" ]]; then
 fi
 
 SERVICE_TOKEN=""
+GROWTH_SERVICE_TOKEN=""
 SERVICE_CLIENTS=""
 if [[ -f "$GATEWAY_ENV_FILE" ]]; then
   if [[ "$(stat -c '%U' "$GATEWAY_ENV_FILE")" != "root" || "$(stat -c '%a' "$GATEWAY_ENV_FILE")" =~ [1-7]$ ]]; then
@@ -118,6 +119,11 @@ if [[ -f "$GATEWAY_ENV_FILE" ]]; then
       CLIENT_ID="eclipse-chat" \
       node "$AI_HUB_PATH/gateway/scripts/service-clients.mjs" primary-token-if-present
     )"
+    GROWTH_SERVICE_TOKEN="$(
+      SERVICE_CLIENTS_JSON="$SERVICE_CLIENTS" \
+      CLIENT_ID="eclipse-chat-growth" \
+      node "$AI_HUB_PATH/gateway/scripts/service-clients.mjs" primary-token-if-present
+    )"
   else
     if [[ -n "$LEGACY_ROTATION_TOKENS" ]]; then
       echo "Gateway legacy credential rotation must finish before migration" >&2
@@ -129,6 +135,9 @@ fi
 if [[ ${#SERVICE_TOKEN} -lt 32 ]]; then
   SERVICE_TOKEN="$(openssl rand -hex 32)"
 fi
+if [[ ${#GROWTH_SERVICE_TOKEN} -lt 32 ]]; then
+  GROWTH_SERVICE_TOKEN="$(openssl rand -hex 32)"
+fi
 SERVICE_CLIENTS="$(
   SERVICE_CLIENTS_JSON="$SERVICE_CLIENTS" \
   CLIENT_ID="eclipse-chat" \
@@ -137,10 +146,21 @@ SERVICE_CLIENTS="$(
   CLIENT_REQUESTS_PER_MINUTE="120" \
   node "$AI_HUB_PATH/gateway/scripts/service-clients.mjs" upsert
 )"
+SERVICE_CLIENTS="$(
+  SERVICE_CLIENTS_JSON="$SERVICE_CLIENTS" \
+  CLIENT_ID="eclipse-chat-growth" \
+  CLIENT_TOKENS="$GROWTH_SERVICE_TOKEN" \
+  CLIENT_SCOPES="growth:execute" \
+  CLIENT_REQUESTS_PER_MINUTE="30" \
+  node "$AI_HUB_PATH/gateway/scripts/service-clients.mjs" upsert
+)"
 
 umask 077
+GATEWAY_ENV_TEMP=""
+GROWTH_CURL_CONFIG=""
+trap 'rm -f "$GATEWAY_ENV_TEMP" "$GROWTH_CURL_CONFIG"' EXIT
 GATEWAY_ENV_TEMP="$(mktemp)"
-trap 'rm -f "$GATEWAY_ENV_TEMP"' EXIT
+GROWTH_CURL_CONFIG="$(mktemp)"
 {
   write_env_line "AI_GATEWAY_HOST" "127.0.0.1"
   write_env_line "AI_GATEWAY_PORT" "8810"
@@ -169,9 +189,31 @@ AI_GATEWAY_SMOKE_BASE_URL="http://127.0.0.1:8810" \
   AI_GATEWAY_SMOKE_COMPLETION=1 \
   node gateway/scripts/smoke.mjs
 
+{
+  printf 'header = "Authorization: Bearer %s"\n' "$GROWTH_SERVICE_TOKEN"
+  printf 'header = "Content-Type: application/json"\n'
+} > "$GROWTH_CURL_CONFIG"
+GROWTH_AUTH_STATUS="$(
+  curl --config "$GROWTH_CURL_CONFIG" \
+    --silent --output /dev/null --write-out '%{http_code}' \
+    --max-time 10 \
+    --request POST \
+    --data '{}' \
+    "http://127.0.0.1:8810/v1/growth/execute"
+)"
+if [[ "$GROWTH_AUTH_STATUS" != "400" ]]; then
+  echo "Growth scoped identity smoke failed with HTTP $GROWTH_AUTH_STATUS" >&2
+  exit 1
+fi
+
 upsert_env_value "ECLIPSE_AI_HUB_BASE_URL" "http://127.0.0.1:8810/v1" "$CHAT_ENV_FILE"
 upsert_env_value "ECLIPSE_AI_HUB_SERVICE_TOKEN" "$SERVICE_TOKEN" "$CHAT_ENV_FILE"
 upsert_env_value "ECLIPSE_AI_HUB_MODELS" "auto/best-chat" "$CHAT_ENV_FILE"
 upsert_env_value "ECLIPSE_AI_HUB_CANARY_PERCENT" "$CANARY_PERCENT" "$CHAT_ENV_FILE"
+upsert_env_value "ECLIPSE_GROWTH_HUB_BASE_URL" "http://127.0.0.1:8810/v1" "$CHAT_ENV_FILE"
+upsert_env_value "ECLIPSE_GROWTH_HUB_SERVICE_TOKEN" "$GROWTH_SERVICE_TOKEN" "$CHAT_ENV_FILE"
+upsert_env_value "ECLIPSE_GROWTH_HUB_MODEL" "auto/best-chat" "$CHAT_ENV_FILE"
+upsert_env_value "ECLIPSE_GROWTH_HUB_TIMEOUT_MS" "65000" "$CHAT_ENV_FILE"
+upsert_env_value "GROWTH_REQUESTS_PER_USER_DAY" "25" "$CHAT_ENV_FILE"
 
-echo "    Eclipse AI Hub gateway is ready; Chat canary configured at ${CANARY_PERCENT}%"
+echo "    Eclipse AI Hub gateway is ready; Chat canary ${CANARY_PERCENT}% and scoped Growth executor configured"

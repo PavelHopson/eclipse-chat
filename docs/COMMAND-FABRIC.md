@@ -140,12 +140,17 @@ reviews use optimistic versions and audit events retain metadata only. The UI co
 loading, empty, validation error, read-only, pending, approved and rejected states on
 desktop and mobile.
 
-Chat still performs no model call and stores no provider credential. Direct execution,
-cancellation, monetary budget enforcement and aggregate provider telemetry require a
-separate scoped Chat-to-AI-Hub service-client slice.
+## v1.7.40 slice
 
-## Next slice
+Growth Command Room can now create a draft directly in Chat and advance it through the
+five fixed AI Hub roles. One explicit click executes one role; the next role never starts
+automatically. The interface shows progress, remaining daily requests, running, cancel,
+provider-error, disabled and review states without requiring a separate manual.
 
-Add a scoped Growth service client between Chat and AI Hub. It must preserve
-idempotency, per-user request budgets, cancellation/timeouts and content-free aggregate
-telemetry. Publication remains a separate future permission with diff approval.
+The server owns workspace authorization, optimistic versions, idempotency and a UTC daily
+per-user request counter. A distinct `eclipse-chat-growth` service identity can call only
+`POST /v1/growth/execute`; arbitrary prompts, tools, URL fetching and publication are not
+part of that endpoint. Timeout and cancel preserve completed artifacts. Audit and AI Hub
+telemetry retain aggregate metadata only, never prompts or generated content.
+
+Publication remains a separate future permission with a human-readable diff and explicit approval.

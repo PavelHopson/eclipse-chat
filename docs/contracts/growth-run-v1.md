@@ -1,7 +1,8 @@
 # Eclipse Growth Run v1
 
-`growth.run.v1` is the portable hand-off from Eclipse AI Hub to the Growth Command Room in Eclipse Chat.
-It carries one completed five-role content workflow, not provider credentials or an instruction to publish.
+`growth.run.v1` is the server-owned state shared by Eclipse Chat and the bounded Eclipse AI Hub Growth executor.
+It can represent a draft, an in-progress run or a completed five-role workflow. It never carries provider
+credentials or an instruction to publish.
 
 ## Import contract
 
@@ -25,21 +26,35 @@ other.
 The import endpoint requires `Idempotency-Key`. Reusing a source run or key with identical content returns the
 existing record; reusing it with different content returns `409`.
 
+## Direct execution contract
+
+- Chat creates a `draft` with zero artifacts and changes it to `in_progress` one role at a time.
+- One request executes only the next fixed role. The server rejects skipped or reordered steps.
+- The dedicated `eclipse-chat-growth` service identity has only `growth:execute`; it cannot call generic chat,
+  models or telemetry endpoints.
+- Every step uses optimistic `version` plus `Idempotency-Key`. A completed retry returns the stored version.
+- The default per-user budget is 25 attempted requests per UTC day. Failed and cancelled provider calls still
+  consume one request, preventing retry loops from bypassing the limit.
+- A 65-second Chat timeout and explicit cancel propagate an abort toward AI Hub. Existing artifacts are kept.
+- Prompts and artifacts never enter audit or aggregate telemetry. Audit retains IDs, role, version and token totals only.
+
 ## Access and data boundary
 
-- Every list, import and review endpoint requires JWT and workspace membership.
+- Every list, create, execute, cancel, import and review endpoint requires JWT and workspace membership.
+- Create and execute additionally require `TASK_CREATE`; review requires `TASK_APPROVE`.
 - Run lookups always include `serverId`; a run identifier from another workspace is not sufficient for access.
 - Import and review are rate-limited. One operator may hold at most 20 pending imports per workspace.
-- Audit records contain identifiers, decision and version only. They do not contain prompts, artifacts,
-  evidence notes, credentials or personal data.
-- Chat stores no provider key and performs no model call, OAuth action, publication, outreach, Ads API request,
-  payment or production change in this slice.
+- Growth-specific audit metadata contains identifiers, decision, role, aggregate token counts and version only.
+  Standard security fields (user ID, IP and user agent) are still recorded; prompts, artifacts, evidence notes
+  and credentials are not.
+- Chat stores only a root-owned scoped AI Hub service token, never an upstream provider key. It performs no OAuth
+  action, publication, outreach, Ads API request, payment or production change in this slice.
 
 ## Endpoints
 
 - `GET /api/servers/:id/growth-runs`
+- `POST /api/servers/:id/growth-runs`
+- `POST /api/servers/:id/growth-runs/:runId/steps`
+- `POST /api/servers/:id/growth-runs/:runId/cancel`
 - `POST /api/servers/:id/growth-runs/import`
 - `PATCH /api/servers/:id/growth-runs/:runId/review`
-
-The next contract revision should add a scoped Chat-to-AI-Hub service client, cancellation/timeouts and
-aggregate execution telemetry before Chat can start a run directly.

@@ -27,6 +27,11 @@ describe("AI gateway production deployment", () => {
     expect(gatewaySync).toContain('AI_GATEWAY_SERVICE_CLIENTS');
     expect(gatewaySync).toContain('CLIENT_ID="eclipse-chat"');
     expect(gatewaySync).toContain('CLIENT_SCOPES="models:read,telemetry:read,chat:write"');
+    expect(gatewaySync).toContain('CLIENT_ID="eclipse-chat-growth"');
+    expect(gatewaySync).toContain('CLIENT_SCOPES="growth:execute"');
+    expect(gatewaySync).toContain('ECLIPSE_GROWTH_HUB_SERVICE_TOKEN');
+    expect(gatewaySync).toContain('curl --config "$GROWTH_CURL_CONFIG"');
+    expect(gatewaySync).not.toContain('--header "Authorization: Bearer $GROWTH_SERVICE_TOKEN"');
     expect(gatewaySync).toContain("primary-token-if-present");
     expect(gatewaySync).toContain('read_exported_env_value "AI_GATEWAY_SERVICE_CLIENTS"');
     expect(gatewaySync).not.toContain('write_env_line "AI_GATEWAY_SERVICE_TOKEN"');
