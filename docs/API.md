@@ -37,6 +37,38 @@ Ping + проверка БД.
 
 ---
 
+## Growth Command Room
+
+Все endpoints требуют Bearer JWT и membership в `:id`. Полный контракт и trust boundary:
+[`contracts/growth-run-v1.md`](contracts/growth-run-v1.md).
+
+### `GET /api/servers/:id/growth-runs`
+
+Возвращает до 30 последних импортированных материалов и server-owned review status.
+
+### `POST /api/servers/:id/growth-runs/import`
+
+Требует header `Idempotency-Key` и body `{ "run": <growth.run.v1> }`. При новом импорте
+возвращает `201`; идентичный повтор возвращает существующую запись; конфликт содержимого — `409`.
+
+### `PATCH /api/servers/:id/growth-runs/:runId/review`
+
+Требует permission `TASK_APPROVE`. Body:
+
+```json
+{
+  "version": 1,
+  "decision": "APPROVE",
+  "humanConfirmed": true,
+  "note": "Ссылки и CTA проверены"
+}
+```
+
+Stale version или повторное решение возвращают `409`. Endpoint утверждает только текстовый
+артефакт и не запускает публикацию.
+
+---
+
 ## Auth
 
 Access token живёт **15 минут**. Refresh token хранится в БД как

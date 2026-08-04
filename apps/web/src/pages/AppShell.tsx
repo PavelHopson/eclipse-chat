@@ -1375,8 +1375,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           <button
             type="button"
             onClick={() => agentOfficeOpen ? openHome() : openAgentOffice()}
-            title="Agent Office — наблюдаемая работа AI-команды"
-            aria-label="Открыть Agent Office"
+            title="Growth Command Room — review материалов"
+            aria-label="Открыть Growth Command Room"
             aria-pressed={agentOfficeOpen}
             className="ec-icon-btn"
           >
@@ -2172,7 +2172,11 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
 
         <Suspense fallback={null}>
         {agentOfficeOpen ? (
-          <AgentOffice />
+          <AgentOffice
+            serverId={activeServer?.id ?? null}
+            serverName={activeServer?.name ?? null}
+            currentRole={currentRole}
+          />
         ) : helpOpen ? (
           <HelpPanel onClose={() => setHelpOpen(false)} />
         ) : adminOpen && activeServer ? (

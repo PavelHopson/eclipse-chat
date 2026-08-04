@@ -122,6 +122,8 @@ eclipse-chat/
 - ✅ Список каналов + создание канала
 - ✅ Быстрый preset `Реклама: аудит → согласование → проверка` для EXECUTION-комнаты:
   название и безопасный workflow заполняются автоматически, а бюджет не меняется без явного approval
+- ✅ Growth Command Room: server-side импорт `growth.run.v1` из AI Hub, evidence review,
+  optimistic versioning и ручное approval без provider-ключей и автопубликации
 - ✅ Выбор канала + загрузка истории + отправка сообщения
 - ✅ Realtime: новые сообщения через Socket.io
 - ✅ Token storage в localStorage с миграцией legacy ключа

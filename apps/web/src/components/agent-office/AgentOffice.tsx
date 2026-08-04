@@ -1,25 +1,31 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { MemberRole } from "../../hooks/useMembers";
 import {
-  growthPilotFixture,
-  type RunStatus,
-} from "./agentOfficeFixture";
+  type GrowthReviewStatus,
+  type GrowthRunView,
+  useGrowthRuns,
+} from "../../hooks/useGrowthRuns";
+import { hasPermission } from "../../lib/memberRoles";
 
-type EventRow = {
-  id: string;
-  label: string;
-  detail: string;
-  tone: "neutral" | "active" | "success" | "danger";
+type AgentOfficeProps = {
+  serverId: string | null;
+  serverName: string | null;
+  currentRole: MemberRole | null;
 };
 
-const statusLabels: Record<RunStatus, string> = {
-  PLANNED: "План готов",
-  RUNNING: "Demo выполняется",
-  PAUSED: "На паузе",
-  COMPLETED: "Artifact готов",
-  CANCELLED: "Остановлено",
+const REVIEW_LABELS: Record<GrowthReviewStatus, string> = {
+  PENDING: "Ждёт проверки",
+  APPROVED: "Утверждено",
+  REJECTED: "Нужна доработка",
 };
 
-function AgentOfficeIcon() {
+const CHANNEL_LABELS = {
+  telegram: "Telegram",
+  linkedin: "LinkedIn",
+  blog: "Блог",
+} as const;
+
+function CommandRoomIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <circle cx="12" cy="5" r="2.25" />
@@ -30,263 +36,284 @@ function AgentOfficeIcon() {
   );
 }
 
-export function AgentOffice() {
-  const fixture = growthPilotFixture;
-  const [status, setStatus] = useState<RunStatus>("PLANNED");
-  const [activeStep, setActiveStep] = useState(0);
-  const [events, setEvents] = useState<EventRow[]>([
-    {
-      id: "event:plan",
-      label: "Plan reviewed",
-      detail: "4 роли · 4 шага · 0 внешних действий",
-      tone: "neutral",
-    },
-  ]);
-  const [refocusOpen, setRefocusOpen] = useState(false);
-  const [operatorNote, setOperatorNote] = useState(
-    "Сохранять только claims, подтверждённые публичным источником.",
+function formatDate(value: string): string {
+  return new Intl.DateTimeFormat("ru-RU", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
+function RunListItem({
+  item,
+  selected,
+  onSelect,
+}: {
+  item: GrowthRunView;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className="ec-growth-run-row"
+      data-selected={selected}
+      data-status={item.reviewStatus}
+      onClick={onSelect}
+    >
+      <span className="ec-growth-run-row__signal" aria-hidden />
+      <span className="ec-growth-run-row__copy">
+        <strong>{item.run.input.releaseName}</strong>
+        <small>{CHANNEL_LABELS[item.run.input.channel]} · {formatDate(item.createdAt)}</small>
+      </span>
+      <span className="ec-growth-run-row__status">{REVIEW_LABELS[item.reviewStatus]}</span>
+    </button>
   );
+}
 
-  const progress = useMemo(() => {
-    if (status === "COMPLETED") return 100;
-    if (status === "PLANNED" || status === "CANCELLED") return 0;
-    return Math.round((activeStep / fixture.steps.length) * 100);
-  }, [activeStep, fixture.steps.length, status]);
+export function AgentOffice({ serverId, serverName, currentRole }: AgentOfficeProps) {
+  const {
+    runs,
+    policy,
+    loading,
+    importing,
+    reviewingId,
+    error,
+    clearError,
+    reload,
+    importRun,
+    reviewRun,
+  } = useGrowthRuns(serverId);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [localError, setLocalError] = useState<string | null>(null);
+  const [reviewNote, setReviewNote] = useState("");
+  const [humanConfirmed, setHumanConfirmed] = useState(false);
 
-  const appendEvent = (event: EventRow) => {
-    setEvents((current) => [...current, event]);
-  };
+  const selected = useMemo(
+    () => runs.find((item) => item.id === selectedId) ?? runs[0] ?? null,
+    [runs, selectedId],
+  );
+  const canReview = currentRole != null && hasPermission(currentRole, "TASK_APPROVE");
+  const pendingCount = runs.filter((item) => item.reviewStatus === "PENDING").length;
 
-  const startDemo = () => {
-    setStatus("RUNNING");
-    appendEvent({
-      id: "event:start",
-      label: "Fixture started",
-      detail: "Локальная UI-симуляция. AI, сеть и budget не используются.",
-      tone: "active",
-    });
-  };
+  useEffect(() => {
+    if (!selectedId && runs[0]) setSelectedId(runs[0].id);
+    if (selectedId && !runs.some((item) => item.id === selectedId)) {
+      setSelectedId(runs[0]?.id ?? null);
+    }
+  }, [runs, selectedId]);
 
-  const advanceDemo = () => {
-    const step = fixture.steps[activeStep];
-    if (!step) return;
-    appendEvent({
-      id: `event:${step.id}`,
-      label: step.title,
-      detail: step.result,
-      tone: "success",
-    });
-    const nextStep = activeStep + 1;
-    setActiveStep(nextStep);
-    if (nextStep === fixture.steps.length) {
-      setStatus("COMPLETED");
-      appendEvent({
-        id: "event:artifact",
-        label: "Artifact prepared",
-        detail: "Growth pilot brief доступен только для внутреннего review.",
-        tone: "success",
-      });
+  useEffect(() => {
+    setReviewNote(selected?.reviewNote ?? "");
+    setHumanConfirmed(false);
+  }, [selected?.id, selected?.reviewNote]);
+
+  const handleFile = async (file: File | undefined) => {
+    if (!file) return;
+    setLocalError(null);
+    clearError();
+    if (file.size > 96 * 1024) {
+      setLocalError("Файл больше 96 КБ. Экспорт Growth OS должен быть компактным JSON.");
+      return;
+    }
+    try {
+      const raw = JSON.parse(await file.text()) as unknown;
+      const imported = await importRun(raw);
+      if (imported) setSelectedId(imported.id);
+    } catch (cause) {
+      setLocalError(cause instanceof SyntaxError ? "Файл не является корректным JSON" : "Не удалось прочитать файл");
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
-  const pauseDemo = () => {
-    setStatus("PAUSED");
-    appendEvent({
-      id: `event:pause:${events.length}`,
-      label: "Paused by operator",
-      detail: "Состояние сохранено; следующий шаг не выполняется.",
-      tone: "neutral",
-    });
+  const submitReview = async (decision: "APPROVE" | "REJECT") => {
+    if (!selected) return;
+    const updated = await reviewRun(
+      selected.id,
+      selected.version,
+      decision,
+      reviewNote,
+      humanConfirmed,
+    );
+    if (updated) setSelectedId(updated.id);
   };
 
-  const resumeDemo = () => {
-    setStatus("RUNNING");
-    appendEvent({
-      id: `event:resume:${events.length}`,
-      label: "Resumed by operator",
-      detail: "Demo продолжено с текущего шага.",
-      tone: "active",
-    });
-  };
-
-  const stopDemo = () => {
-    setStatus("CANCELLED");
-    appendEvent({
-      id: `event:stop:${events.length}`,
-      label: "Stopped by operator",
-      detail: "Незавершённый fixture-run остановлен без внешних последствий.",
-      tone: "danger",
-    });
-  };
-
-  const applyRefocus = () => {
-    const note = operatorNote.trim();
-    if (!note) return;
-    appendEvent({
-      id: `event:refocus:${events.length}`,
-      label: "Operator refocus",
-      detail: note,
-      tone: "active",
-    });
-    setRefocusOpen(false);
-  };
-
-  const resetDemo = () => {
-    setStatus("PLANNED");
-    setActiveStep(0);
-    setRefocusOpen(false);
-    setEvents([
-      {
-        id: "event:plan",
-        label: "Plan reviewed",
-        detail: "4 роли · 4 шага · 0 внешних действий",
-        tone: "neutral",
-      },
-    ]);
-  };
+  if (!serverId) {
+    return (
+      <main className="ec-agent-office ec-agent-office--centered">
+        <section className="ec-growth-empty">
+          <span className="ec-agent-office__mark"><CommandRoomIcon /></span>
+          <h1>Выберите пространство</h1>
+          <p>Growth Command Room хранит материалы внутри конкретной команды и не смешивает доступ между пространствами.</p>
+        </section>
+      </main>
+    );
+  }
 
   return (
-    <main className="ec-agent-office" aria-labelledby="agent-office-title">
+    <main className="ec-agent-office" aria-labelledby="growth-room-title" aria-busy={loading}>
       <header className="ec-agent-office__header">
         <div className="ec-agent-office__identity">
-          <span className="ec-agent-office__mark"><AgentOfficeIcon /></span>
+          <span className="ec-agent-office__mark"><CommandRoomIcon /></span>
           <div>
-            <p className="ec-agent-office__eyebrow">Eclipse Forge OS</p>
-            <h1 id="agent-office-title">Agent Office</h1>
-            <p>Наблюдаемая работа AI-команды с plan review, budget и ручным контролем.</p>
+            <p className="ec-agent-office__eyebrow">{serverName ?? "Eclipse Forge"} · Agent Office</p>
+            <h1 id="growth-room-title">Growth Command Room</h1>
+            <p>Импортируйте готовый материал, проверьте доказательства и зафиксируйте решение команды.</p>
           </div>
         </div>
         <div className="ec-agent-office__run-meta">
-          <span className="ec-agent-office__contract">{fixture.contractVersion}</span>
-          <span className="ec-agent-office__status" data-status={status}>{statusLabels[status]}</span>
+          <span className="ec-agent-office__contract">growth.run.v1</span>
+          <span className="ec-agent-office__queue">{pendingCount} на проверке</span>
+          <button type="button" className="ec-btn ec-btn--primary" disabled={importing} onClick={() => fileInputRef.current?.click()}>
+            {importing ? "Импортируем…" : "Импортировать JSON"}
+          </button>
+          <input
+            ref={fileInputRef}
+            className="ec-growth-file-input"
+            type="file"
+            accept="application/json,.json"
+            aria-label="Выбрать growth.run.v1 JSON"
+            onChange={(event) => void handleFile(event.target.files?.[0])}
+          />
         </div>
       </header>
 
-      <section className="ec-agent-office__fixture-note" aria-label="Ограничения демо">
-        <strong>Fixture demo</strong>
-        <span>Никаких model calls, OAuth, публикаций, платежей или production-действий.</span>
+      <section className="ec-agent-office__safety" aria-label="Границы автоматизации">
+        <strong>Без автопубликации</strong>
+        <span>Chat не получает API-ключи provider'а, не запускает рекламу и не выполняет внешние действия. Approval относится только к текстовому артефакту.</span>
       </section>
 
-      <div className="ec-agent-office__workspace">
-        <section className="ec-agent-office__primary" aria-label="Текущий запуск">
-          <div className="ec-agent-office__objective">
-            <div>
-              <p className="ec-agent-office__section-label">Objective</p>
-              <h2>{fixture.objective}</h2>
-            </div>
-            <div className="ec-agent-office__progress" aria-label={`Прогресс ${progress}%`}>
-              <span>{progress}%</span>
-              <div><i style={{ width: `${progress}%` }} /></div>
-            </div>
+      {(error || localError) && (
+        <div className="ec-growth-alert" role="alert">
+          <span>{localError ?? error}</span>
+          <div>
+            {error && <button type="button" onClick={() => void reload()}>Повторить</button>}
+            <button type="button" onClick={() => { setLocalError(null); clearError(); }}>Закрыть</button>
           </div>
+        </div>
+      )}
 
-          <dl className="ec-agent-office__guardrails">
-            <div><dt>Источники</dt><dd>{fixture.policy.sourceBoundary}</dd></div>
-            <div><dt>Personal data</dt><dd>{fixture.policy.personalData}</dd></div>
-            <div><dt>Connected apps</dt><dd>{fixture.policy.connectedApps}</dd></div>
-            <div><dt>Budget cap</dt><dd>${fixture.budget.maxCostUsd} · {fixture.budget.maxDurationMinutes} min · {fixture.budget.maxExternalActions} actions</dd></div>
-          </dl>
-
-          <div className="ec-agent-office__team-head">
-            <div>
-              <p className="ec-agent-office__section-label">Team</p>
-              <h2>Growth Research Cell</h2>
-            </div>
-            <span>{fixture.agents.length} agents</span>
-          </div>
-
-          <div className="ec-agent-office__agents">
-            {fixture.agents.map((agent, index) => {
-              const isDone = activeStep > index || status === "COMPLETED";
-              const isActive = activeStep === index && (status === "RUNNING" || status === "PAUSED");
-              const agentState = isDone ? "done" : isActive ? status === "PAUSED" ? "paused" : "working" : "queued";
-              return (
-                <article className="ec-agent-office__agent" key={agent.id} data-state={agentState}>
-                  <span className="ec-agent-office__agent-index">{String(index + 1).padStart(2, "0")}</span>
-                  <div>
-                    <h3>{agent.name}</h3>
-                    <p>{agent.role}</p>
-                  </div>
-                  <span className="ec-agent-office__agent-state">
-                    {agentState === "done" ? "Done" : agentState === "working" ? "Working" : agentState === "paused" ? "Paused" : "Queued"}
-                  </span>
-                </article>
-              );
-            })}
-          </div>
-
-          <section className="ec-agent-office__activity" aria-labelledby="agent-activity-title">
-            <div className="ec-agent-office__team-head">
-              <div>
-                <p className="ec-agent-office__section-label">Audit stream</p>
-                <h2 id="agent-activity-title">Что произошло</h2>
-              </div>
-              <span aria-live="polite">{events.length} events</span>
-            </div>
-            <ol>
-              {events.map((event) => (
-                <li key={event.id} data-tone={event.tone}>
-                  <span aria-hidden />
-                  <div><strong>{event.label}</strong><p>{event.detail}</p></div>
-                </li>
-              ))}
-            </ol>
-          </section>
+      {loading ? (
+        <section className="ec-growth-loading" aria-label="Загрузка запусков">
+          <span /><span /><span />
         </section>
+      ) : runs.length === 0 ? (
+        <section className="ec-growth-empty">
+          <span className="ec-agent-office__mark"><CommandRoomIcon /></span>
+          <h2>Здесь появится первый материал</h2>
+          <p>В AI Hub завершите пять шагов Growth OS, скачайте versioned JSON и импортируйте его сюда. Chat ещё раз потребует ручную проверку.</p>
+          <button type="button" className="ec-btn ec-btn--primary" onClick={() => fileInputRef.current?.click()}>Выбрать JSON</button>
+        </section>
+      ) : selected ? (
+        <div className="ec-agent-office__workspace">
+          <aside className="ec-growth-runs" aria-label="Материалы команды">
+            <div className="ec-growth-panel-head">
+              <div><p className="ec-agent-office__section-label">Очередь</p><h2>Материалы</h2></div>
+              <span>{runs.length}</span>
+            </div>
+            <div className="ec-growth-runs__list">
+              {runs.map((item) => (
+                <RunListItem key={item.id} item={item} selected={item.id === selected.id} onSelect={() => setSelectedId(item.id)} />
+              ))}
+            </div>
+            <p className="ec-growth-runs__limit">До {policy?.maxPendingRunsPerOperator ?? 20} незакрытых импортов на участника.</p>
+          </aside>
 
-        <aside className="ec-agent-office__side" aria-label="Run controls">
-          <section>
-            <p className="ec-agent-office__section-label">Operator controls</p>
-            <h2>Run control</h2>
-            <p className="ec-agent-office__side-copy">Каждый переход выполняется вручную. Автозапуск и auto-approval отключены.</p>
-
-            <div className="ec-agent-office__controls">
-              {status === "PLANNED" && <button type="button" className="is-primary" onClick={startDemo}>Запустить fixture demo</button>}
-              {status === "RUNNING" && (
-                <>
-                  <button type="button" className="is-primary" onClick={advanceDemo}>Завершить текущий demo-шаг</button>
-                  <button type="button" onClick={pauseDemo}>Пауза</button>
-                  <button type="button" onClick={() => setRefocusOpen((value) => !value)}>Скорректировать</button>
-                  <button type="button" className="is-danger" onClick={stopDemo}>Остановить</button>
-                </>
-              )}
-              {status === "PAUSED" && (
-                <>
-                  <button type="button" className="is-primary" onClick={resumeDemo}>Продолжить</button>
-                  <button type="button" onClick={() => setRefocusOpen((value) => !value)}>Скорректировать</button>
-                  <button type="button" className="is-danger" onClick={stopDemo}>Остановить</button>
-                </>
-              )}
-              {(status === "COMPLETED" || status === "CANCELLED") && <button type="button" onClick={resetDemo}>Сбросить demo</button>}
+          <section className="ec-agent-office__primary" aria-label="Материал на проверке">
+            <div className="ec-agent-office__objective">
+              <div>
+                <p className="ec-agent-office__section-label">Релиз · {CHANNEL_LABELS[selected.run.input.channel]}</p>
+                <h2>{selected.run.input.releaseName}</h2>
+                <p>{selected.run.input.releaseSummary}</p>
+              </div>
+              <span className="ec-agent-office__status" data-status={selected.reviewStatus}>{REVIEW_LABELS[selected.reviewStatus]}</span>
             </div>
 
-            {refocusOpen && (
-              <div className="ec-agent-office__refocus">
-                <label htmlFor="agent-office-refocus">Инструкция оператору</label>
-                <textarea id="agent-office-refocus" value={operatorNote} maxLength={500} onChange={(event) => setOperatorNote(event.target.value)} />
-                <div>
-                  <button type="button" onClick={() => setRefocusOpen(false)}>Отмена</button>
-                  <button type="button" className="is-primary" disabled={!operatorNote.trim()} onClick={applyRefocus}>Применить</button>
-                </div>
+            <dl className="ec-agent-office__guardrails">
+              <div><dt>Аудитория</dt><dd>{selected.run.input.audience}</dd></div>
+              <div><dt>AI-запросы</dt><dd>{selected.run.execution.completedRequests} / {selected.run.execution.maxRequests}</dd></div>
+              <div><dt>Provider</dt><dd>{selected.run.execution.provider} · {selected.run.execution.model}</dd></div>
+              <div><dt>Внешние действия</dt><dd>Запрещены</dd></div>
+            </dl>
+
+            <section className="ec-growth-evidence" aria-labelledby="growth-evidence-title">
+              <div className="ec-growth-panel-head">
+                <div><p className="ec-agent-office__section-label">Evidence</p><h2 id="growth-evidence-title">Что проверить</h2></div>
+                <span>{selected.run.input.sourceUrls.length} ссылок</span>
               </div>
-            )}
+              <p>{selected.run.input.evidenceNotes}</p>
+              <ul>
+                {selected.run.input.sourceUrls.map((url) => (
+                  <li key={url}><a href={url} target="_blank" rel="noopener noreferrer">{new URL(url).hostname}<span>Открыть источник</span></a></li>
+                ))}
+              </ul>
+            </section>
+
+            <section className="ec-growth-artifacts" aria-labelledby="growth-artifacts-title">
+              <div className="ec-growth-panel-head">
+                <div><p className="ec-agent-office__section-label">Run history</p><h2 id="growth-artifacts-title">Пять этапов</h2></div>
+                <span>{selected.run.artifacts.length} / 5</span>
+              </div>
+              {selected.run.artifacts.map((artifact) => (
+                <details key={artifact.step} open={artifact.step === "final"}>
+                  <summary><span>{artifact.role}</span><strong>{artifact.step === "final" ? "Финальный материал" : "Показать результат"}</strong></summary>
+                  <div>{artifact.content}</div>
+                </details>
+              ))}
+            </section>
           </section>
 
-          <section>
-            <p className="ec-agent-office__section-label">Success criteria</p>
-            <ul className="ec-agent-office__criteria">
-              {fixture.successCriteria.map((criterion) => <li key={criterion}>{criterion}</li>)}
-            </ul>
-          </section>
+          <aside className="ec-agent-office__side" aria-label="Решение по материалу">
+            <section className="ec-growth-review" data-status={selected.reviewStatus}>
+              <p className="ec-agent-office__section-label">Human gate · v{selected.version}</p>
+              <h2>{REVIEW_LABELS[selected.reviewStatus]}</h2>
+              {selected.reviewStatus === "PENDING" ? (
+                <>
+                  <p>Проверьте финальный текст, ссылки и CTA. Это решение не публикует материал.</p>
+                  {canReview ? (
+                    <>
+                      <label htmlFor="growth-review-note">Комментарий команде</label>
+                      <textarea id="growth-review-note" value={reviewNote} maxLength={1000} placeholder="Что исправить или почему материал готов" onChange={(event) => setReviewNote(event.target.value)} />
+                      <label className="ec-growth-review__confirm">
+                        <input type="checkbox" checked={humanConfirmed} onChange={(event) => setHumanConfirmed(event.target.checked)} />
+                        <span>Я вручную проверил факты, ссылки и CTA.</span>
+                      </label>
+                      <div className="ec-growth-review__actions">
+                        <button type="button" className="ec-btn ec-btn--primary" disabled={!humanConfirmed || reviewingId === selected.id} onClick={() => void submitReview("APPROVE")}>Утвердить артефакт</button>
+                        <button type="button" className="ec-btn ec-btn--danger" disabled={reviewNote.trim().length < 3 || reviewingId === selected.id} onClick={() => void submitReview("REJECT")}>Вернуть на доработку</button>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="ec-growth-review__readonly">Вы можете читать материалы. Решение фиксирует участник с правом approval.</div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <p>{selected.reviewStatus === "APPROVED" ? "Артефакт принят для дальнейшей ручной работы." : "Материал остановлен до новой версии из AI Hub."}</p>
+                  {selected.reviewNote && <blockquote>{selected.reviewNote}</blockquote>}
+                  <dl>
+                    <div><dt>Решение</dt><dd>{selected.reviewedBy?.displayName ?? "Удалённый участник"}</dd></div>
+                    <div><dt>Когда</dt><dd>{selected.reviewedAt ? formatDate(selected.reviewedAt) : "—"}</dd></div>
+                  </dl>
+                </>
+              )}
+            </section>
 
-          <section className="ec-agent-office__artifact" data-ready={status === "COMPLETED"}>
-            <p className="ec-agent-office__section-label">Artifact</p>
-            <h2>Growth pilot brief</h2>
-            <p>{status === "COMPLETED" ? "Готов к внутреннему review. Внешняя публикация недоступна." : "Появится после завершения четырёх demo-шагов."}</p>
-            <button type="button" disabled={status !== "COMPLETED"}>Открыть review</button>
-          </section>
-        </aside>
-      </div>
+            <section>
+              <p className="ec-agent-office__section-label">Provenance</p>
+              <dl className="ec-growth-provenance">
+                <div><dt>Импортировал</dt><dd>{selected.importedBy?.displayName ?? "Удалённый участник"}</dd></div>
+                <div><dt>Source run</dt><dd title={selected.sourceRunId}>{selected.sourceRunId}</dd></div>
+                <div><dt>Контракт</dt><dd>{selected.schemaVersion}</dd></div>
+                <div><dt>Импорт</dt><dd>{formatDate(selected.createdAt)}</dd></div>
+              </dl>
+            </section>
+          </aside>
+        </div>
+      ) : null}
     </main>
   );
 }

@@ -55,6 +55,21 @@ scope доступа, понятное действие и подтвержде�
 - [x] Закрыть loading, stale/error, empty, disabled, keyboard focus, reduced motion
   и mobile single-column layout без отдельной инструкции для основного сценария.
 
+### Growth Command Room — v1.7.39
+
+- [x] Заменить локальный Agent Office fixture на workspace-scoped review surface для
+  завершённых `growth.run.v1` exports из Eclipse AI Hub.
+- [x] Валидировать пять последовательных ролей, safe HTTPS evidence, no-tools/no-publish
+  policy и лимит 96 КБ; не принимать source approval как решение Chat.
+- [x] Добавить server-side storage, JWT + membership на каждый endpoint, `TASK_APPROVE`
+  для решения, tenant-scoped lookups, idempotency и optimistic version conflict.
+- [x] Ограничить import/review rate, pending queue per operator и metadata-only audit;
+  не хранить provider credentials, prompts в audit или скрытый chain-of-thought.
+- [x] Собрать loading, empty, import error, read-only, pending, approved и rejected states;
+  desktop/mobile и reduced-motion входят в один production slice.
+- [ ] Добавить scoped Chat-to-AI-Hub executor, cancellation/timeout, реальный per-user
+  request budget и aggregate telemetry без prompt content. Автопубликация остаётся запрещена.
+
 ### Mobile Command Inbox — v1.7.37
 
 - [x] Превратить колокольчик в очевидную точку входа: на телефоне открывается единая
@@ -438,7 +453,7 @@ scope доступа, понятное действие и подтвержде�
 - Provider routing — только owned/legal keys, no grey-zone token bypass.
 - Token-saving tools (`sqz`, caveman-like compression) сначала benchmark в sandbox; не сжимать секреты, миграции, юридический текст и точные логи.
 
-**Актуальная версия (короткий индекс):** **v1.7.37** — mobile users get one prioritized decision inbox for AI approvals, self-claim, room replies and active calls; desktop keeps the full Command Brief, while server-side ACL, atomic claim and realtime table sync remain authoritative.
+**Актуальная версия (короткий индекс):** **v1.7.39** — Growth Command Room persists completed `growth.run.v1` artifacts, re-validates evidence and safety policy, and records a tenant-scoped, versioned human review without provider credentials or publication actions.
 
 **Текущая версия:** **v1.6.98** (🗄️⚡ PARTIAL-ИНДЕКС под escalation-scan (бэклог-хвост, заход через CI). Фоновой `escalation.ts` раз в час обходит `ActionItem` где `status ∈ (OPEN,IN_PROGRESS,REVIEW)`, `dueAt < now-48h`, `(escalatedAt IS NULL OR < now-7d)`, `ORDER BY dueAt ASC LIMIT 50`. Запрос **глобальный** (без serverId/channelId) → все 4 существующих индекса `ActionItem` ведут с channelId/serverId и его НЕ покрывают → был seq-scan всей таблицы каждый час. **Новый partial composite index** `ActionItem_escalation_scan_idx ON ("dueAt") WHERE status IN (OPEN,IN_PROGRESS,REVIEW) AND dueAt IS NOT NULL` (raw-миграция `20260625120000_add_escalation_partial_index`): индексирует только кандидатов эскалации (крошечная доля таблицы — закрытые DONE и задачи без дедлайна исключены); ведущая `dueAt` → один forward index-scan покрывает и `dueAt < X`, и `ORDER BY dueAt ASC LIMIT 50` без сортировки, рано останавливается. **Prisma не выражает WHERE-индексы** → raw SQL; `migrate deploy` (deploy.sh [4/10]) применяет как есть, `prisma generate` индексы не читает, drift-проверок (`migrate dev`) в проекте нет (прод=migrate deploy, локальной БД нет). schema.prisma — doc-comment у `ActionItem` фиксирует существование индекса («не чинить как drift»). **temp-channel scan (`tempChannels.ts`) НЕ трогал** — `Channel` уже имеет `@@index([expiresAt])`, а `WHERE expiresAt < now` = чистый range-scan по нему (NULL'ы сортируются последними, не читаются); partial там лишь дублировал бы индекс = write-amplification на крошечной таблице ради ~нуля. Version 1.6.97→1.6.98 (4 точки). Verify: server `tsc --noEmit` PASS, web build PASS; миграция применится на проде при деплое (`migrate deploy`). **Бэклог-остаток:** виртуализация ленты сообщений (npm-dep + риск-рефактор скролла) — единственный крупный хвост.)
 

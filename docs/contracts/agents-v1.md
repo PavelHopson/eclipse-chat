@@ -25,4 +25,4 @@ The machine-readable source of truth is [`agents.v1.schema.json`](./agents.v1.sc
 
 `DRAFT → PLANNED → WAITING_START_APPROVAL → RUNNING → PAUSED | WAITING_ACTION_APPROVAL → COMPLETED | FAILED | CANCELLED`
 
-The first UI slice is fixture-backed. It performs no model calls, network requests, OAuth actions, publications, payments, or production changes.
+The original Agent Office foundation was fixture-backed. In v1.7.39 the Growth template became a server-owned review surface for completed `growth.run.v1` imports; it still performs no model calls, OAuth actions, publications, payments, or production changes.

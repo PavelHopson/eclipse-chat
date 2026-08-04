@@ -1,0 +1,191 @@
+import { createHash } from "node:crypto";
+import { z } from "zod";
+
+export const GROWTH_STEP_DEFINITIONS = [
+  { step: "research", role: "Researcher" },
+  { step: "strategy", role: "Strategist" },
+  { step: "draft", role: "Writer" },
+  { step: "claims", role: "Claim Auditor" },
+  { step: "final", role: "Editor" },
+] as const;
+
+export const MAX_GROWTH_IMPORT_BYTES = 96 * 1024;
+export const MAX_PENDING_GROWTH_RUNS_PER_OPERATOR = 20;
+
+const controlCharacters = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
+const identifierSchema = z
+  .string()
+  .min(1)
+  .max(128)
+  .regex(/^[a-zA-Z0-9][a-zA-Z0-9._:-]*$/);
+
+function boundedText(min: number, max: number) {
+  return z
+    .string()
+    .trim()
+    .min(min)
+    .max(max)
+    .refine((value) => !controlCharacters.test(value), "Управляющие символы запрещены");
+}
+
+const httpsUrlSchema = z.string().max(2048).transform((raw, context) => {
+  try {
+    const url = new URL(raw.trim());
+    if (url.protocol !== "https:" || url.username || url.password) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Разрешены только HTTPS-ссылки без логина и пароля",
+      });
+      return z.NEVER;
+    }
+    url.hash = "";
+    return url.toString();
+  } catch {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: "Некорректная ссылка" });
+    return z.NEVER;
+  }
+});
+
+const growthArtifactSchema = z
+  .object({
+    step: z.enum(["research", "strategy", "draft", "claims", "final"]),
+    role: boundedText(1, 80),
+    content: boundedText(40, 16_000),
+    createdAt: z.string().datetime(),
+  })
+  .strict();
+
+const sourceApprovalSchema = z
+  .object({
+    approvedAt: z.string().datetime(),
+    humanConfirmed: z.literal(true),
+  })
+  .strict();
+
+const growthRunSchema = z
+  .object({
+    schemaVersion: z.literal("growth.run.v1"),
+    id: identifierSchema,
+    status: z.enum(["ready_for_approval", "approved"]),
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+    input: z
+      .object({
+        releaseName: boundedText(3, 120),
+        releaseSummary: boundedText(20, 2_000),
+        audience: boundedText(3, 240),
+        channel: z.enum(["telegram", "linkedin", "blog"]),
+        sourceUrls: z.array(httpsUrlSchema).min(1).max(8),
+        evidenceNotes: boundedText(20, 12_000),
+      })
+      .strict(),
+    execution: z
+      .object({
+        provider: boundedText(2, 80),
+        model: boundedText(1, 160),
+        maxRequests: z.literal(5),
+        completedRequests: z.literal(5),
+        cost: z.literal("provider-dependent"),
+      })
+      .strict(),
+    policy: z
+      .object({
+        externalActions: z.literal(false),
+        publishAllowed: z.literal(false),
+        toolsAllowed: z.literal(false),
+        sourceContentTrusted: z.literal(false),
+      })
+      .strict(),
+    artifacts: z.array(growthArtifactSchema).length(GROWTH_STEP_DEFINITIONS.length),
+    approval: sourceApprovalSchema.nullable(),
+  })
+  .strict()
+  .superRefine((run, context) => {
+    GROWTH_STEP_DEFINITIONS.forEach((expected, index) => {
+      const artifact = run.artifacts[index];
+      if (artifact?.step !== expected.step || artifact.role !== expected.role) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["artifacts", index],
+          message: `Ожидается шаг ${expected.step} роли ${expected.role}`,
+        });
+      }
+    });
+    if (run.status === "approved" && !run.approval) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["approval"],
+        message: "Approved export должен содержать исходное подтверждение",
+      });
+    }
+    if (run.status === "ready_for_approval" && run.approval !== null) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["approval"],
+        message: "Непроверенный export не может содержать approval",
+      });
+    }
+    if (new Date(run.updatedAt).getTime() < new Date(run.createdAt).getTime()) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["updatedAt"],
+        message: "updatedAt не может быть раньше createdAt",
+      });
+    }
+  });
+
+export type GrowthRunPayload = z.infer<typeof growthRunSchema>;
+
+export type ParsedGrowthRunImport = {
+  run: GrowthRunPayload;
+  payload: string;
+  payloadHash: string;
+  sourceApprovalClaimed: boolean;
+};
+
+export function parseGrowthRunImport(raw: unknown): ParsedGrowthRunImport {
+  const rawJson = JSON.stringify(raw);
+  if (Buffer.byteLength(rawJson, "utf8") > MAX_GROWTH_IMPORT_BYTES) {
+    throw new Error("Growth export превышает лимит 96 КБ");
+  }
+
+  const parsed = growthRunSchema.safeParse(raw);
+  if (!parsed.success) {
+    const first = parsed.error.issues[0];
+    const path = first?.path.length ? `${first.path.join(".")}: ` : "";
+    throw new Error(`${path}${first?.message ?? "Некорректный growth.run.v1"}`);
+  }
+
+  const sourceApprovalClaimed = parsed.data.status === "approved";
+  const run: GrowthRunPayload = {
+    ...parsed.data,
+    // Chat owns its own review gate and never trusts an imported approval claim.
+    status: "ready_for_approval",
+    approval: null,
+    input: {
+      ...parsed.data.input,
+      sourceUrls: [...new Set(parsed.data.input.sourceUrls)],
+    },
+  };
+  const payload = JSON.stringify(run);
+  return {
+    run,
+    payload,
+    payloadHash: createHash("sha256").update(payload).digest("hex"),
+    sourceApprovalClaimed,
+  };
+}
+
+export function parseStoredGrowthRun(payload: string): GrowthRunPayload {
+  const parsed = growthRunSchema.safeParse(JSON.parse(payload) as unknown);
+  if (!parsed.success) {
+    throw new Error("Stored growth.run.v1 failed validation");
+  }
+  return parsed.data;
+}
+
+export function parseGrowthIdempotencyKey(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const value = raw.trim();
+  return /^[a-zA-Z0-9][a-zA-Z0-9._:-]{7,127}$/.test(value) ? value : null;
+}

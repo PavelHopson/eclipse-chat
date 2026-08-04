@@ -127,8 +127,25 @@ original Action Item, a failed deploy opens the verified GitHub run, and normal
 work returns to its room. This keeps the passport useful as an index and status
 surface without turning it into another system that users must maintain.
 
+## v1.7.39 slice
+
+Growth Command Room replaces the Agent Office fixture with a server-owned review
+surface for completed `growth.run.v1` exports from Eclipse AI Hub. Every import is
+validated as a five-step, no-tools, no-publication artifact; HTTPS evidence is bounded,
+unknown fields are rejected and any approval claim from the source file is discarded.
+
+Reads and mutations require workspace membership. Approval additionally requires the
+existing `TASK_APPROVE` capability. Run lookups are tenant-scoped, imports are idempotent,
+reviews use optimistic versions and audit events retain metadata only. The UI covers
+loading, empty, validation error, read-only, pending, approved and rejected states on
+desktop and mobile.
+
+Chat still performs no model call and stores no provider credential. Direct execution,
+cancellation, monetary budget enforcement and aggregate provider telemetry require a
+separate scoped Chat-to-AI-Hub service-client slice.
+
 ## Next slice
 
-Connect Project Passport to the ecosystem Command Center through explicit
-workspace-to-project identities. Do not infer a repository mapping from names;
-the next contract must be reviewed, versioned and reversible.
+Add a scoped Growth service client between Chat and AI Hub. It must preserve
+idempotency, per-user request budgets, cancellation/timeouts and content-free aggregate
+telemetry. Publication remains a separate future permission with diff approval.

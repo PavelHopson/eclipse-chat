@@ -205,6 +205,8 @@ model User {
   /// Опять SetNull для completeness; cascade-delete срабатывает раньше.
   friendshipsBlockedBy       Friendship[]              @relation("FriendshipBlockedBy")
   decidedBotActionApprovals  BotActionApproval[]       @relation("BotActionApprovalDecider")
+  importedGrowthRuns         GrowthRun[]                @relation("GrowthRunImporter")
+  reviewedGrowthRuns         GrowthRun[]                @relation("GrowthRunReviewer")
 }
 
 /// Публичное изображение, которое пользователь явно добавил в профиль.
@@ -418,6 +420,9 @@ enum AuditEventType {
   BOT_ACTION_APPROVAL_REQUESTED
   /// Agent Workbench: Owner approved/rejected a queued action; no payload in audit.
   BOT_ACTION_APPROVAL_DECIDED
+  /// Growth Command Room: versioned import and explicit human review.
+  GROWTH_RUN_IMPORTED
+  GROWTH_RUN_REVIEWED
   /// v1.0.1 Composio integration: OAuth-managed external apps.
   COMPOSIO_CONNECTED
   COMPOSIO_DISCONNECTED
@@ -450,6 +455,41 @@ model AuditLog {
 
   @@index([userId, createdAt])
   @@index([type, createdAt])
+}
+
+enum GrowthRunReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+/// Server-owned copy of a completed `growth.run.v1` artifact. Provider secrets
+/// never enter this table: payload contains only the bounded portable contract.
+/// Chat approval is independent from any approval claim in the imported JSON.
+model GrowthRun {
+  id                 String                @id @default(cuid())
+  sourceRunId        String
+  serverId           String
+  server             Server                @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  importedByUserId   String?
+  importedBy         User?                 @relation("GrowthRunImporter", fields: [importedByUserId], references: [id], onDelete: SetNull)
+  schemaVersion      String
+  payload            String
+  payloadHash        String
+  idempotencyKey     String
+  reviewStatus       GrowthRunReviewStatus @default(PENDING)
+  reviewNote         String?
+  reviewedAt         DateTime?
+  reviewedByUserId   String?
+  reviewedBy         User?                 @relation("GrowthRunReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  version            Int                   @default(1)
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+
+  @@unique([serverId, sourceRunId])
+  @@unique([serverId, idempotencyKey])
+  @@index([serverId, reviewStatus, createdAt])
+  @@index([serverId, importedByUserId, reviewStatus])
 }
 
 model RefreshToken {
@@ -800,6 +840,7 @@ model Server {
   /// v1.7.3 — curated room/project memory. Entries are soft-deleted via archivedAt.
   memoryEntries       MemoryEntry[]
   botActionApprovals  BotActionApproval[]
+  growthRuns          GrowthRun[]
 }
 
 /// v1.6.99 — одноразовые / истекающие invite-коды (privacy slice B).
