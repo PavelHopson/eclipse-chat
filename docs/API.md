@@ -69,6 +69,28 @@ Stale version или повторное решение возвращают `409
 
 ---
 
+## Deck Review Room
+
+Все endpoints требуют Bearer JWT и membership в `:id`. Полный контракт и trust boundary:
+[`contracts/deck-job-v1.md`](contracts/deck-job-v1.md).
+
+### `GET /api/servers/:id/deck-reviews`
+
+Возвращает до 30 последних презентаций и независимый server-owned review status.
+
+### `POST /api/servers/:id/deck-reviews/import`
+
+Требует permission `TASK_CREATE`, header `Idempotency-Key` и body
+`{ "job": <deck.job.v1> }`. Принимает только upstream-статус `approved`, но сбрасывает
+его в `ready_for_review`; идентичный повтор безопасен, конфликт содержимого возвращает `409`.
+
+### `PATCH /api/servers/:id/deck-reviews/:reviewId`
+
+Требует permission `TASK_APPROVE`, точную `version` и независимый checklist. Для `APPROVE`
+обязательны `claimsVerified`, `rightsConfirmed` и `finalReviewComplete`; для `REJECT` —
+комментарий не короче трёх символов. Endpoint не рендерит PPTX и не публикует материалы.
+
+---
 ## Auth
 
 Access token живёт **15 минут**. Refresh token хранится в БД как

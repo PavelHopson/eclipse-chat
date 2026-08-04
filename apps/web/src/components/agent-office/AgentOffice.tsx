@@ -8,6 +8,7 @@ import {
   useGrowthRuns,
 } from "../../hooks/useGrowthRuns";
 import { hasPermission } from "../../lib/memberRoles";
+import { DeckReviewRoom } from "./DeckReviewRoom";
 
 type AgentOfficeProps = {
   serverId: string | null;
@@ -66,7 +67,7 @@ function RunListItem({ item, selected, onSelect }: { item: GrowthRunView; select
   );
 }
 
-export function AgentOffice({ serverId, serverName, currentRole }: AgentOfficeProps) {
+function GrowthCommandRoom({ serverId, serverName, currentRole }: AgentOfficeProps) {
   const {
     runs, policy, loading, importing, creating, executingId, cancellingId, reviewingId,
     error, clearError, reload, importRun, createRun, executeNext, cancelStep, reviewRun,
@@ -221,5 +222,17 @@ export function AgentOffice({ serverId, serverName, currentRole }: AgentOfficePr
         </div>
       ) : null}
     </main>
+  );
+}
+export function AgentOffice(props: AgentOfficeProps) {
+  const [workspace, setWorkspace] = useState<"growth" | "deck">("growth");
+  return (
+    <>
+      <nav className="ec-agent-office-switcher" aria-label="Рабочая зона Agent Office">
+        <button type="button" data-active={workspace === "growth"} aria-pressed={workspace === "growth"} onClick={() => setWorkspace("growth")}>Growth OS</button>
+        <button type="button" data-active={workspace === "deck"} aria-pressed={workspace === "deck"} onClick={() => setWorkspace("deck")}>Deck Review</button>
+      </nav>
+      {workspace === "growth" ? <GrowthCommandRoom {...props} /> : <DeckReviewRoom {...props} />}
+    </>
   );
 }

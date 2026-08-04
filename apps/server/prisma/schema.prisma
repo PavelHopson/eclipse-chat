@@ -207,6 +207,8 @@ model User {
   decidedBotActionApprovals  BotActionApproval[]       @relation("BotActionApprovalDecider")
   importedGrowthRuns         GrowthRun[]                @relation("GrowthRunImporter")
   reviewedGrowthRuns         GrowthRun[]                @relation("GrowthRunReviewer")
+  importedDeckReviews        DeckReview[]               @relation("DeckReviewImporter")
+  reviewedDeckReviews        DeckReview[]               @relation("DeckReviewReviewer")
   growthAiUsage              GrowthAiUsage[]
 }
 
@@ -424,6 +426,8 @@ enum AuditEventType {
   /// Growth Command Room: versioned import and explicit human review.
   GROWTH_RUN_IMPORTED
   GROWTH_RUN_REVIEWED
+  DECK_REVIEW_IMPORTED
+  DECK_REVIEW_DECIDED
   GROWTH_RUN_CREATED
   GROWTH_STEP_EXECUTED
   GROWTH_STEP_CANCELLED
@@ -498,6 +502,33 @@ model GrowthRun {
   @@index([serverId, importedByUserId, reviewStatus])
 }
 
+/// Tenant-scoped copy of an approved deck.job.v1. Imported approval is reset;
+/// Chat reviewers make an independent decision before any downstream handoff.
+model DeckReview {
+  id                 String                @id @default(cuid())
+  sourceJobId        String
+  serverId           String
+  server             Server                @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  importedByUserId   String?
+  importedBy         User?                 @relation("DeckReviewImporter", fields: [importedByUserId], references: [id], onDelete: SetNull)
+  schemaVersion      String
+  payload            String
+  payloadHash        String
+  idempotencyKey     String
+  reviewStatus       GrowthRunReviewStatus @default(PENDING)
+  reviewNote         String?
+  reviewedAt         DateTime?
+  reviewedByUserId   String?
+  reviewedBy         User?                 @relation("DeckReviewReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  version            Int                   @default(1)
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+
+  @@unique([serverId, sourceJobId])
+  @@unique([serverId, idempotencyKey])
+  @@index([serverId, reviewStatus, createdAt])
+  @@index([serverId, importedByUserId, reviewStatus])
+}
 /// UTC daily request budget for the bounded Growth executor. It stores counters
 /// only; prompts, artifacts and provider responses stay in GrowthRun.
 model GrowthAiUsage {
@@ -860,6 +891,7 @@ model Server {
   memoryEntries       MemoryEntry[]
   botActionApprovals  BotActionApproval[]
   growthRuns          GrowthRun[]
+  deckReviews         DeckReview[]
 }
 
 /// v1.6.99 — одноразовые / истекающие invite-коды (privacy slice B).

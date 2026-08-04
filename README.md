@@ -125,6 +125,9 @@ eclipse-chat/
 - ✅ Growth Command Room: draft создаётся прямо в Chat и проходит пять фиксированных AI Hub ролей
   по одному явному шагу; per-user budget, timeout/cancel, optimistic versioning и ручное approval
   работают без provider-ключей в браузере, tools и автопубликации
+- ✅ Deck Review Room: импортирует утверждённый `deck.job.v1` из AI Hub, сбрасывает исходный
+  approval и требует независимой проверки фактов, прав и каждого слайда внутри workspace;
+  рендер PPTX, tools и публикация в этом контуре отключены
 - ✅ Выбор канала + загрузка истории + отправка сообщения
 - ✅ Realtime: новые сообщения через Socket.io
 - ✅ Token storage в localStorage с миграцией legacy ключа
