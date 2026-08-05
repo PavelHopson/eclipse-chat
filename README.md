@@ -128,6 +128,9 @@ eclipse-chat/
 - ✅ Deck Review Room: импортирует утверждённый `deck.job.v1` из AI Hub, сбрасывает исходный
   approval и требует независимой проверки фактов, прав и каждого слайда внутри workspace;
   после решения команды создаёт детерминированный editable PPTX без внешних tools и публикации
+- ✅ Builder Review Room: принимает только утверждённый `builder.project.v1`, повторно блокирует
+  build queue и требует workspace-scoped review требований, preview и security boundary; Chat не
+  ставит зависимости, не запускает код, не подключает GitHub и не делает deploy
 - ✅ Выбор канала + загрузка истории + отправка сообщения
 - ✅ Realtime: новые сообщения через Socket.io
 - ✅ Token storage в localStorage с миграцией legacy ключа

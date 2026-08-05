@@ -9,6 +9,7 @@ import {
 } from "../../hooks/useGrowthRuns";
 import { hasPermission } from "../../lib/memberRoles";
 import { DeckReviewRoom } from "./DeckReviewRoom";
+import { BuilderReviewRoom } from "./BuilderReviewRoom";
 
 type AgentOfficeProps = {
   serverId: string | null;
@@ -225,14 +226,15 @@ function GrowthCommandRoom({ serverId, serverName, currentRole }: AgentOfficePro
   );
 }
 export function AgentOffice(props: AgentOfficeProps) {
-  const [workspace, setWorkspace] = useState<"growth" | "deck">("growth");
+  const [workspace, setWorkspace] = useState<"growth" | "deck" | "builder">("growth");
   return (
     <>
       <nav className="ec-agent-office-switcher" aria-label="Рабочая зона Agent Office">
         <button type="button" data-active={workspace === "growth"} aria-pressed={workspace === "growth"} onClick={() => setWorkspace("growth")}>Growth OS</button>
         <button type="button" data-active={workspace === "deck"} aria-pressed={workspace === "deck"} onClick={() => setWorkspace("deck")}>Deck Review</button>
+        <button type="button" data-active={workspace === "builder"} aria-pressed={workspace === "builder"} onClick={() => setWorkspace("builder")}>Builder Review</button>
       </nav>
-      {workspace === "growth" ? <GrowthCommandRoom {...props} /> : <DeckReviewRoom {...props} />}
+      {workspace === "growth" ? <GrowthCommandRoom {...props} /> : workspace === "deck" ? <DeckReviewRoom {...props} /> : <BuilderReviewRoom {...props} />}
     </>
   );
 }

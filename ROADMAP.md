@@ -125,6 +125,19 @@ scope доступа, понятное действие и подтвержде�
   в профильное меню на desktop/mobile, сохранив обязательную server-side проверку `isPlatformOwner`.
 - [x] Обновить web/server/SW версии, чтобы service worker не оставлял старый app shell после deploy.
 
+### Builder Review Room — v1.7.45
+
+- [x] Принимать только approved `builder.project.v1`, строго валидировать 128 КБ JSON и
+  отбрасывать unknown fields, unsafe policy и high-confidence secrets.
+- [x] Сбрасывать source approval и повторно блокировать все build steps кроме brief;
+  Chat approval не устанавливает dependencies, не запускает code, GitHub или deploy.
+- [x] Привязать storage и каждый lookup к server tenant; защитить import через membership,
+  `TASK_CREATE`, rate limit, pending queue, idempotency key и normalized payload hash.
+- [x] Требовать `TASK_APPROVE`, тройной checklist и optimistic version для решения;
+  audit хранит только IDs, bounded counts, decision и version.
+- [x] Добавить третью Agent Office workspace с очередью, preview, sections, build gates,
+  loading/empty/error/read-only/approved/rejected states и существующим responsive layout.
+
 ### Mobile Command Inbox — v1.7.37
 
 - [x] Превратить колокольчик в очевидную точку входа: на телефоне открывается единая

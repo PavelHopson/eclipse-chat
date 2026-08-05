@@ -98,6 +98,27 @@ evidence URLs, не вызывает внешние tools, не включает
 и возвращает `404` для чужого или неутверждённого review. Rate limit — 5 файлов за 15 минут.
 
 ---
+
+## Builder Review Room
+
+Все endpoints требуют Bearer JWT и membership в `:id`. Полный контракт и trust boundary:
+[`contracts/builder-project-v1.md`](contracts/builder-project-v1.md).
+
+### `GET /api/servers/:id/builder-reviews`
+
+Возвращает до 30 последних server-owned проектов. Source approval не переносится.
+
+### `POST /api/servers/:id/builder-reviews/import`
+
+Требует `TASK_CREATE`, `Idempotency-Key` и body `{ "project": <builder.project.v1> }`.
+Принимает только upstream `approved`, сбрасывает approval и повторно блокирует build queue.
+
+### `PATCH /api/servers/:id/builder-reviews/:reviewId`
+
+Требует `TASK_APPROVE` и точную `version`. Approval требует три подтверждения: требования,
+security boundary и preview. Rejection требует комментарий. Endpoint не запускает build или deploy.
+
+---
 ## Auth
 
 Access token живёт **15 минут**. Refresh token хранится в БД как

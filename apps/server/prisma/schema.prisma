@@ -209,6 +209,8 @@ model User {
   reviewedGrowthRuns         GrowthRun[]                @relation("GrowthRunReviewer")
   importedDeckReviews        DeckReview[]               @relation("DeckReviewImporter")
   reviewedDeckReviews        DeckReview[]               @relation("DeckReviewReviewer")
+  importedBuilderReviews     BuilderReview[]            @relation("BuilderReviewImporter")
+  reviewedBuilderReviews     BuilderReview[]            @relation("BuilderReviewReviewer")
   growthAiUsage              GrowthAiUsage[]
 }
 
@@ -428,6 +430,8 @@ enum AuditEventType {
   GROWTH_RUN_REVIEWED
   DECK_REVIEW_IMPORTED
   DECK_REVIEW_DECIDED
+  BUILDER_REVIEW_IMPORTED
+  BUILDER_REVIEW_DECIDED
   DECK_PPTX_RENDERED
   GROWTH_RUN_CREATED
   GROWTH_STEP_EXECUTED
@@ -526,6 +530,34 @@ model DeckReview {
   updatedAt          DateTime              @updatedAt
 
   @@unique([serverId, sourceJobId])
+  @@unique([serverId, idempotencyKey])
+  @@index([serverId, reviewStatus, createdAt])
+  @@index([serverId, importedByUserId, reviewStatus])
+}
+
+/// Tenant-scoped copy of an approved builder.project.v1. Imported approval and
+/// unlocked build steps are reset before the independent Chat review starts.
+model BuilderReview {
+  id                 String                @id @default(cuid())
+  sourceProjectId    String
+  serverId           String
+  server             Server                @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  importedByUserId   String?
+  importedBy         User?                 @relation("BuilderReviewImporter", fields: [importedByUserId], references: [id], onDelete: SetNull)
+  schemaVersion      String
+  payload            String
+  payloadHash        String
+  idempotencyKey     String
+  reviewStatus       GrowthRunReviewStatus @default(PENDING)
+  reviewNote         String?
+  reviewedAt         DateTime?
+  reviewedByUserId   String?
+  reviewedBy         User?                 @relation("BuilderReviewReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  version            Int                   @default(1)
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+
+  @@unique([serverId, sourceProjectId])
   @@unique([serverId, idempotencyKey])
   @@index([serverId, reviewStatus, createdAt])
   @@index([serverId, importedByUserId, reviewStatus])
@@ -893,6 +925,7 @@ model Server {
   botActionApprovals  BotActionApproval[]
   growthRuns          GrowthRun[]
   deckReviews         DeckReview[]
+  builderReviews      BuilderReview[]
 }
 
 /// v1.6.99 — одноразовые / истекающие invite-коды (privacy slice B).
