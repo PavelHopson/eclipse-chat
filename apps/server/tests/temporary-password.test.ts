@@ -3,6 +3,7 @@ import {
   generateTemporaryPassword,
   PASSWORD_HASH_COST,
 } from "../src/security/temporaryPassword.js";
+import { hasUsablePasswordRecoveryCodes } from "../src/routes/platform.js";
 
 const SAFE_TEMP_PASSWORD =
   /^[abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789]{16}$/;
@@ -23,5 +24,14 @@ describe("temporary password", () => {
       Array.from({ length: 50 }, () => generateTemporaryPassword()),
     );
     expect(values.size).toBe(50);
+  });
+});
+
+describe("platform password recovery status", () => {
+  it("only reports a usable non-empty recovery-code set", () => {
+    expect(hasUsablePasswordRecoveryCodes(null)).toBe(false);
+    expect(hasUsablePasswordRecoveryCodes("[]")).toBe(false);
+    expect(hasUsablePasswordRecoveryCodes("not-json")).toBe(false);
+    expect(hasUsablePasswordRecoveryCodes('["bcrypt-hash"]')).toBe(true);
   });
 });

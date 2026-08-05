@@ -47,6 +47,10 @@ const PLATFORM_USER_SELECT = {
   avatar: true,
   createdAt: true,
   isPlatformOwner: true,
+  twoFactorEnabled: true,
+  passwordRecoveryCodes: true,
+  failedLoginAttempts: true,
+  lockoutUntil: true,
   bannedAt: true,
   bannedReason: true,
   bannedByUserId: true,
@@ -72,6 +76,12 @@ type PlatformUserView = {
   avatar: string | null;
   createdAt: string;
   isPlatformOwner: boolean;
+  twoFactorEnabled: boolean;
+  hasPasswordRecoveryCodes: boolean;
+  failedLoginAttempts: number;
+  lockoutUntil: string | null;
+  lastActiveAt: string | null;
+  activeSessionCount: number;
   bannedAt: string | null;
   bannedReason: string | null;
   bannedBy: { id: string; email: string; displayName: string } | null;
@@ -80,7 +90,28 @@ type PlatformUserView = {
   deletedBy: { id: string; email: string; displayName: string } | null;
 };
 
-function toView(u: DbPlatformUser): PlatformUserView {
+type PlatformUserSessionSummary = {
+  lastActiveAt: Date | null;
+  activeSessionCount: number;
+};
+
+export function hasUsablePasswordRecoveryCodes(value: string | null): boolean {
+  if (!value) return false;
+  try {
+    const codes: unknown = JSON.parse(value);
+    return Array.isArray(codes) && codes.length > 0;
+  } catch {
+    return false;
+  }
+}
+
+function toView(
+  u: DbPlatformUser,
+  session: PlatformUserSessionSummary = {
+    lastActiveAt: null,
+    activeSessionCount: 0,
+  },
+): PlatformUserView {
   return {
     id: u.id,
     email: u.email,
@@ -88,6 +119,16 @@ function toView(u: DbPlatformUser): PlatformUserView {
     avatar: u.avatar,
     createdAt: u.createdAt.toISOString(),
     isPlatformOwner: u.isPlatformOwner,
+    twoFactorEnabled: u.twoFactorEnabled,
+    hasPasswordRecoveryCodes: hasUsablePasswordRecoveryCodes(
+      u.passwordRecoveryCodes,
+    ),
+    failedLoginAttempts: u.failedLoginAttempts,
+    lockoutUntil: u.lockoutUntil ? u.lockoutUntil.toISOString() : null,
+    lastActiveAt: session.lastActiveAt
+      ? session.lastActiveAt.toISOString()
+      : null,
+    activeSessionCount: session.activeSessionCount,
     bannedAt: u.bannedAt ? u.bannedAt.toISOString() : null,
     bannedReason: u.bannedReason,
     bannedBy: u.bannedBy
@@ -257,7 +298,9 @@ export async function registerPlatformRoutes(app: FastifyInstance) {
       where.deletedAt = { not: null };
     }
 
-    const [users, total] = await Promise.all([
+    const now = new Date();
+    const [users, total, active, banned, deleted, accessLocked, recoveryCandidates] =
+      await Promise.all([
       db.user.findMany({
         where,
         select: PLATFORM_USER_SELECT,
@@ -270,13 +313,63 @@ export async function registerPlatformRoutes(app: FastifyInstance) {
         skip: offset,
       }),
       db.user.count({ where }),
+      db.user.count({ where: { bannedAt: null, deletedAt: null } }),
+      db.user.count({ where: { bannedAt: { not: null }, deletedAt: null } }),
+      db.user.count({ where: { deletedAt: { not: null } } }),
+      db.user.count({
+        where: {
+          bannedAt: null,
+          deletedAt: null,
+          lockoutUntil: { gt: now },
+        },
+      }),
+      db.user.findMany({
+        where: {
+          bannedAt: null,
+          deletedAt: null,
+          passwordRecoveryCodes: { not: null },
+        },
+        select: { passwordRecoveryCodes: true },
+      }),
     ]);
 
+    const sessionRows =
+      users.length === 0
+        ? []
+        : await db.refreshToken.groupBy({
+            by: ["userId"],
+            where: {
+              userId: { in: users.map((user) => user.id) },
+              expiresAt: { gt: now },
+            },
+            _count: { _all: true },
+            _max: { lastSeenAt: true, createdAt: true },
+          });
+    const sessionsByUserId = new Map<string, PlatformUserSessionSummary>(
+      sessionRows.map((row) => [
+        row.userId,
+        {
+          activeSessionCount: row._count._all,
+          lastActiveAt: row._max.lastSeenAt ?? row._max.createdAt,
+        },
+      ]),
+    );
+
     return reply.send({
-      users: users.map(toView),
+      users: users.map((user) => toView(user, sessionsByUserId.get(user.id))),
       total,
       limit,
       offset,
+      summary: {
+        total: active + banned + deleted,
+        active,
+        banned,
+        deleted,
+        accessLocked,
+        recoveryReady: recoveryCandidates.filter((user) =>
+          hasUsablePasswordRecoveryCodes(user.passwordRecoveryCodes),
+        ).length,
+      },
     });
   });
 
@@ -433,7 +526,10 @@ export async function registerPlatformRoutes(app: FastifyInstance) {
   // Pavel передаёт юзеру out-of-band.
   app.post(
     "/api/platform/users/:id/reset-password",
-    guard,
+    {
+      ...guard,
+      config: { rateLimit: { max: 10, timeWindow: 15 * 60 * 1000 } },
+    },
     async (req, reply) => {
       const params = idParam.safeParse(req.params);
       if (!params.success) return reply.status(400).send({ error: "Invalid id" });
@@ -476,20 +572,25 @@ export async function registerPlatformRoutes(app: FastifyInstance) {
 
       // Все рефреш-токены — выкинуть; пусть user логинится временным паролем.
       await deleteAllUserRefresh(targetId);
+      const dropped = disconnectUser(targetId);
 
       recordAudit("PLATFORM_USER_PASSWORD_RESET", {
         userId: adminId,
         req,
         metadata: {
           targetUserId: targetId,
+          socketsDropped: dropped,
           // ⚠️ Никогда не логируем сам пароль.
         },
       });
 
-      return reply.send({
+      return reply
+        .header("Cache-Control", "no-store")
+        .header("Pragma", "no-cache")
+        .send({
         user: toView(updated),
         tempPassword,
-      });
+        });
     },
   );
 
@@ -694,7 +795,8 @@ export async function registerPlatformRoutes(app: FastifyInstance) {
     });
     if (!user) return reply.status(404).send({ error: "Пользователь не найден." });
 
-    const [ownedServers, memberCount, auditEntries] = await Promise.all([
+    const now = new Date();
+    const [ownedServers, memberCount, auditEntries, activeSessions] = await Promise.all([
       db.server.findMany({
         where: { ownerId: targetId },
         select: {
@@ -720,10 +822,19 @@ export async function registerPlatformRoutes(app: FastifyInstance) {
           user: { select: { id: true, email: true, displayName: true } },
         },
       }),
+      db.refreshToken.aggregate({
+        where: { userId: targetId, expiresAt: { gt: now } },
+        _count: { _all: true },
+        _max: { lastSeenAt: true, createdAt: true },
+      }),
     ]);
 
     return reply.send({
-      user: toView(user),
+      user: toView(user, {
+        activeSessionCount: activeSessions._count._all,
+        lastActiveAt:
+          activeSessions._max.lastSeenAt ?? activeSessions._max.createdAt,
+      }),
       ownedServers: ownedServers.map((s) => ({
         id: s.id,
         name: s.name,

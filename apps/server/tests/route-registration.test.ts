@@ -62,6 +62,39 @@ describe("server route registration", () => {
     expect(rateLimit).toEqual({ max: 12, timeWindow: 60 * 1000 });
   });
 
+  it("protects platform user administration and rate-limits password recovery", async () => {
+    const app = Fastify();
+    const routes = new Map<
+      string,
+      { guards: string[]; rateLimit?: { max?: number; timeWindow?: number } }
+    >();
+    app.addHook("onRoute", (route) => {
+      if (!route.url.startsWith("/api/platform/users")) return;
+      const routeGuards = Array.isArray(route.preHandler)
+        ? route.preHandler
+        : route.preHandler
+          ? [route.preHandler]
+          : [];
+      routes.set(`${route.method}:${route.url}`, {
+        guards: routeGuards.map((guard) => guard.name),
+        rateLimit: route.config?.rateLimit as
+          | { max?: number; timeWindow?: number }
+          | undefined,
+      });
+    });
+
+    await registerPlatformRoutes(app);
+
+    expect(routes.size).toBeGreaterThanOrEqual(6);
+    for (const route of routes.values()) {
+      expect(route.guards).toEqual(["requireJwt", "requirePlatformOwner"]);
+    }
+    expect(routes.get("POST:/api/platform/users/:id/reset-password")?.rateLimit).toEqual({
+      max: 10,
+      timeWindow: 15 * 60 * 1000,
+    });
+  });
+
   it("registers every server route exactly once", async () => {
     const app = Fastify();
     let createServerGuards: string[] = [];

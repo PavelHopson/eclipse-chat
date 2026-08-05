@@ -191,7 +191,7 @@ export function PlatformUserDetailsModal({
                       className="ec-btn ec-btn--sm"
                       onClick={() => onReset(data.user)}
                     >
-                      Сбросить пароль
+                      Восстановить доступ
                     </button>
                   )}
                   {!data.user.deletedAt && onDelete && (
@@ -205,6 +205,42 @@ export function PlatformUserDetailsModal({
                   )}
                 </div>
               )}
+
+            <div className="ec-platform-admin__details-section">
+              <div className="ec-platform-admin__label">Доступ и безопасность</div>
+              <div className="ec-platform-admin__security-grid">
+                <div>
+                  <span>Последняя активность</span>
+                  <strong>
+                    {data.user.lastActiveAt
+                      ? formatDateTime(data.user.lastActiveAt)
+                      : "Нет активной сессии"}
+                  </strong>
+                </div>
+                <div>
+                  <span>Активные сессии</span>
+                  <strong>{data.user.activeSessionCount}</strong>
+                </div>
+                <div>
+                  <span>Защита входа</span>
+                  <strong>{data.user.twoFactorEnabled ? "2FA включена" : "Только пароль"}</strong>
+                </div>
+                <div>
+                  <span>Самовосстановление</span>
+                  <strong>
+                    {data.user.hasPasswordRecoveryCodes
+                      ? "Recovery codes готовы"
+                      : "Recovery codes не созданы"}
+                  </strong>
+                </div>
+              </div>
+              {data.user.lockoutUntil && new Date(data.user.lockoutUntil) > new Date() && (
+                <div className="ec-cck-banner ec-cck-banner--warn">
+                  Вход временно заблокирован до {formatDateTime(data.user.lockoutUntil)}
+                  после {data.user.failedLoginAttempts} неудачных попыток.
+                </div>
+              )}
+            </div>
 
             {(data.user.bannedAt || data.user.deletedAt) && (
               <div className="ec-platform-admin__details-section">

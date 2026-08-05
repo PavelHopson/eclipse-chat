@@ -16,6 +16,12 @@ export type PlatformUser = {
   avatar: string | null;
   createdAt: string;
   isPlatformOwner: boolean;
+  twoFactorEnabled: boolean;
+  hasPasswordRecoveryCodes: boolean;
+  failedLoginAttempts: number;
+  lockoutUntil: string | null;
+  lastActiveAt: string | null;
+  activeSessionCount: number;
   bannedAt: string | null;
   bannedReason: string | null;
   bannedBy: { id: string; email: string; displayName: string } | null;
@@ -32,6 +38,14 @@ export type ListUsersResponse = {
   total: number;
   limit: number;
   offset: number;
+  summary: {
+    total: number;
+    active: number;
+    banned: number;
+    deleted: number;
+    accessLocked: number;
+    recoveryReady: number;
+  };
 };
 
 export type ListUsersParams = {

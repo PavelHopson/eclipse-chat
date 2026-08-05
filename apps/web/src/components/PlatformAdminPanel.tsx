@@ -178,7 +178,7 @@ function formatDateTime(iso: string): string {
 }
 
 export function PlatformAdminPanel({ onClose, currentUserId }: Props) {
-  const [tab, setTab] = useState<Tab>("ecosystem");
+  const [tab, setTab] = useState<Tab>("users");
 
   return (
     <Modal title="Platform Admin" onClose={onClose} width={1040}>
@@ -248,6 +248,14 @@ export function PlatformAdminPanel({ onClose, currentUserId }: Props) {
 function UsersTab({ currentUserId }: { currentUserId: string }) {
   const [users, setUsers] = useState<PlatformUser[]>([]);
   const [total, setTotal] = useState(0);
+  const [summary, setSummary] = useState({
+    total: 0,
+    active: 0,
+    banned: 0,
+    deleted: 0,
+    accessLocked: 0,
+    recoveryReady: 0,
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -291,12 +299,21 @@ function UsersTab({ currentUserId }: { currentUserId: string }) {
       const res = await listPlatformUsers(params);
       setUsers(res.users);
       setTotal(res.total);
+      setSummary(res.summary);
     } catch (e) {
       setError(
         e instanceof ApiError ? e.message : "Не удалось загрузить список пользователей.",
       );
       setUsers([]);
       setTotal(0);
+      setSummary({
+        total: 0,
+        active: 0,
+        banned: 0,
+        deleted: 0,
+        accessLocked: 0,
+        recoveryReady: 0,
+      });
     } finally {
       setLoading(false);
     }
@@ -414,6 +431,35 @@ function UsersTab({ currentUserId }: { currentUserId: string }) {
 
   return (
     <>
+      <section className="ec-platform-admin__overview" aria-label="Состояние пользователей">
+        <div className="ec-platform-admin__overview-copy">
+          <span className="ec-platform-admin__eyebrow">Управление доступом</span>
+          <strong>Пользователи Eclipse Chat</strong>
+          <p>
+            Найди человека, проверь состояние входа и при необходимости выдай
+            новый временный пароль.
+          </p>
+        </div>
+        <div className="ec-platform-admin__stats" aria-live="polite">
+          <div className="ec-platform-admin__stat">
+            <span>Всего</span>
+            <strong>{loading ? "—" : summary.total}</strong>
+          </div>
+          <div className="ec-platform-admin__stat ec-platform-admin__stat--ok">
+            <span>Активные аккаунты</span>
+            <strong>{loading ? "—" : summary.active}</strong>
+          </div>
+          <div className="ec-platform-admin__stat ec-platform-admin__stat--risk">
+            <span>Вход заблокирован</span>
+            <strong>{loading ? "—" : summary.accessLocked}</strong>
+          </div>
+          <div className="ec-platform-admin__stat">
+            <span>Recovery codes</span>
+            <strong>{loading ? "—" : summary.recoveryReady}</strong>
+          </div>
+        </div>
+      </section>
+
       <div className="ec-platform-admin__toolbar">
         <form
           className="ec-platform-admin__search"
@@ -466,7 +512,8 @@ function UsersTab({ currentUserId }: { currentUserId: string }) {
               <tr>
                 <th className="ec-cck-th">Пользователь</th>
                 <th className="ec-cck-th">Email</th>
-                <th className="ec-cck-th">Регистрация</th>
+                <th className="ec-cck-th">Последняя активность</th>
+                <th className="ec-cck-th">Защита входа</th>
                 <th className="ec-cck-th">Статус</th>
                 <th className="ec-cck-th ec-platform-admin__th-actions">
                   Действия
@@ -515,8 +562,31 @@ function UsersTab({ currentUserId }: { currentUserId: string }) {
                     <td className="ec-cck-cell ec-platform-admin__email">
                       {u.email}
                     </td>
-                    <td className="ec-cck-cell">{formatDate(u.createdAt)}</td>
-                    <td className="ec-cck-cell">
+                    <td className="ec-cck-cell" data-label="Последняя активность">
+                      <div className="ec-platform-admin__access-stack">
+                        <strong>
+                          {u.lastActiveAt ? formatDateTime(u.lastActiveAt) : "Нет активной сессии"}
+                        </strong>
+                        <span>
+                          {u.activeSessionCount > 0
+                            ? `${u.activeSessionCount} активн. сесс.`
+                            : `Регистрация ${formatDate(u.createdAt)}`}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="ec-cck-cell" data-label="Защита входа">
+                      <div className="ec-platform-admin__access-stack">
+                        <strong>
+                          {u.twoFactorEnabled ? "2FA включена" : "Только пароль"}
+                        </strong>
+                        <span>
+                          {u.hasPasswordRecoveryCodes
+                            ? "Есть recovery codes"
+                            : "Нет recovery codes"}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="ec-cck-cell" data-label="Пользователь">
                       {isDeleted ? (
                         <span
                           className="ec-cck-chip"
@@ -536,6 +606,14 @@ function UsersTab({ currentUserId }: { currentUserId: string }) {
                           title={u.bannedReason ?? undefined}
                         >
                           Забанен
+                        </span>
+                      ) : u.lockoutUntil && new Date(u.lockoutUntil) > new Date() ? (
+                        <span
+                          className="ec-cck-chip"
+                          style={{ ["--tone" as string]: "var(--ec-status-warn)" }}
+                          title={`Автоблокировка до ${formatDateTime(u.lockoutUntil)}`}
+                        >
+                          Вход заблокирован
                         </span>
                       ) : (
                         <span
@@ -588,7 +666,7 @@ function UsersTab({ currentUserId }: { currentUserId: string }) {
                           }}
                           disabled={locked}
                         >
-                          Сбросить пароль
+                          Восстановить доступ
                         </button>
                       )}
                       {!isDeleted && (
@@ -760,7 +838,7 @@ function UsersTab({ currentUserId }: { currentUserId: string }) {
       {/* Confirm: reset password */}
       {resetTarget && (
         <Modal
-          title={`Сбросить пароль для ${resetTarget.displayName}?`}
+          title={`Восстановить доступ для ${resetTarget.displayName}?`}
           onClose={() => {
             if (!resetBusy) setResetTarget(null);
           }}
@@ -781,16 +859,23 @@ function UsersTab({ currentUserId }: { currentUserId: string }) {
                 onClick={() => void submitReset()}
                 disabled={resetBusy}
               >
-                {resetBusy ? "Сбрасываю…" : "Сбросить пароль"}
+                {resetBusy ? "Восстанавливаю…" : "Создать временный пароль"}
               </button>
             </>
           }
         >
           <p className="ec-platform-admin__warn">
-            Будет сгенерирован новый временный пароль. Текущий пароль
-            перестанет работать, refresh-токены отозваны. Временный пароль
-            покажется один раз — передашь юзеру вне платформы.
+            Будет создан новый временный пароль, снята автоматическая
+            блокировка входа и завершены все активные сессии. Текущий пароль
+            перестанет работать. Новый пароль покажется один раз — передай его
+            пользователю по доверенному каналу.
           </p>
+          {resetTarget.twoFactorEnabled && (
+            <div className="ec-cck-banner ec-cck-banner--warn">
+              У пользователя включена 2FA. Временный пароль не отключит её:
+              для входа всё равно понадобится код из приложения или 2FA recovery code.
+            </div>
+          )}
           {actionError && (
             <div className="ec-cck-banner ec-cck-banner--error">{actionError}</div>
           )}
@@ -1124,7 +1209,10 @@ function ServersTab() {
                         </span>
                       </div>
                     </td>
-                    <td className="ec-cck-cell ec-platform-admin__email">
+                    <td
+                      className="ec-cck-cell ec-platform-admin__email"
+                      data-label="Email"
+                    >
                       {s.owner.displayName}
                       <br />
                       <span style={{ opacity: 0.7 }}>{s.owner.email}</span>
@@ -1139,7 +1227,7 @@ function ServersTab() {
                         </span>
                       )}
                     </td>
-                    <td className="ec-cck-cell">
+                    <td className="ec-cck-cell" data-label="Статус">
                       {s.memberCount}&nbsp;уч. · {s.channelCount}&nbsp;кан.
                     </td>
                     <td className="ec-cck-cell">{formatDate(s.createdAt)}</td>
@@ -1165,7 +1253,10 @@ function ServersTab() {
                         </span>
                       )}
                     </td>
-                    <td className="ec-cck-cell ec-platform-admin__actions">
+                    <td
+                      className="ec-cck-cell ec-platform-admin__actions"
+                      data-label="Действия"
+                    >
                       {isSuspended ? (
                         <button
                           type="button"
