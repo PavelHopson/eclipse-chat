@@ -34,10 +34,11 @@ Chat сбрасывает его, записывает `ready_for_review` и с�
   оператора в workspace.
 - Audit хранит только идентификаторы, решение, количество слайдов и версию, но не source
   text, speaker notes или содержимое слайдов.
-- Chat не запускает tools, не получает URL, не рендерит PPTX и не публикует презентацию.
+- Chat не запускает tools, не загружает evidence URL и не публикует презентацию. Editable PPTX
 
 ## Endpoints
 
 - `GET /api/servers/:id/deck-reviews`
 - `POST /api/servers/:id/deck-reviews/import`
 - `PATCH /api/servers/:id/deck-reviews/:reviewId`
+- `POST /api/servers/:id/deck-reviews/:reviewId/render` — approved-only editable PPTX

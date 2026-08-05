@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { apiJson, ApiError } from "../lib/api";
+import { api, apiJson, ApiError } from "../lib/api";
 
 export type DeckReviewStatus = "PENDING" | "APPROVED" | "REJECTED";
 export type DeckJobPayload = {
@@ -52,7 +52,7 @@ export type DeckReviewView = {
 
 type DeckReviewsResponse = {
   reviews: DeckReviewView[];
-  policy: { maxPendingReviewsPerOperator: number; pptxRenderingEnabled: false };
+  policy: { maxPendingReviewsPerOperator: number; pptxRenderingEnabled: boolean; renderRequiresApproval: boolean };
 };
 
 function message(error: unknown, fallback: string): string {
@@ -65,6 +65,7 @@ export function useDeckReviews(serverId: string | null, enabled: boolean) {
   const [loading, setLoading] = useState(Boolean(serverId && enabled));
   const [importing, setImporting] = useState(false);
   const [reviewingId, setReviewingId] = useState<string | null>(null);
+  const [renderingId, setRenderingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
@@ -146,16 +147,49 @@ export function useDeckReviews(serverId: string | null, enabled: boolean) {
     }
   }, [serverId]);
 
+  const renderJob = useCallback(async (reviewId: string, title: string): Promise<boolean> => {
+    if (!serverId) return false;
+    setRenderingId(reviewId);
+    setError(null);
+    try {
+      const response = await api(
+        `/api/servers/${encodeURIComponent(serverId)}/deck-reviews/${encodeURIComponent(reviewId)}/render`,
+        { method: "POST" },
+      );
+      if (!response.ok) {
+        const detail = await response.json().catch(() => null) as { error?: unknown } | null;
+        throw new ApiError(typeof detail?.error === "string" ? detail.error : `HTTP ${response.status}`, response.status, detail);
+      }
+      const blob = await response.blob();
+      if (blob.size === 0 || blob.size > 4 * 1024 * 1024) throw new Error("Сервер вернул некорректный PPTX");
+      const safeTitle = title.normalize("NFKC").replace(/[<>:"/\\|?*\u0000-\u001f]/g, " ").replace(/\s+/g, " ").trim().slice(0, 80) || "Eclipse deck";
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `${safeTitle}.pptx`;
+      anchor.click();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+      return true;
+    } catch (cause) {
+      setError(message(cause, "Не удалось создать PPTX"));
+      return false;
+    } finally {
+      setRenderingId(null);
+    }
+  }, [serverId]);
+
   return {
     reviews,
     policy,
     loading,
     importing,
     reviewingId,
+    renderingId,
     error,
     clearError: () => setError(null),
     reload,
     importJob,
     reviewJob,
+    renderJob,
   };
 }

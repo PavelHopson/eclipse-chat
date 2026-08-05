@@ -10,6 +10,7 @@ import {
   parseDeckJobImport,
   parseStoredDeckJob,
 } from "../lib/deckJobContract.js";
+import { encodeRfc5987Filename, renderDeckPptx } from "../lib/deckPptx.js";
 import { hasPermission } from "../lib/permissions.js";
 import { ensureServerActive } from "../lib/serverGating.js";
 import { recordAudit } from "../security/audit.js";
@@ -18,6 +19,7 @@ import type { MemberRole } from "./servers.js";
 const READ_RATE_LIMIT = { max: 60, timeWindow: 60 * 1000 };
 const IMPORT_RATE_LIMIT = { max: 10, timeWindow: 15 * 60 * 1000 };
 const REVIEW_RATE_LIMIT = { max: 30, timeWindow: 5 * 60 * 1000 };
+const RENDER_RATE_LIMIT = { max: 5, timeWindow: 15 * 60 * 1000 };
 const importBodySchema = z.object({ job: z.unknown() }).strict();
 const reviewBodySchema = z.object({
   version: z.number().int().positive(),
@@ -77,6 +79,10 @@ function requestUserId(req: FastifyRequest): string | null {
   return getUserId(req);
 }
 
+export function approvedDeckRenderSelector(serverId: string, reviewId: string) {
+  return { id: reviewId, serverId, reviewStatus: "APPROVED" as const };
+}
+
 export function registerDeckReviewRoutes(app: FastifyInstance) {
   app.get(
     "/api/servers/:id/deck-reviews",
@@ -94,7 +100,11 @@ export function registerDeckReviewRoutes(app: FastifyInstance) {
       });
       return {
         reviews: rows.map(reviewView),
-        policy: { maxPendingReviewsPerOperator: MAX_PENDING_DECK_REVIEWS_PER_OPERATOR, pptxRenderingEnabled: false },
+        policy: {
+          maxPendingReviewsPerOperator: MAX_PENDING_DECK_REVIEWS_PER_OPERATOR,
+          pptxRenderingEnabled: true,
+          renderRequiresApproval: true,
+        },
       };
     },
   );
@@ -184,6 +194,55 @@ export function registerDeckReviewRoutes(app: FastifyInstance) {
         },
       });
       return reply.status(201).send({ review: reviewView(created), idempotent: false });
+    },
+  );
+
+  app.post(
+    "/api/servers/:id/deck-reviews/:reviewId/render",
+    { onRequest: [requireJwt], config: { rateLimit: RENDER_RATE_LIMIT } },
+    async (req, reply) => {
+      const userId = requestUserId(req);
+      if (!userId) return reply.status(401).send({ error: "Unauthorized" });
+      const { id: serverId, reviewId } = req.params as { id: string; reviewId: string };
+      const membership = await loadMembership(userId, serverId);
+      if (!membership) return reply.status(403).send({ error: "Not a member" });
+      if (!hasPermission(membership.role as MemberRole, "TASK_APPROVE")) {
+        return reply.status(403).send({ error: "Недостаточно прав для создания PPTX" });
+      }
+      if (!(await ensureServerActive(serverId, reply))) return;
+
+      // Tenant and approval predicates stay in the data query: a guessed reviewId
+      // from another workspace never becomes a renderable object.
+      const review = await db.deckReview.findFirst({
+        where: approvedDeckRenderSelector(serverId, reviewId),
+        select: { payload: true, sourceJobId: true },
+      });
+      if (!review) return reply.status(404).send({ error: "Утверждённая презентация не найдена" });
+
+      let rendered;
+      try {
+        rendered = renderDeckPptx(parseStoredDeckJob(review.payload));
+      } catch (error) {
+        return reply.status(422).send({ error: error instanceof Error ? error.message : "Не удалось создать PPTX" });
+      }
+
+      recordAudit("DECK_PPTX_RENDERED", {
+        userId,
+        req,
+        metadata: {
+          serverId,
+          deckReviewId: reviewId,
+          sourceJobId: review.sourceJobId,
+          outputBytes: rendered.buffer.length,
+        },
+      });
+      return reply
+        .type("application/vnd.openxmlformats-officedocument.presentationml.presentation")
+        .header("Cache-Control", "private, no-store")
+        .header("X-Content-Type-Options", "nosniff")
+        .header("Content-Disposition", `attachment; filename="eclipse-deck.pptx"; filename*=UTF-8''${encodeRfc5987Filename(rendered.filename)}`)
+        .header("Content-Length", String(rendered.buffer.length))
+        .send(rendered.buffer);
     },
   );
 

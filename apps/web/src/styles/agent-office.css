@@ -653,6 +653,9 @@
 .ec-deck-review textarea:focus-visible { outline: 2px solid var(--ec-border-accent); outline-offset: 2px; }
 .ec-deck-review section > div:last-child { display: grid; gap: var(--ec-space-2); margin-top: var(--ec-space-3); }
 .ec-deck-review blockquote { margin: var(--ec-space-3) 0 0; padding-left: var(--ec-space-3); border-left: 2px solid var(--ec-border-accent); color: var(--ec-text-muted); }
+.ec-deck-download { display: grid; gap: var(--ec-space-2); margin-top: var(--ec-space-3); }
+.ec-deck-download .ec-btn { width: 100%; min-height: 44px; }
+.ec-deck-download small { color: var(--ec-text-dim); font-size: var(--ec-text-2xs); line-height: 1.5; }
 
 .ec-deck-row {
   display: grid;

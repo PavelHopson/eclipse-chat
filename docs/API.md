@@ -88,7 +88,14 @@ Stale version или повторное решение возвращают `409
 
 Требует permission `TASK_APPROVE`, точную `version` и независимый checklist. Для `APPROVE`
 обязательны `claimsVerified`, `rightsConfirmed` и `finalReviewComplete`; для `REJECT` —
-комментарий не короче трёх символов. Endpoint не рендерит PPTX и не публикует материалы.
+комментарий не короче трёх символов. Endpoint меняет только review status и не публикует материалы.
+
+### `POST /api/servers/:id/deck-reviews/:reviewId/render`
+
+Требует permission `TASK_APPROVE` и запись со статусом `APPROVED` в том же workspace.
+Возвращает editable 16:9 `.pptx` с text shapes и speaker notes. Renderer не загружает
+evidence URLs, не вызывает внешние tools, не включает `sourceText`, ограничивает результат 4 МБ
+и возвращает `404` для чужого или неутверждённого review. Rate limit — 5 файлов за 15 минут.
 
 ---
 ## Auth
