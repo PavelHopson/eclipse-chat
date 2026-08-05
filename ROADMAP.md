@@ -113,6 +113,9 @@ scope доступа, понятное действие и подтвержде�
   refresh-сессии и WebSocket-подключения завершаются.
 - [x] Защитить recovery endpoint platform-owner authorization, rate limit 10/15m,
   `Cache-Control: no-store`, audit metadata без пароля и regression-тестами.
+- [x] Добавить production maintenance workflow для additive Platform Admin grants:
+  только существующие активные аккаунты, dry-run, backup, typed confirmation и
+  production approval; workflow никого не демотирует и не меняет credentials.
 
 ### Mobile Command Inbox — v1.7.37
 

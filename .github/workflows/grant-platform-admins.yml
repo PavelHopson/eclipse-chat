@@ -1,0 +1,146 @@
+name: Grant platform admins
+
+on:
+  workflow_dispatch:
+    inputs:
+      admin_emails:
+        description: "Comma-separated active accounts to promote"
+        required: true
+        default: "hopsintoxin@mail.ru,garaa11@mail.ru"
+        type: string
+      confirmation:
+        description: "Type GRANT_PLATFORM_ADMINS"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: eclipse-chat-prod-maintenance
+  cancel-in-progress: false
+
+jobs:
+  grant:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Validate request
+        env:
+          ADMIN_EMAILS: ${{ inputs.admin_emails }}
+          GRANT_CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          set -euo pipefail
+          test "$GRANT_CONFIRMATION" = "GRANT_PLATFORM_ADMINS"
+          test -n "$ADMIN_EMAILS"
+          case "$ADMIN_EMAILS" in
+            *[!A-Za-z0-9._+@,-]*) echo "Invalid admin email list" >&2; exit 1 ;;
+          esac
+
+      - name: Backup and grant platform admin access
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          ADMIN_EMAILS: ${{ inputs.admin_emails }}
+          GRANT_CONFIRMATION: ${{ inputs.confirmation }}
+        with:
+          host: ${{ secrets.DEPLOY_HOST_PROD }}
+          username: ${{ secrets.DEPLOY_USER_PROD }}
+          key: ${{ secrets.SSH_PRIVATE_KEY_PROD }}
+          envs: ADMIN_EMAILS,GRANT_CONFIRMATION
+          command_timeout: 10m
+          script: |
+            set -euo pipefail
+            test "$GRANT_CONFIRMATION" = "GRANT_PLATFORM_ADMINS"
+            cd /var/www/eclipse-chat
+
+            grant_admins() {
+              cd /var/www/eclipse-chat/apps/server
+              node --input-type=module <<'NODE'
+            import "dotenv/config";
+            import { PrismaClient } from "@prisma/client";
+
+            const db = new PrismaClient();
+            const emails = [...new Set(
+              (process.env.ADMIN_EMAILS ?? "")
+                .split(",")
+                .map((email) => email.trim().toLowerCase())
+                .filter(Boolean),
+            )];
+
+            try {
+              if (emails.length === 0 || emails.length > 5) {
+                throw new Error("Expected between 1 and 5 unique admin emails");
+              }
+
+              const users = await db.user.findMany({
+                where: {
+                  OR: emails.map((email) => ({
+                    email: { equals: email, mode: "insensitive" },
+                  })),
+                },
+                select: {
+                  id: true,
+                  email: true,
+                  displayName: true,
+                  isPlatformOwner: true,
+                  bannedAt: true,
+                  deletedAt: true,
+                },
+                orderBy: { email: "asc" },
+              });
+
+              const found = new Set(users.map((user) => user.email.toLowerCase()));
+              const missing = emails.filter((email) => !found.has(email));
+              if (missing.length > 0) {
+                throw new Error(`Accounts not found: ${missing.join(", ")}`);
+              }
+              const inactive = users.filter((user) => user.bannedAt || user.deletedAt);
+              if (inactive.length > 0) {
+                throw new Error(
+                  `Refusing inactive accounts: ${inactive.map((user) => user.email).join(", ")}`,
+                );
+              }
+
+              for (const user of users) {
+                console.log(
+                  `${user.isPlatformOwner ? "KEEP" : "GRANT"} ${user.email} (${user.displayName})`,
+                );
+              }
+
+              if (process.env.APPLY !== "true") {
+                console.log("DRY RUN only");
+              } else {
+                const result = await db.user.updateMany({
+                  where: {
+                    id: { in: users.map((user) => user.id) },
+                    isPlatformOwner: false,
+                  },
+                  data: { isPlatformOwner: true },
+                });
+                const platformOwners = await db.user.findMany({
+                  where: { isPlatformOwner: true },
+                  select: { email: true },
+                  orderBy: { email: "asc" },
+                });
+                console.log(`Granted: ${result.count}`);
+                console.log(
+                  `Platform admins: ${platformOwners.map((owner) => owner.email).join(", ")}`,
+                );
+              }
+            } finally {
+              await db.$disconnect();
+            }
+            NODE
+            }
+
+            echo "==> Dry run"
+            export APPLY=false
+            grant_admins
+
+            echo "==> Verified database backup"
+            cd /var/www/eclipse-chat
+            bash deploy/scripts/backup-db.sh
+
+            echo "==> Apply additive admin grants"
+            export APPLY=true
+            grant_admins
