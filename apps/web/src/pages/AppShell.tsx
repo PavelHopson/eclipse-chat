@@ -425,7 +425,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   /** v0.76 #25 phase 1: Admin Panel — полноэкранный view для OWNER/ADMIN. */
   const [adminOpen, setAdminOpen] = useState(false);
   // v1.2.6 Platform Admin (trek P1) — глобальная super-admin панель.
-  // Иконка в топбаре появляется ТОЛЬКО при user.isPlatformOwner = true.
+  // Доступ в профильном меню и legacy-иконка гейтятся user.isPlatformOwner = true.
   const [platformAdminOpen, setPlatformAdminOpen] = useState(false);
   // v1.5.4 — AI agent button ripple. Перемонтаж <span key={rippleKey}>
   // перезапускает CSS keyframe при каждом клике.
@@ -3084,6 +3084,22 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           onClose={() => setStatusAnchor(null)}
           themeSlot={<ThemeToggle />}
           tools={[
+            ...(user.isPlatformOwner === true
+              ? [
+                  {
+                    key: "platform-admin",
+                    label: "Админ-панель",
+                    hint: "Пользователи и доступ",
+                    onClick: () => setPlatformAdminOpen(true),
+                    icon: (
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                        <path d="M12 2l9 4v6c0 5-3.5 9.5-9 10-5.5-.5-9-5-9-10V6l9-4z" />
+                        <path d="M9 12l2 2 4-4" />
+                      </svg>
+                    ),
+                  },
+                ]
+              : []),
             {
               key: "dnd-forge",
               label: "DnD Forge",
