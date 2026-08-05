@@ -144,3 +144,50 @@ jobs:
             echo "==> Apply additive admin grants"
             export APPLY=true
             grant_admins
+
+            echo "==> Verify running API exposes platform admin access"
+            cd /var/www/eclipse-chat/apps/server
+            node --input-type=module <<'NODE'
+            import "dotenv/config";
+            import { createSigner } from "fast-jwt";
+            import { PrismaClient } from "@prisma/client";
+
+            const db = new PrismaClient();
+            const emails = [...new Set(
+              (process.env.ADMIN_EMAILS ?? "")
+                .split(",")
+                .map((email) => email.trim().toLowerCase())
+                .filter(Boolean),
+            )];
+
+            try {
+              if (!process.env.JWT_SECRET) {
+                throw new Error("JWT_SECRET is unavailable to runtime verification");
+              }
+              const signer = createSigner({
+                key: process.env.JWT_SECRET,
+                expiresIn: 60_000,
+              });
+              const port = Number(process.env.PORT) || 3001;
+
+              for (const email of emails) {
+                const user = await db.user.findFirstOrThrow({
+                  where: { email: { equals: email, mode: "insensitive" } },
+                  select: { id: true, email: true },
+                });
+                const token = signer({ sub: user.id, email: user.email });
+                const response = await fetch(`http://127.0.0.1:${port}/api/auth/me`, {
+                  headers: { authorization: `Bearer ${token}` },
+                });
+                const body = await response.json();
+                if (!response.ok || body?.user?.isPlatformOwner !== true) {
+                  throw new Error(
+                    `Running API did not expose platform admin access for ${user.email}`,
+                  );
+                }
+                console.log(`API VERIFIED ${user.email}: platform admin`);
+              }
+            } finally {
+              await db.$disconnect();
+            }
+            NODE
