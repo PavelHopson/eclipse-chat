@@ -87,7 +87,15 @@ scope доступа, понятное действие и подтвержде�
 - [x] Пересылать cards в AI Hub без provider credentials и повторно проверять ожидаемую
   role schema перед сохранением direct-execution artifact.
 - [x] Сохранить legacy create/import compatibility; Evidence Card editor и v4 run остаются
-  отдельными owner gates. Production deploy этим commit не разрешён.
+  отдельными owner gates. Ручной production approval не выдавался; push запустил
+  существующий deploy workflow, который остановился на dependency audit до deployment.
+
+### Dependency security patch — v1.7.47
+
+- [x] Обновить transitive build dependency `nanoid` `3.3.16 -> 3.3.17` в lockfile по
+  официальной npm metadata и integrity, закрыв `GHSA-2v37-7h3g-55p8`.
+- [x] Подтвердить `npm audit --audit-level=high`: 0 vulnerabilities.
+- [x] Повторить 52 server suites / 294 tests, workspace typecheck и build.
 
 ### Deck Review Room — v1.7.41
 
@@ -533,7 +541,7 @@ scope доступа, понятное действие и подтвержде�
 - Provider routing — только owned/legal keys, no grey-zone token bypass.
 - Token-saving tools (`sqz`, caveman-like compression) сначала benchmark в sandbox; не сжимать секреты, миграции, юридический текст и точные логи.
 
-**Актуальная версия (короткий индекс):** **v1.7.46** — Growth runs accept optional typed Evidence Cards with claim-level source binding; legacy runs remain compatible, and no v4 model run or production deploy is authorized.
+**Актуальная версия (короткий индекс):** **v1.7.47** — Growth runs accept optional typed Evidence Cards with claim-level source binding; legacy runs remain compatible, and the transitive nanoid High advisory is remediated. No v4 model run is authorized.
 
 **Текущая версия:** **v1.6.98** (🗄️⚡ PARTIAL-ИНДЕКС под escalation-scan (бэклог-хвост, заход через CI). Фоновой `escalation.ts` раз в час обходит `ActionItem` где `status ∈ (OPEN,IN_PROGRESS,REVIEW)`, `dueAt < now-48h`, `(escalatedAt IS NULL OR < now-7d)`, `ORDER BY dueAt ASC LIMIT 50`. Запрос **глобальный** (без serverId/channelId) → все 4 существующих индекса `ActionItem` ведут с channelId/serverId и его НЕ покрывают → был seq-scan всей таблицы каждый час. **Новый partial composite index** `ActionItem_escalation_scan_idx ON ("dueAt") WHERE status IN (OPEN,IN_PROGRESS,REVIEW) AND dueAt IS NOT NULL` (raw-миграция `20260625120000_add_escalation_partial_index`): индексирует только кандидатов эскалации (крошечная доля таблицы — закрытые DONE и задачи без дедлайна исключены); ведущая `dueAt` → один forward index-scan покрывает и `dueAt < X`, и `ORDER BY dueAt ASC LIMIT 50` без сортировки, рано останавливается. **Prisma не выражает WHERE-индексы** → raw SQL; `migrate deploy` (deploy.sh [4/10]) применяет как есть, `prisma generate` индексы не читает, drift-проверок (`migrate dev`) в проекте нет (прод=migrate deploy, локальной БД нет). schema.prisma — doc-comment у `ActionItem` фиксирует существование индекса («не чинить как drift»). **temp-channel scan (`tempChannels.ts`) НЕ трогал** — `Channel` уже имеет `@@index([expiresAt])`, а `WHERE expiresAt < now` = чистый range-scan по нему (NULL'ы сортируются последними, не читаются); partial там лишь дублировал бы индекс = write-amplification на крошечной таблице ради ~нуля. Version 1.6.97→1.6.98 (4 точки). Verify: server `tsc --noEmit` PASS, web build PASS; миграция применится на проде при деплое (`migrate deploy`). **Бэклог-остаток:** виртуализация ленты сообщений (npm-dep + риск-рефактор скролла) — единственный крупный хвост.)
 
