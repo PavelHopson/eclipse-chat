@@ -77,6 +77,18 @@ scope доступа, понятное действие и подтвержде�
 - [x] Применить optimistic version, idempotency, 65-second timeout, cancel и дневной budget 25 попыток на user.
 - [x] Сохранить import fallback, human approval и запрет tools, URL fetching, OAuth, рекламы и публикации.
 - [x] Добавить понятные create/progress/running/cancel/error/disabled/review состояния на desktop и mobile.
+
+### Growth Evidence Cards — v1.7.46
+
+- [x] Добавить optional Evidence Cards в `growth.run.v1`: bounded unique ID, exact claim,
+  state, allowlisted HTTPS source или `null`, evidence boundary.
+- [x] Требовать source URL для verified cards и отклонять duplicate IDs, credentials,
+  unknown fields и источники вне общего `sourceUrls`.
+- [x] Пересылать cards в AI Hub без provider credentials и повторно проверять ожидаемую
+  role schema перед сохранением direct-execution artifact.
+- [x] Сохранить legacy create/import compatibility; Evidence Card editor и v4 run остаются
+  отдельными owner gates. Production deploy этим commit не разрешён.
+
 ### Deck Review Room — v1.7.41
 
 - [x] Принять `deck.job.v1` из Eclipse AI Hub только после upstream approval, затем сбросить
@@ -521,7 +533,7 @@ scope доступа, понятное действие и подтвержде�
 - Provider routing — только owned/legal keys, no grey-zone token bypass.
 - Token-saving tools (`sqz`, caveman-like compression) сначала benchmark в sandbox; не сжимать секреты, миграции, юридический текст и точные логи.
 
-**Актуальная версия (короткий индекс):** **v1.7.44** — Platform Admin is now exposed as an explicit “Админ-панель” action in the profile menu; it no longer depends on topbar icon visibility, while the existing server-side platform-owner authorization remains mandatory.
+**Актуальная версия (короткий индекс):** **v1.7.46** — Growth runs accept optional typed Evidence Cards with claim-level source binding; legacy runs remain compatible, and no v4 model run or production deploy is authorized.
 
 **Текущая версия:** **v1.6.98** (🗄️⚡ PARTIAL-ИНДЕКС под escalation-scan (бэклог-хвост, заход через CI). Фоновой `escalation.ts` раз в час обходит `ActionItem` где `status ∈ (OPEN,IN_PROGRESS,REVIEW)`, `dueAt < now-48h`, `(escalatedAt IS NULL OR < now-7d)`, `ORDER BY dueAt ASC LIMIT 50`. Запрос **глобальный** (без serverId/channelId) → все 4 существующих индекса `ActionItem` ведут с channelId/serverId и его НЕ покрывают → был seq-scan всей таблицы каждый час. **Новый partial composite index** `ActionItem_escalation_scan_idx ON ("dueAt") WHERE status IN (OPEN,IN_PROGRESS,REVIEW) AND dueAt IS NOT NULL` (raw-миграция `20260625120000_add_escalation_partial_index`): индексирует только кандидатов эскалации (крошечная доля таблицы — закрытые DONE и задачи без дедлайна исключены); ведущая `dueAt` → один forward index-scan покрывает и `dueAt < X`, и `ORDER BY dueAt ASC LIMIT 50` без сортировки, рано останавливается. **Prisma не выражает WHERE-индексы** → raw SQL; `migrate deploy` (deploy.sh [4/10]) применяет как есть, `prisma generate` индексы не читает, drift-проверок (`migrate dev`) в проекте нет (прод=migrate deploy, локальной БД нет). schema.prisma — doc-comment у `ActionItem` фиксирует существование индекса («не чинить как drift»). **temp-channel scan (`tempChannels.ts`) НЕ трогал** — `Channel` уже имеет `@@index([expiresAt])`, а `WHERE expiresAt < now` = чистый range-scan по нему (NULL'ы сортируются последними, не читаются); partial там лишь дублировал бы индекс = write-amplification на крошечной таблице ради ~нуля. Version 1.6.97→1.6.98 (4 точки). Verify: server `tsc --noEmit` PASS, web build PASS; миграция применится на проде при деплое (`migrate deploy`). **Бэклог-остаток:** виртуализация ленты сообщений (npm-dep + риск-рефактор скролла) — единственный крупный хвост.)
 

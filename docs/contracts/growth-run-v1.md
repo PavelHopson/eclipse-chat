@@ -14,6 +14,9 @@ credentials or an instruction to publish.
 - `externalActions`, `publishAllowed` and `toolsAllowed` must all be `false`.
 - One to eight HTTPS evidence links are accepted. Credentials in URLs, non-HTTPS schemes and unknown
   fields are rejected.
+- `evidenceCards` is optional for legacy compatibility. When present it contains 1–20 strict cards:
+  unique ID, exact claim, state, source URL or `null`, and evidence boundary. A verified card requires
+  an HTTPS URL already present in `sourceUrls`; duplicate IDs and unlisted URLs are rejected.
 - The complete JSON is limited to 96 KB; each artifact is plain text and limited to 16,000 characters.
 
 ## Chat-owned review
@@ -37,6 +40,12 @@ existing record; reusing it with different content returns `409`.
   consume one request, preventing retry loops from bypassing the limit.
 - A 65-second Chat timeout and explicit cancel propagate an abort toward AI Hub. Existing artifacts are kept.
 - Prompts and artifacts never enter audit or aggregate telemetry. Audit retains IDs, role, version and token totals only.
+- Chat forwards Evidence Cards unchanged to AI Hub. Card-enabled Researcher and Claim Auditor responses
+  must use `growth.research.v2` / `growth.claims.v2`; other roles remain v1. Chat rechecks the expected
+  schema marker before storing a direct-execution artifact. Historical completed prose imports remain readable.
+
+This release adds server/API compatibility only. The existing create form still produces legacy runs without
+cards; a reviewed Evidence Card editor is a separate UX slice. No v4 model run is implied by this contract.
 
 ## Access and data boundary
 

@@ -24,6 +24,13 @@ function validRun() {
         "https://library.eclipse-forge.ru/#release",
       ],
       evidenceNotes: "Production build прошёл, а источники проверены редактором.",
+      evidenceCards: [{
+        id: "LIB-001",
+        claim: "Eclipse Library release is documented.",
+        state: "verified",
+        sourceUrl: "https://library.eclipse-forge.ru/#release",
+        evidenceBoundary: "Источник подтверждает release, но не adoption.",
+      }],
     },
     execution: {
       provider: "openai",
@@ -62,6 +69,7 @@ describe("growth.run.v1 import boundary", () => {
     expect(parsed.run.status).toBe("ready_for_approval");
     expect(parsed.run.approval).toBeNull();
     expect(parsed.run.input.sourceUrls).toEqual(["https://library.eclipse-forge.ru/"]);
+    expect(parsed.run.input.evidenceCards?.[0]?.sourceUrl).toBe("https://library.eclipse-forge.ru/");
     expect(parsed.payloadHash).toMatch(/^[a-f0-9]{64}$/);
   });
 
@@ -80,6 +88,20 @@ describe("growth.run.v1 import boundary", () => {
       reordered.artifacts[0],
     ];
     expect(() => parseGrowthRunImport(reordered)).toThrow(/Ожидается шаг/i);
+  });
+
+  it("rejects invalid Evidence Card ids, states and source bindings", () => {
+    const duplicate = validRun();
+    duplicate.input.evidenceCards.push({ ...duplicate.input.evidenceCards[0] });
+    expect(() => parseGrowthRunImport(duplicate)).toThrow(/уникальным/i);
+
+    const outside = validRun();
+    outside.input.evidenceCards[0].sourceUrl = "https://outside.example/source";
+    expect(() => parseGrowthRunImport(outside)).toThrow(/sourceUrls/i);
+
+    const missing = validRun();
+    missing.input.evidenceCards[0].sourceUrl = null as unknown as string;
+    expect(() => parseGrowthRunImport(missing)).toThrow(/требует sourceUrl/i);
   });
 
   it("accepts only bounded stable idempotency keys", () => {

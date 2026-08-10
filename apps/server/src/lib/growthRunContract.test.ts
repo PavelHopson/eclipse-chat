@@ -14,7 +14,22 @@ const INPUT = {
   channel: "telegram" as const,
   sourceUrls: ["https://example.com/release"],
   evidenceNotes: "Источник проверяется человеком и передаётся модели только как недоверенные данные.",
+  evidenceCards: [{
+    id: "EF-001",
+    claim: "The bounded Growth gateway exists.",
+    state: "verified" as const,
+    sourceUrl: "https://example.com/release",
+    evidenceBoundary: "Источник подтверждает существование gateway, но не customer outcomes.",
+  }],
 };
+
+function typedArtifact(step: typeof GROWTH_STEP_DEFINITIONS[number]["step"], usesCards = true) {
+  const version = usesCards && ["research", "claims"].includes(step) ? "v2" : "v1";
+  return JSON.stringify({
+    schemaVersion: `growth.${step}.${version}`,
+    content: "Проверенный typed результат без внешних действий и скрытых capability.",
+  });
+}
 
 describe("growth.run.v1 server contract", () => {
   it("creates a fail-closed draft and requires the fixed role order", () => {
@@ -50,7 +65,7 @@ describe("growth.run.v1 server contract", () => {
       run = appendGrowthArtifact(run, {
         step: step.step,
         role: step.role,
-        content: `${step.role}: ${"Проверенный результат без внешних действий. ".repeat(3)}`,
+        content: typedArtifact(step.step),
         provider: "eclipse-ai-hub",
         model: "selected-model",
       });
@@ -67,5 +82,47 @@ describe("growth.run.v1 server contract", () => {
       model: "auto/best-chat",
     });
     expect(() => parseGrowthRunImport(run)).toThrow("только завершённый");
+  });
+
+  it("rejects direct-execution prose and a schema from another role", () => {
+    const run = createGrowthRunPayload(INPUT, "chat:run-typed", {
+      provider: "eclipse-ai-hub",
+      model: "auto/best-chat",
+    });
+    expect(() => appendGrowthArtifact(run, {
+      step: "research",
+      role: "Researcher",
+      content: "Untyped prose is long enough but must not enter direct execution storage.",
+      provider: "eclipse-ai-hub",
+      model: "selected-model",
+    })).toThrow("typed JSON");
+    expect(() => appendGrowthArtifact(run, {
+      step: "research",
+      role: "Researcher",
+      content: typedArtifact("claims"),
+      provider: "eclipse-ai-hub",
+      model: "selected-model",
+    })).toThrow("growth.research.v2");
+  });
+
+  it("keeps Evidence Cards optional and validates claim bindings before execution", () => {
+    const legacy = createGrowthRunPayload({ ...INPUT, evidenceCards: undefined }, "chat:legacy", {
+      provider: "eclipse-ai-hub",
+      model: "auto/best-chat",
+    });
+    expect(legacy.input.evidenceCards).toBeUndefined();
+
+    expect(() => createGrowthRunPayload({
+      ...INPUT,
+      evidenceCards: [INPUT.evidenceCards[0], INPUT.evidenceCards[0]],
+    }, "chat:duplicate", { provider: "eclipse-ai-hub", model: "auto/best-chat" })).toThrow("уникальным");
+    expect(() => createGrowthRunPayload({
+      ...INPUT,
+      evidenceCards: [{ ...INPUT.evidenceCards[0], sourceUrl: "https://outside.example/source" }],
+    }, "chat:outside", { provider: "eclipse-ai-hub", model: "auto/best-chat" })).toThrow("входить в sourceUrls");
+    expect(() => createGrowthRunPayload({
+      ...INPUT,
+      evidenceCards: [{ ...INPUT.evidenceCards[0], sourceUrl: null }],
+    }, "chat:missing-source", { provider: "eclipse-ai-hub", model: "auto/best-chat" })).toThrow("требует sourceUrl");
   });
 });

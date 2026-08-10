@@ -19,6 +19,13 @@ const identifierSchema = z
   .max(128)
   .regex(/^[a-zA-Z0-9][a-zA-Z0-9._:-]*$/);
 
+const evidenceCardIdSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(64)
+  .regex(/^[a-zA-Z0-9][a-zA-Z0-9._:-]*$/);
+
 function boundedText(min: number, max: number) {
   return z
     .string()
@@ -62,6 +69,16 @@ const sourceApprovalSchema = z
   })
   .strict();
 
+const evidenceCardSchema = z
+  .object({
+    id: evidenceCardIdSchema,
+    claim: boundedText(5, 500),
+    state: z.enum(["verified", "hypothesis", "planned", "unknown", "rejected"]),
+    sourceUrl: httpsUrlSchema.nullable(),
+    evidenceBoundary: boundedText(5, 1_000),
+  })
+  .strict();
+
 export const growthInputSchema = z
   .object({
     releaseName: boundedText(3, 120),
@@ -70,8 +87,58 @@ export const growthInputSchema = z
     channel: z.enum(["telegram", "linkedin", "blog"]),
     sourceUrls: z.array(httpsUrlSchema).min(1).max(8).transform((urls) => [...new Set(urls)]),
     evidenceNotes: boundedText(20, 12_000),
+    evidenceCards: z.array(evidenceCardSchema).min(1).max(20).optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((input, context) => {
+    if (!input.evidenceCards) return;
+    const sourceUrls = new Set(input.sourceUrls);
+    const ids = new Set<string>();
+    input.evidenceCards.forEach((card, index) => {
+      if (ids.has(card.id)) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["evidenceCards", index, "id"],
+          message: "Evidence Card id должен быть уникальным",
+        });
+      }
+      ids.add(card.id);
+      if (card.sourceUrl && !sourceUrls.has(card.sourceUrl)) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["evidenceCards", index, "sourceUrl"],
+          message: "Источник Evidence Card должен входить в sourceUrls",
+        });
+      }
+      if (card.state === "verified" && !card.sourceUrl) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["evidenceCards", index, "sourceUrl"],
+          message: "Verified Evidence Card требует sourceUrl",
+        });
+      }
+    });
+  });
+
+function validateExecutedArtifactContent(
+  content: string,
+  step: typeof GROWTH_STEP_DEFINITIONS[number]["step"],
+  usesEvidenceCards: boolean,
+): string {
+  const normalized = boundedText(40, 16_000).parse(content);
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(normalized);
+  } catch {
+    throw new Error("AI Hub вернул Growth artifact вне typed JSON contract");
+  }
+  const expected = `growth.${step}.${usesEvidenceCards && ["research", "claims"].includes(step) ? "v2" : "v1"}`;
+  const schemaVersion = z.object({ schemaVersion: z.literal(expected) }).passthrough().safeParse(parsed);
+  if (!schemaVersion.success) {
+    throw new Error(`AI Hub вернул artifact вне ожидаемой schema ${expected}`);
+  }
+  return normalized;
+}
 
 const growthRunSchema = z
   .object({
@@ -251,10 +318,15 @@ export function appendGrowthArtifact(
     throw new Error("AI Hub вернул шаг вне очереди Growth OS");
   }
   const timestamp = now.toISOString();
+  const content = validateExecutedArtifactContent(
+    result.content,
+    expected.step,
+    Boolean(run.input.evidenceCards?.length),
+  );
   const artifacts = [...run.artifacts, {
     step: expected.step,
     role: expected.role,
-    content: result.content,
+    content,
     createdAt: timestamp,
   }];
   return growthRunSchema.parse({

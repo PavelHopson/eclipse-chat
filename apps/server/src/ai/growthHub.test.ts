@@ -10,6 +10,13 @@ const RUN = createGrowthRunPayload({
   channel: "telegram",
   sourceUrls: ["https://example.com/release"],
   evidenceNotes: "Источник проверяется человеком и передаётся модели только как недоверенные данные.",
+  evidenceCards: [{
+    id: "EF-001",
+    claim: "The bounded Growth gateway exists.",
+    state: "verified",
+    sourceUrl: "https://example.com/release",
+    evidenceBoundary: "Источник подтверждает существование, но не customer outcomes.",
+  }],
 }, "chat:run-1", { provider: "eclipse-ai-hub", model: "auto/best-chat" });
 
 describe("Growth AI Hub client", () => {
@@ -26,12 +33,18 @@ describe("Growth AI Hub client", () => {
       expect(new Headers(init?.headers).get("Authorization")).toBe(`Bearer ${TOKEN}`);
       const body = JSON.parse(String(init?.body));
       expect(body).toMatchObject({ schemaVersion: "growth.execute.v1", step: "research" });
+      expect(body.run.input.evidenceCards).toEqual(RUN.input.evidenceCards);
       expect(body.run).not.toHaveProperty("providerToken");
       return new Response(JSON.stringify({
         schemaVersion: "growth.execute.result.v1",
         step: "research",
         role: "Researcher",
-        content: "Проверяемый результат роли с достаточной длиной и без внешних действий.",
+        content: JSON.stringify({
+          schemaVersion: "growth.research.v2",
+          verifiedFacts: [],
+          hypotheses: [],
+          unknowns: [{ question: "Есть ли спрос?", whyItMatters: "Спрос пока не измерен." }],
+        }),
         provider: "eclipse-ai-hub",
         model: "selected-model",
         usage: { promptTokens: 100, completionTokens: 20 },

@@ -17,6 +17,13 @@ export type GrowthRunPayload = {
     channel: "telegram" | "linkedin" | "blog";
     sourceUrls: string[];
     evidenceNotes: string;
+    evidenceCards?: Array<{
+      id: string;
+      claim: string;
+      state: "verified" | "hypothesis" | "planned" | "unknown" | "rejected";
+      sourceUrl: string | null;
+      evidenceBoundary: string;
+    }>;
   };
   execution: {
     provider: string;
