@@ -1238,7 +1238,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   };
 
   return (
-    <div className={shellClass}>
+    <div className={shellClass} data-visual-profile="operational">
+      <div className="ec-visual-contract-signal" aria-hidden="true" />
       {/* v1.6.57 Discord-каркас — постоянный левый server-rail (desktop). */}
       {!isMobile && (
         <div className="ec-shell__rail">

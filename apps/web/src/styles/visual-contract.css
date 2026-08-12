@@ -1,0 +1,33 @@
+/* Eclipse Forge visual contract v1 — operational profile. */
+:root {
+  --ef-brand-bg: #05070A;
+  --ef-brand-surface: #0C1117;
+  --ef-brand-surface-hover: #111820;
+  --ef-brand-text: #F2F5F9;
+  --ef-brand-text-secondary: #C4CED8;
+  --ef-brand-muted: #94A3B8;
+  --ef-brand-line: #1C2536;
+  --ef-brand-signal: #6BA3FF;
+  --ef-brand-gold: #D4AF37;
+  --ef-motion-fast: 160ms;
+  --ef-motion-base: 240ms;
+  --ef-ease-interface: cubic-bezier(.22, .61, .36, 1);
+}
+
+.ec-visual-contract-signal {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 9990;
+  height: 2px;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent 0%, rgba(107,163,255,.72) 38%, rgba(212,175,55,.56) 68%, transparent 100%);
+  box-shadow: 0 1px 16px rgba(107,163,255,.16);
+}
+
+.ec-shell[data-visual-profile="operational"] :focus-visible {
+  outline-color: var(--ef-brand-signal);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ec-visual-contract-signal { box-shadow: none; }
+}

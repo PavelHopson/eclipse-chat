@@ -261,3 +261,6 @@ enums `MemberRole`/`ChannelType`/`UserStatus`) — в
 <div align="center">
 <sub>Сделано в Eclipse Forge</sub>
 </div>
+## Visual contract
+
+Eclipse Chat uses the local `eclipse-forge.visual-system.v1` snapshot in the `operational` profile: shared deep-black, signal-blue and warm-gold brand tokens with a quiet 2 px signal line. Dense communication and admin surfaces keep their existing fast motion and do not inherit cinematic cursor or parallax effects.
