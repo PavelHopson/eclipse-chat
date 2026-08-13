@@ -541,7 +541,7 @@ scope доступа, понятное действие и подтвержде�
 - Provider routing — только owned/legal keys, no grey-zone token bypass.
 - Token-saving tools (`sqz`, caveman-like compression) сначала benchmark в sandbox; не сжимать секреты, миграции, юридический текст и точные логи.
 
-**Актуальная версия (короткий индекс):** **v1.7.48** — Growth runs accept optional typed Evidence Cards with claim-level source binding; legacy runs remain compatible, and the transitive nanoid High advisory is remediated. No v4 model run is authorized.
+**Актуальная версия (короткий индекс):** **v1.7.49** — Growth Command Room includes an optional reviewed Evidence Card editor with allowlisted provenance, safe defaults and responsive operational states. Legacy runs remain compatible; no v4 model run is authorized.
 
 **Текущая версия:** **v1.6.98** (🗄️⚡ PARTIAL-ИНДЕКС под escalation-scan (бэклог-хвост, заход через CI). Фоновой `escalation.ts` раз в час обходит `ActionItem` где `status ∈ (OPEN,IN_PROGRESS,REVIEW)`, `dueAt < now-48h`, `(escalatedAt IS NULL OR < now-7d)`, `ORDER BY dueAt ASC LIMIT 50`. Запрос **глобальный** (без serverId/channelId) → все 4 существующих индекса `ActionItem` ведут с channelId/serverId и его НЕ покрывают → был seq-scan всей таблицы каждый час. **Новый partial composite index** `ActionItem_escalation_scan_idx ON ("dueAt") WHERE status IN (OPEN,IN_PROGRESS,REVIEW) AND dueAt IS NOT NULL` (raw-миграция `20260625120000_add_escalation_partial_index`): индексирует только кандидатов эскалации (крошечная доля таблицы — закрытые DONE и задачи без дедлайна исключены); ведущая `dueAt` → один forward index-scan покрывает и `dueAt < X`, и `ORDER BY dueAt ASC LIMIT 50` без сортировки, рано останавливается. **Prisma не выражает WHERE-индексы** → raw SQL; `migrate deploy` (deploy.sh [4/10]) применяет как есть, `prisma generate` индексы не читает, drift-проверок (`migrate dev`) в проекте нет (прод=migrate deploy, локальной БД нет). schema.prisma — doc-comment у `ActionItem` фиксирует существование индекса («не чинить как drift»). **temp-channel scan (`tempChannels.ts`) НЕ трогал** — `Channel` уже имеет `@@index([expiresAt])`, а `WHERE expiresAt < now` = чистый range-scan по нему (NULL'ы сортируются последними, не читаются); partial там лишь дублировал бы индекс = write-amplification на крошечной таблице ради ~нуля. Version 1.6.97→1.6.98 (4 точки). Verify: server `tsc --noEmit` PASS, web build PASS; миграция применится на проде при деплое (`migrate deploy`). **Бэклог-остаток:** виртуализация ленты сообщений (npm-dep + риск-рефактор скролла) — единственный крупный хвост.)
 
@@ -8137,3 +8137,11 @@ _Updated 2026-05-11 — переписано в рамках Step 0 (docs sync) 
 - [x] Add a non-interactive brand signal line without ambient loops around messages, forms, tables or incidents.
 - [x] Keep existing VOID/SOLAR behavior, per-server accents, focus states and reduced-motion rules intact.
 - [x] Pass workspace typecheck and production build; dependency audit reports zero vulnerabilities.
+
+## Growth Evidence Card editor — v1.7.49 (2026-08-13)
+
+- [x] Add optional claim-level cards to the Growth draft form with `hypothesis` as the safe default.
+- [x] Require an allowlisted HTTPS source for `verified` claims and show an inline error when provenance becomes invalid.
+- [x] Keep card identifiers and provenance inside the draft; expose no OAuth, publication, payment or external-action path.
+- [x] Add explicit two-step removal, empty/disabled/error states and a compact saved-run summary.
+- [x] Complete browser QA at 1280 px and 390 px with no horizontal overflow; keep v4 execution behind a separate owner gate.

@@ -10,6 +10,7 @@ import {
 import { hasPermission } from "../../lib/memberRoles";
 import { DeckReviewRoom } from "./DeckReviewRoom";
 import { BuilderReviewRoom } from "./BuilderReviewRoom";
+import { EvidenceCardEditor, EvidenceCardSummary } from "./EvidenceCardEditor";
 
 type AgentOfficeProps = {
   serverId: string | null;
@@ -88,6 +89,19 @@ function GrowthCommandRoom({ serverId, serverName, currentRole }: AgentOfficePro
   const pendingCount = runs.filter((item) => item.reviewStatus === "PENDING" && item.run.status === "ready_for_approval").length;
   const nextStep = selected ? STEP_ORDER[selected.run.artifacts.length] ?? null : null;
   const isExecuting = Boolean(selected && (selected.executionState === "RUNNING" || executingId === selected.id));
+  const sourceOptions = useMemo(() => {
+    const normalized = sourceText.split(/\r?\n/).map((item) => item.trim()).filter(Boolean).flatMap((value) => {
+      try {
+        const url = new URL(value);
+        if (url.protocol !== "https:" || url.username || url.password) return [];
+        url.hash = "";
+        return [url.toString()];
+      } catch {
+        return [];
+      }
+    });
+    return [...new Set(normalized)];
+  }, [sourceText]);
 
   useEffect(() => {
     if (!selectedId && runs[0]) setSelectedId(runs[0].id);
@@ -143,6 +157,14 @@ function GrowthCommandRoom({ serverId, serverName, currentRole }: AgentOfficePro
       setLocalError("Используйте только полные HTTPS-ссылки без логина и пароля.");
       return;
     }
+    const invalidCard = input.evidenceCards?.find((card) =>
+      (card.state === "verified" && !card.sourceUrl)
+      || (card.sourceUrl !== null && !sourceOptions.includes(card.sourceUrl)),
+    );
+    if (invalidCard) {
+      setLocalError(`Проверьте источник Evidence Card ${invalidCard.id}.`);
+      return;
+    }
     const created = await createRun({ ...input, sourceUrls });
     if (created) {
       setSelectedId(created.id);
@@ -187,6 +209,7 @@ function GrowthCommandRoom({ serverId, serverName, currentRole }: AgentOfficePro
             <label><span>Канал</span><select value={input.channel} onChange={(event) => setInput({ ...input, channel: event.target.value as GrowthRunInput["channel"] })}><option value="telegram">Telegram</option><option value="linkedin">LinkedIn</option><option value="blog">Блог</option></select></label>
             <label><span>Официальные ссылки</span><textarea required maxLength={16384} value={sourceText} placeholder={"До 8 HTTPS-ссылок, по одной на строку"} onChange={(event) => setSourceText(event.target.value)} /></label>
             <label className="ec-growth-create__wide"><span>Факты и доказательства</span><textarea required minLength={20} maxLength={12000} value={input.evidenceNotes} placeholder="Что проверено: тесты, цифры, ограничения, ссылки на релиз" onChange={(event) => setInput({ ...input, evidenceNotes: event.target.value })} /></label>
+            <div className="ec-growth-create__wide"><EvidenceCardEditor cards={input.evidenceCards ?? []} sourceUrls={sourceOptions} onChange={(evidenceCards) => setInput({ ...input, evidenceCards: evidenceCards.length ? evidenceCards : undefined })} /></div>
           </div>
           <div className="ec-growth-create__actions"><p>Сначала будет доступен только Researcher. Каждый следующий этап вы запускаете сами.</p><button type="submit" className="ec-btn ec-btn--primary" disabled={creating}>{creating ? "Создаём…" : "Создать черновик"}</button></div>
         </form>
@@ -211,7 +234,7 @@ function GrowthCommandRoom({ serverId, serverName, currentRole }: AgentOfficePro
               <section className="ec-growth-next" aria-live="polite"><div><p className="ec-agent-office__section-label">Следующий этап · {selected.run.artifacts.length + 1} из 5</p><h2>{STEP_LABELS[nextStep].action}</h2><p>{STEP_LABELS[nextStep].role} получит исходные данные и уже готовые этапы. Результат сохранится только внутри этого материала.</p></div><div className="ec-growth-next__actions">{isExecuting ? <><span className="ec-growth-running"><i />{STEP_LABELS[selected.activeStep ?? nextStep].role} работает…</span><button type="button" className="ec-btn ec-btn--danger" disabled={cancellingId === selected.id} onClick={() => void cancelStep(selected.id)}>{cancellingId === selected.id ? "Останавливаем…" : "Остановить"}</button></> : <><small>{policy?.budget.remaining ?? 0} запросов осталось сегодня</small><button type="button" className="ec-btn ec-btn--primary" disabled={!canCreate || !policy?.executionEnabled || (policy?.budget.remaining ?? 0) < 1} onClick={() => void executeNext(selected.id, selected.version)}>{policy?.executionEnabled ? STEP_LABELS[nextStep].action : "Executor не настроен"}</button></>}</div></section>
             )}
 
-            <section className="ec-growth-evidence" aria-labelledby="growth-evidence-title"><div className="ec-growth-panel-head"><div><p className="ec-agent-office__section-label">Evidence</p><h2 id="growth-evidence-title">Что проверить</h2></div><span>{selected.run.input.sourceUrls.length} ссылок</span></div><p>{selected.run.input.evidenceNotes}</p><ul>{selected.run.input.sourceUrls.map((url) => <li key={url}><a href={url} target="_blank" rel="noopener noreferrer">{new URL(url).hostname}<span>Открыть источник</span></a></li>)}</ul></section>
+            <section className="ec-growth-evidence" aria-labelledby="growth-evidence-title"><div className="ec-growth-panel-head"><div><p className="ec-agent-office__section-label">Evidence</p><h2 id="growth-evidence-title">Что проверить</h2></div><span>{selected.run.input.evidenceCards?.length ?? 0} карточек · {selected.run.input.sourceUrls.length} ссылок</span></div><p>{selected.run.input.evidenceNotes}</p><EvidenceCardSummary cards={selected.run.input.evidenceCards ?? []} /><ul>{selected.run.input.sourceUrls.map((url) => <li key={url}><a href={url} target="_blank" rel="noopener noreferrer">{new URL(url).hostname}<span>Открыть источник</span></a></li>)}</ul></section>
 
             <section className="ec-growth-artifacts" aria-labelledby="growth-artifacts-title"><div className="ec-growth-panel-head"><div><p className="ec-agent-office__section-label">Run history</p><h2 id="growth-artifacts-title">Результаты ролей</h2></div><span>{selected.run.artifacts.length} / 5</span></div>{selected.run.artifacts.length === 0 ? <div className="ec-growth-artifacts__empty">Здесь появится результат Researcher после первого запуска.</div> : selected.run.artifacts.map((artifact) => <details key={artifact.step} open={artifact.step === selected.run.artifacts.at(-1)?.step}><summary><span>{artifact.role}</span><strong>{STEP_LABELS[artifact.step].result}</strong></summary><div>{artifact.content}</div></details>)}</section>
           </section>

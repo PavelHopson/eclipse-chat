@@ -44,8 +44,10 @@ existing record; reusing it with different content returns `409`.
   must use `growth.research.v2` / `growth.claims.v2`; other roles remain v1. Chat rechecks the expected
   schema marker before storing a direct-execution artifact. Historical completed prose imports remain readable.
 
-This release adds server/API compatibility only. The existing create form still produces legacy runs without
-cards; a reviewed Evidence Card editor is a separate UX slice. No v4 model run is implied by this contract.
+The create form exposes an optional reviewed Evidence Card editor. New cards default to `hypothesis`, verified
+cards require an allowlisted source, and removing a card requires an explicit second action. The saved run view
+shows claim, state, boundary and source provenance. Legacy runs without cards remain readable. No v4 model run is
+implied by this contract.
 
 ## Access and data boundary
 
