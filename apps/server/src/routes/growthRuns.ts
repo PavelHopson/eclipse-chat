@@ -17,6 +17,7 @@ import {
 import { consumeGrowthBudget, getGrowthBudget } from "../lib/growthBudget.js";
 import { executeGrowthHubStep, getGrowthHubPolicy, GrowthHubError } from "../ai/growthHub.js";
 import { hasPermission } from "../lib/permissions.js";
+import { GrowthStepLeaseRegistry } from "../lib/growthStepLease.js";
 import { ensureServerActive } from "../lib/serverGating.js";
 import { recordAudit } from "../security/audit.js";
 import type { MemberRole } from "./servers.js";
@@ -69,7 +70,7 @@ const growthRunInclude = {
 
 type GrowthRunRow = Prisma.GrowthRunGetPayload<{ include: typeof growthRunInclude }>;
 
-const activeGrowthSteps = new Map<string, { userId: string; step: string; controller: AbortController }>();
+const activeGrowthSteps = new GrowthStepLeaseRegistry();
 
 function growthRunView(row: GrowthRunRow) {
   const active = activeGrowthSteps.get(row.id);
@@ -242,7 +243,7 @@ export function registerGrowthRunRoutes(app: FastifyInstance) {
       const run = parseStoredGrowthRun(row.payload);
       const next = GROWTH_STEP_DEFINITIONS[run.artifacts.length];
       if (!next) return reply.status(409).send({ error: "Все пять ролей уже завершены" });
-      if (activeGrowthSteps.has(runId)) return reply.status(409).send({ error: "Этот шаг уже выполняется" });
+      if (activeGrowthSteps.get(runId)) return reply.status(409).send({ error: "Этот шаг уже выполняется" });
 
       const hubPolicy = getGrowthHubPolicy();
       if (!hubPolicy.configured) {
@@ -251,7 +252,9 @@ export function registerGrowthRunRoutes(app: FastifyInstance) {
       const controller = new AbortController();
       // Reserve the run synchronously before the first await below. This prevents
       // two clicks from starting duplicate provider requests in the same server process.
-      activeGrowthSteps.set(runId, { userId, step: next.step, controller });
+      if (!activeGrowthSteps.reserve(runId, { userId, step: next.step, controller })) {
+        return reply.status(409).send({ error: "Этот шаг уже выполняется" });
+      }
       try {
         const budget = await consumeGrowthBudget(userId, hubPolicy.dailyRequestLimit);
         if (!budget) {
@@ -290,7 +293,7 @@ export function registerGrowthRunRoutes(app: FastifyInstance) {
             completionTokens: result.usage.completionTokens,
           },
         });
-        activeGrowthSteps.delete(runId);
+        activeGrowthSteps.release(runId, controller);
         return { run: growthRunView(updated), budget, idempotent: false };
       } catch (error) {
         if (error instanceof GrowthHubError) {
@@ -303,7 +306,7 @@ export function registerGrowthRunRoutes(app: FastifyInstance) {
         }
         throw error;
       } finally {
-        if (activeGrowthSteps.get(runId)?.controller === controller) activeGrowthSteps.delete(runId);
+        activeGrowthSteps.release(runId, controller);
       }
     },
   );

@@ -60,6 +60,8 @@ implied by this contract.
   and credentials are not.
 - Chat stores only a root-owned scoped AI Hub service token, never an upstream provider key. It performs no OAuth
   action, publication, outreach, Ads API request, payment or production change in this slice.
+- Negative regression tests cover concurrent daily-budget exhaustion, duplicate in-process step leases,
+  cross-workspace mutation lookups, missing approval permission, absent human confirmation and stale review versions.
 
 ## Endpoints
 
