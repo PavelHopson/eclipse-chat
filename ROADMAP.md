@@ -5,6 +5,15 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
+## Spec Gate independent review (2026-08-13)
+
+- [x] Add a tenant-scoped Spec Review workspace to Agent Office.
+- [x] Validate exact eclipse.spec-gate.v1 imports and reset the source approval before local review.
+- [x] Require server membership plus TASK_CREATE or TASK_APPROVE, optimistic versioning,
+      idempotency, per-operator rate limits and a bounded pending queue.
+- [x] Store metadata-only audit events; never persist secrets in audit metadata.
+- [x] Keep execution, tools, GitHub, deployment, publication, payments and external actions unavailable.
+
 ## Eclipse Command Fabric
 
 Цель следующего продуктового слоя: связать communication, execution, memory,

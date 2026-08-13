@@ -211,6 +211,8 @@ model User {
   reviewedDeckReviews        DeckReview[]               @relation("DeckReviewReviewer")
   importedBuilderReviews     BuilderReview[]            @relation("BuilderReviewImporter")
   reviewedBuilderReviews     BuilderReview[]            @relation("BuilderReviewReviewer")
+  importedSpecGateReviews    SpecGateReview[]           @relation("SpecGateReviewImporter")
+  reviewedSpecGateReviews    SpecGateReview[]           @relation("SpecGateReviewReviewer")
   growthAiUsage              GrowthAiUsage[]
 }
 
@@ -432,6 +434,8 @@ enum AuditEventType {
   DECK_REVIEW_DECIDED
   BUILDER_REVIEW_IMPORTED
   BUILDER_REVIEW_DECIDED
+  SPEC_GATE_REVIEW_IMPORTED
+  SPEC_GATE_REVIEW_DECIDED
   DECK_PPTX_RENDERED
   GROWTH_RUN_CREATED
   GROWTH_STEP_EXECUTED
@@ -558,6 +562,34 @@ model BuilderReview {
   updatedAt          DateTime              @updatedAt
 
   @@unique([serverId, sourceProjectId])
+  @@unique([serverId, idempotencyKey])
+  @@index([serverId, reviewStatus, createdAt])
+  @@index([serverId, importedByUserId, reviewStatus])
+}
+
+/// Tenant-scoped copy of an approved eclipse.spec-gate.v1 artifact. Source
+/// approval is reset and implementation remains blocked after Chat approval.
+model SpecGateReview {
+  id                 String                @id @default(cuid())
+  sourceSpecId       String
+  serverId           String
+  server             Server                @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  importedByUserId   String?
+  importedBy         User?                 @relation("SpecGateReviewImporter", fields: [importedByUserId], references: [id], onDelete: SetNull)
+  schemaVersion      String
+  payload            String
+  payloadHash        String
+  idempotencyKey     String
+  reviewStatus       GrowthRunReviewStatus @default(PENDING)
+  reviewNote         String?
+  reviewedAt         DateTime?
+  reviewedByUserId   String?
+  reviewedBy         User?                 @relation("SpecGateReviewReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  version            Int                   @default(1)
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+
+  @@unique([serverId, sourceSpecId])
   @@unique([serverId, idempotencyKey])
   @@index([serverId, reviewStatus, createdAt])
   @@index([serverId, importedByUserId, reviewStatus])
@@ -926,6 +958,7 @@ model Server {
   growthRuns          GrowthRun[]
   deckReviews         DeckReview[]
   builderReviews      BuilderReview[]
+  specGateReviews     SpecGateReview[]
 }
 
 /// v1.6.99 — одноразовые / истекающие invite-коды (privacy slice B).

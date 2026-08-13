@@ -264,3 +264,14 @@ enums `MemberRole`/`ChannelType`/`UserStatus`) — в
 ## Visual contract
 
 Eclipse Chat uses the local `eclipse-forge.visual-system.v1` snapshot in the `operational` profile: shared deep-black, signal-blue and warm-gold brand tokens with a quiet 2 px signal line. Dense communication and admin surfaces keep their existing fast motion and do not inherit cinematic cursor or parallax effects.
+
+## Spec Review в Agent Office
+
+В Agent Office появился отдельный workspace **Spec Review**. Оператор импортирует только
+утверждённый eclipse.spec-gate.v1 из AI Hub. Сервер повторно валидирует exact schema, размер,
+порядок стадий, безопасные evidence paths и запрет внешних действий. Upstream approval
+намеренно сбрасывается: участник workspace с TASK_APPROVE отдельно подтверждает scope,
+риски и rollback.
+
+Импорт и review tenant-scoped, имеют rate limit, idempotency key, optimistic version и
+metadata-only audit. Комната не запускает агента, shell, GitHub, deploy, публикацию или платёж.

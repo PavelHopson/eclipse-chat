@@ -822,8 +822,12 @@
   .ec-deck-review { grid-column: 1 / -1; grid-template-columns: repeat(2, minmax(0, 1fr)); border-top: 1px solid var(--ec-border-subtle); border-left: 0; }
 }
 @media (max-width: 760px) {
-  .ec-agent-office-switcher { padding: var(--ec-space-2) var(--ec-space-4); }
-  .ec-agent-office-switcher button { flex: 1; }
+  .ec-agent-office-switcher {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: var(--ec-space-2) var(--ec-space-4);
+  }
+  .ec-agent-office-switcher button { width: 100%; }
   .ec-deck-workspace { grid-template-columns: 1fr; }
   .ec-deck-list { max-height: 260px; overflow-y: auto; border-right: 0; border-bottom: 1px solid var(--ec-border-subtle); }
   .ec-deck-review { grid-template-columns: 1fr; }
