@@ -5,6 +5,17 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
+## Safe Voice Ops handoff — v1.7.51 (2026-08-20)
+
+- [x] Добавить в Agent Office отдельный Voice Command Room с видимыми состояниями
+      microphone, speaker, STT/TTS и Sentinel bridge; не маскировать browser Web Speech под local voice.
+- [x] Ограничить первый slice фиксированным read-only allowlist без network, shell,
+      filesystem, provider calls, secrets и скрытой записи в Markdown memory.
+- [x] Провести каждую команду через plan -> diff -> approval -> one-shot execute -> receipt;
+      kill switch включён по умолчанию и автоматически возвращается после receipt.
+- [x] Оставить Sentinel bridge disconnected до отдельного authenticated localhost contract,
+      hardware/dependency audit и явного permission flow.
+
 ## Operational design and delivery QA (2026-08-19)
 
 - [x] Убраны декоративные бесконечные pulse/glint/halo-анимации с operational surface;
@@ -565,7 +576,7 @@ scope доступа, понятное действие и подтвержде�
 - Provider routing — только owned/legal keys, no grey-zone token bypass.
 - Token-saving tools (`sqz`, caveman-like compression) сначала benchmark в sandbox; не сжимать секреты, миграции, юридический текст и точные логи.
 
-**Актуальная версия (короткий индекс):** **v1.7.50** — Growth runtime invariants have focused negative tests for budget races, duplicate step execution, tenant isolation and human approval. No permissions, external actions or v4 execution were added.
+**Актуальная версия (короткий индекс):** **v1.7.51** — Voice Ops adds a fail-closed, browser-local read-only command room with explicit plan, diff, approval, one-shot receipt and no active Sentinel bridge or voice device access.
 
 **Текущая версия:** **v1.6.98** (🗄️⚡ PARTIAL-ИНДЕКС под escalation-scan (бэклог-хвост, заход через CI). Фоновой `escalation.ts` раз в час обходит `ActionItem` где `status ∈ (OPEN,IN_PROGRESS,REVIEW)`, `dueAt < now-48h`, `(escalatedAt IS NULL OR < now-7d)`, `ORDER BY dueAt ASC LIMIT 50`. Запрос **глобальный** (без serverId/channelId) → все 4 существующих индекса `ActionItem` ведут с channelId/serverId и его НЕ покрывают → был seq-scan всей таблицы каждый час. **Новый partial composite index** `ActionItem_escalation_scan_idx ON ("dueAt") WHERE status IN (OPEN,IN_PROGRESS,REVIEW) AND dueAt IS NOT NULL` (raw-миграция `20260625120000_add_escalation_partial_index`): индексирует только кандидатов эскалации (крошечная доля таблицы — закрытые DONE и задачи без дедлайна исключены); ведущая `dueAt` → один forward index-scan покрывает и `dueAt < X`, и `ORDER BY dueAt ASC LIMIT 50` без сортировки, рано останавливается. **Prisma не выражает WHERE-индексы** → raw SQL; `migrate deploy` (deploy.sh [4/10]) применяет как есть, `prisma generate` индексы не читает, drift-проверок (`migrate dev`) в проекте нет (прод=migrate deploy, локальной БД нет). schema.prisma — doc-comment у `ActionItem` фиксирует существование индекса («не чинить как drift»). **temp-channel scan (`tempChannels.ts`) НЕ трогал** — `Channel` уже имеет `@@index([expiresAt])`, а `WHERE expiresAt < now` = чистый range-scan по нему (NULL'ы сортируются последними, не читаются); partial там лишь дублировал бы индекс = write-amplification на крошечной таблице ради ~нуля. Version 1.6.97→1.6.98 (4 точки). Verify: server `tsc --noEmit` PASS, web build PASS; миграция применится на проде при деплое (`migrate deploy`). **Бэклог-остаток:** виртуализация ленты сообщений (npm-dep + риск-рефактор скролла) — единственный крупный хвост.)
 
