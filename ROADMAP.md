@@ -5,6 +5,21 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
+## Operational design and delivery QA (2026-08-19)
+
+- [x] Убраны декоративные бесконечные pulse/glint/halo-анимации с operational surface;
+      status и feedback motion сохранены, reduced motion поддерживается.
+- [x] Ранний theme/density/focus bootstrap вынесен из inline script; Nginx contract получил
+      gzip, immutable cache для assets и строгий app CSP без `unsafe-inline` для scripts.
+- [x] Upload surface изолирован отдельным CSP sandbox, `nosniff`, CORP и deny framing как
+      в Nginx, так и в Fastify, чтобы загруженный SVG не выполнялся в app origin.
+- [x] Пройдены typecheck, 8/8 security contract tests и полный production build.
+- [x] Локальный Edge QA: desktop 1440px и точный mobile viewport 390px без horizontal overflow;
+      primary login flow читается за три секунды. Production deploy и runtime verification не выполнялись.
+- [x] Закрыт `deepmerge-ts <8` stack-exhaustion advisory через exact 8.0.0 root pin + override;
+      root Prisma 6.19.3 pin обходит npm workspace override bug без смены ORM API. Фактическое дерево
+      использует одну patched-копию, полный `npm audit --audit-level=high` сообщает 0 vulnerabilities.
+
 ## Spec Gate independent review (2026-08-13)
 
 - [x] Add a tenant-scoped Spec Review workspace to Agent Office.

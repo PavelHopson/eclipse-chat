@@ -157,6 +157,18 @@ await app.register(fastifyStatic, {
   decorateReply: false,
   cacheControl: true,
   maxAge: "1h",
+  setHeaders: (reply) => {
+    // Uploads are user-controlled. A restrictive document policy keeps a
+    // directly opened SVG from executing script in the application origin.
+    reply.header(
+      "Content-Security-Policy",
+      "default-src 'none'; style-src 'unsafe-inline'; img-src data:; sandbox; frame-ancestors 'none'",
+    );
+    reply.header("Cross-Origin-Resource-Policy", "same-origin");
+    reply.header("X-Content-Type-Options", "nosniff");
+    reply.header("Referrer-Policy", "strict-origin-when-cross-origin");
+    reply.header("X-Frame-Options", "DENY");
+  },
 });
 
 app.get("/health", async () => ({ ok: true, service: "eclipse-chat-server" }));

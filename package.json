@@ -9,13 +9,20 @@
     "apps/desktop",
     "packages/*"
   ],
+  "devDependencies": {
+    "deepmerge-ts": "8.0.0",
+    "prisma": "6.19.3"
+  },
+  "overrides": {
+    "deepmerge-ts": "8.0.0"
+  },
   "scripts": {
     "typecheck": "npm run typecheck --workspaces --if-present",
     "dev:server": "npm run dev -w @eclipse-chat/server",
     "dev:web": "npm run dev -w @eclipse-chat/web",
     "build": "npm run build --workspaces --if-present",
     "security:profile": "node deploy/scripts/security-profile.mjs",
-    "security:profile:test": "node --test deploy/scripts/security-profile.test.mjs",
+    "security:profile:test": "node --test deploy/scripts/security-profile.test.mjs deploy/scripts/nginx-contract.test.mjs",
     "db:push": "npm run db:push -w @eclipse-chat/server",
     "db:migrate": "npm run db:migrate -w @eclipse-chat/server",
     "db:migrate:deploy": "npm run db:migrate:deploy -w @eclipse-chat/server",
