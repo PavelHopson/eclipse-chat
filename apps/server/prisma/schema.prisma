@@ -213,6 +213,8 @@ model User {
   reviewedBuilderReviews     BuilderReview[]            @relation("BuilderReviewReviewer")
   importedSpecGateReviews    SpecGateReview[]           @relation("SpecGateReviewImporter")
   reviewedSpecGateReviews    SpecGateReview[]           @relation("SpecGateReviewReviewer")
+  importedAutomationAudits   AutomationAuditReview[]    @relation("AutomationAuditImporter")
+  reviewedAutomationAudits   AutomationAuditReview[]    @relation("AutomationAuditReviewer")
   growthAiUsage              GrowthAiUsage[]
 }
 
@@ -436,6 +438,8 @@ enum AuditEventType {
   BUILDER_REVIEW_DECIDED
   SPEC_GATE_REVIEW_IMPORTED
   SPEC_GATE_REVIEW_DECIDED
+  AUTOMATION_AUDIT_IMPORTED
+  AUTOMATION_AUDIT_DECIDED
   DECK_PPTX_RENDERED
   GROWTH_RUN_CREATED
   GROWTH_STEP_EXECUTED
@@ -605,6 +609,34 @@ model GrowthAiUsage {
 
   @@id([userId, day])
   @@index([day])
+}
+
+/// Tenant-scoped copy of an approved eclipse.automation-audit.v1. Import
+/// resets source approval; Chat issues its own human decision receipt.
+model AutomationAuditReview {
+  id                 String                @id @default(cuid())
+  sourceAuditId      String
+  serverId           String
+  server             Server                @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  importedByUserId   String?
+  importedBy         User?                 @relation("AutomationAuditImporter", fields: [importedByUserId], references: [id], onDelete: SetNull)
+  schemaVersion      String
+  payload            String
+  payloadHash        String
+  idempotencyKey     String
+  reviewStatus       GrowthRunReviewStatus @default(PENDING)
+  reviewNote         String?
+  reviewedAt         DateTime?
+  reviewedByUserId   String?
+  reviewedBy         User?                 @relation("AutomationAuditReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  version            Int                   @default(1)
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+
+  @@unique([serverId, sourceAuditId])
+  @@unique([serverId, idempotencyKey])
+  @@index([serverId, reviewStatus, createdAt])
+  @@index([serverId, importedByUserId, reviewStatus])
 }
 
 model RefreshToken {
@@ -959,6 +991,7 @@ model Server {
   deckReviews         DeckReview[]
   builderReviews      BuilderReview[]
   specGateReviews     SpecGateReview[]
+  automationAudits    AutomationAuditReview[]
 }
 
 /// v1.6.99 — одноразовые / истекающие invite-коды (privacy slice B).

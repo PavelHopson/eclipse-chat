@@ -275,3 +275,13 @@ Eclipse Chat uses the local `eclipse-forge.visual-system.v1` snapshot in the `op
 
 Импорт и review tenant-scoped, имеют rate limit, idempotency key, optimistic version и
 metadata-only audit. Комната не запускает агента, shell, GitHub, deploy, публикацию или платёж.
+
+## Automation Audit в Agent Office
+
+Workspace **Automation Audit** принимает утверждённый `eclipse.automation-audit.v1` из AI Hub,
+повторно проверяет intake, read-only process map, proposal, SaaS validation evidence и claim →
+evidence bindings. Source approval и receipt сбрасываются при импорте: локальный receipt появляется
+только после отдельного решения участника с `TASK_APPROVE`.
+
+Даже утверждённый audit не подключает OAuth, не отправляет сообщения, не проводит платежи и не
+изменяет production. Receipt подтверждает только human review read-only pilot proposal.

@@ -16,6 +16,19 @@
 - [x] Оставить Sentinel bridge disconnected до отдельного authenticated localhost contract,
       hardware/dependency audit и явного permission flow.
 
+## B2B Automation Audit review (2026-08-20)
+
+- [x] Добавить exact-schema adapter для `eclipse.automation-audit.v1`; принимать только
+      source-approved JSON и сбрасывать source approval/receipt при импорте.
+- [x] Хранить audit tenant-scoped, ограничить импорт membership/RBAC, body/rate/pending
+      limits, idempotency и unique constraints; решение защищено optimistic version.
+- [x] Добавить в Agent Office состояния loading/empty/error/review/success, read-only process
+      map, Claim Auditor, SaaS validation evidence и отдельный Chat human gate.
+- [x] Выдавать Chat receipt только после local approval; receipt прямо сообщает, что OAuth,
+      отправки, платежи и production-действия не выполнялись.
+- [x] Перегенерировать Prisma client после точечного восстановления generated entry files;
+      пройти полный server suite, typecheck, build, security profile и dependency audit.
+
 ## Operational design and delivery QA (2026-08-19)
 
 - [x] Убраны декоративные бесконечные pulse/glint/halo-анимации с operational surface;
