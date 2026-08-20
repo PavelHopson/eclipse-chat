@@ -873,7 +873,7 @@ export function MessageList({
                         type="button"
                         className={
                           "ec-anim-reaction-pop ec-msg-reaction" +
-                          (r.mine ? " ec-msg-reaction--mine ec-anim-reaction-mine" : "")
+                          (r.mine ? " ec-msg-reaction--mine" : "")
                         }
                         onClick={() => void onToggleReaction?.(m.id, r.emoji)}
                         title={r.mine ? "Снять реакцию" : "Поддержать"}

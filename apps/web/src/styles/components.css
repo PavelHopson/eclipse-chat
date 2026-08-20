@@ -5164,8 +5164,8 @@ input[type="radio"]:focus-visible {
 }
 .ec-msg-sticky-time:hover { color: var(--ec-accent); }
 
-/* v1.5.3 — reactions: hover scale + own-reaction continuous breath
- * (ec-anim-reaction-mine in motion.css). Counter has its own bump on change. */
+/* Reactions use tactile hover and a one-shot counter bump. Selected state is
+ * communicated by color and border without a permanent animation. */
 .ec-msg-reaction {
   display: inline-flex;
   align-items: center;
@@ -5215,9 +5215,8 @@ input[type="radio"]:focus-visible {
   user-select: none;
 }
 
-/* v1.5.4 — AI agent button. Положение в topbar между Notifications
- * и SpiderClock. Violet glow breath через .ec-anim-ai-pulse;
- * material-style ripple через перемонтированный <span> + .ec-anim-ai-ripple. */
+/* AI agent button. Operational state stays static; a one-shot material ripple
+ * confirms the explicit click. */
 .ec-ai-btn {
   position: relative;
   overflow: hidden;
@@ -12853,10 +12852,18 @@ body {
 .ec-member-row:not(.ec-member-row--offline) .ec-member-row__presence,
 .ec-dm-row.is-online .ec-avatar,
 .ec-composer-send:not(:disabled),
+.ec-anim-ai-pulse,
 .ec-anim-reaction-mine,
 .ec-dm-row__badge,
 .ec-dm-row__badge::after,
-.ec-channel-item--active::before {
+.ec-channel-item--active::before,
+.ec-incident-card--open,
+.ec-video-attachment__play,
+.ec-audio-attachment__icon,
+.ec-home-today__header::after,
+.ec-home-today__tod-dot,
+.ec-home-today__zen-ring,
+.ec-home-today__zen-check {
   animation: none !important;
 }
 

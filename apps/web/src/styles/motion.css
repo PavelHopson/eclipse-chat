@@ -1047,6 +1047,18 @@
     transition: transform var(--ec-dur-slow) var(--ec-ease-out);
   }
 }
+/* Operational profile: the signed-in application stays quiet until something
+ * changes. Brand, online and atmospheric states are still visible, but do not
+ * consume attention or battery with permanent decorative motion. */
+.ec-brand-mark,
+.ec-avatar-glow,
+.ec-anim-breathe,
+.ec-anim-levitate,
+.ec-anim-orbit-sweep,
+.ec-aurora-bg,
+.ec-scan-line::before {
+  animation: none !important;
+}
 
 /* prefers-reduced-motion: убираем все non-essential анимации.
  * Этот блок покрывает И one-shot transitions (fade/zoom/pop),

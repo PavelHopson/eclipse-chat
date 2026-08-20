@@ -1451,7 +1451,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             }}
             title="AI агент — спросить @ai в чате"
             aria-label="AI агент"
-            className="ec-icon-btn ec-ai-btn ec-anim-ai-pulse"
+            className="ec-icon-btn ec-ai-btn"
           >
             {aiRippleKey > 0 && (
               <span
