@@ -8129,9 +8129,18 @@ docker-compose.yml нет). Сюда переезжает всё что там �
 
 - [ ] **Поиск по сообщениям и серверам** — full-text search (Postgres tsvector или Meilisearch)
 - [ ] **Bots API + webhooks** — продолжение v0.10
-- [ ] **P2P передача файлов по LAN** без сервера, на базе протокола
-      [LocalSend](https://github.com/localsend/localsend) — для команд
-      в одной сети без интернета
+- [x] **P2P передача файлов по LAN · send vertical slice** без сервера, на базе протокола
+      [LocalSend](https://github.com/localsend/localsend) — для команд в одной сети без интернета.
+      Eclipse Desktop обнаруживает устройства, открывает системный выбор файлов,
+      требует явное подтверждение адресата, передаёт по HTTPS с certificate pinning,
+      показывает прогресс, поддерживает отмену и проверяет SHA-256. Пути не попадают
+      в webview, входящие выключены. Архитектура и threat model: `docs/LAN_TRANSFER.md`.
+  - [ ] Jarvis intent: открыть передачу с подготовленным экспортом Chat/Library,
+        сохранив финальный клик за пользователем.
+  - [ ] Receive mode: quarantine, preview, лимиты, anti-malware hook и отдельное
+        подтверждение; до реализации не включать.
+  - [ ] Companion/PWA share target для телефона и доверенные устройства с
+        визуальной сверкой fingerprint.
 - [ ] **Мобильный PWA** — installable, push notifications через VAPID
 - [ ] **Federation** (mатрица-стиль) — серверы между разными инстансами
       могут общаться

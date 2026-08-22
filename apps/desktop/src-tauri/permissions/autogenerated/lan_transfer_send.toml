@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-lan-transfer-send"
+description = "Enables the lan_transfer_send command without any pre-configured scope."
+commands.allow = ["lan_transfer_send"]
+
+[[permission]]
+identifier = "deny-lan-transfer-send"
+description = "Denies the lan_transfer_send command without any pre-configured scope."
+commands.deny = ["lan_transfer_send"]

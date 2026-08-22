@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-lan-transfer-pick-files"
+description = "Enables the lan_transfer_pick_files command without any pre-configured scope."
+commands.allow = ["lan_transfer_pick_files"]
+
+[[permission]]
+identifier = "deny-lan-transfer-pick-files"
+description = "Denies the lan_transfer_pick_files command without any pre-configured scope."
+commands.deny = ["lan_transfer_pick_files"]

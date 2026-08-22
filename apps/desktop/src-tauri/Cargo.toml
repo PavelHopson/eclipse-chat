@@ -1,6 +1,6 @@
 [package]
 name = "eclipse-chat-desktop"
-version = "1.0.7"
+version = "1.0.8"
 description = "Eclipse Chat desktop shell (Tauri 2)"
 authors = ["Pavel Hopson <hopsintoxin@mail.ru>"]
 edition = "2021"
@@ -33,6 +33,18 @@ tauri-plugin-autostart = "2"
 tauri-plugin-global-shortcut = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+anyhow = "1"
+bytes = "1"
+futures-util = "0.3"
+mime_guess = "2"
+pem = "4"
+rcgen = "0.14"
+rfd = "0.15"
+tokio = { version = "1", features = ["full"] }
+tokio-stream = "0.1"
+tokio-util = { version = "0.7", features = ["rt"] }
+uuid = { version = "1", features = ["v4"] }
+localsend = { version = "0.1.0", path = "vendor/localsend-core", features = ["crypto", "discovery", "http", "multicast"] }
 
 [profile.release]
 panic = "abort"

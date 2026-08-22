@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-lan-transfer-scan"
+description = "Enables the lan_transfer_scan command without any pre-configured scope."
+commands.allow = ["lan_transfer_scan"]
+
+[[permission]]
+identifier = "deny-lan-transfer-scan"
+description = "Denies the lan_transfer_scan command without any pre-configured scope."
+commands.deny = ["lan_transfer_scan"]

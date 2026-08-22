@@ -20,6 +20,9 @@
 //     это no-op, только лог)
 
 #[cfg(desktop)]
+mod lan_transfer;
+
+#[cfg(desktop)]
 use std::sync::atomic::{AtomicBool, Ordering};
 
 // Флаг «идёт реальный выход» — чтобы close-handler НЕ перехватывал закрытие,
@@ -37,6 +40,17 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_window_state::Builder::default().build());
+
+    #[cfg(desktop)]
+    let builder = builder
+        .manage(lan_transfer::LanTransferState::default())
+        .invoke_handler(tauri::generate_handler![
+            lan_transfer::lan_transfer_status,
+            lan_transfer::lan_transfer_scan,
+            lan_transfer::lan_transfer_pick_files,
+            lan_transfer::lan_transfer_send,
+            lan_transfer::lan_transfer_cancel,
+        ]);
 
     #[cfg(desktop)]
     let builder = builder.plugin(tauri_plugin_autostart::init(

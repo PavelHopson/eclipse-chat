@@ -2177,6 +2177,11 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             serverId={activeServer?.id ?? null}
             serverName={activeServer?.name ?? null}
             currentRole={currentRole}
+            onOpenLanTransfer={() => {
+              setSettingsInitialView("integrations");
+              setShowProfile(true);
+              setAgentOfficeOpen(false);
+            }}
           />
         ) : helpOpen ? (
           <HelpPanel onClose={() => setHelpOpen(false)} />

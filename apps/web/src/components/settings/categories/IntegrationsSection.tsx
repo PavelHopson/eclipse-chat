@@ -1,3 +1,5 @@
+import { LanTransferCard } from "./LanTransferCard";
+
 const DND_CONNECT_URL =
   "https://dnd.eclipse-forge.ru/#/auth/canary?from=eclipse-chat";
 
@@ -37,6 +39,8 @@ export function IntegrationsSection() {
           </a>
         </div>
       </section>
+
+      <LanTransferCard />
 
       <section className="ec-settings-card ec-settings-card--sunken">
         <div className="ec-settings-icon" aria-hidden>

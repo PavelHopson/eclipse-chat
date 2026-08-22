@@ -19,6 +19,7 @@ type AgentOfficeProps = {
   serverId: string | null;
   serverName: string | null;
   currentRole: MemberRole | null;
+  onOpenLanTransfer: () => void;
 };
 
 const REVIEW_LABELS: Record<GrowthReviewStatus, string> = {
@@ -259,6 +260,7 @@ export function AgentOffice(props: AgentOfficeProps) {
         <button type="button" data-active={workspace === "growth"} aria-pressed={workspace === "growth"} onClick={() => setWorkspace("growth")}>Growth OS</button>
         <button type="button" data-active={workspace === "audit"} aria-pressed={workspace === "audit"} onClick={() => setWorkspace("audit")}>Automation Audit</button>
         <button type="button" data-active={workspace === "voice"} aria-pressed={workspace === "voice"} onClick={() => setWorkspace("voice")}>Voice Ops</button>
+        <button type="button" aria-pressed="false" onClick={props.onOpenLanTransfer}>Передача рядом</button>
         <button type="button" data-active={workspace === "deck"} aria-pressed={workspace === "deck"} onClick={() => setWorkspace("deck")}>Deck Review</button>
         <button type="button" data-active={workspace === "builder"} aria-pressed={workspace === "builder"} onClick={() => setWorkspace("builder")}>Builder Review</button>
         <button type="button" data-active={workspace === "spec"} aria-pressed={workspace === "spec"} onClick={() => setWorkspace("spec")}>Spec Review</button>
