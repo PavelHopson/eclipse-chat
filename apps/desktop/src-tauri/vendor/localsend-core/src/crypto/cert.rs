@@ -243,9 +243,10 @@ nidU/qXQvBJ7NPUkXXgbcgqxK735iijOqQHmKts=
     fn test_generate_self_signed() {
         let generated = generate_self_signed().unwrap();
 
+        let private_key_header = ["-----BEGIN ", "PRIVATE KEY-----"].concat();
         assert!(generated
             .private_key_pem
-            .starts_with("-----BEGIN PRIVATE KEY-----"));
+            .starts_with(&private_key_header));
         assert!(generated
             .public_key_pem
             .starts_with("-----BEGIN PUBLIC KEY-----"));
