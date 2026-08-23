@@ -19,6 +19,8 @@ type AgentOfficeProps = {
   serverId: string | null;
   serverName: string | null;
   currentRole: MemberRole | null;
+  workspaces: Array<{ id: string; name: string }>;
+  onSelectWorkspace: (serverId: string) => void;
   onOpenLanTransfer: () => void;
 };
 
@@ -30,11 +32,11 @@ const REVIEW_LABELS: Record<GrowthReviewStatus, string> = {
 
 const CHANNEL_LABELS = { telegram: "Telegram", linkedin: "LinkedIn", blog: "Блог" } as const;
 const STEP_LABELS: Record<GrowthStepId, { role: string; action: string; result: string }> = {
-  research: { role: "Researcher", action: "Проверить факты", result: "Исследование" },
-  strategy: { role: "Strategist", action: "Собрать стратегию", result: "Стратегия" },
-  draft: { role: "Writer", action: "Написать черновик", result: "Черновик" },
-  claims: { role: "Claim Auditor", action: "Проверить утверждения", result: "Аудит утверждений" },
-  final: { role: "Editor", action: "Подготовить финал", result: "Финальный материал" },
+  research: { role: "Исследователь", action: "Проверить факты", result: "Исследование" },
+  strategy: { role: "Стратег", action: "Собрать стратегию", result: "Стратегия" },
+  draft: { role: "Автор", action: "Написать черновик", result: "Черновик" },
+  claims: { role: "Проверяющий фактов", action: "Проверить утверждения", result: "Аудит утверждений" },
+  final: { role: "Редактор", action: "Подготовить финал", result: "Финальный материал" },
 };
 const STEP_ORDER = Object.keys(STEP_LABELS) as GrowthStepId[];
 
@@ -122,7 +124,7 @@ function GrowthCommandRoom({ serverId, serverName, currentRole }: AgentOfficePro
     setLocalError(null);
     clearError();
     if (file.size > 96 * 1024) {
-      setLocalError("Файл больше 96 КБ. Экспорт Growth OS должен быть компактным JSON.");
+      setLocalError("Файл больше 96 КБ. Экспорт контент-команды должен быть компактным JSON.");
       return;
     }
     try {
@@ -166,7 +168,7 @@ function GrowthCommandRoom({ serverId, serverName, currentRole }: AgentOfficePro
       || (card.sourceUrl !== null && !sourceOptions.includes(card.sourceUrl)),
     );
     if (invalidCard) {
-      setLocalError(`Проверьте источник Evidence Card ${invalidCard.id}.`);
+      setLocalError(`Проверьте источник карточки доказательства ${invalidCard.id}.`);
       return;
     }
     const created = await createRun({ ...input, sourceUrls });
@@ -185,13 +187,13 @@ function GrowthCommandRoom({ serverId, serverName, currentRole }: AgentOfficePro
   };
 
   if (!serverId) {
-    return <main className="ec-agent-office ec-agent-office--centered"><section className="ec-growth-empty"><span className="ec-agent-office__mark"><CommandRoomIcon /></span><h1>Выберите пространство</h1><p>Growth Command Room хранит материалы внутри конкретной команды и не смешивает доступ между пространствами.</p></section></main>;
+    return <main className="ec-agent-office ec-agent-office--centered"><section className="ec-growth-empty"><span className="ec-agent-office__mark"><CommandRoomIcon /></span><h1>Выберите пространство</h1><p>Контент-команда хранит материалы внутри выбранного пространства и не смешивает доступ.</p></section></main>;
   }
 
   return (
     <main className="ec-agent-office" aria-labelledby="growth-room-title" aria-busy={loading}>
       <header className="ec-agent-office__header">
-        <div className="ec-agent-office__identity"><span className="ec-agent-office__mark"><CommandRoomIcon /></span><div><p className="ec-agent-office__eyebrow">{serverName ?? "Eclipse Forge"} · Agent Office</p><h1 id="growth-room-title">Growth Command Room</h1><p>Создайте материал, проведите его через пять изолированных AI-ролей и утвердите после ручной проверки.</p></div></div>
+        <div className="ec-agent-office__identity"><span className="ec-agent-office__mark"><CommandRoomIcon /></span><div><p className="ec-agent-office__eyebrow">{serverName ?? "Eclipse Forge"} · AI-офис</p><h1 id="growth-room-title">Контент-команда</h1><p>Создайте материал, проведите его через пять изолированных AI-ролей и утвердите после ручной проверки.</p></div></div>
         <div className="ec-agent-office__run-meta">
           <span className="ec-agent-office__contract">growth.run.v1</span>
           <span className="ec-agent-office__queue">{pendingCount} на проверке</span>
@@ -201,7 +203,7 @@ function GrowthCommandRoom({ serverId, serverName, currentRole }: AgentOfficePro
         </div>
       </header>
 
-      <section className="ec-agent-office__safety" aria-label="Границы автоматизации"><strong>Контролируемая генерация</strong><span>Один клик запускает только одну роль. AI не открывает ссылки, не вызывает tools и ничего не публикует.</span><span className="ec-growth-budget">{policy ? `${policy.budget.remaining} из ${policy.budget.limit} запросов сегодня` : "Лимит загружается"}</span></section>
+      <section className="ec-agent-office__safety" aria-label="Границы автоматизации"><strong>Контролируемая генерация</strong><span>Один клик запускает только одну роль. AI не открывает ссылки, не вызывает инструменты и ничего не публикует.</span><span className="ec-growth-budget">{policy ? `${policy.budget.remaining} из ${policy.budget.limit} запросов сегодня` : "Лимит загружается"}</span></section>
 
       {createOpen && (
         <form className="ec-growth-create" onSubmit={(event) => void submitCreate(event)}>
@@ -215,7 +217,7 @@ function GrowthCommandRoom({ serverId, serverName, currentRole }: AgentOfficePro
             <label className="ec-growth-create__wide"><span>Факты и доказательства</span><textarea required minLength={20} maxLength={12000} value={input.evidenceNotes} placeholder="Что проверено: тесты, цифры, ограничения, ссылки на релиз" onChange={(event) => setInput({ ...input, evidenceNotes: event.target.value })} /></label>
             <div className="ec-growth-create__wide"><EvidenceCardEditor cards={input.evidenceCards ?? []} sourceUrls={sourceOptions} onChange={(evidenceCards) => setInput({ ...input, evidenceCards: evidenceCards.length ? evidenceCards : undefined })} /></div>
           </div>
-          <div className="ec-growth-create__actions"><p>Сначала будет доступен только Researcher. Каждый следующий этап вы запускаете сами.</p><button type="submit" className="ec-btn ec-btn--primary" disabled={creating}>{creating ? "Создаём…" : "Создать черновик"}</button></div>
+          <div className="ec-growth-create__actions"><p>Сначала будет доступен только исследователь. Каждый следующий этап вы запускаете сами.</p><button type="submit" className="ec-btn ec-btn--primary" disabled={creating}>{creating ? "Создаём…" : "Создать черновик"}</button></div>
         </form>
       )}
 
@@ -232,20 +234,20 @@ function GrowthCommandRoom({ serverId, serverName, currentRole }: AgentOfficePro
           <section className="ec-agent-office__primary" aria-label="Рабочий материал">
             <div className="ec-agent-office__objective"><div><p className="ec-agent-office__section-label">{selected.origin === "chat" ? "Создано в Chat" : "Импорт из AI Hub"} · {CHANNEL_LABELS[selected.run.input.channel]}</p><h2>{selected.run.input.releaseName}</h2><p>{selected.run.input.releaseSummary}</p></div><span className="ec-agent-office__status" data-status={selected.reviewStatus}>{visibleStatus(selected)}</span></div>
             <div className="ec-growth-progress" aria-label={`${selected.run.artifacts.length} из 5 этапов завершено`}>{STEP_ORDER.map((step, index) => <span key={step} data-state={index < selected.run.artifacts.length ? "done" : index === selected.run.artifacts.length ? "next" : "waiting"}><i>{index < selected.run.artifacts.length ? "✓" : index + 1}</i><small>{STEP_LABELS[step].role}</small></span>)}</div>
-            <dl className="ec-agent-office__guardrails"><div><dt>Аудитория</dt><dd>{selected.run.input.audience}</dd></div><div><dt>AI-запросы</dt><dd>{selected.run.execution.completedRequests} / {selected.run.execution.maxRequests}</dd></div><div><dt>Provider</dt><dd>{selected.run.execution.provider} · {selected.run.execution.model}</dd></div><div><dt>Внешние действия</dt><dd>Запрещены</dd></div></dl>
+            <dl className="ec-agent-office__guardrails"><div><dt>Аудитория</dt><dd>{selected.run.input.audience}</dd></div><div><dt>AI-запросы</dt><dd>{selected.run.execution.completedRequests} / {selected.run.execution.maxRequests}</dd></div><div><dt>Провайдер</dt><dd>{selected.run.execution.provider} · {selected.run.execution.model}</dd></div><div><dt>Внешние действия</dt><dd>Запрещены</dd></div></dl>
 
             {nextStep && selected.reviewStatus === "PENDING" && (
-              <section className="ec-growth-next" aria-live="polite"><div><p className="ec-agent-office__section-label">Следующий этап · {selected.run.artifacts.length + 1} из 5</p><h2>{STEP_LABELS[nextStep].action}</h2><p>{STEP_LABELS[nextStep].role} получит исходные данные и уже готовые этапы. Результат сохранится только внутри этого материала.</p></div><div className="ec-growth-next__actions">{isExecuting ? <><span className="ec-growth-running"><i />{STEP_LABELS[selected.activeStep ?? nextStep].role} работает…</span><button type="button" className="ec-btn ec-btn--danger" disabled={cancellingId === selected.id} onClick={() => void cancelStep(selected.id)}>{cancellingId === selected.id ? "Останавливаем…" : "Остановить"}</button></> : <><small>{policy?.budget.remaining ?? 0} запросов осталось сегодня</small><button type="button" className="ec-btn ec-btn--primary" disabled={!canCreate || !policy?.executionEnabled || (policy?.budget.remaining ?? 0) < 1} onClick={() => void executeNext(selected.id, selected.version)}>{policy?.executionEnabled ? STEP_LABELS[nextStep].action : "Executor не настроен"}</button></>}</div></section>
+              <section className="ec-growth-next" aria-live="polite"><div><p className="ec-agent-office__section-label">Следующий этап · {selected.run.artifacts.length + 1} из 5</p><h2>{STEP_LABELS[nextStep].action}</h2><p>{STEP_LABELS[nextStep].role} получит исходные данные и уже готовые этапы. Результат сохранится только внутри этого материала.</p></div><div className="ec-growth-next__actions">{isExecuting ? <><span className="ec-growth-running"><i />{STEP_LABELS[selected.activeStep ?? nextStep].role} работает…</span><button type="button" className="ec-btn ec-btn--danger" disabled={cancellingId === selected.id} onClick={() => void cancelStep(selected.id)}>{cancellingId === selected.id ? "Останавливаем…" : "Остановить"}</button></> : <><small>{policy?.budget.remaining ?? 0} запросов осталось сегодня</small><button type="button" className="ec-btn ec-btn--primary" disabled={!canCreate || !policy?.executionEnabled || (policy?.budget.remaining ?? 0) < 1} onClick={() => void executeNext(selected.id, selected.version)}>{policy?.executionEnabled ? STEP_LABELS[nextStep].action : "Исполнитель не настроен"}</button></>}</div></section>
             )}
 
-            <section className="ec-growth-evidence" aria-labelledby="growth-evidence-title"><div className="ec-growth-panel-head"><div><p className="ec-agent-office__section-label">Evidence</p><h2 id="growth-evidence-title">Что проверить</h2></div><span>{selected.run.input.evidenceCards?.length ?? 0} карточек · {selected.run.input.sourceUrls.length} ссылок</span></div><p>{selected.run.input.evidenceNotes}</p><EvidenceCardSummary cards={selected.run.input.evidenceCards ?? []} /><ul>{selected.run.input.sourceUrls.map((url) => <li key={url}><a href={url} target="_blank" rel="noopener noreferrer">{new URL(url).hostname}<span>Открыть источник</span></a></li>)}</ul></section>
+            <section className="ec-growth-evidence" aria-labelledby="growth-evidence-title"><div className="ec-growth-panel-head"><div><p className="ec-agent-office__section-label">Доказательства</p><h2 id="growth-evidence-title">Что проверить</h2></div><span>{selected.run.input.evidenceCards?.length ?? 0} карточек · {selected.run.input.sourceUrls.length} ссылок</span></div><p>{selected.run.input.evidenceNotes}</p><EvidenceCardSummary cards={selected.run.input.evidenceCards ?? []} /><ul>{selected.run.input.sourceUrls.map((url) => <li key={url}><a href={url} target="_blank" rel="noopener noreferrer">{new URL(url).hostname}<span>Открыть источник</span></a></li>)}</ul></section>
 
-            <section className="ec-growth-artifacts" aria-labelledby="growth-artifacts-title"><div className="ec-growth-panel-head"><div><p className="ec-agent-office__section-label">Run history</p><h2 id="growth-artifacts-title">Результаты ролей</h2></div><span>{selected.run.artifacts.length} / 5</span></div>{selected.run.artifacts.length === 0 ? <div className="ec-growth-artifacts__empty">Здесь появится результат Researcher после первого запуска.</div> : selected.run.artifacts.map((artifact) => <details key={artifact.step} open={artifact.step === selected.run.artifacts.at(-1)?.step}><summary><span>{artifact.role}</span><strong>{STEP_LABELS[artifact.step].result}</strong></summary><div>{artifact.content}</div></details>)}</section>
+            <section className="ec-growth-artifacts" aria-labelledby="growth-artifacts-title"><div className="ec-growth-panel-head"><div><p className="ec-agent-office__section-label">История запуска</p><h2 id="growth-artifacts-title">Результаты ролей</h2></div><span>{selected.run.artifacts.length} / 5</span></div>{selected.run.artifacts.length === 0 ? <div className="ec-growth-artifacts__empty">Здесь появится результат исследователя после первого запуска.</div> : selected.run.artifacts.map((artifact) => <details key={artifact.step} open={artifact.step === selected.run.artifacts.at(-1)?.step}><summary><span>{STEP_LABELS[artifact.step].role}</span><strong>{STEP_LABELS[artifact.step].result}</strong></summary><div>{artifact.content}</div></details>)}</section>
           </section>
 
           <aside className="ec-agent-office__side" aria-label="Решение по материалу">
-            {selected.run.status === "ready_for_approval" ? <section className="ec-growth-review" data-status={selected.reviewStatus}><p className="ec-agent-office__section-label">Human gate · v{selected.version}</p><h2>{REVIEW_LABELS[selected.reviewStatus]}</h2>{selected.reviewStatus === "PENDING" ? <><p>Проверьте финальный текст, ссылки и CTA. Это решение не публикует материал.</p>{canReview ? <><label htmlFor="growth-review-note">Комментарий команды</label><textarea id="growth-review-note" value={reviewNote} maxLength={1000} placeholder="Что исправить или почему материал готов" onChange={(event) => setReviewNote(event.target.value)} /><label className="ec-growth-review__confirm"><input type="checkbox" checked={humanConfirmed} onChange={(event) => setHumanConfirmed(event.target.checked)} /><span>Я вручную проверил факты, ссылки и CTA.</span></label><div className="ec-growth-review__actions"><button type="button" className="ec-btn ec-btn--primary" disabled={!humanConfirmed || reviewingId === selected.id} onClick={() => void submitReview("APPROVE")}>Утвердить артефакт</button><button type="button" className="ec-btn ec-btn--danger" disabled={reviewNote.trim().length < 3 || reviewingId === selected.id} onClick={() => void submitReview("REJECT")}>Вернуть на доработку</button></div></> : <div className="ec-growth-review__readonly">Вы можете читать материал. Решение фиксирует участник с правом approval.</div>}</> : <><p>{selected.reviewStatus === "APPROVED" ? "Артефакт принят для дальнейшей ручной работы." : "Материал остановлен до новой версии."}</p>{selected.reviewNote && <blockquote>{selected.reviewNote}</blockquote>}</>}</section> : <section className="ec-growth-guide"><p className="ec-agent-office__section-label">Как это работает</p><h2>Вы управляете каждым шагом</h2><ol>{STEP_ORDER.map((step, index) => <li key={step} data-state={index < selected.run.artifacts.length ? "done" : index === selected.run.artifacts.length ? "next" : "waiting"}><span>{index < selected.run.artifacts.length ? "✓" : index + 1}</span><div><strong>{STEP_LABELS[step].role}</strong><small>{STEP_LABELS[step].action}</small></div></li>)}</ol><p>Остановка не удаляет уже готовые результаты. Повторный запуск всегда требует отдельного клика.</p></section>}
-            <section><p className="ec-agent-office__section-label">Provenance</p><dl className="ec-growth-provenance"><div><dt>Создал</dt><dd>{selected.importedBy?.displayName ?? "Удалённый участник"}</dd></div><div><dt>Source run</dt><dd title={selected.sourceRunId}>{selected.sourceRunId}</dd></div><div><dt>Контракт</dt><dd>{selected.schemaVersion}</dd></div><div><dt>Создано</dt><dd>{formatDate(selected.createdAt)}</dd></div></dl></section>
+            {selected.run.status === "ready_for_approval" ? <section className="ec-growth-review" data-status={selected.reviewStatus}><p className="ec-agent-office__section-label">Ручное решение · v{selected.version}</p><h2>{REVIEW_LABELS[selected.reviewStatus]}</h2>{selected.reviewStatus === "PENDING" ? <><p>Проверьте финальный текст, ссылки и призыв к действию. Это решение не публикует материал.</p>{canReview ? <><label htmlFor="growth-review-note">Комментарий команды</label><textarea id="growth-review-note" value={reviewNote} maxLength={1000} placeholder="Что исправить или почему материал готов" onChange={(event) => setReviewNote(event.target.value)} /><label className="ec-growth-review__confirm"><input type="checkbox" checked={humanConfirmed} onChange={(event) => setHumanConfirmed(event.target.checked)} /><span>Я вручную проверил факты, ссылки и призыв к действию.</span></label><div className="ec-growth-review__actions"><button type="button" className="ec-btn ec-btn--primary" disabled={!humanConfirmed || reviewingId === selected.id} onClick={() => void submitReview("APPROVE")}>Утвердить материал</button><button type="button" className="ec-btn ec-btn--danger" disabled={reviewNote.trim().length < 3 || reviewingId === selected.id} onClick={() => void submitReview("REJECT")}>Вернуть на доработку</button></div></> : <div className="ec-growth-review__readonly">Вы можете читать материал. Решение фиксирует участник с правом согласования.</div>}</> : <><p>{selected.reviewStatus === "APPROVED" ? "Материал принят для дальнейшей ручной работы." : "Материал остановлен до новой версии."}</p>{selected.reviewNote && <blockquote>{selected.reviewNote}</blockquote>}</>}</section> : <section className="ec-growth-guide"><p className="ec-agent-office__section-label">Как это работает</p><h2>Вы управляете каждым шагом</h2><ol>{STEP_ORDER.map((step, index) => <li key={step} data-state={index < selected.run.artifacts.length ? "done" : index === selected.run.artifacts.length ? "next" : "waiting"}><span>{index < selected.run.artifacts.length ? "✓" : index + 1}</span><div><strong>{STEP_LABELS[step].role}</strong><small>{STEP_LABELS[step].action}</small></div></li>)}</ol><p>Остановка не удаляет уже готовые результаты. Повторный запуск всегда требует отдельного клика.</p></section>}
+            <section><p className="ec-agent-office__section-label">Происхождение</p><dl className="ec-growth-provenance"><div><dt>Создал</dt><dd>{selected.importedBy?.displayName ?? "Удалённый участник"}</dd></div><div><dt>Исходный запуск</dt><dd title={selected.sourceRunId}>{selected.sourceRunId}</dd></div><div><dt>Контракт</dt><dd>{selected.schemaVersion}</dd></div><div><dt>Создано</dt><dd>{formatDate(selected.createdAt)}</dd></div></dl></section>
           </aside>
         </div>
       ) : null}
@@ -255,17 +257,49 @@ function GrowthCommandRoom({ serverId, serverName, currentRole }: AgentOfficePro
 export function AgentOffice(props: AgentOfficeProps) {
   const [workspace, setWorkspace] = useState<"growth" | "audit" | "voice" | "deck" | "builder" | "spec">("growth");
   return (
-    <>
-      <nav className="ec-agent-office-switcher" aria-label="Рабочая зона Agent Office">
-        <button type="button" data-active={workspace === "growth"} aria-pressed={workspace === "growth"} onClick={() => setWorkspace("growth")}>Growth OS</button>
-        <button type="button" data-active={workspace === "audit"} aria-pressed={workspace === "audit"} onClick={() => setWorkspace("audit")}>Automation Audit</button>
-        <button type="button" data-active={workspace === "voice"} aria-pressed={workspace === "voice"} onClick={() => setWorkspace("voice")}>Voice Ops</button>
-        <button type="button" aria-pressed="false" onClick={props.onOpenLanTransfer}>Передача рядом</button>
-        <button type="button" data-active={workspace === "deck"} aria-pressed={workspace === "deck"} onClick={() => setWorkspace("deck")}>Deck Review</button>
-        <button type="button" data-active={workspace === "builder"} aria-pressed={workspace === "builder"} onClick={() => setWorkspace("builder")}>Builder Review</button>
-        <button type="button" data-active={workspace === "spec"} aria-pressed={workspace === "spec"} onClick={() => setWorkspace("spec")}>Spec Review</button>
-      </nav>
-      {workspace === "growth" ? <GrowthCommandRoom {...props} /> : workspace === "audit" ? <AutomationAuditReviewRoom {...props} /> : workspace === "voice" ? <VoiceOpsRoom {...props} /> : workspace === "deck" ? <DeckReviewRoom {...props} /> : workspace === "builder" ? <BuilderReviewRoom {...props} /> : <SpecGateReviewRoom {...props} />}
-    </>
+    <div className="ec-office-surface">
+      <header className="ec-agent-office-switcher">
+        <div className="ec-agent-office-switcher__identity">
+          <img src={`${import.meta.env.BASE_URL}brand-mark.svg`} alt="" aria-hidden />
+          <div><strong>AI-офис</strong><span>Работа · проверка · решения</span></div>
+        </div>
+        <nav className="ec-agent-office-switcher__tabs" aria-label="Разделы AI-офиса">
+          <button type="button" data-active={workspace === "growth"} aria-pressed={workspace === "growth"} onClick={() => setWorkspace("growth")}>Контент</button>
+          <button type="button" data-active={workspace === "audit"} aria-pressed={workspace === "audit"} onClick={() => setWorkspace("audit")}>Аудит процессов</button>
+          <button type="button" data-active={workspace === "voice"} aria-pressed={workspace === "voice"} onClick={() => setWorkspace("voice")}>Голосовые команды</button>
+          <button type="button" aria-pressed="false" onClick={props.onOpenLanTransfer}>Передача рядом</button>
+          <button type="button" data-active={workspace === "deck"} aria-pressed={workspace === "deck"} onClick={() => setWorkspace("deck")}>Презентации</button>
+          <button type="button" data-active={workspace === "builder"} aria-pressed={workspace === "builder"} onClick={() => setWorkspace("builder")}>Сборка</button>
+          <button type="button" data-active={workspace === "spec"} aria-pressed={workspace === "spec"} onClick={() => setWorkspace("spec")}>Требования</button>
+        </nav>
+        <label className="ec-agent-office-switcher__context">
+          <span>Пространство</span>
+          <select value={props.serverId ?? ""} onChange={(event) => event.target.value && props.onSelectWorkspace(event.target.value)}>
+            <option value="">Выберите пространство</option>
+            {props.workspaces.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+          </select>
+        </label>
+      </header>
+      {!props.serverId ? (
+        <main className="ec-office-picker" aria-labelledby="office-picker-title">
+          <section className="ec-office-picker__intro">
+            <span className="ec-office-picker__mark"><CommandRoomIcon /></span>
+            <p>Контекст работы</p>
+            <h1 id="office-picker-title">Выберите пространство</h1>
+            <span>AI-офис изолирует материалы, права и решения каждой команды. Выбор применяется сразу и не подключает внешние действия.</span>
+          </section>
+          <div className="ec-office-picker__list" aria-label="Доступные пространства">
+            {props.workspaces.length ? props.workspaces.map((item) => (
+              <button key={item.id} type="button" onClick={() => props.onSelectWorkspace(item.id)}>
+                <span aria-hidden>{item.name.trim().charAt(0).toUpperCase() || "E"}</span>
+                <strong>{item.name}</strong>
+                <small>Открыть AI-офис</small>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="m9 18 6-6-6-6" /></svg>
+              </button>
+            )) : <p>Доступных пространств пока нет. Создайте первое пространство в основной навигации.</p>}
+          </div>
+        </main>
+      ) : workspace === "growth" ? <GrowthCommandRoom {...props} /> : workspace === "audit" ? <AutomationAuditReviewRoom {...props} /> : workspace === "voice" ? <VoiceOpsRoom {...props} /> : workspace === "deck" ? <DeckReviewRoom {...props} /> : workspace === "builder" ? <BuilderReviewRoom {...props} /> : <SpecGateReviewRoom {...props} />}
+    </div>
   );
 }

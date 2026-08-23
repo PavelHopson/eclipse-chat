@@ -77,7 +77,7 @@ export function BottomNav({
           <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
         </svg>
       </TabButton>
-      <TabButton label="Office" active={active === "office"} onClick={onOffice}>
+      <TabButton label="AI-офис" active={active === "office"} onClick={onOffice}>
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
           <circle cx="12" cy="5" r="2.25" />
           <circle cx="5" cy="17" r="2.25" />

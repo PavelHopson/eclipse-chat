@@ -18,18 +18,18 @@ export const VOICE_OPS_SKILLS: ReadonlyArray<{
   description: string;
   effect: "read-only";
 }> = [
-  { id: "workspace.status", label: "Статус workspace", description: "Показать безопасные границы текущего пространства.", effect: "read-only" },
-  { id: "memory.preview", label: "Preview Markdown memory", description: "Подготовить preview без записи в память.", effect: "read-only" },
-  { id: "skills.status", label: "Статус навыков", description: "Показать allowlist и причины блокировки.", effect: "read-only" },
+  { id: "workspace.status", label: "Статус пространства", description: "Показать безопасные границы текущего пространства.", effect: "read-only" },
+  { id: "memory.preview", label: "Предпросмотр Markdown-памяти", description: "Подготовить предпросмотр без записи в память.", effect: "read-only" },
+  { id: "skills.status", label: "Статус навыков", description: "Показать разрешённый список и причины блокировки.", effect: "read-only" },
 ];
 
 export function buildVoiceOpsPlan(command: string, skillId: VoiceOpsSkillId): VoiceOpsPlan {
   const normalized = command.trim().replace(/\s+/g, " ").slice(0, 500);
   return {
-    command: normalized || "Показать безопасный статус workspace",
+    command: normalized || "Показать безопасный статус пространства",
     skillId,
-    steps: ["Проверить fixed allowlist", "Собрать локальный read-only результат", "Сформировать receipt без отправки в Sentinel"],
-    diff: ["Файлы и Markdown memory: без изменений", "Shell, сеть и provider API: не используются", "Sentinel bridge: disconnected, команда остаётся в браузере"],
+    steps: ["Проверить фиксированный список разрешений", "Собрать локальный результат только для чтения", "Сформировать квитанцию без отправки в Sentinel"],
+    diff: ["Файлы и Markdown-память: без изменений", "Командная строка, сеть и API провайдера: не используются", "Мост Sentinel: не подключён, команда остаётся в браузере"],
   };
 }
 
@@ -37,17 +37,17 @@ export function executeVoiceOpsPlan(plan: VoiceOpsPlan, workspaceName: string): 
   if (plan.skillId === "memory.preview") {
     return {
       title: "Markdown preview готов",
-      lines: [`# ${workspaceName} voice note`, `- Command: ${plan.command}`, "- Persistence: blocked"],
+      lines: [`# Голосовая заметка · ${workspaceName}`, `- Команда: ${plan.command}`, "- Сохранение: заблокировано"],
     };
   }
   if (plan.skillId === "skills.status") {
     return {
-      title: "Allowlist проверен",
-      lines: [`Allowed: ${VOICE_OPS_SKILLS.map((skill) => skill.id).join(", ")}`, "Blocked: shell, writes, installs, deploy, secrets"],
+      title: "Список разрешений проверен",
+      lines: [`Разрешено: ${VOICE_OPS_SKILLS.map((skill) => skill.id).join(", ")}`, "Заблокировано: командная строка, запись, установка, развёртывание, секреты"],
     };
   }
   return {
-    title: "Workspace проверен",
-    lines: [`Workspace: ${workspaceName}`, "Execution: local read-only", "Sentinel bridge: disconnected", "Voice I/O: not attested"],
+    title: "Пространство проверено",
+    lines: [`Пространство: ${workspaceName}`, "Выполнение: локально, только чтение", "Мост Sentinel: не подключён", "Голосовой ввод и вывод: не аттестованы"],
   };
 }

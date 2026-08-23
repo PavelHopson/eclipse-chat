@@ -8,6 +8,7 @@ import { Avatar } from "../components/Avatar";
 import { ChannelList } from "../components/ChannelList";
 import { RichContent } from "../components/RichContent";
 import { DirectConversationList } from "../components/DirectConversationList";
+import { DirectMessageWelcome } from "../components/DirectMessageWelcome";
 import { FriendsPanel } from "../components/friends/FriendsPanel";
 import { type AvailableUser } from "../components/CreateGroupDmModal";
 import { DmPeerHeader } from "../components/DmPeerHeader";
@@ -82,7 +83,6 @@ import { ServerNavBar, type ServerView } from "../components/server/ServerNavBar
 import { IsolationConfirmDialog } from "../components/server/IsolationConfirmDialog";
 import { ExpiryBadge } from "../components/ExpiryBadge";
 import {
-  EmptyDmIcon,
   EmptyHomeIcon,
 } from "../components/EmptyIcons";
 import { TypingIndicator } from "../components/TypingIndicator";
@@ -157,7 +157,7 @@ type Props = {
 
 export function AppShell({ user, socketRev, onLogout }: Props) {
   const socket = useSocket(socketRev);
-  const brandMarkUrl = `${import.meta.env.BASE_URL}eclipse-chat-logo.png`;
+  const brandMarkUrl = `${import.meta.env.BASE_URL}brand-mark.svg`;
 
   const isReady = socket != null;
   const {
@@ -1304,6 +1304,10 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             title="Главная"
           >
             <img className="ec-brand-mark" src={brandMarkUrl} alt="" aria-hidden />
+            <span className="ec-shell__brand-lockup" aria-hidden>
+              <strong>Eclipse</strong>
+              <small>Chat</small>
+            </span>
           </button>
           {/* v1.6.57 — на desktop переключение серверов в левом ServerRail;
               дропдаун ServerSwitcher остаётся только на mobile (до нижнего
@@ -1338,9 +1342,9 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
       <header className="ec-shell__cmdbar">
         {agentOfficeOpen ? (
           <div className="ec-shell__breadcrumb ec-shell__loc">
-            <span className="ec-shell__loc-space">Eclipse Forge OS</span>
+            <span className="ec-shell__loc-space">Eclipse Forge</span>
             <span className="ec-shell__loc-sep">/</span>
-            <span className="ec-shell__loc-name">Agent Office</span>
+            <span className="ec-shell__loc-name">AI-офис</span>
           </div>
         ) : homeOpen ? (
           <div className="ec-shell__breadcrumb ec-shell__loc">
@@ -1726,7 +1730,13 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
         }
       >
         <div className="ec-chat-header">
-          {homeOpen ? (
+          {agentOfficeOpen ? (
+            <span className="ec-chat-title">
+              <span className="ec-chat-title__glyph" aria-hidden>AI</span>
+              AI-офис
+              {activeServer && <small className="ec-chat-title__context">· {activeServer.name}</small>}
+            </span>
+          ) : homeOpen ? (
             <span className="ec-chat-title">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--ec-accent)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <path d="M4 17V9M10 17V5M16 17v-7M22 17V3" />
@@ -2162,11 +2172,19 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
 
         <Suspense fallback={null}>
         {agentOfficeOpen ? (
-          <AgentOffice
-            serverId={activeServer?.id ?? null}
-            serverName={activeServer?.name ?? null}
-            currentRole={currentRole}
-            onOpenLanTransfer={() => {
+            <AgentOffice
+              serverId={activeServer?.id ?? null}
+              serverName={activeServer?.name ?? null}
+              currentRole={currentRole}
+              workspaces={servers.map((server) => ({ id: server.id, name: server.name }))}
+              onSelectWorkspace={(serverId) => {
+                setActiveServerId(serverId);
+                setAgentOfficeOpen(true);
+                setHomeOpen(false);
+                setFriendsOpen(false);
+                setShowProfile(false);
+              }}
+              onOpenLanTransfer={() => {
               setSettingsInitialView("integrations");
               setShowProfile(true);
               setAgentOfficeOpen(false);
@@ -2332,11 +2350,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                 }
               />
             ) : (
-              <EmptyState
-                icon={<EmptyDmIcon />}
-                title="Личные сообщения"
-                hint="Выбери диалог слева или нажми «Новое сообщение», чтобы начать переписку."
-              />
+              <DirectMessageWelcome onNewMessage={openFriends} />
             )
           ) : (
             <>

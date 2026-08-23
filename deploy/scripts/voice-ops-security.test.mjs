@@ -9,7 +9,7 @@ test("Voice Ops allowlist remains read-only and blocks mutable capabilities", as
   const policy = await readFile(policyPath, "utf8");
   assert.match(policy, /effect:\s*"read-only"/);
   assert.doesNotMatch(policy, /effect:\s*"(?:write|execute|network|shell)"/);
-  assert.match(policy, /Blocked: shell, writes, installs, deploy, secrets/);
+  assert.match(policy, /Заблокировано: командная строка, запись, установка, развёртывание, секреты/);
 });
 
 test("Voice Ops UI keeps kill switch fail-closed and performs no remote execution", async () => {

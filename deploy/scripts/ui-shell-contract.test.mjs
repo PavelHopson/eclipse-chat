@@ -14,13 +14,13 @@ test("desktop and mobile docks expose the primary product destinations", () => {
   const rail = source("apps/web/src/components/ServerRail.tsx");
   const bottomNav = source("apps/web/src/components/BottomNav.tsx");
 
-  for (const label of ["Сводка", "Личные", "Office", "Профиль"]) {
+  for (const label of ["Сводка", "Личные", "AI-офис", "Профиль"]) {
     assert.match(rail, new RegExp(`caption=\"${label}\"`));
   }
   assert.match(rail, /caption="Админ"/);
   assert.match(rail, /caption="Система"/);
 
-  for (const label of ["Сводка", "Комнаты", "Личные", "Office", "Я"]) {
+  for (const label of ["Сводка", "Комнаты", "Личные", "AI-офис", "Я"]) {
     assert.match(bottomNav, new RegExp(`label=\"${label}\"`));
   }
   assert.match(bottomNav, /export type BottomTab = "home" \| "servers" \| "dms" \| "office" \| "me"/);
@@ -51,4 +51,41 @@ test("shell redesign preserves focus, touch targets and reduced motion", () => {
   assert.match(css, /@media \(max-width: 1024px\) \{[\s\S]*?\.ec-guide__voice-room,[\s\S]*?min-height: 44px/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
   assert.match(tokens, /--ec-bottomnav-height:\s+56px/);
+});
+
+test("compact shell uses the dedicated Eclipse mark instead of the wide wordmark", () => {
+  const shell = source("apps/web/src/pages/AppShell.tsx");
+  const motion = source("apps/web/src/styles/motion.css");
+  const mark = source("apps/web/public/brand-mark.svg");
+
+  assert.match(shell, /const brandMarkUrl = .*brand-mark\.svg/);
+  assert.doesNotMatch(shell, /const brandMarkUrl = .*eclipse-chat-logo\.png/);
+  assert.match(shell, /ec-shell__brand-lockup/);
+  assert.match(mark, /viewBox="0 0 64 64"/);
+  assert.match(mark, /id="eclipse-rim"/);
+  assert.doesNotMatch(motion, /ec-brand-mark-breathe/);
+});
+
+test("AI office is localized and lets the user select a workspace in place", () => {
+  const office = source("apps/web/src/components/agent-office/AgentOffice.tsx");
+
+  for (const label of ["Контент", "Аудит процессов", "Голосовые команды", "Передача рядом", "Презентации", "Сборка", "Требования"]) {
+    assert.match(office, new RegExp(`>${label}<`));
+  }
+  assert.match(office, /props\.workspaces\.map/);
+  assert.match(office, /props\.onSelectWorkspace\(item\.id\)/);
+  assert.match(office, /Выберите пространство/);
+  assert.doesNotMatch(office, />Growth OS<|>Automation Audit<|>Voice Ops<|>Deck Review<|>Builder Review<|>Spec Review</);
+});
+
+test("direct messages use a compact actionable welcome state", () => {
+  const shell = source("apps/web/src/pages/AppShell.tsx");
+  const welcome = source("apps/web/src/components/DirectMessageWelcome.tsx");
+  const css = source("apps/web/src/styles/dm-home.css");
+
+  assert.match(shell, /<DirectMessageWelcome onNewMessage=\{openFriends\}/);
+  assert.match(welcome, /Продолжите разговор/);
+  assert.match(welcome, /Написать сообщение/);
+  assert.match(css, /\.ec-dm-welcome \{/);
+  assert.match(css, /@media \(max-width: 760px\)/);
 });

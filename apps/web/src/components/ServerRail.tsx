@@ -157,8 +157,8 @@ export function ServerRail({
           </svg>
         </RailButton>
         <RailButton
-          label="Agent Office — AI-команда и согласования"
-          caption="Office"
+          label="AI-офис — команда и согласования"
+          caption="AI-офис"
           active={officeActive}
           onClick={onOfficeRequest}
         >

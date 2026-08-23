@@ -58,7 +58,7 @@ export function EvidenceCardEditor({ cards, sourceUrls, onChange }: EditorProps)
     <section className="ec-evidence-editor" aria-labelledby="evidence-editor-title">
       <div className="ec-evidence-editor__head">
         <div>
-          <span className="ec-agent-office__section-label">Claim-level evidence</span>
+          <span className="ec-agent-office__section-label">Доказательства по утверждениям</span>
           <h3 id="evidence-editor-title">Доказательства</h3>
           <p>Свяжите конкретный тезис с источником. Без карточек запуск останется в legacy-режиме.</p>
         </div>
@@ -70,7 +70,7 @@ export function EvidenceCardEditor({ cards, sourceUrls, onChange }: EditorProps)
       {cards.length === 0 ? (
         <div className="ec-evidence-editor__empty">
           <strong>Карточек пока нет</strong>
-          <span>Добавьте только те тезисы, которые Researcher и Claim Auditor должны проверить отдельно.</span>
+          <span>Добавьте только те тезисы, которые исследователь и проверяющий фактов должны проверить отдельно.</span>
         </div>
       ) : (
         <div className="ec-evidence-editor__list" aria-live="polite">
@@ -131,7 +131,7 @@ export function EvidenceCardEditor({ cards, sourceUrls, onChange }: EditorProps)
 export function EvidenceCardSummary({ cards }: { cards: GrowthEvidenceCard[] }) {
   if (cards.length === 0) return null;
   return (
-    <div className="ec-evidence-summary" aria-label={`${cards.length} evidence cards`}>
+    <div className="ec-evidence-summary" aria-label={`${cards.length} карточек доказательств`}>
       {cards.map((card) => (
         <article key={card.id} data-state={card.state}>
           <header><strong>{card.claim}</strong><span>{STATE_LABELS[card.state]}</span></header>
