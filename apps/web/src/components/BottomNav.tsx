@@ -1,24 +1,17 @@
 import type { ReactNode } from "react";
 
-/**
- * BottomNav (v1.6.58 — Discord-каркас, слайс 2) — мобильный нижний таб-бар.
- *
- * Заменяет гамбургер-навигацию на ≤1024: 4 всегда-видимых таба под большой
- * палец — Серверы / Личные / Друзья / Я. Рендерится только на mobile
- * (grid-area «nav» в responsive.css). Каждый таб ведёт в свой контекст в
- * один тап; списки (каналы/ЛС) открываются левым drawer'ом.
- */
+/** Мобильный global dock: пять предсказуемых destinations под большой палец. */
 
-export type BottomTab = "servers" | "dms" | "friends" | "me";
+export type BottomTab = "home" | "servers" | "dms" | "office" | "me";
 
 type Props = {
   active: BottomTab;
+  onHome: () => void;
   onServers: () => void;
   onDms: () => void;
-  onFriends: () => void;
+  onOffice: () => void;
   onProfile: () => void;
   dmsUnread?: number;
-  friendsPending?: number;
 };
 
 function TabButton({
@@ -39,7 +32,7 @@ function TabButton({
       type="button"
       className={"ec-bnav__tab" + (active ? " is-active" : "")}
       aria-label={label}
-      aria-current={active || undefined}
+      aria-current={active ? "page" : undefined}
       onClick={onClick}
     >
       <span className="ec-bnav__icon">
@@ -57,16 +50,21 @@ function TabButton({
 
 export function BottomNav({
   active,
+  onHome,
   onServers,
   onDms,
-  onFriends,
+  onOffice,
   onProfile,
   dmsUnread = 0,
-  friendsPending = 0,
 }: Props) {
   return (
     <nav className="ec-bnav" aria-label="Основная навигация">
-      <TabButton label="Пространства" active={active === "servers"} onClick={onServers}>
+      <TabButton label="Сводка" active={active === "home"} onClick={onHome}>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="M4 13h6V4H4zM14 20h6v-9h-6zM4 20h6v-3H4zM14 7h6V4h-6z" />
+        </svg>
+      </TabButton>
+      <TabButton label="Комнаты" active={active === "servers"} onClick={onServers}>
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
           <rect x="3" y="3" width="7" height="7" rx="1.5" />
           <rect x="14" y="3" width="7" height="7" rx="1.5" />
@@ -79,12 +77,12 @@ export function BottomNav({
           <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
         </svg>
       </TabButton>
-      <TabButton label="Друзья" active={active === "friends"} badge={friendsPending} onClick={onFriends}>
+      <TabButton label="Office" active={active === "office"} onClick={onOffice}>
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-          <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
-          <circle cx="9" cy="7" r="4" />
-          <path d="M23 21v-2a4 4 0 00-3-3.87" />
-          <path d="M16 3.13a4 4 0 010 7.75" />
+          <circle cx="12" cy="5" r="2.25" />
+          <circle cx="5" cy="17" r="2.25" />
+          <circle cx="19" cy="17" r="2.25" />
+          <path d="M12 7.25v4.25M10.25 12.5 6.6 15M13.75 12.5 17.4 15" />
         </svg>
       </TabButton>
       <TabButton label="Я" active={active === "me"} onClick={onProfile}>

@@ -1,6 +1,6 @@
 {
   "name": "eclipse-chat",
-  "version": "1.7.53",
+  "version": "1.7.54",
   "private": true,
   "description": "Self-hosted чат: монорепо (сервер, web, shared). Код — поэтапно; см. README.",
   "workspaces": [
@@ -17,6 +17,7 @@
     "deepmerge-ts": "8.0.0"
   },
   "scripts": {
+    "test": "node --test deploy/scripts/ui-shell-contract.test.mjs && npm run test -w @eclipse-chat/server",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "dev:server": "npm run dev -w @eclipse-chat/server",
     "dev:web": "npm run dev -w @eclipse-chat/web",

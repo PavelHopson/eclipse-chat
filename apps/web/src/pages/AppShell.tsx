@@ -1188,14 +1188,14 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     if (isMobile) setNavOpen(false);
   };
 
-  // v1.6.58 — мобильный нижний таб-бар: активный таб из текущего состояния +
-  // хендлеры (Личные/Серверы открывают левый drawer-список каналов/ЛС).
+  // Mobile global dock: destinations mirror the desktop dock. Комнаты и ЛС
+  // открывают contextual drawer; Сводка и Office — самостоятельные surfaces.
   const bottomTab: BottomTab = showProfile
     ? "me"
-    : friendsOpen
-      ? "friends"
+    : agentOfficeOpen
+      ? "office"
       : homeOpen
-        ? "servers"
+        ? "home"
       : inDmMode
         ? "dms"
         : "servers";
@@ -1220,17 +1220,6 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     selectDm(null);
     setNavOpen(true);
   };
-  const bnavFriends = () => {
-    setShowProfile(false);
-    setHomeOpen(false);
-    setAgentOfficeOpen(false);
-    setHelpOpen(false);
-    setAdminOpen(false);
-    setActiveServerId(null);
-    selectDm(null);
-    setFriendsOpen(true);
-    setNavOpen(false);
-  };
   const bnavProfile = () => {
     setNavOpen(false);
     setMembersOpen(false);
@@ -1240,7 +1229,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   return (
     <div className={shellClass} data-visual-profile="operational">
       <div className="ec-visual-contract-signal" aria-hidden="true" />
-      {/* v1.6.57 Discord-каркас — постоянный левый server-rail (desktop). */}
+      {/* Desktop global dock: surfaces, workspaces and scoped control. */}
       {!isMobile && (
         <div className="ec-shell__rail">
           <ServerRail
@@ -1251,6 +1240,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               if (canCreateServer) setShowCreateServer(true);
             }}
             onJoinRequest={() => setShowJoinServer(true)}
+            homeActive={homeOpen}
+            onHomeRequest={openHome}
             dmsActive={inDmMode && !homeOpen && !friendsOpen && !showProfile}
             dmsUnread={dmConversations.reduce((sum, c) => sum + c.unread, 0)}
             onDmsRequest={navOpenDms}
@@ -1259,6 +1250,20 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             friendsPending={friends.pendingIn.length}
             onProfileRequest={() => setShowProfile(true)}
             profileActive={showProfile}
+            officeActive={agentOfficeOpen}
+            onOfficeRequest={openAgentOffice}
+            adminActive={adminOpen}
+            onAdminRequest={
+              (currentRole === "OWNER" || currentRole === "ADMIN") && activeServer && !inDmMode
+                ? () => adminOpen ? setAdminOpen(false) : openAdmin()
+                : undefined
+            }
+            platformAdminActive={platformAdminOpen}
+            onPlatformAdminRequest={
+              user.isPlatformOwner === true
+                ? () => setPlatformAdminOpen((value) => !value)
+                : undefined
+            }
             canCreateServer={canCreateServer}
             creationAllowed={serverLimits.creationAllowed}
             ownedCount={ownedServersCount}
@@ -1368,26 +1373,10 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           </div>
         ) : null}
         <div className="ec-shell__top-actions">
-          {/* UXR9 / v1.6.59 slice 3 — topbar держит только постоянные
+          {/* Topbar держит только контекстные и session-действия.
               действия: поиск, AI, участники, профиль, выход. Вторичные
               утилиты (тема, уведомления, справка) уехали в профиль-меню
-              за аватаром (StatusMenu), чтобы первый слой не шумел.
-              Админ-иконки остаются — они и так role-gated. */}
-          <button
-            type="button"
-            onClick={() => agentOfficeOpen ? openHome() : openAgentOffice()}
-            title="Growth Command Room — review материалов"
-            aria-label="Открыть Growth Command Room"
-            aria-pressed={agentOfficeOpen}
-            className="ec-icon-btn"
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <circle cx="12" cy="5" r="2.25" />
-              <circle cx="5" cy="17" r="2.25" />
-              <circle cx="19" cy="17" r="2.25" />
-              <path d="M12 7.25v4.25M10.25 12.5 6.6 15M13.75 12.5 17.4 15" />
-            </svg>
-          </button>
+              за аватаром (StatusMenu), а Office/Admin живут в global dock. */}
           {inServerView && (
             <button
               type="button"
@@ -1402,7 +1391,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               </svg>
             </button>
           )}
-          {(currentRole === "OWNER" || currentRole === "ADMIN") &&
+          {isMobile && (currentRole === "OWNER" || currentRole === "ADMIN") &&
             activeServer &&
             !inDmMode && (
               <button
@@ -1425,7 +1414,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               платформы. Per-server AdminPanel и Platform Admin — две
               разные иерархии: первая управляет конкретным workspace'ом,
               вторая — глобальная (баны, сброс пароля). */}
-          {user.isPlatformOwner === true && (
+          {isMobile && user.isPlatformOwner === true && (
             <button
               type="button"
               onClick={() => setPlatformAdminOpen((v) => !v)}
@@ -1598,16 +1587,16 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
         aria-hidden
       />
 
-      {/* v1.6.58 Discord-каркас — мобильный нижний таб-бар (≤1024). */}
+      {/* Mobile global dock (≤1024). */}
       {isMobile && (
         <BottomNav
           active={bottomTab}
+          onHome={openHome}
           onServers={bnavServers}
           onDms={bnavDms}
-          onFriends={bnavFriends}
+          onOffice={openAgentOffice}
           onProfile={bnavProfile}
           dmsUnread={dmConversations.reduce((sum, c) => sum + c.unread, 0)}
-          friendsPending={friends.pendingIn.length}
         />
       )}
 

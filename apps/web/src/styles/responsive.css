@@ -28,9 +28,8 @@
      незачем — это был источник !important-войны. */
   color: var(--ec-text);
   grid-template-rows: var(--ec-header-height) 1fr;
-  /* v1.6.57 Discord-каркас: вернули постоянный far-left server-rail
-     (отдельная колонка) — смена сервера в 1 клик. ServerSwitcher в топбаре
-     теперь только на mobile. */
+  /* Desktop global dock + contextual channel spine + work canvas + context.
+     ServerSwitcher остаётся mobile-only. */
   grid-template-columns: var(--ec-rail-width) var(--ec-spine-width) 1fr var(--ec-members-width);
   grid-template-areas:
     "rail brand    cmd   cmd"

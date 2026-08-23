@@ -5,6 +5,19 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
+## Shell + Workspace Overview Reset — v1.7.54 (2026-08-23)
+
+- [x] Заменить desktop icon-only server rail на подписанный global dock: Сводка, Личные,
+      Друзья, Agent Office, Профиль, пространства и role-gated Admin/System control points.
+- [x] Дать mobile пять постоянных destinations — Сводка, Комнаты, Личные, Office и Я —
+      с safe-area, 44px touch targets и без скрытого core flow за tooltip.
+- [x] Перекомпоновать Путеводитель в operational workspace overview: компактная identity,
+      один очевидный следующий шаг, live attention, рабочие комнаты и secondary context
+      под доступным disclosure «О пространстве».
+- [x] Удалить tilt/depth interaction из рабочих карточек, оставить только короткие
+      transform/opacity-safe transitions и полный `prefers-reduced-motion` fallback.
+- [x] Добавить source-level UI contract regression для IA, focus, touch targets и motion.
+
 ## Safe Voice Ops handoff — v1.7.51 (2026-08-20)
 
 - [x] Добавить в Agent Office отдельный Voice Command Room с видимыми состояниями

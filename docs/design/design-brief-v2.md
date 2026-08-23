@@ -176,7 +176,7 @@ Violet — это «здесь важное / активное / действи�
 | **5** | Overlays: `Modal`, `ChannelInfoPanel`, `SearchOverlay`, `ServerHubModal`. | ✅ грамматика (v1.1.95–97) |
 | **6** | Data surfaces: `OperationalTablePanel`, `StatusBoard`, `AdminPanel`, `BotsTab`. | ✅ v1.2.4 (R2 cockpit) + v1.2.11 (AdminPanel) + v1.2.12 (BotsTab) |
 | **7** | CSS-консолидация: дубль-блоки `.ec-shell*` + `!important`-война (`components.css` ↔ `responsive.css` ↔ `effects.css`). | ✅ v1.2.5 |
-| **R** | **Визуальная пересборка** (не refactor): композиция топбара/shell, кнопки + hover/press/focus как система, фирменный media-плеер, media-controls. | в работе |
+| **R** | **Визуальная пересборка** (не refactor): `v1.7.54` закрыл первый compose-slice — подписанный global dock, mobile destinations и operational workspace overview; дальше кнопки как система, media-плеер и media-controls. | 🟡 shell/overview готовы, media открыт |
 | — | sci-fi-копирайт sweep (отдельный трек, решение Pavel'я). | открыто |
 
 ---
@@ -192,4 +192,4 @@ Violet — это «здесь важное / активное / действи�
 - ❌ Не делать «весь редизайн сразу» — только послойно.
 - ❌ Не вводить новые крупные паттерны без необходимости; сохранять
   UX-архитектуру там, где она уже стала лучше старой версии
-  (свёрнутый far-left rail, упрощённый правый rail, hover-buttons).
+  (global dock, упрощённый правый rail, предсказуемый keyboard focus).

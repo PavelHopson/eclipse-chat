@@ -1,7 +1,6 @@
 import "../styles/clean-ui.css";
 import { resolveAssetUrl } from "../lib/assets";
 import { serverBannerGradient } from "../lib/serverBanner";
-import { depthTiltProps } from "../lib/tilt";
 import { parseServerFeatures } from "../lib/serverFeatures";
 import type { ServerRow } from "../hooks/useServers";
 import type { ChannelRow } from "../hooks/useChannels";
@@ -11,12 +10,9 @@ import { Avatar } from "./Avatar";
 import { ChannelGlyph } from "./icons/ChannelCustomIcons";
 
 /**
- * Server guide («Путеводитель») — показывается когда канал не выбран.
- *
- * Clean redesign (IA reset): баннер — контейнерная шапка (не full-bleed за
- * текстом), иконка + имя + meta, описание читаемой колонкой (max-width),
- * welcome-callout, быстрые входы карточками. Без наслоений и sci-fi-театра.
- * Стили — clean-ui.css (.ec-guide*).
+ * Workspace overview — показывается до выбора комнаты. Это command surface,
+ * а не второй лендинг: identity компактна, следующий шаг первый, live-сигналы
+ * сгруппированы, длинный контекст раскрывается только по запросу.
  */
 
 type Props = {
@@ -185,101 +181,50 @@ export function ServerWelcomeHero({
     ? "Без выбора из десяти пунктов — начни отсюда."
     : "Пространство пустое. Нужна первая комната.";
 
+  const hasAttentionItems =
+    activeVoiceRooms.length > 0 || unreadRooms.length > 0 || openActions.length > 0;
+
   return (
-    <section className="ec-guide">
+    <section className="ec-guide" aria-labelledby="workspace-overview-title">
       <div className="ec-guide__inner">
-        <div
-          className={"ec-guide__banner" + (bannerUrl ? "" : " ec-guide__banner--fallback")}
+        <header
+          className={"ec-guide__identity" + (bannerUrl ? "" : " ec-guide__identity--fallback")}
           style={{
             backgroundImage: bannerUrl
               ? `url("${bannerUrl}")`
               : serverBannerGradient(server),
           }}
-          aria-hidden
-        />
-        <div className="ec-guide__head">
-          <div className="ec-guide__icon" aria-hidden>
-            {iconUrl ? (
-              <img
-                src={iconUrl}
-                alt=""
-                style={{ width: "100%", height: "100%", objectFit: "cover" }}
-              />
-            ) : (
-              (server.name?.[0] ?? "•").toUpperCase()
-            )}
-          </div>
-          <div className="ec-guide__title-wrap">
-            <h1 className="ec-guide__name">{server.name}</h1>
-            <div className="ec-guide__meta">
-              <span className="dot" aria-hidden />
-              {server.memberCount} {pluralMembers(server.memberCount)}
+        >
+          <span className="ec-guide__identity-shade" aria-hidden />
+          <div className="ec-guide__head">
+            <div className="ec-guide__icon" aria-hidden>
+              {iconUrl ? (
+                <img
+                  src={iconUrl}
+                  alt=""
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                />
+              ) : (
+                (server.name?.[0] ?? "•").toUpperCase()
+              )}
+            </div>
+            <div className="ec-guide__title-wrap">
+              <div className="ec-guide__eyebrow">Обзор пространства</div>
+              <h1 id="workspace-overview-title" className="ec-guide__name">{server.name}</h1>
+              <div className="ec-guide__meta">
+                <span className="dot" aria-hidden />
+                {server.memberCount} {pluralMembers(server.memberCount)} · {channels.length} комнат
+              </div>
             </div>
           </div>
-        </div>
+        </header>
 
         <div className="ec-guide__body">
-          <div className="ec-guide__main">
-            <div className="ec-guide__stats" aria-label="Сводка пространства">
-              <span>
-                <strong>{server.memberCount}</strong>
-                участников
-              </span>
-              <span>
-                <strong>{channels.length}</strong>
-                комнат
-              </span>
-              <span>
-                <strong>{openActions.length}</strong>
-                открыто
-              </span>
-              <span>
-                <strong>{activeVoiceRooms.length}</strong>
-                эфиров
-              </span>
-            </div>
-            {featureChips.length > 0 && (
-              <div className="ec-guide__features" aria-label="Ключевые особенности">
-                {featureChips.map((feature) => (
-                  <span key={feature} className="ec-guide__feature">
-                    {feature}
-                  </span>
-                ))}
-              </div>
-            )}
-            {guide.intro.length > 0 && (
-              <div className="ec-guide__desc">
-                {guide.intro.map((line) => (
-                  <p key={line}>{line}</p>
-                ))}
-              </div>
-            )}
-            {guide.sections.length > 0 && (
-              <div className="ec-guide__sections">
-                {guide.sections.map((section) => (
-                  <section key={section.title} className="ec-guide__section">
-                    <h2>{section.title}</h2>
-                    <div className="ec-guide__chips">
-                      {section.items.map((item) => (
-                        <span key={item} className="ec-guide__chip">
-                          {item}
-                        </span>
-                      ))}
-                    </div>
-                  </section>
-                ))}
-              </div>
-            )}
-            {server.welcomeMessage && (
-              <div className="ec-guide__welcome">{server.welcomeMessage}</div>
-            )}
-          </div>
-
-          <aside className="ec-guide__quick" aria-label="Быстрые действия пространства">
-            <div className="ec-guide__operator">
+          <main className="ec-guide__main">
+            <section className="ec-guide__operator" aria-labelledby="workspace-next-step">
               <div>
                 <div className="ec-guide__quick-label">Следующий шаг</div>
-                <h2>{primaryLabel}</h2>
+                <h2 id="workspace-next-step">{primaryLabel}</h2>
                 <p>{primaryHint}</p>
               </div>
               {nextChannel ? (
@@ -295,8 +240,195 @@ export function ServerWelcomeHero({
                   Нет комнат
                 </button>
               )}
-            </div>
+            </section>
 
+            <section className="ec-guide__activity" aria-labelledby="workspace-attention-title">
+              <div className="ec-guide__section-head">
+                <div>
+                  <div className="ec-guide__quick-label">Рабочий контур</div>
+                  <h2 id="workspace-attention-title">Что требует внимания</h2>
+                </div>
+                <span>{hasAttentionItems ? "Актуально сейчас" : "Всё спокойно"}</span>
+              </div>
+              <div className="ec-guide__activity-grid">
+                {activeVoiceRooms.length > 0 && (
+                  <div className="ec-guide__panel">
+                    <div className="ec-guide__panel-head">
+                      <span>Сейчас говорят</span>
+                      <span>{activeVoiceRooms.reduce((sum, room) => sum + room.userIds.length, 0)}</span>
+                    </div>
+                    <div className="ec-guide__voice-list">
+                      {activeVoiceRooms.map(({ channel, userIds }) => (
+                        <button
+                          key={channel.id}
+                          type="button"
+                          className="ec-guide__voice-room"
+                          onClick={() => onSelectChannel(channel.id)}
+                        >
+                          <span className="ec-guide__voice-main">
+                            <ChannelGlyph type={channel.type} icon={channel.emoji} size={14} />
+                            <span>{channel.name}</span>
+                          </span>
+                          <span className="ec-guide__voice-avatars" aria-hidden>
+                            {userIds.slice(0, 4).map((userId) => {
+                              const member = memberByUserId.get(userId);
+                              const name = member?.user.displayName ?? userId;
+                              return (
+                                <Avatar
+                                  key={userId}
+                                  url={member?.user.avatar ?? null}
+                                  name={name}
+                                  size={22}
+                                />
+                              );
+                            })}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {unreadRooms.length > 0 && (
+                  <div className="ec-guide__panel">
+                    <div className="ec-guide__panel-head">
+                      <span>Нужно посмотреть</span>
+                      <span>{unreadRooms.reduce((sum, item) => sum + item.count, 0)}</span>
+                    </div>
+                    <div className="ec-guide__todo-list">
+                      {unreadRooms.map(({ channel, count }) => (
+                        <button
+                          key={channel.id}
+                          type="button"
+                          className="ec-guide__todo-row"
+                          onClick={() => onSelectChannel(channel.id)}
+                        >
+                          <span>
+                            <ChannelGlyph type={channel.type} icon={channel.emoji} size={14} />
+                            {channel.name}
+                          </span>
+                          <strong>{count > 99 ? "99+" : count}</strong>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {(myActions.length > 0 || openActions.length > 0) && (
+                  <div className="ec-guide__panel">
+                    <div className="ec-guide__panel-head">
+                      <span>Дела</span>
+                      <span>{myActions.length > 0 ? `${myActions.length} мои` : `${openActions.length} открыто`}</span>
+                    </div>
+                    <div className="ec-guide__todo-list">
+                      {(myActions.length > 0 ? myActions : openActions).slice(0, 3).map((action) => {
+                        const channel = channels.find((item) => item.id === action.channelId);
+                        return (
+                          <button
+                            key={action.id}
+                            type="button"
+                            className="ec-guide__todo-row ec-guide__todo-row--action"
+                            onClick={onOpenStatusBoard}
+                            disabled={!onOpenStatusBoard}
+                          >
+                            <span>
+                              <small>{actionTypeLabel(action.type)}</small>
+                              {action.title}
+                            </span>
+                            <em>{channel?.name ?? "доска"}</em>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {!hasAttentionItems && (
+                  <div className="ec-guide__empty">
+                    <strong>Новых сигналов нет</strong>
+                    <span>Можно перейти в рабочую комнату или найти нужный контекст.</span>
+                  </div>
+                )}
+              </div>
+            </section>
+
+            {featured.length > 0 && (
+              <section className="ec-guide__rooms" aria-labelledby="workspace-rooms-title">
+                <div className="ec-guide__section-head">
+                  <div>
+                    <div className="ec-guide__quick-label">Быстрый вход</div>
+                    <h2 id="workspace-rooms-title">Рабочие комнаты</h2>
+                  </div>
+                </div>
+                <div className="ec-guide__quick-grid">
+                  {featured.map((ch) => (
+                    <button
+                      key={ch.id}
+                      type="button"
+                      className="ec-guide__card"
+                      onClick={() => onSelectChannel(ch.id)}
+                    >
+                      <span className="ec-guide__card-glyph">
+                        <ChannelGlyph type={ch.type} icon={ch.emoji} size={15} />
+                      </span>
+                      <span className="ec-guide__card-name">{ch.name}</span>
+                      <span className="ec-guide__card-arrow" aria-hidden>→</span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {(featureChips.length > 0 || guide.intro.length > 0 || guide.sections.length > 0 || server.welcomeMessage) && (
+              <details className="ec-guide__about">
+                <summary>
+                  <span>
+                    <strong>О пространстве</strong>
+                    <small>Цель, правила и контекст команды</small>
+                  </span>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <path d="m6 9 6 6 6-6" />
+                  </svg>
+                </summary>
+                <div className="ec-guide__about-body">
+                  {featureChips.length > 0 && (
+                    <div className="ec-guide__features" aria-label="Ключевые особенности">
+                      {featureChips.map((feature) => (
+                        <span key={feature} className="ec-guide__feature">{feature}</span>
+                      ))}
+                    </div>
+                  )}
+                  {guide.intro.length > 0 && (
+                    <div className="ec-guide__desc">
+                      {guide.intro.map((line) => <p key={line}>{line}</p>)}
+                    </div>
+                  )}
+                  {guide.sections.length > 0 && (
+                    <div className="ec-guide__sections">
+                      {guide.sections.map((section) => (
+                        <section key={section.title} className="ec-guide__section">
+                          <h2>{section.title}</h2>
+                          <div className="ec-guide__chips">
+                            {section.items.map((item) => (
+                              <span key={item} className="ec-guide__chip">{item}</span>
+                            ))}
+                          </div>
+                        </section>
+                      ))}
+                    </div>
+                  )}
+                  {server.welcomeMessage && (
+                    <div className="ec-guide__welcome">{server.welcomeMessage}</div>
+                  )}
+                </div>
+              </details>
+            )}
+          </main>
+
+          <aside className="ec-guide__quick" aria-label="Быстрый контроль пространства">
+            <div className="ec-guide__quick-label">Быстрый контроль</div>
+            <h2>Состояние пространства</h2>
+            <p>Дела, люди и поиск — без перехода в настройки.</p>
             <div className="ec-guide__signal-grid">
               <button type="button" onClick={onOpenStatusBoard} disabled={!onOpenStatusBoard} className="ec-guide__signal">
                 <strong>{actionsLoading ? "…" : openActions.length}</strong>
@@ -308,127 +440,13 @@ export function ServerWelcomeHero({
               </button>
               <button type="button" onClick={onOpenMembers} disabled={!onOpenMembers} className="ec-guide__signal">
                 <strong>{members.length || server.memberCount}</strong>
-                <span>людей</span>
+                <span>участников</span>
               </button>
               <button type="button" onClick={onOpenSearch} disabled={!onOpenSearch} className="ec-guide__signal">
                 <strong>⌘K</strong>
                 <span>найти всё</span>
               </button>
             </div>
-
-            {activeVoiceRooms.length > 0 && (
-              <div className="ec-guide__panel">
-                <div className="ec-guide__panel-head">
-                  <span>Сейчас говорят</span>
-                  <span>{activeVoiceRooms.reduce((sum, room) => sum + room.userIds.length, 0)}</span>
-                </div>
-                <div className="ec-guide__voice-list">
-                  {activeVoiceRooms.map(({ channel, userIds }) => (
-                    <button
-                      key={channel.id}
-                      type="button"
-                      className="ec-guide__voice-room"
-                      onClick={() => onSelectChannel(channel.id)}
-                    >
-                      <span className="ec-guide__voice-main">
-                        <ChannelGlyph type={channel.type} icon={channel.emoji} size={14} />
-                        <span>{channel.name}</span>
-                      </span>
-                      <span className="ec-guide__voice-avatars" aria-hidden>
-                        {userIds.slice(0, 4).map((userId) => {
-                          const member = memberByUserId.get(userId);
-                          const name = member?.user.displayName ?? userId;
-                          return (
-                            <Avatar
-                              key={userId}
-                              url={member?.user.avatar ?? null}
-                              name={name}
-                              size={22}
-                            />
-                          );
-                        })}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {unreadRooms.length > 0 && (
-              <div className="ec-guide__panel">
-                <div className="ec-guide__panel-head">
-                  <span>Нужно посмотреть</span>
-                  <span>{unreadRooms.reduce((sum, item) => sum + item.count, 0)}</span>
-                </div>
-                <div className="ec-guide__todo-list">
-                  {unreadRooms.map(({ channel, count }) => (
-                    <button
-                      key={channel.id}
-                      type="button"
-                      className="ec-guide__todo-row"
-                      onClick={() => onSelectChannel(channel.id)}
-                    >
-                      <span>
-                        <ChannelGlyph type={channel.type} icon={channel.emoji} size={14} />
-                        {channel.name}
-                      </span>
-                      <strong>{count > 99 ? "99+" : count}</strong>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {(myActions.length > 0 || openActions.length > 0) && (
-              <div className="ec-guide__panel">
-                <div className="ec-guide__panel-head">
-                  <span>Рабочий контур</span>
-                  <span>{myActions.length > 0 ? `${myActions.length} мои` : `${openActions.length} открыто`}</span>
-                </div>
-                <div className="ec-guide__todo-list">
-                  {(myActions.length > 0 ? myActions : openActions).slice(0, 3).map((action) => {
-                    const channel = channels.find((item) => item.id === action.channelId);
-                    return (
-                      <button
-                        key={action.id}
-                        type="button"
-                        className="ec-guide__todo-row ec-guide__todo-row--action"
-                        onClick={onOpenStatusBoard}
-                        disabled={!onOpenStatusBoard}
-                      >
-                        <span>
-                          <small>{actionTypeLabel(action.type)}</small>
-                          {action.title}
-                        </span>
-                        <em>{channel?.name ?? "доска"}</em>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {featured.length > 0 && (
-              <>
-                <div className="ec-guide__quick-label">Комнаты для старта</div>
-                <div className="ec-guide__quick-grid">
-                  {featured.map((ch) => (
-                    <button
-                      key={ch.id}
-                      type="button"
-                      className="ec-guide__card ec-depth-card"
-                      onClick={() => onSelectChannel(ch.id)}
-                      {...depthTiltProps}
-                    >
-                      <span className="ec-guide__card-glyph">
-                        <ChannelGlyph type={ch.type} icon={ch.emoji} size={15} />
-                      </span>
-                      <span className="ec-guide__card-name">{ch.name}</span>
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
           </aside>
         </div>
       </div>
