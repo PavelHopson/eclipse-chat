@@ -1,0 +1,1662 @@
+/*
+ * Eclipse Chat workspace v2.
+ * Final operational UI layer for chat, server navigation and context panels.
+ * LogoutButton is intentionally excluded: this file contains no logout selectors.
+ */
+
+.ec-shell.ec-workspace-v2 {
+  --ec-ws-canvas: #080a0f;
+  --ec-ws-rail: #090b10;
+  --ec-ws-sidebar: #0c0f15;
+  --ec-ws-panel: #10141b;
+  --ec-ws-raised: #151a23;
+  --ec-ws-line: rgba(215, 220, 240, 0.09);
+  --ec-ws-line-strong: rgba(215, 220, 240, 0.16);
+  --ec-ws-violet: #8d6df2;
+  --ec-ws-violet-soft: rgba(141, 109, 242, 0.13);
+  --ec-ws-text: #eceef4;
+  --ec-ws-muted: #949baa;
+  --ec-ws-dim: #656d7c;
+  background: var(--ec-ws-canvas);
+  color: var(--ec-ws-text);
+}
+
+@media (min-width: 1025px) {
+  .ec-shell.ec-workspace-v2 {
+    grid-template-columns: 82px 286px minmax(460px, 1fr) 260px;
+  }
+
+  .ec-shell.ec-workspace-v2:not(.ec-shell--has-server) {
+    grid-template-columns: 82px 286px minmax(460px, 1fr);
+  }
+}
+
+.ec-workspace-v2 .ec-shell__rail,
+.ec-workspace-v2 .ec-shell__brandbar,
+.ec-workspace-v2 .ec-shell__cmdbar,
+.ec-workspace-v2 .ec-shell__channels,
+.ec-workspace-v2 .ec-shell__members,
+.ec-workspace-v2 .ec-chat-header {
+  background-image: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+}
+
+.ec-workspace-v2 .ec-shell__brandbar,
+.ec-workspace-v2 .ec-shell__cmdbar {
+  min-height: var(--ec-header-height);
+  background: var(--ec-ws-rail);
+  border-bottom: 1px solid var(--ec-ws-line);
+}
+
+.ec-workspace-v2 .ec-shell__brandbar {
+  border-right: 1px solid var(--ec-ws-line);
+}
+
+.ec-workspace-v2 .ec-shell__brand-home {
+  min-width: 0;
+  padding: 0 16px;
+  gap: 10px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.ec-workspace-v2 .ec-shell__brand-home:hover,
+.ec-workspace-v2 .ec-shell__brand-home:focus-visible {
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.ec-workspace-v2 .ec-shell__brand-lockup strong {
+  color: var(--ec-ws-text);
+  font-size: 13px;
+  font-weight: 720;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.ec-workspace-v2 .ec-shell__brand-lockup small {
+  color: var(--ec-ws-dim);
+  font-size: 9px;
+  font-weight: 650;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.ec-workspace-v2 .ec-shell__cmdbar {
+  padding-inline: 18px;
+}
+
+.ec-workspace-v2 .ec-shell__loc,
+.ec-workspace-v2 .ec-shell__breadcrumb {
+  color: var(--ec-ws-muted);
+  font-size: 12px;
+}
+
+.ec-workspace-v2 .ec-shell__loc-name,
+.ec-workspace-v2 .ec-shell__breadcrumb strong {
+  color: var(--ec-ws-text);
+  font-weight: 650;
+}
+
+.ec-workspace-v2 .ec-shell__user-chip {
+  min-height: 34px;
+  padding: 4px 8px 4px 5px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--ec-ws-muted);
+}
+
+.ec-workspace-v2 .ec-shell__user-chip:hover,
+.ec-workspace-v2 .ec-shell__user-chip:focus-visible {
+  border-color: var(--ec-ws-line);
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--ec-ws-text);
+}
+
+/* Global rail */
+.ec-workspace-v2 .ec-shell__rail {
+  background: var(--ec-ws-rail);
+  border-right: 1px solid var(--ec-ws-line);
+}
+
+.ec-workspace-v2 .ec-rail {
+  width: 100%;
+  height: 100%;
+  padding: 10px 7px 12px;
+  gap: 6px;
+  background: transparent;
+  border: 0;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--ec-ws-line-strong) transparent;
+}
+
+.ec-workspace-v2 .ec-rail__group,
+.ec-workspace-v2 .ec-rail__servers {
+  width: 100%;
+  gap: 3px;
+}
+
+.ec-workspace-v2 .ec-rail__group--utilities {
+  margin-top: auto;
+}
+
+.ec-workspace-v2 .ec-rail__divider {
+  width: calc(100% - 16px);
+  height: 1px;
+  margin: 4px 8px;
+  background: var(--ec-ws-line);
+}
+
+.ec-workspace-v2 .ec-rail__section-label {
+  margin: 3px 0 1px;
+  color: var(--ec-ws-dim);
+  font-family: var(--ec-font-mono);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.ec-workspace-v2 .ec-rail__btn {
+  position: relative;
+  width: 100%;
+  min-height: 52px;
+  padding: 5px 3px;
+  gap: 3px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ec-ws-muted);
+  transition: color 140ms ease, background-color 140ms ease, border-color 140ms ease;
+}
+
+.ec-workspace-v2 .ec-rail__btn:hover:not(:disabled),
+.ec-workspace-v2 .ec-rail__btn:focus-visible {
+  border-color: var(--ec-ws-line);
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--ec-ws-text);
+  transform: none;
+}
+
+.ec-workspace-v2 .ec-rail__btn.is-active {
+  border-color: rgba(141, 109, 242, 0.24);
+  background: var(--ec-ws-violet-soft);
+  color: #dcd3ff;
+}
+
+.ec-workspace-v2 .ec-rail__btn:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+
+.ec-workspace-v2 .ec-rail__pill {
+  top: 8px;
+  bottom: 8px;
+  left: -7px;
+  width: 2px;
+  height: auto;
+  border-radius: 0 2px 2px 0;
+  background: transparent;
+  transform: none;
+}
+
+.ec-workspace-v2 .ec-rail__btn.is-active .ec-rail__pill {
+  background: var(--ec-ws-violet);
+}
+
+.ec-workspace-v2 .ec-rail__glyph {
+  width: 24px;
+  height: 24px;
+  color: inherit;
+}
+
+.ec-workspace-v2 .ec-rail__btn--server .ec-rail__glyph,
+.ec-workspace-v2 .ec-rail__btn--server .ec-rail__glyph > * {
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 7px !important;
+  overflow: hidden;
+}
+
+.ec-workspace-v2 .ec-rail__caption {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  color: inherit;
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.1;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ec-workspace-v2 .ec-rail__badge {
+  top: 3px;
+  right: 3px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border: 2px solid var(--ec-ws-rail);
+  background: var(--ec-danger);
+  box-shadow: none;
+  font-size: 9px;
+}
+
+/* Context sidebar */
+.ec-workspace-v2 .ec-shell__channels {
+  background: var(--ec-ws-sidebar);
+  border-right: 1px solid var(--ec-ws-line);
+}
+
+.ec-workspace-v2 .ec-channel-list,
+.ec-workspace-v2 .ec-dmx {
+  height: 100%;
+  background: transparent;
+  color: var(--ec-ws-text);
+  border: 0;
+}
+
+.ec-workspace-v2 .ec-channel-list__header,
+.ec-workspace-v2 .ec-dmx__head {
+  min-height: 58px;
+  padding: 10px 14px;
+  background: var(--ec-ws-sidebar);
+  border: 0;
+  border-bottom: 1px solid var(--ec-ws-line);
+  box-shadow: none;
+}
+
+.ec-workspace-v2 .ec-channel-list__header::before,
+.ec-workspace-v2 .ec-channel-list__header::after,
+.ec-workspace-v2 .ec-server-header-edge::after,
+.ec-workspace-v2 .ec-dmx__dot {
+  display: none;
+}
+
+.ec-workspace-v2 .ec-channel-list__header--banner {
+  background: var(--ec-ws-sidebar) !important;
+}
+
+.ec-workspace-v2 .ec-channel-list__header--banner::before {
+  display: none;
+}
+
+.ec-workspace-v2 .ec-channel-list__server-btn {
+  min-height: 38px;
+  padding: 0 7px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--ec-ws-text);
+}
+
+.ec-workspace-v2 .ec-channel-list__server-btn:hover,
+.ec-workspace-v2 .ec-channel-list__server-btn:focus-visible,
+.ec-workspace-v2 .ec-channel-list__server-btn[aria-expanded="true"] {
+  border-color: var(--ec-ws-line);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.ec-workspace-v2 .ec-channel-list__server-name,
+.ec-workspace-v2 .ec-dmx__title {
+  color: var(--ec-ws-text);
+  font-size: 13px;
+  font-weight: 680;
+  letter-spacing: -0.01em;
+}
+
+.ec-workspace-v2 .ec-dmx__head-btn,
+.ec-workspace-v2 .ec-channel-category__action,
+.ec-workspace-v2 .ec-section-add,
+.ec-workspace-v2 .ec-channel-action,
+.ec-workspace-v2 .ec-channel-search__clear {
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ec-ws-dim);
+}
+
+.ec-workspace-v2 .ec-dmx__head-btn:hover,
+.ec-workspace-v2 .ec-dmx__head-btn:focus-visible,
+.ec-workspace-v2 .ec-channel-category__action:hover,
+.ec-workspace-v2 .ec-channel-category__action:focus-visible,
+.ec-workspace-v2 .ec-section-add:hover,
+.ec-workspace-v2 .ec-section-add:focus-visible,
+.ec-workspace-v2 .ec-channel-action:hover,
+.ec-workspace-v2 .ec-channel-action:focus-visible {
+  border-color: var(--ec-ws-line);
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--ec-ws-text);
+}
+
+.ec-workspace-v2 .ec-sidebar-tabs {
+  position: relative;
+  min-height: 42px;
+  margin: 0;
+  padding: 5px 9px;
+  gap: 3px;
+  background: var(--ec-ws-sidebar);
+  border-bottom: 1px solid var(--ec-ws-line);
+}
+
+.ec-workspace-v2 .ec-sidebar-tab {
+  min-height: 31px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--ec-ws-dim);
+  font-size: 11px;
+  font-weight: 630;
+}
+
+.ec-workspace-v2 .ec-sidebar-tab:hover,
+.ec-workspace-v2 .ec-sidebar-tab:focus-visible {
+  color: var(--ec-ws-muted);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.ec-workspace-v2 .ec-sidebar-tab[aria-selected="true"] {
+  border-color: var(--ec-ws-line);
+  background: var(--ec-ws-panel);
+  color: var(--ec-ws-text);
+}
+
+.ec-workspace-v2 .ec-sidebar-tab[aria-selected="true"]::before,
+.ec-workspace-v2 .ec-sidebar-tab[aria-selected="true"]::after,
+.ec-workspace-v2 .ec-hud-slider {
+  display: none;
+}
+
+.ec-workspace-v2 .ec-channel-list__list {
+  padding: 10px 8px 14px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--ec-ws-line-strong) transparent;
+}
+
+.ec-workspace-v2 .ec-channel-search,
+.ec-workspace-v2 .ec-dmx__search {
+  min-height: 36px;
+  margin: 9px 10px 6px;
+  padding: 0 10px;
+  border: 1px solid var(--ec-ws-line);
+  border-radius: 7px;
+  background: #090c11;
+  color: var(--ec-ws-dim);
+  box-shadow: none;
+}
+
+.ec-workspace-v2 .ec-channel-search:focus-within,
+.ec-workspace-v2 .ec-dmx__search:focus-within {
+  border-color: rgba(141, 109, 242, 0.5);
+  background: #0b0e14;
+  box-shadow: 0 0 0 2px rgba(141, 109, 242, 0.1);
+}
+
+.ec-workspace-v2 .ec-channel-search input,
+.ec-workspace-v2 .ec-dmx__search input {
+  color: var(--ec-ws-text);
+  font-size: 12px;
+}
+
+.ec-workspace-v2 .ec-channel-search input::placeholder,
+.ec-workspace-v2 .ec-dmx__search input::placeholder {
+  color: var(--ec-ws-dim);
+}
+
+.ec-workspace-v2 .ec-section-label,
+.ec-workspace-v2 .ec-channel-category__header,
+.ec-workspace-v2 .ec-dmx__label {
+  min-height: 27px;
+  margin: 7px 4px 3px;
+  padding: 0 7px;
+  color: var(--ec-ws-dim);
+  font-family: var(--ec-font-sans);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.065em;
+  text-transform: uppercase;
+}
+
+.ec-workspace-v2 .ec-section-label--diamond::before {
+  display: none;
+}
+
+.ec-workspace-v2 .ec-channel-category {
+  margin: 0;
+  border: 0;
+  background: transparent;
+}
+
+.ec-workspace-v2 .ec-channel-item {
+  position: relative;
+  min-height: 38px;
+  margin: 1px 0;
+  padding: 0 8px;
+  gap: 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ec-ws-muted);
+  box-shadow: none !important;
+}
+
+.ec-workspace-v2 .ec-channel-item::before,
+.ec-workspace-v2 .ec-channel-item::after {
+  display: none;
+}
+
+.ec-workspace-v2 .ec-channel-item:hover,
+.ec-workspace-v2 .ec-channel-item:focus-visible {
+  border-color: rgba(215, 220, 240, 0.055);
+  background: rgba(255, 255, 255, 0.032);
+  color: var(--ec-ws-text);
+  transform: none;
+}
+
+.ec-workspace-v2 .ec-channel-item--active {
+  border-color: rgba(141, 109, 242, 0.2);
+  background: var(--ec-ws-violet-soft);
+  color: #e5dfff;
+}
+
+.ec-workspace-v2 .ec-channel-item--active::before {
+  display: block;
+  position: absolute;
+  inset: 7px auto 7px -1px;
+  width: 2px;
+  border-radius: 0 2px 2px 0;
+  background: var(--ec-ws-violet);
+  content: "";
+}
+
+.ec-workspace-v2 .ec-channel-item__name {
+  color: inherit;
+  font-size: 12.5px;
+  font-weight: 550;
+}
+
+.ec-workspace-v2 .ec-channel-count,
+.ec-workspace-v2 .ec-channel-section__count,
+.ec-workspace-v2 .ec-channel-category__count,
+.ec-workspace-v2 .ec-sidebar-tab__count {
+  border: 0;
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--ec-ws-dim);
+  box-shadow: none;
+}
+
+.ec-workspace-v2 .ec-channel-list__composer {
+  padding: 10px;
+  border-top: 1px solid var(--ec-ws-line);
+  background: var(--ec-ws-sidebar);
+}
+
+/* Direct messages */
+.ec-workspace-v2 .ec-dmx__compose {
+  width: calc(100% - 20px);
+  min-height: 36px;
+  margin: 10px 10px 2px;
+  border-radius: 7px;
+  box-shadow: none;
+}
+
+.ec-workspace-v2 .ec-dmx__list {
+  padding: 3px 8px 14px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--ec-ws-line-strong) transparent;
+}
+
+.ec-workspace-v2 .ec-dmx-row {
+  position: relative;
+  min-height: 54px;
+  margin: 1px 0;
+  padding: 6px 7px;
+  gap: 9px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--ec-ws-muted);
+  box-shadow: none;
+}
+
+.ec-workspace-v2 .ec-dmx-row:hover,
+.ec-workspace-v2 .ec-dmx-row:focus-visible {
+  border-color: rgba(215, 220, 240, 0.055);
+  background: rgba(255, 255, 255, 0.032);
+  transform: none;
+}
+
+.ec-workspace-v2 .ec-dmx-row.is-active {
+  border-color: rgba(141, 109, 242, 0.2);
+  background: var(--ec-ws-violet-soft);
+}
+
+.ec-workspace-v2 .ec-dmx-row.is-active::before {
+  position: absolute;
+  inset: 9px auto 9px -1px;
+  width: 2px;
+  border-radius: 0 2px 2px 0;
+  background: var(--ec-ws-violet);
+  content: "";
+}
+
+.ec-workspace-v2 .ec-dmx-row__av,
+.ec-workspace-v2 .ec-dmx-row__saved-tile {
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+}
+
+.ec-workspace-v2 .ec-dmx-row__av img {
+  width: 34px !important;
+  height: 34px !important;
+}
+
+.ec-workspace-v2 .ec-dmx-row__name {
+  color: var(--ec-ws-text);
+  font-size: 12.5px;
+  font-weight: 620;
+}
+
+.ec-workspace-v2 .ec-dmx-row__sub-text,
+.ec-workspace-v2 .ec-dmx-row__time {
+  color: var(--ec-ws-dim);
+  font-size: 10.5px;
+}
+
+.ec-workspace-v2 .ec-dmx-row.is-unread .ec-dmx-row__name {
+  color: #fff;
+  font-weight: 720;
+}
+
+.ec-workspace-v2 .ec-dmx-row__unread {
+  min-width: 18px;
+  height: 18px;
+  background: var(--ec-ws-violet);
+  box-shadow: none;
+  font-size: 9px;
+}
+
+/* Main chat */
+.ec-workspace-v2 .ec-shell__chat {
+  position: relative;
+  background: var(--ec-ws-canvas);
+  border: 0;
+}
+
+.ec-workspace-v2 .ec-chat-header {
+  min-height: 54px;
+  padding: 0 18px;
+  background: #0b0e13;
+  border: 0;
+  border-bottom: 1px solid var(--ec-ws-line);
+}
+
+.ec-workspace-v2 .ec-chat-header::before,
+.ec-workspace-v2 .ec-chat-header::after {
+  display: none;
+}
+
+.ec-workspace-v2 .ec-chat-title {
+  min-width: 0;
+  gap: 9px;
+  color: var(--ec-ws-text);
+  font-size: 13px;
+  font-weight: 680;
+  letter-spacing: -0.005em;
+}
+
+.ec-workspace-v2 .ec-chat-title__glyph {
+  color: #a993ff;
+}
+
+.ec-workspace-v2 .ec-chat-title__context {
+  color: var(--ec-ws-dim);
+  font-weight: 500;
+}
+
+.ec-workspace-v2 .ec-server-nav {
+  min-height: 43px;
+  padding: 5px 12px;
+  background: #0b0e13;
+  border-bottom: 1px solid var(--ec-ws-line);
+}
+
+.ec-workspace-v2 .ec-server-nav__track {
+  gap: 3px;
+}
+
+.ec-workspace-v2 .ec-server-nav__item {
+  min-height: 31px;
+  padding: 0 11px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ec-ws-dim);
+  font-size: 11px;
+  font-weight: 620;
+}
+
+.ec-workspace-v2 .ec-server-nav__item:hover,
+.ec-workspace-v2 .ec-server-nav__item:focus-visible {
+  background: rgba(255, 255, 255, 0.028);
+  color: var(--ec-ws-muted);
+}
+
+.ec-workspace-v2 .ec-server-nav__item--active {
+  border-color: var(--ec-ws-line);
+  background: var(--ec-ws-panel);
+  color: var(--ec-ws-text);
+}
+
+.ec-workspace-v2 .ec-server-nav__item--active::after {
+  display: none;
+}
+
+.ec-workspace-v2 .ec-message-list-shell,
+.ec-workspace-v2 .ec-message-list {
+  min-height: 0;
+  background: var(--ec-ws-canvas);
+}
+
+.ec-workspace-v2 .ec-message-list {
+  padding: 18px max(18px, calc((100% - 920px) / 2)) 14px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--ec-ws-line-strong) transparent;
+}
+
+.ec-workspace-v2 .ec-msg-channel-top {
+  min-height: 74px;
+  margin: 0 0 18px;
+  padding: 14px 12px 16px;
+  border: 0;
+  border-bottom: 1px solid var(--ec-ws-line);
+  border-radius: 0;
+  background: transparent;
+}
+
+.ec-workspace-v2 .ec-msg-channel-top__title {
+  color: var(--ec-ws-text);
+  font-size: 18px;
+  font-weight: 720;
+  letter-spacing: -0.02em;
+}
+
+.ec-workspace-v2 .ec-msg-channel-top__sub {
+  color: var(--ec-ws-muted);
+  font-size: 12px;
+}
+
+.ec-workspace-v2 .ec-msg-day {
+  margin: 18px 0 12px;
+  color: var(--ec-ws-dim);
+}
+
+.ec-workspace-v2 .ec-msg-day__line {
+  background: var(--ec-ws-line);
+}
+
+.ec-workspace-v2 .ec-msg-day__label {
+  color: var(--ec-ws-dim);
+  font-family: var(--ec-font-sans);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ec-workspace-v2 .ec-message-row {
+  width: 100%;
+  max-width: 920px;
+  margin-inline: auto;
+  padding: 6px 10px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  box-shadow: none;
+}
+
+.ec-workspace-v2 .ec-message-row--grouped {
+  padding-block: 2px;
+}
+
+.ec-workspace-v2 .ec-message-row:hover,
+.ec-workspace-v2 .ec-message-row:focus-within {
+  border-color: rgba(215, 220, 240, 0.045);
+  background: rgba(255, 255, 255, 0.022);
+  transform: none;
+}
+
+.ec-workspace-v2 .ec-message-row--mine {
+  background: transparent;
+}
+
+.ec-workspace-v2 .ec-message-row--mine .ec-message-content {
+  width: auto;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ec-ws-text);
+  box-shadow: none;
+}
+
+.ec-workspace-v2 .ec-message-row--ai {
+  max-width: 920px;
+  padding-left: 10px !important;
+  border: 1px solid rgba(141, 109, 242, 0.15);
+  border-left: 2px solid rgba(141, 109, 242, 0.6);
+  border-radius: 7px;
+  background: rgba(141, 109, 242, 0.045) !important;
+}
+
+.ec-workspace-v2 .ec-message-row--ai::after {
+  display: none;
+}
+
+.ec-workspace-v2 .ec-message-row--pinned {
+  border-color: rgba(236, 190, 87, 0.18);
+  background: rgba(236, 190, 87, 0.035);
+}
+
+.ec-workspace-v2 .ec-msg-avatar-wrap {
+  box-shadow: none;
+  filter: none;
+}
+
+.ec-workspace-v2 .ec-msg-author {
+  color: var(--ec-ws-text);
+  font-size: 12.5px;
+  font-weight: 680;
+}
+
+.ec-workspace-v2 .ec-msg-time,
+.ec-workspace-v2 .ec-msg-sticky-time {
+  color: var(--ec-ws-dim);
+  font-size: 10px;
+}
+
+.ec-workspace-v2 .ec-message-content {
+  width: auto;
+  max-width: none;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #d8dbe4;
+  font-size: 13.5px;
+  line-height: 1.55;
+  box-shadow: none;
+}
+
+.ec-workspace-v2 .ec-message-content::before {
+  display: none;
+}
+
+.ec-workspace-v2 .ec-message-actions {
+  top: -24px;
+  right: 8px;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--ec-ws-line-strong);
+  border-radius: 7px;
+  background: #11151c;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+}
+
+.ec-workspace-v2 .ec-msg-action {
+  min-width: 28px;
+  min-height: 28px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--ec-ws-muted);
+}
+
+.ec-workspace-v2 .ec-msg-action:hover,
+.ec-workspace-v2 .ec-msg-action:focus-visible {
+  background: rgba(255, 255, 255, 0.055);
+  color: var(--ec-ws-text);
+}
+
+/* Composer */
+.ec-workspace-v2 .ec-composer {
+  padding: 8px max(18px, calc((100% - 920px) / 2)) 10px;
+  background: var(--ec-ws-canvas);
+  border: 0;
+}
+
+.ec-workspace-v2 .ec-composer::before,
+.ec-workspace-v2 .ec-composer-box::before,
+.ec-workspace-v2 .ec-composer-plus::before,
+.ec-workspace-v2 .ec-composer-send::before {
+  display: none;
+}
+
+.ec-workspace-v2 .ec-composer-box,
+.ec-workspace-v2 .ec-composer-box--full,
+.ec-workspace-v2 .ec-composer-box--minimal {
+  min-height: 48px;
+  border: 1px solid var(--ec-ws-line-strong);
+  border-radius: 8px;
+  background: #0e1218;
+  box-shadow: none;
+}
+
+.ec-workspace-v2 .ec-composer-box:focus-within {
+  border-color: rgba(141, 109, 242, 0.55);
+  background: #10141b;
+  box-shadow: 0 0 0 2px rgba(141, 109, 242, 0.1);
+}
+
+.ec-workspace-v2 .ec-composer-textarea {
+  color: var(--ec-ws-text);
+  font-size: 13.5px;
+  line-height: 1.45;
+}
+
+.ec-workspace-v2 .ec-composer-textarea::placeholder {
+  color: var(--ec-ws-dim);
+}
+
+.ec-workspace-v2 .ec-composer-plus,
+.ec-workspace-v2 .ec-composer-icon-btn,
+.ec-workspace-v2 .ec-composer-send {
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ec-ws-muted);
+  box-shadow: none;
+}
+
+.ec-workspace-v2 .ec-composer-plus:hover:not(:disabled),
+.ec-workspace-v2 .ec-composer-plus:focus-visible,
+.ec-workspace-v2 .ec-composer-icon-btn:hover:not(:disabled),
+.ec-workspace-v2 .ec-composer-icon-btn:focus-visible {
+  border-color: var(--ec-ws-line);
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--ec-ws-text);
+  transform: none;
+}
+
+.ec-workspace-v2 .ec-composer-send:not(:disabled) {
+  border-color: rgba(141, 109, 242, 0.28);
+  background: var(--ec-ws-violet-soft);
+  color: #d9d0ff;
+}
+
+.ec-workspace-v2 .ec-composer-send:hover:not(:disabled),
+.ec-workspace-v2 .ec-composer-send:focus-visible:not(:disabled) {
+  border-color: rgba(141, 109, 242, 0.48);
+  background: rgba(141, 109, 242, 0.2);
+  color: #fff;
+  transform: none;
+}
+
+.ec-workspace-v2 .ec-composer-send-label {
+  display: none;
+}
+
+.ec-workspace-v2 .ec-composer-hints {
+  min-height: 18px;
+  margin-top: 4px;
+  color: var(--ec-ws-dim);
+  font-size: 9px;
+}
+
+.ec-workspace-v2 .ec-kbd {
+  border: 0;
+  background: transparent;
+  color: var(--ec-ws-muted);
+  box-shadow: none;
+}
+
+.ec-workspace-v2 .ec-composer-action-menu,
+.ec-workspace-v2 .ec-slash-hint {
+  border: 1px solid var(--ec-ws-line-strong);
+  border-radius: 8px;
+  background: #11151c;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.42);
+}
+
+/* Members */
+.ec-workspace-v2 .ec-shell__members {
+  background: var(--ec-ws-sidebar);
+  border-left: 1px solid var(--ec-ws-line);
+}
+
+.ec-workspace-v2 .ec-mem {
+  height: 100%;
+  background: transparent;
+  border: 0;
+}
+
+.ec-workspace-v2 .ec-mem__hd {
+  min-height: 54px;
+  padding: 0 13px;
+  border-bottom: 1px solid var(--ec-ws-line);
+  background: var(--ec-ws-sidebar);
+}
+
+.ec-workspace-v2 .ec-mem__hd-title {
+  color: var(--ec-ws-text);
+  font-size: 12px;
+  font-weight: 680;
+}
+
+.ec-workspace-v2 .ec-mem__hd-count,
+.ec-workspace-v2 .ec-mem-row__role {
+  border: 0;
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--ec-ws-dim);
+  box-shadow: none;
+}
+
+.ec-workspace-v2 .ec-mem__scroll {
+  padding: 9px 8px 14px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--ec-ws-line-strong) transparent;
+}
+
+.ec-workspace-v2 .ec-mem__group {
+  min-height: 29px;
+  margin: 5px 2px 2px;
+  padding: 0 6px;
+  color: var(--ec-ws-dim);
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.ec-workspace-v2 .ec-mem-row {
+  min-height: 43px;
+  margin: 1px 0;
+  padding: 5px 6px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ec-ws-muted);
+}
+
+.ec-workspace-v2 .ec-mem-row:hover,
+.ec-workspace-v2 .ec-mem-row:focus-within {
+  border-color: rgba(215, 220, 240, 0.055);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.ec-workspace-v2 .ec-mem-row__name {
+  color: var(--ec-ws-text);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.ec-workspace-v2 .ec-mem-row__act {
+  color: var(--ec-ws-dim);
+  font-size: 9.5px;
+}
+
+.ec-workspace-v2 .ec-mem-row__role--owner,
+.ec-workspace-v2 .ec-mem-row__role--admin {
+  background: var(--ec-ws-violet-soft);
+  color: #cbbfff;
+}
+
+/* Accessible interaction states */
+.ec-workspace-v2 :where(
+  .ec-rail__btn,
+  .ec-channel-item,
+  .ec-dmx-row,
+  .ec-server-nav__item,
+  .ec-sidebar-tab,
+  .ec-msg-action,
+  .ec-composer-plus,
+  .ec-composer-icon-btn,
+  .ec-composer-send,
+  .ec-mem-row
+):focus-visible {
+  outline: 2px solid rgba(169, 147, 255, 0.82);
+  outline-offset: 1px;
+}
+
+.ec-workspace-v2 .ec-skeleton-row,
+.ec-workspace-v2 .ec-skeleton-row__avatar,
+.ec-workspace-v2 .ec-skeleton-row__bar {
+  background-image: none;
+  background-color: rgba(255, 255, 255, 0.045);
+  box-shadow: none;
+}
+
+@media (max-width: 1280px) and (min-width: 1025px) {
+  .ec-shell.ec-workspace-v2.ec-shell--has-server {
+    grid-template-columns: 76px 248px minmax(420px, 1fr) 224px;
+  }
+
+  .ec-workspace-v2 .ec-message-list,
+  .ec-workspace-v2 .ec-composer {
+    padding-inline: 16px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .ec-shell.ec-workspace-v2,
+  .ec-shell.ec-workspace-v2.ec-shell--has-server,
+  .ec-shell.ec-workspace-v2:not(.ec-shell--has-server) {
+    grid-template-columns: 54px minmax(0, 1fr) !important;
+  }
+
+  .ec-workspace-v2 .ec-shell__brandbar,
+  .ec-workspace-v2 .ec-shell__cmdbar {
+    padding-inline: 8px !important;
+  }
+
+  .ec-workspace-v2 .ec-shell__brand-home {
+    padding-inline: 7px;
+  }
+
+  .ec-workspace-v2 .ec-shell__brand-lockup {
+    display: none;
+  }
+
+  .ec-workspace-v2 .ec-shell__channels {
+    width: min(304px, 88vw);
+    background: var(--ec-ws-sidebar);
+    box-shadow: 18px 0 48px rgba(0, 0, 0, 0.42);
+  }
+
+  .ec-workspace-v2 .ec-shell__members {
+    width: min(296px, 88vw);
+    background: var(--ec-ws-sidebar);
+    box-shadow: -18px 0 48px rgba(0, 0, 0, 0.42);
+  }
+
+  .ec-workspace-v2 .ec-chat-header {
+    padding-inline: 12px !important;
+  }
+
+  .ec-workspace-v2 .ec-message-list,
+  .ec-workspace-v2 .ec-composer {
+    padding-inline: 12px;
+  }
+}
+
+@media (max-width: 640px) {
+  .ec-workspace-v2 .ec-chat-header {
+    min-height: 50px;
+  }
+
+  .ec-workspace-v2 .ec-message-list {
+    padding: 10px 7px 8px;
+  }
+
+  .ec-workspace-v2 .ec-msg-channel-top {
+    min-height: 64px;
+    margin-bottom: 10px;
+    padding-inline: 8px;
+  }
+
+  .ec-workspace-v2 .ec-msg-channel-top__title {
+    font-size: 16px;
+  }
+
+  .ec-workspace-v2 .ec-message-row {
+    padding: 5px 4px;
+    border-radius: 5px;
+  }
+
+  .ec-workspace-v2 .ec-message-content {
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .ec-workspace-v2 .ec-message-actions {
+    position: static;
+    grid-column: 2;
+    width: fit-content;
+    margin-top: 4px;
+    box-shadow: none;
+  }
+
+  .ec-workspace-v2 .ec-composer {
+    padding: 6px 8px calc(7px + env(safe-area-inset-bottom));
+  }
+
+  .ec-workspace-v2 .ec-composer-hints {
+    display: none;
+  }
+
+  .ec-workspace-v2 .ec-composer-plus,
+  .ec-workspace-v2 .ec-composer-icon-btn,
+  .ec-workspace-v2 .ec-composer-send {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ec-workspace-v2 .ec-rail__btn,
+  .ec-workspace-v2 .ec-channel-item,
+  .ec-workspace-v2 .ec-dmx-row,
+  .ec-workspace-v2 .ec-server-nav__item,
+  .ec-workspace-v2 .ec-sidebar-tab,
+  .ec-workspace-v2 .ec-composer-box,
+  .ec-workspace-v2 .ec-composer-plus,
+  .ec-workspace-v2 .ec-composer-icon-btn,
+  .ec-workspace-v2 .ec-composer-send,
+  .ec-workspace-v2 .ec-mem-row {
+    transition: none;
+  }
+}
+
+/* Dialogs, profile and settings share the same quiet operational language. */
+.ec-workspace-v2 .ec-modal-backdrop {
+  padding: 18px;
+  background: rgba(2, 4, 8, 0.82);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.ec-workspace-v2 .ec-modal-box {
+  max-height: min(900px, calc(100dvh - 36px));
+  border: 1px solid var(--ec-ws-line-strong);
+  border-radius: 10px;
+  background: #0d1117;
+  box-shadow: 0 24px 72px rgba(0, 0, 0, 0.56);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.ec-workspace-v2 .ec-modal-header {
+  min-height: 54px;
+  padding: 0 18px;
+  border-bottom: 1px solid var(--ec-ws-line);
+  background: #0b0e13;
+}
+
+.ec-workspace-v2 .ec-modal-title {
+  color: var(--ec-ws-text);
+  font-family: var(--ec-font-sans);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.025em;
+}
+
+.ec-workspace-v2 .ec-modal-close {
+  width: 32px;
+  height: 32px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--ec-ws-muted);
+  transition: color 140ms ease, border-color 140ms ease, background-color 140ms ease;
+}
+
+.ec-workspace-v2 .ec-modal-close:hover,
+.ec-workspace-v2 .ec-modal-close:active,
+.ec-workspace-v2 .ec-modal-close:focus-visible {
+  border-color: var(--ec-ws-line);
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--ec-ws-text);
+  transform: none;
+}
+
+.ec-workspace-v2 .ec-modal-body {
+  gap: 14px;
+  padding: 16px;
+  background: #0d1117;
+  scrollbar-width: thin;
+  scrollbar-color: var(--ec-ws-line-strong) transparent;
+}
+
+.ec-workspace-v2 .ec-modal-footer {
+  padding: 12px 16px;
+  border-top: 1px solid var(--ec-ws-line);
+  background: #0b0e13;
+}
+
+.ec-workspace-v2 .ec-modal-box :where(input, textarea, select) {
+  border-color: var(--ec-ws-line-strong);
+  border-radius: 6px;
+  background: #090c11;
+  color: var(--ec-ws-text);
+  box-shadow: none;
+}
+
+.ec-workspace-v2 .ec-modal-box :where(input, textarea, select):focus {
+  border-color: rgba(141, 109, 242, 0.62);
+  outline: 2px solid rgba(141, 109, 242, 0.15);
+  outline-offset: 1px;
+  box-shadow: none;
+}
+
+/* Settings: dense tree on the left, one clear task surface on the right. */
+.ec-workspace-v2 .ec-settings-panel {
+  grid-template-columns: 228px minmax(0, 1fr);
+  height: min(820px, calc(100dvh - 104px));
+  max-height: calc(100dvh - 104px);
+  margin: -16px;
+  background: #0d1117;
+}
+
+.ec-workspace-v2 .ec-settings-tree-nav {
+  padding: 12px 9px 16px;
+  border-right: 1px solid var(--ec-ws-line);
+  background: #0a0d12;
+  background-image: none;
+}
+
+.ec-workspace-v2 .ec-settings-tree-nav__group {
+  gap: 2px;
+  margin-bottom: 13px;
+}
+
+.ec-workspace-v2 .ec-settings-tree-nav__group-trigger {
+  min-height: 28px;
+  margin: 0;
+  padding: 0 9px;
+  color: var(--ec-ws-dim);
+  font-family: var(--ec-font-mono);
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.ec-workspace-v2 .ec-settings-category-item {
+  min-height: 34px;
+  padding: 6px 9px 6px 12px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--ec-ws-muted);
+  font-size: 12px;
+  font-weight: 600;
+  transition: color 140ms ease, border-color 140ms ease, background-color 140ms ease;
+}
+
+.ec-workspace-v2 .ec-settings-category-item::before {
+  top: 7px;
+  bottom: 7px;
+  width: 2px;
+  border-radius: 0 2px 2px 0;
+  background: var(--ec-ws-violet);
+  transform: none;
+}
+
+.ec-workspace-v2 .ec-settings-category-item:hover,
+.ec-workspace-v2 .ec-settings-category-item--active {
+  border-color: rgba(215, 220, 240, 0.055);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--ec-ws-text);
+  transform: none;
+}
+
+.ec-workspace-v2 .ec-settings-category-item--active {
+  border-color: rgba(141, 109, 242, 0.22);
+  background: var(--ec-ws-violet-soft);
+}
+
+.ec-workspace-v2 .ec-settings-category-item__soon {
+  border-color: var(--ec-ws-line);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.ec-workspace-v2 .ec-settings-panel__main {
+  background: #0d1117;
+  scrollbar-width: thin;
+  scrollbar-color: var(--ec-ws-line-strong) transparent;
+}
+
+.ec-workspace-v2 .ec-settings-section {
+  width: min(100%, 880px);
+  min-height: 100%;
+  gap: 12px;
+  padding: 22px;
+}
+
+.ec-workspace-v2 .ec-settings-section__hero {
+  padding: 0 0 18px;
+  border: 0;
+  border-bottom: 1px solid var(--ec-ws-line);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.ec-workspace-v2 .ec-settings-section__hero h2 {
+  color: var(--ec-ws-text);
+  font-size: clamp(20px, 2vw, 28px);
+  line-height: 1.14;
+}
+
+.ec-workspace-v2 .ec-settings-section__hero p {
+  max-width: 680px;
+  margin-top: 6px;
+  color: var(--ec-ws-muted);
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+.ec-workspace-v2 .ec-settings-section__eyebrow,
+.ec-workspace-v2 .ec-settings-kicker {
+  margin-bottom: 7px;
+  color: #b7a8fa;
+  font-family: var(--ec-font-mono);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+}
+
+.ec-workspace-v2 .ec-settings-card,
+.ec-workspace-v2 .ec-settings-empty {
+  gap: 12px;
+  padding: 15px;
+  border: 1px solid var(--ec-ws-line);
+  border-radius: 7px;
+  background: #10151c;
+  box-shadow: none;
+}
+
+.ec-workspace-v2 .ec-settings-card--sunken {
+  border-color: rgba(215, 220, 240, 0.065);
+  background: #0a0e13;
+}
+
+.ec-workspace-v2 .ec-settings-card--active {
+  border-color: rgba(141, 109, 242, 0.3);
+  background: rgba(141, 109, 242, 0.08);
+  background-image: none;
+}
+
+.ec-workspace-v2 .ec-settings-card__body strong,
+.ec-workspace-v2 .ec-settings-toggle-row strong {
+  color: var(--ec-ws-text);
+  font-size: 12.5px;
+}
+
+.ec-workspace-v2 .ec-settings-muted {
+  color: var(--ec-ws-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.ec-workspace-v2 .ec-settings-icon {
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--ec-ws-line);
+  border-radius: 6px;
+  background: #0c1016;
+  color: var(--ec-ws-muted);
+  font-size: 17px;
+}
+
+.ec-workspace-v2 .ec-settings-card--active .ec-settings-icon {
+  border-color: rgba(141, 109, 242, 0.28);
+  background: var(--ec-ws-violet-soft);
+  color: #cbbfff;
+}
+
+/* User profile: content first, decoration second. */
+.ec-workspace-v2 .ec-user-profile {
+  overflow: hidden;
+  border: 1px solid var(--ec-ws-line);
+  border-radius: 8px;
+  background: #0f141b;
+  box-shadow: none;
+}
+
+.ec-workspace-v2 .ec-user-profile__cover {
+  min-height: 150px;
+  border-bottom: 1px solid var(--ec-ws-line);
+  background: #111722;
+}
+
+.ec-workspace-v2 .ec-user-profile__cover-fallback {
+  background: #111722;
+  background-image: none;
+}
+
+.ec-workspace-v2 .ec-user-profile__avatar {
+  border-color: #0f141b;
+  box-shadow: 0 0 0 1px var(--ec-ws-line-strong);
+}
+
+.ec-workspace-v2 .ec-user-profile__content {
+  padding: 58px 20px 20px;
+}
+
+.ec-workspace-v2 .ec-user-profile__identity,
+.ec-workspace-v2 .ec-user-profile__section,
+.ec-workspace-v2 .ec-user-profile__facts {
+  border-color: var(--ec-ws-line);
+}
+
+.ec-workspace-v2 .ec-user-profile__title h3,
+.ec-workspace-v2 .ec-user-profile__section p,
+.ec-workspace-v2 .ec-user-profile__facts dd {
+  color: var(--ec-ws-text);
+}
+
+.ec-workspace-v2 .ec-user-profile__section-label,
+.ec-workspace-v2 .ec-user-profile__facts dt {
+  color: var(--ec-ws-dim);
+}
+
+.ec-workspace-v2 .ec-user-profile__media-grid button,
+.ec-workspace-v2 .ec-user-profile__media-empty,
+.ec-workspace-v2 .ec-user-profile-error {
+  border-color: var(--ec-ws-line);
+  border-radius: 6px;
+  background: #0a0e13;
+  box-shadow: none;
+}
+
+@media (max-width: 760px) {
+  .ec-workspace-v2 .ec-modal-backdrop {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .ec-workspace-v2 .ec-modal-box {
+    width: 100% !important;
+    max-height: calc(100dvh - env(safe-area-inset-top));
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    border-radius: 10px 10px 0 0;
+  }
+
+  .ec-workspace-v2 .ec-settings-panel {
+    grid-template-columns: 1fr;
+    height: calc(100dvh - 70px);
+    max-height: none;
+  }
+
+  .ec-workspace-v2 .ec-settings-tree-nav {
+    max-height: 174px;
+    padding: 8px;
+    border-right: 0;
+    border-bottom: 1px solid var(--ec-ws-line);
+  }
+
+  .ec-workspace-v2 .ec-settings-tree-nav__group {
+    margin-bottom: 8px;
+  }
+
+  .ec-workspace-v2 .ec-settings-section {
+    padding: 16px 12px 24px;
+  }
+
+  .ec-workspace-v2 .ec-settings-two-col,
+  .ec-workspace-v2 .ec-settings-card {
+    grid-template-columns: 1fr;
+  }
+
+  .ec-workspace-v2 .ec-settings-card__row,
+  .ec-workspace-v2 .ec-settings-toggle-row {
+    align-items: flex-start;
+  }
+
+  .ec-workspace-v2 .ec-user-profile__content {
+    padding: 54px 14px 14px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ec-workspace-v2 .ec-modal-backdrop,
+  .ec-workspace-v2 .ec-modal-box,
+  .ec-workspace-v2 .ec-modal-close,
+  .ec-workspace-v2 .ec-settings-category-item {
+    animation: none;
+    transition: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .ec-workspace-v2 .ec-settings-panel {
+    grid-template-rows: 52px minmax(0, 1fr);
+    overflow: hidden;
+  }
+
+  .ec-workspace-v2 .ec-settings-tree-nav {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    max-height: 52px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+  }
+
+  .ec-workspace-v2 .ec-settings-tree-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .ec-workspace-v2 .ec-settings-tree-nav__group {
+    display: flex;
+    flex: 0 0 auto;
+    gap: 4px;
+    margin: 0;
+  }
+
+  .ec-workspace-v2 .ec-settings-tree-nav__group-trigger {
+    display: none;
+  }
+
+  .ec-workspace-v2 .ec-settings-category-item {
+    flex: 0 0 auto;
+    width: auto;
+    min-height: 36px;
+    padding-inline: 11px;
+    white-space: nowrap;
+  }
+
+  .ec-workspace-v2 .ec-settings-section--profile,
+  .ec-workspace-v2 .ec-settings-profile-preview,
+  .ec-workspace-v2 .ec-settings-profile-details {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .ec-workspace-v2 .ec-settings-profile-preview__cover-actions {
+    top: 10px;
+    right: 10px;
+    left: 10px;
+    justify-content: flex-end;
+  }
+
+  .ec-workspace-v2 .ec-settings-profile-media-button {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .ec-workspace-v2 .ec-settings-profile-preview__identity {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 12px;
+    padding-inline: 14px;
+  }
+
+  .ec-workspace-v2 .ec-settings-profile-preview__avatar-actions {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .ec-workspace-v2 .ec-settings-profile-preview__avatar-actions .ec-btn {
+    flex: 1 1 auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .ec-shell.ec-workspace-v2,
+  .ec-workspace-v2 .ec-shell__chat,
+  .ec-workspace-v2 .ec-chat-main,
+  .ec-workspace-v2 .ec-message-list {
+    width: 100%;
+    min-width: 0;
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+
+  .ec-workspace-v2 .ec-message-row {
+    box-sizing: border-box;
+    grid-template-columns: 34px minmax(0, 1fr) !important;
+    width: 100%;
+    min-width: 0;
+    max-width: 100% !important;
+    margin-inline: 0;
+    overflow: hidden;
+  }
+
+  .ec-workspace-v2 .ec-message-content {
+    box-sizing: border-box;
+    width: auto !important;
+    min-width: 0;
+    max-width: 100% !important;
+    overflow: hidden;
+  }
+
+  .ec-workspace-v2 .ec-message-content > header {
+    min-width: 0;
+    flex-wrap: wrap;
+  }
+
+  .ec-workspace-v2 .ec-message-content :where(p, li, a, code) {
+    min-width: 0;
+    max-width: 100%;
+    white-space: pre-wrap !important;
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
+  }
+
+  .ec-workspace-v2 .ec-message-actions {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+  }
+
+  .ec-workspace-v2 .ec-message-actions::-webkit-scrollbar {
+    display: none;
+  }
+
+  .ec-workspace-v2 .ec-settings-profile-preview__cover-actions {
+    width: calc(100% - 20px);
+  }
+
+  .ec-workspace-v2 .ec-settings-profile-preview__cover-actions .ec-btn {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+}

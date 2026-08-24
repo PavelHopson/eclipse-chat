@@ -1161,7 +1161,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   ]);
 
   const shellClass =
-    "ec-shell" +
+    "ec-shell ec-workspace-v2" +
     (homeOpen || agentOfficeOpen ? " ec-shell--home" : "") +
     (rightRailVisible ? " ec-shell--has-server" : "") +
     (navOpen ? " ec-shell--nav-open" : "") +
