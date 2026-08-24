@@ -1,4 +1,5 @@
 export type GrowthStepLease = {
+  leaseId: string;
   userId: string;
   step: string;
   controller: AbortController;

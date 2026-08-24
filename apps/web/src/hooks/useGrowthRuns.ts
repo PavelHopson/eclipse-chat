@@ -66,7 +66,7 @@ export type GrowthRunView = {
   createdAt: string;
   updatedAt: string;
   origin: "chat" | "import";
-  executionState: "IDLE" | "RUNNING";
+  executionState: "IDLE" | "RUNNING" | "CANCELLING";
   activeStep: GrowthStepId | null;
   run: GrowthRunPayload;
 };

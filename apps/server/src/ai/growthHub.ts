@@ -86,12 +86,14 @@ export async function executeGrowthHubStep(
     controller.abort();
   }, policy.timeoutMs);
   try {
+    const requestId = options.requestId ?? randomUUID();
     const response = await (options.fetchImpl ?? fetch)(`${policy.baseUrl}/growth/execute`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${policy.token}`,
         "Content-Type": "application/json",
-        "X-Request-Id": options.requestId ?? randomUUID(),
+        "X-Request-Id": requestId,
+        "Idempotency-Key": requestId,
         "X-Eclipse-Client": "eclipse-chat-growth",
       },
       body: JSON.stringify({

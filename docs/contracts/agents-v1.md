@@ -26,3 +26,7 @@ The machine-readable source of truth is [`agents.v1.schema.json`](./agents.v1.sc
 `DRAFT → PLANNED → WAITING_START_APPROVAL → RUNNING → PAUSED | WAITING_ACTION_APPROVAL → COMPLETED | FAILED | CANCELLED`
 
 The original Agent Office foundation was fixture-backed. In v1.7.39 the Growth template became a server-owned review surface for completed `growth.run.v1` imports; it still performs no model calls, OAuth actions, publications, payments, or production changes.
+
+## AI Office projection
+
+The operational team view is a projection of the selected run. Agent state, provider and model come from the existing tenant-scoped read model. The view never grants permissions, starts a role, mutates a run, or becomes a source of truth. Any future 3D floor must consume the same versioned events and preserve an accessible 2D queue, detail view, cancel control and human approval gate.

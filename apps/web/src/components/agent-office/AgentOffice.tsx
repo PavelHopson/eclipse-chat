@@ -7,6 +7,7 @@ import {
   type GrowthStepId,
   useGrowthRuns,
 } from "../../hooks/useGrowthRuns";
+import { useOfficeEvents, type OfficeEvent } from "../../hooks/useOfficeEvents";
 import { hasPermission } from "../../lib/memberRoles";
 import { DeckReviewRoom } from "./DeckReviewRoom";
 import { BuilderReviewRoom } from "./BuilderReviewRoom";
@@ -14,6 +15,7 @@ import { SpecGateReviewRoom } from "./SpecGateReviewRoom";
 import { AutomationAuditReviewRoom } from "./AutomationAuditReviewRoom";
 import { EvidenceCardEditor, EvidenceCardSummary } from "./EvidenceCardEditor";
 import { VoiceOpsRoom } from "./VoiceOpsRoom";
+import { CreativeStudioRoom } from "./CreativeStudioRoom";
 
 type AgentOfficeProps = {
   serverId: string | null;
@@ -39,6 +41,14 @@ const STEP_LABELS: Record<GrowthStepId, { role: string; action: string; result: 
   final: { role: "Редактор", action: "Подготовить финал", result: "Финальный материал" },
 };
 const STEP_ORDER = Object.keys(STEP_LABELS) as GrowthStepId[];
+type OfficeAgentState = "done" | "working" | "ready" | "waiting";
+
+const OFFICE_STATE_LABELS: Record<OfficeAgentState, string> = {
+  done: "Готово",
+  working: "Работает",
+  ready: "Можно запускать",
+  waiting: "Ожидает",
+};
 
 const EMPTY_INPUT: GrowthRunInput = {
   releaseName: "",
@@ -58,6 +68,7 @@ function formatDate(value: string): string {
 }
 
 function visibleStatus(item: GrowthRunView): string {
+  if (item.executionState === "CANCELLING") return "Останавливается";
   if (item.executionState === "RUNNING") return "Выполняется";
   if (item.reviewStatus !== "PENDING") return REVIEW_LABELS[item.reviewStatus];
   if (item.run.status === "ready_for_approval") return "Готов к проверке";
@@ -75,6 +86,68 @@ function RunListItem({ item, selected, onSelect }: { item: GrowthRunView; select
   );
 }
 
+function officeAgentState(item: GrowthRunView, index: number): OfficeAgentState {
+  if (index < item.run.artifacts.length) return "done";
+  if (item.executionState !== "IDLE" && index === item.run.artifacts.length) return "working";
+  if (item.reviewStatus === "PENDING" && index === item.run.artifacts.length) return "ready";
+  return "waiting";
+}
+
+function OperationalTeam({ item, events, connected }: { item: GrowthRunView; events: OfficeEvent[]; connected: boolean }) {
+  const relevantEvents = events.filter((event) => event.subject.id === item.id).slice(-5).reverse();
+  const activityStatus = connected ? "Шина событий подключена" : "Переподключение…";
+  return (
+    <>
+    <section className="ec-office-team" aria-labelledby="ec-office-team-title">
+      <header className="ec-office-team__head">
+        <div>
+          <p className="ec-agent-office__section-label">Команда · актуальное состояние</p>
+          <h2 id="ec-office-team-title">Кто сейчас работает над материалом</h2>
+        </div>
+        <span>{item.run.execution.provider} · {item.run.execution.model}</span>
+      </header>
+      <div className="ec-office-team__grid">
+        {STEP_ORDER.map((step, index) => {
+          const state = officeAgentState(item, index);
+          return (
+            <article key={step} className="ec-office-agent" data-state={state}>
+              <span className="ec-office-agent__signal" aria-hidden />
+              <div>
+                <strong>{STEP_LABELS[step].role}</strong>
+                <small>{STEP_LABELS[step].action}</small>
+              </div>
+              <em>{OFFICE_STATE_LABELS[state]}</em>
+            </article>
+          );
+        })}
+      </div>
+      <p className="ec-office-team__note">Состояние берётся из реального процесса. Следующий шаг запускается только после вашего явного действия.</p>
+    </section>
+      <section className="ec-office-team__activity" aria-labelledby="ec-office-activity-title" aria-live="polite">
+        <header>
+          <div>
+            <p className="ec-agent-office__section-label">Ядро офиса · события</p>
+            <h3 id="ec-office-activity-title">Живой журнал задачи</h3>
+          </div>
+          <span data-connected={connected}>{activityStatus}</span>
+        </header>
+        {relevantEvents.length === 0 ? (
+          <p className="ec-office-team__activity-empty">События появятся после следующего запуска, остановки или решения по материалу.</p>
+        ) : (
+          <ol>
+            {relevantEvents.map((event) => (
+              <li key={event.id} data-event={event.type}>
+                <time dateTime={event.occurredAt}>{new Intl.DateTimeFormat("ru-RU", { hour: "2-digit", minute: "2-digit" }).format(new Date(event.occurredAt))}</time>
+                <span>{event.summary}</span>
+              </li>
+            ))}
+          </ol>
+        )}
+      </section>
+    </>
+  );
+}
+
 function GrowthCommandRoom({ serverId, serverName, currentRole }: AgentOfficeProps) {
   const {
     runs, policy, loading, importing, creating, executingId, cancellingId, reviewingId,
@@ -83,6 +156,7 @@ function GrowthCommandRoom({ serverId, serverName, currentRole }: AgentOfficePro
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const officeFeed = useOfficeEvents(serverId);
   const [input, setInput] = useState<GrowthRunInput>(EMPTY_INPUT);
   const [sourceText, setSourceText] = useState("");
   const [localError, setLocalError] = useState<string | null>(null);
@@ -94,7 +168,7 @@ function GrowthCommandRoom({ serverId, serverName, currentRole }: AgentOfficePro
   const canCreate = currentRole != null && hasPermission(currentRole, "TASK_CREATE");
   const pendingCount = runs.filter((item) => item.reviewStatus === "PENDING" && item.run.status === "ready_for_approval").length;
   const nextStep = selected ? STEP_ORDER[selected.run.artifacts.length] ?? null : null;
-  const isExecuting = Boolean(selected && (selected.executionState === "RUNNING" || executingId === selected.id));
+  const isExecuting = Boolean(selected && (selected.executionState !== "IDLE" || executingId === selected.id));
   const sourceOptions = useMemo(() => {
     const normalized = sourceText.split(/\r?\n/).map((item) => item.trim()).filter(Boolean).flatMap((value) => {
       try {
@@ -205,6 +279,8 @@ function GrowthCommandRoom({ serverId, serverName, currentRole }: AgentOfficePro
 
       <section className="ec-agent-office__safety" aria-label="Границы автоматизации"><strong>Контролируемая генерация</strong><span>Один клик запускает только одну роль. AI не открывает ссылки, не вызывает инструменты и ничего не публикует.</span><span className="ec-growth-budget">{policy ? `${policy.budget.remaining} из ${policy.budget.limit} запросов сегодня` : "Лимит загружается"}</span></section>
 
+      {selected && <OperationalTeam item={selected} events={officeFeed.events} connected={officeFeed.connected} />}
+
       {createOpen && (
         <form className="ec-growth-create" onSubmit={(event) => void submitCreate(event)}>
           <div className="ec-growth-panel-head"><div><p className="ec-agent-office__section-label">Новый запуск</p><h2>Что нужно рассказать аудитории?</h2></div><span>5 шагов · без публикации</span></div>
@@ -255,7 +331,7 @@ function GrowthCommandRoom({ serverId, serverName, currentRole }: AgentOfficePro
   );
 }
 export function AgentOffice(props: AgentOfficeProps) {
-  const [workspace, setWorkspace] = useState<"growth" | "audit" | "voice" | "deck" | "builder" | "spec">("growth");
+  const [workspace, setWorkspace] = useState<"growth" | "creative" | "audit" | "voice" | "deck" | "builder" | "spec">("growth");
   return (
     <div className="ec-office-surface">
       <header className="ec-agent-office-switcher">
@@ -265,6 +341,7 @@ export function AgentOffice(props: AgentOfficeProps) {
         </div>
         <nav className="ec-agent-office-switcher__tabs" aria-label="Разделы AI-офиса">
           <button type="button" data-active={workspace === "growth"} aria-pressed={workspace === "growth"} onClick={() => setWorkspace("growth")}>Контент</button>
+          <button type="button" data-active={workspace === "creative"} aria-pressed={workspace === "creative"} onClick={() => setWorkspace("creative")}>Creative Studio</button>
           <button type="button" data-active={workspace === "audit"} aria-pressed={workspace === "audit"} onClick={() => setWorkspace("audit")}>Аудит процессов</button>
           <button type="button" data-active={workspace === "voice"} aria-pressed={workspace === "voice"} onClick={() => setWorkspace("voice")}>Голосовые команды</button>
           <button type="button" aria-pressed="false" onClick={props.onOpenLanTransfer}>Передача рядом</button>
@@ -299,7 +376,7 @@ export function AgentOffice(props: AgentOfficeProps) {
             )) : <p>Доступных пространств пока нет. Создайте первое пространство в основной навигации.</p>}
           </div>
         </main>
-      ) : workspace === "growth" ? <GrowthCommandRoom {...props} /> : workspace === "audit" ? <AutomationAuditReviewRoom {...props} /> : workspace === "voice" ? <VoiceOpsRoom {...props} /> : workspace === "deck" ? <DeckReviewRoom {...props} /> : workspace === "builder" ? <BuilderReviewRoom {...props} /> : <SpecGateReviewRoom {...props} />}
+      ) : workspace === "growth" ? <GrowthCommandRoom {...props} /> : workspace === "creative" ? <CreativeStudioRoom {...props} /> : workspace === "audit" ? <AutomationAuditReviewRoom {...props} /> : workspace === "voice" ? <VoiceOpsRoom {...props} /> : workspace === "deck" ? <DeckReviewRoom {...props} /> : workspace === "builder" ? <BuilderReviewRoom {...props} /> : <SpecGateReviewRoom {...props} />}
     </div>
   );
 }

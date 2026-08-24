@@ -7,8 +7,8 @@ describe("Growth step execution lease", () => {
     const first = new AbortController();
     const duplicate = new AbortController();
 
-    expect(leases.reserve("run-1", { userId: "user-1", step: "research", controller: first })).toBe(true);
-    expect(leases.reserve("run-1", { userId: "user-1", step: "research", controller: duplicate })).toBe(false);
+    expect(leases.reserve("run-1", { leaseId: "lease-1", userId: "user-1", step: "research", controller: first })).toBe(true);
+    expect(leases.reserve("run-1", { leaseId: "lease-2", userId: "user-1", step: "research", controller: duplicate })).toBe(false);
     expect(leases.get("run-1")?.controller).toBe(first);
 
     leases.release("run-1", duplicate);

@@ -40,6 +40,8 @@ import { registerVisitRoutes } from "./routes/visits.js";
 import { registerPersonalDigestRoutes } from "./routes/personalDigest.js";
 import { registerProjectPassportRoutes } from "./routes/projectPassport.js";
 import { registerGrowthRunRoutes } from "./routes/growthRuns.js";
+import { registerOfficeRoutes } from "./routes/office.js";
+import { registerCreativeJobRoutes } from "./routes/creativeJobs.js";
 import { registerDeckReviewRoutes } from "./routes/deckReviews.js";
 import { registerBuilderReviewRoutes } from "./routes/builderReviews.js";
 import { registerSpecGateReviewRoutes } from "./routes/specGateReviews.js";
@@ -63,9 +65,11 @@ import { recoverStuckTranscripts } from "./ai/transcribe.js";
 import { startEscalationCron } from "./escalation.js";
 import { startTempChannelCron } from "./tempChannels.js";
 import { startExpiredMessageCron } from "./expiredMessages.js";
+import { startOfficeOutboxDispatcher } from "./office/outbox.js";
 import { db } from "./db.js";
 import { serverManifest } from "./version.js";
 import { canAccessRealtimeChannel, serverRealtimeRoom } from "./lib/realtimeAccess.js";
+import { registerSafeErrorHandler } from "./security/safeErrorHandler.js";
 
 const port = Number(process.env.PORT) || 3001;
 const jwtSecret = process.env.JWT_SECRET;
@@ -75,6 +79,7 @@ if (!jwtSecret && process.env.NODE_ENV === "production") {
 }
 
 const app = Fastify({ logger: true });
+registerSafeErrorHandler(app);
 
 const corsOrigin = process.env.CORS_ORIGIN ?? "http://localhost:5173";
 await app.register(cors, { origin: corsOrigin, credentials: true });
@@ -309,6 +314,8 @@ await registerVisitRoutes(app);
 await registerPersonalDigestRoutes(app);
 registerProjectPassportRoutes(app);
 registerGrowthRunRoutes(app);
+registerOfficeRoutes(app);
+registerCreativeJobRoutes(app);
 registerDeckReviewRoutes(app);
 registerBuilderReviewRoutes(app);
 registerSpecGateReviewRoutes(app);
@@ -701,6 +708,9 @@ try {
 
   // v1.7.0 — cron исчезающих сообщений (Message.expiresAt). Scan каждые 30s.
   startExpiredMessageCron(app.log);
+
+  // Durable Office projections retry independently from user-facing mutations.
+  startOfficeOutboxDispatcher(app.log);
 
   // Keep-alive ping для Neon free tier (Scales to zero после ~5 минут idle).
   // Без этого Neon рвёт connection и каждый запрос имеет 20-сек cold start.

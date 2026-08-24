@@ -69,13 +69,27 @@ test("compact shell uses the dedicated Eclipse mark instead of the wide wordmark
 test("AI office is localized and lets the user select a workspace in place", () => {
   const office = source("apps/web/src/components/agent-office/AgentOffice.tsx");
 
-  for (const label of ["Контент", "Аудит процессов", "Голосовые команды", "Передача рядом", "Презентации", "Сборка", "Требования"]) {
+  for (const label of ["Контент", "Creative Studio", "Аудит процессов", "Голосовые команды", "Передача рядом", "Презентации", "Сборка", "Требования"]) {
     assert.match(office, new RegExp(`>${label}<`));
   }
   assert.match(office, /props\.workspaces\.map/);
   assert.match(office, /props\.onSelectWorkspace\(item\.id\)/);
   assert.match(office, /Выберите пространство/);
   assert.doesNotMatch(office, />Growth OS<|>Automation Audit<|>Voice Ops<|>Deck Review<|>Builder Review<|>Spec Review</);
+});
+
+test("Creative Studio exposes cost, approval, receipt and manual LocalSend boundaries", () => {
+  const room = source("apps/web/src/components/agent-office/CreativeStudioRoom.tsx");
+  const css = source("apps/web/src/styles/creative-studio.css");
+
+  assert.match(room, /Сначала подтверждение/);
+  assert.match(room, /Higgsfield MCP всегда расходует кредиты/);
+  assert.match(room, /Подтвердить задание/);
+  assert.match(room, /Квитанция выполнения/);
+  assert.match(room, /Скачать и отправить рядом/);
+  assert.match(room, /Jarvis не получает путь к файлу/);
+  assert.match(css, /@media \(max-width: 600px\)/);
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
 });
 
 test("direct messages use a compact actionable welcome state", () => {

@@ -1,6 +1,6 @@
 {
   "name": "@eclipse-chat/server",
-  "version": "1.7.55",
+  "version": "1.7.56",
   "private": true,
   "type": "module",
   "scripts": {
@@ -19,6 +19,8 @@
     "access:restore": "tsx src/scripts/restoreUserAccess.ts",
     "password:reset": "tsx src/scripts/resetUserPassword.ts",
     "ai:smoke": "tsx src/scripts/smokeAiProvider.ts",
+    "office:qa:persistence": "tsx src/scripts/qaOfficePersistence.ts",
+    "office:qa:restart-replay": "tsx src/scripts/qaOfficeRestartReplay.ts",
     "servers:retain-owner": "tsx src/scripts/retainOwnerServers.ts",
     "postinstall": "prisma generate"
   },

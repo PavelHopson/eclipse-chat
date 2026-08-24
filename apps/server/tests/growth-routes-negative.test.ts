@@ -2,6 +2,7 @@ import Fastify from "fastify";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const routeDb = vi.hoisted(() => ({
+  $transaction: vi.fn(),
   member: { findUnique: vi.fn() },
   growthRun: {
     findMany: vi.fn(),
@@ -22,7 +23,7 @@ vi.mock("../src/lib/serverGating.js", () => ({ ensureServerActive: async () => t
 vi.mock("../src/security/audit.js", () => ({ recordAudit: vi.fn() }));
 vi.mock("../src/lib/growthBudget.js", () => ({
   getGrowthBudget: vi.fn(async () => ({ day: "2026-08-13", limit: 25, used: 0, remaining: 25 })),
-  consumeGrowthBudget: vi.fn(async () => ({ day: "2026-08-13", limit: 25, used: 1, remaining: 24 })),
+  consumeGrowthBudgetOnce: vi.fn(async () => ({ day: "2026-08-13", limit: 25, used: 1, remaining: 24, charged: true, idempotent: false })),
 }));
 vi.mock("../src/ai/growthHub.js", () => ({
   GrowthHubError: class GrowthHubError extends Error {},
@@ -71,6 +72,7 @@ async function createApp() {
 describe("Growth route negative authorization boundaries", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    routeDb.$transaction.mockImplementation(async (callback) => callback(routeDb));
   });
 
   it("denies non-members and scopes mutation lookups to the requested workspace", async () => {

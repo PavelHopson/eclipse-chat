@@ -31,6 +31,8 @@ describe("Growth AI Hub client", () => {
     const fetchImpl = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
       expect(String(url)).toBe("http://127.0.0.1:8810/v1/growth/execute");
       expect(new Headers(init?.headers).get("Authorization")).toBe(`Bearer ${TOKEN}`);
+      expect(new Headers(init?.headers).get("X-Request-Id")).toBe("b".repeat(64));
+      expect(new Headers(init?.headers).get("Idempotency-Key")).toBe("b".repeat(64));
       const body = JSON.parse(String(init?.body));
       expect(body).toMatchObject({ schemaVersion: "growth.execute.v1", step: "research" });
       expect(body.run.input.evidenceCards).toEqual(RUN.input.evidenceCards);
@@ -52,6 +54,7 @@ describe("Growth AI Hub client", () => {
     });
     const result = await executeGrowthHubStep(RUN, "research", {
       fetchImpl: fetchImpl as typeof fetch,
+      requestId: "b".repeat(64),
       env: {
         ECLIPSE_GROWTH_HUB_BASE_URL: "http://127.0.0.1:8810/v1",
         ECLIPSE_GROWTH_HUB_SERVICE_TOKEN: TOKEN,

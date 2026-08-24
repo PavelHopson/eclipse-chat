@@ -5,6 +5,22 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
+## Creative Studio safe generation — v1.7.56 (2026-08-24)
+
+- [x] Добавить в AI-офис отдельный Creative Studio для изображений и видео с
+      понятной цепочкой: задание -> стоимость -> подтверждение -> выполнение -> передача.
+- [x] Зафиксировать строгий `creative.job.v1`: tenant/RBAC, bounded input, HTTPS-only
+      источники, rate limits, idempotency, optimistic version и pending-queue limit.
+- [x] Запретить скрытый платный вызов: Higgsfield-задача сохраняется, но fail-closed
+      до server-side OAuth, pinned MCP metadata и точной quote; preview-пакет стоит 0 кредитов.
+- [x] Записывать lifecycle в transactional Office outbox и показывать task/approval/
+      deliverable события в общей 2D-проекции AI-офиса.
+- [x] Скачать проверочный JSON с bounded execution receipt и передать его через
+      LocalSend только после ручного выбора файла и получателя в native picker.
+- [x] Пройти 371 server tests, 7 UI contracts, Prisma validate, production build,
+      fresh PostgreSQL restart/replay (200 exact replay, 409 conflict), API/MCP security
+      review и `npm audit` без найденных vulnerabilities.
+
 ## Brand + AI Office Surface Repair — v1.7.55 (2026-08-24)
 
 - [x] Заменить нечитаемый широкий wordmark в компактном shell на самостоятельный
@@ -30,6 +46,21 @@
 - [x] Удалить tilt/depth interaction из рабочих карточек, оставить только короткие
       transform/opacity-safe transitions и полный `prefers-reduced-motion` fallback.
 - [x] Добавить source-level UI contract regression для IA, focus, touch targets и motion.
+
+## AI Office live projection — local slice (2026-08-23)
+
+- [x] Показать пять реальных Growth-ролей как operational team со states done, working, ready и waiting; provider/model берутся из выбранного run.
+- [x] Сохранить очередь, детальный workflow и human gate primary surface; 3D не является источником state, permissions или решений.
+- [x] Не добавлять tools, OAuth, auto-run, публикацию или внешние actions: следующий шаг по-прежнему запускается одним явным кликом.
+- [x] P1a: `office.event.v1`, tenant-isolated bounded Event Bus и JWT/membership-protected cursor endpoint; Growth create/start/progress/cancel/review публикуют безопасные operational events.
+- [x] P1b: Provider Router foundation для OpenAI, Anthropic, Google, Ollama и OpenAI-compatible: primary/fallback, spending cap и fail-closed `requested ∩ granted ∩ adapter-supported` capabilities.
+- [x] P1c: read-only живой журнал событий встроен в существующую 2D operational projection без изменения human-gated workflow.
+- [x] P1d: authenticated atomic HMAC ingest для Sentinel, PostgreSQL journal + transactional outbox, 30-дневный replay retention, safe status SLO, dead-letter/redrive с append-only forensic receipts и fresh PostgreSQL migration QA.
+- [ ] P1e: единый Office Core read model для Growth, Research, Build, QA, Design и Support; employees, tasks, budgets, approvals, deliverables и provider receipts.
+- [x] P1f: Sentinel-side Office Bridge adapter — строгая схема internal projection -> `OfficeEventInput`, atomic `publishBatch`, workspace binding, фильтрация секретных metadata и сохранение approval/receipt boundary; 254/254 Sentinel tests.
+- [ ] P2: Company Builder, employee/model/budget editor и quiet 2D operations screen как основной режим.
+- [ ] P3: Sentinel Presence MVP — VAD/STT/TTS, непривилегированный VRM avatar, stop/mute/privacy и отдельный local IPC.
+- [ ] P4: опциональная lightweight 3D projection после performance, keyboard, screen-reader, reduced-motion и mobile QA; доступная 2D-поверхность остаётся обязательной.
 
 ## Safe Voice Ops handoff — v1.7.51 (2026-08-20)
 
@@ -615,7 +646,7 @@ scope доступа, понятное действие и подтвержде�
 - Provider routing — только owned/legal keys, no grey-zone token bypass.
 - Token-saving tools (`sqz`, caveman-like compression) сначала benchmark в sandbox; не сжимать секреты, миграции, юридический текст и точные логи.
 
-**Актуальная версия (короткий индекс):** **v1.7.55** — новый Eclipse mark, полностью русская оболочка AI-офиса с выбором пространства, компактный DM next-action и плотная поверхность интеграций.
+**Актуальная версия (короткий индекс):** **v1.7.56** — безопасный Creative Studio: стоимость и human approval до выполнения, нулевая preview-цепочка, квитанция, Office Event Bus и ручная передача через LocalSend.
 
 **Текущая версия:** **v1.6.98** (🗄️⚡ PARTIAL-ИНДЕКС под escalation-scan (бэклог-хвост, заход через CI). Фоновой `escalation.ts` раз в час обходит `ActionItem` где `status ∈ (OPEN,IN_PROGRESS,REVIEW)`, `dueAt < now-48h`, `(escalatedAt IS NULL OR < now-7d)`, `ORDER BY dueAt ASC LIMIT 50`. Запрос **глобальный** (без serverId/channelId) → все 4 существующих индекса `ActionItem` ведут с channelId/serverId и его НЕ покрывают → был seq-scan всей таблицы каждый час. **Новый partial composite index** `ActionItem_escalation_scan_idx ON ("dueAt") WHERE status IN (OPEN,IN_PROGRESS,REVIEW) AND dueAt IS NOT NULL` (raw-миграция `20260625120000_add_escalation_partial_index`): индексирует только кандидатов эскалации (крошечная доля таблицы — закрытые DONE и задачи без дедлайна исключены); ведущая `dueAt` → один forward index-scan покрывает и `dueAt < X`, и `ORDER BY dueAt ASC LIMIT 50` без сортировки, рано останавливается. **Prisma не выражает WHERE-индексы** → raw SQL; `migrate deploy` (deploy.sh [4/10]) применяет как есть, `prisma generate` индексы не читает, drift-проверок (`migrate dev`) в проекте нет (прод=migrate deploy, локальной БД нет). schema.prisma — doc-comment у `ActionItem` фиксирует существование индекса («не чинить как drift»). **temp-channel scan (`tempChannels.ts`) НЕ трогал** — `Channel` уже имеет `@@index([expiresAt])`, а `WHERE expiresAt < now` = чистый range-scan по нему (NULL'ы сортируются последними, не читаются); partial там лишь дублировал бы индекс = write-amplification на крошечной таблице ради ~нуля. Version 1.6.97→1.6.98 (4 точки). Verify: server `tsc --noEmit` PASS, web build PASS; миграция применится на проде при деплое (`migrate deploy`). **Бэклог-остаток:** виртуализация ленты сообщений (npm-dep + риск-рефактор скролла) — единственный крупный хвост.)
 

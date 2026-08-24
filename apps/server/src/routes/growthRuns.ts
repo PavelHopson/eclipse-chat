@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
@@ -14,18 +14,28 @@ import {
   parseGrowthRunImport,
   parseStoredGrowthRun,
 } from "../lib/growthRunContract.js";
-import { consumeGrowthBudget, getGrowthBudget } from "../lib/growthBudget.js";
+import { consumeGrowthBudgetOnceWithClient, getGrowthBudget, type GrowthBudgetTransactionClient } from "../lib/growthBudget.js";
 import { executeGrowthHubStep, getGrowthHubPolicy, GrowthHubError } from "../ai/growthHub.js";
 import { hasPermission } from "../lib/permissions.js";
 import { GrowthStepLeaseRegistry } from "../lib/growthStepLease.js";
 import { ensureServerActive } from "../lib/serverGating.js";
 import { recordAudit } from "../security/audit.js";
+import {
+  enqueueGrowthApprovalResolved,
+  enqueueGrowthTaskCancelled,
+  enqueueGrowthTaskCreated,
+  enqueueGrowthTaskProgressed,
+  enqueueGrowthTaskStarted,
+} from "../office/growthEvents.js";
+import { dispatchOfficeEventOutboxBestEffort } from "../office/outbox.js";
 import type { MemberRole } from "./servers.js";
 
 const READ_RATE_LIMIT = { max: 60, timeWindow: 60 * 1000 };
 const IMPORT_RATE_LIMIT = { max: 10, timeWindow: 15 * 60 * 1000 };
 const REVIEW_RATE_LIMIT = { max: 30, timeWindow: 5 * 60 * 1000 };
 const EXECUTE_RATE_LIMIT = { max: 30, timeWindow: 15 * 60 * 1000 };
+const GROWTH_EXECUTION_LEASE_MS = 3 * 60 * 1000;
+const GROWTH_EXECUTION_POLL_MS = 2 * 1000;
 
 const importBodySchema = z.object({ run: z.unknown() }).strict();
 const createBodySchema = z.object({ input: growthInputSchema }).strict();
@@ -73,7 +83,13 @@ type GrowthRunRow = Prisma.GrowthRunGetPayload<{ include: typeof growthRunInclud
 const activeGrowthSteps = new GrowthStepLeaseRegistry();
 
 function growthRunView(row: GrowthRunRow) {
-  const active = activeGrowthSteps.get(row.id);
+  const localActive = activeGrowthSteps.get(row.id);
+  const leaseActive = Boolean(
+    row.executionLeaseId
+    && row.executionLeaseStep
+    && row.executionLeaseUntil
+    && row.executionLeaseUntil.getTime() > Date.now(),
+  );
   return {
     id: row.id,
     sourceRunId: row.sourceRunId,
@@ -87,8 +103,10 @@ function growthRunView(row: GrowthRunRow) {
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     origin: row.sourceRunId.startsWith("chat:") ? "chat" : "import",
-    executionState: active ? "RUNNING" : "IDLE",
-    activeStep: active?.step ?? null,
+    executionState: row.executionCancelRequestedAt && leaseActive
+      ? "CANCELLING"
+      : localActive || leaseActive ? "RUNNING" : "IDLE",
+    activeStep: localActive?.step ?? (leaseActive ? row.executionLeaseStep : null),
     run: parseStoredGrowthRun(row.payload),
   };
 }
@@ -98,6 +116,92 @@ function storedPayload(run: ReturnType<typeof parseStoredGrowthRun>) {
   return { payload, payloadHash: createHash("sha256").update(payload).digest("hex") };
 }
 
+function growthExecutionLeaseUntil(now = Date.now()): Date {
+  return new Date(now + GROWTH_EXECUTION_LEASE_MS);
+}
+
+type GrowthDbClockClient = Pick<Prisma.TransactionClient, "$queryRaw">;
+
+async function readGrowthDatabaseNow(client: unknown): Promise<Date> {
+  const rows = await (client as GrowthDbClockClient).$queryRaw<Array<{ now: Date }>>(
+    Prisma.sql`SELECT CURRENT_TIMESTAMP AS "now"`,
+  );
+  const now = rows[0]?.now;
+  if (!(now instanceof Date) || Number.isNaN(now.getTime())) {
+    throw new Error("Growth database clock unavailable");
+  }
+  return now;
+}
+
+async function releaseGrowthExecutionLease(
+  runId: string,
+  serverId: string,
+  leaseId: string,
+): Promise<void> {
+  await db.growthRun.updateMany({
+    where: { id: runId, serverId, executionLeaseId: leaseId },
+    data: {
+      executionLeaseId: null,
+      executionLeaseUserId: null,
+      executionLeaseStep: null,
+      executionLeaseUntil: null,
+      executionCancelRequestedAt: null,
+    },
+  });
+}
+
+function startGrowthExecutionMonitor(options: {
+  runId: string;
+  serverId: string;
+  leaseId: string;
+  controller: AbortController;
+}): () => void {
+  let stopped = false;
+  let timer: NodeJS.Timeout | null = null;
+
+  const poll = async () => {
+    try {
+      const current = await db.growthRun.findFirst({
+        where: { id: options.runId, serverId: options.serverId },
+        select: { executionLeaseId: true, executionCancelRequestedAt: true },
+      });
+      if (
+        !current
+        || current.executionLeaseId !== options.leaseId
+        || current.executionCancelRequestedAt !== null
+      ) {
+        options.controller.abort();
+        return;
+      }
+      const heartbeatAt = await readGrowthDatabaseNow(db);
+      const renewed = await db.growthRun.updateMany({
+        where: {
+          id: options.runId,
+          serverId: options.serverId,
+          executionLeaseId: options.leaseId,
+          executionCancelRequestedAt: null,
+          executionLeaseUntil: { gt: heartbeatAt },
+        },
+        data: { executionLeaseUntil: growthExecutionLeaseUntil(heartbeatAt.getTime()) },
+      });
+      if (renewed.count !== 1) options.controller.abort();
+    } catch {
+      options.controller.abort();
+    } finally {
+      if (!stopped && !options.controller.signal.aborted) {
+        timer = setTimeout(poll, GROWTH_EXECUTION_POLL_MS);
+        timer.unref();
+      }
+    }
+  };
+
+  timer = setTimeout(poll, GROWTH_EXECUTION_POLL_MS);
+  timer.unref();
+  return () => {
+    stopped = true;
+    if (timer) clearTimeout(timer);
+  };
+}
 async function loadMembership(userId: string, serverId: string) {
   return db.member.findUnique({
     where: { userId_serverId: { userId, serverId } },
@@ -182,22 +286,31 @@ export function registerGrowthRunRoutes(app: FastifyInstance) {
       });
       const serialized = storedPayload(run);
       try {
-        const created = await db.growthRun.create({
-          data: {
-            sourceRunId,
-            serverId,
-            importedByUserId: userId,
-            schemaVersion: run.schemaVersion,
-            ...serialized,
-            idempotencyKey,
-          },
-          include: growthRunInclude,
+        const { created, outboxId } = await db.$transaction(async (tx) => {
+          const created = await tx.growthRun.create({
+            data: {
+              sourceRunId,
+              serverId,
+              importedByUserId: userId,
+              schemaVersion: run.schemaVersion,
+              ...serialized,
+              idempotencyKey,
+            },
+            include: growthRunInclude,
+          });
+          const outboxId = await enqueueGrowthTaskCreated(tx, {
+            workspaceId: serverId,
+            runId: created.id,
+            releaseName: run.input.releaseName,
+          }, "chat");
+          return { created, outboxId };
         });
         recordAudit("GROWTH_RUN_CREATED", {
           userId,
           req,
           metadata: { serverId, growthRunId: created.id, sourceRunId },
         });
+        await dispatchOfficeEventOutboxBestEffort({ ids: [outboxId] });
         return reply.status(201).send({ run: growthRunView(created), idempotent: false });
       } catch (error) {
         if ((error as { code?: string } | null)?.code !== "P2002") throw error;
@@ -245,38 +358,134 @@ export function registerGrowthRunRoutes(app: FastifyInstance) {
       if (!next) return reply.status(409).send({ error: "Все пять ролей уже завершены" });
       if (activeGrowthSteps.get(runId)) return reply.status(409).send({ error: "Этот шаг уже выполняется" });
 
+      const logicalExecutionId = createHash("sha256")
+        .update(JSON.stringify([runId, next.step, row.version]))
+        .digest("hex");
+
       const hubPolicy = getGrowthHubPolicy();
       if (!hubPolicy.configured) {
         return reply.status(503).send({ error: "Growth executor пока не настроен администратором" });
       }
-      const controller = new AbortController();
-      // Reserve the run synchronously before the first await below. This prevents
-      // two clicks from starting duplicate provider requests in the same server process.
-      if (!activeGrowthSteps.reserve(runId, { userId, step: next.step, controller })) {
+
+      const leaseId = randomUUID();
+      const claimAt = await readGrowthDatabaseNow(db);
+      const claimed = await db.growthRun.updateMany({
+        where: {
+          id: runId,
+          serverId,
+          version: row.version,
+          reviewStatus: "PENDING",
+          OR: [
+            { executionLeaseId: null },
+            { executionLeaseUntil: { lt: claimAt } },
+          ],
+        },
+        data: {
+          executionLeaseId: leaseId,
+          executionLeaseUserId: userId,
+          executionLeaseStep: next.step,
+          executionLeaseUntil: growthExecutionLeaseUntil(claimAt.getTime()),
+          executionCancelRequestedAt: null,
+        },
+      });
+      if (claimed.count !== 1) {
         return reply.status(409).send({ error: "Этот шаг уже выполняется" });
       }
+
+      const controller = new AbortController();
+      if (!activeGrowthSteps.reserve(runId, {
+        leaseId,
+        userId,
+        step: next.step,
+        controller,
+      })) {
+        await releaseGrowthExecutionLease(runId, serverId, leaseId);
+        return reply.status(409).send({ error: "Этот шаг уже выполняется" });
+      }
+
+      const stopMonitor = startGrowthExecutionMonitor({ runId, serverId, leaseId, controller });
       try {
-        const budget = await consumeGrowthBudget(userId, hubPolicy.dailyRequestLimit);
-        if (!budget) {
+        const startTransition = await db.$transaction(async (tx) => {
+          const startAt = await readGrowthDatabaseNow(tx);
+          const kept = await tx.growthRun.updateMany({
+            where: {
+              id: runId,
+              serverId,
+              executionLeaseId: leaseId,
+              executionCancelRequestedAt: null,
+              executionLeaseUntil: { gt: startAt },
+            },
+            data: { executionLeaseUntil: growthExecutionLeaseUntil(startAt.getTime()) },
+          });
+          if (kept.count !== 1) return { state: "cancelled" as const };
+
+          const budget = await consumeGrowthBudgetOnceWithClient(
+            tx as unknown as GrowthBudgetTransactionClient,
+            userId,
+            hubPolicy.dailyRequestLimit,
+            logicalExecutionId,
+            startAt,
+          );
+          if (!budget) return { state: "exhausted" as const };
+
+          const outboxId = budget.idempotent
+            ? null
+            : await enqueueGrowthTaskStarted(tx, {
+              workspaceId: serverId,
+              runId,
+              releaseName: run.input.releaseName,
+            }, next.step, next.role);
+          return { state: "started" as const, budget, outboxId };
+        });
+        if (startTransition.state === "cancelled") {
+          return reply.status(409).send({ error: "Запуск был отменён до обращения к AI Hub" });
+        }
+        if (startTransition.state === "exhausted") {
           return reply.status(429).send({ error: "Дневной лимит Growth-запросов исчерпан. Он обновится в 00:00 UTC" });
         }
+        const { budget } = startTransition;
+        if (startTransition.outboxId) {
+          await dispatchOfficeEventOutboxBestEffort({ ids: [startTransition.outboxId] });
+        }
+        const providerRequestId = logicalExecutionId;
         const result = await executeGrowthHubStep(run, next.step, {
           signal: controller.signal,
-          requestId: randomUUID(),
+          requestId: providerRequestId,
         });
         const updatedRun = appendGrowthArtifact(run, result);
         const serialized = storedPayload(updatedRun);
-        const changed = await db.growthRun.updateMany({
-          where: { id: runId, serverId, version: row.version, reviewStatus: "PENDING" },
-          data: {
-            ...serialized,
-            lastExecutionKey: executionKey,
-            lastExecutedStep: next.step,
-            version: { increment: 1 },
-          },
+        const transition = await db.$transaction(async (tx) => {
+          const changed = await tx.growthRun.updateMany({
+            where: {
+              id: runId,
+              serverId,
+              version: row.version,
+              reviewStatus: "PENDING",
+              executionLeaseId: leaseId,
+              executionCancelRequestedAt: null,
+            },
+            data: {
+              ...serialized,
+              lastExecutionKey: executionKey,
+              lastExecutedStep: next.step,
+              executionLeaseId: null,
+              executionLeaseUserId: null,
+              executionLeaseStep: null,
+              executionLeaseUntil: null,
+              executionCancelRequestedAt: null,
+              version: { increment: 1 },
+            },
+          });
+          if (changed.count !== 1) return { changed: changed.count, outboxId: null };
+          const outboxId = await enqueueGrowthTaskProgressed(tx, {
+            workspaceId: serverId,
+            runId,
+            releaseName: updatedRun.input.releaseName,
+          }, result.step, result.role, updatedRun.artifacts.length, GROWTH_STEP_DEFINITIONS.length);
+          return { changed: changed.count, outboxId };
         });
-        if (changed.count !== 1) {
-          return reply.status(409).send({ error: "Материал изменился во время выполнения. Обновите список" });
+        if (transition.changed !== 1 || !transition.outboxId) {
+          return reply.status(409).send({ error: "Материал изменился или запуск был отменён во время выполнения" });
         }
         const updated = await db.growthRun.findFirst({ where: { id: runId, serverId }, include: growthRunInclude });
         if (!updated) return reply.status(404).send({ error: "Growth run не найден" });
@@ -293,7 +502,7 @@ export function registerGrowthRunRoutes(app: FastifyInstance) {
             completionTokens: result.usage.completionTokens,
           },
         });
-        activeGrowthSteps.release(runId, controller);
+        await dispatchOfficeEventOutboxBestEffort({ ids: [transition.outboxId] });
         return { run: growthRunView(updated), budget, idempotent: false };
       } catch (error) {
         if (error instanceof GrowthHubError) {
@@ -306,7 +515,9 @@ export function registerGrowthRunRoutes(app: FastifyInstance) {
         }
         throw error;
       } finally {
+        stopMonitor();
         activeGrowthSteps.release(runId, controller);
+        await releaseGrowthExecutionLease(runId, serverId, leaseId);
       }
     },
   );
@@ -320,23 +531,68 @@ export function registerGrowthRunRoutes(app: FastifyInstance) {
       const { id: serverId, runId } = req.params as { id: string; runId: string };
       const membership = await loadMembership(userId, serverId);
       if (!membership) return reply.status(403).send({ error: "Not a member" });
-      const row = await db.growthRun.findFirst({ where: { id: runId, serverId }, select: { id: true } });
+      const row = await db.growthRun.findFirst({
+        where: { id: runId, serverId },
+        select: {
+          id: true,
+          payload: true,
+          executionLeaseId: true,
+          executionLeaseUserId: true,
+          executionLeaseStep: true,
+          executionLeaseUntil: true,
+          executionCancelRequestedAt: true,
+        },
+      });
       if (!row) return reply.status(404).send({ error: "Growth run не найден" });
-      const active = activeGrowthSteps.get(runId);
-      if (!active) return reply.status(409).send({ error: "Сейчас нет выполняющегося шага" });
-      if (active.userId !== userId && !hasPermission(membership.role as MemberRole, "TASK_APPROVE")) {
+      const executionLeaseId = row.executionLeaseId;
+      const executionLeaseStep = row.executionLeaseStep;
+      if (!executionLeaseId || !executionLeaseStep || !row.executionLeaseUntil) {
+        return reply.status(409).send({ error: "Сейчас нет выполняющегося шага" });
+      }
+      if (row.executionLeaseUserId !== userId && !hasPermission(membership.role as MemberRole, "TASK_APPROVE")) {
         return reply.status(403).send({ error: "Остановить чужой запуск может только участник с правом approval" });
       }
-      active.controller.abort();
+
+      const local = activeGrowthSteps.get(runId);
+      if (row.executionCancelRequestedAt) {
+        if (local?.leaseId === executionLeaseId) local.controller.abort();
+        return reply.status(202).send({ cancelled: true, idempotent: true });
+      }
+
+      const run = parseStoredGrowthRun(row.payload);
+      const cancellation = await db.$transaction(async (tx) => {
+        const cancellationAt = await readGrowthDatabaseNow(tx);
+        const changed = await tx.growthRun.updateMany({
+          where: {
+            id: runId,
+            serverId,
+            executionLeaseId: executionLeaseId,
+            executionCancelRequestedAt: null,
+            executionLeaseUntil: { gt: cancellationAt },
+          },
+          data: { executionCancelRequestedAt: cancellationAt },
+        });
+        if (changed.count !== 1) return null;
+        return enqueueGrowthTaskCancelled(tx, {
+          workspaceId: serverId,
+          runId,
+          releaseName: run.input.releaseName,
+        }, executionLeaseStep);
+      });
+      if (!cancellation) {
+        return reply.status(409).send({ error: "Запуск уже завершился или был отменён" });
+      }
+
+      if (local?.leaseId === executionLeaseId) local.controller.abort();
       recordAudit("GROWTH_STEP_CANCELLED", {
         userId,
         req,
-        metadata: { serverId, growthRunId: runId, step: active.step },
+        metadata: { serverId, growthRunId: runId, step: executionLeaseStep },
       });
-      return reply.status(202).send({ cancelled: true });
+      await dispatchOfficeEventOutboxBestEffort({ ids: [cancellation] });
+      return reply.status(202).send({ cancelled: true, idempotent: false });
     },
   );
-
   app.post(
     "/api/servers/:id/growth-runs/import",
     { onRequest: [requireJwt], config: { rateLimit: IMPORT_RATE_LIMIT } },
@@ -393,20 +649,31 @@ export function registerGrowthRunRoutes(app: FastifyInstance) {
         });
       }
 
-      let created;
+      let created: GrowthRunRow;
+      let outboxId: string;
       try {
-        created = await db.growthRun.create({
-          data: {
-            sourceRunId: parsed.run.id,
-            serverId,
-            importedByUserId: userId,
-            schemaVersion: parsed.run.schemaVersion,
-            payload: parsed.payload,
-            payloadHash: parsed.payloadHash,
-            idempotencyKey,
-          },
-          include: growthRunInclude,
+        const transaction = await db.$transaction(async (tx) => {
+          const created = await tx.growthRun.create({
+            data: {
+              sourceRunId: parsed.run.id,
+              serverId,
+              importedByUserId: userId,
+              schemaVersion: parsed.run.schemaVersion,
+              payload: parsed.payload,
+              payloadHash: parsed.payloadHash,
+              idempotencyKey,
+            },
+            include: growthRunInclude,
+          });
+          const outboxId = await enqueueGrowthTaskCreated(tx, {
+            workspaceId: serverId,
+            runId: created.id,
+            releaseName: parsed.run.input.releaseName,
+          }, "import");
+          return { created, outboxId };
         });
+        created = transaction.created;
+        outboxId = transaction.outboxId;
       } catch (error) {
         if ((error as { code?: string } | null)?.code !== "P2002") throw error;
         const raced = await db.growthRun.findUnique({
@@ -430,6 +697,7 @@ export function registerGrowthRunRoutes(app: FastifyInstance) {
           completedRequests: parsed.run.execution.completedRequests,
         },
       });
+      await dispatchOfficeEventOutboxBestEffort({ ids: [outboxId] });
       return reply.status(201).send({ run: growthRunView(created), idempotent: false });
     },
   );
@@ -462,22 +730,31 @@ export function registerGrowthRunRoutes(app: FastifyInstance) {
 
       const nextStatus = body.data.decision === "APPROVE" ? "APPROVED" : "REJECTED";
       const now = new Date();
-      const changed = await db.growthRun.updateMany({
-        where: {
-          id: runId,
-          serverId,
-          version: body.data.version,
-          reviewStatus: "PENDING",
-        },
-        data: {
-          reviewStatus: nextStatus,
-          reviewNote: body.data.note || null,
-          reviewedAt: now,
-          reviewedByUserId: userId,
-          version: { increment: 1 },
-        },
+      const transition = await db.$transaction(async (tx) => {
+        const changed = await tx.growthRun.updateMany({
+          where: {
+            id: runId,
+            serverId,
+            version: body.data.version,
+            reviewStatus: "PENDING",
+          },
+          data: {
+            reviewStatus: nextStatus,
+            reviewNote: body.data.note || null,
+            reviewedAt: now,
+            reviewedByUserId: userId,
+            version: { increment: 1 },
+          },
+        });
+        if (changed.count !== 1) return { changed: changed.count, outboxId: null };
+        const outboxId = await enqueueGrowthApprovalResolved(tx, {
+          workspaceId: serverId,
+          runId,
+          releaseName: reviewPayload.input.releaseName,
+        }, nextStatus);
+        return { changed: changed.count, outboxId };
       });
-      if (changed.count !== 1) {
+      if (transition.changed !== 1 || !transition.outboxId) {
         const current = await db.growthRun.findFirst({ where: { id: runId, serverId } });
         if (!current) return reply.status(404).send({ error: "Growth run не найден" });
         return reply.status(409).send({
@@ -497,6 +774,7 @@ export function registerGrowthRunRoutes(app: FastifyInstance) {
         req,
         metadata: { serverId, growthRunId: runId, decision: nextStatus, version: updated.version },
       });
+      await dispatchOfficeEventOutboxBestEffort({ ids: [transition.outboxId] });
       return { run: growthRunView(updated) };
     },
   );

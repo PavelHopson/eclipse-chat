@@ -35,8 +35,16 @@ existing record; reusing it with different content returns `409`.
 - One request executes only the next fixed role. The server rejects skipped or reordered steps.
 - The dedicated `eclipse-chat-growth` service identity has only `growth:execute`; it cannot call generic chat,
   models or telemetry endpoints.
-- Every step uses optimistic `version` plus `Idempotency-Key`. A completed retry returns the stored version.
-- The default per-user budget is 25 attempted requests per UTC day. Failed and cancelled provider calls still
+- Every step uses optimistic version plus Idempotency-Key. A completed retry returns the stored version.
+- Chat derives a stable logical execution ID from runId + step + version. That ID is independent from the
+  caller HTTP retry key, is recorded in the budget charge ledger once, and is sent to AI Hub in both
+  X-Request-Id and Idempotency-Key. The same transaction emits task.started only when the budget receipt is
+  first created; an idempotent retry reuses that receipt and cannot duplicate the lifecycle event.
+- AI Hub must persist an idempotency receipt before crossing its paid provider boundary and return the same
+  bounded result for duplicate keys. A provider adapter that ignores this header is not production-compatible.
+- A database lease fences replicas. Its heartbeat, completion and cancellation mutations require the same
+  lease generation; cancellation is stored in PostgreSQL and observed by another replica within the polling interval.
+- The default per-user budget is 25 logical provider executions per UTC day. Failed and cancelled provider calls still
   consume one request, preventing retry loops from bypassing the limit.
 - A 65-second Chat timeout and explicit cancel propagate an abort toward AI Hub. Existing artifacts are kept.
 - Prompts and artifacts never enter audit or aggregate telemetry. Audit retains IDs, role, version and token totals only.
@@ -60,7 +68,7 @@ implied by this contract.
   and credentials are not.
 - Chat stores only a root-owned scoped AI Hub service token, never an upstream provider key. It performs no OAuth
   action, publication, outreach, Ads API request, payment or production change in this slice.
-- Negative regression tests cover concurrent daily-budget exhaustion, duplicate in-process step leases,
+- Negative regression tests cover concurrent daily-budget exhaustion, idempotent execution charges, distributed step leases,
   cross-workspace mutation lookups, missing approval permission, absent human confirmation and stale review versions.
 
 ## Endpoints

@@ -205,17 +205,18 @@ model User {
   /// Опять SetNull для completeness; cascade-delete срабатывает раньше.
   friendshipsBlockedBy       Friendship[]              @relation("FriendshipBlockedBy")
   decidedBotActionApprovals  BotActionApproval[]       @relation("BotActionApprovalDecider")
-  importedGrowthRuns         GrowthRun[]                @relation("GrowthRunImporter")
-  reviewedGrowthRuns         GrowthRun[]                @relation("GrowthRunReviewer")
-  importedDeckReviews        DeckReview[]               @relation("DeckReviewImporter")
-  reviewedDeckReviews        DeckReview[]               @relation("DeckReviewReviewer")
-  importedBuilderReviews     BuilderReview[]            @relation("BuilderReviewImporter")
-  reviewedBuilderReviews     BuilderReview[]            @relation("BuilderReviewReviewer")
-  importedSpecGateReviews    SpecGateReview[]           @relation("SpecGateReviewImporter")
-  reviewedSpecGateReviews    SpecGateReview[]           @relation("SpecGateReviewReviewer")
-  importedAutomationAudits   AutomationAuditReview[]    @relation("AutomationAuditImporter")
-  reviewedAutomationAudits   AutomationAuditReview[]    @relation("AutomationAuditReviewer")
+  importedGrowthRuns         GrowthRun[]               @relation("GrowthRunImporter")
+  reviewedGrowthRuns         GrowthRun[]               @relation("GrowthRunReviewer")
+  importedDeckReviews        DeckReview[]              @relation("DeckReviewImporter")
+  reviewedDeckReviews        DeckReview[]              @relation("DeckReviewReviewer")
+  importedBuilderReviews     BuilderReview[]           @relation("BuilderReviewImporter")
+  reviewedBuilderReviews     BuilderReview[]           @relation("BuilderReviewReviewer")
+  importedSpecGateReviews    SpecGateReview[]          @relation("SpecGateReviewImporter")
+  reviewedSpecGateReviews    SpecGateReview[]          @relation("SpecGateReviewReviewer")
+  importedAutomationAudits   AutomationAuditReview[]   @relation("AutomationAuditImporter")
+  reviewedAutomationAudits   AutomationAuditReview[]   @relation("AutomationAuditReviewer")
   growthAiUsage              GrowthAiUsage[]
+  growthAiUsageCharges       GrowthAiUsageCharge[]
 }
 
 /// Публичное изображение, которое пользователь явно добавил в профиль.
@@ -367,7 +368,7 @@ model Bot {
   allowedChannelIds    String?
   /// Curated memory available to the agent. OFF is fail-closed; ROOM includes
   /// the current room; WORKSPACE additionally includes explicitly shared entries.
-  memoryPolicy         BotMemoryPolicy      @default(OFF)
+  memoryPolicy         BotMemoryPolicy     @default(OFF)
   /// HTTPS URL для outbound webhook'ов. Backend POST'ит сюда события
   /// (message.created etc) от каналов где bot — member. Null = нет webhook.
   webhookUrl           String?
@@ -444,6 +445,11 @@ enum AuditEventType {
   GROWTH_RUN_CREATED
   GROWTH_STEP_EXECUTED
   GROWTH_STEP_CANCELLED
+  OFFICE_OUTBOX_REDRIVEN
+  CREATIVE_JOB_CREATED
+  CREATIVE_JOB_REVIEWED
+  CREATIVE_JOB_EXECUTED
+  CREATIVE_PACKAGE_DOWNLOADED
   /// v1.0.1 Composio integration: OAuth-managed external apps.
   COMPOSIO_CONNECTED
   COMPOSIO_DISCONNECTED
@@ -488,54 +494,189 @@ enum GrowthRunReviewStatus {
 /// never enter this table: payload contains only the bounded portable contract.
 /// Chat approval is independent from any approval claim in the imported JSON.
 model GrowthRun {
-  id                 String                @id @default(cuid())
-  sourceRunId        String
-  serverId           String
-  server             Server                @relation(fields: [serverId], references: [id], onDelete: Cascade)
-  importedByUserId   String?
-  importedBy         User?                 @relation("GrowthRunImporter", fields: [importedByUserId], references: [id], onDelete: SetNull)
-  schemaVersion      String
-  payload            String
-  payloadHash        String
-  idempotencyKey     String
-  lastExecutionKey   String?
-  lastExecutedStep   String?
-  reviewStatus       GrowthRunReviewStatus @default(PENDING)
-  reviewNote         String?
-  reviewedAt         DateTime?
-  reviewedByUserId   String?
-  reviewedBy         User?                 @relation("GrowthRunReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
-  version            Int                   @default(1)
-  createdAt          DateTime              @default(now())
-  updatedAt          DateTime              @updatedAt
+  id                         String                @id @default(cuid())
+  sourceRunId                String
+  serverId                   String
+  server                     Server                @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  importedByUserId           String?
+  importedBy                 User?                 @relation("GrowthRunImporter", fields: [importedByUserId], references: [id], onDelete: SetNull)
+  schemaVersion              String
+  payload                    String
+  payloadHash                String
+  idempotencyKey             String
+  lastExecutionKey           String?
+  lastExecutedStep           String?
+  executionLeaseId           String?
+  executionLeaseUserId       String?
+  executionLeaseStep         String?
+  executionLeaseUntil        DateTime?
+  executionCancelRequestedAt DateTime?
+  reviewStatus               GrowthRunReviewStatus @default(PENDING)
+  reviewNote                 String?
+  reviewedAt                 DateTime?
+  reviewedByUserId           String?
+  reviewedBy                 User?                 @relation("GrowthRunReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  version                    Int                   @default(1)
+  createdAt                  DateTime              @default(now())
+  updatedAt                  DateTime              @updatedAt
 
   @@unique([serverId, sourceRunId])
   @@unique([serverId, idempotencyKey])
   @@index([serverId, reviewStatus, createdAt])
   @@index([serverId, importedByUserId, reviewStatus])
+  @@index([executionLeaseUntil])
+}
+
+/// Creative Studio job. The bounded JSON payload owns the state machine while
+/// these scalar columns keep tenant filtering, optimistic concurrency and
+/// idempotency enforceable in PostgreSQL.
+model CreativeJob {
+  id               String   @id @default(cuid())
+  sourceJobId      String
+  serverId         String
+  server           Server   @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  createdByUserId  String
+  schemaVersion    String
+  payload          String
+  payloadHash      String
+  idempotencyKey   String
+  lastExecutionKey String?
+  status           String
+  version          Int      @default(1)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([serverId, sourceJobId])
+  @@unique([serverId, idempotencyKey])
+  @@index([serverId, status, createdAt])
+  @@index([serverId, createdByUserId, status])
+}
+
+/// Durable tenant-scoped Office Event journal. Visual 2D/3D/Presence clients
+/// consume this projection; it never becomes an action or approval channel.
+model OfficeEvent {
+  id            String   @id @default(uuid())
+  serverId      String
+  server        Server   @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  sequence      BigInt
+  schemaVersion String
+  type          String
+  subjectKind   String
+  subjectId     String
+  summary       String
+  metadata      String
+  producerId    String
+  occurredAt    DateTime
+  createdAt     DateTime @default(now())
+
+  @@unique([serverId, sequence])
+  @@index([serverId, occurredAt])
+}
+
+/// Atomic per-workspace sequence allocator for OfficeEvent.
+model OfficeEventCursor {
+  serverId     String   @id
+  server       Server   @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  lastSequence BigInt   @default(0)
+  updatedAt    DateTime @updatedAt
+}
+
+/// Durable HMAC nonce ledger. A signed Sentinel request can be accepted once;
+/// expired rows are pruned during later authenticated ingests.
+model OfficeIngestNonce {
+  id            String   @id @default(cuid())
+  keyId         String
+  producerId    String
+  nonce         String
+  serverId      String
+  server        Server   @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  requestDigest String
+  firstSequence BigInt?
+  lastSequence  BigInt?
+  acceptedCount Int?
+  expiresAt     DateTime
+  createdAt     DateTime @default(now())
+
+  @@unique([producerId, nonce])
+  @@index([expiresAt])
+  @@index([serverId, createdAt])
 }
 
 /// Tenant-scoped copy of an approved deck.job.v1. Imported approval is reset;
 /// Chat reviewers make an independent decision before any downstream handoff.
+
+/// Transactional bridge from business mutations to the durable Office journal.
+/// Payload is a minimized validated projection; delivery is idempotent by row id.
+model OfficeEventOutbox {
+  id                   String    @id @default(uuid())
+  serverId             String
+  server               Server    @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  producerId           String
+  payload              String
+  requestDigest        String
+  attempts             Int       @default(0)
+  availableAt          DateTime  @default(now())
+  deliveredAt          DateTime?
+  discardedAt          DateTime?
+  claimToken           String?
+  claimUntil           DateTime?
+  lastErrorCode        String?
+  redriveCount         Int       @default(0)
+  lastRedrivenAt       DateTime?
+  lastRedrivenByUserId String?
+  lastRedriveReason    String?
+  lastDiscardedAt      DateTime?
+  lastDiscardErrorCode String?
+  lastDiscardAttempts  Int?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  @@index([deliveredAt, discardedAt, availableAt, createdAt])
+  @@index([deliveredAt, discardedAt, claimUntil, availableAt, createdAt])
+  @@index([serverId, deliveredAt, discardedAt, createdAt])
+}
+
+/// Immutable forensic receipt for each approved Office outbox dead-letter redrive.
+/// It deliberately keeps scalar outbox/actor identifiers so later cleanup or user
+/// deletion cannot erase who redrove which failed delivery.
+model OfficeEventOutboxRedriveReceipt {
+  id               String   @id @default(uuid())
+  batchId          String
+  outboxId         String
+  serverId         String
+  server           Server   @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  actorUserId      String
+  reason           String
+  priorDiscardedAt DateTime
+  priorErrorCode   String
+  priorAttempts    Int
+  redriveNumber    Int
+  redrivenAt       DateTime @default(now())
+
+  @@unique([outboxId, redriveNumber])
+  @@index([batchId])
+  @@index([serverId, redrivenAt])
+}
+
 model DeckReview {
-  id                 String                @id @default(cuid())
-  sourceJobId        String
-  serverId           String
-  server             Server                @relation(fields: [serverId], references: [id], onDelete: Cascade)
-  importedByUserId   String?
-  importedBy         User?                 @relation("DeckReviewImporter", fields: [importedByUserId], references: [id], onDelete: SetNull)
-  schemaVersion      String
-  payload            String
-  payloadHash        String
-  idempotencyKey     String
-  reviewStatus       GrowthRunReviewStatus @default(PENDING)
-  reviewNote         String?
-  reviewedAt         DateTime?
-  reviewedByUserId   String?
-  reviewedBy         User?                 @relation("DeckReviewReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
-  version            Int                   @default(1)
-  createdAt          DateTime              @default(now())
-  updatedAt          DateTime              @updatedAt
+  id               String                @id @default(cuid())
+  sourceJobId      String
+  serverId         String
+  server           Server                @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  importedByUserId String?
+  importedBy       User?                 @relation("DeckReviewImporter", fields: [importedByUserId], references: [id], onDelete: SetNull)
+  schemaVersion    String
+  payload          String
+  payloadHash      String
+  idempotencyKey   String
+  reviewStatus     GrowthRunReviewStatus @default(PENDING)
+  reviewNote       String?
+  reviewedAt       DateTime?
+  reviewedByUserId String?
+  reviewedBy       User?                 @relation("DeckReviewReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  version          Int                   @default(1)
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
 
   @@unique([serverId, sourceJobId])
   @@unique([serverId, idempotencyKey])
@@ -546,24 +687,24 @@ model DeckReview {
 /// Tenant-scoped copy of an approved builder.project.v1. Imported approval and
 /// unlocked build steps are reset before the independent Chat review starts.
 model BuilderReview {
-  id                 String                @id @default(cuid())
-  sourceProjectId    String
-  serverId           String
-  server             Server                @relation(fields: [serverId], references: [id], onDelete: Cascade)
-  importedByUserId   String?
-  importedBy         User?                 @relation("BuilderReviewImporter", fields: [importedByUserId], references: [id], onDelete: SetNull)
-  schemaVersion      String
-  payload            String
-  payloadHash        String
-  idempotencyKey     String
-  reviewStatus       GrowthRunReviewStatus @default(PENDING)
-  reviewNote         String?
-  reviewedAt         DateTime?
-  reviewedByUserId   String?
-  reviewedBy         User?                 @relation("BuilderReviewReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
-  version            Int                   @default(1)
-  createdAt          DateTime              @default(now())
-  updatedAt          DateTime              @updatedAt
+  id               String                @id @default(cuid())
+  sourceProjectId  String
+  serverId         String
+  server           Server                @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  importedByUserId String?
+  importedBy       User?                 @relation("BuilderReviewImporter", fields: [importedByUserId], references: [id], onDelete: SetNull)
+  schemaVersion    String
+  payload          String
+  payloadHash      String
+  idempotencyKey   String
+  reviewStatus     GrowthRunReviewStatus @default(PENDING)
+  reviewNote       String?
+  reviewedAt       DateTime?
+  reviewedByUserId String?
+  reviewedBy       User?                 @relation("BuilderReviewReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  version          Int                   @default(1)
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
 
   @@unique([serverId, sourceProjectId])
   @@unique([serverId, idempotencyKey])
@@ -574,30 +715,31 @@ model BuilderReview {
 /// Tenant-scoped copy of an approved eclipse.spec-gate.v1 artifact. Source
 /// approval is reset and implementation remains blocked after Chat approval.
 model SpecGateReview {
-  id                 String                @id @default(cuid())
-  sourceSpecId       String
-  serverId           String
-  server             Server                @relation(fields: [serverId], references: [id], onDelete: Cascade)
-  importedByUserId   String?
-  importedBy         User?                 @relation("SpecGateReviewImporter", fields: [importedByUserId], references: [id], onDelete: SetNull)
-  schemaVersion      String
-  payload            String
-  payloadHash        String
-  idempotencyKey     String
-  reviewStatus       GrowthRunReviewStatus @default(PENDING)
-  reviewNote         String?
-  reviewedAt         DateTime?
-  reviewedByUserId   String?
-  reviewedBy         User?                 @relation("SpecGateReviewReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
-  version            Int                   @default(1)
-  createdAt          DateTime              @default(now())
-  updatedAt          DateTime              @updatedAt
+  id               String                @id @default(cuid())
+  sourceSpecId     String
+  serverId         String
+  server           Server                @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  importedByUserId String?
+  importedBy       User?                 @relation("SpecGateReviewImporter", fields: [importedByUserId], references: [id], onDelete: SetNull)
+  schemaVersion    String
+  payload          String
+  payloadHash      String
+  idempotencyKey   String
+  reviewStatus     GrowthRunReviewStatus @default(PENDING)
+  reviewNote       String?
+  reviewedAt       DateTime?
+  reviewedByUserId String?
+  reviewedBy       User?                 @relation("SpecGateReviewReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  version          Int                   @default(1)
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
 
   @@unique([serverId, sourceSpecId])
   @@unique([serverId, idempotencyKey])
   @@index([serverId, reviewStatus, createdAt])
   @@index([serverId, importedByUserId, reviewStatus])
 }
+
 /// UTC daily request budget for the bounded Growth executor. It stores counters
 /// only; prompts, artifacts and provider responses stay in GrowthRun.
 model GrowthAiUsage {
@@ -611,27 +753,40 @@ model GrowthAiUsage {
   @@index([day])
 }
 
+/// Idempotency ledger for paid Growth executions. A logical run step consumes
+/// the caller's daily budget once even when a replica crashes and the request
+/// is retried with another HTTP idempotency key.
+model GrowthAiUsageCharge {
+  executionId String   @id
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  day         String
+  createdAt   DateTime @default(now())
+
+  @@index([userId, day])
+}
+
 /// Tenant-scoped copy of an approved eclipse.automation-audit.v1. Import
 /// resets source approval; Chat issues its own human decision receipt.
 model AutomationAuditReview {
-  id                 String                @id @default(cuid())
-  sourceAuditId      String
-  serverId           String
-  server             Server                @relation(fields: [serverId], references: [id], onDelete: Cascade)
-  importedByUserId   String?
-  importedBy         User?                 @relation("AutomationAuditImporter", fields: [importedByUserId], references: [id], onDelete: SetNull)
-  schemaVersion      String
-  payload            String
-  payloadHash        String
-  idempotencyKey     String
-  reviewStatus       GrowthRunReviewStatus @default(PENDING)
-  reviewNote         String?
-  reviewedAt         DateTime?
-  reviewedByUserId   String?
-  reviewedBy         User?                 @relation("AutomationAuditReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
-  version            Int                   @default(1)
-  createdAt          DateTime              @default(now())
-  updatedAt          DateTime              @updatedAt
+  id               String                @id @default(cuid())
+  sourceAuditId    String
+  serverId         String
+  server           Server                @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  importedByUserId String?
+  importedBy       User?                 @relation("AutomationAuditImporter", fields: [importedByUserId], references: [id], onDelete: SetNull)
+  schemaVersion    String
+  payload          String
+  payloadHash      String
+  idempotencyKey   String
+  reviewStatus     GrowthRunReviewStatus @default(PENDING)
+  reviewNote       String?
+  reviewedAt       DateTime?
+  reviewedByUserId String?
+  reviewedBy       User?                 @relation("AutomationAuditReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  version          Int                   @default(1)
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
 
   @@unique([serverId, sourceAuditId])
   @@unique([serverId, idempotencyKey])
@@ -956,42 +1111,48 @@ model Server {
   /// Zod validation в PATCH /api/servers/:id/identity.
   features String?
 
-  channels            Channel[]
+  channels                    Channel[]
   /// v1.5.46 Discord-parity C1 — channel categories на этом сервере.
   /// Сортировка по ChannelCategory.position. Канал без categoryId =
   /// uncategorized (UI рисует над списком категорий, по Discord паттерну).
-  channelCategories   ChannelCategory[]
-  members             Member[]
-  actionItems         ActionItem[]
-  bots                Bot[]
-  incidents           Incident[]
-  tables              Table[]
+  channelCategories           ChannelCategory[]
+  members                     Member[]
+  actionItems                 ActionItem[]
+  bots                        Bot[]
+  incidents                   Incident[]
+  tables                      Table[]
   /// v0.80 #26 phase 1: automation rules (trigger + action декларативные).
-  automations         AutomationRule[]
+  automations                 AutomationRule[]
   /// v0.86 #24 phase 2: client invoices (server-scoped).
-  invoices            Invoice[]
+  invoices                    Invoice[]
   /// v0.89 #26 phase 2: external integrations (Telegram outgoing, GitHub
   /// incoming webhook). Cascade при удалении server'а.
-  integrations        Integration[]
+  integrations                Integration[]
   /// v1.0.1 #11.5 Composio integration: per-server OAuth-managed apps
   /// (500+ через единый Composio proxy). Cascade при удалении server'а.
-  composioConnections ComposioConnection[]
+  composioConnections         ComposioConnection[]
   /// v1.2.20: custom-emoji per-server. Cascade при удалении server'а.
-  emojis              Emoji[]
+  emojis                      Emoji[]
   /// v1.6.25: server-wide Team Health training catalog. Sections/videos are
   /// visible to every server member; write access is OWNER/ADMIN only.
-  trainingSections    TrainingSection[]
-  trainingVideos      TrainingVideo[]
+  trainingSections            TrainingSection[]
+  trainingVideos              TrainingVideo[]
   /// v1.6.99 — одноразовые / истекающие invite-коды (privacy slice B).
-  invites             ServerInvite[]
+  invites                     ServerInvite[]
   /// v1.7.3 — curated room/project memory. Entries are soft-deleted via archivedAt.
-  memoryEntries       MemoryEntry[]
-  botActionApprovals  BotActionApproval[]
-  growthRuns          GrowthRun[]
-  deckReviews         DeckReview[]
-  builderReviews      BuilderReview[]
-  specGateReviews     SpecGateReview[]
-  automationAudits    AutomationAuditReview[]
+  memoryEntries               MemoryEntry[]
+  botActionApprovals          BotActionApproval[]
+  growthRuns                  GrowthRun[]
+  creativeJobs                CreativeJob[]
+  deckReviews                 DeckReview[]
+  builderReviews              BuilderReview[]
+  specGateReviews             SpecGateReview[]
+  automationAudits            AutomationAuditReview[]
+  officeEvents                OfficeEvent[]
+  officeEventCursor           OfficeEventCursor?
+  officeIngestNonces          OfficeIngestNonce[]
+  officeEventOutbox           OfficeEventOutbox[]
+  officeOutboxRedriveReceipts OfficeEventOutboxRedriveReceipt[]
 }
 
 /// v1.6.99 — одноразовые / истекающие invite-коды (privacy slice B).
