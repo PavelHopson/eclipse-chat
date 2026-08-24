@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -20,7 +20,7 @@ async function fixture() {
   const directory = await mkdtemp(join(tmpdir(), "eclipse-office-deploy-"));
   directories.push(directory);
   const envPath = join(directory, ".env");
-  await writeFile(envPath, 'JWT_SECRET="test-only"\n', { mode: 0o600 });
+  await writeFile(envPath, 'JWT_SECRET="test-only"\n', { mode: 0o640 });
   return envPath;
 }
 
@@ -66,7 +66,7 @@ describe("production Office ingest provisioning", () => {
     const contents = await readFile(envPath, "utf8");
     expect(registryFrom(contents)[keyId]).toEqual({ producerId, secret, workspaceIds: [workspaceId] });
     expect(`${result.stdout}${result.stderr}`).not.toContain(secret);
-    if (process.platform !== "win32") expect((await stat(envPath)).mode & 0o777).toBe(0o600);
+    if (process.platform !== "win32") expect((await stat(envPath)).mode & 0o777).toBe(0o640);
 
     await configure(envPath);
     expect((await readFile(envPath, "utf8")).match(/OFFICE_INGEST_KEYS_JSON=/gu)).toHaveLength(1);
@@ -82,6 +82,17 @@ describe("production Office ingest provisioning", () => {
       stderr: expect.stringContaining("EXISTING_KEY_CONFLICT"),
     });
     expect(await readFile(envPath, "utf8")).toBe(before);
+  });
+
+  it("rejects an environment file readable outside its owner group", async () => {
+    if (process.platform === "win32") return;
+    const envPath = await fixture();
+    await chmod(envPath, 0o644);
+
+    await expect(configure(envPath)).rejects.toMatchObject({
+      stderr: expect.stringContaining("ENV_FILE_PERMISSIONS_UNSAFE"),
+    });
+    expect(await readFile(envPath, "utf8")).toBe('JWT_SECRET="test-only"\n');
   });
 
   it("removes only the selected producer key when disabled", async () => {

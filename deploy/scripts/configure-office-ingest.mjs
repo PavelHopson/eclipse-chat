@@ -120,9 +120,13 @@ async function readEnvironmentState(envPath) {
 async function writeEnvironmentState({ target, stat, newline, lines }) {
   const updated = `${lines.join(newline)}${newline}`;
   const tempPath = `${dirname(target)}/.${basename(target)}.office-${process.pid}-${randomUUID()}.tmp`;
+  const existingMode = stat.mode & 0o777;
+  if (process.platform !== "win32" && (existingMode & 0o027) !== 0) {
+    fail("ENV_FILE_PERMISSIONS_UNSAFE");
+  }
   try {
-    await writeFile(tempPath, updated, { encoding: "utf8", flag: "wx", mode: 0o600 });
-    await chmod(tempPath, 0o600);
+    await writeFile(tempPath, updated, { encoding: "utf8", flag: "wx", mode: existingMode });
+    await chmod(tempPath, existingMode);
     if (process.platform !== "win32") await chown(tempPath, stat.uid, stat.gid);
     await rename(tempPath, target);
   } finally {
