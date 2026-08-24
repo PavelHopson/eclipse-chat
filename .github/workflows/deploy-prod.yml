@@ -128,14 +128,24 @@ jobs:
           username: ${{ secrets.DEPLOY_USER_PROD }}
           key: ${{ secrets.SSH_PRIVATE_KEY_PROD }}
           command_timeout: 15m
+          envs: OFFICE_INGEST_SENTINEL_SECRET,OFFICE_INGEST_SENTINEL_KEY_ID,OFFICE_INGEST_SENTINEL_PRODUCER_ID,OFFICE_INGEST_SENTINEL_WORKSPACE_ID
           script: |
             set -e
             cd /var/www/eclipse-chat
             echo "==> Pre-pull (workflow bootstrap, до deploy.sh)"
             git fetch origin master
             git reset --hard origin/master
+            echo "==> Configure scoped Sentinel Office producer"
+            sudo --preserve-env=OFFICE_INGEST_SENTINEL_SECRET,OFFICE_INGEST_SENTINEL_KEY_ID,OFFICE_INGEST_SENTINEL_PRODUCER_ID,OFFICE_INGEST_SENTINEL_WORKSPACE_ID \
+              node deploy/scripts/configure-office-ingest.mjs /var/www/eclipse-chat/apps/server/.env
+            unset OFFICE_INGEST_SENTINEL_SECRET OFFICE_INGEST_SENTINEL_KEY_ID OFFICE_INGEST_SENTINEL_PRODUCER_ID OFFICE_INGEST_SENTINEL_WORKSPACE_ID
             echo "==> Running deploy/scripts/deploy.sh"
             bash deploy/scripts/deploy.sh
+        env:
+          OFFICE_INGEST_SENTINEL_SECRET: ${{ secrets.OFFICE_INGEST_SENTINEL_20260824_SECRET }}
+          OFFICE_INGEST_SENTINEL_KEY_ID: ${{ vars.OFFICE_INGEST_SENTINEL_KEY_ID }}
+          OFFICE_INGEST_SENTINEL_PRODUCER_ID: ${{ vars.OFFICE_INGEST_SENTINEL_PRODUCER_ID }}
+          OFFICE_INGEST_SENTINEL_WORKSPACE_ID: ${{ vars.OFFICE_INGEST_SENTINEL_WORKSPACE_ID }}
 
       # --- Post-deploy: independent smoke от CI runner (не из prod),
       #     чтобы убедиться что внешний пользователь видит работающий сервис ---

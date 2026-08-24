@@ -151,7 +151,7 @@ Airi используется как архитектурный reference, не 
 - [x] durable nonce receipt, exact same-request 2xx replay, conflict rejection и concurrent retry tests;
 - [x] PostgreSQL 14 fresh migration QA: 87 migrations, cross-process write/exact replay/conflict/budget и invariant events=1, nonce=1, cursor=1, charge=1;
 - [x] zero-downtime HMAC activation windows (`notBefore`/`notAfter`) и rotation runbook;
-- [ ] production secret-manager/Credential Manager provisioning и фактическая rotation ceremony на развёрнутых инстансах;
+- [ ] production secret-manager и Windows Credential Manager provisioned для `sentinel-prod-20260824-01`; live signed delivery и последующая rotation ceremony ещё требуют runtime-проверки;
 - [x] transactional Growth outbox: mutation и Office projection создаются атомарно, а доставка выполняется идемпотентным dispatcher после commit;
 - [x] membership-protected health/status без раскрытия конфигурации и безопасный общий 5xx error boundary.
 
