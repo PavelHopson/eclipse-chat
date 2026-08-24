@@ -341,7 +341,7 @@ export function AgentOffice(props: AgentOfficeProps) {
         </div>
         <nav className="ec-agent-office-switcher__tabs" aria-label="Разделы AI-офиса">
           <button type="button" data-active={workspace === "growth"} aria-pressed={workspace === "growth"} onClick={() => setWorkspace("growth")}>Контент</button>
-          <button type="button" data-active={workspace === "creative"} aria-pressed={workspace === "creative"} onClick={() => setWorkspace("creative")}>Creative Studio</button>
+          <button type="button" data-active={workspace === "creative"} aria-pressed={workspace === "creative"} onClick={() => setWorkspace("creative")}>Творческая студия</button>
           <button type="button" data-active={workspace === "audit"} aria-pressed={workspace === "audit"} onClick={() => setWorkspace("audit")}>Аудит процессов</button>
           <button type="button" data-active={workspace === "voice"} aria-pressed={workspace === "voice"} onClick={() => setWorkspace("voice")}>Голосовые команды</button>
           <button type="button" aria-pressed="false" onClick={props.onOpenLanTransfer}>Передача рядом</button>
