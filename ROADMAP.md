@@ -5,6 +5,12 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
+## Sentinel Office rollback safety — v1.7.60 (2026-08-24)
+
+- [x] Перенести изменение production `.env` после создания rollback-copy, чтобы failed restart действительно возвращал предыдущую конфигурацию.
+- [x] Добавить fail-closed disabled mode, который атомарно удаляет только выбранный key ID и не удаляет secret из GitHub/Windows Credential Manager.
+- [x] Зафиксировать regression на порядок backup -> provision и восстановить production после failed v1.7.59 deploy.
+
 ## Sentinel Office production binding — v1.7.59 (2026-08-24)
 
 - [x] Добавить fail-closed provisioning `OFFICE_INGEST_KEYS_JSON` из GitHub Environment secret без секрета в argv, workflow logs или Git.
@@ -667,7 +673,7 @@ scope доступа, понятное действие и подтвержде�
 - Provider routing — только owned/legal keys, no grey-zone token bypass.
 - Token-saving tools (`sqz`, caveman-like compression) сначала benchmark в sandbox; не сжимать секреты, миграции, юридический текст и точные логи.
 
-**Актуальная версия (короткий индекс):** **v1.7.59** — безопасная production-привязка Sentinel Office producer; live signed delivery проверяется после deploy.
+**Актуальная версия (короткий индекс):** **v1.7.60** — rollback-safe Sentinel Office provisioning и аварийное отключение отдельного producer key.
 
 **Текущая версия:** **v1.6.98** (🗄️⚡ PARTIAL-ИНДЕКС под escalation-scan (бэклог-хвост, заход через CI). Фоновой `escalation.ts` раз в час обходит `ActionItem` где `status ∈ (OPEN,IN_PROGRESS,REVIEW)`, `dueAt < now-48h`, `(escalatedAt IS NULL OR < now-7d)`, `ORDER BY dueAt ASC LIMIT 50`. Запрос **глобальный** (без serverId/channelId) → все 4 существующих индекса `ActionItem` ведут с channelId/serverId и его НЕ покрывают → был seq-scan всей таблицы каждый час. **Новый partial composite index** `ActionItem_escalation_scan_idx ON ("dueAt") WHERE status IN (OPEN,IN_PROGRESS,REVIEW) AND dueAt IS NOT NULL` (raw-миграция `20260625120000_add_escalation_partial_index`): индексирует только кандидатов эскалации (крошечная доля таблицы — закрытые DONE и задачи без дедлайна исключены); ведущая `dueAt` → один forward index-scan покрывает и `dueAt < X`, и `ORDER BY dueAt ASC LIMIT 50` без сортировки, рано останавливается. **Prisma не выражает WHERE-индексы** → raw SQL; `migrate deploy` (deploy.sh [4/10]) применяет как есть, `prisma generate` индексы не читает, drift-проверок (`migrate dev`) в проекте нет (прод=migrate deploy, локальной БД нет). schema.prisma — doc-comment у `ActionItem` фиксирует существование индекса («не чинить как drift»). **temp-channel scan (`tempChannels.ts`) НЕ трогал** — `Channel` уже имеет `@@index([expiresAt])`, а `WHERE expiresAt < now` = чистый range-scan по нему (NULL'ы сортируются последними, не читаются); partial там лишь дублировал бы индекс = write-amplification на крошечной таблице ради ~нуля. Version 1.6.97→1.6.98 (4 точки). Verify: server `tsc --noEmit` PASS, web build PASS; миграция применится на проде при деплое (`migrate deploy`). **Бэклог-остаток:** виртуализация ленты сообщений (npm-dep + риск-рефактор скролла) — единственный крупный хвост.)
 

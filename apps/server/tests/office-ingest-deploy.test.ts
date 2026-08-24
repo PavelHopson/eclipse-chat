@@ -9,6 +9,7 @@ import { afterEach, describe, expect, it } from "vitest";
 const execFileAsync = promisify(execFile);
 const scriptPath = fileURLToPath(new URL("../../../deploy/scripts/configure-office-ingest.mjs", import.meta.url));
 const workflowPath = fileURLToPath(new URL("../../../.github/workflows/deploy-prod.yml", import.meta.url));
+const deployPath = fileURLToPath(new URL("../../../deploy/scripts/deploy.sh", import.meta.url));
 const directories: string[] = [];
 const keyId = "sentinel-prod-test-01";
 const producerId = "eclipse-hopson-sentinel";
@@ -27,10 +28,21 @@ async function configure(envPath: string, secretValue = secret) {
   return execFileAsync(process.execPath, [scriptPath, envPath], {
     env: {
       ...process.env,
+      OFFICE_INGEST_SENTINEL_ENABLED: "1",
       OFFICE_INGEST_SENTINEL_SECRET: secretValue,
       OFFICE_INGEST_SENTINEL_KEY_ID: keyId,
       OFFICE_INGEST_SENTINEL_PRODUCER_ID: producerId,
       OFFICE_INGEST_SENTINEL_WORKSPACE_ID: workspaceId,
+    },
+  });
+}
+
+async function disable(envPath: string) {
+  return execFileAsync(process.execPath, [scriptPath, envPath], {
+    env: {
+      ...process.env,
+      OFFICE_INGEST_SENTINEL_ENABLED: "0",
+      OFFICE_INGEST_SENTINEL_KEY_ID: keyId,
     },
   });
 }
@@ -72,11 +84,26 @@ describe("production Office ingest provisioning", () => {
     expect(await readFile(envPath, "utf8")).toBe(before);
   });
 
+  it("removes only the selected producer key when disabled", async () => {
+    const envPath = await fixture();
+    await configure(envPath);
+    const result = await disable(envPath);
+    const contents = await readFile(envPath, "utf8");
+    expect(contents).toContain('JWT_SECRET="test-only"');
+    expect(contents).not.toContain("OFFICE_INGEST_KEYS_JSON=");
+    expect(`${result.stdout}${result.stderr}`).not.toContain(secret);
+  });
+
   it("keeps the GitHub secret out of argv and binds only environment-scoped values", async () => {
     const workflow = await readFile(workflowPath, "utf8");
+    const deploy = await readFile(deployPath, "utf8");
     expect(workflow).toContain("secrets.OFFICE_INGEST_SENTINEL_20260824_SECRET");
     expect(workflow).toContain("vars.OFFICE_INGEST_SENTINEL_WORKSPACE_ID");
-    expect(workflow).toContain("node deploy/scripts/configure-office-ingest.mjs /var/www/eclipse-chat/apps/server/.env");
-    expect(workflow).not.toMatch(/configure-office-ingest\.mjs[^\n]*OFFICE_INGEST_SENTINEL_SECRET/u);
+    expect(workflow).toContain("vars.OFFICE_INGEST_SENTINEL_ENABLED");
+    expect(deploy).toContain('node "$SCRIPT_DIR/configure-office-ingest.mjs" "$CHAT_ENV"');
+    expect(deploy.indexOf('cp -p -- "$CHAT_ENV" "$CHAT_ENV_PREVIOUS"')).toBeLessThan(
+      deploy.indexOf('node "$SCRIPT_DIR/configure-office-ingest.mjs" "$CHAT_ENV"'),
+    );
+    expect(`${workflow}\n${deploy}`).not.toMatch(/configure-office-ingest\.mjs[^\n]*OFFICE_INGEST_SENTINEL_SECRET/u);
   });
 });

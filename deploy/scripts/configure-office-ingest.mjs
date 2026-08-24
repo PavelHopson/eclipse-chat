@@ -105,34 +105,20 @@ function validateInput({ keyId, producerId, workspaceId, secret }) {
   if (!validSecret(secret)) fail("SECRET_INVALID");
 }
 
-export async function configureOfficeIngestEnvironment({
-  envPath,
-  keyId,
-  producerId,
-  workspaceId,
-  secret,
-}) {
-  validateInput({ keyId, producerId, workspaceId, secret });
+async function readEnvironmentState(envPath) {
   const target = resolve(envPath);
   const stat = await lstat(target).catch(() => fail("ENV_FILE_UNAVAILABLE"));
   if (!stat.isFile() || stat.isSymbolicLink() || stat.size > MAX_ENV_BYTES) fail("ENV_FILE_UNSAFE");
-
   const original = await readFile(target, "utf8");
   const newline = original.includes("\r\n") ? "\r\n" : "\n";
   const hadFinalNewline = original.endsWith("\n");
   const lines = original.split(/\r?\n/u);
   if (hadFinalNewline) lines.pop();
-  const { index, registry } = readRegistry(lines);
-  const nextEntry = { producerId, secret, workspaceIds: [workspaceId] };
-  if (registry[keyId] !== undefined && JSON.stringify(registry[keyId]) !== JSON.stringify(nextEntry)) {
-    fail("EXISTING_KEY_CONFLICT");
-  }
-  registry[keyId] = nextEntry;
-  const registryLine = `${REGISTRY_KEY}='${JSON.stringify(registry)}'`;
-  if (index === null) lines.push(registryLine);
-  else lines[index] = registryLine;
-  const updated = `${lines.join(newline)}${newline}`;
+  return { target, stat, newline, lines };
+}
 
+async function writeEnvironmentState({ target, stat, newline, lines }) {
+  const updated = `${lines.join(newline)}${newline}`;
   const tempPath = `${dirname(target)}/.${basename(target)}.office-${process.pid}-${randomUUID()}.tmp`;
   try {
     await writeFile(tempPath, updated, { encoding: "utf8", flag: "wx", mode: 0o600 });
@@ -146,11 +132,55 @@ export async function configureOfficeIngestEnvironment({
   }
 }
 
+export async function configureOfficeIngestEnvironment({
+  envPath,
+  keyId,
+  producerId,
+  workspaceId,
+  secret,
+}) {
+  validateInput({ keyId, producerId, workspaceId, secret });
+  const state = await readEnvironmentState(envPath);
+  const { lines } = state;
+  const { index, registry } = readRegistry(lines);
+  const nextEntry = { producerId, secret, workspaceIds: [workspaceId] };
+  if (registry[keyId] !== undefined && JSON.stringify(registry[keyId]) !== JSON.stringify(nextEntry)) {
+    fail("EXISTING_KEY_CONFLICT");
+  }
+  registry[keyId] = nextEntry;
+  const registryLine = `${REGISTRY_KEY}='${JSON.stringify(registry)}'`;
+  if (index === null) lines.push(registryLine);
+  else lines[index] = registryLine;
+  await writeEnvironmentState(state);
+}
+
+export async function removeOfficeIngestEnvironment({ envPath, keyId }) {
+  if (typeof keyId !== "string" || !KEY_ID_PATTERN.test(keyId)) fail("KEY_ID_INVALID");
+  const state = await readEnvironmentState(envPath);
+  const { lines } = state;
+  const { index, registry } = readRegistry(lines);
+  if (index === null || registry[keyId] === undefined) return;
+  delete registry[keyId];
+  if (Object.keys(registry).length === 0) lines.splice(index, 1);
+  else lines[index] = `${REGISTRY_KEY}='${JSON.stringify(registry)}'`;
+  await writeEnvironmentState(state);
+}
+
 async function main() {
   if (process.argv.length !== 3) fail("USAGE_INVALID");
+  const enabled = process.env.OFFICE_INGEST_SENTINEL_ENABLED;
   let secret = process.env.OFFICE_INGEST_SENTINEL_SECRET;
   delete process.env.OFFICE_INGEST_SENTINEL_SECRET;
   try {
+    if (enabled === "0") {
+      await removeOfficeIngestEnvironment({
+        envPath: process.argv[2],
+        keyId: process.env.OFFICE_INGEST_SENTINEL_KEY_ID,
+      });
+      process.stdout.write("Office ingest producer disabled.\n");
+      return;
+    }
+    if (enabled !== "1") fail("ENABLED_FLAG_INVALID");
     await configureOfficeIngestEnvironment({
       envPath: process.argv[2],
       keyId: process.env.OFFICE_INGEST_SENTINEL_KEY_ID,
