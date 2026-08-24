@@ -69,7 +69,7 @@ test("compact shell uses the dedicated Eclipse mark instead of the wide wordmark
 test("AI office is localized and lets the user select a workspace in place", () => {
   const office = source("apps/web/src/components/agent-office/AgentOffice.tsx");
 
-  for (const label of ["Контент", "Creative Studio", "Аудит процессов", "Голосовые команды", "Передача рядом", "Презентации", "Сборка", "Требования"]) {
+  for (const label of ["Контент", "Творческая студия", "Аудит процессов", "Голосовые команды", "Передача рядом", "Презентации", "Сборка", "Требования"]) {
     assert.match(office, new RegExp(`>${label}<`));
   }
   assert.match(office, /props\.workspaces\.map/);
@@ -82,13 +82,22 @@ test("Creative Studio exposes cost, approval, receipt and manual LocalSend bound
   const room = source("apps/web/src/components/agent-office/CreativeStudioRoom.tsx");
   const css = source("apps/web/src/styles/creative-studio.css");
 
-  assert.match(room, /Сначала подтверждение/);
-  assert.match(room, /Higgsfield MCP всегда расходует кредиты/);
+  assert.match(room, /Творческая студия/);
+  assert.match(room, /Как пользоваться/);
+  assert.match(room, /От идеи до готового файла — четыре шага/);
+  assert.match(room, /Что делать сейчас/);
+  assert.match(room, /Безопасный режим/);
+  assert.match(room, /Проверочный пакет: 0 кредитов/);
   assert.match(room, /Подтвердить задание/);
   assert.match(room, /Квитанция выполнения/);
   assert.match(room, /Скачать и отправить рядом/);
   assert.match(room, /Jarvis не получает путь к файлу/);
-  assert.match(css, /@media \(max-width: 600px\)/);
+  assert.match(css, /\.ec-creative-guide \{/);
+  assert.match(css, /\.ec-creative-next \{/);
+  assert.match(css, /grid-template-areas:[\s\S]*?"queue main"[\s\S]*?"queue side"/);
+  assert.match(css, /\.ec-creative-guide header button:focus-visible/);
+  assert.match(css, /@media \(max-width: 700px\)/);
+  assert.match(css, /@media \(max-width: 520px\)/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
 });
 
