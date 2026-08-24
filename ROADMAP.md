@@ -10,7 +10,7 @@
 - [x] Устранить production 502: серверный процесс `www-data` снова читает root-owned `.env` через ограниченный режим `0640`.
 - [x] Сохранять исходный безопасный mode при атомарной замене `.env`, отклоняя group-write и любой доступ для other.
 - [x] Проверять доступ `www-data` до restart и покрыть регрессией сохранение `0640` и fail-closed отказ для `0644`.
-- [ ] Включить scoped Sentinel producer и подтвердить реальную signed delivery для workspace `cmp2ksqyg00059j5kuqxoerqr`.
+- [x] Включить scoped Sentinel producer и подтвердить реальную signed delivery для workspace `cmp2ksqyg00059j5kuqxoerqr` (`agent.state.changed`, server-assigned `sequence: 1`).
 
 ## Sentinel Office rollback safety — v1.7.60 (2026-08-24)
 
@@ -23,7 +23,7 @@
 - [x] Добавить fail-closed provisioning `OFFICE_INGEST_KEYS_JSON` из GitHub Environment secret без секрета в argv, workflow logs или Git.
 - [x] Ограничить producer `eclipse-hopson-sentinel` точным allowlist одного workspace и запретить неявную перезапись существующего key ID.
 - [x] Сохранять production `.env` атомарно с исходным безопасным owner/group/mode и строгой проверкой существующего registry.
-- [ ] Подтвердить реальную signed delivery из Windows Credential Manager после production deploy; до этого runtime-закрытие не заявлять.
+- [x] Подтвердить реальную signed delivery из Windows Credential Manager после production deploy без вывода секрета.
 
 ## Visible workspace ID — v1.7.58 (2026-08-24)
 
