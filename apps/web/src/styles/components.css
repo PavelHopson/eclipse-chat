@@ -6930,6 +6930,38 @@ input[type="radio"]:focus-visible {
   color: var(--ec-text-dim);
   line-height: 1.5;
 }
+
+.ec-hub-workspace-id {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.ec-hub-workspace-id code {
+  min-width: 0;
+  padding: var(--ec-space-2) var(--ec-space-3);
+  overflow-wrap: anywhere;
+  color: var(--ec-text-strong);
+  border: 1px solid var(--ec-border-subtle);
+  border-radius: var(--ec-radius-md);
+  background: var(--ec-surface-1);
+  font: 600 var(--ec-text-xs)/1.45 var(--ec-font-mono);
+  user-select: all;
+}
+
+.ec-hub-workspace-id .ec-hub-hint {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 640px) {
+  .ec-hub-workspace-id {
+    grid-template-columns: 1fr;
+  }
+
+  .ec-hub-workspace-id .ec-btn {
+    width: 100%;
+  }
+}
 .ec-hub-input {
   width: 100%;
   padding: 0.55rem 0.7rem;

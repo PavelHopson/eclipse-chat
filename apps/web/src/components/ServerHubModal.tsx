@@ -183,6 +183,7 @@ export function ServerHubModal({
   const [iconBusy, setIconBusy] = useState(false);
   const [bannerBusy, setBannerBusy] = useState(false);
   const [copyState, setCopyState] = useState<"code" | "link" | null>(null);
+  const [workspaceIdCopied, setWorkspaceIdCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dangerOpen, setDangerOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -274,6 +275,16 @@ export function ServerHubModal({
       setTimeout(() => setCopyState(null), 1500);
     } catch {
       setError("Не удалось скопировать (clipboard недоступен)");
+    }
+  };
+
+  const copyWorkspaceId = async () => {
+    try {
+      await navigator.clipboard.writeText(server.id);
+      setWorkspaceIdCopied(true);
+      setTimeout(() => setWorkspaceIdCopied(false), 1500);
+    } catch {
+      setError("Не удалось скопировать ID пространства");
     }
   };
 
@@ -490,6 +501,23 @@ export function ServerHubModal({
                   </div>
                 )}
               </div>
+            </div>
+          </section>
+
+          <section aria-labelledby="ec-workspace-id-title">
+            <h3 id="ec-workspace-id-title" className="ec-hub-label">ID пространства</h3>
+            <div className="ec-hub-card ec-hub-workspace-id">
+              <code>{server.id}</code>
+              <button
+                type="button"
+                className="ec-btn ec-btn--ghost ec-btn--sm"
+                onClick={() => void copyWorkspaceId()}
+              >
+                {workspaceIdCopied ? "Скопировано" : "Копировать"}
+              </button>
+              <p className="ec-hub-hint">
+                Нужен для подключения Sentinel и других доверенных интеграций к этому пространству.
+              </p>
             </div>
           </section>
 

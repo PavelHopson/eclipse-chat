@@ -66,6 +66,20 @@ test("compact shell uses the dedicated Eclipse mark instead of the wide wordmark
   assert.doesNotMatch(motion, /ec-brand-mark-breathe/);
 });
 
+test("workspace ID is visible in server settings and remains above overflowing menu actions", () => {
+  const hub = source("apps/web/src/components/ServerHubModal.tsx");
+  const menu = source("apps/web/src/components/server/ServerActionsMenu.tsx");
+  const css = source("apps/web/src/styles/components.css");
+  const copyAction = menu.indexOf('{ key: "copy-id", label: "Копировать ID пространства"');
+  const createChannelAction = menu.indexOf('{ key: "create-channel"');
+
+  assert.match(hub, /id="ec-workspace-id-title"/);
+  assert.match(hub, /<code>\{server\.id\}<\/code>/);
+  assert.match(hub, /copyWorkspaceId/);
+  assert.match(css, /\.ec-hub-workspace-id \{/);
+  assert.ok(copyAction >= 0 && copyAction < createChannelAction);
+});
+
 test("AI office is localized and lets the user select a workspace in place", () => {
   const office = source("apps/web/src/components/agent-office/AgentOffice.tsx");
 

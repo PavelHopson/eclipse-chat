@@ -251,6 +251,7 @@ export function ServerActionsMenu({
 
   const actions = useMemo(
     () => [
+      { key: "copy-id", label: "Копировать ID пространства", onClick: copyServerId },
       ...(isManager
         ? [
             { key: "settings", label: "Настройки сервера", onClick: onOpenSettings },
@@ -280,7 +281,6 @@ export function ServerActionsMenu({
             },
           ]
         : []),
-      { key: "copy-id", label: "Копировать ID", onClick: copyServerId },
       ...(canLeave ? [{ key: "leave", label: "Покинуть сервер", danger: true, onClick: leave }] : []),
     ],
     [
@@ -366,7 +366,7 @@ export function ServerActionsMenu({
       )}
       {actions.map((action) => (
         <div key={action.key}>
-          {(action.key === "create-channel" || action.key === "copy-id" || action.key === "leave") && (
+          {(action.key === "create-channel" || action.key === "leave") && (
             <div className="ec-server-actions-menu__divider" aria-hidden />
           )}
           <button
