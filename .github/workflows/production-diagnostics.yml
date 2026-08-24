@@ -1,0 +1,35 @@
+name: Production diagnostics
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Read bounded Eclipse Chat startup diagnostics
+        uses: appleboy/ssh-action@7eaf76671a0d7eec5d98ee897acda4f968735a17 # v1.2.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST_PROD }}
+          username: ${{ secrets.DEPLOY_USER_PROD }}
+          key: ${{ secrets.SSH_PRIVATE_KEY_PROD }}
+          command_timeout: 2m
+          script: |
+            set -eu
+            APP=/var/www/eclipse-chat/apps/server
+            echo "==> Supervisor"
+            sudo supervisorctl status eclipse-chat-server || true
+            echo "==> File access"
+            sudo stat -c '%A %U:%G %n' "$APP" "$APP/dist" "$APP/dist/index.js" "$APP/.env"
+            sudo -u www-data test -r "$APP/.env" && echo '.env readable: yes' || echo '.env readable: no'
+            sudo -u www-data test -r "$APP/dist/index.js" && echo 'index readable: yes' || echo 'index readable: no'
+            echo "==> Environment variable names only"
+            sudo awk -F= '/^[A-Za-z_][A-Za-z0-9_]*=/{print $1}' "$APP/.env" | sort -u
+            echo "==> Sanitized stderr tail"
+            sudo tail -n 120 /var/log/supervisor/eclipse-chat.err.log \
+              | sed -E 's#postgres(ql)?://[^[:space:]]+#postgresql://[REDACTED]#g; s/[A-Za-z0-9_-]{32,}/[REDACTED]/g' \
+              | tail -n 120
