@@ -203,6 +203,14 @@ echo "    Applying rollback-safe Sentinel Office producer state"
 sudo --preserve-env=OFFICE_INGEST_SENTINEL_ENABLED,OFFICE_INGEST_SENTINEL_SECRET,OFFICE_INGEST_SENTINEL_KEY_ID,OFFICE_INGEST_SENTINEL_PRODUCER_ID,OFFICE_INGEST_SENTINEL_WORKSPACE_ID \
     node "$SCRIPT_DIR/configure-office-ingest.mjs" "$CHAT_ENV"
 unset OFFICE_INGEST_SENTINEL_ENABLED OFFICE_INGEST_SENTINEL_SECRET OFFICE_INGEST_SENTINEL_KEY_ID OFFICE_INGEST_SENTINEL_PRODUCER_ID OFFICE_INGEST_SENTINEL_WORKSPACE_ID
+# The server runs as www-data. Keep secrets root-owned, group-readable only,
+# and verify access before restart so a permissions regression fails early.
+sudo chown root:www-data "$CHAT_ENV"
+sudo chmod 0640 "$CHAT_ENV"
+if ! sudo -u www-data test -r "$CHAT_ENV"; then
+    echo "Chat environment is not readable by www-data after provisioning"
+    exit 1
+fi
 bash "$SCRIPT_DIR/sync-ai-gateway.sh"
 
 echo
