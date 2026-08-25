@@ -39,17 +39,39 @@ test("workspace overview keeps one next action before secondary context", () => 
   assert.match(overview, /aria-labelledby="workspace-overview-title"/);
 });
 
-test("shell redesign preserves focus, touch targets and reduced motion", () => {
-  const css = source("apps/web/src/styles/clean-ui.css");
+test("workspace v2 activates and owns its complete responsive theme layer", () => {
+  const shell = source("apps/web/src/pages/AppShell.tsx");
+  const appCss = source("apps/web/src/styles/app.css");
+  const workspaceCss = source("apps/web/src/styles/workspace-v2.css");
+  const socialCss = source("apps/web/src/styles/workspace-v2-server-social.css");
+  const accountCss = source("apps/web/src/styles/workspace-v2-account.css");
   const tokens = source("apps/web/src/styles/tokens.css");
+  const v2Css = [workspaceCss, socialCss, accountCss].join("\n");
+  const baseImport = appCss.indexOf('@import "./workspace-v2.css";');
+  const socialImport = appCss.indexOf('@import "./workspace-v2-server-social.css";');
+  const accountImport = appCss.indexOf('@import "./workspace-v2-account.css";');
+  const backdropValues = [...v2Css.matchAll(/(?:-webkit-)?backdrop-filter\s*:\s*([^;]+);/g)].map((match) => match[1].trim());
 
-  assert.match(css, /\.ec-guide__primary:focus-visible/);
-  assert.match(css, /\.ec-rail__btn:focus-visible/);
-  assert.match(css, /\.ec-bnav__tab:focus-visible/);
-  assert.match(css, /\.ec-guide__primary \{[\s\S]*?min-height: 44px/);
-  assert.match(css, /\.ec-guide__card \{[\s\S]*?min-height: 44px/);
-  assert.match(css, /@media \(max-width: 1024px\) \{[\s\S]*?\.ec-guide__voice-room,[\s\S]*?min-height: 44px/);
-  assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
+  assert.match(shell, /ec-shell ec-workspace-v2/);
+  assert.ok(baseImport >= 0, "workspace base stylesheet is imported");
+  assert.ok(baseImport < socialImport && socialImport < accountImport, "workspace styles keep base, social, account order");
+  assert.match(workspaceCss, /--ec-ws-backdrop:/);
+  assert.match(workspaceCss, /html\[data-ec-theme="solar"\] \.ec-shell\.ec-workspace-v2 \{/);
+  assert.match(workspaceCss, /--ec-ws-canvas:\s*var\(--ec-bg\)/);
+  assert.match(workspaceCss, /--ec-ws-text:\s*var\(--ec-text\)/);
+  assert.doesNotMatch(workspaceCss, /background(?:-color)?:\s*#[0-2][0-9a-f]{2,7}\b/i);
+  assert.doesNotMatch(socialCss, /^\.(?!ec-workspace-v2)/m);
+  assert.doesNotMatch(accountCss, /^\.(?!ec-workspace-v2)/m);
+  assert.doesNotMatch(v2Css, /(?:linear|radial)-gradient\s*\(/i);
+  assert.ok(backdropValues.length > 0 && backdropValues.every((value) => value === "none"), "workspace blur stays disabled");
+  assert.match(socialCss, /\.ec-workspace-v2[\s\S]*:focus-visible/);
+  assert.match(accountCss, /\.ec-workspace-v2[\s\S]*:focus-visible/);
+  assert.match(socialCss, /@media \(max-width: 1024px\)/);
+  assert.match(socialCss, /@media \(max-width: 760px\)/);
+  assert.match(accountCss, /@media \(max-width: 1024px\)/);
+  assert.match(accountCss, /@media \(max-width: 760px\) \{[\s\S]*?\.ec-workspace-v2 \.ec-settings-panel/);
+  assert.match(socialCss, /@media \(prefers-reduced-motion: reduce\)/);
+  assert.match(accountCss, /@media \(prefers-reduced-motion: reduce\)/);
   assert.match(tokens, /--ec-bottomnav-height:\s+56px/);
 });
 

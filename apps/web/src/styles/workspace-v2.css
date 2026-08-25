@@ -10,6 +10,7 @@
   --ec-ws-sidebar: #0c0f15;
   --ec-ws-panel: #10141b;
   --ec-ws-raised: #151a23;
+  --ec-ws-backdrop: color-mix(in srgb, var(--ec-bg) 82%, transparent);
   --ec-ws-line: rgba(215, 220, 240, 0.09);
   --ec-ws-line-strong: rgba(215, 220, 240, 0.16);
   --ec-ws-violet: #8d6df2;
@@ -19,6 +20,22 @@
   --ec-ws-dim: #656d7c;
   background: var(--ec-ws-canvas);
   color: var(--ec-ws-text);
+}
+
+html[data-ec-theme="solar"] .ec-shell.ec-workspace-v2 {
+  --ec-ws-canvas: var(--ec-bg);
+  --ec-ws-rail: var(--ec-surface-1);
+  --ec-ws-sidebar: var(--ec-surface-2);
+  --ec-ws-panel: var(--ec-surface-1);
+  --ec-ws-raised: var(--ec-surface-3);
+  --ec-ws-backdrop: color-mix(in srgb, var(--ec-bg) 76%, transparent);
+  --ec-ws-line: var(--ec-border-subtle);
+  --ec-ws-line-strong: var(--ec-border-default);
+  --ec-ws-violet: var(--ec-accent);
+  --ec-ws-violet-soft: var(--ec-accent-soft);
+  --ec-ws-text: var(--ec-text);
+  --ec-ws-muted: var(--ec-text-muted);
+  --ec-ws-dim: var(--ec-text-dim);
 }
 
 @media (min-width: 1025px) {
@@ -386,7 +403,7 @@
   padding: 0 10px;
   border: 1px solid var(--ec-ws-line);
   border-radius: 7px;
-  background: #090c11;
+  background: var(--ec-ws-canvas);
   color: var(--ec-ws-dim);
   box-shadow: none;
 }
@@ -394,7 +411,7 @@
 .ec-workspace-v2 .ec-channel-search:focus-within,
 .ec-workspace-v2 .ec-dmx__search:focus-within {
   border-color: rgba(141, 109, 242, 0.5);
-  background: #0b0e14;
+  background: var(--ec-ws-panel);
   box-shadow: 0 0 0 2px rgba(141, 109, 242, 0.1);
 }
 
@@ -593,7 +610,7 @@
 .ec-workspace-v2 .ec-chat-header {
   min-height: 54px;
   padding: 0 18px;
-  background: #0b0e13;
+  background: var(--ec-ws-sidebar);
   border: 0;
   border-bottom: 1px solid var(--ec-ws-line);
 }
@@ -624,7 +641,7 @@
 .ec-workspace-v2 .ec-server-nav {
   min-height: 43px;
   padding: 5px 12px;
-  background: #0b0e13;
+  background: var(--ec-ws-sidebar);
   border-bottom: 1px solid var(--ec-ws-line);
 }
 
@@ -808,7 +825,7 @@
   padding: 3px;
   border: 1px solid var(--ec-ws-line-strong);
   border-radius: 7px;
-  background: #11151c;
+  background: var(--ec-ws-raised);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
 }
 
@@ -847,13 +864,13 @@
   min-height: 48px;
   border: 1px solid var(--ec-ws-line-strong);
   border-radius: 8px;
-  background: #0e1218;
+  background: var(--ec-ws-panel);
   box-shadow: none;
 }
 
 .ec-workspace-v2 .ec-composer-box:focus-within {
   border-color: rgba(141, 109, 242, 0.55);
-  background: #10141b;
+  background: var(--ec-ws-raised);
   box-shadow: 0 0 0 2px rgba(141, 109, 242, 0.1);
 }
 
@@ -926,7 +943,7 @@
 .ec-workspace-v2 .ec-slash-hint {
   border: 1px solid var(--ec-ws-line-strong);
   border-radius: 8px;
-  background: #11151c;
+  background: var(--ec-ws-raised);
   box-shadow: 0 18px 48px rgba(0, 0, 0, 0.42);
 }
 
@@ -1162,7 +1179,7 @@
 /* Dialogs, profile and settings share the same quiet operational language. */
 .ec-workspace-v2 .ec-modal-backdrop {
   padding: 18px;
-  background: rgba(2, 4, 8, 0.82);
+  background: var(--ec-ws-backdrop);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
@@ -1171,7 +1188,7 @@
   max-height: min(900px, calc(100dvh - 36px));
   border: 1px solid var(--ec-ws-line-strong);
   border-radius: 10px;
-  background: #0d1117;
+  background: var(--ec-ws-panel);
   box-shadow: 0 24px 72px rgba(0, 0, 0, 0.56);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
@@ -1181,7 +1198,7 @@
   min-height: 54px;
   padding: 0 18px;
   border-bottom: 1px solid var(--ec-ws-line);
-  background: #0b0e13;
+  background: var(--ec-ws-sidebar);
 }
 
 .ec-workspace-v2 .ec-modal-title {
@@ -1213,7 +1230,7 @@
 .ec-workspace-v2 .ec-modal-body {
   gap: 14px;
   padding: 16px;
-  background: #0d1117;
+  background: var(--ec-ws-panel);
   scrollbar-width: thin;
   scrollbar-color: var(--ec-ws-line-strong) transparent;
 }
@@ -1221,13 +1238,13 @@
 .ec-workspace-v2 .ec-modal-footer {
   padding: 12px 16px;
   border-top: 1px solid var(--ec-ws-line);
-  background: #0b0e13;
+  background: var(--ec-ws-sidebar);
 }
 
 .ec-workspace-v2 .ec-modal-box :where(input, textarea, select) {
   border-color: var(--ec-ws-line-strong);
   border-radius: 6px;
-  background: #090c11;
+  background: var(--ec-ws-canvas);
   color: var(--ec-ws-text);
   box-shadow: none;
 }
@@ -1245,13 +1262,13 @@
   height: min(820px, calc(100dvh - 104px));
   max-height: calc(100dvh - 104px);
   margin: -16px;
-  background: #0d1117;
+  background: var(--ec-ws-panel);
 }
 
 .ec-workspace-v2 .ec-settings-tree-nav {
   padding: 12px 9px 16px;
   border-right: 1px solid var(--ec-ws-line);
-  background: #0a0d12;
+  background: var(--ec-ws-sidebar);
   background-image: none;
 }
 
@@ -1311,7 +1328,7 @@
 }
 
 .ec-workspace-v2 .ec-settings-panel__main {
-  background: #0d1117;
+  background: var(--ec-ws-panel);
   scrollbar-width: thin;
   scrollbar-color: var(--ec-ws-line-strong) transparent;
 }
@@ -1361,13 +1378,13 @@
   padding: 15px;
   border: 1px solid var(--ec-ws-line);
   border-radius: 7px;
-  background: #10151c;
+  background: var(--ec-ws-raised);
   box-shadow: none;
 }
 
 .ec-workspace-v2 .ec-settings-card--sunken {
   border-color: rgba(215, 220, 240, 0.065);
-  background: #0a0e13;
+  background: var(--ec-ws-canvas);
 }
 
 .ec-workspace-v2 .ec-settings-card--active {
@@ -1393,7 +1410,7 @@
   height: 38px;
   border: 1px solid var(--ec-ws-line);
   border-radius: 6px;
-  background: #0c1016;
+  background: var(--ec-ws-sidebar);
   color: var(--ec-ws-muted);
   font-size: 17px;
 }
@@ -1409,23 +1426,23 @@
   overflow: hidden;
   border: 1px solid var(--ec-ws-line);
   border-radius: 8px;
-  background: #0f141b;
+  background: var(--ec-ws-panel);
   box-shadow: none;
 }
 
 .ec-workspace-v2 .ec-user-profile__cover {
   min-height: 150px;
   border-bottom: 1px solid var(--ec-ws-line);
-  background: #111722;
+  background: var(--ec-ws-raised);
 }
 
 .ec-workspace-v2 .ec-user-profile__cover-fallback {
-  background: #111722;
+  background: var(--ec-ws-raised);
   background-image: none;
 }
 
 .ec-workspace-v2 .ec-user-profile__avatar {
-  border-color: #0f141b;
+  border-color: var(--ec-ws-panel);
   box-shadow: 0 0 0 1px var(--ec-ws-line-strong);
 }
 
@@ -1455,7 +1472,7 @@
 .ec-workspace-v2 .ec-user-profile-error {
   border-color: var(--ec-ws-line);
   border-radius: 6px;
-  background: #0a0e13;
+  background: var(--ec-ws-canvas);
   box-shadow: none;
 }
 

@@ -1,0 +1,909 @@
+/*
+ * Eclipse Chat workspace v2: account, profile and deep settings surfaces.
+ * These overrides stay inside the active workspace and preserve component flow.
+ */
+
+/* Public profile modal */
+.ec-workspace-v2 .ec-user-profile,
+.ec-workspace-v2 .ec-user-profile-skeleton,
+.ec-workspace-v2 .ec-user-profile-error {
+  color: var(--ec-ws-text);
+}
+
+.ec-workspace-v2 .ec-user-profile {
+  background: var(--ec-ws-panel);
+}
+
+.ec-workspace-v2 .ec-user-profile__cover {
+  min-height: 146px;
+  background: var(--ec-ws-raised);
+}
+
+.ec-workspace-v2 .ec-user-profile__cover-image,
+.ec-workspace-v2 .ec-user-profile__cover-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ec-workspace-v2 .ec-user-profile__cover-fallback {
+  color: var(--ec-ws-dim);
+  background: var(--ec-ws-raised);
+}
+
+.ec-workspace-v2 .ec-user-profile__cover-fallback::before,
+.ec-workspace-v2 .ec-user-profile__cover-fallback::after {
+  display: none;
+}
+
+.ec-workspace-v2 .ec-user-profile__avatar {
+  border: 4px solid var(--ec-ws-panel);
+  background: var(--ec-ws-raised);
+  box-shadow: 0 0 0 1px var(--ec-ws-line-strong);
+  transition: border-color 140ms ease;
+}
+
+.ec-workspace-v2 .ec-user-profile__avatar:hover:not(:disabled) {
+  border-color: var(--ec-ws-violet-soft);
+  transform: none;
+}
+
+.ec-workspace-v2 .ec-user-profile__avatar:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ec-workspace-v2 .ec-user-profile__identity {
+  align-items: flex-start;
+  gap: 12px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--ec-ws-line);
+}
+
+.ec-workspace-v2 .ec-user-profile__title h3 {
+  color: var(--ec-ws-text);
+  font-size: clamp(20px, 2.4vw, 27px);
+  line-height: 1.15;
+}
+
+.ec-workspace-v2 .ec-user-profile__presence,
+.ec-workspace-v2 .ec-user-profile__activity {
+  color: var(--ec-ws-muted);
+  font-size: 11px;
+}
+
+.ec-workspace-v2 .ec-user-profile__presence i {
+  background: var(--ec-ws-dim);
+  box-shadow: none;
+}
+
+.ec-workspace-v2 .ec-user-profile__presence.is-online i {
+  background: var(--ec-ok);
+}
+
+.ec-workspace-v2 .ec-user-profile__actions {
+  gap: 8px;
+}
+
+.ec-workspace-v2 .ec-user-profile__section,
+.ec-workspace-v2 .ec-user-profile__facts,
+.ec-workspace-v2 .ec-user-profile__media-section {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--ec-ws-line);
+}
+
+.ec-workspace-v2 .ec-user-profile__section-label,
+.ec-workspace-v2 .ec-user-profile__facts dt,
+.ec-workspace-v2 .ec-user-profile__section-heading > span:last-child {
+  color: var(--ec-ws-dim);
+  font-family: var(--ec-font-mono);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.ec-workspace-v2 .ec-user-profile__section p,
+.ec-workspace-v2 .ec-user-profile__facts dd {
+  color: var(--ec-ws-text);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.ec-workspace-v2 .ec-user-profile__facts > div {
+  min-width: 0;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--ec-ws-line);
+}
+
+.ec-workspace-v2 .ec-user-profile__facts > div:last-child {
+  border-bottom: 0;
+}
+
+.ec-workspace-v2 .ec-user-profile__media-grid {
+  gap: 8px;
+}
+
+.ec-workspace-v2 .ec-user-profile__media-grid button {
+  overflow: hidden;
+  border: 1px solid var(--ec-ws-line);
+  border-radius: 6px;
+  background: var(--ec-ws-canvas);
+  box-shadow: none;
+}
+
+.ec-workspace-v2 .ec-user-profile__media-grid button:hover {
+  border-color: var(--ec-ws-line-strong);
+  transform: none;
+}
+
+.ec-workspace-v2 .ec-user-profile__media-grid button img {
+  transition: opacity 140ms ease;
+}
+
+.ec-workspace-v2 .ec-user-profile__media-grid button:hover img,
+.ec-workspace-v2 .ec-user-profile__media-grid button:focus-visible img {
+  opacity: 0.82;
+  transform: none;
+}
+
+.ec-workspace-v2 .ec-user-profile__media-empty,
+.ec-workspace-v2 .ec-user-profile-error {
+  min-height: 104px;
+  border: 1px dashed var(--ec-ws-line-strong);
+  color: var(--ec-ws-muted);
+  background: var(--ec-ws-canvas);
+}
+
+.ec-workspace-v2 .ec-user-profile-error {
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--ec-danger) 42%, var(--ec-ws-line));
+  color: var(--ec-danger);
+  background: var(--ec-danger-soft);
+}
+
+.ec-workspace-v2 .ec-user-profile-skeleton {
+  background: var(--ec-ws-panel);
+}
+
+.ec-workspace-v2 .ec-user-profile-skeleton > *,
+.ec-workspace-v2 .ec-user-profile-skeleton__banner,
+.ec-workspace-v2 .ec-user-profile-skeleton__identity,
+.ec-workspace-v2 .ec-user-profile-skeleton__line {
+  background: var(--ec-ws-raised);
+  box-shadow: none;
+}
+
+/* Profile media lightbox */
+.ec-workspace-v2 .ec-profile-lightbox {
+  background: var(--ec-ws-backdrop);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.ec-workspace-v2 .ec-profile-lightbox__stage {
+  border: 1px solid var(--ec-ws-line-strong);
+  border-radius: 8px;
+  background: var(--ec-ws-canvas);
+  box-shadow: none;
+}
+
+.ec-workspace-v2 .ec-profile-lightbox__stage img {
+  object-fit: contain;
+}
+
+.ec-workspace-v2 .ec-profile-lightbox__nav,
+.ec-workspace-v2 .ec-profile-lightbox__bar button {
+  border: 1px solid var(--ec-ws-line-strong);
+  border-radius: 6px;
+  color: var(--ec-ws-text);
+  background: var(--ec-ws-raised);
+  box-shadow: none;
+}
+
+.ec-workspace-v2 .ec-profile-lightbox__nav:hover,
+.ec-workspace-v2 .ec-profile-lightbox__bar button:hover {
+  border-color: var(--ec-ws-violet);
+  background: var(--ec-ws-panel);
+  transform: none;
+}
+
+.ec-workspace-v2 .ec-profile-lightbox__bar {
+  color: var(--ec-ws-muted);
+  background: var(--ec-ws-panel);
+}
+
+/* Shared settings controls */
+.ec-workspace-v2 .ec-settings-section {
+  color: var(--ec-ws-text);
+}
+
+.ec-workspace-v2 .ec-settings-section__hero {
+  background: transparent;
+}
+
+.ec-workspace-v2 .ec-settings-section__hero::before,
+.ec-workspace-v2 .ec-settings-section__hero::after,
+.ec-workspace-v2 .ec-holo-edge::before,
+.ec-workspace-v2 .ec-holo-edge::after {
+  display: none;
+}
+
+.ec-workspace-v2 .ec-settings-section__hero h2 {
+  max-width: 28ch;
+}
+
+.ec-workspace-v2 .ec-settings-section__eyebrow,
+.ec-workspace-v2 .ec-settings-kicker {
+  color: var(--ec-ws-violet);
+}
+
+.ec-workspace-v2 .ec-settings-card,
+.ec-workspace-v2 .ec-settings-empty,
+.ec-workspace-v2 .ec-settings-profile-preview,
+.ec-workspace-v2 .ec-settings-integrations__connections {
+  border: 1px solid var(--ec-ws-line);
+  border-radius: 7px;
+  color: var(--ec-ws-text);
+  background: var(--ec-ws-raised);
+  box-shadow: none;
+}
+
+.ec-workspace-v2 .ec-settings-card--sunken,
+.ec-workspace-v2 .ec-settings-readonly {
+  border-color: var(--ec-ws-line);
+  background: var(--ec-ws-canvas);
+}
+
+.ec-workspace-v2 .ec-settings-card--active {
+  border-color: color-mix(in srgb, var(--ec-ws-violet) 34%, var(--ec-ws-line));
+  background: var(--ec-ws-violet-soft);
+}
+
+.ec-workspace-v2 .ec-settings-card__row,
+.ec-workspace-v2 .ec-settings-toggle-row {
+  gap: 12px;
+}
+
+.ec-workspace-v2 .ec-settings-card__row + .ec-settings-card__row,
+.ec-workspace-v2 .ec-settings-card--stack > * + * {
+  border-top-color: var(--ec-ws-line);
+}
+
+.ec-workspace-v2 .ec-settings-card__body strong,
+.ec-workspace-v2 .ec-settings-toggle-row strong,
+.ec-workspace-v2 .ec-settings-profile-card-heading strong,
+.ec-workspace-v2 .ec-settings-gallery-heading strong,
+.ec-workspace-v2 .ec-settings-profile-account strong {
+  color: var(--ec-ws-text);
+}
+
+.ec-workspace-v2 .ec-settings-muted,
+.ec-workspace-v2 .ec-settings-profile-card-heading__hint,
+.ec-workspace-v2 .ec-field-counter {
+  color: var(--ec-ws-muted);
+}
+
+.ec-workspace-v2 .ec-settings-icon {
+  flex: 0 0 auto;
+  border-color: var(--ec-ws-line);
+  color: var(--ec-ws-muted);
+  background: var(--ec-ws-panel);
+  box-shadow: none;
+}
+
+.ec-workspace-v2 :where(
+  .ec-field,
+  .ec-input,
+  .ec-settings-section input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  .ec-settings-section textarea,
+  .ec-settings-section select
+) {
+  min-height: 40px;
+  border: 1px solid var(--ec-ws-line-strong);
+  border-radius: 6px;
+  color: var(--ec-ws-text);
+  background: var(--ec-ws-canvas);
+  box-shadow: none;
+}
+
+.ec-workspace-v2 :where(.ec-field, .ec-input, .ec-settings-section textarea)::placeholder {
+  color: var(--ec-ws-dim);
+}
+
+.ec-workspace-v2 :where(
+  .ec-field,
+  .ec-input,
+  .ec-settings-section input,
+  .ec-settings-section textarea,
+  .ec-settings-section select
+):focus-visible {
+  border-color: var(--ec-ws-violet);
+  outline: 2px solid color-mix(in srgb, var(--ec-ws-violet) 24%, transparent);
+  outline-offset: 1px;
+  box-shadow: none;
+}
+
+.ec-workspace-v2 .ec-field-label {
+  color: var(--ec-ws-muted);
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.ec-workspace-v2 .ec-settings-error,
+.ec-workspace-v2 .ec-settings-ok {
+  display: block;
+  padding: 9px 10px;
+  border: 1px solid;
+  border-radius: 6px;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.ec-workspace-v2 .ec-settings-error {
+  border-color: color-mix(in srgb, var(--ec-danger) 40%, var(--ec-ws-line));
+  color: var(--ec-danger);
+  background: var(--ec-danger-soft);
+}
+
+.ec-workspace-v2 .ec-settings-ok {
+  border-color: color-mix(in srgb, var(--ec-ok) 38%, var(--ec-ws-line));
+  color: var(--ec-ok);
+  background: color-mix(in srgb, var(--ec-ok) 10%, transparent);
+}
+
+.ec-workspace-v2 .ec-settings-empty {
+  min-height: 112px;
+  border-style: dashed;
+  color: var(--ec-ws-muted);
+  background: var(--ec-ws-canvas);
+}
+
+.ec-workspace-v2 .ec-settings-actions {
+  gap: 8px;
+}
+
+.ec-workspace-v2 .ec-settings-actions--column {
+  align-items: stretch;
+}
+
+.ec-workspace-v2 .ec-settings-section :where(button, [role="button"]):focus-visible,
+.ec-workspace-v2 .ec-user-profile :where(button, [role="button"]):focus-visible,
+.ec-workspace-v2 .ec-profile-lightbox :where(button, [role="button"]):focus-visible {
+  outline: 2px solid var(--ec-ws-violet);
+  outline-offset: 2px;
+}
+
+.ec-workspace-v2 .ec-settings-section :where(button, input, select, textarea):disabled {
+  opacity: 0.46;
+  cursor: not-allowed;
+}
+
+.ec-workspace-v2 .ec-settings-section[aria-busy="true"],
+.ec-workspace-v2 .ec-settings-profile-preview[aria-busy="true"] {
+  cursor: progress;
+}
+
+/* Profile editor and gallery */
+.ec-workspace-v2 .ec-settings-profile-hero {
+  align-items: end;
+}
+
+.ec-workspace-v2 .ec-settings-profile-visibility,
+.ec-workspace-v2 .ec-settings-status-pill {
+  border: 1px solid var(--ec-ws-line);
+  border-radius: 5px;
+  color: var(--ec-ws-muted);
+  background: var(--ec-ws-panel);
+  box-shadow: none;
+}
+
+.ec-workspace-v2 .ec-settings-status-pill--ok {
+  border-color: color-mix(in srgb, var(--ec-ok) 36%, var(--ec-ws-line));
+  color: var(--ec-ok);
+  background: color-mix(in srgb, var(--ec-ok) 9%, transparent);
+}
+
+.ec-workspace-v2 .ec-settings-profile-preview {
+  overflow: hidden;
+}
+
+.ec-workspace-v2 .ec-settings-profile-preview__cover {
+  min-height: 164px;
+  border-bottom: 1px solid var(--ec-ws-line);
+  background-color: var(--ec-ws-panel);
+  box-shadow: none;
+}
+
+.ec-workspace-v2 .ec-settings-profile-preview__cover::after {
+  display: none;
+}
+
+.ec-workspace-v2 .ec-settings-profile-preview__cover > img {
+  object-fit: cover;
+}
+
+.ec-workspace-v2 .ec-settings-profile-preview__cover > span {
+  color: var(--ec-ws-muted);
+}
+
+.ec-workspace-v2 .ec-settings-profile-preview__cover-actions,
+.ec-workspace-v2 .ec-settings-profile-preview__avatar-actions {
+  gap: 7px;
+}
+
+.ec-workspace-v2 .ec-settings-profile-media-button,
+.ec-workspace-v2 .ec-settings-profile-preview__avatar-edit {
+  border: 1px solid var(--ec-ws-line-strong);
+  border-radius: 6px;
+  color: var(--ec-ws-text);
+  background: var(--ec-ws-raised);
+  box-shadow: none;
+}
+
+.ec-workspace-v2 .ec-settings-profile-preview__identity {
+  background: var(--ec-ws-raised);
+}
+
+.ec-workspace-v2 .ec-settings-profile-preview__avatar {
+  border: 4px solid var(--ec-ws-raised);
+  background: var(--ec-ws-panel);
+  box-shadow: 0 0 0 1px var(--ec-ws-line-strong);
+}
+
+.ec-workspace-v2 .ec-settings-profile-preview__copy strong {
+  color: var(--ec-ws-text);
+}
+
+.ec-workspace-v2 .ec-settings-profile-preview__copy span,
+.ec-workspace-v2 .ec-settings-profile-account span {
+  color: var(--ec-ws-muted);
+}
+
+.ec-workspace-v2 .ec-settings-profile-card-heading,
+.ec-workspace-v2 .ec-settings-profile-footer,
+.ec-workspace-v2 .ec-settings-gallery-heading {
+  padding-bottom: 11px;
+  border-bottom: 1px solid var(--ec-ws-line);
+}
+
+.ec-workspace-v2 .ec-settings-profile-footer {
+  padding-top: 12px;
+  padding-bottom: 0;
+  border-top: 1px solid var(--ec-ws-line);
+  border-bottom: 0;
+}
+
+.ec-workspace-v2 .ec-settings-gallery-grid {
+  gap: 8px;
+}
+
+.ec-workspace-v2 .ec-settings-gallery-grid figure,
+.ec-workspace-v2 .ec-settings-gallery-empty {
+  overflow: hidden;
+  border: 1px solid var(--ec-ws-line);
+  border-radius: 6px;
+  background: var(--ec-ws-canvas);
+  box-shadow: none;
+}
+
+.ec-workspace-v2 .ec-settings-gallery-grid figure:hover {
+  border-color: var(--ec-ws-line-strong);
+  transform: none;
+}
+
+.ec-workspace-v2 .ec-settings-gallery-grid button {
+  border: 1px solid var(--ec-ws-line-strong);
+  color: var(--ec-ws-text);
+  background: var(--ec-ws-raised);
+}
+
+.ec-workspace-v2 .ec-settings-gallery-empty {
+  min-height: 120px;
+  border-style: dashed;
+  color: var(--ec-ws-muted);
+}
+
+/* Security, sessions and activity */
+.ec-workspace-v2 .ec-session-list,
+.ec-workspace-v2 .ec-hotkeys-list {
+  overflow: hidden;
+  border: 1px solid var(--ec-ws-line);
+  border-radius: 6px;
+  background: var(--ec-ws-line);
+}
+
+.ec-workspace-v2 .ec-session-row,
+.ec-workspace-v2 .ec-hotkey-row {
+  border: 0;
+  border-bottom: 1px solid var(--ec-ws-line);
+  border-radius: 0;
+  color: var(--ec-ws-text);
+  background: var(--ec-ws-panel);
+  box-shadow: none;
+}
+
+.ec-workspace-v2 .ec-session-row:last-child,
+.ec-workspace-v2 .ec-hotkey-row:last-child {
+  border-bottom: 0;
+}
+
+.ec-workspace-v2 .ec-session-row::before,
+.ec-workspace-v2 .ec-hotkey-row::before {
+  display: none;
+}
+
+.ec-workspace-v2 .ec-session-row:hover,
+.ec-workspace-v2 .ec-hotkey-row:hover {
+  background: var(--ec-ws-raised);
+  transform: none;
+}
+
+.ec-workspace-v2 .ec-session-row__icon,
+.ec-workspace-v2 .ec-hotkey-row__keys kbd {
+  border-color: var(--ec-ws-line);
+  color: var(--ec-ws-muted);
+  background: var(--ec-ws-canvas);
+  box-shadow: none;
+}
+
+.ec-workspace-v2 .ec-session-row__main strong {
+  color: var(--ec-ws-text);
+}
+
+.ec-workspace-v2 .ec-session-row__meta,
+.ec-workspace-v2 .ec-session-row__status {
+  color: var(--ec-ws-muted);
+}
+
+.ec-workspace-v2 .ec-session-row__status--active {
+  color: var(--ec-ok);
+}
+
+.ec-workspace-v2 .ec-session-row--skeleton {
+  min-height: 64px;
+  background: var(--ec-ws-raised);
+  box-shadow: none;
+}
+
+/* Notifications, sound and quiet hours */
+.ec-workspace-v2 .ec-settings-switch {
+  accent-color: var(--ec-ws-violet);
+}
+
+.ec-workspace-v2 .ec-settings-sound-themes {
+  gap: 8px;
+}
+
+.ec-workspace-v2 .ec-settings-sound-theme {
+  min-height: 58px;
+  border: 1px solid var(--ec-ws-line);
+  border-radius: 6px;
+  color: var(--ec-ws-muted);
+  background: var(--ec-ws-panel);
+  box-shadow: none;
+  transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+
+.ec-workspace-v2 .ec-settings-sound-theme:hover,
+.ec-workspace-v2 .ec-settings-sound-theme.is-active {
+  border-color: var(--ec-ws-line-strong);
+  color: var(--ec-ws-text);
+  background: var(--ec-ws-raised);
+  transform: none;
+}
+
+.ec-workspace-v2 .ec-settings-sound-theme.is-active {
+  border-color: color-mix(in srgb, var(--ec-ws-violet) 34%, var(--ec-ws-line));
+  background: var(--ec-ws-violet-soft);
+}
+
+.ec-workspace-v2 .ec-settings-sound-theme__signal {
+  color: var(--ec-ws-violet);
+  background: var(--ec-ws-violet-soft);
+  box-shadow: none;
+}
+
+.ec-workspace-v2 .ec-settings-sound-volume input[type="range"] {
+  min-height: 24px;
+  accent-color: var(--ec-ws-violet);
+}
+
+.ec-workspace-v2 .ec-settings-readonly {
+  padding: 10px;
+  border: 1px solid var(--ec-ws-line);
+  border-radius: 6px;
+  color: var(--ec-ws-muted);
+}
+
+/* Appearance and density */
+.ec-workspace-v2 .ec-density-seg {
+  overflow: hidden;
+  border: 1px solid var(--ec-ws-line);
+  border-radius: 6px;
+  background: var(--ec-ws-canvas);
+  box-shadow: none;
+}
+
+.ec-workspace-v2 .ec-density-seg__btn {
+  min-height: 38px;
+  border: 0;
+  border-right: 1px solid var(--ec-ws-line);
+  border-radius: 0;
+  color: var(--ec-ws-muted);
+  background: transparent;
+}
+
+.ec-workspace-v2 .ec-density-seg__btn:last-child {
+  border-right: 0;
+}
+
+.ec-workspace-v2 .ec-density-seg__btn:hover,
+.ec-workspace-v2 .ec-density-seg__btn--active {
+  color: var(--ec-ws-text);
+  background: var(--ec-ws-raised);
+}
+
+.ec-workspace-v2 .ec-density-seg__btn--active {
+  color: var(--ec-ws-violet);
+  background: var(--ec-ws-violet-soft);
+}
+
+/* Integrations */
+.ec-workspace-v2 .ec-settings-integrations__hero {
+  border-bottom-color: var(--ec-ws-line);
+  background: transparent;
+}
+
+.ec-workspace-v2 .ec-settings-integrations__summary {
+  border: 1px solid var(--ec-ws-line);
+  border-radius: 6px;
+  background: var(--ec-ws-panel);
+}
+
+.ec-workspace-v2 .ec-settings-integrations__summary strong {
+  color: var(--ec-ws-text);
+}
+
+.ec-workspace-v2 .ec-settings-integrations__summary span,
+.ec-workspace-v2 .ec-settings-integrations__connections > header span,
+.ec-workspace-v2 .ec-settings-integrations__connections > header small {
+  color: var(--ec-ws-muted);
+}
+
+.ec-workspace-v2 .ec-settings-integrations__connections > header {
+  border-bottom: 1px solid var(--ec-ws-line);
+  background: var(--ec-ws-panel);
+}
+
+.ec-workspace-v2 .ec-settings-integrations__rows {
+  gap: 1px;
+  background: var(--ec-ws-line);
+}
+
+.ec-workspace-v2 .ec-settings-integrations__rows > .ec-settings-card {
+  border: 0;
+  border-radius: 0;
+  background: var(--ec-ws-panel);
+}
+
+.ec-workspace-v2 .ec-settings-integrations__trust {
+  border-color: var(--ec-ws-line);
+  background: var(--ec-ws-canvas);
+}
+
+/* Hotkeys and LAN transfer */
+.ec-workspace-v2 .ec-hotkey-row__keys {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.ec-workspace-v2 .ec-lan-card {
+  border-color: var(--ec-ws-line);
+  background: var(--ec-ws-raised);
+  box-shadow: none;
+}
+
+.ec-workspace-v2 .ec-lan-card__head,
+.ec-workspace-v2 .ec-lan-card__step {
+  border-bottom-color: var(--ec-ws-line);
+}
+
+.ec-workspace-v2 .ec-lan-card__trust,
+.ec-workspace-v2 .ec-lan-selection,
+.ec-workspace-v2 .ec-lan-progress,
+.ec-workspace-v2 .ec-lan-result,
+.ec-workspace-v2 .ec-lan-card__empty {
+  border: 1px solid var(--ec-ws-line);
+  border-radius: 6px;
+  color: var(--ec-ws-muted);
+  background: var(--ec-ws-canvas);
+  box-shadow: none;
+}
+
+.ec-workspace-v2 .ec-lan-device {
+  min-height: 54px;
+  border: 1px solid var(--ec-ws-line);
+  border-radius: 6px;
+  color: var(--ec-ws-text);
+  background: var(--ec-ws-panel);
+  box-shadow: none;
+}
+
+.ec-workspace-v2 .ec-lan-device:hover,
+.ec-workspace-v2 .ec-lan-device.is-selected {
+  border-color: var(--ec-ws-line-strong);
+  background: var(--ec-ws-raised);
+  transform: none;
+}
+
+.ec-workspace-v2 .ec-lan-device.is-selected {
+  border-color: color-mix(in srgb, var(--ec-ws-violet) 38%, var(--ec-ws-line));
+  background: var(--ec-ws-violet-soft);
+}
+
+.ec-workspace-v2 .ec-lan-device__signal,
+.ec-workspace-v2 .ec-lan-progress > div {
+  background: var(--ec-ws-violet);
+  box-shadow: none;
+}
+
+.ec-workspace-v2 .ec-lan-result--ok {
+  border-color: color-mix(in srgb, var(--ec-ok) 38%, var(--ec-ws-line));
+  color: var(--ec-ok);
+  background: color-mix(in srgb, var(--ec-ok) 9%, transparent);
+}
+
+.ec-workspace-v2 .ec-lan-result--error {
+  border-color: color-mix(in srgb, var(--ec-danger) 40%, var(--ec-ws-line));
+  color: var(--ec-danger);
+  background: var(--ec-danger-soft);
+}
+
+@media (max-width: 1024px) {
+  .ec-workspace-v2 .ec-settings-section {
+    width: 100%;
+    padding: 18px;
+  }
+
+  .ec-workspace-v2 .ec-settings-profile-preview__cover-actions {
+    flex-wrap: wrap;
+  }
+
+  .ec-workspace-v2 .ec-settings-integrations__hero,
+  .ec-workspace-v2 .ec-settings-integrations__summary {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .ec-workspace-v2 .ec-settings-panel {
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+  }
+
+  .ec-workspace-v2 .ec-settings-panel__main {
+    min-width: 0;
+  }
+
+  .ec-workspace-v2 .ec-settings-section {
+    gap: 10px;
+    padding: 14px 12px calc(18px + env(safe-area-inset-bottom));
+  }
+
+  .ec-workspace-v2 .ec-settings-section__hero h2,
+  .ec-workspace-v2 .ec-user-profile__title h3 {
+    font-size: 21px;
+  }
+
+  .ec-workspace-v2 .ec-settings-card,
+  .ec-workspace-v2 .ec-settings-empty,
+  .ec-workspace-v2 .ec-settings-profile-details,
+  .ec-workspace-v2 .ec-settings-integrations__connections {
+    padding: 12px;
+  }
+
+  .ec-workspace-v2 .ec-settings-card,
+  .ec-workspace-v2 .ec-settings-card__row,
+  .ec-workspace-v2 .ec-settings-toggle-row,
+  .ec-workspace-v2 .ec-settings-profile-footer,
+  .ec-workspace-v2 .ec-settings-gallery-heading,
+  .ec-workspace-v2 .ec-session-row,
+  .ec-workspace-v2 .ec-hotkey-row,
+  .ec-workspace-v2 .ec-lan-card__head {
+    align-items: stretch;
+    grid-template-columns: 1fr;
+  }
+
+  .ec-workspace-v2 .ec-settings-card > .ec-settings-icon,
+  .ec-workspace-v2 .ec-settings-card__row > .ec-settings-icon {
+    display: none;
+  }
+
+  .ec-workspace-v2 .ec-settings-two-col,
+  .ec-workspace-v2 .ec-settings-profile-fields,
+  .ec-workspace-v2 .ec-settings-sound-themes,
+  .ec-workspace-v2 .ec-settings-gallery-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ec-workspace-v2 .ec-settings-actions,
+  .ec-workspace-v2 .ec-settings-profile-footer,
+  .ec-workspace-v2 .ec-user-profile__actions,
+  .ec-workspace-v2 .ec-lan-card__send {
+    flex-direction: column;
+  }
+
+  .ec-workspace-v2 .ec-settings-actions .ec-btn,
+  .ec-workspace-v2 .ec-settings-profile-footer .ec-btn,
+  .ec-workspace-v2 .ec-user-profile__actions .ec-btn,
+  .ec-workspace-v2 .ec-lan-card__send .ec-btn {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .ec-workspace-v2 .ec-settings-profile-preview__cover {
+    min-height: 138px;
+  }
+
+  .ec-workspace-v2 .ec-settings-profile-preview__identity {
+    align-items: flex-start;
+    padding: 12px;
+  }
+
+  .ec-workspace-v2 .ec-settings-profile-preview__avatar-actions {
+    width: 100%;
+  }
+
+  .ec-workspace-v2 .ec-settings-profile-preview__avatar-actions .ec-btn {
+    flex: 1 1 auto;
+  }
+
+  .ec-workspace-v2 .ec-session-row__meta,
+  .ec-workspace-v2 .ec-hotkey-row__keys {
+    align-items: flex-start;
+    justify-content: flex-start;
+  }
+
+  .ec-workspace-v2 .ec-user-profile__content {
+    padding: 56px 14px 14px;
+  }
+
+  .ec-workspace-v2 .ec-user-profile__identity {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .ec-workspace-v2 .ec-user-profile__media-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ec-workspace-v2 .ec-profile-lightbox__stage {
+    width: calc(100% - 20px);
+    max-height: calc(100dvh - 90px);
+  }
+
+  .ec-workspace-v2 .ec-profile-lightbox__nav {
+    width: 40px;
+    height: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ec-workspace-v2 :where(
+    .ec-user-profile__avatar,
+    .ec-user-profile__media-grid button img,
+    .ec-profile-lightbox__nav,
+    .ec-profile-lightbox__bar button,
+    .ec-settings-profile-media-button,
+    .ec-settings-profile-preview__avatar-edit,
+    .ec-session-row,
+    .ec-hotkey-row,
+    .ec-settings-sound-theme,
+    .ec-density-seg__btn,
+    .ec-lan-device
+  ) {
+    transition-duration: 1ms;
+    animation: none;
+    scroll-behavior: auto;
+  }
+}
