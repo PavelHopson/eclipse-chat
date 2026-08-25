@@ -23,7 +23,7 @@
     "dev:web": "npm run dev -w @eclipse-chat/web",
     "build": "npm run build --workspaces --if-present",
     "security:profile": "node deploy/scripts/security-profile.mjs",
-    "security:profile:test": "node --test deploy/scripts/security-profile.test.mjs deploy/scripts/nginx-contract.test.mjs deploy/scripts/voice-ops-security.test.mjs",
+    "security:profile:test": "node --test deploy/scripts/security-profile.test.mjs deploy/scripts/nginx-contract.test.mjs deploy/scripts/voice-ops-security.test.mjs deploy/scripts/ai-gateway-deploy-contract.test.mjs",
     "db:push": "npm run db:push -w @eclipse-chat/server",
     "db:migrate": "npm run db:migrate -w @eclipse-chat/server",
     "db:migrate:deploy": "npm run db:migrate:deploy -w @eclipse-chat/server",

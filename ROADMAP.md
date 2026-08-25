@@ -5,6 +5,17 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
+## Complete workspace redesign + fail-closed AI deploy — v1.7.62 (2026-08-25)
+
+- [x] Распространить единый плотный operational design на серверы, Friends/DM,
+      профиль и настройки; сохранить русский-first, focus, reduced motion и mobile.
+- [x] Разделить обязательный baseline AI Gateway smoke и внешний live completion:
+      pinned source, права, supervisor, baseline health и Growth authorization остаются hard gates.
+- [x] При недоступном live completion принудительно записывать effective AI-canary 0%
+      и продолжать deploy основного Chat; strict mode AI_GATEWAY_REQUIRE_LIVE_COMPLETION=1
+      сохраняет фатальное поведение.
+- [x] Покрыть deploy-контракт регрессией, включая запрет вывода credentials в status logs.
+
 ## Sentinel Office environment permissions recovery — v1.7.61 (2026-08-24)
 
 - [x] Устранить production 502: серверный процесс `www-data` снова читает root-owned `.env` через ограниченный режим `0640`.

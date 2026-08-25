@@ -192,7 +192,7 @@ if [[ -d "$DEPLOY_PATH/uploads" ]]; then
 fi
 
 echo
-echo "==> [10/12] deploy Eclipse AI Hub gateway and configure 10% canary"
+echo "==> [10/12] deploy Eclipse AI Hub gateway and configure fail-closed canary"
 if [[ ! -f "$CHAT_ENV" ]]; then
     echo "Chat environment is missing: $CHAT_ENV"
     exit 1

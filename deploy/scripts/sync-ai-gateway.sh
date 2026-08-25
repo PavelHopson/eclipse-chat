@@ -7,6 +7,8 @@ AI_HUB_PATH="${ECLIPSE_AI_HUB_GATEWAY_PATH:-/var/www/eclipse-ai-hub-gateway}"
 GATEWAY_ENV_FILE="${AI_GATEWAY_ENV_FILE:-/etc/eclipse-ai-gateway.env}"
 CHAT_ENV_FILE="${ECLIPSE_CHAT_ENV_FILE:-/var/www/eclipse-chat/apps/server/.env}"
 CANARY_PERCENT="${ECLIPSE_AI_HUB_CANARY_PERCENT:-10}"
+REQUIRE_LIVE_COMPLETION="${AI_GATEWAY_REQUIRE_LIVE_COMPLETION:-0}"
+EFFECTIVE_CANARY_PERCENT="$CANARY_PERCENT"
 
 if [[ "$(id -u)" -ne 0 ]]; then
   echo "AI gateway sync must run as root" >&2
@@ -18,6 +20,10 @@ if [[ ! "$AI_HUB_PATH" =~ ^/[A-Za-z0-9._/-]+$ || ! "$GATEWAY_ENV_FILE" =~ ^/[A-Z
 fi
 if [[ ! "$CANARY_PERCENT" =~ ^[0-9]+$ || "$CANARY_PERCENT" -gt 100 ]]; then
   echo "ECLIPSE_AI_HUB_CANARY_PERCENT must be an integer from 0 to 100" >&2
+  exit 1
+fi
+if [[ ! "$REQUIRE_LIVE_COMPLETION" =~ ^(0|1)$ ]]; then
+  echo "AI_GATEWAY_REQUIRE_LIVE_COMPLETION must be 0 or 1" >&2
   exit 1
 fi
 if [[ ! -r "$CHAT_ENV_FILE" ]]; then
@@ -186,8 +192,21 @@ set +a
 cd "$AI_HUB_PATH"
 AI_GATEWAY_SMOKE_BASE_URL="http://127.0.0.1:8810" \
   AI_GATEWAY_SERVICE_TOKEN="$SERVICE_TOKEN" \
-  AI_GATEWAY_SMOKE_COMPLETION=1 \
+  AI_GATEWAY_SMOKE_COMPLETION=0 \
   node gateway/scripts/smoke.mjs
+
+if AI_GATEWAY_SMOKE_BASE_URL="http://127.0.0.1:8810" \
+  AI_GATEWAY_SERVICE_TOKEN="$SERVICE_TOKEN" \
+  AI_GATEWAY_SMOKE_COMPLETION=1 \
+  node gateway/scripts/smoke.mjs; then
+  echo "    Live AI completion smoke passed; requested Chat canary ${CANARY_PERCENT}% is eligible"
+elif [[ "$REQUIRE_LIVE_COMPLETION" == "1" ]]; then
+  echo "Live AI completion smoke failed and strict mode is enabled" >&2
+  exit 1
+else
+  EFFECTIVE_CANARY_PERCENT=0
+  echo "    WARNING: live AI completion smoke failed; Chat AI canary forced to 0%"
+fi
 
 {
   printf 'header = "Authorization: Bearer %s"\n' "$GROWTH_SERVICE_TOKEN"
@@ -209,11 +228,15 @@ fi
 upsert_env_value "ECLIPSE_AI_HUB_BASE_URL" "http://127.0.0.1:8810/v1" "$CHAT_ENV_FILE"
 upsert_env_value "ECLIPSE_AI_HUB_SERVICE_TOKEN" "$SERVICE_TOKEN" "$CHAT_ENV_FILE"
 upsert_env_value "ECLIPSE_AI_HUB_MODELS" "auto/best-chat" "$CHAT_ENV_FILE"
-upsert_env_value "ECLIPSE_AI_HUB_CANARY_PERCENT" "$CANARY_PERCENT" "$CHAT_ENV_FILE"
+upsert_env_value "ECLIPSE_AI_HUB_CANARY_PERCENT" "$EFFECTIVE_CANARY_PERCENT" "$CHAT_ENV_FILE"
 upsert_env_value "ECLIPSE_GROWTH_HUB_BASE_URL" "http://127.0.0.1:8810/v1" "$CHAT_ENV_FILE"
 upsert_env_value "ECLIPSE_GROWTH_HUB_SERVICE_TOKEN" "$GROWTH_SERVICE_TOKEN" "$CHAT_ENV_FILE"
 upsert_env_value "ECLIPSE_GROWTH_HUB_MODEL" "auto/best-chat" "$CHAT_ENV_FILE"
 upsert_env_value "ECLIPSE_GROWTH_HUB_TIMEOUT_MS" "65000" "$CHAT_ENV_FILE"
 upsert_env_value "GROWTH_REQUESTS_PER_USER_DAY" "25" "$CHAT_ENV_FILE"
 
-echo "    Eclipse AI Hub gateway is ready; Chat canary ${CANARY_PERCENT}% and scoped Growth executor configured"
+if [[ "$EFFECTIVE_CANARY_PERCENT" == "0" && "$CANARY_PERCENT" != "0" ]]; then
+  echo "    Eclipse AI Hub gateway baseline is ready; live completion degraded; effective Chat canary 0%; scoped Growth executor configured"
+else
+  echo "    Eclipse AI Hub gateway is ready; effective Chat canary ${EFFECTIVE_CANARY_PERCENT}% and scoped Growth executor configured"
+fi

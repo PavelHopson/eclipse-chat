@@ -60,10 +60,15 @@ The production sync script upserts both identities without reconstructing or del
 
 The regular production deploy performs this step automatically through
 `deploy/scripts/sync-ai-gateway.sh`. It fetches a pinned full AI Hub commit,
-keeps the gateway on loopback, stores its environment as root-owned `0640`,
-runs an authenticated completion smoke, and only then writes the Chat canary
-configuration. The orchestrator restores the previous Chat environment together
-with the previous build if a later deploy step fails.
+keeps the gateway on loopback, stores its environment as root-owned `0640`, and
+runs an authenticated baseline smoke before it can write the Chat configuration.
+A separate live completion smoke controls the effective canary: success preserves
+the requested percentage, while failure forces `ECLIPSE_AI_HUB_CANARY_PERCENT=0`
+and allows the core Chat deploy to continue. Set
+`AI_GATEWAY_REQUIRE_LIVE_COMPLETION=1` only for an explicitly strict rollout where
+an unavailable completion provider must fail the whole deploy. Invalid values fail
+closed. The orchestrator restores the previous Chat environment together with the
+previous build if any mandatory check or later deploy step fails.
 
 Use the same service token in the Chat server environment:
 
@@ -81,6 +86,8 @@ GROWTH_REQUESTS_PER_USER_DAY=25
 
 The Growth token is generated on the host, stored only in root-controlled server environments and smoke-tested
 against the fixed endpoint before Chat restarts. It is never exposed to the browser or GitHub Actions output.
+The Growth scoped authorization smoke remains mandatory even when the general Chat
+AI canary is forced to `0%`.
 
 Restart the Chat server and verify Platform Admin → AI. `eclipse-ai-hub` must appear as a gateway before `omniroute`; token values are never returned by diagnostics.
 
