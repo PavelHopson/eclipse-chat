@@ -37,6 +37,7 @@
 }
 
 .ec-workspace-v2 .ec-guide__identity--fallback {
+  border-bottom-color: color-mix(in srgb, var(--ec-ws-gold) 24%, var(--ec-ws-line));
   background: var(--ec-ws-raised);
 }
 
@@ -135,10 +136,10 @@
 
 .ec-workspace-v2 .ec-guide__primary {
   min-height: 42px;
-  border: 1px solid color-mix(in srgb, var(--ec-ws-violet) 48%, var(--ec-ws-line));
+  border: 1px solid color-mix(in srgb, var(--ec-ws-gold) 58%, var(--ec-ws-line));
   border-radius: 6px;
-  color: var(--ec-accent-text);
-  background: var(--ec-ws-violet);
+  color: #07090c;
+  background: var(--ec-ws-gold);
   box-shadow: none;
   font-size: 12px;
   font-weight: 700;
@@ -146,8 +147,8 @@
 }
 
 .ec-workspace-v2 .ec-guide__primary:hover:not(:disabled) {
-  border-color: var(--ec-ws-violet);
-  background: var(--ec-accent-hover);
+  border-color: color-mix(in srgb, var(--ec-ws-gold) 82%, white 12%);
+  background: color-mix(in srgb, var(--ec-ws-gold) 88%, white 12%);
   transform: none;
 }
 
@@ -167,7 +168,21 @@
 
 .ec-workspace-v2 .ec-guide__signal-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
   margin-top: 12px;
+  border-top: 1px solid var(--ec-ws-line);
+  border-bottom: 1px solid var(--ec-ws-line);
+}
+
+.ec-workspace-v2 .ec-guide__signal-grid .ec-guide__signal {
+  border: 0;
+  border-right: 1px solid var(--ec-ws-line);
+  border-radius: 0;
+  background: transparent;
+}
+
+.ec-workspace-v2 .ec-guide__signal-grid .ec-guide__signal:last-child {
+  border-right: 0;
 }
 
 .ec-workspace-v2 .ec-guide__signal,
@@ -191,6 +206,11 @@
   border-color: var(--ec-ws-line-strong);
   background: var(--ec-ws-raised);
   transform: none;
+}
+
+.ec-workspace-v2 .ec-guide__signal-grid .ec-guide__signal:hover:not(:disabled) {
+  border-color: var(--ec-ws-line);
+  background: color-mix(in srgb, var(--ec-ws-violet) 5%, transparent);
 }
 
 .ec-workspace-v2 .ec-guide__signal strong,

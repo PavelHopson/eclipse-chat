@@ -478,31 +478,32 @@ export function MessageList({
   }
 
   const canMod = canModerate(currentRole);
-
-  // v1.5.35 — channel-top hero. Render если channelName present:
-  // - С banner: cinematic cover-фон + overlay (читается на любом изображении).
-  // - Без banner: subtle text-only label.
-  // Hero сидит первым в scroll-контейнере, появляется при scroll-to-top.
-  // Clean redesign: full-bleed cinematic banner (с overlaid текстом и
-  // выцветшим server-баннером за заголовком) убран — channel-top теперь
-  // чистый компактный text-only header (base .ec-msg-channel-top, 84px).
-  const channelTopHero = channelName ? (
-    <header className="ec-msg-channel-top">
-      <div className="ec-msg-channel-top__content">
-        <h2 className="ec-msg-channel-top__title">
-          Начало канала #{channelName}
-        </h2>
-        {channelTopSubtitle && (
-          <p className="ec-msg-channel-top__sub">в {channelTopSubtitle}</p>
-        )}
-      </div>
-    </header>
-  ) : null;
+  const visibleMessages = messages.filter((message) => message.deletedAt == null);
+  const isShortThread = visibleMessages.length <= 6;
 
   return (
     <div className="ec-message-list-shell">
-      <div ref={containerRef} className="ec-message-list" onScroll={handleScroll}>
-      {channelTopHero}
+      <div
+        ref={containerRef}
+        className={`ec-message-list${isShortThread ? " ec-message-list--short" : ""}`}
+        onScroll={handleScroll}
+        aria-label={
+          channelName
+            ? `Сообщения канала ${channelName}${channelTopSubtitle ? `, ${channelTopSubtitle}` : ""}`
+            : "Сообщения"
+        }
+      >
+      {isShortThread && (
+        <>
+          <span className="ec-message-short-spacer" aria-hidden />
+          <img
+            className="ec-message-list__eclipse"
+            src={`${import.meta.env.BASE_URL}brand-mark.svg`}
+            alt=""
+            aria-hidden
+          />
+        </>
+      )}
       {pickerFor && onToggleReaction && (
         <EmojiPicker
           anchorRect={pickerFor.rect}
@@ -513,7 +514,7 @@ export function MessageList({
           onClose={() => setPickerFor(null)}
         />
       )}
-      {messages.filter((m) => m.deletedAt == null).map((m, i, arr) => {
+      {visibleMessages.map((m, i, arr) => {
         const prev = i > 0 ? arr[i - 1] : null;
         const sameAuthor = prev?.user.id === m.user.id;
         const closeInTime =
@@ -611,7 +612,7 @@ export function MessageList({
               </div>
               <div className="ec-message-content">
                 {(!grouped || newDay || isPinned) && (
-                  <header style={{ display: "flex", alignItems: "baseline", gap: "var(--ec-space-2)", marginBottom: 2 }}>
+                  <header className="ec-message-meta">
                     <button
                       type="button"
                       className="ec-msg-author"

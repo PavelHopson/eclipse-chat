@@ -5,6 +5,19 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
+## Eclipse workspace visual clarity — v1.7.63 (2026-08-26)
+
+- [x] Пересобрать 404 в стиле Eclipse Forge с понятным восстановлением маршрута,
+      адаптивной композицией, keyboard focus и reduced-motion fallback.
+- [x] Сохранить задачи как отдельную рабочую поверхность и убрать визуальный шум
+      из диалога: один channel header, спокойные human rows, отдельный AI signal rail.
+- [x] Прижать короткие переписки к composer и использовать локальный Eclipse mark
+      как низкоконтрастный фон без влияния на доступность и production auth.
+- [x] Доработать profile chip со статусом и доступным expanded state; существующую
+      кнопку выхода и её поведение не изменять.
+- [x] Пройти desktop/mobile browser QA, build/typecheck, UI contracts, dependency
+      audit и production-preview проверку отсутствия dev-only workspace bypass.
+
 ## Complete workspace redesign + fail-closed AI deploy — v1.7.62 (2026-08-25)
 
 - [x] Распространить единый плотный operational design на серверы, Friends/DM,

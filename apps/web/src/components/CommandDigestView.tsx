@@ -126,7 +126,7 @@ export function CommandDigestView({
         </div>
         <div className="ec-personal-digest__hero-actions">
           <button type="button" className="ec-btn ec-btn--sm" onClick={onReload} disabled={loading}>
-            {loading ? "Обновляю…" : "Обновить сводку"}
+            {loading ? "Обновляю…" : "Обновить"}
           </button>
           {active && (
             <button
@@ -135,7 +135,7 @@ export function CommandDigestView({
               onClick={onAcknowledge}
               disabled={acknowledging}
             >
-              {acknowledging ? "Сохраняю…" : "Отметить события просмотренными"}
+              {acknowledging ? "Сохраняю…" : "Всё просмотрено"}
             </button>
           )}
         </div>

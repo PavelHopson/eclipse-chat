@@ -1551,8 +1551,10 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             }}
             title="Статус и профиль"
             className="ec-shell__user-chip"
+            aria-haspopup="menu"
+            aria-expanded={Boolean(statusAnchor)}
           >
-            <span style={{ position: "relative", display: "inline-block" }}>
+            <span className="ec-shell__user-avatar">
               <Avatar url={headerAvatar} name={headerName} size={26} />
               {/* presence dot на собственном avatar */}
               <span
@@ -1576,7 +1578,18 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                 }}
               />
             </span>
-            <span className="ec-shell__user-name">{headerName}</span>
+            <span className="ec-shell__user-meta">
+              <span className="ec-shell__user-name">{headerName}</span>
+              <small className="ec-shell__user-status">
+                {profile?.status === "INVISIBLE"
+                  ? "Невидимый"
+                  : profile?.status === "IDLE"
+                  ? "Отошёл"
+                  : profile?.status === "DND"
+                  ? "Не беспокоить"
+                  : "В сети"}
+              </small>
+            </span>
           </button>
           <LogoutButton onLogout={onLogout} />
         </div>
