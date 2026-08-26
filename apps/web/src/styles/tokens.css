@@ -9,12 +9,11 @@
  *   — Calm command center: плотный, структурный, уверенный chrome,
  *     рецессивный к контенту.
  *   — Глубокий night-blue void (VOID-тема), 4 чёткие глубины surface.
- *   — Primary accent — violet #8B5CF6. Premium — gold #D4AF37,
- *     точечно. Cyan/teal демотированы в status-only (--ec-accent-2 /
- *     --ec-status-*). Warm orange в брендинге/акцентах НЕ используем.
+ *   — Primary signal — Eclipse Forge blue #6BA3FF. Gold #D4AF37 marks
+ *     decisive actions and the eclipse corona; semantic colors remain
+ *     reserved for actual status.
  *   — Глубина и свет (--ec-edge / --ec-elev-*), не толстые бордеры.
- *   — Шрифт — Geist (sans) + Geist Mono. Отдельного display-шрифта
- *     нет: иерархия строится весом и размером.
+ *   — Шрифт — Outfit (display), Inter (body/UI), Geist Mono (telemetry).
  *   — Motion быстрый (--ec-dur-fast 120ms / base 180ms); ambient-петли
  *     только осмысленно (live / AI / бренд-марка), не на chrome.
  *
@@ -50,35 +49,29 @@
    */
   --ec-void:                #05070A;
   --ec-bg:                  #05070A;             /* alias на --ec-void (бриф §5) */
-  --ec-surface-1:           #0B0F14;
-  --ec-surface-2:           #11161D;
-  --ec-surface-3:           #141A22;
-  --ec-surface-4:           hsl(214 22% 14%);    /* slightly warmer active */
+  --ec-surface-1:           #080C12;
+  --ec-surface-2:           #0C1117;
+  --ec-surface-3:           #111820;
+  --ec-surface-4:           #16202A;
 
   /* Контрастный input bg — чтобы поля «втыкались» в surface */
   --ec-input-bg:            hsl(210 18% 8%);
   --ec-input-bg-focus:      hsl(210 18% 11%);
 
   /* ---- Borders / dividers -------------------------------------- */
-  --ec-border-subtle:       rgba(190, 195, 220, 0.05);
-  --ec-border-default:      rgba(190, 195, 220, 0.10);
-  --ec-border-emphasis:     rgba(190, 195, 220, 0.18);
-  --ec-border-accent:       hsl(258 90% 66% / 0.55);
+  --ec-border-subtle:       rgba(148, 163, 184, 0.06);
+  --ec-border-default:      rgba(148, 163, 184, 0.12);
+  --ec-border-emphasis:     rgba(148, 163, 184, 0.2);
+  --ec-border-accent:       rgba(107, 163, 255, 0.55);
 
-  /*
-   * ---- Accent: violet primary (бриф 20.05.2026 — «violet + gold») --
-   * Primary акцент проекта — фиолетовый #8B5CF6. Cyan/teal демотированы
-   * в status-only (см. --ec-status-*). Gold — premium-точечный акцент.
-   * Переопределяет прежнее правило «cool-tone, никогда warm».
-   */
-  --ec-accent:              hsl(258 90% 66%);    /* #8B5CF6 violet */
-  --ec-accent-hover:        hsl(258 95% 73%);
-  --ec-accent-soft:         hsl(258 90% 66% / 0.14);
+  /* Eclipse Forge signal: navigation, focus and selected product state. */
+  --ec-accent:              #6BA3FF;
+  --ec-accent-hover:        #9DC4FF;
+  --ec-accent-soft:         rgba(107, 163, 255, 0.14);
   --ec-accent-text:         hsl(0 0% 100%);
-  /* Multi-layer glow: тонкий outline + outer halo */
-  --ec-accent-glow:         0 0 0 1px hsl(258 90% 66% / 0.45),
-                            0 0 22px -2px hsl(258 90% 66% / 0.42),
-                            0 0 40px -8px hsl(258 80% 72% / 0.18);
+  --ec-accent-glow:         0 0 0 1px rgba(107, 163, 255, 0.42),
+                            0 0 22px -2px rgba(107, 163, 255, 0.34),
+                            0 0 40px -8px rgba(157, 196, 255, 0.16);
 
   /* Gold — premium-акцент, точечно (emphasis CTA, owner, награды). */
   --ec-accent-gold:         hsl(46 65% 52%);     /* #D4AF37 */
@@ -138,13 +131,10 @@
   --ec-presence-dnd:        hsl(355 70% 62%);
   --ec-presence-offline:    hsl(210 10% 40%);
 
-  /* ---- Typography ----------------------------------------------
-     v1.1.76 — Geist (self-hosted, см. fonts.css). Display = тот же
-     Geist: иерархия строится весом + размером, без отдельного
-     sci-fi-шрифта (Orbitron убран — это было generic-клише). */
-  --ec-font-display:        "Geist", -apple-system, BlinkMacSystemFont,
+  /* ---- Typography — Eclipse Forge visual contract ------------- */
+  --ec-font-display:        "Outfit", "Inter", -apple-system, BlinkMacSystemFont,
                             "Segoe UI", system-ui, sans-serif;
-  --ec-font-sans:           "Geist", -apple-system, BlinkMacSystemFont,
+  --ec-font-sans:           "Inter", -apple-system, BlinkMacSystemFont,
                             "Segoe UI", system-ui, Roboto, "Helvetica Neue",
                             Arial, sans-serif;
   --ec-font-mono:           "Geist Mono", ui-monospace, "SF Mono",
@@ -1770,13 +1760,11 @@
   pointer-events: none;
 }
 
-/* v1.3.7 — Eclipse Chat logo PNG (Pavel'я logo 24.05.2026). Wide aspect
- * ratio с встроенным текстом «ECLIPSE CHAT». Frame пропорционален
- * logo, без CSS-frame chrome. Drop-shadow cyan вместо violet. */
+/* Eclipse Forge-compatible round mark for the auth gateway. */
 .ec-auth-logo {
   position: relative;
   display: block;
-  width: auto;
+  width: 112px;
   height: 112px;
   margin-bottom: 28px;
 }
@@ -1795,16 +1783,16 @@
   width: auto;
   object-fit: contain;
   filter:
-    drop-shadow(0 0 24px rgba(93, 181, 217, 0.32))
-    drop-shadow(0 0 8px rgba(154, 216, 239, 0.18));
-  animation: ec-auth-logo-breathe 4.4s ease-in-out infinite;
+    drop-shadow(0 0 24px rgba(212, 175, 55, 0.24))
+    drop-shadow(0 0 10px rgba(107, 163, 255, 0.16));
+  animation: ec-auth-logo-ignite 700ms cubic-bezier(.16, 1, .3, 1) both;
 }
-@keyframes ec-auth-logo-breathe {
-  0%, 100% { transform: scale(1); filter: brightness(1); }
-  50%      { transform: scale(1.05); filter: brightness(1.15); }
+@keyframes ec-auth-logo-ignite {
+  from { opacity: 0; transform: scale(.92) rotate(-7deg); }
+  to { opacity: 1; transform: scale(1) rotate(0); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .ec-auth-logo::before { animation: none; }
+  .ec-auth-logo__mark { animation: none; }
 }
 
 .ec-auth-title {
@@ -1813,18 +1801,7 @@
   font-weight: 700;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  background: linear-gradient(
-    90deg,
-    var(--ec-text-strong) 0%,
-    var(--ec-accent) 50%,
-    var(--ec-text-strong) 100%
-  );
-  background-size: 200% auto;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  -webkit-text-fill-color: transparent;
-  animation: ec-shimmer-text-sweep 4.5s linear infinite;
+  color: var(--ec-text-strong);
   margin: 0;
   text-align: center;
 }
@@ -2310,8 +2287,8 @@
   object-fit: contain;
   mix-blend-mode: normal;
   filter:
-    drop-shadow(0 0 28px rgba(93, 181, 217, 0.34))
-    drop-shadow(0 0 10px rgba(154, 216, 239, 0.2));
+    drop-shadow(0 0 28px rgba(212, 175, 55, 0.24))
+    drop-shadow(0 0 12px rgba(107, 163, 255, 0.18));
 }
 
 .ec-auth-bio-gate__eyebrow {

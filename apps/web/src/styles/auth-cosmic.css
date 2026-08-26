@@ -6,31 +6,48 @@
 
 .ec-landing {
   --ec-auth-cosmic-ring: rgba(212, 175, 55, 0.42);
-  --ec-auth-cosmic-cyan: rgba(93, 181, 217, 0.34);
-  --ec-auth-cosmic-violet: rgba(139, 92, 246, 0.28);
+  --ec-auth-cosmic-cyan: rgba(107, 163, 255, 0.34);
+  --ec-auth-cosmic-violet: rgba(212, 175, 55, 0.2);
 }
 
-.ec-landing__hero {
+.ec-landing__hero.is-auth-open {
   overflow: hidden;
   border-radius: 0 0 18px 18px;
 }
 
-.ec-landing__hero::after {
+.ec-landing__hero.is-auth-open::after {
   content: "";
   position: absolute;
   inset: -7% -12% -10% -8%;
   z-index: 0;
   pointer-events: none;
   background:
-    linear-gradient(90deg, rgba(3, 7, 11, 0.94) 0%, rgba(3, 7, 11, 0.78) 38%, rgba(3, 7, 11, 0.36) 70%, rgba(3, 7, 11, 0.88) 100%),
-    radial-gradient(circle at 76% 46%, rgba(212, 175, 55, 0.18), transparent 28%),
-    var(--ec-auth-bg-image);
-  background-size: cover;
-  background-position: center;
-  opacity: 0.92;
-  filter: saturate(1.1) contrast(1.06);
+    linear-gradient(90deg, rgba(3, 7, 11, 0.96) 0%, rgba(3, 7, 11, 0.82) 34%, rgba(3, 7, 11, 0.08) 56%, rgba(3, 7, 11, 0.72) 100%),
+    radial-gradient(circle at 59% 30%, #fffdf2 0 .35%, rgba(255, 244, 198, 0.94) .7%, rgba(212, 175, 55, 0.34) 2.6%, transparent 7%),
+    radial-gradient(ellipse 42% 16% at 55% 49%, transparent 0 25%, rgba(255, 248, 220, 0.88) 29%, rgba(212, 175, 55, 0.66) 37%, rgba(107, 163, 255, 0.34) 51%, transparent 73%),
+    radial-gradient(circle at 55% 47%, #000 0 15%, #020306 15.4%, rgba(255, 249, 227, 0.96) 16%, rgba(212, 175, 55, 0.66) 19%, rgba(107, 163, 255, 0.28) 26%, transparent 39%),
+    radial-gradient(circle at 55% 47%, rgba(107, 163, 255, 0.2), transparent 52%),
+    #05070a;
+  opacity: 0.96;
+  filter: contrast(1.04);
   transform: scale(1.03);
-  animation: ec-auth-cosmic-drift 28s ease-in-out infinite alternate;
+  animation: ec-auth-cosmic-arrive 1.2s cubic-bezier(.16, 1, .3, 1) both;
+}
+
+.ec-landing__auth-eclipse {
+  position: absolute;
+  top: 49%;
+  left: 55%;
+  z-index: 1;
+  width: min(34vw, 390px);
+  height: auto;
+  pointer-events: none;
+  opacity: 0.68;
+  filter:
+    drop-shadow(0 0 32px rgba(212, 175, 55, 0.2))
+    drop-shadow(0 0 60px rgba(107, 163, 255, 0.12));
+  transform: translate3d(-50%, -50%, 0);
+  animation: ec-auth-eclipse-ignite 1.2s cubic-bezier(.16, 1, .3, 1) both;
 }
 
 .ec-landing__hero-copy,
@@ -39,7 +56,7 @@
   z-index: 2;
 }
 
-.ec-landing__hero-stage::before {
+.ec-landing__hero.is-auth-open .ec-landing__hero-stage::before {
   content: "";
   position: absolute;
   inset: -76px -90px -68px -94px;
@@ -47,8 +64,8 @@
   pointer-events: none;
   background:
     radial-gradient(circle at 58% 38%, rgba(212, 175, 55, 0.2), transparent 24%),
-    radial-gradient(circle at 44% 48%, rgba(93, 181, 217, 0.22), transparent 34%),
-    radial-gradient(circle at 60% 54%, rgba(139, 92, 246, 0.18), transparent 42%);
+    radial-gradient(circle at 44% 48%, rgba(107, 163, 255, 0.22), transparent 34%),
+    radial-gradient(circle at 60% 54%, rgba(212, 175, 55, 0.14), transparent 42%);
   filter: blur(20px);
   opacity: 0.84;
 }
@@ -56,7 +73,7 @@
 .ec-hero-access__frame {
   background:
     linear-gradient(180deg, rgba(9, 14, 22, 0.82), rgba(4, 7, 12, 0.9)),
-    radial-gradient(circle at 18% 0%, rgba(139, 92, 246, 0.14), transparent 34%);
+    radial-gradient(circle at 18% 0%, rgba(107, 163, 255, 0.12), transparent 34%);
   border: 1px solid rgba(212, 175, 55, 0.18);
   backdrop-filter: blur(18px) saturate(1.18);
   -webkit-backdrop-filter: blur(18px) saturate(1.18);
@@ -64,17 +81,17 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.08),
     inset 0 -40px 70px rgba(0, 0, 0, 0.24),
     0 34px 100px rgba(0, 0, 0, 0.62),
-    0 0 0 1px rgba(93, 181, 217, 0.08),
+    0 0 0 1px rgba(107, 163, 255, 0.08),
     0 0 70px rgba(212, 175, 55, 0.08);
 }
 
 .ec-hero-access__frame::before {
   background:
-    linear-gradient(115deg, transparent 28%, rgba(212, 175, 55, 0.09) 44%, rgba(93, 181, 217, 0.18) 50%, rgba(139, 92, 246, 0.08) 57%, transparent 72%);
+    linear-gradient(115deg, transparent 28%, rgba(212, 175, 55, 0.09) 44%, rgba(107, 163, 255, 0.18) 50%, rgba(212, 175, 55, 0.07) 57%, transparent 72%);
 }
 
 .ec-hero-access__frame::after {
-  background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.55), rgba(93, 181, 217, 0.44), transparent);
+  background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.55), rgba(107, 163, 255, 0.44), transparent);
 }
 
 .ec-hero-access__tabs,
@@ -91,7 +108,7 @@
 
 .ec-hero-access__tab-indicator,
 .ec-hero-access__submit {
-  background: linear-gradient(135deg, #f1d582 0%, #a16eff 46%, #5db5d9 100%);
+  background: linear-gradient(135deg, #f1d582 0%, #d4af37 48%, #6ba3ff 100%);
 }
 
 .ec-hero-access__submit {
@@ -101,8 +118,10 @@
 .ec-auth-shell:not(.ec-auth-shell--embedded) {
   background:
     linear-gradient(90deg, rgba(0, 0, 0, 0.94), rgba(3, 7, 11, 0.7) 46%, rgba(0, 0, 0, 0.9)),
-    var(--ec-auth-bg-image),
-    #020407;
+    radial-gradient(circle at 74% 31%, #fffdf2 0 .3%, rgba(255, 244, 198, 0.8) .6%, rgba(212, 175, 55, 0.22) 2%, transparent 6%),
+    radial-gradient(ellipse 36% 11% at 66% 49%, transparent 0 26%, rgba(255, 248, 220, 0.5) 30%, rgba(212, 175, 55, 0.32) 39%, rgba(107, 163, 255, 0.15) 54%, transparent 72%),
+    radial-gradient(circle at 66% 47%, #000 0 12%, #020306 12.5%, rgba(255, 244, 207, 0.7) 13%, rgba(212, 175, 55, 0.3) 15%, rgba(107, 163, 255, 0.1) 22%, transparent 32%),
+    #05070a;
   background-size: cover;
   background-position: center;
 }
@@ -111,11 +130,11 @@
   inset: -6%;
   background:
     radial-gradient(circle at 74% 38%, rgba(212, 175, 55, 0.2), transparent 24%),
-    radial-gradient(circle at 56% 50%, rgba(93, 181, 217, 0.16), transparent 36%),
-    radial-gradient(circle at 36% 52%, rgba(139, 92, 246, 0.16), transparent 34%);
+    radial-gradient(circle at 56% 50%, rgba(107, 163, 255, 0.16), transparent 36%),
+    radial-gradient(circle at 36% 52%, rgba(212, 175, 55, 0.12), transparent 34%);
   filter: blur(24px);
   opacity: 0.94;
-  animation: ec-auth-cosmic-drift 30s ease-in-out infinite alternate;
+  animation: none;
 }
 
 .ec-auth-shell:not(.ec-auth-shell--embedded)::after {
@@ -139,41 +158,59 @@
 .ec-auth-shell:not(.ec-auth-shell--embedded) .ec-auth-radar__grid {
   background-image:
     linear-gradient(rgba(212, 175, 55, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(93, 181, 217, 0.035) 1px, transparent 1px);
+    linear-gradient(90deg, rgba(107, 163, 255, 0.035) 1px, transparent 1px);
 }
 
-@keyframes ec-auth-cosmic-drift {
+@keyframes ec-auth-cosmic-arrive {
   from {
-    transform: scale(1.03) translate3d(-0.6%, -0.4%, 0);
+    opacity: 0.36;
+    transform: scale(1.08) translate3d(1.4%, 0.6%, 0);
   }
   to {
-    transform: scale(1.07) translate3d(0.8%, 0.5%, 0);
+    opacity: 0.96;
+    transform: scale(1.03) translate3d(0, 0, 0);
+  }
+}
+
+@keyframes ec-auth-eclipse-ignite {
+  from {
+    opacity: 0;
+    transform: translate3d(-50%, -50%, 0) scale(0.88) rotate(-7deg);
+  }
+  to {
+    opacity: 0.68;
+    transform: translate3d(-50%, -50%, 0) scale(1) rotate(0deg);
   }
 }
 
 @media (max-width: 900px) {
-  .ec-landing__hero::after {
+  .ec-landing__auth-eclipse {
+    display: none;
+  }
+
+  .ec-landing__hero.is-auth-open::after {
     inset: -4% -35% -8% -25%;
     background:
       linear-gradient(180deg, rgba(3, 7, 11, 0.88), rgba(3, 7, 11, 0.7) 48%, rgba(3, 7, 11, 0.92)),
-      var(--ec-auth-bg-image);
-    background-size: cover;
-    background-position: 54% center;
+      radial-gradient(circle at 58% 31%, #fffdf2 0 .35%, rgba(212, 175, 55, 0.25) 2%, transparent 7%),
+      radial-gradient(ellipse 68% 12% at 58% 42%, transparent 0 24%, rgba(212, 175, 55, 0.32) 34%, rgba(107, 163, 255, 0.14) 54%, transparent 74%),
+      radial-gradient(circle at 58% 40%, #000 0 15%, rgba(255, 244, 207, 0.6) 16%, rgba(212, 175, 55, 0.24) 19%, rgba(107, 163, 255, 0.08) 28%, transparent 40%),
+      #05070a;
   }
 
-  .ec-landing__hero-stage::before {
+  .ec-landing__hero.is-auth-open .ec-landing__hero-stage::before {
     inset: -42px -34px -46px;
   }
 }
 
 @media (max-width: 560px) {
-  .ec-landing__hero {
+  .ec-landing__hero.is-auth-open {
     border-radius: 0;
     gap: 20px;
     padding: 22px 0 34px;
   }
 
-  .ec-landing__hero::after {
+  .ec-landing__hero.is-auth-open::after {
     inset: -10% -82% -8% -72%;
     opacity: 0.72;
     background-position: 58% center;
@@ -222,13 +259,17 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ec-landing__hero::after,
+  .ec-landing__hero.is-auth-open::after,
   .ec-auth-shell:not(.ec-auth-shell--embedded)::before {
     animation: none;
     transform: none;
   }
 
   .ec-hero-access__frame::before {
+    animation: none;
+  }
+
+  .ec-landing__auth-eclipse {
     animation: none;
   }
 }

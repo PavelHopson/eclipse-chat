@@ -1,5 +1,4 @@
 import type { ComponentType, ReactNode } from "react";
-import { TiltCard } from "./LandingEffects";
 
 type TrustBandProps = {
   items: ReadonlyArray<{
@@ -32,29 +31,10 @@ type FinalCtaSectionProps = {
   onDemo?: () => void;
 };
 
-const FEATURES = [
-  {
-    title: "Чаты и каналы",
-    body: "Структурируйте обсуждения по проектам, отделам и темам.",
-  },
-  {
-    title: "Задачи и проекты",
-    body: "Ставьте задачи, назначайте исполнителей и отслеживайте прогресс.",
-  },
-  {
-    title: "Голос и видео",
-    body: "Качественные звонки и созвоны без внешних сервисов.",
-  },
-  {
-    title: "Клиентские порталы",
-    body: "Дайте клиентам доступ к проектам без хаоса в переписке.",
-  },
-] as const;
-
 export function TrustBand({ items }: TrustBandProps) {
   return (
     <section className="ec-landing__trust" aria-label="Инфраструктура">
-      <div className="ec-landing__trust-label">Доверие инфраструктурам —</div>
+      <div className="ec-landing__trust-label">Работает на вашей инфраструктуре —</div>
       <div className="ec-landing__trust-row">
         {items.map(({ label, glyph: Glyph }) => (
           <div
@@ -79,42 +59,108 @@ export function ExecutionFeaturesGrid({
     <section className="ec-landing__section" id="features">
       <div className="ec-landing__section-grid">
         <div>
-          <span className="ec-landing__section-eyebrow">Всё, что нужно команде</span>
+          <span className="ec-landing__section-eyebrow">Рабочий контур</span>
           <h2 className="ec-landing__h2">
-            Одна система.
+            Работа видна.
             <br />
-            <span className="ec-landing__h2-accent">Полный контроль.</span>
+            <span className="ec-landing__h2-accent">Контекст остаётся.</span>
           </h2>
           <p className="ec-landing__body">
-            Объедините общение, задачи, файлы и клиентов в одном пространстве.
-            Без лишних инструментов и переключений.
+            Канал хранит не только сообщения: здесь же решения, задачи,
+            голос и память команды. Без прыжков между пятью сервисами.
           </p>
           <button
             type="button"
             className="ec-landing-btn ec-landing-btn--ghost ec-landing__section-cta"
             onClick={onOpenSecurity}
           >
-            Все возможности
+            Контур безопасности
             <span className="ec-landing-btn__arrow" aria-hidden>→</span>
           </button>
         </div>
 
-        <div className="ec-landing__features">
-          {FEATURES.map((feature) => (
-            <TiltCard
-              key={feature.title}
-              className="ec-landing__feature-tilt"
-              intensity={10}
-            >
-              <article className="ec-landing__feature">
-                <span className="ec-landing__feature-icon" aria-hidden />
+        <div
+          className="ec-product-proof"
+          role="img"
+          aria-label="Интерфейс Eclipse Chat: канал релиза, сообщения команды, задача и статус AI-памяти"
+        >
+          <header className="ec-product-proof__topbar">
+            <div>
+              <span className="ec-product-proof__eclipse" aria-hidden />
+              <strong>ECLIPSE / RELEASE ROOM</strong>
+            </div>
+            <span className="ec-product-proof__live">LIVE · 4 ONLINE</span>
+          </header>
+
+          <div className="ec-product-proof__surface">
+            <aside className="ec-product-proof__rail" aria-hidden>
+              <b>E</b>
+              <span>#</span>
+              <span>@</span>
+              <span>✓</span>
+            </aside>
+
+            <aside className="ec-product-proof__channels">
+              <span className="ec-product-proof__label">ПРОСТРАНСТВО</span>
+              <strong>Product Core</strong>
+              <nav aria-hidden>
+                <span># общий</span>
+                <span className="is-active"># release-room</span>
+                <span># design-review</span>
+              </nav>
+              <div className="ec-product-proof__voice">
+                <span>VOICE</span>
+                <b>Design sync · 3</b>
+              </div>
+            </aside>
+
+            <section className="ec-product-proof__conversation">
+              <div className="ec-product-proof__channel-head">
+                <div><span>#</span><strong>release-room</strong></div>
+                <small>Релиз и контроль качества</small>
+              </div>
+              <div className="ec-product-proof__message">
+                <span className="ec-product-proof__avatar">П</span>
                 <div>
-                  <h3>{feature.title}</h3>
-                  <p>{feature.body}</p>
+                  <b>Павел <time>10:42</time></b>
+                  <p>Финальный mobile smoke прошёл. Готовим выпуск.</p>
                 </div>
+              </div>
+              <div className="ec-product-proof__message is-agent">
+                <span className="ec-product-proof__avatar">AI</span>
+                <div>
+                  <b>Eclipse Operator <time>10:43</time></b>
+                  <p>Собрал release-check: 18/18 проверок зелёные.</p>
+                  <div className="ec-product-proof__task">
+                    <span>RELEASE CHECK</span>
+                    <strong>Production readiness</strong>
+                    <small><i /> Готово к подтверждению</small>
+                  </div>
+                </div>
+              </div>
+              <div className="ec-product-proof__composer">Сообщение в #release-room <span>↵</span></div>
+            </section>
+
+            <aside className="ec-product-proof__context">
+              <span className="ec-product-proof__label">КОНТЕКСТ</span>
+              <article>
+                <small>СЛЕДУЮЩИЙ ШАГ</small>
+                <strong>Подтвердить релиз</strong>
+                <span>Ответственный · Павел</span>
               </article>
-            </TiltCard>
-          ))}
+              <article>
+                <small>AI MEMORY</small>
+                <strong>12 решений</strong>
+                <span>Контекст синхронизирован</span>
+              </article>
+            </aside>
+          </div>
+
+          <footer className="ec-product-proof__footer">
+            <span>SELF-HOSTED</span>
+            <span>ENCRYPTED TRANSPORT</span>
+            <strong>ALL SYSTEMS NOMINAL</strong>
+          </footer>
         </div>
       </div>
     </section>

@@ -1014,7 +1014,13 @@
   height: 34px;
   flex-shrink: 0;
   object-fit: contain;
-  filter: drop-shadow(0 0 10px hsl(258 86% 62% / 0.24));
+  filter: drop-shadow(0 0 10px rgba(212, 175, 55, 0.2));
+  transition: transform var(--ec-dur-base) cubic-bezier(.16, 1, .3, 1);
+}
+
+.ec-shell__brand-home:hover .ec-brand-mark,
+.ec-shell__brand-home:focus-visible .ec-brand-mark {
+  transform: rotate(8deg) scale(1.06);
 }
 
 /* Компактная бренд-марка — для chat-header'а «Главная». */
@@ -1054,6 +1060,7 @@
  * Cosmic ambient остаётся (gradient static — без anim/drift).
  */
 @media (prefers-reduced-motion: reduce) {
+  .ec-brand-mark { transition: none !important; }
   .ec-anim-fade,
   .ec-anim-message-enter,
   .ec-anim-reaction-pop,

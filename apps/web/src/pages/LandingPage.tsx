@@ -19,12 +19,15 @@ import {
   SecurityStackArt,
 } from "../components/landing/LandingVisuals";
 import {
-  CursorTrail,
+  CursorLight,
   MagneticButton,
 } from "../components/landing/LandingEffects";
+import { LandingCinematic } from "../components/landing/LandingCinematic";
 import "../styles/landing.css";
+import "../styles/landing-cinematic.css";
 
-const ECLIPSE_LOGO_URL = `${import.meta.env.BASE_URL}eclipse-chat-logo.png`;
+const ECLIPSE_MARK_URL = `${import.meta.env.BASE_URL}brand-mark.svg`;
+const ECLIPSE_HERO_REFERENCE_URL = `${import.meta.env.BASE_URL}auth/eclipse-forge-reference.png`;
 const AUTH_BACKGROUND_URL = `${import.meta.env.BASE_URL}auth/eclipse-login-orbit.webp`;
 
 type Props = {
@@ -56,7 +59,7 @@ const TRUST_ITEMS = [
   { label: "Grafana", glyph: TelemetryGlyph },
 ] as const;
 
-const HERO_CHIPS = ["Self-hosted", "Encrypted", "AI Memory", "Real-time"] as const;
+const HERO_CHIPS = ["Self-hosted", "TLS / WSS", "RBAC + 2FA", "Real-time"] as const;
 
 /* v1.4.5 audit fix P2 — security copy more precise. Раньше «end-to-end
  * шифрование» / «шифрование на всех уровнях» overstated — messages в
@@ -76,37 +79,12 @@ const SECURITY_ATTESTATIONS = [
   { title: "Доступ", value: "RBAC + 2FA" },
 ] as const;
 
-const FOOTER_COLS: Array<{
-  heading: string;
-  items: ReadonlyArray<{ label: string; href?: string }>;
-}> = [
-  {
-    heading: "Продукт",
-    items: [
-      { label: "Возможности" },
-      { label: "Тарифы" },
-      { label: "Документация" },
-      { label: "Roadmap" },
-    ],
-  },
-  {
-    heading: "Ресурсы",
-    items: [
-      { label: "Блог" },
-      { label: "Гайды" },
-      { label: "API" },
-      { label: "Статус" },
-    ],
-  },
-  {
-    heading: "Компания",
-    items: [
-      { label: "О нас" },
-      { label: "Безопасность" },
-      { label: "Контакты" },
-    ],
-  },
-];
+const FOOTER_LINKS = [
+  { label: "Продукт", target: "product" },
+  { label: "Возможности", target: "features" },
+  { label: "AI Memory", target: "memory" },
+  { label: "Безопасность", target: "security" },
+] as const;
 
 export function LandingPage({
   authMode,
@@ -198,20 +176,31 @@ export function LandingPage({
     <main
       className="ec-landing"
       aria-label="Eclipse Chat"
+      data-active-section={activeSection}
       style={{ "--ec-auth-bg-image": `url("${AUTH_BACKGROUND_URL}")` } as CSSProperties}
     >
+      <LandingCinematic activeSection={activeSection} />
       <div className="ec-landing__atmosphere" aria-hidden />
 
       <div className="ec-landing__shell">
         <nav className="ec-landing__nav" aria-label="Главное">
-          <a className="ec-landing__brand" href="#product" aria-label="Eclipse Chat">
+          <a
+            className="ec-landing__brand"
+            href="#product"
+            aria-label="Eclipse Chat"
+            onClick={(event) => {
+              event.preventDefault();
+              scrollToSection("product");
+            }}
+          >
             <img
-              className="ec-landing__brand-logo"
-              src={ECLIPSE_LOGO_URL}
-              alt="Eclipse Chat"
+              className="ec-landing__brand-mark"
+              src={ECLIPSE_MARK_URL}
+              alt=""
               decoding="async"
               loading="eager"
             />
+            <span className="ec-landing__brand-name">ECLIPSE CHAT</span>
           </a>
 
           <div className="ec-landing__nav-links" ref={navRef}>
@@ -224,6 +213,7 @@ export function LandingPage({
                   }}
                   type="button"
                   className={`ec-landing__nav-link${activeSection === link.target ? " is-active" : ""}`}
+                  aria-current={activeSection === link.target ? "page" : undefined}
                   onClick={() => scrollToSection(link.target)}
                 >
                   {link.label}
@@ -244,10 +234,13 @@ export function LandingPage({
           <div className="ec-landing__nav-actions">
             <button
               type="button"
-              className="ec-landing-btn ec-landing-btn--link"
+              className={`ec-landing-btn ec-landing-btn--link${authMode === "login" ? " is-active" : ""}`}
+              aria-controls="auth-panel"
+              aria-expanded={authMode === "login"}
               onClick={() => onOpenAuth("login")}
             >
-              Вход
+              <span className="ec-landing-btn__login-orbit" aria-hidden />
+              Войти
             </button>
             <button
               type="button"
@@ -260,20 +253,37 @@ export function LandingPage({
           </div>
         </nav>
 
-        <section className="ec-landing__hero" id="product">
-          <CursorTrail className="ec-landing__hero-trail" density={1} />
+        <section
+          className={`ec-landing__hero ${authMode ? "is-auth-open" : "is-product-preview"}`}
+          id="product"
+        >
+          <CursorLight />
+          {authMode && (
+            <span className="ec-landing__auth-eclipse" aria-hidden>
+              <span className="ec-landing__auth-eclipse-rays" />
+              <span className="ec-landing__auth-eclipse-corona" />
+              <span className="ec-landing__auth-eclipse-orbit ec-landing__auth-eclipse-orbit--outer" />
+              <span className="ec-landing__auth-eclipse-mark">
+                <img src={ECLIPSE_HERO_REFERENCE_URL} alt="" decoding="async" />
+              </span>
+              <span className="ec-landing__auth-eclipse-chromosphere" />
+              <span className="ec-landing__auth-eclipse-diamond" />
+              <span className="ec-landing__auth-eclipse-lensing" />
+              <span className="ec-landing__auth-eclipse-reflection" />
+            </span>
+          )}
           <div className="ec-landing__hero-copy">
-            <span className="ec-landing__eyebrow">Операционная платформа для команд</span>
+            <span className="ec-landing__eyebrow">Self-hosted communication core</span>
             <h1 className="ec-landing__hero-title">
-              <span className="ec-landing__hero-title-line">Работа</span>
-              <span className="ec-landing__hero-title-line">в одном</span>
+              <span className="ec-landing__hero-title-line">Команда.</span>
+              <span className="ec-landing__hero-title-line">Контекст.</span>
               <span className="ec-landing__hero-title-line ec-landing__hero-title-accent">
-                месте.
+                Действие.
               </span>
             </h1>
             <p className="ec-landing__hero-subhead">
-              Чат, задачи, голос и клиентские порталы в единой системе.
-              Никакого хаоса. Только исполнение.
+              Каналы, задачи, голос и AI-память в одном пространстве.
+              Решения не теряются — следующий шаг всегда виден.
             </p>
             <div className="ec-landing__hero-cta">
               <MagneticButton>
@@ -282,7 +292,7 @@ export function LandingPage({
                   className="ec-landing-btn ec-landing-btn--primary"
                   onClick={() => onOpenAuth("register")}
                 >
-                  Создать рабочее пространство
+                  Создать пространство
                   <span className="ec-landing-btn__arrow" aria-hidden>→</span>
                 </button>
               </MagneticButton>
@@ -291,7 +301,8 @@ export function LandingPage({
                 className="ec-landing-btn ec-landing-btn--ghost"
                 onClick={() => scrollToSection("features")}
               >
-                Посмотреть обзор
+                Посмотреть рабочий интерфейс
+                <span className="ec-landing-btn__arrow" aria-hidden>↓</span>
               </button>
             </div>
             <div className="ec-landing__hero-chips">
@@ -301,7 +312,7 @@ export function LandingPage({
             </div>
           </div>
 
-          <div ref={heroStageRef} className="ec-landing__hero-stage">
+          <div id="auth-panel" ref={heroStageRef} className="ec-landing__hero-stage">
             <HeroOperationalStage
               authMode={authMode}
               onOpenAuth={onOpenAuth}
@@ -337,44 +348,39 @@ export function LandingPage({
           <div className="ec-landing__footer-brand">
             <span className="ec-landing__brand">
               <img
-                className="ec-landing__brand-logo"
-                src={ECLIPSE_LOGO_URL}
-                alt="Eclipse Chat"
+                className="ec-landing__brand-mark"
+                src={ECLIPSE_MARK_URL}
+                alt=""
                 decoding="async"
                 loading="lazy"
               />
+              <span className="ec-landing__brand-name">ECLIPSE CHAT</span>
             </span>
             <p>
               Операционная платформа для команд, которые ценят фокус и результат.
             </p>
           </div>
 
-          {FOOTER_COLS.map((col) => (
-            <div key={col.heading} className="ec-landing__footer-col">
-              <h4>{col.heading}</h4>
-              <ul>
-                {col.items.map((item) => (
-                  <li key={item.label}>
-                    {item.href ? (
-                      <a href={item.href}>{item.label}</a>
-                    ) : (
-                      <button type="button">{item.label}</button>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+          <nav className="ec-landing__footer-nav" aria-label="Навигация в подвале">
+            {FOOTER_LINKS.map((item) => (
+              <button
+                key={item.target}
+                type="button"
+                onClick={() => scrollToSection(item.target)}
+              >
+                {item.label}
+              </button>
+            ))}
+          </nav>
 
-          <div className="ec-landing__footer-social" aria-label="Соцсети">
-            <a href="#" aria-label="Чат поддержки">
-              <MailIcon />
-            </a>
-            <a href="#" aria-label="GitHub">
-              <GithubIcon />
-            </a>
-            <a href="#" aria-label="Telegram">
-              <SendIcon />
+          <div className="ec-landing__footer-actions">
+            <button type="button" onClick={() => onOpenAuth("login")}>Войти</button>
+            <a
+              href="https://github.com/PavelHopson/eclipse-chat"
+              target="_blank"
+              rel="noreferrer"
+            >
+              GitHub ↗
             </a>
           </div>
         </footer>
@@ -388,30 +394,4 @@ function scrollToSection(id: string): void {
   if (!el) return;
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   el.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "start" });
-}
-
-function MailIcon() {
-  return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
-      <rect x="3" y="5" width="18" height="14" rx="2" />
-      <path d="M3 7l9 6 9-6" />
-    </svg>
-  );
-}
-
-function GithubIcon() {
-  return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-      <path d="M12 2a10 10 0 0 0-3.16 19.5c.5.1.68-.22.68-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.45-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.9 1.52 2.34 1.08 2.92.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.94 0-1.09.39-1.99 1.03-2.69-.1-.25-.45-1.27.1-2.64 0 0 .84-.27 2.75 1.02a9.6 9.6 0 0 1 5 0c1.9-1.29 2.75-1.02 2.75-1.02.55 1.37.2 2.39.1 2.64.64.7 1.03 1.6 1.03 2.69 0 3.84-2.34 4.68-4.57 4.93.36.31.68.92.68 1.85v2.74c0 .27.18.59.69.48A10 10 0 0 0 12 2z" />
-    </svg>
-  );
-}
-
-function SendIcon() {
-  return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M22 2L11 13" />
-      <path d="M22 2l-7 20-4-9-9-4 20-7z" />
-    </svg>
-  );
 }

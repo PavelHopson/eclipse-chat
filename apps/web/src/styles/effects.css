@@ -35,10 +35,10 @@ html[data-ec-theme="solar"] {
   --ec-text-muted: hsl(222 12% 44%);
   --ec-text-dim: hsl(222 10% 56%);
   --ec-text-placeholder: hsl(222 10% 67%);
-  --ec-accent: hsl(258 92% 42%);
-  --ec-accent-hover: hsl(258 96% 35%);
-  --ec-accent-soft: hsl(258 92% 42% / 0.10);
-  --ec-border-accent: hsl(258 92% 42% / 0.38);
+  --ec-accent: #1E56E8;
+  --ec-accent-hover: #1740B2;
+  --ec-accent-soft: rgba(30, 86, 232, 0.10);
+  --ec-border-accent: rgba(30, 86, 232, 0.38);
   /* Crisp hairline-ring edge (white-glow на белом был бесполезен) +
      мягкие нейтральные тени вместо blue-tinted heavy. */
   --ec-edge: 0 0 0 1px hsl(225 16% 88%);
@@ -159,7 +159,7 @@ html[data-ec-theme="solar"] .ec-shell__chat {
 }
 html[data-ec-theme="solar"] .ec-composer-box {
   background:
-    radial-gradient(circle at 0% 0%, hsl(258 92% 42% / 0.06), transparent 42%),
+    radial-gradient(circle at 0% 0%, rgba(30, 86, 232, 0.06), transparent 42%),
     hsl(0 0% 100% / 0.74) !important;
 }
 
@@ -167,7 +167,7 @@ html[data-ec-theme="solar"] .ec-composer-box {
    roomWrap'а в светлой теме давали бы тёмные фиолетовые пятна. */
 html[data-ec-theme="solar"] .ec-voice-room {
   background:
-    radial-gradient(ellipse 70% 55% at 22% -8%, hsl(258 70% 60% / 0.08), transparent 58%),
+    radial-gradient(ellipse 70% 55% at 22% -8%, rgba(30, 86, 232, 0.08), transparent 58%),
     var(--ec-bg) !important;
 }
 

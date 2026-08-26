@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Reveal } from "./CinematicMotion";
 import { apiPath } from "../../lib/api";
 
@@ -103,6 +103,12 @@ export function HeroOperationalStage({
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [passwordFocused, setPasswordFocused] = useState(false);
+  const [localAuthError, setLocalAuthError] = useState<string | null>(null);
+  const phantomRef = useRef<HTMLDivElement>(null);
+  const submitButtonRef = useRef<HTMLButtonElement>(null);
+  const phantomFrameRef = useRef<number | null>(null);
+  const phantomTargetRef = useRef({ x: 0, y: 0 });
   // v1.6.68 — self-serve сброс пароля по коду восстановления.
   const [recoveryMode, setRecoveryMode] = useState(false);
   const [recCode, setRecCode] = useState("");
@@ -110,6 +116,28 @@ export function HeroOperationalStage({
   const [recBusy, setRecBusy] = useState(false);
   const [recError, setRecError] = useState<string | null>(null);
   const [recDone, setRecDone] = useState(false);
+
+  const fieldsReady = Boolean(
+    email.trim() &&
+    password &&
+    (mode === "login" || displayName.trim()),
+  );
+
+  useEffect(() => () => {
+    if (phantomFrameRef.current != null) {
+      window.cancelAnimationFrame(phantomFrameRef.current);
+    }
+  }, []);
+
+  useEffect(() => {
+    setLocalAuthError(null);
+    submitButtonRef.current?.style.removeProperty("--ec-auth-evade-x");
+    submitButtonRef.current?.style.removeProperty("--ec-auth-evade-y");
+  }, [mode]);
+
+  if (authMode == null) {
+    return <HeroWorkspacePreview />;
+  }
 
   const submitRecovery = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -164,9 +192,78 @@ export function HeroOperationalStage({
     setShowPassword((v) => !v);
   };
 
+  const motionAllowed = (pointerType: string) => (
+    pointerType === "mouse" &&
+    window.matchMedia("(hover: hover) and (pointer: fine)").matches &&
+    !window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
+
+  const resetPhantom = () => {
+    phantomTargetRef.current = { x: 0, y: 0 };
+    const phantom = phantomRef.current;
+    if (!phantom) return;
+    phantom.style.setProperty("--ec-phantom-x", "0px");
+    phantom.style.setProperty("--ec-phantom-y", "0px");
+    phantom.style.setProperty("--ec-phantom-tilt", "0deg");
+    phantom.style.setProperty("--ec-phantom-eye-x", "0px");
+    phantom.style.setProperty("--ec-phantom-eye-y", "0px");
+  };
+
+  const trackPhantom = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!motionAllowed(event.pointerType)) return;
+    const bounds = event.currentTarget.getBoundingClientRect();
+    phantomTargetRef.current = {
+      x: Math.max(-1, Math.min(1, (event.clientX - bounds.left) / bounds.width * 2 - 1)),
+      y: Math.max(-1, Math.min(1, (event.clientY - bounds.top) / bounds.height * 2 - 1)),
+    };
+    if (phantomFrameRef.current != null) return;
+    phantomFrameRef.current = window.requestAnimationFrame(() => {
+      phantomFrameRef.current = null;
+      const phantom = phantomRef.current;
+      if (!phantom) return;
+      const { x, y } = phantomTargetRef.current;
+      phantom.style.setProperty("--ec-phantom-x", `${(x * 5).toFixed(2)}px`);
+      phantom.style.setProperty("--ec-phantom-y", `${(y * 4).toFixed(2)}px`);
+      phantom.style.setProperty("--ec-phantom-tilt", `${(x * 2).toFixed(2)}deg`);
+      phantom.style.setProperty("--ec-phantom-eye-x", `${(x * 2.6).toFixed(2)}px`);
+      phantom.style.setProperty("--ec-phantom-eye-y", `${(y * 2.2).toFixed(2)}px`);
+    });
+  };
+
+  const resetSubmitEscape = () => {
+    submitButtonRef.current?.style.setProperty("--ec-auth-evade-x", "0px");
+    submitButtonRef.current?.style.setProperty("--ec-auth-evade-y", "0px");
+  };
+
+  const evadeSubmit = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (fieldsReady || loading || success || !motionAllowed(event.pointerType)) {
+      resetSubmitEscape();
+      return;
+    }
+    const button = submitButtonRef.current;
+    if (!button) return;
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const xRatio = (event.clientX - bounds.left) / Math.max(bounds.width, 1);
+    const yRatio = (event.clientY - bounds.top) / Math.max(bounds.height, 1);
+    const x = Math.max(-24, Math.min(24, (0.5 - xRatio) * 58));
+    const y = Math.max(-8, Math.min(8, (0.5 - yRatio) * 22));
+    button.style.setProperty("--ec-auth-evade-x", `${x.toFixed(1)}px`);
+    button.style.setProperty("--ec-auth-evade-y", `${y.toFixed(1)}px`);
+  };
+
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (loading) return;
+    if (!fieldsReady) {
+      setLocalAuthError(
+        mode === "register"
+          ? "Фантом ждёт: заполните имя, email и пароль."
+          : "Фантом ждёт: заполните email и пароль.",
+      );
+      resetSubmitEscape();
+      return;
+    }
+    setLocalAuthError(null);
     setLoading(true);
     let ok = false;
     try {
@@ -195,15 +292,32 @@ export function HeroOperationalStage({
       : "С возвращением. Войдите в свой аккаунт.";
 
   return (
-    <div className="ec-hero-access" aria-label="Доступ к Eclipse Chat">
+    <div
+      ref={phantomRef}
+      className="ec-hero-access"
+      aria-label="Доступ к Eclipse Chat"
+      onPointerMove={trackPhantom}
+      onPointerLeave={resetPhantom}
+    >
       <Reveal className="ec-hero-access__frame" variant="panel">
         <div className="ec-hero-access__glow" aria-hidden />
+        <div className="ec-hero-access__scan" aria-hidden>
+          <span className="ec-hero-access__scan-ring" />
+          <i className="ec-hero-access__scan-beam" />
+        </div>
+        <CursorPhantom hidingEyes={passwordFocused} />
 
         <header className="ec-hero-access__head">
-          <span className="ec-hero-access__eyebrow">
-            <span className="ec-hero-access__eyebrow-dot" aria-hidden />
-            {mode === "register" ? "Регистрация" : "Вход"}
-          </span>
+          <div className="ec-hero-access__kicker-row">
+            <span className="ec-hero-access__eyebrow">
+              <span className="ec-hero-access__eyebrow-dot" aria-hidden />
+              {mode === "register" ? "Регистрация" : "Вход"}
+            </span>
+            <span className="ec-hero-access__session">
+              <span aria-hidden />
+              Secure session
+            </span>
+          </div>
           <h2 className="ec-hero-access__title">{heading}</h2>
           <p className="ec-hero-access__sub">{sub}</p>
         </header>
@@ -367,9 +481,13 @@ export function HeroOperationalStage({
                     id="hero-access-name"
                     type="text"
                     value={displayName}
-                    onChange={(event) => setDisplayName(event.target.value)}
+                    onChange={(event) => {
+                      setDisplayName(event.target.value);
+                      setLocalAuthError(null);
+                    }}
                     autoComplete="name"
                     required
+                    aria-invalid={Boolean(localAuthError && !displayName.trim())}
                     disabled={loading}
                   />
                   <label htmlFor="hero-access-name" className="ec-hero-access__floating-label">
@@ -388,9 +506,13 @@ export function HeroOperationalStage({
                   id="hero-access-email"
                   type="email"
                   value={email}
-                  onChange={(event) => setEmail(event.target.value)}
+                  onChange={(event) => {
+                    setEmail(event.target.value);
+                    setLocalAuthError(null);
+                  }}
                   autoComplete="email"
                   required
+                  aria-invalid={Boolean(localAuthError && !email.trim())}
                   disabled={loading}
                 />
                 <label htmlFor="hero-access-email" className="ec-hero-access__floating-label">
@@ -410,9 +532,15 @@ export function HeroOperationalStage({
                   id="hero-access-password"
                   type={showPassword ? "text" : "password"}
                   value={password}
-                  onChange={(event) => setPassword(event.target.value)}
+                  onChange={(event) => {
+                    setPassword(event.target.value);
+                    setLocalAuthError(null);
+                  }}
+                  onFocus={() => setPasswordFocused(true)}
+                  onBlur={() => setPasswordFocused(false)}
                   autoComplete={mode === "register" ? "new-password" : "current-password"}
                   required
+                  aria-invalid={Boolean(localAuthError && !password)}
                   disabled={loading}
                 />
                 <label htmlFor="hero-access-password" className="ec-hero-access__floating-label">
@@ -431,9 +559,9 @@ export function HeroOperationalStage({
               </div>
             </div>
 
-            {authError && (
-              <div className="ec-hero-access__error" role="alert">
-                {authError}
+            {(localAuthError || authError) && (
+              <div id="hero-access-error" className="ec-hero-access__error" role="alert">
+                {localAuthError || authError}
                 {mode === "login" && (
                   <>
                     {" "}
@@ -453,38 +581,45 @@ export function HeroOperationalStage({
               </div>
             )}
 
-            <button
-              type="submit"
-              className={`ec-hero-access__submit${loading ? " is-loading" : ""}${success ? " is-success" : ""}`}
-              disabled={loading || success}
+            <div
+              className={`ec-hero-access__submit-zone${fieldsReady ? " is-ready" : " is-evasive"}`}
+              onPointerMove={evadeSubmit}
+              onPointerLeave={resetSubmitEscape}
             >
-              <span className="ec-hero-access__submit-shimmer" aria-hidden />
-              {success ? (
-                <span className="ec-hero-access__submit-success">
-                  <span className="ec-hero-access__submit-check">
-                    <CheckIcon />
-                  </span>
-                  {mode === "register" ? "Аккаунт создан" : "Вы вошли"}
-                </span>
-              ) : (
-                <>
-                  <span className="ec-hero-access__submit-label">
-                    {loading
-                      ? mode === "register"
-                        ? "Создаём аккаунт…"
-                        : "Входим…"
-                      : mode === "register"
-                        ? "Создать аккаунт"
-                        : "Войти"}
-                  </span>
-                  {!loading && (
-                    <span className="ec-hero-access__submit-arrow" aria-hidden>
-                      <ArrowIcon />
+              <button
+                ref={submitButtonRef}
+                type="submit"
+                className={`ec-hero-access__submit${loading ? " is-loading" : ""}${success ? " is-success" : ""}`}
+                disabled={loading || success}
+              >
+                <span className="ec-hero-access__submit-shimmer" aria-hidden />
+                {success ? (
+                  <span className="ec-hero-access__submit-success">
+                    <span className="ec-hero-access__submit-check">
+                      <CheckIcon />
                     </span>
-                  )}
-                </>
-              )}
-            </button>
+                    {mode === "register" ? "Аккаунт создан" : "Вы вошли"}
+                  </span>
+                ) : (
+                  <>
+                    <span className="ec-hero-access__submit-label">
+                      {loading
+                        ? mode === "register"
+                          ? "Создаём аккаунт…"
+                          : "Входим…"
+                        : mode === "register"
+                          ? "Создать аккаунт"
+                          : "Войти"}
+                    </span>
+                    {!loading && (
+                      <span className="ec-hero-access__submit-arrow" aria-hidden>
+                        <ArrowIcon />
+                      </span>
+                    )}
+                  </>
+                )}
+              </button>
+            </div>
 
             <p className="ec-hero-access__hint">
               {mode === "register" ? (
@@ -531,8 +666,126 @@ export function HeroOperationalStage({
             <span className="ec-hero-access__footer-dot" aria-hidden />
             Защищённое соединение
           </span>
+          <span className="ec-hero-access__footer-meta">TLS 1.3 · 2FA ready</span>
         </footer>
       </Reveal>
+    </div>
+  );
+}
+
+function CursorPhantom({ hidingEyes }: { hidingEyes: boolean }) {
+  return (
+    <div
+      className={`ec-auth-phantom${hidingEyes ? " is-hiding-eyes" : ""}`}
+      aria-hidden
+    >
+      <span className="ec-auth-phantom__orbit" />
+      <svg viewBox="0 0 68 78" role="presentation">
+        <path
+          className="ec-auth-phantom__body"
+          d="M12 62V32C12 18.2 21.4 9 34 9s22 9.2 22 23v30l-7-5.5-7.2 6-7.8-6-7.8 6-7.2-6L12 62Z"
+        />
+        <g className="ec-auth-phantom__eyes-open">
+          <ellipse cx="27" cy="33" rx="4.7" ry="6.4" />
+          <ellipse cx="43" cy="33" rx="4.7" ry="6.4" />
+          <circle className="ec-auth-phantom__pupil" cx="27" cy="34" r="2" />
+          <circle className="ec-auth-phantom__pupil" cx="43" cy="34" r="2" />
+        </g>
+        <g className="ec-auth-phantom__eyes-closed">
+          <path d="M22 34c2.4 2.1 6.2 2.1 8.6 0" />
+          <path d="M38.5 34c2.4 2.1 6.2 2.1 8.6 0" />
+        </g>
+        <path className="ec-auth-phantom__mouth" d="M31 47c1.8-1.4 4.2-1.4 6 0" />
+      </svg>
+    </div>
+  );
+}
+
+function HeroWorkspacePreview() {
+  return (
+    <div
+      className="ec-hero-workspace"
+      role="img"
+      aria-label="Рабочее пространство Eclipse Chat с каналами, сообщениями, задачей релиза и AI-памятью"
+    >
+      <div className="ec-hero-workspace__orbit" aria-hidden>
+        <span />
+      </div>
+
+      <header className="ec-hero-workspace__topbar">
+        <div className="ec-hero-workspace__brand">
+          <span className="ec-hero-workspace__mark" aria-hidden />
+          <strong>ECLIPSE CHAT</strong>
+        </div>
+        <div className="ec-hero-workspace__state">
+          <i aria-hidden />
+          WORKSPACE ONLINE
+        </div>
+      </header>
+
+      <div className="ec-hero-workspace__body">
+        <aside className="ec-hero-workspace__nav" aria-hidden>
+          <b>E</b>
+          <span>#</span>
+          <span>@</span>
+          <span>✓</span>
+        </aside>
+
+        <aside className="ec-hero-workspace__sidebar">
+          <small>PRODUCT CORE</small>
+          <strong>Команда</strong>
+          <div className="ec-hero-workspace__channel"># общий</div>
+          <div className="ec-hero-workspace__channel is-active"># release-room <b>3</b></div>
+          <div className="ec-hero-workspace__channel"># design-review</div>
+          <div className="ec-hero-workspace__voice">
+            <span>VOICE ROOM</span>
+            <strong>Design sync · 3</strong>
+          </div>
+        </aside>
+
+        <section className="ec-hero-workspace__chat">
+          <header>
+            <div><span>#</span><strong>release-room</strong></div>
+            <small>Фокус: production readiness</small>
+          </header>
+          <div className="ec-hero-workspace__feed">
+            <article>
+              <span className="ec-hero-workspace__avatar">П</span>
+              <div>
+                <b>Павел <time>10:42</time></b>
+                <p>Проверь mobile и подготовь релиз.</p>
+              </div>
+            </article>
+            <article className="is-agent">
+              <span className="ec-hero-workspace__avatar">AI</span>
+              <div>
+                <b>Eclipse Operator <time>10:43</time></b>
+                <p>18 проверок пройдены. Нужен финальный approval.</p>
+                <div className="ec-hero-workspace__approval">
+                  <span>RELEASE GATE</span>
+                  <strong>Готово к подтверждению</strong>
+                  <div><i /> Build <i /> Mobile <i /> Security</div>
+                </div>
+              </div>
+            </article>
+          </div>
+          <div className="ec-hero-workspace__composer">Сообщение в #release-room <span>↵</span></div>
+        </section>
+
+        <aside className="ec-hero-workspace__context">
+          <small>AI MEMORY</small>
+          <strong>Контекст команды</strong>
+          <div><b>12</b><span>решений</span></div>
+          <div><b>7</b><span>задач</span></div>
+          <p>Синхронизировано 1 мин назад</p>
+        </aside>
+      </div>
+
+      <footer className="ec-hero-workspace__footer">
+        <span>SELF-HOSTED</span>
+        <span>REAL-TIME</span>
+        <strong>ALL SYSTEMS NOMINAL</strong>
+      </footer>
     </div>
   );
 }
@@ -590,21 +843,14 @@ export function MemoryConstellation() {
               className="ec-memory-map__link"
             />
             <circle
+              cx={node.x}
+              cy={node.y}
               r="0.7"
               fill="rgba(154, 216, 239, 0.95)"
               filter="url(#ec-memory-pulse-glow)"
               className="ec-memory-map__pulse"
-            >
-              <animateMotion
-                dur={`${3 + index * 0.5}s`}
-                repeatCount="indefinite"
-                begin={`${index * 0.4}s`}
-                keyTimes="0;1"
-                keySplines="0.4 0 0.6 1"
-                calcMode="spline"
-                path={`M ${node.x} ${node.y} L 50 50`}
-              />
-            </circle>
+              style={{ animationDelay: `${340 + index * 60}ms` }}
+            />
           </g>
         ))}
       </svg>

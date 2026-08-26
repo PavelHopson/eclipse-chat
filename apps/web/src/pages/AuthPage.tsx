@@ -74,7 +74,7 @@ export function AuthPage({
   onExit,
   presentation = "fullscreen",
 }: Props) {
-  const brandMarkUrl = `${import.meta.env.BASE_URL}eclipse-chat-logo.png`;
+  const brandMarkUrl = `${import.meta.env.BASE_URL}brand-mark.svg`;
   const authBackgroundUrl = `${import.meta.env.BASE_URL}auth/eclipse-login-orbit.webp`;
   const isEmbedded = presentation === "embedded";
   const [step, setStep] = useState<Step>("credentials");

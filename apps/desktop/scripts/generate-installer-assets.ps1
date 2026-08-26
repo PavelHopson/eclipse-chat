@@ -42,19 +42,19 @@ function Add-Atmosphere {
   }
   $gridPen.Dispose()
 
-  $violetGlow = [System.Drawing.Drawing2D.GraphicsPath]::new()
-  $violetGlow.AddEllipse(
+  $signalGlow = [System.Drawing.Drawing2D.GraphicsPath]::new()
+  $signalGlow.AddEllipse(
     [int]($Width * 0.50),
     [int]($Height * 0.36),
     [Math]::Max(80, [int]($Width * 0.68)),
     [Math]::Max(80, [int]($Height * 0.72))
   )
-  $glowBrush = [System.Drawing.Drawing2D.PathGradientBrush]::new($violetGlow)
-  $glowBrush.CenterColor = [System.Drawing.Color]::FromArgb(38, 102, 35, 196)
-  $glowBrush.SurroundColors = @([System.Drawing.Color]::FromArgb(0, 102, 35, 196))
-  $Graphics.FillPath($glowBrush, $violetGlow)
+  $glowBrush = [System.Drawing.Drawing2D.PathGradientBrush]::new($signalGlow)
+  $glowBrush.CenterColor = [System.Drawing.Color]::FromArgb(34, 107, 163, 255)
+  $glowBrush.SurroundColors = @([System.Drawing.Color]::FromArgb(0, 107, 163, 255))
+  $Graphics.FillPath($glowBrush, $signalGlow)
   $glowBrush.Dispose()
-  $violetGlow.Dispose()
+  $signalGlow.Dispose()
 }
 
 function Add-Logo {
@@ -105,7 +105,7 @@ function Add-SignalLine {
   $Graphics.DrawLine($track, $X, $Y, $X + $Width, $Y)
   $track.Dispose()
 
-  $accent = [System.Drawing.Pen]::new([System.Drawing.Color]::FromArgb(245, 255, 151, 59), 2)
+  $accent = [System.Drawing.Pen]::new([System.Drawing.Color]::FromArgb(245, 212, 175, 55), 2)
   $Graphics.DrawLine($accent, $X + [int]($Width * 0.72), $Y, $X + $Width, $Y)
   $accent.Dispose()
 }
@@ -129,10 +129,10 @@ function New-BrandBitmap {
   try {
     Add-Atmosphere -Graphics $graphics -Width $Width -Height $Height
 
-    $white = [System.Drawing.Color]::FromArgb(246, 241, 244, 250)
-    $muted = [System.Drawing.Color]::FromArgb(205, 151, 164, 188)
-    $orange = [System.Drawing.Color]::FromArgb(245, 255, 157, 68)
-    $blue = [System.Drawing.Color]::FromArgb(225, 126, 165, 231)
+    $white = [System.Drawing.Color]::FromArgb(246, 242, 245, 249)
+    $muted = [System.Drawing.Color]::FromArgb(220, 148, 163, 184)
+    $orange = [System.Drawing.Color]::FromArgb(245, 212, 175, 55)
+    $blue = [System.Drawing.Color]::FromArgb(235, 107, 163, 255)
 
     switch ($Variant) {
       "sidebar" {

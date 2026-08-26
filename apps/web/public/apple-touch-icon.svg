@@ -1,12 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" fill="none">
-  <!-- Apple touch icon: bigger version of favicon, без rounded mask
-       (iOS сам делает rounded squircle). Сохраняет 1:1 brand identity. -->
-  <rect width="180" height="180" rx="40" fill="#07090D"/>
-  <circle cx="90" cy="90" r="56" fill="#0B0F14" stroke="#141A22" stroke-width="2"/>
-  <!-- Limbus arc -->
-  <path d="M 90 34 A 56 56 0 0 1 146 90" stroke="#5db5d9" stroke-width="10" stroke-linecap="round" fill="none" opacity="0.95"/>
-  <!-- Edge-light spark -->
-  <circle cx="132" cy="46" r="7" fill="#9ad8ef"/>
-  <!-- Soft glow ring (atmospheric depth) -->
-  <circle cx="90" cy="90" r="56" stroke="#5db5d9" stroke-width="1" stroke-opacity="0.2" fill="none"/>
+  <rect width="180" height="180" rx="40" fill="#05070A"/>
+  <circle cx="90" cy="90" r="72" stroke="#1C2536" stroke-width="2"/>
+  <ellipse cx="90" cy="90" rx="76" ry="45" transform="rotate(-17 90 90)" stroke="#6BA3FF" stroke-opacity=".22" stroke-width="2"/>
+  <circle cx="90" cy="90" r="62" stroke="#D4AF37" stroke-opacity=".14" stroke-width="14"/>
+  <circle cx="90" cy="90" r="62" stroke="#E3C45E" stroke-width="6" stroke-linecap="round" stroke-dasharray="46 15 112 22 50 140" transform="rotate(-72 90 90)"/>
+  <circle cx="90" cy="90" r="50" fill="#020306" stroke="#FFF2BD" stroke-opacity=".42" stroke-width="2"/>
+  <circle cx="135.5" cy="69.7" r="6" fill="#FFFDF2"/>
+  <path d="M135.5 50.5v38.4M116.3 69.7h38.4" stroke="#FFF4C6" stroke-opacity=".68" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="53.6" cy="132.2" r="4.2" fill="#6BA3FF"/>
 </svg>

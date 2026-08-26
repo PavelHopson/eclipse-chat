@@ -13,7 +13,7 @@ import {
  * All effects respect prefers-reduced-motion (skip animations).
  * Vanilla — no libraries — keeps bundle compact.
  *
- *   - CursorTrail        — cyan dust trail attached к hero zone
+ *   - CursorLight        — Forge-style gold/blue cursor illumination
  *   - SplitTextReveal    — letter-by-letter slide-up reveal через IO
  *   - TiltCard           — 3D parallax tilt на mouse position
  *   - MagneticButton     — wrapper translates child slightly towards cursor
@@ -34,34 +34,18 @@ function usePrefersReducedMotion(): boolean {
   return reduced;
 }
 
-/* ───────────────── CursorTrail ─────────────────
- * Canvas-based cyan dust trail. Mount as fixed overlay over hero zone.
- * On mousemove — spawn N particles с velocity + fade. Draw RAF loop.
- *
- * Adapted concept from docs/design/effects/dd/ (grey HSL strands).
- * Recolored to cyan + redesigned as discrete particles вместо strands.
+/* ───────────────── CursorLight ─────────────────
+ * Local operational rewrite of Eclipse Forge's cursor light. Three DOM
+ * layers follow the pointer at different latencies; only compositor-safe
+ * transforms and opacity change per frame. It never mounts for touch,
+ * narrow screens or reduced-motion users.
  */
-type Particle = {
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  life: number;
-  size: number;
-};
-
-export function CursorTrail({
-  className,
-  density = 1,
-}: {
-  className?: string;
-  density?: number;
-}) {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const particlesRef = useRef<Particle[]>([]);
-  const rafRef = useRef<number | null>(null);
+export function CursorLight({ className }: { className?: string }) {
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const goldRef = useRef<HTMLSpanElement | null>(null);
+  const blueRef = useRef<HTMLSpanElement | null>(null);
+  const coreRef = useRef<HTMLSpanElement | null>(null);
   const reduced = usePrefersReducedMotion();
-  const lastMouseRef = useRef<{ x: number; y: number } | null>(null);
   const [enabled, setEnabled] = useState(false);
 
   useEffect(() => {
@@ -69,110 +53,91 @@ export function CursorTrail({
       setEnabled(false);
       return;
     }
-    const canRunTrail = () =>
-      window.innerWidth >= 900 &&
-      !window.matchMedia("(pointer: coarse)").matches;
-    setEnabled(canRunTrail());
-    const handleCapabilityResize = () => setEnabled(canRunTrail());
-    window.addEventListener("resize", handleCapabilityResize);
-    return () => window.removeEventListener("resize", handleCapabilityResize);
+    const finePointer = window.matchMedia("(hover: hover) and (pointer: fine)");
+    const update = () => setEnabled(finePointer.matches && window.innerWidth >= 1024);
+    update();
+    finePointer.addEventListener("change", update);
+    window.addEventListener("resize", update);
+    return () => {
+      finePointer.removeEventListener("change", update);
+      window.removeEventListener("resize", update);
+    };
   }, [reduced]);
 
   useEffect(() => {
-    if (reduced || !enabled) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    if (!enabled) return;
+    const root = rootRef.current;
+    const gold = goldRef.current;
+    const blue = blueRef.current;
+    const core = coreRef.current;
+    if (!root || !gold || !blue || !core) return;
 
-    let width = 0;
-    let height = 0;
-    let rect = canvas.getBoundingClientRect();
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-
-    const resize = () => {
-      rect = canvas.getBoundingClientRect();
-      width = rect.width;
-      height = rect.height;
-      canvas.width = Math.max(1, Math.floor(width * dpr));
-      canvas.height = Math.max(1, Math.floor(height * dpr));
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    let raf = 0;
+    let initialized = false;
+    const target = { x: -500, y: -500 };
+    const slow = { ...target };
+    const mid = { ...target };
+    const fast = { ...target };
+    const place = (node: HTMLElement, point: { x: number; y: number }) => {
+      node.style.transform = `translate3d(${point.x}px, ${point.y}px, 0)`;
     };
-    resize();
-
-    const draw = () => {
-      ctx.clearRect(0, 0, width, height);
-      const particles = particlesRef.current;
-      for (let i = particles.length - 1; i >= 0; i--) {
-        const p = particles[i];
-        p.x += p.vx;
-        p.y += p.vy;
-        p.life -= 0.018;
-        if (p.life <= 0) {
-          particles.splice(i, 1);
-          continue;
-        }
-        const alpha = p.life * 0.55;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(154, 216, 239, ${alpha})`;
-        ctx.shadowColor = `rgba(93, 181, 217, ${alpha * 0.75})`;
-        ctx.shadowBlur = 6;
-        ctx.fill();
-      }
-      ctx.shadowBlur = 0;
-      rafRef.current =
-        particles.length > 0 ? window.requestAnimationFrame(draw) : null;
+    const frame = () => {
+      slow.x += (target.x - slow.x) * 0.075;
+      slow.y += (target.y - slow.y) * 0.075;
+      mid.x += (target.x - mid.x) * 0.14;
+      mid.y += (target.y - mid.y) * 0.14;
+      fast.x += (target.x - fast.x) * 0.34;
+      fast.y += (target.y - fast.y) * 0.34;
+      place(gold, slow);
+      place(blue, mid);
+      place(core, fast);
+      const remaining = Math.max(
+        Math.abs(target.x - slow.x),
+        Math.abs(target.y - slow.y),
+        Math.abs(target.x - mid.x),
+        Math.abs(target.y - mid.y),
+        Math.abs(target.x - fast.x),
+        Math.abs(target.y - fast.y),
+      );
+      raf = remaining > 0.1 ? window.requestAnimationFrame(frame) : 0;
     };
-
-    const scheduleDraw = () => {
-      if (rafRef.current === null) {
-        rafRef.current = window.requestAnimationFrame(draw);
-      }
-    };
-
-    const handleMove = (event: PointerEvent) => {
+    const move = (event: PointerEvent) => {
       if (event.pointerType === "touch") return;
-      const x = event.clientX - rect.left;
-      const y = event.clientY - rect.top;
-      if (x < 0 || y < 0 || x > width || y > height) return;
-      lastMouseRef.current = { x, y };
-      const spawnCount = Math.max(1, Math.round(density));
-      for (let i = 0; i < spawnCount; i++) {
-        particlesRef.current.push({
-          x,
-          y,
-          vx: (Math.random() - 0.5) * 0.6,
-          vy: (Math.random() - 0.5) * 0.6 - 0.1,
-          life: 1,
-          size: Math.random() * 2 + 0.6,
-        });
+      target.x = event.clientX;
+      target.y = event.clientY;
+      if (!initialized) {
+        Object.assign(slow, target);
+        Object.assign(mid, target);
+        Object.assign(fast, target);
+        initialized = true;
       }
-      if (particlesRef.current.length > 96) {
-        particlesRef.current.splice(0, particlesRef.current.length - 96);
-      }
-      scheduleDraw();
+      root.classList.add("is-visible");
+      if (raf === 0) raf = window.requestAnimationFrame(frame);
     };
+    const hide = () => root.classList.remove("is-visible");
 
-    window.addEventListener("pointermove", handleMove, { passive: true });
-    window.addEventListener("resize", resize);
-
+    window.addEventListener("pointermove", move, { passive: true });
+    window.addEventListener("blur", hide);
+    document.documentElement.addEventListener("mouseleave", hide);
     return () => {
-      if (rafRef.current !== null) window.cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
-      window.removeEventListener("pointermove", handleMove);
-      window.removeEventListener("resize", resize);
-      particlesRef.current = [];
+      if (raf !== 0) window.cancelAnimationFrame(raf);
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("blur", hide);
+      document.documentElement.removeEventListener("mouseleave", hide);
     };
-  }, [density, enabled, reduced]);
+  }, [enabled]);
 
-  if (reduced || !enabled) return null;
+  if (!enabled) return null;
   return (
-    <canvas
-      ref={canvasRef}
-      className={`ec-cursor-trail${className ? ` ${className}` : ""}`}
+    <div
+      ref={rootRef}
+      className={`ec-cursor-light${className ? ` ${className}` : ""}`}
       aria-hidden
-    />
+    >
+      <span ref={goldRef} className="ec-cursor-light__gold" />
+      <span ref={blueRef} className="ec-cursor-light__blue" />
+      <span ref={coreRef} className="ec-cursor-light__core" />
+    </div>
   );
 }
 

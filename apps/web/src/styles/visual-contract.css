@@ -9,8 +9,13 @@
   --ef-brand-line: #1C2536;
   --ef-brand-signal: #6BA3FF;
   --ef-brand-gold: #D4AF37;
+  --ef-font-display: "Outfit", "Inter", system-ui, sans-serif;
+  --ef-font-body: "Inter", system-ui, sans-serif;
+  --ef-font-mono: "Geist Mono", ui-monospace, monospace;
   --ef-motion-fast: 160ms;
   --ef-motion-base: 240ms;
+  --ef-motion-reveal: 700ms;
+  --ef-ease-presence: cubic-bezier(.16, 1, .3, 1);
   --ef-ease-interface: cubic-bezier(.22, .61, .36, 1);
 }
 
