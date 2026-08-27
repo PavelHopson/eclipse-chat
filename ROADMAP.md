@@ -5,7 +5,7 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-## Workspace polish — v1.7.64 (2026-08-27, релиз согласован)
+## Workspace polish — v1.7.64 (2026-08-27, в production)
 
 - [x] Добавить спокойный Eclipse cursor с fine-pointer/reduced-motion guards и нативным курсором для текста/видео.
 - [x] Убрать лишние profile/logout/search рамки; сохранить анимацию и handler выхода.
@@ -19,9 +19,10 @@
 - [x] Получить подтверждение публикации от пользователя; исключить локальные demo-файлы из релиза.
 - [x] Добавить обязательные проверенные DB backups до checkout mutation и UI contracts в CI, сохранив production approval gate.
 - [x] Read-only диагностикой подтвердить production target Star CRM `star_crm_prod` вместо устаревшего `star_crm`; сверять target с app/backup config до dump.
-- [ ] Завершить production deploy и smoke точного commit/bundle/health.
+- [x] Завершить production deploy и smoke точного commit/bundle/health: `0d8ca0f`, run `33110221296`, API/SW v1.7.64, SHA-256 JS/CSS совпадают со сборкой.
 
-Предыдущая опубликованная версия — v1.7.63; v1.7.64 проходит штатный rollout.
+Production: v1.7.64; обе БД сохранены в проверенных backup, CI/Security/Deploy зелёные.
+Production browser smoke: вход/регистрация desktop 1280px и mobile 390px, без горизонтального overflow и console errors. Авторизованные экраны проверены локально; для production-проверки нужен вход пользователя.
 Release scope и safety: docs/releases/v1.7.64.md.
 Доказательства и ограничения проверки: design-qa.md, секция Workspace polish от 27 августа.
 
