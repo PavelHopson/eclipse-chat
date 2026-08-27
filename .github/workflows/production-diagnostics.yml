@@ -20,6 +20,29 @@ jobs:
           command_timeout: 2m
           script: |
             set -eu
+            echo "==> Backup target metadata (no credentials)"
+            for config in /var/www/app.star-crm.ru/backend/.env /etc/star-crm-backup.env; do
+              if sudo test -f "$config"; then
+                sudo stat -c '%a %U:%G %n' "$config"
+                sudo awk -F= '
+                  /^(DB_CONNECTION|DB_HOST|DB_PORT|DB_DATABASE|PGHOST|PGPORT|PGDATABASE)=/ {
+                    value=substr($0, index($0,"=")+1)
+                    gsub(/^[ \t\047\042]+|[ \t\r\047\042]+$/, "", value)
+                    if (value ~ /^[A-Za-z0-9_.-]+$/) print $1 "=" value
+                    else print $1 "=[non-simple value; operator verification required]"
+                  }
+                  /^DB_URL=/ { print "DB_URL override is present; operator verification required" }
+                ' "$config"
+              else
+                echo "Missing documented config: $config"
+              fi
+            done
+            echo "==> Known backup locations"
+            for backup_path in /var/backups/eclipse-chat /var/backups/star-crm/db /usr/local/sbin/star-crm-db-backup; do
+              if sudo test -e "$backup_path"; then
+                sudo stat -c '%a %U:%G %n' "$backup_path"
+              fi
+            done
             APP=/var/www/eclipse-chat/apps/server
             echo "==> Supervisor"
             sudo supervisorctl status eclipse-chat-server || true
