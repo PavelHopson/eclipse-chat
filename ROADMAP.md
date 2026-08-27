@@ -14,10 +14,11 @@
 - [x] Сделать активный rail однозначным и убрать обрезанное жёлтое свечение.
 - [x] Уплотнить Platform Admin, сохранить защиту аккаунтов и подтверждения; добавить focus trap/unique titles в Modal.
 - [x] Освободить ширину видеобиблиотеки, вынести editing в disclosure, добавить крупный режим и подтверждение удаления.
-- [x] Пройти desktop/mobile QA, 14 UI contracts, 376 server tests, 15 security contracts, typecheck/build/audit.
+- [x] Пройти desktop/mobile QA, 15 UI/release contracts, 376 server tests, 15 security contracts, typecheck/build/audit.
 - [x] Обновить package/SW version до 1.7.64; runtime server version читает package manifest, hardcode не добавлялся.
 - [x] Получить подтверждение публикации от пользователя; исключить локальные demo-файлы из релиза.
 - [x] Добавить обязательные проверенные DB backups до checkout mutation и UI contracts в CI, сохранив production approval gate.
+- [x] Read-only диагностикой подтвердить production target Star CRM `star_crm_prod` вместо устаревшего `star_crm`; сверять target с app/backup config до dump.
 - [ ] Завершить production deploy и smoke точного commit/bundle/health.
 
 Предыдущая опубликованная версия — v1.7.63; v1.7.64 проходит штатный rollout.

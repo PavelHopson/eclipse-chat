@@ -13,7 +13,7 @@ Nginx + Supervisor + Let's Encrypt + PostgreSQL 16. Star CRM это
 
 ## ⚠️ Перед deploy — обязательные пункты
 
-1. **Сделай backup Star CRM БД** — `pg_dump star_crm > backup_$(date +%Y%m%d).sql`. Никогда не деплой ничего на прод-сервер без backup.
+1. **Сделай проверенные backup обеих БД** — production target Star CRM: `star_crm_prod`, Eclipse Chat: `eclipse_chat`. Имя Star CRM подтверждено 27.08.2026 по `DB_DATABASE` в `/var/www/app.star-crm.ru/backend/.env` и `PGDATABASE` в `/etc/star-crm-backup.env`; старое имя `star_crm` в initial-setup примерах ниже не является production target. Штатный workflow сверяет обе конфигурации, создаёт уникальные root-only custom-format dumps в `/var/backups/eclipse-chat/release-*` и проверяет их через `pg_restore --list` до изменения checkout. Не пропускай backup при несовпадении конфигурации.
 2. **Деплой делай в low-traffic окно** — если что-то пойдёт не так с nginx reload, ты заметишь до того как ляжет Star CRM.
 3. **Прочитай весь этот гайд до конца** прежде чем начинать. Half-done deploy = риск для Star CRM customers.
 

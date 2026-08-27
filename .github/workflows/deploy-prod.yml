@@ -141,6 +141,14 @@ jobs:
             set -euo pipefail
             umask 077
             set -o noclobber
+            # Confirm the targets against both production app and backup configuration.
+            grep -Eq "^DB_CONNECTION=['\"]?pgsql['\"]?[[:space:]]*$" /var/www/app.star-crm.ru/backend/.env
+            grep -Eq "^DB_HOST=['\"]?127[.]0[.]0[.]1['\"]?[[:space:]]*$" /var/www/app.star-crm.ru/backend/.env
+            grep -Eq "^DB_PORT=['\"]?5432['\"]?[[:space:]]*$" /var/www/app.star-crm.ru/backend/.env
+            grep -Eq "^DB_DATABASE=['\"]?star_crm_prod['\"]?[[:space:]]*$" /var/www/app.star-crm.ru/backend/.env
+            grep -Eq "^PGHOST=['\"]?127[.]0[.]0[.]1['\"]?[[:space:]]*$" /etc/star-crm-backup.env
+            grep -Eq "^PGPORT=['\"]?5432['\"]?[[:space:]]*$" /etc/star-crm-backup.env
+            grep -Eq "^PGDATABASE=['\"]?star_crm_prod['\"]?[[:space:]]*$" /etc/star-crm-backup.env
             backup_root=/var/backups/eclipse-chat
             if [[ -e "$backup_root" && "$(readlink -f "$backup_root")" != "$backup_root" ]]; then
               echo "Refusing unexpected backup path" >&2
@@ -151,10 +159,10 @@ jobs:
             install -d -m 0700 -o root -g root "$backup_root"
             test "$(readlink -f "$backup_root")" = "$backup_root"
             free_kb=$(df -Pk "$backup_root" | awk 'NR==2 {print $4}')
-            database_bytes=$(sudo -u postgres psql -Atqc "SELECT COALESCE(SUM(pg_database_size(oid)),0) FROM pg_database WHERE datname IN ('eclipse_chat','star_crm')")
+            database_bytes=$(sudo -u postgres psql -Atqc "SELECT COALESCE(SUM(pg_database_size(oid)),0) FROM pg_database WHERE datname IN ('eclipse_chat','star_crm_prod')")
             test "$free_kb" -ge "$((database_bytes / 1024 * 2 + 1048576))"
             backup_dir=$(mktemp -d "$backup_root/release-$(date -u +%Y%m%dT%H%M%SZ)-XXXXXX")
-            for database in eclipse_chat star_crm; do
+            for database in eclipse_chat star_crm_prod; do
               sudo -u postgres pg_dump --format=custom --no-owner --no-acl "$database" > "$backup_dir/$database.dump"
               test "$(stat -c%s "$backup_dir/$database.dump")" -gt 100
               pg_restore --list "$backup_dir/$database.dump" > /dev/null
