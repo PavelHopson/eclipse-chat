@@ -722,7 +722,7 @@ input[type="radio"]:focus-visible {
 }
 
 .ec-server-actions-menu.ec-popover-surface {
-  width: min(260px, calc(100vw - 20px)) !important;
+  width: min(260px, calc(100vw - 20px));
   max-height: min(62vh, 430px);
   padding: 6px;
   border-radius: var(--ec-radius-lg);
@@ -10620,14 +10620,9 @@ body {
   width: min(316px, calc(100vw - 24px));
   padding: 10px;
   border-radius: 16px;
-  border-color: color-mix(in srgb, var(--ec-accent) 30%, #2dd4bf 8%) !important;
-  background:
-    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--ec-accent) 18%, transparent), transparent 56%),
-    linear-gradient(180deg, #111827, #090d15) !important;
-  box-shadow:
-    0 26px 80px -40px hsl(210 80% 2% / 0.96),
-    0 0 0 1px hsl(0 0% 100% / 0.035),
-    0 0 44px -30px var(--ec-accent) !important;
+  border-color: var(--ec-border-default);
+  background: var(--ec-surface-2);
+  box-shadow: 0 14px 38px #0006;
 }
 
 .ec-server-actions-menu__item {

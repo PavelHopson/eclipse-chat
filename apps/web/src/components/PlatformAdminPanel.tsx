@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Modal } from "./Modal";
 import { Avatar } from "./Avatar";
+import { EclipseUiIcon } from "./icons/EclipseUiIcon";
 import { PlatformUserDetailsModal } from "./PlatformUserDetailsModal";
 import { PlatformServerDetailsModal } from "./PlatformServerDetailsModal";
 import { EcosystemCommandCenter } from "./EcosystemCommandCenter";
@@ -181,7 +182,7 @@ export function PlatformAdminPanel({ onClose, currentUserId }: Props) {
   const [tab, setTab] = useState<Tab>("users");
 
   return (
-    <Modal title="Platform Admin" onClose={onClose} width={1040}>
+    <Modal title="Управление платформой" onClose={onClose} width={1180}>
       <div className="ec-platform-admin">
         <div className="ec-platform-admin__tabs" role="tablist">
           <button
@@ -266,6 +267,7 @@ function UsersTab({ currentUserId }: { currentUserId: string }) {
   const [offset, setOffset] = useState(0);
   // v1.2.8 trek P3 — клик по строке → details modal.
   const [detailsTargetId, setDetailsTargetId] = useState<string | null>(null);
+  const [actionsTarget, setActionsTarget] = useState<PlatformUser | null>(null);
 
   const [banTarget, setBanTarget] = useState<PlatformUser | null>(null);
   const [banReason, setBanReason] = useState("");
@@ -436,8 +438,7 @@ function UsersTab({ currentUserId }: { currentUserId: string }) {
           <span className="ec-platform-admin__eyebrow">Управление доступом</span>
           <strong>Пользователи Eclipse Chat</strong>
           <p>
-            Найди человека, проверь состояние входа и при необходимости выдай
-            новый временный пароль.
+            Участники, состояние входа и управление доступом.
           </p>
         </div>
         <div className="ec-platform-admin__stats" aria-live="polite">
@@ -454,7 +455,7 @@ function UsersTab({ currentUserId }: { currentUserId: string }) {
             <strong>{loading ? "—" : summary.accessLocked}</strong>
           </div>
           <div className="ec-platform-admin__stat">
-            <span>Recovery codes</span>
+            <span>Коды восстановления</span>
             <strong>{loading ? "—" : summary.recoveryReady}</strong>
           </div>
         </div>
@@ -507,11 +508,10 @@ function UsersTab({ currentUserId }: { currentUserId: string }) {
 
       {users.length > 0 && (
         <div className="ec-platform-admin__tablewrap">
-          <table className="ec-cck-table ec-platform-admin__table ec-ai-provider-table">
+          <table className="ec-cck-table ec-platform-admin__table ec-platform-admin__users-table">
             <thead>
               <tr>
                 <th className="ec-cck-th">Пользователь</th>
-                <th className="ec-cck-th">Email</th>
                 <th className="ec-cck-th">Последняя активность</th>
                 <th className="ec-cck-th">Защита входа</th>
                 <th className="ec-cck-th">Статус</th>
@@ -525,8 +525,6 @@ function UsersTab({ currentUserId }: { currentUserId: string }) {
                 const isSelf = u.id === currentUserId;
                 const isDeleted = u.deletedAt !== null;
                 const isBanned = u.bannedAt !== null;
-                const isOtherOwner = u.isPlatformOwner && !isSelf;
-                const locked = isSelf || isOtherOwner || isDeleted;
                 return (
                   <tr
                     key={u.id}
@@ -538,14 +536,15 @@ function UsersTab({ currentUserId }: { currentUserId: string }) {
                       <div className="ec-platform-admin__user">
                         <Avatar name={u.displayName} url={u.avatar} size={28} />
                         <div className="ec-platform-admin__user-text">
-                          <span className="ec-platform-admin__user-name">
+                          <button type="button" className="ec-platform-admin__user-name" onClick={(event) => { event.stopPropagation(); setDetailsTargetId(u.id); }}>
                             {u.displayName}
                             {isSelf && (
                               <span className="ec-platform-admin__self-mark">
                                 (ты)
                               </span>
                             )}
-                          </span>
+                          </button>
+                          <span className="ec-platform-admin__email">{u.email}</span>
                           {u.isPlatformOwner && (
                             <span
                               className="ec-cck-chip"
@@ -558,9 +557,6 @@ function UsersTab({ currentUserId }: { currentUserId: string }) {
                           )}
                         </div>
                       </div>
-                    </td>
-                    <td className="ec-cck-cell ec-platform-admin__email">
-                      {u.email}
                     </td>
                     <td className="ec-cck-cell" data-label="Последняя активность">
                       <div className="ec-platform-admin__access-stack">
@@ -581,12 +577,12 @@ function UsersTab({ currentUserId }: { currentUserId: string }) {
                         </strong>
                         <span>
                           {u.hasPasswordRecoveryCodes
-                            ? "Есть recovery codes"
-                            : "Нет recovery codes"}
+                            ? "Коды сохранены"
+                            : "Коды не созданы"}
                         </span>
                       </div>
                     </td>
-                    <td className="ec-cck-cell" data-label="Пользователь">
+                    <td className="ec-cck-cell" data-label="Статус">
                       {isDeleted ? (
                         <span
                           className="ec-cck-chip"
@@ -626,72 +622,12 @@ function UsersTab({ currentUserId }: { currentUserId: string }) {
                         </span>
                       )}
                     </td>
-                    <td className="ec-cck-cell ec-platform-admin__actions">
-                      {isBanned && !isDeleted ? (
-                        <button
-                          type="button"
-                          className="ec-btn ec-btn--sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setActionError(null);
-                            setUnbanTarget(u);
-                          }}
-                          disabled={isSelf || isOtherOwner}
-                        >
-                          Снять бан
-                        </button>
-                      ) : !isDeleted ? (
-                        <button
-                          type="button"
-                          className="ec-btn ec-btn--sm ec-btn--danger"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setActionError(null);
-                            setBanReason("");
-                            setBanTarget(u);
-                          }}
-                          disabled={locked}
-                        >
-                          Забанить
-                        </button>
-                      ) : null}
-                      {!isDeleted && (
-                        <button
-                          type="button"
-                          className="ec-btn ec-btn--sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setActionError(null);
-                            setResetTarget(u);
-                          }}
-                          disabled={locked}
-                        >
-                          Восстановить доступ
-                        </button>
-                      )}
-                      {!isDeleted && (
-                        <button
-                          type="button"
-                          className="ec-btn ec-btn--sm ec-btn--danger"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setActionError(null);
-                            setDeleteReason("");
-                            setDeleteConfirmText("");
-                            setDeleteTarget(u);
-                          }}
-                          disabled={locked}
-                          title={
-                            isSelf
-                              ? "Нельзя удалить себя"
-                              : isOtherOwner
-                                ? "Нельзя удалить другого platform-owner'а"
-                                : undefined
-                          }
-                        >
-                          Удалить
-                        </button>
-                      )}
+                    <td className="ec-cck-cell ec-platform-admin__actions" data-label="Действия">
+                      <button type="button" className="ec-btn ec-btn--ghost ec-btn--sm ec-platform-admin__manage"
+                        aria-label={`Управление: ${u.displayName}`} aria-haspopup="dialog"
+                        onClick={(event) => { event.stopPropagation(); setActionsTarget(u); }}>
+                        Управление <EclipseUiIcon name="chevron" size={14} />
+                      </button>
                     </td>
                   </tr>
                 );
@@ -699,6 +635,36 @@ function UsersTab({ currentUserId }: { currentUserId: string }) {
             </tbody>
           </table>
         </div>
+      )}
+
+      {actionsTarget && (
+        <Modal title={`Управление · ${actionsTarget.displayName}`} onClose={() => setActionsTarget(null)} width={440}>
+          <div className="ec-admin-user-actions">
+            <p className="ec-admin-user-actions__identity">{actionsTarget.email}</p>
+            <button type="button" className="ec-admin-user-actions__item"
+              onClick={() => { setDetailsTargetId(actionsTarget.id); setActionsTarget(null); }}>
+              <EclipseUiIcon name="profile" /><span><strong>Карточка пользователя</strong><small>Сессии, защита и история действий</small></span>
+            </button>
+            {actionsTarget.deletedAt === null && <>
+              <button type="button" className="ec-admin-user-actions__item"
+                disabled={actionsTarget.id === currentUserId || actionsTarget.isPlatformOwner}
+                onClick={() => { setActionError(null); setResetTarget(actionsTarget); setActionsTarget(null); }}>
+                <EclipseUiIcon name="shield" /><span><strong>Восстановить доступ</strong><small>Перейти к подтверждению сброса пароля</small></span>
+              </button>
+              <button type="button" className="ec-admin-user-actions__item ec-admin-user-actions__item--danger"
+                disabled={actionsTarget.id === currentUserId || actionsTarget.isPlatformOwner}
+                onClick={() => { setActionError(null); if (actionsTarget.bannedAt) setUnbanTarget(actionsTarget); else { setBanReason(""); setBanTarget(actionsTarget); } setActionsTarget(null); }}>
+                <EclipseUiIcon name="incident" /><span><strong>{actionsTarget.bannedAt ? "Снять блокировку" : "Заблокировать пользователя"}</strong><small>Доступ изменится только после подтверждения</small></span>
+              </button>
+              <button type="button" className="ec-admin-user-actions__item ec-admin-user-actions__item--danger"
+                disabled={actionsTarget.id === currentUserId || actionsTarget.isPlatformOwner}
+                onClick={() => { setActionError(null); setDeleteReason(""); setDeleteConfirmText(""); setDeleteTarget(actionsTarget); setActionsTarget(null); }}>
+                <EclipseUiIcon name="delete" /><span><strong>Удалить пользователя</strong><small>Потребуется ввести слово «удалить»</small></span>
+              </button>
+            </>}
+            {(actionsTarget.id === currentUserId || actionsTarget.isPlatformOwner) && <p className="ec-platform-admin__sub">Защищённый аккаунт: изменение доступа недоступно.</p>}
+          </div>
+        </Modal>
       )}
 
       <PaginationFooter

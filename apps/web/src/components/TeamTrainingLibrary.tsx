@@ -6,6 +6,7 @@ import { fileToBase64 } from "../lib/fileToBase64";
 import { SocketEvents } from "../lib/socket";
 import { parseYouTubeUrl, toYouTubeEmbedUrl } from "../lib/youtubeEmbed";
 import { useConfirm } from "./ConfirmDialog";
+import { EclipseUiIcon } from "./icons/EclipseUiIcon";
 
 type TrainingVideoSource = "youtube" | "file";
 
@@ -133,6 +134,8 @@ function normalizeLegacyCatalog(raw: unknown): Array<{ name: string; videos: Arr
 
 export function TeamTrainingLibrary({ serverId, canUploadFiles, socket }: Props) {
   const confirm = useConfirm();
+  const [manageOpen, setManageOpen] = useState(false);
+  const [largeVideos, setLargeVideos] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const legacyImportRef = useRef<string | null>(null);
   const [sections, setSections] = useState<TrainingSection[]>([]);
@@ -406,6 +409,14 @@ export function TeamTrainingLibrary({ serverId, canUploadFiles, socket }: Props)
   }
 
   async function removeVideo(videoId: string) {
+    if (!canUploadFiles || busy) return;
+    const video = activeSection?.videos.find((item) => item.id === videoId);
+    if (!await confirm({
+      title: "Удалить видео?",
+      message: `«${video?.title ?? "Видео"}» будет удалено из общей библиотеки.`,
+      confirmLabel: "Удалить",
+      danger: true,
+    })) return;
     setBusy(true);
     try {
       const res = await api(`api/training-videos/${encodeURIComponent(videoId)}`, { method: "DELETE" });
@@ -422,17 +433,27 @@ export function TeamTrainingLibrary({ serverId, canUploadFiles, socket }: Props)
   const canEdit = canUploadFiles;
 
   return (
-    <section className="ec-team-training" aria-labelledby="team-training-title">
+    <section className={`ec-team-training ec-team-training--library${largeVideos ? " is-large" : ""}`} aria-labelledby="team-training-title" aria-busy={loading || busy}>
       <div className="ec-team-training__head">
         <div>
           <h3 id="team-training-title" className="ec-team-training__title">
             Тренировки
           </h3>
           <p className="ec-team-training__hint">
-            Общая библиотека разделов и видео для всех участников пространства. Добавление и управление доступны OWNER/ADMIN.
+            Видео команды · {sections.reduce((total, section) => total + section.videos.length, 0)} в библиотеке
           </p>
         </div>
-        {canEdit && (
+        <div className="ec-team-training__head-actions">
+          <button type="button" className="ec-btn ec-btn--ghost ec-btn--sm" aria-pressed={largeVideos} onClick={() => setLargeVideos((value) => !value)}>
+            <EclipseUiIcon name={largeVideos ? "collapse" : "expand"} size={17} />
+            {largeVideos ? "Компактно" : "Крупнее"}
+          </button>
+          {canEdit && <button type="button" className="ec-btn ec-btn--sm" aria-expanded={manageOpen} onClick={() => setManageOpen((value) => !value)}>
+            <EclipseUiIcon name={manageOpen ? "close" : "plus"} size={17} />
+            {manageOpen ? "Готово" : "Управление"}
+          </button>}
+        </div>
+        {canEdit && manageOpen && (
           <div className="ec-team-training__new-section">
             <input
               className="ec-field ec-team-training__input"
@@ -454,11 +475,20 @@ export function TeamTrainingLibrary({ serverId, canUploadFiles, socket }: Props)
       </div>
 
       {loading && sections.length === 0 ? (
-        <div className="ec-team-training__empty">Загружаем общую библиотеку тренировок...</div>
+        <div className="ec-team-training__empty" role="status">Загружаем видеобиблиотеку…</div>
       ) : (
         <>
           <div className="ec-team-training__controls">
-            <div className="ec-team-training__sections" role="tablist" aria-label="Разделы тренировок">
+            <div className="ec-team-training__sections" role="tablist" aria-label="Разделы тренировок"
+              onKeyDown={(event) => {
+                if (!(event.target instanceof HTMLElement) || event.target.getAttribute("role") !== "tab") return;
+                const tabs = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]'));
+                const index = tabs.indexOf(event.target as HTMLButtonElement);
+                const next = event.key === "ArrowRight" ? (index + 1) % tabs.length
+                  : event.key === "ArrowLeft" ? (index - 1 + tabs.length) % tabs.length
+                  : event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : -1;
+                if (next >= 0) { event.preventDefault(); tabs[next]?.focus(); tabs[next]?.click(); }
+              }}>
               {sections.map((section) => {
                 const isActive = section.id === activeSection?.id;
                 const isRenaming = section.id === renameSectionId;
@@ -492,6 +522,9 @@ export function TeamTrainingLibrary({ serverId, canUploadFiles, socket }: Props)
                           type="button"
                           role="tab"
                           aria-selected={isActive}
+                          tabIndex={isActive ? 0 : -1}
+                          id={`training-section-${section.id}`}
+                          aria-controls={`training-videos-${section.id}`}
                           className={`ec-team-training__section ${isActive ? "ec-team-training__section--active" : ""}`}
                           onClick={() => {
                             setActiveSectionId(section.id);
@@ -501,7 +534,7 @@ export function TeamTrainingLibrary({ serverId, canUploadFiles, socket }: Props)
                           <span>{section.name}</span>
                           <span className="ec-team-training__count">{section.videos.length}</span>
                         </button>
-                        {canEdit && (
+                        {canEdit && manageOpen && (
                           <>
                             <button
                               type="button"
@@ -514,7 +547,7 @@ export function TeamTrainingLibrary({ serverId, canUploadFiles, socket }: Props)
                               title="Переименовать раздел"
                               aria-label={`Переименовать раздел ${section.name}`}
                             >
-                              ✎
+                              <EclipseUiIcon name="edit" size={16} />
                             </button>
                             <button
                               type="button"
@@ -523,7 +556,7 @@ export function TeamTrainingLibrary({ serverId, canUploadFiles, socket }: Props)
                               title="Удалить раздел"
                               aria-label={`Удалить раздел ${section.name}`}
                             >
-                              ×
+                              <EclipseUiIcon name="delete" size={16} />
                             </button>
                           </>
                         )}
@@ -534,15 +567,7 @@ export function TeamTrainingLibrary({ serverId, canUploadFiles, socket }: Props)
               })}
             </div>
 
-            <div className="ec-team-training__active-summary">
-              <div>
-                <span className="ec-team-training__active-kicker">Активный раздел</span>
-                <strong>{activeSection?.name ?? "Разделов пока нет"}</strong>
-              </div>
-              <span>{activeSection ? (activeSection.videos.length === 0 ? "нет видео" : `${activeSection.videos.length} видео`) : "создайте раздел"}</span>
-            </div>
-
-            {canEdit && activeSection && (
+            {canEdit && manageOpen && activeSection && (
               <div className="ec-team-training__form">
                 <input
                   className="ec-field ec-team-training__input"
@@ -586,15 +611,17 @@ export function TeamTrainingLibrary({ serverId, canUploadFiles, socket }: Props)
                   {busy ? "Сохраняю..." : "Загрузить файл"}
                 </button>
                 <p className="ec-team-training__upload-hint">
-                  Файлы: MP4, WebM, MOV, MKV, AVI до 200 MB. После сохранения видео видно всем участникам сервера.
+                  MP4, WebM, MOV, MKV, AVI · до 200 МБ · доступно участникам пространства
                 </p>
               </div>
             )}
 
-            {error && <div className="ec-team-training__error">{error}</div>}
+            {error && <div className="ec-team-training__error" role="alert">{error}</div>}
           </div>
 
-          <div className="ec-team-training__stage">
+          <div className="ec-team-training__stage" role={activeSection ? "tabpanel" : undefined}
+            id={activeSection ? `training-videos-${activeSection.id}` : undefined}
+            aria-labelledby={activeSection ? `training-section-${activeSection.id}` : undefined}>
             {!activeSection ? (
               <div className="ec-team-training__empty">
                 {canEdit ? "Создайте первый раздел тренировок." : "Разделы тренировок пока не добавлены."}
@@ -604,12 +631,12 @@ export function TeamTrainingLibrary({ serverId, canUploadFiles, socket }: Props)
                 В разделе «{activeSection.name}» пока нет видео.
               </div>
             ) : (
-              <div className="ec-team-training__videos" role="tabpanel" aria-label={`Видео раздела ${activeSection.name}`}>
+              <div className="ec-team-training__videos">
                 {activeSection.videos.map((video) => (
                   <TrainingVideoCard
                     key={video.id}
                     video={video}
-                    canEdit={canEdit}
+                    canEdit={canEdit && manageOpen}
                     onRemove={() => void removeVideo(video.id)}
                   />
                 ))}
@@ -623,13 +650,15 @@ export function TeamTrainingLibrary({ serverId, canUploadFiles, socket }: Props)
 }
 
 function TrainingVideoCard({ video, canEdit, onRemove }: { video: TrainingVideo; canEdit: boolean; onRemove: () => void }) {
+  const [portrait, setPortrait] = useState(false);
   if (video.source === "file") {
     const src = resolveAssetUrl(video.url);
     return (
-      <article className="ec-team-training-video ec-team-training-video--file">
+      <article className={`ec-team-training-video ec-team-training-video--file${portrait ? " is-portrait" : ""}`}>
         <div className="ec-team-training-video__frame">
           {src ? (
-            <video controls preload="metadata" src={src} />
+            <video controls playsInline preload="metadata" src={src} aria-label={video.title}
+              onLoadedMetadata={(event) => setPortrait(event.currentTarget.videoHeight > event.currentTarget.videoWidth)} />
           ) : (
             <div className="ec-team-training-video__bad-link">Файл недоступен</div>
           )}

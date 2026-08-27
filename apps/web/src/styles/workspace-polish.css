@@ -1,0 +1,390 @@
+/* Eclipse operational polish. One border per control; gold denotes selection. */
+.ec-workspace-v2 .ec-shell__top-actions {
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.ec-workspace-v2 .ec-shell__top-actions::before,
+.ec-workspace-v2 .ec-shell__top-actions::after { display: none; }
+.ec-workspace-v2 .ec-shell__user-chip {
+  min-height: 38px;
+  padding: 4px 9px;
+  gap: 9px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  box-shadow: none;
+}
+.ec-workspace-v2 .ec-shell__user-chip:hover,
+.ec-workspace-v2 .ec-shell__user-chip[aria-expanded="true"] {
+  background: var(--ec-ws-raised);
+}
+.ec-workspace-v2 .ec-shell__user-chip::before,
+.ec-workspace-v2 .ec-shell__user-chip::after { display: none; }
+.ec-workspace-v2 .ec-shell__user-avatar,
+.ec-workspace-v2 .ec-shell__user-chip .ec-avatar { box-shadow: none; }
+.ec-workspace-v2 .ec-shell__user-chevron { color: var(--ec-ws-dim); flex-shrink: 0; }
+/* Preserve the walking-door animation and logout handler; simplify only its surface. */
+.ec-workspace-v2 .ec-logout-btn {
+  border: 0;
+  border-radius: 6px;
+  background-color: transparent;
+  box-shadow: none;
+}
+.ec-workspace-v2 .ec-logout-btn:hover { background-color: var(--ec-ws-raised); }
+.ec-workspace-v2 .ec-shell__top-actions :is(.ec-shell__user-chip, .ec-logout-btn) {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+.ec-workspace-v2 .ec-shell__top-actions .ec-shell__user-chip:is(:hover, [aria-expanded="true"]) {
+  background: var(--ec-ws-raised) !important;
+}
+.ec-workspace-v2 .ec-logout-btn::before {
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  box-shadow: none;
+}
+.ec-workspace-v2 .ec-logout-btn:is(:hover, .ec-logout-btn--walking1, .ec-logout-btn--walking2)::before {
+  background: var(--ec-danger-soft);
+  box-shadow: none;
+}
+.ec-workspace-v2 .ec-shell__top-actions :is(.ec-shell__user-chip, .ec-logout-btn):focus-visible {
+  outline: 2px solid var(--ec-ws-gold);
+  outline-offset: 2px;
+}
+.ec-workspace-v2 .ec-channel-search input,
+.ec-workspace-v2 .ec-dmx__search input {
+  width: 100%;
+  min-width: 0;
+  min-height: 34px;
+  padding: 0;
+  border: 0 !important;
+  border-radius: 0;
+  outline: 0;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+.ec-workspace-v2 .ec-channel-search,
+.ec-workspace-v2 .ec-dmx__search { display: flex; align-items: center; gap: 9px; }
+.ec-workspace-v2 .ec-rail__btn.is-active {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--ec-ws-gold) 9%, transparent);
+  color: var(--ec-ws-gold);
+  box-shadow: none;
+}
+.ec-workspace-v2 .ec-rail__pill { left: 3px; border-radius: 2px; box-shadow: none; }
+.ec-ui-icon { display: inline-block; flex: 0 0 auto; vertical-align: middle; }
+.ec-channel-glyph.ec-channel-glyph--eclipse {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  color: inherit;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  filter: none;
+}
+.ec-channel-glyph--eclipse::before,
+.ec-channel-glyph--eclipse::after { display: none; }
+.ec-workspace-v2 .ec-channel-item .ec-channel-glyph--eclipse { color: var(--ec-ws-dim); }
+.ec-workspace-v2 .ec-channel-item--active .ec-channel-glyph--eclipse { color: var(--ec-ws-gold); }
+.ec-workspace-v2 .ec-chat-title__glyph:has(.ec-channel-glyph--eclipse) {
+  background: none;
+  border: 0;
+  box-shadow: none;
+  color: var(--ec-ws-gold);
+}
+.ec-server-actions-menu.ec-popover-surface {
+  position: fixed;
+  padding: 7px;
+  border: 1px solid var(--ec-border-default);
+  border-radius: 10px;
+  box-shadow: 0 14px 38px #0006;
+  scrollbar-width: thin;
+}
+.ec-server-actions-menu .ec-server-actions-menu__item {
+  min-height: 38px;
+  padding: 8px 10px;
+  gap: 11px;
+  border: 0;
+  border-radius: 5px;
+  box-shadow: none;
+}
+.ec-server-actions-menu .ec-server-actions-menu__icon {
+  width: 20px;
+  height: 20px;
+  background: none;
+  border: 0;
+  box-shadow: none;
+  color: var(--ec-text-muted);
+}
+.ec-server-actions-menu .ec-server-actions-menu__label {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  line-height: 1.35;
+}
+.ec-server-actions-menu__item:focus-visible {
+  outline: 2px solid var(--ec-accent-gold, #d4af37);
+  outline-offset: -2px;
+}
+.ec-server-actions-menu__item:hover:not(:disabled) .ec-server-actions-menu__icon {
+  color: var(--ec-accent-gold, #d4af37);
+}
+
+/* Admin: scan people and access state; destructive actions live behind one control. */
+.ec-platform-admin__overview {
+  grid-template-columns: minmax(210px, 1fr) minmax(400px, 1.6fr);
+  padding: 8px 0 18px;
+  border: 0;
+  border-bottom: 1px solid var(--ec-border-subtle);
+  border-radius: 0;
+  background: none;
+}
+.ec-platform-admin__stats { gap: 0; }
+.ec-platform-admin__stat {
+  min-height: 70px;
+  border: 0;
+  border-left: 1px solid var(--ec-border-subtle);
+  border-radius: 0;
+  background: none;
+}
+.ec-platform-admin__tablewrap:has(.ec-platform-admin__users-table) {
+  max-height: none;
+  overflow: visible;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.ec-platform-admin__users-table { table-layout: fixed; border-collapse: collapse; }
+.ec-platform-admin__users-table th:nth-child(1) { width: 29%; }
+.ec-platform-admin__users-table th:nth-child(2) { width: 23%; }
+.ec-platform-admin__users-table th:nth-child(3) { width: 19%; }
+.ec-platform-admin__users-table th:nth-child(4) { width: 13%; }
+.ec-platform-admin__users-table th:nth-child(5) { width: 16%; }
+.ec-platform-admin__users-table .ec-cck-cell {
+  padding: 13px 10px;
+  vertical-align: middle;
+  white-space: normal;
+  border-bottom: 1px solid var(--ec-border-subtle);
+}
+.ec-platform-admin__users-table .ec-platform-admin__user-name {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.4;
+}
+.ec-platform-admin__users-table .ec-platform-admin__email {
+  font-family: var(--ec-font-sans);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+  line-height: 1.4;
+}
+.ec-platform-admin__users-table .ec-platform-admin__access-stack { min-width: 0; line-height: 1.4; }
+.ec-platform-admin__users-table .ec-platform-admin__actions { display: table-cell; text-align: right; }
+.ec-platform-admin__manage { gap: 6px; border: 0; background: transparent; box-shadow: none; }
+.ec-admin-user-actions { display: grid; gap: 4px; }
+.ec-admin-user-actions__identity { margin: 0 0 12px; color: var(--ec-text-muted); overflow-wrap: anywhere; }
+.ec-admin-user-actions__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 60px;
+  padding: 12px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ec-text);
+  text-align: left;
+}
+.ec-admin-user-actions__item > span { display: grid; gap: 4px; }
+.ec-admin-user-actions__item strong { font-size: 13px; }
+.ec-admin-user-actions__item small { font-size: 11px; color: var(--ec-text-muted); }
+.ec-admin-user-actions__item:hover:not(:disabled) { background: var(--ec-surface-2); }
+.ec-admin-user-actions__item--danger { color: var(--ec-status-risk); }
+.ec-admin-user-actions__item:disabled { opacity: .45; cursor: not-allowed; }
+
+/* Library: controls no longer occupy a permanent third of the video stage. */
+.ec-team-training.ec-team-training--library {
+  display: block;
+  padding: 16px;
+  border: 0;
+  border-top: 1px solid var(--ec-border-subtle);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
+}
+.ec-team-training--library::before { display: none; }
+.ec-team-training--library .ec-team-training__head {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.ec-team-training__head-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.ec-workspace-v2 .ec-team-training--library .ec-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  width: auto !important; min-width: 0; flex: 0 0 auto; padding: 8px 12px; white-space: nowrap;
+}
+.ec-team-training--library .ec-team-training__new-section { flex-basis: 100%; max-width: 500px; }
+.ec-team-training--library .ec-team-training__controls,
+.ec-team-training--library .ec-team-training__stage { padding: 0; border: 0; }
+.ec-team-training--library .ec-team-training__sections { flex-wrap: nowrap; padding: 0 0 12px; gap: 12px; }
+.ec-team-training--library .ec-team-training__section {
+  min-height: 38px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  transform: none;
+}
+.ec-team-training--library .ec-team-training__section--active {
+  color: var(--ec-accent-gold, #d4af37);
+  border-bottom-color: currentColor;
+}
+.ec-team-training--library .ec-team-training__section:hover { transform: none; box-shadow: none; }
+.ec-team-training--library .ec-team-training__form {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) minmax(180px, 1.3fr) auto auto;
+  padding: 12px;
+  margin-bottom: 16px;
+  gap: 10px;
+  border: 1px solid var(--ec-border-subtle);
+  border-radius: 6px;
+  background: var(--ec-surface-1);
+}
+.ec-team-training--library .ec-team-training__upload-hint { grid-column: 1 / -1; margin: 0; }
+.ec-team-training--library .ec-team-training__videos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 16px;
+  max-height: none;
+  overflow: visible;
+  padding: 0;
+  align-items: start;
+}
+.ec-team-training--library.is-large .ec-team-training__videos { grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr)); }
+.ec-team-training--library .ec-team-training-video {
+  min-width: 0;
+  border: 0;
+  border-radius: 6px;
+  box-shadow: none;
+  background: transparent;
+  transform: none;
+}
+.ec-team-training--library .ec-team-training-video:hover,
+.ec-team-training--library .ec-team-training-video:focus-within { transform: none; box-shadow: none; }
+.ec-team-training--library .ec-team-training-video__frame {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  aspect-ratio: 16 / 10;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #030405;
+}
+.ec-team-training--library .ec-team-training-video.is-portrait .ec-team-training-video__frame { aspect-ratio: 9 / 14; }
+.ec-team-training--library .ec-team-training-video__frame video,
+.ec-team-training--library .ec-team-training-video__frame iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  max-height: none;
+  object-fit: contain;
+}
+.ec-team-training--library .ec-team-training-video__meta { display: block; padding: 10px 0; }
+.ec-team-training--library .ec-team-training-video__title {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: normal;
+  line-height: 1.4;
+  font-size: 13px;
+}
+.ec-team-training--library .ec-team-training-video__actions { gap: 14px; margin-top: 7px; }
+.ec-team-training--library .ec-team-training-video__source { margin-top: 4px; font-size: 10px; }
+.ec-team-training--library .ec-team-training-video__link,
+.ec-team-training--library .ec-team-training-video__remove { min-height: 32px; display: inline-flex; align-items: center; }
+
+/* Pointer is event-driven: no idle RAF, no text/media cursor replacement. */
+.ec-eclipse-pointer,
+.ec-eclipse-pointer-core { position: fixed; top: 0; left: 0; pointer-events: none; z-index: 2147483000; opacity: 0; }
+.ec-eclipse-pointer[data-visible="true"],
+.ec-eclipse-pointer-core[data-visible="true"] { opacity: 1; }
+.ec-eclipse-pointer span {
+  display: block;
+  width: 22px;
+  height: 22px;
+  margin: -11px 0 0 -11px;
+  border: 1px solid #d4af37aa;
+  border-top-color: #fff0af;
+  border-right-color: transparent;
+  border-radius: 50%;
+  box-shadow: -2px -1px 8px #d4af371b;
+  transition: transform 140ms ease, border-color 140ms ease;
+}
+.ec-eclipse-pointer[data-interactive="true"] span { transform: scale(1.45) rotate(-30deg); border-color: #e7c965; border-right-color: transparent; }
+.ec-eclipse-pointer-core { width: 4px; height: 4px; margin: -2px 0 0 -2px; border-radius: 50%; background: #fff0af; }
+@media (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  html.ec-pointer-active :is(.ec-workspace-v2, .ec-server-actions-menu),
+  html.ec-pointer-active :is(.ec-workspace-v2, .ec-server-actions-menu) * { cursor: none !important; }
+}
+@media (pointer: coarse), (prefers-reduced-motion: reduce) {
+  .ec-eclipse-pointer, .ec-eclipse-pointer-core { display: none; }
+}
+@media (max-width: 900px) {
+  .ec-platform-admin__overview { grid-template-columns: 1fr; }
+  .ec-platform-admin__stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .ec-team-training--library .ec-team-training__form { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 640px) {
+  .ec-workspace-v2 .ec-modal-backdrop { align-items: center; }
+  .ec-workspace-v2 .ec-modal-box {
+    height: auto !important;
+    min-height: 0;
+    max-height: calc(100dvh - 24px) !important;
+    transform: none;
+  }
+  .ec-workspace-v2 .ec-shell__user-chip { padding: 4px; }
+  .ec-workspace-v2 .ec-shell__user-chevron { display: none; }
+  .ec-platform-admin__users-table thead { display: none; }
+  .ec-platform-admin__users-table tbody { display: grid; }
+  .ec-platform-admin__users-table tr { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; padding: 14px 0; border-bottom: 1px solid var(--ec-border-subtle); }
+  .ec-platform-admin__users-table .ec-cck-cell { display: block; padding: 0; border: 0; min-width: 0; }
+  .ec-platform-admin__users-table .ec-cck-cell:first-child { grid-column: 1 / -1; }
+  .ec-platform-admin__users-table .ec-cck-cell[data-label]::before { content: attr(data-label); display: block; margin-bottom: 5px; color: var(--ec-text-dim); font-size: 10px; }
+  .ec-platform-admin__users-table .ec-platform-admin__actions { text-align: left; }
+  .ec-platform-admin__users-table .ec-platform-admin__manage { min-height: 40px; padding-left: 0; }
+  .ec-platform-admin__stat { min-height: 65px; padding: 8px; }
+  .ec-platform-admin__filters { flex-wrap: wrap; }
+  .ec-team-training.ec-team-training--library { padding: 12px 0; }
+  .ec-team-training--library .ec-team-training__head { align-items: flex-start; }
+  .ec-workspace-v2 .ec-team-training--library .ec-btn { min-height: 44px; }
+  .ec-team-training--library .ec-team-training__videos { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 10px; }
+  .ec-team-training--library.is-large .ec-team-training__videos { grid-template-columns: 1fr; }
+  .ec-team-training--library .ec-team-training__form { grid-template-columns: 1fr; }
+  .ec-team-training--library .ec-team-training__new-section { max-width: none; }
+  .ec-team-training--library .ec-team-training__section-action { min-width: 36px; min-height: 40px; }
+  .ec-server-actions-menu .ec-server-actions-menu__item { min-height: 44px; }
+}

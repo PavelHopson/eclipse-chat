@@ -601,7 +601,7 @@ html[data-ec-theme="solar"] .ec-shell.ec-workspace-v2 {
 .ec-workspace-v2 .ec-rail__pill {
   top: 8px;
   bottom: 8px;
-  left: -7px;
+  left: 3px;
   width: 2px;
   height: auto;
   border-radius: 0 2px 2px 0;
@@ -611,7 +611,7 @@ html[data-ec-theme="solar"] .ec-shell.ec-workspace-v2 {
 
 .ec-workspace-v2 .ec-rail__btn.is-active .ec-rail__pill {
   background: var(--ec-ws-gold);
-  box-shadow: 0 0 10px color-mix(in srgb, var(--ec-ws-gold) 42%, transparent);
+  box-shadow: none;
 }
 
 .ec-workspace-v2 .ec-rail__glyph {

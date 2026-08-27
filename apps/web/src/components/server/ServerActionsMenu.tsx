@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import type { ServerRow } from "../../hooks/useServers";
 import { useConfirm } from "../ConfirmDialog";
+import { EclipseUiIcon, type EclipseUiIconName } from "../icons/EclipseUiIcon";
 
 type Props = {
   open: boolean;
@@ -44,6 +45,7 @@ type MenuPosition = {
   top: number;
   left: number;
   width: number;
+  maxHeight: number;
 };
 
 const MANAGE_ROLES = new Set(["OWNER", "ADMIN"]);
@@ -53,114 +55,27 @@ function canManage(role: string | null | undefined): boolean {
 }
 
 function ActionIcon({ actionKey }: { actionKey: string }) {
-  const common = {
-    width: 16,
-    height: 16,
-    viewBox: "0 0 24 24",
-    fill: "none",
-    stroke: "currentColor",
-    strokeWidth: 1.9,
-    strokeLinecap: "round" as const,
-    strokeLinejoin: "round" as const,
-    "aria-hidden": true,
+  const names: Record<string, EclipseUiIconName> = {
+    settings: "settings", invite: "invite", notifications: "notifications",
+    "hide-muted": "hide-muted", "create-channel": "create-channel",
+    "create-category": "create-category", "create-event": "create-event",
+    incident: "incident", leave: "leave", "copy-id": "copy-id",
   };
-
-  switch (actionKey) {
-    case "settings":
-      return (
-        <svg {...common}>
-          <circle cx="12" cy="12" r="3" />
-          <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 0 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V22h-4v-.2a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 0 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H2v-4h.2a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1A2 2 0 0 1 6.1 3.3l.1.1a1.7 1.7 0 0 0 1.8.3 1.7 1.7 0 0 0 1-1.5V2h4v.2a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 0 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8 1.7 1.7 0 0 0 1.5 1h.2v4h-.2a1.7 1.7 0 0 0-1.5 1Z" />
-        </svg>
-      );
-    case "invite":
-      return (
-        <svg {...common}>
-          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-          <circle cx="9" cy="7" r="4" />
-          <path d="M19 8v6" />
-          <path d="M22 11h-6" />
-        </svg>
-      );
-    case "notifications":
-      return (
-        <svg {...common}>
-          <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
-          <path d="M13.7 21a2 2 0 0 1-3.4 0" />
-        </svg>
-      );
-    case "hide-muted":
-      return (
-        <svg {...common}>
-          <path d="M3 3l18 18" />
-          <path d="M10 5 6 9H2v6h4l4 4V5Z" />
-          <path d="M16 9.5c.5.7.8 1.6.8 2.5" />
-        </svg>
-      );
-    case "create-channel":
-      return (
-        <svg {...common}>
-          <path d="M5 9h14" />
-          <path d="M4 15h14" />
-          <path d="M10 3 8 21" />
-          <path d="M16 3l-2 18" />
-        </svg>
-      );
-    case "create-category":
-      return (
-        <svg {...common}>
-          <path d="M3 7h7l2 2h9v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z" />
-          <path d="M12 13h6" />
-          <path d="M15 10v6" />
-        </svg>
-      );
-    case "create-event":
-      return (
-        <svg {...common}>
-          <rect x="3" y="5" width="18" height="16" rx="2" />
-          <path d="M16 3v4" />
-          <path d="M8 3v4" />
-          <path d="M3 11h18" />
-        </svg>
-      );
-    case "incident":
-      return (
-        <svg {...common}>
-          <rect x="3" y="11" width="18" height="10" rx="2" />
-          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-        </svg>
-      );
-    case "copy-id":
-      return (
-        <svg {...common}>
-          <rect x="9" y="9" width="12" height="12" rx="2" />
-          <rect x="3" y="3" width="12" height="12" rx="2" />
-        </svg>
-      );
-    case "leave":
-      return (
-        <svg {...common}>
-          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-          <path d="M16 17l5-5-5-5" />
-          <path d="M21 12H9" />
-        </svg>
-      );
-    default:
-      return null;
-  }
+  return names[actionKey] ? <EclipseUiIcon name={names[actionKey]} size={18} /> : null;
 }
 
 function computePosition(trigger: HTMLElement | null): MenuPosition {
-  if (!trigger || typeof window === "undefined") return { top: 64, left: 12, width: 280 };
+  if (!trigger || typeof window === "undefined") return { top: 64, left: 12, width: 304, maxHeight: 540 };
   const rect = trigger.getBoundingClientRect();
-  const mobile = window.matchMedia("(max-width: 640px)").matches;
-  const width = mobile ? Math.min(window.innerWidth * 0.8, 360) : 286;
-  const left = Math.min(Math.max(10, rect.left), Math.max(10, window.innerWidth - width - 10));
-  return {
-    top: Math.min(rect.bottom + 8, window.innerHeight - 16),
-    left,
-    width,
-  };
+  const width = Math.min(320, window.innerWidth - 24);
+  const left = Math.max(12, Math.min(rect.left, window.innerWidth - width - 12));
+  const desiredHeight = Math.min(640, window.innerHeight - 24);
+  const below = window.innerHeight - rect.bottom - 20;
+  const above = rect.top - 20;
+  const top = below < 320 && above > below
+    ? Math.max(12, rect.top - desiredHeight - 8)
+    : Math.max(12, Math.min(rect.bottom + 8, window.innerHeight - 240));
+  return { top, left, width, maxHeight: Math.min(desiredHeight, Math.max(120, window.innerHeight - top - 12)) };
 }
 
 export function ServerActionsMenu({
@@ -194,7 +109,10 @@ export function ServerActionsMenu({
     // Keep the portal anchored while the rail/page scrolls. Closing on every
     // captured scroll made the menu disappear immediately when layout changes
     // emitted a scroll after opening.
-    const onScroll = () => update();
+    const onScroll = (event: Event) => {
+      if (event.target instanceof Node && menuRef.current?.contains(event.target)) return;
+      update();
+    };
     window.addEventListener("resize", update);
     window.addEventListener("scroll", onScroll, true);
     return () => {
@@ -213,7 +131,24 @@ export function ServerActionsMenu({
       onClose();
     };
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose();
+        triggerRef.current?.focus();
+        return;
+      }
+      const menu = menuRef.current;
+      if (!menu?.contains(document.activeElement)) return;
+      if (event.key === "Tab") { onClose(); return; }
+      const items = Array.from(menu.querySelectorAll<HTMLButtonElement>('[role="menuitem"]:not(:disabled)'));
+      const index = items.indexOf(document.activeElement as HTMLButtonElement);
+      const target = event.key === "Home" ? 0 : event.key === "End" ? items.length - 1
+        : event.key === "ArrowDown" ? (index + 1) % items.length
+        : event.key === "ArrowUp" ? (index - 1 + items.length) % items.length : -1;
+      if (target >= 0) {
+        event.preventDefault();
+        items[target]?.focus();
+      }
     };
     window.addEventListener("pointerdown", onPointerDown);
     window.addEventListener("keydown", onKeyDown);
@@ -222,6 +157,12 @@ export function ServerActionsMenu({
       window.removeEventListener("keydown", onKeyDown);
     };
   }, [open, onClose, triggerRef]);
+
+  useEffect(() => {
+    if (!open) return;
+    const frame = requestAnimationFrame(() => menuRef.current?.querySelector<HTMLButtonElement>('[role="menuitem"]:not(:disabled)')?.focus({ preventScroll: true }));
+    return () => cancelAnimationFrame(frame);
+  }, [open]);
 
   useEffect(() => {
     if (!toast) return;
@@ -316,6 +257,9 @@ export function ServerActionsMenu({
         left: inline ? "12px" : position.left,
         right: inline ? "12px" : undefined,
         width: inline ? "auto" : position.width,
+        maxHeight: position.maxHeight,
+        overflowY: "auto",
+        overscrollBehavior: "contain",
         zIndex: 10000,
         // Solid-фон inline — бьёт любой (в т.ч. устаревший из кэша) CSS-чанк,
         // чтобы поповер никогда не просвечивал список каналов под собой.
@@ -358,7 +302,8 @@ export function ServerActionsMenu({
                 onClose();
               }}
             >
-              <span>{nav.label}</span>
+              <span className="ec-server-actions-menu__icon"><EclipseUiIcon name={nav.view} size={18} /></span>
+              <span className="ec-server-actions-menu__label">{nav.label}</span>
             </button>
           ))}
           <div className="ec-server-actions-menu__divider" aria-hidden />

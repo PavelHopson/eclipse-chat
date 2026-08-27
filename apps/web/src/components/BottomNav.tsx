@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { EclipseUiIcon } from "./icons/EclipseUiIcon";
 
 /** Мобильный global dock: пять предсказуемых destinations под большой палец. */
 
@@ -60,36 +61,19 @@ export function BottomNav({
   return (
     <nav className="ec-bnav" aria-label="Основная навигация">
       <TabButton label="Сводка" active={active === "home"} onClick={onHome}>
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-          <path d="M4 13h6V4H4zM14 20h6v-9h-6zM4 20h6v-3H4zM14 7h6V4h-6z" />
-        </svg>
+        <EclipseUiIcon name="overview" size={22} />
       </TabButton>
       <TabButton label="Комнаты" active={active === "servers"} onClick={onServers}>
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-          <rect x="3" y="3" width="7" height="7" rx="1.5" />
-          <rect x="14" y="3" width="7" height="7" rx="1.5" />
-          <rect x="3" y="14" width="7" height="7" rx="1.5" />
-          <rect x="14" y="14" width="7" height="7" rx="1.5" />
-        </svg>
+        <EclipseUiIcon name="channels-roles" size={22} />
       </TabButton>
       <TabButton label="Личные" active={active === "dms"} badge={dmsUnread} onClick={onDms}>
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-          <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
-        </svg>
+        <EclipseUiIcon name="chat" size={22} />
       </TabButton>
       <TabButton label="AI-офис" active={active === "office"} onClick={onOffice}>
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-          <circle cx="12" cy="5" r="2.25" />
-          <circle cx="5" cy="17" r="2.25" />
-          <circle cx="19" cy="17" r="2.25" />
-          <path d="M12 7.25v4.25M10.25 12.5 6.6 15M13.75 12.5 17.4 15" />
-        </svg>
+        <EclipseUiIcon name="office" size={22} />
       </TabButton>
       <TabButton label="Я" active={active === "me"} onClick={onProfile}>
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-          <circle cx="12" cy="8" r="4" />
-          <path d="M4 21a8 8 0 0116 0" />
-        </svg>
+        <EclipseUiIcon name="profile" size={22} />
       </TabButton>
     </nav>
   );

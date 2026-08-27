@@ -1035,7 +1035,7 @@ export function ChannelList({
           <ServerActionsMenu
             open={serverMenuOpen}
             triggerRef={serverTriggerRef}
-            renderMode="inline"
+            renderMode="portal"
             server={{
               id: serverId,
               name: serverName,

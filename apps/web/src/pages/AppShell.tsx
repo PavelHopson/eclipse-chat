@@ -5,6 +5,8 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 // (fonts + tokens + reset + effects + motion).
 import "../styles/app.css";
 import { Avatar } from "../components/Avatar";
+import { EclipsePointer } from "../components/EclipsePointer";
+import { EclipseUiIcon } from "../components/icons/EclipseUiIcon";
 import { ChannelList } from "../components/ChannelList";
 import { RichContent } from "../components/RichContent";
 import { DirectConversationList } from "../components/DirectConversationList";
@@ -1228,6 +1230,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
 
   return (
     <div className={shellClass} data-visual-profile="operational">
+      <EclipsePointer />
       <div className="ec-visual-contract-signal" aria-hidden="true" />
       {/* Desktop global dock: surfaces, workspaces and scoped control. */}
       {!isMobile && (
@@ -1590,6 +1593,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                   : "В сети"}
               </small>
             </span>
+            <EclipseUiIcon name="chevron" size={13} className="ec-shell__user-chevron" />
           </button>
           <LogoutButton onLogout={onLogout} />
         </div>

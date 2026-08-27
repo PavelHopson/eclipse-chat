@@ -1,6 +1,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import "../styles/dm-home.css";
 import { Avatar } from "./Avatar";
+import { EclipseUiIcon } from "./icons/EclipseUiIcon";
 import { GroupAvatar, deriveGroupTitle } from "./GroupAvatar";
 import { EmptyState } from "./EmptyState";
 import { EmptyDmIcon } from "./EmptyIcons";
@@ -138,12 +139,7 @@ export function DirectConversationList({
             title="Создать группу"
             aria-label="Создать группу"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
-              <circle cx="9" cy="7" r="4" />
-              <path d="M19 8v6" />
-              <path d="M22 11h-6" />
-            </svg>
+            <EclipseUiIcon name="invite" size={18} />
           </button>
         )}
       </div>
@@ -154,19 +150,13 @@ export function DirectConversationList({
           className="ec-btn ec-btn--primary ec-btn--sm ec-dmx__compose"
           onClick={onNewMessage}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <path d="M12 20h9" />
-            <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
-          </svg>
+          <EclipseUiIcon name="edit" size={18} />
           Новое сообщение
         </button>
       )}
 
       <div className="ec-dmx__search">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-          <circle cx="11" cy="11" r="8" />
-          <path d="m21 21-4.3-4.3" />
-        </svg>
+        <EclipseUiIcon name="search" size={17} />
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}

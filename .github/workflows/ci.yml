@@ -36,3 +36,6 @@ jobs:
 
       - name: Test
         run: npm run test -w @eclipse-chat/server
+
+      - name: UI and release contracts
+        run: node --test deploy/scripts/ui-shell-contract.test.mjs deploy/scripts/workspace-polish.test.mjs

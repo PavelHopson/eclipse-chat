@@ -5,6 +5,25 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
+## Workspace polish — v1.7.64 (2026-08-27, релиз согласован)
+
+- [x] Добавить спокойный Eclipse cursor с fine-pointer/reduced-motion guards и нативным курсором для текста/видео.
+- [x] Убрать лишние profile/logout/search рамки; сохранить анимацию и handler выхода.
+- [x] Унифицировать channel/navigation/menu/voice icons через Phosphor regular, сохранив 30 существующих ec:* IDs.
+- [x] Исправить clipped workspace menu через portal, viewport positioning и keyboard navigation.
+- [x] Сделать активный rail однозначным и убрать обрезанное жёлтое свечение.
+- [x] Уплотнить Platform Admin, сохранить защиту аккаунтов и подтверждения; добавить focus trap/unique titles в Modal.
+- [x] Освободить ширину видеобиблиотеки, вынести editing в disclosure, добавить крупный режим и подтверждение удаления.
+- [x] Пройти desktop/mobile QA, 14 UI contracts, 376 server tests, 15 security contracts, typecheck/build/audit.
+- [x] Обновить package/SW version до 1.7.64; runtime server version читает package manifest, hardcode не добавлялся.
+- [x] Получить подтверждение публикации от пользователя; исключить локальные demo-файлы из релиза.
+- [x] Добавить обязательные проверенные DB backups до checkout mutation и UI contracts в CI, сохранив production approval gate.
+- [ ] Завершить production deploy и smoke точного commit/bundle/health.
+
+Предыдущая опубликованная версия — v1.7.63; v1.7.64 проходит штатный rollout.
+Release scope и safety: docs/releases/v1.7.64.md.
+Доказательства и ограничения проверки: design-qa.md, секция Workspace polish от 27 августа.
+
 ## Eclipse workspace visual clarity — v1.7.63 (2026-08-26)
 
 - [x] Пересобрать 404 в стиле Eclipse Forge с понятным восстановлением маршрута,

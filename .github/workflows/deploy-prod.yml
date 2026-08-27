@@ -71,6 +71,9 @@ jobs:
       - name: Unit tests (server)
         run: npm test --workspace=@eclipse-chat/server
 
+      - name: UI and release contracts
+        run: node --test deploy/scripts/ui-shell-contract.test.mjs deploy/scripts/workspace-polish.test.mjs
+
       - name: Production build (server + web)
         run: npm run build
         env:
@@ -132,6 +135,32 @@ jobs:
           script: |
             set -e
             cd /var/www/eclipse-chat
+            echo "==> Pre-deploy verified database backups"
+            test "$(readlink -f /var/www/eclipse-chat)" = "/var/www/eclipse-chat"
+            sudo bash -se <<'ECLIPSE_RELEASE_BACKUP'
+            set -euo pipefail
+            umask 077
+            set -o noclobber
+            backup_root=/var/backups/eclipse-chat
+            if [[ -e "$backup_root" && "$(readlink -f "$backup_root")" != "$backup_root" ]]; then
+              echo "Refusing unexpected backup path" >&2
+              exit 1
+            fi
+            available_kb=$(awk '/^MemAvailable:/ {print $2}' /proc/meminfo)
+            test "$available_kb" -ge 524288
+            install -d -m 0700 -o root -g root "$backup_root"
+            test "$(readlink -f "$backup_root")" = "$backup_root"
+            free_kb=$(df -Pk "$backup_root" | awk 'NR==2 {print $4}')
+            database_bytes=$(sudo -u postgres psql -Atqc "SELECT COALESCE(SUM(pg_database_size(oid)),0) FROM pg_database WHERE datname IN ('eclipse_chat','star_crm')")
+            test "$free_kb" -ge "$((database_bytes / 1024 * 2 + 1048576))"
+            backup_dir=$(mktemp -d "$backup_root/release-$(date -u +%Y%m%dT%H%M%SZ)-XXXXXX")
+            for database in eclipse_chat star_crm; do
+              sudo -u postgres pg_dump --format=custom --no-owner --no-acl "$database" > "$backup_dir/$database.dump"
+              test "$(stat -c%s "$backup_dir/$database.dump")" -gt 100
+              pg_restore --list "$backup_dir/$database.dump" > /dev/null
+              stat -c 'Verified backup: %n (%s bytes, %a)' "$backup_dir/$database.dump"
+            done
+            ECLIPSE_RELEASE_BACKUP
             echo "==> Pre-pull (workflow bootstrap, до deploy.sh)"
             git fetch origin master
             git reset --hard origin/master
