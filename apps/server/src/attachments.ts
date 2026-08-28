@@ -22,6 +22,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import sharp from "sharp";
+import { createUploadFilename } from "./security/uploadFilename.js";
 import { db } from "./db.js";
 import {
   isTranscribableMime,
@@ -745,8 +746,7 @@ export async function processStandaloneFile(
   const dir = tablesDir();
   await fs.mkdir(dir, { recursive: true });
   const ext = extFromMime(input.mimeType);
-  const baseName = sanitizeFilename(input.filename);
-  const filename = `${ownerId}-${position}-${Date.now()}-${baseName}.${ext}`;
+  const filename = createUploadFilename(ext);
   await fs.writeFile(path.join(dir, filename), buf);
   return {
     url: tablesUrl(filename),
@@ -785,8 +785,7 @@ export async function processTrainingVideoFile(
   const dir = trainingVideosDir();
   await fs.mkdir(dir, { recursive: true });
   const ext = extFromMime(input.mimeType);
-  const baseName = sanitizeFilename(input.filename);
-  const filename = `${ownerId}-${Date.now()}-${baseName}.${ext}`;
+  const filename = createUploadFilename(ext);
   await fs.writeFile(path.join(dir, filename), buf);
   return {
     url: trainingVideosUrl(filename),

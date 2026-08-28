@@ -1,4 +1,5 @@
-import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { VoiceChatContext } from "./VoiceRoomContext";
 import { Attachments } from "./Attachments";
 import { MessageActionChip } from "./MessageActionChip";
 import { MessageActions } from "./MessageActions";
@@ -168,6 +169,14 @@ export function MessageList({
   channelTopSubtitle = null,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const voiceChat = useContext(VoiceChatContext);
+  const visibleRef = useRef(voiceChat.visible);
+  visibleRef.current = voiceChat.visible;
+  const savedScroll = useRef(0);
+  useLayoutEffect(() => {
+    if (!voiceChat.visible || !containerRef.current) return;
+    containerRef.current.scrollTop = savedScroll.current;
+  }, [voiceChat.visible]);
   const confirm = useConfirm();
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [pinBurstId, setPinBurstId] = useState<string | null>(null);
@@ -197,7 +206,9 @@ export function MessageList({
   }, []);
 
   const syncBottomState = useCallback(() => {
+    if (!visibleRef.current) return false;
     const el = containerRef.current;
+    if (el) savedScroll.current = el.scrollTop;
     const next = !el || isNearBottom(el);
     if (atBottomRef.current !== next) {
       atBottomRef.current = next;
@@ -208,9 +219,11 @@ export function MessageList({
 
   const scrollToLatest = useCallback(
     (behavior: ScrollBehavior = "smooth") => {
+      if (!visibleRef.current) return;
       const el = containerRef.current;
       if (!el) return;
       el.scrollTo({ top: el.scrollHeight, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : behavior });
+      savedScroll.current = Math.max(0, el.scrollHeight - el.clientHeight);
       atBottomRef.current = true;
       setIsAtBottom(true);
       clearNewMessageMarker();
@@ -226,6 +239,7 @@ export function MessageList({
     const nextListKey = listKey ?? null;
     if (listKeyRef.current === nextListKey) return;
     listKeyRef.current = nextListKey;
+    savedScroll.current = 0;
     tailIdRef.current = null;
     messageCountRef.current = 0;
     atBottomRef.current = true;
@@ -263,13 +277,15 @@ export function MessageList({
     if (tail.id === previousTailId) return;
 
     const isOwnMessage = Boolean(currentUserId && tail.user.id === currentUserId);
-    if (atBottomRef.current || isOwnMessage || tail.pending) {
+    if (visibleRef.current && (atBottomRef.current || isOwnMessage || tail.pending)) {
       requestAnimationFrame(() => scrollToLatest(isOwnMessage ? "smooth" : "auto"));
       return;
     }
 
     const incoming = incomingAfter(messages, previousTailId, currentUserId);
     if (incoming.length) {
+      atBottomRef.current = false;
+      setIsAtBottom(false);
       setUnreadAnchorId((current) => current ?? incoming[0].id);
       setNewMessagesCount((count) => count + incoming.length);
     }
@@ -316,6 +332,10 @@ export function MessageList({
   const unreadStart = unreadAnchorId ? messages.findIndex(message => message.id === unreadAnchorId) : -1;
   const mentions = unreadStart < 0 ? [] : messages.slice(unreadStart).filter(message =>
     !message.deletedAt && message.user.id !== currentUserId && isDirectMention(message.content, currentUserName));
+
+  useEffect(() => {
+    voiceChat.reportUnread?.({ total: newMessagesCount, mentions: mentions.length });
+  }, [newMessagesCount, mentions.length, voiceChat.reportUnread]);
 
   useEffect(() => {
     if (seededUnread.current || !unreadSince || !messages.length) return;

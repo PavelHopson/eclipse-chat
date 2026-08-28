@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
+import { VoiceMusicGainContext } from "./VoiceRoomContext";
+import { musicTrackTitle } from "../lib/voicePresentation";
 import { Avatar } from "./Avatar";
 import { MediaScrubber } from "./MediaScrubber";
 import { resolveAssetUrl } from "../lib/assets";
@@ -60,6 +62,7 @@ export function MusicMiniPlayer({
   onExpand,
 }: Props) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const speechGain = useContext(VoiceMusicGainContext);
   const [durationMs, setDurationMs] = useState<number | null>(null);
 
   // v1.2.13 — регистрируем audio как «текущий music-source» для
@@ -73,11 +76,32 @@ export function MusicMiniPlayer({
   // v1.1.58 — общая громкость медиа: shared хук с live-sync + localStorage.
   const [volume, setVolume] = useMediaVolume();
   const lastVolumeRef = useRef(volume > 0 ? volume : 0.7);
+  const appliedVolumeRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (audioRef.current) audioRef.current.volume = volume;
+    const audio = audioRef.current;
     if (volume > 0) lastVolumeRef.current = volume;
-  }, [volume]);
+    if (!audio) return;
+    const target = volume * speechGain;
+    const nominalChanged = appliedVolumeRef.current !== volume;
+    appliedVolumeRef.current = volume;
+    // Saved volume and explicit user changes are immediate, never a loud fade-in.
+    if (nominalChanged || volume === 0 || document.hidden) { audio.volume = target; return; }
+    const from = audio.volume;
+    const start = performance.now();
+    let frame = 0;
+    const ramp = (now: number) => {
+      const progress = Math.min(1, (now - start) / (speechGain < 1 ? 160 : 420));
+      audio.volume = Math.max(0, Math.min(1, from + (target - from) * progress));
+      if (progress < 1) frame = requestAnimationFrame(ramp);
+    };
+    frame = requestAnimationFrame(ramp);
+    const onHidden = () => {
+      if (document.hidden) { cancelAnimationFrame(frame); audio.volume = target; }
+    };
+    document.addEventListener("visibilitychange", onHidden);
+    return () => { cancelAnimationFrame(frame); document.removeEventListener("visibilitychange", onHidden); };
+  }, [volume, speechGain]);
 
   // Sync audio element с session.
   useEffect(() => {
@@ -120,7 +144,7 @@ export function MusicMiniPlayer({
     session.updatedAt,
   ]);
 
-  const trackName = session.currentTrack?.filename ?? "Очередь пуста";
+  const trackName = session.currentTrack ? musicTrackTitle(session.currentTrack.filename) : "Очередь пуста";
   const isVoiceMessage = session.currentTrack
     ? /^voice-message-/i.test(session.currentTrack.filename)
     : false;

@@ -3,6 +3,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { z } from "zod";
 import sharp from "sharp";
+import { createUploadFilename } from "../security/uploadFilename.js";
 import { db } from "../db.js";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
 import { ensureServerActive } from "../lib/serverGating.js";
@@ -210,7 +211,7 @@ export async function registerEmojiRoutes(app: FastifyInstance) {
           uploaderId: userId,
         },
       });
-      const filename = `${serverId}-${row.id}.webp`;
+      const filename = createUploadFilename("webp");
       const dir = emojisDir();
       try {
         await fs.mkdir(dir, { recursive: true });

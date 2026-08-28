@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import bcrypt from "bcryptjs";
 import { randomBytes } from "node:crypto";
+import { generateApiKey } from "../security/botApiKey.js";
 import { z } from "zod";
 import { db } from "../db.js";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
@@ -54,22 +55,6 @@ const ALLOWED_BOT_EMOJI = new Set([
   "👍", "❤️", "😂", "😮", "😢", "🔥", "🎉", "👀",
   "🚀", "💯", "🙏", "👏",
 ]);
-
-const URL_SAFE = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
-
-/**
- * Генерация bot API key: `ecb_<32-char-urlsafe-base64>`.
- * Используем crypto.randomBytes + URL-safe alphabet — детерминированный
- * формат, легко проверить regex'ом.
- */
-function generateApiKey(): string {
-  const bytes = randomBytes(32);
-  let out = "ecb_";
-  for (let i = 0; i < 32; i++) {
-    out += URL_SAFE[bytes[i] % URL_SAFE.length];
-  }
-  return out;
-}
 
 const createBotBody = z.object({
   name: z.string().trim().min(1).max(80),

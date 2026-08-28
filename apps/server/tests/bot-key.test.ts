@@ -1,22 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { randomBytes } from "node:crypto";
-
-/**
- * Тесты для bot API key generation pattern (apps/server/src/routes/bots.ts).
- * Inline copy formula here — чтобы избежать import side-effects из routes/bots.ts
- * (он pulls в Prisma client, db setup, fastify deps).
- */
-
-const URL_SAFE = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
-
-function generateApiKey(): string {
-  const bytes = randomBytes(32);
-  let out = "ecb_";
-  for (let i = 0; i < 32; i++) {
-    out += URL_SAFE[bytes[i] % URL_SAFE.length];
-  }
-  return out;
-}
+import { generateApiKey } from "../src/security/botApiKey.js";
 
 describe("bot API key", () => {
   it("format: ecb_ + 32 URL-safe chars (total 36)", () => {

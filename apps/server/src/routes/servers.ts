@@ -3,6 +3,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { z } from "zod";
 import sharp from "sharp";
+import { createUploadFilename } from "../security/uploadFilename.js";
 import { db } from "../db.js";
 import { serializeUser, userDisplayName } from "../lib/userView.js";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
@@ -1822,7 +1823,7 @@ export async function registerServerRoutes(app: FastifyInstance) {
         const oldName = path.basename(existing.icon);
         if (oldName) await fs.unlink(path.join(dir, oldName)).catch(() => undefined);
       }
-      const filename = `${serverId}-${Date.now()}.webp`;
+      const filename = createUploadFilename("webp");
       await fs.writeFile(path.join(dir, filename), resized);
       const url = serverIconUrl(filename);
       await db.server.update({ where: { id: serverId }, data: { icon: url } });
@@ -2121,7 +2122,7 @@ export async function registerServerRoutes(app: FastifyInstance) {
         const oldName = path.basename(existing.banner);
         if (oldName) await fs.unlink(path.join(dir, oldName)).catch(() => undefined);
       }
-      const filename = `${serverId}-${Date.now()}.webp`;
+      const filename = createUploadFilename("webp");
       await fs.writeFile(path.join(dir, filename), resized);
       const url = `/uploads/server-banners/${filename}`;
       await db.server.update({ where: { id: serverId }, data: { banner: url } });

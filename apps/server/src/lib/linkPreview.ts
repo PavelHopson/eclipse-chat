@@ -220,15 +220,13 @@ function decodeMaybe(s: string | null): string | null {
   return s ? decodeEntities(s) : null;
 }
 
-function decodeEntities(s: string): string {
-  return s
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&#x27;/g, "'")
-    .replace(/&nbsp;/g, " ");
+export function decodeEntities(s: string): string {
+  const entities: Record<string, string> = {
+    "&amp;": "&", "&lt;": "<", "&gt;": ">", "&quot;": '"',
+    "&#39;": "'", "&#x27;": "'", "&nbsp;": " ",
+  };
+  // One pass: a decoded ampersand must not trigger another entity decode.
+  return s.replace(/&(?:amp|lt|gt|quot|#39|#x27|nbsp);/g, (entity) => entities[entity]);
 }
 
 function clamp(s: string | null, max: number): string | null {

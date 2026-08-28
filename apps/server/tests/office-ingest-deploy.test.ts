@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { chmod, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { chmod, link, mkdtemp, readFile, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -60,7 +60,7 @@ afterEach(async () => {
 });
 
 describe("production Office ingest provisioning", () => {
-  it("atomically adds one scoped producer without printing its secret", async () => {
+  it.skipIf(process.platform === "win32")("atomically adds one scoped producer without printing its secret", async () => {
     const envPath = await fixture();
     const result = await configure(envPath);
     const contents = await readFile(envPath, "utf8");
@@ -72,7 +72,7 @@ describe("production Office ingest provisioning", () => {
     expect((await readFile(envPath, "utf8")).match(/OFFICE_INGEST_KEYS_JSON=/gu)).toHaveLength(1);
   });
 
-  it("fails closed rather than overwriting an existing key", async () => {
+  it.skipIf(process.platform === "win32")("fails closed rather than overwriting an existing key", async () => {
     const envPath = await fixture();
     await configure(envPath);
     const before = await readFile(envPath, "utf8");
@@ -84,8 +84,7 @@ describe("production Office ingest provisioning", () => {
     expect(await readFile(envPath, "utf8")).toBe(before);
   });
 
-  it("rejects an environment file readable outside its owner group", async () => {
-    if (process.platform === "win32") return;
+  it.skipIf(process.platform === "win32")("rejects an environment file readable outside its owner group", async () => {
     const envPath = await fixture();
     await chmod(envPath, 0o644);
 
@@ -95,7 +94,7 @@ describe("production Office ingest provisioning", () => {
     expect(await readFile(envPath, "utf8")).toBe('JWT_SECRET="test-only"\n');
   });
 
-  it("removes only the selected producer key when disabled", async () => {
+  it.skipIf(process.platform === "win32")("removes only the selected producer key when disabled", async () => {
     const envPath = await fixture();
     await configure(envPath);
     const result = await disable(envPath);
@@ -103,6 +102,27 @@ describe("production Office ingest provisioning", () => {
     expect(contents).toContain('JWT_SECRET="test-only"');
     expect(contents).not.toContain("OFFICE_INGEST_KEYS_JSON=");
     expect(`${result.stdout}${result.stderr}`).not.toContain(secret);
+  });
+
+  it.skipIf(process.platform === "win32")("rejects symbolic links and leaves the target unchanged", async () => {
+    const envPath = await fixture();
+    const linked = envPath + ".link";
+    await symlink(envPath, linked);
+    await expect(configure(linked)).rejects.toMatchObject({ stderr: expect.stringContaining("ENV_FILE_UNAVAILABLE") });
+    expect(await readFile(envPath, "utf8")).toBe('JWT_SECRET="test-only"\n');
+  });
+
+  it.skipIf(process.platform === "win32")("rejects hardlinked environment files", async () => {
+    const envPath = await fixture();
+    await link(envPath, envPath + ".alias");
+    await expect(configure(envPath)).rejects.toMatchObject({ stderr: expect.stringContaining("ENV_FILE_UNSAFE") });
+    expect(await readFile(envPath, "utf8")).toBe('JWT_SECRET="test-only"\n');
+  });
+
+  it.skipIf(process.platform !== "win32")("fails closed on Windows without O_NOFOLLOW", async () => {
+    const envPath = await fixture();
+    await expect(configure(envPath)).rejects.toMatchObject({ stderr: expect.stringContaining("ENV_NOFOLLOW_UNSUPPORTED") });
+    expect(await readFile(envPath, "utf8")).toBe('JWT_SECRET="test-only"\n');
   });
 
   it("keeps the GitHub secret out of argv and binds only environment-scoped values", async () => {

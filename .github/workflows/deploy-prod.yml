@@ -72,7 +72,7 @@ jobs:
         run: npm test --workspace=@eclipse-chat/server
 
       - name: UI and release contracts
-        run: node --test deploy/scripts/ui-shell-contract.test.mjs deploy/scripts/workspace-polish.test.mjs deploy/scripts/task-flow.test.mjs deploy/scripts/conversation-flow.test.mjs deploy/scripts/workspace-navigation.test.mjs
+        run: node --test deploy/scripts/ui-shell-contract.test.mjs deploy/scripts/workspace-polish.test.mjs deploy/scripts/task-flow.test.mjs deploy/scripts/conversation-flow.test.mjs deploy/scripts/workspace-navigation.test.mjs deploy/scripts/voice-room-ui.test.mjs deploy/scripts/managed-environment.test.mjs
 
       - name: Production build (server + web)
         run: npm run build
@@ -131,7 +131,7 @@ jobs:
           username: ${{ secrets.DEPLOY_USER_PROD }}
           key: ${{ secrets.SSH_PRIVATE_KEY_PROD }}
           command_timeout: 15m
-          envs: OFFICE_INGEST_SENTINEL_ENABLED,OFFICE_INGEST_SENTINEL_SECRET,OFFICE_INGEST_SENTINEL_KEY_ID,OFFICE_INGEST_SENTINEL_PRODUCER_ID,OFFICE_INGEST_SENTINEL_WORKSPACE_ID
+          envs: ECLIPSE_RELEASE_SHA,OFFICE_INGEST_SENTINEL_ENABLED,OFFICE_INGEST_SENTINEL_SECRET,OFFICE_INGEST_SENTINEL_KEY_ID,OFFICE_INGEST_SENTINEL_PRODUCER_ID,OFFICE_INGEST_SENTINEL_WORKSPACE_ID
           script: |
             set -e
             cd /var/www/eclipse-chat
@@ -141,6 +141,16 @@ jobs:
             set -euo pipefail
             umask 077
             set -o noclobber
+            # The privileged env reader requires a trusted, non-writable parent chain.
+            env_parent=/var/www/eclipse-chat/apps/server
+            while [[ "$env_parent" != "/" ]]; do
+              test "$(readlink -f "$env_parent")" = "$env_parent"
+              test "$(stat -c %u "$env_parent")" = 0
+              parent_mode=$(stat -c %a "$env_parent")
+              test "$((8#$parent_mode & 0022))" -eq 0
+              env_parent=$(dirname "$env_parent")
+            done
+            echo "Verified root-owned, non-writable environment parent chain"
             # Confirm the targets against both production app and backup configuration.
             grep -Eq "^DB_CONNECTION=['\"]?pgsql['\"]?[[:space:]]*$" /var/www/app.star-crm.ru/backend/.env
             grep -Eq "^DB_HOST=['\"]?127[.]0[.]0[.]1['\"]?[[:space:]]*$" /var/www/app.star-crm.ru/backend/.env
@@ -170,11 +180,14 @@ jobs:
             done
             ECLIPSE_RELEASE_BACKUP
             echo "==> Pre-pull (workflow bootstrap, до deploy.sh)"
+            test "$(printf %s "$ECLIPSE_RELEASE_SHA" | grep -Ec '^[0-9a-f]{40}$')" = 1
             git fetch origin master
-            git reset --hard origin/master
+            test "$(git rev-parse origin/master)" = "$ECLIPSE_RELEASE_SHA"
+            git reset --hard "$ECLIPSE_RELEASE_SHA"
             echo "==> Running deploy/scripts/deploy.sh"
             bash deploy/scripts/deploy.sh
         env:
+          ECLIPSE_RELEASE_SHA: ${{ github.sha }}
           OFFICE_INGEST_SENTINEL_ENABLED: ${{ vars.OFFICE_INGEST_SENTINEL_ENABLED }}
           OFFICE_INGEST_SENTINEL_SECRET: ${{ secrets.OFFICE_INGEST_SENTINEL_20260824_SECRET }}
           OFFICE_INGEST_SENTINEL_KEY_ID: ${{ vars.OFFICE_INGEST_SENTINEL_KEY_ID }}

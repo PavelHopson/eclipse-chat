@@ -1,5 +1,5 @@
 import { generateSecret as otplibGenerateSecret, generateURI, verify as otplibVerify } from "otplib";
-import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from "node:crypto";
+import { createCipheriv, createDecipheriv, randomBytes, randomInt, scryptSync } from "node:crypto";
 import bcrypt from "bcryptjs";
 import QRCode from "qrcode";
 
@@ -109,10 +109,9 @@ export async function generateRecoveryCodes(): Promise<{
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   const codes: string[] = [];
   for (let i = 0; i < 10; i++) {
-    const buf = randomBytes(10);
     let code = "";
     for (let j = 0; j < 10; j++) {
-      code += alphabet[buf[j] % alphabet.length];
+      code += alphabet[randomInt(alphabet.length)];
     }
     codes.push(code.slice(0, 5) + "-" + code.slice(5));
   }

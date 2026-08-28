@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 
 import { randomUUID } from "node:crypto";
-import { chmod, chown, lstat, readFile, rename, unlink, writeFile } from "node:fs/promises";
+import { chmod, chown, rename, unlink, writeFile } from "node:fs/promises";
+import { readManagedEnvironment } from "./managed-environment.mjs";
 import { basename, dirname, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -107,9 +108,7 @@ function validateInput({ keyId, producerId, workspaceId, secret }) {
 
 async function readEnvironmentState(envPath) {
   const target = resolve(envPath);
-  const stat = await lstat(target).catch(() => fail("ENV_FILE_UNAVAILABLE"));
-  if (!stat.isFile() || stat.isSymbolicLink() || stat.size > MAX_ENV_BYTES) fail("ENV_FILE_UNSAFE");
-  const original = await readFile(target, "utf8");
+  const { stat, original } = await readManagedEnvironment(target, MAX_ENV_BYTES, fail);
   const newline = original.includes("\r\n") ? "\r\n" : "\n";
   const hadFinalNewline = original.endsWith("\n");
   const lines = original.split(/\r?\n/u);

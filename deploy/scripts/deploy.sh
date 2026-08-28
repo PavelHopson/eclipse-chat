@@ -8,7 +8,7 @@
 #
 #   ssh root@<prod>
 #   cd /var/www/eclipse-chat
-#   bash deploy/scripts/deploy.sh
+#   ECLIPSE_RELEASE_SHA=<validated-full-SHA> bash deploy/scripts/deploy.sh
 #
 # Шаги:
 #   [1/12] git fetch + reset --hard origin/master
@@ -104,8 +104,10 @@ echo "════════════════════════�
 
 echo
 echo "==> [1/12] git fetch + reset --hard origin/master"
+[[ "${ECLIPSE_RELEASE_SHA:-}" =~ ^[0-9a-f]{40}$ ]] || { echo "Missing validated release SHA"; exit 1; }
 git fetch origin master
-git reset --hard origin/master
+[[ "$(git rev-parse origin/master)" == "$ECLIPSE_RELEASE_SHA" ]] || { echo "Refusing stale release"; exit 1; }
+git reset --hard "$ECLIPSE_RELEASE_SHA"
 echo "    HEAD: $(git log -1 --oneline)"
 
 echo

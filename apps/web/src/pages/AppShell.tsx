@@ -1987,7 +1987,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                   </span>
                 </>
               )}
-              {music.session && (
+              {music.session && !(selectedChannel.type === "VOICE" && voiceHealth.enabled) && (
                 // v0.72: убрано исключение для VOICE — теперь music
                 // работает и в voice-каналах (synchronous listening
                 // во время голосового созвона). Backend разрешил VOICE.
@@ -2006,7 +2006,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                   кнопка «Запустить музыку» открывает picker. Для TEXT
                   каналов это не нужно (можно нажать «Слушать вместе»
                   на любом audio attachment в чате). */}
-              {!music.session && selectedChannel.type === "VOICE" && (
+              {!music.session && selectedChannel.type === "VOICE" && !voiceHealth.enabled && (
                 <button
                   type="button"
                   onClick={() => setShowVoiceMusicPicker(true)}
@@ -2609,7 +2609,20 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               occupants={selectedVoiceOccupants}
               activeVoiceChannelName={activeVoiceChannelName}
               voice={voice}
+              embedded
               musicSession={music.session}
+              musicPlayer={music.session ? (
+                <MusicMiniPlayer
+                  session={music.session}
+                  derivedPositionMs={music.derivedPositionMs}
+                  isHost={music.session.host.id === user.id}
+                  onTogglePlayPause={() => void music.togglePlayPause()}
+                  onSkip={() => void music.skip()}
+                  onSeek={(ms) => void music.seek(ms)}
+                  onStop={() => void music.stop()}
+                  onExpand={() => setShowMusicExpand(true)}
+                />
+              ) : null}
               onOpenMusicPicker={() => setShowVoiceMusicPicker(true)}
               onOpenMusicExpand={music.session ? () => setShowMusicExpand(true) : undefined}
               onOpenProfile={setViewedProfileUserId}
@@ -2660,6 +2673,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                   disabled={!isReady}
                   sendDisabled={!connection.connected}
                   hideSlashCommands
+                  placeholder="Написать сообщение…"
                   mentionNames={members.map((m) => m.user.displayName)}
                   customEmojis={customEmojis}
                   onSend={(content, attachments, actionItem) =>

@@ -5,17 +5,57 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-## v1.7.65 — Conversation workspace (2026-08-28, подготовка разрешённого релиза)
+## v1.7.66 — Voice workspace + security hardening (2026-08-28, подготовка релиза)
+
+Пользователь разрешил исправить security-блокеры и завершить production rollout.
+Релиз заменяет ожидающий v1.7.65: включает conversation/task-слайсы и согласованный
+редизайн голосовой комнаты. До подтверждённой выкладки production остаётся 1.7.64.
+
+- [x] No-follow descriptor reader, проверки владельца/прав/размера, безопасные имена загрузок, unbiased credential sampling и single-pass entity decode.
+- [x] Штатный deploy привязан к точному проверенному SHA; approval, backup и rollback сохранены.
+- [ ] Clean release snapshot, Linux CI/security, CodeQL review и desktop/mobile smoke.
+- [ ] Production approve, точный SHA/bundle/version/health и запись результата.
+
+Детали: docs/releases/v1.7.66.md и docs/security/v1.7.66-release-security.md.
+Ниже сохранена история подготовки предыдущих слайсов.
+
+## v1.7.65 — Conversation workspace (2026-08-28, заменён релизом 1.7.66)
 
 Пользователь разрешил production-публикацию трёх локальных слайсов ниже: Message → task, Conversation flow и Workspace navigation. Цель — существующая master и штатный Deploy PROD с approval gate. Локальный preview, fixtures, screenshots, logs и прочие несвязанные dirty files не входят в release commit. Версия production до подтверждённого deploy остаётся v1.7.64.
 
 - [x] Бамп root/web/server manifests, lockfile и SW cache до 1.7.65; backend уже читает server manifest, hardcode не возвращается.
 - [x] UI-контракты проверяют production-компоненты без зависимости от локальных demo-файлов.
 - [x] Clean release snapshot: typecheck, 40 UI / 376 server / 15 security tests, web/server build и полный dependency audit (0). Anonymous desktop/mobile entry smoke пройден.
-- [ ] CI + Security Gate зелёные; verified database backups перед checkout mutation; штатный production approve/deploy.
+- [x] Release commit 45f7209 отправлен в master; CI, Security Gate и deploy validate зелёные.
+- [ ] Production approve/deploy остановлен: прямой CodeQL alerts review обнаружил существующие High findings, не блокирующие зелёный job. Требуется отдельный security-патч/триаж; предупреждения не скрывались. См. docs/security/v1.7.65-release-triage.md.
+- [ ] Verified database backups перед checkout mutation и штатный production approve/deploy после закрытия blocker.
 - [ ] Exact commit/bundle/version/health и desktop/mobile production smoke.
 
 Release scope и safety: docs/releases/v1.7.65.md. Следующие локальные QA-секции сохранены как исторические доказательства до публикации.
+
+## Voice room refinement — 2026-08-28 (локально, не опубликовано)
+
+Следующий согласованный слайс также реализован локально:
+
+- [x] Сцена по высоте комнаты, закрепление источника, доступная лента участников и изменение ширины чата мышью/клавиатурой.
+- [x] Ясные подписи режимов/управления, отдельный статус демонстрации и остановка экрана.
+- [x] Проверка микрофона по явному действию с очисткой ресурсов; вход без первоначального захвата микрофона.
+- [x] Eclipse-корона по уровню речи, остановка при hidden/reduced-motion; короткое появление участников.
+- [x] Непрочитанное и упоминания в скрытом чате, сохранение места чтения.
+- [x] Читаемые названия треков и опциональное локальное приглушение музыки при речи без изменения общей очереди.
+- [x] 62 UI/security контракта, пять browser suites, web/server typecheck/build, audit 0.
+
+QA следующего слайса: docs/design/voice-experience-qa-2026-08-28.md. Реальный звонок/native smoke и release security blockers остаются открытыми.
+
+- [x] Одна шапка комнаты, один настоящий музыкальный плеер и одна видимая кнопка подключения.
+- [x] Постоянное управление звонком в режимах «Вместе / Эфир / Чат»; звук, диагностика и устройства раскрываются отдельно.
+- [x] Адаптивная раскладка по доступной ширине комнаты, компактные участники, видео без наложения на миниатюры и чат без обрезания.
+- [x] Сохранены задачи, переписка, музыка, обработчики звонка и выхода; media state ограничен выбранной активной комнатой.
+- [x] 55 UI/security контрактов, typecheck и web/server build, audit (0), четыре browser suites; desktop/mobile 320–1920 px, клавиатура и reduced motion.
+- [ ] Реальный многопользовательский звонок и native desktop smoke перед выпуском.
+- [ ] Production только после отдельного разрешения и решения существующих security blockers v1.7.65. Этот слайс не коммитился и не публиковался.
+
+Доказательства и границы проверки: docs/design/voice-room-qa-2026-08-28.md.
 
 ## Workspace navigation — 2026-08-28 (локально, не опубликовано)
 

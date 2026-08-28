@@ -175,6 +175,7 @@ export function useVoice(socket: Socket | null = null) {
   const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const micCaptureAllowedRef = useRef(true);
   const [isMicMuted, setIsMicMuted] = useState(false);
   const [isDeafened, setIsDeafened] = useState(false);
   const [isCameraEnabled, setIsCameraEnabled] = useState(false);
@@ -463,7 +464,7 @@ export function useVoice(socket: Socket | null = null) {
 
   useEffect(() => {
     const r = roomRef.current;
-    if (!r || state !== "connected") return;
+    if (!r || state !== "connected" || !micCaptureAllowedRef.current) return;
 
     const published = publishedMicConfigRef.current;
     const nextEnhancerMode =
@@ -570,13 +571,15 @@ export function useVoice(socket: Socket | null = null) {
   }, []);
 
   const join = useCallback(
-    async (channelId: string): Promise<boolean> => {
+    async (channelId: string, options: { muted?: boolean } = {}): Promise<boolean> => {
       setError(null);
       if (busy) return false;
       if (activeChannelId === channelId && state === "connected") return true;
       if (roomRef.current) {
         await leave();
       }
+      micCaptureAllowedRef.current = !options.muted;
+      setIsMicMuted(Boolean(options.muted));
       setBusy(true);
       let voiceJoinEmitted = false;
       try {
@@ -740,13 +743,14 @@ export function useVoice(socket: Socket | null = null) {
         // LiveKit; muted-состояние сразу выставляется ниже).
         try {
           const isPtt = settingsRef.current.micActivationMode === "push_to_talk";
-          await applyLocalMicrophoneSettings(r, isPtt);
+          if (!options.muted) await applyLocalMicrophoneSettings(r, isPtt);
+          else setIsMicMuted(true);
 
           // v1.1.75 — PTT: трек опубликован (+ enhancer уже прикреплён),
           // глушим его до первого нажатия клавиши через
           // mediaStreamTrack.enabled=false. PTT-хендлеры дальше толкают
           // тот же флаг — enhancer-цепочка переживает нажатия.
-          if (isPtt) {
+          if (isPtt && !options.muted) {
             try {
               const lkm = await import("livekit-client");
               const ms = r.localParticipant
@@ -806,13 +810,16 @@ export function useVoice(socket: Socket | null = null) {
     if (!r) return;
     try {
       const next = !isMicMuted;
-      await r.localParticipant.setMicrophoneEnabled(!next);
+      if (!next && !micCaptureAllowedRef.current) {
+        micCaptureAllowedRef.current = true;
+        await applyLocalMicrophoneSettings(r, false);
+      } else await r.localParticipant.setMicrophoneEnabled(!next);
       setIsMicMuted(next);
       refreshParticipants();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Не удалось переключить микрофон");
     }
-  }, [isMicMuted, refreshParticipants]);
+  }, [isMicMuted, refreshParticipants, applyLocalMicrophoneSettings]);
 
   const toggleDeafen = useCallback(() => {
     const next = !isDeafened;
@@ -894,6 +901,8 @@ export function useVoice(socket: Socket | null = null) {
     });
 
     const setMicLive = (live: boolean) => {
+      if (!live && !micCaptureAllowedRef.current) return;
+      if (live) micCaptureAllowedRef.current = true; // Explicit PTT press.
       const r = roomRef.current;
       const ms =
         lkMod && r
@@ -1254,7 +1263,16 @@ export function useVoice(socket: Socket | null = null) {
     return out;
   }, []);
 
+  const getSpeechLevel = useCallback((identity: string): number => {
+    const active = roomRef.current;
+    if (!active) return 0;
+    const people = [active.localParticipant, ...active.remoteParticipants.values()];
+    const person = people.find(candidate => parseVoiceParticipantProfile(candidate).userId === identity);
+    return person?.audioLevel ?? 0;
+  }, []);
+
   return {
+    getSpeechLevel,
     state,
     participants,
     activeChannelId,

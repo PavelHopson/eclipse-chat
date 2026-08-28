@@ -38,4 +38,4 @@ jobs:
         run: npm run test -w @eclipse-chat/server
 
       - name: UI and release contracts
-        run: node --test deploy/scripts/ui-shell-contract.test.mjs deploy/scripts/workspace-polish.test.mjs deploy/scripts/task-flow.test.mjs deploy/scripts/conversation-flow.test.mjs deploy/scripts/workspace-navigation.test.mjs
+        run: node --test deploy/scripts/ui-shell-contract.test.mjs deploy/scripts/workspace-polish.test.mjs deploy/scripts/task-flow.test.mjs deploy/scripts/conversation-flow.test.mjs deploy/scripts/workspace-navigation.test.mjs deploy/scripts/voice-room-ui.test.mjs deploy/scripts/managed-environment.test.mjs
