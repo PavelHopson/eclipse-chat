@@ -57,6 +57,7 @@ export type SinceLastVisitAiSummary = {
 
 export function useSinceLastVisit(channelId: string | null) {
   const [data, setData] = useState<SinceLastVisitData | null>(null);
+  const [dataChannelId, setDataChannelId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [aiSummary, setAiSummary] = useState<SinceLastVisitAiSummary | null>(null);
@@ -80,7 +81,7 @@ export function useSinceLastVisit(channelId: string | null) {
       { method: "POST" },
     )
       .then((d) => {
-        if (!cancelled) setData(d);
+        if (!cancelled) { setData(d); setDataChannelId(channelId); }
       })
       .catch((e) => {
         if (!cancelled) {
@@ -124,7 +125,7 @@ export function useSinceLastVisit(channelId: string | null) {
   };
 
   return {
-    data,
+    data: dataChannelId === channelId ? data : null,
     loading,
     error,
     dismiss,

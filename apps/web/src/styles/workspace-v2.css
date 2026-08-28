@@ -4,6 +4,7 @@
  * LogoutButton is intentionally excluded: this file contains no logout selectors.
  */
 
+.ec-discussion-backdrop.ec-workspace-v2,
 .ec-shell.ec-workspace-v2 {
   --ec-ws-canvas: var(--ef-brand-bg, #05070a);
   --ec-ws-rail: #06090d;
@@ -25,6 +26,7 @@
   font-family: var(--ef-font-body, var(--ec-font-sans));
 }
 
+html[data-ec-theme="solar"] .ec-discussion-backdrop.ec-workspace-v2,
 html[data-ec-theme="solar"] .ec-shell.ec-workspace-v2 {
   --ec-ws-canvas: var(--ec-bg);
   --ec-ws-rail: var(--ec-surface-1);

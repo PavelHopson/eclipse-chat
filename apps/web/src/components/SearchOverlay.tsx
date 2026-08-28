@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Avatar } from "./Avatar";
+import { ConversationState } from "./ConversationState";
+import { EclipseUiIcon } from "./icons/EclipseUiIcon";
+import { localDateInput } from "../lib/conversationNavigation";
+import { ACTION_KIND } from "../lib/actionDraft";
 import { EmptyState } from "./EmptyState";
 import { EmptySearchIcon } from "./EmptyIcons";
 import { resolveAssetUrl } from "../lib/assets";
@@ -31,6 +35,7 @@ type Props = {
   loading: boolean;
   error: string | null;
   onSelectMessage: (hit: SearchMessageHit) => void;
+  onRetry?: () => void;
   onSelectAction: (hit: SearchActionHit) => void;
   onSelectFile: (hit: SearchFileHit) => void;
   onSelectMemory: (hit: SemanticMemoryHit) => void;
@@ -156,6 +161,7 @@ function humanSize(bytes: number): string {
 }
 
 export function SearchOverlay({
+  onRetry,
   query,
   setQuery,
   results,
@@ -173,8 +179,29 @@ export function SearchOverlay({
   quickItems = [],
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+  const [preview, setPreview] = useState<
+    { kind: "message"; hit: SearchMessageHit } | { kind: "action"; hit: SearchActionHit } | { kind: "file"; hit: SearchFileHit } | null
+  >(null);
+  const previewRef = useRef(preview);
+  previewRef.current = preview;
+  const previewTitleRef = useRef<HTMLHeadingElement>(null);
+  const resultTriggerRef = useRef<HTMLElement | null>(null);
+  const choosePreview = (next: NonNullable<typeof preview>) => {
+    resultTriggerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setPreview(next);
+  };
+  const closePreview = () => {
+    setPreview(null);
+    requestAnimationFrame(() => resultTriggerRef.current?.focus({ preventScroll: true }));
+  };
+  useEffect(() => { if (preview) previewTitleRef.current?.focus(); }, [preview]);
+  useEffect(() => { setPreview(null); }, [query, filters?.since, filters?.until, filters?.channelId]);
   const quickButtonRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const [tab, setTab] = useState<Tab>("messages");
+  useEffect(() => { setPreview(null); }, [tab]);
   const [activeQuickIndex, setActiveQuickIndex] = useState(0);
   const [recentQuickIds, setRecentQuickIds] = useState<string[]>(readQuickRecentIds);
   const semantic = useSemanticSearch(
@@ -196,18 +223,33 @@ export function SearchOverlay({
     [results, semantic.hits.length, semantic.memoryHits.length],
   );
 
+  const autoQuery = useRef("");
   useEffect(() => {
-    if (tab === "semantic") return; // pure user-choice
+    if (loading) { autoQuery.current = query; return; }
+    if (query !== autoQuery.current || query.trim().length < 2) return;
+    autoQuery.current = "";
+    if (tab === "semantic") return;
     if (counts[tab] > 0) return;
     if (counts.messages > 0) setTab("messages");
     else if (counts.actions > 0) setTab("actions");
     else if (counts.files > 0) setTab("files");
-  }, [counts, tab]);
+  }, [counts, query, loading]);
 
   useEffect(() => {
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     inputRef.current?.focus();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        e.preventDefault();
+        if (previewRef.current) { setPreview(null); requestAnimationFrame(() => resultTriggerRef.current?.focus({ preventScroll: true })); }
+        else closeRef.current();
+      }
+      if (e.key !== "Tab") return;
+      const nodes = Array.from(panelRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), summary, a[href], [tabindex="0"]') ?? [])
+        .filter(node => node.getClientRects().length > 0);
+      const first = nodes[0], last = nodes.at(-1);
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); }
     };
     document.addEventListener("keydown", onKey);
     const prevOverflow = document.body.style.overflow;
@@ -215,8 +257,9 @@ export function SearchOverlay({
     return () => {
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = prevOverflow;
+      if (previous?.isConnected) previous.focus({ preventScroll: true });
     };
-  }, [onClose]);
+  }, []);
 
   const truncated = query.trim().length >= 2;
   const totalHits = counts.messages + counts.actions + counts.files;
@@ -318,24 +361,26 @@ export function SearchOverlay({
 
   return (
     <div
-      className="ec-search-overlay"
+      className="ec-search-overlay ec-search-refined"
       onClick={(e) => e.target === e.currentTarget && onClose()}
       role="dialog"
       aria-modal="true"
       aria-label="Операционный поиск"
     >
-      <div className="ec-search-panel">
+      <div ref={panelRef} className={"ec-search-panel" + (preview ? " has-preview" : "")}>
         <div className="ec-server-header-edge ec-search-bar">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ec-accent)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ filter: "drop-shadow(0 0 4px hsl(258 90% 66% / 0.4))" }}>
-            <circle cx="11" cy="11" r="8" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
+          <EclipseUiIcon name="search" size={20} />
           <input
             ref={inputRef}
             type="search"
+            aria-label="Поиск в пространстве"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => {
+              if (truncated && e.key === "ArrowDown") {
+                const first = panelRef.current?.querySelector<HTMLButtonElement>(".ec-search-hit");
+                if (first) { e.preventDefault(); first.focus(); return; }
+              }
               if (quickMatches.length === 0) return;
               if (e.key === "ArrowDown") {
                 e.preventDefault();
@@ -366,17 +411,20 @@ export function SearchOverlay({
             }
           />
           <span className="ec-kbd">↑↓ Enter · Esc</span>
+          <button type="button" className="ec-icon-btn" onClick={onClose} aria-label="Закрыть поиск"><EclipseUiIcon name="close" size={20} /></button>
         </div>
 
         {/* v1.5.23 — filter row: date range + channel select. Виден всегда
             если filters props переданы (нет filters → backward compat). */}
         {filters && onChangeFilters && (
+          <details className="ec-search-filter-disclosure">
+          <summary>Фильтры <span>{[filters.since, filters.until, filters.channelId].filter(Boolean).length || ""}</span><EclipseUiIcon name="chevron" size={14} /></summary>
           <div className="ec-search-filters" role="group" aria-label="Фильтры">
             <label className="ec-search-filter">
               <span className="ec-search-filter__label">С</span>
               <input
                 type="datetime-local"
-                value={filters.since ? filters.since.slice(0, 16) : ""}
+                value={localDateInput(filters.since)}
                 onChange={(e) =>
                   onChangeFilters({
                     ...filters,
@@ -393,7 +441,7 @@ export function SearchOverlay({
               <span className="ec-search-filter__label">По</span>
               <input
                 type="datetime-local"
-                value={filters.until ? filters.until.slice(0, 16) : ""}
+                value={localDateInput(filters.until)}
                 onChange={(e) =>
                   onChangeFilters({
                     ...filters,
@@ -439,14 +487,21 @@ export function SearchOverlay({
                 title="Сбросить фильтры"
                 aria-label="Сбросить фильтры"
               >
-                ✕
+                <EclipseUiIcon name="close" size={16} />
               </button>
             )}
           </div>
+          </details>
         )}
 
-        {truncated && (totalHits > 0 || semanticAvailable) && (
-          <div className="ec-search-tabs" role="tablist">
+        {truncated && (
+          <div className="ec-search-tabs" role="tablist" aria-label="Тип результатов" onKeyDown={event => {
+            if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+            const tabs = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]'));
+            const current = tabs.indexOf(document.activeElement as HTMLButtonElement);
+            const next = event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : (current + (event.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length;
+            event.preventDefault(); tabs[next]?.focus(); tabs[next]?.click();
+          }}>
             <button
               type="button"
               role="tab"
@@ -498,7 +553,7 @@ export function SearchOverlay({
         )}
 
         {quickMatches.length > 0 && (
-          <div className="ec-command-palette" aria-label="Быстрые переходы">
+          <div className={"ec-command-palette" + (truncated ? " is-query" : "")} aria-label="Быстрые переходы">
             <div className="ec-command-palette__head">
               <span>Быстрые переходы</span>
               <span>{query.trim() ? "по запросу" : "основные места"}</span>
@@ -549,7 +604,7 @@ export function SearchOverlay({
                           onMouseEnter={() => setActiveQuickIndex(index)}
                         >
                           <span className="ec-command-palette__glyph" aria-hidden>
-                            {meta.glyph}
+                            <EclipseUiIcon name={item.kind === "settings" ? "settings" : item.kind === "channel" ? "create-channel" : item.kind === "dm" ? "chat" : item.kind === "table" ? "overview" : "arrow"} size={18} />
                           </span>
                           <span className="ec-command-palette__body">
                             <span className="ec-command-palette__label">{item.label}</span>
@@ -570,7 +625,17 @@ export function SearchOverlay({
           </div>
         )}
 
-        <div className="ec-search-list">
+        <div className="ec-search-body">
+        <div className="ec-search-list" role="tabpanel" aria-label="Результаты поиска" aria-busy={loading} onKeyDown={event => {
+          if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
+          const rows = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>(".ec-search-hit"));
+          if (!rows.length) return;
+          const index = rows.indexOf(document.activeElement as HTMLButtonElement);
+          if (index < 0) return;
+          event.preventDefault();
+          const next = event.key === "Home" ? 0 : event.key === "End" ? rows.length - 1 : (index + (event.key === "ArrowDown" ? 1 : -1) + rows.length) % rows.length;
+          rows[next]?.focus();
+        }}>
           {!truncated && quickMatches.length === 0 && (
             <EmptyState
               icon={<EmptySearchIcon />}
@@ -580,39 +645,35 @@ export function SearchOverlay({
             />
           )}
           {truncated && loading && (
-            <p className="ec-search-hint">Ищу…</p>
+            <ConversationState kind="loading" title="Ищем в пространстве…" />
           )}
           {truncated && !loading && error && (
-            <p className="ec-search-hint ec-search-hint--error">{error}</p>
+            <ConversationState kind="error" title="Поиск временно недоступен" detail="Запрос и фильтры сохранены. Попробуйте ещё раз." onRetry={onRetry} />
           )}
-          {truncated && !loading && !error && totalHits === 0 && quickMatches.length === 0 && (
-            <EmptyState
-              icon={<EmptySearchIcon />}
-              title="Ничего не найдено"
-              hint="Попробуйте название канала, имя диалога или раздел настроек."
-              compact
-            />
+          {truncated && !loading && !error && tab !== "semantic" && counts[tab] === 0 && (
+            <ConversationState kind="empty" title="Совпадений нет" detail="Попробуйте другое слово или расширьте фильтры."
+              onRetry={filters && onChangeFilters && (filters.since || filters.until || filters.channelId) ? () => onChangeFilters({ since: null, until: null, channelId: null }) : undefined} actionLabel="Сбросить фильтры" />
           )}
 
           {truncated && !loading && !error && totalHits > 0 && tab === "messages" && (
             <MessageList
               hits={results.messages}
               query={query}
-              onSelect={onSelectMessage}
+              onSelect={hit => choosePreview({ kind: "message", hit })}
             />
           )}
           {truncated && !loading && !error && totalHits > 0 && tab === "actions" && (
             <ActionList
               hits={results.actions}
               query={query}
-              onSelect={onSelectAction}
+              onSelect={hit => choosePreview({ kind: "action", hit })}
             />
           )}
           {truncated && !loading && !error && totalHits > 0 && tab === "files" && (
             <FileList
               hits={results.files}
               query={query}
-              onSelect={onSelectFile}
+              onSelect={hit => choosePreview({ kind: "file", hit })}
             />
           )}
           {truncated && tab === "semantic" && (
@@ -625,7 +686,7 @@ export function SearchOverlay({
               mode={semantic.mode}
               onSelectMemory={onSelectMemory}
               onSelect={(h) =>
-                onSelectMessage({
+                choosePreview({ kind: "message", hit: {
                   // адаптируем под SearchMessageHit shape — все нужные поля есть.
                   // slug не передаётся бэкендом — fallback на channelId (для
                   // onSelectMessage важна только channel.id для навигации).
@@ -643,10 +704,34 @@ export function SearchOverlay({
                     displayName: h.displayName ?? "—",
                     avatar: h.avatar,
                   },
-                })
+                } })
               }
             />
           )}
+        </div>
+        {preview && <section className="ec-search-preview" aria-label="Просмотр результата">
+          <div className="ec-search-preview__head">
+            <button type="button" onClick={closePreview}><EclipseUiIcon name="reply" size={16} />К результатам</button>
+            <span>#{preview.hit.channel.name}</span>
+          </div>
+          <h3 ref={previewTitleRef} tabIndex={-1}>{preview.kind === "message" ? preview.hit.user.displayName : preview.kind === "action" ? preview.hit.title : preview.hit.filename}</h3>
+          {preview.kind !== "action" && <time dateTime={preview.hit.createdAt}>{formatHitDate(preview.hit.createdAt)}</time>}
+          {preview.kind === "message" && <div className="ec-search-preview__text">{highlight(preview.hit.content, query)}</div>}
+          {preview.kind === "action" && <>
+            <p>{ACTION_TYPE_META[preview.hit.type].label} · {preview.hit.assignee?.displayName ?? "Без ответственного"}</p>
+            <div className="ec-search-preview__text">{highlight(preview.hit.description ?? "Описание не добавлено.", query)}</div>
+            {preview.hit.dueAt && <p>Срок: {formatHitDate(preview.hit.dueAt)}</p>}
+          </>}
+          {preview.kind === "file" && <div className="ec-search-preview__file">
+            <EclipseUiIcon name="file" size={38} /><p>{humanSize(preview.hit.size)} · {preview.hit.mimeType}</p>
+            <p>Откройте исходное сообщение, чтобы посмотреть или скачать файл.</p>
+          </div>}
+          <button type="button" className="ec-search-preview__open" onClick={() => {
+            if (preview.kind === "message") onSelectMessage(preview.hit);
+            else if (preview.kind === "action") onSelectAction(preview.hit);
+            else onSelectFile(preview.hit);
+          }}>{preview.kind === "action" ? "Открыть задачу" : "Показать в переписке"}<EclipseUiIcon name="arrow" size={16} /></button>
+        </section>}
         </div>
       </div>
     </div>
@@ -951,7 +1036,7 @@ function ActionList({
                 fontFamily: "var(--ec-font-mono)",
               }}
             >
-              {meta.glyph}
+              <EclipseUiIcon name={ACTION_KIND[h.type].icon} size={19} />
             </span>
             <span style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
               <span style={{ display: "flex", alignItems: "baseline", gap: 8 }}>

@@ -58,18 +58,21 @@ export function useServerActions(serverId: string | null, socket: Socket | null)
     };
   }, [socket]);
 
-  /** Optimistic toggle OPEN↔DONE, серверный ответ прилетит через socket. */
+  /** Confirm the mutation before showing success; socket updates still reconcile the board. */
   const updateStatus = useCallback(
     async (id: string, status: import("../lib/socket").ActionItemStatus) => {
-      setActions((prev) => prev.map((a) => (a.id === id ? { ...a, status } : a)));
       try {
         await apiJson(`/api/actions/${encodeURIComponent(id)}`, {
           method: "PATCH",
           body: JSON.stringify({ status }),
         });
+        setActions((prev) => prev.map((a) => (a.id === id ? { ...a, status } : a)));
+        setError(null);
+        return true;
       } catch (e) {
         setError(e instanceof ApiError ? e.message : "Не удалось обновить задачу");
         void reload();
+        return false;
       }
     },
     [reload],

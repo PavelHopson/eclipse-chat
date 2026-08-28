@@ -7,6 +7,11 @@ import "../styles/app.css";
 import { Avatar } from "../components/Avatar";
 import { EclipsePointer } from "../components/EclipsePointer";
 import { EclipseUiIcon } from "../components/icons/EclipseUiIcon";
+import { ConnectionNotice } from "../components/ConnectionNotice";
+import { WorkspaceFocusButton } from "../components/WorkspaceFocusButton";
+import { useConversationConnection } from "../hooks/useConversationConnection";
+import { useWorkspaceLayout } from "../hooks/useWorkspaceLayout";
+import { readingAnchor } from "../lib/conversationNavigation";
 import { ChannelList } from "../components/ChannelList";
 import { RichContent } from "../components/RichContent";
 import { DirectConversationList } from "../components/DirectConversationList";
@@ -159,6 +164,8 @@ type Props = {
 
 export function AppShell({ user, socketRev, onLogout }: Props) {
   const socket = useSocket(socketRev);
+  const connection = useConversationConnection(socket);
+  const workspaceLayout = useWorkspaceLayout();
   const brandMarkUrl = `${import.meta.env.BASE_URL}brand-mark.svg`;
 
   const isReady = socket != null;
@@ -316,6 +323,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   /** v0.96 UX refactor: открыт ли ChannelInfoPanel overlay (Сводка/Память/
    *  Дела/Файлы) поверх MessageList. Раньше эти 4 вкладки жили в right rail. */
   const [infoPanelOpen, setInfoPanelOpen] = useState(false);
+  const [taskComposerRequest, setTaskComposerRequest] = useState(0);
   const [infoPanelTab, setInfoPanelTab] = useState<
     "summary" | "memory" | "execution" | "files"
   >("summary");
@@ -449,6 +457,13 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     parentMessageId?: string | null;
   } | null>(null);
   const [focusedMessageId, setFocusedMessageId] = useState<string | null>(null);
+  const [searchReturn, setSearchReturn] = useState<{ channelId: string; channelName: string; messageId: string } | null>(null);
+  const rememberSearchOrigin = () => {
+    if (!selectedChannel) return;
+    const messageId = readingAnchor(document.querySelector<HTMLElement>(".ec-shell__chat .ec-message-list"));
+    if (messageId) setSearchReturn({ channelId: selectedChannel.id, channelName: selectedChannel.name, messageId });
+  };
+  useEffect(() => { setSearchReturn(null); }, [activeServerId]);
   const [pendingMemoryChannelId, setPendingMemoryChannelId] = useState<string | null>(null);
   // Channel settings modal — id канала, который сейчас редактируется.
   const [settingsChannelId, setSettingsChannelId] = useState<string | null>(null);
@@ -497,6 +512,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     results: searchResults,
     loading: searchLoading,
     error: searchError,
+    retry: retrySearch,
     reset: searchReset,
   } = useSearch(activeServerId);
 
@@ -650,13 +666,15 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   // Правый rail сворачивается, чтобы не съедать ширину центра (особенно
   // в voice-immersive режиме). По умолчанию свёрнут в voice, развёрнут в chat.
   const [rightRailCollapsed, setRightRailCollapsed] = useState(false);
-  const rightRailVisible = showRightRail && !rightRailCollapsed;
 
   // v1.1.20: mobile breakpoint 900 → 1024 (sync с responsive.css).
   // Всё ≤1024px = single-column + drawers; промежуточный планшетный
   // 3-колоночный режим убран (cramped на large phones / low-DPI).
   const isMobile = useMediaQuery("(max-width: 1024px)");
   const isTabletOrSmaller = useMediaQuery("(max-width: 1024px)");
+  const dockedActionItem = Boolean(openActionItemId && showRightRail && !isTabletOrSmaller);
+  const layoutFocused = workspaceLayout.focused && (showRightRail || inDmMode);
+  const rightRailVisible = showRightRail && (Boolean(selectedThreadId) || dockedActionItem || (!rightRailCollapsed && !layoutFocused));
   const showAndroidApkShortcut = isMobile && isAndroidWebBrowser();
 
   useEffect(() => {
@@ -1162,10 +1180,72 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     user.id,
   ]);
 
+  const taskComposerChannel = selectedChannel?.type === "TEXT"
+    ? selectedChannel : channels.find(channel => channel.type === "TEXT");
+  const canStartTask = !isClientMode && Boolean(currentRole && hasPermission(currentRole, "TASK_CREATE")) && Boolean(taskComposerChannel);
+  const startTaskInComposer = () => {
+    if (!canStartTask || !taskComposerChannel) return;
+    setInfoPanelOpen(false);
+    setStatusBoardOpen(false);
+    setStatusBoardFilter(null);
+    setOpenActionItemId(null);
+    setServerView("chat");
+    setSelectedChannelId(taskComposerChannel.id);
+    setTaskComposerRequest(value => value + 1);
+    if (isMobile) setNavOpen(false);
+  };
+
+  const actionPanel = openActionItemId ? (
+        <ActionItemDrawer
+          key={openActionItemId}
+          docked={dockedActionItem}
+          actionItemId={openActionItemId}
+          socket={socket}
+          currentUserId={user.id}
+          members={members.map((m) => ({
+            userId: m.userId,
+            user: { displayName: m.user.displayName, avatar: m.user.avatar },
+          }))}
+          channelNameById={(cid) => channelNameById(cid) ?? null}
+          onClose={() => setOpenActionItemId(null)}
+          onJumpToSource={(channelId, messageId) => {
+            setPendingSourceJump({ channelId, messageId });
+            setOpenActionItemId(null);
+            setStatusBoardOpen(false);
+            setServerView("chat");
+            setSelectedChannelId(channelId);
+            if (isMobile) setNavOpen(false);
+          }}
+          serverActions={
+            activeServerId ? serverActions.actions : undefined
+          }
+          memorySaving={channelMemorySaving}
+          memorySuggesting={channelMemorySuggesting}
+          onSaveMemory={createMemoryEntryForChannel}
+          onSuggestMemory={suggestActionMemoryEntry}
+          onMemorySaved={(channelId) => {
+            setOpenActionItemId(null);
+            setStatusBoardOpen(false);
+            setServerView("chat");
+            if (channelId === selectedChannelId) {
+              setInfoPanelTab("memory");
+              setInfoPanelOpen(true);
+            } else {
+              pendingMemoryChannelRef.current = channelId;
+              setSelectedChannelId(channelId);
+            }
+            if (isMobile) setNavOpen(false);
+          }}
+        />
+  ) : null;
+
   const shellClass =
     "ec-shell ec-workspace-v2" +
     (homeOpen || agentOfficeOpen ? " ec-shell--home" : "") +
     (rightRailVisible ? " ec-shell--has-server" : "") +
+    (dockedActionItem ? " ec-shell--task-open" : "") +
+    (selectedThreadId && rightRailVisible ? " ec-shell--discussion-open" : "") +
+    (layoutFocused ? " ec-shell--focus-layout" : "") +
     (navOpen ? " ec-shell--nav-open" : "") +
     (membersOpen ? " ec-shell--members-open" : "");
 
@@ -1229,7 +1309,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   };
 
   return (
-    <div className={shellClass} data-visual-profile="operational">
+    <div className={shellClass} data-visual-profile="operational" style={{ "--ec-discussion-width": workspaceLayout.width + "px" } as React.CSSProperties}>
       <EclipsePointer />
       <div className="ec-visual-contract-signal" aria-hidden="true" />
       {/* Desktop global dock: surfaces, workspaces and scoped control. */}
@@ -1390,12 +1470,9 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               onClick={() => setShowSearch(true)}
               title="Поиск (Ctrl+K)"
               aria-label="Поиск"
-              className="ec-icon-btn"
+              className="ec-icon-btn ec-workspace-search"
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <circle cx="11" cy="11" r="8" />
-                <line x1="21" y1="21" x2="16.65" y2="16.65" />
-              </svg>
+              <EclipseUiIcon name="search" size={19} />
             </button>
           )}
           {isMobile && (currentRole === "OWNER" || currentRole === "ADMIN") &&
@@ -2089,6 +2166,16 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           )}
         </div>
 
+        <ConnectionNotice state={connection.state} onRetry={connection.retry} />
+        {(showRightRail || inDmMode) && <div className="ec-conversation-toolbar">
+          <WorkspaceFocusButton active={layoutFocused} onToggle={workspaceLayout.toggle} />
+          {layoutFocused && <span>Все сообщения на месте</span>}
+          {searchReturn && <button type="button" className="ec-conversation-return" onClick={() => {
+            setServerView("chat"); setSelectedChannelId(searchReturn.channelId);
+            setPendingSourceJump({ channelId: searchReturn.channelId, messageId: searchReturn.messageId });
+            setSearchReturn(null);
+          }}>Назад в #{searchReturn.channelName}</button>}
+        </div>}
         {(serversError || messagesError || dmError || dmMessagesError) && (
           <div className="ec-error-banner">
             {serversError ?? messagesError ?? dmError ?? dmMessagesError}
@@ -2137,6 +2224,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               displayName: member.user.displayName,
             }))}
             onCreateMemoryEntry={createChannelMemoryEntry}
+            onCreateTask={canStartTask && selectedChannel?.type === "TEXT" ? startTaskInComposer : undefined}
             onMemoryListStateChange={setChannelMemoryListState}
             onUpdateMemoryEntry={updateChannelMemoryEntry}
             onReviewMemoryEntry={reviewChannelMemoryEntry}
@@ -2166,7 +2254,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                 : null,
             }))}
             onToggleExecutionStatus={(id, status) =>
-              void updateActionItemStatus(id, status)
+              updateActionItemStatus(id, status)
             }
             onOpenAction={(id) => setOpenActionItemId(id)}
             clientMode={isClientMode}
@@ -2239,7 +2327,9 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             onReload={() => void serverActions.reload()}
             currentUserId={user.id}
             channelNameById={(cid) => channelNameById(cid)}
-            onUpdateStatus={(id, status) => void serverActions.updateStatus(id, status)}
+            onUpdateStatus={(id, status) => serverActions.updateStatus(id, status)}
+            onCreateTask={canStartTask ? startTaskInComposer : undefined}
+            createTaskLabel={"Создать в #" + taskComposerChannel?.name}
             onOpenChannel={(channelId) => {
               setStatusBoardOpen(false);
               setStatusBoardFilter(null);
@@ -2409,6 +2499,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                 placeholder={dmIsSaved(selectedDm) ? "Заметка в Избранное" : undefined}
                 draftKey={`dm:${selectedDm.id}`}
                 disabled={!isReady}
+                sendDisabled={!connection.connected}
                 hideSlashCommands
                 onSend={(content, attachments) => dmSend(content, senderForMessages, attachments)}
                 onTypingStart={dmEmitTypingStart}
@@ -2548,9 +2639,11 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                     onPin={pinMessage}
                     onUnpin={unpinMessage}
                     onToggleReaction={toggleReaction}
-                    onCreateAction={setActionDraftMessage}
+                      onCreateAction={setActionDraftMessage}
+                      onOpenAction={setOpenActionItemId}
                     onToggleActionStatus={updateActionItemStatus}
                     onOpenThread={(messageId) => {
+                      setOpenActionItemId(null);
                       setSelectedThreadId(messageId);
                       setRightRailCollapsed(false);
                       if (isTabletOrSmaller) setMembersOpen(true);
@@ -2565,6 +2658,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                   channelName={selectedChannel.name}
                   draftKey={`channel:${selectedChannel.id}`}
                   disabled={!isReady}
+                  sendDisabled={!connection.connected}
                   hideSlashCommands
                   mentionNames={members.map((m) => m.user.displayName)}
                   customEmojis={customEmojis}
@@ -2598,8 +2692,10 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             currentUserId={user.id}
             channelNameById={(cid) => channelNameById(cid)}
             onUpdateStatus={(id, status) =>
-              void serverActions.updateStatus(id, status)
+              serverActions.updateStatus(id, status)
             }
+            onCreateTask={canStartTask ? startTaskInComposer : undefined}
+            createTaskLabel={"Создать в #" + taskComposerChannel?.name}
             onOpenChannel={(channelId) => {
               setServerView("chat");
               setSelectedChannelId(channelId);
@@ -2709,6 +2805,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               ephemeralBanner={ephemeralBanner}
               onDismissEphemeralBanner={dismissEphemeralBanner}
               emptyHint={messagesLoading ? "Загрузка…" : undefined}
+              unreadSince={sinceLastVisit.data?.priorVisitAt}
+              activeThreadId={selectedThreadId}
               channelName={selectedChannel.name}
               channelTopBanner={activeServer?.banner ?? null}
               channelTopSubtitle={activeServer?.name ?? null}
@@ -2726,11 +2824,13 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               onUnpin={unpinMessage}
               onToggleReaction={toggleReaction}
               onCreateAction={setActionDraftMessage}
+              onOpenAction={setOpenActionItemId}
               onToggleActionStatus={updateActionItemStatus}
               onSaveToMemory={setMemoryDraftMessage}
               focusMessageId={focusedMessageId}
               onFocusHandled={() => setFocusedMessageId(null)}
               onOpenThread={(messageId) => {
+                setOpenActionItemId(null);
                 setSelectedThreadId(messageId);
                 // v0.46 fix: auto-expand right rail if collapsed —
                 // иначе click silent, ThreadPanel рендерится только
@@ -2769,7 +2869,11 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                 channelName={selectedChannel.name}
                 draftKey={`channel:${selectedChannel.id}`}
                 disabled={!isReady}
+                sendDisabled={!connection.connected}
                 hideSlashCommands={isClientMode}
+                canCreateActions={!isClientMode && Boolean(currentRole && hasPermission(currentRole, "TASK_CREATE"))}
+                taskRequest={taskComposerRequest}
+                onTaskRequestHandled={() => setTaskComposerRequest(0)}
                 mentionNames={members.map((m) => m.user.displayName)}
                 customEmojis={customEmojis}
                 onSend={(content, attachments, actionItem) =>
@@ -2788,7 +2892,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
         </Suspense>
       </section>
 
-      {showRightRail && rightRailCollapsed && !isTabletOrSmaller && (
+      {showRightRail && rightRailCollapsed && !isTabletOrSmaller && !dockedActionItem && (
         <button
           type="button"
           className="ec-rail-expand"
@@ -2807,16 +2911,23 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           {/* v1.6.32 — right rail trio fully lazy under Suspense:
            * Thread/Incident/IntelligencePanel грузятся только при mount. */}
           <Suspense fallback={null}>
-          {selectedThreadId ? (
+          {dockedActionItem ? actionPanel : selectedThreadId ? (
             <ThreadPanel
               rootId={selectedThreadId}
+              key={selectedThreadId}
               socket={socket}
               currentUser={user}
               currentUserName={headerName}
               currentUserAvatar={headerAvatar}
               mentionNames={members.map((m) => m.user.displayName)}
               customEmojis={customEmojis}
-              onClose={() => setSelectedThreadId(null)}
+              onClose={() => { setSelectedThreadId(null); if (isTabletOrSmaller) setMembersOpen(false); }}
+              sendDisabled={!connection.connected}
+              width={workspaceLayout.width} onResize={workspaceLayout.resize}
+              onJumpToSource={(channelId, messageId) => {
+                setSelectedThreadId(null); setMembersOpen(false);
+                setPendingSourceJump({ channelId, messageId });
+              }}
             />
           ) : (
             <IntelligencePanel
@@ -2853,46 +2964,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
        * Suspense с fallback={null} даёт чистый UX без визуальных blip'ов.
        * v1.6.32: StatusMenu тоже lazy, чтобы меню профиля не жило в initial AppShell. */}
       <Suspense fallback={null}>
-      {openActionItemId && (
-        <ActionItemDrawer
-          actionItemId={openActionItemId}
-          socket={socket}
-          currentUserId={user.id}
-          members={members.map((m) => ({
-            userId: m.userId,
-            user: { displayName: m.user.displayName, avatar: m.user.avatar },
-          }))}
-          channelNameById={(cid) => channelNameById(cid) ?? null}
-          onClose={() => setOpenActionItemId(null)}
-          onJumpToSource={(channelId, _messageId) => {
-            setOpenActionItemId(null);
-            setStatusBoardOpen(false);
-            setServerView("chat");
-            setSelectedChannelId(channelId);
-            if (isMobile) setNavOpen(false);
-          }}
-          serverActions={
-            activeServerId ? serverActions.actions : undefined
-          }
-          memorySaving={channelMemorySaving}
-          memorySuggesting={channelMemorySuggesting}
-          onSaveMemory={createMemoryEntryForChannel}
-          onSuggestMemory={suggestActionMemoryEntry}
-          onMemorySaved={(channelId) => {
-            setOpenActionItemId(null);
-            setStatusBoardOpen(false);
-            setServerView("chat");
-            if (channelId === selectedChannelId) {
-              setInfoPanelTab("memory");
-              setInfoPanelOpen(true);
-            } else {
-              pendingMemoryChannelRef.current = channelId;
-              setSelectedChannelId(channelId);
-            }
-            if (isMobile) setNavOpen(false);
-          }}
-        />
-      )}
+      {!dockedActionItem && actionPanel}
 
       {showVoiceMusicPicker && activeServerId && (
         <VoiceMusicPicker
@@ -3255,7 +3327,9 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           results={searchResults}
           loading={searchLoading}
           error={searchError}
+          onRetry={retrySearch}
           onSelectMessage={(hit) => {
+            rememberSearchOrigin();
             setFocusedMessageId(null);
             setHomeOpen(false);
             setServerView("chat");
@@ -3275,6 +3349,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             setOpenActionItemId(hit.id);
           }}
           onSelectFile={(hit) => {
+            rememberSearchOrigin();
             setFocusedMessageId(null);
             setHomeOpen(false);
             setServerView("chat");

@@ -1,5 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { MemberList } from "./MemberList";
+import { MessageActionChip } from "./MessageActionChip";
+import { EclipseUiIcon } from "./icons/EclipseUiIcon";
 import type { MemberRow } from "../hooks/useMembers";
 import type {
   ChannelMemoryEntry,
@@ -492,111 +494,26 @@ export function LegacyMemoryView({ items }: { items: PinnedMessageBrief[] }) {
   );
 }
 
-function execTypeMeta(type: import("../lib/socket").ActionItemType) {
-  if (type === "DECISION") return { glyph: "◆", color: "var(--ec-status-ai)" };
-  if (type === "FOLLOW_UP") return { glyph: "↻", color: "var(--ec-status-warn)" };
-  if (type === "RISK") return { glyph: "!", color: "var(--ec-status-risk)" };
-  if (type === "REQUIREMENT") return { glyph: "≡", color: "var(--ec-accent-2)" };
-  return { glyph: "□", color: "var(--ec-status-exec)" };
+export function ExecutionView({ items, onToggle, onOpen, onCreate }: {
+  items: ExecutionItemBrief[];
+  onToggle?: (id: string, status: import("../lib/socket").ActionItemStatus) => unknown | Promise<unknown>;
+  onOpen?: (actionItemId: string) => void;
+  onCreate?: () => void;
+}) {
+  return <div className="ec-execution-list">
+    {onCreate && <button type="button" className="ec-task-board__create" onClick={onCreate}>
+      <EclipseUiIcon name="plus" size={17} />Создать задачу
+    </button>}
+    {items.length === 0 ? <div className="ec-task-board__empty">
+      <EclipseUiIcon name="task" size={28} />
+      <h3>В комнате пока нет задач</h3>
+      <p>Задачи и решения, связанные с обсуждением, будут здесь.</p>
+    </div> : items.map(item => <MessageActionChip key={item.id} action={item} onOpen={onOpen}
+      onToggle={onToggle ? async (id, status) => (await onToggle(id, status)) !== false : undefined} />)}
+  </div>;
 }
 
-export function ExecutionView({
-  items,
-  onToggle,
-  onOpen,
-}: {
-  items: ExecutionItemBrief[];
-  onToggle?: (id: string, status: import("../lib/socket").ActionItemStatus) => void;
-  onOpen?: (actionItemId: string) => void;
-}) {
-  if (items.length === 0) {
-    return (
-      <p style={{ margin: 0, color: "var(--ec-text-dim)", fontSize: "var(--ec-text-sm)" }}>
-        Открытых задач, решений и follow-up в комнате нет. Набери в композере
-        «/task ...» / «/decision ...» / «/followup ...» — задача появится здесь
-        и в общей доске пространства.
-      </p>
-    );
-  }
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "var(--ec-space-2)" }}>
-      {items.map((a) => {
-        const meta = execTypeMeta(a.type);
-        const done = a.status === "DONE";
-        return (
-          <div
-            key={a.id}
-            onClick={() => onOpen?.(a.id)}
-            style={{
-              display: "grid",
-              gridTemplateColumns: "auto 1fr",
-              gap: 8,
-              padding: "var(--ec-space-2) var(--ec-space-3)",
-              borderRadius: "var(--ec-radius-md)",
-              background: "var(--ec-surface-2)",
-              border: "1px solid var(--ec-border-subtle)",
-              cursor: onOpen ? "pointer" : "default",
-            }}
-          >
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggle?.(a.id, done ? "OPEN" : "DONE");
-              }}
-              style={{
-                width: 16,
-                height: 16,
-                marginTop: 2,
-                borderRadius: "var(--ec-radius-xs)",
-                border: `1.5px solid ${done ? "var(--ec-status-exec)" : "var(--ec-border-emphasis)"}`,
-                background: done ? "var(--ec-status-exec)" : "transparent",
-                color: "var(--ec-accent-text)",
-                cursor: onToggle ? "pointer" : "default",
-                display: "grid",
-                placeItems: "center",
-              }}
-              aria-label={done ? "Открыть заново" : "Отметить выполненным"}
-            >
-              {done && (
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-              )}
-            </button>
-            <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
-              <span
-                style={{
-                  display: "flex",
-                  alignItems: "baseline",
-                  gap: 6,
-                  fontSize: "var(--ec-text-sm)",
-                  color: done ? "var(--ec-text-dim)" : "var(--ec-text)",
-                  textDecoration: done ? "line-through" : "none",
-                }}
-              >
-                <span aria-hidden style={{ color: meta.color, fontFamily: "var(--ec-font-mono)" }}>
-                  {meta.glyph}
-                </span>
-                <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
-                  {a.title}
-                </span>
-              </span>
-              {(a.assignee || a.dueAt) && (
-                <span style={{ fontSize: "var(--ec-text-2xs)", color: "var(--ec-text-dim)" }}>
-                  {a.assignee?.displayName ?? "без ответственного"}
-                  {a.dueAt
-                    ? ` · до ${new Date(a.dueAt).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}`
-                    : ""}
-                </span>
-              )}
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
+
 
 function humanSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;

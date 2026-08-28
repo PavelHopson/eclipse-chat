@@ -83,6 +83,8 @@ export function useSearch(serverId: string | null) {
   const [results, setResults] = useState<SearchResults>(EMPTY);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [revision, setRevision] = useState(0);
+  const retry = useCallback(() => setRevision(value => value + 1), []);
 
   useEffect(() => {
     if (!serverId || query.trim().length < 2) {
@@ -93,6 +95,8 @@ export function useSearch(serverId: string | null) {
     }
     let cancelled = false;
     setLoading(true);
+    setError(null);
+    setResults(EMPTY);
     const timer = setTimeout(() => {
       const params = new URLSearchParams({ q: query.trim() });
       if (filters.since) params.set("since", filters.since);
@@ -126,7 +130,7 @@ export function useSearch(serverId: string | null) {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [serverId, query, filters.since, filters.until, filters.channelId]);
+  }, [serverId, query, filters.since, filters.until, filters.channelId, revision]);
 
   const reset = useCallback(() => {
     setQuery("");
@@ -143,6 +147,7 @@ export function useSearch(serverId: string | null) {
     results,
     loading,
     error,
+    retry,
     reset,
   };
 }

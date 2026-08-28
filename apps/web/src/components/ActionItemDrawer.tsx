@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Socket } from "socket.io-client";
 import { Avatar } from "./Avatar";
 import {
@@ -18,6 +18,8 @@ import type {
   MemorySuggestion,
 } from "../hooks/useChannelMemory";
 import { ActionItemMemoryModal } from "./ActionItemMemoryModal";
+import { EclipseUiIcon } from "./icons/EclipseUiIcon";
+import { ACTION_KIND } from "../lib/actionDraft";
 
 /**
  * ActionItemDrawer — mission detail panel для task / decision /
@@ -35,6 +37,7 @@ import { ActionItemMemoryModal } from "./ActionItemMemoryModal";
  */
 
 type Props = {
+  docked?: boolean;
   actionItemId: string;
   socket: Socket | null;
   currentUserId: string;
@@ -74,10 +77,10 @@ const TYPE_META: Record<
 };
 
 const PRIORITY_META: Record<ActionItemPriority, { label: string; tone: string }> = {
-  LOW: { label: "Low", tone: "var(--ec-status-idle)" },
-  NORMAL: { label: "Normal", tone: "var(--ec-text-muted)" },
-  HIGH: { label: "High", tone: "var(--ec-status-warn)" },
-  URGENT: { label: "Urgent", tone: "var(--ec-status-risk)" },
+  LOW: { label: "Низкий", tone: "var(--ec-status-idle)" },
+  NORMAL: { label: "Обычный", tone: "var(--ec-text-muted)" },
+  HIGH: { label: "Высокий", tone: "var(--ec-status-warn)" },
+  URGENT: { label: "Срочный", tone: "var(--ec-status-risk)" },
 };
 
 type TaskStatus = "OPEN" | "IN_PROGRESS" | "REVIEW" | "DONE";
@@ -153,6 +156,7 @@ function formatActivity(a: ActionItemActivity): string {
 /* ===== Component =========================================== */
 
 export function ActionItemDrawer({
+  docked = false,
   actionItemId,
   socket,
   currentUserId,
@@ -171,6 +175,7 @@ export function ActionItemDrawer({
     detail,
     loading,
     error,
+    reload,
     update,
     addComment,
     removeComment,
@@ -198,6 +203,9 @@ export function ActionItemDrawer({
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [memoryOpen, setMemoryOpen] = useState(false);
+  const panelRef = useRef<HTMLElement>(null);
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
 
   useEffect(() => {
     if (detail) {
@@ -206,19 +214,37 @@ export function ActionItemDrawer({
     }
   }, [detail?.id, detail?.updatedAt]);
 
-  // Escape closes drawer + body scroll-lock пока drawer открыт.
+  // Desktop is a non-modal neighbour of chat; small screens get a focused dialog.
   useEffect(() => {
+    const panel = panelRef.current;
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const focusable = () => Array.from(panel?.querySelectorAll<HTMLElement>('button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), summary, [tabindex="0"]') ?? [])
+      .filter(element => element.getClientRects().length > 0);
+    const frame = requestAnimationFrame(() => panel?.focus({ preventScroll: true }));
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !memoryOpen) onClose();
+      const modal = Array.from(document.querySelectorAll('[role="dialog"][aria-modal="true"]')).at(-1);
+      if (modal && modal !== panel) return;
+      if (e.key === "Escape" && (!docked || panel?.contains(document.activeElement))) {
+        e.preventDefault();
+        closeRef.current();
+      }
+      if (!docked && e.key === "Tab") {
+        const items = focusable(), first = items[0], last = items.at(-1);
+        if (!first) { e.preventDefault(); panel?.focus(); }
+        else if (e.shiftKey && (document.activeElement === first || document.activeElement === panel || !panel?.contains(document.activeElement))) { e.preventDefault(); last?.focus(); }
+        else if (!e.shiftKey && (document.activeElement === last || !panel?.contains(document.activeElement))) { e.preventDefault(); first.focus(); }
+      }
     };
     document.addEventListener("keydown", onKey);
     const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    if (!docked) document.body.style.overflow = "hidden";
     return () => {
+      cancelAnimationFrame(frame);
       document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prevOverflow;
+      if (!docked) document.body.style.overflow = prevOverflow;
+      if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
     };
-  }, [memoryOpen, onClose]);
+  }, [docked]);
 
   const typeMeta = detail ? TYPE_META[detail.type] : null;
 
@@ -273,17 +299,20 @@ export function ActionItemDrawer({
 
   return (
     <>
-      <div className="ec-cck-drawer__backdrop" onClick={onClose} aria-hidden />
+      {!docked && <div className="ec-cck-drawer__backdrop ec-action-drawer-backdrop" onClick={onClose} aria-hidden />}
       <aside
-        className="ec-cck-drawer ec-action-drawer"
-        role="dialog"
+        ref={panelRef}
+        tabIndex={-1}
+        className={"ec-cck-drawer ec-action-drawer ec-task-detail" + (docked ? " ec-task-detail--docked" : "")}
+        role={docked ? "region" : "dialog"}
+        aria-modal={docked ? undefined : true}
         aria-label="Детали задачи"
       >
         <header className="ec-cck-drawer__head">
           {detail && typeMeta ? (
             <>
               <span className="ec-cck-drawer__glyph" style={tone(typeMeta.tone)} aria-hidden>
-                {typeMeta.glyph}
+                <EclipseUiIcon name={ACTION_KIND[detail.type].icon} size={17} />
               </span>
               <span className="ec-cck-drawer__type" style={tone(typeMeta.tone)}>
                 {typeMeta.label}
@@ -315,23 +344,26 @@ export function ActionItemDrawer({
             aria-label="Закрыть"
             title="Закрыть · Esc"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
+            <EclipseUiIcon name="close" size={18} />
           </button>
         </header>
 
         <div className="ec-cck-drawer__body">
-          {error && <p className="ec-cck-banner ec-cck-banner--error">{error}</p>}
+          {error && <div className="ec-cck-banner ec-cck-banner--error" role="alert">
+            <p>{error}</p>
+            <button type="button" className="ec-btn ec-btn--secondary ec-btn--sm" onClick={() => void reload()} disabled={loading}>Повторить загрузку</button>
+          </div>}
+          {loading && !detail && <div className="ec-task-detail__loading" role="status" aria-label="Загрузка задачи">
+            <span /><span /><span /><span />
+          </div>}
 
           {detail && (
             <>
               {/* Identity — заголовок задачи (hero). */}
               <section className="ec-cck-sec">
-                <h3 className="ec-cck-sec__label">Задача</h3>
-                <input
-                  type="text"
+                <h3 className="ec-cck-sec__label">Название</h3>
+                <textarea
+                  rows={2}
                   className="ec-cck-titleinput"
                   value={titleDraft}
                   onChange={(e) => setTitleDraft(e.target.value)}
@@ -354,6 +386,7 @@ export function ActionItemDrawer({
                   <span className="ec-cck-prop__label">Приоритет</span>
                   <select
                     className="ec-cck-field ec-cck-field--tone"
+                    aria-label="Приоритет"
                     style={tone(PRIORITY_META[detail.priority].tone)}
                     value={detail.priority}
                     onChange={(e) =>
@@ -371,6 +404,7 @@ export function ActionItemDrawer({
                   <span className="ec-cck-prop__label">Ответственный</span>
                   <select
                     className="ec-cck-field"
+                    aria-label="Ответственный"
                     value={detail.assignee?.id ?? ""}
                     onChange={(e) =>
                       void update({
@@ -392,6 +426,7 @@ export function ActionItemDrawer({
                   <input
                     type="datetime-local"
                     className="ec-cck-field ec-cck-field--mono"
+                    aria-label="Срок"
                     value={dueValue}
                     onChange={(e) => {
                       const v = e.target.value;
@@ -442,6 +477,10 @@ export function ActionItemDrawer({
               </section>
 
               {/* Approval */}
+              <details className="ec-task-detail__disclosure">
+                <summary>Согласование и зависимости
+                  <span>{detail.blockedByOpen > 0 ? "Есть блокировка" : detail.approvalStatus === "PENDING" ? "Ждёт одобрения" : <EclipseUiIcon name="chevron" size={14} />}</span>
+                </summary>
               <section className="ec-cck-sec">
                 <h3 className="ec-cck-sec__label">Одобрение</h3>
                 <ApprovalSection
@@ -509,10 +548,12 @@ export function ActionItemDrawer({
               </section>
 
               {/* Description */}
+              </details>
               <section className="ec-cck-sec">
                 <h3 className="ec-cck-sec__label">Описание</h3>
                 <textarea
                   className="ec-cck-field ec-cck-field--area"
+                  aria-label="Описание задачи"
                   value={descDraft}
                   onChange={(e) => setDescDraft(e.target.value)}
                   onBlur={() => void saveDescription()}
@@ -523,6 +564,8 @@ export function ActionItemDrawer({
               </section>
 
               {/* Reviewed ActionItem -> Memory. Nothing is persisted until the modal CTA. */}
+              <details className="ec-task-detail__disclosure">
+                <summary>Память и AI-сводка<EclipseUiIcon name="chevron" size={14} /></summary>
               <section className="ec-cck-sec ec-cck-memory">
                 <h3 className="ec-cck-sec__label">Память</h3>
                 <div className="ec-cck-memory__card">
@@ -602,6 +645,7 @@ export function ActionItemDrawer({
               </section>
 
               {/* Comments */}
+              </details>
               <section className="ec-cck-sec">
                 <h3 className="ec-cck-sec__label">
                   Комментарии
@@ -658,6 +702,7 @@ export function ActionItemDrawer({
           <div className="ec-cck-drawer__foot">
             <textarea
               className="ec-cck-field ec-cck-field--area"
+              aria-label="Комментарий к задаче"
               style={{ minHeight: 38 }}
               value={commentDraft}
               onChange={(e) => setCommentDraft(e.target.value)}

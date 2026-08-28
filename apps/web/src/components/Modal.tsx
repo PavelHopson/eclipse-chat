@@ -36,7 +36,7 @@ export function Modal({
     const focusable = () => Array.from(box?.querySelectorAll<HTMLElement>('button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex="0"]') ?? [])
       .filter((element) => element.getClientRects().length > 0);
     const frame = requestAnimationFrame(() => {
-      if (topmost()) (focusable()[0] ?? box)?.focus({ preventScroll: true });
+      if (topmost()) (box?.querySelector<HTMLElement>("[data-autofocus]:not(:disabled)") ?? focusable()[0] ?? box)?.focus({ preventScroll: true });
     });
     const onKey = (e: KeyboardEvent) => {
       if (!topmost()) return;

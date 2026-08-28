@@ -76,8 +76,9 @@ type Props = {
   onToggleExecutionStatus?: (
     id: string,
     status: import("../lib/socket").ActionItemStatus,
-  ) => void;
+  ) => Promise<boolean>;
   onOpenAction?: (actionItemId: string) => void;
+  onCreateTask?: () => void;
   /** Client Mode: скрыть operator-tabs «Дела» и «Файлы». */
   clientMode?: boolean;
 };
@@ -149,6 +150,7 @@ export function ChannelInfoPanel({
   onRestoreMemoryEntry,
   onToggleExecutionStatus,
   onOpenAction,
+  onCreateTask,
   clientMode = false,
 }: Props) {
   // ESC закрывает panel.
@@ -283,6 +285,7 @@ export function ChannelInfoPanel({
               items={executionItems}
               onToggle={onToggleExecutionStatus}
               onOpen={onOpenAction}
+              onCreate={onCreateTask}
             />
           ) : (
             <FilesView items={attachments} />

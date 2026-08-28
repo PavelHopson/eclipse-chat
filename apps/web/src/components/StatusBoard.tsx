@@ -2,6 +2,9 @@ import type { CSSProperties } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { Avatar } from "./Avatar";
 import type { ActionItemPayload, ActionItemStatus, ActionItemType } from "../lib/socket";
+import { MessageActionChip } from "./MessageActionChip";
+import { EclipseUiIcon } from "./icons/EclipseUiIcon";
+import { ACTION_KIND } from "../lib/actionDraft";
 
 /**
  * StatusBoard — Execution-доска: все ActionItem'ы сервера (across
@@ -34,7 +37,9 @@ type Props = {
   currentUserId: string;
   /** Резолв имени канала по id (из useChannels активного сервера). */
   channelNameById: (channelId: string) => string | undefined;
-  onUpdateStatus: (id: string, status: ActionItemStatus) => void;
+  onUpdateStatus: (id: string, status: ActionItemStatus) => unknown | Promise<unknown>;
+  onCreateTask?: () => void;
+  createTaskLabel?: string;
   onOpenChannel: (channelId: string) => void;
   /** v0.54: открыть ActionItemDrawer по клику на карточку. */
   onOpenAction?: (actionItemId: string) => void;
@@ -169,13 +174,13 @@ function Card({
       <button type="button" className="ec-cck-card__body" onClick={onOpen}>
         <span className="ec-cck-card__title">
           <span className="ec-cck-card__glyph" style={tone(meta.tone)} aria-hidden>
-            {meta.glyph}
+            <EclipseUiIcon name={ACTION_KIND[item.type].icon} size={16} />
           </span>
           <span className="ec-cck-card__name">{item.title}</span>
         </span>
         <span className="ec-cck-card__meta">
           <span>#{channelName ?? "комната"}</span>
-          {item.assignee && (
+          {item.assignee ? (
             <span className="ec-cck-user">
               <Avatar
                 url={item.assignee.avatar}
@@ -184,7 +189,7 @@ function Card({
               />
               <span className="ec-cck-user__name">{item.assignee.displayName}</span>
             </span>
-          )}
+          ) : <span>Без ответственного</span>}
           {chip && (
             <span className="ec-cck-chip" style={tone(chip.tone)}>
               {chip.label}
@@ -236,7 +241,11 @@ export function StatusBoard({
   onOpenChannel,
   onOpenAction,
   initialFilter,
+  onCreateTask,
+  createTaskLabel = "Создать задачу",
 }: Props) {
+  const [view, setView] = useState<"list" | "board">("list");
+  const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("ALL");
   const [mineOnly, setMineOnly] = useState(false);
   const [overdueOnly, setOverdueOnly] = useState(false);
@@ -276,7 +285,7 @@ export function StatusBoard({
   const filtered = useMemo(
     () =>
       applyBoardFilters(
-        actions,
+        actions.filter(action => !query.trim() || (action.title + " " + (action.assignee?.displayName ?? "")).toLocaleLowerCase("ru").includes(query.trim().toLocaleLowerCase("ru"))),
         {
           type: typeFilter,
           mineOnly,
@@ -286,7 +295,7 @@ export function StatusBoard({
         },
         currentUserId,
       ),
-    [actions, typeFilter, mineOnly, overdueOnly, unassignedOnly, assigneeFilter, currentUserId],
+    [actions, typeFilter, mineOnly, overdueOnly, unassignedOnly, assigneeFilter, currentUserId, query],
   );
 
   // 4-status kanban — bucket на каждый статус. Items с нераспознанным
@@ -309,10 +318,10 @@ export function StatusBoard({
   const [dropCol, setDropCol] = useState<ActionItemStatus | null>(null);
 
   return (
-    <div className="ec-cck">
+    <div className="ec-cck ec-task-board" aria-busy={loading}>
       <div className="ec-cck__head">
         <div className="ec-cck__headline">
-          <h2 className="ec-cck__title">Доска задач</h2>
+          <h2 className="ec-cck__title">Задачи</h2>
           {serverName && <span className="ec-cck__sub">· {serverName}</span>}
           <span className="ec-cck__count">{filtered.length}</span>
         </div>
@@ -379,6 +388,9 @@ export function StatusBoard({
         </div>
 
         <div className="ec-cck__tools ec-cck__tools--end">
+          {onCreateTask && <button type="button" className="ec-task-board__create" onClick={onCreateTask}>
+            <EclipseUiIcon name="plus" size={17} />{createTaskLabel}
+          </button>}
           <button
             type="button"
             onClick={onReload}
@@ -390,7 +402,40 @@ export function StatusBoard({
         </div>
       </div>
 
-      {error && <p className="ec-cck-banner ec-cck-banner--error">{error}</p>}
+      <div className="ec-task-board__controls">
+        <label className="ec-task-board__search"><EclipseUiIcon name="search" size={18} />
+          <input value={query} onChange={event => setQuery(event.target.value)} aria-label="Найти задачу" placeholder="Найти задачу или ответственного" />
+        </label>
+        <div className="ec-task-board__views" role="group" aria-label="Вид задач">
+          <button type="button" aria-pressed={view === "list"} onClick={() => setView("list")}>Список</button>
+          <button type="button" aria-pressed={view === "board"} onClick={() => setView("board")}>Доска</button>
+        </div>
+      </div>
+      {error && <p role="alert" className="ec-cck-banner ec-cck-banner--error">{error} <button type="button" onClick={onReload}>Повторить</button></p>}
+      {!loading && !error && filtered.length === 0 && <div className="ec-task-board__empty">
+        <EclipseUiIcon name="task" size={28} />
+        <h3>{actions.length ? "Ничего не найдено" : "Здесь будут задачи команды"}</h3>
+        <p>{actions.length ? "Попробуйте другой запрос или снимите фильтры." : "Задача сохраняет связь с обсуждением, срок и ответственного."}</p>
+        {actions.length ? <button type="button" onClick={() => {
+          setQuery(""); setTypeFilter("ALL"); setMineOnly(false); setOverdueOnly(false); setUnassignedOnly(false); setAssigneeFilter(null);
+        }}>Сбросить фильтры</button> : onCreateTask && <button type="button" onClick={onCreateTask}>{createTaskLabel}</button>}
+      </div>}
+      {loading && actions.length === 0 && <div className="ec-task-board__loading" role="status">Загружаем задачи…</div>}
+      {view === "list" ? <div className="ec-task-board__list">
+        {COLUMNS.filter(column => byStatus[column.key].length > 0).map(column => <section key={column.key} aria-label={column.title}>
+          <h3>{column.title}<span>{byStatus[column.key].length}</span></h3>
+          {byStatus[column.key].map(item => <div className="ec-task-board__row" key={item.id}>
+            <MessageActionChip action={item}
+              onOpen={id => onOpenAction ? onOpenAction(id) : onOpenChannel(item.channelId)}
+              onToggle={async (id, status) => (await onUpdateStatus(id, status)) !== false} />
+            <button type="button" className="ec-task-board__channel" onClick={() => onOpenChannel(item.channelId)}>
+              #{channelNameById(item.channelId) ?? "комната"}
+            </button>
+            {item.approvalStatus !== "NONE" && <ApprovalChip status={item.approvalStatus} />}
+            {item.status !== "DONE" && item.blockedByOpen > 0 && <span className="ec-task-board__blocked">Зависимостей: {item.blockedByOpen}</span>}
+          </div>)}
+        </section>)}
+      </div> : (
 
       <div className="ec-cck-board ec-status-board">
         {COLUMNS.map((col) => {
@@ -458,6 +503,7 @@ export function StatusBoard({
           );
         })}
       </div>
+      )}
     </div>
   );
 }

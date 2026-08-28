@@ -1,5 +1,9 @@
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { Attachments } from "./Attachments";
+import { MessageActionChip } from "./MessageActionChip";
+import { MessageActions } from "./MessageActions";
+import { EclipseUiIcon } from "./icons/EclipseUiIcon";
+import { incomingAfter, isDirectMention, replyLabel } from "../lib/conversationNavigation";
 import { Avatar } from "./Avatar";
 import { EmojiPicker } from "./EmojiPicker";
 import { RichContent } from "./RichContent";
@@ -13,7 +17,7 @@ import { extractFirstUrl } from "../lib/linkExtract";
 import { parseYouTubeUrl } from "../lib/youtubeEmbed";
 import { gameIcon } from "../lib/gameIcons";
 import { useMessageEditHistory } from "../hooks/useMessageEditHistory";
-import type { ActionItemStatus, ActionItemType, MessageRow } from "../hooks/useMessages";
+import type { ActionItemStatus, MessageRow } from "../hooks/useMessages";
 import type { MemberRole } from "../hooks/useMembers";
 import { hasPermission } from "../lib/memberRoles";
 import {
@@ -28,6 +32,8 @@ type Props = {
   emptyHint?: string;
   channelName?: string | null;
   listKey?: string | null;
+  unreadSince?: string | null;
+  activeThreadId?: string | null;
   currentUserId?: string;
   /** Открыть профиль автора по клику на avatar/name. */
   onOpenUserProfile?: (userId: string) => void;
@@ -50,6 +56,7 @@ type Props = {
   onUnpin?: (messageId: string) => Promise<boolean>;
   onToggleReaction?: (messageId: string, emoji: string) => Promise<boolean>;
   onCreateAction?: (message: MessageRow) => void;
+  onOpenAction?: (actionId: string) => void;
   onToggleActionStatus?: (actionId: string, nextStatus: ActionItemStatus) => Promise<boolean>;
   /** Открыть Thread panel для этого root message. Скрывает кнопку если не задано. */
   onOpenThread?: (messageId: string) => void;
@@ -78,59 +85,9 @@ type Props = {
 // .ec-message-list* / .ec-message-row* / .ec-msg-* (components.css).
 // JS-hover убран — состояния через CSS.
 
-function labelForAction(type: ActionItemType): string {
-  if (type === "DECISION") return "Decision";
-  if (type === "FOLLOW_UP") return "Follow-up";
-  if (type === "RISK") return "Risk";
-  if (type === "REQUIREMENT") return "Requirement";
-  return "Task";
-}
-
-function tintForAction(type: ActionItemType, status: ActionItemStatus) {
-  if (status === "DONE") {
-    return {
-      bg: "color-mix(in srgb, var(--ec-surface-3) 75%, transparent)",
-      fg: "var(--ec-text-dim)",
-      border: "var(--ec-border-subtle)",
-    };
-  }
-  if (type === "DECISION") {
-    return {
-      bg: "var(--ec-status-warn-soft)",
-      fg: "var(--ec-status-warn)",
-      border: "color-mix(in srgb, var(--ec-status-warn) 32%, transparent)",
-    };
-  }
-  if (type === "FOLLOW_UP") {
-    return {
-      bg: "var(--ec-accent-2-soft)",
-      fg: "var(--ec-accent-2)",
-      border: "color-mix(in srgb, var(--ec-accent-2) 28%, transparent)",
-    };
-  }
-  if (type === "RISK") {
-    return {
-      bg: "var(--ec-status-risk-soft)",
-      fg: "var(--ec-status-risk)",
-      border: "color-mix(in srgb, var(--ec-status-risk) 32%, transparent)",
-    };
-  }
-  if (type === "REQUIREMENT") {
-    return {
-      bg: "var(--ec-status-ai-soft)",
-      fg: "var(--ec-status-ai)",
-      border: "color-mix(in srgb, var(--ec-status-ai) 30%, transparent)",
-    };
-  }
-  return {
-    bg: "var(--ec-accent-soft)",
-    fg: "var(--ec-accent)",
-    border: "var(--ec-border-accent)",
-  };
-}
 
 function formatTime(iso: string): string {
-  return iso.slice(11, 16);
+  return new Date(iso).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
 }
 
 // v1.5.3 — full datetime for timestamp tooltip (title= attribute).
@@ -182,6 +139,8 @@ export function MessageList({
   emptyHint,
   channelName,
   listKey,
+  unreadSince,
+  activeThreadId,
   currentUserId,
   onOpenUserProfile,
   currentUserName,
@@ -198,6 +157,7 @@ export function MessageList({
   onUnpin,
   onToggleReaction,
   onCreateAction,
+  onOpenAction,
   onToggleActionStatus,
   onOpenThread,
   onSaveToMemory,
@@ -220,6 +180,9 @@ export function MessageList({
   const [isAtBottom, setIsAtBottom] = useState(true);
   const [unreadAnchorId, setUnreadAnchorId] = useState<string | null>(null);
   const [newMessagesCount, setNewMessagesCount] = useState(0);
+  const [updatedThreads, setUpdatedThreads] = useState<string[]>([]);
+  const threadCounts = useRef(new Map<string, number>());
+  const seededUnread = useRef(false);
   const atBottomRef = useRef(true);
   const listKeyRef = useRef<string | null>(listKey ?? null);
   const tailIdRef = useRef<string | null>(null);
@@ -247,7 +210,7 @@ export function MessageList({
     (behavior: ScrollBehavior = "smooth") => {
       const el = containerRef.current;
       if (!el) return;
-      el.scrollTo({ top: el.scrollHeight, behavior });
+      el.scrollTo({ top: el.scrollHeight, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : behavior });
       atBottomRef.current = true;
       setIsAtBottom(true);
       clearNewMessageMarker();
@@ -268,6 +231,9 @@ export function MessageList({
     atBottomRef.current = true;
     setIsAtBottom(true);
     clearNewMessageMarker();
+    threadCounts.current.clear();
+    seededUnread.current = false;
+    setUpdatedThreads([]);
     setPickerFor(null);
     setEditingId(null);
     setEditDraft("");
@@ -302,8 +268,11 @@ export function MessageList({
       return;
     }
 
-    setUnreadAnchorId((current) => current ?? tail.id);
-    setNewMessagesCount((count) => count + 1);
+    const incoming = incomingAfter(messages, previousTailId, currentUserId);
+    if (incoming.length) {
+      setUnreadAnchorId((current) => current ?? incoming[0].id);
+      setNewMessagesCount((count) => count + incoming.length);
+    }
   }, [
     tail?.id,
     tail?.user.id,
@@ -319,6 +288,46 @@ export function MessageList({
       clearNewMessageMarker();
     }
   }, [messages, unreadAnchorId, clearNewMessageMarker]);
+
+  useEffect(() => {
+    const changed: string[] = [];
+    for (const message of messages) {
+      const previous = threadCounts.current.get(message.id);
+      const count = message.threadReplyCount ?? 0;
+      if (previous !== undefined && count > previous && message.id !== activeThreadId) changed.push(message.id);
+      threadCounts.current.set(message.id, count);
+    }
+    if (changed.length) setUpdatedThreads(current => [...new Set([...current, ...changed])]);
+    if (activeThreadId) setUpdatedThreads(current => current.includes(activeThreadId) ? current.filter(id => id !== activeThreadId) : current);
+  }, [messages, activeThreadId]);
+
+  const jumpTo = (id: string) => {
+    const target = Array.from(containerRef.current?.querySelectorAll<HTMLElement>("[data-message-id]") ?? [])
+      .find(element => element.dataset.messageId === id);
+    target?.scrollIntoView({ block: "start", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    setHighlightedMessageId(id);
+    if (focusTimerRef.current) clearTimeout(focusTimerRef.current);
+    focusTimerRef.current = window.setTimeout(() => setHighlightedMessageId(null), 2400);
+  };
+  const openThread = (id: string) => {
+    setUpdatedThreads(current => current.filter(value => value !== id));
+    onOpenThread?.(id);
+  };
+  const unreadStart = unreadAnchorId ? messages.findIndex(message => message.id === unreadAnchorId) : -1;
+  const mentions = unreadStart < 0 ? [] : messages.slice(unreadStart).filter(message =>
+    !message.deletedAt && message.user.id !== currentUserId && isDirectMention(message.content, currentUserName));
+
+  useEffect(() => {
+    if (seededUnread.current || !unreadSince || !messages.length) return;
+    const incoming = messages.filter(message => !message.deletedAt && message.user.id !== currentUserId && new Date(message.createdAt).getTime() > new Date(unreadSince).getTime());
+    if (!incoming.length) { seededUnread.current = true; return; }
+    const frame = requestAnimationFrame(() => {
+      seededUnread.current = true;
+      setUnreadAnchorId(incoming[0].id);
+      setNewMessagesCount(incoming.length);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [unreadSince, messages, currentUserId]);
 
   useEffect(() => {
     return () => {
@@ -338,7 +347,7 @@ export function MessageList({
     ).find((element) => element.dataset.messageId === focusMessageId);
     if (!target) return;
 
-    target.scrollIntoView({ behavior: "smooth", block: "center" });
+    target.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "center" });
     setHighlightedMessageId(focusMessageId);
     onFocusHandled?.();
     if (focusTimerRef.current !== null) window.clearTimeout(focusTimerRef.current);
@@ -353,8 +362,9 @@ export function MessageList({
       await navigator.clipboard.writeText(m.content);
       setCopiedId(m.id);
       setTimeout(() => setCopiedId((cur) => (cur === m.id ? null : cur)), 1400);
+      return true;
     } catch {
-      /* fail silently */
+      return false;
     }
   };
 
@@ -388,11 +398,13 @@ export function MessageList({
       danger: true,
     });
     if (!ok) return;
-    await onDelete(m.id);
+    return await onDelete(m.id);
   };
 
   const handlePin = async (m: MessageRow) => {
     if (!onPin) return;
+    const ok = await onPin(m.id);
+    if (!ok) return false;
     if (pinBurstTimerRef.current !== null) {
       window.clearTimeout(pinBurstTimerRef.current);
     }
@@ -401,7 +413,7 @@ export function MessageList({
       setPinBurstId((current) => (current === m.id ? null : current));
       pinBurstTimerRef.current = null;
     }, 820);
-    await onPin(m.id);
+    return true;
   };
 
   // Loading state — skeleton screens вместо пустого блока с текстом «Загрузка…».
@@ -483,6 +495,11 @@ export function MessageList({
 
   return (
     <div className="ec-message-list-shell">
+      {(newMessagesCount > 0 || updatedThreads.length > 0) && <nav className="ec-attention-nav" aria-label="Новое в переписке">
+        {unreadAnchorId && <button type="button" onClick={() => jumpTo(unreadAnchorId)}>Непрочитанное <span>{newMessagesCount}</span></button>}
+        {mentions.length > 0 && <button type="button" className="is-mention" onClick={() => jumpTo(mentions[0].id)}>Вас упомянули <span>{mentions.length}</span></button>}
+        {updatedThreads.length > 0 && onOpenThread && <button type="button" onClick={() => openThread(updatedThreads[0])}>Новые ответы <span>{updatedThreads.length}</span></button>}
+      </nav>}
       <div
         ref={containerRef}
         className={`ec-message-list${isShortThread ? " ec-message-list--short" : ""}`}
@@ -573,6 +590,7 @@ export function MessageList({
                 rowClass +
                 (m.user.isBot ? " ec-message-row--ai" : "") +
                 (isMine ? " ec-message-row--mine" : "") +
+                (!isMine && isDirectMention(m.content, currentUserName) ? " ec-message-row--mentioned" : "") +
                 (highlightedMessageId === m.id ? " ec-message-row--source-focus" : "")
               }
               style={{
@@ -916,8 +934,8 @@ export function MessageList({
                 {!isDeleted && !isEditing && (m.threadReplyCount ?? 0) > 0 && onOpenThread && (
                   <button
                     type="button"
-                    className="ec-msg-pill"
-                    onClick={() => onOpenThread(m.id)}
+                    className={"ec-msg-pill ec-thread-link" + (updatedThreads.includes(m.id) ? " is-unread" : "")}
+                    onClick={() => openThread(m.id)}
                     style={{
                       display: "inline-flex",
                       alignItems: "center",
@@ -935,246 +953,33 @@ export function MessageList({
                       transition: "transform var(--ec-dur-fast) var(--ec-ease)",
                     }}
                   >
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                      <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" />
-                    </svg>
-                    {m.threadReplyCount} {m.threadReplyCount === 1 ? "ответ" : "ответов"} в треде
+                    <EclipseUiIcon name="reply" size={14} />
+                    {replyLabel(m.threadReplyCount ?? 0)}{updatedThreads.includes(m.id) ? " · новые" : ""}
                   </button>
                 )}
                 {!isDeleted && !isEditing && m.actionItems.length > 0 && (
-                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
-                    {m.actionItems.map((action) => {
-                      const tint = tintForAction(action.type, action.status);
-                      return (
-                        <button
-                          key={action.id}
-                          type="button"
-                          className="ec-msg-pill"
-                          title={
-                            action.status === "OPEN"
-                              ? "Отметить как выполненное"
-                              : "Вернуть в открытые action items"
-                          }
-                          onClick={() =>
-                            void onToggleActionStatus?.(
-                              action.id,
-                              action.status === "OPEN" ? "DONE" : "OPEN",
-                            )
-                          }
-                          style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: 6,
-                            maxWidth: "100%",
-                            padding: "0.26rem 0.65rem",
-                            borderRadius: "var(--ec-radius-full)",
-                            border: `1px solid ${tint.border}`,
-                            background: tint.bg,
-                            color: tint.fg,
-                            cursor: onToggleActionStatus ? "pointer" : "default",
-                            transition: "transform var(--ec-dur-fast) var(--ec-ease)",
-                          }}
-                        >
-                          <span
-                            style={{
-                              fontSize: "var(--ec-text-2xs)",
-                              fontWeight: 700,
-                              letterSpacing: "var(--ec-tracking-wide)",
-                              textTransform: "uppercase",
-                              flexShrink: 0,
-                            }}
-                          >
-                            {labelForAction(action.type)}
-                          </span>
-                          <span
-                            style={{
-                              color: action.status === "DONE" ? "var(--ec-text-dim)" : "var(--ec-text)",
-                              fontSize: "var(--ec-text-xs)",
-                              whiteSpace: "nowrap",
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              maxWidth: 240,
-                            }}
-                          >
-                            {action.title}
-                          </span>
-                        </button>
-                      );
-                    })}
+                  <div className="ec-message-tasks">
+                    {m.actionItems.map(action => <MessageActionChip key={action.id}
+                      action={action} onOpen={onOpenAction} onToggle={onToggleActionStatus} />)}
                   </div>
                 )}
               </div>
-              {showActions && (
-                <div className="ec-message-actions">
-                  {/* v1.5.22 — quick reactions: 6 popular emoji prepended
-                      перед actions toolbar. Click — toggleReaction immediately,
-                      без opening picker. Existing user reactions get accent
-                      state. Slack/Linear-style. */}
-                  {onToggleReaction && (
-                    <>
-                      {(["👍", "❤️", "😂", "🎉", "🔥", "👀"] as const).map((emoji) => {
-                        const mine = m.reactions.some(
-                          (r) => r.emoji === emoji && r.mine,
-                        );
-                        return (
-                          <button
-                            key={emoji}
-                            type="button"
-                            className={
-                              "ec-msg-action ec-msg-quick-react" +
-                              (mine ? " ec-msg-quick-react--mine" : "")
-                            }
-                            aria-label={`Реакция ${emoji}`}
-                            title={mine ? "Снять реакцию" : `Поставить ${emoji}`}
-                            onClick={() => void onToggleReaction(m.id, emoji)}
-                          >
-                            <span aria-hidden style={{ fontSize: 14, lineHeight: 1 }}>
-                              {emoji}
-                            </span>
-                          </button>
-                        );
-                      })}
-                      <span className="ec-msg-action-sep" aria-hidden />
-                    </>
-                  )}
-                  {onOpenThread && (
-                    <button
-                      type="button"
-                      className="ec-msg-action ec-msg-action--accent"
-                      aria-label="Открыть тред"
-                      title="Ответить в треде"
-                      onClick={() => onOpenThread(m.id)}
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                        <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" />
-                      </svg>
-                    </button>
-                  )}
-                  {onToggleReaction && (
-                    <button
-                      type="button"
-                      className="ec-msg-action"
-                      aria-label="Добавить реакцию"
-                      title="Реакция"
-                      onClick={(e) => {
-                        const rect = e.currentTarget.getBoundingClientRect();
-                        setPickerFor({ messageId: m.id, rect });
-                      }}
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                        <circle cx="12" cy="12" r="10" />
-                        <path d="M8 14s1.5 2 4 2 4-2 4-2" />
-                        <line x1="9" y1="9" x2="9.01" y2="9" />
-                        <line x1="15" y1="9" x2="15.01" y2="9" />
-                      </svg>
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    className="ec-msg-action"
-                    aria-label="Копировать"
-                    title={isCopied ? "Скопировано" : "Копировать"}
-                    onClick={() => void handleCopy(m)}
-                  >
-                    {isCopied ? (
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ec-ok)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                    ) : (
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                        <rect x="9" y="9" width="13" height="13" rx="2" />
-                        <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
-                      </svg>
-                    )}
-                  </button>
-                  {onSaveToMemory && m.content.trim() && (
-                    <button
-                      type="button"
-                      className="ec-msg-action ec-msg-action--accent"
-                      aria-label="Сохранить в память комнаты"
-                      title="Сохранить в память"
-                      onClick={() => onSaveToMemory(m)}
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                        <path d="M6 4a2 2 0 012-2h8a2 2 0 012 2v17l-6-4-6 4V4z" />
-                        <path d="M9 7h6M9 11h4" />
-                      </svg>
-                    </button>
-                  )}
-                  {showEdit && (
-                    <button
-                      type="button"
-                      className="ec-msg-action"
-                      aria-label="Редактировать"
-                      title="Редактировать"
-                      onClick={() => beginEdit(m)}
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                        <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
-                        <path d="M18.5 2.5a2.121 2.121 0 113 3L12 15l-4 1 1-4 9.5-9.5z" />
-                      </svg>
-                    </button>
-                  )}
-                  {canCreateActions && (
-                    <button
-                      type="button"
-                      className="ec-msg-action ec-msg-action--accent"
-                      aria-label="Создать рабочий объект"
-                      title="Создать задачу, решение или контроль"
-                      onClick={() => onCreateAction?.(m)}
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                        <path d="M12 7v10M7 12h10" />
-                        <rect x="3" y="3" width="18" height="18" rx="4" />
-                      </svg>
-                    </button>
-                  )}
-                  {showUnpin && (
-                    <button
-                      type="button"
-                      className="ec-msg-action ec-msg-action--warn"
-                      aria-label="Открепить"
-                      title="Открепить"
-                      onClick={() => void onUnpin?.(m.id)}
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                        <line x1="2" y1="2" x2="22" y2="22" />
-                        <line x1="12" y1="17" x2="12" y2="22" />
-                        <path d="M5 17h14V5l-2 2-2-2-2 2-2-2-2 2-2-2-2 2z" />
-                      </svg>
-                    </button>
-                  )}
-                  {showPin && (
-                    <button
-                      type="button"
-                      className={`ec-msg-action ec-msg-action--warn ec-msg-action--pin${pinBurstId === m.id ? " is-bursting" : ""}`}
-                      aria-label="Закрепить"
-                      title="Закрепить"
-                      onClick={() => void handlePin(m)}
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                        <line x1="12" y1="17" x2="12" y2="22" />
-                        <path d="M5 17h14V5l-2 2-2-2-2 2-2-2-2 2-2-2-2 2z" />
-                      </svg>
-                    </button>
-                  )}
-                  {showDelete && (
-                    <button
-                      type="button"
-                      className="ec-msg-action ec-msg-action--danger"
-                      aria-label="Удалить"
-                      title="Удалить"
-                      onClick={() => void handleDelete(m)}
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                        <polyline points="3 6 5 6 21 6" />
-                        <path d="M19 6l-2 14a2 2 0 01-2 2H9a2 2 0 01-2-2L5 6" />
-                        <path d="M10 11v6M14 11v6" />
-                      </svg>
-                    </button>
-                  )}
-                </div>
-              )}
+              {showActions && <MessageActions
+                onReply={onOpenThread ? () => openThread(m.id) : undefined}
+                onTask={canCreateActions ? () => onCreateAction?.(m) : undefined}
+                hasTask={m.actionItems.some(item => item.type === "TASK")}
+                onReact={onToggleReaction ? emoji => onToggleReaction(m.id, emoji) : undefined}
+                onPickReaction={onToggleReaction ? rect => setPickerFor({ messageId: m.id, rect }) : undefined}
+                actions={[
+                  { id: "copy", label: isCopied ? "Скопировано" : "Копировать", icon: "copy-id", run: () => handleCopy(m) },
+                  ...(onSaveToMemory && m.content.trim() ? [{ id: "memory", label: "Сохранить в память", icon: "memory" as const, run: () => onSaveToMemory(m) }] : []),
+                  ...(showEdit ? [{ id: "edit", label: "Редактировать", icon: "edit" as const, run: () => beginEdit(m) }] : []),
+                  ...(showUnpin ? [{ id: "unpin", label: "Открепить", icon: "pin" as const, run: () => onUnpin?.(m.id) }] : []),
+                  ...(showPin ? [{ id: "pin", label: pinBurstId === m.id ? "Закреплено" : "Закрепить", icon: "pin" as const, run: () => handlePin(m) }] : []),
+                  ...(showDelete ? [{ id: "delete", label: "Удалить сообщение", icon: "delete" as const, danger: true, run: () => handleDelete(m) }] : []),
+                ]}
+              />}
+
             </article>
           </Fragment>
         );

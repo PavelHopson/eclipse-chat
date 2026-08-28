@@ -6,6 +6,7 @@ import { apiJson } from "../lib/api";
 import { resolveAssetUrl } from "../lib/assets";
 import { useMediaVolume } from "../hooks/useMediaVolume";
 import { VideoPlayer } from "./VideoPlayer";
+import { EclipseUiIcon } from "./icons/EclipseUiIcon";
 
 type Props = {
   attachments: Attachment[];
@@ -14,13 +15,7 @@ type Props = {
   onPlayShared?: (attachmentId: string) => void | Promise<void>;
 };
 
-const wrap: CSSProperties = {
-  marginTop: 6,
-  display: "flex",
-  flexDirection: "column",
-  gap: 6,
-  maxWidth: 540,
-};
+
 
 function humanSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -40,35 +35,7 @@ function isAudio(a: Attachment): boolean {
   return a.mimeType.startsWith("audio/");
 }
 
-const imageWrap: CSSProperties = {
-  display: "block",
-  background: "var(--ec-surface-2)",
-  border: "1px solid var(--ec-border-subtle)",
-  borderRadius: "var(--ec-radius-md)",
-  overflow: "hidden",
-  cursor: "zoom-in",
-  position: "relative",
-  // v1.1.62 redesign §8 — «subtle media frame»: мягкая тень глубины,
-  // картинка читается как лёгкая floating-карточка, не ломает поток чата.
-  boxShadow: "0 8px 24px -12px hsl(210 60% 2% / 0.6)",
-  transition:
-    "transform var(--ec-dur-fast) var(--ec-ease), box-shadow var(--ec-dur-fast) var(--ec-ease)",
-};
 
-const fileChip: CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  gap: "var(--ec-space-3)",
-  padding: "var(--ec-space-2) var(--ec-space-3)",
-  background: "var(--ec-surface-2)",
-  border: "1px solid var(--ec-border-subtle)",
-  borderRadius: "var(--ec-radius-md)",
-  color: "var(--ec-text)",
-  textDecoration: "none",
-  fontSize: "var(--ec-text-sm)",
-  maxWidth: 360,
-  transition: "background var(--ec-dur-fast) var(--ec-ease), border-color var(--ec-dur-fast) var(--ec-ease)",
-};
 
 const fileIconWrap: CSSProperties = {
   width: 36,
@@ -163,26 +130,35 @@ function FileIcon({ mime }: { mime: string }) {
 
 function VideoItem({ a, onOpen }: { a: Attachment; onOpen: (a: Attachment) => void }) {
   const src = resolveAssetUrl(a.url) ?? "";
-  return (
-    <button
-      type="button"
-      className="ec-video-attachment"
-      onClick={() => onOpen(a)}
-      aria-label={`Открыть видео ${a.filename}`}
-    >
-      <video src={src} preload="metadata" muted playsInline />
-      <span className="ec-video-attachment__play" aria-hidden>
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-          <path d="M8 5v14l11-7z" />
-        </svg>
-      </span>
-      <span className="ec-video-attachment__meta">
-        <span>{a.filename}</span>
-        <span>{humanSize(a.size)}</span>
-      </span>
+  const [failed, setFailed] = useState(false);
+  const [ready, setReady] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  const [portrait, setPortrait] = useState(Boolean(a.width && a.height && a.height > a.width));
+  const [duration, setDuration] = useState("");
+  return <figure className={"ec-media-preview" + (portrait ? " is-portrait" : "")}>
+    <button type="button" className="ec-media-preview__visual"
+      onClick={() => { if (failed) { setFailed(false); setReady(false); setAttempt(value => value + 1); } else onOpen(a); }}
+      aria-label={(failed ? "Повторить загрузку видео " : "Открыть видео ") + a.filename}>
+      <video key={attempt} src={src} preload="metadata" muted playsInline
+        onLoadedMetadata={event => {
+          const video = event.currentTarget;
+          setPortrait(video.videoHeight > video.videoWidth);
+          setDuration(Number.isFinite(video.duration) ? formatDuration(video.duration) : "");
+          setReady(true);
+        }} onError={() => { setFailed(true); setReady(false); }} />
+      <span className="ec-media-preview__play" aria-hidden><EclipseUiIcon name={failed ? "followup" : "play"} size={26} /></span>
+      {(!ready || failed) && <span className="ec-media-preview__state" role="status">
+        {failed ? "Превью недоступно · повторить" : "Загружаем превью…"}
+      </span>}
+      {duration && !failed && <span className="ec-media-preview__duration">{duration}</span>}
     </button>
-  );
+    <figcaption><span title={a.filename}>{a.filename}</span><span>{humanSize(a.size)}</span>
+      <a href={src} download={a.filename} target="_blank" rel="noopener noreferrer" aria-label={"Скачать " + a.filename}>Скачать</a>
+    </figcaption>
+  </figure>;
 }
+
+
 
 /**
  * v0.66: Telegram-style audio waveform. Peaks pre-computed на клиенте
@@ -757,94 +733,30 @@ function TranscriptBlock({
 }
 
 function ImageItem({ a, onOpen }: { a: Attachment; onOpen: (a: Attachment) => void }) {
-  // Если thumbnail-sharp умер на сервере и thumbnailUrl=null — берём original.
-  // Если ImgLoad упадёт и для thumbnail (404 / битый файл) — onError swap'нет
-  // на original; если и original битый — показываем placeholder без broken-icon.
   const initialSrc = resolveAssetUrl(a.thumbnailUrl ?? a.url) ?? "";
   const fallbackSrc = resolveAssetUrl(a.url) ?? "";
   const [imgSrc, setImgSrc] = useState(initialSrc);
   const [errored, setErrored] = useState(false);
-  return (
-    <button
-      type="button"
-      onClick={() => onOpen(a)}
-      style={{
-        ...imageWrap,
-        padding: 0,
-        border: imageWrap.border,
-        // Контейнер сжимается под natural размер картинки — не растягивается
-        // в широкий бокс. maxWidth ограничивает крупные пейзажи.
-        display: "inline-block",
-        maxWidth: 480,
-        width: "auto",
-      }}
-      aria-label={`Открыть изображение ${a.filename}`}
-      onMouseEnter={(e) => {
-        // v1.1.62 §8 — медиа «всплывает» на hover, как floating-сообщения.
-        e.currentTarget.style.transform = "translateY(-2px)";
-        e.currentTarget.style.boxShadow =
-          "0 16px 36px -12px hsl(210 60% 2% / 0.7)";
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.transform = "translateY(0)";
-        e.currentTarget.style.boxShadow =
-          "0 8px 24px -12px hsl(210 60% 2% / 0.6)";
-      }}
-    >
-      {errored ? (
-        <div
-          style={{
-            width: 320,
-            height: 180,
-            display: "grid",
-            placeItems: "center",
-            background: "var(--ec-surface-2)",
-            color: "var(--ec-text-muted)",
-            fontSize: "var(--ec-text-sm)",
-            gap: 6,
-            flexDirection: "column",
-          }}
-        >
-          <FileIcon mime={a.mimeType} />
-          <span style={{ maxWidth: "80%", textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {a.filename}
-          </span>
-          <span style={{ fontSize: "var(--ec-text-2xs)", color: "var(--ec-text-dim)" }}>
-            не удалось показать превью
-          </span>
-        </div>
-      ) : (
-        <img
-          src={imgSrc}
-          alt={a.filename}
-          loading="lazy"
-          onError={() => {
-            // First fail: попробуем original. Second fail: placeholder.
-            if (imgSrc !== fallbackSrc) {
-              setImgSrc(fallbackSrc);
-            } else {
-              setErrored(true);
-            }
-          }}
-          /*
-           * Картинка рендерится ЦЕЛИКОМ в естественной пропорции (без crop'а),
-           * вписана в maxWidth × maxHeight. Раньше aspectRatio + objectFit:cover
-           * обрезали портретные кадры в widescreen-бокс — теперь width/height:auto
-           * + object-fit:contain держат картинку целой. Click → lightbox full-size.
-           */
-          style={{
-            display: "block",
-            width: "auto",
-            height: "auto",
-            maxWidth: 480,
-            maxHeight: 420,
-            objectFit: "contain",
-          }}
-        />
-      )}
+  const [loaded, setLoaded] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  return <figure className="ec-media-preview ec-media-preview--image">
+    <button type="button" className="ec-media-preview__visual" onClick={() => {
+      if (errored) { setErrored(false); setLoaded(false); setImgSrc(initialSrc); setAttempt(value => value + 1); }
+      else onOpen(a);
+    }} aria-label={(errored ? "Повторить загрузку изображения " : "Открыть изображение ") + a.filename}>
+      {errored ? <span className="ec-media-preview__fallback"><EclipseUiIcon name="followup" size={24} />
+        Превью недоступно · повторить
+      </span> : <img key={attempt} src={imgSrc} alt={a.filename} loading="lazy"
+        onLoad={() => setLoaded(true)} onError={() => {
+          if (imgSrc !== fallbackSrc) setImgSrc(fallbackSrc); else setErrored(true);
+        }} />}
+      {!loaded && !errored && <span className="ec-media-preview__state" role="status">Загружаем изображение…</span>}
     </button>
-  );
+    <figcaption><span title={a.filename}>{a.filename}</span><span>{humanSize(a.size)}</span></figcaption>
+  </figure>;
 }
+
+
 
 // v1.5.15 — lightbox styling переведён на .ec-lightbox-* classNames
 // в player.css (radial backdrop + accent image frame + premium controls).
@@ -1006,7 +918,7 @@ export function Attachments({ attachments, onPlayShared }: Props) {
   };
 
   return (
-    <div style={wrap}>
+    <div className="ec-message-attachments">
       {images.length > 0 && (
         <div
           style={
@@ -1053,7 +965,7 @@ export function Attachments({ attachments, onPlayShared }: Props) {
               download={a.filename}
               target="_blank"
               rel="noopener noreferrer"
-              style={fileChip}
+              className="ec-message-file"
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = "var(--ec-surface-3)";
                 e.currentTarget.style.borderColor = "var(--ec-border-default)";

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { fileToBase64 } from "../lib/fileToBase64";
 import { computeWaveformPeaks } from "../lib/audioPeaks";
@@ -11,6 +11,8 @@ import {
   type AutocompleteTrigger,
 } from "./AutocompletePopover";
 import { ComposerEmojiPicker } from "./ComposerEmojiPicker";
+import { EclipseUiIcon } from "./icons/EclipseUiIcon";
+import { ACTION_KIND } from "../lib/actionDraft";
 
 /**
  * Operator slash-commands — `/task` `/decision` `/followup` в композере.
@@ -80,7 +82,12 @@ function parseSlashCommand(
 
 type Props = {
   channelName: string | null;
+  taskRequest?: number;
+  onTaskRequestHandled?: () => void;
+  canCreateActions?: boolean;
   disabled?: boolean;
+  /** Keep drafting available while the transport is reconnecting. */
+  sendDisabled?: boolean;
   onSend: (
     content: string,
     attachments: AttachmentUpload[],
@@ -185,6 +192,16 @@ const ALLOWED_MIME = new Set([
 
 function clientSizeLimit(mime: string): number {
   return mime.startsWith("video/") ? ATTACHMENT_MAX_BYTES_VIDEO : ATTACHMENT_MAX_BYTES;
+}
+
+function validateComposerFile(file: Pick<File, "name" | "size" | "type">): string | null {
+  // Unknown browser MIME types still go to authoritative server magic-byte validation.
+  const allowed = ALLOWED_MIME.has(file.type) || file.type === "" ||
+    file.type === "application/octet-stream" || /^(image|video|audio)\//.test(file.type);
+  if (!allowed) return `Не поддерживается: ${file.type || file.name}`;
+  const limit = clientSizeLimit(file.type);
+  if (file.size > limit) return `«${file.name}» больше ${(limit / 1024 / 1024).toFixed(0)} МБ`;
+  return null;
 }
 
 type Pending = {
@@ -297,6 +314,7 @@ function saveDraft(draftKey: string | null | undefined, value: string) {
 export function MessageInput({
   channelName,
   disabled,
+  sendDisabled = false,
   onSend,
   onTypingStart,
   onTypingStop,
@@ -310,11 +328,22 @@ export function MessageInput({
   onPrefillConsumed,
   prefillFiles = null,
   onPrefillFilesConsumed,
+  taskRequest = 0,
+  onTaskRequestHandled,
+  canCreateActions = !hideSlashCommands,
 }: Props) {
+  const sendErrorId = useId();
   const [draft, setDraft] = useState(() => loadDraft(draftKey));
   const [sending, setSending] = useState(false);
   const [pending, setPending] = useState<Pending[]>([]);
   const [attachError, setAttachError] = useState<string | null>(null);
+  const [sendError, setSendError] = useState<string | null>(null);
+  const [sendStage, setSendStage] = useState<"idle" | "preparing" | "sending">("idle");
+  const [sentFeedback, setSentFeedback] = useState("");
+  const [actionType, setActionType] = useState<ActionItemType | null>(null);
+  const sendingRef = useRef(false);
+  const pendingRef = useRef<Pending[]>([]);
+  pendingRef.current = pending;
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const draftRef = useRef(draft);
@@ -408,9 +437,21 @@ export function MessageInput({
 
   const insertSlashCommand = (value: string) => {
     setActionMenuOpen(false);
-    setDraftValue(value);
+    if (value === "/task ") {
+      setActionType("TASK");
+    } else if (!draftRef.current.trim()) {
+      setDraftValue(value);
+    }
     focusTextarea();
   };
+
+
+
+  useEffect(() => {
+    if (!sentFeedback) return;
+    const timer = window.setTimeout(() => setSentFeedback(""), 2400);
+    return () => window.clearTimeout(timer);
+  }, [sentFeedback]);
 
   const refreshTrigger = () => {
     const el = textareaRef.current;
@@ -472,10 +513,21 @@ export function MessageInput({
     saveDraft(draftKeyRef.current, draftRef.current);
     draftKeyRef.current = currentKey;
     setDraftValue(loadDraft(currentKey));
+    for (const item of pendingRef.current) if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
     setPending([]);
     setAttachError(null);
+    setSendError(null);
+    setActionType(null);
+    setActionMenuOpen(false);
     setTrigger(null);
   }, [draftKey]);
+
+  useEffect(() => {
+    if (!taskRequest || disabled || hideSlashCommands || !canCreateActions) return;
+    setActionType("TASK");
+    focusTextarea();
+    onTaskRequestHandled?.();
+  }, [taskRequest, disabled, hideSlashCommands, canCreateActions]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => saveDraft(draftKey, draft), 250);
@@ -530,6 +582,7 @@ export function MessageInput({
 
   useEffect(() => {
     if (!actionMenuOpen) return;
+    actionMenuRef.current?.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus();
 
     const onPointerDown = (event: PointerEvent) => {
       const target = event.target as Node | null;
@@ -626,13 +679,13 @@ export function MessageInput({
     const el = textareaRef.current;
     if (!el) return;
     el.style.height = "auto";
-    el.style.height = `${el.scrollHeight}px`;
+    el.style.height = `${Math.min(el.scrollHeight, 176)}px`;
   }, [draft]);
 
   // Cleanup object-URLs on unmount или при unpending
   useEffect(() => {
     return () => {
-      for (const p of pending) {
+      for (const p of pendingRef.current) {
         if (p.previewUrl && p.previewUrl.startsWith("blob:")) {
           URL.revokeObjectURL(p.previewUrl);
         }
@@ -642,29 +695,15 @@ export function MessageInput({
   }, []);
 
   const addFiles = (filesList: FileList | File[]) => {
+    if (disabled || hideAttachments || sendingRef.current) return;
     setAttachError(null);
     const files = Array.from(filesList);
     const newOnes: Pending[] = [];
     let err: string | null = null;
     for (const f of files) {
-      // Allow files без явного MIME — браузер часто не знает HEIC, MOV.
-      // Backend сам разруливает через sharp/magic bytes.
-      const acceptable =
-        ALLOWED_MIME.has(f.type) ||
-        f.type === "" ||
-        f.type === "application/octet-stream" ||
-        f.type.startsWith("image/") ||
-        f.type.startsWith("video/") ||
-        f.type.startsWith("audio/");
-      if (!acceptable) {
-        err = `Не поддерживается: ${f.type || f.name}`;
-        continue;
-      }
-      const limit = clientSizeLimit(f.type);
-      if (f.size > limit) {
-        err = `«${f.name}» больше ${(limit / 1024 / 1024).toFixed(0)} МБ`;
-        continue;
-      }
+      const fileError = validateComposerFile(f);
+      if (fileError) { err = fileError; continue; }
+
       const isImage = f.type.startsWith("image/");
       newOnes.push({
         id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
@@ -675,7 +714,8 @@ export function MessageInput({
     setPending((prev) => {
       const next = [...prev, ...newOnes];
       if (next.length > MAX_PER_MESSAGE) {
-        err = `Максимум ${MAX_PER_MESSAGE} файлов на сообщение`;
+        setAttachError(`Максимум ${MAX_PER_MESSAGE} файлов на сообщение`);
+        for (const item of next.slice(MAX_PER_MESSAGE)) if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
         return next.slice(0, MAX_PER_MESSAGE);
       }
       return next;
@@ -684,6 +724,7 @@ export function MessageInput({
   };
 
   const removePending = (id: string) => {
+    if (sendingRef.current) return;
     setPending((prev) => {
       const target = prev.find((p) => p.id === id);
       if (target?.previewUrl?.startsWith("blob:")) {
@@ -811,15 +852,27 @@ export function MessageInput({
 
   const submit = async () => {
     const trimmed = draft.trim();
-    if ((!trimmed && pending.length === 0) || sending || isRecording) return;
+    if ((!trimmed && pending.length === 0) || sendingRef.current || disabled || sendDisabled || isRecording) return;
+    const slash = hideSlashCommands || !canCreateActions ? null
+      : actionType ? { title: trimmed, type: actionType } : parseSlashCommand(trimmed);
+    if (slash && (!slash.title || slash.title.length > 160)) {
+      setSendError("Название задачи должно содержать от 1 до 160 символов.");
+      focusTextarea();
+      return;
+    }
+    const sendingKey = draftKeyRef.current;
+    const sendingFiles = pending;
+    sendingRef.current = true;
     setSending(true);
     setAttachError(null);
+    setSendError(null);
+    setSendStage(sendingFiles.length ? "preparing" : "sending");
     try {
       // Конвертируем все File в base64 параллельно + для audio дополнительно
       // считаем waveform peaks (Telegram-style viz). computeWaveformPeaks
       // failure-safe возвращает null — backend fallback на linear progress.
       const uploads: AttachmentUpload[] = await Promise.all(
-        pending.map(async (p) => {
+        sendingFiles.map(async (p) => {
           const isAudio = p.file.type.startsWith("audio/");
           const [dataBase64, waveformPeaks] = await Promise.all([
             fileToBase64(p.file),
@@ -835,16 +888,19 @@ export function MessageInput({
       );
       // Operator slash-command: `/task ...` → отправляем title + actionItem.
       // В Client Mode парсинг отключён — клиенту не нужны task-shortcut'ы.
-      const slash = hideSlashCommands ? null : parseSlashCommand(trimmed);
       const textMacro = hideSlashCommands || slash ? null : parseTextMacroCommand(trimmed);
       const outgoingText = textMacro ?? trimmed;
+      setSendStage("sending");
       const ok = slash
         ? await onSend(slash.title, uploads, { type: slash.type })
         : await onSend(outgoingText, uploads);
-      if (ok) {
+      if (!ok) throw new Error("send-failed");
+      saveDraft(sendingKey, "");
+      if (draftKeyRef.current === sendingKey) {
         setDraftValue("");
-        saveDraft(draftKeyRef.current, "");
-        for (const p of pending) {
+        setActionType(null);
+        setSentFeedback(slash ? "Создано: " + ACTION_KIND[slash.type].label.toLowerCase() : "Сообщение отправлено");
+        for (const p of sendingFiles) {
           if (p.previewUrl?.startsWith("blob:")) URL.revokeObjectURL(p.previewUrl);
         }
         setPending([]);
@@ -858,13 +914,25 @@ export function MessageInput({
           stopTimerRef.current = null;
         }
       }
+    } catch {
+      if (draftKeyRef.current === sendingKey) {
+        setSendError("Не удалось отправить. Текст и файлы сохранены здесь — попробуйте ещё раз.");
+      }
     } finally {
+      sendingRef.current = false;
       setSending(false);
-      textareaRef.current?.focus();
+      setSendStage("idle");
+      if (draftKeyRef.current === sendingKey) requestAnimationFrame(() => {
+        const field = textareaRef.current;
+        if (draftKeyRef.current === sendingKey && field &&
+          (document.activeElement === document.body || field.closest("form")?.contains(document.activeElement))) {
+          field.focus({ preventScroll: true });
+        }
+      });
     }
   };
 
-  const canSend = (draft.trim().length > 0 || pending.length > 0) && !disabled && !sending && !isRecording;
+  const canSend = (draft.trim().length > 0 || pending.length > 0) && !disabled && !sendDisabled && !sending && !isRecording;
   // Grid-колонки композера зависят от hideAttachments — единственное
   // динамическое значение; фокус-состояние коробки — CSS :focus-within.
   // Slash-command hint: показываем когда юзер набрал «/» + (опц.) часть
@@ -963,7 +1031,9 @@ export function MessageInput({
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={onDrop}
-      className={"ec-composer ec-composer-safe" + (dragOver ? " is-drag" : "")}
+      className={"ec-composer ec-composer-safe ec-composer--quiet" + (dragOver ? " is-drag" : "")}
+      aria-label="Отправка сообщения"
+      aria-busy={sending}
     >
       {/* v1.5.15 — full-screen dropzone overlay (portal). Виден когда
           файл тащится над окном; drop → addFiles в pending. Composer
@@ -981,7 +1051,7 @@ export function MessageInput({
               </div>
               <h3 className="ec-drag-overlay__title">Бросьте файлы</h3>
               <p className="ec-drag-overlay__hint">
-                Любое количество — будут вложены к следующему сообщению
+                До 10 файлов · видео до 200 МБ, остальные файлы до 50 МБ
               </p>
             </div>
           </div>,
@@ -1005,13 +1075,14 @@ export function MessageInput({
                 {p.file.name}
               </span>
               <span className="ec-composer-preview__size">
-                {humanSize(p.file.size)}
+                {humanSize(p.file.size)} · {sendStage === "preparing" ? "Подготовка…" : sendStage === "sending" ? "Отправка…" : "Готов к отправке"}
               </span>
               <button
                 type="button"
                 onClick={() => removePending(p.id)}
-                aria-label="Убрать"
-                title="Убрать"
+                aria-label={"Убрать файл " + p.file.name}
+                title="Убрать файл"
+                disabled={sending}
                 className="ec-composer-preview__remove"
               >
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -1024,7 +1095,7 @@ export function MessageInput({
         </div>
       )}
       {attachError && (
-        <p style={{ margin: "0 0 var(--ec-space-2)", color: "var(--ec-danger)", fontSize: "var(--ec-text-xs)" }}>
+        <p role="alert" className="ec-composer-error">
           {attachError}
         </p>
       )}
@@ -1088,6 +1159,17 @@ export function MessageInput({
       {/* Clean redesign: декоративный operator-strip («>_ Защищённый канал» +
           фейковое «в эфире» + scan-dots) убран — sci-fi-театр + ложный
           security-claim. Композер ниже самодостаточен. */}
+      {actionType && !hideSlashCommands && canCreateActions && <div className="ec-composer-mode">
+        <EclipseUiIcon name={ACTION_KIND[actionType].icon} size={18} />
+        <label>Создать
+          <select aria-label="Тип объекта сообщения" value={actionType} disabled={sending}
+            onChange={event => setActionType(event.target.value as ActionItemType)}>
+            {Object.entries(ACTION_KIND).map(([type, meta]) => <option key={type} value={type}>{meta.label}</option>)}
+          </select>
+        </label>
+        <button type="button" disabled={sending} onClick={() => { setActionType(null); setSendError(null); focusTextarea(); }}
+          aria-label="Отменить создание задачи"><EclipseUiIcon name="close" size={16} /></button>
+      </div>}
       <div
         className={
           "ec-composer-box" +
@@ -1111,7 +1193,7 @@ export function MessageInput({
           ref={actionButtonRef}
           type="button"
           onClick={() => setActionMenuOpen((open) => !open)}
-          disabled={disabled || isRecording}
+          disabled={disabled || sending || isRecording}
           className="ec-composer-plus"
           title="Добавить"
           aria-label="Открыть действия сообщения"
@@ -1123,7 +1205,18 @@ export function MessageInput({
           </svg>
         </button>
             {actionMenuOpen && (
-              <div ref={actionMenuRef} className="ec-composer-action-menu" role="menu" aria-label="Действия сообщения">
+              <div ref={actionMenuRef} className="ec-composer-action-menu" role="menu" aria-label="Действия сообщения"
+                onKeyDown={event => {
+                  const buttons = Array.from(actionMenuRef.current?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)') ?? []);
+                  const index = buttons.indexOf(document.activeElement as HTMLButtonElement);
+                  if (event.key === "Tab") { setActionMenuOpen(false); }
+                  if (["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
+                    event.preventDefault();
+                    const next = event.key === "Home" ? 0 : event.key === "End" ? buttons.length - 1
+                      : (index + (event.key === "ArrowDown" ? 1 : -1) + buttons.length) % buttons.length;
+                    buttons[next]?.focus();
+                  }
+                }}>
                 <button
                   type="button"
                   role="menuitem"
@@ -1154,7 +1247,7 @@ export function MessageInput({
                   </span>
                   <span>Голосовое сообщение</span>
                 </button>
-                {!hideSlashCommands && (
+                {!hideSlashCommands && canCreateActions && (
                   <button
                     type="button"
                     role="menuitem"
@@ -1170,25 +1263,7 @@ export function MessageInput({
                     <span>Создать задачу</span>
                   </button>
                 )}
-                <button type="button" role="menuitem" className="ec-composer-action-menu__item" disabled>
-                  <span className="ec-composer-action-menu__icon" aria-hidden>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M21 15a4 4 0 0 1-4 4H7l-4 4V7a4 4 0 0 1 4-4h6" />
-                      <path d="M16 3h5v5M21 3l-7 7" />
-                    </svg>
-                  </span>
-                  <span>Создать ветку</span>
-                  <span className="ec-composer-action-menu__soon">скоро</span>
-                </button>
-                <button type="button" role="menuitem" className="ec-composer-action-menu__item" disabled>
-                  <span className="ec-composer-action-menu__icon" aria-hidden>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M4 7h16M4 12h10M4 17h7" />
-                    </svg>
-                  </span>
-                  <span>Создать опрос</span>
-                  <span className="ec-composer-action-menu__soon">скоро</span>
-                </button>
+
                 {!hideSlashCommands && (
                   <button
                     type="button"
@@ -1212,7 +1287,7 @@ export function MessageInput({
           ref={emojiButtonRef}
           type="button"
           onClick={toggleEmojiPicker}
-          disabled={disabled || isRecording}
+          disabled={disabled || sending || isRecording}
           className="ec-composer-icon-btn"
           title="Эмодзи"
           aria-label="Выбрать эмодзи"
@@ -1233,7 +1308,7 @@ export function MessageInput({
           onKeyDown={(e) => {
             // Если popover активен — Enter/Tab/Arrow keys обрабатывает он (capture).
             // Здесь только Enter без trigger = submit.
-            if (e.key === "Enter" && !e.shiftKey && !trigger) {
+            if (e.key === "Enter" && !e.shiftKey && !trigger && !e.nativeEvent.isComposing) {
               e.preventDefault();
               void submit();
             }
@@ -1255,9 +1330,11 @@ export function MessageInput({
             setTimeout(() => setTrigger(null), 120);
           }}
           placeholder={
-            placeholder ?? (channelName ? `Сообщение в #${channelName}…` : "Канал открыт…")
+            actionType ? "Название задачи…" : placeholder ?? (channelName ? `Сообщение в #${channelName}…` : "Написать сообщение…")
           }
-          disabled={disabled}
+          aria-label={actionType ? "Название задачи" : "Сообщение"}
+          aria-describedby={sendError ? sendErrorId : undefined}
+          disabled={disabled || sending}
           className="ec-composer-textarea"
         />
         <button
@@ -1266,52 +1343,24 @@ export function MessageInput({
           className="ec-composer-send"
           style={{ opacity: canSend ? 1 : 0.4, cursor: canSend ? "pointer" : "default" }}
           title="Отправить (Enter)"
+          aria-label={sending ? "Отправка сообщения" : sendError ? "Повторить отправку" : actionType ? "Создать задачу" : "Отправить сообщение"}
         >
-          {sending ? (
-            "…"
-          ) : (
-            <>
-              <span className="ec-composer-send-label" style={{ letterSpacing: "0.06em" }}>Отправить</span>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <line x1="22" y1="2" x2="11" y2="13" />
-                <polygon points="22 2 15 22 11 13 2 9 22 2" />
-              </svg>
-            </>
-          )}
+          <EclipseUiIcon name={sending ? "orbit" : sendError ? "followup" : actionType ? "task" : "send"} size={19} />
+          <span className="ec-composer-send-label">{sending ? "Отправка…" : sendError ? "Повторить" : actionType ? "Создать" : "Отправить"}</span>
+
         </button>
       </div>
-      <div className="ec-composer-hints">
-        <span><span className="ec-kbd">Enter</span> — отправить</span>
-        <span className="ec-composer-hint--md ec-composer-hints__sep">·</span>
-        <span className="ec-composer-hint--md"><span className="ec-kbd">Shift+Enter</span> — новая строка</span>
-        {!hideAttachments && (
-          <>
-            <span className="ec-composer-hint--lg ec-composer-hints__sep">·</span>
-            <span className="ec-composer-hint--lg">drop файлы</span>
-          </>
-        )}
-        <span className="ec-composer-hint--lg" style={{ color: "var(--ec-border-emphasis)" }}>·</span>
-        <span className="ec-composer-hint--lg">
-          <span className="ec-kbd">@</span> участник · <span className="ec-kbd">:</span>emoji
+      <div className="ec-composer-feedback">
+        <span role="status" className={sentFeedback ? "ec-composer-feedback__success" : ""}>
+          {sending ? (sendStage === "preparing" ? "Подготовка файлов…" : "Отправка…") : sentFeedback}
         </span>
-        {!hideSlashCommands && (
-          <>
-            <span className="ec-composer-hints__sep">·</span>
-            <span>
-              <span className="ec-kbd">/task</span> задача
-            </span>
-          </>
-        )}
-        {/* v1.1.90 TLS-транспорт индикатор — честная метка транспорта
-            (HTTPS/WSS), НЕ сквозное (E2E) шифрование. */}
-        <span
-          className="ec-composer-tls"
-          title="Соединение защищено TLS — сквозного (E2E) шифрования нет"
-        >
-          <span className="ec-composer-tls__dot" aria-hidden />
-          TLS
-        </span>
+        <span className="ec-composer-feedback__keys">Enter — отправить · Shift+Enter — новая строка</span>
       </div>
+      {sendError && <div id={sendErrorId} className="ec-composer-error" role="alert">
+        <span>{sendError}</span>
+        <button type="button" disabled={sending || disabled} onClick={() => void submit()}>Повторить</button>
+      </div>}
+
       {trigger && (
         <AutocompletePopover
           trigger={trigger}

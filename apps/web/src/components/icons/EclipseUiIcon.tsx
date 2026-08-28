@@ -30,6 +30,22 @@ import { ArrowsOutIcon } from "@phosphor-icons/react/dist/csr/ArrowsOut";
 import { ArrowsInIcon } from "@phosphor-icons/react/dist/csr/ArrowsIn";
 import { CursorIcon } from "@phosphor-icons/react/dist/csr/Cursor";
 import { CircleNotchIcon } from "@phosphor-icons/react/dist/csr/CircleNotch";
+import { CheckSquareOffsetIcon } from "@phosphor-icons/react/dist/csr/CheckSquareOffset";
+import { CheckIcon } from "@phosphor-icons/react/dist/csr/Check";
+import { DiamondIcon } from "@phosphor-icons/react/dist/csr/Diamond";
+import { ArrowClockwiseIcon } from "@phosphor-icons/react/dist/csr/ArrowClockwise";
+import { WarningIcon } from "@phosphor-icons/react/dist/csr/Warning";
+import { ListChecksIcon } from "@phosphor-icons/react/dist/csr/ListChecks";
+import { ArrowRightIcon } from "@phosphor-icons/react/dist/csr/ArrowRight";
+import { ArrowBendUpLeftIcon } from "@phosphor-icons/react/dist/csr/ArrowBendUpLeft";
+import { SmileyIcon } from "@phosphor-icons/react/dist/csr/Smiley";
+import { PaperclipIcon } from "@phosphor-icons/react/dist/csr/Paperclip";
+import { MicrophoneIcon } from "@phosphor-icons/react/dist/csr/Microphone";
+import { FileIcon } from "@phosphor-icons/react/dist/csr/File";
+import { PlayIcon } from "@phosphor-icons/react/dist/csr/Play";
+import { PushPinIcon } from "@phosphor-icons/react/dist/csr/PushPin";
+import { BookmarkSimpleIcon } from "@phosphor-icons/react/dist/csr/BookmarkSimple";
+import { PaperPlaneTiltIcon } from "@phosphor-icons/react/dist/csr/PaperPlaneTilt";
 
 // Phosphor (MIT). Individual imports keep the development module graph small.
 const icons = {
@@ -44,6 +60,12 @@ const icons = {
   members: UsersThreeIcon, external: ArrowSquareOutIcon, delete: TrashIcon,
   edit: PencilSimpleIcon, more: DotsThreeIcon, upload: UploadSimpleIcon,
   expand: ArrowsOutIcon, collapse: ArrowsInIcon, cursor: CursorIcon, orbit: CircleNotchIcon,
+  task: CheckSquareOffsetIcon, check: CheckIcon, decision: DiamondIcon,
+  followup: ArrowClockwiseIcon, risk: WarningIcon, requirement: ListChecksIcon,
+  arrow: ArrowRightIcon,
+  reply: ArrowBendUpLeftIcon, smile: SmileyIcon, attach: PaperclipIcon,
+  microphone: MicrophoneIcon, file: FileIcon, play: PlayIcon,
+  pin: PushPinIcon, memory: BookmarkSimpleIcon, send: PaperPlaneTiltIcon,
 } as const;
 export type EclipseUiIconName = keyof typeof icons;
 export function EclipseUiIcon({ name, size = 20, className = "" }: {
