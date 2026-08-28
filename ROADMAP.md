@@ -5,16 +5,16 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-## v1.7.66 — Voice workspace + security hardening (2026-08-28, подготовка релиза)
+## v1.7.66 — Voice workspace + security hardening (2026-08-28, production)
 
 Пользователь разрешил исправить security-блокеры и завершить production rollout.
 Релиз заменяет ожидающий v1.7.65: включает conversation/task-слайсы и согласованный
-редизайн голосовой комнаты. До подтверждённой выкладки production остаётся 1.7.64.
+редизайн голосовой комнаты. Production подтверждён: 1.7.66, код 3e6c176.
 
 - [x] No-follow descriptor reader, проверки владельца/прав/размера, безопасные имена загрузок, unbiased credential sampling и single-pass entity decode.
 - [x] Штатный deploy привязан к точному проверенному SHA; approval, backup и rollback сохранены.
-- [ ] Clean release snapshot, Linux CI/security, CodeQL review и desktop/mobile smoke.
-- [ ] Production approve, точный SHA/bundle/version/health и запись результата.
+- [x] Clean release snapshot, Linux CI/security, CodeQL review и desktop/mobile smoke. Все 10 runtime CodeQL findings закрыты; 14 reference-doc предупреждений не входят в runtime и не скрывались.
+- [x] Production run 33185208482 успешен: проверенные backups обеих БД, точный SHA, 10 совпадающих asset hashes, version/SW 1.7.66, health/database true.
 
 Детали: docs/releases/v1.7.66.md и docs/security/v1.7.66-release-security.md.
 Ниже сохранена история подготовки предыдущих слайсов.
@@ -33,9 +33,9 @@
 
 Release scope и safety: docs/releases/v1.7.65.md. Следующие локальные QA-секции сохранены как исторические доказательства до публикации.
 
-## Voice room refinement — 2026-08-28 (локально, не опубликовано)
+## Voice room refinement — 2026-08-28 (production v1.7.66)
 
-Следующий согласованный слайс также реализован локально:
+Согласованный слайс опубликован в v1.7.66:
 
 - [x] Сцена по высоте комнаты, закрепление источника, доступная лента участников и изменение ширины чата мышью/клавиатурой.
 - [x] Ясные подписи режимов/управления, отдельный статус демонстрации и остановка экрана.
@@ -45,15 +45,15 @@ Release scope и safety: docs/releases/v1.7.65.md. Следующие локал
 - [x] Читаемые названия треков и опциональное локальное приглушение музыки при речи без изменения общей очереди.
 - [x] 62 UI/security контракта, пять browser suites, web/server typecheck/build, audit 0.
 
-QA следующего слайса: docs/design/voice-experience-qa-2026-08-28.md. Реальный звонок/native smoke и release security blockers остаются открытыми.
+QA: docs/design/voice-experience-qa-2026-08-28.md. Реальный многопользовательский звонок/native smoke остаются отдельной проверкой; runtime security blockers закрыты.
 
 - [x] Одна шапка комнаты, один настоящий музыкальный плеер и одна видимая кнопка подключения.
 - [x] Постоянное управление звонком в режимах «Вместе / Эфир / Чат»; звук, диагностика и устройства раскрываются отдельно.
 - [x] Адаптивная раскладка по доступной ширине комнаты, компактные участники, видео без наложения на миниатюры и чат без обрезания.
 - [x] Сохранены задачи, переписка, музыка, обработчики звонка и выхода; media state ограничен выбранной активной комнатой.
 - [x] 55 UI/security контрактов, typecheck и web/server build, audit (0), четыре browser suites; desktop/mobile 320–1920 px, клавиатура и reduced motion.
-- [ ] Реальный многопользовательский звонок и native desktop smoke перед выпуском.
-- [ ] Production только после отдельного разрешения и решения существующих security blockers v1.7.65. Этот слайс не коммитился и не публиковался.
+- [ ] Реальный многопользовательский звонок и native desktop smoke: не выполнены; synthetic QA не заменяет физические устройства.
+- [x] Production v1.7.66 после разрешения пользователя и исправления security blockers; код 3e6c176, deploy 33185208482.
 
 Доказательства и границы проверки: docs/design/voice-room-qa-2026-08-28.md.
 
