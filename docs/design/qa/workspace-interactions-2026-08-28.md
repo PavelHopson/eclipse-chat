@@ -1,6 +1,7 @@
 # Eclipse Chat — interaction QA, 2026-08-28
 
-Status: implemented locally; not committed, pushed or deployed. Production remains v1.7.66.
+Historical local implementation evidence before v1.7.67. Now released;
+production evidence and remaining limits: ../../releases/v1.7.67.md.
 
 ## Implemented
 
@@ -46,6 +47,9 @@ Used real UI components with DEV-only local fixtures; no production account, mic
 
 Proportional diff review: API authorization/rate limits, React escaping, existing asset URL resolution, local-only sound output, fixture isolation, dependencies and absence of new secrets/logging. No new Critical/High/Medium/Low security finding identified in this changed surface; this is not a full application penetration test.
 
-Still required before a production release: real two-client LiveKit + desktop-wrapper smoke, denied device/autoplay permission scenarios, audible cue balance on actual headphones, production exact-bundle verification. Fixtures do not certify these runtime paths.
+The user authorized v1.7.67 publication after these limits were disclosed. Exact
+production bundle verification passed; real two-client LiveKit + desktop-wrapper,
+denied device/autoplay scenarios and audible cue balance on actual headphones
+remain unverified. Fixtures do not certify these runtime paths.
 
 Unrelated dirty files, task functionality, logout behavior, upload rules and deployment configuration were preserved.

@@ -1,8 +1,8 @@
 # Eclipse Chat: interaction refinement
 
-Status: local implementation and fixture QA complete; not released.
+Status: released in v1.7.67 after separate user authorization.
 
-Evidence: [QA report](qa/workspace-interactions-2026-08-28.md). Live two-client/native verification remains a release gate.
+Evidence: [QA report](qa/workspace-interactions-2026-08-28.md) and [production release](../releases/v1.7.67.md). Live two-client/native verification remains explicitly unperformed, not a passed check.
 
 ## Scope
 - Compact voice chrome; adaptive audio-only / video / screen-share layout.

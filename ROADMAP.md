@@ -5,7 +5,9 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-## v1.7.67 — Media workbench + interaction refinement (2026-08-28, подготовка выпуска)
+**Текущая production-версия: v1.7.67** · code `30e8aa3` · verified 2026-08-28 20:40 UTC.
+
+## v1.7.67 — Media workbench + interaction refinement (2026-08-28, production)
 
 Пользователь разрешил публикацию на сайте и в приложении после просмотра локального preview.
 Цель — существующая master и штатный production workflow с проверенными backup и approval.
@@ -14,13 +16,16 @@ Desktop 1.0.8 загружает тот же production URL: native binary/insta
 - [x] Root/web/server/lockfile/SW синхронизированы на 1.7.67; backend читает manifest.
 - [x] Media и interaction contracts добавлены в CI и deploy validate; проверки не ослаблены.
 - [x] Clean release snapshot: 60 файлов, typecheck, 81 UI / 401 server / 22 security tests, build и audit 0; staged secret scan без кандидатов.
-- [ ] Exact-SHA CI/security review, production approve и smoke.
+- [x] Exact-SHA CI 33208761690 / Security 33208761727 зелёные; CodeQL: 14 прежних reference-doc findings, 0 runtime.
+- [x] Deploy 33208761706: проверенные backups обеих БД, HEAD 30e8aa3, internal/external smoke, version/SW 1.7.67, health/database true.
+- [x] 10 JS/CSS SHA-256 совпали с clean build; production update-banner и обычный reload на 1.7.67, desktop 1280/mobile 390 без overflow/битых изображений/runtime errors.
 - [ ] Реальный двухклиентский LiveKit, физические устройства и баланс звуков в наушниках остаются непроверенными; fixture QA не считается аппаратной проверкой.
+- [ ] Low follow-up: legacy hardReload в App.tsx всё ещё очищает SW/кэши всего origin. В этом выпуске исправлен только activate-handler SW; origin-wide helper требует отдельного слайса.
 
 Release scope и риски: docs/releases/v1.7.67.md и docs/security/v1.7.67-release-security.md.
-Production до успешного smoke остаётся v1.7.66.
+Production подтверждён: v1.7.67; desktop remote-wrapper получает тот же веб-интерфейс без нового установщика.
 
-## Media workbench — 2026-08-28 (включён в подготовку v1.7.67)
+## Media workbench — 2026-08-28 (production v1.7.67)
 
 - [x] Весь согласованный media/UI-слайс: быстрые устройства, компактный эфир, читабельный чат, редактирование очереди, Вписать/100%, состояния и анимации плееров, компонентные контракты.
 - [x] Локальные аудио/видео-плееры: скорость, перемотка, громкость, ошибки, fullscreen и mobile-пропорции.
@@ -32,7 +37,7 @@ Production до успешного smoke остаётся v1.7.66.
 Детали, visual contract и границы проверки: docs/design/qa/media-workbench-2026-08-28.md.
 Локальные результаты ниже предшествуют release-проверке v1.7.67.
 
-## Interaction refinement — 2026-08-28 (включён в подготовку v1.7.67)
+## Interaction refinement — 2026-08-28 (production v1.7.67)
 
 - [x] Компактная шапка звонка, адаптивный чат и сцена, без дублирования единственного источника.
 - [x] Общий слой модальных окон, viewport-safe previews, компактный профиль и исправление рамок контролов.
@@ -43,7 +48,7 @@ Production до успешного smoke остаётся v1.7.66.
 - [ ] Реальный двухклиентский/native audio smoke — остаётся verification limit.
 
 Детали и границы проверки: `docs/design/qa/workspace-interactions-2026-08-28.md`.
-Production до подтверждённого smoke остаётся v1.7.66; статус выпуска — в секции v1.7.67.
+Опубликовано в v1.7.67; доказательства — в секции релиза выше.
 
 ## v1.7.66 — Voice workspace + security hardening (2026-08-28, production)
 
@@ -855,7 +860,7 @@ scope доступа, понятное действие и подтвержде�
 
 **Актуальная версия (короткий индекс):** **v1.7.61** — восстановление безопасного доступа `www-data` к production `.env` и regression-защита прав.
 
-**Текущая версия:** **v1.6.98** (🗄️⚡ PARTIAL-ИНДЕКС под escalation-scan (бэклог-хвост, заход через CI). Фоновой `escalation.ts` раз в час обходит `ActionItem` где `status ∈ (OPEN,IN_PROGRESS,REVIEW)`, `dueAt < now-48h`, `(escalatedAt IS NULL OR < now-7d)`, `ORDER BY dueAt ASC LIMIT 50`. Запрос **глобальный** (без serverId/channelId) → все 4 существующих индекса `ActionItem` ведут с channelId/serverId и его НЕ покрывают → был seq-scan всей таблицы каждый час. **Новый partial composite index** `ActionItem_escalation_scan_idx ON ("dueAt") WHERE status IN (OPEN,IN_PROGRESS,REVIEW) AND dueAt IS NOT NULL` (raw-миграция `20260625120000_add_escalation_partial_index`): индексирует только кандидатов эскалации (крошечная доля таблицы — закрытые DONE и задачи без дедлайна исключены); ведущая `dueAt` → один forward index-scan покрывает и `dueAt < X`, и `ORDER BY dueAt ASC LIMIT 50` без сортировки, рано останавливается. **Prisma не выражает WHERE-индексы** → raw SQL; `migrate deploy` (deploy.sh [4/10]) применяет как есть, `prisma generate` индексы не читает, drift-проверок (`migrate dev`) в проекте нет (прод=migrate deploy, локальной БД нет). schema.prisma — doc-comment у `ActionItem` фиксирует существование индекса («не чинить как drift»). **temp-channel scan (`tempChannels.ts`) НЕ трогал** — `Channel` уже имеет `@@index([expiresAt])`, а `WHERE expiresAt < now` = чистый range-scan по нему (NULL'ы сортируются последними, не читаются); partial там лишь дублировал бы индекс = write-amplification на крошечной таблице ради ~нуля. Version 1.6.97→1.6.98 (4 точки). Verify: server `tsc --noEmit` PASS, web build PASS; миграция применится на проде при деплое (`migrate deploy`). **Бэклог-остаток:** виртуализация ленты сообщений (npm-dep + риск-рефактор скролла) — единственный крупный хвост.)
+**Историческая версия:** **v1.6.98** (🗄️⚡ PARTIAL-ИНДЕКС под escalation-scan (бэклог-хвост, заход через CI). Фоновой `escalation.ts` раз в час обходит `ActionItem` где `status ∈ (OPEN,IN_PROGRESS,REVIEW)`, `dueAt < now-48h`, `(escalatedAt IS NULL OR < now-7d)`, `ORDER BY dueAt ASC LIMIT 50`. Запрос **глобальный** (без serverId/channelId) → все 4 существующих индекса `ActionItem` ведут с channelId/serverId и его НЕ покрывают → был seq-scan всей таблицы каждый час. **Новый partial composite index** `ActionItem_escalation_scan_idx ON ("dueAt") WHERE status IN (OPEN,IN_PROGRESS,REVIEW) AND dueAt IS NOT NULL` (raw-миграция `20260625120000_add_escalation_partial_index`): индексирует только кандидатов эскалации (крошечная доля таблицы — закрытые DONE и задачи без дедлайна исключены); ведущая `dueAt` → один forward index-scan покрывает и `dueAt < X`, и `ORDER BY dueAt ASC LIMIT 50` без сортировки, рано останавливается. **Prisma не выражает WHERE-индексы** → raw SQL; `migrate deploy` (deploy.sh [4/10]) применяет как есть, `prisma generate` индексы не читает, drift-проверок (`migrate dev`) в проекте нет (прод=migrate deploy, локальной БД нет). schema.prisma — doc-comment у `ActionItem` фиксирует существование индекса («не чинить как drift»). **temp-channel scan (`tempChannels.ts`) НЕ трогал** — `Channel` уже имеет `@@index([expiresAt])`, а `WHERE expiresAt < now` = чистый range-scan по нему (NULL'ы сортируются последними, не читаются); partial там лишь дублировал бы индекс = write-amplification на крошечной таблице ради ~нуля. Version 1.6.97→1.6.98 (4 точки). Verify: server `tsc --noEmit` PASS, web build PASS; миграция применится на проде при деплое (`migrate deploy`). **Бэклог-остаток:** виртуализация ленты сообщений (npm-dep + риск-рефактор скролла) — единственный крупный хвост.)
 
 **Предыдущая:** **v1.6.97** (📲✅ ANDROID v1.0.4 НА САЙТЕ (хвост закрыт) + splash-hide. CDN отпустил → перезалит on-site `public/download/eclipse-chat.apk` на подписанный **`android-v1.0.4`** (4.8 МБ): in-app downloads (DownloadListener в `MainActivity`) + тёмный status-bar + сплеш (`@capacitor/splash-screen`). Юзеры v1.0.3 → баннер «новая версия». **Веб-часть слайса 3 дозакрыта:** `main.tsx` прячет нативный сплеш (`window.Capacitor.Plugins.SplashScreen.hide()`) по монтированию веба (rAF; graceful no-op в браузере; `launchAutoHide` страхует). Version 1.6.96→1.6.97 (4 точки). Verify: typecheck+build green, APK 4.8МБ в `dist/download/`. **Осталось (всё внешне-заблокировано локально):** partial-индексы — Prisma-миграцию НЕ сгенерить локально (нет БД); виртуализация ленты — npm-dep не добавить локально. Оба — отдельным заходом через CI/с БД. Полировка-де-нойз/перф/SOLAR/серверный-рефактор — закрыты (слайсы v1.6.90-96).
 
