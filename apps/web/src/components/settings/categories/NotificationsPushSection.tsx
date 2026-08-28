@@ -246,7 +246,7 @@ export function NotificationsPushSection({
           ))}
           <label className="ec-settings-sound-volume">
             <span>
-              <strong>Громкость</strong>
+              <strong>Громкость уведомлений</strong>
               <span className="ec-settings-muted">По умолчанию тихо, чтобы не мешать разговору</span>
             </span>
             <input
@@ -259,6 +259,20 @@ export function NotificationsPushSection({
             />
             <strong>{Math.round(sounds.settings.volume * 100)}%</strong>
           </label>
+          <label className="ec-settings-toggle-row">
+            <span><strong>Звуки действий в звонке</strong><span className="ec-settings-muted">Микрофон, камера, демонстрация и состояние соединения</span></span>
+            <input type="checkbox" checked={sounds.settings.actions} onChange={e => sounds.update({ actions: e.target.checked })} />
+          </label>
+          <label className="ec-settings-sound-volume">
+            <strong>Громкость действий</strong>
+            <input type="range" min="0" max="1" step="0.05" value={sounds.settings.actionsVolume}
+              disabled={!sounds.settings.actions} onChange={e => sounds.update({ actionsVolume: Number(e.target.value) })} />
+            <strong>{Math.round(sounds.settings.actionsVolume * 100)}%</strong>
+          </label>
+          <div className="ec-settings-sound-actions">
+            <button type="button" className="ec-btn ec-btn--ghost ec-btn--sm" onClick={() => sounds.test("micOn")}>Слушать: включение</button>
+            <button type="button" className="ec-btn ec-btn--ghost ec-btn--sm" onClick={() => sounds.test("micOff")}>Слушать: выключение</button>
+          </div>
         </section>
       )}
 

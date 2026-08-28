@@ -24,7 +24,7 @@ export function VoiceVisualStage({ channelId, tracks, participants, avatar, rend
         <PushPinIcon size={14} aria-hidden />Снять закрепление
       </button>}
     </div>
-    <div className="ec-voice-visual-stage__filmstrip" aria-label="Источники и участники звонка">
+    {(tracks.length + audioOnly.length > 1) && <div className="ec-voice-visual-stage__filmstrip" aria-label="Источники и участники звонка">
       {tracks.map(track => <button type="button" key={track.id}
         className="ec-voice-source" aria-pressed={active.id === track.id}
         aria-label={"Закрепить: " + track.name + (track.source === "screen" ? ", экран" : ", камера")}
@@ -43,6 +43,6 @@ export function VoiceVisualStage({ channelId, tracks, participants, avatar, rend
         <Avatar name={person.name} url={avatar(person.identity)} size={30} />
         <span><strong>{person.name}</strong><small>{person.isMicMuted ? "Микрофон выкл." : person.isSpeaking ? "Говорит" : "В звонке"}</small></span>
       </button>)}
-    </div>
+    </div>}
   </div>;
 }

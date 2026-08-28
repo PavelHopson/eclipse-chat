@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { db } from "../db.js";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
+import { editMusicQueue, queueEditBody } from "../lib/musicQueue.js";
 import { emitMusicSessionUpdated } from "../realtime.js";
 
 /**
@@ -85,6 +86,7 @@ async function loadAudioAttachment(attachmentId: string, serverId: string) {
       size: true,
       message: {
         select: {
+          deletedAt: true,
           channel: { select: { serverId: true } },
         },
       },
@@ -103,7 +105,7 @@ async function loadAudioAttachment(attachmentId: string, serverId: string) {
   // Принимаем только server attachments из этого же сервера — DM tracks
   // не делимся (privacy).
   const attServerId = att.message?.channel?.serverId;
-  if (attServerId !== serverId) return null;
+  if (attServerId !== serverId || att.message?.deletedAt) return null;
   return att;
 }
 
@@ -164,6 +166,7 @@ function serializeSession(s: {
   return {
     id: s.id,
     channelId: s.channelId,
+    serverNow: new Date().toISOString(),
     currentTrack: s.currentTrack
       ? {
           id: s.currentTrack.id,
@@ -278,7 +281,7 @@ export async function registerMusicRoutes(app: FastifyInstance) {
 
   /** GET queue — резолвит очередь (attachment IDs) в треки с именами,
    *  в порядке очереди. Для UI-списка в expand-плеере. Membership-only.
-   *  Битые/удалённые id молча пропускаются. */
+   *  Недоступные позиции сохраняются без раскрытия имени файла. */
   app.get(
     "/api/channels/:id/music/queue",
     { onRequest: [requireJwt] },
@@ -300,14 +303,44 @@ export async function registerMusicRoutes(app: FastifyInstance) {
       const ids = parseQueue(session.queue);
       if (ids.length === 0) return { queue: [] };
       const rows = await db.attachment.findMany({
-        where: { id: { in: ids } },
+        where: { id: { in: ids }, message: { channel: { serverId: ctx.channel.serverId }, deletedAt: null } },
         select: { id: true, filename: true },
       });
       const byId = new Map(rows.map((r) => [r.id, r] as const));
-      const queue = ids
-        .map((id) => byId.get(id))
-        .filter((t): t is { id: string; filename: string } => t != null);
-      return { queue };
+      const queue = ids.map((id, queueIndex) => ({
+        id, queueIndex, filename: byId.get(id)?.filename ?? "Трек недоступен", available: byId.has(id),
+      }));
+      return { queue, snapshot: ids };
+    },
+  );
+
+  /** Positional queue editing: host/MOD+, exact snapshot and compare-and-swap. */
+  app.patch("/api/channels/:id/music/queue",
+    { onRequest: [requireJwt], config: { rateLimit: { max: 30, timeWindow: "1 minute" } } },
+    async (req, reply) => {
+      const userId = getUserId(req);
+      if (!userId) return reply.status(401).send({ error: "Unauthorized" });
+      const parsed = queueEditBody.safeParse(req.body);
+      if (!parsed.success) return reply.status(400).send({ error: "Invalid queue edit" });
+      const { id: channelId } = req.params as { id: string };
+      const ctx = await loadChannelMembership(userId, channelId);
+      if ("error" in ctx) return reply.status(ctx.error === "Channel not found" ? 404 : 403).send({ error: ctx.error });
+      const session = await db.musicSession.findUnique({ where: { channelId } });
+      if (!session) return reply.status(404).send({ error: "No active session" });
+      if (session.hostUserId !== userId && !isMod(ctx.member.role)) {
+        return reply.status(403).send({ error: "Очередью управляет ведущий или модератор" });
+      }
+      const next = editMusicQueue(parseQueue(session.queue), parsed.data);
+      if (!next) return reply.status(409).send({ error: "Очередь уже изменилась. Обнови её и повтори действие." });
+      const changed = await db.musicSession.updateMany({
+        where: { id: session.id, queue: session.queue, hostUserId: session.hostUserId },
+        data: { queue: JSON.stringify(next) },
+      });
+      if (changed.count !== 1) return reply.status(409).send({ error: "Очередь уже изменилась. Обнови её и повтори действие." });
+      const updated = await db.musicSession.findUnique({ where: { channelId }, include: sessionInclude });
+      const payload = updated ? serializeSession(updated) : null;
+      emitMusicSessionUpdated(channelId, payload);
+      return { session: payload };
     },
   );
 
@@ -560,39 +593,29 @@ export async function registerMusicRoutes(app: FastifyInstance) {
         return reply.status(403).send({ error: "Only host or moderator can skip" });
       }
       const queue = parseQueue(session.queue);
+      const unchanged = { id: session.id, queue: session.queue, hostUserId: session.hostUserId,
+        currentTrackAttachmentId: session.currentTrackAttachmentId };
+      const conflict = () => reply.status(409).send({ error: "Очередь уже изменилась. Обнови её и повтори действие." });
       if (queue.length === 0) {
-        // Нет следующего — drop session.
-        await db.musicSession.delete({ where: { channelId } });
+        const removed = await db.musicSession.deleteMany({ where: unchanged });
+        if (removed.count !== 1) return conflict();
         emitMusicSessionUpdated(channelId, null);
         return { session: null };
       }
-      const nextId = queue[0];
       const nextQueue = queue.slice(1);
-      const track = await loadAudioAttachment(nextId, ctx.channel.serverId);
-      if (!track) {
-        // Битый id в очереди — skip его и пробуем дальше.
-        await db.musicSession.update({
-          where: { channelId },
-          data: { queue: JSON.stringify(nextQueue) },
-        });
-        return reply.status(409).send({
-          error: "Следующий трек недоступен, попробуй ещё раз skip",
-        });
-      }
-      const now = new Date();
-      const updated = await db.musicSession.update({
-        where: { channelId },
-        data: {
-          currentTrackAttachmentId: track.id,
-          startedAt: now,
-          positionMs: 0,
-          isPlaying: true,
-          queue: JSON.stringify(nextQueue),
-        },
-        include: sessionInclude,
+      const track = await loadAudioAttachment(queue[0], ctx.channel.serverId);
+      const changed = await db.musicSession.updateMany({
+        where: unchanged,
+        data: track ? {
+          currentTrackAttachmentId: track.id, startedAt: new Date(), positionMs: 0,
+          isPlaying: true, queue: JSON.stringify(nextQueue),
+        } : { queue: JSON.stringify(nextQueue) },
       });
-      const payload = serializeSession(updated);
+      if (changed.count !== 1) return conflict();
+      const updated = await db.musicSession.findUnique({ where: { channelId }, include: sessionInclude });
+      const payload = updated ? serializeSession(updated) : null;
       emitMusicSessionUpdated(channelId, payload);
+      if (!track) return reply.status(409).send({ error: "Недоступный трек удалён из очереди. Выбери следующий." });
       return { session: payload };
     },
   );
@@ -731,13 +754,15 @@ export async function registerMusicRoutes(app: FastifyInstance) {
       if (queue[queue.length - 1] === track.id) {
         return reply.status(409).send({ error: "Этот трек уже последний в очереди" });
       }
+      if (queue.length >= 200) return reply.status(400).send({ error: "В очереди уже 200 треков" });
       queue.push(track.id);
-      const updated = await db.musicSession.update({
-        where: { channelId },
+      const changed = await db.musicSession.updateMany({
+        where: { id: existing.id, queue: existing.queue },
         data: { queue: JSON.stringify(queue) },
-        include: sessionInclude,
       });
-      const payload = serializeSession(updated);
+      if (changed.count !== 1) return reply.status(409).send({ error: "Очередь изменилась. Повтори добавление." });
+      const updated = await db.musicSession.findUnique({ where: { channelId }, include: sessionInclude });
+      const payload = updated ? serializeSession(updated) : null;
       emitMusicSessionUpdated(channelId, payload);
       return { session: payload };
     },

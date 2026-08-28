@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useUserProfile } from "../hooks/useUserProfile";
 import { ROLE_LABELS_RU } from "../lib/memberRoles";
 import { resolveAssetUrl } from "../lib/assets";
@@ -43,6 +44,7 @@ export function UserProfileModal({
 }: Props) {
   const { profile, loading, error, reload } = useUserProfile(userId, serverId);
   const [selectedMedia, setSelectedMedia] = useState<MediaItem | null>(null);
+  const lightboxRef = useRef<HTMLDivElement>(null);
 
   const media = useMemo<MediaItem[]>(() => {
     if (!profile) return [];
@@ -58,6 +60,7 @@ export function UserProfileModal({
     for (const image of profile.profileImages) add(image.id, image.url, "Фото профиля");
     return items;
   }, [profile]);
+  const gallery = media.filter(item => item.id !== "avatar" && item.id !== "banner");
   const selectedIndex = selectedMedia
     ? media.findIndex((item) => item.id === selectedMedia.id)
     : -1;
@@ -69,6 +72,13 @@ export function UserProfileModal({
   useEffect(() => {
     if (!selectedMedia) return;
     const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Tab") {
+        const buttons = Array.from(lightboxRef.current?.querySelectorAll<HTMLButtonElement>("button:not(:disabled)") ?? []);
+        const first = buttons[0], last = buttons.at(-1);
+        if (first && ((!event.shiftKey && document.activeElement === last) || (event.shiftKey && document.activeElement === first))) {
+          event.preventDefault(); (event.shiftKey ? last : first)?.focus();
+        }
+      }
       if (event.key === "Escape") {
         event.preventDefault();
         setSelectedMedia(null);
@@ -90,7 +100,7 @@ export function UserProfileModal({
 
   return (
     <>
-      <Modal title="Профиль" onClose={onClose} width={760} closeOnEscape={!selectedMedia}>
+      <Modal title="Профиль" onClose={onClose} width={640} closeOnEscape={!selectedMedia}>
         {loading && !profile ? (
           <div className="ec-user-profile-skeleton" aria-label="Загрузка профиля">
             <div className="ec-user-profile-skeleton__banner" />
@@ -107,7 +117,7 @@ export function UserProfileModal({
             </button>
           </div>
         ) : (
-          <article className="ec-user-profile">
+          <article className={"ec-user-profile ec-user-profile--refined" + (!profile.profileBanner ? " ec-user-profile--no-cover" : "")}>
             <div className="ec-user-profile__cover">
               {profile.profileBanner ? (
                 <button
@@ -197,14 +207,14 @@ export function UserProfileModal({
                 </div>
               </dl>
 
-              <section className="ec-user-profile__section ec-user-profile__media-section">
+              {gallery.length > 0 && <section className="ec-user-profile__section ec-user-profile__media-section">
                 <div className="ec-user-profile__section-heading">
                   <span className="ec-user-profile__section-label">Изображения</span>
-                  <span>{media.length}</span>
+                  <span>{gallery.length}</span>
                 </div>
-                {media.length > 0 ? (
+                {gallery.length > 0 ? (
                   <div className="ec-user-profile__media-grid">
-                    {media.map((item) => (
+                    {gallery.map((item) => (
                       <button
                         type="button"
                         key={item.id}
@@ -221,14 +231,15 @@ export function UserProfileModal({
                     Здесь появятся фотографии, которые пользователь добавит в профиль.
                   </div>
                 )}
-              </section>
+              </section>}
             </div>
           </article>
         )}
       </Modal>
 
-      {selectedMedia && (
+      {selectedMedia && createPortal(
         <div
+          ref={lightboxRef}
           className="ec-profile-lightbox"
           role="dialog"
           aria-modal="true"
@@ -272,7 +283,7 @@ export function UserProfileModal({
               </button>
             </div>
           </div>
-        </div>
+        </div>, document.querySelector(".ec-shell.ec-workspace-v2") ?? document.body,
       )}
     </>
   );

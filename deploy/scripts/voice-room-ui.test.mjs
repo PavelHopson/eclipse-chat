@@ -39,7 +39,8 @@ test("small rooms fall back to stage without overwriting the desktop preference"
   assert.equal(modes.resolveVoiceRoomLayout("chat", false, false), "stage");
   assert.match(layout, /ResizeObserver/);
   assert.match(layout, /observer\.disconnect/);
-  assert.equal((layout.match(/localStorage\.setItem/g) ?? []).length, 1);
+  assert.equal((layout.match(/localStorage\.setItem\(layoutKey/g) ?? []).length, 1);
+  assert.equal((layout.match(/localStorage\.setItem\("ec.voiceRoom.audioCompact."/g) ?? []).length, 1);
   assert.match(layout, /choice\.channelId === channelId/);
 });
 test("invalid or unavailable storage falls back safely", () => {

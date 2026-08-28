@@ -38,7 +38,7 @@ type Props = {
   width?: number | string;
 };
 
-const clamp01 = (n: number): number => Math.min(1, Math.max(0, n));
+const clamp01 = (n: number): number => Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : 0;
 
 function clockOf(ms: number): string {
   const t = Math.max(0, Math.floor(ms / 1000));
@@ -60,7 +60,7 @@ export function MediaScrubber({
   const [dragFrac, setDragFrac] = useState<number | null>(null);
   const [hoverFrac, setHoverFrac] = useState<number | null>(null);
 
-  const seekable = !disabled && durationMs > 0 && !loading;
+  const seekable = !disabled && Number.isFinite(durationMs) && durationMs > 0 && !loading;
   const baseFrac = durationMs > 0 ? clamp01(positionMs / durationMs) : 0;
   const frac = dragFrac != null ? dragFrac : baseFrac;
   const bufFrac = durationMs > 0 ? clamp01(bufferedMs / durationMs) : 0;
@@ -77,7 +77,7 @@ export function MediaScrubber({
   };
 
   const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
-    if (!seekable) return;
+    if (!seekable || e.button !== 0) return;
     e.currentTarget.setPointerCapture(e.pointerId);
     setDragFrac(fracFromClientX(e.clientX));
   };
@@ -91,12 +91,15 @@ export function MediaScrubber({
     if (dragFrac == null) return;
     const committed = fracFromClientX(e.clientX);
     setDragFrac(null);
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
     onSeek(committed * durationMs);
   };
   const onKeyDown = (e: ReactKeyboardEvent<HTMLDivElement>) => {
     if (!seekable) return;
     const step = 5000;
-    if (e.key === "ArrowLeft") {
+    if (e.key === "Home" || e.key === "End") {
+      e.preventDefault(); onSeek(e.key === "Home" ? 0 : durationMs);
+    } else if (e.key === "ArrowLeft") {
       e.preventDefault();
       onSeek(Math.max(0, positionMs - step));
     } else if (e.key === "ArrowRight") {
@@ -123,6 +126,7 @@ export function MediaScrubber({
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={() => setDragFrac(null)}
+      onLostPointerCapture={() => setDragFrac(null)}
       onPointerLeave={() => setHoverFrac(null)}
       onKeyDown={onKeyDown}
       style={

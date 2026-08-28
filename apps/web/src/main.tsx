@@ -41,7 +41,8 @@ if (root) {
 // sw.js; если байты изменились — новый SW устанавливается в фоне
 // (skipWaiting + clients.claim уже в sw.js). App.tsx version-banner
 // ловит mismatch и предлагает hard reload.
-if ("serviceWorker" in navigator) {
+// Vite modules must never be mixed with an offline production shell.
+if (import.meta.env.PROD && "serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     const swUrl = `${import.meta.env.BASE_URL}sw.js`;
     navigator.serviceWorker

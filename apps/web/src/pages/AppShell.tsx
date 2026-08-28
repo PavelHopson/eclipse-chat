@@ -166,6 +166,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
   const socket = useSocket(socketRev);
   const connection = useConversationConnection(socket);
   const workspaceLayout = useWorkspaceLayout();
+  const [voiceToolbarTarget, setVoiceToolbarTarget] = useState<HTMLDivElement | null>(null);
   const brandMarkUrl = `${import.meta.env.BASE_URL}brand-mark.svg`;
 
   const isReady = socket != null;
@@ -1955,7 +1956,8 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               {selectedChannel.expiresAt && (
                 <ExpiryBadge expiresAt={selectedChannel.expiresAt} />
               )}
-              {selectedChannel.description && (
+              {selectedChannel.type === "VOICE" && voiceHealth.enabled && <div className="ec-voice-toolbar-host" ref={setVoiceToolbarTarget} />}
+              {selectedChannel.description && !(selectedChannel.type === "VOICE" && voiceHealth.enabled) && (
                 <>
                   <span
                     aria-hidden
@@ -1995,10 +1997,11 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                   session={music.session}
                   derivedPositionMs={music.derivedPositionMs}
                   isHost={music.session.host.id === user.id}
-                  onTogglePlayPause={() => void music.togglePlayPause()}
-                  onSkip={() => void music.skip()}
-                  onSeek={(ms) => void music.seek(ms)}
-                  onStop={() => void music.stop()}
+                  canControl={music.session.host.id === user.id || Boolean(currentRole && ["OWNER", "ADMIN", "MODERATOR", "OPERATOR"].includes(currentRole))}
+                  onTogglePlayPause={() => music.togglePlayPause()}
+                  onSkip={() => music.skip()}
+                  onSeek={(ms) => music.seek(ms)}
+                  onStop={() => music.stop()}
                   onExpand={() => setShowMusicExpand(true)}
                 />
               )}
@@ -2167,7 +2170,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
         </div>
 
         <ConnectionNotice state={connection.state} onRetry={connection.retry} />
-        {(showRightRail || inDmMode) && <div className="ec-conversation-toolbar">
+        {(showRightRail || inDmMode) && (!(selectedChannel?.type === "VOICE" && voiceHealth.enabled && !inDmMode) || searchReturn) && <div className="ec-conversation-toolbar">
           <WorkspaceFocusButton active={layoutFocused} onToggle={workspaceLayout.toggle} />
           {layoutFocused && <span>Все сообщения на месте</span>}
           {searchReturn && <button type="button" className="ec-conversation-return" onClick={() => {
@@ -2610,16 +2613,19 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               activeVoiceChannelName={activeVoiceChannelName}
               voice={voice}
               embedded
+              toolbarTarget={voiceToolbarTarget}
+              focusControl={<WorkspaceFocusButton active={layoutFocused} onToggle={workspaceLayout.toggle} />}
               musicSession={music.session}
               musicPlayer={music.session ? (
                 <MusicMiniPlayer
                   session={music.session}
                   derivedPositionMs={music.derivedPositionMs}
                   isHost={music.session.host.id === user.id}
-                  onTogglePlayPause={() => void music.togglePlayPause()}
-                  onSkip={() => void music.skip()}
-                  onSeek={(ms) => void music.seek(ms)}
-                  onStop={() => void music.stop()}
+                  canControl={music.session.host.id === user.id || Boolean(currentRole && ["OWNER", "ADMIN", "MODERATOR", "OPERATOR"].includes(currentRole))}
+                  onTogglePlayPause={() => music.togglePlayPause()}
+                  onSkip={() => music.skip()}
+                  onSeek={(ms) => music.seek(ms)}
+                  onStop={() => music.stop()}
                   onExpand={() => setShowMusicExpand(true)}
                 />
               ) : null}
@@ -2996,16 +3002,19 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           session={music.session}
           derivedPositionMs={music.derivedPositionMs}
           currentUserId={user.id}
+          canModerate={Boolean(currentRole && ["OWNER", "ADMIN", "MODERATOR", "OPERATOR"].includes(currentRole))}
+          onEditQueue={music.editQueue}
           library={musicLibrary.tracks}
           libraryLoading={musicLibrary.loading}
+          error={music.error}
           onClose={() => setShowMusicExpand(false)}
-          onTogglePlayPause={() => void music.togglePlayPause()}
-          onSkip={() => void music.skip()}
-          onSeek={(ms) => void music.seek(ms)}
-          onStop={() => void music.stop()}
-          onStartTrack={(id) => void music.start(id)}
-          onAddToQueue={(id) => void music.addToQueue(id)}
-          onStartPlaylist={(ids) => void music.startPlaylist(ids)}
+          onTogglePlayPause={() => music.togglePlayPause()}
+          onSkip={() => music.skip()}
+          onSeek={(ms) => music.seek(ms)}
+          onStop={() => music.stop()}
+          onStartTrack={(id) => music.start(id)}
+          onAddToQueue={(id) => music.addToQueue(id)}
+          onStartPlaylist={(ids) => music.startPlaylist(ids)}
         />
       )}
 

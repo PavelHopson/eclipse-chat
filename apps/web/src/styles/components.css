@@ -12312,8 +12312,8 @@ body {
 }
 
 .ec-voice-room__body:not(.ec-voice-room__body--visual) {
-  align-items: center !important;
-  justify-content: center !important;
+  align-items: safe center !important;
+  justify-content: safe center !important;
 }
 
 .ec-voice-room__body--visual {

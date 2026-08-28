@@ -678,15 +678,16 @@ export function MessageList({
                               ? `Бот · ${BOT_ROLE_LABELS[role!]}`
                               : "Сообщение от бота"
                           }
+                          className="ec-message-bot-tag"
                           aria-label={useRole ? BOT_ROLE_LABELS[role!] : "бот"}
                           style={{
                             display: "inline-flex",
                             alignItems: "center",
                             gap: 3,
                             padding: "0.05rem 0.4rem",
-                            background: c.bg,
-                            color: c.fg,
-                            border: `1px solid ${c.border}`,
+                            background: useRole ? c.bg : "transparent",
+                            color: useRole ? c.fg : "var(--ec-text-muted)",
+                            border: useRole ? `1px solid ${c.border}` : "0",
                             borderRadius: "var(--ec-radius-full)",
                             fontSize: "0.62rem",
                             fontWeight: 700,

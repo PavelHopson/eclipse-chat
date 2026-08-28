@@ -5,6 +5,46 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
+## v1.7.67 — Media workbench + interaction refinement (2026-08-28, подготовка выпуска)
+
+Пользователь разрешил публикацию на сайте и в приложении после просмотра локального preview.
+Цель — существующая master и штатный production workflow с проверенными backup и approval.
+Desktop 1.0.8 загружает тот же production URL: native binary/installer не меняются.
+
+- [x] Root/web/server/lockfile/SW синхронизированы на 1.7.67; backend читает manifest.
+- [x] Media и interaction contracts добавлены в CI и deploy validate; проверки не ослаблены.
+- [x] Clean release snapshot: 60 файлов, typecheck, 81 UI / 401 server / 22 security tests, build и audit 0; staged secret scan без кандидатов.
+- [ ] Exact-SHA CI/security review, production approve и smoke.
+- [ ] Реальный двухклиентский LiveKit, физические устройства и баланс звуков в наушниках остаются непроверенными; fixture QA не считается аппаратной проверкой.
+
+Release scope и риски: docs/releases/v1.7.67.md и docs/security/v1.7.67-release-security.md.
+Production до успешного smoke остаётся v1.7.66.
+
+## Media workbench — 2026-08-28 (включён в подготовку v1.7.67)
+
+- [x] Весь согласованный media/UI-слайс: быстрые устройства, компактный эфир, читабельный чат, редактирование очереди, Вписать/100%, состояния и анимации плееров, компонентные контракты.
+- [x] Локальные аудио/видео-плееры: скорость, перемотка, громкость, ошибки, fullscreen и mobile-пропорции.
+- [x] Защита заглушённого микрофона при обновлении настроек; CAS очереди; PWA cache ownership и изоляция Vite-модулей.
+- [x] 81 UI / 401 server / 22 security checks, typecheck/build, полный audit (0), desktop/mobile fixture QA.
+- [x] Отдельное разрешение на публикацию получено 2026-08-28.
+- [ ] Двухклиентский LiveKit/native/наушники — остаётся verification limit.
+
+Детали, visual contract и границы проверки: docs/design/qa/media-workbench-2026-08-28.md.
+Локальные результаты ниже предшествуют release-проверке v1.7.67.
+
+## Interaction refinement — 2026-08-28 (включён в подготовку v1.7.67)
+
+- [x] Компактная шапка звонка, адаптивный чат и сцена, без дублирования единственного источника.
+- [x] Общий слой модальных окон, viewport-safe previews, компактный профиль и исправление рамок контролов.
+- [x] Очередь/аудиотека с поиском, клавиатурная перемотка и серверная опора времени плеера.
+- [x] Локальные звуки действий с отдельной громкостью; анимации Eclipse и отключение движения/курсора.
+- [x] Typecheck, UI/server/security tests, build, audit и desktop/mobile fixture QA.
+- [x] Публикация разрешена пользователем 2026-08-28.
+- [ ] Реальный двухклиентский/native audio smoke — остаётся verification limit.
+
+Детали и границы проверки: `docs/design/qa/workspace-interactions-2026-08-28.md`.
+Production до подтверждённого smoke остаётся v1.7.66; статус выпуска — в секции v1.7.67.
+
 ## v1.7.66 — Voice workspace + security hardening (2026-08-28, production)
 
 Пользователь разрешил исправить security-блокеры и завершить production rollout.

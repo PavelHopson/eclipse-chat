@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { QueueEdit } from "../lib/mediaPresentation";
+import { sessionPositionMs } from "../lib/musicTiming";
 import type { Socket } from "socket.io-client";
 import { apiJson } from "../lib/api";
 import { SocketEvents } from "../lib/socket";
@@ -6,12 +8,9 @@ import { SocketEvents } from "../lib/socket";
 /**
  * Shared listening room (v0.61) — synchronous audio playback на канале.
  *
- * Sync механизм: server держит `startedAt` (timestamp последнего play/resume)
- * + `positionMs` (offset на момент pause). Frontend рассчитывает текущую
- * позицию как:
- *   position = isPlaying && startedAt
- *     ? (Date.now() - startedAt.getTime() + positionMs)
- *     : positionMs
+ * Сервер присылает startedAt, positionMs и serverNow. Позиция привязана
+ * к времени сервера, затем продвигается монотонными часами клиента.
+ * После возвращения во вкладку и reconnect опора обновляется.
  *
  * Hook возвращает `derivedPositionMs` который тикает каждую секунду.
  * При change session — re-fetch (socket event payload приходит с полным
@@ -40,14 +39,17 @@ export type MusicSession = {
   queue: string[];
   host: { id: string; displayName: string; avatar: string | null };
   updatedAt: string;
+  serverNow?: string;
 };
 
 export function useChannelMusic(channelId: string | null, socket: Socket | null) {
   const [session, setSession] = useState<MusicSession | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const requestGeneration = useRef(0);
 
   const reload = useCallback(async () => {
+    const generation = ++requestGeneration.current;
     if (!channelId) {
       setSession(null);
       return;
@@ -58,17 +60,28 @@ export function useChannelMusic(channelId: string | null, socket: Socket | null)
       const data = await apiJson<{ session: MusicSession | null }>(
         `/api/channels/${encodeURIComponent(channelId)}/music`,
       );
-      setSession(data.session);
+      if (generation === requestGeneration.current) setSession(data.session);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Не удалось загрузить плеер");
+      if (generation === requestGeneration.current) setError(e instanceof Error ? e.message : "Не удалось загрузить плеер");
     } finally {
-      setLoading(false);
+      if (generation === requestGeneration.current) setLoading(false);
     }
   }, [channelId]);
 
   useEffect(() => {
     void reload();
+    return () => { requestGeneration.current++; };
   }, [reload]);
+
+  useEffect(() => {
+    const recover = () => { if (!document.hidden) void reload(); };
+    socket?.on("connect", recover);
+    document.addEventListener("visibilitychange", recover);
+    return () => {
+      socket?.off("connect", recover);
+      document.removeEventListener("visibilitychange", recover);
+    };
+  }, [socket, reload]);
 
   // Subscribe: server emit'ит full session payload (или null = stop) при
   // любых изменениях. Match по channelId через event-room subscription
@@ -79,6 +92,8 @@ export function useChannelMusic(channelId: string | null, socket: Socket | null)
       // Если payload относится к другому каналу — игнорим (socket emit'ит
       // в channel-room, поэтому payload по идее тот же channel; double-check).
       if (payload && channelId && payload.channelId !== channelId) return;
+      requestGeneration.current++;
+      setLoading(false);
       setSession(payload);
     };
     socket.on(SocketEvents.MusicSessionUpdated, onUpdated);
@@ -96,15 +111,12 @@ export function useChannelMusic(channelId: string | null, socket: Socket | null)
     return () => clearInterval(id);
   }, [session?.isPlaying, session?.startedAt]);
 
-  const derivedPositionMs = (() => {
-    if (!session) return 0;
-    if (session.isPlaying && session.startedAt) {
-      return (
-        Date.now() - new Date(session.startedAt).getTime() + session.positionMs
-      );
-    }
-    return session.positionMs;
-  })();
+  const clockAnchor = useMemo(() => ({
+    position: session ? sessionPositionMs(session) : 0,
+    at: performance.now(),
+  }), [session]);
+  const derivedPositionMs = clockAnchor.position + (session?.isPlaying
+    ? Math.max(0, performance.now() - clockAnchor.at) : 0);
   // Use tick to mark as read (avoid lint unused). Side-effect: re-render
   // фронт при каждом интервале.
   void tick;
@@ -249,7 +261,27 @@ export function useChannelMusic(channelId: string | null, socket: Socket | null)
     [channelId],
   );
 
+  const editQueue = useCallback(async (edit: QueueEdit): Promise<boolean> => {
+    if (!channelId) return false;
+    setError(null);
+    try {
+      const data = await apiJson<{ session: MusicSession | null }>(
+        `/api/channels/${encodeURIComponent(channelId)}/music/queue`,
+        { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(edit) },
+      );
+      requestGeneration.current++;
+      setSession(data.session);
+      return true;
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : "Не удалось изменить очередь";
+      await reload();
+      setError(message);
+      return false;
+    }
+  }, [channelId, reload]);
+
   return {
+    editQueue,
     session,
     loading,
     error,

@@ -1,5 +1,11 @@
 import type { CSSProperties, ReactNode } from "react";
+import { createPortal } from "react-dom";
+import { useInteractionMotion } from "../hooks/useInteractionMotion";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { MediaViewport } from "./MediaViewport";
+import { VoiceDeviceControl } from "./VoiceDeviceControl";
+import { SquaresFourIcon } from "@phosphor-icons/react/dist/csr/SquaresFour";
+import { RowsIcon } from "@phosphor-icons/react/dist/csr/Rows";
 import { VoiceMicCheck, type VoiceMicCheckHandle } from "./VoiceMicCheck";
 import { VoiceVisualStage } from "./VoiceVisualStage";
 import { VoiceChatDivider } from "./VoiceChatDivider";
@@ -57,6 +63,8 @@ type Props = {
   /** The existing transport is rendered once, inside this room. */
   musicPlayer?: ReactNode;
   embedded?: boolean;
+  toolbarTarget?: HTMLElement | null;
+  focusControl?: ReactNode;
   onOpenMusicPicker?: () => void;
   onOpenMusicExpand?: () => void;
   onOpenProfile?: (userId: string) => void;
@@ -75,7 +83,9 @@ const controlBtn: CSSProperties = {
   placeItems: "center",
   background: "var(--ec-surface-3)",
   color: "var(--ec-text)",
-  border: "1px solid var(--ec-border-subtle)",
+  borderWidth: 1,
+  borderStyle: "solid",
+  borderColor: "var(--ec-border-subtle)",
   cursor: "pointer",
   transition:
     "background var(--ec-dur-fast) var(--ec-ease), color var(--ec-dur-fast) var(--ec-ease), border-color var(--ec-dur-fast) var(--ec-ease), transform var(--ec-dur-fast) var(--ec-ease)",
@@ -93,7 +103,7 @@ const controlBtnAccent: CSSProperties = {
   background: "var(--ec-accent-soft)",
   color: "var(--ec-accent)",
   borderColor: "var(--ec-accent)",
-  boxShadow: "0 0 0 1px var(--ec-border-accent), 0 0 18px -2px hsl(258 90% 66% / 0.42)",
+  boxShadow: "0 0 0 1px var(--ec-border-accent)",
 };
 
 // v1.5.16 — helper для mapping inline style ref → semantic className.
@@ -250,6 +260,7 @@ function FullscreenGlyph({ active }: { active: boolean }) {
 function PresenceAvatar({ name, avatar, size, speaking, muted, getLevel }: {
   name: string; avatar: string | null; size: number; speaking: boolean; muted: boolean; getLevel?: () => number;
 }) {
+  const motionEnabled = useInteractionMotion();
   const corona = useRef<HTMLSpanElement>(null);
   const levelReader = useRef(getLevel);
   levelReader.current = getLevel;
@@ -263,7 +274,7 @@ function PresenceAvatar({ name, avatar, size, speaking, muted, getLevel }: {
     const update = () => {
       cancelAnimationFrame(frame);
       if (!speaking || muted || document.hidden) { node.style.opacity = "0"; return; }
-      if (motion.matches) { node.style.transform = "none"; node.style.opacity = ".7"; return; }
+      if (motion.matches || !motionEnabled) { node.style.transform = "none"; node.style.opacity = ".7"; return; }
       const tick = (now: number) => {
         if (now - last >= 70) {
           last = now;
@@ -280,7 +291,7 @@ function PresenceAvatar({ name, avatar, size, speaking, muted, getLevel }: {
     motion.addEventListener("change", update);
     document.addEventListener("visibilitychange", update);
     return () => { cancelAnimationFrame(frame); motion.removeEventListener("change", update); document.removeEventListener("visibilitychange", update); };
-  }, [speaking, muted]);
+  }, [speaking, muted, motionEnabled]);
   return <span className="ec-voice-avatar" data-speaking={speaking && !muted || undefined}>
     <Avatar url={avatar} name={name} size={size} />
     <span className="ec-voice-corona" ref={corona} aria-hidden />
@@ -301,6 +312,7 @@ function VideoTrackTile({
   const tileRef = useRef<HTMLElement | null>(null);
   // v1.1.68 — натуральные пропорции источника (см. ниже).
   const [aspect, setAspect] = useState<number | null>(null);
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
@@ -332,6 +344,7 @@ function VideoTrackTile({
     const syncAspect = () => {
       if (element.videoWidth > 0 && element.videoHeight > 0) {
         setAspect(element.videoWidth / element.videoHeight);
+        setDimensions({ width: element.videoWidth, height: element.videoHeight });
       }
     };
     syncAspect();
@@ -401,7 +414,7 @@ function VideoTrackTile({
           : null),
       }}
     >
-      <div ref={mountRef} style={videoCanvas} />
+      <MediaViewport width={dimensions.width} height={dimensions.height} enabled={isScreen}><div ref={mountRef} style={videoCanvas} /></MediaViewport>
       {/* v1.5.31 — placeholder пока aspect не пришло (loadedmetadata
        *  not fired). Большой avatar + имя + статус — user видит КТО шарит
        *  до того как первый frame отрендерился. Hide когда aspect loaded. */}
@@ -515,6 +528,8 @@ export function VoiceRoom({
   musicSession,
   musicPlayer,
   embedded = false,
+  toolbarTarget,
+  focusControl,
   onOpenMusicPicker,
   onOpenMusicExpand,
   onOpenProfile,
@@ -522,6 +537,14 @@ export function VoiceRoom({
   composer,
 }: Props) {
   const v = voice;
+  const [controlPending, setControlPending] = useState<string[]>([]);
+  const pendingRef = useRef(new Set<string>());
+  const runControl = async (name: string, action: () => unknown) => {
+    const pending = pendingRef.current;
+    if (pending.has(name) || (["mic", "audio"].includes(name) && (pending.has("mic") || pending.has("audio")))) return;
+    pending.add(name); setControlPending([...pending]);
+    try { await action(); } finally { pending.delete(name); setControlPending([...pending]); }
+  };
   const micCheckRef = useRef<VoiceMicCheckHandle>(null);
   const [joinMuted, setJoinMuted] = useState(false);
   const [unread, setUnread] = useState({ total: 0, mentions: 0 });
@@ -546,7 +569,7 @@ export function VoiceRoom({
     return () => document.removeEventListener("pointerdown", close);
   }, []);
   const hasRoomChat = Boolean(messages || composer);
-  const { layout: effectiveLayoutMode, compact, selectLayout } = useVoiceRoomLayout(channelId, roomRef, hasRoomChat);
+  const { layout: effectiveLayoutMode, compact, selectLayout, audioCompact, selectAudioCompact } = useVoiceRoomLayout(channelId, roomRef, hasRoomChat);
   // UXR2 — серверная телеметрия (ПАМ/ЦП/связь) переехала из глобального
   // topbar в voice diagnostics, где объясняет качество связи/нагрузку.
   // Реальные значения из /api/health; null/offline → честный «нет данных».
@@ -644,14 +667,8 @@ export function VoiceRoom({
     });
   };
 
-  return (
-    <div
-      ref={roomRef}
-      data-layout={effectiveLayoutMode}
-      data-compact={compact || undefined}
-      className={"ec-voice-room ec-voice-room--refined" + (hasVisual ? " ec-voice-room--visual" : " ec-voice-room--audio")}
-    >
-      <div className="ec-voice-room__topbar">
+  const toolbar = (
+      <div className="ec-voice-room__topbar ec-voice-room--refined">
         {!embedded && <h2 className="ec-voice-room__title"><VoiceChannelIcon />{channelName}</h2>}
         <span className="ec-voice-room__status" style={{ color: statusColor }} role="status">
           <span className="ec-voice-room__status-dot" aria-hidden />
@@ -661,6 +678,13 @@ export function VoiceRoom({
         {v.settings.micActivationMode === "push_to_talk" && isJoinedHere && (
           <span className="ec-voice-room__ptt">Зажми {keyCodeToLabel(v.settings.pttKey)}, чтобы говорить</span>
         )}
+        {isJoinedHere && v.isScreenShareEnabled && <span className="ec-voice-sharing" role="status"><ScreenShareIcon size={14} aria-hidden />Экран в эфире</span>}
+        {!hasVisual && isJoinedHere && <button type="button" className="ec-voice-density" aria-pressed={audioCompact}
+          aria-label={audioCompact ? "Показать карточки участников" : "Компактный список участников"} onClick={() => selectAudioCompact(!audioCompact)}>
+          {audioCompact ? <SquaresFourIcon size={15} aria-hidden /> : <RowsIcon size={15} aria-hidden />}
+          <span>{audioCompact ? "Карточки" : "Компактно"}</span>
+        </button>}
+        {focusControl}
         {!musicSession && onOpenMusicPicker && (
           <button type="button" className="ec-voice-room__music-trigger" onClick={onOpenMusicPicker}>
             <MusicNotesIcon size={17} aria-hidden />Музыка
@@ -686,11 +710,17 @@ export function VoiceRoom({
           </div>
         )}
       </div>
+  );
 
-      {isJoinedHere && v.isScreenShareEnabled && <div className="ec-voice-sharing" role="status">
-        <ScreenShareIcon size={16} /><span>Вы показываете экран</span>
-        <button type="button" onClick={() => void v.toggleScreenShare()} disabled={!isConnected}>Остановить</button>
-      </div>}
+  return (
+    <div
+      ref={roomRef}
+      data-layout={effectiveLayoutMode}
+      data-audio-density={audioCompact ? "compact" : "cards"}
+      data-compact={compact || undefined}
+      className={"ec-voice-room ec-voice-room--refined" + (hasVisual ? " ec-voice-room--visual" : " ec-voice-room--audio")}
+    >
+      {toolbarTarget ? createPortal(toolbar, toolbarTarget) : toolbar}
 
       {musicSession && (
         <section className="ec-voice-room__music" aria-label="Общий музыкальный плеер">
@@ -764,7 +794,7 @@ export function VoiceRoom({
                   <PresenceAvatar
                     name={p.name}
                     avatar={p.avatar}
-                    size={compact && stageParticipants.length > 1 ? 48 : 72}
+                    size={audioCompact || compact && stageParticipants.length > 1 ? 48 : 72}
                     getLevel={() => v.getSpeechLevel(p.identity)}
                     speaking={speaking}
                     muted={p.isMicMuted}
@@ -787,7 +817,9 @@ export function VoiceRoom({
                     )}
                   </span>
                   <span style={{ fontSize: "var(--ec-text-2xs)", color: "var(--ec-text-dim)" }}>
-                    {!p.isLive
+                    {isReconnecting
+                      ? "восстанавливаем связь"
+                      : !p.isLive
                       ? "в комнате"
                       : speaking
                       ? "говорит"
@@ -910,7 +942,7 @@ export function VoiceRoom({
 
         </section>
 
-        {hasRoomChat && <VoiceChatDivider roomRef={roomRef} channelId={channelId} />}
+        {hasRoomChat && <VoiceChatDivider roomRef={roomRef} channelId={channelId} visual={hasVisual} compactAudio={!hasVisual && audioCompact} />}
         {(messages || composer) && (
           <aside className="ec-voice-room__chat-column" aria-label="Чат голосовой комнаты">
             <VoiceChatContext.Provider value={{ visible: effectiveLayoutMode !== "stage", reportUnread }}>
@@ -1052,6 +1084,8 @@ export function VoiceRoom({
             className="ec-voice-room__controls"
             role="group"
             aria-label="Управление голосовой комнатой"
+            aria-busy={controlPending.length > 0}
+            data-pending={controlPending.join(" ") || undefined}
           >
         {!isJoinedHere ? (
           <button
@@ -1069,9 +1103,10 @@ export function VoiceRoom({
           </button>
         ) : (
           <>
+            <VoiceDeviceControl kind="input" selected={v.settings.inputDeviceId} onSelect={v.setInputDevice} onSettings={() => setShowSettings(true)}>
             <button
               type="button"
-              onClick={() => void v.toggleMic()}
+              onClick={() => void runControl("mic", v.toggleMic)}
               style={
                 v.pttActive ? controlBtnAccent : v.isMicMuted ? controlBtnAccent : controlBtn
               }
@@ -1089,53 +1124,57 @@ export function VoiceRoom({
               }
               aria-label={v.isMicMuted ? "Включить микрофон" : "Выключить микрофон"}
               aria-pressed={!v.isMicMuted}
-              disabled={v.settings.micActivationMode === "push_to_talk" || !isConnected}
+              disabled={v.settings.micActivationMode === "push_to_talk" || !isConnected || (controlPending.includes("mic") || controlPending.includes("audio"))}
             >
-              <MicStateIcon off={v.isMicMuted} />
-              <span className="ec-voice-control-label">{v.settings.micActivationMode === "push_to_talk" ? "Речь: " + keyCodeToLabel(v.settings.pttKey) : v.isMicMuted ? "Микрофон выкл." : "Микрофон"}</span>
+              <MicStateIcon key={String(v.isMicMuted)} off={v.isMicMuted} />
+              <span className="ec-voice-control-label">{v.settings.micActivationMode === "push_to_talk" ? "Речь: " + keyCodeToLabel(v.settings.pttKey) : controlPending.includes("mic") ? "Переключаем…" : v.isMicMuted ? "Микрофон выкл." : "Микрофон вкл."}</span>
             </button>
+            </VoiceDeviceControl>
 
+            <VoiceDeviceControl kind="output" selected={v.settings.outputDeviceId} onSelect={v.setOutputDevice} onSettings={() => setShowSettings(true)}>
             <button
               type="button"
-              onClick={() => v.toggleDeafen()}
+              onClick={() => void runControl("audio", v.toggleDeafen)}
+              disabled={!isConnected || controlPending.includes("mic") || controlPending.includes("audio")}
               style={v.isDeafened ? controlBtnAccent : controlBtn}
               className={ctrlClassFor(v.isDeafened ? controlBtnAccent : controlBtn)}
               title={v.isDeafened ? "Включить звук" : "Заглушить всех"}
               aria-label={v.isDeafened ? "Включить звук" : "Заглушить всех"}
               aria-pressed={v.isDeafened}
             >
-              <HeadsetIcon off={v.isDeafened} />
-              <span className="ec-voice-control-label">{v.isDeafened ? "Звук выкл." : "Звук"}</span>
+              <HeadsetIcon key={String(v.isDeafened)} off={v.isDeafened} />
+              <span className="ec-voice-control-label">{v.isDeafened ? "Звук выкл." : "Звук вкл."}</span>
             </button>
+            </VoiceDeviceControl>
 
             <span className="ec-vr-control-separator" aria-hidden />
 
             <button
               type="button"
-              onClick={() => void v.toggleCamera()}
+              onClick={() => void runControl("camera", v.toggleCamera)}
               style={v.isCameraEnabled ? controlBtnAccent : controlBtn}
               className={ctrlClassFor(v.isCameraEnabled ? controlBtnAccent : controlBtn)}
               title={v.isCameraEnabled ? "Выключить камеру" : "Включить камеру"}
               aria-label={v.isCameraEnabled ? "Выключить камеру" : "Включить камеру"}
               aria-pressed={v.isCameraEnabled}
-              disabled={!isConnected}
+              disabled={!isConnected || controlPending.includes("camera")}
             >
-              <CameraLensIcon off={!v.isCameraEnabled} />
-              <span className="ec-voice-control-label">Камера</span>
+              <CameraLensIcon key={String(v.isCameraEnabled)} off={!v.isCameraEnabled} />
+              <span className="ec-voice-control-label">{controlPending.includes("camera") ? "Подключаем…" : v.isCameraEnabled ? "Камера вкл." : "Камера"}</span>
             </button>
 
             <button
               type="button"
-              onClick={() => void v.toggleScreenShare()}
+              onClick={() => void runControl("screen", v.toggleScreenShare)}
               style={v.isScreenShareEnabled ? controlBtnAccent : controlBtn}
               className={ctrlClassFor(v.isScreenShareEnabled ? controlBtnAccent : controlBtn)}
               title={v.isScreenShareEnabled ? "Остановить демонстрацию" : "Демонстрация экрана"}
               aria-label={v.isScreenShareEnabled ? "Остановить демонстрацию" : "Демонстрация экрана"}
               aria-pressed={v.isScreenShareEnabled}
-              disabled={!isConnected}
+              disabled={!isConnected || controlPending.includes("screen")}
             >
               <ScreenShareIcon off={!v.isScreenShareEnabled} />
-              <span className="ec-voice-control-label">Экран</span>
+              <span className="ec-voice-control-label">{controlPending.includes("screen") ? "Выбираем…" : v.isScreenShareEnabled ? "Остановить показ" : "Экран"}</span>
             </button>
 
             <span className="ec-vr-control-separator" aria-hidden />

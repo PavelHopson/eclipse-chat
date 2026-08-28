@@ -1,6 +1,8 @@
+import { PlayerStateIcon } from "./PlayerStateIcon";
 import { useContext, useEffect, useRef, useState } from "react";
 import { VoiceMusicGainContext } from "./VoiceRoomContext";
 import { musicTrackTitle } from "../lib/voicePresentation";
+import { boundedMediaPosition, mediaClock } from "../lib/musicTiming";
 import { Avatar } from "./Avatar";
 import { MediaScrubber } from "./MediaScrubber";
 import { resolveAssetUrl } from "../lib/assets";
@@ -30,31 +32,23 @@ type Props = {
   /** v1.5.14 — host advances queue automatically on track end (avoid
    *  permission 403 storm если не-host listeners тоже вызывают). */
   isHost: boolean;
-  onTogglePlayPause: () => void | Promise<void>;
-  onSkip: () => void | Promise<void>;
-  onSeek: (positionMs: number) => void | Promise<void>;
-  onStop: () => void | Promise<void>;
+  canControl?: boolean;
+  onTogglePlayPause: () => unknown | Promise<unknown>;
+  onSkip: () => unknown | Promise<unknown>;
+  onSeek: (positionMs: number) => unknown | Promise<unknown>;
+  onStop: () => unknown | Promise<unknown>;
   onExpand?: () => void;
 };
 
 function formatTime(ms: number, durationMs?: number): string {
-  const total = Math.max(0, Math.floor(ms / 1000));
-  const m = Math.floor(total / 60);
-  const s = total % 60;
-  const cur = `${m}:${s.toString().padStart(2, "0")}`;
-  if (durationMs == null || !Number.isFinite(durationMs) || durationMs <= 0) {
-    return cur;
-  }
-  const td = Math.floor(durationMs / 1000);
-  const dm = Math.floor(td / 60);
-  const ds = td % 60;
-  return `${cur} / ${dm}:${ds.toString().padStart(2, "0")}`;
+  return mediaClock(ms, durationMs) + (durationMs && Number.isFinite(durationMs) ? " / " + mediaClock(durationMs) : "");
 }
 
 export function MusicMiniPlayer({
   session,
   derivedPositionMs,
   isHost,
+  canControl = isHost,
   onTogglePlayPause,
   onSkip,
   onSeek,
@@ -62,6 +56,29 @@ export function MusicMiniPlayer({
   onExpand,
 }: Props) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [blocked, setBlocked] = useState(false);
+  const [mediaError, setMediaError] = useState<string | null>(null);
+  const [ended, setEnded] = useState(false);
+  const [pending, setPending] = useState(false);
+  const pendingRef = useRef(false);
+  const runAction = async (action: () => unknown) => {
+    if (!canControl || pendingRef.current) return;
+    pendingRef.current = true; setPending(true); setMediaError(null);
+    try { if (await action() === false) setMediaError("Действие не выполнено. Открой плеер и повтори."); }
+    catch { setMediaError("Нет ответа от сервера. Попробуй ещё раз."); }
+    finally { pendingRef.current = false; setPending(false); }
+  };
+  const advanceKey = useRef<string | null>(null);
+  const onSkipRef = useRef(onSkip); onSkipRef.current = onSkip;
+  const advance = () => {
+    const key = session.id + ":" + session.currentTrack?.id + ":" + session.startedAt;
+    setEnded(true);
+    if (!isHost || advanceKey.current === key) return;
+    advanceKey.current = key;
+    void Promise.resolve(onSkipRef.current()).then(result => {
+      if (result === false) setMediaError("Не удалось перейти к следующему треку");
+    }).catch(() => setMediaError("Не удалось перейти к следующему треку"));
+  };
   const speechGain = useContext(VoiceMusicGainContext);
   const [durationMs, setDurationMs] = useState<number | null>(null);
 
@@ -103,6 +120,11 @@ export function MusicMiniPlayer({
     return () => { cancelAnimationFrame(frame); document.removeEventListener("visibilitychange", onHidden); };
   }, [volume, speechGain]);
 
+  useEffect(() => {
+    setDurationMs(null); setBufferedMs(0); setBlocked(false); setMediaError(null); setEnded(false);
+    advanceKey.current = null;
+  }, [session.currentTrack?.id]);
+
   // Sync audio element с session.
   useEffect(() => {
     const audio = audioRef.current;
@@ -122,17 +144,19 @@ export function MusicMiniPlayer({
       return;
     }
     const src = resolveAssetUrl(session.currentTrack.url) ?? "";
-    if (audio.src !== src) {
+    if (audio.getAttribute("src") !== src) {
       audio.src = src;
       audio.load();
     }
-    const targetSec = Math.max(0, derivedPositionMs / 1000 - 0.15);
+    const targetSec = boundedMediaPosition(derivedPositionMs - 150, Number.isFinite(audio.duration) ? audio.duration * 1000 : null) / 1000;
+    setEnded(false);
     if (Math.abs(audio.currentTime - targetSec) > 1.5) {
       audio.currentTime = targetSec;
     }
     if (session.isPlaying) {
-      void audio.play().catch(() => {
-        // autoplay блокирован — пользователь должен явно нажать play.
+      void audio.play().then(() => setBlocked(false)).catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "NotAllowedError") setBlocked(true);
+        else if (!(error instanceof DOMException && error.name === "AbortError")) setMediaError("Не удалось воспроизвести трек");
       });
     } else {
       audio.pause();
@@ -142,13 +166,14 @@ export function MusicMiniPlayer({
     session.isPlaying,
     session.startedAt,
     session.updatedAt,
+    session.serverNow,
   ]);
 
   const trackName = session.currentTrack ? musicTrackTitle(session.currentTrack.filename) : "Очередь пуста";
   const isVoiceMessage = session.currentTrack
     ? /^voice-message-/i.test(session.currentTrack.filename)
     : false;
-  const playing = session.isPlaying;
+  const playing = session.isPlaying && !blocked && !ended && !mediaError;
   const hasTrack = !!session.currentTrack;
 
   return (
@@ -168,22 +193,15 @@ export function MusicMiniPlayer({
           if (audioRef.current) {
             attachAnalyser(audioRef.current);
           }
-          void onTogglePlayPause();
+          if (blocked && audioRef.current) {
+            void audioRef.current.play().then(() => { setBlocked(false); setMediaError(null); }).catch(() => setMediaError("Браузер не разрешил воспроизведение"));
+          } else { void runAction(onTogglePlayPause); }
         }}
         title={playing ? "Пауза" : "Воспроизвести"}
-        aria-label={playing ? "Пауза" : "Воспроизвести"}
-        disabled={!hasTrack}
+        aria-label={blocked ? "Включить прослушивание" : playing ? "Пауза" : "Воспроизвести"}
+        disabled={!hasTrack || pending || (!canControl && !blocked)}
       >
-        {playing ? (
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-            <rect x="6" y="5" width="4" height="14" rx="1" />
-            <rect x="14" y="5" width="4" height="14" rx="1" />
-          </svg>
-        ) : (
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-            <path d="M8 5v14l11-7z" />
-          </svg>
-        )}
+        <PlayerStateIcon playing={playing} size={16} />
       </button>
 
       {/* Мини-эквалайзер «now playing» — живой ритм при игре. */}
@@ -206,14 +224,15 @@ export function MusicMiniPlayer({
         title={onExpand ? `${trackName} — открыть плеер` : trackName}
       >
         {isVoiceMessage ? "Голосовое" : trackName}
+        {(blocked || mediaError || ended) && <small className="ec-player-mini__feedback" role="status">{mediaError ?? (blocked ? "Нажми ▶, чтобы слушать" : isHost ? "Следующий трек…" : "Трек завершён · ждём ведущего")}</small>}
       </button>
 
       <MediaScrubber
         positionMs={derivedPositionMs}
         durationMs={durationMs ?? 0}
         bufferedMs={bufferedMs}
-        onSeek={(ms) => void onSeek(ms)}
-        disabled={!hasTrack}
+        onSeek={(ms) => void runAction(() => onSeek(ms))}
+        disabled={!hasTrack || pending || !canControl}
         loading={hasTrack && durationMs == null}
       />
 
@@ -282,10 +301,10 @@ export function MusicMiniPlayer({
       <button
         type="button"
         className="ec-player-ctrl"
-        onClick={() => void onSkip()}
+        onClick={() => void runAction(onSkip)}
         title="Следующий"
         aria-label="Следующий трек"
-        disabled={session.queue.length === 0 && !hasTrack}
+        disabled={!canControl || pending || (session.queue.length === 0 && !hasTrack)}
       >
         <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
           <path d="M5 4l10 8-10 8z" />
@@ -310,9 +329,10 @@ export function MusicMiniPlayer({
       <button
         type="button"
         className="ec-player-ctrl"
-        onClick={() => void onStop()}
+        onClick={() => void runAction(onStop)}
         title="Завершить"
         aria-label="Завершить сессию"
+        disabled={!canControl || pending}
       >
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
           <line x1="18" y1="6" x2="6" y2="18" />
@@ -336,16 +356,11 @@ export function MusicMiniPlayer({
           for (let i = 0; i < b.length; i++) end = Math.max(end, b.end(i));
           setBufferedMs(end * 1000);
         }}
-        onEnded={() => {
-          // v1.5.14 — auto-advance к следующему треку. Только host
-          // вызывает backend skip (избегаем 403-storm от non-host
-          // listeners — все они тоже видят ended почти одновременно).
-          // Если queue пуст — backend дропает session и эмитит null,
-          // socket update приведёт всех в idle.
-          if (isHost) {
-            void onSkip();
-          }
+        onEnded={advance}
+        onTimeUpdate={event => {
+          if (session.isPlaying && event.currentTarget.ended) advance();
         }}
+        onError={() => { if (session.currentTrack) setMediaError("Трек недоступен"); }}
         preload="metadata"
         style={{ display: "none" }}
       />

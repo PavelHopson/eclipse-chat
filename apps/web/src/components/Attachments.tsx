@@ -1,10 +1,13 @@
 import type { CSSProperties } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import type { Attachment } from "../hooks/useMessages";
 import { apiJson } from "../lib/api";
 import { resolveAssetUrl } from "../lib/assets";
-import { useMediaVolume } from "../hooks/useMediaVolume";
+import { AudioPlayer } from "./AudioPlayer";
+import { musicTrackTitle } from "../lib/voicePresentation";
+import { DownloadSimpleIcon } from "@phosphor-icons/react/dist/csr/DownloadSimple";
+import { UsersThreeIcon } from "@phosphor-icons/react/dist/csr/UsersThree";
 import { VideoPlayer } from "./VideoPlayer";
 import { EclipseUiIcon } from "./icons/EclipseUiIcon";
 
@@ -167,131 +170,6 @@ function VideoItem({ a, onOpen }: { a: Attachment; onOpen: (a: Attachment) => vo
  * рендерим baseline-bars equal-height fallback. Bars подсвечиваются
  * прогрессом проигрывания, click/drag = seek.
  */
-function Waveform({
-  peaks,
-  progress,
-  isPlaying,
-  onSeek,
-  ariaLabel,
-}: {
-  peaks: number[];
-  progress: number; // 0..1
-  isPlaying: boolean;
-  onSeek: (fraction: number) => void;
-  ariaLabel: string;
-}) {
-  const ref = useRef<SVGSVGElement | null>(null);
-  const draggingRef = useRef(false);
-  const fillIdx = Math.round(progress * peaks.length);
-  // v1.5.3 — bars в окрестности playhead'а получают live-pulse класс
-  // (`ec-wave-bar--live`), создавая ощущение пульсирующего звука.
-  const LIVE_ZONE = 4;
-
-  const seekFromEvent = (clientX: number) => {
-    const el = ref.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const f = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-    onSeek(f);
-  };
-
-  // 64 bars × 3px width + 1px gap = ~256px. SVG viewBox масштабируется.
-  const barW = 3;
-  const gap = 1;
-  const slot = barW + gap;
-  const w = peaks.length * slot - gap;
-  const h = 32;
-
-  return (
-    <svg
-      ref={ref}
-      role="slider"
-      tabIndex={0}
-      aria-label={ariaLabel}
-      aria-valuemin={0}
-      aria-valuemax={100}
-      aria-valuenow={Math.round(progress * 100)}
-      width="100%"
-      height={h}
-      viewBox={`0 0 ${w} ${h}`}
-      preserveAspectRatio="none"
-      className="ec-waveform"
-      onPointerDown={(e) => {
-        draggingRef.current = true;
-        (e.target as Element).setPointerCapture?.(e.pointerId);
-        seekFromEvent(e.clientX);
-      }}
-      onPointerMove={(e) => {
-        if (draggingRef.current) seekFromEvent(e.clientX);
-      }}
-      onPointerUp={(e) => {
-        draggingRef.current = false;
-        (e.target as Element).releasePointerCapture?.(e.pointerId);
-      }}
-      onKeyDown={(e) => {
-        if (e.key === "ArrowLeft") {
-          e.preventDefault();
-          onSeek(Math.max(0, progress - 0.05));
-        } else if (e.key === "ArrowRight") {
-          e.preventDefault();
-          onSeek(Math.min(1, progress + 0.05));
-        }
-      }}
-    >
-      {peaks.map((p, i) => {
-        const barH = Math.max(2, (p / 100) * h);
-        const y = (h - barH) / 2;
-        const x = i * slot;
-        const played = i < fillIdx;
-        // v1.5.3 — last LIVE_ZONE played bars under playhead pulse stronger
-        // когда audio playing (trailing ripple).
-        // v1.5.13 — все bars получают base idle wave flow с staggered delay
-        // (propagating wave illusion). Active live-zone replaces idle с
-        // stronger pulse keyframe.
-        const distFromHead = fillIdx - 1 - i;
-        const isLive = isPlaying && played && distFromHead >= 0 && distFromHead < LIVE_ZONE;
-        return (
-          <rect
-            key={i}
-            x={x}
-            y={y}
-            width={barW}
-            height={barH}
-            rx={1}
-            ry={1}
-            fill={played ? "var(--ec-accent)" : "var(--ec-text-dim)"}
-            opacity={played ? 0.95 : 0.5}
-            className={isLive ? "ec-wave-bar ec-wave-bar--live" : "ec-wave-bar"}
-            style={
-              isLive
-                ? { animationDelay: `${distFromHead * 90}ms` }
-                : {
-                    // Staggered delay создаёт wave-propagating-illusion слева
-                    // направо. Каждые ~3 bar'а = 1 цикл wave-flow keyframe'а
-                    // (2.4s / 60ms × 40 bars = многократно перекрывается).
-                    animationDelay: `${i * 70}ms`,
-                  }
-            }
-          />
-        );
-      })}
-      {isPlaying && fillIdx > 0 && fillIdx < peaks.length && (
-        <line
-          className="ec-wave-playhead"
-          x1={fillIdx * slot - gap / 2}
-          x2={fillIdx * slot - gap / 2}
-          y1={2}
-          y2={h - 2}
-          stroke="var(--ec-accent)"
-          strokeWidth={1.4}
-          strokeLinecap="round"
-          opacity={0.7}
-        />
-      )}
-    </svg>
-  );
-}
-
 function formatDuration(sec: number): string {
   if (!Number.isFinite(sec) || sec < 0) return "0:00";
   const total = Math.round(sec);
@@ -300,237 +178,25 @@ function formatDuration(sec: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-function AudioItem({
-  a,
-  onPlayShared,
-}: {
-  a: Attachment;
-  onPlayShared?: (attachmentId: string) => void | Promise<void>;
-}) {
+function AudioItem({ a, onPlayShared }: { a: Attachment; onPlayShared?: (attachmentId: string) => void | Promise<void> }) {
   const src = resolveAssetUrl(a.url) ?? "";
   const isVoice = /^voice-message-/i.test(a.filename);
-  const transcriptStatus = a.transcriptStatus ?? "NONE";
-  const peaks = a.waveformPeaks ?? null;
-
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-  // v1.1.58 — общая громкость медиа (shared с music-плеером).
-  const [volume, setVolume] = useMediaVolume();
-  const lastVolumeRef = useRef(volume > 0 ? volume : 0.7);
-
-  useEffect(() => {
-    if (audioRef.current) audioRef.current.volume = volume;
-    if (volume > 0) lastVolumeRef.current = volume;
-  }, [volume]);
-
-  useEffect(() => {
-    const el = audioRef.current;
-    if (!el) return;
-    const onPlay = () => setIsPlaying(true);
-    const onPause = () => setIsPlaying(false);
-    const onTime = () => setCurrentTime(el.currentTime);
-    const onMeta = () => setDuration(el.duration);
-    const onEnded = () => setIsPlaying(false);
-    el.addEventListener("play", onPlay);
-    el.addEventListener("pause", onPause);
-    el.addEventListener("timeupdate", onTime);
-    el.addEventListener("loadedmetadata", onMeta);
-    el.addEventListener("durationchange", onMeta);
-    el.addEventListener("ended", onEnded);
-    return () => {
-      el.removeEventListener("play", onPlay);
-      el.removeEventListener("pause", onPause);
-      el.removeEventListener("timeupdate", onTime);
-      el.removeEventListener("loadedmetadata", onMeta);
-      el.removeEventListener("durationchange", onMeta);
-      el.removeEventListener("ended", onEnded);
-    };
-  }, []);
-
-  const togglePlay = () => {
-    const el = audioRef.current;
-    if (!el) return;
-    if (el.paused) void el.play();
-    else el.pause();
-  };
-
-  const seekTo = (fraction: number) => {
-    const el = audioRef.current;
-    if (!el || !Number.isFinite(el.duration) || el.duration === 0) return;
-    el.currentTime = fraction * el.duration;
-    setCurrentTime(el.currentTime);
-  };
-
-  const progress = duration > 0 ? currentTime / duration : 0;
-
-  // Fallback бары если peaks нет (старые attachments / decode failed).
-  // v1.5.13 — глубокая wave-форма: primary sine + secondary harmonic +
-  // light variation = cinematic waveform даже без actual peak data.
-  const fallbackPeaks =
-    peaks ??
-    Array.from({ length: 64 }, (_, i) => {
-      const primary = Math.sin(i * 0.28) * 28;
-      const harmonic = Math.sin(i * 0.65) * 12;
-      const drift = Math.sin(i * 1.1) * 6;
-      return Math.max(18, Math.min(92, Math.round(48 + primary + harmonic + drift)));
-    });
-
-  return (
-    <div className={isVoice ? "ec-audio-attachment ec-audio-attachment--voice" : "ec-audio-attachment"}>
-      <button
-        type="button"
-        onClick={togglePlay}
-        aria-label={isPlaying ? "Пауза" : "Воспроизвести"}
-        title={isPlaying ? "Пауза" : "Воспроизвести"}
-        className="ec-audio-attachment__icon"
-        style={{
-          background: "var(--ec-accent)",
-          color: "var(--ec-accent-text)",
-          border: 0,
-          cursor: "pointer",
-          borderRadius: "var(--ec-radius-full)",
-        }}
-      >
-        {isPlaying ? (
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-            <rect x="6" y="5" width="4" height="14" rx="1" />
-            <rect x="14" y="5" width="4" height="14" rx="1" />
-          </svg>
-        ) : (
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-            <path d="M8 5v14l11-7z" />
-          </svg>
-        )}
-      </button>
-      <div className="ec-audio-attachment__body">
-        <div className="ec-audio-attachment__title">
-          {isVoice ? "Голосовое сообщение" : a.filename}
-        </div>
-        <Waveform
-          peaks={fallbackPeaks}
-          progress={progress}
-          isPlaying={isPlaying}
-          onSeek={seekTo}
-          ariaLabel={`Дорожка ${isVoice ? "голосового сообщения" : a.filename}`}
-        />
-        <audio ref={audioRef} preload="metadata" src={src} style={{ display: "none" }} />
-        <div className="ec-audio-attachment__meta">
-          <span style={{ fontVariantNumeric: "tabular-nums" }}>
-            {formatDuration(currentTime)} / {formatDuration(duration)}
-          </span>
-          <span style={{ opacity: 0.6 }}> · {humanSize(a.size)}</span>
-          {!peaks && (
-            <span style={{ opacity: 0.45, marginLeft: 6 }} title="Waveform не доступен для этого файла">
-              · базовая дорожка
-            </span>
-          )}
-        </div>
-        {/* v1.1.58 — регулировка громкости (общая для всех медиа-плееров) */}
-        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
-          <button
-            type="button"
-            onClick={() =>
-              setVolume(volume > 0 ? 0 : lastVolumeRef.current || 0.7)
-            }
-            title={volume > 0 ? "Заглушить" : "Включить звук"}
-            aria-label={volume > 0 ? "Заглушить" : "Включить звук"}
-            style={{
-              display: "grid",
-              placeItems: "center",
-              width: 22,
-              height: 22,
-              background: "transparent",
-              border: 0,
-              color: "var(--ec-text-muted)",
-              cursor: "pointer",
-              flexShrink: 0,
-            }}
-          >
-            {volume === 0 ? (
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <path d="M11 5L6 9H2v6h4l5 4V5z" />
-                <line x1="23" y1="9" x2="17" y2="15" />
-                <line x1="17" y1="9" x2="23" y2="15" />
-              </svg>
-            ) : (
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <path d="M11 5L6 9H2v6h4l5 4V5z" />
-                <path d="M15.5 8.5a5 5 0 0 1 0 7" />
-                {volume >= 0.55 && <path d="M18.5 5.5a9 9 0 0 1 0 13" />}
-              </svg>
-            )}
-          </button>
-          <input
-            type="range"
-            min={0}
-            max={1}
-            step={0.05}
-            value={volume}
-            onChange={(e) => setVolume(Number(e.target.value))}
-            aria-label="Громкость"
-            title={`Громкость: ${Math.round(volume * 100)}%`}
-            className="ec-audio-volume-slider"
-            // v1.5.6 — `--volume-progress` управляет gradient fill в
-            // ::-webkit-slider-runnable-track. Fallback `accentColor`
-            // оставлен для Firefox/Safari без custom-track support.
-            style={
-              {
-                width: 92,
-                accentColor: "var(--ec-accent)",
-                ["--volume-progress" as string]: `${Math.round(volume * 100)}%`,
-              } as React.CSSProperties
-            }
-          />
-        </div>
-        <TranscriptBlock
-          attachmentId={a.id}
-          status={transcriptStatus}
-          transcript={a.transcript ?? null}
-          error={a.transcriptError ?? null}
-        />
-      </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 4, alignSelf: "flex-start" }}>
-        {onPlayShared && (
-          <button
-            type="button"
-            onClick={() => void onPlayShared(a.id)}
-            title="Слушать вместе с комнатой"
-            aria-label="Слушать вместе"
-            style={{
-              width: 28,
-              height: 28,
-              display: "grid",
-              placeItems: "center",
-              borderRadius: "var(--ec-radius-full)",
-              background: "var(--ec-accent-soft)",
-              color: "var(--ec-accent)",
-              border: "1px solid var(--ec-border-accent)",
-              cursor: "pointer",
-            }}
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-              <path d="M8 5v14l11-7z" />
-            </svg>
-          </button>
-        )}
-        <a
-          href={src}
-          download={a.filename}
-          className="ec-audio-attachment__download"
-          title="Скачать"
-          aria-label="Скачать аудио"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-            <polyline points="7 10 12 15 17 10" />
-            <line x1="12" y1="15" x2="12" y2="3" />
-          </svg>
-        </a>
-      </div>
-    </div>
-  );
+  const [pending, setPending] = useState(false);
+  const [sharedError, setSharedError] = useState("");
+  return <AudioPlayer src={src} title={isVoice ? "Голосовое сообщение" : musicTrackTitle(a.filename)}
+    detail={humanSize(a.size)} peaks={a.waveformPeaks}
+    actions={<>
+      {onPlayShared && <button type="button" disabled={pending} aria-label="Слушать вместе с комнатой" onClick={async () => {
+        if (pending) return;
+        setPending(true); setSharedError("");
+        try { await onPlayShared(a.id); } catch { setSharedError("Не удалось запустить совместное прослушивание."); }
+        finally { setPending(false); }
+      }}><UsersThreeIcon size={17} aria-hidden /><span>Вместе</span></button>}
+      <a href={src} download={a.filename} target="_blank" rel="noopener noreferrer" aria-label={"Скачать " + a.filename}><DownloadSimpleIcon size={17} aria-hidden /></a>
+    </>}>
+    {sharedError && <p className="ec-player-notice" role="alert">{sharedError}</p>}
+    <TranscriptBlock attachmentId={a.id} status={a.transcriptStatus ?? "NONE"} transcript={a.transcript ?? null} error={a.transcriptError ?? null} />
+  </AudioPlayer>;
 }
 
 /**

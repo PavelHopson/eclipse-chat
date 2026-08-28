@@ -325,7 +325,7 @@
 .ec-voice-room__presence-grid[data-count="3"],
 .ec-voice-room__presence-grid[data-count="4"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .ec-voice-room__presence-grid { align-content: safe center; min-height: min-content; }
-.ec-voice-room--refined[data-compact] .ec-voice-room__presence-grid:not([data-count="1"]) .ec-vr-presence-card {
+.ec-voice-room--refined[data-compact]:not([data-audio-density="compact"]) .ec-voice-room__presence-grid:not([data-count="1"]) .ec-vr-presence-card {
   min-height: 148px; padding: 16px 6px;
 }
 .ec-voice-room--refined .ec-vr-connection { border: 0 !important; }

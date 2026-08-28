@@ -19,6 +19,7 @@ import {
   useVoiceSettings,
 } from "./useVoiceSettings";
 import { playNotificationSound } from "../lib/notificationSounds";
+import { useVoiceFeedback } from "./useVoiceFeedback";
 
 /**
  * `livekit-client` весит ~500 KB raw / 140 KB gzip — слишком много для
@@ -183,6 +184,11 @@ export function useVoice(socket: Socket | null = null) {
   const [visualTracks, setVisualTracks] = useState<VoiceVisualTrack[]>([]);
   /** True пока удерживается PTT hotkey. */
   const [pttActive, setPttActive] = useState(false);
+  useVoiceFeedback({
+    channelId: activeChannelId, connection: state, micMuted: isMicMuted, deafened: isDeafened,
+    camera: isCameraEnabled, screen: isScreenShareEnabled,
+    pushToTalk: settings.micActivationMode === "push_to_talk", error,
+  });
 
   const roomRef = useRef<RoomType | null>(null);
   roomRef.current = room;
@@ -261,20 +267,19 @@ export function useVoice(socket: Socket | null = null) {
   useEffect(() => {
     const r = roomRef.current;
     if (!r) return;
-    const targetId = settings.outputDeviceId;
-    if (targetId == null) return;
+    const targetId = settings.outputDeviceId ?? "default";
     // LiveKit Room.switchActiveDevice
     void r
       .switchActiveDevice("audiooutput", targetId)
-      .catch((e) => console.warn("switchActiveDevice audiooutput failed", e));
+      .catch(() => setError("Не удалось переключить вывод звука. Выбери другое устройство в настройках."));
     // setSinkId на каждом audio-элементе (для уже attached tracks)
     for (const entry of remoteTracksRef.current.values()) {
       const el = entry.audioEl as HTMLAudioElement & {
         setSinkId?: (id: string) => Promise<void>;
       };
       if (typeof el.setSinkId === "function") {
-        el.setSinkId(targetId).catch((e) =>
-          console.warn("setSinkId failed", e),
+        el.setSinkId(targetId).catch(() =>
+          setError("Не удалось применить устройство вывода звука."),
         );
       }
     }
@@ -285,11 +290,11 @@ export function useVoice(socket: Socket | null = null) {
   useEffect(() => {
     const r = roomRef.current;
     if (!r) return;
-    const targetId = settings.inputDeviceId;
-    if (targetId != null) {
+    const targetId = settings.inputDeviceId ?? "default";
+    if (targetId) {
       void r
         .switchActiveDevice("audioinput", targetId)
-        .catch((e) => console.warn("switchActiveDevice audioinput failed", e));
+        .catch(() => setError("Не удалось переключить микрофон. Выбери другое устройство в настройках."));
     }
   }, [settings.inputDeviceId]);
 
@@ -478,14 +483,11 @@ export function useVoice(socket: Socket | null = null) {
       published.noiseSuppression !== settings.noiseSuppression ||
       published.enhancerMode !== nextEnhancerMode;
 
-    if (!needsRefresh) return;
+    // Defer reconfiguration until an explicit unmute. The SDK's enable call
+    // can transmit before a later raw-track mute, even if the final UI says muted.
+    if (!needsRefresh || isMicMuted || isDeafened || settings.micActivationMode === "push_to_talk") return;
 
-    const preserveMuted =
-      isDeafened ||
-      settings.micActivationMode === "push_to_talk" ||
-      (settings.micActivationMode === "voice_activity" && isMicMuted);
-
-    void applyLocalMicrophoneSettings(r, preserveMuted).catch((e) => {
+    void applyLocalMicrophoneSettings(r, false).catch((e) => {
       console.warn("applyLocalMicrophoneSettings failed", e);
       setError(e instanceof Error ? e.message : "Не удалось применить настройки микрофона");
     });

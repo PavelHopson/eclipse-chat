@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
+import { INTERACTION_EVENT, readInteractionPreferences } from "../lib/interactionPreferences";
 
 /** A precise core and a trailing corona. Text and native media keep their cursors. */
 export function EclipsePointer() {
@@ -12,6 +13,7 @@ export function EclipsePointer() {
     let visible = false;
     let x = 0, y = 0, ringX = 0, ringY = 0;
     const root = document.documentElement;
+    let preferences = readInteractionPreferences();
     const hide = () => {
       visible = false;
       root.classList.remove("ec-pointer-active");
@@ -31,9 +33,9 @@ export function EclipsePointer() {
     };
     const move = (event: PointerEvent) => {
       const target = event.target;
-      if (motion.matches || !pointer.matches || event.pointerType !== "mouse" || !(target instanceof Element)
+      if (!preferences.pointer || !preferences.motion || motion.matches || !pointer.matches || event.pointerType !== "mouse" || !(target instanceof Element)
         || !target.closest(".ec-workspace-v2, .ec-server-actions-menu")
-        || target.closest("input, textarea, [contenteditable=true], video, iframe, :disabled, [data-native-cursor]")) {
+        || target.closest("input, textarea, [contenteditable=true], video, iframe, :disabled, [data-native-cursor], [role=separator], [role=menu], [role=dialog], .ec-voice-room__controls")) {
         hide();
         return;
       }
@@ -48,6 +50,14 @@ export function EclipsePointer() {
       ringRef.current?.setAttribute("data-interactive", String(Boolean(target.closest("button:not(:disabled), a[href], summary, [role=tab]"))));
       if (!frame) frame = requestAnimationFrame(draw);
     };
+    const updatePreferences = () => {
+      preferences = readInteractionPreferences();
+      root.dataset.ecMotion = preferences.motion ? "full" : "quiet";
+      hide();
+    };
+    updatePreferences();
+    window.addEventListener(INTERACTION_EVENT, updatePreferences);
+    window.addEventListener("storage", updatePreferences);
     document.addEventListener("pointermove", move, { passive: true });
     document.addEventListener("pointerleave", hide);
     document.addEventListener("visibilitychange", hide);
@@ -57,6 +67,9 @@ export function EclipsePointer() {
     pointer.addEventListener("change", hide);
     return () => {
       hide();
+      window.removeEventListener(INTERACTION_EVENT, updatePreferences);
+      window.removeEventListener("storage", updatePreferences);
+      delete root.dataset.ecMotion;
       document.removeEventListener("pointermove", move);
       document.removeEventListener("pointerleave", hide);
       document.removeEventListener("visibilitychange", hide);

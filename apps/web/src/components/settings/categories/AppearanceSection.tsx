@@ -1,4 +1,5 @@
 import { ThemeToggle } from "../../ThemeToggle";
+import { InteractionPreferences } from "../../InteractionPreferences";
 import type { Density } from "../../../hooks/useDensity";
 
 type Props = {
@@ -23,6 +24,7 @@ export function AppearanceSection({ density, onDensity, focusEnabled, onFocusEna
         <p>Локальные настройки интерфейса для этого устройства.</p>
       </header>
 
+      <InteractionPreferences />
       <section className="ec-settings-card">
         <div className="ec-settings-card__body">
           <strong>Тема</strong>

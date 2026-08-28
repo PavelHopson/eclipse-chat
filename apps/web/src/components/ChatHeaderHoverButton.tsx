@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { AnchoredOverlay } from "./AnchoredOverlay";
 
 /**
  * ChatHeaderHoverButton — v0.98 chat surface cleanup.
@@ -77,25 +78,6 @@ const badge: CSSProperties = {
   letterSpacing: 0,
 };
 
-const popover: CSSProperties = {
-  position: "absolute",
-  top: "calc(100% + 6px)",
-  right: 0,
-  // v0.99: гарантируем что popover никогда не уезжает за viewport.
-  // min(320, calc(100vw - 64px)) — на 360px mobile получится 296px,
-  // оставляя 32px margin'а с каждой стороны.
-  width: "min(320px, calc(100vw - 64px))",
-  background: "var(--ec-surface-1)",
-  border: "1px solid var(--ec-border-default)",
-  borderRadius: "var(--ec-radius-lg)",
-  boxShadow: "0 16px 40px -8px hsl(210 40% 2% / 0.65)",
-  padding: "var(--ec-space-2)",
-  display: "flex",
-  flexDirection: "column",
-  gap: "var(--ec-space-1)",
-  zIndex: 20,
-};
-
 const popoverHeader: CSSProperties = {
   display: "flex",
   alignItems: "center",
@@ -151,6 +133,15 @@ export function ChatHeaderHoverButton<T>({
   accent,
 }: Props<T>) {
   const [open, setOpen] = useState(false);
+  const anchor = useRef<HTMLDivElement>(null);
+  const suppressFocus = useRef(false);
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+  const close = useCallback(() => {
+    suppressFocus.current = true;
+    setOpen(false); setKeyboardOpen(false);
+    queueMicrotask(() => { suppressFocus.current = false; });
+  }, []);
+  const openFull = () => { close(); onOpenFull(); };
   const closeTimer = useRef<number | null>(null);
 
   const scheduleClose = () => {
@@ -173,6 +164,7 @@ export function ChatHeaderHoverButton<T>({
 
   return (
     <div
+      ref={anchor}
       style={wrap}
       onMouseEnter={() => {
         cancelClose();
@@ -182,11 +174,14 @@ export function ChatHeaderHoverButton<T>({
     >
       <button
         type="button"
-        onClick={onOpenFull}
+        onClick={openFull}
         aria-label={label}
-        title={label}
+        data-native-cursor
+        aria-haspopup="dialog"
+        aria-expanded={open}
         style={btn}
-        onFocus={() => setOpen(true)}
+        onFocus={() => { if (!suppressFocus.current) setOpen(true); }}
+        onKeyDown={event => { if (event.key === "ArrowDown") { event.preventDefault(); cancelClose(); setKeyboardOpen(true); setOpen(true); } }}
         onBlur={scheduleClose}
         onMouseEnter={(e) => {
           e.currentTarget.style.background = "var(--ec-surface-2)";
@@ -210,13 +205,7 @@ export function ChatHeaderHoverButton<T>({
       </button>
 
       {open && items.length > 0 && (
-        <div
-          style={popover}
-          role="dialog"
-          aria-label={label}
-          onMouseEnter={cancelClose}
-          onMouseLeave={scheduleClose}
-        >
+        <AnchoredOverlay anchor={anchor} label={label} autoFocus={keyboardOpen} onClose={close} onEnter={cancelClose} onLeave={scheduleClose}>
           <div style={popoverHeader}>
             <span>{label}</span>
             <span style={{ color: "var(--ec-text-dim)", textTransform: "none", letterSpacing: 0 }}>
@@ -228,7 +217,7 @@ export function ChatHeaderHoverButton<T>({
               key={itemKey(item)}
               type="button"
               style={itemBtn}
-              onClick={onOpenFull}
+              onClick={openFull}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = "var(--ec-surface-2)";
               }}
@@ -242,7 +231,7 @@ export function ChatHeaderHoverButton<T>({
           {count > items.length && (
             <button
               type="button"
-              onClick={onOpenFull}
+              onClick={openFull}
               style={showAllLink}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = "var(--ec-accent-soft)";
@@ -257,7 +246,7 @@ export function ChatHeaderHoverButton<T>({
           {count === items.length && count > 0 && (
             <button
               type="button"
-              onClick={onOpenFull}
+              onClick={openFull}
               style={showAllLink}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = "var(--ec-accent-soft)";
@@ -269,7 +258,7 @@ export function ChatHeaderHoverButton<T>({
               Открыть панель
             </button>
           )}
-        </div>
+        </AnchoredOverlay>
       )}
     </div>
   );

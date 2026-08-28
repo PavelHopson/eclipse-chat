@@ -1,4 +1,6 @@
-export type NotificationSoundKind =
+export type VoiceActionSoundKind = "micOn" | "micOff" | "audioOn" | "audioOff"
+  | "cameraOn" | "cameraOff" | "screenOn" | "screenOff" | "callReady" | "callEnd" | "callRecover" | "actionError";
+export type NotificationSoundKind = VoiceActionSoundKind
   | "message"
   | "mention"
   | "dm"
@@ -14,6 +16,8 @@ export type NotificationSoundSettings = {
   dm: boolean;
   voice: boolean;
   tasks: boolean;
+  actions: boolean;
+  actionsVolume: number;
   volume: number;
   theme: NotificationSoundTheme;
 };
@@ -40,11 +44,13 @@ const DEFAULT_SETTINGS: NotificationSoundSettings = {
   dm: true,
   voice: true,
   tasks: true,
+  actions: true,
+  actionsVolume: 0.25,
   volume: 0.42,
   theme: "eclipse",
 };
 
-type SoundCategory = "message" | "dm" | "voice" | "tasks";
+type SoundCategory = "message" | "dm" | "voice" | "tasks" | "actions";
 type AudioContextLike = AudioContext & { resume: () => Promise<void> };
 type Tone = {
   at: number;
@@ -55,7 +61,24 @@ type Tone = {
   bend?: number;
 };
 
+const ACTION_PATTERNS: Record<VoiceActionSoundKind, Tone[]> = {
+  micOn: [{ at: 0, hz: 520, duration: .10, gain: .45 }, { at: .055, hz: 780, duration: .13, gain: .32 }],
+  micOff: [{ at: 0, hz: 620, duration: .09, gain: .40 }, { at: .055, hz: 390, duration: .13, gain: .30 }],
+  audioOn: [{ at: 0, hz: 350, duration: .14, gain: .42, bend: 1.35 }],
+  audioOff: [{ at: 0, hz: 470, duration: .16, gain: .36, bend: .7 }],
+  cameraOn: [{ at: 0, hz: 660, duration: .10, gain: .35 }, { at: .065, hz: 880, duration: .11, gain: .25 }],
+  cameraOff: [{ at: 0, hz: 560, duration: .13, gain: .32, bend: .8 }],
+  screenOn: [{ at: 0, hz: 440, duration: .13, gain: .4 }, { at: .09, hz: 880, duration: .16, gain: .28 }],
+  screenOff: [{ at: 0, hz: 660, duration: .12, gain: .35 }, { at: .08, hz: 330, duration: .14, gain: .26 }],
+  callReady: [{ at: 0, hz: 330, duration: .13, gain: .4 }, { at: .10, hz: 660, duration: .18, gain: .3 }],
+  callEnd: [{ at: 0, hz: 440, duration: .14, gain: .35, bend: .65 }],
+  callRecover: [{ at: 0, hz: 300, duration: .12, gain: .3 }, { at: .18, hz: 300, duration: .12, gain: .24 }],
+  actionError: [{ at: 0, hz: 240, duration: .14, gain: .4 }, { at: .12, hz: 200, duration: .16, gain: .28 }],
+};
 const MIN_INTERVAL_BY_KIND: Record<NotificationSoundKind, number> = {
+  micOn: 180, micOff: 180, audioOn: 180, audioOff: 180,
+  cameraOn: 250, cameraOff: 250, screenOn: 250, screenOff: 250,
+  callReady: 1200, callEnd: 1200, callRecover: 5000, actionError: 1500,
   message: 850,
   mention: 700,
   dm: 650,
@@ -69,6 +92,7 @@ const SOUND_PATTERNS_BY_THEME: Record<
   Record<NotificationSoundKind, Tone[]>
 > = {
   eclipse: {
+    ...ACTION_PATTERNS,
     message: [
       { at: 0, hz: 392, duration: 0.14, gain: 0.5, type: "sine", bend: 1.06 },
       { at: 0.06, hz: 587, duration: 0.16, gain: 0.45, type: "triangle", bend: 1.05 },
@@ -101,6 +125,7 @@ const SOUND_PATTERNS_BY_THEME: Record<
     ],
   },
   signal: {
+    ...ACTION_PATTERNS,
     message: [
       { at: 0, hz: 540, duration: 0.13, gain: 0.7, type: "sine", bend: 1.05 },
       { at: 0.07, hz: 720, duration: 0.16, gain: 0.55, type: "triangle", bend: 1.03 },
@@ -135,9 +160,9 @@ let audioContext: AudioContextLike | null = null;
 let unlockInstalled = false;
 const lastPlayedAt = new Map<string, number>();
 
-function clampVolume(value: unknown): number {
+function clampVolume(value: unknown, fallback = DEFAULT_SETTINGS.volume): number {
   const numeric = typeof value === "number" ? value : Number(value);
-  if (!Number.isFinite(numeric)) return DEFAULT_SETTINGS.volume;
+  if (!Number.isFinite(numeric)) return fallback;
   return Math.min(1, Math.max(0, numeric));
 }
 
@@ -146,6 +171,7 @@ function normalizeTheme(value: unknown): NotificationSoundTheme {
 }
 
 function categoryFor(kind: NotificationSoundKind): SoundCategory {
+  if (kind in ACTION_PATTERNS) return "actions";
   if (kind === "dm") return "dm";
   if (kind === "task") return "tasks";
   if (kind === "voiceJoin" || kind === "voiceLeave") return "voice";
@@ -161,6 +187,8 @@ function settingsFromRaw(raw: unknown): NotificationSoundSettings {
     dm: typeof data.dm === "boolean" ? data.dm : DEFAULT_SETTINGS.dm,
     voice: typeof data.voice === "boolean" ? data.voice : DEFAULT_SETTINGS.voice,
     tasks: typeof data.tasks === "boolean" ? data.tasks : DEFAULT_SETTINGS.tasks,
+    actions: typeof data.actions === "boolean" ? data.actions : DEFAULT_SETTINGS.actions,
+    actionsVolume: data.actionsVolume === undefined ? DEFAULT_SETTINGS.actionsVolume : clampVolume(data.actionsVolume, DEFAULT_SETTINGS.actionsVolume),
     volume: clampVolume(data.volume),
     theme: normalizeTheme(data.theme),
   };
@@ -304,7 +332,15 @@ export function playNotificationSound(
   const ctx = getAudioContext();
   if (!ctx) return false;
 
-  const play = () => schedulePattern(ctx, kind, settings.volume, settings.theme);
+  const requestedAt = performance.now();
+  const play = () => {
+    // Never replay old confirmations after a permission dialog / suspended context.
+    if (category === "actions" && performance.now() - requestedAt > 800) return;
+    const latest = readNotificationSoundSettings();
+    if (!options.force && (!latest.enabled || !latest[category])) return;
+    const volume = category === "actions" ? latest.actionsVolume : latest.volume;
+    if (volume > 0) schedulePattern(ctx, kind, volume, latest.theme);
+  };
   if (ctx.state === "suspended") {
     void ctx.resume().then(play).catch(() => undefined);
     return true;

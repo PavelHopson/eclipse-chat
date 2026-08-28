@@ -9,8 +9,8 @@ export function speechLevel(value: number): number {
   return Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0;
 }
 
-export function voiceChatWidth(value: number, roomWidth: number): number {
-  return Math.round(Math.min(Math.max(300, roomWidth - 380), 620, Math.max(300, Number.isFinite(value) ? value : 380)));
+export function voiceChatWidth(value: number, roomWidth: number, compactAudio = false): number {
+  return Math.round(Math.min(Math.max(300, roomWidth - (compactAudio ? 260 : 380)), compactAudio ? 820 : 620, Math.max(300, Number.isFinite(value) ? value : 380)));
 }
 
 export function musicSpeechGain(enabled: boolean, connected: boolean, speaking: boolean): number {

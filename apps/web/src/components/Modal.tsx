@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { useEffect, useId, useRef } from "react";
+import { createPortal } from "react-dom";
 import { EclipseUiIcon } from "./icons/EclipseUiIcon";
 
 /**
@@ -15,6 +16,7 @@ type Props = {
   footer?: ReactNode;
   width?: number;
   closeOnEscape?: boolean;
+  className?: string;
 };
 
 export function Modal({
@@ -24,6 +26,7 @@ export function Modal({
   footer,
   width = 440,
   closeOnEscape = true,
+  className = "",
 }: Props) {
   const titleId = useId();
   const boxRef = useRef<HTMLDivElement>(null);
@@ -62,7 +65,9 @@ export function Modal({
     };
   }, [closeOnEscape]);
 
-  return (
+  // Escape the isolated chat pane without losing workspace theme variables.
+  const overlayRoot = document.querySelector(".ec-shell.ec-workspace-v2") ?? document.body;
+  return createPortal(
     <div
       className="ec-modal-backdrop"
       onClick={(e) => {
@@ -72,7 +77,7 @@ export function Modal({
       <div
         ref={boxRef}
         tabIndex={-1}
-        className="ec-modal-box"
+        className={"ec-modal-box " + className}
         // width — единственное динамическое значение (prop); 100dvh-clamp
         // и breathing-room по 16px с каждой стороны — в .ec-modal-box.
         style={{ width: `min(${width}px, calc(100vw - 32px))` }}
@@ -96,6 +101,6 @@ export function Modal({
         <div className="ec-modal-body">{children}</div>
         {footer && <div className="ec-modal-footer">{footer}</div>}
       </div>
-    </div>
+    </div>, overlayRoot,
   );
 }

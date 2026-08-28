@@ -20,6 +20,8 @@ export type AudioDevice = {
 };
 
 export type AudioDevices = {
+  loaded: boolean;
+  error: string | null;
   inputs: AudioDevice[];
   outputs: AudioDevice[];
   /** Поддерживает ли браузер выбор output device (setSinkId). */
@@ -42,6 +44,8 @@ function detectSinkIdSupport(): boolean {
 }
 
 export function useAudioDevices(): AudioDevices {
+  const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [inputs, setInputs] = useState<AudioDevice[]>([]);
   const [outputs, setOutputs] = useState<AudioDevice[]>([]);
   const [hasPermission, setHasPermission] = useState(false);
@@ -51,9 +55,12 @@ export function useAudioDevices(): AudioDevices {
     if (!navigator.mediaDevices?.enumerateDevices) {
       setInputs([]);
       setOutputs([]);
+      setLoaded(true);
+      setError("Браузер не предоставляет список аудиоустройств.");
       return;
     }
     try {
+      setError(null);
       const list = await navigator.mediaDevices.enumerateDevices();
       const ins: AudioDevice[] = [];
       const outs: AudioDevice[] = [];
@@ -79,8 +86,9 @@ export function useAudioDevices(): AudioDevices {
       setOutputs(outs);
       setHasPermission(anyLabel);
     } catch (e) {
-      console.warn("enumerateDevices failed", e);
+      setError("Не удалось получить список устройств. Попробуй обновить его.");
     }
+    finally { setLoaded(true); }
   }, []);
 
   const requestPermission = useCallback(async (): Promise<boolean> => {
@@ -111,6 +119,8 @@ export function useAudioDevices(): AudioDevices {
   }, [enumerate]);
 
   return {
+    loaded,
+    error,
     inputs,
     outputs,
     supportsOutputSelection,

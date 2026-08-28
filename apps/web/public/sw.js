@@ -22,7 +22,7 @@
 // v1.5.30: PWA harden — bumped до текущей версии. Cache invalidation работает
 // через name-prefix change → activate cleanup удаляет стары caches.
 // v1.5.32: GitHub Actions trigger flake — пришлось ретригернуть push.
-const SW_VERSION = "eclipse-v1.7.66";
+const SW_VERSION = "eclipse-v1.7.67";
 const APP_SHELL_CACHE = `${SW_VERSION}-shell`;
 const ASSETS_CACHE = `${SW_VERSION}-assets`;
 const UPLOADS_CACHE = `${SW_VERSION}-uploads`;
@@ -64,7 +64,8 @@ self.addEventListener("activate", (event) => {
       const names = await caches.keys();
       await Promise.all(
         names
-          .filter((n) => !n.startsWith(SW_VERSION))
+          // This origin can host other products; only retire Eclipse-owned caches.
+          .filter((n) => n.startsWith("eclipse-v") && !n.startsWith(SW_VERSION))
           .map((n) => caches.delete(n)),
       );
       await self.clients.claim();
@@ -86,6 +87,13 @@ self.addEventListener("fetch", (event) => {
   }
 
   if (req.method !== "GET") return;
+
+  // A previously installed worker can still control a Vite preview origin.
+  // Always fetch source modules live; caching them mixes React prebundle versions.
+  const localDevelopment = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
+  if (localDevelopment && /\/(?:src\/|node_modules\/|@vite\/|@id\/|@fs\/)/.test(url.pathname)) {
+    return;
+  }
 
   // Никогда не cache live API/socket — пропускаем в сеть.
   // /download/ — бинарники приложения (APK): тоже мимо SW (не кэшируем 3 МБ,

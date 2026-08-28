@@ -1,6 +1,20 @@
 import type { PointerEvent as ReactPointerEvent } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { MediaViewport } from "./MediaViewport";
+import { useMediaVolume } from "../hooks/useMediaVolume";
+import { SpeakerHighIcon } from "@phosphor-icons/react/dist/csr/SpeakerHigh";
+import { PlayerStateIcon } from "./PlayerStateIcon";
+import type { QueueEdit } from "../lib/mediaPresentation";
+import { ArrowUpIcon } from "@phosphor-icons/react/dist/csr/ArrowUp";
+import { ArrowDownIcon } from "@phosphor-icons/react/dist/csr/ArrowDown";
+import { TrashIcon } from "@phosphor-icons/react/dist/csr/Trash";
+import { SkipForwardIcon } from "@phosphor-icons/react/dist/csr/SkipForward";
+import { StopIcon } from "@phosphor-icons/react/dist/csr/Stop";
 import { Avatar } from "./Avatar";
+import { musicTrackTitle } from "../lib/voicePresentation";
+import { boundedMediaPosition } from "../lib/musicTiming";
+import { PlayIcon } from "@phosphor-icons/react/dist/csr/Play";
+import { PlusIcon } from "@phosphor-icons/react/dist/csr/Plus";
 import { Modal } from "./Modal";
 import { apiJson } from "../lib/api";
 import { resolveAssetUrl } from "../lib/assets";
@@ -12,12 +26,14 @@ import {
   getCurrentMusicAudio,
 } from "../hooks/useMusicAnalyser";
 
+import { useInteractionMotion } from "../hooks/useInteractionMotion";
+
 const LIVE_BARS = 64;
 
 /**
  * MusicExpandModal (v1.1.91 redesign) — расширенный плеер, «сигнальный
  * пульт». Showpiece фирменного медиа-языка (см. player.css):
- * большая waveform-дорожка с атмосферной violet-подложкой,
+ * компактная waveform-дорожка в золотом акценте Eclipse,
  * выразительный transport, очередь с подсветкой «следующего».
  *
  * Host (или MOD на backend) перематывает кликом/перетаскиванием по
@@ -37,22 +53,25 @@ type Props = {
   session: MusicSession;
   derivedPositionMs: number;
   currentUserId: string;
+  canModerate?: boolean;
+  onEditQueue?: (edit: QueueEdit) => Promise<boolean>;
   /** v1.5.14 — все audio attachments сервера (для playlist section).
    *  Empty array если ещё не loaded или сервер не имеет треков. */
   library?: LibraryTrack[];
   libraryLoading?: boolean;
+  error?: string | null;
   onClose: () => void;
-  onTogglePlayPause: () => void | Promise<void>;
-  onSkip: () => void | Promise<void>;
-  onSeek: (positionMs: number) => void | Promise<void>;
-  onStop: () => void | Promise<void>;
+  onTogglePlayPause: () => unknown | Promise<unknown>;
+  onSkip: () => unknown | Promise<unknown>;
+  onSeek: (positionMs: number) => unknown | Promise<unknown>;
+  onStop: () => unknown | Promise<unknown>;
   /** v1.5.14 — click трека из library: replace current + clear queue. */
-  onStartTrack?: (attachmentId: string) => void | Promise<void>;
+  onStartTrack?: (attachmentId: string) => unknown | Promise<unknown>;
   /** v1.5.14 — добавить трек в очередь без замены current. */
-  onAddToQueue?: (attachmentId: string) => void | Promise<void>;
+  onAddToQueue?: (attachmentId: string) => unknown | Promise<unknown>;
   /** v1.5.14 — проиграть весь library / выборку: first = current,
    *  rest replace queue. */
-  onStartPlaylist?: (attachmentIds: string[]) => void | Promise<void>;
+  onStartPlaylist?: (attachmentIds: string[]) => unknown | Promise<unknown>;
 };
 
 function formatClock(ms: number): string {
@@ -66,8 +85,11 @@ export function MusicExpandModal({
   session,
   derivedPositionMs,
   currentUserId,
+  canModerate = false,
+  onEditQueue,
   library,
   libraryLoading,
+  error,
   onClose,
   onTogglePlayPause,
   onSkip,
@@ -77,6 +99,31 @@ export function MusicExpandModal({
   onAddToQueue,
   onStartPlaylist,
 }: Props) {
+  const [volume, setVolume] = useMediaVolume();
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+  const [mediaLoading, setMediaLoading] = useState(false);
+  const [mediaFailure, setMediaFailure] = useState(false);
+  const [queueNotice, setQueueNotice] = useState("");
+  const [queueSnapshot, setQueueSnapshot] = useState<string[]>([]);
+  const queueListRef = useRef<HTMLOListElement>(null);
+  const queueRects = useRef(new Map<string, DOMRect>());
+  const [tab, setTab] = useState<"queue" | "library">("queue");
+  const [query, setQuery] = useState("");
+  const [pending, setPending] = useState(false);
+  const pendingRef = useRef(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [localBlocked, setLocalBlocked] = useState(false);
+  const [queueError, setQueueError] = useState(false);
+  const [queueLoading, setQueueLoading] = useState(false);
+  const [queueRevision, setQueueRevision] = useState(0);
+  const run = async (action: () => unknown) => {
+    if (pendingRef.current) return;
+    pendingRef.current = true; setPending(true); setActionError(null);
+    try { const result = await action(); if (result === false) setActionError("Действие не выполнено. Проверь подключение и права ведущего."); }
+    catch { setActionError("Действие не выполнено. Попробуй ещё раз."); }
+    finally { pendingRef.current = false; setPending(false); }
+  };
+  const filteredLibrary = (library ?? []).filter(track => musicTrackTitle(track.filename).toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
   // v1.5.14 — отслеживаем какие треки сейчас в queue для UI badge'ев.
   const queuedIds = new Set(session.queue);
   const currentId = session.currentTrack?.id;
@@ -91,7 +138,7 @@ export function MusicExpandModal({
   const [dragFrac, setDragFrac] = useState<number | null>(null);
   const [hoverFrac, setHoverFrac] = useState<number | null>(null);
   const [queueTracks, setQueueTracks] = useState<
-    { id: string; filename: string }[]
+    { id: string; filename: string; queueIndex?: number }[]
   >([]);
 
   // Probe длительности аудио-трека.
@@ -99,7 +146,8 @@ export function MusicExpandModal({
     if (!track || isVideoTrack) return;
     const a = audioRef.current;
     if (!a) return;
-    a.src = track.url;
+    setDurationMs(null); setMediaLoading(true); setMediaFailure(false);
+    a.src = resolveAssetUrl(track.url) ?? "";
     a.load();
   }, [track?.url, isVideoTrack]);
 
@@ -109,16 +157,16 @@ export function MusicExpandModal({
     const v = videoElRef.current;
     if (!v || !isVideoTrack || !track) return;
     const src = resolveAssetUrl(track.url) ?? "";
-    if (v.src !== src) {
+    if (v.getAttribute("src") !== src) {
       v.src = src;
       v.load();
     }
-    const targetSec = Math.max(0, derivedPositionMs / 1000 - 0.15);
+    const targetSec = boundedMediaPosition(derivedPositionMs - 150, Number.isFinite(v.duration) ? v.duration * 1000 : null) / 1000;
     if (Math.abs(v.currentTime - targetSec) > 1.5) {
       v.currentTime = targetSec;
     }
     if (session.isPlaying) {
-      void v.play().catch(() => undefined);
+      void v.play().catch(cause => { if (cause?.name !== "AbortError") setLocalBlocked(true); });
     } else {
       v.pause();
     }
@@ -128,51 +176,64 @@ export function MusicExpandModal({
     session.isPlaying,
     session.startedAt,
     session.updatedAt,
+    session.serverNow,
   ]);
 
   // Резолв очереди (attachment IDs → имена).
   const queueKey = session.queue.join(",");
   useEffect(() => {
     let cancelled = false;
+    setQueueError(false); setQueueLoading(false);
     if (session.queue.length === 0) {
       setQueueTracks([]);
       return;
     }
-    void apiJson<{ queue: { id: string; filename: string }[] }>(
+    setQueueLoading(true);
+    void apiJson<{ queue: { id: string; filename: string; queueIndex?: number }[]; snapshot?: string[] }>(
       `/api/channels/${encodeURIComponent(session.channelId)}/music/queue`,
     )
       .then((d) => {
-        if (!cancelled) setQueueTracks(d.queue);
+        if (!cancelled) { setQueueTracks(d.queue); setQueueSnapshot(d.snapshot ?? session.queue); }
       })
       .catch(() => {
-        if (!cancelled) setQueueTracks([]);
-      });
+        if (!cancelled) { setQueueTracks([]); setQueueError(true); }
+      }).finally(() => { if (!cancelled) setQueueLoading(false); });
     return () => {
       cancelled = true;
     };
-  }, [session.channelId, queueKey]);
+  }, [session.channelId, queueKey, queueRevision]);
 
   // Fallback peaks для legacy attachments без сохранённых waveformPeaks.
   const peaks = useMemo<number[]>(() => {
     if (track?.waveformPeaks && track.waveformPeaks.length > 0) {
       return track.waveformPeaks;
     }
-    const N = 64;
-    const out: number[] = [];
-    for (let i = 0; i < N; i++) {
-      out.push(Math.round(45 + 25 * Math.abs(Math.sin((i / N) * Math.PI * 3))));
-    }
-    return out;
+    return Array.from({ length: LIVE_BARS }, () => 24);
   }, [track?.waveformPeaks]);
 
   // v1.2.13 — live audio-reactive peaks через Web Audio AnalyserNode.
   // Активны только когда: трек играет + не reduced-motion + audio
   // прицеплен к analyser (MiniPlayer на play вызывает attachAnalyser).
   // Иначе fallback — статичные pre-rendered peaks (поведение v1.2.0).
-  const [livePeaks, setLivePeaks] = useState<number[] | null>(null);
 
-  const isHost = session.host.id === currentUserId;
-  const seekable = isHost && durationMs != null && durationMs > 0 && !!track;
+
+  useEffect(() => {
+    const media = isVideoTrack ? videoElRef.current : getCurrentMusicAudio();
+    if (!media) return;
+    const update = () => setLocalBlocked(session.isPlaying && media.paused && !media.ended);
+    update();
+    media.addEventListener("playing", update); media.addEventListener("pause", update); media.addEventListener("ended", update);
+    return () => { media.removeEventListener("playing", update); media.removeEventListener("pause", update); media.removeEventListener("ended", update); };
+  }, [session.isPlaying, track?.id, isVideoTrack]);
+  const resumeLocal = async () => {
+    const media = isVideoTrack ? videoElRef.current : getCurrentMusicAudio();
+    if (!media) return;
+    try { await media.play(); setLocalBlocked(false); setActionError(null); }
+    catch { setActionError("Не удалось воспроизвести трек на этом устройстве. Попробуй ещё раз."); }
+  };
+
+  const isHost = session.host.id === currentUserId || canModerate;
+  const seekable = isHost && durationMs != null && durationMs > 0 && !!track && !pending;
 
   const basePos =
     durationMs && derivedPositionMs >= 0
@@ -189,7 +250,7 @@ export function MusicExpandModal({
     return Math.min(1, Math.max(0, (clientX - r.left) / r.width));
   };
   const onWavePointerDown = (e: ReactPointerEvent<SVGSVGElement>) => {
-    if (!seekable) return;
+    if (!seekable || e.button !== 0) return;
     e.currentTarget.setPointerCapture(e.pointerId);
     setDragFrac(fracFromClientX(e.clientX));
   };
@@ -203,63 +264,77 @@ export function MusicExpandModal({
     if (dragFrac == null || durationMs == null) return;
     const committed = fracFromClientX(e.clientX);
     setDragFrac(null);
-    void onSeek(committed * durationMs);
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
+    void run(() => onSeek(committed * durationMs));
   };
 
-  const playing = session.isPlaying;
+  const playing = session.isPlaying && !localBlocked && !mediaFailure;
+  useEffect(() => { if (videoElRef.current) videoElRef.current.volume = volume; }, [volume, isVideoTrack]);
+  const motionEnabled = useInteractionMotion();
 
-  // v1.2.13 — RAF-loop читает frequency-bin'ы из AnalyserNode и
-  // обновляет livePeaks. fftSize=128 → 64 bin'а, ровно столько же, что
-  // и баров в waveform'е. sqrt-curve компенсирует low-freq dominance
-  // (без неё басы доминируют, верха проседают). Иначе аудио-«огонёк»
-  // несёт меньше визуальной информации.
+  // Real spectrum. Update transforms only; no per-frame React tree rerenders.
   useEffect(() => {
-    if (!playing || isVideoTrack) {
-      setLivePeaks(null);
-      return;
-    }
-    const reducedMotion =
-      typeof window !== "undefined" &&
-      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    if (reducedMotion) {
-      setLivePeaks(null);
-      return;
-    }
+    if (!playing || isVideoTrack || !motionEnabled) return;
     const audio = getCurrentMusicAudio();
-    if (!audio) return;
-    const analyser =
-      getAttachedAnalyser(audio) ?? attachAnalyser(audio);
+    if (!audio || audio.paused) return;
+    const analyser = getAttachedAnalyser(audio) ?? attachAnalyser(audio);
     if (!analyser) return;
-
+    const bars = Array.from(waveformRef.current?.querySelectorAll<SVGRectElement>("rect") ?? []);
     const buffer = new Uint8Array(analyser.frequencyBinCount);
-    const out = new Array<number>(LIVE_BARS);
-    let rafId = 0;
-    const tick = () => {
-      analyser.getByteFrequencyData(buffer);
-      // analyser.frequencyBinCount = fftSize/2 = 64 — совпадает с
-      // LIVE_BARS. Если когда-то fftSize изменится, downsample по
-      // делению индекса (для текущего MVP — 1:1).
-      const N = Math.min(LIVE_BARS, buffer.length);
-      for (let i = 0; i < N; i++) {
-        // bytes [0..255] → высота бара [0..100]. sqrt-curve.
-        out[i] = Math.round(Math.sqrt(buffer[i] / 255) * 100);
+    let frame = 0, last = 0;
+    const tick = (now: number) => {
+      if (now - last >= 40 && !audio.paused) {
+        last = now; analyser.getByteFrequencyData(buffer);
+        bars.forEach((bar, index) => {
+          const value = buffer[Math.floor(index / Math.max(1, bars.length) * buffer.length)] ?? 0;
+          const height = Number(bar.getAttribute("height")) || 24;
+          bar.style.transform = "scaleY(" + Math.max(.05, Math.sqrt(value / 255) * 90 / height) + ")";
+        });
       }
-      setLivePeaks([...out]);
-      rafId = requestAnimationFrame(tick);
+      frame = requestAnimationFrame(tick);
     };
-    rafId = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(rafId);
-  }, [playing, isVideoTrack]);
+    frame = requestAnimationFrame(tick);
+    return () => { cancelAnimationFrame(frame); bars.forEach(bar => { bar.style.transform = ""; }); };
+  }, [playing, isVideoTrack, motionEnabled, track?.id, peaks]);
 
-  const displayPeaks = livePeaks ?? peaks;
+  const displayPeaks = peaks;
+  useLayoutEffect(() => {
+    const rows = Array.from(queueListRef.current?.querySelectorAll<HTMLElement>("[data-queue-entry]") ?? []);
+    const boxes = rows.map(row => ({ row, key: row.dataset.queueEntry!, rect: row.getBoundingClientRect() }));
+    const animations: Animation[] = [];
+    for (const { row, key, rect } of boxes) {
+      const previous = queueRects.current.get(key);
+      if (motionEnabled && previous && Math.abs(previous.top - rect.top) > 1) {
+        const delta = Math.max(-120, Math.min(120, previous.top - rect.top));
+        animations.push(row.animate([{ transform: "translateY(" + delta + "px)", opacity: .6 }, { transform: "none", opacity: 1 }],
+          { duration: 220, easing: "cubic-bezier(.2,.8,.2,1)" }));
+      }
+    }
+    queueRects.current = new Map(boxes.map(({ key, rect }) => [key, rect]));
+    return () => animations.forEach(animation => animation.cancel());
+  }, [queueTracks, motionEnabled]);
+  const editQueued = (from: number, action: "move" | "remove", to?: number) => {
+    if (!onEditQueue || !isHost || pending || queueLoading) return;
+    void run(async () => {
+      const result = await onEditQueue({ action, from, ...(action === "move" ? { to } : {}), expectedQueue: queueSnapshot });
+      if (result) {
+        setQueueNotice(action === "remove" ? "Трек удалён из очереди" : "Порядок треков изменён");
+        queueListRef.current?.focus();
+      }
+      setQueueRevision(value => value + 1);
+      return result;
+    });
+  };
 
   return (
     <Modal
       title={isVideoTrack ? "Совместный просмотр" : "Совместное прослушивание"}
-      width={620}
+      width={760}
+      className="ec-player-dialog"
       onClose={onClose}
     >
-      <div className="ec-player-expand">
+      <div className="ec-player-expand ec-player-expand--refined" aria-busy={pending} data-playing={playing}>
+        <div className="ec-player-context"><span>{isVideoTrack ? "ВИДЕО" : "АУДИО"} / ОБЩИЙ ПЛЕЕР</span><span data-active={playing}>{mediaFailure ? "Нет сигнала" : localBlocked ? "Ожидает включения" : playing ? "Воспроизведение" : "На паузе"}</span></div>
         {/* Заголовок — трек + ведущий + часы. */}
         <div className="ec-player-expand__head">
           <div style={{ minWidth: 0 }}>
@@ -267,7 +342,7 @@ export function MusicExpandModal({
               className="ec-player-expand__title"
               title={track?.filename ?? "Очередь пуста"}
             >
-              {track?.filename ?? "Очередь пуста"}
+              {track ? musicTrackTitle(track.filename) : "Очередь пуста"}
             </h3>
             <div className="ec-player-expand__host">
               <span className="ec-player-expand__host-ring">
@@ -286,7 +361,7 @@ export function MusicExpandModal({
               {formatClock(
                 dragFrac != null && durationMs
                   ? dragFrac * durationMs
-                  : derivedPositionMs,
+                  : boundedMediaPosition(derivedPositionMs, durationMs),
               )}
             </b>
             {durationMs ? ` / ${formatClock(durationMs)}` : ""}
@@ -299,21 +374,28 @@ export function MusicExpandModal({
         >
           {isVideoTrack ? (
             <>
+              <div className="ec-player-shared-video"><MediaViewport width={dimensions.width} height={dimensions.height}>
               <video
                 ref={videoElRef}
                 className="ec-player-expand__video"
                 playsInline
+                onWaiting={() => setMediaLoading(true)}
+                onPlaying={() => { setMediaLoading(false); setMediaFailure(false); }}
+                onError={() => { setMediaFailure(true); setMediaLoading(false); }}
+                onEnded={() => { if (session.host.id === currentUserId) void run(onSkip); }}
                 onLoadedMetadata={(e) => {
                   const d = e.currentTarget.duration;
                   if (Number.isFinite(d)) setDurationMs(d * 1000);
+                  setDimensions({ width: e.currentTarget.videoWidth, height: e.currentTarget.videoHeight });
+                  setMediaLoading(false);
                 }}
-              />
+              /></MediaViewport></div>
               <div style={{ marginTop: "var(--ec-space-3)" }}>
                 <MediaScrubber
                   positionMs={derivedPositionMs}
                   durationMs={durationMs ?? 0}
                   onSeek={(ms) => void onSeek(ms)}
-                  disabled={!isHost}
+                  disabled={!isHost || pending}
                   width="100%"
                 />
               </div>
@@ -329,7 +411,7 @@ export function MusicExpandModal({
                   приглушено.
                   v1.2.13: бары теперь audio-reactive — при playing
                   читаем frequency-bin'ы из AnalyserNode (Web Audio
-                  API), 60fps. На pause / reduced-motion / без
+                  API), не чаще 30fps. На pause / reduced-motion / без
                   AudioContext'a — fallback на статичные peaks трека
                   (поведение v1.2.0). Playhead: линия + узел движется
                   с прогрессом. Host кликает/тащит → server-side seek;
@@ -337,6 +419,21 @@ export function MusicExpandModal({
               <div className="ec-player-expand__wave-wrap">
                 <svg
                   ref={waveformRef}
+                  role={seekable ? "slider" : "img"}
+                  aria-label={seekable ? "Позиция общего трека" : "Звуковая дорожка"}
+                  tabIndex={seekable ? 0 : undefined}
+                  aria-valuemin={seekable ? 0 : undefined}
+                  aria-valuemax={seekable ? durationMs ?? undefined : undefined}
+                  aria-valuenow={seekable ? boundedMediaPosition(derivedPositionMs, durationMs) : undefined}
+                  aria-valuetext={seekable ? formatClock(boundedMediaPosition(derivedPositionMs, durationMs)) : undefined}
+                  onKeyDown={event => {
+                    if (!seekable || !durationMs) return;
+                    const delta = event.key === "ArrowRight" || event.key === "ArrowUp" ? 5000 : event.key === "ArrowLeft" || event.key === "ArrowDown" ? -5000 : 0;
+                    if (!delta && event.key !== "Home" && event.key !== "End") return;
+                    event.preventDefault();
+                    const target = event.key === "Home" ? 0 : event.key === "End" ? durationMs : derivedPositionMs + delta;
+                    void run(() => onSeek(boundedMediaPosition(target, durationMs)));
+                  }}
                   className="ec-player-expand__wave"
                   viewBox={`0 0 ${displayPeaks.length * 4} 100`}
                   preserveAspectRatio="none"
@@ -345,6 +442,7 @@ export function MusicExpandModal({
                   onPointerMove={onWavePointerMove}
                   onPointerUp={onWavePointerUp}
                   onPointerCancel={() => setDragFrac(null)}
+                  onLostPointerCapture={() => setDragFrac(null)}
                   onPointerLeave={() => setHoverFrac(null)}
                 >
                   {displayPeaks.map((p, i) => {
@@ -358,6 +456,7 @@ export function MusicExpandModal({
                         y={y}
                         width={3}
                         height={h}
+                        style={{ transformBox: "view-box", transformOrigin: "center" }}
                         rx={1.5}
                         fill={played ? "var(--ec-accent)" : "var(--ec-text-dim)"}
                         opacity={played ? 0.96 : 0.36}
@@ -404,66 +503,81 @@ export function MusicExpandModal({
               </div>
               {seekable && (
                 <div className="ec-player-expand__hint">
-                  Клик или перетаскивание по дорожке — перемотка для всех
+                  Перемотка меняет позицию для всех участников
                 </div>
               )}
             </>
           )}
         </div>
 
-        {/* Transport — выразительные контролы. */}
+        {mediaLoading && <span className="ec-media-inline-status" role="status">Загружаем медиа…</span>}
+        {mediaFailure && <p className="ec-player-notice" role="alert">Не удалось загрузить медиа. <button type="button" onClick={() => {
+          setMediaFailure(false); setMediaLoading(true);
+          (isVideoTrack ? videoElRef.current : audioRef.current)?.load();
+        }}>Повторить</button></p>}
+        {localBlocked && <button type="button" className="ec-btn ec-player-local-resume" onClick={() => void resumeLocal()}>
+          {isVideoTrack ? "Включить просмотр на этом устройстве" : "Включить прослушивание на этом устройстве"}
+        </button>}
+        {/* Transport stays visible while the library scrolls. */}
         <div className="ec-player-expand__transport">
           <button
             type="button"
             className="ec-player-ctrl ec-player-ctrl--lg"
-            onClick={() => void onSkip()}
+            onClick={() => void run(onSkip)}
             title="Следующий трек"
             aria-label="Следующий"
-            disabled={!isHost}
+            disabled={!isHost || pending}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-              <path d="M5 4l10 8-10 8z" />
-              <rect x="17" y="4" width="2" height="16" />
-            </svg>
+            <SkipForwardIcon size={19} weight="fill" aria-hidden />
           </button>
           <button
             type="button"
             className={"ec-player-play ec-player-play--lg" + (playing ? " is-playing" : "")}
             data-state={playing ? "playing" : "paused"}
-            onClick={() => void onTogglePlayPause()}
+            onClick={() => void run(onTogglePlayPause)}
             title={playing ? "Пауза" : "Воспроизвести"}
             aria-label={playing ? "Пауза" : "Воспроизвести"}
-            disabled={!track}
+            disabled={!track || pending || !isHost}
           >
-            {playing ? (
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-                <rect x="6" y="5" width="4" height="14" rx="1" />
-                <rect x="14" y="5" width="4" height="14" rx="1" />
-              </svg>
-            ) : (
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-                <path d="M8 5v14l11-7z" />
-              </svg>
-            )}
+            <PlayerStateIcon playing={playing} size={24} />
           </button>
           <button
             type="button"
             className="ec-player-ctrl ec-player-ctrl--lg"
-            onClick={() => void onStop()}
+            onClick={() => void run(onStop)}
             title="Завершить сессию"
             aria-label="Завершить"
+            disabled={pending || !isHost}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
+            <StopIcon size={18} weight="fill" aria-hidden />
           </button>
+          <label className="ec-player-local-volume"><SpeakerHighIcon size={16} aria-hidden />
+            <input type="range" min={0} max={1} step={.05} value={volume} aria-label="Громкость плеера на этом устройстве" onChange={event => setVolume(Number(event.target.value))} />
+            <span>{Math.round(volume * 100)}%</span>
+          </label>
         </div>
+        {!isHost && <p className="ec-media-inline-status">Воспроизведением управляет ведущий. Громкость меняется только у тебя.</p>}
 
+        {(error || actionError) && <p className="ec-player-notice" role="alert">{error || actionError}</p>}
+        <div className="ec-player-browser-tools">
+          <div role="tablist" aria-label="Содержимое плеера" onKeyDown={event => {
+            if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) {
+              event.preventDefault();
+              const next = event.key === "Home" ? "queue" : event.key === "End" ? "library" : tab === "queue" ? "library" : "queue";
+              setTab(next); event.currentTarget.querySelector<HTMLButtonElement>('[data-tab="' + next + '"]')?.focus();
+            }
+          }}>
+            <button type="button" role="tab" id="ec-music-queue-tab" data-tab="queue" aria-controls="ec-music-browser" aria-selected={tab === "queue"} tabIndex={tab === "queue" ? 0 : -1} onClick={() => setTab("queue")}>Очередь <span>{session.queue.length}</span></button>
+            <button type="button" role="tab" id="ec-music-library-tab" data-tab="library" aria-controls="ec-music-browser" aria-selected={tab === "library"} tabIndex={tab === "library" ? 0 : -1} onClick={() => setTab("library")}>Аудиотека <span>{tracksTotal}</span></button>
+          </div>
+          {tab === "library" && <input aria-label="Найти трек" placeholder="Найти трек" value={query} onChange={e => setQuery(e.target.value)} />}
+        </div>
+        <div className="ec-player-browser" id="ec-music-browser" role="tabpanel" aria-labelledby={tab === "queue" ? "ec-music-queue-tab" : "ec-music-library-tab"} tabIndex={0}>
+        {tab === "library" && libraryLoading && <p role="status">Загружаем аудиотеку…</p>}
         {/* v1.5.14 — Аудиотека сервера: всё audio из чатов в одном
             плейлисте. Click — play. Plus — добавить в очередь. «Все» —
             проигрывать подряд (replace queue). */}
-        {library && library.length > 0 && (
+        {tab === "library" && library && library.length > 0 && (
           <div className="ec-player-library">
             <div className="ec-player-library__header">
               <span className="ec-player-library__label">
@@ -474,17 +588,18 @@ export function MusicExpandModal({
                   type="button"
                   className="ec-btn ec-btn--primary ec-btn--sm"
                   onClick={() => {
-                    const ids = library.map((t) => t.id);
-                    void onStartPlaylist(ids);
+                    const ids = filteredLibrary.map((t) => t.id);
+                    void run(() => onStartPlaylist(ids));
                   }}
+                  disabled={pending || !isHost || filteredLibrary.length === 0}
                   title="Запустить все треки подряд (заменит очередь)"
                 >
-                  ▶ Проиграть все
+                  <PlayIcon size={14} aria-hidden /> Проиграть список
                 </button>
               )}
             </div>
             <ul className="ec-player-library__list">
-              {library.map((t) => {
+              {filteredLibrary.map((t) => {
                 const isCurrent = currentId === t.id;
                 const isQueued = queuedIds.has(t.id);
                 return (
@@ -496,8 +611,8 @@ export function MusicExpandModal({
                     }
                   >
                     <div className="ec-player-library-row__meta">
-                      <span className="ec-player-library-row__name" title={t.filename}>
-                        {t.filename}
+                      <span className="ec-player-library-row__name" title={musicTrackTitle(t.filename)}>
+                        {musicTrackTitle(t.filename)}
                       </span>
                       <span className="ec-player-library-row__sub">
                         #{t.channel.name} · {t.uploader.displayName}
@@ -505,7 +620,7 @@ export function MusicExpandModal({
                     </div>
                     {isCurrent ? (
                       <span className="ec-player-library-row__badge ec-player-library-row__badge--current">
-                        играет
+                        {playing ? "играет" : "на паузе"}
                       </span>
                     ) : isQueued ? (
                       <span className="ec-player-library-row__badge">
@@ -517,22 +632,24 @@ export function MusicExpandModal({
                           <button
                             type="button"
                             className="ec-icon-btn ec-icon-btn--sm"
-                            onClick={() => void onAddToQueue(t.id)}
+                            disabled={pending}
+                            onClick={() => void run(() => onAddToQueue(t.id))}
                             title="В очередь"
                             aria-label="Добавить в очередь"
                           >
-                            +
+                            <PlusIcon size={16} aria-hidden />
                           </button>
                         )}
                         {onStartTrack && (
                           <button
                             type="button"
                             className="ec-icon-btn ec-icon-btn--sm"
-                            onClick={() => void onStartTrack(t.id)}
+                            disabled={pending || !isHost}
+                            onClick={() => void run(() => onStartTrack(t.id))}
                             title="Воспроизвести"
                             aria-label="Воспроизвести"
                           >
-                            ▶
+                            <PlayIcon size={16} aria-hidden />
                           </button>
                         )}
                       </div>
@@ -543,40 +660,49 @@ export function MusicExpandModal({
             </ul>
           </div>
         )}
-        {library && library.length === 0 && !libraryLoading && (
+        {tab === "library" && filteredLibrary.length === 0 && !libraryLoading && (
           <p className="ec-player-library__empty">
-            В этом пространстве пока нет аудиофайлов в чатах.
+            {query ? "По этому запросу треков нет." : "В пространстве пока нет аудиофайлов."}
           </p>
         )}
 
         {/* Очередь — список ближайших треков, «следующий» подсвечен. */}
-        {queueTracks.length > 0 && (
+        {tab === "queue" && queueTracks.length > 0 && (
           <div className="ec-player-queue">
             <div className="ec-player-queue__label">
               Очередь · {queueTracks.length}
             </div>
-            <ol className="ec-player-queue__list">
+            <ol ref={queueListRef} tabIndex={-1} aria-label="Очередь треков" className="ec-player-queue__list">
               {queueTracks.map((t, i) => (
                 <li
-                  key={`${t.id}-${i}`}
+                  key={t.id + ":" + queueTracks.slice(0, i).filter(row => row.id === t.id).length}
+                  data-queue-entry={t.id + ":" + queueTracks.slice(0, i).filter(row => row.id === t.id).length}
                   className={
                     "ec-player-queue-row" +
                     (i === 0 ? " ec-player-queue-row--next" : "")
                   }
                 >
                   <span className="ec-player-queue-row__idx">{i + 1}</span>
-                  <span className="ec-player-queue-row__name" title={t.filename}>
-                    {t.filename}
+                  <span className="ec-player-queue-row__name" title={musicTrackTitle(t.filename)}>
+                    {musicTrackTitle(t.filename)}
                   </span>
-                  {i === 0 && (
-                    <span className="ec-player-queue-row__tag">Далее</span>
-                  )}
+                  {i === 0 && <span className="ec-player-queue-row__tag">Далее</span>}
+                  {isHost && onEditQueue && <div className="ec-player-queue-row__actions">
+                    <button type="button" disabled={pending || queueLoading || i === 0} aria-label={"Поднять трек " + (i + 1)} onClick={() => editQueued(t.queueIndex ?? i, "move", (t.queueIndex ?? i) - 1)}><ArrowUpIcon size={15} aria-hidden /></button>
+                    <button type="button" disabled={pending || queueLoading || i === queueTracks.length - 1} aria-label={"Опустить трек " + (i + 1)} onClick={() => editQueued(t.queueIndex ?? i, "move", (t.queueIndex ?? i) + 1)}><ArrowDownIcon size={15} aria-hidden /></button>
+                    <button type="button" disabled={pending || queueLoading} aria-label={"Удалить трек " + (i + 1) + " из очереди"} onClick={() => editQueued(t.queueIndex ?? i, "remove")}><TrashIcon size={15} aria-hidden /></button>
+                  </div>}
                 </li>
               ))}
             </ol>
           </div>
         )}
 
+        <span className="ec-sr-only" role="status">{queueNotice}</span>
+        {tab === "queue" && queueLoading && <p role="status">Загружаем очередь…</p>}
+        {tab === "queue" && queueError && <p role="alert">Не удалось загрузить очередь. <button type="button" onClick={() => setQueueRevision(value => value + 1)}>Повторить</button></p>}
+        {tab === "queue" && !queueLoading && !queueError && queueTracks.length === 0 && <div className="ec-player-browser-empty"><strong>Дальше пока ничего нет</strong><p>Выбери следующий трек в аудиотеке.</p><button type="button" className="ec-btn ec-btn--ghost" onClick={() => setTab("library")}>Открыть аудиотеку</button></div>}
+        </div>
         {!track && (
           <p className="ec-player-empty">
             Очередь пуста. Добавь audio-attachment в чат и нажми «Слушать
@@ -588,11 +714,12 @@ export function MusicExpandModal({
         <audio
           ref={audioRef}
           preload="metadata"
+          onError={() => { setMediaFailure(true); setMediaLoading(false); }}
           style={{ display: "none" }}
           onLoadedMetadata={(e) => {
             const a = e.currentTarget;
             if (Number.isFinite(a.duration)) {
-              setDurationMs(a.duration * 1000);
+              setDurationMs(a.duration * 1000); setMediaLoading(false);
             }
           }}
         />

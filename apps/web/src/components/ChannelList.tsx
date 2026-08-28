@@ -999,7 +999,8 @@ export function ChannelList({
             setServerMenuOpen((value) => !value);
           }}
           className="ec-channel-list__server-btn ec-server-header-trigger"
-          title="Действия пространства"
+          aria-label={`Действия пространства ${serverName ?? ""}`}
+          data-native-cursor
           aria-haspopup="menu"
           aria-expanded={serverMenuOpen}
         >
