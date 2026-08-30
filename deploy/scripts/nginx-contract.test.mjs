@@ -33,6 +33,7 @@ test('nginx serves the application with a strict browser security contract', asy
   assert.doesNotMatch(app, /script-src[^;]*'unsafe-inline'/);
   assert.match(app, /frame-ancestors 'none'/);
   assert.match(app, /object-src 'none'/);
+  assert.match(app, /frame-src https:\/\/www\.youtube-nocookie\.com https:\/\/www\.youtube\.com/);
   assert.match(app, /Permissions-Policy "camera=\(self\), microphone=\(self\)/);
   assert.match(app, /X-Content-Type-Options "nosniff"/);
   assert.match(app, /Referrer-Policy "strict-origin-when-cross-origin"/);

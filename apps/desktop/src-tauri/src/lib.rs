@@ -50,6 +50,7 @@ pub fn run() {
             lan_transfer::lan_transfer_pick_files,
             lan_transfer::lan_transfer_send,
             lan_transfer::lan_transfer_cancel,
+            open_external_media,
         ]);
 
     #[cfg(desktop)]
@@ -90,6 +91,35 @@ pub fn run() {
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+/// Open a small allowlist of media links in the system browser. The remote
+/// production webview receives this command instead of broad shell access.
+#[cfg(desktop)]
+#[tauri::command]
+fn open_external_media(url: String) -> Result<(), String> {
+    let parsed = url::Url::parse(&url).map_err(|_| "Некорректная ссылка".to_string())?;
+    let host = parsed.host_str().unwrap_or_default().to_ascii_lowercase();
+    let allowed_host = matches!(
+        host.as_str(),
+        "youtube.com"
+            | "www.youtube.com"
+            | "m.youtube.com"
+            | "music.youtube.com"
+            | "youtu.be"
+            | "www.youtu.be"
+    );
+
+    if parsed.scheme() != "https"
+        || !allowed_host
+        || !parsed.username().is_empty()
+        || parsed.password().is_some()
+    {
+        return Err("Разрешены только официальные HTTPS-ссылки YouTube".to_string());
+    }
+
+    open::that_detached(parsed.as_str())
+        .map_err(|_| "Не удалось открыть системный браузер".to_string())
 }
 
 // ----- desktop helpers ----------------------------------------------------

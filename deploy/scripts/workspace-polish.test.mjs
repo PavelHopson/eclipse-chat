@@ -102,9 +102,17 @@ test("video management is optional while upload limits and confirmation remain",
   assert.match(video, /activeVideoId === video\.id/);
   assert.match(video, /api\/training-videos\/\$\{encodeURIComponent\(videoId\)\}\/thumbnail/);
   assert.match(video, /playerState === "error"/);
-  assert.match(video, /toYouTubeEmbedUrl\(parsed, \{ autoplay: true \}\)/);
+  assert.match(video, /host: playerHost/);
+  assert.match(video, /origin: window\.location\.origin/);
+  assert.match(video, /playerHost === "standard"/);
+  assert.match(video, /setPlayerHost\("privacy"\)/);
+  assert.match(video, /message\.event === "onError"/);
+  assert.match(video, /toYouTubeWatchUrl/);
+  assert.match(video, /Открыть YouTube/);
   assert.match(video, /К обложке/);
-  assert.match(video, /YouTube недоступен в текущей сети/);
+  assert.match(video, /Нет соединения с YouTube/);
+  assert.match(video, /youtubeDirectPosterUrl/);
+  assert.match(video, /canReplace=\{canEdit\}/);
   assert.match(video, /replaceVideoWithFile/);
   assert.match(video, /Заменить файлом/);
   assert.match(serverRoutes, /"\/api\/training-videos\/:id\/replace-file"/);
@@ -119,4 +127,20 @@ test("video management is optional while upload limits and confirmation remain",
   assert.match(css, /ec-team-training-video__poster/);
   assert.match(css, /prefers-reduced-motion: reduce/);
   assert.match(css, /ec-dmx__search input[\s\S]*border: 0 !important/);
+});
+
+test("desktop external media bridge is restricted to official YouTube HTTPS URLs", () => {
+  const desktop = source("apps/desktop/src-tauri/src/lib.rs");
+  const capability = source("apps/desktop/src-tauri/capabilities/remote-external-media.json");
+  const browserBridge = source("apps/web/src/lib/openExternalMedia.ts");
+
+  assert.match(desktop, /fn open_external_media/);
+  assert.match(desktop, /parsed\.scheme\(\) != "https"/);
+  assert.match(desktop, /allowed_host/);
+  assert.match(desktop, /parsed\.username\(\)\.is_empty\(\)/);
+  assert.match(capability, /https:\/\/app\.star-crm\.ru\/eclipse-chat\/\*/);
+  assert.match(capability, /allow-open-external-media/);
+  assert.doesNotMatch(capability, /shell:allow-open/);
+  assert.match(browserBridge, /YOUTUBE_HOSTS/);
+  assert.match(browserBridge, /window\.location\.assign\(url\)/);
 });

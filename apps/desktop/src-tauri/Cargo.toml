@@ -1,6 +1,6 @@
 [package]
 name = "eclipse-chat-desktop"
-version = "1.0.8"
+version = "1.0.9"
 description = "Eclipse Chat desktop shell (Tauri 2)"
 authors = ["Pavel Hopson <hopsintoxin@mail.ru>"]
 edition = "2021"
@@ -44,6 +44,8 @@ tokio = { version = "1", features = ["full"] }
 tokio-stream = "0.1"
 tokio-util = { version = "0.7", features = ["rt"] }
 uuid = { version = "1", features = ["v4"] }
+url = "2"
+open = "5"
 localsend = { version = "0.1.0", path = "vendor/localsend-core", features = ["crypto", "discovery", "http", "multicast"] }
 
 [profile.release]

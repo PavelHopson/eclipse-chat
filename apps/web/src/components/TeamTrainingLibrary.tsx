@@ -3,8 +3,9 @@ import type { Socket } from "socket.io-client";
 import { ApiError, api, apiJson } from "../lib/api";
 import { resolveAssetUrl } from "../lib/assets";
 import { fileToBase64 } from "../lib/fileToBase64";
+import { openExternalYouTube } from "../lib/openExternalMedia";
 import { SocketEvents } from "../lib/socket";
-import { parseYouTubeUrl, toYouTubeEmbedUrl } from "../lib/youtubeEmbed";
+import { parseYouTubeUrl, toYouTubeEmbedUrl, toYouTubeWatchUrl, type YouTubeEmbedHost } from "../lib/youtubeEmbed";
 import { useConfirm } from "./ConfirmDialog";
 import { EclipseUiIcon } from "./icons/EclipseUiIcon";
 
@@ -48,6 +49,7 @@ type Props = {
 
 type PosterStatus = "idle" | "loading" | "ready" | "error";
 type YouTubeProviderStatus = "idle" | "checking" | "available" | "unavailable";
+type YouTubePosterSource = "idle" | "checking" | "proxy" | "direct" | "unavailable";
 
 const TRAINING_VIDEO_MAX_BYTES = 200 * 1024 * 1024;
 const TRAINING_VIDEO_MIME = new Set([
@@ -86,6 +88,10 @@ async function fetchTrainingVideoPoster(videoId: string, signal: AbortSignal): P
   return blob;
 }
 
+function youtubeDirectPosterUrl(videoId: string): string {
+  return `https://i.ytimg.com/vi/${encodeURIComponent(videoId)}/hqdefault.jpg`;
+}
+
 function useYouTubeProviderAvailability(videoId: string | null) {
   const [attempt, setAttempt] = useState(0);
   const [status, setStatus] = useState<YouTubeProviderStatus>(videoId ? "checking" : "idle");
@@ -103,6 +109,49 @@ function useYouTubeProviderAvailability(videoId: string | null) {
         if (!controller.signal.aborted) setStatus("unavailable");
       });
     return () => controller.abort();
+  }, [attempt, videoId]);
+
+  return {
+    status,
+    retry: () => setAttempt((value) => value + 1),
+  };
+}
+
+function useYouTubeClientThumbnailAvailability(videoId: string | null) {
+  const [attempt, setAttempt] = useState(0);
+  const [status, setStatus] = useState<YouTubeProviderStatus>(videoId ? "checking" : "idle");
+
+  useEffect(() => {
+    if (!videoId) {
+      setStatus("idle");
+      return;
+    }
+
+    let active = true;
+    const image = new Image();
+    const finish = (next: YouTubeProviderStatus) => {
+      if (!active) return;
+      active = false;
+      window.clearTimeout(timeout);
+      image.onload = null;
+      image.onerror = null;
+      setStatus(next);
+    };
+    const timeout = window.setTimeout(() => finish("unavailable"), 6_000);
+    setStatus("checking");
+    image.decoding = "async";
+    image.referrerPolicy = "no-referrer";
+    image.onload = () => finish("available");
+    image.onerror = () => finish("unavailable");
+    image.src = youtubeDirectPosterUrl(videoId);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timeout);
+      image.onload = null;
+      image.onerror = null;
+      image.src = "";
+    };
   }, [attempt, videoId]);
 
   return {
@@ -295,7 +344,23 @@ export function TeamTrainingLibrary({ serverId, canUploadFiles, socket }: Props)
     () => sections.flatMap((section) => section.videos).find((video) => video.source === "youtube")?.id ?? null,
     [sections],
   );
-  const youtubeProvider = useYouTubeProviderAvailability(youtubeProbeVideoId);
+  const youtubeServerProvider = useYouTubeProviderAvailability(youtubeProbeVideoId);
+  const youtubeClientProvider = useYouTubeClientThumbnailAvailability(youtubeProbeVideoId);
+  const youtubePosterSource = useMemo<YouTubePosterSource>(() => {
+    if (!youtubeProbeVideoId) return "idle";
+    if (youtubeServerProvider.status === "available") return "proxy";
+    if (youtubeClientProvider.status === "available") return "direct";
+    if (
+      youtubeServerProvider.status === "unavailable"
+      && youtubeClientProvider.status === "unavailable"
+    ) return "unavailable";
+    return "checking";
+  }, [youtubeClientProvider.status, youtubeProbeVideoId, youtubeServerProvider.status]);
+
+  const retryYouTube = useCallback(() => {
+    youtubeServerProvider.retry();
+    youtubeClientProvider.retry();
+  }, [youtubeClientProvider, youtubeServerProvider]);
 
   useEffect(() => {
     setActiveVideoId(null);
@@ -780,14 +845,14 @@ export function TeamTrainingLibrary({ serverId, canUploadFiles, socket }: Props)
             {error && <div className="ec-team-training__error" role="alert">{error}</div>}
           </div>
 
-          {youtubeProvider.status === "unavailable" && (
-            <div className="ec-team-training__provider-status" role="status">
+          {youtubePosterSource === "unavailable" && (
+            <div className="ec-team-training__provider-status" role="status" aria-live="polite">
               <EclipseUiIcon name="risk" size={20} />
               <div>
-                <strong>YouTube недоступен в текущей сети</strong>
-                <span>Ссылки и названия сохранены. Локальные видео продолжают работать.</span>
+                <strong>Нет соединения с YouTube</strong>
+                <span>Плеер попробует два официальных адреса. Для гарантированного просмотра загрузите файл.</span>
               </div>
-              <button type="button" className="ec-btn ec-btn--ghost ec-btn--sm" onClick={youtubeProvider.retry}>
+              <button type="button" className="ec-btn ec-btn--ghost ec-btn--sm" onClick={retryYouTube}>
                 Проверить снова
               </button>
             </div>
@@ -810,8 +875,9 @@ export function TeamTrainingLibrary({ serverId, canUploadFiles, socket }: Props)
                   <TrainingVideoCard
                     key={video.id}
                     video={video}
-                    canEdit={canEdit && manageOpen}
-                    providerStatus={youtubeProvider.status}
+                    canRemove={canEdit && manageOpen}
+                    canReplace={canEdit}
+                    posterSource={youtubePosterSource}
                     isActive={activeVideoId === video.id}
                     onActivate={() => setActiveVideoId(video.id)}
                     onDeactivate={() => setActiveVideoId(null)}
@@ -830,8 +896,9 @@ export function TeamTrainingLibrary({ serverId, canUploadFiles, socket }: Props)
 
 function TrainingVideoCard({
   video,
-  canEdit,
-  providerStatus,
+  canRemove,
+  canReplace,
+  posterSource,
   isActive,
   onActivate,
   onDeactivate,
@@ -839,8 +906,9 @@ function TrainingVideoCard({
   onReplace,
 }: {
   video: TrainingVideo;
-  canEdit: boolean;
-  providerStatus: YouTubeProviderStatus;
+  canRemove: boolean;
+  canReplace: boolean;
+  posterSource: YouTubePosterSource;
   isActive: boolean;
   onActivate: () => void;
   onDeactivate: () => void;
@@ -852,20 +920,79 @@ function TrainingVideoCard({
   const [fileAttempt, setFileAttempt] = useState(0);
   const [playerAttempt, setPlayerAttempt] = useState(0);
   const [playerState, setPlayerState] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const [playerHost, setPlayerHost] = useState<YouTubeEmbedHost>("standard");
+  const [directPosterFailed, setDirectPosterFailed] = useState(false);
+  const playerRef = useRef<HTMLIFrameElement>(null);
   const parsed = video.source === "youtube" ? parseYouTubeUrl(video.url) : null;
-  const poster = useTrainingVideoPoster(parsed ? video.id : null, providerStatus === "available");
+  const poster = useTrainingVideoPoster(parsed ? video.id : null, posterSource === "proxy");
+  const directPoster = parsed && posterSource === "direct" && !directPosterFailed
+    ? youtubeDirectPosterUrl(parsed.videoId)
+    : null;
+  const posterUrl = poster.url ?? directPoster;
+
+  useEffect(() => {
+    setDirectPosterFailed(false);
+  }, [posterSource, video.id]);
 
   useEffect(() => {
     if (!isActive) {
       setPlayerState("idle");
+      setPlayerHost("standard");
       return;
     }
     setPlayerState("loading");
-    const timeout = window.setTimeout(() => {
-      setPlayerState((current) => current === "loading" ? "error" : current);
-    }, 12_000);
-    return () => window.clearTimeout(timeout);
   }, [isActive, playerAttempt]);
+
+  useEffect(() => {
+    if (!isActive || playerState !== "loading") return;
+    const timeout = window.setTimeout(() => {
+      if (playerHost === "standard") {
+        setPlayerHost("privacy");
+      } else {
+        setPlayerState((current) => current === "loading" ? "error" : current);
+      }
+    }, 8_000);
+    return () => window.clearTimeout(timeout);
+  }, [isActive, playerAttempt, playerHost, playerState]);
+
+  useEffect(() => {
+    if (!isActive || !parsed) return;
+    const expectedOrigin = playerHost === "standard"
+      ? "https://www.youtube.com"
+      : "https://www.youtube-nocookie.com";
+    const onMessage = (event: MessageEvent) => {
+      if (event.origin !== expectedOrigin || event.source !== playerRef.current?.contentWindow) return;
+      let payload: unknown = event.data;
+      if (typeof payload === "string") {
+        try { payload = JSON.parse(payload); } catch { return; }
+      }
+      if (!payload || typeof payload !== "object") return;
+      const message = payload as { event?: string; info?: unknown };
+      if (message.event === "onError") {
+        if (playerHost === "standard") setPlayerHost("privacy");
+        else setPlayerState("error");
+        return;
+      }
+      if (message.event === "onReady" || message.event === "infoDelivery" || message.event === "onStateChange") {
+        setPlayerState("ready");
+      }
+    };
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [isActive, parsed, playerHost]);
+
+  const retryPlayer = () => {
+    setPlayerHost("standard");
+    setPlayerAttempt((value) => value + 1);
+  };
+
+  const handlePlayerFailure = () => {
+    if (playerHost === "standard") {
+      setPlayerHost("privacy");
+    } else {
+      setPlayerState("error");
+    }
+  };
 
   if (video.source === "file") {
     const src = resolveAssetUrl(video.url);
@@ -907,7 +1034,7 @@ function TrainingVideoCard({
                 Открыть
               </a>
             )}
-            {canEdit && (
+            {canRemove && (
               <button type="button" className="ec-team-training-video__remove" onClick={onRemove}>
                 Удалить
               </button>
@@ -922,7 +1049,7 @@ function TrainingVideoCard({
     return (
       <article className="ec-team-training-video">
         <div className="ec-team-training-video__bad-link">Ссылка недоступна</div>
-        {canEdit && (
+        {canRemove && (
           <button type="button" className="ec-team-training-video__remove" onClick={onRemove}>
             Удалить
           </button>
@@ -931,45 +1058,52 @@ function TrainingVideoCard({
     );
   }
 
+  const officialUrl = toYouTubeWatchUrl(parsed);
+
   return (
     <article className="ec-team-training-video ec-team-training-video--youtube">
-      <div className="ec-team-training-video__frame" data-player-state={isActive ? playerState : poster.status}>
+      <div className="ec-team-training-video__frame" data-player-state={isActive ? playerState : posterSource}>
         {isActive ? (
           playerState === "error" ? (
             <div className="ec-team-training-video__unavailable" role="alert">
               <EclipseUiIcon name="risk" size={28} />
-              <strong>YouTube не отвечает</strong>
-              <span>Видео осталось в библиотеке. Можно повторить загрузку или открыть источник.</span>
+              <strong>Плеер YouTube недоступен</strong>
+              <span>Оба официальных адреса не ответили. Откройте YouTube отдельно или загрузите файл.</span>
               <div className="ec-team-training-video__recovery-actions">
-                <button type="button" onClick={() => setPlayerAttempt((value) => value + 1)}>
+                <button type="button" onClick={retryPlayer}>
                   <EclipseUiIcon name="followup" size={16} />Повторить
                 </button>
                 <button type="button" onClick={onDeactivate}>
                   <EclipseUiIcon name="close" size={16} />К обложке
                 </button>
-                <a href={video.url} target="_blank" rel="noopener noreferrer">Открыть YouTube</a>
-                {canEdit && (
-                  <button type="button" onClick={onReplace}>
-                    <EclipseUiIcon name="upload" size={16} />Заменить файлом
-                  </button>
-                )}
               </div>
             </div>
           ) : (
             <>
               <iframe
-                key={playerAttempt}
+                ref={playerRef}
+                key={`${playerAttempt}-${playerHost}`}
                 title={video.title}
-                src={toYouTubeEmbedUrl(parsed, { autoplay: true })}
+                src={toYouTubeEmbedUrl(parsed, {
+                  autoplay: true,
+                  host: playerHost,
+                  origin: window.location.origin,
+                })}
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                 sandbox="allow-scripts allow-same-origin allow-presentation allow-popups"
                 allowFullScreen
                 referrerPolicy="strict-origin-when-cross-origin"
-                onLoad={() => setPlayerState("ready")}
+                onLoad={() => {
+                  const targetOrigin = playerHost === "standard"
+                    ? "https://www.youtube.com"
+                    : "https://www.youtube-nocookie.com";
+                  playerRef.current?.contentWindow?.postMessage(JSON.stringify({ event: "listening", id: video.id }), targetOrigin);
+                }}
+                onError={handlePlayerFailure}
               />
               {playerState === "loading" && (
-                <div className="ec-team-training-video__player-loading" role="status">
-                  <span>Подключаем плеер</span>
+                <div className="ec-team-training-video__player-loading" role="status" aria-live="polite">
+                  <span>{playerHost === "standard" ? "Подключаем плеер" : "Проверяем запасной адрес"}</span>
                 </div>
               )}
               <button type="button" className="ec-team-training-video__close-player" onClick={onDeactivate} aria-label="Закрыть плеер">
@@ -977,14 +1111,33 @@ function TrainingVideoCard({
               </button>
             </>
           )
+        ) : posterSource === "unavailable" ? (
+          <div className="ec-team-training-video__unavailable ec-team-training-video__unavailable--youtube" role="status">
+            <EclipseUiIcon name="external" size={28} />
+            <strong>Нет доступа к YouTube</strong>
+            <div className="ec-team-training-video__recovery-actions">
+              <a href={officialUrl} target="_blank" rel="noopener noreferrer" onClick={(event) => openExternalYouTube(event, officialUrl)}>
+                <EclipseUiIcon name="external" size={16} />Открыть YouTube
+              </a>
+              <button type="button" onClick={onActivate}>Проверить плеер</button>
+            </div>
+          </div>
         ) : (
           <button type="button" className="ec-team-training-video__poster" onClick={onActivate} aria-label={`Воспроизвести: ${video.title}`}>
-            {poster.url ? (
-              <img src={poster.url} alt="" />
+            {posterUrl ? (
+              <img
+                src={posterUrl}
+                alt=""
+                loading="lazy"
+                referrerPolicy={directPoster ? "no-referrer" : undefined}
+                onError={() => {
+                  if (directPoster) setDirectPosterFailed(true);
+                }}
+              />
             ) : (
-              <span className="ec-team-training-video__poster-fallback" data-loading={poster.status === "loading" ? "true" : "false"}>
-                <EclipseUiIcon name={providerStatus === "unavailable" ? "external" : "orbit"} size={34} />
-                <span>{providerStatus === "checking" ? "Проверяем YouTube" : "YouTube"}</span>
+              <span className="ec-team-training-video__poster-fallback" data-loading={posterSource === "checking" ? "true" : "false"}>
+                <EclipseUiIcon name="orbit" size={34} />
+                <span>{posterSource === "checking" ? "Проверяем обложку" : "YouTube"}</span>
               </span>
             )}
             <span className="ec-team-training-video__play">
@@ -1000,15 +1153,15 @@ function TrainingVideoCard({
           <div className="ec-team-training-video__source">YouTube</div>
         </div>
         <div className="ec-team-training-video__actions">
-          <a className="ec-team-training-video__link" href={video.url} target="_blank" rel="noopener noreferrer">
+          <a className="ec-team-training-video__link" href={officialUrl} target="_blank" rel="noopener noreferrer" onClick={(event) => openExternalYouTube(event, officialUrl)}>
             Открыть источник
           </a>
-          {canEdit && (
+          {canReplace && (
             <button type="button" className="ec-team-training-video__link" onClick={onReplace}>
               Заменить файлом
             </button>
           )}
-          {canEdit && (
+          {canRemove && (
             <button type="button" className="ec-team-training-video__remove" onClick={onRemove}>
               Удалить
             </button>

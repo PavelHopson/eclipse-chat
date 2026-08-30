@@ -308,6 +308,7 @@
 }
 .ec-team-training--library.is-large .ec-team-training__videos { grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr)); }
 .ec-team-training--library .ec-team-training-video {
+  container-type: inline-size;
   min-width: 0;
   border: 0;
   border-radius: 6px;
@@ -439,8 +440,8 @@
   gap: 7px;
   width: 100%;
   height: 100%;
-  min-height: 150px;
-  padding: 18px;
+  min-height: 0;
+  padding: 12px;
   background: var(--ec-surface-1);
   color: var(--ec-text-muted);
   text-align: center;
@@ -463,6 +464,19 @@
   font-weight: 750;
   text-decoration: none;
   cursor: pointer;
+}
+.ec-team-training--library .ec-team-training-video__unavailable--youtube .ec-team-training-video__recovery-actions {
+  margin-top: 2px;
+}
+@container (max-width: 260px) {
+  .ec-team-training--library .ec-team-training-video__unavailable > span {
+    display: none;
+  }
+  .ec-team-training--library .ec-team-training-video__recovery-actions :is(button, a) {
+    min-height: 30px;
+    padding-inline: 8px;
+    font-size: 10px;
+  }
 }
 .ec-team-training--library .ec-team-training-video__recovery-actions :is(button, a):hover,
 .ec-team-training--library .ec-team-training-video__recovery-actions :is(button, a):focus-visible { border-color: var(--ec-accent); outline: none; }

@@ -6,6 +6,7 @@ fn main() {
             "lan_transfer_pick_files",
             "lan_transfer_send",
             "lan_transfer_cancel",
+            "open_external_media",
         ]),
     ))
     .expect("failed to build Tauri application manifest")

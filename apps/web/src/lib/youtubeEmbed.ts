@@ -69,8 +69,18 @@ export function parseYouTubeUrl(rawUrl: string): YouTubeVideo | null {
   }
 }
 
-export function toYouTubeEmbedUrl(video: YouTubeVideo, options: { autoplay?: boolean } = {}): string {
+export type YouTubeEmbedHost = "privacy" | "standard";
+
+export function toYouTubeEmbedUrl(
+  video: YouTubeVideo,
+  options: {
+    autoplay?: boolean;
+    host?: YouTubeEmbedHost;
+    origin?: string;
+  } = {},
+): string {
   const params = new URLSearchParams({
+    enablejsapi: "1",
     rel: "0",
     modestbranding: "1",
     playsinline: "1",
@@ -84,5 +94,27 @@ export function toYouTubeEmbedUrl(video: YouTubeVideo, options: { autoplay?: boo
     params.set("start", String(video.startSeconds));
   }
 
-  return `https://www.youtube-nocookie.com/embed/${video.videoId}?${params.toString()}`;
+  if (options.origin) {
+    try {
+      const origin = new URL(options.origin);
+      if (origin.protocol === "https:" || origin.protocol === "http:") {
+        params.set("origin", origin.origin);
+      }
+    } catch {
+      // An invalid caller-provided origin is ignored; the video id remains
+      // independently validated by parseYouTubeUrl.
+    }
+  }
+
+  const host = options.host === "standard"
+    ? "www.youtube.com"
+    : "www.youtube-nocookie.com";
+  return `https://${host}/embed/${video.videoId}?${params.toString()}`;
+}
+
+export function toYouTubeWatchUrl(video: YouTubeVideo): string {
+  const url = new URL("https://www.youtube.com/watch");
+  url.searchParams.set("v", video.videoId);
+  if (video.startSeconds) url.searchParams.set("t", String(video.startSeconds));
+  return url.toString();
 }
