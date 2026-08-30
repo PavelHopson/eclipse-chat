@@ -36,7 +36,11 @@ import {
   tokenizeRetrievalQuery,
 } from "../ai/memoryRetrieval.js";
 import { memoryContextEligibilityWhere } from "../lib/memoryGovernance.js";
-import { loadYouTubeThumbnail, parseYouTubeVideoId } from "../lib/youtubeThumbnail.js";
+import {
+  loadYouTubeThumbnail,
+  parseYouTubeVideoId,
+  YouTubeThumbnailProviderUnavailableError,
+} from "../lib/youtubeThumbnail.js";
 
 // v1.6.99 — сообщение об отклонённом ServerInvite (slice B).
 const INVITE_REJECT_MESSAGE: Record<InviteRejectReason, string> = {
@@ -1319,7 +1323,76 @@ export async function registerServerRoutes(app: FastifyInstance) {
           .send(thumbnail);
       } catch (error) {
         req.log.warn({ err: error, trainingVideoId: video.id }, "youtube thumbnail unavailable");
+        if (error instanceof YouTubeThumbnailProviderUnavailableError) {
+          return reply
+            .header("Retry-After", String(error.retryAfterSeconds))
+            .status(503)
+            .send({ error: "YouTube thumbnail provider unavailable" });
+        }
         return reply.status(502).send({ error: "YouTube thumbnail unavailable" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/training-videos/:id/replace-file",
+    {
+      onRequest: [requireJwt],
+      bodyLimit: TRAINING_VIDEO_BODY_LIMIT,
+      config: { rateLimit: { max: 12, timeWindow: "1 minute" } },
+    },
+    async (req, reply) => {
+      const { id } = req.params as { id: string };
+      const video = await db.trainingVideo.findUnique({
+        where: { id },
+        select: { id: true, serverId: true, source: true },
+      });
+      if (!video) return reply.status(404).send({ error: "Video not found" });
+      const member = await loadMember(req, reply, video.serverId);
+      if (!member) return reply;
+      if (!canManageTraining(member.role)) {
+        return reply.status(403).send({ error: "Только OWNER/ADMIN могут менять видео тренировок" });
+      }
+      const active = await ensureServerActive(video.serverId, reply);
+      if (!active) return;
+      if (video.source !== "youtube") {
+        return reply.status(409).send({ error: "Only YouTube videos can be replaced" });
+      }
+
+      const parsed = uploadTrainingVideoBody.safeParse(req.body);
+      if (!parsed.success) return reply.status(400).send({ error: "Invalid upload body" });
+      if (!parsed.data.file.mimeType.startsWith("video/")) {
+        return reply.status(400).send({ error: "Only video files are allowed" });
+      }
+
+      let file: Awaited<ReturnType<typeof processTrainingVideoFile>>;
+      try {
+        file = await processTrainingVideoFile(
+          parsed.data.file,
+          `${video.serverId}-${member.userId}`,
+        );
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Replacement failed";
+        req.log.warn({ err: error, trainingVideoId: video.id }, "training video replacement rejected");
+        return reply.status(400).send({ error: message });
+      }
+
+      try {
+        await db.trainingVideo.update({
+          where: { id: video.id },
+          data: {
+            source: "file",
+            url: file.url,
+            filename: file.filename,
+            mimeType: file.mimeType,
+            size: file.size,
+          },
+        });
+        emitTrainingCatalogUpdated(video.serverId);
+        return reply.send(await loadTrainingCatalog(video.serverId));
+      } catch (error) {
+        req.log.warn({ err: error, trainingVideoId: video.id }, "training video replacement failed");
+        return reply.status(500).send({ error: "Video replacement failed" });
       }
     },
   );

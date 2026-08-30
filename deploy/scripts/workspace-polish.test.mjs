@@ -104,6 +104,12 @@ test("video management is optional while upload limits and confirmation remain",
   assert.match(video, /playerState === "error"/);
   assert.match(video, /toYouTubeEmbedUrl\(parsed, \{ autoplay: true \}\)/);
   assert.match(video, /К обложке/);
+  assert.match(video, /YouTube недоступен в текущей сети/);
+  assert.match(video, /replaceVideoWithFile/);
+  assert.match(video, /Заменить файлом/);
+  assert.match(serverRoutes, /"\/api\/training-videos\/:id\/replace-file"/);
+  assert.match(serverRoutes, /if \(!canManageTraining\(member\.role\)\)/);
+  assert.match(serverRoutes, /if \(video\.source !== "youtube"\)/);
   assert.ok(video.indexOf("{isActive ? (") < video.indexOf("<iframe"), "YouTube iframe is created only for the active card");
   assert.match(thumbnailRoute, /onRequest: \[requireJwt\]/);
   assert.match(thumbnailRoute, /rateLimit: \{ max: 120/);

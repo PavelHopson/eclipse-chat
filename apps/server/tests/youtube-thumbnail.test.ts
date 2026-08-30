@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   loadYouTubeThumbnail,
   parseYouTubeVideoId,
+  YouTubeThumbnailProviderUnavailableError,
 } from "../src/lib/youtubeThumbnail.js";
 
 const VIDEO_ID = "dQw4w9WgXcQ";
@@ -65,5 +66,21 @@ describe("YouTube training thumbnails", () => {
     const fetchImpl = vi.fn() as unknown as typeof fetch;
     await expect(loadYouTubeThumbnail("../../escape", { fetchImpl })).rejects.toThrow("Invalid YouTube video id");
     expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("opens a short circuit after an upstream network failure", async () => {
+    const cacheDir = await mkdtemp(path.join(tmpdir(), "ec-youtube-thumbnail-"));
+    const fetchImpl = vi.fn(async () => {
+      throw new TypeError("network timeout");
+    }) as unknown as typeof fetch;
+    try {
+      await expect(loadYouTubeThumbnail(VIDEO_ID, { cacheDir, fetchImpl }))
+        .rejects.toBeInstanceOf(YouTubeThumbnailProviderUnavailableError);
+      await expect(loadYouTubeThumbnail("M7lc1UVf-VE", { cacheDir, fetchImpl }))
+        .rejects.toBeInstanceOf(YouTubeThumbnailProviderUnavailableError);
+      expect(fetchImpl).toHaveBeenCalledTimes(1);
+    } finally {
+      await rm(cacheDir, { recursive: true, force: true });
+    }
   });
 });

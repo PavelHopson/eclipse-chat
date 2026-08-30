@@ -272,6 +272,31 @@
   background: var(--ec-surface-1);
 }
 .ec-team-training--library .ec-team-training__upload-hint { grid-column: 1 / -1; margin: 0; }
+.ec-team-training--library .ec-team-training__provider-status {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 16px;
+  padding: 11px 12px;
+  border: 1px solid color-mix(in srgb, var(--ec-warning, #d4af37) 34%, var(--ec-border-subtle));
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--ec-warning, #d4af37) 7%, var(--ec-surface-1));
+  color: var(--ec-warning, #d4af37);
+}
+.ec-team-training--library .ec-team-training__provider-status > div { min-width: 0; }
+.ec-team-training--library .ec-team-training__provider-status strong,
+.ec-team-training--library .ec-team-training__provider-status span { display: block; }
+.ec-team-training--library .ec-team-training__provider-status strong {
+  color: var(--ec-text-strong);
+  font-size: 12px;
+}
+.ec-team-training--library .ec-team-training__provider-status span {
+  margin-top: 2px;
+  color: var(--ec-text-muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
 .ec-team-training--library .ec-team-training__videos {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
@@ -356,7 +381,7 @@
   font-size: 12px;
   text-align: center;
 }
-.ec-team-training--library .ec-team-training-video__poster-fallback img { width: 48px; height: 48px; opacity: 0.72; }
+.ec-team-training--library .ec-team-training-video__poster-fallback .ec-ui-icon { color: var(--ec-accent); opacity: 0.78; }
 .ec-team-training--library .ec-team-training-video__poster-fallback[data-loading="true"] { color: var(--ec-text-dim); }
 .ec-team-training--library .ec-team-training-video__play {
   position: absolute;
@@ -514,6 +539,8 @@
   .ec-team-training--library .ec-team-training__videos { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 10px; }
   .ec-team-training--library.is-large .ec-team-training__videos { grid-template-columns: 1fr; }
   .ec-team-training--library .ec-team-training__form { grid-template-columns: 1fr; }
+  .ec-team-training--library .ec-team-training__provider-status { grid-template-columns: auto minmax(0, 1fr); }
+  .ec-team-training--library .ec-team-training__provider-status .ec-btn { grid-column: 1 / -1; width: 100%; }
   .ec-team-training--library .ec-team-training__new-section { max-width: none; }
   .ec-team-training--library .ec-team-training__section-action { min-width: 36px; min-height: 40px; }
   .ec-team-training--library .ec-team-training-video__play { left: 8px; bottom: 8px; min-height: 34px; padding: 0 10px; }

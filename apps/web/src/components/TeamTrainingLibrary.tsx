@@ -47,6 +47,7 @@ type Props = {
 };
 
 type PosterStatus = "idle" | "loading" | "ready" | "error";
+type YouTubeProviderStatus = "idle" | "checking" | "available" | "unavailable";
 
 const TRAINING_VIDEO_MAX_BYTES = 200 * 1024 * 1024;
 const TRAINING_VIDEO_MIME = new Set([
@@ -77,13 +78,45 @@ function formatBytes(size: number | null | undefined): string | null {
   return `${size} B`;
 }
 
-function useTrainingVideoPoster(videoId: string | null) {
+async function fetchTrainingVideoPoster(videoId: string, signal: AbortSignal): Promise<Blob> {
+  const response = await api(`api/training-videos/${encodeURIComponent(videoId)}/thumbnail`, { signal });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  const blob = await response.blob();
+  if (!blob.type.startsWith("image/")) throw new Error("Invalid thumbnail response");
+  return blob;
+}
+
+function useYouTubeProviderAvailability(videoId: string | null) {
   const [attempt, setAttempt] = useState(0);
-  const [status, setStatus] = useState<PosterStatus>(videoId ? "loading" : "idle");
-  const [url, setUrl] = useState<string | null>(null);
+  const [status, setStatus] = useState<YouTubeProviderStatus>(videoId ? "checking" : "idle");
 
   useEffect(() => {
     if (!videoId) {
+      setStatus("idle");
+      return;
+    }
+    const controller = new AbortController();
+    setStatus("checking");
+    void fetchTrainingVideoPoster(videoId, controller.signal)
+      .then(() => setStatus("available"))
+      .catch(() => {
+        if (!controller.signal.aborted) setStatus("unavailable");
+      });
+    return () => controller.abort();
+  }, [attempt, videoId]);
+
+  return {
+    status,
+    retry: () => setAttempt((value) => value + 1),
+  };
+}
+
+function useTrainingVideoPoster(videoId: string | null, enabled: boolean) {
+  const [status, setStatus] = useState<PosterStatus>(videoId && enabled ? "loading" : "idle");
+  const [url, setUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!videoId || !enabled) {
       setStatus("idle");
       setUrl(null);
       return;
@@ -94,12 +127,7 @@ function useTrainingVideoPoster(videoId: string | null) {
     setStatus("loading");
     setUrl(null);
 
-    void api(`api/training-videos/${encodeURIComponent(videoId)}/thumbnail`, {
-      signal: controller.signal,
-    }).then(async (response) => {
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const blob = await response.blob();
-      if (!blob.type.startsWith("image/")) throw new Error("Invalid thumbnail response");
+    void fetchTrainingVideoPoster(videoId, controller.signal).then((blob) => {
       objectUrl = URL.createObjectURL(blob);
       if (disposed) {
         URL.revokeObjectURL(objectUrl);
@@ -120,12 +148,11 @@ function useTrainingVideoPoster(videoId: string | null) {
       controller.abort();
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [attempt, videoId]);
+  }, [enabled, videoId]);
 
   return {
     status,
     url,
-    retry: () => setAttempt((value) => value + 1),
   };
 }
 
@@ -192,6 +219,8 @@ export function TeamTrainingLibrary({ serverId, canUploadFiles, socket }: Props)
   const [largeVideos, setLargeVideos] = useState(false);
   const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const replacementInputRef = useRef<HTMLInputElement | null>(null);
+  const replacementVideoRef = useRef<string | null>(null);
   const legacyImportRef = useRef<string | null>(null);
   const [sections, setSections] = useState<TrainingSection[]>([]);
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
@@ -262,6 +291,11 @@ export function TeamTrainingLibrary({ serverId, canUploadFiles, socket }: Props)
     () => sections.find((section) => section.id === activeSectionId) ?? sections[0] ?? null,
     [activeSectionId, sections],
   );
+  const youtubeProbeVideoId = useMemo(
+    () => sections.flatMap((section) => section.videos).find((video) => video.source === "youtube")?.id ?? null,
+    [sections],
+  );
+  const youtubeProvider = useYouTubeProviderAvailability(youtubeProbeVideoId);
 
   useEffect(() => {
     setActiveVideoId(null);
@@ -464,6 +498,59 @@ export function TeamTrainingLibrary({ serverId, canUploadFiles, socket }: Props)
     } finally {
       setBusy(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+  async function requestFileReplacement(video: TrainingVideo) {
+    if (!canUploadFiles || busy) return;
+    const ok = await confirm({
+      title: "Заменить источник видео?",
+      message: `«${video.title}» сохранит название и место в разделе, но вместо YouTube будет использовать загруженный файл.`,
+      confirmLabel: "Выбрать файл",
+    });
+    if (!ok) return;
+    replacementVideoRef.current = video.id;
+    replacementInputRef.current?.click();
+  }
+
+  async function replaceVideoWithFile(file: File) {
+    const videoId = replacementVideoRef.current;
+    if (!videoId || !canUploadFiles) return;
+    const mimeType = mimeFromVideoFile(file);
+    if (!mimeType) {
+      setError("Поддерживаются MP4, WebM, MOV, MKV и AVI.");
+      return;
+    }
+    if (file.size > TRAINING_VIDEO_MAX_BYTES) {
+      setError("Файл слишком большой. Максимум 200 MB.");
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+    try {
+      const dataBase64 = await fileToBase64(file);
+      const data = await apiJson<TrainingCatalogResponse>(
+        `api/training-videos/${encodeURIComponent(videoId)}/replace-file`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            file: {
+              filename: file.name,
+              mimeType,
+              dataBase64,
+            },
+          }),
+        },
+      );
+      setSections(data.sections);
+      setActiveVideoId(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось заменить источник видео.");
+    } finally {
+      setBusy(false);
+      replacementVideoRef.current = null;
+      if (replacementInputRef.current) replacementInputRef.current.value = "";
     }
   }
 
@@ -676,8 +763,35 @@ export function TeamTrainingLibrary({ serverId, canUploadFiles, socket }: Props)
               </div>
             )}
 
+            {canEdit && (
+              <input
+                ref={replacementInputRef}
+                className="ec-team-training__file-input"
+                type="file"
+                accept={TRAINING_VIDEO_ACCEPT}
+                aria-label="Файл для замены YouTube-видео"
+                onChange={(event) => {
+                  const file = event.currentTarget.files?.[0];
+                  if (file) void replaceVideoWithFile(file);
+                }}
+              />
+            )}
+
             {error && <div className="ec-team-training__error" role="alert">{error}</div>}
           </div>
+
+          {youtubeProvider.status === "unavailable" && (
+            <div className="ec-team-training__provider-status" role="status">
+              <EclipseUiIcon name="risk" size={20} />
+              <div>
+                <strong>YouTube недоступен в текущей сети</strong>
+                <span>Ссылки и названия сохранены. Локальные видео продолжают работать.</span>
+              </div>
+              <button type="button" className="ec-btn ec-btn--ghost ec-btn--sm" onClick={youtubeProvider.retry}>
+                Проверить снова
+              </button>
+            </div>
+          )}
 
           <div className="ec-team-training__stage" role={activeSection ? "tabpanel" : undefined}
             id={activeSection ? `training-videos-${activeSection.id}` : undefined}
@@ -697,10 +811,12 @@ export function TeamTrainingLibrary({ serverId, canUploadFiles, socket }: Props)
                     key={video.id}
                     video={video}
                     canEdit={canEdit && manageOpen}
+                    providerStatus={youtubeProvider.status}
                     isActive={activeVideoId === video.id}
                     onActivate={() => setActiveVideoId(video.id)}
                     onDeactivate={() => setActiveVideoId(null)}
                     onRemove={() => void removeVideo(video.id)}
+                    onReplace={() => void requestFileReplacement(video)}
                   />
                 ))}
               </div>
@@ -715,17 +831,21 @@ export function TeamTrainingLibrary({ serverId, canUploadFiles, socket }: Props)
 function TrainingVideoCard({
   video,
   canEdit,
+  providerStatus,
   isActive,
   onActivate,
   onDeactivate,
   onRemove,
+  onReplace,
 }: {
   video: TrainingVideo;
   canEdit: boolean;
+  providerStatus: YouTubeProviderStatus;
   isActive: boolean;
   onActivate: () => void;
   onDeactivate: () => void;
   onRemove: () => void;
+  onReplace: () => void;
 }) {
   const [portrait, setPortrait] = useState(false);
   const [fileFailed, setFileFailed] = useState(false);
@@ -733,7 +853,7 @@ function TrainingVideoCard({
   const [playerAttempt, setPlayerAttempt] = useState(0);
   const [playerState, setPlayerState] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const parsed = video.source === "youtube" ? parseYouTubeUrl(video.url) : null;
-  const poster = useTrainingVideoPoster(parsed ? video.id : null);
+  const poster = useTrainingVideoPoster(parsed ? video.id : null, providerStatus === "available");
 
   useEffect(() => {
     if (!isActive) {
@@ -828,6 +948,11 @@ function TrainingVideoCard({
                   <EclipseUiIcon name="close" size={16} />К обложке
                 </button>
                 <a href={video.url} target="_blank" rel="noopener noreferrer">Открыть YouTube</a>
+                {canEdit && (
+                  <button type="button" onClick={onReplace}>
+                    <EclipseUiIcon name="upload" size={16} />Заменить файлом
+                  </button>
+                )}
               </div>
             </div>
           ) : (
@@ -858,8 +983,8 @@ function TrainingVideoCard({
               <img src={poster.url} alt="" />
             ) : (
               <span className="ec-team-training-video__poster-fallback" data-loading={poster.status === "loading" ? "true" : "false"}>
-                <img src={resolveAssetUrl("/brand-mark.svg") ?? ""} alt="" />
-                <span>{poster.status === "loading" ? "Загружаем обложку" : "Обложка недоступна"}</span>
+                <EclipseUiIcon name={providerStatus === "unavailable" ? "external" : "orbit"} size={34} />
+                <span>{providerStatus === "checking" ? "Проверяем YouTube" : "YouTube"}</span>
               </span>
             )}
             <span className="ec-team-training-video__play">
@@ -875,12 +1000,14 @@ function TrainingVideoCard({
           <div className="ec-team-training-video__source">YouTube</div>
         </div>
         <div className="ec-team-training-video__actions">
-          {poster.status === "error" && !isActive && (
-            <button type="button" className="ec-team-training-video__link" onClick={poster.retry}>Обновить обложку</button>
-          )}
           <a className="ec-team-training-video__link" href={video.url} target="_blank" rel="noopener noreferrer">
-            YouTube
+            Открыть источник
           </a>
+          {canEdit && (
+            <button type="button" className="ec-team-training-video__link" onClick={onReplace}>
+              Заменить файлом
+            </button>
+          )}
           {canEdit && (
             <button type="button" className="ec-team-training-video__remove" onClick={onRemove}>
               Удалить

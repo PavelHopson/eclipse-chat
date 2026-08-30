@@ -14,7 +14,20 @@ const YOUTUBE_HOSTS = new Set([
 const VIDEO_ID_RE = /^[a-zA-Z0-9_-]{11}$/;
 const MAX_SOURCE_BYTES = 3 * 1024 * 1024;
 const FETCH_TIMEOUT_MS = 8_000;
+const PROVIDER_RETRY_MS = 5 * 60 * 1_000;
 const inFlight = new Map<string, Promise<Buffer>>();
+const providerRetryAt = new WeakMap<typeof fetch, number>();
+let upstreamTail: Promise<void> = Promise.resolve();
+
+export class YouTubeThumbnailProviderUnavailableError extends Error {
+  readonly retryAfterSeconds: number;
+
+  constructor(retryAfterSeconds: number, options?: ErrorOptions) {
+    super("YouTube thumbnail provider is temporarily unavailable", options);
+    this.name = "YouTubeThumbnailProviderUnavailableError";
+    this.retryAfterSeconds = Math.max(1, Math.ceil(retryAfterSeconds));
+  }
+}
 
 function cleanVideoId(value: string | null): string | null {
   if (!value) return null;
@@ -81,6 +94,50 @@ async function readLimitedBody(response: Response): Promise<Buffer> {
   return Buffer.concat(chunks.map((chunk) => Buffer.from(chunk)), total);
 }
 
+async function fetchThumbnailUpstream(videoId: string, fetchImpl: typeof fetch): Promise<Response> {
+  const previous = upstreamTail;
+  let release = () => {};
+  upstreamTail = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await previous;
+
+  try {
+    const now = Date.now();
+    const retryAt = providerRetryAt.get(fetchImpl) ?? 0;
+    if (retryAt > now) {
+      throw new YouTubeThumbnailProviderUnavailableError((retryAt - now) / 1_000);
+    }
+
+    try {
+      const response = await fetchImpl(`https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`, {
+        headers: { Accept: "image/avif,image/webp,image/jpeg" },
+        redirect: "error",
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      });
+      if (response.ok) {
+        providerRetryAt.delete(fetchImpl);
+        return response;
+      }
+      if (response.status === 403 || response.status === 429 || response.status >= 500) {
+        providerRetryAt.set(fetchImpl, Date.now() + PROVIDER_RETRY_MS);
+        throw new YouTubeThumbnailProviderUnavailableError(PROVIDER_RETRY_MS / 1_000);
+      }
+      throw new Error(`YouTube thumbnail upstream returned ${response.status}`);
+    } catch (error) {
+      if (error instanceof YouTubeThumbnailProviderUnavailableError || error instanceof Error && error.message.startsWith("YouTube thumbnail upstream returned")) {
+        throw error;
+      }
+      providerRetryAt.set(fetchImpl, Date.now() + PROVIDER_RETRY_MS);
+      throw new YouTubeThumbnailProviderUnavailableError(PROVIDER_RETRY_MS / 1_000, {
+        cause: error,
+      });
+    }
+  } finally {
+    release();
+  }
+}
+
 export type YouTubeThumbnailOptions = {
   cacheDir?: string;
   fetchImpl?: typeof fetch;
@@ -106,12 +163,7 @@ export async function loadYouTubeThumbnail(
 
   const task = (async () => {
     const fetchImpl = options.fetchImpl ?? fetch;
-    const response = await fetchImpl(`https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`, {
-      headers: { Accept: "image/avif,image/webp,image/jpeg" },
-      redirect: "error",
-      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-    });
-    if (!response.ok) throw new Error(`YouTube thumbnail upstream returned ${response.status}`);
+    const response = await fetchThumbnailUpstream(videoId, fetchImpl);
     const contentType = (response.headers.get("content-type") ?? "").toLowerCase();
     if (!contentType.startsWith("image/jpeg") && !contentType.startsWith("image/webp")) {
       throw new Error("YouTube thumbnail upstream returned an unsupported content type");
