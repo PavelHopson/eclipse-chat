@@ -99,7 +99,7 @@ test("video management is optional while upload limits and confirmation remain",
   assert.match(video, /onLoadedMetadata/);
   assert.match(video, /ArrowRight/);
   assert.match(video, /useTrainingVideoPoster/);
-  assert.match(video, /activeVideoId === video\.id/);
+  assert.match(video, /const activeVideo = activeVideoIndex >= 0/);
   assert.match(video, /api\/training-videos\/\$\{encodeURIComponent\(videoId\)\}\/thumbnail/);
   assert.match(video, /playerState === "error"/);
   assert.match(video, /host: playerHost/);
@@ -109,7 +109,9 @@ test("video management is optional while upload limits and confirmation remain",
   assert.match(video, /message\.event === "onError"/);
   assert.match(video, /toYouTubeWatchUrl/);
   assert.match(video, /Открыть YouTube/);
-  assert.match(video, /К обложке/);
+  assert.match(video, /TrainingVideoViewer/);
+  assert.match(video, /VideoPlayer key=\{video\.id\}/);
+  assert.match(video, /Открыть экран просмотра/);
   assert.match(video, /Нет соединения с YouTube/);
   assert.match(video, /youtubeDirectPosterUrl/);
   assert.match(video, /canReplace=\{canEdit\}/);
@@ -118,7 +120,7 @@ test("video management is optional while upload limits and confirmation remain",
   assert.match(serverRoutes, /"\/api\/training-videos\/:id\/replace-file"/);
   assert.match(serverRoutes, /if \(!canManageTraining\(member\.role\)\)/);
   assert.match(serverRoutes, /if \(video\.source !== "youtube"\)/);
-  assert.ok(video.indexOf("{isActive ? (") < video.indexOf("<iframe"), "YouTube iframe is created only for the active card");
+  assert.ok(video.indexOf("function YouTubeTrainingPlayer") < video.indexOf("<iframe"), "YouTube iframe is created only inside the viewer");
   assert.match(thumbnailRoute, /onRequest: \[requireJwt\]/);
   assert.match(thumbnailRoute, /rateLimit: \{ max: 120/);
   assert.match(thumbnailRoute, /loadMember\(req, reply, video\.serverId\)/);

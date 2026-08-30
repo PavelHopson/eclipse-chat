@@ -495,6 +495,121 @@
 .ec-team-training--library .ec-team-training-video__link,
 .ec-team-training--library .ec-team-training-video__remove { min-height: 32px; display: inline-flex; align-items: center; }
 .ec-team-training--library button.ec-team-training-video__link { padding: 0; border: 0; background: transparent; font: inherit; cursor: pointer; }
+.ec-team-training--library .ec-team-training-video__poster--file > video {
+  pointer-events: none;
+  transition: transform 220ms var(--ec-ease), filter 220ms var(--ec-ease);
+}
+.ec-team-training--library .ec-team-training-video__poster--file:hover > video,
+.ec-team-training--library .ec-team-training-video__poster--file:focus-visible > video { transform: scale(1.025); filter: saturate(1.06); }
+
+/* Training playback is a single focused screen, never an inline card player. */
+.ec-modal-box.ec-team-training-viewer-dialog {
+  width: min(1480px, calc(100vw - 32px));
+  height: min(900px, calc(100dvh - 28px));
+  max-height: calc(100dvh - 28px);
+  background: var(--ec-overlay-bg);
+}
+.ec-team-training-viewer-dialog .ec-modal-header { flex: 0 0 auto; padding-block: 12px; }
+.ec-team-training-viewer-dialog .ec-modal-title {
+  max-width: calc(100% - 54px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ec-team-training-viewer-dialog .ec-modal-body { flex: 1; min-height: 0; overflow: hidden; padding: 0; }
+.ec-team-training-viewer {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  background: var(--ec-surface-0);
+}
+.ec-team-training-viewer__media {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: #030405;
+}
+.ec-team-training-viewer__media > .ec-video-player--refined {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  max-height: none;
+  border: 0;
+  border-radius: 0;
+}
+.ec-team-training-viewer__youtube { position: relative; width: 100%; height: 100%; min-height: 0; }
+.ec-team-training-viewer__youtube iframe { display: block; width: 100%; height: 100%; border: 0; background: #000; }
+.ec-team-training-viewer__loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 10px;
+  background: color-mix(in srgb, #030405 92%, transparent);
+  color: #a8b4c5;
+  font-size: 12px;
+  pointer-events: none;
+}
+.ec-team-training-viewer__failure {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 10px;
+  width: min(560px, calc(100% - 32px));
+  min-height: 240px;
+  padding: 28px;
+  color: var(--ec-text-muted);
+  text-align: center;
+}
+.ec-team-training-viewer__failure strong { color: var(--ec-text-strong); font-size: 17px; }
+.ec-team-training-viewer__failure > span { max-width: 48ch; line-height: 1.55; font-size: 13px; }
+.ec-team-training-viewer__failure-actions,
+.ec-team-training-viewer__actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.ec-team-training-viewer__failure-actions { justify-content: center; margin-top: 6px; }
+.ec-team-training-viewer__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  min-width: 0;
+  padding: 12px 14px;
+  border-top: 1px solid var(--ec-border-subtle);
+  background: var(--ec-surface-1);
+}
+.ec-team-training-viewer__details { display: grid; gap: 4px; min-width: 0; }
+.ec-team-training-viewer__details strong { overflow: hidden; color: var(--ec-text-strong); text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+.ec-team-training-viewer__details span { color: var(--ec-text-muted); font-size: 10px; letter-spacing: .04em; text-transform: uppercase; }
+.ec-team-training-viewer__actions { flex: 0 0 auto; justify-content: flex-end; }
+.ec-team-training-viewer__actions :is(button, a),
+.ec-team-training-viewer__failure-actions :is(button, a) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--ec-border-subtle);
+  border-radius: 6px;
+  background: var(--ec-surface-2);
+  color: var(--ec-text-strong);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 750;
+  text-decoration: none;
+  cursor: pointer;
+}
+.ec-team-training-viewer__actions :is(button, a):hover,
+.ec-team-training-viewer__actions :is(button, a):focus-visible,
+.ec-team-training-viewer__failure-actions :is(button, a):hover,
+.ec-team-training-viewer__failure-actions :is(button, a):focus-visible { border-color: var(--ec-accent); outline: none; }
+.ec-team-training-viewer__actions button:disabled { opacity: .38; cursor: default; }
+.ec-team-training-viewer__arrow--prev { transform: rotate(180deg); }
 
 /* Pointer is event-driven: no idle RAF, no text/media cursor replacement. */
 .ec-eclipse-pointer,
@@ -559,12 +674,25 @@
   .ec-team-training--library .ec-team-training__section-action { min-width: 36px; min-height: 40px; }
   .ec-team-training--library .ec-team-training-video__play { left: 8px; bottom: 8px; min-height: 34px; padding: 0 10px; }
   .ec-team-training--library .ec-team-training-video__play span { display: none; }
+  .ec-workspace-v2 .ec-modal-box.ec-team-training-viewer-dialog {
+    width: calc(100vw - 16px) !important;
+    height: calc(100dvh - 16px) !important;
+    max-height: calc(100dvh - 16px) !important;
+  }
+  .ec-team-training-viewer__media .ec-video-player__screen { height: 100%; max-height: none; aspect-ratio: auto; }
+  .ec-team-training-viewer__bar { align-items: stretch; flex-direction: column; gap: 10px; padding: 10px; }
+  .ec-team-training-viewer__actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ec-team-training-viewer__actions :is(button, a) { min-height: 44px; padding-inline: 8px; }
+  .ec-team-training-viewer__actions a:first-child { grid-column: 1 / -1; }
   .ec-server-actions-menu .ec-server-actions-menu__item { min-height: 44px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .ec-team-training--library .ec-team-training-video__poster > img,
+  .ec-team-training--library .ec-team-training-video__poster--file > video,
   .ec-team-training--library .ec-team-training-video__play { transition: none; }
   .ec-team-training--library .ec-team-training-video__poster:hover > img,
+  .ec-team-training--library .ec-team-training-video__poster--file:hover > video,
+  .ec-team-training--library .ec-team-training-video__poster--file:focus-visible > video,
   .ec-team-training--library .ec-team-training-video__poster:focus-visible > img { transform: none; }
 }

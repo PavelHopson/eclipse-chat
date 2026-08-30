@@ -76,12 +76,18 @@ test("players expose keyboard and state controls instead of decorative activity"
   assert.match(viewport, /aria-pressed/);
   assert.match(viewport, /onPointerCancel/);
   assert.match(read("apps/web/src/components/MediaScrubber.tsx"), /Home/);
+  assert.match(video, /ec-video-player__ambient/);
+  assert.match(video, /ec-video-player__control-group--transport/);
+  assert.match(video, /ec-video-player__control-group--utility/);
+  assert.match(video, /onClick=\{togglePlay\}/);
 });
 test("motion can be disabled and player layout has one component owner", () => {
   const css = read("apps/web/src/styles/media-workbench.css");
   assert.match(css, /prefers-reduced-motion: reduce/);
   assert.match(css, /data-ec-motion="quiet"/);
   assert.match(css, /forced-colors: active/);
+  assert.match(css, /transform: scaleX\(var\(--buffered\)\)/);
+  assert.match(css, /transition: opacity 180ms ease, transform 180ms ease/);
   assert.doesNotMatch(read("apps/web/src/styles/workspace-interactions.css"), /ec-player-dialog \.ec-modal-body/);
 });
 test("development source modules cannot be served from a production service-worker cache", () => {

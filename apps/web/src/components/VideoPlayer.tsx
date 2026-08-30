@@ -122,6 +122,7 @@ export function VideoPlayer({ src, poster, onNext, onPrev }: Props) {
     style={{ "--ec-media-ratio": dimensions.height ? dimensions.width / dimensions.height : 16 / 9 } as CSSProperties}
     role="group" aria-label="Видеоплеер" tabIndex={0} data-native-cursor
     data-playing={playing} data-fullscreen={fullscreen} data-controls={controls || !playing || !!problem || loading}
+    data-orientation={dimensions.height > dimensions.width ? "portrait" : "landscape"}
     onMouseMove={reveal} onPointerDown={reveal} onFocusCapture={reveal}
     onKeyDown={event => {
       if (event.target !== event.currentTarget) return;
@@ -133,8 +134,10 @@ export function VideoPlayer({ src, poster, onNext, onPrev }: Props) {
       if (event.key === "f") void toggleFullscreen();
     }}>
     <div className="ec-video-player__screen">
-      <MediaViewport width={dimensions.width} height={dimensions.height}>
+      {poster && <img className="ec-video-player__ambient" src={poster} alt="" aria-hidden draggable={false} />}
+      <MediaViewport width={dimensions.width} height={dimensions.height} enabled={false}>
         <video ref={videoRef} className="ec-video-player__video" src={src} poster={poster} playsInline preload="metadata"
+          onClick={togglePlay}
           onPlay={() => { setPlaying(true); setProblem(""); confirm("Воспроизведение"); reveal(); }}
           onPause={() => { setPlaying(false); reveal(); }}
           onWaiting={() => { setLoading(true); reveal(); }}
@@ -163,31 +166,36 @@ export function VideoPlayer({ src, poster, onNext, onPrev }: Props) {
       {problem && <div className="ec-media-error" role="alert"><WarningCircleIcon size={20} aria-hidden /><span>{problem}</span>
         <button type="button" onClick={togglePlay}>{failed ? "Повторить" : "Воспроизвести"}</button></div>}
     </div>
-    <div className="ec-video-player__bar">
+    <div className="ec-video-player__bar" aria-label="Управление видео">
       <div className="ec-video-player__timeline">
+        <span className="ec-video-player__time ec-video-player__time--current">{mediaTime(currentMs)}</span>
         <MediaScrubber positionMs={currentMs} durationMs={durationMs} bufferedMs={bufferedMs} onSeek={seek} width="100%" disabled={failed} />
-        <span className="ec-video-player__time">{mediaTime(currentMs)} <span>/ {mediaTime(durationMs)}</span></span>
+        <span className="ec-video-player__time ec-video-player__time--duration">{mediaTime(durationMs)}</span>
       </div>
       <div className="ec-video-player__tools">
-        <button type="button" className="ec-media-main-control" onClick={togglePlay} aria-label={playing ? "Приостановить видео" : "Воспроизвести видео"}><PlayerStateIcon playing={playing} /></button>
-        {onPrev && <button type="button" onClick={onPrev} aria-label="Предыдущее видео"><SkipBackIcon size={18} aria-hidden /></button>}
-        <button type="button" onClick={() => seek(currentMs - 10000)} disabled={!durationMs} aria-label="Назад на 10 секунд"><ArrowCounterClockwiseIcon size={18} aria-hidden /><small>10</small></button>
-        <button type="button" onClick={() => seek(currentMs + 10000)} disabled={!durationMs} aria-label="Вперёд на 10 секунд"><ArrowClockwiseIcon size={18} aria-hidden /><small>10</small></button>
-        {onNext && <button type="button" onClick={onNext} aria-label="Следующее видео"><SkipForwardIcon size={18} aria-hidden /></button>}
-        <div className="ec-video-player__volume">
+        <div className="ec-video-player__control-group ec-video-player__control-group--transport">
+          {onPrev && <button type="button" className="ec-video-player__nav" onClick={onPrev} aria-label="Предыдущее видео"><SkipBackIcon size={18} aria-hidden /></button>}
+          <button type="button" onClick={() => seek(currentMs - 10000)} disabled={!durationMs} aria-label="Назад на 10 секунд"><ArrowCounterClockwiseIcon size={18} aria-hidden /><small>10</small></button>
+          <button type="button" className="ec-media-main-control" onClick={togglePlay} aria-label={playing ? "Приостановить видео" : "Воспроизвести видео"}><PlayerStateIcon playing={playing} /></button>
+          <button type="button" onClick={() => seek(currentMs + 10000)} disabled={!durationMs} aria-label="Вперёд на 10 секунд"><ArrowClockwiseIcon size={18} aria-hidden /><small>10</small></button>
+          {onNext && <button type="button" className="ec-video-player__nav" onClick={onNext} aria-label="Следующее видео"><SkipForwardIcon size={18} aria-hidden /></button>}
+        </div>
+        <div className="ec-video-player__volume ec-video-player__control-group">
           <button type="button" onClick={() => setVolume(volume > 0 ? 0 : lastVol.current)} aria-label={volume ? "Выключить звук видео" : "Включить звук видео"}>
             {volume ? <SpeakerHighIcon size={19} aria-hidden /> : <SpeakerSlashIcon size={19} aria-hidden />}</button>
           <input type="range" min={0} max={1} step={.05} value={volume} onChange={event => setVolume(Number(event.target.value))} aria-label="Громкость видео" />
         </div>
-        <label className="ec-media-speed"><span className="ec-sr-only">Скорость видео</span>
-          <select aria-label="Скорость видео" value={rate} onChange={event => { setRate(Number(event.target.value)); confirm(event.target.value + "×"); }}>
-            {[.5, .75, 1, 1.25, 1.5, 2].map(value => <option key={value} value={value}>{value}×</option>)}
-          </select>
-        </label>
-        {canPip && <button type="button" className="ec-media-pip" onClick={() => void togglePip()} disabled={!durationMs || failed}
-          aria-pressed={pip} aria-label="Картинка в картинке"><PictureInPictureIcon size={20} aria-hidden /></button>}
-        <button type="button" onClick={() => void toggleFullscreen()} aria-label={fullscreen ? "Выйти из полного экрана" : "Видео на весь экран"}>
-          {fullscreen ? <CornersInIcon size={20} aria-hidden /> : <CornersOutIcon size={20} aria-hidden />}</button>
+        <div className="ec-video-player__control-group ec-video-player__control-group--utility">
+          <label className="ec-media-speed"><span className="ec-sr-only">Скорость видео</span>
+            <select aria-label="Скорость видео" value={rate} onChange={event => { setRate(Number(event.target.value)); confirm(event.target.value + "×"); }}>
+              {[.5, .75, 1, 1.25, 1.5, 2].map(value => <option key={value} value={value}>{value}×</option>)}
+            </select>
+          </label>
+          {canPip && <button type="button" className="ec-media-pip" onClick={() => void togglePip()} disabled={!durationMs || failed}
+            aria-pressed={pip} aria-label="Картинка в картинке"><PictureInPictureIcon size={20} aria-hidden /></button>}
+          <button type="button" onClick={() => void toggleFullscreen()} aria-label={fullscreen ? "Выйти из полного экрана" : "Видео на весь экран"}>
+            {fullscreen ? <CornersInIcon size={20} aria-hidden /> : <CornersOutIcon size={20} aria-hidden />}</button>
+        </div>
       </div>
     </div>
   </div>;
