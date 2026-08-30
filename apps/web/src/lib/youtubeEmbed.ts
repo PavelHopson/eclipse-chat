@@ -69,12 +69,16 @@ export function parseYouTubeUrl(rawUrl: string): YouTubeVideo | null {
   }
 }
 
-export function toYouTubeEmbedUrl(video: YouTubeVideo): string {
+export function toYouTubeEmbedUrl(video: YouTubeVideo, options: { autoplay?: boolean } = {}): string {
   const params = new URLSearchParams({
     rel: "0",
     modestbranding: "1",
     playsinline: "1",
   });
+
+  if (options.autoplay) {
+    params.set("autoplay", "1");
+  }
 
   if (video.startSeconds) {
     params.set("start", String(video.startSeconds));

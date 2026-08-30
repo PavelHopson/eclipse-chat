@@ -312,6 +312,135 @@
   max-height: none;
   object-fit: contain;
 }
+.ec-team-training--library .ec-team-training-video__frame { position: relative; isolation: isolate; }
+.ec-team-training--library .ec-team-training-video__poster {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  background: var(--ec-surface-1);
+  color: var(--ec-text-strong);
+  cursor: pointer;
+}
+.ec-team-training--library .ec-team-training-video__poster > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 220ms var(--ec-ease), filter 220ms var(--ec-ease);
+}
+.ec-team-training--library .ec-team-training-video__poster::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 42%, rgb(2 4 10 / 0.7));
+  pointer-events: none;
+}
+.ec-team-training--library .ec-team-training-video__poster:hover > img,
+.ec-team-training--library .ec-team-training-video__poster:focus-visible > img { transform: scale(1.025); filter: saturate(1.06); }
+.ec-team-training--library .ec-team-training-video__poster:focus-visible { outline: 2px solid var(--ec-accent); outline-offset: -3px; }
+.ec-team-training--library .ec-team-training-video__poster:active .ec-team-training-video__play { transform: translateY(1px) scale(0.98); }
+.ec-team-training--library .ec-team-training-video__poster-fallback {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 10px;
+  width: 100%;
+  height: 100%;
+  padding: 18px;
+  background: color-mix(in srgb, var(--ec-surface-2) 88%, var(--ec-surface-1));
+  color: var(--ec-text-muted);
+  font-size: 12px;
+  text-align: center;
+}
+.ec-team-training--library .ec-team-training-video__poster-fallback img { width: 48px; height: 48px; opacity: 0.72; }
+.ec-team-training--library .ec-team-training-video__poster-fallback[data-loading="true"] { color: var(--ec-text-dim); }
+.ec-team-training--library .ec-team-training-video__play {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 13px;
+  border: 1px solid color-mix(in srgb, var(--ec-accent) 36%, var(--ec-border-strong));
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--ec-surface-0) 88%, transparent);
+  color: var(--ec-text-strong);
+  box-shadow: 0 10px 28px rgb(0 0 0 / 0.3);
+  font-size: 12px;
+  font-weight: 800;
+  transition: transform var(--ec-dur-fast) var(--ec-ease), border-color var(--ec-dur-fast) var(--ec-ease);
+}
+.ec-team-training--library .ec-team-training-video__poster:hover .ec-team-training-video__play { border-color: var(--ec-accent); }
+.ec-team-training--library .ec-team-training-video__player-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--ec-surface-0) 92%, transparent);
+  color: var(--ec-text-muted);
+  font-size: 12px;
+  pointer-events: none;
+}
+.ec-team-training--library .ec-team-training-video__close-player {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--ec-border-strong) 80%, transparent);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--ec-surface-0) 90%, transparent);
+  color: var(--ec-text-strong);
+  cursor: pointer;
+}
+.ec-team-training--library .ec-team-training-video__close-player:hover,
+.ec-team-training--library .ec-team-training-video__close-player:focus-visible { border-color: var(--ec-accent); outline: none; }
+.ec-team-training--library .ec-team-training-video__unavailable {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 7px;
+  width: 100%;
+  height: 100%;
+  min-height: 150px;
+  padding: 18px;
+  background: var(--ec-surface-1);
+  color: var(--ec-text-muted);
+  text-align: center;
+}
+.ec-team-training--library .ec-team-training-video__unavailable strong { color: var(--ec-text-strong); font-size: 13px; }
+.ec-team-training--library .ec-team-training-video__unavailable > span { max-width: 38ch; font-size: 11px; line-height: 1.45; }
+.ec-team-training--library .ec-team-training-video__recovery-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 5px; }
+.ec-team-training--library .ec-team-training-video__recovery-actions :is(button, a) {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--ec-border-subtle);
+  border-radius: 6px;
+  background: var(--ec-surface-2);
+  color: var(--ec-text-strong);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 750;
+  text-decoration: none;
+  cursor: pointer;
+}
+.ec-team-training--library .ec-team-training-video__recovery-actions :is(button, a):hover,
+.ec-team-training--library .ec-team-training-video__recovery-actions :is(button, a):focus-visible { border-color: var(--ec-accent); outline: none; }
 .ec-team-training--library .ec-team-training-video__meta { display: block; padding: 10px 0; }
 .ec-team-training--library .ec-team-training-video__title {
   display: -webkit-box;
@@ -326,6 +455,7 @@
 .ec-team-training--library .ec-team-training-video__source { margin-top: 4px; font-size: 10px; }
 .ec-team-training--library .ec-team-training-video__link,
 .ec-team-training--library .ec-team-training-video__remove { min-height: 32px; display: inline-flex; align-items: center; }
+.ec-team-training--library button.ec-team-training-video__link { padding: 0; border: 0; background: transparent; font: inherit; cursor: pointer; }
 
 /* Pointer is event-driven: no idle RAF, no text/media cursor replacement. */
 .ec-eclipse-pointer,
@@ -386,5 +516,14 @@
   .ec-team-training--library .ec-team-training__form { grid-template-columns: 1fr; }
   .ec-team-training--library .ec-team-training__new-section { max-width: none; }
   .ec-team-training--library .ec-team-training__section-action { min-width: 36px; min-height: 40px; }
+  .ec-team-training--library .ec-team-training-video__play { left: 8px; bottom: 8px; min-height: 34px; padding: 0 10px; }
+  .ec-team-training--library .ec-team-training-video__play span { display: none; }
   .ec-server-actions-menu .ec-server-actions-menu__item { min-height: 44px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ec-team-training--library .ec-team-training-video__poster > img,
+  .ec-team-training--library .ec-team-training-video__play { transition: none; }
+  .ec-team-training--library .ec-team-training-video__poster:hover > img,
+  .ec-team-training--library .ec-team-training-video__poster:focus-visible > img { transform: none; }
 }

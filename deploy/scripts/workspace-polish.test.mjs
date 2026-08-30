@@ -87,12 +87,30 @@ test("admin grouping keeps protected accounts and danger confirmations", () => {
 
 test("video management is optional while upload limits and confirmation remain", () => {
   const video = source("apps/web/src/components/TeamTrainingLibrary.tsx");
+  const serverRoutes = source("apps/server/src/routes/servers.ts");
+  const thumbnailRoute = serverRoutes.slice(
+    serverRoutes.indexOf('"/api/training-videos/:id/thumbnail"'),
+    serverRoutes.indexOf('"/api/training-videos/:id"', serverRoutes.indexOf('"/api/training-videos/:id/thumbnail"')),
+  );
   assert.match(video, /canEdit && manageOpen && activeSection/);
   assert.match(video, /200 \* 1024 \* 1024/);
   assert.match(video, /if \(!canUploadFiles \|\| busy\) return/);
   assert.match(video, /title: "Удалить видео\?"/);
   assert.match(video, /onLoadedMetadata/);
   assert.match(video, /ArrowRight/);
+  assert.match(video, /useTrainingVideoPoster/);
+  assert.match(video, /activeVideoId === video\.id/);
+  assert.match(video, /api\/training-videos\/\$\{encodeURIComponent\(videoId\)\}\/thumbnail/);
+  assert.match(video, /playerState === "error"/);
+  assert.match(video, /toYouTubeEmbedUrl\(parsed, \{ autoplay: true \}\)/);
+  assert.match(video, /К обложке/);
+  assert.ok(video.indexOf("{isActive ? (") < video.indexOf("<iframe"), "YouTube iframe is created only for the active card");
+  assert.match(thumbnailRoute, /onRequest: \[requireJwt\]/);
+  assert.match(thumbnailRoute, /rateLimit: \{ max: 120/);
+  assert.match(thumbnailRoute, /loadMember\(req, reply, video\.serverId\)/);
+  assert.match(thumbnailRoute, /loadYouTubeThumbnail\(youtubeId\)/);
   assert.match(css, /ec-team-training__videos[\s\S]*max-height: none/);
+  assert.match(css, /ec-team-training-video__poster/);
+  assert.match(css, /prefers-reduced-motion: reduce/);
   assert.match(css, /ec-dmx__search input[\s\S]*border: 0 !important/);
 });

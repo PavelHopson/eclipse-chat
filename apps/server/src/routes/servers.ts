@@ -36,6 +36,7 @@ import {
   tokenizeRetrievalQuery,
 } from "../ai/memoryRetrieval.js";
 import { memoryContextEligibilityWhere } from "../lib/memoryGovernance.js";
+import { loadYouTubeThumbnail, parseYouTubeVideoId } from "../lib/youtubeThumbnail.js";
 
 // v1.6.99 — сообщение об отклонённом ServerInvite (slice B).
 const INVITE_REJECT_MESSAGE: Record<InviteRejectReason, string> = {
@@ -308,13 +309,7 @@ async function loadTrainingCatalog(serverId: string) {
 
 function isValidTrainingVideo(input: z.infer<typeof createTrainingVideoBody>): boolean {
   if (input.source === "youtube") {
-    try {
-      const parsed = new URL(input.url);
-      const host = parsed.hostname.toLowerCase().replace(/^www\./, "");
-      return host === "youtube.com" || host === "youtu.be" || host === "m.youtube.com";
-    } catch {
-      return false;
-    }
+    return parseYouTubeVideoId(input.url) != null;
   }
   return input.url.startsWith("/uploads/training-videos/") && (input.mimeType?.startsWith("video/") ?? false);
 }
@@ -1289,6 +1284,43 @@ export async function registerServerRoutes(app: FastifyInstance) {
       });
       emitTrainingCatalogUpdated(serverId);
       return reply.status(201).send(await loadTrainingCatalog(serverId));
+    },
+  );
+
+  app.get(
+    "/api/training-videos/:id/thumbnail",
+    {
+      onRequest: [requireJwt],
+      config: { rateLimit: { max: 120, timeWindow: "1 minute" } },
+    },
+    async (req, reply) => {
+      const { id } = req.params as { id: string };
+      const video = await db.trainingVideo.findUnique({
+        where: { id },
+        select: { id: true, serverId: true, source: true, url: true },
+      });
+      if (!video) return reply.status(404).send({ error: "Video not found" });
+      const member = await loadMember(req, reply, video.serverId);
+      if (!member) return reply;
+      if (video.source !== "youtube") {
+        return reply.status(404).send({ error: "Thumbnail not available" });
+      }
+      const youtubeId = parseYouTubeVideoId(video.url);
+      if (!youtubeId) return reply.status(422).send({ error: "Invalid YouTube video" });
+
+      try {
+        const thumbnail = await loadYouTubeThumbnail(youtubeId);
+        return reply
+          .header("Content-Type", "image/webp")
+          .header("Cache-Control", "private, max-age=86400, stale-while-revalidate=604800")
+          .header("Content-Security-Policy", "default-src 'none'; sandbox; frame-ancestors 'none'")
+          .header("Cross-Origin-Resource-Policy", "same-origin")
+          .header("X-Content-Type-Options", "nosniff")
+          .send(thumbnail);
+      } catch (error) {
+        req.log.warn({ err: error, trainingVideoId: video.id }, "youtube thumbnail unavailable");
+        return reply.status(502).send({ error: "YouTube thumbnail unavailable" });
+      }
     },
   );
 

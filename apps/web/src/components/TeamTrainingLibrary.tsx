@@ -46,6 +46,8 @@ type Props = {
   socket?: Socket | null;
 };
 
+type PosterStatus = "idle" | "loading" | "ready" | "error";
+
 const TRAINING_VIDEO_MAX_BYTES = 200 * 1024 * 1024;
 const TRAINING_VIDEO_MIME = new Set([
   "video/mp4",
@@ -73,6 +75,58 @@ function formatBytes(size: number | null | undefined): string | null {
   if (size >= 1024 * 1024) return `${(size / 1024 / 1024).toFixed(size >= 10 * 1024 * 1024 ? 0 : 1)} MB`;
   if (size >= 1024) return `${Math.round(size / 1024)} KB`;
   return `${size} B`;
+}
+
+function useTrainingVideoPoster(videoId: string | null) {
+  const [attempt, setAttempt] = useState(0);
+  const [status, setStatus] = useState<PosterStatus>(videoId ? "loading" : "idle");
+  const [url, setUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!videoId) {
+      setStatus("idle");
+      setUrl(null);
+      return;
+    }
+    const controller = new AbortController();
+    let objectUrl: string | null = null;
+    let disposed = false;
+    setStatus("loading");
+    setUrl(null);
+
+    void api(`api/training-videos/${encodeURIComponent(videoId)}/thumbnail`, {
+      signal: controller.signal,
+    }).then(async (response) => {
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const blob = await response.blob();
+      if (!blob.type.startsWith("image/")) throw new Error("Invalid thumbnail response");
+      objectUrl = URL.createObjectURL(blob);
+      if (disposed) {
+        URL.revokeObjectURL(objectUrl);
+        objectUrl = null;
+        return;
+      }
+      setUrl(objectUrl);
+      setStatus("ready");
+    }).catch((error) => {
+      if (controller.signal.aborted) return;
+      setStatus("error");
+      setUrl(null);
+      if (import.meta.env.DEV) console.warn("Training video poster unavailable", error);
+    });
+
+    return () => {
+      disposed = true;
+      controller.abort();
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [attempt, videoId]);
+
+  return {
+    status,
+    url,
+    retry: () => setAttempt((value) => value + 1),
+  };
 }
 
 function mimeFromVideoFile(file: File): string | null {
@@ -136,6 +190,7 @@ export function TeamTrainingLibrary({ serverId, canUploadFiles, socket }: Props)
   const confirm = useConfirm();
   const [manageOpen, setManageOpen] = useState(false);
   const [largeVideos, setLargeVideos] = useState(false);
+  const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const legacyImportRef = useRef<string | null>(null);
   const [sections, setSections] = useState<TrainingSection[]>([]);
@@ -207,6 +262,10 @@ export function TeamTrainingLibrary({ serverId, canUploadFiles, socket }: Props)
     () => sections.find((section) => section.id === activeSectionId) ?? sections[0] ?? null,
     [activeSectionId, sections],
   );
+
+  useEffect(() => {
+    setActiveVideoId(null);
+  }, [activeSection?.id]);
 
   async function importLegacyCatalog(
     targetServerId: string,
@@ -427,6 +486,7 @@ export function TeamTrainingLibrary({ serverId, canUploadFiles, socket }: Props)
       return;
     }
     await reload();
+    setActiveVideoId((current) => current === videoId ? null : current);
     setBusy(false);
   }
 
@@ -637,6 +697,9 @@ export function TeamTrainingLibrary({ serverId, canUploadFiles, socket }: Props)
                     key={video.id}
                     video={video}
                     canEdit={canEdit && manageOpen}
+                    isActive={activeVideoId === video.id}
+                    onActivate={() => setActiveVideoId(video.id)}
+                    onDeactivate={() => setActiveVideoId(null)}
                     onRemove={() => void removeVideo(video.id)}
                   />
                 ))}
@@ -649,18 +712,66 @@ export function TeamTrainingLibrary({ serverId, canUploadFiles, socket }: Props)
   );
 }
 
-function TrainingVideoCard({ video, canEdit, onRemove }: { video: TrainingVideo; canEdit: boolean; onRemove: () => void }) {
+function TrainingVideoCard({
+  video,
+  canEdit,
+  isActive,
+  onActivate,
+  onDeactivate,
+  onRemove,
+}: {
+  video: TrainingVideo;
+  canEdit: boolean;
+  isActive: boolean;
+  onActivate: () => void;
+  onDeactivate: () => void;
+  onRemove: () => void;
+}) {
   const [portrait, setPortrait] = useState(false);
+  const [fileFailed, setFileFailed] = useState(false);
+  const [fileAttempt, setFileAttempt] = useState(0);
+  const [playerAttempt, setPlayerAttempt] = useState(0);
+  const [playerState, setPlayerState] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const parsed = video.source === "youtube" ? parseYouTubeUrl(video.url) : null;
+  const poster = useTrainingVideoPoster(parsed ? video.id : null);
+
+  useEffect(() => {
+    if (!isActive) {
+      setPlayerState("idle");
+      return;
+    }
+    setPlayerState("loading");
+    const timeout = window.setTimeout(() => {
+      setPlayerState((current) => current === "loading" ? "error" : current);
+    }, 12_000);
+    return () => window.clearTimeout(timeout);
+  }, [isActive, playerAttempt]);
+
   if (video.source === "file") {
     const src = resolveAssetUrl(video.url);
     return (
       <article className={`ec-team-training-video ec-team-training-video--file${portrait ? " is-portrait" : ""}`}>
         <div className="ec-team-training-video__frame">
-          {src ? (
-            <video controls playsInline preload="metadata" src={src} aria-label={video.title}
-              onLoadedMetadata={(event) => setPortrait(event.currentTarget.videoHeight > event.currentTarget.videoWidth)} />
+          {src && !fileFailed ? (
+            <video key={fileAttempt} controls playsInline preload="metadata" src={src} aria-label={video.title}
+              onError={() => setFileFailed(true)}
+              onLoadedMetadata={(event) => {
+                setFileFailed(false);
+                setPortrait(event.currentTarget.videoHeight > event.currentTarget.videoWidth);
+              }} />
           ) : (
-            <div className="ec-team-training-video__bad-link">Файл недоступен</div>
+            <div className="ec-team-training-video__unavailable" role="alert">
+              <EclipseUiIcon name="file" size={28} />
+              <strong>Видео временно недоступно</strong>
+              <span>Проверьте подключение или откройте файл отдельно.</span>
+              <div className="ec-team-training-video__recovery-actions">
+                {src && <button type="button" onClick={() => {
+                  setFileFailed(false);
+                  setFileAttempt((value) => value + 1);
+                }}><EclipseUiIcon name="followup" size={16} />Повторить</button>}
+                {src && <a href={src} target="_blank" rel="noopener noreferrer">Открыть файл</a>}
+              </div>
+            </div>
           )}
         </div>
         <div className="ec-team-training-video__meta">
@@ -687,7 +798,6 @@ function TrainingVideoCard({ video, canEdit, onRemove }: { video: TrainingVideo;
     );
   }
 
-  const parsed = parseYouTubeUrl(video.url);
   if (!parsed) {
     return (
       <article className="ec-team-training-video">
@@ -703,16 +813,61 @@ function TrainingVideoCard({ video, canEdit, onRemove }: { video: TrainingVideo;
 
   return (
     <article className="ec-team-training-video ec-team-training-video--youtube">
-      <div className="ec-team-training-video__frame">
-        <iframe
-          title={video.title}
-          src={toYouTubeEmbedUrl(parsed)}
-          loading="lazy"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-          sandbox="allow-scripts allow-same-origin allow-presentation allow-popups"
-          allowFullScreen
-          referrerPolicy="strict-origin-when-cross-origin"
-        />
+      <div className="ec-team-training-video__frame" data-player-state={isActive ? playerState : poster.status}>
+        {isActive ? (
+          playerState === "error" ? (
+            <div className="ec-team-training-video__unavailable" role="alert">
+              <EclipseUiIcon name="risk" size={28} />
+              <strong>YouTube не отвечает</strong>
+              <span>Видео осталось в библиотеке. Можно повторить загрузку или открыть источник.</span>
+              <div className="ec-team-training-video__recovery-actions">
+                <button type="button" onClick={() => setPlayerAttempt((value) => value + 1)}>
+                  <EclipseUiIcon name="followup" size={16} />Повторить
+                </button>
+                <button type="button" onClick={onDeactivate}>
+                  <EclipseUiIcon name="close" size={16} />К обложке
+                </button>
+                <a href={video.url} target="_blank" rel="noopener noreferrer">Открыть YouTube</a>
+              </div>
+            </div>
+          ) : (
+            <>
+              <iframe
+                key={playerAttempt}
+                title={video.title}
+                src={toYouTubeEmbedUrl(parsed, { autoplay: true })}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                sandbox="allow-scripts allow-same-origin allow-presentation allow-popups"
+                allowFullScreen
+                referrerPolicy="strict-origin-when-cross-origin"
+                onLoad={() => setPlayerState("ready")}
+              />
+              {playerState === "loading" && (
+                <div className="ec-team-training-video__player-loading" role="status">
+                  <span>Подключаем плеер</span>
+                </div>
+              )}
+              <button type="button" className="ec-team-training-video__close-player" onClick={onDeactivate} aria-label="Закрыть плеер">
+                <EclipseUiIcon name="close" size={17} />
+              </button>
+            </>
+          )
+        ) : (
+          <button type="button" className="ec-team-training-video__poster" onClick={onActivate} aria-label={`Воспроизвести: ${video.title}`}>
+            {poster.url ? (
+              <img src={poster.url} alt="" />
+            ) : (
+              <span className="ec-team-training-video__poster-fallback" data-loading={poster.status === "loading" ? "true" : "false"}>
+                <img src={resolveAssetUrl("/brand-mark.svg") ?? ""} alt="" />
+                <span>{poster.status === "loading" ? "Загружаем обложку" : "Обложка недоступна"}</span>
+              </span>
+            )}
+            <span className="ec-team-training-video__play">
+              <EclipseUiIcon name="play" size={22} />
+              <span>Смотреть</span>
+            </span>
+          </button>
+        )}
       </div>
       <div className="ec-team-training-video__meta">
         <div>
@@ -720,6 +875,9 @@ function TrainingVideoCard({ video, canEdit, onRemove }: { video: TrainingVideo;
           <div className="ec-team-training-video__source">YouTube</div>
         </div>
         <div className="ec-team-training-video__actions">
+          {poster.status === "error" && !isActive && (
+            <button type="button" className="ec-team-training-video__link" onClick={poster.retry}>Обновить обложку</button>
+          )}
           <a className="ec-team-training-video__link" href={video.url} target="_blank" rel="noopener noreferrer">
             YouTube
           </a>
