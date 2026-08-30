@@ -1,6 +1,10 @@
 import type { CSSProperties, ReactNode } from "react";
 import { useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import type { UserStatus } from "../hooks/useProfile";
+import type { StoredAccount } from "../lib/accountVault";
+import { resolveAssetUrl } from "../lib/assets";
+import { EclipseUiIcon } from "./icons/EclipseUiIcon";
 
 /**
  * Вторичное действие в профиль-меню (slice 3 «разгрузка топбара»):
@@ -29,6 +33,11 @@ type Props = {
   themeSlot?: ReactNode;
   /** Вторичные утилиты (уведомления, справка). */
   tools?: ToolItem[];
+  accounts?: StoredAccount[];
+  currentAccountId?: string;
+  onSwitchAccount?: (accountId: string) => void;
+  onForgetAccount?: (accountId: string) => void;
+  onAddAccount?: () => void;
 };
 
 const popover: CSSProperties = {
@@ -44,7 +53,9 @@ const popover: CSSProperties = {
   flexDirection: "column",
   gap: 0,
   minWidth: 180,
-  zIndex: 80,
+  maxHeight: "calc(100vh - 16px)",
+  overflowY: "auto",
+  zIndex: 2200,
   animation: "ec-modal-zoom-in var(--ec-dur-fast) var(--ec-ease-out) both",
 };
 
@@ -105,7 +116,20 @@ const OPTIONS: StatusOption[] = [
   },
 ];
 
-export function StatusMenu({ anchorRect, current, onSelect, onOpenProfile, onClose, themeSlot, tools }: Props) {
+export function StatusMenu({
+  anchorRect,
+  current,
+  onSelect,
+  onOpenProfile,
+  onClose,
+  themeSlot,
+  tools,
+  accounts = [],
+  currentAccountId,
+  onSwitchAccount,
+  onForgetAccount,
+  onAddAccount,
+}: Props) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -126,8 +150,8 @@ export function StatusMenu({ anchorRect, current, onSelect, onOpenProfile, onClo
   }, [onClose]);
 
   // Positioning: ниже-слева от anchor (user-chip), clamp в viewport
-  const POP_W = 220;
-  const POP_H = 380;
+  const POP_W = 276;
+  const POP_H = accounts.length > 1 ? 590 : 500;
   const margin = 8;
   let left = anchorRect.left;
   let top = anchorRect.bottom + 6;
@@ -135,12 +159,70 @@ export function StatusMenu({ anchorRect, current, onSelect, onOpenProfile, onClo
     left = window.innerWidth - POP_W - margin;
   }
   if (top + POP_H > window.innerHeight - margin) {
-    top = anchorRect.top - POP_H - 6;
+    top = Math.max(margin, anchorRect.top - POP_H - 6);
   }
+  if (top < margin) top = margin;
   if (left < margin) left = margin;
 
-  return (
+  return createPortal(
     <div ref={ref} style={{ ...popover, left, top, minWidth: POP_W }} role="menu" aria-label="Статус">
+      {(accounts.length > 0 || onAddAccount) && (
+        <section className="ec-account-switcher" aria-label="Аккаунты">
+          <div className="ec-account-switcher__label">Аккаунты</div>
+          {accounts.map((account) => {
+            const active = account.id === currentAccountId;
+            return (
+              <div key={account.id} className="ec-account-switcher__row" data-active={active}>
+                <button
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={active}
+                  onClick={() => {
+                    if (!active) onSwitchAccount?.(account.id);
+                    onClose();
+                  }}
+                >
+                  <span className="ec-account-switcher__avatar" aria-hidden>
+                    {account.user.avatar
+                      ? <img src={resolveAssetUrl(account.user.avatar) ?? ""} alt="" />
+                      : account.user.displayName.slice(0, 1).toUpperCase()}
+                  </span>
+                  <span>
+                    <strong>{account.user.displayName}</strong>
+                    <small>{account.user.email}</small>
+                  </span>
+                  {active && <EclipseUiIcon name="check" size={15} />}
+                </button>
+                {!active && onForgetAccount && (
+                  <button
+                    type="button"
+                    className="ec-account-switcher__forget"
+                    aria-label={`Забыть аккаунт ${account.user.displayName}`}
+                    title="Убрать с этого устройства"
+                    onClick={() => onForgetAccount(account.id)}
+                  >
+                    <EclipseUiIcon name="close" size={14} />
+                  </button>
+                )}
+              </div>
+            );
+          })}
+          {onAddAccount && (
+            <button
+              type="button"
+              className="ec-account-switcher__add"
+              role="menuitem"
+              onClick={() => { onAddAccount(); onClose(); }}
+            >
+              <EclipseUiIcon name="plus" size={16} />
+              <span>Добавить аккаунт</span>
+            </button>
+          )}
+        </section>
+      )}
+      {(accounts.length > 0 || onAddAccount) && (
+        <div style={{ height: 1, background: "var(--ec-border-subtle)", margin: "4px 0" }} aria-hidden />
+      )}
       {OPTIONS.map((o) => {
         const isActive = o.value === current;
         return (
@@ -173,11 +255,7 @@ export function StatusMenu({ anchorRect, current, onSelect, onOpenProfile, onClo
                 {o.description}
               </span>
             </span>
-            {isActive && (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ec-accent)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-            )}
+            {isActive && <EclipseUiIcon name="check" size={14} />}
           </button>
         );
       })}
@@ -188,10 +266,7 @@ export function StatusMenu({ anchorRect, current, onSelect, onOpenProfile, onClo
         <div style={{ ...item, cursor: "default", justifyContent: "space-between" }}>
           <span style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
             <span aria-hidden style={{ width: 10, display: "grid", placeItems: "center", color: "var(--ec-text-muted)" }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="9" />
-                <path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor" stroke="none" />
-              </svg>
+              <EclipseUiIcon name="orbit" size={13} />
             </span>
             <span style={{ color: "var(--ec-text)" }}>Оформление</span>
           </span>
@@ -235,14 +310,12 @@ export function StatusMenu({ anchorRect, current, onSelect, onOpenProfile, onClo
           onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
         >
           <span aria-hidden style={{ width: 10, display: "grid", placeItems: "center", color: "var(--ec-text-muted)" }}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
-              <circle cx="12" cy="7" r="4" />
-            </svg>
+            <EclipseUiIcon name="profile" size={13} />
           </span>
           <span style={{ color: "var(--ec-text)" }}>Профиль…</span>
         </button>
       )}
-    </div>
+    </div>,
+    document.body,
   );
 }

@@ -72,5 +72,5 @@ export function EclipseUiIcon({ name, size = 20, className = "" }: {
   name: EclipseUiIconName; size?: number; className?: string;
 }) {
   const Icon = icons[name];
-  return <Icon size={size} weight="regular" className={`ec-ui-icon ${className}`} aria-hidden="true" focusable="false" />;
+  return <Icon size={size} weight="regular" data-icon={name} className={`ec-ui-icon ${className}`} aria-hidden="true" focusable="false" />;
 }

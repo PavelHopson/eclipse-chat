@@ -97,7 +97,19 @@ const loadingStyle: CSSProperties = {
 };
 
 export function App() {
-  const { view, user, error, login, register, logout, socketRev, clearError } = useAuth();
+  const {
+    view,
+    user,
+    error,
+    login,
+    register,
+    logout,
+    accounts,
+    switchAccount,
+    forgetAccount,
+    socketRev,
+    clearError,
+  } = useAuth();
   const [authSurface, setAuthSurface] = useState<null | "login" | "register">(() =>
     parseLandingHash().wantsAuthPanel ? "login" : null,
   );
@@ -379,7 +391,16 @@ export function App() {
       ) : (
         /* v1.6.50 — Client Portal удалён; authenticated всегда = AppShell. */
         <Suspense fallback={<main style={loadingStyle}>Загрузка…</main>}>
-          <AppShell user={user} socketRev={socketRev} onLogout={logout} />
+          <AppShell
+            key={user.id}
+            user={user}
+            accounts={accounts}
+            socketRev={socketRev}
+            onLoginAccount={login}
+            onSwitchAccount={switchAccount}
+            onForgetAccount={forgetAccount}
+            onLogout={logout}
+          />
         </Suspense>
       )}
     </ConfirmProvider>

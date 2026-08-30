@@ -66,7 +66,7 @@ test("pointer preserves reduced-motion, coarse pointers, text input and cleanup"
   const pointer = source("apps/web/src/components/EclipsePointer.tsx");
   assert.match(pointer, /prefers-reduced-motion: reduce/);
   assert.match(pointer, /pointer: fine/);
-  assert.match(pointer, /input, textarea, \[contenteditable=true\], video, iframe, :disabled/);
+  assert.match(pointer, /input, textarea, select, \[contenteditable=true\], video, iframe, :disabled/);
   assert.match(pointer, /cancelAnimationFrame\(frame\)/);
   assert.match(pointer, /removeEventListener\("pointermove", move\)/);
   assert.match(pointer, /if \(!frame\) frame = requestAnimationFrame/);

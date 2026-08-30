@@ -2,6 +2,7 @@ import type { ChangeEvent, RefObject } from "react";
 import { Avatar } from "../../Avatar";
 import type { Profile } from "../../../hooks/useProfile";
 import { resolveAssetUrl } from "../../../lib/assets";
+import { EclipseUiIcon } from "../../icons/EclipseUiIcon";
 
 type Props = {
   profile: Profile;
@@ -99,10 +100,7 @@ export function AccountProfileSection({
               aria-label={profile.avatar ? "Изменить аватар" : "Добавить аватар"}
               disabled={busy}
             >
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <path d="M12 20h9" />
-                <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z" />
-              </svg>
+              <EclipseUiIcon name="edit" size={16} />
             </button>
           </div>
           <div className="ec-settings-profile-preview__copy">

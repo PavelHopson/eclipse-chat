@@ -21,6 +21,8 @@ import { NotificationsPushSection } from "./categories/NotificationsPushSection"
 import { NotificationsQuietHoursSection } from "./categories/NotificationsQuietHoursSection";
 import { PlaceholderSection } from "./categories/PlaceholderSection";
 import { SessionsSection } from "./categories/SessionsSection";
+import { AccountsSection } from "./categories/AccountsSection";
+import type { StoredAccount } from "../../lib/accountVault";
 import { useSessions } from "../../hooks/useSessions";
 import {
   isSettingsViewId,
@@ -60,6 +62,11 @@ type Props = {
   onDeleteProfileImage: (imageId: string) => Promise<boolean>;
   onTwoFactorChanged?: () => void;
   onLogout: () => Promise<void>;
+  accounts: StoredAccount[];
+  currentAccountId: string;
+  onSwitchAccount: (accountId: string) => void;
+  onForgetAccount: (accountId: string) => void;
+  onAddAccount: () => void;
 };
 
 function initialView(): SettingsViewId {
@@ -141,6 +148,11 @@ export function SettingsPanel({
   onDeleteProfileImage,
   onTwoFactorChanged,
   onLogout,
+  accounts,
+  currentAccountId,
+  onSwitchAccount,
+  onForgetAccount,
+  onAddAccount,
 }: Props) {
   const [active, setActive] = useState<SettingsViewId>(
     () => initialViewId ?? initialView(),
@@ -446,6 +458,17 @@ export function SettingsPanel({
     }
     if (active === "install") {
       return <InstallSection install={install} autostart={autostart} />;
+    }
+    if (active === "account-accounts") {
+      return (
+        <AccountsSection
+          accounts={accounts}
+          currentAccountId={currentAccountId}
+          onSwitch={onSwitchAccount}
+          onForget={onForgetAccount}
+          onAdd={onAddAccount}
+        />
+      );
     }
     if (active === "integrations") return <IntegrationsSection />;
     if (active === "hotkeys") return <HotkeysSection />;

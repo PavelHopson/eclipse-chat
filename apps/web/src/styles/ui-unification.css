@@ -1,0 +1,401 @@
+/*
+ * v1.7.68 — shared product motion + account switching.
+ * All animation frames are transform/opacity-only. The compact brand mark has
+ * an ambient eclipse cycle; operational surfaces otherwise move on intent.
+ */
+
+/* Brand: one arrival beat followed by a restrained, user-disableable eclipse cycle. */
+@keyframes ec-brand-arrival {
+  0% { opacity: 0; transform: rotate(-22deg) scale(.72); }
+  58% { opacity: 1; transform: rotate(5deg) scale(1.05); }
+  100% { opacity: 1; transform: rotate(0) scale(1); }
+}
+
+@keyframes ec-brand-eclipse-flare {
+  0%, 100% { opacity: 0; transform: scale(.72); }
+  48% { opacity: .72; transform: scale(1.18); }
+}
+
+@keyframes ec-brand-eclipse-live {
+  0%, 100% { transform: rotate(-3deg) scale(.98); }
+  38% { transform: rotate(4deg) scale(1.055); }
+  56% { transform: rotate(1deg) scale(1.02); }
+  74% { transform: rotate(-4deg) scale(1.045); }
+}
+
+@keyframes ec-brand-corona-live {
+  0%, 58%, 100% { opacity: 0; transform: scale(.68); }
+  12% { opacity: .18; }
+  28% { opacity: .72; transform: scale(1.12); }
+  43% { opacity: 0; transform: scale(1.34); }
+}
+
+@keyframes ec-brand-star-live {
+  0%, 18%, 70%, 100% { opacity: .18; transform: rotate(0deg) translateX(13px) scale(.7); }
+  34% { opacity: 1; transform: rotate(102deg) translateX(17px) scale(1.15); }
+  54% { opacity: .46; transform: rotate(210deg) translateX(14px) scale(.82); }
+}
+
+@keyframes ec-icon-signal {
+  0%, 100% { transform: translateY(0) rotate(0deg) scale(1); }
+  38% { transform: translateY(-4px) rotate(-7deg) scale(1.22); }
+  68% { transform: translateY(1px) rotate(4deg) scale(.96); }
+}
+
+@keyframes ec-icon-orbit {
+  0% { transform: rotate(0deg) scale(1); }
+  48% { transform: rotate(190deg) scale(1.18); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+
+@keyframes ec-icon-bell {
+  0%, 100% { transform: rotate(0deg) scale(1); }
+  25% { transform: rotate(-18deg) scale(1.16); }
+  52% { transform: rotate(15deg) scale(1.16); }
+  76% { transform: rotate(-8deg) scale(1.08); }
+}
+
+@keyframes ec-icon-forward {
+  0%, 100% { transform: translateX(0) scale(1); }
+  42% { transform: translateX(5px) scale(1.16); }
+  70% { transform: translateX(-1px) scale(.98); }
+}
+
+.ec-workspace-v2 .ec-shell__brand-home {
+  position: relative;
+  isolation: isolate;
+}
+
+.ec-workspace-v2 .ec-brand-orbit {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  animation: ec-brand-arrival 620ms cubic-bezier(.16, 1, .3, 1) both;
+  transform-origin: 52% 50%;
+}
+
+.ec-workspace-v2 .ec-brand-orbit::before {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--ec-ws-gold) 58%, transparent);
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(.68);
+}
+
+.ec-workspace-v2 .ec-brand-orbit::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 4px;
+  height: 4px;
+  margin: -2px;
+  border-radius: 50%;
+  background: var(--ec-ws-gold);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--ec-ws-gold) 72%, transparent);
+  opacity: .18;
+  pointer-events: none;
+  transform: translateX(13px) scale(.7);
+}
+
+html:not([data-ec-motion="quiet"]) .ec-workspace-v2 .ec-brand-mark {
+  animation: ec-brand-eclipse-live 4.2s cubic-bezier(.45, 0, .2, 1) 700ms infinite !important;
+  transform-origin: 52% 50%;
+}
+
+html:not([data-ec-motion="quiet"]) .ec-workspace-v2 .ec-brand-orbit::before {
+  animation: ec-brand-corona-live 4.2s cubic-bezier(.16, 1, .3, 1) 700ms infinite;
+}
+
+html:not([data-ec-motion="quiet"]) .ec-workspace-v2 .ec-brand-orbit::after {
+  animation: ec-brand-star-live 4.2s cubic-bezier(.45, 0, .2, 1) 700ms infinite;
+}
+
+.ec-workspace-v2 .ec-shell__brand-home:hover .ec-brand-orbit::before,
+.ec-workspace-v2 .ec-shell__brand-home:focus-visible .ec-brand-orbit::before {
+  animation: ec-brand-eclipse-flare 520ms cubic-bezier(.16, 1, .3, 1) both;
+}
+
+.ec-workspace-v2 .ec-shell__brand-home:hover .ec-brand-mark,
+.ec-workspace-v2 .ec-shell__brand-home:focus-visible .ec-brand-mark {
+  transform: rotate(10deg) scale(1.065);
+}
+
+/* Phosphor motion language: every actionable icon gives a visible, short cue. */
+.ec-ui-icon {
+  flex: 0 0 auto;
+  transform-origin: center;
+  transition: transform 170ms cubic-bezier(.2, .8, .2, 1), color 140ms ease, opacity 140ms ease;
+}
+
+html:not([data-ec-motion="quiet"]) :is(button, a, summary, [role="button"], [role="tab"], [role="menuitem"]):is(:hover, :focus-visible) .ec-ui-icon {
+  animation: ec-icon-signal 430ms cubic-bezier(.16, 1, .3, 1) both;
+}
+
+:is(button, a, [role="button"]):active .ec-ui-icon { transform: scale(.9); }
+html:not([data-ec-motion="quiet"]) :is(button, a, [role="button"]):is(:hover, :focus-visible) :is(.ec-ui-icon[data-icon="settings"], .ec-ui-icon[data-icon="orbit"], .ec-ui-icon[data-icon="plus"]) { animation-name: ec-icon-orbit; }
+html:not([data-ec-motion="quiet"]) :is(button, a, [role="button"]):is(:hover, :focus-visible) .ec-ui-icon[data-icon="notifications"] { animation-name: ec-icon-bell; transform-origin: 50% 15%; }
+html:not([data-ec-motion="quiet"]) :is(button, a, [role="button"]):is(:hover, :focus-visible) :is(.ec-ui-icon[data-icon="enter"], .ec-ui-icon[data-icon="leave"], .ec-ui-icon[data-icon="external"], .ec-ui-icon[data-icon="arrow"], .ec-ui-icon[data-icon="send"]) { animation-name: ec-icon-forward; }
+
+.ec-workspace-v2 .ec-rail__glyph { position: relative; }
+.ec-workspace-v2 .ec-rail__glyph::after {
+  content: "";
+  position: absolute;
+  inset: -7px;
+  border: 1px solid color-mix(in srgb, var(--ec-ws-gold) 56%, transparent);
+  border-radius: 50%;
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(.55);
+  transition: opacity 180ms ease, transform 360ms cubic-bezier(.16, 1, .3, 1);
+}
+.ec-workspace-v2 .ec-rail__btn:is(:hover, :focus-visible) .ec-rail__glyph::after {
+  opacity: .64;
+  transform: scale(1);
+}
+.ec-workspace-v2 .ec-rail__btn--server:is(:hover, :focus-visible) .ec-rail__glyph {
+  transform: translateY(-2px) scale(1.08);
+  transition: transform 260ms cubic-bezier(.16, 1, .3, 1);
+}
+
+.ec-settings-tree-nav__group-trigger .ec-settings-tree-nav__chevron { transition-duration: 180ms; }
+.ec-settings-tree-nav__group:not(.ec-settings-tree-nav__group--collapsed) .ec-settings-tree-nav__chevron { transform: rotate(180deg); }
+
+/* Legacy feature icons share the same interaction grammar while they migrate
+ * to EclipseUiIcon. Brand illustrations and the authored logout animation are
+ * deliberately excluded. */
+.ec-workspace-v2 :is(
+  .ec-rail__btn,
+  .ec-channel-item,
+  .ec-icon-btn,
+  .ec-chat-header button,
+  .ec-composer-box button,
+  .ec-settings-section button,
+  .ec-server-actions-menu button
+) svg:not(.ec-logout-btn svg) {
+  transform-origin: center;
+  transition: transform 170ms cubic-bezier(.2, .8, .2, 1), color 140ms ease, opacity 140ms ease;
+}
+
+html:not([data-ec-motion="quiet"]) .ec-workspace-v2 :is(
+  .ec-rail__btn,
+  .ec-channel-item,
+  .ec-icon-btn,
+  .ec-chat-header button,
+  .ec-composer-box button,
+  .ec-settings-section button,
+  .ec-server-actions-menu button
+):is(:hover, :focus-visible) svg:not(.ec-ui-icon):not(.ec-logout-btn svg) {
+  animation: ec-icon-signal 430ms cubic-bezier(.16, 1, .3, 1) both;
+}
+
+.ec-workspace-v2 :is(.ec-rail__btn, .ec-channel-item, .ec-icon-btn):active svg:not(.ec-logout-btn svg) {
+  transform: scale(.9);
+}
+
+/* Settings: stronger hierarchy with fewer framed surfaces. */
+.ec-workspace-v2 .ec-settings-tree-nav {
+  background: color-mix(in srgb, var(--ec-ws-rail) 96%, transparent);
+}
+
+.ec-workspace-v2 .ec-settings-category-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 36px;
+  border: 0;
+  border-left: 2px solid transparent;
+  border-radius: 0 6px 6px 0;
+  transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+}
+
+.ec-workspace-v2 .ec-settings-category-item--active {
+  border-left-color: var(--ec-ws-violet);
+  background: color-mix(in srgb, var(--ec-ws-violet) 10%, transparent);
+}
+
+.ec-workspace-v2 .ec-settings-category-item--active .ec-ui-icon { color: var(--ec-ws-violet); }
+.ec-workspace-v2 .ec-settings-category-item--danger { margin-top: auto; color: var(--ec-danger); }
+
+.ec-workspace-v2 .ec-settings-card,
+.ec-workspace-v2 .ec-settings-profile-preview {
+  border-color: color-mix(in srgb, var(--ec-ws-line) 82%, transparent);
+}
+
+/* Account popover */
+.ec-account-switcher { display: grid; gap: 2px; padding: 4px; }
+.ec-account-switcher__label {
+  padding: 5px 7px 4px;
+  color: var(--ec-text-dim);
+  font: 700 var(--ec-text-2xs)/1 var(--ec-font-mono);
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+.ec-account-switcher__row { position: relative; min-width: 0; }
+.ec-account-switcher__row > button:first-child,
+.ec-account-switcher__add {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  min-height: 42px;
+  padding: 5px 32px 5px 5px;
+  border: 0;
+  border-radius: 6px;
+  color: var(--ec-text);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+.ec-account-switcher__row[data-active="true"] > button:first-child { background: var(--ec-accent-soft); }
+.ec-account-switcher__row > button:first-child:hover,
+.ec-account-switcher__add:hover { background: var(--ec-surface-3); }
+.ec-account-switcher__avatar {
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  border: 1px solid var(--ec-border-default);
+  border-radius: 50%;
+  color: var(--ec-text-strong);
+  background: var(--ec-surface-3);
+  font-size: 12px;
+  font-weight: 750;
+}
+.ec-account-switcher__avatar img { width: 100%; height: 100%; object-fit: cover; }
+.ec-account-switcher__row > button:first-child > span:nth-child(2) { display: grid; min-width: 0; flex: 1; }
+.ec-account-switcher__row strong,
+.ec-account-switcher__row small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ec-account-switcher__row strong { color: var(--ec-text-strong); font-size: 12px; }
+.ec-account-switcher__row small { color: var(--ec-text-dim); font-size: 10px; }
+.ec-account-switcher__row[data-active="true"] > button:first-child > .ec-ui-icon { color: var(--ec-accent); }
+.ec-account-switcher__forget {
+  position: absolute;
+  right: 5px;
+  top: 50%;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  color: var(--ec-text-dim);
+  background: transparent;
+  transform: translateY(-50%);
+  cursor: pointer;
+}
+.ec-account-switcher__forget:hover { color: var(--ec-danger); background: var(--ec-danger-soft); }
+.ec-account-switcher__add { min-height: 34px; padding-right: 7px; color: var(--ec-accent); font-size: 11px; }
+
+/* Add-account dialog */
+.ec-account-add { display: grid; gap: 14px; padding: 18px; }
+.ec-account-add > header { display: flex; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid var(--ec-border-subtle); }
+.ec-account-add > header > div { display: grid; gap: 4px; min-width: 0; }
+.ec-account-add > header strong { color: var(--ec-text-strong); font-size: 16px; }
+.ec-account-add > header p { max-width: 48ch; margin: 0; color: var(--ec-text-muted); font-size: 12px; line-height: 1.5; }
+.ec-account-add__symbol { display: grid; place-items: center; width: 38px; height: 38px; flex: 0 0 auto; border-radius: 50%; color: var(--ec-accent); background: var(--ec-accent-soft); }
+.ec-account-add > label { display: grid; gap: 6px; }
+.ec-account-add > footer { display: flex; justify-content: flex-end; gap: 8px; padding-top: 4px; }
+
+/* Settings account management */
+.ec-settings-section--accounts .ec-settings-section__hero { align-items: end; }
+.ec-settings-section--accounts .ec-settings-section__hero .ec-btn { flex: 0 0 auto; }
+.ec-settings-account-list { display: grid; border-top: 1px solid var(--ec-ws-line); }
+.ec-settings-account-row {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 70px;
+  padding: 12px 4px;
+  border-bottom: 1px solid var(--ec-ws-line);
+}
+.ec-settings-account-row[data-active="true"] { background: color-mix(in srgb, var(--ec-ok) 5%, transparent); }
+.ec-settings-account-row__copy { display: grid; gap: 3px; min-width: 0; }
+.ec-settings-account-row__copy strong,
+.ec-settings-account-row__copy span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ec-settings-account-row__copy strong { color: var(--ec-ws-text); font-size: 13px; }
+.ec-settings-account-row__copy span { color: var(--ec-ws-muted); font-size: 11px; }
+.ec-settings-account-row__actions { display: flex; gap: 7px; }
+.ec-settings-account-note {
+  display: flex;
+  gap: 11px;
+  padding: 13px 14px;
+  border-left: 2px solid var(--ec-ws-violet);
+  color: var(--ec-ws-muted);
+  background: var(--ec-ws-violet-soft);
+}
+.ec-settings-account-note > .ec-ui-icon { color: var(--ec-ws-violet); }
+.ec-settings-account-note > div { display: grid; gap: 4px; }
+.ec-settings-account-note strong { color: var(--ec-ws-text); font-size: 12px; }
+.ec-settings-account-note p { max-width: 72ch; margin: 0; font-size: 11px; line-height: 1.5; }
+
+/* Pointer modes: velocity only stretches the composited inner ring. */
+.ec-eclipse-pointer span {
+  transform: rotate(var(--ec-pointer-angle, 0deg)) scaleX(calc(1 + var(--ec-pointer-velocity, 0) * .38));
+  transition: transform 100ms ease, border-color 120ms ease, background-color 120ms ease, opacity 120ms ease;
+}
+.ec-eclipse-pointer[data-mode="action"] span { border-color: color-mix(in srgb, var(--ec-accent) 70%, var(--ec-ws-gold, #d4af37)); }
+.ec-eclipse-pointer[data-mode="danger"] span { border-color: var(--ec-danger); box-shadow: 0 0 12px color-mix(in srgb, var(--ec-danger) 24%, transparent); }
+.ec-eclipse-pointer[data-mode="drag"] span { border-style: dashed; }
+.ec-eclipse-pointer[data-pressed="true"] span { transform: rotate(var(--ec-pointer-angle, 0deg)) scale(.72); }
+.ec-eclipse-pointer-core { background: var(--ec-text-strong); box-shadow: 0 0 7px color-mix(in srgb, var(--ec-accent) 45%, transparent); }
+
+html[data-ec-theme="solar"] .ec-account-switcher__row[data-active="true"] > button:first-child {
+  background: color-mix(in srgb, var(--ec-accent) 8%, white);
+}
+
+@media (max-width: 640px) {
+  .ec-account-add { padding: 14px; }
+  .ec-account-add > footer { display: grid; grid-template-columns: 1fr 1fr; }
+  .ec-settings-section--accounts .ec-settings-section__hero { align-items: stretch; }
+  .ec-settings-account-row { grid-template-columns: 40px minmax(0, 1fr); }
+  .ec-settings-account-row > :last-child { grid-column: 1 / -1; justify-self: stretch; }
+  .ec-settings-account-row__actions { display: grid; grid-template-columns: 1fr auto; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ec-workspace-v2 .ec-brand-orbit,
+  .ec-workspace-v2 .ec-brand-mark,
+  .ec-workspace-v2 .ec-brand-orbit::before,
+  .ec-workspace-v2 .ec-brand-orbit::after,
+  .ec-ui-icon,
+  .ec-settings-category-item,
+  .ec-eclipse-pointer span {
+    animation: none !important;
+    transition-duration: .01ms !important;
+  }
+  :is(button, a, summary, [role="button"], [role="tab"], [role="menuitem"]):hover .ec-ui-icon,
+  :is(button, a, summary, [role="button"], [role="tab"], [role="menuitem"]):focus-visible .ec-ui-icon {
+    transform: none !important;
+  }
+  .ec-workspace-v2 :is(
+    .ec-rail__btn,
+    .ec-channel-item,
+    .ec-icon-btn,
+    .ec-chat-header button,
+    .ec-composer-box button,
+    .ec-settings-section button,
+    .ec-server-actions-menu button
+  ) svg {
+    transition-duration: .01ms !important;
+    transform: none !important;
+  }
+}
+
+html[data-ec-motion="quiet"] .ec-workspace-v2 :is(.ec-brand-orbit, .ec-brand-mark),
+html[data-ec-motion="quiet"] .ec-workspace-v2 .ec-brand-orbit::before,
+html[data-ec-motion="quiet"] .ec-workspace-v2 .ec-brand-orbit::after,
+html[data-ec-motion="quiet"] .ec-ui-icon {
+  animation: none !important;
+  transition-duration: .01ms !important;
+}

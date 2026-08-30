@@ -63,6 +63,7 @@ const ServerWelcomeHero = lazy(() => import("../components/ServerWelcomeHero").t
 const ChannelsAndRolesView = lazy(() => import("../components/server/ChannelsAndRolesView").then((m) => ({ default: m.ChannelsAndRolesView })));
 const MembersView = lazy(() => import("../components/server/MembersView").then((m) => ({ default: m.MembersView })));
 const StatusMenu = lazy(() => import("../components/StatusMenu").then((m) => ({ default: m.StatusMenu })));
+const AddAccountModal = lazy(() => import("../components/account/AddAccountModal").then((m) => ({ default: m.AddAccountModal })));
 const DownloadAppModal = lazy(() => import("../components/DownloadAppModal").then((m) => ({ default: m.DownloadAppModal })));
 const UserProfileModal = lazy(() => import("../components/UserProfileModal").then((m) => ({ default: m.UserProfileModal })));
 const MessageMemoryModal = lazy(() => import("../components/MessageMemoryModal").then((m) => ({ default: m.MessageMemoryModal })));
@@ -131,6 +132,8 @@ import { useVoice } from "../hooks/useVoice";
 import { useVoiceHealth } from "../hooks/useVoiceHealth";
 import { useVoicePresence, reverseVoiceMap } from "../hooks/useVoicePresence";
 import type { PublicUser } from "../hooks/useAuth";
+import type { StoredAccount } from "../lib/accountVault";
+import { updateStoredAccountUser } from "../lib/accountVault";
 import type { SettingsViewId } from "../components/settings/SettingsTreeNav";
 
 const ANDROID_APK_URL = `${import.meta.env.BASE_URL}download/eclipse-chat.apk?v=1.0.5`;
@@ -154,7 +157,15 @@ function isAndroidWebBrowser(): boolean {
 
 type Props = {
   user: PublicUser;
+  accounts: StoredAccount[];
   socketRev: number;
+  onLoginAccount: (
+    email: string,
+    password: string,
+    options?: { totpCode?: string; recoveryCode?: string },
+  ) => Promise<{ success: boolean; needs2FA?: boolean }>;
+  onSwitchAccount: (accountId: string) => Promise<boolean>;
+  onForgetAccount: (accountId: string) => Promise<void>;
   onLogout: () => Promise<void>;
 };
 
@@ -162,11 +173,20 @@ type Props = {
 // каркас одет в классы (.ec-shell__top / .ec-chat-header / .ec-chat-title
 // / .ec-error-banner …) в components.css. См. docs/design/design-brief-v2.
 
-export function AppShell({ user, socketRev, onLogout }: Props) {
+export function AppShell({
+  user,
+  accounts,
+  socketRev,
+  onLoginAccount,
+  onSwitchAccount,
+  onForgetAccount,
+  onLogout,
+}: Props) {
   const socket = useSocket(socketRev);
   const connection = useConversationConnection(socket);
   const workspaceLayout = useWorkspaceLayout();
   const [voiceToolbarTarget, setVoiceToolbarTarget] = useState<HTMLDivElement | null>(null);
+  const [addAccountOpen, setAddAccountOpen] = useState(false);
   const brandMarkUrl = `${import.meta.env.BASE_URL}brand-mark.svg`;
 
   const isReady = socket != null;
@@ -547,6 +567,17 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
     updateQuietHours,
     reload: reloadProfile,
   } = useProfile(true);
+
+  useEffect(() => {
+    if (!profile || profile.id !== user.id) return;
+    updateStoredAccountUser({
+      ...user,
+      displayName: profile.displayName,
+      avatar: profile.avatar,
+      bio: profile.bio,
+    });
+  }, [profile?.id, profile?.displayName, profile?.avatar, profile?.bio, user]);
+
   const [statusAnchor, setStatusAnchor] = useState<DOMRect | null>(null);
 
   const {
@@ -1387,7 +1418,9 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
             aria-label="Открыть главную страницу"
             title="Главная"
           >
-            <img className="ec-brand-mark" src={brandMarkUrl} alt="" aria-hidden />
+            <span className="ec-brand-orbit" aria-hidden>
+              <img className="ec-brand-mark" src={brandMarkUrl} alt="" />
+            </span>
             <span className="ec-shell__brand-lockup" aria-hidden>
               <strong>Eclipse</strong>
               <small>Chat</small>
@@ -3117,6 +3150,14 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
           onDeleteProfileBanner={deleteProfileBanner}
           onUploadProfileImage={uploadProfileImage}
           onDeleteProfileImage={deleteProfileImage}
+          accounts={accounts}
+          currentAccountId={user.id}
+          onSwitchAccount={(accountId) => void onSwitchAccount(accountId)}
+          onForgetAccount={(accountId) => void onForgetAccount(accountId)}
+          onAddAccount={() => {
+            setShowProfile(false);
+            setAddAccountOpen(true);
+          }}
           onLogout={onLogout}
           onTwoFactorChanged={() => {
             // Refresh profile чтобы twoFactorEnabled flag обновился.
@@ -3196,12 +3237,24 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
         </Suspense>
       )}
 
+      {addAccountOpen && (
+        <AddAccountModal
+          onClose={() => setAddAccountOpen(false)}
+          onLogin={onLoginAccount}
+        />
+      )}
+
       {statusAnchor && profile && (
         <StatusMenu
           anchorRect={statusAnchor}
           current={profile.status ?? "ONLINE"}
           onSelect={(s) => void updateStatus(s)}
           onOpenProfile={() => setShowProfile(true)}
+          accounts={accounts}
+          currentAccountId={user.id}
+          onSwitchAccount={(accountId) => void onSwitchAccount(accountId)}
+          onForgetAccount={(accountId) => void onForgetAccount(accountId)}
+          onAddAccount={() => setAddAccountOpen(true)}
           onClose={() => setStatusAnchor(null)}
           themeSlot={<ThemeToggle />}
           tools={[
@@ -3212,12 +3265,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                     label: "Админ-панель",
                     hint: "Пользователи и доступ",
                     onClick: () => setPlatformAdminOpen(true),
-                    icon: (
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                        <path d="M12 2l9 4v6c0 5-3.5 9.5-9 10-5.5-.5-9-5-9-10V6l9-4z" />
-                        <path d="M9 12l2 2 4-4" />
-                      </svg>
-                    ),
+                    icon: <EclipseUiIcon name="shield" size={14} />,
                   },
                 ]
               : []),
@@ -3229,13 +3277,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                 setSettingsInitialView("integrations");
                 setShowProfile(true);
               },
-              icon: (
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                  <path d="M8.8 15.2 15.2 8.8" />
-                  <path d="M6.6 17.4 4.8 19.2a3.4 3.4 0 0 1-4.8-4.8l4-4a3.4 3.4 0 0 1 4.8 0" />
-                  <path d="m17.4 6.6 1.8-1.8A3.4 3.4 0 0 1 24 9.6l-4 4a3.4 3.4 0 0 1-4.8 0" />
-                </svg>
-              ),
+              icon: <EclipseUiIcon name="external" size={14} />,
             },
             ...(notif.supported
               ? [
@@ -3257,21 +3299,7 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
                       if (notif.permission === "default") void notif.request();
                       else notif.toggle();
                     },
-                    icon:
-                      notif.permission === "granted" && notif.enabled ? (
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                          <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                          <path d="M13.73 21a2 2 0 01-3.46 0" />
-                        </svg>
-                      ) : (
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                          <path d="M13.73 21a2 2 0 01-3.46 0" />
-                          <path d="M18.63 13A17.89 17.89 0 0118 8" />
-                          <path d="M6.26 6.26A5.86 5.86 0 006 8c0 7-3 9-3 9h14" />
-                          <path d="M18 8a6 6 0 00-9.33-5" />
-                          <line x1="1" y1="1" x2="23" y2="23" />
-                        </svg>
-                      ),
+                    icon: <EclipseUiIcon name="notifications" size={14} />,
                   },
                 ]
               : []),
@@ -3280,25 +3308,13 @@ export function AppShell({ user, socketRev, onLogout }: Props) {
               label: "Скачать приложение",
               hint: "Windows · Mac · Linux · Android · iOS",
               onClick: () => setDownloadOpen(true),
-              icon: (
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                  <polyline points="7 10 12 15 17 10" />
-                  <line x1="12" y1="15" x2="12" y2="3" />
-                </svg>
-              ),
+              icon: <EclipseUiIcon name="external" size={14} />,
             },
             {
               key: "help",
               label: "Справка и онбординг",
               onClick: openHelp,
-              icon: (
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                  <circle cx="12" cy="12" r="10" />
-                  <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-                  <line x1="12" y1="17" x2="12.01" y2="17" />
-                </svg>
-              ),
+              icon: <EclipseUiIcon name="guide" size={14} />,
             },
           ]}
         />

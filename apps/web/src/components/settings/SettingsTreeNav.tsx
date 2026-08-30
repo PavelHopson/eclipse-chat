@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
+import { EclipseUiIcon, type EclipseUiIconName } from "../icons/EclipseUiIcon";
 
 export type SettingsViewId =
   | "account-profile"
+  | "account-accounts"
   | "account-security"
   | "account-sessions"
   | "activity-status"
@@ -21,6 +23,7 @@ type NavItem = {
   label: string;
   soon?: string;
   hidden?: boolean;
+  icon: EclipseUiIconName;
 };
 
 type NavGroup = {
@@ -42,39 +45,40 @@ export const SETTINGS_GROUPS: NavGroup[] = [
   {
     label: "Учётная запись",
     items: [
-      { id: "account-profile", label: "Профиль" },
-      { id: "account-security", label: "Безопасность" },
-      { id: "account-sessions", label: "Сессии и устройства" },
+      { id: "account-profile", label: "Профиль", icon: "profile" },
+      { id: "account-accounts", label: "Аккаунты на устройстве", icon: "people" },
+      { id: "account-security", label: "Безопасность", icon: "shield" },
+      { id: "account-sessions", label: "Сессии и устройства", icon: "people" },
     ],
   },
   {
     label: "Персонализация",
     items: [
-      { id: "activity-status", label: "Кастомный статус" },
-      { id: "notifications-push", label: "Уведомления и звук" },
-      { id: "notifications-quiet", label: "Тихие часы" },
-      { id: "appearance", label: "Тема и интерфейс" },
+      { id: "activity-status", label: "Кастомный статус", icon: "orbit" },
+      { id: "notifications-push", label: "Уведомления и звук", icon: "notifications" },
+      { id: "notifications-quiet", label: "Тихие часы", icon: "notifications" },
+      { id: "appearance", label: "Тема и интерфейс", icon: "settings" },
     ],
   },
   {
     label: "Приложение",
     items: [
-      { id: "voice-video", label: "Голос и видео", soon: "v1.5.55+" },
-      { id: "content", label: "Контент", soon: "v1.5.55+" },
-      { id: "hotkeys", label: "Горячие клавиши" },
-      { id: "install", label: "Установить приложение" },
+      { id: "voice-video", label: "Голос и видео", icon: "microphone", soon: "v1.5.55+" },
+      { id: "content", label: "Контент", icon: "file", soon: "v1.5.55+" },
+      { id: "hotkeys", label: "Горячие клавиши", icon: "cursor" },
+      { id: "install", label: "Установить приложение", icon: "external" },
     ],
   },
   {
     label: "Данные и связи",
     items: [
-      { id: "data-export", label: "Экспорт данных", soon: "v1.5.55+" },
-      { id: "integrations", label: "Интеграции" },
+      { id: "data-export", label: "Экспорт данных", icon: "upload", soon: "v1.5.55+" },
+      { id: "integrations", label: "Интеграции", icon: "attach" },
     ],
   },
   {
     label: "Дополнительно",
-    items: [{ id: "developer", label: "Для разработчика", soon: "v1.5.55+" }],
+    items: [{ id: "developer", label: "Для разработчика", icon: "settings", soon: "v1.5.55+" }],
   },
 ];
 
@@ -153,7 +157,7 @@ export function SettingsTreeNav({ active, installAvailable, onSelect, onLogout }
             onClick={() => toggleGroup(group.label)}
           >
             <span>{group.label}</span>
-            <span aria-hidden>{collapsed.has(group.label) ? "›" : "⌄"}</span>
+            <EclipseUiIcon name="chevron" size={13} className="ec-settings-tree-nav__chevron" />
           </button>
           {group.items.map((item) => (
               <button
@@ -166,6 +170,7 @@ export function SettingsTreeNav({ active, installAvailable, onSelect, onLogout }
                 aria-current={active === item.id ? "page" : undefined}
                 onClick={() => onSelect(item.id)}
               >
+                <EclipseUiIcon name={item.icon} size={16} />
                 <span>{item.label}</span>
                 {item.soon && <span className="ec-settings-category-item__soon">Скоро</span>}
               </button>
@@ -177,7 +182,8 @@ export function SettingsTreeNav({ active, installAvailable, onSelect, onLogout }
         className="ec-settings-category-item ec-settings-category-item--danger"
         onClick={() => void onLogout()}
       >
-        Выйти
+        <EclipseUiIcon name="leave" size={16} />
+        <span>Выйти из аккаунта</span>
       </button>
     </aside>
   );

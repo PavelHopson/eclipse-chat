@@ -5,6 +5,7 @@ import { z } from "zod";
 import { db } from "../db.js";
 import {
   deleteAllUserRefresh,
+  deleteRefreshByRawForUser,
   findValidRefreshTokenRow,
   makeRefreshTokenPair,
   storeRefreshToken,
@@ -43,6 +44,12 @@ const loginBody = z.object({
 
 const refreshBody = z.object({
   refreshToken: z.string().min(10),
+});
+
+const logoutBody = z.object({
+  // Optional for cached/older clients. Missing token means the short-lived
+  // access JWT simply expires; it must not become a global logout.
+  refreshToken: z.string().min(10).optional(),
 });
 
 const changePasswordBody = z.object({
@@ -367,7 +374,6 @@ export async function registerAuthRoutes(app: FastifyInstance) {
         }
 
         await resetLockout(user.id);
-        await deleteAllUserRefresh(user.id);
         recordAudit("AUTH_LOGIN", { userId: user.id, req });
         return await issueSession(reply, user, sessionMetaFromReq(req));
       } catch (err) {
@@ -422,13 +428,17 @@ export async function registerAuthRoutes(app: FastifyInstance) {
   app.post(
     "/api/auth/logout",
     { onRequest: [requireJwt] },
-    async (req) => {
+    async (req, reply) => {
       const payload = req.user as { sub: string; email: string } | undefined;
       const sub = payload?.sub;
-      if (sub) {
-        await deleteAllUserRefresh(sub);
-        recordAudit("AUTH_LOGOUT", { userId: sub, req });
+      const parsed = logoutBody.safeParse(req.body ?? {});
+      if (!parsed.success) {
+        return reply.status(400).send({ error: "Invalid body" });
       }
+      if (sub && parsed.data.refreshToken) {
+        await deleteRefreshByRawForUser(parsed.data.refreshToken, sub);
+      }
+      if (sub) recordAudit("AUTH_LOGOUT", { userId: sub, req });
       return { ok: true as const };
     },
   );

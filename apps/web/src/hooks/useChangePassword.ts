@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ApiError, apiJson } from "../lib/api";
 import { setTokenPair } from "../lib/storage";
+import { updateActiveStoredTokens } from "../lib/accountVault";
 
 /**
  * Смена пароля из профиля. POST /api/auth/change-password требует
@@ -30,6 +31,7 @@ export function useChangePassword() {
       const access = res.accessToken ?? res.token;
       if (access && res.refreshToken) {
         setTokenPair(access, res.refreshToken);
+        updateActiveStoredTokens(access, res.refreshToken);
       }
       return { ok: true };
     } catch (e) {

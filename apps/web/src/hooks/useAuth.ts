@@ -1,6 +1,18 @@
 ﻿import { useCallback, useEffect, useState } from "react";
-import { ApiError, api, apiJson, apiPath } from "../lib/api";
+import { ApiError, apiJson, apiPath, refreshAccessToken } from "../lib/api";
 import { clearAllTokens, getAccess, getRefresh, migrateLegacyToken, setTokenPair } from "../lib/storage";
+import {
+  ACCOUNT_VAULT_EVENT,
+  activateStoredAccount,
+  getActiveAccountId,
+  listStoredAccounts,
+  persistCurrentSessionFor,
+  removeStoredAccount,
+  restoreActiveAccountTokens,
+  upsertAccountSession,
+  updateStoredAccountUser,
+  type StoredAccount,
+} from "../lib/accountVault";
 
 export type PublicUser = {
   id: string;
@@ -35,6 +47,7 @@ export function useAuth() {
   const [view, setView] = useState<AuthView>("loading");
   const [user, setUser] = useState<PublicUser | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [accounts, setAccounts] = useState<StoredAccount[]>(() => listStoredAccounts());
   const clearError = useCallback(() => setError(null), []);
 
   /** Пересоздание Socket после смены access-токена. */
@@ -44,6 +57,7 @@ export function useAuth() {
   /** Загрузка текущего user'а — при boot и после login. */
   const loadMe = useCallback(async () => {
     migrateLegacyToken();
+    if (!getAccess() && !getRefresh()) restoreActiveAccountTokens();
     if (!getAccess() && !getRefresh()) {
       setView("auth");
       return;
@@ -52,6 +66,7 @@ export function useAuth() {
       const data = await apiJson<{ user: PublicUser | null }>("/api/auth/me");
       if (data.user) {
         setUser(data.user);
+        setAccounts(persistCurrentSessionFor(data.user));
         setView("app");
       } else {
         clearAllTokens();
@@ -74,6 +89,16 @@ export function useAuth() {
   useEffect(() => {
     void loadMe();
   }, [loadMe]);
+
+  useEffect(() => {
+    const sync = () => setAccounts(listStoredAccounts());
+    window.addEventListener(ACCOUNT_VAULT_EVENT, sync);
+    window.addEventListener("storage", sync);
+    return () => {
+      window.removeEventListener(ACCOUNT_VAULT_EVENT, sync);
+      window.removeEventListener("storage", sync);
+    };
+  }, []);
 
   const login = useCallback(
     async (
@@ -108,6 +133,9 @@ export function useAuth() {
         }
         if (data.user) {
           setUser(data.user);
+          if (acc && data.refreshToken) {
+            setAccounts(upsertAccountSession(data.user, acc, data.refreshToken));
+          }
         }
         setView("app");
         bumpSocketRev();
@@ -141,6 +169,9 @@ export function useAuth() {
         }
         if (data.user) {
           setUser(data.user);
+          if (acc && data.refreshToken) {
+            setAccounts(upsertAccountSession(data.user, acc, data.refreshToken));
+          }
         }
         setView("app");
         bumpSocketRev();
@@ -155,18 +186,95 @@ export function useAuth() {
   );
 
   const logout = useCallback(async () => {
-    if (getAccess()) {
+    const activeAccountId = user?.id ?? getActiveAccountId();
+    let refreshToken = getRefresh();
+    let accessToken = getAccess();
+    if (accessToken && refreshToken) {
       try {
-        await api("/api/auth/logout", { method: "POST", body: JSON.stringify({}) });
+        let response = await fetch(apiPath("api/auth/logout"), {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({ refreshToken: refreshToken ?? undefined }),
+        });
+        if (response.status === 401) {
+          await refreshAccessToken();
+          accessToken = getAccess();
+          refreshToken = getRefresh();
+          if (accessToken && refreshToken) {
+            response = await fetch(apiPath("api/auth/logout"), {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${accessToken}`,
+              },
+              body: JSON.stringify({ refreshToken }),
+            });
+          }
+        }
       } catch {
         /* logout best-effort — даже если backend упал, локально чистим */
       }
     }
-    clearAllTokens();
-    setUser(null);
-    setView("auth");
+    const remaining = activeAccountId ? removeStoredAccount(activeAccountId) : [];
+    setAccounts(remaining);
+    const next = remaining[0] ? activateStoredAccount(remaining[0].id) : null;
+    if (next) {
+      setUser(next.user);
+      setView("app");
+    } else {
+      clearAllTokens();
+      setUser(null);
+      setView("auth");
+    }
     bumpSocketRev();
-  }, [bumpSocketRev]);
+  }, [bumpSocketRev, user?.id]);
 
-  return { view, user, error, login, register, logout, socketRev, bumpSocketRev, clearError };
+  const switchAccount = useCallback(async (accountId: string): Promise<boolean> => {
+    if (accountId === user?.id) return true;
+    const previousId = user?.id ?? getActiveAccountId();
+    const next = activateStoredAccount(accountId);
+    if (!next) return false;
+    setError(null);
+    try {
+      const data = await apiJson<{ user: PublicUser | null }>("/api/auth/me");
+      if (!data.user || data.user.id !== accountId) throw new Error("Сессия аккаунта истекла");
+      setUser(data.user);
+      setAccounts(updateStoredAccountUser(data.user));
+      setView("app");
+      bumpSocketRev();
+      return true;
+    } catch (cause) {
+      removeStoredAccount(accountId);
+      if (previousId) activateStoredAccount(previousId);
+      setAccounts(listStoredAccounts());
+      setError(cause instanceof Error ? cause.message : "Не удалось переключить аккаунт");
+      return false;
+    }
+  }, [bumpSocketRev, user?.id]);
+
+  const forgetAccount = useCallback(async (accountId: string) => {
+    if (accountId === user?.id) {
+      await logout();
+      return;
+    }
+    setAccounts(removeStoredAccount(accountId));
+  }, [logout, user?.id]);
+
+  return {
+    view,
+    user,
+    error,
+    login,
+    register,
+    logout,
+    accounts,
+    switchAccount,
+    forgetAccount,
+    socketRev,
+    bumpSocketRev,
+    clearError,
+  };
 }

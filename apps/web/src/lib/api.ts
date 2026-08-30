@@ -14,6 +14,7 @@
  */
 
 import { clearAllTokens, getAccess, getRefresh, setTokenPair } from "./storage";
+import { updateActiveStoredTokens } from "./accountVault";
 
 /** Префиксует path значением BASE_URL. Caller передаёт `api/auth/login` без leading `/`. */
 export function apiPath(path: string): string {
@@ -74,6 +75,7 @@ export async function refreshAccessToken(): Promise<string | null> {
         return null;
       }
       setTokenPair(access, data.refreshToken);
+      updateActiveStoredTokens(access, data.refreshToken);
       notifyRefresh();
       return access;
     } finally {

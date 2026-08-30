@@ -85,6 +85,19 @@ export async function deleteRefreshByRaw(raw: string) {
   await db.refreshToken.deleteMany({ where: { tokenHash: h } });
 }
 
+/**
+ * Revoke one refresh session only when it belongs to the authenticated user.
+ * The compound filter is intentional: a leaked/guessed token for another
+ * account must never let the caller terminate somebody else's session.
+ */
+export async function deleteRefreshByRawForUser(raw: string, userId: string) {
+  const h = hashToken(raw);
+  const result = await db.refreshToken.deleteMany({
+    where: { tokenHash: h, userId },
+  });
+  return result.count;
+}
+
 export async function deleteAllUserRefresh(userId: string) {
   await db.refreshToken.deleteMany({ where: { userId } });
 }
