@@ -7,6 +7,7 @@ import sharp from "sharp";
 import { db } from "../db.js";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
 import { broadcastActivityChange, broadcastStatusChange, isOnline } from "../presence.js";
+import { registerAppearanceRoutes } from "./appearance.js";
 
 const updateProfileBody = z.object({
   displayName: z.string().min(1).max(64).optional(),
@@ -383,6 +384,7 @@ export function publicViewedProfile(
 }
 
 export async function registerUserRoutes(app: FastifyInstance) {
+  await registerAppearanceRoutes(app);
   app.get(
     "/api/users/me/profile",
     { onRequest: [requireJwt] },

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { EclipseUiIcon, type EclipseUiIconName } from "../icons/EclipseUiIcon";
 
 export type SettingsViewId =
@@ -57,7 +57,7 @@ export const SETTINGS_GROUPS: NavGroup[] = [
       { id: "activity-status", label: "Кастомный статус", icon: "orbit" },
       { id: "notifications-push", label: "Уведомления и звук", icon: "notifications" },
       { id: "notifications-quiet", label: "Тихие часы", icon: "notifications" },
-      { id: "appearance", label: "Тема и интерфейс", icon: "settings" },
+      { id: "appearance", label: "Оформление", icon: "settings" },
     ],
   },
   {
@@ -94,6 +94,7 @@ export function isSettingsViewId(value: string | null): value is SettingsViewId 
 }
 
 export function SettingsTreeNav({ active, installAvailable, onSelect, onLogout }: Props) {
+  const navRef = useRef<HTMLElement>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(() => {
     const defaults = new Set(["Дополнительно"]);
     if (typeof localStorage === "undefined") return defaults;
@@ -126,6 +127,19 @@ export function SettingsTreeNav({ active, installAvailable, onSelect, onLogout }
     });
   }, [active]);
 
+  useEffect(() => {
+    let frame = 0;
+    const revealActive = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        navRef.current?.querySelector<HTMLElement>('[aria-current="page"]')?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "instant" });
+      });
+    };
+    revealActive();
+    window.addEventListener("resize", revealActive);
+    return () => { cancelAnimationFrame(frame); window.removeEventListener("resize", revealActive); };
+  }, [active, collapsed]);
+
   const toggleGroup = (label: string) => {
     setCollapsed((prev) => {
       const next = new Set(prev);
@@ -141,7 +155,7 @@ export function SettingsTreeNav({ active, installAvailable, onSelect, onLogout }
   };
 
   return (
-    <aside className="ec-settings-tree-nav" aria-label="Разделы настроек">
+    <aside ref={navRef} className="ec-settings-tree-nav" aria-label="Разделы настроек">
       {visibleGroups(installAvailable).map((group) => (
         <section
           key={group.label}

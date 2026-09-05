@@ -36,7 +36,8 @@ test("optional live completion failure forces the effective Chat canary to zero"
     script,
     /upsert_env_value "ECLIPSE_AI_HUB_CANARY_PERCENT" "\$CANARY_PERCENT"/,
   );
-  assert.match(deploy, /configure fail-closed canary/);
+  // Gateway provisioning remains available only as a separately scoped operation.
+  assert.doesNotMatch(deploy, /bash .*sync-ai-gateway\.sh|node .*configure-office-ingest\.mjs/);
 });
 
 test("strict live completion mode is validated and remains fatal", async () => {

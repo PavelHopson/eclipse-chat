@@ -22,8 +22,9 @@ if [[ ! -d "$SRC_DIR" ]]; then
     exit 1
 fi
 
-for src in "$SRC_DIR"/*.conf; do
-    [[ -f "$src" ]] || continue
+for name in eclipse-chat-server.conf; do
+    src="$SRC_DIR/$name"
+    [[ -f "$src" ]] || { echo "Missing Chat supervisor config: $name"; exit 1; }
     name=$(basename "$src")
     target="$TARGET_DIR/$name"
 
@@ -44,5 +45,5 @@ fi
 
 echo "→ supervisorctl reread + update..."
 sudo supervisorctl reread
-sudo supervisorctl update
+sudo supervisorctl update eclipse-chat-server
 echo "✓ supervisor synced"

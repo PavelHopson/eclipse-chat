@@ -1,0 +1,17 @@
+/* Loaded with AppShell, before a saved palette is applied (not with lazy settings). */
+html[data-ec-palette="custom"] { color-scheme: dark; accent-color: var(--ec-accent); }
+html[data-ec-palette="custom"] .ec-workspace-v2 {
+  --ec-ws-rail: var(--ec-surface-1);
+  --ec-ws-canvas: var(--ec-bg);
+  --ec-ws-sidebar: var(--ec-surface-1);
+  --ec-ws-panel: var(--ec-surface-2);
+  --ec-ws-raised: var(--ec-surface-3);
+  --ec-ws-line: var(--ec-border-default);
+  --ec-ws-line-strong: var(--ec-border-emphasis);
+  --ec-ws-text: var(--ec-text);
+  --ec-ws-muted: var(--ec-text-muted);
+  --ec-ws-dim: var(--ec-text-dim);
+}
+html[data-ec-palette="custom"] .ec-btn--primary:not(.ec-btn--danger) { background: var(--ec-accent) !important; color: var(--ec-on-accent) !important; }
+html[data-ec-palette="custom"] .ec-voice-room--refined,
+html[data-ec-palette="custom"] .ec-media-workbench { --ec-accent-text: var(--ec-on-secondary); --ec-on-accent: var(--ec-on-secondary); }

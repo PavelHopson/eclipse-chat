@@ -125,16 +125,12 @@ describe("production Office ingest provisioning", () => {
     expect(await readFile(envPath, "utf8")).toBe('JWT_SECRET="test-only"\n');
   });
 
-  it("keeps the GitHub secret out of argv and binds only environment-scoped values", async () => {
+  it("routine Chat releases never provision Office keys or receive their secrets", async () => {
     const workflow = await readFile(workflowPath, "utf8");
     const deploy = await readFile(deployPath, "utf8");
-    expect(workflow).toContain("secrets.OFFICE_INGEST_SENTINEL_20260824_SECRET");
-    expect(workflow).toContain("vars.OFFICE_INGEST_SENTINEL_WORKSPACE_ID");
-    expect(workflow).toContain("vars.OFFICE_INGEST_SENTINEL_ENABLED");
-    expect(deploy).toContain('node "$SCRIPT_DIR/configure-office-ingest.mjs" "$CHAT_ENV"');
-    expect(deploy.indexOf('cp -p -- "$CHAT_ENV" "$CHAT_ENV_PREVIOUS"')).toBeLessThan(
-      deploy.indexOf('node "$SCRIPT_DIR/configure-office-ingest.mjs" "$CHAT_ENV"'),
-    );
-    expect(`${workflow}\n${deploy}`).not.toMatch(/configure-office-ingest\.mjs[^\n]*OFFICE_INGEST_SENTINEL_SECRET/u);
+    expect(workflow).not.toContain("OFFICE_INGEST_SENTINEL");
+    expect(deploy).not.toContain("configure-office-ingest.mjs");
+    expect(deploy).not.toMatch(/(?:cp|chown|chmod).*\$CHAT_ENV/u);
+    expect(deploy).toContain('sudo -u www-data test -r "$CHAT_ENV"');
   });
 });

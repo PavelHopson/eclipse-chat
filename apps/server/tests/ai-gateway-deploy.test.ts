@@ -38,11 +38,11 @@ describe("AI gateway production deployment", () => {
     expect(gatewaySync).not.toContain("set -x");
   });
 
-  it("restores the previous Chat environment when an activated deploy fails", () => {
-    expect(deployOrchestrator).toContain("CHAT_ENV_PREVIOUS=");
-    expect(deployOrchestrator).toContain("CHAT_ENV_BACKED_UP=1");
-    expect(deployOrchestrator).toContain('cp -p -- "$CHAT_ENV_PREVIOUS" "$CHAT_ENV"');
-    expect(deployOrchestrator).toContain('bash "$SCRIPT_DIR/sync-ai-gateway.sh"');
+  it("routine Chat releases preserve gateway configuration without redeploying it", () => {
+    expect(deployOrchestrator).not.toContain("CHAT_ENV_PREVIOUS=");
+    expect(deployOrchestrator).not.toContain("sync-ai-gateway.sh");
+    expect(deployOrchestrator).not.toMatch(/(?:cp|chown|chmod).*\$CHAT_ENV/u);
+    expect(deployOrchestrator).toContain("trap rollback_activated_build EXIT");
   });
 
   it("supports a bounded canary rollback with deterministic provider smoke", () => {

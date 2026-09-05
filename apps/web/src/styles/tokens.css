@@ -17,9 +17,9 @@
  *   — Motion быстрый (--ec-dur-fast 120ms / base 180ms); ambient-петли
  *     только осмысленно (live / AI / бренд-марка), не на chrome.
  *
- * Две темы, обе обязательны: VOID (тёмная, тут) и SOLAR (светлая —
- * оверрайды в effects.css, html[data-ec-theme="solar"]). Любой новый
- * surface-токен/класс обязан иметь SOLAR-вариант.
+ * 2026-09-05: продукт использует только тёмную OBSIDIAN-основу.
+ * Личная HEX-палитра overrides через lib/appearance.ts. Старые SOLAR
+ * селекторы остаются неактивными для совместимости, переключателя нет.
  *
  * Per-server brand-color override: AppShell инжектит
  * `:root { --ec-accent: hsl(X Y% Z%) }` когда у активного сервера задан

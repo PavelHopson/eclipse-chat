@@ -1,8 +1,10 @@
-import { ThemeToggle } from "../../ThemeToggle";
+import { PaletteEditor } from "../PaletteEditor";
+import type { AppearanceController } from "../../../hooks/useAppearance";
 import { InteractionPreferences } from "../../InteractionPreferences";
 import type { Density } from "../../../hooks/useDensity";
 
 type Props = {
+  appearance?: AppearanceController;
   density: Density;
   onDensity: (density: Density) => void;
   focusEnabled: boolean;
@@ -15,23 +17,17 @@ const DENSITY_OPTIONS: Array<{ id: Density; label: string }> = [
   { id: "tactical", label: "Тактика" },
 ];
 
-export function AppearanceSection({ density, onDensity, focusEnabled, onFocusEnabled }: Props) {
+export function AppearanceSection({ appearance, density, onDensity, focusEnabled, onFocusEnabled }: Props) {
   return (
     <div className="ec-settings-section">
       <header className="ec-settings-section__hero ec-holo-edge">
         <span className="ec-settings-section__eyebrow">Внешний вид</span>
-        <h2>Тема, плотность, фокус</h2>
-        <p>Локальные настройки интерфейса для этого устройства.</p>
+        <h2>Оформление</h2>
+        <p>Личные цвета для вашего профиля. Плотность и эффекты настраиваются для этого устройства.</p>
       </header>
 
+      {appearance && <PaletteEditor appearance={appearance} />}
       <InteractionPreferences />
-      <section className="ec-settings-card">
-        <div className="ec-settings-card__body">
-          <strong>Тема</strong>
-          <span className="ec-settings-muted">OBSIDIAN (OLED-чёрная) и SOLAR (светлая) — переключаются сразу.</span>
-        </div>
-        <ThemeToggle />
-      </section>
 
       <section className="ec-settings-card ec-settings-card--stack">
         <div className="ec-settings-card__row">

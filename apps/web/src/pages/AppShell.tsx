@@ -85,7 +85,7 @@ import { ServerSwitcher } from "../components/ServerSwitcher";
 import { ServerRail } from "../components/ServerRail";
 import { BottomNav, type BottomTab } from "../components/BottomNav";
 import { SinceLastVisitBanner } from "../components/SinceLastVisitBanner";
-import { ThemeToggle } from "../components/ThemeToggle";
+import { useAppearance } from "../hooks/useAppearance";
 import { EmptyState } from "../components/EmptyState";
 import { ServerNavBar, type ServerView } from "../components/server/ServerNavBar";
 import { IsolationConfirmDialog } from "../components/server/IsolationConfirmDialog";
@@ -211,53 +211,7 @@ export function AppShell({
     canCreateServer,
   } = useServers(true);
 
-  /**
-   * Per-server brand-color injection.
-   * Когда активен сервер с `brandColor` (HSL "200 80% 60%") — инжектим
-   * `:root { --ec-accent: hsl(X) }` через document.documentElement.style.
-   * Cleanup при unmount/change на default tokens.css value.
-   */
-  useEffect(() => {
-    const c = activeServer?.brandColor;
-    const root = document.documentElement;
-    if (c && /^\d{1,3}\s+\d{1,3}%\s+\d{1,3}%$/.test(c.trim())) {
-      const hsl = c.trim();
-      root.style.setProperty("--ec-accent", `hsl(${hsl})`);
-      // hover чуть светлее (+6% lightness — best-effort regex)
-      const m = hsl.match(/^(\d+)\s+(\d+)%\s+(\d+)%$/);
-      if (m) {
-        const h = Number(m[1]);
-        const s = Number(m[2]);
-        const l = Math.min(95, Number(m[3]) + 6);
-        root.style.setProperty("--ec-accent-hover", `hsl(${h} ${s}% ${l}%)`);
-        root.style.setProperty(
-          "--ec-accent-soft",
-          `hsl(${h} ${s}% ${m[3]}% / 0.14)`,
-        );
-        root.style.setProperty(
-          "--ec-border-accent",
-          `hsl(${h} ${s}% ${m[3]}% / 0.55)`,
-        );
-        root.style.setProperty(
-          "--ec-accent-glow",
-          `0 0 0 1px hsl(${h} ${s}% ${m[3]}% / 0.45), 0 0 22px -2px hsl(${h} ${s}% ${m[3]}% / 0.42)`,
-        );
-      }
-    } else {
-      root.style.removeProperty("--ec-accent");
-      root.style.removeProperty("--ec-accent-hover");
-      root.style.removeProperty("--ec-accent-soft");
-      root.style.removeProperty("--ec-border-accent");
-      root.style.removeProperty("--ec-accent-glow");
-    }
-    return () => {
-      root.style.removeProperty("--ec-accent");
-      root.style.removeProperty("--ec-accent-hover");
-      root.style.removeProperty("--ec-accent-soft");
-      root.style.removeProperty("--ec-border-accent");
-      root.style.removeProperty("--ec-accent-glow");
-    };
-  }, [activeServer?.brandColor]);
+  const appearance = useAppearance(user.id, activeServer?.brandColor);
 
   const {
     channels,
@@ -3132,6 +3086,7 @@ export function AppShell({
 
       {showProfile && profile && (
         <SettingsPanel
+          appearance={appearance}
           key={settingsInitialView ?? "remembered"}
           initialViewId={settingsInitialView}
           profile={profile}
@@ -3256,8 +3211,17 @@ export function AppShell({
           onForgetAccount={(accountId) => void onForgetAccount(accountId)}
           onAddAccount={() => setAddAccountOpen(true)}
           onClose={() => setStatusAnchor(null)}
-          themeSlot={<ThemeToggle />}
           tools={[
+            {
+              key: "appearance",
+              label: "Оформление",
+              hint: "Личные цвета интерфейса",
+              icon: <EclipseUiIcon name="settings" size={14} />,
+              onClick: () => {
+                setSettingsInitialView("appearance");
+                setShowProfile(true);
+              },
+            },
             ...(user.isPlatformOwner === true
               ? [
                   {

@@ -9,18 +9,19 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "../..");
 const source = path => readFileSync(join(root, path), "utf8");
 const css = source("apps/web/src/styles/workspace-polish.css");
 
-test("production release backs up both documented databases before checkout mutation", () => {
+test("production release backs up only the verified Chat database before checkout mutation", () => {
   const workflow = source(".github/workflows/deploy-prod.yml");
   const deploy = workflow.slice(workflow.indexOf("- name: Deploy via SSH"));
   const backupStart = deploy.indexOf("Pre-deploy verified database backups");
   const backupEnd = deploy.indexOf('echo "==> Pre-pull');
   assert.ok(backupStart > 0 && backupStart < backupEnd);
   const backup = deploy.slice(backupStart, backupEnd);
-  for (const guard of ['set -euo pipefail', 'umask 077', 'set -o noclobber', 'readlink -f /var/www/eclipse-chat', 'backup_root=/var/backups/eclipse-chat', 'mktemp -d', 'for database in eclipse_chat star_crm_prod; do', 'pg_dump --format=custom --no-owner --no-acl', 'pg_restore --list', '/var/www/app.star-crm.ru/backend/.env', '/etc/star-crm-backup.env', '^DB_DATABASE=', '^PGDATABASE=']) {
+  for (const guard of ['set -euo pipefail', 'umask 077', 'set -o noclobber', 'readlink -f /var/www/eclipse-chat', 'backup_root=/var/backups/eclipse-chat', 'mktemp -d', 'for database in eclipse_chat; do', 'pg_dump --format=custom --no-owner --no-acl', 'pg_restore --list', 'readManagedEnvironment', 'decodeURIComponent(target.pathname) !== "/eclipse_chat"']) {
     assert.ok(backup.includes(guard), guard);
   }
   assert.doesNotMatch(backup, /rm -|find .*delete|DROP DATABASE|CREATE DATABASE/);
   assert.doesNotMatch(backup, /for database in eclipse_chat star_crm;|PGPASSWORD|DB_PASSWORD|source .*\.env/);
+  assert.doesNotMatch(backup, /star_crm|star-crm-backup|app\.star-crm\.ru\/backend/);
   assert.match(workflow, /environment: production/);
   assert.match(workflow, /UI and release contracts/);
 });

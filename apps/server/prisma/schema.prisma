@@ -13,10 +13,18 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+/// Private interface palette, never included in a public user profile.
+model UserAppearance {
+  userId  String @id
+  palette String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
 /// Пользователь — реальный человек. После v0.10 появится Bot, и Member
 /// получит поле `type` (HUMAN | BOT) — но пока Member привязан только
 /// к User.
 model User {
+  appearance             UserAppearance?
   id                     String     @id @default(cuid())
   email                  String     @unique
   passwordHash           String

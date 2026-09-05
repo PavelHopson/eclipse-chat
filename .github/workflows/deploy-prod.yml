@@ -72,7 +72,7 @@ jobs:
         run: npm test --workspace=@eclipse-chat/server
 
       - name: UI and release contracts
-        run: node --test deploy/scripts/ui-shell-contract.test.mjs deploy/scripts/workspace-polish.test.mjs deploy/scripts/ui-unification.test.mjs deploy/scripts/task-flow.test.mjs deploy/scripts/conversation-flow.test.mjs deploy/scripts/workspace-navigation.test.mjs deploy/scripts/voice-room-ui.test.mjs deploy/scripts/workspace-interactions.test.mjs deploy/scripts/media-workbench.test.mjs deploy/scripts/managed-environment.test.mjs
+        run: node --test deploy/scripts/appearance.test.mjs deploy/scripts/release-scope.test.mjs deploy/scripts/dependency-security.test.mjs deploy/scripts/ui-shell-contract.test.mjs deploy/scripts/workspace-polish.test.mjs deploy/scripts/ui-unification.test.mjs deploy/scripts/task-flow.test.mjs deploy/scripts/conversation-flow.test.mjs deploy/scripts/workspace-navigation.test.mjs deploy/scripts/voice-room-ui.test.mjs deploy/scripts/workspace-interactions.test.mjs deploy/scripts/media-workbench.test.mjs deploy/scripts/managed-environment.test.mjs
 
       - name: Production build (server + web)
         run: npm run build
@@ -131,7 +131,7 @@ jobs:
           username: ${{ secrets.DEPLOY_USER_PROD }}
           key: ${{ secrets.SSH_PRIVATE_KEY_PROD }}
           command_timeout: 15m
-          envs: ECLIPSE_RELEASE_SHA,OFFICE_INGEST_SENTINEL_ENABLED,OFFICE_INGEST_SENTINEL_SECRET,OFFICE_INGEST_SENTINEL_KEY_ID,OFFICE_INGEST_SENTINEL_PRODUCER_ID,OFFICE_INGEST_SENTINEL_WORKSPACE_ID
+          envs: ECLIPSE_RELEASE_SHA
           script: |
             set -e
             cd /var/www/eclipse-chat
@@ -151,14 +151,27 @@ jobs:
               env_parent=$(dirname "$env_parent")
             done
             echo "Verified root-owned, non-writable environment parent chain"
-            # Confirm the targets against both production app and backup configuration.
-            grep -Eq "^DB_CONNECTION=['\"]?pgsql['\"]?[[:space:]]*$" /var/www/app.star-crm.ru/backend/.env
-            grep -Eq "^DB_HOST=['\"]?127[.]0[.]0[.]1['\"]?[[:space:]]*$" /var/www/app.star-crm.ru/backend/.env
-            grep -Eq "^DB_PORT=['\"]?5432['\"]?[[:space:]]*$" /var/www/app.star-crm.ru/backend/.env
-            grep -Eq "^DB_DATABASE=['\"]?star_crm_prod['\"]?[[:space:]]*$" /var/www/app.star-crm.ru/backend/.env
-            grep -Eq "^PGHOST=['\"]?127[.]0[.]0[.]1['\"]?[[:space:]]*$" /etc/star-crm-backup.env
-            grep -Eq "^PGPORT=['\"]?5432['\"]?[[:space:]]*$" /etc/star-crm-backup.env
-            grep -Eq "^PGDATABASE=['\"]?star_crm_prod['\"]?[[:space:]]*$" /etc/star-crm-backup.env
+            # Verify only Chat's configured target; never print connection credentials.
+            node --input-type=module <<'ECLIPSE_VERIFY_DATABASE'
+            import { createRequire } from "node:module";
+            import { readManagedEnvironment } from "/var/www/eclipse-chat/deploy/scripts/managed-environment.mjs";
+            const require = createRequire("/var/www/eclipse-chat/apps/server/package.json");
+            try {
+              const { original } = await readManagedEnvironment(
+                "/var/www/eclipse-chat/apps/server/.env", 256 * 1024,
+                () => { throw new Error("Unsafe environment"); },
+              );
+              const target = new URL(require("dotenv").parse(original).DATABASE_URL);
+              if (!["postgres:", "postgresql:"].includes(target.protocol)
+                || !["localhost", "127.0.0.1", "[::1]"].includes(target.hostname)
+                || (target.port && target.port !== "5432")
+                || decodeURIComponent(target.pathname) !== "/eclipse_chat") throw new Error("Wrong target");
+              console.log("Verified Eclipse Chat database target");
+            } catch {
+              console.error("Refusing backup: Eclipse Chat database target verification failed");
+              process.exitCode = 1;
+            }
+            ECLIPSE_VERIFY_DATABASE
             backup_root=/var/backups/eclipse-chat
             if [[ -e "$backup_root" && "$(readlink -f "$backup_root")" != "$backup_root" ]]; then
               echo "Refusing unexpected backup path" >&2
@@ -169,10 +182,10 @@ jobs:
             install -d -m 0700 -o root -g root "$backup_root"
             test "$(readlink -f "$backup_root")" = "$backup_root"
             free_kb=$(df -Pk "$backup_root" | awk 'NR==2 {print $4}')
-            database_bytes=$(sudo -u postgres psql -Atqc "SELECT COALESCE(SUM(pg_database_size(oid)),0) FROM pg_database WHERE datname IN ('eclipse_chat','star_crm_prod')")
+            database_bytes=$(sudo -u postgres psql --dbname=eclipse_chat -Atqc "SELECT pg_database_size(current_database())")
             test "$free_kb" -ge "$((database_bytes / 1024 * 2 + 1048576))"
             backup_dir=$(mktemp -d "$backup_root/release-$(date -u +%Y%m%dT%H%M%SZ)-XXXXXX")
-            for database in eclipse_chat star_crm_prod; do
+            for database in eclipse_chat; do
               sudo -u postgres pg_dump --format=custom --no-owner --no-acl "$database" > "$backup_dir/$database.dump"
               test "$(stat -c%s "$backup_dir/$database.dump")" -gt 100
               pg_restore --list "$backup_dir/$database.dump" > /dev/null
@@ -188,11 +201,6 @@ jobs:
             bash deploy/scripts/deploy.sh
         env:
           ECLIPSE_RELEASE_SHA: ${{ github.sha }}
-          OFFICE_INGEST_SENTINEL_ENABLED: ${{ vars.OFFICE_INGEST_SENTINEL_ENABLED }}
-          OFFICE_INGEST_SENTINEL_SECRET: ${{ secrets.OFFICE_INGEST_SENTINEL_20260824_SECRET }}
-          OFFICE_INGEST_SENTINEL_KEY_ID: ${{ vars.OFFICE_INGEST_SENTINEL_KEY_ID }}
-          OFFICE_INGEST_SENTINEL_PRODUCER_ID: ${{ vars.OFFICE_INGEST_SENTINEL_PRODUCER_ID }}
-          OFFICE_INGEST_SENTINEL_WORKSPACE_ID: ${{ vars.OFFICE_INGEST_SENTINEL_WORKSPACE_ID }}
 
       # --- Post-deploy: independent smoke от CI runner (не из prod),
       #     чтобы убедиться что внешний пользователь видит работающий сервис ---

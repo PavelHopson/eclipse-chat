@@ -32,9 +32,10 @@ fi
 # Убеждаемся что target exists
 sudo mkdir -p "$NGINX_TARGET_DIR"
 
-# Цикл по всем .conf файлам в репо
-for src in "$NGINX_SRC_DIR"/*.conf; do
-    [[ -f "$src" ]] || continue
+# Explicit Chat-owned snippets only; never manage other products' configuration.
+for name in eclipse-chat.conf eclipse-chat-livekit.conf; do
+    src="$NGINX_SRC_DIR/$name"
+    [[ -f "$src" ]] || { echo "Missing Chat nginx snippet: $name"; exit 1; }
     name=$(basename "$src")
     target="$NGINX_TARGET_DIR/$name"
 
@@ -80,5 +81,4 @@ echo "→ Reloading nginx..."
 sudo systemctl reload nginx
 echo "✓ nginx synced and reloaded"
 
-# Чистим старые backups (старше 30 дней) чтобы не мусорить
-sudo find "$NGINX_TARGET_DIR" -maxdepth 1 -name '*.bak.*' -mtime +30 -delete 2>/dev/null || true
+# Backup retention is a separate maintenance operation, never part of a release.

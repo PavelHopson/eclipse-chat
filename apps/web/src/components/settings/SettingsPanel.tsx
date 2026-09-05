@@ -14,6 +14,7 @@ import { AccountProfileSection } from "./categories/AccountProfileSection";
 import { AccountSecuritySection } from "./categories/AccountSecuritySection";
 import { ActivitySection } from "./categories/ActivitySection";
 import { AppearanceSection } from "./categories/AppearanceSection";
+import type { AppearanceController } from "../../hooks/useAppearance";
 import { HotkeysSection } from "./categories/HotkeysSection";
 import { InstallSection } from "./categories/InstallSection";
 import { IntegrationsSection } from "./categories/IntegrationsSection";
@@ -39,6 +40,7 @@ const ACTIVITY_EMOJI_PRESETS = [
 ];
 
 type Props = {
+  appearance?: AppearanceController;
   initialViewId?: SettingsViewId;
   profile: Profile;
   busy: boolean;
@@ -132,6 +134,7 @@ function placeholderFor(view: SettingsViewId) {
 }
 
 export function SettingsPanel({
+  appearance,
   initialViewId,
   profile,
   busy,
@@ -449,6 +452,7 @@ export function SettingsPanel({
     if (active === "appearance") {
       return (
         <AppearanceSection
+          appearance={appearance}
           density={density}
           onDensity={setDensity}
           focusEnabled={focusDim.enabled}

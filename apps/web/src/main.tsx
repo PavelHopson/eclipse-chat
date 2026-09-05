@@ -3,6 +3,8 @@ import { createRoot } from "react-dom/client";
 import { App } from "./App";
 import "./index.css";
 
+document.documentElement.dataset.ecTheme = "obsidian";
+
 const root = document.getElementById("root");
 if (root) {
   createRoot(root).render(
