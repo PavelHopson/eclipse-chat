@@ -1,27 +1,65 @@
-<div align="center">
+# Eclipse Chat
 
-# ⚡ Eclipse Chat
+![Eclipse Chat: Сообщение → Действие → Результат](docs/assets/repository-cover.svg)
 
-### Self-hosted communication core
+**Рабочее пространство.** Рабочее пространство для общения, AI-задач и проверяемых действий в экосистеме Eclipse.
 
-**Серверы · Каналы · Сообщения · Realtime · Operator-friendly**
+<!-- repository-guide:start -->
+[Интерфейс](#readme-interface) · [Первый запуск](#readme-start) · [Что внутри](#readme-map) · [Путеводитель](docs/repository-guide.md#start) · [Карта кода](docs/repository-guide.md#map) · [Проверки](docs/repository-guide.md#checks) · [Границы и права](docs/repository-guide.md#boundaries)
 
-[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://typescriptlang.org)
-[![React](https://img.shields.io/badge/React_19-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev)
-[![Fastify](https://img.shields.io/badge/Fastify-000000?style=for-the-badge&logo=fastify&logoColor=white)](https://fastify.dev)
-[![Socket.io](https://img.shields.io/badge/Socket.io-010101?style=for-the-badge&logo=socketdotio&logoColor=white)](https://socket.io)
-[![MIT](https://img.shields.io/badge/License-MIT-22c55e?style=for-the-badge)](LICENSE)
+<a id="readme-interface"></a>
 
-> **Статус:** 🟢 **LIVE in production** (с 12.05.2026)
-> → [`https://app.star-crm.ru/eclipse-chat/`](https://app.star-crm.ru/eclipse-chat/)
->
-> v0.4 (Server / Member / invite end-to-end) завершён + path-based deploy
-> на VPS Star CRM. Дальше — v0.5 UX polish (show password + user profile
-> с avatar). Полная карта в [ROADMAP.md](ROADMAP.md).
+## Интерфейс
 
-</div>
+![Eclipse Chat — Продуктовая страница Eclipse Chat с встроенным демонстрационным превью рабочего пространства.](docs/assets/ui/overview.png)
 
----
+**Продуктовая страница Eclipse Chat с встроенным демонстрационным превью рабочего пространства.**
+
+Локальный снимок от 8 сентября 2026: отдельный профиль браузера, без внешних API и пользовательских секретов. Это вид интерфейса, не подтверждение production-функций.
+
+<details>
+<summary><strong>Мобильный экран · 390 px</strong></summary>
+
+<img src="docs/assets/ui/mobile.png" alt="Eclipse Chat — мобильный экран" width="390">
+
+</details>
+
+[Открыть в полном размере](docs/assets/ui/overview.png) · [Данные снимка](docs/assets/ui/capture.json)
+
+<a id="readme-map"></a>
+
+## Проект за минуту
+
+- **[Клиент](<apps/web/src>)** — Сообщения, рабочие пространства и голосовой интерфейс.
+- **[Сервер](<apps/server/src>)** — API, события общения и серверные проверки доступа.
+- **[Данные](<apps/server/prisma>)** — Схема Prisma и миграции; отдельная база для разработки.
+
+<a id="readme-start"></a>
+
+## Начать локально
+
+**Среда:** Node.js и npm. **Источник:** [package.json](<package.json>).
+
+Из корня клонированного репозитория:
+
+```bash
+npm ci
+npm run dev:web
+```
+
+Это клиент. API запускается отдельно через `npm run dev:server`; сначала подготовьте локальную базу по разделу установки ниже.
+
+<details>
+<summary><strong>Перед первым запуском и изменением кода</strong></summary>
+
+- Команды сверены с исходниками 8 сентября 2026. Это инструкция, а не отметка об успешном запуске или текущем production.
+- Установка зависимостей может обращаться в registry и выполнять lifecycle scripts. Используйте отдельную рабочую среду и демонстрационные данные.
+- Проверяйте доступ к workspace, подтверждения действий и безопасное журналирование отдельно от оформления интерфейса.
+- [SECURITY.md](<SECURITY.md>)
+- [ROADMAP.md](<ROADMAP.md>)
+
+</details>
+<!-- repository-guide:end -->
 
 ## Что это
 

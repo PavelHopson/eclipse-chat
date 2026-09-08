@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "project": "eclipse-chat",
+  "capturedAt": "2026-09-08T09:49:23.907Z",
+  "caption": "Продуктовая страница Eclipse Chat с встроенным демонстрационным превью рабочего пространства.",
+  "method": "isolated-local-source-preview",
+  "context": "Local source preview, clean browser storage, reduced motion, no .env, external resources and backend APIs blocked. Repository content only, no additional fixtures or personal history; no production verification.",
+  "sourceHead": "2bf5f143d5271b39f9e40079a727bb3cf28374b9",
+  "sourceWorktreeDirty": true,
+  "entryFiles": [
+    {
+      "file": "apps/web/index.html",
+      "sha256": "48b183fe92fa4055772e6e6bc439dc730f3c7370a3fbdf79a56ce299b827bc43"
+    },
+    {
+      "file": "apps/web/package.json",
+      "sha256": "773721d5a12d4fb62ca4633b967d4f54a3d4949a640958d978673e4b81924f3d"
+    },
+    {
+      "file": "apps/web/src/main.tsx",
+      "sha256": "965e31b34c0393e60201b4b54049afc62c64cd6153b05d55d5c88fd5847985d2"
+    }
+  ],
+  "screenshots": [
+    {
+      "kind": "overview",
+      "file": "overview.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "37ece52ca8f275692755669c42780ce69639071db1c6a9bed1e2add2db897904",
+      "bytes": 322554
+    },
+    {
+      "kind": "mobile",
+      "file": "mobile.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "d3d1bc67f7b80613a11d3671388fc0f03011822d444698687bb1985da9dfc6da",
+      "bytes": 193057
+    }
+  ],
+  "review": "Desktop and selected mobile captures visually reviewed before documentation use."
+}
