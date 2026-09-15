@@ -293,12 +293,21 @@ else
 fi
 
 LIVEKIT_STATE=""
-for _ in $(seq 1 15); do
+for _ in $(seq 1 45); do
     LIVEKIT_STATE=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' eclipse-livekit 2>/dev/null || true)
     if [[ "$LIVEKIT_STATE" == "healthy" || "$LIVEKIT_STATE" == "running" ]]; then break; fi
     sleep 2
 done
-[[ "$LIVEKIT_STATE" == "healthy" || "$LIVEKIT_STATE" == "running" ]] || { echo "LiveKit did not recover after webhook config update"; exit 1; }
+if [[ "$LIVEKIT_STATE" != "healthy" && "$LIVEKIT_STATE" != "running" ]]; then
+    echo "LiveKit did not recover after webhook config update (state: ${LIVEKIT_STATE:-missing})" >&2
+    # Keep diagnostics bounded and redact token/secret-like values. This runs
+    # before the EXIT trap restores the previous config and container.
+    docker inspect -f 'status={{.State.Status}} health={{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}} exit={{.State.ExitCode}} error={{.State.Error}}' eclipse-livekit 2>/dev/null || true
+    docker logs --tail 60 eclipse-livekit 2>&1 \
+        | sed -E 's/[A-Za-z0-9_-]{24,}/[REDACTED]/g' \
+        | tail -n 60 || true
+    exit 1
+fi
 grep -Fqx "  api_key: $BACKEND_LIVEKIT_API_KEY" "$LIVEKIT_CONFIG" || { echo "LiveKit webhook signing key mismatch"; exit 1; }
 grep -Fqx "    - https://app.star-crm.ru/eclipse-chat/api/webhooks/livekit" "$LIVEKIT_CONFIG" || { echo "LiveKit webhook URL mismatch"; exit 1; }
 

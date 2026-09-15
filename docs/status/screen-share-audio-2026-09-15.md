@@ -26,8 +26,8 @@
 
 Dependencies were restored as a normal ignored directory copied from the verified
 `E:\projects\eclipse-chat\node_modules` tree. No junction or dependency file is
-tracked. The lockfile dependency graph is unchanged; its diff contains only the
-four release-version fields.
+tracked. The lockfile dependency graph was initially unchanged beyond the four
+release-version fields, then received the `sharp` security update below.
 
 - focused voice UI contracts: 29/29 passed;
 - focused server voice/access/proxy/webhook regressions: 39/39 passed across 5 files;
@@ -57,11 +57,21 @@ one High `sharp`/libheif advisory and a Moderate test-only Vitest advisory.
 High is fixed. Repeated main-worktree and isolated-lock Vitest 4.1.11 installs,
 plus direct registry metadata requests, were reset or stalled by the local
 network. The Moderate dev dependency remains explicit and does not meet the
-High/Critical release threshold. The next production workflow must supply the
-authoritative audit, Gitleaks, CodeQL, and CycloneDX evidence before release.
+High/Critical release threshold. CI `35012361207` and Security Gate
+`35012361134` subsequently passed, including the authoritative High/Critical
+audit, Gitleaks, CodeQL, security profile, and CycloneDX SBOM jobs.
+
+The first production attempt (`35012361142`) passed validation, then timed out
+after 30 seconds while the recreated LiveKit container was still inside its
+30-second healthcheck interval. Both the previous LiveKit config and application
+build were restored by the transactional rollback. The retry uses a five-second
+health interval with a five-second start period, retains twelve failed probes,
+and allows up to 90 seconds for readiness. A repeated failure emits only bounded,
+redacted container diagnostics before rolling back again.
 
 ## Manual and production gaps
 
 - Automated mocks cannot prove audible two-user microphone, screen-share audio, speaker routing, or the browser's native picker.
 - Required manual smoke: two authenticated Chrome/Edge clients; tab share with native audio enabled; video-only window share; mute/deafen; PTT/VAD; input/output switch; autoplay recovery; stop/restart; 320px layout.
-- Publication, GitHub Actions, production approval, `/api/version`, health/database, service-worker freshness, and browser smoke are pending.
+- Production activation, signed webhook/removal smoke, service-worker freshness,
+  and browser smoke remain pending after the safe rollback above.

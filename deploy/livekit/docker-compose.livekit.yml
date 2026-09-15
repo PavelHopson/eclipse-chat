@@ -31,9 +31,10 @@ services:
     # Healthcheck — простой ping на signal API
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:7880"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 5s
 
   redis:
     image: redis:7-alpine

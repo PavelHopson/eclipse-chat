@@ -7,6 +7,7 @@ const read = path => readFileSync(new URL("../../" + path, import.meta.url), "ut
 const workflow = read(".github/workflows/deploy-prod.yml");
 const deploy = read("deploy/scripts/deploy.sh");
 const livekitExample = read("deploy/livekit/livekit.yaml.example");
+const livekitCompose = read("deploy/livekit/docker-compose.livekit.yml");
 
 test("routine release keeps approval, verified backup and exact-SHA gates without other products", () => {
   assert.match(workflow, /environment: production/);
@@ -55,6 +56,11 @@ test("release enables signed LiveKit ACL webhooks transactionally", () => {
   assert.match(deploy, /rollback_livekit_webhook/);
   assert.match(deploy, /LIVEKIT_CONFIG_CHANGED=1/);
   assert.match(deploy, /docker compose -f docker-compose\.livekit\.yml up -d --force-recreate livekit/);
+  assert.match(livekitCompose, /interval: 5s[\s\S]*timeout: 3s[\s\S]*retries: 12[\s\S]*start_period: 5s/);
+  assert.match(deploy, /for _ in \$\(seq 1 45\)/);
+  assert.match(deploy, /docker inspect -f 'status=\{\{\.State\.Status\}\} health=/);
+  assert.match(deploy, /docker logs --tail 60 eclipse-livekit/);
+  assert.ok(deploy.includes("| sed -E 's/[A-Za-z0-9_-]{24,}/[REDACTED]/g'"));
   assert.match(deploy, /event: "participant_joined"/);
   assert.match(deploy, /sha256: createHash\("sha256"\)\.update\(body\)\.digest\("base64"\)/);
   assert.match(deploy, /response\.status !== 200 \|\| \(await response\.json\(\)\)\.action !== "removed"/);
