@@ -22,11 +22,9 @@ export function recordAudit(
     metadata?: Record<string, unknown>;
   },
 ): void {
-  const ip = opts.req
-    ? (opts.req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim() ||
-      opts.req.ip ||
-      null
-    : null;
+  // Fastify resolves this through the configured trusted-proxy boundary.
+  // Never parse caller-controlled forwarding headers again at the route layer.
+  const ip = opts.req?.ip || null;
   const ua = opts.req?.headers["user-agent"] || null;
   const metaStr = opts.metadata ? safeStringify(opts.metadata) : null;
 

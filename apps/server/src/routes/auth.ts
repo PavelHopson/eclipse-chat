@@ -157,18 +157,13 @@ async function issueSession(
 
 /**
  * v1.5.52 B2: extract session metadata из request — UA + origin IP.
- * UA trimmed app-layer'ом до 512 chars. IP extracted via X-Forwarded-For
- * (nginx ставит) либо fallback req.ip.
+ * UA trimmed app-layer'ом до 512 chars. Fastify resolves req.ip only through
+ * the configured trusted-proxy boundary.
  */
 function sessionMetaFromReq(req: FastifyRequest): { userAgent: string | null; ipAddress: string | null } {
   const ua = req.headers["user-agent"];
   const userAgent = typeof ua === "string" && ua.length > 0 ? ua : null;
-  const fwd = req.headers["x-forwarded-for"];
-  let ipAddress: string | null = null;
-  if (typeof fwd === "string") {
-    ipAddress = fwd.split(",")[0]?.trim() || null;
-  }
-  if (!ipAddress) ipAddress = req.ip || null;
+  const ipAddress = req.ip || null;
   return { userAgent, ipAddress };
 }
 

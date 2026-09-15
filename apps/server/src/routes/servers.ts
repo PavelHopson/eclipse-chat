@@ -26,6 +26,11 @@ import {
 } from "../realtime.js";
 import { addServerRoom, onlineUserIds, removeServerRoom } from "../presence.js";
 import { getSystemBotUserId } from "../lib/systemBot.js";
+import {
+  deleteLivekitRoomsForChannels,
+  removeLivekitUsersFromChannels,
+} from "../livekit.js";
+import { canAccessRealtimeChannel } from "../lib/realtimeAccess.js";
 import { inviteRejectReason, type InviteRejectReason } from "../lib/serverInvites.js";
 import { normalizeMessageTtl } from "../lib/disappearingMessages.js";
 import {
@@ -235,6 +240,80 @@ async function loadMember(
     ...member,
     role: isMemberRole(member.role) ? member.role : "MEMBER",
   };
+}
+
+export async function revokeLostVoiceAccess(
+  userId: string,
+  serverId: string,
+  previousRole: MemberRole,
+  nextRole: MemberRole | null,
+): Promise<number> {
+  const server = await db.server.findUnique({
+    where: { id: serverId },
+    select: {
+      mode: true,
+      channels: { where: { type: "VOICE" }, select: { id: true, internal: true } },
+    },
+  });
+  if (!server) return 0;
+  const revokedChannels = server.channels
+    .filter(channel =>
+      canAccessRealtimeChannel(server.mode, channel.internal, previousRole) &&
+      (nextRole === null || !canAccessRealtimeChannel(server.mode, channel.internal, nextRole)),
+    )
+    .map(channel => channel.id);
+  return removeLivekitUsersFromChannels([userId], revokedChannels);
+}
+
+export async function revokeLostVoiceChannelAccess(
+  serverId: string,
+  channelId: string,
+  previousMode: "ENGINEERING" | "CLIENT",
+  nextMode: "ENGINEERING" | "CLIENT",
+  previousInternal: boolean,
+  nextInternal: boolean,
+): Promise<number> {
+  const members = await db.member.findMany({
+    where: { serverId },
+    select: { userId: true, role: true },
+  });
+  const revokedUsers = members
+    .filter(member => {
+      const role = isMemberRole(member.role) ? member.role : "MEMBER";
+      return canAccessRealtimeChannel(previousMode, previousInternal, role) &&
+        !canAccessRealtimeChannel(nextMode, nextInternal, role);
+    })
+    .map(member => member.userId);
+  return removeLivekitUsersFromChannels(revokedUsers, [channelId]);
+}
+
+export async function revokeLostVoiceServerModeAccess(
+  serverId: string,
+  previousMode: "ENGINEERING" | "CLIENT",
+  nextMode: "ENGINEERING" | "CLIENT",
+): Promise<number> {
+  const server = await db.server.findUnique({
+    where: { id: serverId },
+    select: {
+      channels: { where: { type: "VOICE" }, select: { id: true, internal: true } },
+      members: { select: { userId: true, role: true } },
+    },
+  });
+  if (!server) return 0;
+  let removed = 0;
+  for (const channel of server.channels) {
+    const revokedUsers = server.members
+      .filter(member => {
+        const role = isMemberRole(member.role) ? member.role : "MEMBER";
+        return canAccessRealtimeChannel(previousMode, channel.internal, role) &&
+          !canAccessRealtimeChannel(nextMode, channel.internal, role);
+      })
+      .map(member => member.userId);
+    if (revokedUsers.length > 0) {
+      removed += await removeLivekitUsersFromChannels(revokedUsers, [channel.id]);
+    }
+  }
+  return removed;
 }
 
 function canManageTraining(role: string): boolean {
@@ -523,6 +602,16 @@ export async function registerServerRoutes(app: FastifyInstance) {
     if (member.role !== "OWNER") {
       return reply.status(403).send({ error: "Only owner can delete server" });
     }
+    const voiceChannels = await db.channel.findMany({
+      where: { serverId: id, type: "VOICE" },
+      select: { id: true },
+    });
+    try {
+      await deleteLivekitRoomsForChannels(voiceChannels.map(channel => channel.id));
+    } catch (err) {
+      req.log.error({ err, serverId: id }, "LiveKit server room deletion failed");
+      return reply.status(503).send({ error: "Voice room deletion unavailable" });
+    }
     await db.server.delete({ where: { id } });
     recordAudit("SERVER_DELETED", {
       userId: member.userId,
@@ -681,6 +770,15 @@ export async function registerServerRoutes(app: FastifyInstance) {
       return reply
         .status(403)
         .send({ error: "Owner cannot leave own server. Delete it or transfer ownership first." });
+    }
+    try {
+      await revokeLostVoiceAccess(member.userId, id, member.role, null);
+    } catch (err) {
+      req.log.error(
+        { err, serverId: id, userId: member.userId },
+        "LiveKit membership revocation failed",
+      );
+      return reply.status(503).send({ error: "Voice access revocation unavailable" });
     }
     await db.member.delete({ where: { id: member.id } });
     removeServerRoom(member.userId, id);
@@ -1618,7 +1716,13 @@ export async function registerServerRoutes(app: FastifyInstance) {
       }
       const channel = await db.channel.findUnique({
         where: { id: channelId },
-        select: { id: true, serverId: true, internal: true },
+        select: {
+          id: true,
+          serverId: true,
+          type: true,
+          internal: true,
+          server: { select: { mode: true } },
+        },
       });
       if (!channel) {
         return reply.status(404).send({ error: "Channel not found" });
@@ -1667,6 +1771,28 @@ export async function registerServerRoutes(app: FastifyInstance) {
       if (parsed.data.messageTtlSeconds !== undefined) {
         // null → выкл; иначе кламп [1м..30д].
         data.messageTtlSeconds = normalizeMessageTtl(parsed.data.messageTtlSeconds);
+      }
+      if (
+        channel.type === "VOICE" &&
+        parsed.data.internal !== undefined &&
+        channel.internal !== parsed.data.internal
+      ) {
+        try {
+          await revokeLostVoiceChannelAccess(
+            channel.serverId,
+            channel.id,
+            channel.server.mode,
+            channel.server.mode,
+            channel.internal,
+            parsed.data.internal,
+          );
+        } catch (err) {
+          req.log.error(
+            { err, serverId: channel.serverId, channelId: channel.id },
+            "LiveKit channel access revocation failed",
+          );
+          return reply.status(503).send({ error: "Voice access revocation unavailable" });
+        }
       }
       const updated = await db.channel.update({
         where: { id: channelId },
@@ -1819,7 +1945,7 @@ export async function registerServerRoutes(app: FastifyInstance) {
     }
     const channel = await db.channel.findUnique({
       where: { id: channelId },
-      select: { id: true, serverId: true, name: true, internal: true },
+      select: { id: true, serverId: true, name: true, type: true, internal: true },
     });
     if (!channel) {
       return reply.status(404).send({ error: "Channel not found" });
@@ -1838,6 +1964,17 @@ export async function registerServerRoutes(app: FastifyInstance) {
     }
     if (member.role !== "OWNER" && member.role !== "ADMIN") {
       return reply.status(403).send({ error: "Only OWNER or ADMIN can delete channels" });
+    }
+    if (channel.type === "VOICE") {
+      try {
+        await deleteLivekitRoomsForChannels([channelId]);
+      } catch (err) {
+        req.log.error(
+          { err, serverId: channel.serverId, channelId },
+          "LiveKit channel room deletion failed",
+        );
+        return reply.status(503).send({ error: "Voice room deletion unavailable" });
+      }
     }
     await db.channel.delete({ where: { id: channelId } });
     emitChannelDeleted(channel.serverId, {
@@ -1977,6 +2114,20 @@ export async function registerServerRoutes(app: FastifyInstance) {
       }
       if (target.role === "OWNER") {
         return reply.status(400).send({ error: "Cannot demote OWNER" });
+      }
+      try {
+        await revokeLostVoiceAccess(
+          targetUserId,
+          serverId,
+          isMemberRole(target.role) ? target.role : "MEMBER",
+          body.data.role,
+        );
+      } catch (err) {
+        req.log.error(
+          { err, serverId, userId: targetUserId },
+          "LiveKit role revocation failed",
+        );
+        return reply.status(503).send({ error: "Voice access revocation unavailable" });
       }
       const updated = await db.member.update({
         where: { id: target.id },
@@ -2127,6 +2278,18 @@ export async function registerServerRoutes(app: FastifyInstance) {
       const previousMode = parsed.data.mode === undefined
         ? null
         : await db.server.findUnique({ where: { id: serverId }, select: { mode: true } });
+      if (
+        previousMode &&
+        parsed.data.mode !== undefined &&
+        previousMode.mode !== parsed.data.mode
+      ) {
+        try {
+          await revokeLostVoiceServerModeAccess(serverId, previousMode.mode, parsed.data.mode);
+        } catch (err) {
+          req.log.error({ err, serverId }, "LiveKit workspace mode revocation failed");
+          return reply.status(503).send({ error: "Voice access revocation unavailable" });
+        }
+      }
       const updated = await db.server.update({
         where: { id: serverId },
         data,

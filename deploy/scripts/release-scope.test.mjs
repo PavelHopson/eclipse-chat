@@ -6,6 +6,7 @@ import test from "node:test";
 const read = path => readFileSync(new URL("../../" + path, import.meta.url), "utf8").replaceAll("\r\n", "\n");
 const workflow = read(".github/workflows/deploy-prod.yml");
 const deploy = read("deploy/scripts/deploy.sh");
+const livekitExample = read("deploy/livekit/livekit.yaml.example");
 
 test("routine release keeps approval, verified backup and exact-SHA gates without other products", () => {
   assert.match(workflow, /environment: production/);
@@ -18,6 +19,48 @@ test("routine release keeps approval, verified backup and exact-SHA gates withou
   assert.match(deploy, /rollback_activated_build/);
   assert.match(deploy, /SMOKE_EXPECTED_VERSION/);
   assert.doesNotMatch(deploy, /sync-ai-gateway|configure-office-ingest|OFFICE_INGEST_SENTINEL|ch(?:mod|own).*CHAT_ENV|cp .*CHAT_ENV/);
+});
+
+test("v1.7.74 skips migration only after verifying the exact previous production diff", () => {
+  assert.match(workflow, /envs: ECLIPSE_RELEASE_SHA,ECLIPSE_SKIP_DB_MIGRATION/);
+  assert.match(workflow, /ECLIPSE_SKIP_DB_MIGRATION: "1"/);
+  assert.match(deploy, /JSON\.parse\(fs\.readFileSync\("release\.json", "utf8"\)\)\.commit/);
+  assert.match(deploy, /git merge-base --is-ancestor "\$PREVIOUS_RELEASE_SHA" "\$ECLIPSE_RELEASE_SHA"/);
+  assert.match(deploy, /git diff --quiet "\$PREVIOUS_RELEASE_SHA" "\$ECLIPSE_RELEASE_SHA" -- \\\n+        apps\/server\/prisma\/schema\.prisma apps\/server\/prisma\/migrations/);
+  assert.ok(deploy.indexOf("Refusing migration skip") < deploy.indexOf("Skipping prisma migrate deploy"));
+  assert.match(deploy, /ECLIPSE_SKIP_DB_MIGRATION must be 0 or 1/);
+});
+
+test("failed deployments preserve the last successful release SHA for the next migration gate", () => {
+  const previousRead = deploy.indexOf('fs.readFileSync("release.json", "utf8")');
+  const migration = deploy.indexOf("npx prisma migrate deploy");
+  const smoke = deploy.indexOf('SMOKE_EXPECTED_VERSION="$EXPECTED_VERSION"');
+  const metadataWrite = deploy.indexOf('cat > "$RELEASE_METADATA_NEXT"');
+  const metadataCommit = deploy.indexOf('mv -f -- "$RELEASE_METADATA_NEXT" "$DEPLOY_PATH/release.json"');
+  const activationCommitted = deploy.indexOf("BUILD_ACTIVATED=0", metadataCommit);
+  assert.ok(previousRead >= 0 && previousRead < migration);
+  assert.ok(migration < smoke && smoke < metadataWrite);
+  assert.ok(metadataWrite < metadataCommit && metadataCommit < activationCommitted);
+  assert.match(deploy, /trap finish_deploy EXIT/);
+  assert.match(deploy, /rm -f -- "\$RELEASE_METADATA_NEXT"/);
+  assert.equal((deploy.match(/> "\$RELEASE_METADATA_NEXT"/g) ?? []).length, 1);
+});
+
+test("release enables signed LiveKit ACL webhooks transactionally", () => {
+  const webhookUrl = "https://app.star-crm.ru/eclipse-chat/api/webhooks/livekit";
+  const webhookActivation = deploy.indexOf("configure and verify signed LiveKit webhooks");
+  const signedSmoke = deploy.indexOf('const response = await fetch("' + webhookUrl);
+  const metadataCommit = deploy.indexOf('mv -f -- "$RELEASE_METADATA_NEXT" "$DEPLOY_PATH/release.json"');
+  assert.match(livekitExample, /webhook:\n  api_key: APIxxxxxxxxxxxxxxxxx\n  urls:\n    - https:\/\/app\.star-crm\.ru\/eclipse-chat\/api\/webhooks\/livekit/);
+  assert.match(deploy, /rollback_livekit_webhook/);
+  assert.match(deploy, /LIVEKIT_CONFIG_CHANGED=1/);
+  assert.match(deploy, /docker compose -f docker-compose\.livekit\.yml up -d --force-recreate livekit/);
+  assert.match(deploy, /event: "participant_joined"/);
+  assert.match(deploy, /sha256: createHash\("sha256"\)\.update\(body\)\.digest\("base64"\)/);
+  assert.match(deploy, /response\.status !== 200 \|\| \(await response\.json\(\)\)\.action !== "removed"/);
+  assert.ok(webhookActivation >= 0 && webhookActivation < signedSmoke);
+  assert.ok(signedSmoke < metadataCommit);
+  assert.ok(deploy.indexOf('rollback_livekit_webhook "$exit_code"') < deploy.indexOf('rollback_activated_build "$exit_code"'));
 });
 
 test("configuration sync can update only explicit Chat-owned targets and preserves backups", () => {

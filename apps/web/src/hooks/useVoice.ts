@@ -51,6 +51,8 @@ export type VoiceVisualTrack = {
   source: "camera" | "screen";
   isLocal: boolean;
   isMuted: boolean;
+  /** For screen shares, whether the browser supplied a separate audio track. */
+  hasAudio?: boolean;
   track: LocalVideoTrack | RemoteVideoTrack;
 };
 
@@ -70,7 +72,11 @@ const CAMERA_PUBLISH_OPTIONS = {
 };
 
 const SCREEN_SHARE_CAPTURE_OPTIONS = {
-  audio: false,
+  // The browser picker remains the consent boundary. Requesting audio only
+  // makes its native "share audio" option available; unsupported surfaces
+  // continue as video-only screen shares.
+  audio: true,
+  systemAudio: "include" as const,
   resolution: {
     width: 1920,
     height: 1080,
@@ -84,6 +90,121 @@ const SCREEN_SHARE_PUBLISH_OPTIONS = {
     maxFramerate: 30,
   },
 };
+
+function hasActiveScreenShareAudio(
+  publications: Iterable<{ source: string; isMuted: boolean }>,
+): boolean {
+  for (const publication of publications) {
+    if (publication.source === "screen_share_audio" && !publication.isMuted) return true;
+  }
+  return false;
+}
+
+type MicrophonePolicy = {
+  mode: "open" | "push_to_talk" | "voice_activity";
+  manuallyMuted: boolean;
+  deafened: boolean;
+  documentVisible: boolean;
+  pttActive: boolean;
+  vadActive: boolean;
+};
+
+function shouldTransmitMicrophone(policy: MicrophonePolicy): boolean {
+  if (policy.manuallyMuted || policy.deafened) return false;
+  if (policy.mode === "open") return true;
+  if (!policy.documentVisible) return false;
+  return policy.mode === "push_to_talk" ? policy.pttActive : policy.vadActive;
+}
+
+function shouldCaptureMicrophone(policy: MicrophonePolicy): boolean {
+  if (policy.manuallyMuted || policy.deafened) return false;
+  if (policy.mode === "open") return true;
+  if (!policy.documentVisible) return false;
+  return policy.mode === "voice_activity" || policy.pttActive;
+}
+
+function applyMicrophoneTrackPolicy(
+  room: RoomType,
+  enhancer: AudioEnhancerHandle | null,
+  policy: MicrophonePolicy,
+): { capture: boolean; transmit: boolean } {
+  const capture = shouldCaptureMicrophone(policy);
+  const transmit = shouldTransmitMicrophone(policy);
+  enhancer?.setInputEnabled(capture);
+  enhancer?.setOutputEnabled(transmit);
+  for (const publication of room.localParticipant.audioTrackPublications.values()) {
+    if (publication.source === "microphone") {
+      const track = publication.audioTrack?.mediaStreamTrack;
+      if (track) track.enabled = transmit;
+    }
+  }
+  return { capture, transmit };
+}
+
+function disableRawMicrophoneTracks(
+  room: RoomType,
+  enhancer: AudioEnhancerHandle | null = null,
+): void {
+  enhancer?.setInputEnabled(false);
+  enhancer?.setOutputEnabled(false);
+  for (const publication of room.localParticipant.audioTrackPublications.values()) {
+    if (publication.source === "microphone") {
+      const track = publication.audioTrack?.mediaStreamTrack;
+      if (track) track.enabled = false;
+    }
+  }
+}
+
+async function publishPreMutedMicrophone(
+  lk: typeof import("livekit-client"),
+  room: RoomType,
+  captureOptions: Parameters<typeof lk.createLocalAudioTrack>[0],
+  enhancerOptions: { micGain: number; gainOnly: boolean } | null,
+): Promise<{
+  publication: Awaited<ReturnType<RoomType["localParticipant"]["publishTrack"]>>;
+  enhancer: AudioEnhancerHandle | null;
+}> {
+  const captureTrack = await lk.createLocalAudioTrack(captureOptions);
+  // getUserMedia resolves with enabled=true. Close it synchronously before
+  // any publish/replace await so PTT/VAD/device races cannot leak a frame.
+  captureTrack.mediaStreamTrack.enabled = false;
+  let enhancer: AudioEnhancerHandle | null = null;
+  let publishTrack = captureTrack;
+
+  try {
+    if (enhancerOptions) {
+      enhancer = createAudioEnhancer(captureTrack.mediaStreamTrack, enhancerOptions);
+      enhancer.setInputEnabled(false);
+      enhancer.setOutputEnabled(false);
+      publishTrack = new lk.LocalAudioTrack(
+        enhancer.outputTrack,
+        captureTrack.constraints,
+        true,
+      );
+    }
+    const publication = await room.localParticipant.publishTrack(publishTrack, {
+      source: lk.Track.Source.Microphone,
+    });
+    return { publication, enhancer };
+  } catch (error) {
+    if (enhancer) enhancer.destroy();
+    else captureTrack.stop();
+    throw error;
+  }
+}
+
+const AUDIO_PLAYBACK_ERROR = "Браузер приостановил звук. Нажми «Включить звук», чтобы продолжить без переподключения.";
+const OUTPUT_DEVICE_ERROR = "Не удалось переключить вывод звука. Выбери другое устройство в настройках.";
+const OUTPUT_SINK_ERROR = "Не удалось применить устройство вывода звука.";
+const INPUT_DEVICE_ERROR = "Не удалось переключить микрофон. Выбери другое устройство в настройках.";
+
+function voiceDisconnectMessage(reason: unknown): string {
+  if (reason === 2) return "Этот профиль подключился к звонку с другого устройства. Подключись снова здесь, если это было неожиданно.";
+  if (reason === 4) return "Доступ к голосовой комнате отозван. Обнови страницу или обратись к администратору.";
+  if (reason === 5 || reason === 10) return "Голосовая комната закрыта. Выбери другую комнату.";
+  if (reason === 3) return "Голосовой сервер перезапускается. Подключись снова через несколько секунд.";
+  return "Связь прервалась и не восстановилась. Нажми «Войти», чтобы подключиться снова.";
+}
 
 type JoinResponse = {
   wsUrl: string;
@@ -177,13 +298,23 @@ export function useVoice(socket: Socket | null = null) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const micCaptureAllowedRef = useRef(true);
+  const micManuallyMutedRef = useRef(false);
+  const documentVisibleRef = useRef(
+    typeof document === "undefined" || document.visibilityState !== "hidden",
+  );
   const [isMicMuted, setIsMicMuted] = useState(false);
   const [isDeafened, setIsDeafened] = useState(false);
+  const deafenedRef = useRef(isDeafened);
+  deafenedRef.current = isDeafened;
   const [isCameraEnabled, setIsCameraEnabled] = useState(false);
   const [isScreenShareEnabled, setIsScreenShareEnabled] = useState(false);
+  const [isAudioPlaybackBlocked, setIsAudioPlaybackBlocked] = useState(false);
+  const [inputTrackRevision, setInputTrackRevision] = useState(0);
   const [visualTracks, setVisualTracks] = useState<VoiceVisualTrack[]>([]);
   /** True пока удерживается PTT hotkey. */
   const [pttActive, setPttActive] = useState(false);
+  const pttActiveRef = useRef(false);
+  const vadVoiceActiveRef = useRef(false);
   useVoiceFeedback({
     channelId: activeChannelId, connection: state, micMuted: isMicMuted, deafened: isDeafened,
     camera: isCameraEnabled, screen: isScreenShareEnabled,
@@ -192,6 +323,7 @@ export function useVoice(socket: Socket | null = null) {
 
   const roomRef = useRef<RoomType | null>(null);
   roomRef.current = room;
+  const intentionalDisconnectsRef = useRef(new WeakSet<RoomType>());
 
   /** identity-trackSid → entry. Используется для cleanup, volume, stats. */
   const remoteTracksRef = useRef<Map<string, RemoteTrackEntry>>(new Map());
@@ -202,6 +334,7 @@ export function useVoice(socket: Socket | null = null) {
    * DSP-цепочка дополнительно в режиме noiseSuppression="aggressive".
    */
   const enhancerRef = useRef<AudioEnhancerHandle | null>(null);
+  const microphoneApplyGenerationRef = useRef(0);
   const publishedMicConfigRef = useRef<{
     inputDeviceId: string | null;
     noiseSuppression: string;
@@ -271,16 +404,17 @@ export function useVoice(socket: Socket | null = null) {
     // LiveKit Room.switchActiveDevice
     void r
       .switchActiveDevice("audiooutput", targetId)
-      .catch(() => setError("Не удалось переключить вывод звука. Выбери другое устройство в настройках."));
+      .then(() => setError(current => current === OUTPUT_DEVICE_ERROR ? null : current))
+      .catch(() => setError(OUTPUT_DEVICE_ERROR));
     // setSinkId на каждом audio-элементе (для уже attached tracks)
     for (const entry of remoteTracksRef.current.values()) {
       const el = entry.audioEl as HTMLAudioElement & {
         setSinkId?: (id: string) => Promise<void>;
       };
       if (typeof el.setSinkId === "function") {
-        el.setSinkId(targetId).catch(() =>
-          setError("Не удалось применить устройство вывода звука."),
-        );
+        el.setSinkId(targetId)
+          .then(() => setError(current => current === OUTPUT_SINK_ERROR ? null : current))
+          .catch(() => setError(OUTPUT_SINK_ERROR));
       }
     }
   }, [settings.outputDeviceId]);
@@ -289,13 +423,42 @@ export function useVoice(socket: Socket | null = null) {
   // (LiveKit Room.switchActiveDevice + republish mic).
   useEffect(() => {
     const r = roomRef.current;
-    if (!r) return;
+    if (!r || !micCaptureAllowedRef.current) return;
     const targetId = settings.inputDeviceId ?? "default";
     if (targetId) {
-      void r
-        .switchActiveDevice("audioinput", targetId)
-        .catch(() => setError("Не удалось переключить микрофон. Выбери другое устройство в настройках."));
+      // Close the current raw track synchronously. The SDK switch can replace
+      // tracks asynchronously, so keep capture closed until the selected
+      // device is reacquired and the central policy has been applied.
+      disableRawMicrophoneTracks(r, enhancerRef.current);
+      micCaptureAllowedRef.current = false;
+      setIsMicMuted(true);
+      void (async () => {
+        try {
+          await r.localParticipant.setMicrophoneEnabled(false);
+          disableRawMicrophoneTracks(r, enhancerRef.current);
+          if (roomRef.current !== r) return;
+          await r.switchActiveDevice("audioinput", targetId);
+          if (
+            roomRef.current !== r ||
+            micManuallyMutedRef.current ||
+            deafenedRef.current
+          ) return;
+          micCaptureAllowedRef.current = true;
+          await applyLocalMicrophoneSettings(r);
+          if (roomRef.current !== r) return;
+          setError(current => current === INPUT_DEVICE_ERROR ? null : current);
+        } catch {
+          disableRawMicrophoneTracks(r, enhancerRef.current);
+          micManuallyMutedRef.current = true;
+          micCaptureAllowedRef.current = false;
+          setIsMicMuted(true);
+          setError(INPUT_DEVICE_ERROR);
+        }
+      })();
     }
+    // applyLocalMicrophoneSettings is stable; this effect intentionally runs
+    // only when the selected input changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings.inputDeviceId]);
 
   const refreshParticipants = useCallback(() => {
@@ -360,6 +523,7 @@ export function useVoice(socket: Socket | null = null) {
       identity: string,
       name: string,
       isLocal: boolean,
+      hasScreenAudio: boolean,
     ) => {
       if (publication.source !== "camera" && publication.source !== "screen_share") return;
       if (!publication.videoTrack) return;
@@ -373,10 +537,14 @@ export function useVoice(socket: Socket | null = null) {
         source: publication.source === "screen_share" ? "screen" : "camera",
         isLocal,
         isMuted: publication.isMuted,
+        hasAudio: publication.source === "screen_share" ? hasScreenAudio : undefined,
         track: publication.videoTrack,
       });
     };
 
+    const localHasScreenAudio = hasActiveScreenShareAudio(
+      r.localParticipant.audioTrackPublications.values(),
+    );
     for (const pub of r.localParticipant.videoTrackPublications.values()) {
       const profile = parseVoiceParticipantProfile(r.localParticipant);
       pushTrack(
@@ -384,17 +552,22 @@ export function useVoice(socket: Socket | null = null) {
         profile.userId,
         profile.displayName,
         true,
+        localHasScreenAudio,
       );
     }
 
     for (const participant of r.remoteParticipants.values()) {
       const profile = parseVoiceParticipantProfile(participant);
+      const remoteHasScreenAudio = hasActiveScreenShareAudio(
+        participant.audioTrackPublications.values(),
+      );
       for (const pub of participant.videoTrackPublications.values()) {
         pushTrack(
           pub as unknown as VideoPublicationLike,
           profile.userId,
           profile.displayName,
           false,
+          remoteHasScreenAudio,
         );
       }
     }
@@ -411,49 +584,77 @@ export function useVoice(socket: Socket | null = null) {
   }, []);
 
   const applyLocalMicrophoneSettings = useCallback(
-    async (r: RoomType, preserveMuted: boolean) => {
+    async (r: RoomType) => {
+      const generation = ++microphoneApplyGenerationRef.current;
+      const isCurrent = () =>
+        microphoneApplyGenerationRef.current === generation && roomRef.current === r;
       const constraints = noiseModeToConstraints(settingsRef.current.noiseSuppression);
       const inputId = settingsRef.current.inputDeviceId;
 
+      disableRawMicrophoneTracks(r, enhancerRef.current);
       if (enhancerRef.current) {
         enhancerRef.current.destroy();
         enhancerRef.current = null;
       }
 
-      await r.localParticipant.setMicrophoneEnabled(true, {
-        ...constraints,
-        ...(inputId ? { deviceId: { exact: inputId } } : {}),
-      });
-
       const lk = await import("livekit-client");
-      const micPub = r.localParticipant.getTrackPublication(lk.Track.Source.Microphone);
-      const localAudioTrack = micPub?.audioTrack;
-      const rawTrack = localAudioTrack?.mediaStreamTrack;
-      const needsEnhancer =
-        settingsRef.current.noiseSuppression === "aggressive" ||
-        settingsRef.current.micGain !== 1;
-      let enhancerMode: "none" | "gain" | "full" = "none";
-
-      if (needsEnhancer && localAudioTrack && rawTrack) {
-        try {
-          const enhancer = createAudioEnhancer(rawTrack, {
-            micGain: settingsRef.current.micGain,
-            gainOnly: settingsRef.current.noiseSuppression !== "aggressive",
-          });
-          await localAudioTrack.replaceTrack(enhancer.outputTrack);
-          enhancerRef.current = enhancer;
-          enhancerMode =
-            settingsRef.current.noiseSuppression === "aggressive" ? "full" : "gain";
-        } catch (enhErr) {
-          console.warn("Audio enhancer failed, using raw mic:", enhErr);
-        }
+      if (!isCurrent() || !micCaptureAllowedRef.current) return;
+      const previousTrack = r.localParticipant.getTrackPublication(lk.Track.Source.Microphone)
+        ?.audioTrack;
+      if (previousTrack) {
+        await r.localParticipant.unpublishTrack(previousTrack, true);
+        if (!isCurrent() || !micCaptureAllowedRef.current) return;
       }
 
-      const currentTrack =
-        r.localParticipant.getTrackPublication(lk.Track.Source.Microphone)?.audioTrack
-          ?.mediaStreamTrack ?? null;
-      if (currentTrack) {
-        currentTrack.enabled = !preserveMuted;
+      const needsEnhancer =
+        settingsRef.current.noiseSuppression === "aggressive" ||
+        settingsRef.current.micGain !== 1 ||
+        settingsRef.current.micActivationMode === "voice_activity";
+      const enhancerMode: "none" | "gain" | "full" = needsEnhancer
+        ? settingsRef.current.noiseSuppression === "aggressive" ? "full" : "gain"
+        : "none";
+      const result = await publishPreMutedMicrophone(
+        lk,
+        r,
+        {
+          ...constraints,
+          ...(inputId ? { deviceId: { exact: inputId } } : {}),
+        },
+        needsEnhancer
+          ? {
+              micGain: settingsRef.current.micGain,
+              gainOnly: settingsRef.current.noiseSuppression !== "aggressive",
+            }
+          : null,
+      );
+      if (!isCurrent() || !micCaptureAllowedRef.current) {
+        const publishedTrack = result.publication.audioTrack ?? result.publication.track;
+        if (publishedTrack) {
+          await r.localParticipant.unpublishTrack(publishedTrack, true).catch(() => undefined);
+        }
+        result.enhancer?.destroy();
+        return;
+      }
+      enhancerRef.current = result.enhancer;
+
+      const policy: MicrophonePolicy = {
+        mode: settingsRef.current.micActivationMode,
+        manuallyMuted: micManuallyMutedRef.current,
+        deafened: deafenedRef.current,
+        documentVisible: documentVisibleRef.current,
+        pttActive: pttActiveRef.current,
+        vadActive: vadVoiceActiveRef.current,
+      };
+      const { transmit } = applyMicrophoneTrackPolicy(r, enhancerRef.current, policy);
+
+      // Deafen/manual mute may have happened while permission or publishing was
+      // pending. Both tracks stayed disabled throughout; now revoke the SDK
+      // publication too so the server state also fails closed.
+      if (deafenedRef.current || micManuallyMutedRef.current) {
+        disableRawMicrophoneTracks(r, enhancerRef.current);
+        await r.localParticipant.setMicrophoneEnabled(false);
+        if (!isCurrent()) return;
+        micCaptureAllowedRef.current = false;
       }
 
       publishedMicConfigRef.current = {
@@ -461,7 +662,8 @@ export function useVoice(socket: Socket | null = null) {
         noiseSuppression: settingsRef.current.noiseSuppression,
         enhancerMode,
       };
-      setIsMicMuted(preserveMuted);
+      setIsMicMuted(!transmit);
+      setInputTrackRevision(revision => revision + 1);
       refreshParticipants();
     },
     [refreshParticipants],
@@ -475,7 +677,7 @@ export function useVoice(socket: Socket | null = null) {
     const nextEnhancerMode =
       settings.noiseSuppression === "aggressive"
         ? "full"
-        : settings.micGain !== 1
+        : settings.micGain !== 1 || settings.micActivationMode === "voice_activity"
         ? "gain"
         : "none";
     const needsRefresh =
@@ -487,7 +689,7 @@ export function useVoice(socket: Socket | null = null) {
     // can transmit before a later raw-track mute, even if the final UI says muted.
     if (!needsRefresh || isMicMuted || isDeafened || settings.micActivationMode === "push_to_talk") return;
 
-    void applyLocalMicrophoneSettings(r, false).catch((e) => {
+    void applyLocalMicrophoneSettings(r).catch((e) => {
       console.warn("applyLocalMicrophoneSettings failed", e);
       setError(e instanceof Error ? e.message : "Не удалось применить настройки микрофона");
     });
@@ -514,6 +716,10 @@ export function useVoice(socket: Socket | null = null) {
   socketRef.current = socket;
 
   const resetLocalVoiceState = useCallback(() => {
+    microphoneApplyGenerationRef.current += 1;
+    micCaptureAllowedRef.current = false;
+    pttActiveRef.current = false;
+    vadVoiceActiveRef.current = false;
     for (const entry of remoteTracksRef.current.values()) {
       try {
         entry.audioEl.pause();
@@ -535,11 +741,18 @@ export function useVoice(socket: Socket | null = null) {
     setVisualTracks([]);
     setIsCameraEnabled(false);
     setIsScreenShareEnabled(false);
+    setIsAudioPlaybackBlocked(false);
+    setPttActive(false);
   }, []);
 
   const leave = useCallback(async () => {
     const r = roomRef.current;
     if (!r) return;
+    intentionalDisconnectsRef.current.add(r);
+    microphoneApplyGenerationRef.current += 1;
+    micCaptureAllowedRef.current = false;
+    pttActiveRef.current = false;
+    vadVoiceActiveRef.current = false;
     // Сначала уведомляем backend — это снимет нас из voice:state у других
     // участников быстрее чем disconnect Socket.io.
     socketRef.current?.emit(SocketEvents.VoiceLeave);
@@ -570,6 +783,7 @@ export function useVoice(socket: Socket | null = null) {
     setVisualTracks([]);
     setIsCameraEnabled(false);
     setIsScreenShareEnabled(false);
+    setPttActive(false);
   }, []);
 
   const join = useCallback(
@@ -580,6 +794,7 @@ export function useVoice(socket: Socket | null = null) {
       if (roomRef.current) {
         await leave();
       }
+      micManuallyMutedRef.current = Boolean(options.muted);
       micCaptureAllowedRef.current = !options.muted;
       setIsMicMuted(Boolean(options.muted));
       setBusy(true);
@@ -645,10 +860,19 @@ export function useVoice(socket: Socket | null = null) {
           else if (s === lk.ConnectionState.Reconnecting) setState("reconnecting");
           else setState("disconnected");
         });
-        r.on(RoomEvent.Disconnected, () => {
+        r.on(RoomEvent.Disconnected, (reason) => {
           if (roomRef.current !== r) return;
+          const intentional = intentionalDisconnectsRef.current.has(r) || reason === 1;
           socketRef.current?.emit(SocketEvents.VoiceLeave);
           resetLocalVoiceState();
+          if (!intentional) setError(voiceDisconnectMessage(reason));
+        });
+        r.on(RoomEvent.AudioPlaybackStatusChanged, () => {
+          if (roomRef.current !== r) return;
+          setIsAudioPlaybackBlocked(!r.canPlaybackAudio);
+          for (const entry of remoteTracksRef.current.values()) {
+            applyRemoteAudioState(entry, deafenedRef.current);
+          }
         });
         r.on(RoomEvent.ParticipantConnected, onParticipantConnected);
         r.on(RoomEvent.ParticipantDisconnected, onParticipantDisconnected);
@@ -694,7 +918,7 @@ export function useVoice(socket: Socket | null = null) {
               participantIdentity: profile.userId,
             };
             remoteTracksRef.current.set(key, entry);
-            applyRemoteAudioState(entry, isDeafened);
+            applyRemoteAudioState(entry, deafenedRef.current);
           }
           refreshVisualTracks();
         });
@@ -717,6 +941,7 @@ export function useVoice(socket: Socket | null = null) {
         roomRef.current = r;
         setRoom(r);
         setActiveChannelId(channelId);
+        setIsAudioPlaybackBlocked(!r.canPlaybackAudio);
 
         socketRef.current?.emit(
           SocketEvents.VoiceJoin,
@@ -737,33 +962,21 @@ export function useVoice(socket: Socket | null = null) {
           }
         }
 
-        // Включаем mic c noise/echo/AGC constraints + selected input device.
-        // v1.1.75 — mic публикуется ВСЕГДА (в т.ч. в PTT-режиме): тогда
-        // enhancer-цепочка прикрепляется один раз на join и переживает
-        // PTT. PTT/VAD глушат трек через mediaStreamTrack.enabled, не
-        // пере-publish'ат (publication остаётся live — это важно для
-        // LiveKit; muted-состояние сразу выставляется ниже).
+        // Capture and any DSP output are disabled before LiveKit sees the
+        // track. The current open/PTT/VAD policy is applied only after publish.
         try {
-          const isPtt = settingsRef.current.micActivationMode === "push_to_talk";
-          if (!options.muted) await applyLocalMicrophoneSettings(r, isPtt);
+          if (!options.muted) await applyLocalMicrophoneSettings(r);
           else setIsMicMuted(true);
-
-          // v1.1.75 — PTT: трек опубликован (+ enhancer уже прикреплён),
-          // глушим его до первого нажатия клавиши через
-          // mediaStreamTrack.enabled=false. PTT-хендлеры дальше толкают
-          // тот же флаг — enhancer-цепочка переживает нажатия.
-          if (isPtt && !options.muted) {
-            try {
-              const lkm = await import("livekit-client");
-              const ms = r.localParticipant
-                .getTrackPublication(lkm.Track.Source.Microphone)
-                ?.audioTrack?.mediaStreamTrack;
-              if (ms) ms.enabled = false;
-            } catch {
-              /* no-op */
-            }
-          }
         } catch (micErr) {
+          micManuallyMutedRef.current = true;
+          micCaptureAllowedRef.current = false;
+          setIsMicMuted(true);
+          disableRawMicrophoneTracks(r, enhancerRef.current);
+          try {
+            await r.localParticipant.setMicrophoneEnabled(false);
+          } catch {
+            /* no active microphone publication */
+          }
           setError(
             micErr instanceof Error && micErr.name === "NotAllowedError"
               ? "Микрофон заблокирован браузером. Разреши доступ и перезайди."
@@ -811,30 +1024,73 @@ export function useVoice(socket: Socket | null = null) {
     const r = roomRef.current;
     if (!r) return;
     try {
-      const next = !isMicMuted;
-      if (!next && !micCaptureAllowedRef.current) {
+      const nextManualMute = !micManuallyMutedRef.current;
+      micManuallyMutedRef.current = nextManualMute;
+      if (nextManualMute || deafenedRef.current) {
+        micCaptureAllowedRef.current = false;
+        disableRawMicrophoneTracks(r, enhancerRef.current);
+        await r.localParticipant.setMicrophoneEnabled(false);
+        setIsMicMuted(true);
+      } else {
         micCaptureAllowedRef.current = true;
-        await applyLocalMicrophoneSettings(r, false);
-      } else await r.localParticipant.setMicrophoneEnabled(!next);
-      setIsMicMuted(next);
+        await applyLocalMicrophoneSettings(r);
+      }
+      setError(null);
       refreshParticipants();
     } catch (e) {
+      micManuallyMutedRef.current = true;
+      micCaptureAllowedRef.current = false;
+      setIsMicMuted(true);
+      disableRawMicrophoneTracks(r, enhancerRef.current);
+      try {
+        await r.localParticipant.setMicrophoneEnabled(false);
+      } catch {
+        /* best-effort fail-closed retry */
+      }
       setError(e instanceof Error ? e.message : "Не удалось переключить микрофон");
     }
-  }, [isMicMuted, refreshParticipants, applyLocalMicrophoneSettings]);
+  }, [refreshParticipants, applyLocalMicrophoneSettings]);
 
-  const toggleDeafen = useCallback(() => {
+  const toggleDeafen = useCallback(async () => {
     const next = !isDeafened;
+    deafenedRef.current = next;
     // Применяем mute к всем audio elements (учитывая per-participant mute из settings).
     for (const entry of remoteTracksRef.current.values()) {
       applyRemoteAudioState(entry, next);
     }
     setIsDeafened(next);
-    if (next && !isMicMuted) {
-      void toggleMic();
+    if (next) {
+      micCaptureAllowedRef.current = false;
+      pttActiveRef.current = false;
+      vadVoiceActiveRef.current = false;
+      setPttActive(false);
+      setIsMicMuted(true);
+      const activeRoom = roomRef.current;
+      if (activeRoom) {
+        disableRawMicrophoneTracks(activeRoom, enhancerRef.current);
+        try {
+          await activeRoom.localParticipant.setMicrophoneEnabled(false);
+        } catch (err) {
+          disableRawMicrophoneTracks(activeRoom, enhancerRef.current);
+          console.warn("Failed to stop microphone while deafening", err);
+        }
+      }
+    } else if (!micManuallyMutedRef.current) {
+      const activeRoom = roomRef.current;
+      if (activeRoom) {
+        try {
+          micCaptureAllowedRef.current = true;
+          await applyLocalMicrophoneSettings(activeRoom);
+        } catch (err) {
+          micManuallyMutedRef.current = true;
+          micCaptureAllowedRef.current = false;
+          setIsMicMuted(true);
+          setError(err instanceof Error ? err.message : "Не удалось включить микрофон");
+        }
+      }
     }
     refreshParticipants();
-  }, [isDeafened, isMicMuted, toggleMic, refreshParticipants, applyRemoteAudioState]);
+  }, [isDeafened, refreshParticipants, applyRemoteAudioState, applyLocalMicrophoneSettings]);
 
   const toggleCamera = useCallback(async () => {
     const r = roomRef.current;
@@ -846,6 +1102,7 @@ export function useVoice(socket: Socket | null = null) {
         CAMERA_CAPTURE_OPTIONS,
         CAMERA_PUBLISH_OPTIONS,
       );
+      setError(null);
       refreshVisualTracks();
     } catch (e) {
       setError(
@@ -863,11 +1120,24 @@ export function useVoice(socket: Socket | null = null) {
     if (!r) return;
     try {
       const next = !r.localParticipant.isScreenShareEnabled;
-      await r.localParticipant.setScreenShareEnabled(
+      const publication = await r.localParticipant.setScreenShareEnabled(
         next,
         SCREEN_SHARE_CAPTURE_OPTIONS,
         SCREEN_SHARE_PUBLISH_OPTIONS,
       );
+      if (roomRef.current !== r) {
+        // A browser permission prompt may resolve after leave/switch. Disable
+        // the whole LiveKit screen source so both video and its optional audio
+        // publication are released, then stop the returned track as fallback.
+        try {
+          await r.localParticipant.setScreenShareEnabled(false);
+        } catch {
+          /* best-effort stale cleanup */
+        }
+        publication?.track?.stop();
+        return;
+      }
+      setError(null);
       refreshVisualTracks();
     } catch (e) {
       setError(
@@ -880,6 +1150,26 @@ export function useVoice(socket: Socket | null = null) {
     }
   }, [refreshVisualTracks]);
 
+  const resumeAudioPlayback = useCallback(async () => {
+    const r = roomRef.current;
+    if (!r) return;
+    try {
+      await r.startAudio();
+      if (roomRef.current !== r) return;
+      for (const entry of remoteTracksRef.current.values()) {
+        applyRemoteAudioState(entry, deafenedRef.current);
+      }
+      setIsAudioPlaybackBlocked(!r.canPlaybackAudio);
+      if (r.canPlaybackAudio) {
+        setError(current => current === AUDIO_PLAYBACK_ERROR ? null : current);
+      }
+    } catch {
+      if (roomRef.current !== r) return;
+      setIsAudioPlaybackBlocked(true);
+      setError(AUDIO_PLAYBACK_ERROR);
+    }
+  }, [applyRemoteAudioState]);
+
   /**
    * Push-to-talk: глобально слушаем keydown/keyup. Активно только если
    * `settings.micActivationMode === 'push_to_talk'` И мы connected.
@@ -891,37 +1181,24 @@ export function useVoice(socket: Socket | null = null) {
     const key = settings.pttKey;
     let pressed = false;
 
-    // v1.1.75 — PTT толкает mediaStreamTrack.enabled опубликованного
-    // mic-трека (как VAD-gate), а НЕ setMicrophoneEnabled — последний
-    // пере-acquire'ил raw-трек на каждое нажатие и ронял enhancer-цепочку
-    // (mic gain + DSP). lk импортируем один раз для резолва публикации;
-    // пока не загрузился / трек недоступен — fallback на старый
-    // setMicrophoneEnabled (PTT не ломается, просто без enhancer).
-    let lkMod: typeof import("livekit-client") | null = null;
-    void import("livekit-client").then((m) => {
-      lkMod = m;
-    });
-
     const setMicLive = (live: boolean) => {
-      if (!live && !micCaptureAllowedRef.current) return;
-      if (live) micCaptureAllowedRef.current = true; // Explicit PTT press.
       const r = roomRef.current;
-      const ms =
-        lkMod && r
-          ? r.localParticipant
-              .getTrackPublication(lkMod.Track.Source.Microphone)
-              ?.audioTrack?.mediaStreamTrack ?? null
-          : null;
-      if (ms) {
-        ms.enabled = live;
-        setIsMicMuted(!live);
-        refreshParticipants();
-      } else if (r) {
-        // fallback — трек ещё не резолвится: старый путь.
-        void r.localParticipant.setMicrophoneEnabled(live).then(() => {
-          setIsMicMuted(!live);
-          refreshParticipants();
-        });
+      if (!r) return;
+      const gate = applyMicrophoneTrackPolicy(r, enhancerRef.current, {
+        mode: "push_to_talk",
+        manuallyMuted: micManuallyMutedRef.current,
+        deafened: deafenedRef.current,
+        documentVisible: documentVisibleRef.current,
+        pttActive: live,
+        vadActive: false,
+      });
+      if (gate.transmit) micCaptureAllowedRef.current = true;
+      const hasPublication = Array.from(r.localParticipant.audioTrackPublications.values())
+        .some(publication => publication.source === "microphone");
+      setIsMicMuted(!gate.transmit);
+      refreshParticipants();
+      if (gate.transmit && !hasPublication) {
+        setError("Микрофон недоступен. Проверь разрешение и войди в комнату снова.");
       }
     };
 
@@ -940,9 +1217,12 @@ export function useVoice(socket: Socket | null = null) {
       if (!isPttKey(e)) return;
       // Не активируем PTT когда юзер печатает в input/textarea.
       if (isTypingTarget(e.target)) return;
+      if (deafenedRef.current) return;
+      if (micManuallyMutedRef.current || !documentVisibleRef.current) return;
       if (e.repeat) return;
       if (pressed) return;
       pressed = true;
+      pttActiveRef.current = true;
       setPttActive(true);
       setMicLive(true);
       e.preventDefault();
@@ -952,6 +1232,7 @@ export function useVoice(socket: Socket | null = null) {
       if (!isPttKey(e)) return;
       if (!pressed) return;
       pressed = false;
+      pttActiveRef.current = false;
       setPttActive(false);
       setMicLive(false);
       e.preventDefault();
@@ -961,6 +1242,7 @@ export function useVoice(socket: Socket | null = null) {
       // Window lost focus — release mic если был зажат.
       if (pressed) {
         pressed = false;
+        pttActiveRef.current = false;
         setPttActive(false);
         setMicLive(false);
       }
@@ -970,11 +1252,42 @@ export function useVoice(socket: Socket | null = null) {
     window.addEventListener("keyup", onUp);
     window.addEventListener("blur", onBlur);
     return () => {
+      pttActiveRef.current = false;
+      if (pressed) setMicLive(false);
       window.removeEventListener("keydown", onDown);
       window.removeEventListener("keyup", onUp);
       window.removeEventListener("blur", onBlur);
     };
   }, [settings.micActivationMode, settings.pttKey, state, refreshParticipants]);
+
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      documentVisibleRef.current = document.visibilityState !== "hidden";
+      if (!documentVisibleRef.current) {
+        pttActiveRef.current = false;
+        vadVoiceActiveRef.current = false;
+        setPttActive(false);
+      }
+      // Rebind VAD when returning and invalidate any analyser bound to the old
+      // device. PTT/VAD close immediately while hidden; open-mic calls remain
+      // active so ordinary background conversations are not interrupted.
+      setInputTrackRevision(revision => revision + 1);
+      const activeRoom = roomRef.current;
+      if (!activeRoom) return;
+      const { transmit } = applyMicrophoneTrackPolicy(activeRoom, enhancerRef.current, {
+        mode: settingsRef.current.micActivationMode,
+        manuallyMuted: micManuallyMutedRef.current,
+        deafened: deafenedRef.current,
+        documentVisible: documentVisibleRef.current,
+        pttActive: pttActiveRef.current,
+        vadActive: vadVoiceActiveRef.current,
+      });
+      setIsMicMuted(!transmit);
+      refreshParticipants();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
+  }, [refreshParticipants]);
 
   // Когда mode меняется на запущенной сессии — синхронизируем mic state.
   // Open / VAD → mic enabled (VAD сам потом отключит через gate).
@@ -983,37 +1296,38 @@ export function useVoice(socket: Socket | null = null) {
     const r = roomRef.current;
     if (!r) return;
     if (state !== "connected") return;
-    const setPublishedTrackEnabled = async (enabled: boolean) => {
-      const lk = await import("livekit-client");
-      const ms = r.localParticipant.getTrackPublication(lk.Track.Source.Microphone)
-        ?.audioTrack?.mediaStreamTrack;
-      if (ms) {
-        ms.enabled = enabled;
-        setIsMicMuted(!enabled);
-        refreshParticipants();
-        return true;
-      }
-      return false;
+    const setPublishedTrackEnabled = (enabled: boolean) => {
+      const gate = applyMicrophoneTrackPolicy(r, enhancerRef.current, {
+        mode: enabled ? "open" : settingsRef.current.micActivationMode,
+        manuallyMuted: micManuallyMutedRef.current,
+        deafened: deafenedRef.current,
+        documentVisible: documentVisibleRef.current,
+        pttActive: false,
+        vadActive: false,
+      });
+      setIsMicMuted(!gate.transmit);
+      refreshParticipants();
+      return Array.from(r.localParticipant.audioTrackPublications.values())
+        .some(publication => publication.source === "microphone");
     };
-    if (settings.micActivationMode === "push_to_talk") {
-      if (!isMicMuted) {
-        void setPublishedTrackEnabled(false).then((ok) => {
-          if (!ok) {
-            void r.localParticipant.setMicrophoneEnabled(false).then(() => {
-              setIsMicMuted(true);
-              refreshParticipants();
-            });
-          }
+    pttActiveRef.current = false;
+    vadVoiceActiveRef.current = false;
+    setPttActive(false);
+    const captureAllowed =
+      !micManuallyMutedRef.current && !deafenedRef.current;
+    const shouldTransmit =
+      settings.micActivationMode === "open" && captureAllowed;
+    const hasPublication = setPublishedTrackEnabled(shouldTransmit);
+    const needsVadPipeline =
+      settings.micActivationMode === "voice_activity" && !enhancerRef.current;
+    if ((!hasPublication || needsVadPipeline) && captureAllowed && roomRef.current === r) {
+        micCaptureAllowedRef.current = true;
+        void applyLocalMicrophoneSettings(r).catch(err => {
+          micCaptureAllowedRef.current = false;
+          micManuallyMutedRef.current = true;
+          setIsMicMuted(true);
+          setError(err instanceof Error ? err.message : "Не удалось включить микрофон");
         });
-      }
-    } else {
-      if (isMicMuted && !isDeafened) {
-        void setPublishedTrackEnabled(true).then((ok) => {
-          if (!ok) {
-            void applyLocalMicrophoneSettings(r, false);
-          }
-        });
-      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings.micActivationMode]);
@@ -1022,18 +1336,18 @@ export function useVoice(socket: Socket | null = null) {
    * Voice Activity Detection gate.
    * Активен когда `micActivationMode === 'voice_activity'` и мы connected.
    *
-   * Подвешиваем Web Audio AnalyserNode к localParticipant.mic track'у,
-   * 50ms раз меряем peak amplitude. Если > threshold → mediaStreamTrack.enabled = true.
-   * Иначе false (тишина, не транслируем). enabled=false мгновенный, не вызывает
-   * unpublish — другие участники видят pub.isMuted=true (через WebRTC ontrackmute).
+   * Analyser reads a private raw input before the DSP/output gate. The raw input
+   * is never published; only the processed output can reach LiveKit. This lets
+   * VAD hear locally while the published track remains disabled.
    *
    * `mediaStreamTrack.enabled` toggle быстрее чем `setMicrophoneEnabled` — LiveKit
    * не делает heavy work (renegotiation), просто mute flag.
    */
-  const vadVoiceActiveRef = useRef(false);
   useEffect(() => {
     if (settings.micActivationMode !== "voice_activity") return;
     if (state !== "connected") return;
+    if (isDeafened) return;
+    if (micManuallyMutedRef.current || !documentVisibleRef.current) return;
     const r = roomRef.current;
     if (!r) return;
 
@@ -1041,6 +1355,9 @@ export function useVoice(socket: Socket | null = null) {
     let audioCtx: AudioContext | null = null;
     let analyser: AnalyserNode | null = null;
     let stream: MediaStream | null = null;
+    let boundInputTrack: MediaStreamTrack | null = null;
+    let boundPublishedTrack: MediaStreamTrack | null = null;
+    let boundEnhancer: AudioEnhancerHandle | null = null;
     let intervalId: number | null = null;
     let releaseTimer: number | null = null;
 
@@ -1049,10 +1366,27 @@ export function useVoice(socket: Socket | null = null) {
       const lk = await import("livekit-client");
       const pub = r.localParticipant.getTrackPublication(lk.Track.Source.Microphone);
       const track = pub?.audioTrack;
-      const msTrack = track?.mediaStreamTrack;
-      if (!msTrack || cancelled) return;
+      const publishedTrack = track?.mediaStreamTrack;
+      const enhancer = enhancerRef.current;
+      const inputTrack = enhancer?.inputTrack;
+      if (
+        !publishedTrack ||
+        !inputTrack ||
+        cancelled ||
+        deafenedRef.current ||
+        micManuallyMutedRef.current ||
+        !documentVisibleRef.current
+      ) return;
+      boundInputTrack = inputTrack;
+      boundPublishedTrack = publishedTrack;
+      boundEnhancer = enhancer;
+      const isBindingCurrent = () =>
+        roomRef.current === r &&
+        enhancerRef.current === boundEnhancer &&
+        r.localParticipant.getTrackPublication(lk.Track.Source.Microphone)
+          ?.audioTrack?.mediaStreamTrack === boundPublishedTrack;
 
-      stream = new MediaStream([msTrack]);
+      stream = new MediaStream([inputTrack]);
       const Ctx: typeof AudioContext =
         window.AudioContext ??
         (window as unknown as { webkitAudioContext: typeof AudioContext })
@@ -1069,6 +1403,28 @@ export function useVoice(socket: Socket | null = null) {
 
       const tick = () => {
         if (cancelled || !analyser) return;
+        if (!isBindingCurrent()) return;
+        if (
+          deafenedRef.current ||
+          micManuallyMutedRef.current ||
+          !documentVisibleRef.current
+        ) {
+          if (releaseTimer !== null) {
+            window.clearTimeout(releaseTimer);
+            releaseTimer = null;
+          }
+          vadVoiceActiveRef.current = false;
+          applyMicrophoneTrackPolicy(r, boundEnhancer, {
+            mode: "voice_activity",
+            manuallyMuted: micManuallyMutedRef.current,
+            deafened: deafenedRef.current,
+            documentVisible: documentVisibleRef.current,
+            pttActive: false,
+            vadActive: false,
+          });
+          setIsMicMuted(true);
+          return;
+        }
         analyser.getByteTimeDomainData(buf);
         let peak = 0;
         for (let i = 0; i < buf.length; i++) {
@@ -1085,16 +1441,30 @@ export function useVoice(socket: Socket | null = null) {
           }
           if (!vadVoiceActiveRef.current) {
             vadVoiceActiveRef.current = true;
-            msTrack.enabled = true;
-            setIsMicMuted(false);
+            const { transmit } = applyMicrophoneTrackPolicy(r, boundEnhancer, {
+              mode: "voice_activity",
+              manuallyMuted: micManuallyMutedRef.current,
+              deafened: deafenedRef.current,
+              documentVisible: documentVisibleRef.current,
+              pttActive: false,
+              vadActive: true,
+            });
+            setIsMicMuted(!transmit);
             refreshParticipants();
           }
         } else if (vadVoiceActiveRef.current && releaseTimer === null) {
           // Тишина — но даём hold-time перед закрытием gate
           releaseTimer = window.setTimeout(() => {
-            if (cancelled) return;
+            if (cancelled || !isBindingCurrent()) return;
             vadVoiceActiveRef.current = false;
-            msTrack.enabled = false;
+            applyMicrophoneTrackPolicy(r, boundEnhancer, {
+              mode: "voice_activity",
+              manuallyMuted: micManuallyMutedRef.current,
+              deafened: deafenedRef.current,
+              documentVisible: documentVisibleRef.current,
+              pttActive: false,
+              vadActive: false,
+            });
             setIsMicMuted(true);
             refreshParticipants();
             releaseTimer = null;
@@ -1103,8 +1473,15 @@ export function useVoice(socket: Socket | null = null) {
       };
 
       // Стартуем gate в closed-state — пользователь должен заговорить.
-      msTrack.enabled = false;
       vadVoiceActiveRef.current = false;
+      applyMicrophoneTrackPolicy(r, enhancer, {
+        mode: "voice_activity",
+        manuallyMuted: micManuallyMutedRef.current,
+        deafened: deafenedRef.current,
+        documentVisible: documentVisibleRef.current,
+        pttActive: false,
+        vadActive: false,
+      });
       setIsMicMuted(true);
 
       intervalId = window.setInterval(tick, 50);
@@ -1117,18 +1494,33 @@ export function useVoice(socket: Socket | null = null) {
       if (intervalId !== null) window.clearInterval(intervalId);
       if (releaseTimer !== null) window.clearTimeout(releaseTimer);
       if (audioCtx) void audioCtx.close().catch(() => undefined);
-      // Возвращаем track в always-on когда выходим из VAD режима
+      vadVoiceActiveRef.current = false;
+      // Never let an obsolete analyser reopen a replacement track. Only the
+      // currently published track receives the policy for the current mode.
       const cur = roomRef.current;
       if (cur && state === "connected") {
         void import("livekit-client").then((lk) => {
           const pub = cur.localParticipant.getTrackPublication(lk.Track.Source.Microphone);
           const ms = pub?.audioTrack?.mediaStreamTrack;
-          if (ms && !ms.enabled) ms.enabled = true;
+          if (
+            !ms ||
+            ms !== boundPublishedTrack ||
+            enhancerRef.current !== boundEnhancer ||
+            boundEnhancer?.inputTrack !== boundInputTrack
+          ) return;
+          const { transmit } = applyMicrophoneTrackPolicy(cur, boundEnhancer, {
+            mode: settingsRef.current.micActivationMode,
+            manuallyMuted: micManuallyMutedRef.current,
+            deafened: deafenedRef.current,
+            documentVisible: documentVisibleRef.current,
+            pttActive: pttActiveRef.current,
+            vadActive: false,
+          });
+          setIsMicMuted(!transmit);
         });
       }
-      vadVoiceActiveRef.current = false;
     };
-  }, [settings.micActivationMode, state, refreshParticipants]);
+  }, [settings.micActivationMode, settings.inputDeviceId, inputTrackRevision, state, isDeafened, refreshParticipants]);
 
   /**
    * AFK auto-disconnect. Если ты один в voice room более N минут — leave.
@@ -1284,6 +1676,7 @@ export function useVoice(socket: Socket | null = null) {
     isDeafened,
     isCameraEnabled,
     isScreenShareEnabled,
+    isAudioPlaybackBlocked,
     visualTracks,
     pttActive,
     join,
@@ -1292,6 +1685,7 @@ export function useVoice(socket: Socket | null = null) {
     toggleDeafen,
     toggleCamera,
     toggleScreenShare,
+    resumeAudioPlayback,
     // settings passthrough — для UI элементов
     settings,
     setInputDevice,

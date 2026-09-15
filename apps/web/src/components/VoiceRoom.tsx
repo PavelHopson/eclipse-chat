@@ -419,7 +419,7 @@ function VideoTrackTile({
        *  not fired). Большой avatar + имя + статус — user видит КТО шарит
        *  до того как первый frame отрендерился. Hide когда aspect loaded. */}
       {aspect == null && (
-        <div style={videoPlaceholder} aria-hidden>
+        <div style={videoPlaceholder} role="status" aria-live="polite">
           <Avatar url={avatar} name={visual.name} size={64} />
           <span
             style={{
@@ -441,7 +441,9 @@ function VideoTrackTile({
             }}
           >
             {isScreen ? <ScreenShareIcon size={12} /> : <CameraLensIcon size={12} />}
-            {isScreen ? "Демонстрация экрана · подключается…" : "Камера · подключается…"}
+            {isScreen
+              ? `Демонстрация экрана${visual.hasAudio ? " со звуком" : " без звука"} · подключается…`
+              : "Камера · подключается…"}
           </span>
         </div>
       )}
@@ -469,9 +471,10 @@ function VideoTrackTile({
             paddingLeft: 6,
             borderLeft: "1px solid hsl(0 0% 100% / 0.18)",
           }}
-          aria-label={isScreen ? "Демонстрация экрана" : "Камера"}
+          aria-label={isScreen ? `Демонстрация экрана ${visual.hasAudio ? "со звуком" : "без звука"}` : "Камера"}
         >
           {isScreen ? <ScreenShareIcon size={11} /> : <CameraLensIcon size={11} />}
+          {isScreen && <span>{visual.hasAudio ? "Со звуком" : "Без звука"}</span>}
         </span>
       </div>
       <div className="ec-vr-video-tile__fullscreen-head" aria-hidden={!isFullscreen}>
@@ -480,7 +483,9 @@ function VideoTrackTile({
           {visual.isLocal ? " · ты" : ""}
         </span>
         <span className="ec-vr-video-tile__fullscreen-source">
-          {isScreen ? "Демонстрация экрана" : "Камера"} · Esc для выхода
+          {isScreen
+            ? `Демонстрация экрана · ${visual.hasAudio ? "со звуком" : "без звука"}`
+            : "Камера"} · Esc для выхода
         </span>
       </div>
       <button
@@ -638,6 +643,7 @@ export function VoiceRoom({
 
   const screenTracks = roomVisualTracks.filter((t) => t.source === "screen");
   const cameraTracks = roomVisualTracks.filter((t) => t.source === "camera");
+  const localScreenAudio = screenTracks.find((track) => track.isLocal)?.hasAudio;
   const hasVisual = screenTracks.length > 0 || cameraTracks.length > 0;
 
   const speakingIdentities = new Set(roomParticipants.filter(person => person.isSpeaking && !person.isMicMuted).map(person => person.identity));
@@ -678,7 +684,16 @@ export function VoiceRoom({
         {v.settings.micActivationMode === "push_to_talk" && isJoinedHere && (
           <span className="ec-voice-room__ptt">Зажми {keyCodeToLabel(v.settings.pttKey)}, чтобы говорить</span>
         )}
-        {isJoinedHere && v.isScreenShareEnabled && <span className="ec-voice-sharing" role="status"><ScreenShareIcon size={14} aria-hidden />Экран в эфире</span>}
+        {isJoinedHere && v.isScreenShareEnabled && (
+          <span className="ec-voice-sharing" role="status">
+            <ScreenShareIcon size={14} aria-hidden />
+            {localScreenAudio === true
+              ? "Экран и звук в эфире"
+              : localScreenAudio === false
+                ? "Экран без звука"
+                : "Экран в эфире"}
+          </span>
+        )}
         {!hasVisual && isJoinedHere && <button type="button" className="ec-voice-density" aria-pressed={audioCompact}
           aria-label={audioCompact ? "Показать карточки участников" : "Компактный список участников"} onClick={() => selectAudioCompact(!audioCompact)}>
           {audioCompact ? <SquaresFourIcon size={15} aria-hidden /> : <RowsIcon size={15} aria-hidden />}
@@ -721,6 +736,15 @@ export function VoiceRoom({
       className={"ec-voice-room ec-voice-room--refined" + (hasVisual ? " ec-voice-room--visual" : " ec-voice-room--audio")}
     >
       {toolbarTarget ? createPortal(toolbar, toolbarTarget) : toolbar}
+
+      {isJoinedHere && v.isAudioPlaybackBlocked && (
+        <div className="ec-voice-playback-gate" role="alert">
+          <span>Браузер приостановил звук звонка.</span>
+          <button type="button" onClick={() => void v.resumeAudioPlayback()}>
+            Включить звук
+          </button>
+        </div>
+      )}
 
       {musicSession && (
         <section className="ec-voice-room__music" aria-label="Общий музыкальный плеер">

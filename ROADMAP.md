@@ -7,6 +7,22 @@
 
 **Текущая production-версия: v1.7.73** · code `a7a19b9` · verified 2026-09-05 через production API и UI.
 
+## v1.7.74 — Надёжность звонков и звук демонстрации (2026-09-15, локальный RC)
+
+- Chromium получает запрос на browser-consented audio и может показать штатный переключатель передачи звука; неподдерживаемые поверхности продолжают работать как video-only.
+- Ведущий и зрители видят фактическое состояние «Со звуком / Без звука» по отдельной LiveKit-публикации `screen_share_audio`.
+- Поздний результат browser permission после выхода или смены комнаты отключает весь устаревший screen source, включая необязательную аудиодорожку.
+- Все точные LiveKit-сессии участника немедленно удаляются из закрытых комнат при выходе, потере роли, смене режима/видимости; удаление channel/workspace завершает комнаты, а недоступный RoomService блокирует мутацию.
+- Повторное подключение по ранее выданному JWT проверяется подписанным `participant_joined` webhook: сервер сверяет exact raw-body digest, identity/metadata и текущий DB ACL, затем fail-closed удаляет запрещённую сессию. Deploy транзакционно включает webhook в self-hosted LiveKit и проверяет полный signed ACL/RoomService путь.
+- Voice token rate limit привязан к authenticated user, proxy chain не доверяет caller XFF, а неиспользуемый LiveKit data publish запрещён.
+- Единая fail-closed mic policy сохраняет ручной mute и согласует PTT/VAD/deafen со сменой устройства, visibility и rebinding трека; autoplay восстанавливается явным пользовательским действием.
+- Call dock работает на 320px с 44px touch targets, а загрузка визуального трека объявляется screen reader.
+- Deploy validate запускает профильные security contracts вместе с dependency audit, typecheck, tests и build; migration skip разрешён только после проверки пустого Prisma diff от записанного production SHA.
+- Версии root/web/server/lockfile/SW синхронизированы на 1.7.74; desktop и Android не менялись. Commit, push, deploy и migration не выполнялись.
+- Автоматические проверки зелёные: 123 root contracts, 474 server tests + 6 skipped, typecheck/build и 22 security contracts; реальный двухклиентский Chrome/Edge smoke со штатным picker и физическим выводом звука остаётся обязательным до production.
+
+Подробности и границы проверки: [screen-share audio RC](docs/status/screen-share-audio-2026-09-15.md).
+
 ## v1.7.73 — Личное оформление и изолированный выпуск (2026-09-05, production)
 
 - Только тёмная основа; персональная палитра из шести цветов с предпросмотром, отменой и сбросом. Приватное хранение по аккаунту, проверка контраста.

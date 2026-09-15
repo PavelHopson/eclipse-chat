@@ -66,8 +66,15 @@ else
   cp livekit.yaml.example livekit.yaml
   # Заменяем placeholder keys
   sed -i "s|APIxxxxxxxxxxxxxxxxx: secretxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx|${API_KEY}: ${API_SECRET}|" livekit.yaml
+  sed -i "s|api_key: APIxxxxxxxxxxxxxxxxx|api_key: ${API_KEY}|" livekit.yaml
+  chmod 600 livekit.yaml
   c_green "  livekit.yaml создан"
 fi
+
+# The config contains the API secret. Keep it root-owned and private even for
+# installations created before this hardening was added.
+chown root:root livekit.yaml
+chmod 600 livekit.yaml
 
 # --- 2. UFW открытие портов --------------------------------------------------
 c_blue "[2/10] UFW порты..."

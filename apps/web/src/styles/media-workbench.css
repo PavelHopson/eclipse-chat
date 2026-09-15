@@ -45,16 +45,16 @@
 /* Eclipse media workbench. Component-owned geometry; no global button resets. */
 .ec-voice-device-control { display: inline-flex; align-items: stretch; min-width: 0; border-radius: 7px; background: var(--ec-surface-2); }
 .ec-voice-device-control .ec-vr-ctrl { display: inline-flex; flex-direction: row; align-items: center; justify-content: center; gap: 6px; border-radius: 7px 0 0 7px !important; width: auto !important; padding: 0 9px !important; }
-.ec-voice-device-control__arrow { display: grid; place-items: center; width: 26px; border: 0; border-left: 1px solid var(--ec-border-subtle); border-radius: 0 7px 7px 0; background: transparent; color: var(--ec-text-muted); cursor: pointer; }
+.ec-voice-device-control__arrow { display: grid; place-items: center; width: 44px; min-height: 44px; border: 0; border-left: 1px solid var(--ec-border-subtle); border-radius: 0 7px 7px 0; background: transparent; color: var(--ec-text-muted); cursor: pointer; }
 .ec-voice-device-control__arrow:hover, .ec-voice-device-control__arrow[aria-expanded="true"] { color: var(--ec-accent-gold, #d4af37); background: var(--ec-accent-soft); }
 .ec-device-menu { padding: 8px; display: grid; gap: 14px; font-size: 13px; }
 .ec-device-menu label { display: grid; gap: 7px; color: var(--ec-text-muted); font-size: 12px; }
-.ec-device-menu select { width: 100%; min-width: 0; min-height: 42px; border: 1px solid var(--ec-border-default); border-radius: 6px; padding: 8px; color: var(--ec-text); background: var(--ec-surface-2); }
+.ec-device-menu select { width: 100%; min-width: 0; min-height: 44px; border: 1px solid var(--ec-border-default); border-radius: 6px; padding: 8px; color: var(--ec-text); background: var(--ec-surface-2); }
 .ec-device-menu p { margin: 0; color: var(--ec-text-muted); font-size: 12px; line-height: 1.5; }
 .ec-device-menu__actions { display: flex; flex-wrap: wrap; gap: 6px; }
-.ec-device-menu__actions button, .ec-voice-density { border: 0; background: transparent; color: var(--ec-text-muted); cursor: pointer; border-radius: 5px; padding: 6px 8px; font: inherit; font-size: 11px; }
+.ec-device-menu__actions button, .ec-voice-density { min-height: 44px; min-width: 44px; border: 0; background: transparent; color: var(--ec-text-muted); cursor: pointer; border-radius: 5px; padding: 6px 8px; font: inherit; font-size: 11px; }
 .ec-device-menu__actions button:hover, .ec-voice-density:hover { background: var(--ec-surface-3); color: var(--ec-text); }
-.ec-voice-density { display: inline-flex; align-items: center; gap: 5px; min-height: 32px; }
+.ec-voice-density { display: inline-flex; align-items: center; gap: 5px; }
 .ec-voice-room--audio[data-audio-density="compact"] .ec-voice-room__presence-grid { width: 100%; max-width: 360px; grid-template-columns: minmax(0, 1fr); gap: 6px; flex: 0 0 auto; min-height: 0; margin: auto; }
 .ec-voice-room--audio[data-audio-density="compact"] .ec-vr-presence-card {
   display: grid; grid-template-columns: 48px minmax(0, 1fr); column-gap: 12px; row-gap: 3px;
@@ -208,6 +208,8 @@
   html:not([data-ec-motion="quiet"]) .ec-player-state-icon { animation: ec-media-icon-in 180ms ease-out both; }
 }
 @media (max-width: 700px) {
+  .ec-voice-settings .ec-btn--sm,
+  .ec-voice-settings__mode { min-height: 44px !important; }
   .ec-video-player--refined { height: auto; min-height: 0; border-radius: 8px; }
   .ec-video-player--refined .ec-video-player__screen { aspect-ratio: var(--ec-media-ratio, 1.77778); max-height: 64dvh; }
   .ec-video-player--refined:fullscreen { height: 100dvh; }
@@ -231,7 +233,7 @@
   .ec-audio-player__tools input { width: 56px; }
   .ec-voice-device-control .ec-voice-control-label { display: none; }
   .ec-voice-device-control .ec-vr-ctrl { min-width: 38px !important; }
-  .ec-voice-device-control__arrow { width: 28px; }
+  .ec-voice-device-control__arrow { width: 44px; }
   .ec-voice-density span { display: none; }
   .ec-media-viewport__modes { top: 6px; right: 6px; }
   .ec-media-viewport__modes button { min-height: 34px; padding: 4px 7px; }

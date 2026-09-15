@@ -27,11 +27,17 @@
  */
 
 export type AudioEnhancerHandle = {
-  /** Processed MediaStreamTrack — передаётся в LiveKit `LocalAudioTrack.replaceTrack`. */
+  /** Raw getUserMedia track. It is never published and feeds the analyser/DSP. */
+  inputTrack: MediaStreamTrack;
+  /** Processed MediaStreamTrack — оборачивается в публикуемый LiveKit LocalAudioTrack. */
   outputTrack: MediaStreamTrack;
+  /** Gate local capture separately from the published output. */
+  setInputEnabled: (enabled: boolean) => void;
+  /** Gate the only track that is published to LiveKit. */
+  setOutputEnabled: (enabled: boolean) => void;
   /** Live-обновление mic gain (0..2). Без пересоздания цепочки. */
   setGain: (value: number) => void;
-  /** Cleanup — закрывает AudioContext. Вызывать на leave / смене устройства. */
+  /** Cleanup — останавливает оба tracks и закрывает AudioContext. */
   destroy: () => void;
 };
 
@@ -99,11 +105,22 @@ export function createAudioEnhancer(
   }
 
   return {
+    inputTrack,
     outputTrack,
+    setInputEnabled: (enabled: boolean) => {
+      inputTrack.enabled = enabled;
+    },
+    setOutputEnabled: (enabled: boolean) => {
+      outputTrack.enabled = enabled;
+    },
     setGain: (value: number) => {
       gain.gain.value = Math.max(0, Math.min(2, value));
     },
     destroy: () => {
+      inputTrack.enabled = false;
+      outputTrack.enabled = false;
+      inputTrack.stop();
+      outputTrack.stop();
       void ctx.close().catch(() => undefined);
     },
   };

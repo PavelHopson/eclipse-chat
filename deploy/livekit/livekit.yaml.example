@@ -29,6 +29,13 @@ keys:
   # ЗАМЕНИТЬ на сгенерированные пары
   APIxxxxxxxxxxxxxxxxx: secretxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
+# Re-authorize every new participant against Eclipse Chat's current database
+# ACL. Required because self-hosted LiveKit join JWTs cannot be revoked.
+webhook:
+  api_key: APIxxxxxxxxxxxxxxxxx
+  urls:
+    - https://app.star-crm.ru/eclipse-chat/api/webhooks/livekit
+
 # Logging
 logging:
   level: info

@@ -42,7 +42,8 @@ describe("AI gateway production deployment", () => {
     expect(deployOrchestrator).not.toContain("CHAT_ENV_PREVIOUS=");
     expect(deployOrchestrator).not.toContain("sync-ai-gateway.sh");
     expect(deployOrchestrator).not.toMatch(/(?:cp|chown|chmod).*\$CHAT_ENV/u);
-    expect(deployOrchestrator).toContain("trap rollback_activated_build EXIT");
+    expect(deployOrchestrator).toContain("trap finish_deploy EXIT");
+    expect(deployOrchestrator).toContain('rollback_activated_build "$exit_code"');
   });
 
   it("supports a bounded canary rollback with deterministic provider smoke", () => {

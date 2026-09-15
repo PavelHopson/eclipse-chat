@@ -47,6 +47,7 @@ import { registerBuilderReviewRoutes } from "./routes/builderReviews.js";
 import { registerSpecGateReviewRoutes } from "./routes/specGateReviews.js";
 import { registerAutomationAuditReviewRoutes } from "./routes/automationAuditReviews.js";
 import { registerVoiceRoutes } from "./routes/voice.js";
+import { registerLivekitWebhookRoutes } from "./routes/livekitWebhook.js";
 import { registerVoiceNoteRoutes } from "./routes/voiceNotes.js";
 import { setSocketIO } from "./realtime.js";
 import { registerSocketAuth } from "./auth/socketAuth.js";
@@ -78,7 +79,10 @@ if (!jwtSecret && process.env.NODE_ENV === "production") {
   throw new Error("JWT_SECRET is required in production");
 }
 
-const app = Fastify({ logger: true });
+// Production traffic reaches this process only through the loopback nginx
+// upstream. Trust that single hop so req.ip selects the rightmost untrusted
+// client address instead of a caller-controlled X-Forwarded-For prefix.
+const app = Fastify({ logger: true, trustProxy: "127.0.0.1" });
 registerSafeErrorHandler(app);
 
 const corsOrigin = process.env.CORS_ORIGIN ?? "http://localhost:5173";
@@ -121,12 +125,7 @@ await app.register(rateLimit, {
   max: 100,
   timeWindow: "1 minute",
   hook: "onRequest",
-  keyGenerator: (req) => {
-    // Используем X-Forwarded-For (nginx ставит) или fallback req.ip
-    const fwd = req.headers["x-forwarded-for"];
-    if (typeof fwd === "string") return fwd.split(",")[0]?.trim() || req.ip;
-    return req.ip;
-  },
+  keyGenerator: req => req.ip,
 });
 
 // v0.89 #26 phase 2: replace default JSON parser чтобы сохранять raw body.
@@ -149,6 +148,15 @@ app.addContentTypeParser(
     } catch (err) {
       done(err as Error, undefined);
     }
+  },
+);
+app.addContentTypeParser(
+  "application/webhook+json",
+  { parseAs: "string" },
+  (req, body, done) => {
+    const raw = typeof body === "string" ? body : body.toString("utf8");
+    (req as typeof req & { rawBody?: string }).rawBody = raw;
+    done(null, raw);
   },
 );
 await app.register(fastifyJwt, {
@@ -306,6 +314,7 @@ await registerMessageRoutes(app);
 await registerThreadRoutes(app);
 await registerEmojiRoutes(app);
 await registerVoiceRoutes(app);
+await registerLivekitWebhookRoutes(app);
 await registerDmRoutes(app);
 await registerFriendRoutes(app);
 await registerEmbedRoutes(app);

@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Modal } from "./Modal";
 import { useConfirm } from "./ConfirmDialog";
 import { useAudioDevices, keyCodeToLabel } from "../hooks/useAudioDevices";
@@ -163,9 +163,12 @@ export function VoiceSettingsModal({ onClose }: Props) {
   const audioCtxRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const rafRef = useRef<number | null>(null);
+  const testGenerationRef = useRef(0);
 
-  // Cleanup test stream при unmount или change device
-  const stopTest = () => {
+  // Resource-only cleanup is safe during unmount. The generation invalidates
+  // any permission prompt that resolves after close/restart.
+  const stopTestResources = useCallback(() => {
+    testGenerationRef.current += 1;
     if (rafRef.current !== null) {
       cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
@@ -179,18 +182,21 @@ export function VoiceSettingsModal({ onClose }: Props) {
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
     }
+  }, []);
+
+  const stopTest = () => {
+    stopTestResources();
     setTesting(false);
     setTestLevel(0);
   };
 
   useEffect(() => {
-    return () => {
-      stopTest();
-    };
-  }, []);
+    return stopTestResources;
+  }, [stopTestResources]);
 
   const startTest = async () => {
     stopTest();
+    const generation = testGenerationRef.current;
     setPermError(null);
     if (!navigator.mediaDevices?.getUserMedia) {
       setPermError("Браузер не поддерживает getUserMedia");
@@ -213,6 +219,10 @@ export function VoiceSettingsModal({ onClose }: Props) {
               },
       };
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      if (testGenerationRef.current !== generation) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
       streamRef.current = stream;
 
       const AudioCtx: typeof AudioContext =
@@ -220,6 +230,11 @@ export function VoiceSettingsModal({ onClose }: Props) {
         (window as unknown as { webkitAudioContext: typeof AudioContext })
           .webkitAudioContext;
       const ctx = new AudioCtx();
+      if (testGenerationRef.current !== generation) {
+        stream.getTracks().forEach((track) => track.stop());
+        await ctx.close().catch(() => undefined);
+        return;
+      }
       audioCtxRef.current = ctx;
       const source = ctx.createMediaStreamSource(stream);
       const analyser = ctx.createAnalyser();
@@ -229,8 +244,11 @@ export function VoiceSettingsModal({ onClose }: Props) {
 
       const buf = new Uint8Array(analyser.frequencyBinCount);
       const tick = () => {
-        if (!analyserRef.current) return;
-        analyserRef.current.getByteTimeDomainData(buf);
+        if (
+          testGenerationRef.current !== generation ||
+          analyserRef.current !== analyser
+        ) return;
+        analyser.getByteTimeDomainData(buf);
         // Peak amplitude (0..1)
         let peak = 0;
         for (let i = 0; i < buf.length; i++) {
@@ -246,6 +264,10 @@ export function VoiceSettingsModal({ onClose }: Props) {
       // После grant'a label'ы устройств станут доступны — refresh.
       await devices.refresh();
     } catch (e) {
+      if (testGenerationRef.current !== generation) return;
+      stopTestResources();
+      setTesting(false);
+      setTestLevel(0);
       if (e instanceof Error && e.name === "NotAllowedError") {
         setPermError("Браузер отказал в доступе к микрофону. Проверь разрешения.");
       } else {
@@ -368,6 +390,7 @@ export function VoiceSettingsModal({ onClose }: Props) {
 
   return (
     <Modal title="Настройки голоса" onClose={onClose} width={520}>
+      <div className="ec-voice-settings">
       <section>
         <h3 style={sectionLabel}>Быстрая настройка</h3>
         <div style={{ ...groupCard, gap: "var(--ec-space-3)" }}>
@@ -459,6 +482,7 @@ export function VoiceSettingsModal({ onClose }: Props) {
                 key={m.value}
                 type="button"
                 onClick={() => setNoiseSuppression(m.value)}
+                className="ec-voice-settings__mode"
                 style={segmentBtn(settings.noiseSuppression === m.value)}
                 aria-pressed={settings.noiseSuppression === m.value}
               >
@@ -654,10 +678,10 @@ export function VoiceSettingsModal({ onClose }: Props) {
             </span>
           </div>
           {permError && (
-            <p style={{ ...fieldHint, color: "var(--ec-danger)" }}>{permError}</p>
+            <p role="alert" aria-live="assertive" style={{ ...fieldHint, color: "var(--ec-danger)" }}>{permError}</p>
           )}
           {outputError && (
-            <p style={{ ...fieldHint, color: "var(--ec-danger)" }}>{outputError}</p>
+            <p role="alert" aria-live="assertive" style={{ ...fieldHint, color: "var(--ec-danger)" }}>{outputError}</p>
           )}
         </div>
       </section>
@@ -676,6 +700,7 @@ export function VoiceSettingsModal({ onClose }: Props) {
                 key={m.value}
                 type="button"
                 onClick={() => setMicActivationMode(m.value)}
+                className="ec-voice-settings__mode"
                 style={segmentBtn(settings.micActivationMode === m.value)}
                 aria-pressed={settings.micActivationMode === m.value}
               >
@@ -832,6 +857,7 @@ export function VoiceSettingsModal({ onClose }: Props) {
           </button>
         </div>
       </section>
+      </div>
     </Modal>
   );
 }
