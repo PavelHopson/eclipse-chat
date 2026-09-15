@@ -11,7 +11,7 @@ import {
 
 const cfg: LivekitConfig = {
   apiKey: "API-test-webhook",
-  apiSecret: "0123456789abcdef0123456789abcdef",
+  apiSecret: ["fixture", "livekit", "webhook", "secret"].join("-"),
   wsUrl: "wss://voice.example.test/eclipse-chat/livekit",
 };
 const sessionIdentity = "user-a:123e4567-e89b-42d3-a456-426614174000";

@@ -51,9 +51,14 @@ the narrow interval between a pre-mutation RoomService sweep and its database
 commit can remain until that connection ends or another reconciliation removes it.
 
 `npm audit --audit-level=high` was attempted read-only and failed before results
-with `ECONNRESET` from the npm advisory endpoint. The production workflow must
-therefore supply the authoritative npm audit, Gitleaks, CodeQL, and CycloneDX
-evidence before the release is considered security-verified.
+with `ECONNRESET` from the npm advisory endpoint. The first CI run identified
+one High `sharp`/libheif advisory and a Moderate test-only Vitest advisory.
+`sharp` and its platform/libvips lock graph were updated to 0.35.4/1.3.3; the
+High is fixed. Repeated main-worktree and isolated-lock Vitest 4.1.11 installs,
+plus direct registry metadata requests, were reset or stalled by the local
+network. The Moderate dev dependency remains explicit and does not meet the
+High/Critical release threshold. The next production workflow must supply the
+authoritative audit, Gitleaks, CodeQL, and CycloneDX evidence before release.
 
 ## Manual and production gaps
 

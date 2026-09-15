@@ -18,6 +18,7 @@
 - Единая fail-closed mic policy сохраняет ручной mute и согласует PTT/VAD/deafen со сменой устройства, visibility и rebinding трека; autoplay восстанавливается явным пользовательским действием.
 - Call dock работает на 320px с 44px touch targets, а загрузка визуального трека объявляется screen reader.
 - Deploy validate запускает профильные security contracts вместе с dependency audit, typecheck, tests и build; migration skip разрешён только после проверки пустого Prisma diff от записанного production SHA.
+- Блокирующий High advisory в bundled libheif закрыт обновлением `sharp` до 0.35.4; test-only Vitest advisory остаётся Moderate и не входит в production runtime.
 - Версии root/web/server/lockfile/SW синхронизированы на 1.7.74; desktop и Android не менялись. Commit, push, deploy и migration не выполнялись.
 - Автоматические проверки зелёные: 123 root contracts, 474 server tests + 6 skipped, typecheck/build и 22 security contracts; реальный двухклиентский Chrome/Edge smoke со штатным picker и физическим выводом звука остаётся обязательным до production.
 
