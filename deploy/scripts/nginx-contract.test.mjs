@@ -30,6 +30,8 @@ test('nginx serves the application with a strict browser security contract', asy
 
   assert.match(app, /Content-Security-Policy/);
   assert.match(app, /script-src 'self'/);
+  assert.match(app, /script-src 'self' 'wasm-unsafe-eval'/);
+  assert.doesNotMatch(app, /script-src[^;]*'unsafe-eval'/);
   assert.doesNotMatch(app, /script-src[^;]*'unsafe-inline'/);
   assert.match(app, /frame-ancestors 'none'/);
   assert.match(app, /object-src 'none'/);

@@ -3,7 +3,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Modal } from "./Modal";
 import { useConfirm } from "./ConfirmDialog";
 import { useAudioDevices, keyCodeToLabel } from "../hooks/useAudioDevices";
+import { createAudioEnhancer, type AudioEnhancerHandle } from "../lib/audioEnhancer";
 import {
+  noiseModeToConstraints,
   useVoiceSettings,
   type MicActivationMode,
   type NoiseSuppressionMode,
@@ -158,6 +160,8 @@ export function VoiceSettingsModal({ onClose }: Props) {
   const [recordingPtt, setRecordingPtt] = useState(false);
   const [permError, setPermError] = useState<string | null>(null);
   const [outputError, setOutputError] = useState<string | null>(null);
+  const [processing, setProcessing] = useState<"rnnoise" | "browser" | "off" | null>(null);
+  const enhancerRef = useRef<AudioEnhancerHandle | null>(null);
 
   const streamRef = useRef<MediaStream | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -178,6 +182,8 @@ export function VoiceSettingsModal({ onClose }: Props) {
       audioCtxRef.current = null;
     }
     analyserRef.current = null;
+    enhancerRef.current?.destroy();
+    enhancerRef.current = null;
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
@@ -188,11 +194,21 @@ export function VoiceSettingsModal({ onClose }: Props) {
     stopTestResources();
     setTesting(false);
     setTestLevel(0);
+    setProcessing(null);
   };
 
   useEffect(() => {
     return stopTestResources;
   }, [stopTestResources]);
+
+  // A running test must not claim to measure settings from the previous mode
+  // or device. A new test is always an explicit microphone action.
+  useEffect(() => {
+    stopTestResources();
+    setTesting(false);
+    setTestLevel(0);
+    setProcessing(null);
+  }, [settings.noiseSuppression, settings.inputDeviceId, settings.micGain, stopTestResources]);
 
   const startTest = async () => {
     stopTest();
@@ -202,21 +218,13 @@ export function VoiceSettingsModal({ onClose }: Props) {
       setPermError("Браузер не поддерживает getUserMedia");
       return;
     }
+    setTesting(true);
     try {
       const constraints: MediaStreamConstraints = {
-        audio:
-          settings.inputDeviceId != null
-            ? {
-                deviceId: { exact: settings.inputDeviceId },
-                echoCancellation: settings.noiseSuppression !== "off",
-                noiseSuppression: settings.noiseSuppression !== "off",
-                autoGainControl: settings.noiseSuppression !== "off",
-              }
-            : {
-                echoCancellation: settings.noiseSuppression !== "off",
-                noiseSuppression: settings.noiseSuppression !== "off",
-                autoGainControl: settings.noiseSuppression !== "off",
-              },
+        audio: {
+          ...noiseModeToConstraints(settings.noiseSuppression),
+          ...(settings.inputDeviceId ? { deviceId: { exact: settings.inputDeviceId } } : {}),
+        },
       };
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       if (testGenerationRef.current !== generation) {
@@ -224,6 +232,24 @@ export function VoiceSettingsModal({ onClose }: Props) {
         return;
       }
       streamRef.current = stream;
+      const input = stream.getAudioTracks()[0];
+      input.enabled = false;
+      const enhancer = await createAudioEnhancer(input, {
+        micGain: settings.micGain,
+        gainOnly: settings.noiseSuppression !== "aggressive",
+        onFailure: () => {
+          if (testGenerationRef.current !== generation) return;
+          stopTestResources();
+          setTesting(false);
+          setProcessing(null);
+          setPermError("Обработка микрофона остановилась. Попробуй режим «Стандарт».");
+        },
+      });
+      if (testGenerationRef.current !== generation) { enhancer.destroy(); return; }
+      enhancerRef.current = enhancer;
+      enhancer.setInputEnabled(true);
+      enhancer.setOutputEnabled(true);
+      setProcessing(enhancer.processing === "rnnoise" ? "rnnoise" : settings.noiseSuppression === "off" ? "off" : "browser");
 
       const AudioCtx: typeof AudioContext =
         window.AudioContext ??
@@ -236,7 +262,7 @@ export function VoiceSettingsModal({ onClose }: Props) {
         return;
       }
       audioCtxRef.current = ctx;
-      const source = ctx.createMediaStreamSource(stream);
+      const source = ctx.createMediaStreamSource(new MediaStream([enhancer.outputTrack]));
       const analyser = ctx.createAnalyser();
       analyser.fftSize = 256;
       source.connect(analyser);
@@ -352,7 +378,7 @@ export function VoiceSettingsModal({ onClose }: Props) {
   const modes: { value: NoiseSuppressionMode; label: string; sub: string }[] = [
     { value: "off", label: "Без обработки", sub: "Raw signal" },
     { value: "standard", label: "Стандарт", sub: "WebRTC DSP" },
-    { value: "aggressive", label: "Студийный", sub: "WebRTC + Web Audio" },
+    { value: "aggressive", label: "Усиленное", sub: "RNNoise · локально" },
   ];
 
   const presets: {
@@ -368,7 +394,7 @@ export function VoiceSettingsModal({ onClose }: Props) {
     {
       id: "noisy",
       title: "Шумно",
-      copy: "Студийная цепочка + автогейт по голосу.",
+      copy: "Локальный RNNoise, активация голосом.",
     },
     {
       id: "studio",
@@ -457,13 +483,10 @@ export function VoiceSettingsModal({ onClose }: Props) {
             }}
           >
             <span style={chipStyle}>
-              WebRTC DSP: {settings.noiseSuppression === "off" ? "выкл" : "вкл"}
+              Режим: {settings.noiseSuppression === "off" ? "без обработки" : settings.noiseSuppression === "aggressive" ? "усиленное" : "стандарт"}
             </span>
-            <span style={chipStyle}>
-              Web Audio:{" "}
-              {settings.noiseSuppression === "aggressive" || settings.micGain !== 1
-                ? "активен"
-                : "standby"}
+            <span style={chipStyle} role="status" aria-live="polite">
+              {processing === "rnnoise" ? "RNNoise работает локально" : processing === "browser" ? "Работает обработка браузера" : processing === "off" ? "Шумоподавление выключено" : testing ? "Запускаем обработку микрофона…" : "Проверка микрофона покажет активную обработку"}
             </span>
             <span style={chipStyle}>
               Вывод: {devices.supportsOutputSelection ? "можно выбрать" : "системный"}
@@ -493,10 +516,9 @@ export function VoiceSettingsModal({ onClose }: Props) {
           </div>
           <p style={fieldHint}>
             «Стандарт» — встроенное в браузер шумоподавление + эхоподавление + AGC.
-            Подходит большинству. «Студийный» — поверх WebRTC прогоняет микрофон
-            через Web Audio DSP-цепочку: highpass 85&nbsp;Гц (режет гул, вибрацию,
-            breath-pops), lowpass 12&nbsp;кГц (шипение), компрессор (выравнивает
-            громкость) + mic gain. «Без обработки» — для USB-mic с собственным DSP.
+            «Усиленное» добавляет локальный RNNoise и отключает автоматическое
+            усиление фона. Звук обрабатывается на устройстве. Если RNNoise недоступен,
+            показываем обработку браузера. «Без обработки» — для микрофона с собственным DSP.
           </p>
         </div>
       </section>

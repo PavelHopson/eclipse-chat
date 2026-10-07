@@ -746,6 +746,15 @@ export function VoiceRoom({
         </div>
       )}
 
+      {isJoinedHere && v.isScreenShareEnabled && localScreenAudio === false && (
+        <div className="ec-voice-playback-gate" role="status" aria-live="polite">
+          <span>Трансляция идёт без звука: устройство не предоставило аудиодорожку. Для звука выбери вкладку в Edge/Chrome и включи «Поделиться звуком» в окне выбора. Захват окна или экрана поддерживает звук не на всех платформах.</span>
+          <button type="button" onClick={() => void runControl("screen", v.toggleScreenShare)} disabled={controlPending.includes("screen")}>
+            Остановить показ
+          </button>
+        </div>
+      )}
+
       {musicSession && (
         <section className="ec-voice-room__music" aria-label="Общий музыкальный плеер">
           <span className="ec-voice-room__music-label"><MusicNotesIcon size={18} aria-hidden />
@@ -1042,7 +1051,7 @@ export function VoiceRoom({
           <div>active channel: <span style={{ color: "var(--ec-text)" }}>{v.activeChannelId ?? "—"}</span></div>
           <div>mic: <span style={{ color: v.isMicMuted ? "var(--ec-warn)" : "var(--ec-status-exec)" }}>{v.isMicMuted ? "muted" : "live"}</span> · deafened: {v.isDeafened ? "yes" : "no"}</div>
           <div>mode: <span style={{ color: "var(--ec-text)" }}>{v.settings.micActivationMode}</span></div>
-          <div>noise: <span style={{ color: "var(--ec-text)" }}>{v.settings.noiseSuppression}</span></div>
+          <div>Шумоподавление: <span style={{ color: "var(--ec-text)" }}>{v.noiseProcessing === "rnnoise" ? "RNNoise · локально" : v.noiseProcessing === "browser" ? "Браузер" : "Выключено"}</span></div>
           <div>input device: <span style={{ color: "var(--ec-text)" }}>{v.settings.inputDeviceId ? v.settings.inputDeviceId.slice(0, 8) + "…" : "default"}</span></div>
           <div>output device: <span style={{ color: "var(--ec-text)" }}>{v.settings.outputDeviceId ? v.settings.outputDeviceId.slice(0, 8) + "…" : "default"}</span></div>
           <div>master volume: <span style={{ color: "var(--ec-text)" }}>{Math.round(v.settings.masterOutputVolume * 100)}%</span></div>

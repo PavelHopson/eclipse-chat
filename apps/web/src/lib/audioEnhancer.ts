@@ -8,25 +8,27 @@
  * Цепочка (raw mic → ... → processed track):
  *   1. highpass 85Hz   — режет low-frequency rumble: вибрация стола, гул
  *                        кондиционера, breath-pops, сетевой 50Hz hum.
- *                        Ниже 85Hz человеческого голоса нет.
+ *                        Часть низкого голоса также может ослабляться.
  *   2. lowpass 12kHz   — режет high-frequency hiss выше voice-band.
- *   3. compressor      — выравнивает динамику: тихие говорящие слышнее,
- *                        пики не зашкаливают. threshold -28dB, ratio 4:1.
+ *   3. RNNoise WASM    — локальное нейросетевое подавление фонового шума.
  *   4. gain            — пользовательский mic boost/attenuate (0..2x).
  *
- * 0 npm-зависимостей — всё native Web Audio API. RNNoise/Krisp DNN —
- * отдельная фича (требует WASM-пакет, отложена из-за ECONNRESET на
- * dev-машине).
+ * RNNoise pinned/vendor bundle загружается только для усиленного режима.
+ * Worklet не отправляет PCM через сообщения; при недоступности есть явный
+ * browser fallback. При runtime-ошибке поток закрывается, без raw bypass.
  *
  * Использование:
- *   const enh = createAudioEnhancer(rawMicTrack, { micGain: 1.2 });
+ *   const enh = await createAudioEnhancer(rawMicTrack, { micGain: 1.2 });
  *   await liveKitTrack.replaceTrack(enh.outputTrack);
  *   // ... позже:
  *   enh.setGain(1.5);   // live-обновление без пересоздания
  *   enh.destroy();      // на leave / device change
  */
 
+import { createMicrophoneDenoise } from "./microphoneDenoise";
+
 export type AudioEnhancerHandle = {
+  processing: "rnnoise" | "browser" | "off";
   /** Raw getUserMedia track. It is never published and feeds the analyser/DSP. */
   inputTrack: MediaStreamTrack;
   /** Processed MediaStreamTrack — оборачивается в публикуемый LiveKit LocalAudioTrack. */
@@ -49,12 +51,12 @@ function resolveAudioContextCtor(): typeof AudioContext {
   );
 }
 
-export function createAudioEnhancer(
+export async function createAudioEnhancer(
   inputTrack: MediaStreamTrack,
-  opts: { micGain: number; gainOnly?: boolean },
-): AudioEnhancerHandle {
+  opts: { micGain: number; gainOnly?: boolean; onFailure?: () => void },
+): Promise<AudioEnhancerHandle> {
   const Ctx = resolveAudioContextCtor();
-  const ctx = new Ctx();
+  const ctx = new Ctx(opts.gainOnly ? {} : { sampleRate: 48_000 });
 
   const srcStream = new MediaStream([inputTrack]);
   const src = ctx.createMediaStreamSource(srcStream);
@@ -64,6 +66,25 @@ export function createAudioEnhancer(
   gain.gain.value = Math.max(0, Math.min(2, opts.micGain));
 
   const dest = ctx.createMediaStreamDestination();
+  const outputTrack = dest.stream.getAudioTracks()[0];
+  if (!outputTrack) {
+    inputTrack.stop();
+    void ctx.close().catch(() => undefined);
+    throw new Error("AudioEnhancer: destination produced no audio track");
+  }
+  outputTrack.enabled = false;
+  let denoise: AudioWorkletNode | null = null;
+  let processing: AudioEnhancerHandle["processing"] = opts.gainOnly ? "off" : "browser";
+  let destroyed = false;
+  let failed = false;
+  let transmitting = false;
+  const fail = () => {
+    if (destroyed || failed) return;
+    failed = true;
+    inputTrack.enabled = false;
+    outputTrack.enabled = false;
+    opts.onFailure?.();
+  };
 
   if (opts.gainOnly) {
     // Режимы standard / off — только усиление, без DSP-фильтров:
@@ -71,7 +92,7 @@ export function createAudioEnhancer(
     src.connect(gain);
   } else {
     // Режим aggressive — полная DSP-цепочка:
-    //   src → highpass → lowpass → compressor → gain → dest
+    //   src → highpass → lowpass → RNNoise → gain → dest
     const highpass = ctx.createBiquadFilter();
     highpass.type = "highpass";
     highpass.frequency.value = 85;
@@ -82,41 +103,62 @@ export function createAudioEnhancer(
     lowpass.frequency.value = 12_000;
     lowpass.Q.value = 0.7;
 
-    const compressor = ctx.createDynamicsCompressor();
-    compressor.threshold.value = -28;
-    compressor.knee.value = 24;
-    compressor.ratio.value = 4;
-    compressor.attack.value = 0.004;
-    compressor.release.value = 0.18;
-
     src.connect(highpass);
     highpass.connect(lowpass);
-    lowpass.connect(compressor);
-    compressor.connect(gain);
+    try {
+      denoise = await createMicrophoneDenoise(ctx);
+      denoise.onprocessorerror = fail;
+      denoise.port.onmessage = ({ data }) => { if (data === "failed") fail(); };
+      lowpass.connect(denoise);
+      denoise.connect(gain);
+      processing = "rnnoise";
+    } catch {
+      // Browser capture still applies its noise/echo processing. Report this
+      // fallback to the caller instead of claiming neural suppression.
+      lowpass.connect(gain);
+    }
   }
   gain.connect(dest);
-
-  const outputTrack = dest.stream.getAudioTracks()[0];
-  if (!outputTrack) {
-    // Крайне маловероятно — но если destination не дал track, чистим
-    // и кидаем — caller fallback'нётся на raw track.
+  try {
+    await ctx.resume();
+    if (ctx.state !== "running") throw new Error("suspended");
+  } catch {
+    denoise?.port.postMessage("destroy");
+    denoise?.disconnect();
+    denoise?.port.close();
+    inputTrack.stop();
+    outputTrack.stop();
     void ctx.close().catch(() => undefined);
-    throw new Error("AudioEnhancer: destination produced no audio track");
+    throw new Error("Не удалось запустить обработку микрофона. Нажми «Включить микрофон».");
   }
 
   return {
+    processing,
     inputTrack,
     outputTrack,
     setInputEnabled: (enabled: boolean) => {
-      inputTrack.enabled = enabled;
+      const wasEnabled = inputTrack.enabled;
+      inputTrack.enabled = enabled && !failed && !destroyed;
+      if (wasEnabled && !inputTrack.enabled && !destroyed) denoise?.port.postMessage({ enabled: false });
     },
     setOutputEnabled: (enabled: boolean) => {
-      outputTrack.enabled = enabled;
+      outputTrack.enabled = enabled && !failed && !destroyed;
+      if (transmitting !== outputTrack.enabled && !destroyed) {
+        transmitting = outputTrack.enabled;
+        denoise?.port.postMessage({ enabled: transmitting });
+      }
     },
     setGain: (value: number) => {
       gain.gain.value = Math.max(0, Math.min(2, value));
     },
     destroy: () => {
+      if (destroyed) return;
+      destroyed = true;
+      denoise?.port.postMessage("destroy");
+      denoise?.disconnect();
+      denoise?.port.close();
+      src.disconnect();
+      gain.disconnect();
       inputTrack.enabled = false;
       outputTrack.enabled = false;
       inputTrack.stop();

@@ -25,10 +25,9 @@ export type VoiceSettings = {
   /**
    * - `off`: никакого DSP, raw signal. Для качественных USB-mic или recording.
    * - `standard`: WebRTC built-in (noiseSuppression+echoCancellation+AGC). Default.
-   * - `aggressive`: standard WebRTC + Web Audio DSP-цепочка (highpass 85Hz
-   *   rumble cut + lowpass 12kHz hiss cut + compressor + mic gain). См.
-   *   `lib/audioEnhancer.ts`. DNN noise filter (Krisp/RNNoise WASM) — отдельная
-   *   фича в будущем.
+   * - `aggressive`: WebRTC echo/noise suppression, без AGC; локальная
+   *   RNNoise WASM-цепочка + mic gain. При недоступности — явный browser
+   *   fallback. См. `lib/audioEnhancer.ts`.
    */
   noiseSuppression: NoiseSuppressionMode;
   /** Activation mode: open / voice_activity / push_to_talk. Заменяет старый bool. */
@@ -323,6 +322,8 @@ export function noiseModeToConstraints(mode: NoiseSuppressionMode): {
   echoCancellation: boolean;
   noiseSuppression: boolean;
   autoGainControl: boolean;
+  channelCount?: { ideal: number };
+  sampleRate?: { ideal: number };
 } {
   if (mode === "off") {
     return {
@@ -331,9 +332,17 @@ export function noiseModeToConstraints(mode: NoiseSuppressionMode): {
       autoGainControl: false,
     };
   }
-  // standard + aggressive: оба включают WebRTC built-ins как baseline.
-  // aggressive дополнительно прогоняет mic через Web Audio DSP-цепочку
-  // (см. useVoice → createAudioEnhancer) — но WebRTC constraints одинаковы.
+  if (mode === "aggressive") {
+    return {
+      echoCancellation: true,
+      noiseSuppression: true,
+      // AGC raised the background between phrases. RNNoise has an explicit
+      // user gain; do not automatically amplify its residual noise.
+      autoGainControl: false,
+      channelCount: { ideal: 1 },
+      sampleRate: { ideal: 48_000 },
+    };
+  }
   return {
     echoCancellation: true,
     noiseSuppression: true,

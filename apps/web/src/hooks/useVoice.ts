@@ -75,8 +75,10 @@ const SCREEN_SHARE_CAPTURE_OPTIONS = {
   // The browser picker remains the consent boundary. Requesting audio only
   // makes its native "share audio" option available; unsupported surfaces
   // continue as video-only screen shares.
-  audio: true,
+  audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
   systemAudio: "include" as const,
+  preferCurrentTab: true,
+  surfaceSwitching: "include" as const,
   resolution: {
     width: 1920,
     height: 1080,
@@ -85,6 +87,8 @@ const SCREEN_SHARE_CAPTURE_OPTIONS = {
 };
 
 const SCREEN_SHARE_PUBLISH_OPTIONS = {
+  audioPreset: { maxBitrate: 128_000 },
+  dtx: false,
   videoEncoding: {
     maxBitrate: 4_500_000,
     maxFramerate: 30,
@@ -98,6 +102,34 @@ function hasActiveScreenShareAudio(
     if (publication.source === "screen_share_audio" && !publication.isMuted) return true;
   }
   return false;
+}
+
+export function attachRemoteAudioElement(
+  track: Pick<RemoteTrack, "attach">,
+  configure: (element: HTMLAudioElement) => void,
+  targetDocument: Document = document,
+): HTMLAudioElement {
+  const element = targetDocument.createElement("audio");
+  element.autoplay = true;
+  element.style.display = "none";
+  element.setAttribute("aria-hidden", "true");
+  // LiveKit plays during attach(). Set user mute/volume and mount first.
+  configure(element);
+  targetDocument.body.appendChild(element);
+  try {
+    track.attach(element);
+    configure(element); // SDK attachment may update element properties.
+    return element;
+  } catch (error) {
+    element.pause();
+    element.srcObject = null;
+    element.remove();
+    throw error;
+  }
+}
+
+export async function requestRemoteAudioPlayback(element: HTMLAudioElement): Promise<boolean> {
+  try { await element.play(); return true; } catch { return false; }
 }
 
 type MicrophonePolicy = {
@@ -159,7 +191,7 @@ async function publishPreMutedMicrophone(
   lk: typeof import("livekit-client"),
   room: RoomType,
   captureOptions: Parameters<typeof lk.createLocalAudioTrack>[0],
-  enhancerOptions: { micGain: number; gainOnly: boolean } | null,
+  enhancerOptions: { micGain: number; gainOnly: boolean; onFailure?: () => void } | null,
 ): Promise<{
   publication: Awaited<ReturnType<RoomType["localParticipant"]["publishTrack"]>>;
   enhancer: AudioEnhancerHandle | null;
@@ -173,7 +205,7 @@ async function publishPreMutedMicrophone(
 
   try {
     if (enhancerOptions) {
-      enhancer = createAudioEnhancer(captureTrack.mediaStreamTrack, enhancerOptions);
+      enhancer = await createAudioEnhancer(captureTrack.mediaStreamTrack, enhancerOptions);
       enhancer.setInputEnabled(false);
       enhancer.setOutputEnabled(false);
       publishTrack = new lk.LocalAudioTrack(
@@ -310,6 +342,7 @@ export function useVoice(socket: Socket | null = null) {
   const [isScreenShareEnabled, setIsScreenShareEnabled] = useState(false);
   const [isAudioPlaybackBlocked, setIsAudioPlaybackBlocked] = useState(false);
   const [inputTrackRevision, setInputTrackRevision] = useState(0);
+  const [noiseProcessing, setNoiseProcessing] = useState<"rnnoise" | "browser" | "off">("off");
   const [visualTracks, setVisualTracks] = useState<VoiceVisualTrack[]>([]);
   /** True пока удерживается PTT hotkey. */
   const [pttActive, setPttActive] = useState(false);
@@ -624,6 +657,16 @@ export function useVoice(socket: Socket | null = null) {
           ? {
               micGain: settingsRef.current.micGain,
               gainOnly: settingsRef.current.noiseSuppression !== "aggressive",
+              onFailure: () => {
+                if (!isCurrent()) return;
+                micManuallyMutedRef.current = true;
+                micCaptureAllowedRef.current = false;
+                disableRawMicrophoneTracks(r, enhancerRef.current);
+                setIsMicMuted(true);
+                setNoiseProcessing("off");
+                setError("Обработка микрофона остановилась. Выбери «Стандарт» и включи микрофон снова.");
+                void r.localParticipant.setMicrophoneEnabled(false).catch(() => undefined);
+              },
             }
           : null,
       );
@@ -636,6 +679,11 @@ export function useVoice(socket: Socket | null = null) {
         return;
       }
       enhancerRef.current = result.enhancer;
+      setNoiseProcessing(result.enhancer?.processing === "rnnoise"
+        ? "rnnoise" : settingsRef.current.noiseSuppression === "off" ? "off" : "browser");
+      if (settingsRef.current.noiseSuppression === "aggressive" && result.enhancer?.processing !== "rnnoise") {
+        setError("Нейрошумоподавление недоступно. Сейчас работает стандартная обработка браузера.");
+      }
 
       const policy: MicrophonePolicy = {
         mode: settingsRef.current.micActivationMode,
@@ -742,6 +790,7 @@ export function useVoice(socket: Socket | null = null) {
     setIsCameraEnabled(false);
     setIsScreenShareEnabled(false);
     setIsAudioPlaybackBlocked(false);
+    setNoiseProcessing("off");
     setPttActive(false);
   }, []);
 
@@ -784,6 +833,7 @@ export function useVoice(socket: Socket | null = null) {
     setIsCameraEnabled(false);
     setIsScreenShareEnabled(false);
     setPttActive(false);
+    setNoiseProcessing("off");
   }, []);
 
   const join = useCallback(
@@ -893,10 +943,19 @@ export function useVoice(socket: Socket | null = null) {
 
         r.on(RoomEvent.TrackSubscribed, (track: RemoteTrack, pub: RemoteTrackPublication, participant: RemoteParticipant) => {
           if (track.kind === Track.Kind.Audio) {
-            const el = track.attach() as HTMLAudioElement;
-            el.style.display = "none";
-            el.autoplay = true;
-            document.body.appendChild(el);
+            const profile = parseVoiceParticipantProfile(participant);
+            const key = `${profile.userId}-${pub.trackSid}`;
+            const configure = (audioEl: HTMLAudioElement) => {
+              applyRemoteAudioState({ audioEl, track, publication: pub, participantIdentity: profile.userId }, deafenedRef.current);
+            };
+            const previous = remoteTracksRef.current.get(key);
+            if (previous) {
+              previous.track.detach(previous.audioEl);
+              previous.audioEl.pause();
+              previous.audioEl.srcObject = null;
+              previous.audioEl.remove();
+            }
+            const el = attachRemoteAudioElement(track, configure);
 
             // Применяем output sink если задан
             const targetSink = settingsRef.current.outputDeviceId;
@@ -904,13 +963,11 @@ export function useVoice(socket: Socket | null = null) {
               setSinkId?: (id: string) => Promise<void>;
             };
             if (targetSink && typeof elTyped.setSinkId === "function") {
-              elTyped.setSinkId(targetSink).catch((e) =>
-                console.warn("setSinkId failed", e),
-              );
+              elTyped.setSinkId(targetSink).catch(() => {
+                if (roomRef.current === r) setError(OUTPUT_SINK_ERROR);
+              });
             }
 
-            const profile = parseVoiceParticipantProfile(participant);
-            const key = `${profile.userId}-${pub.trackSid}`;
             const entry: RemoteTrackEntry = {
               audioEl: el,
               track,
@@ -919,6 +976,11 @@ export function useVoice(socket: Socket | null = null) {
             };
             remoteTracksRef.current.set(key, entry);
             applyRemoteAudioState(entry, deafenedRef.current);
+            void requestRemoteAudioPlayback(el).then(playing => {
+              if (playing || roomRef.current !== r || remoteTracksRef.current.get(key) !== entry) return;
+              setIsAudioPlaybackBlocked(true);
+              setError(AUDIO_PLAYBACK_ERROR);
+            });
           }
           refreshVisualTracks();
         });
@@ -1154,7 +1216,13 @@ export function useVoice(socket: Socket | null = null) {
     const r = roomRef.current;
     if (!r) return;
     try {
-      await r.startAudio();
+      const playback = r.startAudio();
+      // startAudio unmutes attached elements synchronously. Restore user's
+      // deafen/participant mute before the first asynchronous boundary.
+      for (const entry of remoteTracksRef.current.values()) {
+        applyRemoteAudioState(entry, deafenedRef.current);
+      }
+      await playback;
       if (roomRef.current !== r) return;
       for (const entry of remoteTracksRef.current.values()) {
         applyRemoteAudioState(entry, deafenedRef.current);
@@ -1676,6 +1744,7 @@ export function useVoice(socket: Socket | null = null) {
     isDeafened,
     isCameraEnabled,
     isScreenShareEnabled,
+    ...({ noiseProcessing } as Partial<{ noiseProcessing: "rnnoise" | "browser" | "off" }>),
     isAudioPlaybackBlocked,
     visualTracks,
     pttActive,

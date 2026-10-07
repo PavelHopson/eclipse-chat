@@ -1,0 +1,14 @@
+Eclipse Chat uses RNNoise locally for microphone denoising.
+
+RNNoise-WASM wrapper:
+Copyright 2021-2025, Takeru Ohta (Original Author)
+Copyright 2021-2025, Shiguredo Inc.
+Apache License 2.0; see RNNOISE-WASM-LICENSE.txt.
+https://github.com/shiguredo/rnnoise-wasm/releases/tag/2025.1.5
+
+Bundled RNNoise source/model:
+https://github.com/xiph/rnnoise/tree/70f1d256acd4b34a572f999a05c87bf00b67730d
+BSD license and original notices: see RNNOISE-LICENSE.txt.
+
+Eclipse modification: allow AudioWorkletProcessor in the JavaScript loader's
+environment check. No model or RNNoise native code changes.

@@ -1,0 +1,4 @@
+# Keep the pinned vendor asset byte-for-byte stable on Windows and Linux.
+apps/web/src/vendor/rnnoise/rnnoise.js text eol=lf whitespace=-blank-at-eol
+# Preserve upstream JSDoc whitespace; don't rewrite pinned vendor files.
+apps/web/src/vendor/rnnoise/rnnoise.d.ts whitespace=-blank-at-eol

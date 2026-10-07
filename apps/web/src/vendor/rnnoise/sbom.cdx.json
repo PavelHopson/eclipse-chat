@@ -1,0 +1,27 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "version": 1,
+  "components": [
+    {
+      "type": "library",
+      "bom-ref": "rnnoise-wasm-2025.1.5-eclipse-worklet",
+      "name": "rnnoise-wasm",
+      "version": "2025.1.5+eclipse-worklet",
+      "purl": "pkg:github/shiguredo/rnnoise-wasm@318dfdecdc2ddf3b33fe01a89ed8273ba0374ddc",
+      "licenses": [{ "license": { "id": "Apache-2.0" } }],
+      "hashes": [{ "alg": "SHA-256", "content": "02e92391af6e1e7c942ae9958e7b3fcb16c22a9a3a4c7d446de34dc8b64d5f24" }],
+      "externalReferences": [{ "type": "distribution", "url": "https://github.com/shiguredo/rnnoise-wasm/releases/tag/2025.1.5" }],
+      "properties": [{ "name": "eclipse:patch", "value": "AudioWorkletProcessor environment check only" }]
+    },
+    {
+      "type": "library",
+      "bom-ref": "rnnoise-70f1d25",
+      "name": "rnnoise",
+      "version": "70f1d256acd4b34a572f999a05c87bf00b67730d",
+      "purl": "pkg:github/xiph/rnnoise@70f1d256acd4b34a572f999a05c87bf00b67730d",
+      "licenses": [{ "license": { "id": "BSD-3-Clause" } }]
+    }
+  ],
+  "dependencies": [{ "ref": "rnnoise-wasm-2025.1.5-eclipse-worklet", "dependsOn": ["rnnoise-70f1d25"] }]
+}

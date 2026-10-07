@@ -122,7 +122,9 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: eclipse-chat-cyclonedx
-          path: eclipse-chat.cdx.json
+          path: |
+            eclipse-chat.cdx.json
+            apps/web/src/vendor/rnnoise/sbom.cdx.json
           retention-days: 30
 
   codeql:

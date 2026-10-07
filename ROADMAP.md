@@ -5,7 +5,29 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Текущая production-версия: v1.7.73** · code `a7a19b9` · verified 2026-09-05 через production API и UI.
+**Последняя проверка production API: v1.7.74 (2026-10-07).** Это не подтверждает новый аудио-RC или физический двухклиентский звонок.
+
+## v1.7.75 — Локальное шумоподавление и воспроизведение трансляции (2026-10-07, локальный RC)
+
+- «Усиленное» использует локальный RNNoise в AudioWorklet вместо компрессора; AGC выключен, стандартный режим и настройки пользователя сохранены. Никаких облачных вызовов или записи микрофона.
+- Проверка микрофона измеряет реальную DSP-цепочку; видны запуск, фактический RNNoise/browser fallback и ошибка. Смена режима/устройства завершает устаревший тест.
+- Mute/PTT/deafen закрывают raw/output gates; модель отбрасывает хвост предыдущей речи. Runtime-сбой отключает микрофон без автоматической передачи raw audio.
+- Входящий звук монтируется и получает текущие mute/volume до SDK attach/play. Autoplay recovery не снимает пользовательский deafen; duplicate subscriptions освобождают старый элемент.
+- Звук экрана не проходит через речевой DSP/AGC, публикуется без DTX с 128 kbit/s. Отсутствующая browser audio track явно отмечается как «без звука», а не как успешная аудиотрансляция.
+- Pinned RNNoise release/source, лицензии, hash regression и отдельный vendor SBOM включены в security artifact. CSP разрешает только компиляцию WASM (`wasm-unsafe-eval`), без JavaScript eval или новых script origins.
+- Версии root/web/server/lockfile/SW: 1.7.75; native desktop/Android не менялись, migration отсутствует. Production не менялся.
+- Проверено: полный локальный suite, typecheck/build, security contracts; реальный Chromium AudioWorklet/WASM под nginx CSP; синтетический звук через два локальных WebRTC peers и настоящий LiveKit RemoteAudioTrack; VoiceSettingsModal на 1280/320/360/390/412 px.
+- Открыто: физические микрофоны/наушники, речь и качество при нагрузке, два production-клиента/SFU, WebView2 и native Windows loopback. Нельзя считать Windows screen audio полностью исправленным: native bridge в текущем Rust runtime отсутствует.
+- Свежий npm audit заблокирован ECONNRESET registry; Linux CI/Security Gate и production acceptance остаются обязательными перед выпуском.
+
+Подробности, проверки и границы: [audio RC](docs/status/voice-audio-2026-10-07.md).
+
+### Отложено вне аудио-среза
+
+IDEA-019–021 (HAPI → Ornith → GLM-5.3-Flash): P2 proposed, только очередь,
+без установки, моделей, расходов и изменения settings. Передача:
+`E:/projects/eclipse-library/reports/2026-10-07-mobile-codex-models-handoff.md`;
+[registry A23:N25](https://docs.google.com/spreadsheets/d/1VpEVU34TXIJj_CKwzD8tNhpRYHXt1hUXUv8j9jvB14I/edit#gid=450001&range=A23:N25).
 
 ## v1.7.74 — Надёжность звонков и звук демонстрации (2026-09-15, локальный RC)
 

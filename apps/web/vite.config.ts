@@ -66,6 +66,7 @@ export default defineConfig(({ mode }) => {
   return {
     base,
     plugins: [react()],
+    worker: { format: "es" },
     define: {
       __ECLIPSE_VERSION__: JSON.stringify(pkg.version),
     },

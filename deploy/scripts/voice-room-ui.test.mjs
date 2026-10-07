@@ -96,7 +96,9 @@ test("screen sharing requests browser-consented audio and remains restartable wi
   await toggle();
 
   assert.deepEqual(calls.map(call => call[0]), [true, false, true]);
-  assert.equal(calls[0][1].audio, true);
+  assert.deepEqual(JSON.parse(JSON.stringify(calls[0][1].audio)), {
+    echoCancellation: false, noiseSuppression: false, autoGainControl: false,
+  });
   assert.equal(calls[0][1].systemAudio, "include");
   assert.deepEqual(calls[0][2], publish);
   assert.equal(refreshes, 3);
@@ -156,7 +158,7 @@ test("remote screen audio uses the generic audio attach, output and deafen path"
     voice.indexOf("RoomEvent.TrackUnsubscribed"),
   );
   assert.match(subscribed, /track\.kind === Track\.Kind\.Audio/);
-  assert.match(subscribed, /track\.attach\(\)/);
+  assert.match(subscribed, /attachRemoteAudioElement\(track, configure\)/);
   assert.match(subscribed, /setSinkId/);
   assert.match(subscribed, /applyRemoteAudioState\(entry, deafenedRef\.current\)/);
   assert.doesNotMatch(subscribed, /Track\.Source\.Microphone|source === ["']microphone["']/);
