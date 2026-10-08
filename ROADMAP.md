@@ -7,6 +7,16 @@
 
 **Последняя проверка production API: v1.7.74 (2026-10-07).** Это не подтверждает новый аудио-RC или физический двухклиентский звонок.
 
+## v1.7.76 — Dependency security follow-up (2026-10-08, проверен локально, не развёрнут)
+
+- Отдельный security-fix и push в существующую master разрешены; production approval — отдельно.
+- Доступ к официальному registry восстановился; lockfile/installed graph и root/web/server/SW согласованы на 1.7.76. Никаких зеркал, TLS/audit bypass или новых major versions.
+- Обновлены sharp/librsvg, Engine.IO, brace-expansion, source-map-js, Fastify/fast-uri и Vitest. Свежий npm audit: 0 vulnerabilities. Прежние 4 High/4 Moderate исправлены в локальном графе, но не закрыты для production до deploy/проверки.
+- Проверено: 6/6 security regressions, 135 root contracts, 474 server tests (6 skipped), 22 security contracts, typecheck/build, CycloneDX SBOM (332 компонента). Реальный Chromium/RNNoise под CSP: синтетический шум подавлен, mute RMS 0.
+- Обязательны новые exact-SHA CI/Security checks после публикации и отдельное production approval. Migration отсутствует; native Windows loopback, аппаратная/двухклиентская проверка и CineMate acceptance не входят в этот security-fix.
+
+Подробности и следующий шаг: [статус аудио и security-fix](docs/status/voice-audio-2026-10-07.md).
+
 ## v1.7.75 — Локальное шумоподавление и воспроизведение трансляции (2026-10-07, локальный RC)
 
 - «Усиленное» использует локальный RNNoise в AudioWorklet вместо компрессора; AGC выключен, стандартный режим и настройки пользователя сохранены. Никаких облачных вызовов или записи микрофона.

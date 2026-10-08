@@ -1,5 +1,178 @@
 # Voice audio RC — 2026-10-07
 
+## Dependency security 1.7.76 — locally verified, production unchanged (2026-10-08)
+
+This supersedes the blocked state below. The official registry returned HTTP
+200 and npm successfully resolved, downloaded and installed the patched graph.
+No unofficial mirror, TLS bypass, audit suppression or force fix was used.
+User authorization covers this fix/fast-forward push; production approval is
+still separate. No new branch, DB schema/migration or runtime auth/API change.
+
+Actual reviewed lock/installed versions:
+
+| Component | Patched graph |
+| --- | --- |
+| sharp / actual runtime librsvg | 0.35.5 / 2.63.2 |
+| Engine.IO | 6.6.11 |
+| brace-expansion | 5.0.12 |
+| source-map-js | 1.2.2 |
+| Fastify / fast-uri | 5.12.5 / 3.1.8 and 4.2.1 |
+| Vitest and companion packages | 4.1.11 |
+
+Root/web/server/lock/SW are 1.7.76. The install/update selected newer compatible
+Engine.IO and fast-uri patches than the initial draft. Ineffective draft
+overrides were removed: the reviewed integrity-bearing lockfile and installed
+version-floor/behavior regressions are the actual enforcement. Related Vitest
+range resolution updates chai 6.2.2 to 6.3.0 and tinyrainbow 3.1.0 to 3.2.0.
+Every resolved tarball remains on official registry.npmjs.org. No new package
+identity or major upgrade was introduced. Installation used `--ignore-scripts`;
+Prisma generation was run separately, without DB/migration access.
+
+Checks on the patched graph:
+
+- Focused dependency regressions 6/6: all locked/installed patch floors;
+  bounded brace nesting/comma input; excessive/invalid source-map offsets;
+  actual patched librsvg and safe normal/malformed/pixel-limited image fixtures;
+  loopback Socket.IO rejects missing/EIO=3 polling and WebSocket upgrades for
+  EIO=4 sessions, while a matching EIO=4 upgrade completes a probe; URI regression.
+- The source-map positive fixture queried column 0 of an indexed section;
+  existing library section lookup returns null there. Corrected the positive
+  fixture to column 1 and checked sources. All negative offset assertions stay
+  unchanged; no security control was relaxed.
+- `npm test`: 135 root checks; 474 server tests, 6 skipped, 82 files.
+- Typecheck and root production build pass, 520 web modules. Existing bootstrap,
+  chunk-size and Prisma configuration warnings remain, not new failures.
+- Security profile 22/22; fresh `npm audit --audit-level=high`: 0 vulnerabilities.
+- CycloneDX 1.5 SBOM generated/parsed in memory: 332 components, 333 dependency
+  entries. CI retains artifact generation. syft/grype/Gitleaks are not installed
+  locally; no claim of those local scans. Narrow secret-pattern scan found no
+  candidates; exact-SHA CI Gitleaks/CodeQL remain mandatory.
+- Built Chromium AudioWorklet/RNNoise under production nginx CSP passed:
+  deterministic synthetic raw RMS 0.017330, processed RMS 0.000090, muted RMS 0.
+  This is not human speech, physical devices, SFU or CineMate acceptance.
+- Diff check and version synchronization pass. Native desktop/Android unchanged.
+
+Prior four High/four Moderate dependency findings are fixed locally. Production
+risk remains open until an approved exact-SHA deployment and runtime acceptance.
+Before push, remote master must remain an ancestor and live production required
+reviewer must remain PavelHopson. Do not approve deployment in this task.
+Remaining real-call/Windows loopback/CineMate limits below still apply.
+
+## Dependency security follow-up — 2026-10-08 (blocked, unpublished)
+
+Read-only recheck later on 2026-10-08: the blocker persists. Official registry
+`curl -I` timed out at 10 s, and `npm view engine.io@6.6.10` with zero retries
+and the dedicated local cache returned ECONNRESET. TLS was not disabled;
+no mirror or audit bypass was used. Git root/remotes/dirty set were rechecked;
+both local HEAD and live remote master remain `5d505b5`. The seven dirty files
+are the existing security draft/status; lockfile and installed graph are still
+1.7.75. Diff check and regression-script syntax check pass again. Full suites
+were not rerun because the graph did not change; results below are the prior
+local run, not new patched-package evidence. No new commit/push/deploy/migration.
+CineMate was not changed or runtime-validated in this Chat dependency task;
+its integration cannot be inferred from Chat's synthetic audio smoke.
+
+User explicitly authorized a separate dependency fix, tests/build and
+fast-forward publication to existing master. Production approval remains
+separate. Checkout is still detached at `5d505b5`; remote master matched it.
+The previous publication update below is historical, not current readiness.
+
+Prepared changes (not yet a release): minimum patched direct dependencies
+Fastify 5.12.5, sharp 0.35.5 and Vitest 4.1.11; scoped overrides for Engine.IO
+6.6.10, brace-expansion 5.0.12, source-map-js 1.2.2 and both existing fast-uri
+major lines (3.1.8 / 4.1.5). No new major, provider or runtime dependency.
+Root/web/server/SW version fields are prepared for 1.7.76, but **package-lock
+and installed dependencies remain old**. Do not publish/deploy this dirty tree.
+
+The official npm registry is unreachable from this Windows environment:
+`ECONNRESET` / HTTPS timeout. A dedicated local cache, the actual DNS IPv4
+addresses with TLS intact, IPv6 and the existing system proxy were checked;
+the proxy is not listening. No system network setting, registry trust,
+TLS validation or audit gate was changed. Both lockfile-only installation
+attempts failed; no lifecycle install script was executed.
+
+Regression checks now cover installed/locked patch floors, bounded nested
+brace/comma parsing, indexed source-map invalid/excessive offsets, actual
+librsvg version and safe image fixtures, and isolated Socket.IO polling/
+WebSocket protocol mismatch. Parser fixtures run in subprocesses with a
+128 MB heap/5 s deadline; network fixture binds only 127.0.0.1.
+
+Checks actually run on the **old installed graph**:
+
+- Dependency security: 1/6 passes, 5 expected failures. Brace nesting causes
+  stack exhaustion in the bounded child; indexed map offsets are accepted;
+  actual librsvg is 2.62.3, below required 2.63.2. Engine.IO mismatched polling
+  does not reject before the fixture's 3 s abort; upgrade checks cannot advance.
+  This is negative local evidence, not a passed regression on patched packages.
+- Typecheck and root production build pass (520 web modules). They do not prove
+  new dependency compatibility. Existing bootstrap/chunk-size warnings remain.
+- Existing security profile: 22/22; server suite: 474 pass, 6 skipped (82 files),
+  still running Vitest 4.1.10.
+- Fresh `npm audit --audit-level=high` failed at the official advisory endpoint
+  with ECONNRESET; it did not return a clean vulnerability report. Diff check
+  and test-script syntax check pass. No schema/migration or auth change.
+
+Remaining blocker: restore HTTPS access to official `registry.npmjs.org`,
+regenerate/review lockfile, install and rerun focused/full/browser checks,
+fresh audit/SBOM, then conventional commit and gated fast-forward push.
+No new commit, push, production action or database migration in this follow-up.
+All four High/four Moderate prior CI findings remain unresolved for release.
+The previous audio acceptance/native Windows limitations still apply.
+
+## Publication update — 2026-10-08
+
+User explicitly approved publishing the audio commit to existing master.
+Fast-forward push succeeded: `2a90bc3` →
+`5d505b593fd1f7fdd18ed657cc01dd1f59313026`. Remote master was rechecked at that
+exact SHA. No branch was created; no production approval, deploy or migration
+was performed. This update supersedes the pre-publication state below.
+
+The live production environment requires reviewer `PavelHopson`, confirmed
+through the GitHub API before push. Automatic workflows started for the exact
+SHA, but dependency audit blocked both CI and deployment validation:
+
+- CI: https://github.com/PavelHopson/eclipse-chat/actions/runs/37744760294 —
+  failed at audit; subsequent typecheck/tests skipped (local results below
+  remain local evidence only).
+- Security Gate: https://github.com/PavelHopson/eclipse-chat/actions/runs/37744760283 —
+  failed at audit/SBOM job; Gitleaks, CodeQL and profile checks succeeded;
+  dependency-review job skipped on push. SBOM artifact generation was skipped.
+- Deploy: https://github.com/PavelHopson/eclipse-chat/actions/runs/37744760250 —
+  validation failed; production job skipped. Do not deploy manually to bypass
+  this gate.
+
+The fresh CI npm audit reports **8 findings: 4 High and 4 Moderate**. The push
+banner's initial 2 High/5 Moderate was stale, not the decisive result.
+All affected versions were already in the base lockfile; the audio slice only
+changed its version fields. Candidate patched versions from the advisories:
+
+| Package | Locked | Advisory severity | Candidate fix |
+| --- | --- | --- | --- |
+| sharp | 0.35.4 | High | 0.35.5 |
+| engine.io | 6.6.9 | High | 6.6.10 |
+| brace-expansion | 5.0.9 | High | 5.0.12 |
+| source-map-js | 1.2.1 (development) | High | 1.2.2 |
+| fast-uri | 3.1.7 / 4.1.4 | Moderate | 3.1.8 / 4.1.5 |
+| fastify | 5.12.3 | Moderate | 5.12.5 |
+| vitest / @vitest/mocker | 4.1.10 (development) | Moderate | 4.1.11 |
+
+High risks are not closed: image decoding has a conditional memory/RCE
+advisory on Linux; Engine.IO and brace/source-map parsers have denial-of-service
+advisories. Actual application reachability of each advisory was not established
+in this publication-only task; no live attack/reproduction was attempted.
+References: https://github.com/advisories/GHSA-wq5f-xc86-pv6w and
+https://github.com/advisories/GHSA-2gc4-cqfq-p2gv; exact remaining advisory IDs
+are in the CI audit log linked above.
+
+Next step requires a bounded dependency security fix, regression checks,
+full tests/build and a fresh exact-SHA CI/security run. No audit bypass or
+`npm audit fix --force`. Dependency changes/new commit/push have not been
+performed under the authorization to publish `5d505b5`.
+
+This status update is local and uncommitted; only the explicitly authorized
+audio commit was published. Windows native loopback and real two-client audio
+acceptance remain open as described below.
+
 ## Scope and state
 
 User reports weak noise suppression and missing screen-share audio everywhere.
