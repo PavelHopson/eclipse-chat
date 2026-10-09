@@ -5,15 +5,18 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Последняя проверка production API: v1.7.74 (2026-10-07).** Это не подтверждает новый аудио-RC или физический двухклиентский звонок.
+**Production: v1.7.77 · code `685d6f3` · проверено 2026-10-09.** API/health, активные web assets, SW и production RNNoise smoke подтверждены; физический двухклиентский звонок ещё не проверен.
 
-## v1.7.77 — JWT security release blocker (2026-10-09, подготовка)
+## v1.7.77 — JWT security fix + audio release (2026-10-09, production)
 
 - Пользователь разрешил продолжить исправление звука и выпуск. Deploy `37788868245` для `1eef8ac` остановлен свежим production audit до сборки/активации: Critical advisory в `fast-jwt` 6.2.4. Backup Chat проверен, schema/migration diff пустой. Успешный вчерашний CI не заменяет свежий audit.
 - Только транзитивный `fast-jwt` обновлён до 6.3.4 из официального registry, без новых зависимостей, major upgrades, TLS/audit bypass или `--force`.
 - Добавлены локальные отрицательные регрессии JWT: пустой/публичный/некорректный ключ, подмена алгоритма, array payload, нечисловой time tolerance и exp без iat при cache; проверка Fastify JWT через inject. Production-атаки не выполнялись; достижимость всех advisory при текущей конфигурации не утверждается.
 - Root/web/server/lockfile/SW: 1.7.77. Аудиосрез предыдущего релиза сохранён. Migration и новый native installer не нужны; реальные звонки/Windows loopback остаются открытыми.
 - Локально прошли: 9 dependency/JWT regressions; 138 root contracts и 474 server tests (6 skipped); typecheck/build; 22 security contracts; свежий npm audit — 0. Chromium под nginx CSP: реальный RNNoise подавляет синтетический шум (RMS 0.017354 → 0.000111), mute RMS 0. Это не проверка речи или двух production-клиентов.
+- Fast-forward публикация code `685d6f389acd2474c00c2648937a0d0dd478f8e5`; exact-SHA CI `37957435848`, Security Gate `37957435852` и утверждённый пользователем Deploy `37957435887` — success. Backup Chat 439465 bytes/mode 600 проверен; миграция пропущена только после сверки diff с `2a90bc3`.
+- Production: version/SW 1.7.77, health/database true, supervisor RUNNING, uploads image/webp, nginx/CSP и signed LiveKit webhook проверены. SHA-256 восьми JS/CSS/worklet assets совпадают с release build; HTML совпадает по содержимому (только Windows CRLF/один CRCRLF против Linux LF).
+- Chromium с production worklet и CSP: синтетический raw RMS ~0.01735 → processed ~0.000113, mute 0; публичная страница и форма входа рендерятся на 1280/390 без горизонтального overflow, page errors 0. Authenticated login, реальный микрофон/SFU/двухклиентский screen audio и Windows native loopback не проверены. Vendor WASM независимый rebuild/CVE scan и слабые устройства остаются Medium/Low ограничениями; свежий npm audit не покрывает этот vendor.
 - Текущие проверки, commit и production-результат: [статус аудио](docs/status/voice-audio-2026-10-07.md).
 
 ## v1.7.76 — Dependency security follow-up (2026-10-08, проверен локально, не развёрнут)
