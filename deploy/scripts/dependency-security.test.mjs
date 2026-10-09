@@ -17,7 +17,7 @@ test("all locked security-sensitive packages include the reviewed patches", () =
   const floors = {
     fastify: "5.12.5", sharp: "0.35.5", "engine.io": "6.6.10",
     "brace-expansion": "5.0.12", "source-map-js": "1.2.2",
-    vitest: "4.1.11", "@vitest/mocker": "4.1.11",
+    vitest: "4.1.11", "@vitest/mocker": "4.1.11", "fast-jwt": "6.3.4",
   };
   for (const [name, floor] of Object.entries(floors)) {
     const packages = Object.entries(lock.packages).filter(([path]) => path.endsWith(`/node_modules/${name}`) || path === `node_modules/${name}`);
@@ -44,6 +44,86 @@ function boundedParserCheck(source) {
   assert.ifError(result.error);
   assert.equal(result.status, 0, result.stderr);
 }
+
+test("JWT verification rejects key confusion, unsigned and non-object payloads", () => {
+  boundedParserCheck(`
+    const assert = require('node:assert/strict');
+    const { createHmac, generateKeyPairSync } = require('node:crypto');
+    const { createSigner, createVerifier } = require('fast-jwt');
+    // Ephemeral local fixtures only; never application keys or production calls.
+    const key = 'local-regression-only-key';
+    const token = (payload, signingKey, alg = 'HS256') => {
+      const header = Buffer.from(JSON.stringify({ alg, typ: 'JWT' })).toString('base64url');
+      const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
+      const data = header + '.' + body;
+      return data + '.' + (signingKey === null ? '' : createHmac('sha256', signingKey).update(data).digest('base64url'));
+    };
+    const verify = createVerifier({ key, algorithms: ['HS256'] });
+    const valid = createSigner({ key, algorithm: 'HS256' })({ sub: 'fixture' });
+    assert.equal(verify(valid).sub, 'fixture');
+    assert.throws(() => verify(token({ sub: 'fixture' }, null, 'none')));
+    assert.throws(() => verify(token({ sub: 'fixture' }, 'wrong-local-key')));
+    assert.throws(() => createVerifier({ key, allowedIss: 'expected' })(token([], key)));
+    for (const empty of ['', null]) {
+      assert.throws(() => createVerifier({ key: empty, algorithms: ['HS256'] })(token({ sub: 'fixture' }, null)));
+    }
+    const { publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
+    const pem = publicKey.export({ type: 'spki', format: 'pem' });
+    for (const prefix of ['# fixture\\n', '\\u0000', '\\u200b']) {
+      const malformedKey = prefix + pem;
+      assert.throws(() => createVerifier({ key: malformedKey })(token({ sub: 'fixture' }, malformedKey)));
+    }
+    const jwk = JSON.stringify(publicKey.export({ format: 'jwk' }));
+    assert.throws(() => createVerifier({ key: jwk })(token({ sub: 'fixture' }, jwk)));
+    for (const clockTolerance of [Infinity, NaN]) {
+      assert.throws(() => createVerifier({ key, clockTolerance }));
+    }
+  `);
+});
+
+test("JWT cache cannot extend exp for tokens without iat", () => {
+  boundedParserCheck(`
+    const assert = require('node:assert/strict');
+    const { createSigner, createVerifier } = require('fast-jwt');
+    const key = 'local-expiry-fixture-key';
+    const originalNow = Date.now;
+    try {
+      const initial = 1700000000000;
+      Date.now = () => initial;
+      const exp = initial / 1000 + 1;
+      const token = createSigner({ key, algorithm: 'HS256', noTimestamp: true })({ sub: 'fixture', exp });
+      const verify = createVerifier({ key, algorithms: ['HS256'], cache: true, cacheTTL: 60000 });
+      assert.equal(verify(token).sub, 'fixture');
+      Date.now = () => exp * 1000 + 1;
+      assert.throws(() => verify(token), error => error.code === 'FAST_JWT_EXPIRED');
+    } finally { Date.now = originalNow; }
+  `);
+});
+
+test("Fastify JWT runtime accepts a valid session and rejects invalid bearer tokens", async () => {
+  const app = require("fastify")({ logger: false });
+  try {
+    await app.register(require("@fastify/jwt"), { secret: "local-plugin-fixture-key" });
+    app.get("/protected", async request => {
+      await request.jwtVerify();
+      return { sub: request.user.sub };
+    });
+    const valid = app.jwt.sign({ sub: "fixture" }, { expiresIn: "1m" });
+    const response = await app.inject({ url: "/protected", headers: { authorization: `Bearer ${valid}` } });
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.json().sub, "fixture");
+    const unsigned = Buffer.from(JSON.stringify({ alg: "none" })).toString("base64url") + "." +
+      Buffer.from(JSON.stringify({ sub: "fixture" })).toString("base64url") + ".";
+    const expired = app.jwt.sign({ sub: "fixture", exp: 1 });
+    const { createSigner } = require("fast-jwt");
+    const wrongKey = createSigner({ key: "different-local-key", algorithm: "HS256" })({ sub: "fixture" });
+    for (const token of [unsigned, expired, wrongKey, "invalid"]) {
+      const rejected = await app.inject({ url: "/protected", headers: { authorization: `Bearer ${token}` } });
+      assert.equal(rejected.statusCode, 401);
+    }
+    assert.equal((await app.inject({ url: "/protected" })).statusCode, 401);
+  } finally { await app.close(); }
+});
 
 test("brace expansion bounds nesting and comma parsing without breaking normal patterns", () => {
   boundedParserCheck(`
