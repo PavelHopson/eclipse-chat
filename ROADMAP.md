@@ -7,6 +7,30 @@
 
 **Production: v1.7.77 · code `685d6f3` · проверено 2026-10-09.** API/health, активные web assets, SW и production RNNoise smoke подтверждены; физический двухклиентский звонок ещё не проверен.
 
+## v1.7.78 — Общие настройки звука до и во время звонка (2026-10-10, локально)
+
+- Профиль → «Голос и звук» теперь открывает действующие настройки устройств, шумоподавления, PTT и проверки звука вместо «Скоро». В звонке используется тот же компонент и тот же store, без второго DSP/runtime.
+- Escape отменяет назначение PTT и возвращает focus; Tab/Shift+Tab сохраняют навигацию, а не назначаются как клавиша передачи.
+- Тест динамиков освобождает AudioContext, oscillator, stream и timer при ошибке, закрытии, смене устройства/громкости и скрытии страницы. Поздние sink/play/permission/DSP результаты не запускают устаревший тест. Отключённый микрофон завершает тест с понятной ошибкой.
+- Тест не записывает и не публикует микрофон; простое открытие раздела не запрашивает захват. Raw exception text не показывается. Transport, mute/deafen, RNNoise defaults и server gates не менялись.
+- Локально: полный npm test, typecheck/build, 22 security contracts и npm audit (0). 14 новых behavioral regressions включены в npm test. Chromium: реальный RNNoise и LiveKit RemoteAudioTrack через локальные WebRTC peers с синтетическим сигналом; профиль → звонок, PTT/отмена/ошибка; 320/360/390/412/768/1280 px, reduced motion, overflow false, page errors 0.
+- Root/web/server/lock/SW согласованы на 1.7.78; dependencies/native версии не менялись, migration отсутствует. Production read-only 10.10: всё ещё 1.7.77, health/database true. Новый deploy не выполнялся.
+- Открыто: физические микрофоны/слышимость на двух устройствах, production SFU/reconnect, WebView2/Android runtime. Native Windows system-audio capture не реализован и этим UI-срезом не закрывается.
+
+Подробности и scope: [статус общих настроек звука](docs/status/voice-settings-2026-10-10.md).
+
+## v1.7.78 — Общие настройки звука до и во время звонка (2026-10-10, локально)
+
+- Профиль → «Голос и звук» теперь открывает действующие настройки устройств, шумоподавления, PTT и проверки звука вместо «Скоро». В звонке используется тот же компонент и тот же store, без второго DSP/runtime.
+- Escape отменяет назначение PTT и возвращает focus; Tab/Shift+Tab сохраняют навигацию, а не назначаются как клавиша передачи.
+- Тест динамиков освобождает AudioContext, oscillator, stream и timer при ошибке, закрытии, смене устройства/громкости и скрытии страницы. Поздние sink/play/permission/DSP результаты не запускают устаревший тест. Отключённый микрофон завершает тест с понятной ошибкой.
+- Тест не записывает и не публикует микрофон; простое открытие раздела не запрашивает захват. Raw exception text не показывается. Transport, mute/deafen, RNNoise defaults и server gates не менялись.
+- Локально: полный npm test, typecheck/build, 22 security contracts и npm audit (0). 14 новых behavioral regressions включены в npm test. Chromium: реальный RNNoise и LiveKit RemoteAudioTrack через локальные WebRTC peers с синтетическим сигналом; профиль → звонок, PTT/отмена/ошибка; 320/360/390/412/768/1280 px, reduced motion, overflow false, page errors 0.
+- Root/web/server/lock/SW согласованы на 1.7.78; dependencies/native версии не менялись, migration отсутствует. Production read-only 10.10: всё ещё 1.7.77, health/database true. Новый deploy не выполнялся.
+- Открыто: физические микрофоны/слышимость на двух устройствах, production SFU/reconnect, WebView2/Android runtime. Native Windows system-audio capture не реализован и этим UI-срезом не закрывается.
+
+Подробности и scope: [статус общих настроек звука](docs/status/voice-settings-2026-10-10.md).
+
 ## v1.7.77 — JWT security fix + audio release (2026-10-09, production)
 
 - Пользователь разрешил продолжить исправление звука и выпуск. Deploy `37788868245` для `1eef8ac` остановлен свежим production audit до сборки/активации: Critical advisory в `fast-jwt` 6.2.4. Backup Chat проверен, schema/migration diff пустой. Успешный вчерашний CI не заменяет свежий audit.

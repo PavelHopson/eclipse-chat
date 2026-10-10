@@ -5,6 +5,14 @@ const { chromium } = createRequire(import.meta.url)(process.env.ECLIPSE_PLAYWRIG
 const browser = await chromium.launch({ headless: true, args: ["--autoplay-policy=no-user-gesture-required"] });
 try {
   const page = await browser.newPage();
+  const errors = [];
+  page.on("pageerror", error => errors.push(error.message));
+  await page.route("**/*", route => {
+    const url = new URL(route.request().url());
+    if (url.hostname !== "127.0.0.1") return route.abort();
+    if (url.pathname.includes("/api/")) return route.fulfill({ contentType: "application/json", body: "{}" });
+    return route.continue();
+  });
   await page.route("**/qa-audio", route => route.fulfill({ contentType: "text/html", body: '<!doctype html><div id="qa-root"></div>' }));
   await page.goto("http://127.0.0.1:5187/qa-audio");
   const result = await page.evaluate(async () => {
@@ -105,28 +113,84 @@ try {
     const React = (await import("/node_modules/.vite/deps/react.js")).default;
     const { createRoot } = (await import("/node_modules/.vite/deps/react-dom_client.js")).default;
     const { VoiceSettingsModal } = await import("/src/components/VoiceSettingsModal.tsx");
+    const { SettingsPanel } = await import("/src/components/settings/SettingsPanel.tsx");
     const { ConfirmProvider } = await import("/src/components/ConfirmDialog.tsx");
     document.documentElement.dataset.ecTheme = "obsidian";
     const ctx = new AudioContext({ sampleRate: 48000 }); await ctx.resume();
     const osc = ctx.createOscillator(); const dest = ctx.createMediaStreamDestination(); osc.connect(dest); osc.start();
-    navigator.mediaDevices.getUserMedia = async () => new MediaStream([dest.stream.getAudioTracks()[0].clone()]);
+    window.qaCapturedTracks = [];
+    window.qaSyntheticCapture = async () => {
+      const track = dest.stream.getAudioTracks()[0].clone();
+      window.qaCapturedTracks.push(track);
+      return new MediaStream([track]);
+    };
+    navigator.mediaDevices.getUserMedia = window.qaSyntheticCapture;
     window.qaAudioRoot = createRoot(document.getElementById("qa-root"));
-    window.qaAudioRoot.render(React.createElement(ConfirmProvider, null, React.createElement(VoiceSettingsModal, { onClose: () => window.qaAudioRoot.unmount() })));
+    window.qaAudioMount = mode => {
+      const close = () => window.qaAudioRoot.render(null);
+      const noop = async () => true;
+      const panel = mode === "profile" ? React.createElement(SettingsPanel, {
+        initialViewId: "voice-video", profile: { id: "synthetic-user", displayName: "QA", bio: "", profileImages: [] },
+        busy: false, error: null, onClose: close, onSave: noop, onUpdateActivity: noop, onUpdateQuietHours: noop,
+        onUploadAvatar: noop, onDeleteAvatar: noop, onUploadProfileBanner: noop, onDeleteProfileBanner: noop,
+        onUploadProfileImage: noop, onDeleteProfileImage: noop, onLogout: noop, accounts: [], currentAccountId: null,
+        onSwitchAccount: noop, onForgetAccount: noop, onAddAccount: noop,
+      }) : React.createElement(VoiceSettingsModal, { onClose: close });
+      window.qaAudioRoot.render(React.createElement(ConfirmProvider, null, panel));
+    };
+    window.qaAudioMount("profile");
     window.qaAudioCleanup = async () => { window.qaAudioRoot.unmount(); osc.stop(); dest.stream.getTracks().forEach(t => t.stop()); await ctx.close(); };
   });
+  await page.getByRole("button", { name: "Проверить микрофон", exact: true }).waitFor();
+  assert.equal(await page.evaluate(() => window.qaCapturedTracks.length), 0, "opening profile settings must not capture a microphone");
+  assert.equal(await page.getByRole("dialog").count(), 1, "profile settings embed content without a nested dialog");
   await page.getByRole("button", { name: "Усиленное", exact: false }).click();
   await page.getByRole("button", { name: "Проверить микрофон", exact: true }).click();
   await page.getByText("RNNoise работает локально", { exact: true }).waitFor({ timeout: 12000 });
-  mkdirSync(".codex-artifacts/voice-audio", { recursive: true });
-  for (const width of [1280, 320, 360, 390, 412]) {
+  mkdirSync(".codex-qa/voice-settings", { recursive: true });
+  for (const width of [1280, 320, 360, 390, 412, 768]) {
     await page.setViewportSize({ width, height: 900 });
     const metrics = await page.evaluate(() => ({ overflow: document.documentElement.scrollWidth > innerWidth,
       dialog: document.querySelector('[role="dialog"]').getBoundingClientRect().width }));
     assert.equal(metrics.overflow, false, `horizontal overflow at ${width}px`);
     await page.getByText("RNNoise работает локально", { exact: true }).scrollIntoViewIfNeeded();
-    await page.screenshot({ path: `.codex-artifacts/voice-audio/settings-${width}.png` });
+    await page.screenshot({ path: `.codex-qa/voice-settings/settings-${width}.png` });
     console.log(JSON.stringify({ kind: "real-settings/synthetic-mic", width, ...metrics }));
   }
   await page.getByRole("button", { name: "Остановить тест", exact: true }).click();
+  await page.getByRole("button", { name: "По клавише", exact: false }).click();
+  await page.getByRole("button", { name: "Назначить", exact: true }).click();
+  await page.keyboard.press("Escape");
+  assert.equal(await page.getByRole("dialog").count(), 1, "Escape cancels PTT capture, not the settings dialog");
+  assert.equal(await page.locator("kbd").textContent(), "Пробел");
+  assert.equal(await page.getByRole("button", { name: "Назначить", exact: true }).evaluate(el => document.activeElement === el), true);
+  await page.getByRole("button", { name: "Назначить", exact: true }).click();
+  await page.keyboard.press("Tab");
+  assert.equal(await page.locator("kbd").textContent(), "Пробел");
+  await page.getByRole("button", { name: "Назначить", exact: true }).click();
+  await page.keyboard.press("t");
+  assert.equal(await page.locator("kbd").textContent(), "T");
+  await page.evaluate(() => window.qaAudioMount("call"));
+  await page.getByRole("heading", { name: "Настройки голоса", exact: true }).waitFor();
+  assert.equal(await page.locator("kbd").textContent(), "T", "call and profile share persisted settings");
+  await page.evaluate(() => { navigator.mediaDevices.getUserMedia = async () => { throw new Error("SYNTHETIC-PRIVATE-ERROR"); }; });
+  await page.getByRole("button", { name: "Проверить микрофон", exact: true }).click();
+  await page.getByRole("alert").filter({ hasText: "Не удалось проверить микрофон" }).waitFor();
+  assert.equal(await page.getByText("SYNTHETIC-PRIVATE-ERROR").count(), 0);
+  await page.evaluate(() => { navigator.mediaDevices.getUserMedia = () => new Promise(resolve => { window.qaGrantLate = resolve; }); });
+  await page.getByRole("button", { name: "Проверить микрофон", exact: true }).click();
+  await page.getByRole("button", { name: "Остановить тест", exact: true }).click();
+  const lateState = await page.evaluate(async () => {
+    const stream = await window.qaSyntheticCapture(); window.qaGrantLate(stream);
+    await new Promise(resolve => setTimeout(resolve, 100)); return stream.getTracks()[0].readyState;
+  });
+  assert.equal(lateState, "ended");
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({ path: ".codex-qa/voice-settings/call-settings-reduced-390.png" });
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
   await page.evaluate(() => window.qaAudioCleanup());
+  assert.equal(await page.evaluate(() => window.qaCapturedTracks.every(track => track.readyState === "ended")), true);
+  assert.deepEqual(errors, []);
+  console.log(JSON.stringify({ kind: "profile-to-call/PTT/late-grant/error/reduced-motion", result: "PASS", pageErrors: errors.length }));
 } finally { await browser.close(); }

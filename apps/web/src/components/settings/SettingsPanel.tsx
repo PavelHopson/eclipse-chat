@@ -1,5 +1,6 @@
 import { useRef, useState, type ChangeEvent } from "react";
 import { Modal } from "../Modal";
+import { VoiceSettingsContent } from "../VoiceSettingsContent";
 import { useConfirm } from "../ConfirmDialog";
 import type { Profile } from "../../hooks/useProfile";
 import { useChangePassword } from "../../hooks/useChangePassword";
@@ -127,7 +128,6 @@ function placeholderFor(view: SettingsViewId) {
   const map: Record<string, { eyebrow: string; title: string; version: string }> = {
     content: { eyebrow: "Контент и общение", title: "Контент и общение", version: "v1.5.55+" },
     "data-export": { eyebrow: "Данные", title: "Экспорт", version: "v1.5.55+" },
-    "voice-video": { eyebrow: "Голос и видео", title: "Голос и видео", version: "v1.5.55+" },
     developer: { eyebrow: "Разработчик", title: "Разработчик", version: "v1.5.55+" },
   };
   return map[view] ?? { eyebrow: "Настройки", title: "Раздел", version: "v1.5.55+" };
@@ -474,6 +474,7 @@ export function SettingsPanel({
         />
       );
     }
+    if (active === "voice-video") return <VoiceSettingsContent />;
     if (active === "integrations") return <IntegrationsSection />;
     if (active === "hotkeys") return <HotkeysSection />;
     const placeholder = placeholderFor(active);

@@ -10,7 +10,7 @@ const shell = read("apps/web/src/pages/AppShell.tsx");
 const layout = read("apps/web/src/hooks/useVoiceRoomLayout.ts");
 const css = read("apps/web/src/styles/voice-room.css");
 const voice = read("apps/web/src/hooks/useVoice.ts");
-const voiceSettings = read("apps/web/src/components/VoiceSettingsModal.tsx");
+const voiceSettings = read("apps/web/src/components/VoiceSettingsContent.tsx");
 function loadFunctions(source, names, globals = {}) {
   const ast = ts.createSourceFile("component.tsx", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
   const declarations = ast.statements.filter(node => ts.isFunctionDeclaration(node) && names.includes(node.name?.text)).map(node => node.getText(ast)).join("\n");

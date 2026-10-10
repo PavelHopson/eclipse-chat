@@ -63,7 +63,7 @@ export const SETTINGS_GROUPS: NavGroup[] = [
   {
     label: "Приложение",
     items: [
-      { id: "voice-video", label: "Голос и видео", icon: "microphone", soon: "v1.5.55+" },
+      { id: "voice-video", label: "Голос и звук", icon: "microphone" },
       { id: "content", label: "Контент", icon: "file", soon: "v1.5.55+" },
       { id: "hotkeys", label: "Горячие клавиши", icon: "cursor" },
       { id: "install", label: "Установить приложение", icon: "external" },
