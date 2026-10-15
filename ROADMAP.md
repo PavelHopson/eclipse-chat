@@ -7,17 +7,15 @@
 
 **Production: v1.7.77 · code `685d6f3` · проверено 2026-10-09.** API/health, активные web assets, SW и production RNNoise smoke подтверждены; физический двухклиентский звонок ещё не проверен.
 
-## v1.7.78 — Общие настройки звука до и во время звонка (2026-10-10, локально)
+## v1.7.79 — Выбор экрана или окна трансляции (2026-10-15, локально)
 
-- Профиль → «Голос и звук» теперь открывает действующие настройки устройств, шумоподавления, PTT и проверки звука вместо «Скоро». В звонке используется тот же компонент и тот же store, без второго DSP/runtime.
-- Escape отменяет назначение PTT и возвращает focus; Tab/Shift+Tab сохраняют навигацию, а не назначаются как клавиша передачи.
-- Тест динамиков освобождает AudioContext, oscillator, stream и timer при ошибке, закрытии, смене устройства/громкости и скрытии страницы. Поздние sink/play/permission/DSP результаты не запускают устаревший тест. Отключённый микрофон завершает тест с понятной ошибкой.
-- Тест не записывает и не публикует микрофон; простое открытие раздела не запрашивает захват. Raw exception text не показывается. Transport, mute/deafen, RNNoise defaults и server gates не менялись.
-- Локально: полный npm test, typecheck/build, 22 security contracts и npm audit (0). 14 новых behavioral regressions включены в npm test. Chromium: реальный RNNoise и LiveKit RemoteAudioTrack через локальные WebRTC peers с синтетическим сигналом; профиль → звонок, PTT/отмена/ошибка; 320/360/390/412/768/1280 px, reduced motion, overflow false, page errors 0.
-- Root/web/server/lock/SW согласованы на 1.7.78; dependencies/native версии не менялись, migration отсутствует. Production read-only 10.10: всё ещё 1.7.77, health/database true. Новый deploy не выполнялся.
-- Открыто: физические микрофоны/слышимость на двух устройствах, production SFU/reconnect, WebView2/Android runtime. Native Windows system-audio capture не реализован и этим UI-срезом не закрывается.
+- Убрано предпочтение текущей вкладки (`preferCurrentTab: false`), добавлена подсказка системному picker открыть окна (`video.displaySurface: window`). Пользователь по-прежнему выбирает окно приложения/игры, монитор или вкладку там, где это поддерживает runtime; нет скрытого выбора источника или обхода подтверждения.
+- Реальный установленный LiveKit проверен до границы `getDisplayMedia`: параметры доходят, тестовые monitor/window/browser tracks принимаются, окно без audio остаётся video-only, отмена не повторяет запрос. Это fixture integration, не визуальное доказательство системного диалога WebView2.
+- Прошли 154 root / 474 server tests (6 skipped), 53 focused voice checks, typecheck/build, 22 security contracts, Chromium SDK/audio/shared-settings smoke и свежий npm audit (0).
+- Root/web/server/lock/SW 1.7.79. Native shell/dependencies/server logic не менялись; migration отсутствует. Production read-only 15.10 остаётся 1.7.77, health/database true; этот срез не развёрнут.
+- Открыта проверка системного picker в Windows-приложении и реальной игры/монитора через SFU. Захват системного звука Windows, DRM/exclusive fullscreen и все игры не объявлены исправленными.
 
-Подробности и scope: [статус общих настроек звука](docs/status/voice-settings-2026-10-10.md).
+Подробности, privacy-pass и acceptance: [выбор источника](docs/status/screen-source-picker-2026-10-15.md).
 
 ## v1.7.78 — Общие настройки звука до и во время звонка (2026-10-10, локально)
 

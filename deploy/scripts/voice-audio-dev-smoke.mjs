@@ -1,7 +1,19 @@
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, readFileSync } from "node:fs";
+import { runInNewContext } from "node:vm";
+import ts from "typescript";
+const voiceSource = ts.createSourceFile("useVoice.ts", readFileSync(new URL("../../apps/web/src/hooks/useVoice.ts", import.meta.url), "utf8"), ts.ScriptTarget.Latest, true);
+const captureDeclaration = voiceSource.statements.filter(ts.isVariableStatement)
+  .flatMap(node => [...node.declarationList.declarations]).find(node => node.name.getText(voiceSource) === "SCREEN_SHARE_CAPTURE_OPTIONS");
+assert.ok(captureDeclaration?.initializer);
+const captureExports = {};
+runInNewContext(ts.transpileModule(`exports.options = ${captureDeclaration.initializer.getText(voiceSource)}`, {
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+}).outputText, { exports: captureExports });
 const { chromium } = createRequire(import.meta.url)(process.env.ECLIPSE_PLAYWRIGHT_PATH || "playwright");
+const qaBase = new URL(process.env.ECLIPSE_VOICE_QA_BASE_URL || "http://127.0.0.1:5187");
+assert.equal(qaBase.protocol, "http:"); assert.equal(qaBase.hostname, "127.0.0.1");
 const browser = await chromium.launch({ headless: true, args: ["--autoplay-policy=no-user-gesture-required"] });
 try {
   const page = await browser.newPage();
@@ -14,7 +26,54 @@ try {
     return route.continue();
   });
   await page.route("**/qa-audio", route => route.fulfill({ contentType: "text/html", body: '<!doctype html><div id="qa-root"></div>' }));
-  await page.goto("http://127.0.0.1:5187/qa-audio");
+  await page.goto(new URL("/qa-audio", qaBase).href);
+  const picker = await page.evaluate(async capture => {
+    const { createLocalScreenTracks } = await import("/node_modules/.vite/deps/livekit-client.js");
+    const original = navigator.mediaDevices.getDisplayMedia;
+    const results = [];
+    try {
+      // Exercise the actual SDK/native-API boundary with fixture-only media.
+      // No real desktop, application window or microphone is captured here.
+      for (const surface of ["monitor", "window", "browser"]) {
+        const canvas = document.createElement("canvas"); canvas.width = 64; canvas.height = 64;
+        canvas.getContext("2d").fillRect(0, 0, 64, 64);
+        const stream = canvas.captureStream(10);
+        const videoTrack = stream.getVideoTracks()[0];
+        const settings = videoTrack.getSettings.bind(videoTrack);
+        videoTrack.getSettings = () => ({ ...settings(), displaySurface: surface });
+        const context = new AudioContext(); await context.resume();
+        const oscillator = context.createOscillator(), destination = context.createMediaStreamDestination();
+        oscillator.connect(destination); oscillator.start();
+        if (surface !== "window") stream.addTrack(destination.stream.getAudioTracks()[0]);
+        let forwarded, tracks = [];
+        navigator.mediaDevices.getDisplayMedia = async options => { forwarded = options; return stream; };
+        try {
+          tracks = await createLocalScreenTracks(capture);
+          results.push({ surface, preferCurrentTab: forwarded.preferCurrentTab,
+            displaySurfaceHint: forwarded.video.displaySurface, systemAudio: forwarded.systemAudio,
+            sources: tracks.map(track => track.source), selectedSurface: tracks[0].mediaStreamTrack.getSettings().displaySurface,
+            noForcedSource: !forwarded.video.deviceId && !forwarded.video.mandatory && forwarded.monitorTypeSurfaces !== "exclude" });
+        } finally {
+          tracks.forEach(track => track.stop()); stream.getTracks().forEach(track => track.stop());
+          destination.stream.getTracks().forEach(track => track.stop()); oscillator.stop(); await context.close();
+        }
+        results.at(-1).released = stream.getTracks().every(track => track.readyState === "ended");
+      }
+      let requests = 0;
+      navigator.mediaDevices.getDisplayMedia = async () => { requests++; throw new DOMException("synthetic-cancel", "NotAllowedError"); };
+      let cancelled = false;
+      try { await createLocalScreenTracks(capture); } catch (error) { cancelled = error.name === "NotAllowedError"; }
+      return { results, cancelled, requests };
+    } finally { navigator.mediaDevices.getDisplayMedia = original; }
+  }, JSON.parse(JSON.stringify(captureExports.options)));
+  for (const result of picker.results) {
+    assert.equal(result.preferCurrentTab, false); assert.equal(result.displaySurfaceHint, "window");
+    assert.equal(result.systemAudio, "include"); assert.equal(result.selectedSurface, result.surface);
+    assert.equal(result.noForcedSource, true); assert.equal(result.released, true);
+    assert.deepEqual(result.sources, result.surface === "window" ? ["screen_share"] : ["screen_share", "screen_share_audio"]);
+  }
+  assert.equal(picker.cancelled, true); assert.equal(picker.requests, 1);
+  console.log(JSON.stringify({ kind: "real-LiveKit/createLocalScreenTracks/fixture-display-picker", ...picker }));
   const result = await page.evaluate(async () => {
     const { createAudioEnhancer } = await import("/src/lib/audioEnhancer.ts");
     const sourceCtx = new AudioContext({ sampleRate: 48000 }); await sourceCtx.resume();

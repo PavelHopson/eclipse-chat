@@ -100,11 +100,45 @@ test("screen sharing requests browser-consented audio and remains restartable wi
     echoCancellation: false, noiseSuppression: false, autoGainControl: false,
   });
   assert.equal(calls[0][1].systemAudio, "include");
+  assert.equal(calls[0][1].preferCurrentTab, false);
+  assert.equal(calls[0][1].video.displaySurface, "window");
   assert.deepEqual(calls[0][2], publish);
   assert.equal(refreshes, 3);
   // No audio publication is required for a successful window/screen share.
   const { hasActiveScreenShareAudio } = loadFunctions(voice, ["hasActiveScreenShareAudio"]);
   assert.equal(hasActiveScreenShareAudio([]), false);
+});
+
+test("screen source hints reach the installed LiveKit getDisplayMedia conversion without restricting monitors", () => {
+  const capture = loadConstant(voice, "SCREEN_SHARE_CAPTURE_OPTIONS");
+  for (const safari of [false, true]) {
+    const { screenCaptureToDisplayMediaStreamOptions: convert } = loadFunctions(
+      read("node_modules/livekit-client/src/room/track/utils.ts"),
+      ["screenCaptureToDisplayMediaStreamOptions"], { isSafari: () => safari });
+    const options = convert(capture);
+    assert.equal(options.preferCurrentTab, false);
+    assert.equal(options.video.displaySurface, "window");
+    assert.equal(options.systemAudio, "include");
+    assert.notEqual(options.monitorTypeSurfaces, "exclude");
+    assert.notEqual(options.selfBrowserSurface, "exclude");
+    assert.equal(options.video.deviceId, undefined, "no app-selected window/device can bypass the picker");
+    assert.equal(options.video.mandatory, undefined);
+    assert.doesNotMatch(JSON.stringify(options), /chromeMediaSource|sourceId|desktopCapture/);
+  }
+});
+
+test("cancelled source selection never retries, publishes a replacement or refreshes live state", async () => {
+  let calls = 0, refreshes = 0, error = null;
+  const roomRef = { current: { localParticipant: { isScreenShareEnabled: false,
+    async setScreenShareEnabled() { calls++; const denied = new Error("synthetic-cancel"); denied.name = "NotAllowedError"; throw denied; } } } };
+  const toggle = loadHookCallback(voice, "toggleScreenShare", { Error, roomRef,
+    SCREEN_SHARE_CAPTURE_OPTIONS: loadConstant(voice, "SCREEN_SHARE_CAPTURE_OPTIONS"),
+    SCREEN_SHARE_PUBLISH_OPTIONS: loadConstant(voice, "SCREEN_SHARE_PUBLISH_OPTIONS"),
+    refreshVisualTracks: () => refreshes++, setError: value => { error = value; } });
+  await toggle();
+  assert.equal(calls, 1); assert.equal(refreshes, 0);
+  assert.equal(roomRef.current.localParticipant.isScreenShareEnabled, false);
+  assert.equal(error, "Доступ к демонстрации экрана отклонён");
 });
 
 test("screen audio state follows only an active LiveKit screen-audio publication", () => {

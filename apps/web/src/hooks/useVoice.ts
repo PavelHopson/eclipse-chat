@@ -77,7 +77,11 @@ const SCREEN_SHARE_CAPTURE_OPTIONS = {
   // continue as video-only screen shares.
   audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
   systemAudio: "include" as const,
-  preferCurrentTab: true,
+  // Do not request the single-tab confirmation flow in Windows WebView2.
+  // Prefer the window pane, but leave the final tab/window/monitor choice to
+  // the native picker. Games are selected as windows (or via their monitor).
+  preferCurrentTab: false,
+  video: { displaySurface: "window" as const },
   surfaceSwitching: "include" as const,
   resolution: {
     width: 1920,
