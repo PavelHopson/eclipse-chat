@@ -2,7 +2,7 @@
 
 ## Результат и граница
 
-Локальный RC v1.7.79, checkout `G:/eclipse-chat-screen-audio-rc`, detached base `366b094496a01b418d4f45a90a1bd9d8ed5485d5`; remote master read-only совпал с `550e9cdb303f656bd27898e0e56109197327ae76`. Origin `https://github.com/PavelHopson/eclipse-chat.git`. Новая ветка не создавалась. Прежний dirty `docs/status/voice-audio-2026-10-07.md` и `.codex-qa` не входят в commit; основной E:/projects/eclipse-chat не менялся.
+Релиз v1.7.79 опубликован 15.10.2026, code `f668784b73fa8e68636d1e6e233ec9f2aac15e73`. Checkout `G:/eclipse-chat-screen-audio-rc`, detached base `366b094496a01b418d4f45a90a1bd9d8ed5485d5`; на старте remote master read-only совпал с `550e9cdb303f656bd27898e0e56109197327ae76`. Origin `https://github.com/PavelHopson/eclipse-chat.git`. Новая ветка не создавалась. Прежний dirty `docs/status/voice-audio-2026-10-07.md` и `.codex-qa` не входят в commit; основной E:/projects/eclipse-chat не менялся.
 
 Пользователь показывает Windows-приложение: разрешение только на собственную вкладку, без выбора рабочего стола/приложений. Исправлена настройка запроса захвата. Сам native WebView2 picker и конкретная игра ещё не проверены: не утверждаем завершённую Windows acceptance по mock или Chromium.
 
@@ -24,8 +24,8 @@
 - `npm.cmd audit --audit-level=low`: 0 vulnerabilities. No install/update, dependency graph неизменен, lockfile diff — только версии приложения.
 - Chromium `voice-audio-dev-smoke.mjs` на своём loopback 5188: actual SDK до native-API границы получает preferCurrentTab=false/displaySurface=window/systemAudio=include. Fixture monitor/browser возвращают screen video+audio, fixture window без audio — только screen video. Во всех случаях tracks ended после stop; cancel — один запрос, без retry.
 - Соседний smoke: actual RNNoise на synthetic input; actual LiveKit RemoteAudioTrack через local WebRTC peers non-silent; shared SettingsPanel → call/PTT/late grant/error flow; 320/360/390/412/768/1280 px без horizontal overflow, reduced-motion, page errors 0. Никакой пользовательский desktop/window/microphone не захватывался. Это не production SFU/hardware/native UI acceptance.
-- Read-only production API 15.10: version 1.7.77, health ok=true/database=true. Активные assets/SW в этом этапе не сравнивались, новый deploy не выполнялся.
-- Git diff/check, manifest parity и exact write-set проверяются перед commit; Gitleaks/CodeQL/Linux CI в этом локальном этапе не запускались.
+- До публикации read-only production API 15.10: version 1.7.77, health ok=true/database=true. Результат после разрешённого deploy приведён ниже, это отдельная проверка.
+- Локально Git diff/check, manifest parity, scoped secret-pattern scan (0), exact write-set — pass. Gitleaks/CodeQL/Linux CI выполнены отдельно после публикации, см. rollout ниже.
 
 ## Пропорциональный security-pass
 
@@ -49,7 +49,31 @@
 4. Stop/OS stop/leave/refresh/reconnect/switch room закрывают capture; повторный запуск снова требует подтверждения. Mic mute/deafen сохраняются.
 5. Browser audio checkbox, наличие/отсутствие screen audio и слышимость проверяются отдельно. Windows native loopback по-прежнему не реализован этим срезом.
 
-Migration не нужна. Push/deploy требуют отдельного выпуска в согласованный master с fresh exact-SHA CI/security/approval; старый `5d505b5` не использовать. До публикации этого commit обычный production pull не получит исправление.
+Migration не нужна. Push/deploy выполнены после явного разрешения пользователя, без обхода fresh exact-SHA CI/security/approval. Старый `5d505b5` не использовать для повторного deploy.
+
+## Подтверждённый production rollout и обновление приложения
+
+- Пользователь разрешил push в master, штатный deploy 1.7.79 с общими настройками звука 1.7.78 и обновление приложения. Выполнен только fast-forward `HEAD:master`, без force. Вся чужая dirty работа сохранена.
+- [CI 38805287518](https://github.com/PavelHopson/eclipse-chat/actions/runs/38805287518), [Security Gate 38805287752](https://github.com/PavelHopson/eclipse-chat/actions/runs/38805287752), [Deploy 38805287573](https://github.com/PavelHopson/eclipse-chat/actions/runs/38805287573): exact `f668784b73fa8e68636d1e6e233ec9f2aac15e73`, success.
+- Перед approval машинно проверены master SHA, headSha/status CI+Security, deploy SHA/waiting, единственный environment `production` id 15291822396 и current_user_can_approve. Только затем одобрена эта ожидающая deployment. Проверки не ослаблялись.
+- Production backup: Chat dump 439906 bytes, mode 600, pg_restore list verified. DB migration skip разрешён штатной пустой Prisma diff проверкой; schema/migrations не менялись. Supervisor RUNNING, health/database true, uploads image/webp, подписанный LiveKit webhook/config/container smoke — success.
+- Независимый GET: API 1.7.79, SW `eclipse-v1.7.79`. SHA-256 всех 8 выбранных production assets совпали byte-for-byte с проверенным release build: entry JS/CSS, AppShell JS/CSS, VoiceRoom, VoiceSettingsContent, SettingsPanel, RNNoise worklet. Active index ссылается на соответствующие entry assets; это не вывод только по package manifest.
+- Реальный production IAB показывает v1.7.79. Обычный login через форму прошёл; открыты «Профиль и настройки → Голос и звук» до звонка. Одна модалка, устройства перечислены, тест не запущен. 1280/390 px: no horizontal overflow, screenshots просмотрены. Учётные данные не читались/не сохранялись в файлы; настройка устройств, mic test, звонок, capture/permission prompts не запускались. Actual WebView2/system picker и два production-клиента не проверены.
+- Desktop Tauri config загружает тот же production URL, поэтому интерфейс 1.7.79 приходит в существующую оболочку без изменения native binaries. Channel metadata проверена: desktop-v1.0.9, latest.json 1.0.9, 6 platform entries с signature fields; бинарники не скачивались/не устанавливались, криптографическая проверка updater signatures не выполнялась. Новая native версия/installer/APK не выпускались, Android остаётся 1.0.5. Не выдавать web update за native rebuild.
+- Windows Computer Use inventory не нашёл запущенного окна Eclipse Chat. Новые программы/Windows настройки не устанавливались/не менялись. Пользователю: закончить звонок, сохранить черновик, перезагрузить интерфейс или полностью выйти через tray и открыть приложение; проверить v1.7.79 внизу.
+- Supply-chain pass по установленному `analyzing-sbom-for-supply-chain-vulnerabilities`: own-CI CycloneDX 1.5 разобран (338 npm components, metadata 1.7.79; отдельный RNNoise BOM 2 components). Audit/SBOM job и Gitleaks/CodeQL зелёные. Независимые NVD/Grype/native artifact CVE scans не запускались, не заявлены.
+- CodeQL open list: 14 прежних reference-doc findings в `docs/Эффекты крутые` (10 high insecure-randomness, 4 medium external-script rules), runtime paths отсутствуют. Не скрывались/не dismiss; это не новая runtime уязвимость и не полный security clearance. Medium/open native supply-chain/signing/auto-update/hardware риски предыдущего release inventory сохраняются.
+
+Повторно разворачивать сервер сейчас не требуется. Для будущего ручного восстановления только после проверки, что этот SHA по-прежнему согласован и равен origin/master (Bash на сервере):
+
+```bash
+cd /var/www/eclipse-chat
+ECLIPSE_RELEASE_SHA=f668784b73fa8e68636d1e6e233ec9f2aac15e73 \
+ECLIPSE_SKIP_DB_MIGRATION=1 \
+bash deploy/scripts/deploy.sh
+```
+
+Это исторический exact-SHA receipt, не команда на слепой повтор: при новом master/stale-release/error остановиться; не force и не отключать guard. Рабочая ручная приёмка picker выше по-прежнему обязательна.
 
 ## Primary references
 

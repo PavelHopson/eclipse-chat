@@ -5,14 +5,16 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Production: v1.7.77 · code `685d6f3` · проверено 2026-10-09.** API/health, активные web assets, SW и production RNNoise smoke подтверждены; физический двухклиентский звонок ещё не проверен.
+**Production: v1.7.79 · code `f668784` · проверено 2026-10-15.** API/health, SW и SHA-256 восьми активных assets подтверждены; вход и общие настройки звука проверены на production. Windows WebView2 picker/реальный двухклиентский звонок остаются открытыми.
 
-## v1.7.79 — Выбор экрана или окна трансляции (2026-10-15, локально)
+## v1.7.79 — Выбор экрана или окна трансляции (2026-10-15, production)
 
 - Убрано предпочтение текущей вкладки (`preferCurrentTab: false`), добавлена подсказка системному picker открыть окна (`video.displaySurface: window`). Пользователь по-прежнему выбирает окно приложения/игры, монитор или вкладку там, где это поддерживает runtime; нет скрытого выбора источника или обхода подтверждения.
 - Реальный установленный LiveKit проверен до границы `getDisplayMedia`: параметры доходят, тестовые monitor/window/browser tracks принимаются, окно без audio остаётся video-only, отмена не повторяет запрос. Это fixture integration, не визуальное доказательство системного диалога WebView2.
 - Прошли 154 root / 474 server tests (6 skipped), 53 focused voice checks, typecheck/build, 22 security contracts, Chromium SDK/audio/shared-settings smoke и свежий npm audit (0).
-- Root/web/server/lock/SW 1.7.79. Native shell/dependencies/server logic не менялись; migration отсутствует. Production read-only 15.10 остаётся 1.7.77, health/database true; этот срез не развёрнут.
+- Root/web/server/lock/SW 1.7.79. Native shell/dependencies/server logic не менялись; migration отсутствует. Пользователь разрешил push/deploy и обновление приложения. Fast-forward master → `f668784`; exact-SHA CI `38805287518`, Security Gate `38805287752` и Deploy `38805287573` — success; approval production после зелёных checks.
+- Backup Chat 439906 bytes/mode 600 проверен; supervisor/DB/uploads/LiveKit signed webhook smoke прошёл. Восемь JS/CSS/worklet SHA-256 совпали с release build, SW/API 1.7.79; production login → настройки звука и 1280/390 px QA прошли без horizontal overflow, без запуска mic/capture.
+- Установленное приложение загружает remote UI; этот выпуск обновляет его интерфейс. Native desktop channel остаётся 1.0.9, Android 1.0.5; новый installer/APK не собирался и не выдаётся за обязательный для этой web-правки. Нового Windows native окна в доступной сессии нет, actual app/picker acceptance — вручную.
 - Открыта проверка системного picker в Windows-приложении и реальной игры/монитора через SFU. Захват системного звука Windows, DRM/exclusive fullscreen и все игры не объявлены исправленными.
 
 Подробности, privacy-pass и acceptance: [выбор источника](docs/status/screen-source-picker-2026-10-15.md).
