@@ -1,5 +1,9 @@
 # Eclipse Chat
 
+<!-- project-links:start -->
+[Открыть веб-версию](https://app.star-crm.ru/eclipse-chat/) · [Документация](docs/repository-guide.md) · [Код](https://github.com/PavelHopson/eclipse-chat/tree/master) · [История изменений](https://github.com/PavelHopson/eclipse-chat/commits/master/)
+<!-- project-links:end -->
+
 ![Eclipse Chat: Сообщение → Действие → Результат](docs/assets/repository-cover.svg)
 
 **Рабочее пространство.** Рабочее пространство для общения, AI-задач и проверяемых действий в экосистеме Eclipse.
