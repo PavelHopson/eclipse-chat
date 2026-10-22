@@ -22,14 +22,15 @@ test("routine release keeps approval, verified backup and exact-SHA gates withou
   assert.doesNotMatch(deploy, /sync-ai-gateway|configure-office-ingest|OFFICE_INGEST_SENTINEL|ch(?:mod|own).*CHAT_ENV|cp .*CHAT_ENV/);
 });
 
-test("v1.7.74 skips migration only after verifying the exact previous production diff", () => {
+test("release runs Prisma migration while retaining the exact-release safety gate", () => {
   assert.match(workflow, /envs: ECLIPSE_RELEASE_SHA,ECLIPSE_SKIP_DB_MIGRATION/);
-  assert.match(workflow, /ECLIPSE_SKIP_DB_MIGRATION: "1"/);
+  assert.match(workflow, /ECLIPSE_SKIP_DB_MIGRATION: "0"/);
   assert.match(deploy, /JSON\.parse\(fs\.readFileSync\("release\.json", "utf8"\)\)\.commit/);
   assert.match(deploy, /git merge-base --is-ancestor "\$PREVIOUS_RELEASE_SHA" "\$ECLIPSE_RELEASE_SHA"/);
   assert.match(deploy, /git diff --quiet "\$PREVIOUS_RELEASE_SHA" "\$ECLIPSE_RELEASE_SHA" -- \\\n+        apps\/server\/prisma\/schema\.prisma apps\/server\/prisma\/migrations/);
   assert.ok(deploy.indexOf("Refusing migration skip") < deploy.indexOf("Skipping prisma migrate deploy"));
   assert.match(deploy, /ECLIPSE_SKIP_DB_MIGRATION must be 0 or 1/);
+  assert.match(deploy, /npx prisma migrate deploy/);
 });
 
 test("failed deployments preserve the last successful release SHA for the next migration gate", () => {
