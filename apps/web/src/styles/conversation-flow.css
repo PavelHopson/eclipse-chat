@@ -41,6 +41,7 @@
 }
 .ec-composer-feedback__success { color: var(--ec-ws-gold, #d5b238); }
 .ec-composer-feedback__keys { margin-left: auto; }
+.ec-composer--quiet:not(:focus-within) .ec-composer-feedback__keys { display: none; }
 .ec-composer-error {
   display: flex; align-items: center; gap: 12px; justify-content: space-between;
   margin: 8px 0 0; font-size: 12px; color: var(--ec-danger); line-height: 1.5;
@@ -178,6 +179,8 @@
 .ec-composer--quiet .ec-composer-box { background: var(--ec-ws-panel,var(--ec-surface-2)) !important; box-shadow: none !important; }
 .ec-composer--quiet .ec-composer-textarea { background: transparent !important; border: 0 !important; color: var(--ec-text); min-width: 0; box-shadow: none !important; }
 .ec-composer--quiet .ec-composer-send::before, .ec-composer--quiet .ec-composer-box::before { display: none; }
+.ec-workspace-v2 .ec-composer--quiet .ec-composer-send-label { display: none; }
+.ec-workspace-v2 .ec-composer--quiet .ec-composer-send { width: 40px; padding-inline: 0; }
 .ec-preview-thread-source { padding: 0 0 16px; border-bottom: 1px solid var(--ec-border-subtle); color: var(--ec-text-muted); }
 @media (prefers-reduced-motion: reduce) {
   .ec-message-menu, .ec-composer-feedback__success, .ec-task-link__check { animation: none !important; transform: none !important; }

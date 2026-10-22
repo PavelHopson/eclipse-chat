@@ -617,6 +617,7 @@ export function ChannelList({
           if (draggedId) return;
           onSelect(c.id);
         }}
+        aria-current={isActive ? "page" : undefined}
         className={isActive ? "ec-channel-item ec-channel-item--active" : "ec-channel-item"}
         style={{
           ...(isDeleting ? { opacity: 0.5, pointerEvents: "none" } : undefined),
@@ -1097,7 +1098,9 @@ export function ChannelList({
         <button
           type="button"
           role="tab"
+          id="sidebar-tab-channels"
           aria-selected={sidebarTab === "channels"}
+          aria-controls="workspace-sidebar-panel"
           onClick={() => setSidebarTab("channels")}
           className="ec-sidebar-tab ec-hud-tab"
           title="Каналы — текстовые, broadcast, голосовые"
@@ -1110,7 +1113,9 @@ export function ChannelList({
         <button
           type="button"
           role="tab"
+          id="sidebar-tab-work"
           aria-selected={sidebarTab === "work"}
+          aria-controls="workspace-sidebar-panel"
           onClick={() => setSidebarTab("work")}
           className="ec-sidebar-tab ec-hud-tab"
           title="Работа — доска задач, здоровье команды"
@@ -1124,7 +1129,9 @@ export function ChannelList({
         <button
           type="button"
           role="tab"
+          id="sidebar-tab-tables"
           aria-selected={sidebarTab === "tables"}
+          aria-controls="workspace-sidebar-panel"
           onClick={() => setSidebarTab("tables")}
           className="ec-sidebar-tab ec-hud-tab"
           title="Таблицы — operational tables"
@@ -1153,7 +1160,13 @@ export function ChannelList({
         />
       </div>
 
-      <div className="ec-channel-list__list">
+      <div
+        id="workspace-sidebar-panel"
+        className="ec-channel-list__list"
+        role="tabpanel"
+        aria-labelledby={`sidebar-tab-${sidebarTab}`}
+        tabIndex={0}
+      >
         {sidebarTab === "work" && (
           <>
             {onOpenStatusBoard && (

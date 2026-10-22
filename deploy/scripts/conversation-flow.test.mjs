@@ -111,6 +111,8 @@ test("media uses existing URL resolver and safe download attributes, no new unsa
   assert.doesNotMatch(media, /style.transform = "translateY/);
   const css = source("apps/web/src/styles/conversation-flow.css");
   assert.match(css, /object-fit: contain/);
+  assert.match(css, /ec-composer--quiet:not\(:focus-within\) \.ec-composer-feedback__keys/);
+  assert.match(css, /ec-workspace-v2 \.ec-composer--quiet \.ec-composer-send-label \{ display: none; \}/);
   assert.match(css, /prefers-reduced-motion: no-preference/);
   assert.match(css, /prefers-reduced-motion: reduce/);
   assert.doesNotMatch(css, /animation:[^;]*infinite/);

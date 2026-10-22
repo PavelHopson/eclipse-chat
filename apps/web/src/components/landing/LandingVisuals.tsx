@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Reveal } from "./CinematicMotion";
 import { apiPath } from "../../lib/api";
+import { QrLoginPanel } from "../QrLoginPanel";
 
 type AuthMode = "login" | "register" | null;
 
@@ -116,6 +117,13 @@ export function HeroOperationalStage({
   const [recBusy, setRecBusy] = useState(false);
   const [recError, setRecError] = useState<string | null>(null);
   const [recDone, setRecDone] = useState(false);
+  const [qrMode, setQrMode] = useState(false);
+
+  useEffect(() => {
+    // QR is an alternate login path. Leaving the login surface or switching
+    // to registration must always return to the ordinary form.
+    if (authMode !== "login") setQrMode(false);
+  }, [authMode]);
 
   const fieldsReady = Boolean(
     email.trim() &&
@@ -322,7 +330,7 @@ export function HeroOperationalStage({
           <p className="ec-hero-access__sub">{sub}</p>
         </header>
 
-        {!recoveryMode && (
+        {!recoveryMode && !qrMode && (
           <div className="ec-hero-access__tabs" role="tablist" aria-label="Режим доступа">
             <span
               className="ec-hero-access__tab-indicator"
@@ -348,6 +356,17 @@ export function HeroOperationalStage({
               Создать
             </button>
           </div>
+        )}
+
+        {!recoveryMode && !qrMode && mode === "login" && (
+          <button
+            type="button"
+            className="ec-hero-access__hint-link"
+            onClick={() => setQrMode(true)}
+            style={{ display: "block", margin: "10px auto 0" }}
+          >
+            Войти по QR-коду
+          </button>
         )}
 
         {/* Form (re-keyed на mode change → animation fires) */}
@@ -463,6 +482,8 @@ export function HeroOperationalStage({
               </p>
             </form>
           )
+        ) : qrMode ? (
+          <QrLoginPanel mode="target" onBack={() => setQrMode(false)} />
         ) : (
         <form
           key={mode}

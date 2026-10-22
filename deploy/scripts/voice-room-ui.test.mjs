@@ -109,6 +109,16 @@ test("screen sharing requests browser-consented audio and remains restartable wi
   assert.equal(hasActiveScreenShareAudio([]), false);
 });
 
+test("participant click opens private audio controls while a modified click opens the profile", () => {
+  assert.match(room, /const openParticipantSettings = \(p: VoiceParticipant, e: React\.MouseEvent\)/);
+  assert.match(room, /e\.shiftKey \|\| e\.ctrlKey \|\| e\.metaKey/);
+  assert.match(room, /Shift\+Enter/);
+  assert.match(room, /Настроить звук участника \$\{p\.name\}/);
+  assert.match(room, /openParticipant=\{openParticipantSettings\}/);
+  assert.match(read("apps/web/src/components/VoiceVisualStage.tsx"), /openProfile\?\.\(person\.identity\)/);
+  assert.match(read("apps/web/src/components/ParticipantContextMenu.tsx"), /max=\{200\}/);
+});
+
 test("screen source hints reach the installed LiveKit getDisplayMedia conversion without restricting monitors", () => {
   const capture = loadConstant(voice, "SCREEN_SHARE_CAPTURE_OPTIONS");
   for (const safari of [false, true]) {

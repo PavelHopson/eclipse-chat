@@ -85,7 +85,10 @@ export const SETTINGS_GROUPS: NavGroup[] = [
 function visibleGroups(installAvailable: boolean): NavGroup[] {
   return SETTINGS_GROUPS.map((group) => ({
     ...group,
-    items: group.items.filter((item) => installAvailable || item.id !== "install"),
+    // Неготовые разделы не должны занимать место в навигации. Они остаются
+    // в модели, чтобы старые deep-link не ломались, но пользователь видит
+    // только действующие настройки.
+    items: group.items.filter((item) => !item.hidden && !item.soon && (installAvailable || item.id !== "install")),
   })).filter((group) => group.items.length > 0);
 }
 

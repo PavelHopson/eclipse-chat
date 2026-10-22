@@ -1249,7 +1249,7 @@ export function MessageInput({
                       <path d="M21.44 11.05 12.25 20.24a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 1 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.49" />
                     </svg>
                   </span>
-                  <span>Отправить файл</span>
+                  <span>Файл</span>
                 </button>
                 <button
                   type="button"
@@ -1265,7 +1265,7 @@ export function MessageInput({
                       <path d="M12 19v4M8 23h8" />
                     </svg>
                   </span>
-                  <span>Голосовое сообщение</span>
+                  <span>Голос</span>
                 </button>
                 {!hideSlashCommands && canCreateActions && (
                   <button
@@ -1280,7 +1280,7 @@ export function MessageInput({
                         <path d="M20 6 9 17l-5-5" />
                       </svg>
                     </span>
-                    <span>Создать задачу</span>
+                    <span>Задача</span>
                   </button>
                 )}
 
@@ -1296,7 +1296,7 @@ export function MessageInput({
                         <path d="M12 3l1.9 5.8L20 10l-4.6 3.8L16.8 20 12 16.7 7.2 20l1.4-6.2L4 10l6.1-1.2L12 3Z" />
                       </svg>
                     </span>
-                    <span>Использовать команды</span>
+                    <span>Команды</span>
                   </button>
                 )}
               </div>

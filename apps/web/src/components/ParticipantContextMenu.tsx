@@ -68,7 +68,7 @@ export function ParticipantContextMenu({
 
   // Clamp position в viewport
   const w = 260;
-  const h = 160;
+  const h = 196;
   const left = Math.min(anchorX, window.innerWidth - w - 8);
   const top = Math.min(anchorY, window.innerHeight - h - 8);
 
@@ -128,7 +128,7 @@ export function ParticipantContextMenu({
           <input
             type="range"
             min={0}
-            max={100}
+            max={200}
             step={1}
             value={Math.round(volume * 100)}
             onChange={(e) => onVolumeChange(Number(e.target.value) / 100)}
@@ -139,7 +139,7 @@ export function ParticipantContextMenu({
             type="button"
             onClick={onResetVolume}
             className="ec-btn ec-btn--ghost ec-btn--sm"
-            title="Сброс к 100%"
+            title="Сбросить к 100%"
             style={{ minWidth: 36, fontSize: "0.6rem", padding: "0.2rem 0.4rem" }}
           >
             100%
@@ -169,7 +169,7 @@ export function ParticipantContextMenu({
                 <line x1="17" y1="9" x2="23" y2="15" />
                 <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
               </svg>
-              Заглушить для меня
+              Выключить для меня
             </>
           )}
         </button>

@@ -204,9 +204,10 @@ jobs:
             bash deploy/scripts/deploy.sh
         env:
           ECLIPSE_RELEASE_SHA: ${{ github.sha }}
-          # v1.7.74 has no Prisma change. deploy.sh verifies the diff from the
-          # recorded previous production SHA and fails closed if that is false.
-          ECLIPSE_SKIP_DB_MIGRATION: "1"
+          # v1.7.81 adds QrLoginAttempt. Run the checked Prisma migration after
+          # the verified production backup; deploy.sh remains fail-closed on
+          # the exact release SHA and database target.
+          ECLIPSE_SKIP_DB_MIGRATION: "0"
 
       # --- Post-deploy: independent smoke от CI runner (не из prod),
       #     чтобы убедиться что внешний пользователь видит работающий сервис ---

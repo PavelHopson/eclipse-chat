@@ -14,7 +14,7 @@ export function DirectMessageWelcome({ onNewMessage }: Props) {
       <div className="ec-dm-welcome__copy">
         <p>Личные сообщения</p>
         <h1 id="dm-welcome-title">Продолжите разговор</h1>
-        <span>Выберите диалог слева или начните новую переписку.</span>
+        <span>Выберите диалог или начните новый.</span>
       </div>
       <button type="button" className="ec-btn ec-btn--primary" onClick={onNewMessage}>
         Написать сообщение

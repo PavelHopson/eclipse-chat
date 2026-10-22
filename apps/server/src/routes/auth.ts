@@ -86,7 +86,7 @@ function isUniqueEmailError(err: unknown): boolean {
   );
 }
 
-function publicUser(u: {
+export function publicUser(u: {
   id: string;
   email: string;
   displayName: string;
@@ -127,7 +127,7 @@ async function requireJwt(req: FastifyRequest, reply: FastifyReply) {
   }
 }
 
-async function issueSession(
+export async function issueSession(
   reply: FastifyReply,
   user: {
     id: string;

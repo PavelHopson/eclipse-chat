@@ -25,6 +25,7 @@ import { keyCodeToLabel } from "../hooks/useAudioDevices";
 import type { MusicSession } from "../hooks/useChannelMusic";
 import type { MemberRow } from "../hooks/useMembers";
 import { useTelemetry } from "../hooks/useTelemetry";
+import { useVoiceShortcuts } from "../hooks/useVoiceShortcuts";
 import {
   CameraLensIcon,
   HeadsetIcon,
@@ -603,6 +604,24 @@ export function VoiceRoom({
     v.activeChannelId !== channelId &&
     (v.state === "connected" || v.state === "connecting" || v.state === "reconnecting");
 
+  useVoiceShortcuts({
+    enabled: isJoinedHere || (!v.activeChannelId && !v.busy),
+    handlers: {
+      "toggle-mic": () => {
+        if (isConnected && v.settings.micActivationMode !== "push_to_talk") return v.toggleMic();
+      },
+      "toggle-deafen": () => {
+        if (isConnected) v.toggleDeafen();
+      },
+      join: () => {
+        if (!isJoinedHere && !isInAnotherVoice) joinRoom();
+      },
+      leave: () => {
+        if (isJoinedHere) return v.leave();
+      },
+    },
+  });
+
   const roomParticipants = isJoinedHere ? v.participants : [];
   const anyoneSpeaking = roomParticipants.some(person => person.isSpeaking && !person.isMicMuted
     && !v.settings.mutedParticipants.includes(person.identity));
@@ -670,6 +689,21 @@ export function VoiceRoom({
       avatar: lookupAvatar(p.identity),
       x: e.clientX,
       y: e.clientY,
+    });
+  };
+
+  const openParticipantSettings = (p: VoiceParticipant, e: React.MouseEvent) => {
+    if (p.isLocal) return;
+    if (e.shiftKey || e.ctrlKey || e.metaKey) {
+      onOpenProfile?.(p.identity);
+      return;
+    }
+    setCtxMenu({
+      identity: p.identity,
+      name: p.name,
+      avatar: lookupAvatar(p.identity),
+      x: Math.min(e.clientX, window.innerWidth - 260),
+      y: Math.min(e.clientY + 8, window.innerHeight - 196),
     });
   };
 
@@ -792,7 +826,8 @@ export function VoiceRoom({
           <VoiceVisualStage channelId={channelId} tracks={roomVisualTracks}
             participants={roomParticipants} avatar={lookupAvatar}
             renderTrack={track => <VideoTrackTile key={track.id} visual={track} lookupAvatar={lookupAvatar} />}
-            openParticipant={openCtxMenu} />
+            openParticipant={openParticipantSettings}
+            openProfile={onOpenProfile} />
         ) : isJoinedHere ? (
           /* Atmospheric presence room — floating avatars, speaking glow */
           <div className="ec-voice-room__presence-grid" data-count={stageParticipants.length}>
@@ -820,9 +855,17 @@ export function VoiceRoom({
                     (muted || volume < 1 ? " ec-vr-presence-card--muted" : "") +
                     (!p.isLive ? " ec-vr-presence-card--pending" : "")
                   }
-                  onClick={() => onOpenProfile?.(p.identity)}
+                  onClick={p.live && !p.isLocal ? (e) => openParticipantSettings(p.live!, e) : () => onOpenProfile?.(p.identity)}
+                  onKeyDown={p.live && !p.isLocal ? (e) => {
+                    if (e.shiftKey && (e.key === "Enter" || e.key === " ")) {
+                      e.preventDefault();
+                      onOpenProfile?.(p.identity);
+                    }
+                  } : undefined}
                   onContextMenu={p.live && !p.isLocal ? (e) => openCtxMenu(p.live!, e) : undefined}
-                  aria-label={`Открыть профиль: ${p.name}`}
+                  aria-label={p.live && !p.isLocal
+                    ? `Настроить звук участника ${p.name}. Shift и клик или Shift+Enter — профиль`
+                    : `Открыть профиль: ${p.name}`}
                 >
                   <PresenceAvatar
                     name={p.name}
@@ -1182,36 +1225,6 @@ export function VoiceRoom({
 
             <span className="ec-vr-control-separator" aria-hidden />
 
-            <button
-              type="button"
-              onClick={() => void runControl("camera", v.toggleCamera)}
-              style={v.isCameraEnabled ? controlBtnAccent : controlBtn}
-              className={ctrlClassFor(v.isCameraEnabled ? controlBtnAccent : controlBtn)}
-              title={v.isCameraEnabled ? "Выключить камеру" : "Включить камеру"}
-              aria-label={v.isCameraEnabled ? "Выключить камеру" : "Включить камеру"}
-              aria-pressed={v.isCameraEnabled}
-              disabled={!isConnected || controlPending.includes("camera")}
-            >
-              <CameraLensIcon key={String(v.isCameraEnabled)} off={!v.isCameraEnabled} />
-              <span className="ec-voice-control-label">{controlPending.includes("camera") ? "Подключаем…" : v.isCameraEnabled ? "Камера вкл." : "Камера"}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => void runControl("screen", v.toggleScreenShare)}
-              style={v.isScreenShareEnabled ? controlBtnAccent : controlBtn}
-              className={ctrlClassFor(v.isScreenShareEnabled ? controlBtnAccent : controlBtn)}
-              title={v.isScreenShareEnabled ? "Остановить демонстрацию" : "Демонстрация экрана"}
-              aria-label={v.isScreenShareEnabled ? "Остановить демонстрацию" : "Демонстрация экрана"}
-              aria-pressed={v.isScreenShareEnabled}
-              disabled={!isConnected || controlPending.includes("screen")}
-            >
-              <ScreenShareIcon off={!v.isScreenShareEnabled} />
-              <span className="ec-voice-control-label">{controlPending.includes("screen") ? "Выбираем…" : v.isScreenShareEnabled ? "Остановить показ" : "Экран"}</span>
-            </button>
-
-            <span className="ec-vr-control-separator" aria-hidden />
-
             <details className="ec-voice-room__options" ref={optionsRef}
               onKeyDown={(event) => {
                 if (event.key === "Escape") {
@@ -1220,8 +1233,36 @@ export function VoiceRoom({
                   event.currentTarget.querySelector("summary")?.focus();
                 }
               }}>
-              <summary aria-label="Дополнительные настройки звонка"><TuningIcon /></summary>
+              <summary aria-label="Ещё настройки звонка" title="Ещё"><TuningIcon /></summary>
               <div className="ec-voice-room__options-panel">
+                <div className="ec-voice-room__options-group" role="group" aria-label="Камера и экран">
+                  <button
+                    type="button"
+                    onClick={() => void runControl("camera", v.toggleCamera)}
+                    style={v.isCameraEnabled ? controlBtnAccent : controlBtn}
+                    className={ctrlClassFor(v.isCameraEnabled ? controlBtnAccent : controlBtn)}
+                    title={v.isCameraEnabled ? "Выключить камеру" : "Включить камеру"}
+                    aria-label={v.isCameraEnabled ? "Выключить камеру" : "Включить камеру"}
+                    aria-pressed={v.isCameraEnabled}
+                    disabled={!isConnected || controlPending.includes("camera")}
+                  >
+                    <CameraLensIcon key={String(v.isCameraEnabled)} off={!v.isCameraEnabled} />
+                    <span>{controlPending.includes("camera") ? "Подключаем…" : v.isCameraEnabled ? "Камера вкл." : "Камера"}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void runControl("screen", v.toggleScreenShare)}
+                    style={v.isScreenShareEnabled ? controlBtnAccent : controlBtn}
+                    className={ctrlClassFor(v.isScreenShareEnabled ? controlBtnAccent : controlBtn)}
+                    title={v.isScreenShareEnabled ? "Остановить демонстрацию" : "Демонстрация экрана"}
+                    aria-label={v.isScreenShareEnabled ? "Остановить демонстрацию" : "Демонстрация экрана"}
+                    aria-pressed={v.isScreenShareEnabled}
+                    disabled={!isConnected || controlPending.includes("screen")}
+                  >
+                    <ScreenShareIcon off={!v.isScreenShareEnabled} />
+                    <span>{controlPending.includes("screen") ? "Выбираем…" : v.isScreenShareEnabled ? "Остановить показ" : "Экран"}</span>
+                  </button>
+                </div>
                 <label className="ec-voice-duck-option"><input type="checkbox" checked={duckMusic}
                   onChange={event => {
                     setDuckMusic(event.target.checked);

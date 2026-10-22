@@ -358,6 +358,7 @@ export function SettingsPanel({
           onDeleteAvatar={() => void confirmDeleteAvatar()}
           onDeleteBanner={() => void confirmDeleteBanner()}
           onDeleteProfileImage={(imageId) => void confirmDeleteProfileImage(imageId)}
+          onOpenHotkeys={() => setActive("hotkeys")}
         />
       );
     }

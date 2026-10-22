@@ -95,12 +95,6 @@ function isActionOpen(action: ActionItemPayload): boolean {
   return action.status !== "DONE";
 }
 
-function isActionHot(action: ActionItemPayload, now: number): boolean {
-  if (action.priority === "URGENT" || action.priority === "HIGH") return true;
-  if (!action.dueAt) return false;
-  return new Date(action.dueAt).getTime() < now + 1000 * 60 * 60 * 24;
-}
-
 function actionTypeLabel(type: ActionItemPayload["type"]): string {
   if (type === "DECISION") return "решение";
   if (type === "FOLLOW_UP") return "follow-up";
@@ -127,7 +121,6 @@ export function ServerWelcomeHero({
   const iconUrl = server.icon ? resolveAssetUrl(server.icon) : null;
   const guide = parseGuideDescription(server.description);
   const featureChips = parseServerFeatures(server.features);
-  const now = Date.now();
   const memberByUserId = new Map(members.map((member) => [member.userId, member]));
   const featured = channels
     .filter((c) => c.type === "TEXT" || c.type === "BROADCAST" || c.type === "EXECUTION")
@@ -153,7 +146,6 @@ export function ServerWelcomeHero({
   const myActions = currentUserId
     ? openActions.filter((action) => action.assignee?.id === currentUserId)
     : [];
-  const hotActions = openActions.filter((action) => isActionHot(action, now));
   const nextChannel =
     currentVoiceRoom?.channel ??
     activeVoiceRooms[0]?.channel ??
@@ -163,26 +155,27 @@ export function ServerWelcomeHero({
     channels[0] ??
     null;
   const primaryLabel = currentVoiceRoom
-    ? "Вернуться в эфир"
+    ? "Вернуться в комнату"
     : activeVoiceRooms.length > 0
-    ? "Зайти в активный голос"
+    ? "Открыть голосовую"
     : unreadRooms.length > 0
     ? "Открыть непрочитанное"
     : nextChannel
-    ? `Открыть ${nextChannel.name}`
-    : "Создать первую комнату";
+    ? "Открыть комнату"
+    : "Нет комнат";
   const primaryHint = currentVoiceRoom
-    ? `Ты уже в комнате «${currentVoiceRoom.channel.name}».`
+    ? `Сейчас в «${currentVoiceRoom.channel.name}».`
     : activeVoiceRooms.length > 0
-    ? `${activeVoiceRooms[0].userIds.length} в «${activeVoiceRooms[0].channel.name}».`
+    ? `${activeVoiceRooms[0].userIds.length} онлайн в «${activeVoiceRooms[0].channel.name}».`
     : unreadRooms.length > 0
     ? `${unreadRooms[0].count} новых в «${unreadRooms[0].channel.name}».`
     : nextChannel
-    ? "Без выбора из десяти пунктов — начни отсюда."
-    : "Пространство пустое. Нужна первая комната.";
+    ? `Следующая: ${nextChannel.name}.`
+    : "Создайте первую комнату.";
 
   const hasAttentionItems =
     activeVoiceRooms.length > 0 || unreadRooms.length > 0 || openActions.length > 0;
+  const hasSecondaryActions = Boolean(onOpenStatusBoard || onOpenMembers || onOpenSearch);
 
   return (
     <section className="ec-guide" aria-labelledby="workspace-overview-title">
@@ -245,7 +238,7 @@ export function ServerWelcomeHero({
             <section className="ec-guide__activity" aria-labelledby="workspace-attention-title">
               <div className="ec-guide__section-head">
                 <div>
-                  <div className="ec-guide__quick-label">Рабочий контур</div>
+                  <div className="ec-guide__quick-label">Сейчас</div>
                   <h2 id="workspace-attention-title">Что требует внимания</h2>
                 </div>
                 <span>{hasAttentionItems ? "Актуально сейчас" : "Всё спокойно"}</span>
@@ -254,7 +247,7 @@ export function ServerWelcomeHero({
                 {activeVoiceRooms.length > 0 && (
                   <div className="ec-guide__panel">
                     <div className="ec-guide__panel-head">
-                      <span>Сейчас говорят</span>
+                      <span>Голос</span>
                       <span>{activeVoiceRooms.reduce((sum, room) => sum + room.userIds.length, 0)}</span>
                     </div>
                     <div className="ec-guide__voice-list">
@@ -292,7 +285,7 @@ export function ServerWelcomeHero({
                 {unreadRooms.length > 0 && (
                   <div className="ec-guide__panel">
                     <div className="ec-guide__panel-head">
-                      <span>Нужно посмотреть</span>
+                      <span>Непрочитанные</span>
                       <span>{unreadRooms.reduce((sum, item) => sum + item.count, 0)}</span>
                     </div>
                     <div className="ec-guide__todo-list">
@@ -356,7 +349,7 @@ export function ServerWelcomeHero({
               <section className="ec-guide__rooms" aria-labelledby="workspace-rooms-title">
                 <div className="ec-guide__section-head">
                   <div>
-                    <div className="ec-guide__quick-label">Быстрый вход</div>
+                    <div className="ec-guide__quick-label">Комнаты</div>
                     <h2 id="workspace-rooms-title">Рабочие комнаты</h2>
                   </div>
                 </div>
@@ -384,7 +377,7 @@ export function ServerWelcomeHero({
                 <summary>
                   <span>
                     <strong>О пространстве</strong>
-                    <small>Цель, правила и контекст команды</small>
+                    <small>Описание и правила</small>
                   </span>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                     <path d="m6 9 6 6 6-6" />
@@ -425,29 +418,28 @@ export function ServerWelcomeHero({
             )}
           </main>
 
-          <aside className="ec-guide__quick" aria-label="Быстрый контроль пространства">
-            <div className="ec-guide__quick-label">Быстрый контроль</div>
-            <h2>Состояние пространства</h2>
-            <p>Дела, люди и поиск — без перехода в настройки.</p>
-            <div className="ec-guide__signal-grid">
-              <button type="button" onClick={onOpenStatusBoard} disabled={!onOpenStatusBoard} className="ec-guide__signal">
-                <strong>{actionsLoading ? "…" : openActions.length}</strong>
-                <span>дел в работе</span>
-              </button>
-              <button type="button" onClick={onOpenStatusBoard} disabled={!onOpenStatusBoard} className="ec-guide__signal">
-                <strong>{hotActions.length}</strong>
-                <span>срочных</span>
-              </button>
-              <button type="button" onClick={onOpenMembers} disabled={!onOpenMembers} className="ec-guide__signal">
-                <strong>{members.length || server.memberCount}</strong>
-                <span>участников</span>
-              </button>
-              <button type="button" onClick={onOpenSearch} disabled={!onOpenSearch} className="ec-guide__signal">
-                <strong>⌘K</strong>
-                <span>найти всё</span>
-              </button>
-            </div>
-          </aside>
+          {hasSecondaryActions && (
+            <nav className="ec-guide__secondary" aria-label="Быстрые действия">
+              {onOpenStatusBoard && (
+                <button type="button" onClick={onOpenStatusBoard}>
+                  <strong>{actionsLoading ? "…" : openActions.length}</strong>
+                  <span>дела</span>
+                </button>
+              )}
+              {onOpenMembers && (
+                <button type="button" onClick={onOpenMembers}>
+                  <strong>{members.length || server.memberCount}</strong>
+                  <span>люди</span>
+                </button>
+              )}
+              {onOpenSearch && (
+                <button type="button" onClick={onOpenSearch}>
+                  <strong>⌘K</strong>
+                  <span>поиск</span>
+                </button>
+              )}
+            </nav>
+          )}
         </div>
       </div>
     </section>

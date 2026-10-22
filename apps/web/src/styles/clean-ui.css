@@ -445,6 +445,55 @@
   font-size: var(--ec-text-xs);
   line-height: 1.45;
 }
+.ec-guide__secondary {
+  grid-column: 2;
+  align-self: start;
+  position: sticky;
+  top: var(--ec-space-4);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ec-space-2);
+  min-width: 0;
+  padding: var(--ec-space-2);
+  border: 1px solid var(--ec-border-default);
+  border-radius: var(--ec-radius-md);
+  background: color-mix(in srgb, var(--ec-surface-2) 86%, var(--ec-void));
+  box-shadow: var(--ec-edge);
+}
+.ec-guide__secondary button {
+  min-width: 0;
+  min-height: 38px;
+  flex: 1 1 72px;
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 5px;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: var(--ec-radius-sm);
+  background: transparent;
+  color: var(--ec-text-muted);
+  cursor: pointer;
+  text-align: center;
+}
+.ec-guide__secondary button:hover,
+.ec-guide__secondary button:focus-visible {
+  border-color: var(--ec-border-default);
+  background: var(--ec-surface-3);
+  color: var(--ec-text-strong);
+}
+.ec-guide__secondary strong {
+  color: var(--ec-text-strong);
+  font-family: var(--ec-font-mono);
+  font-size: var(--ec-text-sm);
+}
+.ec-guide__secondary span {
+  color: var(--ec-text-dim);
+  font-size: var(--ec-text-2xs);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
 .ec-guide__operator {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -862,6 +911,7 @@
   padding: var(--ec-space-5);
 }
 .ec-guide__primary:focus-visible,
+.ec-guide__secondary button:focus-visible,
 .ec-guide__signal:focus-visible,
 .ec-guide__voice-room:focus-visible,
 .ec-guide__todo-row:focus-visible,
@@ -962,6 +1012,14 @@
   .ec-guide__quick {
     grid-column: auto;
     position: static;
+  }
+  .ec-guide__secondary {
+    grid-column: auto;
+    position: static;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
   }
   .ec-guide__quick-grid { grid-template-columns: 1fr; }
   .ec-guide__about-body { padding: var(--ec-space-4); }
@@ -1178,6 +1236,10 @@
 
 @media (max-width: 1180px) and (min-width: 641px) {
   .ec-guide__body { grid-template-columns: 1fr; }
+  .ec-guide__secondary {
+    grid-column: auto;
+    position: static;
+  }
   .ec-guide__quick {
     grid-column: auto;
     grid-row: auto;

@@ -6,6 +6,7 @@ import { LandingPage } from "./pages/LandingPage";
 import { EcosystemAuthorizePage } from "./pages/EcosystemAuthorizePage";
 import { NativeApkBanner } from "./components/NativeApkBanner";
 import { ConfirmProvider } from "./components/ConfirmDialog";
+import { QrLoginPanel } from "./components/QrLoginPanel";
 
 /**
  * v1.5.17 — Bundle split: AppShell и ClientPortalContainer теперь lazy.
@@ -46,7 +47,8 @@ const CLIENT_VERSION =
 const AUTH_PANEL_HASH = "#auth-panel";
 const AUTH_PANEL_HASH_RE = /^#auth-panel\/?$/i;
 const ECOSYSTEM_AUTHORIZE_HASH_RE = /^#authorize\/?$/i;
-const KNOWN_HASH_RE = /^(|#|#auth-panel\/?|#authorize\/?)$/i;
+const QR_LOGIN_HASH_RE = /^#qr-login(?:\?.*)?$/i;
+const KNOWN_HASH_RE = /^(|#|#auth-panel\/?|#authorize\/?|#qr-login(?:\?.*)?)$/i;
 
 function normalizeBasePath() {
   const base = import.meta.env.BASE_URL || "/";
@@ -243,6 +245,7 @@ export function App() {
 
   const isAuthenticated = view !== "loading" && view !== "auth" && user;
   const wantsEcosystemAuthorize = ECOSYSTEM_AUTHORIZE_HASH_RE.test(window.location.hash || "");
+  const wantsQrLogin = QR_LOGIN_HASH_RE.test(window.location.hash || "");
 
   const openAuthSurface = (mode: "login" | "register") => {
       clearError();
@@ -364,6 +367,12 @@ export function App() {
         <DeadlineNotFoundPage />
       ) : view === "loading" ? (
         <main style={loadingStyle}>Загрузка…</main>
+      ) : wantsQrLogin ? (
+        <QrLoginPanel
+          mode="phone"
+          user={user}
+          onLogin={async (email, password, options) => login(email, password, options)}
+        />
       ) : wantsEcosystemAuthorize ? (
         <EcosystemAuthorizePage
           authError={error}

@@ -4,13 +4,14 @@ import type { VoiceVisualTrack, VoiceParticipant } from "../hooks/useVoice";
 import { Avatar } from "./Avatar";
 import { CameraLensIcon, ScreenShareIcon } from "./icons/EclipseIcons";
 
-export function VoiceVisualStage({ channelId, tracks, participants, avatar, renderTrack, openParticipant }: {
+export function VoiceVisualStage({ channelId, tracks, participants, avatar, renderTrack, openParticipant, openProfile }: {
   channelId: string;
   tracks: VoiceVisualTrack[];
   participants: VoiceParticipant[];
   avatar: (id: string) => string | null;
   renderTrack: (track: VoiceVisualTrack) => ReactNode;
   openParticipant: (participant: VoiceParticipant, event: React.MouseEvent) => void;
+  openProfile?: (userId: string) => void;
 }) {
   const [pinned, setPinned] = useState<{ channel: string; id: string } | null>(null);
   const chosen = pinned?.channel === channelId ? tracks.find(track => track.id === pinned.id) : undefined;
@@ -39,6 +40,12 @@ export function VoiceVisualStage({ channelId, tracks, participants, avatar, rend
       {audioOnly.map(person => <button key={person.identity} type="button" className="ec-voice-source"
         data-speaking={person.isSpeaking && !person.isMicMuted || undefined}
         onClick={event => openParticipant(person, event)}
+        onKeyDown={event => {
+          if (event.shiftKey && (event.key === "Enter" || event.key === " ")) {
+            event.preventDefault();
+            openProfile?.(person.identity);
+          }
+        }}
         aria-label={"Настройки участника " + person.name}>
         <Avatar name={person.name} url={avatar(person.identity)} size={30} />
         <span><strong>{person.name}</strong><small>{person.isMicMuted ? "Микрофон выкл." : person.isSpeaking ? "Говорит" : "В звонке"}</small></span>

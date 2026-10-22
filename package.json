@@ -1,6 +1,6 @@
 {
   "name": "eclipse-chat",
-  "version": "1.7.80",
+  "version": "1.7.81",
   "private": true,
   "description": "Self-hosted чат: монорепо (сервер, web, shared). Код — поэтапно; см. README.",
   "workspaces": [

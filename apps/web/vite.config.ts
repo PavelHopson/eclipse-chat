@@ -26,6 +26,8 @@ const pkg = JSON.parse(
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   const base = env.VITE_BASE_PATH ?? "/";
+  const apiTarget = env.VITE_DEV_API_TARGET ?? "http://127.0.0.1:3001";
+  const readOnlyPreview = env.VITE_DEV_READ_ONLY === "1";
 
   if (!base.endsWith("/")) {
     throw new Error(
@@ -43,13 +45,13 @@ export default defineConfig(({ mode }) => {
 
   const proxy: Record<string, import("vite").ProxyOptions> = {
     [apiPrefix]: {
-      target: "http://127.0.0.1:3001",
+      target: apiTarget,
       changeOrigin: true,
       ws: true,
       rewrite: base === "/" ? undefined : (path) => path.replace(base.slice(0, -1), ""),
     },
     [socketPrefix]: {
-      target: "http://127.0.0.1:3001",
+      target: apiTarget,
       changeOrigin: true,
       ws: true,
       rewrite: base === "/" ? undefined : (path) => path.replace(base.slice(0, -1), ""),
@@ -57,7 +59,7 @@ export default defineConfig(({ mode }) => {
     // Аватарки: в dev отдаёт Fastify (@fastify/static на /uploads/).
     // В prod nginx перехватывает /eclipse-chat/uploads/ через alias.
     [uploadsPrefix]: {
-      target: "http://127.0.0.1:3001",
+      target: apiTarget,
       changeOrigin: true,
       rewrite: base === "/" ? undefined : (path) => path.replace(base.slice(0, -1), ""),
     },
@@ -73,6 +75,26 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 5173,
       proxy,
+      configureServer(server) {
+        if (!readOnlyPreview) return;
+        server.middlewares.use((req, res, next) => {
+          const url = req.url ?? "";
+          const method = (req.method ?? "GET").toUpperCase();
+          const isRead = method === "GET" || method === "HEAD" || method === "OPTIONS";
+          const isAuthSessionAction =
+            url.includes("/api/auth/login") ||
+            url.includes("/api/auth/refresh") ||
+            url.includes("/api/auth/logout");
+          const isApiRequest = url.startsWith(apiPrefix) || url.startsWith(uploadsPrefix);
+          if (isApiRequest && !isRead && !isAuthSessionAction) {
+            res.statusCode = 405;
+            res.setHeader("Content-Type", "application/json; charset=utf-8");
+            res.end(JSON.stringify({ error: "Локальный просмотр работает только для чтения" }));
+            return;
+          }
+          next();
+        });
+      },
     },
     build: {
       // v1.5.28 — livekit-client.esm.js (514KB) — третий-party voice SDK,

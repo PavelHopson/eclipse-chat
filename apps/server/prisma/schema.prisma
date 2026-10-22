@@ -25,8 +25,8 @@ model UserAppearance {
 /// к User.
 model User {
   appearance             UserAppearance?
-  id                     String     @id @default(cuid())
-  email                  String     @unique
+  id                     String          @id @default(cuid())
+  email                  String          @unique
   passwordHash           String
   displayName            String
   /// URL аватара (path-based, обычно `/eclipse-chat/uploads/avatars/<file>`).
@@ -42,7 +42,7 @@ model User {
   /// override. Combines с auto-presence (socket-based) на render:
   /// если manual=INVISIBLE → frontend показывает offline; иначе manual
   /// overrides auto.
-  status                 UserStatus @default(ONLINE)
+  status                 UserStatus      @default(ONLINE)
   /// v1.5.45 Discord-parity A3: free-form custom status текст. Max 128 chars
   /// (Discord parity). NULL — без custom-сообщения, frontend рендерит
   /// только presence dot. Валидируется в zod PATCH /api/users/me/activity.
@@ -71,7 +71,7 @@ model User {
   /// timezone (`process.env.TZ` либо OS default). Frontend заполняет из
   /// `Intl.DateTimeFormat().resolvedOptions().timeZone` при first set.
   timezone               String?
-  createdAt              DateTime   @default(now())
+  createdAt              DateTime        @default(now())
   /// Last point explicitly acknowledged in the personal command digest.
   /// Opening the app does not move this cursor: only the reviewed CTA does.
   digestAcknowledgedAt   DateTime?
@@ -79,7 +79,7 @@ model User {
   /// в app-layer (apps/server/src/auth/twoFactor.ts).
   twoFactorSecret        String?
   /// 2FA включён (secret сохранён И первый код подтверждён).
-  twoFactorEnabled       Boolean    @default(false)
+  twoFactorEnabled       Boolean         @default(false)
   /// Recovery codes — JSON массив bcrypt-хэшей. При verify сравниваем bcrypt
   /// и помечаем code как использованный (remove from list).
   twoFactorRecoveryCodes String?
@@ -88,7 +88,7 @@ model User {
   /// (показ 1 раз), consume'ится при сбросе. Те же хелперы что у 2FA, отдельный набор.
   passwordRecoveryCodes  String?
   /// Счётчик неудачных попыток входа. Reset при успехе или после lockoutUntil.
-  failedLoginAttempts    Int        @default(0)
+  failedLoginAttempts    Int             @default(0)
   /// Времянка lockout после 5 неудачных попыток. Null = не залочен.
   lockoutUntil           DateTime?
 
@@ -122,6 +122,8 @@ model User {
 
   messages                   Message[]
   refreshTokens              RefreshToken[]
+  qrLoginTargets             QrLoginAttempt[]          @relation("QrLoginTarget")
+  qrLoginApprovals           QrLoginAttempt[]          @relation("QrLoginApprover")
   memberships                Member[]
   ownedServers               Server[]                  @relation("ServerOwner")
   reactions                  Reaction[]
@@ -406,6 +408,12 @@ enum AuditEventType {
   AUTH_LOGIN_LOCKED
   AUTH_LOGOUT
   AUTH_REGISTER
+  AUTH_QR_STARTED
+  AUTH_QR_APPROVED
+  AUTH_QR_DENIED
+  AUTH_QR_EXCHANGED
+  AUTH_QR_CANCELLED
+  AUTH_QR_EXPIRED
   AUTH_PASSWORD_CHANGE
   TWOFA_ENABLED
   TWOFA_DISABLED
@@ -825,6 +833,44 @@ model RefreshToken {
   lastSeenAt DateTime?
 
   @@index([userId, lastSeenAt])
+}
+
+enum QrLoginStatus {
+  PENDING
+  APPROVED
+  DENIED
+  CONSUMED
+  CANCELLED
+  EXPIRED
+}
+
+/// Short-lived device pairing record. Raw code/verifier are never persisted;
+/// only SHA-256 hashes are stored so a DB leak cannot replay a pairing.
+model QrLoginAttempt {
+  id                String        @id @default(cuid())
+  codeHash          String        @unique
+  verifierHash      String        @unique
+  status            QrLoginStatus @default(PENDING)
+  targetUserId      String?
+  targetUser        User?         @relation("QrLoginTarget", fields: [targetUserId], references: [id], onDelete: Cascade)
+  approvedByUserId  String?
+  approvedBy        User?         @relation("QrLoginApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  expiresAt         DateTime
+  createdAt         DateTime      @default(now())
+  approvedAt        DateTime?
+  claimedAt         DateTime?
+  deniedAt          DateTime?
+  consumedAt        DateTime?
+  targetUserAgent   String?
+  targetIpAddress   String?
+  claimUserAgent    String?
+  claimIpAddress    String?
+  approverUserAgent String?
+  approverIpAddress String?
+
+  @@index([status, expiresAt])
+  @@index([targetUserId, status])
+  @@index([approvedByUserId, status])
 }
 
 /// Роли участников. PostgreSQL поддерживает enum нативно — после v0.6

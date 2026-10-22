@@ -1,8 +1,10 @@
-import type { ChangeEvent, RefObject } from "react";
+import { useState, type ChangeEvent, type RefObject } from "react";
 import { Avatar } from "../../Avatar";
 import type { Profile } from "../../../hooks/useProfile";
 import { resolveAssetUrl } from "../../../lib/assets";
 import { EclipseUiIcon } from "../../icons/EclipseUiIcon";
+import { VoiceShortcutsSummary } from "./VoiceShortcutsSummary";
+import { QrLoginPanel } from "../../QrLoginPanel";
 
 type Props = {
   profile: Profile;
@@ -25,6 +27,7 @@ type Props = {
   onDeleteAvatar: () => void;
   onDeleteBanner: () => void;
   onDeleteProfileImage: (imageId: string) => void;
+  onOpenHotkeys: () => void;
 };
 
 export function AccountProfileSection({
@@ -48,7 +51,10 @@ export function AccountProfileSection({
   onDeleteAvatar,
   onDeleteBanner,
   onDeleteProfileImage,
+  onOpenHotkeys,
 }: Props) {
+  const [showQrPairing, setShowQrPairing] = useState(false);
+
   return (
     <div className="ec-settings-section ec-settings-section--profile">
       <header className="ec-settings-section__hero ec-settings-profile-hero ec-holo-edge">
@@ -188,6 +194,25 @@ export function AccountProfileSection({
             {busy ? "Сохраняем…" : "Сохранить профиль"}
           </button>
         </div>
+      </section>
+
+      <VoiceShortcutsSummary onOpen={onOpenHotkeys} />
+
+      <section className="ec-settings-card ec-settings-card--stack" aria-labelledby="profile-qr-title">
+        <div className="ec-settings-profile-card-heading">
+          <div>
+            <strong id="profile-qr-title">Вход с телефона</strong>
+            <span className="ec-settings-muted">Одноразовый QR-код для безопасного подключения устройства.</span>
+          </div>
+          <button
+            type="button"
+            className="ec-btn ec-btn--sm"
+            onClick={() => setShowQrPairing((value) => !value)}
+          >
+            {showQrPairing ? "Скрыть код" : "Показать QR-код"}
+          </button>
+        </div>
+        {showQrPairing && <QrLoginPanel mode="pair" onBack={() => setShowQrPairing(false)} />}
       </section>
 
       <section className="ec-settings-card ec-settings-card--stack">

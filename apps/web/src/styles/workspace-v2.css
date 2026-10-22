@@ -745,11 +745,13 @@ html[data-ec-theme="solar"] .ec-shell.ec-workspace-v2 {
 .ec-workspace-v2 .ec-sidebar-tabs {
   position: relative;
   min-height: 42px;
+  min-width: 0;
   margin: 0;
   padding: 5px 9px;
   gap: 3px;
   background: var(--ec-ws-sidebar);
   border-bottom: 1px solid var(--ec-ws-line);
+  overflow: hidden;
 }
 
 .ec-workspace-v2 .ec-preview-tabs {
@@ -766,6 +768,7 @@ html[data-ec-theme="solar"] .ec-shell.ec-workspace-v2 {
 }
 
 .ec-workspace-v2 .ec-sidebar-tab {
+  min-width: 0;
   min-height: 31px;
   padding: 0 10px;
   border: 1px solid transparent;
@@ -773,6 +776,9 @@ html[data-ec-theme="solar"] .ec-shell.ec-workspace-v2 {
   color: var(--ec-ws-dim);
   font-size: 11px;
   font-weight: 630;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ec-workspace-v2 .ec-sidebar-tab:hover,
@@ -794,9 +800,18 @@ html[data-ec-theme="solar"] .ec-shell.ec-workspace-v2 {
 }
 
 .ec-workspace-v2 .ec-channel-list__list {
+  min-width: 0;
   padding: 10px 8px 14px;
+  overflow-x: hidden;
   scrollbar-width: thin;
   scrollbar-color: var(--ec-ws-line-strong) transparent;
+}
+
+.ec-workspace-v2 .ec-channel-category-stack,
+.ec-workspace-v2 .ec-channel-category__body,
+.ec-workspace-v2 .ec-channel-item {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .ec-workspace-v2 .ec-channel-search,
