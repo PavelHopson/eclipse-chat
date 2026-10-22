@@ -13,13 +13,13 @@ const composer = source("apps/web/src/components/MessageInput.tsx");
 const ast = ts.createSourceFile("MessageInput.tsx", composer, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
 const names = ["SLASH_COMMANDS", "TEXT_MACRO_COMMANDS", "parseSlashCommand", "parseTextMacroCommand",
   "ATTACHMENT_MAX_BYTES", "ATTACHMENT_MAX_BYTES_VIDEO", "MAX_PER_MESSAGE", "ALLOWED_MIME",
-  "clientSizeLimit", "validateComposerFile", "dataTransferHasType", "isHtmlDragArtifact", "attachmentFilesFromDrop"];
+  "clientSizeLimit", "validateComposerFile", "dataTransferHasType", "isHtmlDragArtifact", "attachmentFilesFromDrop", "imageFilesFromClipboard"];
 const selected = ast.statements.filter(node =>
   ts.isFunctionDeclaration(node) ? names.includes(node.name?.text) :
   ts.isVariableStatement(node) && node.declarationList.declarations.some(decl => names.includes(decl.name.getText(ast))));
 const scope = {};
 runInNewContext(ts.transpileModule(selected.map(node => node.getText(ast)).join("\n") +
-  "\nObject.assign(result, { parseSlashCommand, parseTextMacroCommand, clientSizeLimit, validateComposerFile, attachmentFilesFromDrop, MAX_PER_MESSAGE });",
+  "\nObject.assign(result, { parseSlashCommand, parseTextMacroCommand, clientSizeLimit, validateComposerFile, attachmentFilesFromDrop, imageFilesFromClipboard, MAX_PER_MESSAGE });",
   { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText,
   { result: scope, Set, Array });
 
@@ -53,6 +53,15 @@ test("HTML drag artifacts are not converted into file uploads", () => {
   assert.equal(files.length, 1);
   assert.equal(files[0], image);
 });
+test("clipboard images use the same attachment path as file and drop uploads", () => {
+  const image = { type: "image/png", name: "clipboard.png", size: 12 };
+  const text = { type: "text/plain", name: "note.txt", size: 8 };
+  assert.deepEqual(scope.imageFilesFromClipboard({ files: [image, text], items: [] }), [image]);
+  assert.deepEqual(scope.imageFilesFromClipboard({ files: [], items: [
+    { kind: "string", type: "text/plain", getAsFile: () => null },
+    { kind: "file", type: "image/jpeg", getAsFile: () => image },
+  ] }), [image]);
+});
 test("send failure retains draft, blocks double submit and never clears a different room", () => {
   assert.match(composer, /sendingRef.current \|\| disabled/);
   assert.match(composer, /if \(!ok\) throw new Error/);
@@ -63,6 +72,8 @@ test("send failure retains draft, blocks double submit and never clears a differ
   assert.match(composer, /pendingRef.current/);
   assert.match(composer, /URL.revokeObjectURL\(item.previewUrl\)/);
   assert.match(composer, /onTaskRequestHandled\?\.\(\)/);
+  assert.match(composer, /onPaste=\{handlePaste\}/);
+  assert.match(composer, /event\.preventDefault\(\);\s*addFiles\(imageFiles\)/);
 });
 test("message overflow menu keeps every action and supports keyboard/viewport dismissal", () => {
   const list = source("apps/web/src/components/MessageList.tsx");

@@ -233,6 +233,16 @@ function attachmentFilesFromDrop(dataTransfer: DataTransfer): File[] {
   return Array.from(dataTransfer.files).filter((file) => !isHtmlDragArtifact(dataTransfer, file));
 }
 
+function imageFilesFromClipboard(dataTransfer: DataTransfer): File[] {
+  const directFiles = Array.from(dataTransfer.files).filter((file) => file.type.startsWith("image/"));
+  if (directFiles.length > 0) return directFiles;
+
+  return Array.from(dataTransfer.items)
+    .filter((item) => item.kind === "file" && item.type.startsWith("image/"))
+    .map((item) => item.getAsFile())
+    .filter((file): file is File => Boolean(file));
+}
+
 function textFromDrop(dataTransfer: DataTransfer): string | null {
   const uriList = dataTransfer.getData("text/uri-list");
   if (uriList.trim()) {
@@ -721,6 +731,16 @@ export function MessageInput({
       return next;
     });
     if (err) setAttachError(err);
+  };
+
+  const handlePaste = (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    if (disabled || hideAttachments || sendingRef.current) return;
+
+    const imageFiles = imageFilesFromClipboard(event.clipboardData);
+    if (imageFiles.length === 0) return;
+
+    event.preventDefault();
+    addFiles(imageFiles);
   };
 
   const removePending = (id: string) => {
@@ -1305,6 +1325,7 @@ export function MessageInput({
           rows={1}
           value={draft}
           onChange={(e) => handleDraftChange(e.target.value)}
+          onPaste={handlePaste}
           onKeyDown={(e) => {
             // Если popover активен — Enter/Tab/Arrow keys обрабатывает он (capture).
             // Здесь только Enter без trigger = submit.
@@ -1354,7 +1375,7 @@ export function MessageInput({
         <span role="status" className={sentFeedback ? "ec-composer-feedback__success" : ""}>
           {sending ? (sendStage === "preparing" ? "Подготовка файлов…" : "Отправка…") : sentFeedback}
         </span>
-        <span className="ec-composer-feedback__keys">Enter — отправить · Shift+Enter — новая строка</span>
+        <span className="ec-composer-feedback__keys">Enter — отправить · Shift+Enter — новая строка{!hideAttachments && " · Ctrl+V — вставить изображение"}</span>
       </div>
       {sendError && <div id={sendErrorId} className="ec-composer-error" role="alert">
         <span>{sendError}</span>
