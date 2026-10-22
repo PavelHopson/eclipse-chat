@@ -5,13 +5,14 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Production: v1.7.79 · code `f668784` · проверено 2026-10-15.** API/health, SW и SHA-256 восьми активных assets подтверждены; вход и общие настройки звука проверены на production. Windows WebView2 picker/реальный двухклиентский звонок остаются открытыми.
+**Production: v1.7.80 · code `53afc63` · проверено 2026-10-22.** API/health, SW и production web UI подтверждены; вход и общие настройки звука проверены на production в предыдущем релизе. Windows WebView2 picker/реальный двухклиентский звонок остаются открытыми.
 
-## v1.7.80 — Вставка изображений из буфера (локально подготовлено, 2026-10-22)
+## v1.7.80 — Вставка изображений из буфера (2026-10-22, production)
 
 - В композере можно вставить скриншот или изображение через Ctrl+V/Cmd+V. Картинка проходит тот же путь валидации, превью, удаления и отправки, что файл из меню и drag-and-drop.
 - Текстовая вставка сохраняется; композеры без вложений не перехватывают обычный текст.
-- Проверено локально: conversation-flow 8/8, web typecheck, production build и `git diff --check`. Native shell и Android wrapper не менялись: они загружают текущий production web UI.
+- Проверено локально: conversation-flow 8/8, web typecheck, production build и `git diff --check`. Для CI audit обновлены только патч-версии Vite 6.4.5 и Vitest 4.1.12; `npm audit` — 0.
+- CI `39779907385`, Security Gate `39779907553` и Deploy `39779907369` — success. Production smoke: `/api/version` = 1.7.80, `/api/health` сообщает `ok=true` и `database=true`, корень отдаёт HTML. Native shell и Android wrapper не менялись: они загружают текущий production web UI.
 
 ## v1.7.79 — Выбор экрана или окна трансляции (2026-10-15, production)
 
