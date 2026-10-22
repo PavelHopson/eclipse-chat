@@ -1,4 +1,5 @@
 import { defineConfig, loadEnv } from "vite";
+import type { Connect } from "vite";
 import react from "@vitejs/plugin-react";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -77,7 +78,7 @@ export default defineConfig(({ mode }) => {
       proxy,
       configureServer(server) {
         if (!readOnlyPreview) return;
-        server.middlewares.use((req, res, next) => {
+        server.middlewares.use((req: Connect.IncomingMessage, res: Connect.ServerResponse, next: Connect.NextFunction) => {
           const url = req.url ?? "";
           const method = (req.method ?? "GET").toUpperCase();
           const isRead = method === "GET" || method === "HEAD" || method === "OPTIONS";
