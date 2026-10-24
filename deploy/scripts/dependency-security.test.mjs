@@ -15,7 +15,7 @@ const uriPackages = Object.entries(lock.packages).filter(([path]) => path.endsWi
 
 test("all locked security-sensitive packages include the reviewed patches", () => {
   const floors = {
-    fastify: "5.12.5", sharp: "0.35.5", "engine.io": "6.6.10",
+    fastify: "5.12.7", zod: "4.6.7", sharp: "0.35.5", "engine.io": "6.6.10",
     "brace-expansion": "5.0.12", "source-map-js": "1.2.2",
     vitest: "4.1.11", "@vitest/mocker": "4.1.11", "fast-jwt": "6.3.4",
   };
