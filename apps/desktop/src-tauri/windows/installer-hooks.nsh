@@ -5,7 +5,7 @@
 !define MUI_TEXTCOLOR "F2F4FA"
 !define MUI_INSTFILESPAGE_COLORS "D9E0ED 090B11"
 !define MUI_INSTFILESPAGE_PROGRESSBAR "colored"
-InstallColors FF9D44 111722
+InstallColors F3C969 0D111B
 
 !macro NSIS_HOOK_POSTINSTALL
   ; Existing shortcuts retain the previous executable icon in the Windows cache.

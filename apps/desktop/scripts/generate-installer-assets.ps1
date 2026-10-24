@@ -1,4 +1,4 @@
-param(
+﻿param(
   [string]$OutputDirectory = (Join-Path $PSScriptRoot "..\src-tauri\windows\branding"),
   [string]$LogoPath = (Join-Path $PSScriptRoot "..\..\web\public\eclipse-chat-icon-master.png")
 )
@@ -16,6 +16,11 @@ if (-not (Test-Path -LiteralPath $logoSource)) {
 [System.IO.Directory]::CreateDirectory($output) | Out-Null
 $logo = [System.Drawing.Image]::FromFile($logoSource)
 
+function C {
+  param([int]$R, [int]$G, [int]$B, [int]$A = 255)
+  return [System.Drawing.Color]::FromArgb($A, $R, $G, $B)
+}
+
 function Add-Atmosphere {
   param(
     [System.Drawing.Graphics]$Graphics,
@@ -26,37 +31,58 @@ function Add-Atmosphere {
   $bounds = [System.Drawing.Rectangle]::new(0, 0, $Width, $Height)
   $background = [System.Drawing.Drawing2D.LinearGradientBrush]::new(
     $bounds,
-    [System.Drawing.Color]::FromArgb(255, 5, 7, 12),
-    [System.Drawing.Color]::FromArgb(255, 16, 20, 31),
-    28.0
+    (C 7 9 15),
+    (C 18 22 37),
+    18.0
   )
   $Graphics.FillRectangle($background, $bounds)
   $background.Dispose()
 
-  $gridPen = [System.Drawing.Pen]::new([System.Drawing.Color]::FromArgb(18, 120, 145, 185), 1)
-  for ($x = 0; $x -lt $Width; $x += 24) {
-    $Graphics.DrawLine($gridPen, $x, 0, $x, $Height)
-  }
-  for ($y = 0; $y -lt $Height; $y += 24) {
-    $Graphics.DrawLine($gridPen, 0, $y, $Width, $y)
+  # A quiet grid gives the installer a technical character without competing
+  # with the logo or the native installer controls.
+  $gridPen = [System.Drawing.Pen]::new((C 92 110 150 18), 1)
+  for ($x = -$Height; $x -lt $Width + $Height; $x += 32) {
+    $Graphics.DrawLine($gridPen, $x, 0, $x + $Height, $Height)
   }
   $gridPen.Dispose()
 
-  $signalGlow = [System.Drawing.Drawing2D.GraphicsPath]::new()
-  $signalGlow.AddEllipse(
-    [int]($Width * 0.50),
-    [int]($Height * 0.36),
-    [Math]::Max(80, [int]($Width * 0.68)),
-    [Math]::Max(80, [int]($Height * 0.72))
+  $glowPath = [System.Drawing.Drawing2D.GraphicsPath]::new()
+  $glowPath.AddEllipse(
+    [int]($Width * 0.38),
+    [int]($Height * 0.18),
+    [Math]::Max(90, [int]($Width * 0.82)),
+    [Math]::Max(90, [int]($Height * 0.82))
   )
-  $glowBrush = [System.Drawing.Drawing2D.PathGradientBrush]::new($signalGlow)
-  $glowBrush.CenterColor = [System.Drawing.Color]::FromArgb(34, 107, 163, 255)
-  $glowBrush.SurroundColors = @([System.Drawing.Color]::FromArgb(0, 107, 163, 255))
-  $Graphics.FillPath($glowBrush, $signalGlow)
-  $glowBrush.Dispose()
-  $signalGlow.Dispose()
+  $glow = [System.Drawing.Drawing2D.PathGradientBrush]::new($glowPath)
+  $glow.CenterColor = (C 116 101 255 28)
+  $glow.SurroundColors = @((C 116 101 255 0))
+  $Graphics.FillPath($glow, $glowPath)
+  $glow.Dispose()
+  $glowPath.Dispose()
+
+  $edge = [System.Drawing.Pen]::new((C 243 201 105 120), 1)
+  $Graphics.DrawLine($edge, [int]($Width * 0.70), $Height - 1, $Width - 1, $Height - 1)
+  $edge.Dispose()
 }
 
+function Add-RoundedFill {
+  param(
+    [System.Drawing.Graphics]$Graphics,
+    [System.Drawing.Brush]$Brush,
+    [System.Drawing.Rectangle]$Rectangle,
+    [int]$Radius
+  )
+
+  $diameter = [Math]::Min($Radius * 2, [Math]::Min($Rectangle.Width, $Rectangle.Height))
+  $path = [System.Drawing.Drawing2D.GraphicsPath]::new()
+  $path.AddArc($Rectangle.X, $Rectangle.Y, $diameter, $diameter, 180, 90)
+  $path.AddArc($Rectangle.Right - $diameter, $Rectangle.Y, $diameter, $diameter, 270, 90)
+  $path.AddArc($Rectangle.Right - $diameter, $Rectangle.Bottom - $diameter, $diameter, $diameter, 0, 90)
+  $path.AddArc($Rectangle.X, $Rectangle.Bottom - $diameter, $diameter, $diameter, 90, 90)
+  $path.CloseFigure()
+  $Graphics.FillPath($Brush, $path)
+  $path.Dispose()
+}
 function Add-Logo {
   param(
     [System.Drawing.Graphics]$Graphics,
@@ -65,8 +91,10 @@ function Add-Logo {
     [int]$Size
   )
 
-  $destination = [System.Drawing.Rectangle]::new($X, $Y, $Size, $Size)
-  $Graphics.DrawImage($logo, $destination)
+  $shadow = [System.Drawing.SolidBrush]::new((C 0 0 0 110))
+  Add-RoundedFill -Graphics $Graphics -Brush $shadow -Rectangle ([System.Drawing.Rectangle]::new($X + 4, $Y + 7, $Size, $Size)) -Radius ([Math]::Max(10, [int]($Size * 0.18)))
+  $shadow.Dispose()
+  $Graphics.DrawImage($logo, [System.Drawing.Rectangle]::new($X, $Y, $Size, $Size))
 }
 
 function Add-Text {
@@ -78,36 +106,50 @@ function Add-Text {
     [float]$Size,
     [System.Drawing.Color]$Color,
     [System.Drawing.FontStyle]$Style = [System.Drawing.FontStyle]::Regular,
-    [string]$Family = "Bahnschrift"
+    [string]$Family = "Segoe UI"
   )
 
-  $font = [System.Drawing.Font]::new(
-    $Family,
-    $Size,
-    $Style,
-    [System.Drawing.GraphicsUnit]::Point
-  )
+  $font = [System.Drawing.Font]::new($Family, $Size, $Style, [System.Drawing.GraphicsUnit]::Point)
   $brush = [System.Drawing.SolidBrush]::new($Color)
   $Graphics.DrawString($Text, $font, $brush, $X, $Y)
   $brush.Dispose()
   $font.Dispose()
 }
 
-function Add-SignalLine {
+function Add-Rule {
   param(
     [System.Drawing.Graphics]$Graphics,
     [int]$X,
     [int]$Y,
-    [int]$Width
+    [int]$Width,
+    [int]$AccentWidth = 42
   )
 
-  $track = [System.Drawing.Pen]::new([System.Drawing.Color]::FromArgb(90, 92, 111, 142), 1)
+  $track = [System.Drawing.Pen]::new((C 126 140 168 95), 1)
   $Graphics.DrawLine($track, $X, $Y, $X + $Width, $Y)
   $track.Dispose()
 
-  $accent = [System.Drawing.Pen]::new([System.Drawing.Color]::FromArgb(245, 212, 175, 55), 2)
-  $Graphics.DrawLine($accent, $X + [int]($Width * 0.72), $Y, $X + $Width, $Y)
+  $accent = [System.Drawing.Pen]::new((C 243 201 105 235), 2)
+  $Graphics.DrawLine($accent, $X + $Width - $AccentWidth, $Y, $X + $Width, $Y)
   $accent.Dispose()
+}
+
+function Add-Pill {
+  param(
+    [System.Drawing.Graphics]$Graphics,
+    [string]$Text,
+    [int]$X,
+    [int]$Y,
+    [int]$Width,
+    [int]$Height,
+    [System.Drawing.Color]$Color,
+    [System.Drawing.Color]$TextColor
+  )
+
+  $brush = [System.Drawing.SolidBrush]::new($Color)
+  Add-RoundedFill -Graphics $Graphics -Brush $brush -Rectangle ([System.Drawing.Rectangle]::new($X, $Y, $Width, $Height)) -Radius ([Math]::Max(4, [int]($Height / 2)))
+  $brush.Dispose()
+  Add-Text -Graphics $Graphics -Text $Text -X ($X + 7) -Y ($Y + 3) -Size 5.2 -Color $TextColor -Style Bold
 }
 
 function New-BrandBitmap {
@@ -129,43 +171,53 @@ function New-BrandBitmap {
   try {
     Add-Atmosphere -Graphics $graphics -Width $Width -Height $Height
 
-    $white = [System.Drawing.Color]::FromArgb(246, 242, 245, 249)
-    $muted = [System.Drawing.Color]::FromArgb(220, 148, 163, 184)
-    $orange = [System.Drawing.Color]::FromArgb(245, 212, 175, 55)
-    $blue = [System.Drawing.Color]::FromArgb(235, 107, 163, 255)
+    $white = C 245 247 252
+    $muted = C 177 187 208
+    $violet = C 141 126 255
+    $gold = C 243 201 105
+    $panel = C 13 17 27 190
 
     switch ($Variant) {
       "sidebar" {
-        Add-Logo -Graphics $graphics -X 14 -Y 22 -Size 136
-        Add-Text -Graphics $graphics -Text "E C L I P S E" -X 17 -Y 171 -Size 11.0 -Color $white -Style Bold
-        Add-Text -Graphics $graphics -Text "C H A T" -X 17 -Y 195 -Size 11.0 -Color $white -Style Bold
-        Add-Text -Graphics $graphics -Text "PRIVATE COMMUNICATION" -X 18 -Y 231 -Size 6.1 -Color $muted
-        Add-Text -Graphics $graphics -Text "FOR OPERATORS" -X 18 -Y 245 -Size 6.1 -Color $muted
-        Add-SignalLine -Graphics $graphics -X 18 -Y 277 -Width 128
-        Add-Text -Graphics $graphics -Text "SECURE DESKTOP" -X 18 -Y 284 -Size 5.7 -Color $blue
-        Add-Text -Graphics $graphics -Text "AUTO UPDATE" -X 99 -Y 284 -Size 5.7 -Color $orange
+        Add-Text -Graphics $graphics -Text "ECLIPSE FORGE" -X 17 -Y 13 -Size 5.8 -Color $muted -Style Bold
+        $vertical = [System.Drawing.Pen]::new($violet, 2)
+        $graphics.DrawLine($vertical, 17, 34, 17, 154)
+        $vertical.Dispose()
+        Add-Logo -Graphics $graphics -X 34 -Y 34 -Size 105
+        Add-Text -Graphics $graphics -Text "ECLIPSE" -X 18 -Y 166 -Size 12.2 -Color $white -Style Bold
+        Add-Text -Graphics $graphics -Text "CHAT" -X 18 -Y 187 -Size 12.2 -Color $white -Style Bold
+        Add-Rule -Graphics $graphics -X 18 -Y 214 -Width 126 -AccentWidth 36
+        Add-Text -Graphics $graphics -Text "КОМАНДНЫЙ ЧАТ" -X 18 -Y 225 -Size 6.2 -Color $white -Style Bold
+        Add-Text -Graphics $graphics -Text "ГОЛОС · ЗАДАЧИ · РЕШЕНИЯ" -X 18 -Y 240 -Size 5.6 -Color $muted
+        Add-Pill -Graphics $graphics -Text "ПРИВАТНО" -X 18 -Y 264 -Width 58 -Height 16 -Color (C 22 27 42 215) -TextColor $violet
+        Add-Pill -Graphics $graphics -Text "БЫСТРО" -X 82 -Y 264 -Width 45 -Height 16 -Color (C 32 29 25 215) -TextColor $gold
+        Add-Text -Graphics $graphics -Text "ECLIPSE FORGE  /  DESKTOP" -X 18 -Y 290 -Size 5.0 -Color $muted
       }
       "header" {
-        Add-Logo -Graphics $graphics -X 4 -Y 3 -Size 51
-        Add-Text -Graphics $graphics -Text "ECLIPSE CHAT" -X 57 -Y 14 -Size 8.4 -Color $white -Style Bold
-        Add-Text -Graphics $graphics -Text "DESKTOP SYSTEM" -X 58 -Y 31 -Size 5.5 -Color $muted
-        Add-SignalLine -Graphics $graphics -X 58 -Y 45 -Width 82
+        Add-Logo -Graphics $graphics -X 5 -Y 4 -Size 48
+        Add-Text -Graphics $graphics -Text "ECLIPSE CHAT" -X 61 -Y 9 -Size 8.6 -Color $white -Style Bold
+        Add-Text -Graphics $graphics -Text "ECLIPSE FORGE  ·  DESKTOP" -X 62 -Y 27 -Size 5.9 -Color $muted
+        Add-Rule -Graphics $graphics -X 62 -Y 46 -Width 80 -AccentWidth 22
       }
       "dialog" {
-        Add-Text -Graphics $graphics -Text "E C L I P S E  C H A T" -X 34 -Y 48 -Size 17.0 -Color $white -Style Bold
-        Add-Text -Graphics $graphics -Text "FOCUS. COMMUNICATE. BUILD." -X 36 -Y 81 -Size 8.2 -Color $muted
-        Add-SignalLine -Graphics $graphics -X 36 -Y 112 -Width 156
-        Add-Text -Graphics $graphics -Text "PRIVATE" -X 36 -Y 137 -Size 7.0 -Color $blue -Style Bold
-        Add-Text -Graphics $graphics -Text "INTELLIGENT" -X 36 -Y 158 -Size 7.0 -Color $blue -Style Bold
-        Add-Text -Graphics $graphics -Text "ENGINEERED" -X 36 -Y 179 -Size 7.0 -Color $orange -Style Bold
-        Add-Logo -Graphics $graphics -X 275 -Y 55 -Size 184
-        Add-Text -Graphics $graphics -Text "SECURE INSTALL / SIGNED UPDATES" -X 36 -Y 268 -Size 6.4 -Color $muted
+        Add-Text -Graphics $graphics -Text "ECLIPSE CHAT" -X 34 -Y 29 -Size 19.0 -Color $white -Style Bold
+        Add-Text -Graphics $graphics -Text "РАБОЧЕЕ ПРОСТРАНСТВО ДЛЯ КОМАНДЫ" -X 36 -Y 63 -Size 7.4 -Color $muted -Style Bold
+        Add-Rule -Graphics $graphics -X 36 -Y 91 -Width 174 -AccentWidth 44
+        Add-Text -Graphics $graphics -Text "ГОЛОС" -X 36 -Y 113 -Size 7.0 -Color $violet -Style Bold
+        Add-Text -Graphics $graphics -Text "ЗАДАЧИ" -X 36 -Y 136 -Size 7.0 -Color $violet -Style Bold
+        Add-Text -Graphics $graphics -Text "РЕШЕНИЯ" -X 36 -Y 159 -Size 7.0 -Color $gold -Style Bold
+        Add-Text -Graphics $graphics -Text "Чистый интерфейс. Проверка обновлений." -X 36 -Y 208 -Size 6.8 -Color $muted
+        Add-Pill -Graphics $graphics -Text "ECLIPSE FORGE  /  DESKTOP" -X 36 -Y 246 -Width 132 -Height 18 -Color $panel -TextColor $white
+        Add-Logo -Graphics $graphics -X 302 -Y 68 -Size 148
+        $status = [System.Drawing.Pen]::new((C 141 126 255 160), 1)
+        $graphics.DrawEllipse($status, 286, 52, 181, 181)
+        $status.Dispose()
       }
       "banner" {
-        Add-Text -Graphics $graphics -Text "ECLIPSE CHAT" -X 18 -Y 14 -Size 10.0 -Color $white -Style Bold
-        Add-Text -Graphics $graphics -Text "SECURE DESKTOP / AUTO UPDATE" -X 19 -Y 34 -Size 5.8 -Color $muted
-        Add-Logo -Graphics $graphics -X 432 -Y 2 -Size 54
-        Add-SignalLine -Graphics $graphics -X 282 -Y 29 -Width 144
+        Add-Text -Graphics $graphics -Text "ECLIPSE CHAT" -X 18 -Y 10 -Size 10.4 -Color $white -Style Bold
+        Add-Text -Graphics $graphics -Text "УСТАНОВЩИК ECLIPSE FORGE" -X 19 -Y 31 -Size 6.1 -Color $muted -Style Bold
+        Add-Rule -Graphics $graphics -X 274 -Y 29 -Width 145 -AccentWidth 36
+        Add-Logo -Graphics $graphics -X 433 -Y 3 -Size 52
       }
     }
 
