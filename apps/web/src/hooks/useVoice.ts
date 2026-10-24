@@ -177,6 +177,18 @@ function applyMicrophoneTrackPolicy(
   return { capture, transmit };
 }
 
+function hasPublishedMicrophoneTrack(room: RoomType): boolean {
+  for (const publication of room.localParticipant.audioTrackPublications.values()) {
+    if (
+      publication.source === "microphone" &&
+      Boolean(publication.audioTrack?.mediaStreamTrack)
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function disableRawMicrophoneTracks(
   room: RoomType,
   enhancer: AudioEnhancerHandle | null = null,
@@ -1264,14 +1276,22 @@ export function useVoice(socket: Socket | null = null) {
         pttActive: live,
         vadActive: false,
       });
-      if (gate.transmit) micCaptureAllowedRef.current = true;
-      const hasPublication = Array.from(r.localParticipant.audioTrackPublications.values())
-        .some(publication => publication.source === "microphone");
+      const hasPublication = hasPublishedMicrophoneTrack(r);
+      // A key can arrive before LiveKit has finished publishing the track.
+      // Never treat that early press as permission to reacquire a raw mic:
+      // PTT must only gate the already-published (possibly enhanced) track.
+      if (gate.transmit && hasPublication) micCaptureAllowedRef.current = true;
+      if (!hasPublication) {
+        micCaptureAllowedRef.current = false;
+        setIsMicMuted(true);
+        refreshParticipants();
+        if (live) {
+          setError("Микрофон ещё подключается. Нажми PTT ещё раз через секунду.");
+        }
+        return;
+      }
       setIsMicMuted(!gate.transmit);
       refreshParticipants();
-      if (gate.transmit && !hasPublication) {
-        setError("Микрофон недоступен. Проверь разрешение и войди в комнату снова.");
-      }
     };
 
     const isPttKey = (e: KeyboardEvent) => e.code === key;

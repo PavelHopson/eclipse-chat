@@ -47,6 +47,9 @@ jobs:
         with:
           node-version: "20"
 
+      - name: Verify desktop and Android trust boundaries
+        run: node --test deploy/scripts/desktop-android-hardening.test.mjs
+
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:

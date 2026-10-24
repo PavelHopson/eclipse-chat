@@ -59,7 +59,7 @@ const TRUST_ITEMS = [
   { label: "Grafana", glyph: TelemetryGlyph },
 ] as const;
 
-const HERO_CHIPS = ["Self-hosted", "TLS / WSS", "RBAC + 2FA", "Real-time"] as const;
+const HERO_CHIPS = ["Свои данные", "Голос в реальном времени", "Роли и 2FA", "AI-память"] as const;
 
 /* v1.4.5 audit fix P2 — security copy more precise. Раньше «end-to-end
  * шифрование» / «шифрование на всех уровнях» overstated — messages в
@@ -273,7 +273,7 @@ export function LandingPage({
             </span>
           )}
           <div className="ec-landing__hero-copy">
-            <span className="ec-landing__eyebrow">Self-hosted communication core</span>
+            <span className="ec-landing__eyebrow">Командная платформа · self-hosted</span>
             <h1 className="ec-landing__hero-title">
               <span className="ec-landing__hero-title-line">Команда.</span>
               <span className="ec-landing__hero-title-line">Контекст.</span>
@@ -282,8 +282,8 @@ export function LandingPage({
               </span>
             </h1>
             <p className="ec-landing__hero-subhead">
-              Каналы, задачи, голос и AI-память в одном пространстве.
-              Решения не теряются — следующий шаг всегда виден.
+              Чаты, голос, задачи и AI-память в одном рабочем контуре.
+              Команда видит контекст и следующий шаг — без лишнего шума.
             </p>
             <div className="ec-landing__hero-cta">
               <MagneticButton>
@@ -310,6 +310,9 @@ export function LandingPage({
                 <span key={chip} className="ec-landing__chip">{chip}</span>
               ))}
             </div>
+            <p className="ec-landing__hero-note">
+              Подключите команду за минуту. Данные остаются под вашим контролем.
+            </p>
           </div>
 
           <div id="auth-panel" ref={heroStageRef} className="ec-landing__hero-stage">

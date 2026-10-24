@@ -371,6 +371,38 @@ test("one microphone policy closes PTT and VAD on manual mute, deafen and hidden
   assert.doesNotMatch(voice, /new MediaStream\(\[publishedTrack\]\)/);
 });
 
+test("PTT never reacquires a raw microphone before the enhanced publication exists", () => {
+  const { hasPublishedMicrophoneTrack, applyMicrophoneTrackPolicy } = loadFunctions(
+    voice,
+    [
+      "hasPublishedMicrophoneTrack",
+      "applyMicrophoneTrackPolicy",
+      "shouldCaptureMicrophone",
+      "shouldTransmitMicrophone",
+    ],
+  );
+  const roomWithoutMic = { localParticipant: { audioTrackPublications: new Map() } };
+  assert.equal(hasPublishedMicrophoneTrack(roomWithoutMic), false);
+  const gate = applyMicrophoneTrackPolicy(roomWithoutMic, null, {
+    mode: "push_to_talk",
+    manuallyMuted: false,
+    deafened: false,
+    documentVisible: true,
+    pttActive: true,
+    vadActive: false,
+  });
+  assert.equal(gate.transmit, true, "the policy can request transmit without mutating a track");
+
+  const ptt = voice.slice(
+    voice.indexOf("Push-to-talk:"),
+    voice.indexOf("Когда mode меняется"),
+  );
+  assert.match(ptt, /hasPublishedMicrophoneTrack\(r\)/);
+  assert.match(ptt, /micCaptureAllowedRef\.current = false/);
+  assert.doesNotMatch(ptt, /setMicrophoneEnabled\(/);
+  assert.doesNotMatch(ptt, /applyLocalMicrophoneSettings\(/);
+});
+
 test("new raw and enhanced microphone tracks are disabled before LiveKit publish", async () => {
   const events = [];
   const raw = { enabled: true, stop: () => events.push("raw-stop") };

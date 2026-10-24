@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { VoiceParticipant } from "../hooks/useVoice";
 
 type RawStat = {
@@ -35,8 +35,9 @@ const wrap: CSSProperties = {
   borderRadius: "var(--ec-radius-md)",
   boxShadow: "var(--ec-shadow-modal)",
   padding: "var(--ec-space-3)",
-  minWidth: 320,
-  maxWidth: 420,
+  width: "min(420px, calc(100vw - 32px))",
+  maxWidth: "calc(100vw - 32px)",
+  boxSizing: "border-box",
   fontSize: "var(--ec-text-2xs)",
   zIndex: 50,
 };
@@ -52,9 +53,10 @@ const headerRow: CSSProperties = {
 
 const grid: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "1.4fr 0.7fr 0.7fr 0.7fr 0.7fr",
-  gap: "0.3rem 0.6rem",
+  gridTemplateColumns: "minmax(0, 1.8fr) repeat(4, minmax(2.5rem, 0.7fr))",
+  gap: "0.35rem 0.45rem",
   fontFamily: "var(--ec-font-mono)",
+  minWidth: 0,
 };
 
 const colHead: CSSProperties = {
@@ -87,6 +89,63 @@ function fmtKbps(kbps: number | null) {
 export function VoiceStatsOverlay({ participants, getRemoteStats, onClose }: Props) {
   const [stats, setStats] = useState<DisplayStat[]>([]);
   const prevRef = useRef<Map<string, { bytes: number; t: number }>>(new Map());
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
+  const onCloseRef = useRef(onClose);
+  const dialogTitleId = useId();
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  useEffect(() => {
+    returnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    closeButtonRef.current?.focus({ preventScroll: true });
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onCloseRef.current();
+        return;
+      }
+      if (event.key !== "Tab") return;
+
+      const dialog = dialogRef.current;
+      if (!dialog) return;
+      const focusable = Array.from(
+        dialog.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter((node) => node.getAttribute("aria-hidden") !== "true");
+      if (focusable.length === 0) {
+        event.preventDefault();
+        return;
+      }
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement;
+      if (!dialog.contains(active)) {
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus();
+        return;
+      }
+      if (event.shiftKey && active === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      returnFocusRef.current?.focus({ preventScroll: true });
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -132,12 +191,19 @@ export function VoiceStatsOverlay({ participants, getRemoteStats, onClose }: Pro
   }, [participants, getRemoteStats]);
 
   return (
-    <div style={wrap} role="dialog" aria-label="Сетевая диагностика голоса">
+    <div
+      ref={dialogRef}
+      style={wrap}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={dialogTitleId}
+    >
       <div style={headerRow}>
-        <strong style={{ color: "var(--ec-text-strong)", fontSize: "var(--ec-text-sm)" }}>
+        <strong id={dialogTitleId} style={{ color: "var(--ec-text-strong)", fontSize: "var(--ec-text-sm)" }}>
           Сетевая диагностика
         </strong>
         <button
+          ref={closeButtonRef}
           type="button"
           onClick={onClose}
           aria-label="Закрыть диагностику"

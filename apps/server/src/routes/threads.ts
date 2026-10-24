@@ -3,6 +3,7 @@ import { z } from "zod";
 import { db } from "../db.js";
 import { serializeUser } from "../lib/userView.js";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
+import { hasPermission } from "../lib/permissions.js";
 import { scheduleEmbed } from "../ai/embedSync.js";
 import {
   emitThreadReplyNew,
@@ -46,7 +47,8 @@ const replyBody = z.object({
  *   thread:meta:update → room `channel:${channelId}` — для replies-counter badge
  *
  * Permissions:
- *   - Read: любой member канала root'а (или открытый GET для anon если main GET тоже открыт)
+ *   - Read: authenticated member канала root'а, с тем же CLIENT/internal visibility
+ *     gate, что и GET /api/channels/:id/messages
  *   - Write: любой member канала root'а
  */
 export async function registerThreadRoutes(app: FastifyInstance) {
@@ -54,8 +56,15 @@ export async function registerThreadRoutes(app: FastifyInstance) {
    * GET /api/messages/:id/thread?take=N — root + replies.
    * Возвращает root-сообщение и до 100 replies в chronological order.
    */
-  app.get("/api/messages/:id/thread", async (req, reply) => {
+  app.get(
+    "/api/messages/:id/thread",
+    { onRequest: [requireJwt] },
+    async (req, reply) => {
     const { id: rootId } = req.params as { id: string };
+    const userId = getUserId(req);
+    if (!userId) {
+      return reply.status(401).send({ error: "Unauthorized" });
+    }
     const take = Math.min(
       100,
       Math.max(1, Number((req.query as { take?: string }).take) || 50),
@@ -88,6 +97,13 @@ export async function registerThreadRoutes(app: FastifyInstance) {
           },
           orderBy: { position: "asc" },
         },
+        channel: {
+          select: {
+            serverId: true,
+            internal: true,
+            server: { select: { mode: true } },
+          },
+        },
       },
     });
     if (!root || root.deletedAt) {
@@ -103,15 +119,27 @@ export async function registerThreadRoutes(app: FastifyInstance) {
       });
     }
 
-    // Optional user identification — для 'mine' aggregation на reactions
-    let currentUserId: string | null = null;
-    try {
-      await req.jwtVerify();
-      const payload = req.user as { sub?: string } | undefined;
-      currentUserId = payload?.sub ?? null;
-    } catch {
-      /* anonymous */
+    const channel = root.channel;
+    if (!channel) {
+      return reply.status(404).send({ error: "Root message not found" });
     }
+    const member = await db.member.findUnique({
+      where: { userId_serverId: { userId, serverId: channel.serverId } },
+      select: { role: true },
+    });
+    if (!member) {
+      return reply.status(403).send({ error: "Not a member of this server" });
+    }
+    if (
+      channel.server.mode === "CLIENT" &&
+      channel.internal &&
+      !hasPermission(member.role, "ROOM_VIEW_INTERNAL")
+    ) {
+      return reply.status(404).send({ error: "Root message not found" });
+    }
+
+    // Authenticated user — для 'mine' aggregation на reactions.
+    const currentUserId = userId;
 
     const replies = await db.message.findMany({
       // v1.2.9 — удалённые reply не показываем в Thread panel.
@@ -179,7 +207,8 @@ export async function registerThreadRoutes(app: FastifyInstance) {
       replies: replies.map(serializeMessage),
       channelId: root.channelId,
     };
-  });
+    },
+  );
 
   /**
    * POST /api/messages/:id/thread — создать reply в thread.

@@ -517,7 +517,11 @@ export function AuthPage({
                   </span>
                 </button>
 
-                <div className="ec-auth-console" aria-hidden={entryState === "gate"}>
+                <div
+                  className="ec-auth-console"
+                  aria-hidden={entryState !== "panel"}
+                  inert={entryState !== "panel"}
+                >
                   {step === "credentials" && (
                     <>
                       <header className="ec-auth-step-head">
@@ -580,8 +584,11 @@ export function AuthPage({
                       <form onSubmit={submitCredentials} className="ec-auth-form">
                         {mode === "register" && (
                           <div className="ec-auth-field">
-                            <label className="ec-auth-field__label">Имя</label>
+                            <label className="ec-auth-field__label" htmlFor="auth-display-name">
+                              Имя
+                            </label>
                             <input
+                              id="auth-display-name"
                               ref={displayNameFieldRef}
                               className="ec-auth-field__input"
                               type="text"
@@ -597,8 +604,11 @@ export function AuthPage({
                         )}
 
                         <div className="ec-auth-field">
-                          <label className="ec-auth-field__label">Email</label>
+                          <label className="ec-auth-field__label" htmlFor="auth-email">
+                            Email
+                          </label>
                           <input
+                            id="auth-email"
                             ref={emailFieldRef}
                             className="ec-auth-field__input"
                             type="email"
@@ -615,8 +625,11 @@ export function AuthPage({
                         </div>
 
                         <div className="ec-auth-field ec-auth-field--violet">
-                          <label className="ec-auth-field__label">Пароль</label>
+                          <label className="ec-auth-field__label" htmlFor="auth-password">
+                            Пароль
+                          </label>
                           <PasswordReveal
+                            id="auth-password"
                             value={password}
                             onChange={setPassword}
                             minLength={8}
@@ -766,8 +779,11 @@ export function AuthPage({
 
                       <form onSubmit={submitRecovery} className="ec-auth-form">
                         <div className="ec-auth-field ec-auth-field--violet">
-                          <label className="ec-auth-field__label">Резервный код</label>
+                          <label className="ec-auth-field__label" htmlFor="auth-recovery-code">
+                            Резервный код
+                          </label>
                           <input
+                            id="auth-recovery-code"
                             className="ec-auth-field__input ec-auth-field__input--centered"
                             type="text"
                             value={recoveryCode}
@@ -843,12 +859,14 @@ export function AuthPage({
 }
 
 function PasswordReveal({
+  id,
   value,
   onChange,
   minLength,
   autoComplete,
   placeholder,
 }: {
+  id: string;
   value: string;
   onChange: (v: string) => void;
   minLength?: number;
@@ -877,6 +895,7 @@ function PasswordReveal({
       }
     >
       <input
+        id={id}
         className="ec-auth-field__input ec-auth-pass__input"
         type={shown ? "text" : "password"}
         value={value}

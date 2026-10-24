@@ -138,6 +138,20 @@ nsis/msi/dmg/deb/appimage, updater signatures и `latest.json` в draft Release.
 `eclipse-chat.deb`, `eclipse-chat.AppImage`, поэтому download page не устаревает
 при повышении версии.
 
+### Trust gate перед публикацией
+
+Подпись `latest.json` и пакетов updater защищает автообновление, но не заменяет
+подпись самого Windows-инсталлятора. Перед первым публичным Windows-релизом
+нужно настроить доверенный Authenticode-сертификат в GitHub Actions и проверить
+NSIS/MSI через `signtool verify /pa`. Для macOS нужен Developer ID и notarization.
+Пока эти проверки не настроены, SmartScreen или Gatekeeper могут показать
+предупреждение даже при корректной работе приложения. Релиз не следует считать
+готовым к раздаче только по успешной сборке.
+
+На каждом desktop- и Android-релизе CI дополнительно запускает
+`deploy/scripts/desktop-android-hardening.test.mjs`: он проверяет узкие Tauri
+capabilities и allowlist скачиваний Android-обёртки.
+
 ## Архитектура
 
 ```

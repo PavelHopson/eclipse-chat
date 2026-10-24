@@ -47,6 +47,10 @@ jobs:
         with:
           node-version: "20"
 
+      - name: Verify desktop and Android trust boundaries
+        run: node --test deploy/scripts/desktop-android-hardening.test.mjs
+        working-directory: .
+
       - name: Setup Java (JDK 21)
         uses: actions/setup-java@v4
         with:
@@ -98,6 +102,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
+
+      - name: Verify desktop and Android trust boundaries
+        run: node --test deploy/scripts/desktop-android-hardening.test.mjs
+        working-directory: .
 
       - name: Setup Java (JDK 21)
         uses: actions/setup-java@v4

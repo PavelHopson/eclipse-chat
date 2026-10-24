@@ -23,6 +23,21 @@ import com.getcapacitor.BridgeActivity;
  */
 public class MainActivity extends BridgeActivity {
 
+    private static final String APP_HOST = "app.star-crm.ru";
+    private static final String APP_PATH_PREFIX = "/eclipse-chat/";
+
+    private static boolean isTrustedDownloadUrl(String rawUrl) {
+        try {
+            Uri parsed = Uri.parse(rawUrl);
+            return "https".equalsIgnoreCase(parsed.getScheme())
+                && APP_HOST.equalsIgnoreCase(parsed.getHost())
+                && parsed.getPath() != null
+                && parsed.getPath().startsWith(APP_PATH_PREFIX);
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -40,6 +55,12 @@ public class MainActivity extends BridgeActivity {
             getBridge().getWebView().setDownloadListener(
                 (url, userAgent, contentDisposition, mimetype, contentLength) -> {
                     try {
+                        // Never turn the WebView into a generic downloader. Apart
+                        // from reducing abuse surface this prevents Android from
+                        // attaching our authenticated cookie to an external URL.
+                        if (!isTrustedDownloadUrl(url)) {
+                            return;
+                        }
                         DownloadManager.Request request =
                             new DownloadManager.Request(Uri.parse(url));
                         request.setMimeType(mimetype);

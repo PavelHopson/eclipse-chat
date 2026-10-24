@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { useEffect, useRef } from "react";
+import { useEffect, useId, useRef } from "react";
 import { Avatar } from "./Avatar";
 
 type Props = {
@@ -24,11 +24,14 @@ type Props = {
 const menu: CSSProperties = {
   position: "fixed",
   padding: "var(--ec-space-3)",
-  minWidth: 240,
   zIndex: 200,
   display: "flex",
   flexDirection: "column",
   gap: "var(--ec-space-3)",
+  width: "min(260px, calc(100vw - 16px))",
+  minWidth: 0,
+  maxWidth: "calc(100vw - 16px)",
+  boxSizing: "border-box",
 };
 
 const headerRow: CSSProperties = {
@@ -65,37 +68,59 @@ export function ParticipantContextMenu({
   onClose,
 }: Props) {
   const ref = useRef<HTMLDivElement>(null);
-
-  // Clamp position в viewport
-  const w = 260;
-  const h = 196;
-  const left = Math.min(anchorX, window.innerWidth - w - 8);
-  const top = Math.min(anchorY, window.innerHeight - h - 8);
+  const volumeRef = useRef<HTMLInputElement>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
+  const onCloseRef = useRef(onClose);
+  const titleId = useId();
+  const volumeLabelId = useId();
 
   useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  // Clamp position в viewport
+  const w = Math.min(260, Math.max(0, window.innerWidth - 16));
+  const h = Math.min(260, Math.max(0, window.innerHeight - 16));
+  const left = Math.max(8, Math.min(anchorX, window.innerWidth - w - 8));
+  const top = Math.max(8, Math.min(anchorY, window.innerHeight - h - 8));
+
+  useEffect(() => {
+    returnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    volumeRef.current?.focus({ preventScroll: true });
+
     const onDoc = (e: MouseEvent) => {
       if (!ref.current) return;
       if (!ref.current.contains(e.target as Node)) {
-        onClose();
+        onCloseRef.current();
       }
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") onCloseRef.current();
     };
     document.addEventListener("mousedown", onDoc);
     document.addEventListener("keydown", onKey);
     return () => {
       document.removeEventListener("mousedown", onDoc);
       document.removeEventListener("keydown", onKey);
+      returnFocusRef.current?.focus({ preventScroll: true });
     };
-  }, [onClose]);
+  }, []);
 
   return (
-    <div ref={ref} className="ec-popover-surface" style={{ ...menu, left, top }} role="menu" aria-label={`Действия с ${name}`}>
+    <div
+      ref={ref}
+      className="ec-popover-surface"
+      style={{ ...menu, left, top }}
+      role="dialog"
+      aria-labelledby={titleId}
+    >
       <div style={headerRow}>
         <Avatar url={avatar} name={name} size={32} />
         <div style={{ minWidth: 0, flex: 1 }}>
-          <div style={{ fontSize: "var(--ec-text-sm)", fontWeight: 600, color: "var(--ec-text-strong)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          <div
+            id={titleId}
+            style={{ fontSize: "var(--ec-text-sm)", fontWeight: 600, color: "var(--ec-text-strong)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
+          >
             {name}
           </div>
           <div style={{ fontSize: "var(--ec-text-2xs)", color: "var(--ec-text-dim)" }}>
@@ -106,6 +131,7 @@ export function ParticipantContextMenu({
 
       <div>
         <label
+          htmlFor={volumeLabelId}
           style={{
             display: "flex",
             justifyContent: "space-between",
@@ -126,6 +152,8 @@ export function ParticipantContextMenu({
             <line x1="17" y1="9" x2="23" y2="15" />
           </svg>
           <input
+            ref={volumeRef}
+            id={volumeLabelId}
             type="range"
             min={0}
             max={200}
@@ -134,6 +162,7 @@ export function ParticipantContextMenu({
             onChange={(e) => onVolumeChange(Number(e.target.value) / 100)}
             style={{ flex: 1, accentColor: "var(--ec-accent)" }}
             aria-label={`Громкость ${name}`}
+            aria-valuetext={`${Math.round(volume * 100)}%`}
           />
           <button
             type="button"

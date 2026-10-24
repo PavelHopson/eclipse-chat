@@ -273,3 +273,194 @@
     animation: none;
   }
 }
+
+/* v1.5.84 — quiet operator-console pass.
+ * The previous auth treatment stacked several luminous gradients and made
+ * the first screen read like a promo poster. Keep one warm accent, flatten
+ * the surfaces and make the next action obvious. This block intentionally
+ * lives here so the auth surface also stays consistent when the landing
+ * sheet is mounted from a route other than the hero.
+ */
+.ec-landing.ec-landing {
+  --L-signal: #d7b36a;
+  --L-signal-soft: #f0d99f;
+  --L-signal-bright: #e6c57f;
+  --L-signal-deep: #bf9140;
+}
+
+.ec-landing.ec-landing .ec-landing__hero.is-auth-open::before {
+  display: none !important;
+}
+
+.ec-landing.ec-landing .ec-landing__hero.is-auth-open::after {
+  background: #0b1015 !important;
+  opacity: 0.94 !important;
+  filter: none !important;
+  transform: none !important;
+  animation: none !important;
+}
+
+.ec-landing.ec-landing .ec-landing__auth-eclipse {
+  display: none !important;
+}
+
+.ec-landing.ec-landing .ec-landing__hero.is-auth-open .ec-hero-access__frame {
+  background: #11171d !important;
+  border: 1px solid rgba(240, 217, 159, 0.24) !important;
+  border-radius: 14px !important;
+  box-shadow:
+    0 24px 70px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.ec-landing.ec-landing .ec-landing__hero.is-auth-open .ec-hero-access__frame::before,
+.ec-landing.ec-landing .ec-landing__hero.is-auth-open .ec-hero-access__glow,
+.ec-landing.ec-landing .ec-landing__hero.is-auth-open .ec-hero-access__scan {
+  display: none !important;
+}
+
+.ec-landing.ec-landing .ec-landing__hero.is-auth-open .ec-hero-access__frame::after {
+  left: 20px !important;
+  right: 20px !important;
+  height: 2px !important;
+  background: #d7b36a !important;
+  opacity: 0.9 !important;
+}
+
+.ec-landing.ec-landing .ec-landing__hero.is-auth-open .ec-hero-access__title {
+  max-width: 15ch;
+  color: #f4f0e8;
+  text-transform: none;
+  font-weight: 720;
+}
+
+.ec-landing.ec-landing .ec-landing__hero.is-auth-open .ec-hero-access__sub {
+  color: #a8b1b8;
+}
+
+.ec-landing.ec-landing .ec-landing__hero.is-auth-open .ec-hero-access__tabs {
+  background: #0b1015 !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.ec-landing.ec-landing .ec-landing__hero.is-auth-open .ec-hero-access__tab-indicator {
+  background: #d7b36a !important;
+  box-shadow: none !important;
+}
+
+.ec-landing.ec-landing .ec-landing__hero.is-auth-open .ec-hero-access__tab {
+  color: #89949c;
+  letter-spacing: 0.08em;
+}
+
+.ec-landing.ec-landing .ec-landing__hero.is-auth-open .ec-hero-access__tab.is-active {
+  color: #17130c;
+}
+
+.ec-landing.ec-landing .ec-landing__hero.is-auth-open .ec-hero-access__input-wrap input {
+  background: #0b1015 !important;
+  border-color: rgba(255, 255, 255, 0.13) !important;
+  border-radius: 9px !important;
+  box-shadow: none !important;
+}
+
+.ec-landing.ec-landing .ec-landing__hero.is-auth-open .ec-hero-access__input-wrap input:focus {
+  border-color: #d7b36a !important;
+  box-shadow: 0 0 0 3px rgba(215, 179, 106, 0.16) !important;
+}
+
+.ec-landing.ec-landing .ec-landing__hero.is-auth-open .ec-hero-access__input-wrap:focus-within .ec-hero-access__field-icon,
+.ec-landing.ec-landing .ec-landing__hero.is-auth-open .ec-hero-access__input-wrap.is-filled .ec-hero-access__field-icon {
+  color: #d7b36a;
+  filter: none;
+}
+
+.ec-landing.ec-landing .ec-landing__hero.is-auth-open .ec-hero-access__submit {
+  background: #d7b36a !important;
+  color: #17130c !important;
+  border-radius: 9px !important;
+  box-shadow: none !important;
+  letter-spacing: 0.08em;
+}
+
+.ec-landing.ec-landing .ec-landing__hero.is-auth-open .ec-hero-access__submit:hover:not(:disabled) {
+  background: #e6c57f !important;
+  box-shadow: 0 8px 24px rgba(215, 179, 106, 0.18) !important;
+}
+
+.ec-landing.ec-landing .ec-landing__hero.is-auth-open .ec-hero-access__submit-shimmer {
+  display: none !important;
+}
+
+.ec-landing.ec-landing .ec-landing__hero.is-auth-open .ec-hero-access__error {
+  background: rgba(180, 72, 72, 0.1);
+  border: 0;
+  border-left: 3px solid #d66d6d;
+  border-radius: 4px;
+  color: #f0b4b4;
+}
+
+.ec-landing.ec-landing .ec-landing__hero.is-auth-open .ec-hero-access__footer {
+  color: #7e8a92;
+  border-top-color: rgba(255, 255, 255, 0.1);
+}
+
+.ec-landing.ec-landing .ec-landing__hero.is-auth-open .ec-hero-access__footer-dot {
+  background: #65c998;
+  box-shadow: none;
+}
+
+.ec-landing.ec-landing .ec-landing__hero-note {
+  max-width: 42ch;
+  margin: 16px 0 0;
+  color: #7e8a92;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.ec-landing.ec-landing .ec-landing__eyebrow {
+  color: #d7b36a;
+  letter-spacing: 0.12em;
+}
+
+.ec-landing.ec-landing .ec-landing__chip::before {
+  border-color: #d7b36a;
+}
+
+.ec-landing.ec-landing .ec-landing__hero.is-auth-open .ec-landing__hero-note {
+  color: #8f9aa1;
+}
+
+@media (max-width: 900px) {
+  .ec-landing.ec-landing .ec-landing__hero.is-auth-open::after {
+    background: #0b1015 !important;
+  }
+
+  .ec-landing.ec-landing .ec-landing__hero.is-auth-open .ec-hero-access__frame {
+    width: min(100%, 430px) !important;
+  }
+}
+
+@media (max-width: 560px) {
+  .ec-landing.ec-landing .ec-landing__hero-note {
+    margin-top: 12px;
+    font-size: 11px;
+  }
+
+  .ec-landing.ec-landing .ec-landing__hero.is-auth-open .ec-hero-access__frame {
+    border-radius: 11px !important;
+    padding: 20px 16px 15px !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ec-landing.ec-landing .ec-hero-access__frame,
+  .ec-landing.ec-landing .ec-hero-access__tab-indicator,
+  .ec-landing.ec-landing .ec-hero-access__submit,
+  .ec-landing.ec-landing .ec-hero-access__submit-arrow {
+    animation: none !important;
+    transition: none !important;
+  }
+}
