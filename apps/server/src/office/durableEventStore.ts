@@ -53,7 +53,10 @@ function parseMetadata(metadata: string): Record<string, string | number | boole
   } catch {
     throw new DurableOfficeEventError("corrupt_event", "Stored Office event metadata is invalid");
   }
-  const result = z.record(z.union([z.string(), z.number().finite(), z.boolean(), z.null()])).safeParse(parsed);
+  const result = z.record(
+    z.string(),
+    z.union([z.string(), z.number().finite(), z.boolean(), z.null()]),
+  ).safeParse(parsed);
   if (!result.success) throw new DurableOfficeEventError("corrupt_event", "Stored Office event metadata is invalid");
   return result.data;
 }

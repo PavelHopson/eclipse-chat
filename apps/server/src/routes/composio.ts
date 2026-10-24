@@ -439,7 +439,7 @@ export async function registerComposioRoutes(app: FastifyInstance) {
       const body = z
         .object({
           actionName: z.string().min(1).max(128),
-          params: z.record(z.unknown()).default({}),
+          params: z.record(z.string(), z.unknown()).default({}),
         })
         .safeParse(req.body);
       if (!body.success) {
