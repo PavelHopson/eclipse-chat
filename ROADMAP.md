@@ -5,14 +5,15 @@
 > `E:\projects\ROADMAP.md` (общий cross-repo лог Pavel'ового монорепо).
 > Любая фича, которой нет в текущем коде, попадает сюда.
 
-**Production: v1.7.81 · code `364f0d8` · проверено 2026-10-22.** CI, Security Gate, Prisma migration, deploy и внешний smoke завершены. Windows WebView2 picker и реальный двухклиентский звонок остаются открытыми.
+**Production: v1.7.82 · code `f888246` · проверено 2026-10-25.** CI, Security Gate, deploy и внешний smoke завершены. Windows WebView2 picker и реальный двухклиентский звонок остаются открытыми.
 
-## v1.7.82 — Ссылки на сайт Eclipse Forge (2026-10-25, release)
+## v1.7.82 — Ссылки на сайт Eclipse Forge (2026-10-25, production)
 
 - Ссылка на `https://eclipse-forge.ru/` в трёх местах: подвал стартовой страницы («Eclipse Forge ↗» рядом с GitHub), верхняя панель после входа (знак Eclipse Forge рядом с профилем) и меню настроек («Сайт Eclipse Forge» над выходом). Все открываются в новой вкладке; адрес — одна константа `apps/web/src/lib/ecosystemLinks.ts`.
 - В топбаре прямые `.ec-icon-btn` скрыты намеренно, поэтому ссылка получила класс `ec-forge-link` с явным показом — по образцу колокольчика уведомлений.
 - Проверено локально: web typecheck, ui-shell-contract 10/10, рендер кнопки топбара и пункта настроек на реальных стилях приложения (desktop/mobile, hover), подвал — в браузере.
-- В релиз также входят уже лежащие в `master` коммиты 24.10 (harden clients, обновления зависимостей безопасности, брендинг установщика), выпущенные после v1.7.81.
+- Коммиты 24.10 (harden clients, обновления зависимостей безопасности) уже были выкачены Deploy PROD #708 без смены версии; брендинг установщика (`apps/desktop`) деплой не затрагивает.
+- CI #883, Security Gate #121 и Deploy PROD #709 — success. Production smoke: `/api/version` = 1.7.82, `/api/health` → `ok=true`, `database=true`; подвал на проде отдаёт ссылку на `https://eclipse-forge.ru/`, в production-чанках есть `ec-forge-link` (AppShell JS+CSS) и пункт «Сайт Eclipse Forge» (SettingsPanel).
 
 ## v1.7.81 — QR-вход и продолжение UI-слайса (2026-10-22, production)
 
