@@ -12,6 +12,7 @@ import { WorkspaceFocusButton } from "../components/WorkspaceFocusButton";
 import { useConversationConnection } from "../hooks/useConversationConnection";
 import { useWorkspaceLayout } from "../hooks/useWorkspaceLayout";
 import { readingAnchor } from "../lib/conversationNavigation";
+import { ECLIPSE_FORGE_URL } from "../lib/ecosystemLinks";
 import { ChannelList } from "../components/ChannelList";
 import { RichContent } from "../components/RichContent";
 import { DirectConversationList } from "../components/DirectConversationList";
@@ -1609,6 +1610,20 @@ export function AppShell({
               </svg>
             </button>
           )}
+          {/* Ссылка на сайт экосистемы: знак Eclipse Forge (корона за диском) в линейном стиле топбара. */}
+          <a
+            href={ECLIPSE_FORGE_URL}
+            target="_blank"
+            rel="noreferrer"
+            title="Eclipse Forge — сайт экосистемы"
+            aria-label="Открыть сайт Eclipse Forge в новой вкладке"
+            className="ec-icon-btn ec-forge-link"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden>
+              <circle cx="13.4" cy="10.6" r="7.6" fill="#D4AF37" />
+              <circle cx="10.6" cy="13.4" r="6.9" fill="var(--ec-surface-1, #0b0b0d)" stroke="currentColor" strokeWidth="1.8" />
+            </svg>
+          </a>
           {/* v1.1.81 — кластер-разделитель: инструменты | идентичность */}
           <span className="ec-topbar-sep" aria-hidden />
           <button

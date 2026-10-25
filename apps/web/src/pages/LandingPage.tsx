@@ -23,6 +23,7 @@ import {
   MagneticButton,
 } from "../components/landing/LandingEffects";
 import { LandingCinematic } from "../components/landing/LandingCinematic";
+import { ECLIPSE_FORGE_URL } from "../lib/ecosystemLinks";
 import "../styles/landing.css";
 import "../styles/landing-cinematic.css";
 
@@ -378,6 +379,13 @@ export function LandingPage({
 
           <div className="ec-landing__footer-actions">
             <button type="button" onClick={() => onOpenAuth("login")}>Войти</button>
+            <a
+              href={ECLIPSE_FORGE_URL}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Eclipse Forge ↗
+            </a>
             <a
               href="https://github.com/PavelHopson/eclipse-chat"
               target="_blank"

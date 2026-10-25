@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { EclipseUiIcon, type EclipseUiIconName } from "../icons/EclipseUiIcon";
+import { ECLIPSE_FORGE_URL } from "../../lib/ecosystemLinks";
 
 export type SettingsViewId =
   | "account-profile"
@@ -194,6 +195,16 @@ export function SettingsTreeNav({ active, installAvailable, onSelect, onLogout }
             ))}
         </section>
       ))}
+      <a
+        href={ECLIPSE_FORGE_URL}
+        target="_blank"
+        rel="noreferrer"
+        className="ec-settings-category-item"
+        aria-label="Eclipse Forge — открыть сайт в новой вкладке"
+      >
+        <EclipseUiIcon name="external" size={16} />
+        <span>Сайт Eclipse Forge</span>
+      </a>
       <button
         type="button"
         className="ec-settings-category-item ec-settings-category-item--danger"

@@ -13875,6 +13875,13 @@ body {
   place-items: center;
 }
 
+/* Ссылка на сайт Eclipse Forge: явно видима, как колокольчик
+   (прочие прямые .ec-icon-btn топбара скрыты намеренно). */
+.ec-shell__top-actions > .ec-forge-link {
+  display: inline-grid;
+  place-items: center;
+}
+
 .ec-notification-topbar.is-enabled {
   color: color-mix(in srgb, var(--ec-status-success) 82%, white);
 }
