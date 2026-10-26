@@ -109,6 +109,24 @@ select:focus-visible {
 }
 *::-webkit-scrollbar-thumb:hover { background: var(--ec-surface-4); background-clip: padding-box; }
 
+/*
+ * Reduced motion safety net. Token durations already drop to 1ms, but ~120
+ * raw durations and infinite loops in other files are not covered; this
+ * stops them for everyone who asked the OS for less motion. Rules with their
+ * own more specific !important still win, so keep ambient loops inside
+ * @media (prefers-reduced-motion: no-preference).
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* Selection */
 ::selection {
   background: var(--ec-accent-soft);

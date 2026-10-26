@@ -104,17 +104,25 @@
   transform: translateX(13px) scale(.7);
 }
 
-html:not([data-ec-motion="quiet"]) .ec-workspace-v2 .ec-brand-mark {
-  animation: ec-brand-eclipse-live 4.2s cubic-bezier(.45, 0, .2, 1) 700ms infinite !important;
-  transform-origin: 52% 50%;
-}
+/* Ambient eclipse cycle: two beats after arrival, then the mark rests. An
+ * endless loop kept the whole UI repainting while idle (measured: ~1 frame/s
+ * idle without it, continuous frames with it). The no-preference media query
+ * keeps it off under prefers-reduced-motion: the guard below loses to this
+ * rule's specificity + !important, so the loop used to run there too. */
+.ec-workspace-v2 .ec-brand-mark { transform-origin: 52% 50%; }
 
-html:not([data-ec-motion="quiet"]) .ec-workspace-v2 .ec-brand-orbit::before {
-  animation: ec-brand-corona-live 4.2s cubic-bezier(.16, 1, .3, 1) 700ms infinite;
-}
+@media (prefers-reduced-motion: no-preference) {
+  html:not([data-ec-motion="quiet"]) .ec-workspace-v2 .ec-brand-mark {
+    animation: ec-brand-eclipse-live 4.2s cubic-bezier(.45, 0, .2, 1) 700ms 2 !important;
+  }
 
-html:not([data-ec-motion="quiet"]) .ec-workspace-v2 .ec-brand-orbit::after {
-  animation: ec-brand-star-live 4.2s cubic-bezier(.45, 0, .2, 1) 700ms infinite;
+  html:not([data-ec-motion="quiet"]) .ec-workspace-v2 .ec-brand-orbit::before {
+    animation: ec-brand-corona-live 4.2s cubic-bezier(.16, 1, .3, 1) 700ms 2;
+  }
+
+  html:not([data-ec-motion="quiet"]) .ec-workspace-v2 .ec-brand-orbit::after {
+    animation: ec-brand-star-live 4.2s cubic-bezier(.45, 0, .2, 1) 700ms 2;
+  }
 }
 
 .ec-workspace-v2 .ec-shell__brand-home:hover .ec-brand-orbit::before,

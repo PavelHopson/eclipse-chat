@@ -365,7 +365,8 @@ html[data-ec-theme="solar"] .ec-shell.ec-workspace-v2 {
   box-shadow: -44px 0 0 -0.25px var(--ec-ws-violet), 0 0 12px color-mix(in srgb, var(--ec-ws-gold) 48%, transparent);
   opacity: 0.58;
   transform: translateX(100%);
-  animation: ec-workspace-signal-scan 12s linear infinite;
+  /* One pass on load, then rest: an endless 12 s scan kept the idle UI repainting. */
+  animation: ec-workspace-signal-scan 12s linear 1 both;
   content: "";
   pointer-events: none;
 }

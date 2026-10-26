@@ -32,9 +32,10 @@ test("unified motion keeps the ambient brand controllable and all other motion e
   const pointer = source("apps/web/src/components/EclipsePointer.tsx");
   assert.match(css, /ec-brand-arrival/);
   assert.match(css, /ec-brand-eclipse-live/);
-  const loops = [...css.matchAll(/animation:\s*([^;]+\binfinite\b)/g)].map(match => match[1]);
-  assert.equal(loops.length, 3);
-  assert.ok(loops.every(value => /ec-brand-/.test(value)));
+  // The ambient brand cycle is finite (two beats, then the UI rests and stops
+  // repainting) and only runs when the OS has not asked for reduced motion.
+  assert.doesNotMatch(css, /animation:\s*[^;]*\binfinite\b/);
+  assert.match(css, /@media \(prefers-reduced-motion: no-preference\)\s*\{[\s\S]*?animation:\s*ec-brand-eclipse-live[^;]*\s2\s*!important/);
   assert.match(css, /html\[data-ec-motion="quiet"\][\s\S]+animation:\s*none\s*!important/);
   assert.match(css, /prefers-reduced-motion: reduce/);
   assert.match(css, /ec-icon-signal/);

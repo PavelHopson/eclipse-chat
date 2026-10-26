@@ -3721,7 +3721,8 @@ input[type="radio"]:focus-visible {
 .ec-icon-btn:hover {
   background: var(--ec-surface-3);
   color: var(--ec-text);
-  transform: translateY(-1px);
+  /* No lift: the icon already plays ec-icon-signal on hover (ui-unification.css);
+     lift + icon motion read as a double jump. */
 }
 /* Press вЂ” РєРЅРѕРїРєР° СЂРµР·РєРѕ В«С‰С‘Р»РєР°РµС‚В» РІРЅРёР· Рё СЃР»РµРіРєР° СЃР¶РёРјР°РµС‚СЃСЏ. */
 .ec-icon-btn:active {
@@ -9431,7 +9432,9 @@ input[type="radio"]:focus-visible {
     border-color var(--ec-dur-fast) var(--ec-ease),
     background var(--ec-dur-fast) var(--ec-ease),
     box-shadow var(--ec-dur-fast) var(--ec-ease),
-    color var(--ec-dur-fast) var(--ec-ease);
+    color var(--ec-dur-fast) var(--ec-ease),
+    /* .ec-btn--primary brightens via filter on hover/press: without it here the change snapped. */
+    filter var(--ec-dur-fast) var(--ec-ease);
 }
 
 .ec-btn:hover:not(:disabled) {
