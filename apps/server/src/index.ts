@@ -14,6 +14,7 @@ import { registerAttachmentRoutes } from "./routes/attachments.js";
 import { registerAutomationRoutes } from "./routes/automations.js";
 import { registerAnalyticsRoutes } from "./routes/analytics.js";
 import { registerAuthRoutes } from "./routes/auth.js";
+import { registerAuthPairingRoutes } from "./routes/authPairing.js";
 import { registerQrAuthRoutes } from "./routes/qrAuth.js";
 import { registerEcosystemIdentityRoutes } from "./routes/ecosystemIdentity.js";
 import { registerBotRoutes } from "./routes/bots.js";
@@ -270,6 +271,7 @@ app.get("/api/health", async () => {
 app.get("/api/version", async () => serverManifest);
 
 await registerAuthRoutes(app);
+await registerAuthPairingRoutes(app);
 await registerQrAuthRoutes(app);
 await registerEcosystemIdentityRoutes(app);
 await registerTwoFactorRoutes(app);
