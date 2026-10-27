@@ -46,6 +46,9 @@ radius. После — проверить и доложить честно.
 
 ## Рабочие процессы
 
+### Web UI craft
+Перед изменением web UI, компонентов, состояний, жестов, motion или accessibility прочитать `.agents/skills/eclipse-ui-craft/SKILL.md` и обязательный `references/project-profile.md`. Текущие правила продукта и `docs/design/design-brief-v2.md` имеют приоритет; skill не применяется к backend-only задачам и product AI system prompts.
+
 ### Дизайн — слайсами
 Слайс → build → deploy → smoke → ревью Pavel'я. Один слайс = одна
 осмысленная порция, не «весь редизайн сразу».
