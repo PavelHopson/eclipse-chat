@@ -136,6 +136,15 @@ const PROFILES: Record<string, RoutingProfile> = {
   }),
   glm: profile("external", "low", 3, 3, 4, 1, 3),
   mimo: profile("external", "low", 3, 3, 4, 1, 3),
+  // Kimi supports chat, streaming, vision and tool calls, but pricing is
+  // model/account dependent; unknown must never be treated as free.
+  moonshot: profile("external", "unknown", 3, 2, 4, 1, 4, {
+    conversation: 4,
+    summarization: 4,
+    structured_extract: 4,
+    agent_tools: 4,
+    code: 4,
+  }),
   custom: profile("external", "unknown", 3, 2, 3, 1, 3),
   openai: profile("external", "standard", 3, 1, 4, 1, 4, {
     conversation: 4,

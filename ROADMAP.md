@@ -7,6 +7,15 @@
 
 **Production: v1.7.82 · code `f888246` · проверено 2026-10-25.** CI, Security Gate, deploy и внешний smoke завершены. Windows WebView2 picker и реальный двухклиентский звонок остаются открытыми.
 
+## v1.7.84 — Kimi / Moonshot provider (2026-10-30, release candidate)
+
+- Добавлен env-gated серверный провайдер `moonshot` через официальный OpenAI-compatible endpoint Kimi.
+- Без одновременных `MOONSHOT_ENABLED=1` и `MOONSHOT_API_KEY` провайдер не появляется в цепочке и не меняет трафик.
+- Модель по умолчанию `kimi-k3.1-pro`; цена остаётся `unknown`, поэтому маршрутизация не считает Kimi бесплатным.
+- Ключи остаются server-side; diagnostics показывают только host/model metadata.
+- Vision/tool/reasoning возможности Kimi не объявляются готовыми для Chat: текущий текстовый контракт Eclipse Chat требует отдельного мультимодального среза.
+- Проверки и production smoke должны быть выполнены для exact SHA перед публикацией.
+
 ## v1.7.83 — Гладкость движения: reduced motion и спокойный простой (2026-10-26, release)
 
 - QA 26.10 (замеры в аккаунте на RTX 4060 Ti + аудит CSS): в простое четыре вечные анимации (`ec-brand-eclipse/corona/star-live`, `ec-workspace-signal-scan`) держали непрерывную перерисовку (без них — ~1 кадр/с), а в режиме «уменьшить движение» логотип продолжал крутиться: правило с `!important` в `ui-unification.css` было специфичнее guard'а.

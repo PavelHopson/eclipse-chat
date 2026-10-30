@@ -22,7 +22,7 @@ import {
  *
  * Chain priority (auto-fallback по списку, первый успешный = result):
  *   Ollama → Eclipse AI Hub → OmniRoute → Groq → Cerebras → OpenRouter →
- *   NVIDIA → Mistral → YandexGPT → DeepSeek → GLM → MiMo → Custom →
+ *   NVIDIA → Mistral → YandexGPT → DeepSeek → GLM → MiMo → Kimi → Custom →
  *   OpenAI → Pollinations.
  *
  * Custom OpenAI-compatible (generic slot, напр. OpenModel-шлюз):
@@ -74,6 +74,10 @@ import {
  *   GLM_MODEL=glm-4.6                    — GLM_MODELS CSV (glm-4.7, glm-5.2...)
  *   MIMO_API_KEY=<key>                   — platform.xiaomimimo.com
  *   MIMO_MODEL=mimo-v2.5-pro             — MIMO_MODELS CSV
+ *   ## Kimi / Moonshot (явный opt-in, OpenAI-compatible)
+ *   MOONSHOT_ENABLED=1                   — провайдер выключен без этого флага
+ *   MOONSHOT_API_KEY=<key>               — хранить только на сервере
+ *   MOONSHOT_MODEL=kimi-k3.1-pro         — MOONSHOT_MODELS CSV
  *   ## Custom OpenAI-compatible (generic, напр. OpenModel-промо)
  *   CUSTOM_LLM_BASE_URL=<url>            — base без /chat/completions
  *   CUSTOM_LLM_API_KEY=<key>             — оба обязательны для включения
@@ -503,7 +507,26 @@ function getProviders(options: { includeConfiguredAiHub?: boolean } = {}): Provi
     });
   }
 
-  // 6f. Custom OpenAI-compatible эндпоинт — generic slot для любого совместимого
+  // 6f. Kimi / Moonshot — официальный OpenAI-compatible API.
+  //     Включается только двойным opt-in: оператор явно задаёт флаг и ключ.
+  //     Это предотвращает случайную передачу рабочих сообщений внешнему
+  //     провайдеру только из-за оставленного в окружении ключа.
+  //     Base URL намеренно фиксирован на официальном global endpoint: никаких
+  //     произвольных URL из env и, следовательно, никакого SSRF через provider.
+  const moonshotKey = process.env.MOONSHOT_API_KEY?.trim();
+  if (process.env.MOONSHOT_ENABLED === "1" && moonshotKey) {
+    out.push({
+      name: "moonshot",
+      baseUrl: "https://api.moonshot.ai/v1",
+      apiKey: moonshotKey,
+      models: parseModels(
+        process.env.MOONSHOT_MODELS ?? process.env.MOONSHOT_MODEL,
+        "kimi-k3.1-pro",
+      ),
+    });
+  }
+
+  // 6g. Custom OpenAI-compatible эндпоинт — generic slot для любого совместимого
   //     провайдера/шлюза. v1.6.71 — добавлен под OpenModel (DeepSeek-V4-Flash
   //     free-промо до 28.06.2026), но URL НЕ хардкодим: провенанс шлюза не
   //     подтверждён → задаётся целиком через env. Включается только если заданы
