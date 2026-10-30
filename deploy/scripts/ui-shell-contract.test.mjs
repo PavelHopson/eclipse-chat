@@ -14,16 +14,31 @@ test("desktop and mobile docks expose the primary product destinations", () => {
   const rail = source("apps/web/src/components/ServerRail.tsx");
   const bottomNav = source("apps/web/src/components/BottomNav.tsx");
 
-  for (const label of ["Сводка", "Личные", "AI-офис", "Профиль"]) {
+  for (const label of ["Сводка", "Личные", "Друзья", "Профиль"]) {
     assert.match(rail, new RegExp(`caption=\"${label}\"`));
   }
+  assert.match(rail, /CHAT_AI_OFFICE_ENABLED && \(/);
+  assert.match(rail, /legacy-поверхность до переноса в DnD Forge/);
   assert.match(rail, /caption="Админ"/);
   assert.match(rail, /caption="Система"/);
 
-  for (const label of ["Сводка", "Комнаты", "Личные", "AI-офис", "Я"]) {
+  for (const label of ["Сводка", "Комнаты", "Личные", "Я"]) {
     assert.match(bottomNav, new RegExp(`label=\"${label}\"`));
   }
+  assert.match(bottomNav, /CHAT_AI_OFFICE_ENABLED && \(/);
   assert.match(bottomNav, /export type BottomTab = "home" \| "servers" \| "dms" \| "office" \| "me"/);
+});
+
+test("AI Office is opt-in while DnD Forge remains the product destination", () => {
+  const flags = source("apps/web/src/lib/productSurfaceFlags.ts");
+  const shell = source("apps/web/src/pages/AppShell.tsx");
+  const integrations = source("apps/web/src/components/settings/categories/IntegrationsSection.tsx");
+
+  assert.match(flags, /VITE_CHAT_AI_OFFICE_ENABLED === "1"/);
+  assert.match(shell, /if \(!CHAT_AI_OFFICE_ENABLED\) return/);
+  assert.match(shell, /key: "dnd-forge"/);
+  assert.match(shell, /Кампании, карты и AI-сценарии/);
+  assert.match(integrations, /Eclipse DnD Forge/);
 });
 
 test("workspace overview keeps one next action before secondary context", () => {

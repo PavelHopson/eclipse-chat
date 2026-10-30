@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import { EclipseUiIcon } from "./icons/EclipseUiIcon";
+import { CHAT_AI_OFFICE_ENABLED } from "../lib/productSurfaceFlags";
 
-/** Мобильный global dock: пять предсказуемых destinations под большой палец. */
+/** Мобильный global dock: основные destinations под большой палец. */
 
 export type BottomTab = "home" | "servers" | "dms" | "office" | "me";
 
@@ -69,9 +70,11 @@ export function BottomNav({
       <TabButton label="Личные" active={active === "dms"} badge={dmsUnread} onClick={onDms}>
         <EclipseUiIcon name="chat" size={22} />
       </TabButton>
-      <TabButton label="AI-офис" active={active === "office"} onClick={onOffice}>
-        <EclipseUiIcon name="office" size={22} />
-      </TabButton>
+      {CHAT_AI_OFFICE_ENABLED && (
+        <TabButton label="AI-офис" active={active === "office"} onClick={onOffice}>
+          <EclipseUiIcon name="office" size={22} />
+        </TabButton>
+      )}
       <TabButton label="Я" active={active === "me"} onClick={onProfile}>
         <EclipseUiIcon name="profile" size={22} />
       </TabButton>

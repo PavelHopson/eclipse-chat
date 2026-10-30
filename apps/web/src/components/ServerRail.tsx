@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { ServerRow } from "../hooks/useServers";
 import { ServerIcon } from "./ServerSwitcher";
 import { EclipseUiIcon } from "./icons/EclipseUiIcon";
+import { CHAT_AI_OFFICE_ENABLED } from "../lib/productSurfaceFlags";
 
 /**
  * Постоянный global dock: продуктовые поверхности сверху, пространства в
@@ -114,7 +115,7 @@ export function ServerRail({
   // Overlays keep their underlying conversation mounted; only the top surface is current.
   const surface = platformAdminActive ? "platform" : adminActive ? "admin"
     : profileActive ? "profile" : friendsActive ? "friends"
-    : officeActive ? "office" : homeActive ? "home" : dmsActive ? "dms" : "server";
+    : CHAT_AI_OFFICE_ENABLED && officeActive ? "office" : homeActive ? "home" : dmsActive ? "dms" : "server";
   const addTooltip = !creationAllowed
     ? "Создавать пространства может только владелец платформы"
     : canCreateServer
@@ -152,14 +153,16 @@ export function ServerRail({
         >
           <EclipseUiIcon name="people" />
         </RailButton>
-        <RailButton
-          label="AI-офис — команда и согласования"
-          caption="AI-офис"
-          active={surface === "office"}
-          onClick={onOfficeRequest}
-        >
-          <EclipseUiIcon name="office" />
-        </RailButton>
+        {CHAT_AI_OFFICE_ENABLED && (
+          <RailButton
+            label="AI-офис — legacy-поверхность до переноса в DnD Forge"
+            caption="AI-офис"
+            active={surface === "office"}
+            onClick={onOfficeRequest}
+          >
+            <EclipseUiIcon name="office" />
+          </RailButton>
+        )}
         <RailButton label="Профиль и настройки" caption="Профиль" active={surface === "profile"} onClick={onProfileRequest}>
           <EclipseUiIcon name="profile" />
         </RailButton>

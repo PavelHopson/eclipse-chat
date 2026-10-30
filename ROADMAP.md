@@ -7,6 +7,14 @@
 
 **Production: v1.7.82 · code `f888246` · проверено 2026-10-25.** CI, Security Gate, deploy и внешний smoke завершены. Windows WebView2 picker и реальный двухклиентский звонок остаются открытыми.
 
+## v1.7.85 — Chat surface split: AI → DnD Forge (2026-10-30, release candidate)
+
+- AI Office скрыт из основной desktop/mobile навигации Eclipse Chat по умолчанию.
+- AI-агенты, творческие сценарии и офисная рабочая поверхность переходят в Eclipse DnD Forge; в Chat остаются коммуникации, контекстные AI-помощники и безопасные действия.
+- Старый Agent Office не удалён: для миграции и обратного отката его можно временно вернуть только явным `VITE_CHAT_AI_OFFICE_ENABLED=1`.
+- Данные, backend runtime, permissions, approvals и audit trail не менялись; Prisma migration не нужна.
+- Интеграционный smoke должен отдельно проверить ссылку Chat → DnD Forge и отсутствие legacy AI Office в навигации при default-конфигурации.
+
 ## v1.7.84 — Kimi / Moonshot provider (2026-10-30, release candidate)
 
 - Добавлен env-gated серверный провайдер `moonshot` через официальный OpenAI-compatible endpoint Kimi.

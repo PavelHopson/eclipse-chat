@@ -13,6 +13,7 @@ import { useConversationConnection } from "../hooks/useConversationConnection";
 import { useWorkspaceLayout } from "../hooks/useWorkspaceLayout";
 import { readingAnchor } from "../lib/conversationNavigation";
 import { ECLIPSE_FORGE_URL } from "../lib/ecosystemLinks";
+import { CHAT_AI_OFFICE_ENABLED } from "../lib/productSurfaceFlags";
 import { ChannelList } from "../components/ChannelList";
 import { RichContent } from "../components/RichContent";
 import { DirectConversationList } from "../components/DirectConversationList";
@@ -901,6 +902,7 @@ export function AppShell({
   };
 
   const openAgentOffice = () => {
+    if (!CHAT_AI_OFFICE_ENABLED) return;
     setAgentOfficeOpen(true);
     setHomeOpen(false);
     setActiveServerId(null);
@@ -3251,7 +3253,7 @@ export function AppShell({
             {
               key: "dnd-forge",
               label: "DnD Forge",
-              hint: "Подключить аккаунт",
+              hint: "Кампании, карты и AI-сценарии",
               onClick: () => {
                 setSettingsInitialView("integrations");
                 setShowProfile(true);
