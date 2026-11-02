@@ -115,7 +115,7 @@ button.ec-task-link__open:hover { background: var(--ec-surface-2); }
 .ec-personal-time .ec-btn--ghost.ec-btn--sm { width: auto; height: auto; min-height: 44px; padding: 8px 12px !important; }
 .ec-personal-time__controls, .ec-personal-time__active { display: flex; gap: 12px; align-items: end; flex-wrap: wrap; margin: 12px 0; }
 .ec-personal-time__controls label { display: grid; gap: 6px; min-width: 0; max-width: 100%; }
-.ec-personal-time__controls select { max-width: 100%; min-height: 36px; border: 1px solid var(--ec-border-subtle); border-radius: 6px; padding: 6px 8px; background: var(--ec-surface-1); color: var(--ec-text); font: inherit; }
+.ec-personal-time__controls select { width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; min-height: 36px; border: 1px solid var(--ec-border-subtle); border-radius: 6px; padding: 6px 8px; background: var(--ec-surface-1); color: var(--ec-text); font: inherit; }
 .ec-personal-time__active span { overflow-wrap: anywhere; }
 .ec-personal-time .ec-personal-plan__list li { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 .ec-personal-time .ec-personal-plan__list li > span { white-space: normal; overflow-wrap: anywhere; }

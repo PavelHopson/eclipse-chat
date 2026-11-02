@@ -1783,10 +1783,8 @@ export function AppShell({
               if (!activeServer) return false;
               return leaveServer(activeServer.id);
             }}
-            /* v1.6.46 — standalone «Доска задач» убрана из сайдбара
-               (slice 1). Доска остаётся drill-down целью из Здоровья
-               команды; тяжёлый Kanban сжимается до thin-backbone в slice 4. */
-            onOpenStatusBoard={undefined}
+            /* Прямой вход в задачи и личный план пространства. */
+            onOpenStatusBoard={openStatusBoardFromGuide}
             statusBoardActive={statusBoardOpen}
             onOpenTeamHealth={
               isClientMode
