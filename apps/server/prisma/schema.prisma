@@ -129,6 +129,8 @@ model User {
   reactions                  Reaction[]
   createdActionItems         ActionItem[]              @relation("ActionItemCreator")
   assignedActionItems        ActionItem[]              @relation("ActionItemAssignee")
+  personalPlans              PersonalActionPlan[]
+  personalTime               PersonalActionTime[]
   createdMemoryEntries       MemoryEntry[]             @relation("MemoryEntryCreator")
   ownedMemoryEntries         MemoryEntry[]             @relation("MemoryEntryOwner")
   reviewedMemoryEntries      MemoryEntry[]             @relation("MemoryEntryReviewer")
@@ -1697,6 +1699,21 @@ model MessageEmbedding {
 /// v0.54 detail-drawer: добавлены `priority`, `description`, comments thread
 /// (ActionItemComment) и activity log (ActionItemActivity). Поле `title`
 /// остаётся коротким (до 160 символов) — markdown body живёт в `description`.
+model PersonalActionPlan {
+  id             String     @id @default(cuid())
+  userId         String
+  user           User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  actionItemId   String
+  actionItem     ActionItem @relation(fields: [actionItemId], references: [id], onDelete: Cascade)
+  day            DateTime   @db.Date
+  plannedMinutes Int?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  @@unique([userId, actionItemId, day])
+  @@index([userId, day])
+}
+
 model ActionItem {
   id          String             @id @default(cuid())
   title       String
@@ -1747,6 +1764,8 @@ model ActionItem {
   aiSummary          String?
   aiSummaryUpdatedAt DateTime?
 
+  personalPlans PersonalActionPlan[]
+  personalTime  PersonalActionTime[]
   comments      ActionItemComment[]
   activities    ActionItemActivity[]
   /// v0.73 #20 phase 2: блокеры — задачи, от которых зависит эта.
@@ -2342,4 +2361,20 @@ enum FriendshipStatus {
   PENDING
   ACCEPTED
   BLOCKED
+}
+
+model PersonalActionTime {
+  id              String @id @default(cuid())
+  userId          String
+  user            User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  actionItemId    String
+  actionItem      ActionItem @relation(fields: [actionItemId], references: [id], onDelete: Cascade)
+  requestId       String
+  startedAt       DateTime
+  lastHeartbeatAt DateTime
+  endedAt         DateTime?
+  interrupted     Boolean @default(false)
+  version         Int @default(0)
+  @@unique([userId, requestId])
+  @@index([userId, startedAt])
 }

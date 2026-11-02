@@ -5,6 +5,7 @@ import type { ActionItemPayload, ActionItemStatus, ActionItemType } from "../lib
 import { MessageActionChip } from "./MessageActionChip";
 import { EclipseUiIcon } from "./icons/EclipseUiIcon";
 import { ACTION_KIND } from "../lib/actionDraft";
+import { PersonalPlan } from "./PersonalPlan";
 
 /**
  * StatusBoard — Execution-доска: все ActionItem'ы сервера (across
@@ -29,6 +30,7 @@ export type BoardPreFilter =
   | null;
 
 type Props = {
+  serverId: string;
   serverName: string | null;
   actions: ActionItemPayload[];
   loading: boolean;
@@ -230,6 +232,7 @@ const COLUMNS: {
 ];
 
 export function StatusBoard({
+  serverId,
   serverName,
   actions,
   loading,
@@ -244,7 +247,7 @@ export function StatusBoard({
   onCreateTask,
   createTaskLabel = "Создать задачу",
 }: Props) {
-  const [view, setView] = useState<"list" | "board">("list");
+  const [view, setView] = useState<"list" | "board" | "plan">("list");
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("ALL");
   const [mineOnly, setMineOnly] = useState(false);
@@ -323,10 +326,10 @@ export function StatusBoard({
         <div className="ec-cck__headline">
           <h2 className="ec-cck__title">Задачи</h2>
           {serverName && <span className="ec-cck__sub">· {serverName}</span>}
-          <span className="ec-cck__count">{filtered.length}</span>
+          {view !== "plan" && <span className="ec-cck__count">{filtered.length}</span>}
         </div>
 
-        <div className="ec-cck__tools">
+        {view !== "plan" && <div className="ec-cck__tools">
           {(["ALL", "TASK", "DECISION", "FOLLOW_UP", "RISK", "REQUIREMENT"] as const).map((t) => (
             <button
               key={t}
@@ -385,7 +388,7 @@ export function StatusBoard({
               </button>
             </span>
           )}
-        </div>
+        </div>}
 
         <div className="ec-cck__tools ec-cck__tools--end">
           {onCreateTask && <button type="button" className="ec-task-board__create" onClick={onCreateTask}>
@@ -403,16 +406,17 @@ export function StatusBoard({
       </div>
 
       <div className="ec-task-board__controls">
-        <label className="ec-task-board__search"><EclipseUiIcon name="search" size={18} />
+        {view !== "plan" && <label className="ec-task-board__search"><EclipseUiIcon name="search" size={18} />
           <input value={query} onChange={event => setQuery(event.target.value)} aria-label="Найти задачу" placeholder="Найти задачу или ответственного" />
-        </label>
+        </label>}
         <div className="ec-task-board__views" role="group" aria-label="Вид задач">
           <button type="button" aria-pressed={view === "list"} onClick={() => setView("list")}>Список</button>
           <button type="button" aria-pressed={view === "board"} onClick={() => setView("board")}>Доска</button>
+          <button type="button" aria-pressed={view === "plan"} onClick={() => setView("plan")}>Мой план</button>
         </div>
       </div>
       {error && <p role="alert" className="ec-cck-banner ec-cck-banner--error">{error} <button type="button" onClick={onReload}>Повторить</button></p>}
-      {!loading && !error && filtered.length === 0 && <div className="ec-task-board__empty">
+      {view !== "plan" && !loading && !error && filtered.length === 0 && <div className="ec-task-board__empty">
         <EclipseUiIcon name="task" size={28} />
         <h3>{actions.length ? "Ничего не найдено" : "Здесь будут задачи команды"}</h3>
         <p>{actions.length ? "Попробуйте другой запрос или снимите фильтры." : "Задача сохраняет связь с обсуждением, срок и ответственного."}</p>
@@ -421,7 +425,7 @@ export function StatusBoard({
         }}>Сбросить фильтры</button> : onCreateTask && <button type="button" onClick={onCreateTask}>{createTaskLabel}</button>}
       </div>}
       {loading && actions.length === 0 && <div className="ec-task-board__loading" role="status">Загружаем задачи…</div>}
-      {view === "list" ? <div className="ec-task-board__list">
+      {view === "plan" ? <PersonalPlan key={serverId} serverId={serverId} actions={actions} onOpenAction={onOpenAction} onOpenChannel={onOpenChannel} /> : view === "list" ? <div className="ec-task-board__list">
         {COLUMNS.filter(column => byStatus[column.key].length > 0).map(column => <section key={column.key} aria-label={column.title}>
           <h3>{column.title}<span>{byStatus[column.key].length}</span></h3>
           {byStatus[column.key].map(item => <div className="ec-task-board__row" key={item.id}>

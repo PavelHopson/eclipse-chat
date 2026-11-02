@@ -2327,6 +2327,7 @@ export function AppShell({
           />
         ) : statusBoardOpen && activeServer ? (
           <StatusBoard
+            serverId={activeServer.id}
             serverName={activeServer.name}
             actions={serverActions.actions}
             loading={serverActions.loading}
@@ -2706,6 +2707,7 @@ export function AppShell({
           // Reuse StatusBoard, фильтруем actions по channelId. Chat не
           // показывается — это «room as kanban» mode.
           <StatusBoard
+            serverId={activeServer.id}
             serverName={`${activeServer.name} · #${selectedChannel.name}`}
             actions={serverActions.actions.filter(
               (a) => a.channelId === selectedChannel.id,

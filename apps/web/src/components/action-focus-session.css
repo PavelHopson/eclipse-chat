@@ -1,0 +1,101 @@
+.ec-action-focus__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  display: grid;
+  place-items: center;
+  overflow-y: auto;
+  padding: max(20px, env(safe-area-inset-top)) 16px max(20px, env(safe-area-inset-bottom));
+  background: rgb(7 9 13 / 72%);
+}
+
+.ec-action-focus {
+  width: min(100%, 520px);
+  max-height: calc(100dvh - 40px);
+  overflow-y: auto;
+  border: 1px solid var(--ec-border-subtle, rgb(255 255 255 / 12%));
+  border-radius: 14px;
+  padding: 22px;
+  background: var(--ec-surface-1, #151922);
+  color: var(--ec-text, #f2f4f8);
+  box-shadow: 0 24px 80px rgb(0 0 0 / 40%);
+}
+
+.ec-action-focus__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.ec-action-focus__eyebrow {
+  margin: 0 0 7px;
+  color: var(--ec-ws-gold, var(--ec-accent-gold, #d9b66d));
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.ec-action-focus h2 {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: clamp(18px, 4vw, 22px);
+  line-height: 1.35;
+}
+
+.ec-action-focus__close,
+.ec-action-focus__duration,
+.ec-action-focus__primary,
+.ec-action-focus__secondary {
+  min-height: 40px;
+  border: 1px solid var(--ec-border-subtle, rgb(255 255 255 / 14%));
+  border-radius: 8px;
+  padding: 8px 12px;
+  background: transparent;
+  color: var(--ec-text, #f2f4f8);
+  font: inherit;
+  cursor: pointer;
+}
+
+.ec-action-focus__close { flex: 0 0 auto; font-size: 12px; }
+.ec-action-focus__description { margin: 16px 0 20px; color: var(--ec-text-muted, #a8afbd); font-size: 13px; line-height: 1.55; }
+.ec-action-focus__durations { margin: 0; border: 0; padding: 0; }
+.ec-action-focus__durations legend { margin-bottom: 9px; color: var(--ec-text-muted, #a8afbd); font-size: 12px; }
+.ec-action-focus__duration-list { display: flex; flex-wrap: wrap; gap: 7px; }
+.ec-action-focus__duration { min-height: 36px; padding: 6px 10px; font-size: 12px; }
+.ec-action-focus__duration[aria-pressed="true"] { border-color: var(--ec-ws-gold, var(--ec-accent-gold, #d9b66d)); color: var(--ec-ws-gold, var(--ec-accent-gold, #d9b66d)); }
+.ec-action-focus__duration:disabled { cursor: default; opacity: .58; }
+
+.ec-action-focus__clock-wrap {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  margin: 26px 0 18px;
+  border: 1px solid var(--ec-border-subtle, rgb(255 255 255 / 10%));
+  border-radius: 12px;
+  padding: 20px 16px 18px;
+  background: var(--ec-surface-2, rgb(255 255 255 / 3%));
+}
+
+.ec-action-focus__state { margin: 0; color: var(--ec-text-muted, #a8afbd); font-size: 12px; }
+.ec-action-focus__clock { font-variant-numeric: tabular-nums; font-size: clamp(52px, 13vw, 76px); font-weight: 650; letter-spacing: -.055em; line-height: 1; }
+.ec-action-focus__progress { width: min(100%, 290px); height: 4px; overflow: hidden; border-radius: 999px; background: var(--ec-border-subtle, rgb(255 255 255 / 12%)); }
+.ec-action-focus__progress span { display: block; height: 100%; border-radius: inherit; background: var(--ec-ws-gold, var(--ec-accent-gold, #d9b66d)); transition: width .25s linear; }
+.ec-action-focus__complete { margin: 0 0 16px; border-left: 3px solid var(--ec-status-exec, #61c59a); padding: 9px 12px; color: var(--ec-text-muted, #a8afbd); font-size: 13px; line-height: 1.5; }
+.ec-action-focus__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.ec-action-focus__primary { border-color: var(--ec-ws-gold, var(--ec-accent-gold, #d9b66d)); background: var(--ec-ws-gold, var(--ec-accent-gold, #d9b66d)); color: #15130d; font-weight: 700; }
+.ec-action-focus__primary:hover:not(:disabled) { filter: brightness(1.08); }
+.ec-action-focus__close:hover, .ec-action-focus__duration:hover:not(:disabled), .ec-action-focus__secondary:hover { background: var(--ec-surface-2, rgb(255 255 255 / 6%)); }
+.ec-action-focus button:focus-visible { outline: 2px solid var(--ec-accent, #8bb4ff); outline-offset: 3px; }
+
+@media (max-width: 520px) {
+  .ec-action-focus { padding: 18px; }
+  .ec-action-focus__header { gap: 10px; }
+  .ec-action-focus__actions { display: grid; grid-template-columns: 1fr 1fr; }
+  .ec-action-focus__primary { grid-column: 1 / -1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ec-action-focus *, .ec-action-focus__backdrop { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}

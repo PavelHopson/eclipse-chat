@@ -84,11 +84,16 @@ test("message overflow menu keeps every action and supports keyboard/viewport di
   assert.match(menu, /removeEventListener\("pointerdown"/);
   assert.match(list, /hasPermission\(currentRole, "TASK_CREATE"\)/);
 });
-test("tasks stay searchable, with both list and board; server-confirmed updates", () => {
+test("tasks default to list, retain board and personal plan; server-confirmed updates", () => {
   const board = source("apps/web/src/components/StatusBoard.tsx");
   const execution = source("apps/web/src/components/IntelligencePanel.tsx");
   const hook = source("apps/web/src/hooks/useServerActions.ts");
-  assert.match(board, /useState<"list" \| "board">\("list"\)/);
+  assert.match(board, /useState<"list" \| "board" \| "plan">\("list"\)/, "list remains the initial view");
+  for (const view of ["list", "board", "plan"]) {
+    assert.ok(board.includes(`aria-pressed={view === "${view}"}`), `${view} exposes selected state`);
+    assert.ok(board.includes(`onClick={() => setView("${view}")}`), `${view} is selectable`);
+  }
+  assert.match(board, /view === "plan" \? <PersonalPlan key=\{serverId\} serverId=\{serverId\}/, "personal plan is scoped and reset when the workspace changes");
   assert.match(board, /aria-label="Найти задачу"/);
   assert.match(board, /Сбросить фильтры/);
   assert.match(board, /onCreateTask/);

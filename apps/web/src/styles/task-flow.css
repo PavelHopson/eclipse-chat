@@ -89,3 +89,48 @@ button.ec-task-link__open:hover { background: var(--ec-surface-2); }
 @media (prefers-reduced-motion: reduce) {
   .ec-task-detail, .ec-action-drawer-backdrop, .ec-task-link, .ec-task-link * { animation: none !important; transition: none !important; }
 }
+
+/* Personal plan uses the existing task surface and stays private to the current account. */
+.ec-personal-plan { border-top: 1px solid var(--ec-border-subtle); padding-top: 18px; }
+.ec-personal-plan > h3 { margin: 0; font-size: 16px; color: var(--ec-text); }
+.ec-personal-plan > p { margin: 7px 0 15px; color: var(--ec-text-muted); font-size: 12px; line-height: 1.5; }
+.ec-personal-plan__form { display: grid; grid-template-columns: minmax(130px, 1fr) minmax(180px, 2fr) minmax(110px, 1fr) auto; align-items: end; gap: 10px; }
+.ec-personal-plan__form label { display: grid; gap: 5px; min-width: 0; color: var(--ec-text-muted); font-size: 12px; }
+.ec-personal-plan__form input, .ec-personal-plan__form select { width: 100%; min-width: 0; min-height: 36px; border: 1px solid var(--ec-border-subtle); border-radius: 6px; padding: 6px 8px; background: var(--ec-surface-1); color: var(--ec-text); font: inherit; }
+.ec-personal-plan__form button { min-height: 36px; }
+.ec-personal-plan__list { list-style: none; margin: 16px 0 0; padding: 0; }
+.ec-personal-plan__list li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--ec-border-subtle); }
+.ec-personal-plan__list li > span { font-size: 12px; color: var(--ec-text-muted); }
+.ec-personal-plan__list li > span { white-space: nowrap; }
+.ec-personal-plan__list li > .ec-btn { margin-left: 8px; white-space: nowrap; }
+.ec-personal-plan__open { border: 0; background: transparent; color: var(--ec-text); padding: 6px 0; font: inherit; text-align: left; overflow-wrap: anywhere; cursor: pointer; }
+.ec-personal-plan button:focus-visible, .ec-personal-plan input:focus-visible, .ec-personal-plan select:focus-visible { outline: 2px solid var(--ec-accent); outline-offset: 2px; }
+@media (max-width: 700px) { .ec-personal-plan__form { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .ec-personal-plan__form label:nth-child(2) { grid-column: 1 / -1; } .ec-personal-plan__list li { gap: 6px; } }
+
+.ec-personal-time { margin-top: 24px; border-top: 1px solid var(--ec-border-subtle); padding-top: 16px; }
+.ec-personal-time h3 { font-size: 16px; color: var(--ec-text); }
+.ec-personal-time p { font-size: 12px; color: var(--ec-text-muted); line-height: 1.5; }
+/* These are text actions, not the compact icon buttons from responsive.css. */
+.ec-personal-plan .ec-btn--ghost.ec-btn--sm,
+.ec-personal-time .ec-btn--ghost.ec-btn--sm { width: auto; height: auto; min-height: 44px; padding: 8px 12px !important; }
+.ec-personal-time__controls, .ec-personal-time__active { display: flex; gap: 12px; align-items: end; flex-wrap: wrap; margin: 12px 0; }
+.ec-personal-time__controls label { display: grid; gap: 6px; min-width: 0; max-width: 100%; }
+.ec-personal-time__controls select { max-width: 100%; min-height: 36px; border: 1px solid var(--ec-border-subtle); border-radius: 6px; padding: 6px 8px; background: var(--ec-surface-1); color: var(--ec-text); font: inherit; }
+.ec-personal-time__active span { overflow-wrap: anywhere; }
+.ec-personal-time .ec-personal-plan__list li { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.ec-personal-time .ec-personal-plan__list li > span { white-space: normal; overflow-wrap: anywhere; }
+.ec-personal-plan__actions { display: flex; gap: 4px; flex-wrap: wrap; }
+.ec-time-report { border-top: 1px solid var(--ec-border-subtle); margin-top: 20px; padding-top: 16px; }
+.ec-time-report h4 { margin: 0 0 12px; color: var(--ec-text); }
+.ec-time-report__controls, .ec-time-report__editor { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; }
+.ec-time-report label { display: grid; gap: 5px; min-width: 0; font-size: 12px; color: var(--ec-text-muted); }
+.ec-time-report input, .ec-time-report select { width: 100%; min-width: 0; max-width: 100%; min-height: 40px; border: 1px solid var(--ec-border-subtle); border-radius: 6px; padding: 6px 8px; background: var(--ec-surface-1); color: var(--ec-text); font: inherit; }
+.ec-time-report button { min-height: 40px; }
+.ec-time-report__total strong { color: var(--ec-text); }
+.ec-time-report__list { list-style: none; padding: 0; margin: 0; }
+.ec-time-report__list > li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: start; border-bottom: 1px solid var(--ec-border-subtle); padding: 12px 0; font-size: 12px; }
+.ec-time-report__list strong { color: var(--ec-text); overflow-wrap: anywhere; }
+.ec-time-report__list p { margin: 5px 0; overflow-wrap: anywhere; }
+.ec-time-report__editor { grid-column: 1 / -1; }
+@media (max-width: 540px) { .ec-time-report__controls label, .ec-time-report__editor label { flex: 1 1 100%; } .ec-time-report__list > li { grid-template-columns: minmax(0, 1fr); } .ec-time-report__list > li > button { justify-self: start; } }
+@media (max-width: 540px) { .ec-personal-plan__list li { grid-template-columns: minmax(0, 1fr) auto; } .ec-personal-plan__actions { grid-column: 1 / -1; } }
