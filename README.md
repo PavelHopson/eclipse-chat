@@ -1,6 +1,6 @@
 # Eclipse Chat
 
-Кандидат v1.7.88 обновляет загрузку Android: кнопки в приложении и на странице скачивания используют проверенный APK 1.0.6 с прежним сертификатом. Это обновление same-origin зеркала; публикация веб-версии проверяется отдельно.
+v1.7.88 обновляет загрузку Android: кнопки в приложении и на странице скачивания используют проверенный APK 1.0.6 с прежним сертификатом. Зеркало опубликовано и сверено с подписанным релизом по SHA256. Desktop 1.0.11 доступен для Windows, Linux и macOS.
 
 <!-- project-links:start -->
 [Открыть веб-версию](https://app.star-crm.ru/eclipse-chat/) · [Документация](docs/repository-guide.md) · [Код](https://github.com/PavelHopson/eclipse-chat/tree/master) · [История изменений](https://github.com/PavelHopson/eclipse-chat/commits/master/)
