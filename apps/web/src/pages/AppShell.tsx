@@ -138,7 +138,7 @@ import type { StoredAccount } from "../lib/accountVault";
 import { updateStoredAccountUser } from "../lib/accountVault";
 import type { SettingsViewId } from "../components/settings/SettingsTreeNav";
 
-const ANDROID_APK_URL = `${import.meta.env.BASE_URL}download/eclipse-chat.apk?v=1.0.5`;
+const ANDROID_APK_URL = `${import.meta.env.BASE_URL}download/eclipse-chat.apk?v=1.0.6`;
 
 function isAndroidWebBrowser(): boolean {
   if (typeof window === "undefined" || typeof navigator === "undefined") {
