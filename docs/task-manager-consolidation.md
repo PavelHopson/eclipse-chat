@@ -1,6 +1,6 @@
 # Task Manager → Eclipse Chat
 
-Срез исходников: 02.11.2026. Это матрица переноса, не подтверждение production. Task Manager: `main` / `5a2a8f8`; Eclipse Chat: изолированный checkout на `be4720b`, кандидат v1.7.86. Локально реализованы личный план, start/pulse/stop, коррекция с optimistic version, отчёт день/неделя, CSV и фокус-сессия. Итоговые проверки координатора приведены ниже.
+Срез исходников: 02.11.2026. Матрица переноса и доказательства выпуска; границы production-проверки указаны ниже. Task Manager: `main` / `5a2a8f8`; Eclipse Chat: изолированный checkout на `be4720b`, кандидат v1.7.86. Локально реализованы личный план, start/pulse/stop, коррекция с optimistic version, отчёт день/неделя, CSV и фокус-сессия. Итоговые проверки координатора приведены ниже.
 
 ## Источники и сохранность
 
@@ -58,9 +58,19 @@
 - Координатор независимо выполнил `node --test` для task-flow/workspace-navigation — **18/18 PASS**, web production build — **PASS**.
 - Focus интегрирован в личный план. Координатор перенёс тест арифметики таймера в `apps/server/tests/actionFocusTimer.test.ts`, чтобы его запускал существующий Vitest/CI: вместе с personalPlan unit **25/25 PASS**. Server typecheck повторно прошёл. PostgreSQL-сценарии остаются отдельной opt-in проверкой, их обычный CI без тестовой БД не выполняет.
 - Координатор: Edge/Playwright, 1440 и 390 px — план → фокус → pause/resume/reset/Escape с возвратом фокуса → start/stop времени → журнал → смена пространства PASS; горизонтального переполнения и JS-ошибок нет. API в браузере подменён; реальные маршруты/БД проверены отдельно PostgreSQL-тестами. Исправлена потеря клавиатурного фокуса при удалении кнопки сброса таймера. Это не проверка полного приложения с настоящей авторизацией и не production smoke.
-- Production не опубликован; исходные репозитории не удалены. Временные PostgreSQL и browser harness удалены после проверки.
+- Production опубликован 02.11.2026; исходные репозитории пока не удалены. Временные PostgreSQL и browser harness удалены после локальной проверки.
 - Коррекция, отчёты и CSV завершены локально. Edge/Playwright 1440/390: день/неделя, редактирование, 409 и reload, возврат фокуса при отмене, содержимое скачанного CSV, запрет выгрузки при 413, подавление устаревшей выгрузки при смене пространства — PASS с подменённым API. Исправлено сжатие текстовых кнопок глобальными мобильными стилями; скриншот проверен визуально.
 - `npm run build` — server+web PASS; security profile tests **22/22**, task/navigation/release contracts **25/25**. `npm audit --audit-level=high` проходит, но остаются **3 moderate** предупреждения glob/minimatch/@fastify/static. Новые зависимости не добавлялись; предлагаемый npm принудительный downgrade не применялся.
 - Повторная проверка источника: чистый main, валидный bundle. GitHub Issues/Releases — 0; прежний Railway URL отвечает 404 fallback (это не подтверждение удаления облачной БД/сервиса).
 - Дополнительные UI/dependency/desktop контракты: 114/115 PASS; единственный сбой — устаревшее ожидание двух режимов StatusBoard. Контракт обновлён для list/board/plan с сохранением default list, проверкой aria-pressed и workspace-key PersonalPlan; повторный набор conversation-flow — 8/8 PASS. Это проверка контрактов исходников, не desktop runtime.
 - Следующий этап: выполнить разрешённые пользователем публикацию v1.7.86 в origin/master и штатный deploy; затем CI и production smoke → финальная проверка архива и удаление Task Manager. Отложенный desktop-мониторинг остаётся отдельной opt-in идеей. Внешние базы/личные activity journals этим решением не удаляются.
+
+## Публикация 02.11.2026
+
+- Пользователь явно разрешил commit/push master и штатный deploy с миграциями.
+- Код: `3832e5227f35265978ebde4598119527f445e986`, `PavelHopson/eclipse-chat`, `master`, версия **1.7.86**.
+- GitHub CI `41483227804`, Security Gate `41483227805`, Deploy PROD `41483227979` — **success**. Устаревший ожидающий deploy `41045174248` отменён для освобождения очереди; текущий production gate одобрен после успешных проверок.
+- Журнал deploy подтверждает применение всех трёх миграций personal_action_plan, personal_action_time, personal_time_revision и `All migrations have been successfully applied`.
+- Публичный smoke: `/api/version` HTTP200 и точная версия 1.7.86; `/api/health` HTTP200, ok=true/database=true; страница HTTP200; `/sw.js` содержит eclipse-v1.7.86. Новые personal-time/report API без авторизации возвращают401.
+- Полный production-сценарий с авторизацией **ещё не проверен**. CUA не запустился из-за ошибки sandbox path; Playwright connector не обнаружил Chrome. Чужие cookie/секреты не извлекались, пользовательские данные не читались.
+- Перед удалением Task Manager: проверить под профилем отдельную тестовую задачу → Мой план → старт/стоп таймера → перезагрузка → коррекция → день/неделя → CSV. После успешного сценария заново проверить сохранность bundle и удалить только разрешённые локальный/GitHub Task Manager; внешний runtime/БД и личные журналы не удалять.
