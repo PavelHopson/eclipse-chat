@@ -24,6 +24,18 @@
 .ec-task-compose summary > .ec-ui-icon:last-child, .ec-task-detail__disclosure > summary > :last-child { margin-left: auto; }
 .ec-task-compose__extra { border-top: 1px solid var(--ec-border-subtle); }
 .ec-task-compose__extra > label { display: block; margin-top: 12px; }
+.ec-action-templates { border-top: 1px solid var(--ec-border-subtle); margin-top: 16px; }
+.ec-action-templates__body { display: grid; gap: 12px; padding: 8px 0 4px; }
+.ec-action-templates__body p { margin: 0; color: var(--ec-text-muted); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+.ec-action-templates__body label { display: block; min-width: 0; }
+.ec-action-templates__actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.ec-action-templates__save { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 8px; }
+.ec-action-templates .ec-btn { width: auto; height: auto; min-height: 44px; white-space: normal; }
+.ec-action-templates__preview { max-height: 120px; overflow-y: auto; padding: 10px 12px; border-left: 2px solid var(--ec-border-accent); background: var(--ec-surface-2); }
+.ec-action-templates__preview p { white-space: pre-wrap; color: var(--ec-text); }
+.ec-action-templates__preview p + p { margin-top: 8px; }
+.ec-action-templates__body .ec-action-templates__error { color: var(--ec-status-risk); }
+.ec-action-templates button:focus-visible, .ec-action-templates__preview:focus-visible { outline: 2px solid var(--ec-accent); outline-offset: 2px; }
 .ec-task-compose__source { padding: 8px 12px; border-left: 2px solid var(--ec-border-accent); background: var(--ec-surface-2); }
 .ec-task-compose__source summary { min-height: 30px; }
 .ec-task-compose__source strong { color: var(--ec-text); font-size: 12px; }
@@ -78,6 +90,7 @@ button.ec-task-link__open:hover { background: var(--ec-surface-2); }
   .ec-task-detail--docked { position: relative; inset: auto; width: 100%; height: 100%; min-height: 0; z-index: auto; border: 0; box-shadow: none; }
 }
 @media (max-width: 540px) {
+  .ec-action-templates__save { grid-template-columns: minmax(0, 1fr); }
   .ec-task-compose__owners { grid-template-columns: minmax(0, 1fr); }
   .ec-task-compose__kind select { max-width: 168px; }
   .ec-task-compose .ec-action-compose__presets button { min-height: 38px; }

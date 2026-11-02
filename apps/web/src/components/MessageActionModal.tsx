@@ -3,6 +3,7 @@ import type { CreateActionItemInput, MessageActionItem, MessageRow } from "../ho
 import type { ActionItemPriority, ActionItemType } from "../lib/socket";
 import { ACTION_KIND, actionDraftTitle, actionDuePreset, localActionDate, prepareActionDraft } from "../lib/actionDraft";
 import { Avatar } from "./Avatar";
+import { ActionTemplateControls } from "./ActionTemplateControls";
 import { EclipseUiIcon } from "./icons/EclipseUiIcon";
 import { Modal } from "./Modal";
 
@@ -128,7 +129,7 @@ export function MessageActionModal({ message, members, currentUserId, canAssign,
         <summary>Описание и приоритет<EclipseUiIcon name="chevron" size={14} /></summary>
         <label>
           <span className="ec-field-label">Описание</span>
-          <textarea className="ec-field ec-field--textarea" value={description} onChange={event => setDescription(event.target.value)}
+          <textarea aria-label="Описание" className="ec-field ec-field--textarea" value={description} onChange={event => setDescription(event.target.value)}
             placeholder="Ожидаемый результат и важные детали" rows={3} maxLength={4000} disabled={submitting} />
         </label>
         <label>
@@ -137,6 +138,9 @@ export function MessageActionModal({ message, members, currentUserId, canAssign,
             {PRIORITIES.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
           </select>
         </label>
+        {type === "TASK" && <ActionTemplateControls key={currentUserId} userId={currentUserId}
+          description={description} priority={priority} disabled={submitting}
+          onApply={(nextDescription, nextPriority) => { if (!busy.current) { setDescription(nextDescription); setPriority(nextPriority); } }} />}
       </details>
       <details className="ec-task-compose__source">
         <summary><Avatar url={message.user.avatar} name={message.user.displayName} size={22} />
