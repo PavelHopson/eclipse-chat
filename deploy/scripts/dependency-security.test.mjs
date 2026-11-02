@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, mkdtempSync, mkdirSync, writeFileSync, rmSync, readdir } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { createRequire } from "node:module";
 import { spawnSync } from "node:child_process";
 import { createServer } from "node:http";
@@ -18,6 +20,7 @@ test("all locked security-sensitive packages include the reviewed patches", () =
     fastify: "5.12.7", zod: "4.6.7", sharp: "0.35.5", "engine.io": "6.6.10",
     "brace-expansion": "5.0.12", "source-map-js": "1.2.2",
     vitest: "4.1.11", "@vitest/mocker": "4.1.11", "fast-jwt": "6.3.4",
+    glob: "14.0.2", minimatch: "11.0.1",
   };
   for (const [name, floor] of Object.entries(floors)) {
     const packages = Object.entries(lock.packages).filter(([path]) => path.endsWith(`/node_modules/${name}`) || path === `node_modules/${name}`);
@@ -44,6 +47,97 @@ function boundedParserCheck(source) {
   assert.ifError(result.error);
   assert.equal(result.status, 0, result.stderr);
 }
+
+test("minimatch bounds globstar parent amplification without breaking normal matches", () => {
+  boundedParserCheck(`
+    const assert = require('node:assert/strict');
+    const { Minimatch } = require('minimatch');
+    const normal = new Minimatch('**/*.{png,svg}', { optimizationLevel: 2 });
+    assert.equal(normal.match('icons/avatar.svg'), true);
+    assert.equal(normal.match('icons/avatar.txt'), false);
+    const pattern = Array(12).fill('**/../a/b').join('/') + '/file.svg';
+    const limited = new Minimatch(pattern, { optimizationLevel: 2, braceExpandMax: 64 });
+    assert.ok(limited.globParts.length > 1);
+    assert.ok(limited.globParts.length <= 64, 'preprocessing must respect the expansion budget');
+  `);
+});
+
+test("glob promise and stream stop reading directories after cancellation", { timeout: 5000 }, async () => {
+  const { glob, globStream } = require("glob");
+  const fixture = mkdtempSync(join(tmpdir(), "eclipse-glob-abort-"));
+  try {
+    for (let i = 0; i < 4; i++) {
+      mkdirSync(join(fixture, `branch-${i}`, "nested"), { recursive: true });
+      writeFileSync(join(fixture, `branch-${i}`, "nested", "fixture.txt"), "fixture");
+    }
+    for (const stream of [false, true]) {
+      const controller = new AbortController();
+      const reason = new Error("local-fixture-abort");
+      let reads = 0;
+      const fs = {
+        readdir(path, options, callback) {
+          reads++;
+          readdir(path, options, (error, entries) => {
+            controller.abort(reason);
+            callback(error, entries);
+          });
+        },
+      };
+      const options = { cwd: fixture, signal: controller.signal, fs };
+      const run = stream ? globStream("**/*", options).collect() : glob("**/*", options);
+      await assert.rejects(run, error => error === reason);
+      const atRejection = reads;
+      await new Promise(resolve => setTimeout(resolve, 50));
+      assert.equal(atRejection, 1, "abort occurs on the first directory read");
+      assert.equal(reads, atRejection, "cancelled traversal must not continue in the background");
+    }
+  } finally { rmSync(fixture, { recursive: true, force: true }); }
+});
+
+test("Fastify static serves uploads with the patched glob and preserves file isolation", async () => {
+  const fixture = mkdtempSync(join(tmpdir(), "eclipse-static-security-"));
+  const uploads = join(fixture, "uploads");
+  mkdirSync(join(uploads, "icons"), { recursive: true });
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"/>';
+  writeFileSync(join(uploads, "icons", "avatar.svg"), svg);
+  writeFileSync(join(fixture, "outside.txt"), "outside-fixture");
+  try {
+    // Default upload routing and the glob-backed eager enumeration both need
+    // to remain compatible when overriding the plugin's transitive major.
+    for (const wildcard of [true, false]) {
+      const app = require("fastify")({ logger: false });
+      try {
+        await app.register(require("@fastify/static"), {
+          root: uploads, prefix: "/uploads/", wildcard, decorateReply: false,
+          cacheControl: true, maxAge: "1h",
+          setHeaders: reply => {
+            reply.header("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; img-src data:; sandbox; frame-ancestors 'none'");
+            reply.header("Cross-Origin-Resource-Policy", "same-origin");
+            reply.header("X-Content-Type-Options", "nosniff");
+            reply.header("Referrer-Policy", "strict-origin-when-cross-origin");
+            reply.header("X-Frame-Options", "DENY");
+          },
+        });
+        for (const method of ["GET", "HEAD"]) {
+          const response = await app.inject({ method, url: "/uploads/icons/avatar.svg" });
+          assert.equal(response.statusCode, 200, `${wildcard}: ${method}`);
+          assert.match(response.headers["content-type"], /^image\/svg\+xml/);
+          assert.match(response.headers["cache-control"], /max-age=3600/);
+          assert.match(response.headers["content-security-policy"], /sandbox/);
+          assert.equal(response.headers["cross-origin-resource-policy"], "same-origin");
+          assert.equal(response.headers["x-content-type-options"], "nosniff");
+          assert.equal(response.headers["x-frame-options"], "DENY");
+          assert.equal(response.body, method === "GET" ? svg : "");
+        }
+        for (const url of ["/uploads/missing.svg", "/uploads/%2e%2e/outside.txt", "/uploads/%2e%2e%2foutside.txt"]) {
+          const response = await app.inject({ url });
+          assert.ok([400, 403, 404].includes(response.statusCode), `${wildcard}: ${url}`);
+          assert.ok(!response.body.includes("outside-fixture"));
+        }
+      } finally { await app.close(); }
+    }
+  } finally { rmSync(fixture, { recursive: true, force: true }); }
+});
 
 test("JWT verification rejects key confusion, unsigned and non-object payloads", () => {
   boundedParserCheck(`
