@@ -2,3 +2,16 @@ title = "Eclipse Chat secret scanning"
 
 [extend]
 useDefault = true
+
+# Historical false positives reviewed on 2026-11-05. These commits contain
+# fixture strings or a vendored test certificate, never production credentials.
+# Keep the exceptions commit-scoped so later changes are scanned normally.
+[allowlist]
+description = "Reviewed historical test/vendor false positives"
+commits = [
+  "154932e7bf46b72da0f8a91a7b5881989269d031",
+  "c7c6c8ac67031ff5a2308bf2840cce3b671868c4",
+  "4c0bdd9b577ba9f1338ce66a39aa0892f83a7252",
+  "41f5123a1c3fffc7efd587a2127d2c0eb8ddee9a",
+  "000f6fa6ef709bb21e84260523325f79421cd66b"
+]
