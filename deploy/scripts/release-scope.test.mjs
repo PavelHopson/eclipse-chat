@@ -62,9 +62,9 @@ test("release enables signed LiveKit ACL webhooks transactionally", () => {
   assert.match(deploy, /docker inspect -f 'status=\{\{\.State\.Status\}\} health=/);
   assert.match(deploy, /docker logs --tail 60 eclipse-livekit/);
   assert.ok(deploy.includes("| sed -E 's/[A-Za-z0-9_-]{24,}/[REDACTED]/g'"));
-  assert.match(deploy, /event: "participant_joined"/);
+  assert.match(deploy, /event: "participant_left"/);
   assert.match(deploy, /sha256: createHash\("sha256"\)\.update\(body\)\.digest\("base64"\)/);
-  assert.match(deploy, /response\.status !== 200 \|\| \(await response\.json\(\)\)\.action !== "removed"/);
+  assert.match(deploy, /response\.status !== 204/);
   assert.ok(webhookActivation >= 0 && webhookActivation < signedSmoke);
   assert.ok(signedSmoke < metadataCommit);
   assert.ok(deploy.indexOf('rollback_livekit_webhook "$exit_code"') < deploy.indexOf('rollback_activated_build "$exit_code"'));

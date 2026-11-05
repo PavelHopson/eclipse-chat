@@ -312,8 +312,9 @@ grep -Fqx "  api_key: $BACKEND_LIVEKIT_API_KEY" "$LIVEKIT_CONFIG" || { echo "Liv
 grep -Fqx "    - https://app.star-crm.ru/eclipse-chat/api/webhooks/livekit" "$LIVEKIT_CONFIG" || { echo "LiveKit webhook URL mismatch"; exit 1; }
 
 # End-to-end signature smoke uses the backend env without printing a token or
-# secret. An unknown participant must traverse raw-body verification, current
-# DB ACL and exact-session RoomService removal before the release can proceed.
+# secret. Use a benign non-mutating event here: ACL removal is covered by the
+# route tests, while production deploy must not call RoomService with a fake
+# participant or depend on a live room existing during every release.
 (
     cd "$DEPLOY_PATH/apps/server"
     node --input-type=module <<'NODE'
@@ -324,7 +325,7 @@ const apiKey = process.env.LIVEKIT_API_KEY;
 const apiSecret = process.env.LIVEKIT_API_SECRET;
 if (!apiKey || !apiSecret) process.exit(1);
 const body = JSON.stringify({
-  event: "participant_joined",
+  event: "participant_left",
   id: "deploy-signature-smoke",
   room: { name: "eclipse-deploy-signature-smoke" },
   participant: {
@@ -335,7 +336,7 @@ const body = JSON.stringify({
 const now = Math.floor(Date.now() / 1000);
 const token = jwt.sign({ iss: apiKey, nbf: now, exp: now + 60, sha256: createHash("sha256").update(body).digest("base64") }, apiSecret, { algorithm: "HS256" });
 const response = await fetch("https://app.star-crm.ru/eclipse-chat/api/webhooks/livekit", { method: "POST", headers: { authorization: token, "content-type": "application/webhook+json" }, body });
-if (response.status !== 200 || (await response.json()).action !== "removed") process.exit(1);
+if (response.status !== 204) process.exit(1);
 NODE
 )
 echo "    LiveKit webhook config, container health and signed endpoint verified"
