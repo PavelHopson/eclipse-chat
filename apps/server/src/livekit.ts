@@ -300,6 +300,97 @@ export async function removeLivekitUsersFromChannels(
   return removed;
 }
 
+export type LivekitRevocationResult = {
+  status: "disabled" | "revoked" | "unknown";
+  attemptedChannels: number;
+  removedParticipants: number;
+  error?: string;
+};
+
+export type LivekitRevocationRetry = {
+  userId: string;
+  channelIds: string[];
+  attempts: number;
+  nextAttemptAt: number;
+};
+
+const LIVEKIT_RETRY_LIMIT = 2;
+const LIVEKIT_RETRY_DELAYS_MS = [1_000, 5_000] as const;
+const livekitRevocationRetries = new Map<string, LivekitRevocationRetry>();
+
+function livekitRetryKey(userId: string, channelIds: readonly string[]): string {
+  return `${userId}:${[...new Set(channelIds)].sort().join(",")}`;
+}
+
+export function getLivekitRevocationRetries(): LivekitRevocationRetry[] {
+  return [...livekitRevocationRetries.values()].map(item => ({ ...item, channelIds: [...item.channelIds] }));
+}
+
+function scheduleLivekitRevocationRetry(userId: string, channelIds: readonly string[], cfg: LivekitConfig): void {
+  const ids = [...new Set(channelIds)];
+  if (!userId || ids.length === 0) return;
+  const key = livekitRetryKey(userId, ids);
+  const current = livekitRevocationRetries.get(key);
+  const attempts = current?.attempts ?? 0;
+  if (attempts >= LIVEKIT_RETRY_LIMIT) return;
+  const nextAttemptAt = Date.now() + LIVEKIT_RETRY_DELAYS_MS[attempts];
+  const item = { userId, channelIds: ids, attempts: attempts + 1, nextAttemptAt };
+  livekitRevocationRetries.set(key, item);
+  setTimeout(() => {
+    const pending = livekitRevocationRetries.get(key);
+    if (!pending) return;
+    void revokeLivekitUserFromChannels(userId, ids, cfg, fetch, false).then(result => {
+      if (result.status === "revoked" || result.status === "disabled") livekitRevocationRetries.delete(key);
+      else if ((livekitRevocationRetries.get(key)?.attempts ?? LIVEKIT_RETRY_LIMIT) >= LIVEKIT_RETRY_LIMIT) {
+        livekitRevocationRetries.delete(key);
+      } else scheduleLivekitRevocationRetry(userId, ids, cfg);
+    }).catch(() => {
+      livekitRevocationRetries.delete(key);
+    });
+  }, LIVEKIT_RETRY_DELAYS_MS[attempts]);
+}
+
+/**
+ * Best-effort revoke used after an account ban/delete has committed. The
+ * account mutation must not be rolled back because LiveKit is unavailable;
+ * callers receive an explicit `unknown` result for audit/retry handling.
+ */
+export async function revokeLivekitUserFromChannels(
+  userId: string,
+  channelIds: Iterable<string>,
+  cfg: LivekitConfig | null = getLivekitConfig(),
+  request: typeof fetch = fetch,
+  scheduleRetry = true,
+): Promise<LivekitRevocationResult> {
+  const ids = [...new Set(channelIds)];
+  if (!cfg) return { status: "disabled", attemptedChannels: ids.length, removedParticipants: 0 };
+  if (!userId || ids.length === 0) {
+    return { status: "revoked", attemptedChannels: ids.length, removedParticipants: 0 };
+  }
+
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const removedParticipants = await removeLivekitUsersFromChannels(
+        [userId], ids, cfg, request,
+      );
+      return { status: "revoked", attemptedChannels: ids.length, removedParticipants };
+    } catch (error) {
+      lastError = error;
+      if (attempt === 0) await new Promise(resolve => setTimeout(resolve, 50));
+    }
+  }
+
+  const result: LivekitRevocationResult = {
+    status: "unknown",
+    attemptedChannels: ids.length,
+    removedParticipants: 0,
+    error: lastError instanceof Error ? lastError.message : "LiveKit revocation failed",
+  };
+  if (scheduleRetry) scheduleLivekitRevocationRetry(userId, ids, cfg);
+  return result;
+}
+
 export async function deleteLivekitRoomsForChannels(
   channelIds: Iterable<string>,
   cfg: LivekitConfig | null = getLivekitConfig(),

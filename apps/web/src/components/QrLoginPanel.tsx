@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ApiError, apiJson } from "../lib/api";
-import { setTokenPair } from "../lib/storage";
+import { ApiError, apiJson, apiJsonForAuth } from "../lib/api";
+import { captureAuthScreen, captureDisplayedAuth } from "../lib/storage";
+import { upsertAccountSession } from "../lib/accountVault";
 import type { PublicUser } from "../hooks/useAuth";
 import "../styles/qr-login.css";
 
@@ -18,7 +19,7 @@ type QrPayload = {
 };
 
 type QrStatus = QrPayload & {
-  status?: "PENDING" | "APPROVED" | "DENIED" | "EXPIRED" | "CONSUMED" | string;
+  status?: "PENDING" | "APPROVED" | "DENIED" | "EXPIRED" | "CONSUMED" | "CANCELLED" | string;
   claimed?: boolean;
   claimedDevice?: string | null;
   accessToken?: string;
@@ -72,6 +73,7 @@ function expiryLabel(expiresAt: string | number | undefined): string {
 }
 
 export function QrLoginPanel({ mode, onBack, user, onLogin }: Props) {
+  const qrApiJson = <T,>(path: string, init?: RequestInit): Promise<T> => user ? apiJson<T>(path, init) : apiJsonForAuth<T>(captureAuthScreen().identity, path, init, true);
   const [payload, setPayload] = useState<QrPayload | null>(null);
   const [status, setStatus] = useState<QrStatus | null>(null);
   const [busy, setBusy] = useState(mode === "target" ? true : false);
@@ -85,6 +87,9 @@ export function QrLoginPanel({ mode, onBack, user, onLogin }: Props) {
     mode === "phone" ? "checking" : "forward",
   );
   const pollRef = useRef<number | null>(null);
+  const challengeGeneration = useRef(0);
+  const exchangeInFlight = useRef(false);
+  const exchangeWarningSent = useRef(false);
   const startedModeRef = useRef<QrMode | null>(null);
   const phoneParams = useMemo(parseQrParams, []);
 
@@ -102,14 +107,19 @@ export function QrLoginPanel({ mode, onBack, user, onLogin }: Props) {
     pollRef.current = null;
   };
 
-  useEffect(() => () => clearPolling(), []);
+  const warnIfExchangeUncertain = () => {
+    if (!exchangeInFlight.current || exchangeWarningSent.current) return;
+    exchangeWarningSent.current = true;
+    window.dispatchEvent(new CustomEvent("ec:auth-warning", { detail: "Отмена выполнена на устройстве, но сервер мог создать сеанс. Проверьте активные сеансы аккаунта." }));
+  };
+  useEffect(() => () => { challengeGeneration.current++; clearPolling(); warnIfExchangeUncertain(); }, []);
 
   useEffect(() => {
     if (mode !== "phone" || !phoneCode) return;
     let cancelled = false;
     void (async () => {
       try {
-        await apiJson("api/auth/qr/claim", {
+        await qrApiJson("api/auth/qr/claim", {
           method: "POST",
           body: JSON.stringify({ code: phoneCode }),
         });
@@ -129,11 +139,12 @@ export function QrLoginPanel({ mode, onBack, user, onLogin }: Props) {
   }, [mode, phoneCode]);
 
   const start = async () => {
+    warnIfExchangeUncertain(); challengeGeneration.current++; clearPolling();
     setBusy(true);
     setError(null);
     setStatus(null);
     try {
-      const data = await apiJson<QrPayload>("api/auth/qr/start", {
+      const data = await qrApiJson<QrPayload>("api/auth/qr/start", {
         method: "POST",
         body: JSON.stringify({ mode }),
       });
@@ -162,28 +173,36 @@ export function QrLoginPanel({ mode, onBack, user, onLogin }: Props) {
   }, [mode]);
 
   const poll = async () => {
+    const generation = challengeGeneration.current;
     if (mode === "phone" && phoneFlow === "reverse") {
       if (!phoneCode) return;
       try {
-        const data = await apiJson<QrStatus>("api/auth/qr/phone-status", {
+        const data = await qrApiJson<QrStatus>("api/auth/qr/phone-status", {
           method: "POST",
           body: JSON.stringify({ code: phoneCode }),
         });
+        if (generation !== challengeGeneration.current) return;
         setStatus(data);
         setNow(Date.now());
-        if (["DENIED", "EXPIRED", "CONSUMED"].includes(data.status ?? "")) clearPolling();
+        if (["DENIED", "EXPIRED", "CONSUMED", "CANCELLED"].includes(data.status ?? "")) clearPolling();
         if (data.status === "APPROVED") {
-          const exchanged = await apiJson<QrStatus>("api/auth/qr/exchange-code", {
-            method: "POST",
-            body: JSON.stringify({ code: phoneCode }),
-          });
+          if (exchangeInFlight.current) return;
+          exchangeInFlight.current = true; exchangeWarningSent.current = false;
+          try {
+          const expected = (user ? captureDisplayedAuth() : captureAuthScreen()).identity;
+          const exchanged = await apiJsonForAuth<QrStatus>(expected, "api/auth/qr/exchange-code", { method: "POST", body: JSON.stringify({ code: phoneCode }) }, !user, false);
+        if (generation !== challengeGeneration.current) return;
           const accessToken = exchanged.accessToken ?? exchanged.token;
           if (!accessToken || !exchanged.refreshToken) throw new Error("Сервер не вернул сессию");
-          setTokenPair(accessToken, exchanged.refreshToken);
+          if (!exchanged.user) throw new Error("Сервер не вернул профиль");
+          await upsertAccountSession(exchanged.user, accessToken, exchanged.refreshToken, expected, () => generation === challengeGeneration.current);
+          if (generation !== challengeGeneration.current) return;
           clearPolling();
           window.location.replace(`${window.location.pathname}${window.location.search}`);
+          } catch (cause) { warnIfExchangeUncertain(); throw cause; } finally { exchangeInFlight.current = false; }
         }
       } catch (cause) {
+        if (generation !== challengeGeneration.current) return;
         clearPolling();
         setError(cause instanceof Error ? cause.message : "Не удалось проверить QR-сессию");
       }
@@ -191,25 +210,32 @@ export function QrLoginPanel({ mode, onBack, user, onLogin }: Props) {
     }
     if (!attemptId || !verifier || expired) return;
     try {
-      const data = await apiJson<QrStatus>("api/auth/qr/status", {
+      const data = await qrApiJson<QrStatus>("api/auth/qr/status", {
         method: "POST",
         body: JSON.stringify({ attemptId, verifier }),
       });
+      if (generation !== challengeGeneration.current) return;
       setStatus(data);
       setNow(Date.now());
-      if (["DENIED", "EXPIRED", "CONSUMED"].includes(data.status ?? "")) clearPolling();
+      if (["DENIED", "EXPIRED", "CONSUMED", "CANCELLED"].includes(data.status ?? "")) clearPolling();
       if (data.status === "APPROVED" && mode === "target") {
-        const exchanged = await apiJson<QrStatus>("api/auth/qr/exchange", {
-          method: "POST",
-          body: JSON.stringify({ attemptId, verifier }),
-        });
+        if (exchangeInFlight.current) return;
+        exchangeInFlight.current = true; exchangeWarningSent.current = false;
+        try {
+        const expected = (user ? captureDisplayedAuth() : captureAuthScreen()).identity;
+        const exchanged = await apiJsonForAuth<QrStatus>(expected, "api/auth/qr/exchange", { method: "POST", body: JSON.stringify({ attemptId, verifier }) }, !user, false);
+        if (generation !== challengeGeneration.current) return;
         const accessToken = exchanged.accessToken ?? exchanged.token;
         if (!accessToken || !exchanged.refreshToken) throw new Error("Сервер не вернул сессию");
-        setTokenPair(accessToken, exchanged.refreshToken);
+        if (!exchanged.user) throw new Error("Сервер не вернул профиль");
+          await upsertAccountSession(exchanged.user, accessToken, exchanged.refreshToken, expected, () => generation === challengeGeneration.current);
+          if (generation !== challengeGeneration.current) return;
         clearPolling();
         window.location.replace(`${window.location.pathname}${window.location.search}`);
+        } catch (cause) { warnIfExchangeUncertain(); throw cause; } finally { exchangeInFlight.current = false; }
       }
     } catch (cause) {
+      if (generation !== challengeGeneration.current) return;
       clearPolling();
       setError(cause instanceof Error ? cause.message : "Не удалось проверить QR-сессию");
     }
@@ -253,7 +279,7 @@ export function QrLoginPanel({ mode, onBack, user, onLogin }: Props) {
     setBusy(true);
     setError(null);
     try {
-      await apiJson("api/auth/qr/approve", {
+      await qrApiJson("api/auth/qr/approve", {
         method: "POST",
         body: JSON.stringify(phoneCode ? { code: phoneCode } : { attemptId, verifier }),
       });
@@ -270,7 +296,7 @@ export function QrLoginPanel({ mode, onBack, user, onLogin }: Props) {
     setBusy(true);
     setError(null);
     try {
-      await apiJson("api/auth/qr/approve-target", {
+      await qrApiJson("api/auth/qr/approve-target", {
         method: "POST",
         body: JSON.stringify({ attemptId, verifier }),
       });
@@ -283,13 +309,14 @@ export function QrLoginPanel({ mode, onBack, user, onLogin }: Props) {
   };
 
   const cancel = async () => {
+    warnIfExchangeUncertain(); challengeGeneration.current++; clearPolling();
     if (!attemptId || !verifier || busy) {
       onBack?.();
       return;
     }
     setBusy(true);
     try {
-      await apiJson("api/auth/qr/cancel", {
+      await qrApiJson("api/auth/qr/cancel", {
         method: "POST",
         body: JSON.stringify({ attemptId, verifier }),
       });
@@ -371,15 +398,15 @@ export function QrLoginPanel({ mode, onBack, user, onLogin }: Props) {
           </div>
         )}
         {status?.status === "DENIED" && <p className="ec-qr-error" role="alert">Подключение отклонено.</p>}
+        {status?.status === "CANCELLED" && <p className="ec-qr-error" role="alert">Этот QR-код больше не действует. Создайте новый.</p>}
         {expired && <p className="ec-qr-error" role="alert">Код истёк. Создайте новый.</p>}
         {error && <p className="ec-qr-error" role="alert">{error}</p>}
 
         <div className="ec-qr-actions">
-          {(expired || error || !payload) && mode !== "phone" && <button className="ec-btn ec-btn--secondary" type="button" onClick={() => void start()} disabled={busy}>Создать новый код</button>}
+          {(expired || error || !payload || status?.status === "CANCELLED") && mode !== "phone" && <button className="ec-btn ec-btn--secondary" type="button" onClick={() => void start()} disabled={busy}>Создать новый код</button>}
           {onBack && <button className="ec-btn ec-btn--ghost" type="button" onClick={() => void cancel()} disabled={busy}>Назад</button>}
         </div>
       </section>
     </main>
   );
 }
-

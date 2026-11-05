@@ -4,8 +4,26 @@ import { z } from "zod";
 import QRCode from "qrcode";
 import { db } from "../db.js";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
+import { isAuthProtocolV2Request, isAuthProtocolV2Required, requireAuthProtocolMarker, sendProtocolGateError, verifyRequestJwt } from "../auth/protocolGate.js";
 import { issueSession } from "./auth.js";
 import { recordAudit } from "../security/audit.js";
+
+
+/** Bind approval to a still-live, signed server session. Lock User before Session. */
+type AuthTx = Omit<typeof db, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">;
+async function withApprovalSession<T>(req: FastifyRequest, userId: string, action: (tx: AuthTx, sid: string) => Promise<T>): Promise<T | null> {
+  const sid = (req.user as { sid?: unknown } | undefined)?.sid;
+  if (typeof sid !== "string" || !sid) return null;
+  return db.$transaction(async tx => {
+    await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${userId} FOR SHARE`;
+    const user = await tx.user.findUnique({ where: { id: userId }, select: { bannedAt: true, deletedAt: true } });
+    if (!user || user.bannedAt || user.deletedAt) return null;
+    await tx.$queryRaw`SELECT "id" FROM "RefreshToken" WHERE "id" = ${sid} FOR SHARE`;
+    const session = await tx.refreshToken.findUnique({ where: { id: sid }, select: { userId: true, expiresAt: true } });
+    if (!session || session.userId !== userId || session.expiresAt <= new Date()) return null;
+    return action(tx, sid);
+  });
+}
 
 const QR_TTL_MS = 2 * 60 * 1000;
 const appOrigin = (process.env.PUBLIC_WEB_ORIGIN ?? process.env.CORS_ORIGIN ?? "http://localhost:5173").replace(/\/$/, "");
@@ -37,14 +55,15 @@ function sessionMeta(req: FastifyRequest): { userAgent: string | null; ipAddress
   };
 }
 
-async function optionalUserId(req: FastifyRequest): Promise<string | null> {
+async function optionalUserId(req: FastifyRequest, reply: import("fastify").FastifyReply): Promise<string | null> {
   if (typeof req.headers.authorization !== "string") return null;
-  try {
-    await req.jwtVerify();
-    return getUserId(req);
-  } catch {
+  const status = await verifyRequestJwt(req);
+  if (status !== "ok") {
+    // In legacy mode an invalid optional token has historically been anonymous.
+    if (isAuthProtocolV2Required()) sendProtocolGateError(reply, status, req);
     return null;
   }
+  return getUserId(req);
 }
 
 async function expireIfNeeded(id: string, expiresAt: Date, status: string): Promise<string> {
@@ -77,7 +96,8 @@ export async function registerQrAuthRoutes(app: FastifyInstance) {
       // running. This is deliberately done before every new challenge and
       // only removes records that can no longer be exchanged.
       await db.qrLoginAttempt.deleteMany({ where: { expiresAt: { lt: new Date() } } });
-      const targetUserId = await optionalUserId(req);
+      const targetUserId = await optionalUserId(req, reply);
+      if (reply.sent) return;
       const code = randomSecret();
       const verifier = randomSecret();
       const expiresAt = new Date(Date.now() + QR_TTL_MS);
@@ -181,10 +201,15 @@ export async function registerQrAuthRoutes(app: FastifyInstance) {
       if (!parsed.success) return reply.status(400).send({ error: "Некорректный QR-запрос" });
       const userId = getUserId(req);
       if (!userId) return reply.status(401).send({ error: "Unauthorized" });
-      const changed = await db.qrLoginAttempt.updateMany({
-        where: { id: parsed.data.attemptId, verifierHash: hash(parsed.data.verifier), targetUserId: userId, status: "PENDING", claimedAt: { not: null }, expiresAt: { gt: new Date() } },
-        data: { status: "APPROVED", approvedByUserId: userId, approvedAt: new Date(), approverUserAgent: sessionMeta(req).userAgent, approverIpAddress: sessionMeta(req).ipAddress },
+      const changed = await withApprovalSession(req, userId, async (tx, sid) => {
+        const result = await tx.qrLoginAttempt.updateMany({
+          where: { id: parsed.data.attemptId, verifierHash: hash(parsed.data.verifier), targetUserId: userId, status: "PENDING", claimedAt: { not: null }, expiresAt: { gt: new Date() } },
+          data: { status: "APPROVED", approvedByUserId: userId, approvedAt: new Date(), approverUserAgent: sessionMeta(req).userAgent, approverIpAddress: sessionMeta(req).ipAddress },
+        });
+        if (result.count === 1) await tx.$executeRaw`UPDATE "QrLoginAttempt" SET "approvedBySessionId" = ${sid} WHERE "id" = ${parsed.data.attemptId}`;
+        return result;
       });
+      if (!changed) return reply.status(401).send({ error: "Обновите вход и попробуйте снова." });
       if (changed.count !== 1) return reply.status(409).send({ error: "QR-сессия не готова к подтверждению" });
       recordAudit("AUTH_QR_APPROVED", { userId, req, metadata: { attemptId: parsed.data.attemptId, direction: "phone" } });
       return { status: "APPROVED" as const };
@@ -210,7 +235,8 @@ export async function registerQrAuthRoutes(app: FastifyInstance) {
       if (attempt.targetUserId && attempt.targetUserId !== userId) {
         return reply.status(403).send({ error: "QR-код связан с другим профилем" });
       }
-      const changed = await db.qrLoginAttempt.updateMany({
+      const changed = await withApprovalSession(req, userId, async (tx, sid) => {
+        const result = await tx.qrLoginAttempt.updateMany({
         where: {
           id: attempt.id,
           status: "PENDING",
@@ -224,7 +250,11 @@ export async function registerQrAuthRoutes(app: FastifyInstance) {
           approverUserAgent: sessionMeta(req).userAgent,
           approverIpAddress: sessionMeta(req).ipAddress,
         },
+        });
+        if (result.count === 1) await tx.$executeRaw`UPDATE "QrLoginAttempt" SET "approvedBySessionId" = ${sid} WHERE "id" = ${attempt.id}`;
+        return result;
       });
+      if (!changed) return reply.status(401).send({ error: "Обновите вход и попробуйте снова." });
       if (changed.count !== 1) return reply.status(409).send({ error: "QR-сессия уже обработана" });
       recordAudit("AUTH_QR_APPROVED", { userId, req, metadata: { attemptId: attempt.id } });
       return { status: "APPROVED" as const };
@@ -267,6 +297,7 @@ export async function registerQrAuthRoutes(app: FastifyInstance) {
     "/api/auth/qr/exchange-code",
     { config: { rateLimit: { max: 3, timeWindow: 60_000 } } },
     async (req, reply) => {
+      if (!requireAuthProtocolMarker(req, reply)) return;
       const parsed = codeBody.safeParse(req.body);
       if (!parsed.success) return reply.status(400).send({ error: "Некорректный QR-код" });
       const user = await db.$transaction(async tx => {
@@ -274,10 +305,15 @@ export async function registerQrAuthRoutes(app: FastifyInstance) {
         if (!attempt || !attempt.targetUserId || !attempt.claimedAt || attempt.status !== "APPROVED" || attempt.expiresAt.getTime() <= Date.now()) return null;
         const changed = await tx.qrLoginAttempt.updateMany({ where: { id: attempt.id, codeHash: hash(parsed.data.code), status: "APPROVED", consumedAt: null, expiresAt: { gt: new Date() } }, data: { status: "CONSUMED", consumedAt: new Date() } });
         if (changed.count !== 1) return null;
-        return tx.user.findUnique({ where: { id: attempt.targetUserId }, select: { id: true, email: true, displayName: true, avatar: true, bio: true, status: true, createdAt: true, twoFactorEnabled: true, isPlatformOwner: true, bannedAt: true, deletedAt: true } });
+        const proofs = await tx.$queryRaw<Array<{ approvedBySessionId: string | null }>>`SELECT "approvedBySessionId" FROM "QrLoginAttempt" WHERE "id" = ${attempt.id}`;
+        if (!proofs[0]?.approvedBySessionId) return null;
+        const owner = await tx.user.findUnique({ where: { id: attempt.targetUserId }, select: { id: true, email: true, displayName: true, avatar: true, bio: true, status: true, createdAt: true, twoFactorEnabled: true, twoFactorSecret: true, passwordHash: true, isPlatformOwner: true, bannedAt: true, deletedAt: true } });
+        return owner ? { ...owner, qrProof: { attemptId: attempt.id, approvedBySessionId: proofs[0].approvedBySessionId } } : null;
       });
       if (!user || user.bannedAt || user.deletedAt) return reply.status(409).send({ error: "QR-сессия недоступна" });
-      const session = await issueSession(reply, user, sessionMeta(req));
+      let session;
+      try { session = await issueSession(reply, user, sessionMeta(req), user.qrProof, undefined, undefined, isAuthProtocolV2Request(req)); }
+      catch (error) { if (error instanceof Error && (error.message === "AUTH_STATE_CHANGED" || error.message === "QR_AUTH_EXPIRED")) return reply.status(409).send({ error: "Сессия подтверждения истекла. Создайте новый QR-код." }); throw error; }
       recordAudit("AUTH_QR_EXCHANGED", { userId: user.id, req, metadata: { direction: "phone" } });
       return session;
     },
@@ -288,6 +324,7 @@ export async function registerQrAuthRoutes(app: FastifyInstance) {
     "/api/auth/qr/exchange",
     { config: { rateLimit: { max: 3, timeWindow: 60_000 } } },
     async (req, reply) => {
+      if (!requireAuthProtocolMarker(req, reply)) return;
       const parsed = exchangeBody.safeParse(req.body);
       if (!parsed.success) return reply.status(400).send({ error: "Некорректный QR-запрос" });
       const meta = sessionMeta(req);
@@ -299,10 +336,15 @@ export async function registerQrAuthRoutes(app: FastifyInstance) {
         if (!attempt || attempt.status !== "APPROVED" || attempt.expiresAt.getTime() <= Date.now() || !attempt.approvedByUserId) return null;
         const changed = await tx.qrLoginAttempt.updateMany({ where: { id: attempt.id, verifierHash: hash(parsed.data.verifier), status: "APPROVED", consumedAt: null, expiresAt: { gt: new Date() } }, data: { status: "CONSUMED", consumedAt: new Date() } });
         if (changed.count !== 1) return null;
-        return tx.user.findUnique({ where: { id: attempt.approvedByUserId }, select: { id: true, email: true, displayName: true, avatar: true, bio: true, status: true, createdAt: true, twoFactorEnabled: true, isPlatformOwner: true, bannedAt: true, deletedAt: true } });
+        const proofs = await tx.$queryRaw<Array<{ approvedBySessionId: string | null }>>`SELECT "approvedBySessionId" FROM "QrLoginAttempt" WHERE "id" = ${attempt.id}`;
+        if (!proofs[0]?.approvedBySessionId) return null;
+        const owner = await tx.user.findUnique({ where: { id: attempt.approvedByUserId }, select: { id: true, email: true, displayName: true, avatar: true, bio: true, status: true, createdAt: true, twoFactorEnabled: true, twoFactorSecret: true, passwordHash: true, isPlatformOwner: true, bannedAt: true, deletedAt: true } });
+        return owner ? { ...owner, qrProof: { attemptId: attempt.id, approvedBySessionId: proofs[0].approvedBySessionId } } : null;
       });
       if (!user || user.bannedAt || user.deletedAt) return reply.status(409).send({ error: "QR-сессия недоступна" });
-      const session = await issueSession(reply, user, meta);
+      let session;
+      try { session = await issueSession(reply, user, meta, user.qrProof, undefined, undefined, isAuthProtocolV2Request(req)); }
+      catch (error) { if (error instanceof Error && (error.message === "AUTH_STATE_CHANGED" || error.message === "QR_AUTH_EXPIRED")) return reply.status(409).send({ error: "Сессия подтверждения истекла. Создайте новый QR-код." }); throw error; }
       recordAudit("AUTH_QR_EXCHANGED", { userId: user.id, req, metadata: { attemptId: parsed.data.attemptId } });
       return session;
     },

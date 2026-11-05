@@ -136,6 +136,7 @@ import { useVoicePresence, reverseVoiceMap } from "../hooks/useVoicePresence";
 import type { PublicUser } from "../hooks/useAuth";
 import type { StoredAccount } from "../lib/accountVault";
 import { updateStoredAccountUser } from "../lib/accountVault";
+import { captureDisplayedAuth } from "../lib/storage";
 import type { SettingsViewId } from "../components/settings/SettingsTreeNav";
 
 const ANDROID_APK_URL = `${import.meta.env.BASE_URL}download/eclipse-chat.apk?v=1.0.6`;
@@ -526,12 +527,15 @@ export function AppShell({
 
   useEffect(() => {
     if (!profile || profile.id !== user.id) return;
-    updateStoredAccountUser({
+    let identity;
+    try { identity = captureDisplayedAuth().identity; } catch { return; }
+    if (identity.accountId !== user.id) return;
+    void updateStoredAccountUser({
       ...user,
       displayName: profile.displayName,
       avatar: profile.avatar,
       bio: profile.bio,
-    });
+    }, identity).catch(() => undefined);
   }, [profile?.id, profile?.displayName, profile?.avatar, profile?.bio, user]);
 
   const [statusAnchor, setStatusAnchor] = useState<DOMRect | null>(null);

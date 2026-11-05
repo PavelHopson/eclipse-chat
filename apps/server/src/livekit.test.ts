@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   deleteLivekitRoomsForChannels,
   removeLivekitUsersFromChannels,
+  revokeLivekitUserFromChannels,
   roomNameForChannel,
   type LivekitConfig,
 } from "./livekit.js";
@@ -133,5 +134,36 @@ describe("LiveKit runtime access revocation", () => {
       deleteLivekitRoomsForChannels(["voice-a"], null, request as typeof fetch),
     ).resolves.toBe(0);
     expect(request).not.toHaveBeenCalled();
+  });
+
+  it("retries a transient revoke failure and reports the final result", async () => {
+    let attempts = 0;
+    const request = vi.fn(async (input: URL | RequestInfo) => {
+      if (String(input).endsWith("/ListParticipants")) {
+        attempts += 1;
+        if (attempts === 1) return new Response("temporary", { status: 503 });
+        return Response.json({ participants: [{ identity: "user-42:web" }] });
+      }
+      return new Response("{}", { status: 200 });
+    });
+
+    await expect(
+      revokeLivekitUserFromChannels("user-42", ["voice-a"], config, request as typeof fetch),
+    ).resolves.toEqual({ status: "revoked", attemptedChannels: 1, removedParticipants: 1 });
+    expect(attempts).toBe(2);
+  });
+
+  it("returns an explicit unknown status after both revoke attempts fail", async () => {
+    const request = vi.fn(async () => new Response("unavailable", { status: 503 }));
+
+    await expect(
+      revokeLivekitUserFromChannels("user-42", ["voice-a"], config, request as typeof fetch, false),
+    ).resolves.toMatchObject({
+      status: "unknown",
+      attemptedChannels: 1,
+      removedParticipants: 0,
+      error: "LiveKit participant listing failed (503)",
+    });
+    expect(request).toHaveBeenCalledTimes(2);
   });
 });

@@ -1,140 +1,77 @@
 import type { PublicUser } from "../hooks/useAuth";
-import { clearAllTokens, getAccess, getRefresh, setTokenPair } from "./storage";
-
-const ACCOUNTS_KEY = "ec.auth.accounts.v1";
-const ACTIVE_ACCOUNT_KEY = "ec.auth.activeAccount.v1";
-
-export const ACCOUNT_VAULT_EVENT = "ec:account-vault-change";
-
-export type StoredAccount = {
-  id: string;
-  user: PublicUser;
-  accessToken: string;
-  refreshToken: string;
-  updatedAt: string;
-};
-
-function isPublicUser(value: unknown): value is PublicUser {
-  if (!value || typeof value !== "object") return false;
-  const candidate = value as Partial<PublicUser>;
-  return typeof candidate.id === "string"
-    && typeof candidate.email === "string"
-    && typeof candidate.displayName === "string";
+import { AuthStateChangedError, AUTH_STATE_EVENT, captureAuth, identityCurrent, readAuthState, withAuthMutation, type AuthIdentity, type StoredAccount } from "./storage";
+export type { StoredAccount } from "./storage";
+export const ACCOUNT_VAULT_EVENT = AUTH_STATE_EVENT;
+export function listStoredAccounts(): StoredAccount[] { return [...readAuthState().accounts].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)); }
+export function getActiveAccountId(): string | null { return readAuthState().activeId; }
+function matches(s: ReturnType<typeof readAuthState>, identity: AuthIdentity): boolean { return s.activeId === identity.accountId && s.revision === identity.revision && (s.accounts.find((a) => a.id === s.activeId)?.generation ?? null) === identity.generation; }
+export async function upsertAccountSession(user: PublicUser, accessToken: string, refreshToken: string, expected: AuthIdentity, valid: () => boolean = () => true): Promise<StoredAccount[]> {
+  return withAuthMutation((s) => {
+    if (!valid() || !matches(s, expected)) throw new AuthStateChangedError();
+    const account: StoredAccount = { id: user.id, user, accessToken, refreshToken, updatedAt: new Date().toISOString(), generation: crypto.randomUUID() };
+    const accounts = [account, ...s.accounts.filter((a) => a.id !== user.id)];
+    return { state: { ...s, activeId: user.id, revision: s.revision + 1, accounts }, result: accounts };
+  });
 }
-
-function isStoredAccount(value: unknown): value is StoredAccount {
-  if (!value || typeof value !== "object") return false;
-  const candidate = value as Partial<StoredAccount>;
-  return typeof candidate.id === "string"
-    && isPublicUser(candidate.user)
-    && typeof candidate.accessToken === "string"
-    && candidate.accessToken.length > 0
-    && typeof candidate.refreshToken === "string"
-    && candidate.refreshToken.length > 0
-    && typeof candidate.updatedAt === "string";
+export async function updateStoredAccountUser(user: PublicUser, expected: AuthIdentity): Promise<StoredAccount[]> {
+  return withAuthMutation((s) => {
+    if (!matches(s, expected) || expected.accountId !== user.id) throw new AuthStateChangedError();
+    const accounts = s.accounts.map((a) => a.id === user.id ? { ...a, user, updatedAt: new Date().toISOString() } : a);
+    return { state: { ...s, accounts }, result: accounts };
+  });
 }
-
-function emitChange() {
-  window.dispatchEvent(new CustomEvent(ACCOUNT_VAULT_EVENT));
+export type ActivatedAccount = StoredAccount & { selectionIdentity: AuthIdentity };
+export async function activateStoredAccount(accountId: string): Promise<ActivatedAccount | null> {
+  return withAuthMutation((s) => {
+    const account = s.accounts.find((a) => a.id === accountId) ?? null;
+    if (!account) return { state: s, result: null };
+    const revision = s.revision + 1;
+    return { state: { ...s, activeId: account.id, revision }, result: { ...account, selectionIdentity: { accountId: account.id, revision, generation: account.generation } } };
+  });
 }
-
-function writeAccounts(accounts: StoredAccount[]) {
-  localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
-  emitChange();
+export async function restoreSelectionIfCurrent(expected: AuthIdentity, previousId: string | null): Promise<boolean> {
+  return withAuthMutation((s) => {
+    if (!matches(s, expected)) return { state: s, result: false };
+    const activeId = previousId && s.accounts.some((a) => a.id === previousId) ? previousId : null;
+    return { state: { ...s, activeId, revision: s.revision + 1 }, result: true };
+  });
 }
-
-export function listStoredAccounts(): StoredAccount[] {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(ACCOUNTS_KEY) ?? "[]") as unknown;
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter(isStoredAccount).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-  } catch {
-    return [];
-  }
+export async function removeStoredAccount(accountId: string, expectedGeneration?: string, selectNext = false, expected?: AuthIdentity): Promise<StoredAccount[]> {
+  return withAuthMutation((s) => {
+    if (expected && !matches(s, expected)) return { state: s, result: s.accounts };
+    const target = s.accounts.find((a) => a.id === accountId);
+    if (!target || (expectedGeneration && target.generation !== expectedGeneration)) return { state: s, result: s.accounts };
+    const accounts = s.accounts.filter((a) => a.id !== accountId);
+    const wasActive = s.activeId === accountId;
+    const activeId = wasActive ? (selectNext ? accounts[0]?.id ?? null : null) : s.activeId;
+    return { state: { ...s, accounts, activeId, revision: wasActive ? s.revision + 1 : s.revision }, result: accounts };
+  });
 }
-
-export function getActiveAccountId(): string | null {
-  try {
-    return localStorage.getItem(ACTIVE_ACCOUNT_KEY);
-  } catch {
-    return null;
-  }
+/** Remove only the session that logout targeted; never remove a replacement session. */
+export async function finishLogout(identity: AuthIdentity, confirmed: boolean): Promise<{ accounts: StoredAccount[]; activeChanged: boolean }> {
+  return withAuthMutation((s) => {
+    const target = s.accounts.find((a) => a.id === identity.accountId);
+    if (!target || target.generation !== identity.generation || (!confirmed && !matches(s, identity))) return { state: s, result: { accounts: s.accounts, activeChanged: false } };
+    const accounts = s.accounts.filter((a) => a.id !== target.id);
+    const activeChanged = s.activeId === target.id;
+    return { state: { ...s, accounts, activeId: activeChanged ? accounts[0]?.id ?? null : s.activeId, revision: activeChanged ? s.revision + 1 : s.revision }, result: { accounts, activeChanged } };
+  });
 }
-
-export function upsertAccountSession(
-  user: PublicUser,
-  accessToken: string,
-  refreshToken: string,
-): StoredAccount[] {
-  const account: StoredAccount = {
-    id: user.id,
-    user,
-    accessToken,
-    refreshToken,
-    updatedAt: new Date().toISOString(),
-  };
-  const next = [account, ...listStoredAccounts().filter((item) => item.id !== user.id)];
-  localStorage.setItem(ACTIVE_ACCOUNT_KEY, user.id);
-  writeAccounts(next);
-  return next;
+export async function beginRefreshAttempt(identity: AuthIdentity, expectedRefresh: string, attempt: string): Promise<boolean> {
+  return withAuthMutation((s) => {
+    const account = s.accounts.find((a) => a.id === identity.accountId);
+    if (!account || account.generation !== identity.generation || account.refreshToken !== expectedRefresh || account.refreshAttempt) return { state: s, result: false };
+    return { state: { ...s, accounts: s.accounts.map((a) => a.id === account.id ? { ...a, refreshAttempt: attempt } : a) }, result: true };
+  });
 }
-
-export function updateStoredAccountUser(user: PublicUser): StoredAccount[] {
-  const accounts = listStoredAccounts();
-  const next = accounts.map((item) => item.id === user.id
-    ? { ...item, user, updatedAt: new Date().toISOString() }
-    : item);
-  if (next.some((item) => item.id === user.id)) writeAccounts(next);
-  return next;
+export async function commitRotatedSession(identity: AuthIdentity, expectedRefresh: string, accessToken: string, refreshToken: string, newGeneration = false, expectedAttempt?: string): Promise<boolean> {
+  return withAuthMutation((s) => {
+    const account = s.accounts.find((a) => a.id === identity.accountId);
+    if (!account || account.generation !== identity.generation || account.refreshToken !== expectedRefresh || (expectedAttempt !== undefined && account.refreshAttempt !== expectedAttempt)) return { state: s, result: false };
+    const accounts = s.accounts.map((a) => a.id === account.id ? { ...a, accessToken, refreshToken, updatedAt: new Date().toISOString(), generation: newGeneration ? crypto.randomUUID() : a.generation, refreshAttempt: undefined } : a);
+    return { state: { ...s, accounts, revision: newGeneration && s.activeId === account.id ? s.revision + 1 : s.revision }, result: true };
+  });
 }
-
-export function updateActiveStoredTokens(accessToken: string, refreshToken: string): StoredAccount[] {
-  const activeId = getActiveAccountId();
-  if (!activeId) return listStoredAccounts();
-  const accounts = listStoredAccounts();
-  const next = accounts.map((item) => item.id === activeId
-    ? { ...item, accessToken, refreshToken, updatedAt: new Date().toISOString() }
-    : item);
-  if (next.some((item) => item.id === activeId)) writeAccounts(next);
-  return next;
-}
-
-export function activateStoredAccount(accountId: string): StoredAccount | null {
-  const account = listStoredAccounts().find((item) => item.id === accountId) ?? null;
-  if (!account) return null;
-  setTokenPair(account.accessToken, account.refreshToken);
-  localStorage.setItem(ACTIVE_ACCOUNT_KEY, account.id);
-  writeAccounts([
-    { ...account, updatedAt: new Date().toISOString() },
-    ...listStoredAccounts().filter((item) => item.id !== account.id),
-  ]);
-  return account;
-}
-
-export function restoreActiveAccountTokens(): StoredAccount | null {
-  const accounts = listStoredAccounts();
-  const preferred = getActiveAccountId();
-  const account = accounts.find((item) => item.id === preferred) ?? accounts[0] ?? null;
-  if (!account) return null;
-  setTokenPair(account.accessToken, account.refreshToken);
-  localStorage.setItem(ACTIVE_ACCOUNT_KEY, account.id);
-  return account;
-}
-
-export function removeStoredAccount(accountId: string): StoredAccount[] {
-  const next = listStoredAccounts().filter((item) => item.id !== accountId);
-  const wasActive = getActiveAccountId() === accountId;
-  if (wasActive) {
-    localStorage.removeItem(ACTIVE_ACCOUNT_KEY);
-    clearAllTokens();
-  }
-  writeAccounts(next);
-  return next;
-}
-
-export function persistCurrentSessionFor(user: PublicUser): StoredAccount[] {
-  const access = getAccess();
-  const refresh = getRefresh();
-  if (!access || !refresh) return listStoredAccounts();
-  return upsertAccountSession(user, access, refresh);
-}
+export function accountFor(identity: AuthIdentity): StoredAccount | null { return readAuthState().accounts.find((a) => a.id === identity.accountId && a.generation === identity.generation) ?? null; }
+export function isCurrent(identity: AuthIdentity): boolean { return identityCurrent(identity); }
+export function currentAccount(): StoredAccount | null { return captureAuth().account; }

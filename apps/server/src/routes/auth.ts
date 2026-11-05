@@ -1,11 +1,18 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import { randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { db } from "../db.js";
+import { requireJwt } from "../auth/requireJwt.js";
+import { assertAuthProtocolConfig, isAuthProtocolV2Request, isAuthProtocolV2Required, requireAuthProtocolMarker } from "../auth/protocolGate.js";
+import { disconnectSession, disconnectUserSockets } from "../realtime.js";
+import { assertMediaSessionConfig, clearMediaSessionCookie, isAllowedMediaBootstrapOrigin, setMediaSessionCookie } from "../auth/mediaSession.js";
 import {
   deleteAllUserRefresh,
   deleteRefreshByRawForUser,
+  deleteRefreshBySessionForUser,
+  rotateRefreshToken,
   findValidRefreshTokenRow,
   makeRefreshTokenPair,
   storeRefreshToken,
@@ -117,15 +124,8 @@ export type AuthResponseBody = {
   refreshToken: string;
   token: string;
   user: ReturnType<typeof publicUser>;
+  mediaSessionId: string;
 };
-
-async function requireJwt(req: FastifyRequest, reply: FastifyReply) {
-  try {
-    await req.jwtVerify();
-  } catch {
-    void reply.status(401).send({ error: "Unauthorized" });
-  }
-}
 
 export async function issueSession(
   reply: FastifyReply,
@@ -137,21 +137,30 @@ export async function issueSession(
     bio: string | null;
     status?: "ONLINE" | "IDLE" | "DND" | "INVISIBLE";
     createdAt: Date;
-    twoFactorEnabled?: boolean;
+    twoFactorEnabled: boolean;
+    twoFactorSecret: string | null;
+    passwordHash: string;
   },
   meta?: { userAgent?: string | null; ipAddress?: string | null },
+  qr?: { attemptId: string; approvedBySessionId: string },
+  recovery?: { expectedJson: string; remainingJson: string },
+  login?: boolean,
+  authProtocol2 = false,
 ): Promise<AuthResponseBody> {
+  const sessionId = randomUUID();
   const accessToken = await reply.jwtSign(
-    { sub: user.id, email: user.email },
+    { sub: user.id, email: user.email, sid: sessionId, ...(authProtocol2 ? { authProtocol: 2 } : {}) },
     { expiresIn: ACCESS_TTL },
   );
   const { raw: refreshToken, hash } = makeRefreshTokenPair();
-  await storeRefreshToken(user.id, hash, meta);
+  const refreshSession = await storeRefreshToken(user.id, hash, meta, sessionId, { passwordHash: user.passwordHash, twoFactorEnabled: user.twoFactorEnabled, twoFactorSecret: user.twoFactorSecret, qr, recovery, login });
+  const mediaSessionId = setMediaSessionCookie(reply, refreshSession.id, user.id, hash, authProtocol2);
   return {
     accessToken,
     refreshToken,
     token: accessToken,
     user: publicUser(user),
+    mediaSessionId,
   };
 }
 
@@ -168,6 +177,8 @@ function sessionMetaFromReq(req: FastifyRequest): { userAgent: string | null; ip
 }
 
 export async function registerAuthRoutes(app: FastifyInstance) {
+  assertAuthProtocolConfig();
+  assertMediaSessionConfig(); // Fail before accepting requests or rotating a session.
   app.post(
     "/api/auth/register",
     {
@@ -176,6 +187,7 @@ export async function registerAuthRoutes(app: FastifyInstance) {
       },
     },
     async (req, reply) => {
+      if (!requireAuthProtocolMarker(req, reply)) return;
       const parsed = registerBody.safeParse(req.body);
       if (!parsed.success) {
         return reply.status(400).send({
@@ -207,8 +219,9 @@ export async function registerAuthRoutes(app: FastifyInstance) {
           metadata: { email },
         });
 
-        return await issueSession(reply, user, sessionMetaFromReq(req));
+        return await issueSession(reply, user, sessionMetaFromReq(req), undefined, undefined, undefined, isAuthProtocolV2Request(req));
       } catch (err) {
+        if (err instanceof Error && err.message === "AUTH_STATE_CHANGED") return reply.status(409).send({ error: "Учётные данные изменились. Войдите снова." });
         if (isUniqueEmailError(err)) {
           return reply.status(409).send({ error: "Email уже зарегистрирован" });
         }
@@ -229,6 +242,7 @@ export async function registerAuthRoutes(app: FastifyInstance) {
       },
     },
     async (req, reply) => {
+      if (!requireAuthProtocolMarker(req, reply)) return;
       const parsed = loginBody.safeParse(req.body);
       if (!parsed.success) {
         return reply.status(400).send({ error: "Invalid body" });
@@ -313,6 +327,7 @@ export async function registerAuthRoutes(app: FastifyInstance) {
           });
         }
 
+        let recoveryProof: { expectedJson: string; remainingJson: string } | undefined;
         if (user.twoFactorEnabled) {
           if (!totpCode && !recoveryCode) {
             return reply.status(401).send({
@@ -338,16 +353,8 @@ export async function registerAuthRoutes(app: FastifyInstance) {
               user.twoFactorRecoveryCodes,
             );
 
-            if (used) {
-              await db.user.update({
-                where: { id: user.id },
-                data: { twoFactorRecoveryCodes: used.remainingJson },
-              });
-              recordAudit("TWOFA_RECOVERY_USED", {
-                userId: user.id,
-                req,
-                metadata: { remaining: JSON.parse(used.remainingJson).length },
-              });
+            if (used && user.twoFactorRecoveryCodes !== null) {
+              recoveryProof = { expectedJson: user.twoFactorRecoveryCodes, remainingJson: used.remainingJson };
               totpOk = true;
             }
           }
@@ -365,13 +372,16 @@ export async function registerAuthRoutes(app: FastifyInstance) {
             });
           }
 
-          recordAudit("TWOFA_VERIFIED", { userId: user.id, req });
         }
 
-        await resetLockout(user.id);
+        const session = await issueSession(reply, user, sessionMetaFromReq(req), undefined, recoveryProof, true, isAuthProtocolV2Request(req));
+        if (user.twoFactorEnabled) recordAudit("TWOFA_VERIFIED", { userId: user.id, req });
+        if (recoveryProof) recordAudit("TWOFA_RECOVERY_USED", { userId: user.id, req, metadata: { remaining: JSON.parse(recoveryProof.remainingJson).length } });
         recordAudit("AUTH_LOGIN", { userId: user.id, req });
-        return await issueSession(reply, user, sessionMetaFromReq(req));
+        return session;
       } catch (err) {
+        if (err instanceof Error && err.message === "AUTH_STATE_CHANGED") return reply.status(409).send({ error: "Учётные данные изменились. Войдите снова." });
+        if (err instanceof Error && err.message === "RECOVERY_CODE_ALREADY_USED") return reply.status(401).send({ error: "Код восстановления уже использован.", twoFactorRequired: true });
         app.log.error({ err, email }, "auth login failed");
         return reply.status(503).send({
           error: "Сервис входа временно недоступен. Попробуйте позже.",
@@ -388,6 +398,7 @@ export async function registerAuthRoutes(app: FastifyInstance) {
       },
     },
     async (req, reply) => {
+      if (!requireAuthProtocolMarker(req, reply)) return;
       const parsed = refreshBody.safeParse(req.body);
       if (!parsed.success) {
         return reply.status(400).send({ error: "Invalid body" });
@@ -398,25 +409,48 @@ export async function registerAuthRoutes(app: FastifyInstance) {
         return reply.status(401).send({ error: "Invalid refresh token" });
       }
 
-      const user = await db.user.findUnique({ where: { id: row.userId } });
-      if (!user) {
-        await db.refreshToken.delete({ where: { id: row.id } });
-        return reply.status(401).send({ error: "User not found" });
-      }
-
-      await db.refreshToken.delete({ where: { id: row.id } });
-      const { raw: refreshToken, hash } = makeRefreshTokenPair();
-      await storeRefreshToken(user.id, hash, sessionMetaFromReq(req));
+      const user = await db.user.findUnique({ where: { id: row.userId }, select: { id: true, email: true } });
+      if (!user) return reply.status(401).send({ error: "Invalid refresh token" });
       const accessToken = await reply.jwtSign(
-        { sub: user.id, email: user.email },
+        { sub: user.id, email: user.email, sid: row.id, ...(isAuthProtocolV2Request(req) ? { authProtocol: 2 } : {}) },
         { expiresIn: ACCESS_TTL },
       );
+      const { raw: refreshToken, hash } = makeRefreshTokenPair();
+      const rotated = await rotateRefreshToken(parsed.data.refreshToken, hash, sessionMetaFromReq(req));
+      if (!rotated) return reply.status(401).send({ error: "Invalid refresh token" });
+      clearMediaSessionCookie(reply, row.id, row.tokenHash);
+      const mediaSessionId = setMediaSessionCookie(reply, rotated.id, rotated.userId, hash, isAuthProtocolV2Request(req));
 
       return {
         accessToken,
         refreshToken,
         token: accessToken,
+        mediaSessionId,
       };
+    },
+  );
+
+  // Restores media access for already authenticated clients without exposing
+  // credentials in a URL. Origin + Bearer + the user's active refresh session
+  // are required; selector is not an authorization credential.
+  app.post(
+    "/api/auth/media-session",
+    { onRequest: [requireJwt], config: { rateLimit: { max: 60, timeWindow: 5 * 60 * 1000 } } },
+    async (req, reply) => {
+      reply.header("Cache-Control", "private, no-store");
+      if (!isAllowedMediaBootstrapOrigin(req)) return reply.status(403).send({ error: "Forbidden" });
+      const userId = (req.user as { sub?: string } | undefined)?.sub;
+      const parsed = refreshBody.safeParse(req.body);
+      if (!userId || !parsed.success) return reply.status(401).send({ error: "Unauthorized" });
+      const session = await findValidRefreshTokenRow(parsed.data.refreshToken);
+      if (!session || session.userId !== userId) return reply.status(401).send({ error: "Unauthorized" });
+      const user = await db.user.findUnique({ where: { id: userId }, select: { bannedAt: true, deletedAt: true } });
+      if (!user || user.bannedAt || user.deletedAt) return reply.status(401).send({ error: "Unauthorized" });
+      // Bind a v2 bootstrap to the already verified access-token session, never to the header alone.
+      const accessClaims = req.user as { sid?: unknown; authProtocol?: unknown } | undefined;
+      if (accessClaims?.authProtocol === 2 && accessClaims.sid !== session.id) return reply.status(401).send({ error: "Unauthorized" });
+      const mediaSessionId = setMediaSessionCookie(reply, session.id, userId, session.tokenHash, accessClaims?.authProtocol === 2);
+      return { mediaSessionId };
     },
   );
 
@@ -424,16 +458,25 @@ export async function registerAuthRoutes(app: FastifyInstance) {
     "/api/auth/logout",
     { onRequest: [requireJwt] },
     async (req, reply) => {
-      const payload = req.user as { sub: string; email: string } | undefined;
+      const payload = req.user as { sub?: string; sid?: string } | undefined;
       const sub = payload?.sub;
       const parsed = logoutBody.safeParse(req.body ?? {});
-      if (!parsed.success) {
-        return reply.status(400).send({ error: "Invalid body" });
+      if (!parsed.success) return reply.status(400).send({ error: "Invalid body" });
+      if (!sub) return reply.status(401).send({ error: "Unauthorized" });
+      if (typeof payload?.sid === "string" && payload.sid.length > 0) {
+        const current = await db.refreshToken.findFirst({ where: { id: payload.sid, userId: sub }, select: { tokenHash: true } });
+        const removed = await deleteRefreshBySessionForUser(payload.sid, sub);
+        if (removed && isAuthProtocolV2Required()) disconnectSession(payload.sid);
+        if (current) clearMediaSessionCookie(reply, payload.sid, current.tokenHash);
+      } else {
+        // Legacy access tokens cannot identify a session once its refresh has rotated.
+        if (!parsed.data.refreshToken) return reply.status(409).send({ error: "SESSION_REVOCATION_UNCONFIRMED" });
+        const session = await findValidRefreshTokenRow(parsed.data.refreshToken);
+        const removed = await deleteRefreshByRawForUser(parsed.data.refreshToken, sub);
+        if (removed !== 1) return reply.status(409).send({ error: "SESSION_REVOCATION_UNCONFIRMED" });
+        if (session?.userId === sub) clearMediaSessionCookie(reply, session.id, session.tokenHash);
       }
-      if (sub && parsed.data.refreshToken) {
-        await deleteRefreshByRawForUser(parsed.data.refreshToken, sub);
-      }
-      if (sub) recordAudit("AUTH_LOGOUT", { userId: sub, req });
+      recordAudit("AUTH_LOGOUT", { userId: sub, req });
       return { ok: true as const };
     },
   );
@@ -497,14 +540,19 @@ export async function registerAuthRoutes(app: FastifyInstance) {
       }
 
       const passwordHash = await bcrypt.hash(newPassword, 12);
-      const updated = await db.user.update({
-        where: { id: user.id },
-        data: { passwordHash },
+      const updated = await db.$transaction(async tx => {
+        const changed = await tx.user.updateMany({ where: { id: user.id, passwordHash: user.passwordHash, bannedAt: null, deletedAt: null }, data: { passwordHash } });
+        if (changed.count !== 1) return null;
+        await tx.refreshToken.deleteMany({ where: { userId: user.id } });
+        return tx.user.findUnique({ where: { id: user.id } });
       });
-
+      if (!updated) return reply.status(409).send({ error: "Учётные данные изменились. Войдите снова." });
+      // Revoke existing realtime sessions only after the password transaction commits.
+      // The replacement session is issued afterwards and can reconnect normally.
+      if (isAuthProtocolV2Required()) disconnectUserSockets(user.id);
       recordAudit("AUTH_PASSWORD_CHANGE", { userId: user.id, req });
-      await deleteAllUserRefresh(user.id);
-      return await issueSession(reply, updated, sessionMetaFromReq(req));
+      try { return await issueSession(reply, updated, sessionMetaFromReq(req), undefined, undefined, undefined, (req.user as { authProtocol?: unknown } | undefined)?.authProtocol === 2); }
+      catch (error) { if (error instanceof Error && error.message === "AUTH_STATE_CHANGED") return reply.status(409).send({ error: "Учётные данные изменились. Войдите снова." }); throw error; }
     },
   );
 
@@ -587,12 +635,15 @@ export async function registerAuthRoutes(app: FastifyInstance) {
         return reply.status(400).send({ error: genericError });
       }
       const passwordHash = await bcrypt.hash(newPassword, 12);
-      await db.user.update({
-        where: { id: user.id },
-        data: { passwordHash, passwordRecoveryCodes: verified.remainingJson },
+      const changed = await db.$transaction(async tx => {
+        const updated = await tx.user.updateMany({ where: { id: user.id, passwordHash: user.passwordHash, passwordRecoveryCodes: user.passwordRecoveryCodes, bannedAt: null, deletedAt: null }, data: { passwordHash, passwordRecoveryCodes: verified.remainingJson } });
+        if (updated.count !== 1) return false;
+        await tx.refreshToken.deleteMany({ where: { userId: user.id } });
+        return true;
       });
+      if (!changed) return reply.status(409).send({ error: "Учётные данные изменились. Повторите восстановление." });
+      if (isAuthProtocolV2Required()) disconnectUserSockets(user.id);
       await resetLockout(user.id);
-      await deleteAllUserRefresh(user.id); // безопасность: гасим старые сессии
       recordAudit("AUTH_PASSWORD_CHANGE", {
         userId: user.id,
         req,
@@ -680,6 +731,7 @@ export async function registerAuthRoutes(app: FastifyInstance) {
         return reply.status(404).send({ error: "Session not found" });
       }
       await db.refreshToken.delete({ where: { id } });
+      if (isAuthProtocolV2Required()) disconnectSession(id);
       return reply.status(204).send();
     },
   );

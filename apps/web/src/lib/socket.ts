@@ -10,7 +10,7 @@
  */
 
 import { io, type Socket } from "socket.io-client";
-import { getAccess } from "./storage";
+import { assertDisplayedIdentity, AuthCoordinationUnavailableError, AuthStateChangedError, captureDisplayedAuth } from "./storage";
 import type { BotRole } from "./botRoles";
 
 /**
@@ -24,13 +24,52 @@ import type { BotRole } from "./botRoles";
 const SOCKET_PATH = `${import.meta.env.BASE_URL}socket.io`;
 
 export function createSocket(): Socket {
-  const t = getAccess() ?? undefined;
-  return io({
-    path: SOCKET_PATH,
-    auth: t ? { token: t } : {},
-  });
+  const captured = captureDisplayedAuth();
+  if (!captured.account) throw new AuthStateChangedError();
+  const identity = captured.identity;
+  const socket = io({ path: SOCKET_PATH, autoConnect: false, auth: { token: captured.account.accessToken, protocol: 2 } });
+  // Guard the transport at the actual send/delivery boundary, not only when
+  // the delayed cross-tab `storage` event eventually updates React.
+  const internal = socket as unknown as {
+    emit: (...args: unknown[]) => unknown;
+    packet: (...args: unknown[]) => unknown;
+    emitEvent: (...args: unknown[]) => unknown;
+    onack: (...args: unknown[]) => unknown;
+    onconnect: (...args: unknown[]) => unknown;
+    onopen: (...args: unknown[]) => unknown;
+  };
+  const names = ["emit", "packet", "emitEvent", "onack", "onconnect", "onopen"] as const;
+  const originals = Object.fromEntries(names.map((name) => [name, internal[name]])) as Record<typeof names[number], (...args: unknown[]) => unknown>;
+  if (names.some((name) => typeof originals[name] !== "function")) { socket.disconnect(); throw new AuthCoordinationUnavailableError(); }
+  let closed = false;
+  const valid = () => { try { assertDisplayedIdentity(identity); return true; } catch { return false; } };
+  const stop = () => { if (!closed) { closed = true; socket.disconnect(); } };
+  internal.packet = function(...args: unknown[]) {
+    if (!valid()) {
+      const packet = args[0] as { type?: number } | undefined;
+      // Socket.IO DISCONNECT contains no data and must remain possible to close.
+      if (packet?.type === 1) return originals.packet.call(socket, { type: 1 });
+      stop(); return;
+    }
+    return originals.packet.apply(socket, args);
+  };  internal.emit = function(...args: unknown[]) { if (!valid()) { stop(); return socket; } return originals.emit.apply(socket, args); };
+  internal.emitEvent = function(...args: unknown[]) {
+    if (!valid()) { stop(); return; }
+    // Server-requested ACK may be invoked later by an async handler.
+    const event = Array.isArray(args[0]) ? [...args[0]] : null;
+    if (event && typeof event[event.length - 1] === "function") {
+      const ack = event[event.length - 1] as (...values: unknown[]) => unknown;
+      event[event.length - 1] = (...values: unknown[]) => { if (!valid()) { stop(); return; } return ack(...values); };
+      args[0] = event;
+    }
+    return originals.emitEvent.apply(socket, args);
+  };
+  internal.onack = function(...args: unknown[]) { if (!valid()) { stop(); return; } return originals.onack.apply(socket, args); };
+  internal.onconnect = function(...args: unknown[]) { if (!valid()) { stop(); return; } return originals.onconnect.apply(socket, args); };
+  internal.onopen = function(...args: unknown[]) { if (!valid()) { stop(); return; } return originals.onopen.apply(socket, args); };
+  socket.connect();
+  return socket;
 }
-
 export type ServerHello = { t: number; msg: string };
 
 export type TranscriptStatus = "NONE" | "PENDING" | "READY" | "FAILED";

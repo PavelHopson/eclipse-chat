@@ -24,7 +24,10 @@ type ChannelAccess = {
 type LivekitWebhookDependencies = {
   config: () => LivekitConfig | null;
   findChannel: (channelId: string) => Promise<ChannelAccess | null>;
-  findMemberRole: (userId: string, serverId: string) => Promise<string | null>;
+  findMemberAccess: (userId: string, serverId: string) => Promise<{
+    role: string;
+    user: { bannedAt: Date | null; deletedAt: Date | null } | null;
+  } | null>;
   removeParticipant: (room: string, identity: string, cfg: LivekitConfig) => Promise<boolean>;
 };
 
@@ -40,13 +43,10 @@ const defaultDependencies: LivekitWebhookDependencies = {
       server: { select: { mode: true } },
     },
   }),
-  findMemberRole: async (userId, serverId) => {
-    const member = await db.member.findUnique({
-      where: { userId_serverId: { userId, serverId } },
-      select: { role: true },
-    });
-    return member?.role ?? null;
-  },
+  findMemberAccess: async (userId, serverId) => db.member.findUnique({
+    where: { userId_serverId: { userId, serverId } },
+    select: { role: true, user: { select: { bannedAt: true, deletedAt: true } } },
+  }),
   removeParticipant: (room, identity, cfg) => removeLivekitParticipant(room, identity, cfg),
 };
 
@@ -108,7 +108,12 @@ export async function registerLivekitWebhookRoutes(
 
       const deny = async (reason: string) => {
         try {
-          await deps.removeParticipant(room, identity, cfg);
+          const removed = await deps.removeParticipant(room, identity, cfg);
+          // A 404 can also mean a misconfigured endpoint, not just an absent participant.
+          if (!removed) {
+            req.log.error({ eventId, reason }, "Could not verify LiveKit participant removal");
+            return reply.status(503).send({ error: "Voice authorization unavailable" });
+          }
           req.log.warn({ eventId, reason }, "Removed unauthorized LiveKit participant");
           return reply.status(200).send({ ok: true, action: "removed" });
         } catch {
@@ -128,13 +133,16 @@ export async function registerLivekitWebhookRoutes(
         if (!channel || channel.id !== channelId || channel.type !== "VOICE") {
           return deny("channel");
         }
-        const role = await deps.findMemberRole(userId, channel.serverId);
+        const member = await deps.findMemberAccess(userId, channel.serverId);
         if (
-          !role ||
+          !member ||
+          !member.user ||
+          member.user.bannedAt !== null ||
+          member.user.deletedAt !== null ||
           !canAccessRealtimeChannel(
             channel.server.mode,
             channel.internal,
-            role as Parameters<typeof canAccessRealtimeChannel>[2],
+            member.role as Parameters<typeof canAccessRealtimeChannel>[2],
           )
         ) {
           return deny("acl");

@@ -6,8 +6,13 @@ import { db } from "../db.js";
 import { getUserId, requireJwt } from "../auth/requireJwt.js";
 import { requirePlatformOwner } from "../auth/requirePlatformOwner.js";
 import { recordAudit } from "../security/audit.js";
-import { deleteAllUserRefresh } from "../auth/refresh.js";
-import { disconnectUser } from "../realtime.js";
+import { disconnectUser, disconnectUserSockets } from "../realtime.js";
+import { isAuthProtocolV2Required } from "../auth/protocolGate.js";
+import {
+  getLivekitConfig,
+  revokeLivekitUserFromChannels,
+  type LivekitRevocationResult,
+} from "../livekit.js";
 import { listAiProviderDiagnostics, listAiRouteDiagnostics } from "../ai/provider.js";
 import { getAiGatewayTelemetryDiagnostic } from "../ai/gatewayTelemetry.js";
 import { getEcosystemHealthSnapshot } from "../lib/ecosystemHealth.js";
@@ -89,6 +94,26 @@ type PlatformUserView = {
   deletedReason: string | null;
   deletedBy: { id: string; email: string; displayName: string } | null;
 };
+
+async function revokeUserLivekitAccess(userId: string): Promise<LivekitRevocationResult> {
+  if (!getLivekitConfig()) {
+    return { status: "disabled", attemptedChannels: 0, removedParticipants: 0 };
+  }
+  try {
+    const channels = await db.channel.findMany({
+      where: { type: "VOICE", server: { members: { some: { userId } } } },
+      select: { id: true },
+    });
+    return revokeLivekitUserFromChannels(userId, channels.map(channel => channel.id));
+  } catch (error) {
+    return {
+      status: "unknown",
+      attemptedChannels: 0,
+      removedParticipants: 0,
+      error: error instanceof Error ? error.message : "LiveKit revocation lookup failed",
+    };
+  }
+}
 
 type PlatformUserSessionSummary = {
   lastActiveAt: Date | null;
@@ -457,19 +482,19 @@ export async function registerPlatformRoutes(app: FastifyInstance) {
       return reply.status(409).send({ error: "Пользователь уже забанен." });
     }
 
-    const updated = await db.user.update({
-      where: { id: targetId },
-      data: {
-        bannedAt: new Date(),
-        bannedReason: body.data.reason,
-        bannedByUserId: adminId,
-      },
-      select: PLATFORM_USER_SELECT,
+    const updated = await db.$transaction(async tx => {
+      const changed = await tx.user.update({
+        where: { id: targetId },
+        data: { bannedAt: new Date(), bannedReason: body.data.reason, bannedByUserId: adminId },
+        select: PLATFORM_USER_SELECT,
+      });
+      await tx.refreshToken.deleteMany({ where: { userId: targetId } });
+      return changed;
     });
-
     // Forced sign-out: refresh tokens мертвы + WS-сокеты дисконнект.
-    await deleteAllUserRefresh(targetId);
     const dropped = disconnectUser(targetId);
+    if (isAuthProtocolV2Required()) disconnectUserSockets(targetId);
+    const livekitRevocation = await revokeUserLivekitAccess(targetId);
 
     recordAudit("PLATFORM_USER_BANNED", {
       userId: adminId,
@@ -478,10 +503,15 @@ export async function registerPlatformRoutes(app: FastifyInstance) {
         targetUserId: targetId,
         reason: body.data.reason,
         socketsDropped: dropped,
+        livekitRevocation: {
+          status: livekitRevocation.status,
+          attemptedChannels: livekitRevocation.attemptedChannels,
+          removedParticipants: livekitRevocation.removedParticipants,
+        },
       },
     });
 
-    return reply.send({ user: toView(updated) });
+    return reply.send({ user: toView(updated), livekitRevocation });
   });
 
   // POST /api/platform/users/:id/unban — снять бан.
@@ -564,15 +594,17 @@ export async function registerPlatformRoutes(app: FastifyInstance) {
       const tempPassword = generateTemporaryPassword();
       const hash = await bcrypt.hash(tempPassword, PASSWORD_HASH_COST);
 
-      const updated = await db.user.update({
-        where: { id: targetId },
-        data: { passwordHash: hash, failedLoginAttempts: 0, lockoutUntil: null },
-        select: PLATFORM_USER_SELECT,
+      const updated = await db.$transaction(async tx => {
+        const changed = await tx.user.update({
+          where: { id: targetId },
+          data: { passwordHash: hash, failedLoginAttempts: 0, lockoutUntil: null },
+          select: PLATFORM_USER_SELECT,
+        });
+        await tx.refreshToken.deleteMany({ where: { userId: targetId } });
+        return changed;
       });
-
-      // Все рефреш-токены — выкинуть; пусть user логинится временным паролем.
-      await deleteAllUserRefresh(targetId);
       const dropped = disconnectUser(targetId);
+      if (isAuthProtocolV2Required()) disconnectUserSockets(targetId);
 
       recordAudit("PLATFORM_USER_PASSWORD_RESET", {
         userId: adminId,
@@ -632,18 +664,18 @@ export async function registerPlatformRoutes(app: FastifyInstance) {
       return reply.status(409).send({ error: "Пользователь уже удалён." });
     }
 
-    const updated = await db.user.update({
-      where: { id: targetId },
-      data: {
-        deletedAt: new Date(),
-        deletedReason: body.data.reason,
-        deletedByUserId: adminId,
-      },
-      select: PLATFORM_USER_SELECT,
+    const updated = await db.$transaction(async tx => {
+      const changed = await tx.user.update({
+        where: { id: targetId },
+        data: { deletedAt: new Date(), deletedReason: body.data.reason, deletedByUserId: adminId },
+        select: PLATFORM_USER_SELECT,
+      });
+      await tx.refreshToken.deleteMany({ where: { userId: targetId } });
+      return changed;
     });
-
-    await deleteAllUserRefresh(targetId);
     const dropped = disconnectUser(targetId);
+    if (isAuthProtocolV2Required()) disconnectUserSockets(targetId);
+    const livekitRevocation = await revokeUserLivekitAccess(targetId);
 
     recordAudit("PLATFORM_USER_DELETED", {
       userId: adminId,
@@ -652,10 +684,15 @@ export async function registerPlatformRoutes(app: FastifyInstance) {
         targetUserId: targetId,
         reason: body.data.reason,
         socketsDropped: dropped,
+        livekitRevocation: {
+          status: livekitRevocation.status,
+          attemptedChannels: livekitRevocation.attemptedChannels,
+          removedParticipants: livekitRevocation.removedParticipants,
+        },
       },
     });
 
-    return reply.send({ user: toView(updated) });
+    return reply.send({ user: toView(updated), livekitRevocation });
   });
 
   // v1.2.7 trek P2 — GET /api/platform/servers — список всех серверов

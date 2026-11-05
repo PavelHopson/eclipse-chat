@@ -1,4 +1,6 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { captureDisplayedAuth, identityCurrent, readAuthState, type AuthIdentity } from "../lib/storage";
+import { acknowledgeDraft, acknowledgeUnsafeCopy, currentDraftOwner, discardOldDraftSnapshot, hasLegacyDraft, hasUnsafeDrafts, listDraftSnapshots, listEmergencyDrafts, listSessionDrafts, liveDraftText, loadScopedDraft, loadStagedDraft, persistStagedDraft, readUnsafeDraft, registerDraftLifecycle, registerUpdateDraft, rememberUnsafeDraft, stageDraft, startDraftOwner, type JournalSnapshot, type StagedDraft } from "../lib/updateDraftRecovery";
 import { createPortal } from "react-dom";
 import { fileToBase64 } from "../lib/fileToBase64";
 import { computeWaveformPeaks } from "../lib/audioPeaks";
@@ -291,34 +293,46 @@ function voiceFilename(mime: string): string {
   return `voice-message-${stamp}.${extensionFromAudioMime(mime)}`;
 }
 
-const DRAFT_STORAGE_PREFIX = "eclipse-chat:draft:v1:";
-
-function getDraftStorageKey(draftKey: string | null | undefined): string | null {
-  return draftKey ? `${DRAFT_STORAGE_PREFIX}${draftKey}` : null;
-}
-
-function loadDraft(draftKey: string | null | undefined): string {
-  const storageKey = getDraftStorageKey(draftKey);
-  if (!storageKey || typeof window === "undefined") return "";
-  try {
-    return window.localStorage.getItem(storageKey) ?? "";
-  } catch {
-    return "";
+export function createOwnedVoiceRecorder(
+  stream: MediaStream,
+  owner: { current: MediaStream | null },
+  create: (value: MediaStream) => MediaRecorder,
+): MediaRecorder {
+  owner.current = stream;
+  try { return create(stream); }
+  catch {
+    owner.current = null;
+    stream.getTracks().forEach((track) => track.stop());
+    throw new Error("Не удалось начать запись");
   }
 }
 
-function saveDraft(draftKey: string | null | undefined, value: string) {
-  const storageKey = getDraftStorageKey(draftKey);
-  if (!storageKey || typeof window === "undefined") return;
-  try {
-    if (value.trim().length === 0) {
-      window.localStorage.removeItem(storageKey);
-    } else {
-      window.localStorage.setItem(storageKey, value);
-    }
-  } catch {
-    // Storage can be unavailable in private modes; composer should still work.
+export function adoptRecordingStream(
+  stream: MediaStream,
+  owner: { current: MediaStream | null },
+  requestGeneration: number,
+  currentGeneration: number,
+): boolean {
+  if (requestGeneration !== currentGeneration) {
+    stream.getTracks().forEach((track) => track.stop());
+    return false;
   }
+  owner.current = stream;
+  return true;
+}
+
+export function confirmedSendNeedsIdentityNotice(sameIdentity: boolean): boolean {
+  return !sameIdentity;
+}
+
+export function sendFailureMessage(confirmed: boolean): string {
+  return confirmed ? "Сообщение отправлено, но не удалось обновить черновик. Не отправляйте его повторно."
+    : "Не удалось подтвердить отправку. Проверьте чат перед повтором; текст и файлы сохранены.";
+}
+
+function canSaveDraft(identity: AuthIdentity | null): boolean {
+  if (!identity?.accountId || !identity.generation) return false;
+  try { return readAuthState().accounts.some(a => a.id === identity.accountId && a.generation === identity.generation); } catch { return false; }
 }
 
 export function MessageInput({
@@ -343,11 +357,29 @@ export function MessageInput({
   canCreateActions = !hideSlashCommands,
 }: Props) {
   const sendErrorId = useId();
-  const [draft, setDraft] = useState(() => loadDraft(draftKey));
+  const updateIdentityRef = useRef<AuthIdentity | null>(null);
+  if (!updateIdentityRef.current) {
+    try { const identity = captureDisplayedAuth().identity; if (identity.accountId) updateIdentityRef.current = identity; }
+    catch { /* unavailable identity is handled by the update safeguard */ }
+  }
+  const [draft, setDraft] = useState("");
+  const [draftReady, setDraftReady] = useState(!draftKey);
+  const draftReadyRef = useRef(!draftKey);
+  const [draftError, setDraftError] = useState<string | null>(null);
+  const [draftChoices, setDraftChoices] = useState<JournalSnapshot[]>([]);
+  const [legacyChoice, setLegacyChoice] = useState<string | null>(null);
+  const draftStageRef = useRef<StagedDraft | null>(null);
+  const renderedDraftRef = useRef(draft);
+  renderedDraftRef.current = draft;
+  const renderedDraftKeyRef = useRef<string | null>(draftKey);
+  renderedDraftKeyRef.current = draftKey;
+  const composerMountedRef = useRef(true);
+  useEffect(() => { composerMountedRef.current = true; return () => { composerMountedRef.current = false; }; }, []);
   const [sending, setSending] = useState(false);
   const [pending, setPending] = useState<Pending[]>([]);
   const [attachError, setAttachError] = useState<string | null>(null);
   const [sendError, setSendError] = useState<string | null>(null);
+  const [postSendNotice, setPostSendNotice] = useState<string | null>(null);
   const [sendStage, setSendStage] = useState<"idle" | "preparing" | "sending">("idle");
   const [sentFeedback, setSentFeedback] = useState("");
   const [actionType, setActionType] = useState<ActionItemType | null>(null);
@@ -358,6 +390,46 @@ export function MessageInput({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const draftRef = useRef(draft);
   const draftKeyRef = useRef<string | null>(draftKey);
+  const composingRef = useRef(false);
+  const pendingTransitionRef = useRef(false);
+  const pickerOpenRef = useRef(false);
+  const recordingRequestRef = useRef(false);
+  const recordingGenerationRef = useRef(0);
+  const recordingDraftKeyRef = useRef(draftKey);
+  const prefillFilesRef = useRef(prefillFiles);
+  prefillFilesRef.current = prefillFiles;
+  const prefillContentRef = useRef(prefillContent);
+  prefillContentRef.current = prefillContent;
+  useLayoutEffect(() => { pendingTransitionRef.current = false; }, [pending]);
+  useLayoutEffect(() => {
+    if (recordingDraftKeyRef.current !== draftKey) {
+      recordingDraftKeyRef.current = draftKey;
+      recordingGenerationRef.current += 1;
+      recordingRequestRef.current = false;
+    }
+  }, [draftKey]);
+  useLayoutEffect(() => {
+    const input = fileInputRef.current;
+    if (!input) return;
+    const onCancel = () => { pickerOpenRef.current = false; };
+    input.addEventListener("cancel", onCancel);
+    return () => input.removeEventListener("cancel", onCancel);
+  }, [hideAttachments]);
+  useLayoutEffect(() => registerUpdateDraft(() => {
+    const identity = updateIdentityRef.current;
+    return {
+      accountId: identity?.accountId ?? null,
+      draftKey: draftKeyRef.current,
+      // Ref may be newer than the last React commit; otherwise the DOM can
+      // include in-progress IME text not delivered through onChange yet.
+      text: liveDraftText(draftRef.current, renderedDraftRef.current, textareaRef.current?.value),
+      blocked: Boolean(draftRef.current.length || textareaRef.current?.value.length || composingRef.current ||
+        pendingRef.current.length || pendingTransitionRef.current || pickerOpenRef.current ||
+        prefillFilesRef.current?.length || prefillContentRef.current?.length || sendingRef.current || recordingRequestRef.current || mediaRecorderRef.current),
+      isCurrent: () => !!identity && draftKeyRef.current === renderedDraftKeyRef.current && identityCurrent(identity),
+      select: () => { textareaRef.current?.focus(); textareaRef.current?.select(); },
+    };
+  }), []);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordingStreamRef = useRef<MediaStream | null>(null);
   const recordingChunksRef = useRef<Blob[]>([]);
@@ -407,6 +479,22 @@ export function MessageInput({
   const setDraftValue = (value: string) => {
     draftRef.current = value;
     setDraft(value);
+    const identity = updateIdentityRef.current;
+    const key = draftKeyRef.current;
+    if (!key || !identity?.accountId) return;
+    if (!draftReadyRef.current || !canSaveDraft(identity) || !currentDraftOwner()) {
+      draftStageRef.current = rememberUnsafeDraft(identity.accountId, key, value);
+      setDraftError("Черновик не сохранён. Скопируйте текст перед закрытием страницы.");
+      return;
+    }
+    try {
+      const stage = stageDraft(identity.accountId, key, value);
+      draftStageRef.current = stage;
+      setDraftError(stage.emergencySaved ? null : "Черновик пока только во вкладке. Скопируйте текст перед закрытием страницы.");
+    } catch {
+      draftStageRef.current = rememberUnsafeDraft(identity.accountId, key, value);
+      setDraftError("Черновик не сохранён. Скопируйте текст перед закрытием страницы.");
+    }
   };
 
   const focusTextarea = () => {
@@ -437,7 +525,7 @@ export function MessageInput({
 
   const openFilePicker = () => {
     setActionMenuOpen(false);
-    fileInputRef.current?.click();
+    if (fileInputRef.current) { pickerOpenRef.current = true; fileInputRef.current.click(); }
   };
 
   const startMenuVoiceRecording = () => {
@@ -504,7 +592,7 @@ export function MessageInput({
   const isTypingRef = useRef(false);
   const stopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const currentKey = draftKey ?? null;
     if (draftKeyRef.current === currentKey) return;
 
@@ -520,13 +608,24 @@ export function MessageInput({
       recordingCancelledRef.current = true;
       mediaRecorderRef.current.stop();
     }
-    saveDraft(draftKeyRef.current, draftRef.current);
+    const oldKey = draftKeyRef.current;
+    const identity = updateIdentityRef.current;
+    const oldText = liveDraftText(draftRef.current, renderedDraftRef.current, textareaRef.current?.value);
+    if (oldKey && identity?.accountId && oldText) {
+      if (oldText !== draftRef.current || !draftStageRef.current) rememberUnsafeDraft(identity.accountId, oldKey, oldText);
+      if (canSaveDraft(identity)) void persistStagedDraft(identity.accountId, oldKey, () => canSaveDraft(identity)).catch(() => {});
+    }
     draftKeyRef.current = currentKey;
-    setDraftValue(loadDraft(currentKey));
+    draftReadyRef.current = !currentKey;
+    setDraftReady(!currentKey);
+    draftStageRef.current = null;
+    draftRef.current = "";
+    setDraft("");
     for (const item of pendingRef.current) if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
     setPending([]);
     setAttachError(null);
     setSendError(null);
+    setPostSendNotice(null);
     setActionType(null);
     setActionMenuOpen(false);
     setTrigger(null);
@@ -540,7 +639,52 @@ export function MessageInput({
   }, [taskRequest, disabled, hideSlashCommands, canCreateActions]);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => saveDraft(draftKey, draft), 250);
+    const identity = updateIdentityRef.current;
+    const key = draftKey;
+    if (!key || !identity?.accountId) { draftReadyRef.current = true; setDraftReady(true); return; }
+    let cancelled = false;
+    draftReadyRef.current = false;
+    setDraftReady(false);
+    setDraftChoices([]);
+    setLegacyChoice(null);
+    void (async () => {
+      try {
+        const owner = await startDraftOwner();
+        const memory = readUnsafeDraft(identity.accountId!, key);
+        let staged: StagedDraft | null = null;
+        let sessionEntries: StagedDraft[] = [];
+        let saved: JournalSnapshot[] = [];
+        let emergency: StagedDraft[] = [];
+        let legacy: string | null = null;
+        let storageFailed = false;
+        try { staged = loadStagedDraft(identity.accountId!, key); sessionEntries = listSessionDrafts(identity.accountId!, key); } catch { storageFailed = true; }
+        try { saved = await listDraftSnapshots(identity.accountId!, key); emergency = listEmergencyDrafts(identity.accountId!, key); legacy = loadScopedDraft(identity.accountId!, key); } catch { storageFailed = true; }
+        if (cancelled || draftKeyRef.current !== key || !identityCurrent(identity)) return;
+        // Only in-memory text with this exact account/chat is restored directly.
+        const own = memory ?? (staged?.owner === owner ? staged : null);
+        if (!draftRef.current && own) { draftStageRef.current = own; draftRef.current = own.text; setDraft(own.text); }
+        const options: JournalSnapshot[] = [...saved];
+        for (const entry of [...emergency, ...sessionEntries]) {
+          if (entry.text && !options.some(x => x.owner === entry.owner && x.revision === entry.revision)) options.unshift({ ...entry, updatedAt: 0 });
+        }
+        setDraftChoices(options.filter(x => !own || x.owner !== own.owner || x.revision !== own.revision));
+        if (legacy) setLegacyChoice(legacy);
+        if (memory) setDraftError("Черновик только в памяти вкладки. Скопируйте текст перед закрытием страницы.");
+        else if (storageFailed) setDraftError("Часть хранилища недоступна. Скопируйте текст перед закрытием страницы.");
+        draftReadyRef.current = true; setDraftReady(true);
+      } catch {
+        if (!cancelled) { setDraftError("Сохранение черновиков недоступно. Скопируйте текст перед закрытием страницы."); draftReadyRef.current = true; setDraftReady(true); }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [draftKey]);
+
+  useEffect(() => {
+    const identity = updateIdentityRef.current;
+    if (!draftKey || !identity?.accountId || !draftStageRef.current) return;
+    const timer = window.setTimeout(() => {
+      void persistStagedDraft(identity.accountId!, draftKey, () => canSaveDraft(identity)).catch(() => setDraftError("Не удалось сохранить черновик надолго. Скопируйте текст."));
+    }, 250);
     return () => window.clearTimeout(timer);
   }, [draftKey, draft]);
 
@@ -587,7 +731,33 @@ export function MessageInput({
   }, [prefillContent]);
 
   useEffect(() => {
-    return () => saveDraft(draftKeyRef.current, draftRef.current);
+    const flush = () => {
+      const identity = updateIdentityRef.current;
+      const key = draftKeyRef.current;
+      if (!identity?.accountId || !key) return;
+      const value = liveDraftText(draftRef.current, renderedDraftRef.current, textareaRef.current?.value);
+      if (value !== draftRef.current || !draftStageRef.current) {
+        draftRef.current = value;
+        try {
+          if (!canSaveDraft(identity)) throw new Error("identity");
+          const stage = stageDraft(identity.accountId, key, value);
+          draftStageRef.current = stage;
+          if (!stage.emergencySaved) rememberUnsafeDraft(identity.accountId, key, value);
+        } catch { rememberUnsafeDraft(identity.accountId, key, value); }
+      }
+      if (canSaveDraft(identity)) void persistStagedDraft(identity.accountId, key, () => canSaveDraft(identity)).catch(() => {});
+    };
+    const unregister = registerDraftLifecycle({ flush, resumed: error => {
+      if (error) { setDraftError("Не удалось восстановить сохранение черновика."); return; }
+      const identity = updateIdentityRef.current;
+      const key = draftKeyRef.current;
+      if (!identity?.accountId || !key || !canSaveDraft(identity)) return;
+      try { const stage = stageDraft(identity.accountId, key, draftRef.current); draftStageRef.current = stage; if (!stage.emergencySaved) setDraftError("Черновик только во вкладке. Скопируйте текст."); }
+      catch { rememberUnsafeDraft(identity.accountId, key, draftRef.current); setDraftError("Черновик только во вкладке. Скопируйте текст."); }
+    }});
+    const beforeUnload = (event: BeforeUnloadEvent) => { if (hasUnsafeDrafts()) { event.preventDefault(); event.returnValue = ""; } };
+    window.addEventListener("beforeunload", beforeUnload);
+    return () => { flush(); unregister(); window.removeEventListener("beforeunload", beforeUnload); };
   }, []);
 
   useEffect(() => {
@@ -721,6 +891,7 @@ export function MessageInput({
         previewUrl: isImage ? URL.createObjectURL(f) : null,
       });
     }
+    if (newOnes.length) pendingTransitionRef.current = true;
     setPending((prev) => {
       const next = [...prev, ...newOnes];
       if (next.length > MAX_PER_MESSAGE) {
@@ -775,12 +946,13 @@ export function MessageInput({
     }
     cleanupRecordingTimer();
     cleanupRecordingStream();
+    mediaRecorderRef.current = null;
     setIsRecording(false);
     setRecordingMs(0);
   };
 
   const startVoiceRecording = async () => {
-    if (disabled || sending || pending.length >= MAX_PER_MESSAGE || hideAttachments) return;
+    if (disabled || sending || recordingRequestRef.current || pending.length >= MAX_PER_MESSAGE || hideAttachments) return;
     if (isRecording) {
       stopVoiceRecording(true);
       return;
@@ -790,6 +962,8 @@ export function MessageInput({
       return;
     }
 
+    recordingRequestRef.current = true;
+    const generation = recordingGenerationRef.current;
     try {
       setAttachError(null);
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -799,14 +973,14 @@ export function MessageInput({
           autoGainControl: true,
         },
       });
+      if (!adoptRecordingStream(stream, recordingStreamRef, generation, recordingGenerationRef.current)) return;
       const preferredMime = pickVoiceMimeType();
-      const recorder = preferredMime
-        ? new MediaRecorder(stream, { mimeType: preferredMime })
-        : new MediaRecorder(stream);
+      const recorder = createOwnedVoiceRecorder(stream, recordingStreamRef, (ownedStream) => preferredMime
+        ? new MediaRecorder(ownedStream, { mimeType: preferredMime })
+        : new MediaRecorder(ownedStream));
 
       recordingChunksRef.current = [];
       recordingCancelledRef.current = false;
-      recordingStreamRef.current = stream;
       mediaRecorderRef.current = recorder;
 
       recorder.ondataavailable = (event) => {
@@ -843,16 +1017,22 @@ export function MessageInput({
         setRecordingMs(Date.now() - startedAt);
       }, 250);
     } catch {
+      if (generation !== recordingGenerationRef.current) return;
       cleanupRecordingTimer();
       cleanupRecordingStream();
+      mediaRecorderRef.current = null;
       setIsRecording(false);
       setRecordingMs(0);
       setAttachError("Не удалось получить доступ к микрофону.");
+    } finally {
+      if (generation === recordingGenerationRef.current) recordingRequestRef.current = false;
     }
   };
 
   useEffect(() => {
+    recordingGenerationRef.current += 1;
     return () => {
+      recordingGenerationRef.current += 1;
       recordingCancelledRef.current = true;
       const recorder = mediaRecorderRef.current;
       if (recorder && recorder.state !== "inactive") {
@@ -881,13 +1061,22 @@ export function MessageInput({
       return;
     }
     const sendingKey = draftKeyRef.current;
+    const sendingText = draftRef.current;
+    const sendingIdentity = updateIdentityRef.current;
+    const sendingStage = draftStageRef.current;
     const sendingFiles = pending;
     sendingRef.current = true;
     setSending(true);
     setAttachError(null);
     setSendError(null);
+    setPostSendNotice(null);
     setSendStage(sendingFiles.length ? "preparing" : "sending");
+    let sendConfirmed = false;
     try {
+      if (sendingKey && sendingIdentity?.accountId && sendingStage) {
+        try { await persistStagedDraft(sendingIdentity.accountId, sendingKey, () => canSaveDraft(sendingIdentity)); }
+        catch { setDraftError("Не удалось сохранить черновик надолго."); }
+      }
       // Конвертируем все File в base64 параллельно + для audio дополнительно
       // считаем waveform peaks (Telegram-style viz). computeWaveformPeaks
       // failure-safe возвращает null — backend fallback на linear progress.
@@ -910,16 +1099,29 @@ export function MessageInput({
       // В Client Mode парсинг отключён — клиенту не нужны task-shortcut'ы.
       const textMacro = hideSlashCommands || slash ? null : parseTextMacroCommand(trimmed);
       const outgoingText = textMacro ?? trimmed;
+      if (!composerMountedRef.current || !sendingIdentity || !identityCurrent(sendingIdentity) || sendingKey !== draftKeyRef.current) throw new Error("identity-or-chat-changed");
       setSendStage("sending");
       const ok = slash
         ? await onSend(slash.title, uploads, { type: slash.type })
         : await onSend(outgoingText, uploads);
       if (!ok) throw new Error("send-failed");
-      saveDraft(sendingKey, "");
-      if (draftKeyRef.current === sendingKey) {
-        setDraftValue("");
+      sendConfirmed = true;
+      const sameIdentity = !!sendingIdentity?.accountId && identityCurrent(sendingIdentity);
+      if (confirmedSendNeedsIdentityNotice(sameIdentity)) {
+        setPostSendNotice(sendFailureMessage(true));
+      }
+      let draftSaved = !sendingKey;
+      if (sendingKey && sendingIdentity?.accountId && sendingStage) {
+        draftSaved = await acknowledgeDraft(sendingIdentity.accountId, sendingKey, sendingStage.owner, sendingStage.revision);
+      }
+      if (draftKeyRef.current === sendingKey && sameIdentity && sendingIdentity?.accountId) {
+        const currentText = liveDraftText(draftRef.current, renderedDraftRef.current, textareaRef.current?.value);
+        if (draftSaved && draftStageRef.current?.revision === sendingStage?.revision && currentText === sendingText) {
+          draftStageRef.current = null; draftRef.current = ""; setDraft("");
+        } else if (currentText !== draftRef.current) setDraftValue(currentText);
         setActionType(null);
-        setSentFeedback(slash ? "Создано: " + ACTION_KIND[slash.type].label.toLowerCase() : "Сообщение отправлено");
+        setSentFeedback(!draftSaved ? "Отправлено, но не удалось обновить черновик. При необходимости очистите поле вручную."
+          : slash ? "Создано: " + ACTION_KIND[slash.type].label.toLowerCase() : "Сообщение отправлено");
         for (const p of sendingFiles) {
           if (p.previewUrl?.startsWith("blob:")) URL.revokeObjectURL(p.previewUrl);
         }
@@ -936,7 +1138,10 @@ export function MessageInput({
       }
     } catch {
       if (draftKeyRef.current === sendingKey) {
-        setSendError("Не удалось отправить. Текст и файлы сохранены здесь — попробуйте ещё раз.");
+        if (sendConfirmed) {
+          setSendError(null);
+          setPostSendNotice(sendFailureMessage(true));
+        } else setSendError(sendFailureMessage(false));
       }
     } finally {
       sendingRef.current = false;
@@ -1055,6 +1260,32 @@ export function MessageInput({
       aria-label="Отправка сообщения"
       aria-busy={sending}
     >
+      {draftError && <p className="ec-composer-feedback" role="alert">{draftError} <button type="button" onClick={async () => {
+        const identity = updateIdentityRef.current; const key = draftKeyRef.current;
+        if (!identity?.accountId || !key) return;
+        const snapshot = readUnsafeDraft(identity.accountId, key);
+        if (!snapshot) return;
+        try { await navigator.clipboard.writeText(snapshot.text); if (acknowledgeUnsafeCopy(identity.accountId, key, snapshot.revision)) setDraftError(null); } catch { setDraftError("Не удалось скопировать. Выделите и скопируйте текст вручную."); }
+      }}>Скопировать</button></p>}
+      {(draftChoices.length > 0 || legacyChoice) && <details className="ec-composer-feedback">
+        <summary>Восстановить сохранённый черновик</summary>
+        {draftChoices.map((item, i) => <div key={item.owner + item.revision}>
+          <button type="button" onClick={() => { if (draftRef.current.length) { setDraftError("Сначала сохраните или очистите текущий текст."); return; } setDraftValue(item.text); }}>Вариант {i + 1}: {item.text.slice(0, 60)}</button>
+          <button type="button" onClick={async () => {
+            const identity = updateIdentityRef.current; const key = draftKeyRef.current;
+            if (!identity?.accountId || !key || !identityCurrent(identity)) return;
+            try { const status = await discardOldDraftSnapshot(identity.accountId, key, item.owner, item.revision);
+              if (status === "in-use") setDraftError("Этот черновик открыт в другой вкладке.");
+              else setDraftChoices(current => current.filter(x => x.owner !== item.owner || x.revision !== item.revision));
+            } catch { setDraftError("Не удалось удалить выбранную копию. Обновите список и повторите."); }
+          }}>Удалить копию</button>
+        </div>)}
+        {legacyChoice && <button type="button" onClick={() => { if (draftRef.current.length) { setDraftError("Сначала сохраните или очистите текущий текст."); return; } setDraftValue(legacyChoice); setDraftChoices([]); setLegacyChoice(null); }}>Предыдущая версия: {legacyChoice.slice(0, 60)}</button>}
+      </details>}
+      {hasLegacyDraft(draftKey) && <details className="ec-composer-feedback">
+        <summary>Найден черновик прежней версии</summary>
+        <span>Его владелец неизвестен, поэтому текст не открывается автоматически. Для безопасного восстановления обратитесь к администратору: данные находятся в Local Storage этого сайта, ключ <code>{`eclipse-chat:draft:v1:${draftKey}`}</code>.</span>
+      </details>}
       {/* v1.5.15 — full-screen dropzone overlay (portal). Виден когда
           файл тащится над окном; drop → addFiles в pending. Composer
           drag handlers тоже работают (узкий drop на самом composer'е). */}
@@ -1204,6 +1435,7 @@ export function MessageInput({
           multiple
           accept="image/*,video/*,audio/*,application/pdf,text/plain,text/markdown,text/csv,application/json,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.oasis.opendocument.text,application/vnd.oasis.opendocument.spreadsheet,application/vnd.oasis.opendocument.presentation,application/zip,application/x-rar-compressed,application/vnd.rar,application/x-7z-compressed,application/x-tar,application/gzip,application/x-bzip2,.docx,.xlsx,.pptx,.odt,.ods,.odp,.csv,.zip,.rar,.7z,.tar,.gz,.bz2,.mkv,.avi"
           onChange={(e) => {
+            pickerOpenRef.current = false;
             if (e.target.files) addFiles(e.target.files);
             e.target.value = "";
           }}
@@ -1325,6 +1557,9 @@ export function MessageInput({
           rows={1}
           value={draft}
           onChange={(e) => handleDraftChange(e.target.value)}
+          onCompositionStart={() => { composingRef.current = true; }}
+          onCompositionUpdate={(e) => { setDraftValue(e.currentTarget.value); }}
+          onCompositionEnd={(e) => { composingRef.current = false; handleDraftChange(e.currentTarget.value); }}
           onPaste={handlePaste}
           onKeyDown={(e) => {
             // Если popover активен — Enter/Tab/Arrow keys обрабатывает он (capture).
@@ -1355,7 +1590,7 @@ export function MessageInput({
           }
           aria-label={actionType ? "Название задачи" : "Сообщение"}
           aria-describedby={sendError ? sendErrorId : undefined}
-          disabled={disabled || sending}
+          disabled={disabled || sending || !draftReady}
           className="ec-composer-textarea"
         />
         <button
@@ -1381,6 +1616,7 @@ export function MessageInput({
         <span>{sendError}</span>
         <button type="button" disabled={sending || disabled} onClick={() => void submit()}>Повторить</button>
       </div>}
+      {postSendNotice && <div className="ec-composer-error" role="status">{postSendNotice}</div>}
 
       {trigger && (
         <AutocompletePopover

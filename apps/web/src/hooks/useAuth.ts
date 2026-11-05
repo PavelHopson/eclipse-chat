@@ -1,280 +1,193 @@
-﻿import { useCallback, useEffect, useState } from "react";
-import { ApiError, apiJson, apiPath, refreshAccessToken } from "../lib/api";
-import { clearAllTokens, getAccess, getRefresh, migrateLegacyToken, setTokenPair } from "../lib/storage";
-import {
-  ACCOUNT_VAULT_EVENT,
-  activateStoredAccount,
-  getActiveAccountId,
-  listStoredAccounts,
-  persistCurrentSessionFor,
-  removeStoredAccount,
-  restoreActiveAccountTokens,
-  upsertAccountSession,
-  updateStoredAccountUser,
-  type StoredAccount,
-} from "../lib/accountVault";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { AUTH_PROTOCOL_HEADER, CLIENT_UPDATE_EVENT, ClientUpdateRequiredError, SessionUpgradeRequiredError, ApiError, apiJsonForAuth, apiPath, assertClientCanRequest, enforceClientUpdate, isClientUpdateRequired, onTokenRefresh } from "../lib/api";
+import { AUTH_STATE_KEY, AuthStateChangedError, bindAuthScreenIdentity, bindDisplayedIdentity, captureAuth, captureAuthScreen, captureDisplayedAuth, hasLegacyAccountData, identityCurrent, initializeAuthStore } from "../lib/storage";
+import { activateStoredAccount, finishLogout, listStoredAccounts, removeStoredAccount, restoreSelectionIfCurrent, updateStoredAccountUser, upsertAccountSession, type StoredAccount } from "../lib/accountVault";
 
-export type PublicUser = {
-  id: string;
-  email: string;
-  displayName: string;
-  avatar: string | null;
-  bio: string | null;
-  createdAt: string;
-  /** v1.2.6 Platform Admin (trek P1) — флаг владельца платформы.
-   *  По нему фронт показывает иконку Platform Admin в топбаре.
-   *  По умолчанию false. */
-  isPlatformOwner?: boolean;
-};
-
-type AuthResponse = {
-  accessToken?: string;
-  refreshToken?: string;
-  token?: string;
-  user?: PublicUser;
-};
-
+export type PublicUser = { id: string; email: string; displayName: string; avatar: string | null; bio: string | null; createdAt: string; isPlatformOwner?: boolean };
+type AuthResponse = { accessToken?: string; refreshToken?: string; token?: string; user?: PublicUser };
 export type AuthView = "loading" | "auth" | "app";
 
-/**
- * Глобальный auth-стейт: текущий user, view (loading/auth/app), действия
- * login/register/logout.
- *
- * Используется в App.tsx один раз через useAuth() и пробрасывается дальше
- * через props (не Context — у нас один потребитель, AppShell).
- */
 export function useAuth() {
   const [view, setView] = useState<AuthView>("loading");
   const [user, setUser] = useState<PublicUser | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [accounts, setAccounts] = useState<StoredAccount[]>(() => listStoredAccounts());
-  const clearError = useCallback(() => setError(null), []);
-
-  /** Пересоздание Socket после смены access-токена. */
+  const [accounts, setAccounts] = useState<StoredAccount[]>([]);
   const [socketRev, setSocketRev] = useState(0);
+  const selected = useRef<number | null>(null);
+  const clearError = useCallback(() => setError(null), []);
   const bumpSocketRev = useCallback(() => setSocketRev((v) => v + 1), []);
-
-  /** Загрузка текущего user'а — при boot и после login. */
   const loadMe = useCallback(async () => {
-    migrateLegacyToken();
-    if (!getAccess() && !getRefresh()) restoreActiveAccountTokens();
-    if (!getAccess() && !getRefresh()) {
-      setView("auth");
-      return;
-    }
+    let intent: ReturnType<typeof captureAuth>["identity"] | null = null;
     try {
-      const data = await apiJson<{ user: PublicUser | null }>("/api/auth/me");
-      if (data.user) {
-        setUser(data.user);
-        setAccounts(persistCurrentSessionFor(data.user));
-        setView("app");
-      } else {
-        clearAllTokens();
-        setUser(null);
-        setView("auth");
-      }
-    } catch (e) {
-      if (e instanceof ApiError && (e.status === 401 || e.status === 403)) {
-        clearAllTokens();
-        setUser(null);
-        setView("auth");
-      } else {
-        /* сетевая ошибка — оставляем loading; UI покажет общую ошибку отдельно */
-        setView("auth");
-      }
-    }
-  }, []);
-
-  /** Boot: один раз при mount. */
-  useEffect(() => {
-    void loadMe();
-  }, [loadMe]);
-
-  useEffect(() => {
-    const sync = () => setAccounts(listStoredAccounts());
-    window.addEventListener(ACCOUNT_VAULT_EVENT, sync);
-    window.addEventListener("storage", sync);
-    return () => {
-      window.removeEventListener(ACCOUNT_VAULT_EVENT, sync);
-      window.removeEventListener("storage", sync);
-    };
-  }, []);
-
-  const login = useCallback(
-    async (
-      email: string,
-      password: string,
-      opts?: { totpCode?: string; recoveryCode?: string },
-    ): Promise<{ success: boolean; needs2FA?: boolean }> => {
-      setError(null);
-      try {
-        const body: Record<string, unknown> = { email, password };
-        if (opts?.totpCode) body.totpCode = opts.totpCode;
-        if (opts?.recoveryCode) body.recoveryCode = opts.recoveryCode;
-        const res = await fetch(apiPath("api/auth/login"), {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        });
-        const data = (await res.json().catch(() => ({}))) as AuthResponse & {
-          error?: string;
-          twoFactorRequired?: boolean;
-        };
-        if (!res.ok) {
-          setError(data.error ?? "Ошибка входа");
-          return {
-            success: false,
-            needs2FA: Boolean(data.twoFactorRequired),
-          };
-        }
-        const acc = data.accessToken ?? data.token;
-        if (acc && data.refreshToken) {
-          setTokenPair(acc, data.refreshToken);
-        }
-        if (data.user) {
-          setUser(data.user);
-          if (acc && data.refreshToken) {
-            setAccounts(upsertAccountSession(data.user, acc, data.refreshToken));
-          }
-        }
-        setView("app");
-        bumpSocketRev();
-        return { success: true };
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Сетевая ошибка");
-        return { success: false };
-      }
-    },
-    [bumpSocketRev],
-  );
-
-  const register = useCallback(
-    async (email: string, password: string, displayName: string) => {
-      setError(null);
-      try {
-        const res = await fetch(apiPath("api/auth/register"), {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password, displayName: displayName || "User" }),
-        });
-        const data = (await res.json().catch(() => ({}))) as AuthResponse & { error?: string };
-        if (!res.ok) {
-          const message = data.error ?? "Ошибка регистрации";
-          setError(message);
-          return { success: false, error: message };
-        }
-        const acc = data.accessToken ?? data.token;
-        if (acc && data.refreshToken) {
-          setTokenPair(acc, data.refreshToken);
-        }
-        if (data.user) {
-          setUser(data.user);
-          if (acc && data.refreshToken) {
-            setAccounts(upsertAccountSession(data.user, acc, data.refreshToken));
-          }
-        }
-        setView("app");
-        bumpSocketRev();
-        return { success: true };
-      } catch (e) {
-        const message = e instanceof Error ? e.message : "Сетевая ошибка";
-        setError(message);
-        return { success: false, error: message };
-      }
-    },
-    [bumpSocketRev],
-  );
-
-  const logout = useCallback(async () => {
-    const activeAccountId = user?.id ?? getActiveAccountId();
-    let refreshToken = getRefresh();
-    let accessToken = getAccess();
-    if (accessToken && refreshToken) {
-      try {
-        let response = await fetch(apiPath("api/auth/logout"), {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify({ refreshToken: refreshToken ?? undefined }),
-        });
-        if (response.status === 401) {
-          await refreshAccessToken();
-          accessToken = getAccess();
-          refreshToken = getRefresh();
-          if (accessToken && refreshToken) {
-            response = await fetch(apiPath("api/auth/logout"), {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${accessToken}`,
-              },
-              body: JSON.stringify({ refreshToken }),
-            });
-          }
-        }
-      } catch {
-        /* logout best-effort — даже если backend упал, локально чистим */
-      }
-    }
-    const remaining = activeAccountId ? removeStoredAccount(activeAccountId) : [];
-    setAccounts(remaining);
-    const next = remaining[0] ? activateStoredAccount(remaining[0].id) : null;
-    if (next) {
-      setUser(next.user);
-      setView("app");
-    } else {
-      clearAllTokens();
-      setUser(null);
-      setView("auth");
-    }
-    bumpSocketRev();
-  }, [bumpSocketRev, user?.id]);
-
-  const switchAccount = useCallback(async (accountId: string): Promise<boolean> => {
-    if (accountId === user?.id) return true;
-    const previousId = user?.id ?? getActiveAccountId();
-    const next = activateStoredAccount(accountId);
-    if (!next) return false;
-    setError(null);
-    try {
-      const data = await apiJson<{ user: PublicUser | null }>("/api/auth/me");
-      if (!data.user || data.user.id !== accountId) throw new Error("Сессия аккаунта истекла");
-      setUser(data.user);
-      setAccounts(updateStoredAccountUser(data.user));
-      setView("app");
-      bumpSocketRev();
-      return true;
-    } catch (cause) {
-      removeStoredAccount(accountId);
-      if (previousId) activateStoredAccount(previousId);
+      await initializeAuthStore();
+      const snapshot = captureAuth();
+      intent = snapshot.identity;
+      selected.current = snapshot.identity.revision;
       setAccounts(listStoredAccounts());
-      setError(cause instanceof Error ? cause.message : "Не удалось переключить аккаунт");
+      if (!snapshot.account) { bindAuthScreenIdentity(snapshot.identity); setUser(null); setView("auth"); return { ok: false as const, error: "Аккаунт не выбран" }; }
+      const data = await apiJsonForAuth<{ user: PublicUser | null }>(snapshot.identity, "api/auth/me");
+      if (!identityCurrent(snapshot.identity)) return { ok: false as const, error: "Аккаунт изменился. Повторите действие." };
+      if (!data.user || data.user.id !== snapshot.account.id) throw new ApiError("Сессия аккаунта недоступна", 401, null);
+      await updateStoredAccountUser(data.user, snapshot.identity);
+      if (!identityCurrent(snapshot.identity)) return { ok: false as const, error: "Аккаунт изменился. Повторите действие." };
+      bindDisplayedIdentity(snapshot.identity); setUser(data.user); setAccounts(listStoredAccounts()); setView("app");
+      return { ok: true as const };
+    } catch (cause) {
+      if (cause instanceof AuthStateChangedError || (intent && !identityCurrent(intent))) return { ok: false as const, error: "Аккаунт изменился. Повторите действие." };
+      if (intent) bindAuthScreenIdentity(intent); else bindDisplayedIdentity(null);
+      setUser(null); setView("auth");
+      const message = cause instanceof SessionUpgradeRequiredError ? cause.message : intent?.accountId ? (cause instanceof ApiError && (cause.status === 401 || cause.status === 403) ? "Сессию не удалось подтвердить. Повторите вход." : "Профиль не удалось проверить. Сессия сохранена; проверьте соединение и повторите вход.") : cause instanceof Error ? cause.message : "Не удалось проверить вход";
+      setError(message);
+      return { ok: false as const, error: message };
+    }
+  }, []);
+  useEffect(() => { void loadMe(); }, [loadMe]);
+  useEffect(() => onTokenRefresh(bumpSocketRev), [bumpSocketRev]);
+  useEffect(() => {
+    const expired = () => {
+      if (!isClientUpdateRequired()) setError("Не удалось обновить вход. Проверьте соединение или войдите снова.");
+    };
+    window.addEventListener("ec:socket-auth-expired", expired);
+    return () => window.removeEventListener("ec:socket-auth-expired", expired);
+  }, []);
+  useEffect(() => {
+    // Keep the current screen and drafts mounted, while disconnecting the socket.
+    const requireUpdate = () => { bindDisplayedIdentity(null); bumpSocketRev(); };
+    window.addEventListener(CLIENT_UPDATE_EVENT, requireUpdate);
+    return () => window.removeEventListener(CLIENT_UPDATE_EVENT, requireUpdate);
+  }, [bumpSocketRev]);
+  useEffect(() => {
+    const showWarning = (event: Event) => {
+      const detail = (event as CustomEvent<unknown>).detail;
+      if (typeof detail === "string") setError(detail);
+    };
+    window.addEventListener("ec:auth-warning", showWarning);
+    return () => window.removeEventListener("ec:auth-warning", showWarning);
+  }, []);
+  useEffect(() => {
+    const changed = () => { bindDisplayedIdentity(null); setUser(null); setView("loading"); bumpSocketRev(); void loadMe(); };
+    window.addEventListener("ec:auth-password-changed", changed);
+    return () => window.removeEventListener("ec:auth-password-changed", changed);
+  }, [bumpSocketRev, loadMe]);
+  useEffect(() => {
+    const sync = (event: StorageEvent) => {
+      if (event.key !== AUTH_STATE_KEY && event.key !== null) return;
+      try {
+        const snapshot = captureAuth();
+        setAccounts(listStoredAccounts());
+        bumpSocketRev();
+        if (snapshot.identity.revision !== selected.current) {
+          selected.current = snapshot.identity.revision;
+          bindDisplayedIdentity(null); setUser(null); setView("loading");
+          void loadMe();
+        }
+      } catch { setUser(null); setView("auth"); setError("Не удалось безопасно синхронизировать аккаунты"); }
+    };
+    window.addEventListener("storage", sync);
+    return () => window.removeEventListener("storage", sync);
+  }, [bumpSocketRev, loadMe]);
+
+  const login = useCallback(async (email: string, password: string, opts?: { totpCode?: string; recoveryCode?: string }): Promise<{ success: boolean; needs2FA?: boolean; error?: string }> => {
+    setError(null);
+    let sessionMayExist = false;
+    try {
+      assertClientCanRequest();
+      const expected = (view === "auth" ? captureAuthScreen() : captureDisplayedAuth()).identity;
+      const body: Record<string, unknown> = { email, password, ...opts };
+      sessionMayExist = true; // request may have committed even if its response is lost
+      const res = await fetch(apiPath("api/auth/login"), { method: "POST", headers: { "Content-Type": "application/json", [AUTH_PROTOCOL_HEADER]: "2" }, body: JSON.stringify(body) });
+      await enforceClientUpdate(res, () => { if (!identityCurrent(expected)) throw new AuthStateChangedError(); });
+      if (res.status >= 400 && res.status < 500) sessionMayExist = false;
+      const data = await res.json().catch(() => ({})) as AuthResponse & { error?: string; twoFactorRequired?: boolean };
+      if (!identityCurrent(expected)) throw new AuthStateChangedError();
+      if (!res.ok) { if (sessionMayExist) throw new Error("Неизвестный исход входа"); const message = data.error ?? "Ошибка входа"; setError(message); return { success: false, needs2FA: Boolean(data.twoFactorRequired), error: message }; }
+      const access = data.accessToken ?? data.token;
+      if (!access || !data.refreshToken || !data.user) throw new Error("Сервер вернул неполную сессию");
+      await upsertAccountSession(data.user, access, data.refreshToken, expected);
+      sessionMayExist = false; // locally associated with the exact intended account
+      bumpSocketRev(); const verified = await loadMe(); return verified.ok ? { success: true } : { success: false, error: verified.error };
+    } catch (cause) {
+      const message = cause instanceof ClientUpdateRequiredError ? cause.message : sessionMayExist ? "Вход не завершён на устройстве, но сервер мог создать сеанс. Проверьте активные сеансы аккаунта." : cause instanceof Error ? cause.message : "Сетевая ошибка";
+      setError(message); return { success: false, error: message };
+    }
+  }, [bumpSocketRev, loadMe, view]);
+  const register = useCallback(async (email: string, password: string, displayName: string) => {
+    setError(null);
+    let sessionMayExist = false;
+    try {
+      assertClientCanRequest();
+      const expected = (view === "auth" ? captureAuthScreen() : captureDisplayedAuth()).identity;
+      sessionMayExist = true; // registration/session outcome is uncertain after network loss
+      const res = await fetch(apiPath("api/auth/register"), { method: "POST", headers: { "Content-Type": "application/json", [AUTH_PROTOCOL_HEADER]: "2" }, body: JSON.stringify({ email, password, displayName: displayName || "User" }) });
+      await enforceClientUpdate(res, () => { if (!identityCurrent(expected)) throw new AuthStateChangedError(); });
+      if (res.status >= 400 && res.status < 500) sessionMayExist = false;
+      const data = await res.json().catch(() => ({})) as AuthResponse & { error?: string };
+      if (!identityCurrent(expected)) throw new AuthStateChangedError();
+      if (!res.ok) throw new Error(data.error ?? "Ошибка регистрации");
+      const access = data.accessToken ?? data.token;
+      if (!access || !data.refreshToken || !data.user) throw new Error("Сервер вернул неполную сессию");
+      await upsertAccountSession(data.user, access, data.refreshToken, expected);
+      sessionMayExist = false;
+      bumpSocketRev(); const verified = await loadMe(); return verified.ok ? { success: true } : { success: false, error: verified.error };
+    } catch (cause) {
+      const message = cause instanceof ClientUpdateRequiredError ? cause.message : sessionMayExist ? "Регистрация не завершена на устройстве, но сервер мог создать аккаунт и сеанс. Попробуйте войти и проверьте активные сеансы." : cause instanceof Error ? cause.message : "Сетевая ошибка";
+      setError(message); return { success: false, error: message };
+    }
+  }, [bumpSocketRev, loadMe, view]);
+  const logout = useCallback(async () => {
+    const capture = captureDisplayedAuth();
+    if (!capture.account) return;
+    let confirmed = false;
+    try {
+      let account = capture.account;
+      let response = await fetch(apiPath("api/auth/logout"), { method: "POST", headers: { "Content-Type": "application/json", [AUTH_PROTOCOL_HEADER]: "2", Authorization: `Bearer ${account.accessToken}` }, body: JSON.stringify({ refreshToken: account.refreshToken }) });
+      if (response.status === 426) await enforceClientUpdate(response, () => { if (!identityCurrent(capture.identity)) throw new AuthStateChangedError(); });
+      if (response.status === 401) {
+        if (identityCurrent(capture.identity)) setError("Выход на сервере не подтверждён. Обновите вход и повторите действие.");
+        return; // Never replay a mutating request or discard its session on 401.
+      }
+      confirmed = response.ok;
+    } catch (cause) {
+      if (cause instanceof ClientUpdateRequiredError || cause instanceof SessionUpgradeRequiredError || cause instanceof AuthStateChangedError) {
+        if (identityCurrent(capture.identity)) setError(cause.message);
+        return; // Gate/reselection must never delete or switch a stored account.
+      }
+      /* The server outcome can be unknown. */
+    }
+    const result = await finishLogout(capture.identity, confirmed);
+    setAccounts(result.accounts);
+    if (result.activeChanged) { bindDisplayedIdentity(null); bumpSocketRev(); setUser(null); setView("loading"); await loadMe(); }
+    if (!confirmed) setError("Выход на сервере не подтверждён. Проверьте активные сеансы аккаунта.");
+  }, [bumpSocketRev, loadMe]);
+  const switchAccount = useCallback(async (accountId: string): Promise<boolean> => {
+    const previous = captureDisplayedAuth();
+    if (accountId === previous.identity.accountId) return true;
+    const next = await activateStoredAccount(accountId);
+    if (!next) return false;
+    const expected = next.selectionIdentity;
+    if (!identityCurrent(expected)) return false;
+    bindDisplayedIdentity(null); setError(null); setUser(null); setView("loading"); bumpSocketRev();
+    try {
+      const data = await apiJsonForAuth<{ user: PublicUser | null }>(expected, "api/auth/me");
+      if (!data.user || data.user.id !== accountId) throw new Error("Сессия аккаунта истекла");
+      await updateStoredAccountUser(data.user, expected);
+      if (!identityCurrent(expected)) throw new AuthStateChangedError();
+      selected.current = expected.revision; bindDisplayedIdentity(expected); setUser(data.user); setAccounts(listStoredAccounts()); setView("app"); return true;
+    } catch (cause) {
+      const restored = await restoreSelectionIfCurrent(expected, previous.identity.accountId);
+      if (restored) { await loadMe(); setError(cause instanceof Error ? cause.message : "Не удалось переключить аккаунт"); }
       return false;
     }
-  }, [bumpSocketRev, user?.id]);
-
+  }, [bumpSocketRev, loadMe]);
   const forgetAccount = useCallback(async (accountId: string) => {
-    if (accountId === user?.id) {
-      await logout();
+    if (hasLegacyAccountData(accountId)) {
+      setError("Удаление аккаунта отложено: в старой версии сохранены данные входа. Сначала завершите старые сеансы.");
       return;
     }
-    setAccounts(removeStoredAccount(accountId));
-  }, [logout, user?.id]);
-
-  return {
-    view,
-    user,
-    error,
-    login,
-    register,
-    logout,
-    accounts,
-    switchAccount,
-    forgetAccount,
-    socketRev,
-    bumpSocketRev,
-    clearError,
-  };
+    const capture = captureDisplayedAuth();
+    if (accountId === capture.identity.accountId) { await logout(); return; }
+    const account = listStoredAccounts().find((a) => a.id === accountId);
+    if (account) setAccounts(await removeStoredAccount(accountId, account.generation));
+  }, [logout]);
+  return { view, user, error, login, register, logout, accounts, switchAccount, forgetAccount, socketRev, bumpSocketRev, clearError };
 }

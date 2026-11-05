@@ -47,6 +47,9 @@ async function buildApp(options: {
   role?: string | null;
   channel?: null | { id: string; type: string; serverId: string; internal: boolean; server: { mode: "ENGINEERING" | "CLIENT" } };
   removeRejects?: boolean;
+  removeReturnsFalse?: boolean;
+  accessLookupRejects?: boolean;
+  user?: { bannedAt: Date | null; deletedAt: Date | null } | null;
 } = {}) {
   const app = Fastify({ logger: false });
   await app.register(rateLimit, { global: false });
@@ -61,17 +64,25 @@ async function buildApp(options: {
   );
   const removeParticipant = options.removeRejects
     ? vi.fn(async () => { throw new Error("fixture private upstream failure"); })
-    : vi.fn(async () => true);
+    : vi.fn(async () => !options.removeReturnsFalse);
+  const findMemberAccess = vi.fn(async () => {
+    if (options.accessLookupRejects) throw new Error("fixture sensitive database failure");
+    if (options.role === null) return null;
+    return {
+      role: options.role ?? "MEMBER",
+      user: options.user === undefined ? { bannedAt: null, deletedAt: null } : options.user,
+    };
+  });
   await registerLivekitWebhookRoutes(app, {
     config: () => cfg,
     findChannel: vi.fn(async () => options.channel === undefined
       ? { id: "channel-a", type: "VOICE", serverId: "server-a", internal: false, server: { mode: "ENGINEERING" as const } }
       : options.channel),
-    findMemberRole: vi.fn(async () => options.role === undefined ? "MEMBER" : options.role),
+    findMemberAccess,
     removeParticipant,
   });
   await app.ready();
-  return { app, removeParticipant };
+  return { app, removeParticipant, findMemberAccess };
 }
 
 async function injectSigned(app: Awaited<ReturnType<typeof buildApp>>["app"], value: unknown) {
@@ -140,7 +151,7 @@ describe("LiveKit participant authorization webhook", () => {
   });
 
   it("rejects forged and body-mismatched signatures before ACL work", async () => {
-    const { app, removeParticipant } = await buildApp();
+    const { app, removeParticipant, findMemberAccess } = await buildApp();
     const rawBody = JSON.stringify(participantEvent());
     const forged = await app.inject({
       method: "POST",
@@ -157,7 +168,49 @@ describe("LiveKit participant authorization webhook", () => {
     });
     expect(forged.statusCode).toBe(401);
     expect(tampered.statusCode).toBe(401);
+    expect(findMemberAccess).not.toHaveBeenCalled();
     expect(removeParticipant).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it.each([
+    ["banned", { bannedAt: new Date(), deletedAt: null }],
+    ["deleted", { bannedAt: null, deletedAt: new Date() }],
+    ["missing", null],
+  ])("removes a participant whose account is %s", async (_name, user) => {
+    const { app, removeParticipant } = await buildApp({ user });
+    const response = await injectSigned(app, participantEvent());
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ ok: true, action: "removed" });
+    expect(removeParticipant).toHaveBeenCalledWith("eclipse-channel-a", sessionIdentity, cfg);
+    await app.close();
+  });
+
+  it("removes a participant when account access cannot be checked", async () => {
+    const { app, removeParticipant } = await buildApp({ accessLookupRejects: true });
+    const response = await injectSigned(app, participantEvent());
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ ok: true, action: "removed" });
+    expect(response.body).not.toMatch(/fixture|sensitive|database/i);
+    expect(removeParticipant).toHaveBeenCalledOnce();
+    await app.close();
+  });
+
+  it("does not claim removal when LiveKit returns an ambiguous 404", async () => {
+    const { app, removeParticipant } = await buildApp({ user: null, removeReturnsFalse: true });
+    const response = await injectSigned(app, participantEvent());
+    expect(response.statusCode).toBe(503);
+    expect(response.json()).toEqual({ error: "Voice authorization unavailable" });
+    expect(removeParticipant).toHaveBeenCalledOnce();
+    await app.close();
+  });
+
+  it("returns retryable failure when account check and removal both fail", async () => {
+    const { app, removeParticipant } = await buildApp({ accessLookupRejects: true, removeRejects: true });
+    const response = await injectSigned(app, participantEvent());
+    expect(response.statusCode).toBe(503);
+    expect(response.body).not.toMatch(/fixture|sensitive|database|private/i);
+    expect(removeParticipant).toHaveBeenCalledOnce();
     await app.close();
   });
 

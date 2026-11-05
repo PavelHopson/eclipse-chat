@@ -112,6 +112,12 @@ export async function reconcileUserServerRealtimeAccess(
   await reconcileServerSockets(serverId, userId);
 }
 
+/** Disconnect a revoked session via the configured adapter (cross-process requires a shared adapter). */
+export function disconnectSession(sessionId: string): void {
+  if (!io || !sessionId) return;
+  io.in(`auth:session:${sessionId}`).disconnectSockets(true);
+}
+
 /**
  * v1.2.6 Platform Admin (trek P1) — принудительный disconnect всех
  * сокетов конкретного user'а. Используется при бане: ban-route ставит
@@ -120,6 +126,13 @@ export async function reconcileUserServerRealtimeAccess(
  *
  * Возвращает количество отключённых сокетов.
  */
+/** Disconnect every socket for an account through the configured adapter. */
+export function disconnectUserSockets(userId: string): void {
+  if (!io || !userId) return;
+  io.in(`auth:user:${userId}`).disconnectSockets(true);
+  io.in(`user:${userId}`).disconnectSockets(true);
+}
+
 export function disconnectUser(userId: string): number {
   if (!io) return 0;
   let count = 0;
