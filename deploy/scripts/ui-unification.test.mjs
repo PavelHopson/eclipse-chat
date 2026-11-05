@@ -9,11 +9,16 @@ const source = path => readFileSync(join(root, path), "utf8");
 
 test("account vault stores session slots but never passwords", () => {
   const vault = source("apps/web/src/lib/accountVault.ts");
-  assert.match(vault, /ec\.auth\.accounts\.v1/);
+  const storage = source("apps/web/src/lib/storage.ts");
+  assert.match(storage, /AUTH_STATE_KEY\s*=\s*"ec\.auth\.state\.v2"/);
+  assert.match(storage, /LEGACY_ACCOUNTS\s*=\s*"ec\.auth\.accounts\.v1"/);
+  assert.match(vault, /withAuthMutation/);
   assert.match(vault, /activateStoredAccount/);
   assert.match(vault, /refreshToken/);
   assert.doesNotMatch(vault, /password\s*:/i);
   assert.doesNotMatch(vault, /localStorage\.setItem\([^\n]*password/i);
+  assert.doesNotMatch(storage, /password\s*:/i);
+  assert.doesNotMatch(storage, /localStorage\.setItem\([^\n]*password/i);
 });
 
 test("account switching is reachable from both status and settings", () => {
