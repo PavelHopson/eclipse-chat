@@ -42,7 +42,7 @@ async function main(){
  const service=new EcosystemIdentityService(env);if(service.issuer!=='https://app.star-crm.ru/eclipse-chat')throw Error('Unexpected issuer');
  stage='migration-check';
  const {PrismaClient}=require('@prisma/client');const db=new PrismaClient({datasources:{db:{url:env.DATABASE_URL}},log:[]});
- try{const rows=await db.$queryRawUnsafe('SELECT to_regclass(\'public."EcosystemSession"\') AS name');if(!rows[0]?.name)throw Error('Migration missing');}finally{await db.$disconnect();}
+ try{const rows=await db.$queryRawUnsafe('SELECT to_regclass(\'public."EcosystemSession"\')::text AS name');if(!rows[0]?.name)throw Error('Migration missing');}finally{await db.$disconnect();}
  stage='validate-settings';
  const updates=updatesFor(env);const next=replaceSettings(before,updates);const configured=new EcosystemIdentityService(parse(next));
  if(!configured.enabled||!configured.allowsSessions(CLIENT.id))throw Error('Invalid proposed settings');
