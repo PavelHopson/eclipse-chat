@@ -5,7 +5,7 @@ import {
   EcosystemIdentityService,
 } from "../src/security/ecosystemIdentity.js";
 
-function createService() {
+function createService(extra: NodeJS.ProcessEnv = {}) {
   const { privateKey } = generateKeyPairSync("ed25519");
   const privateDer = privateKey.export({ format: "der", type: "pkcs8" });
   return new EcosystemIdentityService({
@@ -13,6 +13,7 @@ function createService() {
     ECOSYSTEM_IDENTITY_ISSUER: "https://chat.example.test/eclipse-chat",
     ECOSYSTEM_IDENTITY_KEY_ID: "test-key-v1",
     ECOSYSTEM_IDENTITY_REDIRECT_URIS: "https://dnd.example.test/",
+    ...extra,
   });
 }
 
@@ -115,5 +116,40 @@ describe("ecosystem identity issuer", () => {
       redirectUri: "https://dnd.example.test/",
       subject: "user-1",
     })).toThrow(/not configured/i);
+  });
+});
+
+
+describe("isolated project identity clients", () => {
+  const redirectUri = "https://library.example.test/editor-api/api/editor/identity/callback";
+  const configured = () => createService({ ECOSYSTEM_IDENTITY_CLIENTS_JSON: JSON.stringify([{id:"eclipse-library",redirectUris:[redirectUri]}]) });
+  const request = {clientId:"eclipse-library",redirectUri,subject:"editor-123",displayName:"Editor",codeChallenge:challenge("v".repeat(64))};
+  it("keeps new clients disabled until explicitly configured", () => {
+    expect(() => createService().issueCode(request)).toThrow(/Unknown client/);
+  });
+  it("uses the project id as audience and does not inherit DnD redirects", () => {
+    const service=configured();
+    expect(() => service.issueCode({...request,redirectUri:"https://dnd.example.test/"})).toThrow(/Unknown client/);
+    const issued=service.issueCode(request);
+    const result=service.exchangeCode({clientId:request.clientId,redirectUri,code:issued.code,codeVerifier:"v".repeat(64)});
+    const payload=JSON.parse(Buffer.from(result.access_token.split(".")[1]!,"base64url").toString());
+    expect(payload.aud).toBe("eclipse-library");
+    expect(payload).not.toHaveProperty("role");
+    expect(() => service.exchangeCode({clientId:request.clientId,redirectUri,code:issued.code,codeVerifier:"v".repeat(64)})).toThrow(/invalid or expired/);
+  });
+  it("rejects using a Library code as a DnD code", () => {
+    const service=configured(); const issued=service.issueCode(request);
+    expect(() => service.exchangeCode({clientId:"eclipse-dnd-forge",redirectUri,code:issued.code,codeVerifier:"v".repeat(64)})).toThrow(/invalid or expired/);
+  });
+  it.each(["https://library.example.test.evil.test/",redirectUri+"?next=https://evil.test",redirectUri+"/", "http://library.example.test/"])("rejects non-exact redirect %s", uri => {
+    expect(() => configured().issueCode({...request,redirectUri:uri})).toThrow(/Unknown client/);
+  });
+  it.each([
+    [{id:"eclipse-dnd-forge",redirectUris:[redirectUri]}],
+    [{id:"eclipse-library",redirectUris:["javascript:alert(1)"]}],
+    [{id:"eclipse-library",redirectUris:[]}],
+    [{id:"eclipse-library",redirectUris:[redirectUri]},{id:"eclipse-library",redirectUris:[redirectUri]}],
+  ])("rejects invalid client configuration", entries => {
+    expect(() => createService({ECOSYSTEM_IDENTITY_CLIENTS_JSON:JSON.stringify(entries)})).toThrow();
   });
 });

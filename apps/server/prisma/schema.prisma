@@ -812,6 +812,19 @@ model AutomationAuditReview {
   @@index([serverId, importedByUserId, reviewStatus])
 }
 
+model EcosystemSession {
+  id               String       @id @default(cuid())
+  tokenHash        String       @unique
+  clientId         String
+  refreshSessionId String
+  refreshSession   RefreshToken @relation(fields: [refreshSessionId], references: [id], onDelete: Cascade)
+  expiresAt        DateTime
+  createdAt        DateTime     @default(now())
+
+  @@index([refreshSessionId, clientId])
+  @@index([expiresAt])
+}
+
 model RefreshToken {
   id         String    @id @default(cuid())
   tokenHash  String    @unique
@@ -833,6 +846,7 @@ model RefreshToken {
   /// показывает «Активна сейчас» если lastSeenAt < 5 min ago. NULL для
   /// legacy rows до v1.5.52.
   lastSeenAt DateTime?
+  ecosystemSessions EcosystemSession[]
 
   @@index([userId, lastSeenAt])
 }

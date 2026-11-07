@@ -26,11 +26,13 @@ type PendingCode = {
   expiresAt: number;
   redirectUri: string;
   subject: string;
+  sessionId?: string;
 };
 
 export type EcosystemIdentityClient = {
   audience: string;
   id: string;
+  sessions?: boolean;
   redirectUris: ReadonlySet<string>;
 };
 
@@ -81,6 +83,24 @@ function parseRedirectUris(value: string | undefined): ReadonlySet<string> {
     throw new Error("ECOSYSTEM_IDENTITY_REDIRECT_URIS must contain between 1 and 8 exact URIs");
   }
   return new Set(entries);
+}
+
+function parseAdditionalClients(value: string | undefined): EcosystemIdentityClient[] {
+  if (!value?.trim()) return [];
+  let entries: unknown;
+  try { entries = JSON.parse(value); } catch { throw new Error("ECOSYSTEM_IDENTITY_CLIENTS_JSON must be valid JSON"); }
+  if (!Array.isArray(entries) || entries.length > 16) throw new Error("Identity clients must be an array of at most 16 entries");
+  const ids = new Set([DEFAULT_CLIENT_ID]);
+  return entries.map((entry) => {
+    if (!entry || typeof entry.id !== "string" || !/^eclipse-[a-z0-9-]{1,48}$/.test(entry.id) || ids.has(entry.id)
+      || (entry.sessions !== undefined && typeof entry.sessions !== "boolean")
+      || !Array.isArray(entry.redirectUris) || entry.redirectUris.length < 1 || entry.redirectUris.length > 8
+      || entry.redirectUris.some((uri: unknown) => typeof uri !== "string" || !uri)) {
+      throw new Error("Identity clients require unique ids and 1-8 exact redirect URIs");
+    }
+    ids.add(entry.id);
+    return Object.freeze({ id: entry.id, audience: entry.id, sessions: entry.sessions === true, redirectUris: new Set<string>(entry.redirectUris.map(normalizeRedirectUri)) });
+  });
 }
 
 function parsePrivateKey(value: string | undefined): KeyObject | null {
@@ -187,6 +207,7 @@ function signJwt(
 export class EcosystemIdentityService {
   private readonly pendingCodes = new Map<string, PendingCode>();
   readonly client: EcosystemIdentityClient;
+  private readonly clients: ReadonlyMap<string, EcosystemIdentityClient>;
   readonly enabled: boolean;
   readonly issuer: string;
   readonly jwks: Readonly<{ keys: readonly JsonWebKey[] }>;
@@ -209,7 +230,10 @@ export class EcosystemIdentityService {
       audience: DEFAULT_AUDIENCE,
       redirectUris: parseRedirectUris(env.ECOSYSTEM_IDENTITY_REDIRECT_URIS),
     });
+    this.clients = new Map([this.client, ...parseAdditionalClients(env.ECOSYSTEM_IDENTITY_CLIENTS_JSON)].map((client) => [client.id, client]));
   }
+
+  allowsSessions(clientId: string): boolean { return this.clients.get(clientId)?.sessions === true; }
 
   private removeExpiredCodes(now = Date.now()): void {
     for (const [hash, pending] of this.pendingCodes) {
@@ -223,6 +247,7 @@ export class EcosystemIdentityService {
     displayName: string;
     redirectUri: string;
     subject: string;
+    sessionId?: string;
   }): { code: string; expiresIn: number } {
     if (!this.privateKey) {
       throw new EcosystemIdentityError("identity_unavailable", "Ecosystem sign-in is not configured");
@@ -231,31 +256,38 @@ export class EcosystemIdentityService {
     if (this.pendingCodes.size >= MAX_PENDING_CODES) {
       throw new EcosystemIdentityError("temporarily_unavailable", "Too many pending sign-in requests");
     }
-    if (input.clientId !== this.client.id || !this.client.redirectUris.has(input.redirectUri)) {
+    const client = this.clients.get(input.clientId);
+    if (!client || !client.redirectUris.has(input.redirectUri)) {
       throw new EcosystemIdentityError("invalid_client", "Unknown client or redirect URI");
     }
+    if (client.sessions && !input.sessionId) throw new EcosystemIdentityError("session_required", "Sign in to Chat again");
     if (!/^[A-Za-z0-9_-]{43}$/.test(input.codeChallenge)) {
       throw new EcosystemIdentityError("invalid_request", "PKCE S256 code challenge is required");
     }
     const code = randomBytes(32).toString("base64url");
     this.pendingCodes.set(codeHash(code), {
-      audience: this.client.audience,
-      clientId: this.client.id,
+      audience: client.audience,
+      clientId: client.id,
       codeChallenge: input.codeChallenge,
       displayName: input.displayName.slice(0, 64),
       expiresAt: Date.now() + CODE_TTL_MS,
       redirectUri: input.redirectUri,
       subject: input.subject,
+      ...(client.sessions ? { sessionId: input.sessionId } : {}),
     });
     return { code, expiresIn: CODE_TTL_MS / 1000 };
   }
 
-  exchangeCode(input: {
+  exchangeCode(input: { clientId: string; code: string; codeVerifier: string; redirectUri: string }): EcosystemIdentityToken {
+    return this.redeemCode(input).token;
+  }
+
+  redeemCode(input: {
     clientId: string;
     code: string;
     codeVerifier: string;
     redirectUri: string;
-  }): EcosystemIdentityToken {
+  }): { token: EcosystemIdentityToken; session?: { sessionId: string; subject: string; clientId: string } } {
     if (!this.privateKey) {
       throw new EcosystemIdentityError("identity_unavailable", "Ecosystem sign-in is not configured");
     }
@@ -292,9 +324,8 @@ export class EcosystemIdentityService {
       jti: randomUUID(),
     });
     return {
-      access_token: accessToken,
-      expires_in: TOKEN_TTL_SECONDS,
-      token_type: "Bearer",
+      token: { access_token: accessToken, expires_in: TOKEN_TTL_SECONDS, token_type: "Bearer" },
+      ...(pending.sessionId ? { session: { sessionId: pending.sessionId, subject: pending.subject, clientId: pending.clientId } } : {}),
     };
   }
 }

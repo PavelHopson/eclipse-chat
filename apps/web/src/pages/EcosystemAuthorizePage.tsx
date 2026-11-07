@@ -21,6 +21,17 @@ type Props = {
   user: PublicUser | null;
 };
 
+const PROJECT_NAMES: Record<string, string> = {
+  "eclipse-dnd-forge": "DnD Forge",
+  "eclipse-library": "Eclipse Library",
+  "eclipse-media": "Eclipse Media",
+  "eclipse-ai-hub": "Eclipse AI Hub",
+  "eclipse-hopson-sentinel": "Hopson Sentinel",
+  "eclipse-claw": "Eclipse Claw",
+  "eclipse-premium-rent": "Premium Rent",
+  "eclipse-admin": "Админка Eclipse",
+};
+
 type AuthorizationRequest = {
   clientId: string;
   codeChallenge: string;
@@ -41,7 +52,7 @@ function readAuthorizationRequest(): AuthorizationRequest | null {
     state: params.get("state") || "",
   };
   if (
-    request.clientId !== "eclipse-dnd-forge" ||
+    !Object.hasOwn(PROJECT_NAMES, request.clientId) ||
     request.responseType !== "code" ||
     request.codeChallengeMethod !== "S256" ||
     !/^[A-Za-z0-9_-]{43}$/.test(request.codeChallenge) ||
@@ -66,6 +77,7 @@ export function EcosystemAuthorizePage({
   user,
 }: Props) {
   const request = useMemo(readAuthorizationRequest, []);
+  const projectName = request ? PROJECT_NAMES[request.clientId] : "проект Eclipse";
   const [mode, setMode] = useState<"login" | "register">("login");
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
@@ -119,7 +131,7 @@ export function EcosystemAuthorizePage({
       });
       window.location.assign(result.redirectTo);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Не удалось подключить DnD Forge");
+      setError(cause instanceof Error ? cause.message : `Не удалось подключить ${projectName}`);
       setBusy(false);
     }
   }
@@ -130,7 +142,7 @@ export function EcosystemAuthorizePage({
         <section className="ec-identity-card" role="alert">
           <p className="ec-kicker">ECLIPSE IDENTITY</p>
           <h1>Ссылка подключения повреждена</h1>
-          <p className="ec-identity-card__lead">Вернитесь в DnD Forge и начните вход ещё раз.</p>
+          <p className="ec-identity-card__lead">Вернитесь в проект и начните вход ещё раз.</p>
           <button className="ec-btn ec-btn--secondary" type="button" onClick={() => window.history.back()}>
             Вернуться назад
           </button>
@@ -143,12 +155,12 @@ export function EcosystemAuthorizePage({
     return (
       <main className="ec-identity-shell">
         <form className="ec-identity-card" onSubmit={(event) => void login(event)}>
-          <p className="ec-kicker">ECLIPSE DND FORGE</p>
+          <p className="ec-kicker">{projectName}</p>
           <h1>{mode === "login" ? "Войдите через Eclipse Chat" : "Создайте аккаунт Eclipse"}</h1>
           <p className="ec-identity-card__lead">
             {mode === "login"
-              ? "Chat подтвердит вашу личность. Пароль и токены не передаются в DnD Forge."
-              : "Один аккаунт для Chat и DnD Forge. После регистрации останется только подтвердить подключение."}
+              ? `Chat подтвердит вашу личность для ${projectName}. Пароль и сессия Chat не передаются проекту.`
+              : "Аккаунт Chat подтверждает личность. Права редактора выдаются отдельно в каждом проекте."}
           </p>
           <div className="ec-identity-mode" role="group" aria-label="Способ продолжить">
             <button
@@ -228,15 +240,16 @@ export function EcosystemAuthorizePage({
     <main className="ec-identity-shell">
       <section className="ec-identity-card">
         <p className="ec-kicker">ECLIPSE IDENTITY</p>
-        <h1>Подключить DnD Forge?</h1>
+        <h1>Подключить {projectName}?</h1>
         <p className="ec-identity-card__lead">
           Вы вошли как <strong className="ec-identity-card__user">{user.displayName}</strong>.
-          DnD Forge получит только ваш внутренний ID и имя — без email, пароля и истории Chat.
+          {projectName} получит только ваш внутренний ID и имя — без email, пароля и истории Chat.
         </p>
+        {request?.clientId === "eclipse-library" && <p className="ec-identity-card__helper">Library сможет проверять эту сессию до 8 часов. Кнопка «Выйти из Eclipse» в Library завершит её также в Chat. Другие устройства останутся в системе.</p>}
         {(error || authError) && <p className="ec-form-error" role="alert">{error || authError}</p>}
         <div className="ec-identity-card__actions">
           <button className="ec-btn ec-btn--primary" type="button" onClick={() => void approve()} disabled={busy}>
-            {busy ? "Подключаю…" : "Подключить DnD Forge"}
+            {busy ? "Подключаю…" : `Подключить ${projectName}`}
           </button>
           <button className="ec-btn ec-btn--secondary" type="button" onClick={() => window.history.back()} disabled={busy}>
             Отмена
