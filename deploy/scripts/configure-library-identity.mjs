@@ -25,18 +25,25 @@ export function replaceSettings(source,updates){
  }
  return result;
 }
+let stage='arguments';
 async function main(){
  const mode=process.argv[2];if(!['inspect','enable'].includes(mode))throw Error('Unknown mode');
  const root='/var/www/eclipse-chat',file=root+'/apps/server/.env';
+ stage='environment-metadata';
  const metadata=fs.lstatSync(file);if(metadata.isSymbolicLink()||metadata.uid!==0||(metadata.mode&0o037))throw Error('Unsafe environment file');
+ stage='load-environment';
  const require=createRequire(root+'/apps/server/package.json');const {parse}=require('dotenv');
  const before=fs.readFileSync(file,'utf8'),env=parse(before);
+ stage='runtime-version';
  const version=JSON.parse(fs.readFileSync(root+'/apps/server/package.json','utf8')).version;
  if(version!=='1.7.92')throw Error('Unexpected runtime version');
+ stage='load-identity-service';
  const {EcosystemIdentityService}=await import(pathToFileURL(root+'/apps/server/dist/security/ecosystemIdentity.js'));
  const service=new EcosystemIdentityService(env);if(service.issuer!=='https://app.star-crm.ru/eclipse-chat')throw Error('Unexpected issuer');
+ stage='migration-check';
  const {PrismaClient}=require('@prisma/client');const db=new PrismaClient({datasources:{db:{url:env.DATABASE_URL}},log:[]});
  try{const rows=await db.$queryRawUnsafe('SELECT to_regclass(\'public."EcosystemSession"\') AS name');if(!rows[0]?.name)throw Error('Migration missing');}finally{await db.$disconnect();}
+ stage='validate-settings';
  const updates=updatesFor(env);const next=replaceSettings(before,updates);const configured=new EcosystemIdentityService(parse(next));
  if(!configured.enabled||!configured.allowsSessions(CLIENT.id))throw Error('Invalid proposed settings');
  console.log(JSON.stringify({mode,version,migration:true,protocolV2:env.AUTH_PROTOCOL_V2_REQUIRED==='true',signingKeyPresent:service.enabled,libraryConfigured:service.allowsSessions(CLIENT.id)}));
@@ -49,4 +56,4 @@ async function main(){
  try{install(next);restart();await smoke();console.log('Library identity enabled; health, grant boundary and JWKS verified; protected backup retained');}
  catch{install(before);restart();throw Error('Configuration rolled back after failed activation');}
 }
-if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href)main().catch(()=>{console.error('Identity configuration failed; no credentials printed. Check bounded preflight/rollback status.');process.exitCode=1;});
+if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href)main().catch(error=>{const known=['Unsafe environment file','Unexpected runtime version','Unexpected issuer','Migration missing','Invalid proposed settings','Existing Library client differs; manual review required','Configuration rolled back after failed activation'];console.error(JSON.stringify({error:'identity_configuration_failed',stage,reason:known.includes(error.message)?error.message:'See bounded stage; credentials suppressed',code:/^[A-Z_0-9]+$/.test(error.code||'')?error.code:undefined}));process.exitCode=1;});
