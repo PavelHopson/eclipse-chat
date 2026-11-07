@@ -1,0 +1,44 @@
+name: Configure Library identity
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        type: choice
+        options: [inspect, enable]
+        default: inspect
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: eclipse-chat-prod-deploy
+  cancel-in-progress: false
+jobs:
+  configure:
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Configure only Chat Library identity
+        uses: appleboy/ssh-action@7eaf76671a0d7eec5d98ee897acda4f968735a17
+        env:
+          CONFIG_SHA: ${{ github.sha }}
+          IDENTITY_MODE: ${{ inputs.mode }}
+        with:
+          host: ${{ secrets.DEPLOY_HOST_PROD }}
+          username: ${{ secrets.DEPLOY_USER_PROD }}
+          key: ${{ secrets.SSH_PRIVATE_KEY_PROD }}
+          envs: CONFIG_SHA,IDENTITY_MODE
+          command_timeout: 5m
+          script: |
+            set -eu
+            test "$(printf %s "$CONFIG_SHA" | grep -Ec '^[0-9a-f]{40}$')" = 1
+            case "$IDENTITY_MODE" in inspect|enable) ;; *) exit 1;; esac
+            cd /var/www/eclipse-chat
+            test "$(git remote get-url origin)" = "https://github.com/PavelHopson/eclipse-chat.git"
+            git fetch origin master
+            test "$(git rev-parse origin/master)" = "$CONFIG_SHA"
+            umask 077
+            script=$(mktemp /tmp/library-identity-XXXXXXXX.mjs)
+            trap 'rm -f -- "$script"' EXIT
+            git show "$CONFIG_SHA:deploy/scripts/configure-library-identity.mjs" > "$script"
+            sudo node "$script" "$IDENTITY_MODE"
