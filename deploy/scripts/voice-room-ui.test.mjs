@@ -777,3 +777,20 @@ test("join muted never calls mic publication; ordinary joining remains unchanged
   }
   assert.match(source, /state !== "connected" \|\| !micCaptureAllowedRef\.current/);
 });
+
+test("silent screen share hint points Windows window shares to full screen with system audio", () => {
+  const { screenShareAudioHint, localScreenSurface } = loadFunctions(room, ["screenShareAudioHint", "localScreenSurface"]);
+  const windowHint = screenShareAudioHint("window", "Windows");
+  assert.match(windowHint, /Звук отдельного окна не передаётся/);
+  assert.match(windowHint, /«Весь экран»/);
+  assert.match(windowHint, /«Поделиться системным звуком»/);
+  assert.match(windowHint, /наушниках/);
+  assert.match(screenShareAudioHint("monitor", "Win32"), /системным звуком/);
+  assert.match(screenShareAudioHint("browser", "macOS"), /звуком вкладки/);
+  // Off Windows there is no system loopback to promise; fall back to tab audio.
+  assert.doesNotMatch(screenShareAudioHint("window", "macOS"), /Весь экран/);
+  assert.equal(localScreenSurface({ mediaStreamTrack: { getSettings: () => ({ displaySurface: "window" }) } }), "window");
+  assert.equal(localScreenSurface(null), undefined);
+  assert.equal(localScreenSurface({ mediaStreamTrack: { getSettings: () => { throw new Error("gone"); } } }), undefined);
+  assert.match(room, /v\.isScreenShareEnabled && silentScreenHint &&/);
+});

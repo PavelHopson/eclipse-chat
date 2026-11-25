@@ -106,6 +106,17 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  // 00-144: вложения сообщений — только через авторизованный /api/ (выше).
+  // Старый публичный путь не кэшируем и не отдаём из кэша: доступ должен
+  // пропадать вместе с членством.
+  if (
+    url.pathname.includes("/uploads/attachments/") ||
+    url.pathname.includes("/uploads/training-videos/") ||
+    url.pathname.includes("/uploads/tables/")
+  ) {
+    return;
+  }
+
   // Uploads: cache-first. Файлы immutable (hashed names + timestamp).
   if (url.pathname.includes("/uploads/")) {
     event.respondWith(cacheFirst(req, UPLOADS_CACHE));

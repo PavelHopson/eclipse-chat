@@ -137,6 +137,7 @@ import type { PublicUser } from "../hooks/useAuth";
 import type { StoredAccount } from "../lib/accountVault";
 import { updateStoredAccountUser } from "../lib/accountVault";
 import { captureDisplayedAuth } from "../lib/storage";
+import { useMediaSessionKeeper } from "../hooks/useMediaSessionKeeper";
 import type { SettingsViewId } from "../components/settings/SettingsTreeNav";
 
 const ANDROID_APK_URL = `${import.meta.env.BASE_URL}download/eclipse-chat.apk?v=1.0.6`;
@@ -215,6 +216,8 @@ export function AppShell({
   } = useServers(true);
 
   const appearance = useAppearance(user.id, activeServer?.brandColor);
+  // 00-144: вложения отдаются только по живой media-cookie.
+  useMediaSessionKeeper(user.id);
 
   const {
     channels,

@@ -217,6 +217,44 @@ function resolveConnectionBadge(isConnected: boolean, isReconnecting: boolean, i
   return "Готов";
 }
 
+/**
+ * Подсказка, когда демонстрация опубликована без аудиодорожки.
+ * Chromium/WebView2 на Windows умеет звук только у вкладки и у всего экрана
+ * (системный loopback); у отдельного окна аудио нет вообще. Текст ведёт к
+ * рабочему варианту для выбранной поверхности и не обещает невозможного.
+ */
+function screenShareAudioHint(surface: string | undefined, platform: string): string {
+  const windows = /win/i.test(platform);
+  const echo = " Лучше в наушниках — иначе собеседники услышат себя в трансляции.";
+  if (surface === "window" && windows) {
+    return "Звук отдельного окна не передаётся: Windows-приложение и браузер не умеют его захватывать. Чтобы зрители слышали звук, остановите показ, выберите «Весь экран» и включите «Поделиться системным звуком»." + echo;
+  }
+  if (surface === "monitor" && windows) {
+    return "Экран транслируется без звука. Запустите показ заново и в окне выбора включите «Поделиться системным звуком»." + echo;
+  }
+  if (surface === "browser") {
+    return "Вкладка транслируется без звука. Запустите показ заново и включите «Поделиться звуком вкладки» в окне выбора.";
+  }
+  return "Трансляция идёт без звука: устройство не предоставило аудиодорожку. Для звука выберите вкладку браузера и включите «Поделиться звуком» в окне выбора.";
+}
+
+/** displaySurface локальной демонстрации (window / monitor / browser), если браузер его сообщает. */
+function localScreenSurface(track: unknown): string | undefined {
+  try {
+    const media = (track as { mediaStreamTrack?: MediaStreamTrack } | null)?.mediaStreamTrack;
+    const settings = media?.getSettings?.() as (MediaTrackSettings & { displaySurface?: string }) | undefined;
+    return settings?.displaySurface;
+  } catch {
+    return undefined;
+  }
+}
+
+function clientPlatform(): string {
+  if (typeof navigator === "undefined") return "";
+  const nav = navigator as Navigator & { userAgentData?: { platform?: string } };
+  return nav.userAgentData?.platform || nav.platform || nav.userAgent || "";
+}
+
 function formatRoomAudience(count: number): string {
   const abs = Math.abs(count);
   const mod10 = abs % 10;
@@ -662,7 +700,11 @@ export function VoiceRoom({
 
   const screenTracks = roomVisualTracks.filter((t) => t.source === "screen");
   const cameraTracks = roomVisualTracks.filter((t) => t.source === "camera");
-  const localScreenAudio = screenTracks.find((track) => track.isLocal)?.hasAudio;
+  const localScreenTrack = screenTracks.find((track) => track.isLocal);
+  const localScreenAudio = localScreenTrack?.hasAudio;
+  const silentScreenHint = localScreenAudio === false
+    ? screenShareAudioHint(localScreenSurface(localScreenTrack?.track), clientPlatform())
+    : null;
   const hasVisual = screenTracks.length > 0 || cameraTracks.length > 0;
 
   const speakingIdentities = new Set(roomParticipants.filter(person => person.isSpeaking && !person.isMicMuted).map(person => person.identity));
@@ -780,9 +822,9 @@ export function VoiceRoom({
         </div>
       )}
 
-      {isJoinedHere && v.isScreenShareEnabled && localScreenAudio === false && (
+      {isJoinedHere && v.isScreenShareEnabled && silentScreenHint && (
         <div className="ec-voice-playback-gate" role="status" aria-live="polite">
-          <span>Трансляция идёт без звука: устройство не предоставило аудиодорожку. Для звука выбери вкладку в Edge/Chrome и включи «Поделиться звуком» в окне выбора. Захват окна или экрана поддерживает звук не на всех платформах.</span>
+          <span>{silentScreenHint}</span>
           <button type="button" onClick={() => void runControl("screen", v.toggleScreenShare)} disabled={controlPending.includes("screen")}>
             Остановить показ
           </button>

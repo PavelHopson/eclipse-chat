@@ -54,6 +54,14 @@ test('nginx serves the application with a strict browser security contract', asy
   assert.match(uploads, /X-Content-Type-Options "nosniff"/);
   assert.match(uploads, /Referrer-Policy "strict-origin-when-cross-origin"/);
   assert.match(uploads, /X-Frame-Options "DENY"/);
+
+  // 00-144: message attachments are never public static files. The more
+  // specific ^~ prefix must win over /uploads/ and must not alias to disk.
+  for (const dir of ['attachments', 'training-videos', 'tables']) {
+    const body = locationBody(source, `/eclipse-chat/uploads/${dir}/`);
+    assert.match(body, /return 404;/);
+    assert.doesNotMatch(body, /alias|root/);
+  }
 });
 
 test('theme bootstrap remains CSP-compatible', async () => {
