@@ -100,8 +100,27 @@ fi
 echo "→ Check uploads MIME (regression guard)"
 PROBE=""
 if [[ -d "$UPLOADS_DIR" ]]; then
-    PROBE=$(find "$UPLOADS_DIR" -name '*.webp' -type f 2>/dev/null | head -1)
+    # Закрытые каталоги (00-144) не годятся для probe: публичны только
+    # аватарки/иконки/баннеры.
+    PROBE=$(find "$UPLOADS_DIR" \( -path "$UPLOADS_DIR/attachments" -o -path "$UPLOADS_DIR/training-videos" -o -path "$UPLOADS_DIR/tables" \) -prune -o -name '*.webp' -type f -print 2>/dev/null | head -1)
 fi
+
+# 00-144: прямые URL закрытых файлов обязаны НЕ отдаваться (ни файла, ни SPA).
+for PRIVATE_DIR in attachments training-videos tables; do
+    PRIVATE_PROBE=""
+    if [[ -d "$UPLOADS_DIR/$PRIVATE_DIR" ]]; then
+        PRIVATE_PROBE=$(find "$UPLOADS_DIR/$PRIVATE_DIR" -type f 2>/dev/null | head -1)
+    fi
+    if [[ -n "$PRIVATE_PROBE" ]]; then
+        PRIVATE_URL="$BASE_URL/uploads/$PRIVATE_DIR/$(basename "$PRIVATE_PROBE")"
+        PRIVATE_STATUS=$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 "$PRIVATE_URL")
+        if [[ "$PRIVATE_STATUS" == "404" ]]; then
+            pass "$PRIVATE_DIR не отдаются публично (404)"
+        else
+            fail "$PRIVATE_DIR доступны без авторизации: HTTP $PRIVATE_STATUS — проверь nginx location /eclipse-chat/uploads/$PRIVATE_DIR/"
+        fi
+    fi
+done
 
 if [[ -n "$PROBE" ]]; then
     REL="${PROBE#$UPLOADS_DIR/}"

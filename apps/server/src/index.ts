@@ -13,6 +13,7 @@ import { registerActionRoutes } from "./routes/actions.js";
 import { registerPersonalTimeRoutes } from "./routes/personalTime.js";
 import { registerPersonalPlanRoutes } from "./routes/personalPlan.js";
 import { registerAttachmentRoutes } from "./routes/attachments.js";
+import { isPublicUploadPath, registerAttachmentMediaRoutes } from "./routes/attachmentMedia.js";
 import { registerAutomationRoutes } from "./routes/automations.js";
 import { registerAnalyticsRoutes } from "./routes/analytics.js";
 import { registerAuthRoutes } from "./routes/auth.js";
@@ -174,6 +175,9 @@ await app.register(fastifyStatic, {
   decorateReply: false,
   cacheControl: true,
   maxAge: "1h",
+  // 00-144: вложения сообщений — только через авторизованный
+  // GET /api/attachments/media/:file (routes/attachmentMedia.ts).
+  allowedPath: (pathName) => isPublicUploadPath(pathName),
   setHeaders: (reply) => {
     // Uploads are user-controlled. A restrictive document policy keeps a
     // directly opened SVG from executing script in the application origin.
@@ -310,6 +314,7 @@ await registerActionRoutes(app);
 await registerPersonalPlanRoutes(app);
 await registerPersonalTimeRoutes(app);
 await registerAttachmentRoutes(app);
+await registerAttachmentMediaRoutes(app);
 await registerAutomationRoutes(app);
 await registerDigestRoutes(app);
 await registerMemoryRoutes(app);

@@ -465,6 +465,28 @@ frontend перейдёт на `/api/servers/:id/channels`.
 
 ---
 
+## Attachments (файлы сообщений)
+
+### `GET /api/attachments/media/:file`
+
+Единственный путь к байтам вложения и его миниатюры (`:file` — имя из
+`url` / `thumbnailUrl` после `/uploads/attachments/`). Авторизация —
+HttpOnly media-cookie (ставится на login/refresh и
+`POST /api/auth/media-session`), без `Authorization`-заголовка, чтобы работали
+`<img>`/`<audio>`/`<video>`. Доступ проверяется на каждом запросе по
+текущему членству в канале или DM. `401` — нет живой сессии, `404` — нет
+файла или нет доступа. `Cache-Control: private, no-store`, поддерживает
+`Range`. Прямой `/uploads/attachments/*` закрыт (404). Подробно —
+`docs/security/attachment-access-00-144.md`.
+
+### `GET /api/attachments/training-videos/:file`
+
+Файл обучающей библиотеки сервера (`TrainingVideo`, source=file). Та же
+media-cookie; доступ — текущий участник сервера. Прямые
+`/uploads/training-videos/*` и `/uploads/tables/*` закрыты (404).
+
+---
+
 ## Messages
 
 ### `GET /api/channels/:id/messages`
